@@ -6,6 +6,7 @@ import { RepositoryProvider } from "alepha/orm";
 import { localSmsOptions } from "alepha/sms";
 import { FileSystemProvider } from "alepha/system";
 
+import { INSPECTOR_ENDPOINTS } from "../constants/INSPECTOR_ENDPOINTS.ts";
 import type {
   InspectorMethod,
   InspectorRoute,
@@ -32,6 +33,8 @@ import { DevToolsMetadataProvider } from "./DevToolsMetadataProvider.ts";
  * into, and why the transport is a `0600` socket rather than a TCP port.
  */
 export class InspectorRoutes {
+  // Method and path of each route come from `INSPECTOR_ENDPOINTS`, which the
+  // client reads too; the keys here are the same names.
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
   protected readonly metadataProvider = $inject(DevToolsMetadataProvider);
@@ -43,8 +46,7 @@ export class InspectorRoutes {
 
   public readonly routes = {
     metadata: this.route({
-      method: "GET",
-      path: "/metadata",
+      ...INSPECTOR_ENDPOINTS.metadata,
       schema: {
         response: devMetadataSchema,
       },
@@ -52,8 +54,7 @@ export class InspectorRoutes {
     }),
 
     updateAtom: this.route({
-      method: "POST",
-      path: "/atoms",
+      ...INSPECTOR_ENDPOINTS.updateAtom,
       schema: {
         body: z.object({
           name: z.text(),
@@ -91,8 +92,7 @@ export class InspectorRoutes {
     }),
 
     atomLog: this.route({
-      method: "GET",
-      path: "/atoms/log",
+      ...INSPECTOR_ENDPOINTS.atomLog,
       schema: {
         query: z.object({
           key: z.text().optional(),
@@ -109,8 +109,7 @@ export class InspectorRoutes {
     }),
 
     logs: this.route({
-      method: "GET",
-      path: "/logs",
+      ...INSPECTOR_ENDPOINTS.logs,
       schema: {
         query: z.object({
           level: z.text().optional(),
@@ -161,8 +160,7 @@ export class InspectorRoutes {
     }),
 
     emails: this.route({
-      method: "GET",
-      path: "/emails",
+      ...INSPECTOR_ENDPOINTS.emails,
       schema: {
         response: z.object({
           emails: z.array(
@@ -195,8 +193,7 @@ export class InspectorRoutes {
     }),
 
     sms: this.route({
-      method: "GET",
-      path: "/sms",
+      ...INSPECTOR_ENDPOINTS.sms,
       schema: {
         response: z.object({
           messages: z.array(
@@ -235,8 +232,7 @@ export class InspectorRoutes {
     // -----------------------------------------------------------------------------------------------------------------
 
     jobs: this.route({
-      method: "GET",
-      path: "/jobs",
+      ...INSPECTOR_ENDPOINTS.jobs,
       schema: { response: z.record(z.text(), z.any()) },
       handler: async () => {
         const service = this.getJobService();
@@ -248,8 +244,7 @@ export class InspectorRoutes {
     // Declared before `/jobs/:name/executions`, which it would otherwise
     // shadow for a job literally named "executions".
     jobExecution: this.route({
-      method: "GET",
-      path: "/jobs/executions/:id",
+      ...INSPECTOR_ENDPOINTS.jobExecution,
       schema: {
         params: z.object({ id: z.text() }),
         response: z.record(z.text(), z.any()),
@@ -262,8 +257,7 @@ export class InspectorRoutes {
     }),
 
     jobExecutions: this.route({
-      method: "GET",
-      path: "/jobs/:name/executions",
+      ...INSPECTOR_ENDPOINTS.jobExecutions,
       schema: {
         params: z.object({ name: z.text() }),
         query: z.object({ status: z.text().optional() }),
@@ -291,8 +285,7 @@ export class InspectorRoutes {
     }),
 
     jobTrigger: this.route({
-      method: "POST",
-      path: "/jobs/:name/trigger",
+      ...INSPECTOR_ENDPOINTS.jobTrigger,
       schema: {
         params: z.object({ name: z.text() }),
         body: z.record(z.text(), z.any()),
@@ -308,8 +301,7 @@ export class InspectorRoutes {
     }),
 
     jobRetry: this.route({
-      method: "POST",
-      path: "/jobs/executions/:id/retry",
+      ...INSPECTOR_ENDPOINTS.jobRetry,
       schema: {
         params: z.object({ id: z.text() }),
         response: z.record(z.text(), z.any()),
@@ -328,8 +320,7 @@ export class InspectorRoutes {
     // -----------------------------------------------------------------------------------------------------------------
 
     dbList: this.route({
-      method: "GET",
-      path: "/db/:entity/records",
+      ...INSPECTOR_ENDPOINTS.dbList,
       schema: {
         params: z.object({ entity: z.text() }),
         query: z.object({
@@ -358,8 +349,7 @@ export class InspectorRoutes {
     }),
 
     dbCreate: this.route({
-      method: "POST",
-      path: "/db/:entity/records",
+      ...INSPECTOR_ENDPOINTS.dbCreate,
       schema: {
         params: z.object({ entity: z.text() }),
         body: z.record(z.text(), z.any()),
@@ -375,8 +365,7 @@ export class InspectorRoutes {
     }),
 
     dbUpdate: this.route({
-      method: "PUT",
-      path: "/db/:entity/records/:id",
+      ...INSPECTOR_ENDPOINTS.dbUpdate,
       schema: {
         params: z.object({ entity: z.text(), id: z.text() }),
         body: z.record(z.text(), z.any()),
@@ -394,8 +383,7 @@ export class InspectorRoutes {
     }),
 
     dbDelete: this.route({
-      method: "DELETE",
-      path: "/db/:entity/records/:id",
+      ...INSPECTOR_ENDPOINTS.dbDelete,
       schema: {
         params: z.object({ entity: z.text(), id: z.text() }),
         response: z.record(z.text(), z.any()),

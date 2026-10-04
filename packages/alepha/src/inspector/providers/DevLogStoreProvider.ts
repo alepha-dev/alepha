@@ -2,6 +2,7 @@ import { $hook, $inject, Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import {
   $logger,
+  LogDestinationProvider,
   type LogEntry,
   MemoryDestinationProvider,
 } from "alepha/logger";
@@ -33,6 +34,7 @@ export class DevLogStoreProvider {
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
   protected readonly memory = $inject(MemoryDestinationProvider);
+  protected readonly destination = $inject(LogDestinationProvider);
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly dateTime = $inject(DateTimeProvider);
 
@@ -123,12 +125,15 @@ export class DevLogStoreProvider {
    *
    * In dev mode `LogDestinationProvider` is bound to
    * `ConsoleDestinationProvider`, so `MemoryDestinationProvider` would
-   * otherwise never receive writes.
+   * otherwise never receive writes. Under test it IS the destination, and
+   * writing again would deliver every entry twice.
    */
   protected readonly onLog = $hook({
     on: "log",
     handler: ({ entry }) => {
-      this.memory.write("", entry);
+      if (this.destination !== this.memory) {
+        this.memory.write("", entry);
+      }
       this.queue(entry);
     },
   });

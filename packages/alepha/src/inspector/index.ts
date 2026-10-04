@@ -18,6 +18,8 @@ export * from "./providers/DevToolsMetadataProvider.ts";
 export * from "./providers/InspectorRoutes.ts";
 export * from "./providers/InspectorRunProvider.ts";
 export * from "./providers/InspectorSocketServer.ts";
+export * from "./services/InspectorClient.ts";
+export * from "./services/InspectorConnection.ts";
 export * from "./services/InspectorDispatcher.ts";
 export * from "./services/InspectorRegistry.ts";
 

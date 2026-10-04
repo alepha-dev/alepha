@@ -1,4 +1,6 @@
+export * from "./constants/INSPECTOR_ENDPOINTS.ts";
 export * from "./constants/INSPECTOR_PROTOCOL.ts";
+export type * from "./interfaces/InspectorCall.ts";
 export * from "./interfaces/InspectorRoute.ts";
 export * from "./schemas/DevActionMetadata.ts";
 export * from "./schemas/DevAtomMetadata.ts";
