@@ -153,7 +153,7 @@ export class RehearseMigrationCommand {
   ): Promise<Record<string, number>> {
     const [listed] = await this.cloudflare.d1Query(
       databaseId,
-      "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' ORDER BY name;",
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite\\_%' ESCAPE '\\' AND name NOT LIKE '\\_cf\\_%' ESCAPE '\\' ORDER BY name;",
     );
     const tables = (listed?.results ?? [])
       .map((row) => row.name)
@@ -162,17 +162,22 @@ export class RehearseMigrationCommand {
       throw new AlephaError("The copy holds no table: the import failed.");
     }
 
-    const sql = tables
-      .map(
-        (table) =>
-          `SELECT '${table.replace(/'/g, "''")}' AS name, COUNT(*) AS n FROM "${table.replace(/"/g, '""')}"`,
-      )
-      .join(" UNION ALL ");
-    const [counted] = await this.cloudflare.d1Query(databaseId, `${sql};`);
-
+    // One statement per table, twenty to a request: a single compound
+    // SELECT over every table is past D1's limit on compound terms.
     const counts: Record<string, number> = {};
-    for (const row of counted?.results ?? []) {
-      counts[String(row.name)] = Number(row.n);
+    for (let i = 0; i < tables.length; i += 20) {
+      const sql = tables
+        .slice(i, i + 20)
+        .map(
+          (table) =>
+            `SELECT '${table.replace(/'/g, "''")}' AS name, COUNT(*) AS n FROM "${table.replace(/"/g, '""')}";`,
+        )
+        .join("\n");
+      for (const answer of await this.cloudflare.d1Query(databaseId, sql)) {
+        for (const row of answer.results ?? []) {
+          counts[String(row.name)] = Number(row.n);
+        }
+      }
     }
     return counts;
   }
