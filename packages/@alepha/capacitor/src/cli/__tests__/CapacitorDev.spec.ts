@@ -8,6 +8,7 @@ import {
   ViteDevServerProvider,
 } from "alepha/cli";
 import { CliProvider } from "alepha/command";
+import { DateTimeProvider } from "alepha/datetime";
 import {
   FileSystemProvider,
   MemoryFileSystemProvider,
@@ -89,6 +90,10 @@ class TestCapacitorDev extends CapacitorDev {
       ];
     }
     return result;
+  }
+
+  public keep(root: string, id: string, port: number): () => void {
+    return this.keepReverse(root, { id, name: id, virtual: true }, port);
   }
 
   protected override async runOnDevice(
@@ -241,6 +246,35 @@ describe("alepha capacitor dev", () => {
     );
     expect(launch).toBeGreaterThanOrEqual(0);
     expect(remove).toBeGreaterThan(launch);
+  });
+
+  it("keeps the emulator's reverse alive while the app runs", async ({
+    expect,
+  }) => {
+    // adb drops every reverse when its connection to the emulator resets.
+    const { shell, dev, alepha } = await setup(
+      [{ id: "emulator-5554", name: "Google sdk_gphone64_arm64" }],
+      "android",
+    );
+    const dateTime = alepha.inject(DateTimeProvider);
+    dateTime.pause();
+    const stop = dev.keep("/app", "emulator-5554", 5173);
+
+    await dateTime.travel([11, "seconds"]);
+    const reasserted = shell.calls.filter(
+      (call) =>
+        call.command === "adb -s emulator-5554 reverse tcp:5173 tcp:5173",
+    ).length;
+    stop();
+    await dateTime.travel([20, "seconds"]);
+
+    expect(reasserted).toBeGreaterThanOrEqual(2);
+    expect(
+      shell.calls.filter(
+        (call) =>
+          call.command === "adb -s emulator-5554 reverse tcp:5173 tcp:5173",
+      ).length,
+    ).toBe(reasserted);
   });
 
   it("allows local networking on an iOS device while it runs, and puts Info.plist back", async ({

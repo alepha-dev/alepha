@@ -7,6 +7,7 @@ import {
   PackageManagerUtils,
   ViteDevServerProvider,
 } from "alepha/cli";
+import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
 
@@ -47,6 +48,7 @@ export class CapacitorDev {
   protected readonly log = $logger();
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly shell = $inject(ShellProvider);
+  protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly pm = $inject(PackageManagerUtils);
   protected readonly project = $inject(CapacitorProject);
   protected readonly packages = $inject(CapacitorPackages);
@@ -363,6 +365,9 @@ export class CapacitorDev {
     const forward = reverse ? ` --forwardPorts ${port}:${port}` : "";
     const ignore = () => {};
     process.on("SIGINT", ignore);
+    const stopKeeping = reverse
+      ? this.keepReverse(root, target, port)
+      : () => {};
     try {
       await this.shell.run(
         this.packages.cap(
@@ -372,8 +377,45 @@ export class CapacitorDev {
         { root },
       );
     } finally {
+      stopKeeping();
       process.off("SIGINT", ignore);
     }
+  }
+
+  /**
+   * Re-assert the emulator's `adb reverse` every few seconds while the app
+   * runs. adb drops every reverse when its connection to the emulator
+   * resets, which happens on its own during a long session; the WebView
+   * then loses the dev server with nothing on screen to say why.
+   * Idempotent, and quiet when the emulator is momentarily unreachable.
+   *
+   * @returns a function that stops it
+   */
+  protected keepReverse(
+    root: string,
+    target: DevTarget,
+    port: number,
+  ): () => void {
+    const interval = this.dateTime.createInterval(
+      async () => {
+        await this.shell
+          .run(
+            [
+              await this.adb(),
+              "-s",
+              target.id,
+              "reverse",
+              `tcp:${port}`,
+              `tcp:${port}`,
+            ],
+            { root, capture: true },
+          )
+          .catch(() => undefined);
+      },
+      [5, "seconds"],
+      true,
+    );
+    return () => this.dateTime.clearInterval(interval);
   }
 }
 

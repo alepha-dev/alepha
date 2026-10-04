@@ -1,4 +1,4 @@
-import { Alepha, z } from "alepha";
+import { $hook, $inject, Alepha, type Service, z } from "alepha";
 import { AlephaReact } from "alepha/react";
 import { $page } from "alepha/react/router";
 import { act } from "react";
@@ -22,7 +22,7 @@ class App {
   });
 }
 
-const boot = async (launch?: string) => {
+const boot = async (launch?: string, extra?: Service) => {
   const alepha = Alepha.create()
     .with({
       provide: CapacitorConfigProvider,
@@ -32,6 +32,9 @@ const boot = async (launch?: string) => {
     .with(AlephaCapacitor)
     .with(AlephaReact)
     .with(App);
+  if (extra) {
+    alepha.with(extra);
+  }
   alepha.inject(MemoryCapacitorConfigProvider).config = {
     appId: "dev.alepha.mobile",
     variant: "base",
@@ -79,6 +82,53 @@ describe("deep links in the app", () => {
 
     expect(text()).toBe("note 7");
     expect(window.history.length).toBe(length + 1);
+  });
+
+  it("opens a link reported before the first screen once it is up", async ({
+    expect,
+  }) => {
+    // What a cold start of a hydrated page sees: `appUrlOpen` arrives during
+    // start, before the router has a state, and no launch resolver runs.
+    class EarlyLink {
+      protected readonly links = $inject(DeepLinkProvider);
+
+      protected readonly onStart = $hook({
+        on: "start",
+        handler: async () => {
+          await (this.links as MemoryDeepLinkProvider).open(
+            "mobile://app/notes/9",
+          );
+        },
+      });
+    }
+
+    await boot(undefined, EarlyLink);
+
+    expect(text()).toBe("note 9");
+    expect(window.location.pathname).toBe("/notes/9");
+  });
+
+  it("opens a launch link once even when it is also reported early", async ({
+    expect,
+  }) => {
+    class EarlyLink {
+      protected readonly links = $inject(DeepLinkProvider);
+
+      protected readonly onStart = $hook({
+        on: "start",
+        handler: async () => {
+          await (this.links as MemoryDeepLinkProvider).open(
+            "mobile://app/notes/42",
+          );
+        },
+      });
+    }
+    const length = window.history.length;
+
+    await boot("mobile://app/notes/42", EarlyLink);
+
+    expect(text()).toBe("note 42");
+    expect(window.history.length).toBe(length);
   });
 
   it("does not navigate for a link that is not the app's", async ({

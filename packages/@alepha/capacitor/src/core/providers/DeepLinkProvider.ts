@@ -47,6 +47,18 @@ export class DeepLinkProvider {
 
   protected last?: { url: string; at: number };
 
+  /**
+   * Whether the first screen is up, so a link can be pushed.
+   */
+  protected routed = false;
+
+  /**
+   * A link that arrived before the first screen: Capacitor also reports the
+   * launch link as `appUrlOpen`, and it can come before the router has a
+   * state to push onto.
+   */
+  protected early?: string;
+
   protected readonly onConfigure = $hook({
     on: "configure",
     handler: () => {
@@ -68,7 +80,29 @@ export class DeepLinkProvider {
   protected readonly onStop = $hook({
     on: "stop",
     handler: async () => {
+      this.routed = false;
       await this.unlisten();
+    },
+  });
+
+  /**
+   * After the router's own `ready` (the first transition), open the link
+   * that came too early, unless the launch resolver already opened it. That
+   * is the cold link of a hydrated page, which has no resolver: the server
+   * rendered its own URL first.
+   */
+  protected readonly onReady = $hook({
+    on: "ready",
+    priority: "last",
+    handler: async () => {
+      this.routed = true;
+      const early = this.early;
+      this.early = undefined;
+      if (early && early !== this.last?.url) {
+        await this.receive(early).catch((error) => {
+          this.log.error("Could not open the link", error);
+        });
+      }
     },
   });
 
@@ -139,6 +173,11 @@ export class DeepLinkProvider {
    */
   public async receive(url: string): Promise<void> {
     if (this.isDuplicate(url)) {
+      return;
+    }
+    // Only a route needs the router; a sign-in callback does not wait.
+    if (!this.routed && this.parse(url)?.kind === "route") {
+      this.early = url;
       return;
     }
     this.remember(url);
