@@ -70,7 +70,10 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
+    "@capacitor/app": "8.1.2",
     "@capacitor/core": "8.5.2",
+    "@capacitor/device": "8.0.3",
+    "@capacitor/haptics": "8.0.2",
     "@types/bun": "^1.4.2",
     "@types/node": "^26.6.3",
     "alepha": "0.31.0",
@@ -81,11 +84,23 @@
     "vitest": "^5.0.3"
   },
   "peerDependencies": {
+    "@capacitor/app": "^8.0.0",
     "@capacitor/core": "^8.4.0",
+    "@capacitor/device": "^8.0.0",
+    "@capacitor/haptics": "^8.0.0",
     "alepha": "^0.31.0"
   },
   "peerDependenciesMeta": {
+    "@capacitor/app": {
+      "optional": true
+    },
     "@capacitor/core": {
+      "optional": true
+    },
+    "@capacitor/device": {
+      "optional": true
+    },
+    "@capacitor/haptics": {
       "optional": true
     }
   },

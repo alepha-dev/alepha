@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@alepha/capacitor": "workspace:*",
     "@alepha/ui": "workspace:*",
     "@aparajita/capacitor-secure-storage": "8.0.1",
     "@capacitor/android": "8.5.2",
@@ -27,7 +28,6 @@
     "react-dom": "^19.3.0"
   },
   "devDependencies": {
-    "@alepha/capacitor": "workspace:*",
     "@capacitor/cli": "8.5.2",
     "@tailwindcss/vite": "^4.3.3",
     "tailwindcss": "^4.3.3",

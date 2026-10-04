@@ -9,7 +9,10 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@alepha/capacitor@workspace:packages/@alepha/capacitor"
   dependencies:
+    "@capacitor/app": "npm:8.1.2"
     "@capacitor/core": "npm:8.5.2"
+    "@capacitor/device": "npm:8.0.3"
+    "@capacitor/haptics": "npm:8.0.2"
     "@types/bun": "npm:^1.4.2"
     "@types/node": "npm:^26.6.3"
     alepha: "npm:0.31.0"
@@ -19,10 +22,19 @@ __metadata:
     vite: "npm:^8.3.2"
     vitest: "npm:^5.0.3"
   peerDependencies:
+    "@capacitor/app": ^8.0.0
     "@capacitor/core": ^8.4.0
+    "@capacitor/device": ^8.0.0
+    "@capacitor/haptics": ^8.0.0
     alepha: ^0.31.0
   peerDependenciesMeta:
+    "@capacitor/app":
+      optional: true
     "@capacitor/core":
+      optional: true
+    "@capacitor/device":
+      optional: true
+    "@capacitor/haptics":
       optional: true
   languageName: unknown
   linkType: soft

@@ -85,4 +85,12 @@ describe("@alepha/capacitor packaging", () => {
     expect(modules.some((id) => id.includes("/src/cli/"))).toBe(true);
     expect(imports).toContain("alepha/cli");
   });
+
+  it("keeps alepha/react/auth free of Capacitor", async ({ expect }) => {
+    // Native token custody lives here, behind a seam the framework's auth
+    // calls; the framework itself never learns Capacitor exists.
+    const { imports } = await graphOf("../../alepha/src/react/auth/index.ts");
+
+    expect(imports.filter((id) => id.startsWith("@capacitor/"))).toEqual([]);
+  });
 });
