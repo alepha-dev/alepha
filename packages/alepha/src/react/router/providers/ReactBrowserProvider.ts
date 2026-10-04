@@ -13,7 +13,12 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { BrowserHeadProvider } from "alepha/react/head";
 import { LinkProvider } from "alepha/server/links";
+import { createElement, Fragment } from "react";
 
+import { reactBootOptions } from "../atoms/reactBootOptions.ts";
+import BootMarker from "../components/BootMarker.tsx";
+import OfflineScreen from "../components/OfflineScreen.tsx";
+import { ReactBootHealth } from "../services/ReactBootHealth.ts";
 import type { RouterPushOptions } from "../services/ReactRouter.ts";
 import { ReactBrowserRouterProvider } from "./ReactBrowserRouterProvider.ts";
 import type {
@@ -79,6 +84,8 @@ export class ReactBrowserProvider {
   protected readonly validator = $inject(SchemaValidator);
 
   protected readonly options = $store(reactBrowserOptions);
+  protected readonly bootOptions = $store(reactBootOptions);
+  protected readonly bootHealth = $inject(ReactBootHealth);
 
   /**
    * Scroll offset of every history entry we have visited, keyed by the id
@@ -681,7 +688,17 @@ export class ReactBrowserProvider {
       const hydration = this.getHydrationState();
       const previous = hydration?.["alepha.react.router.layers"] ?? [];
 
-      await this.render({ previous });
+      try {
+        if (this.bootOptions.offline && !hydration) {
+          await this.bootWithDeadline(previous);
+        } else {
+          await this.render({ previous });
+        }
+        this.markBootScreen();
+      } catch (error) {
+        this.bootHealth.report("failed", error);
+        throw error;
+      }
 
       const element = this.router.root(this.state);
 
@@ -745,6 +762,122 @@ export class ReactBrowserProvider {
       this.attachAnchorInterceptor();
     },
   });
+
+  /**
+   * The first transition, bounded: what an app whose API may be unreachable
+   * boots through (see `reactBootOptions`).
+   *
+   * The transition races the deadline. Past it, the transition is superseded
+   * (its result, whenever it arrives, is dropped like any stale navigation)
+   * and the offline screen is committed instead, so `ready` completes and
+   * every later `ready` hook runs. A transition that finished with a request
+   * that got no response ends on the offline screen too. Any HTTP answer, an
+   * error status included, is not offline and keeps its ordinary handling.
+   */
+  protected async bootWithDeadline(previous: PreviousLayerData[]) {
+    const myTransitionId = ++this.transitionId;
+    const controller = new AbortController();
+
+    const rendering = this.render({
+      previous,
+      transitionId: myTransitionId,
+    }).then(() => "rendered" as const);
+    const outcome = await Promise.race([
+      rendering,
+      this.dateTimeProvider
+        .wait(this.bootOptions.deadline, { signal: controller.signal })
+        .then(() => "deadline" as const),
+    ]);
+    controller.abort();
+
+    if (outcome === "deadline" && myTransitionId === this.transitionId) {
+      this.log.warn(
+        `First transition still pending after ${this.bootOptions.deadline}ms, showing the offline screen`,
+      );
+      // Superseded: a late result is now stale and is discarded, and a late
+      // failure is not an unhandled rejection.
+      this.transitionId++;
+      rendering.catch(() => undefined);
+      this.showOffline("deadline");
+      return;
+    }
+
+    const unreachable = this.state?.layers.some(
+      (layer) => layer.error && this.bootHealth.isNetworkError(layer.error),
+    );
+    if (unreachable) {
+      this.log.warn("The API could not be reached, showing the offline screen");
+      this.showOffline("network");
+    }
+  }
+
+  /**
+   * Commit the offline screen as the router state, for the current URL.
+   *
+   * A layer of its own, named `offline`, so nothing mistakes it for a page or
+   * an error. Retry re-runs the bounded transition for the same URL.
+   */
+  protected showOffline(reason: "network" | "deadline") {
+    const url = new URL(`http://localhost${this.url}`);
+    const screen = this.bootHealth.offlineScreen ?? OfflineScreen;
+    const state = {
+      url,
+      params: {},
+      query: {},
+      meta: {},
+      head: {},
+      name: "offline",
+      onError: () => null,
+      layers: [
+        {
+          name: "offline",
+          index: 0,
+          path: "/",
+          element: createElement(screen, {
+            reason,
+            retry: () => this.retryBoot(),
+          }),
+        },
+      ],
+    } as unknown as ReactRouterState;
+    this.alepha.store.set("alepha.react.router.state", state);
+  }
+
+  /**
+   * Retry from the offline screen: the bounded transition again, then the
+   * screen it lands on (the page, or the offline screen once more) is
+   * announced to the views like any transition.
+   */
+  protected async retryBoot() {
+    await this.bootWithDeadline([]);
+    if (this.state?.name === "offline") {
+      await this.alepha.events.emit("react:transition:end", {
+        state: this.state,
+      });
+    }
+  }
+
+  /**
+   * Put the boot marker beside the deepest layer of the first screen. Its
+   * effect reports `healthy` once that layer is on the screen, or `failed`
+   * when the screen is an error layer.
+   */
+  protected markBootScreen() {
+    const layers = this.state?.layers ?? [];
+    const leaf = layers[layers.length - 1];
+    if (!leaf) {
+      return;
+    }
+    const failed = layers.some(
+      (layer) => layer.error || layer.name === "error",
+    );
+    leaf.element = createElement(
+      Fragment,
+      null,
+      leaf.element,
+      createElement(BootMarker, { outcome: failed ? "failed" : "healthy" }),
+    );
+  }
 
   /**
    * Attach a delegated click listener that routes plain `<a href="/...">`

@@ -1,4 +1,5 @@
 import { $hook, Alepha } from "alepha";
+import { reactBootOptions } from "alepha/react/router";
 import { linkOptionsAtom } from "alepha/server/links";
 import { describe, it } from "vitest";
 
@@ -73,6 +74,23 @@ describe("CapacitorConfigProvider", () => {
     await alepha.start();
 
     expect(alepha.store.get(linkOptionsAtom).hostname).toBe("https://api.test");
+  });
+
+  it("turns on the bounded boot in a shell, and only there", async ({
+    expect,
+  }) => {
+    const shell = Alepha.create().with({
+      provide: CapacitorConfigProvider,
+      use: MemoryCapacitorConfigProvider,
+    });
+    shell.inject(MemoryCapacitorConfigProvider).config = shellConfig;
+    shell.with(AlephaCapacitor);
+    await shell.start();
+    const web = Alepha.create().with(AlephaCapacitor);
+    await web.start();
+
+    expect(shell.store.get(reactBootOptions).offline).toBe(true);
+    expect(web.store.get(reactBootOptions)?.offline ?? false).toBe(false);
   });
 
   it("leaves a web build alone", async ({ expect }) => {

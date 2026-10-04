@@ -67,6 +67,16 @@ declare module "alepha" {
       html?: string;
     };
     /**
+     * The first screen of a browser boot settled, once per boot: `healthy`
+     * when a page or the offline screen is on the screen, `failed` when an
+     * error is. Distinct from `ready` and from `react:transition:end`, which
+     * both fire before React has rendered anything. See `ReactBootHealth`.
+     */
+    "react:boot:settled": {
+      outcome: "healthy" | "failed";
+      error?: unknown;
+    };
+    /**
      * Fires when the React application has been rendered on the server.
      */
     "react:server:render:end": {

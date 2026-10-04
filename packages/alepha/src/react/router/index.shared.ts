@@ -1,4 +1,5 @@
 export * from "./atoms/loginRoutesAtom.ts";
+export * from "./atoms/reactBootOptions.ts";
 export type * from "./components/ErrorViewer.tsx";
 export { default as ErrorViewer } from "./components/ErrorViewer.tsx";
 export type * from "./components/Link.tsx";
@@ -17,5 +18,6 @@ export * from "./hooks/useRouterState.ts";
 export * from "./primitives/$page.ts";
 export * from "./providers/ReactPageProvider.ts";
 export * from "./providers/RootComponentsProvider.ts";
+export * from "./services/ReactBootHealth.ts";
 export * from "./services/ReactPageService.ts";
 export * from "./services/ReactRouter.ts";

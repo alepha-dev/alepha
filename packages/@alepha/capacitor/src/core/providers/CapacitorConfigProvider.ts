@@ -1,4 +1,5 @@
 import { $hook, $inject, Alepha } from "alepha";
+import { reactBootOptions } from "alepha/react/router";
 import { linkOptionsAtom } from "alepha/server/links";
 
 import type { CapacitorPublicConfig } from "../schemas/capacitorPublicConfigSchema.ts";
@@ -11,9 +12,16 @@ import type { CapacitorPublicConfig } from "../schemas/capacitorPublicConfigSche
  * its absence is how the rest of `@alepha/capacitor/core` knows it runs in a
  * plain website: nothing it configures then changes.
  *
- * On `configure` it points every host-less `$client` at the shell's API: the
- * WebView's own origin (`capacitor://localhost`, `https://localhost`) serves
- * the shell and nothing else.
+ * On `configure`, in a shell only:
+ *
+ * - every host-less `$client` is pointed at the shell's API: the WebView's own
+ *   origin (`capacitor://localhost`, `https://localhost`) serves the shell
+ *   and nothing else;
+ * - the router's bounded boot is turned on (`reactBootOptions.offline`): an
+ *   API that cannot be reached commits the offline screen within the boot
+ *   deadline instead of leaving a blank WebView behind the splash. Keyed on
+ *   the shell, not on `isNativePlatform()`, so the same shell opened in a
+ *   browser boots exactly as a phone does.
  */
 export class CapacitorConfigProvider {
   protected readonly alepha = $inject(Alepha);
@@ -21,14 +29,20 @@ export class CapacitorConfigProvider {
   protected readonly onConfigure = $hook({
     on: "configure",
     handler: () => {
-      const apiUrl = this.get()?.apiUrl;
-      if (!apiUrl) {
+      const config = this.get();
+      if (!config) {
         return;
       }
-      this.alepha.store.mut(linkOptionsAtom, (options) => ({
+      this.alepha.store.mut(reactBootOptions, (options) => ({
         ...options,
-        hostname: apiUrl,
+        offline: true,
       }));
+      if (config.apiUrl) {
+        this.alepha.store.mut(linkOptionsAtom, (options) => ({
+          ...options,
+          hostname: config.apiUrl,
+        }));
+      }
     },
   });
 
