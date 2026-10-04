@@ -7,6 +7,7 @@ import { INSPECTOR_PROTOCOL } from "../constants/INSPECTOR_PROTOCOL.ts";
 import type { InspectorRunEntry } from "../schemas/InspectorRunEntry.ts";
 import { InspectorRegistry } from "../services/InspectorRegistry.ts";
 import { DevLogStoreProvider } from "./DevLogStoreProvider.ts";
+import { InspectorSocketServer } from "./InspectorSocketServer.ts";
 
 /**
  * The run registry, write side: announces this process in
@@ -39,7 +40,7 @@ export class InspectorRunProvider {
 
   /**
    * Written on `ready`, not `start`: the entry tells a tool it can connect,
-   * so it must not appear before the process can answer.
+   * so it must not appear before the socket (opened on `start`) answers.
    */
   protected readonly onReady = $hook({
     on: "ready",
@@ -78,6 +79,14 @@ export class InspectorRunProvider {
   // -------------------------------------------------------------------------------------------------------------------
 
   protected async register(): Promise<void> {
+    // Resolved here rather than injected: the socket server needs this
+    // provider's run id, and a field injection both ways is a cycle.
+    if (!this.alepha.inject(InspectorSocketServer).listening) {
+      // No socket (Windows, a path too long, a refused bind): an entry
+      // would announce a process nobody can reach.
+      return;
+    }
+
     const dir = this.registry.directory();
     const file = this.fs.join(dir, `${this.runId}.json`);
 

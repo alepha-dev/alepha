@@ -1,3 +1,4 @@
+import { createConnection } from "node:net";
 import { homedir } from "node:os";
 
 import { $env, $inject, Alepha } from "alepha";
@@ -28,6 +29,19 @@ export class InspectorRegistry {
   protected readonly env = $env(inspectorEnvSchema);
 
   /**
+   * How long a liveness probe waits on a socket that neither accepts nor
+   * refuses.
+   */
+  protected readonly connectTimeoutMs = 500;
+
+  /**
+   * Whether `ALEPHA_RUN_DIR` names the directory, rather than the default.
+   */
+  public get explicitDirectory(): boolean {
+    return !!this.env.ALEPHA_RUN_DIR;
+  }
+
+  /**
    * The run directory: `ALEPHA_RUN_DIR`, else `~/.alepha/run`.
    */
   public directory(): string {
@@ -37,15 +51,19 @@ export class InspectorRegistry {
   }
 
   /**
-   * Every run whose process is still alive, oldest first.
+   * Every run that answers, oldest first.
    *
+   * Alive means its socket accepts a connection. Not the pid: a container's
+   * pid means nothing on the host (every container's main process is pid 1),
+   * and a pid can be reused by an unrelated process. The connect covers both.
    * A file that does not parse as an entry is skipped rather than fatal: a
    * reader can catch a writer mid-write, and one torn file must not hide the
    * other apps.
    */
   public async discover(): Promise<InspectorRun[]> {
     const runs = await this.list();
-    return runs.filter((run) => this.isAlive(run.pid));
+    const alive = await Promise.all(runs.map((run) => this.isAlive(run)));
+    return runs.filter((_, index) => alive[index]);
   }
 
   /**
@@ -98,18 +116,25 @@ export class InspectorRegistry {
   // -------------------------------------------------------------------------------------------------------------------
 
   /**
-   * Whether a pid is alive ON THIS HOST.
+   * Whether a run answers: its socket accepts a connection.
    *
-   * Signal 0 checks existence without sending anything. `EPERM` means the
-   * process exists but belongs to another user, which is still alive.
+   * A missing socket fails at once (`ENOENT`), and so does a file nobody
+   * listens on (`ECONNREFUSED`), so the timeout only bounds a process that is
+   * wedged. Not checked through `FileSystemProvider`: a socket is always a
+   * real file, whatever backs the entries.
    */
-  protected isAlive(pid: number): boolean {
-    try {
-      process.kill(pid, 0);
-      return true;
-    } catch (error) {
-      return (error as { code?: string } | undefined)?.code === "EPERM";
-    }
+  protected async isAlive(run: InspectorRun): Promise<boolean> {
+    return new Promise<boolean>((resolve) => {
+      const socket = createConnection({ path: run.socketPath });
+      const done = (alive: boolean) => {
+        socket.removeAllListeners();
+        socket.destroy();
+        resolve(alive);
+      };
+      socket.setTimeout(this.connectTimeoutMs, () => done(false));
+      socket.once("connect", () => done(true));
+      socket.once("error", () => done(false));
+    });
   }
 
   /**

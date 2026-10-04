@@ -22,6 +22,8 @@ build on.
 - One route table, independent of `$route`, for every transport
 - A run registry: each process announces itself in
   `~/.alepha/run/<runId>.json`, and `InspectorRegistry.discover()` lists them
+- Served over a per-process Unix socket (`<runId>.sock`, `0600`), never on
+  the app's own port
 
 No application imports it. `alepha dev` injects it into the app it serves,
 and the devtools app (`npx @alepha/devtools`) is its first consumer.
@@ -40,3 +42,4 @@ which would register them whatever this guard decides.
 - [`DevLogStoreProvider`](/docs/reference-providers-devlogstoreprovider) - The devtools log buffer, and the part of it that outlives the process.
 - [`InspectorRoutes`](/docs/reference-providers-inspectorroutes) - The inspector protocol: every endpoint a tool can call on a running app.
 - [`InspectorRunProvider`](/docs/reference-providers-inspectorrunprovider) - The run registry, write side: announces this process in
+- [`InspectorSocketServer`](/docs/reference-providers-inspectorsocketserver) - Serves the inspector's route table as HTTP over a per-process Unix socket,

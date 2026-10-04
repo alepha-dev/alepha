@@ -5,19 +5,35 @@ import { describe, it } from "vitest";
 import { INSPECTOR_PROTOCOL } from "../constants/INSPECTOR_PROTOCOL.ts";
 import { AlephaInspector } from "../index.ts";
 import { InspectorRunProvider } from "../providers/InspectorRunProvider.ts";
+import { InspectorSocketServer } from "../providers/InspectorSocketServer.ts";
+import type { InspectorRun } from "../schemas/InspectorRun.ts";
 import { InspectorRegistry } from "../services/InspectorRegistry.ts";
 
 const RUN_DIR = "/tmp/alepha-run-spec";
 
 /**
- * Liveness without signals: the spec decides which pids are alive, so a dead
- * entry does not depend on some pid happening to be free on the machine.
+ * Liveness without sockets: the files live in memory, so the spec decides
+ * which runs answer. The real probe is covered by `InspectorSocketServer.spec`.
  */
 class TestInspectorRegistry extends InspectorRegistry {
-  public alive = new Set<number>([process.pid]);
+  public dead = new Set<string>();
 
-  protected override isAlive(pid: number): boolean {
-    return this.alive.has(pid);
+  protected override async isAlive(run: InspectorRun): Promise<boolean> {
+    return !this.dead.has(run.runId);
+  }
+}
+
+/**
+ * A socket that is always "listening", without binding anything: the entry is
+ * only written for a process a tool can reach.
+ */
+class FakeSocketServer extends InspectorSocketServer {
+  protected override async listen(): Promise<void> {
+    this.path = `${RUN_DIR}/fake.sock`;
+  }
+
+  protected override async close(): Promise<void> {
+    this.path = undefined;
   }
 }
 
@@ -27,6 +43,7 @@ const boot = async () => {
   })
     .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
     .with({ provide: InspectorRegistry, use: TestInspectorRegistry })
+    .with({ provide: InspectorSocketServer, use: FakeSocketServer })
     .with(AlephaInspector);
 
   const fs = alepha.inject(MemoryFileSystemProvider);
@@ -127,7 +144,7 @@ describe("the inspector run registry", () => {
     await alepha.stop();
   });
 
-  it("discover() lists live runs, drops dead pids and torn files", async ({
+  it("discover() lists the runs that answer, drops the others and torn files", async ({
     expect,
   }) => {
     const { alepha, fs, run, registry } = await boot();
@@ -142,6 +159,7 @@ describe("the inspector run registry", () => {
         socket: "deadbeef.sock",
       }),
     );
+    registry.dead.add("deadbeef");
     await fs.writeFile(`${RUN_DIR}/torn0000.json`, '{"runId":"torn');
     await fs.writeFile(`${RUN_DIR}/notes.txt`, "not an entry");
 
