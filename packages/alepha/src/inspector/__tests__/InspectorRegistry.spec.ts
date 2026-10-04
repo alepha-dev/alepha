@@ -18,8 +18,10 @@ const RUN_DIR = "/tmp/alepha-run-spec";
 class TestInspectorRegistry extends InspectorRegistry {
   public dead = new Set<string>();
 
-  protected override async isAlive(run: InspectorRun): Promise<boolean> {
-    return !this.dead.has(run.runId);
+  protected override async probe(
+    run: InspectorRun,
+  ): Promise<"live" | "refused" | "timeout"> {
+    return this.dead.has(run.runId) ? "refused" : "live";
   }
 }
 
@@ -199,5 +201,174 @@ describe("the inspector run registry", () => {
     const dir = alepha.inject(InspectorRegistry).directory();
 
     expect(dir.endsWith("/.alepha/run")).toBe(true);
+  });
+
+  describe("dead runs", () => {
+    /**
+     * Another run's entry, as a process that is gone would have left it.
+     */
+    const writeRun = async (
+      fs: MemoryFileSystemProvider,
+      own: Record<string, unknown>,
+      fields: Record<string, unknown>,
+    ) => {
+      const entry = { ...own, ...fields };
+      await fs.writeFile(
+        `${RUN_DIR}/${String(entry.runId)}.json`,
+        JSON.stringify(entry),
+      );
+      return entry;
+    };
+
+    it("keeps a dead run while its log file exists, marked dead", async ({
+      expect,
+    }) => {
+      const { alepha, fs, run, registry } = await boot();
+      const own = JSON.parse(fs.getFileContent(run.file!)!);
+
+      await writeRun(fs, own, {
+        runId: "crashed1",
+        startedAt: "2026-01-01T00:00:00.000Z",
+        cwd: "/apps/other",
+        socket: "crashed1.sock",
+        logFile: "/apps/other/logs.jsonl",
+      });
+      registry.dead.add("crashed1");
+      await fs.mkdir("/apps/other", { recursive: true });
+      await fs.writeFile("/apps/other/logs.jsonl", "");
+
+      const runs = await registry.discover();
+      // Oldest first.
+      expect(runs.map((r) => [r.runId, r.status])).toEqual([
+        ["crashed1", "dead"],
+        [run.runId, "live"],
+      ]);
+
+      await alepha.stop();
+    });
+
+    it("drops a dead run whose log file is gone", async ({ expect }) => {
+      const { alepha, fs, run, registry } = await boot();
+      const own = JSON.parse(fs.getFileContent(run.file!)!);
+
+      await writeRun(fs, own, {
+        runId: "nologs00",
+        cwd: "/apps/other",
+        socket: "nologs00.sock",
+        logFile: "/apps/other/missing.jsonl",
+      });
+      registry.dead.add("nologs00");
+
+      expect((await registry.discover()).map((r) => r.runId)).toEqual([
+        run.runId,
+      ]);
+
+      await alepha.stop();
+    });
+
+    it("keeps one dead run per cwd, replaced by any newer run of that app", async ({
+      expect,
+    }) => {
+      const { alepha, fs, run, registry } = await boot();
+      const own = JSON.parse(fs.getFileContent(run.file!)!);
+      await fs.mkdir("/apps/other", { recursive: true });
+      await fs.writeFile("/apps/other/logs.jsonl", "");
+
+      for (const [runId, startedAt] of [
+        ["older000", "2026-01-01T00:00:00.000Z"],
+        ["newer000", "2026-01-02T00:00:00.000Z"],
+      ]) {
+        await writeRun(fs, own, {
+          runId,
+          startedAt,
+          cwd: "/apps/other",
+          socket: `${runId}.sock`,
+          logFile: "/apps/other/logs.jsonl",
+        });
+        registry.dead.add(runId);
+      }
+      expect((await registry.discover()).map((r) => r.runId)).toEqual([
+        "newer000",
+        run.runId,
+      ]);
+
+      // And this run, newer than any of them, replaces a dead one of its own
+      // cwd.
+      await writeRun(fs, own, {
+        runId: "mine0000",
+        startedAt: "2026-01-01T00:00:00.000Z",
+        socket: "mine0000.sock",
+      });
+      await fs.writeFile(own.logFile, "");
+      registry.dead.add("mine0000");
+      expect((await registry.discover()).map((r) => r.runId)).not.toContain(
+        "mine0000",
+      );
+
+      await alepha.stop();
+    });
+
+    it("prune() deletes what discover() no longer shows, and nothing it does", async ({
+      expect,
+    }) => {
+      const { alepha, fs, run, registry } = await boot();
+      const own = JSON.parse(fs.getFileContent(run.file!)!);
+      await fs.mkdir("/apps/other", { recursive: true });
+      await fs.writeFile("/apps/other/logs.jsonl", "");
+
+      await writeRun(fs, own, {
+        runId: "kept0000",
+        cwd: "/apps/other",
+        socket: "kept0000.sock",
+        logFile: "/apps/other/logs.jsonl",
+      });
+      await writeRun(fs, own, {
+        runId: "gone0000",
+        cwd: "/apps/third",
+        socket: "gone0000.sock",
+        logFile: "/apps/third/none.jsonl",
+      });
+      registry.dead.add("kept0000");
+      registry.dead.add("gone0000");
+
+      await registry.prune();
+
+      expect(await fs.exists(`${RUN_DIR}/gone0000.json`)).toBe(false);
+      expect(await fs.exists(`${RUN_DIR}/kept0000.json`)).toBe(true);
+      expect(await fs.exists(run.file!)).toBe(true);
+
+      await alepha.stop();
+    });
+
+    it("reads a dead run's log file without a socket, newest first, past a torn line", async ({
+      expect,
+    }) => {
+      const { alepha, fs, registry } = await boot();
+      const line = (message: string, timestamp: number) =>
+        JSON.stringify({
+          level: "INFO",
+          message,
+          service: "spec",
+          module: "spec",
+          timestamp,
+        });
+      await fs.mkdir("/apps/other", { recursive: true });
+      await fs.writeFile(
+        "/apps/other/logs.jsonl",
+        `${line("first", 1)}\n${line("second", 2)}\n{"level":"ERR`,
+      );
+
+      const logs = await registry.readLogFile(
+        { logFile: "/apps/other/logs.jsonl" },
+        { limit: 10 },
+      );
+      expect(logs.map((e) => [e.message, e.seq])).toEqual([
+        ["second", 1],
+        ["first", 0],
+      ]);
+      expect(await registry.readLogFile({ logFile: undefined })).toEqual([]);
+
+      await alepha.stop();
+    });
   });
 });

@@ -1,8 +1,9 @@
+import { rm } from "node:fs/promises";
 import { createConnection } from "node:net";
 import { homedir } from "node:os";
 
 import { $env, $inject, Alepha } from "alepha";
-import { $logger } from "alepha/logger";
+import { $logger, type LogEntry } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
 
 import { inspectorEnvSchema } from "../schemas/inspectorEnvSchema.ts";
@@ -51,23 +52,34 @@ export class InspectorRegistry {
   }
 
   /**
-   * Every run that answers, oldest first.
+   * The runs a tool should show, oldest first: every live one, and the last
+   * dead run of each app while its log file exists.
    *
    * Alive means its socket accepts a connection. Not the pid: a container's
    * pid means nothing on the host (every container's main process is pid 1),
    * and a pid can be reused by an unrelated process. The connect covers both.
-   * A file that does not parse as an entry is skipped rather than fatal: a
-   * reader can catch a writer mid-write, and one torn file must not hide the
-   * other apps.
+   *
+   * Dead runs are kept for their logs, one per app (keyed by `cwd`): a newer
+   * run of the same app, live or dead, replaces it. A dead run with no log
+   * file left is not worth showing.
    */
   public async discover(): Promise<InspectorRun[]> {
     const runs = await this.list();
-    const alive = await Promise.all(runs.map((run) => this.isAlive(run)));
-    return runs.filter((_, index) => alive[index]);
+    const kept: InspectorRun[] = [];
+    for (const run of runs) {
+      if (run.status === "live" || (await this.retains(run, runs))) {
+        kept.push(run);
+      }
+    }
+    return kept;
   }
 
   /**
-   * Every entry in the run directory, alive or not.
+   * Every entry in the run directory, probed, oldest first.
+   *
+   * A file that does not parse as an entry is skipped rather than fatal: a
+   * reader can catch a writer mid-write, and one torn file must not hide the
+   * other apps.
    */
   public async list(): Promise<InspectorRun[]> {
     const dir = this.directory();
@@ -89,16 +101,70 @@ export class InspectorRegistry {
       const file = this.fs.join(dir, name);
       const entry = await this.read(file);
       if (!entry) continue;
-      runs.push({
-        ...entry,
-        file,
-        // The writer's own absolute path means nothing here when the writer
-        // was a container: only the name is trusted, against this directory.
-        socketPath: this.fs.join(dir, this.basename(entry.socket)),
-      });
+      // The writer's own absolute path means nothing here when the writer
+      // was a container: only the name is trusted, against this directory.
+      const socketPath = this.fs.join(dir, this.basename(entry.socket));
+      runs.push({ ...entry, file, socketPath, status: "dead" });
     }
 
+    const probes = await Promise.all(runs.map((run) => this.probe(run)));
+    runs.forEach((run, index) => {
+      run.status = probes[index] === "live" ? "live" : "dead";
+    });
+
     return runs.sort((a, b) => a.startedAt.localeCompare(b.startedAt));
+  }
+
+  /**
+   * Delete the entries `discover()` would no longer show, and their sockets.
+   *
+   * Only runs whose socket was refused outright are touched: a probe that
+   * timed out may be a live process too busy to answer, and deleting its
+   * entry would hide it for good.
+   */
+  public async prune(): Promise<void> {
+    const runs = await this.list();
+    for (const run of runs) {
+      if (run.status === "live" || (await this.retains(run, runs))) continue;
+      if ((await this.probe(run)) !== "refused") continue;
+      await this.fs.rm(run.file, { force: true }).catch(() => undefined);
+      await rm(run.socketPath, { force: true }).catch(() => undefined);
+    }
+  }
+
+  /**
+   * The newest entries of a run's persisted log file, newest first, read
+   * straight from disk: a dead run has no socket to ask.
+   *
+   * Malformed lines are skipped, since the last line of a crashed process's
+   * file is routinely torn. `seq` is the line's position in the file.
+   */
+  public async readLogFile(
+    run: Pick<InspectorRun, "logFile">,
+    options: { limit?: number } = {},
+  ): Promise<Array<LogEntry & { seq: number }>> {
+    if (!run.logFile) return [];
+
+    let text: string;
+    try {
+      text = await this.fs.readTextFile(run.logFile);
+    } catch {
+      return [];
+    }
+
+    const entries: Array<LogEntry & { seq: number }> = [];
+    for (const line of text.split("\n")) {
+      if (!line.trim()) continue;
+      try {
+        const entry = JSON.parse(line) as LogEntry;
+        if (typeof entry?.timestamp !== "number") continue;
+        entries.push({ ...entry, seq: entries.length });
+      } catch {
+        // torn line
+      }
+    }
+
+    return entries.toReversed().slice(0, options.limit ?? 100);
   }
 
   /**
@@ -116,24 +182,49 @@ export class InspectorRegistry {
   // -------------------------------------------------------------------------------------------------------------------
 
   /**
+   * Whether a dead run is still worth showing: its log file exists, and no
+   * newer run of the same app replaced it.
+   */
+  protected async retains(
+    run: InspectorRun,
+    runs: InspectorRun[],
+  ): Promise<boolean> {
+    if (run.status === "live") return true;
+    if (!run.logFile) return false;
+
+    const replaced = runs.some(
+      (other) =>
+        other !== run &&
+        other.cwd === run.cwd &&
+        other.startedAt.localeCompare(run.startedAt) > 0,
+    );
+    if (replaced) return false;
+
+    return this.fs.exists(run.logFile).catch(() => false);
+  }
+
+  /**
    * Whether a run answers: its socket accepts a connection.
    *
-   * A missing socket fails at once (`ENOENT`), and so does a file nobody
-   * listens on (`ECONNREFUSED`), so the timeout only bounds a process that is
-   * wedged. Not checked through `FileSystemProvider`: a socket is always a
-   * real file, whatever backs the entries.
+   * `refused` is certain: a missing socket fails at once (`ENOENT`), and so
+   * does a file nobody listens on (`ECONNREFUSED`). `timeout` is not: it
+   * bounds a wedged process, which may yet answer. Not checked through
+   * `FileSystemProvider`: a socket is always a real file, whatever backs the
+   * entries.
    */
-  protected async isAlive(run: InspectorRun): Promise<boolean> {
-    return new Promise<boolean>((resolve) => {
+  protected async probe(
+    run: InspectorRun,
+  ): Promise<"live" | "refused" | "timeout"> {
+    return new Promise((resolve) => {
       const socket = createConnection({ path: run.socketPath });
-      const done = (alive: boolean) => {
+      const done = (result: "live" | "refused" | "timeout") => {
         socket.removeAllListeners();
         socket.destroy();
-        resolve(alive);
+        resolve(result);
       };
-      socket.setTimeout(this.connectTimeoutMs, () => done(false));
-      socket.once("connect", () => done(true));
-      socket.once("error", () => done(false));
+      socket.setTimeout(this.connectTimeoutMs, () => done("timeout"));
+      socket.once("connect", () => done("live"));
+      socket.once("error", () => done("refused"));
     });
   }
 

@@ -16,6 +16,12 @@ export const inspectorRunSchema = inspectorRunEntrySchema.extend({
    * found in rather than taken from the writer.
    */
   socketPath: z.text(),
+  /**
+   * `live` when its socket accepts a connection. A `dead` run is still listed
+   * while its log file exists, so the logs of a crash stay readable once the
+   * process is gone.
+   */
+  status: z.enum(["live", "dead"]),
 });
 
 export type InspectorRun = Infer<typeof inspectorRunSchema>;

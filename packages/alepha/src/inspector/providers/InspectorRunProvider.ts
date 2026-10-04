@@ -99,6 +99,10 @@ export class InspectorRunProvider {
       });
       this.file = file;
       this.log.debug("Inspector run registered", { file });
+
+      // This run replaces the last dead one of the same app, and whatever
+      // else no tool would show any more.
+      await this.registry.prune();
     } catch (error) {
       // A read-only home or a sandbox costs discoverability, never the boot.
       this.log.warn("Could not write the inspector run entry", {
