@@ -97,6 +97,14 @@ export class DevLogStoreProvider {
   }
 
   /**
+   * The persisted file's absolute path, which the run registry advertises so
+   * a tool can read the logs once this process is gone.
+   */
+  public get path(): string {
+    return this.fs.resolve(process.cwd(), this.file);
+  }
+
+  /**
    * Restore before the server can answer anything, which `configure`
    * guarantees and `start` does not.
    */

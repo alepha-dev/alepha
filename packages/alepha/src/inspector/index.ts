@@ -4,7 +4,9 @@ import { DevAtomLogProvider } from "./providers/DevAtomLogProvider.ts";
 import { DevLogStoreProvider } from "./providers/DevLogStoreProvider.ts";
 import { DevToolsMetadataProvider } from "./providers/DevToolsMetadataProvider.ts";
 import { InspectorRoutes } from "./providers/InspectorRoutes.ts";
+import { InspectorRunProvider } from "./providers/InspectorRunProvider.ts";
 import { InspectorDispatcher } from "./services/InspectorDispatcher.ts";
+import { InspectorRegistry } from "./services/InspectorRegistry.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -13,7 +15,9 @@ export * from "./providers/DevAtomLogProvider.ts";
 export * from "./providers/DevLogStoreProvider.ts";
 export * from "./providers/DevToolsMetadataProvider.ts";
 export * from "./providers/InspectorRoutes.ts";
+export * from "./providers/InspectorRunProvider.ts";
 export * from "./services/InspectorDispatcher.ts";
+export * from "./services/InspectorRegistry.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -27,6 +31,8 @@ export * from "./services/InspectorDispatcher.ts";
  * - A log buffer that survives a restart, read with a cursor
  * - Database rows, job executions, atom writes, the local email and SMS outbox
  * - One route table, independent of `$route`, for every transport
+ * - A run registry: each process announces itself in
+ *   `~/.alepha/run/<runId>.json`, and `InspectorRegistry.discover()` lists them
  *
  * No application imports it. `alepha dev` injects it into the app it serves,
  * and the devtools app (`npx @alepha/devtools`) is its first consumer.
@@ -58,5 +64,7 @@ export const AlephaInspector = $module({
     alepha.with(DevToolsMetadataProvider);
     alepha.with(InspectorRoutes);
     alepha.with(InspectorDispatcher);
+    alepha.with(InspectorRegistry);
+    alepha.with(InspectorRunProvider);
   },
 });

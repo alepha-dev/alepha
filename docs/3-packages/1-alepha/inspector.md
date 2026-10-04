@@ -20,6 +20,8 @@ build on.
 - A log buffer that survives a restart, read with a cursor
 - Database rows, job executions, atom writes, the local email and SMS outbox
 - One route table, independent of `$route`, for every transport
+- A run registry: each process announces itself in
+  `~/.alepha/run/<runId>.json`, and `InspectorRegistry.discover()` lists them
 
 No application imports it. `alepha dev` injects it into the app it serves,
 and the devtools app (`npx @alepha/devtools`) is its first consumer.
@@ -37,3 +39,4 @@ which would register them whatever this guard decides.
 - [`DevAtomLogProvider`](/docs/reference-providers-devatomlogprovider) - In-memory ring buffer of `state:mutate` events, powering the devtools
 - [`DevLogStoreProvider`](/docs/reference-providers-devlogstoreprovider) - The devtools log buffer, and the part of it that outlives the process.
 - [`InspectorRoutes`](/docs/reference-providers-inspectorroutes) - The inspector protocol: every endpoint a tool can call on a running app.
+- [`InspectorRunProvider`](/docs/reference-providers-inspectorrunprovider) - The run registry, write side: announces this process in

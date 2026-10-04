@@ -2,6 +2,7 @@ import { join } from "node:path";
 
 import {
   __alephaRef,
+  $hook,
   $inject,
   $store,
   type Alepha,
@@ -92,6 +93,21 @@ export class ViteDevServerProvider {
   protected currentReloadPromise: Promise<void> | null = null;
   protected extraVitePlugins: Plugin[] = [];
   protected alephaLoadedHooks: OnAlephaLoadedHook[] = [];
+
+  /**
+   * Stop the app with the CLI.
+   *
+   * Under `alepha dev` the app's `run()` installs no signal traps (Vite owns
+   * the process), so a Ctrl+C stopped the CLI's container and left the app's
+   * never stopped: its `stop` hooks, the inspector's run entry among them,
+   * never ran.
+   */
+  protected readonly onStop = $hook({
+    on: "stop",
+    handler: async () => {
+      await this.destroyAlepha();
+    },
+  });
 
   /**
    * Register an additional Vite plugin.
