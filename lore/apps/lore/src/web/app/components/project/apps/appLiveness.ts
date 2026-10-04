@@ -14,7 +14,7 @@ import type { AppInstanceResource } from "@/api/schemas/appInstanceResourceSchem
  * cannot check each other is how the list and the Overview end up disagreeing
  * about what silent means.
  */
-export const SILENT_AFTER_MS = 24 * 60 * 60 * 1000;
+const SILENT_AFTER_MS = 24 * 60 * 60 * 1000;
 
 /**
  * The three states a deployed copy can be in, as far as reporting goes.

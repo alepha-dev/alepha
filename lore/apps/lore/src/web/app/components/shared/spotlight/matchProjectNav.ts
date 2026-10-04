@@ -5,7 +5,7 @@ import type { ProjectNavEntry } from "../../../atoms/projectNavAtom.ts";
  * sidebar entry a project has today without content — what most searches are
  * actually for — ever being pushed out of view.
  */
-export const MAX_NAV_MATCHES = 6;
+const MAX_NAV_MATCHES = 6;
 
 /**
  * Pick the pages and apps a query should offer, best first.

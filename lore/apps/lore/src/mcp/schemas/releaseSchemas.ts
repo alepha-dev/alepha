@@ -10,7 +10,7 @@ import { projectParamsSchema } from "./projectParamsSchema.ts";
  * internal reference and the sort key; it is simply not how a release is
  * addressed.
  */
-export const releaseRefSchema = z.object({
+const releaseRefSchema = z.object({
   tag: z
     .string()
     .describe(

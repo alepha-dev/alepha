@@ -9,10 +9,6 @@ import { projects } from "../entities/projects.ts";
 
 /**
  * Keeps the blights inbox from growing without bound.
- *
- * One table now. The legacy `sigil_blights` this also used to sweep no longer
- * exists — the sigil family was dropped and rebuilt — so the second pass, and
- * the sigil lookup that resolved its rows, went with it.
  */
 export class BlightJobs {
   /**

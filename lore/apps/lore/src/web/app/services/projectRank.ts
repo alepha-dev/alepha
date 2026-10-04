@@ -52,11 +52,3 @@ export const canInProject = (
       (granted.endsWith("*") && permission.startsWith(granted.slice(0, -1))),
   );
 };
-
-/**
- * Every permission asked for, or nothing. For a control that needs two.
- */
-export const canAllInProject = (
-  project: ProjectRankSource | undefined,
-  permissions: string[],
-): boolean => permissions.every((it) => canInProject(project, it));

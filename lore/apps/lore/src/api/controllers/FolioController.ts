@@ -495,8 +495,7 @@ export class FolioController {
     ]);
 
     // Outbound: split by targetType, each kind resolving through its own
-    // table. Old rows have no targetType (defaults to "folio"), so the
-    // partition stays backwards-compatible.
+    // table.
     const outFolioIds = out
       .filter((l) => l.targetType === "folio")
       .map((l) => l.toId);

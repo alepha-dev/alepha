@@ -24,7 +24,7 @@ export const AREA_DOT_CLASS: Record<PaletteColor, string> = {
 /**
  * An area with no colour picked, and any area we cannot resolve.
  */
-export const AREA_DOT_FALLBACK = "bg-muted-foreground/50";
+const AREA_DOT_FALLBACK = "bg-muted-foreground/50";
 
 /**
  * The same palette as the hue half of a `Badge variant="tint"`, for tag

@@ -193,7 +193,7 @@ export const questListResultSchema = z.object({
  * Absent when the author deleted their account (`authorId` is set-null, so
  * the comment survives the account).
  */
-export const questCommentSchema = z.object({
+const questCommentSchema = z.object({
   id: z.integer(),
   author: z.string().optional(),
   authorKind: z
@@ -219,7 +219,7 @@ export const questCommentSchema = z.object({
  * `feedback_get`'s attachments and the `attachmentId` param that opens one:
  * an agent reading either surface uses the same word for the same thing.
  */
-export const questAttachmentSchema = z.object({
+const questAttachmentSchema = z.object({
   id: z.uuid(),
   name: z.string(),
   mimeType: z.string(),
@@ -229,7 +229,7 @@ export const questAttachmentSchema = z.object({
 /**
  * A commit as a tool accepts one. `at` and `by` are stamped server-side.
  */
-export const questCommitInputSchema = z.object({
+const questCommitInputSchema = z.object({
   sha: z
     .string()
     .regex(/^[0-9a-fA-F]{7,40}$/)
@@ -245,7 +245,7 @@ export const questCommitInputSchema = z.object({
     .string()
     .max(200)
     .describe(
-      "Which repository, e.g. `alepha-dev/alepha`. Free text: Lore does not know a project's repository and never resolves this into a link.",
+      "Which repository, e.g. `alepha-dev/alepha`. Free text, recorded as given and never resolved into a link: the quest rail links a sha through the project's own `repositoryUrl`, not through this.",
     )
     .optional(),
 });
@@ -253,7 +253,7 @@ export const questCommitInputSchema = z.object({
 /**
  * A commit as `quest_get` hands one out.
  */
-export const questCommitRefSchema = questCommitInputSchema.extend({
+const questCommitRefSchema = questCommitInputSchema.extend({
   at: z.datetime().describe("When it was recorded, not when it was authored."),
 });
 

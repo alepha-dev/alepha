@@ -35,7 +35,7 @@ const questOrientationRefSchema = z.object({
  * owner called it, and for a rank somebody created the key is opaque
  * (`r1x9k2`), so a row showing only one of the two is showing the wrong one.
  */
-export const rankRefSchema = z.object({
+const rankRefSchema = z.object({
   key: z.text(),
   name: z.text(),
 });
@@ -325,7 +325,7 @@ export const projectActivityParamsSchema = projectParamsSchema.extend({
  * the same row differently, plus `summary`: a phrase already readable without
  * decoding `type` and `action` against each other.
  */
-export const projectActivityEventSchema = projectActivityRowSchema
+const projectActivityEventSchema = projectActivityRowSchema
   .omit({ id: true, metadata: true, resourceType: true })
   .extend({
     summary: z

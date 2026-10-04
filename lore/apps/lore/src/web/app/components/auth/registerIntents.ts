@@ -9,7 +9,7 @@ export interface RegisterIntent {
   redirectTo: string;
 }
 
-export const registerIntents: Record<string, RegisterIntent> = {
+const registerIntents: Record<string, RegisterIntent> = {
   createProject: {
     messageKey: "auth.register.intent.createProject",
     redirectTo: "/?action=createProject",

@@ -23,7 +23,7 @@ export type MemberWithUser = {
  * building `/api/public/files/https://…` from it is a request that can only
  * 404, the same rule `@alepha/ui`'s `FileImage` applies.
  */
-export const memberPictureSrc = (member: MemberWithUser): string | null => {
+const memberPictureSrc = (member: MemberWithUser): string | null => {
   const picture = member.user.picture;
   if (!picture) {
     return null;

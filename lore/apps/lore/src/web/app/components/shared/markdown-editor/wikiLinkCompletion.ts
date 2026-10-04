@@ -45,7 +45,7 @@ export type SyncCompletionSource = (
  * Built over the state rather than the view so a spec can apply it without
  * a layout, as `insertAtCursor.ts` is.
  */
-export const referenceInsertion = (
+const referenceInsertion = (
   state: EditorState,
   token: string,
   completion: Completion,

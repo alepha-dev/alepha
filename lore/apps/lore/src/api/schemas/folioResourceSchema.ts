@@ -66,14 +66,14 @@ export const folioLinksSchema = z.object({
  * Same shape folio directories carry on `listContents`. Empty
  * array when the folio lives at the project root.
  */
-export const folioPathSchema = z.array(
+const folioPathSchema = z.array(
   z.object({
     shortId: z.integer(),
     name: z.string(),
   }),
 );
 
-export const folioMetadataSchema = z.object({
+const folioMetadataSchema = z.object({
   links: folioLinksSchema.optional(),
   path: folioPathSchema.optional(),
   /**

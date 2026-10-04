@@ -17,7 +17,7 @@ import { z } from "alepha";
  * the findings are read off the parsed model rather than from a list of known
  * traps.
  */
-export const diagramWarningsSchema = z
+const diagramWarningsSchema = z
   .array(z.string())
   .describe(
     "Problems found in the ```mermaid fences of the content just written. The write SUCCEEDED - these say how the diagram will draw, not that anything was rejected. A cut label or a refused diagram type still renders, just not as intended: fix the source and call the update tool again. Absent when there is nothing wrong.",

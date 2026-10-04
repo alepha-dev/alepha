@@ -7,19 +7,9 @@ import {
   CircleDotDashed,
 } from "lucide-react";
 
-import {
-  type EpicResource,
-  epicResourceSchema,
-} from "@/api/schemas/epicResourceSchema.ts";
+import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
 
 export type EpicStatus = EpicResource["status"];
-
-/**
- * Every status, in lifecycle order, read off the column's own enum (which
- * declares them in that order) rather than restated. What a picker offering
- * all four iterates.
- */
-export const EPIC_STATUSES = epicResourceSchema.shape.status.options;
 
 export type EpicStatusLabelKey =
   | "epic.status.draft"

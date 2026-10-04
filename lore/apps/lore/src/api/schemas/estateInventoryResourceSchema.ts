@@ -19,11 +19,7 @@ import { estateInventoryHostSchema } from "./estateInventoryHostSchema.ts";
  * order this wants (matched, then machine-only, then Lore-only) is a
  * comparator over the array in memory.
  */
-export const ESTATE_INVENTORY_TRACKING = [
-  "matched",
-  "untracked",
-  "missing",
-] as const;
+const ESTATE_INVENTORY_TRACKING = ["matched", "untracked", "missing"] as const;
 
 export type EstateInventoryTracking =
   (typeof ESTATE_INVENTORY_TRACKING)[number];

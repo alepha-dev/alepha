@@ -32,7 +32,7 @@ import { sigils } from "./entities/sigils.ts";
  *
  * Everything else joins here rather than in a controller.
  */
-export const schema = {
+const schema = {
   users,
   projects,
   organizationMembers,

@@ -60,7 +60,7 @@ export const ROUTES_APP = new Set([
  * rail. `projectViewRoutes.spec.ts` walks the router and fails when a page
  * under `projectSettings` is missing from the label table this feeds.
  */
-export const ROUTES_SETTINGS = [
+const ROUTES_SETTINGS = [
   "projectSettings",
   "projectSettingsBanner",
   "projectSettingsCapabilities",

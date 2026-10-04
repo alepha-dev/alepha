@@ -9,8 +9,8 @@ import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
  * reads as decoration, while "getting old" and "stalled" are two states
  * somebody can act on.
  */
-export const AGING_WARN_DAYS = 7;
-export const AGING_STALE_DAYS = 21;
+const AGING_WARN_DAYS = 7;
+const AGING_STALE_DAYS = 21;
 
 export type AgingLevel = "fresh" | "aging" | "stale";
 

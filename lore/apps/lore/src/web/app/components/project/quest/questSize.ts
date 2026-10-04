@@ -10,7 +10,7 @@
  * they need no glossary, they sort the way anyone would guess, and they
  * describe the work instead of grading whoever picks it up.
  */
-export const QUEST_SIZE_LABELS: Record<number, string> = {
+const QUEST_SIZE_LABELS: Record<number, string> = {
   1: "XS",
   2: "S",
   3: "M",

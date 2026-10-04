@@ -25,7 +25,7 @@ export interface RankableHit {
  * Exact, then prefix, then contained, then everything else — a folio that
  * matched deep in its body rather than in its title lands last.
  */
-export const rankSearchHit = (title: string, needle: string): number => {
+const rankSearchHit = (title: string, needle: string): number => {
   const lower = title.toLowerCase();
   if (lower === needle) return 0;
   if (lower.startsWith(needle)) return 1;

@@ -52,7 +52,7 @@ export const CLOUDFLARE_TOKEN_TEMPLATE: readonly CloudflareTokenTemplateRow[] =
  * The name the dashboard pre-fills. Not a secret, and worth being specific:
  * a person minting several of these needs to tell them apart.
  */
-export const CLOUDFLARE_TOKEN_NAME = "lore-deploy";
+const CLOUDFLARE_TOKEN_NAME = "lore-deploy";
 
 /**
  * A link that opens Cloudflare's Custom token form with the six rows already

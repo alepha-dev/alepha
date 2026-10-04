@@ -28,7 +28,7 @@
  * and the parser refuses a port, an IP literal and any scheme of its own
  * before it consults this at all.
  */
-export const REGISTRY_HOSTS = ["ghcr.io"] as const;
+const REGISTRY_HOSTS = ["ghcr.io"] as const;
 
 /**
  * Whether Lore will talk to this host.

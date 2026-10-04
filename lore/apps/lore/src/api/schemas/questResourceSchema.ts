@@ -20,7 +20,7 @@ export const questStatusSchema = z.enum([
 /**
  * Computed metadata attached to every quest resource.
  */
-export const questMetadataSchema = z.object({
+const questMetadataSchema = z.object({
   status: questStatusSchema,
   /**
    * `completed + waived` need not equal `total`: an objective that is
@@ -45,7 +45,7 @@ export const questMetadataSchema = z.object({
  * id even when the stored row does not. Restating that here is what lets
  * callers address an objective without a null check that can never fire.
  */
-export const questObjectiveResourceSchema = z.object({
+const questObjectiveResourceSchema = z.object({
   id: z.integer().min(0),
   title: z.string(),
   completed: z.boolean(),

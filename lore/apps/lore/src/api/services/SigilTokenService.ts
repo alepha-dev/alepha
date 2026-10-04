@@ -1,5 +1,5 @@
 import { sigilKeyBuild, sigilKeyPrefix } from "@alepha/lore/sigil";
-import { $inject } from "alepha";
+import { $inject, AlephaError } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { $repository } from "alepha/orm";
 
@@ -39,11 +39,11 @@ export class SigilTokenService {
    * the app renders. What it buys is that the app no longer has to be TOLD its
    * own project in a second variable that could disagree with this one.
    *
-   * A project with no slug mints the older shape, with no namespace. Every live
-   * row has one and every write path sets it, so this is the theoretical case
-   * rather than the expected one - and a key with no slug is a working
-   * credential that merely offers no feedback link, which beats baking a
-   * guessed slug into a URL readers will follow.
+   * A project with no slug is refused. Create and rename always set one, and
+   * only a soft delete clears it, so there is nothing live to mint for. The
+   * bare `sg_<secret>` shape older keys carry is still READ (`sigilKey.ts`),
+   * but no longer minted: its secret is base64url, which holds `_`, so
+   * `sigilKeyProject` could read the head of the secret as a slug.
    */
   async mint(
     projectId: number,
@@ -51,10 +51,13 @@ export class SigilTokenService {
     const project = await this.projects.findOne({
       where: { id: { eq: projectId } },
     });
+    if (!project?.slug) {
+      throw new AlephaError(
+        `Project ${projectId} has no slug, so no sigil can be minted for it.`,
+      );
+    }
     const secret = this.crypto.randomText(32);
-    const token = project?.slug
-      ? sigilKeyBuild(project.slug, secret)
-      : `sg_${secret}`;
+    const token = sigilKeyBuild(project.slug, secret);
     return {
       token,
       hash: this.crypto.hash(token),

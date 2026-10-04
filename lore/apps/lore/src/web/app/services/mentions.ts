@@ -42,7 +42,7 @@ export const mentionPattern = (): RegExp => /(^|[^\w@/])@([\w.-]+)/g;
  * a typo or an email address, and neither should render as a live link or
  * reach anybody's inbox.
  */
-export const resolveMention = <T extends { name: string }>(
+const resolveMention = <T extends { name: string }>(
   handle: string,
   members: T[],
 ): T | undefined =>

@@ -71,7 +71,7 @@ export interface ProjectFixtureOptions {
   rank?: { key: string; name: string };
 }
 
-export class ProjectFixtureBuilder {
+class ProjectFixtureBuilder {
   protected readonly registry = new CapabilityRegistry();
 
   /**

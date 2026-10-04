@@ -10,7 +10,7 @@ import { type Infer, z } from "alepha";
  * pipeline. The manifest schema is `.loose()` by design, so reading a narrow
  * subset of it is the contract working as intended - not a shortcut.
  */
-export const ARTIFACT_RUNTIMES = ["node", "bun", "workerd", "static"] as const;
+const ARTIFACT_RUNTIMES = ["node", "bun", "workerd", "static"] as const;
 
 /**
  * What Lore reads out of an artifact's `manifest.json`.

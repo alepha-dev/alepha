@@ -44,7 +44,7 @@ const CLS_SCALE = 1000;
  * not the mean of their p75s - which is why a backend that returned per-app
  * percentiles could not be merged at all, and why this takes counts.
  */
-export const vitalsP75Bucket = (
+const vitalsP75Bucket = (
   histogram: Map<number, number> | undefined,
   metric: VitalMetric,
 ): number | null => {

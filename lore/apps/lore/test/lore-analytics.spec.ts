@@ -94,6 +94,8 @@ const setup = async (
   const owner = await users.createUser({ username: "owner" });
   const project = await probe.projects.create({
     title: "Test",
+    // A sigil is minted only for a project with a slug (#Q2620).
+    slug: "test",
     createdBy: owner.id,
   } as any);
 

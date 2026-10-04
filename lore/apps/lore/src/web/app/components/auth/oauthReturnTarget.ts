@@ -8,7 +8,7 @@
  * entry, and the bridge accepting only the first dropped every device approval
  * on the home page.
  */
-export const OAUTH_RETURN_PATHS = ["/oauth/authorize", "/oauth/device"];
+const OAUTH_RETURN_PATHS = ["/oauth/authorize", "/oauth/device"];
 
 /**
  * Whether `to` is one of those pages, on this origin.
