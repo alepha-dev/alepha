@@ -14,7 +14,7 @@ import type { EpicController } from "@/api/controllers/EpicController.ts";
 import type { FeedbackController } from "@/api/controllers/FeedbackController.ts";
 import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
-import type { Folio } from "@/api/entities/folios.ts";
+import type { FolioResource as Folio } from "@/api/schemas/folioResourceSchema.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
 

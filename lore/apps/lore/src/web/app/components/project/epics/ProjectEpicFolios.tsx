@@ -5,7 +5,7 @@ import { Link, useRouter } from "alepha/react/router";
 import { X } from "lucide-react";
 
 import type { EpicController } from "@/api/controllers/EpicController.ts";
-import type { Folio } from "@/api/entities/folios.ts";
+import type { FolioResource as Folio } from "@/api/schemas/folioResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 

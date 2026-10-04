@@ -14,7 +14,7 @@ import { ZipArchive } from "alepha/system";
 import { useEffect, useRef, useState } from "react";
 
 import type { FolioController } from "@/api/controllers/FolioController.ts";
-import type { Folio } from "@/api/entities/folios.ts";
+import type { FolioResource as Folio } from "@/api/schemas/folioResourceSchema.ts";
 
 import type { AppRouter } from "../../../AppRouter.ts";
 import { currentFolioAttachmentsAtom } from "../../../atoms/currentFolioAttachmentsAtom.ts";

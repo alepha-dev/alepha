@@ -370,11 +370,11 @@ export class ProjectController {
         project = await this.projects.create({
           ...columns,
           slug: slug || undefined,
-          // ⚠️ Still written, and still `defaultProjectFeatures`. Nothing reads
-          // it any more, but every row on disk has to keep decoding against the
-          // schema that still describes it, and four of its keys are REQUIRED.
-          // The column is frozen rather than dropped, because dropping one from
-          // `projects` is the D1 rebuild that cascade-wipes its children.
+          // ⚠️ Still written until #Q2606 drops the column, though nothing
+          // reads it. Left to the column DEFAULT, production would write its
+          // stale pre-rename one (`petitions`, `chapters`), which lacks two
+          // REQUIRED keys: the row would fail to decode on every read, the
+          // 2026-08-05 outage. The entity still SELECTs and validates it.
           features: defaultProjectFeatures,
           createdBy: user.id,
           organizationId: organization.id,
@@ -888,8 +888,6 @@ export class ProjectController {
         // Blights retention window in days (Quest #90). `null` clears the
         // override → the purge cron falls back to the global 30-day default.
         retentionDays: z.integer().min(1).max(3_650).nullable().optional(),
-        // Which surface bare `/:projectSlug` lands on. `null` clears the
-        // override → the index route falls back to the quest table.
         // Who may read `/:projectSlug/roadmap`. `null` clears the override →
         // `ProjectSecurityService.roadmapVisibilityOf` reads it as `off`.
         roadmapVisibility: roadmapVisibilitySchema.nullable().optional(),

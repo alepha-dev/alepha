@@ -30,7 +30,6 @@ const quest = (over: Partial<QuestResource> = {}): QuestResource =>
     attachments: [],
     tags: [],
     timerSessions: [],
-    note: "",
     projectId: 1,
     metadata: {
       status: "todo",

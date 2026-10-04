@@ -62,7 +62,7 @@ const questObjectiveResourceSchema = z.object({
 /**
  * Quest entity + server-computed metadata.
  */
-export const questResourceSchema = quests.schema.extend({
+export const questResourceSchema = quests.schema.omit({ note: true }).extend({
   objectives: z.array(questObjectiveResourceSchema),
   metadata: questMetadataSchema,
 });

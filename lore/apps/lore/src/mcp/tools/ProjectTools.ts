@@ -193,7 +193,7 @@ export class ProjectTools {
    */
   project_list = $tool({
     description:
-      "List all projects the user has access to (owned + member-of). Use this to find the project id (required by most other tools) and check the title for project_name lookups. Each entry includes id, title, public (boolean) and `rank` - the caller's rank in that project, as `{ key, name }`. What that rank actually GRANTS is `permissions` on `project_info` / `project_context`, which answer for one project.",
+      "List all projects the user has access to (owned + member-of). Use this to find the project id (required by most other tools) and check the title for project_name lookups. Each entry includes id, title and `rank` - the caller's rank in that project, as `{ key, name }`. What that rank actually GRANTS is `permissions` on `project_info` / `project_context`, which answer for one project.",
     title: "List projects",
     annotations: {
       readOnlyHint: true,
@@ -259,7 +259,6 @@ export class ProjectTools {
           return {
             id: p.id,
             title: p.title,
-            public: p.public ?? false,
             ...(key ? { rank: { key, name: named?.name ?? key } } : {}),
           };
         }),
@@ -297,7 +296,6 @@ export class ProjectTools {
       return {
         id: result.id,
         title: result.title,
-        public: result.public ?? false,
         areas: this.toAreaSummaries(areas),
         createdAt: result.createdAt,
         activeQuests: result.quests.map((quest) => ({
@@ -365,9 +363,7 @@ export class ProjectTools {
       const hasWork = has("work");
       const hasKnowledge = has("knowledge");
 
-      // `areas` table is the source of truth for the list (`projects.areas`
-      // is a deprecated rollback net nothing else reads — see
-      // `QuestService.createQuest`). Only `name` + `description` cross the
+      // The `areas` table is the list. Only `name` + `description` cross the
       // MCP boundary: this call is paid for on every `project_context`
       // round-trip, and the stats (`questCount`, dates) are a settings-page
       // concern, not an orientation one.
@@ -446,7 +442,6 @@ export class ProjectTools {
       return {
         id: result.id,
         title: result.title,
-        public: result.public ?? false,
         capabilities: capabilities.map((it) => ({
           key: it.key,
           options: it.options,

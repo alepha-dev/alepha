@@ -21,23 +21,36 @@ import { projectCapabilityResourceSchema } from "./projectCapabilityResourceSche
  * lacks one fails response validation loudly, instead of silently rendering
  * every project link as `/`.
  */
-export const projectResourceSchema = projects.schema.extend({
-  slug: z.string(),
-  organizationId: z.uuid(),
-  /**
-   * The capabilities this project has turned on, each with its options.
-   *
-   * ⚠️ **Declared on the RESPONSE schema, which is what makes it exist.** A
-   * field added to the entity, the type and the component still does not
-   * reach the wire unless it is here, and it fails silently.
-   *
-   * Every web-side gate reads `currentProjectAtom`, filled by the `project`
-   * route loader from `getProjectBySlug`. So the capability set has to ride
-   * the resource: the alternative is each surface fetching it, which is one
-   * request per gate and four sources of truth for one answer.
-   */
-  capabilities: z.array(projectCapabilityResourceSchema),
-});
+export const projectResourceSchema = projects.schema
+  .omit({
+    // Eight dead columns, declared on the entity only until their drop (#E74).
+    // Nothing reads them, so nothing carries them.
+    public: true,
+    areas: true,
+    features: true,
+    milestoneDuration: true,
+    defaultSurface: true,
+    defaultEnv: true,
+    unlockedFeatures: true,
+    unlockHistory: true,
+  })
+  .extend({
+    slug: z.string(),
+    organizationId: z.uuid(),
+    /**
+     * The capabilities this project has turned on, each with its options.
+     *
+     * ⚠️ **Declared on the RESPONSE schema, which is what makes it exist.** A
+     * field added to the entity, the type and the component still does not
+     * reach the wire unless it is here, and it fails silently.
+     *
+     * Every web-side gate reads `currentProjectAtom`, filled by the `project`
+     * route loader from `getProjectBySlug`. So the capability set has to ride
+     * the resource: the alternative is each surface fetching it, which is one
+     * request per gate and four sources of truth for one answer.
+     */
+    capabilities: z.array(projectCapabilityResourceSchema),
+  });
 
 /**
  * A project as the UI sees it. Prefer this over the entity's `Project` for

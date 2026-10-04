@@ -288,7 +288,6 @@ export class FolioController {
             "projectId",
             "title",
             "protected",
-            "tags",
             "pinned",
             "directoryId",
             "epicId",
@@ -1322,7 +1321,6 @@ export class FolioController {
           contentSnapshot: z.string(),
           createdAt: z.string(),
           folioId: z.uuid(),
-          tagsSnapshot: z.array(z.string()),
           byUserId: z.uuid().optional(),
           byUsername: z.string().optional(),
           byAvatarUrl: z.string().optional(),
@@ -1378,7 +1376,6 @@ export class FolioController {
           contentSnapshot: after,
           createdAt: revision.createdAt,
           folioId: revision.folioId,
-          tagsSnapshot: revision.tagsSnapshot,
           byUserId: revision.byUserId,
           byUsername: author?.username ?? author?.email,
           byAvatarUrl: author?.picture

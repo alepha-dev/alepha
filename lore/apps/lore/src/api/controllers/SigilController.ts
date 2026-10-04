@@ -337,7 +337,6 @@ export class SigilController {
       name: sigil.name,
       tokenPrefix: sigil.tokenPrefix,
       kinds: sigil.kinds ?? [],
-      url: sigil.url,
       createdAt: sigil.createdAt,
       lastSeenAt: sigil.lastSeenAt,
       lastSeenHost: sigil.lastSeenHost,

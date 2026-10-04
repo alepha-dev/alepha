@@ -185,7 +185,7 @@ export const createTestProject = async (
  */
 export const createTestQuest = async (
   alepha: Alepha,
-  project: Project,
+  project: Pick<Project, "id" | "createdBy" | "organizationId">,
   overrides: Partial<QuestInsert> = {},
 ): Promise<Quest> => {
   const repo = alepha.inject(TestEntityRepositories);
@@ -213,7 +213,7 @@ export const createTestQuest = async (
  */
 export const createTestEpic = async (
   alepha: Alepha,
-  project: Project,
+  project: Pick<Project, "id" | "createdBy" | "organizationId">,
   overrides: Partial<EpicInsert> = {},
 ): Promise<Epic> => {
   const repo = alepha.inject(TestEntityRepositories);
@@ -237,7 +237,7 @@ export const createTestEpic = async (
  */
 export const createTestFolio = async (
   alepha: Alepha,
-  project: Project,
+  project: Pick<Project, "id" | "createdBy" | "organizationId">,
   overrides: Partial<FolioInsert> = {},
 ): Promise<Folio> => {
   const repo = alepha.inject(TestEntityRepositories);
@@ -261,7 +261,7 @@ export const createTestFolio = async (
  */
 export const createTestMember = async (
   alepha: Alepha,
-  project: Project,
+  project: Pick<Project, "id" | "createdBy" | "organizationId">,
   userId: string,
   // ⚠️ No `owner`. The column is retired (#Q1997) and its database DEFAULT is
   // `true`, so every row written now says `true` and means nothing. A fixture

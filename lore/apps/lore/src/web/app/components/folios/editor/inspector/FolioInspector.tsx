@@ -3,7 +3,7 @@ import { useI18n } from "alepha/react/i18n";
 import { PanelRightClose } from "lucide-react";
 import type { ReactElement } from "react";
 
-import type { Folio } from "@/api/entities/folios.ts";
+import type { FolioResource as Folio } from "@/api/schemas/folioResourceSchema.ts";
 
 import type { I18n } from "../../../../services/I18n.ts";
 import FolioAttachmentsTab from "./FolioAttachmentsTab.tsx";

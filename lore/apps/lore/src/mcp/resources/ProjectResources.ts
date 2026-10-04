@@ -31,7 +31,6 @@ export class ProjectResources {
         projects: projects.map((p) => ({
           id: p.id,
           title: p.title,
-          public: p.public ?? false,
         })),
         hint: "Use project ID or title (project_name) in tools like quest_list, project_info to access project data.",
       };

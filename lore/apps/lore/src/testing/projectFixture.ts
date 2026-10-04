@@ -110,21 +110,10 @@ class ProjectFixtureBuilder {
       slug: over.slug ?? "lore",
       createdBy: over.createdBy ?? "00000000-0000-4000-8000-000000000001",
       organizationId: "00000000-0000-4000-8000-000000000002",
-      areas: [],
-      // Still written, because the column is frozen rather than dropped and
-      // the entity schema still describes it. Nothing reads it.
-      features: {
-        kanban: true,
-        folios: true,
-        feedback: true,
-        milestones: true,
-      },
       capabilities: this.capabilities(over),
       permissions: over.permissions ?? ["*"],
       rank: over.rank ?? { key: "owner", name: "Owner" },
       kanbanColumns: ["In Progress"],
-      unlockedFeatures: [],
-      unlockHistory: [],
     } as ProjectResource;
   }
 }

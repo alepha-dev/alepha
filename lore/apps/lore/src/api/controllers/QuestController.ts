@@ -881,17 +881,11 @@ export class QuestController {
   /**
    * Re-sync this quest's outbound `[[...]]` links.
    *
-   * Scans all three of a quest's markdown fields together — `description`,
-   * `note`, `completionMessage` — because a link row records only that
-   * quest #N references X, with no column for WHICH field it was written
-   * in. Syncing from one field would silently drop the references in the
-   * other two the moment that field was saved.
-   *
-   * `note` is a frozen dead column since the note feature was deleted
-   * (2026-08-20): nothing writes it anymore. It stays in this scan for
-   * that exact reason — a quest whose only reference to a folio was
-   * written in its note would otherwise lose that link on the next
-   * description save.
+   * Scans both of a quest's markdown fields together — `description` and
+   * `completionMessage` — because a link row records only that quest #N
+   * references X, with no column for WHICH field it was written in. Syncing
+   * from one field would silently drop the references in the other the
+   * moment that field was saved.
    *
    * Takes the stored row rather than the request body for the same reason:
    * a handler that only touches one field still has to sync against the
@@ -907,9 +901,7 @@ export class QuestController {
   ): Promise<void> {
     await this.linkService.syncLinks(
       { kind: "quest", id: quest.id, projectId: quest.projectId },
-      [quest.description, quest.note, quest.completionMessage]
-        .filter(Boolean)
-        .join("\n\n"),
+      [quest.description, quest.completionMessage].filter(Boolean).join("\n\n"),
       opts,
     );
   }

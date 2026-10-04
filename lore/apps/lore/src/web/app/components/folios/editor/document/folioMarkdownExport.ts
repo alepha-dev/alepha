@@ -1,4 +1,4 @@
-import type { Folio } from "@/api/entities/folios.ts";
+import type { FolioResource as Folio } from "@/api/schemas/folioResourceSchema.ts";
 
 /**
  * What {@link folioMarkdownExport} needs. Widened from the brief's stated

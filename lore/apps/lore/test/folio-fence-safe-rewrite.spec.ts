@@ -11,7 +11,6 @@ const folio = (shortId: number, title: string) =>
     shortId,
     title,
     content: "",
-    tags: [],
     summary: "",
     directoryId: null,
     projectId: PROJECT_SLUG,

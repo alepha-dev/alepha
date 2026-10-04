@@ -9,7 +9,7 @@ import { AlephaContext } from "alepha/react";
 import { act } from "react";
 import { describe, it } from "vitest";
 
-import type { Folio } from "@/api/entities/folios.ts";
+import type { FolioResource as Folio } from "@/api/schemas/folioResourceSchema.ts";
 
 import {
   type FolioDraft,
@@ -48,7 +48,6 @@ const baseFolio = (overrides: Partial<Folio> = {}): Folio => ({
   title: "Original title",
   protected: false,
   content: "original content",
-  tags: [],
   pinned: false,
   directoryId: undefined,
   summary: "",

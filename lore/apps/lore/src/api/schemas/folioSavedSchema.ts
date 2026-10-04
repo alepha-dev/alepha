@@ -35,6 +35,6 @@ import { folios } from "../entities/folios.ts";
  * alternative is a request per keystroke-pause for a panel showing "a few
  * seconds ago" either way.
  */
-export const folioSavedSchema = folios.schema.extend({
+export const folioSavedSchema = folios.schema.omit({ tags: true }).extend({
   revisionsChanged: z.boolean(),
 });

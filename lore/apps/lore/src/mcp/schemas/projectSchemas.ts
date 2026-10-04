@@ -45,7 +45,6 @@ export const projectListResultSchema = z.object({
     z.object({
       id: z.integer(),
       title: z.string(),
-      public: z.boolean(),
       /**
        * The caller's rank in this project.
        *
@@ -71,7 +70,6 @@ export const projectInfoParamsSchema = projectParamsSchema;
 export const projectInfoResultSchema = z.object({
   id: z.integer(),
   title: z.string(),
-  public: z.boolean(),
   areas: z.array(
     z.object({
       name: z.string(),
@@ -132,7 +130,6 @@ const folioIndexEntrySchema = z.object({
 export const projectContextResultSchema = z.object({
   id: z.integer(),
   title: z.string(),
-  public: z.boolean(),
   /**
    * What this project is: the capabilities it has turned on, and the options
    * inside each.

@@ -8,7 +8,7 @@ import { AreaService } from "./AreaService.ts";
 import { ProjectLimits } from "./ProjectLimits.ts";
 
 /**
- * Quest rich-text fields (`description`, `note`, `completionMessage`) are
+ * Quest rich-text fields (`description`, `completionMessage`) are
  * **Markdown**, not HTML: they are authored by `MarkdownEditor` and rendered
  * by `MarkdownView`, which mounts no `rehype-raw` and leaves react-markdown's
  * default in place — every raw node is escaped to text. That posture is
@@ -16,7 +16,7 @@ import { ProjectLimits } from "./ProjectLimits.ts";
  * to turn red if someone reaches for `rehype-raw` later.
  *
  * So there is deliberately **no sanitizer here.** A `sanitizeHtml` helper
- * used to run on `description` and `note` — a leftover from the TipTap
+ * used to run on `description` and the since-deleted note — a leftover from the TipTap
  * rich-text editor `MarkdownEditor` replaced, allow-listing the tags TipTap
  * emitted. Against Markdown it was not a defence but a corrupter: it deleted
  * any `<word…>` whose name was not allow-listed, code spans and fenced
@@ -143,7 +143,7 @@ export class QuestService {
    * given attachments list.
    *
    * Runs server-side on every write that carries markdown (description,
-   * note, completion message) so embedded images become quest
+   * completion message) so embedded images become quest
    * attachments regardless of the author — web editor or MCP agent
    * (the controller then keeps only ids the author uploaded).
    * Being listed in `quest.attachments` is what lets

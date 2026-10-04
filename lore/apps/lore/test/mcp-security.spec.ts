@@ -683,7 +683,6 @@ describe("MCP Security Integration", () => {
     interface ProjectContextResult {
       id: number;
       title: string;
-      public: boolean;
       areas: string[];
       activeQuests: Array<{ shortId: number; title: string }>;
       folios: {

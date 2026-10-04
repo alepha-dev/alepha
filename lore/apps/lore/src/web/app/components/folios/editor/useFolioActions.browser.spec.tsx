@@ -11,7 +11,7 @@ import { AlephaContext } from "alepha/react";
 import { LinkProvider } from "alepha/server/links";
 import { describe, it } from "vitest";
 
-import type { Folio } from "@/api/entities/folios.ts";
+import type { FolioResource as Folio } from "@/api/schemas/folioResourceSchema.ts";
 import { virtualClientFake } from "@/testing/virtualClientFake.ts";
 
 import {
@@ -52,7 +52,6 @@ const baseFolio = (overrides: Partial<Folio> = {}): Folio => ({
   title: "A clear folio",
   protected: false,
   content: "some plaintext content",
-  tags: [],
   pinned: false,
   directoryId: undefined,
   summary: "",
@@ -236,12 +235,11 @@ describe("useFolioActions — applyReverted syncs the draft after a history reve
     );
   };
 
-  it("writes the reverted title/tags/content into the draft and re-baselines dirty", async ({
+  it("writes the reverted title/content into the draft and re-baselines dirty", async ({
     expect,
   }) => {
     const folio = baseFolio({
       title: "Original",
-      tags: ["a"],
       content: "original body",
     });
     const alepha = Alepha.create()
@@ -258,7 +256,6 @@ describe("useFolioActions — applyReverted syncs the draft after a history reve
     const reverted: Folio = {
       ...folio,
       title: "Reverted title",
-      tags: ["b"],
       content: "reverted body",
       updatedAt: "2026-01-02T00:00:00.000Z",
     };

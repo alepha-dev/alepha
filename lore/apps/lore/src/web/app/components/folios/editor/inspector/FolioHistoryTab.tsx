@@ -41,7 +41,7 @@ import type { FolioRevision } from "@/api/entities/folioRevisions.ts";
 type HistoryRevision = Awaited<
   ReturnType<FolioController["listHistory"]>
 >[number];
-import type { Folio } from "@/api/entities/folios.ts";
+import type { FolioResource as Folio } from "@/api/schemas/folioResourceSchema.ts";
 
 import type { I18n } from "../../../../services/I18n.ts";
 

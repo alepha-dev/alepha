@@ -16,7 +16,7 @@ import { LinkProvider } from "alepha/server/links";
 import { setupJsdomMocks } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
-import type { Folio } from "@/api/entities/folios.ts";
+import type { FolioResource as Folio } from "@/api/schemas/folioResourceSchema.ts";
 import { virtualClientFake } from "@/testing/virtualClientFake.ts";
 import { I18n } from "@/web/app/services/I18n.ts";
 

@@ -4,7 +4,7 @@ import { useI18n } from "alepha/react/i18n";
 import { type ReactElement, useMemo } from "react";
 import { createPortal } from "react-dom";
 
-import type { Folio } from "@/api/entities/folios.ts";
+import type { FolioResource as Folio } from "@/api/schemas/folioResourceSchema.ts";
 import { capabilityOption } from "@/web/app/services/projectCapabilities.ts";
 
 import { currentFolioAttachmentsAtom } from "../../../../atoms/currentFolioAttachmentsAtom.ts";

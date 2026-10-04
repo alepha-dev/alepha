@@ -226,7 +226,8 @@ export class FolioAttachmentController {
         name: z.string().min(1).max(200),
         folioId: z.uuid(),
       }),
-      response: folioAttachments.schema,
+      // `directoryId` is a dead column until its drop (#E74).
+      response: folioAttachments.schema.omit({ directoryId: true }),
     },
     handler: async ({ params, body }) => {
       return this.attachmentService.register({
@@ -245,7 +246,8 @@ export class FolioAttachmentController {
     schema: {
       params: z.object({ id: z.uuid() }),
       body: z.object({ name: z.string().min(1).max(200) }),
-      response: folioAttachments.schema,
+      // `directoryId` is a dead column until its drop (#E74).
+      response: folioAttachments.schema.omit({ directoryId: true }),
     },
     handler: async ({ params, body }) => {
       return this.attachmentService.rename(params.id, body.name);

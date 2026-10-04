@@ -86,7 +86,6 @@ export class DirectoryController {
             name: z.string(),
             updatedAt: z.string(),
             // Folio extras (omitted on directory)
-            tags: z.array(z.string()).optional(),
             protected: z.boolean().optional(),
             pinned: z.boolean().optional(),
             summary: z.string().optional(),
@@ -148,7 +147,6 @@ export class DirectoryController {
           shortId: f.shortId,
           name: f.title,
           updatedAt: f.updatedAt,
-          tags: f.tags ?? [],
           protected: f.protected,
           pinned: f.pinned,
           summary: f.summary || undefined,
@@ -163,7 +161,7 @@ export class DirectoryController {
    * Project-wide name search across folios + attachments + directories.
    * Powers the Folio page's top search bar. Case-insensitive
    * substring match against name (attachments/dirs) and `searchText`
-   * (folios — title + tags + summary + content). Capped at 50 results
+   * (folios — title + summary + content). Capped at 50 results
    * per kind so the response stays small.
    *
    * Returns the `listContents` Entry shape widened with `"attachment"`: an
@@ -187,7 +185,6 @@ export class DirectoryController {
             shortId: z.integer(),
             name: z.string(),
             updatedAt: z.string(),
-            tags: z.array(z.string()).optional(),
             pinned: z.boolean().optional(),
             protected: z.boolean().optional(),
             summary: z.string().optional(),
@@ -242,7 +239,6 @@ export class DirectoryController {
             shortId: f.shortId,
             name: f.title,
             updatedAt: f.updatedAt,
-            tags: f.tags ?? [],
             pinned: f.pinned,
             protected: f.protected,
             summary: f.summary || undefined,
