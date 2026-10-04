@@ -28,16 +28,6 @@ One small surface covers the server, the database, auth, background work and Rea
 - **Multi-runtime**: the same code runs on Node, Bun, and Cloudflare Workers
 - **Deploy anywhere**: Cloudflare, Vercel, Docker, bare metal
 
-## Three products
-
-Everything below is MIT. The framework is developed in this repository; Lore and Bay each live in a repository of their own, built on the published framework. They are not demos: they are the applications that keep the framework honest.
-
-|                      |                                                                                                                                        |                                                       |
-| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| **Alepha Framework** | The framework itself, on npm as [`alepha`](https://www.npmjs.com/package/alepha)                                                       | [alepha.dev](https://alepha.dev)                      |
-| **Alepha Lore**      | Project management, for agents too: quests, folios, feedback and crash telemetry, every one of them readable and writable over MCP     | [alepha-dev/lore](https://github.com/alepha-dev/lore) |
-| **Alepha Bay**       | A self-hosted application server. One small Go binary that gives an Alepha app TLS, backups and process isolation on a machine you own | [alepha-dev/bay](https://github.com/alepha-dev/bay)   |
-
 ## Architecture
 
 Each layer builds on the previous. Use only what you need: Foundation alone is enough for a CLI tool.
@@ -150,10 +140,10 @@ export default defineConfig({
     platform({
       environments: {
         production: cloudflare({
-          domain: "lore.alepha.dev",
+          domain: "example.com",
         }),
-        staging: bay({
-          host: "deploy@bay.example.com",
+        staging: cloudflare({
+          domain: "staging.example.com",
         }),
       },
     }),
