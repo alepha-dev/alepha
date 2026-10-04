@@ -12,6 +12,7 @@ import { CapacitorNativeBuild } from "./services/CapacitorNativeBuild.ts";
 import { CapacitorPackages } from "./services/CapacitorPackages.ts";
 import { CapacitorProject } from "./services/CapacitorProject.ts";
 import { CapacitorSync } from "./services/CapacitorSync.ts";
+import { NativeAssets } from "./services/NativeAssets.ts";
 import { NativeBuildRecords } from "./services/NativeBuildRecords.ts";
 import { NativeFingerprint } from "./services/NativeFingerprint.ts";
 import { NativeGuard } from "./services/NativeGuard.ts";
@@ -22,6 +23,7 @@ import { NativeSchemes } from "./services/NativeSchemes.ts";
 export * from "./atoms/capacitorOptions.ts";
 export * from "./commands/CapacitorCommand.ts";
 export * from "./schemas/capacitorBuildRecordSchema.ts";
+export * from "./schemas/capacitorIconSchema.ts";
 export * from "./schemas/capacitorIdentitySchema.ts";
 export * from "./services/CapacitorDev.ts";
 export * from "./services/CapacitorInit.ts";
@@ -29,6 +31,7 @@ export * from "./services/CapacitorNativeBuild.ts";
 export * from "./services/CapacitorPackages.ts";
 export * from "./services/CapacitorProject.ts";
 export * from "./services/CapacitorSync.ts";
+export * from "./services/NativeAssets.ts";
 export * from "./services/NativeBuildRecords.ts";
 export * from "./services/NativeFingerprint.ts";
 export * from "./services/NativeGuard.ts";
@@ -82,6 +85,7 @@ export const AlephaCliCapacitorPlugin = $module({
     CapacitorProject,
     CapacitorPackages,
     NativeSchemes,
+    NativeAssets,
     NativeGuard,
     NativeFingerprint,
     NativeBuildRecords,

@@ -26,7 +26,13 @@ const graphOf = async (entry: string) => {
   const chunks = output.filter((it) => it.type === "chunk");
   return {
     modules: chunks.flatMap((chunk) => chunk.moduleIds),
-    imports: [...new Set(chunks.flatMap((chunk) => chunk.imports))],
+    // Lazy `import()`s count: a native plugin or sharp loaded on first use is
+    // still reached.
+    imports: [
+      ...new Set(
+        chunks.flatMap((chunk) => [...chunk.imports, ...chunk.dynamicImports]),
+      ),
+    ],
   };
 };
 
@@ -84,6 +90,27 @@ describe("@alepha/capacitor packaging", () => {
 
     expect(modules.some((id) => id.includes("/src/cli/"))).toBe(true);
     expect(imports).toContain("alepha/cli");
+  });
+
+  it("reaches sharp from the cli only, and never @capacitor/assets or Trapeze", async ({
+    expect,
+  }) => {
+    // The icon generator is the cli's; @capacitor/assets was rejected for its
+    // Capacitor 5 CLI and its Trapeze dependency.
+    const cli = await graphOf("src/cli/index.ts");
+    const core = await graphOf("src/core/index.ts");
+    const rejected = (id: string) =>
+      id.startsWith("@capacitor/assets") || id.startsWith("@trapezedev/");
+
+    expect(cli.imports).toContain("sharp");
+    expect(core.imports).not.toContain("sharp");
+    expect([...cli.imports, ...core.imports].filter(rejected)).toEqual([]);
+    expect(pkg.dependencies).toEqual({ sharp: "0.35.4" });
+    expect(
+      Object.keys({ ...pkg.devDependencies, ...pkg.peerDependencies }).filter(
+        rejected,
+      ),
+    ).toEqual([]);
   });
 
   it("keeps alepha/react/auth free of Capacitor", async ({ expect }) => {

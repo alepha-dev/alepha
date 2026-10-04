@@ -69,6 +69,9 @@
     "test": "alepha test",
     "typecheck": "tsc --noEmit"
   },
+  "dependencies": {
+    "sharp": "0.35.4"
+  },
   "devDependencies": {
     "@aparajita/capacitor-secure-storage": "8.0.1",
     "@capacitor/app": "8.1.2",

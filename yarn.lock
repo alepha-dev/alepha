@@ -21,6 +21,7 @@ __metadata:
     alepha: "npm:0.31.0"
     react: "npm:^19.3.0"
     rolldown: "npm:~1.2.12"
+    sharp: "npm:0.35.4"
     tsdown: "npm:^0.23.0"
     typescript: "npm:^7.0.2"
     vite: "npm:^8.3.2"

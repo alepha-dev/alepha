@@ -10,6 +10,7 @@ import type {
 } from "../atoms/capacitorOptions.ts";
 import { CapacitorPackages } from "./CapacitorPackages.ts";
 import { CapacitorProject } from "./CapacitorProject.ts";
+import { NativeAssets } from "./NativeAssets.ts";
 import { NativeSchemes } from "./NativeSchemes.ts";
 
 /**
@@ -26,12 +27,12 @@ import { NativeSchemes } from "./NativeSchemes.ts";
  *    is the user's, and is refused rather than overwritten);
  * 4. add the ignore rules for build outputs and signing keys;
  * 5. run `cap add` for each platform whose project does not exist yet;
- * 6. register the custom URL scheme in each native project.
+ * 6. register the custom URL scheme in each native project;
+ * 7. with an `icon` configured, generate the icons and the splash
+ *    ({@link NativeAssets}); without one, Capacitor's default icon stays.
  *
  * The native projects are source, checked in like any other: only their
- * build outputs are ignored. Icons and the splash come from the generator of
- * `@alepha/capacitor/cli` once an `icon` is configured; until then
- * Capacitor's default icon stays.
+ * build outputs are ignored.
  */
 export class CapacitorInit {
   protected readonly log = $logger();
@@ -40,6 +41,7 @@ export class CapacitorInit {
   protected readonly project = $inject(CapacitorProject);
   protected readonly packages = $inject(CapacitorPackages);
   protected readonly schemes = $inject(NativeSchemes);
+  protected readonly assets = $inject(NativeAssets);
 
   /**
    * What the app's `.gitignore` must carry. The native templates ignore their
@@ -100,6 +102,16 @@ export class CapacitorInit {
         await this.registerScheme(root, options, platforms);
       },
     });
+
+    const icon = options.icon;
+    if (icon) {
+      await run({
+        name: "generate icons and splash",
+        handler: async () => {
+          await this.assets.generate(root, icon, platforms);
+        },
+      });
+    }
   }
 
   /**

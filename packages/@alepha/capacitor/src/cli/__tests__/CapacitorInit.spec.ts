@@ -7,6 +7,7 @@ import {
   MemoryShellProvider,
   ShellProvider,
 } from "alepha/system";
+import sharp from "sharp";
 import { describe, it } from "vitest";
 
 import { capacitorOptions } from "../atoms/capacitorOptions.ts";
@@ -205,6 +206,65 @@ describe("alepha capacitor init", () => {
     expect(
       fs.getFileContent(`${ROOT}/android/app/src/main/AndroidManifest.xml`),
     ).toContain('android:scheme="mobile"');
+  });
+
+  it("generates the icons and the splash when an icon is configured", async ({
+    expect,
+  }) => {
+    const { alepha, fs, init, addNativeProjects, installEverything } =
+      await setup();
+    alepha.store.set(capacitorOptions, {
+      appId: "dev.alepha.mobile",
+      appName: "Mobile",
+      scheme: "mobile",
+      icon: { source: "icon.png", background: "#0f172a" },
+    });
+    await fs.writeFile(
+      `${ROOT}/icon.png`,
+      await sharp({
+        create: {
+          width: 1024,
+          height: 1024,
+          channels: 4,
+          background: "#e11d48",
+        },
+      })
+        .png()
+        .toBuffer(),
+    );
+    await addNativeProjects();
+    await installEverything();
+
+    await init();
+
+    expect(
+      fs.wasWritten(
+        `${ROOT}/ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png`,
+      ),
+    ).toBe(true);
+    expect(
+      fs.getFileContent(
+        `${ROOT}/android/app/src/main/res/values/ic_launcher_background.xml`,
+      ),
+    ).toContain("#0F172A");
+
+    // Still a no-op the second time.
+    fs.writeFileCalls = [];
+    await init();
+    expect(fs.writeFileCalls).toEqual([]);
+  });
+
+  it("leaves Capacitor's default icon without one", async ({ expect }) => {
+    const { fs, init, addNativeProjects } = await setup();
+    await addNativeProjects();
+
+    await init();
+
+    expect(
+      fs.writeFileCalls.filter((call) =>
+        /ic_launcher|AppIcon|splash/.test(call.path),
+      ),
+    ).toEqual([]);
   });
 
   it("is a no-op the second time", async ({ expect }) => {

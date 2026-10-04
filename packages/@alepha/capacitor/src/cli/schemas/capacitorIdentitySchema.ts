@@ -1,5 +1,7 @@
 import { type Infer, z } from "alepha";
 
+import { capacitorIconSchema } from "./capacitorIconSchema.ts";
+
 /**
  * What makes one installable app distinct from another: the keys a variant
  * may override.
@@ -48,10 +50,11 @@ export const capacitorIdentitySchema = z.object({
   apiUrl: z.string().optional(),
 
   /**
-   * A square source image of at least 1024 px (PNG or SVG), relative to the
-   * project root, that the icons and the splash are generated from.
+   * The source of the icons and the splash, generated into both native
+   * projects by `init` (and by every variant switch). Without one,
+   * Capacitor's default icon stays.
    */
-  icon: z.string().optional(),
+  icon: capacitorIconSchema.optional(),
 
   /**
    * The Apple developer team that signs the iOS app (`DEVELOPMENT_TEAM`). A
