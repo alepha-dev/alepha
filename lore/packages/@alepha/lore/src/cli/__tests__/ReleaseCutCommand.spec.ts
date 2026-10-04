@@ -34,7 +34,13 @@ class FakeLinkProvider extends LinkProvider {
         id: 7,
         slug: config.params.slug,
       }),
-      getReleases: async () => this.releases,
+      // An empty release is complete; the completeness gate has its own
+      // specs in `ReleaseCommand.spec.ts`.
+      getReleases: async () =>
+        this.releases.map((it) => ({
+          progress: { completed: 0, total: 0 },
+          ...it,
+        })),
       getReleaseChangelog: async (config: any) => ({
         markdown: this.changelogs.get(config.params.id) ?? "",
       }),

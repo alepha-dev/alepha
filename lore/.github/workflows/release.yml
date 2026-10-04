@@ -81,6 +81,16 @@ jobs:
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
+      # Before anything irreversible, dry runs included: the Lore release
+      # carrying this version must have every quest completed (shelved ones
+      # do not count). `publish` at the end refuses too, but by then npm and
+      # the tag are public (#Q2600).
+      - name: Check the Lore release is complete
+        run: yarn lore releases check --tag "$VERSION"
+        env:
+          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
+          VERSION: ${{ steps.version.outputs.version }}
+
       - name: Commit and Tag Release
         env:
           VERSION: ${{ steps.version.outputs.version }}

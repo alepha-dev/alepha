@@ -14,12 +14,15 @@ import { LoreProjectResolver } from "../services/LoreProjectResolver.ts";
  *
  * ```bash
  * export LORE_API_KEY=...
+ * lore releases check --tag 0.28.0
  * lore releases cut --bump minor --notes notes.md --env-file "$GITHUB_ENV"
  * lore releases changelog --tag 0.28.0
  * lore releases publish --tag 0.28.0
  * ```
  *
- * `cut` prepares a version locally (package.json, CHANGELOG.md, commit, tag)
+ * `check` refuses a release whose quests are not all completed, and runs
+ * before anything irreversible; `cut` prepares a version locally
+ * (package.json, CHANGELOG.md, commit, tag)
  * from the open Lore release that carries it; `changelog` prints that
  * release's notes; `publish` flips it to published once the version shipped.
  * Nothing here pushes: the builds, the git push and the GitHub Release stay in
@@ -38,6 +41,21 @@ import { LoreProjectResolver } from "../services/LoreProjectResolver.ts";
  * Everything else still fails loudly: a wrong key, a project the key cannot
  * see, a release the key may not publish. Those are configuration facts, and
  * silence there would hide a job that has stopped doing its work.
+ *
+ * ## ⚠️ An incomplete release never ships (#Q2600)
+ *
+ * Alepha 0.31.0 was published at 47/66, because nothing here read
+ * `progress`. `check`, `cut`, `changelog` and `publish` all refuse an open
+ * release with `progress.completed < progress.total`, listing what is left.
+ * Shelved quests sit outside `total`, so declined work never blocks. There
+ * is no flag to ship anyway: move or shelve the open work in Lore, so the
+ * release records what actually shipped.
+ *
+ * `check` exists because the others run too late in a typical job:
+ * `publish` is the LAST step, after npm and the tag push, where a refusal
+ * only turns a public release red. A job runs `check` right after it
+ * computes the version. It keeps `publish`'s quiet exits for a missing or
+ * an already-published release.
  *
  * ## Why the release is found client-side
  *
@@ -111,6 +129,8 @@ export class ReleaseCommand {
         return;
       }
 
+      await this.assertComplete(release, flags.tag, project);
+
       const published = await this.api.publishRelease({
         params: { id: release.id },
         body: {},
@@ -146,6 +166,7 @@ export class ReleaseCommand {
         `Release ${tag} in ${project} was already published, on ${release.releasedAt}`,
       );
     }
+    await this.assertComplete(release, tag, project);
 
     const { markdown } = await this.api.getReleaseChangelog({
       params: { id: release.id },
@@ -155,6 +176,101 @@ export class ReleaseCommand {
       .replace(/^(#+) /gm, "#$1 ")
       .trim();
   }
+
+  /**
+   * Refuses an open release that still holds unfinished work, naming it.
+   *
+   * `progress` comes with every row of `getReleases`; the contents are only
+   * fetched to word the refusal, so a complete release costs no extra call.
+   */
+  protected async assertComplete(
+    release: { id: number; progress: { completed: number; total: number } },
+    tag: string,
+    project: string,
+  ): Promise<void> {
+    const progress = release.progress;
+    if (progress.completed >= progress.total) return;
+
+    const contents = await this.api.getReleaseContents({
+      params: { id: release.id },
+    });
+    type Quest = (typeof contents.looseQuests)[number];
+    const open = (quest: Quest) => !quest.completedAt && !quest.shelvedAt;
+    const line = (quest: Quest) =>
+      `    #Q${quest.shortId} ${quest.title} (${quest.acceptedAt ? "in progress" : "todo"})`;
+
+    const lines: string[] = [];
+    for (const epic of contents.epics) {
+      const left = epic.quests.filter(open);
+      if (left.length === 0) continue;
+      lines.push(
+        `  #E${epic.number} ${epic.title}: ${epic.completed}/${epic.total}`,
+      );
+      lines.push(...left.map(line));
+    }
+    const loose = contents.looseQuests.filter(open);
+    if (loose.length > 0) {
+      lines.push("  Loose quests:");
+      lines.push(...loose.map(line));
+    }
+
+    throw new AlephaError(
+      `Release ${tag} in ${project} is ${progress.completed}/${progress.total} complete. ` +
+        "Finish, move or shelve the rest in Lore before releasing:\n\n" +
+        lines.join("\n"),
+    );
+  }
+
+  /**
+   * `lore releases check` - the gate a release job runs before anything
+   * irreversible: fails while the open release carrying the tag holds
+   * unfinished quests. A missing or already-published release exits 0, for
+   * the reasons `publish` gives.
+   */
+  public readonly check = $command({
+    name: "check",
+    description:
+      "Fail when the open Lore release carrying a version tag still has unfinished quests",
+    flags: z.object({
+      project: z
+        .text({
+          aliases: ["p"],
+          description:
+            "Lore project slug, overriding LORE_PROJECT for this invocation",
+        })
+        .optional(),
+      tag: z.text({
+        aliases: ["t"],
+        description:
+          "The release's tag, byte for byte: `0.28.0`, the version about to ship.",
+      }),
+    }),
+    handler: async ({ flags }) => {
+      const project = this.client.resolveProject(flags.project);
+      const projectId = await this.projects.resolve(project);
+
+      const releases = await this.api.getReleases({ params: { projectId } });
+      const release = releases.find((it) => it.tag === flags.tag);
+
+      if (!release) {
+        this.log.info(
+          `No release tagged ${flags.tag} in ${project}: nothing to check`,
+        );
+        return;
+      }
+      if (release.releasedAt) {
+        this.log.info(
+          `Release ${flags.tag} in ${project} is already published, since ${release.releasedAt}`,
+        );
+        return;
+      }
+
+      await this.assertComplete(release, flags.tag, project);
+      this.log.info(
+        `Release ${flags.tag} in ${project} is complete: ${release.progress.completed}/${release.progress.total}`,
+      );
+    },
+  });
 
   public readonly changelog = $command({
     name: "changelog",
@@ -299,7 +415,7 @@ export class ReleaseCommand {
   public readonly releases = $command({
     name: "releases",
     description: "The releases of a Lore project",
-    children: [this.cut, this.changelog, this.publish],
+    children: [this.check, this.cut, this.changelog, this.publish],
     handler: async ({ help }) => {
       help();
     },
