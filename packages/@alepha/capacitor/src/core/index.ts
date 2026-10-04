@@ -1,5 +1,6 @@
 import { Capacitor } from "@capacitor/core";
 import { $module } from "alepha";
+import { ReactAuthTransport } from "alepha/react/auth";
 
 import { AppStateProvider } from "./providers/AppStateProvider.ts";
 import { CapacitorConfigProvider } from "./providers/CapacitorConfigProvider.ts";
@@ -7,11 +8,15 @@ import { ContentInspector } from "./providers/ContentInspector.ts";
 import { DeviceProvider } from "./providers/DeviceProvider.ts";
 import { HapticsProvider } from "./providers/HapticsProvider.ts";
 import { NativeAppStateProvider } from "./providers/NativeAppStateProvider.ts";
+import { NativeAuthTransport } from "./providers/NativeAuthTransport.ts";
 import { NativeDeviceProvider } from "./providers/NativeDeviceProvider.ts";
 import { NativeHapticsProvider } from "./providers/NativeHapticsProvider.ts";
 import { NativeStatusBarProvider } from "./providers/NativeStatusBarProvider.ts";
+import { NativeTokenStorageProvider } from "./providers/NativeTokenStorageProvider.ts";
 import { StatusBarProvider } from "./providers/StatusBarProvider.ts";
+import { TokenStorageProvider } from "./providers/TokenStorageProvider.ts";
 import { WebContentProvider } from "./providers/WebContentProvider.ts";
+import { NativeSession } from "./services/NativeSession.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -28,14 +33,19 @@ export * from "./providers/MemoryContentInspector.ts";
 export * from "./providers/MemoryDeviceProvider.ts";
 export * from "./providers/MemoryHapticsProvider.ts";
 export * from "./providers/MemoryStatusBarProvider.ts";
+export * from "./providers/MemoryTokenStorageProvider.ts";
 export * from "./providers/MemoryWebContentProvider.ts";
 export * from "./providers/NativeAppStateProvider.ts";
+export * from "./providers/NativeAuthTransport.ts";
 export * from "./providers/NativeDeviceProvider.ts";
 export * from "./providers/NativeHapticsProvider.ts";
 export * from "./providers/NativeStatusBarProvider.ts";
+export * from "./providers/NativeTokenStorageProvider.ts";
 export * from "./providers/StatusBarProvider.ts";
+export * from "./providers/TokenStorageProvider.ts";
 export * from "./providers/WebContentProvider.ts";
 export * from "./schemas/capacitorPublicConfigSchema.ts";
+export * from "./services/NativeSession.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -46,6 +56,14 @@ declare module "alepha" {
      */
     "capacitor:app:state": {
       active: boolean;
+    };
+    /**
+     * A native sign-out finished. `revoked` is false when the server could
+     * not confirm the session was revoked; the device is signed out either
+     * way.
+     */
+    "capacitor:auth:signout": {
+      revoked: boolean;
     };
   }
 }
@@ -64,7 +82,11 @@ declare module "alepha" {
  * - {@link WebContentProvider}: which web layer is running (bundled, dev, or
  *   a live update through a substituted {@link ContentInspector});
  * - {@link HapticsProvider}, {@link AppStateProvider}, {@link DeviceProvider},
- *   {@link StatusBarProvider}.
+ *   {@link StatusBarProvider};
+ * - natively, {@link NativeAuthTransport}: `ReactAuth` signs in against the
+ *   API with a password and keeps the session in secure storage
+ *   ({@link TokenStorageProvider}) as a Bearer token. Register this module
+ *   before the one importing `AlephaReactAuth`.
  *
  * Each has a `Memory*` implementation for specs: substitute it before this
  * module is registered.
@@ -83,6 +105,13 @@ export const AlephaCapacitor = $module({
       alepha.with({ provide: AppStateProvider, use: NativeAppStateProvider });
       alepha.with({ provide: DeviceProvider, use: NativeDeviceProvider });
       alepha.with({ provide: StatusBarProvider, use: NativeStatusBarProvider });
+      alepha.with({
+        provide: TokenStorageProvider,
+        use: NativeTokenStorageProvider,
+      });
+      // Token custody: register this module before AlephaReactAuth (the app's
+      // web module), so ReactAuth is built with this transport.
+      alepha.with({ provide: ReactAuthTransport, use: NativeAuthTransport });
     }
   },
   services: [
@@ -93,5 +122,7 @@ export const AlephaCapacitor = $module({
     AppStateProvider,
     DeviceProvider,
     StatusBarProvider,
+    TokenStorageProvider,
+    NativeSession,
   ],
 });

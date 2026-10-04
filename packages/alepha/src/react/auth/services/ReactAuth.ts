@@ -1,4 +1,4 @@
-import { $hook, $inject, Alepha } from "alepha";
+import { $hook, $inject, Alepha, AlephaError } from "alepha";
 import { $logger } from "alepha/logger";
 import { ReactBrowserProvider, Redirection } from "alepha/react/router";
 import { currentUserAtom, type UserAccountToken } from "alepha/security";
@@ -6,11 +6,14 @@ import { HttpClient } from "alepha/server";
 import {
   alephaServerAuthRoutes,
   mfaResendResponseSchema,
+  type TokenResponse,
   type Tokens,
   tokenResponseSchema,
   userinfoResponseSchema,
 } from "alepha/server/auth";
 import { LinkProvider } from "alepha/server/links";
+
+import { ReactAuthTransport } from "./ReactAuthTransport.ts";
 
 /**
  * Browser, SSR friendly, service to handle authentication.
@@ -20,6 +23,7 @@ export class ReactAuth {
   protected readonly alepha = $inject(Alepha);
   protected readonly httpClient = $inject(HttpClient);
   protected readonly linkProvider = $inject(LinkProvider);
+  protected readonly transport = $inject(ReactAuthTransport);
 
   protected readonly onBeginTransition = $hook({
     on: "react:transition:begin",
@@ -35,8 +39,10 @@ export class ReactAuth {
   protected readonly onFetchRequest = $hook({
     on: "client:onRequest",
     handler: async ({ request }) => {
-      if (this.alepha.isBrowser() && this.user) {
-        // ensure cookies are sent with requests and refresh-able
+      if (this.alepha.isBrowser() && this.user && this.transport.cookies) {
+        // ensure cookies are sent with requests and refresh-able. Never for a
+        // transport without cookies: a cross-origin request asking for
+        // credentials needs a CORS grant a Bearer API does not give.
         request.credentials ??= "include";
       }
     },
@@ -55,8 +61,9 @@ export class ReactAuth {
 
   public async ping() {
     const { data } = await this.httpClient.fetch(
-      alephaServerAuthRoutes.userinfo,
+      this.transport.url(alephaServerAuthRoutes.userinfo),
       {
+        ...(await this.transport.request({ authenticated: true })),
         schema: { response: userinfoResponseSchema },
       },
     );
@@ -92,9 +99,10 @@ export class ReactAuth {
 
     if (options.username || options.password) {
       const { data } = await this.httpClient.fetch(
-        `${options.hostname || ""}${alephaServerAuthRoutes.token}?provider=${provider}${realmParam}`,
+        `${this.authUrl(alephaServerAuthRoutes.token, options.hostname)}?provider=${provider}${realmParam}`,
         {
           method: "POST",
+          ...(await this.transport.request({ authenticated: false })),
           body: JSON.stringify({
             username: options.username,
             password: options.password,
@@ -103,10 +111,15 @@ export class ReactAuth {
         },
       );
 
-      this.alepha.store.set("alepha.server.request.apiLinks", data.api);
-      this.alepha.store.set(currentUserAtom, data.user);
+      await this.signedIn(data);
 
       return data;
+    }
+
+    if (!this.transport.cookies) {
+      throw new AlephaError(
+        `Sign-in with "${provider}" opens a browser and returns through a redirect, which this app's auth transport does not support yet. Sign in with a password.`,
+      );
     }
 
     if (this.alepha.isBrowser()) {
@@ -144,16 +157,16 @@ export class ReactAuth {
     options: { hostname?: string } = {},
   ): Promise<Tokens> {
     const { data } = await this.httpClient.fetch(
-      `${options.hostname || ""}${alephaServerAuthRoutes.mfa}`,
+      this.authUrl(alephaServerAuthRoutes.mfa, options.hostname),
       {
         method: "POST",
+        ...(await this.transport.request({ authenticated: false })),
         body: JSON.stringify({ challenge, code }),
         schema: { response: tokenResponseSchema },
       },
     );
 
-    this.alepha.store.set("alepha.server.request.apiLinks", data.api);
-    this.alepha.store.set(currentUserAtom, data.user);
+    await this.signedIn(data);
 
     return data;
   }
@@ -167,9 +180,10 @@ export class ReactAuth {
     options: { hostname?: string } = {},
   ): Promise<{ sentTo?: string }> {
     const { data } = await this.httpClient.fetch(
-      `${options.hostname || ""}${alephaServerAuthRoutes.mfaResend}`,
+      this.authUrl(alephaServerAuthRoutes.mfaResend, options.hostname),
       {
         method: "POST",
+        ...(await this.transport.request({ authenticated: false })),
         body: JSON.stringify({ challenge }),
         schema: {
           response: mfaResendResponseSchema,
@@ -180,7 +194,37 @@ export class ReactAuth {
     return data;
   }
 
-  public logout() {
+  /**
+   * The URL of an auth route: under an explicit `hostname` when the caller
+   * names one, else wherever the transport says.
+   */
+  protected authUrl(path: string, hostname?: string): string {
+    return hostname ? `${hostname}${path}` : this.transport.url(path);
+  }
+
+  /**
+   * A sign-in succeeded: hand the tokens to the transport first, then expose
+   * the user. A cookie session is complete as the response says. A token
+   * session is validated through `userinfo`, which is also the only answer
+   * that carries the user's `sessionId`.
+   */
+  protected async signedIn(data: TokenResponse): Promise<void> {
+    await this.transport.signedIn(data);
+
+    if (this.transport.cookies) {
+      this.alepha.store.set("alepha.server.request.apiLinks", data.api);
+      this.alepha.store.set(currentUserAtom, data.user);
+      return;
+    }
+
+    await this.ping();
+  }
+
+  public async logout(): Promise<void> {
+    if (await this.transport.signOut()) {
+      return;
+    }
+
     const form = document.createElement("form");
     form.method = "POST";
     form.action = `${alephaServerAuthRoutes.logout}?post_logout_redirect_uri=${encodeURIComponent(window.location.origin)}`;

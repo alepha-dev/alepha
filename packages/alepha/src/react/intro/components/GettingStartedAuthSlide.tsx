@@ -44,7 +44,7 @@ export const useAuthSlide = (): GettingStartedSlide | undefined => {
                 href="#"
                 onClick={(e) => {
                   e.preventDefault();
-                  logout();
+                  void logout();
                 }}
               >
                 Sign out

@@ -70,13 +70,16 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
+    "@aparajita/capacitor-secure-storage": "8.0.1",
     "@capacitor/app": "8.1.2",
     "@capacitor/core": "8.5.2",
     "@capacitor/device": "8.0.3",
     "@capacitor/haptics": "8.0.2",
     "@types/bun": "^1.4.2",
     "@types/node": "^26.6.3",
+    "@types/react": "^19.3.0",
     "alepha": "0.31.0",
+    "react": "^19.3.0",
     "rolldown": "~1.2.12",
     "tsdown": "^0.23.0",
     "typescript": "^7.0.2",
@@ -84,6 +87,7 @@
     "vitest": "^5.0.3"
   },
   "peerDependencies": {
+    "@aparajita/capacitor-secure-storage": "^8.0.0",
     "@capacitor/app": "^8.0.0",
     "@capacitor/core": "^8.4.0",
     "@capacitor/device": "^8.0.0",
@@ -91,6 +95,9 @@
     "alepha": "^0.31.0"
   },
   "peerDependenciesMeta": {
+    "@aparajita/capacitor-secure-storage": {
+      "optional": true
+    },
     "@capacitor/app": {
       "optional": true
     },

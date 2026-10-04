@@ -40,6 +40,28 @@ export class ReactBootHealth {
    */
   public offlineScreen?: ComponentType<OfflineScreenProps>;
 
+  protected readonly bootTasks: Array<() => Promise<void>> = [];
+
+  /**
+   * Work the first transition must wait for, run just before it: restoring a
+   * stored session is the case. Inside the boot deadline when the bounded
+   * boot is on, so a task waiting on an unreachable API ends on the offline
+   * screen like a loader would; a task that throws a network error does too.
+   * Run again by the offline screen's retry. Register before `ready`.
+   */
+  public addBootTask(task: () => Promise<void>): void {
+    this.bootTasks.push(task);
+  }
+
+  /**
+   * Run the boot tasks, in order.
+   */
+  public async runBootTasks(): Promise<void> {
+    for (const task of this.bootTasks) {
+      await task();
+    }
+  }
+
   /**
    * Resolves with the outcome, whenever it is (or was) reported.
    */

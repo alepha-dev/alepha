@@ -692,6 +692,7 @@ export class ReactBrowserProvider {
         if (this.bootOptions.offline && !hydration) {
           await this.bootWithDeadline(previous);
         } else {
+          await this.bootHealth.runBootTasks();
           await this.render({ previous });
         }
         this.markBootScreen();
@@ -778,10 +779,24 @@ export class ReactBrowserProvider {
     const myTransitionId = ++this.transitionId;
     const controller = new AbortController();
 
-    const rendering = this.render({
-      previous,
-      transitionId: myTransitionId,
-    }).then(() => "rendered" as const);
+    // Boot tasks (a session restore) run inside the race, so an API that
+    // never answers them is bounded like a loader. One that fails for lack of
+    // a response ends on the offline screen; any other failure propagates.
+    const rendering = (async () => {
+      try {
+        await this.bootHealth.runBootTasks();
+      } catch (error) {
+        if (this.bootHealth.isNetworkError(error)) {
+          return "unreachable" as const;
+        }
+        throw error;
+      }
+      if (myTransitionId !== this.transitionId) {
+        return "rendered" as const;
+      }
+      await this.render({ previous, transitionId: myTransitionId });
+      return "rendered" as const;
+    })();
     const outcome = await Promise.race([
       rendering,
       this.dateTimeProvider
@@ -802,9 +817,11 @@ export class ReactBrowserProvider {
       return;
     }
 
-    const unreachable = this.state?.layers.some(
-      (layer) => layer.error && this.bootHealth.isNetworkError(layer.error),
-    );
+    const unreachable =
+      outcome === "unreachable" ||
+      this.state?.layers.some(
+        (layer) => layer.error && this.bootHealth.isNetworkError(layer.error),
+      );
     if (unreachable) {
       this.log.warn("The API could not be reached, showing the offline screen");
       this.showOffline("network");
