@@ -340,6 +340,7 @@ export class BuildManifestTask extends BuildTask {
       crons,
       secrets: envOf(true),
       variables: envOf(false),
+      inspect: ctx.options.inspect ? true : undefined,
       // Only what a Worker deploy reads, and only when there is a Worker slice
       // to deploy: a node-only artifact carries no Cloudflare noise.
       cloudflare: runtimes.some((slice) => slice.runtime === "workerd")

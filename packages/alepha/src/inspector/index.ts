@@ -54,6 +54,11 @@ export * from "./services/InspectorRegistry.ts";
 export const AlephaInspector = $module({
   name: "alepha.inspector",
   register: (alepha) => {
+    // Says "this process carries the inspector", whether or not it turns on:
+    // `run()` reads it to explain an `ALEPHA_INSPECT=1` given to a build
+    // that has none.
+    alepha.store.set("alepha.inspector.bundled" as any, true);
+
     const explicit = ["1", "true"].includes(
       String(alepha.env.ALEPHA_INSPECT ?? "").toLowerCase(),
     );

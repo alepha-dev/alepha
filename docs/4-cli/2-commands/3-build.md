@@ -74,11 +74,12 @@ node dist/index.node.js   # or name the slice
 
 ## Options
 
-| Flag              | Description                                                                                                                                                 |
-| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--runtime`, `-r` | Runtimes to link the server for, comma-separated and in order: `node`, `bun`, `workerd`. The first is the primary. `static` declares an app with no server. |
-| `--stats`         | Generate build statistics report (use `--stats=json` for JSON output)                                                                                       |
-| `--prebuilt`      | Skip the bundle steps; only regenerate the target-specific deploy config (e.g. `wrangler.jsonc`) when `dist/` is already built                              |
+| Flag              | Description                                                                                                                                                     |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--runtime`, `-r` | Runtimes to link the server for, comma-separated and in order: `node`, `bun`, `workerd`. The first is the primary. `static` declares an app with no server.     |
+| `--stats`         | Generate build statistics report (use `--stats=json` for JSON output)                                                                                           |
+| `--inspect`       | Bundle `alepha/inspector` so devtools can inspect the production build. Off until started with `ALEPHA_INSPECT=1`. See [Inspector](/docs/guides-core-inspector) |
+| `--prebuilt`      | Skip the bundle steps; only regenerate the target-specific deploy config (e.g. `wrangler.jsonc`) when `dist/` is already built                                  |
 
 Declaring a `workerd` slice is what writes the Cloudflare deploy config; `runtime: ["static"]` is what makes a static site. There is no `--target`: the build is described by what it produces.
 

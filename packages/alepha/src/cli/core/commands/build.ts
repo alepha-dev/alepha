@@ -98,6 +98,12 @@ export class BuildCommand {
           "Runtimes to link the server for, comma-separated and in order: node, bun, workerd. The first is the primary: what the manifest names, what dist/package.json points at, and what a deployer spawns. e.g. --runtime node,workerd. `static` declares an app with no server at all.",
         )
         .optional(),
+      inspect: z
+        .boolean()
+        .describe(
+          "Bundle alepha/inspector into the server so devtools can inspect this production build. It stays off until the process runs with ALEPHA_INSPECT=1; a build without the flag carries none of it. Not on workerd.",
+        )
+        .optional(),
       prebuilt: z
         .boolean()
         .describe(
@@ -152,6 +158,7 @@ export class BuildCommand {
         const resolved: BuildOptions = {
           ...current,
           stats: flags.stats ?? current.stats ?? false,
+          inspect: flags.inspect ?? current.inspect ?? false,
           runtime,
           runtimes,
         };

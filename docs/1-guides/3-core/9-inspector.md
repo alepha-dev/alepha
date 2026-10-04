@@ -13,8 +13,8 @@ script, a TUI, an MCP server for an agent.
 ## How an app becomes inspectable
 
 No app imports the inspector. `alepha dev` injects it into the app it serves,
-and it registers in development only: never under test, never in production,
-unless `ALEPHA_INSPECT=1` asks for it explicitly.
+and it registers in development only: never under test, and in production only
+in a build made for it (see [Production builds](#production-builds)).
 
 Once the app is ready, it announces itself in the run registry:
 
@@ -35,6 +35,45 @@ You can try it with curl:
 ```bash
 curl --unix-socket ~/.alepha/run/k3x9q2mf.sock http://localhost/metadata
 ```
+
+## Production builds
+
+A production bundle carries no inspector unless you ask, twice:
+
+```bash
+alepha build --inspect                      # bundle it in
+ALEPHA_INSPECT=1 node dist/index.node.js    # and turn it on
+```
+
+`--inspect` registers the inspector before the app starts; the manifest
+records `"inspect": true`. Started without `ALEPHA_INSPECT=1`, such a build
+stays silent: nothing listens. A build made without `--inspect` carries none of
+the inspector's code, and `ALEPHA_INSPECT=1` on it logs one line saying so. The
+entry says `"mode": "production"`, so you can debug `./dist` locally the same
+way as `alepha dev`. The workerd slice never carries it: no socket there.
+
+### Docker on Linux
+
+Bind-mount the run directory, and run the container as your own user:
+
+```bash
+docker run \
+  --user "$(id -u):$(id -g)" \
+  -v ~/.alepha/run:/run/alepha \
+  -e ALEPHA_RUN_DIR=/run/alepha \
+  -e ALEPHA_INSPECT=1 \
+  my-app
+```
+
+Each container's process is pid 1, which is why entries are named by a random
+run id; the socket is recorded by file name and resolved against the directory
+the reader finds it in; and a run counts as alive when its socket accepts a
+connection, not by its pid, which the host cannot see.
+
+The `--user` matters: a container running as root writes `0600` files owned by
+root, which you can neither read nor connect to. Do not loosen the mode; run as
+yourself. Docker Desktop on macOS is out of scope: a Unix socket does not cross
+its bind mount.
 
 ## Finding the apps
 
@@ -130,4 +169,5 @@ On a dead run, `logs()` and `tail()` read the file the process left behind.
 The inspector reads and mutates application state: database rows, atoms, job
 triggers, and the environment, secrets included, in cleartext. That is why it
 lives on a `0600` socket in a `0700` directory rather than on a port, and why
-it never registers in production unless asked to.
+a production build carries it only with `--inspect` and runs it only with
+`ALEPHA_INSPECT=1`.

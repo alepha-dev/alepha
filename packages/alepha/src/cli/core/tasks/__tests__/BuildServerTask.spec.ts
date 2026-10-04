@@ -23,6 +23,9 @@ class TestServerTask extends BuildServerTask {
 
   public testExtractEntry = (root: string, entry: string, result: any) =>
     this.extractEntryFromBundle(root, entry, result);
+
+  public testInspects = (inspect: boolean | undefined, runtime: any) =>
+    this.inspects({ options: { inspect } } as any, runtime);
 }
 
 /**
@@ -344,5 +347,20 @@ describe("BuildServerTask DO re-export", () => {
         ),
       ).toBe("abc123.js");
     });
+  });
+});
+
+describe("BuildServerTask --inspect", () => {
+  it("carries the inspector on node and bun slices only when asked", ({
+    expect,
+  }) => {
+    const task = Alepha.create().inject(TestServerTask);
+
+    expect(task.testInspects(true, "node")).toBe(true);
+    expect(task.testInspects(true, "bun")).toBe(true);
+    // No socket on Workers: the slice is left without it.
+    expect(task.testInspects(true, "workerd")).toBe(false);
+    expect(task.testInspects(false, "node")).toBe(false);
+    expect(task.testInspects(undefined, "node")).toBe(false);
   });
 });

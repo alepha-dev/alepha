@@ -176,6 +176,12 @@ export const buildManifestSchema = z
      * own Worker), with no app to introspect, so everything that regeneration
      * cannot derive is captured here at build time.
      */
+    /**
+     * Whether the server slices carry `alepha/inspector` (`alepha build
+     * --inspect`). Even then it stays off until `ALEPHA_INSPECT=1`. Absent
+     * when they do not.
+     */
+    inspect: z.boolean().optional(),
     cloudflare: z
       .object({
         /**
