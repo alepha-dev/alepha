@@ -106,12 +106,12 @@ Every workspace holding specs owns a `vitest.config.ts` calling `workspaceProjec
 
 ### Ports
 
-| band                        | owner                                                                                                                                                 |
-| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `3300-3399`                 | dev servers, `dev.port` in `alepha.config.ts`: docs 3302, shop 3305, totp 3307, ui 3308, devtools 3310 (its Vite config), ssr 3311, `~/git/loom` 3312 |
-| `5173+`                     | dev servers with no `dev.port`, and `alepha dev` in multi-app mode (`5173 + index` via `SERVER_PORT`, which **overrides `dev.port`**)                 |
-| `4300-4999`                 | **e2e, and nothing else**                                                                                                                             |
-| `15432` / `16379` / `19090` | `compose.yml` test services (postgres / redis / versitygw)                                                                                            |
+| band                        | owner                                                                                                                                                              |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `3300-3399`                 | dev servers, `dev.port` in `alepha.config.ts`: docs 3302, shop 3305, totp 3307, ui 3308, devtools 3310 (its Vite config), ssr 3311, `~/git/loom` 3312, mobile 3313 |
+| `5173+`                     | dev servers with no `dev.port`, and `alepha dev` in multi-app mode (`5173 + index` via `SERVER_PORT`, which **overrides `dev.port`**)                              |
+| `4300-4999`                 | **e2e, and nothing else**                                                                                                                                          |
+| `15432` / `16379` / `19090` | `compose.yml` test services (postgres / redis / versitygw)                                                                                                         |
 
 ⚠️ `check:conventions` reads this table: every dev port must appear in the `3300-3399` row.
 

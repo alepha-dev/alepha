@@ -1,0 +1,27 @@
+{
+  "name": "mobile",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "alepha build",
+    "build:workerd": "DATABASE_URL=d1://mobile:local alepha build --runtime workerd",
+    "check:migrations": "alepha db migrations check",
+    "db:generate": "alepha db migrations create",
+    "dev": "alepha dev",
+    "serve:workerd": "node scripts/serve-workerd.ts",
+    "test": "alepha test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@alepha/ui": "workspace:*",
+    "alepha": "workspace:^",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "tailwindcss": "^4.3.3",
+    "vite": "^8.3.2",
+    "wrangler": "^4.145.0"
+  }
+}
