@@ -1,5 +1,4 @@
 import { defineConfig } from "alepha/cli/config";
-import { devtools } from "alepha/cli/devtools";
 import { cloudflare, platform } from "alepha/cli/platform";
 
 export default defineConfig({
@@ -8,11 +7,6 @@ export default defineConfig({
   // 3306 errors, 3308 ui, 3311 ssr, so this one takes 3307.
   dev: { port: 3307 },
   plugins: [
-    /*
-     * Dev-server only: the plugin is registered by the CLI, never by the app, so
-     * nothing here reaches the deployed Worker.
-     */
-    devtools(),
     platform({
       /*
        * Worker secrets are auto-detected from the build manifest's `env` list

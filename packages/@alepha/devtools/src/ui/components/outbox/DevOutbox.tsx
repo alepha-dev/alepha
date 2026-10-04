@@ -6,6 +6,7 @@ import { Mail, MessageSquare } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useRelativeTime } from "../../hooks/useRelativeTime.ts";
+import { useRunApi } from "../../hooks/useRunApi.ts";
 import { DevEmpty } from "../shared/DevEmpty.tsx";
 import { OutboxDetail } from "./OutboxDetail.tsx";
 
@@ -31,6 +32,7 @@ const querySchema = z.object({
  */
 export const DevOutbox = () => {
   const http = useInject(HttpClient);
+  const api = useRunApi();
   const relative = useRelativeTime({ fallback: "unknown" });
   const [params, setParams] = useQueryParams(querySchema, {
     format: "querystring",
@@ -44,7 +46,7 @@ export const DevOutbox = () => {
     const out: OutboxMessage[] = [];
     const dirs: string[] = [];
     try {
-      const res = await http.fetch("/__devtools/api/emails");
+      const res = await http.fetch(api("/emails"));
       const data = res.data as any;
       for (const e of data?.emails ?? []) {
         out.push({ kind: "email", ...e });
@@ -54,7 +56,7 @@ export const DevOutbox = () => {
       // A missing transport is normal — an app need not send email.
     }
     try {
-      const res = await http.fetch("/__devtools/api/sms");
+      const res = await http.fetch(api("/sms"));
       const data = res.data as any;
       for (const s of data?.messages ?? []) {
         out.push({ kind: "sms", to: s.to, body: s.message, sentAt: s.sentAt });
@@ -67,7 +69,7 @@ export const DevOutbox = () => {
     setMessages(out);
     setDirectories(dirs);
     setLoaded(true);
-  }, [http]);
+  }, [http, api]);
 
   useEffect(() => {
     // An effect that starts an I/O load is the "synchronize with an external

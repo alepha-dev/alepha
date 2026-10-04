@@ -2,6 +2,7 @@ import { useInject } from "alepha/react";
 import { HttpClient } from "alepha/server";
 import { useEffect, useState } from "react";
 
+import { useRunApi } from "../../hooks/useRunApi.ts";
 import { collapse } from "./collapseValue.ts";
 
 export interface AtomMutationsProps {
@@ -24,6 +25,7 @@ interface MutationEntry {
  */
 export const AtomMutations = (props: AtomMutationsProps) => {
   const http = useInject(HttpClient);
+  const api = useRunApi();
   const [entries, setEntries] = useState<MutationEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,9 +33,7 @@ export const AtomMutations = (props: AtomMutationsProps) => {
     let cancelled = false;
     const load = () =>
       http
-        .fetch(
-          `/__devtools/api/atoms/log?key=${encodeURIComponent(props.atomName)}`,
-        )
+        .fetch(api(`/atoms/log?key=${encodeURIComponent(props.atomName)}`))
         // Assigns into state and hands nothing on; the `.catch` below is what the
         // chain exists for.
         // oxlint-disable-next-line promise/always-return
@@ -55,7 +55,7 @@ export const AtomMutations = (props: AtomMutationsProps) => {
       cancelled = true;
       clearInterval(id);
     };
-  }, [http, props.atomName]);
+  }, [http, api, props.atomName]);
 
   if (error) {
     return (

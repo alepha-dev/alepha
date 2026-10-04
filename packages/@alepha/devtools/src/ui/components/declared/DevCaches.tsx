@@ -1,6 +1,6 @@
+import type { DevCacheMetadata } from "alepha/inspector";
 import { Boxes } from "lucide-react";
 
-import type { DevCacheMetadata } from "../../../schemas/DevCacheMetadata.ts";
 import { useMetadata } from "../../hooks/useMetadata.ts";
 import { toText } from "../shared/toText.ts";
 import { DeclaredScreen } from "./DeclaredScreen.tsx";

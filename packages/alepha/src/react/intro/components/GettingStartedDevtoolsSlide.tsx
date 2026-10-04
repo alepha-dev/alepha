@@ -2,27 +2,20 @@ import type { GettingStartedSlide } from "./GettingStarted.tsx";
 
 /**
  * Hook that provides the devtools slide content.
- * Only shown when @alepha/devtools is installed and enabled.
- * Returns undefined if devtools are not available.
+ *
+ * Always shown: the devtools is not installed into the app, it is a separate
+ * tool that finds every app `alepha dev` runs, so there is nothing to detect.
  */
-export const useDevtoolsSlide = (): GettingStartedSlide | undefined => {
-  if (!import.meta.env?.VITE_ALEPHA_DEVTOOLS) {
-    return undefined;
-  }
-
+export const useDevtoolsSlide = (): GettingStartedSlide => {
   return {
     text: "Inspect everything.",
-    sub: "DevTools are built in.",
+    sub: "Every running app, from one place.",
     steps: [
       {
         num: "→",
         text: (
           <>
-            Open{" "}
-            <a href="/__devtools/" target="_blank" rel="noopener noreferrer">
-              /__devtools
-            </a>{" "}
-            to explore your app
+            Run <code>npx @alepha/devtools</code> in another terminal
           </>
         ),
       },

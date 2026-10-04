@@ -12,7 +12,6 @@
     "start": "yarn build && LOG_LEVEL=info LOG_FORMAT=pretty node dist"
   },
   "dependencies": {
-    "@alepha/devtools": "workspace:*",
     "@alepha/ui": "workspace:*",
     "alepha": "workspace:^",
     "lucide-react": "^1.49.0",

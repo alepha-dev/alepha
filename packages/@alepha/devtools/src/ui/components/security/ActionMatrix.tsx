@@ -1,7 +1,6 @@
+import type { DevActionMetadata, DevRoleMetadata } from "alepha/inspector";
 import { Fragment, useMemo } from "react";
 
-import type { DevActionMetadata } from "../../../schemas/DevActionMetadata.ts";
-import type { DevRoleMetadata } from "../../../schemas/DevRoleMetadata.ts";
 import { methodColor, shortMethod } from "../shared/methodColor.ts";
 import { type ActionGuard, guardOf } from "./guardOf.ts";
 import { RoleColumnHead } from "./RoleColumnHead.tsx";

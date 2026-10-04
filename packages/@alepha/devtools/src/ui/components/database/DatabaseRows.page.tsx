@@ -7,6 +7,8 @@ import { useEffect, useMemo, useState } from "react";
 import type { AppRouter } from "../../AppRouter.tsx";
 import { devRowCountsAtom } from "../../atoms/devRowCountsAtom.ts";
 import { useMetadata } from "../../hooks/useMetadata.ts";
+import { useRunApi } from "../../hooks/useRunApi.ts";
+import { useRunId } from "../../hooks/useRunId.ts";
 import { DevEmpty } from "../shared/DevEmpty.tsx";
 import { DevError } from "../shared/DevError.tsx";
 
@@ -22,7 +24,9 @@ const DatabaseRowsPage = () => {
   const meta = useMetadata();
   const alepha = useAlepha();
   const http = useInject(HttpClient);
+  const api = useRunApi();
   const router = useRouter<AppRouter>();
+  const runId = useRunId();
   const state = useRouterState();
   const [tableFilter, setTableFilter] = useState("");
   const [counts] = useStore(devRowCountsAtom);
@@ -45,7 +49,7 @@ const DatabaseRowsPage = () => {
         if (cancelled) return;
         try {
           const res = await http.fetch(
-            `/__devtools/api/db/${encodeURIComponent(e.name)}/records?page=0&size=1`,
+            api(`/db/${encodeURIComponent(e.name)}/records?page=0&size=1`),
           );
           const n = (res.data as any)?.page?.totalElements ?? 0;
           if (cancelled) return;
@@ -111,7 +115,9 @@ const DatabaseRowsPage = () => {
               onClick={() =>
                 // By name, so the grid's page, sort and search are left
                 // behind: they describe the table being left.
-                void router.push("rowsTable", { params: { table: e.name } })
+                void router.push("rowsTable", {
+                  params: { runId, table: e.name },
+                })
               }
             >
               <Table2 size={11} style={{ color: "var(--dt-get)" }} />

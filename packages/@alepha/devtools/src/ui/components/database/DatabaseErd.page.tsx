@@ -1,6 +1,7 @@
 import { useMetadata } from "../../hooks/useMetadata.ts";
 import { DevError } from "../shared/DevError.tsx";
 import { DatabaseErd } from "./DatabaseErd.tsx";
+import { MigrationDrift } from "./MigrationDrift.tsx";
 
 const DatabaseErdPage = () => {
   const meta = useMetadata();
@@ -11,7 +12,19 @@ const DatabaseErdPage = () => {
     );
   }
 
-  return <DatabaseErd entities={meta.data?.entities ?? []} />;
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        flex: 1,
+        minHeight: 0,
+      }}
+    >
+      <MigrationDrift />
+      <DatabaseErd entities={meta.data?.entities ?? []} />
+    </div>
+  );
 };
 
 export default DatabaseErdPage;

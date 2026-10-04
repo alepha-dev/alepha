@@ -1,6 +1,6 @@
+import type { DevActionMetadata } from "alepha/inspector";
 import { useCallback, useState } from "react";
 
-import type { DevActionMetadata } from "../../../schemas/DevActionMetadata.ts";
 import { useActionHistory } from "../../hooks/useActionHistory.ts";
 import { METHOD_COLOR } from "../shared/methodColor.ts";
 import { SchemaTree } from "../shared/SchemaTree.tsx";

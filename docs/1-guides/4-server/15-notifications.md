@@ -330,8 +330,8 @@ header map is otherwise a spoofing surface. Use the `replyTo` option.
 ## 10. Previewing and testing
 
 In development the Local provider writes every message to `DATA_DIR`, and
-`@alepha/devtools` renders them in its **Outbox** view, emails and SMS
-together. That is the preview: send the thing and look at it.
+the devtools (`npx @alepha/devtools`) renders them in its **Outbox** view,
+emails and SMS together. That is the preview: send the thing and look at it.
 
 In tests, use `MemoryEmailProvider`:
 

@@ -1,8 +1,10 @@
+import type {
+  DevActionMetadata,
+  DevPermissionMetadata,
+  DevRoleMetadata,
+} from "alepha/inspector";
 import { Fragment, useMemo } from "react";
 
-import type { DevActionMetadata } from "../../../schemas/DevActionMetadata.ts";
-import type { DevPermissionMetadata } from "../../../schemas/DevPermissionMetadata.ts";
-import type { DevRoleMetadata } from "../../../schemas/DevRoleMetadata.ts";
 import { requiredPermissions } from "./guardOf.ts";
 import { RoleColumnHead } from "./RoleColumnHead.tsx";
 

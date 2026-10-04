@@ -1,4 +1,4 @@
-import type { DevRoleMetadata } from "../../../schemas/DevRoleMetadata.ts";
+import type { DevRoleMetadata } from "alepha/inspector";
 
 export interface RoleColumnHeadProps {
   role: DevRoleMetadata;

@@ -1,4 +1,6 @@
 import { Toaster, TooltipProvider, DialogProvider } from "@alepha/ui";
+import type { InspectorRun } from "alepha/inspector";
+import { useAlepha } from "alepha/react";
 import { NestedView, useRouter, useRouterState } from "alepha/react/router";
 import {
   Archive,
@@ -11,21 +13,23 @@ import {
   KeyRound,
   LayoutDashboard,
   List,
-  LockOpen,
   Network,
   Radio,
   RotateCw,
   ShieldCheck,
   Table2,
-  UserRound,
   Variable,
   Zap,
 } from "lucide-react";
 import type { ComponentType } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { useDevSession } from "../hooks/useDevSession.ts";
+import { devRowCountsAtom } from "../atoms/devRowCountsAtom.ts";
 import { useMetadata } from "../hooks/useMetadata.ts";
+import { useRunHref } from "../hooks/useRunHref.ts";
+import { useRunId } from "../hooks/useRunId.ts";
+import { useRuns } from "../hooks/useRuns.ts";
+import { RunSwitcher } from "./runs/RunSwitcher.tsx";
 import { CommandPalette } from "./shared/CommandPalette.tsx";
 import { DevNavItem } from "./shared/DevNavItem.tsx";
 
@@ -47,9 +51,49 @@ interface NavEntry {
 const DevLayout = () => {
   const state = useRouterState();
   const router = useRouter();
+  const alepha = useAlepha();
   const meta = useMetadata();
-  const session = useDevSession();
+  const runId = useRunId();
+  const href = useRunHref();
+  const { runs, loaded } = useRuns();
   const [paletteOpen, setPaletteOpen] = useState(false);
+
+  const current = runs.find((run) => run.runId === runId);
+  const lastSeen = useRef<InspectorRun | undefined>(undefined);
+
+  /**
+   * Under `alepha dev` every reload is a new run of the same app: the run
+   * being inspected vanishes and one with the same `cwd` appears. That is a
+   * restart, and the selection follows it, on the same panel.
+   */
+  useEffect(() => {
+    if (current) {
+      lastSeen.current = current;
+      return;
+    }
+    const previous = lastSeen.current;
+    if (!previous) return;
+    const successor = runs.find(
+      (run) =>
+        run.cwd === previous.cwd &&
+        run.status === "live" &&
+        run.startedAt.localeCompare(previous.startedAt) >= 0,
+    );
+    if (successor) {
+      const prefix = `/apps/${encodeURIComponent(runId)}`;
+      const rest = state.url.pathname.startsWith(prefix)
+        ? state.url.pathname.slice(prefix.length)
+        : "";
+      void router.push(
+        `/apps/${encodeURIComponent(successor.runId)}${rest}${state.url.search}`,
+      );
+    }
+  }, [current, runs, runId, router, state.url]);
+
+  // Row counts belong to one run's database.
+  useEffect(() => {
+    alepha.store.set(devRowCountsAtom, {});
+  }, [alepha, runId]);
 
   /**
    * DevTools v1 is dark-only by design. Screens still on the shadcn stack read
@@ -200,39 +244,16 @@ const DevLayout = () => {
    * `/stateful`.
    */
   const isActive = useCallback(
-    (href?: string, exact?: boolean): boolean => {
-      if (!href) return false;
-      const path = state.url.pathname;
-      if (exact || href === "/") return path === "/";
-      return path === href || path.startsWith(`${href}/`);
+    (target?: string, exact?: boolean): boolean => {
+      if (!target) return false;
+      const root = href("/");
+      const path = state.url.pathname.replace(/\/$/, "") || "/";
+      if (exact || target === "/") return path === root;
+      const full = href(target);
+      return path === full || path.startsWith(`${full}/`);
     },
-    [state.url.pathname],
+    [state.url.pathname, href],
   );
-
-  /**
-   * The chip's own copy. `loading` gets its own word so the topbar never
-   * flashes "Not signed in" during the round-trip, which would read as a
-   * verdict rather than as "not known yet".
-   */
-  const sessionLabel = session.loading
-    ? "Session…"
-    : (session.user?.name ??
-      session.user?.username ??
-      session.user?.email ??
-      session.user?.id ??
-      "Not signed in");
-
-  const sessionTitle = session.user
-    ? [
-        "Try It requests run as this session.",
-        session.user.realm ? `Realm: ${session.user.realm}` : undefined,
-        session.user.roles?.length
-          ? `Roles: ${session.user.roles.join(", ")}`
-          : "No roles",
-      ]
-        .filter(Boolean)
-        .join("\n")
-    : "Try It requests run unauthenticated. Sign in to the application itself, then come back.";
 
   return (
     <TooltipProvider>
@@ -261,27 +282,13 @@ const DevLayout = () => {
 
             <span style={{ marginLeft: "auto" }} />
 
-            {/*
-             * A status chip, not a login. Devtools presents no credential of
-             * its own: Try It rides the application's own session cookie, so
-             * the only useful thing this can do is report who that is.
-             * Signed out, it opens the application so you can go and log in;
-             * signed in, it re-reads the session.
-             */}
-            <button
-              type="button"
-              className="dt-btn"
-              data-on={session.user ? true : undefined}
-              onClick={() =>
-                session.user
-                  ? session.reload()
-                  : window.open("/", "_blank", "noopener")
+            <RunSwitcher
+              runs={runs}
+              current={current}
+              onSelect={(run) =>
+                router.push(`/apps/${encodeURIComponent(run.runId)}`)
               }
-              title={sessionTitle}
-            >
-              {session.user ? <UserRound size={11} /> : <LockOpen size={11} />}
-              {sessionLabel}
-            </button>
+            />
 
             <button
               type="button"
@@ -309,7 +316,9 @@ const DevLayout = () => {
                       live={item.live}
                       active={isActive(item.href, item.exact)}
                       onSelect={
-                        item.href ? () => router.push(item.href!) : undefined
+                        item.href
+                          ? () => router.push(href(item.href!))
+                          : undefined
                       }
                     />
                   ))}
@@ -317,7 +326,22 @@ const DevLayout = () => {
               ))}
             </nav>
 
-            <NestedView />
+            {loaded && !current ? (
+              <div style={{ flex: 1, padding: 24 }}>
+                <div className="dt-banner">
+                  This app is not running any more (run {runId}).{" "}
+                  <button
+                    type="button"
+                    className="dt-btn"
+                    onClick={() => router.push("/")}
+                  >
+                    Pick an app
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <NestedView />
+            )}
           </div>
         </div>
 
@@ -325,9 +349,9 @@ const DevLayout = () => {
           <CommandPalette
             metadata={d}
             onClose={() => setPaletteOpen(false)}
-            onNavigate={(href: string) => {
+            onNavigate={(target: string) => {
               setPaletteOpen(false);
-              void router.push(href);
+              void router.push(href(target));
             }}
           />
         )}

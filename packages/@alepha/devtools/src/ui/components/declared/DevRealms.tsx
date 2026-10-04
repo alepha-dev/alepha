@@ -1,6 +1,6 @@
+import type { DevRealmMetadata } from "alepha/inspector";
 import { ShieldCheck } from "lucide-react";
 
-import type { DevRealmMetadata } from "../../../schemas/DevRealmMetadata.ts";
 import { useMetadata } from "../../hooks/useMetadata.ts";
 import { toText } from "../shared/toText.ts";
 import { DeclaredScreen } from "./DeclaredScreen.tsx";

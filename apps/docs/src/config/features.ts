@@ -179,8 +179,8 @@ export const coreFeatures = [
   {
     icon: IconDeviceDesktop,
     title: "DevTools",
-    module: "alepha/devtools",
-    description: "Inspect actions, queues, logs.",
+    module: "@alepha/devtools",
+    description: "Every running app, inspected.",
     slug: "packages-alepha-devtools",
   },
   {
