@@ -1,15 +1,3 @@
-# Alepha @alepha/devtools
-
-Alepha DevTools: every app running on this machine, inspected from one place. Run it with npx @alepha/devtools.
-
-## Usage
-
-Part of the Alepha framework, run rather than installed:
-
-```bash
-npx @alepha/devtools
-```
-
 ## What it is
 
 A local web app that finds every Alepha app running on your machine and

@@ -1,16 +1,12 @@
 import { join } from "node:path";
 
-import base from "../../../tsdown.config.ts";
-
 /**
- * The library entries every package gets, plus the `npx @alepha/devtools`
- * bin, built for node with its shebang kept.
+ * The `npx @alepha/devtools` bin, built for node with its shebang kept. The
+ * package exports nothing to import: it is a tool, run rather than installed.
  */
-export default async () => {
+export default () => {
   const root = process.cwd();
-  const configs = await base();
   return [
-    ...configs,
     {
       entry: { bin: join(root, "src/bin.ts") },
       format: ["esm"],

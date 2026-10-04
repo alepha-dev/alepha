@@ -1,5 +1,4 @@
 import { defineConfig } from "alepha/cli/config";
-import { devtools } from "alepha/cli/devtools";
 import { cloudflare, platform } from "alepha/cli/platform";
 
 /*
@@ -14,12 +13,6 @@ export default defineConfig({
   // without a `dev.port` binds 5173.
   dev: { port: 3305 },
   plugins: [
-    /*
-     * Dev-server only: the plugin is registered by the CLI, never by the app, so
-     * nothing here reaches the deployed Worker. It mounts the inspector at
-     * `/__devtools/` and injects the floating button into every dev page.
-     */
-    devtools(),
     platform({
       // Worker, D1 and bucket `alepha-shop-production`: the names Lore Deploy
       // gave them, so the Custom Domain moved over without a 409 (#Q2576).

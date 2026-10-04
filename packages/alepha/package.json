@@ -160,11 +160,6 @@
       "import": "./src/cli/core/index.ts",
       "default": "./src/cli/core/index.ts"
     },
-    "./cli/devtools": {
-      "types": "./src/cli/devtools/index.ts",
-      "import": "./src/cli/devtools/index.ts",
-      "default": "./src/cli/devtools/index.ts"
-    },
     "./cli/i18n": {
       "types": "./src/cli/i18n/index.ts",
       "import": "./src/cli/i18n/index.ts",
@@ -619,11 +614,6 @@
         "workerd": "./dist/cli/core/index.workerd.js",
         "import": "./dist/cli/core/index.js",
         "default": "./dist/cli/core/index.js"
-      },
-      "./cli/devtools": {
-        "types": "./dist/cli/devtools/index.d.ts",
-        "import": "./dist/cli/devtools/index.js",
-        "default": "./dist/cli/devtools/index.js"
       },
       "./cli/i18n": {
         "types": "./dist/cli/i18n/index.d.ts",
