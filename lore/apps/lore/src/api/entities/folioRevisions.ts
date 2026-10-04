@@ -83,13 +83,6 @@ export const folioRevisions = $entity({
      */
     snapshotIsLive: db.default(z.boolean(), false),
     titleSnapshot: z.string(),
-    /**
-     * @deprecated Dead column — frozen at `[]` for every revision written
-     * since the tag feature was removed. Kept declared for the same reason
-     * as `folios.tags`: dropping it forces a table rebuild, and on D1 that
-     * cascade-wipes. See the note on that column.
-     */
-    tagsSnapshot: db.default(z.array(z.string()), []),
     summarySnapshot: db.default(z.string(), ""),
     /**
      * UI-only pin (no MCP surface in v1). Pinned revisions are exempt

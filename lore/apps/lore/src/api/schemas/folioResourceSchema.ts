@@ -92,12 +92,9 @@ const folioMetadataSchema = z.object({
  * (e.g. `getByShortId?withLinks=true`); `list`/`get`/`create`/`update`
  * return the bare entity.
  */
-export const folioResourceSchema = folios.schema
-  // A dead column, declared on the entity only until its drop (#E74).
-  .omit({ tags: true })
-  .extend({
-    metadata: folioMetadataSchema.optional(),
-  });
+export const folioResourceSchema = folios.schema.extend({
+  metadata: folioMetadataSchema.optional(),
+});
 
 export type FolioLinks = Infer<typeof folioLinksSchema>;
 export type FolioPath = Infer<typeof folioPathSchema>;

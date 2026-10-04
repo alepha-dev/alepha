@@ -1,7 +1,6 @@
 import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
-import { folioDirectories } from "./folioDirectories.ts";
 import { folios } from "./folios.ts";
 import { projects } from "./projects.ts";
 
@@ -67,20 +66,6 @@ export const folioAttachments = $entity({
      * enforcement.
      */
     folioId: db.ref(z.uuid(), () => folios.cols.id, {
-      onDelete: "cascade",
-    }),
-    /**
-     * @deprecated Dead column — nothing reads or writes it since
-     * attachments became folio-scoped.
-     *
-     * It survives because SQLite cannot drop a column that carries a
-     * foreign key, and removing the FK means rebuilding the table —
-     * which is the D1 cascade-wipe hazard this file's other comments
-     * describe. Kept declared so the snapshot matches what is
-     * physically on disk, exactly as `projects.public` and
-     * `projects.unlockedFeatures` are.
-     */
-    directoryId: db.ref(z.uuid().optional(), () => folioDirectories.cols.id, {
       onDelete: "cascade",
     }),
     /**

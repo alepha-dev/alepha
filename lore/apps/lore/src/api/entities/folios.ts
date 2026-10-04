@@ -39,19 +39,6 @@ export const folios = $entity({
     protected: db.default(z.boolean(), false),
     content: db.default(z.string(), ""),
     /**
-     * @deprecated Dead column. The tag feature was removed (feedback #62)
-     * — nothing reads or writes this, and no UI or MCP surface exposes it.
-     *
-     * **It stays declared on purpose.** Dropping a column from SQLite means
-     * a table rebuild, and `folios` is the `ON DELETE CASCADE` parent of
-     * `folio_links`, `folio_revisions` and `folio_blobs` — D1 ignores
-     * `PRAGMA foreign_keys=OFF`, so the rebuild's `DROP TABLE` would
-     * cascade-wipe all three in production. Same verdict, same reasoning as
-     * `projects.unlockedFeatures` / `projects.public`. See "Migration safety
-     * on D1" in apps/lore/CLAUDE.md.
-     */
-    tags: db.default(z.array(z.string()), []),
-    /**
      * Pin a folio so it sorts to the top of the project's folio list AND
      * (when not protected) has its full content surfaced by
      * `project_context` — the per-project equivalent of CLAUDE.md.
@@ -94,10 +81,8 @@ export const folios = $entity({
      * Lowercased concatenation of `title + " " + summary + " " + content`.
      * Populated on every create/update for cheap `LIKE` search on D1/SQLite.
      *
-     * Rows written before the tag feature was removed still carry their tag
-     * words in here until their next save. Search stays a superset, so this
-     * is left to age out rather than backfilled with an `UPDATE` over every
-     * row in production.
+     * Rows last saved while folios still had tags carry those words too,
+     * until their next save. Search stays a superset, so they age out.
      */
     searchText: db.default(z.string(), ""),
   }),

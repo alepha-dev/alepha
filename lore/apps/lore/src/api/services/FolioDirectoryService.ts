@@ -244,9 +244,9 @@ export class FolioDirectoryService {
    * DB cascade. Explicit walk keeps the reservation table consistent.)
    *
    * Attachments are not counted and not walked. An attachment belongs to a
-   * folio, not to a folder: `folio_blobs.directoryId` has been dead
-   * since attachments became folio-scoped, so a query on it always came
-   * back empty, and the release loop it fed had nothing to release -
+   * folio, not to a folder: the folder column they once carried was
+   * dead since attachments became folio-scoped (dropped with #E74), so a
+   * query on it always came back empty, and the release loop it fed had nothing to release -
    * attachments left the `folio_names` namespace in the same change. The
    * attachments of the folios below are reclaimed by the delete itself:
    * their rows with the other rows, their bytes last.

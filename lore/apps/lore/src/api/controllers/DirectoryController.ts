@@ -55,8 +55,8 @@ export class DirectoryController {
    * them in one table.
    *
    * Attachments are not children of a folder. They belong to one folio,
-   * and `folio_blobs.directoryId` has been dead since that became true,
-   * so the attachment query this used to run always came back empty and
+   * and the attachment query this used to run, on a folder column that
+   * has since been dropped, always came back empty and
    * every caller was reading an attachment entry kind that could not occur. To
    * list a folio's attachments, ask `FolioAttachmentController`.
    */

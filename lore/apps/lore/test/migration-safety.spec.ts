@@ -188,6 +188,10 @@ const SANCTIONED_DROPS: Record<string, string[]> = {
   // points at (the cascade refusal above checks that against the previous
   // snapshot). Each DROP carries its own `alepha-allow-drop-table` marker.
   "20261004222909_drop_frozen_leaf_tables": DROPPED_AWAY,
+  // #E74 / #Q2605: drizzle's rebuild of `folio_blobs` to drop `directory_id`,
+  // a column with a foreign key that SQLite cannot drop in place. A leaf: no
+  // foreign key points at it, which the cascade refusal checks.
+  "20261004225050_drop_dead_folio_columns": ["folio_blobs"],
 };
 
 /**
