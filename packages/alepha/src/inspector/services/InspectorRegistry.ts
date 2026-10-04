@@ -168,6 +168,31 @@ export class InspectorRegistry {
   }
 
   /**
+   * One run by id, probed, or `undefined` when there is no such entry.
+   *
+   * The id is checked against the shape the writer produces before it goes
+   * anywhere near a path: it usually arrives from a URL, and `../` must not
+   * name a file outside the run directory.
+   */
+  public async get(runId: string): Promise<InspectorRun | undefined> {
+    if (!/^[0-9a-z]{8}$/.test(runId)) return undefined;
+
+    const dir = this.directory();
+    const file = this.fs.join(dir, `${runId}.json`);
+    const entry = await this.read(file);
+    if (!entry) return undefined;
+
+    const run: InspectorRun = {
+      ...entry,
+      file,
+      socketPath: this.fs.join(dir, this.basename(entry.socket)),
+      status: "dead",
+    };
+    run.status = (await this.probe(run)) === "live" ? "live" : "dead";
+    return run;
+  }
+
+  /**
    * One entry file, or `undefined` when it is missing, torn, or not an entry.
    */
   public async read(file: string): Promise<InspectorRunEntry | undefined> {

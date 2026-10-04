@@ -193,6 +193,30 @@ export class InspectorConnection {
     }
   }
 
+  /**
+   * One request by method and path, answered as is: the status and the JSON
+   * body, whatever they are. For a proxy, which forwards rather than calls;
+   * a tool calling a known route wants `call()`.
+   *
+   * @throws AlephaError when the socket cannot be reached.
+   */
+  public request(
+    method: string,
+    path: string,
+    body?: unknown,
+  ): Promise<{ status: number; body: unknown }> {
+    return this.send(method, path, body);
+  }
+
+  /**
+   * Whether an error from `request()` or `call()` means the run is gone:
+   * its socket is missing or refuses.
+   */
+  public isGone(error: unknown): boolean {
+    const code = ((error as { cause?: { code?: string } })?.cause ?? {}).code;
+    return code === "ENOENT" || code === "ECONNREFUSED";
+  }
+
   // -------------------------------------------------------------------------------------------------------------------
 
   protected path(
@@ -280,14 +304,6 @@ export class InspectorConnection {
       if (payload) req.write(payload);
       req.end();
     });
-  }
-
-  /**
-   * The run went away mid-tail: its socket is gone or refuses.
-   */
-  protected isGone(error: unknown): boolean {
-    const code = ((error as { cause?: { code?: string } })?.cause ?? {}).code;
-    return code === "ENOENT" || code === "ECONNREFUSED";
   }
 
   protected filterLevel(

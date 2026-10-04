@@ -1,6 +1,6 @@
 # Alepha @alepha/devtools
 
-Developer tools for Alepha applications.
+Alepha DevTools: every app running on this machine, inspected from one place. Run it with npx @alepha/devtools.
 
 ## Installation
 

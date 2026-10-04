@@ -2,6 +2,8 @@ import { useInject } from "alepha/react";
 import { HttpClient } from "alepha/server";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { useRunApi } from "./useRunApi.ts";
+
 export interface LogEntry {
   level: string;
   message: string;
@@ -83,6 +85,7 @@ const MAX_CATCHUP_ROUNDS = 8;
  */
 export const useLogTail = (filters: LogFilters): UseLogTailResult => {
   const http = useInject(HttpClient);
+  const api = useRunApi();
   const [entries, setEntries] = useState<LogEntry[]>([]);
   const [total, setTotal] = useState(0);
   const [following, setFollowing] = useState(true);
@@ -146,7 +149,7 @@ export const useLogTail = (filters: LogFilters): UseLogTailResult => {
         let evicted = 0;
         for (let round = 0; round < MAX_CATCHUP_ROUNDS; round++) {
           const res = await http.fetch(
-            `/__devtools/api/logs?${buildQuery(cursor.current)}`,
+            api(`/logs?${buildQuery(cursor.current)}`),
           );
           const data = res.data as any;
           const page: LogEntry[] = data?.logs ?? [];
@@ -194,7 +197,7 @@ export const useLogTail = (filters: LogFilters): UseLogTailResult => {
         setError(e?.message ?? "Failed to load logs");
       }
     },
-    [http, buildQuery, advance],
+    [http, api, buildQuery, advance],
   );
 
   // Filters changing invalidates the cursor: a widened filter exposes older

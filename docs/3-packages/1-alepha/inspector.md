@@ -31,7 +31,7 @@ and the devtools app (`npx @alepha/devtools`) is its first consumer.
 SECURITY: the inspector reads and MUTATES application state and serves the
 environment, secrets included. It registers in development only: never in
 production and never under test, unless `ALEPHA_INSPECT=1` asks for it
-explicitly. The providers are deliberately NOT listed under `services`,
+explicitly. `ALEPHA_INSPECT=0` turns it off everywhere. The providers are deliberately NOT listed under `services`,
 which would register them whatever this guard decides.
 
 ## API Reference

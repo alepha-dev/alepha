@@ -6,8 +6,8 @@ import { z } from "alepha";
 export const inspectorEnvSchema = z.object({
   /**
    * Turn the inspector on where it is otherwise off: under test, and in a
-   * production build made with `alepha build --inspect`. `1` or `true`; any
-   * other value leaves it off.
+   * production build made with `alepha build --inspect`. `1` or `true`. `0` or
+   * `false` turns it off everywhere, development included.
    */
   ALEPHA_INSPECT: z.text().optional(),
 

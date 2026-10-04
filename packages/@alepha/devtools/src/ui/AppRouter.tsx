@@ -2,8 +2,21 @@ import { z } from "alepha";
 import { $page } from "alepha/react/router";
 
 export class AppRouter {
-  layout = $page({
+  /**
+   * Every app running on the machine, to pick one.
+   */
+  picker = $page({
     path: "/",
+    lazy: () => import("./components/runs/RunPicker.tsx"),
+  });
+
+  /**
+   * One run's panels. The run id in the path is what keeps a panel URL
+   * bookmarkable and lets two tabs inspect two apps.
+   */
+  layout = $page({
+    path: "/apps/:runId",
+    schema: { params: z.object({ runId: z.text() }) },
     lazy: () => import("./components/DevLayout.tsx"),
   });
 
@@ -106,7 +119,7 @@ export class AppRouter {
   rowsTable = $page({
     path: "/:table",
     parent: this.rows,
-    schema: { params: z.object({ table: z.text() }) },
+    schema: { params: z.object({ runId: z.text(), table: z.text() }) },
     loader: ({ params }) => ({ table: params.table }),
     lazy: () => import("./components/database/DatabaseTable.page.tsx"),
   });
@@ -114,7 +127,9 @@ export class AppRouter {
   rowsRecord = $page({
     path: "/:id",
     parent: this.rowsTable,
-    schema: { params: z.object({ table: z.text(), id: z.text() }) },
+    schema: {
+      params: z.object({ runId: z.text(), table: z.text(), id: z.text() }),
+    },
     loader: ({ params }) => ({ table: params.table, recordId: params.id }),
     lazy: () => import("./components/database/DatabaseRecord.page.tsx"),
   });

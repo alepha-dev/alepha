@@ -23,6 +23,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { AppRouter } from "../../AppRouter.tsx";
 import { devRowCountsAtom } from "../../atoms/devRowCountsAtom.ts";
 import { useMetadata } from "../../hooks/useMetadata.ts";
+import { useRunApi } from "../../hooks/useRunApi.ts";
+import { useRunId } from "../../hooks/useRunId.ts";
 import { DevEmpty } from "../shared/DevEmpty.tsx";
 import { DT_TRIGGER } from "../shared/dtTrigger.ts";
 import { toText } from "../shared/toText.ts";
@@ -57,8 +59,10 @@ export interface DatabaseTablePageProps {
  */
 const DatabaseTablePage = (props: DatabaseTablePageProps) => {
   const http = useInject(HttpClient);
+  const api = useRunApi();
   const alepha = useAlepha();
   const router = useRouter<AppRouter>();
+  const runId = useRunId();
   const routerState = useRouterState();
   const dialog = useDialog();
   const meta = useMetadata();
@@ -110,7 +114,7 @@ const DatabaseTablePage = (props: DatabaseTablePageProps) => {
       });
       if (sort) qs.set("sort", sort);
       const res = await http.fetch(
-        `/__devtools/api/db/${encodeURIComponent(table)}/records?${qs}`,
+        api(`/db/${encodeURIComponent(table)}/records?${qs}`),
       );
       const data = res.data as any;
       const totalElements = data?.page?.totalElements ?? 0;
@@ -129,7 +133,7 @@ const DatabaseTablePage = (props: DatabaseTablePageProps) => {
     } finally {
       setLoading(false);
     }
-  }, [http, alepha, table, page, size, sort]);
+  }, [http, api, alepha, table, page, size, sort]);
 
   useEffect(() => {
     // An effect that starts an I/O load is the "synchronize with an external
@@ -160,8 +164,10 @@ const DatabaseTablePage = (props: DatabaseTablePageProps) => {
       try {
         const url =
           method === "POST"
-            ? `/__devtools/api/db/${encodeURIComponent(table)}/records`
-            : `/__devtools/api/db/${encodeURIComponent(table)}/records/${encodeURIComponent(id!)}`;
+            ? api(`/db/${encodeURIComponent(table)}/records`)
+            : api(
+                `/db/${encodeURIComponent(table)}/records/${encodeURIComponent(id!)}`,
+              );
         await http.fetch(url, {
           method,
           headers: { "Content-Type": "application/json" },
@@ -169,7 +175,7 @@ const DatabaseTablePage = (props: DatabaseTablePageProps) => {
         });
         if (method === "POST") {
           await router.push("rowsTable", {
-            params: { table },
+            params: { runId, table },
             query: router.query,
           });
         }
@@ -179,7 +185,7 @@ const DatabaseTablePage = (props: DatabaseTablePageProps) => {
         return e?.message ?? "Save failed";
       }
     },
-    [http, router, table, load],
+    [http, api, router, table, load],
   );
 
   const removeIds = useCallback(
@@ -197,12 +203,14 @@ const DatabaseTablePage = (props: DatabaseTablePageProps) => {
       try {
         for (const id of ids) {
           await http.fetch(
-            `/__devtools/api/db/${encodeURIComponent(table)}/records/${encodeURIComponent(id)}`,
+            api(
+              `/db/${encodeURIComponent(table)}/records/${encodeURIComponent(id)}`,
+            ),
             { method: "DELETE" },
           );
         }
         await router.push("rowsTable", {
-          params: { table },
+          params: { runId, table },
           query: router.query,
         });
         await load();
@@ -220,7 +228,7 @@ const DatabaseTablePage = (props: DatabaseTablePageProps) => {
    */
   const openRecord = (id: string) =>
     router.push("rowsRecord", {
-      params: { table, id },
+      params: { runId, table, id },
       query: router.query,
     });
 
@@ -441,7 +449,7 @@ const DatabaseTablePage = (props: DatabaseTablePageProps) => {
                               column={c}
                               onFollow={(ent, fid) =>
                                 router.push("rowsRecord", {
-                                  params: { table: ent, id: fid },
+                                  params: { runId, table: ent, id: fid },
                                 })
                               }
                             />

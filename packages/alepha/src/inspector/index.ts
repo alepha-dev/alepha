@@ -46,7 +46,7 @@ export * from "./services/InspectorRegistry.ts";
  * SECURITY: the inspector reads and MUTATES application state and serves the
  * environment, secrets included. It registers in development only: never in
  * production and never under test, unless `ALEPHA_INSPECT=1` asks for it
- * explicitly. The providers are deliberately NOT listed under `services`,
+ * explicitly. `ALEPHA_INSPECT=0` turns it off everywhere. The providers are deliberately NOT listed under `services`,
  * which would register them whatever this guard decides.
  *
  * @module alepha.inspector
@@ -59,9 +59,15 @@ export const AlephaInspector = $module({
     // that has none.
     alepha.store.set("alepha.inspector.bundled" as any, true);
 
-    const explicit = ["1", "true"].includes(
-      String(alepha.env.ALEPHA_INSPECT ?? "").toLowerCase(),
-    );
+    const asked = String(alepha.env.ALEPHA_INSPECT ?? "").toLowerCase();
+    const explicit = ["1", "true"].includes(asked);
+
+    // An explicit no wins everywhere, development included: a tool that is
+    // itself an Alepha app under `alepha dev` (the devtools server) must not
+    // list itself among the apps it inspects.
+    if (["0", "false"].includes(asked)) {
+      return;
+    }
 
     // Production: a deployed app must never answer these routes by accident.
     // Test: every suite would otherwise run a log persister, and once the

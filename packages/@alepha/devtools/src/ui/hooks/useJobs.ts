@@ -2,6 +2,8 @@ import { useInject } from "alepha/react";
 import { HttpClient } from "alepha/server";
 import { useCallback, useEffect, useState } from "react";
 
+import { useRunApi } from "./useRunApi.ts";
+
 export interface JobRuntime {
   name: string;
   description?: string;
@@ -37,6 +39,7 @@ export interface JobExecution {
  */
 export const useJobs = (pollMs = 5000) => {
   const http = useInject(HttpClient);
+  const api = useRunApi();
   const [jobs, setJobs] = useState<JobRuntime[]>([]);
   const [error, setError] = useState<string | undefined>();
   const [loading, setLoading] = useState(true);
@@ -44,7 +47,7 @@ export const useJobs = (pollMs = 5000) => {
   const load = useCallback(async () => {
     if (document.visibilityState !== "visible") return;
     try {
-      const res = await http.fetch("/__devtools/api/jobs");
+      const res = await http.fetch(api("/jobs"));
       setJobs(((res.data as any)?.jobs ?? []) as JobRuntime[]);
       setError(undefined);
     } catch (e: any) {
@@ -52,7 +55,7 @@ export const useJobs = (pollMs = 5000) => {
     } finally {
       setLoading(false);
     }
-  }, [http]);
+  }, [http, api]);
 
   useEffect(() => {
     // An effect that starts an I/O load is the "synchronize with an external

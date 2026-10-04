@@ -4,6 +4,8 @@ import { HttpClient } from "alepha/server";
 import { useCallback, useEffect, useState } from "react";
 
 import { devMetadataAtom } from "../atoms/devMetadataAtom.ts";
+import { useRunApi } from "./useRunApi.ts";
+import { useRunId } from "./useRunId.ts";
 
 export interface UseMetadataResult {
   data?: DevMetadata;
@@ -13,7 +15,7 @@ export interface UseMetadataResult {
 }
 
 /**
- * Read the application metadata, fetching it once per session.
+ * Read the selected run's metadata, fetching it once per run.
  *
  * Every screen calls this; only the first call that finds the atom empty
  * performs the request. `error` is surfaced rather than swallowed — a failed
@@ -22,7 +24,11 @@ export interface UseMetadataResult {
  */
 export const useMetadata = (): UseMetadataResult => {
   const http = useInject(HttpClient);
-  const [data, setData] = useStore(devMetadataAtom);
+  const api = useRunApi();
+  const runId = useRunId();
+  const [held, setHeld] = useStore(devMetadataAtom);
+  // Another run's metadata is no answer for this one.
+  const data = held?.runId === runId ? held.metadata : undefined;
   const [loading, setLoading] = useState(!data);
   const [error, setError] = useState<string | undefined>();
 
@@ -30,16 +36,16 @@ export const useMetadata = (): UseMetadataResult => {
     setLoading(true);
     setError(undefined);
     try {
-      const res = await http.fetch("/__devtools/api/metadata", {
+      const res = await http.fetch(api("/metadata"), {
         schema: { response: devMetadataSchema },
       });
-      setData(res.data);
+      setHeld({ runId, metadata: res.data });
     } catch (e: any) {
       setError(e?.message ?? "Failed to load metadata");
     } finally {
       setLoading(false);
     }
-  }, [http, setData]);
+  }, [http, api, runId, setHeld]);
 
   useEffect(() => {
     if (!data) {

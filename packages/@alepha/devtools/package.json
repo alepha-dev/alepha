@@ -1,7 +1,7 @@
 {
   "name": "@alepha/devtools",
   "version": "0.31.0",
-  "description": "Developer tools for Alepha applications.",
+  "description": "Alepha DevTools: every app running on this machine, inspected from one place. Run it with npx @alepha/devtools.",
   "keywords": [
     "alepha",
     "devtools",
@@ -14,9 +14,11 @@
     "type": "git",
     "url": "git+https://github.com/alepha-dev/alepha.git"
   },
+  "bin": {
+    "alepha-devtools": "./dist/bin.js"
+  },
   "files": [
     "dist",
-    "src",
     "assets"
   ],
   "type": "module",
@@ -50,9 +52,12 @@
     "lint": "alepha lint",
     "typecheck": "alepha typecheck",
     "test": "alepha test",
-    "dev:ui": "alepha dev --no-devtools",
+    "dev:ui": "ALEPHA_INSPECT=0 alepha dev",
     "build": "yarn build:ui && tsdown --no-clean",
-    "build:ui": "alepha build --runtime static && rm -rf assets/ui && mkdir -p assets && cp -r dist/public assets/ui"
+    "build:ui": "alepha build --runtime static && rm -rf assets/ui && mkdir -p assets && cp -r dist/public assets/ui && rm -rf dist"
+  },
+  "dependencies": {
+    "alepha": "0.31.0"
   },
   "devDependencies": {
     "@alepha/ui": "workspace:^",
@@ -62,7 +67,6 @@
     "@types/node": "^26.6.3",
     "@types/react": "^19.3.0",
     "@xyflow/react": "^12.12.0",
-    "alepha": "0.31.0",
     "lucide-react": "^1.49.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
@@ -71,11 +75,6 @@
     "typescript": "^7.0.2",
     "vite": "^8.3.2",
     "vitest": "^5.0.3"
-  },
-  "peerDependencies": {
-    "alepha": "^0.31.0",
-    "react": "^19",
-    "react-dom": "^19"
   },
   "engines": {
     "node": ">=22.0.0"

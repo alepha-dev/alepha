@@ -48,11 +48,24 @@ describe("AlephaInspector: where it registers", () => {
     ).toBe(true);
   });
 
+  it("stays off in development when ALEPHA_INSPECT=0 says so", () => {
+    expect(
+      boot({ NODE_ENV: "development", ALEPHA_INSPECT: "0" }).has(
+        InspectorRoutes,
+      ),
+    ).toBe(false);
+    expect(
+      boot({ NODE_ENV: "development", ALEPHA_INSPECT: "false" }).has(
+        InspectorRoutes,
+      ),
+    ).toBe(false);
+  });
+
   it("ignores any other value of ALEPHA_INSPECT", () => {
     const alepha = boot({
       NODE_ENV: "production",
       APP_SECRET: "test-secret",
-      ALEPHA_INSPECT: "0",
+      ALEPHA_INSPECT: "yes",
     });
 
     expect(alepha.has(InspectorRoutes)).toBe(false);

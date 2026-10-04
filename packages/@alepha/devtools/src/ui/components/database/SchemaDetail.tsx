@@ -1,6 +1,8 @@
 import { useRouter } from "alepha/react/router";
 import { ArrowRight } from "lucide-react";
 
+import { useRunHref } from "../../hooks/useRunHref.ts";
+
 export interface SchemaDetailProps {
   entity: any;
 }
@@ -55,6 +57,7 @@ const Row = (props: {
 export const SchemaDetail = (props: SchemaDetailProps) => {
   const entity = props.entity;
   const router = useRouter();
+  const href = useRunHref();
 
   return (
     <div
@@ -82,7 +85,7 @@ export const SchemaDetail = (props: SchemaDetailProps) => {
           className="dt-btn"
           style={{ marginLeft: "auto" }}
           onClick={() =>
-            router.push(`/rows/${encodeURIComponent(entity.name)}`)
+            router.push(href(`/rows/${encodeURIComponent(entity.name)}`))
           }
         >
           Edit rows <ArrowRight size={10} />

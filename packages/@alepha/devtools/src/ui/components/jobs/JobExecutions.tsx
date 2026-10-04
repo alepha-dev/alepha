@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import type { JobExecution } from "../../hooks/useJobs.ts";
 import { useRelativeTime } from "../../hooks/useRelativeTime.ts";
+import { useRunApi } from "../../hooks/useRunApi.ts";
 import { describeRetention } from "./describeRetention.ts";
 
 const STATUS_COLOR: Record<string, string> = {
@@ -58,6 +59,7 @@ export interface JobExecutionsProps {
 
 export const JobExecutions = (props: JobExecutionsProps) => {
   const http = useInject(HttpClient);
+  const api = useRunApi();
   const relative = useRelativeTime();
   const [rows, setRows] = useState<JobExecution[]>([]);
   const [selected, setSelected] = useState<JobExecution | null>(null);
@@ -69,7 +71,7 @@ export const JobExecutions = (props: JobExecutionsProps) => {
   const load = useCallback(async () => {
     try {
       const res = await http.fetch(
-        `/__devtools/api/jobs/${encodeURIComponent(props.jobName)}/executions`,
+        api(`/jobs/${encodeURIComponent(props.jobName)}/executions`),
       );
       const data = res.data as any;
       setRows(
@@ -79,7 +81,7 @@ export const JobExecutions = (props: JobExecutionsProps) => {
     } catch (e: any) {
       setError(e?.message ?? "Failed to load executions");
     }
-  }, [http, props.jobName]);
+  }, [http, api, props.jobName]);
 
   useEffect(() => {
     // Clearing the selection belongs with the reload that invalidates it: the
@@ -99,9 +101,7 @@ export const JobExecutions = (props: JobExecutionsProps) => {
     }
     let live = true;
     void http
-      .fetch(
-        `/__devtools/api/jobs/executions/${encodeURIComponent(selected.id)}`,
-      )
+      .fetch(api(`/jobs/executions/${encodeURIComponent(selected.id)}`))
       .then((res) => {
         if (live) setDetail(res.data as JobExecution);
       })
@@ -111,13 +111,13 @@ export const JobExecutions = (props: JobExecutionsProps) => {
     return () => {
       live = false;
     };
-  }, [http, selected]);
+  }, [http, api, selected]);
 
   const retry = async (row: JobExecution) => {
     setBusy(true);
     try {
       await http.fetch(
-        `/__devtools/api/jobs/executions/${encodeURIComponent(row.id)}/retry`,
+        api(`/jobs/executions/${encodeURIComponent(row.id)}/retry`),
         { method: "POST" },
       );
       await load();

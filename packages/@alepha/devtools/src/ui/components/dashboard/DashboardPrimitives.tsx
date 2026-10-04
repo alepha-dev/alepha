@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import type { ComponentType } from "react";
 
+import { useRunHref } from "../../hooks/useRunHref.ts";
+
 export interface DashboardPrimitivesProps {
   metadata?: DevMetadata;
 }
@@ -40,6 +42,7 @@ interface PrimitiveTile {
  */
 export const DashboardPrimitives = (props: DashboardPrimitivesProps) => {
   const router = useRouter();
+  const href = useRunHref();
   const d = props.metadata;
 
   const tiles: PrimitiveTile[] = d
@@ -136,7 +139,7 @@ export const DashboardPrimitives = (props: DashboardPrimitivesProps) => {
           key={tile.label}
           type="button"
           className="dt-tile"
-          onClick={() => router.push(tile.href)}
+          onClick={() => router.push(href(tile.href))}
         >
           <span className="dt-tile-head">
             <span style={{ color: tile.tone, display: "inline-flex" }}>

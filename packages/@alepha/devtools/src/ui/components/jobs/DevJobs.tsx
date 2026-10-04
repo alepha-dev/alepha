@@ -9,6 +9,7 @@ import { useMemo, useState } from "react";
 import { type JobRuntime, useJobs } from "../../hooks/useJobs.ts";
 import { useMetadata } from "../../hooks/useMetadata.ts";
 import { useRelativeTime } from "../../hooks/useRelativeTime.ts";
+import { useRunApi } from "../../hooks/useRunApi.ts";
 import { describeCron } from "../declared/describeCron.ts";
 import { DevEmpty } from "../shared/DevEmpty.tsx";
 import { DevError } from "../shared/DevError.tsx";
@@ -76,6 +77,7 @@ export const DevJobs = () => {
   const relative = useRelativeTime({ fallback: "never" });
   const runtime = useJobs();
   const http = useInject(HttpClient);
+  const api = useRunApi();
   const [params, setParams] = useQueryParams(querySchema, {
     format: "querystring",
   });
@@ -131,7 +133,7 @@ export const DevJobs = () => {
     setPushResult(null);
     try {
       await http.fetch(
-        `/__devtools/api/jobs/${encodeURIComponent(current.declared.name)}/trigger`,
+        api(`/jobs/${encodeURIComponent(current.declared.name)}/trigger`),
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
