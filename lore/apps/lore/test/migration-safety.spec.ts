@@ -12,8 +12,6 @@ import { projects } from "../src/api/entities/projects.ts";
 import { sigilErrorGroups } from "../src/api/entities/sigilErrorGroups.ts";
 import { sigils } from "../src/api/entities/sigils.ts";
 import { sigilUniquesDaily } from "../src/api/entities/sigilUniquesDaily.ts";
-import { sigilViewsHourly } from "../src/api/entities/sigilViewsHourly.ts";
-import { sigilVitalsHourly } from "../src/api/entities/sigilVitalsHourly.ts";
 import { users } from "../src/api/entities/users.ts";
 
 const MIGRATIONS = join(import.meta.dirname, "../migrations/sqlite");
@@ -83,6 +81,22 @@ const RENAMED_AWAY = [
   "chapters",
   "archive_directories",
   "archive_blobs",
+];
+
+/**
+ * Tables this app dropped on purpose, which the entity walk no longer
+ * produces because their entities went with them (#E74, #Q2604).
+ *
+ * The migrations before the drop still create and fill them, so they stay
+ * guarded there, exactly like the renamed-away names above.
+ */
+const DROPPED_AWAY = [
+  "members",
+  "invitations",
+  "rank_definitions",
+  "sigil_views_hourly",
+  "sigil_vitals_hourly",
+  "analytics_backfills",
 ];
 
 /**
@@ -170,6 +184,10 @@ const SANCTIONED_DROPS: Record<string, string[]> = {
   // `artifacts.cols.id`, this reasoning is void and the NEXT rebuild of this
   // table has to be re-derived rather than waved through by citing this entry.
   "20260909124143_romantic_ben_urich": ["artifacts"],
+  // #E74 / #Q2604: six frozen leaf tables, none of which any foreign key
+  // points at (the cascade refusal above checks that against the previous
+  // snapshot). Each DROP carries its own `alepha-allow-drop-table` marker.
+  "20261004222909_drop_frozen_leaf_tables": DROPPED_AWAY,
 };
 
 /**
@@ -317,7 +335,11 @@ const dropViolations = (
 
 describe("migration safety", () => {
   it("never drops a table this app owns, unsanctioned", async ({ expect }) => {
-    const guarded = [...(await entityTables()), ...RENAMED_AWAY];
+    const guarded = [
+      ...(await entityTables()),
+      ...RENAMED_AWAY,
+      ...DROPPED_AWAY,
+    ];
     const dirs = migrationDirs();
 
     // A guard that silently scans nothing is worse than no guard. Both halves:
@@ -362,7 +384,11 @@ describe("migration safety", () => {
   it("catches a synthetic migration that drops a guarded table", async ({
     expect,
   }) => {
-    const guarded = [...(await entityTables()), ...RENAMED_AWAY];
+    const guarded = [
+      ...(await entityTables()),
+      ...RENAMED_AWAY,
+      ...DROPPED_AWAY,
+    ];
 
     // Exactly what drizzle-kit emits for a rebuild, and the shape that wiped
     // production: the DROP is the third statement, wrapped in the innocuous
@@ -778,8 +804,6 @@ describe("migration safety", () => {
       users = $repository(users);
       sigils = $repository(sigils);
       blights = $repository(blights);
-      views = $repository(sigilViewsHourly);
-      vitals = $repository(sigilVitalsHourly);
       uniques = $repository(sigilUniquesDaily);
       errorGroups = $repository(sigilErrorGroups);
     }
@@ -798,8 +822,6 @@ describe("migration safety", () => {
     // union of signatures TypeScript refuses to call.
     expect(await repos.sigils.findMany({ limit: 1 })).toEqual([]);
     expect(await repos.blights.findMany({ limit: 1 })).toEqual([]);
-    expect(await repos.views.findMany({ limit: 1 })).toEqual([]);
-    expect(await repos.vitals.findMany({ limit: 1 })).toEqual([]);
     expect(await repos.uniques.findMany({ limit: 1 })).toEqual([]);
     expect(await repos.errorGroups.findMany({ limit: 1 })).toEqual([]);
   });

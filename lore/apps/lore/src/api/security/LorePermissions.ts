@@ -8,7 +8,7 @@ import { LoreRankBounds } from "./LoreRankBounds.ts";
  * ## ⚠️ These names can never change
  *
  * A rank definition stores permission strings as **data**
- * (`rank_definitions.permissions`), so renaming `folio:write` silently drops
+ * (`organization_ranks`), so renaming `folio:write` silently drops
  * it from every custom rank that held it - on a deploy that looks like a
  * relabelling, with nothing going red. It is the same class of failure as the
  * `features.milestones` key that took production down in 2026-08: a name that

@@ -12,15 +12,9 @@ import {
 /**
  * Keeps `sigil_uniques_daily` from growing without bound.
  *
- * This used to also collapse `sigil_views_hourly` into daily buckets
- * (`collapseViews`, deleted). That half retired along with the rest of the
- * legacy views/vitals write and read path: `SigilIngestService` no longer
- * writes `sigil_views_hourly` at all, and `AnalyticsRollupJobs`
- * (`alepha/api/analytics`) owns retention for the `sigil_views` / `sigil_vitals`
- * `$analytics()` datasets that replaced it — its own sweep, exercised in that
- * package's own test suite, not this one. `sigil_views_hourly` is therefore
- * now frozen: whatever rows it already holds stay exactly as they are, with
- * nothing left to write to it, read it or sweep it.
+ * Views and vitals live in the `sigil_views` / `sigil_vitals` `$analytics()`
+ * datasets, whose retention `AnalyticsRollupJobs` (`alepha/api/analytics`)
+ * owns; their old hourly tables were dropped (#E74).
  *
  * Uniques could not follow the same path — a distinct visitor count cannot
  * survive sampling or a rollup — so this class survives for exactly that one

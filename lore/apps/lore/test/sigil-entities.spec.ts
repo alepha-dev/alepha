@@ -6,7 +6,6 @@ import { describe, it } from "vitest";
 import { blights } from "../src/api/entities/blights.ts";
 import { projects } from "../src/api/entities/projects.ts";
 import { sigils } from "../src/api/entities/sigils.ts";
-import { sigilViewsHourly } from "../src/api/entities/sigilViewsHourly.ts";
 import { users } from "../src/api/entities/users.ts";
 
 describe("sigil entities", () => {
@@ -72,11 +71,6 @@ describe("sigil entities", () => {
       kinds: [],
     });
     expect(elsewhere.name).toBe("lore");
-  });
-
-  it("buckets views by the hour, not the day", async ({ expect }) => {
-    expect(sigilViewsHourly.schema.shape.hour).toBeDefined();
-    expect((sigilViewsHourly.schema.shape as any).date).toBeUndefined();
   });
 
   it("declares a real foreign key from blights.sigilId to sigils.id", async ({

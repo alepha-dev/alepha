@@ -255,7 +255,7 @@ describe("$ownsProject, measured", () => {
     // when a later change removes the gate altogether, which is the one
     // failure this epic must never cause.
     //
-    // ⚠️ `rank_definitions: 1` is epic #E39's whole added cost, and it was
+    // ⚠️ `organization_ranks: 1` is epic #E39's whole added cost, and it was
     // SEVEN when this line was first written. The TTL cache answers the
     // second REQUEST inside 30 seconds; it cannot answer the second entry of
     // a batch already in flight, because all seven miss before any of them

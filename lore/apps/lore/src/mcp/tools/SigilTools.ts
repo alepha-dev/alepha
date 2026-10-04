@@ -159,7 +159,7 @@ export class SigilTools {
   sigil_delete = $tool({
     title: "Delete a sigil",
     description:
-      "Remove a credential and everything it reported. Project owner only. ⚠️ DESTRUCTIVE: the four aggregate tables cascade, so this erases that copy's page views, web vitals, unique visitors and error budget. Cannot be undone; if the goal is only to invalidate a leaked token, use `sigil_rotate`. Blights already filed survive - a triage decision outlives the credential that surfaced it. ⚠️ **The deployed copy SURVIVES**, with no sigil: this used to remove the app, and since Apps v3 it does not. `app_instance_delete` is the tool that removes the copy.",
+      "Remove a credential and everything it reported. Project owner only. ⚠️ DESTRUCTIVE: the aggregate tables cascade, so this erases that copy's page views, web vitals, unique visitors and error budget. Cannot be undone; if the goal is only to invalidate a leaked token, use `sigil_rotate`. Blights already filed survive - a triage decision outlives the credential that surfaced it. ⚠️ **The deployed copy SURVIVES**, with no sigil: this used to remove the app, and since Apps v3 it does not. `app_instance_delete` is the tool that removes the copy.",
     annotations: {
       readOnlyHint: false,
       destructiveHint: true,

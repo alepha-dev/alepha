@@ -153,7 +153,7 @@ export class SigilController {
   /**
    * Replace a sigil's token, keeping the row and everything attached to it.
    *
-   * This is what revoking a leaked credential should cost. All four aggregate
+   * This is what revoking a leaked credential should cost. Every aggregate
    * tables cascade on `sigilId`, so {@link deleteSigil} — the other way to make
    * a token stop working — also erases that app's views, vitals, uniques and
    * error budget. Rotation is the same revocation without the

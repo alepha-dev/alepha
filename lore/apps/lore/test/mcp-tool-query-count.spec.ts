@@ -117,7 +117,7 @@ describe("MCP tool query count", () => {
     });
 
     // Six, cold, and each one is doing something: `projects` authorizes the
-    // call, `members` carries the caller's rank, `rank_definitions` says what
+    // call, `organization_members` carries the caller's rank, `organization_ranks` says what
     // that rank grants, `users` names the reporters, `feedback` is the page,
     // `quests` are the linked quests.
     //
@@ -127,7 +127,7 @@ describe("MCP tool query count", () => {
     // `createdBy` is not an authorization input any more, so the join answers
     // instead - and once a rank is known, what it grants has to be looked up.
     //
-    // ⚠️ `members` is ONE read across two checks. The resolver above asks the
+    // ⚠️ `organization_members` is ONE read across two checks. The resolver above asks the
     // rank module imperatively (it turns a 403 into a 404, which middleware
     // cannot do) and the action's own `$ownsProject` then gates the same
     // request; both reach the row through
@@ -136,7 +136,7 @@ describe("MCP tool query count", () => {
     // paid in full - one operation per HTTP request, no sibling to amortize
     // it against.
     //
-    // `projects` and `rank_definitions` are both served from the ORM's keyed
+    // `projects` and `organization_ranks` are both served from the ORM's keyed
     // cache for 30s, so a second tool call inside that window pays four. This
     // asserts the cold number, which is what a first call after a deploy
     // actually costs.

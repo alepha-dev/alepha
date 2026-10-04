@@ -13,7 +13,7 @@ import { AppController } from "../src/api/controllers/AppController.ts";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { SigilController } from "../src/api/controllers/SigilController.ts";
 import { projects } from "../src/api/entities/projects.ts";
-import { sigilViewsHourly } from "../src/api/entities/sigilViewsHourly.ts";
+import { sigilUniquesDaily } from "../src/api/entities/sigilUniquesDaily.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { SigilTokenService } from "../src/api/services/SigilTokenService.ts";
 import { createTestMemberByProjectId } from "./fixtures/entities.ts";
@@ -31,7 +31,7 @@ const userDataSchema = z.object({
  */
 class Probe {
   members = $repository(members);
-  views = $repository(sigilViewsHourly);
+  uniques = $repository(sigilUniquesDaily);
   projects = $repository(projects);
 }
 
@@ -350,11 +350,10 @@ describe("SigilController", () => {
       { params: { projectId }, body: instance },
       { user: owner },
     );
-    await ctx.probe.views.create({
+    await ctx.probe.uniques.create({
       sigilId: created.data.id,
-      hour: "2026-08-01T10",
-      path: "/",
-      country: "FR",
+      day: "2026-08-01",
+      visitorHash: "*",
       count: 7,
     });
 
@@ -372,11 +371,11 @@ describe("SigilController", () => {
     );
 
     // …and the whole point: nothing it ever reported was lost.
-    const views = await ctx.probe.views.findMany({
+    const uniques = await ctx.probe.uniques.findMany({
       where: { sigilId: { eq: created.data.id } },
     });
-    expect(views).toHaveLength(1);
-    expect(views[0].count).toBe(7);
+    expect(uniques).toHaveLength(1);
+    expect(uniques[0].count).toBe(7);
   });
 
   it("replaces a sigil's kinds", async ({ expect }) => {
@@ -458,11 +457,10 @@ describe("SigilController", () => {
       { params: { projectId }, body: instance },
       { user: owner },
     );
-    await ctx.probe.views.create({
+    await ctx.probe.uniques.create({
       sigilId: created.data.id,
-      hour: "2026-08-01T10",
-      path: "/",
-      country: "FR",
+      day: "2026-08-01",
+      visitorHash: "*",
       count: 7,
     });
 
@@ -478,10 +476,10 @@ describe("SigilController", () => {
     expect(list.data.items).toHaveLength(0);
 
     // The aggregates cascade — which is exactly why `rotateSigil` exists.
-    const views = await ctx.probe.views.findMany({
+    const uniques = await ctx.probe.uniques.findMany({
       where: { sigilId: { eq: created.data.id } },
     });
-    expect(views).toHaveLength(0);
+    expect(uniques).toHaveLength(0);
 
     // Genuinely gone: a second delete is a clean 404, not a no-op.
     await expectStatus(

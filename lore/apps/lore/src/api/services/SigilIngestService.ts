@@ -90,10 +90,7 @@ export class SigilIngestService {
 
   /**
    * Where views and vitals actually live: the portable `$analytics()`
-   * datasets declared on `LoreAnalytics`. This was a dual-write mirror
-   * alongside the legacy `sigilViewsHourly` / `sigilVitalsHourly` tables
-   * while `InsightsController` still read from those tables; now that it
-   * reads from these datasets instead, this is the only write for both.
+   * datasets declared on `LoreAnalytics`, the only write for both.
    */
   protected readonly datasets = $inject(LoreAnalytics);
 
@@ -760,8 +757,8 @@ export class SigilIngestService {
    *
    * **The value is client-supplied, so it is clamped rather than trusted.**
    * Whoever holds the sigil token can claim any time at all; unclamped, that
-   * turns "can inflate today's count" — already true, and documented on
-   * `sigil_views_hourly` — into "can rewrite last month's chart", which is a
+   * turns "can inflate today's count" — already true of every count a token
+   * holder reports — into "can rewrite last month's chart", which is a
    * different and worse property. Outside the window the timestamp is
    * discarded, not rejected: a batch is not worth refusing over a bad clock,
    * and absorb time is exactly as good as what came before.

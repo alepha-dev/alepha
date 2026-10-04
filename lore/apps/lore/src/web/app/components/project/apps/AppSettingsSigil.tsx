@@ -40,7 +40,7 @@ import TokenReveal from "../../shared/TokenReveal.tsx";
  *   two, and the server answers 409 either way.
  * - **Rotate** replaces the credential and keeps everything the app reported.
  *   This is the answer to a leak.
- * - **Remove** takes the history with it, because the four analytics tables
+ * - **Remove** takes the history with it, because its analytics tables
  *   cascade on `sigilId`. There is deliberately no soft version: unlinking and
  *   keeping the row would leave a credential that still accepts ingest and that
  *   no page can reach, which is worse than the deletion.

@@ -59,7 +59,6 @@ import { SigilIngestController } from "./controllers/SigilIngestController.ts";
 import { LoreDashboardCatalog } from "./dashboardCatalogModule.ts";
 import { OrganizationHooks } from "./hooks/OrganizationHooks.ts";
 import { UserDeletionHook } from "./hooks/UserDeletionHook.ts";
-import { ActivityBackfillJob } from "./jobs/ActivityBackfillJob.ts";
 import { BlightJobs } from "./jobs/BlightJobs.ts";
 import { DeployJobs } from "./jobs/DeployJobs.ts";
 import { EpicJobs } from "./jobs/EpicJobs.ts";
@@ -115,8 +114,6 @@ import { FolioDirectoryService } from "./services/FolioDirectoryService.ts";
 import { FolioHistoryService } from "./services/FolioHistoryService.ts";
 import { FolioLinkService } from "./services/FolioLinkService.ts";
 import { FolioNameService } from "./services/FolioNameService.ts";
-import { FrozenLegacyOrganizationTables } from "./services/FrozenLegacyOrganizationTables.ts";
-import { FrozenSigilAnalyticsTables } from "./services/FrozenSigilAnalyticsTables.ts";
 import { HeldQuestsMetric } from "./services/HeldQuestsMetric.ts";
 import { LoreAudits } from "./services/LoreAudits.ts";
 import { LoreAuditService } from "./services/LoreAuditService.ts";
@@ -233,13 +230,6 @@ export const LoreApi = $module({
     // Substituted for the framework's `FileAccessProvider` in
     // `main.server.ts`. Listed here only so DI scanning sees the class.
     LoreFileAccessProvider,
-    // Pins `sigil_views_hourly` / `sigil_vitals_hourly` in the migration
-    // snapshot now that nothing else holds a repository on either — see its
-    // own doc for why that would otherwise read as a dropped table.
-    FrozenSigilAnalyticsTables,
-    // The same schema-only registration for Lore's retired membership, rank,
-    // and invitation tables. Application code uses `organization_*` only.
-    FrozenLegacyOrganizationTables,
     FolioNameService,
     FolioDirectoryService,
     FolioAttachmentService,
@@ -257,12 +247,6 @@ export const LoreApi = $module({
     BlightJobs,
     SigilJobs,
     QualityJobs,
-    // The one-shot fill of `project_activity` from the audit log (#E65). A
-    // cron rather than an endpoint because both ends of it - D1 and Analytics
-    // Engine - exist only inside the deployed Worker; a row in
-    // `analytics_backfills` is what makes "once" true. Deletable, with its
-    // row, once it has run on production.
-    ActivityBackfillJob,
     EstateCommandJobs,
     EstateCredentialJobs,
     UserDeletionHook,
@@ -351,8 +335,7 @@ export const LoreApi = $module({
     // aggregate tables — writes go through `LoreAnalyticsStore` (uniques) and
     // the `LoreAnalytics` `$analytics()` datasets (views, vitals). An entity
     // exists, for the migration generator, exactly as long as some
-    // `$repository` — or, for the two frozen legacy tables,
-    // `FrozenSigilAnalyticsTables` above — names it.
+    // `$repository` names it.
     SigilTokenService,
     SigilIngestService,
     // The deploy-destination half: a machine's secret and what an estate is.

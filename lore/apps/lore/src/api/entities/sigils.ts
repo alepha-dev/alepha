@@ -85,7 +85,7 @@ export const sigils = $entity({
      *
      * The column stays rather than being dropped, for the same reason
      * `projects.unlockedFeatures` and `quests.note` stay: `sigils` is the
-     * CASCADE parent of the four analytics tables, and a `DROP COLUMN` that
+     * CASCADE parent of its analytics tables, and a `DROP COLUMN` that
      * drizzle turns into a table rebuild is the wipe bomb documented in
      * CLAUDE.md. It is also why the column is nullable with no `db.default` —
      * a nullable `ADD COLUMN` was the one shape that avoided a rebuild going
@@ -103,7 +103,7 @@ export const sigils = $entity({
      * move onto the instance resource with #1774.
      *
      * The column stays rather than being dropped, for the reason
-     * {@link feedbackPosition} does: `sigils` is the CASCADE parent of the four
+     * {@link feedbackPosition} does: `sigils` is the CASCADE parent of its
      * analytics tables, and a `DROP COLUMN` drizzle turns into a table rebuild
      * is the wipe bomb documented in `apps/lore/CLAUDE.md`.
      *
@@ -124,7 +124,7 @@ export const sigils = $entity({
      *
      * Optional, and deliberately without a `db.default` - the same shape
      * {@link feedbackPosition} carries, for the same reason. `sigils` is the
-     * CASCADE parent of the four analytics tables, and a nullable `ADD COLUMN`
+     * CASCADE parent of its analytics tables, and a nullable `ADD COLUMN`
      * is the one shape that does not make drizzle rebuild the table. See
      * `apps/lore/CLAUDE.md`.
      */
@@ -172,7 +172,7 @@ export const sigils = $entity({
      *
      * Optional, and without a `db.default`, for the same table-rebuild reason
      * as {@link url} and {@link lastSeenHost}: `sigils` is the CASCADE parent
-     * of the four analytics tables, and a nullable `ADD COLUMN` is the one
+     * of its analytics tables, and a nullable `ADD COLUMN` is the one
      * shape that does not make drizzle rebuild it.
      */
     reportedConfig: z
