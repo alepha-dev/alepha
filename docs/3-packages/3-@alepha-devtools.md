@@ -38,4 +38,8 @@ for Docker, and for writing a tool of your own on the same protocol.
 ## Security
 
 The devtools reads and writes your apps' state (database rows, atoms, jobs)
-and shows their environment, secrets included. It listens on `127.0.0.1` only.
+and shows their environment, secrets included. It listens on `127.0.0.1` only,
+answers only to a loopback `Host` on its own port (which defeats DNS
+rebinding), refuses a request whose `Origin` is another site's, and never
+sends a CORS header: a web page you have open can neither read it nor write
+through it.
