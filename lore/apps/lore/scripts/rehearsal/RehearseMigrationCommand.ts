@@ -74,16 +74,15 @@ export class RehearseMigrationCommand {
         const copy = await this.cloudflare.createD1(
           RehearseMigrationCommand.COPY,
         );
-        await run({
-          name: `import the dump into ${RehearseMigrationCommand.COPY}`,
-          handler: async () => {
-            await this.cloudflare.d1Import(
-              copy.uuid,
-              await this.fs.readTextFile(dump),
-              { pollLimit: 600 },
-            );
-          },
-        });
+        // The dump goes in through wrangler's own `--file` path, the same
+        // import flow, which names what it refuses: D1's import endpoint
+        // driven directly answered a production dump with an error and no
+        // reason (2026-10-04). The MIGRATIONS still go through
+        // `D1MigrationsService` below, which is the transport under test.
+        await run(
+          `wrangler d1 execute ${RehearseMigrationCommand.COPY} --remote --yes --file="${dump}"`,
+          { alias: `import the dump into ${RehearseMigrationCommand.COPY}` },
+        );
         // The dump has done its job: production rows live only in the copy
         // from here on.
         await this.fs.rm(dump, { force: true });
