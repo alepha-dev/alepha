@@ -15,10 +15,9 @@ import type { I18n } from "@/web/app/services/I18n.ts";
  * know before they decide.
  *
  * It sits on the Releases settings page because the roadmap IS the release
- * plan rendered for someone who does not use Lore daily. It is not a
- * `features.*` toggle: a tri-state does not fit a boolean bag, and adding a
- * key to `defaultProjectFeatures` changes the `projects.features` column
- * DEFAULT, which is the D1 table rebuild that cascade-wipes children.
+ * plan rendered for someone who does not use Lore daily. It is its own
+ * column rather than a capability option: a tri-state does not fit a
+ * boolean option.
  *
  * ⚠️ **Public is confirmed, not just switched.** Publishing a roadmap
  * publishes the titles of epics nobody has announced - draft epics are

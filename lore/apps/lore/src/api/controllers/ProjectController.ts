@@ -31,11 +31,7 @@ import { $etag } from "alepha/server/etag";
 // `FolioAttachmentService` imports `folioAssetPath` from the same tree. Pure
 // function, no imports of its own.
 import { displayName } from "../../web/app/services/displayName.ts";
-import {
-  defaultProjectFeatures,
-  type Project,
-  projects,
-} from "../entities/projects.ts";
+import { type Project, projects } from "../entities/projects.ts";
 import { quests } from "../entities/quests.ts";
 import { releases } from "../entities/releases.ts";
 import type { User } from "../entities/users.ts";
@@ -276,9 +272,8 @@ export class ProjectController {
          * and its own comment said so.
          *
          * ⚠️ **Omitted means the wizard's own default set** - Work and
-         * Knowledge, each with the options the wizard preselects - the same
-         * shape `features` had, where an absent body fell back to
-         * `defaultProjectFeatures`. An explicit `[]` is how a caller asks for
+         * Knowledge, each with the options the wizard preselects. An explicit
+         * `[]` is how a caller asks for
          * a project with nothing turned on, which stays a legal state.
          *
          * Omitted meaning NONE was the other reading, and it is worse in the
@@ -370,12 +365,6 @@ export class ProjectController {
         project = await this.projects.create({
           ...columns,
           slug: slug || undefined,
-          // ⚠️ Still written until #Q2606 drops the column, though nothing
-          // reads it. Left to the column DEFAULT, production would write its
-          // stale pre-rename one (`petitions`, `chapters`), which lacks two
-          // REQUIRED keys: the row would fail to decode on every read, the
-          // 2026-08-05 outage. The entity still SELECTs and validates it.
-          features: defaultProjectFeatures,
           createdBy: user.id,
           organizationId: organization.id,
         });

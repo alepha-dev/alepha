@@ -15,7 +15,7 @@ import { LoreRankBounds } from "./LoreRankBounds.ts";
  * looks internal, and is not.
  *
  * `group:name` therefore joins the list of identifiers this repository never
- * renames, beside `projects.features`'s keys, the storage bucket literals and
+ * renames, beside the keys of any required JSON field, the storage bucket literals and
  * `$sequence` property names. What a permission is CALLED is the `label` key,
  * which is free to change because nothing stores it.
  *

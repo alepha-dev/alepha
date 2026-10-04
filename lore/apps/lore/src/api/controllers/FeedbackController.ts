@@ -953,13 +953,9 @@ export class FeedbackController {
    * Used by submit + attachment-upload — the only two endpoints
    * non-members can reach, so they need their own opt-in gate.
    *
-   * ⚠️ This read moved off `project.features.feedback` with the capability
-   * table, and it had to move in the same commit as the write path. The
-   * moment nothing writes `features` any more, a gate still reading it is a
-   * gate that always allows: `createProject` stamps `defaultProjectFeatures`,
-   * whose `feedback` is `true`, so every project in existence would have
-   * opened its public submit endpoint. That is the one failure mode a
-   * transitional tree may not carry.
+   * Reads the Support capability, never the old `projects.features.feedback`
+   * (dropped with #E74), which every project carried as `true` and so would
+   * have opened every public submit endpoint.
    */
   protected async assertFeedbackOpen(projectId: number) {
     const project = await this.projects.findOne({

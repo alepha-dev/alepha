@@ -2,115 +2,9 @@ import { type Infer, z } from "alepha";
 import { organizations } from "alepha/api/organizations";
 import { $entity, db } from "alepha/orm";
 
-import { APP_NAME_MAX_LENGTH } from "../schemas/appNameSchema.ts";
 import { kanbanColumnConfigSchema } from "../schemas/kanbanColumnSchema.ts";
 import { paletteColorSchema } from "../schemas/paletteColorSchema.ts";
 import { roadmapVisibilitySchema } from "../schemas/roadmapVisibilitySchema.ts";
-
-/**
- * ⚠️ **FROZEN. Nothing reads this, and nothing may start.** The live surface
- * is the `project_capabilities` table, four rows at most per project, read
- * through `ProjectSecurityService.capabilitiesOf` on the server and
- * `hasCapability` / `capabilityOption` in the browser. Epic #36 moved every
- * gate off this object; `test/project-features-frozen.spec.ts` is what keeps
- * it that way.
- *
- * ## Why the column stays on disk forever
- *
- * Dropping a column from `projects` is drizzle's table-rebuild path, and
- * `projects` is the `ON DELETE CASCADE` parent that wiped lore-production on
- * 2026-05-13 - `DROP TABLE projects` took members, quests, releases, folios
- * and feedback with it. So this joins `unlockedFeatures`, `unlockHistory`,
- * `public`, `areas`, `milestoneDuration`, `defaultSurface` and `defaultEnv`
- * as a frozen dead column. `createProject` keeps writing `defaultProjectFeatures` into it
- * so every row on disk stays decodable by the schema that still describes it,
- * and `defaultProjectFeatures` itself must not change: it IS the column
- * DEFAULT, and changing a DEFAULT is the same rebuild.
- *
- * ## Why the keys can never be renamed either
- *
- * Four of them are REQUIRED `z.boolean()`, and a missing required key does not
- * read as `undefined` and fall back to false - the whole row fails to decode
- * and every query touching `projects` throws. That is verbatim the 2026-08-05
- * incident: the great rename renamed the table and the columns, left
- * `petitions` and `chapters` inside the JSON on all 54 existing rows, and took
- * production down on every project read minutes after deploy. It is why
- * Releases is stored as `milestones` here and why the capability option that
- * replaced it could finally be called `releases`: moving the storage is what
- * let the name move with it.
- *
- * ## What each key became
- *
- * | this key | its replacement |
- * | --- | --- |
- * | `kanban` | option `work.board` |
- * | `folios` | capability `knowledge` |
- * | `feedback` | capability `support` |
- * | `milestones` | option `work.releases` |
- * | `epics` | option `work.epics` |
- * | `questEstimate` / `questChrono` / `questReminder` | options `work.estimate` / `work.chrono` / `work.reminder` |
- * | `sigils` | capability `apps`, and its option `apps.track` |
- * | `quality` | nothing - Quality joined the Apps baseline and its Reports tab self-hides until a run exists |
- * | `folioSummary` | option `knowledge.agentSummary` |
- * | `blights` / `beacon` / `vitals` | per-app `sigils.kinds`, already dead since 2026-08-06 |
- *
- * @deprecated Read `project_capabilities` instead. This exists so old rows
- * decode, and for no other reason.
- */
-export const projectFeaturesSchema = z.object({
-  kanban: z.boolean(),
-  folios: z.boolean(),
-  feedback: z.boolean(),
-  /**
-   * ⚠️ The KEY stays `milestones` forever. See the block above: it is a
-   * required key inside a JSON column, and renaming one of those is what took
-   * production down on 2026-08-05.
-   */
-  milestones: z.boolean(),
-  questEstimate: z.boolean().optional(),
-  questReminder: z.boolean().optional(),
-  questChrono: z.boolean().optional(),
-  sigils: z.boolean().optional(),
-  folioSummary: z.boolean().optional(),
-  epics: z.boolean().optional(),
-  quality: z.boolean().optional(),
-  blights: z.boolean().optional(),
-  beacon: z.boolean().optional(),
-  vitals: z.boolean().optional(),
-});
-
-export type ProjectFeatures = Infer<typeof projectFeaturesSchema>;
-
-/**
- * ⚠️ **This object IS the column DEFAULT. Changing it is the wipe bomb.**
- *
- * A key added or removed here changes drizzle's `DEFAULT` clause on
- * `projects.features`, which drizzle-kit expresses as a table rebuild -
- * `CREATE __new`, `INSERT FROM SELECT`, `DROP TABLE projects`, `RENAME` - and
- * D1 ignores `PRAGMA foreign_keys=OFF`, so the `DROP` cascades through
- * members, quests, releases, folios and feedback. That is not a hypothetical:
- * it is migration `0023_special_purifiers.sql`, 2026-05-13, which flipped
- * exactly these defaults and wiped lore-production. See CLAUDE.md, "Migration
- * safety on D1".
- *
- * It is why the four keys below are the only ones here, why every switch
- * added afterwards had to be `.optional()` with no default, and ultimately why
- * epic #36 moved capabilities to their own table: a bag that cannot grow is
- * not a place to keep configuration.
- *
- * `createProject` still stamps this on every new row so the row decodes
- * against {@link projectFeaturesSchema}, and nothing else writes it.
- *
- * @deprecated Frozen with the column. See {@link projectFeaturesSchema}.
- */
-export const defaultProjectFeatures: ProjectFeatures = {
-  kanban: true,
-  folios: true,
-  feedback: true,
-  // Reads "Releases" in the UI. The persisted key keeps its old name — see
-  // `projectFeaturesSchema` above for why renaming it takes production down.
-  milestones: true,
-};
 
 export const projects = $entity({
   name: "projects",
@@ -146,44 +40,7 @@ export const projects = $entity({
     organizationId: db.ref(z.uuid().optional(), () => organizations.cols.id, {
       onDelete: "restrict",
     }),
-    /**
-     * @deprecated — the public-project feature was removed. Column is kept
-     * in the schema to avoid a Drizzle/D1 rebuild migration (which would
-     * cascade-wipe child rows on D1 — see CLAUDE.md). No code reads or
-     * writes this field. Future PR can drop it with a hand-written safe
-     * `ALTER TABLE ... DROP COLUMN`.
-     */
-    public: z.boolean().optional(),
     icon: z.uuid().optional(),
-    /**
-     * @deprecated Superseded by the `areas` table (2026-08-19). Nothing
-     * reads or writes this. It stays in the schema because dropping a
-     * `projects` column risks the D1 rebuild path, and `projects` is the
-     * CASCADE parent that wiped production in 2026-05. Same treatment as
-     * `public` / `unlockedFeatures` / `unlockHistory`.
-     */
-    areas: db.default(z.array(z.string()), []),
-    /**
-     * @deprecated Frozen since epic #36 (2026-09-06). The live surface is the
-     * `project_capabilities` table; see {@link projectFeaturesSchema} for what
-     * each key became and why neither the column, its DEFAULT nor any key
-     * inside it can ever change. Still WRITTEN by `createProject`, with
-     * `defaultProjectFeatures` and nothing else, so every row stays decodable
-     * - which is not a reason to read it.
-     */
-    features: db.default(projectFeaturesSchema, defaultProjectFeatures),
-    /**
-     * @deprecated Dead since the release recorder was deleted (2026-08-30).
-     * It held an ISO 8601 duration (`"P14D"`, `"P1M"`) that computed a
-     * milestone's auto-close deadline; nothing closes on a timer any more, so
-     * nothing reads or writes it. The settings control that set it is gone.
-     *
-     * ⚠️ Kept, and keeping its pre-rename name, for the same reason as
-     * `public` / `unlockedFeatures` / `unlockHistory`: `projects` is the
-     * CASCADE parent that wiped production on 2026-05-13, and a rename or a
-     * drop that drizzle turns into a table rebuild is that wipe bomb.
-     */
-    milestoneDuration: z.string().optional(),
     /**
      * ISO 639-1 code (e.g. "en", "fr", "ja") the project owner picks as
      * the preferred language for AI-generated content. Does NOT affect
@@ -248,39 +105,20 @@ export const projects = $entity({
      * that existed before this column: `New | <every configured column,
      * accepted> | Completed`.
      *
-     * NB: `z.optional` with NO `db.default(...)`, like `retentionDays`,
-     * `defaultSurface` and `tagColors` above — a column DEFAULT triggers
+     * NB: `z.optional` with NO `db.default(...)`, like `retentionDays` and
+     * `tagColors` — a column DEFAULT triggers
      * the `projects` table rebuild that cascade-wipes children on D1.
      */
     kanbanColumnConfig: kanbanColumnConfigSchema.optional(),
     /**
-     * @deprecated Frozen dead column since 2026-09-02 (feedback #2066).
-     *
-     * It held which surface a bare `/:projectSlug` landed on, the list or
-     * the Kanban board, and drove a redirect in the index route's loader.
-     * The "Open on the board" setting and that redirect are gone; nothing
-     * reads or writes this any more, and a bare project URL always lands
-     * on the list.
-     *
-     * Kept declared, still `z.optional` with no `db.default(...)`, because
-     * dropping a column on `projects` is the D1 table rebuild that
-     * cascade-wipes its children (2026-05-13). Same treatment as
-     * `unlockedFeatures` and `milestoneDuration`.
-     */
-    defaultSurface: z.enum(["list", "kanban"]).optional(),
-    /**
      * Who may read this project's roadmap at `/:projectSlug/roadmap`.
      * Absent means `off`.
      *
-     * A dedicated column rather than a key in `features` on purpose. A
-     * tri-state does not fit a boolean bag, and `projectFeaturesSchema`'s
-     * required keys cannot be renamed while adding one to
-     * `defaultProjectFeatures` changes the column DEFAULT - which is the D1
-     * `projects` rebuild that cascade-wipes children. A separate column is
-     * both cheaper and safer.
+     * A dedicated column, not an option of a capability: it is a tri-state
+     * and it belongs to the project, not to one surface.
      *
      * NB: `z.optional` with NO `db.default(...)`, for the same reason as
-     * `retentionDays` and `defaultSurface` above. The `off` fallback lives in
+     * `retentionDays` above. The `off` fallback lives in
      * `ProjectSecurityService.roadmapVisibilityOf`, not in the column.
      */
     roadmapVisibility: roadmapVisibilitySchema.optional(),
@@ -299,61 +137,11 @@ export const projects = $entity({
      * moment anyone wants to change one colour it becomes a migration, and
      * the palette and its picker already exist for `areas.color`.
      *
-     * NB: `z.optional` with NO `db.default(...)`, like `retentionDays` and
-     * `defaultSurface` above — a column DEFAULT triggers the `projects`
+     * NB: `z.optional` with NO `db.default(...)`, like `retentionDays`
+     * above — a column DEFAULT triggers the `projects`
      * table rebuild that cascade-wipes children on D1.
      */
     tagColors: z.record(z.text(), paletteColorSchema).optional(),
-    /**
-     * @deprecated — the project-wide default environment, removed by #Q2135.
-     * Nothing reads or writes it.
-     *
-     * It shipped with #1811 as "which environment a command means when it
-     * names none", read by the CLI and by `defaultAppInstance` ahead of its
-     * fixed rule. The shape was wrong: it is ONE value shared by every app of
-     * a project, while the question it answered is per app. A project set to
-     * `production` with an app whose only copy is `preview` held a setting
-     * that could only ever be wrong — and it outranked the single place that
-     * app could go. `lore deploy` reads the app's own rows now (#Q2134), and
-     * `defaultAppInstance` is back to `production`, else the first env by
-     * name.
-     *
-     * Kept in the schema ON PURPOSE, like `public`, `unlockedFeatures`,
-     * `milestoneDuration` and `defaultSurface` above: dropping a column from
-     * `projects` risks the Drizzle/D1 table-rebuild path, and `projects` is a
-     * CASCADE parent of members/quests/releases/folios/feedback — exactly the
-     * shape that wiped production on 2026-05-13. A future PR can drop it with
-     * a hand-written, verified `ALTER TABLE … DROP COLUMN`.
-     */
-    defaultEnv: z.text({ max: APP_NAME_MAX_LENGTH }).optional(),
-    /**
-     * @deprecated — the gold Shop / feature paywall was removed. Every
-     * feature it used to sell (Reports, Quest Reminder, Quest Gating)
-     * is now either always-on or a plain owner toggle. No code reads or
-     * writes these two columns.
-     *
-     * They are kept in the schema ON PURPOSE: dropping a column from
-     * `projects` risks the Drizzle/D1 table-rebuild path, and `projects`
-     * is a CASCADE parent of members/quests/releases/folios/feedback —
-     * exactly the shape that wiped production on 2026-05-13. Same
-     * treatment as the `public` column above. A future PR can drop them
-     * with a hand-written, verified `ALTER TABLE ... DROP COLUMN`.
-     */
-    unlockedFeatures: db.default(z.array(z.string()), []),
-    /**
-     * @deprecated — see `unlockedFeatures`.
-     */
-    unlockHistory: db.default(
-      z.array(
-        z.object({
-          feature: z.string(),
-          characterId: z.integer(),
-          price: z.integer().min(0),
-          at: z.datetime(),
-        }),
-      ),
-      [],
-    ),
   }),
   indexes: [
     {

@@ -272,11 +272,8 @@ const QuestCreate = (props: QuestCreateProps) => {
     q?.dependsOn != null ||
     q?.releaseId != null;
 
-  // ⚠️ The last live read of `projects.features` in the tree, and the one the
-  // capability migration missed: `features.milestones` is still WRITTEN by
-  // `createProject` so old rows stay decodable, so this went on answering
-  // whatever the frozen column default says and ignored the switch the owner
-  // actually moved - wrong in both directions rather than merely stale.
+  // The `work.releases` option, never the old `projects.features.milestones`
+  // (dropped with #E74), which ignored the switch the owner actually moved.
   const releasesEnabled = capabilityOption(props.project, "work", "releases");
   const releaseOptions = (releases ?? [])
     .filter((r) => !r.releasedAt || r.id === props.quest?.releaseId)
@@ -400,8 +397,8 @@ const QuestCreate = (props: QuestCreateProps) => {
                 clearLabel={tr("quest.create.tags.empty")}
               />
 
-              {/* Estimation is a methodology, not a default — see
-              `projectFeaturesSchema.questEstimate`. With the switch off the
+              {/* Estimation is a methodology, not a default: the
+              `work.estimate` option. With the switch off the
               field is not rendered, but a stored estimate still rides along
               in `initialValues` and is submitted untouched, so turning the
               switch back on shows the old value rather than a blank. */}

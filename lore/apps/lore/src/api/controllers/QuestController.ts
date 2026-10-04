@@ -2326,11 +2326,8 @@ export class QuestController {
       // Reminders are an owner-controlled option inside Work. Disabling
       // (interval=null) is always allowed so a project that turned the option
       // off can still clear pre-existing reminders.
-      //
-      // ⚠️ One of four `features.*` reads on this class that neither the spec
-      // nor the review of this epic counted - they looked for a gate and these
-      // are behaviour. The `use:` gate above already refuses a project without
-      // Work, so this only has to answer for the option.
+      // The `use:` gate above already refuses a project without Work, so this
+      // only has to answer for the option.
       if (
         body.interval != null &&
         !this.security.capabilityOption(

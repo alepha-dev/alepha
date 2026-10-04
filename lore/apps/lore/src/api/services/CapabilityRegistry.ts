@@ -646,9 +646,7 @@ export class CapabilityRegistry {
    *
    * The wizard's own preselection - Work and Knowledge on, each with its
    * preselected options - so `createProject` with no `capabilities` field
-   * produces the project the wizard would have made. That is the same shape
-   * `features` had, where an absent body fell back to
-   * `defaultProjectFeatures`.
+   * produces the project the wizard would have made.
    *
    * ⚠️ Derived from the declarations rather than written out, so a fifth
    * capability decides for itself whether it is in the default set by

@@ -34,25 +34,10 @@ export class ProjectResourceMapper {
   protected slugs = $inject(ProjectSlugService);
   protected registry = $inject(CapabilityRegistry);
 
-  /**
-   * Eight dead columns, still SELECTed while the entity declares them (#E74)
-   * and never handed out. Each goes with its drop in #Q2606.
-   */
-  public static readonly DEAD_COLUMNS = [
-    "public",
-    "areas",
-    "features",
-    "milestoneDuration",
-    "defaultSurface",
-    "defaultEnv",
-    "unlockedFeatures",
-    "unlockHistory",
-  ] as const;
-
   public toResource(
     project: Project,
     capabilities: ProjectCapability[],
-  ): Omit<Project, (typeof ProjectResourceMapper.DEAD_COLUMNS)[number]> & {
+  ): Project & {
     slug: string;
     organizationId: string;
     capabilities: ProjectCapabilityResource[];
@@ -62,15 +47,8 @@ export class ProjectResourceMapper {
         `Project ${project.id} has no organization. Reapply the E61 backfill.`,
       );
     }
-    const row: Partial<Project> = { ...project };
-    for (const column of ProjectResourceMapper.DEAD_COLUMNS) {
-      delete row[column];
-    }
     return {
-      ...(row as Omit<
-        Project,
-        (typeof ProjectResourceMapper.DEAD_COLUMNS)[number]
-      >),
+      ...project,
       slug: project.slug ?? this.slugs.fallbackSlug(project.id),
       organizationId: project.organizationId,
       capabilities: this.toCapabilityResources(capabilities),
