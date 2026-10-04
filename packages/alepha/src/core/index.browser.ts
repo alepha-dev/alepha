@@ -45,8 +45,10 @@ export const run = (
         const box = document.createElement("div");
         box.setAttribute("data-alepha-start-failed", "");
         box.setAttribute("role", "alert");
+        // Below the status bar of an edge-to-edge native shell; 0 elsewhere.
         box.style.cssText =
-          "font-family:system-ui,sans-serif;padding:24px;text-align:center;";
+          "font-family:system-ui,sans-serif;text-align:center;padding:24px;" +
+          "padding-top:calc(var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) + 24px);";
         const message = document.createElement("p");
         message.textContent = "The app could not start.";
         const reload = document.createElement("button");

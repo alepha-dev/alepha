@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  A debug build also trusts user-installed CAs, so a phone with the mkcert
+  root installed reaches the local HTTPS API (README.md). Release builds keep
+  the system store only. No cleartext anywhere.
+-->
+<network-security-config>
+    <debug-overrides>
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </debug-overrides>
+</network-security-config>
