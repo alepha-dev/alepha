@@ -70,6 +70,7 @@ export class RehearseMigrationCommand {
           alias: `export D1 ${source}`,
         });
         await this.escapeNulBytes(dump);
+        await this.disableForeignKeys(dump);
 
         const copy = await this.cloudflare.createD1(
           RehearseMigrationCommand.COPY,
@@ -206,6 +207,25 @@ export class RehearseMigrationCommand {
       }
     }
     return pending;
+  }
+
+  /**
+   * Prefix the dump with `PRAGMA foreign_keys=OFF`.
+   *
+   * `wrangler d1 export` writes each table's rows right after its `CREATE`, in
+   * `sqlite_master` order, so a child's rows can arrive before its parent
+   * table exists, and D1 refuses them ("no such table: main.projects",
+   * 2026-10-04). Production's rows are already consistent, and the import
+   * flow honours the pragma. It covers this file only: the migrations that
+   * follow are separate imports, which run with foreign keys on, as they do
+   * in production.
+   */
+  protected async disableForeignKeys(path: string): Promise<void> {
+    const dump = await this.fs.readFile(path);
+    await this.fs.writeFile(
+      path,
+      Buffer.concat([Buffer.from("PRAGMA foreign_keys=OFF;\n"), dump]),
+    );
   }
 
   /**
