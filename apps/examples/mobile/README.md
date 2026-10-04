@@ -27,6 +27,16 @@ yarn w mobile dev
 
 Then open http://localhost:3313.
 
+## The browser suite
+
+`yarn w mobile e2e` builds the API and the app shell (`alepha capacitor sync
+--web-only`) and serves them on two e2e ports, then checks in Chromium that
+the shell boots from `index.html`, that its first loader reaches the API on
+the other origin, and that an unreachable or silent API lands on the offline
+screen within the boot deadline, with a retry that recovers. It runs in CI's
+`e2e-apps` job. A browser is not native: token transport, storage, deep links
+and the native chrome are checked on devices.
+
 ## Serve the API to a phone over HTTPS
 
 The Alepha server has no TLS listener, so a phone reaches the API through the

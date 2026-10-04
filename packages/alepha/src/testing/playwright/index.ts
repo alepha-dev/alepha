@@ -66,10 +66,9 @@ export interface E2ePortAllocator<S extends Record<string, number>> {
    * workers therefore never evaluate the same port at all, which is what makes
    * their answers independent of whatever is listening.
    *
-   * ⚠️ Deliberately NOT memoised through `E2E_PORT`. That variable exists so a
-   * config and its global setup agree on one answer; here every worker must
-   * get a DIFFERENT answer, so writing it back would hand the whole run one
-   * port. `E2E_PORT` still overrides, offset per worker, which keeps the
+   * ⚠️ Deliberately NOT memoised. The per-app variable exists so a config and
+   * its global setup agree on one answer; here every worker must get a
+   * DIFFERENT answer, so writing it back would hand the whole run one port. `E2E_PORT` still overrides, offset per worker, which keeps the
    * escape hatch usable for a suite that needs several.
    */
   worker(app: keyof S, workerIndex: number): number;
@@ -153,14 +152,31 @@ export const createE2ePortAllocator = <S extends Record<string, number>>(
     );
   };
 
+  /**
+   * Where one app's answer is memoised: `E2E_PORT_<APP>`, e.g.
+   * `E2E_PORT_MOBILE_API`. Per app, so a config that starts two servers (an
+   * app and its API) gets two ports; one shared variable handed the second
+   * the first one's port.
+   */
+  const memoKey = (app: keyof S): string =>
+    `E2E_PORT_${String(app)
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "_")}`;
+
   const allocate = (app: keyof S): number => {
+    // `E2E_PORT` set by hand overrides everything, for a one-server suite.
+    if (process.env.E2E_PORT) {
+      return Number(process.env.E2E_PORT);
+    }
+
     // Memoised through the environment, not a module variable, because a suite
     // may call this from BOTH its config and a global setup file, and the two
     // must agree. The first call binds the answer and the second reads it
     // back. This also reaches the `webServer` child, which inherits
     // `process.env`.
-    if (process.env.E2E_PORT) {
-      return Number(process.env.E2E_PORT);
+    const memoised = process.env[memoKey(app)];
+    if (memoised) {
+      return Number(memoised);
     }
 
     const list = candidates(checkoutRoot(), app);
@@ -174,7 +190,7 @@ export const createE2ePortAllocator = <S extends Record<string, number>>(
       );
     }
 
-    process.env.E2E_PORT = String(port);
+    process.env[memoKey(app)] = String(port);
     return port;
   };
 

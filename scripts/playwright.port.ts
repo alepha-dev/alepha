@@ -15,7 +15,7 @@ import { createE2ePortAllocator } from "alepha/testing/playwright";
  * (`default % 100`) and so depended on two unrelated numbers staying
  * coordinated by comment.
  *
- * Slots 1, 2, 7, 8 and 9 are free. Past that, raise the band's `stride`.
+ * Slots 1, 7 and 8 are free. Past that, raise the band's `stride`.
  *
  * ⚠️ Numbers are not reshuffled when a suite goes away. Slot 2 was
  * `apps/examples/playground`, retired once `apps/ui` replaced it; slots 1, 7
@@ -25,10 +25,12 @@ import { createE2ePortAllocator } from "alepha/testing/playwright";
  */
 export const E2E_SLOTS = {
   docs: 0,
+  mobile: 2,
   shop: 3,
   ssr: 4,
   "ssr-dev": 5,
   ui: 6,
+  "mobile-api": 9,
 } as const;
 
 export type E2eApp = keyof typeof E2E_SLOTS;
@@ -57,7 +59,7 @@ export type E2eApp = keyof typeof E2E_SLOTS;
  * | **4300-4999** | **e2e, and nothing else**                                 |
  *
  * Nothing else in the repo may allocate inside the e2e band. The answer is
- * memoised through `E2E_PORT`, so a suite calling this from both its config
+ * memoised per app (`E2E_PORT_<APP>`), so a suite calling this from both its config
  * and its setup gets the same port twice, and `E2E_PORT` set by hand
  * overrides the whole thing.
  *

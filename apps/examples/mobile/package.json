@@ -8,6 +8,7 @@
     "check:migrations": "alepha db migrations check",
     "db:generate": "alepha db migrations create",
     "dev": "alepha dev",
+    "e2e": "playwright test",
     "serve:workerd": "node scripts/serve-workerd.ts",
     "test": "alepha test",
     "typecheck": "tsc --noEmit"
@@ -29,6 +30,7 @@
   },
   "devDependencies": {
     "@capacitor/cli": "8.5.2",
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/vite": "^4.3.3",
     "tailwindcss": "^4.3.3",
     "vite": "^8.3.2",

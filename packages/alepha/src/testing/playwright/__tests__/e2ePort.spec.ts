@@ -116,6 +116,9 @@ describe("allocation", () => {
     // restore it would hand its port to every test after it.
     if (saved === undefined) delete process.env.E2E_PORT;
     else process.env.E2E_PORT = saved;
+    for (const app of APPS) {
+      delete process.env[`E2E_PORT_${app.toUpperCase()}`];
+    }
   });
 
   const hold = async (port: number, host?: string): Promise<void> => {
@@ -165,9 +168,25 @@ describe("allocation", () => {
     expect,
   }) => {
     delete process.env.E2E_PORT;
+    delete process.env.E2E_PORT_GAMMA;
     const first = allocator("gamma");
     expect(allocator("gamma")).toBe(first);
-    expect(process.env.E2E_PORT).toBe(String(first));
+    expect(process.env.E2E_PORT_GAMMA).toBe(String(first));
+  });
+
+  it("gives two apps of one config two ports", ({ expect }) => {
+    // A config starting an app and its API asks twice. One shared memo used
+    // to answer the second call with the first app's port.
+    delete process.env.E2E_PORT;
+    delete process.env.E2E_PORT_ALPHA;
+    delete process.env.E2E_PORT_DELTA;
+
+    const app = allocator("alpha");
+    const api = allocator("delta");
+
+    expect(api).not.toBe(app);
+    expect(allocator("alpha")).toBe(app);
+    expect(allocator("delta")).toBe(api);
   });
 
   it("honours E2E_PORT without probing", ({ expect }) => {

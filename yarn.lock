@@ -6382,6 +6382,7 @@ __metadata:
     "@capacitor/haptics": "npm:8.0.2"
     "@capacitor/ios": "npm:8.5.2"
     "@capacitor/splash-screen": "npm:8.0.2"
+    "@playwright/test": "npm:^1.63.0"
     "@tailwindcss/vite": "npm:^4.3.3"
     alepha: "workspace:^"
     react: "npm:^19.3.0"
