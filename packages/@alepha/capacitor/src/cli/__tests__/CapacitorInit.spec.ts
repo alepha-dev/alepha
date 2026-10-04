@@ -288,7 +288,12 @@ describe("capacitor()", () => {
     })(alepha);
 
     const family = alepha.inject(CapacitorCommand).capacitor;
-    expect(family.children.map((child) => child.name)).toEqual(["init"]);
+    expect(family.children.map((child) => child.name)).toEqual([
+      "init",
+      "sync",
+      "build",
+      "open",
+    ]);
     expect(alepha.store.get(capacitorOptions)?.appId).toBe("dev.alepha.mobile");
   });
 

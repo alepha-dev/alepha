@@ -51,6 +51,13 @@ export interface ShellRunOptions {
    * needs one.
    */
   stdin?: Uint8Array | string;
+
+  /**
+   * Values masked as `***` wherever the provider prints the command, such as
+   * a password passed as an argument. The command itself still receives
+   * them.
+   */
+  redact?: string[];
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

@@ -54,6 +54,12 @@ export const capacitorIdentitySchema = z.object({
   icon: z.string().optional(),
 
   /**
+   * The Apple developer team that signs the iOS app (`DEVELOPMENT_TEAM`). A
+   * free personal team is enough to install on your own phone.
+   */
+  iosTeamId: z.string().optional(),
+
+  /**
    * Values the browser code of the shell may read, by name. Public by
    * definition: they ship inside the app. Never a secret.
    */

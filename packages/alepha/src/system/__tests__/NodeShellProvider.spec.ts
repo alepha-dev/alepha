@@ -1,6 +1,10 @@
 import { randomUUID } from "node:crypto";
 
 import { Alepha } from "alepha";
+import {
+  LogDestinationProvider,
+  MemoryDestinationProvider,
+} from "alepha/logger";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { NodeShellProvider } from "../providers/NodeShellProvider.ts";
@@ -265,6 +269,31 @@ describe("NodeShellProvider", () => {
       await expect(
         shell.run("node -e 'process.exit(0)'", { stdin: "x" }),
       ).rejects.toThrow(/argv/i);
+    });
+  });
+
+  describe("redact", () => {
+    it("masks the given values in the command it logs, and still passes them", async () => {
+      const app = Alepha.create({ env: { LOG_LEVEL: "debug" } })
+        .with({ provide: ShellProvider, use: NodeShellProvider })
+        .with({
+          provide: LogDestinationProvider,
+          use: MemoryDestinationProvider,
+        });
+      const logs = app.inject(MemoryDestinationProvider);
+      const secret = `pw-${randomUUID()}`;
+
+      const out = await app
+        .inject(ShellProvider)
+        .run(["node", "-e", "process.stdout.write(process.argv[1])", secret], {
+          capture: true,
+          redact: [secret],
+        });
+
+      expect(out).toBe(secret);
+      const printed = logs.logs.map((log) => log.message).join("\n");
+      expect(printed).toContain("***");
+      expect(printed).not.toContain(secret);
     });
   });
 });

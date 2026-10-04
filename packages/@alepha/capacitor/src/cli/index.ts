@@ -7,18 +7,29 @@ import {
 } from "./atoms/capacitorOptions.ts";
 import { CapacitorCommand } from "./commands/CapacitorCommand.ts";
 import { CapacitorInit } from "./services/CapacitorInit.ts";
+import { CapacitorNativeBuild } from "./services/CapacitorNativeBuild.ts";
 import { CapacitorPackages } from "./services/CapacitorPackages.ts";
 import { CapacitorProject } from "./services/CapacitorProject.ts";
+import { CapacitorSync } from "./services/CapacitorSync.ts";
+import { NativeBuildRecords } from "./services/NativeBuildRecords.ts";
+import { NativeFingerprint } from "./services/NativeFingerprint.ts";
+import { NativeGuard } from "./services/NativeGuard.ts";
 import { NativeSchemes } from "./services/NativeSchemes.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export * from "./atoms/capacitorOptions.ts";
 export * from "./commands/CapacitorCommand.ts";
+export * from "./schemas/capacitorBuildRecordSchema.ts";
 export * from "./schemas/capacitorIdentitySchema.ts";
 export * from "./services/CapacitorInit.ts";
+export * from "./services/CapacitorNativeBuild.ts";
 export * from "./services/CapacitorPackages.ts";
 export * from "./services/CapacitorProject.ts";
+export * from "./services/CapacitorSync.ts";
+export * from "./services/NativeBuildRecords.ts";
+export * from "./services/NativeFingerprint.ts";
+export * from "./services/NativeGuard.ts";
 export * from "./services/NativeSchemes.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -45,9 +56,15 @@ export * from "./services/NativeSchemes.ts";
  * });
  * ```
  *
- * Then `alepha capacitor init` creates `ios/` and `android/` (both checked
- * in), installs the pinned Capacitor packages and writes
- * `capacitor.config.ts`. `alepha capacitor --help` lists the family.
+ * Then:
+ *
+ * - `alepha capacitor init` creates `ios/` and `android/` (both checked in),
+ *   installs the pinned Capacitor packages and writes `capacitor.config.ts`;
+ * - `alepha capacitor sync` builds the app shell into `dist-capacitor/` and
+ *   copies it into the native projects;
+ * - `alepha capacitor build ios|android` syncs, compiles a binary and records
+ *   it in `capacitor.builds.json`;
+ * - `alepha capacitor open ios|android` opens Xcode or Android Studio.
  *
  * Node only: this entry reaches the file system, the shell and the build
  * pipeline. Browser code imports `@alepha/capacitor` (the `core` entry).
@@ -61,7 +78,12 @@ export const AlephaCliCapacitorPlugin = $module({
     CapacitorProject,
     CapacitorPackages,
     NativeSchemes,
+    NativeGuard,
+    NativeFingerprint,
+    NativeBuildRecords,
     CapacitorInit,
+    CapacitorSync,
+    CapacitorNativeBuild,
     CapacitorCommand,
   ],
 });

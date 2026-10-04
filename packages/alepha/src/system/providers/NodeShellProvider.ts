@@ -34,7 +34,11 @@ export class NodeShellProvider implements ShellProvider {
     const cwd = root ?? process.cwd();
     const isArgv = Array.isArray(command);
 
-    this.log.debug(`Shell: ${isArgv ? command.join(" ") : command}`, {
+    let printed = isArgv ? command.join(" ") : command;
+    for (const secret of options.redact ?? []) {
+      if (secret) printed = printed.replaceAll(secret, "***");
+    }
+    this.log.debug(`Shell: ${printed}`, {
       cwd,
       resolve,
       capture,

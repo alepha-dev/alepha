@@ -66,9 +66,23 @@ trusts. Nothing is deployed.
 Check from the phone's browser that `https://192.168.1.48:8443/api/hello`
 loads without a warning.
 
-## On a device
+## The native app
 
-The native projects, `alepha capacitor` commands and the device procedure
-arrive with the rest of the epic. The full device run (simulators, an
-emulator and one physical phone per platform) is
-[#Q2525](https://lore.alepha.dev/alepha/quests/2525).
+`alepha.config.ts` declares `capacitor({ ... })`, and `ios/` and `android/`
+are checked in (made by `yarn alepha capacitor init`). The shell calls the API
+named by `MOBILE_API_URL`, the HTTPS address of `serve:workerd` above:
+
+```bash
+export MOBILE_API_URL=https://192.168.1.48:8443
+yarn alepha capacitor sync           # the shell into dist-capacitor/, then cap sync
+yarn alepha capacitor build android  # a debug APK, recorded in capacitor.builds.json
+yarn alepha capacitor build ios      # a simulator .app (--device for a phone, needs iosTeamId)
+yarn alepha capacitor open ios       # Xcode
+```
+
+Android needs a JDK 21 (`JAVA_HOME` at Android Studio's
+`Contents/jbr/Contents/Home` works) and the Android SDK. iOS needs Xcode with
+the iOS platform its SDK names (Xcode > Settings > Components).
+
+The full device run (simulators, an emulator and one physical phone per
+platform) is [#Q2525](https://lore.alepha.dev/alepha/quests/2525).
