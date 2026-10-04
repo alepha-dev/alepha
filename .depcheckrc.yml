@@ -60,6 +60,17 @@ ignores:
   - "@fontsource-variable/jetbrains-mono"
   - "date-fns"
   - "tw-animate-css"
+  # Capacitor platforms and plugins a native app installs: the iOS and
+  # Android projects load them (through Swift Package Manager and Gradle), and
+  # `@alepha/capacitor/core` reaches the plugins through the bridge, so no
+  # JavaScript of the app imports them by name.
+  - "@capacitor/android"
+  - "@capacitor/ios"
+  - "@capacitor/app"
+  - "@capacitor/device"
+  - "@capacitor/haptics"
+  - "@capacitor/splash-screen"
+  - "@aparajita/capacitor-secure-storage"
 
 ignore-patterns:
   - "dist"

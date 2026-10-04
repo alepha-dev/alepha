@@ -10,6 +10,8 @@
   "ignorePatterns": [
     "**/.playwright",
     "**/playwright-report",
-    "**/test-results"
+    "**/test-results",
+    "apps/examples/mobile/ios",
+    "apps/examples/mobile/android"
   ]
 }

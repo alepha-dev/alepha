@@ -5,6 +5,7 @@ import { projects as mobile } from "./apps/examples/mobile/vitest.config.ts";
 import { projects as relations } from "./apps/examples/relations/vitest.config.ts";
 import { projects as shop } from "./apps/examples/shop/vitest.config.ts";
 import { projects as uiApp } from "./apps/ui/vitest.config.ts";
+import { projects as capacitor } from "./packages/@alepha/capacitor/vitest.config.ts";
 import { projects as commerce } from "./packages/@alepha/commerce/vitest.config.ts";
 import { projects as devtools } from "./packages/@alepha/devtools/vitest.config.ts";
 import { projects as discord } from "./packages/@alepha/discord/vitest.config.ts";
@@ -86,6 +87,7 @@ export default defineConfig({
         include: ["*.spec.ts", "scripts/**/*.spec.ts"],
       }),
       ...alepha,
+      ...capacitor,
       ...commerce,
       ...createAlepha,
       ...devtools,

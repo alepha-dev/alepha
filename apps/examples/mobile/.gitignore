@@ -1,0 +1,6 @@
+# @alepha/capacitor: the app shell and signing keys
+/dist-capacitor
+*.keystore
+*.jks
+*.p12
+*.mobileprovision

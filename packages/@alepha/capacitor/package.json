@@ -1,0 +1,96 @@
+{
+  "name": "@alepha/capacitor",
+  "private": true,
+  "description": "Native iOS and Android apps for Alepha: a Capacitor shell, native capabilities behind DI providers, and the alepha capacitor commands.",
+  "keywords": [
+    "alepha",
+    "android",
+    "capacitor",
+    "ios",
+    "mobile",
+    "typescript"
+  ],
+  "homepage": "https://alepha.dev",
+  "license": "MIT",
+  "author": "Nicolas Foures",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alepha-dev/alepha.git"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "type": "module",
+  "main": "./src/core/index.ts",
+  "types": "./src/core/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/core/index.ts",
+      "import": "./src/core/index.ts",
+      "default": "./src/core/index.ts"
+    },
+    "./core": {
+      "types": "./src/core/index.ts",
+      "import": "./src/core/index.ts",
+      "default": "./src/core/index.ts"
+    },
+    "./cli": {
+      "types": "./src/cli/index.ts",
+      "import": "./src/cli/index.ts",
+      "default": "./src/cli/index.ts"
+    },
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "main": "./dist/core/index.js",
+    "types": "./dist/core/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/core/index.d.ts",
+        "import": "./dist/core/index.js",
+        "default": "./dist/core/index.js"
+      },
+      "./core": {
+        "types": "./dist/core/index.d.ts",
+        "import": "./dist/core/index.js",
+        "default": "./dist/core/index.js"
+      },
+      "./cli": {
+        "types": "./dist/cli/index.d.ts",
+        "import": "./dist/cli/index.js",
+        "default": "./dist/cli/index.js"
+      },
+      "./package.json": "./package.json"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "test": "alepha test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@capacitor/core": "8.5.2",
+    "@types/bun": "^1.4.2",
+    "@types/node": "^26.6.3",
+    "alepha": "0.31.0",
+    "rolldown": "~1.2.12",
+    "tsdown": "^0.23.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.2",
+    "vitest": "^5.0.3"
+  },
+  "peerDependencies": {
+    "@capacitor/core": "^8.4.0",
+    "alepha": "^0.31.0"
+  },
+  "peerDependenciesMeta": {
+    "@capacitor/core": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "llms": "https://alepha.dev/llms.txt"
+}

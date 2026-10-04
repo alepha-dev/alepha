@@ -1,0 +1,49 @@
+import { type Infer, z } from "alepha";
+
+/**
+ * The configuration a native shell's browser code may read, and nothing else.
+ *
+ * The `alepha capacitor` commands build it from `capacitor({ ... })` in
+ * `alepha.config.ts` and hand it to the client bundle as the Vite `define`
+ * `__ALEPHA_CAPACITOR__`: browser code has no other channel, since
+ * `alepha.env` is empty in the browser. It is an allowlist. Whatever is here
+ * ships in a file anyone with the app can read, so no secret, no backend
+ * environment and no signing material may ever be added to it.
+ */
+export const capacitorPublicConfigSchema = z.object({
+  /**
+   * The native bundle identifier, e.g. `dev.alepha.mobile`.
+   */
+  appId: z.text(),
+
+  /**
+   * The variant this shell was built for, `base` when the app has none.
+   */
+  variant: z.text(),
+
+  /**
+   * The custom URL scheme deep links arrive on, e.g. `mobile` for
+   * `mobile://app/notes`.
+   */
+  scheme: z.text(),
+
+  /**
+   * Where the web layer comes from: `bundled` for a shell built into the
+   * binary, `dev` for a WebView pointed at a development server.
+   */
+  mode: z.enum(["bundled", "dev"]),
+
+  /**
+   * The origin of the API every host-less `$client` calls, e.g.
+   * `https://api.example.com`. Absent only in development, where the shell is
+   * served by the API itself.
+   */
+  apiUrl: z.text().optional(),
+
+  /**
+   * Public values the app declared for the browser, by name.
+   */
+  env: z.record(z.text(), z.text()),
+});
+
+export type CapacitorPublicConfig = Infer<typeof capacitorPublicConfigSchema>;
