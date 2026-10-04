@@ -92,7 +92,13 @@ describe("a $page and its params", () => {
     }
 
     const alepha = Alepha.create().with(AlephaReact).with(App);
-    await alepha.start();
+    // `start` creates the root and renders into it. Outside `act` that first
+    // commit waits on React's scheduler, a macrotask nothing below awaits:
+    // on a loaded runner it landed after the first assertion (Nightly
+    // 37193411740 read `undefined` for the epic).
+    await act(async () => {
+      await alepha.start();
+    });
     const router = alepha.inject(ReactRouter);
     const go = async (url: string) => {
       await act(async () => {
