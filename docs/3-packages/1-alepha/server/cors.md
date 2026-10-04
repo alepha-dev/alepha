@@ -15,6 +15,7 @@ Cross-Origin Resource Sharing configuration.
 **Features:**
 
 - CORS policy definition
+- `CAPACITOR_ORIGINS`, the two WebView origins of a Capacitor app
 
 ## API Reference
 
