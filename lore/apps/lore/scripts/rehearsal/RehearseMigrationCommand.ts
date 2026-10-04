@@ -9,6 +9,7 @@ import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
 
+import { DumpSplitter } from "./DumpSplitter.ts";
 import { RehearsalDiff } from "./RehearsalDiff.ts";
 
 /**
@@ -35,6 +36,7 @@ export class RehearseMigrationCommand {
   protected readonly cloudflare = $inject(CloudflareApi);
   protected readonly migrations = $inject(D1MigrationsService);
   protected readonly diff = $inject(RehearsalDiff);
+  protected readonly splitter = $inject(DumpSplitter);
 
   /**
    * The throwaway database. A fixed name, so a copy a crashed run left behind
@@ -70,7 +72,7 @@ export class RehearseMigrationCommand {
           alias: `export D1 ${source}`,
         });
         await this.escapeNulBytes(dump);
-        await this.disableForeignKeys(dump);
+        await this.prepareDump(dump);
 
         const copy = await this.cloudflare.createD1(
           RehearseMigrationCommand.COPY,
@@ -210,22 +212,26 @@ export class RehearseMigrationCommand {
   }
 
   /**
-   * Prefix the dump with `PRAGMA foreign_keys=OFF`.
+   * Make the export importable into D1, without changing a row.
    *
-   * `wrangler d1 export` writes each table's rows right after its `CREATE`, in
-   * `sqlite_master` order, so a child's rows can arrive before its parent
-   * table exists, and D1 refuses them ("no such table: main.projects",
-   * 2026-10-04). Production's rows are already consistent, and the import
-   * flow honours the pragma. It covers this file only: the migrations that
-   * follow are separate imports, which run with foreign keys on, as they do
-   * in production.
+   * - **`PRAGMA foreign_keys=OFF` in front.** The export writes each table's
+   *   rows right after its `CREATE`, in `sqlite_master` order, so a child's
+   *   rows can arrive before its parent table exists, and D1 refuses them
+   *   ("no such table: main.projects", 2026-10-04). Production's rows are
+   *   already consistent, and the import flow honours the pragma. It covers
+   *   this file only: the migrations that follow are separate imports, which
+   *   run with foreign keys on, as they do in production.
+   * - **Over-long INSERTs split** by `DumpSplitter`: D1 refuses a statement
+   *   over 100 KB, and a production row can be longer than that.
    */
-  protected async disableForeignKeys(path: string): Promise<void> {
-    const dump = await this.fs.readFile(path);
-    await this.fs.writeFile(
-      path,
-      Buffer.concat([Buffer.from("PRAGMA foreign_keys=OFF;\n"), dump]),
+  protected async prepareDump(path: string): Promise<void> {
+    const { sql, rewritten } = this.splitter.split(
+      await this.fs.readTextFile(path),
     );
+    if (rewritten > 0) {
+      this.log.info(`Split ${rewritten} over-long INSERT(s) in the dump`);
+    }
+    await this.fs.writeFile(path, `PRAGMA foreign_keys=OFF;\n${sql}`);
   }
 
   /**
