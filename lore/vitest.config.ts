@@ -2,6 +2,10 @@ import { defineConfig } from "vitest/config";
 
 import { projects as lore } from "./apps/lore/vitest.config.ts";
 import { projects as loreSdk } from "./packages/@alepha/lore/vitest.config.ts";
+import { projects as loreCore } from "./packages/@lore/core/vitest.config.ts";
+import { projects as loreDeploy } from "./packages/@lore/deploy/vitest.config.ts";
+import { projects as loreKnowledge } from "./packages/@lore/knowledge/vitest.config.ts";
+import { projects as loreWork } from "./packages/@lore/work/vitest.config.ts";
 import { workspaceProjects } from "./scripts/vitest.projects.ts";
 
 /**
@@ -22,6 +26,10 @@ export default defineConfig({
       }),
       ...lore,
       ...loreSdk,
+      ...loreCore,
+      ...loreWork,
+      ...loreKnowledge,
+      ...loreDeploy,
     ],
   },
 });

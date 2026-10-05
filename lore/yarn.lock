@@ -2006,6 +2006,41 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@lore/core@workspace:*, @lore/core@workspace:packages/@lore/core":
+  version: 0.0.0-use.local
+  resolution: "@lore/core@workspace:packages/@lore/core"
+  dependencies:
+    alepha: "workspace:*"
+  languageName: unknown
+  linkType: soft
+
+"@lore/deploy@workspace:*, @lore/deploy@workspace:packages/@lore/deploy":
+  version: 0.0.0-use.local
+  resolution: "@lore/deploy@workspace:packages/@lore/deploy"
+  dependencies:
+    "@lore/core": "workspace:*"
+    alepha: "workspace:*"
+  languageName: unknown
+  linkType: soft
+
+"@lore/knowledge@workspace:*, @lore/knowledge@workspace:packages/@lore/knowledge":
+  version: 0.0.0-use.local
+  resolution: "@lore/knowledge@workspace:packages/@lore/knowledge"
+  dependencies:
+    "@lore/core": "workspace:*"
+    alepha: "workspace:*"
+  languageName: unknown
+  linkType: soft
+
+"@lore/work@workspace:*, @lore/work@workspace:packages/@lore/work":
+  version: 0.0.0-use.local
+  resolution: "@lore/work@workspace:packages/@lore/work"
+  dependencies:
+    "@lore/core": "workspace:*"
+    alepha: "workspace:*"
+  languageName: unknown
+  linkType: soft
+
 "@marijn/find-cluster-break@npm:^1.0.0":
   version: 1.0.4
   resolution: "@marijn/find-cluster-break@npm:1.0.4"
@@ -5606,6 +5641,10 @@ __metadata:
     "@dnd-kit/core": "npm:^6.3.1"
     "@dnd-kit/utilities": "npm:^3.2.2"
     "@lezer/highlight": "npm:^1.2.4"
+    "@lore/core": "workspace:*"
+    "@lore/deploy": "workspace:*"
+    "@lore/knowledge": "workspace:*"
+    "@lore/work": "workspace:*"
     "@playwright/test": "npm:^1.63.0"
     "@tailwindcss/vite": "npm:^4.3.3"
     "@testing-library/dom": "npm:^10.4.2"

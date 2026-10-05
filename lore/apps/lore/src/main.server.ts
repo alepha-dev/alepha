@@ -1,5 +1,17 @@
 import { SigilSinkProvider } from "@alepha/lore/sigil";
 import { adminRouterOptionsAtom } from "@alepha/ui/admin";
+import { LoreCoreApi } from "@lore/core/api";
+import { LoreCoreMcp } from "@lore/core/mcp";
+import { LoreCoreWeb } from "@lore/core/web";
+import { LoreDeployApi } from "@lore/deploy/api";
+import { LoreDeployMcp } from "@lore/deploy/mcp";
+import { LoreDeployWeb } from "@lore/deploy/web";
+import { LoreKnowledgeApi } from "@lore/knowledge/api";
+import { LoreKnowledgeMcp } from "@lore/knowledge/mcp";
+import { LoreKnowledgeWeb } from "@lore/knowledge/web";
+import { LoreWorkApi } from "@lore/work/api";
+import { LoreWorkMcp } from "@lore/work/mcp";
+import { LoreWorkWeb } from "@lore/work/web";
 import { Alepha, run } from "alepha";
 import { FileAccessProvider } from "alepha/api/files";
 import { jobConfig } from "alepha/api/jobs";
@@ -163,7 +175,18 @@ alepha.with({
   use: LoreNotificationPreferences,
 });
 
+// The `@lore/*` modules, core first. Every entry-level substitution above
+// comes before them: a substitution recorded after a module resolved what it
+// replaces is a `TooLateSubstitutionError`.
+alepha.with(LoreCoreApi);
+alepha.with(LoreWorkApi);
+alepha.with(LoreKnowledgeApi);
+alepha.with(LoreDeployApi);
 alepha.with(LoreApi);
+alepha.with(LoreCoreMcp);
+alepha.with(LoreWorkMcp);
+alepha.with(LoreKnowledgeMcp);
+alepha.with(LoreDeployMcp);
 alepha.with(LoreMcp);
 
 // Lore reports to Lore, and this line is what makes that possible.
@@ -178,6 +201,10 @@ alepha.with(LoreMcp);
 // therefore the provider being replaced here.
 alepha.with({ provide: SigilSinkProvider, use: LoreSigilSinkProvider });
 
+alepha.with(LoreCoreWeb);
+alepha.with(LoreWorkWeb);
+alepha.with(LoreKnowledgeWeb);
+alepha.with(LoreDeployWeb);
 alepha.with(LoreWebApp);
 alepha.with(LoreWebAdmin);
 

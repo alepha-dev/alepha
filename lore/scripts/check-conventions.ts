@@ -13,6 +13,8 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 
+import { LorePackageGraph } from "./lore-package-graph.ts";
+
 /**
  * One row of `yarn workspaces list --json`.
  */
@@ -873,6 +875,50 @@ if (jobTimeoutViolations.length > 0) {
       "and with no timeout its cron lock and crash recovery fall back to\n" +
       "defaults nobody chose. Declare one, at most 30 seconds unless the job\n" +
       "needs a queue: that is Cloudflare's direct-mode budget.\n",
+  );
+  process.exit(1);
+}
+
+/*
+ * The `@lore` packages depend on core only (#E75, folio #F1356).
+ *
+ * `work`, `knowledge` and `deploy` import `@lore/core` and nothing else of
+ * Lore's; `core` imports none of them. The graph, and the four rules that go
+ * with it (no deep import, type-only server imports from `./web`, no app, no
+ * `@/`), are `scripts/lore-package-graph.ts`, which reads the allowed edges
+ * from one table.
+ */
+const lorePackageExports: Record<string, string[]> = {};
+for (const workspace of workspaces) {
+  const match = /^packages\/@lore\/([^/]+)$/.exec(workspace.location);
+  if (!match) continue;
+  const manifest: Manifest = JSON.parse(
+    readFileSync(`${workspace.location}/package.json`, "utf8"),
+  );
+  lorePackageExports[match[1]] = Object.keys(manifest.exports ?? {})
+    .filter((subpath) => subpath !== "./package.json")
+    .map((subpath) => subpath.slice(2));
+}
+
+const lorePackageGraph = new LorePackageGraph(lorePackageExports);
+const lorePackageViolations = execFileSync(
+  "git",
+  ["ls-files", "-co", "--exclude-standard", "packages/@lore"],
+  { encoding: "utf8" },
+)
+  .trim()
+  .split("\n")
+  .filter((file) => /\.(ts|tsx)$/.test(file) && existsSync(file))
+  .flatMap((file) => lorePackageGraph.check(file, readFileSync(file, "utf8")));
+
+if (lorePackageViolations.length > 0) {
+  console.error(
+    `\n${lorePackageViolations.length} @lore package import(s) off the graph:\n\n` +
+      `${lorePackageViolations.join("\n")}\n\n` +
+      "work, knowledge and deploy import @lore/core only, and core imports no\n" +
+      "other @lore package. A feature spanning two modules goes through a core\n" +
+      "registry or a core link. The graph is LorePackageGraph.GRAPH in\n" +
+      "scripts/lore-package-graph.ts.\n",
   );
   process.exit(1);
 }

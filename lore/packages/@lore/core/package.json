@@ -1,0 +1,22 @@
+{
+  "name": "@lore/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./api": "./src/api/index.ts",
+    "./mcp": "./src/mcp/index.ts",
+    "./web": "./src/web/index.ts",
+    "./schemas": "./src/schemas/index.ts",
+    "./testing": "./src/testing/index.ts",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "lint": "alepha lint",
+    "typecheck": "alepha typecheck",
+    "test": "alepha test"
+  },
+  "dependencies": {
+    "alepha": "workspace:*"
+  }
+}

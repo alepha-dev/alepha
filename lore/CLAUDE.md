@@ -1,8 +1,33 @@
 # CLAUDE.md
 
-**Alepha Lore**: the planning memory, telemetry sink and deploy chain for Alepha applications, at `lore.alepha.dev`. This repository holds the app (`apps/lore`, read `apps/lore/CLAUDE.md` before working on it), its CLI and client (`packages/@alepha/lore`, published to npm), and the end-to-end suites that drive built artefacts (`apps/e2e-cli`).
+**Alepha Lore**: the planning memory, telemetry sink and deploy chain for Alepha applications, at `lore.alepha.dev`. This repository holds the app (`apps/lore`, read `apps/lore/CLAUDE.md` before working on it), its four private modules (`packages/@lore/*`, see the layout below), its CLI and client (`packages/@alepha/lore`, published to npm), and the end-to-end suites that drive built artefacts (`apps/e2e-cli`).
 
 It left the Alepha monorepo on 2026-10-01 (epic #E72 of the Alepha project) with its history. The framework is developed in `github.com/alepha-dev/alepha`; Bay in `github.com/alepha-dev/bay`.
+
+## Layout: packages are modules, apps are executables
+
+`packages/*` holds Alepha modules; `apps/*` holds executables. `apps/lore` is being split into four private packages, loaded as source with no build step (#E75, folio #F1356):
+
+| package           | is               | owns                                                                                                                                                                                     |
+| ----------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@lore/core`      | the glue         | projects, capabilities, ranks and permissions, notifications, audits, the resource registry and its link graph, search, dashboard, reports, agent prompts, the web shell, every registry |
+| `@lore/work`      | Lore as Jira     | quests, epics, releases, areas, kanban, roadmap, feedback                                                                                                                                |
+| `@lore/knowledge` | Lore as Obsidian | folios, directories, attachments, revisions, names                                                                                                                                       |
+| `@lore/deploy`    | Lore as Vercel   | apps, telemetry, deployments, estates                                                                                                                                                    |
+
+Each package exports `./api`, `./mcp`, `./web` and `./schemas` (core also `./testing`), and declares three modules, `Lore<Pkg>Api`, `Lore<Pkg>Mcp` and `Lore<Pkg>Web`, registered by `apps/lore`'s entries after every entry-level substitution, core first. `./web` is registered by BOTH entries.
+
+⚠️ **The rule** (`check:conventions`, graph table in `scripts/lore-package-graph.ts`):
+
+```
+core <- work
+core <- knowledge
+core <- deploy
+```
+
+- A feature module never imports another. A feature spanning two goes through a core registry or a core link (an epic files folios, a blight is forwarded to a quest, a release lists its artifacts).
+- `./web` imports another package's `./api` or `./mcp` as `import type` only; runtime values come from `./schemas` or `./web`.
+- No deep import past `exports`, no import of `apps/*` (nor of `lore`), no `@/` inside a package.
 
 ## The framework is vendored
 

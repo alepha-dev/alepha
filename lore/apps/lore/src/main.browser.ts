@@ -1,4 +1,8 @@
 import { adminRouterOptionsAtom } from "@alepha/ui/admin";
+import { LoreCoreWeb } from "@lore/core/web";
+import { LoreDeployWeb } from "@lore/deploy/web";
+import { LoreKnowledgeWeb } from "@lore/knowledge/web";
+import { LoreWorkWeb } from "@lore/work/web";
 import { Alepha, run } from "alepha";
 import { ScopeGrantsProvider } from "alepha/server/links";
 
@@ -23,6 +27,12 @@ alepha.set(adminRouterOptionsAtom, loreAdminOptions);
 // `LinkProvider.can`'s own comment exists to prevent.
 alepha.with({ provide: ScopeGrantsProvider, use: ProjectScopeGrants });
 
+// Every `@lore/*` web module, as in `main.server.ts`: SSR and hydration read
+// the same page registry, so both entries register the same pages.
+alepha.with(LoreCoreWeb);
+alepha.with(LoreWorkWeb);
+alepha.with(LoreKnowledgeWeb);
+alepha.with(LoreDeployWeb);
 alepha.with(LoreWebApp);
 alepha.with(LoreWebAdmin);
 
