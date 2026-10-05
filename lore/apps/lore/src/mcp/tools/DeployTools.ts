@@ -11,7 +11,7 @@ import {
   deployStartResultSchema,
   deployStatusParamsSchema,
   deployStatusResultSchema,
-} from "../schemas/index.ts";
+} from "../schemas/deploySchemas.ts";
 import { ProjectTools } from "./ProjectTools.ts";
 
 /**

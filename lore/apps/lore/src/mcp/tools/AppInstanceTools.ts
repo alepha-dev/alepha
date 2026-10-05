@@ -13,7 +13,7 @@ import {
   appInstanceListResultSchema,
   appInstanceUpdateParamsSchema,
   appInstanceUpdateResultSchema,
-} from "../schemas/index.ts";
+} from "../schemas/appInstanceSchemas.ts";
 import { ProjectTools } from "./ProjectTools.ts";
 
 /**

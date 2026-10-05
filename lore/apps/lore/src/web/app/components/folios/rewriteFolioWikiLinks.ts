@@ -1,3 +1,4 @@
+import { outsideMarkdownCode } from "../shared/element/markdownCodeSegments.ts";
 import {
   type AttachmentRef,
   BROKEN_HREF_PREFIX,
@@ -10,7 +11,6 @@ import {
   type QuestRef,
   type ReleaseRef,
 } from "./folioWikiLinkResolver.ts";
-import { outsideMarkdownCode } from "./markdownCodeSegments.ts";
 
 export {
   type AttachmentRef,

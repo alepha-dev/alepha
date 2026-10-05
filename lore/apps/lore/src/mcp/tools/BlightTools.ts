@@ -9,7 +9,7 @@ import {
   blightListResultSchema,
   blightResolveParamsSchema,
   blightResolveResultSchema,
-} from "../schemas/index.ts";
+} from "../schemas/blightSchemas.ts";
 import { ProjectTools } from "./ProjectTools.ts";
 
 /**

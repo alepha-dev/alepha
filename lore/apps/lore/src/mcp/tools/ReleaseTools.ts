@@ -30,7 +30,7 @@ import {
   releaseSetDefaultResultSchema,
   releaseUpdateParamsSchema,
   releaseUpdateResultSchema,
-} from "../schemas/index.ts";
+} from "../schemas/releaseSchemas.ts";
 import { ProjectTools } from "./ProjectTools.ts";
 
 /**

@@ -46,7 +46,7 @@ export const folioLinks = $entity({
      *
      * ⚠️ Dropping the FK dropped its `ON DELETE CASCADE` with it, which is
      * what used to clear a folio's outbound links when the folio was hard
-     * deleted. `FolioLinkService.deleteLinksFrom` replaces it and the
+     * deleted. `ResourceLinkService.deleteLinksFrom` replaces it and the
      * delete handlers must call it — nothing in the schema will complain
      * if they stop.
      */
@@ -62,7 +62,7 @@ export const folioLinks = $entity({
     /**
      * Discriminator for the target table. Defaults to `folio` so pre-Lore
      * #57 rows stay valid without a backfill. Add new types by extending
-     * {@link linkTargetKindSchema} + teaching `FolioLinkService` to
+     * {@link linkTargetKindSchema} + teaching `ResourceLinkService` to
      * resolve them — which is all `epic` needed.
      *
      * `mode: "text"` ⇒ no CHECK constraint at the DB level — extending

@@ -19,6 +19,7 @@ import {
   folios,
 } from "../entities/folios.ts";
 import { relations } from "../relations.ts";
+import type { ResourceRef } from "../resources/ResourceRegistry.ts";
 import { folioIdParamsSchema } from "../schemas/folioIdParamsSchema.ts";
 import { folioListQuerySchema } from "../schemas/folioListQuerySchema.ts";
 import {
@@ -40,10 +41,10 @@ import {
   FolioHistoryService,
   type RevisionPlan,
 } from "../services/FolioHistoryService.ts";
-import { FolioLinkService } from "../services/FolioLinkService.ts";
 import { FolioNameService } from "../services/FolioNameService.ts";
 import { FolioRevisionStatsService } from "../services/FolioRevisionStatsService.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
+import { ResourceLinkService } from "../services/ResourceLinkService.ts";
 
 /**
  * The columns of `folio_directories` any ancestor walk needs — the tree
@@ -70,7 +71,7 @@ export class FolioController {
    */
   protected readonly revisionsWith = $repository(relations, "folioRevisions");
   protected readonly users = $repository(users);
-  protected readonly linkService = $inject(FolioLinkService);
+  protected readonly linkService = $inject(ResourceLinkService);
   protected readonly bound = $inject(BoundParameters);
   protected readonly attachmentService = $inject(FolioAttachmentService);
   protected readonly historyService = $inject(FolioHistoryService);
@@ -494,61 +495,50 @@ export class FolioController {
       this.linkService.findInbound(folioId),
     ]);
 
-    // Outbound: split by targetType, each kind resolving through its own
-    // table.
+    // Folios resolve here, with their folder chain. Every other kind
+    // resolves through the module that registers it (`ResourceRegistry`),
+    // so this controller reads no other module's table; a kind no module
+    // registers describes nothing, and its rows are dropped below rather
+    // than rendered blank. Inbound rows are grouped by the kind of element
+    // that CONTAINS the reference: `comment` is not a registered kind, and is
+    // dropped the same way.
     const outFolioIds = out
       .filter((l) => l.targetType === "folio")
       .map((l) => l.toId);
-    const outQuestIds = out
-      .filter((l) => l.targetType === "quest")
-      .map((l) => Number.parseInt(l.toId, 10))
-      .filter((n) => Number.isFinite(n));
-    const outEpicIds = out
-      .filter((l) => l.targetType === "epic")
-      .map((l) => Number.parseInt(l.toId, 10))
-      .filter((n) => Number.isFinite(n));
-    const outFeedbackIds = out
-      .filter((l) => l.targetType === "feedback")
-      .map((l) => Number.parseInt(l.toId, 10))
-      .filter((n) => Number.isFinite(n));
-    const outReleaseIds = out
-      .filter((l) => l.targetType === "release")
-      .map((l) => Number.parseInt(l.toId, 10))
-      .filter((n) => Number.isFinite(n));
-
-    // Inbound rows are grouped by the kind of element that CONTAINS the
-    // reference. `comment` is not resolved — comments do not exist yet, and
-    // an unresolved row is dropped below rather than rendered blank.
     const inboundFolioIds = inb
       .filter((l) => l.fromType === "folio")
       .map((l) => l.fromId);
-    const inboundQuestIds = inb
-      .filter((l) => l.fromType === "quest")
-      .map((l) => Number.parseInt(l.fromId, 10))
-      .filter((n) => Number.isFinite(n));
-    const inboundEpicIds = inb
-      .filter((l) => l.fromType === "epic")
-      .map((l) => Number.parseInt(l.fromId, 10))
-      .filter((n) => Number.isFinite(n));
+    const idsByKind = (rows: Array<{ kind: string; id: string }>) => {
+      const grouped = new Map<string, string[]>();
+      for (const row of rows) {
+        if (row.kind === "folio") continue;
+        grouped.set(row.kind, [...(grouped.get(row.kind) ?? []), row.id]);
+      }
+      return grouped;
+    };
+    const describeAll = async (grouped: Map<string, string[]>) => {
+      const refs = new Map<string, ResourceRef>();
+      await Promise.all(
+        [...grouped].map(async ([kind, ids]) => {
+          for (const ref of await this.linkService.describe(
+            kind,
+            projectId,
+            ids,
+          )) {
+            refs.set(`${kind}:${ref.id}`, ref);
+          }
+        }),
+      );
+      return refs;
+    };
 
-    const [
-      folioRefs,
-      questRefs,
-      epicRefs,
-      inboundRefs,
-      inboundQuestRefs,
-      inboundEpicRefs,
-      feedbackRefs,
-      releaseRefs,
-    ] = await Promise.all([
+    const [folioRefs, inboundRefs, outRefs, inRefs] = await Promise.all([
       this.bound.collect(outFolioIds, (batch) =>
         this.folios.findMany({
           where: { id: { inArray: batch } },
           columns: ["id", "shortId", "title", "directoryId", "projectId"],
         }),
       ),
-      this.linkService.findQuestRefs(outQuestIds),
-      this.linkService.findEpicRefs(outEpicIds),
       // Folio SOURCES only. Since links went polymorphic an inbound row
       // can come from a quest or an epic, whose stringified integer ids
       // must never be handed to the folios repository as UUIDs.
@@ -558,10 +548,12 @@ export class FolioController {
           columns: ["id", "shortId", "title", "directoryId", "projectId"],
         }),
       ),
-      this.linkService.findQuestRefs(inboundQuestIds),
-      this.linkService.findEpicRefs(inboundEpicIds),
-      this.linkService.findFeedbackRefs(outFeedbackIds),
-      this.linkService.findReleaseRefs(outReleaseIds),
+      describeAll(
+        idsByKind(out.map((l) => ({ kind: l.targetType, id: l.toId }))),
+      ),
+      describeAll(
+        idsByKind(inb.map((l) => ({ kind: l.fromType, id: l.fromId }))),
+      ),
     ]);
 
     // One per-project directory map covers every ref's ancestor walk and
@@ -609,13 +601,7 @@ export class FolioController {
     };
 
     const folioById = new Map(folioRefs.map((r) => [r.id, r]));
-    const questById = new Map(questRefs.map((r) => [r.id, r]));
-    const epicById = new Map(epicRefs.map((r) => [r.id, r]));
     const inboundById = new Map(inboundRefs.map((r) => [r.id, r]));
-    const inboundQuestById = new Map(inboundQuestRefs.map((r) => [r.id, r]));
-    const inboundEpicById = new Map(inboundEpicRefs.map((r) => [r.id, r]));
-    const feedbackById = new Map(feedbackRefs.map((r) => [r.id, r]));
-    const releaseById = new Map(releaseRefs.map((r) => [r.id, r]));
 
     /**
      * One inbound row: the element that CONTAINS a reference to this folio.
@@ -638,44 +624,7 @@ export class FolioController {
     };
     const outbound: OutRef[] = [];
     for (const l of out) {
-      if (l.targetType === "quest") {
-        const ref = questById.get(Number.parseInt(l.toId, 10));
-        if (ref)
-          outbound.push({
-            kind: "quest",
-            shortId: ref.shortId,
-            title: ref.title,
-          });
-      } else if (l.targetType === "epic") {
-        const ref = epicById.get(Number.parseInt(l.toId, 10));
-        if (ref)
-          outbound.push({
-            kind: "epic",
-            // `findEpicRefs` already maps `number` onto `shortId`.
-            shortId: ref.shortId,
-            title: ref.title,
-            // No folder chain: epics do not live in the folio tree.
-            path: undefined,
-          });
-      } else if (l.targetType === "feedback") {
-        const ref = feedbackById.get(Number.parseInt(l.toId, 10));
-        if (ref)
-          outbound.push({
-            kind: "feedback",
-            shortId: ref.shortId,
-            title: ref.title,
-          });
-      } else if (l.targetType === "release") {
-        const ref = releaseById.get(Number.parseInt(l.toId, 10));
-        if (ref)
-          outbound.push({
-            kind: "release",
-            // `findReleaseRefs` maps `number` onto `shortId`, as for epics.
-            shortId: ref.shortId,
-            title: ref.title,
-            tag: ref.tag,
-          });
-      } else {
+      if (l.targetType === "folio") {
         const ref = folioById.get(l.toId);
         if (ref)
           outbound.push({
@@ -684,34 +633,26 @@ export class FolioController {
             title: ref.title,
             path: pathOf(ref.directoryId),
           });
+        continue;
       }
+      // An epic's and a release's `number` rides under `shortId`; only a
+      // release carries a tag. Nothing outside the folio tree has a path.
+      const ref = outRefs.get(`${l.targetType}:${l.toId}`);
+      if (ref)
+        outbound.push({
+          kind: l.targetType,
+          shortId: ref.shortId,
+          title: ref.title,
+          ...(ref.tag !== undefined ? { tag: ref.tag } : {}),
+        });
     }
     return {
       outbound,
       inbound: inb.flatMap((l): InRef[] => {
-        if (l.fromType === "quest") {
-          const ref = inboundQuestById.get(Number.parseInt(l.fromId, 10));
+        if (l.fromType !== "folio") {
+          const ref = inRefs.get(`${l.fromType}:${l.fromId}`);
           return ref
-            ? [
-                {
-                  kind: "quest" as const,
-                  shortId: ref.shortId,
-                  title: ref.title,
-                },
-              ]
-            : [];
-        }
-        if (l.fromType === "epic") {
-          const ref = inboundEpicById.get(Number.parseInt(l.fromId, 10));
-          // `findEpicRefs` already maps `number` onto `shortId`.
-          return ref
-            ? [
-                {
-                  kind: "epic" as const,
-                  shortId: ref.shortId,
-                  title: ref.title,
-                },
-              ]
+            ? [{ kind: l.fromType, shortId: ref.shortId, title: ref.title }]
             : [];
         }
         const ref = inboundById.get(l.fromId);

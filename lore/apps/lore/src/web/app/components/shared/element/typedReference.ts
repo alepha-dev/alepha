@@ -13,7 +13,7 @@ import type { LinkTargetKind } from "../../../../../api/schemas/linkTargetKindSc
  * surface labels the thing (epic #32).
  *
  * Both link parsers read the grammar through this one module: on the server
- * `FolioLinkService.parseToken`, which persists `folio_links`, and in the
+ * `ResourceLinkService.parseToken`, which persists `folio_links`, and in the
  * browser `folioWikiLinkResolver`, which renders. A letter added here is
  * known to both at once, which is the only way the graph and the page can
  * keep agreeing on what a token means.

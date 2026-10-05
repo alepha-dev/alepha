@@ -5,7 +5,7 @@ import { InsightsController } from "../../api/controllers/InsightsController.ts"
 import {
   insightsReadParamsSchema,
   insightsReadResultSchema,
-} from "../schemas/index.ts";
+} from "../schemas/insightsSchemas.ts";
 import { ProjectTools } from "./ProjectTools.ts";
 
 /**

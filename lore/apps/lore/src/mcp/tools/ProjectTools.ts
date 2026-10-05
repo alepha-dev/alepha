@@ -23,7 +23,7 @@ import {
   projectInfoParamsSchema,
   projectInfoResultSchema,
   projectListResultSchema,
-} from "../schemas/index.ts";
+} from "../schemas/projectSchemas.ts";
 
 /**
  * Folio index cap returned by `project_context`. Sized so a project with

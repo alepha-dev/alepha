@@ -52,7 +52,7 @@ import {
   questUnshelveResultSchema,
   questUpdateParamsSchema,
   questUpdateResultSchema,
-} from "../schemas/index.ts";
+} from "../schemas/questSchemas.ts";
 import { AttachmentContentService } from "../services/AttachmentContentService.ts";
 import { AttachmentPushCommand } from "../services/AttachmentPushCommand.ts";
 import { DiagramCheckService } from "../services/DiagramCheckService.ts";

@@ -14,7 +14,7 @@ import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { QuestController } from "../src/api/controllers/QuestController.ts";
 import { ReleaseController } from "../src/api/controllers/ReleaseController.ts";
 import { LoreApi } from "../src/api/index.ts";
-import { FolioLinkService } from "../src/api/services/FolioLinkService.ts";
+import { ResourceLinkService } from "../src/api/services/ResourceLinkService.ts";
 import { createFolioWikiLinkResolver } from "../src/web/app/components/folios/folioWikiLinkResolver.ts";
 import { rewriteFolioWikiLinks } from "../src/web/app/components/folios/rewriteFolioWikiLinks.ts";
 
@@ -49,7 +49,7 @@ interface Seed {
  * The two link parsers have to agree, token for token, or the reader sees
  * a live link for an edge the graph does not hold, or the reverse. This
  * spec is the agreement: one table of tokens, resolved on the server
- * through `FolioLinkService` (which persists `folio_links`) and in the
+ * through `ResourceLinkService` (which persists `folio_links`) and in the
  * browser through `createFolioWikiLinkResolver` (which renders), and the
  * two answers compared.
  *
@@ -59,7 +59,7 @@ interface Seed {
  */
 describe("the reference grammar is one grammar on both sides", () => {
   let alepha: Alepha;
-  let folioLinkService: FolioLinkService;
+  let folioLinkService: ResourceLinkService;
   let seed: Seed;
 
   beforeAll(async () => {
@@ -75,7 +75,7 @@ describe("the reference grammar is one grammar on both sides", () => {
     alepha.with(LoreApi);
     await alepha.start();
 
-    folioLinkService = alepha.inject(FolioLinkService);
+    folioLinkService = alepha.inject(ResourceLinkService);
     const fake = alepha.inject(FakeProvider);
     const created = await alepha
       .inject(AdminUserController)
@@ -188,11 +188,7 @@ describe("the reference grammar is one grammar on both sides", () => {
    */
   const onServer = async (token: string): Promise<Resolved | undefined> => {
     const tokens = folioLinkService.parseTokens(`[[${token}]]`);
-    const rows = await folioLinkService.resolveTokenIds(
-      tokens,
-      seed.projectId,
-      "",
-    );
+    const rows = await folioLinkService.resolveTokenIds(tokens, seed.projectId);
     if (rows.length === 0) return undefined;
     const [{ targetType, toId }] = rows;
     if (targetType === "folio" && toId === seed.folio.id) {
@@ -382,11 +378,7 @@ describe("the reference grammar is one grammar on both sides", () => {
     // Server: one edge, the folio in prose. Before #1803 this returned three,
     // and the design folio of epic #32 carried the proof in production.
     const tokens = folioLinkService.parseTokens(content);
-    const rows = await folioLinkService.resolveTokenIds(
-      tokens,
-      seed.projectId,
-      "",
-    );
+    const rows = await folioLinkService.resolveTokenIds(tokens, seed.projectId);
     expect(rows).toEqual([{ targetType: "folio", toId: seed.folio.id }]);
 
     // Browser: the two code tokens survive verbatim, the prose one is a link.

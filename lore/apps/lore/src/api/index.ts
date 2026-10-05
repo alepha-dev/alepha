@@ -77,6 +77,12 @@ import { LoreFileAccessProvider } from "./providers/LoreFileAccessProvider.ts";
 import { LoreInboxRecipientProvider } from "./providers/LoreInboxRecipientProvider.ts";
 import { LoreNotificationPreferences } from "./providers/LoreNotificationPreferences.ts";
 import { LoreOrganizationPolicyProvider } from "./providers/LoreOrganizationPolicyProvider.ts";
+import { DirectoryResourceKind } from "./resources/DirectoryResourceKind.ts";
+import { EpicResourceKind } from "./resources/EpicResourceKind.ts";
+import { FeedbackResourceKind } from "./resources/FeedbackResourceKind.ts";
+import { FolioResourceKind } from "./resources/FolioResourceKind.ts";
+import { QuestResourceKind } from "./resources/QuestResourceKind.ts";
+import { ReleaseResourceKind } from "./resources/ReleaseResourceKind.ts";
 import { LorePermissions } from "./security/LorePermissions.ts";
 import { ProjectRankPresets } from "./security/ProjectRankPresets.ts";
 import { ActiveQuestsMetric } from "./services/ActiveQuestsMetric.ts";
@@ -85,6 +91,7 @@ import { AppService } from "./services/AppService.ts";
 import { AreaService } from "./services/AreaService.ts";
 import { ArtifactService } from "./services/ArtifactService.ts";
 import { ArtifactTarReader } from "./services/ArtifactTarReader.ts";
+import { BlightQuestHandBack } from "./services/BlightQuestHandBack.ts";
 import { BlightRuleService } from "./services/BlightRuleService.ts";
 import { CapabilityRegistry } from "./services/CapabilityRegistry.ts";
 import { CloudflareProbeService } from "./services/CloudflareProbeService.ts";
@@ -112,7 +119,6 @@ import { FeedbackRateLimiter } from "./services/FeedbackRateLimiter.ts";
 import { FolioAttachmentService } from "./services/FolioAttachmentService.ts";
 import { FolioDirectoryService } from "./services/FolioDirectoryService.ts";
 import { FolioHistoryService } from "./services/FolioHistoryService.ts";
-import { FolioLinkService } from "./services/FolioLinkService.ts";
 import { FolioNameService } from "./services/FolioNameService.ts";
 import { HeldQuestsMetric } from "./services/HeldQuestsMetric.ts";
 import { LoreAudits } from "./services/LoreAudits.ts";
@@ -133,6 +139,7 @@ import { ReleaseAttachmentService } from "./services/ReleaseAttachmentService.ts
 import { ReleaseContentService } from "./services/ReleaseContentService.ts";
 import { ReleaseNotifier } from "./services/ReleaseNotifier.ts";
 import { ReleaseProgressMetric } from "./services/ReleaseProgressMetric.ts";
+import { ResourceLinkService } from "./services/ResourceLinkService.ts";
 import { RoadmapService } from "./services/RoadmapService.ts";
 import { RollbackService } from "./services/RollbackService.ts";
 import { SigilIngestService } from "./services/SigilIngestService.ts";
@@ -234,7 +241,18 @@ export const LoreApi = $module({
     FolioDirectoryService,
     FolioAttachmentService,
     FolioHistoryService,
-    FolioLinkService,
+    ResourceLinkService,
+    // The resource kinds each module registers on the core
+    // `ResourceRegistry` (#E75, #Q2610), and Deploy's subscription to a
+    // quest's deletion. Listed, because nothing injects them: a kind exists
+    // only once its class is constructed.
+    QuestResourceKind,
+    EpicResourceKind,
+    ReleaseResourceKind,
+    FeedbackResourceKind,
+    FolioResourceKind,
+    DirectoryResourceKind,
+    BlightQuestHandBack,
     // Declares the `$invitationResource` for `resourceType: "project"`.
     // Nothing injects it, so like `AppSecurityProvider` it has to be listed
     // or the resolver is never registered and every invitation 404s.

@@ -200,7 +200,7 @@ export const formatAttachmentBytes = (bytes: number): string => {
  * body with fifty references would otherwise rebuild them fifty times, and
  * the editor resolves a token on every keystroke inside it.
  *
- * The rules mirror the server-side `FolioLinkService` exactly, because what
+ * The rules mirror the server-side `ResourceLinkService` exactly, because what
  * the reader sees resolved and what gets persisted in `folio_links` have to
  * agree — a resolver that drifted from the server would show a live link for
  * an edge the graph does not have (or the reverse).

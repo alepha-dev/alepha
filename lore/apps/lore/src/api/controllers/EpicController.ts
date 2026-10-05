@@ -25,10 +25,10 @@ import {
   EpicProgressService,
 } from "../services/EpicProgressService.ts";
 import { EpicWorkflowService } from "../services/EpicWorkflowService.ts";
-import { FolioLinkService } from "../services/FolioLinkService.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
 import { ReleaseAttachmentService } from "../services/ReleaseAttachmentService.ts";
 import { ReleaseCascadeService } from "../services/ReleaseCascadeService.ts";
+import { ResourceLinkService } from "../services/ResourceLinkService.ts";
 
 /**
  * CRUD, the status lifecycle, and attach/detach for quests and folios.
@@ -67,7 +67,7 @@ export class EpicController {
   epics = $repository(epics);
   quests = $repository(quests);
   folios = $repository(folios);
-  linkService = $inject(FolioLinkService);
+  linkService = $inject(ResourceLinkService);
   bestEffort = $inject(BestEffort);
   attachment = $inject(ReleaseAttachmentService);
   cascade = $inject(ReleaseCascadeService);
@@ -489,7 +489,7 @@ export class EpicController {
 
       // `folio_links.from_id` is not a foreign key, so the FK cascade this
       // delete relies on for quests and folios does not reach the link
-      // graph — see `FolioLinkService.deleteLinksFrom`.
+      // graph — see `ResourceLinkService.deleteLinksFrom`.
       await this.linkService.deleteLinksFrom({ kind: "epic", id: params.id });
       await this.epics.deleteById(params.id, { force: true });
       await this.logEpic("delete", epic, user);

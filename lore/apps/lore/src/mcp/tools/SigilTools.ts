@@ -13,7 +13,7 @@ import {
   sigilListResultSchema,
   sigilRotateParamsSchema,
   sigilRotateResultSchema,
-} from "../schemas/index.ts";
+} from "../schemas/sigilSchemas.ts";
 import { ProjectTools } from "./ProjectTools.ts";
 
 /**

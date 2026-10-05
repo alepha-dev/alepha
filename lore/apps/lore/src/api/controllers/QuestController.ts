@@ -3,12 +3,7 @@ import { $storage, FileService } from "alepha/api/files";
 import { RankService } from "alepha/api/organizations";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import {
-  $repository,
-  DbEntityNotFoundError,
-  db,
-  pageQuerySchema,
-} from "alepha/orm";
+import { $repository, db, pageQuerySchema } from "alepha/orm";
 import {
   OwnedResourceProvider,
   $secure,
@@ -24,7 +19,6 @@ import {
 } from "alepha/server";
 
 import { formatReference } from "../../web/app/components/shared/element/typedReference.ts";
-import { blights, QUEST_STATUS_PREFIX } from "../entities/blights.ts";
 import { epics } from "../entities/epics.ts";
 import { feedback } from "../entities/feedback.ts";
 import type { Project } from "../entities/projects.ts";
@@ -37,6 +31,7 @@ import {
   REMINDER_INTERVAL_VALUES,
 } from "../entities/quests.ts";
 import { releases } from "../entities/releases.ts";
+import { ResourceRegistry } from "../resources/ResourceRegistry.ts";
 import { questCommitSchema } from "../schemas/questCommitSchema.ts";
 import { questCreateSchema } from "../schemas/questCreateSchema.ts";
 import {
@@ -58,7 +53,6 @@ import { BoundParameters } from "../services/BoundParameters.ts";
 import { DefaultReleaseService } from "../services/DefaultReleaseService.ts";
 import { EpicVisibilityService } from "../services/EpicVisibilityService.ts";
 import { EpicWorkflowService } from "../services/EpicWorkflowService.ts";
-import { FolioLinkService } from "../services/FolioLinkService.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
 import { MentionNotifier } from "../services/MentionNotifier.ts";
 import { OpenQuestScope } from "../services/OpenQuestScope.ts";
@@ -66,6 +60,7 @@ import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 import { QuestResourceMapper } from "../services/QuestResourceMapper.ts";
 import { QuestService } from "../services/QuestService.ts";
 import { ReleaseAttachmentService } from "../services/ReleaseAttachmentService.ts";
+import { ResourceLinkService } from "../services/ResourceLinkService.ts";
 
 export class QuestController {
   /**
@@ -135,7 +130,7 @@ export class QuestController {
   log = $logger();
   quests = $repository(quests);
   feedback = $repository(feedback);
-  blights = $repository(blights);
+  resources = $inject(ResourceRegistry);
   /**
    * Read-only here, and only so a history line can name the epic or release a
    * quest moved to by its `number` / `tag` rather than by a row id nobody
@@ -189,7 +184,7 @@ export class QuestController {
   questService = $inject(QuestService);
   areaService = $inject(AreaService);
   releaseAttachment = $inject(ReleaseAttachmentService);
-  linkService = $inject(FolioLinkService);
+  linkService = $inject(ResourceLinkService);
   bound = $inject(BoundParameters);
   bestEffort = $inject(BestEffort);
 
@@ -3128,39 +3123,20 @@ export class QuestController {
         { dependsOn: null },
       );
 
-      // Hand the blight back to the inbox before its quest disappears.
-      //
-      // `blight_forward` is one-way — it refuses a blight already carrying a
-      // `quest:` status — so without this the row is stranded: invisible in the
-      // inbox because its status is not `open`, un-forwardable because it looks
-      // handled, and pointing at a quest that 404s. The failure it reported
-      // goes on happening with nothing left to surface it.
-      //
-      // Reopening here does not contradict the rule that a triage decision
-      // survives the next batch (see `absorbErrors`). That rule protects a
-      // decision from being undone by NOISE; deleting the quest is the owner
-      // deliberately withdrawing the decision, which is the opposite.
-      if (quest.source?.sigilBlightId) {
-        // Only if it still points HERE, checked by the write itself (#Q2550):
-        // a blight re-forwarded to another quest belongs to that one now,
-        // and must not be reopened by this delete. A miss means somebody
-        // else moved it, which is fine.
-        await this.blights
-          .updateOne(
-            {
-              id: { eq: quest.source.sigilBlightId },
-              status: { eq: `${QUEST_STATUS_PREFIX}${params.id}` },
-            },
-            { status: "open" },
-          )
-          .catch((error: unknown) => {
-            if (!(error instanceof DbEntityNotFoundError)) throw error;
-          });
-      }
+      // Whoever subscribed to a quest's deletion runs now, with the row
+      // still readable: Deploy hands a forwarded blight back to its inbox
+      // (`BlightQuestHandBack`). Through the registry, so this module never
+      // reads `blights` (#E75, #Q2610).
+      await this.resources.deleted({
+        kind: "quest",
+        id: params.id,
+        projectId: quest.projectId,
+        row: quest,
+      });
 
       // `folio_links.from_id` is not a foreign key, so nothing in the
       // database clears this quest's outbound links — see
-      // `FolioLinkService.deleteLinksFrom`. Inbound rows are left alone on
+      // `ResourceLinkService.deleteLinksFrom`. Inbound rows are left alone on
       // purpose: a reference to a deleted quest is a broken link, which is
       // what the reader should see.
       await this.linkService.deleteLinksFrom({ kind: "quest", id: params.id });

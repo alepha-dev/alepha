@@ -12,7 +12,7 @@ import { FolioController } from "../src/api/controllers/FolioController.ts";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { QuestController } from "../src/api/controllers/QuestController.ts";
 import { LoreApi } from "../src/api/index.ts";
-import { FolioLinkService } from "../src/api/services/FolioLinkService.ts";
+import { ResourceLinkService } from "../src/api/services/ResourceLinkService.ts";
 
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };
 
@@ -28,7 +28,7 @@ interface TestContext {
   folioController: FolioController;
   questController: QuestController;
   epicController: EpicController;
-  folioLinkService: FolioLinkService;
+  folioLinkService: ResourceLinkService;
   fakeProvider: FakeProvider;
 }
 
@@ -51,7 +51,7 @@ const setup = async (): Promise<TestContext> => {
     folioController: alepha.inject(FolioController),
     questController: alepha.inject(QuestController),
     epicController: alepha.inject(EpicController),
-    folioLinkService: alepha.inject(FolioLinkService),
+    folioLinkService: alepha.inject(ResourceLinkService),
     fakeProvider: alepha.inject(FakeProvider),
   };
 };

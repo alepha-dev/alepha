@@ -1,4 +1,4 @@
-import { $inject, z } from "alepha";
+import { $inject, type Infer, z } from "alepha";
 import { $tool } from "alepha/mcp";
 import { BadRequestError, NotFoundError } from "alepha/server";
 
@@ -8,18 +8,18 @@ import { FolioAttachmentController } from "../../api/controllers/FolioAttachment
 import { FolioController } from "../../api/controllers/FolioController.ts";
 import { ProjectController } from "../../api/controllers/ProjectController.ts";
 import { folioRevisions } from "../../api/entities/folioRevisions.ts";
+import { ResourceRegistry } from "../../api/resources/ResourceRegistry.ts";
 import { formatReference } from "../../web/app/components/shared/element/typedReference.ts";
+import { attachmentPushResultSchema } from "../schemas/attachmentPushResultSchema.ts";
 import { DIAGRAM_CAPABILITY } from "../schemas/diagramCapability.ts";
 import {
-  attachmentPushResultSchema,
   folioEpicRefSchema,
   folioFullSchema,
   folioRefParamsSchema,
   folioRefSchema,
-} from "../schemas/index.ts";
+} from "../schemas/folioSchemas.ts";
 import { AttachmentPushCommand } from "../services/AttachmentPushCommand.ts";
 import { DiagramCheckService } from "../services/DiagramCheckService.ts";
-import { EpicRefService } from "../services/EpicRefService.ts";
 import { ProjectTools } from "./ProjectTools.ts";
 
 /**
@@ -64,7 +64,7 @@ export class FolioTools {
   protected readonly directoryController = $inject(DirectoryController);
   protected readonly attachmentController = $inject(FolioAttachmentController);
   protected readonly epicController = $inject(EpicController);
-  protected readonly epicRefs = $inject(EpicRefService);
+  protected readonly resources = $inject(ResourceRegistry);
   protected readonly diagrams = $inject(DiagramCheckService);
   protected readonly attachmentPush = $inject(AttachmentPushCommand);
   protected readonly projectTools = $inject(ProjectTools);
@@ -117,10 +117,56 @@ export class FolioTools {
     projectId: number,
     number: number,
   ): Promise<number> {
-    const epic = await this.epicController.getEpicByNumber({
-      params: { projectId, number },
-    });
-    return epic.id;
+    // Through the `epic` kind Work registers (#E75, #Q2610): Knowledge reads
+    // no epic, and without Work an `epic_number` is refused by name.
+    const epicKind = this.resources.require(
+      "epic",
+      "file a folio under an epic",
+    );
+    const ids = await epicKind.resolveNumbers!(projectId, [number]);
+    const id = ids.get(number);
+    if (id === undefined) {
+      throw new NotFoundError(`Epic #${number} not found in this project`);
+    }
+    return Number(id);
+  }
+
+  /**
+   * One epic's ref, or `undefined` for a folio filed under none.
+   */
+  protected async epicRefFor(
+    projectId: number,
+    epicId: number | null | undefined,
+  ): Promise<FolioEpicRef | undefined> {
+    if (epicId == null) return undefined;
+    return (await this.epicRefsFor(projectId, [epicId])).get(epicId);
+  }
+
+  /**
+   * The `{ number, title, status }` of each epic id, through the registered
+   * `epic` kind: what a folio filed under an epic reports. Empty without
+   * Work.
+   */
+  protected async epicRefsFor(
+    projectId: number,
+    epicIds: ReadonlyArray<number | null | undefined>,
+  ): Promise<Map<number, FolioEpicRef>> {
+    const ids = [...new Set(epicIds.filter((id): id is number => id != null))];
+    const refs = await this.resources.describe(
+      "epic",
+      projectId,
+      ids.map(String),
+    );
+    return new Map(
+      refs.map((ref) => [
+        Number(ref.id),
+        {
+          number: ref.shortId,
+          title: ref.title,
+          status: ref.status as FolioEpicRef["status"],
+        },
+      ]),
+    );
   }
 
   // Folios live inside `folio_directories` (quest #66); use the
@@ -231,7 +277,10 @@ export class FolioTools {
       });
       // One extra call for the whole page rather than one per folio, the
       // same way quest_list stamps its rows.
-      const epicRefs = await this.epicRefs.mapFor(projectId);
+      const epicRefs = await this.epicRefsFor(
+        projectId,
+        folios.map((f) => f.epicId),
+      );
       return {
         folios: folios.map((f) => ({
           id: f.id,
@@ -285,7 +334,10 @@ export class FolioTools {
           projectId,
         },
       });
-      const epicRefs = await this.epicRefs.mapFor(projectId);
+      const epicRefs = await this.epicRefsFor(
+        projectId,
+        folios.map((f) => f.epicId),
+      );
       return {
         results: folios.map((f) => ({
           id: f.id,
@@ -325,7 +377,7 @@ export class FolioTools {
         content: folio.content,
         createdAt: folio.createdAt,
         updatedAt: folio.updatedAt,
-        epic: await this.epicRefs.refFor(folio.projectId, folio.epicId),
+        epic: await this.epicRefFor(folio.projectId, folio.epicId),
         links,
       };
     },
@@ -434,7 +486,7 @@ export class FolioTools {
         content: folio.content,
         createdAt: folio.createdAt,
         updatedAt: folio.updatedAt,
-        epic: await this.epicRefs.refFor(projectId, epicId),
+        epic: await this.epicRefFor(projectId, epicId),
         ...this.diagrams.warn(folio.content),
       };
     },
@@ -553,7 +605,7 @@ export class FolioTools {
         content: folio.content,
         createdAt: folio.createdAt,
         updatedAt: folio.updatedAt,
-        epic: await this.epicRefs.refFor(folio.projectId, folio.epicId),
+        epic: await this.epicRefFor(folio.projectId, folio.epicId),
         // `params.content`, not `folio.content`: a call that only renamed the
         // folio must not be warned about a diagram it did not write.
         ...this.diagrams.warn(params.content),
@@ -1051,3 +1103,10 @@ export class FolioTools {
     },
   });
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * The epic a folio reports it is filed under.
+ */
+type FolioEpicRef = Infer<typeof folioEpicRefSchema>;

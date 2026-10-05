@@ -17,7 +17,7 @@ import {
   epicSetStatusResultSchema,
   epicUpdateParamsSchema,
   epicUpdateResultSchema,
-} from "../schemas/index.ts";
+} from "../schemas/epicSchemas.ts";
 import { DiagramCheckService } from "../services/DiagramCheckService.ts";
 import { ProjectTools } from "./ProjectTools.ts";
 

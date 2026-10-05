@@ -12,8 +12,8 @@ import { folios } from "../entities/folios.ts";
 import { BestEffort } from "./BestEffort.ts";
 import { BoundParameters } from "./BoundParameters.ts";
 import { FolioAttachmentService } from "./FolioAttachmentService.ts";
-import { FolioLinkService } from "./FolioLinkService.ts";
 import { FolioNameService } from "./FolioNameService.ts";
+import { ResourceLinkService } from "./ResourceLinkService.ts";
 
 /**
  * Create / rename / move / delete operations on folio directories,
@@ -39,7 +39,7 @@ export class FolioDirectoryService {
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly bestEffort = $inject(BestEffort);
   protected readonly bound = $inject(BoundParameters);
-  protected readonly linkService = $inject(FolioLinkService);
+  protected readonly linkService = $inject(ResourceLinkService);
   protected readonly attachmentService = $inject(FolioAttachmentService);
   protected readonly directoryShortId = $sequence();
 

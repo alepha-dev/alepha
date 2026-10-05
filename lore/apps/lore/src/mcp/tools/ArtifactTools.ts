@@ -8,7 +8,7 @@ import {
   artifactGetResultSchema,
   artifactListParamsSchema,
   artifactListResultSchema,
-} from "../schemas/index.ts";
+} from "../schemas/artifactSchemas.ts";
 import { ProjectTools } from "./ProjectTools.ts";
 
 /**

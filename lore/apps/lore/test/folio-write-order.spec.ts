@@ -15,7 +15,7 @@ import {
   type AppendedRevision,
   FolioHistoryService,
 } from "../src/api/services/FolioHistoryService.ts";
-import { FolioLinkService } from "../src/api/services/FolioLinkService.ts";
+import { ResourceLinkService } from "../src/api/services/ResourceLinkService.ts";
 
 /**
  * Lands a second request between the first one's gate read and its write,
@@ -53,12 +53,12 @@ class FailingRecordHistory extends FolioHistoryService {
 /**
  * The link wipe an encrypt runs before its write fails.
  */
-class FailingWipeLinks extends FolioLinkService {
+class FailingWipeLinks extends ResourceLinkService {
   public fail = false;
 
   public override async syncLinks(
-    ...args: Parameters<FolioLinkService["syncLinks"]>
-  ): ReturnType<FolioLinkService["syncLinks"]> {
+    ...args: Parameters<ResourceLinkService["syncLinks"]>
+  ): ReturnType<ResourceLinkService["syncLinks"]> {
     if (this.fail && args[1] === "") {
       throw new AlephaError("link wipe failed");
     }
@@ -84,7 +84,7 @@ const setup = async () => {
     },
   });
   alepha.with({ provide: FolioHistoryService, use: FailingRecordHistory });
-  alepha.with({ provide: FolioLinkService, use: FailingWipeLinks });
+  alepha.with({ provide: ResourceLinkService, use: FailingWipeLinks });
   alepha.with(AlephaOrm);
   alepha.with(AlephaServer);
   alepha.with(AlephaSecurity);
@@ -110,7 +110,7 @@ const setup = async () => {
 
   const folios = alepha.inject(FolioController);
   const history = alepha.inject(FolioHistoryService) as FailingRecordHistory;
-  const links = alepha.inject(FolioLinkService) as FailingWipeLinks;
+  const links = alepha.inject(ResourceLinkService) as FailingWipeLinks;
   const create = async (title: string, content: string) =>
     (
       await folios.create.fetch(

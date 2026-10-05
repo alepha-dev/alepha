@@ -1,21 +1,17 @@
 import { Alepha } from "alepha";
 import { describe, expect, it } from "vitest";
 
-import { SearchController } from "../src/api/controllers/SearchController.ts";
+import { SearchPreview } from "../src/api/resources/SearchPreview.ts";
 
 /**
- * `preview` is protected, so it is exposed through a subclass rather than
- * reached around — the TestProvider pattern. Nothing here starts the
- * container: `preview` is pure and touches no repository.
+ * Nothing here starts the container: `preview` is pure and touches no
+ * repository. It moved off `SearchController` when search became the
+ * registered sources' (#Q2610), every one of which shows the same line.
  */
-class TestSearchController extends SearchController {
-  public testPreview = this.preview.bind(this);
-}
-
 const preview = (raw: string | null | undefined) =>
-  Alepha.create().inject(TestSearchController).testPreview(raw);
+  Alepha.create().inject(SearchPreview).preview(raw);
 
-describe("SearchController.preview — palette row context (#189)", () => {
+describe("SearchPreview.preview — palette row context (#189)", () => {
   it("returns undefined for nothing to show", () => {
     expect(preview(undefined)).toBeUndefined();
     expect(preview(null)).toBeUndefined();

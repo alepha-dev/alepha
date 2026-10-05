@@ -4,13 +4,7 @@ import { $repository } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 import { $action } from "alepha/server";
 
-import { parseTypedReference } from "../../web/app/components/shared/element/typedReference.ts";
-import { epics } from "../entities/epics.ts";
-import { feedback } from "../entities/feedback.ts";
-import { folioDirectories } from "../entities/folioDirectories.ts";
-import { folios } from "../entities/folios.ts";
-import { quests } from "../entities/quests.ts";
-import { releases } from "../entities/releases.ts";
+import { ResourceRegistry } from "../resources/ResourceRegistry.ts";
 /**
  * Project-wide search across every surface at once — what the ⌘K palette
  * runs, and the answer to "find anything called X".
@@ -31,6 +25,11 @@ import { releases } from "../entities/releases.ts";
  *
  * Round trips were NOT a reason: `BatchCollector` already coalesces
  * concurrent client calls into one `POST /api/_batch`.
+ *
+ * It reads no module's table: every kind it finds is a search source a
+ * module registered on the `ResourceRegistry` (#E75, #Q2610), so a kind no
+ * module registers is simply never found. Ranking stays here and applies to
+ * every source alike.
  */
 import { searchHitSchema } from "../schemas/searchHitSchema.ts";
 import { orderSearchHits } from "../searchRanking.ts";
@@ -49,18 +48,7 @@ import { CapabilityRegistry } from "../services/CapabilityRegistry.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 export class SearchController {
-  /**
-   * Characters of body context a palette row shows. Enough for a sentence,
-   * short enough that twelve of them do not outweigh the titles.
-   */
-  protected readonly MAX_PREVIEW = 140;
-
-  protected readonly quests = $repository(quests);
-  protected readonly folios = $repository(folios);
-  protected readonly directories = $repository(folioDirectories);
-  protected readonly epics = $repository(epics);
-  protected readonly releases = $repository(releases);
-  protected readonly feedback = $repository(feedback);
+  protected readonly resources = $inject(ResourceRegistry);
   protected readonly members = $repository(organizationMembers);
   protected readonly security = $inject(ProjectSecurityService);
   protected readonly registry = $inject(CapabilityRegistry);
@@ -128,159 +116,48 @@ export class SearchController {
       // keeps twelve palette rows from filling with three more kinds of
       // near-miss. Whether they should also match by title is the owner's
       // call, left open on the quest.
-      const typed = parseTypedReference(raw);
+      const typed = this.resources.parseReference(raw);
       const idMatch = typed ? undefined : raw.match(/^#?(\d+)$/);
       const untypedId = idMatch ? Number.parseInt(idMatch[1], 10) : undefined;
-      const idFor = (kind: SearchKind) =>
-        typed ? (typed.kind === kind ? typed.id : undefined) : untypedId;
-      const questId = idFor("quest");
-      const folioId = idFor("folio");
-      const directoryId = idFor("directory");
-      const id = typed?.id ?? untypedId;
+      const idFor = (kind: string) =>
+        typed ? (typed.kind === kind ? typed.number : undefined) : untypedId;
+      const id = typed?.number ?? untypedId;
+
+      // Every registered source this project indexes. A number-only kind
+      // (epics, releases, feedback) runs only when a number was typed.
+      const sources = this.resources
+        .all()
+        .filter(
+          (kind) =>
+            kind.search &&
+            indexes(kind.kind as SearchKind) &&
+            (!kind.search.numberOnly || idFor(kind.kind) !== undefined),
+        );
 
       // ⚠️ Each number-only kind is filtered by its OWN read permission, and
       // none of them is in `requires`: a rank without `feedback:read` must
       // still get quests and folios, not lose the whole palette. Read only
-      // when a number was typed, since nothing else reaches these kinds.
-      const numbered = (kind: "epic" | "release" | "feedback") =>
-        idFor(kind) !== undefined && indexes(kind);
-      const granted =
-        numbered("epic") || numbered("release") || numbered("feedback")
-          ? await this.grantedIn(params.projectId, user)
-          : new Set<string>();
-      const findEpic = numbered("epic") && granted.has("epic:read");
-      const findRelease = numbered("release") && granted.has("release:read");
-      const findFeedback = numbered("feedback") && granted.has("feedback:read");
+      // when a number-only kind would run, since nothing else needs it.
+      const granted = sources.some((kind) => kind.search?.numberOnly)
+        ? await this.grantedIn(params.projectId, user)
+        : new Set<string>();
 
-      const [
-        questRows,
-        folioRows,
-        directoryRows,
-        epicRows,
-        releaseRows,
-        feedbackRows,
-      ] = await Promise.all([
-        !indexes("quest")
-          ? []
-          : this.quests.findMany({
-              where: {
-                projectId: { eq: params.projectId },
-                ...(questId === undefined
-                  ? { title: { ilike: `%${raw}%` } }
-                  : {
-                      or: [
-                        { shortId: { eq: questId } },
-                        { title: { ilike: `%${raw}%` } },
-                      ],
-                    }),
-              },
+      const found = await Promise.all(
+        sources
+          .filter(
+            (kind) => !kind.search?.numberOnly || granted.has(kind.permission),
+          )
+          .map((kind) =>
+            kind.search!.find({
+              projectId: params.projectId,
+              raw,
+              needle,
+              number: idFor(kind.kind),
               limit,
             }),
-        !indexes("folio")
-          ? []
-          : this.folios.findMany({
-              where: {
-                projectId: { eq: params.projectId },
-                ...(folioId === undefined
-                  ? { searchText: { like: `%${needle}%` } }
-                  : {
-                      or: [
-                        { shortId: { eq: folioId } },
-                        { searchText: { like: `%${needle}%` } },
-                      ],
-                    }),
-              },
-              limit,
-            }),
-        !indexes("directory")
-          ? []
-          : this.directories.findMany({
-              where: {
-                projectId: { eq: params.projectId },
-                ...(directoryId === undefined
-                  ? { name: { like: `%${raw}%` } }
-                  : {
-                      or: [
-                        { shortId: { eq: directoryId } },
-                        { name: { like: `%${raw}%` } },
-                      ],
-                    }),
-              },
-              limit,
-            }),
-        !findEpic
-          ? []
-          : this.epics.findMany({
-              where: {
-                projectId: { eq: params.projectId },
-                number: { eq: idFor("epic")! },
-              },
-              limit: 1,
-            }),
-        !findRelease
-          ? []
-          : this.releases.findMany({
-              where: {
-                projectId: { eq: params.projectId },
-                number: { eq: idFor("release")! },
-              },
-              limit: 1,
-            }),
-        !findFeedback
-          ? []
-          : this.feedback.findMany({
-              where: {
-                projectId: { eq: params.projectId },
-                shortId: { eq: idFor("feedback")! },
-              },
-              limit: 1,
-            }),
-      ]);
-
-      const hits = [
-        ...questRows.map((q) => ({
-          kind: "quest" as const,
-          id: String(q.id),
-          shortId: q.shortId,
-          title: q.title,
-          description: this.preview(q.description),
-        })),
-        ...folioRows.map((f) => ({
-          kind: "folio" as const,
-          id: f.id,
-          shortId: f.shortId,
-          title: f.title,
-          description: this.preview(f.summary),
-          protected: f.protected || undefined,
-        })),
-        ...directoryRows.map((d) => ({
-          kind: "directory" as const,
-          id: d.id,
-          shortId: d.shortId,
-          title: d.name,
-        })),
-        ...epicRows.map((e) => ({
-          kind: "epic" as const,
-          id: String(e.id),
-          shortId: e.number,
-          title: e.title,
-        })),
-        ...releaseRows.map((r) => ({
-          kind: "release" as const,
-          id: String(r.id),
-          shortId: r.number,
-          // The tag is how a release is named everywhere else (`0.28.0`),
-          // and the title only where one was given beside it.
-          title: r.tag && r.tag !== r.title ? `${r.tag} - ${r.title}` : r.title,
-          tag: r.tag ?? undefined,
-        })),
-        ...feedbackRows.map((f) => ({
-          kind: "feedback" as const,
-          id: String(f.id),
-          shortId: f.shortId,
-          title: f.title,
-        })),
-      ];
+          ),
+      );
+      const hits = found.flat();
 
       return { hits: orderSearchHits(hits, needle, id, limit) };
     },
@@ -309,29 +186,6 @@ export class SearchController {
     });
     const { permissions } = await this.permissions.of(projectId, user, member);
     return new Set(permissions);
-  }
-
-  /**
-   * Collapse a body down to one short line fit for a palette row.
-   *
-   * Markdown is flattened rather than rendered — the palette shows plain
-   * muted text, and leaving `##` or `**` in would put syntax on screen. This
-   * is intentionally cruder than the folio hover card's `stripMarkdown`: at
-   * ~140 characters the difference between a good strip and a rough one is
-   * invisible, and the alternative is a second copy of that helper on the
-   * server for no gain.
-   */
-  protected preview(raw: string | null | undefined): string | undefined {
-    if (!raw) return undefined;
-    const flat = raw
-      .replace(/```[\s\S]*?```/g, " ")
-      .replace(/[#>*_`~[\]]/g, "")
-      .replace(/\s+/g, " ")
-      .trim();
-    if (!flat) return undefined;
-    return flat.length > this.MAX_PREVIEW
-      ? `${flat.slice(0, this.MAX_PREVIEW)}…`
-      : flat;
   }
 }
 

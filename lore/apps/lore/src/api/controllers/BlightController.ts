@@ -13,8 +13,8 @@ import {
   blights,
   QUEST_STATUS_PREFIX,
 } from "../entities/blights.ts";
-import { quests } from "../entities/quests.ts";
 import { sigils } from "../entities/sigils.ts";
+import { ResourceRegistry } from "../resources/ResourceRegistry.ts";
 import {
   type BlightResource,
   blightResourceSchema,
@@ -27,7 +27,6 @@ import { blightSigilSchema } from "../schemas/blightSigilSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { BlightRuleService } from "../services/BlightRuleService.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
-import { QuestService } from "../services/QuestService.ts";
 
 /**
  * Owner-facing triage surface for blights — the deduplicated uncaught
@@ -55,10 +54,9 @@ export class BlightController {
   protected readonly BLIGHT_AREA = "Blights";
 
   protected currentBlights = $repository(blights);
-  protected quests = $repository(quests);
   protected sigils = $repository(sigils);
   protected security = $inject(ProjectSecurityService);
-  protected questService = $inject(QuestService);
+  protected resources = $inject(ResourceRegistry);
   protected ruleService = $inject(BlightRuleService);
 
   /**
@@ -245,9 +243,15 @@ export class BlightController {
       // Blight-forwarded quests always land in a dedicated "Blights" area
       // (created on the project if absent) — predictable triage, not
       // whatever the project's arbitrary first area happens to be.
-      // Creation mechanics (shortId, area-ensure, defaults)
-      // are shared with QuestController.createQuest via QuestService.
-      const quest = await this.questService.createQuest({
+      // Creation mechanics (shortId, area-ensure, defaults) are Work's: this
+      // module asks the registered `quest` kind, and never imports quest
+      // code (#E75, #Q2610). Without Work registered, the forward is refused
+      // by name.
+      const questKind = this.resources.require(
+        "quest",
+        "forward a blight into a quest",
+      );
+      const quest = await questKind.create!({
         projectId: params.projectId,
         title,
         description,
@@ -273,7 +277,7 @@ export class BlightController {
         );
       } catch (error) {
         if (!(error instanceof DbEntityNotFoundError)) throw error;
-        await this.quests.deleteById(quest.id, { force: true });
+        await questKind.discard!(quest.id);
         throw new BadRequestError("Blight already forwarded to a quest");
       }
 

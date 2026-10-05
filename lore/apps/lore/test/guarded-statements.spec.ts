@@ -20,7 +20,7 @@ import { quests } from "../src/api/entities/quests.ts";
 import { releases } from "../src/api/entities/releases.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { FolioAttachmentService } from "../src/api/services/FolioAttachmentService.ts";
-import { FolioLinkService } from "../src/api/services/FolioLinkService.ts";
+import { ResourceLinkService } from "../src/api/services/ResourceLinkService.ts";
 
 /**
  * Lands a second request after the first one's read of `table`, once:
@@ -64,11 +64,11 @@ class RecordingAttachments extends FolioAttachmentService {
 /**
  * The link cleanup of a subtree delete fails, midway through it.
  */
-class FailingLinks extends FolioLinkService {
+class FailingLinks extends ResourceLinkService {
   public fail = false;
 
   public override async deleteLinksFromMany(
-    ...args: Parameters<FolioLinkService["deleteLinksFromMany"]>
+    ...args: Parameters<ResourceLinkService["deleteLinksFromMany"]>
   ) {
     if (this.fail) throw new AlephaError("link cleanup failed");
     await super.deleteLinksFromMany(...args);
@@ -97,7 +97,7 @@ const setup = async () => {
     },
   });
   alepha.with({ provide: FolioAttachmentService, use: RecordingAttachments });
-  alepha.with({ provide: FolioLinkService, use: FailingLinks });
+  alepha.with({ provide: ResourceLinkService, use: FailingLinks });
   alepha.with(AlephaOrm);
   alepha.with(AlephaServer);
   alepha.with(AlephaSecurity);
@@ -138,7 +138,7 @@ const setup = async () => {
     interleave,
     rows,
     attachments: alepha.inject(FolioAttachmentService) as RecordingAttachments,
-    links: alepha.inject(FolioLinkService) as FailingLinks,
+    links: alepha.inject(ResourceLinkService) as FailingLinks,
   };
 };
 

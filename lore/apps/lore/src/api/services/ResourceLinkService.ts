@@ -1,17 +1,12 @@
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 
-import { splitMarkdownCode } from "../../web/app/components/folios/markdownCodeSegments.ts";
-import {
-  parseTypedReference,
-  type ReferenceKind,
-} from "../../web/app/components/shared/element/typedReference.ts";
-import { epics } from "../entities/epics.ts";
-import { feedback } from "../entities/feedback.ts";
+import { splitMarkdownCode } from "../../web/app/components/shared/element/markdownCodeSegments.ts";
 import { type FolioLink, folioLinks } from "../entities/folioLinks.ts";
-import { folios } from "../entities/folios.ts";
-import { quests } from "../entities/quests.ts";
-import { releases } from "../entities/releases.ts";
+import {
+  ResourceRegistry,
+  type ResourceRef,
+} from "../resources/ResourceRegistry.ts";
 import type { LinkSourceKind } from "../schemas/linkSourceKindSchema.ts";
 import type { LinkTargetKind } from "../schemas/linkTargetKindSchema.ts";
 import { BoundParameters } from "./BoundParameters.ts";
@@ -22,7 +17,10 @@ import { BoundParameters } from "./BoundParameters.ts";
  * feedback item's `shortId`, an epic's or release's `number`.
  */
 export interface ParsedToken {
-  type: ReferenceKind;
+  /**
+   * The registered kind its letter names (`quest` for `Q`).
+   */
+  type: string;
   id: number;
   /**
    * The token as written, between the `[[` and `]]`.
@@ -41,32 +39,28 @@ export interface LinkSource {
 }
 
 /**
- * Per kind, the per-project number → the value stored in
- * `folio_links.to_id`: a folio's UUID, every other kind's integer id as a
- * string. Read once per sync, for the kinds the tokens actually name.
- */
-type TokenLookupMaps = Record<ReferenceKind, Map<number, string>>;
-
-/**
- * Parse, resolve and persist the `[[#Q12]]` references between elements.
- * `FolioController`, `QuestService` and the epic controller call
- * {@link FolioLinkService.syncLinks} on every write to keep `folio_links` in
- * step with the body that was just stored.
+ * Core's link graph: parse, resolve and persist the `[[#Q12]]` references
+ * between resources, over `folio_links` (the table kept its name when it
+ * became every resource's graph, #E75 #Q2610). `FolioController`,
+ * `QuestService` and the epic controller call
+ * {@link ResourceLinkService.syncLinks} on every write to keep it in step with
+ * the body that was just stored.
  *
- * One grammar, since epic #32: `#<LETTER><integer>`, project-scoped, read
- * through `typedReference.ts`, the same module the browser resolver reads it
- * through. `Q` is a quest, `E` an epic, `F` a folio, `P` a feedback item,
- * `R` a release; the number is the id that kind is addressed by. Anything
- * else between `[[` and `]]` is not a reference: no row is written for it,
- * and the reader shows it as a broken link rather than as prose, because a
- * visible break beats a silent one.
+ * One grammar, since epic #32: `#<LETTER><integer>`, project-scoped. The
+ * letter names a kind through the {@link ResourceRegistry}, so this service
+ * reads no module's table: each kind resolves its own numbers and describes
+ * its own rows. A letter no registered module claims is not a reference here:
+ * no row is written for it, and the reader shows it as plain text. Anything
+ * else between `[[` and `]]` is not a reference either, and the reader shows
+ * it as a broken link rather than as prose, because a visible break beats a
+ * silent one.
  *
  * The title, path, anchor and `blob:` forms that used to parse here, and the
  * five hundred lines that resolved them, went with the purge of epic #32
  * (quest #1808). An id needs no rewriter behind it: it survives a rename, a
  * move and a re-import unchanged.
  */
-export class FolioLinkService {
+export class ResourceLinkService {
   /**
    * Maximum number of outbound `[[...]]` references parsed from a single
    * body. Hard ceiling so a pathological note can't blow up the link table
@@ -74,12 +68,8 @@ export class FolioLinkService {
    */
   protected readonly MAX_LINKS_PER_FOLIO = 200;
 
-  protected readonly folios = $repository(folios);
   protected readonly links = $repository(folioLinks);
-  protected readonly quests = $repository(quests);
-  protected readonly epics = $repository(epics);
-  protected readonly feedbackRows = $repository(feedback);
-  protected readonly releaseRows = $repository(releases);
+  protected readonly resources = $inject(ResourceRegistry);
   protected readonly bound = $inject(BoundParameters);
 
   /**
@@ -126,9 +116,9 @@ export class FolioLinkService {
   public parseToken(raw: string): ParsedToken | undefined {
     const trimmed = raw.trim();
     if (!trimmed) return undefined;
-    const typed = parseTypedReference(trimmed);
+    const typed = this.resources.parseReference(trimmed);
     if (!typed) return undefined;
-    return { type: typed.kind, id: typed.id, raw: trimmed };
+    return { type: typed.kind, id: typed.number, raw: trimmed };
   }
 
   /**
@@ -148,7 +138,7 @@ export class FolioLinkService {
   public async resolveTokenIds(
     tokens: ParsedToken[],
     projectId: number,
-    sourceFolioId: string,
+    source?: { kind: string; id: string },
   ): Promise<Array<{ targetType: LinkTargetKind; toId: string }>> {
     if (tokens.length === 0) return [];
     const maps = await this.buildLookupMaps(tokens, projectId);
@@ -156,74 +146,43 @@ export class FolioLinkService {
     const seen = new Set<string>();
     const resolved: Array<{ targetType: LinkTargetKind; toId: string }> = [];
     for (const token of tokens) {
-      const toId = maps[token.type].get(token.id);
+      const toId = maps.get(token.type)?.get(token.id);
       if (!toId) continue;
-      // Self-link suppression is folio-only because `toId` for a folio is a
-      // UUID: comparing a quest's stringified integer against it can never
-      // match anyway, so the check would be noise rather than a filter.
-      if (token.type === "folio" && toId === sourceFolioId) continue;
+      // Self-link suppression is folio-only, as it always was: a folio's
+      // `toId` is a UUID, and a quest naming its own number keeps its row.
+      if (
+        source?.kind === "folio" &&
+        token.type === "folio" &&
+        toId === source.id
+      ) {
+        continue;
+      }
       const dedupKey = `${token.type}:${toId}`;
       if (seen.has(dedupKey)) continue;
       seen.add(dedupKey);
-      resolved.push({ targetType: token.type, toId });
+      resolved.push({ targetType: token.type as LinkTargetKind, toId });
     }
     return resolved;
   }
 
   /**
-   * Read the number → id table of every kind the tokens name, once. Two
-   * columns per table, and a body with only `#Q` refs never reads folios.
+   * Per kind, the per-project number → the value stored in
+   * `folio_links.to_id`, read once per sync, for the kinds the tokens
+   * actually name: a body with only `#Q` refs never reads folios. Each kind
+   * resolves its own numbers.
    */
   protected async buildLookupMaps(
     tokens: ParsedToken[],
     projectId: number,
-  ): Promise<TokenLookupMaps> {
-    const kinds = new Set(tokens.map((t) => t.type));
-    const where = { projectId: { eq: projectId } };
-    const maps: TokenLookupMaps = {
-      folio: new Map(),
-      quest: new Map(),
-      epic: new Map(),
-      feedback: new Map(),
-      release: new Map(),
-    };
-    if (kinds.has("folio")) {
-      const rows = await this.folios.findMany({
-        where,
-        columns: ["id", "shortId"],
-      });
-      for (const r of rows) maps.folio.set(r.shortId, r.id);
+  ): Promise<Map<string, Map<number, string>>> {
+    const numbers = new Map<string, number[]>();
+    for (const token of tokens) {
+      numbers.set(token.type, [...(numbers.get(token.type) ?? []), token.id]);
     }
-    if (kinds.has("quest")) {
-      const rows = await this.quests.findMany({
-        where,
-        columns: ["id", "shortId"],
-      });
-      for (const r of rows) maps.quest.set(r.shortId, String(r.id));
-    }
-    // Epics and releases are addressed by their per-project `number`, NOT a
-    // `shortId`: that is the column they carry, and what `/epics/:epicNumber`
-    // and `#R12` both mean.
-    if (kinds.has("epic")) {
-      const rows = await this.epics.findMany({
-        where,
-        columns: ["id", "number"],
-      });
-      for (const r of rows) maps.epic.set(r.number, String(r.id));
-    }
-    if (kinds.has("feedback")) {
-      const rows = await this.feedbackRows.findMany({
-        where,
-        columns: ["id", "shortId"],
-      });
-      for (const r of rows) maps.feedback.set(r.shortId, String(r.id));
-    }
-    if (kinds.has("release")) {
-      const rows = await this.releaseRows.findMany({
-        where,
-        columns: ["id", "number"],
-      });
-      for (const r of rows) maps.release.set(r.number, String(r.id));
+    const maps = new Map<string, Map<number, string>>();
+    for (const [kind, wanted] of numbers) {
+      const resolve = this.resources.get(kind)?.resolveNumbers;
+      maps.set(kind, resolve ? await resolve(projectId, wanted) : new Map());
     }
     return maps;
   }
@@ -256,11 +215,10 @@ export class FolioLinkService {
   ): Promise<void> {
     const fromId = String(source.id);
     const tokens = this.parseTokens(content);
-    const targets = await this.resolveTokenIds(
-      tokens,
-      source.projectId,
-      source.kind === "folio" ? fromId : "",
-    );
+    const targets = await this.resolveTokenIds(tokens, source.projectId, {
+      kind: source.kind,
+      id: fromId,
+    });
 
     if (!opts.created) {
       await this.links.deleteMany({
@@ -360,81 +318,15 @@ export class FolioLinkService {
   }
 
   /**
-   * Resolve quest target ids (integers) to display refs. Helper for
-   * `FolioController.getLinks` — kept on the service so the controller
-   * doesn't grow a direct dependency on the quests repository for
-   * link-resolution concerns.
+   * Display refs of one kind's target ids, through the kind's own module:
+   * what a links list shows. An id nothing answers to is absent, and so is
+   * every id of a kind no registered module owns.
    */
-  public async findQuestRefs(
-    ids: number[],
-  ): Promise<Array<{ id: number; shortId: number; title: string }>> {
-    return this.bound.collect(ids, (batch) =>
-      this.quests.findMany({
-        where: { id: { inArray: batch } },
-        columns: ["id", "shortId", "title"],
-      }),
-    );
-  }
-
-  /**
-   * Resolve epic target ids (integers) to display refs. Sibling of
-   * {@link findQuestRefs}, and it returns the epic's `number` under the
-   * name `shortId` on purpose: the links payload has one row shape across
-   * every kind, and `number` is the field an epic is addressed by
-   * (`/epics/:epicNumber`), so it is what a link row has to carry.
-   */
-  public async findEpicRefs(
-    ids: number[],
-  ): Promise<Array<{ id: number; shortId: number; title: string }>> {
-    const rows = await this.bound.collect(ids, (batch) =>
-      this.epics.findMany({
-        where: { id: { inArray: batch } },
-        columns: ["id", "number", "title"],
-      }),
-    );
-    return rows.map((r) => ({ id: r.id, shortId: r.number, title: r.title }));
-  }
-
-  /**
-   * Resolve feedback target ids to display refs, the row shape the links
-   * payload uses for every kind.
-   */
-  public async findFeedbackRefs(
-    ids: number[],
-  ): Promise<Array<{ id: number; shortId: number; title: string }>> {
-    return this.bound.collect(ids, (batch) =>
-      this.feedbackRows.findMany({
-        where: { id: { inArray: batch } },
-        columns: ["id", "shortId", "title"],
-      }),
-    );
-  }
-
-  /**
-   * Resolve release target ids to display refs. As with epics, the
-   * per-project `number` rides under `shortId`; the `tag` comes along
-   * because it is what `/releases/:releaseTag` navigates by, and a release
-   * may not have one.
-   */
-  public async findReleaseRefs(ids: number[]): Promise<
-    Array<{
-      id: number;
-      shortId: number;
-      title: string;
-      tag?: string;
-    }>
-  > {
-    const rows = await this.bound.collect(ids, (batch) =>
-      this.releaseRows.findMany({
-        where: { id: { inArray: batch } },
-        columns: ["id", "number", "title", "tag"],
-      }),
-    );
-    return rows.map((r) => ({
-      id: r.id,
-      shortId: r.number,
-      title: r.title,
-      tag: r.tag,
-    }));
+  public async describe(
+    kind: string,
+    projectId: number,
+    ids: readonly (string | number)[],
+  ): Promise<ResourceRef[]> {
+    return this.resources.describe(kind, projectId, ids.map(String));
   }
 }

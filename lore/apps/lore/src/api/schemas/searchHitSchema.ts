@@ -1,4 +1,4 @@
-import { z } from "alepha";
+import { type Infer, z } from "alepha";
 
 /**
  * One row of the ⌘K palette: what it is, how to address it, and a line of
@@ -48,3 +48,5 @@ export const searchHitSchema = z.object({
    */
   protected: z.boolean().optional(),
 });
+
+export type SearchHit = Infer<typeof searchHitSchema>;

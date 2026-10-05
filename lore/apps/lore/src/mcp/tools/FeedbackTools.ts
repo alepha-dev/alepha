@@ -16,7 +16,7 @@ import {
   feedbackListResultSchema,
   feedbackTriageParamsSchema,
   feedbackTriageResultSchema,
-} from "../schemas/index.ts";
+} from "../schemas/feedbackSchemas.ts";
 import { AttachmentContentService } from "../services/AttachmentContentService.ts";
 import { ProjectTools } from "./ProjectTools.ts";
 
