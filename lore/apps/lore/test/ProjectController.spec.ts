@@ -8,10 +8,10 @@ import { AlephaSecurity, currentUserAtom } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, describe, it } from "vitest";
 
-import { TestEntityRepositories } from "../../../test/fixtures/entities.ts";
-import { projects as projectsEntity } from "../entities/projects.ts";
-import { LoreApi } from "../index.ts";
-import { ProjectController } from "./ProjectController.ts";
+import { ProjectController } from "../src/api/controllers/ProjectController.ts";
+import { projects as projectsEntity } from "../src/api/entities/projects.ts";
+import { LoreApi } from "../src/api/index.ts";
+import { TestEntityRepositories } from "./fixtures/entities.ts";
 
 /**
  * `createProject` with a membership write that refuses.

@@ -1,6 +1,8 @@
 import { $inject } from "alepha";
+import { $client } from "alepha/server/links";
 import { AppWindow, Bug, Package } from "lucide-react";
 
+import type { QualityController } from "../../../api/controllers/QualityController.ts";
 import { currentBlightCountAtom } from "../atoms/currentBlightCountAtom.ts";
 import { currentInstanceAtom } from "../atoms/currentInstanceAtom.ts";
 import { currentInstancesAtom } from "../atoms/currentInstancesAtom.ts";
@@ -14,6 +16,7 @@ import { AccountDeletionRegistry } from "../registries/AccountDeletionRegistry.t
 import { AgentPromptRegistry } from "../registries/AgentPromptRegistry.ts";
 import { DashboardPickerRegistry } from "../registries/DashboardPickerRegistry.ts";
 import { ProjectShellRegistry } from "../registries/ProjectShellRegistry.ts";
+import { ReportsTabRegistry } from "../registries/ReportsTabRegistry.ts";
 import { ResourceTabRegistry } from "../registries/ResourceTabRegistry.ts";
 import { hasCapability } from "../services/projectCapabilities.ts";
 import { canInProject } from "../services/projectRank.ts";
@@ -23,7 +26,7 @@ import { canInProject } from "../services/projectRank.ts";
  * `ProjectShellRegistry` (#E75, #Q2624): the Apps, Artifacts and Blights
  * entries, the Apps settings section, New app, the instance breadcrumb, the
  * instances in the palette, the Artifacts tab on a release, the blight
- * triage prompt, and the dashboard's app picker.
+ * triage prompt, the dashboard's app picker, and the Quality tab of Reports.
  */
 export class DeployShell {
   protected readonly shell = $inject(ProjectShellRegistry);
@@ -31,6 +34,8 @@ export class DeployShell {
   protected readonly prompts = $inject(AgentPromptRegistry);
   protected readonly pickers = $inject(DashboardPickerRegistry);
   protected readonly deletion = $inject(AccountDeletionRegistry);
+  protected readonly reports = $inject(ReportsTabRegistry);
+  protected readonly qualityApi = $client<QualityController>();
 
   constructor() {
     this.shell.registerNav("apps", [
@@ -221,6 +226,22 @@ export class DeployShell {
       key: "owned-estates",
       order: 20,
       useLine: useOwnedEstatesDeletionLine,
+    });
+
+    // Quality is INGESTED from CI, under a CI credential, and most projects
+    // will never push a run: a permanently empty tab on everyone's Reports
+    // page is worse than no tab. It lost its switch and joined the Apps
+    // baseline, and what replaced the flag is the honest question: the tab
+    // exists once there is something in it. Asked when Reports opens, not on
+    // the `project` loader, which every project navigation pays.
+    this.reports.register({
+      route: "reportsQuality",
+      labelKey: "project.reports.nav.quality",
+      order: 40,
+      needs: "apps",
+      available: async (projectId) =>
+        (await this.qualityApi.getQualityRuns({ params: { projectId } })).runs
+          .length > 0,
     });
   }
 }

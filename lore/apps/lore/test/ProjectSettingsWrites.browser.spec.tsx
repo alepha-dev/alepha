@@ -16,8 +16,8 @@ import { projectFixture } from "@/testing/projectFixture.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { I18n } from "@/web/app/services/I18n.ts";
 
-import ProjectSettingsBoardPage from "./ProjectSettingsBoardPage.tsx";
-import ProjectSettingsRanksPage from "./ProjectSettingsRanksPage.tsx";
+import ProjectSettingsBoardPage from "../src/web/app/components/project/settings/ProjectSettingsBoardPage.tsx";
+import ProjectSettingsRanksPage from "../src/web/app/components/project/settings/ProjectSettingsRanksPage.tsx";
 
 /**
  * Answers the reads both pages make, and refuses the one write a case names.

@@ -11,6 +11,7 @@ import { describe, it } from "vitest";
 import { FolioController } from "@/api/controllers/FolioController.ts";
 import { ProjectController } from "@/api/controllers/ProjectController.ts";
 import { LoreApi } from "@/api/index.ts";
+import { ProjectSecurityService } from "@/api/services/ProjectSecurityService.ts";
 import { LoreMcp } from "@/mcp/index.ts";
 import { ProjectTools } from "@/mcp/tools/ProjectTools.ts";
 import { QuestTools } from "@/mcp/tools/QuestTools.ts";
@@ -160,10 +161,7 @@ describe("project_context and capabilities", () => {
     );
 
     // Turn Knowledge off the way Settings does.
-    const security = ctx.alepha.inject(
-      (await import("@/api/services/ProjectSecurityService.ts"))
-        .ProjectSecurityService,
-    );
+    const security = ctx.alepha.inject(ProjectSecurityService);
     const row = await security.capabilities.findOne({
       where: { projectId: { eq: project.id }, key: { eq: "knowledge" } },
     });

@@ -12,10 +12,10 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake } from "alepha/testing/faker";
 import { describe, it } from "vitest";
 
-import { ProjectController } from "../controllers/ProjectController.ts";
-import { LoreApi } from "../index.ts";
-import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
-import { ProjectPermissions } from "./ProjectPermissions.ts";
+import { ProjectController } from "../src/api/controllers/ProjectController.ts";
+import { LoreApi } from "../src/api/index.ts";
+import { ProjectPermissions } from "../src/api/security/ProjectPermissions.ts";
+import { ProjectSecurityService } from "../src/api/services/ProjectSecurityService.ts";
 
 /**
  * Direct handle onto `members`, to read the owner's membership row the way

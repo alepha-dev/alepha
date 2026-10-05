@@ -1,8 +1,35 @@
+import { Alepha } from "alepha";
 import { describe, expect, it } from "vitest";
 
 import { projectFixture } from "@/testing/projectFixture.ts";
+import { ReportsTabRegistry } from "@/web/app/registries/ReportsTabRegistry.ts";
+import { DeployShell } from "@/web/app/shell/DeployShell.ts";
+import { WorkShell } from "@/web/app/shell/WorkShell.ts";
 
-import { reportsTabs } from "./reportsTabs.ts";
+/**
+ * The tabs as Work and Deploy register them (#E75, #Q2611).
+ */
+const registry = (() => {
+  const alepha = Alepha.create();
+  alepha.inject(WorkShell);
+  alepha.inject(DeployShell);
+  return alepha.inject(ReportsTabRegistry);
+})();
+
+/**
+ * Every tab available, except Quality unless a run exists: what
+ * `ReportsTabRegistry.availability` answers.
+ */
+const reportsTabs = (
+  project: ReturnType<typeof projectFixture>,
+  hasQualityRun = false,
+) =>
+  registry.tabs(
+    project,
+    ["reportsOverview", "reportsQuests", "reportsMembers"].concat(
+      hasQualityRun ? ["reportsQuality"] : [],
+    ),
+  );
 
 /**
  * Which Reports tabs a project has.

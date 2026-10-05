@@ -42,6 +42,7 @@ import { AgentPromptRegistry } from "../registries/AgentPromptRegistry.ts";
 import { DashboardPickerRegistry } from "../registries/DashboardPickerRegistry.ts";
 import { ElementReferenceRegistry } from "../registries/ElementReferenceRegistry.ts";
 import { ProjectShellRegistry } from "../registries/ProjectShellRegistry.ts";
+import { ReportsTabRegistry } from "../registries/ReportsTabRegistry.ts";
 import {
   capabilityOption,
   hasCapability,
@@ -55,7 +56,8 @@ import { canInProject } from "../services/projectRank.ts";
  * quest, epic, release and feedback creates, the epic, quest and release
  * breadcrumb leaves, the quest log beside the Quests pages, the quest, epic,
  * feedback and release `[[...]]` references, the agent prompt kinds, and the
- * dashboard's tag, epic and release pickers.
+ * dashboard's tag, epic and release pickers, and the Overview, Quests and
+ * Members tabs of Reports.
  */
 export class WorkShell {
   protected readonly shell = $inject(ProjectShellRegistry);
@@ -63,6 +65,7 @@ export class WorkShell {
   protected readonly prompts = $inject(AgentPromptRegistry);
   protected readonly pickers = $inject(DashboardPickerRegistry);
   protected readonly deletion = $inject(AccountDeletionRegistry);
+  protected readonly reports = $inject(ReportsTabRegistry);
 
   constructor() {
     this.shell.registerNav("work", [
@@ -446,6 +449,27 @@ export class WorkShell {
       key: "authored-quests",
       order: 10,
       useLine: useAuthoredQuestsDeletionLine,
+    });
+
+    // Overview and Quests are derived from quests, so they belong to Work.
+    // Members is too (completed quests per member), but it needs no switch:
+    // the leaderboard exists for every project that has members.
+    this.reports.register({
+      route: "reportsOverview",
+      labelKey: "project.reports.nav.overview",
+      order: 10,
+      needs: "work",
+    });
+    this.reports.register({
+      route: "reportsQuests",
+      labelKey: "project.reports.nav.quests",
+      order: 20,
+      needs: "work",
+    });
+    this.reports.register({
+      route: "reportsMembers",
+      labelKey: "project.reports.nav.members",
+      order: 30,
     });
   }
 

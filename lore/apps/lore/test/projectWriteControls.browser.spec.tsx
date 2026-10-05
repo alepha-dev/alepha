@@ -12,12 +12,12 @@ import { afterEach, describe, it } from "vitest";
 import type { AreaResource } from "@/api/schemas/areaResourceSchema.ts";
 import { projectFixture } from "@/testing/projectFixture.ts";
 
-import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
-import { I18n } from "../../services/I18n.ts";
-import { canInProject } from "../../services/projectRank.ts";
-import { ProjectScopeGrants } from "../../services/ProjectScopeGrants.ts";
-import EpicFoliosList from "../folios/epic/EpicFoliosList.tsx";
-import ProjectSettingsAreasPage from "./settings/ProjectSettingsAreasPage.tsx";
+import { currentProjectAtom } from "../src/web/app/atoms/currentProjectAtom.ts";
+import EpicFoliosList from "../src/web/app/components/folios/epic/EpicFoliosList.tsx";
+import ProjectSettingsAreasPage from "../src/web/app/components/project/settings/ProjectSettingsAreasPage.tsx";
+import { I18n } from "../src/web/app/services/I18n.ts";
+import { canInProject } from "../src/web/app/services/projectRank.ts";
+import { ProjectScopeGrants } from "../src/web/app/services/ProjectScopeGrants.ts";
 
 /**
  * The whole chain of #Q1958, end to end, with nothing faked in the middle.

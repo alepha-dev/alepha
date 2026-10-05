@@ -12,7 +12,7 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { describe, it } from "vitest";
 
-import { LoreApi } from "../index.ts";
+import { LoreApi } from "../src/api/index.ts";
 
 /**
  * The realm switch, from the outside: does Lore's own realm expose a

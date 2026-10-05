@@ -3,7 +3,7 @@ import { AlephaReactI18n } from "alepha/react/i18n";
 import { AlephaReactRouter } from "alepha/react/router";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { AppRouter } from "../src/web/app/AppRouter.ts";
+import { CoreRouter } from "../src/web/app/CoreRouter.ts";
 
 /**
  * The login page's bridge back into the server-rendered OAuth pages, #Q2217.
@@ -20,7 +20,7 @@ import { AppRouter } from "../src/web/app/AppRouter.ts";
  */
 describe("the login page's OAuth bridge", () => {
   let alepha: Alepha;
-  let pages: AppRouter;
+  let pages: CoreRouter;
 
   beforeEach(async () => {
     alepha = Alepha.create({
@@ -29,7 +29,7 @@ describe("the login page's OAuth bridge", () => {
     // i18n only so a page that does NOT redirect renders instead of throwing:
     // without it a missing bridge fails on the layout, not on the assertion.
     alepha.with(AlephaReactRouter).with(AlephaReactI18n);
-    pages = alepha.inject(AppRouter);
+    pages = alepha.inject(CoreRouter);
     await alepha.start();
   });
 

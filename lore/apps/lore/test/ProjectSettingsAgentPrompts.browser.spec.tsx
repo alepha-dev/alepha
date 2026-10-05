@@ -18,7 +18,7 @@ import { I18n } from "@/web/app/services/I18n.ts";
 import { DeployShell } from "@/web/app/shell/DeployShell.ts";
 import { WorkShell } from "@/web/app/shell/WorkShell.ts";
 
-import ProjectSettingsAgentPrompts from "./ProjectSettingsAgentPrompts.tsx";
+import ProjectSettingsAgentPrompts from "../src/web/app/components/project/settings/ProjectSettingsAgentPrompts.tsx";
 
 interface Call {
   action: string;

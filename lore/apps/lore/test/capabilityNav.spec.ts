@@ -13,7 +13,10 @@ import { DeployShell } from "@/web/app/shell/DeployShell.ts";
 import { KnowledgeShell } from "@/web/app/shell/KnowledgeShell.ts";
 import { WorkShell } from "@/web/app/shell/WorkShell.ts";
 
-import { CORE_NAV, type ProjectShellContext } from "./capabilityNav.ts";
+import {
+  CORE_NAV,
+  type ProjectShellContext,
+} from "../src/web/app/components/project/capabilityNav.ts";
 
 /**
  * What the sidebar offers, without rendering one.

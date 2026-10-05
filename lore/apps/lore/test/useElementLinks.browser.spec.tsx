@@ -6,9 +6,9 @@ import { LinkProvider } from "alepha/server/links";
 import type React from "react";
 import { describe, it } from "vitest";
 
-import { KnowledgeShell } from "../../../shell/KnowledgeShell.ts";
-import { WorkShell } from "../../../shell/WorkShell.ts";
-import { useElementLinks } from "./useElementLinks.ts";
+import { useElementLinks } from "../src/web/app/components/shared/element/useElementLinks.ts";
+import { KnowledgeShell } from "../src/web/app/shell/KnowledgeShell.ts";
+import { WorkShell } from "../src/web/app/shell/WorkShell.ts";
 
 interface FakeQuest {
   id: number;

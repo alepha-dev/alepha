@@ -11,9 +11,9 @@ import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { projectPromptsAtom } from "@/web/app/atoms/projectPromptsAtom.ts";
 import type { AgentPromptSubject } from "@/web/app/prompts/renderPromptTemplate.ts";
 
-import { I18n } from "../../../services/I18n.ts";
-import { WorkShell } from "../../../shell/WorkShell.ts";
-import { AgentPromptsMenu } from "./AgentPromptsMenu.tsx";
+import { AgentPromptsMenu } from "../src/web/app/components/project/prompts/AgentPromptsMenu.tsx";
+import { I18n } from "../src/web/app/services/I18n.ts";
+import { WorkShell } from "../src/web/app/shell/WorkShell.ts";
 
 const subject: AgentPromptSubject = {
   project: "Alepha",

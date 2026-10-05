@@ -7,8 +7,8 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake } from "alepha/testing/faker";
 import { describe, it } from "vitest";
 
-import { LoreApi } from "../index.ts";
-import { NotificationPreferenceController } from "./NotificationPreferenceController.ts";
+import { NotificationPreferenceController } from "../src/api/controllers/NotificationPreferenceController.ts";
+import { LoreApi } from "../src/api/index.ts";
 
 /**
  * Pinned like every other lore spec: the ROOT vitest config sets a Postgres

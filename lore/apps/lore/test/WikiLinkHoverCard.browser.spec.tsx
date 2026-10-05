@@ -10,10 +10,10 @@ import { afterEach, beforeAll, describe, it } from "vitest";
 import { virtualClientFake } from "@/testing/virtualClientFake.ts";
 import { I18n } from "@/web/app/services/I18n.ts";
 
-import { KnowledgeShell } from "../../../shell/KnowledgeShell.ts";
-import { WorkShell } from "../../../shell/WorkShell.ts";
-import WikiLinkHoverProvider from "./WikiLinkHoverProvider.tsx";
-import { BROKEN_HREF_PREFIX } from "./wikiLinkResolver.ts";
+import WikiLinkHoverProvider from "../src/web/app/components/shared/element/WikiLinkHoverProvider.tsx";
+import { BROKEN_HREF_PREFIX } from "../src/web/app/components/shared/element/wikiLinkResolver.ts";
+import { KnowledgeShell } from "../src/web/app/shell/KnowledgeShell.ts";
+import { WorkShell } from "../src/web/app/shell/WorkShell.ts";
 
 /**
  * Serves nothing: the link below is a broken reference, the one kind of card

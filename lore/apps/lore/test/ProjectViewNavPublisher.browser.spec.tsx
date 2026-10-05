@@ -11,12 +11,12 @@ import { describe, it } from "vitest";
 import type { AppInstanceResource } from "@/api/schemas/appInstanceResourceSchema.ts";
 import { projectFixture } from "@/testing/projectFixture.ts";
 
-import { currentInstancesAtom } from "../../atoms/currentInstancesAtom.ts";
-import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
-import { projectNavAtom } from "../../atoms/projectNavAtom.ts";
-import { I18n } from "../../services/I18n.ts";
-import { DeployShell } from "../../shell/DeployShell.ts";
-import ProjectViewNavPublisher from "./ProjectViewNavPublisher.tsx";
+import { currentInstancesAtom } from "../src/web/app/atoms/currentInstancesAtom.ts";
+import { currentProjectAtom } from "../src/web/app/atoms/currentProjectAtom.ts";
+import { projectNavAtom } from "../src/web/app/atoms/projectNavAtom.ts";
+import ProjectViewNavPublisher from "../src/web/app/components/project/ProjectViewNavPublisher.tsx";
+import { I18n } from "../src/web/app/services/I18n.ts";
+import { DeployShell } from "../src/web/app/shell/DeployShell.ts";
 
 class Routes {
   app = $page({

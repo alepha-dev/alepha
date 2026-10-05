@@ -1,12 +1,11 @@
 import { PlateLayout, type PlateTab } from "@alepha/ui/shell";
-import { useStore } from "alepha/react";
+import { useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { NestedView, useRouter, useRouterState } from "alepha/react/router";
 
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
+import { ReportsTabRegistry } from "@/web/app/registries/ReportsTabRegistry.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
-
-import { reportsTabs } from "./reportsTabs.ts";
 
 /**
  * Reports shell: a tab strip and a `<NestedView />` rendering the active
@@ -19,16 +18,17 @@ import { reportsTabs } from "./reportsTabs.ts";
  * else. The cap went with it: a report is a table and a chart, and both want
  * the width.
  *
- * The tab list is not a constant: Overview and Quests need Work, Quality
- * needs Apps AND a run to exist, and Members needs nothing. See
- * `reportsTabs.ts` for why an ingested tab is gated where a derived one is
- * not, and why this section is Core while its tabs are not.
+ * The tab list is not a constant: each module registers its own tabs on
+ * `ReportsTabRegistry` (#E75, #Q2611), Overview, Quests and Members from Work
+ * and Quality from Deploy, each with its gate. See the registry for why this
+ * section is Core while its tabs are not.
  */
 export interface ReportsLayoutProps {
   /**
-   * Whether this project has ever received a quality run, from the loader.
+   * The routes of the tabs whose `available` answered yes when Reports
+   * opened (`ReportsTabRegistry.availability`), from the loader.
    */
-  hasQualityRun: boolean;
+  available: string[];
 }
 
 const ReportsLayout = (props: ReportsLayoutProps) => {
@@ -36,16 +36,17 @@ const ReportsLayout = (props: ReportsLayoutProps) => {
   const router = useRouter();
   const routerState = useRouterState();
   const [project] = useStore(currentProjectAtom);
+  const registry = useInject(ReportsTabRegistry);
 
-  const tabs: PlateTab[] = reportsTabs(project, props.hasQualityRun).map(
-    (tab) => ({
+  const tabs: PlateTab[] = registry
+    .tabs(project, props.available)
+    .map((tab) => ({
       key: tab.route,
-      label: tr(tab.labelKey),
+      label: tr(tab.labelKey as never),
       // Each tab is its own route, so each is a link: middle-click, copy-link
       // and the back button all depend on it.
-      href: router.path(tab.route),
-    }),
-  );
+      href: router.path(tab.route as never),
+    }));
 
   return (
     <PlateLayout

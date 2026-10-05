@@ -9,12 +9,12 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake } from "alepha/testing/faker";
 import { describe, it } from "vitest";
 
-import { createTestMemberByProjectId } from "../../../test/fixtures/entities.ts";
-import { ProjectController } from "../../api/controllers/ProjectController.ts";
-import { projects } from "../../api/entities/projects.ts";
-import { LoreApi } from "../../api/index.ts";
-import { LoreMcp } from "../index.ts";
-import { ProjectTools } from "./ProjectTools.ts";
+import { ProjectController } from "../src/api/controllers/ProjectController.ts";
+import { projects } from "../src/api/entities/projects.ts";
+import { LoreApi } from "../src/api/index.ts";
+import { LoreMcp } from "../src/mcp/index.ts";
+import { ProjectTools } from "../src/mcp/tools/ProjectTools.ts";
+import { createTestMemberByProjectId } from "./fixtures/entities.ts";
 
 /**
  * Typed handle onto the `members` table for direct inserts, so a spec can

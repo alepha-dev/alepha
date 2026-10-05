@@ -2,13 +2,13 @@ import { Alepha, AlephaError } from "alepha";
 import { $page, AlephaReactRouter, ReactRouter } from "alepha/react/router";
 import { describe, expect, it } from "vitest";
 
-import { AppRouter } from "../../AppRouter.ts";
+import { AppRouter } from "../src/web/app/AppRouter.ts";
 import {
   ROUTES_APP,
   ROUTES_FULL_WIDTH,
   SECTION_HREF_ROUTES,
   SECTION_LABEL_KEYS,
-} from "./projectViewRoutes.ts";
+} from "../src/web/app/components/project/projectViewRoutes.ts";
 
 /**
  * Route names are plain strings, so a tab added to `AppRouter` and to
