@@ -1,6 +1,6 @@
 import { type Infer, z } from "alepha";
 
-import { folios } from "../entities/folios.ts";
+import { folioRowSchema } from "./folioRowSchema.ts";
 import { hydratedFolioAttachmentSchema } from "./hydratedFolioAttachmentSchema.ts";
 import { linkSourceKindSchema } from "./linkSourceKindSchema.ts";
 import { linkTargetKindSchema } from "./linkTargetKindSchema.ts";
@@ -92,7 +92,7 @@ const folioMetadataSchema = z.object({
  * (e.g. `getByShortId?withLinks=true`); `list`/`get`/`create`/`update`
  * return the bare entity.
  */
-export const folioResourceSchema = folios.schema.extend({
+export const folioResourceSchema = folioRowSchema.extend({
   metadata: folioMetadataSchema.optional(),
 });
 

@@ -240,8 +240,8 @@ export const createTestEpic = async (
 export const createTestFolio = async (
   alepha: Alepha,
   project: Pick<Project, "id" | "createdBy" | "organizationId">,
-  overrides: Partial<FolioInsert> = {},
-): Promise<Folio> => {
+  overrides: Partial<FolioInsert> & { epicId?: number } = {},
+): Promise<Folio & { epicId?: number }> => {
   const repo = alepha.inject(TestEntityRepositories);
   folioSeq += 1;
   // `epicId` is a filing, which lives in core's link graph rather than on

@@ -1,4 +1,4 @@
-import type { Infer } from "alepha";
+import { type Infer, z } from "alepha";
 
 import { folios } from "../entities/folios.ts";
 
@@ -22,9 +22,12 @@ export const folioTreeEntrySchema = folios.schema
     protected: true,
     pinned: true,
     directoryId: true,
-    epicId: true,
     summary: true,
   })
-  .extend({ content: folios.schema.shape.content.optional() });
+  .extend({
+    content: folios.schema.shape.content.optional(),
+    // The epic that files it, from core's link graph (#Q2626): not a column.
+    epicId: z.integer().optional(),
+  });
 
 export type FolioTreeEntry = Infer<typeof folioTreeEntrySchema>;

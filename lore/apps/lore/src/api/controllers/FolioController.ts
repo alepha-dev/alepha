@@ -26,6 +26,7 @@ import {
   folioLinksSchema,
   folioResourceSchema,
 } from "../schemas/folioResourceSchema.ts";
+import { folioRowSchema } from "../schemas/folioRowSchema.ts";
 import { folioSavedSchema } from "../schemas/folioSavedSchema.ts";
 import {
   type FolioTreeEntry,
@@ -182,7 +183,7 @@ export class FolioController {
     description: "List the project's folios (newest first).",
     schema: {
       query: folioListQuerySchema,
-      response: z.array(folios.schema),
+      response: z.array(folioRowSchema),
     },
     handler: async ({ query }) => {
       const where: Record<string, unknown> = {
@@ -474,7 +475,7 @@ export class FolioController {
     description: "Get a single folio by id.",
     schema: {
       params: folioIdParamsSchema,
-      response: folios.schema,
+      response: folioRowSchema,
     },
     handler: async () => (await this.withEpics([this.owned.get<Folio>()]))[0],
   });
@@ -1396,7 +1397,7 @@ export class FolioController {
         id: z.uuid(),
         revisionId: z.uuid(),
       }),
-      response: folios.schema,
+      response: folioRowSchema,
     },
     handler: async ({ params, user }) => {
       const folio = this.owned.get<Folio>();

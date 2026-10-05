@@ -1,6 +1,6 @@
 import { z } from "alepha";
 
-import { folios } from "../entities/folios.ts";
+import { folioRowSchema } from "./folioRowSchema.ts";
 
 /**
  * What `create` and `update` answer with: the folio row, plus whether the
@@ -35,6 +35,6 @@ import { folios } from "../entities/folios.ts";
  * alternative is a request per keystroke-pause for a panel showing "a few
  * seconds ago" either way.
  */
-export const folioSavedSchema = folios.schema.extend({
+export const folioSavedSchema = folioRowSchema.extend({
   revisionsChanged: z.boolean(),
 });
