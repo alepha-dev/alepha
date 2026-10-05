@@ -13,7 +13,7 @@ import {
  *
  * ## Why not extend the resolver itself
  *
- * `useElementLinks` / `rewriteFolioWikiLinks` render `[[...]]` on every
+ * `useElementLinks` / `rewriteWikiLinks` render `[[...]]` on every
  * element that carries markdown. Teaching THAT to rewrite a bare `#Q1204`
  * would turn every reference quoted in a folio's prose into a link, and a
  * document quotes a reference without pointing at it. The bare form is a

@@ -63,7 +63,7 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
    *
    * `?feedback=<shortId>` rather than a path segment, because it is already
    * the address of a feedback item everywhere else in Lore: it is what
-   * `createFolioWikiLinkResolver` emits for `[[#P120]]` and what
+   * `createWikiLinkResolver` emits for `[[#P120]]` and what
    * `WikiLinkHoverProvider` matches to draw the hover card. Those links have
    * pointed here since typed references landed and the inbox ignored the
    * query, so every one of them opened the inbox on whatever happened to be

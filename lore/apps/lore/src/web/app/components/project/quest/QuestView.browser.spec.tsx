@@ -25,6 +25,7 @@ import {
 import { projectFixture } from "@/testing/projectFixture.ts";
 import { virtualClientFake } from "@/testing/virtualClientFake.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
+import { ElementReferenceRegistry } from "@/web/app/registries/ElementReferenceRegistry.ts";
 import { I18n } from "@/web/app/services/I18n.ts";
 
 import QuestView from "./QuestView.tsx";
@@ -127,6 +128,8 @@ describe("QuestView", () => {
       .with(AlephaReactI18n);
     alepha.inject(Routes);
     alepha.inject(I18n);
+    // The editor reads the reference kinds (#E75, #Q2624); none are needed here.
+    alepha.inject(ElementReferenceRegistry);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
     alepha.store.set(currentProjectAtom, projectFixture() as never);

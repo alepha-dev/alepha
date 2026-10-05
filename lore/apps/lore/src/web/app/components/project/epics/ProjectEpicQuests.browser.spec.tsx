@@ -20,6 +20,7 @@ import { projectFixture } from "@/testing/projectFixture.ts";
 
 import { currentAreasAtom } from "../../../atoms/currentAreasAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
+import { ElementReferenceRegistry } from "../../../registries/ElementReferenceRegistry.ts";
 import { I18n } from "../../../services/I18n.ts";
 import ProjectEpicQuests from "./ProjectEpicQuests.tsx";
 
@@ -148,6 +149,8 @@ describe("ProjectEpicQuests - columns", () => {
     // The real catalogue: the headers are asserted by the words a reader
     // sees, not by their keys.
     alepha.inject(I18n);
+    // The editor reads the reference kinds (#E75, #Q2624); none are needed here.
+    alepha.inject(ElementReferenceRegistry);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
     // The create sheet reads the project and the areas from the atoms the

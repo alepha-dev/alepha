@@ -1,5 +1,5 @@
 import { FileImage, formatBytes } from "@alepha/ui";
-import { useClient, useQuery, useStore } from "alepha/react";
+import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import {
   type RefObject,
@@ -10,27 +10,18 @@ import {
   useState,
 } from "react";
 
-import type { EpicController } from "@/api/controllers/EpicController.ts";
-import type { FeedbackController } from "@/api/controllers/FeedbackController.ts";
-import type { FolioController } from "@/api/controllers/FolioController.ts";
-import type { QuestController } from "@/api/controllers/QuestController.ts";
-import type { FolioResource as Folio } from "@/api/schemas/folioResourceSchema.ts";
-import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
-import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
-
-import { currentReleasesAtom } from "../../atoms/currentReleasesAtom.ts";
-import type { I18n } from "../../services/I18n.ts";
 import {
-  type EpicStatus,
-  STATUS_LABEL_KEYS,
-} from "../project/epics/epicStatus.ts";
-import { formatReference } from "../shared/element/typedReference.ts";
-import type { BrokenWikiLinkReason } from "./folioWikiLinkResolver.ts";
+  ElementReferenceRegistry,
+  type ElementReferenceKind,
+} from "../../../registries/ElementReferenceRegistry.ts";
+import type { I18n } from "../../../services/I18n.ts";
+import { useHoverCardPosition } from "./useHoverCardPosition.ts";
+import WikiLinkPreviewState from "./WikiLinkPreviewState.tsx";
 import {
   type AttachmentRef,
   BROKEN_HREF_PREFIX,
-} from "./rewriteFolioWikiLinks.ts";
-import { useHoverCardPosition } from "./useHoverCardPosition.ts";
+  type BrokenWikiLinkReason,
+} from "./wikiLinkResolver.ts";
 
 /**
  * Obsidian-style hover-card preview on `[[wiki-links]]` in folio /
@@ -78,15 +69,9 @@ export interface WikiLinkHoverProviderProps {
 export type BrokenReason = BrokenWikiLinkReason;
 
 type HoverTarget =
-  | { kind: "folio"; shortId: number }
-  | { kind: "quest"; shortId: number }
-  // `shortId` on an epic is its per-project `number` — one field name
-  // across the union so `targetKey` and the fetch switch stay uniform.
-  | { kind: "epic"; shortId: number }
-  | { kind: "feedback"; shortId: number }
-  // A release link carries its tag, not its number: that is what the route
-  // takes, and the preview finds the release by it.
-  | { kind: "release"; tag: string }
+  // A row of a registered kind, by whatever its `match` answered: a number,
+  // or a release's tag, which is what its route takes.
+  | { kind: "ref"; ref: ElementReferenceKind; id: string }
   | { kind: "attachment"; fileId: string }
   | { kind: "broken"; reason: BrokenReason };
 
@@ -98,14 +83,6 @@ interface HoverState {
   anchorEl: HTMLElement;
 }
 
-// The project segment is the slug, so it is matched as an opaque segment and
-// compared against the open project's own — an id could be matched as `\d+`,
-// a slug cannot be told from any other first segment by shape alone.
-const FOLIO_RE = /^\/([^/]+)\/folios\/(\d+)(?:[#?]|$)/;
-const QUEST_RE = /^\/([^/]+)\/quests\/(\d+)(?:[#?]|$)/;
-const EPIC_RE = /^\/([^/]+)\/epics\/(\d+)(?:[#?]|$)/;
-const FEEDBACK_RE = /^\/([^/]+)\/feedback\?feedback=(\d+)(?:[#&]|$)/;
-const RELEASE_RE = /^\/([^/]+)\/releases\/([^/?#]+)(?:[#?]|$)/;
 const ATTACHMENT_RE = /^\/api\/files\/([a-f0-9-]{36})(?:[#?]|$)/i;
 
 /**
@@ -126,6 +103,7 @@ const pathOf = (href: string): string => {
 const parseHref = (
   href: string | null,
   projectSlug: string,
+  references: ElementReferenceRegistry,
 ): HoverTarget | null => {
   if (!href) return null;
   if (href.startsWith(BROKEN_HREF_PREFIX)) {
@@ -137,26 +115,11 @@ const parseHref = (
   // Strip protocol/host if present (markdown links are typically root-relative
   // but a user could paste an absolute URL into a wiki body).
   const path = pathOf(href);
-  const folio = FOLIO_RE.exec(path);
-  if (folio && folio[1] === projectSlug) {
-    return { kind: "folio", shortId: Number(folio[2]) };
-  }
-  const epic = EPIC_RE.exec(path);
-  if (epic && epic[1] === projectSlug) {
-    return { kind: "epic", shortId: Number(epic[2]) };
-  }
-  const quest = QUEST_RE.exec(path);
-  if (quest && quest[1] === projectSlug) {
-    return { kind: "quest", shortId: Number(quest[2]) };
-  }
-  const feedback = FEEDBACK_RE.exec(path);
-  if (feedback && feedback[1] === projectSlug) {
-    return { kind: "feedback", shortId: Number(feedback[2]) };
-  }
-  const release = RELEASE_RE.exec(path);
-  if (release && release[1] === projectSlug) {
-    return { kind: "release", tag: decodeURIComponent(release[2]) };
-  }
+  // Each kind recognises its own pages, and only in this project: the
+  // project segment is the slug, matched as an opaque segment and compared
+  // against the open project's own.
+  const ref = references.match(path, projectSlug);
+  if (ref) return { kind: "ref", ref: ref.kind, id: ref.id };
   const attachment = ATTACHMENT_RE.exec(path);
   if (attachment) return { kind: "attachment", fileId: attachment[1] };
   return null;
@@ -164,29 +127,27 @@ const parseHref = (
 
 const targetKey = (t: HoverTarget): string => {
   if (t.kind === "attachment") return `attachment:${t.fileId}`;
-  if (t.kind === "release") return `release:${t.tag}`;
   if (t.kind === "broken") return `broken:${t.reason}`;
-  return `${t.kind}:${t.shortId}`;
+  return `${t.ref.kind}:${t.id}`;
 };
 
-const BROKEN_REASON_KEY: Record<BrokenReason, string> = {
-  "not-a-reference": "folios.wikilink.broken.notAReference",
-  "folio-not-found": "folios.wikilink.broken.folioNotFound",
-  "quest-not-found": "folios.wikilink.broken.questNotFound",
-  "epic-not-found": "folios.wikilink.broken.epicNotFound",
-  "attachment-not-found": "folios.wikilink.broken.attachmentNotFound",
-  "feedback-not-found": "folios.wikilink.broken.feedbackNotFound",
-  "release-not-found": "folios.wikilink.broken.releaseNotFound",
+/**
+ * The i18n key explaining why a link is broken. A `<kind>-not-found` is
+ * explained by its kind's own `brokenKey`; a kind no module registered reads
+ * as not a reference at all, which is what it is in this build.
+ */
+const brokenReasonKey = (
+  reason: BrokenReason,
+  references: ElementReferenceRegistry,
+): string => {
+  if (reason === "attachment-not-found") {
+    return "folios.wikilink.broken.attachmentNotFound";
+  }
+  const kind = reason.endsWith("-not-found")
+    ? references.kinds().find((it) => `${it.kind}-not-found` === reason)
+    : undefined;
+  return kind?.brokenKey ?? "folios.wikilink.broken.notAReference";
 };
-
-const stripMarkdown = (raw: string): string =>
-  raw
-    .replace(/```[\s\S]*?```/g, "")
-    .replace(/`[^`]*`/g, "")
-    .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
-    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
-    .replace(/[#>*_~]/g, "")
-    .trim();
 
 /**
  * How long the pointer must rest on a wiki link before its preview opens.
@@ -205,11 +166,7 @@ const HOVER_OPEN_DELAY_MS = 400;
 
 const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
   const { projectId, projectSlug, attachments } = props;
-  const folioApi = useClient<FolioController>();
-  const questApi = useClient<QuestController>();
-  const epicApi = useClient<EpicController>();
-  const feedbackApi = useClient<FeedbackController>();
-  const [releases] = useStore(currentReleasesAtom);
+  const references = useInject(ElementReferenceRegistry);
 
   const [hover, setHover] = useState<HoverState | null>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -293,7 +250,7 @@ const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
       const anchor = el?.closest("a[href]") as HTMLElement | null;
       if (!anchor) return;
       const href = anchor.getAttribute("href");
-      const t = parseHref(href, projectSlug);
+      const t = parseHref(href, projectSlug, references);
       if (!t) return;
       cancelClose();
 
@@ -401,11 +358,7 @@ const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
           state={hover}
           projectId={projectId}
           attachmentByUuid={attachmentByUuid}
-          folioApi={folioApi}
-          questApi={questApi}
-          epicApi={epicApi}
-          feedbackApi={feedbackApi}
-          releases={releases ?? []}
+          references={references}
           cardRef={cardRef}
           onEnter={cancelClose}
           onLeave={scheduleClose}
@@ -420,82 +373,11 @@ const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
 // Popover
 // ---------------------------------------------------------------------------
 
-interface FolioPreview {
-  kind: "folio";
-  title: string;
-  summary?: string;
-  bodyPreview: string;
-}
-interface QuestPreview {
-  kind: "quest";
-  title: string;
-  area?: string;
-  priority?: string;
-  status?: string;
-  shortId: number;
-}
-interface EpicPreview {
-  kind: "epic";
-  title: string;
-  /**
-   * The epic's per-project `number`, which is how it is addressed.
-   */
-  number: number;
-  /**
-   * Rendered through `STATUS_LABEL_KEYS`, never printed raw: `in_progress`
-   * is a stored value, not something to show a reader.
-   */
-  status: EpicStatus;
-  /**
-   * `completed / total` quests, the same rollup the Epics list shows.
-   */
-  progress: { completed: number; total: number };
-}
-
-interface AttachmentPreview {
-  kind: "attachment";
-  name: string;
-  size?: number;
-  mime?: string;
-  fileId: string;
-}
-
-interface FeedbackPreview {
-  kind: "feedback";
-  title: string;
-  status: string;
-  shortId: number;
-}
-
-interface ReleasePreview {
-  kind: "release";
-  title: string;
-  number: number;
-  tag?: string;
-  released: boolean;
-}
-
-type Preview =
-  | FolioPreview
-  | QuestPreview
-  | EpicPreview
-  | AttachmentPreview
-  | FeedbackPreview
-  | ReleasePreview;
-
 interface HoverCardPopoverProps {
   state: HoverState;
   projectId: number;
   attachmentByUuid: Map<string, AttachmentRef>;
-  folioApi: ReturnType<typeof useClient<FolioController>>;
-  questApi: ReturnType<typeof useClient<QuestController>>;
-  epicApi: ReturnType<typeof useClient<EpicController>>;
-  feedbackApi: ReturnType<typeof useClient<FeedbackController>>;
-  /**
-   * The project's releases, from the layout's atom: a release preview is a
-   * lookup by tag, never a fetch.
-   */
-  releases: ReleaseResource[];
+  references: ElementReferenceRegistry;
   /**
    * Handed up so the delegated leave check can exempt the card: it is rendered
    * inside the pane but positioned `fixed` over it, and crossing into it must
@@ -511,140 +393,17 @@ interface HoverCardPopoverProps {
 }
 
 const HoverCardPopover = (props: HoverCardPopoverProps) => {
-  const {
-    state,
-    projectId,
-    attachmentByUuid,
-    folioApi,
-    questApi,
-    epicApi,
-    feedbackApi,
-    releases,
-  } = props;
+  const { state, projectId, attachmentByUuid } = props;
   const { tr } = useI18n<I18n, "en">();
-  const key = targetKey(state.target);
   const target = state.target;
 
-  /**
-   * The four references that need a request, read through one `useQuery`
-   * keyed on the reference (#E59, #Q2331). The five-minute `staleTime` is
-   * `useElementLinks`' own, for the same references: a second hover of the
-   * same link inside it sends nothing, which the hand-kept `Map` this
-   * replaced also did, and which a query without a `staleTime` would not.
-   *
-   * Quiet on failure: the card says the preview is unavailable, which is
-   * the whole of what a reader needs from a hover.
-   */
-  const remote =
-    target.kind === "folio" ||
-    target.kind === "quest" ||
-    target.kind === "epic" ||
-    target.kind === "feedback";
-  const previewQuery = useQuery<Preview | null>(
-    {
-      key: ["wikilink-preview", projectId, key],
-      enabled: remote,
-      staleTime: [5, "minutes"],
-      handler: async () => {
-        if (target.kind === "folio") {
-          const folio = (await folioApi.getByShortId({
-            params: { projectId, shortId: target.shortId },
-          })) as Folio;
-          // A protected folio's content is its encryption envelope; the
-          // preview used to paint the first 600 characters of that JSON.
-          const body = folio.protected
-            ? ""
-            : stripMarkdown(folio.content ?? "");
-          return {
-            kind: "folio",
-            title: folio.title,
-            summary: folio.summary || undefined,
-            bodyPreview: body.split("\n").slice(0, 10).join("\n").slice(0, 600),
-          } satisfies FolioPreview;
-        }
-        if (target.kind === "quest") {
-          const quest = (await questApi.getQuestByShortId({
-            params: { projectId, shortId: target.shortId },
-          })) as QuestResource;
-          return {
-            kind: "quest",
-            title: quest.title,
-            area: quest.area,
-            priority: quest.priority,
-            status: quest.metadata.status,
-            shortId: quest.shortId,
-          } satisfies QuestPreview;
-        }
-        if (target.kind === "epic") {
-          // `shortId` on an epic target IS its `number` — see `EpicRef`.
-          const epic = await epicApi.getEpicByNumber({
-            params: { projectId, number: target.shortId },
-          });
-          return {
-            kind: "epic",
-            title: epic.title,
-            number: epic.number,
-            status: epic.status,
-            progress: {
-              completed: epic.progress.completed,
-              total: epic.progress.total,
-            },
-          } satisfies EpicPreview;
-        }
-        if (target.kind === "feedback") {
-          const item = await feedbackApi.getFeedbackByShortId({
-            params: { projectId, shortId: target.shortId },
-          });
-          return {
-            kind: "feedback",
-            title: item.title,
-            status: item.status,
-            shortId: item.shortId,
-          } satisfies FeedbackPreview;
-        }
-        return null;
-      },
-      onError: () => {},
-    },
-    [projectId, key, folioApi, questApi, epicApi, feedbackApi],
-  );
+  // An attachment is the folio's own, already in hand: a lookup, never a
+  // fetch. A reference's preview is its kind's, which fetches what it shows.
+  const attachment =
+    target.kind === "attachment"
+      ? attachmentByUuid.get(target.fileId)
+      : undefined;
 
-  /**
-   * The two references answered from what the page already holds: a
-   * release by tag from the layout's atom, an attachment by id from the
-   * folio's own list. A broken one has nothing to show; the popover renders
-   * the reason straight from `state.target.reason` below.
-   */
-  const local = (): Preview | null => {
-    if (target.kind === "release") {
-      const release = releases.find((r) => r.tag === target.tag);
-      if (!release) return null;
-      return {
-        kind: "release",
-        title: release.title,
-        number: release.number,
-        tag: release.tag,
-        released: release.releasedAt != null,
-      } satisfies ReleasePreview;
-    }
-    if (target.kind === "attachment") {
-      const attachment = attachmentByUuid.get(target.fileId);
-      if (!attachment) return null;
-      return {
-        kind: "attachment",
-        name: attachment.name,
-        size: attachment.size,
-        mime: attachment.mime,
-        fileId: attachment.fileId,
-      } satisfies AttachmentPreview;
-    }
-    return null;
-  };
-
-  const data: Preview | null = remote ? (previewQuery.data ?? null) : local();
-  const loading = remote && previewQuery.loading && !previewQuery.data;
-
-  // Below the link, and kept there while the folio scrolls (#Q2354).
   const { top, left } = useHoverCardPosition(
     state.anchorEl,
     props.onAnchorHidden,
@@ -660,117 +419,40 @@ const HoverCardPopover = (props: HoverCardPopoverProps) => {
       onMouseEnter={props.onEnter}
       onMouseLeave={props.onLeave}
     >
-      {state.target.kind === "broken" ? (
+      {target.kind === "broken" && (
         <div className="flex flex-col gap-1">
           <span className="text-danger-text flex items-center gap-1.5 text-sm font-semibold">
             <span aria-hidden>⚠</span>
             {tr("folios.wikilink.broken.title")}
           </span>
           <span className="text-muted-foreground text-xs">
-            {tr(BROKEN_REASON_KEY[state.target.reason])}
+            {tr(brokenReasonKey(target.reason, props.references) as never)}
           </span>
         </div>
-      ) : loading ? (
-        <p className="text-muted-foreground text-xs">
-          {tr("folios.wikilink.loading")}
-        </p>
-      ) : null}
-      {state.target.kind !== "broken" && !loading && !data && (
-        <p className="text-muted-foreground text-xs italic">
-          {tr("folios.wikilink.unavailable")}
-        </p>
       )}
-      {data?.kind === "folio" && (
-        <div className="flex flex-col gap-1.5">
-          <span className="text-sm font-semibold">{data.title}</span>
-          {data.summary && (
-            <span className="text-muted-foreground text-xs italic">
-              {data.summary}
-            </span>
-          )}
-          {data.bodyPreview && (
-            <pre className="text-muted-foreground max-h-32 overflow-hidden text-xs leading-relaxed whitespace-pre-wrap">
-              {data.bodyPreview}
-            </pre>
-          )}
-        </div>
+      {target.kind === "ref" && (
+        <target.ref.preview projectId={projectId} id={target.id} />
       )}
-      {data?.kind === "quest" && (
-        <div className="flex flex-col gap-1.5">
-          <div className="flex items-baseline gap-2">
-            <span className="text-muted-foreground font-mono text-xs">
-              {formatReference("quest", data.shortId)}
-            </span>
-            <span className="text-sm font-semibold">{data.title}</span>
-          </div>
-          <div className="text-muted-foreground flex flex-wrap gap-2 text-xs">
-            {data.area && <span>{data.area}</span>}
-            {data.priority && <span>· {data.priority}</span>}
-            {data.status && <span>· {data.status}</span>}
-          </div>
-        </div>
+      {target.kind === "attachment" && !attachment && (
+        <WikiLinkPreviewState loading={false} />
       )}
-      {data?.kind === "epic" && (
+      {attachment && (
         <div className="flex flex-col gap-1.5">
-          <div className="flex items-baseline gap-2">
-            <span className="text-muted-foreground font-mono text-xs">
-              {formatReference("epic", data.number)}
-            </span>
-            <span className="text-sm font-semibold">{data.title}</span>
-          </div>
-          <div className="text-muted-foreground flex flex-wrap gap-2 text-xs">
-            <span>{tr(STATUS_LABEL_KEYS[data.status])}</span>
-            <span>
-              · {data.progress.completed}/{data.progress.total}
-            </span>
-          </div>
-        </div>
-      )}
-      {data?.kind === "feedback" && (
-        <div className="flex flex-col gap-1.5">
-          <div className="flex items-baseline gap-2">
-            <span className="text-muted-foreground font-mono text-xs">
-              {formatReference("feedback", data.shortId)}
-            </span>
-            <span className="text-sm font-semibold">{data.title}</span>
-          </div>
-          <div className="text-muted-foreground text-xs">{data.status}</div>
-        </div>
-      )}
-      {data?.kind === "release" && (
-        <div className="flex flex-col gap-1.5">
-          <div className="flex items-baseline gap-2">
-            <span className="text-muted-foreground font-mono text-xs">
-              {formatReference("release", data.number)}
-            </span>
-            <span className="text-sm font-semibold">{data.title}</span>
-          </div>
-          <div className="text-muted-foreground flex flex-wrap gap-2 text-xs">
-            {data.tag && <span>{data.tag}</span>}
-            <span>
-              {data.tag ? "· " : ""}
-              {tr(
-                data.released
-                  ? "folios.wikilink.release.released"
-                  : "folios.wikilink.release.open",
-              )}
-            </span>
-          </div>
-        </div>
-      )}
-      {data?.kind === "attachment" && (
-        <div className="flex flex-col gap-1.5">
-          {data.mime?.startsWith("image/") && (
+          {attachment.mime?.startsWith("image/") && (
             <FileImage
-              id={data.fileId}
-              alt={data.name}
+              id={attachment.fileId}
+              alt={attachment.name}
               className="max-h-48 w-full rounded-sm border object-contain"
             />
           )}
-          <span className="text-sm font-semibold break-all">{data.name}</span>
+          <span className="text-sm font-semibold break-all">
+            {attachment.name}
+          </span>
           <div className="text-muted-foreground flex flex-wrap gap-2 text-xs">
-            {data.size != null && <span>{formatBytes(data.size)}</span>}
-            {data.mime && <span>· {data.mime}</span>}
+            {attachment.size != null && (
+              <span>{formatBytes(attachment.size)}</span>
+            )}
+            {attachment.mime && <span>· {attachment.mime}</span>}
           </div>
         </div>
       )}

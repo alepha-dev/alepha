@@ -1,5 +1,6 @@
-import { useFolioImageUpload } from "../markdown-editor/useFolioImageUpload.ts";
-import { useQuestImageUpload } from "../markdown-editor/useQuestImageUpload.ts";
+import { useInject } from "alepha/react";
+
+import { ElementReferenceRegistry } from "../../../registries/ElementReferenceRegistry.ts";
 import type { ElementRef } from "./elementRef.ts";
 
 /**
@@ -14,29 +15,25 @@ import type { ElementRef } from "./elementRef.ts";
  */
 export const useElementImageUpload = (
   element: ElementRef,
-  /**
-   * `false` suppresses upload entirely. A protected folio passes this: its
-   * bytes must never be written in plaintext next to encrypted content.
-   */
   enabled = true,
 ): ((file: File) => Promise<string>) | undefined => {
-  const folioUpload = useFolioImageUpload(
-    element.projectId,
-    element.kind === "folio" ? (element.id as string | undefined) : undefined,
-    enabled && element.kind === "folio",
+  const registry = useInject(ElementReferenceRegistry);
+
+  // One hook per registered kind with an attachment store, each answering
+  // only for an element of its own kind (#E75, #Q2624). Legal for the reason
+  // `useElementLinks` gives: the kinds are frozen before the first render.
+  //
+  // A kind with no store answers nothing, so an epic body gets no upload:
+  // borrowing another kind's bucket would upload fine and then leave a file
+  // nobody but its uploader is granted.
+  const uploads = registry.kinds().map((kind) =>
+    // oxlint-disable-next-line react-hooks/rules-of-hooks -- the kinds are frozen at boot, so the hook order never changes
+    kind.useImageUpload?.(element, enabled && element.kind === kind.kind),
   );
-  const questUpload = useQuestImageUpload();
 
   if (!enabled) return undefined;
-  if (element.kind === "folio") return folioUpload;
-  if (element.kind === "quest") return questUpload;
-
-  // Epics have no attachment store. `useQuestImageUpload` writes into the
-  // quest-attachments bucket, and those ids only become readable to the
-  // rest of the project because `QuestService.mergeEmbeddedAttachments`
-  // scans saved QUEST markdown and records them on `quest.attachments`. An
-  // epic has no such column and no such merge, so borrowing the quest
-  // handler would upload fine and then leave a file nobody but its uploader
-  // is granted. Give epics a store before giving this an arm.
-  return undefined;
+  const index = registry
+    .kinds()
+    .findIndex((kind) => kind.kind === element.kind);
+  return index === -1 ? undefined : uploads[index];
 };

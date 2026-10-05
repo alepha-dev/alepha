@@ -7,7 +7,7 @@ import {
 } from "@codemirror/autocomplete";
 import type { EditorState, TransactionSpec } from "@codemirror/state";
 
-import type { WikiLinkSuggestion } from "../../folios/editor/wikilink/wikiLinkSuggestion.ts";
+import type { WikiLinkSuggestion } from "../element/wikiLinkSuggestion.ts";
 
 /**
  * How many entries the picker shows. Eight is what the Lexical typeahead it

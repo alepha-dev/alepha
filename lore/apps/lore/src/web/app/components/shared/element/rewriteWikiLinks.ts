@@ -1,25 +1,12 @@
-import { outsideMarkdownCode } from "../shared/element/markdownCodeSegments.ts";
+import { outsideMarkdownCode } from "./markdownCodeSegments.ts";
 import {
-  type AttachmentRef,
   BROKEN_HREF_PREFIX,
-  createFolioWikiLinkResolver,
-  type EpicRef,
-  type FeedbackRef,
-  type FolioRef,
+  createWikiLinkResolver,
   formatAttachmentBytes,
   isImageAttachment,
-  type QuestRef,
-  type ReleaseRef,
-} from "./folioWikiLinkResolver.ts";
-
-export {
-  type AttachmentRef,
-  BROKEN_HREF_PREFIX,
-  type EpicRef,
-  type FeedbackRef,
-  type FolioRef,
-  type ReleaseRef,
-} from "./folioWikiLinkResolver.ts";
+  type WikiLinkResolver,
+  type WikiLinkResolverInput,
+} from "./wikiLinkResolver.ts";
 
 /**
  * Rewrite `[[#Q12]]` reference tokens and `assets/<name>` attachment paths
@@ -29,7 +16,7 @@ export {
  * This is the READ-ONLY half of wiki-links: markdown in, markdown out, for
  * `MarkdownView`. The editor never goes through here — it shows the token
  * as typed and leaves the markdown alone. Both call
- * `createFolioWikiLinkResolver`, which is where the resolution rules live
+ * `createWikiLinkResolver`, which is where the resolution rules live
  * and the only place they are allowed to live: two implementations would
  * drift, and the reader would see a live link the editor calls broken.
  *
@@ -39,30 +26,16 @@ export {
  * `[[...]]` text is preserved as the label so the author still sees what
  * they typed.
  */
-export const rewriteFolioWikiLinks = (
+export const rewriteWikiLinks = (
   content: string,
-  projectSlug: string,
-  folios: FolioRef[],
-  quests: QuestRef[],
-  attachments: AttachmentRef[] = [],
-  epics: EpicRef[] = [],
-  feedback: FeedbackRef[] = [],
-  releases: ReleaseRef[] = [],
+  input: WikiLinkResolverInput,
 ): string => {
   if (!content) return content;
   const hasWiki = content.includes("[[");
   const hasAssets = /\]\(assets\//i.test(content);
   if (!hasWiki && !hasAssets) return content;
 
-  const resolver = createFolioWikiLinkResolver({
-    projectSlug,
-    folios,
-    quests,
-    epics,
-    attachments,
-    feedback,
-    releases,
-  });
+  const resolver = createWikiLinkResolver(input);
 
   // Every pass below is a regex over a raw string, and a regex cannot see a
   // code fence. Running them over the whole document turned `[[1, 2]]` in a
@@ -80,7 +53,7 @@ export const rewriteFolioWikiLinks = (
  */
 const rewriteSegment = (
   content: string,
-  resolver: ReturnType<typeof createFolioWikiLinkResolver>,
+  resolver: WikiLinkResolver,
   present: { hasWiki: boolean; hasAssets: boolean },
 ): string => {
   const { hasWiki, hasAssets } = present;

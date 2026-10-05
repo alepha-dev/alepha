@@ -15,8 +15,7 @@ import { QuestController } from "../src/api/controllers/QuestController.ts";
 import { ReleaseController } from "../src/api/controllers/ReleaseController.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { ResourceLinkService } from "../src/api/services/ResourceLinkService.ts";
-import { createFolioWikiLinkResolver } from "../src/web/app/components/folios/folioWikiLinkResolver.ts";
-import { rewriteFolioWikiLinks } from "../src/web/app/components/folios/rewriteFolioWikiLinks.ts";
+import { WikiLinkFixture } from "./fixtures/wikiLinks.ts";
 
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };
 
@@ -210,7 +209,7 @@ describe("the reference grammar is one grammar on both sides", () => {
   };
 
   const browserResolver = () =>
-    createFolioWikiLinkResolver({
+    WikiLinkFixture.resolver({
       projectSlug: PROJECT_SLUG,
       folios: [
         {
@@ -264,7 +263,10 @@ describe("the reference grammar is one grammar on both sides", () => {
         : undefined;
     }
     const tail = target.href.split("/").pop() ?? "";
-    return { kind: target.kind, id: Number.parseInt(tail, 10) };
+    return {
+      kind: target.kind as Resolved["kind"],
+      id: Number.parseInt(tail, 10),
+    };
   };
 
   const cases: Array<{
@@ -382,7 +384,7 @@ describe("the reference grammar is one grammar on both sides", () => {
     expect(rows).toEqual([{ targetType: "folio", toId: seed.folio.id }]);
 
     // Browser: the two code tokens survive verbatim, the prose one is a link.
-    const rendered = rewriteFolioWikiLinks(
+    const rendered = WikiLinkFixture.rewrite(
       content,
       PROJECT_SLUG,
       [

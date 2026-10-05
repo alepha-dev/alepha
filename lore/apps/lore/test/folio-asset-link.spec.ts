@@ -1,9 +1,7 @@
 import { describe, it } from "vitest";
 
-import {
-  type AttachmentRef,
-  rewriteFolioWikiLinks,
-} from "../src/web/app/components/folios/rewriteFolioWikiLinks.ts";
+import type { AttachmentRef } from "../src/web/app/components/shared/element/wikiLinkResolver.ts";
+import { WikiLinkFixture } from "./fixtures/wikiLinks.ts";
 
 const imagePng: AttachmentRef = {
   fileId: "11111111-1111-1111-1111-111111111111",
@@ -31,7 +29,7 @@ const PROJECT_SLUG = "sds";
 
 describe("rewriteFolioWikiLinks — assets/ references", () => {
   it("rewrites ![alt](assets/<name>) to the file URL", ({ expect }) => {
-    const out = rewriteFolioWikiLinks(
+    const out = WikiLinkFixture.rewrite(
       "Here: ![A diagram](assets/diagram.png)",
       PROJECT_SLUG,
       [],
@@ -48,7 +46,7 @@ describe("rewriteFolioWikiLinks — assets/ references", () => {
     // An empty alt is filled with the attachment's name: a rendered `<img>`
     // with no alt text is an accessibility hole, and the author wrote no
     // better label to keep.
-    const out = rewriteFolioWikiLinks(
+    const out = WikiLinkFixture.rewrite(
       "![](assets/photo.jpg)",
       PROJECT_SLUG,
       [],
@@ -63,7 +61,7 @@ describe("rewriteFolioWikiLinks — assets/ references", () => {
   it("degrades a non-image attachment to a paperclip download link", ({
     expect,
   }) => {
-    const out = rewriteFolioWikiLinks(
+    const out = WikiLinkFixture.rewrite(
       "![](assets/data.csv)",
       PROJECT_SLUG,
       [],
@@ -76,7 +74,7 @@ describe("rewriteFolioWikiLinks — assets/ references", () => {
   });
 
   it("leaves an unknown assets/ path as a broken-link marker", ({ expect }) => {
-    const out = rewriteFolioWikiLinks(
+    const out = WikiLinkFixture.rewrite(
       "![](assets/missing.png)",
       PROJECT_SLUG,
       [],
@@ -91,7 +89,7 @@ describe("rewriteFolioWikiLinks — assets/ references", () => {
   it("rewrites a plain link to an attachment, not just an embed", ({
     expect,
   }) => {
-    const out = rewriteFolioWikiLinks(
+    const out = WikiLinkFixture.rewrite(
       "See [the data](assets/data.csv).",
       PROJECT_SLUG,
       [],
@@ -105,7 +103,13 @@ describe("rewriteFolioWikiLinks — assets/ references", () => {
 
   it("leaves a non-assets relative path alone", ({ expect }) => {
     const input = "![](other/diagram.png)";
-    const out = rewriteFolioWikiLinks(input, PROJECT_SLUG, [], [], [imagePng]);
+    const out = WikiLinkFixture.rewrite(
+      input,
+      PROJECT_SLUG,
+      [],
+      [],
+      [imagePng],
+    );
     expect(out).toBe(input);
   });
 });

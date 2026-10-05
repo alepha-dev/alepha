@@ -3,7 +3,7 @@ import { EditorState, type TransactionSpec } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
 import { describe, expect, it } from "vitest";
 
-import type { WikiLinkSuggestion } from "../../folios/editor/wikilink/wikiLinkSuggestion.ts";
+import type { WikiLinkSuggestion } from "../element/wikiLinkSuggestion.ts";
 import { createWikiLinkCompletion } from "./wikiLinkCompletion.ts";
 
 const suggestions: WikiLinkSuggestion[] = [

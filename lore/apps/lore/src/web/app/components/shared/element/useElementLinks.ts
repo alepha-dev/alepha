@@ -1,29 +1,14 @@
-import { useClient, useQuery, useStore } from "alepha/react";
-import { useMemo } from "react";
+import { useInject } from "alepha/react";
+import { useMemo, useRef } from "react";
 
-import type { EpicController } from "@/api/controllers/EpicController.ts";
-import type { FeedbackController } from "@/api/controllers/FeedbackController.ts";
-import type { FolioAttachmentController } from "@/api/controllers/FolioAttachmentController.ts";
-import type { FolioController } from "@/api/controllers/FolioController.ts";
-import type { QuestController } from "@/api/controllers/QuestController.ts";
-import type { FolioTreeEntry } from "@/api/schemas/folioTreeEntrySchema.ts";
-
-import { currentFolioAttachmentsAtom } from "../../../atoms/currentFolioAttachmentsAtom.ts";
-import { currentReleasesAtom } from "../../../atoms/currentReleasesAtom.ts";
-import { userFoliosAtom } from "../../../atoms/userFoliosAtom.ts";
-import type { WikiLinkSuggestion } from "../../folios/editor/wikilink/wikiLinkSuggestion.ts";
-import type {
-  AttachmentRef,
-  EpicRef,
-  FeedbackRef,
-  FolioRef,
-  QuestRef,
-  ReleaseRef,
-} from "../../folios/folioWikiLinkResolver.ts";
-import { rewriteFolioWikiLinks } from "../../folios/rewriteFolioWikiLinks.ts";
+import {
+  ElementReferenceRegistry,
+  type ElementReferenceSet,
+} from "../../../registries/ElementReferenceRegistry.ts";
 import type { ElementRef } from "./elementRef.ts";
-import { referencedIds } from "./referencedIds.ts";
-import { formatReference } from "./typedReference.ts";
+import { rewriteWikiLinks } from "./rewriteWikiLinks.ts";
+import type { AttachmentRef, ElementReference } from "./wikiLinkResolver.ts";
+import type { WikiLinkSuggestion } from "./wikiLinkSuggestion.ts";
 
 export interface ElementLinks {
   /**
@@ -42,341 +27,80 @@ export interface ElementLinks {
 }
 
 /**
- * Both halves of wiki-link support — the picker's entries and the rendered
- * markdown — for ANY element, from one set of lookups.
+ * Both halves of wiki-link support - the picker's entries and the rendered
+ * markdown - for ANY element, from one set of lookups.
  *
  * Replaces the two hooks that used to do this: `useFolioWikiLinks` (folio
  * workspace) and `useWikiLinkRewrite` (quest description). They resolved the
- * same syntax against the same tables and had drifted anyway — only the
- * folio one offered suggestions, so `[[` autocomplete existed on exactly one
+ * same syntax against the same tables and had drifted anyway: only the folio
+ * one offered suggestions, so `[[` autocomplete existed on exactly one
  * surface while the syntax it inserts worked on three.
  *
- * ## Where the folio list comes from depends on the element
+ * ## Each kind is its module's (#E75, #Q2624)
  *
- * A `folio` element is only ever rendered inside the folios workspace, whose
- * route loader has already filled `userFoliosAtom` and
- * `currentFolioAttachmentsAtom` — the tree pane is built from them. Reading the
- * atoms there rather than fetching is what keeps opening a folio at one
- * request instead of four. Every other element is rendered somewhere those
- * atoms are empty, so it fetches.
+ * What a kind holds, and where it reads it from, is the `useReferences` hook
+ * its module registered on `ElementReferenceRegistry`: Knowledge reads the
+ * folio workspace's atoms inside it and fetches everywhere else, Work reads
+ * releases from the project layout's atom and fetches quests, epics and
+ * feedback through project-scoped `useQuery` keys, so walking from a quest
+ * to a folio to an epic pays for them once, not once per surface. Each one
+ * resolves the numbers the body names, not only its capped picker page
+ * (#Q2355), so a reference to a row outside the recent page still renders.
  *
- * That is a data-SOURCE difference, not a capability one: both branches feed
- * the same resolver and produce the same links. It is keyed on `kind` rather
- * than on "is the atom non-empty", because an empty atom is also what a
- * project with no folios looks like.
- *
- * Quests and epics are fetched on both branches, through `useQuery` with a
- * project-scoped key — so walking from a quest to a folio to an epic pays
- * for them once, not once per surface.
- *
- * ## The picker's lists are not what a reference resolves against
- *
- * The quest and folio lists above are capped pages, sized for the picker:
- * the 100 most recently updated quests, the first 100 folios. A reference is
- * resolved by the numbers the body names instead, through the two refs
- * endpoints, two columns per quest or folio named (#Q2355). Before that, a
- * `[[#Q2165]]` to a quest outside the recent page rendered as a broken link
- * in a project holding thousands of them. The pages still feed the picker
- * and still resolve what they happen to hold, so a token the author has just
- * typed from a suggestion renders at once.
+ * The picker lists every kind's suggestions in registration order: folios,
+ * then quests, then epics.
  */
 export const useElementLinks = (
   element: ElementRef,
   content: string,
 ): ElementLinks => {
-  const folioApi = useClient<FolioController>();
-  const questApi = useClient<QuestController>();
-  const epicApi = useClient<EpicController>();
-  const attachmentApi = useClient<FolioAttachmentController>();
-  const feedbackApi = useClient<FeedbackController>();
+  const registry = useInject(ElementReferenceRegistry);
+  const kinds = registry.kinds();
 
-  const [atomFolios] = useStore(userFoliosAtom);
-  const [atomAttachments] = useStore(currentFolioAttachmentsAtom);
-  const [atomReleases] = useStore(currentReleasesAtom);
-
-  const inFolioWorkspace = element.kind === "folio";
-  const { projectId, projectSlug } = element;
-
-  // Only an `assets/<name>` reference needs the attachment list, and only
-  // `[[#P120]]` needs the feedback refs. Both are gated so a plain
-  // `[[#Q42]]` never pays for them.
-  const hasAssets = /\]\(assets\//i.test(content);
-  const hasFeedbackRefs = /\[\[\s*#p\d+\s*\]\]/i.test(content);
-
-  // The numbers the body names, as the refs lookups' query and key.
-  const namedQuestIds = useMemo(
-    () => referencedIds(content, "quest").join(","),
-    [content],
-  );
-  const namedFolioIds = useMemo(
-    () => referencedIds(content, "folio"),
-    [content],
+  // One hook per registered kind. Legal because the registry is frozen
+  // before the first render (see `ElementReferenceRegistry`), so this loop
+  // is the same length, in the same order, on every render.
+  const sets = kinds.map((kind) =>
+    // oxlint-disable-next-line react-hooks/rules-of-hooks -- the kinds are frozen at boot, so the hook order never changes
+    kind.useReferences(element, content),
   );
 
-  // The inbox is paged, so a feedback item's title cannot be read off a
-  // list the page already holds the way a release's can. Three columns for
-  // the whole inbox, fetched only when a body names one.
-  const { data: feedbackRefs } = useQuery<FeedbackRef[]>(
-    {
-      key: ["elementLinks:feedback", projectId],
-      enabled: hasFeedbackRefs && projectId > 0,
-      staleTime: [5, "minutes"],
-      handler: async () =>
-        await feedbackApi.listFeedbackRefs({ params: { projectId } }),
-      onError: () => {},
-    },
-    [feedbackApi, projectId, hasFeedbackRefs],
-  );
+  // Each kind memoizes its own set, so the sets keep their identity until
+  // one of them changes; the merge below is redone only then, not on every
+  // keystroke in the editor.
+  const previous = useRef<ElementReferenceSet[]>([]);
+  const stable =
+    sets.length === previous.current.length &&
+    sets.every((set, index) => set === previous.current[index])
+      ? previous.current
+      : sets;
+  previous.current = stable;
 
-  // Every release, with its number, tag and title, is already in the
-  // project layout's atom, so `[[#R12]]` costs no request.
-  const releases = useMemo<ReleaseRef[]>(
-    () =>
-      (atomReleases ?? []).map((r) => ({
-        number: r.number,
-        title: r.title,
-        tag: r.tag,
-      })),
-    [atomReleases],
-  );
-
-  // Fetched, not atom-read, only outside the folio workspace. `enabled`
-  // does the gating so the hook order never changes between renders.
-  // Every folio, not a page of 100 (#Q2510): the `[[` picker cannot
-  // suggest a folio it was never sent.
-  const { data: fetchedFolios } = useQuery<FolioTreeEntry[]>(
-    {
-      key: ["elementLinks:folios", projectId],
-      enabled: !inFolioWorkspace && projectId > 0,
-      staleTime: [5, "minutes"],
-      handler: async () =>
-        await folioApi.tree({
-          params: { projectId },
-        }),
-      onError: () => {},
-    },
-    [folioApi, projectId, inFolioWorkspace],
-  );
-
-  // Unconditional, unlike the reader-side fetch this replaces: the picker
-  // has to offer a quest the moment the author types the second bracket,
-  // and that is too late to start a round-trip.
-  const { data: quests } = useQuery<QuestRef[]>(
-    {
-      key: ["elementLinks:quests", projectId],
-      enabled: projectId > 0,
-      staleTime: [5, "minutes"],
-      handler: async () => {
-        const page = await questApi.getQuests({
-          params: { projectId },
-          // Direct addressing (design §5.3, "never gated") — a link into a
-          // draft epic must still resolve, or the reader sees a literal
-          // `[[…]]` token and the author cannot even create the link.
-          query: {
-            size: 100,
-            sort: "-updatedAt",
-            includeDrafts: true,
-          },
-        });
-        return page.content.map((q) => ({
-          shortId: q.shortId,
-          title: q.title,
-        }));
-      },
-      onError: () => {},
-    },
-    [questApi, projectId],
-  );
-
-  // Every quest the body names, wherever it would fall in the list above.
-  // Kept across a key change so a link does not flash broken while the
-  // author adds a reference beside it.
-  const { data: namedQuests } = useQuery<QuestRef[]>(
-    {
-      key: ["elementLinks:quest-refs", projectId, namedQuestIds],
-      enabled: namedQuestIds !== "" && projectId > 0,
-      staleTime: [5, "minutes"],
-      keepPreviousData: true,
-      handler: async () =>
-        await questApi.listQuestRefs({
-          params: { projectId },
-          query: { shortIds: namedQuestIds },
-        }),
-      onError: () => {},
-    },
-    [questApi, projectId, namedQuestIds],
-  );
-
-  const { data: epics } = useQuery<EpicRef[]>(
-    {
-      key: ["elementLinks:epics", projectId],
-      enabled: projectId > 0,
-      staleTime: [5, "minutes"],
-      handler: async () => {
-        const rows = await epicApi.getEpics({ params: { projectId } });
-        // `EpicRef.shortId` IS the epic's `number` — epics have no shortId.
-        return rows.map((e) => ({ shortId: e.number, title: e.title }));
-      },
-      onError: () => {},
-    },
-    [epicApi, projectId],
-  );
-
-  // Attachments hang off ONE folio, so an `assets/` reference is only
-  // resolvable for a folio element. Outside the workspace that means
-  // fetching by id; a quest or epic body's `assets/` path stays unresolved
-  // rather than being looked up project-wide, which is not a thing.
-  const { data: fetchedAttachments } = useQuery<AttachmentRef[]>(
-    {
-      key: ["elementLinks:attachments", String(element.id ?? "")],
-      enabled: !inFolioWorkspace && hasAssets && element.id !== undefined,
-      staleTime: [1, "minutes"],
-      handler: async () => {
-        const rows = await attachmentApi.listAttachments({
-          params: { folioId: String(element.id) },
-        });
-        return rows.map((b) => ({
-          fileId: b.id,
-          shortId: b.shortId,
-          name: b.name,
-          size: b.size,
-          mime: b.mimeType,
-        }));
-      },
-      onError: () => {},
-    },
-    [attachmentApi, element.id, inFolioWorkspace, hasAssets],
-  );
-
-  const folios = inFolioWorkspace ? atomFolios : (fetchedFolios ?? []);
-
-  // Inside the workspace the tree atom is already in memory, so only the
-  // folios it does not hold are asked for, and opening a folio that links
-  // recent ones costs no request. Outside it the list is itself a fetch
-  // still in flight, so every named folio is asked for rather than waiting
-  // on it to learn which are missing.
-  const missingFolioIds = useMemo(() => {
-    if (!inFolioWorkspace) return namedFolioIds.join(",");
-    const held = new Set(atomFolios.map((f) => f.shortId));
-    return namedFolioIds.filter((id) => !held.has(id)).join(",");
-  }, [namedFolioIds, inFolioWorkspace, atomFolios]);
-
-  const { data: namedFolios } = useQuery<FolioRef[]>(
-    {
-      key: ["elementLinks:folio-refs", projectId, missingFolioIds],
-      enabled: missingFolioIds !== "" && projectId > 0,
-      staleTime: [5, "minutes"],
-      keepPreviousData: true,
-      handler: async () =>
-        await folioApi.listFolioRefs({
-          params: { projectId },
-          query: { shortIds: missingFolioIds },
-        }),
-      onError: () => {},
-    },
-    [folioApi, projectId, missingFolioIds],
-  );
-
-  const resolvableFolios = useMemo<FolioRef[]>(
-    () => [...folios, ...(namedFolios ?? [])],
-    [folios, namedFolios],
-  );
-  const resolvableQuests = useMemo<QuestRef[]>(
-    () => [...(quests ?? []), ...(namedQuests ?? [])],
-    [quests, namedQuests],
-  );
-  const attachments = useMemo<AttachmentRef[]>(
-    () =>
-      inFolioWorkspace
-        ? atomAttachments.map((b) => ({
-            fileId: b.id,
-            shortId: b.shortId,
-            name: b.name,
-            size: b.size,
-            mime: b.mimeType,
-          }))
-        : (fetchedAttachments ?? []),
-    [inFolioWorkspace, atomAttachments, fetchedAttachments],
-  );
-
-  /**
-   * Ordering is folios, then quests, then epics. The picker shows the first
-   * eight matches and every entry inserts the same `#<LETTER><n>` shape, so
-   * the order only says what a body most often points at: notes cite notes.
-   * Epics come last because a project has far fewer of them, so they are
-   * rarely what a prefix-free search is reaching for.
-   *
-   * Every token is the typed reference (`typedReference.ts`), shown again
-   * as the hint so the author sees what will land in the document. A quest
-   * used to be inserted as `quest#N`, without the colon both parsers needed
-   * to select the type, so every quest link the picker ever wrote was a
-   * broken folio reference (epic #32).
-   *
-   * Attachments are not offered: a file is embedded as
-   * `![name](assets/<name>)` from the Attachments tab or by dropping it
-   * into the editor, never through a wiki-link.
-   */
-  const suggestions = useMemo<WikiLinkSuggestion[]>(
-    () => [
-      ...folios.map((f) => {
-        const token = formatReference("folio", f.shortId);
-        return {
-          key: `folio:${f.id}`,
-          kind: "folio" as const,
-          token,
-          label: f.title,
-          hint: token,
-        };
-      }),
-      ...(quests ?? []).map((q) => {
-        const token = formatReference("quest", q.shortId);
-        return {
-          key: `quest:${q.shortId}`,
-          kind: "quest" as const,
-          token,
-          label: q.title,
-          hint: token,
-        };
-      }),
-      ...(epics ?? []).map((e) => {
-        const token = formatReference("epic", e.shortId);
-        return {
-          key: `epic:${e.shortId}`,
-          kind: "epic" as const,
-          token,
-          label: e.title,
-          hint: token,
-        };
-      }),
-    ],
-    [folios, quests, epics],
-  );
+  const merged = useMemo(() => {
+    const refs: Record<string, ElementReference[]> = {};
+    const suggestions: WikiLinkSuggestion[] = [];
+    const attachments: AttachmentRef[] = [];
+    kinds.forEach((kind, index) => {
+      const set = stable[index];
+      refs[kind.kind] = set.refs;
+      suggestions.push(...(set.suggestions ?? []));
+      attachments.push(...(set.attachments ?? []));
+    });
+    return { refs, suggestions, attachments };
+  }, [kinds, stable]);
 
   const rendered = useMemo(
     () =>
-      projectSlug
-        ? rewriteFolioWikiLinks(
-            content,
-            projectSlug,
-            resolvableFolios,
-            resolvableQuests,
-            attachments,
-            epics ?? [],
-            feedbackRefs ?? [],
-            releases,
-          )
+      element.projectSlug
+        ? rewriteWikiLinks(content, {
+            projectSlug: element.projectSlug,
+            kinds,
+            refs: merged.refs,
+            attachments: merged.attachments,
+          })
         : content,
-    [
-      content,
-      projectSlug,
-      resolvableFolios,
-      resolvableQuests,
-      attachments,
-      epics,
-      feedbackRefs,
-      releases,
-    ],
+    [content, element.projectSlug, kinds, merged],
   );
 
-  return { suggestions, rendered };
+  return { suggestions: merged.suggestions, rendered };
 };

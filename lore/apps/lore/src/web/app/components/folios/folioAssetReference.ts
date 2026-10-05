@@ -3,7 +3,7 @@
  *
  * One definition because there are two writers — the editor's upload handler
  * (`useFolioImageUpload`) and the Attachments tab's "copy reference" — and
- * one reader (`rewriteFolioWikiLinks`'s `assets/` pass). A reference that
+ * one reader (`rewriteWikiLinks`'s `assets/` pass). A reference that
  * disagrees with the reader by so much as an encoding rule produces a
  * broken-link marker on a file that is sitting right there in the panel, and
  * nothing else in the app would report it.

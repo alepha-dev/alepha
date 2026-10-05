@@ -6,6 +6,8 @@ import { LinkProvider } from "alepha/server/links";
 import type React from "react";
 import { describe, it } from "vitest";
 
+import { KnowledgeShell } from "../../../shell/KnowledgeShell.ts";
+import { WorkShell } from "../../../shell/WorkShell.ts";
 import { useElementLinks } from "./useElementLinks.ts";
 
 interface FakeQuest {
@@ -95,6 +97,9 @@ const setup = () => {
   const alepha = Alepha.create()
     .with(AlephaLogger)
     .with({ provide: LinkProvider, use: FakeLinkProvider });
+  // The kinds the app registers (#E75, #Q2624).
+  alepha.inject(KnowledgeShell);
+  alepha.inject(WorkShell);
   const fake = alepha.inject(FakeLinkProvider);
   const wrapper = ({ children }: { children: React.ReactNode }) => (
     <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>

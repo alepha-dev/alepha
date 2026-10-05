@@ -8,7 +8,10 @@
  */
 export interface WikiLinkSuggestion {
   key: string;
-  kind: "folio" | "quest" | "epic";
+  /**
+   * The reference kind it inserts, as its module registered it.
+   */
+  kind: string;
   /**
    * What is written INTO the document, between the brackets: the typed
    * reference `#Q12` / `#E3` / `#F12` (`typedReference.ts`), for every kind.

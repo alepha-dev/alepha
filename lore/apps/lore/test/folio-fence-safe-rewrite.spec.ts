@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { rewriteFolioWikiLinks } from "../src/web/app/components/folios/rewriteFolioWikiLinks.ts";
 import { splitMarkdownCode } from "../src/web/app/components/shared/element/markdownCodeSegments.ts";
+import { WikiLinkFixture } from "./fixtures/wikiLinks.ts";
 
 const PROJECT_SLUG = "sds";
 
@@ -23,7 +23,7 @@ const folio = (shortId: number, title: string) =>
   }) as never;
 
 const rewrite = (content: string) =>
-  rewriteFolioWikiLinks(
+  WikiLinkFixture.rewrite(
     content,
     PROJECT_SLUG,
     [folio(1, "Roadmap")],

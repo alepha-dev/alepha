@@ -2,7 +2,7 @@ import { MarkdownView } from "@alepha/ui/markdown";
 import { render } from "@testing-library/react";
 import { describe, it } from "vitest";
 
-import { BROKEN_HREF_PREFIX } from "./folioWikiLinkResolver.ts";
+import { BROKEN_HREF_PREFIX } from "./wikiLinkResolver.ts";
 
 /**
  * The broken-link path is only as real as the href that carries it, and that

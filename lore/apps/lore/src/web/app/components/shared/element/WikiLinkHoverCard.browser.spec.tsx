@@ -10,8 +10,10 @@ import { afterEach, beforeAll, describe, it } from "vitest";
 import { virtualClientFake } from "@/testing/virtualClientFake.ts";
 import { I18n } from "@/web/app/services/I18n.ts";
 
-import { BROKEN_HREF_PREFIX } from "./folioWikiLinkResolver.ts";
+import { KnowledgeShell } from "../../../shell/KnowledgeShell.ts";
+import { WorkShell } from "../../../shell/WorkShell.ts";
 import WikiLinkHoverProvider from "./WikiLinkHoverProvider.tsx";
+import { BROKEN_HREF_PREFIX } from "./wikiLinkResolver.ts";
 
 /**
  * Serves nothing: the link below is a broken reference, the one kind of card
@@ -67,6 +69,9 @@ describe("the wiki-link hover card", () => {
       .with(AlephaReact)
       .with(AlephaReactI18n);
     alepha.inject(I18n);
+    // The kinds the app registers (#E75, #Q2624).
+    alepha.inject(KnowledgeShell);
+    alepha.inject(WorkShell);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
 

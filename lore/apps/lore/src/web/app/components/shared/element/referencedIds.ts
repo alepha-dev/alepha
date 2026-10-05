@@ -10,7 +10,7 @@ import { parseTypedReference, type ReferenceKind } from "./typedReference.ts";
  * older quest or folio rendered as a broken link; asking for the numbers the
  * body actually carries makes resolution independent of any page.
  *
- * The token pattern is the one `rewriteFolioWikiLinks` replaces, so a token
+ * The token pattern is the one `rewriteWikiLinks` replaces, so a token
  * the reader renders is a token this finds. It does not skip code fences,
  * unlike the rewrite: a reference quoted in a fence only costs a title
  * nobody renders, and the ids are sorted so the query key stays the same

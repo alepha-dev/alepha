@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { rewriteFolioWikiLinks } from "../src/web/app/components/folios/rewriteFolioWikiLinks.ts";
+import { WikiLinkFixture } from "./fixtures/wikiLinks.ts";
 
 const PROJECT_SLUG = "sds";
 
@@ -30,7 +30,7 @@ const folio = (shortId: number, title: string) =>
  */
 describe("rewriteFolioWikiLinks — broken-link markers (#107)", () => {
   it("unresolved folio number → folio-not-found marker", () => {
-    const out = rewriteFolioWikiLinks(
+    const out = WikiLinkFixture.rewrite(
       "See [[#F999]].",
       PROJECT_SLUG,
       [folio(1, "Roadmap")],
@@ -42,7 +42,7 @@ describe("rewriteFolioWikiLinks — broken-link markers (#107)", () => {
   it("[[#F156]] with no folio 156 but quest 156 → plain folio-not-found, no guess", () => {
     // The letter said "folio". Resolving across kinds would make a link's
     // destination depend on which folios happen to exist.
-    const out = rewriteFolioWikiLinks(
+    const out = WikiLinkFixture.rewrite(
       "See [[#F156]].",
       PROJECT_SLUG,
       [folio(1, "Roadmap")],
@@ -52,7 +52,7 @@ describe("rewriteFolioWikiLinks — broken-link markers (#107)", () => {
   });
 
   it("unresolved quest number → quest-not-found marker", () => {
-    const out = rewriteFolioWikiLinks(
+    const out = WikiLinkFixture.rewrite(
       "Cf. [[#Q999]].",
       PROJECT_SLUG,
       [],
@@ -64,7 +64,7 @@ describe("rewriteFolioWikiLinks — broken-link markers (#107)", () => {
   it("the legacy bare number is not a reference", () => {
     // `[[#156]]` used to mean folio 156. The kind is no longer guessed: the
     // token breaks visibly, whatever folios or quests exist.
-    const out = rewriteFolioWikiLinks(
+    const out = WikiLinkFixture.rewrite(
       "See [[#156]].",
       PROJECT_SLUG,
       [folio(156, "Roadmap")],
@@ -74,7 +74,7 @@ describe("rewriteFolioWikiLinks — broken-link markers (#107)", () => {
   });
 
   it("a title is not a reference, even one that names a folio", () => {
-    const out = rewriteFolioWikiLinks(
+    const out = WikiLinkFixture.rewrite(
       "Cf. [[Roadmap]] and [[Nonexistent]].",
       PROJECT_SLUG,
       [folio(1, "Roadmap")],
@@ -86,7 +86,7 @@ describe("rewriteFolioWikiLinks — broken-link markers (#107)", () => {
   });
 
   it("the prefixed, path and anchored forms are not references", () => {
-    const out = rewriteFolioWikiLinks(
+    const out = WikiLinkFixture.rewrite(
       "[[quest:#2]] [[epic:#3]] [[blob:#4]] [[specs/roadmap]] [[#F1#intro]]",
       PROJECT_SLUG,
       [folio(1, "Roadmap")],
@@ -99,7 +99,7 @@ describe("rewriteFolioWikiLinks — broken-link markers (#107)", () => {
   });
 
   it("resolved links are NOT rewritten with broken markers", () => {
-    const out = rewriteFolioWikiLinks(
+    const out = WikiLinkFixture.rewrite(
       "Cf. [[#F1]] and [[#Q2]].",
       PROJECT_SLUG,
       [folio(1, "Roadmap")],
@@ -111,7 +111,7 @@ describe("rewriteFolioWikiLinks — broken-link markers (#107)", () => {
   });
 
   it("empty token stays literal — not a wiki-link, not a broken marker", () => {
-    const out = rewriteFolioWikiLinks("Cf. [[ ]].", PROJECT_SLUG, [], []);
+    const out = WikiLinkFixture.rewrite("Cf. [[ ]].", PROJECT_SLUG, [], []);
     expect(out).toBe("Cf. [[ ]].");
   });
 });
@@ -125,7 +125,7 @@ describe("rewriteFolioWikiLinks — epic targets", () => {
   const epics = [{ shortId: 3, title: "Lore Deploy" }];
 
   it("[[#E3]] → a link to the epic", () => {
-    const out = rewriteFolioWikiLinks(
+    const out = WikiLinkFixture.rewrite(
       "See [[#E3]].",
       PROJECT_SLUG,
       [],
@@ -137,7 +137,7 @@ describe("rewriteFolioWikiLinks — epic targets", () => {
   });
 
   it("an unknown epic gets its own broken reason, not the folio one", () => {
-    const out = rewriteFolioWikiLinks(
+    const out = WikiLinkFixture.rewrite(
       "See [[#E99]].",
       PROJECT_SLUG,
       [],
@@ -155,7 +155,7 @@ describe("rewriteFolioWikiLinks — epic targets", () => {
  */
 describe("rewriteFolioWikiLinks — typed references", () => {
   it("[[#Q2]] → a link to the quest", () => {
-    const out = rewriteFolioWikiLinks(
+    const out = WikiLinkFixture.rewrite(
       "See [[#Q2]].",
       PROJECT_SLUG,
       [],
@@ -165,7 +165,7 @@ describe("rewriteFolioWikiLinks — typed references", () => {
   });
 
   it("the letter is case-insensitive on the way in", () => {
-    const out = rewriteFolioWikiLinks(
+    const out = WikiLinkFixture.rewrite(
       "See [[#q2]].",
       PROJECT_SLUG,
       [],
@@ -175,7 +175,7 @@ describe("rewriteFolioWikiLinks — typed references", () => {
   });
 
   it("[[#F1]] → a link to the folio", () => {
-    const out = rewriteFolioWikiLinks(
+    const out = WikiLinkFixture.rewrite(
       "See [[#F1]].",
       PROJECT_SLUG,
       [folio(1, "Roadmap")],
@@ -198,7 +198,7 @@ describe("rewriteFolioWikiLinks — feedback and release targets", () => {
     { number: 13, title: "Untagged", tag: undefined },
   ];
   const rewrite = (content: string) =>
-    rewriteFolioWikiLinks(
+    WikiLinkFixture.rewrite(
       content,
       PROJECT_SLUG,
       [],

@@ -80,7 +80,7 @@ export class ResourceLinkService {
    *
    * Fenced blocks and inline code spans are held out. A regex cannot see a
    * fence, and the reader has skipped code since #1261
-   * (`rewriteFolioWikiLinks`); until this side did the same, a token quoted
+   * (`rewriteWikiLinks`); until this side did the same, a token quoted
    * inside backticks wrote an edge into the graph that no page ever showed
    * as a link. Same splitter as the reader, so the two agree on what code is.
    */

@@ -23,6 +23,7 @@ import { currentAreasAtom } from "../../atoms/currentAreasAtom.ts";
 import { currentEpicsAtom } from "../../atoms/currentEpicsAtom.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { currentReleasesAtom } from "../../atoms/currentReleasesAtom.ts";
+import { ElementReferenceRegistry } from "../../registries/ElementReferenceRegistry.ts";
 import { I18n } from "../../services/I18n.ts";
 import ProjectQuestsTable from "./ProjectQuestsTable.tsx";
 
@@ -206,6 +207,8 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
     // The real catalogue, so the button is found by the words a reader
     // sees rather than by a key.
     alepha.inject(I18n);
+    // The editor reads the reference kinds (#E75, #Q2624); none are needed here.
+    alepha.inject(ElementReferenceRegistry);
     await alepha.start();
     if (initial) {
       alepha.inject(FakeLinkProvider).quests = initial;

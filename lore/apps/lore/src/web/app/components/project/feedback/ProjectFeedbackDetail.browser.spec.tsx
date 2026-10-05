@@ -13,6 +13,7 @@ import type { FeedbackResource } from "@/api/schemas/feedbackResourceSchema.ts";
 import { projectFixture } from "@/testing/projectFixture.ts";
 
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
+import { ElementReferenceRegistry } from "../../../registries/ElementReferenceRegistry.ts";
 import { I18n } from "../../../services/I18n.ts";
 import ProjectFeedbackDetail from "./ProjectFeedbackDetail.tsx";
 
@@ -128,6 +129,8 @@ describe("ProjectFeedbackDetail - accept then dismiss", () => {
       .with(AlephaReact)
       .with(AlephaReactI18n)
       .with(AlephaReactRouter);
+    // The editor reads the reference kinds (#E75, #Q2624); none are needed here.
+    alepha.inject(ElementReferenceRegistry);
     await alepha.start();
     // The atom validates against `projectResourceSchema`, so this is the
     // whole required shape, not a convenient subset.
@@ -195,6 +198,8 @@ describe("ProjectFeedbackDetail - attachment previews", () => {
       .with(AlephaReact)
       .with(AlephaReactI18n)
       .with(AlephaReactRouter);
+    // The editor reads the reference kinds (#E75, #Q2624); none are needed here.
+    alepha.inject(ElementReferenceRegistry);
     await alepha.start();
     alepha.store.set(currentProjectAtom, projectFixture() as never);
 
@@ -309,6 +314,8 @@ describe("ProjectFeedbackDetail - the Agent Prompts menu", () => {
       .with(AlephaReactRouter);
     alepha.inject(Routes);
     alepha.inject(I18n);
+    // The editor reads the reference kinds (#E75, #Q2624); none are needed here.
+    alepha.inject(ElementReferenceRegistry);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
     alepha.store.set(currentProjectAtom, project as never);

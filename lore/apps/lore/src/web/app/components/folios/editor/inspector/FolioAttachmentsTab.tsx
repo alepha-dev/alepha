@@ -10,9 +10,9 @@ import type { FolioAttachmentController } from "@/api/controllers/FolioAttachmen
 
 import { currentFolioAttachmentsAtom } from "../../../../atoms/currentFolioAttachmentsAtom.ts";
 import type { I18n } from "../../../../services/I18n.ts";
+import { formatAttachmentBytes } from "../../../shared/element/wikiLinkResolver.ts";
 import { folioAssetEmbed } from "../../folioAssetReference.ts";
 import { FOLIO_IMAGE_MAX_WIDTH } from "../../folioImageBounds.ts";
-import { formatAttachmentBytes } from "../../folioWikiLinkResolver.ts";
 
 // Mirrors `FolioAttachmentService.BUCKET` — not imported so the
 // browser bundle does not pull a server-side module. Value stays

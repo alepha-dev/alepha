@@ -17,7 +17,7 @@ export interface MarkdownSegment {
  *
  * Exists because every display-time rewrite Lore runs over markdown is a
  * regex over the raw string, and a regex has no idea what a code fence is.
- * `rewriteFolioWikiLinks` used to turn `const a = [[1, 2]];` inside a
+ * `rewriteWikiLinks` used to turn `const a = [[1, 2]];` inside a
  * ```ts block into a broken-link marker, visibly, inside the `<pre>` (#1261).
  * A mermaid `A[[Sub]]` node was corrupted the same way, which is fatal once
  * a fence is a diagram rather than decoration.

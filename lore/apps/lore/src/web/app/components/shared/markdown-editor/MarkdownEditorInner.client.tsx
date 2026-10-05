@@ -2,7 +2,7 @@ import { MarkdownView } from "@alepha/ui/markdown";
 import type { EditorView } from "@codemirror/view";
 import { useMemo, useRef, useState } from "react";
 
-import type { WikiLinkSuggestion } from "../../folios/editor/wikilink/wikiLinkSuggestion.ts";
+import type { WikiLinkSuggestion } from "../element/wikiLinkSuggestion.ts";
 import CodeMirrorEditor from "./CodeMirrorEditor.tsx";
 import MarkdownFormatToolbar from "./MarkdownFormatToolbar.tsx";
 import MarkdownSelectionToolbar from "./MarkdownSelectionToolbar.tsx";
@@ -72,7 +72,7 @@ export interface MarkdownEditorInnerProps {
    * What VIEW mode renders instead of `value`. Edit mode always shows
    * `value` — the raw, stored markdown.
    *
-   * The folio workspace passes `value` run through `rewriteFolioWikiLinks`,
+   * The folio workspace passes `value` run through `rewriteWikiLinks`,
    * which turns `[[…]]` into real links and `assets/<name>` into
    * `/api/files/<id>`. Without it a folio in View mode shows `[[#F12]]` as
    * literal text and every attachment as a broken image, since a relative

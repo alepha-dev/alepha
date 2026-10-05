@@ -4,10 +4,8 @@ import {
   folioAssetEmbed,
   folioAssetPath,
 } from "../src/web/app/components/folios/folioAssetReference.ts";
-import {
-  type AttachmentRef,
-  rewriteFolioWikiLinks,
-} from "../src/web/app/components/folios/rewriteFolioWikiLinks.ts";
+import type { AttachmentRef } from "../src/web/app/components/shared/element/wikiLinkResolver.ts";
+import { WikiLinkFixture } from "./fixtures/wikiLinks.ts";
 
 const PROJECT_SLUG = "sds";
 
@@ -42,7 +40,7 @@ describe("folio asset references round-trip through the reader", () => {
 
   for (const name of names) {
     it(`resolves ${JSON.stringify(name)}`, ({ expect }) => {
-      const out = rewriteFolioWikiLinks(
+      const out = WikiLinkFixture.rewrite(
         folioAssetEmbed(name),
         PROJECT_SLUG,
         [],
@@ -67,7 +65,7 @@ describe("folio asset references round-trip through the reader", () => {
   }) => {
     // Hand-written markdown will not be percent-encoded, and has to work
     // anyway — the encoding is a writer-side convenience, not a contract.
-    const out = rewriteFolioWikiLinks(
+    const out = WikiLinkFixture.rewrite(
       "![](assets/my photo.webp)",
       PROJECT_SLUG,
       [],

@@ -1,7 +1,11 @@
 import { $inject } from "alepha";
 import { BookOpen } from "lucide-react";
 
+import FolioReferencePreview from "../components/folios/FolioReferencePreview.tsx";
+import { useFolioElementImageUpload } from "../components/folios/useFolioElementImageUpload.ts";
+import { useFolioReferences } from "../components/folios/useFolioReferences.ts";
 import { formatReference } from "../components/shared/element/typedReference.ts";
+import { ElementReferenceRegistry } from "../registries/ElementReferenceRegistry.ts";
 import { ProjectShellRegistry } from "../registries/ProjectShellRegistry.ts";
 import { hasCapability } from "../services/projectCapabilities.ts";
 import { canInProject } from "../services/projectRank.ts";
@@ -9,10 +13,12 @@ import { canInProject } from "../services/projectRank.ts";
 /**
  * Knowledge's part of the project shell, registered on core's
  * `ProjectShellRegistry` (#E75, #Q2624): the Folios entry, the Folios
- * settings section, New folio and the folio breadcrumb leaf.
+ * settings section, New folio, the folio breadcrumb leaf and the folio
+ * `[[...]]` references.
  */
 export class KnowledgeShell {
   protected readonly shell = $inject(ProjectShellRegistry);
+  protected readonly references = $inject(ElementReferenceRegistry);
 
   constructor() {
     this.shell.registerNav("knowledge", [
@@ -70,6 +76,21 @@ export class KnowledgeShell {
         ctx.routeName === "projectFoliosFolio" && ctx.params.shortId
           ? { label: formatReference("folio", Number(ctx.params.shortId)) }
           : undefined,
+    });
+
+    // First in the picker: notes cite notes.
+    this.references.register({
+      kind: "folio",
+      order: 10,
+      brokenKey: "folios.wikilink.broken.folioNotFound",
+      href: (projectSlug, ref) => `/${projectSlug}/folios/${ref.number}`,
+      match: (path, projectSlug) => {
+        const match = /^\/([^/]+)\/folios\/(\d+)(?:[#?]|$)/.exec(path);
+        return match && match[1] === projectSlug ? match[2] : undefined;
+      },
+      preview: FolioReferencePreview,
+      useReferences: useFolioReferences,
+      useImageUpload: useFolioElementImageUpload,
     });
   }
 }

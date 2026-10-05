@@ -16,11 +16,21 @@ import { currentFeedbackCountAtom } from "../atoms/currentFeedbackCountAtom.ts";
 import { currentQuestAtom } from "../atoms/currentQuestAtom.ts";
 import { currentQuestCountAtom } from "../atoms/currentQuestCountAtom.ts";
 import EpicCreateMenuSheet from "../components/project/epics/EpicCreateMenuSheet.tsx";
+import EpicReferencePreview from "../components/project/epics/EpicReferencePreview.tsx";
+import { useEpicReferences } from "../components/project/epics/useEpicReferences.ts";
+import FeedbackReferencePreview from "../components/project/feedback/FeedbackReferencePreview.tsx";
+import { useFeedbackReferences } from "../components/project/feedback/useFeedbackReferences.ts";
 import ProjectQuestLogAside from "../components/project/ProjectQuestLogAside.tsx";
 import { ROUTES_WITH_QUEST_LOG } from "../components/project/projectViewRoutes.ts";
 import QuestCreateMenuSheet from "../components/project/quest/QuestCreateMenuSheet.tsx";
+import QuestReferencePreview from "../components/project/quest/QuestReferencePreview.tsx";
+import { useQuestElementImageUpload } from "../components/project/quest/useQuestElementImageUpload.ts";
+import { useQuestReferences } from "../components/project/quest/useQuestReferences.ts";
 import ReleaseCreateMenuDialog from "../components/project/releases/ReleaseCreateMenuDialog.tsx";
+import ReleaseReferencePreview from "../components/project/releases/ReleaseReferencePreview.tsx";
+import { useReleaseReferences } from "../components/project/releases/useReleaseReferences.ts";
 import { formatReference } from "../components/shared/element/typedReference.ts";
+import { ElementReferenceRegistry } from "../registries/ElementReferenceRegistry.ts";
 import { ProjectShellRegistry } from "../registries/ProjectShellRegistry.ts";
 import {
   capabilityOption,
@@ -33,10 +43,12 @@ import { canInProject } from "../services/projectRank.ts";
  * `ProjectShellRegistry` (#E75, #Q2624): the Quests, Kanban, Epics, Releases
  * and Feedback entries with their badges, the Quests settings section, the
  * quest, epic, release and feedback creates, the epic, quest and release
- * breadcrumb leaves, and the quest log beside the Quests pages.
+ * breadcrumb leaves, the quest log beside the Quests pages, and the quest,
+ * epic, feedback and release `[[...]]` references.
  */
 export class WorkShell {
   protected readonly shell = $inject(ProjectShellRegistry);
+  protected readonly references = $inject(ElementReferenceRegistry);
 
   constructor() {
     this.shell.registerNav("work", [
@@ -244,5 +256,90 @@ export class WorkShell {
       routes: [...ROUTES_WITH_QUEST_LOG],
       component: ProjectQuestLogAside,
     });
+
+    // Picker order: after folios, and epics after quests because a project
+    // has far fewer of them, so they are rarely what a prefix-free search
+    // is reaching for. Feedback and releases are resolved, not offered.
+    this.references.register({
+      kind: "quest",
+      order: 20,
+      brokenKey: "folios.wikilink.broken.questNotFound",
+      href: (projectSlug, ref) => `/${projectSlug}/quests/${ref.number}`,
+      match: (path, projectSlug) =>
+        WorkShell.matchPage(
+          path,
+          projectSlug,
+          /^\/([^/]+)\/quests\/(\d+)(?:[#?]|$)/,
+        ),
+      preview: QuestReferencePreview,
+      useReferences: useQuestReferences,
+      useImageUpload: useQuestElementImageUpload,
+    });
+    this.references.register({
+      kind: "epic",
+      order: 30,
+      brokenKey: "folios.wikilink.broken.epicNotFound",
+      href: (projectSlug, ref) => `/${projectSlug}/epics/${ref.number}`,
+      match: (path, projectSlug) =>
+        WorkShell.matchPage(
+          path,
+          projectSlug,
+          /^\/([^/]+)\/epics\/(\d+)(?:[#?]|$)/,
+        ),
+      preview: EpicReferencePreview,
+      useReferences: useEpicReferences,
+    });
+    // Feedback has no page of its own, so `#P120` links to the inbox naming
+    // the item.
+    this.references.register({
+      kind: "feedback",
+      order: 40,
+      brokenKey: "folios.wikilink.broken.feedbackNotFound",
+      href: (projectSlug, ref) =>
+        `/${projectSlug}/feedback?feedback=${ref.number}`,
+      match: (path, projectSlug) =>
+        WorkShell.matchPage(
+          path,
+          projectSlug,
+          /^\/([^/]+)\/feedback\?feedback=(\d+)(?:[#&]|$)/,
+        ),
+      preview: FeedbackReferencePreview,
+      useReferences: useFeedbackReferences,
+    });
+    // `#R12` resolves the number and navigates by the release's TAG, which
+    // is what the page takes; a release with no tag links to the list.
+    this.references.register({
+      kind: "release",
+      order: 50,
+      brokenKey: "folios.wikilink.broken.releaseNotFound",
+      href: (projectSlug, ref) =>
+        ref.tag
+          ? `/${projectSlug}/releases/${encodeURIComponent(ref.tag)}`
+          : `/${projectSlug}/releases`,
+      match: (path, projectSlug) => {
+        const tag = WorkShell.matchPage(
+          path,
+          projectSlug,
+          /^\/([^/]+)\/releases\/([^/?#]+)(?:[#?]|$)/,
+        );
+        return tag === undefined ? undefined : decodeURIComponent(tag);
+      },
+      preview: ReleaseReferencePreview,
+      useReferences: useReleaseReferences,
+    });
+  }
+
+  /**
+   * The second capture of `pattern` when its first is this project's slug.
+   * The project segment is matched as an opaque segment and compared, since
+   * a slug cannot be told from any other first segment by shape alone.
+   */
+  protected static matchPage(
+    path: string,
+    projectSlug: string,
+    pattern: RegExp,
+  ): string | undefined {
+    const match = pattern.exec(path);
+    return match && match[1] === projectSlug ? match[2] : undefined;
   }
 }

@@ -22,7 +22,7 @@ const FOLIO_ATTACHMENT_BUCKET = "archive-blobs";
  * That is what makes an export a copy rather than a transform: the stored
  * markdown is the exported markdown, and an unzipped folio opens correctly
  * in any markdown viewer sitting next to its `assets/` folder. The reader
- * (`rewriteFolioWikiLinks`) and the editor's `imagePreviewHandler` are what
+ * (`rewriteWikiLinks`) and the editor's `imagePreviewHandler` are what
  * turn it back into a URL for display.
  *
  * The name comes from the server's response, not from `file.name` — the
