@@ -42,7 +42,7 @@ import { settleBulk } from "../../shared/bulkOutcome.ts";
 import { formatReference } from "../../shared/element/typedReference.ts";
 import { useBulkReport } from "../../shared/useBulkReport.ts";
 import { useAgentPrompt } from "../prompts/useAgentPrompt.ts";
-import { useAgentPromptSubject } from "../prompts/useAgentPromptSubject.ts";
+import { useWorkPromptSubject } from "../prompts/useWorkPromptSubject.ts";
 import { releaseRowMenu } from "../releaseRowMenu.ts";
 import { useReleaseCascadeToast } from "../releases/useReleaseCascadeToast.ts";
 import EpicCreateSheet from "./EpicCreateSheet.tsx";
@@ -104,7 +104,7 @@ const ProjectEpics = () => {
   const [releases] = useStore(currentReleasesAtom);
   const reportBulk = useBulkReport();
   const agentPrompt = useAgentPrompt();
-  const promptSubject = useAgentPromptSubject();
+  const promptSubject = useWorkPromptSubject();
   const alepha = useAlepha();
   // The write below moves the epic's quests too (#Q2111), and a row the
   // reader did not name must not move without a word.

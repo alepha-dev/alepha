@@ -24,7 +24,7 @@ import type { I18n } from "@/web/app/services/I18n.ts";
 
 import { formatReference } from "../../shared/element/typedReference.ts";
 import { useAgentPrompt } from "../prompts/useAgentPrompt.ts";
-import { useAgentPromptSubject } from "../prompts/useAgentPromptSubject.ts";
+import { useWorkPromptSubject } from "../prompts/useWorkPromptSubject.ts";
 import {
   QUEST_PRIORITY_ICONS,
   QUEST_PRIORITY_RANK,
@@ -91,7 +91,7 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
   const router = useRouter();
   const [project] = useStore(currentProjectAtom);
   const agentPrompt = useAgentPrompt();
-  const promptSubject = useAgentPromptSubject();
+  const promptSubject = useWorkPromptSubject();
   const quests = props.quests;
   const attachedIds = new Set((quests ?? []).map((q) => q.id));
   // The create sheet, opened from the toolbar beside Attach (feedback #2057).

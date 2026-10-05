@@ -36,7 +36,7 @@ import { formatReference } from "../../shared/element/typedReference.ts";
 import { preloadMarkdownEditor } from "../../shared/markdown-editor/MarkdownEditor.tsx";
 import { AgentPromptsMenu } from "../prompts/AgentPromptsMenu.tsx";
 import { questAgentGate } from "../prompts/questAgentGate.ts";
-import { useAgentPromptSubject } from "../prompts/useAgentPromptSubject.ts";
+import { useWorkPromptSubject } from "../prompts/useWorkPromptSubject.ts";
 import QuestAttachments from "./QuestAttachments.tsx";
 import { QUEST_STATUS_LABEL_KEYS, QUEST_STATUS_TONE } from "./questChips.ts";
 import QuestCompletionDialog from "./QuestCompletionDialog.tsx";
@@ -128,7 +128,7 @@ const QuestView = (props: QuestViewProps) => {
 
   const [project] = useStore(currentProjectAtom);
   const [epics] = useStore(currentEpicsAtom);
-  const promptSubject = useAgentPromptSubject();
+  const promptSubject = useWorkPromptSubject();
 
   // The epic phase gate (epic #31): a quest can be accepted only while its
   // epic is active, and this page reaches a draft epic's quest by direct

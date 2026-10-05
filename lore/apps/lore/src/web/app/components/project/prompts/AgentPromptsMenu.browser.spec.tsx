@@ -12,6 +12,7 @@ import { projectPromptsAtom } from "@/web/app/atoms/projectPromptsAtom.ts";
 import type { AgentPromptSubject } from "@/web/app/prompts/renderPromptTemplate.ts";
 
 import { I18n } from "../../../services/I18n.ts";
+import { WorkShell } from "../../../shell/WorkShell.ts";
 import { AgentPromptsMenu } from "./AgentPromptsMenu.tsx";
 
 const subject: AgentPromptSubject = {
@@ -49,6 +50,8 @@ describe("AgentPromptsMenu", () => {
   ) => {
     alepha = Alepha.create().with(AlephaReactRouter).with(AlephaReactI18n);
     alepha.inject(I18n);
+    // The kinds as Work registers them (#E75, #Q2624).
+    alepha.inject(WorkShell);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
     alepha.store.set(currentProjectAtom, project as never);

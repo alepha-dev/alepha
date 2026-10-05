@@ -18,6 +18,7 @@ import { virtualClientFake } from "@/testing/virtualClientFake.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { ResourceTabRegistry } from "@/web/app/registries/ResourceTabRegistry.ts";
 import { I18n } from "@/web/app/services/I18n.ts";
+import { WorkShell } from "@/web/app/shell/WorkShell.ts";
 
 import ProjectEpic from "./ProjectEpic.tsx";
 
@@ -130,6 +131,8 @@ describe("ProjectEpic", () => {
     alepha.inject(I18n);
     // The tabs other modules add here (#E75, #Q2624); none in this spec.
     alepha.inject(ResourceTabRegistry);
+    // Work registers the agent prompt kinds the page offers (#E75, #Q2624).
+    alepha.inject(WorkShell);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
     alepha.store.set(currentProjectAtom, projectFixture() as never);
@@ -200,6 +203,8 @@ describe("ProjectEpic, the Edit button", () => {
     alepha.inject(I18n);
     // The tabs other modules add here (#E75, #Q2624); none in this spec.
     alepha.inject(ResourceTabRegistry);
+    // Work registers the agent prompt kinds the page offers (#E75, #Q2624).
+    alepha.inject(WorkShell);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
     alepha.store.set(currentProjectAtom, projectFixture() as never);

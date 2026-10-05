@@ -8,6 +8,8 @@ import AppCreateMenuDialog from "../components/project/apps/AppCreateMenuDialog.
 import ReleaseArtifactsPanel from "../components/project/artifacts/ReleaseArtifactsPanel.tsx";
 import { useReleaseArtifacts } from "../components/project/artifacts/useReleaseArtifacts.ts";
 import { ROUTES_APP } from "../components/project/projectViewRoutes.ts";
+import { blightTriagePromptDefault } from "../prompts/blightTriagePrompt.ts";
+import { AgentPromptRegistry } from "../registries/AgentPromptRegistry.ts";
 import { ProjectShellRegistry } from "../registries/ProjectShellRegistry.ts";
 import { ResourceTabRegistry } from "../registries/ResourceTabRegistry.ts";
 import { hasCapability } from "../services/projectCapabilities.ts";
@@ -17,11 +19,13 @@ import { canInProject } from "../services/projectRank.ts";
  * Deploy's part of the project shell, registered on core's
  * `ProjectShellRegistry` (#E75, #Q2624): the Apps, Artifacts and Blights
  * entries, the Apps settings section, New app, the instance breadcrumb, the
- * instances in the palette, and the Artifacts tab on a release.
+ * instances in the palette, the Artifacts tab on a release, and the blight
+ * triage prompt.
  */
 export class DeployShell {
   protected readonly shell = $inject(ProjectShellRegistry);
   protected readonly tabs = $inject(ResourceTabRegistry);
+  protected readonly prompts = $inject(AgentPromptRegistry);
 
   constructor() {
     this.shell.registerNav("apps", [
@@ -189,6 +193,15 @@ export class DeployShell {
         one: "release.edit.tagWarning.artifacts.one",
         many: "release.edit.tagWarning.artifacts.many",
       },
+    });
+
+    // `Bug`, not `ListChecks`: both are triage loops, and the surface is
+    // what tells them apart in a menu.
+    this.prompts.register({
+      kind: "blightTriage",
+      template: blightTriagePromptDefault,
+      icon: Bug,
+      labelKey: "agentPrompts.triageBlights",
     });
   }
 }

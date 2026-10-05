@@ -1,9 +1,10 @@
 import { Button, Textarea, useDialog, useToast } from "@alepha/ui";
+import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRef, useState } from "react";
 
 import type { AgentPromptKind } from "@/api/schemas/agentPromptKindSchema.ts";
-import { AGENT_PROMPT_DEFAULTS } from "@/web/app/prompts/agentPromptDefaults.ts";
+import { AgentPromptRegistry } from "@/web/app/registries/AgentPromptRegistry.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 /**
@@ -52,7 +53,7 @@ export const ProjectSettingsAgentPromptEditor = (
   const { tr } = useI18n<I18n, "en">();
   const toaster = useToast();
   const dialog = useDialog();
-  const fallback = AGENT_PROMPT_DEFAULTS[props.kind];
+  const fallback = useInject(AgentPromptRegistry).get(props.kind).template;
   const persisted = props.stored ?? fallback;
   const [text, setText] = useState(persisted);
   const pending = props.busy;

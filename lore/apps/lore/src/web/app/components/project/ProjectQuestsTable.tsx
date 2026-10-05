@@ -72,7 +72,7 @@ import { useQuestMutations } from "../shared/useQuestMutations.ts";
 import { AgentPromptsMenu } from "./prompts/AgentPromptsMenu.tsx";
 import { questAgentGate } from "./prompts/questAgentGate.ts";
 import { useAgentPrompt } from "./prompts/useAgentPrompt.ts";
-import { useAgentPromptSubject } from "./prompts/useAgentPromptSubject.ts";
+import { useWorkPromptSubject } from "./prompts/useWorkPromptSubject.ts";
 import {
   QUEST_PRIORITY_ICONS,
   QUEST_PRIORITY_TONE,
@@ -88,7 +88,7 @@ const ProjectQuestsTable = () => {
   const [releases] = useStore(currentReleasesAtom);
   const [epics] = useStore(currentEpicsAtom);
   const agentPrompt = useAgentPrompt();
-  const promptSubject = useAgentPromptSubject();
+  const promptSubject = useWorkPromptSubject();
   const questApi = useClient<QuestController>();
   const questMutations = useQuestMutations();
   const reportBulk = useBulkReport();

@@ -13,8 +13,8 @@ import type { FeedbackResource } from "@/api/schemas/feedbackResourceSchema.ts";
 import { projectFixture } from "@/testing/projectFixture.ts";
 
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import { ElementReferenceRegistry } from "../../../registries/ElementReferenceRegistry.ts";
 import { I18n } from "../../../services/I18n.ts";
+import { WorkShell } from "../../../shell/WorkShell.ts";
 import ProjectFeedbackDetail from "./ProjectFeedbackDetail.tsx";
 
 /**
@@ -129,8 +129,8 @@ describe("ProjectFeedbackDetail - accept then dismiss", () => {
       .with(AlephaReact)
       .with(AlephaReactI18n)
       .with(AlephaReactRouter);
-    // The editor reads the reference kinds (#E75, #Q2624); none are needed here.
-    alepha.inject(ElementReferenceRegistry);
+    // Work registers the reference and agent prompt kinds (#E75, #Q2624).
+    alepha.inject(WorkShell);
     await alepha.start();
     // The atom validates against `projectResourceSchema`, so this is the
     // whole required shape, not a convenient subset.
@@ -198,8 +198,8 @@ describe("ProjectFeedbackDetail - attachment previews", () => {
       .with(AlephaReact)
       .with(AlephaReactI18n)
       .with(AlephaReactRouter);
-    // The editor reads the reference kinds (#E75, #Q2624); none are needed here.
-    alepha.inject(ElementReferenceRegistry);
+    // Work registers the reference and agent prompt kinds (#E75, #Q2624).
+    alepha.inject(WorkShell);
     await alepha.start();
     alepha.store.set(currentProjectAtom, projectFixture() as never);
 
@@ -314,8 +314,8 @@ describe("ProjectFeedbackDetail - the Agent Prompts menu", () => {
       .with(AlephaReactRouter);
     alepha.inject(Routes);
     alepha.inject(I18n);
-    // The editor reads the reference kinds (#E75, #Q2624); none are needed here.
-    alepha.inject(ElementReferenceRegistry);
+    // Work registers the reference and agent prompt kinds (#E75, #Q2624).
+    alepha.inject(WorkShell);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
     alepha.store.set(currentProjectAtom, project as never);
@@ -479,7 +479,7 @@ describe("ProjectFeedbackDetail - the Agent Prompts menu", () => {
    * extra field on the subject never reaches the text and this case passes
    * even with the whole resource spread into the subject. The inner
    * guarantee, that the subject itself carries seven fields, is asserted in
-   * `useAgentPromptSubject.browser.spec.tsx`, where deleting it goes red.
+   * `useWorkPromptSubject.browser.spec.tsx`, where deleting it goes red.
    */
   it("carries no reporter data, no context and no attachments", async ({
     expect,

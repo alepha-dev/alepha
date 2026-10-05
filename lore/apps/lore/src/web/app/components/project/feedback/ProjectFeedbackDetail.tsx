@@ -26,7 +26,7 @@ import { attachmentPreview } from "../../shared/attachmentPreview.ts";
 import { formatReference } from "../../shared/element/typedReference.ts";
 import { useRank } from "../../shared/useRank.ts";
 import { AgentPromptsMenu } from "../prompts/AgentPromptsMenu.tsx";
-import { useAgentPromptSubject } from "../prompts/useAgentPromptSubject.ts";
+import { useWorkPromptSubject } from "../prompts/useWorkPromptSubject.ts";
 import { QUEST_STATUS_LABEL_KEYS } from "../quest/questChips.ts";
 import QuestCreate from "../quest/QuestCreate.tsx";
 import FeedbackThread from "./FeedbackThread.tsx";
@@ -43,7 +43,7 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
   const [project] = useStore(currentProjectAtom);
   const [currentUser] = useStore(currentUserAtom);
   const { can } = useRank();
-  const promptSubject = useAgentPromptSubject();
+  const promptSubject = useWorkPromptSubject();
   // Stated here rather than left to the route guard. The panel is a
   // component and a spec can mount it directly, so a gate that only exists
   // upstream is a gate this component does not have.

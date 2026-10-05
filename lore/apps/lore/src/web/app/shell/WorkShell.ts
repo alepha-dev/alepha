@@ -1,13 +1,17 @@
 import { $inject } from "alepha";
 import {
+  ClipboardCheck,
   Columns3,
   Flag,
   Grid3x2,
   Inbox,
   Layers,
+  ListChecks,
+  ListTodo,
   MessageSquarePlus,
   ScrollText,
   Swords,
+  Wrench,
 } from "lucide-react";
 
 import { currentEpicAtom } from "../atoms/currentEpicAtom.ts";
@@ -31,6 +35,13 @@ import ReleaseReferencePreview from "../components/project/releases/ReleaseRefer
 import { useReleaseReferences } from "../components/project/releases/useReleaseReferences.ts";
 import ProjectSettingsDataSection from "../components/project/settings/ProjectSettingsDataSection.tsx";
 import { formatReference } from "../components/shared/element/typedReference.ts";
+import { epicActivatePromptDefault } from "../prompts/epicActivatePrompt.ts";
+import { epicReviewPromptDefault } from "../prompts/epicReviewPrompt.ts";
+import { feedbackLoopPromptDefault } from "../prompts/feedbackLoopPrompt.ts";
+import { feedbackWorkPromptDefault } from "../prompts/feedbackWorkPrompt.ts";
+import { questLoopPromptDefault } from "../prompts/questLoopPrompt.ts";
+import { questWorkPromptDefault } from "../prompts/questWorkPrompt.ts";
+import { AgentPromptRegistry } from "../registries/AgentPromptRegistry.ts";
 import { ElementReferenceRegistry } from "../registries/ElementReferenceRegistry.ts";
 import { ProjectShellRegistry } from "../registries/ProjectShellRegistry.ts";
 import {
@@ -44,12 +55,13 @@ import { canInProject } from "../services/projectRank.ts";
  * `ProjectShellRegistry` (#E75, #Q2624): the Quests, Kanban, Epics, Releases
  * and Feedback entries with their badges, the Quests settings section, the
  * quest, epic, release and feedback creates, the epic, quest and release
- * breadcrumb leaves, the quest log beside the Quests pages, and the quest,
- * epic, feedback and release `[[...]]` references.
+ * breadcrumb leaves, the quest log beside the Quests pages, the quest, epic,
+ * feedback and release `[[...]]` references, and the agent prompt kinds.
  */
 export class WorkShell {
   protected readonly shell = $inject(ProjectShellRegistry);
   protected readonly references = $inject(ElementReferenceRegistry);
+  protected readonly prompts = $inject(AgentPromptRegistry);
 
   constructor() {
     this.shell.registerNav("work", [
@@ -336,6 +348,55 @@ export class WorkShell {
       },
       preview: ReleaseReferencePreview,
       useReferences: useReleaseReferences,
+    });
+
+    this.prompts.register({
+      kind: "epicReview",
+      template: epicReviewPromptDefault,
+      icon: ClipboardCheck,
+      labelKey: "agentPrompts.review",
+    });
+    // `Wrench` and "Work on it", like the two below: handing an epic over is
+    // the same verb as handing over a quest or a report, so it reads the
+    // same on all three surfaces (feedback #P2182). Only the label and the
+    // glyph: the kind stays `epicActivate`, because it is persisted in
+    // `project_prompts.kind` and a rename would orphan every stored template.
+    this.prompts.register({
+      kind: "epicActivate",
+      template: epicActivatePromptDefault,
+      icon: Wrench,
+      labelKey: "agentPrompts.workOnIt",
+    });
+    this.prompts.register({
+      kind: "questWork",
+      template: questWorkPromptDefault,
+      icon: Wrench,
+      labelKey: "agentPrompts.workOnIt",
+    });
+    this.prompts.register({
+      kind: "feedbackWork",
+      template: feedbackWorkPromptDefault,
+      icon: Wrench,
+      labelKey: "agentPrompts.workOnIt",
+    });
+    // ⚠️ Its own glyph and its own label, not `Wrench` and "Work on it". The
+    // three above share those because they are the same verb on three
+    // surfaces; this is a different verb on a surface none of them touches,
+    // and a menu where every row is a wrench says nothing.
+    this.prompts.register({
+      kind: "feedbackLoop",
+      template: feedbackLoopPromptDefault,
+      icon: ListChecks,
+      labelKey: "agentPrompts.triageInbox",
+    });
+    // `ListTodo`, not `Wrench`: "Work on it" hands over ONE item, and this
+    // hands over a list. A wrench here would read as working the quest the
+    // page happens to show.
+    this.prompts.register({
+      kind: "questLoop",
+      template: questLoopPromptDefault,
+      icon: ListTodo,
+      labelKey: "agentPrompts.workLooseQuests",
     });
   }
 

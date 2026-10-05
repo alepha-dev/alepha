@@ -1,12 +1,29 @@
+import { Alepha } from "alepha";
 import { describe, expect, it } from "vitest";
 
 import {
   type AgentPromptKind,
   agentPromptKindSchema,
-} from "@/api/schemas/agentPromptKindSchema.ts";
+} from "../src/api/schemas/agentPromptKindSchema.ts";
+import { AgentPromptRegistry } from "../src/web/app/registries/AgentPromptRegistry.ts";
+import { capabilityRegistry } from "../src/web/app/services/capabilityRegistry.ts";
+import { DeployShell } from "../src/web/app/shell/DeployShell.ts";
+import { WorkShell } from "../src/web/app/shell/WorkShell.ts";
 
-import { capabilityRegistry } from "../services/capabilityRegistry.ts";
-import { AGENT_PROMPT_DEFAULTS } from "./agentPromptDefaults.ts";
+/**
+ * Every default, as Work and Deploy register them (#E75, #Q2624).
+ */
+const AGENT_PROMPT_DEFAULTS = (() => {
+  const alepha = Alepha.create();
+  alepha.inject(WorkShell);
+  alepha.inject(DeployShell);
+  return Object.fromEntries(
+    alepha
+      .inject(AgentPromptRegistry)
+      .all()
+      .map((entry) => [entry.kind, entry.template]),
+  ) as Record<AgentPromptKind, string>;
+})();
 
 /**
  * Tools no capability owns, because they are the orientation calls every

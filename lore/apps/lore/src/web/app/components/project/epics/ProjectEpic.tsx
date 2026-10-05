@@ -29,7 +29,7 @@ import { canInProject } from "@/web/app/services/projectRank.ts";
 
 import ProjectActivityPage from "../activity/ProjectActivityPage.tsx";
 import { AgentPromptsMenu } from "../prompts/AgentPromptsMenu.tsx";
-import { useAgentPromptSubject } from "../prompts/useAgentPromptSubject.ts";
+import { useWorkPromptSubject } from "../prompts/useWorkPromptSubject.ts";
 import EpicCreateSheet from "./EpicCreateSheet.tsx";
 import EpicStatusControl from "./EpicStatusControl.tsx";
 import ProjectEpicAside from "./ProjectEpicAside.tsx";
@@ -73,7 +73,7 @@ type TabKey = "overview" | "quests" | "flow" | "activity" | (string & {});
  */
 const ProjectEpic = (props: ProjectEpicProps) => {
   const { tr } = useI18n<I18n, "en">();
-  const promptSubject = useAgentPromptSubject();
+  const promptSubject = useWorkPromptSubject();
   const dialog = useDialog();
   const epicApi = useClient<EpicController>();
   const questApi = useClient<QuestController>();

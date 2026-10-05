@@ -11,8 +11,12 @@ import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { projectFixture } from "@/testing/projectFixture.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { projectPromptsAtom } from "@/web/app/atoms/projectPromptsAtom.ts";
-import { AGENT_PROMPT_DEFAULTS } from "@/web/app/prompts/agentPromptDefaults.ts";
+import { epicReviewPromptDefault } from "@/web/app/prompts/epicReviewPrompt.ts";
+import { feedbackWorkPromptDefault } from "@/web/app/prompts/feedbackWorkPrompt.ts";
+import { questLoopPromptDefault } from "@/web/app/prompts/questLoopPrompt.ts";
 import { I18n } from "@/web/app/services/I18n.ts";
+import { DeployShell } from "@/web/app/shell/DeployShell.ts";
+import { WorkShell } from "@/web/app/shell/WorkShell.ts";
 
 import ProjectSettingsAgentPrompts from "./ProjectSettingsAgentPrompts.tsx";
 
@@ -79,6 +83,9 @@ describe("ProjectSettingsAgentPrompts", () => {
       .with(AlephaReactRouter)
       .with(AlephaReactI18n);
     alepha.inject(I18n);
+    // The kinds as Work and Deploy register them (#E75, #Q2624).
+    alepha.inject(WorkShell);
+    alepha.inject(DeployShell);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
 
@@ -125,10 +132,8 @@ describe("ProjectSettingsAgentPrompts", () => {
     await mount();
 
     await waitFor(() => expect(editor("epicReview")).not.toBeNull());
-    expect(editor("epicReview")!.value).toBe(AGENT_PROMPT_DEFAULTS.epicReview);
-    expect(editor("feedbackWork")!.value).toBe(
-      AGENT_PROMPT_DEFAULTS.feedbackWork,
-    );
+    expect(editor("epicReview")!.value).toBe(epicReviewPromptDefault);
+    expect(editor("feedbackWork")!.value).toBe(feedbackWorkPromptDefault);
   });
 
   /**
@@ -236,7 +241,7 @@ describe("ProjectSettingsAgentPrompts", () => {
     expect(screen.getByText("Feedback: Triage the inbox")).toBeDefined();
     expect(screen.getByText("Blights: Triage")).toBeDefined();
     expect(screen.getByText("Quests: Work the loose quests")).toBeDefined();
-    expect(editor("questLoop")!.value).toBe(AGENT_PROMPT_DEFAULTS.questLoop);
+    expect(editor("questLoop")!.value).toBe(questLoopPromptDefault);
   });
 
   it("names all seven placeholders, the title and the slug apart", async () => {

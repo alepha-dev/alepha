@@ -13,6 +13,7 @@ import { projectFixture } from "@/testing/projectFixture.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 
 import { useAgentPromptSubject } from "./useAgentPromptSubject.ts";
+import { useWorkPromptSubject } from "./useWorkPromptSubject.ts";
 
 /**
  * The routes the subject builds URLs from. `router.path` resolves
@@ -50,7 +51,7 @@ class Routes {
  * covers the substitution. What is pinned here is the assembly: seven named
  * fields, copied out of the resource one at a time, and nothing else.
  */
-describe("useAgentPromptSubject", () => {
+describe("useWorkPromptSubject, over useAgentPromptSubject", () => {
   let alepha: Alepha | undefined;
 
   beforeAll(() => {
@@ -71,13 +72,23 @@ describe("useAgentPromptSubject", () => {
       (project ?? projectFixture()) as never,
     );
 
-    const { result } = renderHook(() => useAgentPromptSubject(), {
-      wrapper: ({ children }) => (
-        <AlephaContext.Provider value={alepha!}>
-          {children}
-        </AlephaContext.Provider>
-      ),
-    });
+    const { result } = renderHook(
+      () => ({
+        ...useWorkPromptSubject(),
+        // A page of another module, through core alone (#E75, #Q2624).
+        forBlightsInbox: useAgentPromptSubject().forPage.bind(
+          null,
+          "projectBlights",
+        ),
+      }),
+      {
+        wrapper: ({ children }) => (
+          <AlephaContext.Provider value={alepha!}>
+            {children}
+          </AlephaContext.Provider>
+        ),
+      },
+    );
     return result.current;
   };
 

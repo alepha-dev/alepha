@@ -18,6 +18,7 @@ import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
 import { projectFixture } from "@/testing/projectFixture.ts";
+import { WorkShell } from "@/web/app/shell/WorkShell.ts";
 
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { currentReleasesAtom } from "../../../atoms/currentReleasesAtom.ts";
@@ -153,6 +154,8 @@ describe("ProjectEpics - the status filter", () => {
       .with(AlephaReactRouter);
     alepha.inject(Routes);
     alepha.inject(I18n);
+    // Work registers the agent prompt kinds the page offers (#E75, #Q2624).
+    alepha.inject(WorkShell);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
     alepha.store.set(currentProjectAtom, project as never);

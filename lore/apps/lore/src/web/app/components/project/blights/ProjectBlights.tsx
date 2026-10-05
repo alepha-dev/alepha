@@ -344,7 +344,7 @@ const ProjectBlights = () => {
                 ? [
                     {
                       kind: "blightTriage" as const,
-                      subject: () => promptSubject.forBlightsInbox(),
+                      subject: () => promptSubject.forPage("projectBlights"),
                     },
                   ]
                 : []

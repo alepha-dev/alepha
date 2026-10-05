@@ -5,20 +5,21 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@alepha/ui";
+import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Bot } from "lucide-react";
 
 import type { AgentPromptKind } from "@/api/schemas/agentPromptKindSchema.ts";
 import type { AgentPromptSubject } from "@/web/app/prompts/renderPromptTemplate.ts";
 
+import { AgentPromptRegistry } from "../../../registries/AgentPromptRegistry.ts";
 import type { I18n } from "../../../services/I18n.ts";
-import { AGENT_PROMPT_MENU_META } from "./agentPromptMenuMeta.ts";
 import { useAgentPrompt } from "./useAgentPrompt.ts";
 
 export interface AgentPromptsMenuItem {
   /**
    * Which prompt. The glyph and the label both come from
-   * {@link AGENT_PROMPT_MENU_META} keyed on this, so a caller cannot give
+   * the registered kind (`AgentPromptRegistry`) keyed on this, so a caller cannot give
    * one and forget the other - and a fifth kind is a type error there
    * rather than a bare row here.
    */
@@ -76,6 +77,7 @@ export interface AgentPromptsMenuProps {
  */
 export const AgentPromptsMenu = (props: AgentPromptsMenuProps) => {
   const { tr } = useI18n<I18n, "en">();
+  const kinds = useInject(AgentPromptRegistry);
   const agentPrompt = useAgentPrompt();
 
   if (!agentPrompt.enabled || props.items.length === 0) {
@@ -98,7 +100,7 @@ export const AgentPromptsMenu = (props: AgentPromptsMenuProps) => {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         {props.items.map((item) => {
-          const meta = AGENT_PROMPT_MENU_META[item.kind];
+          const meta = kinds.get(item.kind);
           return (
             // The label alone, on the default one-line row (feedback
             // #P2183). The line under it that #P2149 asked for is gone on
@@ -107,7 +109,7 @@ export const AgentPromptsMenu = (props: AgentPromptsMenuProps) => {
               key={item.kind}
               onClick={() => agentPrompt.copy(item.kind, item.subject())}
             >
-              <meta.Icon />
+              <meta.icon />
               {tr(meta.labelKey as never)}
             </DropdownMenuItem>
           );

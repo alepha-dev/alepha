@@ -1,15 +1,15 @@
 import { useToast } from "@alepha/ui";
-import { useStore } from "alepha/react";
+import { useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 
 import type { AgentPromptKind } from "@/api/schemas/agentPromptKindSchema.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { projectPromptsAtom } from "@/web/app/atoms/projectPromptsAtom.ts";
-import { AGENT_PROMPT_DEFAULTS } from "@/web/app/prompts/agentPromptDefaults.ts";
 import {
   type AgentPromptSubject,
   renderPromptTemplate,
 } from "@/web/app/prompts/renderPromptTemplate.ts";
+import { AgentPromptRegistry } from "@/web/app/registries/AgentPromptRegistry.ts";
 import { capabilityOption } from "@/web/app/services/projectCapabilities.ts";
 
 import type { I18n } from "../../../services/I18n.ts";
@@ -55,11 +55,12 @@ export const useAgentPrompt = (): AgentPromptHandle => {
   const toaster = useToast();
   const [project] = useStore(currentProjectAtom);
   const [prompts] = useStore(projectPromptsAtom);
+  const kinds = useInject(AgentPromptRegistry);
 
   return {
     enabled: capabilityOption(project, "work", "agentPrompts"),
     copy: async (kind, subject) => {
-      const template = prompts?.[kind] ?? AGENT_PROMPT_DEFAULTS[kind];
+      const template = prompts?.[kind] ?? kinds.get(kind).template;
       const text = renderPromptTemplate(template, subject);
       try {
         await navigator.clipboard.writeText(text);

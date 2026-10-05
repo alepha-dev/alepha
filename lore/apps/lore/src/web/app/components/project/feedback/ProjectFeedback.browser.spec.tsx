@@ -14,6 +14,7 @@ import { projectFixture } from "@/testing/projectFixture.ts";
 
 import { currentFeedbackCountAtom } from "../../../atoms/currentFeedbackCountAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
+import { WorkShell } from "../../../shell/WorkShell.ts";
 import { FEEDBACK_PAGE_SIZE } from "./feedbackPageSize.ts";
 import ProjectFeedback from "./ProjectFeedback.tsx";
 
@@ -161,6 +162,8 @@ describe("ProjectFeedback - Show more", () => {
       .with(AlephaReactI18n)
       .with(AlephaReactRouter);
     alepha.inject(Routes);
+    // Work registers the agent prompt kinds the page offers (#E75, #Q2624).
+    alepha.inject(WorkShell);
     await alepha.start();
     // The atom validates against `projectResourceSchema`, so this is the
     // whole required shape, not a convenient subset.
