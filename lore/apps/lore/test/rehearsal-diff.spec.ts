@@ -41,6 +41,46 @@ describe("RehearsalDiff", () => {
     expect(report.failures).toEqual(["quest_comments went from 9 rows to 0"]);
   });
 
+  /**
+   * A backfill grows its table on purpose (#Q2626), and says so with a
+   * marker directly above its INSERT. The marker allows growth only: the
+   * same table losing rows still fails, and an unmarked table still fails.
+   */
+  it("lets a marked backfill grow its table, and nothing else", ({
+    expect,
+  }) => {
+    const backfill = [
+      "ALTER TABLE `folio_links` ADD `relation` text;--> statement-breakpoint",
+      "-- alepha-rehearse-allow-insert: one filed row per folio with an epic",
+      "INSERT OR IGNORE INTO `folio_links` (`from_type`) SELECT 'epic' FROM `folios`;",
+      "INSERT INTO `quests` (`id`) SELECT 1;",
+    ].join("\n");
+    expect(diff.markedInserts(backfill)).toEqual(["folio_links"]);
+
+    const grown = diff.compare(
+      { d1_migrations: 1, folio_links: 10, quests: 5 },
+      { d1_migrations: 2, folio_links: 14, quests: 5 },
+      [backfill],
+    );
+    expect(grown.failures).toEqual([]);
+    expect(grown.rows[1]).toEqual({
+      table: "folio_links",
+      before: 10,
+      after: 14,
+      status: "grown",
+    });
+
+    const shrunk = diff.compare(
+      { d1_migrations: 1, folio_links: 10, quests: 5 },
+      { d1_migrations: 2, folio_links: 9, quests: 6 },
+      [backfill],
+    );
+    expect(shrunk.failures).toEqual([
+      "folio_links went from 10 rows to 9",
+      "quests went from 5 rows to 6",
+    ]);
+  });
+
   it("fails when a table vanishes that no marker names", ({ expect }) => {
     const report = diff.compare(
       { d1_migrations: 1, invitations: 2 },

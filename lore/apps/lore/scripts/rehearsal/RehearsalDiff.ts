@@ -4,6 +4,9 @@
  * - `same`: the count did not move.
  * - `changed`: the count moved. A failure: no migration of #E74 inserts or
  *   deletes rows, and an `UPDATE` changes none.
+ * - `grown`: the count rose, and an `alepha-rehearse-allow-insert` marker in
+ *   the applied SQL names the table: a backfill (#Q2626). A drop in count
+ *   there is still a failure.
  * - `dropped`: gone, and an `alepha-allow-drop-table` marker in the applied SQL
  *   names it.
  * - `vanished`: gone, and nothing names it. A failure.
@@ -13,7 +16,7 @@ export interface RehearsalRow {
   table: string;
   before?: number;
   after?: number;
-  status: "same" | "changed" | "dropped" | "vanished" | "new";
+  status: "same" | "changed" | "grown" | "dropped" | "vanished" | "new";
 }
 
 /**
@@ -58,7 +61,29 @@ export class RehearsalDiff {
   }
 
   /**
-   * Passes when every table that still exists kept its exact count, every
+   * The tables a migration's SQL inserts into under an
+   * `alepha-rehearse-allow-insert` marker: a `-- alepha-rehearse-allow-insert:
+   * <why>` line directly above the `INSERT`. A backfill grows its table by
+   * design (#Q2626), and the marker is what says so, in the migration that
+   * does it.
+   */
+  public markedInserts(sql: string): string[] {
+    const lines = sql.split("\n").map((line) => line.trim());
+    const tables: string[] = [];
+    for (let i = 1; i < lines.length; i++) {
+      const insert = /^INSERT\s+(?:OR\s+\w+\s+)?INTO\s+[`"]?(\w+)[`"]?/i.exec(
+        lines[i],
+      );
+      if (insert && /^--\s*alepha-rehearse-allow-insert:/.test(lines[i - 1])) {
+        tables.push(insert[1]);
+      }
+    }
+    return tables;
+  }
+
+  /**
+   * Passes when every table that still exists kept its exact count (or grew,
+   * when a marker allows inserts into it), every
    * table that disappeared is named by a marker in `appliedSql`, and the
    * bookkeeping table grew by exactly one row per applied migration.
    */
@@ -68,6 +93,9 @@ export class RehearsalDiff {
     appliedSql: string[],
   ): RehearsalReport {
     const marked = new Set(appliedSql.flatMap((sql) => this.markedDrops(sql)));
+    const inserted = new Set(
+      appliedSql.flatMap((sql) => this.markedInserts(sql)),
+    );
     const tables = [
       ...new Set([...Object.keys(before), ...Object.keys(after)]),
     ].sort();
@@ -107,6 +135,8 @@ export class RehearsalDiff {
         }
       } else if (was === now) {
         rows.push({ table, before: was, after: now, status: "same" });
+      } else if (now > was && inserted.has(table)) {
+        rows.push({ table, before: was, after: now, status: "grown" });
       } else {
         rows.push({ table, before: was, after: now, status: "changed" });
         failures.push(`${table} went from ${was} rows to ${now}`);

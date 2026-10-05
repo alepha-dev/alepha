@@ -14,5 +14,6 @@ CREATE UNIQUE INDEX `folio_links_from_type_from_id_target_type_to_id_relation_id
 --    is the epic id as text, like every integer source; `created_at` takes
 --    the column default. #Q2627 runs it again before the drop, to catch a
 --    filing the previous Worker wrote between this migration and the deploy.
+-- alepha-rehearse-allow-insert: one filed row per folio with an epic_id
 INSERT OR IGNORE INTO `folio_links` (`from_type`, `from_id`, `target_type`, `to_id`, `relation`)
 SELECT 'epic', CAST(`epic_id` AS TEXT), 'folio', `id`, 'filed' FROM `folios` WHERE `epic_id` IS NOT NULL;
