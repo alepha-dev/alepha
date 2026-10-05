@@ -6,6 +6,8 @@ import { ProjectResources } from "./resources/ProjectResources.ts";
 import { AttachmentContentService } from "./services/AttachmentContentService.ts";
 import { AttachmentPushCommand } from "./services/AttachmentPushCommand.ts";
 import { EpicRefService } from "./services/EpicRefService.ts";
+import { KnowledgeProjectContext } from "./services/KnowledgeProjectContext.ts";
+import { WorkProjectContext } from "./services/WorkProjectContext.ts";
 import { AppInstanceTools } from "./tools/AppInstanceTools.ts";
 import { ArtifactTools } from "./tools/ArtifactTools.ts";
 import { BlightTools } from "./tools/BlightTools.ts";
@@ -43,5 +45,10 @@ export const LoreMcp = $module({
     AttachmentContentService,
     AttachmentPushCommand,
     EpicRefService,
+    // The orientation sections each module registers on the core
+    // `ProjectContextRegistry` (#E75, #Q2623); listed because nothing
+    // injects them.
+    WorkProjectContext,
+    KnowledgeProjectContext,
   ],
 });

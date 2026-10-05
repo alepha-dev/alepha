@@ -10,7 +10,7 @@ import { AlephaFake } from "alepha/testing/faker";
 import { describe, expect, it } from "vitest";
 
 import { blights } from "../src/api/entities/blights.ts";
-import { LoreAnalytics } from "../src/api/entities/loreAnalytics.ts";
+import { DeployAnalytics } from "../src/api/entities/deployAnalytics.ts";
 import { projectCapabilities } from "../src/api/entities/projectCapabilities.ts";
 import { projects } from "../src/api/entities/projects.ts";
 import { sigilErrorGroups } from "../src/api/entities/sigilErrorGroups.ts";
@@ -42,7 +42,7 @@ class Probe {
  * with two populated buckets comes back as two rows, not one row with two
  * non-zero columns.
  */
-const readReferrers = async (analytics: LoreAnalytics, sigilId: string) => {
+const readReferrers = async (analytics: DeployAnalytics, sigilId: string) => {
   const result = await analytics.views.query({
     since: "2000-01-01",
     where: { sigilId: { inArray: [sigilId] } },
@@ -54,7 +54,7 @@ const readReferrers = async (analytics: LoreAnalytics, sigilId: string) => {
     .sort((a, b) => a.referrer.localeCompare(b.referrer));
 };
 
-const readMeasures = async (analytics: LoreAnalytics, sigilId: string) => {
+const readMeasures = async (analytics: DeployAnalytics, sigilId: string) => {
   const result = await analytics.views.query({
     since: "2000-01-01",
     where: { sigilId: { inArray: [sigilId] } },
@@ -69,7 +69,7 @@ const readMeasures = async (analytics: LoreAnalytics, sigilId: string) => {
 };
 
 const readBy = async (
-  analytics: LoreAnalytics,
+  analytics: DeployAnalytics,
   sigilId: string,
   dimension: "campaign" | "device" | "traffic" | "auth",
 ) => {
@@ -84,7 +84,7 @@ const readBy = async (
     .sort((a, b) => a.value.localeCompare(b.value));
 };
 
-const readViews = async (analytics: LoreAnalytics, sigilId: string) => {
+const readViews = async (analytics: DeployAnalytics, sigilId: string) => {
   const result = await analytics.views.query({
     since: "2000-01-01",
     where: { sigilId: { inArray: [sigilId] } },
@@ -99,7 +99,7 @@ const readViews = async (analytics: LoreAnalytics, sigilId: string) => {
   }>;
 };
 
-const readVitals = async (analytics: LoreAnalytics, sigilId: string) => {
+const readVitals = async (analytics: DeployAnalytics, sigilId: string) => {
   const result = await analytics.vitals.query({
     since: "2000-01-01",
     where: { sigilId: { inArray: [sigilId] } },
@@ -166,7 +166,7 @@ const setup = async (
   alepha.with(LoreApi);
 
   const probe = alepha.inject(Probe);
-  const analytics = alepha.inject(LoreAnalytics);
+  const analytics = alepha.inject(DeployAnalytics);
   const tokens = alepha.inject(SigilTokenService);
   const server = alepha.inject(ServerProvider);
   const users = alepha.inject(UserService);

@@ -2,11 +2,8 @@ import { $repository } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 import { BadRequestError, NotFoundError } from "alepha/server";
 
-import { type Epic, epics } from "../entities/epics.ts";
 import { type Project, projects } from "../entities/projects.ts";
-import { type Release, releases } from "../entities/releases.ts";
-import { type Sigil, sigils } from "../entities/sigils.ts";
-import { relations } from "../relations.ts";
+import { coreRelations } from "../relations/coreRelations.ts";
 import type { DashboardScope } from "../schemas/dashboardScopeSchema.ts";
 
 /**
@@ -25,23 +22,49 @@ export interface ResolvedDashboardScope {
    * Apps in scope. Only a `kind: "apps"` scope sets it.
    */
   sigilIds?: string[];
-  sigils: Sigil[];
   /**
-   * The epic, for a `kind: "epic"` scope, proven to belong to a project the
-   * caller may read.
+   * What an `apps`, `epic` or `release` scope names, proven by the module
+   * that owns it (#E75, #Q2623): the rows themselves, because the resolvers
+   * need them and only this layer may read them. Empty for `all` and
+   * `projects`.
    *
-   * The whole row rather than the id, because the resolver is the only layer
-   * that can carry the per-project `number` across to `link()` — see
-   * {@link DashboardCardTarget}. A card that put an id where the page expects
-   * a number would land on somebody else's epic, silently.
+   * The whole row rather than an id, because the resolver is the only layer
+   * that can carry an epic's per-project `number` or a release's `tag` across
+   * to `link()`: a card that put an id where the page expects a number would
+   * land on somebody else's epic, silently.
    */
-  epic?: Epic;
-  /**
-   * The release, for a `kind: "release"` scope. Same reasoning as
-   * {@link epic}: `projectRelease` is addressed by TAG.
-   */
-  release?: Release;
+  subjects: DashboardScopeSubject[];
 }
+
+/**
+ * One thing an `apps`, `epic` or `release` scope names.
+ */
+export interface DashboardScopeSubject {
+  /**
+   * `app`, `epic` or `release`.
+   */
+  kind: string;
+  id: string;
+  projectId: number;
+  /**
+   * What the card's scope chip reads: an app's name, an epic's title, a
+   * release's tag.
+   */
+  name: string;
+  /**
+   * The row, for the owning module's resolvers to read back.
+   */
+  row: unknown;
+}
+
+/**
+ * Proves the subjects of one scope kind: every id must exist and belong to a
+ * visible project, or the whole scope is a 404.
+ */
+export type DashboardScopeResolver = (
+  scope: DashboardScope,
+  visibleById: ReadonlyMap<number, Project>,
+) => Promise<DashboardScopeSubject[]>;
 
 /**
  * The security boundary of the dashboard, and the only place a card's scope
@@ -66,10 +89,20 @@ export interface ResolvedDashboardScope {
  */
 export class DashboardScopeService {
   protected readonly projects = $repository(projects);
-  protected readonly sigils = $repository(sigils);
-  protected readonly epics = $repository(epics);
-  protected readonly releases = $repository(releases);
-  protected readonly usersWith = $repository(relations, "users");
+  protected readonly resolvers = new Map<string, DashboardScopeResolver>();
+  protected readonly usersWith = $repository(coreRelations, "users");
+
+  /**
+   * Register how a scope kind that names a module's rows is proven: `apps`
+   * by Deploy, `epic` and `release` by Work (#E75, #Q2623). A kind no module
+   * registered is refused, as an unsupported scope.
+   */
+  registerScope(
+    kind: DashboardScope["kind"],
+    resolver: DashboardScopeResolver,
+  ): void {
+    this.resolvers.set(kind, resolver);
+  }
 
   /**
    * Structural validation of the tagged union.
@@ -149,7 +182,7 @@ export class DashboardScopeService {
       return {
         projectIds: visible.map((it) => it.id),
         projects: visible,
-        sigils: [],
+        subjects: [],
       };
     }
 
@@ -165,75 +198,25 @@ export class DashboardScopeService {
       return {
         projectIds: inScope.map((it) => it.id),
         projects: inScope,
-        sigils: [],
+        subjects: [],
       };
     }
 
-    if (scope.kind === "apps") {
-      const ids = scope.sigilIds ?? [];
-      // ⚠️ D1, and one bound parameter per app — but bounded already, and by
-      // the schema rather than by anything here: `dashboardScopeSchema` caps
-      // `sigilIds` at 50, well under D1's hundred-parameter ceiling (folio
-      // #F1173). Said out loud because the cap is a validation rule two files
-      // away, and raising it past 90 would break this read with no error
-      // anyone reads until a card with that many apps is resolved. The
-      // project-wide sets, which have no such cap, are bounded where they are
-      // built: `LoreAnalyticsStore.scope` and `InsightsController.chunked`.
-      const rows = await this.sigils.findMany({
-        where: { id: { inArray: ids } },
-      });
-      const byId = new Map(rows.map((it) => [it.id, it]));
-      const inScope: Sigil[] = [];
-      for (const id of ids) {
-        const sigil = byId.get(id);
-        // Two ways to fail, one answer: the app does not exist, or it exists
-        // in a project the caller has nothing to do with. "No such app here"
-        // is true either way, and distinguishing them would leak the second.
-        if (!sigil || !visibleById.has(sigil.projectId)) {
-          throw new NotFoundError("App not found");
-        }
-        inScope.push(sigil);
-      }
-      const projectIds = [...new Set(inScope.map((it) => it.projectId))];
+    // `apps`, `epic`, `release`: the module that owns the rows proves them,
+    // and throws a 404 for one that does not exist or sits in a project the
+    // caller has nothing to do with. "No such thing here" is true either way,
+    // and distinguishing them would leak the second.
+    const resolver = this.resolvers.get(scope.kind);
+    if (resolver) {
+      const subjects = await resolver(scope, visibleById);
+      const projectIds = [...new Set(subjects.map((it) => it.projectId))];
       return {
         projectIds,
         projects: projectIds.map((id) => visibleById.get(id)!),
-        sigilIds: inScope.map((it) => it.id),
-        sigils: inScope,
-      };
-    }
-
-    if (scope.kind === "epic") {
-      const epic = await this.epics.findOne({
-        where: { id: { eq: scope.epicId! } },
-      });
-      // Two ways to fail, one answer, exactly as for an app above: the epic
-      // does not exist, or it belongs to a project the caller has nothing to
-      // do with. "No such epic here" is true either way, and distinguishing
-      // them would leak the second.
-      if (!epic || !visibleById.has(epic.projectId)) {
-        throw new NotFoundError("Epic not found");
-      }
-      return {
-        projectIds: [epic.projectId],
-        projects: [visibleById.get(epic.projectId)!],
-        sigils: [],
-        epic,
-      };
-    }
-
-    if (scope.kind === "release") {
-      const release = await this.releases.findOne({
-        where: { id: { eq: scope.releaseId! } },
-      });
-      if (!release || !visibleById.has(release.projectId)) {
-        throw new NotFoundError("Release not found");
-      }
-      return {
-        projectIds: [release.projectId],
-        projects: [visibleById.get(release.projectId)!],
-        sigils: [],
-        release,
+        ...(scope.kind === "apps"
+          ? { sigilIds: subjects.map((it) => it.id) }
+          : {}),
+        subjects,
       };
     }
 

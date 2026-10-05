@@ -2,7 +2,6 @@ import { organizationMembers } from "alepha/api/organizations";
 import { $repository } from "alepha/orm";
 
 import { projects } from "../entities/projects.ts";
-import { quests } from "../entities/quests.ts";
 
 /**
  * The one definition of "delete a project and its dependents".
@@ -26,7 +25,14 @@ import { quests } from "../entities/quests.ts";
 export class ProjectDeletionService {
   protected readonly projects = $repository(projects);
   protected readonly organizationMembers = $repository(organizationMembers);
-  protected readonly quests = $repository(quests);
+  protected readonly steps: ProjectDeletionStep[] = [];
+
+  /**
+   * Register what a module deletes when a project goes, in `order`.
+   */
+  public registerStep(step: ProjectDeletionStep): void {
+    this.steps.push(step);
+  }
 
   /**
    * Removes the project row, then the child rows the application deletes
@@ -54,7 +60,11 @@ export class ProjectDeletionService {
         organizationId: { eq: project.organizationId },
       });
     }
-    await this.quests.deleteMany({ projectId: { eq: projectId } });
+    // What each module deletes explicitly rather than leaving to a database
+    // cascade (#E75, #Q2623): Work's quests.
+    for (const step of [...this.steps].sort((a, b) => a.order - b.order)) {
+      await step.run(projectId);
+    }
     return project ? { id: project.id, title: project.title } : undefined;
   }
 
@@ -85,4 +95,12 @@ export class ProjectDeletionService {
     project.slug = undefined;
     await this.projects.save(project);
   }
+}
+
+/**
+ * One module's part of deleting a project.
+ */
+export interface ProjectDeletionStep {
+  order: number;
+  run: (projectId: number) => Promise<void>;
 }

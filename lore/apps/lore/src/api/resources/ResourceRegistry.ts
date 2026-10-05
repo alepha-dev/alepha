@@ -215,6 +215,24 @@ export interface ResourceKind {
   create?: (input: ResourceCreateInput) => Promise<ResourceCreated>;
 
   /**
+   * File a child resource under one of this kind (an epic files a folio),
+   * with the same gate and audit as the owning module's own action. A kind
+   * without it files nothing.
+   */
+  attach?: (
+    parentId: number,
+    child: { kind: string; id: string },
+  ) => Promise<void>;
+
+  /**
+   * Take a child resource out of one of this kind.
+   */
+  detach?: (
+    parentId: number,
+    child: { kind: string; id: string },
+  ) => Promise<void>;
+
+  /**
    * Hard-delete one that {@link ResourceKind.create} just made, when the
    * action that made it lost a race. Nothing points at it yet.
    */
@@ -240,6 +258,18 @@ export interface ResourceRef {
    * The kind's own status, where it has one (an epic's `draft`...).
    */
   status?: string;
+  /**
+   * A one-line summary, where the kind has one (a folio's).
+   */
+  summary?: string;
+  /**
+   * When it last changed, where a list orders by recency.
+   */
+  updatedAt?: string;
+  /**
+   * Pinned, where the kind pins (a folio).
+   */
+  pinned?: boolean;
 }
 
 /**

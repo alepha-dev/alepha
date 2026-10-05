@@ -38,13 +38,23 @@ export class FolioResourceKind {
         const rows = await this.bound.collect([...ids], (batch) =>
           this.folios.findMany({
             where: { id: { inArray: batch }, projectId: { eq: projectId } },
-            columns: ["id", "shortId", "title"],
+            columns: [
+              "id",
+              "shortId",
+              "title",
+              "summary",
+              "updatedAt",
+              "pinned",
+            ],
           }),
         );
         return rows.map((r) => ({
           id: r.id,
           shortId: r.shortId,
           title: r.title,
+          summary: r.summary,
+          updatedAt: r.updatedAt,
+          pinned: r.pinned,
         }));
       },
       search: {

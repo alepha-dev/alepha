@@ -9,7 +9,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 import { $action, NotFoundError } from "alepha/server";
 
-import { LoreAnalytics } from "../entities/loreAnalytics.ts";
+import { DeployAnalytics } from "../entities/deployAnalytics.ts";
 import { sigilErrorGroups } from "../entities/sigilErrorGroups.ts";
 import { sigils } from "../entities/sigils.ts";
 import {
@@ -45,14 +45,14 @@ export type { InsightsResource };
  * built as a list rather than hard-coded to the project.
  *
  * **Views and vitals are asked of `$analytics()`.** Both go through the
- * `sigil_views` / `sigil_vitals` datasets declared in `LoreAnalytics`, via the
+ * `sigil_views` / `sigil_vitals` datasets declared in `DeployAnalytics`, via the
  * question-shaped `views.query(...)` / `vitals.query(...)`. The pseudo-
  * dimension `"day"` folds hour buckets into the daily timeline with no epoch
  * math on this end, the same way the old `substr(hour, 1, 10)` group did.
  * `uniqueVisitors` stays on `LoreAnalyticsStore` (the legacy
  * `sigil_uniques_daily` table): a distinct count cannot survive sampling or a
  * rollup, so it is out of scope for `$analytics()` by construction — see
- * `LoreAnalytics`'s class doc.
+ * `DeployAnalytics`'s class doc.
  *
  * **The error budget lives here too**, and also stays on the legacy path.
  * `sigil_error_groups` is the only table that keeps failures split by app, and
@@ -222,7 +222,7 @@ export class InsightsController {
   protected readonly SIGIL_CHUNK = 90;
 
   protected analytics = $inject(LoreAnalyticsStore);
-  protected datasets = $inject(LoreAnalytics);
+  protected datasets = $inject(DeployAnalytics);
   protected dateTime = $inject(DateTimeProvider);
   /**
    * Injected for one method: `percentChange`. The rule for when a delta may
@@ -379,7 +379,7 @@ export class InsightsController {
       }
 
       // Six questions, one window. Views and vitals are asked of the
-      // `$analytics()` datasets in `LoreAnalytics` — the same declaration
+      // `$analytics()` datasets in `DeployAnalytics` — the same declaration
       // Workers Analytics Engine and a relational database both answer, so
       // this handler cannot tell which one it is talking to. Unique visitors
       // and the error budget stay on `LoreAnalyticsStore` / `sigilErrorGroups`

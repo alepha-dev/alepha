@@ -16,7 +16,7 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { HomeController } from "../src/api/controllers/HomeController.ts";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
-import { LoreAnalytics } from "../src/api/entities/loreAnalytics.ts";
+import { ProjectAnalytics } from "../src/api/entities/projectAnalytics.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { LoreAudits } from "../src/api/services/LoreAudits.ts";
 
@@ -61,7 +61,7 @@ interface TestContext {
   alepha: Alepha;
   homeApi: HomeController;
   audits: LoreAudits;
-  datasets: LoreAnalytics;
+  datasets: ProjectAnalytics;
   user: { id: string; roles: string[] };
   projectId: number;
 }
@@ -110,7 +110,7 @@ const setup = async (unreadable = false): Promise<TestContext> => {
     alepha,
     homeApi: alepha.inject(HomeController),
     audits: alepha.inject(LoreAudits),
-    datasets: alepha.inject(LoreAnalytics),
+    datasets: alepha.inject(ProjectAnalytics),
     user,
     projectId: project.data.id,
   };

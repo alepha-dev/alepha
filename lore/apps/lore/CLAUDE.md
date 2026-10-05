@@ -101,6 +101,22 @@ apps/lore/                # This app
 - Cross-module actions: a blight forward asks the `quest` kind to `create` (`require` refuses by name when absent); a quest delete calls `resources.deleted(...)`, and Deploy's `BlightQuestHandBack` subscribes with `onDeleted("quest")`.
 - Never import another module's table or service to reach one of its rows: register a kind, or add what you need to the kind.
 
+## Registries: core shows what a module owns (#E75, #Q2623)
+
+Core reads no Work, Knowledge or Deploy table. Where core shows or polices something a module owns, the module registers it, and core asks:
+
+| core registry                                                                                           | what modules register                                                                                                                                                                  |
+| ------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ProjectCountRegistry`                                                                                  | per-project counts: Home's draft epics / open blights / pending feedback, the overview's areas / open quests                                                                           |
+| `AssignedWorkRegistry`                                                                                  | the viewer's open work, `getProjectById` / `BySlug`'s `quests` (kept narrow for published CLIs; the web reads `QuestController.getMyActiveQuests`)                                     |
+| `ProjectContextRegistry` (`mcp/services`)                                                               | `project_context` / `project_info` sections, merged in `order` so the output is unchanged                                                                                              |
+| `DashboardMetricCatalog` / `DashboardMetricRegistry` / `DashboardScopeService` / `DashboardCardService` | metric descriptors (browser-safe, in `LoreDashboardCatalog`), resolvers (they register themselves), the `apps` / `epic` / `release` scope kinds (as generic `subjects`), default cards |
+| `FileAccessRegistry`                                                                                    | who may read each attachment bucket                                                                                                                                                    |
+| `ProjectDeletionService.registerStep`                                                                   | what a module deletes with a project                                                                                                                                                   |
+| `ResourceRegistry`                                                                                      | linkable kinds, see below                                                                                                                                                              |
+
+Two more cuts are not registries: `$relations` is one value per module (`api/relations/*Relations.ts`), and the analytics datasets are `ProjectAnalytics` (core) and `DeployAnalytics`. `CapabilityRegistry` derives each capability's options schema from its own descriptor; `test/capability-options-schemas.spec.ts` holds it equal to the module's schema. A module's own `$hook` (`QuestMemberRemoval` on `organization:member:removed`) needs no registry at all.
+
 ## Capabilities: what a project DOES
 
 Since epic #36 (2026-09-06) a project is not a quest tracker with extras. It is

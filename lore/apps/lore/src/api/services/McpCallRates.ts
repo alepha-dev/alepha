@@ -1,7 +1,7 @@
 import { $hook, $inject } from "alepha";
 import { $logger } from "alepha/logger";
 
-import { LoreAnalytics } from "../entities/loreAnalytics.ts";
+import { ProjectAnalytics } from "../entities/projectAnalytics.ts";
 
 /**
  * One point in `mcp_calls` per MCP tool call (#E65).
@@ -41,7 +41,7 @@ import { LoreAnalytics } from "../entities/loreAnalytics.ts";
  */
 export class McpCallRates {
   protected readonly log = $logger();
-  protected readonly datasets = $inject(LoreAnalytics);
+  protected readonly datasets = $inject(ProjectAnalytics);
 
   public readonly onToolEnd = $hook({
     on: "mcp:tool:end",

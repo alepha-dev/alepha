@@ -1,4 +1,4 @@
-import { $inject } from "alepha";
+import { $inject, AlephaError } from "alepha";
 import { $logger } from "alepha/logger";
 import type { UserAccountToken } from "alepha/security";
 
@@ -6,7 +6,6 @@ import type { ProjectCapability } from "../entities/projectCapabilities.ts";
 import type { Project } from "../entities/projects.ts";
 import type { DashboardCardResource } from "../schemas/dashboardCardResourceSchema.ts";
 import type { DashboardCardValue } from "../schemas/dashboardCardValueSchema.ts";
-import { ActiveQuestsMetric } from "./ActiveQuestsMetric.ts";
 import { CapabilityRegistry } from "./CapabilityRegistry.ts";
 import {
   type DashboardBoard,
@@ -21,14 +20,7 @@ import {
   DashboardScopeService,
   type ResolvedDashboardScope,
 } from "./DashboardScopeService.ts";
-import { EpicProgressMetric } from "./EpicProgressMetric.ts";
-import { HeldQuestsMetric } from "./HeldQuestsMetric.ts";
-import { OpenBlightsMetric } from "./OpenBlightsMetric.ts";
 import { ProjectSecurityService } from "./ProjectSecurityService.ts";
-import { ReleaseProgressMetric } from "./ReleaseProgressMetric.ts";
-import { TagCompletionMetric } from "./TagCompletionMetric.ts";
-import { UniqueVisitorsMetric } from "./UniqueVisitorsMetric.ts";
-import { UntriagedFeedbackMetric } from "./UntriagedFeedbackMetric.ts";
 
 /**
  * Turns a whole card list into a whole list of values, in one pass.
@@ -71,34 +63,32 @@ export class DashboardMetricRegistry {
   protected readonly security = $inject(ProjectSecurityService);
   protected readonly registry = $inject(CapabilityRegistry);
 
-  protected readonly activeQuests = $inject(ActiveQuestsMetric);
-  protected readonly heldQuests = $inject(HeldQuestsMetric);
-  protected readonly epicProgress = $inject(EpicProgressMetric);
-  protected readonly releaseProgress = $inject(ReleaseProgressMetric);
-  protected readonly tagCompletion = $inject(TagCompletionMetric);
-  protected readonly openBlights = $inject(OpenBlightsMetric);
-  protected readonly untriagedFeedback = $inject(UntriagedFeedbackMetric);
-  protected readonly uniqueVisitors = $inject(UniqueVisitorsMetric);
+  /**
+   * Every resolver, by metric key, registered by the module that owns the
+   * metric (#E75, #Q2623): Work's quest, epic, release, tag and feedback
+   * metrics, Deploy's blights and visitors. A card whose metric no module
+   * resolves fails as an unknown metric would.
+   */
+  protected readonly resolverByMetric = new Map<
+    string,
+    DashboardMetricResolver
+  >();
 
   /**
-   * Every resolver, by metric key.
-   *
-   * Adding a metric is one catalogue entry, one resolver, and one line here.
-   * Built from the resolvers' own `metric` fields rather than from a literal
-   * map, so a resolver cannot be registered under a key it does not claim.
+   * Register a resolver under the metric key it claims, so a resolver cannot
+   * be registered under a key it does not own.
    */
+  public register(resolver: DashboardMetricResolver): void {
+    if (this.resolverByMetric.has(resolver.metric)) {
+      throw new AlephaError(
+        `Dashboard metric '${resolver.metric}' has two resolvers`,
+      );
+    }
+    this.resolverByMetric.set(resolver.metric, resolver);
+  }
+
   protected resolvers(): Map<string, DashboardMetricResolver> {
-    const all: DashboardMetricResolver[] = [
-      this.activeQuests,
-      this.heldQuests,
-      this.epicProgress,
-      this.releaseProgress,
-      this.tagCompletion,
-      this.openBlights,
-      this.untriagedFeedback,
-      this.uniqueVisitors,
-    ];
-    return new Map(all.map((resolver) => [resolver.metric, resolver]));
+    return this.resolverByMetric;
   }
 
   /**
@@ -276,8 +266,13 @@ export class DashboardMetricRegistry {
 
     const projects = scope.projects.filter((project) => answers(project.id));
     const projectIds = new Set(projects.map((project) => project.id));
-    const sigils = scope.sigils.filter((sigil) =>
-      projectIds.has(sigil.projectId),
+    // ⚠️ Subjects are dropped WITH their project rather than carried through
+    // it. An epic card added while `work.epics` was on must resolve to zero
+    // once the option goes off, and the resolvers read the subjects, so
+    // leaving them standing over an emptied project list would count rows the
+    // project no longer shows.
+    const subjects = scope.subjects.filter((subject) =>
+      projectIds.has(subject.projectId),
     );
 
     return {
@@ -285,21 +280,10 @@ export class DashboardMetricRegistry {
       projects,
       // Kept `undefined` rather than emptied when the card was never
       // app-scoped: the field's presence is what says which picker filled it.
-      sigilIds: scope.sigilIds ? sigils.map((sigil) => sigil.id) : undefined,
-      sigils,
-      // ⚠️ Dropped WITH their project rather than carried through it. An epic
-      // card added while `work.epics` was on must resolve to zero once the
-      // option goes off, and the resolvers read these fields, so leaving them
-      // standing over an emptied project list would count rows the project no
-      // longer shows.
-      epic:
-        scope.epic && projectIds.has(scope.epic.projectId)
-          ? scope.epic
-          : undefined,
-      release:
-        scope.release && projectIds.has(scope.release.projectId)
-          ? scope.release
-          : undefined,
+      sigilIds: scope.sigilIds
+        ? subjects.filter((it) => it.kind === "app").map((it) => it.id)
+        : undefined,
+      subjects,
     };
   }
 
@@ -310,26 +294,13 @@ export class DashboardMetricRegistry {
    * should read as is the locale's decision, not this layer's.
    */
   protected scopeNames(entry: DashboardResolvable): string[] {
-    if (entry.card.scope.kind === "apps") {
-      return entry.scope.sigils.map((sigil) => sigil.name);
-    }
     if (entry.card.scope.kind === "projects") {
       return entry.scope.projects.map((project) => project.title);
     }
-    if (entry.card.scope.kind === "epic") {
-      // The epic's own title, which is what the chip has to read: a card
-      // pinned to one epic on a board full of them says nothing useful with
-      // its project's name on it.
-      return entry.scope.epic ? [entry.scope.epic.title] : [];
-    }
-    if (entry.card.scope.kind === "release") {
-      // The TAG, not the title, matching how a release is named everywhere
-      // else in the app and in its own URL.
-      const release = entry.scope.release;
-      if (!release) return [];
-      return [release.tag ?? release.title];
-    }
-    return [];
+    // An app's name, an epic's own title (a card pinned to one epic on a
+    // board full of them says nothing useful with its project's name on it),
+    // a release's TAG: each subject carries the name its module chose.
+    return entry.scope.subjects.map((subject) => subject.name);
   }
 
   protected failed(

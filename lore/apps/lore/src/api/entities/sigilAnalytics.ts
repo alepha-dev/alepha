@@ -14,7 +14,7 @@ export const UNIQUES_COLLAPSED_HASH = "*";
 /**
  * The sigil aggregate table that is still Lore's own: daily unique visitors.
  *
- * Views and vitals moved onto the `LoreAnalytics` `$analytics()` datasets, and
+ * Views and vitals moved onto the `DeployAnalytics` `$analytics()` datasets, and
  * their hourly tables were dropped (#E74). Uniques cannot follow them: a
  * distinct count survives neither sampling nor a rollup, so it stays a table
  * here, read and written by `LoreAnalyticsStore` and collapsed by `SigilJobs`.

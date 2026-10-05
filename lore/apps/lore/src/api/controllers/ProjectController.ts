@@ -32,10 +32,9 @@ import { $etag } from "alepha/server/etag";
 // function, no imports of its own.
 import { displayName } from "../../web/app/services/displayName.ts";
 import { type Project, projects } from "../entities/projects.ts";
-import { quests } from "../entities/quests.ts";
-import { releases } from "../entities/releases.ts";
 import type { User } from "../entities/users.ts";
-import { relations } from "../relations.ts";
+import { coreRelations } from "../relations/coreRelations.ts";
+import { assignedWorkItemSchema } from "../schemas/assignedWorkItemSchema.ts";
 import { capabilityKeySchema } from "../schemas/capabilityKeySchema.ts";
 import { kanbanColumnConfigSchema } from "../schemas/kanbanColumnSchema.ts";
 import { paletteColorSchema } from "../schemas/paletteColorSchema.ts";
@@ -47,21 +46,19 @@ import {
   projectResourceSchema,
 } from "../schemas/projectResourceSchema.ts";
 import { projectTitleSchema } from "../schemas/projectTitleSchema.ts";
-import { questResourceSchema } from "../schemas/questResourceSchema.ts";
 import { roadmapVisibilitySchema } from "../schemas/roadmapVisibilitySchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { ProjectPermissions } from "../security/ProjectPermissions.ts";
-import { AreaService } from "../services/AreaService.ts";
+import { AssignedWorkRegistry } from "../services/AssignedWorkRegistry.ts";
 import { CapabilityRegistry } from "../services/CapabilityRegistry.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
-import { OpenQuestScope } from "../services/OpenQuestScope.ts";
+import { ProjectCountRegistry } from "../services/ProjectCountRegistry.ts";
 import { ProjectDeletionService } from "../services/ProjectDeletionService.ts";
 import { ProjectLimits } from "../services/ProjectLimits.ts";
 import { ProjectRecencyService } from "../services/ProjectRecencyService.ts";
 import { ProjectResourceMapper } from "../services/ProjectResourceMapper.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 import { ProjectSlugService } from "../services/ProjectSlugService.ts";
-import { QuestResourceMapper } from "../services/QuestResourceMapper.ts";
 
 export class ProjectController {
   /**
@@ -87,11 +84,9 @@ export class ProjectController {
    * fetch one and then look up the other. Same tables, same rows — `include`
    * is the only thing they add.
    */
-  projectsWith = $repository(relations, "projects");
-  membersWith = $repository(relations, "organizationMembers");
-  usersWith = $repository(relations, "users");
-  quests = $repository(quests);
-  releases = $repository(releases);
+  projectsWith = $repository(coreRelations, "projects");
+  membersWith = $repository(coreRelations, "organizationMembers");
+  usersWith = $repository(coreRelations, "users");
   users = $repository(users);
   fileRepo = $repository(files);
   owned = $inject(OwnedResourceProvider);
@@ -122,7 +117,6 @@ export class ProjectController {
    */
   protected ownsAsOwner = (requires: string | string[]) =>
     $ownsProject({ requires, param: "id" });
-  questMapper = $inject(QuestResourceMapper);
   projectMapper = $inject(ProjectResourceMapper);
   limits = $inject(ProjectLimits);
   slugs = $inject(ProjectSlugService);
@@ -130,11 +124,11 @@ export class ProjectController {
   protected readonly capabilityRegistry = $inject(CapabilityRegistry);
   audits = $inject(LoreAudits);
   auditService = $inject(AuditService);
-  areaService = $inject(AreaService);
+  counts = $inject(ProjectCountRegistry);
+  assignedWork = $inject(AssignedWorkRegistry);
   recency = $inject(ProjectRecencyService);
   projectPermissions = $inject(ProjectPermissions);
   ranks = $inject(RankService);
-  openQuests = $inject(OpenQuestScope);
 
   /**
    * Reserve-and-collision gate for a project slug.
@@ -519,12 +513,10 @@ export class ProjectController {
         ownedIds,
         lastActivity,
       ] = await Promise.all([
-        this.areaService.countByProjectIds(projectIds),
-        // The dashboard rail's per-project number. Counted through the same
-        // scope as the sidebar badge and the Active Quests tile: all three are
-        // visible together, and a disagreement between them is one of them
-        // lying rather than a rounding difference.
-        this.openQuests.countByProject(projectIds),
+        // Work's two numbers, each through the module that owns it
+        // (`ProjectCountRegistry`, #E75 #Q2623): zero without Work.
+        this.counts.count("areas", projectIds),
+        this.counts.count("openQuests", projectIds),
         // Third batched read on the same id list. The Home cards, the create
         // menu and the sidebar all read the capability set, and one query per
         // card is N round trips on D1 for a list already in memory.
@@ -1001,7 +993,12 @@ export class ProjectController {
       }),
       response: projectResourceSchema.extend({
         member: organizationMembers.schema.optional(),
-        quests: z.array(questResourceSchema),
+        /**
+         * The viewer's open work here, through the module that owns it
+         * (`AssignedWorkRegistry`). Kept for published CLIs; the web app
+         * reads `QuestController.getMyActiveQuests`.
+         */
+        quests: z.array(assignedWorkItemSchema),
         /**
          * Total number of members in this project (including the viewer).
          */
@@ -1037,14 +1034,6 @@ export class ProjectController {
         },
       });
 
-      const projectQuests = await this.quests.findMany({
-        where: {
-          projectId: { eq: params.id },
-          completedAt: { isNull: true },
-          acceptedBy: { eq: user.id },
-        },
-      });
-
       const memberCount = await this.organizationMembers.count({
         organizationId: { eq: project.organizationId! },
       });
@@ -1056,9 +1045,7 @@ export class ProjectController {
           // without a second query.
           await this.projectSecurity.capabilityRowsOf(params.id),
         ),
-        quests: projectQuests.map((quest) =>
-          this.questMapper.mapQuestToResource(quest),
-        ),
+        quests: await this.assignedWork.of(project.id, user.id),
         member,
         memberCount,
         // Off the membership row the gate already read, and the definitions
@@ -1094,7 +1081,12 @@ export class ProjectController {
       }),
       response: projectResourceSchema.extend({
         member: organizationMembers.schema.optional(),
-        quests: z.array(questResourceSchema),
+        /**
+         * The viewer's open work here, through the module that owns it
+         * (`AssignedWorkRegistry`). Kept for published CLIs; the web app
+         * reads `QuestController.getMyActiveQuests`.
+         */
+        quests: z.array(assignedWorkItemSchema),
         /**
          * Total number of members in this project (including the viewer).
          */
@@ -1152,14 +1144,6 @@ export class ProjectController {
 
       await this.ranks.assert(project.organizationId!, "project:read", user);
 
-      const projectQuests = await this.quests.findMany({
-        where: {
-          projectId: { eq: project.id },
-          completedAt: { isNull: true },
-          acceptedBy: { eq: user.id },
-        },
-      });
-
       const memberCount = await this.organizationMembers.count({
         organizationId: { eq: project.organizationId! },
       });
@@ -1169,9 +1153,7 @@ export class ProjectController {
           project,
           await this.projectSecurity.capabilityRowsOf(project.id),
         ),
-        quests: projectQuests.map((quest) =>
-          this.questMapper.mapQuestToResource(quest),
-        ),
+        quests: await this.assignedWork.of(project.id, user.id),
         member,
         memberCount,
         ...(await this.projectPermissions.of(project.id, user, member)),
@@ -1387,176 +1369,6 @@ export class ProjectController {
       );
 
       return { ok: true };
-    },
-  });
-
-  // ── Kanban column CRUD ──────────────────────────────────────────────
-
-  addKanbanColumn = $action({
-    use: [this.ownsProject("project:update")],
-    schema: {
-      params: z.object({ id: z.integer() }),
-      body: z.object({
-        name: z.string().min(1).max(24),
-      }),
-      response: z.array(z.string()),
-    },
-    handler: async ({ params, body, user }) => {
-      const project = this.owned.get<Project>();
-      const current = project.kanbanColumns ?? [];
-      const name = body.name.trim();
-      if (!name) {
-        throw new BadRequestError("Column name must not be empty.");
-      }
-      if (current.length >= 5) {
-        throw new BadRequestError(
-          "A project can have at most 5 kanban columns.",
-        );
-      }
-      if (current.includes(name)) {
-        throw new BadRequestError("A column with this name already exists.");
-      }
-      const updated = [...current, name];
-      await this.projects.updateById(params.id, { kanbanColumns: updated });
-      return updated;
-    },
-  });
-
-  renameKanbanColumn = $action({
-    use: [this.ownsProject("project:update")],
-    schema: {
-      params: z.object({ id: z.integer() }),
-      body: z.object({
-        oldName: z.string(),
-        newName: z.string().min(1).max(24),
-      }),
-      response: z.array(z.string()),
-    },
-    handler: async ({ params, body, user }) => {
-      const project = this.owned.get<Project>();
-      const current = project.kanbanColumns ?? [];
-      const newName = body.newName.trim();
-      if (!current.includes(body.oldName)) {
-        throw new BadRequestError("Column not found.");
-      }
-      if (newName === body.oldName) return current;
-      if (current.includes(newName)) {
-        throw new BadRequestError("A column with this name already exists.");
-      }
-
-      // Cascade-rename onto every quest that lives in that column, in ONE
-      // statement. It used to read the column and then update row by row,
-      // which is unbounded in the size of the column: on D1 each update is
-      // a round trip, so a column holding 400 quests was several seconds of
-      // them against a 5000 ms `DATABASE_TIMEOUT`.
-      await this.quests.updateMany(
-        {
-          projectId: { eq: params.id },
-          kanbanColumn: { eq: body.oldName },
-        },
-        { kanbanColumn: newName },
-      );
-
-      const updated = current.map((c) => (c === body.oldName ? newName : c));
-      // The settings map is keyed by name, so a rename has to carry the
-      // entry across or the column silently loses its status and its WIP
-      // limit — which for a `completed` column would quietly turn it back
-      // into an in-progress lane.
-      const config = { ...project.kanbanColumnConfig };
-      if (config[body.oldName]) {
-        config[newName] = config[body.oldName];
-        delete config[body.oldName];
-      }
-      await this.projects.updateById(params.id, {
-        kanbanColumns: updated,
-        // `null` for the same reason the delete path uses it: `undefined`
-        // reads as "leave unchanged", so a rename that empties the map would
-        // leave the OLD name's entry behind.
-        kanbanColumnConfig: Object.keys(config).length ? config : null,
-      });
-      return updated;
-    },
-  });
-
-  deleteKanbanColumn = $action({
-    use: [this.ownsProject("project:update")],
-    schema: {
-      params: z.object({ id: z.integer() }),
-      body: z.object({ name: z.string() }),
-      response: z.array(z.string()),
-    },
-    handler: async ({ params, body, user }) => {
-      const project = this.owned.get<Project>();
-      const current = project.kanbanColumns ?? [];
-      if (!current.includes(body.name)) {
-        throw new BadRequestError("Column not found.");
-      }
-      if (current.length <= 1) {
-        throw new BadRequestError("A project must keep at least one column.");
-      }
-
-      // Refuse if any quest still lives in this column.
-      const occupants = await this.quests.count({
-        projectId: { eq: params.id },
-        kanbanColumn: { eq: body.name },
-      });
-      if (occupants > 0) {
-        throw new BadRequestError(
-          "Move or complete the quests in this column before deleting it.",
-        );
-      }
-
-      const updated = current.filter((c) => c !== body.name);
-      // Drop the deleted column's settings too. Leaving them would be inert
-      // today, but re-creating a column with the same name would silently
-      // resurrect a status and a WIP limit nobody asked for.
-      const remainingConfig = { ...project.kanbanColumnConfig };
-      delete remainingConfig[body.name];
-      // ⚠️ `null`, not `undefined`, when the map empties. An undefined patch
-      // value means "leave unchanged" to `updateById`, so emptying the map
-      // used to write nothing at all: the last configured column's settings
-      // survived its deletion, and re-creating a column with that name
-      // silently resurrected them - the exact outcome the comment above says
-      // this code exists to prevent. Reproduced on a live board (#1511):
-      // delete a violet column, add one back with the same name, and it
-      // comes back violet.
-      await this.projects.updateById(params.id, {
-        kanbanColumns: updated,
-        kanbanColumnConfig: Object.keys(remainingConfig).length
-          ? remainingConfig
-          : null,
-      });
-      return updated;
-    },
-  });
-
-  reorderKanbanColumns = $action({
-    use: [this.ownsProject("project:update")],
-    schema: {
-      params: z.object({ id: z.integer() }),
-      body: z.object({
-        columns: z.array(z.string()).min(1).max(5),
-      }),
-      response: z.array(z.string()),
-    },
-    handler: async ({ params, body, user }) => {
-      const project = this.owned.get<Project>();
-      const current = project.kanbanColumns ?? [];
-      // Must reorder the exact same set — additions/removals go through the
-      // dedicated endpoints so concurrent edits can't drop a column silently.
-      if (
-        body.columns.length !== current.length ||
-        new Set(body.columns).size !== body.columns.length ||
-        body.columns.some((c) => !current.includes(c))
-      ) {
-        throw new BadRequestError(
-          "Reordered list must contain the same columns.",
-        );
-      }
-      await this.projects.updateById(params.id, {
-        kanbanColumns: body.columns,
-      });
-      return body.columns;
     },
   });
 }

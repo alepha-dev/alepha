@@ -1,6 +1,7 @@
-import { $inject } from "alepha";
+import { $inject, Alepha } from "alepha";
 import { $repository } from "alepha/orm";
 
+import { EpicController } from "../controllers/EpicController.ts";
 import { epics } from "../entities/epics.ts";
 import { BoundParameters } from "../services/BoundParameters.ts";
 import { ResourceRegistry } from "./ResourceRegistry.ts";
@@ -14,6 +15,15 @@ export class EpicResourceKind {
   protected readonly resources = $inject(ResourceRegistry);
   protected readonly epics = $repository(epics);
   protected readonly bound = $inject(BoundParameters);
+  protected readonly alepha = $inject(Alepha);
+
+  /**
+   * Resolved on use rather than injected: `EpicController` injects the
+   * registry this kind registers on.
+   */
+  protected epicController(): EpicController {
+    return this.alepha.inject(EpicController);
+  }
 
   constructor() {
     this.resources.register({
@@ -52,6 +62,20 @@ export class EpicResourceKind {
           title: r.title,
           status: r.status,
         }));
+      },
+      // Filing goes through the controller, so it keeps its gate (`epic:write`
+      // on the epic) and its audit row (#E75, #Q2623): a module filing a
+      // folio never reaches the epic's code.
+      attach: async (parentId, child) => {
+        await this.epicController().attachFolio({
+          params: { id: parentId },
+          body: { folioId: child.id },
+        });
+      },
+      detach: async (parentId, child) => {
+        await this.epicController().detachFolio({
+          params: { id: parentId, folioId: child.id },
+        });
       },
       search: {
         numberOnly: true,

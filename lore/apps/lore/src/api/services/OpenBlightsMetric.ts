@@ -3,6 +3,7 @@ import { $inject } from "alepha";
 import type { DashboardCardValue } from "../schemas/dashboardCardValueSchema.ts";
 import type { OpenBlightsFilters } from "../schemas/openBlightsFiltersSchema.ts";
 import { DashboardMetricCatalog } from "./DashboardMetricCatalog.ts";
+import { DashboardMetricRegistry } from "./DashboardMetricRegistry.ts";
 import type {
   DashboardMetricResolver,
   DashboardResolvable,
@@ -36,6 +37,13 @@ import { OpenBlightCounter } from "./OpenBlightCounter.ts";
  * the moment a token is revoked — a zero would read as "nothing is wrong".
  */
 export class OpenBlightsMetric implements DashboardMetricResolver {
+  protected readonly dashboard = $inject(DashboardMetricRegistry);
+
+  constructor() {
+    // Registered by the module that owns the metric (#E75, #Q2623).
+    this.dashboard.register(this);
+  }
+
   readonly metric = "openBlights";
 
   protected readonly counter = $inject(OpenBlightCounter);

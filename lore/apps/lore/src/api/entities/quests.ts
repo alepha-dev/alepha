@@ -2,6 +2,7 @@ import { type Infer, z } from "alepha";
 import { users } from "alepha/api/users";
 import { $entity, db, sql } from "alepha/orm";
 
+import { prioritySchema } from "../../mcp/schemas/prioritySchema.ts";
 import { questCommitSchema } from "../schemas/questCommitSchema.ts";
 import { questSourceSchema } from "../schemas/questSourceSchema.ts";
 import { epics } from "./epics.ts";
@@ -33,9 +34,7 @@ export const quests = $entity({
     title: z.string(),
     description: z.string().meta({ size: "rich" }),
     area: z.string(),
-    priority: z
-      .enum(["optional", "low", "medium", "high"])
-      .meta({ mode: "text" }),
+    priority: prioritySchema.meta({ mode: "text" }),
     /**
      * T-shirt size, 1 (XS) to 5 (XL). Answers "is this chunky work or is it
      * ready-to-go", as a claim about scope rather than duration: `L` never

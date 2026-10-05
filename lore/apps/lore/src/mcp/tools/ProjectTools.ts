@@ -5,14 +5,7 @@ import { $repository } from "alepha/orm";
 import { currentUserAtom } from "alepha/security";
 import { BadRequestError, ForbiddenError, NotFoundError } from "alepha/server";
 
-import { pinnedContentAtom } from "../../api/atoms/pinnedContentAtom.ts";
-import { EpicController } from "../../api/controllers/EpicController.ts";
-import { FolioController } from "../../api/controllers/FolioController.ts";
 import { ProjectController } from "../../api/controllers/ProjectController.ts";
-import { ReleaseController } from "../../api/controllers/ReleaseController.ts";
-import type { CapabilityKey } from "../../api/schemas/capabilityKeySchema.ts";
-import { AreaService } from "../../api/services/AreaService.ts";
-import { PinnedFolioFolder } from "../../api/services/PinnedFolioFolder.ts";
 import { ProjectSecurityService } from "../../api/services/ProjectSecurityService.ts";
 import { ProjectSlugService } from "../../api/services/ProjectSlugService.ts";
 import {
@@ -24,46 +17,18 @@ import {
   projectInfoResultSchema,
   projectListResultSchema,
 } from "../schemas/projectSchemas.ts";
-
-/**
- * Folio index cap returned by `project_context`. Sized so a project with
- * 30 folios fits well under the ~2K token orientation budget; beyond this
- * the index would crowd out the quest signal. Agents follow the `capped`
- * flag and drill via `folio_list` when they need the long tail.
- */
-const FOLIO_INDEX_CAP = 30;
-
-/**
- * Cap on each area's `description` as it crosses the MCP boundary.
- *
- * Deliberately the OPPOSITE shape from `FOLIO_INDEX_CAP` above: that one
- * bounds the NUMBER of folios and flags when entries are dropped, because
- * an agent that needs more can always follow up with `folio_get`. The
- * area LIST is never capped — an agent that cannot see an existing area
- * name is exactly the agent that invents a new one, which is the
- * regrowth this task exists to stop, so every area must stay visible in
- * full. Only each entry's `description` is bounded here, to keep the
- * payload predictable while the list itself stays whole.
- * `areas.description` carries no length limit at the entity level
- * (`meta({ size: "rich" })`), so this is the only thing standing between
- * a verbose write on the settings page and an unbounded MCP payload.
- */
-const AREA_DESCRIPTION_MAX_CHARS = 160;
+import { ProjectContextRegistry } from "../services/ProjectContextRegistry.ts";
 
 /**
  * MCP tools for project operations.
  */
 export class ProjectTools {
   protected readonly projectController = $inject(ProjectController);
-  protected readonly folioController = $inject(FolioController);
-  protected readonly epicController = $inject(EpicController);
-  protected readonly releaseController = $inject(ReleaseController);
-  protected readonly areaService = $inject(AreaService);
+  protected readonly contextSections = $inject(ProjectContextRegistry);
   protected readonly projectSecurity = $inject(ProjectSecurityService);
   protected readonly slugs = $inject(ProjectSlugService);
   protected readonly ranks = $inject(RankService);
   protected readonly members = $repository(organizationMembers);
-  protected readonly pinnedFolder = $inject(PinnedFolioFolder);
   protected readonly alepha = $inject(Alepha);
 
   /**
@@ -170,25 +135,6 @@ export class ProjectTools {
   }
 
   /**
-   * `{ name, description }` mapping shared by `project_info` and
-   * `project_context` so the two call sites cannot drift. Truncates
-   * `description` to `AREA_DESCRIPTION_MAX_CHARS`, appending an ellipsis
-   * when clipped — see that constant's own comment for why the area
-   * LIST itself is never capped the same way.
-   */
-  protected toAreaSummaries(
-    areas: Array<{ name: string; description: string }>,
-  ): Array<{ name: string; description: string }> {
-    return areas.map((area) => ({
-      name: area.name,
-      description:
-        area.description.length > AREA_DESCRIPTION_MAX_CHARS
-          ? `${area.description.slice(0, AREA_DESCRIPTION_MAX_CHARS)}…`
-          : area.description,
-    }));
-  }
-
-  /**
    * List all projects the user has access to.
    */
   project_list = $tool({
@@ -291,12 +237,17 @@ export class ProjectTools {
         params: { id: projectId },
       });
 
-      const areas = await this.areaService.listWithStats(projectId);
+      const sections = await this.contextSections.info({
+        projectId,
+        assignedWork: result.quests,
+      });
 
       return {
         id: result.id,
         title: result.title,
-        areas: this.toAreaSummaries(areas),
+        // Work's, through its registered section; none without it.
+        areas: [],
+        ...sections,
         createdAt: result.createdAt,
         activeQuests: result.quests.map((quest) => ({
           id: quest.id,
@@ -355,88 +306,15 @@ export class ProjectTools {
       // A section a disabled capability owns is OMITTED, never emptied:
       // `epics: []` on a project with no Work reads as "no epics yet", which
       // is a different and wrong answer. It also stops paying for reads whose
-      // results the project has no use for - a Knowledge-only project ran
-      // three of them for three empty arrays.
-      const capabilities = result.capabilities;
-      const has = (key: CapabilityKey) =>
-        capabilities.some((it) => it.key === key);
-      const hasWork = has("work");
-      const hasKnowledge = has("knowledge");
-
-      // The `areas` table is the list. Only `name` + `description` cross the
-      // MCP boundary: this call is paid for on every `project_context`
-      // round-trip, and the stats (`questCount`, dates) are a settings-page
-      // concern, not an orientation one.
+      // results the project has no use for.
       //
-      // Work's, because a quest carries an area and a blight forwards into
-      // one.
-      const areaStats = hasWork
-        ? await this.areaService.listWithStats(projectId)
-        : [];
-
-      // The epic index. Never gated on an epic's STATUS (same as an epic's
-      // own view of itself) — orientation is exactly what failed for the work
-      // that motivated this: thirteen quests parked under one epic read as
-      // noise with no signal they were one subject. It is Work's, though.
-      const epics = hasWork
-        ? await this.epicController.getEpics({ params: { projectId } })
-        : [];
-
-      // The open releases, so an agent opens a session already knowing what
-      // `0.28.0` is meant to contain. Published ones are dropped: this index
-      // is for planning into, and a shipped release is not.
-      const openReleases = hasWork
-        ? (await this.releaseController.getReleases({ params: { projectId } }))
-            .filter((release) => !release.releasedAt)
-            .sort((a, b) => a.number - b.number)
-        : [];
-
-      // Fetch one over the cap to detect truncation without a separate count
-      // query — cheap on D1 (single LIKE-free indexed range scan).
-      const folios = hasKnowledge
-        ? await this.folioController.list({
-            query: {
-              projectId,
-              limit: FOLIO_INDEX_CAP + 1,
-            },
-          })
-        : [];
-      const capped = folios.length > FOLIO_INDEX_CAP;
-      // The epic index above already holds every epic's number; a folio
-      // only needs to point into it.
-      const epicNumberById = new Map(
-        epics.map((epic) => [epic.id, epic.number]),
-      );
-      const items = (capped ? folios.slice(0, FOLIO_INDEX_CAP) : folios).map(
-        (folio) => ({
-          shortId: folio.shortId,
-          title: folio.title,
-          updatedAt: folio.updatedAt,
-          // Omit when empty so agents seeing the field always trust it.
-          // The schema field is optional; consumers fall back to title.
-          summary: folio.summary?.trim() ? folio.summary : undefined,
-          epicNumber:
-            folio.epicId != null ? epicNumberById.get(folio.epicId) : undefined,
-        }),
-      );
-
-      // Pinned-folio content surface (the per-project CLAUDE.md). Drop
-      // protected folios — their content is ciphertext and useless to
-      // the agent. Cap logic lives in `foldPinnedFolios` so it can be
-      // unit-tested without spinning the MCP transport.
-      const cap = this.alepha.store.get(pinnedContentAtom).maxChars;
-      const { pinnedFolios, pinnedFoliosTruncated } = this.pinnedFolder.fold(
-        folios
-          .filter((f) => f.pinned && !f.protected)
-          // controller already sorts (pinned DESC, updatedAt DESC) so
-          // this slice is already newest-first.
-          .map((f) => ({
-            id: f.id,
-            shortId: f.shortId,
-            title: f.title,
-            content: f.content,
-          })),
-        cap,
+      // The sections themselves are the modules' (`ProjectContextRegistry`,
+      // #E75 #Q2623): Work's areas, active quests, epics and open releases,
+      // Knowledge's folio index and pinned folios, merged in their order.
+      const capabilities = result.capabilities;
+      const sections = await this.contextSections.context(
+        { projectId, assignedWork: result.quests },
+        new Set(capabilities.map((it) => it.key)),
       );
 
       return {
@@ -447,54 +325,7 @@ export class ProjectTools {
           options: it.options,
         })),
         createdAt: result.createdAt,
-        ...(hasWork
-          ? {
-              areas: this.toAreaSummaries(areaStats),
-              activeQuests: result.quests.map((quest) => ({
-                id: quest.id,
-                shortId: quest.shortId,
-                title: quest.title,
-                area: quest.area,
-                priority: quest.priority,
-              })),
-            }
-          : {}),
-        ...(hasWork
-          ? {
-              epics: epics.map((epic) => ({
-                number: epic.number,
-                title: epic.title,
-                status: epic.status,
-                questCount: epic.questCount,
-                // Beside the count, so "draft, 9 specified" and "draft, 9
-                // shipped" are distinguishable at orientation. Epic #27 was
-                // worked to 9 of 9 while `planned`, and this is the field that
-                // would have shown it.
-                completed: epic.progress.completed,
-              })),
-              openReleases: openReleases.map((release) => ({
-                tag: release.tag,
-                title: release.title,
-                targetDate: release.targetDate,
-                completed: release.progress.completed,
-                total: release.progress.total,
-                // Omitted rather than `false` on every other release: an
-                // orientation payload pays for every key on every row.
-                ...(release.defaultSince ? { default: true } : {}),
-              })),
-            }
-          : {}),
-        ...(hasKnowledge
-          ? {
-              folios: {
-                shown: items.length,
-                capped,
-                items,
-              },
-              pinnedFolios,
-              pinnedFoliosTruncated,
-            }
-          : {}),
+        ...sections,
         ...(result.rank ? { rank: result.rank } : {}),
         permissions: result.permissions ?? [],
         preferredLanguage: result.preferredLanguage,

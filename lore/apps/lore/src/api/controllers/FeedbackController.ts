@@ -18,7 +18,7 @@ import { type Feedback, feedback } from "../entities/feedback.ts";
 import { type Project, projects } from "../entities/projects.ts";
 import type { Quest } from "../entities/quests.ts";
 import type { User } from "../entities/users.ts";
-import { relations } from "../relations.ts";
+import { workRelations } from "../relations/workRelations.ts";
 import { feedbackBodySchema } from "../schemas/feedbackBodySchema.ts";
 import {
   type FeedbackResource,
@@ -66,7 +66,7 @@ export class FeedbackController {
    * happens in the statement instead of in three follow-up queries and three
    * Maps.
    */
-  protected feedbackWith = $repository(relations, "feedback");
+  protected feedbackWith = $repository(workRelations, "feedback");
   protected projects = $repository(projects);
   protected fileRepo = $repository(files);
 

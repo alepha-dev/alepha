@@ -6,6 +6,7 @@ import { feedback } from "../entities/feedback.ts";
 import type { DashboardCardValue } from "../schemas/dashboardCardValueSchema.ts";
 import type { UntriagedFeedbackFilters } from "../schemas/untriagedFeedbackFiltersSchema.ts";
 import { DashboardMetricCatalog } from "./DashboardMetricCatalog.ts";
+import { DashboardMetricRegistry } from "./DashboardMetricRegistry.ts";
 import type {
   DashboardMetricResolver,
   DashboardResolvable,
@@ -35,6 +36,13 @@ import type {
  * quest lifecycle's. The mockup's "untriaged" chip is `pending`.
  */
 export class UntriagedFeedbackMetric implements DashboardMetricResolver {
+  protected readonly dashboard = $inject(DashboardMetricRegistry);
+
+  constructor() {
+    // Registered by the module that owns the metric (#E75, #Q2623).
+    this.dashboard.register(this);
+  }
+
   readonly metric = "untriagedFeedback";
 
   protected readonly feedback = $repository(feedback);

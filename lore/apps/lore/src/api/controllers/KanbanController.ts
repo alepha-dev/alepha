@@ -1,7 +1,7 @@
 import { $inject, z } from "alepha";
 import { $repository } from "alepha/orm";
 import { OwnedResourceProvider } from "alepha/security";
-import { $action } from "alepha/server";
+import { $action, BadRequestError } from "alepha/server";
 
 import { type Project, projects } from "../entities/projects.ts";
 import { type Quest, quests } from "../entities/quests.ts";
@@ -231,4 +231,186 @@ export class KanbanController {
       })
       .map((entry) => entry.quest);
   }
+
+  // ── Kanban column CRUD ──────────────────────────────────────────────
+  //
+  // Moved here from `ProjectController` (#E75, #Q2623): the columns are
+  // stored on `projects` (core's table, which Work may write), but a rename
+  // cascades onto `quests` and a delete counts them, which core may not
+  // read. Names and paths are unchanged (`/addKanbanColumn/:id`...): an
+  // `$action`'s default path is its name and params, never its class.
+
+  /**
+   * The project in `:id`, gated like every other project write.
+   */
+  protected ownsProject = (requires: string | string[]) =>
+    $ownsProject({ requires, param: "id" });
+
+  addKanbanColumn = $action({
+    use: [this.ownsProject("project:update")],
+    schema: {
+      params: z.object({ id: z.integer() }),
+      body: z.object({
+        name: z.string().min(1).max(24),
+      }),
+      response: z.array(z.string()),
+    },
+    handler: async ({ params, body, user }) => {
+      const project = this.owned.get<Project>();
+      const current = project.kanbanColumns ?? [];
+      const name = body.name.trim();
+      if (!name) {
+        throw new BadRequestError("Column name must not be empty.");
+      }
+      if (current.length >= 5) {
+        throw new BadRequestError(
+          "A project can have at most 5 kanban columns.",
+        );
+      }
+      if (current.includes(name)) {
+        throw new BadRequestError("A column with this name already exists.");
+      }
+      const updated = [...current, name];
+      await this.projects.updateById(params.id, { kanbanColumns: updated });
+      return updated;
+    },
+  });
+
+  renameKanbanColumn = $action({
+    use: [this.ownsProject("project:update")],
+    schema: {
+      params: z.object({ id: z.integer() }),
+      body: z.object({
+        oldName: z.string(),
+        newName: z.string().min(1).max(24),
+      }),
+      response: z.array(z.string()),
+    },
+    handler: async ({ params, body, user }) => {
+      const project = this.owned.get<Project>();
+      const current = project.kanbanColumns ?? [];
+      const newName = body.newName.trim();
+      if (!current.includes(body.oldName)) {
+        throw new BadRequestError("Column not found.");
+      }
+      if (newName === body.oldName) return current;
+      if (current.includes(newName)) {
+        throw new BadRequestError("A column with this name already exists.");
+      }
+
+      // Cascade-rename onto every quest that lives in that column, in ONE
+      // statement. It used to read the column and then update row by row,
+      // which is unbounded in the size of the column: on D1 each update is
+      // a round trip, so a column holding 400 quests was several seconds of
+      // them against a 5000 ms `DATABASE_TIMEOUT`.
+      await this.quests.updateMany(
+        {
+          projectId: { eq: params.id },
+          kanbanColumn: { eq: body.oldName },
+        },
+        { kanbanColumn: newName },
+      );
+
+      const updated = current.map((c) => (c === body.oldName ? newName : c));
+      // The settings map is keyed by name, so a rename has to carry the
+      // entry across or the column silently loses its status and its WIP
+      // limit — which for a `completed` column would quietly turn it back
+      // into an in-progress lane.
+      const config = { ...project.kanbanColumnConfig };
+      if (config[body.oldName]) {
+        config[newName] = config[body.oldName];
+        delete config[body.oldName];
+      }
+      await this.projects.updateById(params.id, {
+        kanbanColumns: updated,
+        // `null` for the same reason the delete path uses it: `undefined`
+        // reads as "leave unchanged", so a rename that empties the map would
+        // leave the OLD name's entry behind.
+        kanbanColumnConfig: Object.keys(config).length ? config : null,
+      });
+      return updated;
+    },
+  });
+
+  deleteKanbanColumn = $action({
+    use: [this.ownsProject("project:update")],
+    schema: {
+      params: z.object({ id: z.integer() }),
+      body: z.object({ name: z.string() }),
+      response: z.array(z.string()),
+    },
+    handler: async ({ params, body, user }) => {
+      const project = this.owned.get<Project>();
+      const current = project.kanbanColumns ?? [];
+      if (!current.includes(body.name)) {
+        throw new BadRequestError("Column not found.");
+      }
+      if (current.length <= 1) {
+        throw new BadRequestError("A project must keep at least one column.");
+      }
+
+      // Refuse if any quest still lives in this column.
+      const occupants = await this.quests.count({
+        projectId: { eq: params.id },
+        kanbanColumn: { eq: body.name },
+      });
+      if (occupants > 0) {
+        throw new BadRequestError(
+          "Move or complete the quests in this column before deleting it.",
+        );
+      }
+
+      const updated = current.filter((c) => c !== body.name);
+      // Drop the deleted column's settings too. Leaving them would be inert
+      // today, but re-creating a column with the same name would silently
+      // resurrect a status and a WIP limit nobody asked for.
+      const remainingConfig = { ...project.kanbanColumnConfig };
+      delete remainingConfig[body.name];
+      // ⚠️ `null`, not `undefined`, when the map empties. An undefined patch
+      // value means "leave unchanged" to `updateById`, so emptying the map
+      // used to write nothing at all: the last configured column's settings
+      // survived its deletion, and re-creating a column with that name
+      // silently resurrected them - the exact outcome the comment above says
+      // this code exists to prevent. Reproduced on a live board (#1511):
+      // delete a violet column, add one back with the same name, and it
+      // comes back violet.
+      await this.projects.updateById(params.id, {
+        kanbanColumns: updated,
+        kanbanColumnConfig: Object.keys(remainingConfig).length
+          ? remainingConfig
+          : null,
+      });
+      return updated;
+    },
+  });
+
+  reorderKanbanColumns = $action({
+    use: [this.ownsProject("project:update")],
+    schema: {
+      params: z.object({ id: z.integer() }),
+      body: z.object({
+        columns: z.array(z.string()).min(1).max(5),
+      }),
+      response: z.array(z.string()),
+    },
+    handler: async ({ params, body, user }) => {
+      const project = this.owned.get<Project>();
+      const current = project.kanbanColumns ?? [];
+      // Must reorder the exact same set — additions/removals go through the
+      // dedicated endpoints so concurrent edits can't drop a column silently.
+      if (
+        body.columns.length !== current.length ||
+        new Set(body.columns).size !== body.columns.length ||
+        body.columns.some((c) => !current.includes(c))
+      ) {
+        throw new BadRequestError(
+          "Reordered list must contain the same columns.",
+        );
+      }
+      await this.projects.updateById(params.id, {
+        kanbanColumns: body.columns,
+      });
+      return body.columns;
+    },
+  });
 }

@@ -2,8 +2,8 @@ import { $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 
+import { DeployAnalytics } from "../entities/deployAnalytics.ts";
 import { type Estate, estates } from "../entities/estates.ts";
-import { LoreAnalytics } from "../entities/loreAnalytics.ts";
 import type { EstateStatsFrame } from "../schemas/estateStatsFrameSchema.ts";
 
 /**
@@ -63,7 +63,7 @@ export interface EstateStatsSeries {
  */
 export class EstateStatsService {
   protected readonly estates = $repository(estates);
-  protected readonly analytics = $inject(LoreAnalytics);
+  protected readonly analytics = $inject(DeployAnalytics);
   protected readonly dateTime = $inject(DateTimeProvider);
 
   /**

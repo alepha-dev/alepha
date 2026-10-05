@@ -7,6 +7,7 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
+import { KanbanController } from "../src/api/controllers/KanbanController.ts";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { QuestController } from "../src/api/controllers/QuestController.ts";
 import { LoreApi } from "../src/api/index.ts";
@@ -36,6 +37,7 @@ interface TestContext {
   alepha: Alepha;
   adminUserController: AdminUserController;
   projectController: ProjectController;
+  kanban: KanbanController;
   questController: QuestController;
   fakeProvider: FakeProvider;
 }
@@ -63,6 +65,7 @@ const setup = async (): Promise<TestContext> => {
     alepha,
     adminUserController: alepha.inject(AdminUserController),
     projectController: alepha.inject(ProjectController),
+    kanban: alepha.inject(KanbanController),
     questController: alepha.inject(QuestController),
     fakeProvider: alepha.inject(FakeProvider),
   };
@@ -124,7 +127,7 @@ describe("kanban columns, created and edited from the board", () => {
     const { user, projectId } = await world();
 
     const columns = (
-      await ctx.projectController.addKanbanColumn.fetch(
+      await ctx.kanban.addKanbanColumn.fetch(
         { params: { id: projectId }, body: { name: "Review" } },
         { user },
       )
@@ -135,13 +138,13 @@ describe("kanban columns, created and edited from the board", () => {
 
   it("carries a colour across a rename", async ({ expect }) => {
     const { user, projectId } = await world();
-    await ctx.projectController.addKanbanColumn.fetch(
+    await ctx.kanban.addKanbanColumn.fetch(
       { params: { id: projectId }, body: { name: "Review" } },
       { user },
     );
     await setColor(user, projectId, { Review: { color: "violet" } });
 
-    await ctx.projectController.renameKanbanColumn.fetch(
+    await ctx.kanban.renameKanbanColumn.fetch(
       { params: { id: projectId }, body: { oldName: "Review", newName: "QA" } },
       { user },
     );
@@ -158,13 +161,13 @@ describe("kanban columns, created and edited from the board", () => {
   }) => {
     // The regression this file exists for.
     const { user, projectId } = await world();
-    await ctx.projectController.addKanbanColumn.fetch(
+    await ctx.kanban.addKanbanColumn.fetch(
       { params: { id: projectId }, body: { name: "Review" } },
       { user },
     );
     await setColor(user, projectId, { Review: { color: "violet" } });
 
-    await ctx.projectController.deleteKanbanColumn.fetch(
+    await ctx.kanban.deleteKanbanColumn.fetch(
       { params: { id: projectId }, body: { name: "Review" } },
       { user },
     );
@@ -174,7 +177,7 @@ describe("kanban columns, created and edited from the board", () => {
     const afterDelete = await read(user, projectId);
     expect(afterDelete.kanbanColumnConfig ?? null).toBeNull();
 
-    await ctx.projectController.addKanbanColumn.fetch(
+    await ctx.kanban.addKanbanColumn.fetch(
       { params: { id: projectId }, body: { name: "Review" } },
       { user },
     );
@@ -190,7 +193,7 @@ describe("kanban columns, created and edited from the board", () => {
     // as null.
     const { user, projectId } = await world();
     for (const name of ["Review", "QA"]) {
-      await ctx.projectController.addKanbanColumn.fetch(
+      await ctx.kanban.addKanbanColumn.fetch(
         { params: { id: projectId }, body: { name } },
         { user },
       );
@@ -200,7 +203,7 @@ describe("kanban columns, created and edited from the board", () => {
       QA: { color: "amber" },
     });
 
-    await ctx.projectController.deleteKanbanColumn.fetch(
+    await ctx.kanban.deleteKanbanColumn.fetch(
       { params: { id: projectId }, body: { name: "Review" } },
       { user },
     );
@@ -214,7 +217,7 @@ describe("kanban columns, created and edited from the board", () => {
     expect,
   }) => {
     const { user, projectId } = await world();
-    await ctx.projectController.addKanbanColumn.fetch(
+    await ctx.kanban.addKanbanColumn.fetch(
       { params: { id: projectId }, body: { name: "Review" } },
       { user },
     );
@@ -246,7 +249,7 @@ describe("kanban columns, created and edited from the board", () => {
     // The board's confirmation says the column has to be empty first, and
     // this is what makes that promise true rather than optimistic.
     await expect(
-      ctx.projectController.deleteKanbanColumn.fetch(
+      ctx.kanban.deleteKanbanColumn.fetch(
         { params: { id: projectId }, body: { name: "Review" } },
         { user },
       ),

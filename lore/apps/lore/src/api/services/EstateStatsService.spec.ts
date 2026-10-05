@@ -10,8 +10,8 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { TestEntityRepositories } from "../../../test/fixtures/entities.ts";
 import { EstateController } from "../controllers/EstateController.ts";
+import { DeployAnalytics } from "../entities/deployAnalytics.ts";
 import { type Estate, estates } from "../entities/estates.ts";
-import { LoreAnalytics } from "../entities/loreAnalytics.ts";
 import { LoreApi } from "../index.ts";
 import type { EstateStatsFrame } from "../schemas/estateStatsFrameSchema.ts";
 import { EstateStatsService } from "./EstateStatsService.ts";
@@ -23,7 +23,7 @@ class EstateRepositories {
 interface TestContext {
   alepha: Alepha;
   service: EstateStatsService;
-  analytics: LoreAnalytics;
+  analytics: DeployAnalytics;
   estateApi: EstateController;
   repos: EstateRepositories;
   entities: TestEntityRepositories;
@@ -49,7 +49,7 @@ const setup = async (): Promise<TestContext> => {
   return {
     alepha,
     service: alepha.inject(EstateStatsService),
-    analytics: alepha.inject(LoreAnalytics),
+    analytics: alepha.inject(DeployAnalytics),
     estateApi: alepha.inject(EstateController),
     repos,
     entities,

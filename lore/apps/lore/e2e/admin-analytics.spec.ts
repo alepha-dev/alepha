@@ -5,7 +5,7 @@ import { signInAsAdmin } from "./_helpers.ts";
  * Admin analytics page (`/admin/analytics`).
  *
  * Smoke: the page is reachable by an admin, the `from` clause defaults to the
- * first code-declared sigil dataset, and a query round-trips (an empty result
+ * first code-declared dataset, and a query round-trips (an empty result
  * on a fresh database renders the empty state, not an error).
  *
  * The dataset assertion reads the trigger's text. `from` is a Base UI
@@ -26,9 +26,12 @@ test.describe("admin analytics", () => {
     await page.goto("/admin/analytics");
     await page.waitForLoadState("domcontentloaded");
 
-    // The `from` clause defaults to the first declared dataset.
+    // The `from` clause defaults to the first declared dataset: core's
+    // `project_activity` since the analytics datasets split per module and
+    // core registers first (#E75, #Q2623). It was `sigil_views` while one
+    // `LoreAnalytics` class declared every dataset with the views first.
     const from = page.getByRole("combobox", { name: /pick a dataset/i });
-    await expect(from).toContainText("sigil_views", { timeout: 15_000 });
+    await expect(from).toContainText("project_activity", { timeout: 15_000 });
 
     // The panel runs itself on every edit, so the empty state is already up;
     // the button re-runs the same query, which must not break it.

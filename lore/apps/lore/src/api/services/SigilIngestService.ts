@@ -9,7 +9,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $repository, sql } from "alepha/orm";
 
 import { blights } from "../entities/blights.ts";
-import { LoreAnalytics } from "../entities/loreAnalytics.ts";
+import { DeployAnalytics } from "../entities/deployAnalytics.ts";
 import { projects } from "../entities/projects.ts";
 import { sigilErrorGroups } from "../entities/sigilErrorGroups.ts";
 import { type Sigil, type SigilKind, sigils } from "../entities/sigils.ts";
@@ -90,9 +90,9 @@ export class SigilIngestService {
 
   /**
    * Where views and vitals actually live: the portable `$analytics()`
-   * datasets declared on `LoreAnalytics`, the only write for both.
+   * datasets declared on `DeployAnalytics`, the only write for both.
    */
-  protected readonly datasets = $inject(LoreAnalytics);
+  protected readonly datasets = $inject(DeployAnalytics);
 
   /**
    * The most a stored `count` ever holds, on a group or a blight.
@@ -597,7 +597,7 @@ export class SigilIngestService {
     });
 
     // The only write for `sigil_views` — `InsightsController` reads it back
-    // through the same `LoreAnalytics` declaration. Unlike the uniques write
+    // through the same `DeployAnalytics` declaration. Unlike the uniques write
     // above, nothing catches a failure here: there is no other copy of this
     // batch to fall back on, so a throw is real data loss and has to surface
     // as one, not be swallowed the way the now-deleted dual-write mirror did.

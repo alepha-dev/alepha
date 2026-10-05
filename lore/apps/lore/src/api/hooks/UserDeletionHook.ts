@@ -1,10 +1,5 @@
-import { $hook, $inject, z } from "alepha";
+import { $hook, $inject } from "alepha";
 import { NotificationInboxService } from "alepha/api/notifications";
-import { $repository } from "alepha/orm";
-import { $secure } from "alepha/security";
-import { $action } from "alepha/server";
-
-import { quests } from "../entities/quests.ts";
 
 /**
  * Refuses to delete an account that still owns projects.
@@ -48,7 +43,6 @@ import { quests } from "../entities/quests.ts";
  * read filters it out — nothing can `assertOwner` on a row nothing returns.
  */
 export class UserDeletionHook {
-  protected readonly quests = $repository(quests);
   protected readonly inbox = $inject(NotificationInboxService);
 
   /**
@@ -77,30 +71,5 @@ export class UserDeletionHook {
       // proceed and inbox cleanup cannot run for a refused account.
       await this.inbox.deleteForUser(userId);
     },
-  });
-
-  /**
-   * How many quests this account authored that its deletion would take with it.
-   *
-   * `quests.createdBy` is `onDelete: "cascade"`, so those quests go — including
-   * ones inside projects belonging to other people. The hook does not refuse on
-   * them (see above), which makes stating the number before the click the only
-   * thing standing between the person and a surprise. The account page reads
-   * this to fill `AccountSecurityProps.deleteWarning`.
-   *
-   * A question, not a decision — which is why it is an action beside the hook
-   * rather than part of it.
-   */
-  countMyAuthoredQuests = $action({
-    method: "GET",
-    path: "/users/me/authored-quests",
-    use: [$secure()],
-    description: "How many quests the caller authored",
-    schema: {
-      response: z.object({ count: z.integer() }),
-    },
-    handler: async ({ user }) => ({
-      count: await this.quests.count({ createdBy: { eq: user.id } }),
-    }),
   });
 }

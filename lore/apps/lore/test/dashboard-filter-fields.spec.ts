@@ -1,6 +1,7 @@
 import { Alepha } from "alepha";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
+import { LoreDashboardCatalog } from "@/api/dashboardCatalogModule.ts";
 import { DashboardMetricCatalog } from "@/api/services/DashboardMetricCatalog.ts";
 import { dashboardFilterFields } from "@/web/app/components/dashboard/dashboardFilterFields.ts";
 
@@ -17,6 +18,9 @@ describe("dashboard filter fields", () => {
 
   beforeEach(async () => {
     alepha = Alepha.create({ env: { LOG_LEVEL: "error", SERVER_PORT: 0 } });
+    // The descriptors are registered by each module (#Q2623), which this
+    // module brings in beside the catalogue.
+    alepha.with(LoreDashboardCatalog);
     catalog = alepha.inject(DashboardMetricCatalog);
     await alepha.start();
   });

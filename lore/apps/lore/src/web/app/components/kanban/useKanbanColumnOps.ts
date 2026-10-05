@@ -2,6 +2,7 @@ import { useDialog } from "@alepha/ui";
 import { useAction, useAlepha, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 
+import type { KanbanController } from "@/api/controllers/KanbanController.ts";
 import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 import type { PaletteColor } from "@/api/schemas/paletteColorSchema.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
@@ -43,6 +44,7 @@ export const useKanbanColumnOps = (
   onColumnsChanged?: () => void,
 ): KanbanColumnOps => {
   const projectApi = useClient<ProjectController>();
+  const kanbanApi = useClient<KanbanController>();
   const alepha = useAlepha();
   const dialog = useDialog();
   const { tr } = useI18n<I18n, "en">();
@@ -95,14 +97,14 @@ export const useKanbanColumnOps = (
       handler: async (name) =>
         apply(
           withColumns(
-            await projectApi.addKanbanColumn({
+            await kanbanApi.addKanbanColumn({
               params: { id: projectId },
               body: { name: name.trim() },
             }),
           ),
         ),
     },
-    [projectApi, projectId, onColumnsChanged],
+    [kanbanApi, projectId, onColumnsChanged],
   );
 
   const rename = useAction<[oldName: string, newName: string], boolean>(
@@ -112,7 +114,7 @@ export const useKanbanColumnOps = (
         if (!trimmed || trimmed === oldName) return false;
         return apply(
           withColumns(
-            await projectApi.renameKanbanColumn({
+            await kanbanApi.renameKanbanColumn({
               params: { id: projectId },
               body: { oldName, newName: trimmed },
             }),
@@ -120,7 +122,7 @@ export const useKanbanColumnOps = (
         );
       },
     },
-    [projectApi, projectId, onColumnsChanged],
+    [kanbanApi, projectId, onColumnsChanged],
   );
 
   const remove = useAction<[name: string], boolean>(
@@ -146,7 +148,7 @@ export const useKanbanColumnOps = (
         if (!confirmed) return false;
         return apply(
           withColumns(
-            await projectApi.deleteKanbanColumn({
+            await kanbanApi.deleteKanbanColumn({
               params: { id: projectId },
               body: { name },
             }),
@@ -154,7 +156,7 @@ export const useKanbanColumnOps = (
         );
       },
     },
-    [projectApi, projectId, dialog, tr, onColumnsChanged],
+    [kanbanApi, projectId, dialog, tr, onColumnsChanged],
   );
 
   const setColor = useAction<
@@ -200,7 +202,7 @@ export const useKanbanColumnOps = (
     // The four verbs are one permission server-side, so one flag - and it
     // comes off the action rather than a string, which is what stops the
     // board and Settings from asking two different questions.
-    can: projectApi.addKanbanColumn.can(),
+    can: kanbanApi.addKanbanColumn.can(),
 
     add: add.run,
     rename: rename.run,

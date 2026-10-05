@@ -1,18 +1,10 @@
 import { AlephaError, type ZType } from "alepha";
 
-import { activeQuestsFiltersSchema } from "../schemas/activeQuestsFiltersSchema.ts";
 import type { CapabilityKey } from "../schemas/capabilityKeySchema.ts";
 import type {
   DashboardScope,
   DashboardScopeKind,
 } from "../schemas/dashboardScopeSchema.ts";
-import { epicProgressFiltersSchema } from "../schemas/epicProgressFiltersSchema.ts";
-import { heldQuestsFiltersSchema } from "../schemas/heldQuestsFiltersSchema.ts";
-import { openBlightsFiltersSchema } from "../schemas/openBlightsFiltersSchema.ts";
-import { releaseProgressFiltersSchema } from "../schemas/releaseProgressFiltersSchema.ts";
-import { tagCompletionFiltersSchema } from "../schemas/tagCompletionFiltersSchema.ts";
-import { uniqueVisitorsFiltersSchema } from "../schemas/uniqueVisitorsFiltersSchema.ts";
-import { untriagedFeedbackFiltersSchema } from "../schemas/untriagedFeedbackFiltersSchema.ts";
 
 /**
  * Which board a metric may be offered on.
@@ -128,6 +120,10 @@ export interface DashboardMetricRequirement {
  */
 export interface DashboardMetricDescriptor {
   /**
+   * Position in the catalogue, which is the Add-card panel's order.
+   */
+  order: number;
+  /**
    * Registry key, and the value stored in `dashboard_cards.metric`.
    */
   key: string;
@@ -239,257 +235,25 @@ export class DashboardMetricCatalog {
    * Every metric, in the order the Add-card panel lists them (grouped, and
    * within a group as written).
    */
-  protected readonly metrics: DashboardMetricDescriptor[] = [
-    {
-      key: "activeQuests",
-      /**
-       * ⚠️ On BOTH boards, and the project half is what makes `heldQuests`
-       * legible: "Quests 12 / On hold 3" reads as three of the twelve being
-       * stuck only while both numbers are on screen and come from the same
-       * `OpenQuestScope`. Home is unchanged - inside a project the scope step
-       * is skipped and the controller forces `projects: [thisProject]`.
-       */
-      boards: ["home", "project"],
-      group: "quests",
-      labelKey: "dashboard.metric.activeQuests",
-      hintKey: "dashboard.metric.activeQuests.hint",
-      icon: "grid-3x3",
-      presentation: "scalar",
-      scopeKinds: ["projects", "all"],
-      filters: activeQuestsFiltersSchema,
-      needs: { capability: "work" },
-      /**
-       * ⚠️ Deliberately disagrees with the count. The tile counts
-       * `todo + in_progress`, but clicking opens `status=todo` only, because the
-       * questlog rail on the left of the quests page already shows the
-       * accepted ones — so the useful thing to open is the half of the
-       * number that is not already on screen. Do not "fix" this to match
-       * the filter.
-       */
-      link: (_scope, target) =>
-        target.projectSlug
-          ? {
-              route: "projectQuests",
-              params: { projectSlug: target.projectSlug },
-              query: { status: "todo" },
-            }
-          : undefined,
-    },
-    {
-      key: "heldQuests",
-      /**
-       * Project only. A held count across every project the reader belongs to
-       * answers nobody's question: a hold is somebody waiting on somebody in
-       * one project, and the drill-through is one project's quest list.
-       */
-      boards: ["project"],
-      group: "quests",
-      labelKey: "dashboard.metric.heldQuests",
-      hintKey: "dashboard.metric.heldQuests.hint",
-      icon: "circle-pause",
-      presentation: "scalar",
-      scopeKinds: ["projects"],
-      filters: heldQuestsFiltersSchema,
-      needs: { capability: "work" },
-      /**
-       * ⚠️ `?status=on_hold`, and it only decodes because
-       * `boardFiltersSchema.status` is derived from `questStatusSchema`
-       * (#Q2082). Before that fix the value was silently dropped and the link
-       * degraded to the unfiltered list, which is the failure this drill-
-       * through would otherwise repeat.
-       */
-      link: (_scope, target) =>
-        target.projectSlug
-          ? {
-              route: "projectQuests",
-              params: { projectSlug: target.projectSlug },
-              query: { status: "on_hold" },
-            }
-          : undefined,
-    },
-    {
-      key: "epicProgress",
-      /**
-       * ⚠️ The `epics` group has existed in this catalogue since epic #E4
-       * with nothing in it, and `dashboardScopeSchema` has carried
-       * `kind: "epic"` since then commented "reserved for the deferred
-       * epic-progress tile". This is the entry both were waiting for.
-       */
-      boards: ["project"],
-      group: "epics",
-      labelKey: "dashboard.metric.epicProgress",
-      hintKey: "dashboard.metric.epicProgress.hint",
-      icon: "layers",
-      presentation: "progress",
-      scopeKinds: ["epic"],
-      filters: epicProgressFiltersSchema,
-      /**
-       * The OPTION as well as the capability. `CapabilityRegistry`'s list is
-       * flat and can only say `work`, which is exactly why `needs` exists:
-       * a project that does Work without epics has no epic to point at.
-       */
-      needs: { capability: "work", option: "epics" },
-      /**
-       * ⚠️ `epicNumber`, filled by the resolver from the row the scope
-       * proved. `projectEpic` is `/epics/:epicNumber` and the scope stores
-       * `epicId`; the two are different integers and confusing them lands on
-       * a real page showing the wrong epic.
-       */
-      link: (_scope, target) =>
-        target.projectSlug && target.epicNumber !== undefined
-          ? {
-              route: "projectEpic",
-              params: {
-                projectSlug: target.projectSlug,
-                epicNumber: String(target.epicNumber),
-              },
-            }
-          : undefined,
-    },
-    {
-      key: "releaseProgress",
-      /**
-       * The companion to the epic card, on the second scope kind
-       * `dashboardScopeSchema` reserved in #E4 and no metric ever accepted.
-       */
-      boards: ["project"],
-      group: "epics",
-      labelKey: "dashboard.metric.releaseProgress",
-      hintKey: "dashboard.metric.releaseProgress.hint",
-      icon: "flag",
-      presentation: "progress",
-      scopeKinds: ["release"],
-      filters: releaseProgressFiltersSchema,
-      needs: { capability: "work", option: "releases" },
-      /**
-       * ⚠️ By TAG, not by id. `projectRelease` is `/releases/:releaseTag`
-       * because `/alepha/releases/0.28.0` is what the URL is for, and the
-       * scope stores `releaseId`. A release with no tag has no destination
-       * and the card is inert rather than linking to `/releases/undefined`.
-       */
-      link: (_scope, target) =>
-        target.projectSlug && target.releaseTag
-          ? {
-              route: "projectRelease",
-              params: {
-                projectSlug: target.projectSlug,
-                releaseTag: target.releaseTag,
-              },
-            }
-          : undefined,
-    },
-    {
-      key: "tagCompletion",
-      boards: ["project"],
-      group: "quests",
-      labelKey: "dashboard.metric.tagCompletion",
-      hintKey: "dashboard.metric.tagCompletion.hint",
-      icon: "flame",
-      presentation: "progress",
-      /**
-       * The PROJECT, not the tag. A tag is not a thing a card points at; it
-       * is how the card narrows what it counts, which is what `filters` is.
-       */
-      scopeKinds: ["projects"],
-      filters: tagCompletionFiltersSchema,
-      filterSources: { tag: "projectTags" },
-      needs: { capability: "work" },
-      /**
-       * ⚠️ `?tag=` AND `?status=`, both of which the quests page's query
-       * schema already takes. The status is `todo,in_progress` - the OPEN half -
-       * because the card's number is a completion ratio and the useful thing
-       * to open is what is left, not what is finished.
-       */
-      link: (_scope, target) =>
-        target.projectSlug && target.tag
-          ? {
-              route: "projectQuests",
-              params: { projectSlug: target.projectSlug },
-              query: { tag: target.tag, status: "todo,in_progress" },
-            }
-          : undefined,
-    },
-    {
-      key: "openBlights",
-      boards: ["home"],
-      group: "inbox",
-      labelKey: "dashboard.metric.openBlights",
-      hintKey: "dashboard.metric.openBlights.hint",
-      icon: "bug",
-      presentation: "scalar",
-      scopeKinds: ["apps", "projects", "all"],
-      filters: openBlightsFiltersSchema,
-      /**
-       * `apps.track`, not bare `apps`. Blights arrive on the same ingest
-       * path the option governs, so a project that deploys without watching
-       * has no source for this number.
-       */
-      needs: { capability: "apps", option: "track" },
-      link: (_scope, target) =>
-        target.projectSlug
-          ? {
-              route: "projectBlights",
-              params: { projectSlug: target.projectSlug },
-            }
-          : undefined,
-    },
-    {
-      key: "untriagedFeedback",
-      boards: ["home"],
-      group: "inbox",
-      labelKey: "dashboard.metric.untriagedFeedback",
-      cardLabelKey: "dashboard.metric.untriagedFeedback.card",
-      hintKey: "dashboard.metric.untriagedFeedback.hint",
-      icon: "inbox",
-      presentation: "scalar",
-      /**
-       * No `apps` kind, and that is a decision rather than an omission: no
-       * flow can attribute a feedback item to an app. Nothing writes
-       * `source.sigilId`, and the sigil feedback URL contract carries no app
-       * identifier — so an app-scoped card would count nothing, forever.
-       */
-      scopeKinds: ["projects", "all"],
-      filters: untriagedFeedbackFiltersSchema,
-      needs: { capability: "support" },
-      link: (_scope, target) =>
-        target.projectSlug
-          ? {
-              route: "projectFeedback",
-              params: { projectSlug: target.projectSlug },
-            }
-          : undefined,
-    },
-    {
-      key: "uniqueVisitors",
-      boards: ["home"],
-      group: "apps",
-      labelKey: "dashboard.metric.uniqueVisitors",
-      hintKey: "dashboard.metric.uniqueVisitors.hint",
-      icon: "users",
-      presentation: "scalar",
-      scopeKinds: ["apps", "projects"],
-      filters: uniqueVisitorsFiltersSchema,
-      needs: { capability: "apps", option: "track" },
-      needsBeacon: true,
-      /**
-       * The analytics tab 404s when the app's own `kinds` lacks `beacon`
-       * (`assertBeacon`), so the resolver only ever reports an app that
-       * carries it. With no such app there is no destination and the card
-       * is not clickable, which is the honest answer.
-       */
-      link: (_scope, target) =>
-        target.projectSlug && target.app && target.env
-          ? {
-              route: "appAnalytics",
-              params: {
-                projectSlug: target.projectSlug,
-                app: target.app,
-                env: target.env,
-              },
-            }
-          : undefined,
-    },
-  ];
+  /**
+   * Every metric, registered by the module that owns it (#E75, #Q2623):
+   * Work's quest, epic, release, tag and feedback metrics, Deploy's blights
+   * and visitors. Kept in `order`, the order the Add-card panel shows them.
+   */
+  protected readonly metrics: DashboardMetricDescriptor[] = [];
+
+  /**
+   * Register a metric. A key is registered once.
+   */
+  register(descriptor: DashboardMetricDescriptor): void {
+    if (this.metrics.some((metric) => metric.key === descriptor.key)) {
+      throw new AlephaError(
+        `Dashboard metric '${descriptor.key}' is registered twice`,
+      );
+    }
+    this.metrics.push(descriptor);
+    this.metrics.sort((a, b) => a.order - b.order);
+  }
 
   /**
    * Every metric, catalogue order.

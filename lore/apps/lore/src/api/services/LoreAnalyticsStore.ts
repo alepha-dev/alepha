@@ -64,12 +64,12 @@ export interface LoreAnalyticsWindow {
  * `AnalyticsStore` interface the sigil package used to ship — a question-shaped
  * contract closed over three tables so the storage backend could be swapped
  * per runtime. That contract is gone: `SigilIngestService` writes views and
- * vitals straight into `LoreAnalytics`'s `$analytics()` datasets now, and
+ * vitals straight into `DeployAnalytics`'s `$analytics()` datasets now, and
  * `InsightsController` reads them the same way. This class is what is left —
  * **uniques only** — because a distinct visitor count is the one question
  * `$analytics()` cannot answer. Sampling and rollup both destroy the ability
  * to say "have I seen this exact hash before", which is the entire mechanism
- * a unique count depends on. See `LoreAnalytics`'s class doc for the same
+ * a unique count depends on. See `DeployAnalytics`'s class doc for the same
  * argument from the dataset side.
  *
  * No longer a subclass of a package factory — with one table and two methods,

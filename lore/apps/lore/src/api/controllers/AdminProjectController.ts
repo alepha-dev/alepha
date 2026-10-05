@@ -6,7 +6,7 @@ import { $secure } from "alepha/security";
 import { $action, okSchema } from "alepha/server";
 
 import { projects } from "../entities/projects.ts";
-import { relations } from "../relations.ts";
+import { coreRelations } from "../relations/coreRelations.ts";
 import { adminProjectResourceSchema } from "../schemas/adminProjectResourceSchema.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
 import { ProjectDeletionService } from "../services/ProjectDeletionService.ts";
@@ -42,7 +42,7 @@ export class AdminProjectController {
   /**
    * Relation-aware view of the same table, for the owner JOIN.
    */
-  protected readonly projectsWith = $repository(relations, "projects");
+  protected readonly projectsWith = $repository(coreRelations, "projects");
   protected readonly members = $repository(organizationMembers);
   protected readonly projectDeletion = $inject(ProjectDeletionService);
   protected readonly audits = $inject(LoreAudits);
@@ -93,7 +93,7 @@ export class AdminProjectController {
 
       /*
        * `include: { owner: true }` is a JOIN, declared once in
-       * `relations.ts` rather than hand-rolled here — the file's own rule is
+       * `relations/coreRelations.ts` rather than hand-rolled here — the file's own rule is
        * that the entity graph joins there and not in a controller.
        *
        * The alternative was resolving `createdBy` in a second query. That

@@ -7,6 +7,7 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
+import { KanbanController } from "../src/api/controllers/KanbanController.ts";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { QuestController } from "../src/api/controllers/QuestController.ts";
 import type { Project } from "../src/api/entities/projects.ts";
@@ -20,6 +21,7 @@ import {
 interface TestContext {
   alepha: Alepha;
   projects: ProjectController;
+  kanban: KanbanController;
   quests: QuestController;
   repos: TestEntityRepositories;
 }
@@ -46,6 +48,7 @@ const setup = async (): Promise<TestContext> => {
   return {
     alepha,
     projects: alepha.inject(ProjectController),
+    kanban: alepha.inject(KanbanController),
     quests: alepha.inject(QuestController),
     repos,
   };
@@ -87,7 +90,7 @@ describe("kanban writes that fan out over quests", () => {
       kanbanColumn: "Todo",
     });
 
-    const columns = await ctx.projects.renameKanbanColumn(
+    const columns = await ctx.kanban.renameKanbanColumn(
       {
         params: { id: project.id },
         body: { oldName: "Doing", newName: "In Progress" },
@@ -130,7 +133,7 @@ describe("kanban writes that fan out over quests", () => {
     });
     await createTestQuest(ctx.alepha, project, { kanbanColumn: "Doing" });
 
-    await ctx.projects.renameKanbanColumn(
+    await ctx.kanban.renameKanbanColumn(
       {
         params: { id: project.id },
         body: { oldName: "Doing", newName: "In Progress" },

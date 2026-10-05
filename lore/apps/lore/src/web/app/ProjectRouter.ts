@@ -113,12 +113,17 @@ export class ProjectRouter {
       // endpoint any page under this layout calls — still takes the integer
       // id, read off `currentProjectAtom`. That is what keeps slug routing out
       // of the rest of the API surface.
-      const { member, quests, ...project } =
-        await this.projectApi.getProjectBySlug({
-          params: {
-            slug: params.projectSlug,
-          },
-        });
+      // `quests` is the narrow list kept on the response for published CLIs;
+      // the full resources come from Work below.
+      const {
+        member,
+        quests: _assignedWork,
+        ...project
+      } = await this.projectApi.getProjectBySlug({
+        params: {
+          slug: params.projectSlug,
+        },
+      });
 
       // Everything below needs only `project.id`, so it is issued together
       // rather than awaited in turn. That is not just parallelism: the
@@ -133,6 +138,7 @@ export class ProjectRouter {
       // `.catch`, so a failure there rejects the loader exactly as it did
       // when it was awaited first.
       const [
+        quests,
         releases,
         pendingFeedback,
         openQuests,
@@ -143,6 +149,13 @@ export class ProjectRouter {
         unreadEverywhere,
         prompts,
       ] = await Promise.all([
+        // The viewer's open quests, which rode on the project response until
+        // core stopped reading Work's tables (#E75, #Q2623). Same round, so
+        // the batch still coalesces it; `[]` on failure, like the counts,
+        // rather than taking the project down.
+        this.questApi
+          .getMyActiveQuests({ params: { projectId: project.id } })
+          .catch(() => []),
         this.releaseApi.getReleases({
           params: { projectId: project.id },
         }),

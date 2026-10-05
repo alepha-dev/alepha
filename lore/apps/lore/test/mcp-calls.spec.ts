@@ -9,7 +9,7 @@ import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { AdminMcpController } from "../src/api/controllers/AdminMcpController.ts";
-import { LoreAnalytics } from "../src/api/entities/loreAnalytics.ts";
+import { ProjectAnalytics } from "../src/api/entities/projectAnalytics.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { LoreMcp } from "../src/mcp/index.ts";
 
@@ -49,7 +49,7 @@ interface TestContext {
   alepha: Alepha;
   mcp: McpServerProvider;
   admin: AdminMcpController;
-  datasets: LoreAnalytics;
+  datasets: ProjectAnalytics;
   user: { id: string; roles: string[] };
 }
 
@@ -85,7 +85,7 @@ const setup = async (): Promise<TestContext> => {
     alepha,
     mcp: alepha.inject(McpServerProvider),
     admin: alepha.inject(AdminMcpController),
-    datasets: alepha.inject(LoreAnalytics),
+    datasets: alepha.inject(ProjectAnalytics),
     user: { id: created.data.id, roles: created.data.roles },
   };
 };

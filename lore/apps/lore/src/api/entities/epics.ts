@@ -1,6 +1,7 @@
 import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
+import { epicStatusSchema } from "../../mcp/schemas/epicStatusSchema.ts";
 import { projects } from "./projects.ts";
 import { releases } from "./releases.ts";
 
@@ -68,12 +69,7 @@ export const epics = $entity({
      * in the same deploy that retired them, by
      * `20260910205427_epic_four_statuses`.
      */
-    status: db.default(
-      z
-        .enum(["draft", "ready", "in_progress", "completed"])
-        .meta({ mode: "text" }),
-      "draft",
-    ),
+    status: db.default(epicStatusSchema.meta({ mode: "text" }), "draft"),
     /**
      * When the first quest was accepted or assigned, which is what moves an
      * epic to `in_progress`. Never cleared: nothing leaves `in_progress` but

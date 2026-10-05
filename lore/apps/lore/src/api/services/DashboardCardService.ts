@@ -9,7 +9,7 @@ import {
   dashboardCards,
 } from "../entities/dashboardCards.ts";
 import { dashboardSettings } from "../entities/dashboardSettings.ts";
-import { sigils } from "../entities/sigils.ts";
+import type { Project } from "../entities/projects.ts";
 import type { DashboardCardResource } from "../schemas/dashboardCardResourceSchema.ts";
 import type { DashboardScope } from "../schemas/dashboardScopeSchema.ts";
 import { DashboardMetricCatalog } from "./DashboardMetricCatalog.ts";
@@ -32,7 +32,7 @@ import { DashboardScopeService } from "./DashboardScopeService.ts";
 export class DashboardCardService {
   protected readonly cards = $repository(dashboardCards);
   protected readonly settings = $repository(dashboardSettings);
-  protected readonly sigils = $repository(sigils);
+  protected readonly seeds: DashboardSeed[] = [];
   protected readonly catalog = $inject(DashboardMetricCatalog);
   protected readonly scopes = $inject(DashboardScopeService);
   protected readonly dateTime = $inject(DateTimeProvider);
@@ -183,29 +183,21 @@ export class DashboardCardService {
   }
 
   /**
-   * The starting dashboard.
+   * The starting dashboard: every registered seed's cards, in seed order.
    *
    * Three `all`-scoped cards that are meaningful for any account, plus
    * yesterday's visitors when the user actually has an app that reports
    * them. A metric with no data available is not offered, so it is not
-   * seeded either.
-   *
-   * The order follows the mockup's own default set: visitors, quests,
-   * blights, feedback.
+   * seeded either. The order follows the mockup's own default set: visitors
+   * (Deploy, 10), quests (Work, 20), blights (Deploy, 30), feedback (Work,
+   * 40).
    */
   protected async seed(user: UserAccountToken): Promise<void> {
-    const cards: Array<{ metric: string; scope: DashboardScope }> = [];
-
-    const beacon = await this.firstBeaconApp(user);
-    if (beacon) {
-      cards.push({
-        metric: "uniqueVisitors",
-        scope: { kind: "apps", sigilIds: [beacon] },
-      });
-    }
-    cards.push({ metric: "activeQuests", scope: { kind: "all" } });
-    cards.push({ metric: "openBlights", scope: { kind: "all" } });
-    cards.push({ metric: "untriagedFeedback", scope: { kind: "all" } });
+    const visible = await this.scopes.visibleProjects(user);
+    const ordered = [...this.seeds].sort((a, b) => a.order - b.order);
+    const cards = (
+      await Promise.all(ordered.map((seed) => seed.cards(user, visible)))
+    ).flat();
 
     await this.cards.createMany(
       cards.map((card, position) => ({
@@ -220,23 +212,11 @@ export class DashboardCardService {
   }
 
   /**
-   * The caller's first beacon-carrying app, if any.
-   *
-   * Beacon and not merely "an app": the visitors metric reads page traffic,
-   * and an app without the `beacon` kind reports none — and its analytics
-   * page 404s, so the card could not even be clicked.
+   * Register default cards. Each module seeds the cards of the metrics it
+   * owns (#E75, #Q2623); `order` is the position on the fresh board.
    */
-  protected async firstBeaconApp(
-    user: UserAccountToken,
-  ): Promise<string | undefined> {
-    const visible = await this.scopes.visibleProjects(user);
-    if (visible.length === 0) return undefined;
-
-    const rows = await this.sigils.findMany({
-      where: { projectId: { inArray: visible.map((it) => it.id) } },
-      orderBy: [{ column: "createdAt", direction: "asc" }],
-    });
-    return rows.find((it) => it.kinds?.includes("beacon"))?.id;
+  public registerSeed(seed: DashboardSeed): void {
+    this.seeds.push(seed);
   }
 
   /**
@@ -314,4 +294,15 @@ export class DashboardCardService {
       position: row.position ?? 0,
     };
   }
+}
+
+/**
+ * Default cards a module adds to a board that has none yet.
+ */
+export interface DashboardSeed {
+  order: number;
+  cards: (
+    user: UserAccountToken,
+    visible: Project[],
+  ) => Promise<Array<{ metric: string; scope: DashboardScope }>>;
 }

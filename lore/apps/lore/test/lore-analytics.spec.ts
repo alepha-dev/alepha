@@ -15,7 +15,7 @@ import { AlephaServerCors } from "alepha/server/cors";
 import { AlephaFake } from "alepha/testing/faker";
 import { describe, expect, it } from "vitest";
 
-import { LoreAnalytics } from "../src/api/entities/loreAnalytics.ts";
+import { DeployAnalytics } from "../src/api/entities/deployAnalytics.ts";
 import { projectCapabilities } from "../src/api/entities/projectCapabilities.ts";
 import { projects } from "../src/api/entities/projects.ts";
 import { sigils } from "../src/api/entities/sigils.ts";
@@ -85,7 +85,7 @@ const setup = async (
   alepha.with(LoreApi);
 
   const probe = alepha.inject(Probe);
-  const analytics = alepha.inject(LoreAnalytics);
+  const analytics = alepha.inject(DeployAnalytics);
   const tokens = alepha.inject(SigilTokenService);
   const server = alepha.inject(ServerProvider);
   const users = alepha.inject(UserService);
@@ -138,7 +138,7 @@ const setup = async (
 describe("Lore analytics datasets", () => {
   it("declares views with the sigil as the index dimension", async () => {
     const alepha = Alepha.create();
-    const analytics = alepha.inject(LoreAnalytics);
+    const analytics = alepha.inject(DeployAnalytics);
     await alepha.start();
 
     expect(analytics.views.dataset.name).toBe("sigil_views");
@@ -147,7 +147,7 @@ describe("Lore analytics datasets", () => {
 
   it("declares vitals with the histogram bucket as an ordinary dimension", async () => {
     const alepha = Alepha.create();
-    const analytics = alepha.inject(LoreAnalytics);
+    const analytics = alepha.inject(DeployAnalytics);
     await alepha.start();
 
     expect(
@@ -157,7 +157,7 @@ describe("Lore analytics datasets", () => {
 
   it("records a view that reads back grouped by path", async () => {
     const alepha = Alepha.create();
-    const analytics = alepha.inject(LoreAnalytics);
+    const analytics = alepha.inject(DeployAnalytics);
     await alepha.start();
 
     await analytics.views.record({

@@ -15,7 +15,7 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { TestEntityRepositories } from "../../../test/fixtures/entities.ts";
 import { ProjectController } from "../controllers/ProjectController.ts";
-import { LoreAnalytics } from "../entities/loreAnalytics.ts";
+import { ProjectAnalytics } from "../entities/projectAnalytics.ts";
 import { LoreApi } from "../index.ts";
 import { LoreAudits } from "./LoreAudits.ts";
 import { LoreAuditService } from "./LoreAuditService.ts";
@@ -47,7 +47,7 @@ class BrokenAnalyticsProvider extends MemoryAnalyticsProvider {
 interface TestContext {
   alepha: Alepha;
   audits: LoreAudits;
-  datasets: LoreAnalytics;
+  datasets: ProjectAnalytics;
   repos: AuditRepositories;
 }
 
@@ -76,7 +76,7 @@ const setup = async (broken = false): Promise<TestContext> => {
   return {
     alepha,
     audits: alepha.inject(LoreAudits),
-    datasets: alepha.inject(LoreAnalytics),
+    datasets: alepha.inject(ProjectAnalytics),
     repos,
   };
 };

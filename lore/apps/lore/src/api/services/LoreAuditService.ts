@@ -3,7 +3,7 @@ import { type AuditEntity, AuditService } from "alepha/api/audits";
 import type { CreateAudit } from "alepha/api/audits";
 import { $logger } from "alepha/logger";
 
-import { LoreAnalytics } from "../entities/loreAnalytics.ts";
+import { ProjectAnalytics } from "../entities/projectAnalytics.ts";
 
 /**
  * The framework's audit log, plus the rate point that goes with it (#E65).
@@ -36,7 +36,7 @@ import { LoreAnalytics } from "../entities/loreAnalytics.ts";
  */
 export class LoreAuditService extends AuditService {
   protected readonly logger = $logger();
-  protected readonly datasets = $inject(LoreAnalytics);
+  protected readonly datasets = $inject(ProjectAnalytics);
 
   /**
    * Records an audit event, best effort (#Q2555).

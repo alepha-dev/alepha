@@ -13,6 +13,7 @@ import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
+import { QuestAuthorshipController } from "../src/api/controllers/QuestAuthorshipController.ts";
 import { QuestController } from "../src/api/controllers/QuestController.ts";
 import { UserDeletionHook } from "../src/api/hooks/UserDeletionHook.ts";
 import { LoreApi } from "../src/api/index.ts";
@@ -39,6 +40,7 @@ interface TestContext {
   projectController: ProjectController;
   questController: QuestController;
   deletionHook: UserDeletionHook;
+  authorship: QuestAuthorshipController;
   accountController: MyAccountController;
   realmProvider: RealmProvider;
   fakeProvider: FakeProvider;
@@ -69,6 +71,7 @@ const setup = async (): Promise<TestContext> => {
     projectController: alepha.inject(ProjectController),
     questController: alepha.inject(QuestController),
     deletionHook: alepha.inject(UserDeletionHook),
+    authorship: alepha.inject(QuestAuthorshipController),
     accountController: alepha.inject(MyAccountController),
     realmProvider: alepha.inject(RealmProvider),
     fakeProvider: alepha.inject(FakeProvider),
@@ -217,7 +220,7 @@ describe("UserDeletionHook", () => {
       { user },
     );
 
-    const { data } = await ctx.deletionHook.countMyAuthoredQuests.fetch(
+    const { data } = await ctx.authorship.countMyAuthoredQuests.fetch(
       {},
       { user },
     );

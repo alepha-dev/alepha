@@ -14,7 +14,7 @@ import { AppController } from "../src/api/controllers/AppController.ts";
 import { InsightsController } from "../src/api/controllers/InsightsController.ts";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { SigilController } from "../src/api/controllers/SigilController.ts";
-import { LoreAnalytics } from "../src/api/entities/loreAnalytics.ts";
+import { DeployAnalytics } from "../src/api/entities/deployAnalytics.ts";
 import { sigilErrorGroups } from "../src/api/entities/sigilErrorGroups.ts";
 import { sigils } from "../src/api/entities/sigils.ts";
 import { sigilUniquesDaily } from "../src/api/entities/sigilUniquesDaily.ts";
@@ -38,7 +38,7 @@ const userDataSchema = z.object({
  * because those two questions stayed on `LoreAnalyticsStore` (a distinct
  * count cannot survive sampling or a rollup, and an error group keeps the
  * *first* stack sample, which needs a read before every write — see
- * `LoreAnalytics`'s class doc).
+ * `DeployAnalytics`'s class doc).
  *
  * Going through the ingest endpoint would only ever produce rows in the current
  * hour, and every assertion here is about a window.
@@ -56,7 +56,7 @@ class Probe {
    * about: they are about the shape of the READ.
    */
   sigils = $repository(sigils);
-  datasets = $inject(LoreAnalytics);
+  datasets = $inject(DeployAnalytics);
 
   views = {
     /**

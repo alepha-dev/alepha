@@ -8,7 +8,7 @@ import { $repository } from "alepha/orm";
 import { projects } from "../entities/projects.ts";
 import { quests, REMINDER_INTERVAL_MS } from "../entities/quests.ts";
 import { QuestNotifications } from "../notifications/QuestNotifications.ts";
-import { relations } from "../relations.ts";
+import { workRelations } from "../relations/workRelations.ts";
 
 export class QuestJobs {
   protected readonly REMINDER_BATCH = 50;
@@ -19,7 +19,7 @@ export class QuestJobs {
   /**
    * ...with the assignee and project a reminder email needs.
    */
-  protected readonly questsWith = $repository(relations, "quests");
+  protected readonly questsWith = $repository(workRelations, "quests");
   protected readonly projects = $repository(projects);
   protected readonly users = $repository(users);
   protected readonly questNotifications = $inject(QuestNotifications);

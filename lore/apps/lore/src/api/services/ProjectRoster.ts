@@ -2,7 +2,7 @@ import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 
 import { displayName } from "../../web/app/services/displayName.ts";
-import { relations } from "../relations.ts";
+import { coreRelations } from "../relations/coreRelations.ts";
 import { ProjectSecurityService } from "./ProjectSecurityService.ts";
 
 /**
@@ -28,7 +28,7 @@ export interface ProjectRosterEntry {
  */
 export class ProjectRoster {
   protected readonly membersWith = $repository(
-    relations,
+    coreRelations,
     "organizationMembers",
   );
   protected readonly security = $inject(ProjectSecurityService);

@@ -1,25 +1,21 @@
 import { $inject } from "alepha";
 import { FileAccessProvider, type FileEntity } from "alepha/api/files";
 import { RankService } from "alepha/api/organizations";
-import { $repository, DatabaseProvider, sql } from "alepha/orm";
+import { $repository, DatabaseProvider } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 import { ForbiddenError } from "alepha/server";
 
-import { feedback } from "../entities/feedback.ts";
-import { folioAttachments } from "../entities/folioAttachments.ts";
 import { projects } from "../entities/projects.ts";
-import { quests } from "../entities/quests.ts";
-import { attachmentLookupSchema } from "../schemas/attachmentLookupSchema.ts";
-import { FeedbackRateLimiter } from "../services/FeedbackRateLimiter.ts";
+import { FileAccessRegistry } from "../services/FileAccessRegistry.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 /**
  * Per-bucket file access policy for Lore.
  *
  * Files are tenant-scoped through the entities that reference them
- * (projects.icon, feedback.attachments[], quests.attachments[]). We
- * locate the owning entity by id, then delegate to the same project
- * gate used by HTTP controllers. The default framework policy is
+ * (projects.icon here; quest, feedback and folio attachments through the
+ * modules' `FileAccessRegistry` rules). We locate the owning entity by id,
+ * then delegate to the same project gate used by HTTP controllers. The default framework policy is
  * creator-only — this widens it for the well-known buckets.
  */
 export class LoreFileAccessProvider extends FileAccessProvider {
@@ -27,22 +23,12 @@ export class LoreFileAccessProvider extends FileAccessProvider {
   protected readonly projectSecurity = $inject(ProjectSecurityService);
   protected readonly database = $inject(DatabaseProvider);
   protected readonly projects = $repository(projects);
-  protected readonly feedback = $repository(feedback);
-  protected readonly quests = $repository(quests);
-  protected readonly folioAttachments = $repository(folioAttachments);
+  protected readonly fileAccess = $inject(FileAccessRegistry);
 
-  /**
-   * Quest attachments bucket inherits the property name when no `name:` is
-   * passed to `$storage(...)` — see `QuestController.attachments`.
-   */
-  protected static readonly QUEST_ATTACHMENT_BUCKET = "attachments";
   // Bucket value stays "campaign-icons" — see the note on `iconBucket`
   // in `ProjectController.ts`.
   protected static readonly PROJECT_ICON_BUCKET = "campaign-icons";
   protected static readonly AVATAR_BUCKET = "avatars";
-  // Bucket value stays "archive-blobs" — see the note on
-  // `FOLIO_ATTACHMENT_BUCKET` in `FolioAttachmentService.ts`.
-  protected static readonly FOLIO_ATTACHMENT_BUCKET = "archive-blobs";
 
   /**
    * ⚠️ **ranks: imperative.** This is a `$secure` guard on a file route, and
@@ -88,46 +74,17 @@ export class LoreFileAccessProvider extends FileAccessProvider {
       throw new ForbiddenError("File access denied");
     }
 
-    // Feedback attachments: project owner triages, including reading
-    // attachments from reporters.
-    if (file.bucket === FeedbackRateLimiter.ATTACHMENT_BUCKET) {
-      const feedback = await this.findFeedbackByAttachment(file.id);
-      if (feedback) {
+    // Every other well-known bucket belongs to a feature module: quest and
+    // feedback attachments (Work), folio attachments (Knowledge). The module
+    // says which project the file belongs to and which permission reads it
+    // (`FileAccessRegistry`, #E75 #Q2623); core asserts it.
+    const rule = this.fileAccess.rule(file.bucket);
+    if (rule) {
+      const owner = await rule(file.id);
+      if (owner) {
         await this.ranks.assert(
-          await this.projectSecurity.organizationIdOf(feedback.projectId),
-          "feedback:triage",
-          user,
-        );
-        return;
-      }
-      throw new ForbiddenError("File access denied");
-    }
-
-    // Folio attachments: any project member can read the bytes (Drive-
-    // style sharing scope per folio #4 Q2). The Lore overlay row holds
-    // the project id.
-    if (file.bucket === LoreFileAccessProvider.FOLIO_ATTACHMENT_BUCKET) {
-      const attachment = await this.folioAttachments.findOne({
-        where: { fileId: { eq: file.id } },
-      });
-      if (attachment) {
-        await this.ranks.assert(
-          await this.projectSecurity.organizationIdOf(attachment.projectId),
-          "folio:read",
-          user,
-        );
-        return;
-      }
-      throw new ForbiddenError("File access denied");
-    }
-
-    // Quest attachments: any project member can view.
-    if (file.bucket === LoreFileAccessProvider.QUEST_ATTACHMENT_BUCKET) {
-      const quest = await this.findQuestByAttachment(file.id);
-      if (quest) {
-        await this.ranks.assert(
-          await this.projectSecurity.organizationIdOf(quest.projectId),
-          "quest:read",
+          await this.projectSecurity.organizationIdOf(owner.projectId),
+          owner.permission,
           user,
         );
         return;
@@ -154,28 +111,5 @@ export class LoreFileAccessProvider extends FileAccessProvider {
       return;
     }
     return super.assertPublic(file);
-  }
-
-  /**
-   * Find the feedback row that lists `fileId` in its `attachments` JSON
-   * array. Uses a LIKE against the JSON text — feedback rows are small and
-   * the bucket constraint at the call site already narrows the search.
-   */
-  protected async findFeedbackByAttachment(fileId: string) {
-    const needle = `%"${fileId}"%`;
-    const rows = await this.database.run(
-      sql`SELECT id, project_id as "projectId" FROM ${this.feedback.table} WHERE attachments LIKE ${needle} LIMIT 1`,
-      attachmentLookupSchema,
-    );
-    return rows[0];
-  }
-
-  protected async findQuestByAttachment(fileId: string) {
-    const needle = `%"${fileId}"%`;
-    const rows = await this.database.run(
-      sql`SELECT id, project_id as "projectId" FROM ${this.quests.table} WHERE attachments LIKE ${needle} LIMIT 1`,
-      attachmentLookupSchema,
-    );
-    return rows[0];
   }
 }

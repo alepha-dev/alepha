@@ -1414,6 +1414,34 @@ export class QuestController {
    *
    * Readable by any project member.
    */
+  /**
+   * The viewer's own open quests in one project: accepted by them, not
+   * completed. What the sidebar's "my quests" list and the orientation tools'
+   * `activeQuests` show.
+   *
+   * It rode on `ProjectController.getProjectById` / `getProjectBySlug` until
+   * core stopped reading Work's tables (#E75, #Q2623): the project loader
+   * asks for it beside the project now, in the same batched round.
+   */
+  getMyActiveQuests = $action({
+    use: [this.ownsProject("quest:read")],
+    path: "/projects/:projectId/my-active-quests",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      response: z.array(questResourceSchema),
+    },
+    handler: async ({ params, user }) => {
+      const mine = await this.quests.findMany({
+        where: {
+          projectId: { eq: params.projectId },
+          completedAt: { isNull: true },
+          acceptedBy: { eq: user.id },
+        },
+      });
+      return mine.map((quest) => this.questMapper.mapQuestToResource(quest));
+    },
+  });
+
   countOpenQuests = $action({
     use: [this.ownsProject("quest:read")],
     path: "/projects/:projectId/quests/count",

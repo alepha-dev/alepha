@@ -48,6 +48,7 @@ import { ProjectQuestPortabilityController } from "./controllers/ProjectQuestPor
 import { ProjectRankController } from "./controllers/ProjectRankController.ts";
 import { ProjectReportsController } from "./controllers/ProjectReportsController.ts";
 import { QualityController } from "./controllers/QualityController.ts";
+import { QuestAuthorshipController } from "./controllers/QuestAuthorshipController.ts";
 import { QuestCommentController } from "./controllers/QuestCommentController.ts";
 import { QuestController } from "./controllers/QuestController.ts";
 import { ReleaseController } from "./controllers/ReleaseController.ts";
@@ -58,6 +59,7 @@ import { SigilController } from "./controllers/SigilController.ts";
 import { SigilIngestController } from "./controllers/SigilIngestController.ts";
 import { LoreDashboardCatalog } from "./dashboardCatalogModule.ts";
 import { OrganizationHooks } from "./hooks/OrganizationHooks.ts";
+import { QuestMemberRemoval } from "./hooks/QuestMemberRemoval.ts";
 import { UserDeletionHook } from "./hooks/UserDeletionHook.ts";
 import { BlightJobs } from "./jobs/BlightJobs.ts";
 import { DeployJobs } from "./jobs/DeployJobs.ts";
@@ -100,8 +102,10 @@ import { DailyVisitorsService } from "./services/DailyVisitorsService.ts";
 import { DashboardCardService } from "./services/DashboardCardService.ts";
 import { DashboardMetricRegistry } from "./services/DashboardMetricRegistry.ts";
 import { DashboardScopeService } from "./services/DashboardScopeService.ts";
+import { DeployDashboard } from "./services/DeployDashboard.ts";
 import { DeployGate } from "./services/DeployGate.ts";
 import { DeployLimits } from "./services/DeployLimits.ts";
+import { DeployProjectCounts } from "./services/DeployProjectCounts.ts";
 import { DeployRegistry } from "./services/DeployRegistry.ts";
 import { DeployRunner } from "./services/DeployRunner.ts";
 import { DeployService } from "./services/DeployService.ts";
@@ -121,6 +125,7 @@ import { FolioDirectoryService } from "./services/FolioDirectoryService.ts";
 import { FolioHistoryService } from "./services/FolioHistoryService.ts";
 import { FolioNameService } from "./services/FolioNameService.ts";
 import { HeldQuestsMetric } from "./services/HeldQuestsMetric.ts";
+import { KnowledgeFileAccess } from "./services/KnowledgeFileAccess.ts";
 import { LoreAudits } from "./services/LoreAudits.ts";
 import { LoreAuditService } from "./services/LoreAuditService.ts";
 import { MentionNotifier } from "./services/MentionNotifier.ts";
@@ -133,6 +138,7 @@ import { ProjectRoster } from "./services/ProjectRoster.ts";
 import { ProjectSecurityService } from "./services/ProjectSecurityService.ts";
 import { QualityService } from "./services/QualityService.ts";
 import { QuestCsvFormatter } from "./services/QuestCsvFormatter.ts";
+import { QuestProjectDeletion } from "./services/QuestProjectDeletion.ts";
 import { QuestService } from "./services/QuestService.ts";
 import { QuestTagTallyService } from "./services/QuestTagTallyService.ts";
 import { ReleaseAttachmentService } from "./services/ReleaseAttachmentService.ts";
@@ -148,10 +154,14 @@ import { TagCompletionMetric } from "./services/TagCompletionMetric.ts";
 import { UniqueVisitorsMetric } from "./services/UniqueVisitorsMetric.ts";
 import { UntriagedFeedbackMetric } from "./services/UntriagedFeedbackMetric.ts";
 import { WebSocketEstateCommandTransport } from "./services/WebSocketEstateCommandTransport.ts";
+import { WorkAssignedWork } from "./services/WorkAssignedWork.ts";
+import { WorkDashboard } from "./services/WorkDashboard.ts";
+import { WorkFileAccess } from "./services/WorkFileAccess.ts";
+import { WorkProjectCounts } from "./services/WorkProjectCounts.ts";
 
 export const LoreApi = $module({
   name: "lore.api",
-  // `$analytics()` (used by `LoreAnalytics`) auto-wires `AlephaApiAnalytics`
+  // `$analytics()` (used by `ProjectAnalytics` and `DeployAnalytics`) auto-wires `AlephaApiAnalytics`
   // itself the moment a dataset is injected — the same module-tagging
   // mechanism `$repository` uses for `AlephaOrm`. The hourly retention sweep
   // does not: `AnalyticsRollupJobs` lives in the separate `AlephaApiAnalyticsRollup`
@@ -253,6 +263,22 @@ export const LoreApi = $module({
     FolioResourceKind,
     DirectoryResourceKind,
     BlightQuestHandBack,
+    // Per-project counts each module registers on the core
+    // `ProjectCountRegistry` (#Q2623); listed because nothing injects them.
+    WorkProjectCounts,
+    WorkAssignedWork,
+    // Each module's part of the dashboard: scopes, default cards, and the
+    // metric resolvers, which register themselves (#Q2623).
+    WorkDashboard,
+    // Who may read each module's attachment bucket (#Q2623).
+    WorkFileAccess,
+    // Work's parts of a member leaving and a project going (#Q2623).
+    QuestMemberRemoval,
+    QuestProjectDeletion,
+    QuestAuthorshipController,
+    KnowledgeFileAccess,
+    DeployDashboard,
+    DeployProjectCounts,
     // Declares the `$invitationResource` for `resourceType: "project"`.
     // Nothing injects it, so like `AppSecurityProvider` it has to be listed
     // or the resolver is never registered and every invitation 404s.
@@ -351,7 +377,7 @@ export const LoreApi = $module({
     // The sink half: the token an app presents, and what happens to what it
     // sends. `SigilIngestService` itself holds no repository on any of the
     // aggregate tables — writes go through `LoreAnalyticsStore` (uniques) and
-    // the `LoreAnalytics` `$analytics()` datasets (views, vitals). An entity
+    // the `DeployAnalytics` `$analytics()` datasets (views, vitals). An entity
     // exists, for the migration generator, exactly as long as some
     // `$repository` names it.
     SigilTokenService,

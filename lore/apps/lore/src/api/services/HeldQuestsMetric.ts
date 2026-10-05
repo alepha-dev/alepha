@@ -5,6 +5,7 @@ import type { Project } from "../entities/projects.ts";
 import { quests } from "../entities/quests.ts";
 import type { DashboardCardValue } from "../schemas/dashboardCardValueSchema.ts";
 import { DashboardMetricCatalog } from "./DashboardMetricCatalog.ts";
+import { DashboardMetricRegistry } from "./DashboardMetricRegistry.ts";
 import type {
   DashboardMetricResolver,
   DashboardResolvable,
@@ -39,6 +40,13 @@ import { OpenQuestScope } from "./OpenQuestScope.ts";
  * mention-based and `heldFor` options are additive later, not alternatives.
  */
 export class HeldQuestsMetric implements DashboardMetricResolver {
+  protected readonly dashboard = $inject(DashboardMetricRegistry);
+
+  constructor() {
+    // Registered by the module that owns the metric (#E75, #Q2623).
+    this.dashboard.register(this);
+  }
+
   readonly metric = "heldQuests";
 
   protected readonly quests = $repository(quests);

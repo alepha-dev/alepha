@@ -1,11 +1,11 @@
-import { quests } from "../../api/entities/quests.ts";
+import { z } from "alepha";
 
 /**
  * Quest priority levels.
  *
- * Taken from the column rather than restated: this used to be a second
- * `z.enum([...])` listing the same four values, so adding a fifth priority
- * meant remembering to edit a file in a different directory, and forgetting
- * meant MCP silently refused a value the app accepted.
+ * The one list: `quests.priority` is declared from it, so MCP cannot refuse a
+ * value the app accepts. It is core's vocabulary, not Work's, because core's
+ * `project_context` contract names it (#E75): the column points down at it,
+ * never the reverse.
  */
-export const prioritySchema = quests.schema.shape.priority;
+export const prioritySchema = z.enum(["optional", "low", "medium", "high"]);

@@ -3,10 +3,12 @@ import { $inject } from "alepha";
 import type { Release } from "../entities/releases.ts";
 import type { DashboardCardValue } from "../schemas/dashboardCardValueSchema.ts";
 import { DashboardMetricCatalog } from "./DashboardMetricCatalog.ts";
+import { DashboardMetricRegistry } from "./DashboardMetricRegistry.ts";
 import type {
   DashboardMetricResolver,
   DashboardResolvable,
 } from "./DashboardMetricResolver.ts";
+import type { ResolvedDashboardScope } from "./DashboardScopeService.ts";
 import {
   type ReleaseContents,
   ReleaseContentService,
@@ -51,6 +53,13 @@ import {
  * "follow the default release" option later throws none of this away.
  */
 export class ReleaseProgressMetric implements DashboardMetricResolver {
+  protected readonly dashboard = $inject(DashboardMetricRegistry);
+
+  constructor() {
+    // Registered by the module that owns the metric (#E75, #Q2623).
+    this.dashboard.register(this);
+  }
+
   readonly metric = "releaseProgress";
 
   protected readonly contents = $inject(ReleaseContentService);
@@ -71,7 +80,7 @@ export class ReleaseProgressMetric implements DashboardMetricResolver {
     // a query whose result is discarded - and, worse, an invitation for a
     // later edit to start counting it live.
     const open = cards
-      .map((entry) => entry.scope.release)
+      .map((entry) => this.releaseOf(entry.scope))
       .filter(
         (release): release is Release => !!release && !release.releasedAt,
       );
@@ -95,7 +104,7 @@ export class ReleaseProgressMetric implements DashboardMetricResolver {
     }
 
     for (const entry of cards) {
-      const release = entry.scope.release;
+      const release = this.releaseOf(entry.scope);
       if (!release) {
         // The project turned `work.releases` off after the card was added.
         // Zero-ish rather than unreadable, the same answer the epic card gives.
@@ -142,5 +151,14 @@ export class ReleaseProgressMetric implements DashboardMetricResolver {
     }
 
     return out;
+  }
+
+  /**
+   * The release the card's scope proved, if it survived `narrow()`.
+   */
+  protected releaseOf(scope: ResolvedDashboardScope): Release | undefined {
+    return scope.subjects.find((it) => it.kind === "release")?.row as
+      | Release
+      | undefined;
   }
 }

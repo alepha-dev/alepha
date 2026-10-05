@@ -18,6 +18,7 @@ import { useI18n } from "alepha/react/i18n";
 import { GripVertical, Plus, Trash2 } from "lucide-react";
 import { useId, useState } from "react";
 
+import type { KanbanController } from "@/api/controllers/KanbanController.ts";
 import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { setCurrentProject } from "@/web/app/services/currentProjectWrite.ts";
@@ -60,6 +61,7 @@ const ProjectSettingsBoardPage = () => {
   const { tr } = useI18n<I18n, "en">();
   const alepha = useAlepha();
   const projectApi = useClient<ProjectController>();
+  const kanbanApi = useClient<KanbanController>();
   const [project] = useStore(currentProjectAtom);
   const boardEnabled = capabilityOption(project, "work", "board");
 
@@ -145,7 +147,7 @@ const ProjectSettingsBoardPage = () => {
         // one back and rethrows, which is what reports it.
         setColumns(next);
         try {
-          await projectApi.reorderKanbanColumns({
+          await kanbanApi.reorderKanbanColumns({
             params: { id: project.id },
             body: { columns: next },
           });
@@ -156,7 +158,7 @@ const ProjectSettingsBoardPage = () => {
         setCurrentProject(alepha, { ...project, kanbanColumns: next });
       },
     },
-    [projectApi, alepha, project],
+    [kanbanApi, alepha, project],
   );
 
   /**
@@ -235,7 +237,7 @@ const ProjectSettingsBoardPage = () => {
             disabled={
               columns.length >= MAX_COLUMNS ||
               busy ||
-              !projectApi.addKanbanColumn.can()
+              !kanbanApi.addKanbanColumn.can()
             }
             onClick={handleAdd}
           >

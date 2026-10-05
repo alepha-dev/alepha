@@ -2,6 +2,7 @@ import { Alepha } from "alepha";
 import { AlephaReactRouter, ReactRouter } from "alepha/react/router";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
+import { LoreDashboardCatalog } from "@/api/dashboardCatalogModule.ts";
 import { DashboardMetricCatalog } from "@/api/services/DashboardMetricCatalog.ts";
 import { AppRouter } from "@/web/app/AppRouter.ts";
 
@@ -25,6 +26,9 @@ describe("dashboard drill-through links", () => {
 
   beforeEach(async () => {
     alepha = Alepha.create({ env: { LOG_LEVEL: "error", SERVER_PORT: 0 } });
+    // The descriptors are registered by each module (#Q2623), which this
+    // module brings in beside the catalogue.
+    alepha.with(LoreDashboardCatalog);
     alepha.with(AlephaReactRouter);
     alepha.inject(AppRouter);
     catalog = alepha.inject(DashboardMetricCatalog);

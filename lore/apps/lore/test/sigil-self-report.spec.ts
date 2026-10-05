@@ -9,7 +9,7 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake } from "alepha/testing/faker";
 import { describe, expect, it } from "vitest";
 
-import { LoreAnalytics } from "../src/api/entities/loreAnalytics.ts";
+import { DeployAnalytics } from "../src/api/entities/deployAnalytics.ts";
 import { projectCapabilities } from "../src/api/entities/projectCapabilities.ts";
 import { projects } from "../src/api/entities/projects.ts";
 import { sigils } from "../src/api/entities/sigils.ts";
@@ -40,7 +40,7 @@ class Probe {
  * Views, read back through the `$analytics()` dataset that is now the only
  * write `SigilIngestService.absorbViews` makes — see that method's doc.
  */
-const readVitals = async (analytics: LoreAnalytics, sigilId: string) => {
+const readVitals = async (analytics: DeployAnalytics, sigilId: string) => {
   const result = await analytics.vitals.query({
     since: "2000-01-01",
     where: { sigilId: { inArray: [sigilId] } },
@@ -50,7 +50,7 @@ const readVitals = async (analytics: LoreAnalytics, sigilId: string) => {
   return result.rows as unknown as Array<Record<string, unknown>>;
 };
 
-const readViews = async (analytics: LoreAnalytics, sigilId: string) => {
+const readViews = async (analytics: DeployAnalytics, sigilId: string) => {
   const result = await analytics.views.query({
     since: "2000-01-01",
     where: { sigilId: { inArray: [sigilId] } },
@@ -127,7 +127,7 @@ const setup = async (
   alepha.with({ provide: SigilSinkProvider, use: LoreSigilSinkProvider });
 
   const probe = alepha.inject(Probe);
-  const analytics = alepha.inject(LoreAnalytics);
+  const analytics = alepha.inject(DeployAnalytics);
   const crypto = alepha.inject(CryptoProvider);
   const users = alepha.inject(UserService);
   const sink = alepha.inject(SigilSinkProvider);

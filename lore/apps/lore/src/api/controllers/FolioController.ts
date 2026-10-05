@@ -18,7 +18,7 @@ import {
   buildFolioSearchText,
   folios,
 } from "../entities/folios.ts";
-import { relations } from "../relations.ts";
+import { knowledgeRelations } from "../relations/knowledgeRelations.ts";
 import type { ResourceRef } from "../resources/ResourceRegistry.ts";
 import { folioIdParamsSchema } from "../schemas/folioIdParamsSchema.ts";
 import { folioListQuerySchema } from "../schemas/folioListQuerySchema.ts";
@@ -70,7 +70,10 @@ export class FolioController {
   /**
    * ...with the author attached, for the project activity feed.
    */
-  protected readonly revisionsWith = $repository(relations, "folioRevisions");
+  protected readonly revisionsWith = $repository(
+    knowledgeRelations,
+    "folioRevisions",
+  );
   protected readonly users = $repository(users);
   protected readonly linkService = $inject(ResourceLinkService);
   protected readonly bound = $inject(BoundParameters);

@@ -3,7 +3,6 @@ import { $tool } from "alepha/mcp";
 import { BadRequestError, NotFoundError } from "alepha/server";
 
 import { DirectoryController } from "../../api/controllers/DirectoryController.ts";
-import { EpicController } from "../../api/controllers/EpicController.ts";
 import { FolioAttachmentController } from "../../api/controllers/FolioAttachmentController.ts";
 import { FolioController } from "../../api/controllers/FolioController.ts";
 import { ProjectController } from "../../api/controllers/ProjectController.ts";
@@ -63,7 +62,6 @@ export class FolioTools {
   protected readonly projectController = $inject(ProjectController);
   protected readonly directoryController = $inject(DirectoryController);
   protected readonly attachmentController = $inject(FolioAttachmentController);
-  protected readonly epicController = $inject(EpicController);
   protected readonly resources = $inject(ResourceRegistry);
   protected readonly diagrams = $inject(DiagramCheckService);
   protected readonly attachmentPush = $inject(AttachmentPushCommand);
@@ -129,6 +127,17 @@ export class FolioTools {
       throw new NotFoundError(`Epic #${number} not found in this project`);
     }
     return Number(id);
+  }
+
+  /**
+   * File a folio under an epic through the `epic` kind Work registers, which
+   * keeps the epic's own gate and audit (#E75, #Q2623).
+   */
+  protected async fileUnderEpic(epicId: number, folioId: string) {
+    await this.resources.require("epic", "file a folio under an epic").attach!(
+      epicId,
+      { kind: "folio", id: folioId },
+    );
   }
 
   /**
@@ -468,10 +477,7 @@ export class FolioTools {
       // original error (not any delete failure) is what the caller sees.
       if (epicId != null) {
         try {
-          await this.epicController.attachFolio({
-            params: { id: epicId },
-            body: { folioId: folio.id },
-          });
+          await this.fileUnderEpic(epicId, folio.id);
         } catch (error) {
           await this.folioController.delete({ params: { id: folio.id } });
           throw error;
@@ -561,19 +567,15 @@ export class FolioTools {
         const current = await this.folioController.get({ params: { id } });
         if (params.epic_number === 0) {
           if (current.epicId != null) {
-            await this.epicController.detachFolio({
-              params: { id: current.epicId, folioId: id },
-            });
+            await this.resources.require("epic", "take a folio out of an epic")
+              .detach!(current.epicId, { kind: "folio", id });
           }
         } else {
           const epicId = await this.resolveEpicId(
             current.projectId,
             params.epic_number,
           );
-          await this.epicController.attachFolio({
-            params: { id: epicId },
-            body: { folioId: id },
-          });
+          await this.fileUnderEpic(epicId, id);
         }
       }
 

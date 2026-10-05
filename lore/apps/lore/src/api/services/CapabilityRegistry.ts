@@ -1,13 +1,9 @@
-import { AlephaError, type ZType } from "alepha";
+import { AlephaError, type ZType, z } from "alepha";
 
-import { appsCapabilityOptionsSchema } from "../schemas/appsCapabilityOptionsSchema.ts";
 import {
   CAPABILITY_KEYS,
   type CapabilityKey,
 } from "../schemas/capabilityKeySchema.ts";
-import { knowledgeCapabilityOptionsSchema } from "../schemas/knowledgeCapabilityOptionsSchema.ts";
-import { supportCapabilityOptionsSchema } from "../schemas/supportCapabilityOptionsSchema.ts";
-import { workCapabilityOptionsSchema } from "../schemas/workCapabilityOptionsSchema.ts";
 
 /**
  * One switch inside a capability.
@@ -413,13 +409,27 @@ export class CapabilityRegistry {
    * Lax because it is what READS a stored row: a build with one option fewer
    * than the row it loads must strip the extra key, not throw. See
    * {@link strictOptionsOf} for the write side.
+   *
+   * Derived from each capability's declared `options`, every one a boolean
+   * that reads `false` when absent, rather than imported from the module that
+   * owns the capability: core reads no module's code (#E75, #Q2623). Each
+   * module's own options schema (`workCapabilityOptionsSchema`...) types its
+   * reads, and `test/capability-options-schemas.spec.ts` holds the two equal.
    */
-  protected readonly optionSchemas = {
-    work: workCapabilityOptionsSchema,
-    knowledge: knowledgeCapabilityOptionsSchema,
-    apps: appsCapabilityOptionsSchema,
-    support: supportCapabilityOptionsSchema,
-  } satisfies Record<CapabilityKey, ZType>;
+  protected readonly optionSchemas: Record<CapabilityKey, ZType> =
+    Object.fromEntries(
+      this.capabilities.map((capability) => [
+        capability.key,
+        z.object(
+          Object.fromEntries(
+            capability.options.map((option) => [
+              option.key,
+              z.boolean().default(false),
+            ]),
+          ),
+        ),
+      ]),
+    ) as unknown as Record<CapabilityKey, ZType>;
 
   /**
    * The same four schemas, closed, built once rather than per call.
@@ -427,12 +437,13 @@ export class CapabilityRegistry {
    * `.strict()` returns a new schema each time it is called, and this is on
    * the path of every capability write.
    */
-  protected readonly strictOptionSchemas: Record<CapabilityKey, ZType> = {
-    work: workCapabilityOptionsSchema.strict(),
-    knowledge: knowledgeCapabilityOptionsSchema.strict(),
-    apps: appsCapabilityOptionsSchema.strict(),
-    support: supportCapabilityOptionsSchema.strict(),
-  };
+  protected readonly strictOptionSchemas: Record<CapabilityKey, ZType> =
+    Object.fromEntries(
+      Object.entries(this.optionSchemas).map(([key, schema]) => [
+        key,
+        (schema as ReturnType<typeof z.object>).strict(),
+      ]),
+    ) as unknown as Record<CapabilityKey, ZType>;
 
   /**
    * Every capability, in the order the wizard and Settings present them.

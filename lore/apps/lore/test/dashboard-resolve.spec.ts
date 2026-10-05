@@ -1340,10 +1340,12 @@ describe("dashboard resolve", () => {
         user,
       );
 
-      expect(resolved.epic?.id).toBe(epic.id);
+      const subject = resolved.subjects[0];
+      expect(subject?.kind).toBe("epic");
+      expect(subject?.id).toBe(String(epic.id));
       // The per-project NUMBER is what `projectEpic` addresses, and it is
       // reachable only because the row came back rather than the id.
-      expect(resolved.epic?.number).toBe(46);
+      expect((subject!.row as { number: number }).number).toBe(46);
       expect(resolved.projectIds).toEqual([project.id]);
     });
 
@@ -1393,7 +1395,8 @@ describe("dashboard resolve", () => {
         user,
       );
       // The TAG, which is what `/alepha/releases/0.1.0` is built from.
-      expect(resolved.release?.tag).toBe("0.1.0");
+      expect((resolved.subjects[0]!.row as { tag?: string }).tag).toBe("0.1.0");
+      expect(resolved.subjects[0]?.name).toBe("0.1.0");
 
       await expect(
         scopeService().resolve({ kind: "release", releaseId: theirs.id }, user),
@@ -1474,6 +1477,7 @@ describe("dashboard resolve", () => {
       const narrowed = ctx.registry.testNarrow(
         {
           key: "epicProgress",
+          order: 30,
           boards: ["project"],
           group: "epics",
           labelKey: "x",
@@ -1488,8 +1492,15 @@ describe("dashboard resolve", () => {
         {
           projectIds: [project.id],
           projects: [project],
-          sigils: [],
-          epic,
+          subjects: [
+            {
+              kind: "epic",
+              id: String(epic.id),
+              projectId: project.id,
+              name: epic.title,
+              row: epic,
+            },
+          ],
         },
         capabilities,
       );
@@ -1498,7 +1509,7 @@ describe("dashboard resolve", () => {
       // deleted, so the rows are still there — counting them would put a
       // number on the board for a surface the project no longer has.
       expect(narrowed.projects).toEqual([]);
-      expect(narrowed.epic).toBeUndefined();
+      expect(narrowed.subjects).toEqual([]);
     });
   });
 

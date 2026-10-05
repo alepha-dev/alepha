@@ -5,7 +5,7 @@ import { $secure } from "alepha/security";
 import { $action } from "alepha/server";
 import { $etag } from "alepha/server/etag";
 
-import { LoreAnalytics } from "../entities/loreAnalytics.ts";
+import { ProjectAnalytics } from "../entities/projectAnalytics.ts";
 
 /**
  * What the MCP surface is actually asked for, over time (#E65).
@@ -61,7 +61,7 @@ export class AdminMcpController {
 
   protected readonly url = "/admin/mcp";
   protected readonly group = "admin:mcp";
-  protected readonly datasets = $inject(LoreAnalytics);
+  protected readonly datasets = $inject(ProjectAnalytics);
   protected readonly dt = $inject(DateTimeProvider);
 
   public readonly readMcpCalls = $action({

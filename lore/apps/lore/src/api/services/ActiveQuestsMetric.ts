@@ -6,6 +6,7 @@ import { quests } from "../entities/quests.ts";
 import type { ActiveQuestsFilters } from "../schemas/activeQuestsFiltersSchema.ts";
 import type { DashboardCardValue } from "../schemas/dashboardCardValueSchema.ts";
 import { DashboardMetricCatalog } from "./DashboardMetricCatalog.ts";
+import { DashboardMetricRegistry } from "./DashboardMetricRegistry.ts";
 import type {
   DashboardMetricResolver,
   DashboardResolvable,
@@ -34,6 +35,13 @@ import { OpenQuestScope } from "./OpenQuestScope.ts";
  * it to match the filter.
  */
 export class ActiveQuestsMetric implements DashboardMetricResolver {
+  protected readonly dashboard = $inject(DashboardMetricRegistry);
+
+  constructor() {
+    // Registered by the module that owns the metric (#E75, #Q2623).
+    this.dashboard.register(this);
+  }
+
   readonly metric = "activeQuests";
 
   protected readonly quests = $repository(quests);

@@ -6,6 +6,7 @@ import { type Sigil, sigils } from "../entities/sigils.ts";
 import type { DashboardCardValue } from "../schemas/dashboardCardValueSchema.ts";
 import { DailyVisitorsService } from "./DailyVisitorsService.ts";
 import { DashboardMetricCatalog } from "./DashboardMetricCatalog.ts";
+import { DashboardMetricRegistry } from "./DashboardMetricRegistry.ts";
 import type {
   DashboardMetricResolver,
   DashboardResolvable,
@@ -43,6 +44,13 @@ import type {
  * a zero that looks like a traffic collapse.
  */
 export class UniqueVisitorsMetric implements DashboardMetricResolver {
+  protected readonly dashboard = $inject(DashboardMetricRegistry);
+
+  constructor() {
+    // Registered by the module that owns the metric (#E75, #Q2623).
+    this.dashboard.register(this);
+  }
+
   readonly metric = "uniqueVisitors";
 
   protected readonly sigils = $repository(sigils);
@@ -119,7 +127,9 @@ export class UniqueVisitorsMetric implements DashboardMetricResolver {
    */
   protected async scopedApps(entry: DashboardResolvable): Promise<Sigil[]> {
     if (entry.scope.sigilIds) {
-      return entry.scope.sigils;
+      return entry.scope.subjects
+        .filter((it) => it.kind === "app")
+        .map((it) => it.row as Sigil);
     }
     if (entry.scope.projectIds.length === 0) {
       return [];

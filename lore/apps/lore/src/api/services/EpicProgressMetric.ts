@@ -3,10 +3,12 @@ import { $inject } from "alepha";
 import type { Epic } from "../entities/epics.ts";
 import type { DashboardCardValue } from "../schemas/dashboardCardValueSchema.ts";
 import { DashboardMetricCatalog } from "./DashboardMetricCatalog.ts";
+import { DashboardMetricRegistry } from "./DashboardMetricRegistry.ts";
 import type {
   DashboardMetricResolver,
   DashboardResolvable,
 } from "./DashboardMetricResolver.ts";
+import type { ResolvedDashboardScope } from "./DashboardScopeService.ts";
 import { EpicProgressService } from "./EpicProgressService.ts";
 
 /**
@@ -49,6 +51,13 @@ import { EpicProgressService } from "./EpicProgressService.ts";
  * that quietly rewrites itself is worse than one that goes visibly stale.
  */
 export class EpicProgressMetric implements DashboardMetricResolver {
+  protected readonly dashboard = $inject(DashboardMetricRegistry);
+
+  constructor() {
+    // Registered by the module that owns the metric (#E75, #Q2623).
+    this.dashboard.register(this);
+  }
+
   readonly metric = "epicProgress";
 
   protected readonly progress = $inject(EpicProgressService);
@@ -71,7 +80,7 @@ export class EpicProgressMetric implements DashboardMetricResolver {
     // A card whose epic dropped out of `narrow()` - its project turned
     // `work.epics` off - has no epic here and never reaches the query.
     const epics = cards
-      .map((entry) => entry.scope.epic)
+      .map((entry) => this.epicOf(entry.scope))
       .filter((epic): epic is Epic => !!epic);
 
     const buckets = await this.progress.computeProgressOf([
@@ -79,7 +88,7 @@ export class EpicProgressMetric implements DashboardMetricResolver {
     ]);
 
     for (const entry of cards) {
-      const epic = entry.scope.epic;
+      const epic = this.epicOf(entry.scope);
       if (!epic) {
         // Zero rather than unreadable: the project genuinely has no Epics
         // surface any more, the same answer every other metric gives when
@@ -137,5 +146,14 @@ export class EpicProgressMetric implements DashboardMetricResolver {
     }
 
     return out;
+  }
+
+  /**
+   * The epic the card's scope proved, if it survived `narrow()`.
+   */
+  protected epicOf(scope: ResolvedDashboardScope): Epic | undefined {
+    return scope.subjects.find((it) => it.kind === "epic")?.row as
+      | Epic
+      | undefined;
   }
 }

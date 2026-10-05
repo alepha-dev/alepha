@@ -1,4 +1,4 @@
-import { $inject, z } from "alepha";
+import { $inject } from "alepha";
 import { audits } from "alepha/api/audits";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
@@ -6,18 +6,15 @@ import {
   $repository,
   DatabaseProvider,
   SqlExpressionProvider,
-  sql,
 } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action } from "alepha/server";
 import { $etag } from "alepha/server/etag";
 
-import { blights } from "../entities/blights.ts";
-import { epics } from "../entities/epics.ts";
-import { feedback } from "../entities/feedback.ts";
-import { LoreAnalytics } from "../entities/loreAnalytics.ts";
-import { relations } from "../relations.ts";
+import { ProjectAnalytics } from "../entities/projectAnalytics.ts";
+import { coreRelations } from "../relations/coreRelations.ts";
 import { homeBoardSchema } from "../schemas/homeBoardSchema.ts";
+import { ProjectCountRegistry } from "../services/ProjectCountRegistry.ts";
 import { ProjectRecencyService } from "../services/ProjectRecencyService.ts";
 
 /**
@@ -51,11 +48,9 @@ export class HomeController {
   protected static readonly MOMENTUM_DAYS = 14;
 
   auditRows = $repository(audits);
-  epicRows = $repository(epics);
-  blightRows = $repository(blights);
-  feedbackRows = $repository(feedback);
-  usersWith = $repository(relations, "users");
-  datasets = $inject(LoreAnalytics);
+  counts = $inject(ProjectCountRegistry);
+  usersWith = $repository(coreRelations, "users");
+  datasets = $inject(ProjectAnalytics);
   log = $logger();
   database = $inject(DatabaseProvider);
   sqlx = $inject(SqlExpressionProvider);
@@ -140,21 +135,13 @@ export class HomeController {
   }
 
   /**
-   * Draft epics, open blights and pending feedback per project, in ONE
-   * statement for every project at once.
+   * Draft epics, open blights and pending feedback per project, each counted
+   * by the module that owns it (`ProjectCountRegistry`, #E75 #Q2623) and all
+   * three in ONE statement for every project at once; zero for a count no
+   * module registered.
    *
    * Each count is what the project's sidebar badge counts, so the two never
-   * disagree: `draft` epics only (the quests of a ready or in-progress epic
-   * are already in the quest count), `open` blights, `pending` feedback.
-   *
-   * The id list is bound once, as a `VALUES` table the three branches read,
-   * rather than as an `IN (...)` per branch: D1 caps a statement at 100
-   * bound parameters, and three copies of the list would reach it at 34
-   * projects. `CAST` because a bare `VALUES` parameter has no type of its
-   * own to compare against an integer column.
-   *
-   * Raw SQL, so the soft delete the repositories apply is spelled out:
-   * epics and feedback carry `deletedAt`, blights do not.
+   * disagree.
    */
   protected async openCounts(projectIds: number[]): Promise<
     Array<{
@@ -164,55 +151,19 @@ export class HomeController {
       feedback: number;
     }>
   > {
-    const e = this.epicRows.table;
-    const b = this.blightRows.table;
-    const f = this.feedbackRows.table;
-    const rows = await this.database.run(
-      sql`
-        WITH ids(id) AS (VALUES ${sql.join(
-          projectIds.map((id) => sql`(CAST(${id} AS INTEGER))`),
-          sql`, `,
-        )})
-        SELECT 'epics' AS kind, ${e.projectId} AS project_id, COUNT(*) AS n
-        FROM ${e}
-        WHERE ${e.projectId} IN (SELECT id FROM ids)
-          AND ${e.status} = 'draft'
-          AND ${e.deletedAt} IS NULL
-        GROUP BY ${e.projectId}
-        UNION ALL
-        SELECT 'blights' AS kind, ${b.projectId} AS project_id, COUNT(*) AS n
-        FROM ${b}
-        WHERE ${b.projectId} IN (SELECT id FROM ids)
-          AND ${b.status} = 'open'
-        GROUP BY ${b.projectId}
-        UNION ALL
-        SELECT 'feedback' AS kind, ${f.projectId} AS project_id, COUNT(*) AS n
-        FROM ${f}
-        WHERE ${f.projectId} IN (SELECT id FROM ids)
-          AND ${f.status} = 'pending'
-          AND ${f.deletedAt} IS NULL
-        GROUP BY ${f.projectId}
-      `,
-      z.object({
-        kind: z.enum(["epics", "blights", "feedback"]),
-        project_id: z.coerce.number(),
-        n: z.coerce.number(),
-      }),
+    const counts = await this.counts.countMany(
+      ["draftEpics", "openBlights", "pendingFeedback"],
+      projectIds,
     );
-
-    const byProject = new Map(
-      projectIds.map((projectId) => [
-        projectId,
-        { projectId, epics: 0, blights: 0, feedback: 0 },
-      ]),
-    );
-    for (const row of rows) {
-      const counts = byProject.get(row.project_id);
-      if (counts) {
-        counts[row.kind] = row.n;
-      }
-    }
-    return [...byProject.values()];
+    const epics = counts.get("draftEpics") ?? new Map<number, number>();
+    const blights = counts.get("openBlights") ?? new Map<number, number>();
+    const feedback = counts.get("pendingFeedback") ?? new Map<number, number>();
+    return projectIds.map((projectId) => ({
+      projectId,
+      epics: epics.get(projectId) ?? 0,
+      blights: blights.get(projectId) ?? 0,
+      feedback: feedback.get(projectId) ?? 0,
+    }));
   }
 
   /**

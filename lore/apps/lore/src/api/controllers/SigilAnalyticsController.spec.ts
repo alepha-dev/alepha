@@ -16,7 +16,7 @@ import {
   createTestProject,
   TestEntityRepositories,
 } from "../../../test/fixtures/entities.ts";
-import { LoreAnalytics } from "../entities/loreAnalytics.ts";
+import { DeployAnalytics } from "../entities/deployAnalytics.ts";
 import { type Sigil, sigils } from "../entities/sigils.ts";
 import { LoreApi } from "../index.ts";
 import { SigilAnalyticsController } from "./SigilAnalyticsController.ts";
@@ -32,7 +32,7 @@ class SigilRepositories {
 interface TestContext {
   alepha: Alepha;
   controller: SigilAnalyticsController;
-  datasets: LoreAnalytics;
+  datasets: DeployAnalytics;
   repos: SigilRepositories;
 }
 
@@ -60,7 +60,7 @@ const setup = async (): Promise<TestContext> => {
   return {
     alepha,
     controller: alepha.inject(SigilAnalyticsController),
-    datasets: alepha.inject(LoreAnalytics),
+    datasets: alepha.inject(DeployAnalytics),
     repos,
   };
 };

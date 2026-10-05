@@ -3,6 +3,7 @@ import { $inject } from "alepha";
 import type { DashboardCardValue } from "../schemas/dashboardCardValueSchema.ts";
 import type { TagCompletionFilters } from "../schemas/tagCompletionFiltersSchema.ts";
 import { DashboardMetricCatalog } from "./DashboardMetricCatalog.ts";
+import { DashboardMetricRegistry } from "./DashboardMetricRegistry.ts";
 import type {
   DashboardMetricResolver,
   DashboardResolvable,
@@ -34,6 +35,13 @@ import { QuestTagTallyService } from "./QuestTagTallyService.ts";
  * hides the overlap entirely unless it says so, which is what its hint does.
  */
 export class TagCompletionMetric implements DashboardMetricResolver {
+  protected readonly dashboard = $inject(DashboardMetricRegistry);
+
+  constructor() {
+    // Registered by the module that owns the metric (#E75, #Q2623).
+    this.dashboard.register(this);
+  }
+
   readonly metric = "tagCompletion";
 
   protected readonly tags = $inject(QuestTagTallyService);

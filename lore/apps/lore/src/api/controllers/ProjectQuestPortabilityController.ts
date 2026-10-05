@@ -5,7 +5,7 @@ import { $action } from "alepha/server";
 import { FileSystemProvider } from "alepha/system";
 
 import { projects } from "../entities/projects.ts";
-import { relations } from "../relations.ts";
+import { workRelations } from "../relations/workRelations.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { QuestCsvFormatter } from "../services/QuestCsvFormatter.ts";
 
@@ -25,7 +25,7 @@ export class ProjectQuestPortabilityController {
   /**
    * ...with release and the three users a quest names, for the CSV export.
    */
-  protected readonly questsWith = $repository(relations, "quests");
+  protected readonly questsWith = $repository(workRelations, "quests");
   protected readonly projects = $repository(projects);
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly dt = $inject(DateTimeProvider);

@@ -2,8 +2,9 @@ import { $inject } from "alepha";
 import { $tool } from "alepha/mcp";
 
 import { EpicController } from "../../api/controllers/EpicController.ts";
-import { FolioController } from "../../api/controllers/FolioController.ts";
 import { ProjectController } from "../../api/controllers/ProjectController.ts";
+import { ResourceRegistry } from "../../api/resources/ResourceRegistry.ts";
+import { ResourceLinkService } from "../../api/services/ResourceLinkService.ts";
 import {
   epicCreateParamsSchema,
   epicCreateResultSchema,
@@ -31,7 +32,8 @@ import { ProjectTools } from "./ProjectTools.ts";
  */
 export class EpicTools {
   protected readonly epicController = $inject(EpicController);
-  protected readonly folioController = $inject(FolioController);
+  protected readonly links = $inject(ResourceLinkService);
+  protected readonly resources = $inject(ResourceRegistry);
   protected readonly projectController = $inject(ProjectController);
   protected readonly diagrams = $inject(DiagramCheckService);
   protected readonly projectTools = $inject(ProjectTools);
@@ -113,11 +115,21 @@ export class EpicTools {
         params: { projectId, number: params.number },
       });
 
-      // Filtered server-side, same as the Epic detail page: an attached
-      // folio outside a client-side window would otherwise silently drop.
-      const folios = await this.folioController.list({
-        query: { projectId, epicId: epic.id, limit: 100 },
-      });
+      // The folios it files: `filed` links in core's graph, described by the
+      // `folio` kind Knowledge registers (#E75, #Q2626 and #Q2623), never a
+      // folio read from here. Pinned first, then most recently updated, at
+      // most a hundred, as the Epic detail page lists them.
+      const filed = await this.links.filedChildren(
+        { kind: "epic", id: epic.id },
+        "folio",
+      );
+      const folios = (await this.resources.describe("folio", projectId, filed))
+        .sort(
+          (a, b) =>
+            Number(b.pinned ?? false) - Number(a.pinned ?? false) ||
+            (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""),
+        )
+        .slice(0, 100);
 
       return {
         id: epic.id,
@@ -138,7 +150,7 @@ export class EpicTools {
           title: folio.title,
           // Omit when empty so agents seeing the field always trust it.
           summary: folio.summary?.trim() ? folio.summary : undefined,
-          updatedAt: folio.updatedAt,
+          updatedAt: folio.updatedAt ?? "",
         })),
       };
     },

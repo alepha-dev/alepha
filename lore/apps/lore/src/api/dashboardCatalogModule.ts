@@ -1,6 +1,8 @@
 import { $module } from "alepha";
 
 import { DashboardMetricCatalog } from "./services/DashboardMetricCatalog.ts";
+import { DeployDashboardMetrics } from "./services/DeployDashboardMetrics.ts";
+import { WorkDashboardMetrics } from "./services/WorkDashboardMetrics.ts";
 
 /**
  * The one service both runtimes need, in a module neither of them owns.
@@ -28,5 +30,11 @@ import { DashboardMetricCatalog } from "./services/DashboardMetricCatalog.ts";
  */
 export const LoreDashboardCatalog = $module({
   name: "lore.dashboard.catalog",
-  services: [DashboardMetricCatalog],
+  // The catalogue, and the descriptors each module registers on it (#E75,
+  // #Q2623). Both are pure, so both live on both sides.
+  services: [
+    DashboardMetricCatalog,
+    WorkDashboardMetrics,
+    DeployDashboardMetrics,
+  ],
 });

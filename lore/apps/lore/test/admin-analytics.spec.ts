@@ -2,18 +2,21 @@ import { Alepha } from "alepha";
 import { AdminAnalyticsService } from "alepha/api/analytics";
 import { describe, expect, it } from "vitest";
 
-import { LoreAnalytics } from "../src/api/entities/loreAnalytics.ts";
+import { DeployAnalytics } from "../src/api/entities/deployAnalytics.ts";
+import { ProjectAnalytics } from "../src/api/entities/projectAnalytics.ts";
 
 /**
  * The admin analytics surface over lore's own datasets. Service-level on
  * purpose: HTTP + `$secure` are covered by the e2e smoke
  * (`e2e/admin-analytics.spec.ts`); this asserts the descriptors and the
- * query path against the real `LoreAnalytics` declarations.
+ * query path against the real `DeployAnalytics` declarations.
  */
 describe("Lore admin analytics surface", () => {
   it("lists every sigil dataset with its declared dimensions", async () => {
     const alepha = Alepha.create();
-    const analytics = alepha.inject(LoreAnalytics);
+    const analytics = alepha.inject(DeployAnalytics);
+    // Core's two datasets, since `LoreAnalytics` split per module (#E75).
+    alepha.inject(ProjectAnalytics);
     const service = alepha.inject(AdminAnalyticsService);
     await alepha.start();
 
@@ -110,7 +113,7 @@ describe("Lore admin analytics surface", () => {
 
   it("answers a recorded view through the admin query path", async () => {
     const alepha = Alepha.create();
-    const analytics = alepha.inject(LoreAnalytics);
+    const analytics = alepha.inject(DeployAnalytics);
     const service = alepha.inject(AdminAnalyticsService);
     await alepha.start();
 

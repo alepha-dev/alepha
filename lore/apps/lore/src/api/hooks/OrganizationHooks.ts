@@ -2,12 +2,10 @@ import { $hook, $inject } from "alepha";
 import { $repository } from "alepha/orm";
 
 import { projects } from "../entities/projects.ts";
-import { quests } from "../entities/quests.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
 
 export class OrganizationHooks {
   protected readonly projects = $repository(projects);
-  protected readonly quests = $repository(quests);
   protected readonly audits = $inject(LoreAudits);
 
   protected readonly onMemberRemoved = $hook({
@@ -16,14 +14,6 @@ export class OrganizationHooks {
       const project = await this.projects.getOne({
         where: { organizationId: { eq: organizationId } },
       });
-      await this.quests.updateMany(
-        {
-          projectId: { eq: project.id },
-          acceptedBy: { eq: userId },
-          completedAt: { isNull: true },
-        },
-        { acceptedAt: null, acceptedBy: null },
-      );
       await this.audits.member.logSuccess("leave", {
         ...this.audits.actor(actor),
         ...this.audits.scope(project.id),
