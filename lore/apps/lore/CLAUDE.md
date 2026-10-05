@@ -117,6 +117,23 @@ Core reads no Work, Knowledge or Deploy table. Where core shows or polices somet
 
 Two more cuts are not registries: `$relations` is one value per module (`api/relations/*Relations.ts`), and the analytics datasets are `ProjectAnalytics` (core) and `DeployAnalytics`. `CapabilityRegistry` derives each capability's options schema from its own descriptor; `test/capability-options-schemas.spec.ts` holds it equal to the module's schema. A module's own `$hook` (`QuestMemberRemoval` on `organization:member:removed`) needs no registry at all.
 
+### The web shell's registries (#E75, #Q2624)
+
+The browser side follows the same rule: core's web code (`ProjectView`, the editor, the dashboard, the account area) names no module. Each module fills the registries in `src/web/app/registries/` from one shell service per module (`shell/WorkShell.ts`, `KnowledgeShell.ts`, `DeployShell.ts`) and one project loader (`loaders/`), all listed in `web/app/index.ts`'s `services` because nothing injects them.
+
+| core web registry          | what modules register                                                                                                   |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `ProjectLoaderRegistry`    | what the `project` page loader fetches, in one `Promise.all`, and clears on leave                                       |
+| `ProjectShellRegistry`     | sidebar entries and badges, settings sections and panels, the "+" menu, breadcrumb leaves, the aside pane, palette rows |
+| `ElementReferenceRegistry` | `[[#Q12]]` kinds: rows, picker suggestions, href, hover preview, image upload                                           |
+| `ResourceTabRegistry`      | tabs on another module's page: Artifacts on a release, Folios on an epic                                                |
+| `DocumentSinkRegistry`     | where a generated document is saved (folios)                                                                            |
+| `AgentPromptRegistry`      | prompt kinds: default template, icon, label                                                                             |
+| `DashboardPickerRegistry`  | the dashboard's app, tag, epic and release pickers                                                                      |
+| `AccountDeletionRegistry`  | the lines the account deletion dialog warns with                                                                        |
+
+⚠️ An entry that carries a HOOK (`useReferences`, `useCollection`, `useOptions`, `useLine`...) is called once per entry, in a loop. That is legal only because these registries freeze the first time they are read: register from a shell's constructor, at boot, never later. A badge, a predicate or a breadcrumb reads module state through `ProjectShellContext.get`, never a hook, and declares the atoms it reads in `reads`. A module's account page is its own `$pageAccount` class (`WorkAccountRouter`, `DeployAccountRouter`), and filing across modules goes through core's `ResourceFilingController`. Browser-loadable runtime values (`CapabilityRegistry`, `DashboardMetricCatalog`, `KanbanColumnConfig`, `ProjectSlugService`, constants) live in `api/schemas/`, never in `api/entities` or `api/services`.
+
 ## Capabilities: what a project DOES
 
 Since epic #36 (2026-09-06) a project is not a quest tracker with extras. It is
@@ -175,10 +192,10 @@ Settings ▸ Quests ▸ Features and turns it on, `lore.alepha.dev` included.
 | the kinds      | `src/api/schemas/agentPromptKindSchema.ts` - item-scoped `epicReview`, `epicActivate`, `questWork`, `feedbackWork`; surface-scoped `feedbackLoop`, `blightTriage`, `questLoop` (the Quests page toolbar)      |
 | the table      | `project_prompts (projectId, kind, template)`, unique on the pair. **A row exists only for a CUSTOMISED kind; absence means the built-in default**, and Reset deletes the row rather than storing the default |
 | the write path | `ProjectPromptController` - member read, owner upsert, owner reset                                                                                                                                            |
-| the defaults   | `src/web/app/prompts/` - one file per kind, mapped by `agentPromptDefaults.ts`                                                                                                                                |
+| the defaults   | `src/web/app/prompts/` - one file per kind, registered by its module on `AgentPromptRegistry`                                                                                                                 |
 | the renderer   | `src/web/app/prompts/renderPromptTemplate.ts` - seven placeholders, one pass                                                                                                                                  |
 | the atom       | `projectPromptsAtom`, filled by the `project` route loader, cleared in `onLeave`                                                                                                                              |
-| the hook       | `components/project/prompts/useAgentPrompt.ts`, plus `useAgentPromptSubject` and `questAgentGate` beside it                                                                                                   |
+| the hook       | `components/project/prompts/useAgentPrompt.ts`, plus `useAgentPromptSubject` (Work's typed helpers: `useWorkPromptSubject`) and `questAgentGate` beside it                                                    |
 | the menus      | a `RowActionGroup` on the three tables, `AgentPromptsMenu` on the three detail pages                                                                                                                          |
 
 **Four rules, and none of them is obvious from the code.**
@@ -800,7 +817,7 @@ User-submitted bug reports / feature requests that the project owner triages. (R
 - Tunables atom: `src/api/atoms/feedbackOptionsAtom.ts`
 - Inbox UI: `src/web/app/components/project/feedback/ProjectFeedback.tsx` (+ `ProjectFeedbackCard.tsx`, `ProjectFeedbackDetail.tsx`)
 - Request UI: `src/web/app/components/project/feedback/ProjectFeedbackRequest.tsx`
-- Routes: `projectFeedback` (under `project`), `projectFeedbackRequest` (top-level, not under the project layout — public landing), `myFeedback` (under the `/account` area, declared in `LoreAccountRouter`)
+- Routes: `projectFeedback` (under `project`), `projectFeedbackRequest` (top-level, not under the project layout — public landing), `myFeedback` (under the `/account` area, declared in `WorkAccountRouter`)
 
 ## Folios are this project's memory for Claude
 

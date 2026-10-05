@@ -1,7 +1,7 @@
 import { type Infer, z } from "alepha";
 
-import { ESTATE_COMMAND_KINDS } from "../entities/estateCommands.ts";
 import { estateCommandPayloadSchema } from "./estateCommandPayloadSchema.ts";
+import { ESTATE_COMMAND_KINDS } from "./estateCommandValues.ts";
 
 /**
  * The `command` frame Lore pushes to a machine, wire format v1 (folio #1198).

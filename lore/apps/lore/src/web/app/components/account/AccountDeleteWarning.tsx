@@ -1,18 +1,16 @@
-import { useClient, useQuery } from "alepha/react";
-import { useI18n } from "alepha/react/i18n";
+import { useInject } from "alepha/react";
 import { TriangleAlert } from "lucide-react";
 
-import type { EstateController } from "@/api/controllers/EstateController.ts";
-import type { QuestAuthorshipController } from "@/api/controllers/QuestAuthorshipController.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
+import { AccountDeletionRegistry } from "@/web/app/registries/AccountDeletionRegistry.ts";
 
 /**
  * What deleting a Lore account costs beyond the account itself.
  *
  * Fills `AccountSecurityProps.deleteWarning`, so it renders inside the
  * framework's delete dialog above the confirmation field. The framework can
- * say what happens to users, identities and sessions; only Lore knows that
- * `quests.createdBy` is `onDelete: "cascade"`, which means every quest this
+ * say what happens to users, identities and sessions; only Lore's modules
+ * know the rest, and each registers its own line on `AccountDeletionRegistry`
+ * (#E75, #Q2624). `quests.createdBy` is `onDelete: "cascade"`, which means every quest this
  * account authored goes with it — **including quests inside projects
  * belonging to other people** — and that `estates.ownerUserId` cascades
  * too, so every estate the account owns is deleted, its secret revoked, and
@@ -30,52 +28,15 @@ import type { I18n } from "@/web/app/services/I18n.ts";
  * must not hide the other.
  */
 const AccountDeleteWarning = () => {
-  const api = useClient<QuestAuthorshipController>();
-  const estateApi = useClient<EstateController>();
-  const { tr } = useI18n<I18n, "en">();
+  const warnings = useInject(AccountDeletionRegistry).warnings();
 
-  // Two queries, so the counts fail independently. Each is quiet on failure,
-  // on purpose: a failed count must not block the dialog or add a toast over
-  // it, since the deletion itself is still gated by the hook and the
-  // confirmation phrase. The warning simply leaves that line out.
-  const count = useQuery(
-    {
-      handler: () => api.countMyAuthoredQuests(),
-      onError: () => {},
-    },
-    [api],
-  ).data?.count;
-  const estates = useQuery(
-    {
-      handler: () => estateApi.countMyEstates(),
-      onError: () => {},
-    },
-    [estateApi],
-  ).data;
-
-  const lines: string[] = [];
-  if (count) {
-    lines.push(
-      String(
-        count === 1
-          ? tr("account.delete.quests.one")
-          : tr("account.delete.quests.many", { args: [String(count)] }),
-      ),
-    );
-  }
-  if (estates?.estates) {
-    lines.push(
-      String(
-        estates.estates === 1
-          ? tr("account.delete.estates.one", {
-              args: [String(estates.projects)],
-            })
-          : tr("account.delete.estates.many", {
-              args: [String(estates.estates), String(estates.projects)],
-            }),
-      ),
-    );
-  }
+  // One hook per registered warning, legal because the registry is frozen
+  // before the first render. Each fails on its own, quietly: a failed count
+  // must not block the dialog or add a toast over it, since the deletion
+  // itself is still gated by the hook and the confirmation phrase.
+  const lines = warnings
+    .map((warning) => warning.useLine())
+    .filter((line): line is string => !!line);
 
   if (lines.length === 0) {
     return null;

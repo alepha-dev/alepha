@@ -1,4 +1,4 @@
-import { CapabilityRegistry } from "@/api/services/CapabilityRegistry.ts";
+import { CapabilityRegistry } from "@/api/schemas/CapabilityRegistry.ts";
 
 /**
  * The capability declarations, for the web.

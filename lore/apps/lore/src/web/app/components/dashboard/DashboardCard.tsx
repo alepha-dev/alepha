@@ -6,7 +6,7 @@ import type { DragEvent } from "react";
 
 import type { DashboardCardResource } from "@/api/schemas/dashboardCardResourceSchema.ts";
 import type { DashboardCardValue as CardValue } from "@/api/schemas/dashboardCardValueSchema.ts";
-import type { DashboardPresentation } from "@/api/services/DashboardMetricCatalog.ts";
+import type { DashboardPresentation } from "@/api/schemas/DashboardMetricCatalog.ts";
 
 import type { I18n } from "../../services/I18n.ts";
 import DashboardCardFooter from "./DashboardCardFooter.tsx";

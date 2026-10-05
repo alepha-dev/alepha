@@ -23,6 +23,8 @@ import { projectPromptsAtom } from "./atoms/projectPromptsAtom.ts";
 import { questLogCollapsedAtom } from "./atoms/questLogCollapsedAtom.ts";
 import { userProjectsAtom } from "./atoms/userProjectsAtom.ts";
 import AccountDeleteWarning from "./components/account/AccountDeleteWarning.tsx";
+import { DeployAccountRouter } from "./components/account/DeployAccountRouter.ts";
+import { WorkAccountRouter } from "./components/account/feedback/WorkAccountRouter.ts";
 import { LoreAccountRouter } from "./components/account/LoreAccountRouter.ts";
 import { DeployProjectLoader } from "./loaders/DeployProjectLoader.ts";
 import { WorkProjectLoader } from "./loaders/WorkProjectLoader.ts";
@@ -48,6 +50,9 @@ export const LoreWebApp = $module({
     AppRouter,
     AccountRouter,
     LoreAccountRouter,
+    // The account pages Work and Deploy own (#E75, #Q2624).
+    WorkAccountRouter,
+    DeployAccountRouter,
     // Each module's part of opening a project, registered on core's
     // `ProjectLoaderRegistry` (#E75, #Q2624). Listed because nothing injects
     // them, and here because the loader runs on both sides of hydration.

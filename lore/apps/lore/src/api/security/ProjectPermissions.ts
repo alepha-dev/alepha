@@ -6,7 +6,7 @@ import {
 } from "alepha/security";
 
 import type { CapabilityKey } from "../schemas/capabilityKeySchema.ts";
-import { CapabilityRegistry } from "../services/CapabilityRegistry.ts";
+import { CapabilityRegistry } from "../schemas/CapabilityRegistry.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 /**

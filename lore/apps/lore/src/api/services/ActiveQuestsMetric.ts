@@ -5,7 +5,7 @@ import type { Project } from "../entities/projects.ts";
 import { quests } from "../entities/quests.ts";
 import type { ActiveQuestsFilters } from "../schemas/activeQuestsFiltersSchema.ts";
 import type { DashboardCardValue } from "../schemas/dashboardCardValueSchema.ts";
-import { DashboardMetricCatalog } from "./DashboardMetricCatalog.ts";
+import { DashboardMetricCatalog } from "../schemas/DashboardMetricCatalog.ts";
 import { DashboardMetricRegistry } from "./DashboardMetricRegistry.ts";
 import type {
   DashboardMetricResolver,

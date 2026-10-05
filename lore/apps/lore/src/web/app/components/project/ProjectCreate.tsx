@@ -29,11 +29,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 import type { CapabilityKey } from "@/api/schemas/capabilityKeySchema.ts";
-import { projectTitleSchema } from "@/api/schemas/projectTitleSchema.ts";
 import type {
   CapabilityDescriptor,
   CapabilityOptionDescriptor,
-} from "@/api/services/CapabilityRegistry.ts";
+} from "@/api/schemas/CapabilityRegistry.ts";
+import { projectTitleSchema } from "@/api/schemas/projectTitleSchema.ts";
 
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import { capabilityRegistry as registry } from "../../services/capabilityRegistry.ts";

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { Project } from "../src/api/entities/projects.ts";
-import { KanbanColumnConfig } from "../src/api/services/KanbanColumnConfig.ts";
+import { KanbanColumnConfig } from "../src/api/schemas/KanbanColumnConfig.ts";
 
 const LABELS = { todo: "To do", completed: "Completed" };
 

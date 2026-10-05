@@ -1,7 +1,7 @@
 import { $inject } from "alepha";
 
 import type { CapabilityKey } from "../schemas/capabilityKeySchema.ts";
-import { CapabilityRegistry } from "../services/CapabilityRegistry.ts";
+import { CapabilityRegistry } from "../schemas/CapabilityRegistry.ts";
 import { LorePermissions } from "./LorePermissions.ts";
 
 /**

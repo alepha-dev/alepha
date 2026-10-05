@@ -12,8 +12,10 @@ import {
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { insightsDimensionResourceSchema } from "../src/api/schemas/insightsDimensionResourceSchema.ts";
-import { ProjectSlugService } from "../src/api/services/ProjectSlugService.ts";
+import { ProjectSlugService } from "../src/api/schemas/ProjectSlugService.ts";
 import { ANALYTICS_DIMENSIONS, AppRouter } from "../src/web/app/AppRouter.ts";
+import { DeployAccountRouter } from "../src/web/app/components/account/DeployAccountRouter.ts";
+import { WorkAccountRouter } from "../src/web/app/components/account/feedback/WorkAccountRouter.ts";
 import { LoreAccountRouter } from "../src/web/app/components/account/LoreAccountRouter.ts";
 
 /**
@@ -106,7 +108,7 @@ const NAV_ROUTE_NAMES = [
   "projectFeedbackRequest",
   // The shared /account area (@alepha/ui AccountRouter) plus Lore's own three
   // pages inside it. `myFeedback` kept its pre-migration name on purpose —
-  // see LoreAccountRouter.
+  // see WorkAccountRouter.
   "account",
   "accountProfile",
   "accountConnections",
@@ -140,6 +142,9 @@ describe("AppRouter route table", () => {
     // Registered alongside AppRouter by `LoreWebApp`. Without it the guard
     // would silently skip Lore's own /account pages.
     alepha.inject(LoreAccountRouter);
+    // The account pages Work and Deploy own (#E75, #Q2624).
+    alepha.inject(WorkAccountRouter);
+    alepha.inject(DeployAccountRouter);
     // Injected before `start()` — the container locks afterwards.
     slugs = alepha.inject(ProjectSlugService);
     router = alepha.inject(ReactRouter);

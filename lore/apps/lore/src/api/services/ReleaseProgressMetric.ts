@@ -2,7 +2,7 @@ import { $inject } from "alepha";
 
 import type { Release } from "../entities/releases.ts";
 import type { DashboardCardValue } from "../schemas/dashboardCardValueSchema.ts";
-import { DashboardMetricCatalog } from "./DashboardMetricCatalog.ts";
+import { DashboardMetricCatalog } from "../schemas/DashboardMetricCatalog.ts";
 import { DashboardMetricRegistry } from "./DashboardMetricRegistry.ts";
 import type {
   DashboardMetricResolver,

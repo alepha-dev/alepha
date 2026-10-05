@@ -4,12 +4,16 @@ import { AppWindow, Bug, Package } from "lucide-react";
 import { currentBlightCountAtom } from "../atoms/currentBlightCountAtom.ts";
 import { currentInstanceAtom } from "../atoms/currentInstanceAtom.ts";
 import { currentInstancesAtom } from "../atoms/currentInstancesAtom.ts";
+import { useOwnedEstatesDeletionLine } from "../components/account/useOwnedEstatesDeletionLine.ts";
 import AppCreateMenuDialog from "../components/project/apps/AppCreateMenuDialog.tsx";
+import { useDashboardApps } from "../components/project/apps/useDashboardApps.ts";
 import ReleaseArtifactsPanel from "../components/project/artifacts/ReleaseArtifactsPanel.tsx";
 import { useReleaseArtifacts } from "../components/project/artifacts/useReleaseArtifacts.ts";
 import { ROUTES_APP } from "../components/project/projectViewRoutes.ts";
 import { blightTriagePromptDefault } from "../prompts/blightTriagePrompt.ts";
+import { AccountDeletionRegistry } from "../registries/AccountDeletionRegistry.ts";
 import { AgentPromptRegistry } from "../registries/AgentPromptRegistry.ts";
+import { DashboardPickerRegistry } from "../registries/DashboardPickerRegistry.ts";
 import { ProjectShellRegistry } from "../registries/ProjectShellRegistry.ts";
 import { ResourceTabRegistry } from "../registries/ResourceTabRegistry.ts";
 import { hasCapability } from "../services/projectCapabilities.ts";
@@ -19,13 +23,15 @@ import { canInProject } from "../services/projectRank.ts";
  * Deploy's part of the project shell, registered on core's
  * `ProjectShellRegistry` (#E75, #Q2624): the Apps, Artifacts and Blights
  * entries, the Apps settings section, New app, the instance breadcrumb, the
- * instances in the palette, the Artifacts tab on a release, and the blight
- * triage prompt.
+ * instances in the palette, the Artifacts tab on a release, the blight
+ * triage prompt, and the dashboard's app picker.
  */
 export class DeployShell {
   protected readonly shell = $inject(ProjectShellRegistry);
   protected readonly tabs = $inject(ResourceTabRegistry);
   protected readonly prompts = $inject(AgentPromptRegistry);
+  protected readonly pickers = $inject(DashboardPickerRegistry);
+  protected readonly deletion = $inject(AccountDeletionRegistry);
 
   constructor() {
     this.shell.registerNav("apps", [
@@ -202,6 +208,15 @@ export class DeployShell {
       template: blightTriagePromptDefault,
       icon: Bug,
       labelKey: "agentPrompts.triageBlights",
+    });
+
+    this.pickers.registerApps({ useApps: useDashboardApps });
+
+    // What deleting an account takes with it from this module.
+    this.deletion.register({
+      key: "owned-estates",
+      order: 20,
+      useLine: useOwnedEstatesDeletionLine,
     });
   }
 }

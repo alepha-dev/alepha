@@ -35,9 +35,9 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { EpicController } from "@/api/controllers/EpicController.ts";
 import type { KanbanController } from "@/api/controllers/KanbanController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
+import { KanbanColumnConfig } from "@/api/schemas/KanbanColumnConfig.ts";
 import type { ProjectResource } from "@/api/schemas/projectResourceSchema.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
-import { KanbanColumnConfig } from "@/api/services/KanbanColumnConfig.ts";
 
 import { currentAreasAtom } from "../../atoms/currentAreasAtom.ts";
 import { currentQuestAtom } from "../../atoms/currentQuestAtom.ts";

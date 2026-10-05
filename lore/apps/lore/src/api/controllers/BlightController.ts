@@ -8,13 +8,10 @@ import {
 } from "alepha/server";
 
 import type { BlightIgnoreRule } from "../entities/blightIgnoreRules.ts";
-import {
-  type Blight,
-  blights,
-  QUEST_STATUS_PREFIX,
-} from "../entities/blights.ts";
+import { type Blight, blights } from "../entities/blights.ts";
 import { sigils } from "../entities/sigils.ts";
 import { ResourceRegistry } from "../resources/ResourceRegistry.ts";
+import { QUEST_STATUS_PREFIX } from "../schemas/blightQuestStatus.ts";
 import {
   type BlightResource,
   blightResourceSchema,

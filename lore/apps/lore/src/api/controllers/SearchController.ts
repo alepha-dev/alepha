@@ -6,6 +6,16 @@ import { $action } from "alepha/server";
 
 import { ResourceRegistry } from "../resources/ResourceRegistry.ts";
 /**
+ * One row of a search result, whatever it turned out to be.
+ *
+ * The whole point of this controller is that callers get ONE shape. The
+ * underlying tables disagree about almost everything — a quest's label is
+ * `title`, a directory's is `name`; a folio carries `protected` as a flag
+ * while `kind` says "folio" — and normalising that in each caller is how
+ * the palette's first version ended up mis-mapping three fields.
+ */
+import { CapabilityRegistry } from "../schemas/CapabilityRegistry.ts";
+/**
  * Project-wide search across every surface at once — what the ⌘K palette
  * runs, and the answer to "find anything called X".
  *
@@ -35,16 +45,6 @@ import { searchHitSchema } from "../schemas/searchHitSchema.ts";
 import { orderSearchHits } from "../searchRanking.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { ProjectPermissions } from "../security/ProjectPermissions.ts";
-/**
- * One row of a search result, whatever it turned out to be.
- *
- * The whole point of this controller is that callers get ONE shape. The
- * underlying tables disagree about almost everything — a quest's label is
- * `title`, a directory's is `name`; a folio carries `protected` as a flag
- * while `kind` says "folio" — and normalising that in each caller is how
- * the palette's first version ended up mis-mapping three fields.
- */
-import { CapabilityRegistry } from "../services/CapabilityRegistry.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 export class SearchController {

@@ -36,6 +36,7 @@ import type { User } from "../entities/users.ts";
 import { coreRelations } from "../relations/coreRelations.ts";
 import { assignedWorkItemSchema } from "../schemas/assignedWorkItemSchema.ts";
 import { capabilityKeySchema } from "../schemas/capabilityKeySchema.ts";
+import { CapabilityRegistry } from "../schemas/CapabilityRegistry.ts";
 import { kanbanColumnConfigSchema } from "../schemas/kanbanColumnSchema.ts";
 import { paletteColorSchema } from "../schemas/paletteColorSchema.ts";
 import { projectActivityRowSchema } from "../schemas/projectActivityRowSchema.ts";
@@ -45,12 +46,12 @@ import {
   projectOverviewResourceSchema,
   projectResourceSchema,
 } from "../schemas/projectResourceSchema.ts";
+import { ProjectSlugService } from "../schemas/ProjectSlugService.ts";
 import { projectTitleSchema } from "../schemas/projectTitleSchema.ts";
 import { roadmapVisibilitySchema } from "../schemas/roadmapVisibilitySchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { ProjectPermissions } from "../security/ProjectPermissions.ts";
 import { AssignedWorkRegistry } from "../services/AssignedWorkRegistry.ts";
-import { CapabilityRegistry } from "../services/CapabilityRegistry.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
 import { ProjectCountRegistry } from "../services/ProjectCountRegistry.ts";
 import { ProjectDeletionService } from "../services/ProjectDeletionService.ts";
@@ -58,7 +59,6 @@ import { ProjectLimits } from "../services/ProjectLimits.ts";
 import { ProjectRecencyService } from "../services/ProjectRecencyService.ts";
 import { ProjectResourceMapper } from "../services/ProjectResourceMapper.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
-import { ProjectSlugService } from "../services/ProjectSlugService.ts";
 
 export class ProjectController {
   /**

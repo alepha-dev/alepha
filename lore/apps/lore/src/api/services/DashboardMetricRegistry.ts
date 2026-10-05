@@ -4,14 +4,14 @@ import type { UserAccountToken } from "alepha/security";
 
 import type { ProjectCapability } from "../entities/projectCapabilities.ts";
 import type { Project } from "../entities/projects.ts";
+import { CapabilityRegistry } from "../schemas/CapabilityRegistry.ts";
 import type { DashboardCardResource } from "../schemas/dashboardCardResourceSchema.ts";
 import type { DashboardCardValue } from "../schemas/dashboardCardValueSchema.ts";
-import { CapabilityRegistry } from "./CapabilityRegistry.ts";
 import {
   type DashboardBoard,
   DashboardMetricCatalog,
   type DashboardMetricDescriptor,
-} from "./DashboardMetricCatalog.ts";
+} from "../schemas/DashboardMetricCatalog.ts";
 import type {
   DashboardMetricResolver,
   DashboardResolvable,

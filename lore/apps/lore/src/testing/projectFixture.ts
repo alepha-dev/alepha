@@ -2,9 +2,9 @@ import {
   CAPABILITY_KEYS,
   type CapabilityKey,
 } from "../api/schemas/capabilityKeySchema.ts";
+import { CapabilityRegistry } from "../api/schemas/CapabilityRegistry.ts";
 import type { ProjectCapabilityResource } from "../api/schemas/projectCapabilityResourceSchema.ts";
 import type { ProjectResource } from "../api/schemas/projectResourceSchema.ts";
-import { CapabilityRegistry } from "../api/services/CapabilityRegistry.ts";
 
 /**
  * A project resource for a spec that has to seed `currentProjectAtom`.

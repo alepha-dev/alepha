@@ -2,7 +2,7 @@ import { useState } from "react";
 
 import type { DashboardCardResource } from "@/api/schemas/dashboardCardResourceSchema.ts";
 import type { DashboardCardValue } from "@/api/schemas/dashboardCardValueSchema.ts";
-import type { DashboardMetricDescriptor } from "@/api/services/DashboardMetricCatalog.ts";
+import type { DashboardMetricDescriptor } from "@/api/schemas/DashboardMetricCatalog.ts";
 
 import DashboardCard from "./DashboardCard.tsx";
 

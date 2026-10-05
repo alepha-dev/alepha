@@ -60,10 +60,7 @@ export const useElementLinks = (
   // One hook per registered kind. Legal because the registry is frozen
   // before the first render (see `ElementReferenceRegistry`), so this loop
   // is the same length, in the same order, on every render.
-  const sets = kinds.map((kind) =>
-    // oxlint-disable-next-line react-hooks/rules-of-hooks -- the kinds are frozen at boot, so the hook order never changes
-    kind.useReferences(element, content),
-  );
+  const sets = kinds.map((kind) => kind.useReferences(element, content));
 
   // Each kind memoizes its own set, so the sets keep their identity until
   // one of them changes; the merge below is redone only then, not on every

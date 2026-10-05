@@ -26,10 +26,11 @@ export const useElementImageUpload = (
   // A kind with no store answers nothing, so an epic body gets no upload:
   // borrowing another kind's bucket would upload fine and then leave a file
   // nobody but its uploader is granted.
-  const uploads = registry.kinds().map((kind) =>
-    // oxlint-disable-next-line react-hooks/rules-of-hooks -- the kinds are frozen at boot, so the hook order never changes
-    kind.useImageUpload?.(element, enabled && element.kind === kind.kind),
-  );
+  const uploads = registry
+    .kinds()
+    .map((kind) =>
+      kind.useImageUpload?.(element, enabled && element.kind === kind.kind),
+    );
 
   if (!enabled) return undefined;
   const index = registry

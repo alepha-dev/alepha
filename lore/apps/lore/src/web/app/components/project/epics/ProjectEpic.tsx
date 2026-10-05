@@ -260,7 +260,6 @@ const ProjectEpic = (props: ProjectEpicProps) => {
   };
   const linked = registeredTabs.map((tab) => ({
     tab,
-    // oxlint-disable-next-line react-hooks/rules-of-hooks -- the tabs are frozen at boot, so the hook order never changes
     ...tab.useCollection(subject),
   }));
 

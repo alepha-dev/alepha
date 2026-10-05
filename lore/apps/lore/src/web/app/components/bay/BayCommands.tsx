@@ -6,9 +6,9 @@ import { useClient, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 
 import type { EstateCommandController } from "@/api/controllers/EstateCommandController.ts";
-import { ESTATE_COMMAND_KINDS } from "@/api/entities/estateCommands.ts";
-import { ESTATE_COMMAND_STATUSES } from "@/api/entities/estateCommands.ts";
 import type { EstateCommandListItem } from "@/api/schemas/estateCommandResourceSchema.ts";
+import { ESTATE_COMMAND_KINDS } from "@/api/schemas/estateCommandValues.ts";
+import { ESTATE_COMMAND_STATUSES } from "@/api/schemas/estateCommandValues.ts";
 import { currentEstateAtom } from "@/web/app/atoms/currentEstateAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 

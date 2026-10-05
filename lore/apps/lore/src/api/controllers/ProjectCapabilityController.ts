@@ -2,10 +2,10 @@ import { $inject, z } from "alepha";
 import { $action } from "alepha/server";
 
 import { capabilityKeySchema } from "../schemas/capabilityKeySchema.ts";
+import { CapabilityRegistry } from "../schemas/CapabilityRegistry.ts";
 import { projectResourceSchema } from "../schemas/projectResourceSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { ProjectPermissions } from "../security/ProjectPermissions.ts";
-import { CapabilityRegistry } from "../services/CapabilityRegistry.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
 import { ProjectResourceMapper } from "../services/ProjectResourceMapper.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";

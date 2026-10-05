@@ -21,6 +21,7 @@ import { currentQuestAtom } from "../atoms/currentQuestAtom.ts";
 import { currentQuestCountAtom } from "../atoms/currentQuestCountAtom.ts";
 import EpicCreateMenuSheet from "../components/project/epics/EpicCreateMenuSheet.tsx";
 import EpicReferencePreview from "../components/project/epics/EpicReferencePreview.tsx";
+import { useDashboardEpicOptions } from "../components/project/epics/useDashboardEpicOptions.ts";
 import { useEpicReferences } from "../components/project/epics/useEpicReferences.ts";
 import FeedbackReferencePreview from "../components/project/feedback/FeedbackReferencePreview.tsx";
 import { useFeedbackReferences } from "../components/project/feedback/useFeedbackReferences.ts";
@@ -28,10 +29,13 @@ import ProjectQuestLogAside from "../components/project/ProjectQuestLogAside.tsx
 import { ROUTES_WITH_QUEST_LOG } from "../components/project/projectViewRoutes.ts";
 import QuestCreateMenuSheet from "../components/project/quest/QuestCreateMenuSheet.tsx";
 import QuestReferencePreview from "../components/project/quest/QuestReferencePreview.tsx";
+import { useAuthoredQuestsDeletionLine } from "../components/project/quest/useAuthoredQuestsDeletionLine.ts";
+import { useDashboardQuestTags } from "../components/project/quest/useDashboardQuestTags.ts";
 import { useQuestElementImageUpload } from "../components/project/quest/useQuestElementImageUpload.ts";
 import { useQuestReferences } from "../components/project/quest/useQuestReferences.ts";
 import ReleaseCreateMenuDialog from "../components/project/releases/ReleaseCreateMenuDialog.tsx";
 import ReleaseReferencePreview from "../components/project/releases/ReleaseReferencePreview.tsx";
+import { useDashboardReleaseOptions } from "../components/project/releases/useDashboardReleaseOptions.ts";
 import { useReleaseReferences } from "../components/project/releases/useReleaseReferences.ts";
 import ProjectSettingsDataSection from "../components/project/settings/ProjectSettingsDataSection.tsx";
 import { formatReference } from "../components/shared/element/typedReference.ts";
@@ -41,7 +45,9 @@ import { feedbackLoopPromptDefault } from "../prompts/feedbackLoopPrompt.ts";
 import { feedbackWorkPromptDefault } from "../prompts/feedbackWorkPrompt.ts";
 import { questLoopPromptDefault } from "../prompts/questLoopPrompt.ts";
 import { questWorkPromptDefault } from "../prompts/questWorkPrompt.ts";
+import { AccountDeletionRegistry } from "../registries/AccountDeletionRegistry.ts";
 import { AgentPromptRegistry } from "../registries/AgentPromptRegistry.ts";
+import { DashboardPickerRegistry } from "../registries/DashboardPickerRegistry.ts";
 import { ElementReferenceRegistry } from "../registries/ElementReferenceRegistry.ts";
 import { ProjectShellRegistry } from "../registries/ProjectShellRegistry.ts";
 import {
@@ -56,12 +62,15 @@ import { canInProject } from "../services/projectRank.ts";
  * and Feedback entries with their badges, the Quests settings section, the
  * quest, epic, release and feedback creates, the epic, quest and release
  * breadcrumb leaves, the quest log beside the Quests pages, the quest, epic,
- * feedback and release `[[...]]` references, and the agent prompt kinds.
+ * feedback and release `[[...]]` references, the agent prompt kinds, and the
+ * dashboard's tag, epic and release pickers.
  */
 export class WorkShell {
   protected readonly shell = $inject(ProjectShellRegistry);
   protected readonly references = $inject(ElementReferenceRegistry);
   protected readonly prompts = $inject(AgentPromptRegistry);
+  protected readonly pickers = $inject(DashboardPickerRegistry);
+  protected readonly deletion = $inject(AccountDeletionRegistry);
 
   constructor() {
     this.shell.registerNav("work", [
@@ -397,6 +406,32 @@ export class WorkShell {
       template: questLoopPromptDefault,
       icon: ListTodo,
       labelKey: "agentPrompts.workLooseQuests",
+    });
+
+    this.pickers.registerTags({ useTags: useDashboardQuestTags });
+    this.pickers.registerSubject({
+      kind: "epic",
+      order: 10,
+      emptyKey: "dashboard.scope.noEpics",
+      useOptions: useDashboardEpicOptions,
+      toScope: (id) => ({ kind: "epic", epicId: id }),
+      selectedId: (scope) => (scope.kind === "epic" ? scope.epicId : undefined),
+    });
+    this.pickers.registerSubject({
+      kind: "release",
+      order: 20,
+      emptyKey: "dashboard.scope.noReleases",
+      useOptions: useDashboardReleaseOptions,
+      toScope: (id) => ({ kind: "release", releaseId: id }),
+      selectedId: (scope) =>
+        scope.kind === "release" ? scope.releaseId : undefined,
+    });
+
+    // What deleting an account takes with it from this module.
+    this.deletion.register({
+      key: "authored-quests",
+      order: 10,
+      useLine: useAuthoredQuestsDeletionLine,
     });
   }
 

@@ -22,7 +22,6 @@ export const useKindReferences = (
   // Conditional on the registry, which is frozen before the first render, so
   // the hook is called on every render or on none (see
   // `ElementReferenceRegistry`).
-  // oxlint-disable-next-line react-hooks/rules-of-hooks -- the kinds are frozen at boot, so the hook order never changes
   const set = registered?.useReferences(element, "");
 
   return {

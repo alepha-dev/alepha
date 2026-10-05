@@ -1,6 +1,6 @@
 import { $module } from "alepha";
 
-import { DashboardMetricCatalog } from "./services/DashboardMetricCatalog.ts";
+import { DashboardMetricCatalog } from "./schemas/DashboardMetricCatalog.ts";
 import { DeployDashboardMetrics } from "./services/DeployDashboardMetrics.ts";
 import { WorkDashboardMetrics } from "./services/WorkDashboardMetrics.ts";
 

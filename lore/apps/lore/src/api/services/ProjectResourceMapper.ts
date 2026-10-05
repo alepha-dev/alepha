@@ -2,9 +2,9 @@ import { $inject, AlephaError } from "alepha";
 
 import type { ProjectCapability } from "../entities/projectCapabilities.ts";
 import type { Project } from "../entities/projects.ts";
+import { CapabilityRegistry } from "../schemas/CapabilityRegistry.ts";
 import type { ProjectCapabilityResource } from "../schemas/projectCapabilityResourceSchema.ts";
-import { CapabilityRegistry } from "./CapabilityRegistry.ts";
-import { ProjectSlugService } from "./ProjectSlugService.ts";
+import { ProjectSlugService } from "../schemas/ProjectSlugService.ts";
 
 /**
  * Turns a `projects` row into the shape the API promises.

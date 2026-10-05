@@ -13,8 +13,8 @@ import {
 } from "../entities/projectCapabilities.ts";
 import { type Project, projects } from "../entities/projects.ts";
 import type { CapabilityKey } from "../schemas/capabilityKeySchema.ts";
+import { CapabilityRegistry } from "../schemas/CapabilityRegistry.ts";
 import type { RoadmapVisibility } from "../schemas/roadmapVisibilitySchema.ts";
-import { CapabilityRegistry } from "./CapabilityRegistry.ts";
 
 /**
  * Project access gates.

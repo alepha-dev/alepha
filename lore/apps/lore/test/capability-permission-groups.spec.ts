@@ -7,8 +7,8 @@ import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { LoreApi } from "../src/api/index.ts";
+import { CapabilityRegistry } from "../src/api/schemas/CapabilityRegistry.ts";
 import { LorePermissions } from "../src/api/security/LorePermissions.ts";
-import { CapabilityRegistry } from "../src/api/services/CapabilityRegistry.ts";
 
 /**
  * The permission groups no capability claims, and that are therefore always

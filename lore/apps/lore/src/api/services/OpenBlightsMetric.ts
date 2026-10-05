@@ -1,8 +1,8 @@
 import { $inject } from "alepha";
 
 import type { DashboardCardValue } from "../schemas/dashboardCardValueSchema.ts";
+import { DashboardMetricCatalog } from "../schemas/DashboardMetricCatalog.ts";
 import type { OpenBlightsFilters } from "../schemas/openBlightsFiltersSchema.ts";
-import { DashboardMetricCatalog } from "./DashboardMetricCatalog.ts";
 import { DashboardMetricRegistry } from "./DashboardMetricRegistry.ts";
 import type {
   DashboardMetricResolver,

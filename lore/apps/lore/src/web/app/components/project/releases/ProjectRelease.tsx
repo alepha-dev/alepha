@@ -215,7 +215,6 @@ const ProjectRelease = () => {
     tab,
     // One hook per registered tab, legal because the registry is frozen
     // before the first render (see `ResourceTabRegistry`).
-    // oxlint-disable-next-line react-hooks/rules-of-hooks -- the tabs are frozen at boot, so the hook order never changes
     ...tab.useCollection(subject),
   }));
 

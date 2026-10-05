@@ -7,7 +7,7 @@ import { $route, AlephaServer, ServerProvider } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { LoreApi } from "@/api/index.ts";
-import { CapabilityRegistry } from "@/api/services/CapabilityRegistry.ts";
+import { CapabilityRegistry } from "@/api/schemas/CapabilityRegistry.ts";
 import { ProjectSecurityService } from "@/api/services/ProjectSecurityService.ts";
 
 import {

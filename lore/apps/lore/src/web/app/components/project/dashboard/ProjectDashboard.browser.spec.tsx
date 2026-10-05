@@ -12,10 +12,11 @@ import { setupJsdomMocks } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import type { DashboardCardResource } from "@/api/schemas/dashboardCardResourceSchema.ts";
-import { DashboardMetricCatalog } from "@/api/services/DashboardMetricCatalog.ts";
+import { DashboardMetricCatalog } from "@/api/schemas/DashboardMetricCatalog.ts";
 import { projectFixture } from "@/testing/projectFixture.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { projectDashboardAtom } from "@/web/app/atoms/projectDashboardAtom.ts";
+import { DashboardPickerRegistry } from "@/web/app/registries/DashboardPickerRegistry.ts";
 import { I18n } from "@/web/app/services/I18n.ts";
 
 import ProjectDashboard from "./ProjectDashboard.tsx";
@@ -84,6 +85,8 @@ describe("ProjectDashboard", () => {
       .with(AlephaReactI18n);
     alepha.inject(I18n);
     alepha.inject(DashboardMetricCatalog);
+    // The pickers Work and Deploy register (#E75, #Q2624); none open here.
+    alepha.inject(DashboardPickerRegistry);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
     const project = projectFixture();

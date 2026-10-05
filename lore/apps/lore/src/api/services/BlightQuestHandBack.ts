@@ -1,8 +1,9 @@
 import { $inject } from "alepha";
 import { $repository, DbEntityNotFoundError } from "alepha/orm";
 
-import { blights, QUEST_STATUS_PREFIX } from "../entities/blights.ts";
+import { blights } from "../entities/blights.ts";
 import { ResourceRegistry } from "../resources/ResourceRegistry.ts";
+import { QUEST_STATUS_PREFIX } from "../schemas/blightQuestStatus.ts";
 
 /**
  * Hands a forwarded blight back to the inbox when its quest is deleted.

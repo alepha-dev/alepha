@@ -1,8 +1,8 @@
 import { $inject } from "alepha";
 
+import { DashboardMetricCatalog } from "../schemas/DashboardMetricCatalog.ts";
 import { openBlightsFiltersSchema } from "../schemas/openBlightsFiltersSchema.ts";
 import { uniqueVisitorsFiltersSchema } from "../schemas/uniqueVisitorsFiltersSchema.ts";
-import { DashboardMetricCatalog } from "./DashboardMetricCatalog.ts";
 
 /**
  * Deploy's blights and visitors metrics, as the dashboard catalogue lists them, registered on core's

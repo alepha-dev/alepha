@@ -6,8 +6,8 @@ import { currentUserAtom } from "alepha/security";
 import { BadRequestError, ForbiddenError, NotFoundError } from "alepha/server";
 
 import { ProjectController } from "../../api/controllers/ProjectController.ts";
+import { ProjectSlugService } from "../../api/schemas/ProjectSlugService.ts";
 import { ProjectSecurityService } from "../../api/services/ProjectSecurityService.ts";
-import { ProjectSlugService } from "../../api/services/ProjectSlugService.ts";
 import {
   projectActivityParamsSchema,
   projectActivityResultSchema,

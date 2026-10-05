@@ -11,8 +11,8 @@ import { useMemo } from "react";
 
 import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 import type { ProjectResource } from "@/api/schemas/projectResourceSchema.ts";
+import { ProjectSlugService } from "@/api/schemas/ProjectSlugService.ts";
 import { projectTitleSchema } from "@/api/schemas/projectTitleSchema.ts";
-import { ProjectSlugService } from "@/api/services/ProjectSlugService.ts";
 import { setCurrentProject } from "@/web/app/services/currentProjectWrite.ts";
 
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";

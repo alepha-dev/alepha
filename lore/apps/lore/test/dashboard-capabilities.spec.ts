@@ -12,9 +12,9 @@ import { type Sigil, sigils } from "@/api/entities/sigils.ts";
 import { sigilUniquesDaily } from "@/api/entities/sigilUniquesDaily.ts";
 import { LoreApi } from "@/api/index.ts";
 import type { CapabilityKey } from "@/api/schemas/capabilityKeySchema.ts";
+import { CapabilityRegistry } from "@/api/schemas/CapabilityRegistry.ts";
+import { DashboardMetricCatalog } from "@/api/schemas/DashboardMetricCatalog.ts";
 import type { DashboardScope } from "@/api/schemas/dashboardScopeSchema.ts";
-import { CapabilityRegistry } from "@/api/services/CapabilityRegistry.ts";
-import { DashboardMetricCatalog } from "@/api/services/DashboardMetricCatalog.ts";
 import {
   eligibleApps,
   eligibleProjects,

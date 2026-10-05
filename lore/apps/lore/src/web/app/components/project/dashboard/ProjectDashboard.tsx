@@ -4,28 +4,23 @@ import {
   useAlepha,
   useClient,
   useInject,
-  useQuery,
   useStore,
 } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useMemo, useState } from "react";
 
 import type { ProjectDashboardController } from "@/api/controllers/ProjectDashboardController.ts";
-import type { QuestController } from "@/api/controllers/QuestController.ts";
-import type { SigilController } from "@/api/controllers/SigilController.ts";
 import type { DashboardCardResource } from "@/api/schemas/dashboardCardResourceSchema.ts";
+import { DashboardMetricCatalog } from "@/api/schemas/DashboardMetricCatalog.ts";
 import type { DashboardScope } from "@/api/schemas/dashboardScopeSchema.ts";
-import { DashboardMetricCatalog } from "@/api/services/DashboardMetricCatalog.ts";
 
-import { currentEpicsAtom } from "../../../atoms/currentEpicsAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import { currentReleasesAtom } from "../../../atoms/currentReleasesAtom.ts";
 import { projectDashboardAtom } from "../../../atoms/projectDashboardAtom.ts";
+import { DashboardPickerRegistry } from "../../../registries/DashboardPickerRegistry.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import DashboardCatalogue from "../../dashboard/DashboardCatalogue.tsx";
 import { projectAnswers } from "../../dashboard/dashboardEligibility.ts";
 import DashboardGrid from "../../dashboard/DashboardGrid.tsx";
-import type { DashboardScopeApp } from "../../dashboard/DashboardScopeStep.tsx";
 import { useRank } from "../../shared/useRank.ts";
 import ProjectDashboardEmpty from "./ProjectDashboardEmpty.tsx";
 import ProjectDashboardHeader from "./ProjectDashboardHeader.tsx";
@@ -74,18 +69,10 @@ const ProjectDashboard = () => {
   const rank = useRank();
   const catalog = useInject(DashboardMetricCatalog);
   const boardApi = useClient<ProjectDashboardController>();
-  const sigilApi = useClient<SigilController>();
-  const questApi = useClient<QuestController>();
+  const pickers = useInject(DashboardPickerRegistry).sources();
 
   const [project] = useStore(currentProjectAtom);
   const [board] = useStore(projectDashboardAtom);
-  // ⚠️ Read, never fetched. The `project` route loader already issues both
-  // (`getEpicRefs` and `getReleases`, inside the one `Promise.all` the
-  // browser coalesces into a single `/api/_batch`), so the epic and release
-  // pickers cost this page no request at all. Fetching them here would add a
-  // round trip for a list already in the store.
-  const [epics] = useStore(currentEpicsAtom);
-  const [releases] = useStore(currentReleasesAtom);
   const [catalogueOpen, setCatalogueOpen] = useState(false);
   const [editing, setEditing] = useState<DashboardCardResource | undefined>();
 
@@ -190,43 +177,25 @@ const ProjectDashboard = () => {
   );
 
   /**
-   * What the scope and filter steps can offer, fetched only when the panel
-   * opens: a board with no app-scoped or tag-filtered card never needs either,
-   * and the project's landing page must not pay for a picker nobody opened.
-   * Each read's failure costs the picker its options, never the page: the two
-   * catches are deliberate partial success, not swallowed errors.
+   * What the scope and filter steps can offer, from the modules that own it
+   * (`DashboardPickerRegistry`, #E75 #Q2624): Deploy's apps, Work's tags,
+   * epics and releases. Fetched only when the panel opens: a board with no
+   * app-scoped or tag-filtered card never needs either, and the project's
+   * landing page must not pay for a picker nobody opened. Each source is a
+   * hook, called once per render; the registry is frozen before the first,
+   * so the loop below is the same length every time.
    */
-  const pickers = useQuery(
-    {
-      key: ["project-dashboard-pickers", projectId],
-      staleTime: [5, "minutes"],
-      enabled: catalogueOpen && !!projectId,
-      handler: async () => {
-        const id = projectId as number;
-        const [foundApps, foundTags] = await Promise.all([
-          sigilApi
-            .listSigils({ params: { projectId: id } })
-            .then((res) =>
-              res.items.map((sigil) => ({
-                id: sigil.id,
-                name: sigil.name,
-                projectId: id,
-                projectTitle: project?.title ?? "",
-                beacon: (sigil.kinds ?? []).includes("beacon"),
-              })),
-            )
-            .catch((): DashboardScopeApp[] => []),
-          questApi
-            .listQuestTags({ query: { projectId: id } })
-            .catch((): string[] => []),
-        ]);
-        return { apps: foundApps, tags: foundTags };
-      },
-    },
-    [sigilApi, questApi, projectId, catalogueOpen],
-  ).data;
-  const apps = pickers?.apps ?? [];
-  const tags = pickers?.tags ?? [];
+  const pickerContext = {
+    projectId,
+    projectTitle: project?.title ?? "",
+    open: catalogueOpen,
+  };
+  const apps = pickers.apps?.useApps(pickerContext) ?? [];
+  const tags = pickers.tags?.useTags(pickerContext) ?? [];
+  const subjects = pickers.subjects.map((picker) => ({
+    picker,
+    options: picker.useOptions(pickerContext),
+  }));
 
   /**
    * Adopt a new card list and re-resolve it.
@@ -435,8 +404,7 @@ const ProjectDashboard = () => {
         cards={cards}
         projects={project ? [project] : []}
         apps={apps}
-        epics={epics ?? []}
-        releases={releases ?? []}
+        subjects={subjects}
         projectTags={tags}
         editing={editing}
         onClose={() => setCatalogueOpen(false)}

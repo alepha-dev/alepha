@@ -1,10 +1,10 @@
 import { AlephaError, type ZType } from "alepha";
 
-import type { CapabilityKey } from "../schemas/capabilityKeySchema.ts";
+import type { CapabilityKey } from "./capabilityKeySchema.ts";
 import type {
   DashboardScope,
   DashboardScopeKind,
-} from "../schemas/dashboardScopeSchema.ts";
+} from "./dashboardScopeSchema.ts";
 
 /**
  * Which board a metric may be offered on.

@@ -4,8 +4,8 @@ import { $repository } from "alepha/orm";
 import { appInstances } from "../entities/appInstances.ts";
 import { type Sigil, sigils } from "../entities/sigils.ts";
 import type { DashboardCardValue } from "../schemas/dashboardCardValueSchema.ts";
+import { DashboardMetricCatalog } from "../schemas/DashboardMetricCatalog.ts";
 import { DailyVisitorsService } from "./DailyVisitorsService.ts";
-import { DashboardMetricCatalog } from "./DashboardMetricCatalog.ts";
 import { DashboardMetricRegistry } from "./DashboardMetricRegistry.ts";
 import type {
   DashboardMetricResolver,

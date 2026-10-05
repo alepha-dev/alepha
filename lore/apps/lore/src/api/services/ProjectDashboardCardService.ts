@@ -7,8 +7,8 @@ import {
   projectDashboardCards,
 } from "../entities/projectDashboardCards.ts";
 import type { DashboardCardResource } from "../schemas/dashboardCardResourceSchema.ts";
+import { DashboardMetricCatalog } from "../schemas/DashboardMetricCatalog.ts";
 import type { DashboardScope } from "../schemas/dashboardScopeSchema.ts";
-import { DashboardMetricCatalog } from "./DashboardMetricCatalog.ts";
 
 /**
  * Storage and layout of one project's dashboard cards.

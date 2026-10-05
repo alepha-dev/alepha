@@ -1,9 +1,6 @@
 import { AlephaError, type ZType, z } from "alepha";
 
-import {
-  CAPABILITY_KEYS,
-  type CapabilityKey,
-} from "../schemas/capabilityKeySchema.ts";
+import { CAPABILITY_KEYS, type CapabilityKey } from "./capabilityKeySchema.ts";
 
 /**
  * One switch inside a capability.

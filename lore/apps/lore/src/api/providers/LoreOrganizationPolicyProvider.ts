@@ -9,7 +9,7 @@ import { ForbiddenError } from "alepha/server";
 
 import { projects } from "../entities/projects.ts";
 import type { CapabilityKey } from "../schemas/capabilityKeySchema.ts";
-import { CapabilityRegistry } from "../services/CapabilityRegistry.ts";
+import { CapabilityRegistry } from "../schemas/CapabilityRegistry.ts";
 import { ProjectLimits } from "../services/ProjectLimits.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 

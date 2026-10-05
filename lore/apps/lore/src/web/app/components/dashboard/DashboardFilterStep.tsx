@@ -1,7 +1,7 @@
 import { cn } from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
 
-import type { DashboardMetricDescriptor } from "@/api/services/DashboardMetricCatalog.ts";
+import type { DashboardMetricDescriptor } from "@/api/schemas/DashboardMetricCatalog.ts";
 
 import type { I18n } from "../../services/I18n.ts";
 import { dashboardFilterFields } from "./dashboardFilterFields.ts";

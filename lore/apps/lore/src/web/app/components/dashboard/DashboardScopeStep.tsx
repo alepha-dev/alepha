@@ -3,18 +3,16 @@ import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Check } from "lucide-react";
 
-import type { DashboardScope } from "@/api/schemas/dashboardScopeSchema.ts";
-import type { EpicRefResource } from "@/api/schemas/epicRefResourceSchema.ts";
-import type { ProjectResource } from "@/api/schemas/projectResourceSchema.ts";
-import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
 import {
   type DashboardBoard,
   DashboardMetricCatalog,
   type DashboardMetricDescriptor,
-} from "@/api/services/DashboardMetricCatalog.ts";
+} from "@/api/schemas/DashboardMetricCatalog.ts";
+import type { DashboardScope } from "@/api/schemas/dashboardScopeSchema.ts";
+import type { ProjectResource } from "@/api/schemas/projectResourceSchema.ts";
 
+import type { DashboardSubjectOptions } from "../../registries/DashboardPickerRegistry.ts";
 import type { I18n } from "../../services/I18n.ts";
-import { STATUS_LABEL_KEYS } from "../project/epics/epicStatus.ts";
 import { ProjectIcon } from "../shared/ProjectIcon.tsx";
 import { eligibleApps, eligibleProjects } from "./dashboardEligibility.ts";
 
@@ -56,20 +54,14 @@ export interface DashboardScopeStepProps {
   projects: DashboardScopeProject[];
   apps: DashboardScopeApp[];
   /**
-   * The current project's epics, for a `kind: "epic"` metric.
+   * The single-row scope kinds (an epic, a release), each with its options,
+   * from the modules that registered them (#E75, #Q2624).
    *
    * ⚠️ Only ever the OPEN project's, and that is sound rather than a
    * shortcut: both metrics that take one declare `boards: ["project"]`, so
-   * this picker is never reached from home. The caller reads
-   * `currentEpicsAtom`, which the project route already loads, so the epic
-   * list costs no request.
+   * this picker is never reached from home.
    */
-  epics: EpicRefResource[];
-  /**
-   * The current project's releases. Same reasoning as {@link epics}, read
-   * from `currentReleasesAtom`.
-   */
-  releases: ReleaseResource[];
+  subjects: DashboardSubjectOptions[];
   scope: DashboardScope;
   onChange: (scope: DashboardScope) => void;
 }
@@ -193,67 +185,35 @@ const DashboardScopeStep = (props: DashboardScopeStepProps) => {
           );
         })}
 
-      {kinds.includes("epic") &&
-        props.epics.map((epic) => {
-          const selected =
-            props.scope.kind === "epic" && props.scope.epicId === epic.id;
-          return (
-            <button
-              key={epic.id}
-              type="button"
-              data-testid="dashboard-scope-epic"
-              onClick={() => props.onChange({ kind: "epic", epicId: epic.id })}
-              className={rowClass(selected)}
-            >
-              <span className="text-muted-foreground shrink-0 tabular-nums">
-                #{epic.number}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate">{epic.title}</span>
-                <span className="text-muted-foreground block truncate text-[11px]">
-                  {tr(STATUS_LABEL_KEYS[epic.status])}
-                </span>
-              </span>
-              {selected && <Check className="size-3.5 shrink-0" />}
-            </button>
-          );
-        })}
-
-      {kinds.includes("release") &&
-        props.releases.map((release) => {
-          const selected =
-            props.scope.kind === "release" &&
-            props.scope.releaseId === release.id;
-          return (
-            <button
-              key={release.id}
-              type="button"
-              data-testid="dashboard-scope-release"
-              onClick={() =>
-                props.onChange({ kind: "release", releaseId: release.id })
-              }
-              className={rowClass(selected)}
-            >
-              <span className="min-w-0 flex-1">
-                <span className="block truncate">{release.tag}</span>
-                <span className="text-muted-foreground block truncate text-[11px]">
-                  {/*
-                    Published is the load-bearing half: a published release is
-                    frozen, so its card is finished by definition rather than
-                    stale. Saying so here is what stops a reader picking one
-                    and reading its unmoving number as a bug.
-                  */}
-                  {tr(
-                    release.releasedAt
-                      ? "dashboard.scope.releasePublished"
-                      : "dashboard.scope.releaseOpen",
+      {props.subjects.map(({ picker, options }) =>
+        kinds.includes(picker.kind)
+          ? options.map((option) => {
+              const selected = picker.selectedId(props.scope) === option.id;
+              return (
+                <button
+                  key={`${picker.kind}:${option.id}`}
+                  type="button"
+                  data-testid={`dashboard-scope-${picker.kind}`}
+                  onClick={() => props.onChange(picker.toScope(option.id))}
+                  className={rowClass(selected)}
+                >
+                  {option.prefix && (
+                    <span className="text-muted-foreground shrink-0 tabular-nums">
+                      {option.prefix}
+                    </span>
                   )}
-                </span>
-              </span>
-              {selected && <Check className="size-3.5 shrink-0" />}
-            </button>
-          );
-        })}
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate">{option.label}</span>
+                    <span className="text-muted-foreground block truncate text-[11px]">
+                      {option.detail}
+                    </span>
+                  </span>
+                  {selected && <Check className="size-3.5 shrink-0" />}
+                </button>
+              );
+            })
+          : null,
+      )}
 
       {kinds.includes("apps") && apps.length === 0 && (
         <div className="text-muted-foreground rounded-[9px] border border-dashed px-2.5 py-3 text-[11.5px]">
@@ -262,21 +222,20 @@ const DashboardScopeStep = (props: DashboardScopeStepProps) => {
       )}
 
       {/*
-        Reachable from the catalogue, unlike the two below: a project with
-        Epics on and no epic yet passes `metricUnavailableKey` (the capability
-        is on) and lands here. An empty list over a dead Save button is the
-        exact failure this step shipped with.
+        Reachable from the catalogue: a project with Epics on and no epic yet
+        passes `metricUnavailableKey` (the capability is on) and lands here.
+        An empty list over a dead Save button is the exact failure this step
+        shipped with.
       */}
-      {kinds.includes("epic") && props.epics.length === 0 && (
-        <div className="text-muted-foreground rounded-[9px] border border-dashed px-2.5 py-3 text-[11.5px]">
-          {tr("dashboard.scope.noEpics")}
-        </div>
-      )}
-
-      {kinds.includes("release") && props.releases.length === 0 && (
-        <div className="text-muted-foreground rounded-[9px] border border-dashed px-2.5 py-3 text-[11.5px]">
-          {tr("dashboard.scope.noReleases")}
-        </div>
+      {props.subjects.map(({ picker, options }) =>
+        kinds.includes(picker.kind) && options.length === 0 ? (
+          <div
+            key={picker.kind}
+            className="text-muted-foreground rounded-[9px] border border-dashed px-2.5 py-3 text-[11.5px]"
+          >
+            {tr(picker.emptyKey as never)}
+          </div>
+        ) : null,
       )}
 
       {/*

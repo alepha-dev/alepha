@@ -1,12 +1,12 @@
 import { $inject } from "alepha";
 
 import { activeQuestsFiltersSchema } from "../schemas/activeQuestsFiltersSchema.ts";
+import { DashboardMetricCatalog } from "../schemas/DashboardMetricCatalog.ts";
 import { epicProgressFiltersSchema } from "../schemas/epicProgressFiltersSchema.ts";
 import { heldQuestsFiltersSchema } from "../schemas/heldQuestsFiltersSchema.ts";
 import { releaseProgressFiltersSchema } from "../schemas/releaseProgressFiltersSchema.ts";
 import { tagCompletionFiltersSchema } from "../schemas/tagCompletionFiltersSchema.ts";
 import { untriagedFeedbackFiltersSchema } from "../schemas/untriagedFeedbackFiltersSchema.ts";
-import { DashboardMetricCatalog } from "./DashboardMetricCatalog.ts";
 
 /**
  * Work's quest, epic, release, tag and feedback metrics, as the dashboard catalogue lists them, registered on core's

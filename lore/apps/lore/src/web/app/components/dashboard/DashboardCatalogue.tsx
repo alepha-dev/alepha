@@ -14,15 +14,14 @@ import { ArrowLeft, Search, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import type { DashboardCardResource } from "@/api/schemas/dashboardCardResourceSchema.ts";
-import type { DashboardScope } from "@/api/schemas/dashboardScopeSchema.ts";
-import type { EpicRefResource } from "@/api/schemas/epicRefResourceSchema.ts";
-import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
 import {
   type DashboardBoard,
   DashboardMetricCatalog,
   type DashboardMetricDescriptor,
-} from "@/api/services/DashboardMetricCatalog.ts";
+} from "@/api/schemas/DashboardMetricCatalog.ts";
+import type { DashboardScope } from "@/api/schemas/dashboardScopeSchema.ts";
 
+import type { DashboardSubjectOptions } from "../../registries/DashboardPickerRegistry.ts";
 import type { I18n } from "../../services/I18n.ts";
 import DashboardCatalogueRow from "./DashboardCatalogueRow.tsx";
 import { metricUnavailableKey } from "./dashboardEligibility.ts";
@@ -60,16 +59,15 @@ export interface DashboardCatalogueProps {
   projects: DashboardScopeProject[];
   apps: DashboardScopeApp[];
   /**
-   * The open project's epics and releases, for the two metrics scoped to one
-   * row of another table.
+   * The open project's single-row scope options (its epics and releases),
+   * for the metrics scoped to one row of another table, from the modules
+   * that registered them (#E75, #Q2624).
    *
    * ⚠️ Optional, and absent on the home board rather than empty by accident:
    * `epicProgress` and `releaseProgress` both declare `boards: ["project"]`,
-   * so home never offers a metric that would read either. A project board
-   * passes both from atoms its route has already loaded.
+   * so home never offers a metric that would read either.
    */
-  epics?: EpicRefResource[];
-  releases?: ReleaseResource[];
+  subjects?: DashboardSubjectOptions[];
   /**
    * When set, the panel opens straight on the scope step for this card and
    * saves back to it instead of adding a new one. The card menu's "Change
@@ -335,8 +333,7 @@ const DashboardCatalogue = (props: DashboardCatalogueProps) => {
                     board={props.board}
                     projects={props.projects}
                     apps={props.apps}
-                    epics={props.epics ?? []}
-                    releases={props.releases ?? []}
+                    subjects={props.subjects ?? []}
                     scope={scope}
                     onChange={setScope}
                   />

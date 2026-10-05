@@ -1,8 +1,8 @@
-import type { ProjectResource } from "@/api/schemas/projectResourceSchema.ts";
 import type {
   DashboardBoard,
   DashboardMetricDescriptor,
-} from "@/api/services/DashboardMetricCatalog.ts";
+} from "@/api/schemas/DashboardMetricCatalog.ts";
+import type { ProjectResource } from "@/api/schemas/projectResourceSchema.ts";
 import {
   capabilityOption,
   hasCapability,

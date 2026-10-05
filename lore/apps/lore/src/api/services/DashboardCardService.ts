@@ -11,8 +11,8 @@ import {
 import { dashboardSettings } from "../entities/dashboardSettings.ts";
 import type { Project } from "../entities/projects.ts";
 import type { DashboardCardResource } from "../schemas/dashboardCardResourceSchema.ts";
+import { DashboardMetricCatalog } from "../schemas/DashboardMetricCatalog.ts";
 import type { DashboardScope } from "../schemas/dashboardScopeSchema.ts";
-import { DashboardMetricCatalog } from "./DashboardMetricCatalog.ts";
 import { DashboardScopeService } from "./DashboardScopeService.ts";
 
 /**

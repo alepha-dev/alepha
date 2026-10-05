@@ -6,12 +6,12 @@ import { ForbiddenError } from "alepha/server";
 
 import {
   type EstateCommand,
-  type EstateCommandKind,
   estateCommands,
 } from "../entities/estateCommands.ts";
 import type { Estate } from "../entities/estates.ts";
 import type { EstateCommandFrame } from "../schemas/estateCommandFrameSchema.ts";
 import type { EstateCommandPayload } from "../schemas/estateCommandPayloadSchema.ts";
+import type { EstateCommandKind } from "../schemas/estateCommandValues.ts";
 import { EstateCommandTransport } from "./EstateCommandTransport.ts";
 
 /**

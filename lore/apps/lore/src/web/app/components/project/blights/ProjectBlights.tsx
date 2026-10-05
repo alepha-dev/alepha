@@ -29,7 +29,7 @@ import {
 import { useState } from "react";
 
 import type { BlightController } from "@/api/controllers/BlightController.ts";
-import { QUEST_STATUS_PREFIX } from "@/api/entities/blights.ts";
+import { QUEST_STATUS_PREFIX } from "@/api/schemas/blightQuestStatus.ts";
 import type { BlightResource } from "@/api/schemas/blightResourceSchema.ts";
 
 import { currentBlightCountAtom } from "../../../atoms/currentBlightCountAtom.ts";

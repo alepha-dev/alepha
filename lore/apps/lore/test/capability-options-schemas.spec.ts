@@ -1,10 +1,10 @@
 import { describe, it } from "vitest";
 
 import { appsCapabilityOptionsSchema } from "../src/api/schemas/appsCapabilityOptionsSchema.ts";
+import { CapabilityRegistry } from "../src/api/schemas/CapabilityRegistry.ts";
 import { knowledgeCapabilityOptionsSchema } from "../src/api/schemas/knowledgeCapabilityOptionsSchema.ts";
 import { supportCapabilityOptionsSchema } from "../src/api/schemas/supportCapabilityOptionsSchema.ts";
 import { workCapabilityOptionsSchema } from "../src/api/schemas/workCapabilityOptionsSchema.ts";
-import { CapabilityRegistry } from "../src/api/services/CapabilityRegistry.ts";
 
 /**
  * Core derives each capability's options schema from the options it declares

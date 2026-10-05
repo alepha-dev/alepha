@@ -4,8 +4,8 @@ import { $repository } from "alepha/orm";
 
 import { feedback } from "../entities/feedback.ts";
 import type { DashboardCardValue } from "../schemas/dashboardCardValueSchema.ts";
+import { DashboardMetricCatalog } from "../schemas/DashboardMetricCatalog.ts";
 import type { UntriagedFeedbackFilters } from "../schemas/untriagedFeedbackFiltersSchema.ts";
-import { DashboardMetricCatalog } from "./DashboardMetricCatalog.ts";
 import { DashboardMetricRegistry } from "./DashboardMetricRegistry.ts";
 import type {
   DashboardMetricResolver,
