@@ -295,7 +295,12 @@ test.describe("agent prompts", () => {
         .getByRole("button", { name: "Open row actions" })
         .first()
         .click();
-      await page.getByRole("menuitem", { name: /agent prompts/i }).click();
+      // By keyboard, not by pointer: the quest table overflows a 1280px
+      // viewport beside the quest log, so its row menu opens against the
+      // right edge and a pointer opening the submenu is a race with the
+      // menu's own placement. ArrowRight opens it wherever it sits.
+      await page.getByRole("menuitem", { name: /agent prompts/i }).focus();
+      await page.keyboard.press("ArrowRight");
       await page.getByRole("menuitem", { name: /work on it/i }).click();
 
       const copied = await page.evaluate(() => navigator.clipboard.readText());

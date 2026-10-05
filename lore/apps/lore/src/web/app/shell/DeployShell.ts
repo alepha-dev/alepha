@@ -5,11 +5,10 @@ import { currentBlightCountAtom } from "../atoms/currentBlightCountAtom.ts";
 import { currentInstanceAtom } from "../atoms/currentInstanceAtom.ts";
 import { currentInstancesAtom } from "../atoms/currentInstancesAtom.ts";
 import { useOwnedEstatesDeletionLine } from "../components/account/useOwnedEstatesDeletionLine.ts";
-import AppCreateMenuDialog from "../components/project/apps/AppCreateMenuDialog.tsx";
 import { useDashboardApps } from "../components/project/apps/useDashboardApps.ts";
-import ReleaseArtifactsPanel from "../components/project/artifacts/ReleaseArtifactsPanel.tsx";
 import { useReleaseArtifacts } from "../components/project/artifacts/useReleaseArtifacts.ts";
 import { ROUTES_APP } from "../components/project/projectViewRoutes.ts";
+import { lazyPart } from "../components/shared/lazyPart.tsx";
 import { blightTriagePromptDefault } from "../prompts/blightTriagePrompt.ts";
 import { AccountDeletionRegistry } from "../registries/AccountDeletionRegistry.ts";
 import { AgentPromptRegistry } from "../registries/AgentPromptRegistry.ts";
@@ -128,7 +127,9 @@ export class DeployShell {
       icon: AppWindow,
       enabled: (project) =>
         hasCapability(project, "apps") && canInProject(project, "app:manage"),
-      dialog: AppCreateMenuDialog,
+      dialog: lazyPart(
+        () => import("../components/project/apps/AppCreateMenuDialog.tsx"),
+      ),
     });
 
     // The app pages contribute the instance as ONE crumb, so the header reads
@@ -185,7 +186,10 @@ export class DeployShell {
       labelKey: "release.tab.artifacts",
       icon: Package,
       useCollection: useReleaseArtifacts,
-      component: ReleaseArtifactsPanel,
+      component: lazyPart(
+        () =>
+          import("../components/project/artifacts/ReleaseArtifactsPanel.tsx"),
+      ),
       metaKeys: {
         one: "release.meta.artifacts.one",
         many: "release.meta.artifacts.many",

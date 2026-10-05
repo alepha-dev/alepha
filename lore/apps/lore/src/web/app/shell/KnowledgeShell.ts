@@ -3,12 +3,11 @@ import { $client } from "alepha/server/links";
 import { BookOpen } from "lucide-react";
 
 import type { FolioController } from "../../../api/controllers/FolioController.ts";
-import EpicFoliosPanel from "../components/folios/epic/EpicFoliosPanel.tsx";
 import { useFiledFolios } from "../components/folios/epic/useFiledFolios.ts";
-import FolioReferencePreview from "../components/folios/FolioReferencePreview.tsx";
 import { useFolioElementImageUpload } from "../components/folios/useFolioElementImageUpload.ts";
 import { useFolioReferences } from "../components/folios/useFolioReferences.ts";
 import { formatReference } from "../components/shared/element/typedReference.ts";
+import { lazyPart } from "../components/shared/lazyPart.tsx";
 import { DocumentSinkRegistry } from "../registries/DocumentSinkRegistry.ts";
 import { ElementReferenceRegistry } from "../registries/ElementReferenceRegistry.ts";
 import { ProjectShellRegistry } from "../registries/ProjectShellRegistry.ts";
@@ -98,7 +97,9 @@ export class KnowledgeShell {
         const match = /^\/([^/]+)\/folios\/(\d+)(?:[#?]|$)/.exec(path);
         return match && match[1] === projectSlug ? match[2] : undefined;
       },
-      preview: FolioReferencePreview,
+      preview: lazyPart(
+        () => import("../components/folios/FolioReferencePreview.tsx"),
+      ),
       useReferences: useFolioReferences,
       useImageUpload: useFolioElementImageUpload,
     });
@@ -120,7 +121,9 @@ export class KnowledgeShell {
       labelKey: "epic.tab.folios",
       icon: BookOpen,
       useCollection: useFiledFolios,
-      component: EpicFoliosPanel,
+      component: lazyPart(
+        () => import("../components/folios/epic/EpicFoliosPanel.tsx"),
+      ),
     });
   }
 }

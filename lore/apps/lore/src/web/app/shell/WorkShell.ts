@@ -19,26 +19,18 @@ import { currentEpicCountAtom } from "../atoms/currentEpicCountAtom.ts";
 import { currentFeedbackCountAtom } from "../atoms/currentFeedbackCountAtom.ts";
 import { currentQuestAtom } from "../atoms/currentQuestAtom.ts";
 import { currentQuestCountAtom } from "../atoms/currentQuestCountAtom.ts";
-import EpicCreateMenuSheet from "../components/project/epics/EpicCreateMenuSheet.tsx";
-import EpicReferencePreview from "../components/project/epics/EpicReferencePreview.tsx";
 import { useDashboardEpicOptions } from "../components/project/epics/useDashboardEpicOptions.ts";
 import { useEpicReferences } from "../components/project/epics/useEpicReferences.ts";
-import FeedbackReferencePreview from "../components/project/feedback/FeedbackReferencePreview.tsx";
 import { useFeedbackReferences } from "../components/project/feedback/useFeedbackReferences.ts";
-import ProjectQuestLogAside from "../components/project/ProjectQuestLogAside.tsx";
 import { ROUTES_WITH_QUEST_LOG } from "../components/project/projectViewRoutes.ts";
-import QuestCreateMenuSheet from "../components/project/quest/QuestCreateMenuSheet.tsx";
-import QuestReferencePreview from "../components/project/quest/QuestReferencePreview.tsx";
 import { useAuthoredQuestsDeletionLine } from "../components/project/quest/useAuthoredQuestsDeletionLine.ts";
 import { useDashboardQuestTags } from "../components/project/quest/useDashboardQuestTags.ts";
 import { useQuestElementImageUpload } from "../components/project/quest/useQuestElementImageUpload.ts";
 import { useQuestReferences } from "../components/project/quest/useQuestReferences.ts";
-import ReleaseCreateMenuDialog from "../components/project/releases/ReleaseCreateMenuDialog.tsx";
-import ReleaseReferencePreview from "../components/project/releases/ReleaseReferencePreview.tsx";
 import { useDashboardReleaseOptions } from "../components/project/releases/useDashboardReleaseOptions.ts";
 import { useReleaseReferences } from "../components/project/releases/useReleaseReferences.ts";
-import ProjectSettingsDataSection from "../components/project/settings/ProjectSettingsDataSection.tsx";
 import { formatReference } from "../components/shared/element/typedReference.ts";
+import { lazyPart } from "../components/shared/lazyPart.tsx";
 import { epicActivatePromptDefault } from "../prompts/epicActivatePrompt.ts";
 import { epicReviewPromptDefault } from "../prompts/epicReviewPrompt.ts";
 import { feedbackLoopPromptDefault } from "../prompts/feedbackLoopPrompt.ts";
@@ -188,7 +180,10 @@ export class WorkShell {
       key: "quest-export",
       section: "general",
       order: 10,
-      component: ProjectSettingsDataSection,
+      component: lazyPart(
+        () =>
+          import("../components/project/settings/ProjectSettingsDataSection.tsx"),
+      ),
     });
 
     // ⚠️ New quest was once the one item gated on the PERMISSION alone. It
@@ -202,7 +197,9 @@ export class WorkShell {
       icon: ScrollText,
       enabled: (project) =>
         hasCapability(project, "work") && canInProject(project, "quest:create"),
-      dialog: QuestCreateMenuSheet,
+      dialog: lazyPart(
+        () => import("../components/project/quest/QuestCreateMenuSheet.tsx"),
+      ),
     });
     this.shell.registerCreate({
       key: "epic",
@@ -212,7 +209,9 @@ export class WorkShell {
       enabled: (project) =>
         capabilityOption(project, "work", "epics") &&
         canInProject(project, "epic:write"),
-      dialog: EpicCreateMenuSheet,
+      dialog: lazyPart(
+        () => import("../components/project/epics/EpicCreateMenuSheet.tsx"),
+      ),
     });
     // Directly after New Epic, matching the sidebar's Epics then Releases: a
     // release is when the epic ships. `releases` is the key
@@ -225,7 +224,10 @@ export class WorkShell {
       enabled: (project) =>
         capabilityOption(project, "work", "releases") &&
         canInProject(project, "release:manage"),
-      dialog: ReleaseCreateMenuDialog,
+      dialog: lazyPart(
+        () =>
+          import("../components/project/releases/ReleaseCreateMenuDialog.tsx"),
+      ),
     });
     // Not rank-gated: this row navigates to the first-party request form,
     // which any signed-in user may submit through - membership is not its
@@ -285,7 +287,9 @@ export class WorkShell {
     this.shell.registerAside({
       key: "quest-log",
       routes: [...ROUTES_WITH_QUEST_LOG],
-      component: ProjectQuestLogAside,
+      component: lazyPart(
+        () => import("../components/project/ProjectQuestLogAside.tsx"),
+      ),
     });
 
     // Picker order: after folios, and epics after quests because a project
@@ -302,7 +306,9 @@ export class WorkShell {
           projectSlug,
           /^\/([^/]+)\/quests\/(\d+)(?:[#?]|$)/,
         ),
-      preview: QuestReferencePreview,
+      preview: lazyPart(
+        () => import("../components/project/quest/QuestReferencePreview.tsx"),
+      ),
       useReferences: useQuestReferences,
       useImageUpload: useQuestElementImageUpload,
     });
@@ -317,7 +323,9 @@ export class WorkShell {
           projectSlug,
           /^\/([^/]+)\/epics\/(\d+)(?:[#?]|$)/,
         ),
-      preview: EpicReferencePreview,
+      preview: lazyPart(
+        () => import("../components/project/epics/EpicReferencePreview.tsx"),
+      ),
       useReferences: useEpicReferences,
     });
     // Feedback has no page of its own, so `#P120` links to the inbox naming
@@ -334,7 +342,10 @@ export class WorkShell {
           projectSlug,
           /^\/([^/]+)\/feedback\?feedback=(\d+)(?:[#&]|$)/,
         ),
-      preview: FeedbackReferencePreview,
+      preview: lazyPart(
+        () =>
+          import("../components/project/feedback/FeedbackReferencePreview.tsx"),
+      ),
       useReferences: useFeedbackReferences,
     });
     // `#R12` resolves the number and navigates by the release's TAG, which
@@ -355,7 +366,10 @@ export class WorkShell {
         );
         return tag === undefined ? undefined : decodeURIComponent(tag);
       },
-      preview: ReleaseReferencePreview,
+      preview: lazyPart(
+        () =>
+          import("../components/project/releases/ReleaseReferencePreview.tsx"),
+      ),
       useReferences: useReleaseReferences,
     });
 
