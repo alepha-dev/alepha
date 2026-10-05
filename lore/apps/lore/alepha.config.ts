@@ -214,7 +214,19 @@ export default defineConfig({
       // `@alepha/ui` is vendored at ../../.vendor/@alepha/ui. The i18n
       // scanner needs to see both app source and the shared UI block strings
       // to extract a complete catalog.
-      scan: ["src", "../../.vendor/@alepha/ui/src"],
+      //
+      // And every `@lore` package (#E75): they carry no `check:i18n` of their
+      // own (a workspace with no dictionary exits 2), so this run scans them,
+      // one at a time because the scanner takes no glob. A package missing
+      // here has its `tr()` calls unseen, and its keys reported as unused.
+      scan: [
+        "src",
+        "../../packages/@lore/core/src",
+        "../../packages/@lore/work/src",
+        "../../packages/@lore/knowledge/src",
+        "../../packages/@lore/deploy/src",
+        "../../.vendor/@alepha/ui/src",
+      ],
       dynamicPrefixes: [
         // tr(`account.notifications.category.${category}`) and its
         // `.description`. A category is a string a `$notification` template
@@ -232,6 +244,9 @@ export default defineConfig({
         "agentPrompts.settings.epicActivate.",
         "agentPrompts.settings.questWork.",
         "agentPrompts.settings.feedbackWork.",
+        "agentPrompts.settings.feedbackLoop.",
+        "agentPrompts.settings.questLoop.",
+        "agentPrompts.settings.blightTriage.",
         // tr(`feedback.filter.${status}`) - pending/accepted/rejected.
         "feedback.filter.",
         // tr(`feedback.empty.detail.${status}.title` / `.body`) - the detail

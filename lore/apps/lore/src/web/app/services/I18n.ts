@@ -10,13 +10,12 @@ import { $dictionary } from "alepha/react/i18n";
  */
 export class I18n {
   en = $dictionary({ lazy: () => import("../../locales/en.ts") });
-  fr = $dictionary({
-    lazy: async () => {
-      const [{ uiFr }, { default: loreFr }] = await Promise.all([
-        import("@alepha/ui/i18n/fr"),
-        import("../../locales/fr.ts"),
-      ]);
-      return { default: { ...uiFr, ...loreFr } };
-    },
-  });
+  /**
+   * ⚠️ The plain `lazy: () => import(...)` form, on purpose. `check:i18n`
+   * finds a dictionary's key file by reading that form, and the async body
+   * this used to have (merging `@alepha/ui`'s French here) hid `fr.ts` from
+   * it: the file was scanned as ordinary source, and every key it declares
+   * counted as "used". The merge lives in `fr.ts` instead.
+   */
+  fr = $dictionary({ lazy: () => import("../../locales/fr.ts") });
 }

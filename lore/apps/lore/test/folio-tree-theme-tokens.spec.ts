@@ -18,6 +18,9 @@ import { describe, expect, it } from "vitest";
  * that folder and folio were "two greys", so distinctness is the property
  * with teeth.
  */
+// Reads `apps/lore/src/main.css` by path, and does not walk the `@lore`
+// packages (#E75): the stylesheet stays in `apps/lore`, which keeps `main.css`
+// and lists every package's web tree in it as an `@source`.
 describe("folio tree theme tokens", () => {
   const css = readFileSync(
     join(import.meta.dirname, "../src/main.css"),

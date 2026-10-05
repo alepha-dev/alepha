@@ -2,9 +2,23 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
+import { LoreCoreApi } from "@lore/core/api";
+import { LoreDeployApi } from "@lore/deploy/api";
+import { LoreKnowledgeApi } from "@lore/knowledge/api";
+import { LoreWorkApi } from "@lore/work/api";
 import { Alepha } from "alepha";
 import { organizations } from "alepha/api/organizations";
-import { $repository, PG_REF, type PgRefOptions } from "alepha/orm";
+import { AlephaApiUsers } from "alepha/api/users";
+import { AlephaEmail } from "alepha/email";
+import {
+  $repository,
+  AlephaOrm,
+  PG_REF,
+  type PgRefOptions,
+  RepositoryProvider,
+} from "alepha/orm";
+import { AlephaSecurity } from "alepha/security";
+import { AlephaServer } from "alepha/server";
 import { describe, it } from "vitest";
 
 import { blights } from "../src/api/entities/blights.ts";
@@ -13,14 +27,19 @@ import { sigilErrorGroups } from "../src/api/entities/sigilErrorGroups.ts";
 import { sigils } from "../src/api/entities/sigils.ts";
 import { sigilUniquesDaily } from "../src/api/entities/sigilUniquesDaily.ts";
 import { users } from "../src/api/entities/users.ts";
+import { LoreApi } from "../src/api/index.ts";
+import { LoreMcp } from "../src/mcp/index.ts";
 
 const MIGRATIONS = join(import.meta.dirname, "../migrations/sqlite");
-const ENTITIES = join(import.meta.dirname, "../src/api/entities");
 
 /**
- * Every table this app declares an entity for, plus every table one of those
- * entities points a foreign key at — read from the registry rather than
- * listed by hand.
+ * Every table this app's container serves a repository for, plus every table
+ * one of those entities points a foreign key at: read from the booted
+ * container rather than listed by hand, or by directory.
+ *
+ * ⚠️ The container, not `src/api/entities`: the entities are moving into the
+ * `@lore/*` packages (#E75), and a directory walk would quietly cover fewer
+ * tables with each move while staying green.
  *
  * Unless `PRAGMA foreign_keys=OFF` holds for it, drizzle-kit's rebuild
  * pattern (`CREATE __new`, `INSERT FROM SELECT`, `DROP old`, `RENAME`) fires
@@ -45,21 +64,32 @@ const ENTITIES = join(import.meta.dirname, "../src/api/entities");
  * See `apps/lore/CLAUDE.md` → "Migration safety on D1".
  */
 const entityTables = async (): Promise<string[]> => {
-  const tables = new Set<string>();
+  const alepha = Alepha.create({
+    env: { LOG_LEVEL: "error", SERVER_PORT: 0, DATABASE_URL: ":memory:" },
+  });
+  alepha.with(AlephaOrm);
+  alepha.with(AlephaServer);
+  alepha.with(AlephaSecurity);
+  alepha.with(AlephaEmail);
+  alepha.with(AlephaApiUsers);
+  alepha.with(LoreCoreApi);
+  alepha.with(LoreWorkApi);
+  alepha.with(LoreKnowledgeApi);
+  alepha.with(LoreDeployApi);
+  alepha.with(LoreApi);
+  alepha.with(LoreMcp);
 
-  for (const file of readdirSync(ENTITIES).filter((f) => f.endsWith(".ts"))) {
-    const mod: Record<string, unknown> = await import(join(ENTITIES, file));
-    for (const value of Object.values(mod)) {
-      const entity = value as { name?: unknown; schema?: { shape?: object } };
-      if (typeof entity.name !== "string" || !entity.schema?.shape) continue;
-      tables.add(entity.name);
-      for (const field of Object.values(entity.schema.shape)) {
-        if (!field || typeof field !== "object" || !(PG_REF in field)) continue;
-        const config = (field as Record<symbol, PgRefOptions>)[PG_REF];
-        // A ref can reach a framework table (`users`, `files`) that this app
-        // declares no entity file for.
-        tables.add(config.ref().entity.name);
-      }
+  const tables = new Set<string>();
+  for (const repository of alepha
+    .inject(RepositoryProvider)
+    .getRepositories()) {
+    const entity = repository.entity;
+    tables.add(entity.name);
+    for (const field of Object.values(entity.schema.shape)) {
+      if (!field || typeof field !== "object" || !(PG_REF in field)) continue;
+      const config = (field as Record<symbol, PgRefOptions>)[PG_REF];
+      // A ref can reach a table no repository of this container serves.
+      tables.add(config.ref().entity.name);
     }
   }
 

@@ -35,7 +35,7 @@ export class ProjectRankPresets {
    * resolved once, at creation, in the creator's language.
    *
    * ⚠️ **Loaded with `import()`, and that is not a style choice.** A STATIC
-   * import here defeats the `$dictionary({ lazy: ... })` in `I18n.ts`: a
+   * import here defeats the lazy dictionaries declared in `I18n.ts`: a
    * module that is both statically and dynamically imported is hoisted into
    * the static graph, and the dynamic import then resolves to the
    * already-loaded copy. The two catalogues are 264 kB of source, and they

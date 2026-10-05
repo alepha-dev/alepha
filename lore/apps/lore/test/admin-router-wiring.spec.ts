@@ -8,6 +8,9 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 import { loreAdminOptions } from "../src/web/admin/adminChrome.tsx";
 import { LoreWebAdmin } from "../src/web/admin/index.ts";
 
+// Reads the two entries and the admin module by path, and does not walk the
+// `@lore` packages (#E75): all three stay in `apps/lore`, which keeps the
+// entries, router composition and admin when the packages are extracted.
 const SRC = join(import.meta.dirname, "../src");
 
 /**

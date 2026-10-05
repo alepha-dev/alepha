@@ -25,6 +25,9 @@ import { describe, expect, it } from "vitest";
  * consumed, downloadable). Only the second one would have caught the
  * original bug, so it is the one not to weaken.
  */
+// Reads `apps/lore/src/main.css` by path, and does not walk the `@lore`
+// packages (#E75): the themes stay in the app's stylesheet, which no package
+// carries.
 describe("theme fonts", () => {
   const LORE_ROOT = join(import.meta.dirname, "..");
   const mainCss = readFileSync(join(LORE_ROOT, "src/main.css"), "utf8");

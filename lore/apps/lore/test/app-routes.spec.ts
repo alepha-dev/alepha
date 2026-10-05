@@ -111,6 +111,9 @@ const NAV_ROUTE_NAMES = [
   "myFeedback",
 ];
 
+// Boots the router rather than reading source by path. Once a package's pages
+// declare `parent:` (`$pageProject`, #Q2609), this spec registers that
+// package's web module beside `AppRouter`, or its names fall out of the table.
 describe("AppRouter route table", () => {
   let alepha: Alepha;
   let router: ReactRouter<AppRouter>;

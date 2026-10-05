@@ -1,4 +1,10 @@
+import { uiFr } from "@alepha/ui/i18n/fr";
+
+/**
+ * Lore's French, over `@alepha/ui`'s: a key both declare reads Lore's.
+ */
 export default {
+  ...uiFr,
   "language.en": "English",
   "language.fr": "Français",
 
@@ -1126,7 +1132,6 @@ export default {
   "account.projects.col.role": "Votre rôle",
   "account.projects.col.openQuests": "Quêtes ouvertes",
   "account.projects.col.lastActivity": "Dernière activité",
-  "account.projects.title": "Projets",
   "account.projects.description":
     "Tous les projets dont vous faites partie, que vous en soyez le propriétaire ou un membre.",
   "account.projects.empty": "Vous ne faites partie d'aucun projet.",
@@ -1836,9 +1841,6 @@ export default {
   "account.estates.col.lentTo": "Prêté à",
   "account.estates.col.created": "Créé",
   "account.estates.lentTo": "$1 projet(s)",
-  "account.estates.title": "Domaines",
-  "account.estates.description":
-    "Les machines et comptes que vous possédez et prêtez aux projets comme destinations de déploiement. Chacun se connecte avec un secret affiché une seule fois, à la création et à la rotation.",
   "account.estates.create": "Créer un domaine",
   "account.estates.create.description":
     "Son secret est affiché une seule fois, à la création. Il ne peut pas être récupéré ensuite, seulement renouvelé.",

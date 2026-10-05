@@ -13,6 +13,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 
+import { JobNameRule } from "./job-name-rule.ts";
 import { LorePackageGraph } from "./lore-package-graph.ts";
 
 /**
@@ -142,7 +143,7 @@ if (subpathViolations.length > 0) {
  *
  * ⚠️ SCOPE. This reads only the trees that have actually been cleaned:
  * `cli/`, `api/users/` and `system/` in the framework, plus the whole Lore
- * API. It is not repo-wide because it cannot yet be - `server/`, `react/`
+ * API, in `apps/lore` and in every `@lore` package. It is not repo-wide because it cannot yet be - `server/`, `react/`
  * and `core/` still carry about a hundred module-level declarations between
  * them, and an allowlist that large is the "list of things nobody dares
  * touch" this file warns about above. Add a tree here once it is clean,
@@ -154,7 +155,14 @@ if (subpathViolations.length > 0) {
  * members a test substitutes, so a helper beside one is as unreachable as a
  * helper beside a provider.
  */
-const NO_MODULE_CODE_TREES = ["apps/lore/src/api"];
+const NO_MODULE_CODE_TREES = [
+  "apps/lore/src/api",
+  // The Lore API as it moves into the `@lore/*` packages (#E75): each
+  // package's own `src/api`, the same tree under a new root.
+  ...readdirSync("packages/@lore")
+    .map((pkg) => `packages/@lore/${pkg}/src/api`)
+    .filter((tree) => existsSync(tree)),
+];
 const SERVICE_DIRS = [
   "services",
   "providers",
@@ -660,12 +668,29 @@ const PROJECT_ATOM_WRITER =
   "apps/lore/src/web/app/services/currentProjectWrite.ts";
 const projectAtomViolations: string[] = [];
 
-const atomReaders = execFileSync("git", ["ls-files", "apps/lore/src/web"], {
-  encoding: "utf8",
-})
+// The app's web tree and every `@lore` package's (#E75), untracked files
+// included so a page moved five minutes ago is already read.
+const atomReaders = execFileSync(
+  "git",
+  [
+    "ls-files",
+    "-co",
+    "--exclude-standard",
+    "apps/lore/src/web",
+    "packages/@lore",
+  ],
+  { encoding: "utf8" },
+)
   .trim()
   .split("\n")
-  .filter((file) => /\.tsx?$/.test(file) && !file.includes(".spec."));
+  .filter(
+    (file) =>
+      (file.startsWith("apps/") ||
+        /^packages\/@lore\/[^/]+\/src\/web\//.test(file)) &&
+      existsSync(file) &&
+      /\.tsx?$/.test(file) &&
+      !file.includes(".spec."),
+  );
 
 for (const file of atomReaders) {
   if (file === PROJECT_ATOM_WRITER) continue;
@@ -717,12 +742,18 @@ if (projectAtomViolations.length > 0) {
  */
 const transactionalViolations: string[] = [];
 
-const loreSources = execFileSync("git", ["ls-files", "apps/lore/src"], {
-  encoding: "utf8",
-})
+// The app and every `@lore` package: Lore's code, wherever it now lives (#E75).
+const loreSources = execFileSync(
+  "git",
+  ["ls-files", "-co", "--exclude-standard", "apps/lore/src", "packages/@lore"],
+  { encoding: "utf8" },
+)
   .trim()
   .split("\n")
-  .filter((file) => /\.tsx?$/.test(file) && !file.includes(".spec."));
+  .filter(
+    (file) =>
+      existsSync(file) && /\.tsx?$/.test(file) && !file.includes(".spec."),
+  );
 
 for (const file of loreSources) {
   const code = stripLiterals(readFileSync(file, "utf8"));
@@ -759,7 +790,9 @@ if (transactionalViolations.length > 0) {
  * registration checks the shape at boot; what it cannot see is where a job
  * comes from, which is the half this rule checks: a framework job must never
  * collide with an application's, so everything under `packages/` is
- * `system.*` and nothing under `apps/` is.
+ * `system.*` and nothing under `apps/` is, except `packages/@lore/`: Lore
+ * itself, split into modules, whose jobs keep their application names. The
+ * per-file check is `JobNameRule` (`scripts/job-name-rule.ts`).
  *
  * The name has to be a string literal inside the `$job({ ... })` call, or this
  * rule cannot read it. Specs are exempt: they declare jobs for pretend
@@ -767,7 +800,6 @@ if (transactionalViolations.length > 0) {
  * whole rather than through `grep`, which skips a file holding a NUL byte as
  * binary (`apps/lore/src/api/jobs/SigilJobs.ts` has one on purpose).
  */
-const JOB_NAME = /^(system\.)?[a-z0-9]+(-[a-z0-9]+)*\.[a-z0-9]+(-[a-z0-9]+)*$/;
 const jobNameViolations: string[] = [];
 const jobTimeoutViolations: string[] = [];
 
@@ -785,62 +817,14 @@ const jobSources = execFileSync("git", ["ls-files", "packages", "apps"], {
       !file.includes("/e2e/"),
   );
 
+const jobNameRule = new JobNameRule();
 for (const file of jobSources) {
-  const source = readFileSync(file, "utf8");
-  // A declaration is an assignment: `work = $job({`. Prose, JSDoc examples
-  // and strings that merely mention `$job({ cron })` never assign it.
-  for (const call of source.matchAll(/=\s*\$job\(\{/g)) {
-    const open = (call.index ?? 0) + call[0].length;
-    let depth = 1;
-    let end = open;
-    while (depth > 0 && end < source.length) {
-      const char = source[end];
-      if (char === "{") depth++;
-      else if (char === "}") depth--;
-      end++;
-    }
-    // Only the call's own properties: blank every nested object first.
-    let top = source.slice(open, end - 1);
-    let previous = "";
-    while (previous !== top) {
-      previous = top;
-      top = top.replace(/\{[^{}]*\}/g, "");
-    }
-    const line = source.slice(0, call.index).split("\n").length;
-    const literal = /(?:^|[\n,])\s*name\s*:\s*(["'])([^"'\n]*)\1/.exec(top);
-    if (!literal) {
-      jobNameViolations.push(
-        `  ${file}:${line}\n    → names its job with no string literal; write \`name: "<domain>.<action>"\``,
-      );
-      continue;
-    }
-    const name = literal[2];
-    const fromPackages = file.startsWith("packages/");
-    if (!JOB_NAME.test(name)) {
-      jobNameViolations.push(
-        `  ${file}:${line}\n    → '${name}' is not <domain>.<action> in lowercase kebab-case`,
-      );
-    } else if (fromPackages && !name.startsWith("system.")) {
-      jobNameViolations.push(
-        `  ${file}:${line}\n    → '${name}' ships from packages/ and must be system.<domain>.<action>`,
-      );
-    } else if (!fromPackages && name.startsWith("system.")) {
-      jobNameViolations.push(
-        `  ${file}:${line}\n    → '${name}' is an application job; system. is reserved for packages/`,
-      );
-    }
-    // A top-level key only: `top` has every nested object blanked, so a
-    // `timeout` passed to a call inside the handler is not the job's.
-    if (
-      fromPackages &&
-      name.startsWith("system.") &&
-      !/(?:^|[\n,])\s*timeout\s*:/.test(top)
-    ) {
-      jobTimeoutViolations.push(
-        `  ${file}:${line}\n    → '${name}' declares no timeout`,
-      );
-    }
-  }
+  const { names, timeouts } = jobNameRule.check(
+    file,
+    readFileSync(file, "utf8"),
+  );
+  jobNameViolations.push(...names);
+  jobTimeoutViolations.push(...timeouts);
 }
 
 if (jobNameViolations.length > 0) {

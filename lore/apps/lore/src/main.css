@@ -1,6 +1,19 @@
 @import "@alepha/ui/styles.css";
 
 /* ────────────────────────────────────────────────────────────────────────
+ * Every `@lore` package's web tree (#E75). Tailwind's automatic detection
+ * starts from the Vite root, `apps/lore`, and never reaches
+ * `packages/@lore`: a class used only in a moved component would vanish from
+ * the CSS, with no test noticing. `@alepha/ui` declares its own `@source` for
+ * the same reason. `test/lore-package-guards.spec.ts` asserts each package
+ * exporting `./web` is listed here.
+ * ──────────────────────────────────────────────────────────────────────── */
+@source "../../../packages/@lore/core/src/web";
+@source "../../../packages/@lore/work/src/web";
+@source "../../../packages/@lore/knowledge/src/web";
+@source "../../../packages/@lore/deploy/src/web";
+
+/* ────────────────────────────────────────────────────────────────────────
  * Page transition keyframes — referenced by `$page({ animation })` in
  * AppRouter. `tw-animate-css` only ships generic enter/exit keyframes
  * driven by utility classes, so the router needs its own named ones.

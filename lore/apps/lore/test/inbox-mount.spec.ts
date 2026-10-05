@@ -25,7 +25,17 @@ import { describe, it } from "vitest";
  * moved import, and `app-routes.spec.ts` already sets the precedent for
  * guarding a rule that the type system cannot express.
  */
-const SRC = join(import.meta.dirname, "..", "src");
+const REPO = join(import.meta.dirname, "..", "..", "..");
+/**
+ * Lore's source: the app's own and every `@lore` package's (#E75), so a mount
+ * moved into a package is still seen. Paths below are repository-relative.
+ */
+const SOURCES = [
+  join(REPO, "apps", "lore", "src"),
+  ...readdirSync(join(REPO, "packages", "@lore")).map((pkg) =>
+    join(REPO, "packages", "@lore", pkg, "src"),
+  ),
+];
 const UI = join(
   import.meta.dirname,
   "..",
@@ -50,13 +60,15 @@ const walk = (dir: string): string[] => {
   return out;
 };
 
-const filesMentioning = (root: string, needle: string | RegExp): string[] =>
-  walk(root).filter((path) => {
-    const source = readFileSync(path, "utf8");
-    return typeof needle === "string"
-      ? source.includes(needle)
-      : needle.test(source);
-  });
+const filesMentioning = (needle: string | RegExp): string[] =>
+  SOURCES.flatMap((root) => walk(root))
+    .filter((path) => {
+      const source = readFileSync(path, "utf8");
+      return typeof needle === "string"
+        ? source.includes(needle)
+        : needle.test(source);
+    })
+    .map((path) => path.slice(REPO.length + 1));
 
 describe("where the inbox bell is mounted", () => {
   it("is imported by exactly the two components allowed to mount it", ({
@@ -65,25 +77,22 @@ describe("where the inbox bell is mounted", () => {
     // The bell is one name in a module every shell imports, so the needle is
     // the name inside an import of `@alepha/ui/shell`, not the specifier.
     const importers = filesMentioning(
-      SRC,
       /import\s*\{[^}]*\bButtonInbox\b[^}]*\}\s*from\s*"@alepha\/ui\/shell"/,
-    ).map((path) => path.slice(SRC.length + 1));
+    );
 
     expect(importers.sort()).toEqual(
       [
-        join("web", "app", "components", "home", "HomeHeader.tsx"),
-        join("web", "app", "components", "project", "ProjectInboxButton.tsx"),
+        "apps/lore/src/web/app/components/home/HomeHeader.tsx",
+        "apps/lore/src/web/app/components/project/ProjectInboxButton.tsx",
       ].sort(),
     );
   });
 
   it("is rendered by ProjectView and by nothing else", ({ expect }) => {
-    const users = filesMentioning(SRC, "<ProjectInboxButton").map((path) =>
-      path.slice(SRC.length + 1),
-    );
+    const users = filesMentioning("<ProjectInboxButton");
 
     expect(users).toEqual([
-      join("web", "app", "components", "project", "ProjectView.tsx"),
+      "apps/lore/src/web/app/components/project/ProjectView.tsx",
     ]);
   });
 

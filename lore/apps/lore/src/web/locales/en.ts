@@ -1155,7 +1155,6 @@ export default {
   "account.projects.col.role": "Your role",
   "account.projects.col.openQuests": "Open quests",
   "account.projects.col.lastActivity": "Last activity",
-  "account.projects.title": "Projects",
   "account.projects.description":
     "Every project you belong to, whether you own it or joined it.",
   "account.projects.empty": "You are not part of any project yet.",
@@ -1856,9 +1855,6 @@ export default {
   "account.estates.col.lentTo": "Lent to",
   "account.estates.col.created": "Created",
   "account.estates.lentTo": "$1 project(s)",
-  "account.estates.title": "Estates",
-  "account.estates.description":
-    "The machines and accounts you own and lend to projects as deploy destinations. Each one dials in with a secret shown once, at creation and at rotation.",
   "account.estates.create": "Create an estate",
   "account.estates.create.description":
     "Its secret is shown once, at creation. It cannot be recovered afterwards, only rotated.",
