@@ -2765,7 +2765,6 @@ export class QuestController {
       }
 
       // The `areas` table is the sole source of truth for the list.
-      // `projects.areas` is `@deprecated` and nothing reads or writes it.
       // Only fires when this update actually carries an `area` — an
       // update that leaves the field alone (`undefined`) must not
       // register anything.

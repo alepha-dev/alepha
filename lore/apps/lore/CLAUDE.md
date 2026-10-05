@@ -20,7 +20,7 @@ The production Alepha Lore instance hosts the project we actually use to run thi
 
 Lore's vocabulary has been renamed twice. Originally the codebase used the plain technical names `project`/`task`/`package`/`players`/`analytics`/`complexity`; a first rename swapped every one of those for RPG flavor — `campaign`/`quest`/`zone`/`member`/`chronicles`/`difficulty` — across code identifiers, DB tables, HTTP routes, MCP tools and URL params. The **2026-08 great rename** partially reversed that: the top-level container went back to the plain, technical **`project`** (campaign → project, `/c/:campaignId` → `/:projectSlug`, `campaign_*` MCP tools → `project_*`), because "campaign" read as more RPG-themed than the container itself deserved. The RPG vocabulary that describes the _work inside_ a project was kept and in some cases sharpened: **quest**, member, folio, blight, sigil are all still RPG-flavored on purpose (the F/C/B/A/S difficulty ranks were part of that list until 2026-08-20, when the whole difficulty mechanic was erased — see "De-gamification" below). A later de-RPG pass (2026-08-09) then took **zone → `area`**: it named the functional part of the system a quest belongs to — "analogous to an Epic in Jira" by its own MCP description — and the map metaphor was carrying no weight. Column, route, `$page` name, MCP param and both locales moved together (FR: _Domaine_); the CSV importer still accepts a `zone` header so pre-rename exports keep working. Three other nouns were renamed in the same pass for clarity rather than theme: Petitions → **Feedback**, Chapters → **Milestones**, and Chronicles → **Reports** (with Reports▸Party → Reports▸Members). The old standalone "Archive" module (directory tree + blobs) was folded entirely into **Folios** — same entities, same MCP tools, one mental model instead of two. A **user** is the account; a **member** is that user's membership row in a project. Identity (name, picture) always comes from the account — the per-project "character" concept was removed in the 2026-07 de-gamification pass.
 
-A fourth pass (2026-08-30, epic #14) took **Milestone → `release`**: table, entity, controller, jobs, routes, `$page` names, components, both locales and the specs. It is a rename plus a **wipe** — every milestone row was deleted and Releases start empty in every project — because the two are not the same model. A milestone was a time window that collected whatever happened to complete inside it; a release is a named goal (`0.28.0`, `demo-1`) that **holds** the epics and quests due to ship in it. Membership is an assignment, not a window. Two identifiers deliberately did **not** move with it, and both would be silent failures if they had: `projects.features.milestones` (a REQUIRED key inside a JSON column — see the incident below) and `projects.milestoneDuration` (a column on the CASCADE parent that wiped production in 2026-05). Migration: `20260830112947_milestones_to_releases`, `DELETE` + two `RENAME`s, zero `DROP TABLE`.
+A fourth pass (2026-08-30, epic #14) took **Milestone → `release`**: table, entity, controller, jobs, routes, `$page` names, components, both locales and the specs. It is a rename plus a **wipe** — every milestone row was deleted and Releases start empty in every project — because the two are not the same model. A milestone was a time window that collected whatever happened to complete inside it; a release is a named goal (`0.28.0`, `demo-1`) that **holds** the epics and quests due to ship in it. Membership is an assignment, not a window. Two identifiers deliberately did **not** move with it at the time, `projects.features.milestones` (a REQUIRED key inside a JSON column, see the incident below) and `projects.milestoneDuration`; both columns were dropped with #E74. Migration: `20260830112947_milestones_to_releases`, `DELETE` + two `RENAME`s, zero `DROP TABLE`.
 
 A project may name **one** of its open releases the **default** (epic #E48, `releases.defaultSince`): where a completed quest that names no release, and inherits none from its epic, lands, and what an epic begun without a release takes and carries down to its own release-less quests. ⚠️ **Not a third state.** A default release is still `open`, `ReleaseState` still has exactly two values, and the UI draws a second orthogonal chip beside the state one - folding it in would make the state filter lie. A fallback rather than a plan: zero defaults is normal, creating a release never picks one, publishing the default clears it on that row (otherwise the next completion could not close) and hands it to the release next in line - the lowest open release above it whose patch is 0, never a patch, a prerelease, a named tag or anything older (`DefaultReleaseService.successor`) - and reopening does not restore it. That hand-off is a second, best-effort write after the publish patch (D1 has no transaction): if it fails the project is left with no default, never with a failed publish. The swap is a single `UPDATE ... CASE ... RETURNING` in `DefaultReleaseService` with **no** partial unique index behind it - SQLite checks uniqueness per row as the update walks, so the guard would throw mid-swap. Written up in `docs/lore/1-guides/8-releases.md`.
 
@@ -107,8 +107,8 @@ and switched in Settings ▸ General ▸ Capabilities:
 
 A **capability** is a product surface: it owns nav entries, routes, entities,
 MCP tools, a settings page, dashboard cards, search kinds, activity kinds and
-permissions. An **option** is a switch inside one. `projects.features`
-conflated the two, which is what this epic fixed.
+permissions. An **option** is a switch inside one. The old `projects.features`
+column conflated the two, which is what this epic fixed; it was dropped with #E74.
 
 Everything not claimed above is **Core** and always on: project identity,
 members, settings, and the three surfaces that _compose_ capabilities - the
@@ -135,12 +135,6 @@ and Members comes from a core table.
 included: a project with none is a legal state and the modularity test
 (`e2e/capabilities.spec.ts`). The wizard keeps an at-least-one rule, because a
 wizard is asking a question and "none" is not an answer to it.
-
-⚠️ **`projects.features` is frozen, not deleted.** Nothing reads it,
-`createProject` still writes `defaultProjectFeatures` so old rows decode, and
-neither the column, its DEFAULT nor any key inside it can ever change - see the
-block on `projectFeaturesSchema` and the two incidents it names.
-`test/project-features-frozen.spec.ts` fails if anything reads it again.
 
 ## Agent prompts (epic #41)
 
@@ -396,7 +390,7 @@ It lives in `atoms/kanbanReloadAtom.ts`.
 
 The board is `projectKanban` at `/:projectSlug/kanban`, with its own sidebar entry. Between the 2026-08 rename and epic #2 it was a _mode_ of the Quests page — no URL, no entry, reachable only through the view bar, which is precisely why that bar had to be invented ("unreachable from the UI at all"). Restoring the route collapsed `ProjectView`'s `kanbanView` special case into the machinery Epics, Folios and Blights already use.
 
-**A bare `/:projectSlug` always lands on the list.** Between 2026-08 and 2026-09-02 `project.defaultSurface` (`"list" | "kanban"`) could send it to the board through the `projectQuests` loader, owner-settable as "Open on the board" on the Kanban settings page. That setting, its write path and the redirect were removed with feedback #2066 ("not needed"). ⚠️ `projects.default_surface` is still on disk and still declared on the entity as a `@deprecated` optional: dropping a `projects` column is the D1 rebuild that cascade-wipes children, so it joins `unlockedFeatures`, `milestoneDuration` and `defaultEnv` as a frozen dead column.
+**A bare `/:projectSlug` always lands on the list.** Between 2026-08 and 2026-09-02 `project.defaultSurface` (`"list" | "kanban"`) could send it to the board through the `projectQuests` loader, owner-settable as "Open on the board" on the Kanban settings page. That setting, its write path and the redirect were removed with feedback #2066 ("not needed"). The column itself was dropped with #E74.
 
 ⚠️ **What #156 was, so it does not come back by another route.** #156 was a `useEffect` seeding `?view=` from `localStorage` during render: `useRouterState` is a global store, so it fired on the OUTGOING render of every navigation away, saw the _next_ route's empty query, and bounced the user straight back — every sidebar link was dead while the board was the stored view. A loader redirect (the removed `defaultSurface` one) runs once on entry and has no outgoing render to misread; a render-time effect never may. `quest.spec.ts`'s "leaving the board actually leaves it" still guards the history.
 
@@ -424,8 +418,7 @@ When `onClose` is provided, it's used instead of router navigation. When `onQues
 Lore projects are private. Every project-scoped endpoint is gated on
 **membership AND a permission**, with **exactly one exception**: the roadmap
 (below). The old `project.public` flag is not that exception and is not coming
-back - it was removed, and the column is kept in the schema only because
-dropping it on D1 triggers a cascade-wipe.
+back: it was removed, and its column was dropped with #E74.
 
 #### Ranks: what a member may do (epic #E39, 2026-09-07)
 
@@ -443,7 +436,7 @@ dropping it on D1 triggers a cascade-wipe.
 - **`projects.createdBy` is not an authorization input.** It cannot be, once
   ownership can be transferred: `organization_members.rank === "owner"` is
   the one answer, and the creator column is history. The old `members` table
-  is frozen and no longer read.
+  was dropped with #E74.
 - **Two acts are owner-only structurally** and are never grantable to a rank:
   `project:delete` and `capability:manage`. One permission is never removable:
   `project:read`. Both lists are `LoreRankBounds`, in a file the browser can
@@ -576,7 +569,7 @@ relabelled, by `20260911141454_epic_draft_status`. That migration is
 hand-written: drizzle generated a rebuild of `epics` to move the column
 DEFAULT, and on D1 its `DROP TABLE` would have detached every quest and folio
 from its epic. So the physical DEFAULT stays `'planned'` while the snapshot
-says `'draft'`, accepted drift like the `projects.features` one below:
+says `'draft'`, accepted drift:
 `EpicController.createEpic` is the only insert path and writes the status
 itself. `test/epic-draft-migration.spec.ts` applies it to seeded rows. Why
 the name: folio #1290.
@@ -792,7 +785,7 @@ Since the 2026-08 great rename, Folios also absorbed the standalone **Archive** 
 
 **Conventions** (apply when curating folios — yourself or via Claude):
 
-- One topic per folio. The title is the topic and the `summary` is the taxonomy — folios carry no tags (the tag feature was removed in feedback #62; `folios.tags` survives as a frozen dead column because dropping it would rebuild a table three others cascade from). Say what kind of note it is in the summary's first clause, since that is the line `project_context` shows.
+- One topic per folio. The title is the topic and the `summary` is the taxonomy — folios carry no tags (the tag feature was removed in feedback #62, and `folios.tags` dropped with #E74). Say what kind of note it is in the summary's first clause, since that is the line `project_context` shows.
 - Keep folios short and self-contained. A folio that needs scrolling is two folios.
 - When an agent creates a folio via MCP, it should always provide a `summary` (1-2 sentences, ~200 chars) so future `folio_list` / `folio_search` calls stay precise and `project_context` returns a self-explanatory index. It is the only orientation field there is now. Web-created folios may leave `summary` empty — the index falls back to the title.
 - Cross-link with the typed grammar of epic #32, and nothing else: `[[#F12]]` a folio, `[[#Q12]]` a quest, `[[#E3]]` an epic, `[[#P120]]` a feedback item, `[[#R12]]` a release, the number being the per-project id. A title, a path, a `quest:` prefix or a `#anchor` between the brackets is not a reference and renders as a broken link. Links re-sync on every save; agents see them as `links.outbound` / `links.inbound` on `folio_get` and humans see them in the Links tab of the inspector.
@@ -879,8 +872,7 @@ value shared by every app of a project while the question it answered is per
 app, so a project set to `production` with an app whose only copy is `preview`
 held a setting that could only ever be wrong - and it outranked the single
 place that app could go. `lore deploy` reads the app's own rows now (#Q2134).
-The column is frozen on disk with the rest; do not reintroduce an argument for
-it.
+The column was dropped with #E74; do not reintroduce an argument for it.
 
 **`sigils.name` is derived, and `AppService` is its only writer.** It mirrors
 `app/env` for the ingest path and for every reader written before v3; nothing
@@ -996,7 +988,6 @@ What survives, deliberately:
 
 - The RPG **vocabulary** for the work inside a project (quests, folios, blights, sigils) — flavor, not mechanics. **This is the whole of it**: the identity principle settled on 2026-08-20 is that Lore's RPG surface is vocabulary only, because "quest" names the agent-facing unit of work better than "task" (which can mean a markdown checkbox, a Jira ticket, anything). Mechanics are not identity. The container itself is deliberately _not_ RPG-flavored — see "The Lore of Lore" above for why it's `project`, not `campaign`.
 - Two glyphs: `Swords` on Complete and `Signature` on Accept / "took the quest".
-- `projects.unlockedFeatures` / `unlockHistory` / `public` and `quests.note` — **`@deprecated` dead columns**. Nothing writes them (`public` is still read by the MCP project resources, always `false`); they stay because dropping a column on either table risks the D1 rebuild path, and both are CASCADE parents (`projects` is the one that wiped prod in 2026-05; `quests` cascades through its own `dependsOn` self-reference).
 
 Do not reintroduce progression mechanics without an explicit decision — the goal is a neutral tool usable with other people; the metaphor describes the work, never the person.
 
@@ -1113,23 +1104,24 @@ change that happened invites a retry that repeats it.
 
 ## ⚠️ Migration safety on D1 (production-data bomb, real incident)
 
-Lore deploys to Cloudflare D1, which **ignores `PRAGMA foreign_keys=OFF`**. Drizzle-kit's auto-generated SQLite migrations use the standard rebuild pattern (`CREATE __new`, `INSERT FROM SELECT`, `DROP old`, `RENAME`). On D1, the `DROP old` step triggers `ON DELETE CASCADE` on every referencing child row.
+A table rebuild is how drizzle-kit changes what SQLite cannot alter in place (`CREATE __new`, `INSERT FROM SELECT`, `DROP old`, `RENAME`). Its `DROP old` fires `ON DELETE CASCADE` and `SET NULL` on every referencing child row unless `PRAGMA foreign_keys=OFF` holds for that statement.
 
 **This already cost us all of lore-production once** (2026-05-13, migration `0023_special_purifiers.sql` flipping campaign feature defaults — `DROP TABLE campaigns` cascade-wiped `characters`, `quests`, `chapters`, `folios`, `petitions`). Recovered from D1 backup. Tracked upstream as [drizzle-team/drizzle-orm#4938](https://github.com/drizzle-team/drizzle-orm/issues/4938), no fix shipped.
 
-**Hard rule before pushing any commit that adds a new migration under `migrations/sqlite/`:**
+**Which transport decides it.** In May the migrations went through the D1 query endpoint, which ignores the pragma. Since framework #1514 `D1MigrationsService` applies each migration file through the D1 **import** flow, which honoured it in one measurement (2026-09-07: 5 of 5 child rows kept, against 0 of 5 through the query endpoint; folio #F1359). One five-row measurement is not a guarantee, so the rule stands for a different reason: **a rebuild of a table with children is unproven at scale, and never needed** - a plain column goes with `ALTER TABLE ... DROP COLUMN`, which drizzle-kit generates on its own for any column without a foreign key, and which D1 has applied to `quests`, `sigils`, `folios` and `projects`.
 
-1. `grep "^DROP TABLE" migrations/sqlite/<newest>.sql` — no match? Safe to push.
-2. Match found? Identify the table, then `grep -rn "<table>.cols.id" src/api/entities/` to find children.
-3. **If any child has `onDelete: "cascade"` referencing the dropped table, the migration is a bomb on D1. Do not push as-is.**
+**What guards it** (#E74):
 
-Mitigations, in order of preference:
+1. **The framework marker.** `check:migrations` (and `platform up`) refuses any `DROP TABLE` without a `-- alepha-allow-drop-table: <why>` comment on the line above it.
+2. **`test/migration-safety.spec.ts`.** Every dropped table needs a per-migration `SANCTIONED_DROPS` entry, and since `CASCADE_BASELINE` a table whose previous snapshot shows a `CASCADE` or `SET NULL` child is refused **whatever the entry says**. Only a leaf can be rebuilt or dropped (precedent: `folio_blobs` in `20261004225050_drop_dead_folio_columns`).
+3. **The `Rehearse migration` workflow** (`workflow_dispatch`, run it on the branch carrying the migration and link the run from the quest). `alepha rehearse` copies lore-production into a throwaway remote D1, applies the pending migrations through `D1MigrationsService` (production's transport), and fails when a surviving table's row count moves or a table vanishes that no marker names. The copy and the dump never leave the runner and are deleted whatever happens.
+4. **The Time Travel bookmark.** `Deploy latest` prints `wrangler d1 time-travel info lore-production` before every deploy; the restore is the one command it prints.
 
-- **Avoid the rebuild entirely.** If the only change is a column _default_ (the bomb we hit), move the default into the application handler — e.g. `createProject` injects `defaultProjectFeatures` server-side — and drop the `db.default(...)` from the entity schema. Drizzle won't generate a rebuild migration for an app-layer default.
-- **Manually rewrite the migration** to back child rows up into `__bk_*` tables before the `DROP`, then re-insert and drop the backups after `RENAME`. Tedious but correct.
-- **Temporarily switch the CASCADE child(ren) to `onDelete: "set null"`** for the migration window if the children make sense without a parent — only viable when the FK column is nullable.
+**A column stops being read before it is dropped,** and the drop ships alone, in its own push to `main`.
 
-**Why local testing won't catch this:** the suites use in-memory SQLite, where `PRAGMA foreign_keys=OFF` actually works. The bomb only goes off on D1. Inspect the migration SQL manually.
+**The migrate-before-deploy window is accepted.** `platform up` migrates, then deploys, so for a few seconds the previous Worker still SELECTs a dropped column and its reads of that table fail. With one user, the owner accepted it (2026-10-04): a drop simply deploys, with no quiet hour and no post-deploy migration phase.
+
+**Why local testing won't catch it:** every database the suites build is empty or seeded by hand, so a cascade only shows up where rows exist. The rehearsal is the step that has them.
 
 **CI auto-deploys to prod on every push to `main` whose Verify succeeds** (this repository's `.github/workflows/verify.yml`, workflow **Verify**, then `.github/workflows/deploy-latest.yml` → `deploy-lore-production` job, a `workflow_run` on Verify → `yarn alepha platform up --env production` from `apps/lore`). A Verify cancelled by a newer push skips that commit's deploy; the next green push ships it. There is no human gate between push and prod migration. Treat every D1 migration as you would a `DROP DATABASE` — read every line before pushing.
 
@@ -1137,7 +1129,7 @@ Mitigations, in order of preference:
 
 `migrations/sqlite/20260805005114_green_captain_universe/` is a rename-only migration for the whole vocabulary rename — **6 table renames** (`campaigns`→`projects`, `petitions`→`feedback`, `chapters`→`milestones`, `archive_directories`→`folio_directories`, `archive_blobs`→`folio_blobs`, `archive_names`→`folio_names`) and 15 column renames, entirely via `ALTER TABLE ... RENAME TO` / `RENAME COLUMN`. **Zero `DROP TABLE`.**
 
-drizzle-kit's auto-generator wanted to add a `projects` table _rebuild_ on top of the renames, because the `features` column's JSON `DEFAULT` embeds the old key names (`petitions`, `chapters`, …) baked in as a literal string, and those keys changed too. A rebuild there means `DROP TABLE projects`, which on D1 cascades through `members`/`quests`/`releases`/`folios`/`feedback` — the exact class of incident described above. That block was **deleted by hand** from the generated migration, replaced with an explanatory SQL comment. This is safe _only_ because nothing reads the stale column default — `createProject` injects `defaultProjectFeatures` server-side in application code, so the column's `DEFAULT` clause is dead weight. The upshot: **the migration snapshot and the live `projects.features` column now deliberately disagree on that one default, forever** (or until a future migration touches that column for an unrelated reason). Do not "fix" this drift by generating a rebuild — that's the bomb, not the fix. `db:generate`/`db:check` will keep flagging it; that's expected, not a regression.
+drizzle-kit's auto-generator wanted to add a `projects` table _rebuild_ on top of the renames, because the `features` column's JSON `DEFAULT` embeds the old key names. That block was **deleted by hand** from the generated migration, which left the snapshot and the live column disagreeing on that DEFAULT until #E74 dropped the column. Do not "fix" a drift like that by generating a rebuild of a parent table: that is the bomb, not the fix.
 
 ### ⚠️ Renaming a REQUIRED key inside a JSON column takes production down (real incident, 2026-08-05)
 
@@ -1150,9 +1142,9 @@ SchemaValidationError: Invalid input: 'features/feedback' is required at /featur
   → DbError: Query select has failed
 ```
 
-`projects.features` is a JSON column validated against `projectFeaturesSchema`.
-Four of its keys are **required** `z.boolean()` — `kanban`, `folios`, `feedback`,
-`milestones` (which gates the **Releases** module: the key deliberately kept its
+`projects.features` was a JSON column (dropped with #E74) validated against
+`projectFeaturesSchema`. Four of its keys were **required** `z.boolean()` — `kanban`, `folios`, `feedback`,
+`milestones` (which gated the **Releases** module: the key deliberately kept its
 pre-rename name for exactly the reason this section exists) — while the rest
 (`sigils`, `blights`, `beacon`, `vitals`, the
 `quest*` trio) are `.optional()`. The migration renamed the
@@ -1237,11 +1229,10 @@ offers no way to add a `NOT NULL` column to a populated table without also inven
 drizzle diffs the entity against the **snapshot**, never the live database — so this is
 invisible to tooling and lives only here and in the migration's own comment block. The
 only way to make the physical column match is a table rebuild, and `sigils` is the
-`ON DELETE CASCADE` parent of `sigil_uniques_daily` / `sigil_error_groups` and
-more — so that "fix" is the bomb at the top of
-this section. Same precedent, same verdict as the `projects.features` `DEFAULT` drift
-documented above: accepted drift beats a rebuild. `test/migration-safety.spec.ts` guards
-the table against a future `DROP TABLE` from the family rebuild forward.
+`ON DELETE CASCADE` parent of `sigil_uniques_daily`, `sigil_error_groups` and more,
+and the `SET NULL` parent of `blights.sigil_id` and `app_instances.sigil_id` — so that
+"fix" is the rebuild of a parent that `test/migration-safety.spec.ts` now refuses
+outright. Accepted drift beats a rebuild.
 
 ### ⚠️ A table registered only under one runtime gets a migration under neither (2026-08-11)
 
@@ -1419,7 +1410,7 @@ Both are the same shape as the `ADD COLUMN … NOT NULL` trap below — a check 
 - `mcp-security.spec.ts` — MCP auth, API keys, user isolation
 - `project-reports.spec.ts` — reports aggregation
 - `project-leave.spec.ts` — `leaveProject` (owner-forbidden, no-op, member removal)
-- `project-capabilities.spec.ts` / `project-capabilities-read.spec.ts` / `project-capabilities-migration.spec.ts` / `capability-gate.spec.ts` / `route-capability-guards.spec.ts` / `project-features-frozen.spec.ts` - the capability model: the write path, the cached and memoised read, the backfill, the gate, the route guards, and the guard that keeps `projects.features` unread
+- `project-capabilities.spec.ts` / `project-capabilities-read.spec.ts` / `project-capabilities-migration.spec.ts` / `capability-gate.spec.ts` / `route-capability-guards.spec.ts` - the capability model: the write path, the cached and memoised read, the backfill, the gate, and the route guards
 - `project-owns-guard.spec.ts` / `project-relations.spec.ts` — `$owns` gating and relational reads
 - `release-changelog.spec.ts` — the changelog reads what is ATTACHED to a release (`quests.releaseId`), not what completed inside a time window. Its `Probe` writes the FK directly because no user-facing surface sets it yet
 - `quest-csv-formatter.spec.ts` - the CSV export, read back through a test-only CSV reader (quest import, Trello included, was deleted in #E48)
@@ -1438,7 +1429,7 @@ Both are the same shape as the `ADD COLUMN … NOT NULL` trap below — a check 
 - `project-slug-migration.spec.ts` — **regression guard**: reads the backfill migration for `DROP TABLE` / `ADD COLUMN … NOT NULL`, then actually _applies_ it to a seeded database and asserts the slugs that come out (collision, accented title, CJK title, soft-deleted row). `migration-safety.spec.ts` stops at earlier migrations, so nothing else executes this SQL
 - `user-deletion-hook.spec.ts` — **regression guard**: `UserDeletionHook` refuses `deleteMyAccount` while the account still owns projects, and the account survives the refusal. Load-bearing because `projects.createdBy` is a bare `z.uuid()` with **no foreign key** — deleting an owner cascades nothing and warns about nothing, leaving a project pointing at a row that no longer exists and failing `assertOwner` for everybody. Nothing in the schema, the types or the migration snapshot can catch that. Also pins that the hook's message reaches the client as a 409 with its text intact (`MyAccountController` emits without `{ log: true }` precisely so it does)
 - `blight-tools.spec.ts` — the MCP triage surface
-- `migration-safety.spec.ts` — asserts the great-rename migration (and the sigil-family rebuild before it) never drops a table the `projects` cascade reaches, and that a fresh D1-shaped database boots with all migrations applied
+- `migration-safety.spec.ts` — every dropped table needs a per-migration `SANCTIONED_DROPS` entry, a table with `CASCADE` or `SET NULL` children (read from the previous snapshot) cannot be dropped at all after `CASCADE_BASELINE`, historical replays keep their rows, and a fresh D1-shaped database boots with all migrations applied
 - Shared fixtures live in `test/fixtures/`
 
 ### ⚠️ Running e2e while another agent is running it

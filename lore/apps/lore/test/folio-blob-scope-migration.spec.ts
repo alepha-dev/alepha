@@ -45,7 +45,8 @@ describe("folio blob scoping migration", () => {
   }) => {
     const db: any = new DatabaseSync(":memory:");
 
-    // D1 ignores `PRAGMA foreign_keys=OFF`, so constraints are ALWAYS live
+    // D1 cannot be relied on to honour `PRAGMA foreign_keys=OFF` (#F1359),
+    // so constraints are taken as live
     // there. Enforcing them here is what makes this reproduce D1 rather than
     // the friendlier local SQLite the rest of the suite runs on.
     db.exec("PRAGMA foreign_keys = ON");

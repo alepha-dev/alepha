@@ -22,11 +22,12 @@ const ENTITIES = join(import.meta.dirname, "../src/api/entities");
  * entities points a foreign key at — read from the registry rather than
  * listed by hand.
  *
- * On Cloudflare D1 `PRAGMA foreign_keys=OFF` is ignored, so drizzle-kit's
- * rebuild pattern (`CREATE __new`, `INSERT FROM SELECT`, `DROP old`,
- * `RENAME`) fires every constraint on the `DROP` — which for a CASCADE child
- * is a silent `DELETE` of every row, reported as a successful deploy. That
- * cost all of lore-production once, in May 2026.
+ * Unless `PRAGMA foreign_keys=OFF` holds for it, drizzle-kit's rebuild
+ * pattern (`CREATE __new`, `INSERT FROM SELECT`, `DROP old`, `RENAME`) fires
+ * every constraint on the `DROP` — which for a CASCADE child is a silent
+ * `DELETE` of every row, reported as a successful deploy. D1's query endpoint
+ * ignores the pragma, and its import flow is not proven to honour it at scale
+ * (#F1359). That cost all of lore-production once, in May 2026.
  *
  * ⚠️ Derived, because the hand-written list rotted exactly as a hand-written
  * list does. It named the tables the 2026-05 wipe reached and nothing added
@@ -562,7 +563,8 @@ describe("migration safety", () => {
   }) => {
     const db: any = new DatabaseSync(":memory:");
 
-    // D1 ignores `PRAGMA foreign_keys=OFF`, so constraints are ALWAYS live
+    // D1 cannot be relied on to honour `PRAGMA foreign_keys=OFF` (#F1359),
+    // so constraints are taken as live
     // there — including during `DROP TABLE`, whose implicit `DELETE FROM`
     // is what cascaded 2434 rows away in May 2026. Enforcing them here is
     // what makes this test reproduce D1 rather than the friendlier local

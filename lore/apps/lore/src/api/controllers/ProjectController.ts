@@ -509,9 +509,8 @@ export class ProjectController {
 
       const result = me?.projects ?? [];
 
-      // `areas` (the `projects.areas` column) is `@deprecated` and frozen —
-      // the Home page's "N areas" stat is re-sourced from the `areas` table
-      // here instead, one batched query rather than one per card.
+      // The Home page's "N areas" stat comes from the `areas` table, one
+      // batched query rather than one per card.
       const projectIds = result.map((it) => it.id);
       const [
         areaCounts,

@@ -197,7 +197,6 @@ export class QuestService {
     // field but must not pollute the project's area list.
     //
     // The `areas` table is the sole source of truth for the list.
-    // `projects.areas` is `@deprecated` and nothing reads or writes it.
     //
     // Store what `ensureArea` actually persisted (trimmed), not the raw
     // input — otherwise `area: " foo "` registers the row `foo` while the

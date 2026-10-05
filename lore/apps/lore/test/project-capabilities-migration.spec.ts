@@ -77,7 +77,8 @@ describe("project capabilities backfill migration", () => {
   it("backfills every project from its feature bag", ({ expect }) => {
     const db: any = new DatabaseSync(":memory:");
 
-    // D1 ignores `PRAGMA foreign_keys=OFF`, so constraints are always live
+    // D1 cannot be relied on to honour `PRAGMA foreign_keys=OFF` (#F1359),
+    // so constraints are taken as live
     // there. Enforcing them here reproduces D1 rather than the friendlier
     // local SQLite the rest of the suite runs on.
     db.exec("PRAGMA foreign_keys = ON");

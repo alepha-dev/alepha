@@ -13,8 +13,8 @@
  * was one value shared by every app of a project while the question is per
  * app, so a project set to `production` with an app whose only copy is
  * `preview` held a setting that could only ever be wrong - and it outranked
- * the single place that app could go. The column is frozen on disk and nothing
- * reads it. Do not reintroduce an argument for it here.
+ * the single place that app could go. The column was dropped with #E74. Do
+ * not reintroduce an argument for it here.
  *
  * ⚠️ **`production` is the first step and must stay one.** A rule that
  * answered "the first env by name" outright would silently move `/apps/club`

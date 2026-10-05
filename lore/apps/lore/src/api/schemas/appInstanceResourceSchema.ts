@@ -35,8 +35,7 @@ export const appInstanceResourceSchema = appInstances.schema
      * presence is what unlocks Analytics, Vitals, Errors and Explore.
      *
      * `name` is not here on purpose: it is a mirror of `"<app>/<env>"`, which
-     * the caller already holds as two fields. Nor is `url`, a frozen dead
-     * column since #1767 - the address is `instance.url` now.
+     * the caller already holds as two fields. The address is `instance.url`.
      */
     sigil: sigilResourceSchema
       .pick({
