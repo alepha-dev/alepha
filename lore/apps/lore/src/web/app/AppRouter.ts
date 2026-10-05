@@ -1,7 +1,5 @@
 import { AccountRouter } from "@alepha/ui/account";
-import { inboxUnreadAtom } from "@alepha/ui/shell";
 import { $hook, $inject, Alepha, z } from "alepha";
-import type { NotificationInboxController } from "alepha/api/notifications";
 import type { RealmController } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import { ReactAuth } from "alepha/react/auth";
@@ -14,7 +12,6 @@ import { createElement } from "react";
 
 import type { AppController } from "../../api/controllers/AppController.ts";
 import type { AreaController } from "../../api/controllers/AreaController.ts";
-import type { BlightController } from "../../api/controllers/BlightController.ts";
 import type { DirectoryController } from "../../api/controllers/DirectoryController.ts";
 import type { EpicController } from "../../api/controllers/EpicController.ts";
 import type { EstateController } from "../../api/controllers/EstateController.ts";
@@ -24,35 +21,24 @@ import type { HomeController } from "../../api/controllers/HomeController.ts";
 import type { InvitationController } from "../../api/controllers/InvitationController.ts";
 import type { ProjectController } from "../../api/controllers/ProjectController.ts";
 import type { ProjectDashboardController } from "../../api/controllers/ProjectDashboardController.ts";
-import type { ProjectPromptController } from "../../api/controllers/ProjectPromptController.ts";
 import type { ProjectReportsController } from "../../api/controllers/ProjectReportsController.ts";
 import type { QualityController } from "../../api/controllers/QualityController.ts";
 import type { QuestController } from "../../api/controllers/QuestController.ts";
-import type { ReleaseController } from "../../api/controllers/ReleaseController.ts";
 import type { RoadmapController } from "../../api/controllers/RoadmapController.ts";
 import type { SigilController } from "../../api/controllers/SigilController.ts";
 import { defaultAppInstance } from "../../api/schemas/defaultAppInstance.ts";
-import { currentAreasAtom } from "./atoms/currentAreasAtom.ts";
-import { currentAssignedQuestsAtom } from "./atoms/currentAssignedQuestsAtom.ts";
-import { currentBlightCountAtom } from "./atoms/currentBlightCountAtom.ts";
+import { $pageProject, $pageProjectSettings } from "./$pageProject.ts";
 import { currentEpicAtom } from "./atoms/currentEpicAtom.ts";
-import { currentEpicCountAtom } from "./atoms/currentEpicCountAtom.ts";
-import { currentEpicsAtom } from "./atoms/currentEpicsAtom.ts";
 import { currentEstateAtom } from "./atoms/currentEstateAtom.ts";
-import { currentFeedbackCountAtom } from "./atoms/currentFeedbackCountAtom.ts";
 import { currentFolioAttachmentsAtom } from "./atoms/currentFolioAttachmentsAtom.ts";
 import { currentInstanceAtom } from "./atoms/currentInstanceAtom.ts";
 import { currentInstancesAtom } from "./atoms/currentInstancesAtom.ts";
 import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
-import { currentProjectMemberAtom } from "./atoms/currentProjectMemberAtom.ts";
 import { currentQuestAtom } from "./atoms/currentQuestAtom.ts";
-import { currentQuestCountAtom } from "./atoms/currentQuestCountAtom.ts";
-import { currentReleasesAtom } from "./atoms/currentReleasesAtom.ts";
 import { folioTreeSeedAtom } from "./atoms/folioTreeSeedAtom.ts";
 import { homeBoardAtom } from "./atoms/homeBoardAtom.ts";
 import { projectDashboardAtom } from "./atoms/projectDashboardAtom.ts";
 import { projectDirectoriesAtom } from "./atoms/projectDirectoriesAtom.ts";
-import { projectPromptsAtom } from "./atoms/projectPromptsAtom.ts";
 import { realmSettingsAtom } from "./atoms/realmSettingsAtom.ts";
 import { roadmapNotFoundAtom } from "./atoms/roadmapNotFoundAtom.ts";
 import { userFoliosAtom } from "./atoms/userFoliosAtom.ts";
@@ -60,10 +46,8 @@ import { userProjectsAtom } from "./atoms/userProjectsAtom.ts";
 import { isOAuthReturnTarget } from "./components/auth/oauthReturnTarget.ts";
 import { FEEDBACK_PAGE_SIZE } from "./components/project/feedback/feedbackPageSize.ts";
 import ErrorPage from "./components/shared/ErrorPage.tsx";
-import {
-  capabilityOption,
-  hasCapability,
-} from "./services/projectCapabilities.ts";
+import { ProjectRouter } from "./ProjectRouter.ts";
+import { hasCapability } from "./services/projectCapabilities.ts";
 import { canInProject } from "./services/projectRank.ts";
 
 /**
@@ -100,21 +84,18 @@ export class AppRouter {
   epicApi = $client<EpicController>();
   projectDashboardApi = $client<ProjectDashboardController>();
   areaApi = $client<AreaController>();
-  blightApi = $client<BlightController>();
   // The framework's inbox, not a Lore controller: the read side of the
   // notification channel lives in `alepha/api/notifications`.
-  inboxApi = $client<NotificationInboxController>();
-  releaseApi = $client<ReleaseController>();
   roadmapApi = $client<RoadmapController>();
   sigilApi = $client<SigilController>();
   appApi = $client<AppController>();
-  promptApi = $client<ProjectPromptController>();
   estateApi = $client<EstateController>();
   folioApi = $client<FolioController>();
   directoryApi = $client<DirectoryController>();
   router = $inject(ReactRouter);
   auth = $inject(ReactAuth);
   account = $inject(AccountRouter);
+  projectRouter = $inject(ProjectRouter);
   realmApi = $client<RealmController>();
   homeApi = $client<HomeController>();
   dateTime = $inject(DateTimeProvider);
@@ -199,7 +180,7 @@ export class AppRouter {
       this.oauthContinue,
       this.register,
       this.resetPassword,
-      this.project,
+      this.projectRouter.project,
       this.projectCreate,
       this.projectFeedbackRequest,
       this.projectRoadmap,
@@ -563,303 +544,356 @@ export class AppRouter {
     lazy: () => import("./components/bay/BaySettings.tsx"),
   });
 
-  project = $page({
-    children: () => [
-      this.projectDashboard,
-      this.projectActivity,
-      this.projectQuests,
-      this.projectKanban,
-      this.projectQuest,
-      this.projectQuestGraph,
-      this.projectEpics,
-      this.projectEpic,
-      this.projectArtifacts,
-      this.projectReleases,
-      this.projectRelease,
-      this.projectSettings,
-      this.projectReports,
-      this.projectFolios,
-      this.projectFeedback,
-      this.projectBlights,
-      this.projectInbox,
-      this.projectApps,
-      this.projectApp,
-      this.projectAppRedirect,
-    ],
-    /**
-     * A **root-level** param: `/sds/quests/19`, not `/p/2/q/19`.
-     *
-     * The router walks static children before the param child and backtracks on
-     * failure (`RouterProvider.search`), so `/auth/login`, `/new-project` and
-     * `/oauth/continue` still win over this. `test/app-routes.spec.ts` asserts
-     * every static root segment is also reserved in `ProjectSlugService`, so a
-     * project can never claim one.
-     *
-     * ⚠️ The param is `projectSlug` here and in `projectFeedbackRequest`, which
-     * shares this tree position. `RouterProvider.push` keeps ONE param name per
-     * position — two routes naming it differently collapse onto one, the outer
-     * wins, and the inner value arrives missing. Same trap documented on
-     * `projectApp`'s `:app` and `:env`.
-     */
-    path: "/:projectSlug",
-    // Every project surface is member-gated server-side, so nothing under here
-    // is reachable anonymously. The guard turns an anonymous visitor away at the
-    // router (instead of letting the loader 401 and the errorHandler catch it),
-    // and puts the whole subtree in CSR — no HTML render a crawler will ever see.
-    //
-    // Consequence of the root-level param: an anonymous visitor who mistypes ANY
-    // path now lands on the login page rather than a 404, because `/tpyo` matches
-    // here. Unavoidable without a database round-trip ahead of the guard. A
-    // signed-in visitor still gets a real 404 — see `errorHandler` below.
-    use: [$secure()],
+  /**
+   * The project's board, and the page you land on when you open a project.
+   *
+   * ⚠️ **It renders here; it does not redirect here**, and nothing may
+   * redirect to it. `AppRouter` has said so twice and both prohibitions were
+   * paid for: a loader redirect on the project root is the shape #156 was
+   * about, where a page could not tell "nobody has chosen yet" from "we are
+   * leaving" and every sidebar link went dead, and a per-project "which page
+   * do I open on" setting is the one feedback #2066 rejected. The board owns
+   * `/` by BEING the page at `/`.
+   *
+   * ⚠️ **No capability gate and no permission gate**, unlike `projectQuests`
+   * one route over, which 404s on both. Every project lands here whatever it
+   * has turned on - a Knowledge-only one included, which lands on the empty
+   * state - and a gate on the project root would lock people out of their own
+   * project.
+   *
+   * The loader fills the card list so the grid lays out with the right tiles
+   * before a single number exists; the page resolves them once on mount. It
+   * catches to an empty board rather than failing the route: a board that
+   * could not be read costs a board, and this is the page the project opens
+   * on.
+   */
+  projectDashboard = $pageProject({
+    path: "/",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Dashboard`,
+    }),
+    lazy: () => import("./components/project/dashboard/ProjectDashboard.tsx"),
+    loader: async () => {
+      const project = this.alepha.store.get(currentProjectAtom);
+      if (!project) {
+        throw new NotFoundError("Project not found");
+      }
+      const listed = await this.projectDashboardApi
+        .listProjectDashboardCards({ params: { projectId: project.id } })
+        .catch(() => undefined);
+      this.alepha.store.set(projectDashboardAtom, {
+        projectId: project.id,
+        cards: listed?.cards ?? [],
+      });
+    },
+  });
+
+  /**
+   * What moved in this project: every recorded write, newest first.
+   *
+   * ⚠️ **Moved off `/` when the dashboard took the project root**, exactly as
+   * Quests moved off it when Activity took it. It sits at `/activity`, a
+   * SIBLING of every other project surface, and every caller reaches it by
+   * NAME - so the path change touched no call site and a bare
+   * `/:projectSlug` bookmark now lands on the board.
+   *
+   * What it used to argue here, and which is still true of Activity itself:
+   * it is the one surface that says something whatever a project has turned
+   * on, which is why it is Core and carries no capability gate. That is no
+   * longer a reason for it to own the root, because the board is true of
+   * every project too and answers a question rather than listing events.
+   *
+   * No loader. `ProjectActivityPage` fetches its own window and re-fetches
+   * on demand, because the window is a control on the page rather than a
+   * property of the URL.
+   */
+  projectActivity = $pageProject({
+    path: "/activity",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Activity`,
+    }),
+    lazy: () => import("./components/project/activity/ProjectActivityPage.tsx"),
+  });
+
+  /**
+   * The quest list.
+   *
+   * ⚠️ **Moved off `/` when Activity took the project root.** It sits at
+   * `/quests`, which also makes it consistent with `projectQuest` at
+   * `/quests/:shortId` - a SIBLING, not a child, so no quest deep link
+   * moved with it. Every caller reaches this page by NAME
+   * (`router.path("projectQuests", …)`), so the path change touched no
+   * call site; a bare `/:projectSlug` bookmark now lands on Activity.
+   */
+  projectQuests = $pageProject({
+    path: "/quests",
     schema: {
-      params: z.object({
-        projectSlug: z.string(),
+      /**
+       * The quests table's filters, seeded from the URL on arrival — the
+       * drill-through target for a dashboard card, and for any link that
+       * wants to open one slice of the backlog. `?status=todo&tag=need-answer`
+       * opens the list already narrowed, and the toolbar's Share item is what
+       * produces such a link.
+       *
+       * Multi-value filters are comma-joined (`?status=todo,in_progress`), the
+       * same spelling `getQuests` takes on the wire, because
+       * `parseQueryString` returns one value per key and a repeated param
+       * keeps only the last.
+       *
+       * ⚠️ **One-directional, and it has to stay that way.** The URL seeds
+       * the filter on entry; the filter NEVER writes back. `?view=kanban`
+       * was removed for exactly this (#156): an effect that restored a
+       * missing param keyed on `useRouterState`, which is a global store, so
+       * the outgoing render on the way *out* of the page saw the next
+       * route's empty query and bounced the user straight back. Every
+       * sidebar link was dead. A page cannot tell "nobody has chosen yet"
+       * from "we are leaving" while the state lives in the URL — so nothing
+       * here may reintroduce a write-back.
+       *
+       * ⚠️ Typed as free text, not the status enum, and not as arrays. A
+       * schema that rejects an unknown value turns a stale bookmark into an
+       * error page; DataTable decodes each param against the table's own
+       * filter schema and drops what it refuses, so a bad value degrades to
+       * the unfiltered list.
+       */
+      query: z.object({
+        status: z.text().optional(),
+        search: z.text().optional(),
+        area: z.text().optional(),
+        tag: z.text().optional(),
+        release: z.text().optional(),
       }),
     },
-    head: (props) => {
-      const project = (props as { project?: { title?: string } } | undefined)
-        ?.project;
-      return { title: project?.title ?? "Project" };
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Quests`,
+    }),
+    lazy: () => import("./components/project/ProjectQuestsPage.tsx"),
+    // ⚠️ The loader GATES and fetches nothing. It used to redirect to
+    // `/kanban` when the project's `defaultSurface` said so; the setting is
+    // gone (feedback #2066), and the prohibition is unchanged: a bare
+    // `/:projectSlug` lands on `projectDashboard` and nothing may send a
+    // project URL anywhere, because a redirect there is the shape #156 was
+    // about. What it does now is the capability check every capability's
+    // landing route carries - see `projectFolios` for the rule.
+    loader: async () => {
+      const project = this.alepha.store.get(currentProjectAtom);
+      if (!project) {
+        throw new NotFoundError("Project not found");
+      }
+      if (!hasCapability(project, "work")) {
+        throw new NotFoundError("Work is not enabled for this project");
+      }
+      // ⚠️ A permission NAME, and a module-level function rather than
+      // `useRank()`: a `$page` loader runs outside React and cannot call a
+      // hook, and the loader and the component must not disagree about which
+      // pages exist. Same arrangement as `hasCapability` beside it.
+      //
+      // 404 rather than 403, matching the capability guard above it: a page
+      // the reader may not open is a page that does not exist for them, and a
+      // 403 would confirm what is behind it.
+      if (!canInProject(project, "quest:read")) {
+        throw new NotFoundError("Your rank does not open quests here");
+      }
+    },
+  });
+
+  /**
+   * The Kanban board as a destination rather than a mode.
+   *
+   * ⚠️ Sibling of `projectQuests`, which sits at `/quests` - it has not held
+   * `path: "/"` since Activity took the project root, and the root is the
+   * dashboard's now. Giving the board a real route is what lets it have a
+   * sidebar entry, a linkable URL and addressable cards.
+   */
+  projectKanban = $pageProject({
+    name: "projectKanban",
+    children: () => [this.projectKanbanCard],
+    path: "/kanban",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Kanban`,
+    }),
+    // No loader: `ProjectKanbanPage` fetches the board itself, because the
+    // board reloads in place when the header creates a quest and the loader
+    // machinery does not re-run for that.
+    lazy: () => import("./components/project/ProjectKanbanPage.tsx"),
+  });
+
+  projectQuest = $pageProject({
+    path: "/quests/:shortId",
+    schema: {
+      params: z.object({
+        shortId: z.integer(),
+      }),
+    },
+    head: (props, previous) => {
+      const questTitle = (props as { quest?: { title?: string } } | undefined)
+        ?.quest?.title;
+      return {
+        title: `${previous?.title ?? ""} › ${questTitle ?? "Quest"}`,
+      };
     },
     animation: ({ meta }) => {
-      if (meta.firstOpen) {
+      if (meta.transition) {
+        return meta.transition;
+      }
+
+      if (meta.completed) {
         return {
-          enter: {
-            name: "projectOpen",
-            duration: 500,
-            timing: "cubic-bezier(0.16, 1, 0.3, 1)",
+          exit: {
+            name: "zoomOutUp",
+            duration: 800,
+          },
+        };
+      }
+
+      if (meta.deleted) {
+        return {
+          exit: {
+            name: "zoomOut",
+            duration: 400,
           },
         };
       }
     },
-    lazy: () => import("./components/project/ProjectView.tsx"),
+    lazy: () => import("./components/project/quest/QuestView.tsx"),
     loader: async ({ params }) => {
-      // The one slug→id resolution in the app. Every fetch below — and every
-      // endpoint any page under this layout calls — still takes the integer
-      // id, read off `currentProjectAtom`. That is what keeps slug routing out
-      // of the rest of the API surface.
-      const { member, quests, ...project } =
-        await this.projectApi.getProjectBySlug({
-          params: {
-            slug: params.projectSlug,
-          },
-        });
-
-      // Everything below needs only `project.id`, so it is issued together
-      // rather than awaited in turn. That is not just parallelism: the
-      // browser's `BatchCollector` coalesces action calls raised within a
-      // 10ms window into ONE `POST /api/_batch`, and sequential awaits can
-      // never share a window because each blocks on a full round trip. As a
-      // chain these were six requests deep on every project navigation; as
-      // one `Promise.all` they are a single batched request, which is also
-      // why adding the epic count below costs nothing.
-      //
-      // Rejection behaviour is unchanged: `getReleases` still has no
-      // `.catch`, so a failure there rejects the loader exactly as it did
-      // when it was awaited first.
-      const [
-        releases,
-        pendingFeedback,
-        openQuests,
-        epicRefs,
-        instances,
-        openBlights,
-        areas,
-        unreadEverywhere,
-        prompts,
-      ] = await Promise.all([
-        this.releaseApi.getReleases({
-          params: { projectId: project.id },
-        }),
-
-        // Pending-feedback count for the sidebar badge. Fetched once per
-        // project navigation instead of polled: accept/reject/remove
-        // actions adjust the atom locally, so within-session math stays
-        // correct. Errors count as 0 (the badge hides).
-        //
-        // `countFeedback`, not `listFeedback().items.length`: the list pages
-        // at ten now, so counting it would cap the badge at 10 over an inbox
-        // of 106 (#1744).
-        this.feedbackApi
-          .countFeedback({
-            params: { projectId: project.id },
-            query: { status: "pending" },
-          })
-          .then((r) => r.count)
-          .catch(() => 0),
-
-        // Open-quest count for the sidebar badge. Always on (unlike Blights /
-        // Feedback, Quests has no feature gate) and member-readable; `.catch`
-        // keeps a transient error from blocking the whole project load
-        // (badge just hides).
-        this.questApi
-          .countOpenQuests({ params: { projectId: project.id } })
-          .then((r) => r.count)
-          .catch(() => 0),
-
-        // Every epic as a ref, which serves two readers at once: the sidebar's
-        // draft-epic badge, counted locally below, and the quests table's
-        // Epic column, which resolves `quests.epicId` against it exactly as
-        // the Release column resolves `releaseId` against `currentReleasesAtom`.
-        //
-        // It replaced a `countPlannedEpics` call rather than joining it, so
-        // this stays one request. `getEpicRefs` and not `getEpics`: the full
-        // resource carries `description`, which is 213 KB of the 222 KB this
-        // project's own epic list weighs, and no reader here wants a word of it.
-        //
-        // Gated on the same `work.epics` option that decides whether the
-        // Epics entry renders at all, so a project with epics off pays nothing.
-        //
-        // The badge is the counterweight to the quest count above: that one
-        // runs the backlog gate, so quests parked inside a draft epic are
-        // excluded from it on purpose. Without this number the sidebar
-        // reported none of that work.
-        //
-        // `undefined` on failure and NOT `[]`, like `currentInstancesAtom`: the
-        // badge must read "could not count" rather than "no drafts".
-        capabilityOption(project, "work", "epics")
-          ? this.epicApi
-              .getEpicRefs({ params: { projectId: project.id } })
-              .catch(() => undefined)
-          : Promise.resolve([]),
-
-        // The project's app instances. Member-readable (`listApps` is gated
-        // on `project:read`, unlike every mutation, which is owner-only)
-        // but `.catch` keeps a transient failure from taking the whole
-        // project down with it: a degraded section costs a section, an
-        // unhandled rejection costs the page.
-        //
-        // `undefined` on failure, NOT `[]`: the sidebar entry, Spotlight and
-        // the Blights derivation below all need to tell "no apps" apart from
-        // "could not read the apps": see `currentInstancesAtom`.
-        hasCapability(project, "apps")
-          ? this.appApi
-              .listApps({ params: { projectId: project.id } })
-              .then((r) => r.items)
-              .catch(() => undefined)
-          : Promise.resolve([]),
-
-        // Open-blight count for the sidebar badge. Member-readable; `.catch`
-        // keeps a transient error from blocking the whole project load
-        // (badge just hides).
-        //
-        // Counted under the module's master switch alone, deliberately *not*
-        // narrowed to "some enrolled app still carries the `blights` kind". A
-        // blight outlives the credential that filed it: `blights.sigilId` is
-        // `ON DELETE SET NULL` and rows survive for `retentionDays`, so an
-        // owner who deletes their last app, or just switches Blights off on it,
-        // still has an inbox full of open crashes. Deriving the count from the
-        // apps would zero it in the same instant the sidebar entry vanished,
-        // and `ProjectView` reads this count to keep that entry reachable.
-        hasCapability(project, "apps")
-          ? this.blightApi
-              .countOpenBlights({ params: { projectId: project.id } })
-              .then((r) => r.count)
-              .catch(() => 0)
-          : Promise.resolve(0),
-
-        // The one list every area picker reads. Member-readable, and
-        // `.catch` keeps a transient failure from taking the page down:
-        // an empty picker costs a picker, an unhandled rejection costs the
-        // project.
-        this.areaApi
-          .getAreas({ params: { projectId: project.id } })
-          .catch(() => undefined),
-
-        // ⚠️ ONE inbox count, and it is deliberately the cross-project one.
-        // Alepha and Odzala are open in the same session and a ping in one
-        // must not be invisible from the other, so this passes NO scope. It
-        // seeds `inboxUnreadAtom` before the first paint, which is what the
-        // bell's own mount-fetch then does not have to do.
-        //
-        // A second, `scope: project:<id>` call sat here for the rail's own
-        // badge until the rail entry was removed (feedback #P2127). It was
-        // one request per project navigation for a number nothing reads.
-        //
-        // A `count` action, never `list().items.length`: that is the bug
-        // #1744 was, where a paged list capped the Feedback badge at 10 over
-        // an inbox of 106.
-        this.inboxApi
-          .countInbox({ query: {} })
-          .then((r) => r.unread)
-          .catch(() => 0),
-
-        // The agent prompt templates this project has customised, read here
-        // so the copy can happen inside a click: Safari's transient
-        // activation does not survive an `await` before `writeText`.
-        //
-        // Gated on the option, which is off by default, so a project that
-        // does not use the feature pays no request.
-        //
-        // ⚠️ `{}` on failure and NOT `undefined`, unlike every neighbour
-        // above. They distinguish "could not read" from "none" because a
-        // badge must not say zero when it means unknown; here there is
-        // nothing to distinguish. The built-in defaults are a complete
-        // answer, so a failed read is indistinguishable from a project that
-        // has customised nothing, and the menus keep working either way.
-        capabilityOption(project, "work", "agentPrompts")
-          ? this.promptApi
-              .getProjectPrompts({ params: { projectId: project.id } })
-              .then((rows) =>
-                Object.fromEntries(
-                  rows.map((it) => [it.kind, it.template] as const),
-                ),
-              )
-              .catch(() => ({}))
-          : Promise.resolve({}),
-      ]);
-
-      this.alepha.store.set(currentProjectAtom, project);
-      this.alepha.store.set(currentProjectMemberAtom, member);
-      this.alepha.store.set(currentAssignedQuestsAtom, quests);
-      this.alepha.store.set(currentReleasesAtom, releases);
-      this.alepha.store.set(currentFeedbackCountAtom, {
-        count: pendingFeedback,
+      const project = this.alepha.store.get(currentProjectAtom);
+      if (!project) {
+        throw new NotFoundError("Project not found");
+      }
+      const quest = await this.questApi.getQuestByShortId({
+        params: {
+          projectId: project.id,
+          shortId: params.shortId,
+        },
       });
-      this.alepha.store.set(currentBlightCountAtom, { count: openBlights });
-      this.alepha.store.set(currentQuestCountAtom, { count: openQuests });
-      this.alepha.store.set(currentEpicsAtom, epicRefs);
-      // Counted here rather than server-side, the same way `ProjectEpics`
-      // counts it off the list it already holds. `undefined` means the read
-      // failed, and 0 is the honest answer for a badge that can only hide.
-      this.alepha.store.set(currentEpicCountAtom, {
-        count: (epicRefs ?? []).filter((epic) => epic.status === "draft")
-          .length,
-      });
-      this.alepha.store.set(currentInstancesAtom, instances);
-      this.alepha.store.set(currentAreasAtom, areas);
-      this.alepha.store.set(inboxUnreadAtom, { count: unreadEverywhere });
-      this.alepha.store.set(projectPromptsAtom, prompts);
-
-      return {
-        project,
-      };
+      this.alepha.store.set(currentQuestAtom, quest);
+      return { quest };
     },
     onLeave: () => {
-      this.alepha.store.set(currentProjectMemberAtom, undefined);
-      this.alepha.store.set(currentProjectAtom, undefined);
-      this.alepha.store.set(currentAssignedQuestsAtom, []);
-      this.alepha.store.set(currentReleasesAtom, undefined);
-      this.alepha.store.set(currentFeedbackCountAtom, { count: 0 });
-      this.alepha.store.set(currentBlightCountAtom, { count: 0 });
-      this.alepha.store.set(currentQuestCountAtom, { count: 0 });
-      this.alepha.store.set(currentEpicCountAtom, { count: 0 });
-      this.alepha.store.set(currentEpicsAtom, undefined);
-      this.alepha.store.set(currentInstancesAtom, undefined);
-      this.alepha.store.set(currentAreasAtom, undefined);
-      // ⚠️ `inboxUnreadAtom` is NOT cleared here, and never was: it counts
-      // every project, so zeroing it on leaving one would erase a number
-      // that is still true. The project-scoped atom that was cleared here
-      // went with the rail's badge (feedback #P2127).
-      this.alepha.store.set(projectPromptsAtom, undefined);
+      this.alepha.store.set(currentQuestAtom, undefined);
     },
     errorHandler: (error) => {
-      // `/:projectSlug` matches any unclaimed root path, so a typo reaches this
-      // route rather than `notFound`. Without this, a signed-in user who
-      // mistypes a URL gets the layout's generic ErrorPage in production
-      // instead of a 404. (An anonymous one is bounced to login by `$secure()`
-      // before the loader runs at all — see the note on `use` above.)
+      if (HttpError.is(error, 404)) {
+        return createElement(NotFound, { style: { height: "100%" } });
+      }
+    },
+  });
+
+  // Quest dependency graph page (Lore #98). Focused quest's connected
+  // `dependsOn` component, laid out client-side, loaded once on mount.
+  /**
+   * One quest's questline: the `dependsOn` component it sits in, drawn with
+   * the same `Questline` map the epic's Flow tab uses.
+   *
+   * ⚠️ **A quest inside an epic never renders here.** Its questline is the
+   * epic's, and the epic's Flow tab already draws it beside that epic's own
+   * chrome, so the loader redirects there rather than showing a second,
+   * lonelier copy of the same map. The route survives for the quests that
+   * belong to no epic, which are the ones with nowhere else to be drawn.
+   *
+   * The redirect is decided by `getQuestline`, in the same call that fetches
+   * the component - the fork cannot be decided client-side, and answering it
+   * in a second round trip would mean a page that renders and then navigates
+   * away.
+   *
+   * The path keeps `/graph`. It is a link people already hold, and the page
+   * behind it still answers the question that name asks.
+   */
+  projectQuestGraph = $pageProject({
+    name: "projectQuestGraph",
+    path: "/quests/:shortId/graph",
+    schema: {
+      params: z.object({
+        shortId: z.integer(),
+      }),
+    },
+    head: (props, previous) => {
+      const quest = (props as { quest?: { title?: string } } | undefined)
+        ?.quest;
+      return {
+        title: `${previous?.title ?? ""} › ${quest?.title ?? "Quest"} › Questline`,
+      };
+    },
+    lazy: () => import("./components/project/quest/QuestQuestline.tsx"),
+    loader: async ({ params }) => {
+      const project = this.alepha.store.get(currentProjectAtom);
+      if (!project) {
+        throw new NotFoundError("Project not found");
+      }
+      const { epic, quests } = await this.questApi.getQuestline({
+        params: {
+          projectId: project.id,
+          shortId: params.shortId,
+        },
+      });
+
+      if (epic) {
+        // `?tab=flow` is what `useDetailTab` reads on the epic page, so this
+        // lands on the Flow tab rather than the epic's default one.
+        throw new Redirection(`/${project.slug}/epics/${epic.number}?tab=flow`);
+      }
+
+      // The focus quest is in the component by construction - it is the
+      // quest the walk started from - so the head needs no second fetch.
+      const quest = quests.find((q) => q.shortId === params.shortId);
+      return { quest, quests };
+    },
+    errorHandler: (error) => {
+      if (HttpError.is(error, 404)) {
+        return createElement(NotFound, { style: { height: "100%" } });
+      }
+    },
+  });
+
+  projectEpics = $pageProject({
+    name: "projectEpics",
+    path: "/epics",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Epics`,
+    }),
+    // No loader: `ProjectEpics` is a DataTable, which owns its own
+    // fetch (filters, sort and page are its state, not the route's). A
+    // loader here would fetch the list a second time and then have it
+    // discarded on mount. Same arrangement as `projectBlights`.
+    lazy: () => import("./components/project/epics/ProjectEpics.tsx"),
+  });
+
+  projectEpic = $pageProject({
+    name: "projectEpic",
+    // `epicNumber`, NOT `number`: route params must be unique across the
+    // whole route table, or two routes with different param names at the
+    // same path position silently lose the inner value.
+    path: "/epics/:epicNumber",
+    schema: {
+      params: z.object({
+        epicNumber: z.integer(),
+      }),
+    },
+    head: (props, previous) => {
+      const epic = (props as { epic?: { title?: string } } | undefined)?.epic;
+      return {
+        title: `${previous?.title ?? ""} › ${epic?.title ?? "Epic"}`,
+      };
+    },
+    lazy: () => import("./components/project/epics/ProjectEpic.tsx"),
+    loader: async ({ params }) => {
+      const project = this.alepha.store.get(currentProjectAtom);
+      if (!project) {
+        throw new NotFoundError("Project not found");
+      }
+      const epic = await this.epicApi.getEpicByNumber({
+        params: { projectId: project.id, number: params.epicNumber },
+      });
+      // The breadcrumb leaf lives in `ProjectView`, the layout above this
+      // route, which can only see `epicNumber`. See `currentEpicAtom`.
+      this.alepha.store.set(currentEpicAtom, epic);
+      return { epic };
+    },
+    onLeave: () => {
+      this.alepha.store.set(currentEpicAtom, undefined);
+    },
+    errorHandler: (error) => {
       if (HttpError.is(error, 404)) {
         return createElement(NotFound, { style: { height: "100%" } });
       }
@@ -867,43 +901,195 @@ export class AppRouter {
   });
 
   /**
-   * Every message addressed to the viewer, from every project.
+   * Every build this project has, across every app (feedback #2111).
    *
-   * ⚠️ **One route, not two.** A `/account/inbox` would be a second page for
-   * the same list differing only in a default filter. The filter is a query
-   * param instead, so both entry points reach the same page with the default
-   * each of them wants: the sidebar lands on this project, and the header
-   * bell's "See all" says `?scope=all`, because that dropdown is
-   * cross-project and a footer showing fewer rows than the menu it came from
-   * reads as messages going missing.
-   *
-   * No capability gate. The events that fill it span `work` and `support`,
-   * so gating on either would leave a project generating messages with no
-   * door to them - the same argument that puts the sidebar entry in
-   * `CORE_NAV`.
-   *
-   * No loader: the page hands the controller to its own list, the way
-   * `projectBlights` does, and the parent loader already seeded both counts.
+   * No loader: `listArtifacts` is one indexed read and it is paid for by the
+   * page that shows it, the same arrangement `AppArtifactsList` documents.
+   * Putting it in the project loader would charge every reader for a page
+   * most of them are not opening.
    */
-  projectInbox = $page({
-    name: "projectInbox",
-    path: "/inbox",
+  projectArtifacts = $pageProject({
+    path: "/artifacts",
     head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Notifications`,
+      title: `${previous?.title ?? ""} › Artifacts`,
     }),
-    // ⚠️ Declared, so the loader's `query` is not empty. A param the schema
-    // does not name reads `undefined` in a loader while `useRouter().query`
-    // three lines away in the component still has it, which is the trap the
-    // invitation link cost an hour to.
-    schema: {
-      query: z.object({
-        scope: z.string().optional(),
-      }),
-    },
-    lazy: () => import("./components/project/inbox/ProjectInbox.tsx"),
+    lazy: () => import("./components/project/artifacts/ProjectArtifacts.tsx"),
   });
 
-  projectBlights = $page({
+  projectReleases = $pageProject({
+    path: "/releases",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Releases`,
+    }),
+    lazy: () => import("./components/project/releases/ProjectReleases.tsx"),
+  });
+
+  projectRelease = $pageProject({
+    name: "projectRelease",
+    // `releaseTag`, NOT `tag` and NOT `number`: route params must be unique
+    // across the whole route table, or two routes with different param names
+    // at the same path position silently lose the inner value. Same trap
+    // `projectEpic`'s `epicNumber` documents.
+    //
+    // Addressed by the TAG rather than the number because
+    // `/alepha/releases/0.28.0` is what the URL is for, and the tag is
+    // already unique per project. `releaseTagSchema` makes it URL-safe by
+    // construction; `number` stays the stable internal reference and the
+    // sort key, it is simply not what addresses the page.
+    path: "/releases/:releaseTag",
+    schema: {
+      params: z.object({
+        releaseTag: z.string(),
+      }),
+    },
+    head: (_props, previous) => ({
+      // The tag is not in `props`: with no loader there is nothing to hand
+      // the component, and `head` is fed the loader's result too. The page
+      // reads the param from the router state instead.
+      title: `${previous?.title ?? ""} › Release`,
+    }),
+    // No loader: the project route already holds every release with its
+    // rollup in `currentReleasesAtom`, so the page resolves the tag from
+    // there. A loader would fetch what is already in the store.
+    lazy: () => import("./components/project/releases/ProjectRelease.tsx"),
+  });
+
+  projectReports = $pageProject({
+    path: "/reports",
+    children: () => [
+      this.reportsOverview,
+      this.reportsQuests,
+      this.reportsMembers,
+      this.reportsQuality,
+    ],
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Reports`,
+    }),
+    lazy: () => import("./components/project/reports/ReportsLayout.tsx"),
+    /**
+     * Whether any quality run exists, which is what decides the Quality tab
+     * now that the flag is gone.
+     *
+     * ⚠️ Read HERE and not on the `project` loader. That one already runs
+     * three parallel reads on every project navigation, and most projects
+     * will never push a run - so this is paid when Reports opens, by the one
+     * page that needs the answer.
+     *
+     * `.catch(() => false)`: a failed read hides a tab, never the page. The
+     * route itself is not gated either way, so a link someone already holds
+     * keeps resolving.
+     */
+    loader: async () => ({
+      hasQualityRun: await this.qualityApi
+        .getQualityRuns({
+          params: {
+            projectId: this.alepha.store.get(currentProjectAtom)?.id ?? -1,
+          },
+        })
+        .then((it) => it.runs.length > 0)
+        .catch(() => false),
+    }),
+  });
+
+  // -------------------------------------------------------------------------------------------------------------------
+  // Folios — project-scoped markdown notes ("folios")
+  // -------------------------------------------------------------------------------------------------------------------
+
+  // Quest #66 originally split this from the entity-level "folios" naming
+  // by giving it its own URL path (/archive), when the directory tree +
+  // blobs were a distinct "Archive" module. The 2026-08 great rename
+  // (Task 5) folded that module back into Folios — entities, MCP tools,
+  // and now the URL path are all "folio(s)"-named again. Internal route
+  // name stays `projectFolios`, unchanged since before quest #66.
+  projectFolios = $pageProject({
+    name: "projectFolios",
+    children: () => [this.projectFoliosNew, this.projectFoliosFolio],
+    path: "/folios",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Folios`,
+    }),
+    lazy: () => import("./components/folios/FoliosLayout.tsx"),
+    loader: async () => {
+      const project = this.alepha.store.get(currentProjectAtom);
+      const projectId = project?.id;
+      if (projectId === undefined) {
+        throw new NotFoundError("Project not found");
+      }
+      if (!hasCapability(project, "knowledge")) {
+        throw new NotFoundError("Knowledge is not enabled for this project");
+      }
+      // ⚠️ A permission NAME, and a module-level function rather than
+      // `useRank()`: a `$page` loader runs outside React and cannot call a
+      // hook, and the loader and the component must not disagree about which
+      // pages exist. Same arrangement as `hasCapability` beside it.
+      //
+      // 404 rather than 403, matching the capability guard above it: a page
+      // the reader may not open is a page that does not exist for them, and a
+      // 403 would confirm what is behind it.
+      if (!canInProject(project, "folio:read")) {
+        throw new NotFoundError("Your rank does not open folios here");
+      }
+      // The tree's own two lists, which `seedFolioTree` owns — the folio
+      // list AND the directory list, the latter load-bearing: the tree's
+      // fallback
+      // `useQuery` is gated on `enabled: !seeded`, where "seeded" is
+      // satisfied by `userFoliosAtom` ALONE. Any project with at least one
+      // folio therefore looked seeded the moment the folio list resolved,
+      // the fallback never ran, and a hard load of `/folios` rendered a
+      // tree with no directories in it — every nested folio flat at the
+      // root.
+      //
+      // The directory-contents fetch and the `?dir=` resolution that used
+      // to sit here went with `FolioBrowser` — they existed to fill its
+      // table and its breadcrumb. A folio page sets its own breadcrumb
+      // from the folio's `metadata.path`, so nothing downstream reads
+      // them any more.
+      await this.seedFolioTree(projectId);
+    },
+    onLeave: () => {
+      this.alepha.store.set(currentFolioAttachmentsAtom, []);
+    },
+  });
+
+  projectFeedback = $pageProject({
+    name: "projectFeedback",
+    path: "/feedback",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Feedback`,
+    }),
+    lazy: () => import("./components/project/feedback/ProjectFeedback.tsx"),
+    loader: async () => {
+      const project = this.alepha.store.get(currentProjectAtom);
+      if (!project) {
+        throw new NotFoundError("Project not found");
+      }
+      if (!hasCapability(project, "support")) {
+        throw new NotFoundError("Support is not enabled for this project");
+      }
+      // ⚠️ A permission NAME, and a module-level function rather than
+      // `useRank()`: a `$page` loader runs outside React and cannot call a
+      // hook, and the loader and the component must not disagree about which
+      // pages exist. Same arrangement as `hasCapability` beside it.
+      //
+      // 404 rather than 403, matching the capability guard above it: a page
+      // the reader may not open is a page that does not exist for them, and a
+      // 403 would confirm what is behind it.
+      if (!canInProject(project, "feedback:read")) {
+        throw new NotFoundError(
+          "Your rank does not open the feedback inbox here",
+        );
+      }
+      // The first page only. `Show more` fetches the rest from inside the
+      // page, so the loader is one screenful regardless of inbox size.
+      const { items, hasMore } = await this.feedbackApi.listFeedback({
+        params: { projectId: project.id },
+        query: { status: "pending", limit: FEEDBACK_PAGE_SIZE },
+      });
+      return { items, hasMore };
+    },
+  });
+
+  projectBlights = $pageProject({
     name: "projectBlights",
     path: "/blights",
     head: (_props, previous) => ({
@@ -941,13 +1127,50 @@ export class AppRouter {
   });
 
   /**
+   * Every message addressed to the viewer, from every project.
+   *
+   * ⚠️ **One route, not two.** A `/account/inbox` would be a second page for
+   * the same list differing only in a default filter. The filter is a query
+   * param instead, so both entry points reach the same page with the default
+   * each of them wants: the sidebar lands on this project, and the header
+   * bell's "See all" says `?scope=all`, because that dropdown is
+   * cross-project and a footer showing fewer rows than the menu it came from
+   * reads as messages going missing.
+   *
+   * No capability gate. The events that fill it span `work` and `support`,
+   * so gating on either would leave a project generating messages with no
+   * door to them - the same argument that puts the sidebar entry in
+   * `CORE_NAV`.
+   *
+   * No loader: the page hands the controller to its own list, the way
+   * `projectBlights` does, and the parent loader already seeded both counts.
+   */
+  projectInbox = $pageProject({
+    name: "projectInbox",
+    path: "/inbox",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Notifications`,
+    }),
+    // ⚠️ Declared, so the loader's `query` is not empty. A param the schema
+    // does not name reads `undefined` in a loader while `useRouter().query`
+    // three lines away in the component still has it, which is the trap the
+    // invitation link cost an hour to.
+    schema: {
+      query: z.object({
+        scope: z.string().optional(),
+      }),
+    },
+    lazy: () => import("./components/project/inbox/ProjectInbox.tsx"),
+  });
+
+  /**
    * Every deployed copy of every app, in one flat table.
    *
    * Gated on the Apps capability the same way `projectApp` is, and for the
    * same reason: the capability is the whole gate, so reaching this by URL
    * without it is a 404 rather than a 403.
    */
-  projectApps = $page({
+  projectApps = $pageProject({
     name: "projectApps",
     path: "/apps",
     head: (_props, previous) => ({
@@ -984,7 +1207,7 @@ export class AppRouter {
    * the same thing collapse onto one, the outer one wins, and the inner param
    * arrives missing.
    */
-  projectApp = $page({
+  projectApp = $pageProject({
     name: "projectApp",
     path: "/apps/:app/:env",
     children: () => [
@@ -1084,7 +1307,7 @@ export class AppRouter {
    * `/apps/docs-production` becomes `/apps/docs-production/production` after
    * the backfill: one hop, invisible.
    */
-  projectAppRedirect = $page({
+  projectAppRedirect = $pageProject({
     name: "projectAppRedirect",
     path: "/apps/:app",
     schema: {
@@ -1124,6 +1347,205 @@ export class AppRouter {
         return createElement(NotFound, { style: { height: "100%" } });
       }
     },
+  });
+
+  projectSettingsBanner = $pageProjectSettings({
+    name: "projectSettingsBanner",
+    path: "/",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › General`,
+    }),
+    lazy: () =>
+      import("./components/project/settings/ProjectSettingsGeneralPage.tsx"),
+  });
+
+  /**
+   * General > Capabilities: every master switch, and the options that add a
+   * sidebar entry (#Q2565). The only page that turns a capability back on,
+   * since an off capability's own settings section leaves the sidebar.
+   */
+  projectSettingsCapabilities = $pageProjectSettings({
+    name: "projectSettingsCapabilities",
+    path: "/capabilities",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Capabilities`,
+    }),
+    lazy: () =>
+      import("./components/project/settings/ProjectSettingsCapabilitiesPage.tsx"),
+  });
+
+  projectSettingsMembers = $pageProjectSettings({
+    name: "projectSettingsMembers",
+    path: "/members",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Members`,
+    }),
+    lazy: () =>
+      import("./components/project/settings/ProjectSettingsMembersPage.tsx"),
+  });
+
+  /**
+   * What each rank in this project may do (epic #E39).
+   *
+   * No loader: the page fetches four things that belong to it alone - the
+   * permission catalogue, the ranks, the members holding them and the presets
+   * - and none of them is read anywhere else, so putting them in the layout's
+   * loader would make every other settings page pay for this one.
+   *
+   * ⚠️ Unguarded, like every other settings route. Who may EDIT ranks is
+   * `rank:manage`, which hides the nav entry and which the module re-checks on
+   * every write; a route guard would only turn a link somebody already holds
+   * into a 404, and the page reads nothing a member may not read.
+   */
+  projectSettingsRanks = $pageProjectSettings({
+    name: "projectSettingsRanks",
+    path: "/ranks",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Ranks`,
+    }),
+    lazy: () =>
+      import("./components/project/settings/ProjectSettingsRanksPage.tsx"),
+  });
+
+  projectSettingsAreas = $pageProjectSettings({
+    name: "projectSettingsAreas",
+    path: "/areas",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Areas`,
+    }),
+    lazy: () =>
+      import("./components/project/settings/ProjectSettingsAreasPage.tsx"),
+    loader: async () => {
+      const project = this.alepha.store.get(currentProjectAtom);
+      if (!project) {
+        throw new NotFoundError("Project not found");
+      }
+      const areas = await this.areaApi.getAreas({
+        params: { projectId: project.id },
+      });
+      return { areas };
+    },
+  });
+
+  /**
+   * The param is `areaId`, NOT the area's name: area names contain
+   * slashes (`@alepha/ui`, `alepha/api/users`) and a path segment cannot
+   * hold one. Route params must also be unique across the whole route
+   * table — two routes with different param names at the same position
+   * silently lose the inner value.
+   */
+  projectSettingsArea = $pageProjectSettings({
+    name: "projectSettingsArea",
+    path: "/areas/:areaId",
+    schema: {
+      params: z.object({ areaId: z.integer() }),
+    },
+    head: (props, previous) => {
+      const area = (props as { area?: { name?: string } } | undefined)?.area;
+      return {
+        title: `${previous?.title ?? ""} › ${area?.name ?? "Area"}`,
+      };
+    },
+    lazy: () =>
+      import("./components/project/settings/ProjectSettingsAreaPage.tsx"),
+    loader: async ({ params }) => {
+      const area = await this.areaApi.getArea({
+        params: { id: params.areaId },
+      });
+      return { area };
+    },
+    // A deleted or foreign area is a 404, like the sibling detail routes,
+    // not the generic error page.
+    errorHandler: (error) => {
+      if (HttpError.is(error, 404)) {
+        return createElement(NotFound, { style: { height: "100%" } });
+      }
+    },
+  });
+
+  /**
+   * The capability pages: each one's Features tab, the options that change
+   * how it behaves. The masters and the options that add a sidebar entry are
+   * on `projectSettingsCapabilities` since #Q2565, and Support, which has no
+   * option, lost its page there.
+   *
+   * ⚠️ **`$page` renames are not typecheck-protected.**
+   * `projectSettingsSections.ts` carries these names as plain strings, and
+   * `app-routes.spec.ts` is what turns a missed one into a red test rather
+   * than a dead link.
+   */
+  projectSettingsWork = $pageProjectSettings({
+    name: "projectSettingsWork",
+    path: "/work",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Quests`,
+    }),
+    lazy: () =>
+      import("./components/project/settings/ProjectSettingsWorkPage.tsx"),
+  });
+
+  /**
+   * Quests > Board: the kanban columns. Its tab is listed while the `board`
+   * option is on; the route is not guarded, like every settings route.
+   */
+  projectSettingsBoard = $pageProjectSettings({
+    name: "projectSettingsBoard",
+    path: "/work/board",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Board`,
+    }),
+    lazy: () =>
+      import("./components/project/settings/ProjectSettingsBoardPage.tsx"),
+  });
+
+  /**
+   * Quests > Agent prompts: the four templates. Renders nothing while the
+   * `agentPrompts` option is off, and its tab is listed only while it is on.
+   */
+  projectSettingsPrompts = $pageProjectSettings({
+    name: "projectSettingsPrompts",
+    path: "/work/prompts",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Agent prompts`,
+    }),
+    lazy: () =>
+      import("./components/project/settings/ProjectSettingsAgentPrompts.tsx"),
+  });
+
+  projectSettingsKnowledge = $pageProjectSettings({
+    name: "projectSettingsKnowledge",
+    path: "/knowledge",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Folios`,
+    }),
+    lazy: () =>
+      import("./components/project/settings/ProjectSettingsKnowledgePage.tsx"),
+  });
+
+  projectSettingsApps = $pageProjectSettings({
+    name: "projectSettingsApps",
+    path: "/apps",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Apps`,
+    }),
+    lazy: () =>
+      import("./components/project/settings/ProjectSettingsAppsPage.tsx"),
+  });
+
+  /**
+   * Where the project can deploy: the estates lent to it (epic #20). No
+   * loader, and no feature flag: the page lists what it holds itself, and an
+   * empty list is a normal state that says so in words. A tab of the Apps
+   * section since #Q2565.
+   */
+  projectSettingsEstates = $pageProjectSettings({
+    name: "projectSettingsEstates",
+    path: "/estates",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Estates`,
+    }),
+    lazy: () =>
+      import("./components/project/settings/ProjectSettingsEstatesPage.tsx"),
   });
 
   app = $page({
@@ -1347,180 +1769,6 @@ export class AppRouter {
   }
 
   /**
-   * The project's board, and the page you land on when you open a project.
-   *
-   * ⚠️ **It renders here; it does not redirect here**, and nothing may
-   * redirect to it. `AppRouter` has said so twice and both prohibitions were
-   * paid for: a loader redirect on the project root is the shape #156 was
-   * about, where a page could not tell "nobody has chosen yet" from "we are
-   * leaving" and every sidebar link went dead, and a per-project "which page
-   * do I open on" setting is the one feedback #2066 rejected. The board owns
-   * `/` by BEING the page at `/`.
-   *
-   * ⚠️ **No capability gate and no permission gate**, unlike `projectQuests`
-   * one route over, which 404s on both. Every project lands here whatever it
-   * has turned on - a Knowledge-only one included, which lands on the empty
-   * state - and a gate on the project root would lock people out of their own
-   * project.
-   *
-   * The loader fills the card list so the grid lays out with the right tiles
-   * before a single number exists; the page resolves them once on mount. It
-   * catches to an empty board rather than failing the route: a board that
-   * could not be read costs a board, and this is the page the project opens
-   * on.
-   */
-  projectDashboard = $page({
-    path: "/",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Dashboard`,
-    }),
-    lazy: () => import("./components/project/dashboard/ProjectDashboard.tsx"),
-    loader: async () => {
-      const project = this.alepha.store.get(currentProjectAtom);
-      if (!project) {
-        throw new NotFoundError("Project not found");
-      }
-      const listed = await this.projectDashboardApi
-        .listProjectDashboardCards({ params: { projectId: project.id } })
-        .catch(() => undefined);
-      this.alepha.store.set(projectDashboardAtom, {
-        projectId: project.id,
-        cards: listed?.cards ?? [],
-      });
-    },
-  });
-
-  /**
-   * What moved in this project: every recorded write, newest first.
-   *
-   * ⚠️ **Moved off `/` when the dashboard took the project root**, exactly as
-   * Quests moved off it when Activity took it. It sits at `/activity`, a
-   * SIBLING of every other project surface, and every caller reaches it by
-   * NAME - so the path change touched no call site and a bare
-   * `/:projectSlug` bookmark now lands on the board.
-   *
-   * What it used to argue here, and which is still true of Activity itself:
-   * it is the one surface that says something whatever a project has turned
-   * on, which is why it is Core and carries no capability gate. That is no
-   * longer a reason for it to own the root, because the board is true of
-   * every project too and answers a question rather than listing events.
-   *
-   * No loader. `ProjectActivityPage` fetches its own window and re-fetches
-   * on demand, because the window is a control on the page rather than a
-   * property of the URL.
-   */
-  projectActivity = $page({
-    path: "/activity",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Activity`,
-    }),
-    lazy: () => import("./components/project/activity/ProjectActivityPage.tsx"),
-  });
-
-  /**
-   * The quest list.
-   *
-   * ⚠️ **Moved off `/` when Activity took the project root.** It sits at
-   * `/quests`, which also makes it consistent with `projectQuest` at
-   * `/quests/:shortId` - a SIBLING, not a child, so no quest deep link
-   * moved with it. Every caller reaches this page by NAME
-   * (`router.path("projectQuests", …)`), so the path change touched no
-   * call site; a bare `/:projectSlug` bookmark now lands on Activity.
-   */
-  projectQuests = $page({
-    path: "/quests",
-    schema: {
-      /**
-       * The quests table's filters, seeded from the URL on arrival — the
-       * drill-through target for a dashboard card, and for any link that
-       * wants to open one slice of the backlog. `?status=todo&tag=need-answer`
-       * opens the list already narrowed, and the toolbar's Share item is what
-       * produces such a link.
-       *
-       * Multi-value filters are comma-joined (`?status=todo,in_progress`), the
-       * same spelling `getQuests` takes on the wire, because
-       * `parseQueryString` returns one value per key and a repeated param
-       * keeps only the last.
-       *
-       * ⚠️ **One-directional, and it has to stay that way.** The URL seeds
-       * the filter on entry; the filter NEVER writes back. `?view=kanban`
-       * was removed for exactly this (#156): an effect that restored a
-       * missing param keyed on `useRouterState`, which is a global store, so
-       * the outgoing render on the way *out* of the page saw the next
-       * route's empty query and bounced the user straight back. Every
-       * sidebar link was dead. A page cannot tell "nobody has chosen yet"
-       * from "we are leaving" while the state lives in the URL — so nothing
-       * here may reintroduce a write-back.
-       *
-       * ⚠️ Typed as free text, not the status enum, and not as arrays. A
-       * schema that rejects an unknown value turns a stale bookmark into an
-       * error page; DataTable decodes each param against the table's own
-       * filter schema and drops what it refuses, so a bad value degrades to
-       * the unfiltered list.
-       */
-      query: z.object({
-        status: z.text().optional(),
-        search: z.text().optional(),
-        area: z.text().optional(),
-        tag: z.text().optional(),
-        release: z.text().optional(),
-      }),
-    },
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Quests`,
-    }),
-    lazy: () => import("./components/project/ProjectQuestsPage.tsx"),
-    // ⚠️ The loader GATES and fetches nothing. It used to redirect to
-    // `/kanban` when the project's `defaultSurface` said so; the setting is
-    // gone (feedback #2066), and the prohibition is unchanged: a bare
-    // `/:projectSlug` lands on `projectDashboard` and nothing may send a
-    // project URL anywhere, because a redirect there is the shape #156 was
-    // about. What it does now is the capability check every capability's
-    // landing route carries - see `projectFolios` for the rule.
-    loader: async () => {
-      const project = this.alepha.store.get(currentProjectAtom);
-      if (!project) {
-        throw new NotFoundError("Project not found");
-      }
-      if (!hasCapability(project, "work")) {
-        throw new NotFoundError("Work is not enabled for this project");
-      }
-      // ⚠️ A permission NAME, and a module-level function rather than
-      // `useRank()`: a `$page` loader runs outside React and cannot call a
-      // hook, and the loader and the component must not disagree about which
-      // pages exist. Same arrangement as `hasCapability` beside it.
-      //
-      // 404 rather than 403, matching the capability guard above it: a page
-      // the reader may not open is a page that does not exist for them, and a
-      // 403 would confirm what is behind it.
-      if (!canInProject(project, "quest:read")) {
-        throw new NotFoundError("Your rank does not open quests here");
-      }
-    },
-  });
-
-  /**
-   * The Kanban board as a destination rather than a mode.
-   *
-   * ⚠️ Sibling of `projectQuests`, which sits at `/quests` - it has not held
-   * `path: "/"` since Activity took the project root, and the root is the
-   * dashboard's now. Giving the board a real route is what lets it have a
-   * sidebar entry, a linkable URL and addressable cards.
-   */
-  projectKanban = $page({
-    name: "projectKanban",
-    children: () => [this.projectKanbanCard],
-    path: "/kanban",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Kanban`,
-    }),
-    // No loader: `ProjectKanbanPage` fetches the board itself, because the
-    // board reloads in place when the header creates a quest and the loader
-    // machinery does not re-run for that.
-    lazy: () => import("./components/project/ProjectKanbanPage.tsx"),
-  });
-
-  /**
    * One card, open over the board.
    *
    * A child route rather than local state: clicking a card used to be
@@ -1576,189 +1824,6 @@ export class AppRouter {
         return createElement(NotFound, { style: { height: "100%" } });
       }
     },
-  });
-
-  projectEpics = $page({
-    name: "projectEpics",
-    path: "/epics",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Epics`,
-    }),
-    // No loader: `ProjectEpics` is a DataTable, which owns its own
-    // fetch (filters, sort and page are its state, not the route's). A
-    // loader here would fetch the list a second time and then have it
-    // discarded on mount. Same arrangement as `projectBlights`.
-    lazy: () => import("./components/project/epics/ProjectEpics.tsx"),
-  });
-
-  projectEpic = $page({
-    name: "projectEpic",
-    // `epicNumber`, NOT `number`: route params must be unique across the
-    // whole route table, or two routes with different param names at the
-    // same path position silently lose the inner value.
-    path: "/epics/:epicNumber",
-    schema: {
-      params: z.object({
-        epicNumber: z.integer(),
-      }),
-    },
-    head: (props, previous) => {
-      const epic = (props as { epic?: { title?: string } } | undefined)?.epic;
-      return {
-        title: `${previous?.title ?? ""} › ${epic?.title ?? "Epic"}`,
-      };
-    },
-    lazy: () => import("./components/project/epics/ProjectEpic.tsx"),
-    loader: async ({ params }) => {
-      const project = this.alepha.store.get(currentProjectAtom);
-      if (!project) {
-        throw new NotFoundError("Project not found");
-      }
-      const epic = await this.epicApi.getEpicByNumber({
-        params: { projectId: project.id, number: params.epicNumber },
-      });
-      // The breadcrumb leaf lives in `ProjectView`, the layout above this
-      // route, which can only see `epicNumber`. See `currentEpicAtom`.
-      this.alepha.store.set(currentEpicAtom, epic);
-      return { epic };
-    },
-    onLeave: () => {
-      this.alepha.store.set(currentEpicAtom, undefined);
-    },
-    errorHandler: (error) => {
-      if (HttpError.is(error, 404)) {
-        return createElement(NotFound, { style: { height: "100%" } });
-      }
-    },
-  });
-
-  /**
-   * Every build this project has, across every app (feedback #2111).
-   *
-   * No loader: `listArtifacts` is one indexed read and it is paid for by the
-   * page that shows it, the same arrangement `AppArtifactsList` documents.
-   * Putting it in the project loader would charge every reader for a page
-   * most of them are not opening.
-   */
-  projectArtifacts = $page({
-    path: "/artifacts",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Artifacts`,
-    }),
-    lazy: () => import("./components/project/artifacts/ProjectArtifacts.tsx"),
-  });
-
-  projectReleases = $page({
-    path: "/releases",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Releases`,
-    }),
-    lazy: () => import("./components/project/releases/ProjectReleases.tsx"),
-  });
-
-  projectRelease = $page({
-    name: "projectRelease",
-    // `releaseTag`, NOT `tag` and NOT `number`: route params must be unique
-    // across the whole route table, or two routes with different param names
-    // at the same path position silently lose the inner value. Same trap
-    // `projectEpic`'s `epicNumber` documents.
-    //
-    // Addressed by the TAG rather than the number because
-    // `/alepha/releases/0.28.0` is what the URL is for, and the tag is
-    // already unique per project. `releaseTagSchema` makes it URL-safe by
-    // construction; `number` stays the stable internal reference and the
-    // sort key, it is simply not what addresses the page.
-    path: "/releases/:releaseTag",
-    schema: {
-      params: z.object({
-        releaseTag: z.string(),
-      }),
-    },
-    head: (_props, previous) => ({
-      // The tag is not in `props`: with no loader there is nothing to hand
-      // the component, and `head` is fed the loader's result too. The page
-      // reads the param from the router state instead.
-      title: `${previous?.title ?? ""} › Release`,
-    }),
-    // No loader: the project route already holds every release with its
-    // rollup in `currentReleasesAtom`, so the page resolves the tag from
-    // there. A loader would fetch what is already in the store.
-    lazy: () => import("./components/project/releases/ProjectRelease.tsx"),
-  });
-
-  projectFeedback = $page({
-    name: "projectFeedback",
-    path: "/feedback",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Feedback`,
-    }),
-    lazy: () => import("./components/project/feedback/ProjectFeedback.tsx"),
-    loader: async () => {
-      const project = this.alepha.store.get(currentProjectAtom);
-      if (!project) {
-        throw new NotFoundError("Project not found");
-      }
-      if (!hasCapability(project, "support")) {
-        throw new NotFoundError("Support is not enabled for this project");
-      }
-      // ⚠️ A permission NAME, and a module-level function rather than
-      // `useRank()`: a `$page` loader runs outside React and cannot call a
-      // hook, and the loader and the component must not disagree about which
-      // pages exist. Same arrangement as `hasCapability` beside it.
-      //
-      // 404 rather than 403, matching the capability guard above it: a page
-      // the reader may not open is a page that does not exist for them, and a
-      // 403 would confirm what is behind it.
-      if (!canInProject(project, "feedback:read")) {
-        throw new NotFoundError(
-          "Your rank does not open the feedback inbox here",
-        );
-      }
-      // The first page only. `Show more` fetches the rest from inside the
-      // page, so the loader is one screenful regardless of inbox size.
-      const { items, hasMore } = await this.feedbackApi.listFeedback({
-        params: { projectId: project.id },
-        query: { status: "pending", limit: FEEDBACK_PAGE_SIZE },
-      });
-      return { items, hasMore };
-    },
-  });
-
-  projectReports = $page({
-    path: "/reports",
-    children: () => [
-      this.reportsOverview,
-      this.reportsQuests,
-      this.reportsMembers,
-      this.reportsQuality,
-    ],
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Reports`,
-    }),
-    lazy: () => import("./components/project/reports/ReportsLayout.tsx"),
-    /**
-     * Whether any quality run exists, which is what decides the Quality tab
-     * now that the flag is gone.
-     *
-     * ⚠️ Read HERE and not on the `project` loader. That one already runs
-     * three parallel reads on every project navigation, and most projects
-     * will never push a run - so this is paid when Reports opens, by the one
-     * page that needs the answer.
-     *
-     * `.catch(() => false)`: a failed read hides a tab, never the page. The
-     * route itself is not gated either way, so a link someone already holds
-     * keeps resolving.
-     */
-    loader: async () => ({
-      hasQualityRun: await this.qualityApi
-        .getQualityRuns({
-          params: {
-            projectId: this.alepha.store.get(currentProjectAtom)?.id ?? -1,
-          },
-        })
-        .then((it) => it.runs.length > 0)
-        .catch(() => false),
-    }),
   });
 
   reportsOverview = $page({
@@ -1825,415 +1890,6 @@ export class AppRouter {
         },
       }),
     }),
-  });
-
-  projectSettings = $page({
-    path: "/settings",
-    children: () => [
-      this.projectSettingsBanner,
-      this.projectSettingsCapabilities,
-      this.projectSettingsMembers,
-      this.projectSettingsRanks,
-      this.projectSettingsAreas,
-      this.projectSettingsArea,
-      this.projectSettingsWork,
-      this.projectSettingsBoard,
-      this.projectSettingsPrompts,
-      this.projectSettingsKnowledge,
-      this.projectSettingsApps,
-      this.projectSettingsEstates,
-    ],
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Settings`,
-    }),
-    lazy: () => import("./components/project/settings/ProjectSettings.tsx"),
-  });
-
-  projectSettingsBanner = $page({
-    name: "projectSettingsBanner",
-    path: "/",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › General`,
-    }),
-    lazy: () =>
-      import("./components/project/settings/ProjectSettingsGeneralPage.tsx"),
-  });
-
-  /**
-   * General > Capabilities: every master switch, and the options that add a
-   * sidebar entry (#Q2565). The only page that turns a capability back on,
-   * since an off capability's own settings section leaves the sidebar.
-   */
-  projectSettingsCapabilities = $page({
-    name: "projectSettingsCapabilities",
-    path: "/capabilities",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Capabilities`,
-    }),
-    lazy: () =>
-      import("./components/project/settings/ProjectSettingsCapabilitiesPage.tsx"),
-  });
-
-  projectSettingsMembers = $page({
-    name: "projectSettingsMembers",
-    path: "/members",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Members`,
-    }),
-    lazy: () =>
-      import("./components/project/settings/ProjectSettingsMembersPage.tsx"),
-  });
-
-  /**
-   * What each rank in this project may do (epic #E39).
-   *
-   * No loader: the page fetches four things that belong to it alone - the
-   * permission catalogue, the ranks, the members holding them and the presets
-   * - and none of them is read anywhere else, so putting them in the layout's
-   * loader would make every other settings page pay for this one.
-   *
-   * ⚠️ Unguarded, like every other settings route. Who may EDIT ranks is
-   * `rank:manage`, which hides the nav entry and which the module re-checks on
-   * every write; a route guard would only turn a link somebody already holds
-   * into a 404, and the page reads nothing a member may not read.
-   */
-  projectSettingsRanks = $page({
-    name: "projectSettingsRanks",
-    path: "/ranks",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Ranks`,
-    }),
-    lazy: () =>
-      import("./components/project/settings/ProjectSettingsRanksPage.tsx"),
-  });
-
-  /**
-   * Where the project can deploy: the estates lent to it (epic #20). No
-   * loader, and no feature flag: the page lists what it holds itself, and an
-   * empty list is a normal state that says so in words. A tab of the Apps
-   * section since #Q2565.
-   */
-  projectSettingsEstates = $page({
-    name: "projectSettingsEstates",
-    path: "/estates",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Estates`,
-    }),
-    lazy: () =>
-      import("./components/project/settings/ProjectSettingsEstatesPage.tsx"),
-  });
-
-  projectSettingsAreas = $page({
-    name: "projectSettingsAreas",
-    path: "/areas",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Areas`,
-    }),
-    lazy: () =>
-      import("./components/project/settings/ProjectSettingsAreasPage.tsx"),
-    loader: async () => {
-      const project = this.alepha.store.get(currentProjectAtom);
-      if (!project) {
-        throw new NotFoundError("Project not found");
-      }
-      const areas = await this.areaApi.getAreas({
-        params: { projectId: project.id },
-      });
-      return { areas };
-    },
-  });
-
-  /**
-   * The param is `areaId`, NOT the area's name: area names contain
-   * slashes (`@alepha/ui`, `alepha/api/users`) and a path segment cannot
-   * hold one. Route params must also be unique across the whole route
-   * table — two routes with different param names at the same position
-   * silently lose the inner value.
-   */
-  projectSettingsArea = $page({
-    name: "projectSettingsArea",
-    path: "/areas/:areaId",
-    schema: {
-      params: z.object({ areaId: z.integer() }),
-    },
-    head: (props, previous) => {
-      const area = (props as { area?: { name?: string } } | undefined)?.area;
-      return {
-        title: `${previous?.title ?? ""} › ${area?.name ?? "Area"}`,
-      };
-    },
-    lazy: () =>
-      import("./components/project/settings/ProjectSettingsAreaPage.tsx"),
-    loader: async ({ params }) => {
-      const area = await this.areaApi.getArea({
-        params: { id: params.areaId },
-      });
-      return { area };
-    },
-    // A deleted or foreign area is a 404, like the sibling detail routes,
-    // not the generic error page.
-    errorHandler: (error) => {
-      if (HttpError.is(error, 404)) {
-        return createElement(NotFound, { style: { height: "100%" } });
-      }
-    },
-  });
-
-  /**
-   * The capability pages: each one's Features tab, the options that change
-   * how it behaves. The masters and the options that add a sidebar entry are
-   * on `projectSettingsCapabilities` since #Q2565, and Support, which has no
-   * option, lost its page there.
-   *
-   * ⚠️ **`$page` renames are not typecheck-protected.**
-   * `projectSettingsSections.ts` carries these names as plain strings, and
-   * `app-routes.spec.ts` is what turns a missed one into a red test rather
-   * than a dead link.
-   */
-  projectSettingsWork = $page({
-    name: "projectSettingsWork",
-    path: "/work",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Quests`,
-    }),
-    lazy: () =>
-      import("./components/project/settings/ProjectSettingsWorkPage.tsx"),
-  });
-
-  /**
-   * Quests > Board: the kanban columns. Its tab is listed while the `board`
-   * option is on; the route is not guarded, like every settings route.
-   */
-  projectSettingsBoard = $page({
-    name: "projectSettingsBoard",
-    path: "/work/board",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Board`,
-    }),
-    lazy: () =>
-      import("./components/project/settings/ProjectSettingsBoardPage.tsx"),
-  });
-
-  /**
-   * Quests > Agent prompts: the four templates. Renders nothing while the
-   * `agentPrompts` option is off, and its tab is listed only while it is on.
-   */
-  projectSettingsPrompts = $page({
-    name: "projectSettingsPrompts",
-    path: "/work/prompts",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Agent prompts`,
-    }),
-    lazy: () =>
-      import("./components/project/settings/ProjectSettingsAgentPrompts.tsx"),
-  });
-
-  projectSettingsKnowledge = $page({
-    name: "projectSettingsKnowledge",
-    path: "/knowledge",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Folios`,
-    }),
-    lazy: () =>
-      import("./components/project/settings/ProjectSettingsKnowledgePage.tsx"),
-  });
-
-  projectSettingsApps = $page({
-    name: "projectSettingsApps",
-    path: "/apps",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Apps`,
-    }),
-    lazy: () =>
-      import("./components/project/settings/ProjectSettingsAppsPage.tsx"),
-  });
-
-  projectQuest = $page({
-    path: "/quests/:shortId",
-    schema: {
-      params: z.object({
-        shortId: z.integer(),
-      }),
-    },
-    head: (props, previous) => {
-      const questTitle = (props as { quest?: { title?: string } } | undefined)
-        ?.quest?.title;
-      return {
-        title: `${previous?.title ?? ""} › ${questTitle ?? "Quest"}`,
-      };
-    },
-    animation: ({ meta }) => {
-      if (meta.transition) {
-        return meta.transition;
-      }
-
-      if (meta.completed) {
-        return {
-          exit: {
-            name: "zoomOutUp",
-            duration: 800,
-          },
-        };
-      }
-
-      if (meta.deleted) {
-        return {
-          exit: {
-            name: "zoomOut",
-            duration: 400,
-          },
-        };
-      }
-    },
-    lazy: () => import("./components/project/quest/QuestView.tsx"),
-    loader: async ({ params }) => {
-      const project = this.alepha.store.get(currentProjectAtom);
-      if (!project) {
-        throw new NotFoundError("Project not found");
-      }
-      const quest = await this.questApi.getQuestByShortId({
-        params: {
-          projectId: project.id,
-          shortId: params.shortId,
-        },
-      });
-      this.alepha.store.set(currentQuestAtom, quest);
-      return { quest };
-    },
-    onLeave: () => {
-      this.alepha.store.set(currentQuestAtom, undefined);
-    },
-    errorHandler: (error) => {
-      if (HttpError.is(error, 404)) {
-        return createElement(NotFound, { style: { height: "100%" } });
-      }
-    },
-  });
-
-  // Quest dependency graph page (Lore #98). Focused quest's connected
-  // `dependsOn` component, laid out client-side, loaded once on mount.
-  /**
-   * One quest's questline: the `dependsOn` component it sits in, drawn with
-   * the same `Questline` map the epic's Flow tab uses.
-   *
-   * ⚠️ **A quest inside an epic never renders here.** Its questline is the
-   * epic's, and the epic's Flow tab already draws it beside that epic's own
-   * chrome, so the loader redirects there rather than showing a second,
-   * lonelier copy of the same map. The route survives for the quests that
-   * belong to no epic, which are the ones with nowhere else to be drawn.
-   *
-   * The redirect is decided by `getQuestline`, in the same call that fetches
-   * the component - the fork cannot be decided client-side, and answering it
-   * in a second round trip would mean a page that renders and then navigates
-   * away.
-   *
-   * The path keeps `/graph`. It is a link people already hold, and the page
-   * behind it still answers the question that name asks.
-   */
-  projectQuestGraph = $page({
-    name: "projectQuestGraph",
-    path: "/quests/:shortId/graph",
-    schema: {
-      params: z.object({
-        shortId: z.integer(),
-      }),
-    },
-    head: (props, previous) => {
-      const quest = (props as { quest?: { title?: string } } | undefined)
-        ?.quest;
-      return {
-        title: `${previous?.title ?? ""} › ${quest?.title ?? "Quest"} › Questline`,
-      };
-    },
-    lazy: () => import("./components/project/quest/QuestQuestline.tsx"),
-    loader: async ({ params }) => {
-      const project = this.alepha.store.get(currentProjectAtom);
-      if (!project) {
-        throw new NotFoundError("Project not found");
-      }
-      const { epic, quests } = await this.questApi.getQuestline({
-        params: {
-          projectId: project.id,
-          shortId: params.shortId,
-        },
-      });
-
-      if (epic) {
-        // `?tab=flow` is what `useDetailTab` reads on the epic page, so this
-        // lands on the Flow tab rather than the epic's default one.
-        throw new Redirection(`/${project.slug}/epics/${epic.number}?tab=flow`);
-      }
-
-      // The focus quest is in the component by construction - it is the
-      // quest the walk started from - so the head needs no second fetch.
-      const quest = quests.find((q) => q.shortId === params.shortId);
-      return { quest, quests };
-    },
-    errorHandler: (error) => {
-      if (HttpError.is(error, 404)) {
-        return createElement(NotFound, { style: { height: "100%" } });
-      }
-    },
-  });
-
-  // -------------------------------------------------------------------------------------------------------------------
-  // Folios — project-scoped markdown notes ("folios")
-  // -------------------------------------------------------------------------------------------------------------------
-
-  // Quest #66 originally split this from the entity-level "folios" naming
-  // by giving it its own URL path (/archive), when the directory tree +
-  // blobs were a distinct "Archive" module. The 2026-08 great rename
-  // (Task 5) folded that module back into Folios — entities, MCP tools,
-  // and now the URL path are all "folio(s)"-named again. Internal route
-  // name stays `projectFolios`, unchanged since before quest #66.
-  projectFolios = $page({
-    name: "projectFolios",
-    children: () => [this.projectFoliosNew, this.projectFoliosFolio],
-    path: "/folios",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Folios`,
-    }),
-    lazy: () => import("./components/folios/FoliosLayout.tsx"),
-    loader: async () => {
-      const project = this.alepha.store.get(currentProjectAtom);
-      const projectId = project?.id;
-      if (projectId === undefined) {
-        throw new NotFoundError("Project not found");
-      }
-      if (!hasCapability(project, "knowledge")) {
-        throw new NotFoundError("Knowledge is not enabled for this project");
-      }
-      // ⚠️ A permission NAME, and a module-level function rather than
-      // `useRank()`: a `$page` loader runs outside React and cannot call a
-      // hook, and the loader and the component must not disagree about which
-      // pages exist. Same arrangement as `hasCapability` beside it.
-      //
-      // 404 rather than 403, matching the capability guard above it: a page
-      // the reader may not open is a page that does not exist for them, and a
-      // 403 would confirm what is behind it.
-      if (!canInProject(project, "folio:read")) {
-        throw new NotFoundError("Your rank does not open folios here");
-      }
-      // The tree's own two lists, which `seedFolioTree` owns — the folio
-      // list AND the directory list, the latter load-bearing: the tree's
-      // fallback
-      // `useQuery` is gated on `enabled: !seeded`, where "seeded" is
-      // satisfied by `userFoliosAtom` ALONE. Any project with at least one
-      // folio therefore looked seeded the moment the folio list resolved,
-      // the fallback never ran, and a hard load of `/folios` rendered a
-      // tree with no directories in it — every nested folio flat at the
-      // root.
-      //
-      // The directory-contents fetch and the `?dir=` resolution that used
-      // to sit here went with `FolioBrowser` — they existed to fill its
-      // table and its breadcrumb. A folio page sets its own breadcrumb
-      // from the folio's `metadata.path`, so nothing downstream reads
-      // them any more.
-      await this.seedFolioTree(projectId);
-    },
-    onLeave: () => {
-      this.alepha.store.set(currentFolioAttachmentsAtom, []);
-    },
   });
 
   projectFoliosNew = $page({

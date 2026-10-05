@@ -1,4 +1,9 @@
+import { LoreCoreWeb } from "@lore/core/web";
+import { LoreDeployWeb } from "@lore/deploy/web";
+import { LoreKnowledgeWeb } from "@lore/knowledge/web";
+import { LoreWorkWeb } from "@lore/work/web";
 import { Alepha } from "alepha";
+import { $page } from "alepha/react/router";
 import {
   AlephaReactRouter,
   ReactPageProvider,
@@ -124,6 +129,13 @@ describe("AppRouter route table", () => {
       env: { LOG_LEVEL: "error", SERVER_PORT: 0 },
     });
     alepha.with(AlephaReactRouter);
+    // Every `@lore` web module, as both entries register them: a package's
+    // pages join the project layout by `parent:` (`$pageProject`), so a
+    // module left out here drops its names from the table.
+    alepha.with(LoreCoreWeb);
+    alepha.with(LoreWorkWeb);
+    alepha.with(LoreKnowledgeWeb);
+    alepha.with(LoreDeployWeb);
     alepha.inject(AppRouter);
     // Registered alongside AppRouter by `LoreWebApp`. Without it the guard
     // would silently skip Lore's own /account pages.
@@ -206,6 +218,58 @@ describe("AppRouter route table", () => {
     expect([...ANALYTICS_DIMENSIONS].sort()).toEqual(
       [...insightsDimensionResourceSchema.shape.dimension.options].sort(),
     );
+  });
+
+  /**
+   * `page(name)` returns the first page with that name and `add()` does not
+   * check, so two pages sharing a name (two packages each declaring a
+   * `settings`, say) would leave one of them unreachable by name, silently.
+   * The type system cannot see it either: names widen to `string`.
+   */
+  it("names every page once across the container", ({ expect }) => {
+    const names = alepha.primitives($page).map((page) => page.name);
+    const duplicates = names.filter(
+      (name, index) => names.indexOf(name) !== index,
+    );
+
+    expect(names.length).toBeGreaterThan(50);
+    expect(duplicates).toEqual([]);
+  });
+
+  /**
+   * `RouterProvider` keeps ONE param name per path position: two routes
+   * naming the same position differently collapse onto one, and the inner
+   * value arrives missing. Pages declared in separate packages under
+   * `/:projectSlug` can no longer see each other's paths, so this is checked
+   * over the compiled table rather than left to each author.
+   */
+  it("uses one param name per path position", ({ expect }) => {
+    const pageApi = alepha.inject(ReactPageProvider);
+    const byPosition = new Map<string, Set<string>>();
+
+    for (const page of pageApi.getPages()) {
+      const segments = page.match.split("/").filter(Boolean);
+      segments.forEach((segment, index) => {
+        if (!segment.startsWith(":")) {
+          return;
+        }
+        // The position: every segment before it, params reduced to `:`.
+        const position = segments
+          .slice(0, index)
+          .map((it) => (it.startsWith(":") ? ":" : it))
+          .join("/");
+        const names = byPosition.get(position) ?? new Set<string>();
+        names.add(segment.replace(/\?$/, ""));
+        byPosition.set(position, names);
+      });
+    }
+
+    const clashes = [...byPosition]
+      .filter(([, names]) => names.size > 1)
+      .map(([position, names]) => `/${position}: ${[...names].join(", ")}`);
+
+    expect(byPosition.size).toBeGreaterThan(3);
+    expect(clashes).toEqual([]);
   });
 
   it("resolves every name the navs pass as a plain string", ({ expect }) => {

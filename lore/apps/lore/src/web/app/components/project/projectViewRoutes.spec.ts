@@ -39,8 +39,11 @@ describe("projectViewRoutes", () => {
       throw new AlephaError(`AppRouter no longer declares a ${shell} page`);
     }
     const children = parent.options.children ?? [];
-    const tabs = typeof children === "function" ? children() : children;
-    return [parent.name, ...tabs.map((it) => it.name)];
+    const listed = typeof children === "function" ? children() : children;
+    // And every page that names this one as its `parent` (`$pageProject`,
+    // #Q2609): the way `ReactPageProvider` composes the tree.
+    const adopted = pages.filter((it) => it.options.parent === parent);
+    return [parent.name, ...[...listed, ...adopted].map((it) => it.name)];
   };
 
   it("registers the per-app page and every tab under it", async () => {
