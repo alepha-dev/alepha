@@ -16,7 +16,6 @@ import { useEffect, useRef, useState } from "react";
 import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { FolioResource as Folio } from "@/api/schemas/folioResourceSchema.ts";
 
-import type { AppRouter } from "../../../AppRouter.ts";
 import { currentFolioAttachmentsAtom } from "../../../atoms/currentFolioAttachmentsAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { userFoliosAtom } from "../../../atoms/userFoliosAtom.ts";
@@ -250,7 +249,7 @@ export const useFolioActions = (
 ): UseFolioActionsResult => {
   const { tr } = useI18n<I18n, "en">();
   const alepha = useAlepha();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const dialog = useDialog();
   const toaster = useToast();
   const cryptoProvider = useInject(CryptoProvider);

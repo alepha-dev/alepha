@@ -15,7 +15,6 @@ import { useRouter } from "alepha/react/router";
 import { CheckCheck, FolderOpen, Globe } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import type { AppRouter } from "../../../AppRouter.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 
@@ -68,7 +67,7 @@ const NO_ROWS: InboxRow[] = [];
  */
 const ProjectInbox = () => {
   const { tr } = useI18n<I18n, "en">();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const api = useClient<NotificationInboxController>();
   const dateTime = useInject(DateTimeProvider);
 

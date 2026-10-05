@@ -1,16 +1,16 @@
 import { Button, Card, CardContent } from "@alepha/ui";
-import { useStore } from "alepha/react";
+import { useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Ban } from "lucide-react";
 import { useState } from "react";
 
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
+import { ProjectShellRegistry } from "@/web/app/registries/ProjectShellRegistry.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 import { hasCapability } from "@/web/app/services/projectCapabilities.ts";
 
 import ProjectBlightRulesDialog from "../blights/ProjectBlightRulesDialog.tsx";
 import ProjectSettingsCapabilitySection from "./ProjectSettingsCapabilitySection.tsx";
-import { CAPABILITY_SETTINGS_OPTIONS } from "./projectSettingsSections.ts";
 
 /**
  * Two blocks: the module switch and the ignore rules.
@@ -53,6 +53,7 @@ const ProjectSettingsAppsPage = () => {
   const { tr } = useI18n<I18n, "en">();
   const [project] = useStore(currentProjectAtom);
   const [rulesOpen, setRulesOpen] = useState(false);
+  const shell = useInject(ProjectShellRegistry);
 
   const enabled = hasCapability(project, "apps");
 
@@ -65,7 +66,7 @@ const ProjectSettingsAppsPage = () => {
       <ProjectSettingsCapabilitySection
         capability="apps"
         master={false}
-        options={CAPABILITY_SETTINGS_OPTIONS.apps}
+        options={shell.settingsOptions("apps")}
       />
 
       {enabled && (

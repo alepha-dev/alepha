@@ -24,8 +24,13 @@ import { questLogCollapsedAtom } from "./atoms/questLogCollapsedAtom.ts";
 import { userProjectsAtom } from "./atoms/userProjectsAtom.ts";
 import AccountDeleteWarning from "./components/account/AccountDeleteWarning.tsx";
 import { LoreAccountRouter } from "./components/account/LoreAccountRouter.ts";
+import { DeployProjectLoader } from "./loaders/DeployProjectLoader.ts";
+import { WorkProjectLoader } from "./loaders/WorkProjectLoader.ts";
 import { I18n } from "./services/I18n.ts";
 import { ThemesProvider } from "./services/ThemesProvider.ts";
+import { DeployShell } from "./shell/DeployShell.ts";
+import { KnowledgeShell } from "./shell/KnowledgeShell.ts";
+import { WorkShell } from "./shell/WorkShell.ts";
 
 export const LoreWebApp = $module({
   name: "lore.web.app",
@@ -37,7 +42,23 @@ export const LoreWebApp = $module({
     // metric registry, so the browser needs the declarative half of it.
     LoreDashboardCatalog,
   ],
-  services: [I18n, ThemesProvider, AppRouter, AccountRouter, LoreAccountRouter],
+  services: [
+    I18n,
+    ThemesProvider,
+    AppRouter,
+    AccountRouter,
+    LoreAccountRouter,
+    // Each module's part of opening a project, registered on core's
+    // `ProjectLoaderRegistry` (#E75, #Q2624). Listed because nothing injects
+    // them, and here because the loader runs on both sides of hydration.
+    WorkProjectLoader,
+    DeployProjectLoader,
+    // Their part of the project shell (sidebar, settings, create menu,
+    // breadcrumbs, palette), on core's `ProjectShellRegistry`.
+    WorkShell,
+    KnowledgeShell,
+    DeployShell,
+  ],
   atoms: [
     projectDirectoriesAtom,
     currentAssignedQuestsAtom,

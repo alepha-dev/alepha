@@ -14,8 +14,6 @@ import type { EstateController } from "@/api/controllers/EstateController.ts";
 import { currentEstateAtom } from "@/web/app/atoms/currentEstateAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
-import type { AppRouter } from "../../AppRouter.ts";
-
 /**
  * CPU and memory over the last thirty days, one point per day.
  *
@@ -34,7 +32,7 @@ import type { AppRouter } from "../../AppRouter.ts";
  */
 const BayStatsChart = () => {
   const { tr } = useI18n<I18n, "en">();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const estateApi = useClient<EstateController>();
   const [estate] = useStore(currentEstateAtom);
 

@@ -1,17 +1,17 @@
 import type { NavGroup } from "@alepha/ui/shell";
-import { useStore } from "alepha/react";
+import { useAlepha, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { useEffect } from "react";
 
-import type { AppRouter } from "../../AppRouter.ts";
-import { currentInstancesAtom } from "../../atoms/currentInstancesAtom.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import {
   type ProjectNavEntry,
   projectNavAtom,
 } from "../../atoms/projectNavAtom.ts";
+import { ProjectShellRegistry } from "../../registries/ProjectShellRegistry.ts";
 import type { I18n } from "../../services/I18n.ts";
+import { useAtomsVersion } from "../shared/useAtomsVersion.ts";
 
 export interface ProjectViewNavPublisherProps {
   /**
@@ -48,7 +48,7 @@ export interface ProjectViewNavPublisherProps {
  * So the two sources are deliberately different. Pages still come from the one
  * computation `projectNavAtom`'s doc insists on, because a second gating pass
  * would drift the first time a feature flag moved. Instances come from
- * `currentInstancesAtom`, which IS the data and cannot disagree with anything.
+ * `currentInstancesAtom` (registered by `DeployShell`), which IS the data and cannot disagree with anything.
  *
  * ⚠️ A palette row is an INSTANCE, so both halves render: three copies of one
  * app would otherwise be three identical rows. `matchProjectNav` matches on the
@@ -68,10 +68,12 @@ export interface ProjectViewNavPublisherProps {
  */
 const ProjectViewNavPublisher = (props: ProjectViewNavPublisherProps) => {
   const { tr } = useI18n<I18n, "en">();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const [, setProjectNav] = useStore(projectNavAtom);
   const [project] = useStore(currentProjectAtom);
-  const [instances] = useStore(currentInstancesAtom);
+  const alepha = useAlepha();
+  const shell = useInject(ProjectShellRegistry);
+  useAtomsVersion(shell.reads());
 
   const navPages: ProjectNavEntry[] = props.nav.flatMap((group) =>
     group.items.flatMap((item): ProjectNavEntry[] => {
@@ -99,21 +101,19 @@ const ProjectViewNavPublisher = (props: ProjectViewNavPublisherProps) => {
 
   // `?? []` is the could-not-read state: a palette that offered nothing is the
   // honest answer there, and the list page says why.
+  // Deploy's instances, through the registry (#E75, #Q2624).
   const navInstances: ProjectNavEntry[] = project
-    ? (instances ?? []).map((instance) => ({
-        label: `${instance.app} / ${instance.env}`,
-        href: router.path("app", {
-          params: {
-            projectSlug: project.slug,
-            app: instance.app,
-            env: instance.env,
-          },
+    ? shell.paletteContributions().flatMap((it) =>
+        it.entries({
+          routeName: "",
+          params: {},
+          get: (atom) => alepha.store.get(atom),
+          projectSlug: project.slug,
+          path: (route, params) => router.path(route as never, { params }),
         }),
-        kind: "app",
-      }))
+      )
     : [];
 
-  // Core and always present, like the page itself: nothing gates `/inbox`.
   const navInbox: ProjectNavEntry[] = project
     ? [
         {

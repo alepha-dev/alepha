@@ -18,7 +18,6 @@ import { Fragment, useState } from "react";
 import type { FeedbackController } from "@/api/controllers/FeedbackController.ts";
 import type { FeedbackResource } from "@/api/schemas/feedbackResourceSchema.ts";
 
-import type { AppRouter } from "../../../AppRouter.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import { hasCapability } from "../../../services/projectCapabilities.ts";
@@ -86,7 +85,7 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
       ]
     : [];
   const feedbackApi = useClient<FeedbackController>();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const toaster = useToast();
   const dialog = useDialog();
 

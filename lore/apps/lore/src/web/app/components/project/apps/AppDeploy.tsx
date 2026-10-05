@@ -16,7 +16,6 @@ import type { DeployController } from "@/api/controllers/DeployController.ts";
 import { acceptedRuntimes } from "@/api/schemas/acceptedRuntimes.ts";
 import type { ArtifactGroup } from "@/api/schemas/artifactGroupSchema.ts";
 
-import type { AppRouter } from "../../../AppRouter.ts";
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
@@ -54,7 +53,7 @@ const AppDeploy = () => {
   const { tr } = useI18n<I18n, "en">();
   const { can } = useRank();
   const toaster = useToast();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const deployApi = useClient<DeployController>();
 
   const [project] = useStore(currentProjectAtom);

@@ -21,8 +21,6 @@ import { useMemo } from "react";
 import { currentEstateAtom } from "@/web/app/atoms/currentEstateAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
-import type { AppRouter } from "../../AppRouter.ts";
-
 /**
  * The console for one `bay` estate, as a detail page inside the account
  * shell (#E68): a header saying which machine this is and whether it is
@@ -41,7 +39,7 @@ import type { AppRouter } from "../../AppRouter.ts";
  */
 const BayLayout = () => {
   const { tr } = useI18n<I18n, "en">();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const routerState = useRouterState();
   const [estate] = useStore(currentEstateAtom);
   const estateId = estate?.id;

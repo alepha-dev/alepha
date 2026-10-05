@@ -19,7 +19,6 @@ import { useState } from "react";
 import type { EpicController } from "@/api/controllers/EpicController.ts";
 import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
-import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
@@ -89,7 +88,7 @@ export interface ProjectEpicQuestsProps {
  */
 const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
   const { tr } = useI18n<I18n, "en">();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const [project] = useStore(currentProjectAtom);
   const agentPrompt = useAgentPrompt();
   const promptSubject = useAgentPromptSubject();

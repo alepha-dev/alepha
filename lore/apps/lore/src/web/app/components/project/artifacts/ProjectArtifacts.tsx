@@ -24,7 +24,6 @@ import {
 import { useMemo } from "react";
 
 import type { ArtifactController } from "@/api/controllers/ArtifactController.ts";
-import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { currentReleasesAtom } from "@/web/app/atoms/currentReleasesAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
@@ -115,7 +114,7 @@ interface ArtifactRow {
  */
 const ProjectArtifacts = () => {
   const { tr, l } = useI18n<I18n, "en">();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const artifactApi = useClient<ArtifactController>();
   const [project] = useStore(currentProjectAtom);
   const [releases] = useStore(currentReleasesAtom);

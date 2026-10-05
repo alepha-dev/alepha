@@ -5,7 +5,6 @@ import { useRouter, useRouterState } from "alepha/react/router";
 
 import type { I18n } from "@/web/app/services/I18n.ts";
 
-import type { AppRouter } from "../../AppRouter.ts";
 import BayActions from "./BayActions.tsx";
 import { bayInstanceRows, bayProcessState } from "./bayInstanceRow.ts";
 import BayLogTail from "./BayLogTail.tsx";
@@ -39,7 +38,7 @@ import { useBayInventory } from "./useBayInventory.ts";
  */
 const BayInstance = () => {
   const { tr, l } = useI18n<I18n, "en">();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const routerState = useRouterState();
   const { estate, data } = useBayInventory();
 

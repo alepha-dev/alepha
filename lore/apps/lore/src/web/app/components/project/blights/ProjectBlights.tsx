@@ -32,7 +32,6 @@ import type { BlightController } from "@/api/controllers/BlightController.ts";
 import { QUEST_STATUS_PREFIX } from "@/api/entities/blights.ts";
 import type { BlightResource } from "@/api/schemas/blightResourceSchema.ts";
 
-import type { AppRouter } from "../../../AppRouter.ts";
 import { currentBlightCountAtom } from "../../../atoms/currentBlightCountAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
@@ -57,7 +56,7 @@ import { sigilNameParts } from "./sigilNameParts.ts";
  */
 const ProjectBlights = () => {
   const { tr } = useI18n<I18n, "en">();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const [project] = useStore(currentProjectAtom);
   const promptSubject = useAgentPromptSubject();
   // Blights live under Apps: there is no capability of their own, and this

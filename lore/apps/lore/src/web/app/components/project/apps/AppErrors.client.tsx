@@ -13,7 +13,6 @@ import { useRouter } from "alepha/react/router";
 import { Bug, Inbox, Laptop, Server } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 
-import type { AppRouter } from "../../../AppRouter.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import AppErrorsStat from "./AppErrorsStat.tsx";
@@ -67,7 +66,7 @@ import { useAppInsights } from "./useAppInsights.ts";
  */
 const AppErrors = () => {
   const { tr, l } = useI18n<I18n, "en">();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const [project] = useStore(currentProjectAtom);
   const { data, loading, range, traffic, setFilters } = useAppInsights();
 

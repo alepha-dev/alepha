@@ -33,7 +33,6 @@ import {
 } from "@/api/schemas/epicResourceSchema.ts";
 import { QUEST_RELEASE_NONE } from "@/api/schemas/questReleaseFilter.ts";
 import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
-import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentEpicCountAtom } from "@/web/app/atoms/currentEpicCountAtom.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { currentReleasesAtom } from "@/web/app/atoms/currentReleasesAtom.ts";
@@ -99,7 +98,7 @@ const ProjectEpics = () => {
   const { tr } = useI18n<I18n, "en">();
   const toaster = useToast();
   const dialog = useDialog();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const epicApi = useClient<EpicController>();
   const [project] = useStore(currentProjectAtom);
   const [releases] = useStore(currentReleasesAtom);

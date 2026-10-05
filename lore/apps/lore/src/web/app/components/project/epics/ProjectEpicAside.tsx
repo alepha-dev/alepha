@@ -7,7 +7,6 @@ import { Link, useRouter } from "alepha/react/router";
 
 import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
-import type { AppRouter } from "@/web/app/AppRouter.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import { formatReference } from "../../shared/element/typedReference.ts";
@@ -47,7 +46,7 @@ const ProjectEpicAside = (props: ProjectEpicAsideProps) => {
   const i18n = useI18n<I18n, "en">();
   const { tr } = i18n;
   const dt = useInject(DateTimeProvider);
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const { completed, total } = props.epic.progress;
   const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
   const StatusIcon = STATUS_ICONS[props.epic.status];

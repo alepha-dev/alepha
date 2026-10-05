@@ -35,7 +35,6 @@ import type {
   CapabilityOptionDescriptor,
 } from "@/api/services/CapabilityRegistry.ts";
 
-import type { AppRouter } from "../../AppRouter.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import { capabilityRegistry as registry } from "../../services/capabilityRegistry.ts";
 import type { I18n } from "../../services/I18n.ts";
@@ -78,7 +77,7 @@ const ProjectCreate = () => {
   const client = useClient<ProjectController>();
   const [overview] = useStore(userProjectsAtom);
   const toaster = useToast();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const alepha = useAlepha();
   const dateTime = useInject(DateTimeProvider);
   const { tr } = useI18n<I18n, "en">();

@@ -12,7 +12,6 @@ import type { CreateEstateBody } from "@/api/schemas/createEstateBodySchema.ts";
 import type { OwnedEstateResource } from "@/api/schemas/ownedEstateResourceSchema.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
-import type { AppRouter } from "../../AppRouter.ts";
 import MyEstateCreateDialog from "./MyEstateCreateDialog.tsx";
 import MyEstateDrawer from "./MyEstateDrawer.tsx";
 import MyEstateSecretDialog from "./MyEstateSecretDialog.tsx";
@@ -56,7 +55,7 @@ import MyEstateSecretDialog from "./MyEstateSecretDialog.tsx";
 const MyEstates = () => {
   const { tr, l } = useI18n<I18n, "en">();
   const toaster = useToast();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const api = useClient<EstateController>();
 
   const [items, setItems] = useState<OwnedEstateResource[] | undefined>();

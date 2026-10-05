@@ -12,128 +12,79 @@ import {
   DropdownMenuTrigger,
   Input,
   Label,
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@alepha/ui";
 import { useInviteOrganizationMember } from "@alepha/ui/organizations";
-import { useClient, useStore } from "alepha/react";
+import { useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { useRouter, useRouterState } from "alepha/react/router";
-import {
-  AppWindow,
-  BookOpen,
-  Flag,
-  Layers,
-  Mail,
-  MessageSquarePlus,
-  Plus,
-  ScrollText,
-  UserPlus,
-} from "lucide-react";
+import { useRouter } from "alepha/react/router";
+import { Mail, Plus, UserPlus } from "lucide-react";
 import { useState } from "react";
 
-import type { QuestController } from "@/api/controllers/QuestController.ts";
 import { useRank } from "@/web/app/components/shared/useRank.ts";
 
-import type { AppRouter } from "../../AppRouter.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
-import { currentReleasesAtom } from "../../atoms/currentReleasesAtom.ts";
-import { kanbanReloadAtom } from "../../atoms/kanbanReloadAtom.ts";
-import type { I18n } from "../../services/I18n.ts";
 import {
-  capabilityOption,
-  hasCapability,
-} from "../../services/projectCapabilities.ts";
-import AppCreateDialog from "./apps/AppCreateDialog.tsx";
-import EpicCreateSheet from "./epics/EpicCreateSheet.tsx";
-import QuestCreate from "./quest/QuestCreate.tsx";
-import { suggestedReleaseTag } from "./releases/releaseBumps.ts";
-import ReleaseCreateDialog from "./releases/ReleaseCreateDialog.tsx";
+  type ProjectCreateItem,
+  ProjectShellRegistry,
+} from "../../registries/ProjectShellRegistry.ts";
+import type { I18n } from "../../services/I18n.ts";
 
 const ProjectActionsCreateButton = () => {
-  const [showDialog, setShowDialog] = useState(false);
-  const [showEpic, setShowEpic] = useState(false);
-  const [showRelease, setShowRelease] = useState(false);
-  const [showApp, setShowApp] = useState(false);
+  // The registered row whose dialog is open, if any.
+  const [openKey, setOpenKey] = useState<string>();
   const [showInvite, setShowInvite] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const { can } = useRank();
   const inviteMember = useInviteOrganizationMember();
   const { tr } = useI18n<I18n, "en">();
-  const client = useClient<QuestController>();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
+  const shell = useInject(ProjectShellRegistry);
   const [project] = useStore(currentProjectAtom);
-  // Only for the release dialog's placeholder. The Releases table computes
-  // the same suggestion from its own fresher fetch; this mount has no fetch
-  // of its own, and the atom is what it can read. Both pass one, or the same
-  // dialog would hint differently depending on the door that opened it.
-  const [releases] = useStore(currentReleasesAtom);
-  const [reloadKey, setReloadKey] = useStore(kanbanReloadAtom);
-  const routerState = useRouterState();
-  // Kanban is its own route again, so this is just the route name. It used
-  // to be `projectQuests` plus the stored view, because the board was a mode
-  // of the Quests page rather than a place.
-  const onKanban = routerState.name === "projectKanban";
 
   if (!project) {
     return null;
   }
 
-  const canCreateQuest = client.createQuest.can();
-  // Each item names the capability that owns it, and the option inside it
-  // where there is one. `releases` is the key `features.milestones` should
-  // always have had: it could not be renamed inside a JSON column whose
-  // required keys take production down when one goes missing, and moving the
-  // storage is what let the name move with it.
-  //
-  // ⚠️ New quest was the one item gated on the PERMISSION alone. It reads as
-  // an oversight rather than a decision because every other item here already
-  // named its capability, and it left a Knowledge-only project offering the
-  // one create that answers 400 - the first thing a reader would try.
-  const questEnabled = hasCapability(project, "work") && canCreateQuest;
-  const folioEnabled =
-    hasCapability(project, "knowledge") && can("folio:write");
-  // Not rank-gated: this row navigates to the first-party request form, which
-  // any signed-in user may submit through - membership is not its gate, so a
-  // rank is not either.
-  const feedbackEnabled = hasCapability(project, "support");
-  // ⚠️ Capability AND rank, on every row. A capability says the project does
-  // this at all; a rank says whether THIS reader may. Offering a create a
-  // Viewer's rank refuses is the same failure the Quest note above describes,
-  // one conjunct further in.
-  const epicsEnabled =
-    capabilityOption(project, "work", "epics") && can("epic:write");
-  const releasesEnabled =
-    capabilityOption(project, "work", "releases") && can("release:manage");
-  const isOwner = can("app:manage");
-  // ⚠️ Gated on ownership as well as on the capability. Creating an instance
-  // is owner-only server-side, so a member shown this item would open a dialog
-  // that can only answer 403 - the one create in this menu with that property.
-  // The ownership half stays until Ranks replaces it with `can()`.
-  const appsEnabled = hasCapability(project, "apps") && isOwner;
-  // Everything BELOW the separator. Quest is deliberately not in it: it is
-  // what the separator separates from.
-  const hasCreateAction =
-    epicsEnabled ||
-    releasesEnabled ||
-    appsEnabled ||
-    folioEnabled ||
-    feedbackEnabled;
+  // Each module registers its rows with the capability AND the rank that
+  // gate them (#E75, #Q2624): a capability says the project does this at
+  // all; a rank says whether THIS reader may. Offering a create the rank
+  // refuses is a dialog that can only answer 400 or 403.
+  const items = shell.createItems().filter((item) => item.enabled(project));
+  const primary = items.filter((item) => item.primary);
+  // Everything BELOW the separator. New quest is deliberately not in it: it
+  // is what the separator separates from.
+  const secondary = items.filter((item) => !item.primary);
 
   // ⚠️ No button at all rather than an empty dropdown. A project with every
-  // capability off is a legal state (the epic's decision 8, and its modularity
-  // test), and before this the "+" opened onto one permanently disabled row.
-  // The owner keeps it for Invite, which belongs to no capability.
+  // capability off is a legal state (the epic's decision 8, and its
+  // modularity test), and before this the "+" opened onto one permanently
+  // disabled row. The owner keeps it for Invite, which belongs to no
+  // capability.
   const canInvite = can("invitation:create");
 
-  if (!questEnabled && !hasCreateAction && !canInvite) {
+  if (items.length === 0 && !canInvite) {
     return null;
   }
+
+  const pick = (item: ProjectCreateItem) => {
+    if (item.dialog) {
+      setOpenKey(item.key);
+    } else if (item.route) {
+      void router.push(item.route as never, {
+        params: { projectSlug: project.slug },
+      });
+    }
+  };
+
+  const row = (item: ProjectCreateItem) => (
+    <DropdownMenuItem key={item.key} onClick={() => pick(item)}>
+      <item.icon className="size-4" />
+      {tr(item.labelKey as never)}
+    </DropdownMenuItem>
+  );
 
   const handleInvite = async () => {
     // `undefined` for the rank, spelled out: the header offers no picker, and
@@ -151,7 +102,6 @@ const ProjectActionsCreateButton = () => {
     setShowInvite(false);
   };
 
-  const mainLabel = tr("project.menu.create-quest");
   const menuLabel = tr("project.menu.create");
 
   return (
@@ -184,60 +134,12 @@ const ProjectActionsCreateButton = () => {
           <TooltipContent>{menuLabel}</TooltipContent>
         </Tooltip>
         <DropdownMenuContent align="end" className="min-w-44">
-          {questEnabled && (
-            <DropdownMenuItem onClick={() => setShowDialog(true)}>
-              <ScrollText className="size-4" />
-              {mainLabel}
-            </DropdownMenuItem>
+          {primary.map(row)}
+          {primary.length > 0 && secondary.length > 0 && (
+            <DropdownMenuSeparator />
           )}
-          {questEnabled && hasCreateAction && <DropdownMenuSeparator />}
-          {epicsEnabled && (
-            <DropdownMenuItem onClick={() => setShowEpic(true)}>
-              <Layers className="size-4" />
-              {tr("project.menu.create-epic")}
-            </DropdownMenuItem>
-          )}
-          {/* Directly after New Epic, matching the sidebar's Epics then
-              Releases: a release is when the epic ships. */}
-          {releasesEnabled && (
-            <DropdownMenuItem onClick={() => setShowRelease(true)}>
-              <Flag className="size-4" />
-              {tr("project.menu.create-release")}
-            </DropdownMenuItem>
-          )}
-          {/* After New Release, matching the sidebar's Work then Ops order:
-              an app is where the work is deployed, not part of planning it. */}
-          {appsEnabled && (
-            <DropdownMenuItem onClick={() => setShowApp(true)}>
-              <AppWindow className="size-4" />
-              {tr("project.menu.create-app")}
-            </DropdownMenuItem>
-          )}
-          {folioEnabled && (
-            <DropdownMenuItem
-              onClick={() =>
-                router.push("projectFoliosNew", {
-                  params: { projectSlug: project.slug },
-                })
-              }
-            >
-              <BookOpen className="size-4" />
-              {tr("project.menu.create-folio")}
-            </DropdownMenuItem>
-          )}
-          {feedbackEnabled && (
-            <DropdownMenuItem
-              onClick={() =>
-                router.push("projectFeedbackRequest", {
-                  params: { projectSlug: project.slug },
-                })
-              }
-            >
-              <MessageSquarePlus className="size-4" />
-              {tr("project.menu.create-feedback")}
-            </DropdownMenuItem>
-          )}
-          {canInvite && <DropdownMenuSeparator />}
+          {secondary.map(row)}
+          {canInvite && items.length > 0 && <DropdownMenuSeparator />}
           {canInvite && (
             <DropdownMenuItem onClick={() => setShowInvite(true)}>
               <UserPlus className="size-4" />
@@ -246,83 +148,17 @@ const ProjectActionsCreateButton = () => {
           )}
         </DropdownMenuContent>
       </DropdownMenu>
-      <Sheet open={showDialog} onOpenChange={setShowDialog}>
-        <SheetContent
-          side="right"
-          className="flex w-full flex-col gap-0 p-0 data-[side=right]:sm:max-w-[50vw]"
-        >
-          <SheetHeader className="shrink-0">
-            <SheetTitle>{mainLabel}</SheetTitle>
-          </SheetHeader>
-          <QuestCreate
-            project={project}
-            onSubmit={() => setShowDialog(false)}
-            onCreated={
-              onKanban
-                ? () => {
-                    setShowDialog(false);
-                    setReloadKey({ key: (reloadKey?.key ?? 0) + 1 });
-                  }
-                : undefined
-            }
-          />
-        </SheetContent>
-      </Sheet>
-      <EpicCreateSheet
-        projectId={project.id}
-        open={showEpic}
-        onOpenChange={setShowEpic}
-        onSubmit={(epic) => {
-          setShowEpic(false);
-          void router.push("projectEpic", {
-            params: {
-              projectSlug: project.slug,
-              epicNumber: String(epic.number),
-            },
-          });
-        }}
-      />
-      {/* #1635's surface, reused rather than a second one built here. */}
-      <ReleaseCreateDialog
-        projectId={project.id}
-        open={showRelease}
-        onOpenChange={setShowRelease}
-        suggestedTag={suggestedReleaseTag(releases ?? [])}
-        onCreated={(created) => {
-          setShowRelease(false);
-          // Onto the release itself, the way New Epic opens the epic it just
-          // made. A release is addressed by its TAG, and the row is
-          // unreachable without one, so a tagless answer falls back to the
-          // list rather than routing to a broken URL.
-          void (created.tag
-            ? router.push("projectRelease", {
-                params: {
-                  projectSlug: project.slug,
-                  releaseTag: created.tag,
-                },
-              })
-            : router.push("projectReleases", {
-                params: { projectSlug: project.slug },
-              }));
-        }}
-      />
-      {/* The one create dialog, mounted here and from the Apps list. It
-          navigates to what it made, the way New Epic and New Release do:
-          creating from the header and landing back where you started is the
-          shape that makes people click twice. */}
-      <AppCreateDialog
-        open={showApp}
-        onOpenChange={setShowApp}
-        onCreated={(instance) => {
-          void router.push("app", {
-            params: {
-              projectSlug: project.slug,
-              app: instance.app,
-              env: instance.env,
-            },
-          });
-        }}
-      />
+      {items.map(
+        (item) =>
+          item.dialog && (
+            <item.dialog
+              key={item.key}
+              project={project}
+              open={openKey === item.key}
+              onOpenChange={(open) => setOpenKey(open ? item.key : undefined)}
+            />
+          ),
+      )}
       <Dialog open={showInvite} onOpenChange={setShowInvite}>
         <DialogContent>
           <DialogHeader>

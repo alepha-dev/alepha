@@ -1,15 +1,7 @@
-import {
-  AppWindow,
-  BookOpen,
-  type LucideIcon,
-  Settings2,
-  Swords,
-  Users,
-} from "lucide-react";
+import { type LucideIcon, Settings2, Users } from "lucide-react";
 
 import type { CapabilityKey } from "@/api/schemas/capabilityKeySchema.ts";
 import type { ProjectResource } from "@/api/schemas/projectResourceSchema.ts";
-import { capabilityRegistry } from "@/web/app/services/capabilityRegistry.ts";
 import {
   capabilityOption,
   hasCapability,
@@ -19,48 +11,16 @@ import {
   type ProjectRankSource,
 } from "@/web/app/services/projectRank.ts";
 
-import { CAPABILITY_NAV_OPTIONS } from "../capabilityNav.ts";
-
 type ProjectCapabilitySubject = Pick<ProjectResource, "capabilities"> &
   ProjectRankSource;
 
-/**
- * The settings routes, as the section and tab tables below name them.
- *
- * Plain strings with nothing in the type system tying them to `AppRouter`,
- * like every other nav table here: `test/app-routes.spec.ts` resolves each
- * one, which is what turns a renamed route into a red test.
- */
-export type SettingsRouteName =
-  | "projectSettingsBanner"
-  | "projectSettingsCapabilities"
-  | "projectSettingsMembers"
-  | "projectSettingsRanks"
-  | "projectSettingsWork"
-  | "projectSettingsAreas"
-  | "projectSettingsArea"
-  | "projectSettingsBoard"
-  | "projectSettingsPrompts"
-  | "projectSettingsKnowledge"
-  | "projectSettingsApps"
-  | "projectSettingsEstates";
-
 export interface SettingsTab {
-  route: SettingsRouteName;
-  labelKey:
-    | "project.settings.tab.details"
-    | "project.settings.tab.capabilities"
-    | "project.settings.tab.features"
-    | "project.settings.tab.board"
-    | "project.settings.tab.prompts"
-    | "project.settings.nav.members"
-    | "project.settings.nav.ranks"
-    | "project.settings.nav.areas"
-    | "project.settings.nav.estates";
+  route: string;
+  labelKey: string;
   /**
    * Other routes this tab is lit on: a detail page under a list tab.
    */
-  alsoOn?: SettingsRouteName[];
+  alsoOn?: string[];
   /**
    * An option of the section's capability the tab needs. Absent means the
    * capability alone decides.
@@ -74,7 +34,12 @@ export interface SettingsTab {
 }
 
 export interface SettingsSectionDef {
-  key: "general" | "members" | CapabilityKey;
+  key: string;
+  /**
+   * Position in the Settings group, ascending: General 10, Members 20, then
+   * each capability's section as its module registers it.
+   */
+  order: number;
   /**
    * The sidebar's own noun for the section (Quests, Folios, Apps), never the
    * capability's name: the settings group sits under entries saying exactly
@@ -102,26 +67,6 @@ export interface SettingsSectionDef {
 }
 
 /**
- * The options a capability's own settings page shows: every option it
- * declares except the ones that add a sidebar entry, which General shows.
- */
-export const CAPABILITY_SETTINGS_OPTIONS = Object.fromEntries(
-  capabilityRegistry
-    .all()
-    .map((descriptor) => [
-      descriptor.key,
-      descriptor.options
-        .map((option) => option.key)
-        .filter(
-          (option) =>
-            !CAPABILITY_NAV_OPTIONS[descriptor.key as CapabilityKey].includes(
-              option,
-            ),
-        ),
-    ]),
-) as Record<CapabilityKey, string[]>;
-
-/**
  * Project settings, one section per child of the sidebar's Settings group
  * and one tab per route (#Q2565, folio #F1352).
  *
@@ -129,13 +74,17 @@ export const CAPABILITY_SETTINGS_OPTIONS = Object.fromEntries(
  * sections go in the sidebar, their pages go in tabs, so the group stays
  * short whatever a section grows.
  *
+ * These are Core's two; each capability's section is its module's, through
+ * `ProjectShellRegistry.registerSettings` (#E75, #Q2624).
+ *
  * ⚠️ Support has no section. Its master switch is in General and it has no
  * option of its own, so a section would be an empty page. Give it one the
  * day it grows an option.
  */
-export const SETTINGS_SECTIONS: SettingsSectionDef[] = [
+export const CORE_SETTINGS_SECTIONS: SettingsSectionDef[] = [
   {
     key: "general",
+    order: 10,
     labelKey: "project.settings.nav.general",
     descriptionKey: "project.settings.section.general",
     icon: Settings2,
@@ -152,6 +101,7 @@ export const SETTINGS_SECTIONS: SettingsSectionDef[] = [
   },
   {
     key: "members",
+    order: 20,
     labelKey: "project.settings.nav.members",
     descriptionKey: "project.settings.section.members",
     icon: Users,
@@ -164,71 +114,6 @@ export const SETTINGS_SECTIONS: SettingsSectionDef[] = [
         route: "projectSettingsRanks",
         labelKey: "project.settings.nav.ranks",
         requires: "rank:manage",
-      },
-    ],
-  },
-  {
-    key: "work",
-    labelKey: "project.menu.quests",
-    descriptionKey: "project.settings.section.work",
-    icon: Swords,
-    capability: "work",
-    tabs: [
-      {
-        route: "projectSettingsWork",
-        labelKey: "project.settings.tab.features",
-      },
-      {
-        // Areas moved here from the top of the old rail: a quest carries an
-        // area and a blight forwards into one, so the page serves Work.
-        route: "projectSettingsAreas",
-        labelKey: "project.settings.nav.areas",
-        alsoOn: ["projectSettingsArea"],
-      },
-      {
-        route: "projectSettingsBoard",
-        labelKey: "project.settings.tab.board",
-        option: "board",
-      },
-      {
-        route: "projectSettingsPrompts",
-        labelKey: "project.settings.tab.prompts",
-        option: "agentPrompts",
-      },
-    ],
-  },
-  {
-    key: "knowledge",
-    labelKey: "project.menu.folios",
-    descriptionKey: "project.settings.section.knowledge",
-    icon: BookOpen,
-    capability: "knowledge",
-    tabs: [
-      {
-        route: "projectSettingsKnowledge",
-        labelKey: "project.settings.tab.features",
-      },
-    ],
-  },
-  {
-    key: "apps",
-    labelKey: "project.menu.apps",
-    descriptionKey: "project.settings.section.apps",
-    icon: AppWindow,
-    capability: "apps",
-    tabs: [
-      {
-        route: "projectSettingsApps",
-        labelKey: "project.settings.tab.features",
-      },
-      {
-        // ⚠️ Under Apps since #Q2565. It used to sit outside the capability
-        // pages so a project lent an estate with no sigils would still see
-        // it; that was the `track` option, and this section is listed
-        // whenever `apps` is on, whatever `track` says. Deploying needs
-        // `apps` anyway.
-        route: "projectSettingsEstates",
-        labelKey: "project.settings.nav.estates",
       },
     ],
   },
@@ -252,23 +137,4 @@ export const visibleSettingsTabs = (
         capabilityOption(project, section.capability, tab.option)) &&
       (!tab.requires || canInProject(project, tab.requires)),
   );
-};
-
-/**
- * The section a settings route belongs to, and the tab it lights.
- */
-export const findSettingsTab = (
-  routeName: string,
-): { section: SettingsSectionDef; tab: SettingsTab } | undefined => {
-  for (const section of SETTINGS_SECTIONS) {
-    for (const tab of section.tabs) {
-      if (
-        tab.route === routeName ||
-        tab.alsoOn?.includes(routeName as SettingsRouteName)
-      ) {
-        return { section, tab };
-      }
-    }
-  }
-  return undefined;
 };

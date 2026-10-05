@@ -15,7 +15,6 @@ import { useMemo } from "react";
 import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 import type { ProjectActivityRow } from "@/api/schemas/projectActivityRowSchema.ts";
 
-import type { AppRouter } from "../../../AppRouter.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { displayName } from "../../../services/displayName.ts";
 import type { I18n } from "../../../services/I18n.ts";
@@ -68,7 +67,7 @@ const ProjectActivityPage = ({
   persistenceKey,
 }: ProjectActivityPageProps) => {
   const { tr } = useI18n<I18n, "en">();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const [project] = useStore(currentProjectAtom);
   const projectApi = useClient<ProjectController>();
   const dt = useInject(DateTimeProvider);

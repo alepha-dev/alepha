@@ -1,6 +1,5 @@
 import { useRouter } from "alepha/react/router";
 
-import type { AppRouter } from "../../AppRouter.ts";
 import type { HomeSearchHit } from "./useHomeSearch.ts";
 
 /**
@@ -9,7 +8,7 @@ import type { HomeSearchHit } from "./useHomeSearch.ts";
  * `go` (`Spotlight.tsx`).
  */
 export const useHomeSearchHitHref = () => {
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
 
   return (projectSlug: string, hit: HomeSearchHit): string => {
     const params = { projectSlug };

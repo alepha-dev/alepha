@@ -3,7 +3,6 @@ import { useRouter } from "alepha/react/router";
 
 import type { FeedbackController } from "@/api/controllers/FeedbackController.ts";
 
-import type { AppRouter } from "../../../AppRouter.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { formatReference } from "../../shared/element/typedReference.ts";
 
@@ -31,7 +30,7 @@ import { formatReference } from "../../shared/element/typedReference.ts";
  * links somewhere they cannot go is worse than one that does not link.
  */
 export const useFeedbackReference = (feedbackId?: number | null) => {
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const feedbackApi = useClient<FeedbackController>();
   const [project] = useStore(currentProjectAtom);
 

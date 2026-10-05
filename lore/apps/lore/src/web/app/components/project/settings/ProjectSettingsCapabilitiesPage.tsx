@@ -1,6 +1,8 @@
-import { CAPABILITY_KEYS } from "@/api/schemas/capabilityKeySchema.ts";
+import { useInject } from "alepha/react";
 
-import { CAPABILITY_NAV_OPTIONS } from "../capabilityNav.ts";
+import { CAPABILITY_KEYS } from "@/api/schemas/capabilityKeySchema.ts";
+import { ProjectShellRegistry } from "@/web/app/registries/ProjectShellRegistry.ts";
+
 import ProjectSettingsCapabilitySection from "./ProjectSettingsCapabilitySection.tsx";
 
 /**
@@ -14,16 +16,20 @@ import ProjectSettingsCapabilitySection from "./ProjectSettingsCapabilitySection
  * off leaves the sidebar, its settings section included, so the page that
  * turns it back on must be one that is always listed. General is.
  */
-const ProjectSettingsCapabilitiesPage = () => (
-  <div className="flex flex-col gap-4">
-    {CAPABILITY_KEYS.map((key) => (
-      <ProjectSettingsCapabilitySection
-        key={key}
-        capability={key}
-        options={CAPABILITY_NAV_OPTIONS[key]}
-      />
-    ))}
-  </div>
-);
+const ProjectSettingsCapabilitiesPage = () => {
+  const shell = useInject(ProjectShellRegistry);
+
+  return (
+    <div className="flex flex-col gap-4">
+      {CAPABILITY_KEYS.map((key) => (
+        <ProjectSettingsCapabilitySection
+          key={key}
+          capability={key}
+          options={shell.navOptions(key)}
+        />
+      ))}
+    </div>
+  );
+};
 
 export default ProjectSettingsCapabilitiesPage;

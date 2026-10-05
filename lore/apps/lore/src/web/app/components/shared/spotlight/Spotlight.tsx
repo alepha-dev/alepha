@@ -26,7 +26,6 @@ import { type ReactElement, useEffect, useState } from "react";
 
 import type { SearchController } from "@/api/controllers/SearchController.ts";
 
-import type { AppRouter } from "../../../AppRouter.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import {
   type ProjectNavEntry,
@@ -86,7 +85,7 @@ interface SpotlightHit {
  */
 const Spotlight = (): ReactElement => {
   const { tr } = useI18n<I18n, "en">();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const [project] = useStore(currentProjectAtom);
   const [spotlight, setSpotlight] = useStore(spotlightOpenAtom);
   const [overview] = useStore(userProjectsAtom);

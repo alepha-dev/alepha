@@ -20,7 +20,6 @@ import { useState } from "react";
 import type { FeedbackController } from "@/api/controllers/FeedbackController.ts";
 import type { FeedbackResource } from "@/api/schemas/feedbackResourceSchema.ts";
 
-import type { AppRouter } from "../../../AppRouter.ts";
 import { currentFeedbackCountAtom } from "../../../atoms/currentFeedbackCountAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
@@ -45,7 +44,7 @@ export interface ProjectFeedbackProps {
 
 const ProjectFeedback = (props: ProjectFeedbackProps) => {
   const { tr } = useI18n<I18n, "en">();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const routerState = useRouterState();
   const [project] = useStore(currentProjectAtom);
   const [, setFeedbackCount] = useStore(currentFeedbackCountAtom);

@@ -4,7 +4,6 @@ import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { Sparkles } from "lucide-react";
 
-import type { AppRouter } from "../../AppRouter.ts";
 import type { I18n } from "../../services/I18n.ts";
 import HeaderActions from "../shared/header/HeaderActions.tsx";
 import LoreLogo from "../shared/LoreLogo.tsx";
@@ -29,7 +28,7 @@ import LoreLogo from "../shared/LoreLogo.tsx";
  */
 const HomeHeader = () => {
   const { tr } = useI18n<I18n, "en">();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
 
   return (
     /*

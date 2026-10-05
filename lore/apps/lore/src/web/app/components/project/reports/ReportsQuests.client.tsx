@@ -11,7 +11,6 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 
 import type { reportsQuestsSchema } from "@/api/schemas/reportsSchemas.ts";
 
-import type { AppRouter } from "../../../AppRouter.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import { formatReference } from "../../shared/element/typedReference.ts";
 import ReportsSection from "./ReportsSection.tsx";
@@ -30,7 +29,7 @@ export interface ReportsQuestsProps {
  */
 const ReportsQuests = (props: ReportsQuestsProps) => {
   const { tr } = useI18n<I18n, "en">();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const { funnel, byArea, byTag, byPriority, cycleTimeByPriority, aging } =
     props.quests;
 

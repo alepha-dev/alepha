@@ -58,7 +58,6 @@ import {
   questStatusSchema,
 } from "@/api/schemas/questResourceSchema.ts";
 
-import type { AppRouter } from "../../AppRouter.ts";
 import { currentAreasAtom } from "../../atoms/currentAreasAtom.ts";
 import { currentEpicsAtom } from "../../atoms/currentEpicsAtom.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
@@ -94,7 +93,7 @@ const ProjectQuestsTable = () => {
   const questMutations = useQuestMutations();
   const reportBulk = useBulkReport();
   const dateFormatter = useInject(DateTimeProvider);
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const { tr } = useI18n<I18n, "en">();
   const dialog = useDialog();
   const toaster = useToast();

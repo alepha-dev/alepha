@@ -4,7 +4,6 @@ import { useRouter } from "alepha/react/router";
 import { useCallback, useMemo } from "react";
 
 import type { ReleaseContentQuest } from "@/api/schemas/releaseContentQuestSchema.ts";
-import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentAreasAtom } from "@/web/app/atoms/currentAreasAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
@@ -46,7 +45,7 @@ export interface ReleaseFlowProps {
  */
 const ReleaseFlow = (props: ReleaseFlowProps) => {
   const { tr } = useI18n<I18n, "en">();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const [areas] = useStore(currentAreasAtom);
   const viewport = useQuestlineViewport();
 

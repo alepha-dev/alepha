@@ -1,3 +1,4 @@
+import { Alepha, type Atom } from "alepha";
 import { describe, it } from "vitest";
 
 import {
@@ -5,55 +6,64 @@ import {
   type CapabilityKey,
 } from "@/api/schemas/capabilityKeySchema.ts";
 import { projectFixture } from "@/testing/projectFixture.ts";
-import {
-  capabilityOption,
-  hasCapability,
-} from "@/web/app/services/projectCapabilities.ts";
+import { currentBlightCountAtom } from "@/web/app/atoms/currentBlightCountAtom.ts";
+import { currentInstancesAtom } from "@/web/app/atoms/currentInstancesAtom.ts";
+import { ProjectShellRegistry } from "@/web/app/registries/ProjectShellRegistry.ts";
+import { DeployShell } from "@/web/app/shell/DeployShell.ts";
+import { KnowledgeShell } from "@/web/app/shell/KnowledgeShell.ts";
+import { WorkShell } from "@/web/app/shell/WorkShell.ts";
 
-import {
-  CAPABILITY_NAV,
-  type CapabilityNavContext,
-  type CapabilityNavEntry,
-  CORE_NAV,
-} from "./capabilityNav.ts";
+import { CORE_NAV, type ProjectShellContext } from "./capabilityNav.ts";
 
 /**
  * What the sidebar offers, without rendering one.
  *
  * `ProjectView` used to answer this with a chain of nine `if (features.x)`,
- * and the only way to assert it was to mount the whole shell. The chain is a
- * map now, so the question is a pure function of the capability set - which
- * makes the cases below the ones nobody could write before: a Knowledge-only
- * project, and a project with everything off.
+ * and the only way to assert it was to mount the whole shell. The entries are
+ * data each module registers (#E75, #Q2624), so the question is a pure
+ * function of the capability set - which makes the cases below the ones
+ * nobody could write before: a Knowledge-only project, and a project with
+ * everything off.
  *
  * ⚠️ The last case is the one to keep. A project with no capability at all is
  * a legal state, deliberately, and the sidebar it gets is the proof that
  * turning everything off leaves an app rather than a broken page.
  */
-const CONTEXT: CapabilityNavContext = {
-  routeName: "projectQuests",
-  collectsBlights: false,
+const alepha = Alepha.create();
+alepha.inject(WorkShell);
+alepha.inject(KnowledgeShell);
+alepha.inject(DeployShell);
+const shell = alepha.inject(ProjectShellRegistry);
+
+/**
+ * Every permission an entry opens on: the rank filter is the registry's
+ * last, and these cases are about capabilities.
+ */
+const PERMISSIONS = [
+  ...new Set(
+    [
+      ...CORE_NAV,
+      ...CAPABILITY_KEYS.flatMap((key) => shell.navOf(key)),
+    ].flatMap((entry) => (entry.permission ? [entry.permission] : [])),
+  ),
+];
+
+const contextWith = (state: Array<[Atom<any>, unknown]> = []) => {
+  const values = new Map(state.map(([atom, value]) => [atom.key, value]));
+  return {
+    routeName: "projectQuests",
+    params: {},
+    get: (atom) => values.get(atom.key) as never,
+  } satisfies ProjectShellContext;
 };
 
 const offered = (
-  project: {
-    capabilities: Array<{ key: string; options: Record<string, boolean> }>;
-  },
-  context: CapabilityNavContext = CONTEXT,
+  project: ReturnType<typeof projectFixture>,
+  context: ProjectShellContext = contextWith(),
 ): string[] =>
-  [
-    ...CORE_NAV,
-    ...CAPABILITY_KEYS.flatMap((key) =>
-      hasCapability(project as never, key)
-        ? CAPABILITY_NAV[key].filter(
-            (entry: CapabilityNavEntry) =>
-              (!entry.option ||
-                capabilityOption(project as never, key, entry.option)) &&
-              (!entry.available || entry.available(context)),
-          )
-        : [],
-    ),
-  ].map((entry) => entry.route);
+  shell
+    .offeredNav({ ...project, permissions: PERMISSIONS } as never, context)
+    .map((entry) => entry.route);
 
 describe("the sidebar, derived from capabilities", () => {
   it("offers everything to a project that has everything", ({ expect }) => {
@@ -145,12 +155,17 @@ describe("the sidebar, derived from capabilities", () => {
     // A blight OUTLIVES the app that reported it - `blights.sigilId` is
     // `ON DELETE SET NULL` and rows survive for the retention window - so an
     // owner who deleted their only app must not lose the inbox with it.
-    expect(offered(apps, { ...CONTEXT, blightCount: 3 })).toContain(
-      "projectBlights",
-    );
-    expect(offered(apps, { ...CONTEXT, collectsBlights: true })).toContain(
-      "projectBlights",
-    );
+    expect(
+      offered(apps, contextWith([[currentBlightCountAtom, { count: 3 }]])),
+    ).toContain("projectBlights");
+    expect(
+      offered(
+        apps,
+        contextWith([
+          [currentInstancesAtom, [{ sigil: { kinds: ["blights"] } }]],
+        ]),
+      ),
+    ).toContain("projectBlights");
   });
 
   it("keeps the Apps baseline when tracking is off", ({ expect }) => {
@@ -180,8 +195,8 @@ describe("the sidebar, derived from capabilities", () => {
     // to be skipped. That every destination is still offered once is the
     // separate check below.
     const owners = new Map<string, string>();
-    for (const key of Object.keys(CAPABILITY_NAV) as CapabilityKey[]) {
-      for (const entry of CAPABILITY_NAV[key]) {
+    for (const key of CAPABILITY_KEYS as readonly CapabilityKey[]) {
+      for (const entry of shell.navOf(key)) {
         const existing = owners.get(entry.route);
         expect(
           existing === undefined || existing === key,
@@ -204,9 +219,7 @@ describe("the sidebar, derived from capabilities", () => {
     // sidebar.
     const all = [
       ...CORE_NAV,
-      ...(Object.keys(CAPABILITY_NAV) as CapabilityKey[]).flatMap(
-        (key) => CAPABILITY_NAV[key],
-      ),
+      ...CAPABILITY_KEYS.flatMap((key) => shell.navOf(key)),
     ].map((entry) => entry.route);
 
     expect(new Set(all).size).toBe(all.length);

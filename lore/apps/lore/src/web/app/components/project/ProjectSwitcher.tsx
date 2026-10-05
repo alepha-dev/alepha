@@ -13,7 +13,6 @@ import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import { Check, ChevronsUpDown, Home, LayoutGrid, Plus } from "lucide-react";
 
-import type { AppRouter } from "../../AppRouter.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
@@ -22,7 +21,7 @@ import { RECENT_PROJECTS_CAP } from "./recentProjectsCap.ts";
 
 const ProjectSwitcher = () => {
   const { tr } = useI18n<I18n, "en">();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const [project] = useStore(currentProjectAtom);
   const [overview] = useStore(userProjectsAtom);
 

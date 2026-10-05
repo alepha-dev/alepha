@@ -7,7 +7,6 @@ import { useEffect } from "react";
 
 import { capabilityOption } from "@/web/app/services/projectCapabilities.ts";
 
-import type { AppRouter } from "../../../AppRouter.ts";
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
@@ -69,7 +68,7 @@ const APP_TAB_ROUTES = new Set([
  */
 const AppLayout = () => {
   const { tr, l } = useI18n<I18n, "en">();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const routerState = useRouterState();
 
   const [project] = useStore(currentProjectAtom);

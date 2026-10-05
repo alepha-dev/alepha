@@ -6,7 +6,6 @@ import { createPortal } from "react-dom";
 
 import type { FolioController } from "@/api/controllers/FolioController.ts";
 
-import type { AppRouter } from "../../../AppRouter.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import FolioEmptyState from "./document/FolioEmptyState.tsx";
 import { FolioWorkspaceShellContext } from "./FolioWorkspaceShellContext.ts";
@@ -52,7 +51,7 @@ const FolioWorkspaceEmpty = (
   }
   const [project] = useStore(currentProjectAtom);
   const folioApi = useClient<FolioController>();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const treeActions = shell.treeActions;
   const panes = shell.panes;
 

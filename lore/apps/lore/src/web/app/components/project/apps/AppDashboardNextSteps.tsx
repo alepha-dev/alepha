@@ -10,7 +10,6 @@ import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import { KeyRound, Link2, Server } from "lucide-react";
 
-import type { AppRouter } from "../../../AppRouter.ts";
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
@@ -34,7 +33,7 @@ import type { I18n } from "../../../services/I18n.ts";
  */
 const AppDashboardNextSteps = () => {
   const { tr } = useI18n<I18n, "en">();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
 
   const [project] = useStore(currentProjectAtom);
   const [instance] = useStore(currentInstanceAtom);

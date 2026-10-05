@@ -4,7 +4,6 @@ import { Crown } from "lucide-react";
 
 import type { ProjectOverviewResource } from "@/api/schemas/projectResourceSchema.ts";
 
-import type { AppRouter } from "../../AppRouter.ts";
 import type { I18n } from "../../services/I18n.ts";
 import { ProjectIcon } from "../shared/ProjectIcon.tsx";
 import { HomeMomentum } from "./HomeMomentum.tsx";
@@ -49,7 +48,7 @@ export interface HomeRecentProjectRowProps {
  */
 export const HomeRecentProjectRow = (props: HomeRecentProjectRowProps) => {
   const { tr } = useI18n<I18n, "en">();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const total = props.counts.reduce((sum, count) => sum + count, 0);
 
   return (

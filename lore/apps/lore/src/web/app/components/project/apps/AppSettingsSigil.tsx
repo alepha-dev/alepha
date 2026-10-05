@@ -14,7 +14,6 @@ import { KeyRound, RefreshCw, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import type { SigilController } from "@/api/controllers/SigilController.ts";
-import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { useRank } from "@/web/app/components/shared/useRank.ts";
 import { hasCapability } from "@/web/app/services/projectCapabilities.ts";
 
@@ -65,7 +64,7 @@ const AppSettingsSigil = () => {
   const dialog = useDialog();
   const sigilApi = useClient<SigilController>();
 
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
 
   const [project] = useStore(currentProjectAtom);
   const [instance, setInstance] = useStore(currentInstanceAtom);

@@ -4,7 +4,6 @@ import { useRouter } from "alepha/react/router";
 
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 
-import type { AppRouter } from "../../AppRouter.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { currentQuestAtom } from "../../atoms/currentQuestAtom.ts";
 import LazyQuestView from "./quest/LazyQuestView.tsx";
@@ -27,7 +26,7 @@ export interface ProjectKanbanCardProps {
  */
 const ProjectKanbanCard = (props: ProjectKanbanCardProps) => {
   const alepha = useAlepha();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const [project] = useStore(currentProjectAtom);
   // The loader seeds this, and `QuestView` writes it on every mutation, so
   // reading it here is what keeps the sheet showing the current version

@@ -1,82 +1,57 @@
 import { AppShell, type NavGroup } from "@alepha/ui/shell";
-import { useStore } from "alepha/react";
+import { useAlepha, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { NestedView, useRouter, useRouterState } from "alepha/react/router";
 import { Cog } from "lucide-react";
 
-import { CAPABILITY_KEYS } from "@/api/schemas/capabilityKeySchema.ts";
-
-import type { AppRouter } from "../../AppRouter.ts";
-import { currentBlightCountAtom } from "../../atoms/currentBlightCountAtom.ts";
-import { currentEpicAtom } from "../../atoms/currentEpicAtom.ts";
-import { currentEpicCountAtom } from "../../atoms/currentEpicCountAtom.ts";
-import { currentFeedbackCountAtom } from "../../atoms/currentFeedbackCountAtom.ts";
-import { currentInstanceAtom } from "../../atoms/currentInstanceAtom.ts";
-import { currentInstancesAtom } from "../../atoms/currentInstancesAtom.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
-import { currentQuestAtom } from "../../atoms/currentQuestAtom.ts";
-import { currentQuestCountAtom } from "../../atoms/currentQuestCountAtom.ts";
-import { questLogCollapsedAtom } from "../../atoms/questLogCollapsedAtom.ts";
+import { ProjectShellRegistry } from "../../registries/ProjectShellRegistry.ts";
 import type { I18n } from "../../services/I18n.ts";
-import {
-  capabilityOption,
-  hasCapability,
-} from "../../services/projectCapabilities.ts";
-import { canInProject } from "../../services/projectRank.ts";
-import { formatReference } from "../shared/element/typedReference.ts";
 import HeaderActions from "../shared/header/HeaderActions.tsx";
 import HeaderRepositoryButton from "../shared/header/HeaderRepositoryButton.tsx";
 import HeaderSearchButton from "../shared/header/HeaderSearchButton.tsx";
-import {
-  CAPABILITY_NAV,
-  type CapabilityNavContext,
-  type CapabilityNavEntry,
-  CORE_NAV,
+import { useAtomsVersion } from "../shared/useAtomsVersion.ts";
+import type {
+  CapabilityNavEntry,
+  ProjectShellContext,
 } from "./capabilityNav.ts";
 import ProjectActionsCreateButton from "./ProjectActionsCreateButton.tsx";
 import ProjectInboxButton from "./ProjectInboxButton.tsx";
-import ProjectQuestLogRail from "./ProjectQuestLogRail.tsx";
 import ProjectSwitcher from "./ProjectSwitcher.tsx";
 import ProjectViewNavPublisher from "./ProjectViewNavPublisher.tsx";
 import {
-  ROUTES_APP,
   ROUTES_FULL_WIDTH,
-  ROUTES_WITH_QUEST_LOG,
   SECTION_HREF_ROUTES,
   SECTION_LABEL_KEYS,
 } from "./projectViewRoutes.ts";
-import QuestLog from "./QuestLog.tsx";
-import {
-  findSettingsTab,
-  SETTINGS_SECTIONS,
-  visibleSettingsTabs,
-} from "./settings/projectSettingsSections.ts";
+import { visibleSettingsTabs } from "./settings/projectSettingsSections.ts";
 
 const ProjectView = () => {
   const routerState = useRouterState();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
+  const alepha = useAlepha();
+  const shell = useInject(ProjectShellRegistry);
   const { tr } = useI18n<I18n, "en">();
   const name = routerState.name ?? "";
-  const [questLogCollapsed, setQuestLogCollapsed] = useStore(
-    questLogCollapsedAtom,
-  );
-  const showQuestLog = ROUTES_WITH_QUEST_LOG.has(name);
+  const aside = shell.asideFor(name);
   const fullWidth = ROUTES_FULL_WIDTH.has(name);
-  const activeSettings = findSettingsTab(name);
+  const activeSettings = shell.findSettingsTab(name);
 
   const [project] = useStore(currentProjectAtom);
-  const [questCount] = useStore(currentQuestCountAtom);
-  const [feedbackCount] = useStore(currentFeedbackCountAtom);
-  const [blightCount] = useStore(currentBlightCountAtom);
-  const [instances] = useStore(currentInstancesAtom);
-  const [instance] = useStore(currentInstanceAtom);
-  const [epic] = useStore(currentEpicAtom);
-  const [quest] = useStore(currentQuestAtom);
-  const [epicCount] = useStore(currentEpicCountAtom);
+  // Every module atom a registered badge, predicate or breadcrumb reads,
+  // subscribed to once: the registered functions read them through
+  // `context.get`, never through a hook (#E75, #Q2624).
+  useAtomsVersion(shell.reads());
 
   if (!project) {
     return null;
   }
+
+  const context: ProjectShellContext = {
+    routeName: name,
+    params: routerState.params,
+    get: (atom) => alepha.store.get(atom),
+  };
 
   const projectSlug = project.slug;
 
@@ -117,50 +92,17 @@ const ProjectView = () => {
   // Groups with no items are dropped by the `.filter` below, so a project with
   // every capability off still renders a clean sidebar: Activity, Reports and
   // Settings.
-  const collectsBlights = (instances ?? []).some((it) =>
-    it.sigil?.kinds.includes("blights"),
-  );
-  const navContext: CapabilityNavContext = {
-    routeName: name,
-    questCount: questCount?.count,
-    epicCount: epicCount?.count,
-    feedbackCount: feedbackCount?.count,
-    blightCount: blightCount?.count,
-    collectsBlights,
-  };
-
   const toItem = (entry: CapabilityNavEntry): NavGroup["items"][number] => ({
     label: tr(entry.labelKey as never),
     icon: entry.icon,
     href: router.path(entry.route as never, { params: { projectSlug } }),
     active: entry.activeOn ? entry.activeOn(name) : name === entry.route,
-    badge: entry.badge?.(navContext),
+    badge: entry.badge?.(context),
   });
 
-  const offered: CapabilityNavEntry[] = [
-    ...CORE_NAV,
-    // Declaration order, not the order the rows came back in: a project's
-    // sidebar must not depend on which capability was turned on first.
-    ...CAPABILITY_KEYS.flatMap((key) =>
-      hasCapability(project, key)
-        ? CAPABILITY_NAV[key].filter(
-            (entry) =>
-              (!entry.option || capabilityOption(project, key, entry.option)) &&
-              (!entry.available || entry.available(navContext)),
-          )
-        : [],
-    ),
-    // ⚠️ The rank is the second filter, applied to the SAME computation the
-    // palette reads through `projectNavAtom`. A second map would be a second
-    // answer, and the two would eventually disagree about which destinations
-    // exist - which is exactly what this one map was built to prevent.
-    //
-    // An entry leading to a 403 is worse than no entry: it advertises a place
-    // the reader cannot go. Never enforcement, though - the page's own loader
-    // refuses too.
-  ].filter(
-    (entry) => !entry.permission || canInProject(project, entry.permission),
-  );
+  // Core's entries and every module's, narrowed by capability, option,
+  // data and rank (`ProjectShellRegistry.offeredNav`).
+  const offered = shell.offeredNav(project, context);
 
   // Sorted by the entry's own `order`, not by which capability it came from:
   // Record reads Folios, Releases, Reports - Knowledge, then Work, then Core -
@@ -197,13 +139,13 @@ const ProjectView = () => {
           // is in General, which always is.
           label: tr("project.menu.settings"),
           icon: Cog,
-          children: SETTINGS_SECTIONS.flatMap((section) => {
+          children: shell.settingsSections().flatMap((section) => {
             const tabs = visibleSettingsTabs(section, project);
             const first = tabs[0];
             if (!first) return [];
             return [
               {
-                label: tr(section.labelKey),
+                label: tr(section.labelKey as never),
                 icon: section.icon,
                 href: router.path(first.route, { params: { projectSlug } }),
                 active: activeSettings?.section.key === section.key,
@@ -238,77 +180,17 @@ const ProjectView = () => {
   // A settings page adds its section, "Project › Settings › Quests", since
   // the sidebar group is now the only other thing naming it (#Q2565).
   if (activeSettings) {
-    breadcrumbs.push({ label: tr(activeSettings.section.labelKey) });
+    breadcrumbs.push({ label: tr(activeSettings.section.labelKey as never) });
   }
-  // The app pages contribute the instance as ONE crumb, so the header reads
-  // "Project › Apps › club / b14-production": an instance is the pair
-  // `(app, env)`, and one crumb says so (#Q2466).
-  //
-  // It replaced two crumbs, an inert app label and a linked env. The app half
-  // had no `href` because there is no app page: `/apps/club` redirects to a
-  // sibling instance, so a link there moved the reader sideways. One crumb
-  // leaves nothing to keep inert.
-  if (ROUTES_APP.has(name) && instance) {
-    breadcrumbs.push({
-      label: `${instance.app} / ${instance.env}`,
-      href: router.path("app", {
-        params: { projectSlug, app: instance.app, env: instance.env },
-      }),
+  // A detail page's own leaf (an instance, `#2`, `#1208`, a release tag,
+  // `#F12`), each contributed by the module that owns the page.
+  for (const contribution of shell.crumbContributions()) {
+    const crumb = contribution.crumb({
+      ...context,
+      projectSlug,
+      path: (route, params) => router.path(route as never, { params }),
     });
-  }
-  // The epic detail page contributes the epic's own `#number` as a leaf, so
-  // the header reads "Project › Epics › #2". No `href`: the leaf is the page
-  // already open.
-  //
-  // The number, not the title, for the reason the quest leaf below gives and
-  // one more: the title now heads `ProjectEpicAside`, immediately under this
-  // bar, so a crumb repeating it would put the same words twice on screen a
-  // few pixels apart. The identifier and the name are split across the two,
-  // one each.
-  if (name === "projectEpic" && epic) {
-    breadcrumbs.push({ label: formatReference("epic", epic.number) });
-  }
-  // Same shape for the quest detail page: `#1208` as an inert leaf. The
-  // number, not the title — the title is already the first thing on the page,
-  // and a long one would push the crumbs off the bar.
-  if (name === "projectQuest" && quest) {
-    breadcrumbs.push({ label: formatReference("quest", quest.shortId) });
-  }
-  // And the release detail page contributes its TAG, which is the one leaf
-  // on this bar that is not a `#number`.
-  //
-  // The tag rather than the number for the same reason the URL is
-  // `/releases/0.28.0`: the number is the internal sequence and nobody
-  // reading the bar knows it. It is read straight from the route params -
-  // this route has no loader and no atom of its own, and the tag is already
-  // the thing the URL carries.
-  if (name === "projectRelease" && routerState.params.releaseTag) {
-    breadcrumbs.push({ label: String(routerState.params.releaseTag) });
-  }
-  // And the folio DETAIL page contributes `#F12`, the same shape as the epic
-  // and quest leaves above and for the same reason (feedback #P2137): the
-  // title heads the document immediately under this bar, and it used to be
-  // spelled out here after every directory it sits in - "Odzala › Folios ›
-  // context › Congo-Brazzaville: country, buyer and timing", which is a bar
-  // made of one title.
-  //
-  // Read from the route params like the release tag, not from
-  // `currentFolioPathAtom`: the URL already carries the number, so this leaf
-  // cannot lag a loader.
-  //
-  // ⚠️ The directory chain is DROPPED, and that is a real capability going
-  // rather than only noise: its segments carried `?dir=<shortId>`, so the bar
-  // was one way back up the tree. The tree pane beside the document is the
-  // other, and it is the one the workspace calls its navigation.
-  //
-  // It took `currentFolioPathAtom` with it. The listing route wrote `[]` into
-  // that atom deliberately - `/folios` reads just "Folios" - so this leaf was
-  // its only consumer, and an atom nothing reads is a loader write and a
-  // subscription for nothing.
-  if (name === "projectFoliosFolio" && routerState.params.shortId) {
-    breadcrumbs.push({
-      label: formatReference("folio", Number(routerState.params.shortId)),
-    });
+    if (crumb) breadcrumbs.push(crumb);
   }
 
   return (
@@ -401,37 +283,13 @@ const ProjectView = () => {
         <div className="flex h-full flex-col">
           <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col">
             <div
-              className={`flex min-h-0 flex-1 flex-col ${showQuestLog || fullWidth ? "overflow-hidden" : "overflow-auto"}`}
+              className={`flex min-h-0 flex-1 flex-col ${aside || fullWidth ? "overflow-hidden" : "overflow-auto"}`}
             >
-              {showQuestLog ? (
+              {aside ? (
                 <div className="flex min-h-0 flex-1">
-                  {/* Collapsed, the pane becomes a rail — but BOTH carry the same
-                    `hidden lg:flex` gate. Below `lg` the quest log does not
-                    render at all today, so a rail without that gate would
-                    introduce 32px of chrome on mobile where there is currently
-                    nothing, and a control that expands a pane the viewport
-                    then refuses to show. */}
-                  {questLogCollapsed.collapsed ? (
-                    <div className="hidden min-h-0 lg:flex">
-                      <ProjectQuestLogRail
-                        onExpand={() =>
-                          setQuestLogCollapsed({ collapsed: false })
-                        }
-                      />
-                    </div>
-                  ) : (
-                    <div
-                      data-testid="quest-log"
-                      className="border-border hidden min-h-0 shrink-0 border-r lg:flex"
-                      style={{ width: "25%", minWidth: 240, maxWidth: 420 }}
-                    >
-                      <QuestLog
-                        onCollapse={() =>
-                          setQuestLogCollapsed({ collapsed: true })
-                        }
-                      />
-                    </div>
-                  )}
+                  {/* The module's pane (Work's quest log), which owns its
+                    width, collapse state and breakpoint. */}
+                  <aside.component />
                   {/* The list owns its own scroll, so this wrapper must NOT
                   also scroll — a nested `overflow-auto` here showed a spurious
                   scrollbar.

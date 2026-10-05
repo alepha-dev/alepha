@@ -9,7 +9,6 @@ import {
   useState,
 } from "react";
 
-import type { AppRouter } from "../../../AppRouter.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { preloadMarkdownEditor } from "../../shared/markdown-editor/MarkdownEditor.tsx";
 import {
@@ -76,7 +75,7 @@ export interface FolioWorkspaceShellProps {
  */
 const FolioWorkspaceShell = (props: FolioWorkspaceShellProps): ReactElement => {
   const [project] = useStore(currentProjectAtom);
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const panes = useFolioPanes();
   const [inspectorTab, setInspectorTab] =
     useState<FolioInspectorTab>("outline");

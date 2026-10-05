@@ -8,7 +8,6 @@ import { FolderKanban, Plus } from "lucide-react";
 
 import type { ProjectOverviewResource } from "@/api/schemas/projectResourceSchema.ts";
 
-import type { AppRouter } from "../../AppRouter.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import { ProjectIcon } from "../shared/ProjectIcon.tsx";
@@ -38,7 +37,7 @@ import { ProjectIcon } from "../shared/ProjectIcon.tsx";
 const MyProjects = () => {
   const { tr } = useI18n<I18n, "en">();
   const [overview] = useStore(userProjectsAtom);
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
 
   const projects = overview?.projects ?? [];
   /*

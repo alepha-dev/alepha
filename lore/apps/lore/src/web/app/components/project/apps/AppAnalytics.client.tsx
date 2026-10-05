@@ -30,7 +30,6 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 
 import type { InsightsDimensionResource } from "@/api/schemas/insightsDimensionResourceSchema.ts";
 
-import type { AppRouter } from "../../../AppRouter.ts";
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
@@ -91,7 +90,7 @@ const ROW_FILTER: Record<
  */
 const AppAnalytics = () => {
   const { tr } = useI18n<I18n, "en">();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const [project] = useStore(currentProjectAtom);
   const [instance] = useStore(currentInstanceAtom);
   const { data, loading, error, range, traffic, filters, setFilters } =

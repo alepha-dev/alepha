@@ -6,7 +6,6 @@ import { useRouter } from "alepha/react/router";
 
 import type { ProjectOverviewResource } from "@/api/schemas/projectResourceSchema.ts";
 
-import type { AppRouter } from "../../AppRouter.ts";
 import type { I18n } from "../../services/I18n.ts";
 import {
   activityAgeInDays,
@@ -41,7 +40,7 @@ export const HomeRecentProjects = (props: HomeRecentProjectsProps) => {
   const { tr } = useI18n<I18n, "en">();
   const dt = useInject(DateTimeProvider);
   const openTags = useHomeOpenTags(props.openCounts);
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
 
   const shown = props.projects.slice(0, RECENT);
 

@@ -13,7 +13,6 @@ import { useEffect, useRef, useState } from "react";
 
 import type { ProjectOverviewResource } from "@/api/schemas/projectResourceSchema.ts";
 
-import type { AppRouter } from "../../AppRouter.ts";
 import type { I18n } from "../../services/I18n.ts";
 import { HomeSearchRow, type HomeSearchRowItem } from "./HomeSearchRow.tsx";
 import { useHomeSearch } from "./useHomeSearch.ts";
@@ -52,7 +51,7 @@ export interface HomeSearchProps {
  */
 export const HomeSearch = (props: HomeSearchProps) => {
   const { tr } = useI18n<I18n, "en">();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const hitHref = useHomeSearchHitHref();
   const search = useHomeSearch(props.projects);
   const [open, setOpen] = useState(false);

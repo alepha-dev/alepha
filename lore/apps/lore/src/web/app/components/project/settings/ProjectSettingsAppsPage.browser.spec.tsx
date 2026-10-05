@@ -13,6 +13,7 @@ import { virtualClientFake } from "@/testing/virtualClientFake.ts";
 
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { I18n } from "../../../services/I18n.ts";
+import { DeployShell } from "../../../shell/DeployShell.ts";
 import ProjectSettingsAppsPage from "./ProjectSettingsAppsPage.tsx";
 import ProjectSettingsCapabilitiesPage from "./ProjectSettingsCapabilitiesPage.tsx";
 
@@ -89,7 +90,8 @@ describe("the Apps settings page", () => {
       .with(AlephaReactI18n)
       // The catalogue itself. Without it `tr()` echoes the key, so the copy
       // assertion below would pass against the key name and prove nothing.
-      .with(I18n);
+      .with(I18n)
+      .with(DeployShell);
     await alepha.start();
     alepha.store.set(currentProjectAtom, aProject as never);
 

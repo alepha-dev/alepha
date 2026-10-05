@@ -6,7 +6,6 @@ import { useState } from "react";
 
 import type { AreaController } from "@/api/controllers/AreaController.ts";
 import type { AreaDetail } from "@/api/schemas/areaResourceSchema.ts";
-import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentAreasAtom } from "@/web/app/atoms/currentAreasAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
@@ -31,7 +30,7 @@ export interface ProjectSettingsAreaPageProps {
 const ProjectSettingsAreaPage = (props: ProjectSettingsAreaPageProps) => {
   const dialog = useDialog();
   const { tr } = useI18n<I18n, "en">();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const areaApi = useClient<AreaController>();
   const [siblings] = useStore(currentAreasAtom);
   const [renaming, setRenaming] = useState(false);

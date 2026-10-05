@@ -1,13 +1,13 @@
 import { Card, CardContent, cn } from "@alepha/ui";
 import { settingsCardEdge } from "@alepha/ui/settings";
-import { useStore } from "alepha/react";
+import { useInject, useStore } from "alepha/react";
 
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
+import { ProjectShellRegistry } from "@/web/app/registries/ProjectShellRegistry.ts";
 import { hasCapability } from "@/web/app/services/projectCapabilities.ts";
 
 import ProjectSettingsCapabilitySection from "./ProjectSettingsCapabilitySection.tsx";
 import ProjectSettingsRoadmapSection from "./ProjectSettingsRoadmapSection.tsx";
-import { CAPABILITY_SETTINGS_OPTIONS } from "./projectSettingsSections.ts";
 import ProjectSettingsTagColors from "./ProjectSettingsTagColors.tsx";
 
 /**
@@ -21,13 +21,14 @@ import ProjectSettingsTagColors from "./ProjectSettingsTagColors.tsx";
 const ProjectSettingsWorkPage = () => {
   const [project] = useStore(currentProjectAtom);
   const workEnabled = hasCapability(project, "work");
+  const shell = useInject(ProjectShellRegistry);
 
   return (
     <div className="flex flex-col gap-4">
       <ProjectSettingsCapabilitySection
         capability="work"
         master={false}
-        options={CAPABILITY_SETTINGS_OPTIONS.work}
+        options={shell.settingsOptions("work")}
       />
 
       {/* Tag colours belong to quests, not to the board: they render on the

@@ -5,7 +5,6 @@ import { Link, useActive, useRouter } from "alepha/react/router";
 import { Clock, Sparkles, TriangleAlert } from "lucide-react";
 
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
-import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
@@ -22,7 +21,7 @@ const QuestItem = (props: QuestItemProps) => {
   const { quest } = props;
 
   const { tr } = useI18n<I18n, "en">();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const [project] = useStore(currentProjectAtom);
   const questEstimateEnabled = capabilityOption(project, "work", "estimate");
   const { isActive, anchorProps } = useActive(

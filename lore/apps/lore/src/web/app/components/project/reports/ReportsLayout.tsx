@@ -3,7 +3,6 @@ import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { NestedView, useRouter, useRouterState } from "alepha/react/router";
 
-import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
@@ -34,7 +33,7 @@ export interface ReportsLayoutProps {
 
 const ReportsLayout = (props: ReportsLayoutProps) => {
   const { tr } = useI18n<I18n, "en">();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const routerState = useRouterState();
   const [project] = useStore(currentProjectAtom);
 

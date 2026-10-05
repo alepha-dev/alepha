@@ -23,7 +23,6 @@ import {
 
 import type { EpicController } from "@/api/controllers/EpicController.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
-import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
@@ -73,7 +72,7 @@ const QuestViewRail = (props: QuestViewRailProps) => {
   const { quest } = props;
   const { tr, l } = useI18n<I18n, "en">();
   const dt = useInject(DateTimeProvider);
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const epicApi = useClient<EpicController>();
   const [project] = useStore(currentProjectAtom);
 

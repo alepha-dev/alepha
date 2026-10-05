@@ -16,7 +16,6 @@ import { useRef, useState } from "react";
 import type { ReleaseController } from "@/api/controllers/ReleaseController.ts";
 import { compareReleaseTags } from "@/api/releaseOrder.ts";
 import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
-import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { currentReleasesAtom } from "@/web/app/atoms/currentReleasesAtom.ts";
 import { loreDocsUrl } from "@/web/app/services/docsUrl.ts";
@@ -85,7 +84,7 @@ import { useSetDefaultRelease } from "./useSetDefaultRelease.ts";
  */
 const ProjectReleases = () => {
   const { tr, l } = useI18n<I18n, "en">();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const [project] = useStore(currentProjectAtom);
   // Write-only. The table fetches its own rows, but the atom is what the
   // sidebar and both release CONTROLS read, so a create has to refresh it.

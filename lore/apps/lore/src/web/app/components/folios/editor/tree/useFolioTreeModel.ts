@@ -20,7 +20,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { DirectoryController } from "@/api/controllers/DirectoryController.ts";
 import type { FolioController } from "@/api/controllers/FolioController.ts";
 
-import type { AppRouter } from "../../../../AppRouter.ts";
 import { folioTreeCollapsedAtom } from "../../../../atoms/folioTreeCollapsedAtom.ts";
 import { projectDirectoriesAtom } from "../../../../atoms/projectDirectoriesAtom.ts";
 import { userFoliosAtom } from "../../../../atoms/userFoliosAtom.ts";
@@ -209,7 +208,7 @@ export const useFolioTreeModel = (
   input: UseFolioTreeModelInput,
 ): FolioTreeState => {
   const { tr } = useI18n<I18n, "en">();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const dialog = useDialog();
   const folioApi = useClient<FolioController>();
   const cryptoProvider = useInject(CryptoProvider);

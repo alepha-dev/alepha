@@ -23,7 +23,6 @@ import type { ReactElement } from "react";
 
 import type { FolioController } from "@/api/controllers/FolioController.ts";
 
-import type { AppRouter } from "../../../../AppRouter.ts";
 import type { I18n } from "../../../../services/I18n.ts";
 import { formatReference } from "../../../shared/element/typedReference.ts";
 import type { FolioTreeNode } from "./folioTree.ts";
@@ -103,7 +102,7 @@ const FolioTreeContextMenu = (
   props: FolioTreeContextMenuProps,
 ): ReactElement => {
   const { tr } = useI18n<I18n, "en">();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const node = props.node;
   const isDirectory = node.data.kind === "directory";
 

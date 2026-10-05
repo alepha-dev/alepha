@@ -19,7 +19,6 @@ import type { ReleaseController } from "@/api/controllers/ReleaseController.ts";
 import type { Release } from "@/api/entities/releases.ts";
 import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
 import { RELEASE_TAG_MAX_LENGTH } from "@/api/schemas/releaseTagSchema.ts";
-import type { AppRouter } from "@/web/app/AppRouter.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import ReleaseDescriptionEditor from "./ReleaseDescriptionEditor.tsx";
@@ -57,7 +56,7 @@ const ReleaseEditForm = (props: ReleaseEditFormProps) => {
   const { tr } = useI18n<I18n, "en">();
   const toaster = useToast();
   const api = useClient<ReleaseController>();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const dt = useInject(DateTimeProvider);
 
   const savedTag = props.release.tag ?? "";

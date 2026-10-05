@@ -16,7 +16,6 @@ import { useState } from "react";
 import type { AppController } from "@/api/controllers/AppController.ts";
 import { useRank } from "@/web/app/components/shared/useRank.ts";
 
-import type { AppRouter } from "../../../AppRouter.ts";
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
 import { currentInstancesAtom } from "../../../atoms/currentInstancesAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
@@ -56,7 +55,7 @@ export interface AppSettingsRenameProps {
 const AppSettingsRename = (props: AppSettingsRenameProps) => {
   const { tr } = useI18n<I18n, "en">();
   const { can } = useRank();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const toaster = useToast();
   const dialog = useDialog();
   const appApi = useClient<AppController>();

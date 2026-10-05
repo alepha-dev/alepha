@@ -39,7 +39,6 @@ import type { ProjectResource } from "@/api/schemas/projectResourceSchema.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import { KanbanColumnConfig } from "@/api/services/KanbanColumnConfig.ts";
 
-import type { AppRouter } from "../../AppRouter.ts";
 import { currentAreasAtom } from "../../atoms/currentAreasAtom.ts";
 import { currentQuestAtom } from "../../atoms/currentQuestAtom.ts";
 import { kanbanFiltersAtom } from "../../atoms/kanbanFiltersAtom.ts";
@@ -165,7 +164,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
   // `currentQuestAtom`, so watching it is how a card moves column without
   // either side holding a reference to the other, and without a refetch.
   const [openQuest] = useStore(currentQuestAtom);
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const questApi = useClient<QuestController>();
   const questMutations = useQuestMutations();
   const kanbanApi = useClient<KanbanController>();

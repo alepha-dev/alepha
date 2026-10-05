@@ -8,7 +8,6 @@ import type { DashboardCardResource } from "@/api/schemas/dashboardCardResourceS
 import type { DashboardCardValue as CardValue } from "@/api/schemas/dashboardCardValueSchema.ts";
 import type { DashboardPresentation } from "@/api/services/DashboardMetricCatalog.ts";
 
-import type { AppRouter } from "../../AppRouter.ts";
 import type { I18n } from "../../services/I18n.ts";
 import DashboardCardFooter from "./DashboardCardFooter.tsx";
 import DashboardCardMenu from "./DashboardCardMenu.tsx";
@@ -103,7 +102,7 @@ export interface DashboardCardProps {
  */
 const DashboardCard = (props: DashboardCardProps) => {
   const { tr } = useI18n<I18n, "en">();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const Icon = dashboardMetricIcon(props.icon);
   const link = props.value?.link;
   // Defaults to true so home, which has no rank to read, is untouched.

@@ -6,7 +6,6 @@ import { X } from "lucide-react";
 
 import type { EpicController } from "@/api/controllers/EpicController.ts";
 import type { FolioResource as Folio } from "@/api/schemas/folioResourceSchema.ts";
-import type { AppRouter } from "@/web/app/AppRouter.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import EpicFolioPicker from "./EpicFolioPicker.tsx";
@@ -35,7 +34,7 @@ export interface ProjectEpicFoliosProps {
  */
 const ProjectEpicFolios = (props: ProjectEpicFoliosProps) => {
   const { tr } = useI18n<I18n, "en">();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const epicApi = useClient<EpicController>();
   const attachedIds = new Set((props.folios ?? []).map((f) => f.id));
 

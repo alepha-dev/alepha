@@ -19,7 +19,6 @@ import { useState } from "react";
 import type { AppInstanceResource } from "@/api/schemas/appInstanceResourceSchema.ts";
 import { useRank } from "@/web/app/components/shared/useRank.ts";
 
-import type { AppRouter } from "../../../AppRouter.ts";
 import { currentInstancesAtom } from "../../../atoms/currentInstancesAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
@@ -84,7 +83,7 @@ const ProjectApps = () => {
   // `time` option that does not exist.
   const { tr, l } = useI18n<I18n, "en">();
   const { can } = useRank();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const dateTime = useInject(DateTimeProvider);
 
   const [project] = useStore(currentProjectAtom);

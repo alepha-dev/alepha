@@ -25,7 +25,6 @@ import { useEffect, useState } from "react";
 
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
-import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentEpicsAtom } from "@/web/app/atoms/currentEpicsAtom.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { currentQuestAtom } from "@/web/app/atoms/currentQuestAtom.ts";
@@ -87,7 +86,7 @@ const QuestView = (props: QuestViewProps) => {
   const alepha = useAlepha();
   const questApi = useClient<QuestController>();
   const questMutations = useQuestMutations();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const { tr, l } = useI18n<I18n, "en">();
   const dialog = useDialog();
   const dt = useInject(DateTimeProvider);

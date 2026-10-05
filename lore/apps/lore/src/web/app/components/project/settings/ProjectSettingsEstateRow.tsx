@@ -4,7 +4,6 @@ import { Link, useRouter } from "alepha/react/router";
 import { Unlink } from "lucide-react";
 
 import type { LentEstateResource } from "@/api/controllers/ProjectEstateController.ts";
-import type { AppRouter } from "@/web/app/AppRouter.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 export interface ProjectSettingsEstateRowProps {
@@ -37,7 +36,7 @@ export interface ProjectSettingsEstateRowProps {
  */
 const ProjectSettingsEstateRow = (props: ProjectSettingsEstateRowProps) => {
   const { tr, l } = useI18n<I18n, "en">();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const estate = props.estate;
 
   return (

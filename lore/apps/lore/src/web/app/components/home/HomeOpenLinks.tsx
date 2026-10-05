@@ -2,8 +2,6 @@ import { Button, ButtonGroup, cn } from "@alepha/ui";
 import { useRouter } from "alepha/react/router";
 import type { LucideIcon } from "lucide-react";
 
-import type { AppRouter } from "../../AppRouter.ts";
-
 /**
  * One kind of open work in a project, and the page it lives on.
  */
@@ -46,7 +44,7 @@ export interface HomeOpenLinksProps {
  * and a group whose buttons come and go would not line up from row to row.
  */
 export const HomeOpenLinks = (props: HomeOpenLinksProps) => {
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   if (props.links.length === 0) return null;
 
   return (

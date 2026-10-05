@@ -3,7 +3,6 @@ import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { Home as HomeIcon } from "lucide-react";
 
-import type { AppRouter } from "../../../AppRouter.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import HeaderActions from "./HeaderActions.tsx";
 
@@ -13,7 +12,7 @@ export type PageHeaderProps = {
 
 const PageHeader = (props: PageHeaderProps) => {
   const showHome = props.showHome ?? true;
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const { tr } = useI18n<I18n, "en">();
 
   return (

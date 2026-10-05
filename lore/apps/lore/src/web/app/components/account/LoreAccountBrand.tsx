@@ -1,7 +1,6 @@
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 
-import type { AppRouter } from "../../AppRouter.ts";
 import type { I18n } from "../../services/I18n.ts";
 import LoreLogo from "../shared/LoreLogo.tsx";
 
@@ -19,7 +18,7 @@ import LoreLogo from "../shared/LoreLogo.tsx";
  * part of the eager bundle every Lore page loads.
  */
 const LoreAccountBrand = () => {
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const { tr } = useI18n<I18n, "en">();
 
   return (

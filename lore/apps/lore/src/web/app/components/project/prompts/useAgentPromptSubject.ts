@@ -4,7 +4,6 @@ import { useRouter } from "alepha/react/router";
 import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
 import type { FeedbackResource } from "@/api/schemas/feedbackResourceSchema.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
-import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type {
   AgentPromptItemSubject,
@@ -28,7 +27,7 @@ import { formatReference } from "../../shared/element/typedReference.ts";
  * `projects.title` lowercased and never the slug.
  */
 export const useAgentPromptSubject = () => {
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const [project] = useStore(currentProjectAtom);
 
   /**

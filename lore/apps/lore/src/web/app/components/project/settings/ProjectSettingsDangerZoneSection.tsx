@@ -20,7 +20,6 @@ import { useRouter } from "alepha/react/router";
 import { useState } from "react";
 
 import type { ProjectController } from "@/api/controllers/ProjectController.ts";
-import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { userProjectsAtom } from "@/web/app/atoms/userProjectsAtom.ts";
 import { useRank } from "@/web/app/components/shared/useRank.ts";
@@ -34,7 +33,7 @@ const ProjectSettingsDangerZoneSection = () => {
   const { tr } = useI18n<I18n, "en">();
   const projectApi = useClient<ProjectController>();
   const memberApi = useClient<MemberController>();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const [project] = useStore(currentProjectAtom);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);

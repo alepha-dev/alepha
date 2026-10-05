@@ -9,7 +9,6 @@ import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { ChevronDown } from "lucide-react";
 
-import type { AppRouter } from "../../../AppRouter.ts";
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
 import { currentInstancesAtom } from "../../../atoms/currentInstancesAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
@@ -36,7 +35,7 @@ import type { I18n } from "../../../services/I18n.ts";
  */
 const AppLayoutSwitcher = () => {
   const { tr } = useI18n<I18n, "en">();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
 
   const [project] = useStore(currentProjectAtom);
   const [instance] = useStore(currentInstanceAtom);

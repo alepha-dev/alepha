@@ -5,7 +5,6 @@ import { Link, useRouter } from "alepha/react/router";
 
 import type { AreaController } from "@/api/controllers/AreaController.ts";
 import type { AreaDetail } from "@/api/schemas/areaResourceSchema.ts";
-import type { AppRouter } from "@/web/app/AppRouter.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 export interface ProjectSettingsAreaHeaderProps {
@@ -22,7 +21,7 @@ export interface ProjectSettingsAreaHeaderProps {
 const ProjectSettingsAreaHeader = (props: ProjectSettingsAreaHeaderProps) => {
   const { tr } = useI18n<I18n, "en">();
   const canManage = useClient<AreaController>().renameArea.can();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
 
   return (
     <div className="flex flex-col gap-2">

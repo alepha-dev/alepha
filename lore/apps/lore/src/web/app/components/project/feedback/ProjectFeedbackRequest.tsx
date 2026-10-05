@@ -22,7 +22,6 @@ import { useEffect, useRef, useState } from "react";
 import type { FeedbackController } from "@/api/controllers/FeedbackController.ts";
 import type { FeedbackSource } from "@/api/schemas/feedbackSourceSchema.ts";
 
-import type { AppRouter } from "../../../AppRouter.ts";
 import { displayName } from "../../../services/displayName.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import type { LoreAccountRouter } from "../../account/LoreAccountRouter.ts";
@@ -178,7 +177,7 @@ const useDraftAutofill = (projectId: string) => {
 const ProjectFeedbackRequest = () => {
   const { tr } = useI18n<I18n, "en">();
   const dateTime = useInject(DateTimeProvider);
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const meRouter = useRouter<LoreAccountRouter>();
   const auth = useAuth();
   const feedbackApi = useClient<FeedbackController>();

@@ -21,7 +21,6 @@ import type { EstateLoan } from "@/api/schemas/ownedEstateResourceSchema.ts";
 import { currentEstateAtom } from "@/web/app/atoms/currentEstateAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
-import type { AppRouter } from "../../AppRouter.ts";
 import MyEstateSecretDialog from "../account/MyEstateSecretDialog.tsx";
 
 /**
@@ -55,7 +54,7 @@ const BaySettings = () => {
   const { tr } = useI18n<I18n, "en">();
   const toaster = useToast();
   const dialog = useDialog();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const api = useClient<EstateController>();
   const projectEstateApi = useClient<ProjectEstateController>();
   const [estate, setEstate] = useStore(currentEstateAtom);

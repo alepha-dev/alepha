@@ -24,7 +24,6 @@ import { useState } from "react";
 
 import type { AreaController } from "@/api/controllers/AreaController.ts";
 import type { AreaResource } from "@/api/schemas/areaResourceSchema.ts";
-import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { descriptionSnippet } from "@/web/app/services/descriptionSnippet.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
@@ -46,7 +45,7 @@ const ProjectSettingsAreasPage = (props: ProjectSettingsAreasPageProps) => {
   const toaster = useToast();
   const dialog = useDialog();
   const dt = useInject(DateTimeProvider);
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const areaApi = useClient<AreaController>();
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [merging, setMerging] = useState(false);

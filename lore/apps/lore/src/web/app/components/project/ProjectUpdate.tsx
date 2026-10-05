@@ -15,7 +15,6 @@ import { projectTitleSchema } from "@/api/schemas/projectTitleSchema.ts";
 import { ProjectSlugService } from "@/api/services/ProjectSlugService.ts";
 import { setCurrentProject } from "@/web/app/services/currentProjectWrite.ts";
 
-import type { AppRouter } from "../../AppRouter.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 
@@ -60,7 +59,7 @@ const ProjectUpdate = (props: ProjectUpdateProps) => {
   const alepha = useAlepha();
   const { tr } = useI18n<I18n, "en">();
   const dialog = useDialog();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   /**
    * The same class the server derives slugs with, so the handler's "did this
    * edit move the URL?" test cannot disagree with what the server will

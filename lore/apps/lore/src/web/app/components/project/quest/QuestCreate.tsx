@@ -41,7 +41,6 @@ import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { ProjectResource } from "@/api/schemas/projectResourceSchema.ts";
 import { questCreateSchema } from "@/api/schemas/questCreateSchema.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
-import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentAreasAtom } from "@/web/app/atoms/currentAreasAtom.ts";
 import { currentAssignedQuestsAtom } from "@/web/app/atoms/currentAssignedQuestsAtom.ts";
 import { currentReleasesAtom } from "@/web/app/atoms/currentReleasesAtom.ts";
@@ -68,7 +67,7 @@ const QuestCreate = (props: QuestCreateProps) => {
   const areaApi = useClient<AreaController>();
   const alepha = useAlepha();
   const dt = useInject(DateTimeProvider);
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const { tr } = useI18n<I18n, "en">();
   const [currentAreas] = useStore(currentAreasAtom);
   const [releases] = useStore(currentReleasesAtom);

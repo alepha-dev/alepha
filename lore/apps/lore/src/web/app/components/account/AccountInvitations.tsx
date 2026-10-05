@@ -7,13 +7,12 @@ import { useCallback } from "react";
 import type { InvitationController } from "@/api/controllers/InvitationController.ts";
 import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 
-import type { AppRouter } from "../../AppRouter.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 
 const AccountInvitations = () => {
   const invitationApi = useClient<InvitationController>();
   const projectApi = useClient<ProjectController>();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const alepha = useAlepha();
 
   const load = useCallback(async () => {

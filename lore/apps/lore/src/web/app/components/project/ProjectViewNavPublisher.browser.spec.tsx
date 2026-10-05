@@ -15,6 +15,7 @@ import { currentInstancesAtom } from "../../atoms/currentInstancesAtom.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { projectNavAtom } from "../../atoms/projectNavAtom.ts";
 import { I18n } from "../../services/I18n.ts";
+import { DeployShell } from "../../shell/DeployShell.ts";
 import ProjectViewNavPublisher from "./ProjectViewNavPublisher.tsx";
 
 class Routes {
@@ -72,6 +73,8 @@ describe("what the palette is offered", () => {
       .with(AlephaReactI18n);
     alepha.inject(Routes);
     alepha.inject(I18n);
+    // Deploy registers the instance rows (#E75, #Q2624).
+    alepha.inject(DeployShell);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
 

@@ -2,7 +2,6 @@ import { cn } from "@alepha/ui";
 import { Link, useRouter } from "alepha/react/router";
 
 import type { ReleaseContentQuest } from "@/api/schemas/releaseContentQuestSchema.ts";
-import type { AppRouter } from "@/web/app/AppRouter.ts";
 
 import { formatReference } from "../../shared/element/typedReference.ts";
 import {
@@ -29,7 +28,7 @@ export interface ReleaseQuestRowProps {
  */
 const ReleaseQuestRow = (props: ReleaseQuestRowProps) => {
   const { quest } = props;
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const bucket = questBucket(quest);
   const Icon = BUCKET_ICONS[bucket];
 

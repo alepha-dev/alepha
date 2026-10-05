@@ -6,7 +6,6 @@ import { Link, useRouter } from "alepha/react/router";
 import { LogIn, Sparkles } from "lucide-react";
 import { useEffect } from "react";
 
-import type { AppRouter } from "../../AppRouter.ts";
 import { realmSettingsAtom } from "../../atoms/realmSettingsAtom.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
@@ -18,7 +17,7 @@ const Home = () => {
   const { tr } = useI18n<I18n, "en">();
   const [overview] = useStore(userProjectsAtom);
   const [realmSettings] = useStore(realmSettingsAtom);
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const auth = useAuth();
 
   const projects = overview?.projects ?? [];

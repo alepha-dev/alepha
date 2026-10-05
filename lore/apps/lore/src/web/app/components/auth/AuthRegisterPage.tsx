@@ -6,7 +6,6 @@ import { useEffect } from "react";
 
 import type { InvitationTokenPreview } from "@/api/schemas/invitationTokenPreviewSchema.ts";
 
-import type { AppRouter } from "../../AppRouter.ts";
 import type { I18n } from "../../services/I18n.ts";
 import PageHeader from "../shared/header/PageHeader.tsx";
 import LoreLogo from "../shared/LoreLogo.tsx";
@@ -48,7 +47,7 @@ export interface AuthRegisterPageProps {
  */
 const AuthRegisterPage = (props: AuthRegisterPageProps) => {
   const { tr } = useI18n<I18n, "en">();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const intentKey =
     typeof router.query.intent === "string" ? router.query.intent : undefined;
   const entry = resolveRegisterIntent(intentKey);

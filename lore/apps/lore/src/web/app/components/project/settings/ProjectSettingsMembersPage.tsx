@@ -5,12 +5,10 @@ import { useRouter } from "alepha/react/router";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { useRank } from "@/web/app/components/shared/useRank.ts";
 
-import type { AppRouter } from "../../../AppRouter.ts";
-
 const ProjectSettingsMembersPage = () => {
   const [project] = useStore(currentProjectAtom);
   const { can } = useRank();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
 
   if (!project) return null;
 

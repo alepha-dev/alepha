@@ -30,7 +30,6 @@ import type { OwnedEstateResource } from "@/api/schemas/ownedEstateResourceSchem
 import { estateErrorMessage } from "@/web/app/components/shared/estateCreateDraft.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
-import type { AppRouter } from "../../AppRouter.ts";
 import BayCommands from "../bay/BayCommands.tsx";
 import { OutboundLink } from "../shared/OutboundLink.tsx";
 
@@ -80,7 +79,7 @@ const MyEstateDrawer = (props: MyEstateDrawerProps) => {
   const { tr, l } = useI18n<I18n, "en">();
   const toaster = useToast();
   const dialog = useDialog();
-  const router = useRouter<AppRouter>();
+  const router = useRouter();
   const api = useClient<EstateController>();
   const projectEstateApi = useClient<ProjectEstateController>();
   // Lives only as long as the drawer, never prefilled and never echoed.
