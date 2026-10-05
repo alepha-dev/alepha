@@ -5,7 +5,6 @@ import {
   CalendarCheck,
   Inbox,
   Layers,
-  Package,
   Pencil,
   RotateCcw,
   Send,
@@ -18,6 +17,7 @@ import type { ReleaseController } from "@/api/controllers/ReleaseController.ts";
 import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import type { LinkedCollection } from "../../../registries/ResourceTabRegistry.ts";
 import { formatReference } from "../../shared/element/typedReference.ts";
 import { releaseBuckets } from "./releaseBuckets.ts";
 import ReleaseDefaultBadge from "./ReleaseDefaultBadge.tsx";
@@ -39,10 +39,11 @@ export interface ReleasePlateProps {
    */
   epicCount: number;
   /**
-   * Counted from the artifact list the Artifacts tab renders. A count, not a
-   * readiness ratio: an artifact is present or absent and has no other state.
+   * The collections other modules list on this page (Deploy's artifacts),
+   * each counted from what its tab renders. A count, not a readiness ratio:
+   * an artifact is present or absent and has no other state.
    */
-  artifactCount: number;
+  linked: LinkedCollection[];
   onEdit: () => void;
   onChanged: () => void;
 }
@@ -58,8 +59,8 @@ export interface ReleasePlateProps {
  * quarter of the width to print a tag and a date.
  *
  * Every fact on the meta line is backed by a surface on this page: the date
- * by the Target card, the epics and quests by Contents, the artifacts by
- * Artifacts. **There is no deployment fact here.** An earlier draft had a
+ * by the Target card, the epics and quests by Contents, each registered
+ * collection (the artifacts) by its own tab. **There is no deployment fact here.** An earlier draft had a
  * Deployments tab and a "furthest environment" entry; both were cut, and
  * putting the environment back in this line would be the tab returning
  * through the side door.
@@ -171,15 +172,21 @@ const ReleasePlate = (props: ReleasePlateProps) => {
         "release.meta.quests.many",
       ),
     },
-    {
-      icon: Package,
-      text: count(
-        props.artifactCount,
-        "release.meta.artifacts.one",
-        "release.meta.artifacts.many",
-      ),
-      divide: true,
-    },
+    ...props.linked.flatMap(({ tab, count: rows }) =>
+      tab.metaKeys
+        ? [
+            {
+              icon: tab.icon as LucideIcon,
+              text: count(
+                rows ?? 0,
+                tab.metaKeys.one as never,
+                tab.metaKeys.many as never,
+              ),
+              divide: true,
+            },
+          ]
+        : [],
+    ),
   ];
 
   return (

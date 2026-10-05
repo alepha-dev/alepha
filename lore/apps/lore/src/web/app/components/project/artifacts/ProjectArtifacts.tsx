@@ -9,7 +9,7 @@ import { z } from "alepha";
 import { useClient, useStore } from "alepha/react";
 import { useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Link, useRouter } from "alepha/react/router";
+import { Link } from "alepha/react/router";
 import {
   AppWindow,
   Container,
@@ -25,12 +25,12 @@ import { useMemo } from "react";
 
 import type { ArtifactController } from "@/api/controllers/ArtifactController.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
-import { currentReleasesAtom } from "@/web/app/atoms/currentReleasesAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import ArtifactRuntimeBadges from "../../shared/ArtifactRuntimeBadges.tsx";
 import ArtifactsEmpty from "../../shared/ArtifactsEmpty.tsx";
 import CommitLink from "../../shared/CommitLink.tsx";
+import { useKindReferences } from "../../shared/element/useKindReferences.ts";
 import { useDeleteArtifact } from "./useDeleteArtifact.ts";
 
 /**
@@ -114,10 +114,15 @@ interface ArtifactRow {
  */
 const ProjectArtifacts = () => {
   const { tr, l } = useI18n<I18n, "en">();
-  const router = useRouter();
   const artifactApi = useClient<ArtifactController>();
   const [project] = useStore(currentProjectAtom);
-  const [releases] = useStore(currentReleasesAtom);
+  // The project's releases, through the `release` reference kind rather
+  // than Work's atom (#E75, #Q2624).
+  const releases = useKindReferences("release", {
+    kind: "artifacts",
+    projectId: project?.id ?? 0,
+    projectSlug: project?.slug ?? "",
+  });
   const deleteArtifact = useDeleteArtifact();
 
   // ⚠️ No `loading`. It existed to keep the page-level empty panel off screen
@@ -197,9 +202,11 @@ const ProjectArtifacts = () => {
 
   // Tag equality, which is the whole join: there is no join table and no
   // foreign key, and an artifact whose tag names no release is normal.
-  const releaseTags = useMemo(
-    () => new Set((releases ?? []).map((release) => release.tag)),
-    [releases],
+  const releaseHrefs = new Map(
+    releases.refs.flatMap((release) => {
+      const href = release.tag ? releases.href(release) : undefined;
+      return release.tag && href ? [[release.tag, href] as const] : [];
+    }),
   );
 
   if (!project) {
@@ -454,14 +461,9 @@ const ProjectArtifacts = () => {
                   // A link only where the release exists. An artifact tagged
                   // with something no release names is normal, and a dead
                   // link would say otherwise.
-                  releaseTags.has(row.tag) ? (
+                  releaseHrefs.has(row.tag) ? (
                     <Link
-                      href={router.path("projectRelease", {
-                        params: {
-                          projectSlug: project.slug,
-                          releaseTag: row.tag,
-                        },
-                      })}
+                      href={releaseHrefs.get(row.tag) ?? ""}
                       className="font-mono text-xs"
                     >
                       {row.tag}

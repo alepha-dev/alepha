@@ -1,24 +1,34 @@
 import { $inject } from "alepha";
+import { $client } from "alepha/server/links";
 import { BookOpen } from "lucide-react";
 
+import type { FolioController } from "../../../api/controllers/FolioController.ts";
+import EpicFoliosPanel from "../components/folios/epic/EpicFoliosPanel.tsx";
+import { useFiledFolios } from "../components/folios/epic/useFiledFolios.ts";
 import FolioReferencePreview from "../components/folios/FolioReferencePreview.tsx";
 import { useFolioElementImageUpload } from "../components/folios/useFolioElementImageUpload.ts";
 import { useFolioReferences } from "../components/folios/useFolioReferences.ts";
 import { formatReference } from "../components/shared/element/typedReference.ts";
+import { DocumentSinkRegistry } from "../registries/DocumentSinkRegistry.ts";
 import { ElementReferenceRegistry } from "../registries/ElementReferenceRegistry.ts";
 import { ProjectShellRegistry } from "../registries/ProjectShellRegistry.ts";
+import { ResourceTabRegistry } from "../registries/ResourceTabRegistry.ts";
 import { hasCapability } from "../services/projectCapabilities.ts";
 import { canInProject } from "../services/projectRank.ts";
 
 /**
  * Knowledge's part of the project shell, registered on core's
  * `ProjectShellRegistry` (#E75, #Q2624): the Folios entry, the Folios
- * settings section, New folio, the folio breadcrumb leaf and the folio
- * `[[...]]` references.
+ * settings section, New folio, the folio breadcrumb leaf, the folio
+ * `[[...]]` references, folios as where a generated document is saved, and
+ * the Folios tab on an epic.
  */
 export class KnowledgeShell {
   protected readonly shell = $inject(ProjectShellRegistry);
   protected readonly references = $inject(ElementReferenceRegistry);
+  protected readonly documents = $inject(DocumentSinkRegistry);
+  protected readonly tabs = $inject(ResourceTabRegistry);
+  protected readonly folioApi = $client<FolioController>();
 
   constructor() {
     this.shell.registerNav("knowledge", [
@@ -91,6 +101,26 @@ export class KnowledgeShell {
       preview: FolioReferencePreview,
       useReferences: useFolioReferences,
       useImageUpload: useFolioElementImageUpload,
+    });
+
+    // A release's changelog, saved as a folio.
+    this.documents.register({
+      key: "folio",
+      can: () => this.folioApi.create.can(),
+      save: async (document) => {
+        await this.folioApi.create({ body: document });
+      },
+    });
+
+    // An epic files folios: a tab on its page, after Flow.
+    this.tabs.register({
+      resource: "epic",
+      key: "folios",
+      order: 40,
+      labelKey: "epic.tab.folios",
+      icon: BookOpen,
+      useCollection: useFiledFolios,
+      component: EpicFoliosPanel,
     });
   }
 }

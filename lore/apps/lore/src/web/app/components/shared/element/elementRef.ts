@@ -15,7 +15,12 @@ import type { ElementKind } from "@/api/schemas/elementKindSchema.ts";
  * mistake this repo has already made once.
  */
 export interface ElementRef {
-  kind: ElementKind;
+  /**
+   * What the element is. A kind with reference support (`folio`, `quest`,
+   * `epic`) also decides which bucket an image uploads into; a page that only
+   * reads references (an artifact list) names itself.
+   */
+  kind: ElementKind | (string & {});
   projectId: number;
   projectSlug: string;
   /**

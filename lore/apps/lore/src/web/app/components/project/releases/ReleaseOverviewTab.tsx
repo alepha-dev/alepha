@@ -3,18 +3,22 @@ import { MarkdownView } from "@alepha/ui/markdown";
 import { DateTimeProvider } from "alepha/datetime";
 import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { CalendarClock, Gauge, Package, Pencil } from "lucide-react";
+import { CalendarClock, Gauge, Pencil } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import type { LinkedCollection } from "../../../registries/ResourceTabRegistry.ts";
 import { releaseBuckets } from "./releaseBuckets.ts";
 import { useCountLabel } from "./useCountLabel.ts";
 
 export interface ReleaseOverviewTabProps {
   release: ReleaseResource;
-  artifactCount: number;
+  /**
+   * The collections other modules list on this page, one KPI each.
+   */
+  linked: LinkedCollection[];
   onEdit: () => void;
 }
 
@@ -128,23 +132,28 @@ const ReleaseOverviewTab = (props: ReleaseOverviewTabProps) => {
           value: target.value,
           note: String(target.note),
         },
-    {
-      icon: Package,
-      label: tr("release.kpi.artifacts.label"),
-      value: String(props.artifactCount),
-      // Zero is a normal state, not a gap: an artifact with no release and a
-      // release with no artifact are both ordinary, since the two are matched
-      // on tag equality rather than linked.
-      note: String(
-        props.artifactCount > 0
-          ? tr("release.kpi.artifacts.built", {
-              args: [release.tag ?? String(release.number)],
-            })
-          : tr("release.artifacts.emptyShort", {
-              args: [release.tag ?? String(release.number)],
-            }),
-      ),
-    },
+    // Zero is a normal state, not a gap: an artifact with no release and a
+    // release with no artifact are both ordinary, since the two are matched
+    // on tag equality rather than linked.
+    ...props.linked.flatMap(({ tab, count }) =>
+      tab.kpiKeys
+        ? [
+            {
+              icon: tab.icon as LucideIcon,
+              label: tr(tab.kpiKeys.label as never),
+              value: String(count ?? 0),
+              note: String(
+                tr(
+                  ((count ?? 0) > 0
+                    ? tab.kpiKeys.some
+                    : tab.kpiKeys.none) as never,
+                  { args: [release.tag ?? String(release.number)] },
+                ),
+              ),
+            },
+          ]
+        : [],
+    ),
   ];
 
   return (

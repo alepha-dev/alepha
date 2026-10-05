@@ -52,6 +52,7 @@ import { QuestAuthorshipController } from "./controllers/QuestAuthorshipControll
 import { QuestCommentController } from "./controllers/QuestCommentController.ts";
 import { QuestController } from "./controllers/QuestController.ts";
 import { ReleaseController } from "./controllers/ReleaseController.ts";
+import { ResourceFilingController } from "./controllers/ResourceFilingController.ts";
 import { RoadmapController } from "./controllers/RoadmapController.ts";
 import { SearchController } from "./controllers/SearchController.ts";
 import { SigilAnalyticsController } from "./controllers/SigilAnalyticsController.ts";
@@ -422,6 +423,7 @@ export const LoreApi = $module({
     ProjectRankController,
     ProjectPromptController,
     ReleaseController,
+    ResourceFilingController,
     RoadmapController,
     EpicController,
     AreaController,

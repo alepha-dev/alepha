@@ -21,16 +21,17 @@ import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
 import { RELEASE_TAG_MAX_LENGTH } from "@/api/schemas/releaseTagSchema.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import type { LinkedCollection } from "../../../registries/ResourceTabRegistry.ts";
 import ReleaseDescriptionEditor from "./ReleaseDescriptionEditor.tsx";
 
 export interface ReleaseEditFormProps {
   release: ReleaseResource;
   /**
-   * How many artifacts this page is currently showing for the saved tag.
-   * Named in the warning band, because "this may break things" is not a
-   * warning - a number is.
+   * The collections matched on the saved tag (the artifacts), with how many
+   * rows this page is currently showing for each. Named in the warning band,
+   * because "this may break things" is not a warning - a number is.
    */
-  artifactCount: number;
+  linked: LinkedCollection[];
   onSubmit: (release: Release) => void;
   onCancel: () => void;
 }
@@ -156,16 +157,18 @@ const ReleaseEditForm = (props: ReleaseEditFormProps) => {
                     aria-hidden
                   />
                   <span>
-                    {props.artifactCount > 0 && (
-                      <>
-                        {props.artifactCount === 1
-                          ? tr("release.edit.tagWarning.artifacts.one", {
-                              args: [savedTag],
-                            })
-                          : tr("release.edit.tagWarning.artifacts.many", {
-                              args: [String(props.artifactCount), savedTag],
-                            })}{" "}
-                      </>
+                    {props.linked.map((it) =>
+                      it.tab.retagKeys && (it.count ?? 0) > 0 ? (
+                        <span key={it.tab.key}>
+                          {it.count === 1
+                            ? tr(it.tab.retagKeys.one as never, {
+                                args: [savedTag],
+                              })
+                            : tr(it.tab.retagKeys.many as never, {
+                                args: [String(it.count), savedTag],
+                              })}{" "}
+                        </span>
+                      ) : null,
                     )}
                     {tr("release.edit.tagWarning.url", { args: [savedTag] })}
                   </span>

@@ -5,11 +5,12 @@ import type { Release } from "@/api/entities/releases.ts";
 import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import type { LinkedCollection } from "../../../registries/ResourceTabRegistry.ts";
 import ReleaseEditForm from "./ReleaseEditForm.tsx";
 
 export interface ReleaseEditSheetProps {
   release: ReleaseResource;
-  artifactCount: number;
+  linked: LinkedCollection[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (release: Release) => void;
@@ -46,7 +47,7 @@ const ReleaseEditSheet = (props: ReleaseEditSheetProps) => {
         <ReleaseEditForm
           key={`${props.release.id}:${props.release.updatedAt}`}
           release={props.release}
-          artifactCount={props.artifactCount}
+          linked={props.linked}
           onSubmit={props.onSubmit}
           onCancel={() => props.onOpenChange(false)}
         />

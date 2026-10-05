@@ -29,6 +29,7 @@ import { useQuestReferences } from "../components/project/quest/useQuestReferenc
 import ReleaseCreateMenuDialog from "../components/project/releases/ReleaseCreateMenuDialog.tsx";
 import ReleaseReferencePreview from "../components/project/releases/ReleaseReferencePreview.tsx";
 import { useReleaseReferences } from "../components/project/releases/useReleaseReferences.ts";
+import ProjectSettingsDataSection from "../components/project/settings/ProjectSettingsDataSection.tsx";
 import { formatReference } from "../components/shared/element/typedReference.ts";
 import { ElementReferenceRegistry } from "../registries/ElementReferenceRegistry.ts";
 import { ProjectShellRegistry } from "../registries/ProjectShellRegistry.ts";
@@ -158,6 +159,15 @@ export class WorkShell {
           option: "agentPrompts",
         },
       ],
+    });
+
+    // The quest export, on General since it is the project's data rather
+    // than a Quests setting.
+    this.shell.registerSettingsPanel({
+      key: "quest-export",
+      section: "general",
+      order: 10,
+      component: ProjectSettingsDataSection,
     });
 
     // ⚠️ New quest was once the one item gated on the PERMISSION alone. It

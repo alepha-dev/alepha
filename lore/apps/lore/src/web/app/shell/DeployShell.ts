@@ -5,18 +5,23 @@ import { currentBlightCountAtom } from "../atoms/currentBlightCountAtom.ts";
 import { currentInstanceAtom } from "../atoms/currentInstanceAtom.ts";
 import { currentInstancesAtom } from "../atoms/currentInstancesAtom.ts";
 import AppCreateMenuDialog from "../components/project/apps/AppCreateMenuDialog.tsx";
+import ReleaseArtifactsPanel from "../components/project/artifacts/ReleaseArtifactsPanel.tsx";
+import { useReleaseArtifacts } from "../components/project/artifacts/useReleaseArtifacts.ts";
 import { ROUTES_APP } from "../components/project/projectViewRoutes.ts";
 import { ProjectShellRegistry } from "../registries/ProjectShellRegistry.ts";
+import { ResourceTabRegistry } from "../registries/ResourceTabRegistry.ts";
 import { hasCapability } from "../services/projectCapabilities.ts";
 import { canInProject } from "../services/projectRank.ts";
 
 /**
  * Deploy's part of the project shell, registered on core's
  * `ProjectShellRegistry` (#E75, #Q2624): the Apps, Artifacts and Blights
- * entries, the Apps settings section, New app and the instance breadcrumb.
+ * entries, the Apps settings section, New app, the instance breadcrumb, the
+ * instances in the palette, and the Artifacts tab on a release.
  */
 export class DeployShell {
   protected readonly shell = $inject(ProjectShellRegistry);
+  protected readonly tabs = $inject(ResourceTabRegistry);
 
   constructor() {
     this.shell.registerNav("apps", [
@@ -159,6 +164,31 @@ export class DeployShell {
           }),
           kind: "app",
         })),
+    });
+
+    // A release lists the artifacts built from its tag: a tab on its page,
+    // and a count on its plate, its KPIs and its retag warning.
+    this.tabs.register({
+      resource: "release",
+      key: "artifacts",
+      order: 50,
+      labelKey: "release.tab.artifacts",
+      icon: Package,
+      useCollection: useReleaseArtifacts,
+      component: ReleaseArtifactsPanel,
+      metaKeys: {
+        one: "release.meta.artifacts.one",
+        many: "release.meta.artifacts.many",
+      },
+      kpiKeys: {
+        label: "release.kpi.artifacts.label",
+        some: "release.kpi.artifacts.built",
+        none: "release.artifacts.emptyShort",
+      },
+      retagKeys: {
+        one: "release.edit.tagWarning.artifacts.one",
+        many: "release.edit.tagWarning.artifacts.many",
+      },
     });
   }
 }

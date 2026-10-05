@@ -9,26 +9,30 @@ import { useDetailTab, PlateLayout, type PlateTab } from "@alepha/ui/shell";
 import {
   useAction,
   useClient,
+  useInject,
   useQuery,
   useQueryClient,
   useStore,
 } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouterState } from "alepha/react/router";
-import { Gauge, ListTree, Package, ScrollText, Workflow } from "lucide-react";
+import { Gauge, ListTree, ScrollText, Workflow } from "lucide-react";
 import { useState } from "react";
 
-import type { ArtifactController } from "@/api/controllers/ArtifactController.ts";
-import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { ReleaseController } from "@/api/controllers/ReleaseController.ts";
 import type { ReleaseChangelogGroup } from "@/api/schemas/releaseChangelogGroupSchema.ts";
 import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { currentReleasesAtom } from "@/web/app/atoms/currentReleasesAtom.ts";
+import { DocumentSinkRegistry } from "@/web/app/registries/DocumentSinkRegistry.ts";
+import {
+  type LinkedCollection,
+  ResourceTabRegistry,
+  type ResourceTabSubject,
+} from "@/web/app/registries/ResourceTabRegistry.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import { formatReference } from "../../shared/element/typedReference.ts";
-import ReleaseArtifactsTab from "./ReleaseArtifactsTab.tsx";
 import ReleaseChangelogPanel from "./ReleaseChangelogPanel.tsx";
 import ReleaseContents, {
   type ReleaseContentsData,
@@ -45,7 +49,11 @@ interface ChangelogState {
   stats: { questCount: number; areaCount: number; contributorCount: number };
 }
 
-type TabKey = "overview" | "contents" | "flow" | "changelog" | "artifacts";
+/**
+ * The page's own tabs, then any a module registered for releases (Deploy's
+ * `artifacts`), by their own key.
+ */
+type TabKey = "overview" | "contents" | "flow" | "changelog" | (string & {});
 
 /**
  * One release: what it is, how far along it is, what is in it, what order it
@@ -86,7 +94,10 @@ const ProjectRelease = () => {
   const [project] = useStore(currentProjectAtom);
   const [releases, setReleases] = useStore(currentReleasesAtom);
   const releaseApi = useClient<ReleaseController>();
-  const folioApi = useClient<FolioController>();
+  // Where the changelog can be saved, and the tabs other modules add here
+  // (#E75, #Q2624).
+  const documents = useInject(DocumentSinkRegistry);
+  const registeredTabs = useInject(ResourceTabRegistry).tabs("release");
 
   const [tab, setTab] = useDetailTab<TabKey>("overview");
   const [editOpen, setEditOpen] = useState(false);
@@ -189,43 +200,24 @@ const ProjectRelease = () => {
   };
 
   /*
-    Real rows since epic #18. Every artifact surface on this page reads this
-    one list, so the tab count, the KPI and the edit sheet's warning cannot
-    disagree with the table.
-
-    ⚠️ Keyed on the TAG, which is the join: `artifacts.tag = releases.tag`,
-    with no join table and no foreign key. Retagging a release therefore
-    changes what this returns, which is exactly what the edit sheet warns
-    about.
-
-    A release with no tag asks for nothing: the query would be unanswerable,
-    and `enabled: false` is the honest way to say so rather than a request for
-    the empty string.
+    Every collection another module lists on this page (Deploy's artifacts),
+    read once here so the tab count, the plate, the KPI and the edit sheet's
+    warning cannot disagree with the tab's own table. A release with no tag
+    asks for nothing.
   */
-  const artifactApi = useClient<ArtifactController>();
-  const { data: artifactData, loading: artifactsLoading } = useQuery(
-    {
-      enabled: Boolean(project && release?.tag),
-      key: ["release-artifacts", project?.id, release?.tag],
-      handler: async () => {
-        if (!project || !release?.tag) return undefined;
-        return await artifactApi.listArtifacts({
-          params: { projectId: project.id },
-          query: { tag: release.tag },
-        });
-      },
-    },
-    [project?.id, release?.tag],
-  );
-
-  const artifacts = artifactData?.groups ?? [];
-  // Variants, not groups: the Artifacts tab lists one row per variant since
-  // #Q2267, so the count on its badge, on the plate and in the retag warning
-  // is the number of rows a reader sees there.
-  const artifactCount = artifacts.reduce(
-    (count, group) => count + group.variants.length,
-    0,
-  );
+  const subject: ResourceTabSubject = {
+    projectId: project?.id ?? 0,
+    id: release?.id ?? 0,
+    number: release?.number ?? 0,
+    tag: release?.tag,
+  };
+  const linked: LinkedCollection[] = registeredTabs.map((tab) => ({
+    tab,
+    // One hook per registered tab, legal because the registry is frozen
+    // before the first render (see `ResourceTabRegistry`).
+    // oxlint-disable-next-line react-hooks/rules-of-hooks -- the tabs are frozen at boot, so the hook order never changes
+    ...tab.useCollection(subject),
+  }));
 
   const handleCopy = async () => {
     if (!changelog) return;
@@ -257,24 +249,22 @@ const ProjectRelease = () => {
     {
       handler: async (title) => {
         if (!project || !changelog || !release) return;
-        await folioApi.create({
-          body: {
-            projectId: project.id,
-            title,
-            content: changelog.markdown,
-            summary: tr("release.folio.summary", {
-              args: [
-                release.tag ?? formatReference("release", release.number),
-                String(changelog.stats.questCount),
-              ],
-            }),
-          },
+        await documents.writable()?.save({
+          projectId: project.id,
+          title,
+          content: changelog.markdown,
+          summary: tr("release.folio.summary", {
+            args: [
+              release.tag ?? formatReference("release", release.number),
+              String(changelog.stats.questCount),
+            ],
+          }),
         });
         setFolioOpen(false);
         toaster.success(tr("release.folio.saved"));
       },
     },
-    [folioApi, project?.id, changelog, release, toaster, tr],
+    [documents, project?.id, changelog, release, toaster, tr],
   );
 
   if (!project) return null;
@@ -319,12 +309,12 @@ const ProjectRelease = () => {
       label: tr("release.tab.changelog"),
       icon: ScrollText,
     },
-    {
-      key: "artifacts",
-      label: tr("release.tab.artifacts"),
-      icon: Package,
-      count: artifactCount,
-    },
+    ...linked.map((it) => ({
+      key: it.tab.key,
+      label: tr(it.tab.labelKey as never),
+      icon: it.tab.icon,
+      count: it.count,
+    })),
   ];
 
   return (
@@ -342,7 +332,7 @@ const ProjectRelease = () => {
         <ReleasePlate
           release={release}
           epicCount={contents?.epics.length ?? 0}
-          artifactCount={artifactCount}
+          linked={linked}
           onEdit={() => setEditOpen(true)}
           onChanged={() => void reload()}
         />
@@ -369,7 +359,7 @@ const ProjectRelease = () => {
           onCopy={() => void handleCopy()}
           onDownload={handleDownload}
           onSaveToFolio={
-            folioApi.create.can() ? () => setFolioOpen(true) : undefined
+            documents.writable() ? () => setFolioOpen(true) : undefined
           }
         />
       ) : (
@@ -377,16 +367,15 @@ const ProjectRelease = () => {
           {tab === "overview" && (
             <ReleaseOverviewTab
               release={release}
-              artifactCount={artifactCount}
+              linked={linked}
               onEdit={() => setEditOpen(true)}
             />
           )}
-          {tab === "artifacts" && (
-            <ReleaseArtifactsTab
-              tag={release.tag ?? String(release.number)}
-              artifacts={artifacts}
-              loading={artifactsLoading}
-            />
+          {linked.map(
+            (it) =>
+              tab === it.tab.key && (
+                <it.tab.component key={it.tab.key} subject={subject} />
+              ),
           )}
           {tab === "contents" && (
             <ReleaseContents
@@ -404,7 +393,7 @@ const ProjectRelease = () => {
           and nesting it in a tab body would unmount it on a tab switch. */}
       <ReleaseEditSheet
         release={release}
-        artifactCount={artifactCount}
+        linked={linked}
         open={editOpen}
         onOpenChange={setEditOpen}
         onSubmit={() => {

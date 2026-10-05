@@ -16,6 +16,7 @@ import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import { projectFixture } from "@/testing/projectFixture.ts";
 import { virtualClientFake } from "@/testing/virtualClientFake.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
+import { ResourceTabRegistry } from "@/web/app/registries/ResourceTabRegistry.ts";
 import { I18n } from "@/web/app/services/I18n.ts";
 
 import ProjectEpic from "./ProjectEpic.tsx";
@@ -127,6 +128,8 @@ describe("ProjectEpic", () => {
       .with(AlephaReactRouter)
       .with(AlephaReactI18n);
     alepha.inject(I18n);
+    // The tabs other modules add here (#E75, #Q2624); none in this spec.
+    alepha.inject(ResourceTabRegistry);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
     alepha.store.set(currentProjectAtom, projectFixture() as never);
@@ -195,6 +198,8 @@ describe("ProjectEpic, the Edit button", () => {
       .with(AlephaReactRouter)
       .with(AlephaReactI18n);
     alepha.inject(I18n);
+    // The tabs other modules add here (#E75, #Q2624); none in this spec.
+    alepha.inject(ResourceTabRegistry);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
     alepha.store.set(currentProjectAtom, projectFixture() as never);

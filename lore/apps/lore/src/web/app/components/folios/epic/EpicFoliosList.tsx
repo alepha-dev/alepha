@@ -1,16 +1,14 @@
 import { Button, Card, CardContent, CardHeader, CardTitle } from "@alepha/ui";
-import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import { X } from "lucide-react";
 
-import type { EpicController } from "@/api/controllers/EpicController.ts";
 import type { FolioResource as Folio } from "@/api/schemas/folioResourceSchema.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import EpicFolioPicker from "./EpicFolioPicker.tsx";
 
-export interface ProjectEpicFoliosProps {
+export interface EpicFoliosListProps {
   projectId: number;
   /**
    * `null` means "not loaded yet" (in flight, or the last fetch failed) —
@@ -23,25 +21,28 @@ export interface ProjectEpicFoliosProps {
    * detach wait for it (#E59 rule 10).
    */
   busy: boolean;
+  /**
+   * Whether the reader may file and unfile folios here: the epic page's
+   * answer, since the gate is the epic's (`epic:write`).
+   */
+  writable: boolean;
   onAttach: (folioId: string) => void;
   onDetach: (folio: Folio) => void;
 }
 
 /**
  * The Folios tab of the Epic page: the attached folios, with a picker to
- * attach more. Detach goes through the parent's `useDialog().confirm(...)` —
- * this component only reports the intent.
+ * attach more. Detach goes through `EpicFoliosPanel`'s
+ * `useDialog().confirm(...)`: this component only reports the intent.
  */
-const ProjectEpicFolios = (props: ProjectEpicFoliosProps) => {
+const EpicFoliosList = (props: EpicFoliosListProps) => {
   const { tr } = useI18n<I18n, "en">();
   const router = useRouter();
-  const epicApi = useClient<EpicController>();
   const attachedIds = new Set((props.folios ?? []).map((f) => f.id));
 
-  // Asked here rather than threaded down from the page: the picker and the
-  // detach button are this component's own affordances, and the list of
-  // attached folios stays readable without either.
-  const canAttach = epicApi.attachFolio.can();
+  // The picker and the detach button are this component's own affordances,
+  // and the list of attached folios stays readable without either.
+  const canAttach = props.writable;
 
   return (
     <div className="min-h-0 flex-1 overflow-auto p-4">
@@ -104,4 +105,4 @@ const ProjectEpicFolios = (props: ProjectEpicFoliosProps) => {
   );
 };
 
-export default ProjectEpicFolios;
+export default EpicFoliosList;

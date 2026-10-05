@@ -23,6 +23,7 @@ import { currentInstancesAtom } from "../../../atoms/currentInstancesAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { currentReleasesAtom } from "../../../atoms/currentReleasesAtom.ts";
 import { I18n } from "../../../services/I18n.ts";
+import { WorkShell } from "../../../shell/WorkShell.ts";
 import ProjectArtifacts from "./ProjectArtifacts.tsx";
 
 /**
@@ -131,6 +132,9 @@ describe("ProjectArtifacts", () => {
       .with(AlephaReactRouter);
     alepha.inject(Routes);
     alepha.inject(I18n);
+    // Work registers the `release` kind the tag column links through
+    // (#E75, #Q2624).
+    alepha.inject(WorkShell);
     await alepha.start();
 
     // Without the project the query stays disabled and every case below

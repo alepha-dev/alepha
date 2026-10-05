@@ -4,31 +4,28 @@ import {
   useAction,
   useAlepha,
   useClient,
+  useInject,
   useQuery,
   useQueryClient,
   useStore,
 } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import {
-  BookOpen,
-  FileText,
-  History,
-  Pencil,
-  Swords,
-  Workflow,
-} from "lucide-react";
+import { FileText, History, Pencil, Swords, Workflow } from "lucide-react";
 import { useState } from "react";
 
 import type { EpicController } from "@/api/controllers/EpicController.ts";
-import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
-import type { FolioResource as Folio } from "@/api/schemas/folioResourceSchema.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import { currentEpicAtom } from "@/web/app/atoms/currentEpicAtom.ts";
 import { currentEpicCountAtom } from "@/web/app/atoms/currentEpicCountAtom.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
+import {
+  ResourceTabRegistry,
+  type ResourceTabSubject,
+} from "@/web/app/registries/ResourceTabRegistry.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
+import { canInProject } from "@/web/app/services/projectRank.ts";
 
 import ProjectActivityPage from "../activity/ProjectActivityPage.tsx";
 import { AgentPromptsMenu } from "../prompts/AgentPromptsMenu.tsx";
@@ -38,14 +35,17 @@ import EpicStatusControl from "./EpicStatusControl.tsx";
 import ProjectEpicAside from "./ProjectEpicAside.tsx";
 import ProjectEpicDescription from "./ProjectEpicDescription.tsx";
 import ProjectEpicFlow from "./ProjectEpicFlow.tsx";
-import ProjectEpicFolios from "./ProjectEpicFolios.tsx";
 import ProjectEpicQuests from "./ProjectEpicQuests.tsx";
 
 export interface ProjectEpicProps {
   epic: EpicResource;
 }
 
-type TabKey = "overview" | "quests" | "flow" | "folios" | "activity";
+/**
+ * The page's own tabs, then any a module registered for epics (Knowledge's
+ * `folios`), by their own key.
+ */
+type TabKey = "overview" | "quests" | "flow" | "activity" | (string & {});
 
 /**
  * The Epic detail page (route `projectEpic`, `/epics/:epicNumber`), composed
@@ -63,10 +63,11 @@ type TabKey = "overview" | "quests" | "flow" | "folios" | "activity";
  * shareable link, and it writes with `replaceState` so walking the tabs does
  * not bury the page the reader arrived from.
  *
- * Quests and folios are not part of `epicResourceSchema`, so they are two
- * queries keyed on the epic (#E59, rule 7): `["quests", projectId,
- * { epicId }]` and `["folios", projectId, { epicId }]`. Every attach and
- * detach invalidates its key, so the picker, the tables and the aside's
+ * Quests are not part of `epicResourceSchema`, so they are a query keyed on
+ * the epic (#E59, rule 7): `["quests", projectId, { epicId }]`. Folios are
+ * Knowledge's tab, registered on `ResourceTabRegistry` (#E75, #Q2624), with
+ * its own `["folios", projectId, { epicId }]`. Every attach and detach
+ * invalidates its key, so the picker, the tables and the aside's
  * derived rows never show stale membership, and a switch to another epic
  * never shows the previous one's rows while the new ones load.
  */
@@ -76,7 +77,7 @@ const ProjectEpic = (props: ProjectEpicProps) => {
   const dialog = useDialog();
   const epicApi = useClient<EpicController>();
   const questApi = useClient<QuestController>();
-  const folioApi = useClient<FolioController>();
+  const registeredTabs = useInject(ResourceTabRegistry).tabs("epic");
   const [project] = useStore(currentProjectAtom);
   const [tab, setTab] = useDetailTab<TabKey>("overview");
   const alepha = useAlepha();
@@ -124,7 +125,6 @@ const ProjectEpic = (props: ProjectEpicProps) => {
   };
 
   const questsKey = ["quests", project?.id, { epicId: epic.id }];
-  const foliosKey = ["folios", project?.id, { epicId: epic.id }];
 
   // The epic's own quest set: shelved and draft-gated quests included.
   // `epic: epic.id` on `getQuests` both scopes to this epic AND bypasses
@@ -162,38 +162,12 @@ const ProjectEpic = (props: ProjectEpicProps) => {
     [questApi, project?.id, epic.id],
   );
 
-  // `epicId` filters server-side (`FolioController.list`) rather than
-  // fetching the project's folios and filtering client-side: a client-side
-  // filter over a `limit`-capped, epic-blind page can drop an attached
-  // folio entirely once the project holds more than the page size, with no
-  // signal that anything was hidden.
-  const foliosQuery = useQuery(
-    {
-      key: foliosKey,
-      enabled: !!project,
-      keepPreviousData: true,
-      handler: async () => ({
-        epicId: epic.id,
-        items: await folioApi.list({
-          query: {
-            projectId: project?.id as number,
-            epicId: epic.id,
-            limit: 100,
-          },
-        }),
-      }),
-    },
-    [folioApi, project?.id, epic.id],
-  );
-
   // `null` means "not loaded yet" — either still in flight or the last
   // fetch failed. Only a successfully resolved `[]` means "confirmed
   // empty": the tab bodies must not render an empty state on `null`, or a
   // failed reload reads as an epic with nothing in it.
   const quests: QuestResource[] | null =
     questsQuery.data?.epicId === epic.id ? questsQuery.data.items : null;
-  const folios: Folio[] | null =
-    foliosQuery.data?.epicId === epic.id ? foliosQuery.data.items : null;
 
   // One `useAction` per write. A refusal is the server's sentence, toasted by
   // the root `ActionErrorToaster`; the two detach confirmations live in their
@@ -268,52 +242,27 @@ const ProjectEpic = (props: ProjectEpicProps) => {
     [epicApi, epic.id, dialog, tr],
   );
 
-  const attachFolioAction = useAction<[folioId: string], void>(
-    {
-      handler: async (folioId) => {
-        setEpic(
-          await epicApi.attachFolio({
-            params: { id: epic.id },
-            body: { folioId },
-          }),
-        );
-      },
-      invalidates: [foliosKey],
-    },
-    [epicApi, epic.id],
-  );
-
-  const detachFolioAction = useAction<[folio: Folio], void>(
-    {
-      handler: async (folio) => {
-        const ok = await dialog.confirm({
-          title: tr("epic.folios.detach.title"),
-          description: tr("epic.folios.detach.confirm", {
-            args: [folio.title],
-          }),
-          confirmLabel: tr("epic.folios.detach"),
-          cancelLabel: tr("common.cancel"),
-        });
-        if (!ok) return;
-        setEpic(
-          await epicApi.detachFolio({
-            params: { id: epic.id, folioId: folio.id },
-          }),
-        );
-      },
-      invalidates: [foliosKey],
-    },
-    [epicApi, epic.id, dialog, tr],
-  );
-
   // Page-wide: every membership control waits while any write runs, since
   // `run()` drops a call made while its own is in flight.
   const busy =
     attachQuestAction.loading ||
     createdQuestAction.loading ||
-    detachQuestAction.loading ||
-    attachFolioAction.loading ||
-    detachFolioAction.loading;
+    detachQuestAction.loading;
+
+  // Every tab another module adds here, with its count. One hook per
+  // registered tab, legal because the registry is frozen before the first
+  // render (see `ResourceTabRegistry`).
+  const subject: ResourceTabSubject = {
+    projectId: project?.id ?? 0,
+    id: epic.id,
+    number: epic.number,
+    writable: canInProject(project, "epic:write"),
+  };
+  const linked = registeredTabs.map((tab) => ({
+    tab,
+    // oxlint-disable-next-line react-hooks/rules-of-hooks -- the tabs are frozen at boot, so the hook order never changes
+    ...tab.useCollection(subject),
+  }));
 
   if (!project) {
     return null;
@@ -341,12 +290,12 @@ const ProjectEpic = (props: ProjectEpicProps) => {
       icon: Workflow,
       label: tr("epic.tab.flow"),
     },
-    {
-      value: "folios",
-      icon: BookOpen,
-      label: tr("epic.tab.folios"),
-      count: folios?.length,
-    },
+    ...linked.map((it) => ({
+      value: it.tab.key,
+      icon: it.tab.icon,
+      label: tr(it.tab.labelKey as never),
+      count: it.count,
+    })),
     {
       value: "activity",
       icon: History,
@@ -448,14 +397,11 @@ const ProjectEpic = (props: ProjectEpicProps) => {
         />
       )}
 
-      {tab === "folios" && (
-        <ProjectEpicFolios
-          projectId={project.id}
-          folios={folios}
-          busy={busy}
-          onAttach={(folioId) => void attachFolioAction.run(folioId)}
-          onDetach={(folio) => void detachFolioAction.run(folio)}
-        />
+      {linked.map(
+        (it) =>
+          tab === it.tab.key && (
+            <it.tab.component key={it.tab.key} subject={subject} />
+          ),
       )}
 
       {tab === "activity" && (

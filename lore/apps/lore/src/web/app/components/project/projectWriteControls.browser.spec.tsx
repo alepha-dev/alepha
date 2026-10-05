@@ -14,8 +14,9 @@ import { projectFixture } from "@/testing/projectFixture.ts";
 
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { I18n } from "../../services/I18n.ts";
+import { canInProject } from "../../services/projectRank.ts";
 import { ProjectScopeGrants } from "../../services/ProjectScopeGrants.ts";
-import ProjectEpicFolios from "./epics/ProjectEpicFolios.tsx";
+import EpicFoliosList from "../folios/epic/EpicFoliosList.tsx";
 import ProjectSettingsAreasPage from "./settings/ProjectSettingsAreasPage.tsx";
 
 /**
@@ -41,7 +42,6 @@ import ProjectSettingsAreasPage from "./settings/ProjectSettingsAreasPage.tsx";
 const REGISTRY = {
   prefix: "/api",
   actions: {
-    attachFolio: { path: "/epics/:id/folios", method: "POST" },
     deleteArea: { path: "/areas/:id", method: "DELETE" },
     mergeAreas: { path: "/areas/merge", method: "POST" },
   } as Record<string, { path: string; method: string; permissions?: string[] }>,
@@ -113,7 +113,6 @@ describe("write controls under a rank", () => {
     alepha.store.set(
       "alepha.server.request.apiLinks",
       registryWith({
-        attachFolio: ["epic:write"],
         deleteArea: ["area:manage"],
         mergeAreas: ["area:manage"],
       }) as never,
@@ -129,10 +128,14 @@ describe("write controls under a rank", () => {
     return render(
       <AlephaContext.Provider value={alepha}>
         <DialogProvider>
-          <ProjectEpicFolios
+          {/* The epic's Folios tab takes its gate from the epic page, the
+              rank's `epic:write` (#E75, #Q2624): Knowledge files through
+              core's filing action, whose own link says nothing about it. */}
+          <EpicFoliosList
             projectId={1}
             folios={[aFolio]}
             busy={false}
+            writable={canInProject({ permissions }, "epic:write")}
             onAttach={() => {}}
             onDetach={() => {}}
           />
