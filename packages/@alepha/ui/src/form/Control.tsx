@@ -738,6 +738,16 @@ export const Control = (props: ControlProps) => {
           : undefined;
   const autoComplete = merged.autoComplete ?? autoCompleteFromFormat;
 
+  // A value typed verbatim (an account identifier, an address, a code) must
+  // not be rewritten by the keyboard: iOS capitalises the first letter of a
+  // username by default, and a sign-in then fails on "Test@mobile.test".
+  const verbatim =
+    htmlType === "email" ||
+    htmlType === "url" ||
+    ["username", "email", "tel", "url", "one-time-code"].includes(
+      autoComplete ?? "",
+    );
+
   // ── Right-side affordance: tick (when dirty) or clear (when nullable) ─
   // Tick only renders inside an `<AutoForm autoSave>` tree (or any caller
   // that explicitly wraps with `<FormFieldAutoSaveProvider value>`).
@@ -772,6 +782,9 @@ export const Control = (props: ControlProps) => {
           <Icon className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
         )}
         <Input
+          autoCapitalize={verbatim ? "none" : undefined}
+          autoCorrect={verbatim ? "off" : undefined}
+          spellCheck={verbatim ? false : undefined}
           {...merged.inputProps}
           {...formFieldAriaProps({
             id: meta.id,

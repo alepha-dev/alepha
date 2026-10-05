@@ -1,12 +1,14 @@
 import { DialogProvider, Toaster } from "@alepha/ui";
 import { ActionErrorToaster, ButtonUser } from "@alepha/ui/shell";
-import { Link, NestedView } from "alepha/react/router";
+import { Link, NestedView, useRouter } from "alepha/react/router";
 
 /**
  * Header and page. The dialog provider is what the notes page's delete
  * confirmation opens in, and the error toaster reports any failed call.
  */
 export const Layout = () => {
+  const router = useRouter();
+
   return (
     <DialogProvider>
       <div className="px-safe flex min-h-dvh flex-col">
@@ -19,7 +21,7 @@ export const Layout = () => {
               <Link href="/notes">Notes</Link>
             </nav>
             <div className="ml-auto">
-              <ButtonUser />
+              <ButtonUser onSignIn={() => router.push("/auth/login")} />
             </div>
           </div>
         </header>
