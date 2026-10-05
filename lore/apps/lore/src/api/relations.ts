@@ -141,7 +141,6 @@ export const relations = $relations(schema, (r) => ({
   epics: {
     project: r.one.projects({ from: r.epics.projectId, to: r.projects.id }),
     quests: r.many.quests({ from: r.epics.id, to: r.quests.epicId }),
-    folios: r.many.folios({ from: r.epics.id, to: r.folios.epicId }),
   },
 
   quests: {
@@ -216,7 +215,6 @@ export const relations = $relations(schema, (r) => ({
       from: r.folios.directoryId,
       to: r.folioDirectories.id,
     }),
-    epic: r.one.epics({ from: r.folios.epicId, to: r.epics.id }),
     revisions: r.many.folioRevisions({
       from: r.folios.id,
       to: r.folioRevisions.folioId,

@@ -191,18 +191,40 @@ export class FolioController {
       if (query.q) {
         where.searchText = { like: `%${query.q.toLowerCase()}%` };
       }
-      if (query.epicId != null) {
-        where.epicId = { eq: query.epicId };
+      const orderBy = [
+        { column: "pinned" as const, direction: "desc" as const },
+        { column: "updatedAt" as const, direction: "desc" as const },
+      ];
+      if (query.epicId == null) {
+        return this.withEpics(
+          await this.folios.findMany({
+            where,
+            orderBy,
+            limit: query.limit ?? 50,
+            offset: query.offset ?? 0,
+          }),
+        );
       }
-      return this.folios.findMany({
-        where,
-        orderBy: [
-          { column: "pinned", direction: "desc" },
-          { column: "updatedAt", direction: "desc" },
-        ],
-        limit: query.limit ?? 50,
-        offset: query.offset ?? 0,
-      });
+      // An epic's folios are its `filed` links in core's graph (#Q2626),
+      // read in bounded batches and paged here: a folio does not know its
+      // epic.
+      const filed = await this.linkService.filedChildren(
+        { kind: "epic", id: query.epicId },
+        "folio",
+      );
+      const rows = await this.bound.collect(filed, (batch) =>
+        this.folios.findMany({
+          where: { ...where, id: { inArray: batch } },
+          orderBy,
+        }),
+      );
+      rows.sort(
+        (a, b) =>
+          Number(b.pinned) - Number(a.pinned) ||
+          (b.updatedAt > a.updatedAt ? 1 : b.updatedAt < a.updatedAt ? -1 : 0),
+      );
+      const offset = query.offset ?? 0;
+      return this.withEpics(rows.slice(offset, offset + (query.limit ?? 50)));
     },
   });
 
@@ -292,7 +314,6 @@ export class FolioController {
             "protected",
             "pinned",
             "directoryId",
-            "epicId",
             "summary",
           ],
           orderBy: [
@@ -310,7 +331,7 @@ export class FolioController {
         }),
       ]);
       const bodies = new Map(pinned.map((row) => [row.id, row.content]));
-      return rows.map((row) => {
+      return (await this.withEpics(rows)).map((row) => {
         const content = bodies.get(row.id);
         return content === undefined ? row : { ...row, content };
       }) as FolioTreeEntry[];
@@ -352,13 +373,14 @@ export class FolioController {
       response: folioResourceSchema,
     },
     handler: async ({ params, query }) => {
-      const folio = await this.folios.findOne({
+      const found = await this.folios.findOne({
         where: {
           projectId: { eq: params.projectId },
           shortId: { eq: params.shortId },
         },
       });
-      if (!folio) throw new NotFoundError("Folio not found");
+      if (!found) throw new NotFoundError("Folio not found");
+      const [folio] = await this.withEpics([found]);
       if (!query.withLinks && !query.withPath && !query.withAttachments) {
         return folio;
       }
@@ -454,7 +476,7 @@ export class FolioController {
       params: folioIdParamsSchema,
       response: folios.schema,
     },
-    handler: async () => this.owned.get<Folio>(),
+    handler: async () => (await this.withEpics([this.owned.get<Folio>()]))[0],
   });
 
   /**
@@ -479,6 +501,31 @@ export class FolioController {
       );
     },
   });
+
+  /**
+   * Stamp each folio with the epic that files it, read from core's link
+   * graph (#Q2626): one bounded read for the whole page.
+   *
+   * It overwrites the row's own `epicId`, which nothing writes any more and
+   * #Q2627 drops: the HTTP and MCP contracts keep the field, and a stale
+   * column value must never reach them.
+   */
+  protected async withEpics<T extends { id: string }>(
+    rows: T[],
+  ): Promise<Array<T & { epicId: number | undefined }>> {
+    const parents =
+      rows.length === 0
+        ? new Map<string, string>()
+        : await this.linkService.filedParents(
+            "epic",
+            "folio",
+            rows.map((row) => row.id),
+          );
+    return rows.map((row) => {
+      const epic = parents.get(row.id);
+      return { ...row, epicId: epic === undefined ? undefined : Number(epic) };
+    });
+  }
 
   /**
    * Resolve outbound + inbound `[[wiki-link]]` refs for a folio into
@@ -814,7 +861,7 @@ export class FolioController {
       // Always true here: a brand-new folio has nothing to fold into. Sent
       // anyway so the two save paths answer the same shape and the client
       // never has to ask which one it called.
-      return { ...folio, revisionsChanged: true };
+      return { ...folio, epicId: undefined, revisionsChanged: true };
     },
   });
 
@@ -1054,7 +1101,7 @@ export class FolioController {
       });
 
       return {
-        ...updated,
+        ...(await this.withEpics([updated]))[0],
         revisionsChanged: purged || appended?.created === true,
       };
     },
@@ -1083,6 +1130,8 @@ export class FolioController {
       // a broken reference, which the reader renders as such; deleting it
       // would silently rewrite what the author wrote.
       await this.linkService.deleteLinksFrom({ kind: "folio", id: params.id });
+      // And its filing: a deleted folio is filed under no epic (#Q2626).
+      await this.linkService.unfileTargets("folio", [params.id]);
       /*
        * Before the folio row, not after. `folio_blobs.folioId` cascades, so
        * the moment the folio is gone so is the only record of which files
@@ -1430,7 +1479,7 @@ export class FolioController {
       await this.logFolio("revert", updated, user, {
         revisionId: params.revisionId,
       });
-      return updated;
+      return (await this.withEpics([updated]))[0];
     },
   });
 

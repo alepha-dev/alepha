@@ -33,10 +33,11 @@ export class FolioResourceKind {
         });
         return new Map(rows.map((r) => [r.shortId, r.id]));
       },
-      describe: async (_projectId, ids) => {
+      // Scoped to the project: a folio id from elsewhere describes nothing.
+      describe: async (projectId, ids) => {
         const rows = await this.bound.collect([...ids], (batch) =>
           this.folios.findMany({
-            where: { id: { inArray: batch } },
+            where: { id: { inArray: batch }, projectId: { eq: projectId } },
             columns: ["id", "shortId", "title"],
           }),
         );

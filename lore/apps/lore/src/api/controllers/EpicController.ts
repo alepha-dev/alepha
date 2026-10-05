@@ -4,8 +4,8 @@ import { OwnedResourceProvider, type UserAccountToken } from "alepha/security";
 import { $action, BadRequestError, okSchema } from "alepha/server";
 
 import { type Epic, epics } from "../entities/epics.ts";
-import { folios } from "../entities/folios.ts";
 import { quests } from "../entities/quests.ts";
+import { ResourceRegistry } from "../resources/ResourceRegistry.ts";
 import { epicManualStatusSchema } from "../schemas/epicManualStatusSchema.ts";
 import { epicRefResourceSchema } from "../schemas/epicRefResourceSchema.ts";
 import {
@@ -66,7 +66,7 @@ import { ResourceLinkService } from "../services/ResourceLinkService.ts";
 export class EpicController {
   epics = $repository(epics);
   quests = $repository(quests);
-  folios = $repository(folios);
+  resources = $inject(ResourceRegistry);
   linkService = $inject(ResourceLinkService);
   bestEffort = $inject(BestEffort);
   attachment = $inject(ReleaseAttachmentService);
@@ -472,7 +472,8 @@ export class EpicController {
 
   /**
    * Relies on the `epicId` FK's `ON DELETE SET NULL` to orphan the epic's
-   * quests and folios. `epics` carries `deletedAt` (soft delete), so a
+   * quests; its folios are `filed` links, which the link delete below
+   * removes with its mentions (#Q2626). `epics` carries `deletedAt` (soft delete), so a
    * plain `deleteById` would only UPDATE the row and never reach the
    * physical DELETE that fires the FK action — `force: true` is what
    * makes this a real delete. Must never iterate quests/folios to clear
@@ -488,8 +489,9 @@ export class EpicController {
       const epic = this.owned.get<Epic>();
 
       // `folio_links.from_id` is not a foreign key, so the FK cascade this
-      // delete relies on for quests and folios does not reach the link
-      // graph — see `ResourceLinkService.deleteLinksFrom`.
+      // delete relies on for quests does not reach the link graph — see
+      // `ResourceLinkService.deleteLinksFrom`. Every row from the epic goes:
+      // its mentions, and the `filed` rows that held its folios.
       await this.linkService.deleteLinksFrom({ kind: "epic", id: params.id });
       await this.epics.deleteById(params.id, { force: true });
       await this.logEpic("delete", epic, user);
@@ -607,16 +609,26 @@ export class EpicController {
     handler: async ({ body, user }) => {
       const epic = this.owned.get<Epic>();
 
-      // Coherence, not access - see `attachQuest`.
-      const folio = await this.folios.getById(body.folioId);
-      if (folio.projectId !== epic.projectId) {
+      // Coherence, not access - see `attachQuest`. Through the `folio` kind
+      // Knowledge registers, which describes only a folio of this project:
+      // Work reads no folio (#E75).
+      const [folio] = await this.resources.describe("folio", epic.projectId, [
+        body.folioId,
+      ]);
+      if (!folio) {
         throw new BadRequestError(
           "Folio belongs to a different project than this epic",
         );
       }
 
-      if (folio.epicId !== epic.id) {
-        await this.folios.updateById(folio.id, { epicId: epic.id });
+      // Filing is a `filed` link in core's graph, never a column on the
+      // folio (#Q2626): a folio does not know which epic files it.
+      if (
+        await this.linkService.file(
+          { kind: "epic", id: epic.id },
+          { kind: "folio", id: folio.id },
+        )
+      ) {
         await this.logEpic("attach", epic, user, { folio: folio.shortId });
       }
 
@@ -633,10 +645,18 @@ export class EpicController {
     handler: async ({ params, user }) => {
       const epic = this.owned.get<Epic>();
 
-      const folio = await this.folios.getById(params.folioId);
-      if (folio.epicId === epic.id) {
-        await this.folios.updateById(folio.id, { epicId: null });
-        await this.logEpic("detach", epic, user, { folio: folio.shortId });
+      if (
+        await this.linkService.unfile(
+          { kind: "epic", id: epic.id },
+          { kind: "folio", id: params.folioId },
+        )
+      ) {
+        const [folio] = await this.resources.describe("folio", epic.projectId, [
+          params.folioId,
+        ]);
+        await this.logEpic("detach", epic, user, {
+          folio: folio?.shortId,
+        });
       }
 
       return await this.buildEpicResource(epic);

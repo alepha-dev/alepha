@@ -220,10 +220,14 @@ export class ResourceLinkService {
       id: fromId,
     });
 
+    // Mentions only: a `filed` row is an explicit act no body holds, and an
+    // epic whose description is saved must keep the folios it files
+    // (#Q2626).
     if (!opts.created) {
       await this.links.deleteMany({
         fromType: { eq: source.kind },
         fromId: { eq: fromId },
+        relation: { isNull: true },
       });
     }
 
@@ -247,6 +251,116 @@ export class ResourceLinkService {
         targetType: target.targetType,
       })),
     );
+  }
+
+  /**
+   * File `child` under `parent` (an epic files a folio, #Q2626): one
+   * `filed` row, and the only one of that parent kind for the child, so a
+   * folio is filed under one epic at most, as it was when the filing was a
+   * column. Returns whether anything changed.
+   */
+  public async file(
+    parent: { kind: LinkSourceKind; id: string | number },
+    child: { kind: LinkTargetKind; id: string },
+  ): Promise<boolean> {
+    const current = await this.filedParents(parent.kind, child.kind, [
+      child.id,
+    ]);
+    if (current.get(child.id) === String(parent.id)) return false;
+    await this.links.deleteMany({
+      fromType: { eq: parent.kind },
+      targetType: { eq: child.kind },
+      toId: { eq: child.id },
+      relation: { eq: "filed" },
+    });
+    await this.links.create({
+      fromType: parent.kind,
+      fromId: String(parent.id),
+      targetType: child.kind,
+      toId: child.id,
+      relation: "filed",
+    });
+    return true;
+  }
+
+  /**
+   * Take `child` out of `parent`. Returns whether it was filed there.
+   */
+  public async unfile(
+    parent: { kind: LinkSourceKind; id: string | number },
+    child: { kind: LinkTargetKind; id: string },
+  ): Promise<boolean> {
+    const current = await this.filedParents(parent.kind, child.kind, [
+      child.id,
+    ]);
+    if (current.get(child.id) !== String(parent.id)) return false;
+    await this.links.deleteMany({
+      fromType: { eq: parent.kind },
+      fromId: { eq: String(parent.id) },
+      targetType: { eq: child.kind },
+      toId: { eq: child.id },
+      relation: { eq: "filed" },
+    });
+    return true;
+  }
+
+  /**
+   * Which parent of `parentKind` files each child: child id to parent id.
+   * A child filed nowhere is absent.
+   */
+  public async filedParents(
+    parentKind: LinkSourceKind,
+    childKind: LinkTargetKind,
+    childIds: readonly string[],
+  ): Promise<Map<string, string>> {
+    const rows = await this.bound.collect([...new Set(childIds)], (batch) =>
+      this.links.findMany({
+        where: {
+          fromType: { eq: parentKind },
+          targetType: { eq: childKind },
+          toId: { inArray: batch },
+          relation: { eq: "filed" },
+        },
+        columns: ["fromId", "toId"],
+      }),
+    );
+    return new Map(rows.map((row) => [row.toId, row.fromId]));
+  }
+
+  /**
+   * The ids of every child of `childKind` one parent files.
+   */
+  public async filedChildren(
+    parent: { kind: LinkSourceKind; id: string | number },
+    childKind: LinkTargetKind,
+  ): Promise<string[]> {
+    const rows = await this.links.findMany({
+      where: {
+        fromType: { eq: parent.kind },
+        fromId: { eq: String(parent.id) },
+        targetType: { eq: childKind },
+        relation: { eq: "filed" },
+      },
+      columns: ["toId"],
+    });
+    return rows.map((row) => row.toId);
+  }
+
+  /**
+   * Drop the filings of children that are being deleted: a deleted folio is
+   * filed under nothing. Mentions of it stay, and read as broken links.
+   */
+  public async unfileTargets(
+    childKind: LinkTargetKind,
+    childIds: readonly string[],
+  ): Promise<void> {
+    for (const batch of this.bound.chunk([...childIds])) {
+      await this.links.deleteMany({
+        targetType: { eq: childKind },
+        toId: { inArray: batch },
+        relation: { eq: "filed" },
+      });
+    }
   }
 
   /**

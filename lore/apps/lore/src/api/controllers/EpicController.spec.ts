@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 import {
   createTestEpic,
   createTestFolio,
+  filedEpicOf,
   createTestMember,
   createTestProject,
   createTestQuest,
@@ -504,7 +505,7 @@ describe("EpicController", () => {
     const survivingQuest = await ctx.repos.quests.getById(quest.id);
     const survivingFolio = await ctx.repos.folios.getById(folio.id);
     expect(survivingQuest.epicId).toBeUndefined();
-    expect(survivingFolio.epicId).toBeUndefined();
+    expect(await filedEpicOf(ctx.alepha, folio.id)).toBeUndefined();
     // The FK's `ON DELETE SET NULL` fires at the database level, not
     // through an application-level UPDATE — `updatedAt` (an app-maintained
     // column) proves no application code iterated and wrote these rows.
@@ -715,6 +716,45 @@ describe("EpicController", () => {
     }
   });
 
+  /**
+   * The filing is a `filed` row in the link graph, and a save of the epic's
+   * description re-syncs that same graph's mentions (#Q2626). The re-sync
+   * deletes and rewrites only the rows with no relation: before it did, every
+   * epic whose description was saved lost the folios it filed.
+   */
+  it("keeps the folios it files when its description is saved, mention included", async ({
+    expect,
+  }) => {
+    const project = await createTestProject(ctx.alepha);
+    const user = ownerToken(project);
+    const epic = await createTestEpic(ctx.alepha, project);
+    const folio = await createTestFolio(ctx.alepha, project);
+    await ctx.controller.attachFolio(
+      { params: { id: epic.id }, body: { folioId: folio.id } },
+      { user },
+    );
+
+    await ctx.controller.updateEpic(
+      {
+        params: { id: epic.id },
+        body: { description: `Plan in [[#F${folio.shortId}]].` },
+      },
+      { user },
+    );
+    await ctx.controller.updateEpic(
+      { params: { id: epic.id }, body: { description: "Nothing linked." } },
+      { user },
+    );
+
+    expect(await filedEpicOf(ctx.alepha, folio.id)).toBe(epic.id);
+    const rows = await ctx.alepha
+      .inject(TestEntityRepositories)
+      .folioLinks.findMany({
+        where: { fromType: { eq: "epic" }, fromId: { eq: String(epic.id) } },
+      });
+    expect(rows.map((row) => row.relation ?? "mention")).toEqual(["filed"]);
+  });
+
   it("attaches and detaches a folio", async ({ expect }) => {
     const project = await createTestProject(ctx.alepha);
     const user = ownerToken(project);
@@ -725,13 +765,13 @@ describe("EpicController", () => {
       { params: { id: epic.id }, body: { folioId: folio.id } },
       { user },
     );
-    expect((await ctx.repos.folios.getById(folio.id)).epicId).toBe(epic.id);
+    expect(await filedEpicOf(ctx.alepha, folio.id)).toBe(epic.id);
 
     await ctx.controller.detachFolio(
       { params: { id: epic.id, folioId: folio.id } },
       { user },
     );
-    expect((await ctx.repos.folios.getById(folio.id)).epicId).toBeUndefined();
+    expect(await filedEpicOf(ctx.alepha, folio.id)).toBeUndefined();
   });
 
   it("refuses to attach a folio from a different project", async ({

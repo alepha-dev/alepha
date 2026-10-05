@@ -1,6 +1,7 @@
 import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
+import { linkRelationSchema } from "../schemas/linkRelationSchema.ts";
 import { linkSourceKindSchema } from "../schemas/linkSourceKindSchema.ts";
 import { linkTargetKindSchema } from "../schemas/linkTargetKindSchema.ts";
 /**
@@ -72,6 +73,15 @@ export const folioLinks = $entity({
       linkTargetKindSchema.meta({ mode: "text" }),
       "folio",
     ),
+    /**
+     * `undefined` for a mention, derived from the source's body and
+     * rewritten on every save of it; `filed` for an explicit filing, which
+     * a body save never touches (see {@link linkRelationSchema}).
+     *
+     * ⚠️ Optional with NO `db.default(...)`, so the migration is a plain
+     * `ALTER TABLE ADD COLUMN`.
+     */
+    relation: linkRelationSchema.meta({ mode: "text" }).optional(),
   }),
   indexes: [
     /**
@@ -88,7 +98,13 @@ export const folioLinks = $entity({
      * all. Feedback and releases joined the same integer id space, which
      * made the collision a matter of when.
      */
-    { columns: ["fromType", "fromId", "targetType", "toId"], unique: true },
+    //
+    // `relation` too (#Q2626): an epic that both files a folio and mentions
+    // it in its description holds two rows for the same pair.
+    {
+      columns: ["fromType", "fromId", "targetType", "toId", "relation"],
+      unique: true,
+    },
     /**
      * Look up backlinks — every folio that points TO this one.
      */

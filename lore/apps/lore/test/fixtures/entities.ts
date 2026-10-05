@@ -11,6 +11,7 @@ import { areas } from "@/api/entities/areas.ts";
 import { type Epic, epics } from "@/api/entities/epics.ts";
 import { feedback } from "@/api/entities/feedback.ts";
 import { folioDirectories } from "@/api/entities/folioDirectories.ts";
+import { folioLinks } from "@/api/entities/folioLinks.ts";
 import { type Folio, folios } from "@/api/entities/folios.ts";
 import { projectCapabilities } from "@/api/entities/projectCapabilities.ts";
 import { type Project, projects } from "@/api/entities/projects.ts";
@@ -53,6 +54,7 @@ export class TestEntityRepositories {
   epics = $repository(epics);
   quests = $repository(quests);
   folios = $repository(folios);
+  folioLinks = $repository(folioLinks);
   // `folios.directoryId` refs this table — needed pre-`start()` whenever
   // `folios` is, for the same reason `quests`'s own FK closure is.
   folioDirectories = $repository(folioDirectories);
@@ -242,13 +244,46 @@ export const createTestFolio = async (
 ): Promise<Folio> => {
   const repo = alepha.inject(TestEntityRepositories);
   folioSeq += 1;
-  return repo.folios.create({
-    ...overrides,
+  // `epicId` is a filing, which lives in core's link graph rather than on
+  // the folio (#Q2626): it becomes a `filed` row, never the column.
+  const { epicId, ...rest } = overrides;
+  const folio = await repo.folios.create({
+    ...rest,
     // Spread first, defaults last — see `createTestProject`.
     projectId: overrides.projectId ?? project.id,
     shortId: overrides.shortId ?? folioSeq,
     title: overrides.title ?? `Test Folio ${folioSeq}`,
   });
+  if (epicId == null) return folio;
+  await repo.folioLinks.create({
+    fromType: "epic",
+    fromId: String(epicId),
+    targetType: "folio",
+    toId: folio.id,
+    relation: "filed",
+  });
+  return { ...folio, epicId };
+};
+
+/**
+ * The epic a folio is filed under, read from core's link graph (#Q2626):
+ * what a spec asserts where it used to read `folios.epicId`.
+ */
+export const filedEpicOf = async (
+  alepha: Alepha,
+  folioId: string,
+): Promise<number | undefined> => {
+  const [row] = await alepha
+    .inject(TestEntityRepositories)
+    .folioLinks.findMany({
+      where: {
+        fromType: { eq: "epic" },
+        targetType: { eq: "folio" },
+        toId: { eq: folioId },
+        relation: { eq: "filed" },
+      },
+    });
+  return row ? Number(row.fromId) : undefined;
 };
 
 /**

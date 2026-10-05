@@ -300,6 +300,8 @@ export class FolioDirectoryService {
     // links stay, as `FolioController.delete` leaves them: a reference to
     // a deleted folio is a broken link, which is what a reader should see.
     await this.linkService.deleteLinksFromMany("folio", folioIds);
+    // And their filings: a deleted folio is filed under no epic (#Q2626).
+    await this.linkService.unfileTargets("folio", folioIds);
     await this.attachmentService.deleteRowsOf(folioIds);
     // The FK cascade takes the child directories, the folios and their
     // revisions.

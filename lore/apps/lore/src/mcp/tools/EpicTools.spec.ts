@@ -12,6 +12,7 @@ import { describe, it } from "vitest";
 import {
   createTestEpic,
   createTestFolio,
+  filedEpicOf,
   createTestMemberByProjectId,
   createTestQuest,
   TestEntityRepositories,
@@ -183,6 +184,7 @@ describe("Lore MCP — epics", () => {
     expect,
   }) => {
     const {
+      alepha,
       repos,
       project,
       epicTools,
@@ -223,7 +225,7 @@ describe("Lore MCP — epics", () => {
     );
 
     expect((await repos.quests.getById(quest.id)).epicId).toBe(epic.id);
-    expect((await repos.folios.getById(folio.id)).epicId).toBe(epic.id);
+    expect(await filedEpicOf(alepha, folio.id)).toBe(epic.id);
   });
 
   /**
@@ -470,7 +472,7 @@ describe("Lore MCP — epics", () => {
 
       expect(result.ok).toBe(true);
       expect((await repos.quests.getById(quest.id)).epicId).toBeUndefined();
-      expect((await repos.folios.getById(folio.id)).epicId).toBeUndefined();
+      expect(await filedEpicOf(alepha, folio.id)).toBeUndefined();
     });
 
     it("removes the epic from epic_list, epic_get and project_context", async ({
@@ -692,7 +694,7 @@ describe("Lore MCP — epics", () => {
       // Before this, an agent had no way to file a folio under an epic: the
       // web picker could, `folio_create` could not, so every design folio an
       // agent wrote landed unattached and the epic's Folios tab read 0.
-      const { alepha, repos, project, folioTools, call } = await setup();
+      const { alepha, project, folioTools, call } = await setup();
       const epic = await createTestEpic(alepha, project, {
         title: "Lore Deploy",
         status: "draft",
@@ -705,7 +707,7 @@ describe("Lore MCP — epics", () => {
         epic_number: epic.number,
       });
 
-      expect((await repos.folios.getById(created.id)).epicId).toBe(epic.id);
+      expect(await filedEpicOf(alepha, created.id)).toBe(epic.id);
       expect(created.epic).toEqual({
         number: epic.number,
         title: "Lore Deploy",
@@ -841,7 +843,7 @@ describe("Lore MCP — epics", () => {
 
   describe("folio_update — epic_number", () => {
     it("reparents a folio to a different epic", async ({ expect }) => {
-      const { alepha, repos, project, folioTools, call } = await setup();
+      const { alepha, project, folioTools, call } = await setup();
       const epic = await createTestEpic(alepha, project);
       const folio = await createTestFolio(alepha, project);
 
@@ -850,12 +852,12 @@ describe("Lore MCP — epics", () => {
         epic_number: epic.number,
       });
 
-      expect((await repos.folios.getById(folio.id)).epicId).toBe(epic.id);
+      expect(await filedEpicOf(alepha, folio.id)).toBe(epic.id);
       expect(updated.epic?.number).toBe(epic.number);
     });
 
     it("passing 0 clears the folio's epic link", async ({ expect }) => {
-      const { alepha, repos, project, folioTools, call } = await setup();
+      const { alepha, project, folioTools, call } = await setup();
       const epic = await createTestEpic(alepha, project);
       const folio = await createTestFolio(alepha, project, {
         epicId: epic.id,
@@ -866,7 +868,7 @@ describe("Lore MCP — epics", () => {
         epic_number: 0,
       });
 
-      expect((await repos.folios.getById(folio.id)).epicId).toBeUndefined();
+      expect(await filedEpicOf(alepha, folio.id)).toBeUndefined();
       expect(updated.epic).toBeUndefined();
     });
 
