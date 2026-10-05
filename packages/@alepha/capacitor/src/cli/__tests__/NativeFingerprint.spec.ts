@@ -33,6 +33,21 @@ describe("NativeFingerprint", () => {
     expect((await compute()).fingerprint).toBe((await compute()).fingerprint);
   });
 
+  it("ignores the config.xml cap sync writes, so a fresh checkout's first build agrees with the next", async ({
+    expect,
+  }) => {
+    // A fresh checkout has no config.xml until the first sync writes it.
+    const { fs, compute } = await setup();
+    const before = (await compute()).fingerprint;
+
+    await fs.writeFile(
+      `${ROOT}/android/app/src/main/res/xml/config.xml`,
+      "<widget><access origin=\"*\" /></widget>",
+    );
+
+    expect((await compute()).fingerprint).toBe(before);
+  });
+
   it("reads the native sources and Gradle files, not build products or generated assets", async ({
     expect,
   }) => {

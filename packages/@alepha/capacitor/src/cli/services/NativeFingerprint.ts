@@ -22,7 +22,8 @@ import type { CapacitorPlatform } from "../atoms/capacitorOptions.ts";
  *
  * Deliberately left out: the root `yarn.lock` (an unrelated web dependency
  * bump would otherwise demand a native rebuild), generated assets (icons,
- * splash, the copied web layer and its config), build products, credentials,
+ * splash, the copied web layer and the config files `cap sync` writes),
+ * build products, credentials,
  * and the records file itself.
  */
 export class NativeFingerprint {
@@ -47,7 +48,10 @@ export class NativeFingerprint {
       /^android\/app\/proguard-rules\.pro$/,
       /^android\/app\/src\/main\/AndroidManifest\.xml$/,
       /^android\/app\/src\/main\/(java|kotlin)\/.+\.(java|kt)$/,
-      /^android\/app\/src\/main\/res\/(xml|values)\/[^/]+\.xml$/,
+      // `res/xml/config.xml` is written by `cap sync` (Capacitor's own
+      // .gitignore lists it): counted, a fresh checkout's first build and
+      // every build after it would disagree with no input changed.
+      /^android\/app\/src\/main\/res\/(xml|values)\/(?!config\.xml$)[^/]+\.xml$/,
     ],
   };
 
