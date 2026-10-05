@@ -42,7 +42,7 @@ describe("NativeFingerprint", () => {
 
     await fs.writeFile(
       `${ROOT}/android/app/src/main/res/xml/config.xml`,
-      "<widget><access origin=\"*\" /></widget>",
+      '<widget><access origin="*" /></widget>',
     );
 
     expect((await compute()).fingerprint).toBe(before);
