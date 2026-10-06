@@ -38,9 +38,12 @@ const ProjectSwitcher = () => {
   // one: capping an alphabetical sort answers "which ten come first in the
   // alphabet", a question nobody asked, and hides everything from S onwards
   // forever.
-  const byRecency = [...projects].sort((a, b) =>
-    a.updatedAt > b.updatedAt ? -1 : 1,
-  );
+  //
+  // Archived projects are left out (#Q2601), except the one you are looking
+  // at: it still needs its checkmark, and its URL keeps working.
+  const byRecency = projects
+    .filter((it) => !it.archivedAt || it.id === project.id)
+    .sort((a, b) => (a.updatedAt > b.updatedAt ? -1 : 1));
   const recent = byRecency.slice(0, RECENT_PROJECTS_CAP);
   // The project you are LOOKING AT has to be in the menu, or the switcher
   // shows no checkmark and reads as though you are nowhere. `updatedAt` moves

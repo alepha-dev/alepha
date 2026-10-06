@@ -89,7 +89,14 @@ export class LoreAudits {
   readonly project = $audit({
     type: "project",
     description: "Project lifecycle",
-    actions: ["create", "update", "delete", "capability"],
+    actions: [
+      "create",
+      "update",
+      "delete",
+      "capability",
+      "archive",
+      "unarchive",
+    ],
     // A session editing one resource repeatedly is the everyday case here -
     // an MCP agent, or somebody working through a form - so `update` folds
     // into one row with a count. Five minutes, measured from the row's

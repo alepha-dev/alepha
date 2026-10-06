@@ -96,9 +96,10 @@ const HomeBoard = () => {
    */
   const recency = (project: { id: number; lastActivityAt: string }) =>
     Date.parse(lastActivity.get(project.id) ?? project.lastActivityAt);
-  const projects = [...(overview?.projects ?? [])].sort(
-    (a, b) => recency(b) - recency(a),
-  );
+  // Archived projects are left out (#Q2601): My projects still lists them.
+  const projects = (overview?.projects ?? [])
+    .filter((it) => !it.archivedAt)
+    .sort((a, b) => recency(b) - recency(a));
 
   return (
     /*

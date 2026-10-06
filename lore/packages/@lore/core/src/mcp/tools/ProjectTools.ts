@@ -206,6 +206,7 @@ export class ProjectTools {
             id: p.id,
             title: p.title,
             ...(key ? { rank: { key, name: named?.name ?? key } } : {}),
+            ...(p.archivedAt ? { archivedAt: p.archivedAt } : {}),
           };
         }),
       };

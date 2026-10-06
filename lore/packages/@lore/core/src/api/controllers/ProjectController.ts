@@ -9,6 +9,7 @@ import {
   RankService,
 } from "alepha/api/organizations";
 import { users } from "alepha/api/users";
+import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository, db, pageQuerySchema } from "alepha/orm";
 import {
@@ -123,6 +124,7 @@ export class ProjectController {
   projectSecurity = $inject(ProjectSecurityService);
   protected readonly capabilityRegistry = $inject(CapabilityRegistry);
   audits = $inject(LoreAudits);
+  protected readonly dateTime = $inject(DateTimeProvider);
   auditService = $inject(AuditService);
   counts = $inject(ProjectCountRegistry);
   assignedWork = $inject(AssignedWorkRegistry);
@@ -1254,6 +1256,67 @@ export class ProjectController {
       return { ok: true };
     },
   });
+
+  /**
+   * Put the project away (#Q2601): it leaves the switcher, Spotlight and
+   * Home, and stays in My projects marked Archived. Nothing is deleted, and
+   * members, ranks and sigils are untouched; it still accepts writes.
+   *
+   * Gated on `project:delete`, which is owner-only structurally: archiving
+   * is the soft half of ending a project, and a permission of its own would
+   * have to join the never-grantable list to mean the same thing.
+   */
+  archiveProject = $action({
+    use: [this.ownsAsOwner("project:delete")],
+    method: "POST",
+    path: "/projects/:id/archive",
+    schema: {
+      params: z.object({ id: z.integer() }),
+      response: projectResourceSchema,
+    },
+    handler: async ({ user }) =>
+      this.setArchived(this.owned.get<Project>(), true, user),
+  });
+
+  /**
+   * The way back from {@link ProjectController.archiveProject}, same gate.
+   */
+  unarchiveProject = $action({
+    use: [this.ownsAsOwner("project:delete")],
+    method: "POST",
+    path: "/projects/:id/unarchive",
+    schema: {
+      params: z.object({ id: z.integer() }),
+      response: projectResourceSchema,
+    },
+    handler: async ({ user }) =>
+      this.setArchived(this.owned.get<Project>(), false, user),
+  });
+
+  protected async setArchived(
+    project: Project,
+    archived: boolean,
+    user: UserAccountToken,
+  ) {
+    // Idempotent: archiving an archived project keeps its first date, so
+    // "Archived since" never moves under a double click.
+    if (archived !== Boolean(project.archivedAt)) {
+      project.archivedAt = archived ? this.dateTime.nowISOString() : undefined;
+      await this.projects.save(project);
+      await this.audits.project.logSuccess(archived ? "archive" : "unarchive", {
+        ...this.audits.actor(user),
+        ...this.audits.scope(project.id),
+        resourceType: "project",
+        resourceId: String(project.id),
+        description: project.title,
+      });
+    }
+
+    return this.projectMapper.toResource(
+      project,
+      await this.projectSecurity.capabilityRowsOf(project.id),
+    );
+  }
 
   leaveProject = $action({
     use: [$secure({ permissions: ["project:read"] })],

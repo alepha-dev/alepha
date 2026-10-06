@@ -142,6 +142,19 @@ export const projects = $entity({
      * table rebuild that cascade-wipes children on D1.
      */
     tagColors: z.record(z.text(), paletteColorSchema).optional(),
+    /**
+     * When an owner archived the project (#Q2601), absent while it is live.
+     *
+     * An archived project leaves the quick surfaces (the switcher, Spotlight,
+     * Home) and stays in My projects with an Archived badge. Nothing else
+     * changes: it still accepts writes, and its members, ranks and sigils
+     * are untouched.
+     *
+     * NB: `z.optional` with NO `db.default(...)`, like `tagColors` above: a
+     * column DEFAULT triggers the `projects` table rebuild that
+     * cascade-wipes children on D1.
+     */
+    archivedAt: z.datetime().optional(),
   }),
   indexes: [
     {

@@ -57,6 +57,12 @@ export const projectListResultSchema = z.object({
        * through the role), or no signed-in `me`.
        */
       rank: rankRefSchema.optional(),
+      /**
+       * When an owner archived the project (#Q2601), absent while it is
+       * live. Archived projects stay listed so an agent can still reach
+       * them; the UI hides them from its quick surfaces only.
+       */
+      archivedAt: z.datetime().optional(),
     }),
   ),
 });

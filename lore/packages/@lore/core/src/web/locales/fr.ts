@@ -605,6 +605,20 @@ export default {
   "project.settings.actions.delete": "Détruire ce projet",
   "project.settings.actions.delete.helper":
     "Parfois, il faut abandonner le combat… mais sachez que toutes les quêtes et les progrès seront perdus.",
+  "project.settings.actions.archive": "Archiver le projet",
+  "project.settings.actions.archive.helper":
+    "Le retirer du sélecteur, de la recherche et de l'accueil. Rien n'est supprimé, et Mes projets le liste toujours.",
+  "project.settings.actions.unarchive": "Désarchiver le projet",
+  "project.settings.actions.unarchive.helper":
+    "Archivé. Le remettre dans le sélecteur, la recherche et l'accueil.",
+  "project.settings.archive.confirm.title": "Archiver $1 ?",
+  "project.settings.archive.confirm.description":
+    "Il quitte le sélecteur de projets, la recherche et l'accueil, et reste dans Mes projets marqué Archivé. Ses quêtes, folios et membres sont conservés, et vous pouvez le désarchiver ici à tout moment.",
+  "project.settings.archive.confirm.submit": "Archiver",
+  "project.settings.unarchive.confirm.title": "Désarchiver $1 ?",
+  "project.settings.unarchive.confirm.description":
+    "Il revient dans le sélecteur de projets, la recherche et l'accueil.",
+  "project.settings.unarchive.confirm.submit": "Désarchiver",
   "project.settings.actions.leave": "Quitter ce projet",
   "project.settings.actions.leave.helper":
     "Les quêtes que vous aviez acceptées sans les terminer seront libérées pour les autres membres.",
@@ -1139,6 +1153,7 @@ export default {
   "account.projects.owner": "Propriétaire",
   "account.projects.member": "Membre",
   "account.projects.see-all": "Tous les projets",
+  "account.projects.archived": "Archivé",
 
   "area.detail.rename": "Renommer",
   "area.detail.rename.title": "Renommer le domaine",

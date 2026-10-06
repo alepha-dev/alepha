@@ -123,6 +123,19 @@ const MyProjects = () => {
                 <span className="truncate text-sm font-medium">
                   {project.title}
                 </span>
+                {/*
+                  Archived projects leave the switcher, Spotlight and Home
+                  (#Q2601); this page is where they stay, so it says which.
+                */}
+                {project.archivedAt ? (
+                  <Badge
+                    variant="secondary"
+                    className="shrink-0"
+                    data-testid="account-project-archived"
+                  >
+                    {tr("account.projects.archived")}
+                  </Badge>
+                ) : null}
               </Link>
             ),
           },

@@ -164,7 +164,10 @@ const Spotlight = (): ReactElement => {
   // "+N more" tail this can fail to find. That is what lets the mode call
   // itself "Projects" rather than "Recent projects" — a switcher that silently
   // omits a project you own reads as a bug, not as a cap.
+  //
+  // Archived projects are left out (#Q2601): My projects still lists them.
   const projectMatches = (overview?.projects ?? []).filter((it) => {
+    if (it.archivedAt) return false;
     const q = query.trim().toLowerCase();
     return !q || it.title.toLowerCase().includes(q);
   });

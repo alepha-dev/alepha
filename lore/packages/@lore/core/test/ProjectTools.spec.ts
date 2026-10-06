@@ -146,6 +146,27 @@ describe("Lore MCP - projects", () => {
       // project, and "may I do this" is a question about ONE project.
       expect(row?.permissions).toBeUndefined();
     });
+
+    it("keeps an archived project, with archivedAt on its row", async ({
+      expect,
+    }) => {
+      const { alepha, projectTools, project, call, OWNER } = await setup();
+      const api = alepha.inject(ProjectController);
+      await alepha.context.run(() => {
+        alepha.store.set(currentUserAtom, {
+          id: OWNER,
+          roles: ["user"],
+        } as any);
+        return api.archiveProject({ params: { id: project.id } } as any);
+      });
+
+      const result = await call(projectTools.project_list, {});
+      const row = result.projects.find((p: any) => p.id === project.id);
+
+      // Archiving hides a project from the UI's quick surfaces only (#Q2601):
+      // an agent still reaches it, and can tell.
+      expect(row?.archivedAt).toEqual(expect.any(String));
+    });
   });
 
   /**

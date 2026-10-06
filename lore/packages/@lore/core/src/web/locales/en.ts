@@ -623,6 +623,20 @@ export default {
   "project.settings.actions.delete": "Delete this project",
   "project.settings.actions.delete.helper":
     "Sometimes retreat is the only option. All quests and progress will be lost forever.",
+  "project.settings.actions.archive": "Archive project",
+  "project.settings.actions.archive.helper":
+    "Hide it from the switcher, search and Home. Nothing is deleted, and My projects still lists it.",
+  "project.settings.actions.unarchive": "Unarchive project",
+  "project.settings.actions.unarchive.helper":
+    "Archived. Bring it back to the switcher, search and Home.",
+  "project.settings.archive.confirm.title": "Archive $1?",
+  "project.settings.archive.confirm.description":
+    "It leaves the project switcher, search and Home, and stays in My projects marked Archived. Its quests, folios and members are kept, and you can unarchive it here at any time.",
+  "project.settings.archive.confirm.submit": "Archive",
+  "project.settings.unarchive.confirm.title": "Unarchive $1?",
+  "project.settings.unarchive.confirm.description":
+    "It comes back to the project switcher, search and Home.",
+  "project.settings.unarchive.confirm.submit": "Unarchive",
   "project.settings.actions.leave": "Leave this project",
   "project.settings.actions.leave.helper":
     "Any unfinished quests you accepted will be released to other members.",
@@ -1162,6 +1176,7 @@ export default {
   "account.projects.owner": "Owner",
   "account.projects.member": "Member",
   "account.projects.see-all": "All projects",
+  "account.projects.archived": "Archived",
 
   "area.detail.rename": "Rename",
   "area.detail.rename.title": "Rename area",
