@@ -81,7 +81,7 @@ const page = (rows: ProjectActivityRow[]): Page<ProjectActivityRow> => ({
 });
 
 /**
- * Only the routes the rows link to. The real `AppRouter` is not mounted:
+ * Only the routes the rows link to. The real routers are not mounted:
  * these cases are about the table, not about the route table.
  */
 class Routes {

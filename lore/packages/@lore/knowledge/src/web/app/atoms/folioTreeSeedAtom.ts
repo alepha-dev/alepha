@@ -2,7 +2,7 @@ import { $atom, z } from "alepha";
 
 /**
  * Which project `userFoliosAtom` + `projectDirectoriesAtom` currently
- * hold, and when they were filled. Written by `AppRouter.seedFolioTree`,
+ * hold, and when they were filled. Written by `KnowledgeRouter.seedFolioTree`,
  * read by nothing else.
  *
  * It exists because every folio route loader used to re-fetch both lists

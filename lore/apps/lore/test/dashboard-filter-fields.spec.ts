@@ -1,9 +1,9 @@
 import { DashboardMetricCatalog } from "@lore/core/schemas";
 import { dashboardFilterFields } from "@lore/core/web";
+import { DeployDashboardMetrics } from "@lore/deploy/schemas";
+import { WorkDashboardMetrics } from "@lore/work/schemas";
 import { Alepha } from "alepha";
 import { afterEach, beforeEach, describe, it } from "vitest";
-
-import { LoreDashboardCatalog } from "@/api/dashboardCatalogModule.ts";
 
 /**
  * The Add-card wizard's filter step is generated from each metric's own Zod
@@ -18,9 +18,10 @@ describe("dashboard filter fields", () => {
 
   beforeEach(async () => {
     alepha = Alepha.create({ env: { LOG_LEVEL: "error", SERVER_PORT: 0 } });
-    // The descriptors are registered by each module (#Q2623), which this
-    // module brings in beside the catalogue.
-    alepha.with(LoreDashboardCatalog);
+    // The descriptors are registered by each module (#Q2623), from the
+    // declarative half both runtimes load.
+    alepha.inject(WorkDashboardMetrics);
+    alepha.inject(DeployDashboardMetrics);
     catalog = alepha.inject(DashboardMetricCatalog);
     await alepha.start();
   });

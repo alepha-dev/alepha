@@ -14,8 +14,7 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { LoreApi } from "@/api/index.ts";
-
+import { bootLore } from "./fixtures/bootLore.ts";
 import {
   createTestMember,
   createTestProject,
@@ -49,7 +48,7 @@ const setup = async (): Promise<TestContext> => {
   alepha.with(AlephaSecurity);
   alepha.with(AlephaEmail);
   alepha.with(AlephaApiUsers);
-  alepha.with(LoreApi);
+  bootLore(alepha);
 
   const repos = alepha.inject(TestEntityRepositories);
   const dashboard = alepha.inject(DashboardTestRepositories);

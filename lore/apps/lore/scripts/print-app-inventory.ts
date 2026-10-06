@@ -1,11 +1,10 @@
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 
-import { LoreAccountRouter } from "@lore/core/web";
 import { Alepha } from "alepha";
 import { AlephaReactRouter, ReactPageProvider } from "alepha/react/router";
 
-import { AppRouter } from "../src/web/app/AppRouter.ts";
+import { bootLore } from "../test/fixtures/bootLore.ts";
 
 /**
  * Prints the three inventories `CLAUDE.md` keeps by hand: the route table,
@@ -53,10 +52,9 @@ class AppInventory {
       env: { LOG_LEVEL: "error", SERVER_PORT: 0 },
     });
     alepha.with(AlephaReactRouter);
-    alepha.inject(AppRouter);
-    // Registered alongside AppRouter by `LoreWebApp`. Without it the /account
+    // Every router, the account pages included: without them the /account
     // pages Lore declares itself are silently absent.
-    alepha.inject(LoreAccountRouter);
+    bootLore(alepha, ["routes"]);
     const pages = alepha.inject(ReactPageProvider);
     await alepha.start();
 
@@ -82,21 +80,34 @@ class AppInventory {
     await alepha.stop();
   }
 
+  /**
+   * Each `@lore/*` package's source root, where the atoms and the components
+   * live since #E75.
+   */
+  protected readonly packages = ["core", "work", "knowledge", "deploy"].map(
+    (pkg) => ({
+      pkg,
+      src: join(import.meta.dirname, "../../../packages/@lore", pkg, "src"),
+    }),
+  );
+
   protected async printAtoms(): Promise<void> {
-    for (const dir of ["src/web/app/atoms", "src/api/atoms"]) {
-      const names = (await readdir(join(import.meta.dirname, "..", dir)))
-        .filter((f) => f.endsWith(".ts") && !f.includes(".spec."))
-        .map((f) => f.replace(/\.ts$/, ""))
-        .sort();
-      console.log(`\n## Atoms in ${dir} (${names.length})\n`);
-      for (const name of names) {
-        console.log(`- \`${name}\``);
+    for (const { pkg, src } of this.packages) {
+      for (const dir of ["web/app/atoms", "api/atoms"]) {
+        const names = (await readdir(join(src, dir)).catch(() => []))
+          .filter((f) => f.endsWith(".ts") && !f.includes(".spec."))
+          .map((f) => f.replace(/\.ts$/, ""))
+          .sort();
+        if (names.length === 0) continue;
+        console.log(`\n## Atoms in @lore/${pkg} ${dir} (${names.length})\n`);
+        for (const name of names) {
+          console.log(`- \`${name}\``);
+        }
       }
     }
   }
 
   protected async printComponentCount(): Promise<void> {
-    const root = join(import.meta.dirname, "..", "src/web/app/components");
     const walk = async (dir: string): Promise<number> => {
       let total = 0;
       for (const entry of await readdir(dir, { withFileTypes: true })) {
@@ -111,7 +122,12 @@ class AppInventory {
       }
       return total;
     };
-    console.log(`\n## Components\n\n${await walk(root)} .tsx files\n`);
+    console.log("\n## Components\n");
+    for (const { pkg, src } of this.packages) {
+      const root = join(src, "web/app/components");
+      const count = await walk(root).catch(() => 0);
+      console.log(`- @lore/${pkg}: ${count} .tsx files`);
+    }
   }
 }
 

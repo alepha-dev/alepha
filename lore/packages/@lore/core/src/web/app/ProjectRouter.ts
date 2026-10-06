@@ -24,9 +24,9 @@ import { capabilityOption } from "./services/projectCapabilities.ts";
  * a page of another module (#E75, #Q2609): the `@lore` packages each declare
  * their own pages, and this class becomes `@lore/core/web`'s.
  *
- * ⚠️ Its own class, apart from `AppRouter`, for the cycle: `$pageProject`
- * injects this class, and a page of `AppRouter` calling it while `AppRouter`
- * is still being constructed would inject `AppRouter` into itself.
+ * ⚠️ Its own class, apart from `CoreRouter`, for the cycle: `$pageProject`
+ * injects this class, and a page of `CoreRouter` calling it while `CoreRouter`
+ * is still being constructed would inject `CoreRouter` into itself.
  */
 export class ProjectRouter {
   protected readonly alepha = $inject(Alepha);

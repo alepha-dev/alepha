@@ -14,7 +14,7 @@ import { AlephaSecurity, type UserAccountToken } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { describe, it } from "vitest";
 
-import { LoreApi } from "../src/api/index.ts";
+import { bootLore } from "./fixtures/bootLore.ts";
 
 /**
  * #Q2491: the newest revision of a folio holds no copy of the body, which
@@ -36,8 +36,8 @@ const setup = async () => {
     .with(AlephaServer)
     .with(AlephaSecurity)
     .with(AlephaEmail)
-    .with(AlephaApiUsers)
-    .with(LoreApi);
+    .with(AlephaApiUsers);
+  bootLore(alepha);
   const rows = alepha.inject(Rows);
   await alepha.start();
 

@@ -29,7 +29,7 @@ import QuestViewRail from "./QuestViewRail.tsx";
  */
 /**
  * The rail links out to the epic and to a quest, so the router has to exist.
- * Two route names is all it reads; the real `AppRouter` would drag the whole
+ * Two route names is all it reads; the real routers would drag the whole
  * app in for a metadata column.
  */
 class Routes {

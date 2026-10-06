@@ -90,7 +90,7 @@ const ProjectSettingsAreaPage = (props: ProjectSettingsAreaPageProps) => {
             // `ReactBrowserProvider`'s `previous` layer list entirely
             // (not just this leaf), so it also re-runs the `project`
             // route's loader and refreshes `currentAreasAtom` for every
-            // picker elsewhere in the app — see AppRouter.ts's `project`
+            // picker elsewhere in the app — see CoreRouter.ts's `project`
             // loader. The merge branch re-runs anyway; the redundant
             // force there costs one loader round-trip.
             force: true,

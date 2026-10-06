@@ -4,8 +4,8 @@ import { describe, it } from "vitest";
 import {
   createTestProject,
   createTestQuest,
-  TestEntityRepositories,
-} from "./fixtures/entities.ts";
+  WorkTestEntities,
+} from "../src/testing/index.ts";
 
 describe("epics entity", () => {
   it("orphans its quests on delete instead of deleting them", async ({
@@ -19,12 +19,12 @@ describe("epics entity", () => {
       env: { LOG_LEVEL: "error", DATABASE_URL: ":memory:" },
     });
     // Inject the exact fixture class (not a subclass) so the later
-    // `alepha.inject(TestEntityRepositories)` calls inside
+    // `alepha.inject(WorkTestEntities)` calls inside
     // `createTestProject` / `createTestQuest` hit the cached instance
     // instead of `ContainerLockedError` — see the comment on
-    // `TestEntityRepositories` for why every FK target needs registering
+    // `WorkTestEntities` for why every FK target needs registering
     // before `alepha.start()` in the first place.
-    const app = alepha.inject(TestEntityRepositories);
+    const app = alepha.inject(WorkTestEntities);
     await alepha.start();
 
     const project = await createTestProject(alepha);

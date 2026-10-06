@@ -1,4 +1,4 @@
-import { SigilSinkProvider } from "@alepha/lore/sigil";
+import { AlephaSigil, SigilSinkProvider } from "@alepha/lore/sigil";
 import { adminRouterOptionsAtom } from "@alepha/ui/admin";
 import { LoreCoreApi } from "@lore/core/api";
 import {
@@ -13,7 +13,6 @@ import { ProjectScopeGrants } from "@lore/core/web";
 import { LoreDeployApi } from "@lore/deploy/api";
 import {
   DeployJobs,
-  LoreSigilSinkProvider,
   EstateCommandTransport,
   WebSocketEstateCommandTransport,
 } from "@lore/deploy/api";
@@ -40,9 +39,7 @@ import { ScopeGrantsProvider } from "alepha/server/links";
 import { loreAdminOptions } from "@/web/admin/adminChrome.tsx";
 import { LoreWebAdmin } from "@/web/admin/index.ts";
 
-import { LoreApi } from "./api/index.ts";
-import { LoreMcp } from "./mcp/index.ts";
-import { LoreWebApp } from "./web/app/index.ts";
+import { LoreSigilSinkProvider } from "./providers/LoreSigilSinkProvider.ts";
 
 const alepha = Alepha.create({
   env: {
@@ -93,7 +90,7 @@ if (alepha.env.EMAIL_HOST) {
 }
 
 // Register the captcha provider BEFORE any module that depends on `alepha/captcha`
-// (e.g. `LoreApi` → `RealmController`). The `AlephaCaptcha` module auto-binds the
+// (e.g. `LoreCoreApi` → `RealmController`). The `AlephaCaptcha` module auto-binds the
 // memory provider on load; substituting after that point trips the DI guard.
 // Register if and only if TURNSTILE_SITE_KEY is present.
 if (alepha.env.TURNSTILE_SITE_KEY) {
@@ -106,7 +103,7 @@ if (alepha.env.TURNSTILE_SITE_KEY) {
 // feedback attachments require project ownership).
 alepha.with({ provide: FileAccessProvider, use: LoreFileAccessProvider });
 
-// Configure the OAuth 2.1 authorization server BEFORE `LoreApi` (which holds
+// Configure the OAuth 2.1 authorization server BEFORE `LoreCoreApi` (which holds
 // the `$realm`). `$realm` merges this value and only overrides `realm`, so
 // `resource` and `loginPath` set here are preserved. `loginPath` points at
 // Lore's actual login route; the OAuth `authorize` endpoint redirects
@@ -137,7 +134,7 @@ alepha.set(adminRouterOptionsAtom, loreAdminOptions);
 // offers to open the form you are already looking at. `*` matches within one
 // path segment, so this covers `/sds/request` and not `/sds/request/anything`.
 // The estate command queue pushes over the estates websocket (epic #20).
-// Declared BEFORE `LoreApi`, which registers the default transport that
+// Declared BEFORE `LoreDeployApi`, which registers the default transport that
 // reaches nothing: a substitution after the service is in use is refused.
 alepha.with({
   provide: EstateCommandTransport,
@@ -146,9 +143,9 @@ alepha.with({
 
 // What `action.can()` means inside a project.
 //
-// ⚠️ At the top of the ENTRY, not in `LoreWebApp.register()`, and the two are
+// ⚠️ At the top of the ENTRY, not in `LoreCoreWeb.register()`, and the two are
 // not interchangeable. A module's `register` runs when the module is injected,
-// which here is after `LoreApi` and `LoreMcp` have already instantiated
+// which here is after the `@lore/*` api and MCP modules have already instantiated
 // `LinkProvider` - and `LinkProvider` injects `ScopeGrantsProvider`, so the
 // substitution arrives as a `TooLateSubstitutionError` and the server does not
 // boot. Every other substitution in this file is up here for the same reason.
@@ -163,8 +160,8 @@ alepha.with({ provide: ScopeGrantsProvider, use: ProjectScopeGrants });
 // default resolves nobody, which is how an app that has not implemented this
 // gets a skipped receipt rather than a crash.
 //
-// Declared BEFORE `LoreApi`, for the same reason the transport above is:
-// `LoreApi` pulls in `alepha/api/notifications`, and a substitution after the
+// Declared BEFORE `LoreCoreApi`, for the same reason the transport above is:
+// `LoreCoreApi` pulls in `alepha/api/notifications`, and a substitution after the
 // service is in use is refused.
 alepha.with({
   provide: NotificationInboxRecipientProvider,
@@ -186,12 +183,10 @@ alepha.with(LoreCoreApi);
 alepha.with(LoreWorkApi);
 alepha.with(LoreKnowledgeApi);
 alepha.with(LoreDeployApi);
-alepha.with(LoreApi);
 alepha.with(LoreCoreMcp);
 alepha.with(LoreWorkMcp);
 alepha.with(LoreKnowledgeMcp);
 alepha.with(LoreDeployMcp);
-alepha.with(LoreMcp);
 
 // Lore reports to Lore, and this line is what makes that possible.
 //
@@ -201,15 +196,15 @@ alepha.with(LoreMcp);
 // up nowhere: Lore would look enrolled and report nothing. The substitution
 // answers those two calls in process instead, against its own services.
 //
-// It must come BEFORE `LoreWebApp`, which is what registers `AlephaSigil` and
-// therefore the provider being replaced here.
+// It must come BEFORE `AlephaSigil`, which registers the provider being
+// replaced here.
 alepha.with({ provide: SigilSinkProvider, use: LoreSigilSinkProvider });
 
 alepha.with(LoreCoreWeb);
 alepha.with(LoreWorkWeb);
 alepha.with(LoreKnowledgeWeb);
 alepha.with(LoreDeployWeb);
-alepha.with(LoreWebApp);
+alepha.with(AlephaSigil);
 alepha.with(LoreWebAdmin);
 
 run(alepha);

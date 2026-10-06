@@ -3,7 +3,7 @@ import { Alepha } from "alepha";
 import { AlephaReactRouter, ReactPageProvider } from "alepha/react/router";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { AppRouter } from "../src/web/app/AppRouter.ts";
+import { bootLore } from "./fixtures/bootLore.ts";
 
 /**
  * Which pages server-render, pinned by name.
@@ -67,14 +67,14 @@ const GUARDED_ROUTES = [
   "admin",
 ];
 
-describe("AppRouter rendering mode", () => {
+describe("the rendering mode of every route", () => {
   let alepha: Alepha;
   let pages: ReactPageProvider;
 
   beforeEach(async () => {
     alepha = Alepha.create({ env: { LOG_LEVEL: "error", SERVER_PORT: 0 } });
     alepha.with(AlephaReactRouter);
-    alepha.inject(AppRouter);
+    bootLore(alepha, ["routes"]);
     // Its own module in the real app (main.server.ts / main.browser.ts), so it
     // has to be wired explicitly here — and it is the most interesting case:
     // it already carried `$secure` before this change and was server-rendered.

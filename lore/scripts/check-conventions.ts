@@ -143,7 +143,7 @@ if (subpathViolations.length > 0) {
  *
  * ⚠️ SCOPE. This reads only the trees that have actually been cleaned:
  * `cli/`, `api/users/` and `system/` in the framework, plus the whole Lore
- * API, in `apps/lore` and in every `@lore` package. It is not repo-wide because it cannot yet be - `server/`, `react/`
+ * API, in every `@lore` package. It is not repo-wide because it cannot yet be - `server/`, `react/`
  * and `core/` still carry about a hundred module-level declarations between
  * them, and an allowlist that large is the "list of things nobody dares
  * touch" this file warns about above. Add a tree here once it is clean,
@@ -155,14 +155,9 @@ if (subpathViolations.length > 0) {
  * members a test substitutes, so a helper beside one is as unreachable as a
  * helper beside a provider.
  */
-const NO_MODULE_CODE_TREES = [
-  "apps/lore/src/api",
-  // The Lore API as it moves into the `@lore/*` packages (#E75): each
-  // package's own `src/api`, the same tree under a new root.
-  ...readdirSync("packages/@lore")
-    .map((pkg) => `packages/@lore/${pkg}/src/api`)
-    .filter((tree) => existsSync(tree)),
-];
+const NO_MODULE_CODE_TREES = readdirSync("packages/@lore")
+  .map((pkg) => `packages/@lore/${pkg}/src/api`)
+  .filter((tree) => existsSync(tree));
 const SERVICE_DIRS = [
   "services",
   "providers",
@@ -665,10 +660,10 @@ if (vitestViolations.length > 0) {
  * most of these files do and is correct.
  */
 const PROJECT_ATOM_WRITER =
-  "apps/lore/src/web/app/services/currentProjectWrite.ts";
+  "packages/@lore/core/src/web/app/services/currentProjectWrite.ts";
 const projectAtomViolations: string[] = [];
 
-// The app's web tree and every `@lore` package's (#E75), untracked files
+// The app's admin pages and every `@lore` package's web tree (#E75), untracked files
 // included so a page moved five minutes ago is already read.
 const atomReaders = execFileSync(
   "git",
@@ -798,7 +793,7 @@ if (transactionalViolations.length > 0) {
  * rule cannot read it. Specs are exempt: they declare jobs for pretend
  * applications, and the registration check still binds them. Files are read
  * whole rather than through `grep`, which skips a file holding a NUL byte as
- * binary (`apps/lore/src/api/jobs/SigilJobs.ts` has one on purpose).
+ * binary (`packages/@lore/deploy/src/api/jobs/SigilJobs.ts` has one on purpose).
  */
 const jobNameViolations: string[] = [];
 const jobTimeoutViolations: string[] = [];

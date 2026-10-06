@@ -20,7 +20,7 @@
     "deploy": "alepha platform up -e production",
     "studio": "alepha db studio",
     "fonts": "node scripts/fetch-fonts.ts",
-    "inventory": "tsx scripts/print-app-inventory.ts",
+    "inventory": "node --import tsx --import ./scripts/css-stub.mjs scripts/print-app-inventory.ts",
     "start": "yarn build && LOG_LEVEL=trace LOG_FORMAT=pretty DATABASE_URL=:memory: node dist",
     "start:e2e": "alepha build --if-stale && DATABASE_URL=:memory: node dist",
     "e2e": "playwright test",

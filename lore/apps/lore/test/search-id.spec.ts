@@ -15,7 +15,7 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { LoreApi } from "../src/api/index.ts";
+import { bootLore } from "./fixtures/bootLore.ts";
 
 /**
  * A bare number in the palette finds everything carrying that shortId.
@@ -68,7 +68,7 @@ const setup = async (): Promise<TestContext> => {
   alepha.with(AlephaEmail);
   alepha.with(AlephaApiUsers);
   alepha.with(AlephaFake);
-  alepha.with(LoreApi);
+  bootLore(alepha);
 
   await alepha.start();
 

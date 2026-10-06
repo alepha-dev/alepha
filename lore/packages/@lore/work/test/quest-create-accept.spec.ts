@@ -10,8 +10,8 @@ import { AlephaServer, NodeHttpServerProvider } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { LoreApi } from "../src/api/index.ts";
-import { LoreMcp } from "../src/mcp/index.ts";
+import { LoreWorkApi } from "../src/api/index.ts";
+import { LoreWorkMcp } from "../src/mcp/index.ts";
 
 // `accept: true` on quest_create is the MCP equivalent of the UI's
 // "Create and accept" split button: create the quest, then immediately
@@ -48,8 +48,8 @@ const setup = async (): Promise<TestContext> => {
   alepha.with(AlephaApiUsers);
   alepha.with(AlephaFake);
   alepha.with(AlephaMcp);
-  alepha.with(LoreApi);
-  alepha.with(LoreMcp);
+  alepha.with(LoreWorkApi);
+  alepha.with(LoreWorkMcp);
 
   await alepha.start();
 

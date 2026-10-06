@@ -12,7 +12,7 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { LoreApi } from "../src/api/index.ts";
+import { bootLore } from "./fixtures/bootLore.ts";
 
 class Rows {
   names = $repository(folioNames);
@@ -52,7 +52,7 @@ describe("names are claimed before the row", () => {
     alepha.with(AlephaEmail);
     alepha.with(AlephaApiUsers);
     alepha.with(AlephaFake);
-    alepha.with(LoreApi);
+    bootLore(alepha);
     rows = alepha.inject(Rows);
     await alepha.start();
 

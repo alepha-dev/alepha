@@ -1,3 +1,4 @@
+import { AlephaSigil } from "@alepha/lore/sigil";
 import { adminRouterOptionsAtom } from "@alepha/ui/admin";
 import { LoreCoreWeb } from "@lore/core/web";
 import { ProjectScopeGrants } from "@lore/core/web";
@@ -10,15 +11,13 @@ import { ScopeGrantsProvider } from "alepha/server/links";
 import { loreAdminOptions } from "@/web/admin/adminChrome.tsx";
 import { LoreWebAdmin } from "@/web/admin/index.ts";
 
-import { LoreWebApp } from "./web/app/index.ts";
-
 const alepha = Alepha.create();
 
 alepha.set(adminRouterOptionsAtom, loreAdminOptions);
 
 // What `action.can()` means inside a project.
 //
-// ⚠️ Declared in BOTH entries rather than in `LoreWebApp.register()`, which is
+// ⚠️ Declared in BOTH entries rather than in `LoreCoreWeb.register()`, which is
 // the tempting single place and does not work: `main.server.ts` injects the
 // web module last, by which point `LinkProvider` is already built and the
 // substitution is a `TooLateSubstitutionError`. And it has to reach the server
@@ -33,7 +32,7 @@ alepha.with(LoreCoreWeb);
 alepha.with(LoreWorkWeb);
 alepha.with(LoreKnowledgeWeb);
 alepha.with(LoreDeployWeb);
-alepha.with(LoreWebApp);
+alepha.with(AlephaSigil);
 alepha.with(LoreWebAdmin);
 
 run(alepha);

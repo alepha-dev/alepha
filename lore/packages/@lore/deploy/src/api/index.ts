@@ -227,7 +227,6 @@ export { EstateCredentialJobs } from "./jobs/EstateCredentialJobs.ts";
 export { QualityJobs } from "./jobs/QualityJobs.ts";
 export { SigilJobs } from "./jobs/SigilJobs.ts";
 export { EstateNotifications } from "./notifications/EstateNotifications.ts";
-export { LoreSigilSinkProvider } from "./providers/LoreSigilSinkProvider.ts";
 export { deployRelations } from "./relations/deployRelations.ts";
 export { AppSecretService } from "./services/AppSecretService.ts";
 export { AppService } from "./services/AppService.ts";

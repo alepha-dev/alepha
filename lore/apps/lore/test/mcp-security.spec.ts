@@ -12,8 +12,7 @@ import { AlephaServer, NodeHttpServerProvider } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { LoreApi } from "../src/api/index.ts";
-import { LoreMcp } from "../src/mcp/index.ts";
+import { bootLore } from "./fixtures/bootLore.ts";
 
 // Admin context for admin controller calls
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };
@@ -49,8 +48,7 @@ const setup = async (): Promise<TestContext> => {
   alepha.with(AlephaApiUsers);
   alepha.with(AlephaFake);
   alepha.with(AlephaMcp);
-  alepha.with(LoreApi);
-  alepha.with(LoreMcp);
+  bootLore(alepha, ["api", "mcp"]);
 
   await alepha.start();
 

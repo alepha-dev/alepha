@@ -4,7 +4,7 @@ import { Alepha, AlephaError } from "alepha";
 import { $page, AlephaReactRouter } from "alepha/react/router";
 import { afterEach, describe, it } from "vitest";
 
-import { AppRouter } from "@/web/app/AppRouter.ts";
+import { bootLore } from "./fixtures/bootLore.ts";
 
 /**
  * The route loaders that 404 under a disabled capability.
@@ -45,7 +45,7 @@ describe("route guards on a capability", () => {
 
   const bootRouter = async () => {
     const alepha = Alepha.create().with(AlephaReactRouter);
-    alepha.inject(AppRouter);
+    bootLore(alepha, ["routes"]);
     await alepha.start();
     containers.push(alepha);
     return alepha;
@@ -53,7 +53,7 @@ describe("route guards on a capability", () => {
 
   const loaderOf = (alepha: Alepha, name: string) => {
     const page = [...alepha.primitives($page)].find((it) => it.name === name);
-    if (!page) throw new AlephaError(`AppRouter no longer declares ${name}`);
+    if (!page) throw new AlephaError(`no router declares ${name}`);
     return page.options.loader;
   };
 

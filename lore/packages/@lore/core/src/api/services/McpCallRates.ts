@@ -22,14 +22,14 @@ import { ProjectAnalytics } from "../entities/projectAnalytics.ts";
  * `handleToolsCall`, the way `LoreAuditService` overrides `AuditService.create`.
  * It worked and it was wrong: a substitution has to be recorded before
  * anything resolves what it replaces, and `AlephaMcp` is wired by a `$tool`
- * auto-wire, by `LoreMcp`, and explicitly by several specs - so whether it
+ * auto-wire, by `LoreCoreMcp`, and explicitly by several specs - so whether it
  * took effect depended on the order the container happened to be assembled
  * in, and `mcp-security.spec.ts` threw `TooLateSubstitutionError` as soon as
  * it existed. `mcp:tool:end` is the framework seam that replaced it: emitted
  * once per call on every path out of `handleToolsCall`, with no ordering
  * requirement at all.
  *
- * ⚠️ Nothing injects this class, so it is listed in `LoreMcp`'s `services`.
+ * ⚠️ Nothing injects this class, so it is listed in `LoreCoreMcp`'s `services`.
  * A `$hook` reaches a subscriber only if the subscriber was constructed.
  *
  * ## ⚠️ Best effort, and quick

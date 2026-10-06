@@ -8,7 +8,7 @@ import { Alepha, AlephaError } from "alepha";
 import { $page, AlephaReactRouter, ReactRouter } from "alepha/react/router";
 import { describe, expect, it } from "vitest";
 
-import { AppRouter } from "../src/web/app/AppRouter.ts";
+import { type LoreRouter, bootLore } from "./fixtures/bootLore.ts";
 
 /**
  * Route names are plain strings, so a tab added to `AppRouter` and to
@@ -30,13 +30,13 @@ describe("projectViewRoutes", () => {
    */
   const pageNamesUnder = async (shell: string): Promise<string[]> => {
     const alepha = Alepha.create().with(AlephaReactRouter);
-    alepha.inject(AppRouter);
+    bootLore(alepha, ["routes"]);
     await alepha.start();
 
     const pages = [...alepha.primitives($page)];
     const parent = pages.find((it) => it.name === shell);
     if (!parent) {
-      throw new AlephaError(`AppRouter no longer declares a ${shell} page`);
+      throw new AlephaError(`no router declares a ${shell} page`);
     }
     const children = parent.options.children ?? [];
     const listed = typeof children === "function" ? children() : children;
@@ -145,10 +145,10 @@ describe("projectViewRoutes", () => {
    */
   it("puts the dashboard at the project root and Activity one path down", async () => {
     const alepha = Alepha.create().with(AlephaReactRouter);
-    alepha.inject(AppRouter);
+    bootLore(alepha, ["routes"]);
     await alepha.start();
 
-    const router = alepha.inject(ReactRouter<AppRouter>);
+    const router = alepha.inject(ReactRouter<LoreRouter>);
 
     // ⚠️ The board owns `/` by BEING the page at `/`. Nothing redirects there
     // and it redirects nowhere: a loader redirect on the project root is the

@@ -10,7 +10,7 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { describe, it } from "vitest";
 
-import { LoreApi } from "../src/api/index.ts";
+import { bootLore } from "./fixtures/bootLore.ts";
 
 /**
  * Home's Open column beyond quests: draft epics, open blights and pending
@@ -39,7 +39,7 @@ const setup = async () => {
   alepha.with(AlephaEmail);
   alepha.with(AlephaApiUsers);
   alepha.with(AlephaFake);
-  alepha.with(LoreApi);
+  bootLore(alepha);
   // Before `start`: the container locks on start.
   const probe = alepha.inject(Probe);
   await alepha.start();

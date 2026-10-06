@@ -35,11 +35,11 @@ export type DashboardPresentation = "scalar" | "trend" | "progress" | "list";
  * Where clicking a card goes.
  *
  * A route NAME plus params, not a URL: the names are `$page` keys from
- * `AppRouter`, so the browser hands this straight to `router.push`.
+ * the routers, so the browser hands this straight to `router.push`.
  *
  * ⚠️ Route names are plain strings here and a `$page` rename is not
  * typecheck-protected (see `apps/lore/CLAUDE.md`). `dashboard-links.spec.ts`
- * asserts every name below still exists on `AppRouter`.
+ * asserts every name below still exists in the route table.
  */
 export interface DashboardCardLink {
   route: string;

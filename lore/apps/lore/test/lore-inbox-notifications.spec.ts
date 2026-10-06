@@ -18,7 +18,7 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { describe, it } from "vitest";
 
-import { LoreApi } from "../src/api/index.ts";
+import { bootLore } from "./fixtures/bootLore.ts";
 
 class Rows {
   readonly inbox = $repository(notificationInboxEntity);
@@ -41,7 +41,7 @@ const setup = async () => {
     provide: NotificationInboxRecipientProvider,
     use: LoreInboxRecipientProvider,
   });
-  alepha.with(LoreApi);
+  bootLore(alepha);
 
   const rows = alepha.inject(Rows);
   await alepha.start();

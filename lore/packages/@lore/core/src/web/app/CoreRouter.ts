@@ -332,7 +332,7 @@ export class CoreRouter {
    * The project's board, and the page you land on when you open a project.
    *
    * ⚠️ **It renders here; it does not redirect here**, and nothing may
-   * redirect to it. `AppRouter` has said so twice and both prohibitions were
+   * redirect to it. This router has said so twice and both prohibitions were
    * paid for: a loader redirect on the project root is the shape #156 was
    * about, where a page could not tell "nobody has chosen yet" from "we are
    * leaving" and every sidebar link went dead, and a per-project "which page

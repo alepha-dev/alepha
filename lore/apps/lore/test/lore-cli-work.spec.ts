@@ -18,7 +18,7 @@ import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { LoreApi } from "../src/api/index.ts";
+import { bootLore } from "./fixtures/bootLore.ts";
 
 /**
  * `lore project`, `lore quest` and `lore folio` against the real Lore app,
@@ -69,7 +69,7 @@ const setup = async (): Promise<TestContext> => {
   alepha.with(AlephaEmail);
   alepha.with(AlephaApiUsers);
   alepha.with(AlephaFake);
-  alepha.with(LoreApi);
+  bootLore(alepha);
 
   await alepha.start();
 

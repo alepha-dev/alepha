@@ -67,8 +67,8 @@ const ProjectUpdate = (props: ProjectUpdateProps) => {
    * Constructed rather than injected, and both halves of that are deliberate.
    * `useInject` throws `ContainerLockedError` here — the container is sealed
    * once the app starts, and this service lives in the API graph, which the
-   * browser never registers. Declaring it in `LoreWebApp.services` fixes that
-   * but pulls an `@/api` import into the web module and perturbs the
+   * browser never registers. Declaring it in a web module's `services` fixes that
+   * but pulls an API import into the web module and perturbs the
    * `SigilSinkProvider` substitution order `main.server.ts` depends on, which
    * takes the whole server down on boot. `ProjectSlugService` is
    * dependency-free by construction (see its own note), so `new` cannot be

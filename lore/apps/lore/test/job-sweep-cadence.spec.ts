@@ -10,7 +10,7 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake } from "alepha/testing/faker";
 import { describe, it } from "vitest";
 
-import { LoreApi } from "../src/api/index.ts";
+import { bootLore } from "./fixtures/bootLore.ts";
 
 /**
  * A queue delivery Cloudflare loses leaves a `pending` row that only the
@@ -42,7 +42,7 @@ describe("job sweep cadence", () => {
     alepha.with(AlephaEmail);
     alepha.with(AlephaApiUsers);
     alepha.with(AlephaFake);
-    alepha.with(LoreApi);
+    bootLore(alepha);
     await alepha.start();
     try {
       expect(alepha.store.get(jobConfig).staleThreshold).toBe(60_000);

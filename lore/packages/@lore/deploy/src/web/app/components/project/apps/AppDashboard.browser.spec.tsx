@@ -76,7 +76,7 @@ const instanceOf = (
 
 /**
  * The one route the next-steps card links to. Declared here rather than booted
- * from `AppRouter`, which would pull the whole route table and every loader
+ * from the routers, which would pull the whole route table and every loader
  * with it.
  */
 class Routes {

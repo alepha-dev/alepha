@@ -4,7 +4,7 @@
  * and where each section's breadcrumb climbs back to.
  *
  * Route names are plain strings here with nothing in the type system tying
- * them to the route table, so a `$page` added to `AppRouter` and left out of
+ * them to the route table, so a `$page` added to a router and left out of
  * one of these sets is not a compile error. It is a page that renders in the
  * centred column while its siblings run full width, a sidebar that stops
  * highlighting, and a crumb that goes dead. That is how the Explore tab
@@ -27,7 +27,7 @@ export const ROUTES_WITH_QUEST_LOG = new Set(["projectQuests", "projectQuest"]);
 /**
  * The per-app page and its tabs.
  *
- * Every tab declared under `projectApp` in `AppRouter` belongs here, and
+ * Every tab declared under `projectApp` in `DeployRouter` belongs here, and
  * `projectViewRoutes.spec.ts` checks that it is. The set drives the width of
  * the page, the highlighted app in the sidebar and the app's own breadcrumb
  * leaf, so a tab missing from it breaks all three at once and silently.

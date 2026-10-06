@@ -935,7 +935,7 @@ const QuestView = (props: QuestViewProps) => {
 /**
  * Which mount `QuestView` is rendering as.
  *
- * One component, two mounts: `AppRouter`'s `projectQuest` lazy-loads this
+ * One component, two mounts: `WorkRouter`'s `projectQuest` lazy-loads this
  * exact file, and the kanban board mounts it inside a `Sheet`. Every change
  * here therefore pays twice, which is why this is a prop over a fork.
  */

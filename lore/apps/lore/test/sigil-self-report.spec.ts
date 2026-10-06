@@ -1,5 +1,7 @@
 import { SigilSinkProvider } from "@alepha/lore/sigil";
 import { projectCapabilities, projects } from "@lore/core/schemas";
+import { DeployAnalytics, LoreDeployApi } from "@lore/deploy/api";
+import { sigils } from "@lore/deploy/schemas";
 import { Alepha } from "alepha";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { CryptoProvider } from "alepha/crypto";
@@ -10,9 +12,7 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake } from "alepha/testing/faker";
 import { describe, expect, it } from "vitest";
 
-import { DeployAnalytics, LoreSigilSinkProvider } from "../src/api/index.ts";
-import { LoreDeployApi } from "../src/api/index.ts";
-import { sigils } from "../src/schemas/index.ts";
+import { LoreSigilSinkProvider } from "../src/providers/LoreSigilSinkProvider.ts";
 
 /**
  * Lore dogfooding its own sigil.

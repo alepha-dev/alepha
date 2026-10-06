@@ -15,7 +15,7 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { LoreApi } from "../src/api/index.ts";
+import { bootLore } from "./fixtures/bootLore.ts";
 import { WikiLinkFixture } from "./fixtures/wikiLinks.ts";
 
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };
@@ -72,7 +72,7 @@ describe("the reference grammar is one grammar on both sides", () => {
     alepha.with(AlephaEmail);
     alepha.with(AlephaApiUsers);
     alepha.with(AlephaFake);
-    alepha.with(LoreApi);
+    bootLore(alepha);
     await alepha.start();
 
     folioLinkService = alepha.inject(ResourceLinkService);

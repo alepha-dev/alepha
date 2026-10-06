@@ -16,7 +16,7 @@ import { useWorkPromptSubject } from "./useWorkPromptSubject.ts";
 /**
  * The routes the subject builds URLs from. `router.path` resolves
  * against the real page table, so a stub is what lets this spec run without
- * booting `AppRouter`.
+ * booting the routers.
  */
 class Routes {
   epic = $page({

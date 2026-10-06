@@ -21,7 +21,7 @@ import {
 } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { LoreApi } from "../src/api/index.ts";
+import { bootLore } from "./fixtures/bootLore.ts";
 import {
   createTestMember,
   createTestProject,
@@ -68,7 +68,7 @@ const setup = async (): Promise<TestContext> => {
   alepha.with(AlephaSecurity);
   alepha.with(AlephaEmail);
   alepha.with(AlephaApiUsers);
-  alepha.with(LoreApi);
+  bootLore(alepha);
   alepha.with(ReadCounter);
   alepha.with(InHandlerGateControl);
 

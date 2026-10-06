@@ -1,10 +1,11 @@
 import { DashboardMetricCatalog } from "@lore/core/schemas";
+import { DeployDashboardMetrics } from "@lore/deploy/schemas";
+import { WorkDashboardMetrics } from "@lore/work/schemas";
 import { Alepha } from "alepha";
 import { AlephaReactRouter, ReactRouter } from "alepha/react/router";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { LoreDashboardCatalog } from "@/api/dashboardCatalogModule.ts";
-import { AppRouter } from "@/web/app/AppRouter.ts";
+import { type LoreRouter, bootLore } from "./fixtures/bootLore.ts";
 
 /**
  * Every drill-through in the metric catalogue lands on a route that exists.
@@ -21,16 +22,17 @@ import { AppRouter } from "@/web/app/AppRouter.ts";
  */
 describe("dashboard drill-through links", () => {
   let alepha: Alepha;
-  let router: ReactRouter<AppRouter>;
+  let router: ReactRouter<LoreRouter>;
   let catalog: DashboardMetricCatalog;
 
   beforeEach(async () => {
     alepha = Alepha.create({ env: { LOG_LEVEL: "error", SERVER_PORT: 0 } });
-    // The descriptors are registered by each module (#Q2623), which this
-    // module brings in beside the catalogue.
-    alepha.with(LoreDashboardCatalog);
+    // The descriptors are registered by each module (#Q2623), from the
+    // declarative half both runtimes load.
+    alepha.inject(WorkDashboardMetrics);
+    alepha.inject(DeployDashboardMetrics);
     alepha.with(AlephaReactRouter);
-    alepha.inject(AppRouter);
+    bootLore(alepha, ["routes"]);
     catalog = alepha.inject(DashboardMetricCatalog);
     router = alepha.inject(ReactRouter);
     await alepha.start();

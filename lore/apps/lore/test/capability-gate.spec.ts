@@ -13,8 +13,7 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake } from "alepha/testing/faker";
 import { describe, it } from "vitest";
 
-import { LoreApi } from "../src/api/index.ts";
-import { LoreMcp } from "../src/mcp/index.ts";
+import { bootLore } from "./fixtures/bootLore.ts";
 
 /**
  * The capability gate, from all three sides it is reached from.
@@ -45,8 +44,7 @@ const setup = async () => {
   alepha.with(AlephaApiUsers);
   alepha.with(AlephaFake);
   alepha.with(AlephaMcp);
-  alepha.with(LoreApi);
-  alepha.with(LoreMcp);
+  bootLore(alepha, ["api", "mcp"]);
 
   const projectApi = alepha.inject(ProjectController);
   const questApi = alepha.inject(QuestController);

@@ -334,5 +334,5 @@ export {
   sigilRotateResultSchema,
 } from "../mcp/schemas/sigilSchemas.ts";
 
-// The dashboard metrics' declarative half: `LoreDashboardCatalog` lists it in both runtimes.
+// The dashboard metrics' declarative half: both runtimes register it.
 export { DeployDashboardMetrics } from "../api/services/DeployDashboardMetrics.ts";

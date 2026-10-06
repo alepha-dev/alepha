@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import QuestViewRailEpicLink from "./QuestViewRailEpicLink.tsx";
 
 /**
- * The one route the link resolves against. The real `AppRouter` is not
+ * The one route the link resolves against. The real routers are not
  * mounted: this component takes its `href` ready-made and only needs a router
  * for `Link` to render an anchor at all.
  */

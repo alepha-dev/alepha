@@ -38,7 +38,7 @@ import { DailyVisitorsService } from "./DailyVisitorsService.ts";
  * ## Beacon or nothing
  *
  * An app whose `kinds` lacks `beacon` reports no page views at all, and its
- * analytics route 404s (`assertBeacon` in `AppRouter`). So beacon-less apps
+ * analytics route 404s (`assertBeacon` in `DeployRouter`). So beacon-less apps
  * are filtered out of the measurement AND out of the link: a card that
  * counted a silent app would report a permanent zero, and a link that
  * targeted one would be a link to an error page. With no beacon app in

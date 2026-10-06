@@ -33,7 +33,7 @@ export type ProjectNavEntry = Infer<typeof projectNavEntrySchema>;
  * through `router.path(...)` and applies the project's capability gates. A
  * hand-written page list in the palette would rot the first time a route was
  * renamed — and route names are famously not typecheck-protected here (see
- * `AppRouter.ts`) — while a second gating pass would drift from the sidebar's
+ * the routers) — while a second gating pass would drift from the sidebar's
  * the first time a capability moved. Reading one computation means the
  * palette cannot disagree with the sidebar about what pages exist.
  *

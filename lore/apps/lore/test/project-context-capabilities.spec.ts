@@ -12,8 +12,7 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake } from "alepha/testing/faker";
 import { describe, it } from "vitest";
 
-import { LoreApi } from "@/api/index.ts";
-import { LoreMcp } from "@/mcp/index.ts";
+import { bootLore } from "./fixtures/bootLore.ts";
 
 /**
  * `project_context` tells the truth about what a project is.
@@ -42,8 +41,7 @@ const setup = async () => {
   alepha.with(AlephaApiUsers);
   alepha.with(AlephaFake);
   alepha.with(AlephaMcp);
-  alepha.with(LoreApi);
-  alepha.with(LoreMcp);
+  bootLore(alepha, ["api", "mcp"]);
 
   const projectTools = alepha.inject(ProjectTools);
   const questTools = alepha.inject(QuestTools);

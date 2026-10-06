@@ -20,7 +20,7 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, describe, it } from "vitest";
 
-import { LoreApi } from "../src/api/index.ts";
+import { bootLore } from "./fixtures/bootLore.ts";
 
 /**
  * Lands a second request after the first one's read of `table`, once:
@@ -104,7 +104,7 @@ const setup = async () => {
   alepha.with(AlephaEmail);
   alepha.with(AlephaApiUsers);
   alepha.with(AlephaFake);
-  alepha.with(LoreApi);
+  bootLore(alepha);
   const interleave = alepha.inject(Interleave);
   const rows = alepha.inject(Rows);
   await alepha.start();

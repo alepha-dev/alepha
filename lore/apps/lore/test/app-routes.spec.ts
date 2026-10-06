@@ -1,12 +1,6 @@
 import { ProjectSlugService } from "@lore/core/schemas";
-import { LoreCoreWeb } from "@lore/core/web";
-import { LoreAccountRouter } from "@lore/core/web";
 import { insightsDimensionResourceSchema } from "@lore/deploy/schemas";
-import { LoreDeployWeb } from "@lore/deploy/web";
-import { DeployAccountRouter, ANALYTICS_DIMENSIONS } from "@lore/deploy/web";
-import { LoreKnowledgeWeb } from "@lore/knowledge/web";
-import { LoreWorkWeb } from "@lore/work/web";
-import { WorkAccountRouter } from "@lore/work/web";
+import { ANALYTICS_DIMENSIONS } from "@lore/deploy/web";
 import { Alepha } from "alepha";
 import { $page } from "alepha/react/router";
 import {
@@ -16,7 +10,7 @@ import {
 } from "alepha/react/router";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { AppRouter } from "../src/web/app/AppRouter.ts";
+import { type LoreRouter, bootLore } from "./fixtures/bootLore.ts";
 
 /**
  * The route table, pinned by name.
@@ -121,9 +115,9 @@ const NAV_ROUTE_NAMES = [
 // Boots the router rather than reading source by path. Once a package's pages
 // declare `parent:` (`$pageProject`, #Q2609), this spec registers that
 // package's web module beside `AppRouter`, or its names fall out of the table.
-describe("AppRouter route table", () => {
+describe("the route table", () => {
   let alepha: Alepha;
-  let router: ReactRouter<AppRouter>;
+  let router: ReactRouter<LoreRouter>;
   let slugs: ProjectSlugService;
 
   beforeEach(async () => {
@@ -134,17 +128,10 @@ describe("AppRouter route table", () => {
     // Every `@lore` web module, as both entries register them: a package's
     // pages join the project layout by `parent:` (`$pageProject`), so a
     // module left out here drops its names from the table.
-    alepha.with(LoreCoreWeb);
-    alepha.with(LoreWorkWeb);
-    alepha.with(LoreKnowledgeWeb);
-    alepha.with(LoreDeployWeb);
-    alepha.inject(AppRouter);
-    // Registered alongside AppRouter by `LoreWebApp`. Without it the guard
+    bootLore(alepha, ["web"]);
+    // Every router, the account pages included: without them the guard
     // would silently skip Lore's own /account pages.
-    alepha.inject(LoreAccountRouter);
-    // The account pages Work and Deploy own (#E75, #Q2624).
-    alepha.inject(WorkAccountRouter);
-    alepha.inject(DeployAccountRouter);
+    bootLore(alepha, ["routes"]);
     // Injected before `start()` — the container locks afterwards.
     slugs = alepha.inject(ProjectSlugService);
     router = alepha.inject(ReactRouter);

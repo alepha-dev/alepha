@@ -14,8 +14,7 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake } from "alepha/testing/faker";
 import { describe, expect, it } from "vitest";
 
-import { LoreApi } from "../src/api/index.ts";
-import { LoreMcp } from "../src/mcp/index.ts";
+import { bootLore } from "./fixtures/bootLore.ts";
 import { createTestMemberByProjectId } from "./fixtures/entities.ts";
 
 /**
@@ -37,8 +36,7 @@ const setup = async () => {
   alepha.with(AlephaApiUsers);
   alepha.with(AlephaFake);
   alepha.with(AlephaMcp);
-  alepha.with(LoreApi);
-  alepha.with(LoreMcp);
+  bootLore(alepha, ["api", "mcp"]);
 
   const questTools = alepha.inject(QuestTools);
   const projectTools = alepha.inject(ProjectTools);

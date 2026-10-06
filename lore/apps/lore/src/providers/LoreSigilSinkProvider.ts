@@ -1,10 +1,8 @@
 import type { SigilForwarded, SigilStamp } from "@alepha/lore/sigil";
 import { SigilSinkProvider } from "@alepha/lore/sigil";
+import { SigilIngestService, SigilTokenService } from "@lore/deploy/api";
+import type { Sigil } from "@lore/deploy/schemas";
 import { $inject, AlephaError } from "alepha";
-
-import type { Sigil } from "../entities/sigils.ts";
-import { SigilIngestService } from "../services/SigilIngestService.ts";
-import { SigilTokenService } from "../services/SigilTokenService.ts";
 
 /**
  * Lore reporting to Lore, without the network.

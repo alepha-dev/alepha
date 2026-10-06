@@ -13,7 +13,8 @@ import { untriagedFeedbackFiltersSchema } from "../schemas/untriagedFeedbackFilt
  * `DashboardMetricCatalog` (#E75, #Q2623).
  *
  * The declarative half only, and browser-safe like the catalogue itself: it
- * is a service of `LoreDashboardCatalog`, which both runtimes import. How a
+ * is listed by `LoreWorkApi` and injected by `LoreWorkWeb`, so both runtimes
+ * register it. How a
  * metric is computed is its resolver's, server-side.
  */
 export class WorkDashboardMetrics {

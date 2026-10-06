@@ -11,7 +11,7 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake } from "alepha/testing/faker";
 import { describe, it } from "vitest";
 
-import { LoreApi } from "@/api/index.ts";
+import { bootLore } from "./fixtures/bootLore.ts";
 
 /**
  * The Activity feed is Core; what it SHOWS is not.
@@ -38,7 +38,7 @@ const setup = async () => {
   alepha.with(AlephaEmail);
   alepha.with(AlephaApiUsers);
   alepha.with(AlephaFake);
-  alepha.with(LoreApi);
+  bootLore(alepha);
 
   const projectApi = alepha.inject(ProjectController);
   const questApi = alepha.inject(QuestController);

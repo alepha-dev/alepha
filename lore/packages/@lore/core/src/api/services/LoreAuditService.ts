@@ -22,7 +22,7 @@ import { ProjectAnalytics } from "../entities/projectAnalytics.ts";
  * wrote. Overriding it is therefore the whole recording surface, and
  * `alepha/api/audits` itself stays untouched - the epic's own boundary.
  *
- * Substituted in `LoreApi`'s `register()`, which runs before its imports are
+ * Substituted in `LoreCoreApi`'s `register()`, which runs before its imports are
  * wired, so it wins over anything `AlephaApiAudits` provides.
  *
  * ## ⚠️ The point is per `create()` CALL, not per stored row

@@ -22,7 +22,7 @@ import AppSettings from "./AppSettings.tsx";
 
 /**
  * The two routes this page navigates to. Declared here rather than booted from
- * `AppRouter`, which would pull the whole route table and every loader with it.
+ * the routers, which would pull the whole route table and every loader with it.
  */
 class Routes {
   appSettings = $page({

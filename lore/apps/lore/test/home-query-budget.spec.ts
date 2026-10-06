@@ -12,7 +12,7 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { describe, it } from "vitest";
 
-import { LoreApi } from "../src/api/index.ts";
+import { bootLore } from "./fixtures/bootLore.ts";
 
 /**
  * How many SQL statements Home costs, and that the number does not grow with
@@ -60,7 +60,7 @@ const statementsFor = async (projectCount: number) => {
   alepha.with(AlephaEmail);
   alepha.with(AlephaApiUsers);
   alepha.with(AlephaFake);
-  alepha.with(LoreApi);
+  bootLore(alepha);
   await alepha.start();
 
   const logs = alepha.inject(MemoryDestinationProvider);

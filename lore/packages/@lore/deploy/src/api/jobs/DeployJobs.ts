@@ -96,7 +96,7 @@ export class DeployJobs {
    * How Lore runs the framework's job sweep (`jobConfig`), set by
    * `main.server.ts` before any module is registered.
    *
-   * ⚠️ **Before any module, not in `LoreApi.register`.** The job provider
+   * ⚠️ **Before any module, not in `LoreDeployApi.register`.** The job provider
    * creates its sweep cron when it is constructed, and whichever module
    * imports `alepha/api/jobs` first constructs it: set later, `sweepCron` is
    * silently ignored (`staleThreshold` is read live and would still apply).

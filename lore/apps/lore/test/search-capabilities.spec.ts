@@ -11,8 +11,7 @@ import { AlephaSecurity, type UserAccountToken } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { LoreApi } from "@/api/index.ts";
-
+import { bootLore } from "./fixtures/bootLore.ts";
 import {
   createTestEpic,
   createTestMember,
@@ -51,7 +50,7 @@ const setup = async (): Promise<TestContext> => {
   alepha.with(AlephaSecurity);
   alepha.with(AlephaEmail);
   alepha.with(AlephaApiUsers);
-  alepha.with(LoreApi);
+  bootLore(alepha);
 
   alepha.inject(TestEntityRepositories);
   const repos = alepha.inject(SearchCapabilityRepositories);

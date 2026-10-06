@@ -27,7 +27,7 @@ import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
  * (1000-1003), and groups sort by their smallest member, so the Lore group
  * sits between the two. Projects leads it at exactly 100.
  *
- * ⚠️ **`/account` is a root shell, not a child of `AppRouter.layout`** (#E68).
+ * ⚠️ **`/account` is a root shell, not a child of `CoreRouter.layout`** (#E68).
  * Nothing that layout provides reaches these pages: not its loader (which
  * fills `userProjectsAtom`), not its `Toaster` or Spotlight. The account
  * shell brings its own chrome; the atom is filled by {@link loadProjects}.
@@ -45,7 +45,7 @@ export class LoreAccountRouter {
   /**
    * Fills `userProjectsAtom` when nothing has yet.
    *
-   * `AppRouter.layout`'s loader fills it on every page under that layout,
+   * `CoreRouter.layout`'s loader fills it on every page under that layout,
    * and a visit that starts there arrives here with the list in memory. A
    * visit that starts on `/account/*` never runs that loader, since the
    * account shell is a root of its own, so the pages that read the atom

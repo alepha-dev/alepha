@@ -152,9 +152,9 @@ export const LoreCoreApi = $module({
     NotificationPreferenceController,
     ProjectLimits,
     // The dashboard: the membership gate every card scope goes through, and
-    // card storage. The declarative registry itself lives in
-    // `LoreDashboardCatalog` — see that module for why it cannot be listed
-    // here as well as in `LoreWebApp`.
+    // card storage. The declarative registry (`DashboardMetricCatalog`) is
+    // browser-safe and constructed by whatever injects it; each module
+    // registers its descriptors from both its api and its web module.
     DashboardScopeService,
     DashboardCardService,
     // The project board's own storage. A second table rather than a branch

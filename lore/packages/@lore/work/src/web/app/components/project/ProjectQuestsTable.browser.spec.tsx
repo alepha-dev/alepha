@@ -131,7 +131,7 @@ class FakeLinkProvider extends LinkProvider {
 
 /**
  * The quest page, so the row anchors have something to resolve against. The
- * real `AppRouter` is not mounted: the table only needs the one route name
+ * real routers are not mounted: the table only needs the one route name
  * and its shape.
  */
 class Routes {

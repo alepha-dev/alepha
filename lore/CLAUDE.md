@@ -6,7 +6,7 @@ It left the Alepha monorepo on 2026-10-01 (epic #E72 of the Alepha project) with
 
 ## Layout: packages are modules, apps are executables
 
-`packages/*` holds Alepha modules; `apps/*` holds executables. `apps/lore` is being split into four private packages, loaded as source with no build step (#E75, folio #F1356):
+`packages/*` holds Alepha modules; `apps/*` holds executables. Lore lives in four private packages, loaded as source with no build step, and `apps/lore` is the executable that composes them (#E75, folio #F1356). Each package documents itself in its own `CLAUDE.md`, read before working on it: [`@lore/core`](packages/@lore/core/CLAUDE.md), [`@lore/work`](packages/@lore/work/CLAUDE.md), [`@lore/knowledge`](packages/@lore/knowledge/CLAUDE.md), [`@lore/deploy`](packages/@lore/deploy/CLAUDE.md).
 
 | package           | is               | owns                                                                                                                                                                                     |
 | ----------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -15,7 +15,7 @@ It left the Alepha monorepo on 2026-10-01 (epic #E72 of the Alepha project) with
 | `@lore/knowledge` | Lore as Obsidian | folios, directories, attachments, revisions, names                                                                                                                                       |
 | `@lore/deploy`    | Lore as Vercel   | apps, telemetry, deployments, estates                                                                                                                                                    |
 
-Each package exports `./api`, `./mcp`, `./web` and `./schemas` (core also `./testing`), and declares three modules, `Lore<Pkg>Api`, `Lore<Pkg>Mcp` and `Lore<Pkg>Web`, registered by `apps/lore`'s entries after every entry-level substitution, core first. `./web` is registered by BOTH entries.
+Each package exports `./api`, `./mcp`, `./web` and `./schemas` (core also `./testing`), and declares three modules, `Lore<Pkg>Api`, `Lore<Pkg>Mcp` and `Lore<Pkg>Web`, registered by `apps/lore`'s entries after every entry-level substitution, core first; the entries are the only place they meet. Scenario specs boot them the same way, through `bootLore()` in `apps/lore/test/fixtures/bootLore.ts`. `./web` is registered by BOTH entries.
 
 ⚠️ **The rule** (`check:conventions`, graph table in `scripts/lore-package-graph.ts`):
 

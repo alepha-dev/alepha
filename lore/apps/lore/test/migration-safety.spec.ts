@@ -28,8 +28,7 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { describe, it } from "vitest";
 
-import { LoreApi } from "../src/api/index.ts";
-import { LoreMcp } from "../src/mcp/index.ts";
+import { bootLore } from "./fixtures/bootLore.ts";
 
 const MIGRATIONS = join(import.meta.dirname, "../migrations/sqlite");
 
@@ -77,8 +76,7 @@ const entityTables = async (): Promise<string[]> => {
   alepha.with(LoreWorkApi);
   alepha.with(LoreKnowledgeApi);
   alepha.with(LoreDeployApi);
-  alepha.with(LoreApi);
-  alepha.with(LoreMcp);
+  bootLore(alepha, ["api", "mcp"]);
 
   const tables = new Set<string>();
   for (const repository of alepha

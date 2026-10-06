@@ -27,7 +27,7 @@ export interface FolioLinksTabProps {
    * optional), so `FolioInspector` can still pass its own `folio` prop
    * straight through with no cast. The route loader populates `metadata`
    * at runtime (`getByShortId({ query: { withLinks: true } })`); the bare
-   * `Folio` type just doesn't know that, the same gap `AppRouter.ts`'s
+   * `Folio` type just doesn't know that, the same gap `WorkRouter.ts`'s
    * `projectFoliosFolio.head()` already casts around.
    */
   folio?: FolioResource;
@@ -134,7 +134,7 @@ const FolioLinksTab = (props: FolioLinksTabProps): ReactElement => {
         // Every element route names its param differently, and the router
         // merges the CURRENT route's params before yours — so passing the
         // wrong name silently inherits the open folio's id instead of
-        // erroring. See `AppRouter`'s note on `:epicNumber`. A release is
+        // erroring. See `WorkRouter`'s note on `:epicNumber`. A release is
         // addressed by its tag, not its number.
         const idParam =
           ref.kind === "epic"

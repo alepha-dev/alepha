@@ -87,7 +87,7 @@ const ProjectRelease = () => {
   // props-declared `releaseTag` is silently `undefined` here.
   //
   // The param is `releaseTag`, never `tag` and never `number`: one param name
-  // per tree position, the trap `:epicNumber` documents in `AppRouter`.
+  // per tree position, the trap `:epicNumber` documents in `WorkRouter`.
   const routerState = useRouterState();
   const releaseTag = String(routerState.params.releaseTag ?? "");
   const [project] = useStore(currentProjectAtom);

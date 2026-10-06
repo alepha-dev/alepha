@@ -14,8 +14,7 @@ import { AlephaServer, NotFoundError } from "alepha/server";
 import { AlephaFake } from "alepha/testing/faker";
 import { describe, it } from "vitest";
 
-import { LoreApi } from "../src/api/index.ts";
-import { LoreMcp } from "../src/mcp/index.ts";
+import { bootLore } from "./fixtures/bootLore.ts";
 import {
   createTestEpic,
   createTestFolio,
@@ -99,8 +98,7 @@ const setup = async (options: { failEpicAttach?: boolean } = {}) => {
   alepha.with(AlephaApiUsers);
   alepha.with(AlephaFake);
   alepha.with(AlephaMcp);
-  alepha.with(LoreApi);
-  alepha.with(LoreMcp);
+  bootLore(alepha, ["api", "mcp"]);
 
   const repos = alepha.inject(TestEntityRepositories);
   alepha.inject(MembersProbe);
