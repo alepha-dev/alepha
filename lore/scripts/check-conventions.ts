@@ -59,8 +59,7 @@ const workspaces: Workspace[] = execFileSync(
  * A subpath is a module.
  *
  * Every entry in a package's `exports` names a documented module: the file it
- * resolves to carries an `@module` JSDoc block, which is what gives it a page
- * on the docs site and a line in llms.txt. An export without one is a file that
+ * resolves to carries an `@module` JSDoc block. An export without one is a file that
  * was handed a public path, and `package.json` is the one place in this repo
  * where that decision is permanent - a published subpath is a compatibility
  * promise, and there is no taking it back.
@@ -74,14 +73,7 @@ const workspaces: Workspace[] = execFileSync(
  * always resolve, so 13 of 14 subpaths pointed at files the tarball did not
  * contain while every test stayed green.
  *
- * The exemptions below are the shapes that legitimately have no `@module`.
  */
-const SUBPATH_EXEMPT: Record<string, string | string[]> = {
-  // A container, not a module. `.` is the DI kernel itself; `$module` is
-  // declared *by* it.
-  alepha: ["."],
-};
-
 const subpathViolations: string[] = [];
 
 for (const workspace of workspaces) {
@@ -90,12 +82,8 @@ for (const workspace of workspaces) {
   const manifest: Manifest = JSON.parse(
     readFileSync(`${workspace.location}/package.json`, "utf8"),
   );
-  const exempt = manifest.name ? SUBPATH_EXEMPT[manifest.name] : undefined;
-  if (exempt === "*") continue;
-
   for (const [subpath, value] of Object.entries(manifest.exports ?? {})) {
-    if (subpath === "./package.json" || subpath === "./tsconfig.base") continue;
-    if (exempt?.includes(subpath)) continue;
+    if (subpath === "./package.json") continue;
 
     const target =
       typeof value === "string" ? value : (value.types ?? value.import);
@@ -141,13 +129,8 @@ if (subpathViolations.length > 0) {
  * subclass cannot override it. Everything a service uses belongs on the
  * service, which is the whole reason the container exists.
  *
- * ⚠️ SCOPE. This reads only the trees that have actually been cleaned:
- * `cli/`, `api/users/` and `system/` in the framework, plus the whole Lore
- * API, in every `@lore` package. It is not repo-wide because it cannot yet be - `server/`, `react/`
- * and `core/` still carry about a hundred module-level declarations between
- * them, and an allowlist that large is the "list of things nobody dares
- * touch" this file warns about above. Add a tree here once it is clean,
- * never an exemption inside one.
+ * ⚠️ SCOPE. This reads the API of every `@lore` package. Add a tree here once
+ * it is clean, never an exemption inside one.
  *
  * Only service-shaped directories count. A `schemas/`, `entities/` or
  * `atoms/` file is module-level constants by definition - that IS the file.
@@ -171,10 +154,9 @@ const SERVICE_DIRS = [
  * Blank out comments and string bodies, keeping every newline, so a line
  * scan sees only real code.
  *
- * Load-bearing, not defensive: `BuildCloudflareTask` and `db.ts` both emit
- * *generated code* as template literals, and that generated code declares
- * module-level functions at column 0 on purpose. A raw grep reads them as
- * violations of a rule they are not even subject to.
+ * Load-bearing, not defensive: code that emits *generated code* as a template
+ * literal declares module-level functions at column 0 on purpose, and a raw
+ * grep reads them as violations of a rule they are not even subject to.
  */
 const stripLiterals = (src: string): string => {
   let out = "";
@@ -402,9 +384,7 @@ if (setupViolations.length > 0) {
  * The house style is `describe` + `it`, and the thing that actually costs
  * something when it drifts is the `describe`: without it the reporter prints
  * a flat list of sentences with no subject, and `vitest run -t` has no handle
- * to select a subject by. Five specs had drifted to a bare `test(...)` at the
- * top of the file - `Alepha-with`, `Router`, `ReactServerProvider`, `$channel`
- * and `$websocket-new`.
+ * to select a subject by.
  *
  * Indentation is the test for "top level", not a parse. Every file here is
  * formatted by oxfmt, so a case at column zero is a case outside every block,
@@ -475,7 +455,7 @@ if (flatSpecViolations.length > 0) {
  * the rule alone would let the alias back in one fixture spec at a time.
  *
  * Spec files and the shared helpers under `__tests__/`, which are not specs
- * (`$repository-tests.ts` and its siblings) but hold assertions all the same.
+ * but hold assertions all the same.
  */
 const THROW_ERROR_ALIAS = /\.toThrowError\(/;
 
@@ -532,13 +512,9 @@ if (aliasViolations.length > 0) {
  * contributes nothing to `yarn test`, and a suite that silently shrinks looks
  * exactly like a suite that passes.
  *
- * `apps/e2e` is the one exemption. Its `cli/` suite packs a tarball and
- * scaffolds a real project, and the root run has always excluded it; it owns
- * a config and runs from `yarn e2e-cli`.
+ * End-to-end specs (any path with an `e2e` segment) are left out: they drive
+ * built artefacts and run from `yarn e2e` / `yarn e2e-cli`, never `yarn test`.
  */
-const VITEST_ROOT_EXEMPT = {
-  "apps/e2e": "packs a tarball; runs from `yarn e2e-cli`, never `yarn test`",
-};
 
 const unitSpecFiles = execFileSync(
   "git",
@@ -577,10 +553,6 @@ const rootVitestConfig = readFileSync("vitest.config.ts", "utf8");
 const vitestViolations: string[] = [];
 
 for (const [location, { owner, browser }] of specOwners) {
-  if (location in VITEST_ROOT_EXEMPT) {
-    continue;
-  }
-
   // The root workspace declares its project inline in the root config, since
   // its config file IS the root config.
   const config =

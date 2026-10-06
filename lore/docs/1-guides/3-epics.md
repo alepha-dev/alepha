@@ -116,7 +116,7 @@ Going the other way, an epic can hand ITSELF to an agent: **Review** asks
 one to sharpen the plan while it is still open (draft or ready), and
 **Work on it** hands the whole epic over, quest by quest, once it is ready.
 Both are in the epic's Agent Prompts menu, which is off until a project
-turns it on. See [Agent prompts](/lore/docs/guides-agent-prompts).
+turns it on. See [Agent prompts](6-agent-prompts.md).
 
 ## What the roadmap shows
 

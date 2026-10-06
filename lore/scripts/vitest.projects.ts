@@ -49,11 +49,7 @@ export const workspaceProjects = (
         root,
         environment: "node",
         ...(options.include ? { include: options.include } : {}),
-        exclude: [
-          ...sharedExclude,
-          "**/*.browser.spec.{ts,tsx}",
-          "**/*.bun.spec.{ts,tsx}",
-        ],
+        exclude: [...sharedExclude, "**/*.browser.spec.{ts,tsx}"],
       },
     },
   ];
@@ -114,7 +110,7 @@ export interface WorkspaceProjectsOptions {
    *
    * Only the repository root needs it, and it needs it badly: that workspace's
    * root is every other workspace's parent, so the default would collect the
-   * whole monorepo a second time, once more per project. The files that
+   * whole repository a second time, once more per project. The files that
    * genuinely live there are the repo-level tooling specs, and nothing else.
    */
   include?: string[];
@@ -161,7 +157,7 @@ const sharedExclude = ["**/node_modules/**", "**/dist/**", "**/e2e/**"];
  * one runtime that did not, so every workspace using `@/` had to restate the
  * mapping by hand or fail at import time. The root config restated it once,
  * repo-wide, pointing at `apps/lore/src` - which would have resolved the first
- * `@/` import written in `examples/shop` into Lore's source, silently.
+ * `@/` import written in any other workspace into Lore's source, silently.
  *
  * ⚠️ A path whose prefix is the workspace's OWN package name is skipped. Those
  * exist for TypeScript alone; the package's `exports` map already resolves the

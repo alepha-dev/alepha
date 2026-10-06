@@ -7,7 +7,7 @@ A project is not one fixed shape. It is a container that composes four
 
 - **Work** - **quests** (the roadmap and the in-flight work), **areas**, and
   optionally **epics** (bounded initiatives that hold quests and run from
-  draft to completed, see [Epics](/lore/docs/guides-epics)), **releases**
+  draft to completed, see [Epics](3-epics.md)), **releases**
   (the named goals epics and quests ship in) and a Kanban **board**.
 - **Knowledge** - **folios**: project memory, wiki-linked, optionally
   end-to-end encrypted, filed in a tree.
@@ -83,5 +83,5 @@ configuration:
 docker run -p 3000:3000 -v lore:/data ghcr.io/alepha-dev/lore
 ```
 
-See [Self-Hosting](/lore/docs/guides-self-hosting) for what happens on first boot and
+See [Self-Hosting](2-self-hosting.md) for what happens on first boot and
 what each optional variable buys.

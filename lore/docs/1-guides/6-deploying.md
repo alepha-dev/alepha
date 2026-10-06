@@ -45,7 +45,7 @@ looking for a second switch.
 
 Open **Settings → Apps → Estates** and add one. A Cloudflare estate needs an account id
 and an API token, and Lore checks the token against that account before the
-estate exists - see [The Cloudflare token](/lore/docs/guides-cloudflare-token) for which
+estate exists - see [The Cloudflare token](5-cloudflare-token.md) for which
 permissions it needs and why the obvious template is not the right one.
 
 An estate belongs to **you**, not to the project. Lending it to a project lets

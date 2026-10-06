@@ -15,11 +15,8 @@ import { createE2ePortAllocator } from "alepha/testing/playwright";
  * (`default % 100`) and so depended on two unrelated numbers staying
  * coordinated by comment.
  *
- * Slots 2 and 9 are free. Past that, raise the band's `stride`.
- *
- * ⚠️ Numbers are not reshuffled when a suite goes away. Slot 2 was
- * `apps/examples/playground`, retired once `apps/ui` replaced it; renumbering
- * the survivors would move every other suite's derived port for no gain.
+ * ⚠️ Numbers are not reshuffled when a suite goes away: renumbering the
+ * survivors would move every other suite's derived port for no gain.
  */
 export const E2E_SLOTS = {
   lore: 1,
@@ -34,13 +31,12 @@ export type E2eApp = keyof typeof E2E_SLOTS;
 /**
  * The e2e port for one suite, shared by every Playwright config in the repo.
  *
- * Same reasoning as `vitest.projects.ts`: a setting that must hold across six
- * configs lives in one place, and a caller contributes nothing but its own
- * name.
+ * Same reasoning as `vitest.projects.ts`: a setting that must hold across
+ * every config lives in one place, and a caller contributes nothing but its
+ * own name.
  *
  * **An e2e port is never a dev port.** Until this was rewritten the two were
- * literally the same number: `apps/docs` served dev on 3302 and ran e2e on
- * 3302, lore on 3303 and 3303, and so on down the band. With
+ * literally the same number: lore served dev on 3303 and ran e2e on 3303. With
  * `reuseExistingServer` on, `yarn dev` in one terminal and `yarn e2e` in
  * another meant Playwright quietly adopted the DEV server and ran the whole
  * suite against it: hot-reloaded sources instead of `node dist`, the dev

@@ -3,7 +3,6 @@
 node_modules
 dist
 coverage
-test-report.junit.xml
 test-results
 playwright-report
 
@@ -13,7 +12,6 @@ playwright-report
 /.claude/
 .codex
 .run
-.gen
 .playwright-mcp
 .playwright-cli
 .playwright

@@ -5,7 +5,7 @@
   "printWidth": 80,
   "sortImports": true,
   "sortTailwindcss": {
-    "functions": ["cn", "clsx", "cva", "tw"]
+    "functions": ["cn", "clsx"]
   },
   "ignorePatterns": [
     ".vendor/**",
