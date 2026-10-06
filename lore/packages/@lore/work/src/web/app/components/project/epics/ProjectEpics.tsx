@@ -685,6 +685,43 @@ const ProjectEpics = () => {
               );
             },
           },
+          // The predecessor that gates this epic's start (#P2), as a chip in
+          // the predecessor's own status tone, so a glance tells "still
+          // blocked" from "free to start". Hidden by default: most epics
+          // have no predecessor, and the column would sit empty on most rows.
+          dependsOnNumber: {
+            label: tr("epic.list.column.dependsOn"),
+            sortable: true,
+            defaultHidden: true,
+            className: "w-32",
+            cell: (epic) => {
+              if (
+                epic.dependsOnNumber === undefined ||
+                epic.dependsOnStatus === undefined
+              ) {
+                return null;
+              }
+              const Icon = STATUS_ICONS[epic.dependsOnStatus];
+              return (
+                <Link
+                  href={router.path("projectEpic", {
+                    params: { epicNumber: String(epic.dependsOnNumber) },
+                  })}
+                  onClick={(e) => e.stopPropagation()}
+                  title={tr(STATUS_LABEL_KEYS[epic.dependsOnStatus])}
+                >
+                  <Badge
+                    variant="tint"
+                    tone={STATUS_TONE[epic.dependsOnStatus]}
+                    className="font-mono"
+                  >
+                    <Icon className="size-3" />
+                    {formatReference("epic", epic.dependsOnNumber)}
+                  </Badge>
+                </Link>
+              );
+            },
+          },
           updatedAt: {
             label: tr("epic.list.column.updated"),
             sortable: true,
@@ -867,7 +904,7 @@ const ProjectEpics = () => {
 export default ProjectEpics;
 
 /**
- * Client-side sort over the full epic list. Supports the four sortable
+ * Client-side sort over the full epic list. Supports the five sortable
  * columns; anything else (including no sort at all) falls back to epic
  * number ascending, which is the order `getEpics` already returns and the
  * order the numbers themselves imply.
@@ -911,6 +948,19 @@ const sortEpics = (
         (relA.number - relB.number) * dir ||
         a.number - b.number
       );
+    }
+    if (field === "dependsOnNumber") {
+      // Epics with no predecessor sort LAST in both directions, for the
+      // reason the release sort above gives.
+      const depA = a.dependsOnNumber;
+      const depB = b.dependsOnNumber;
+      if (depA === undefined || depB === undefined) {
+        if (depA === undefined && depB === undefined) {
+          return a.number - b.number;
+        }
+        return depA !== undefined ? -1 : 1;
+      }
+      return (depA - depB) * dir || a.number - b.number;
     }
     if (field === "number") {
       return (a.number - b.number) * dir;

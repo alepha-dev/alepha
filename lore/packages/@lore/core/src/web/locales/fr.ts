@@ -2184,6 +2184,7 @@ export default {
   "epic.aside.release": "Version",
   "epic.aside.release.none": "Aucune",
   "epic.list.column.release": "Version",
+  "epic.list.column.dependsOn": "Dépend de",
   "epic.aside.progress": "Progression",
   "epic.aside.progress.value": "$1 / $2 quêtes",
   "epic.aside.upNext": "À faire ensuite",
