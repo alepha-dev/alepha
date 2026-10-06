@@ -10,6 +10,7 @@ import {
   useToast,
 } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
+import type { I18n } from "@lore/core/web";
 import { z } from "alepha";
 import { useAction, useClient } from "alepha/react";
 import { useForm, useFormValues } from "alepha/react/form";
@@ -19,7 +20,6 @@ import type { DragEvent } from "react";
 import type { AppSecretController } from "@/api/controllers/AppSecretController.ts";
 
 import { DotenvParser } from "../../../services/DotenvParser.ts";
-import type { I18n } from "../../../services/I18n.ts";
 
 export interface AppEnvironmentImportProps {
   open: boolean;

@@ -1,5 +1,11 @@
 import { TimeAgo, Button, Textarea, useDialog } from "@alepha/ui";
 import {
+  type I18n,
+  currentProjectAtom,
+  displayName,
+  useProjectUsers,
+} from "@lore/core/web";
+import {
   useAction,
   useClient,
   useQuery,
@@ -12,11 +18,7 @@ import { useState } from "react";
 
 import type { FeedbackCommentController } from "@/api/controllers/FeedbackCommentController.ts";
 import type { FeedbackCommentResource } from "@/api/schemas/feedbackCommentResourceSchema.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import { displayName } from "../../../services/displayName.ts";
-import { useProjectUsers } from "../../shared/useProjectUsers.ts";
 import FeedbackThreadBody from "./FeedbackThreadBody.tsx";
 
 export interface FeedbackThreadProps {

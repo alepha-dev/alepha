@@ -1,3 +1,5 @@
+import { LorePermissions } from "@lore/core/api";
+import { CapabilityRegistry } from "@lore/core/schemas";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -7,8 +9,6 @@ import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { LoreApi } from "../src/api/index.ts";
-import { CapabilityRegistry } from "../src/api/schemas/CapabilityRegistry.ts";
-import { LorePermissions } from "../src/api/security/LorePermissions.ts";
 
 /**
  * The permission groups no capability claims, and that are therefore always

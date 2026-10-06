@@ -40,9 +40,9 @@ import type { FolioRevision } from "@/api/entities/folioRevisions.ts";
 type HistoryRevision = Awaited<
   ReturnType<FolioController["listHistory"]>
 >[number];
-import type { FolioResource as Folio } from "@/api/schemas/folioResourceSchema.ts";
+import type { I18n } from "@lore/core/web";
 
-import type { I18n } from "../../../../services/I18n.ts";
+import type { FolioResource as Folio } from "@/api/schemas/folioResourceSchema.ts";
 
 export interface FolioHistoryTabProps {
   folio: Folio;

@@ -1,4 +1,5 @@
 import { SigilSinkProvider } from "@alepha/lore/sigil";
+import { projectCapabilities, projects } from "@lore/core/schemas";
 import { Alepha } from "alepha";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { CryptoProvider } from "alepha/crypto";
@@ -10,8 +11,6 @@ import { AlephaFake } from "alepha/testing/faker";
 import { describe, expect, it } from "vitest";
 
 import { DeployAnalytics } from "../src/api/entities/deployAnalytics.ts";
-import { projectCapabilities } from "../src/api/entities/projectCapabilities.ts";
-import { projects } from "../src/api/entities/projects.ts";
 import { sigils } from "../src/api/entities/sigils.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { LoreSigilSinkProvider } from "../src/api/providers/LoreSigilSinkProvider.ts";

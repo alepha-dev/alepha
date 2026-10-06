@@ -4,18 +4,21 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@alepha/ui/chart";
+import {
+  currentProjectAtom,
+  type I18n,
+  ReportsKpiRow,
+  type ReportsKpi,
+  ReportsSection,
+} from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 
 import type { QualityOverview } from "@/api/schemas/qualityOverviewSchema.ts";
-import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 
-import type { I18n } from "../../../services/I18n.ts";
-import ReportsKpiRow, { type ReportsKpi } from "./ReportsKpiRow.tsx";
 import ReportsQualityEmpty from "./ReportsQualityEmpty.tsx";
 import ReportsQualityStaleness from "./ReportsQualityStaleness.tsx";
-import ReportsSection from "./ReportsSection.tsx";
 
 export interface ReportsQualityProps {
   quality: QualityOverview;

@@ -1,4 +1,5 @@
 import { DialogProvider } from "@alepha/ui";
+import { I18n } from "@lore/core/web";
 import {
   act,
   fireEvent,
@@ -17,7 +18,6 @@ import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { projectDirectoriesAtom } from "../../../../atoms/projectDirectoriesAtom.ts";
 import { userFoliosAtom } from "../../../../atoms/userFoliosAtom.ts";
-import { I18n } from "../../../../services/I18n.ts";
 import FolioTree, { type FolioTreeProps } from "./FolioTree.tsx";
 
 const DIR_A = "11111111-1111-4111-8111-111111111111";

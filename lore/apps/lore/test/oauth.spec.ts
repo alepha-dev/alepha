@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 
+import { AppSecurityProvider, LoreOAuthScopes } from "@lore/core/api";
 import { Alepha, z } from "alepha";
 import { oauthOptions } from "alepha/api/oauth";
 import {
@@ -16,8 +17,6 @@ import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { LoreApi } from "../src/api/index.ts";
-import { AppSecurityProvider } from "../src/api/providers/AppSecurityProvider.ts";
-import { LoreOAuthScopes } from "../src/api/security/LoreOAuthScopes.ts";
 import { LoreMcp } from "../src/mcp/index.ts";
 
 /**

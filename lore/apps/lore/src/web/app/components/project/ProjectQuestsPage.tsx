@@ -1,6 +1,6 @@
+import { currentProjectAtom } from "@lore/core/web";
 import { useStore } from "alepha/react";
 
-import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import ProjectQuestsTable from "./ProjectQuestsTable.tsx";
 
 /**

@@ -1,3 +1,11 @@
+import {
+  ResourceRegistry,
+  $ownsProject,
+  BestEffort,
+  BoundParameters,
+  LoreAudits,
+  ResourceLinkService,
+} from "@lore/core/api";
 import { $inject, z } from "alepha";
 import { $repository, $sequence } from "alepha/orm";
 import { OwnedResourceProvider, type UserAccountToken } from "alepha/security";
@@ -5,7 +13,6 @@ import { $action, BadRequestError, okSchema } from "alepha/server";
 
 import { type Epic, epics } from "../entities/epics.ts";
 import { quests } from "../entities/quests.ts";
-import { ResourceRegistry } from "../resources/ResourceRegistry.ts";
 import { epicManualStatusSchema } from "../schemas/epicManualStatusSchema.ts";
 import { epicRefResourceSchema } from "../schemas/epicRefResourceSchema.ts";
 import {
@@ -16,19 +23,14 @@ import {
   type ReleaseCascade,
   releaseCascadeSchema,
 } from "../schemas/releaseCascadeSchema.ts";
-import { $ownsProject } from "../security/$ownsProject.ts";
-import { BestEffort } from "../services/BestEffort.ts";
-import { BoundParameters } from "../services/BoundParameters.ts";
 import { EpicDependencyService } from "../services/EpicDependencyService.ts";
 import {
   type EpicProgress,
   EpicProgressService,
 } from "../services/EpicProgressService.ts";
 import { EpicWorkflowService } from "../services/EpicWorkflowService.ts";
-import { LoreAudits } from "../services/LoreAudits.ts";
 import { ReleaseAttachmentService } from "../services/ReleaseAttachmentService.ts";
 import { ReleaseCascadeService } from "../services/ReleaseCascadeService.ts";
-import { ResourceLinkService } from "../services/ResourceLinkService.ts";
 
 /**
  * CRUD, the status lifecycle, and attach/detach for quests and folios.

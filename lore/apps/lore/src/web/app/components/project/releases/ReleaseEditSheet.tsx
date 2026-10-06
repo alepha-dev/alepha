@@ -1,11 +1,10 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@alepha/ui";
+import type { I18n, LinkedCollection } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 
 import type { Release } from "@/api/entities/releases.ts";
 import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
-import type { LinkedCollection } from "../../../registries/ResourceTabRegistry.ts";
 import ReleaseEditForm from "./ReleaseEditForm.tsx";
 
 export interface ReleaseEditSheetProps {

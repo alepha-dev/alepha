@@ -1,10 +1,10 @@
+import { projectFixture } from "@lore/core/testing";
+import { currentProjectAtom } from "@lore/core/web";
 import { Alepha, AlephaError } from "alepha";
 import { $page, AlephaReactRouter } from "alepha/react/router";
 import { afterEach, describe, it } from "vitest";
 
-import { projectFixture } from "@/testing/projectFixture.ts";
 import { AppRouter } from "@/web/app/AppRouter.ts";
-import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 
 /**
  * The route loaders that 404 under a disabled capability.

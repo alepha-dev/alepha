@@ -1,3 +1,4 @@
+import { ProjectController, UserDeletionHook } from "@lore/core/api";
 import { Alepha, z } from "alepha";
 import {
   AdminUserController,
@@ -12,10 +13,8 @@ import { AlephaServer, HttpError } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { QuestAuthorshipController } from "../src/api/controllers/QuestAuthorshipController.ts";
 import { QuestController } from "../src/api/controllers/QuestController.ts";
-import { UserDeletionHook } from "../src/api/hooks/UserDeletionHook.ts";
 import { LoreApi } from "../src/api/index.ts";
 
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };

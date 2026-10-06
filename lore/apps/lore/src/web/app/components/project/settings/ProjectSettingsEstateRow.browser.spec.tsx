@@ -1,3 +1,4 @@
+import { I18n } from "@lore/core/web";
 import { render, screen } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaLogger } from "alepha/logger";
@@ -8,7 +9,6 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import type { LentEstateResource } from "@/api/controllers/ProjectEstateController.ts";
 
-import { I18n } from "../../../services/I18n.ts";
 import ProjectSettingsEstateRow from "./ProjectSettingsEstateRow.tsx";
 
 /**

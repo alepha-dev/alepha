@@ -1,3 +1,6 @@
+import { $ownsProject, LoreAudits } from "@lore/core/api";
+import { type Project } from "@lore/core/schemas";
+import { formatReference } from "@lore/core/web";
 import { $inject, z } from "alepha";
 import { RankService } from "alepha/api/organizations";
 import { DateTimeProvider } from "alepha/datetime";
@@ -5,14 +8,10 @@ import { $repository } from "alepha/orm";
 import { OwnedResourceProvider } from "alepha/security";
 import { $action, ForbiddenError, okSchema } from "alepha/server";
 
-import { formatReference } from "../../web/app/components/shared/element/typedReference.ts";
-import type { Project } from "../entities/projects.ts";
 import { type QuestComment, questComments } from "../entities/questComments.ts";
 import { type Quest, quests } from "../entities/quests.ts";
 import { questCommentResourceSchema } from "../schemas/questCommentResourceSchema.ts";
 import { questCommentSourceSchema } from "../schemas/questCommentSourceSchema.ts";
-import { $ownsProject } from "../security/$ownsProject.ts";
-import { LoreAudits } from "../services/LoreAudits.ts";
 import { MentionNotifier } from "../services/MentionNotifier.ts";
 
 /**

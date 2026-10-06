@@ -1,5 +1,5 @@
-import type { Project } from "../entities/projects.ts";
-import type { KanbanColumnSettings } from "./kanbanColumnSchema.ts";
+import type { Project } from "@lore/core/schemas";
+import type { KanbanColumnSettings } from "@lore/core/schemas";
 
 /**
  * A board column, fully resolved: what it is called, what it collapses to,

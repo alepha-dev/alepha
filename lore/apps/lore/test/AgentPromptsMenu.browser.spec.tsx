@@ -1,3 +1,11 @@
+import { projectFixture } from "@lore/core/testing";
+import {
+  currentProjectAtom,
+  projectPromptsAtom,
+  type AgentPromptSubject,
+  AgentPromptsMenu,
+  I18n,
+} from "@lore/core/web";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaContext } from "alepha/react";
@@ -6,13 +14,6 @@ import { AlephaReactRouter } from "alepha/react/router";
 import { setupJsdomMocks } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
-import { projectFixture } from "@/testing/projectFixture.ts";
-import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
-import { projectPromptsAtom } from "@/web/app/atoms/projectPromptsAtom.ts";
-import type { AgentPromptSubject } from "@/web/app/prompts/renderPromptTemplate.ts";
-
-import { AgentPromptsMenu } from "../src/web/app/components/project/prompts/AgentPromptsMenu.tsx";
-import { I18n } from "../src/web/app/services/I18n.ts";
 import { WorkShell } from "../src/web/app/shell/WorkShell.ts";
 
 const subject: AgentPromptSubject = {

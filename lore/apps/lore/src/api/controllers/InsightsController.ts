@@ -3,6 +3,7 @@ import {
   VITALS_THRESHOLDS,
   type VitalMetric,
 } from "@alepha/lore/sigil";
+import { $ownsProject } from "@lore/core/api";
 import { $inject, z } from "alepha";
 import type { AnalyticsDataset, AnalyticsFilter } from "alepha/api/analytics";
 import { DateTimeProvider } from "alepha/datetime";
@@ -28,7 +29,6 @@ import {
   type VitalsPathsResource,
   vitalsPathsResourceSchema,
 } from "../schemas/vitalsPathsResourceSchema.ts";
-import { $ownsProject } from "../security/$ownsProject.ts";
 import { DailyVisitorsService } from "../services/DailyVisitorsService.ts";
 import { LoreAnalyticsStore } from "../services/LoreAnalyticsStore.ts";
 import type { AnalyticsVitalHistograms } from "../vitalsPercentile.ts";

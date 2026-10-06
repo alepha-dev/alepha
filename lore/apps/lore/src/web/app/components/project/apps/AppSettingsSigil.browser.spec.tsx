@@ -1,4 +1,10 @@
 import { DialogProvider } from "@alepha/ui";
+import { projectFixture } from "@lore/core/testing";
+import {
+  currentProjectAtom,
+  currentProjectMemberAtom,
+  I18n,
+} from "@lore/core/web";
 import { render, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
@@ -10,12 +16,8 @@ import { LinkProvider } from "alepha/server/links";
 import { afterEach, describe, it } from "vitest";
 
 import type { AppInstanceResource } from "@/api/schemas/appInstanceResourceSchema.ts";
-import { projectFixture } from "@/testing/projectFixture.ts";
 
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import { currentProjectMemberAtom } from "../../../atoms/currentProjectMemberAtom.ts";
-import { I18n } from "../../../services/I18n.ts";
 import AppSettingsSigil from "./AppSettingsSigil.tsx";
 
 class Routes {

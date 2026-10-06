@@ -1,6 +1,7 @@
 import { Badge, useToast } from "@alepha/ui";
 import { AccountPage } from "@alepha/ui/account";
 import { DataTable, type DataTableFilterFields } from "@alepha/ui/table";
+import type { I18n } from "@lore/core/web";
 import { z } from "alepha";
 import { useClient, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -10,7 +11,6 @@ import type { EstateCommandListItem } from "@/api/schemas/estateCommandResourceS
 import { ESTATE_COMMAND_KINDS } from "@/api/schemas/estateCommandValues.ts";
 import { ESTATE_COMMAND_STATUSES } from "@/api/schemas/estateCommandValues.ts";
 import { currentEstateAtom } from "@/web/app/atoms/currentEstateAtom.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
 export interface BayCommandsProps {
   /**

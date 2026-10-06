@@ -8,16 +8,13 @@ import {
   DialogTitle,
   Input,
 } from "@alepha/ui";
+import { currentProjectAtom, type I18n, LoreEditor } from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { SquareSlash, Swords } from "lucide-react";
 import { useState } from "react";
 
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
-import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
-
-import LoreEditor from "../../shared/element/LoreEditor.tsx";
 
 export interface QuestCompletionDialogProps {
   open: boolean;

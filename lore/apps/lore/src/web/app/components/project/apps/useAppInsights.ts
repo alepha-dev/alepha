@@ -1,3 +1,4 @@
+import { currentProjectAtom } from "@lore/core/web";
 import type { Infer } from "alepha";
 import { useClient, useQuery, useStore } from "alepha/react";
 import { useQueryParams } from "alepha/react/router";
@@ -5,7 +6,6 @@ import { useQueryParams } from "alepha/react/router";
 import type { InsightsController } from "@/api/controllers/InsightsController.ts";
 
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { appInsightsFiltersSchema } from "./appInsightsFiltersSchema.ts";
 
 export type AppInsightsRange = "1d" | "7d" | "30d";

@@ -1,3 +1,4 @@
+import { HomeController, ProjectController } from "@lore/core/api";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
@@ -8,8 +9,6 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { HomeController } from "../src/api/controllers/HomeController.ts";
-import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { ProjectReportsController } from "../src/api/controllers/ProjectReportsController.ts";
 import { ReleaseController } from "../src/api/controllers/ReleaseController.ts";
 import { LoreApi } from "../src/api/index.ts";

@@ -1,3 +1,14 @@
+import {
+  ResourceRegistry,
+  $ownsProject,
+  BestEffort,
+  BoundParameters,
+  LoreAudits,
+  ProjectSecurityService,
+  ResourceLinkService,
+} from "@lore/core/api";
+import { type Project } from "@lore/core/schemas";
+import { formatReference } from "@lore/core/web";
 import { $inject, z } from "alepha";
 import { $storage, FileService } from "alepha/api/files";
 import { RankService } from "alepha/api/organizations";
@@ -18,10 +29,8 @@ import {
   okSchema,
 } from "alepha/server";
 
-import { formatReference } from "../../web/app/components/shared/element/typedReference.ts";
 import { epics } from "../entities/epics.ts";
 import { feedback } from "../entities/feedback.ts";
-import type { Project } from "../entities/projects.ts";
 import { questComments } from "../entities/questComments.ts";
 import {
   normalizeQuestTags,
@@ -31,7 +40,6 @@ import {
   REMINDER_INTERVAL_VALUES,
 } from "../entities/quests.ts";
 import { releases } from "../entities/releases.ts";
-import { ResourceRegistry } from "../resources/ResourceRegistry.ts";
 import { questCommitSchema } from "../schemas/questCommitSchema.ts";
 import { questCreateSchema } from "../schemas/questCreateSchema.ts";
 import {
@@ -46,21 +54,15 @@ import {
   questStatusSchema,
 } from "../schemas/questResourceSchema.ts";
 import type { ReleaseCascade } from "../schemas/releaseCascadeSchema.ts";
-import { $ownsProject } from "../security/$ownsProject.ts";
 import { AreaService } from "../services/AreaService.ts";
-import { BestEffort } from "../services/BestEffort.ts";
-import { BoundParameters } from "../services/BoundParameters.ts";
 import { DefaultReleaseService } from "../services/DefaultReleaseService.ts";
 import { EpicVisibilityService } from "../services/EpicVisibilityService.ts";
 import { EpicWorkflowService } from "../services/EpicWorkflowService.ts";
-import { LoreAudits } from "../services/LoreAudits.ts";
 import { MentionNotifier } from "../services/MentionNotifier.ts";
 import { OpenQuestScope } from "../services/OpenQuestScope.ts";
-import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 import { QuestResourceMapper } from "../services/QuestResourceMapper.ts";
 import { QuestService } from "../services/QuestService.ts";
 import { ReleaseAttachmentService } from "../services/ReleaseAttachmentService.ts";
-import { ResourceLinkService } from "../services/ResourceLinkService.ts";
 
 export class QuestController {
   /**

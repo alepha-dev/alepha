@@ -1,3 +1,4 @@
+import { LoreOAuthScopes } from "@lore/core/api";
 import { Alepha } from "alepha";
 import { oauthOptions } from "alepha/api/oauth";
 import { AlephaApiUsers } from "alepha/api/users";
@@ -9,7 +10,6 @@ import { AlephaServer } from "alepha/server";
 import { afterAll, beforeAll, describe, it } from "vitest";
 
 import { LoreApi } from "../src/api/index.ts";
-import { LoreOAuthScopes } from "../src/api/security/LoreOAuthScopes.ts";
 import { LoreMcp } from "../src/mcp/index.ts";
 
 /**

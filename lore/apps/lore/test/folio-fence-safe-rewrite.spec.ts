@@ -1,6 +1,6 @@
+import { splitMarkdownCode } from "@lore/core/web";
 import { describe, expect, it } from "vitest";
 
-import { splitMarkdownCode } from "../src/web/app/components/shared/element/markdownCodeSegments.ts";
 import { WikiLinkFixture } from "./fixtures/wikiLinks.ts";
 
 const PROJECT_SLUG = "sds";

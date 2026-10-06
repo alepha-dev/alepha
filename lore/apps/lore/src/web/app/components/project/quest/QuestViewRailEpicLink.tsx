@@ -1,6 +1,5 @@
+import { formatReference } from "@lore/core/web";
 import { Link } from "alepha/react/router";
-
-import { formatReference } from "../../shared/element/typedReference.ts";
 
 export interface QuestViewRailEpicLinkProps {
   /**

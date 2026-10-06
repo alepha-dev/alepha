@@ -1,3 +1,10 @@
+import { $ownsProject } from "@lore/core/api";
+import { projects } from "@lore/core/schemas";
+import {
+  reportsMembersSchema,
+  reportsOverviewSchema,
+  reportsQuestsSchema,
+} from "@lore/core/schemas";
 import { $inject, z } from "alepha";
 import { organizationMembers } from "alepha/api/organizations";
 import { users } from "alepha/api/users";
@@ -11,15 +18,8 @@ import {
 import { $action } from "alepha/server";
 import { $etag } from "alepha/server/etag";
 
-import { projects } from "../entities/projects.ts";
 import { quests } from "../entities/quests.ts";
 import { QUEST_PRIORITY_ORDER } from "../schemas/questPriority.ts";
-import {
-  reportsMembersSchema,
-  reportsOverviewSchema,
-  reportsQuestsSchema,
-} from "../schemas/reportsSchemas.ts";
-import { $ownsProject } from "../security/$ownsProject.ts";
 import { EpicVisibilityService } from "../services/EpicVisibilityService.ts";
 import { QuestTagTallyService } from "../services/QuestTagTallyService.ts";
 

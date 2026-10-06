@@ -1,10 +1,10 @@
 import { Button, Card, CardContent, CardHeader, CardTitle } from "@alepha/ui";
+import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import { X } from "lucide-react";
 
 import type { FolioResource as Folio } from "@/api/schemas/folioResourceSchema.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
 import EpicFolioPicker from "./EpicFolioPicker.tsx";
 

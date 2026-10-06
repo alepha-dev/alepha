@@ -3,7 +3,8 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 /**
- * The published types must never name the `lore` workspace.
+ * The published types must never name the `lore` workspace, nor a private
+ * `@lore/*` package.
  *
  * `@alepha/lore/cli` reaches Lore's controllers through a type-only
  * devDependency on `apps/lore`, which is `private` and never goes to the
@@ -39,8 +40,11 @@ try {
 }
 
 // `from "lore"` and `from "lore/anything"`, in either quote style, and the
-// `import("lore/...")` form tsc emits for an inlined type reference.
-const leak = /(?:from\s*|import\s*\()\s*["']lore(?:\/[^"']*)?["']/;
+// `import("lore/...")` form tsc emits for an inlined type reference. The
+// `@lore/*` packages are as private as the app they were split out of
+// (#E75), so `@lore/core` and its siblings are refused the same way.
+const leak =
+  /(?:from\s*|import\s*\()\s*["'](?:@lore\/[^"'/]+|lore)(?:\/[^"']*)?["']/;
 
 const offenders = declarations.filter((file) =>
   leak.test(readFileSync(file, "utf8")),
@@ -48,7 +52,7 @@ const offenders = declarations.filter((file) =>
 
 if (offenders.length > 0) {
   console.error(
-    `\n${offenders.length} declaration file(s) reference the private \`lore\` workspace:\n\n` +
+    `\n${offenders.length} declaration file(s) reference the private \`lore\` workspace or an \`@lore/*\` package:\n\n` +
       `${offenders.map((file) => `  ${file}`).join("\n")}\n\n` +
       "A type from `apps/lore` reached an exported signature. Keep it internal:\n" +
       "type it at the call site instead of returning or accepting it.\n",

@@ -1,3 +1,6 @@
+import { projectFixture, virtualClientFake } from "@lore/core/testing";
+import { ProjectSettingsCapabilitiesPage } from "@lore/core/testing";
+import { currentProjectAtom, I18n } from "@lore/core/web";
 import { fireEvent, render, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
@@ -8,14 +11,8 @@ import { LinkProvider } from "alepha/server/links";
 import type { ReactNode } from "react";
 import { describe, it } from "vitest";
 
-import { projectFixture } from "@/testing/projectFixture.ts";
-import { virtualClientFake } from "@/testing/virtualClientFake.ts";
-
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import { I18n } from "../../../services/I18n.ts";
 import { DeployShell } from "../../../shell/DeployShell.ts";
 import ProjectSettingsAppsPage from "./ProjectSettingsAppsPage.tsx";
-import ProjectSettingsCapabilitiesPage from "./ProjectSettingsCapabilitiesPage.tsx";
 
 interface SetCapabilityCall {
   params: { projectId: number; key: string };

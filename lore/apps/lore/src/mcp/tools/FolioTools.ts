@@ -1,3 +1,14 @@
+import { ProjectController, ResourceRegistry } from "@lore/core/api";
+import {
+  AttachmentPushCommand,
+  DiagramCheckService,
+  ProjectTools,
+} from "@lore/core/mcp";
+import {
+  attachmentPushResultSchema,
+  DIAGRAM_CAPABILITY,
+} from "@lore/core/schemas";
+import { formatReference } from "@lore/core/web";
 import { $inject, type Infer, z } from "alepha";
 import { $tool } from "alepha/mcp";
 import { BadRequestError, NotFoundError } from "alepha/server";
@@ -5,21 +16,13 @@ import { BadRequestError, NotFoundError } from "alepha/server";
 import { DirectoryController } from "../../api/controllers/DirectoryController.ts";
 import { FolioAttachmentController } from "../../api/controllers/FolioAttachmentController.ts";
 import { FolioController } from "../../api/controllers/FolioController.ts";
-import { ProjectController } from "../../api/controllers/ProjectController.ts";
 import { folioRevisions } from "../../api/entities/folioRevisions.ts";
-import { ResourceRegistry } from "../../api/resources/ResourceRegistry.ts";
-import { formatReference } from "../../web/app/components/shared/element/typedReference.ts";
-import { attachmentPushResultSchema } from "../schemas/attachmentPushResultSchema.ts";
-import { DIAGRAM_CAPABILITY } from "../schemas/diagramCapability.ts";
 import {
   folioEpicRefSchema,
   folioFullSchema,
   folioRefParamsSchema,
   folioRefSchema,
 } from "../schemas/folioSchemas.ts";
-import { AttachmentPushCommand } from "../services/AttachmentPushCommand.ts";
-import { DiagramCheckService } from "../services/DiagramCheckService.ts";
-import { ProjectTools } from "./ProjectTools.ts";
 
 /**
  * Pull a ~200-character window around the first match of `query` in `text`.

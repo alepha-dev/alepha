@@ -1,10 +1,11 @@
+import {
+  type WikiLinkPreviewProps,
+  WikiLinkPreviewState,
+} from "@lore/core/web";
 import { useClient, useQuery } from "alepha/react";
 
 import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { FolioResource } from "@/api/schemas/folioResourceSchema.ts";
-
-import type { WikiLinkPreviewProps } from "../../registries/ElementReferenceRegistry.ts";
-import WikiLinkPreviewState from "../shared/element/WikiLinkPreviewState.tsx";
 
 /**
  * A folio's hover card: its title, its summary for agents when it has one,

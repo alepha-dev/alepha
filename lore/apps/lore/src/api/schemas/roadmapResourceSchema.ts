@@ -1,6 +1,6 @@
+import { projectResourceSchema } from "@lore/core/schemas";
 import { type Infer, z } from "alepha";
 
-import { projectResourceSchema } from "./projectResourceSchema.ts";
 import { roadmapReleaseSchema } from "./roadmapReleaseSchema.ts";
 
 /**

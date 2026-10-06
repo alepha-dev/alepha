@@ -1,6 +1,5 @@
+import { isOAuthReturnTarget } from "@lore/core/web";
 import { describe, it } from "vitest";
-
-import { isOAuthReturnTarget } from "../src/web/app/components/auth/oauthReturnTarget.ts";
 
 /**
  * Where the sign-in bridge may send somebody back to, #Q2217.

@@ -1,35 +1,22 @@
 import { AlephaSigil } from "@alepha/lore/sigil";
-import { AccountRouter, accountRouterOptionsAtom } from "@alepha/ui/account";
 import { $module } from "alepha";
-import { AlephaCrypto } from "alepha/crypto";
-import { I18nProvider } from "alepha/react/i18n";
-import { AlephaReactUi } from "alepha/react/ui";
-import { createElement, lazy, Suspense } from "react";
 
 import { LoreDashboardCatalog } from "@/api/dashboardCatalogModule.ts";
 
 import { AppRouter } from "./AppRouter.ts";
 import { currentAssignedQuestsAtom } from "./atoms/currentAssignedQuestsAtom.ts";
 import { currentEpicsAtom } from "./atoms/currentEpicsAtom.ts";
-import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
-import { currentProjectMemberAtom } from "./atoms/currentProjectMemberAtom.ts";
 import { currentQuestAtom } from "./atoms/currentQuestAtom.ts";
 import { currentReleasesAtom } from "./atoms/currentReleasesAtom.ts";
 import { folioTreeCollapsedAtom } from "./atoms/folioTreeCollapsedAtom.ts";
 import { kanbanFiltersAtom } from "./atoms/kanbanFiltersAtom.ts";
 import { kanbanReloadAtom } from "./atoms/kanbanReloadAtom.ts";
 import { projectDirectoriesAtom } from "./atoms/projectDirectoriesAtom.ts";
-import { projectPromptsAtom } from "./atoms/projectPromptsAtom.ts";
 import { questLogCollapsedAtom } from "./atoms/questLogCollapsedAtom.ts";
-import { userProjectsAtom } from "./atoms/userProjectsAtom.ts";
-import AccountDeleteWarning from "./components/account/AccountDeleteWarning.tsx";
 import { DeployAccountRouter } from "./components/account/DeployAccountRouter.ts";
 import { WorkAccountRouter } from "./components/account/feedback/WorkAccountRouter.ts";
-import { LoreAccountRouter } from "./components/account/LoreAccountRouter.ts";
 import { DeployProjectLoader } from "./loaders/DeployProjectLoader.ts";
 import { WorkProjectLoader } from "./loaders/WorkProjectLoader.ts";
-import { I18n } from "./services/I18n.ts";
-import { ThemesProvider } from "./services/ThemesProvider.ts";
 import { DeployShell } from "./shell/DeployShell.ts";
 import { KnowledgeShell } from "./shell/KnowledgeShell.ts";
 import { WorkShell } from "./shell/WorkShell.ts";
@@ -37,19 +24,13 @@ import { WorkShell } from "./shell/WorkShell.ts";
 export const LoreWebApp = $module({
   name: "lore.web.app",
   imports: [
-    AlephaReactUi,
-    AlephaCrypto,
     AlephaSigil,
     // The dashboard's tiles and its Add-card panel are generated from the
     // metric registry, so the browser needs the declarative half of it.
     LoreDashboardCatalog,
   ],
   services: [
-    I18n,
-    ThemesProvider,
     AppRouter,
-    AccountRouter,
-    LoreAccountRouter,
     // The account pages Work and Deploy own (#E75, #Q2624).
     WorkAccountRouter,
     DeployAccountRouter,
@@ -69,10 +50,7 @@ export const LoreWebApp = $module({
     currentAssignedQuestsAtom,
     currentReleasesAtom,
     currentEpicsAtom,
-    projectPromptsAtom,
     folioTreeCollapsedAtom,
-    currentProjectAtom,
-    currentProjectMemberAtom,
     currentQuestAtom,
     kanbanFiltersAtom,
     kanbanReloadAtom,
@@ -81,36 +59,5 @@ export const LoreWebApp = $module({
     // unregistered `persist: "cookie"` atom still persists, lazily, on its
     // first read.
     questLogCollapsedAtom,
-    userProjectsAtom,
   ],
-  register(alepha) {
-    // Lore's `quests.createdBy` cascades, so deleting an account also deletes
-    // every quest it authored — including inside other people's projects. The
-    // framework cannot know that; this fills the dialog's warning slot so the
-    // count is stated before the click rather than discovered after it.
-    //
-    // `/account` is a root shell like `/admin` (#E68): not adopted into
-    // `AppRouter.layout`, so its chrome is set here. The brand is Lore's
-    // mark linking home, loaded lazily so the account chrome stays out of
-    // the bundle every page loads; `Suspense` holds the header empty for the
-    // moment the chunk takes.
-    alepha.store.set(accountRouterOptionsAtom, {
-      brand: createElement(
-        Suspense,
-        { fallback: null },
-        createElement(
-          lazy(() => import("./components/account/LoreAccountBrand.tsx")),
-        ),
-      ),
-      homeRouteName: "home",
-      pages: {
-        security: { deleteWarning: createElement(AccountDeleteWarning) },
-      },
-    });
-
-    // Dogfood locale-prefix routing: French gets `/fr/...` URLs, English (the
-    // default) stays unprefixed. Source of truth is the URL, with hreflang
-    // alternates emitted for SEO.
-    alepha.inject(I18nProvider).options.routing = "prefix";
-  },
 });

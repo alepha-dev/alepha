@@ -6,6 +6,13 @@ import {
   DropdownMenuTrigger,
 } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
+import type { ProjectResource } from "@lore/core/schemas";
+import {
+  type I18n,
+  capabilityOption,
+  CollapsibleBlock,
+  useLoreEditorControl,
+} from "@lore/core/web";
 import { z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import {
@@ -38,17 +45,12 @@ import { useMemo, useRef, useState } from "react";
 
 import type { AreaController } from "@/api/controllers/AreaController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
-import type { ProjectResource } from "@/api/schemas/projectResourceSchema.ts";
 import { questCreateSchema } from "@/api/schemas/questCreateSchema.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import { currentAreasAtom } from "@/web/app/atoms/currentAreasAtom.ts";
 import { currentAssignedQuestsAtom } from "@/web/app/atoms/currentAssignedQuestsAtom.ts";
 import { currentReleasesAtom } from "@/web/app/atoms/currentReleasesAtom.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
-import { capabilityOption } from "../../../services/projectCapabilities.ts";
-import CollapsibleBlock from "../../shared/CollapsibleBlock.tsx";
-import { useLoreEditorControl } from "../../shared/element/useLoreEditorControl.ts";
 import QuestAttachments from "./QuestAttachments.tsx";
 import QuestCreateObjectives from "./QuestCreateObjectives.tsx";
 import QuestDependencyPicker from "./QuestDependencyPicker.tsx";

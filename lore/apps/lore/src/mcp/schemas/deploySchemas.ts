@@ -1,8 +1,9 @@
+import {
+  APP_NAME_MAX_LENGTH,
+  releaseTagSchema,
+  projectParamsSchema,
+} from "@lore/core/schemas";
 import { z } from "alepha";
-
-import { APP_NAME_MAX_LENGTH } from "../../api/schemas/appNameSchema.ts";
-import { releaseTagSchema } from "../../api/schemas/releaseTagSchema.ts";
-import { projectParamsSchema } from "./projectParamsSchema.ts";
 
 /**
  * The pair that names a deployed copy, as `app_instance_*` already spells it.

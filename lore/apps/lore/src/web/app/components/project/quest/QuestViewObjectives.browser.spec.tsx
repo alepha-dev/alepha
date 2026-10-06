@@ -1,5 +1,7 @@
 import { Toaster } from "@alepha/ui";
 import { ActionErrorToaster } from "@alepha/ui/shell";
+import { virtualClientFake } from "@lore/core/testing";
+import { I18n } from "@lore/core/web";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { $inject, Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
@@ -14,8 +16,6 @@ import {
   type QuestResource,
   questResourceSchema,
 } from "@/api/schemas/questResourceSchema.ts";
-import { virtualClientFake } from "@/testing/virtualClientFake.ts";
-import { I18n } from "@/web/app/services/I18n.ts";
 
 import QuestViewObjectives from "./QuestViewObjectives.tsx";
 

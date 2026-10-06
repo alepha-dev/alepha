@@ -1,3 +1,4 @@
+import { ProjectController } from "@lore/core/api";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -9,7 +10,6 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { DirectoryController } from "../src/api/controllers/DirectoryController.ts";
 import { FolioController } from "../src/api/controllers/FolioController.ts";
-import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { areas } from "../src/api/entities/areas.ts";
 import { folioNames } from "../src/api/entities/folioNames.ts";
 import { LoreApi } from "../src/api/index.ts";

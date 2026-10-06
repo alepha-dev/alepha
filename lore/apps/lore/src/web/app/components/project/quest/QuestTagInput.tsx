@@ -1,11 +1,11 @@
 import { Badge, Input } from "@alepha/ui";
+import type { I18n } from "@lore/core/web";
 import { useClient, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Tags as TagsIcon, X } from "lucide-react";
 import { type KeyboardEvent, useState } from "react";
 
 import type { QuestController } from "@/api/controllers/QuestController.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
 export interface QuestTagInputProps {
   value?: string[];

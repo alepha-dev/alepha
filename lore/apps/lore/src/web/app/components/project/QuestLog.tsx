@@ -5,6 +5,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@alepha/ui";
+import type { I18n } from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import {
@@ -18,7 +19,6 @@ import {
 import { useMemo, useState } from "react";
 
 import { currentAssignedQuestsAtom } from "../../atoms/currentAssignedQuestsAtom.ts";
-import type { I18n } from "../../services/I18n.ts";
 import QuestList from "./quest/QuestList.tsx";
 
 export interface QuestLogProps {

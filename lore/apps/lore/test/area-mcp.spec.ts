@@ -1,3 +1,5 @@
+import { ProjectController } from "@lore/core/api";
+import { ProjectTools } from "@lore/core/mcp";
 import { Alepha } from "alepha";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -9,11 +11,9 @@ import { AlephaFake } from "alepha/testing/faker";
 import { describe, expect, it } from "vitest";
 
 import { AreaController } from "../src/api/controllers/AreaController.ts";
-import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { AreaService } from "../src/api/services/AreaService.ts";
 import { LoreMcp } from "../src/mcp/index.ts";
-import { ProjectTools } from "../src/mcp/tools/ProjectTools.ts";
 
 const setup = async () => {
   const alepha = Alepha.create({

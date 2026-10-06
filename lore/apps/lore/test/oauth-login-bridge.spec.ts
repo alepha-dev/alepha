@@ -1,9 +1,8 @@
+import { CoreRouter } from "@lore/core/web";
 import { Alepha } from "alepha";
 import { AlephaReactI18n } from "alepha/react/i18n";
 import { AlephaReactRouter } from "alepha/react/router";
 import { afterEach, beforeEach, describe, it } from "vitest";
-
-import { CoreRouter } from "../src/web/app/CoreRouter.ts";
 
 /**
  * The login page's bridge back into the server-rendered OAuth pages, #Q2217.

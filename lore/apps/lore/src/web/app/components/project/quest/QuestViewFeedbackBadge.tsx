@@ -1,9 +1,9 @@
 import { Badge } from "@alepha/ui";
+import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { Link } from "alepha/react/router";
 import { Inbox } from "lucide-react";
 
-import type { I18n } from "../../../services/I18n.ts";
 import { useFeedbackReference } from "./useFeedbackReference.ts";
 
 export interface QuestViewFeedbackBadgeProps {

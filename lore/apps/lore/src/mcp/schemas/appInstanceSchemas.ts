@@ -1,8 +1,7 @@
+import { APP_NAME_MAX_LENGTH, projectParamsSchema } from "@lore/core/schemas";
 import { z } from "alepha";
 
 import { appInstanceResourceSchema } from "../../api/schemas/appInstanceResourceSchema.ts";
-import { APP_NAME_MAX_LENGTH } from "../../api/schemas/appNameSchema.ts";
-import { projectParamsSchema } from "./projectParamsSchema.ts";
 
 /**
  * The charset both halves take, stated once.

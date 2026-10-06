@@ -1,9 +1,8 @@
+import type { I18n } from "@lore/core/web";
 import { useClient, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 
 import type { QuestAuthorshipController } from "@/api/controllers/QuestAuthorshipController.ts";
-
-import type { I18n } from "../../../services/I18n.ts";
 
 /**
  * The account-deletion line for the quests this account authored, which go

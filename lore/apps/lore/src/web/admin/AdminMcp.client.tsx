@@ -1,9 +1,8 @@
 import { Badge } from "@alepha/ui";
 import { AdminPage } from "@alepha/ui/admin";
 import { DataTable } from "@alepha/ui/table";
+import type { AdminMcpController } from "@lore/core/api";
 import { useClient, useQuery } from "alepha/react";
-
-import type { AdminMcpController } from "@/api/controllers/AdminMcpController.ts";
 
 import { AdminMcpCallsChart } from "./AdminMcpCallsChart.client.tsx";
 

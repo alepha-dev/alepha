@@ -1,3 +1,4 @@
+import { ProjectController, ProjectSecurityService } from "@lore/core/api";
 import { Alepha } from "alepha";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -8,10 +9,8 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake } from "alepha/testing/faker";
 import { describe, expect, it } from "vitest";
 
-import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { QuestController } from "../src/api/controllers/QuestController.ts";
 import { LoreApi } from "../src/api/index.ts";
-import { ProjectSecurityService } from "../src/api/services/ProjectSecurityService.ts";
 import { LoreMcp } from "../src/mcp/index.ts";
 import { QuestTools } from "../src/mcp/tools/QuestTools.ts";
 

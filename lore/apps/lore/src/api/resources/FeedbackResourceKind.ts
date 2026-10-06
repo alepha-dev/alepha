@@ -1,9 +1,8 @@
+import { BoundParameters, ResourceRegistry } from "@lore/core/api";
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 
 import { feedback } from "../entities/feedback.ts";
-import { BoundParameters } from "../services/BoundParameters.ts";
-import { ResourceRegistry } from "./ResourceRegistry.ts";
 
 /**
  * The `feedback` resource (`#P`, the letter it had as Petitions), registered

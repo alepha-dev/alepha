@@ -1,9 +1,8 @@
+import { linkSourceKindSchema, linkTargetKindSchema } from "@lore/core/schemas";
 import { type Infer, z } from "alepha";
 
 import { folioRowSchema } from "./folioRowSchema.ts";
 import { hydratedFolioAttachmentSchema } from "./hydratedFolioAttachmentSchema.ts";
-import { linkSourceKindSchema } from "./linkSourceKindSchema.ts";
-import { linkTargetKindSchema } from "./linkTargetKindSchema.ts";
 
 /**
  * Resolved outbound + inbound `[[wiki-link]]` refs for a folio.

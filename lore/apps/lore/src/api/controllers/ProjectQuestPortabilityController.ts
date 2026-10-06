@@ -1,12 +1,12 @@
+import { $ownsProject } from "@lore/core/api";
+import { projects } from "@lore/core/schemas";
 import { $inject, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 import { $action } from "alepha/server";
 import { FileSystemProvider } from "alepha/system";
 
-import { projects } from "../entities/projects.ts";
 import { workRelations } from "../relations/workRelations.ts";
-import { $ownsProject } from "../security/$ownsProject.ts";
 import { QuestCsvFormatter } from "../services/QuestCsvFormatter.ts";
 
 /**

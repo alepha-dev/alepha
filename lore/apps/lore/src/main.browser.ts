@@ -1,5 +1,6 @@
 import { adminRouterOptionsAtom } from "@alepha/ui/admin";
 import { LoreCoreWeb } from "@lore/core/web";
+import { ProjectScopeGrants } from "@lore/core/web";
 import { LoreDeployWeb } from "@lore/deploy/web";
 import { LoreKnowledgeWeb } from "@lore/knowledge/web";
 import { LoreWorkWeb } from "@lore/work/web";
@@ -10,7 +11,6 @@ import { loreAdminOptions } from "@/web/admin/adminChrome.tsx";
 import { LoreWebAdmin } from "@/web/admin/index.ts";
 
 import { LoreWebApp } from "./web/app/index.ts";
-import { ProjectScopeGrants } from "./web/app/services/ProjectScopeGrants.ts";
 
 const alepha = Alepha.create();
 

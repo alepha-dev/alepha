@@ -1,6 +1,13 @@
 import { Badge, UserAvatar } from "@alepha/ui";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
+import type { PaletteColor } from "@lore/core/schemas";
+import {
+  displayName,
+  type I18n,
+  formatReference,
+  type ProjectUser,
+} from "@lore/core/web";
 import { DateTimeProvider } from "alepha/datetime";
 import { useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -15,16 +22,11 @@ import {
   Flag,
 } from "lucide-react";
 
-import type { PaletteColor } from "@/api/schemas/paletteColorSchema.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 
 import { currentReleasesAtom } from "../../atoms/currentReleasesAtom.ts";
-import { displayName } from "../../services/displayName.ts";
-import type { I18n } from "../../services/I18n.ts";
 import { QuestDueDate } from "../project/quest/questDueDate.ts";
 import { TAG_CHIP_CLASS, TAG_CHIP_FALLBACK } from "../shared/areaColor.ts";
-import { formatReference } from "../shared/element/typedReference.ts";
-import type { ProjectUser } from "../shared/useProjectUsers.ts";
 
 export interface KanbanCardProps {
   quest: QuestResource;

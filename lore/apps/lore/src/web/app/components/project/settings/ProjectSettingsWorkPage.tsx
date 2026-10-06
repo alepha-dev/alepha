@@ -1,12 +1,13 @@
 import { Card, CardContent, cn } from "@alepha/ui";
 import { settingsCardEdge } from "@alepha/ui/settings";
+import {
+  currentProjectAtom,
+  ProjectShellRegistry,
+  hasCapability,
+  ProjectSettingsCapabilitySection,
+} from "@lore/core/web";
 import { useInject, useStore } from "alepha/react";
 
-import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
-import { ProjectShellRegistry } from "@/web/app/registries/ProjectShellRegistry.ts";
-import { hasCapability } from "@/web/app/services/projectCapabilities.ts";
-
-import ProjectSettingsCapabilitySection from "./ProjectSettingsCapabilitySection.tsx";
 import ProjectSettingsRoadmapSection from "./ProjectSettingsRoadmapSection.tsx";
 import ProjectSettingsTagColors from "./ProjectSettingsTagColors.tsx";
 

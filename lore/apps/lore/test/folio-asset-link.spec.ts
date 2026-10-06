@@ -1,6 +1,6 @@
+import type { AttachmentRef } from "@lore/core/web";
 import { describe, it } from "vitest";
 
-import type { AttachmentRef } from "../src/web/app/components/shared/element/wikiLinkResolver.ts";
 import { WikiLinkFixture } from "./fixtures/wikiLinks.ts";
 
 const imagePng: AttachmentRef = {

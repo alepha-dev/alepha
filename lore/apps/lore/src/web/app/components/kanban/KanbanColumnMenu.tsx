@@ -5,13 +5,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@alepha/ui";
+import { PALETTE_COLORS, type PaletteColor } from "@lore/core/schemas";
+import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { Check, MoreHorizontal } from "lucide-react";
 
-import { PALETTE_COLORS } from "@/api/schemas/paletteColorSchema.ts";
-import type { PaletteColor } from "@/api/schemas/paletteColorSchema.ts";
 import { AREA_DOT_CLASS } from "@/web/app/components/shared/areaColor.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
 export interface KanbanColumnMenuProps {
   name: string;

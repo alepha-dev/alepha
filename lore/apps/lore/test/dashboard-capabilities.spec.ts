@@ -1,3 +1,16 @@
+import { DashboardController } from "@lore/core/api";
+import { type Project } from "@lore/core/schemas";
+import {
+  type CapabilityKey,
+  CapabilityRegistry,
+  DashboardMetricCatalog,
+  type DashboardScope,
+} from "@lore/core/schemas";
+import {
+  eligibleApps,
+  eligibleProjects,
+  metricUnavailableKey,
+} from "@lore/core/web";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -6,20 +19,9 @@ import { AlephaSecurity, type UserAccountToken } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { DashboardController } from "@/api/controllers/DashboardController.ts";
-import type { Project } from "@/api/entities/projects.ts";
 import { type Sigil, sigils } from "@/api/entities/sigils.ts";
 import { sigilUniquesDaily } from "@/api/entities/sigilUniquesDaily.ts";
 import { LoreApi } from "@/api/index.ts";
-import type { CapabilityKey } from "@/api/schemas/capabilityKeySchema.ts";
-import { CapabilityRegistry } from "@/api/schemas/CapabilityRegistry.ts";
-import { DashboardMetricCatalog } from "@/api/schemas/DashboardMetricCatalog.ts";
-import type { DashboardScope } from "@/api/schemas/dashboardScopeSchema.ts";
-import {
-  eligibleApps,
-  eligibleProjects,
-  metricUnavailableKey,
-} from "@/web/app/components/dashboard/dashboardEligibility.ts";
 
 import {
   createTestMember,

@@ -1,3 +1,4 @@
+import { ProjectController } from "@lore/core/api";
 import { Alepha, z } from "alepha";
 import { files } from "alepha/api/files";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
@@ -11,7 +12,6 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 import { DirectoryController } from "../src/api/controllers/DirectoryController.ts";
 import { FolioAttachmentController } from "../src/api/controllers/FolioAttachmentController.ts";
 import { FolioController } from "../src/api/controllers/FolioController.ts";
-import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { folioAttachments } from "../src/api/entities/folioAttachments.ts";
 import { LoreApi } from "../src/api/index.ts";
 

@@ -1,10 +1,10 @@
+import type { AttachmentRef } from "@lore/core/web";
 import { describe, it } from "vitest";
 
 import {
   folioAssetEmbed,
   folioAssetPath,
 } from "../src/web/app/components/folios/folioAssetReference.ts";
-import type { AttachmentRef } from "../src/web/app/components/shared/element/wikiLinkResolver.ts";
 import { WikiLinkFixture } from "./fixtures/wikiLinks.ts";
 
 const PROJECT_SLUG = "sds";

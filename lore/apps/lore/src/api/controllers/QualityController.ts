@@ -1,3 +1,4 @@
+import { $ownsProject } from "@lore/core/api";
 import { $inject, z } from "alepha";
 import { $action } from "alepha/server";
 
@@ -5,7 +6,6 @@ import type { QualityRun } from "../entities/qualityRuns.ts";
 import { qualityOverviewSchema } from "../schemas/qualityOverviewSchema.ts";
 import { qualityRunPushSchema } from "../schemas/qualityRunPushSchema.ts";
 import { qualityRunSchema } from "../schemas/qualityRunSchema.ts";
-import { $ownsProject } from "../security/$ownsProject.ts";
 import { QualityService } from "../services/QualityService.ts";
 
 /**

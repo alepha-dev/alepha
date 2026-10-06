@@ -9,6 +9,7 @@ import {
   TimeAgo,
 } from "@alepha/ui";
 import { DataTable } from "@alepha/ui/table";
+import { currentProjectAtom, type I18n, useRank } from "@lore/core/web";
 import { useClient, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { FileUp, KeyRound, Pencil, Trash2 } from "lucide-react";
@@ -17,9 +18,6 @@ import { useState } from "react";
 import type { AppSecretController } from "@/api/controllers/AppSecretController.ts";
 
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import type { I18n } from "../../../services/I18n.ts";
-import { useRank } from "../../shared/useRank.ts";
 import AppEnvironmentAdd from "./AppEnvironmentAdd.tsx";
 import AppEnvironmentImport from "./AppEnvironmentImport.tsx";
 import {

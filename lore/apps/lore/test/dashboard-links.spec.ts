@@ -1,9 +1,9 @@
+import { DashboardMetricCatalog } from "@lore/core/schemas";
 import { Alepha } from "alepha";
 import { AlephaReactRouter, ReactRouter } from "alepha/react/router";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { LoreDashboardCatalog } from "@/api/dashboardCatalogModule.ts";
-import { DashboardMetricCatalog } from "@/api/schemas/DashboardMetricCatalog.ts";
 import { AppRouter } from "@/web/app/AppRouter.ts";
 
 /**

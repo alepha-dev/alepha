@@ -1,10 +1,10 @@
 import { Badge, Button, CardContent } from "@alepha/ui";
+import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import { Unlink } from "lucide-react";
 
 import type { LentEstateResource } from "@/api/controllers/ProjectEstateController.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
 export interface ProjectSettingsEstateRowProps {
   estate: LentEstateResource;

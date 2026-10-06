@@ -1,11 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@alepha/ui";
 import { settingsCardEdge } from "@alepha/ui/settings";
+import type { I18n } from "@lore/core/web";
 import { DateTimeProvider } from "alepha/datetime";
 import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 
 import type { AreaDetail } from "@/api/schemas/areaResourceSchema.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
 export interface ProjectSettingsAreaStatsProps {
   area: AreaDetail;

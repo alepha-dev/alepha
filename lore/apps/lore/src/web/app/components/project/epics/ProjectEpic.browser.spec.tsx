@@ -1,5 +1,7 @@
 import { DialogProvider, Toaster } from "@alepha/ui";
 import { ActionErrorToaster } from "@alepha/ui/shell";
+import { projectFixture, virtualClientFake } from "@lore/core/testing";
+import { currentProjectAtom, ResourceTabRegistry, I18n } from "@lore/core/web";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
@@ -13,11 +15,6 @@ import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
-import { projectFixture } from "@/testing/projectFixture.ts";
-import { virtualClientFake } from "@/testing/virtualClientFake.ts";
-import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
-import { ResourceTabRegistry } from "@/web/app/registries/ResourceTabRegistry.ts";
-import { I18n } from "@/web/app/services/I18n.ts";
 import { WorkShell } from "@/web/app/shell/WorkShell.ts";
 
 import ProjectEpic from "./ProjectEpic.tsx";

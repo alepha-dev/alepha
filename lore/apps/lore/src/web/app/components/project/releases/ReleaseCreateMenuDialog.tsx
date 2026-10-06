@@ -1,8 +1,8 @@
+import type { ProjectCreateDialogProps } from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useRouter } from "alepha/react/router";
 
 import { currentReleasesAtom } from "../../../atoms/currentReleasesAtom.ts";
-import type { ProjectCreateDialogProps } from "../../../registries/ProjectShellRegistry.ts";
 import { suggestedReleaseTag } from "./releaseBumps.ts";
 import ReleaseCreateDialog from "./ReleaseCreateDialog.tsx";
 

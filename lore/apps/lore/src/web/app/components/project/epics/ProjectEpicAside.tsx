@@ -1,5 +1,6 @@
 import { Badge, Progress } from "@alepha/ui";
 import { DetailAside, type DetailAsideRow } from "@alepha/ui/shell";
+import { type I18n, formatReference } from "@lore/core/web";
 import { DateTimeProvider } from "alepha/datetime";
 import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -7,9 +8,7 @@ import { Link, useRouter } from "alepha/react/router";
 
 import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
-import { formatReference } from "../../shared/element/typedReference.ts";
 import EpicReleaseControl from "./EpicReleaseControl.tsx";
 import {
   epicBlockedBy,

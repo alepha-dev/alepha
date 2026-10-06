@@ -1,6 +1,7 @@
 import { useToast } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
 import { SettingsRow, SettingsSection } from "@alepha/ui/settings";
+import { useRank, currentProjectAtom, type I18n } from "@lore/core/web";
 import { z } from "alepha";
 import { useClient, useQuery, useStore } from "alepha/react";
 import { useForm } from "alepha/react/form";
@@ -10,12 +11,9 @@ import { useState } from "react";
 
 import type { AppController } from "@/api/controllers/AppController.ts";
 import type { ProjectEstateController } from "@/api/controllers/ProjectEstateController.ts";
-import { useRank } from "@/web/app/components/shared/useRank.ts";
 
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
 import { currentInstancesAtom } from "../../../atoms/currentInstancesAtom.ts";
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import type { I18n } from "../../../services/I18n.ts";
 
 /**
  * The value the select carries for "no estate".

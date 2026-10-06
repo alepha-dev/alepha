@@ -1,3 +1,4 @@
+import { ProjectCapabilityController, ProjectController } from "@lore/core/api";
 import { Alepha, AlephaError, z } from "alepha";
 import { jobExecutionEntity } from "alepha/api/jobs";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
@@ -11,8 +12,6 @@ import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { AppController } from "../src/api/controllers/AppController.ts";
-import { ProjectCapabilityController } from "../src/api/controllers/ProjectCapabilityController.ts";
-import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { appInstances } from "../src/api/entities/appInstances.ts";
 import { artifacts } from "../src/api/entities/artifacts.ts";
 import { deployments } from "../src/api/entities/deployments.ts";

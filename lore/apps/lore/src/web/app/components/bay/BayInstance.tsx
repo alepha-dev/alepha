@@ -1,9 +1,8 @@
 import { Badge, Card, CardContent, formatBytes } from "@alepha/ui";
 import { AccountPage } from "@alepha/ui/account";
+import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter, useRouterState } from "alepha/react/router";
-
-import type { I18n } from "@/web/app/services/I18n.ts";
 
 import BayActions from "./BayActions.tsx";
 import { bayInstanceRows, bayProcessState } from "./bayInstanceRow.ts";

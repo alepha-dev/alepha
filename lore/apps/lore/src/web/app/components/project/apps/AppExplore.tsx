@@ -1,10 +1,10 @@
 import { AdminAnalytics, type AnalyticsTransport } from "@alepha/ui/admin";
+import { currentProjectAtom } from "@lore/core/web";
 import { useClient, useStore } from "alepha/react";
 import { useMemo } from "react";
 
 import type { SigilAnalyticsController } from "../../../../../api/controllers/SigilAnalyticsController.ts";
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 
 /**
  * The query explorer, scoped to the open app.

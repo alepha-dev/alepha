@@ -1,3 +1,15 @@
+import {
+  DashboardController,
+  DashboardMetricRegistry,
+  DashboardScopeService,
+  ProjectSecurityService,
+} from "@lore/core/api";
+import {
+  dashboardCards,
+  dashboardSettings,
+  type Project,
+} from "@lore/core/schemas";
+import type { DashboardScope } from "@lore/core/schemas";
 import { Alepha, z } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
@@ -8,23 +20,15 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { DashboardController } from "@/api/controllers/DashboardController.ts";
 import { appInstances } from "@/api/entities/appInstances.ts";
 import { blights } from "@/api/entities/blights.ts";
-import { dashboardCards } from "@/api/entities/dashboardCards.ts";
-import { dashboardSettings } from "@/api/entities/dashboardSettings.ts";
 import { feedback } from "@/api/entities/feedback.ts";
-import type { Project } from "@/api/entities/projects.ts";
 import { releases } from "@/api/entities/releases.ts";
 import { sigilErrorGroups } from "@/api/entities/sigilErrorGroups.ts";
 import { type Sigil, sigils } from "@/api/entities/sigils.ts";
 import { sigilUniquesDaily } from "@/api/entities/sigilUniquesDaily.ts";
 import { LoreApi } from "@/api/index.ts";
-import type { DashboardScope } from "@/api/schemas/dashboardScopeSchema.ts";
-import { DashboardMetricRegistry } from "@/api/services/DashboardMetricRegistry.ts";
-import { DashboardScopeService } from "@/api/services/DashboardScopeService.ts";
 import { EpicProgressService } from "@/api/services/EpicProgressService.ts";
-import { ProjectSecurityService } from "@/api/services/ProjectSecurityService.ts";
 import { QuestTagTallyService } from "@/api/services/QuestTagTallyService.ts";
 
 import {

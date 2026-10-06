@@ -1,14 +1,13 @@
 import { Button } from "@alepha/ui";
 import { useDroppable } from "@dnd-kit/core";
+import type { PaletteColor } from "@lore/core/schemas";
+import type { I18n, ProjectUser } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { ChevronsLeftRight } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import type { PaletteColor } from "@/api/schemas/paletteColorSchema.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 
-import type { I18n } from "../../services/I18n.ts";
-import type { ProjectUser } from "../shared/useProjectUsers.ts";
 import KanbanCard from "./KanbanCard.tsx";
 import KanbanColumnComposer from "./KanbanColumnComposer.tsx";
 import KanbanColumnMenu from "./KanbanColumnMenu.tsx";

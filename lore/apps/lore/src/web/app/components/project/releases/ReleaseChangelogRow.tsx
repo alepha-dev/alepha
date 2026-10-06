@@ -1,4 +1,5 @@
-import { formatReference } from "../../shared/element/typedReference.ts";
+import { formatReference } from "@lore/core/web";
+
 import ReleasePriorityPill from "./ReleasePriorityPill.tsx";
 
 export interface ReleaseChangelogRowProps {

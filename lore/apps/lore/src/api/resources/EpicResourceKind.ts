@@ -1,10 +1,9 @@
+import { BoundParameters, ResourceRegistry } from "@lore/core/api";
 import { $inject, Alepha } from "alepha";
 import { $repository } from "alepha/orm";
 
 import { EpicController } from "../controllers/EpicController.ts";
 import { epics } from "../entities/epics.ts";
-import { BoundParameters } from "../services/BoundParameters.ts";
-import { ResourceRegistry } from "./ResourceRegistry.ts";
 
 /**
  * The `epic` resource (`#E`), registered by Work. An epic is addressed by its

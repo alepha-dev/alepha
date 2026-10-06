@@ -5,14 +5,13 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@alepha/ui";
+import { currentProjectAtom, type I18n } from "@lore/core/web";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Pencil } from "lucide-react";
 
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
-import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
 import QuestCreate from "./QuestCreate.tsx";
 

@@ -2,6 +2,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
+import { ProjectController } from "@lore/core/api";
 import { Alepha } from "alepha";
 import { AlephaApiUsers, RealmProvider } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
@@ -12,7 +13,6 @@ import { AlephaServer } from "alepha/server";
 import { describe, it } from "vitest";
 
 import { FolioController } from "../src/api/controllers/FolioController.ts";
-import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { folioRevisions } from "../src/api/entities/folioRevisions.ts";
 import { LoreApi } from "../src/api/index.ts";
 

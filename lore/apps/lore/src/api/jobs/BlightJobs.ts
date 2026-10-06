@@ -1,3 +1,4 @@
+import { projects } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { $job } from "alepha/api/jobs";
 import { DateTimeProvider } from "alepha/datetime";
@@ -5,7 +6,6 @@ import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 
 import { blights } from "../entities/blights.ts";
-import { projects } from "../entities/projects.ts";
 
 /**
  * Keeps the blights inbox from growing without bound.

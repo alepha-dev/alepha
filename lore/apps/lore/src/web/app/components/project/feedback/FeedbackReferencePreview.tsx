@@ -1,10 +1,11 @@
+import {
+  type WikiLinkPreviewProps,
+  formatReference,
+  WikiLinkPreviewState,
+} from "@lore/core/web";
 import { useClient, useQuery } from "alepha/react";
 
 import type { FeedbackController } from "@/api/controllers/FeedbackController.ts";
-
-import type { WikiLinkPreviewProps } from "../../../registries/ElementReferenceRegistry.ts";
-import { formatReference } from "../../shared/element/typedReference.ts";
-import WikiLinkPreviewState from "../../shared/element/WikiLinkPreviewState.tsx";
 
 /**
  * A feedback item's hover card: its reference, title and status.

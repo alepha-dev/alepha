@@ -7,13 +7,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@alepha/ui";
+import type { I18n } from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Folder } from "lucide-react";
 import { type ReactElement, useState } from "react";
 
 import { projectDirectoriesAtom } from "../../../../atoms/projectDirectoriesAtom.ts";
-import type { I18n } from "../../../../services/I18n.ts";
 
 export interface FolioMoveDialogProps {
   open: boolean;

@@ -11,6 +11,7 @@ import {
   useDialog,
   useToast,
 } from "@alepha/ui";
+import { type I18n, OutboundLink } from "@lore/core/web";
 import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
@@ -28,10 +29,8 @@ import type { ProjectEstateController } from "@/api/controllers/ProjectEstateCon
 import { cloudflareTokenTemplateUrl } from "@/api/schemas/cloudflareTokenTemplate.ts";
 import type { OwnedEstateResource } from "@/api/schemas/ownedEstateResourceSchema.ts";
 import { estateErrorMessage } from "@/web/app/components/shared/estateCreateDraft.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
 import BayCommands from "../bay/BayCommands.tsx";
-import { OutboundLink } from "../shared/OutboundLink.tsx";
 
 export interface MyEstateDrawerProps {
   /**

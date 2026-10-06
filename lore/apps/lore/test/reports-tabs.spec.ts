@@ -1,8 +1,8 @@
+import { projectFixture } from "@lore/core/testing";
+import { ReportsTabRegistry } from "@lore/core/web";
 import { Alepha } from "alepha";
 import { describe, expect, it } from "vitest";
 
-import { projectFixture } from "@/testing/projectFixture.ts";
-import { ReportsTabRegistry } from "@/web/app/registries/ReportsTabRegistry.ts";
 import { DeployShell } from "@/web/app/shell/DeployShell.ts";
 import { WorkShell } from "@/web/app/shell/WorkShell.ts";
 

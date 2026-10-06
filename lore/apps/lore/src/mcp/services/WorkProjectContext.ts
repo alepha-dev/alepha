@@ -1,9 +1,9 @@
+import { ProjectContextRegistry } from "@lore/core/mcp";
 import { $inject } from "alepha";
 
 import { EpicController } from "../../api/controllers/EpicController.ts";
 import { ReleaseController } from "../../api/controllers/ReleaseController.ts";
 import { AreaService } from "../../api/services/AreaService.ts";
-import { ProjectContextRegistry } from "./ProjectContextRegistry.ts";
 
 /**
  * Work's sections of `project_context` and `project_info`, registered on

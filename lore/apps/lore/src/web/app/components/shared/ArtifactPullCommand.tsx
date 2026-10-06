@@ -1,8 +1,7 @@
 import { useToast } from "@alepha/ui";
+import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { Container } from "lucide-react";
-
-import type { I18n } from "../../services/I18n.ts";
 
 export interface ArtifactPullCommandProps {
   /**

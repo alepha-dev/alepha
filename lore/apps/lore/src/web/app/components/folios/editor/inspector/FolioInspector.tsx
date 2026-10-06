@@ -1,11 +1,11 @@
 import { cn } from "@alepha/ui";
+import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { PanelRightClose } from "lucide-react";
 import type { ReactElement } from "react";
 
 import type { FolioResource as Folio } from "@/api/schemas/folioResourceSchema.ts";
 
-import type { I18n } from "../../../../services/I18n.ts";
 import FolioAttachmentsTab from "./FolioAttachmentsTab.tsx";
 import FolioHistoryTab from "./FolioHistoryTab.tsx";
 import FolioLinksTab from "./FolioLinksTab.tsx";

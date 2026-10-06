@@ -4,6 +4,13 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@alepha/ui/chart";
+import type { reportsOverviewSchema } from "@lore/core/schemas";
+import {
+  type I18n,
+  ReportsKpiRow,
+  type ReportsKpi,
+  ReportsSection,
+} from "@lore/core/web";
 import type { Infer } from "alepha";
 import { useI18n } from "alepha/react/i18n";
 import {
@@ -15,12 +22,6 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-
-import type { reportsOverviewSchema } from "@/api/schemas/reportsSchemas.ts";
-
-import type { I18n } from "../../../services/I18n.ts";
-import ReportsKpiRow, { type ReportsKpi } from "./ReportsKpiRow.tsx";
-import ReportsSection from "./ReportsSection.tsx";
 
 type ReportsOverview = Infer<typeof reportsOverviewSchema>;
 

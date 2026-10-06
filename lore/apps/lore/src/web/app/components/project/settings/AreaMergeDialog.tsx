@@ -9,6 +9,7 @@ import {
   useToast,
 } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
+import { currentProjectAtom, type I18n } from "@lore/core/web";
 import { z } from "alepha";
 import { useAction, useClient, useStore } from "alepha/react";
 import { useForm } from "alepha/react/form";
@@ -17,8 +18,6 @@ import { useState } from "react";
 
 import type { AreaController } from "@/api/controllers/AreaController.ts";
 import type { AreaResource } from "@/api/schemas/areaResourceSchema.ts";
-import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
 /**
  * The picker's own one-field form. `targetId` stays in React state as well,

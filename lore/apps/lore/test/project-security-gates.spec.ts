@@ -1,3 +1,4 @@
+import { InvitationController, ProjectController } from "@lore/core/api";
 import { Alepha, z } from "alepha";
 import { FileService } from "alepha/api/files";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
@@ -8,8 +9,6 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { InvitationController } from "../src/api/controllers/InvitationController.ts";
-import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { ProjectQuestPortabilityController } from "../src/api/controllers/ProjectQuestPortabilityController.ts";
 import { QuestController } from "../src/api/controllers/QuestController.ts";
 import { LoreApi } from "../src/api/index.ts";

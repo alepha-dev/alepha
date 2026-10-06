@@ -1,3 +1,4 @@
+import { $ownsProject } from "@lore/core/api";
 import { $inject, z } from "alepha";
 import {
   adminAnalyticsQuerySchema,
@@ -9,7 +10,6 @@ import { $repository } from "alepha/orm";
 import { $action, NotFoundError } from "alepha/server";
 
 import { type Sigil, sigils } from "../entities/sigils.ts";
-import { $ownsProject } from "../security/$ownsProject.ts";
 
 /**
  * The per-app query explorer: the framework's analytics query builder, narrowed

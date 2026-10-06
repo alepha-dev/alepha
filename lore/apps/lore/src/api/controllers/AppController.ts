@@ -1,3 +1,9 @@
+import {
+  $ownsProject,
+  LoreAudits,
+  ProjectSecurityService,
+} from "@lore/core/api";
+import { appNameSchema } from "@lore/core/schemas";
 import { $inject, z } from "alepha";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
@@ -11,11 +17,7 @@ import {
   type AppInstanceResource,
   appInstanceResourceSchema,
 } from "../schemas/appInstanceResourceSchema.ts";
-import { appNameSchema } from "../schemas/appNameSchema.ts";
-import { $ownsProject } from "../security/$ownsProject.ts";
 import { AppService } from "../services/AppService.ts";
-import { LoreAudits } from "../services/LoreAudits.ts";
-import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 import { TeardownService } from "../services/TeardownService.ts";
 
 export type { AppInstanceResource };

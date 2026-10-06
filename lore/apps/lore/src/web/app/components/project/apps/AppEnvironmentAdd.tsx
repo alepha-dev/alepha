@@ -8,6 +8,7 @@ import {
   useToast,
 } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
+import type { I18n } from "@lore/core/web";
 import { z } from "alepha";
 import { useClient, useQueryClient } from "alepha/react";
 import { useForm, useFormState } from "alepha/react/form";
@@ -15,8 +16,6 @@ import { useI18n } from "alepha/react/i18n";
 
 import type { AppSecretController } from "@/api/controllers/AppSecretController.ts";
 import type { DeclaredEnvKey } from "@/api/schemas/declaredEnvKeySchema.ts";
-
-import type { I18n } from "../../../services/I18n.ts";
 
 export interface AppEnvironmentAddProps {
   projectId: number;

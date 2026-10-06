@@ -1,4 +1,5 @@
 import { TreeViewResizer } from "@alepha/ui/tree";
+import { currentProjectAtom, preloadMarkdownEditor } from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useRouter, useRouterState } from "alepha/react/router";
 import {
@@ -9,8 +10,6 @@ import {
   useState,
 } from "react";
 
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import { preloadMarkdownEditor } from "../../shared/markdown-editor/MarkdownEditor.tsx";
 import {
   FolioWorkspaceShellContext,
   type FolioWorkspaceShellValue,

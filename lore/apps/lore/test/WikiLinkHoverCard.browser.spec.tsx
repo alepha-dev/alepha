@@ -1,3 +1,9 @@
+import { virtualClientFake } from "@lore/core/testing";
+import {
+  I18n,
+  WikiLinkHoverProvider,
+  BROKEN_HREF_PREFIX,
+} from "@lore/core/web";
 import { act, fireEvent, render, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaLogger } from "alepha/logger";
@@ -7,11 +13,6 @@ import { LinkProvider } from "alepha/server/links";
 import { setupJsdomMocks } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, it } from "vitest";
 
-import { virtualClientFake } from "@/testing/virtualClientFake.ts";
-import { I18n } from "@/web/app/services/I18n.ts";
-
-import WikiLinkHoverProvider from "../src/web/app/components/shared/element/WikiLinkHoverProvider.tsx";
-import { BROKEN_HREF_PREFIX } from "../src/web/app/components/shared/element/wikiLinkResolver.ts";
 import { KnowledgeShell } from "../src/web/app/shell/KnowledgeShell.ts";
 import { WorkShell } from "../src/web/app/shell/WorkShell.ts";
 

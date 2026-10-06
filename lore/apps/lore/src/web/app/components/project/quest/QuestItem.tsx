@@ -1,15 +1,17 @@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@alepha/ui";
+import {
+  currentProjectAtom,
+  type I18n,
+  capabilityOption,
+  formatReference,
+} from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useActive, useRouter } from "alepha/react/router";
 import { Clock, Sparkles, TriangleAlert } from "lucide-react";
 
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
-import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
-import { capabilityOption } from "../../../services/projectCapabilities.ts";
-import { formatReference } from "../../shared/element/typedReference.ts";
 import { formatEstimate } from "./questEstimate.ts";
 
 export interface QuestItemProps {

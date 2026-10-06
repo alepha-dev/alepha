@@ -1,7 +1,6 @@
+import { projects } from "@lore/core/schemas";
 import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
-
-import { projects } from "./projects.ts";
 
 /**
  * What CI built: one row per `(project, app, tag, runtime, format)`, the bytes

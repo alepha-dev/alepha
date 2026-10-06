@@ -1,4 +1,5 @@
 import { Button } from "@alepha/ui";
+import { currentProjectAtom, type I18n } from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
@@ -13,9 +14,6 @@ import {
 import type { ReactElement } from "react";
 
 import type { FeedbackResource } from "@/api/schemas/feedbackResourceSchema.ts";
-
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import type { I18n } from "../../../services/I18n.ts";
 
 export interface ProjectFeedbackEmptyStateProps {
   /**

@@ -1,4 +1,6 @@
 import { DialogProvider } from "@alepha/ui";
+import { projectFixture } from "@lore/core/testing";
+import { currentProjectAtom, I18n } from "@lore/core/web";
 import {
   cleanup,
   fireEvent,
@@ -17,12 +19,9 @@ import { LinkProvider } from "alepha/server/links";
 import { beforeAll, describe, expect, it } from "vitest";
 
 import type { AppInstanceResource } from "@/api/schemas/appInstanceResourceSchema.ts";
-import { projectFixture } from "@/testing/projectFixture.ts";
 
 import { currentInstancesAtom } from "../../../atoms/currentInstancesAtom.ts";
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { currentReleasesAtom } from "../../../atoms/currentReleasesAtom.ts";
-import { I18n } from "../../../services/I18n.ts";
 import { WorkShell } from "../../../shell/WorkShell.ts";
 import ProjectArtifacts from "./ProjectArtifacts.tsx";
 

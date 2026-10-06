@@ -8,6 +8,13 @@ import {
   UserAvatar,
 } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
+import {
+  displayName,
+  type I18n,
+  type LoreAccountRouter,
+  PageHeader,
+  ProjectIcon,
+} from "@lore/core/web";
 import { z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { useAction, useClient, useInject, useQuery } from "alepha/react";
@@ -21,12 +28,6 @@ import { useEffect, useRef, useState } from "react";
 
 import type { FeedbackController } from "@/api/controllers/FeedbackController.ts";
 import type { FeedbackSource } from "@/api/schemas/feedbackSourceSchema.ts";
-
-import { displayName } from "../../../services/displayName.ts";
-import type { I18n } from "../../../services/I18n.ts";
-import type { LoreAccountRouter } from "../../account/LoreAccountRouter.ts";
-import PageHeader from "../../shared/header/PageHeader.tsx";
-import { ProjectIcon } from "../../shared/ProjectIcon.tsx";
 
 // Renamed from "lor.petition.draft" in the 2026-08 great rename (Task 4).
 // Unlike the attachment bucket name (see FeedbackRateLimiter.ATTACHMENT_BUCKET),

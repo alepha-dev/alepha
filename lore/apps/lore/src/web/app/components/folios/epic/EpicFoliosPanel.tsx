@@ -1,12 +1,11 @@
 import { useDialog } from "@alepha/ui";
+import type { ResourceFilingController } from "@lore/core/api";
+import type { ResourceTabSubject, I18n } from "@lore/core/web";
 import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 
-import type { ResourceFilingController } from "@/api/controllers/ResourceFilingController.ts";
 import type { FolioResource } from "@/api/schemas/folioResourceSchema.ts";
 
-import type { ResourceTabSubject } from "../../../registries/ResourceTabRegistry.ts";
-import type { I18n } from "../../../services/I18n.ts";
 import EpicFoliosList from "./EpicFoliosList.tsx";
 import { useFiledFolios } from "./useFiledFolios.ts";
 

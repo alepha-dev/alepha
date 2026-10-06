@@ -1,10 +1,13 @@
+import {
+  ProjectController,
+  ResourceRegistry,
+  ResourceLinkService,
+} from "@lore/core/api";
+import { DiagramCheckService, ProjectTools } from "@lore/core/mcp";
 import { $inject } from "alepha";
 import { $tool } from "alepha/mcp";
 
 import { EpicController } from "../../api/controllers/EpicController.ts";
-import { ProjectController } from "../../api/controllers/ProjectController.ts";
-import { ResourceRegistry } from "../../api/resources/ResourceRegistry.ts";
-import { ResourceLinkService } from "../../api/services/ResourceLinkService.ts";
 import {
   epicCreateParamsSchema,
   epicCreateResultSchema,
@@ -19,8 +22,6 @@ import {
   epicUpdateParamsSchema,
   epicUpdateResultSchema,
 } from "../schemas/epicSchemas.ts";
-import { DiagramCheckService } from "../services/DiagramCheckService.ts";
-import { ProjectTools } from "./ProjectTools.ts";
 
 /**
  * MCP tools for epic operations.

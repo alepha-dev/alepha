@@ -5,16 +5,13 @@ import {
   DropdownMenuTrigger,
   UserAvatar,
 } from "@alepha/ui";
+import { displayName, type I18n, useProjectUsers } from "@lore/core/web";
 import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { ChevronDown, UserMinus } from "lucide-react";
 
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
-import { displayName } from "@/web/app/services/displayName.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
-
-import { useProjectUsers } from "../../shared/useProjectUsers.ts";
 
 export interface QuestAssigneePickerProps {
   quest: QuestResource;

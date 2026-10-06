@@ -1,16 +1,18 @@
+import {
+  DashboardMetricRegistry,
+  type DashboardMetricResolver,
+  type DashboardResolvable,
+} from "@lore/core/api";
+import { type Project } from "@lore/core/schemas";
+import {
+  type DashboardCardValue,
+  DashboardMetricCatalog,
+} from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 
-import type { Project } from "../entities/projects.ts";
 import { quests } from "../entities/quests.ts";
 import type { ActiveQuestsFilters } from "../schemas/activeQuestsFiltersSchema.ts";
-import type { DashboardCardValue } from "../schemas/dashboardCardValueSchema.ts";
-import { DashboardMetricCatalog } from "../schemas/DashboardMetricCatalog.ts";
-import { DashboardMetricRegistry } from "./DashboardMetricRegistry.ts";
-import type {
-  DashboardMetricResolver,
-  DashboardResolvable,
-} from "./DashboardMetricResolver.ts";
 import { OpenQuestScope } from "./OpenQuestScope.ts";
 
 /**

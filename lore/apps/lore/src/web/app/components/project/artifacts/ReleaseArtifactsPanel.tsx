@@ -1,4 +1,5 @@
-import type { ResourceTabSubject } from "../../../registries/ResourceTabRegistry.ts";
+import type { ResourceTabSubject } from "@lore/core/web";
+
 import ReleaseArtifactsTab from "./ReleaseArtifactsTab.tsx";
 import { useReleaseArtifacts } from "./useReleaseArtifacts.ts";
 

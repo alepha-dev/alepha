@@ -1,3 +1,4 @@
+import { ProjectController, LoreInboxRecipientProvider } from "@lore/core/api";
 import { Alepha } from "alepha";
 import { jobExecutionEntity } from "alepha/api/jobs";
 import {
@@ -16,9 +17,7 @@ import { describe, it } from "vitest";
 
 import { FeedbackCommentController } from "../src/api/controllers/FeedbackCommentController.ts";
 import { FeedbackController } from "../src/api/controllers/FeedbackController.ts";
-import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { LoreApi } from "../src/api/index.ts";
-import { LoreInboxRecipientProvider } from "../src/api/providers/LoreInboxRecipientProvider.ts";
 import { createTestMemberByProjectId } from "./fixtures/entities.ts";
 
 class Probe {

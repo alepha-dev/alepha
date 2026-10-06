@@ -131,4 +131,26 @@ describe("@alepha/lore packaging", () => {
       "./src/api/controllers/*.ts",
     );
   });
+
+  /**
+   * The controllers that left `apps/lore` for an `@lore/*` package (#E75) are
+   * typed through that package's `./api`, under the same optional peer: the
+   * monorepo satisfies it through its workspace link, and a consumer without
+   * Lore is never asked for it.
+   */
+  it("type-imports a moved controller through its package's ./api", () => {
+    const core = JSON.parse(
+      readFileSync(
+        new URL("../../../../@lore/core/package.json", import.meta.url),
+        "utf8",
+      ),
+    );
+
+    expect(manifest.peerDependencies["@lore/core"]).toBe("*");
+    expect(manifest.peerDependenciesMeta["@lore/core"]).toEqual({
+      optional: true,
+    });
+    expect(core.private).toBe(true);
+    expect(core.exports["./api"]).toBe("./src/api/index.ts");
+  });
 });

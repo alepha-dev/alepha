@@ -1,10 +1,10 @@
-import { describe, expect, it } from "vitest";
-
-import { blightTriagePromptDefault } from "./blightTriagePrompt.ts";
 import {
   type AgentPromptProjectSubject,
   renderPromptTemplate,
-} from "./renderPromptTemplate.ts";
+} from "@lore/core/web";
+import { describe, expect, it } from "vitest";
+
+import { blightTriagePromptDefault } from "./blightTriagePrompt.ts";
 
 /**
  * Surface-scoped, like the feedback loop: a triage pass has no item, so

@@ -1,3 +1,4 @@
+import { en as enDictionary, fr as frDictionary } from "@lore/core/testing";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -6,8 +7,6 @@ import {
   folioShortcutBindings,
   isFolioActionEnabled,
 } from "@/web/app/components/folios/editor/menubar/folioMenubarModel.ts";
-import enDictionary from "@/web/locales/en.ts";
-import frDictionary from "@/web/locales/fr.ts";
 
 describe("FOLIO_MENUS", () => {
   it("declares the five menus in the designed order", () => {

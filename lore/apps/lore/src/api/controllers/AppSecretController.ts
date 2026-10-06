@@ -1,3 +1,4 @@
+import { $ownsProject } from "@lore/core/api";
 import { $inject, z } from "alepha";
 import { $repository } from "alepha/orm";
 import { $action, NotFoundError, okSchema } from "alepha/server";
@@ -6,7 +7,6 @@ import { appInstances } from "../entities/appInstances.ts";
 import type { AppSecret } from "../entities/appSecrets.ts";
 import { appSecretResourceSchema } from "../schemas/appSecretResourceSchema.ts";
 import { declaredEnvKeySchema } from "../schemas/declaredEnvKeySchema.ts";
-import { $ownsProject } from "../security/$ownsProject.ts";
 import { AppSecretService } from "../services/AppSecretService.ts";
 
 /**

@@ -1,4 +1,5 @@
 import { Badge, Button } from "@alepha/ui";
+import { type I18n, formatReference } from "@lore/core/web";
 import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
@@ -8,10 +9,8 @@ import { useMemo } from "react";
 import type { EpicController } from "@/api/controllers/EpicController.ts";
 import type { ReleaseContentQuest } from "@/api/schemas/releaseContentQuestSchema.ts";
 import { currentAreasAtom } from "@/web/app/atoms/currentAreasAtom.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
 import { AreaDotColor } from "../../shared/areaColor.ts";
-import { formatReference } from "../../shared/element/typedReference.ts";
 import {
   type EpicStatus,
   STATUS_ICONS,

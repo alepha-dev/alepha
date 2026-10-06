@@ -1,4 +1,5 @@
 import { Button, Tooltip, TooltipContent, TooltipTrigger } from "@alepha/ui";
+import type { I18n } from "@lore/core/web";
 import { DateTimeProvider } from "alepha/datetime";
 import { ClientOnly, useAction, useClient, useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -7,7 +8,6 @@ import { useEffect, useRef, useState } from "react";
 
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
 export interface QuestViewTimerProps {
   quest: QuestResource;

@@ -1,4 +1,5 @@
 import { AlephaLoreCli } from "@alepha/lore/cli";
+import { ProjectController } from "@lore/core/api";
 import { Alepha, AlephaError, z } from "alepha";
 import { ApiKeyController } from "alepha/api/keys";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
@@ -17,7 +18,6 @@ import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { EpicController } from "../src/api/controllers/EpicController.ts";
-import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { QuestController } from "../src/api/controllers/QuestController.ts";
 import { LoreApi } from "../src/api/index.ts";
 

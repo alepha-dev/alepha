@@ -1,8 +1,8 @@
+import { ProjectLimits } from "@lore/core/api";
 import { $inject } from "alepha";
 import { $job } from "alepha/api/jobs";
 import { $logger } from "alepha/logger";
 
-import { ProjectLimits } from "../services/ProjectLimits.ts";
 import { QualityService } from "../services/QualityService.ts";
 
 /**

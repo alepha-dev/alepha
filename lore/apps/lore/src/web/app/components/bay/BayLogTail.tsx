@@ -1,4 +1,5 @@
 import { Button, Card, CardContent } from "@alepha/ui";
+import type { I18n } from "@lore/core/web";
 import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { ScrollText } from "lucide-react";
@@ -7,7 +8,6 @@ import { useState } from "react";
 import type { EstateCommandController } from "@/api/controllers/EstateCommandController.ts";
 import type { EstateCommandResult } from "@/api/schemas/estateCommandResultSchema.ts";
 import { currentEstateAtom } from "@/web/app/atoms/currentEstateAtom.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
 export interface BayLogTailProps {
   app: string;

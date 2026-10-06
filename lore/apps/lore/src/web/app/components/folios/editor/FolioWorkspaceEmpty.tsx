@@ -1,3 +1,4 @@
+import { currentProjectAtom } from "@lore/core/web";
 import { AlephaError } from "alepha";
 import { useClient, useStore } from "alepha/react";
 import { useRouter } from "alepha/react/router";
@@ -6,7 +7,6 @@ import { createPortal } from "react-dom";
 
 import type { FolioController } from "@/api/controllers/FolioController.ts";
 
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import FolioEmptyState from "./document/FolioEmptyState.tsx";
 import { FolioWorkspaceShellContext } from "./FolioWorkspaceShellContext.ts";
 import FolioMenubar from "./menubar/FolioMenubar.tsx";

@@ -1,3 +1,5 @@
+import { ProjectController, ProjectDashboardController } from "@lore/core/api";
+import { projectDashboardCards } from "@lore/core/schemas";
 import { Alepha } from "alepha";
 import { RankService } from "alepha/api/organizations";
 import { AlephaApiUsers } from "alepha/api/users";
@@ -7,9 +9,6 @@ import { AlephaSecurity, type UserAccountToken } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { ProjectController } from "@/api/controllers/ProjectController.ts";
-import { ProjectDashboardController } from "@/api/controllers/ProjectDashboardController.ts";
-import { projectDashboardCards } from "@/api/entities/projectDashboardCards.ts";
 import { LoreApi } from "@/api/index.ts";
 
 import {

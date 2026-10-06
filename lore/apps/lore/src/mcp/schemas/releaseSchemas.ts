@@ -1,6 +1,5 @@
+import { projectParamsSchema } from "@lore/core/schemas";
 import { z } from "alepha";
-
-import { projectParamsSchema } from "./projectParamsSchema.ts";
 
 /**
  * How every tool in this surface names a release.

@@ -1,10 +1,10 @@
 import { TimeAgo } from "@alepha/ui";
+import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { Archive, Container, Link2 } from "lucide-react";
 import { useMemo } from "react";
 
 import type { ArtifactGroup } from "@/api/schemas/artifactGroupSchema.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
 import ArtifactPullCommand from "../../shared/ArtifactPullCommand.tsx";
 import ArtifactRuntimeBadges from "../../shared/ArtifactRuntimeBadges.tsx";

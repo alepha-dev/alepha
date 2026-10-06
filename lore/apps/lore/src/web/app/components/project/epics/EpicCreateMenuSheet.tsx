@@ -1,6 +1,6 @@
+import type { ProjectCreateDialogProps } from "@lore/core/web";
 import { useRouter } from "alepha/react/router";
 
-import type { ProjectCreateDialogProps } from "../../../registries/ProjectShellRegistry.ts";
 import EpicCreateSheet from "./EpicCreateSheet.tsx";
 
 /**

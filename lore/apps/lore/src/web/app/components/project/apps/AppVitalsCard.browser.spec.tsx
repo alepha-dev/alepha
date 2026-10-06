@@ -1,3 +1,4 @@
+import { I18n } from "@lore/core/web";
 import { render } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
@@ -8,7 +9,6 @@ import { describe, it } from "vitest";
 
 import { summariseVitalMetric } from "@/api/vitalsPercentile.ts";
 
-import { I18n } from "../../../services/I18n.ts";
 import AppVitalsCard from "./AppVitalsCard.tsx";
 
 /**

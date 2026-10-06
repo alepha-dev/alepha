@@ -1,5 +1,7 @@
 import { DialogProvider, Toaster } from "@alepha/ui";
 import { ActionErrorToaster } from "@alepha/ui/shell";
+import { projectFixture, virtualClientFake } from "@lore/core/testing";
+import { currentProjectAtom, I18n } from "@lore/core/web";
 import {
   fireEvent,
   render,
@@ -22,10 +24,6 @@ import {
   type QuestResource,
   questResourceSchema,
 } from "@/api/schemas/questResourceSchema.ts";
-import { projectFixture } from "@/testing/projectFixture.ts";
-import { virtualClientFake } from "@/testing/virtualClientFake.ts";
-import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
-import { I18n } from "@/web/app/services/I18n.ts";
 import { WorkShell } from "@/web/app/shell/WorkShell.ts";
 
 import QuestView from "./QuestView.tsx";

@@ -1,3 +1,5 @@
+import { projectFixture } from "@lore/core/testing";
+import { currentProjectAtom, I18n } from "@lore/core/web";
 import { fireEvent, render, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
@@ -8,11 +10,8 @@ import { LinkProvider } from "alepha/server/links";
 import { describe, it } from "vitest";
 
 import type { AppInstanceResource } from "@/api/schemas/appInstanceResourceSchema.ts";
-import { projectFixture } from "@/testing/projectFixture.ts";
 
 import { currentInstancesAtom } from "../../../atoms/currentInstancesAtom.ts";
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import { I18n } from "../../../services/I18n.ts";
 import AppCreateDialog from "./AppCreateDialog.tsx";
 
 const aProject = projectFixture({ title: "Alepha", slug: "alepha" });

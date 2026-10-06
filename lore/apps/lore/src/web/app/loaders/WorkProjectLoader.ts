@@ -1,3 +1,4 @@
+import { ProjectLoaderRegistry, capabilityOption } from "@lore/core/web";
 import { $inject, Alepha } from "alepha";
 import { $client } from "alepha/server/links";
 
@@ -13,8 +14,6 @@ import { currentEpicsAtom } from "../atoms/currentEpicsAtom.ts";
 import { currentFeedbackCountAtom } from "../atoms/currentFeedbackCountAtom.ts";
 import { currentQuestCountAtom } from "../atoms/currentQuestCountAtom.ts";
 import { currentReleasesAtom } from "../atoms/currentReleasesAtom.ts";
-import { ProjectLoaderRegistry } from "../registries/ProjectLoaderRegistry.ts";
-import { capabilityOption } from "../services/projectCapabilities.ts";
 
 /**
  * What Work reads when a project opens, registered on core's

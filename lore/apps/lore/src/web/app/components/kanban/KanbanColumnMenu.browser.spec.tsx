@@ -1,3 +1,5 @@
+import type { PaletteColor } from "@lore/core/schemas";
+import { I18n } from "@lore/core/web";
 import { fireEvent, render } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaLogger } from "alepha/logger";
@@ -5,9 +7,6 @@ import { AlephaContext, AlephaReact } from "alepha/react";
 import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
 import { describe, expect, it } from "vitest";
 
-import type { PaletteColor } from "@/api/schemas/paletteColorSchema.ts";
-
-import { I18n } from "../../services/I18n.ts";
 import KanbanColumnMenu from "./KanbanColumnMenu.tsx";
 
 /**

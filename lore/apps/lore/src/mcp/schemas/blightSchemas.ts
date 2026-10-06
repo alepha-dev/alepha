@@ -1,7 +1,7 @@
+import { projectParamsSchema } from "@lore/core/schemas";
 import { z } from "alepha";
 
 import { blightResourceSchema } from "../../api/schemas/blightResourceSchema.ts";
-import { projectParamsSchema } from "./projectParamsSchema.ts";
 
 // -----------------------------------------------------------------------------
 // blight_list

@@ -1,12 +1,13 @@
+import {
+  type ElementReferenceSet,
+  type ElementRef,
+  formatReference,
+  type ElementReference,
+} from "@lore/core/web";
 import { useClient, useQuery } from "alepha/react";
 import { useMemo } from "react";
 
 import type { EpicController } from "@/api/controllers/EpicController.ts";
-
-import type { ElementReferenceSet } from "../../../registries/ElementReferenceRegistry.ts";
-import type { ElementRef } from "../../shared/element/elementRef.ts";
-import { formatReference } from "../../shared/element/typedReference.ts";
-import type { ElementReference } from "../../shared/element/wikiLinkResolver.ts";
 
 /**
  * The epics an element body can reference, registered by `WorkShell` on

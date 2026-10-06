@@ -1,3 +1,9 @@
+import {
+  type I18n,
+  displayName,
+  CollapsibleBlock,
+  useProjectUsers,
+} from "@lore/core/web";
 import { useClient, useQuery, useQueryClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { MessageSquare } from "lucide-react";
@@ -5,11 +11,7 @@ import { MessageSquare } from "lucide-react";
 import type { QuestCommentController } from "@/api/controllers/QuestCommentController.ts";
 import type { QuestCommentResource } from "@/api/schemas/questCommentResourceSchema.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
-import { displayName } from "../../../services/displayName.ts";
-import CollapsibleBlock from "../../shared/CollapsibleBlock.tsx";
-import { useProjectUsers } from "../../shared/useProjectUsers.ts";
 import QuestDiscussionComment from "./QuestDiscussionComment.tsx";
 import QuestDiscussionComposer from "./QuestDiscussionComposer.tsx";
 import { buildQuestDiscussionEntries } from "./questDiscussionEntries.ts";

@@ -1,4 +1,5 @@
 import { VITALS_BUCKETS } from "@alepha/lore/sigil";
+import { ProjectController } from "@lore/core/api";
 import { $inject, Alepha, z } from "alepha";
 import { organizationMembers as members } from "alepha/api/organizations";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
@@ -12,7 +13,6 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { AppController } from "../src/api/controllers/AppController.ts";
 import { InsightsController } from "../src/api/controllers/InsightsController.ts";
-import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { SigilController } from "../src/api/controllers/SigilController.ts";
 import { DeployAnalytics } from "../src/api/entities/deployAnalytics.ts";
 import { sigilErrorGroups } from "../src/api/entities/sigilErrorGroups.ts";

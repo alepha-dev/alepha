@@ -1,13 +1,13 @@
+import { ProjectSecurityService } from "@lore/core/api";
+import { projects } from "@lore/core/schemas";
 import { $inject, z } from "alepha";
 import { $repository } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action, NotFoundError } from "alepha/server";
 import { $etag } from "alepha/server/etag";
 
-import { projects } from "../entities/projects.ts";
 import { memberRoadmapResourceSchema } from "../schemas/memberRoadmapResourceSchema.ts";
 import { roadmapResourceSchema } from "../schemas/roadmapResourceSchema.ts";
-import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 import { RoadmapService } from "../services/RoadmapService.ts";
 
 /**

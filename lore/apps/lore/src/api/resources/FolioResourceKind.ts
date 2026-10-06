@@ -1,10 +1,12 @@
+import {
+  BoundParameters,
+  ResourceRegistry,
+  SearchPreview,
+} from "@lore/core/api";
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 
 import { folios } from "../entities/folios.ts";
-import { BoundParameters } from "../services/BoundParameters.ts";
-import { ResourceRegistry } from "./ResourceRegistry.ts";
-import { SearchPreview } from "./SearchPreview.ts";
 
 /**
  * The `folio` resource (`#F`), registered by Knowledge. Its stored id is a

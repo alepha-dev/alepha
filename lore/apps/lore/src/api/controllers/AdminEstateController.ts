@@ -1,16 +1,16 @@
+import { LoreAudits } from "@lore/core/api";
+import { displayName } from "@lore/core/web";
 import { $inject, z } from "alepha";
 import { users } from "alepha/api/users";
 import { $repository, db, pageQuerySchema } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action, NotFoundError, okSchema } from "alepha/server";
 
-import { displayName } from "../../web/app/services/displayName.ts";
 import { estateProjects } from "../entities/estateProjects.ts";
 import { estates } from "../entities/estates.ts";
 import { adminEstateResourceSchema } from "../schemas/adminEstateResourceSchema.ts";
 import { EstateCloudflareService } from "../services/EstateCloudflareService.ts";
 import { EstateService } from "../services/EstateService.ts";
-import { LoreAudits } from "../services/LoreAudits.ts";
 
 /**
  * Instance-wide view of every estate, for the admin shell (#1838).

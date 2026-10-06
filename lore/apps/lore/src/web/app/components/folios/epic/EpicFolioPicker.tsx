@@ -6,6 +6,7 @@ import {
   CommandItem,
   CommandList,
 } from "@alepha/ui/command";
+import { type I18n, formatReference } from "@lore/core/web";
 import { useClient, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Plus } from "lucide-react";
@@ -13,9 +14,6 @@ import { useState } from "react";
 
 import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { FolioTreeEntry } from "@/api/schemas/folioTreeEntrySchema.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
-
-import { formatReference } from "../../shared/element/typedReference.ts";
 
 export interface EpicFolioPickerProps {
   projectId: number;

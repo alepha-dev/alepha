@@ -1,4 +1,11 @@
 import { DialogProvider } from "@alepha/ui";
+import { projectFixture } from "@lore/core/testing";
+import {
+  currentProjectAtom,
+  I18n,
+  canInProject,
+  ProjectScopeGrants,
+} from "@lore/core/web";
 import { render } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
@@ -10,14 +17,9 @@ import { ScopeGrantsProvider } from "alepha/server/links";
 import { afterEach, describe, it } from "vitest";
 
 import type { AreaResource } from "@/api/schemas/areaResourceSchema.ts";
-import { projectFixture } from "@/testing/projectFixture.ts";
 
-import { currentProjectAtom } from "../src/web/app/atoms/currentProjectAtom.ts";
 import EpicFoliosList from "../src/web/app/components/folios/epic/EpicFoliosList.tsx";
 import ProjectSettingsAreasPage from "../src/web/app/components/project/settings/ProjectSettingsAreasPage.tsx";
-import { I18n } from "../src/web/app/services/I18n.ts";
-import { canInProject } from "../src/web/app/services/projectRank.ts";
-import { ProjectScopeGrants } from "../src/web/app/services/ProjectScopeGrants.ts";
 
 /**
  * The whole chain of #Q1958, end to end, with nothing faked in the middle.

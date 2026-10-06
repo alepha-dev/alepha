@@ -1,4 +1,5 @@
 import { Button, Input } from "@alepha/ui";
+import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { ChevronDown, ChevronUp, X } from "lucide-react";
 import {
@@ -8,7 +9,6 @@ import {
   useRef,
 } from "react";
 
-import type { I18n } from "../../../../services/I18n.ts";
 import type { FolioFindState } from "./useFolioFind.ts";
 
 export interface FolioFindBarProps {

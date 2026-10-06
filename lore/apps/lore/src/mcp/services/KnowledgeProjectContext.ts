@@ -1,10 +1,10 @@
+import { ResourceRegistry } from "@lore/core/api";
+import { ProjectContextRegistry } from "@lore/core/mcp";
 import { $inject, Alepha } from "alepha";
 
 import { pinnedContentAtom } from "../../api/atoms/pinnedContentAtom.ts";
 import { FolioController } from "../../api/controllers/FolioController.ts";
-import { ResourceRegistry } from "../../api/resources/ResourceRegistry.ts";
 import { PinnedFolioFolder } from "../../api/services/PinnedFolioFolder.ts";
-import { ProjectContextRegistry } from "./ProjectContextRegistry.ts";
 
 /**
  * Knowledge's section of `project_context`: the folio index and the pinned

@@ -1,3 +1,8 @@
+import {
+  BestEffort,
+  BoundParameters,
+  ResourceLinkService,
+} from "@lore/core/api";
 import { $inject } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
@@ -9,11 +14,8 @@ import {
   folioDirectories,
 } from "../entities/folioDirectories.ts";
 import { folios } from "../entities/folios.ts";
-import { BestEffort } from "./BestEffort.ts";
-import { BoundParameters } from "./BoundParameters.ts";
 import { FolioAttachmentService } from "./FolioAttachmentService.ts";
 import { FolioNameService } from "./FolioNameService.ts";
-import { ResourceLinkService } from "./ResourceLinkService.ts";
 
 /**
  * Create / rename / move / delete operations on folio directories,

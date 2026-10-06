@@ -1,4 +1,20 @@
 import { AccountRouter } from "@alepha/ui/account";
+import type {
+  HomeController,
+  InvitationController,
+  ProjectController,
+  ProjectDashboardController,
+} from "@lore/core/api";
+import {
+  $pageProject,
+  $pageProjectSettings,
+  currentProjectAtom,
+  RedirectPage,
+  CoreRouter,
+  ProjectRouter,
+  hasCapability,
+  canInProject,
+} from "@lore/core/web";
 import { $inject, Alepha, z } from "alepha";
 import type { RealmController } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
@@ -16,34 +32,23 @@ import type { EpicController } from "../../api/controllers/EpicController.ts";
 import type { EstateController } from "../../api/controllers/EstateController.ts";
 import type { FeedbackController } from "../../api/controllers/FeedbackController.ts";
 import type { FolioController } from "../../api/controllers/FolioController.ts";
-import type { HomeController } from "../../api/controllers/HomeController.ts";
-import type { InvitationController } from "../../api/controllers/InvitationController.ts";
-import type { ProjectController } from "../../api/controllers/ProjectController.ts";
-import type { ProjectDashboardController } from "../../api/controllers/ProjectDashboardController.ts";
 import type { ProjectReportsController } from "../../api/controllers/ProjectReportsController.ts";
 import type { QualityController } from "../../api/controllers/QualityController.ts";
 import type { QuestController } from "../../api/controllers/QuestController.ts";
 import type { RoadmapController } from "../../api/controllers/RoadmapController.ts";
 import type { SigilController } from "../../api/controllers/SigilController.ts";
 import { defaultAppInstance } from "../../api/schemas/defaultAppInstance.ts";
-import { $pageProject, $pageProjectSettings } from "./$pageProject.ts";
 import { currentEpicAtom } from "./atoms/currentEpicAtom.ts";
 import { currentEstateAtom } from "./atoms/currentEstateAtom.ts";
 import { currentFolioAttachmentsAtom } from "./atoms/currentFolioAttachmentsAtom.ts";
 import { currentInstanceAtom } from "./atoms/currentInstanceAtom.ts";
 import { currentInstancesAtom } from "./atoms/currentInstancesAtom.ts";
-import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
 import { currentQuestAtom } from "./atoms/currentQuestAtom.ts";
 import { folioTreeSeedAtom } from "./atoms/folioTreeSeedAtom.ts";
 import { projectDirectoriesAtom } from "./atoms/projectDirectoriesAtom.ts";
 import { roadmapNotFoundAtom } from "./atoms/roadmapNotFoundAtom.ts";
 import { userFoliosAtom } from "./atoms/userFoliosAtom.ts";
 import { FEEDBACK_PAGE_SIZE } from "./components/project/feedback/feedbackPageSize.ts";
-import RedirectPage from "./components/shared/RedirectPage.tsx";
-import { CoreRouter } from "./CoreRouter.ts";
-import { ProjectRouter } from "./ProjectRouter.ts";
-import { hasCapability } from "./services/projectCapabilities.ts";
-import { canInProject } from "./services/projectRank.ts";
 
 /**
  * The leaderboards that have a detail page, which is exactly the set

@@ -1,4 +1,10 @@
 import { Button } from "@alepha/ui";
+import {
+  currentProjectAtom,
+  type I18n,
+  formatReference,
+  isReferenceKind,
+} from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
@@ -9,13 +15,6 @@ import type {
   FolioLinks,
   FolioResource,
 } from "@/api/schemas/folioResourceSchema.ts";
-
-import { currentProjectAtom } from "../../../../atoms/currentProjectAtom.ts";
-import type { I18n } from "../../../../services/I18n.ts";
-import {
-  formatReference,
-  isReferenceKind,
-} from "../../../shared/element/typedReference.ts";
 
 export interface FolioLinksTabProps {
   /**

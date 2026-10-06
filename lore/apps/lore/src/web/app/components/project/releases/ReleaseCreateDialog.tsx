@@ -9,12 +9,12 @@ import {
   Input,
   Label,
 } from "@alepha/ui";
+import type { I18n } from "@lore/core/web";
 import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useState } from "react";
 
 import type { ReleaseController } from "@/api/controllers/ReleaseController.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
 export interface ReleaseCreateDialogProps {
   projectId: number;

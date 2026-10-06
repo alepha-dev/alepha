@@ -1,3 +1,4 @@
+import type { Project } from "@lore/core/schemas";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
@@ -18,7 +19,6 @@ import {
   TestEntityRepositories,
 } from "../../../test/fixtures/entities.ts";
 import { ReadCounter } from "../../../test/fixtures/ReadCounter.ts";
-import type { Project } from "../entities/projects.ts";
 import { LoreApi } from "../index.ts";
 import { EpicController } from "./EpicController.ts";
 

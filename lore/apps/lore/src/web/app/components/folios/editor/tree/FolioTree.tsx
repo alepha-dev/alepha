@@ -1,5 +1,6 @@
 import { Button } from "@alepha/ui";
 import { TreeView } from "@alepha/ui/tree";
+import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import {
   FilePlus,
@@ -11,7 +12,6 @@ import {
 } from "lucide-react";
 import { type ReactElement, useEffect } from "react";
 
-import type { I18n } from "../../../../services/I18n.ts";
 import FolioPassphraseDialog from "../../FolioPassphraseDialog.tsx";
 import { asFolioNode, type FolioTreeData } from "./folioTree.ts";
 import FolioTreeContextMenu from "./FolioTreeContextMenu.tsx";

@@ -1,4 +1,5 @@
-import type { ElementRef } from "../../shared/element/elementRef.ts";
+import type { ElementRef } from "@lore/core/web";
+
 import { useQuestImageUpload } from "../../shared/markdown-editor/useQuestImageUpload.ts";
 
 /**

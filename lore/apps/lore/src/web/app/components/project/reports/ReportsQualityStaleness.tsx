@@ -1,8 +1,7 @@
+import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 
 import type { QualityRunResource } from "@/api/schemas/qualityRunSchema.ts";
-
-import type { I18n } from "../../../services/I18n.ts";
 
 export interface ReportsQualityStalenessProps {
   latest: QualityRunResource;

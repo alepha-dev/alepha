@@ -1,3 +1,5 @@
+import { projectFixture } from "@lore/core/testing";
+import { currentProjectAtom, useAgentPromptSubject } from "@lore/core/web";
 import { renderHook } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaContext } from "alepha/react";
@@ -9,10 +11,7 @@ import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
 import type { FeedbackResource } from "@/api/schemas/feedbackResourceSchema.ts";
-import { projectFixture } from "@/testing/projectFixture.ts";
-import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 
-import { useAgentPromptSubject } from "./useAgentPromptSubject.ts";
 import { useWorkPromptSubject } from "./useWorkPromptSubject.ts";
 
 /**

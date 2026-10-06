@@ -1,6 +1,5 @@
+import { projectParamsSchema } from "@lore/core/schemas";
 import { z } from "alepha";
-
-import { projectParamsSchema } from "./projectParamsSchema.ts";
 
 /**
  * One failure as the error budget sees it — per app, unlike a blight.

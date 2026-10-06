@@ -1,14 +1,15 @@
 import { Button, Segmented, useDialog, useToast } from "@alepha/ui";
 import { SettingsRow, SettingsSection } from "@alepha/ui/settings";
+import type { ProjectController } from "@lore/core/api";
+import type { RoadmapVisibility } from "@lore/core/schemas";
+import {
+  currentProjectAtom,
+  setCurrentProject,
+  type I18n,
+} from "@lore/core/web";
 import { useAction, useAlepha, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Copy } from "lucide-react";
-
-import type { ProjectController } from "@/api/controllers/ProjectController.ts";
-import type { RoadmapVisibility } from "@/api/schemas/roadmapVisibilitySchema.ts";
-import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
-import { setCurrentProject } from "@/web/app/services/currentProjectWrite.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
 /**
  * Who may read `/:projectSlug/roadmap`, and the two things the owner has to

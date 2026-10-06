@@ -1,3 +1,8 @@
+import {
+  ResourceRegistry,
+  $ownsProject,
+  ProjectSecurityService,
+} from "@lore/core/api";
 import { $inject, z } from "alepha";
 import { $repository, DbEntityNotFoundError } from "alepha/orm";
 import {
@@ -10,7 +15,6 @@ import {
 import type { BlightIgnoreRule } from "../entities/blightIgnoreRules.ts";
 import { type Blight, blights } from "../entities/blights.ts";
 import { sigils } from "../entities/sigils.ts";
-import { ResourceRegistry } from "../resources/ResourceRegistry.ts";
 import { QUEST_STATUS_PREFIX } from "../schemas/blightQuestStatus.ts";
 import {
   type BlightResource,
@@ -21,9 +25,7 @@ import {
   blightRuleResourceSchema,
 } from "../schemas/blightRuleResourceSchema.ts";
 import { blightSigilSchema } from "../schemas/blightSigilSchema.ts";
-import { $ownsProject } from "../security/$ownsProject.ts";
 import { BlightRuleService } from "../services/BlightRuleService.ts";
-import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 /**
  * Owner-facing triage surface for blights — the deduplicated uncaught

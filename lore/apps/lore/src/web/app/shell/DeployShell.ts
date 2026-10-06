@@ -1,3 +1,15 @@
+import {
+  ROUTES_APP,
+  lazyPart,
+  AccountDeletionRegistry,
+  AgentPromptRegistry,
+  DashboardPickerRegistry,
+  ProjectShellRegistry,
+  ReportsTabRegistry,
+  ResourceTabRegistry,
+  hasCapability,
+  canInProject,
+} from "@lore/core/web";
 import { $inject } from "alepha";
 import { $client } from "alepha/server/links";
 import { AppWindow, Bug, Package } from "lucide-react";
@@ -9,17 +21,7 @@ import { currentInstancesAtom } from "../atoms/currentInstancesAtom.ts";
 import { useOwnedEstatesDeletionLine } from "../components/account/useOwnedEstatesDeletionLine.ts";
 import { useDashboardApps } from "../components/project/apps/useDashboardApps.ts";
 import { useReleaseArtifacts } from "../components/project/artifacts/useReleaseArtifacts.ts";
-import { ROUTES_APP } from "../components/project/projectViewRoutes.ts";
-import { lazyPart } from "../components/shared/lazyPart.tsx";
 import { blightTriagePromptDefault } from "../prompts/blightTriagePrompt.ts";
-import { AccountDeletionRegistry } from "../registries/AccountDeletionRegistry.ts";
-import { AgentPromptRegistry } from "../registries/AgentPromptRegistry.ts";
-import { DashboardPickerRegistry } from "../registries/DashboardPickerRegistry.ts";
-import { ProjectShellRegistry } from "../registries/ProjectShellRegistry.ts";
-import { ReportsTabRegistry } from "../registries/ReportsTabRegistry.ts";
-import { ResourceTabRegistry } from "../registries/ResourceTabRegistry.ts";
-import { hasCapability } from "../services/projectCapabilities.ts";
-import { canInProject } from "../services/projectRank.ts";
 
 /**
  * Deploy's part of the project shell, registered on core's

@@ -1,12 +1,11 @@
 import { Badge } from "@alepha/ui";
+import { type I18n, formatReference } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { Link } from "alepha/react/router";
 
 import type { ReleaseContentQuest } from "@/api/schemas/releaseContentQuestSchema.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
 import type { AreaDotColor } from "../../shared/areaColor.ts";
-import { formatReference } from "../../shared/element/typedReference.ts";
 import {
   type EpicStatus,
   STATUS_ICONS,

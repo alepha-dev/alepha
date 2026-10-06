@@ -2,7 +2,7 @@
  * Every action the folio workspace menubar, toolbar and keyboard can
  * trigger. One flat union so a handler map is exhaustive-checkable.
  */
-import type { MarkdownEditorMode } from "../../../shared/markdown-editor/MarkdownEditorInner.client.tsx";
+import type { MarkdownEditorMode } from "@lore/core/web";
 
 export type FolioActionId =
   | "folio.new"

@@ -1,3 +1,4 @@
+import { ProjectController, LoreInboxRecipientProvider } from "@lore/core/api";
 import { Alepha, z } from "alepha";
 import { jobExecutionEntity } from "alepha/api/jobs";
 import {
@@ -15,11 +16,9 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { describe, it } from "vitest";
 
-import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { QuestCommentController } from "../src/api/controllers/QuestCommentController.ts";
 import { QuestController } from "../src/api/controllers/QuestController.ts";
 import { LoreApi } from "../src/api/index.ts";
-import { LoreInboxRecipientProvider } from "../src/api/providers/LoreInboxRecipientProvider.ts";
 import { LoreMcp } from "../src/mcp/index.ts";
 import { QuestTools } from "../src/mcp/tools/QuestTools.ts";
 import { createTestMemberByProjectId } from "./fixtures/entities.ts";

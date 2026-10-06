@@ -1,3 +1,5 @@
+import { ProjectCapabilityController, ProjectController } from "@lore/core/api";
+import { projects } from "@lore/core/schemas";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { CloudflareDeployClient } from "alepha/cli/platform-lib";
@@ -11,14 +13,11 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { AppController } from "../src/api/controllers/AppController.ts";
 import { DeployController } from "../src/api/controllers/DeployController.ts";
-import { ProjectCapabilityController } from "../src/api/controllers/ProjectCapabilityController.ts";
-import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { appInstances } from "../src/api/entities/appInstances.ts";
 import { artifacts } from "../src/api/entities/artifacts.ts";
 import { deployments } from "../src/api/entities/deployments.ts";
 import { estateProjects } from "../src/api/entities/estateProjects.ts";
 import { estates } from "../src/api/entities/estates.ts";
-import { projects } from "../src/api/entities/projects.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { DeployJobs } from "../src/api/jobs/DeployJobs.ts";
 import { AppSecretService } from "../src/api/services/AppSecretService.ts";

@@ -7,17 +7,15 @@ import {
   useToast,
 } from "@alepha/ui";
 import { SettingsRow } from "@alepha/ui/settings";
+import { useRank, currentProjectAtom, type I18n } from "@lore/core/web";
 import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useState } from "react";
 
 import type { AppController } from "@/api/controllers/AppController.ts";
-import { useRank } from "@/web/app/components/shared/useRank.ts";
 
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
 import { currentInstancesAtom } from "../../../atoms/currentInstancesAtom.ts";
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import type { I18n } from "../../../services/I18n.ts";
 
 /**
  * Where this deployed copy lives, as the operator pinned it.

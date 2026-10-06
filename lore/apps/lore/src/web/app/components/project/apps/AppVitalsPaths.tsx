@@ -1,4 +1,5 @@
 import { Badge, Card, CardContent, CardHeader, CardTitle } from "@alepha/ui";
+import { currentProjectAtom, type I18n } from "@lore/core/web";
 import { useClient, useStore } from "alepha/react";
 import { useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -6,8 +7,6 @@ import { useI18n } from "alepha/react/i18n";
 import type { InsightsController } from "@/api/controllers/InsightsController.ts";
 
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import type { I18n } from "../../../services/I18n.ts";
 import { VITAL_METRICS } from "./appVitalMetrics.ts";
 import { useAppInsightsFilters } from "./useAppInsights.ts";
 

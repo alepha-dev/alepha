@@ -11,6 +11,13 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
+import type { ProjectController } from "@lore/core/api";
+import {
+  currentProjectAtom,
+  setCurrentProject,
+  type I18n,
+  capabilityOption,
+} from "@lore/core/web";
 import { z } from "alepha";
 import { useAction, useAlepha, useClient, useStore } from "alepha/react";
 import { useForm } from "alepha/react/form";
@@ -19,11 +26,6 @@ import { GripVertical, Plus, Trash2 } from "lucide-react";
 import { useId, useState } from "react";
 
 import type { KanbanController } from "@/api/controllers/KanbanController.ts";
-import type { ProjectController } from "@/api/controllers/ProjectController.ts";
-import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
-import { setCurrentProject } from "@/web/app/services/currentProjectWrite.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
-import { capabilityOption } from "@/web/app/services/projectCapabilities.ts";
 
 import { useKanbanColumnOps } from "../../kanban/useKanbanColumnOps.ts";
 import { KanbanColumnOrder } from "./kanbanColumnOrder.ts";

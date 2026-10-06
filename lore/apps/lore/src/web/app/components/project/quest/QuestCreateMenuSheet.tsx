@@ -1,11 +1,10 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@alepha/ui";
+import type { ProjectCreateDialogProps, I18n } from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouterState } from "alepha/react/router";
 
 import { kanbanReloadAtom } from "../../../atoms/kanbanReloadAtom.ts";
-import type { ProjectCreateDialogProps } from "../../../registries/ProjectShellRegistry.ts";
-import type { I18n } from "../../../services/I18n.ts";
 import QuestCreate from "./QuestCreate.tsx";
 
 /**

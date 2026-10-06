@@ -1,9 +1,8 @@
+import type { ResourceTabSubject } from "@lore/core/web";
 import { useClient, useQuery } from "alepha/react";
 
 import type { ArtifactController } from "@/api/controllers/ArtifactController.ts";
 import type { ArtifactGroup } from "@/api/schemas/artifactGroupSchema.ts";
-
-import type { ResourceTabSubject } from "../../../registries/ResourceTabRegistry.ts";
 
 /**
  * The artifacts built from a release's tag: what the release page's

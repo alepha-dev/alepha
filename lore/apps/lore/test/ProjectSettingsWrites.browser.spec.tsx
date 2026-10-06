@@ -1,5 +1,8 @@
 import { DialogProvider, Toaster } from "@alepha/ui";
 import { ActionErrorToaster } from "@alepha/ui/shell";
+import { projectFixture } from "@lore/core/testing";
+import { ProjectSettingsRanksPage } from "@lore/core/testing";
+import { currentProjectAtom, I18n } from "@lore/core/web";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
@@ -12,12 +15,7 @@ import { setupJsdomMocks } from "alepha/testing/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
-import { projectFixture } from "@/testing/projectFixture.ts";
-import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
-import { I18n } from "@/web/app/services/I18n.ts";
-
 import ProjectSettingsBoardPage from "../src/web/app/components/project/settings/ProjectSettingsBoardPage.tsx";
-import ProjectSettingsRanksPage from "../src/web/app/components/project/settings/ProjectSettingsRanksPage.tsx";
 
 /**
  * Answers the reads both pages make, and refuses the one write a case names.

@@ -1,9 +1,8 @@
+import type { ResourceTabSubject } from "@lore/core/web";
 import { useClient, useQuery } from "alepha/react";
 
 import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { FolioResource } from "@/api/schemas/folioResourceSchema.ts";
-
-import type { ResourceTabSubject } from "../../../registries/ResourceTabRegistry.ts";
 
 /**
  * The folios filed under an epic, registered by `KnowledgeShell` as the

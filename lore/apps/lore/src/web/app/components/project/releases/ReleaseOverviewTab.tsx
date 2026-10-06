@@ -1,5 +1,6 @@
 import { Button } from "@alepha/ui";
 import { MarkdownView } from "@alepha/ui/markdown";
+import type { I18n, LinkedCollection } from "@lore/core/web";
 import { DateTimeProvider } from "alepha/datetime";
 import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -7,9 +8,7 @@ import { CalendarClock, Gauge, Pencil } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
-import type { LinkedCollection } from "../../../registries/ResourceTabRegistry.ts";
 import { releaseBuckets } from "./releaseBuckets.ts";
 import { useCountLabel } from "./useCountLabel.ts";
 

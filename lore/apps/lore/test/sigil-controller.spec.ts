@@ -1,4 +1,6 @@
 import { sigilKeyProject } from "@alepha/lore/sigil";
+import { ProjectController } from "@lore/core/api";
+import { projects } from "@lore/core/schemas";
 import { Alepha, z } from "alepha";
 import { organizationMembers as members } from "alepha/api/organizations";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
@@ -10,9 +12,7 @@ import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { AppController } from "../src/api/controllers/AppController.ts";
-import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { SigilController } from "../src/api/controllers/SigilController.ts";
-import { projects } from "../src/api/entities/projects.ts";
 import { sigilUniquesDaily } from "../src/api/entities/sigilUniquesDaily.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { SigilTokenService } from "../src/api/services/SigilTokenService.ts";

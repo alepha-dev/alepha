@@ -1,8 +1,8 @@
+import { FileAccessRegistry } from "@lore/core/api";
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 
 import { folioAttachments } from "../entities/folioAttachments.ts";
-import { FileAccessRegistry } from "./FileAccessRegistry.ts";
 
 /**
  * Who may read a folio attachment, registered on core's `FileAccessRegistry`

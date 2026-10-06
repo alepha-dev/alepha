@@ -1,3 +1,4 @@
+import type { I18n } from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
@@ -5,7 +6,6 @@ import { useCallback, useMemo } from "react";
 
 import type { ReleaseContentQuest } from "@/api/schemas/releaseContentQuestSchema.ts";
 import { currentAreasAtom } from "@/web/app/atoms/currentAreasAtom.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
 import { AreaDotColor } from "../../shared/areaColor.ts";
 import type { QuestlineNode } from "../quest/questline/questlineLayout.ts";

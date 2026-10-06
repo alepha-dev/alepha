@@ -1,3 +1,4 @@
+import { LoreAudits } from "@lore/core/api";
 import { $inject, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
@@ -28,7 +29,6 @@ import { EstateInventoryService } from "../services/EstateInventoryService.ts";
 import { EstateService } from "../services/EstateService.ts";
 import { EstateStatsService } from "../services/EstateStatsService.ts";
 import { EstateTokenService } from "../services/EstateTokenService.ts";
-import { LoreAudits } from "../services/LoreAudits.ts";
 
 export type {
   EstateInventoryResource,

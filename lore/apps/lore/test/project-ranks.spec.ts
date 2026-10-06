@@ -1,3 +1,9 @@
+import {
+  ProjectController,
+  ProjectRankController,
+  LorePermissions,
+  ProjectRankPresets,
+} from "@lore/core/api";
 import { Alepha } from "alepha";
 import { RankService } from "alepha/api/organizations";
 import { AlephaApiUsers } from "alepha/api/users";
@@ -7,11 +13,7 @@ import { AlephaSecurity, type UserAccountToken } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { ProjectController } from "../src/api/controllers/ProjectController.ts";
-import { ProjectRankController } from "../src/api/controllers/ProjectRankController.ts";
 import { LoreApi } from "../src/api/index.ts";
-import { LorePermissions } from "../src/api/security/LorePermissions.ts";
-import { ProjectRankPresets } from "../src/api/security/ProjectRankPresets.ts";
 import {
   createTestProject,
   TestEntityRepositories,

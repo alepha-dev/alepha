@@ -1,4 +1,6 @@
 import { DialogProvider } from "@alepha/ui";
+import { projectFixture } from "@lore/core/testing";
+import { currentProjectAtom } from "@lore/core/web";
 import { cleanup, render, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
@@ -10,10 +12,8 @@ import { LinkProvider } from "alepha/server/links";
 import { afterEach, beforeAll, describe, it } from "vitest";
 
 import type { FeedbackResource } from "@/api/schemas/feedbackResourceSchema.ts";
-import { projectFixture } from "@/testing/projectFixture.ts";
 
 import { currentFeedbackCountAtom } from "../../../atoms/currentFeedbackCountAtom.ts";
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { WorkShell } from "../../../shell/WorkShell.ts";
 import { FEEDBACK_PAGE_SIZE } from "./feedbackPageSize.ts";
 import ProjectFeedback from "./ProjectFeedback.tsx";

@@ -1,11 +1,11 @@
+import { ProjectLimits } from "@lore/core/api";
+import { projects } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { $repository, $sequence } from "alepha/orm";
 import { ForbiddenError } from "alepha/server";
 
-import { projects } from "../entities/projects.ts";
 import { normalizeQuestTags, type Quest, quests } from "../entities/quests.ts";
 import { AreaService } from "./AreaService.ts";
-import { ProjectLimits } from "./ProjectLimits.ts";
 
 /**
  * Quest rich-text fields (`description`, `completionMessage`) are

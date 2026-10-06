@@ -1,12 +1,12 @@
+import {
+  type AgentPromptItemSubject,
+  type AgentPromptProjectSubject,
+  useAgentPromptSubject,
+} from "@lore/core/web";
+
 import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
 import type { FeedbackResource } from "@/api/schemas/feedbackResourceSchema.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
-import type {
-  AgentPromptItemSubject,
-  AgentPromptProjectSubject,
-} from "@/web/app/prompts/renderPromptTemplate.ts";
-
-import { useAgentPromptSubject } from "./useAgentPromptSubject.ts";
 
 /**
  * Work's prompt subjects, over core's kind-blind `useAgentPromptSubject`

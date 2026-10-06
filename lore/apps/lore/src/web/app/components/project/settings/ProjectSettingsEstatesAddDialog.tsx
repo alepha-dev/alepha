@@ -9,6 +9,7 @@ import {
   useToast,
   cn,
 } from "@alepha/ui";
+import { currentProjectAtom, type I18n } from "@lore/core/web";
 import { useAction, useClient, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Loader2, TriangleAlert } from "lucide-react";
@@ -22,7 +23,6 @@ import type {
   LentEstateResource,
   ProjectEstateController,
 } from "@/api/controllers/ProjectEstateController.ts";
-import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import {
   type EstateCreateDraft,
   emptyEstateDraft,
@@ -33,7 +33,6 @@ import {
   estateErrorMessage,
 } from "@/web/app/components/shared/estateCreateDraft.ts";
 import EstateCreateFields from "@/web/app/components/shared/EstateCreateFields.tsx";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
 export interface ProjectSettingsEstatesAddDialogProps {
   open: boolean;

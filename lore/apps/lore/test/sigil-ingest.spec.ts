@@ -1,4 +1,5 @@
 import { SIGIL_INGEST_PATH } from "@alepha/lore/sigil";
+import { projectCapabilities, projects } from "@lore/core/schemas";
 import { Alepha } from "alepha";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -11,8 +12,6 @@ import { describe, expect, it } from "vitest";
 
 import { blights } from "../src/api/entities/blights.ts";
 import { DeployAnalytics } from "../src/api/entities/deployAnalytics.ts";
-import { projectCapabilities } from "../src/api/entities/projectCapabilities.ts";
-import { projects } from "../src/api/entities/projects.ts";
 import { sigilErrorGroups } from "../src/api/entities/sigilErrorGroups.ts";
 import { sigils } from "../src/api/entities/sigils.ts";
 import { sigilUniquesDaily } from "../src/api/entities/sigilUniquesDaily.ts";

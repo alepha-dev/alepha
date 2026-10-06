@@ -4,16 +4,12 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@alepha/ui/chart";
+import type { reportsQuestsSchema } from "@lore/core/schemas";
+import { type I18n, formatReference, ReportsSection } from "@lore/core/web";
 import type { Infer } from "alepha";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
-
-import type { reportsQuestsSchema } from "@/api/schemas/reportsSchemas.ts";
-
-import type { I18n } from "../../../services/I18n.ts";
-import { formatReference } from "../../shared/element/typedReference.ts";
-import ReportsSection from "./ReportsSection.tsx";
 
 type ReportsQuests = Infer<typeof reportsQuestsSchema>;
 

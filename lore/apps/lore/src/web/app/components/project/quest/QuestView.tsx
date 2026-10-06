@@ -1,4 +1,12 @@
 import { Badge, Button, useDialog } from "@alepha/ui";
+import {
+  currentProjectAtom,
+  type I18n,
+  CollapsibleBlock,
+  formatReference,
+  preloadMarkdownEditor,
+  AgentPromptsMenu,
+} from "@lore/core/web";
 import { DateTimeProvider } from "alepha/datetime";
 import {
   useAction,
@@ -26,15 +34,9 @@ import { useEffect, useState } from "react";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import { currentEpicsAtom } from "@/web/app/atoms/currentEpicsAtom.ts";
-import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { currentQuestAtom } from "@/web/app/atoms/currentQuestAtom.ts";
 import { useQuestMutations } from "@/web/app/components/shared/useQuestMutations.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
-import CollapsibleBlock from "../../shared/CollapsibleBlock.tsx";
-import { formatReference } from "../../shared/element/typedReference.ts";
-import { preloadMarkdownEditor } from "../../shared/markdown-editor/MarkdownEditor.tsx";
-import { AgentPromptsMenu } from "../prompts/AgentPromptsMenu.tsx";
 import { questAgentGate } from "../prompts/questAgentGate.ts";
 import { useWorkPromptSubject } from "../prompts/useWorkPromptSubject.ts";
 import QuestAttachments from "./QuestAttachments.tsx";

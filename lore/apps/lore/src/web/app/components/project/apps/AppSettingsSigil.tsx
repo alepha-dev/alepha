@@ -7,6 +7,13 @@ import {
   useToast,
 } from "@alepha/ui";
 import { SettingsRow, SettingsSection } from "@alepha/ui/settings";
+import {
+  useRank,
+  hasCapability,
+  currentProjectAtom,
+  type I18n,
+  TokenReveal,
+} from "@lore/core/web";
 import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
@@ -14,14 +21,9 @@ import { KeyRound, RefreshCw, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import type { SigilController } from "@/api/controllers/SigilController.ts";
-import { useRank } from "@/web/app/components/shared/useRank.ts";
-import { hasCapability } from "@/web/app/services/projectCapabilities.ts";
 
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
 import { currentInstancesAtom } from "../../../atoms/currentInstancesAtom.ts";
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import type { I18n } from "../../../services/I18n.ts";
-import TokenReveal from "../../shared/TokenReveal.tsx";
 
 /**
  * The instance's credential: create it, rotate it, remove it.

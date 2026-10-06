@@ -1,13 +1,13 @@
-import { Alepha } from "alepha";
-
-import { rewriteWikiLinks } from "../../src/web/app/components/shared/element/rewriteWikiLinks.ts";
-import type { ElementReference } from "../../src/web/app/components/shared/element/wikiLinkResolver.ts";
 import {
+  rewriteWikiLinks,
+  type ElementReference,
   type AttachmentRef,
   createWikiLinkResolver,
   type WikiLinkResolver,
-} from "../../src/web/app/components/shared/element/wikiLinkResolver.ts";
-import { ElementReferenceRegistry } from "../../src/web/app/registries/ElementReferenceRegistry.ts";
+  ElementReferenceRegistry,
+} from "@lore/core/web";
+import { Alepha } from "alepha";
+
 import { KnowledgeShell } from "../../src/web/app/shell/KnowledgeShell.ts";
 import { WorkShell } from "../../src/web/app/shell/WorkShell.ts";
 

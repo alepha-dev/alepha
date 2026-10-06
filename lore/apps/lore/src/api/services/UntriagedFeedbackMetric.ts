@@ -1,16 +1,18 @@
+import {
+  DashboardMetricRegistry,
+  type DashboardMetricResolver,
+  type DashboardResolvable,
+} from "@lore/core/api";
+import {
+  type DashboardCardValue,
+  DashboardMetricCatalog,
+} from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 
 import { feedback } from "../entities/feedback.ts";
-import type { DashboardCardValue } from "../schemas/dashboardCardValueSchema.ts";
-import { DashboardMetricCatalog } from "../schemas/DashboardMetricCatalog.ts";
 import type { UntriagedFeedbackFilters } from "../schemas/untriagedFeedbackFiltersSchema.ts";
-import { DashboardMetricRegistry } from "./DashboardMetricRegistry.ts";
-import type {
-  DashboardMetricResolver,
-  DashboardResolvable,
-} from "./DashboardMetricResolver.ts";
 
 /**
  * The triage queue: how much feedback is waiting, and how long the oldest

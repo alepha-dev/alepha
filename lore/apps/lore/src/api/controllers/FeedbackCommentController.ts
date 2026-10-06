@@ -1,3 +1,8 @@
+import { LoreAudits, ProjectSecurityService } from "@lore/core/api";
+import { projects } from "@lore/core/schemas";
+// The helper the UI labels a user with, so a name reads identically in a
+// thread and on the rest of the page. Same precedent as `ProjectController`.
+import { formatReference, displayName } from "@lore/core/web";
 import { $inject, z } from "alepha";
 import { RankService } from "alepha/api/organizations";
 import { users } from "alepha/api/users";
@@ -11,19 +16,12 @@ import {
   okSchema,
 } from "alepha/server";
 
-// The helper the UI labels a user with, so a name reads identically in a
-// thread and on the rest of the page. Same precedent as `ProjectController`.
-import { formatReference } from "../../web/app/components/shared/element/typedReference.ts";
-import { displayName } from "../../web/app/services/displayName.ts";
 import { feedback } from "../entities/feedback.ts";
 import { feedbackComments } from "../entities/feedbackComments.ts";
-import { projects } from "../entities/projects.ts";
 import { feedbackCommentResourceSchema } from "../schemas/feedbackCommentResourceSchema.ts";
 import { questCommentSourceSchema } from "../schemas/questCommentSourceSchema.ts";
 import { FeedbackNotifier } from "../services/FeedbackNotifier.ts";
-import { LoreAudits } from "../services/LoreAudits.ts";
 import { MentionNotifier } from "../services/MentionNotifier.ts";
-import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 /**
  * The thread on a feedback item: the owner asking the reporter a question,

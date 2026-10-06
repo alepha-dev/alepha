@@ -8,6 +8,16 @@ import {
   useDialog,
   useToast,
 } from "@alepha/ui";
+import {
+  currentProjectAtom,
+  type I18n,
+  hasCapability,
+  AttachmentLightbox,
+  attachmentPreview,
+  formatReference,
+  useRank,
+  AgentPromptsMenu,
+} from "@lore/core/web";
 import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
@@ -18,14 +28,6 @@ import { Fragment, useState } from "react";
 import type { FeedbackController } from "@/api/controllers/FeedbackController.ts";
 import type { FeedbackResource } from "@/api/schemas/feedbackResourceSchema.ts";
 
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import type { I18n } from "../../../services/I18n.ts";
-import { hasCapability } from "../../../services/projectCapabilities.ts";
-import AttachmentLightbox from "../../shared/AttachmentLightbox.tsx";
-import { attachmentPreview } from "../../shared/attachmentPreview.ts";
-import { formatReference } from "../../shared/element/typedReference.ts";
-import { useRank } from "../../shared/useRank.ts";
-import { AgentPromptsMenu } from "../prompts/AgentPromptsMenu.tsx";
 import { useWorkPromptSubject } from "../prompts/useWorkPromptSubject.ts";
 import { QUEST_STATUS_LABEL_KEYS } from "../quest/questChips.ts";
 import QuestCreate from "../quest/QuestCreate.tsx";

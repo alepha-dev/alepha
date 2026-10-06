@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 import { LoreCoreApi } from "@lore/core/api";
+import { projects, users } from "@lore/core/schemas";
 import { LoreDeployApi } from "@lore/deploy/api";
 import { LoreKnowledgeApi } from "@lore/knowledge/api";
 import { LoreWorkApi } from "@lore/work/api";
@@ -22,11 +23,9 @@ import { AlephaServer } from "alepha/server";
 import { describe, it } from "vitest";
 
 import { blights } from "../src/api/entities/blights.ts";
-import { projects } from "../src/api/entities/projects.ts";
 import { sigilErrorGroups } from "../src/api/entities/sigilErrorGroups.ts";
 import { sigils } from "../src/api/entities/sigils.ts";
 import { sigilUniquesDaily } from "../src/api/entities/sigilUniquesDaily.ts";
-import { users } from "../src/api/entities/users.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { LoreMcp } from "../src/mcp/index.ts";
 

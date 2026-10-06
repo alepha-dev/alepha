@@ -1,7 +1,7 @@
+import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { Gauge } from "lucide-react";
 
-import type { I18n } from "../../../services/I18n.ts";
 import AppAnalyticsEstimatedBadge from "./AppAnalyticsEstimatedBadge.tsx";
 import AppInsightsControls from "./AppInsightsControls.tsx";
 import { VITAL_METRICS, vitalThresholds } from "./appVitalMetrics.ts";

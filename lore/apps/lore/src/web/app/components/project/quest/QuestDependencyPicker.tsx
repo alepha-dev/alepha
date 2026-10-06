@@ -12,6 +12,7 @@ import {
   CommandItem,
   CommandList,
 } from "@alepha/ui/command";
+import { type I18n, formatReference } from "@lore/core/web";
 import { useClient, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Check, ChevronDown, Link2, X } from "lucide-react";
@@ -19,9 +20,6 @@ import { useMemo, useState } from "react";
 
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
-
-import { formatReference } from "../../shared/element/typedReference.ts";
 
 export interface QuestDependencyPickerProps {
   projectId: number;

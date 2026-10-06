@@ -1,3 +1,10 @@
+import {
+  $ownsProject,
+  LoreAudits,
+  ProjectSecurityService,
+} from "@lore/core/api";
+import { projects } from "@lore/core/schemas";
+import { displayName } from "@lore/core/web";
 import { $inject, type Infer, z } from "alepha";
 import { RankService } from "alepha/api/organizations";
 import { users } from "alepha/api/users";
@@ -11,10 +18,8 @@ import {
   okSchema,
 } from "alepha/server";
 
-import { displayName } from "../../web/app/services/displayName.ts";
 import { estateProjects } from "../entities/estateProjects.ts";
 import { type Estate, estates } from "../entities/estates.ts";
-import { projects } from "../entities/projects.ts";
 import { createEstateBodySchema } from "../schemas/createEstateBodySchema.ts";
 import {
   type LentEstateResource,
@@ -22,11 +27,8 @@ import {
   type MintedLentEstate,
   mintedLentEstateSchema,
 } from "../schemas/lentEstateResourceSchema.ts";
-import { $ownsProject } from "../security/$ownsProject.ts";
 import { EstateCloudflareService } from "../services/EstateCloudflareService.ts";
 import { EstateService } from "../services/EstateService.ts";
-import { LoreAudits } from "../services/LoreAudits.ts";
-import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 export type { LentEstateResource, MintedLentEstate };
 

@@ -1,3 +1,4 @@
+import type { Project } from "@lore/core/schemas";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -8,7 +9,6 @@ import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { QuestController } from "../src/api/controllers/QuestController.ts";
-import type { Project } from "../src/api/entities/projects.ts";
 import { LoreApi } from "../src/api/index.ts";
 import {
   createTestEpic,

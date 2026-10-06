@@ -1,10 +1,8 @@
+import { currentProjectAtom, formatReference } from "@lore/core/web";
 import { useClient, useQuery, useStore } from "alepha/react";
 import { useRouter } from "alepha/react/router";
 
 import type { FeedbackController } from "@/api/controllers/FeedbackController.ts";
-
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import { formatReference } from "../../shared/element/typedReference.ts";
 
 /**
  * The `#P` reference and the URL for a feedback row a quest came from.

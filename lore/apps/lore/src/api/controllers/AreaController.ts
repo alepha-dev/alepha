@@ -1,3 +1,4 @@
+import { $ownsProject, ProjectSecurityService } from "@lore/core/api";
 import { $inject, z } from "alepha";
 import { $repository } from "alepha/orm";
 import { OwnedResourceProvider } from "alepha/security";
@@ -10,9 +11,7 @@ import {
   areaDetailSchema,
   areaResourceSchema,
 } from "../schemas/areaResourceSchema.ts";
-import { $ownsProject } from "../security/$ownsProject.ts";
 import { AreaService } from "../services/AreaService.ts";
-import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 /**
  * The Area management surface, split out of `ProjectController` (901

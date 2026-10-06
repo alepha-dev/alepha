@@ -1,11 +1,12 @@
+import {
+  type WikiLinkPreviewProps,
+  formatReference,
+  WikiLinkPreviewState,
+} from "@lore/core/web";
 import { useClient, useQuery } from "alepha/react";
 
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
-
-import type { WikiLinkPreviewProps } from "../../../registries/ElementReferenceRegistry.ts";
-import { formatReference } from "../../shared/element/typedReference.ts";
-import WikiLinkPreviewState from "../../shared/element/WikiLinkPreviewState.tsx";
 
 /**
  * A quest's hover card: its reference, title, area, priority and status.

@@ -1,8 +1,8 @@
+import {
+  ProjectShellRegistry,
+  ProjectSettingsCapabilitySection,
+} from "@lore/core/web";
 import { useInject } from "alepha/react";
-
-import { ProjectShellRegistry } from "@/web/app/registries/ProjectShellRegistry.ts";
-
-import ProjectSettingsCapabilitySection from "./ProjectSettingsCapabilitySection.tsx";
 
 /**
  * Folios > Features: the Knowledge capability's options. Its master switch

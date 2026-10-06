@@ -1,5 +1,6 @@
+import type { PaletteColor } from "@lore/core/schemas";
+
 import type { AreaResource } from "@/api/schemas/areaResourceSchema.ts";
-import type { PaletteColor } from "@/api/schemas/paletteColorSchema.ts";
 
 /**
  * A palette token resolved to a dot class.

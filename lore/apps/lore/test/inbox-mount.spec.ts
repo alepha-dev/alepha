@@ -82,8 +82,8 @@ describe("where the inbox bell is mounted", () => {
 
     expect(importers.sort()).toEqual(
       [
-        "apps/lore/src/web/app/components/home/HomeHeader.tsx",
-        "apps/lore/src/web/app/components/project/ProjectInboxButton.tsx",
+        "packages/@lore/core/src/web/app/components/home/HomeHeader.tsx",
+        "packages/@lore/core/src/web/app/components/project/ProjectInboxButton.tsx",
       ].sort(),
     );
   });
@@ -92,7 +92,7 @@ describe("where the inbox bell is mounted", () => {
     const users = filesMentioning("<ProjectInboxButton");
 
     expect(users).toEqual([
-      "apps/lore/src/web/app/components/project/ProjectView.tsx",
+      "packages/@lore/core/src/web/app/components/project/ProjectView.tsx",
     ]);
   });
 

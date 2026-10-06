@@ -1,10 +1,9 @@
+import { projects, users } from "@lore/core/schemas";
 import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
 import { estates } from "./estates.ts";
-import { projects } from "./projects.ts";
 import { sigils } from "./sigils.ts";
-import { users } from "./users.ts";
 
 /**
  * One deployed copy of an app: `club` in `b14-production`, `lore` in

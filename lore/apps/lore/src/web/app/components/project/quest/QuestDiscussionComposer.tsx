@@ -1,4 +1,5 @@
 import { Button, UserAvatar } from "@alepha/ui";
+import { currentProjectAtom, type I18n, LoreEditor } from "@lore/core/web";
 import { useAction, useClient, useStore } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
@@ -8,10 +9,6 @@ import { useState } from "react";
 import type { QuestCommentController } from "@/api/controllers/QuestCommentController.ts";
 import type { QuestCommentResource } from "@/api/schemas/questCommentResourceSchema.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
-import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
-
-import LoreEditor from "../../shared/element/LoreEditor.tsx";
 
 export interface QuestDiscussionComposerProps {
   quest: QuestResource;

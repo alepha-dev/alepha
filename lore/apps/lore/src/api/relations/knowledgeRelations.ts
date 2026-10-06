@@ -1,3 +1,4 @@
+import { projects } from "@lore/core/schemas";
 import { users } from "alepha/api/users";
 import { $relations } from "alepha/orm";
 
@@ -5,7 +6,6 @@ import { folioAttachments } from "../entities/folioAttachments.ts";
 import { folioDirectories } from "../entities/folioDirectories.ts";
 import { folioRevisions } from "../entities/folioRevisions.ts";
 import { folios } from "../entities/folios.ts";
-import { projects } from "../entities/projects.ts";
 
 /**
  * Knowledge's entity graph: folios, their revisions, directories and

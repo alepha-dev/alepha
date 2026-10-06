@@ -91,12 +91,16 @@
     "vitest": "^5.0.2"
   },
   "peerDependencies": {
+    "@lore/core": "*",
     "alepha": "^0.30.0",
     "lore": "*",
     "react": "*",
     "react-dom": "*"
   },
   "peerDependenciesMeta": {
+    "@lore/core": {
+      "optional": true
+    },
     "alepha": {
       "optional": true
     },

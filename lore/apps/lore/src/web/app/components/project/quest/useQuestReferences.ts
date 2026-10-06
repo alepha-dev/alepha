@@ -1,12 +1,13 @@
+import {
+  type ElementReferenceSet,
+  type ElementRef,
+  referencedIds,
+  formatReference,
+} from "@lore/core/web";
 import { useClient, useQuery } from "alepha/react";
 import { useMemo } from "react";
 
 import type { QuestController } from "@/api/controllers/QuestController.ts";
-
-import type { ElementReferenceSet } from "../../../registries/ElementReferenceRegistry.ts";
-import type { ElementRef } from "../../shared/element/elementRef.ts";
-import { referencedIds } from "../../shared/element/referencedIds.ts";
-import { formatReference } from "../../shared/element/typedReference.ts";
 
 /**
  * The quests an element body can reference, registered by `WorkShell` on

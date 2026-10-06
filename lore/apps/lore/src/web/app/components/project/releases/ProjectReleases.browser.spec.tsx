@@ -1,4 +1,6 @@
 import { DialogProvider } from "@alepha/ui";
+import { projectFixture } from "@lore/core/testing";
+import { currentProjectAtom, I18n } from "@lore/core/web";
 import {
   fireEvent,
   render,
@@ -16,11 +18,8 @@ import { LinkProvider } from "alepha/server/links";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
-import { projectFixture } from "@/testing/projectFixture.ts";
 
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { currentReleasesAtom } from "../../../atoms/currentReleasesAtom.ts";
-import { I18n } from "../../../services/I18n.ts";
 import ProjectReleases from "./ProjectReleases.tsx";
 
 const RELEASED = "2026-09-03T10:00:00.000Z";

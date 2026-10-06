@@ -1,10 +1,9 @@
+import { DashboardCardService, DashboardScopeService } from "@lore/core/api";
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 import { NotFoundError } from "alepha/server";
 
 import { sigils } from "../entities/sigils.ts";
-import { DashboardCardService } from "./DashboardCardService.ts";
-import { DashboardScopeService } from "./DashboardScopeService.ts";
 
 /**
  * Deploy's part of the dashboard, registered on core (#E75, #Q2623): how a

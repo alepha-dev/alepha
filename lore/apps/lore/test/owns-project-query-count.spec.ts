@@ -1,3 +1,4 @@
+import { type Project, projects } from "@lore/core/schemas";
 import { Alepha, z } from "alepha";
 import { RankService } from "alepha/api/organizations";
 import { organizationMembers as members } from "alepha/api/organizations";
@@ -19,7 +20,6 @@ import {
 } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { type Project, projects } from "../src/api/entities/projects.ts";
 import { LoreApi } from "../src/api/index.ts";
 import {
   createTestMember,

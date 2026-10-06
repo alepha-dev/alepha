@@ -1,18 +1,20 @@
+import {
+  $ownsProject,
+  ProjectResourceMapper,
+  ProjectSecurityService,
+} from "@lore/core/api";
+import { type Project, projects } from "@lore/core/schemas";
+import { projectResourceSchema } from "@lore/core/schemas";
 import { $inject, z } from "alepha";
 import { $repository } from "alepha/orm";
 import { OwnedResourceProvider } from "alepha/security";
 import { $action, BadRequestError } from "alepha/server";
 
-import { type Project, projects } from "../entities/projects.ts";
 import { type Quest, quests } from "../entities/quests.ts";
-import { projectResourceSchema } from "../schemas/projectResourceSchema.ts";
 import { byPriorityDesc } from "../schemas/questPriority.ts";
 import { questResourceSchema } from "../schemas/questResourceSchema.ts";
-import { $ownsProject } from "../security/$ownsProject.ts";
 import { BoardRank } from "../services/BoardRank.ts";
 import { EpicVisibilityService } from "../services/EpicVisibilityService.ts";
-import { ProjectResourceMapper } from "../services/ProjectResourceMapper.ts";
-import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 import { QuestResourceMapper } from "../services/QuestResourceMapper.ts";
 
 export class KanbanController {

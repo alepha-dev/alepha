@@ -7,6 +7,7 @@ import {
   CardTitle,
   useToast,
 } from "@alepha/ui";
+import { currentProjectAtom, type I18n, useRank } from "@lore/core/web";
 import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
@@ -17,9 +18,6 @@ import { acceptedRuntimes } from "@/api/schemas/acceptedRuntimes.ts";
 import type { ArtifactGroup } from "@/api/schemas/artifactGroupSchema.ts";
 
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import type { I18n } from "../../../services/I18n.ts";
-import { useRank } from "../../shared/useRank.ts";
 import AppArtifactsList from "./AppArtifactsList.tsx";
 import AppDeployRuns from "./AppDeployRuns.tsx";
 

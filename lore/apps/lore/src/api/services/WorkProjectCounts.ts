@@ -1,3 +1,4 @@
+import { ProjectCountRegistry } from "@lore/core/api";
 import { $inject } from "alepha";
 import { $repository, sql } from "alepha/orm";
 
@@ -5,7 +6,6 @@ import { epics } from "../entities/epics.ts";
 import { feedback } from "../entities/feedback.ts";
 import { AreaService } from "./AreaService.ts";
 import { OpenQuestScope } from "./OpenQuestScope.ts";
-import { ProjectCountRegistry } from "./ProjectCountRegistry.ts";
 
 /**
  * Work's per-project counts, registered on core's `ProjectCountRegistry`

@@ -9,6 +9,7 @@ import {
 } from "@alepha/ui";
 import { AccountPage } from "@alepha/ui/account";
 import { DataTable } from "@alepha/ui/table";
+import type { I18n } from "@lore/core/web";
 import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
@@ -19,7 +20,6 @@ import type { EstateController } from "@/api/controllers/EstateController.ts";
 import type { ProjectEstateController } from "@/api/controllers/ProjectEstateController.ts";
 import type { EstateLoan } from "@/api/schemas/ownedEstateResourceSchema.ts";
 import { currentEstateAtom } from "@/web/app/atoms/currentEstateAtom.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
 import MyEstateSecretDialog from "../account/MyEstateSecretDialog.tsx";
 

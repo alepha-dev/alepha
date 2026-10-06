@@ -7,6 +7,15 @@ import {
 } from "@alepha/ui";
 import { useDetailTab, PlateLayout, type PlateTab } from "@alepha/ui/shell";
 import {
+  currentProjectAtom,
+  DocumentSinkRegistry,
+  type LinkedCollection,
+  ResourceTabRegistry,
+  type ResourceTabSubject,
+  type I18n,
+  formatReference,
+} from "@lore/core/web";
+import {
   useAction,
   useClient,
   useInject,
@@ -22,17 +31,8 @@ import { useState } from "react";
 import type { ReleaseController } from "@/api/controllers/ReleaseController.ts";
 import type { ReleaseChangelogGroup } from "@/api/schemas/releaseChangelogGroupSchema.ts";
 import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
-import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { currentReleasesAtom } from "@/web/app/atoms/currentReleasesAtom.ts";
-import { DocumentSinkRegistry } from "@/web/app/registries/DocumentSinkRegistry.ts";
-import {
-  type LinkedCollection,
-  ResourceTabRegistry,
-  type ResourceTabSubject,
-} from "@/web/app/registries/ResourceTabRegistry.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
-import { formatReference } from "../../shared/element/typedReference.ts";
 import ReleaseChangelogPanel from "./ReleaseChangelogPanel.tsx";
 import ReleaseContents, {
   type ReleaseContentsData,

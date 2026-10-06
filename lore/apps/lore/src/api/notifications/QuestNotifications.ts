@@ -1,8 +1,7 @@
+import { NotificationHtmlEscaper } from "@lore/core/api";
+import { formatReference } from "@lore/core/web";
 import { $inject, z } from "alepha";
 import { $notification } from "alepha/api/notifications";
-
-import { formatReference } from "../../web/app/components/shared/element/typedReference.ts";
-import { NotificationHtmlEscaper } from "./NotificationHtmlEscaper.ts";
 
 /**
  * Email templates for the Quest module. Currently just the per-quest

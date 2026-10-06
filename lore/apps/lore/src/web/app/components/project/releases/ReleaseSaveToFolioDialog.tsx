@@ -1,9 +1,8 @@
 import { Button, Input, Label } from "@alepha/ui";
+import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { BookMarked } from "lucide-react";
 import { useState } from "react";
-
-import type { I18n } from "@/web/app/services/I18n.ts";
 
 export interface ReleaseSaveToFolioDialogProps {
   defaultTitle: string;

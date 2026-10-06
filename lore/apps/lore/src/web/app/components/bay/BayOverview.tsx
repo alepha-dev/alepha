@@ -1,10 +1,9 @@
 import { Card, CardContent } from "@alepha/ui";
 import { AccountPage } from "@alepha/ui/account";
+import type { I18n } from "@lore/core/web";
 import { DateTimeProvider } from "alepha/datetime";
 import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-
-import type { I18n } from "@/web/app/services/I18n.ts";
 
 import BayStatsChart from "./BayStatsChart.client.tsx";
 import BayUsageBar from "./BayUsageBar.tsx";

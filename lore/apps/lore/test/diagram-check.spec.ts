@@ -1,6 +1,5 @@
+import { DiagramCheckService } from "@lore/core/mcp";
 import { describe, it } from "vitest";
-
-import { DiagramCheckService } from "../src/mcp/services/DiagramCheckService.ts";
 
 /**
  * The server-side diagram check that reports into the tool result (quest

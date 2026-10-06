@@ -1,10 +1,9 @@
+import { LoreInboxNotifications, ProjectRoster } from "@lore/core/api";
+import { type Project } from "@lore/core/schemas";
 import { $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
 
-import type { Project } from "../entities/projects.ts";
 import type { Release } from "../entities/releases.ts";
-import { LoreInboxNotifications } from "../notifications/LoreInboxNotifications.ts";
-import { ProjectRoster } from "./ProjectRoster.ts";
 
 /**
  * Tells a project that one of its releases shipped.

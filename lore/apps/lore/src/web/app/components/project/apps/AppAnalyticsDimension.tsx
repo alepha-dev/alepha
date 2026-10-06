@@ -1,5 +1,6 @@
 import { Button } from "@alepha/ui";
 import { DataTable } from "@alepha/ui/table";
+import { currentProjectAtom, type I18n } from "@lore/core/web";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter, useRouterState } from "alepha/react/router";
@@ -9,8 +10,6 @@ import type { InsightsController } from "@/api/controllers/InsightsController.ts
 import type { InsightsDimensionResource } from "@/api/schemas/insightsDimensionResourceSchema.ts";
 
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import type { I18n } from "../../../services/I18n.ts";
 import {
   APP_INSIGHTS_FILTER_KEYS,
   useAppInsightsFilters,

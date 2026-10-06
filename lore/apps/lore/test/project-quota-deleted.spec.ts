@@ -1,3 +1,5 @@
+import { ProjectController, ProjectLimits } from "@lore/core/api";
+import { projects } from "@lore/core/schemas";
 import { Alepha, z } from "alepha";
 import { organizationMembers as members } from "alepha/api/organizations";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
@@ -8,10 +10,7 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { describe, it } from "vitest";
 
-import { ProjectController } from "../src/api/controllers/ProjectController.ts";
-import { projects } from "../src/api/entities/projects.ts";
 import { LoreApi } from "../src/api/index.ts";
-import { ProjectLimits } from "../src/api/services/ProjectLimits.ts";
 
 /**
  * The project quota counts what you OWN AND STILL HAVE.

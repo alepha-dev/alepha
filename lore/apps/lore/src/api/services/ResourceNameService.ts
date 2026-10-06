@@ -1,9 +1,9 @@
+import { projects } from "@lore/core/schemas";
 import { $repository } from "alepha/orm";
 import { BadRequestError } from "alepha/server";
 
 import { type AppInstance, appInstances } from "../entities/appInstances.ts";
 import { type Estate, estates } from "../entities/estates.ts";
-import { projects } from "../entities/projects.ts";
 
 /**
  * The name a deployed copy carries in its estate, decided on its first deploy

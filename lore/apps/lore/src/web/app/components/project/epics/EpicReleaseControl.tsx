@@ -1,5 +1,6 @@
 import { useToast } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
+import type { I18n } from "@lore/core/web";
 import { z } from "alepha";
 import { useClient, useStore } from "alepha/react";
 import { useForm } from "alepha/react/form";
@@ -10,7 +11,6 @@ import { useState } from "react";
 import type { EpicController } from "@/api/controllers/EpicController.ts";
 import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
 import { currentReleasesAtom } from "@/web/app/atoms/currentReleasesAtom.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
 import { useReleaseCascadeToast } from "../releases/useReleaseCascadeToast.ts";
 

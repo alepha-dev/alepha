@@ -1,3 +1,4 @@
+import { FileAccessRegistry } from "@lore/core/api";
 import { $inject } from "alepha";
 import { $repository, DatabaseProvider, sql } from "alepha/orm";
 
@@ -5,7 +6,6 @@ import { feedback } from "../entities/feedback.ts";
 import { quests } from "../entities/quests.ts";
 import { attachmentLookupSchema } from "../schemas/attachmentLookupSchema.ts";
 import { FeedbackRateLimiter } from "./FeedbackRateLimiter.ts";
-import { FileAccessRegistry } from "./FileAccessRegistry.ts";
 
 /**
  * Who may read Work's attachments, registered on core's `FileAccessRegistry`

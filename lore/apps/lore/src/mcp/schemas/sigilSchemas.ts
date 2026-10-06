@@ -1,9 +1,8 @@
+import { APP_NAME_MAX_LENGTH, projectParamsSchema } from "@lore/core/schemas";
 import { z } from "alepha";
 
 import { appInstances } from "../../api/entities/appInstances.ts";
-import { APP_NAME_MAX_LENGTH } from "../../api/schemas/appNameSchema.ts";
 import { sigilResourceSchema } from "../../api/schemas/sigilResourceSchema.ts";
-import { projectParamsSchema } from "./projectParamsSchema.ts";
 
 /**
  * One credential, and the deployed copy it belongs to.

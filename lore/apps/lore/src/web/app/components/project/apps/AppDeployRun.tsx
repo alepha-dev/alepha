@@ -1,11 +1,10 @@
 import { TimeAgo, Badge, Button, useDialog, useToast } from "@alepha/ui";
+import type { I18n } from "@lore/core/web";
 import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useEffect, useState } from "react";
 
 import type { DeployController } from "@/api/controllers/DeployController.ts";
-
-import type { I18n } from "../../../services/I18n.ts";
 
 export interface AppDeployRunProps {
   run: Record<string, any>;

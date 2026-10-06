@@ -1,8 +1,8 @@
+import { ProjectCountRegistry } from "@lore/core/api";
 import { $inject } from "alepha";
 import { $repository, sql } from "alepha/orm";
 
 import { blights } from "../entities/blights.ts";
-import { ProjectCountRegistry } from "./ProjectCountRegistry.ts";
 
 /**
  * Deploy's per-project counts, registered on core's `ProjectCountRegistry`

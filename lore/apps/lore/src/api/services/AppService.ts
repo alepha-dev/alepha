@@ -1,3 +1,7 @@
+import {
+  APP_NAME_PATTERN,
+  SIGIL_NAME_PAIR_MAX_LENGTH,
+} from "@lore/core/schemas";
 import { $inject, Alepha } from "alepha";
 import { $repository, DbConflictError } from "alepha/orm";
 import { BadRequestError, ConflictError, NotFoundError } from "alepha/server";
@@ -5,10 +9,6 @@ import { BadRequestError, ConflictError, NotFoundError } from "alepha/server";
 import { type AppInstance, appInstances } from "../entities/appInstances.ts";
 import { estateProjects } from "../entities/estateProjects.ts";
 import { SIGIL_KINDS, sigils, type Sigil } from "../entities/sigils.ts";
-import {
-  APP_NAME_PATTERN,
-  SIGIL_NAME_PAIR_MAX_LENGTH,
-} from "../schemas/appNameSchema.ts";
 import { defaultAppInstance } from "../schemas/defaultAppInstance.ts";
 import { AppSecretService } from "./AppSecretService.ts";
 import { SigilTokenService } from "./SigilTokenService.ts";

@@ -1,8 +1,8 @@
+import type { Project } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 
 import { epics } from "../entities/epics.ts";
-import type { Project } from "../entities/projects.ts";
 import { quests } from "../entities/quests.ts";
 import { releases } from "../entities/releases.ts";
 import { compareReleaseTags } from "../releaseOrder.ts";

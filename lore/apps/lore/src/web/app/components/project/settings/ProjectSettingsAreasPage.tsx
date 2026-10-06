@@ -14,6 +14,7 @@ import {
   useToast,
 } from "@alepha/ui";
 import { settingsCardEdge } from "@alepha/ui/settings";
+import { descriptionSnippet, type I18n } from "@lore/core/web";
 import { DateTimeProvider } from "alepha/datetime";
 import { useAction, useClient, useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -24,8 +25,6 @@ import { useState } from "react";
 
 import type { AreaController } from "@/api/controllers/AreaController.ts";
 import type { AreaResource } from "@/api/schemas/areaResourceSchema.ts";
-import { descriptionSnippet } from "@/web/app/services/descriptionSnippet.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
 import AreaMergeDialog from "./AreaMergeDialog.tsx";
 

@@ -1,5 +1,6 @@
 import { useToast } from "@alepha/ui";
 import type { DragEndEvent } from "@dnd-kit/core";
+import type { I18n } from "@lore/core/web";
 import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import type { Dispatch, SetStateAction } from "react";
@@ -8,7 +9,6 @@ import type { KanbanController } from "@/api/controllers/KanbanController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 
-import type { I18n } from "../../services/I18n.ts";
 import { useQuestMutations } from "../shared/useQuestMutations.ts";
 import type { ColumnDescriptor, ColumnKind } from "./KanbanColumn.tsx";
 

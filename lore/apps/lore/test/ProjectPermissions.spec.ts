@@ -1,3 +1,8 @@
+import {
+  ProjectController,
+  ProjectPermissions,
+  ProjectSecurityService,
+} from "@lore/core/api";
 import { Alepha } from "alepha";
 import { organizationMembers as members } from "alepha/api/organizations";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
@@ -12,10 +17,7 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake } from "alepha/testing/faker";
 import { describe, it } from "vitest";
 
-import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { LoreApi } from "../src/api/index.ts";
-import { ProjectPermissions } from "../src/api/security/ProjectPermissions.ts";
-import { ProjectSecurityService } from "../src/api/services/ProjectSecurityService.ts";
 
 /**
  * Direct handle onto `members`, to read the owner's membership row the way

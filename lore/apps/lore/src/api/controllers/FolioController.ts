@@ -1,3 +1,12 @@
+import {
+  type ResourceRef,
+  $ownsProject,
+  BestEffort,
+  BoundParameters,
+  LoreAudits,
+  ResourceLinkService,
+} from "@lore/core/api";
+import type { LinkSourceKind, LinkTargetKind } from "@lore/core/schemas";
 import { $inject, z } from "alepha";
 import { users } from "alepha/api/users";
 import { CryptoProvider } from "alepha/crypto";
@@ -19,7 +28,6 @@ import {
   folios,
 } from "../entities/folios.ts";
 import { knowledgeRelations } from "../relations/knowledgeRelations.ts";
-import type { ResourceRef } from "../resources/ResourceRegistry.ts";
 import { folioIdParamsSchema } from "../schemas/folioIdParamsSchema.ts";
 import { folioListQuerySchema } from "../schemas/folioListQuerySchema.ts";
 import {
@@ -32,11 +40,6 @@ import {
   type FolioTreeEntry,
   folioTreeEntrySchema,
 } from "../schemas/folioTreeEntrySchema.ts";
-import type { LinkSourceKind } from "../schemas/linkSourceKindSchema.ts";
-import type { LinkTargetKind } from "../schemas/linkTargetKindSchema.ts";
-import { $ownsProject } from "../security/$ownsProject.ts";
-import { BestEffort } from "../services/BestEffort.ts";
-import { BoundParameters } from "../services/BoundParameters.ts";
 import { FolioAttachmentService } from "../services/FolioAttachmentService.ts";
 import {
   FolioHistoryService,
@@ -44,8 +47,6 @@ import {
 } from "../services/FolioHistoryService.ts";
 import { FolioNameService } from "../services/FolioNameService.ts";
 import { FolioRevisionStatsService } from "../services/FolioRevisionStatsService.ts";
-import { LoreAudits } from "../services/LoreAudits.ts";
-import { ResourceLinkService } from "../services/ResourceLinkService.ts";
 
 /**
  * The columns of `folio_directories` any ancestor walk needs — the tree

@@ -1,15 +1,15 @@
+import { LoreAudits } from "@lore/core/api";
+import { formatReference } from "@lore/core/web";
 import { $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, DbEntityNotFoundError, sql } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 import { BadRequestError } from "alepha/server";
 
-import { formatReference } from "../../web/app/components/shared/element/typedReference.ts";
 import { type Epic, epics } from "../entities/epics.ts";
 import { type Quest, quests } from "../entities/quests.ts";
 import type { ReleaseCascade } from "../schemas/releaseCascadeSchema.ts";
 import { DefaultReleaseService } from "./DefaultReleaseService.ts";
-import { LoreAudits } from "./LoreAudits.ts";
 import { ReleaseCascadeService } from "./ReleaseCascadeService.ts";
 
 /**

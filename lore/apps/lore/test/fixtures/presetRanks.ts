@@ -1,8 +1,6 @@
+import { ProjectRankPresets, ProjectSecurityService } from "@lore/core/api";
 import { type Alepha, AlephaError } from "alepha";
 import { RankService } from "alepha/api/organizations";
-
-import { ProjectRankPresets } from "@/api/security/ProjectRankPresets.ts";
-import { ProjectSecurityService } from "@/api/services/ProjectSecurityService.ts";
 
 /**
  * Create Admin, Contributor and Viewer in a project, the way its owner would

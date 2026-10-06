@@ -1,9 +1,8 @@
+import { displayName, matchMentions } from "@lore/core/web";
 import { describe, it } from "vitest";
 
 import { expandCommentReferences } from "../src/web/app/components/project/quest/commentReferences.ts";
 import { outsideProtected } from "../src/web/app/components/project/quest/commentReferences.ts";
-import { displayName } from "../src/web/app/services/displayName.ts";
-import { matchMentions } from "../src/web/app/services/mentions.ts";
 
 /**
  * The roster, built the way BOTH sides have to build it: through

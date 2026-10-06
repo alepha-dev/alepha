@@ -1,12 +1,11 @@
+import { projects, users } from "@lore/core/schemas";
 import { Alepha } from "alepha";
 import { organizations } from "alepha/api/organizations";
 import { $repository, DatabaseProvider, sql } from "alepha/orm";
 import { describe, it } from "vitest";
 
 import { blights } from "../src/api/entities/blights.ts";
-import { projects } from "../src/api/entities/projects.ts";
 import { sigils } from "../src/api/entities/sigils.ts";
-import { users } from "../src/api/entities/users.ts";
 
 describe("sigil entities", () => {
   it("identifies a sigil by name within a project", async ({ expect }) => {

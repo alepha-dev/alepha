@@ -1,4 +1,5 @@
 import { Badge } from "@alepha/ui";
+import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { ArrowUp } from "lucide-react";
 
@@ -8,7 +9,6 @@ import {
   STATUS_LABEL_KEYS,
   STATUS_TONE,
 } from "@/web/app/components/project/epics/epicStatus.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
 import RoadmapEpicRowSegment from "./RoadmapEpicRowSegment.tsx";
 

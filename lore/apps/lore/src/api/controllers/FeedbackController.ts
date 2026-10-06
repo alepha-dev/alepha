@@ -1,4 +1,11 @@
 import { sigilScrubUrl } from "@alepha/lore/sigil";
+import {
+  $ownsProject,
+  BoundParameters,
+  LoreAudits,
+  ProjectSecurityService,
+} from "@lore/core/api";
+import { type Project, projects, type User } from "@lore/core/schemas";
 import { $inject, z } from "alepha";
 import { $storage, FileService, files } from "alepha/api/files";
 import { RankService } from "alepha/api/organizations";
@@ -15,9 +22,7 @@ import {
 import { FileSystemProvider } from "alepha/system";
 
 import { type Feedback, feedback } from "../entities/feedback.ts";
-import { type Project, projects } from "../entities/projects.ts";
 import type { Quest } from "../entities/quests.ts";
-import type { User } from "../entities/users.ts";
 import { workRelations } from "../relations/workRelations.ts";
 import { feedbackBodySchema } from "../schemas/feedbackBodySchema.ts";
 import {
@@ -29,12 +34,8 @@ import {
   type MyFeedbackResource,
   myFeedbackResourceSchema,
 } from "../schemas/myFeedbackResourceSchema.ts";
-import { $ownsProject } from "../security/$ownsProject.ts";
-import { BoundParameters } from "../services/BoundParameters.ts";
 import { FeedbackNotifier } from "../services/FeedbackNotifier.ts";
 import { FeedbackRateLimiter } from "../services/FeedbackRateLimiter.ts";
-import { LoreAudits } from "../services/LoreAudits.ts";
-import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 /**
  * A feedback row carrying the relations a resource needs, as `include`

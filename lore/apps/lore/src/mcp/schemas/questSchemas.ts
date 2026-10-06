@@ -1,17 +1,19 @@
+import {
+  attachmentPushResultSchema,
+  DIAGRAM_CAPABILITY,
+  diagramWarningsShape,
+  entityRefSchema,
+  epicStatusSchema,
+  prioritySchema,
+  projectParamsSchema,
+} from "@lore/core/schemas";
 import { z } from "alepha";
 
 import { MAX_QUEST_OBJECTIVES } from "@/api/schemas/questObjectivesLimit.ts";
 
 import { questStatusSchema } from "../../api/schemas/questResourceSchema.ts";
-import { attachmentPushResultSchema } from "./attachmentPushResultSchema.ts";
-import { DIAGRAM_CAPABILITY } from "./diagramCapability.ts";
-import { diagramWarningsShape } from "./diagramWarningsSchema.ts";
-import { entityRefSchema } from "./entityRefSchema.ts";
-import { epicStatusSchema } from "./epicStatusSchema.ts";
 import { objectiveInputSchema } from "./objectiveInputSchema.ts";
 import { objectiveSchema } from "./objectiveSchema.ts";
-import { prioritySchema } from "./prioritySchema.ts";
-import { projectParamsSchema } from "./projectParamsSchema.ts";
 import { questSizeSchema } from "./questSizeSchema.ts";
 
 // -----------------------------------------------------------------------------

@@ -1,8 +1,6 @@
+import { projects, users } from "@lore/core/schemas";
 import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
-
-import { projects } from "./projects.ts";
-import { users } from "./users.ts";
 
 /**
  * A project-wide **blight ignore rule** — a case-insensitive substring that,

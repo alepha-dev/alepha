@@ -1,3 +1,4 @@
+import { HomeController, ProjectController } from "@lore/core/api";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -7,8 +8,6 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { describe, it } from "vitest";
 
-import { HomeController } from "../src/api/controllers/HomeController.ts";
-import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { blights } from "../src/api/entities/blights.ts";
 import { epics } from "../src/api/entities/epics.ts";
 import { feedback } from "../src/api/entities/feedback.ts";

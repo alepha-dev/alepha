@@ -1,4 +1,5 @@
 import { useDialog } from "@alepha/ui";
+import type { I18n } from "@lore/core/web";
 import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
@@ -7,7 +8,6 @@ import { useState } from "react";
 import type { AreaController } from "@/api/controllers/AreaController.ts";
 import type { AreaDetail } from "@/api/schemas/areaResourceSchema.ts";
 import { currentAreasAtom } from "@/web/app/atoms/currentAreasAtom.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
 import AreaRenameDialog from "./AreaRenameDialog.tsx";
 import ProjectSettingsAreaDescription from "./ProjectSettingsAreaDescription.tsx";

@@ -1,12 +1,11 @@
 import { Button, Card, CardContent, cn } from "@alepha/ui";
 import { settingsCardEdge } from "@alepha/ui/settings";
+import { currentProjectAtom, type I18n } from "@lore/core/web";
 import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Download } from "lucide-react";
 
 import type { ProjectQuestPortabilityController } from "@/api/controllers/ProjectQuestPortabilityController.ts";
-import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
 /**
  * Data section: export the project's quests as CSV. Rendered inside the

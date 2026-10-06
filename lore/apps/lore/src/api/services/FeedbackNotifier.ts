@@ -1,11 +1,9 @@
+import { LoreInboxNotifications } from "@lore/core/api";
+import { projects, users } from "@lore/core/schemas";
+import { formatReference } from "@lore/core/web";
 import { $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
-
-import { formatReference } from "../../web/app/components/shared/element/typedReference.ts";
-import { projects } from "../entities/projects.ts";
-import { users } from "../entities/users.ts";
-import { LoreInboxNotifications } from "../notifications/LoreInboxNotifications.ts";
 
 /**
  * The feedback item a message is about, as its callers already hold it.

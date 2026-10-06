@@ -1,13 +1,15 @@
+import {
+  DashboardMetricRegistry,
+  type DashboardMetricResolver,
+  type DashboardResolvable,
+} from "@lore/core/api";
+import {
+  type DashboardCardValue,
+  DashboardMetricCatalog,
+} from "@lore/core/schemas";
 import { $inject } from "alepha";
 
-import type { DashboardCardValue } from "../schemas/dashboardCardValueSchema.ts";
-import { DashboardMetricCatalog } from "../schemas/DashboardMetricCatalog.ts";
 import type { OpenBlightsFilters } from "../schemas/openBlightsFiltersSchema.ts";
-import { DashboardMetricRegistry } from "./DashboardMetricRegistry.ts";
-import type {
-  DashboardMetricResolver,
-  DashboardResolvable,
-} from "./DashboardMetricResolver.ts";
 import { OpenBlightCounter } from "./OpenBlightCounter.ts";
 
 /**

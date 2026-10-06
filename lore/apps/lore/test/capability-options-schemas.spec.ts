@@ -1,7 +1,7 @@
+import { CapabilityRegistry } from "@lore/core/schemas";
 import { describe, it } from "vitest";
 
 import { appsCapabilityOptionsSchema } from "../src/api/schemas/appsCapabilityOptionsSchema.ts";
-import { CapabilityRegistry } from "../src/api/schemas/CapabilityRegistry.ts";
 import { knowledgeCapabilityOptionsSchema } from "../src/api/schemas/knowledgeCapabilityOptionsSchema.ts";
 import { supportCapabilityOptionsSchema } from "../src/api/schemas/supportCapabilityOptionsSchema.ts";
 import { workCapabilityOptionsSchema } from "../src/api/schemas/workCapabilityOptionsSchema.ts";

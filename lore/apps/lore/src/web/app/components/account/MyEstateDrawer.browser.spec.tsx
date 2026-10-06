@@ -1,5 +1,6 @@
 import { DialogProvider, Toaster } from "@alepha/ui";
 import { ActionErrorToaster } from "@alepha/ui/shell";
+import { I18n } from "@lore/core/web";
 import {
   fireEvent,
   render,
@@ -19,7 +20,6 @@ import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import type { OwnedEstateResource } from "@/api/schemas/ownedEstateResourceSchema.ts";
 
-import { I18n } from "../../services/I18n.ts";
 import MyEstateDrawer from "./MyEstateDrawer.tsx";
 
 /**

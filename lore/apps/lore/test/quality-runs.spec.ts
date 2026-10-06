@@ -1,3 +1,4 @@
+import { ProjectController, ProjectLimits } from "@lore/core/api";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
@@ -8,13 +9,11 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { QualityController } from "../src/api/controllers/QualityController.ts";
 import { qualityRuns } from "../src/api/entities/qualityRuns.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { QualityJobs } from "../src/api/jobs/QualityJobs.ts";
 import type { QualityRunPush } from "../src/api/schemas/qualityRunPushSchema.ts";
-import { ProjectLimits } from "../src/api/services/ProjectLimits.ts";
 import { QualityService } from "../src/api/services/QualityService.ts";
 import { createTestMemberByProjectId } from "./fixtures/entities.ts";
 import { createPresetRanks } from "./fixtures/presetRanks.ts";

@@ -1,9 +1,9 @@
+import { projects } from "@lore/core/schemas";
 import { users } from "alepha/api/users";
 import { $relations } from "alepha/orm";
 
 import { epics } from "../entities/epics.ts";
 import { feedback } from "../entities/feedback.ts";
-import { projects } from "../entities/projects.ts";
 import { questComments } from "../entities/questComments.ts";
 import { quests } from "../entities/quests.ts";
 import { releases } from "../entities/releases.ts";

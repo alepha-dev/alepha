@@ -1,20 +1,22 @@
 import type { EditorView } from "@codemirror/view";
+import {
+  capabilityOption,
+  currentProjectAtom,
+  type I18n,
+  type ElementRef,
+  LoreEditor,
+  WikiLinkHoverProvider,
+  type MarkdownEditorMode,
+} from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { type ReactElement, useMemo } from "react";
 import { createPortal } from "react-dom";
 
 import type { FolioResource as Folio } from "@/api/schemas/folioResourceSchema.ts";
-import { capabilityOption } from "@/web/app/services/projectCapabilities.ts";
 
 import { currentFolioAttachmentsAtom } from "../../../../atoms/currentFolioAttachmentsAtom.ts";
-import { currentProjectAtom } from "../../../../atoms/currentProjectAtom.ts";
 import { folioTextSizeAtom } from "../../../../atoms/folioTextSizeAtom.ts";
-import type { I18n } from "../../../../services/I18n.ts";
-import type { ElementRef } from "../../../shared/element/elementRef.ts";
-import LoreEditor from "../../../shared/element/LoreEditor.tsx";
-import WikiLinkHoverProvider from "../../../shared/element/WikiLinkHoverProvider.tsx";
-import type { MarkdownEditorMode } from "../../../shared/markdown-editor/MarkdownEditorInner.client.tsx";
 import FolioPassphraseDialog from "../../FolioPassphraseDialog.tsx";
 import FolioMenubar from "../menubar/FolioMenubar.tsx";
 import { useFolioShortcuts } from "../menubar/useFolioShortcuts.ts";

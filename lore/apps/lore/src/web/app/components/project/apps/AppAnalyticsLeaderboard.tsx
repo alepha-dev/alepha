@@ -8,13 +8,12 @@ import {
   TabsList,
   TabsTrigger,
 } from "@alepha/ui";
+import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { Link } from "alepha/react/router";
 import { useState } from "react";
 
 import type { InsightsDimensionResource } from "@/api/schemas/insightsDimensionResourceSchema.ts";
-
-import type { I18n } from "../../../services/I18n.ts";
 
 export interface AppAnalyticsLeaderboardRow {
   /**

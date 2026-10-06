@@ -1,9 +1,9 @@
+import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { ScrollText } from "lucide-react";
 import { useMemo } from "react";
 
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
 import QuestGroup from "./QuestGroup.tsx";
 

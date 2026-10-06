@@ -1,11 +1,11 @@
 import { Badge, Card, CardContent, CardHeader, CardTitle } from "@alepha/ui";
+import type { I18n } from "@lore/core/web";
 import { DateTimeProvider } from "alepha/datetime";
 import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 
 import type { AppInstanceResource } from "@/api/schemas/appInstanceResourceSchema.ts";
 
-import type { I18n } from "../../../services/I18n.ts";
 import { appUrl, appUrlLabel } from "./appUrl.ts";
 
 /**

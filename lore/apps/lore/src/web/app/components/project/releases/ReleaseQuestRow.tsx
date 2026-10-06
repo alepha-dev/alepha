@@ -1,9 +1,9 @@
 import { cn } from "@alepha/ui";
+import { formatReference } from "@lore/core/web";
 import { Link, useRouter } from "alepha/react/router";
 
 import type { ReleaseContentQuest } from "@/api/schemas/releaseContentQuestSchema.ts";
 
-import { formatReference } from "../../shared/element/typedReference.ts";
 import {
   BUCKET_ICON_CLASS,
   BUCKET_ICONS,

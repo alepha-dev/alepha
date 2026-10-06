@@ -1,8 +1,8 @@
+import { projects } from "@lore/core/schemas";
 import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
 import { folios } from "./folios.ts";
-import { projects } from "./projects.ts";
 
 /**
  * Lore-side overlay table on top of the framework `files` entity (see

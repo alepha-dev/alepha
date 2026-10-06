@@ -1,3 +1,5 @@
+import { $ownsProject } from "@lore/core/api";
+import { type Project } from "@lore/core/schemas";
 import { $inject, Alepha, z } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -11,9 +13,7 @@ import { AlephaServer, ForbiddenError, $action } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { epics } from "../src/api/entities/epics.ts";
-import type { Project } from "../src/api/entities/projects.ts";
 import { LoreApi } from "../src/api/index.ts";
-import { $ownsProject } from "../src/api/security/$ownsProject.ts";
 import {
   createTestEpic,
   createTestMember,

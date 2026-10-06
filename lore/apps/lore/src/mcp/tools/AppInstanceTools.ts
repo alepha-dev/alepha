@@ -1,3 +1,4 @@
+import { ProjectTools } from "@lore/core/mcp";
 import { $inject } from "alepha";
 import { $tool } from "alepha/mcp";
 
@@ -14,7 +15,6 @@ import {
   appInstanceUpdateParamsSchema,
   appInstanceUpdateResultSchema,
 } from "../schemas/appInstanceSchemas.ts";
-import { ProjectTools } from "./ProjectTools.ts";
 
 /**
  * MCP tools for app instances — the deployed copies a project tracks.

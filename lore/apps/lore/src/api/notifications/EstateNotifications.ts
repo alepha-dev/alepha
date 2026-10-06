@@ -1,7 +1,6 @@
+import { NotificationHtmlEscaper } from "@lore/core/api";
 import { $inject, z } from "alepha";
 import { $notification } from "alepha/api/notifications";
-
-import { NotificationHtmlEscaper } from "./NotificationHtmlEscaper.ts";
 
 /**
  * Email templates for estates. One, so far: the nightly check found a

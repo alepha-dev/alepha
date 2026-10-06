@@ -1,10 +1,13 @@
+import {
+  LoreInboxNotifications,
+  ProjectRoster,
+  type ProjectRosterEntry,
+} from "@lore/core/api";
+import { matchMentions } from "@lore/core/web";
 import { $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
 
 import { outsideProtected } from "../../web/app/components/project/quest/commentReferences.ts";
-import { matchMentions } from "../../web/app/services/mentions.ts";
-import { LoreInboxNotifications } from "../notifications/LoreInboxNotifications.ts";
-import { ProjectRoster, type ProjectRosterEntry } from "./ProjectRoster.ts";
 
 /**
  * What a mention points at, resolved by the caller.

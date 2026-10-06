@@ -1,3 +1,5 @@
+import { HomeController, ProjectController, LoreAudits } from "@lore/core/api";
+import { ProjectAnalytics } from "@lore/core/api";
 import { Alepha, z } from "alepha";
 import {
   AnalyticsProvider,
@@ -14,11 +16,7 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { HomeController } from "../src/api/controllers/HomeController.ts";
-import { ProjectController } from "../src/api/controllers/ProjectController.ts";
-import { ProjectAnalytics } from "../src/api/entities/projectAnalytics.ts";
 import { LoreApi } from "../src/api/index.ts";
-import { LoreAudits } from "../src/api/services/LoreAudits.ts";
 
 /**
  * Home's momentum strip, since it stopped reading `audits` (#E65).

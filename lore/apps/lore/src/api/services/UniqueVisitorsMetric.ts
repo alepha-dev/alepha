@@ -1,16 +1,18 @@
+import {
+  DashboardMetricRegistry,
+  type DashboardMetricResolver,
+  type DashboardResolvable,
+} from "@lore/core/api";
+import {
+  type DashboardCardValue,
+  DashboardMetricCatalog,
+} from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 
 import { appInstances } from "../entities/appInstances.ts";
 import { type Sigil, sigils } from "../entities/sigils.ts";
-import type { DashboardCardValue } from "../schemas/dashboardCardValueSchema.ts";
-import { DashboardMetricCatalog } from "../schemas/DashboardMetricCatalog.ts";
 import { DailyVisitorsService } from "./DailyVisitorsService.ts";
-import { DashboardMetricRegistry } from "./DashboardMetricRegistry.ts";
-import type {
-  DashboardMetricResolver,
-  DashboardResolvable,
-} from "./DashboardMetricResolver.ts";
 
 /**
  * Yesterday's audience, against the day before.

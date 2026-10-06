@@ -1,13 +1,13 @@
+import { projects } from "@lore/core/schemas";
+import { prioritySchema } from "@lore/core/schemas";
 import { type Infer, z } from "alepha";
 import { users } from "alepha/api/users";
 import { $entity, db, sql } from "alepha/orm";
 
-import { prioritySchema } from "../../mcp/schemas/prioritySchema.ts";
 import { questCommitSchema } from "../schemas/questCommitSchema.ts";
 import { questSourceSchema } from "../schemas/questSourceSchema.ts";
 import { epics } from "./epics.ts";
 import { feedback } from "./feedback.ts";
-import { projects } from "./projects.ts";
 import { releases } from "./releases.ts";
 
 export const quests = $entity({

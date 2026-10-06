@@ -1,4 +1,5 @@
 import { TimeAgo } from "@alepha/ui";
+import { currentProjectAtom, type I18n, CommitLink } from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { GitCommitHorizontal } from "lucide-react";
@@ -6,11 +7,8 @@ import type { ReactNode } from "react";
 
 import type { ArtifactGroup } from "@/api/schemas/artifactGroupSchema.ts";
 
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import type { I18n } from "../../../services/I18n.ts";
 import ArtifactPullCommand from "../../shared/ArtifactPullCommand.tsx";
 import ArtifactRuntimeBadges from "../../shared/ArtifactRuntimeBadges.tsx";
-import CommitLink from "../../shared/CommitLink.tsx";
 
 export interface AppArtifactsRowProps {
   group: ArtifactGroup;

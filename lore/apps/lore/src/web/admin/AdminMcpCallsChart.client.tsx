@@ -4,9 +4,8 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@alepha/ui/chart";
+import type { AdminMcpController } from "@lore/core/api";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
-
-import type { AdminMcpController } from "@/api/controllers/AdminMcpController.ts";
 
 export interface AdminMcpCallsChartProps {
   /**

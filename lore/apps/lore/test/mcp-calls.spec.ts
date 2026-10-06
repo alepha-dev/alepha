@@ -1,3 +1,5 @@
+import { AdminMcpController } from "@lore/core/api";
+import { ProjectAnalytics } from "@lore/core/api";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -8,8 +10,6 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { AdminMcpController } from "../src/api/controllers/AdminMcpController.ts";
-import { ProjectAnalytics } from "../src/api/entities/projectAnalytics.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { LoreMcp } from "../src/mcp/index.ts";
 

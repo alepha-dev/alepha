@@ -1,3 +1,7 @@
+import { $ownsProject, LoreAudits, ProjectLimits } from "@lore/core/api";
+import { type Project } from "@lore/core/schemas";
+import { RELEASE_TAG_PATTERN, releaseTagSchema } from "@lore/core/schemas";
+import { formatReference } from "@lore/core/web";
 import { $inject, type Infer, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
@@ -13,9 +17,7 @@ import {
 } from "alepha/server";
 import { $etag } from "alepha/server/etag";
 
-import { formatReference } from "../../web/app/components/shared/element/typedReference.ts";
 import { epics } from "../entities/epics.ts";
-import type { Project } from "../entities/projects.ts";
 import { type Quest, quests } from "../entities/quests.ts";
 import { type Release, releases } from "../entities/releases.ts";
 import { compareReleaseTags } from "../releaseOrder.ts";
@@ -25,14 +27,7 @@ import {
 } from "../schemas/releaseChangelogGroupSchema.ts";
 import { releaseContentQuestSchema } from "../schemas/releaseContentQuestSchema.ts";
 import { releaseResourceSchema } from "../schemas/releaseResourceSchema.ts";
-import {
-  RELEASE_TAG_PATTERN,
-  releaseTagSchema,
-} from "../schemas/releaseTagSchema.ts";
-import { $ownsProject } from "../security/$ownsProject.ts";
 import { DefaultReleaseService } from "../services/DefaultReleaseService.ts";
-import { LoreAudits } from "../services/LoreAudits.ts";
-import { ProjectLimits } from "../services/ProjectLimits.ts";
 import {
   type ReleaseContents,
   ReleaseContentService,

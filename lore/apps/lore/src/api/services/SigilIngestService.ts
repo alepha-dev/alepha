@@ -3,6 +3,8 @@ import { sigilFingerprintSource } from "@alepha/lore/sigil";
 import { sigilHost, sigilNormalizeReportedConfig } from "@alepha/lore/sigil";
 import { sigilScrubUrl } from "@alepha/lore/sigil";
 import { bucketIndex, type VitalMetric } from "@alepha/lore/sigil";
+import { ProjectSecurityService } from "@lore/core/api";
+import { projects } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
@@ -10,12 +12,10 @@ import { $repository, sql } from "alepha/orm";
 
 import { blights } from "../entities/blights.ts";
 import { DeployAnalytics } from "../entities/deployAnalytics.ts";
-import { projects } from "../entities/projects.ts";
 import { sigilErrorGroups } from "../entities/sigilErrorGroups.ts";
 import { type Sigil, type SigilKind, sigils } from "../entities/sigils.ts";
 import { BlightRuleService } from "./BlightRuleService.ts";
 import { LoreAnalyticsStore } from "./LoreAnalyticsStore.ts";
-import { ProjectSecurityService } from "./ProjectSecurityService.ts";
 
 /**
  * What one sigil is allowed to write, right now.

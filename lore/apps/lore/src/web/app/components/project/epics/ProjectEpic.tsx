@@ -1,6 +1,15 @@
 import { Button, useDialog } from "@alepha/ui";
 import { DetailLayout, type DetailTab, useDetailTab } from "@alepha/ui/shell";
 import {
+  currentProjectAtom,
+  ResourceTabRegistry,
+  type ResourceTabSubject,
+  type I18n,
+  canInProject,
+  LazyProjectActivityPage,
+  AgentPromptsMenu,
+} from "@lore/core/web";
+import {
   useAction,
   useAlepha,
   useClient,
@@ -19,16 +28,7 @@ import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import { currentEpicAtom } from "@/web/app/atoms/currentEpicAtom.ts";
 import { currentEpicCountAtom } from "@/web/app/atoms/currentEpicCountAtom.ts";
-import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
-import {
-  ResourceTabRegistry,
-  type ResourceTabSubject,
-} from "@/web/app/registries/ResourceTabRegistry.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
-import { canInProject } from "@/web/app/services/projectRank.ts";
 
-import ProjectActivityPage from "../activity/ProjectActivityPage.tsx";
-import { AgentPromptsMenu } from "../prompts/AgentPromptsMenu.tsx";
 import { useWorkPromptSubject } from "../prompts/useWorkPromptSubject.ts";
 import EpicCreateSheet from "./EpicCreateSheet.tsx";
 import EpicStatusControl from "./EpicStatusControl.tsx";
@@ -404,7 +404,7 @@ const ProjectEpic = (props: ProjectEpicProps) => {
       )}
 
       {tab === "activity" && (
-        <ProjectActivityPage
+        <LazyProjectActivityPage
           resource={{ type: "epic", id: String(epic.number) }}
           persistenceKey={`lor.activity.${project.id}.epic.${epic.number}`}
         />

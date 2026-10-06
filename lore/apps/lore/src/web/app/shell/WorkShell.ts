@@ -1,3 +1,17 @@
+import {
+  ROUTES_WITH_QUEST_LOG,
+  formatReference,
+  lazyPart,
+  AccountDeletionRegistry,
+  AgentPromptRegistry,
+  DashboardPickerRegistry,
+  ElementReferenceRegistry,
+  ProjectShellRegistry,
+  ReportsTabRegistry,
+  capabilityOption,
+  hasCapability,
+  canInProject,
+} from "@lore/core/web";
 import { $inject } from "alepha";
 import {
   ClipboardCheck,
@@ -22,32 +36,18 @@ import { currentQuestCountAtom } from "../atoms/currentQuestCountAtom.ts";
 import { useDashboardEpicOptions } from "../components/project/epics/useDashboardEpicOptions.ts";
 import { useEpicReferences } from "../components/project/epics/useEpicReferences.ts";
 import { useFeedbackReferences } from "../components/project/feedback/useFeedbackReferences.ts";
-import { ROUTES_WITH_QUEST_LOG } from "../components/project/projectViewRoutes.ts";
 import { useAuthoredQuestsDeletionLine } from "../components/project/quest/useAuthoredQuestsDeletionLine.ts";
 import { useDashboardQuestTags } from "../components/project/quest/useDashboardQuestTags.ts";
 import { useQuestElementImageUpload } from "../components/project/quest/useQuestElementImageUpload.ts";
 import { useQuestReferences } from "../components/project/quest/useQuestReferences.ts";
 import { useDashboardReleaseOptions } from "../components/project/releases/useDashboardReleaseOptions.ts";
 import { useReleaseReferences } from "../components/project/releases/useReleaseReferences.ts";
-import { formatReference } from "../components/shared/element/typedReference.ts";
-import { lazyPart } from "../components/shared/lazyPart.tsx";
 import { epicActivatePromptDefault } from "../prompts/epicActivatePrompt.ts";
 import { epicReviewPromptDefault } from "../prompts/epicReviewPrompt.ts";
 import { feedbackLoopPromptDefault } from "../prompts/feedbackLoopPrompt.ts";
 import { feedbackWorkPromptDefault } from "../prompts/feedbackWorkPrompt.ts";
 import { questLoopPromptDefault } from "../prompts/questLoopPrompt.ts";
 import { questWorkPromptDefault } from "../prompts/questWorkPrompt.ts";
-import { AccountDeletionRegistry } from "../registries/AccountDeletionRegistry.ts";
-import { AgentPromptRegistry } from "../registries/AgentPromptRegistry.ts";
-import { DashboardPickerRegistry } from "../registries/DashboardPickerRegistry.ts";
-import { ElementReferenceRegistry } from "../registries/ElementReferenceRegistry.ts";
-import { ProjectShellRegistry } from "../registries/ProjectShellRegistry.ts";
-import { ReportsTabRegistry } from "../registries/ReportsTabRegistry.ts";
-import {
-  capabilityOption,
-  hasCapability,
-} from "../services/projectCapabilities.ts";
-import { canInProject } from "../services/projectRank.ts";
 
 /**
  * Work's part of the project shell, registered on core's

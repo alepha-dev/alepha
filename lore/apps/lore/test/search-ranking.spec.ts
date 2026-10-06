@@ -1,6 +1,5 @@
+import { orderSearchHits } from "@lore/core/api";
 import { describe, expect, it } from "vitest";
-
-import { orderSearchHits } from "@/api/searchRanking.ts";
 
 const hit = (kind: string, title: string, shortId?: number) => ({
   kind,

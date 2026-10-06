@@ -1,14 +1,16 @@
+import {
+  DashboardMetricRegistry,
+  type DashboardMetricResolver,
+  type DashboardResolvable,
+  type ResolvedDashboardScope,
+} from "@lore/core/api";
+import {
+  type DashboardCardValue,
+  DashboardMetricCatalog,
+} from "@lore/core/schemas";
 import { $inject } from "alepha";
 
 import type { Epic } from "../entities/epics.ts";
-import type { DashboardCardValue } from "../schemas/dashboardCardValueSchema.ts";
-import { DashboardMetricCatalog } from "../schemas/DashboardMetricCatalog.ts";
-import { DashboardMetricRegistry } from "./DashboardMetricRegistry.ts";
-import type {
-  DashboardMetricResolver,
-  DashboardResolvable,
-} from "./DashboardMetricResolver.ts";
-import type { ResolvedDashboardScope } from "./DashboardScopeService.ts";
 import { EpicProgressService } from "./EpicProgressService.ts";
 
 /**

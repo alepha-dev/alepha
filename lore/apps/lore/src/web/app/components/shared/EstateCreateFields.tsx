@@ -1,4 +1,5 @@
 import { Control } from "@alepha/ui/form";
+import { loreDocsUrl, type I18n, OutboundLink } from "@lore/core/web";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { Cloud, Fingerprint, KeyRound, Server, Tag } from "lucide-react";
@@ -6,15 +7,12 @@ import { useState } from "react";
 
 import { cloudflareTokenTemplateUrl } from "@/api/schemas/cloudflareTokenTemplate.ts";
 import { ESTATE_SLUG_PATTERN } from "@/api/schemas/estateSlugSchema.ts";
-import { loreDocsUrl } from "@/web/app/services/docsUrl.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
 import {
   type EstateCreateDraft,
   estateDraftSlug,
 } from "./estateCreateDraft.ts";
 import { estateCreateFormSchema } from "./estateCreateFormSchema.ts";
-import { OutboundLink } from "./OutboundLink.tsx";
 
 export interface EstateCreateFieldsProps {
   draft: EstateCreateDraft;

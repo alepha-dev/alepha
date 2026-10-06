@@ -11,13 +11,12 @@ import {
   MenubarShortcut,
   MenubarTrigger,
 } from "@alepha/ui";
+import type { I18n, MarkdownEditorMode } from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import type { ReactElement } from "react";
 
 import { folioTextSizeAtom } from "../../../../atoms/folioTextSizeAtom.ts";
-import type { I18n } from "../../../../services/I18n.ts";
-import type { MarkdownEditorMode } from "../../../shared/markdown-editor/MarkdownEditorInner.client.tsx";
 import type { FolioActionHandlers } from "../useFolioActions.ts";
 import {
   FOLIO_MENUS,

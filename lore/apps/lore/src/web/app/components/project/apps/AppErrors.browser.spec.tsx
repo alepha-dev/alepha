@@ -1,3 +1,5 @@
+import { projectFixture } from "@lore/core/testing";
+import { currentProjectAtom, I18n } from "@lore/core/web";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
@@ -9,11 +11,8 @@ import { LinkProvider } from "alepha/server/links";
 import { describe, expect, it } from "vitest";
 
 import type { AppInstanceResource } from "@/api/schemas/appInstanceResourceSchema.ts";
-import { projectFixture } from "@/testing/projectFixture.ts";
 
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import { I18n } from "../../../services/I18n.ts";
 import AppErrors from "./AppErrors.client.tsx";
 
 class FakeLinkProvider extends LinkProvider {

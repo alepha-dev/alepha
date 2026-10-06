@@ -1,3 +1,5 @@
+import { projectFixture } from "@lore/core/testing";
+import { currentProjectAtom, I18n } from "@lore/core/web";
 import { render, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
@@ -7,10 +9,7 @@ import { AlephaReactI18n } from "alepha/react/i18n";
 import { describe, it } from "vitest";
 
 import type { QualityRunResource } from "@/api/schemas/qualityRunSchema.ts";
-import { projectFixture } from "@/testing/projectFixture.ts";
 
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import { I18n } from "../../../services/I18n.ts";
 import ReportsQualityEmpty from "./ReportsQualityEmpty.tsx";
 import ReportsQualityStaleness from "./ReportsQualityStaleness.tsx";
 

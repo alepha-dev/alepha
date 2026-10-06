@@ -1,3 +1,4 @@
+import { ProjectTools } from "@lore/core/mcp";
 import { $inject } from "alepha";
 import { $tool } from "alepha/mcp";
 
@@ -6,7 +7,6 @@ import {
   insightsReadParamsSchema,
   insightsReadResultSchema,
 } from "../schemas/insightsSchemas.ts";
-import { ProjectTools } from "./ProjectTools.ts";
 
 /**
  * The other half of triage: not "what have we decided", but "is it still

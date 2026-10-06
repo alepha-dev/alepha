@@ -1,7 +1,7 @@
+import { formatReference } from "@lore/core/web";
 import { $repository } from "alepha/orm";
 import { BadRequestError, NotFoundError } from "alepha/server";
 
-import { formatReference } from "../../web/app/components/shared/element/typedReference.ts";
 import { type Release, releases } from "../entities/releases.ts";
 
 /**

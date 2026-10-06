@@ -1,15 +1,16 @@
 import { PlateLayout, type PlateTab } from "@alepha/ui/shell";
+import {
+  capabilityOption,
+  currentProjectAtom,
+  type I18n,
+} from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { NestedView, useRouter, useRouterState } from "alepha/react/router";
 import { ExternalLink } from "lucide-react";
 import { useEffect } from "react";
 
-import { capabilityOption } from "@/web/app/services/projectCapabilities.ts";
-
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import type { I18n } from "../../../services/I18n.ts";
 import AppLayoutSwitcher from "./AppLayoutSwitcher.tsx";
 import { appTabsFor } from "./appTabs.ts";
 import { appUrl, appUrlLabel } from "./appUrl.ts";

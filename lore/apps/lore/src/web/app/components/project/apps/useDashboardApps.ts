@@ -1,9 +1,7 @@
+import type { DashboardPickerContext, DashboardScopeApp } from "@lore/core/web";
 import { useClient, useQuery } from "alepha/react";
 
 import type { SigilController } from "@/api/controllers/SigilController.ts";
-
-import type { DashboardPickerContext } from "../../../registries/DashboardPickerRegistry.ts";
-import type { DashboardScopeApp } from "../../dashboard/DashboardScopeStep.tsx";
 
 /**
  * The apps a dashboard card can be scoped to, registered by `DeployShell`

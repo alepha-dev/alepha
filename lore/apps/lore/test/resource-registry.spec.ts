@@ -1,9 +1,7 @@
+import { ResourceRegistry, ResourceLinkService } from "@lore/core/api";
 import { Alepha } from "alepha";
 import { AlephaOrm } from "alepha/orm";
 import { describe, it } from "vitest";
-
-import { ResourceRegistry } from "../src/api/resources/ResourceRegistry.ts";
-import { ResourceLinkService } from "../src/api/services/ResourceLinkService.ts";
 
 /**
  * Core's registry of linkable resources (#E75, #Q2610): the modules register

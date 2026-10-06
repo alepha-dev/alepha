@@ -1,3 +1,4 @@
+import { I18n } from "@lore/core/web";
 import { cleanup, render } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
@@ -8,7 +9,6 @@ import { describe, it } from "vitest";
 
 import type { ArtifactGroup } from "@/api/schemas/artifactGroupSchema.ts";
 
-import { I18n } from "../../../services/I18n.ts";
 import ReleaseArtifactsTab from "./ReleaseArtifactsTab.tsx";
 
 /**

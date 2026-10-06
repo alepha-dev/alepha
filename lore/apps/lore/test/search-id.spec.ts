@@ -1,3 +1,4 @@
+import { ProjectController, SearchController } from "@lore/core/api";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -11,10 +12,8 @@ import { DirectoryController } from "../src/api/controllers/DirectoryController.
 import { EpicController } from "../src/api/controllers/EpicController.ts";
 import { FeedbackController } from "../src/api/controllers/FeedbackController.ts";
 import { FolioController } from "../src/api/controllers/FolioController.ts";
-import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { QuestController } from "../src/api/controllers/QuestController.ts";
 import { ReleaseController } from "../src/api/controllers/ReleaseController.ts";
-import { SearchController } from "../src/api/controllers/SearchController.ts";
 import { LoreApi } from "../src/api/index.ts";
 
 /**

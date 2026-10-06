@@ -1,3 +1,11 @@
+import {
+  type ElementReferenceSet,
+  type ElementRef,
+  referencedIds,
+  formatReference,
+  type AttachmentRef,
+  type ElementReference,
+} from "@lore/core/web";
 import { useClient, useQuery, useStore } from "alepha/react";
 import { useMemo } from "react";
 
@@ -7,14 +15,6 @@ import type { FolioTreeEntry } from "@/api/schemas/folioTreeEntrySchema.ts";
 
 import { currentFolioAttachmentsAtom } from "../../atoms/currentFolioAttachmentsAtom.ts";
 import { userFoliosAtom } from "../../atoms/userFoliosAtom.ts";
-import type { ElementReferenceSet } from "../../registries/ElementReferenceRegistry.ts";
-import type { ElementRef } from "../shared/element/elementRef.ts";
-import { referencedIds } from "../shared/element/referencedIds.ts";
-import { formatReference } from "../shared/element/typedReference.ts";
-import type {
-  AttachmentRef,
-  ElementReference,
-} from "../shared/element/wikiLinkResolver.ts";
 
 /**
  * The folios an element body can reference, and a folio's attachments,

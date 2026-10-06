@@ -1,10 +1,10 @@
-import { describe, expect, it } from "vitest";
-
-import { feedbackLoopPromptDefault } from "./feedbackLoopPrompt.ts";
 import {
   type AgentPromptProjectSubject,
   renderPromptTemplate,
-} from "./renderPromptTemplate.ts";
+} from "@lore/core/web";
+import { describe, expect, it } from "vitest";
+
+import { feedbackLoopPromptDefault } from "./feedbackLoopPrompt.ts";
 
 /**
  * ⚠️ Three fields, and that is the point of this file. The other four

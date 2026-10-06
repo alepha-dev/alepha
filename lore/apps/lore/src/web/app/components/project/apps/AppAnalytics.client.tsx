@@ -13,6 +13,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@alepha/ui/chart";
+import { currentProjectAtom, type I18n } from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
@@ -31,8 +32,6 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import type { InsightsDimensionResource } from "@/api/schemas/insightsDimensionResourceSchema.ts";
 
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import type { I18n } from "../../../services/I18n.ts";
 import AppAnalyticsEstimatedBadge from "./AppAnalyticsEstimatedBadge.tsx";
 import AppAnalyticsFilterChips from "./AppAnalyticsFilterChips.tsx";
 import AppAnalyticsLeaderboard, {

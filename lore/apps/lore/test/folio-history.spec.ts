@@ -1,3 +1,4 @@
+import { ProjectController } from "@lore/core/api";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
@@ -10,7 +11,6 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { folioHistoryAtom } from "../src/api/atoms/folioHistoryAtom.ts";
 import { FolioController } from "../src/api/controllers/FolioController.ts";
-import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { FolioHistoryService } from "../src/api/services/FolioHistoryService.ts";
 

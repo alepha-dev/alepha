@@ -1,8 +1,8 @@
+import { ResourceRegistry } from "@lore/core/api";
 import { $inject } from "alepha";
 import { $repository, DbEntityNotFoundError } from "alepha/orm";
 
 import { blights } from "../entities/blights.ts";
-import { ResourceRegistry } from "../resources/ResourceRegistry.ts";
 import { QUEST_STATUS_PREFIX } from "../schemas/blightQuestStatus.ts";
 
 /**

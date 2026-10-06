@@ -1,10 +1,10 @@
-import { describe, expect, it } from "vitest";
-
-import { questLoopPromptDefault } from "./questLoopPrompt.ts";
 import {
   type AgentPromptProjectSubject,
   renderPromptTemplate,
-} from "./renderPromptTemplate.ts";
+} from "@lore/core/web";
+import { describe, expect, it } from "vitest";
+
+import { questLoopPromptDefault } from "./questLoopPrompt.ts";
 
 /**
  * Surface-scoped, like the two triage loops: the Quests page names no single

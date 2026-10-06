@@ -1,11 +1,10 @@
 import { Badge, Button } from "@alepha/ui";
+import { type I18n, formatReference } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { BookMarked, Copy, Download, ScrollText } from "lucide-react";
 
 import type { ReleaseChangelogGroup } from "@/api/schemas/releaseChangelogGroupSchema.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
-import { formatReference } from "../../shared/element/typedReference.ts";
 import ReleaseChangelogRow from "./ReleaseChangelogRow.tsx";
 
 export interface ReleaseChangelogPanelProps {

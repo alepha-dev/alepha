@@ -1,7 +1,6 @@
+import { SearchPreview } from "@lore/core/api";
 import { Alepha } from "alepha";
 import { describe, expect, it } from "vitest";
-
-import { SearchPreview } from "../src/api/resources/SearchPreview.ts";
 
 /**
  * Nothing here starts the container: `preview` is pure and touches no

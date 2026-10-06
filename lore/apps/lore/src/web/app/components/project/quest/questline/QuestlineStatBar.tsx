@@ -1,9 +1,8 @@
 import { Button, Popover, PopoverContent, PopoverTrigger } from "@alepha/ui";
+import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { ChevronDown, Maximize, Minus, Plus } from "lucide-react";
 import { useMemo } from "react";
-
-import type { I18n } from "@/web/app/services/I18n.ts";
 
 import type { AreaDotColor } from "../../../shared/areaColor.ts";
 import type { QuestlineState, QuestlineTrack } from "./questlineLayout.ts";

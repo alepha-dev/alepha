@@ -3,6 +3,7 @@
 // assertion, so the writes to the enclosing `let` are the measurement, not a
 // side effect the component depends on.
 import { DialogProvider } from "@alepha/ui";
+import { virtualClientFake } from "@lore/core/testing";
 import { render, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
@@ -12,7 +13,6 @@ import { LinkProvider } from "alepha/server/links";
 import { describe, it } from "vitest";
 
 import type { FolioResource as Folio } from "@/api/schemas/folioResourceSchema.ts";
-import { virtualClientFake } from "@/testing/virtualClientFake.ts";
 
 import {
   forgetAllProtectedKeys,

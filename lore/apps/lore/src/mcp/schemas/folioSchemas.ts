@@ -1,9 +1,10 @@
+import {
+  linkSourceKindSchema,
+  linkTargetKindSchema,
+  diagramWarningsShape,
+  epicStatusSchema,
+} from "@lore/core/schemas";
 import { z } from "alepha";
-
-import { linkSourceKindSchema } from "../../api/schemas/linkSourceKindSchema.ts";
-import { linkTargetKindSchema } from "../../api/schemas/linkTargetKindSchema.ts";
-import { diagramWarningsShape } from "./diagramWarningsSchema.ts";
-import { epicStatusSchema } from "./epicStatusSchema.ts";
 
 /**
  * The epic a folio is filed under. Same shape as the `epic` on quest rows

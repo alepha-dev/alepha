@@ -5,6 +5,7 @@ import {
   type TreeStateCommands,
   useTreeState,
 } from "@alepha/ui/tree";
+import type { I18n } from "@lore/core/web";
 import { CryptoProvider } from "alepha/crypto";
 import {
   useAction,
@@ -23,7 +24,6 @@ import type { FolioController } from "@/api/controllers/FolioController.ts";
 import { folioTreeCollapsedAtom } from "../../../../atoms/folioTreeCollapsedAtom.ts";
 import { projectDirectoriesAtom } from "../../../../atoms/projectDirectoriesAtom.ts";
 import { userFoliosAtom } from "../../../../atoms/userFoliosAtom.ts";
-import type { I18n } from "../../../../services/I18n.ts";
 import {
   ensureProtectedKeysAutoLock,
   rememberProtectedKey,

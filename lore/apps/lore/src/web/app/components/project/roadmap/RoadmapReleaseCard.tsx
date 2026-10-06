@@ -1,11 +1,11 @@
 import { MarkdownView } from "@alepha/ui/markdown";
+import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 
 import type { RoadmapRelease } from "@/api/schemas/roadmapReleaseSchema.ts";
 import { releaseBuckets } from "@/web/app/components/project/releases/releaseBuckets.ts";
 import ReleaseProgressBar from "@/web/app/components/project/releases/ReleaseProgressBar.tsx";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
 import RoadmapEpicRow from "./RoadmapEpicRow.tsx";
 

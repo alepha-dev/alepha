@@ -1,5 +1,7 @@
 import { DialogProvider, Toaster } from "@alepha/ui";
 import { ActionErrorToaster } from "@alepha/ui/shell";
+import { virtualClientFake } from "@lore/core/testing";
+import { I18n } from "@lore/core/web";
 import {
   fireEvent,
   render,
@@ -15,9 +17,6 @@ import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
 import { LinkProvider } from "alepha/server/links";
 import { setupJsdomMocks } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
-
-import { virtualClientFake } from "@/testing/virtualClientFake.ts";
-import { I18n } from "@/web/app/services/I18n.ts";
 
 import AppDeployRun from "./AppDeployRun.tsx";
 

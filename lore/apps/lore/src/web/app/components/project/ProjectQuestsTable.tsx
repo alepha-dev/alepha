@@ -20,6 +20,17 @@ import {
   type BulkActionContext,
   type BulkMenuAction,
 } from "@alepha/ui/table";
+import {
+  currentProjectAtom,
+  descriptionSnippet,
+  displayName,
+  type I18n,
+  formatReference,
+  useBulkReport,
+  useProjectUsers,
+  AgentPromptsMenu,
+  useAgentPrompt,
+} from "@lore/core/web";
 import { z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import {
@@ -60,18 +71,9 @@ import {
 
 import { currentAreasAtom } from "../../atoms/currentAreasAtom.ts";
 import { currentEpicsAtom } from "../../atoms/currentEpicsAtom.ts";
-import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { currentReleasesAtom } from "../../atoms/currentReleasesAtom.ts";
-import { descriptionSnippet } from "../../services/descriptionSnippet.ts";
-import { displayName } from "../../services/displayName.ts";
-import type { I18n } from "../../services/I18n.ts";
-import { formatReference } from "../shared/element/typedReference.ts";
-import { useBulkReport } from "../shared/useBulkReport.ts";
-import { useProjectUsers } from "../shared/useProjectUsers.ts";
 import { useQuestMutations } from "../shared/useQuestMutations.ts";
-import { AgentPromptsMenu } from "./prompts/AgentPromptsMenu.tsx";
 import { questAgentGate } from "./prompts/questAgentGate.ts";
-import { useAgentPrompt } from "./prompts/useAgentPrompt.ts";
 import { useWorkPromptSubject } from "./prompts/useWorkPromptSubject.ts";
 import {
   QUEST_PRIORITY_ICONS,

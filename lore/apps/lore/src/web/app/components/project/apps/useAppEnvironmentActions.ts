@@ -1,12 +1,11 @@
 import { useDialog, useToast } from "@alepha/ui";
+import type { I18n } from "@lore/core/web";
 import type { Infer } from "alepha";
 import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 
 import type { AppSecretController } from "@/api/controllers/AppSecretController.ts";
 import type { appSecretResourceSchema } from "@/api/schemas/appSecretResourceSchema.ts";
-
-import type { I18n } from "../../../services/I18n.ts";
 
 export type AppEnvironmentItem = Infer<typeof appSecretResourceSchema>;
 

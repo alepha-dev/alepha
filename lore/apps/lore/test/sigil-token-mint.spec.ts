@@ -1,4 +1,5 @@
 import { sigilKeyProject } from "@alepha/lore/sigil";
+import { projects } from "@lore/core/schemas";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -7,7 +8,6 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { describe, it } from "vitest";
 
-import { projects } from "../src/api/entities/projects.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { SigilTokenService } from "../src/api/services/SigilTokenService.ts";
 

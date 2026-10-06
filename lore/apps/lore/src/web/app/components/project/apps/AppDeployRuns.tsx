@@ -1,10 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@alepha/ui";
+import type { I18n } from "@lore/core/web";
 import { useClient, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 
 import type { DeployController } from "@/api/controllers/DeployController.ts";
 
-import type { I18n } from "../../../services/I18n.ts";
 import AppDeployRun from "./AppDeployRun.tsx";
 
 export interface AppDeployRunsProps {

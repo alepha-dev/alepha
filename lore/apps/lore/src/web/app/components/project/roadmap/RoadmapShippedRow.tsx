@@ -1,8 +1,8 @@
+import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 
 import type { RoadmapRelease } from "@/api/schemas/roadmapReleaseSchema.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
 export interface RoadmapShippedRowProps {
   release: RoadmapRelease;

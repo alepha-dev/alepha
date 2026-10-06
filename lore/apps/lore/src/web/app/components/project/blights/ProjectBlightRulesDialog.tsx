@@ -8,6 +8,7 @@ import {
   Input,
   useToast,
 } from "@alepha/ui";
+import type { I18n } from "@lore/core/web";
 import { useAction, useClient, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Plus, Trash2 } from "lucide-react";
@@ -15,8 +16,6 @@ import { useState } from "react";
 
 import type { BlightController } from "@/api/controllers/BlightController.ts";
 import type { BlightRuleResource } from "@/api/schemas/blightRuleResourceSchema.ts";
-
-import type { I18n } from "../../../services/I18n.ts";
 
 export interface ProjectBlightRulesDialogProps {
   open: boolean;

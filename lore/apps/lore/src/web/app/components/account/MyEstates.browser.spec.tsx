@@ -1,4 +1,5 @@
 import { DialogProvider } from "@alepha/ui";
+import { I18n } from "@lore/core/web";
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
@@ -12,7 +13,6 @@ import { afterEach, beforeAll, describe, it } from "vitest";
 
 import { CLOUDFLARE_TOKEN_TEMPLATE } from "@/api/schemas/cloudflareTokenTemplate.ts";
 
-import { I18n } from "../../services/I18n.ts";
 import MyEstates from "./MyEstates.tsx";
 
 /**

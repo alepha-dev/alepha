@@ -1,3 +1,5 @@
+import { virtualClientFake } from "@lore/core/testing";
+import { I18n } from "@lore/core/web";
 import { render, screen } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
@@ -9,10 +11,8 @@ import { LinkProvider } from "alepha/server/links";
 import { describe, it } from "vitest";
 
 import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
-import { virtualClientFake } from "@/testing/virtualClientFake.ts";
 
 import { currentReleasesAtom } from "../../../atoms/currentReleasesAtom.ts";
-import { I18n } from "../../../services/I18n.ts";
 import ProjectEpicAside from "./ProjectEpicAside.tsx";
 
 /**

@@ -1,14 +1,16 @@
+import {
+  BoundParameters,
+  ResourceRegistry,
+  SearchPreview,
+} from "@lore/core/api";
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 
 import { quests } from "../entities/quests.ts";
-import { BoundParameters } from "../services/BoundParameters.ts";
 import {
   type CreateQuestInput,
   QuestService,
 } from "../services/QuestService.ts";
-import { ResourceRegistry } from "./ResourceRegistry.ts";
-import { SearchPreview } from "./SearchPreview.ts";
 
 /**
  * The `quest` resource (`#Q`), registered by Work: how core resolves,

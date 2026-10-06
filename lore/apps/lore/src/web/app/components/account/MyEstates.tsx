@@ -1,6 +1,7 @@
 import { Badge, Button, TimeAgo, useToast } from "@alepha/ui";
 import { AccountPage } from "@alepha/ui/account";
 import { DataTable } from "@alepha/ui/table";
+import type { I18n } from "@lore/core/web";
 import { useClient, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
@@ -10,7 +11,6 @@ import { useState } from "react";
 import type { EstateController } from "@/api/controllers/EstateController.ts";
 import type { CreateEstateBody } from "@/api/schemas/createEstateBodySchema.ts";
 import type { OwnedEstateResource } from "@/api/schemas/ownedEstateResourceSchema.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
 import MyEstateCreateDialog from "./MyEstateCreateDialog.tsx";
 import MyEstateDrawer from "./MyEstateDrawer.tsx";

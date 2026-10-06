@@ -1,10 +1,7 @@
+import { type AgentPromptSubject, renderPromptTemplate } from "@lore/core/web";
 import { describe, expect, it } from "vitest";
 
 import { feedbackWorkPromptDefault } from "./feedbackWorkPrompt.ts";
-import {
-  type AgentPromptSubject,
-  renderPromptTemplate,
-} from "./renderPromptTemplate.ts";
 
 const subject: AgentPromptSubject = {
   project: "Alepha",

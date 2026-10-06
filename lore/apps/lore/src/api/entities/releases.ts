@@ -1,8 +1,8 @@
+import { projects } from "@lore/core/schemas";
 import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
 import { releaseChangelogGroupSchema } from "../schemas/releaseChangelogGroupSchema.ts";
-import { projects } from "./projects.ts";
 
 /**
  * A named goal that holds the epics and quests due to ship in it.

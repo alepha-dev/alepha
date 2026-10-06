@@ -1,10 +1,10 @@
+import type { ProjectController } from "@lore/core/api";
 import { $inject, AlephaError } from "alepha";
 import { WorkspacePacker } from "alepha/cli";
 import { UsageError } from "alepha/command";
 import { $client } from "alepha/server/links";
 import { FileSystemProvider } from "alepha/system";
 import type { AppController } from "lore/api/controllers/AppController";
-import type { ProjectController } from "lore/api/controllers/ProjectController";
 
 import { LoreClientService } from "./LoreClientService.ts";
 import type { LoreRefusalContext } from "./LoreRefusals.ts";

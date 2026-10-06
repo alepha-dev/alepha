@@ -1,8 +1,8 @@
 import { Dialog, DialogContent, DialogTitle } from "@alepha/ui";
+import { formatReference } from "@lore/core/web";
 
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 
-import { formatReference } from "../../../shared/element/typedReference.ts";
 import LazyQuestView from "../LazyQuestView.tsx";
 import type { QuestlineNode } from "./questlineLayout.ts";
 

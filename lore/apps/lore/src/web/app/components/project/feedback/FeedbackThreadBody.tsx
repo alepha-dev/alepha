@@ -1,10 +1,7 @@
+import { mentionPattern, resolveMentionCapture } from "@lore/core/web";
 import { Link } from "alepha/react/router";
 import { Fragment, type ReactNode } from "react";
 
-import {
-  mentionPattern,
-  resolveMentionCapture,
-} from "../../../services/mentions.ts";
 import { protectedSegments } from "../quest/commentReferences.ts";
 
 export interface FeedbackThreadBodyProps {

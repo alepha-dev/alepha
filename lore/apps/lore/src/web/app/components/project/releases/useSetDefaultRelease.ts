@@ -1,13 +1,11 @@
 import { useDialog, useToast } from "@alepha/ui";
+import { type I18n, formatReference } from "@lore/core/web";
 import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 
 import type { ReleaseController } from "@/api/controllers/ReleaseController.ts";
 import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
 import { currentReleasesAtom } from "@/web/app/atoms/currentReleasesAtom.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
-
-import { formatReference } from "../../shared/element/typedReference.ts";
 
 /**
  * Point the project's intake at a release, or take it away.

@@ -7,6 +7,14 @@ import {
   type BulkActionContext,
   type BulkMenuAction,
 } from "@alepha/ui/table";
+import {
+  currentProjectAtom,
+  type I18n,
+  settleBulk,
+  formatReference,
+  useBulkReport,
+  useAgentPrompt,
+} from "@lore/core/web";
 import { type Page, z } from "alepha";
 import { useAction, useAlepha, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -34,14 +42,8 @@ import {
 import { QUEST_RELEASE_NONE } from "@/api/schemas/questReleaseFilter.ts";
 import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
 import { currentEpicCountAtom } from "@/web/app/atoms/currentEpicCountAtom.ts";
-import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { currentReleasesAtom } from "@/web/app/atoms/currentReleasesAtom.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
-import { settleBulk } from "../../shared/bulkOutcome.ts";
-import { formatReference } from "../../shared/element/typedReference.ts";
-import { useBulkReport } from "../../shared/useBulkReport.ts";
-import { useAgentPrompt } from "../prompts/useAgentPrompt.ts";
 import { useWorkPromptSubject } from "../prompts/useWorkPromptSubject.ts";
 import { releaseRowMenu } from "../releaseRowMenu.ts";
 import { useReleaseCascadeToast } from "../releases/useReleaseCascadeToast.ts";

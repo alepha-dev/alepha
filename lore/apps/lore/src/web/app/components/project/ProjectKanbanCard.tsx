@@ -1,10 +1,10 @@
 import { Sheet, SheetContent } from "@alepha/ui";
+import { currentProjectAtom } from "@lore/core/web";
 import { useAlepha, useStore } from "alepha/react";
 import { useRouter } from "alepha/react/router";
 
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 
-import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { currentQuestAtom } from "../../atoms/currentQuestAtom.ts";
 import LazyQuestView from "./quest/LazyQuestView.tsx";
 

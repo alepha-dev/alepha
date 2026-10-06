@@ -1,4 +1,9 @@
 import { Badge, Button, useDialog } from "@alepha/ui";
+import {
+  type I18n,
+  type LinkedCollection,
+  formatReference,
+} from "@lore/core/web";
 import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import {
@@ -15,10 +20,7 @@ import type { LucideIcon } from "lucide-react";
 
 import type { ReleaseController } from "@/api/controllers/ReleaseController.ts";
 import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
-import type { LinkedCollection } from "../../../registries/ResourceTabRegistry.ts";
-import { formatReference } from "../../shared/element/typedReference.ts";
 import { releaseBuckets } from "./releaseBuckets.ts";
 import ReleaseDefaultBadge from "./ReleaseDefaultBadge.tsx";
 import ReleaseProgressBar from "./ReleaseProgressBar.tsx";

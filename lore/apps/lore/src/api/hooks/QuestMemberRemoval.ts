@@ -1,7 +1,7 @@
+import { projects } from "@lore/core/schemas";
 import { $hook } from "alepha";
 import { $repository } from "alepha/orm";
 
-import { projects } from "../entities/projects.ts";
 import { quests } from "../entities/quests.ts";
 
 /**

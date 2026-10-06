@@ -1,3 +1,9 @@
+import {
+  ProjectController,
+  LoreAudits,
+  LoreAuditService,
+} from "@lore/core/api";
+import { ProjectAnalytics } from "@lore/core/api";
 import { $hook, Alepha } from "alepha";
 import {
   AnalyticsProvider,
@@ -13,11 +19,7 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { ProjectController } from "../src/api/controllers/ProjectController.ts";
-import { ProjectAnalytics } from "../src/api/entities/projectAnalytics.ts";
 import { LoreApi } from "../src/api/index.ts";
-import { LoreAudits } from "../src/api/services/LoreAudits.ts";
-import { LoreAuditService } from "../src/api/services/LoreAuditService.ts";
 import { TestEntityRepositories } from "./fixtures/entities.ts";
 
 class AuditRepositories {

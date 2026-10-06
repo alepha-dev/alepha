@@ -1,6 +1,6 @@
+import { DashboardMetricCatalog } from "@lore/core/schemas";
 import { $module } from "alepha";
 
-import { DashboardMetricCatalog } from "./schemas/DashboardMetricCatalog.ts";
 import { DeployDashboardMetrics } from "./services/DeployDashboardMetrics.ts";
 import { WorkDashboardMetrics } from "./services/WorkDashboardMetrics.ts";
 

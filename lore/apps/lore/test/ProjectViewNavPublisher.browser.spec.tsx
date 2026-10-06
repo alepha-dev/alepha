@@ -1,4 +1,11 @@
 import type { NavGroup } from "@alepha/ui/shell";
+import { projectFixture } from "@lore/core/testing";
+import {
+  currentProjectAtom,
+  projectNavAtom,
+  ProjectViewNavPublisher,
+  I18n,
+} from "@lore/core/web";
 import { render, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
@@ -9,13 +16,8 @@ import { $page, AlephaReactRouter } from "alepha/react/router";
 import { describe, it } from "vitest";
 
 import type { AppInstanceResource } from "@/api/schemas/appInstanceResourceSchema.ts";
-import { projectFixture } from "@/testing/projectFixture.ts";
 
 import { currentInstancesAtom } from "../src/web/app/atoms/currentInstancesAtom.ts";
-import { currentProjectAtom } from "../src/web/app/atoms/currentProjectAtom.ts";
-import { projectNavAtom } from "../src/web/app/atoms/projectNavAtom.ts";
-import ProjectViewNavPublisher from "../src/web/app/components/project/ProjectViewNavPublisher.tsx";
-import { I18n } from "../src/web/app/services/I18n.ts";
 import { DeployShell } from "../src/web/app/shell/DeployShell.ts";
 
 class Routes {

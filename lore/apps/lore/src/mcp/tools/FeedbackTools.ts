@@ -1,10 +1,11 @@
+import { ProjectController } from "@lore/core/api";
+import { AttachmentContentService, ProjectTools } from "@lore/core/mcp";
 import { $inject } from "alepha";
 import { $tool } from "alepha/mcp";
 import { BadRequestError, NotFoundError } from "alepha/server";
 
 import { FeedbackCommentController } from "../../api/controllers/FeedbackCommentController.ts";
 import { FeedbackController } from "../../api/controllers/FeedbackController.ts";
-import { ProjectController } from "../../api/controllers/ProjectController.ts";
 import type { FeedbackResource } from "../../api/schemas/feedbackResourceSchema.ts";
 import {
   feedbackAttachmentGetParamsSchema,
@@ -17,8 +18,6 @@ import {
   feedbackTriageParamsSchema,
   feedbackTriageResultSchema,
 } from "../schemas/feedbackSchemas.ts";
-import { AttachmentContentService } from "../services/AttachmentContentService.ts";
-import { ProjectTools } from "./ProjectTools.ts";
 
 /**
  * MCP tools for feedback — user-submitted bug/feature requests that the

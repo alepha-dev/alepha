@@ -1,10 +1,9 @@
 import { SettingsSection } from "@alepha/ui/settings";
+import { currentProjectAtom, type I18n } from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import type { I18n } from "../../../services/I18n.ts";
 import AppSettingsDelete from "./AppSettingsDelete.tsx";
 import AppSettingsEstate from "./AppSettingsEstate.tsx";
 import AppSettingsRename from "./AppSettingsRename.tsx";

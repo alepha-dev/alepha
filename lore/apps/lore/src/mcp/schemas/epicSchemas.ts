@@ -1,10 +1,12 @@
+import {
+  DIAGRAM_CAPABILITY,
+  diagramWarningsShape,
+  epicStatusSchema,
+  projectParamsSchema,
+} from "@lore/core/schemas";
 import { z } from "alepha";
 
 import { epicManualStatusSchema } from "../../api/schemas/epicManualStatusSchema.ts";
-import { DIAGRAM_CAPABILITY } from "./diagramCapability.ts";
-import { diagramWarningsShape } from "./diagramWarningsSchema.ts";
-import { epicStatusSchema } from "./epicStatusSchema.ts";
-import { projectParamsSchema } from "./projectParamsSchema.ts";
 
 /**
  * Epic reference for MCP tools. Unlike quests (`id` / `shortId`) and

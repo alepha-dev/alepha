@@ -1,9 +1,8 @@
 import { Button } from "@alepha/ui";
+import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-
-import type { I18n } from "../../services/I18n.ts";
 
 export interface KanbanColumnComposerProps {
   /**

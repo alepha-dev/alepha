@@ -1,6 +1,5 @@
+import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
-
-import type { I18n } from "@/web/app/services/I18n.ts";
 
 type I18nApi = ReturnType<typeof useI18n<I18n, "en">>;
 

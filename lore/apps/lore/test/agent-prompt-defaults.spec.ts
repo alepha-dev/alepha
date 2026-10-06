@@ -1,12 +1,11 @@
-import { Alepha } from "alepha";
-import { describe, expect, it } from "vitest";
-
 import {
   type AgentPromptKind,
   agentPromptKindSchema,
-} from "../src/api/schemas/agentPromptKindSchema.ts";
-import { AgentPromptRegistry } from "../src/web/app/registries/AgentPromptRegistry.ts";
-import { capabilityRegistry } from "../src/web/app/services/capabilityRegistry.ts";
+} from "@lore/core/schemas";
+import { AgentPromptRegistry, capabilityRegistry } from "@lore/core/web";
+import { Alepha } from "alepha";
+import { describe, expect, it } from "vitest";
+
 import { DeployShell } from "../src/web/app/shell/DeployShell.ts";
 import { WorkShell } from "../src/web/app/shell/WorkShell.ts";
 

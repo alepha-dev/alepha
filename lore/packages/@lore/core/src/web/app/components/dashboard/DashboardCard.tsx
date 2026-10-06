@@ -1,0 +1,246 @@
+import { cn } from "@alepha/ui";
+import { useI18n } from "alepha/react/i18n";
+import { useRouter } from "alepha/react/router";
+import { GripVertical } from "lucide-react";
+import type { DragEvent } from "react";
+
+import type { DashboardCardResource } from "../../../../api/schemas/dashboardCardResourceSchema.ts";
+import type { DashboardCardValue as CardValue } from "../../../../api/schemas/dashboardCardValueSchema.ts";
+import type { DashboardPresentation } from "../../../../api/schemas/DashboardMetricCatalog.ts";
+import type { I18n } from "../../services/I18n.ts";
+import DashboardCardFooter from "./DashboardCardFooter.tsx";
+import DashboardCardMenu from "./DashboardCardMenu.tsx";
+import DashboardCardValue from "./DashboardCardValue.tsx";
+import {
+  dashboardFilterChipKeys,
+  dashboardFilterChipLabels,
+} from "./dashboardChips.ts";
+import { dashboardMetricIcon } from "./dashboardMetricIcon.ts";
+
+export interface DashboardCardProps {
+  card: DashboardCardResource;
+  /**
+   * Absent until the first resolve returns.
+   */
+  value?: CardValue;
+  /**
+   * i18n key for the metric's title, from the catalogue.
+   */
+  labelKey: string;
+  /**
+   * lucide id for the metric's icon, from the catalogue.
+   */
+  icon: string;
+  /**
+   * How this metric renders its figure, from the catalogue. A `progress`
+   * metric's number is a percentage and is drawn as one.
+   */
+  presentation?: DashboardPresentation;
+  /**
+   * The project this board belongs to, on a project board.
+   *
+   * ⚠️ It exists for ONE rule, and the rule is mechanical rather than a
+   * judgement: a project-board card that points at the project stores
+   * `kind: "projects", projectIds: [thisProject]`, so `scopeNames` answers the
+   * project's own title and every card on the board would wear the same chip.
+   * The chip is suppressed for exactly that scope and kept for an app, an
+   * epic or a release, which genuinely differ from one card to the next.
+   */
+  boardProjectId?: number;
+  /**
+   * Whether the viewer may curate the board. `false` renders no menu and no
+   * drag affordance at all, rather than disabled ones.
+   */
+  canEdit?: boolean;
+  /**
+   * Whether a mousedown on this card's header has armed it for dragging.
+   *
+   * `draggable` is toggled rather than left on: a permanently draggable card
+   * cannot be clicked, because the browser starts a drag on the first pixel
+   * of movement and the click never lands.
+   */
+  armed: boolean;
+  dragging: boolean;
+  over: boolean;
+  onArm: () => void;
+  onDisarm: () => void;
+  onDragStart: () => void;
+  onDragOver: (event: DragEvent) => void;
+  onDrop: (event: DragEvent) => void;
+  onDragEnd: () => void;
+  onChangeScope: () => void;
+  onDuplicate: () => void;
+  onRemove: () => void;
+  /**
+   * True while a card write runs: the menu's writes are held until it lands,
+   * since `run()` would drop a second one in silence (#E59 rule 10).
+   */
+  busy?: boolean;
+}
+
+/**
+ * One tile.
+ *
+ * ## Drag comes from the header, not the whole card
+ *
+ * `draggable` is armed on mousedown over the header strip and disarmed on
+ * mouseup, exactly as the mockup does it. Without that, a card whose body is
+ * a link cannot be clicked: the browser starts a drag on the first pixel of
+ * movement and the click never lands.
+ *
+ * Native HTML5 drag rather than `@dnd-kit`, which the kanban board uses. The
+ * board needs cross-column transfer, drop-zone hit-testing and a lifecycle
+ * gate; this is a flat list reordering itself, `@dnd-kit/sortable` is not a
+ * dependency of this app, and the mockup was drawn with the native events.
+ *
+ * ## The whole tile is the drill-through
+ *
+ * A card with a `link` is a button over its own body. Cards without one (a
+ * failed resolve, or a visitors card with no beacon app) are inert rather
+ * than clickable-but-dead, because a link to a 404 is worse than no link.
+ */
+const DashboardCard = (props: DashboardCardProps) => {
+  const { tr } = useI18n<I18n, "en">();
+  const router = useRouter();
+  const Icon = dashboardMetricIcon(props.icon);
+  const link = props.value?.link;
+  // Defaults to true so home, which has no rank to read, is untouched.
+  const canEdit = props.canEdit ?? true;
+
+  const scopeChip = (() => {
+    if (props.card.scope.kind === "all") return tr("dashboard.scope.all");
+    if (
+      props.boardProjectId !== undefined &&
+      props.card.scope.kind === "projects" &&
+      (props.card.scope.projectIds ?? []).length === 1 &&
+      props.card.scope.projectIds?.[0] === props.boardProjectId
+    ) {
+      // The board's own project. See `boardProjectId`.
+      return undefined;
+    }
+    const names = props.value?.scopeNames ?? [];
+    if (names.length === 1) return names[0];
+    if (names.length === 0) return undefined;
+    return tr(
+      props.card.scope.kind === "apps"
+        ? "dashboard.scope.apps"
+        : "dashboard.scope.projects",
+      { args: [String(names.length)] },
+    );
+  })();
+
+  const open = () => {
+    if (!link) return;
+    void router.push(
+      link.route as never,
+      {
+        params: link.params,
+        query: link.query,
+      } as never,
+    );
+  };
+
+  return (
+    <div
+      data-testid="dashboard-card"
+      data-metric={props.card.metric}
+      draggable={(canEdit && props.armed) || undefined}
+      onDragStart={props.onDragStart}
+      onDragOver={props.onDragOver}
+      onDrop={props.onDrop}
+      onDragEnd={props.onDragEnd}
+      style={{ gridColumn: `span ${props.card.size}` }}
+      // The edge is the kit's one border (feedback #P2179): `--border` at
+      // rest, `--border-hover` under the pointer, eased on the same default
+      // duration and curve as a field's `transition-colors`. Read from the
+      // tokens, never restated, and drawn as an inset shadow because
+      // drag-over swaps it for the 2px primary ring - which is why hover is
+      // off while `over`, so the ring always wins.
+      className={cn(
+        "bg-card relative flex h-full flex-col gap-2.5 rounded-xl p-3.5 shadow-[inset_0_0_0_1px_var(--border)] transition-shadow",
+        !props.over && "hover:shadow-[inset_0_0_0_1px_var(--border-hover)]",
+        props.dragging && "opacity-45",
+        props.over && "shadow-[inset_0_0_0_2px_var(--primary)]",
+      )}
+    >
+      {/* A drag affordance, pointer-only by nature; the card it belongs to is reachable and actionable by keyboard on its own. */}
+      {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions */}
+      <div
+        className={cn(
+          "flex items-center gap-2",
+          canEdit && "cursor-grab active:cursor-grabbing",
+        )}
+        onMouseDown={canEdit ? props.onArm : undefined}
+        onMouseUp={canEdit ? props.onDisarm : undefined}
+        title={canEdit ? tr("dashboard.card.drag") : undefined}
+      >
+        <Icon className="text-muted-foreground size-3.5 shrink-0" />
+        <span className="text-muted-foreground truncate text-[11.5px] font-medium tracking-[0.05em] uppercase">
+          {tr(props.labelKey as never)}
+        </span>
+        <span className="flex-1" />
+        {/* ⚠️ ABSENT without the permission, never disabled. A greyed handle
+            and a greyed kebab advertise a board this reader cannot curate;
+            the empty state says who can, once, instead. */}
+        {canEdit && (
+          <>
+            <GripVertical className="text-muted-foreground/45 size-[13px] shrink-0" />
+            <DashboardCardMenu
+              onChangeScope={props.onChangeScope}
+              onDuplicate={props.onDuplicate}
+              onRemove={props.onRemove}
+              busy={props.busy}
+            />
+          </>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-[5px]">
+        {scopeChip && (
+          <span className="bg-muted inline-flex h-[19px] items-center rounded-full px-[7px] text-[11px]">
+            {scopeChip}
+          </span>
+        )}
+        {dashboardFilterChipLabels(props.card).map((label) => (
+          <span
+            key={label}
+            className="bg-muted inline-flex h-[19px] items-center rounded-full px-[7px] text-[11px]"
+          >
+            {label}
+          </span>
+        ))}
+        {dashboardFilterChipKeys(props.card).map((key) => (
+          <span
+            key={key}
+            className="bg-muted inline-flex h-[19px] items-center rounded-full px-[7px] text-[11px]"
+          >
+            {tr(key as never)}
+          </span>
+        ))}
+      </div>
+      {link ? (
+        <button
+          type="button"
+          onClick={open}
+          data-testid="dashboard-card-open"
+          className="flex flex-1 flex-col items-start justify-start gap-1 text-left"
+        >
+          <DashboardCardValue
+            value={props.value}
+            presentation={props.presentation}
+          />
+          <DashboardCardFooter metric={props.card.metric} value={props.value} />
+        </button>
+      ) : (
+        <div className="flex flex-1 flex-col items-start justify-start gap-1">
+          <DashboardCardValue
+            value={props.value}
+            presentation={props.presentation}
+          />
+          <DashboardCardFooter metric={props.card.metric} value={props.value} />
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default DashboardCard;

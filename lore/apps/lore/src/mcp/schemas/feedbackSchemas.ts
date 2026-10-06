@@ -1,8 +1,8 @@
+import { projectParamsSchema } from "@lore/core/schemas";
 import { z } from "alepha";
 
 import { feedback } from "../../api/entities/feedback.ts";
 import { feedbackLinkedQuestSchema } from "../../api/schemas/feedbackResourceSchema.ts";
-import { projectParamsSchema } from "./projectParamsSchema.ts";
 
 const feedbackRefSchema = z.object({
   id: z.integer(),

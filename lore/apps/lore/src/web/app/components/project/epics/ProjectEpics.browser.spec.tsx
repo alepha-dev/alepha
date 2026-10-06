@@ -1,5 +1,7 @@
 import { DialogProvider, Toaster } from "@alepha/ui";
 import { ActionErrorToaster } from "@alepha/ui/shell";
+import { projectFixture } from "@lore/core/testing";
+import { currentProjectAtom, I18n } from "@lore/core/web";
 import {
   fireEvent,
   render,
@@ -17,12 +19,9 @@ import { LinkProvider } from "alepha/server/links";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
-import { projectFixture } from "@/testing/projectFixture.ts";
 import { WorkShell } from "@/web/app/shell/WorkShell.ts";
 
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { currentReleasesAtom } from "../../../atoms/currentReleasesAtom.ts";
-import { I18n } from "../../../services/I18n.ts";
 import ProjectEpics from "./ProjectEpics.tsx";
 
 const epicOf = (

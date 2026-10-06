@@ -1,4 +1,5 @@
 import { Segmented, cn } from "@alepha/ui";
+import { currentProjectAtom, type I18n } from "@lore/core/web";
 import {
   useAction,
   useClient,
@@ -21,8 +22,6 @@ import type { FeedbackController } from "@/api/controllers/FeedbackController.ts
 import type { FeedbackResource } from "@/api/schemas/feedbackResourceSchema.ts";
 
 import { currentFeedbackCountAtom } from "../../../atoms/currentFeedbackCountAtom.ts";
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import type { I18n } from "../../../services/I18n.ts";
 import { FEEDBACK_PAGE_SIZE } from "./feedbackPageSize.ts";
 import ProjectFeedbackCard from "./ProjectFeedbackCard.tsx";
 import ProjectFeedbackDetail from "./ProjectFeedbackDetail.tsx";

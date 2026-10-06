@@ -1,28 +1,13 @@
 import { $module } from "alepha";
-import {
-  AlephaApiAnalyticsAdmin,
-  AlephaApiAnalyticsRollup,
-} from "alepha/api/analytics";
-import { AuditService } from "alepha/api/audits";
-import { filesOptions } from "alepha/api/files";
-import { AlephaApiJobsQueue } from "alepha/api/jobs";
-import {
-  AlephaApiOrganizations,
-  organizationConfigAtom,
-  OrganizationPolicyProvider,
-} from "alepha/api/organizations";
 import { AlephaServerRateLimit } from "alepha/server/rate-limit";
 import { AlephaWebSocket } from "alepha/websocket";
 
 import { AdminEstateController } from "./controllers/AdminEstateController.ts";
-import { AdminMcpController } from "./controllers/AdminMcpController.ts";
-import { AdminProjectController } from "./controllers/AdminProjectController.ts";
 import { AppController } from "./controllers/AppController.ts";
 import { AppSecretController } from "./controllers/AppSecretController.ts";
 import { AreaController } from "./controllers/AreaController.ts";
 import { ArtifactController } from "./controllers/ArtifactController.ts";
 import { BlightController } from "./controllers/BlightController.ts";
-import { DashboardController } from "./controllers/DashboardController.ts";
 import { DeployController } from "./controllers/DeployController.ts";
 import { DirectoryController } from "./controllers/DirectoryController.ts";
 import { EpicController } from "./controllers/EpicController.ts";
@@ -34,34 +19,22 @@ import { FeedbackCommentController } from "./controllers/FeedbackCommentControll
 import { FeedbackController } from "./controllers/FeedbackController.ts";
 import { FolioAttachmentController } from "./controllers/FolioAttachmentController.ts";
 import { FolioController } from "./controllers/FolioController.ts";
-import { HomeController } from "./controllers/HomeController.ts";
 import { InsightsController } from "./controllers/InsightsController.ts";
-import { InvitationController } from "./controllers/InvitationController.ts";
 import { KanbanController } from "./controllers/KanbanController.ts";
-import { NotificationPreferenceController } from "./controllers/NotificationPreferenceController.ts";
-import { ProjectCapabilityController } from "./controllers/ProjectCapabilityController.ts";
-import { ProjectController } from "./controllers/ProjectController.ts";
-import { ProjectDashboardController } from "./controllers/ProjectDashboardController.ts";
 import { ProjectEstateController } from "./controllers/ProjectEstateController.ts";
-import { ProjectPromptController } from "./controllers/ProjectPromptController.ts";
 import { ProjectQuestPortabilityController } from "./controllers/ProjectQuestPortabilityController.ts";
-import { ProjectRankController } from "./controllers/ProjectRankController.ts";
 import { ProjectReportsController } from "./controllers/ProjectReportsController.ts";
 import { QualityController } from "./controllers/QualityController.ts";
 import { QuestAuthorshipController } from "./controllers/QuestAuthorshipController.ts";
 import { QuestCommentController } from "./controllers/QuestCommentController.ts";
 import { QuestController } from "./controllers/QuestController.ts";
 import { ReleaseController } from "./controllers/ReleaseController.ts";
-import { ResourceFilingController } from "./controllers/ResourceFilingController.ts";
 import { RoadmapController } from "./controllers/RoadmapController.ts";
-import { SearchController } from "./controllers/SearchController.ts";
 import { SigilAnalyticsController } from "./controllers/SigilAnalyticsController.ts";
 import { SigilController } from "./controllers/SigilController.ts";
 import { SigilIngestController } from "./controllers/SigilIngestController.ts";
 import { LoreDashboardCatalog } from "./dashboardCatalogModule.ts";
-import { OrganizationHooks } from "./hooks/OrganizationHooks.ts";
 import { QuestMemberRemoval } from "./hooks/QuestMemberRemoval.ts";
-import { UserDeletionHook } from "./hooks/UserDeletionHook.ts";
 import { BlightJobs } from "./jobs/BlightJobs.ts";
 import { DeployJobs } from "./jobs/DeployJobs.ts";
 import { EpicJobs } from "./jobs/EpicJobs.ts";
@@ -71,24 +44,13 @@ import { QualityJobs } from "./jobs/QualityJobs.ts";
 import { QuestJobs } from "./jobs/QuestJobs.ts";
 import { SigilJobs } from "./jobs/SigilJobs.ts";
 import { EstateNotifications } from "./notifications/EstateNotifications.ts";
-import { InvitationNotifications } from "./notifications/InvitationNotifications.ts";
-import { LoreInboxNotifications } from "./notifications/LoreInboxNotifications.ts";
-import { NotificationHtmlEscaper } from "./notifications/NotificationHtmlEscaper.ts";
 import { QuestNotifications } from "./notifications/QuestNotifications.ts";
-import { AppSecurityProvider } from "./providers/AppSecurityProvider.ts";
-import { LoreFileAccessProvider } from "./providers/LoreFileAccessProvider.ts";
-import { LoreInboxRecipientProvider } from "./providers/LoreInboxRecipientProvider.ts";
-import { LoreNotificationPreferences } from "./providers/LoreNotificationPreferences.ts";
-import { LoreOrganizationPolicyProvider } from "./providers/LoreOrganizationPolicyProvider.ts";
 import { DirectoryResourceKind } from "./resources/DirectoryResourceKind.ts";
 import { EpicResourceKind } from "./resources/EpicResourceKind.ts";
 import { FeedbackResourceKind } from "./resources/FeedbackResourceKind.ts";
 import { FolioResourceKind } from "./resources/FolioResourceKind.ts";
 import { QuestResourceKind } from "./resources/QuestResourceKind.ts";
 import { ReleaseResourceKind } from "./resources/ReleaseResourceKind.ts";
-import { CapabilityRegistry } from "./schemas/CapabilityRegistry.ts";
-import { LorePermissions } from "./security/LorePermissions.ts";
-import { ProjectRankPresets } from "./security/ProjectRankPresets.ts";
 import { ActiveQuestsMetric } from "./services/ActiveQuestsMetric.ts";
 import { AppSecretService } from "./services/AppSecretService.ts";
 import { AppService } from "./services/AppService.ts";
@@ -100,9 +62,6 @@ import { BlightRuleService } from "./services/BlightRuleService.ts";
 import { CloudflareProbeService } from "./services/CloudflareProbeService.ts";
 import { CredentialSealService } from "./services/CredentialSealService.ts";
 import { DailyVisitorsService } from "./services/DailyVisitorsService.ts";
-import { DashboardCardService } from "./services/DashboardCardService.ts";
-import { DashboardMetricRegistry } from "./services/DashboardMetricRegistry.ts";
-import { DashboardScopeService } from "./services/DashboardScopeService.ts";
 import { DeployDashboard } from "./services/DeployDashboard.ts";
 import { DeployGate } from "./services/DeployGate.ts";
 import { DeployLimits } from "./services/DeployLimits.ts";
@@ -127,16 +86,10 @@ import { FolioHistoryService } from "./services/FolioHistoryService.ts";
 import { FolioNameService } from "./services/FolioNameService.ts";
 import { HeldQuestsMetric } from "./services/HeldQuestsMetric.ts";
 import { KnowledgeFileAccess } from "./services/KnowledgeFileAccess.ts";
-import { LoreAudits } from "./services/LoreAudits.ts";
-import { LoreAuditService } from "./services/LoreAuditService.ts";
 import { MentionNotifier } from "./services/MentionNotifier.ts";
 import { OpenBlightCounter } from "./services/OpenBlightCounter.ts";
 import { OpenBlightsMetric } from "./services/OpenBlightsMetric.ts";
 import { OpenQuestScope } from "./services/OpenQuestScope.ts";
-import { ProjectDashboardCardService } from "./services/ProjectDashboardCardService.ts";
-import { ProjectLimits } from "./services/ProjectLimits.ts";
-import { ProjectRoster } from "./services/ProjectRoster.ts";
-import { ProjectSecurityService } from "./services/ProjectSecurityService.ts";
 import { QualityService } from "./services/QualityService.ts";
 import { QuestCsvFormatter } from "./services/QuestCsvFormatter.ts";
 import { QuestProjectDeletion } from "./services/QuestProjectDeletion.ts";
@@ -146,7 +99,6 @@ import { ReleaseAttachmentService } from "./services/ReleaseAttachmentService.ts
 import { ReleaseContentService } from "./services/ReleaseContentService.ts";
 import { ReleaseNotifier } from "./services/ReleaseNotifier.ts";
 import { ReleaseProgressMetric } from "./services/ReleaseProgressMetric.ts";
-import { ResourceLinkService } from "./services/ResourceLinkService.ts";
 import { RoadmapService } from "./services/RoadmapService.ts";
 import { RollbackService } from "./services/RollbackService.ts";
 import { SigilIngestService } from "./services/SigilIngestService.ts";
@@ -162,49 +114,7 @@ import { WorkProjectCounts } from "./services/WorkProjectCounts.ts";
 
 export const LoreApi = $module({
   name: "lore.api",
-  // `$analytics()` (used by `ProjectAnalytics` and `DeployAnalytics`) auto-wires `AlephaApiAnalytics`
-  // itself the moment a dataset is injected — the same module-tagging
-  // mechanism `$repository` uses for `AlephaOrm`. The hourly retention sweep
-  // does not: `AnalyticsRollupJobs` lives in the separate `AlephaApiAnalyticsRollup`
-  // module specifically so declaring a dataset never forces a database
-  // connection onto an app that has none. Both `sigil_views` and
-  // `sigil_vitals` declare `retention.hot`, so this import is required, not
-  // optional — without it the sweep never runs and the raw tables grow
-  // forever with no error (see `AnalyticsRetentionGuard`'s boot warning).
-  // `AlephaApiAnalyticsAdmin` is the opt-in admin query surface behind
-  // `admin:analytics:read` — it feeds the /admin/analytics page.
-  //
-  // `AlephaApiOrganizations` owns the membership, rank, and invitation
-  // lifecycle. Lore supplies the project-specific policy and notifications.
   imports: [
-    AlephaApiAnalyticsRollup,
-    AlephaApiAnalyticsAdmin,
-    // ⚠️ **Without this every `$job` runs inside `executionCtx.waitUntil`,
-    // which Cloudflare cuts off about 30 seconds after the response.** That
-    // is not a slow path, it is a hard ceiling, and `deploys.run` is the
-    // job that lives past it: a `docs` deploy on 2026-09-09 logged
-    // `Uploaded 405 assets` at exactly 30s, the isolate was cancelled
-    // mid-upload, and because the run's own timer died with it the row read
-    // `running` until the sweep, while `lore apps deploy` polled it for the
-    // full ten minutes and CI reported nothing but a long step.
-    //
-    // A queue consumer gets 15 minutes of wall clock instead, which is the
-    // only surface Cloudflare offers that a deploy of somebody else's site
-    // fits inside. It also gives retries a real delay, since the transport
-    // can hold a delayed message rather than waiting for the outbox sweep.
-    //
-    // ⚠️ CPU is a SEPARATE budget and the queue does not raise it. That is
-    // `limits.cpu_ms` in `alepha.config.ts`, and it stays.
-    //
-    // On Node (the self-hosted image, `alepha dev`, tests) this resolves to
-    // `MemoryQueueProvider`, so dispatch takes an in-process hop instead of
-    // running in front of the caller. Durability is unchanged either way:
-    // the outbox row is the guarantee and the reconciliation sweep is the
-    // backstop.
-    AlephaApiJobsQueue,
-    // Registering this module installs the grants provider used by
-    // `$ownsOrganization`, before the controllers whose gates depend on it.
-    AlephaApiOrganizations,
     LoreDashboardCatalog,
     // The estates websocket (epic #20). The first websocket in Lore: on
     // Cloudflare the build derives the Durable Object binding and its
@@ -218,21 +128,6 @@ export const LoreApi = $module({
     AlephaServerRateLimit,
   ],
   services: [
-    // Declares the `$realm`. Nothing injects it — it must be listed here
-    // explicitly or the realm (and every permission) is never registered.
-    AppSecurityProvider,
-    // Declares every `$permission`. Nothing injects it either: the strings
-    // reach the registry through `$secure()` anyway, and what this class adds
-    // is their LABELS and their group order - which the rank matrix renders
-    // from. Unlisted, the matrix would show raw `group:name` strings in
-    // whatever order the gates happened to run.
-    LorePermissions,
-    // Declares the $audit types. Nothing but the controllers inject it, and
-    // they inject it lazily - listed here so the types are registered at
-    // boot and the admin filter offers them before any row exists.
-    LoreAudits,
-    ProjectSecurityService,
-    CapabilityRegistry,
     ReleaseAttachmentService,
     ReleaseContentService,
     RoadmapService,
@@ -245,14 +140,10 @@ export const LoreApi = $module({
     // which quest action is allowed in which epic phase, and the words a
     // refusal carries. Injected by the quest and epic controllers.
     EpicWorkflowService,
-    // Substituted for the framework's `FileAccessProvider` in
-    // `main.server.ts`. Listed here only so DI scanning sees the class.
-    LoreFileAccessProvider,
     FolioNameService,
     FolioDirectoryService,
     FolioAttachmentService,
     FolioHistoryService,
-    ResourceLinkService,
     // The resource kinds each module registers on the core
     // `ResourceRegistry` (#E75, #Q2610), and Deploy's subscription to a
     // quest's deletion. Listed, because nothing injects them: a kind exists
@@ -280,13 +171,6 @@ export const LoreApi = $module({
     KnowledgeFileAccess,
     DeployDashboard,
     DeployProjectCounts,
-    // Declares the `$invitationResource` for `resourceType: "project"`.
-    // Nothing injects it, so like `AppSecurityProvider` it has to be listed
-    // or the resolver is never registered and every invitation 404s.
-    // Declares the `$rankResource` for `type: "project"`, for the same
-    // reason: unlisted, the ranks module knows about no scope at all and
-    // every `requires` allows.
-    ProjectRankPresets,
     QuestJobs,
     EpicJobs,
     BlightJobs,
@@ -294,31 +178,13 @@ export const LoreApi = $module({
     QualityJobs,
     EstateCommandJobs,
     EstateCredentialJobs,
-    UserDeletionHook,
-    OrganizationHooks,
     QuestNotifications,
     EstateNotifications,
-    InvitationNotifications,
-    // The inbox half: two templates, and the one HTML escaper the four
-    // notification classes share.
-    LoreInboxNotifications,
-    NotificationHtmlEscaper,
-    // Who is in a project, as one read, for everything that writes to
-    // people. One question, not two.
-    ProjectRoster,
     // Turns `@name` in a comment into a message. Injected by the quest and
     // feedback comment controllers.
     MentionNotifier,
     // The release fan-out. Publish only; reopen notifies nobody.
     ReleaseNotifier,
-    // Substituted for the framework's `NotificationInboxRecipientProvider`
-    // in `main.server.ts`. Listed here only so DI scanning sees the class,
-    // the same arrangement `LoreFileAccessProvider` has.
-    LoreInboxRecipientProvider,
-    // Substituted for the framework's `NotificationPreferenceProvider` in
-    // `main.server.ts`, same arrangement.
-    LoreNotificationPreferences,
-    NotificationPreferenceController,
     FeedbackRateLimiter,
     QuestCsvFormatter,
     QuestService,
@@ -336,7 +202,6 @@ export const LoreApi = $module({
     RollbackService,
     DeployJobs,
     DeployController,
-    ProjectLimits,
     AreaService,
     // The one write path for `app_instances`, and the only writer of
     // `sigils.name`, which mirrors it (#1767).
@@ -349,16 +214,6 @@ export const LoreApi = $module({
     // What "open quests" means, shared by the sidebar badge, the dashboard
     // rail and the Active Quests tile — all three are visible together.
     OpenQuestScope,
-    // The dashboard: the membership gate every card scope goes through, and
-    // card storage. The declarative registry itself lives in
-    // `LoreDashboardCatalog` — see that module for why it cannot be listed
-    // here as well as in `LoreWebApp`.
-    DashboardScopeService,
-    DashboardCardService,
-    // The project board's own storage. A second table rather than a branch
-    // inside the one above: the configuration belongs to the project, so
-    // every query here names a project and none of them names a user.
-    ProjectDashboardCardService,
     DailyVisitorsService,
     // One resolver per metric, plus the registry that groups a card list by
     // metric so N cards on one metric stay one query.
@@ -374,7 +229,6 @@ export const LoreApi = $module({
     QuestTagTallyService,
     UntriagedFeedbackMetric,
     UniqueVisitorsMetric,
-    DashboardMetricRegistry,
     // The sink half: the token an app presents, and what happens to what it
     // sends. `SigilIngestService` itself holds no repository on any of the
     // aggregate tables — writes go through `LoreAnalyticsStore` (uniques) and
@@ -414,16 +268,7 @@ export const LoreApi = $module({
     QuestController,
     QuestCommentController,
     FeedbackCommentController,
-    ProjectController,
-    // The landing page's own reads: the momentum bars and the activity panel.
-    // Off `ProjectController` because neither is about one project, and off
-    // `getHomeOverview` because that endpoint fills an atom every page holds.
-    HomeController,
-    ProjectCapabilityController,
-    ProjectRankController,
-    ProjectPromptController,
     ReleaseController,
-    ResourceFilingController,
     RoadmapController,
     EpicController,
     AreaController,
@@ -431,15 +276,9 @@ export const LoreApi = $module({
     QualityController,
     ArtifactController,
     ProjectQuestPortabilityController,
-    InvitationController,
-    AdminProjectController,
-    // What the MCP surface is asked for, over time (#E65). Admin rather than
-    // a project page: a tool call is not scoped to a project.
-    AdminMcpController,
     KanbanController,
     FolioController,
     DirectoryController,
-    SearchController,
     FolioAttachmentController,
     FeedbackController,
     AppController,
@@ -455,41 +294,5 @@ export const LoreApi = $module({
     SigilAnalyticsController,
     InsightsController,
     BlightController,
-    DashboardController,
-    // The project board. A second controller rather than a branch inside the
-    // one above: every path here hangs off `/projects/:projectId` and is
-    // gated by `$ownsProject`, where home's hang off `/me` and cannot be.
-    ProjectDashboardController,
   ],
-  register: (alepha) => {
-    alepha.with({
-      provide: OrganizationPolicyProvider,
-      use: LoreOrganizationPolicyProvider,
-    });
-    // Lore's audit log also writes a rate point (#E65). Here rather than in
-    // `services`, because a substitution has to be recorded before anything
-    // resolves the thing it replaces: this hook runs ahead of `imports[]`
-    // being wired and `services[]` being injected, so it wins over whatever
-    // `AlephaApiAudits` provides when a `$audit` type auto-wires it. See
-    // `LoreAuditService` for why the recording lives on the service rather
-    // than on `LoreAudits`.
-    alepha.with({ provide: AuditService, use: LoreAuditService });
-    alepha.store.set(organizationConfigAtom, {
-      ...alepha.store.get(organizationConfigAtom),
-      memberPermissions: LorePermissions.MEMBER_DEFAULT,
-      floor: LorePermissions.FLOOR,
-      ownerOnly: LorePermissions.OWNER_ONLY,
-    });
-    // Lore's own upload quotas (#Q2508). Registration is open and every
-    // account holds `file:create`, so the per-user cap is what keeps one
-    // account from filling the shared total and turning every other upload
-    // into a 413. 250 MB is a hundred folio images at the largest; builds
-    // are uploaded with no user and count against the total only.
-    // `FILES_MAX_TOTAL_SIZE` / `FILES_MAX_USER_SIZE` still win over both.
-    alepha.store.set(filesOptions, {
-      ...alepha.store.get(filesOptions),
-      maxTotalSize: 10 * 1024,
-      maxUserSize: 250,
-    });
-  },
 });

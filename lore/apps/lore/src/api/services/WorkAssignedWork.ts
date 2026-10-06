@@ -1,8 +1,8 @@
+import { AssignedWorkRegistry } from "@lore/core/api";
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 
 import { quests } from "../entities/quests.ts";
-import { AssignedWorkRegistry } from "./AssignedWorkRegistry.ts";
 
 /**
  * Work's answer to "what has this viewer got open here": the quests they

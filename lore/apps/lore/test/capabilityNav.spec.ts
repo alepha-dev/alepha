@@ -1,22 +1,18 @@
+import { CAPABILITY_KEYS, type CapabilityKey } from "@lore/core/schemas";
+import { projectFixture } from "@lore/core/testing";
+import {
+  ProjectShellRegistry,
+  CORE_NAV,
+  type ProjectShellContext,
+} from "@lore/core/web";
 import { Alepha, type Atom } from "alepha";
 import { describe, it } from "vitest";
 
-import {
-  CAPABILITY_KEYS,
-  type CapabilityKey,
-} from "@/api/schemas/capabilityKeySchema.ts";
-import { projectFixture } from "@/testing/projectFixture.ts";
 import { currentBlightCountAtom } from "@/web/app/atoms/currentBlightCountAtom.ts";
 import { currentInstancesAtom } from "@/web/app/atoms/currentInstancesAtom.ts";
-import { ProjectShellRegistry } from "@/web/app/registries/ProjectShellRegistry.ts";
 import { DeployShell } from "@/web/app/shell/DeployShell.ts";
 import { KnowledgeShell } from "@/web/app/shell/KnowledgeShell.ts";
 import { WorkShell } from "@/web/app/shell/WorkShell.ts";
-
-import {
-  CORE_NAV,
-  type ProjectShellContext,
-} from "../src/web/app/components/project/capabilityNav.ts";
 
 /**
  * What the sidebar offers, without rendering one.

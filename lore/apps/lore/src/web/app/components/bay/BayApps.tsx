@@ -1,10 +1,9 @@
 import { Badge, formatBytes } from "@alepha/ui";
 import { AccountPage } from "@alepha/ui/account";
 import { DataTable } from "@alepha/ui/table";
+import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-
-import type { I18n } from "@/web/app/services/I18n.ts";
 
 import BayActions from "./BayActions.tsx";
 import {

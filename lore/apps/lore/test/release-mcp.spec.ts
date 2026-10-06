@@ -1,3 +1,5 @@
+import { ProjectController } from "@lore/core/api";
+import { ProjectTools } from "@lore/core/mcp";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
@@ -10,12 +12,10 @@ import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { EpicController } from "../src/api/controllers/EpicController.ts";
-import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { QuestController } from "../src/api/controllers/QuestController.ts";
 import { ReleaseController } from "../src/api/controllers/ReleaseController.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { LoreMcp } from "../src/mcp/index.ts";
-import { ProjectTools } from "../src/mcp/tools/ProjectTools.ts";
 import { QuestTools } from "../src/mcp/tools/QuestTools.ts";
 import { ReleaseTools } from "../src/mcp/tools/ReleaseTools.ts";
 

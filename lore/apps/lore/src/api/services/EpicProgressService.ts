@@ -1,9 +1,9 @@
+import { BoundParameters } from "@lore/core/api";
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 
 import { quests } from "../entities/quests.ts";
 import type { EpicResource } from "../schemas/epicResourceSchema.ts";
-import { BoundParameters } from "./BoundParameters.ts";
 
 /**
  * The rollup `epicResourceSchema.progress` carries, named once so the

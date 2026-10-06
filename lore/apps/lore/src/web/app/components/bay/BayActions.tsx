@@ -1,11 +1,11 @@
 import { Button, useDialog, useToast } from "@alepha/ui";
+import type { I18n } from "@lore/core/web";
 import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { HttpError } from "alepha/server";
 import { Play, RefreshCw, RotateCw, Save, Square } from "lucide-react";
 
 import type { EstateController } from "@/api/controllers/EstateController.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
 import type { BayInstanceRow } from "./bayInstanceRow.ts";
 import { bayProcessState } from "./bayInstanceRow.ts";

@@ -1,11 +1,9 @@
+import { type I18n, formatReference } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { Link } from "alepha/react/router";
 import { Archive, Check, CircleDot, Lock, Play } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
 
-import type { I18n } from "@/web/app/services/I18n.ts";
-
-import { formatReference } from "../../../shared/element/typedReference.ts";
 import {
   CARD_H,
   CARD_W,

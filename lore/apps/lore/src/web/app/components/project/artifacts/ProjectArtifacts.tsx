@@ -5,6 +5,12 @@ import {
   type DataTableFilterFields,
   type RowActionContext,
 } from "@alepha/ui/table";
+import {
+  currentProjectAtom,
+  type I18n,
+  CommitLink,
+  useKindReferences,
+} from "@lore/core/web";
 import { z } from "alepha";
 import { useClient, useStore } from "alepha/react";
 import { useQuery } from "alepha/react";
@@ -24,13 +30,9 @@ import {
 import { useMemo } from "react";
 
 import type { ArtifactController } from "@/api/controllers/ArtifactController.ts";
-import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
 import ArtifactRuntimeBadges from "../../shared/ArtifactRuntimeBadges.tsx";
 import ArtifactsEmpty from "../../shared/ArtifactsEmpty.tsx";
-import CommitLink from "../../shared/CommitLink.tsx";
-import { useKindReferences } from "../../shared/element/useKindReferences.ts";
 import { useDeleteArtifact } from "./useDeleteArtifact.ts";
 
 /**

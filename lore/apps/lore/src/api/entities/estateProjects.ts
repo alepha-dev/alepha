@@ -1,9 +1,9 @@
+import { projects } from "@lore/core/schemas";
 import { type Infer, z } from "alepha";
 import { users } from "alepha/api/users";
 import { $entity, db } from "alepha/orm";
 
 import { estates } from "./estates.ts";
-import { projects } from "./projects.ts";
 
 /**
  * The lending: which projects may deploy through which estate.

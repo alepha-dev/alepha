@@ -3,10 +3,9 @@ import {
   TooltipTrigger,
   Tooltip as UiTooltip,
 } from "@alepha/ui";
+import { type I18n, ToolbarSpinner } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 
-import type { I18n } from "../../../services/I18n.ts";
-import ToolbarSpinner from "../../shared/ToolbarSpinner.tsx";
 import {
   APP_INSIGHTS_RANGES,
   APP_INSIGHTS_TRAFFICS,

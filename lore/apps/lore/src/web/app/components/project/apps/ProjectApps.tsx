@@ -1,5 +1,6 @@
 import { TimeAgo, Button } from "@alepha/ui";
 import { DataTable, type DataTableFilterFields } from "@alepha/ui/table";
+import { useRank, currentProjectAtom, type I18n } from "@lore/core/web";
 import { z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { useInject, useStore } from "alepha/react";
@@ -17,11 +18,8 @@ import {
 import { useState } from "react";
 
 import type { AppInstanceResource } from "@/api/schemas/appInstanceResourceSchema.ts";
-import { useRank } from "@/web/app/components/shared/useRank.ts";
 
 import { currentInstancesAtom } from "../../../atoms/currentInstancesAtom.ts";
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import type { I18n } from "../../../services/I18n.ts";
 import AppCreateDialog from "./AppCreateDialog.tsx";
 import { appLiveness } from "./appLiveness.ts";
 import AppStatusDot from "./AppStatusDot.tsx";

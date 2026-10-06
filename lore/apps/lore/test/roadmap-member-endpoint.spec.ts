@@ -1,3 +1,5 @@
+import { ProjectController, ProjectSecurityService } from "@lore/core/api";
+import type { RoadmapVisibility } from "@lore/core/schemas";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -8,12 +10,9 @@ import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { EpicController } from "../src/api/controllers/EpicController.ts";
-import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { ReleaseController } from "../src/api/controllers/ReleaseController.ts";
 import { RoadmapController } from "../src/api/controllers/RoadmapController.ts";
 import { LoreApi } from "../src/api/index.ts";
-import type { RoadmapVisibility } from "../src/api/schemas/roadmapVisibilitySchema.ts";
-import { ProjectSecurityService } from "../src/api/services/ProjectSecurityService.ts";
 import { createTestMemberByProjectId } from "./fixtures/entities.ts";
 
 /**

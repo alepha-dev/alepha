@@ -1,3 +1,4 @@
+import { ProjectTools } from "@lore/core/mcp";
 import { $inject } from "alepha";
 import { $tool } from "alepha/mcp";
 
@@ -10,7 +11,6 @@ import {
   blightResolveParamsSchema,
   blightResolveResultSchema,
 } from "../schemas/blightSchemas.ts";
-import { ProjectTools } from "./ProjectTools.ts";
 
 /**
  * MCP tools for the blights inbox.

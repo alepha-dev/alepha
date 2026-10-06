@@ -1,3 +1,4 @@
+import { ProjectController, ProjectSecurityService } from "@lore/core/api";
 import { Alepha, type FileLike, z } from "alepha";
 import { RankService } from "alepha/api/organizations";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
@@ -10,12 +11,10 @@ import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { ArtifactController } from "../src/api/controllers/ArtifactController.ts";
-import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { artifacts } from "../src/api/entities/artifacts.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { ArtifactService } from "../src/api/services/ArtifactService.ts";
 import { DeployAssetCache } from "../src/api/services/DeployAssetCache.ts";
-import { ProjectSecurityService } from "../src/api/services/ProjectSecurityService.ts";
 import { RegistryTransport } from "../src/api/services/RegistryTransport.ts";
 import { packedArtifact, tar } from "./fixtures/artifactTarball.ts";
 import { createTestMemberByProjectId } from "./fixtures/entities.ts";

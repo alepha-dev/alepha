@@ -1,4 +1,5 @@
 import { TimeAgo, cn } from "@alepha/ui";
+import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import {
   ChevronRight,
@@ -10,8 +11,6 @@ import {
 } from "lucide-react";
 
 import type { FeedbackResource } from "@/api/schemas/feedbackResourceSchema.ts";
-
-import type { I18n } from "../../../services/I18n.ts";
 
 export interface ProjectFeedbackCardProps {
   feedback: FeedbackResource;

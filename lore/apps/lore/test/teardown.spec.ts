@@ -1,3 +1,8 @@
+import {
+  ProjectCapabilityController,
+  ProjectController,
+  LoreAudits,
+} from "@lore/core/api";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -8,14 +13,11 @@ import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { AppController } from "../src/api/controllers/AppController.ts";
-import { ProjectCapabilityController } from "../src/api/controllers/ProjectCapabilityController.ts";
-import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { appInstances } from "../src/api/entities/appInstances.ts";
 import { estateProjects } from "../src/api/entities/estateProjects.ts";
 import { estates } from "../src/api/entities/estates.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { CredentialSealService } from "../src/api/services/CredentialSealService.ts";
-import { LoreAudits } from "../src/api/services/LoreAudits.ts";
 import { TeardownService } from "../src/api/services/TeardownService.ts";
 
 /**

@@ -1,3 +1,6 @@
+import { ProjectController } from "@lore/core/api";
+import { ProjectTools } from "@lore/core/mcp";
+import { projects } from "@lore/core/schemas";
 import { Alepha } from "alepha";
 import { organizationMembers as members } from "alepha/api/organizations";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
@@ -9,11 +12,8 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake } from "alepha/testing/faker";
 import { describe, it } from "vitest";
 
-import { ProjectController } from "../src/api/controllers/ProjectController.ts";
-import { projects } from "../src/api/entities/projects.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { LoreMcp } from "../src/mcp/index.ts";
-import { ProjectTools } from "../src/mcp/tools/ProjectTools.ts";
 import { createTestMemberByProjectId } from "./fixtures/entities.ts";
 
 /**

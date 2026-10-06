@@ -1,9 +1,9 @@
+import { DashboardMetricCatalog } from "@lore/core/schemas";
+import { dashboardFilterFields } from "@lore/core/web";
 import { Alepha } from "alepha";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { LoreDashboardCatalog } from "@/api/dashboardCatalogModule.ts";
-import { DashboardMetricCatalog } from "@/api/schemas/DashboardMetricCatalog.ts";
-import { dashboardFilterFields } from "@/web/app/components/dashboard/dashboardFilterFields.ts";
 
 /**
  * The Add-card wizard's filter step is generated from each metric's own Zod

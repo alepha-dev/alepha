@@ -6,6 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@alepha/ui";
+import type { I18n } from "@lore/core/web";
 import { useAction } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Loader2 } from "lucide-react";
@@ -21,7 +22,6 @@ import {
   estateErrorMessage,
 } from "@/web/app/components/shared/estateCreateDraft.ts";
 import EstateCreateFields from "@/web/app/components/shared/EstateCreateFields.tsx";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
 export interface MyEstateCreateDialogProps {
   open: boolean;

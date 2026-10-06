@@ -1,3 +1,4 @@
+import { ProjectTools } from "@lore/core/mcp";
 import { $inject } from "alepha";
 import { $tool } from "alepha/mcp";
 import { BadRequestError, NotFoundError } from "alepha/server";
@@ -12,7 +13,6 @@ import {
   deployStatusParamsSchema,
   deployStatusResultSchema,
 } from "../schemas/deploySchemas.ts";
-import { ProjectTools } from "./ProjectTools.ts";
 
 /**
  * Shipping, from a conversation: what to deploy, deploy it, watch it, take it

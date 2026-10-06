@@ -10,6 +10,12 @@ import {
   cn,
 } from "@alepha/ui";
 import { settingsCardEdge } from "@alepha/ui/settings";
+import {
+  currentProjectAtom,
+  useRank,
+  type I18n,
+  TokenReveal,
+} from "@lore/core/web";
 import { useAction, useClient, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Plus } from "lucide-react";
@@ -19,11 +25,7 @@ import type {
   LentEstateResource,
   ProjectEstateController,
 } from "@/api/controllers/ProjectEstateController.ts";
-import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
-import { useRank } from "@/web/app/components/shared/useRank.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
-import TokenReveal from "../../shared/TokenReveal.tsx";
 import ProjectSettingsEstateRow from "./ProjectSettingsEstateRow.tsx";
 import ProjectSettingsEstatesAddDialog from "./ProjectSettingsEstatesAddDialog.tsx";
 

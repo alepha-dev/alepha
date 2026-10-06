@@ -1,3 +1,5 @@
+import { projectFixture } from "@lore/core/testing";
+import { currentProjectAtom, I18n } from "@lore/core/web";
 import { renderHook } from "@testing-library/react";
 import { $inject, Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
@@ -13,11 +15,8 @@ import {
   type QuestResource,
   questResourceSchema,
 } from "@/api/schemas/questResourceSchema.ts";
-import { projectFixture } from "@/testing/projectFixture.ts";
 import { currentAssignedQuestsAtom } from "@/web/app/atoms/currentAssignedQuestsAtom.ts";
-import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { currentQuestCountAtom } from "@/web/app/atoms/currentQuestCountAtom.ts";
-import { I18n } from "@/web/app/services/I18n.ts";
 
 import { useQuestMutations } from "./useQuestMutations.ts";
 

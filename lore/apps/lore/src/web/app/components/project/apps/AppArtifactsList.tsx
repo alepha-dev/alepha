@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@alepha/ui";
+import { currentProjectAtom, type I18n } from "@lore/core/web";
 import { useClient, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import type { ReactNode } from "react";
@@ -6,8 +7,6 @@ import type { ReactNode } from "react";
 import type { ArtifactController } from "@/api/controllers/ArtifactController.ts";
 import type { ArtifactGroup } from "@/api/schemas/artifactGroupSchema.ts";
 
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import type { I18n } from "../../../services/I18n.ts";
 import ArtifactsEmpty from "../../shared/ArtifactsEmpty.tsx";
 import AppArtifactsRow from "./AppArtifactsRow.tsx";
 

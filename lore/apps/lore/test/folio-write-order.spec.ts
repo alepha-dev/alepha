@@ -1,3 +1,4 @@
+import { ProjectController, ResourceLinkService } from "@lore/core/api";
 import { $hook, Alepha, AlephaError, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -8,14 +9,12 @@ import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, describe, it } from "vitest";
 
 import { FolioController } from "../src/api/controllers/FolioController.ts";
-import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { folioNames } from "../src/api/entities/folioNames.ts";
 import { LoreApi } from "../src/api/index.ts";
 import {
   type AppendedRevision,
   FolioHistoryService,
 } from "../src/api/services/FolioHistoryService.ts";
-import { ResourceLinkService } from "../src/api/services/ResourceLinkService.ts";
 
 /**
  * Lands a second request between the first one's gate read and its write,

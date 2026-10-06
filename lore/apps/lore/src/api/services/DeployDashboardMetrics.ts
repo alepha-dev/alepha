@@ -1,6 +1,6 @@
+import { DashboardMetricCatalog } from "@lore/core/schemas";
 import { $inject } from "alepha";
 
-import { DashboardMetricCatalog } from "../schemas/DashboardMetricCatalog.ts";
 import { openBlightsFiltersSchema } from "../schemas/openBlightsFiltersSchema.ts";
 import { uniqueVisitorsFiltersSchema } from "../schemas/uniqueVisitorsFiltersSchema.ts";
 

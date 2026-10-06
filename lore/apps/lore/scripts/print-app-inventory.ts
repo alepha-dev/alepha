@@ -1,11 +1,11 @@
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 
+import { LoreAccountRouter } from "@lore/core/web";
 import { Alepha } from "alepha";
 import { AlephaReactRouter, ReactPageProvider } from "alepha/react/router";
 
 import { AppRouter } from "../src/web/app/AppRouter.ts";
-import { LoreAccountRouter } from "../src/web/app/components/account/LoreAccountRouter.ts";
 
 /**
  * Prints the three inventories `CLAUDE.md` keeps by hand: the route table,

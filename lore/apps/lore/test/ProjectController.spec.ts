@@ -1,3 +1,5 @@
+import { ProjectController } from "@lore/core/api";
+import { projects as projectsEntity } from "@lore/core/schemas";
 import { Alepha, AlephaError } from "alepha";
 import { MemberService as OrganizationMemberService } from "alepha/api/organizations";
 import { AlephaApiUsers } from "alepha/api/users";
@@ -8,8 +10,6 @@ import { AlephaSecurity, currentUserAtom } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, describe, it } from "vitest";
 
-import { ProjectController } from "../src/api/controllers/ProjectController.ts";
-import { projects as projectsEntity } from "../src/api/entities/projects.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { TestEntityRepositories } from "./fixtures/entities.ts";
 

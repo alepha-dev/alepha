@@ -1,13 +1,13 @@
+import type {
+  DashboardPickerContext,
+  DashboardScopeOption,
+  I18n,
+} from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useMemo } from "react";
 
 import { currentReleasesAtom } from "../../../atoms/currentReleasesAtom.ts";
-import type {
-  DashboardPickerContext,
-  DashboardScopeOption,
-} from "../../../registries/DashboardPickerRegistry.ts";
-import type { I18n } from "../../../services/I18n.ts";
 
 /**
  * The releases a dashboard card can be scoped to, registered by `WorkShell`

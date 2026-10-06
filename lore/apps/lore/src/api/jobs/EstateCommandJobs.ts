@@ -1,9 +1,9 @@
+import { ProjectLimits } from "@lore/core/api";
 import { $inject } from "alepha";
 import { $job } from "alepha/api/jobs";
 import { $logger } from "alepha/logger";
 
 import { EstateCommandService } from "../services/EstateCommandService.ts";
-import { ProjectLimits } from "../services/ProjectLimits.ts";
 
 /**
  * One sweep for the two things a command queue must not do: leave a stuck

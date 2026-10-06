@@ -1,11 +1,13 @@
+import {
+  type WikiLinkPreviewProps,
+  type I18n,
+  formatReference,
+  WikiLinkPreviewState,
+} from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 
 import { currentReleasesAtom } from "../../../atoms/currentReleasesAtom.ts";
-import type { WikiLinkPreviewProps } from "../../../registries/ElementReferenceRegistry.ts";
-import type { I18n } from "../../../services/I18n.ts";
-import { formatReference } from "../../shared/element/typedReference.ts";
-import WikiLinkPreviewState from "../../shared/element/WikiLinkPreviewState.tsx";
 
 /**
  * A release's hover card: its reference, title, tag and whether it has

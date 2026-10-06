@@ -1,4 +1,6 @@
+import { ProjectSlugService } from "@lore/core/schemas";
 import { LoreCoreWeb } from "@lore/core/web";
+import { LoreAccountRouter } from "@lore/core/web";
 import { LoreDeployWeb } from "@lore/deploy/web";
 import { LoreKnowledgeWeb } from "@lore/knowledge/web";
 import { LoreWorkWeb } from "@lore/work/web";
@@ -12,11 +14,9 @@ import {
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { insightsDimensionResourceSchema } from "../src/api/schemas/insightsDimensionResourceSchema.ts";
-import { ProjectSlugService } from "../src/api/schemas/ProjectSlugService.ts";
 import { ANALYTICS_DIMENSIONS, AppRouter } from "../src/web/app/AppRouter.ts";
 import { DeployAccountRouter } from "../src/web/app/components/account/DeployAccountRouter.ts";
 import { WorkAccountRouter } from "../src/web/app/components/account/feedback/WorkAccountRouter.ts";
-import { LoreAccountRouter } from "../src/web/app/components/account/LoreAccountRouter.ts";
 
 /**
  * The route table, pinned by name.

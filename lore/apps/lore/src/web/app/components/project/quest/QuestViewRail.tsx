@@ -1,4 +1,10 @@
 import { Button, Tooltip, TooltipContent, TooltipTrigger } from "@alepha/ui";
+import {
+  currentProjectAtom,
+  type I18n,
+  capabilityOption,
+  CommitLink,
+} from "@lore/core/web";
 import { DateTimeProvider } from "alepha/datetime";
 import { useClient, useInject, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -23,11 +29,7 @@ import {
 
 import type { EpicController } from "@/api/controllers/EpicController.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
-import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
-import { capabilityOption } from "../../../services/projectCapabilities.ts";
-import CommitLink from "../../shared/CommitLink.tsx";
 import QuestAssigneePicker from "./QuestAssigneePicker.tsx";
 import { QUEST_STATUS_LABEL_KEYS } from "./questChips.ts";
 import { formatEstimate } from "./questEstimate.ts";

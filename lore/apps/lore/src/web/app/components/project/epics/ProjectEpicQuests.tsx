@@ -10,6 +10,12 @@ import {
   SheetTitle,
 } from "@alepha/ui";
 import { DataTable } from "@alepha/ui/table";
+import {
+  currentProjectAtom,
+  type I18n,
+  formatReference,
+  useAgentPrompt,
+} from "@lore/core/web";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
@@ -19,11 +25,7 @@ import { useState } from "react";
 import type { EpicController } from "@/api/controllers/EpicController.ts";
 import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
-import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
-import { formatReference } from "../../shared/element/typedReference.ts";
-import { useAgentPrompt } from "../prompts/useAgentPrompt.ts";
 import { useWorkPromptSubject } from "../prompts/useWorkPromptSubject.ts";
 import {
   QUEST_PRIORITY_ICONS,

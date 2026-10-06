@@ -1,4 +1,9 @@
 import { useToast } from "@alepha/ui";
+import {
+  type I18n,
+  AttachmentLightbox,
+  attachmentPreview,
+} from "@lore/core/web";
 import { DateTimeProvider } from "alepha/datetime";
 import { useAction, useClient, useInject, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -6,10 +11,7 @@ import { Loader2, Plus } from "lucide-react";
 import { type ChangeEvent, useRef, useState } from "react";
 
 import type { QuestController } from "@/api/controllers/QuestController.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
-import AttachmentLightbox from "../../shared/AttachmentLightbox.tsx";
-import { attachmentPreview } from "../../shared/attachmentPreview.ts";
 import QuestAttachmentChip from "./QuestAttachmentChip.tsx";
 import { useExclusiveWindowPaste } from "./useExclusiveWindowPaste.ts";
 

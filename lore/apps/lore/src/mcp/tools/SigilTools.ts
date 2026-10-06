@@ -1,3 +1,4 @@
+import { ProjectTools } from "@lore/core/mcp";
 import { $inject } from "alepha";
 import { $tool } from "alepha/mcp";
 import { BadRequestError } from "alepha/server";
@@ -14,7 +15,6 @@ import {
   sigilRotateParamsSchema,
   sigilRotateResultSchema,
 } from "../schemas/sigilSchemas.ts";
-import { ProjectTools } from "./ProjectTools.ts";
 
 /**
  * MCP tools for sigils — the credential ONE DEPLOYED COPY reports with.

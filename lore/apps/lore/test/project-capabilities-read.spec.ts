@@ -1,3 +1,5 @@
+import { ProjectSecurityService } from "@lore/core/api";
+import { CapabilityRegistry } from "@lore/core/schemas";
 import { $inject, Alepha, z } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -7,8 +9,6 @@ import { $route, AlephaServer, ServerProvider } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { LoreApi } from "@/api/index.ts";
-import { CapabilityRegistry } from "@/api/schemas/CapabilityRegistry.ts";
-import { ProjectSecurityService } from "@/api/services/ProjectSecurityService.ts";
 
 import {
   createTestProject,

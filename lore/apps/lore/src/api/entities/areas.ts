@@ -1,8 +1,7 @@
+import { projects } from "@lore/core/schemas";
+import { paletteColorSchema } from "@lore/core/schemas";
 import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
-
-import { paletteColorSchema } from "../schemas/paletteColorSchema.ts";
-import { projects } from "./projects.ts";
 
 /**
  * A part of the system a quest belongs to — a module, a package, a

@@ -1,9 +1,9 @@
+import { users } from "@lore/core/schemas";
 import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
 import { questCommentSourceSchema } from "../schemas/questCommentSourceSchema.ts";
 import { feedback } from "./feedback.ts";
-import { users } from "./users.ts";
 
 /**
  * One comment on a feedback item.

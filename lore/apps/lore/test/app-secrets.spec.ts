@@ -1,3 +1,4 @@
+import { ProjectCapabilityController, ProjectController } from "@lore/core/api";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -9,8 +10,6 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { AppController } from "../src/api/controllers/AppController.ts";
 import { AppSecretController } from "../src/api/controllers/AppSecretController.ts";
-import { ProjectCapabilityController } from "../src/api/controllers/ProjectCapabilityController.ts";
-import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { appInstances } from "../src/api/entities/appInstances.ts";
 import { appSecrets } from "../src/api/entities/appSecrets.ts";
 import { artifacts } from "../src/api/entities/artifacts.ts";

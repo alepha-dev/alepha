@@ -1,5 +1,7 @@
 import { Button, useToast } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
+import { RELEASE_TAG_MAX_LENGTH } from "@lore/core/schemas";
+import type { I18n, LinkedCollection } from "@lore/core/web";
 import { z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { useClient, useInject } from "alepha/react";
@@ -18,10 +20,7 @@ import {
 import type { ReleaseController } from "@/api/controllers/ReleaseController.ts";
 import type { Release } from "@/api/entities/releases.ts";
 import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
-import { RELEASE_TAG_MAX_LENGTH } from "@/api/schemas/releaseTagSchema.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
-import type { LinkedCollection } from "../../../registries/ResourceTabRegistry.ts";
 import ReleaseDescriptionEditor from "./ReleaseDescriptionEditor.tsx";
 
 export interface ReleaseEditFormProps {

@@ -1,7 +1,7 @@
+import { DashboardMetricCatalog } from "@lore/core/schemas";
 import { $inject } from "alepha";
 
 import { activeQuestsFiltersSchema } from "../schemas/activeQuestsFiltersSchema.ts";
-import { DashboardMetricCatalog } from "../schemas/DashboardMetricCatalog.ts";
 import { epicProgressFiltersSchema } from "../schemas/epicProgressFiltersSchema.ts";
 import { heldQuestsFiltersSchema } from "../schemas/heldQuestsFiltersSchema.ts";
 import { releaseProgressFiltersSchema } from "../schemas/releaseProgressFiltersSchema.ts";

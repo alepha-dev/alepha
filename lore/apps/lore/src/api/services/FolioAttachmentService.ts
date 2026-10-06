@@ -1,3 +1,4 @@
+import { BoundParameters } from "@lore/core/api";
 import { $inject } from "alepha";
 import { FileService, files } from "alepha/api/files";
 import { $repository, $sequence, DbEntityNotFoundError, sql } from "alepha/orm";
@@ -16,7 +17,6 @@ import {
 } from "../entities/folioAttachments.ts";
 import { folios } from "../entities/folios.ts";
 import type { HydratedFolioAttachment } from "../schemas/hydratedFolioAttachmentSchema.ts";
-import { BoundParameters } from "./BoundParameters.ts";
 import { FolioHistoryService } from "./FolioHistoryService.ts";
 
 /**

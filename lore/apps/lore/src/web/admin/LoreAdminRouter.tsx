@@ -1,10 +1,12 @@
 import { $pageAdmin } from "@alepha/ui/admin";
+import type {
+  AdminMcpController,
+  AdminProjectController,
+} from "@lore/core/api";
 import { $client } from "alepha/server/links";
 import { FolderKanban, Plug, Server } from "lucide-react";
 
 import type { AdminEstateController } from "@/api/controllers/AdminEstateController.ts";
-import type { AdminMcpController } from "@/api/controllers/AdminMcpController.ts";
-import type { AdminProjectController } from "@/api/controllers/AdminProjectController.ts";
 
 /**
  * Lore's own pages inside the shared admin shell.

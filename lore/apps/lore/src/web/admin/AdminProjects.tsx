@@ -4,15 +4,14 @@ import {
   type DataTableFilterFields,
   type DataTableFilterValues,
 } from "@alepha/ui/table";
+import type { AdminProjectController } from "@lore/core/api";
+import type { AdminProjectResource } from "@lore/core/schemas";
 import { AlephaError, z } from "alepha";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link } from "alepha/react/router";
 import { Activity, Trash2 } from "lucide-react";
 import { useCallback } from "react";
-
-import type { AdminProjectController } from "@/api/controllers/AdminProjectController.ts";
-import type { AdminProjectResource } from "@/api/schemas/adminProjectResourceSchema.ts";
 
 /**
  * Instance-wide projects list, mounted into the shared admin shell by

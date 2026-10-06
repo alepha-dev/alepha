@@ -1,3 +1,9 @@
+import {
+  NotificationPreferenceController,
+  LoreInboxRecipientProvider,
+  LoreNotificationPreferences,
+} from "@lore/core/api";
+import { notificationPreferences } from "@lore/core/schemas";
 import { Alepha } from "alepha";
 import {
   NotificationInboxRecipientProvider,
@@ -12,11 +18,7 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake } from "alepha/testing/faker";
 import { describe, it } from "vitest";
 
-import { NotificationPreferenceController } from "../src/api/controllers/NotificationPreferenceController.ts";
-import { notificationPreferences } from "../src/api/entities/notificationPreferences.ts";
 import { LoreApi } from "../src/api/index.ts";
-import { LoreInboxRecipientProvider } from "../src/api/providers/LoreInboxRecipientProvider.ts";
-import { LoreNotificationPreferences } from "../src/api/providers/LoreNotificationPreferences.ts";
 
 class Probe {
   prefs = $repository(notificationPreferences);

@@ -1,3 +1,10 @@
+import type { ProjectController } from "@lore/core/api";
+import type { PaletteColor } from "@lore/core/schemas";
+import {
+  currentProjectAtom,
+  setCurrentProject,
+  type I18n,
+} from "@lore/core/web";
 import {
   useAction,
   useAlepha,
@@ -7,12 +14,7 @@ import {
 } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 
-import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
-import type { PaletteColor } from "@/api/schemas/paletteColorSchema.ts";
-import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
-import { setCurrentProject } from "@/web/app/services/currentProjectWrite.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
 import { TAG_CHIP_CLASS, TAG_CHIP_FALLBACK } from "../../shared/areaColor.ts";
 

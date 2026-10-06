@@ -1,8 +1,8 @@
+import { projects } from "@lore/core/schemas";
+import { epicStatusSchema } from "@lore/core/schemas";
 import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
-import { epicStatusSchema } from "../../mcp/schemas/epicStatusSchema.ts";
-import { projects } from "./projects.ts";
 import { releases } from "./releases.ts";
 
 /**

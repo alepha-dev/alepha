@@ -1,6 +1,7 @@
 import { TimeAgo, Badge, useDialog } from "@alepha/ui";
 import { AccountPage } from "@alepha/ui/account";
 import { DataTable, type DataTableFilterFields } from "@alepha/ui/table";
+import { type I18n, formatReference } from "@lore/core/web";
 import { z } from "alepha";
 import { useAction, useClient, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -9,9 +10,7 @@ import { useMemo, useState } from "react";
 
 import type { FeedbackController } from "@/api/controllers/FeedbackController.ts";
 import type { MyFeedbackResource } from "@/api/schemas/myFeedbackResourceSchema.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
-import { formatReference } from "../../shared/element/typedReference.ts";
 import MyFeedbackEditSheet from "./MyFeedbackEditSheet.tsx";
 
 const STATUS_VARIANT: Record<string, "secondary" | "default" | "destructive"> =

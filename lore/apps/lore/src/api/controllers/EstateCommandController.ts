@@ -1,3 +1,5 @@
+import { ProjectLimits, ProjectSecurityService } from "@lore/core/api";
+import { projects } from "@lore/core/schemas";
 import { $inject, z } from "alepha";
 import { FileService } from "alepha/api/files";
 import { RankService } from "alepha/api/organizations";
@@ -15,7 +17,6 @@ import { appInstances } from "../entities/appInstances.ts";
 import { artifacts } from "../entities/artifacts.ts";
 import { estateCommands } from "../entities/estateCommands.ts";
 import { estateProjects } from "../entities/estateProjects.ts";
-import { projects } from "../entities/projects.ts";
 import {
   type EstateCommandListItem,
   type EstateCommandResource,
@@ -24,8 +25,6 @@ import {
 } from "../schemas/estateCommandResourceSchema.ts";
 import { EstateCommandService } from "../services/EstateCommandService.ts";
 import { EstateService } from "../services/EstateService.ts";
-import { ProjectLimits } from "../services/ProjectLimits.ts";
-import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 import { ResourceNameService } from "../services/ResourceNameService.ts";
 
 export type { EstateCommandListItem, EstateCommandResource };

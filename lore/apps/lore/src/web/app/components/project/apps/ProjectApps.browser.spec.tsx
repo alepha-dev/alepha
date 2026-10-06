@@ -1,3 +1,9 @@
+import { projectFixture } from "@lore/core/testing";
+import {
+  currentProjectAtom,
+  currentProjectMemberAtom,
+  I18n,
+} from "@lore/core/web";
 import {
   fireEvent,
   render,
@@ -15,12 +21,8 @@ import { LinkProvider } from "alepha/server/links";
 import { afterEach, beforeAll, describe, it } from "vitest";
 
 import type { AppInstanceResource } from "@/api/schemas/appInstanceResourceSchema.ts";
-import { projectFixture } from "@/testing/projectFixture.ts";
 
 import { currentInstancesAtom } from "../../../atoms/currentInstancesAtom.ts";
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import { currentProjectMemberAtom } from "../../../atoms/currentProjectMemberAtom.ts";
-import { I18n } from "../../../services/I18n.ts";
 import ProjectApps from "./ProjectApps.tsx";
 
 class Routes {

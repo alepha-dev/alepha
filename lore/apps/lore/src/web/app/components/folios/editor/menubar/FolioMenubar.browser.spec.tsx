@@ -1,3 +1,4 @@
+import { I18n } from "@lore/core/web";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaLogger } from "alepha/logger";
@@ -7,7 +8,6 @@ import { AlephaReactRouter } from "alepha/react/router";
 import { describe, it } from "vitest";
 
 import { folioTextSizeAtom } from "../../../../atoms/folioTextSizeAtom.ts";
-import { I18n } from "../../../../services/I18n.ts";
 import type { FolioActionHandlers } from "../useFolioActions.ts";
 import FolioMenubar from "./FolioMenubar.tsx";
 import type { FolioActionState } from "./folioMenubarModel.ts";

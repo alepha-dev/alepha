@@ -1,8 +1,7 @@
+import type { DashboardPickerContext } from "@lore/core/web";
 import { useClient, useQuery } from "alepha/react";
 
 import type { QuestController } from "@/api/controllers/QuestController.ts";
-
-import type { DashboardPickerContext } from "../../../registries/DashboardPickerRegistry.ts";
 
 /**
  * The board project's own quest tags, for a dashboard metric whose filter

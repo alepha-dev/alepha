@@ -10,6 +10,7 @@ import {
   Textarea,
   useToast,
 } from "@alepha/ui";
+import type { I18n } from "@lore/core/web";
 import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { currentUserAtom } from "alepha/security";
@@ -18,7 +19,6 @@ import { useState } from "react";
 
 import type { FeedbackController } from "@/api/controllers/FeedbackController.ts";
 import type { MyFeedbackResource } from "@/api/schemas/myFeedbackResourceSchema.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
 import FeedbackThread from "../../project/feedback/FeedbackThread.tsx";
 import QuestTagInput from "../../project/quest/QuestTagInput.tsx";

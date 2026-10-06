@@ -1,4 +1,5 @@
 import { SIGIL_INGEST_PATH } from "@alepha/lore/sigil";
+import { projectCapabilities, projects } from "@lore/core/schemas";
 import { Alepha, AlephaError } from "alepha";
 import {
   type AnalyticsDataset,
@@ -16,8 +17,6 @@ import { AlephaFake } from "alepha/testing/faker";
 import { describe, expect, it } from "vitest";
 
 import { DeployAnalytics } from "../src/api/entities/deployAnalytics.ts";
-import { projectCapabilities } from "../src/api/entities/projectCapabilities.ts";
-import { projects } from "../src/api/entities/projects.ts";
 import { sigils } from "../src/api/entities/sigils.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { SigilTokenService } from "../src/api/services/SigilTokenService.ts";

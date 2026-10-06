@@ -6,6 +6,13 @@ import {
   type BulkAction,
   type RowActionEntry,
 } from "@alepha/ui/table";
+import {
+  currentProjectAtom,
+  loreDocsUrl,
+  type I18n,
+  formatReference,
+  OutboundLink,
+} from "@lore/core/web";
 import { type Page, z } from "alepha";
 import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -16,13 +23,8 @@ import { useRef, useState } from "react";
 import type { ReleaseController } from "@/api/controllers/ReleaseController.ts";
 import { compareReleaseTags } from "@/api/releaseOrder.ts";
 import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
-import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { currentReleasesAtom } from "@/web/app/atoms/currentReleasesAtom.ts";
-import { loreDocsUrl } from "@/web/app/services/docsUrl.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
-import { formatReference } from "../../shared/element/typedReference.ts";
-import { OutboundLink } from "../../shared/OutboundLink.tsx";
 import { releaseBumps, suggestedReleaseTag } from "./releaseBumps.ts";
 import ReleaseCreateDialog from "./ReleaseCreateDialog.tsx";
 import ReleaseDefaultBadge from "./ReleaseDefaultBadge.tsx";

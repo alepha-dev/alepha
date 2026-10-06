@@ -10,6 +10,8 @@ import {
   Label,
 } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
+import { APP_NAME_MAX_LENGTH } from "@lore/core/schemas";
+import { currentProjectAtom, type I18n, TokenReveal } from "@lore/core/web";
 import { z } from "alepha";
 import { useClient, useStore } from "alepha/react";
 import { useForm, useFormState } from "alepha/react/form";
@@ -18,12 +20,8 @@ import { useState } from "react";
 
 import type { AppController } from "@/api/controllers/AppController.ts";
 import type { SigilController } from "@/api/controllers/SigilController.ts";
-import { APP_NAME_MAX_LENGTH } from "@/api/schemas/appNameSchema.ts";
 
 import { currentInstancesAtom } from "../../../atoms/currentInstancesAtom.ts";
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import type { I18n } from "../../../services/I18n.ts";
-import TokenReveal from "../../shared/TokenReveal.tsx";
 
 export interface AppCreateDialogProps {
   open: boolean;

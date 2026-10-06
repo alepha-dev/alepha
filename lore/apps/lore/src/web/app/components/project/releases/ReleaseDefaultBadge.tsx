@@ -1,8 +1,8 @@
+import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { Inbox } from "lucide-react";
 
 import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
 export interface ReleaseDefaultBadgeProps {
   release: ReleaseResource;

@@ -1,3 +1,4 @@
+import type { Project } from "@lore/core/schemas";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -7,7 +8,6 @@ import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { blights } from "@/api/entities/blights.ts";
-import type { Project } from "@/api/entities/projects.ts";
 import { sigilErrorGroups } from "@/api/entities/sigilErrorGroups.ts";
 import { type Sigil, sigils } from "@/api/entities/sigils.ts";
 import { LoreApi } from "@/api/index.ts";

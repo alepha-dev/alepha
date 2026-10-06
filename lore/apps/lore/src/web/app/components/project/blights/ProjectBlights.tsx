@@ -14,6 +14,14 @@ import {
   type DataTableFilterFields,
   type DataTableFilterValues,
 } from "@alepha/ui/table";
+import {
+  currentProjectAtom,
+  type I18n,
+  hasCapability,
+  formatReference,
+  AgentPromptsMenu,
+  useAgentPromptSubject,
+} from "@lore/core/web";
 import { type Page, z } from "alepha";
 import { useAction, useAlepha, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -33,12 +41,6 @@ import { QUEST_STATUS_PREFIX } from "@/api/schemas/blightQuestStatus.ts";
 import type { BlightResource } from "@/api/schemas/blightResourceSchema.ts";
 
 import { currentBlightCountAtom } from "../../../atoms/currentBlightCountAtom.ts";
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import type { I18n } from "../../../services/I18n.ts";
-import { hasCapability } from "../../../services/projectCapabilities.ts";
-import { formatReference } from "../../shared/element/typedReference.ts";
-import { AgentPromptsMenu } from "../prompts/AgentPromptsMenu.tsx";
-import { useAgentPromptSubject } from "../prompts/useAgentPromptSubject.ts";
 import BlightSourceCell from "./BlightSourceCell.tsx";
 import { sigilNameParts } from "./sigilNameParts.ts";
 

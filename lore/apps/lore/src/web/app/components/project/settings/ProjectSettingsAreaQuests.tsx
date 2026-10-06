@@ -1,12 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@alepha/ui";
 import { settingsCardEdge } from "@alepha/ui/settings";
+import { type I18n, formatReference } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 
 import type { AreaDetail } from "@/api/schemas/areaResourceSchema.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
-
-import { formatReference } from "../../shared/element/typedReference.ts";
 
 export interface ProjectSettingsAreaQuestsProps {
   area: AreaDetail;

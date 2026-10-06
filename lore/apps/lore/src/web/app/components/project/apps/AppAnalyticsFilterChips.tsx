@@ -1,8 +1,8 @@
 import { Badge } from "@alepha/ui";
+import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { X } from "lucide-react";
 
-import type { I18n } from "../../../services/I18n.ts";
 import {
   APP_INSIGHTS_FILTER_KEYS,
   type AppInsightsFilterKey,

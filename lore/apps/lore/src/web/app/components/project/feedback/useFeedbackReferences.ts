@@ -1,11 +1,12 @@
+import type {
+  ElementReferenceSet,
+  ElementRef,
+  ElementReference,
+} from "@lore/core/web";
 import { useClient, useQuery } from "alepha/react";
 import { useMemo } from "react";
 
 import type { FeedbackController } from "@/api/controllers/FeedbackController.ts";
-
-import type { ElementReferenceSet } from "../../../registries/ElementReferenceRegistry.ts";
-import type { ElementRef } from "../../shared/element/elementRef.ts";
-import type { ElementReference } from "../../shared/element/wikiLinkResolver.ts";
 
 /**
  * The feedback items an element body can reference, registered by

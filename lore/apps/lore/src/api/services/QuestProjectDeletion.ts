@@ -1,8 +1,8 @@
+import { ProjectDeletionService } from "@lore/core/api";
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 
 import { quests } from "../entities/quests.ts";
-import { ProjectDeletionService } from "./ProjectDeletionService.ts";
 
 /**
  * Work's step of a project deletion, registered on core's

@@ -1,3 +1,4 @@
+import { ProjectLoaderRegistry, hasCapability } from "@lore/core/web";
 import { $inject, Alepha } from "alepha";
 import { $client } from "alepha/server/links";
 
@@ -5,8 +6,6 @@ import type { AppController } from "../../../api/controllers/AppController.ts";
 import type { BlightController } from "../../../api/controllers/BlightController.ts";
 import { currentBlightCountAtom } from "../atoms/currentBlightCountAtom.ts";
 import { currentInstancesAtom } from "../atoms/currentInstancesAtom.ts";
-import { ProjectLoaderRegistry } from "../registries/ProjectLoaderRegistry.ts";
-import { hasCapability } from "../services/projectCapabilities.ts";
 
 /**
  * What Deploy reads when a project opens, registered on core's

@@ -1,8 +1,8 @@
+import { projects } from "@lore/core/schemas";
 import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
 import { folioDirectories } from "./folioDirectories.ts";
-import { projects } from "./projects.ts";
 
 export const folios = $entity({
   name: "folios",

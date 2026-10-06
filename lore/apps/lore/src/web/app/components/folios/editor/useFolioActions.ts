@@ -1,4 +1,5 @@
 import { useDialog, useToast } from "@alepha/ui";
+import { currentProjectAtom, type I18n } from "@lore/core/web";
 import { AlephaError } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import {
@@ -17,9 +18,7 @@ import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { FolioResource as Folio } from "@/api/schemas/folioResourceSchema.ts";
 
 import { currentFolioAttachmentsAtom } from "../../../atoms/currentFolioAttachmentsAtom.ts";
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { userFoliosAtom } from "../../../atoms/userFoliosAtom.ts";
-import type { I18n } from "../../../services/I18n.ts";
 import {
   ensureProtectedKeysAutoLock,
   forgetProtectedKey,

@@ -3,6 +3,7 @@ import {
   ContextMenuItem,
   ContextMenuSeparator,
 } from "@alepha/ui";
+import { type I18n, formatReference } from "@lore/core/web";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
@@ -23,8 +24,6 @@ import type { ReactElement } from "react";
 
 import type { FolioController } from "@/api/controllers/FolioController.ts";
 
-import type { I18n } from "../../../../services/I18n.ts";
-import { formatReference } from "../../../shared/element/typedReference.ts";
 import type { FolioTreeNode } from "./folioTree.ts";
 import type { FolioTreeCommands } from "./useFolioTreeModel.ts";
 export interface FolioTreeContextMenuProps {

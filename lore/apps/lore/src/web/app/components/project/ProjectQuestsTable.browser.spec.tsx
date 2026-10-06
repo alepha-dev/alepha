@@ -1,5 +1,7 @@
 import { DialogProvider, Toaster } from "@alepha/ui";
 import { ActionErrorToaster } from "@alepha/ui/shell";
+import { projectFixture } from "@lore/core/testing";
+import { currentProjectAtom, I18n } from "@lore/core/web";
 import {
   fireEvent,
   render,
@@ -17,14 +19,11 @@ import { LinkProvider } from "alepha/server/links";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
-import { projectFixture } from "@/testing/projectFixture.ts";
 import { WorkShell } from "@/web/app/shell/WorkShell.ts";
 
 import { currentAreasAtom } from "../../atoms/currentAreasAtom.ts";
 import { currentEpicsAtom } from "../../atoms/currentEpicsAtom.ts";
-import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { currentReleasesAtom } from "../../atoms/currentReleasesAtom.ts";
-import { I18n } from "../../services/I18n.ts";
 import ProjectQuestsTable from "./ProjectQuestsTable.tsx";
 
 const questOf = (

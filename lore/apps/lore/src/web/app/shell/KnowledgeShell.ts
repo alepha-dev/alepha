@@ -1,3 +1,13 @@
+import {
+  formatReference,
+  lazyPart,
+  DocumentSinkRegistry,
+  ElementReferenceRegistry,
+  ProjectShellRegistry,
+  ResourceTabRegistry,
+  hasCapability,
+  canInProject,
+} from "@lore/core/web";
 import { $inject } from "alepha";
 import { $client } from "alepha/server/links";
 import { BookOpen } from "lucide-react";
@@ -6,14 +16,6 @@ import type { FolioController } from "../../../api/controllers/FolioController.t
 import { useFiledFolios } from "../components/folios/epic/useFiledFolios.ts";
 import { useFolioElementImageUpload } from "../components/folios/useFolioElementImageUpload.ts";
 import { useFolioReferences } from "../components/folios/useFolioReferences.ts";
-import { formatReference } from "../components/shared/element/typedReference.ts";
-import { lazyPart } from "../components/shared/lazyPart.tsx";
-import { DocumentSinkRegistry } from "../registries/DocumentSinkRegistry.ts";
-import { ElementReferenceRegistry } from "../registries/ElementReferenceRegistry.ts";
-import { ProjectShellRegistry } from "../registries/ProjectShellRegistry.ts";
-import { ResourceTabRegistry } from "../registries/ResourceTabRegistry.ts";
-import { hasCapability } from "../services/projectCapabilities.ts";
-import { canInProject } from "../services/projectRank.ts";
 
 /**
  * Knowledge's part of the project shell, registered on core's

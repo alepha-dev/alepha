@@ -1,3 +1,4 @@
+import type { I18n } from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import type { ReactElement } from "react";
@@ -5,7 +6,6 @@ import type { ReactElement } from "react";
 import type { FolioResource as Folio } from "@/api/schemas/folioResourceSchema.ts";
 
 import { userFoliosAtom } from "../../../../atoms/userFoliosAtom.ts";
-import type { I18n } from "../../../../services/I18n.ts";
 
 export interface FolioPinnedBudgetProps {
   folio: Folio;

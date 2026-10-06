@@ -1,3 +1,5 @@
+import { LoreAudits } from "@lore/core/api";
+import { projects } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, DbConflictError } from "alepha/orm";
@@ -12,7 +14,6 @@ import {
 import { appInstances } from "../entities/appInstances.ts";
 import { estateProjects } from "../entities/estateProjects.ts";
 import { type Estate, type EstateType, estates } from "../entities/estates.ts";
-import { projects } from "../entities/projects.ts";
 import { acceptedRuntimes } from "../schemas/acceptedRuntimes.ts";
 import {
   type EstateResource,
@@ -31,7 +32,6 @@ import { CredentialSealService } from "./CredentialSealService.ts";
 import { EstateCloudflareService } from "./EstateCloudflareService.ts";
 import { EstateInventoryService } from "./EstateInventoryService.ts";
 import { EstateTokenService } from "./EstateTokenService.ts";
-import { LoreAudits } from "./LoreAudits.ts";
 
 /**
  * What an estate IS, stated once: which runtimes its type runs, when it

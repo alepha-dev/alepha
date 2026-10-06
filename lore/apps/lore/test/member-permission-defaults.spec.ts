@@ -1,3 +1,4 @@
+import { LorePermissions } from "@lore/core/api";
 import { Alepha } from "alepha";
 import { OrganizationPermissions } from "alepha/api/organizations";
 import { AlephaApiUsers } from "alepha/api/users";
@@ -8,7 +9,6 @@ import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { LoreApi } from "../src/api/index.ts";
-import { LorePermissions } from "../src/api/security/LorePermissions.ts";
 
 /**
  * The acceptance criterion of epic #E39, as a test.

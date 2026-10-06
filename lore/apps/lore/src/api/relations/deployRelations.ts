@@ -1,9 +1,9 @@
+import { projects } from "@lore/core/schemas";
 import { users } from "alepha/api/users";
 import { $relations } from "alepha/orm";
 
 import { appInstances } from "../entities/appInstances.ts";
 import { blightIgnoreRules } from "../entities/blightIgnoreRules.ts";
-import { projects } from "../entities/projects.ts";
 import { sigils } from "../entities/sigils.ts";
 
 /**

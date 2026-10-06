@@ -1,4 +1,6 @@
 import { DialogProvider } from "@alepha/ui";
+import { projectFixture } from "@lore/core/testing";
+import { currentProjectAtom, I18n } from "@lore/core/web";
 import {
   fireEvent,
   render,
@@ -16,12 +18,9 @@ import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
-import { projectFixture } from "@/testing/projectFixture.ts";
 import { WorkShell } from "@/web/app/shell/WorkShell.ts";
 
 import { currentAreasAtom } from "../../../atoms/currentAreasAtom.ts";
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import { I18n } from "../../../services/I18n.ts";
 import ProjectEpicQuests from "./ProjectEpicQuests.tsx";
 
 const questOf = (

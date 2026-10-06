@@ -1,3 +1,4 @@
+import { ProjectTools } from "@lore/core/mcp";
 import { $inject } from "alepha";
 import { $tool } from "alepha/mcp";
 import { NotFoundError } from "alepha/server";
@@ -9,7 +10,6 @@ import {
   artifactListParamsSchema,
   artifactListResultSchema,
 } from "../schemas/artifactSchemas.ts";
-import { ProjectTools } from "./ProjectTools.ts";
 
 /**
  * MCP tools for artifacts - what CI has built and kept.

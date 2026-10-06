@@ -1,8 +1,6 @@
+import { ProjectSlugService, projectTitleSchema } from "@lore/core/schemas";
 import { Alepha } from "alepha";
 import { describe, it } from "vitest";
-
-import { ProjectSlugService } from "../src/api/schemas/ProjectSlugService.ts";
-import { projectTitleSchema } from "../src/api/schemas/projectTitleSchema.ts";
 
 describe("ProjectSlugService", () => {
   const service = () => Alepha.create().inject(ProjectSlugService);

@@ -1,3 +1,4 @@
+import { currentProjectAtom } from "@lore/core/web";
 import { useClient, useQuery, useStore } from "alepha/react";
 import { NestedView } from "alepha/react/router";
 import { useEffect } from "react";
@@ -5,7 +6,6 @@ import { useEffect } from "react";
 import type { KanbanController } from "@/api/controllers/KanbanController.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 
-import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import KanbanBoard from "../kanban/KanbanBoard.tsx";
 import { preloadQuestView } from "../project/quest/LazyQuestView.tsx";
 

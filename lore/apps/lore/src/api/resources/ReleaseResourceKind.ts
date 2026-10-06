@@ -1,9 +1,8 @@
+import { BoundParameters, ResourceRegistry } from "@lore/core/api";
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 
 import { releases } from "../entities/releases.ts";
-import { BoundParameters } from "../services/BoundParameters.ts";
-import { ResourceRegistry } from "./ResourceRegistry.ts";
 
 /**
  * The `release` resource (`#R`), registered by Work. Addressed by its

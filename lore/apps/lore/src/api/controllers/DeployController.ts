@@ -1,9 +1,9 @@
+import { $ownsProject } from "@lore/core/api";
+import { releaseTagSchema } from "@lore/core/schemas";
 import { $inject, z } from "alepha";
 import { $action, NotFoundError, okSchema } from "alepha/server";
 
 import { DeployJobs } from "../jobs/DeployJobs.ts";
-import { releaseTagSchema } from "../schemas/releaseTagSchema.ts";
-import { $ownsProject } from "../security/$ownsProject.ts";
 import { DeployService } from "../services/DeployService.ts";
 import { RollbackService } from "../services/RollbackService.ts";
 

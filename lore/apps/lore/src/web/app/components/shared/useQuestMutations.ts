@@ -1,15 +1,17 @@
 import { useToast } from "@alepha/ui";
+import {
+  currentProjectAtom,
+  type I18n,
+  type BulkOutcome,
+  settleBulk,
+} from "@lore/core/web";
 import { useAlepha, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import { currentAssignedQuestsAtom } from "@/web/app/atoms/currentAssignedQuestsAtom.ts";
-import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { currentQuestCountAtom } from "@/web/app/atoms/currentQuestCountAtom.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
-
-import { type BulkOutcome, settleBulk } from "./bulkOutcome.ts";
 
 /**
  * The five quest transitions, plus the bookkeeping the two sidebar atoms

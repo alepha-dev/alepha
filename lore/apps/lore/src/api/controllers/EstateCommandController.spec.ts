@@ -1,3 +1,4 @@
+import { projects } from "@lore/core/schemas";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -15,7 +16,6 @@ import { appInstances } from "../entities/appInstances.ts";
 import { artifacts } from "../entities/artifacts.ts";
 import { estateProjects } from "../entities/estateProjects.ts";
 import { type Estate, estates } from "../entities/estates.ts";
-import { projects } from "../entities/projects.ts";
 import { LoreApi } from "../index.ts";
 import { EstateCommandController } from "./EstateCommandController.ts";
 import { EstateController } from "./EstateController.ts";

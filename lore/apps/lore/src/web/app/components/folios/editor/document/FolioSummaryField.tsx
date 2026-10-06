@@ -1,9 +1,8 @@
 import { cn } from "@alepha/ui";
+import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { Sparkles } from "lucide-react";
 import type { ReactElement } from "react";
-
-import type { I18n } from "../../../../services/I18n.ts";
 
 export interface FolioSummaryFieldProps {
   value: string;

@@ -1,19 +1,21 @@
+import {
+  $ownsProject,
+  LoreAudits,
+  ProjectSecurityService,
+} from "@lore/core/api";
+import { appNameSchema } from "@lore/core/schemas";
 import { $inject, z } from "alepha";
 import { $repository, DbConflictError } from "alepha/orm";
 import { $action, ConflictError, NotFoundError, okSchema } from "alepha/server";
 
 import { SIGIL_KINDS, type Sigil, sigils } from "../entities/sigils.ts";
-import { appNameSchema } from "../schemas/appNameSchema.ts";
 import {
   type MintedSigil,
   mintedSigilSchema,
   type SigilResource,
   sigilResourceSchema,
 } from "../schemas/sigilResourceSchema.ts";
-import { $ownsProject } from "../security/$ownsProject.ts";
 import { AppService } from "../services/AppService.ts";
-import { LoreAudits } from "../services/LoreAudits.ts";
-import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 import { SigilTokenService } from "../services/SigilTokenService.ts";
 
 export type { MintedSigil, SigilResource };

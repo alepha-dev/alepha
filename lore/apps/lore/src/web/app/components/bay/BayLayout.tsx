@@ -1,5 +1,6 @@
 import { Badge } from "@alepha/ui";
 import { PlateLayout } from "@alepha/ui/shell";
+import type { I18n } from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import {
@@ -19,7 +20,6 @@ import {
 import { useMemo } from "react";
 
 import { currentEstateAtom } from "@/web/app/atoms/currentEstateAtom.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
 /**
  * The console for one `bay` estate, as a detail page inside the account

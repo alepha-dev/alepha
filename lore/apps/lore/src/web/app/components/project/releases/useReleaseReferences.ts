@@ -1,9 +1,8 @@
+import type { ElementReferenceSet, ElementRef } from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useMemo } from "react";
 
 import { currentReleasesAtom } from "../../../atoms/currentReleasesAtom.ts";
-import type { ElementReferenceSet } from "../../../registries/ElementReferenceRegistry.ts";
-import type { ElementRef } from "../../shared/element/elementRef.ts";
 
 /**
  * The releases an element body can reference, registered by `WorkShell` on

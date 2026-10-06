@@ -1,0 +1,256 @@
+import { cn } from "@alepha/ui";
+import { useInject } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
+import { Check } from "lucide-react";
+
+import {
+  type DashboardBoard,
+  DashboardMetricCatalog,
+  type DashboardMetricDescriptor,
+} from "../../../../api/schemas/DashboardMetricCatalog.ts";
+import type { DashboardScope } from "../../../../api/schemas/dashboardScopeSchema.ts";
+import type { ProjectResource } from "../../../../api/schemas/projectResourceSchema.ts";
+import type { DashboardSubjectOptions } from "../../registries/DashboardPickerRegistry.ts";
+import type { I18n } from "../../services/I18n.ts";
+import { ProjectIcon } from "../shared/ProjectIcon.tsx";
+import { eligibleApps, eligibleProjects } from "./dashboardEligibility.ts";
+
+/**
+ * One app the reader can point a card at.
+ */
+export interface DashboardScopeApp {
+  id: string;
+  name: string;
+  projectId: number;
+  projectTitle: string;
+  /**
+   * Whether this app reports page views. Visitors cards need it.
+   */
+  beacon: boolean;
+}
+
+/**
+ * The four fields a scope picker reads off a project.
+ *
+ * ⚠️ Narrowed rather than taking a whole resource, because the two boards hand
+ * it different ones: home passes `ProjectOverviewResource` (which carries
+ * `openQuestCount`) and a project board passes the `currentProjectAtom`
+ * resource (which carries `rank` and `permissions`). Neither is assignable to
+ * the other, and this picker needs nothing either of them adds.
+ */
+export type DashboardScopeProject = Pick<
+  ProjectResource,
+  "id" | "title" | "icon" | "capabilities"
+>;
+
+export interface DashboardScopeStepProps {
+  metric: DashboardMetricDescriptor;
+  /**
+   * Which board the card is being added to. It decides which pickers are
+   * offered: inside a project, `projects` and `all` are not choices.
+   */
+  board: DashboardBoard;
+  projects: DashboardScopeProject[];
+  apps: DashboardScopeApp[];
+  /**
+   * The single-row scope kinds (an epic, a release), each with its options,
+   * from the modules that registered them (#E75, #Q2624).
+   *
+   * ⚠️ Only ever the OPEN project's, and that is sound rather than a
+   * shortcut: both metrics that take one declare `boards: ["project"]`, so
+   * this picker is never reached from home.
+   */
+  subjects: DashboardSubjectOptions[];
+  scope: DashboardScope;
+  onChange: (scope: DashboardScope) => void;
+}
+
+/**
+ * Step two: what the card is pointed at.
+ *
+ * The picker is chosen by the metric's declared `scopeKinds`, never by the
+ * metric's name — `all` offers one entry, `projects` a project list, `apps` a
+ * multi-select that may span projects. That last one is the hard case and the
+ * reason the scope is a tagged union rather than a project id: an app list is
+ * not implicitly single-project.
+ *
+ * ⚠️ Apps without a `beacon` capability are offered for blights and withheld
+ * from visitors. A beacon-less app reports no page views at all and its
+ * analytics page 404s, so a visitors card scoped to one would show a
+ * permanent zero and link to an error.
+ *
+ * ⚠️ **A target that does not do this is not listed at all**, rather than
+ * listed and refused. A Knowledge-only project is absent from the Active
+ * Quests picker; if it is the reader's only project, the metric never got
+ * past the catalogue. Both filters come from `dashboardEligibility.ts`, which
+ * reads the metric's own `needs` - this file names no metric, which is the
+ * property the panel's docblock asks for and which the beacon rule used to
+ * break by testing `metric.key === "uniqueVisitors"` here.
+ */
+const DashboardScopeStep = (props: DashboardScopeStepProps) => {
+  const { tr } = useI18n<I18n, "en">();
+  const catalog = useInject(DashboardMetricCatalog);
+  // The kinds a READER may pick, not the kinds the metric accepts. The
+  // difference is the whole of this board's behaviour: inside a project, both
+  // `all` and `projects` resolve to the project and neither is a question.
+  const kinds = catalog.pickableScopeKinds(props.metric.key, props.board);
+
+  const projects = eligibleProjects(props.metric, props.projects);
+  const apps = eligibleApps(props.metric, props.apps, props.projects);
+
+  const selectProject = (projectId: number) =>
+    props.onChange({ kind: "projects", projectIds: [projectId] });
+
+  const toggleApp = (appId: string) => {
+    const current =
+      props.scope.kind === "apps" ? (props.scope.sigilIds ?? []) : [];
+    const next = current.includes(appId)
+      ? current.filter((id) => id !== appId)
+      : [...current, appId];
+    if (next.length === 0) {
+      // Never leave an `apps` scope empty: it would fail validation on save
+      // and the reader would have no way to see why.
+      props.onChange(
+        kinds.includes("all")
+          ? { kind: "all" }
+          : { kind: "apps", sigilIds: current },
+      );
+      return;
+    }
+    props.onChange({ kind: "apps", sigilIds: next });
+  };
+
+  const rowClass = (selected: boolean) =>
+    cn(
+      "border-border hover:border-border-hover flex items-center gap-2.5 rounded-[9px] border px-2.5 py-2 text-left text-[12.5px] transition-colors",
+      selected && "border-primary/60 bg-accent",
+    );
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      {kinds.includes("all") && (
+        <button
+          type="button"
+          data-testid="dashboard-scope-all"
+          onClick={() => props.onChange({ kind: "all" })}
+          className={rowClass(props.scope.kind === "all")}
+        >
+          <span className="flex-1">{tr("dashboard.scope.allProjects")}</span>
+          {props.scope.kind === "all" && <Check className="size-3.5" />}
+        </button>
+      )}
+
+      {kinds.includes("projects") &&
+        projects.map((project) => {
+          const selected =
+            props.scope.kind === "projects" &&
+            (props.scope.projectIds ?? []).includes(project.id);
+          return (
+            <button
+              key={project.id}
+              type="button"
+              data-testid="dashboard-scope-project"
+              onClick={() => selectProject(project.id)}
+              className={rowClass(selected)}
+            >
+              <ProjectIcon fileId={project.icon} className="size-5 rounded" />
+              <span className="flex-1 truncate">{project.title}</span>
+              {selected && <Check className="size-3.5" />}
+            </button>
+          );
+        })}
+
+      {kinds.includes("apps") &&
+        apps.map((app) => {
+          const selected =
+            props.scope.kind === "apps" &&
+            (props.scope.sigilIds ?? []).includes(app.id);
+          return (
+            <button
+              key={app.id}
+              type="button"
+              data-testid="dashboard-scope-app"
+              onClick={() => toggleApp(app.id)}
+              className={rowClass(selected)}
+            >
+              <span className="min-w-0 flex-1">
+                <span className="block truncate">{app.name}</span>
+                <span className="text-muted-foreground block truncate text-[11px]">
+                  {app.projectTitle}
+                </span>
+              </span>
+              {selected && <Check className="size-3.5" />}
+            </button>
+          );
+        })}
+
+      {props.subjects.map(({ picker, options }) =>
+        kinds.includes(picker.kind)
+          ? options.map((option) => {
+              const selected = picker.selectedId(props.scope) === option.id;
+              return (
+                <button
+                  key={`${picker.kind}:${option.id}`}
+                  type="button"
+                  data-testid={`dashboard-scope-${picker.kind}`}
+                  onClick={() => props.onChange(picker.toScope(option.id))}
+                  className={rowClass(selected)}
+                >
+                  {option.prefix && (
+                    <span className="text-muted-foreground shrink-0 tabular-nums">
+                      {option.prefix}
+                    </span>
+                  )}
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate">{option.label}</span>
+                    <span className="text-muted-foreground block truncate text-[11px]">
+                      {option.detail}
+                    </span>
+                  </span>
+                  {selected && <Check className="size-3.5 shrink-0" />}
+                </button>
+              );
+            })
+          : null,
+      )}
+
+      {kinds.includes("apps") && apps.length === 0 && (
+        <div className="text-muted-foreground rounded-[9px] border border-dashed px-2.5 py-3 text-[11.5px]">
+          {tr("dashboard.scope.noApps")}
+        </div>
+      )}
+
+      {/*
+        Reachable from the catalogue: a project with Epics on and no epic yet
+        passes `metricUnavailableKey` (the capability is on) and lands here.
+        An empty list over a dead Save button is the exact failure this step
+        shipped with.
+      */}
+      {props.subjects.map(({ picker, options }) =>
+        kinds.includes(picker.kind) && options.length === 0 ? (
+          <div
+            key={picker.kind}
+            className="text-muted-foreground rounded-[9px] border border-dashed px-2.5 py-3 text-[11.5px]"
+          >
+            {tr(picker.emptyKey as never)}
+          </div>
+        ) : null,
+      )}
+
+      {/*
+        Reachable only from "Change scope" on a card already on the board:
+        the catalogue refuses to open this step for a metric with no eligible
+        target. It is here because a capability turned off after the card was
+        added lands exactly there, and an empty list over a dead Save button
+        says nothing about why.
+      */}
+      {kinds.includes("projects") && projects.length === 0 && (
+        <div className="text-muted-foreground rounded-[9px] border border-dashed px-2.5 py-3 text-[11.5px]">
+          {tr("dashboard.scope.noProjects")}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default DashboardScopeStep;

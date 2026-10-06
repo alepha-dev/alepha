@@ -1,3 +1,11 @@
+import { ProjectSecurityService } from "@lore/core/api";
+import {
+  folioLinks,
+  projectCapabilities,
+  type Project,
+  projects,
+} from "@lore/core/schemas";
+import type { CapabilityKey } from "@lore/core/schemas";
 import type { Alepha, Infer } from "alepha";
 import {
   type OrganizationMember,
@@ -11,14 +19,9 @@ import { areas } from "@/api/entities/areas.ts";
 import { type Epic, epics } from "@/api/entities/epics.ts";
 import { feedback } from "@/api/entities/feedback.ts";
 import { folioDirectories } from "@/api/entities/folioDirectories.ts";
-import { folioLinks } from "@/api/entities/folioLinks.ts";
 import { type Folio, folios } from "@/api/entities/folios.ts";
-import { projectCapabilities } from "@/api/entities/projectCapabilities.ts";
-import { type Project, projects } from "@/api/entities/projects.ts";
 import { type Quest, type QuestInsert, quests } from "@/api/entities/quests.ts";
 import { releases } from "@/api/entities/releases.ts";
-import type { CapabilityKey } from "@/api/schemas/capabilityKeySchema.ts";
-import { ProjectSecurityService } from "@/api/services/ProjectSecurityService.ts";
 
 type ProjectInsert = Infer<typeof projects.insertSchema>;
 type EpicInsert = Infer<typeof epics.insertSchema>;

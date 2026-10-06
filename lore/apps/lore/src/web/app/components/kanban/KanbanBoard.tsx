@@ -6,6 +6,8 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
+import type { ProjectResource } from "@lore/core/schemas";
+import { type I18n, ToolbarSpinner, useProjectUsers } from "@lore/core/web";
 import { z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import {
@@ -36,17 +38,13 @@ import type { EpicController } from "@/api/controllers/EpicController.ts";
 import type { KanbanController } from "@/api/controllers/KanbanController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import { KanbanColumnConfig } from "@/api/schemas/KanbanColumnConfig.ts";
-import type { ProjectResource } from "@/api/schemas/projectResourceSchema.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 
 import { currentAreasAtom } from "../../atoms/currentAreasAtom.ts";
 import { currentQuestAtom } from "../../atoms/currentQuestAtom.ts";
 import { kanbanFiltersAtom } from "../../atoms/kanbanFiltersAtom.ts";
 import { kanbanReloadAtom } from "../../atoms/kanbanReloadAtom.ts";
-import type { I18n } from "../../services/I18n.ts";
 import { AREA_DOT_CLASS, AreaDotColor } from "../shared/areaColor.ts";
-import ToolbarSpinner from "../shared/ToolbarSpinner.tsx";
-import { useProjectUsers } from "../shared/useProjectUsers.ts";
 import { useQuestMutations } from "../shared/useQuestMutations.ts";
 import { KanbanAging } from "./kanbanAging.ts";
 import KanbanColumn, { type ColumnDescriptor } from "./KanbanColumn.tsx";

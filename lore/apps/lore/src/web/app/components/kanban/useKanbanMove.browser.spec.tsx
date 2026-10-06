@@ -1,5 +1,7 @@
 import { Toaster } from "@alepha/ui";
 import { ActionErrorToaster } from "@alepha/ui/shell";
+import { projectFixture, virtualClientFake } from "@lore/core/testing";
+import { currentProjectAtom, I18n } from "@lore/core/web";
 import { act, renderHook, screen, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
@@ -12,10 +14,6 @@ import { type ReactNode, useState } from "react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
-import { projectFixture } from "@/testing/projectFixture.ts";
-import { virtualClientFake } from "@/testing/virtualClientFake.ts";
-import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
-import { I18n } from "@/web/app/services/I18n.ts";
 
 import type { ColumnDescriptor } from "./KanbanColumn.tsx";
 import { useKanbanMove } from "./useKanbanMove.ts";

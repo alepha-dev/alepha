@@ -1,3 +1,4 @@
+import { $ownsProject } from "@lore/core/api";
 import { $inject, z } from "alepha";
 import { $repository } from "alepha/orm";
 import { $action, NotFoundError, okSchema } from "alepha/server";
@@ -5,7 +6,6 @@ import { $action, NotFoundError, okSchema } from "alepha/server";
 import { folioAttachments } from "../entities/folioAttachments.ts";
 import { folioDirectories } from "../entities/folioDirectories.ts";
 import { folios } from "../entities/folios.ts";
-import { $ownsProject } from "../security/$ownsProject.ts";
 import { FolioDirectoryService } from "../services/FolioDirectoryService.ts";
 
 /**

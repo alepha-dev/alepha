@@ -1,3 +1,4 @@
+import { ProjectController } from "@lore/core/api";
 import { Alepha } from "alepha";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -8,7 +9,6 @@ import { describe, it } from "vitest";
 
 import { FeedbackCommentController } from "../src/api/controllers/FeedbackCommentController.ts";
 import { FeedbackController } from "../src/api/controllers/FeedbackController.ts";
-import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { QuestController } from "../src/api/controllers/QuestController.ts";
 import { LoreApi } from "../src/api/index.ts";
 import {

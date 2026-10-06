@@ -1,9 +1,5 @@
+import { loreDocsUrl, type I18n, OutboundLink } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
-
-import { loreDocsUrl } from "@/web/app/services/docsUrl.ts";
-
-import type { I18n } from "../../services/I18n.ts";
-import { OutboundLink } from "./OutboundLink.tsx";
 
 export interface ArtifactsEmptyProps {
   /**

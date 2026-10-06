@@ -1,5 +1,7 @@
 import { DialogProvider, Toaster } from "@alepha/ui";
 import { ActionErrorToaster } from "@alepha/ui/shell";
+import { virtualClientFake } from "@lore/core/testing";
+import { I18n } from "@lore/core/web";
 import {
   fireEvent,
   render,
@@ -17,8 +19,6 @@ import { setupJsdomMocks } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import type { FeedbackCommentResource } from "@/api/schemas/feedbackCommentResourceSchema.ts";
-import { virtualClientFake } from "@/testing/virtualClientFake.ts";
-import { I18n } from "@/web/app/services/I18n.ts";
 
 import FeedbackThread from "./FeedbackThread.tsx";
 

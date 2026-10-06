@@ -1,3 +1,4 @@
+import { projects } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
@@ -6,7 +7,6 @@ import { $repository } from "alepha/orm";
 import { appInstances } from "../entities/appInstances.ts";
 import { estateInventories } from "../entities/estateInventories.ts";
 import type { Estate } from "../entities/estates.ts";
-import { projects } from "../entities/projects.ts";
 import type { EstateInventoryFrame } from "../schemas/estateInventoryFrameSchema.ts";
 import type {
   EstateInventoryExpectedApp,

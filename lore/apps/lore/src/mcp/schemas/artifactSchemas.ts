@@ -1,9 +1,11 @@
+import {
+  APP_NAME_MAX_LENGTH,
+  RELEASE_TAG_MAX_LENGTH,
+  projectParamsSchema,
+} from "@lore/core/schemas";
 import { z } from "alepha";
 
-import { APP_NAME_MAX_LENGTH } from "../../api/schemas/appNameSchema.ts";
 import { artifactGroupSchema } from "../../api/schemas/artifactGroupSchema.ts";
-import { RELEASE_TAG_MAX_LENGTH } from "../../api/schemas/releaseTagSchema.ts";
-import { projectParamsSchema } from "./projectParamsSchema.ts";
 
 /**
  * The bounds are imported rather than restated: the server enforces them on the

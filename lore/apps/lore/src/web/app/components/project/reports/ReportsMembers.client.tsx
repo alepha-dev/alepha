@@ -5,16 +5,13 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@alepha/ui/chart";
+import type { reportsMembersSchema } from "@lore/core/schemas";
+import { type I18n, ReportsSection } from "@lore/core/web";
 import type { Infer } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
-
-import type { reportsMembersSchema } from "@/api/schemas/reportsSchemas.ts";
-
-import type { I18n } from "../../../services/I18n.ts";
-import ReportsSection from "./ReportsSection.tsx";
 
 type ReportsMembers = Infer<typeof reportsMembersSchema>;
 

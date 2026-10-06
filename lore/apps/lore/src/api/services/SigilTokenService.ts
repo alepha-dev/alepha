@@ -1,9 +1,9 @@
 import { sigilKeyBuild, sigilKeyPrefix } from "@alepha/lore/sigil";
+import { projects } from "@lore/core/schemas";
 import { $inject, AlephaError } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { $repository } from "alepha/orm";
 
-import { projects } from "../entities/projects.ts";
 import { type Sigil, sigils } from "../entities/sigils.ts";
 
 /**

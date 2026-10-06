@@ -7,14 +7,13 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@alepha/ui/chart";
+import { currentProjectAtom, type I18n } from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { Bug, Inbox, Laptop, Server } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import type { I18n } from "../../../services/I18n.ts";
 import AppErrorsStat from "./AppErrorsStat.tsx";
 import AppInsightsControls from "./AppInsightsControls.tsx";
 import { useAppInsights } from "./useAppInsights.ts";

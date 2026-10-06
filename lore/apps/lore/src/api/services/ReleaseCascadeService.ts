@@ -1,10 +1,10 @@
+import { BoundParameters } from "@lore/core/api";
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 
 import type { Epic } from "../entities/epics.ts";
 import { type Quest, quests } from "../entities/quests.ts";
 import type { ReleaseCascade } from "../schemas/releaseCascadeSchema.ts";
-import { BoundParameters } from "./BoundParameters.ts";
 import { ReleaseAttachmentService } from "./ReleaseAttachmentService.ts";
 
 /**

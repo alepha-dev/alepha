@@ -1,5 +1,6 @@
 import { Button, useDialog, useToast } from "@alepha/ui";
 import { resizeImage } from "@alepha/ui/form";
+import { type I18n, formatAttachmentBytes } from "@lore/core/web";
 import { AlephaError } from "alepha";
 import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -9,8 +10,6 @@ import { type DragEvent, type ReactElement, useRef, useState } from "react";
 import type { FolioAttachmentController } from "@/api/controllers/FolioAttachmentController.ts";
 
 import { currentFolioAttachmentsAtom } from "../../../../atoms/currentFolioAttachmentsAtom.ts";
-import type { I18n } from "../../../../services/I18n.ts";
-import { formatAttachmentBytes } from "../../../shared/element/wikiLinkResolver.ts";
 import { folioAssetEmbed } from "../../folioAssetReference.ts";
 import { FOLIO_IMAGE_MAX_WIDTH } from "../../folioImageBounds.ts";
 

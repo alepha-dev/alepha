@@ -1,3 +1,9 @@
+import { DashboardController } from "@lore/core/api";
+import {
+  dashboardCards,
+  dashboardSettings,
+  type Project,
+} from "@lore/core/schemas";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -7,10 +13,6 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { DashboardController } from "@/api/controllers/DashboardController.ts";
-import { dashboardCards } from "@/api/entities/dashboardCards.ts";
-import { dashboardSettings } from "@/api/entities/dashboardSettings.ts";
-import type { Project } from "@/api/entities/projects.ts";
 import { sigils } from "@/api/entities/sigils.ts";
 import { LoreApi } from "@/api/index.ts";
 

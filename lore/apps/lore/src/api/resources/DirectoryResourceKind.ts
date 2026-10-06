@@ -1,8 +1,8 @@
+import { ResourceRegistry } from "@lore/core/api";
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 
 import { folioDirectories } from "../entities/folioDirectories.ts";
-import { ResourceRegistry } from "./ResourceRegistry.ts";
 
 /**
  * The `directory` resource, registered by Knowledge: found by the palette by

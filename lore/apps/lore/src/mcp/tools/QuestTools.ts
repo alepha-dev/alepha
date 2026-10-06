@@ -1,21 +1,26 @@
+import { ProjectController } from "@lore/core/api";
+import {
+  AttachmentContentService,
+  AttachmentPushCommand,
+  DiagramCheckService,
+  ProjectTools,
+} from "@lore/core/mcp";
+import { formatReference, displayName } from "@lore/core/web";
 import { $inject } from "alepha";
 import { $tool } from "alepha/mcp";
 import { BadRequestError, NotFoundError } from "alepha/server";
 
 import { EpicController } from "../../api/controllers/EpicController.ts";
 import { FeedbackController } from "../../api/controllers/FeedbackController.ts";
-import { ProjectController } from "../../api/controllers/ProjectController.ts";
 import { QuestCommentController } from "../../api/controllers/QuestCommentController.ts";
 import { QuestController } from "../../api/controllers/QuestController.ts";
 import { ReleaseController } from "../../api/controllers/ReleaseController.ts";
 import type { QuestStatus } from "../../api/schemas/questResourceSchema.ts";
 import { QuestResourceMapper } from "../../api/services/QuestResourceMapper.ts";
-import { formatReference } from "../../web/app/components/shared/element/typedReference.ts";
 // Same helper the UI labels a user with, so a name reads identically over
 // MCP and on the page. Precedent for reaching across: `FolioAttachmentService`
 // imports `folioAssetPath` from the same tree. It is a pure function with no
 // imports of its own.
-import { displayName } from "../../web/app/services/displayName.ts";
 import {
   questAcceptParamsSchema,
   questAcceptResultSchema,
@@ -53,11 +58,7 @@ import {
   questUpdateParamsSchema,
   questUpdateResultSchema,
 } from "../schemas/questSchemas.ts";
-import { AttachmentContentService } from "../services/AttachmentContentService.ts";
-import { AttachmentPushCommand } from "../services/AttachmentPushCommand.ts";
-import { DiagramCheckService } from "../services/DiagramCheckService.ts";
 import { EpicRefService } from "../services/EpicRefService.ts";
-import { ProjectTools } from "./ProjectTools.ts";
 
 /**
  * MCP tools for quest operations.

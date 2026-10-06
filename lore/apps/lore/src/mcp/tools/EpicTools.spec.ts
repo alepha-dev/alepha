@@ -1,3 +1,5 @@
+import { ProjectController } from "@lore/core/api";
+import { ProjectTools } from "@lore/core/mcp";
 import { Alepha, AlephaError } from "alepha";
 import { organizationMembers as members } from "alepha/api/organizations";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
@@ -18,12 +20,10 @@ import {
   TestEntityRepositories,
 } from "../../../test/fixtures/entities.ts";
 import { EpicController } from "../../api/controllers/EpicController.ts";
-import { ProjectController } from "../../api/controllers/ProjectController.ts";
 import { LoreApi } from "../../api/index.ts";
 import { LoreMcp } from "../index.ts";
 import { EpicTools } from "./EpicTools.ts";
 import { FolioTools } from "./FolioTools.ts";
-import { ProjectTools } from "./ProjectTools.ts";
 import { QuestTools } from "./QuestTools.ts";
 
 /**

@@ -5,14 +5,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@alepha/ui";
+import { currentProjectAtom, type I18n } from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import { KeyRound, Link2, Server } from "lucide-react";
 
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
-import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import type { I18n } from "../../../services/I18n.ts";
 
 /**
  * What an instance with nothing unlocked offers instead of an empty card grid.

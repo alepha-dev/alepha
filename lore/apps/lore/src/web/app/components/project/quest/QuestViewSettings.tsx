@@ -1,4 +1,5 @@
 import { Segmented } from "@alepha/ui";
+import type { I18n } from "@lore/core/web";
 import { DateTimeProvider } from "alepha/datetime";
 import { useAction, useAlepha, useClient, useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -8,7 +9,6 @@ import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { ReminderInterval } from "@/api/entities/quests.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import { currentAssignedQuestsAtom } from "@/web/app/atoms/currentAssignedQuestsAtom.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
 export interface QuestViewSettingsProps {
   quest: QuestResource;

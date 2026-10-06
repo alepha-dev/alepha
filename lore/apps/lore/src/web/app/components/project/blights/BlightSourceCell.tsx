@@ -1,4 +1,5 @@
-import { OutboundLink } from "../../shared/OutboundLink.tsx";
+import { OutboundLink } from "@lore/core/web";
+
 import { blightSourceHref } from "./blightSourceHref.ts";
 
 export interface BlightSourceCellProps {
