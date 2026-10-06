@@ -26,6 +26,17 @@ import { seedNativeProject } from "./memoryProject.ts";
 
 const ROOT = "/app";
 const PLIST = `${ROOT}/ios/App/App/Info.plist`;
+const MANIFEST = `${ROOT}/android/app/src/main/AndroidManifest.xml`;
+const NETWORK = `${ROOT}/android/app/src/main/res/xml/network_security_config.xml`;
+const NETWORK_CONFIG = `<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <debug-overrides>
+        <trust-anchors>
+            <certificates src="user" />
+        </trust-anchors>
+    </debug-overrides>
+</network-security-config>
+`;
 
 /**
  * The dev server, recorded instead of started.
@@ -59,6 +70,7 @@ class FakeAppEntryProvider extends AppEntryProvider {
 class TestCapacitorDev extends CapacitorDev {
   public lan: Record<string, string> = { en0: "192.168.1.48" };
   public plistDuringRun?: string;
+  public networkDuringRun?: string;
 
   protected override hostPlatform(): NodeJS.Platform {
     return "darwin";
@@ -100,6 +112,9 @@ class TestCapacitorDev extends CapacitorDev {
     ...args: Parameters<CapacitorDev["runOnDevice"]>
   ): Promise<void> {
     this.plistDuringRun = await this.fs.readTextFile(PLIST);
+    if (await this.fs.exists(NETWORK)) {
+      this.networkDuringRun = await this.fs.readTextFile(NETWORK);
+    }
     await super.runOnDevice(...args);
   }
 }
@@ -287,6 +302,51 @@ describe("alepha capacitor dev", () => {
 
     expect(dev.plistDuringRun).toContain("<key>NSAllowsLocalNetworking</key>");
     expect(fs.getFileContent(PLIST)).toBe(before);
+    expect(await fs.exists(`${ROOT}/.capacitor-dev.json`)).toBe(false);
+  });
+
+  it("allows cleartext to the dev host in an Android network security config while it runs, and puts it back", async ({
+    expect,
+  }) => {
+    // With a network security config, Android ignores the manifest's
+    // usesCleartextTraffic that cap run -l sets: the WebView would refuse
+    // the dev server.
+    const { fs, dev, run } = await setup(
+      [{ id: "38251JEHN04224", name: "Google Pixel 7a" }],
+      "android",
+    );
+    await fs.writeFile(
+      MANIFEST,
+      (fs.getFileContent(MANIFEST) ?? "").replace(
+        "<application",
+        '<application android:networkSecurityConfig="@xml/network_security_config"',
+      ),
+    );
+    await fs.writeFile(NETWORK, NETWORK_CONFIG);
+
+    await run("android");
+
+    expect(dev.networkDuringRun).toContain(
+      '<domain-config cleartextTrafficPermitted="true">\n        <domain includeSubdomains="false">192.168.1.48</domain>',
+    );
+    expect(dev.networkDuringRun).toContain("<debug-overrides>");
+    expect(fs.getFileContent(NETWORK)).toBe(NETWORK_CONFIG);
+    expect(await fs.exists(`${ROOT}/.capacitor-dev.json`)).toBe(false);
+  });
+
+  it("leaves an Android app without a network security config alone", async ({
+    expect,
+  }) => {
+    const { fs, dev, run } = await setup(
+      [{ id: "38251JEHN04224", name: "Google Pixel 7a" }],
+      "android",
+    );
+    const manifest = fs.getFileContent(MANIFEST);
+
+    await run("android");
+
+    expect(dev.networkDuringRun).toBeUndefined();
+    expect(fs.getFileContent(MANIFEST)).toBe(manifest);
     expect(await fs.exists(`${ROOT}/.capacitor-dev.json`)).toBe(false);
   });
 

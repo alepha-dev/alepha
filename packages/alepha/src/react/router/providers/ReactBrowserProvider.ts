@@ -332,6 +332,21 @@ export class ReactBrowserProvider {
       options,
     });
 
+    // The offline screen is up, so the boot never finished: its tasks (a
+    // session restore) have not run, and a plain transition would render the
+    // page without them, a signed-in user's link landing on the sign-in page.
+    // Boot again for this URL instead, like the screen's retry would.
+    if (this.state?.name === "offline") {
+      this.pushState(url, options.replace);
+      await this.retryBoot();
+      const landed =
+        this.state.url.pathname + this.state.url.search + this.state.url.hash;
+      if (this.state.name !== "offline" && landed !== url) {
+        this.pushState(landed, true);
+      }
+      return;
+    }
+
     // Before anything renders: the offset belongs to the entry we are on, and
     // it is gone the moment the new view paints.
     this.saveScroll();

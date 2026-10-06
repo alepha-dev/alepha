@@ -1,4 +1,4 @@
-import { $hook, Alepha, type Service } from "alepha";
+import { $hook, $inject, Alepha, type Service } from "alepha";
 import { AlephaReact } from "alepha/react";
 import { HttpError } from "alepha/server";
 import { act, use } from "react";
@@ -6,6 +6,7 @@ import { beforeEach, describe, it } from "vitest";
 
 import {
   $page,
+  ReactBrowserProvider,
   ReactBootHealth,
   type ReactBootOutcome,
   reactBootOptions,
@@ -206,6 +207,63 @@ describe("boot health", () => {
       await flush();
 
       expect(text()).toBe("back online");
+    });
+
+    it("boots again for a URL pushed from the offline screen, boot tasks first", async ({
+      expect,
+    }) => {
+      let reachable = false;
+      let user: string | undefined;
+      class App {
+        protected readonly health = $inject(ReactBootHealth);
+
+        protected readonly onConfigure = $hook({
+          on: "configure",
+          handler: () => {
+            // A session restore: what a page past the offline screen relies on.
+            this.health.addBootTask(async () => {
+              if (!reachable) {
+                throw new TypeError("Failed to fetch");
+              }
+              user = "alice";
+            });
+          },
+        });
+
+        home = $page({
+          path: "/",
+          component: () => <p>home</p>,
+        });
+
+        notes = $page({
+          path: "/notes",
+          loader: async () => ({ owner: user ?? "nobody" }),
+          component: (props: { owner: string }) => (
+            <p>notes of {props.owner}</p>
+          ),
+        });
+      }
+
+      const { alepha } = await boot(App, { offline: true });
+      expect(document.querySelector("[data-alepha-offline]")).not.toBeNull();
+      const router = alepha.inject(ReactBrowserProvider);
+
+      // Still unreachable: the offline screen again, now for the pushed URL.
+      await act(async () => {
+        await router.push("/notes");
+      });
+      await flush();
+      expect(document.querySelector("[data-alepha-offline]")).not.toBeNull();
+      expect(window.location.pathname).toBe("/notes");
+
+      reachable = true;
+      await act(async () => {
+        await router.push("/notes");
+      });
+      await flush();
+
+      expect(text()).toBe("notes of alice");
+      expect(window.location.pathname).toBe("/notes");
     });
 
     it("keeps an HTTP error an error, not offline", async ({ expect }) => {

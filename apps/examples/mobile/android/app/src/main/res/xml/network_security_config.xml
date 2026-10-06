@@ -2,7 +2,9 @@
 <!--
   A debug build also trusts user-installed CAs, so a phone with the mkcert
   root installed reaches the local HTTPS API (README.md). Release builds keep
-  the system store only. No cleartext anywhere.
+  the system store only. No cleartext: `alepha capacitor dev` adds a
+  cleartext domain-config for its dev host while it runs, and puts this file
+  back when it stops.
 -->
 <network-security-config>
     <debug-overrides>
