@@ -1,9 +1,8 @@
 import { ProjectAnalytics } from "@lore/core/api";
+import { DeployAnalytics } from "@lore/deploy/api";
 import { Alepha } from "alepha";
 import { AdminAnalyticsService } from "alepha/api/analytics";
 import { describe, expect, it } from "vitest";
-
-import { DeployAnalytics } from "../src/api/entities/deployAnalytics.ts";
 
 /**
  * The admin analytics surface over lore's own datasets. Service-level on

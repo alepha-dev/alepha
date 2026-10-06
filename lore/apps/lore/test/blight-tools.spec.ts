@@ -1,4 +1,6 @@
 import { ProjectController } from "@lore/core/api";
+import { BlightTools } from "@lore/deploy/mcp";
+import { blights } from "@lore/deploy/schemas";
 import { QuestTools } from "@lore/work/mcp";
 import { Alepha } from "alepha";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
@@ -10,10 +12,8 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake } from "alepha/testing/faker";
 import { describe, expect, it } from "vitest";
 
-import { blights } from "../src/api/entities/blights.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { LoreMcp } from "../src/mcp/index.ts";
-import { BlightTools } from "../src/mcp/tools/BlightTools.ts";
 
 /**
  * The blights inbox over MCP: triage happens in a conversation, and the

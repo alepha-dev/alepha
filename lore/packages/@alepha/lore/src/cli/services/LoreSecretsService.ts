@@ -1,8 +1,8 @@
+import type { AppSecretController } from "@lore/deploy/api";
 import { $inject } from "alepha";
 import { $logger } from "alepha/logger";
 import { HttpError } from "alepha/server";
 import { $client } from "alepha/server/links";
-import type { AppSecretController } from "lore/api/controllers/AppSecretController";
 
 import { LoreClientService } from "./LoreClientService.ts";
 

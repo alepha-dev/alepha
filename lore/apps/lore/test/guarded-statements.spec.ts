@@ -1,5 +1,7 @@
 import { ProjectController, ResourceLinkService } from "@lore/core/api";
 import { folioLinks } from "@lore/core/schemas";
+import { BlightController } from "@lore/deploy/api";
+import { blights } from "@lore/deploy/schemas";
 import {
   DirectoryController,
   FolioController,
@@ -18,8 +20,6 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, describe, it } from "vitest";
 
-import { BlightController } from "../src/api/controllers/BlightController.ts";
-import { blights } from "../src/api/entities/blights.ts";
 import { LoreApi } from "../src/api/index.ts";
 
 /**

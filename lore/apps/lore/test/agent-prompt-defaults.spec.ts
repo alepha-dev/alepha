@@ -3,11 +3,10 @@ import {
   agentPromptKindSchema,
 } from "@lore/core/schemas";
 import { AgentPromptRegistry, capabilityRegistry } from "@lore/core/web";
+import { DeployShell } from "@lore/deploy/web";
 import { WorkShell } from "@lore/work/web";
 import { Alepha } from "alepha";
 import { describe, expect, it } from "vitest";
-
-import { DeployShell } from "../src/web/app/shell/DeployShell.ts";
 
 /**
  * Every default, as Work and Deploy register them (#E75, #Q2624).

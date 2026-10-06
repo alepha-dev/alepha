@@ -1,7 +1,10 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 
-import { packedArtifact } from "../test/fixtures/artifactTarball.ts";
+// Its own subpath, not `./testing`: that barrel renders React pages, and
+// Playwright's loader cannot import their stylesheets.
+import { packedArtifact } from "@lore/deploy/testing/tarball";
+
 import { expect, test } from "./_fixtures.ts";
 import { createProjectViaWizard, registerAndVerify } from "./_helpers.ts";
 

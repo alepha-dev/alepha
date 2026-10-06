@@ -103,42 +103,18 @@ describe("@alepha/lore packaging", () => {
   });
 
   /**
-   * `./cli` types itself against Lore's own controllers, type-only, through a
-   * declared subpath of `apps/lore`. That workspace once declared no `exports`
-   * at all, so a deep import into it resolved only by undeclared legacy file
-   * resolution: it worked, until the day it did not, with nothing in either
-   * manifest saying it was supposed to.
+   * `./cli` types itself against Lore's controllers, type-only, through the
+   * `./api` barrel of the `@lore/*` package that owns each one (#E75). The
+   * app (`lore`) holds no controller any more, so the CLI names it nowhere.
    *
-   * The dependency is an OPTIONAL peer, not a devDependency. A `workspace:*`
-   * devDependency made the package uninstallable anywhere there is no `lore`
+   * Each package is an OPTIONAL peer, not a devDependency. A `workspace:*`
+   * devDependency made the package uninstallable anywhere there is no Lore
    * workspace: a project vendoring it failed `yarn install` before running
    * anything. An optional peer still says the relationship out loud, the
    * monorepo satisfies it through its workspace link, and a consumer without
-   * the Lore app is never asked for it.
-   */
-  it("type-imports Lore's controllers through a declared subpath", () => {
-    const lore = JSON.parse(
-      readFileSync(
-        new URL("../../../../../apps/lore/package.json", import.meta.url),
-        "utf8",
-      ),
-    );
-
-    expect(manifest.devDependencies.lore).toBeUndefined();
-    expect(manifest.peerDependencies.lore).toBe("*");
-    expect(manifest.peerDependenciesMeta.lore).toEqual({ optional: true });
-    expect(lore.exports["./api/controllers/*"]).toBe(
-      "./src/api/controllers/*.ts",
-    );
-  });
-
-  /**
-   * The controllers that left `apps/lore` for an `@lore/*` package (#E75) are
-   * typed through that package's `./api`, under the same optional peer: the
-   * monorepo satisfies it through its workspace link, and a consumer without
    * Lore is never asked for it.
    */
-  it("type-imports a moved controller through its package's ./api", () => {
+  it("type-imports Lore's controllers through each package's ./api", () => {
     const core = JSON.parse(
       readFileSync(
         new URL("../../../../@lore/core/package.json", import.meta.url),
@@ -146,10 +122,17 @@ describe("@alepha/lore packaging", () => {
       ),
     );
 
-    for (const pkg of ["@lore/core", "@lore/work", "@lore/knowledge"]) {
+    for (const pkg of [
+      "@lore/core",
+      "@lore/work",
+      "@lore/knowledge",
+      "@lore/deploy",
+    ]) {
       expect(manifest.peerDependencies[pkg]).toBe("*");
       expect(manifest.peerDependenciesMeta[pkg]).toEqual({ optional: true });
     }
+    expect(manifest.devDependencies.lore).toBeUndefined();
+    expect(manifest.peerDependencies.lore).toBeUndefined();
     expect(core.private).toBe(true);
     expect(core.exports["./api"]).toBe("./src/api/index.ts");
   });

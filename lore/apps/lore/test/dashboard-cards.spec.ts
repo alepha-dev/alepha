@@ -4,6 +4,7 @@ import {
   dashboardSettings,
   type Project,
 } from "@lore/core/schemas";
+import { sigils } from "@lore/deploy/schemas";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -13,7 +14,6 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { sigils } from "@/api/entities/sigils.ts";
 import { LoreApi } from "@/api/index.ts";
 
 import {

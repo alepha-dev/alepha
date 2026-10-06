@@ -5,14 +5,15 @@ import {
   CORE_NAV,
   type ProjectShellContext,
 } from "@lore/core/web";
+import {
+  currentBlightCountAtom,
+  currentInstancesAtom,
+  DeployShell,
+} from "@lore/deploy/web";
 import { KnowledgeShell } from "@lore/knowledge/web";
 import { WorkShell } from "@lore/work/web";
 import { Alepha, type Atom } from "alepha";
 import { describe, it } from "vitest";
-
-import { currentBlightCountAtom } from "@/web/app/atoms/currentBlightCountAtom.ts";
-import { currentInstancesAtom } from "@/web/app/atoms/currentInstancesAtom.ts";
-import { DeployShell } from "@/web/app/shell/DeployShell.ts";
 
 /**
  * What the sidebar offers, without rendering one.

@@ -5,14 +5,13 @@ import {
   type DataTableFilterFields,
   type DataTableFilterValues,
 } from "@alepha/ui/table";
+import type { AdminEstateController } from "@lore/deploy/api";
+import type { AdminEstateResource } from "@lore/deploy/schemas";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link } from "alepha/react/router";
 import { Trash2 } from "lucide-react";
 import { useCallback } from "react";
-
-import type { AdminEstateController } from "@/api/controllers/AdminEstateController.ts";
-import type { AdminEstateResource } from "@/api/schemas/adminEstateResourceSchema.ts";
 
 /**
  * Instance-wide estates list, mounted into the shared admin shell by

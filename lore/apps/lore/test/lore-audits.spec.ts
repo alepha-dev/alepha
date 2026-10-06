@@ -1,4 +1,5 @@
 import { ProjectController } from "@lore/core/api";
+import { AppController, SigilController } from "@lore/deploy/api";
 import {
   FeedbackController,
   QuestController,
@@ -14,8 +15,6 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { AppController } from "../src/api/controllers/AppController.ts";
-import { SigilController } from "../src/api/controllers/SigilController.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { createTestMemberByProjectId } from "./fixtures/entities.ts";
 

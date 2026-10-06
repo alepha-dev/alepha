@@ -1,5 +1,7 @@
 import { readFile } from "node:fs/promises";
 
+import { ArtifactTarReader, DeployAssetCache } from "@lore/deploy/api";
+import { deployAssetCacheSchema } from "@lore/deploy/schemas";
 import { Alepha, AlephaError } from "alepha";
 import { FileStorageProvider, MemoryFileStorageProvider } from "alepha/bucket";
 import {
@@ -8,10 +10,6 @@ import {
   type CloudflareAssetEntry,
 } from "alepha/cli/platform-lib";
 import { MemoryFileSystemProvider } from "alepha/system";
-
-import { deployAssetCacheSchema } from "../src/api/schemas/deployAssetCacheSchema.ts";
-import { ArtifactTarReader } from "../src/api/services/ArtifactTarReader.ts";
-import { DeployAssetCache } from "../src/api/services/DeployAssetCache.ts";
 
 /**
  * Run against a ustar gzip of a built docs site. The upload uses the real

@@ -1,10 +1,9 @@
 import { projectFixture } from "@lore/core/testing";
 import { ReportsTabRegistry } from "@lore/core/web";
+import { DeployShell } from "@lore/deploy/web";
 import { WorkShell } from "@lore/work/web";
 import { Alepha } from "alepha";
 import { describe, expect, it } from "vitest";
-
-import { DeployShell } from "@/web/app/shell/DeployShell.ts";
 
 /**
  * The tabs as Work and Deploy register them (#E75, #Q2611).

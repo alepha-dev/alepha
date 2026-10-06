@@ -1,12 +1,11 @@
 import { CapabilityRegistry } from "@lore/core/schemas";
+import { appsCapabilityOptionsSchema } from "@lore/deploy/schemas";
 import { knowledgeCapabilityOptionsSchema } from "@lore/knowledge/schemas";
 import {
   supportCapabilityOptionsSchema,
   workCapabilityOptionsSchema,
 } from "@lore/work/schemas";
 import { describe, it } from "vitest";
-
-import { appsCapabilityOptionsSchema } from "../src/api/schemas/appsCapabilityOptionsSchema.ts";
 
 /**
  * Core derives each capability's options schema from the options it declares

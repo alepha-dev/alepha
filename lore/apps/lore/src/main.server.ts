@@ -11,6 +11,12 @@ import { LoreCoreMcp } from "@lore/core/mcp";
 import { LoreCoreWeb } from "@lore/core/web";
 import { ProjectScopeGrants } from "@lore/core/web";
 import { LoreDeployApi } from "@lore/deploy/api";
+import {
+  DeployJobs,
+  LoreSigilSinkProvider,
+  EstateCommandTransport,
+  WebSocketEstateCommandTransport,
+} from "@lore/deploy/api";
 import { LoreDeployMcp } from "@lore/deploy/mcp";
 import { LoreDeployWeb } from "@lore/deploy/web";
 import { LoreKnowledgeApi } from "@lore/knowledge/api";
@@ -35,10 +41,6 @@ import { loreAdminOptions } from "@/web/admin/adminChrome.tsx";
 import { LoreWebAdmin } from "@/web/admin/index.ts";
 
 import { LoreApi } from "./api/index.ts";
-import { DeployJobs } from "./api/jobs/DeployJobs.ts";
-import { LoreSigilSinkProvider } from "./api/providers/LoreSigilSinkProvider.ts";
-import { EstateCommandTransport } from "./api/services/EstateCommandTransport.ts";
-import { WebSocketEstateCommandTransport } from "./api/services/WebSocketEstateCommandTransport.ts";
 import { LoreMcp } from "./mcp/index.ts";
 import { LoreWebApp } from "./web/app/index.ts";
 

@@ -1,7 +1,9 @@
 import { ProjectSlugService } from "@lore/core/schemas";
 import { LoreCoreWeb } from "@lore/core/web";
 import { LoreAccountRouter } from "@lore/core/web";
+import { insightsDimensionResourceSchema } from "@lore/deploy/schemas";
 import { LoreDeployWeb } from "@lore/deploy/web";
+import { DeployAccountRouter, ANALYTICS_DIMENSIONS } from "@lore/deploy/web";
 import { LoreKnowledgeWeb } from "@lore/knowledge/web";
 import { LoreWorkWeb } from "@lore/work/web";
 import { WorkAccountRouter } from "@lore/work/web";
@@ -14,10 +16,7 @@ import {
 } from "alepha/react/router";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { insightsDimensionResourceSchema } from "../src/api/schemas/insightsDimensionResourceSchema.ts";
 import { AppRouter } from "../src/web/app/AppRouter.ts";
-import { DeployAccountRouter } from "../src/web/app/components/account/DeployAccountRouter.ts";
-import { ANALYTICS_DIMENSIONS } from "../src/web/app/DeployRouter.ts";
 
 /**
  * The route table, pinned by name.

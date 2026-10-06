@@ -1,4 +1,5 @@
 import { ProjectController, ProjectSecurityService } from "@lore/core/api";
+import { QualityController } from "@lore/deploy/api";
 import { FolioController } from "@lore/knowledge/api";
 import { QuestController } from "@lore/work/api";
 import { QuestTools } from "@lore/work/mcp";
@@ -12,7 +13,6 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake } from "alepha/testing/faker";
 import { describe, it } from "vitest";
 
-import { QualityController } from "../src/api/controllers/QualityController.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { LoreMcp } from "../src/mcp/index.ts";
 

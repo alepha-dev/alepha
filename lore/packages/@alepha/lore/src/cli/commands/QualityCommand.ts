@@ -1,8 +1,8 @@
+import type { QualityController } from "@lore/deploy/api";
 import { $inject, z } from "alepha";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { $client } from "alepha/server/links";
-import type { QualityController } from "lore/api/controllers/QualityController";
 
 import { GitContextService } from "../services/GitContextService.ts";
 import { LoreClientService } from "../services/LoreClientService.ts";

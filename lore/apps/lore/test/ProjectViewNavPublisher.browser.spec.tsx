@@ -6,6 +6,8 @@ import {
   ProjectViewNavPublisher,
   I18n,
 } from "@lore/core/web";
+import type { AppInstanceResource } from "@lore/deploy/schemas";
+import { currentInstancesAtom, DeployShell } from "@lore/deploy/web";
 import { render, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
@@ -14,11 +16,6 @@ import { AlephaContext, AlephaReact } from "alepha/react";
 import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
 import { $page, AlephaReactRouter } from "alepha/react/router";
 import { describe, it } from "vitest";
-
-import type { AppInstanceResource } from "@/api/schemas/appInstanceResourceSchema.ts";
-
-import { currentInstancesAtom } from "../src/web/app/atoms/currentInstancesAtom.ts";
-import { DeployShell } from "../src/web/app/shell/DeployShell.ts";
 
 class Routes {
   app = $page({

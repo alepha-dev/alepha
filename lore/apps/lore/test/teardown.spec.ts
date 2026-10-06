@@ -3,6 +3,12 @@ import {
   ProjectController,
   LoreAudits,
 } from "@lore/core/api";
+import {
+  AppController,
+  CredentialSealService,
+  TeardownService,
+} from "@lore/deploy/api";
+import { appInstances, estateProjects, estates } from "@lore/deploy/schemas";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -12,13 +18,7 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { AppController } from "../src/api/controllers/AppController.ts";
-import { appInstances } from "../src/api/entities/appInstances.ts";
-import { estateProjects } from "../src/api/entities/estateProjects.ts";
-import { estates } from "../src/api/entities/estates.ts";
 import { LoreApi } from "../src/api/index.ts";
-import { CredentialSealService } from "../src/api/services/CredentialSealService.ts";
-import { TeardownService } from "../src/api/services/TeardownService.ts";
 
 /**
  * Removing what a copy's deploys made.

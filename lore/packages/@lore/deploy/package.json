@@ -3,11 +3,14 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "sideEffects": false,
   "exports": {
     "./api": "./src/api/index.ts",
     "./mcp": "./src/mcp/index.ts",
     "./web": "./src/web/index.ts",
     "./schemas": "./src/schemas/index.ts",
+    "./testing": "./src/testing/index.ts",
+    "./testing/tarball": "./src/testing/artifactTarball.ts",
     "./package.json": "./package.json"
   },
   "scripts": {
@@ -16,7 +19,24 @@
     "test": "alepha test"
   },
   "dependencies": {
+    "@alepha/lore": "workspace:*",
+    "@alepha/ui": "workspace:*",
     "@lore/core": "workspace:*",
-    "alepha": "workspace:*"
+    "alepha": "workspace:*",
+    "fzstd": "0.1.1",
+    "lucide-react": "^1.48.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "recharts": "^3.10.1"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
+    "@types/bun": "^1.4.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/ws": "^8.18.1",
+    "vitest": "^5.0.2",
+    "ws": "^8.22.0"
   }
 }

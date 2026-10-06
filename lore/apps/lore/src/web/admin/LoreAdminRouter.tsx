@@ -3,10 +3,9 @@ import type {
   AdminMcpController,
   AdminProjectController,
 } from "@lore/core/api";
+import type { AdminEstateController } from "@lore/deploy/api";
 import { $client } from "alepha/server/links";
 import { FolderKanban, Plug, Server } from "lucide-react";
-
-import type { AdminEstateController } from "@/api/controllers/AdminEstateController.ts";
 
 /**
  * Lore's own pages inside the shared admin shell.

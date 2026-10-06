@@ -2,6 +2,7 @@ import { DialogProvider } from "@alepha/ui";
 import { projectFixture } from "@lore/core/testing";
 import { ProjectSettingsAgentPrompts } from "@lore/core/testing";
 import { currentProjectAtom, projectPromptsAtom, I18n } from "@lore/core/web";
+import { DeployShell } from "@lore/deploy/web";
 import {
   epicReviewPromptDefault,
   feedbackWorkPromptDefault,
@@ -16,8 +17,6 @@ import { AlephaReactRouter } from "alepha/react/router";
 import { LinkProvider } from "alepha/server/links";
 import { setupJsdomMocks } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
-
-import { DeployShell } from "@/web/app/shell/DeployShell.ts";
 
 interface Call {
   action: string;

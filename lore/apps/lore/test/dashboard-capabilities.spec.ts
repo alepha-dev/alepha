@@ -11,6 +11,7 @@ import {
   eligibleProjects,
   metricUnavailableKey,
 } from "@lore/core/web";
+import { type Sigil, sigils, sigilUniquesDaily } from "@lore/deploy/schemas";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -19,8 +20,6 @@ import { AlephaSecurity, type UserAccountToken } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { type Sigil, sigils } from "@/api/entities/sigils.ts";
-import { sigilUniquesDaily } from "@/api/entities/sigilUniquesDaily.ts";
 import { LoreApi } from "@/api/index.ts";
 
 import {

@@ -1,3 +1,4 @@
+import { DeployJobs } from "@lore/deploy/api";
 import { Alepha } from "alepha";
 import { jobConfig } from "alepha/api/jobs";
 import { AlephaApiUsers } from "alepha/api/users";
@@ -10,7 +11,6 @@ import { AlephaFake } from "alepha/testing/faker";
 import { describe, it } from "vitest";
 
 import { LoreApi } from "../src/api/index.ts";
-import { DeployJobs } from "../src/api/jobs/DeployJobs.ts";
 
 /**
  * A queue delivery Cloudflare loses leaves a `pending` row that only the

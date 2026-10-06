@@ -4,7 +4,6 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./api/controllers/*": "./src/api/controllers/*.ts",
     "./package.json": "./package.json"
   },
   "scripts": {
@@ -36,7 +35,6 @@
     "@lore/knowledge": "workspace:*",
     "@lore/work": "workspace:*",
     "alepha": "workspace:*",
-    "fzstd": "0.1.1",
     "lucide-react": "^1.48.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",

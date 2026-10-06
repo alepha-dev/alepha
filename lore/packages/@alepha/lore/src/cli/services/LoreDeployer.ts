@@ -1,3 +1,6 @@
+import type { AppController } from "@lore/deploy/api";
+import type { DeployController } from "@lore/deploy/api";
+import type { ProjectEstateController } from "@lore/deploy/api";
 import { $inject, AlephaError } from "alepha";
 import type { RunnerMethod } from "alepha/command";
 import { DateTimeProvider } from "alepha/datetime";
@@ -5,9 +8,6 @@ import { $logger } from "alepha/logger";
 import { HttpError } from "alepha/server";
 import { $client } from "alepha/server/links";
 import { ShellProvider } from "alepha/system";
-import type { AppController } from "lore/api/controllers/AppController";
-import type { DeployController } from "lore/api/controllers/DeployController";
-import type { ProjectEstateController } from "lore/api/controllers/ProjectEstateController";
 
 import {
   type LentEstate,

@@ -4,6 +4,7 @@ import {
   LoreInboxRecipientProvider,
 } from "@lore/core/api";
 import { users } from "@lore/core/schemas";
+import { EstateNotifications } from "@lore/deploy/api";
 import { QuestNotifications } from "@lore/work/api";
 import { Alepha } from "alepha";
 import {
@@ -18,7 +19,6 @@ import { AlephaServer } from "alepha/server";
 import { describe, it } from "vitest";
 
 import { LoreApi } from "../src/api/index.ts";
-import { EstateNotifications } from "../src/api/notifications/EstateNotifications.ts";
 
 class Rows {
   readonly inbox = $repository(notificationInboxEntity);

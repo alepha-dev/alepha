@@ -92,15 +92,18 @@
   },
   "peerDependencies": {
     "@lore/core": "*",
+    "@lore/deploy": "*",
     "@lore/knowledge": "*",
     "@lore/work": "*",
     "alepha": "^0.30.0",
-    "lore": "*",
     "react": "*",
     "react-dom": "*"
   },
   "peerDependenciesMeta": {
     "@lore/core": {
+      "optional": true
+    },
+    "@lore/deploy": {
       "optional": true
     },
     "@lore/knowledge": {
@@ -110,9 +113,6 @@
       "optional": true
     },
     "alepha": {
-      "optional": true
-    },
-    "lore": {
       "optional": true
     },
     "react": {

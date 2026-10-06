@@ -1,8 +1,8 @@
+import type { ArtifactController } from "@lore/deploy/api";
 import { $inject, AlephaError, z } from "alepha";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { $client } from "alepha/server/links";
-import type { ArtifactController } from "lore/api/controllers/ArtifactController";
 
 import { GitContextService } from "../services/GitContextService.ts";
 import { LoreArtifactPusher } from "../services/LoreArtifactPusher.ts";
