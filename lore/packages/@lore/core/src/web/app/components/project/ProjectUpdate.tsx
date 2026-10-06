@@ -13,9 +13,9 @@ import type { ProjectController } from "../../../../api/controllers/ProjectContr
 import type { ProjectResource } from "../../../../api/schemas/projectResourceSchema.ts";
 import { ProjectSlugService } from "../../../../api/schemas/ProjectSlugService.ts";
 import { projectTitleSchema } from "../../../../api/schemas/projectTitleSchema.ts";
-import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import { setCurrentProject } from "../../services/currentProjectWrite.ts";
 import type { I18n } from "../../services/I18n.ts";
+import { mergeIntoProjectOverview } from "../../services/projectOverviewWrite.ts";
 
 export interface ProjectUpdateProps {
   project: ProjectResource;
@@ -153,31 +153,7 @@ const ProjectUpdate = (props: ProjectUpdateProps) => {
         });
 
       setCurrentProject(alepha, project);
-      const overview = alepha.store.get(userProjectsAtom);
-      if (overview) {
-        alepha.store.set(userProjectsAtom, {
-          ...overview,
-          // `updateProjectById`'s response has neither `areaCount` nor
-          // `openQuestCount` — only `getHomeOverview` computes those — so
-          // carry the existing ones forward rather than dropping them to 0.
-          projects: overview.projects.map((p) =>
-            p.id === project.id
-              ? {
-                  ...project,
-                  areaCount: p.areaCount,
-                  openQuestCount: p.openQuestCount,
-                  // Same reasoning: `owner` is computed by `getHomeOverview`
-                  // from a batched `members` read, so an update response has
-                  // no idea and dropping it would flip the Owner badge off.
-                  owner: p.owner,
-                  // This update is the project's newest activity, and its
-                  // `updatedAt` says exactly when.
-                  lastActivityAt: project.updatedAt,
-                }
-              : p,
-          ),
-        });
-      }
+      mergeIntoProjectOverview(alepha, project);
 
       // The URL this page is sitting on went stale the moment that resolved.
       if (project.slug !== currentSlug) {

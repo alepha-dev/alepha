@@ -5,13 +5,13 @@ import { useState } from "react";
 import type { ProjectCapabilityController } from "../../../../../api/controllers/ProjectCapabilityController.ts";
 import type { CapabilityKey } from "../../../../../api/schemas/capabilityKeySchema.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import { userProjectsAtom } from "../../../atoms/userProjectsAtom.ts";
 import { capabilityRegistry } from "../../../services/capabilityRegistry.ts";
 import { setCurrentProject } from "../../../services/currentProjectWrite.ts";
 import {
   capabilityOption,
   hasCapability,
 } from "../../../services/projectCapabilities.ts";
+import { mergeIntoProjectOverview } from "../../../services/projectOverviewWrite.ts";
 
 export interface CapabilitySwitch {
   enabled: boolean;
@@ -178,28 +178,7 @@ const optionsOf = (
  * string - the requirement travels from `$ownsProject({ requires })` through
  * the registry to `can()`.
  */
-const applyCapabilityWrite = (alepha: Alepha, updated: any): void => {
+const applyCapabilityWrite = (alepha: Alepha, updated: unknown): void => {
   setCurrentProject(alepha, updated);
-  const overview = alepha.store.get(userProjectsAtom);
-  if (overview) {
-    alepha.store.set(userProjectsAtom, {
-      ...overview,
-      // The response carries neither `areaCount` nor `openQuestCount` - only
-      // `getHomeOverview` computes those - so carry the existing ones forward
-      // rather than dropping them to 0.
-      projects: overview.projects.map((p) =>
-        p.id === updated.id
-          ? {
-              ...updated,
-              areaCount: p.areaCount,
-              openQuestCount: p.openQuestCount,
-              // Same reasoning: `owner` is computed by `getHomeOverview` from
-              // a batched `members` read, so an update response has no idea
-              // and dropping it would flip the Owner badge off.
-              owner: p.owner,
-            }
-          : p,
-      ),
-    });
-  }
+  mergeIntoProjectOverview(alepha, updated);
 };
