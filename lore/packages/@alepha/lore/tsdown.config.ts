@@ -68,7 +68,7 @@ export default defineConfig([
   // The `lore` binary. `dts: false` is load-bearing rather than an
   // optimisation: a bin has no consumers, so its types are dead weight, and
   // emitting them hands `scripts/check-dts.ts` a new `.d.ts` to walk for the
-  // private `lore` workspace it exists to keep out of `dist`.
+  // private `@lore/*` packages it exists to keep out of `dist`.
   //
   // ⚠️ It INLINES `alepha` (and zod with it), unlike every other entry. The
   // subpaths above run inside a host app and must use its `alepha`, so it is

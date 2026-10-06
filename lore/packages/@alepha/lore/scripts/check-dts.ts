@@ -3,12 +3,11 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 /**
- * The published types must never name the `lore` workspace, nor a private
- * `@lore/*` package.
+ * The published types must never name a private `@lore/*` package.
  *
- * `@alepha/lore/cli` reaches Lore's controllers through a type-only
- * devDependency on `apps/lore`, which is `private` and never goes to the
- * registry. `import type` is erased, so as long as those types stay internal
+ * `@alepha/lore/cli` reaches Lore's controllers through `import type` of the
+ * `@lore/*` packages, which are `private` and never go to the registry.
+ * `import type` is erased, so as long as those types stay internal
  * the emitted `.d.ts` says nothing about them. Leak one into an exported
  * signature and the published package declares a dependency on a workspace
  * nobody outside this repo can resolve, and the failure lands on whoever

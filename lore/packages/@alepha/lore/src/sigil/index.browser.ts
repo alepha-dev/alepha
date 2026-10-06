@@ -25,13 +25,6 @@ export * from "./sigilEnv.ts";
  * `<SigilRoot />` is mounted here through {@link RootComponentsProvider}, the
  * same way `index.ts` does it — both entries must push it, or the client would
  * hydrate a tree the server did not render.
- *
- * The React surface is still deliberately **not** re-exported here. It lives at
- * `@alepha/lore`, a condition-free subpath, so that it resolves the same
- * way on an SSR server pass as in a client bundle. Exporting it from a
- * `browser`-only entry made it unimportable under `types` / `import` /
- * `default`, which is a compile error in every host that is not a browser
- * bundle. Mounting the component and exporting it are separate questions.
  */
 export const AlephaSigil = $module({
   name: "alepha.sigil",

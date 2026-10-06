@@ -328,17 +328,3 @@ export class LoreClientService {
     return flag || String(this.env.LORE_ENV || "") || undefined;
   }
 }
-
-/*
-  ⚠️ `.lorerc.json` is future work, and will NOT be an epic #27 regression.
-
-  Worth writing down here, beside the variables it would supplement, so a later
-  session does not read it as one. Epic #27 removed a `lore()` plugin
-  registration from `alepha.config.ts`, which dragged the app's entire
-  container, build options and config into the CLI's process. A small standalone
-  `.lorerc.json` (`{ url, project, app }`) read by the `lore` binary alone is a
-  different and far cheaper thing: no container, no Vite, no app code.
-
-  Environment variables first is the correct order. File the config file
-  separately once this shape has been used in anger.
-*/

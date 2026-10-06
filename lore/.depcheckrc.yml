@@ -5,14 +5,12 @@ ignores:
   # so every `yarn lore ...` step in CI stops resolving the moment somebody
   # deletes it as unused.
   - "@alepha/lore"
-  # `@alepha/lore` peers on `lore` to type `@alepha/lore/cli` against Lore's
-  # own controllers. The edge is `import type` and nothing else.
-  - "lore"
-  # And on each `@lore/*` package whose controllers it types against, the
-  # same way, since they left `apps/lore` (#E75).
+  # `@alepha/lore` peers on each `@lore/*` package to type `@alepha/lore/cli`
+  # against Lore's own controllers. The edge is `import type` and nothing else.
   - "@lore/core"
   - "@lore/work"
   - "@lore/knowledge"
+  - "@lore/deploy"
   - "@vitejs/plugin-react"
   - "jsdom"
   - "@vitest/coverage-v8"

@@ -4,28 +4,23 @@ The Lore client for Alepha apps: the sigil reporter, and the CLI that talks to a
 
 ## Installation
 
-Part of the Alepha framework, published on its own:
-
 ```bash
 npm install @alepha/lore
 ```
 
-Everything an Alepha app needs to talk to [Lore](https://lore.alepha.dev), in two
+Everything an Alepha app needs to talk to [Lore](https://lore.alepha.dev), in three
 subpaths that no host installs for the same reason.
 
-|                      |                                                                                           |
-| -------------------- | ----------------------------------------------------------------------------------------- |
-| `@alepha/lore/sigil` | the reporting half. A running app pushes page views, Web Vitals and errors to a sink.     |
-| `@alepha/lore/cli`   | the command half. A build or a CI job pushes a record of what it produced into a project. |
+|                       |                                                                                           |
+| --------------------- | ----------------------------------------------------------------------------------------- |
+| `@alepha/lore/sigil`  | the reporting half. A running app pushes page views, Web Vitals and errors to a sink.     |
+| `@alepha/lore/cli`    | the command half. A build or a CI job pushes a record of what it produced into a project. |
+| `@alepha/lore/client` | a typed client of a Lore instance, for provisioning from code.                            |
 
 The package is not part of the framework, and that is deliberate: Lore is a
 superset of Alepha, so no Lore code belongs inside `alepha` itself. Both halves
 live together because they share one answer to "where is Lore, and how do I
 authenticate to it".
-
-⚠️ The `SIGIL_*` variables below are unchanged by the rename. They name the
-concept, not the package: a sigil is still a sigil inside Lore, and a deployed
-app keeps reporting across the upgrade.
 
 ## Integration
 
