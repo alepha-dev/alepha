@@ -6,6 +6,8 @@ import {
   canInProject,
   ProjectScopeGrants,
 } from "@lore/core/web";
+import type { AreaResource } from "@lore/work/schemas";
+import { ProjectSettingsAreasPage } from "@lore/work/testing";
 import { render } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
@@ -16,10 +18,7 @@ import { $page, AlephaReactRouter } from "alepha/react/router";
 import { ScopeGrantsProvider } from "alepha/server/links";
 import { afterEach, describe, it } from "vitest";
 
-import type { AreaResource } from "@/api/schemas/areaResourceSchema.ts";
-
 import EpicFoliosList from "../src/web/app/components/folios/epic/EpicFoliosList.tsx";
-import ProjectSettingsAreasPage from "../src/web/app/components/project/settings/ProjectSettingsAreasPage.tsx";
 
 /**
  * The whole chain of #Q1958, end to end, with nothing faked in the middle.

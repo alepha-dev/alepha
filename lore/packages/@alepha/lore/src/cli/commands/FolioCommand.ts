@@ -1,8 +1,8 @@
+import type { EpicController } from "@lore/work/api";
 import { $inject, z } from "alepha";
 import { $command, CommandError } from "alepha/command";
 import { $client } from "alepha/server/links";
 import type { DirectoryController } from "lore/api/controllers/DirectoryController";
-import type { EpicController } from "lore/api/controllers/EpicController";
 import type { FolioController } from "lore/api/controllers/FolioController";
 
 import { LoreClientService } from "../services/LoreClientService.ts";

@@ -1,0 +1,143 @@
+import { Badge, Input } from "@alepha/ui";
+import type { I18n } from "@lore/core/web";
+import { useClient, useQuery } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
+import { Tags as TagsIcon, X } from "lucide-react";
+import { type KeyboardEvent, useState } from "react";
+
+import type { QuestController } from "../../../../../api/controllers/QuestController.ts";
+
+export interface QuestTagInputProps {
+  value?: string[];
+  onChange?: (next: string[]) => void;
+  disabled?: boolean;
+  /**
+   * Project id used to fetch the known-tags suggestion list.
+   */
+  projectId?: number;
+}
+
+/**
+ * Chip-style tag input with project-level autocomplete. Type and press
+ * Enter to commit; click X to remove; suggestions show only the unused
+ * tags so the same project converges on a stable taxonomy.
+ *
+ * Normalization here mirrors the server's `normalizeQuestTags`: trim +
+ * lowercase. We dedupe on commit too so a sloppy paste doesn't sneak
+ * duplicates past the server round-trip.
+ */
+const QuestTagInput = (props: QuestTagInputProps) => {
+  const { tr } = useI18n<I18n, "en">();
+  const questApi = useClient<QuestController>();
+  const [draft, setDraft] = useState("");
+
+  const value = props.value ?? [];
+
+  // Suggestions are a nice-to-have: quiet on failure (#E59, #Q2328), which
+  // keeps the input usable for offline and first-tag scenarios. Keyed on the
+  // project, and shared with `QuestCreate`.
+  const known =
+    useQuery(
+      {
+        key: ["quest-tags", props.projectId],
+        enabled: !!props.projectId,
+        handler: () =>
+          questApi.listQuestTags({
+            query: { projectId: props.projectId as number },
+          }),
+        onError: () => {},
+      },
+      [questApi, props.projectId],
+    ).data ?? [];
+
+  const commit = (raw: string) => {
+    const v = raw.trim().toLowerCase();
+    if (!v || value.includes(v)) {
+      setDraft("");
+      return;
+    }
+    props.onChange?.([...value, v]);
+    setDraft("");
+  };
+
+  const remove = (tag: string) => {
+    props.onChange?.(value.filter((t) => t !== tag));
+  };
+
+  const onKey = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      commit(draft);
+    } else if (e.key === "Backspace" && draft === "" && value.length > 0) {
+      e.preventDefault();
+      remove(value[value.length - 1]);
+    }
+  };
+
+  const suggestions = known.filter(
+    (t) =>
+      !value.includes(t) &&
+      (draft === "" || t.startsWith(draft.trim().toLowerCase())),
+  );
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex flex-wrap items-center gap-1.5 rounded-md border px-2 py-1.5">
+        {/* Anchored to the bordered box, not absolutely positioned against
+            the inner `<Input>` the way a plain text control does it: the
+            input here is borderless and reflows below the chips once they
+            wrap, so an icon pinned to it would drift down the box. As a
+            flex child it stays on the first row, level with the border. */}
+        <TagsIcon className="text-muted-foreground pointer-events-none size-4 shrink-0" />
+        {value.map((tag) => (
+          <Badge
+            key={tag}
+            variant="secondary"
+            className="gap-1 font-mono text-xs"
+          >
+            {tag}
+            {!props.disabled && (
+              <button
+                type="button"
+                onClick={() => remove(tag)}
+                className="hover:bg-danger/20 -mr-1 ml-0.5 rounded-sm p-0.5"
+                aria-label={`Remove ${tag}`}
+              >
+                <X className="size-3" />
+              </button>
+            )}
+          </Badge>
+        ))}
+        <Input
+          value={draft}
+          onChange={(e) => setDraft(e.currentTarget.value)}
+          onKeyDown={onKey}
+          onBlur={() => commit(draft)}
+          placeholder={tr("quest.tags.placeholder")}
+          disabled={props.disabled}
+          className="h-7 min-w-32 flex-1 border-0 px-1 shadow-none focus-visible:ring-0"
+        />
+      </div>
+      {suggestions.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-muted-foreground text-xs">
+            {tr("quest.tags.suggestions")}
+          </span>
+          {suggestions.slice(0, 12).map((tag) => (
+            <button
+              key={tag}
+              type="button"
+              disabled={props.disabled}
+              onClick={() => commit(tag)}
+              className="bg-muted hover:bg-hover rounded-sm border px-1.5 py-0.5 font-mono text-xs"
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default QuestTagInput;

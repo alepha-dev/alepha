@@ -1,6 +1,6 @@
+import { compareReleaseTags } from "@lore/work/schemas";
 import type { Page } from "@playwright/test";
 
-import { compareReleaseTags } from "../src/api/releaseOrder.ts";
 import { expect, test } from "./_fixtures.ts";
 import {
   apiPost,

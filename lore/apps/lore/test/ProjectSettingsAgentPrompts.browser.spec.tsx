@@ -2,6 +2,12 @@ import { DialogProvider } from "@alepha/ui";
 import { projectFixture } from "@lore/core/testing";
 import { ProjectSettingsAgentPrompts } from "@lore/core/testing";
 import { currentProjectAtom, projectPromptsAtom, I18n } from "@lore/core/web";
+import {
+  epicReviewPromptDefault,
+  feedbackWorkPromptDefault,
+  questLoopPromptDefault,
+  WorkShell,
+} from "@lore/work/web";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaContext } from "alepha/react";
@@ -11,11 +17,7 @@ import { LinkProvider } from "alepha/server/links";
 import { setupJsdomMocks } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
-import { epicReviewPromptDefault } from "@/web/app/prompts/epicReviewPrompt.ts";
-import { feedbackWorkPromptDefault } from "@/web/app/prompts/feedbackWorkPrompt.ts";
-import { questLoopPromptDefault } from "@/web/app/prompts/questLoopPrompt.ts";
 import { DeployShell } from "@/web/app/shell/DeployShell.ts";
-import { WorkShell } from "@/web/app/shell/WorkShell.ts";
 
 interface Call {
   action: string;

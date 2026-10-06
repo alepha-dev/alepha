@@ -1,8 +1,8 @@
 import type { ProjectController } from "@lore/core/api";
+import type { AreaController } from "@lore/work/api";
 import { $inject, z } from "alepha";
 import { $command } from "alepha/command";
 import { $client } from "alepha/server/links";
-import type { AreaController } from "lore/api/controllers/AreaController";
 
 import { LoreClientService } from "../services/LoreClientService.ts";
 import { LoreOutput } from "../services/LoreOutput.ts";

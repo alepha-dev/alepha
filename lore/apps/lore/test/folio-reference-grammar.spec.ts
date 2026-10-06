@@ -1,4 +1,10 @@
 import { ProjectController, ResourceLinkService } from "@lore/core/api";
+import {
+  EpicController,
+  FeedbackController,
+  QuestController,
+  ReleaseController,
+} from "@lore/work/api";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -8,11 +14,7 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { EpicController } from "../src/api/controllers/EpicController.ts";
-import { FeedbackController } from "../src/api/controllers/FeedbackController.ts";
 import { FolioController } from "../src/api/controllers/FolioController.ts";
-import { QuestController } from "../src/api/controllers/QuestController.ts";
-import { ReleaseController } from "../src/api/controllers/ReleaseController.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { WikiLinkFixture } from "./fixtures/wikiLinks.ts";
 

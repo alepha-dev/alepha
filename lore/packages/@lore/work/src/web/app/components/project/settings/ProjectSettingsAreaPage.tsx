@@ -1,0 +1,104 @@
+import { useDialog } from "@alepha/ui";
+import type { I18n } from "@lore/core/web";
+import { useAction, useClient, useStore } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
+import { useRouter } from "alepha/react/router";
+import { useState } from "react";
+
+import type { AreaController } from "../../../../../api/controllers/AreaController.ts";
+import type { AreaDetail } from "../../../../../api/schemas/areaResourceSchema.ts";
+import { currentAreasAtom } from "../../../atoms/currentAreasAtom.ts";
+import AreaRenameDialog from "./AreaRenameDialog.tsx";
+import ProjectSettingsAreaDescription from "./ProjectSettingsAreaDescription.tsx";
+import ProjectSettingsAreaHeader from "./ProjectSettingsAreaHeader.tsx";
+import ProjectSettingsAreaQuests from "./ProjectSettingsAreaQuests.tsx";
+import ProjectSettingsAreaStats from "./ProjectSettingsAreaStats.tsx";
+
+export interface ProjectSettingsAreaPageProps {
+  area: AreaDetail;
+}
+
+/**
+ * The Area detail page: header (rename / delete), the activity rollup, the
+ * description card, and a sample of what is filed here.
+ *
+ * `siblings` (for the rename dialog's merge-collision check) comes from
+ * `currentAreasAtom`, filled by the `project` route loader — not refetched
+ * here.
+ */
+const ProjectSettingsAreaPage = (props: ProjectSettingsAreaPageProps) => {
+  const dialog = useDialog();
+  const { tr } = useI18n<I18n, "en">();
+  const router = useRouter();
+  const areaApi = useClient<AreaController>();
+  const [siblings] = useStore(currentAreasAtom);
+  const [renaming, setRenaming] = useState(false);
+
+  // A rename or a merge navigates to another area, but React reconciles the
+  // same component types in place: every child seeded from `props.area` at
+  // mount kept the PREVIOUS area's values. One Save then wrote the old
+  // description onto the merge target, and reopening the rename dialog
+  // renamed it back. The root div below is keyed on the area id so the
+  // subtree remounts; the dialog's open flag lives here rather than there, so
+  // it is reset the way React documents for state that must follow a prop.
+  const [shownArea, setShownArea] = useState(props.area.id);
+  if (shownArea !== props.area.id) {
+    setShownArea(props.area.id);
+    setRenaming(false);
+  }
+
+  const removeAction = useAction<[], void>(
+    {
+      handler: async () => {
+        const ok = await dialog.confirm({
+          title: tr("project.settings.areas.delete.confirm"),
+          destructive: true,
+        });
+        if (!ok) return;
+        await areaApi.deleteArea({ params: { id: props.area.id } });
+        await router.push("projectSettingsAreas");
+      },
+    },
+    [areaApi, dialog, router, props.area.id, tr],
+  );
+  const remove = removeAction.run;
+
+  return (
+    <div className="flex flex-col gap-4" key={props.area.id}>
+      <ProjectSettingsAreaHeader
+        area={props.area}
+        onRename={() => setRenaming(true)}
+        onDelete={() => void remove()}
+      />
+      <ProjectSettingsAreaStats area={props.area} />
+      <ProjectSettingsAreaDescription area={props.area} />
+      <ProjectSettingsAreaQuests area={props.area} />
+      <AreaRenameDialog
+        open={renaming}
+        area={props.area}
+        siblings={siblings ?? []}
+        onClose={() => setRenaming(false)}
+        onRenamed={(areaId) =>
+          void router.push("projectSettingsArea", {
+            params: { areaId: String(areaId) },
+            // Forced unconditionally, not just on a merge: on a PLAIN
+            // rename the surviving id equals the path id, so an unforced
+            // push targets the URL already on screen and
+            // `ReactPageProvider.createLayers` reuses every layer's props
+            // outright — the heading, stats and description would stay
+            // stale with no error and no toast. `force: true` clears
+            // `ReactBrowserProvider`'s `previous` layer list entirely
+            // (not just this leaf), so it also re-runs the `project`
+            // route's loader and refreshes `currentAreasAtom` for every
+            // picker elsewhere in the app — see AppRouter.ts's `project`
+            // loader. The merge branch re-runs anyway; the redundant
+            // force there costs one loader round-trip.
+            force: true,
+          })
+        }
+      />
+    </div>
+  );
+};
+
+export default ProjectSettingsAreaPage;

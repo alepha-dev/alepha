@@ -2,15 +2,9 @@ import { type Project } from "@lore/core/schemas";
 import type { Alepha, Infer } from "alepha";
 import { $repository } from "alepha/orm";
 
-import { areas } from "@/api/entities/areas.ts";
-import { type Epic, epics } from "@/api/entities/epics.ts";
-import { feedback } from "@/api/entities/feedback.ts";
 import { folioDirectories } from "@/api/entities/folioDirectories.ts";
 import { type Folio, folios } from "@/api/entities/folios.ts";
-import { type Quest, type QuestInsert, quests } from "@/api/entities/quests.ts";
-import { releases } from "@/api/entities/releases.ts";
 
-type EpicInsert = Infer<typeof epics.insertSchema>;
 type FolioInsert = Infer<typeof folios.insertSchema>;
 
 /**
@@ -31,7 +25,9 @@ type FolioInsert = Infer<typeof folios.insertSchema>;
  * pre-`start()` class every field this class has (or `extends` it), so the
  * whole FK closure gets registered up front.
  */
-import { CoreTestEntities } from "@lore/core/testing";
+import { WorkTestEntities } from "@lore/work/testing";
+
+export { createTestEpic, createTestQuest } from "@lore/work/testing";
 
 export {
   createTestMember,
@@ -39,12 +35,7 @@ export {
   createTestProject,
 } from "@lore/core/testing";
 
-export class TestEntityRepositories extends CoreTestEntities {
-  releases = $repository(releases);
-  feedback = $repository(feedback);
-  areas = $repository(areas);
-  epics = $repository(epics);
-  quests = $repository(quests);
+export class TestEntityRepositories extends WorkTestEntities {
   folios = $repository(folios);
   // `folios.directoryId` refs this table: needed pre-`start()` whenever
   // `folios` is, for the same reason `quests`'s own FK closure is.
@@ -60,61 +51,7 @@ export class TestEntityRepositories extends CoreTestEntities {
  * `$sequence` — tests that care about that allocate their own numbers
  * through the real controller/service instead of these fixtures.
  */
-let questSeq = 0;
-let epicSeq = 0;
 let folioSeq = 0;
-
-/**
- * Creates a quest directly through the repository, bypassing
- * `QuestController` / `QuestService` (auth, `$sequence`-allocated `shortId`,
- * area bookkeeping). `createdBy` defaults to the project's own owner so
- * callers that don't care about attribution don't have to invent a user.
- */
-export const createTestQuest = async (
-  alepha: Alepha,
-  project: Pick<Project, "id" | "createdBy" | "organizationId">,
-  overrides: Partial<QuestInsert> = {},
-): Promise<Quest> => {
-  const repo = alepha.inject(TestEntityRepositories);
-  questSeq += 1;
-  return repo.quests.create({
-    ...overrides,
-    // Spread first, defaults last — see `createTestProject`. `history`
-    // needs the same treatment as the other required fields below even
-    // though it looks defaultable: it is a plain `z.array().default([])`,
-    // not `db.default(...)`, so `QuestInsert` does not mark it optional.
-    shortId: overrides.shortId ?? questSeq,
-    title: overrides.title ?? `Test Quest ${questSeq}`,
-    description: overrides.description ?? "",
-    area: overrides.area ?? "general",
-    priority: overrides.priority ?? "medium",
-    projectId: overrides.projectId ?? project.id,
-    createdBy: overrides.createdBy ?? project.createdBy,
-    history: overrides.history ?? [],
-  });
-};
-
-/**
- * Creates an epic directly through the repository, bypassing
- * `EpicController` and its `$sequence`-allocated `number`.
- */
-export const createTestEpic = async (
-  alepha: Alepha,
-  project: Pick<Project, "id" | "createdBy" | "organizationId">,
-  overrides: Partial<EpicInsert> = {},
-): Promise<Epic> => {
-  const repo = alepha.inject(TestEntityRepositories);
-  epicSeq += 1;
-  return repo.epics.create({
-    ...overrides,
-    // Spread first, defaults last — see `createTestProject`.
-    projectId: overrides.projectId ?? project.id,
-    number: overrides.number ?? epicSeq,
-    title: overrides.title ?? `Test Epic ${epicSeq}`,
-    description: overrides.description ?? "",
-    status: overrides.status ?? "draft",
-  });
-};
 
 /**
  * Creates a folio directly through the repository, bypassing

@@ -1,9 +1,9 @@
+import type { EpicController } from "@lore/work/api";
+import type { QuestCommentController } from "@lore/work/api";
+import type { QuestController } from "@lore/work/api";
 import { $inject, z } from "alepha";
 import { $command, CommandError, UsageError } from "alepha/command";
 import { $client } from "alepha/server/links";
-import type { EpicController } from "lore/api/controllers/EpicController";
-import type { QuestCommentController } from "lore/api/controllers/QuestCommentController";
-import type { QuestController } from "lore/api/controllers/QuestController";
 
 import { LoreClientService } from "../services/LoreClientService.ts";
 import { LoreOutput } from "../services/LoreOutput.ts";

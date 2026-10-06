@@ -1,0 +1,619 @@
+import { Badge, Button } from "@alepha/ui";
+import {
+  DataTable,
+  type DataTableFilterFields,
+  type DataTableFilterValues,
+  type BulkAction,
+  type RowActionEntry,
+} from "@alepha/ui/table";
+import {
+  currentProjectAtom,
+  loreDocsUrl,
+  type I18n,
+  formatReference,
+  OutboundLink,
+} from "@lore/core/web";
+import { type Page, z } from "alepha";
+import { useAction, useClient, useStore } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
+import { Link, useRouter } from "alepha/react/router";
+import { CircleDot, Flag, Inbox, Plus, Trash2, X } from "lucide-react";
+import { useRef, useState } from "react";
+
+import type { ReleaseController } from "../../../../../api/controllers/ReleaseController.ts";
+import { compareReleaseTags } from "../../../../../api/releaseOrder.ts";
+import type { ReleaseResource } from "../../../../../api/schemas/releaseResourceSchema.ts";
+import { currentReleasesAtom } from "../../../atoms/currentReleasesAtom.ts";
+import { releaseBumps, suggestedReleaseTag } from "./releaseBumps.ts";
+import ReleaseCreateDialog from "./ReleaseCreateDialog.tsx";
+import ReleaseDefaultBadge from "./ReleaseDefaultBadge.tsx";
+import ReleaseProgress from "./ReleaseProgress.tsx";
+import {
+  releaseState,
+  STATE_ICONS,
+  STATE_LABEL_KEYS,
+  STATE_TONE,
+} from "./releaseState.ts";
+import { useDeleteRelease } from "./useDeleteRelease.ts";
+import { useSetDefaultRelease } from "./useSetDefaultRelease.ts";
+
+/**
+ * Every release in the project, built on {@link DataTable}.
+ *
+ * It was a hand-rolled card list with an OPEN heading, a RELEASED heading and
+ * an inline create form, while Epics next door had search, filters, sortable
+ * headers and a row menu. Two lists of the same project's work, read two
+ * different ways.
+ *
+ * Modelled on `ProjectEpics.tsx`, which documents four rules worth repeating
+ * and this page now repeats:
+ *
+ * - the identifier is part of the name rather than a column of its own. For a
+ *   release the identifier is the TAG, so `0.28.0` plays the part `#12 -
+ *   Title` plays on an epic;
+ * - the whole row is clickable and the title is a real anchor inside it, so a
+ *   plain click routes while cmd or middle click opens a tab;
+ * - the coloured state is the first thing on the row;
+ * - the chip is `tint` + tone + glyph, not a solid fill.
+ *
+ * `getReleases` returns the project's whole list in one response, so search,
+ * filter, sort and paging are all client-side here. Same shape as
+ * `ProjectEpics` and `ProjectBlights`.
+ *
+ * ## Open and released became a FILTER, not two sections
+ *
+ * The two headings could not survive the move: a table is one flat list, and
+ * faking sections inside it would give up the sorting that is the reason to
+ * be here. The state became a derived two-value filter instead, and
+ * `releaseState.ts` carries why it is derived rather than stored.
+ *
+ * **The property the headings encoded is preserved, not lost.** "There is no
+ * active state because nothing pauses" is a deliberate fact about this model,
+ * and the filter has exactly two values because of it. What is given up is
+ * seeing both groups labelled at once; what is gained is sorting either of
+ * them by target date or by progress.
+ *
+ * ⚠️ Ordered by `number`, **never by `tag`**. Semver does not sort as text:
+ * `0.10.0` comes before `0.9.0`. Same bug class as the text-enum priority
+ * ordering that put `optional` above `high` on the board for a year, and the
+ * same rule #1633 applies on the Epics side. The tag column therefore sorts
+ * on `number`, which is what the header says and what the comparator does.
+ *
+ * The default sort is `number` DESCENDING, which is the closest thing to the
+ * old page's reading order: open releases are the recent ones, so they still
+ * arrive at the top without the table having to know what "open" means.
+ */
+const ProjectReleases = () => {
+  const { tr, l } = useI18n<I18n, "en">();
+  const router = useRouter();
+  const [project] = useStore(currentProjectAtom);
+  // Write-only. The table fetches its own rows, but the atom is what the
+  // sidebar and both release CONTROLS read, so a create has to refresh it.
+  const [, setReleases] = useStore(currentReleasesAtom);
+  const releaseApi = useClient<ReleaseController>();
+  const defaultRelease = useSetDefaultRelease();
+  const deleteRelease = useDeleteRelease();
+
+  const [creating, setCreating] = useState(false);
+  // What the dialog's field holds when it opens: the tag a row's create entry
+  // named, or nothing for the toolbar and the empty state. The dialog seeds
+  // itself from it on every open, so the two doors cannot leak into each
+  // other.
+  const [createTag, setCreateTag] = useState<string>();
+  // The list, its rows and the empty state all stay; only the two doors into
+  // `createRelease` close.
+  const canCreate = releaseApi.createRelease.can();
+  // Bumped after a create, which happens outside the table and so has no
+  // `ctx.refresh()` of its own to call.
+  const [reload, setReload] = useState(0);
+  /**
+   * The project's WHOLE release list, as the table's last fetch received it,
+   * before the state filter, the search and the paging narrowed it.
+   *
+   * The create dialog's placeholder reads it, and so does every row's create
+   * entry. Never the rows on screen: filtered to Released, `0.30.0` is not a
+   * row, so `0.29.0` would look like the frontier of major 0. And never
+   * `currentReleasesAtom`, which is filled when the project is entered and
+   * misses a release created over MCP since, while this table refetches on
+   * mount: rows and suggestions must come from the same response.
+   *
+   * ⚠️ A ref, not state. The write happens inside the table's fetcher, and a
+   * state write there re-renders this component, which hands the table a new
+   * `fetch` and spins it into the refetch loop `ProjectEpics.tsx` warns
+   * about. Nothing needs to re-render on the write: the dialog reads it when
+   * `creating` flips, and the row menu while the table renders the rows that
+   * very fetch returned.
+   */
+  const allReleases = useRef<ReleaseResource[]>([]);
+
+  /**
+   * The table refetches itself off `refreshSignal`, but the atom has to be
+   * refreshed by hand: it is what the sidebar and both release CONTROLS
+   * read, and none of them is watching this table. A `useAction` (#E59,
+   * #Q2326), so a failed refetch is toasted by the root listener.
+   */
+  const createdAction = useAction<[], void>(
+    {
+      handler: async () => {
+        if (!project) return;
+        setReleases(
+          await releaseApi.getReleases({ params: { projectId: project.id } }),
+        );
+        setReload((n) => n + 1);
+      },
+    },
+    [releaseApi, project?.id],
+  );
+
+  // Page-wide: the row menu's writes and the bulk delete wait while any of
+  // them runs. The bulk bar has no disabled state, so it hides.
+  const busy = defaultRelease.busy || deleteRelease.busy;
+
+  if (!project) return null;
+
+  const openCreate = (tag?: string) => {
+    setCreateTag(tag);
+    setCreating(true);
+  };
+
+  /**
+   * The row menu's create entries, named by the tag they would create
+   * ("Create 0.31.0") rather than by the bump ("Create minor"): the label
+   * verifies itself, and nobody has to know what the minor of `1.0` is
+   * before clicking. `releaseBumps.ts` holds the rule and why it is the
+   * frontier and not the release's state.
+   *
+   * One entry is flat; two or three are one group, in the order the rule
+   * returns them (patch, minor, major); none is nothing.
+   *
+   * ⚠️ Read from `allReleases`, the unfiltered response, and never from the
+   * rows on screen. See that ref for the two lists this must not use.
+   *
+   * An entry opens the create dialog with the tag filled in, and does not
+   * write. One write path, the tag stays editable, and a tag taken since the
+   * list was read is the dialog's own inline error. After the create the
+   * reader stays on this list, planning: `created()` refreshes and does not
+   * navigate, unlike the header menu's mount of the same dialog.
+   */
+  const createEntries = (
+    release: ReleaseResource,
+  ): RowActionEntry<ReleaseResource>[] => {
+    const entries = releaseBumps(release, allReleases.current).map((bump) => ({
+      icon: Plus,
+      label: tr("release.bump.create", { args: [bump.tag] }),
+      onClick: () => openCreate(bump.tag),
+    }));
+    if (entries.length < 2) return entries;
+    return [{ icon: Plus, label: tr("release.bump.group"), children: entries }];
+  };
+
+  const filterFields = {
+    search: { preset: "search" },
+    /**
+     * A SCALAR again, and absent means every state.
+     *
+     * ⚠️ This went array and came back, so the round trip is worth stating.
+     * It was made an array by feedback #2092 because a `clearable` scalar drew
+     * its clear entry as a third SELECTABLE row with a check mark beside Open
+     * and Released, so "All states" read as a third state a release could be
+     * in, and a multi-select was the only arity that had no such row.
+     *
+     * #2098 removed the row from `control-select` itself, which took the only
+     * reason with it. What is left is two values that are exhaustive and
+     * mutually exclusive - a release either has a `releasedAt` or does not -
+     * so selecting both was the same query as selecting neither, and the
+     * trigger said "2 states" for what meant "no filter". Apps' `reporting`
+     * filter is the identical shape and stayed a scalar throughout; #1816
+     * flagged the two disagreeing and named this as the fix.
+     *
+     * A stored `["open"]` from the array era survives the change:
+     * `reconcilePersistedFilters` takes the first element when the schema
+     * wants a scalar and finds an array.
+     */
+    state: {
+      schema: z.enum(["open", "released"]),
+      label: tr("release.filter.state"),
+      icon: CircleDot,
+      items: [
+        { label: tr("release.group.open"), value: "open" },
+        { label: tr("release.group.released"), value: "released" },
+      ],
+      control: { clearLabel: tr("release.filter.allStates") },
+    },
+  } satisfies DataTableFilterFields;
+
+  const fetchReleases = async ({
+    page,
+    size,
+    sort,
+    filters,
+  }: {
+    page: number;
+    size: number;
+    sort?: string;
+    filters?: DataTableFilterValues<typeof filterFields>;
+  }): Promise<Page<ReleaseResource>> => {
+    const all = await releaseApi.getReleases({
+      params: { projectId: project.id },
+    });
+    // Before anything filters it; see `allReleases`.
+    allReleases.current = all;
+
+    const state = filters?.state;
+    const needle = (filters?.search ?? "").trim().toLowerCase();
+
+    const rows = sortReleases(
+      all.filter((release) => {
+        if (state && releaseState(release) !== state) {
+          return false;
+        }
+        if (!needle) return true;
+        return (
+          (release.tag ?? "").toLowerCase().includes(needle) ||
+          release.title.toLowerCase().includes(needle)
+        );
+      }),
+      sort,
+    );
+
+    const offset = page * size;
+    const content = rows.slice(offset, offset + size);
+    return {
+      content,
+      page: {
+        number: page,
+        size,
+        offset,
+        numberOfElements: content.length,
+        totalElements: rows.length,
+        totalPages: Math.max(1, Math.ceil(rows.length / size)),
+        isEmpty: content.length === 0,
+        isFirst: page === 0,
+        isLast: offset + size >= rows.length,
+      },
+    };
+  };
+
+  // ⚠️ This array is the table's CHECKBOX COLUMN. `DataTable` derives
+  // `hasCheckbox` from it being non-empty, the way the Epics list documents,
+  // and Delete is the only bulk action here. So a rank that may not delete
+  // gets `[]`, and with it the table exactly as it was before bulk delete
+  // existed: no column, and no selection with nothing to do.
+  //
+  // Refresh, then clear, in that order: a selection that survives a delete
+  // points at rows that no longer exist. The hook has already refetched
+  // `currentReleasesAtom` once for the whole run.
+  const bulkActions: BulkAction<ReleaseResource>[] = deleteRelease.can
+    ? [
+        {
+          icon: Trash2,
+          label: tr("board.bulk.delete"),
+          destructive: true,
+          visible: () => !busy,
+          onClick: async (selected, ctx) => {
+            if (!(await deleteRelease.removeMany(selected))) return;
+            ctx.refresh();
+            ctx.clearSelection();
+          },
+        },
+      ]
+    : [];
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col p-2">
+      <ReleaseCreateDialog
+        projectId={project.id}
+        open={creating}
+        onOpenChange={setCreating}
+        onCreated={() => void createdAction.run()}
+        initialTag={createTag}
+        suggestedTag={suggestedReleaseTag(allReleases.current)}
+      />
+
+      <DataTable<ReleaseResource, typeof filterFields>
+        className="min-h-0 flex-1"
+        persistenceKey={`lor.releases.${project.id}`}
+        bulkActions={bulkActions}
+        defaultSort={{ field: "tag", direction: "desc" }}
+        // The full empty state rather than `emptyMessage`, so the page that
+        // has never had a release still explains what one IS and offers the
+        // way to make one. A bare "No results" in a table nobody has filled
+        // teaches nothing.
+        //
+        // ⚠️ Two states, never the single `empty` node this used to be. That
+        // prop replaces BOTH of them at once, so filtering the list down to
+        // nothing announced that no release is open and offered to open one -
+        // the same defect feedback #P2160 reported against Apps, unreported
+        // here only because nobody filtered this page to zero.
+        emptyState={{
+          icon: Flag,
+          title: tr("release.empty.title"),
+          description: tr("release.empty.body"),
+          // Both the way in and the way to the explanation. An empty state is
+          // a signpost, not a manual: the release model and the default
+          // release are written once, in the Lore docs, rather than grown
+          // into prose here. The link stands whether or not this rank may
+          // create a release - reading about the model is not a write.
+          action: (
+            <div className="flex flex-col items-center gap-3">
+              {canCreate && (
+                <Button onClick={() => openCreate()}>
+                  <Plus className="size-4" />
+                  {tr("release.start")}
+                </Button>
+              )}
+              {/* ⚠️ Absolute, through `loreDocsUrl`: written root-relative it
+                  resolves against Lore's own origin and 404s (feedback
+                  #P2142). */}
+              <OutboundLink
+                href={loreDocsUrl("guides-releases")}
+                className="text-muted-foreground text-sm underline underline-offset-4"
+                data-testid="releases-empty-docs"
+              >
+                {tr("release.empty.docs")}
+              </OutboundLink>
+            </div>
+          ),
+        }}
+        noMatchState={{
+          title: tr("release.noMatch.title"),
+          description: tr("release.noMatch.body"),
+        }}
+        refreshSignal={reload}
+        filters={{ fields: filterFields }}
+        fetch={fetchReleases}
+        onRowClick={(release) =>
+          release.tag &&
+          router.push("projectRelease", {
+            params: { releaseTag: release.tag },
+          })
+        }
+        actions={
+          canCreate
+            ? [
+                {
+                  icon: Plus,
+                  label: tr("release.start"),
+                  primary: true,
+                  onClick: () => openCreate(),
+                },
+              ]
+            : []
+        }
+        // Built in pieces, each under its own condition. It was one ternary
+        // that emptied the whole menu on a published row, which could stand
+        // only while every entry was a default entry: Delete is offered on a
+        // published row too.
+        //
+        // `createRelease`, `setDefaultRelease` and `deleteRelease` all need
+        // `release:manage` today, so the split between the pieces is about
+        // the row's STATE, not about permission. Each piece still asks its
+        // own action, so a later change to one permission cannot silently
+        // gate the others. The menu reads create, then the default entries,
+        // then Delete last.
+        rowActions={(release) => [
+          // On published and open rows alike: a patch is offered only on a
+          // published one.
+          ...(canCreate ? createEntries(release) : []),
+          // Never offered on a published release: the server refuses it, and
+          // an affordance that always fails is worse than no affordance.
+          ...(defaultRelease.can && !release.releasedAt
+            ? [
+                release.defaultSince
+                  ? {
+                      icon: X,
+                      label: tr("release.default.clear"),
+                      disabled: () => busy,
+                      onClick: (row: ReleaseResource) =>
+                        void defaultRelease
+                          .clear(row)
+                          .then((done) => done && setReload((n) => n + 1)),
+                    }
+                  : {
+                      icon: Inbox,
+                      label: tr("release.default.set"),
+                      disabled: () => busy,
+                      onClick: (row: ReleaseResource) =>
+                        void defaultRelease
+                          .set(row)
+                          // The hook already wrote `currentReleasesAtom` from
+                          // the response, which is what both chips read. The
+                          // TABLE fetches its own rows, so it needs the bump
+                          // and not a second `getReleases`.
+                          .then((done) => done && setReload((n) => n + 1)),
+                    },
+              ]
+            : []),
+          // Last, and on every row, published included. The confirm inside
+          // the hook is where a published release's frozen record and the
+          // default are named, since neither shows on the row.
+          ...(deleteRelease.can
+            ? [
+                {
+                  icon: Trash2,
+                  label: tr("release.delete.action"),
+                  destructive: true,
+                  disabled: () => busy,
+                  onClick: (
+                    row: ReleaseResource,
+                    { refresh }: { refresh: () => void },
+                  ) =>
+                    void deleteRelease
+                      .remove(row)
+                      .then((done) => done && refresh()),
+                },
+              ]
+            : []),
+        ]}
+        columns={{
+          // First on the row, like the epic status chip and the Quests
+          // table's status dot.
+          state: {
+            label: tr("release.list.column.state"),
+            sortable: true,
+            className: "w-32 pl-4",
+            cell: (release) => {
+              const state = releaseState(release);
+              const Icon = STATE_ICONS[state];
+              return (
+                // One chip, and never one with three values: see
+                // `ReleaseDefaultBadge`. The default marker used to be a
+                // second chip here and wrapped underneath, making the row
+                // twice as tall as its neighbours; it is a glyph beside the
+                // tag now.
+                <Badge variant="tint" tone={STATE_TONE[state]}>
+                  <Icon className="size-3" />
+                  {tr(STATE_LABEL_KEYS[state])}
+                </Badge>
+              );
+            },
+          },
+          tag: {
+            label: tr("release.list.column.tag"),
+            sortable: true,
+            // `w-full max-w-0 min-w-48`, copied from the Epics table with its
+            // reasoning: auto-layout means `max-width: 0` is what stops this
+            // column claiming its content width, `width: 100%` is what makes
+            // it absorb the slack, and without the pair the ellipsis never
+            // fires.
+            className: "w-full max-w-0 min-w-48",
+            cell: (release) => {
+              // A release with no tag cannot be addressed at all: the tag IS
+              // the URL. It should be unreachable (the create schema requires
+              // one) but the column is nullable, so the row falls back to
+              // inert text rather than to a broken link.
+              const tag = release.tag;
+              return (
+                <div className="flex flex-col overflow-hidden whitespace-nowrap">
+                  {/* The default glyph rides with the tag, which is the
+                      thing it qualifies. `min-w-0` on the link's wrapper so
+                      the ellipsis still fires against the glyph rather than
+                      pushing it out of the cell. */}
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    {tag ? (
+                      // A real anchor inside a clickable row, so the browser
+                      // owns cmd / shift / middle click and "copy link
+                      // address". `stopPropagation` because the row carries
+                      // `onRowClick` too: without it a plain click navigates
+                      // twice, once through each.
+                      <Link
+                        href={router.path("projectRelease", {
+                          params: { releaseTag: tag },
+                        })}
+                        onClick={(e) => e.stopPropagation()}
+                        className="truncate font-mono text-sm font-medium"
+                        title={tag}
+                      >
+                        {tag}
+                      </Link>
+                    ) : (
+                      <span className="text-muted-foreground truncate font-mono text-sm">
+                        {formatReference("release", release.number)}
+                      </span>
+                    )}
+                    <ReleaseDefaultBadge release={release} />
+                  </span>
+                  {/* Only when it says something the tag does not. `title`
+                      defaults to the tag server-side, so printing both would
+                      show the same string twice. */}
+                  {release.title !== tag ? (
+                    <span className="text-muted-foreground truncate text-xs">
+                      {release.title}
+                    </span>
+                  ) : null}
+                </div>
+              );
+            },
+          },
+          progress: {
+            label: tr("release.list.column.progress"),
+            className: "w-56",
+            cell: (release) => <ReleaseProgress release={release} />,
+          },
+          // One column, two meanings, which is what the old row did too: an
+          // open release shows the date it is aiming at, a released one the
+          // date it went out. Keeping them apart would leave whichever column
+          // did not apply empty on every row.
+          targetDate: {
+            label: tr("release.list.column.date"),
+            sortable: true,
+            className: "w-40",
+            cell: (release) =>
+              release.releasedAt ? (
+                <span className="whitespace-nowrap">
+                  {tr("release.list.releasedOn", {
+                    args: [l(release.releasedAt as string, { date: "ll" })],
+                  })}
+                </span>
+              ) : release.targetDate ? (
+                <span className="text-muted-foreground whitespace-nowrap">
+                  {tr("release.list.target", {
+                    args: [l(release.targetDate as string, { date: "ll" })],
+                  })}
+                </span>
+              ) : (
+                <span className="text-muted-foreground">
+                  {tr("release.list.noTarget")}
+                </span>
+              ),
+          },
+        }}
+      />
+    </div>
+  );
+};
+
+/**
+ * ⚠️ The tag column parses the tag. It does NOT sort it as text, and it no
+ * longer sorts on `number` either.
+ *
+ * `["0.9.0", "0.28.0"].sort()` yields `0.28.0` first, which is why sorting
+ * the string is wrong. `number` was adopted as a proxy for version order and
+ * is not one: it is a `$sequence`, so it tracks version order only while
+ * releases are created in version order. A project that planned `1.0.0`
+ * before `0.29.0` read `0.28.0, 1.0.0, 0.29.0` under an ascending header.
+ *
+ * `compareReleaseTags` is the single answer, shared with the Epics list.
+ * `number` stays as the tiebreak, where it is honest.
+ */
+const sortReleases = (
+  items: ReleaseResource[],
+  sort?: string,
+): ReleaseResource[] => {
+  const field = sort?.replace(/^-/, "");
+  const dir = sort?.startsWith("-") ? -1 : 1;
+  const rows = [...items];
+  rows.sort((a, b) => {
+    if (field === "state") {
+      // Open before released ascending, which walks the lifecycle the way
+      // the epic status sort does rather than sorting the two words.
+      const rank = (release: ReleaseResource) => (release.releasedAt ? 1 : 0);
+      return (rank(a) - rank(b)) * dir || a.number - b.number;
+    }
+    if (field === "targetDate") {
+      // The column shows `releasedAt` for a shipped release and
+      // `targetDate` otherwise, so it sorts on whichever it is showing.
+      // A release with neither sorts last in both directions, for the same
+      // reason an epic with no release does on the Epics list: most rows
+      // would otherwise drag through the middle on every flip.
+      const at = a.releasedAt ?? a.targetDate;
+      const bt = b.releasedAt ?? b.targetDate;
+      if (!at || !bt) {
+        if (!at && !bt) return a.number - b.number;
+        return at ? -1 : 1;
+      }
+      return (
+        (new Date(at as string).getTime() - new Date(bt as string).getTime()) *
+          dir || a.number - b.number
+      );
+    }
+    if (field === "tag") {
+      return compareReleaseTags(a.tag, b.tag) * dir || a.number - b.number;
+    }
+    // No sort at all: creation order, which is what the list arrives in.
+    return a.number - b.number;
+  });
+  return rows;
+};
+
+export default ProjectReleases;

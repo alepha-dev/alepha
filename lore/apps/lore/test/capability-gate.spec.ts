@@ -1,4 +1,6 @@
 import { ProjectController, ProjectSecurityService } from "@lore/core/api";
+import { QuestController } from "@lore/work/api";
+import { QuestTools } from "@lore/work/mcp";
 import { Alepha } from "alepha";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -11,10 +13,8 @@ import { describe, it } from "vitest";
 
 import { FolioController } from "../src/api/controllers/FolioController.ts";
 import { QualityController } from "../src/api/controllers/QualityController.ts";
-import { QuestController } from "../src/api/controllers/QuestController.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { LoreMcp } from "../src/mcp/index.ts";
-import { QuestTools } from "../src/mcp/tools/QuestTools.ts";
 
 /**
  * The capability gate, from all three sides it is reached from.

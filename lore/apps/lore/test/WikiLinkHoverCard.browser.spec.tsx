@@ -4,6 +4,7 @@ import {
   WikiLinkHoverProvider,
   BROKEN_HREF_PREFIX,
 } from "@lore/core/web";
+import { WorkShell } from "@lore/work/web";
 import { act, fireEvent, render, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaLogger } from "alepha/logger";
@@ -14,7 +15,6 @@ import { setupJsdomMocks } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, it } from "vitest";
 
 import { KnowledgeShell } from "../src/web/app/shell/KnowledgeShell.ts";
-import { WorkShell } from "../src/web/app/shell/WorkShell.ts";
 
 /**
  * Serves nothing: the link below is a broken reference, the one kind of card

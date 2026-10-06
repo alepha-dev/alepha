@@ -11,6 +11,7 @@ ignores:
   # And on each `@lore/*` package whose controllers it types against, the
   # same way, since they left `apps/lore` (#E75).
   - "@lore/core"
+  - "@lore/work"
   - "@vitejs/plugin-react"
   - "jsdom"
   - "@vitest/coverage-v8"

@@ -11,6 +11,8 @@ import {
 } from "@lore/core/schemas";
 import type { DashboardScope } from "@lore/core/schemas";
 import { ReadCounter } from "@lore/core/testing";
+import { EpicProgressService, QuestTagTallyService } from "@lore/work/api";
+import { feedback, releases } from "@lore/work/schemas";
 import { Alepha, z } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
@@ -23,14 +25,10 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { appInstances } from "@/api/entities/appInstances.ts";
 import { blights } from "@/api/entities/blights.ts";
-import { feedback } from "@/api/entities/feedback.ts";
-import { releases } from "@/api/entities/releases.ts";
 import { sigilErrorGroups } from "@/api/entities/sigilErrorGroups.ts";
 import { type Sigil, sigils } from "@/api/entities/sigils.ts";
 import { sigilUniquesDaily } from "@/api/entities/sigilUniquesDaily.ts";
 import { LoreApi } from "@/api/index.ts";
-import { EpicProgressService } from "@/api/services/EpicProgressService.ts";
-import { QuestTagTallyService } from "@/api/services/QuestTagTallyService.ts";
 
 import {
   createTestEpic,

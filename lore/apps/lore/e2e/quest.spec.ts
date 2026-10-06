@@ -1,6 +1,6 @@
+import { MAX_QUEST_OBJECTIVES } from "@lore/work/schemas";
 import type { Page } from "@playwright/test";
 
-import { MAX_QUEST_OBJECTIVES } from "../src/api/schemas/questObjectivesLimit.ts";
 import { expect, test } from "./_fixtures.ts";
 import {
   apiPath,

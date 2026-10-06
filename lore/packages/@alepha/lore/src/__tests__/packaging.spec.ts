@@ -146,10 +146,10 @@ describe("@alepha/lore packaging", () => {
       ),
     );
 
-    expect(manifest.peerDependencies["@lore/core"]).toBe("*");
-    expect(manifest.peerDependenciesMeta["@lore/core"]).toEqual({
-      optional: true,
-    });
+    for (const pkg of ["@lore/core", "@lore/work"]) {
+      expect(manifest.peerDependencies[pkg]).toBe("*");
+      expect(manifest.peerDependenciesMeta[pkg]).toEqual({ optional: true });
+    }
     expect(core.private).toBe(true);
     expect(core.exports["./api"]).toBe("./src/api/index.ts");
   });

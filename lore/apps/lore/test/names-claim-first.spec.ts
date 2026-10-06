@@ -1,4 +1,6 @@
 import { ProjectController } from "@lore/core/api";
+import { AreaService } from "@lore/work/api";
+import { areas } from "@lore/work/schemas";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -10,10 +12,8 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { DirectoryController } from "../src/api/controllers/DirectoryController.ts";
 import { FolioController } from "../src/api/controllers/FolioController.ts";
-import { areas } from "../src/api/entities/areas.ts";
 import { folioNames } from "../src/api/entities/folioNames.ts";
 import { LoreApi } from "../src/api/index.ts";
-import { AreaService } from "../src/api/services/AreaService.ts";
 
 class Rows {
   names = $repository(folioNames);

@@ -1,5 +1,7 @@
 import { ProjectController } from "@lore/core/api";
 import { ProjectTools } from "@lore/core/mcp";
+import { FeedbackController } from "@lore/work/api";
+import { EpicTools, QuestTools, ReleaseTools } from "@lore/work/mcp";
 import { Alepha } from "alepha";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
@@ -11,13 +13,9 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake } from "alepha/testing/faker";
 import { describe, expect, it } from "vitest";
 
-import { FeedbackController } from "../src/api/controllers/FeedbackController.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { LoreMcp } from "../src/mcp/index.ts";
-import { EpicTools } from "../src/mcp/tools/EpicTools.ts";
 import { FolioTools } from "../src/mcp/tools/FolioTools.ts";
-import { QuestTools } from "../src/mcp/tools/QuestTools.ts";
-import { ReleaseTools } from "../src/mcp/tools/ReleaseTools.ts";
 import { createTestMemberByProjectId } from "./fixtures/entities.ts";
 
 /**

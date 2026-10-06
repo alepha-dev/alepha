@@ -1,10 +1,10 @@
+import type { ReleaseController } from "@lore/work/api";
 import { $inject, AlephaError, z } from "alepha";
 import { $command } from "alepha/command";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $client } from "alepha/server/links";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
-import type { ReleaseController } from "lore/api/controllers/ReleaseController";
 
 import { LoreClientService } from "../services/LoreClientService.ts";
 import { LoreProjectResolver } from "../services/LoreProjectResolver.ts";

@@ -1,5 +1,6 @@
 import { ProjectController, ProjectSecurityService } from "@lore/core/api";
 import { ProjectTools } from "@lore/core/mcp";
+import { QuestTools } from "@lore/work/mcp";
 import { Alepha } from "alepha";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -13,7 +14,6 @@ import { describe, it } from "vitest";
 import { FolioController } from "@/api/controllers/FolioController.ts";
 import { LoreApi } from "@/api/index.ts";
 import { LoreMcp } from "@/mcp/index.ts";
-import { QuestTools } from "@/mcp/tools/QuestTools.ts";
 
 /**
  * `project_context` tells the truth about what a project is.

@@ -1,6 +1,7 @@
 import { AccountRouter, accountRouterOptionsAtom } from "@alepha/ui/account";
 import { $module } from "alepha";
 import { AlephaCrypto } from "alepha/crypto";
+import { AlephaReactAuth } from "alepha/react/auth";
 import { I18nProvider } from "alepha/react/i18n";
 import { AlephaReactUi } from "alepha/react/ui";
 import { createElement, lazy, Suspense } from "react";
@@ -30,7 +31,10 @@ import { ThemesProvider } from "./app/services/ThemesProvider.ts";
  */
 export const LoreCoreWeb = $module({
   name: "lore.core.web",
-  imports: [AlephaReactUi, AlephaCrypto],
+  // `AlephaReactAuth` explicitly: the sign-in, register and verification
+  // pages need `ReactAuth`, and nothing on the page tree injects it any more
+  // (the old `AppRouter` held an unused field that registered it, #E75).
+  imports: [AlephaReactUi, AlephaCrypto, AlephaReactAuth],
   atoms: [
     currentProjectAtom,
     currentProjectMemberAtom,

@@ -1,8 +1,8 @@
 import { DashboardMetricCatalog } from "@lore/core/schemas";
+import { WorkDashboardMetrics } from "@lore/work/schemas";
 import { $module } from "alepha";
 
 import { DeployDashboardMetrics } from "./services/DeployDashboardMetrics.ts";
-import { WorkDashboardMetrics } from "./services/WorkDashboardMetrics.ts";
 
 /**
  * The one service both runtimes need, in a module neither of them owns.

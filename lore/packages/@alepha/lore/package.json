@@ -92,6 +92,7 @@
   },
   "peerDependencies": {
     "@lore/core": "*",
+    "@lore/work": "*",
     "alepha": "^0.30.0",
     "lore": "*",
     "react": "*",
@@ -99,6 +100,9 @@
   },
   "peerDependenciesMeta": {
     "@lore/core": {
+      "optional": true
+    },
+    "@lore/work": {
       "optional": true
     },
     "alepha": {

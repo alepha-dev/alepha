@@ -1,4 +1,5 @@
 import { useElementLinks } from "@lore/core/web";
+import { WorkShell } from "@lore/work/web";
 import { renderHook, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaLogger } from "alepha/logger";
@@ -8,7 +9,6 @@ import type React from "react";
 import { describe, it } from "vitest";
 
 import { KnowledgeShell } from "../src/web/app/shell/KnowledgeShell.ts";
-import { WorkShell } from "../src/web/app/shell/WorkShell.ts";
 
 interface FakeQuest {
   id: number;

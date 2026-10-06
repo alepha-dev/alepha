@@ -4,6 +4,7 @@ import { LoreAccountRouter } from "@lore/core/web";
 import { LoreDeployWeb } from "@lore/deploy/web";
 import { LoreKnowledgeWeb } from "@lore/knowledge/web";
 import { LoreWorkWeb } from "@lore/work/web";
+import { WorkAccountRouter } from "@lore/work/web";
 import { Alepha } from "alepha";
 import { $page } from "alepha/react/router";
 import {
@@ -16,7 +17,6 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 import { insightsDimensionResourceSchema } from "../src/api/schemas/insightsDimensionResourceSchema.ts";
 import { AppRouter } from "../src/web/app/AppRouter.ts";
 import { DeployAccountRouter } from "../src/web/app/components/account/DeployAccountRouter.ts";
-import { WorkAccountRouter } from "../src/web/app/components/account/feedback/WorkAccountRouter.ts";
 import { ANALYTICS_DIMENSIONS } from "../src/web/app/DeployRouter.ts";
 
 /**
