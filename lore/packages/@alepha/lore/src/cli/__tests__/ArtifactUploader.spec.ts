@@ -1,5 +1,10 @@
 import { Alepha, z } from "alepha";
-import { $action, AlephaServer, ServerProvider } from "alepha/server";
+import {
+  $action,
+  AlephaServer,
+  HttpError,
+  ServerProvider,
+} from "alepha/server";
 import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
 import { describe, expect, it } from "vitest";
 
@@ -20,6 +25,13 @@ import { ArtifactUploader } from "../services/ArtifactUploader.ts";
  * declaring `z.file()` plus scalar fields, and asserts what arrived.
  */
 class Sink {
+  /**
+   * Statuses to answer before accepting, one per request, in order. Empty is
+   * a registry that takes every push.
+   */
+  public failures: number[] = [];
+  public attempts = 0;
+
   public received?: {
     app: string;
     tag: string;
@@ -53,6 +65,12 @@ class Sink {
       }),
     },
     handler: async ({ body }) => {
+      this.attempts += 1;
+      const failure = this.failures.shift();
+      if (failure) {
+        throw new HttpError({ status: failure, message: "not now" });
+      }
+
       this.received = {
         app: body.app,
         tag: body.tag,
@@ -74,6 +92,14 @@ class Sink {
       };
     },
   });
+}
+
+/**
+ * The real uploader with no wait between attempts, so a retry is exercised
+ * without the spec sleeping through the backoff.
+ */
+class ImpatientArtifactUploader extends ArtifactUploader {
+  protected override readonly retryDelays = [0, 0, 0];
 }
 
 describe("ArtifactUploader", () => {
@@ -108,7 +134,7 @@ describe("ArtifactUploader", () => {
       },
     })
       .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
-      .with(ArtifactUploader);
+      .with({ provide: ArtifactUploader, use: ImpatientArtifactUploader });
 
     await cli.start();
 
@@ -126,8 +152,10 @@ describe("ArtifactUploader", () => {
   const upload = async (
     overrides: Partial<Parameters<ArtifactUploader["upload"]>[0]> = {},
     content?: string,
+    failures: number[] = [],
   ) => {
     const ctx = await setup(content);
+    ctx.sink.failures = failures;
     const result = await ctx.uploader.upload({
       projectId: 7,
       app: "my-app",
@@ -216,5 +244,60 @@ describe("ArtifactUploader", () => {
     ).rejects.toThrow(/line break/);
 
     expect(ctx.sink.received).toBeUndefined();
+  });
+
+  /**
+   * #Q2633: `Deploy latest` went red whenever a D1 read on Lore stalled past
+   * its budget, which Lore answers with a 503. The push is idempotent, so
+   * the retry is safe, and the stream has to be reopened for it: a retry
+   * over the drained one would deliver an empty file.
+   */
+  it("retries a 503, 502 or 504 and delivers the whole file again", async () => {
+    const content = "0123456789".repeat(50_000);
+    const ctx = await upload({}, content, [503, 502, 504]);
+
+    expect(ctx.sink.attempts).toBe(4);
+    expect(ctx.sink.received?.bytes).toBe(content);
+    expect(ctx.result.stored).toBe(true);
+  });
+
+  it("gives up once every retry was answered with a 503", async () => {
+    const ctx = await setup();
+    ctx.sink.failures = [503, 503, 503, 503];
+
+    await expect(
+      ctx.uploader.upload({
+        projectId: 7,
+        app: "my-app",
+        tag: "1.2.3",
+        archivePath: "/repo/my-app-1.2.3.tar.gz",
+        filename: "my-app-1.2.3.tar.gz",
+      }),
+    ).rejects.toThrow(HttpError);
+
+    expect(ctx.sink.attempts).toBe(4);
+  });
+
+  /**
+   * A 500 is a bug and a 409 is a pinned tag refusing different bytes:
+   * pushing again would only repeat the answer, three times slower.
+   */
+  it("does not retry a 500 or a refusal", async () => {
+    for (const status of [500, 409]) {
+      const ctx = await setup();
+      ctx.sink.failures = [status];
+
+      await expect(
+        ctx.uploader.upload({
+          projectId: 7,
+          app: "my-app",
+          tag: "1.2.3",
+          archivePath: "/repo/my-app-1.2.3.tar.gz",
+          filename: "my-app-1.2.3.tar.gz",
+        }),
+      ).rejects.toThrow(HttpError);
+
+      expect(ctx.sink.attempts).toBe(1);
+    }
   });
 });

@@ -1,5 +1,7 @@
 import { $inject, AlephaError, z } from "alepha";
-import { HttpClient } from "alepha/server";
+import { DateTimeProvider } from "alepha/datetime";
+import { $logger } from "alepha/logger";
+import { HttpClient, HttpError } from "alepha/server";
 import { FileSystemProvider } from "alepha/system";
 
 import { LoreClientService } from "./LoreClientService.ts";
@@ -33,6 +35,36 @@ export class ArtifactUploader {
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly http = $inject(HttpClient);
   protected readonly client = $inject(LoreClientService);
+  protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly log = $logger();
+
+  /**
+   * How long to wait before each retry of a push Lore could not take, in
+   * milliseconds. Three retries, thirty-five seconds in all.
+   *
+   * ## Why a push retries at all (#Q2633)
+   *
+   * `Deploy latest` went red on half its runs with "Internal Server Error",
+   * and every one was a D1 read stalling past the 5 s budget the framework
+   * puts on a Worker: Lore answered 503, and production masks every 5xx
+   * message. Nothing was wrong with the push, the database was slow for a
+   * few seconds.
+   *
+   * ⚠️ **Safe because a push is idempotent**, and only because of that.
+   * Identical bytes under the same key answer `stored: false`, so a retry
+   * after a write that committed once its budget had already expired (D1 has
+   * no abort) is recognised rather than refused as a conflicting tag.
+   *
+   * Overridden by a spec subclass, so a retry is exercised without sleeping.
+   */
+  protected readonly retryDelays: number[] = [5_000, 10_000, 20_000];
+
+  /**
+   * The statuses that mean "not now" rather than "no": a 503 from the D1
+   * budget, a 502 or 504 from Cloudflare in front of the Worker. A 500 is a
+   * bug and a 4xx is a refusal, and retrying either would only repeat it.
+   */
+  protected static readonly TRANSIENT = [502, 503, 504];
 
   /**
    * What comes back. A hand-written shape, and the only one in this package.
@@ -73,6 +105,38 @@ export class ArtifactUploader {
       fields.force = "true";
     }
 
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await this.send(input, fields);
+      } catch (error) {
+        const delay = this.retryDelays[attempt];
+        if (
+          delay === undefined ||
+          !HttpError.is(error) ||
+          !ArtifactUploader.TRANSIENT.includes(error.status)
+        ) {
+          throw error;
+        }
+        this.log.warn(
+          `Lore answered ${error.status} to the push, retrying in ${delay / 1000}s (${attempt + 1}/${this.retryDelays.length})`,
+        );
+        await this.dateTime.wait(delay);
+      }
+    }
+  }
+
+  /**
+   * One attempt: the message composed and sent.
+   *
+   * ⚠️ The file streams are opened HERE, per attempt, and never shared. A
+   * failed attempt has already drained them, and a retry over a spent stream
+   * would send an empty file part that the server reads as "the artifact is
+   * empty".
+   */
+  protected async send(
+    input: ArtifactUploadInput,
+    fields: Record<string, string>,
+  ): Promise<ArtifactUploaded> {
     // Random enough that it cannot occur inside a gzip stream by accident, and
     // long enough that it cannot be produced by one on purpose either. The
     // parts are never scanned for it here - that is the receiver's job - so a
