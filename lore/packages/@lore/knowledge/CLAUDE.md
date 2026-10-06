@@ -10,6 +10,11 @@ The source keeps the directory structure it had in `apps/lore/src` (`api/`, `mcp
 
 `test/` holds the specs whose subject is Knowledge, and they boot `LoreKnowledgeApi` (and `LoreKnowledgeMcp`) alone, through `@lore/knowledge/testing`: `KnowledgeTestEntities` (core's bag plus `folios` and `folio_directories`), `createTestFolio`, `filedEpicOf`. An epic's filing lives in core's link graph, so a spec reads it with `filedEpicOf`, never a column. A spec that needs Work registered is a scenario and lives in `apps/lore/test`.
 
+Notable:
+
+- `folio-protected-history.spec.ts`, **regression guard**: no plaintext is left in `folio_revisions` after encrypting, and pinned revisions are not exempt.
+- `folio-*.spec.ts`: tidy, pinning, permissions, history, activity, directories. The link and reference specs (`folio-broken-link`, `folio-reference-grammar`, `folio-link-source`, `folio-asset-link`, ...) need Work and live in `apps/lore/test`.
+
 ## Routes
 
 Defined in `src/web/app/KnowledgeRouter.ts. A module's project pages join `CoreRouter`'s `project`layout through`$pageProject` (`parent:`). Route names (the `$page`keys) are what`router.path(...)`/`router.push(...)` consume.

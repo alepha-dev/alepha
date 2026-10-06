@@ -26,6 +26,12 @@ Entities are in `./schemas`, not `./api`: a module's entity (an epic) references
 
 `test/` holds the specs whose subject is core, and they boot `LoreCoreApi` (and `LoreCoreMcp`) alone, through `@lore/core/testing`'s helpers. A spec that needs a module registered (Home's per-module counts, an endpoint of a module) is a scenario and lives in `apps/lore/test`. `CoreTestEntities` is the repository bag a spec constructs before `start()`; a module's fixture extends it, and the helpers find whichever bag the container built.
 
+Notable:
+
+- `project-capabilities.spec.ts` / `project-capabilities-read.spec.ts`: the capability write path, and the cached, memoised read.
+- `project-owns-guard.spec.ts` / `project-relations.spec.ts`: `$owns` gating and relational reads.
+- `project-slug-service.spec.ts` / `project-slug-controller.spec.ts`: slug derivation (accent folding, separator collapse, the reserved list, the `project-<id>` fallback) and its lifecycle: derived on create, recomputed on rename, 409 on a taken name across _any_ owner, freed on delete.
+
 ## Resources: everything linkable (#E75, #Q2610)
 
 `api/resources/ResourceRegistry.ts` is core's registry of linkable kinds. Each module registers its own (`QuestResourceKind`, `EpicResourceKind`, `ReleaseResourceKind`, `FeedbackResourceKind`, `FolioResourceKind`, `DirectoryResourceKind`, listed in each package's api module's `services` because nothing injects them): letter, `resolveNumbers`, `describe`, page, permission, search source, and `create`/`discard` where another module needs them.

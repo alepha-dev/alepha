@@ -10,6 +10,13 @@ The source keeps the directory structure it had in `apps/lore/src` (`api/`, `mcp
 
 `test/` holds the specs whose subject is Work, and they boot `LoreWorkApi` (and `LoreWorkMcp`) alone, through `@lore/work/testing`: `WorkTestEntities` (core's bag plus the quest tables), `createTestQuest`, `createTestEpic`. A spec that needs another module registered is a scenario and lives in `apps/lore/test`.
 
+Notable:
+
+- `release-changelog.spec.ts`: the changelog reads what is ATTACHED to a release (`quests.releaseId`), not what completed inside a time window.
+- `quest-csv-formatter.spec.ts`: the CSV export, read back through a test-only CSV reader (quest import was deleted in #E48).
+- `project-reports.spec.ts`, `project-leave.spec.ts`, `quest-objective-history.spec.ts`, `quest-reminder.spec.ts`, `quest-feedback-link.spec.ts`, `my-feedback.spec.ts`, and `feedback-*.spec.ts` for the Feedback module (attachments, rate limits, `source` provenance).
+- `user-deletion-hook.spec.ts`, **regression guard**: `UserDeletionHook` refuses `deleteMyAccount` while the account still owns projects, and the account survives the refusal. Load-bearing because `projects.createdBy` has **no foreign key**: deleting an owner cascades nothing and leaves a project failing `assertOwner` for everybody, which nothing in the schema or the migrations can catch. Also pins that the hook's message reaches the client as a 409 with its text intact.
+
 ## Routes
 
 Defined in `src/web/app/WorkRouter.ts` (and the account page in `WorkAccountRouter.ts`). A module's project pages join `CoreRouter`'s `project` layout through `$pageProject` (`parent:`). Route names (the `$page` keys) are what `router.path(...)` / `router.push(...)` consume.

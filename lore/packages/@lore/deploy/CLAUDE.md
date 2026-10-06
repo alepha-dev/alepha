@@ -10,6 +10,12 @@ The source keeps the directory structure it had in `apps/lore/src` (`api/`, `mcp
 
 `test/` holds the specs whose subject is Deploy, and they boot `LoreDeployApi` (and `LoreDeployMcp`) alone, through `@lore/deploy/testing`: `DeployTestEntities`, the memory Cloudflare probe and registry transport, and the artifact tarball builders. The tarball builders also have their own subpath, `@lore/deploy/testing/tarball`, for the e2e suite: Playwright's loader cannot import the React pages `./testing` exports. `test/fixtures/bay/` is a copy of Bay's wire fixtures; Bay's are the authority (see its README). Lore reporting on itself (`LoreSigilSinkProvider`) is the executable's, in `apps/lore`, and its spec lives there.
 
+Notable:
+
+- `sigil-controller.spec.ts` / `sigil-ingest.spec.ts` / `sigil-entities.spec.ts`: sigil CRUD and rotation, token verification, capability gating, aggregate upserts.
+- `sigil-jobs.spec.ts`: the analytics collapse sweep, its idempotency, and what Insights reads on either side of it. Drives `DateTimeProvider.travel()`, so it asserts end state, never call counts.
+- `insights-controller.spec.ts` / `insights-tools.spec.ts`: the p75 walk (clock pinned with `pause()`), the `?sigilId=` per-app filter including the cross-project refusal, and the MCP surface.
+
 ## Routes
 
 Defined in `src/web/app/DeployRouter.ts` (and the account page in `DeployAccountRouter.ts`). A module's project pages join `CoreRouter`'s `project` layout through `$pageProject` (`parent:`). Route names (the `$page` keys) are what `router.path(...)` / `router.push(...)` consume.
