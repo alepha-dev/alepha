@@ -1,4 +1,5 @@
 import { ProjectController } from "@lore/core/api";
+import { createPresetRanks } from "@lore/core/testing";
 import { Alepha } from "alepha";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -16,7 +17,6 @@ import {
   createTestQuest,
   TestEntityRepositories,
 } from "./fixtures/entities.ts";
-import { createPresetRanks } from "./fixtures/presetRanks.ts";
 
 /**
  * #Q2515: `projects.createdBy` records who created the project. An ownership

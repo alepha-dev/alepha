@@ -10,8 +10,8 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { LoreApi } from "../src/api/index.ts";
-import { LoreMcp } from "../src/mcp/index.ts";
+import { LoreCoreApi } from "../src/api/index.ts";
+import { LoreCoreMcp } from "../src/mcp/index.ts";
 
 /**
  * The chart that could not be drawn before this epic (#E65, #Q2443).
@@ -64,8 +64,8 @@ const setup = async (): Promise<TestContext> => {
   alepha.with(AlephaApiUsers);
   alepha.with(AlephaFake);
   alepha.with(AlephaMcp);
-  alepha.with(LoreApi);
-  alepha.with(LoreMcp);
+  alepha.with(LoreCoreApi);
+  alepha.with(LoreCoreMcp);
   alepha.with(BrokenTool);
   await alepha.start();
 

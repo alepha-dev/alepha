@@ -1,4 +1,5 @@
 import { ProjectController } from "@lore/core/api";
+import { ReadCounter } from "@lore/core/testing";
 import { Alepha } from "alepha";
 import { FileService } from "alepha/api/files";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
@@ -14,7 +15,6 @@ import { QuestController } from "../src/api/controllers/QuestController.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { LoreMcp } from "../src/mcp/index.ts";
 import { QuestTools } from "../src/mcp/tools/QuestTools.ts";
-import { ReadCounter } from "./fixtures/ReadCounter.ts";
 
 /**
  * The incident this closes: the owner attached a screenshot to a quest and the

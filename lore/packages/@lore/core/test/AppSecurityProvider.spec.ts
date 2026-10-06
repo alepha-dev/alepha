@@ -12,7 +12,7 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { describe, it } from "vitest";
 
-import { LoreApi } from "../src/api/index.ts";
+import { LoreCoreApi } from "../src/api/index.ts";
 
 /**
  * The realm switch, from the outside: does Lore's own realm expose a
@@ -37,7 +37,7 @@ const boot = async (env: Record<string, string> = {}) => {
   alepha.with(AlephaSecurity);
   alepha.with(AlephaEmail);
   alepha.with(AlephaApiUsers);
-  alepha.with(LoreApi);
+  alepha.with(LoreCoreApi);
 
   await alepha.start();
 

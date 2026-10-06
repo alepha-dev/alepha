@@ -1,4 +1,5 @@
 import { ProjectController, ProjectSecurityService } from "@lore/core/api";
+import { createPresetRanks } from "@lore/core/testing";
 import { Alepha, type FileLike, z } from "alepha";
 import { RankService } from "alepha/api/organizations";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
@@ -19,7 +20,6 @@ import { RegistryTransport } from "../src/api/services/RegistryTransport.ts";
 import { packedArtifact, tar } from "./fixtures/artifactTarball.ts";
 import { createTestMemberByProjectId } from "./fixtures/entities.ts";
 import { MemoryRegistryTransport } from "./fixtures/MemoryRegistryTransport.ts";
-import { createPresetRanks } from "./fixtures/presetRanks.ts";
 
 /**
  * The registry half of epic #18: CI pushes what it built, and Lore keeps it.

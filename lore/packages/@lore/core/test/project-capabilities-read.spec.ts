@@ -1,5 +1,6 @@
 import { ProjectSecurityService } from "@lore/core/api";
 import { CapabilityRegistry } from "@lore/core/schemas";
+import { ReadCounter } from "@lore/core/testing";
 import { $inject, Alepha, z } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -8,13 +9,8 @@ import { AlephaSecurity } from "alepha/security";
 import { $route, AlephaServer, ServerProvider } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { LoreApi } from "@/api/index.ts";
-
-import {
-  createTestProject,
-  TestEntityRepositories,
-} from "./fixtures/entities.ts";
-import { ReadCounter } from "./fixtures/ReadCounter.ts";
+import { LoreCoreApi } from "../src/api/index.ts";
+import { createTestProject, CoreTestEntities } from "../src/testing/index.ts";
 
 /**
  * The capability read path: the query, its window, and its request memo.
@@ -62,7 +58,7 @@ class CapabilityProbe {
 
 interface TestContext {
   alepha: Alepha;
-  repos: TestEntityRepositories;
+  repos: CoreTestEntities;
   counter: ReadCounter;
   security: ProjectSecurityService;
   registry: CapabilityRegistry;
@@ -82,11 +78,11 @@ const setup = async (): Promise<TestContext> => {
   alepha.with(AlephaSecurity);
   alepha.with(AlephaEmail);
   alepha.with(AlephaApiUsers);
-  alepha.with(LoreApi);
+  alepha.with(LoreCoreApi);
   alepha.with(ReadCounter);
   alepha.with(CapabilityProbe);
 
-  const repos = alepha.inject(TestEntityRepositories);
+  const repos = alepha.inject(CoreTestEntities);
   const counter = alepha.inject(ReadCounter);
   const security = alepha.inject(ProjectSecurityService);
   const registry = alepha.inject(CapabilityRegistry);

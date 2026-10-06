@@ -1,4 +1,5 @@
 import { type Project, projects } from "@lore/core/schemas";
+import { ReadCounter } from "@lore/core/testing";
 import { Alepha, z } from "alepha";
 import { RankService } from "alepha/api/organizations";
 import { organizationMembers as members } from "alepha/api/organizations";
@@ -26,7 +27,6 @@ import {
   createTestProject,
   TestEntityRepositories,
 } from "./fixtures/entities.ts";
-import { ReadCounter } from "./fixtures/ReadCounter.ts";
 
 /**
  * The number the epic exists for.

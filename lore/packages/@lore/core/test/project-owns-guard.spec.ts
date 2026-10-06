@@ -8,7 +8,7 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { LoreApi } from "../src/api/index.ts";
+import { LoreCoreApi } from "../src/api/index.ts";
 
 /**
  * Denial coverage for the `$owns` gates on ProjectController.
@@ -52,7 +52,7 @@ const setup = async (): Promise<TestContext> => {
   alepha.with(AlephaEmail);
   alepha.with(AlephaApiUsers);
   alepha.with(AlephaFake);
-  alepha.with(LoreApi);
+  alepha.with(LoreCoreApi);
 
   await alepha.start();
 

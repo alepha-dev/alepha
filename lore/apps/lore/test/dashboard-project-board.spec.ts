@@ -1,5 +1,6 @@
 import { ProjectController, ProjectDashboardController } from "@lore/core/api";
 import { projectDashboardCards } from "@lore/core/schemas";
+import { createPresetRanks } from "@lore/core/testing";
 import { Alepha } from "alepha";
 import { RankService } from "alepha/api/organizations";
 import { AlephaApiUsers } from "alepha/api/users";
@@ -18,7 +19,6 @@ import {
   createTestQuest,
   TestEntityRepositories,
 } from "./fixtures/entities.ts";
-import { createPresetRanks } from "./fixtures/presetRanks.ts";
 
 /**
  * The project board's endpoints: one membership gate, a scope proved inside

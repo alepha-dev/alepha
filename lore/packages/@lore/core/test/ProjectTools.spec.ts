@@ -12,9 +12,9 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake } from "alepha/testing/faker";
 import { describe, it } from "vitest";
 
-import { LoreApi } from "../src/api/index.ts";
-import { LoreMcp } from "../src/mcp/index.ts";
-import { createTestMemberByProjectId } from "./fixtures/entities.ts";
+import { LoreCoreApi } from "../src/api/index.ts";
+import { LoreCoreMcp } from "../src/mcp/index.ts";
+import { createTestMemberByProjectId } from "../src/testing/index.ts";
 
 /**
  * Typed handle onto the `members` table for direct inserts, so a spec can
@@ -52,8 +52,8 @@ const setup = async () => {
   alepha.with(AlephaApiUsers);
   alepha.with(AlephaFake);
   alepha.with(AlephaMcp);
-  alepha.with(LoreApi);
-  alepha.with(LoreMcp);
+  alepha.with(LoreCoreApi);
+  alepha.with(LoreCoreMcp);
 
   alepha.inject(MembersProbe);
   const projectsProbe = alepha.inject(ProjectsProbe);

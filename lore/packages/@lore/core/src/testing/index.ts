@@ -25,3 +25,13 @@ export { default as fr } from "../web/locales/fr.ts";
 export { default as ProjectSettingsAgentPrompts } from "../web/app/components/project/settings/ProjectSettingsAgentPrompts.tsx";
 export { default as ProjectSettingsCapabilitiesPage } from "../web/app/components/project/settings/ProjectSettingsCapabilitiesPage.tsx";
 export { default as ProjectSettingsRanksPage } from "../web/app/components/project/settings/ProjectSettingsRanksPage.tsx";
+
+export {
+  CoreTestEntities,
+  createTestMember,
+  createTestMemberByProjectId,
+  createTestProject,
+} from "./entities.ts";
+
+export { createPresetRanks } from "./presetRanks.ts";
+export { ReadCounter } from "./ReadCounter.ts";

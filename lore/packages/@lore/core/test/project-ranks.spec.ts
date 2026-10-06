@@ -4,6 +4,7 @@ import {
   LorePermissions,
   ProjectRankPresets,
 } from "@lore/core/api";
+import { createPresetRanks } from "@lore/core/testing";
 import { Alepha } from "alepha";
 import { RankService } from "alepha/api/organizations";
 import { AlephaApiUsers } from "alepha/api/users";
@@ -13,16 +14,12 @@ import { AlephaSecurity, type UserAccountToken } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { LoreApi } from "../src/api/index.ts";
-import {
-  createTestProject,
-  TestEntityRepositories,
-} from "./fixtures/entities.ts";
-import { createPresetRanks } from "./fixtures/presetRanks.ts";
+import { LoreCoreApi } from "../src/api/index.ts";
+import { createTestProject, CoreTestEntities } from "../src/testing/index.ts";
 
 interface Ctx {
   alepha: Alepha;
-  repos: TestEntityRepositories;
+  repos: CoreTestEntities;
   ranks: RankService;
   presets: ProjectRankPresets;
   projects: ProjectController;
@@ -42,9 +39,9 @@ const setup = async (): Promise<Ctx> => {
   alepha.with(AlephaSecurity);
   alepha.with(AlephaEmail);
   alepha.with(AlephaApiUsers);
-  alepha.with(LoreApi);
+  alepha.with(LoreCoreApi);
 
-  const repos = alepha.inject(TestEntityRepositories);
+  const repos = alepha.inject(CoreTestEntities);
 
   await alepha.start();
 

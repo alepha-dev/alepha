@@ -8,7 +8,7 @@ import { AlephaSecurity, SecurityProvider } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { LoreApi } from "../src/api/index.ts";
+import { LoreCoreApi } from "../src/api/index.ts";
 
 /**
  * The acceptance criterion of epic #E39, as a test.
@@ -44,7 +44,7 @@ const setup = async (): Promise<Ctx> => {
   alepha.with(AlephaSecurity);
   alepha.with(AlephaEmail);
   alepha.with(AlephaApiUsers);
-  alepha.with(LoreApi);
+  alepha.with(LoreCoreApi);
 
   const permissions = alepha.inject(LorePermissions);
   const organizationPermissions = alepha.inject(OrganizationPermissions);

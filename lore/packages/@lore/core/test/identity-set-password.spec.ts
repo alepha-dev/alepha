@@ -13,8 +13,8 @@ import { AlephaServer, NodeHttpServerProvider } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { LoreApi } from "../src/api/index.ts";
-import { LoreMcp } from "../src/mcp/index.ts";
+import { LoreCoreApi } from "../src/api/index.ts";
+import { LoreCoreMcp } from "../src/mcp/index.ts";
 
 /**
  * Regression coverage for the `/me` "Set Password" flow
@@ -69,8 +69,8 @@ const setup = async (): Promise<TestContext> => {
     loginPath: "/auth/login",
   });
 
-  alepha.with(LoreApi);
-  alepha.with(LoreMcp);
+  alepha.with(LoreCoreApi);
+  alepha.with(LoreCoreMcp);
 
   await alepha.start();
 

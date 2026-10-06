@@ -18,7 +18,7 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake } from "alepha/testing/faker";
 import { describe, it } from "vitest";
 
-import { LoreApi } from "../src/api/index.ts";
+import { LoreCoreApi } from "../src/api/index.ts";
 
 class Probe {
   prefs = $repository(notificationPreferences);
@@ -42,7 +42,7 @@ const setup = async () => {
     provide: NotificationPreferenceProvider,
     use: LoreNotificationPreferences,
   });
-  alepha.with(LoreApi);
+  alepha.with(LoreCoreApi);
 
   const probe = alepha.inject(Probe);
   const users = alepha.inject(UserService);

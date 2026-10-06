@@ -1,4 +1,5 @@
 import { ProjectController } from "@lore/core/api";
+import { ReadCounter } from "@lore/core/testing";
 import { Alepha } from "alepha";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -16,7 +17,6 @@ import { describe, expect, it } from "vitest";
 import { LoreApi } from "../src/api/index.ts";
 import { LoreMcp } from "../src/mcp/index.ts";
 import { FeedbackTools } from "../src/mcp/tools/FeedbackTools.ts";
-import { ReadCounter } from "./fixtures/ReadCounter.ts";
 
 /**
  * The number this file exists for.

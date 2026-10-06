@@ -19,8 +19,8 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { LoreApi } from "../src/api/index.ts";
-import { TestEntityRepositories } from "./fixtures/entities.ts";
+import { LoreCoreApi } from "../src/api/index.ts";
+import { CoreTestEntities } from "../src/testing/index.ts";
 
 class AuditRepositories {
   audits = $repository(audits);
@@ -58,7 +58,7 @@ const setup = async (broken = false): Promise<TestContext> => {
     env: { LOG_LEVEL: "error", DATABASE_URL: ":memory:" },
   });
   if (broken) {
-    // Before `LoreApi`, which wires the analytics module: the FIRST
+    // Before `LoreCoreApi`, which wires the analytics module: the FIRST
     // substitution of a token wins.
     alepha.with({
       provide: AnalyticsProvider,
@@ -70,7 +70,7 @@ const setup = async (broken = false): Promise<TestContext> => {
   alepha.with(AlephaSecurity);
   alepha.with(AlephaEmail);
   alepha.with(AlephaApiUsers);
-  alepha.with(LoreApi);
+  alepha.with(LoreCoreApi);
 
   const repos = alepha.inject(AuditRepositories);
   await alepha.start();
@@ -280,7 +280,7 @@ describe("LoreAuditService.record is best effort (#Q2555)", () => {
         DATABASE_TRANSACTIONS: false,
       },
     });
-    // `LoreApi` substitutes `AuditService` with `LoreAuditService`; this
+    // `LoreCoreApi` substitutes `AuditService` with `LoreAuditService`; this
     // replaces the latter, so the chain ends here.
     alepha.with({ provide: LoreAuditService, use: RefusingAuditService });
     alepha.with(AlephaOrm);
@@ -288,9 +288,9 @@ describe("LoreAuditService.record is best effort (#Q2555)", () => {
     alepha.with(AlephaSecurity);
     alepha.with(AlephaEmail);
     alepha.with(AlephaApiUsers);
-    alepha.with(LoreApi);
+    alepha.with(LoreCoreApi);
     const probe = alepha.inject(ErrorLogProbe);
-    const repos = alepha.inject(TestEntityRepositories);
+    const repos = alepha.inject(CoreTestEntities);
     await alepha.start();
     return { alepha, probe, repos };
   };

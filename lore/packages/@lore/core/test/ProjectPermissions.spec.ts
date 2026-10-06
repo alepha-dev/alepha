@@ -17,7 +17,7 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake } from "alepha/testing/faker";
 import { describe, it } from "vitest";
 
-import { LoreApi } from "../src/api/index.ts";
+import { LoreCoreApi } from "../src/api/index.ts";
 
 /**
  * Direct handle onto `members`, to read the owner's membership row the way
@@ -41,7 +41,7 @@ const setup = async () => {
   alepha.with(AlephaEmail);
   alepha.with(AlephaApiUsers);
   alepha.with(AlephaFake);
-  alepha.with(LoreApi);
+  alepha.with(LoreCoreApi);
 
   const probe = alepha.inject(MembersProbe);
   const projectApi = alepha.inject(ProjectController);

@@ -1,4 +1,5 @@
 import { ProjectController, ProjectLimits } from "@lore/core/api";
+import { createPresetRanks } from "@lore/core/testing";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
@@ -16,7 +17,6 @@ import { QualityJobs } from "../src/api/jobs/QualityJobs.ts";
 import type { QualityRunPush } from "../src/api/schemas/qualityRunPushSchema.ts";
 import { QualityService } from "../src/api/services/QualityService.ts";
 import { createTestMemberByProjectId } from "./fixtures/entities.ts";
-import { createPresetRanks } from "./fixtures/presetRanks.ts";
 
 /**
  * The Lore half of epic #15: a CI job pushes what a test run measured, and the

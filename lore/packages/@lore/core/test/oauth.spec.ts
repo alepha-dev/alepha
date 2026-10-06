@@ -16,8 +16,8 @@ import { AlephaServer, NodeHttpServerProvider } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { LoreApi } from "../src/api/index.ts";
-import { LoreMcp } from "../src/mcp/index.ts";
+import { LoreCoreApi } from "../src/api/index.ts";
+import { LoreCoreMcp } from "../src/mcp/index.ts";
 
 /**
  * End-to-end coverage for the OAuth 2.1 authorization server that backs MCP
@@ -56,7 +56,7 @@ const setup = async (): Promise<TestContext> => {
   alepha.with(AlephaFake);
   alepha.with(AlephaMcp);
 
-  // Mirror `main.server.ts`: configure the OAuth server before `LoreApi`
+  // Mirror `main.server.ts`: configure the OAuth server before `LoreCoreApi`
   // (which holds the `$realm` that merges this value).
   alepha.set(oauthOptions, {
     realm: "users",
@@ -65,8 +65,8 @@ const setup = async (): Promise<TestContext> => {
     scopes: LoreOAuthScopes.SCOPES,
   });
 
-  alepha.with(LoreApi);
-  alepha.with(LoreMcp);
+  alepha.with(LoreCoreApi);
+  alepha.with(LoreCoreMcp);
 
   await alepha.start();
 

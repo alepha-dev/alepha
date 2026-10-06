@@ -16,7 +16,7 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { LoreApi } from "../src/api/index.ts";
+import { LoreCoreApi } from "../src/api/index.ts";
 
 /**
  * Home's momentum strip, since it stopped reading `audits` (#E65).
@@ -69,7 +69,7 @@ const setup = async (unreadable = false): Promise<TestContext> => {
     env: { LOG_LEVEL: "error", SERVER_PORT: 0, DATABASE_URL: ":memory:" },
   });
   if (unreadable) {
-    // Before `LoreApi` wires the analytics module: the first substitution of
+    // Before `LoreCoreApi` wires the analytics module: the first substitution of
     // a token wins.
     alepha.with({
       provide: AnalyticsProvider,
@@ -82,7 +82,7 @@ const setup = async (unreadable = false): Promise<TestContext> => {
   alepha.with(AlephaEmail);
   alepha.with(AlephaApiUsers);
   alepha.with(AlephaFake);
-  alepha.with(LoreApi);
+  alepha.with(LoreCoreApi);
   await alepha.start();
 
   const admins = alepha.inject(AdminUserController);

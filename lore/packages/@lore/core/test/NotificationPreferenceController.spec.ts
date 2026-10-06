@@ -8,7 +8,7 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake } from "alepha/testing/faker";
 import { describe, it } from "vitest";
 
-import { LoreApi } from "../src/api/index.ts";
+import { LoreCoreApi } from "../src/api/index.ts";
 
 /**
  * Pinned like every other lore spec: the ROOT vitest config sets a Postgres
@@ -24,7 +24,7 @@ const setup = async () => {
   alepha.with(AlephaEmail);
   alepha.with(AlephaApiUsers);
   alepha.with(AlephaFake);
-  alepha.with(LoreApi);
+  alepha.with(LoreCoreApi);
 
   const controller = alepha.inject(NotificationPreferenceController);
   const users = alepha.inject(UserService);

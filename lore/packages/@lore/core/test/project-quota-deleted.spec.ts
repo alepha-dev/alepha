@@ -10,7 +10,7 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { describe, it } from "vitest";
 
-import { LoreApi } from "../src/api/index.ts";
+import { LoreCoreApi } from "../src/api/index.ts";
 
 /**
  * The project quota counts what you OWN AND STILL HAVE.
@@ -46,7 +46,7 @@ const setup = async () => {
   alepha.with(AlephaEmail);
   alepha.with(AlephaApiUsers);
   alepha.with(AlephaFake);
-  alepha.with(LoreApi);
+  alepha.with(LoreCoreApi);
   // ⚠️ Before `start`: the container locks on start, and a probe class it has
   // never seen cannot be injected afterwards.
   const probe = alepha.inject(Probe);

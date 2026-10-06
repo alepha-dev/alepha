@@ -9,8 +9,8 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { LoreApi } from "../src/api/index.ts";
-import { createTestMemberByProjectId } from "./fixtures/entities.ts";
+import { LoreCoreApi } from "../src/api/index.ts";
+import { createTestMemberByProjectId } from "../src/testing/index.ts";
 
 /**
  * Regression guards for the reads that moved onto `$relations`.
@@ -54,7 +54,7 @@ const setup = async (): Promise<TestContext> => {
   alepha.with(AlephaEmail);
   alepha.with(AlephaApiUsers);
   alepha.with(AlephaFake);
-  alepha.with(LoreApi);
+  alepha.with(LoreCoreApi);
 
   alepha.inject(MemberProbe);
   await alepha.start();

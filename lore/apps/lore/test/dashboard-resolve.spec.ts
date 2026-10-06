@@ -10,6 +10,7 @@ import {
   type Project,
 } from "@lore/core/schemas";
 import type { DashboardScope } from "@lore/core/schemas";
+import { ReadCounter } from "@lore/core/testing";
 import { Alepha, z } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
@@ -38,7 +39,6 @@ import {
   createTestQuest,
   TestEntityRepositories,
 } from "./fixtures/entities.ts";
-import { ReadCounter } from "./fixtures/ReadCounter.ts";
 
 class ResolveTestRepositories {
   instances = $repository(appInstances);

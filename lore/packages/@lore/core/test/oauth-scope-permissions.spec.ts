@@ -9,8 +9,8 @@ import { AlephaSecurity, SecurityProvider } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterAll, beforeAll, describe, it } from "vitest";
 
-import { LoreApi } from "../src/api/index.ts";
-import { LoreMcp } from "../src/mcp/index.ts";
+import { LoreCoreApi } from "../src/api/index.ts";
+import { LoreCoreMcp } from "../src/mcp/index.ts";
 
 /**
  * Lore's OAuth scope declarations against the permission registry Lore
@@ -36,14 +36,14 @@ describe("Lore's OAuth scopes", () => {
       .with(AlephaEmail)
       .with(AlephaApiUsers)
       .with(AlephaMcp);
-    // As `main.server.ts` does it, before the `$realm` in `LoreApi`.
+    // As `main.server.ts` does it, before the `$realm` in `LoreCoreApi`.
     alepha.set(oauthOptions, {
       realm: "users",
       resource: "/mcp",
       loginPath: "/auth/login",
       scopes: LoreOAuthScopes.SCOPES,
     });
-    alepha.with(LoreApi).with(LoreMcp);
+    alepha.with(LoreCoreApi).with(LoreCoreMcp);
     await alepha.start();
 
     security = alepha.inject(SecurityProvider);

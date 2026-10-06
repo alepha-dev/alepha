@@ -8,7 +8,7 @@ import { AlephaSecurity, SecurityProvider } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { LoreApi } from "../src/api/index.ts";
+import { LoreCoreApi } from "../src/api/index.ts";
 
 /**
  * The permission groups no capability claims, and that are therefore always
@@ -62,7 +62,7 @@ const setup = async (): Promise<Ctx> => {
   alepha.with(AlephaSecurity);
   alepha.with(AlephaEmail);
   alepha.with(AlephaApiUsers);
-  alepha.with(LoreApi);
+  alepha.with(LoreCoreApi);
 
   const permissions = alepha.inject(LorePermissions);
 

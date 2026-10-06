@@ -10,8 +10,8 @@ import { AlephaSecurity, currentUserAtom } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, describe, it } from "vitest";
 
-import { LoreApi } from "../src/api/index.ts";
-import { TestEntityRepositories } from "./fixtures/entities.ts";
+import { LoreCoreApi } from "../src/api/index.ts";
+import { CoreTestEntities } from "../src/testing/index.ts";
 
 /**
  * `createProject` with a membership write that refuses.
@@ -67,7 +67,7 @@ class FailingProjectSaveController extends ProjectController {
 interface TestContext {
   alepha: Alepha;
   controller: ProjectController;
-  repos: TestEntityRepositories;
+  repos: CoreTestEntities;
 }
 
 /**
@@ -106,9 +106,9 @@ const setup = async (
   alepha.with(AlephaSecurity);
   alepha.with(AlephaEmail);
   alepha.with(AlephaApiUsers);
-  alepha.with(LoreApi);
+  alepha.with(LoreCoreApi);
 
-  const repos = alepha.inject(TestEntityRepositories);
+  const repos = alepha.inject(CoreTestEntities);
 
   await alepha.start();
 

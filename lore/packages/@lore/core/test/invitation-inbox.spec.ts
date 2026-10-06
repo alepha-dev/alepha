@@ -1,4 +1,5 @@
 import { InvitationController, ProjectController } from "@lore/core/api";
+import { ReadCounter } from "@lore/core/testing";
 import { Alepha, z } from "alepha";
 import { InvitationService } from "alepha/api/organizations";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
@@ -9,8 +10,7 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { LoreApi } from "../src/api/index.ts";
-import { ReadCounter } from "./fixtures/ReadCounter.ts";
+import { LoreCoreApi } from "../src/api/index.ts";
 
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };
 
@@ -54,7 +54,7 @@ const setup = async (): Promise<TestContext> => {
   alepha.with(AlephaEmail);
   alepha.with(AlephaApiUsers);
   alepha.with(AlephaFake);
-  alepha.with(LoreApi);
+  alepha.with(LoreCoreApi);
   alepha.with(ReadCounter);
 
   await alepha.start();
