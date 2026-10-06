@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 /**
  * The admin analytics surface over lore's own datasets. Service-level on
  * purpose: HTTP + `$secure` are covered by the e2e smoke
- * (`e2e/admin-analytics.spec.ts`); this asserts the descriptors and the
+ * (`apps/e2e/web/admin-analytics.spec.ts`); this asserts the descriptors and the
  * query path against the real `DeployAnalytics` declarations.
  */
 describe("Lore admin analytics surface", () => {

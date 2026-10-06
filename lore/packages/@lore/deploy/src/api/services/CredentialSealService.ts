@@ -103,7 +103,7 @@ export class CredentialSealService {
    * would seal real cloud tokens under a constant published in this
    * repository and look perfectly healthy. A credential sealed with a key
    * everyone knows is not sealed. Specs that seal pass an `APP_SECRET` in
-   * `Alepha.create({ env })`; `apps/lore/e2e/_fixtures.ts` already does.
+   * `Alepha.create({ env })`; `apps/e2e/web/_fixtures.ts` already does.
    */
   protected keyFor(purpose: string): string {
     const secret = this.secrets.secretKey;

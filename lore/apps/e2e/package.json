@@ -1,0 +1,24 @@
+{
+  "name": "e2e",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "web": "playwright test",
+    "web:ui": "playwright test --ui",
+    "web:headed": "playwright test --headed",
+    "cli": "vitest run",
+    "typecheck": "alepha typecheck"
+  },
+  "devDependencies": {
+    "@alepha/lore": "workspace:*",
+    "@lore/deploy": "workspace:*",
+    "@lore/work": "workspace:*",
+    "@playwright/test": "^1.63.0",
+    "@types/bun": "^1.4.2",
+    "@types/ws": "^8.18.1",
+    "alepha": "workspace:*",
+    "vite": "^8.3.1",
+    "vitest": "^5.0.2",
+    "ws": "^8.22.0"
+  }
+}

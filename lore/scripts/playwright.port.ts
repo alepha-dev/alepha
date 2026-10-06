@@ -23,7 +23,7 @@ import { createE2ePortAllocator } from "alepha/testing/playwright";
  */
 export const E2E_SLOTS = {
   lore: 1,
-  // The Bay end-to-end (apps/e2e-cli/src/bay.e2e.spec.ts) boots two servers:
+  // The Bay end-to-end (apps/e2e/cli/bay.e2e.spec.ts) boots two servers:
   // a Lore instance and a Bay proxy, one slot each.
   bay: 7,
   "bay-proxy": 8,
@@ -56,7 +56,7 @@ export type E2eApp = keyof typeof E2E_SLOTS;
  *
  * Nothing else in the repo may allocate inside the e2e band. The answer is
  * memoised through `E2E_PORT`, so a suite calling this from both its config
- * and its setup gets the same port twice (`apps/e2e-cli/src/bay.e2e.spec.ts`
+ * and its setup gets the same port twice (`apps/e2e/cli/bay.e2e.spec.ts`
  * depends on exactly that), and `E2E_PORT` set by hand overrides the whole
  * thing.
  *
@@ -69,7 +69,7 @@ export const e2ePort = createE2ePortAllocator(E2E_SLOTS);
  *
  * `apps/lore` does: each worker boots its own instance on its own in-memory
  * database, which is what lets its specs run `fullyParallel` (see
- * `apps/lore/e2e/_fixtures.ts`). Never memoised; see
+ * `apps/e2e/web/_fixtures.ts`). Never memoised; see
  * `E2ePortAllocator.worker`.
  */
 export const e2eWorkerPort = (app: E2eApp, workerIndex: number): number =>

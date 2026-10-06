@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-**Alepha Lore**: the planning memory, telemetry sink and deploy chain for Alepha applications, at `lore.alepha.dev`. This repository holds the app (`apps/lore`, read `apps/lore/CLAUDE.md` before working on it), its four private modules (`packages/@lore/*`, see the layout below), its CLI and client (`packages/@alepha/lore`, published to npm), and the end-to-end suites that drive built artefacts (`apps/e2e-cli`).
+**Alepha Lore**: the planning memory, telemetry sink and deploy chain for Alepha applications, at `lore.alepha.dev`. This repository holds the app (`apps/lore`, read `apps/lore/CLAUDE.md` before working on it), its four private modules (`packages/@lore/*`, see the layout below), its CLI and client (`packages/@alepha/lore`, published to npm), and the end-to-end suites that drive built artefacts (`apps/e2e`).
 
 It left the Alepha monorepo on 2026-10-01 (epic #E72 of the Alepha project) with its history. The framework is developed in `github.com/alepha-dev/alepha`; Bay in `github.com/alepha-dev/bay`.
 
@@ -55,7 +55,7 @@ A small edit (a few lines, no decision anyone would look for later) goes straigh
 - `yarn v` (`yarn alepha verify`) runs what CI runs, the Docker image aside: install, lint, then typecheck and the audits (`check:deps`, `check:conventions`, `check:i18n`, `check:migrations`), `yarn test`, `yarn build`, `yarn e2e` and `yarn e2e-cli`. `e2e-cli` needs a Bay checkout and Go: `BAY_DIR`, else `.bay`, else a sibling `../bay`; `yarn v` refuses up front when none exists. No service is needed: every spec runs on SQLite.
 - `yarn v --fast` is the **inner loop**: it stops after `yarn test`, so it cannot catch a build failure, an SSR regression or anything an e2e covers.
 - `yarn w lore test` / `yarn w @alepha/lore test` for one workspace, `yarn w lore vitest run <pattern>` for one file.
-- `yarn w lore e2e` needs `yarn w lore build` first; `yarn e2e-cli` needs `yarn build` and the Bay checkout above.
+- The end-to-end suites live in `apps/e2e` (#Q2628, read `apps/e2e/CLAUDE.md`): `web/` is the Playwright suite (`yarn e2e`, or `yarn w e2e web <spec>` for one file) and `cli/` the CLI and Bay suite (`yarn e2e-cli`). Both drive built artefacts and import no `apps/lore/src`: `yarn e2e` needs `yarn w lore build` first (each worker starts `apps/lore/dist`), and `yarn e2e-cli` needs `yarn build` and the Bay checkout above.
 
 ### Releasing
 
@@ -78,7 +78,7 @@ E2E ports come from `e2ePort` / `e2eWorkerPort` in `scripts/playwright.port.ts` 
 ### Patterns
 
 - `Alepha.create()` handles start/stop in tests. Arrange-Act-Assert, descriptive names, `expect` taken from the test fixture.
-- **`describe` + `it`, never a bare `test()` or `it()` at the top level** (`check:conventions`; `e2e/` is exempt, Playwright has no `it`).
+- **`describe` + `it`, never a bare `test()` or `it()` at the top level** (`check:conventions`; `apps/e2e` is exempt, Playwright has no `it`).
 - Errors: `expect().toThrow()` and `expect().rejects.toThrow()`. Never `toThrowError` (`check:conventions`).
 - **NEVER `vi.mock()` or `vi.spyOn()`.** Substitute services instead:
 

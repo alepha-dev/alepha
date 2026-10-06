@@ -532,13 +532,12 @@ if (aliasViolations.length > 0) {
  * contributes nothing to `yarn test`, and a suite that silently shrinks looks
  * exactly like a suite that passes.
  *
- * `apps/e2e-cli` is the one exemption. It packs a tarball and scaffolds a real
- * project, and the root run has always excluded it; it owns a config and runs
- * from `yarn e2e-cli`.
+ * `apps/e2e` is the one exemption. Its `cli/` suite packs a tarball and
+ * scaffolds a real project, and the root run has always excluded it; it owns
+ * a config and runs from `yarn e2e-cli`.
  */
 const VITEST_ROOT_EXEMPT = {
-  "apps/e2e-cli":
-    "packs a tarball; runs from `yarn e2e-cli`, never `yarn test`",
+  "apps/e2e": "packs a tarball; runs from `yarn e2e-cli`, never `yarn test`",
 };
 
 const unitSpecFiles = execFileSync(

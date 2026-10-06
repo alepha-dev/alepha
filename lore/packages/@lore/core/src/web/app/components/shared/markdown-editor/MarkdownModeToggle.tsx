@@ -42,7 +42,7 @@ export interface MarkdownModeToggleProps {
  * keyboard.
  *
  * `data-testid` and `data-mode` are a contract with `fillMarkdownEditor` in
- * `e2e/_helpers.ts`: CodeMirror is not mounted at all in view mode, so a
+ * `apps/e2e/web/_helpers.ts`: CodeMirror is not mounted at all in view mode, so a
  * spec that types into the editor has to be able to find this control and
  * read which face is currently showing before it clicks.
  */

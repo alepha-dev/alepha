@@ -13,7 +13,7 @@ import {
  * though: which component a route renders is a unit concern, but "the page at
  * this path is the feed, and the URL does not move under the reader" is a
  * claim about the real router, the real sidebar and the real project layout.
- * `e2e/dashboard.spec.ts` pins the root's own destination from the other
+ * `web/dashboard.spec.ts` pins the root's own destination from the other
  * side.
  *
  * Since the page became a `DataTable` over scoped `audits` rows, the last

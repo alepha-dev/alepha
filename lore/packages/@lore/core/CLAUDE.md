@@ -109,7 +109,7 @@ and Members comes from a core table.
 
 **Settings has no floor.** Every capability may be turned off, the last one
 included: a project with none is a legal state and the modularity test
-(`e2e/capabilities.spec.ts`). The wizard keeps an at-least-one rule, because a
+(`apps/e2e/web/capabilities.spec.ts`). The wizard keeps an at-least-one rule, because a
 wizard is asking a question and "none" is not an answer to it.
 
 ## Agent prompts (epic #41)
@@ -152,7 +152,7 @@ Settings ▸ Quests ▸ Features and turns it on, `lore.alepha.dev` included.
   filled, and flipping the switch does not re-run the loader. Without the
   refetch, an owner with stored templates who turns the option on and copies
   from Epics gets the built-in defaults, silently, until the next full page
-  load. `e2e/agent-prompts.spec.ts` catches exactly this, which is why its
+  load. `apps/e2e/web/agent-prompts.spec.ts` catches exactly this, which is why its
   navigation from Settings to Epics is a sidebar CLICK and never a
   `page.goto`.
 - ⚠️ **`{{project}}` is the project's TITLE and `{{slug}}` is its slug.**

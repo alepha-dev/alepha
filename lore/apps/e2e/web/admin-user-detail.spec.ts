@@ -9,7 +9,7 @@ import { registerAndVerify, signInAsAdmin } from "./_helpers.ts";
  * server-side guards (email-changed → emailVerified=false, unique
  * conflicts → friendly 409).
  *
- * The admin account is registered once by `e2e/global-setup.ts` and
+ * The admin account is registered once by `web/global-setup.ts` and
  * auto-promoted on first login, because `playwright.config.ts` passes its
  * address as `ADMIN_EMAIL` to the webServer — the realm `adminEmails`
  * setting then matches it and grants the `admin` role.

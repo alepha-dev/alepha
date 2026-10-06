@@ -13,8 +13,8 @@ import { workspaceProjects } from "./scripts/vitest.projects.ts";
  * `vitest.config.ts` naming itself through `workspaceProjects`; this file is
  * the import list that makes a root `yarn test` the union of them.
  *
- * `e2e-cli` is out of it on purpose: it drives built artefacts and a Go
- * toolchain, and runs through `yarn e2e-cli`. The vendored framework is out of
+ * `apps/e2e` is out of it on purpose: it drives built artefacts and a Go
+ * toolchain, and runs through `yarn e2e` and `yarn e2e-cli`. The vendored framework is out of
  * it too: its suite runs where it is developed, in `alepha-dev/alepha`.
  */
 export default defineConfig({

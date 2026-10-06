@@ -11,7 +11,7 @@ import { defineConfig, devices } from "@playwright/test";
  */
 
 export default defineConfig({
-  testDir: "./e2e",
+  testDir: "./web",
   // PoC: fullyParallel, made safe by one Lore instance per worker.
   //
   // `globalSetup` and `webServer` are gone. Both existed to serve ONE shared

@@ -4431,12 +4431,20 @@ __metadata:
   languageName: node
   linkType: hard
 
-"e2e-cli@workspace:apps/e2e-cli":
+"e2e@workspace:apps/e2e":
   version: 0.0.0-use.local
-  resolution: "e2e-cli@workspace:apps/e2e-cli"
+  resolution: "e2e@workspace:apps/e2e"
   dependencies:
+    "@alepha/lore": "workspace:*"
+    "@lore/deploy": "workspace:*"
+    "@lore/work": "workspace:*"
+    "@playwright/test": "npm:^1.63.0"
+    "@types/bun": "npm:^1.4.2"
+    "@types/ws": "npm:^8.18.1"
+    alepha: "workspace:*"
     vite: "npm:^8.3.1"
     vitest: "npm:^5.0.2"
+    ws: "npm:^8.22.0"
   languageName: unknown
   linkType: soft
 
@@ -5702,14 +5710,12 @@ __metadata:
     "@lore/deploy": "workspace:*"
     "@lore/knowledge": "workspace:*"
     "@lore/work": "workspace:*"
-    "@playwright/test": "npm:^1.63.0"
     "@tailwindcss/vite": "npm:^4.3.3"
     "@testing-library/dom": "npm:^10.4.2"
     "@testing-library/react": "npm:^16.3.3"
     "@types/bun": "npm:^1.4.2"
     "@types/react": "npm:^19.3.0"
     "@types/react-dom": "npm:^19.3.0"
-    "@types/ws": "npm:^8.18.1"
     alepha: "workspace:*"
     drizzle-kit: "npm:1.0.0-rc.4"
     lucide-react: "npm:^1.48.0"
@@ -5722,7 +5728,6 @@ __metadata:
     vite: "npm:^8.3.1"
     vitest: "npm:^5.0.2"
     wrangler: "npm:^4.142.0"
-    ws: "npm:^8.22.0"
   languageName: unknown
   linkType: soft
 

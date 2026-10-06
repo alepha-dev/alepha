@@ -96,7 +96,7 @@ test.describe("Inbox", () => {
         entry is gone, the bell is the only door, and the assertion above is
         the whole claim.
 
-        `e2e/inbox.spec.ts`'s "the bell is the only door" case pins the
+        `web/inbox.spec.ts`'s "the bell is the only door" case pins the
         absence, so removing the assertion here does not remove the coverage.
       */
 

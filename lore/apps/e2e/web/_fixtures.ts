@@ -1,7 +1,7 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { test as base, expect } from "@playwright/test";
@@ -9,7 +9,11 @@ import { test as base, expect } from "@playwright/test";
 import { e2eWorkerPort } from "../../../scripts/playwright.port.ts";
 import { ADMIN_EMAIL, ADMIN_PASSWORD, registerAndVerify } from "./_helpers.ts";
 
-const appRoot = dirname(dirname(fileURLToPath(import.meta.url)));
+/**
+ * The Lore app whose build every worker starts, `apps/lore` beside this
+ * workspace, the way `cli/bay.e2e.spec.ts` finds it.
+ */
+const LORE_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "../../lore");
 
 /**
  * One Lore instance per Playwright worker, each on its own in-memory database.
@@ -69,7 +73,7 @@ export const test = base.extend<{}, { loreServer: LoreServer }>({
       process.env.LORE_E2E_DATA_DIR = dataDir;
 
       const child = spawn("node", ["dist"], {
-        cwd: appRoot,
+        cwd: LORE_DIR,
         env: {
           ...process.env,
           SERVER_PORT: String(port),

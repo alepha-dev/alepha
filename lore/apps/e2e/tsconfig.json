@@ -1,0 +1,7 @@
+{
+  "extends": "alepha/tsconfig.base",
+  "compilerOptions": {
+    "types": ["bun"]
+  },
+  "include": ["web", "cli", "playwright.config.ts", "vitest.config.ts"]
+}

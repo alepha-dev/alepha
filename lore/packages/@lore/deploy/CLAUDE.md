@@ -130,7 +130,7 @@ sigil with it. Rotate to revoke a leaked token, which keeps every row.
 - MCP: `src/mcp/tools/AppInstanceTools.ts` (`sigil_create` still works and now creates the instance when it is missing, defaulting `env` to `production` - safe there precisely because it creates the row rather than guessing among several)
 - UI: `src/web/app/components/project/apps/` - `ProjectApps.tsx` (the table), `AppCreateDialog.tsx`, `AppLayout.tsx` (the tab shell), `appTabs.ts` (the tab set), one `AppSettings*.tsx` per settings row
 - Migration: `migrations/sqlite/20260905230348_red_grim_reaper/` - `CREATE TABLE` plus four indexes, then one instance backfilled per existing sigil at `production`, then `UPDATE sigils SET name = name || '/production'`. ⚠️ The statement order is load-bearing (the INSERT reads `sigils.name` as the app name), and there is no `DROP TABLE`
-- E2E: `e2e/apps.spec.ts`
+- E2E: `apps/e2e/web/apps.spec.ts`
 
 ## Sigils, Blights, Beacon, Vitals
 
@@ -184,7 +184,7 @@ Read endpoints are member-gated; mutations are owner-only. **Ingest has its own 
 - UI — feedback module toggle: `src/web/app/components/project/settings/ProjectSettingsFeedbackPage.tsx` (its own settings page now, split out of the Sigils page)
 - UI — triage: `project/blights/ProjectBlights.tsx`
 - MCP: `src/mcp/tools/SigilTools.ts`, `src/mcp/tools/BlightTools.ts`
-- E2E: `e2e/apps.spec.ts` - create an instance → mint its sigil → ingest as it → triage → walk the tabs → rename → rotate → delete, with ingest driven through Playwright's isolated `request` fixture (the page's `fetch` is patched to attach the session bearer, which would replace the sigil token)
+- E2E: `apps/e2e/web/apps.spec.ts` - create an instance → mint its sigil → ingest as it → triage → walk the tabs → rename → rotate → delete, with ingest driven through Playwright's isolated `request` fixture (the page's `fetch` is patched to attach the session bearer, which would replace the sigil token)
 
 ## ⚠️ The Cloudflare WAF rule on `/sigils/` has a job again — keep it
 

@@ -1530,7 +1530,7 @@ test.describe("Quest", () => {
    * and no longer on Activity either (#Q2104).
    * That is not a weakening of what this test guards: the thing under
    * guard was never "which page is the root", it was that nothing may
-   * silently re-point a URL the reader chose. `e2e/dashboard.spec.ts` pins
+   * silently re-point a URL the reader chose. `web/dashboard.spec.ts` pins
    * the root's own destination.
    *
    * ⚠️ This used to drive the "Quest list | Kanban board" rail, which is gone

@@ -2,7 +2,7 @@
 /**
  * Rehearses `npm i -g "@alepha/lore"` on all four package managers.
  *
- * `apps/e2e-cli` proves the tarball installs and the bin runs, but only under
+ * `apps/e2e` proves the tarball installs and the bin runs, but only under
  * npm and only as a local dependency. The headline of the standalone CLI is a
  * GLOBAL install, and a global install has no host project: nothing is there
  * to satisfy a peer, hoist a dependency, or supply `alepha`. npm, Yarn, pnpm
