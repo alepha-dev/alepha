@@ -32,8 +32,9 @@ import { CapacitorProject } from "./CapacitorProject.ts";
  *    edits when interrupted.
  * 4. What `cap run -l` does not set, this command sets and restores: an
  *    Android emulator needs `adb reverse` for its `localhost` to be this
- *    machine's, and an iOS device loading plain HTTP from the LAN needs
- *    `NSAllowsLocalNetworking`.
+ *    machine's, an iOS device loading plain HTTP from the LAN needs
+ *    `NSAllowsLocalNetworking`, and an Android app with a network security
+ *    config needs cleartext to the dev host allowed there.
  *    The original file is kept in a recovery journal first, restored on exit,
  *    on Ctrl+C and when the launch fails. A crash cannot restore anything;
  *    the next build refuses while the journal exists, and
@@ -308,7 +309,7 @@ export class CapacitorDev {
   }
 
   /**
-   * Set what `cap run -l` leaves to the app: on iOS, plain HTTP to the LAN.
+   * Set what `cap run -l` leaves to the app: plain HTTP to the dev server.
    * Journaled first.
    */
   protected async applyDevExceptions(
@@ -316,34 +317,100 @@ export class CapacitorDev {
     platform: CapacitorPlatform,
     host: string,
   ): Promise<void> {
-    if (platform !== "ios" || host === "localhost") {
+    const edit =
+      platform === "ios"
+        ? await this.iosDevException(root, host)
+        : await this.androidDevException(root, host);
+    if (!edit) {
       return;
+    }
+
+    await this.fs.writeFile(
+      this.journalPath(root),
+      `${JSON.stringify({ platform, files: { [edit.relative]: edit.before } }, null, 2)}\n`,
+    );
+    await this.fs.writeFile(this.fs.join(root, edit.relative), edit.after);
+  }
+
+  /**
+   * An iOS device loading plain HTTP from the LAN needs
+   * `NSAllowsLocalNetworking`. A simulator's `localhost` is exempt already.
+   */
+  protected async iosDevException(
+    root: string,
+    host: string,
+  ): Promise<DevEdit | undefined> {
+    if (host === "localhost") {
+      return undefined;
     }
     const relative = "ios/App/App/Info.plist";
     const path = this.fs.join(root, relative);
     if (!(await this.fs.exists(path))) {
-      return;
+      return undefined;
     }
     const plist = await this.fs.readTextFile(path);
     if (plist.includes("<key>NSAppTransportSecurity</key>")) {
       this.log.warn(
         "Info.plist already declares NSAppTransportSecurity; not adding the development exception.",
       );
-      return;
+      return undefined;
     }
-
-    await this.fs.writeFile(
-      this.journalPath(root),
-      `${JSON.stringify({ platform, files: { [relative]: plist } }, null, 2)}\n`,
-    );
-    await this.fs.writeFile(
-      path,
-      plist.replace(
+    return {
+      relative,
+      before: plist,
+      after: plist.replace(
         /\n<\/dict>\s*\n<\/plist>\s*$/,
         (end) =>
           `\n\t<key>NSAppTransportSecurity</key>\n\t<dict>\n\t\t<key>NSAllowsLocalNetworking</key>\n\t\t<true/>\n\t</dict>${end}`,
       ),
+    };
+  }
+
+  /**
+   * `cap run -l` allows cleartext through the manifest's
+   * `usesCleartextTraffic`, which Android ignores once the app declares a
+   * network security config (one that trusts user CAs in `debug-overrides`,
+   * say): the WebView then refuses the dev server with
+   * `ERR_CLEARTEXT_NOT_PERMITTED`. Allow cleartext to the dev host alone, in
+   * that config, for the run.
+   */
+  protected async androidDevException(
+    root: string,
+    host: string,
+  ): Promise<DevEdit | undefined> {
+    const manifestPath = this.fs.join(
+      root,
+      "android/app/src/main/AndroidManifest.xml",
     );
+    if (!(await this.fs.exists(manifestPath))) {
+      return undefined;
+    }
+    const name = (await this.fs.readTextFile(manifestPath)).match(
+      /android:networkSecurityConfig="@xml\/([\w.]+)"/,
+    )?.[1];
+    if (!name) {
+      return undefined;
+    }
+    const relative = `android/app/src/main/res/xml/${name}.xml`;
+    const path = this.fs.join(root, relative);
+    if (!(await this.fs.exists(path))) {
+      return undefined;
+    }
+    const config = await this.fs.readTextFile(path);
+    if (!config.includes("</network-security-config>")) {
+      this.log.warn(
+        `${relative} has no closing </network-security-config>; not adding the development exception.`,
+      );
+      return undefined;
+    }
+    return {
+      relative,
+      before: config,
+      after: config.replace(
+        "</network-security-config>",
+        `    <domain-config cleartextTrafficPermitted="true">\n        <domain includeSubdomains="false">${host}</domain>\n    </domain-config>\n</network-security-config>`,
+      ),
+    };
   }
 
   /**
@@ -426,4 +493,14 @@ interface DevTarget {
   id: string;
   name: string;
   virtual: boolean;
+}
+
+/**
+ * One native file a dev run changes: its path from the app root, what it
+ * held, what the run needs it to hold.
+ */
+interface DevEdit {
+  relative: string;
+  before: string;
+  after: string;
 }
