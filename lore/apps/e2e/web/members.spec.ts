@@ -20,7 +20,8 @@ test.describe("Members settings page", () => {
     await page.goto(`/${projectSlug}/settings/members`);
     await page.waitForLoadState("domcontentloaded");
 
-    // The owner's own membership is rendered as a MemberIdentity card.
+    // The owner's own membership is rendered by @alepha/ui's
+    // OrganizationMemberIdentity, which carries the `member-identity` test id.
     const trigger = page.getByTestId("member-identity").first();
     await expect(trigger).toBeVisible({ timeout: 10_000 });
 

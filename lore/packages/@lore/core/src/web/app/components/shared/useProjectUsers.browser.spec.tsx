@@ -15,23 +15,17 @@ import { beforeAll, describe, it } from "vitest";
 import { projectFixture } from "../../../../testing/projectFixture.ts";
 import { virtualClientFake } from "../../../../testing/virtualClientFake.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
-import { useProjectRanks } from "./useProjectRanks.ts";
 import { useProjectUsers } from "./useProjectUsers.ts";
 
 /**
- * Answers `getOrganizationRanks` and `getProjectUsers` with whatever the test sets.
+ * Answers `getProjectUsers` with whatever the test sets.
  */
 class FakeLinkProvider extends LinkProvider {
-  ranksError?: Error;
   usersError?: Error;
 
   // matches the real client's own loose virtual-action shape
   override client(): any {
     return virtualClientFake({
-      getOrganizationRanks: async () => {
-        if (this.ranksError) throw this.ranksError;
-        return { items: [{ key: "member" }] };
-      },
       getProjectUsers: async () => {
         if (this.usersError) throw this.usersError;
         return [{ id: "u1", username: "ada" }];
@@ -41,15 +35,13 @@ class FakeLinkProvider extends LinkProvider {
 }
 
 /**
- * The two shared reads, on keyed `useQuery`s (#Q2323), with the root
+ * The shared users read, on a keyed `useQuery` (#Q2323), with the root
  * `ActionErrorToaster` mounted as Lore mounts it.
  *
- * `useProjectRanks` answers a reader who may not manage ranks with a 403 on
- * every project page that shows a picker, so that one is quiet, while any
- * other failure is worth a toast. `useProjectUsers` resolves names, which are
- * chrome: its failures are quiet and read as an empty list.
+ * `useProjectUsers` resolves names, which are chrome: its failures are quiet
+ * and read as an empty list.
  */
-describe("useProjectRanks and useProjectUsers", () => {
+describe("useProjectUsers", () => {
   beforeAll(() => {
     setupJsdomMocks();
   });
@@ -78,46 +70,6 @@ describe("useProjectRanks and useProjectUsers", () => {
   };
 
   const settle = () => new Promise((resolve) => setTimeout(resolve, 100));
-
-  it("reads the ranks", async ({ expect }) => {
-    const { result } = await mount(useProjectRanks, () => {});
-
-    await waitFor(() => expect(result.current.ranks).toHaveLength(1));
-    expect(result.current.loading).toBe(false);
-  });
-
-  it("answers a 403 with no ranks and no toast", async ({ expect }) => {
-    const { result } = await mount(useProjectRanks, (fake) => {
-      fake.ranksError = new HttpError({
-        status: 403,
-        message: "Ranks are not yours to read (spec)",
-      });
-    });
-
-    await waitFor(() => expect(result.current.loading).toBe(false));
-    await settle();
-    expect(result.current.ranks).toEqual([]);
-    expect(screen.queryByText("Ranks are not yours to read (spec)")).toBeNull();
-  });
-
-  it("toasts any other ranks failure exactly once", async ({ expect }) => {
-    await mount(useProjectRanks, (fake) => {
-      fake.ranksError = new HttpError({
-        status: 500,
-        message: "Ranks store unavailable (spec)",
-      });
-    });
-
-    await waitFor(() =>
-      expect(
-        screen.getAllByText("Ranks store unavailable (spec)"),
-      ).toHaveLength(1),
-    );
-    await settle();
-    expect(screen.getAllByText("Ranks store unavailable (spec)")).toHaveLength(
-      1,
-    );
-  });
 
   it("reads the users, and a failure is an empty list with no toast", async ({
     expect,

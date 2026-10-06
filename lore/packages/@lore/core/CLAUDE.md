@@ -10,7 +10,7 @@ The source keeps the directory structure it had in `apps/lore/src` (`api/`, `mcp
 | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `@lore/core/api`     | `LoreCoreApi`, controllers, services, providers, security, the resource registry: server only                                                                        |
 | `@lore/core/mcp`     | `LoreCoreMcp`, `ProjectTools`, the attachment commands, `ProjectContextRegistry`                                                                                     |
-| `@lore/core/web`     | `LoreCoreWeb`, `CoreRouter`, `ProjectRouter`, `$pageProject`, components, atoms, registries, the dictionaries' `I18n` service                                        |
+| `@lore/core/web`     | `LoreCoreWeb`, `CoreRouter`, `$pageProject`, components, atoms, registries, the dictionaries' `I18n` service                                                         |
 | `@lore/core/schemas` | browser-loadable values: `api/schemas/*`, `mcp/schemas/*`, the entities, and the isomorphic classes (`CapabilityRegistry`, `DashboardMetricCatalog`, ...)            |
 | `@lore/core/testing` | `projectFixture`, `CoreTestEntities` and the project and member helpers, `ReadCounter`, `createPresetRanks`, and what specs render that the web barrel must not name |
 

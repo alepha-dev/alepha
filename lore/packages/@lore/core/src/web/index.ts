@@ -89,165 +89,28 @@ export const LoreCoreWeb = $module({
 
 export { $pageProject, $pageProjectSettings } from "./app/$pageProject.ts";
 export { CoreRouter } from "./app/CoreRouter.ts";
-export { ProjectRouter } from "./app/ProjectRouter.ts";
 export { currentProjectAtom } from "./app/atoms/currentProjectAtom.ts";
 export { currentProjectMemberAtom } from "./app/atoms/currentProjectMemberAtom.ts";
-export { homeBoardAtom } from "./app/atoms/homeBoardAtom.ts";
-export { projectDashboardAtom } from "./app/atoms/projectDashboardAtom.ts";
 export {
   type ProjectNavEntry,
   projectNavAtom,
 } from "./app/atoms/projectNavAtom.ts";
 export { projectPromptsAtom } from "./app/atoms/projectPromptsAtom.ts";
-export { realmSettingsAtom } from "./app/atoms/realmSettingsAtom.ts";
-export { spotlightOpenAtom } from "./app/atoms/spotlightOpenAtom.ts";
 export { userProjectsAtom } from "./app/atoms/userProjectsAtom.ts";
-export { default as AccountDeleteWarning } from "./app/components/account/AccountDeleteWarning.tsx";
 export { LoreAccountRouter } from "./app/components/account/LoreAccountRouter.ts";
-export {
-  default as AuthRegisterInvitationNotice,
-  type AuthRegisterInvitationNoticeProps,
-} from "./app/components/auth/AuthRegisterInvitationNotice.tsx";
 export { isOAuthReturnTarget } from "./app/components/auth/oauthReturnTarget.ts";
+export { type DashboardScopeApp } from "./app/components/dashboard/DashboardScopeStep.tsx";
 export {
-  type RegisterIntent,
-  resolveRegisterIntent,
-} from "./app/components/auth/registerIntents.ts";
-export {
-  default as DashboardCard,
-  type DashboardCardProps,
-} from "./app/components/dashboard/DashboardCard.tsx";
-export {
-  default as DashboardCardFooter,
-  type DashboardCardFooterProps,
-} from "./app/components/dashboard/DashboardCardFooter.tsx";
-export {
-  default as DashboardCardMenu,
-  type DashboardCardMenuProps,
-} from "./app/components/dashboard/DashboardCardMenu.tsx";
-export {
-  default as DashboardCardValue,
-  type DashboardCardValueProps,
-} from "./app/components/dashboard/DashboardCardValue.tsx";
-export {
-  default as DashboardCatalogue,
-  type DashboardCatalogueProps,
-} from "./app/components/dashboard/DashboardCatalogue.tsx";
-export {
-  default as DashboardCatalogueRow,
-  type DashboardCatalogueRowProps,
-} from "./app/components/dashboard/DashboardCatalogueRow.tsx";
-export {
-  default as DashboardFilterStep,
-  type DashboardFilterStepProps,
-} from "./app/components/dashboard/DashboardFilterStep.tsx";
-export {
-  default as DashboardGrid,
-  type DashboardGridProps,
-} from "./app/components/dashboard/DashboardGrid.tsx";
-export {
-  type DashboardScopeApp,
-  type DashboardScopeProject,
-  default as DashboardScopeStep,
-  type DashboardScopeStepProps,
-} from "./app/components/dashboard/DashboardScopeStep.tsx";
-export {
-  DASHBOARD_NO_VALUE,
-  dashboardFilterChipKeys,
-  dashboardFilterChipLabels,
-} from "./app/components/dashboard/dashboardChips.ts";
-export {
-  type DashboardEligibleProject,
   eligibleApps,
   eligibleProjects,
   metricUnavailableKey,
-  projectAnswers,
 } from "./app/components/dashboard/dashboardEligibility.ts";
-export {
-  type DashboardFilterField,
-  dashboardFilterFields,
-} from "./app/components/dashboard/dashboardFilterFields.ts";
-export { dashboardMetricIcon } from "./app/components/dashboard/dashboardMetricIcon.ts";
-export { default as HomeBoard } from "./app/components/home/HomeBoard.tsx";
-export { default as HomeHeader } from "./app/components/home/HomeHeader.tsx";
-export {
-  HomeMomentum,
-  type HomeMomentumProps,
-} from "./app/components/home/HomeMomentum.tsx";
-export {
-  type HomeOpenLink,
-  HomeOpenLinks,
-  type HomeOpenLinksProps,
-} from "./app/components/home/HomeOpenLinks.tsx";
-export {
-  HomeRecentProjectRow,
-  type HomeRecentProjectRowProps,
-} from "./app/components/home/HomeRecentProjectRow.tsx";
-export {
-  HomeRecentProjects,
-  type HomeRecentProjectsProps,
-} from "./app/components/home/HomeRecentProjects.tsx";
-export {
-  HomeSearch,
-  type HomeSearchProps,
-} from "./app/components/home/HomeSearch.tsx";
-export {
-  HomeSearchRow,
-  type HomeSearchRowItem,
-  type HomeSearchRowProps,
-} from "./app/components/home/HomeSearchRow.tsx";
-export {
-  HOME_INACTIVE_AFTER_DAYS,
-  activityAgeInDays,
-} from "./app/components/home/homeActivityAge.ts";
-export {
-  EMPTY_BAR,
-  MIN_BAR,
-  momentumBarHeights,
-  momentumDelta,
-} from "./app/components/home/homeMomentumBars.ts";
-export { useHomeOpenTags } from "./app/components/home/useHomeOpenTags.ts";
-export {
-  type HomeSearchGroup,
-  type HomeSearchHit,
-  useHomeSearch,
-} from "./app/components/home/useHomeSearch.ts";
-export { useHomeSearchHitHref } from "./app/components/home/useHomeSearchHitHref.ts";
-export { default as ProjectActionsCreateButton } from "./app/components/project/ProjectActionsCreateButton.tsx";
-export { default as ProjectCreateBackdrop } from "./app/components/project/ProjectCreateBackdrop.tsx";
-export { default as ProjectInboxButton } from "./app/components/project/ProjectInboxButton.tsx";
-export { default as ProjectSwitcher } from "./app/components/project/ProjectSwitcher.tsx";
-export {
-  default as ProjectUpdate,
-  type ProjectUpdateProps,
-} from "./app/components/project/ProjectUpdate.tsx";
-export {
-  default as ProjectViewNavPublisher,
-  type ProjectViewNavPublisherProps,
-} from "./app/components/project/ProjectViewNavPublisher.tsx";
-export {
-  ActivityDetails,
-  type ActivityDetailsProps,
-} from "./app/components/project/activity/ActivityDetails.tsx";
-export { activityResourceHref } from "./app/components/project/activity/activityResourceHref.ts";
-export { activityResourceIcon } from "./app/components/project/activity/activityResourceIcon.ts";
-export {
-  activityResourceLabel,
-  capitalize,
-} from "./app/components/project/activity/activityResourceLabel.ts";
+export { dashboardFilterFields } from "./app/components/dashboard/dashboardFilterFields.ts";
+export { default as ProjectViewNavPublisher } from "./app/components/project/ProjectViewNavPublisher.tsx";
 export {
   CORE_NAV,
-  type CapabilityNavEntry,
   type ProjectShellContext,
 } from "./app/components/project/capabilityNav.ts";
-export {
-  default as ProjectDashboardEmpty,
-  type ProjectDashboardEmptyProps,
-} from "./app/components/project/dashboard/ProjectDashboardEmpty.tsx";
-export {
-  default as ProjectDashboardHeader,
-  type ProjectDashboardHeaderProps,
-} from "./app/components/project/dashboard/ProjectDashboardHeader.tsx";
 export {
   ROUTES_APP,
   ROUTES_FULL_WIDTH,
@@ -255,315 +118,107 @@ export {
   SECTION_HREF_ROUTES,
   SECTION_LABEL_KEYS,
 } from "./app/components/project/projectViewRoutes.ts";
-export {
-  AgentPromptsMenu,
-  type AgentPromptsMenuItem,
-  type AgentPromptsMenuProps,
-} from "./app/components/project/prompts/AgentPromptsMenu.tsx";
-export {
-  type AgentPromptHandle,
-  useAgentPrompt,
-} from "./app/components/project/prompts/useAgentPrompt.ts";
-export {
-  type AgentPromptItem,
-  useAgentPromptSubject,
-} from "./app/components/project/prompts/useAgentPromptSubject.ts";
-export { RECENT_PROJECTS_CAP } from "./app/components/project/recentProjectsCap.ts";
+export { AgentPromptsMenu } from "./app/components/project/prompts/AgentPromptsMenu.tsx";
+export { useAgentPrompt } from "./app/components/project/prompts/useAgentPrompt.ts";
+export { useAgentPromptSubject } from "./app/components/project/prompts/useAgentPromptSubject.ts";
 export {
   type ReportsKpi,
   default as ReportsKpiRow,
-  type ReportsKpiRowProps,
 } from "./app/components/project/reports/ReportsKpiRow.tsx";
-export {
-  default as ReportsSection,
-  type ReportsSectionProps,
-} from "./app/components/project/reports/ReportsSection.tsx";
-export {
-  ProjectSettingsAgentPromptEditor,
-  type ProjectSettingsAgentPromptEditorProps,
-} from "./app/components/project/settings/ProjectSettingsAgentPromptEditor.tsx";
-export {
-  default as ProjectSettingsCapabilitySection,
-  type ProjectSettingsCapabilitySectionProps,
-} from "./app/components/project/settings/ProjectSettingsCapabilitySection.tsx";
-export {
-  default as ProjectSettingsConfirmationModal,
-  type ProjectSettingsConfirmationModalProps,
-} from "./app/components/project/settings/ProjectSettingsConfirmationModal.tsx";
-export { default as ProjectSettingsDangerZoneSection } from "./app/components/project/settings/ProjectSettingsDangerZoneSection.tsx";
-export {
-  CORE_SETTINGS_SECTIONS,
-  type SettingsSectionDef,
-  type SettingsTab,
-  visibleSettingsTabs,
-} from "./app/components/project/settings/projectSettingsSections.ts";
-export {
-  type CapabilitySwitch,
-  useCapabilityOption,
-  useCapabilityToggle,
-} from "./app/components/project/settings/useCapability.ts";
-export {
-  default as AttachmentLightbox,
-  type AttachmentLightboxProps,
-  type PreviewableAttachment,
-} from "./app/components/shared/AttachmentLightbox.tsx";
-export {
-  default as CollapsibleBlock,
-  type CollapsibleBlockProps,
-} from "./app/components/shared/CollapsibleBlock.tsx";
-export {
-  default as CommitLink,
-  type CommitLinkProps,
-} from "./app/components/shared/CommitLink.tsx";
-export { default as ErrorPage } from "./app/components/shared/ErrorPage.tsx";
-export {
-  default as LoreLogo,
-  type LoreLogoProps,
-} from "./app/components/shared/LoreLogo.tsx";
-export {
-  MemberIdentity,
-  type MemberIdentityProps,
-  type MemberWithUser,
-} from "./app/components/shared/MemberIdentity.tsx";
-export {
-  OutboundLink,
-  type OutboundLinkProps,
-} from "./app/components/shared/OutboundLink.tsx";
-export {
-  ProjectIcon,
-  type ProjectIconProps,
-} from "./app/components/shared/ProjectIcon.tsx";
+export { default as ReportsSection } from "./app/components/project/reports/ReportsSection.tsx";
+export { default as ProjectSettingsCapabilitySection } from "./app/components/project/settings/ProjectSettingsCapabilitySection.tsx";
+export { default as AttachmentLightbox } from "./app/components/shared/AttachmentLightbox.tsx";
+export { default as CollapsibleBlock } from "./app/components/shared/CollapsibleBlock.tsx";
+export { default as CommitLink } from "./app/components/shared/CommitLink.tsx";
+export { OutboundLink } from "./app/components/shared/OutboundLink.tsx";
+export { ProjectIcon } from "./app/components/shared/ProjectIcon.tsx";
 export { default as RedirectPage } from "./app/components/shared/RedirectPage.tsx";
-export {
-  default as TokenReveal,
-  type TokenRevealProps,
-} from "./app/components/shared/TokenReveal.tsx";
-export {
-  default as ToolbarSpinner,
-  type ToolbarSpinnerProps,
-} from "./app/components/shared/ToolbarSpinner.tsx";
-export {
-  type AttachmentPreview,
-  PREVIEW_MAX_BYTES,
-  attachmentPreview,
-} from "./app/components/shared/attachmentPreview.ts";
+export { default as TokenReveal } from "./app/components/shared/TokenReveal.tsx";
+export { default as ToolbarSpinner } from "./app/components/shared/ToolbarSpinner.tsx";
+export { attachmentPreview } from "./app/components/shared/attachmentPreview.ts";
 export {
   type BulkOutcome,
   settleBulk,
 } from "./app/components/shared/bulkOutcome.ts";
-export {
-  default as LoreEditor,
-  type LoreEditorProps,
-} from "./app/components/shared/element/LoreEditor.tsx";
-export {
-  default as LoreViewer,
-  type LoreViewerProps,
-} from "./app/components/shared/element/LoreViewer.tsx";
-export {
-  type BrokenReason,
-  default as WikiLinkHoverProvider,
-  type WikiLinkHoverProviderProps,
-} from "./app/components/shared/element/WikiLinkHoverProvider.tsx";
-export {
-  default as WikiLinkPreviewState,
-  type WikiLinkPreviewStateProps,
-} from "./app/components/shared/element/WikiLinkPreviewState.tsx";
+export { default as LoreEditor } from "./app/components/shared/element/LoreEditor.tsx";
+export { default as LoreViewer } from "./app/components/shared/element/LoreViewer.tsx";
+export { default as WikiLinkHoverProvider } from "./app/components/shared/element/WikiLinkHoverProvider.tsx";
+export { default as WikiLinkPreviewState } from "./app/components/shared/element/WikiLinkPreviewState.tsx";
 export type { ElementRef } from "./app/components/shared/element/elementRef.ts";
-export {
-  type MarkdownSegment,
-  outsideMarkdownCode,
-  splitMarkdownCode,
-} from "./app/components/shared/element/markdownCodeSegments.ts";
+export { splitMarkdownCode } from "./app/components/shared/element/markdownCodeSegments.ts";
 export { referencedIds } from "./app/components/shared/element/referencedIds.ts";
 export { rewriteWikiLinks } from "./app/components/shared/element/rewriteWikiLinks.ts";
 export {
-  REFERENCE_LETTERS,
-  type ReferenceKind,
-  type TypedReference,
   formatReference,
   isReferenceKind,
   parseTypedReference,
 } from "./app/components/shared/element/typedReference.ts";
-export { useElementImageUpload } from "./app/components/shared/element/useElementImageUpload.ts";
-export {
-  type ElementLinks,
-  useElementLinks,
-} from "./app/components/shared/element/useElementLinks.ts";
-export {
-  type HoverCardPosition,
-  useHoverCardPosition,
-} from "./app/components/shared/element/useHoverCardPosition.ts";
-export {
-  type KindReferences,
-  useKindReferences,
-} from "./app/components/shared/element/useKindReferences.ts";
+export { useElementLinks } from "./app/components/shared/element/useElementLinks.ts";
+export { useKindReferences } from "./app/components/shared/element/useKindReferences.ts";
 export { useLoreEditorControl } from "./app/components/shared/element/useLoreEditorControl.ts";
 export {
   type AttachmentRef,
   BROKEN_HREF_PREFIX,
-  type BrokenWikiLinkReason,
   type ElementReference,
-  type ElementReferenceLinks,
   type WikiLinkResolver,
-  type WikiLinkResolverInput,
-  type WikiLinkTarget,
   createWikiLinkResolver,
   formatAttachmentBytes,
-  isImageAttachment,
 } from "./app/components/shared/element/wikiLinkResolver.ts";
-export type { WikiLinkSuggestion } from "./app/components/shared/element/wikiLinkSuggestion.ts";
-export {
-  default as HeaderActions,
-  type HeaderActionsProps,
-} from "./app/components/shared/header/HeaderActions.tsx";
-export { default as HeaderRepositoryButton } from "./app/components/shared/header/HeaderRepositoryButton.tsx";
-export { default as HeaderSearchButton } from "./app/components/shared/header/HeaderSearchButton.tsx";
-export {
-  default as PageHeader,
-  type PageHeaderProps,
-} from "./app/components/shared/header/PageHeader.tsx";
+export { default as PageHeader } from "./app/components/shared/header/PageHeader.tsx";
 export { lazyPart } from "./app/components/shared/lazyPart.tsx";
 export {
-  default as CodeMirrorEditor,
-  type CodeMirrorEditorProps,
-} from "./app/components/shared/markdown-editor/CodeMirrorEditor.tsx";
-export {
   default as MarkdownEditor,
-  type MarkdownEditorProps,
   preloadMarkdownEditor,
 } from "./app/components/shared/markdown-editor/MarkdownEditor.tsx";
-export {
-  default as MarkdownFormatToolbar,
-  type MarkdownFormatToolbarProps,
-} from "./app/components/shared/markdown-editor/MarkdownFormatToolbar.tsx";
-export {
-  default as MarkdownModeToggle,
-  type MarkdownModeToggleProps,
-} from "./app/components/shared/markdown-editor/MarkdownModeToggle.tsx";
-export {
-  default as MarkdownSelectionToolbar,
-  type MarkdownSelectionToolbarProps,
-} from "./app/components/shared/markdown-editor/MarkdownSelectionToolbar.tsx";
-export {
-  default as MarkdownToolbarBand,
-  type MarkdownToolbarBandProps,
-} from "./app/components/shared/markdown-editor/MarkdownToolbarBand.tsx";
-export {
-  type MarkdownExtensionOptions,
-  createMarkdownExtensions,
-} from "./app/components/shared/markdown-editor/codeMirrorSetup.ts";
-export { fenceBlockHighlight } from "./app/components/shared/markdown-editor/fenceDecorations.ts";
-export {
-  buildInsertion,
-  imageMarkdown,
-  insertAtCursor,
-} from "./app/components/shared/markdown-editor/insertAtCursor.ts";
+export { default as MarkdownModeToggle } from "./app/components/shared/markdown-editor/MarkdownModeToggle.tsx";
 export {
   type MarkdownCommandId,
   markdownCommands,
 } from "./app/components/shared/markdown-editor/markdownCommands.ts";
-export {
-  MARKDOWN_TOOLBAR_GROUPS,
-  type MarkdownToolbarAction,
-} from "./app/components/shared/markdown-editor/markdownToolbarActions.ts";
-export {
-  DIAGRAM_BLOCK,
-  TABLE_BLOCK,
-  insertBlock,
-  toggleFencedCode,
-  toggleInlineMarker,
-  toggleLinePrefix,
-  wrapAsLink,
-} from "./app/components/shared/markdown-editor/markdownTransforms.ts";
-export { createMentionCompletion } from "./app/components/shared/markdown-editor/mentionCompletion.ts";
-export {
-  type SyncCompletionSource,
-  createWikiLinkCompletion,
-} from "./app/components/shared/markdown-editor/wikiLinkCompletion.ts";
-export { default as Spotlight } from "./app/components/shared/spotlight/Spotlight.tsx";
 export { matchProjectNav } from "./app/components/shared/spotlight/matchProjectNav.ts";
-export { useAtomsVersion } from "./app/components/shared/useAtomsVersion.ts";
-export {
-  type BulkReport,
-  useBulkReport,
-} from "./app/components/shared/useBulkReport.ts";
-export {
-  type ProjectRanks,
-  useProjectRanks,
-} from "./app/components/shared/useProjectRanks.ts";
+export { useBulkReport } from "./app/components/shared/useBulkReport.ts";
 export {
   type ProjectUser,
   useProjectUsers,
 } from "./app/components/shared/useProjectUsers.ts";
-export { type Rank, useRank } from "./app/components/shared/useRank.ts";
+export { useRank } from "./app/components/shared/useRank.ts";
 export {
   type AgentPromptItemSubject,
   type AgentPromptProjectSubject,
   type AgentPromptSubject,
   renderPromptTemplate,
 } from "./app/prompts/renderPromptTemplate.ts";
+export { AccountDeletionRegistry } from "./app/registries/AccountDeletionRegistry.ts";
+export { AgentPromptRegistry } from "./app/registries/AgentPromptRegistry.ts";
 export {
-  AccountDeletionRegistry,
-  type AccountDeletionWarning,
-} from "./app/registries/AccountDeletionRegistry.ts";
-export {
-  type AgentPromptKindEntry,
-  AgentPromptRegistry,
-} from "./app/registries/AgentPromptRegistry.ts";
-export {
-  type DashboardAppSource,
   type DashboardPickerContext,
   DashboardPickerRegistry,
   type DashboardScopeOption,
-  type DashboardSubjectOptions,
-  type DashboardSubjectPicker,
-  type DashboardTagSource,
 } from "./app/registries/DashboardPickerRegistry.ts";
+export { DocumentSinkRegistry } from "./app/registries/DocumentSinkRegistry.ts";
 export {
-  type DocumentSink,
-  DocumentSinkRegistry,
-  type SavedDocument,
-} from "./app/registries/DocumentSinkRegistry.ts";
-export {
-  type ElementReferenceKind,
   ElementReferenceRegistry,
   type ElementReferenceSet,
   type WikiLinkPreviewProps,
 } from "./app/registries/ElementReferenceRegistry.ts";
+export { ProjectLoaderRegistry } from "./app/registries/ProjectLoaderRegistry.ts";
 export {
-  type ProjectLoaderContribution,
-  ProjectLoaderRegistry,
-} from "./app/registries/ProjectLoaderRegistry.ts";
-export {
-  type ProjectAsideContribution,
   type ProjectCreateDialogProps,
-  type ProjectCreateItem,
-  type ProjectCrumbContribution,
-  type ProjectLinkContext,
-  type ProjectPaletteContribution,
-  type ProjectSettingsPanel,
   ProjectShellRegistry,
-  type ShellProject,
 } from "./app/registries/ProjectShellRegistry.ts";
-export {
-  type ReportsTab,
-  ReportsTabRegistry,
-} from "./app/registries/ReportsTabRegistry.ts";
+export { ReportsTabRegistry } from "./app/registries/ReportsTabRegistry.ts";
 export {
   type LinkedCollection,
-  type ResourceTab,
   ResourceTabRegistry,
   type ResourceTabSubject,
 } from "./app/registries/ResourceTabRegistry.ts";
 export { I18n } from "./app/services/I18n.ts";
 export { ProjectScopeGrants } from "./app/services/ProjectScopeGrants.ts";
-export { ThemesProvider } from "./app/services/ThemesProvider.ts";
 export { capabilityRegistry } from "./app/services/capabilityRegistry.ts";
 export { setCurrentProject } from "./app/services/currentProjectWrite.ts";
 export { descriptionSnippet } from "./app/services/descriptionSnippet.ts";
 export { displayName } from "./app/services/displayName.ts";
 export { loreDocsUrl } from "./app/services/docsUrl.ts";
-export { publicFileUrl } from "./app/services/fileUrl.ts";
 export {
   matchMentions,
   mentionPattern,
@@ -573,10 +228,7 @@ export {
   capabilityOption,
   hasCapability,
 } from "./app/services/projectCapabilities.ts";
-export {
-  type ProjectRankSource,
-  canInProject,
-} from "./app/services/projectRank.ts";
+export { canInProject } from "./app/services/projectRank.ts";
 
 // ---- modules a route or a lazy boundary loads (#E75, #Q2611) ----
 //
@@ -586,9 +238,5 @@ export {
 // only when another package renders it inline, and otherwise as types alone,
 // which are erased and add no edge. A spec reaches the rest through
 // `@lore/core/testing`, which nothing at runtime imports.
-export type {
-  MarkdownEditorInnerProps,
-  MarkdownEditorMode,
-} from "./app/components/shared/markdown-editor/MarkdownEditorInner.client.tsx";
-export type { ProjectActivityPageProps } from "./app/components/project/activity/ProjectActivityPage.tsx";
+export type { MarkdownEditorMode } from "./app/components/shared/markdown-editor/MarkdownEditorInner.client.tsx";
 export { default as LazyProjectActivityPage } from "./app/components/project/activity/LazyProjectActivityPage.tsx";

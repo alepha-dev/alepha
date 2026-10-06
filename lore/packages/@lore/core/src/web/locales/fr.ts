@@ -2394,8 +2394,6 @@ export default {
   "folios.wikilink.unavailable": "Aperçu indisponible",
 
   // --- shared ---------------------------------------------------------------
-  "members.owner": "Propriétaire",
-  "members.unknown": "Inconnu",
   "nav.home": "Accueil",
   "common.close": "Fermer",
   "common.save": "Enregistrer",

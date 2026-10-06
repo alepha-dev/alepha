@@ -220,99 +220,48 @@ export { ProjectPromptController } from "./controllers/ProjectPromptController.t
 export { ProjectRankController } from "./controllers/ProjectRankController.ts";
 export { ResourceFilingController } from "./controllers/ResourceFilingController.ts";
 export { SearchController } from "./controllers/SearchController.ts";
-export { OrganizationHooks } from "./hooks/OrganizationHooks.ts";
 export { UserDeletionHook } from "./hooks/UserDeletionHook.ts";
-export { InvitationNotifications } from "./notifications/InvitationNotifications.ts";
 export { LoreInboxNotifications } from "./notifications/LoreInboxNotifications.ts";
 export { NotificationHtmlEscaper } from "./notifications/NotificationHtmlEscaper.ts";
 export { AppSecurityProvider } from "./providers/AppSecurityProvider.ts";
 export { LoreFileAccessProvider } from "./providers/LoreFileAccessProvider.ts";
 export { LoreInboxRecipientProvider } from "./providers/LoreInboxRecipientProvider.ts";
 export { LoreNotificationPreferences } from "./providers/LoreNotificationPreferences.ts";
-export { LoreOrganizationPolicyProvider } from "./providers/LoreOrganizationPolicyProvider.ts";
-export { coreRelations } from "./relations/coreRelations.ts";
 export {
-  type ResourceCreateInput,
-  type ResourceCreated,
-  type ResourceDeletion,
-  type ResourceDeletionHandler,
-  type ResourceKind,
   type ResourceRef,
   ResourceRegistry,
-  type ResourceSearchQuery,
-  type ResourceSearchSource,
 } from "./resources/ResourceRegistry.ts";
 export { SearchPreview } from "./resources/SearchPreview.ts";
-export { type RankableHit, orderSearchHits } from "./searchRanking.ts";
-export {
-  $ownsProject,
-  type OwnsProjectOptions,
-  type RequiredCapability,
-} from "./security/$ownsProject.ts";
+export { orderSearchHits } from "./searchRanking.ts";
+export { $ownsProject } from "./security/$ownsProject.ts";
 export { LoreOAuthScopes } from "./security/LoreOAuthScopes.ts";
 export { LorePermissions } from "./security/LorePermissions.ts";
-export { LoreRankBounds } from "./security/LoreRankBounds.ts";
-export {
-  type ProjectPermissionSet,
-  ProjectPermissions,
-} from "./security/ProjectPermissions.ts";
-export {
-  type PresetKey,
-  type ProjectRankPreset,
-  ProjectRankPresets,
-} from "./security/ProjectRankPresets.ts";
-export {
-  type AssignedWorkProvider,
-  AssignedWorkRegistry,
-} from "./services/AssignedWorkRegistry.ts";
+export { ProjectPermissions } from "./security/ProjectPermissions.ts";
+export { ProjectRankPresets } from "./security/ProjectRankPresets.ts";
+export { AssignedWorkRegistry } from "./services/AssignedWorkRegistry.ts";
 export { BestEffort } from "./services/BestEffort.ts";
 export { BoundParameters } from "./services/BoundParameters.ts";
-export {
-  DashboardCardService,
-  type DashboardSeed,
-} from "./services/DashboardCardService.ts";
+export { DashboardCardService } from "./services/DashboardCardService.ts";
 export { DashboardMetricRegistry } from "./services/DashboardMetricRegistry.ts";
 export type {
   DashboardMetricResolver,
   DashboardResolvable,
 } from "./services/DashboardMetricResolver.ts";
 export {
-  type DashboardScopeResolver,
   DashboardScopeService,
-  type DashboardScopeSubject,
   type ResolvedDashboardScope,
 } from "./services/DashboardScopeService.ts";
-export {
-  FileAccessRegistry,
-  type FileAccessRule,
-} from "./services/FileAccessRegistry.ts";
+export { FileAccessRegistry } from "./services/FileAccessRegistry.ts";
 export { LoreAuditService } from "./services/LoreAuditService.ts";
 export { LoreAudits } from "./services/LoreAudits.ts";
-export { McpCallRates } from "./services/McpCallRates.ts";
-export {
-  type ProjectCountProvider,
-  ProjectCountRegistry,
-} from "./services/ProjectCountRegistry.ts";
-export { ProjectDashboardCardService } from "./services/ProjectDashboardCardService.ts";
-export {
-  ProjectDeletionService,
-  type ProjectDeletionStep,
-} from "./services/ProjectDeletionService.ts";
+export { ProjectCountRegistry } from "./services/ProjectCountRegistry.ts";
+export { ProjectDeletionService } from "./services/ProjectDeletionService.ts";
 export { ProjectLimits } from "./services/ProjectLimits.ts";
-export { ProjectRecencyService } from "./services/ProjectRecencyService.ts";
 export { ProjectResourceMapper } from "./services/ProjectResourceMapper.ts";
 export {
   ProjectRoster,
   type ProjectRosterEntry,
 } from "./services/ProjectRoster.ts";
-export {
-  type ProjectCapabilitySet,
-  type ProjectGuard,
-  ProjectSecurityService,
-} from "./services/ProjectSecurityService.ts";
-export {
-  type LinkSource,
-  type ParsedToken,
-  ResourceLinkService,
-} from "./services/ResourceLinkService.ts";
+export { ProjectSecurityService } from "./services/ProjectSecurityService.ts";
+export { ResourceLinkService } from "./services/ResourceLinkService.ts";
 export { ProjectAnalytics } from "./entities/projectAnalytics.ts";
