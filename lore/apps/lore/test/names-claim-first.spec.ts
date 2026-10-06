@@ -1,4 +1,6 @@
 import { ProjectController } from "@lore/core/api";
+import { DirectoryController, FolioController } from "@lore/knowledge/api";
+import { folioNames } from "@lore/knowledge/schemas";
 import { AreaService } from "@lore/work/api";
 import { areas } from "@lore/work/schemas";
 import { Alepha, z } from "alepha";
@@ -10,9 +12,6 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { DirectoryController } from "../src/api/controllers/DirectoryController.ts";
-import { FolioController } from "../src/api/controllers/FolioController.ts";
-import { folioNames } from "../src/api/entities/folioNames.ts";
 import { LoreApi } from "../src/api/index.ts";
 
 class Rows {

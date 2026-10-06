@@ -1,5 +1,11 @@
 import { ProjectController, ResourceLinkService } from "@lore/core/api";
 import { folioLinks } from "@lore/core/schemas";
+import {
+  DirectoryController,
+  FolioController,
+  FolioAttachmentService,
+} from "@lore/knowledge/api";
+import { folios } from "@lore/knowledge/schemas";
 import { ReleaseController } from "@lore/work/api";
 import { quests, releases } from "@lore/work/schemas";
 import { $hook, Alepha, AlephaError, z } from "alepha";
@@ -13,12 +19,8 @@ import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, describe, it } from "vitest";
 
 import { BlightController } from "../src/api/controllers/BlightController.ts";
-import { DirectoryController } from "../src/api/controllers/DirectoryController.ts";
-import { FolioController } from "../src/api/controllers/FolioController.ts";
 import { blights } from "../src/api/entities/blights.ts";
-import { folios } from "../src/api/entities/folios.ts";
 import { LoreApi } from "../src/api/index.ts";
-import { FolioAttachmentService } from "../src/api/services/FolioAttachmentService.ts";
 
 /**
  * Lands a second request after the first one's read of `table`, once:

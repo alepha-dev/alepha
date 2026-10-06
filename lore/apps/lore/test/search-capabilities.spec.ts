@@ -1,6 +1,7 @@
 import { SearchController } from "@lore/core/api";
 import { type Project } from "@lore/core/schemas";
 import type { CapabilityKey } from "@lore/core/schemas";
+import { folioDirectories, folios } from "@lore/knowledge/schemas";
 import { Alepha } from "alepha";
 import { RankService } from "alepha/api/organizations";
 import { AlephaApiUsers } from "alepha/api/users";
@@ -10,8 +11,6 @@ import { AlephaSecurity, type UserAccountToken } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { folioDirectories } from "@/api/entities/folioDirectories.ts";
-import { folios } from "@/api/entities/folios.ts";
 import { LoreApi } from "@/api/index.ts";
 
 import {

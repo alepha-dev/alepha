@@ -1,5 +1,6 @@
 import { ProjectCapabilityController, ProjectController } from "@lore/core/api";
 import type { CapabilityKey } from "@lore/core/schemas";
+import { FolioController } from "@lore/knowledge/api";
 import { EpicController, QuestController } from "@lore/work/api";
 import { Alepha } from "alepha";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
@@ -10,7 +11,6 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake } from "alepha/testing/faker";
 import { describe, it } from "vitest";
 
-import { FolioController } from "@/api/controllers/FolioController.ts";
 import { LoreApi } from "@/api/index.ts";
 
 /**

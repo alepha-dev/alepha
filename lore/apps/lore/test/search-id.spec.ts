@@ -1,4 +1,5 @@
 import { ProjectController, SearchController } from "@lore/core/api";
+import { DirectoryController, FolioController } from "@lore/knowledge/api";
 import {
   EpicController,
   FeedbackController,
@@ -14,8 +15,6 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { DirectoryController } from "../src/api/controllers/DirectoryController.ts";
-import { FolioController } from "../src/api/controllers/FolioController.ts";
 import { LoreApi } from "../src/api/index.ts";
 
 /**

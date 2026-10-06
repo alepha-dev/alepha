@@ -1,0 +1,287 @@
+import type { EditorView } from "@codemirror/view";
+import {
+  capabilityOption,
+  currentProjectAtom,
+  type I18n,
+  type ElementRef,
+  LoreEditor,
+  WikiLinkHoverProvider,
+  type MarkdownEditorMode,
+} from "@lore/core/web";
+import { useStore } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
+import { type ReactElement, useMemo } from "react";
+import { createPortal } from "react-dom";
+
+import type { FolioResource as Folio } from "../../../../../../api/schemas/folioResourceSchema.ts";
+import { currentFolioAttachmentsAtom } from "../../../../atoms/currentFolioAttachmentsAtom.ts";
+import { folioTextSizeAtom } from "../../../../atoms/folioTextSizeAtom.ts";
+import FolioPassphraseDialog from "../../FolioPassphraseDialog.tsx";
+import FolioMenubar from "../menubar/FolioMenubar.tsx";
+import { useFolioShortcuts } from "../menubar/useFolioShortcuts.ts";
+import type { UseFolioActionsResult } from "../useFolioActions.ts";
+import type { FolioDraft } from "../useFolioDraft.ts";
+import FolioLockedPanel from "./FolioLockedPanel.tsx";
+import FolioMoveDialog from "./FolioMoveDialog.tsx";
+import FolioSummaryField from "./FolioSummaryField.tsx";
+
+export interface FolioDocumentProps {
+  /**
+   * `undefined` → create mode.
+   */
+  folio?: Folio;
+  /**
+   * Create-mode only: the directory the new folio will land in (carried
+   * from `FolioCreatePage`'s `?dir=` resolution). Read only when `folio` is
+   * unset — an existing folio's real `directoryId` always wins once it
+   * exists. It is what the Move dialog opens on, so that creating a folio
+   * from inside a directory (via "+ Create → New folio") and then moving it
+   * starts from where the folio is about to land, not from the project root.
+   */
+  directoryId?: string;
+  draft: FolioDraft;
+  actions: UseFolioActionsResult;
+  /**
+   * Where the menubar row renders: a slot above all three panes, owned by
+   * `FolioWorkspaceShell`.
+   *
+   * It is a portal target purely for LAYOUT now. It used to be a necessity:
+   * the menubar had to be created inside MDXEditor's realm, the only place
+   * its formatting commands could be published from, so it was rendered
+   * through `renderToolbar` and portalled back up to where the design
+   * wanted it. With the formatting commands gone there is no realm and no
+   * second `toolbarSlot` — the row is plain React that happens to render
+   * somewhere else in the DOM.
+   */
+  chromeSlot: HTMLElement | null;
+  /**
+   * Which face the body shows. Owned by `FolioWorkspaceContent` because
+   * `useFolioActions` needs a toggle for `view.mode` (⌘E) and that is where
+   * the hook is called.
+   */
+  mode: MarkdownEditorMode;
+  /**
+   * The `[[` picker's entries and the rewritten markdown View mode shows.
+   * Computed one level up because find-in-folio has to key on the rendered
+   * string — see `FolioWorkspaceContent`.
+   */
+  element: ElementRef;
+  /**
+   * The rewritten markdown, computed by the workspace because
+   * `useFolioFind` needs it too. `LoreEditor` would derive the same value
+   * on its own; it is passed so both halves of the pane search and render
+   * the identical string.
+   */
+  rendered: string;
+  /**
+   * `false` for a protected folio — see `LoreEditor.imageUpload`.
+   */
+  imageUpload?: boolean;
+  /**
+   * Receives the live CodeMirror view so the workspace can dispatch
+   * formatting commands into it. `null` on unmount.
+   */
+  onEditorViewReady?: (view: EditorView | null) => void;
+}
+
+/**
+ * The document column: summary → divider → body. Body is either the
+ * `MarkdownEditor` (rendered or raw, per `props.mode`) or, for a
+ * protected-and-still-locked folio, `FolioLockedPanel` in its place.
+ *
+ * There is no chrome row above the body anymore. `FolioMetaBar` — the
+ * directory chip, the tag chips, and `#id · N words · N revisions` — was
+ * deleted with the tag feature (feedback #62): the directory is already
+ * shown by the tree, and the three counters were reporting numbers nobody
+ * acts on. Moving a folio survives that deletion because `folio.move` is a
+ * menubar action, which is where it was always reachable from anyway. The
+ * one control the row did carry, the view/edit toggle, now floats over the
+ * top-right of the pane — mounted in `FolioWorkspaceContent` so it does not
+ * scroll away with the document.
+ *
+ * Also owns the menubar chrome and the keyboard shortcuts that drive it.
+ * `useFolioShortcuts` is called HERE, not inside `FolioMenubar`,
+ * deliberately: this component never unmounts while a folio is open (only
+ * the `MarkdownEditor`/`FolioLockedPanel` ternary below swaps), so binding
+ * shortcuts here — once — keeps every `availableWhenLocked` action (the
+ * pane toggles, ⌘\, ⌘F, …) reachable by keyboard the whole time, including
+ * while `FolioMenubar` itself isn't mounted (locked).
+ *
+ * The mode is threaded into `useFolioShortcuts` AND into `FolioMenubar`,
+ * because two bindings belong to the editor while it holds the caret.
+ * ⌘F means the same thing either way and only changes implementation —
+ * this hook claims it for the find bar in View mode and stands aside for
+ * `@codemirror/search` in Edit, since a walk of the rendered pane's text
+ * nodes cannot see CodeMirror's virtualized viewport. ⌘D means two
+ * different things: duplicate-folio here, duplicate-line in the editor,
+ * which is why the menubar also stops showing its glyph in Edit mode.
+ * See `EDITOR_OWNED_BINDINGS` in `folioMenubarModel.ts`.
+ */
+const FolioDocument = (props: FolioDocumentProps): ReactElement => {
+  const { tr } = useI18n<I18n, "en">();
+  const [attachments] = useStore(currentFolioAttachmentsAtom);
+  const [project] = useStore(currentProjectAtom);
+  const [textSize] = useStore(folioTextSizeAtom);
+
+  useFolioShortcuts(
+    props.actions.handlers,
+    props.actions.actionState,
+    props.mode,
+  );
+
+  const values = props.draft.values;
+  // The hover card resolves a attachment preview from a precomputed list rather
+  // than a fetch, so it needs the same rows the resolver got.
+  const hoverAttachments = useMemo(
+    () =>
+      attachments.map((b) => ({
+        fileId: b.id,
+        shortId: b.shortId,
+        name: b.name,
+      })),
+    [attachments],
+  );
+
+  // Off unless the project says otherwise: an absent option reads as false,
+  // which is the read rule of the whole capability model. Off is also the
+  // right default here - the summary is written for `project_context`, so for
+  // a human reading a folio it is chrome between the title and the first line.
+  const summaryVisible = capabilityOption(project, "knowledge", "agentSummary");
+
+  // `props.actions.directoryId` (LIVE — moved by `confirmMove`'s own
+  // success), NOT `props.folio?.directoryId`. The latter is the
+  // route-loader snapshot, so after a successful in-session move the Move
+  // dialog would reopen on the OLD directory until a full reload. In create
+  // mode `props.actions.directoryId` is always `undefined` (no folio yet),
+  // so this falls through to the create-mode target directory.
+  const directoryId = props.actions.directoryId ?? props.directoryId;
+
+  return (
+    // `data-slot` is what `FolioTitleField` scopes its Enter-moves-to-body
+    // lookup to — the tree and the inspector carry `contenteditable` nodes
+    // of their own, so a document-wide query would land in the wrong one.
+    //
+    // `data-text-size` is the reading size, and it goes HERE rather than on
+    // either face: `main.css` resolves it to `--folio-text-size`, which the
+    // one rule under this slot applies to the rendered body and the editor
+    // together. The menubar writes the same atom without either component
+    // knowing about the other.
+    <div
+      data-slot="folio-document"
+      data-text-size={textSize.level}
+      className="flex flex-col gap-0"
+    >
+      {/* A LAYOUT portal, nothing more. The menubar used to be created
+          inside MDXEditor's realm and portalled up here, which forced a
+          `loadingChrome` stand-in for the second before the editor chunk
+          landed — the row was simply absent until then, and popped in. It
+          is plain React now, so it renders on the first paint like
+          everything else. */}
+      {props.chromeSlot &&
+        createPortal(
+          <FolioMenubar
+            handlers={props.actions.handlers}
+            state={props.actions.actionState}
+            saving={props.actions.saving}
+            dirty={props.draft.dirty}
+            mode={props.mode}
+          />,
+          props.chromeSlot,
+        )}
+
+      {/* Off unless the project opts in (Settings › Folios). The summary is
+          written for `project_context` / `folio_list`, so for a reader it is
+          chrome above the first line of prose. Hiding the field does not stop
+          it round-tripping — the draft still carries the stored value and
+          still saves it.
+
+          It is the ONLY chrome left above the body, so it now carries the
+          padding the deleted header row used to provide, and the rule below
+          renders with it rather than unconditionally: a divider with nothing
+          above it is not separating anything, it is just a line under the
+          menubar. */}
+      {summaryVisible && (
+        <>
+          <div className="px-8 pt-4">
+            <FolioSummaryField
+              value={values.summary}
+              onChange={(v) => props.draft.form.input.summary.set(v)}
+              unavailable={props.actions.actionState.isProtected}
+            />
+          </div>
+
+          {/* Edge to edge, unlike everything under it. The rule separates the
+              document's chrome from the document, so it has to reach the
+              pane's own edges — inside the prose measure it read as an
+              underline on the summary field rather than as a division of the
+              surface. */}
+          <div className="border-border border-t" />
+        </>
+      )}
+
+      {/* BODY — the only part still held to the 812px prose measure. This
+          wrapper used to live in `FolioWorkspaceContent` and enclose the
+          header and the rule as well, which is what kept all three the same
+          width. */}
+      <div className="mx-auto w-full max-w-[812px] px-8 py-10">
+        {props.actions.locked ? (
+          <FolioLockedPanel
+            onUnlock={props.actions.unlock}
+            onDelete={() => props.actions.handlers["folio.delete"]()}
+          />
+        ) : (
+          // Same hover card the reader gets. The provider delegates over the
+          // anchors `MarkdownView` renders, so one component serves View
+          // mode here and the read-only surfaces without either knowing
+          // about the other. Edit mode has no anchors to delegate over - it
+          // is raw markdown in CodeMirror.
+          <WikiLinkHoverProvider
+            projectId={project?.id ?? 0}
+            projectSlug={project?.slug ?? ""}
+            attachments={hoverAttachments}
+          >
+            <LoreEditor
+              element={props.element}
+              // `"document"` is what turns on the line-number gutter and the
+              // taller default: a folio body is long enough for "the table
+              // around line 40" to be a usable coordinate. The quest and
+              // epic description fields are `"field"` and get neither.
+              variant="document"
+              bare
+              value={values.content}
+              onChange={(v) => props.draft.form.input.content.set(v)}
+              placeholder={tr("folios.content-placeholder")}
+              imageUpload={props.imageUpload}
+              // CONTROLLED: the menubar and ⌘E own the mode here, so the
+              // editor must not render its own toggle or hold its own state.
+              mode={props.mode}
+              onViewReady={props.onEditorViewReady}
+            />
+          </WikiLinkHoverProvider>
+        )}
+      </div>
+
+      <FolioMoveDialog
+        open={props.actions.moveDialogOpen}
+        folioTitle={values.title.trim() || tr("folios.title-placeholder")}
+        currentDirectoryId={directoryId}
+        onCancel={props.actions.closeMoveDialog}
+        onConfirm={props.actions.confirmMove}
+      />
+
+      <FolioPassphraseDialog
+        open={props.actions.encryptDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) props.actions.closeEncryptDialog();
+        }}
+        title={tr("folios.protected.encrypt-title")}
+        description={tr("folios.protected.encrypt-description")}
+        submitLabel={tr("folios.protected.encrypt")}
+        requireConfirm
+        onSubmit={props.actions.confirmEncrypt}
+      />
+    </div>
+  );
+};
+
+export default FolioDocument;

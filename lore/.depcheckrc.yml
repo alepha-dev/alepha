@@ -12,6 +12,7 @@ ignores:
   # same way, since they left `apps/lore` (#E75).
   - "@lore/core"
   - "@lore/work"
+  - "@lore/knowledge"
   - "@vitejs/plugin-react"
   - "jsdom"
   - "@vitest/coverage-v8"

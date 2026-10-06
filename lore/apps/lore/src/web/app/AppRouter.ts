@@ -1,8 +1,8 @@
+import { KnowledgeRouter } from "@lore/knowledge/web";
 import { WorkRouter } from "@lore/work/web";
 import { $inject } from "alepha";
 
 import { DeployRouter } from "./DeployRouter.ts";
-import { KnowledgeRouter } from "./KnowledgeRouter.ts";
 
 /**
  * The page tree of the whole app, for what still asks for it in one piece

@@ -12,13 +12,10 @@ import { AppSecretController } from "./controllers/AppSecretController.ts";
 import { ArtifactController } from "./controllers/ArtifactController.ts";
 import { BlightController } from "./controllers/BlightController.ts";
 import { DeployController } from "./controllers/DeployController.ts";
-import { DirectoryController } from "./controllers/DirectoryController.ts";
 import { EstateCommandController } from "./controllers/EstateCommandController.ts";
 import { EstateController } from "./controllers/EstateController.ts";
 import { EstatePullController } from "./controllers/EstatePullController.ts";
 import { EstateSocketController } from "./controllers/EstateSocketController.ts";
-import { FolioAttachmentController } from "./controllers/FolioAttachmentController.ts";
-import { FolioController } from "./controllers/FolioController.ts";
 import { InsightsController } from "./controllers/InsightsController.ts";
 import { ProjectEstateController } from "./controllers/ProjectEstateController.ts";
 import { QualityController } from "./controllers/QualityController.ts";
@@ -33,8 +30,6 @@ import { EstateCredentialJobs } from "./jobs/EstateCredentialJobs.ts";
 import { QualityJobs } from "./jobs/QualityJobs.ts";
 import { SigilJobs } from "./jobs/SigilJobs.ts";
 import { EstateNotifications } from "./notifications/EstateNotifications.ts";
-import { DirectoryResourceKind } from "./resources/DirectoryResourceKind.ts";
-import { FolioResourceKind } from "./resources/FolioResourceKind.ts";
 import { AppSecretService } from "./services/AppSecretService.ts";
 import { AppService } from "./services/AppService.ts";
 import { ArtifactService } from "./services/ArtifactService.ts";
@@ -57,11 +52,6 @@ import { EstateCommandTransport } from "./services/EstateCommandTransport.ts";
 import { EstateService } from "./services/EstateService.ts";
 import { EstateStatsService } from "./services/EstateStatsService.ts";
 import { EstateTokenService } from "./services/EstateTokenService.ts";
-import { FolioAttachmentService } from "./services/FolioAttachmentService.ts";
-import { FolioDirectoryService } from "./services/FolioDirectoryService.ts";
-import { FolioHistoryService } from "./services/FolioHistoryService.ts";
-import { FolioNameService } from "./services/FolioNameService.ts";
-import { KnowledgeFileAccess } from "./services/KnowledgeFileAccess.ts";
 import { OpenBlightCounter } from "./services/OpenBlightCounter.ts";
 import { OpenBlightsMetric } from "./services/OpenBlightsMetric.ts";
 import { QualityService } from "./services/QualityService.ts";
@@ -93,14 +83,7 @@ export const LoreApi = $module({
     AlephaServerRateLimit,
   ],
   services: [
-    FolioNameService,
-    FolioDirectoryService,
-    FolioAttachmentService,
-    FolioHistoryService,
-    FolioResourceKind,
-    DirectoryResourceKind,
     BlightQuestHandBack,
-    KnowledgeFileAccess,
     DeployDashboard,
     DeployProjectCounts,
     BlightJobs,
@@ -171,9 +154,6 @@ export const LoreApi = $module({
     WebSocketEstateCommandTransport,
     QualityController,
     ArtifactController,
-    FolioController,
-    DirectoryController,
-    FolioAttachmentController,
     AppController,
     AppSecretController,
     SigilController,

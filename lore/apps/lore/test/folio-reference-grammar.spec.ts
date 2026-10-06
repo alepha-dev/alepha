@@ -1,4 +1,5 @@
 import { ProjectController, ResourceLinkService } from "@lore/core/api";
+import { FolioController } from "@lore/knowledge/api";
 import {
   EpicController,
   FeedbackController,
@@ -14,7 +15,6 @@ import { AlephaServer } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { FolioController } from "../src/api/controllers/FolioController.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { WikiLinkFixture } from "./fixtures/wikiLinks.ts";
 

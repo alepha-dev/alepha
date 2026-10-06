@@ -1,5 +1,6 @@
 import { ProjectController } from "@lore/core/api";
 import { ProjectTools } from "@lore/core/mcp";
+import { FolioTools } from "@lore/knowledge/mcp";
 import { FeedbackController } from "@lore/work/api";
 import { EpicTools, QuestTools, ReleaseTools } from "@lore/work/mcp";
 import { Alepha } from "alepha";
@@ -15,7 +16,6 @@ import { describe, expect, it } from "vitest";
 
 import { LoreApi } from "../src/api/index.ts";
 import { LoreMcp } from "../src/mcp/index.ts";
-import { FolioTools } from "../src/mcp/tools/FolioTools.ts";
 import { createTestMemberByProjectId } from "./fixtures/entities.ts";
 
 /**

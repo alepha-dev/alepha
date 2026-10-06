@@ -1,5 +1,6 @@
 import { ProjectController } from "@lore/core/api";
 import { ProjectTools } from "@lore/core/mcp";
+import { FolioTools } from "@lore/knowledge/mcp";
 import { EpicController } from "@lore/work/api";
 import { EpicTools, QuestTools } from "@lore/work/mcp";
 import { Alepha, AlephaError } from "alepha";
@@ -15,7 +16,6 @@ import { describe, it } from "vitest";
 
 import { LoreApi } from "../src/api/index.ts";
 import { LoreMcp } from "../src/mcp/index.ts";
-import { FolioTools } from "../src/mcp/tools/FolioTools.ts";
 import {
   createTestEpic,
   createTestFolio,

@@ -31,7 +31,6 @@
   "dependencies": {
     "@alepha/lore": "workspace:*",
     "@alepha/ui": "workspace:*",
-    "@codemirror/view": "^6.43.13",
     "@lore/core": "workspace:*",
     "@lore/deploy": "workspace:*",
     "@lore/knowledge": "workspace:*",

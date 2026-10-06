@@ -146,7 +146,7 @@ describe("@alepha/lore packaging", () => {
       ),
     );
 
-    for (const pkg of ["@lore/core", "@lore/work"]) {
+    for (const pkg of ["@lore/core", "@lore/work", "@lore/knowledge"]) {
       expect(manifest.peerDependencies[pkg]).toBe("*");
       expect(manifest.peerDependenciesMeta[pkg]).toEqual({ optional: true });
     }

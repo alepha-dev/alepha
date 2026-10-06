@@ -8,12 +8,9 @@ import { $module } from "alepha";
 import { LoreDashboardCatalog } from "@/api/dashboardCatalogModule.ts";
 
 import { AppRouter } from "./AppRouter.ts";
-import { folioTreeCollapsedAtom } from "./atoms/folioTreeCollapsedAtom.ts";
-import { projectDirectoriesAtom } from "./atoms/projectDirectoriesAtom.ts";
 import { DeployAccountRouter } from "./components/account/DeployAccountRouter.ts";
 import { DeployProjectLoader } from "./loaders/DeployProjectLoader.ts";
 import { DeployShell } from "./shell/DeployShell.ts";
-import { KnowledgeShell } from "./shell/KnowledgeShell.ts";
 
 export const LoreWebApp = $module({
   name: "lore.web.app",
@@ -29,12 +26,5 @@ export const LoreWebApp = $module({
     // metric registry, so the browser needs the declarative half of it.
     LoreDashboardCatalog,
   ],
-  services: [
-    AppRouter,
-    DeployAccountRouter,
-    DeployProjectLoader,
-    KnowledgeShell,
-    DeployShell,
-  ],
-  atoms: [projectDirectoriesAtom, folioTreeCollapsedAtom],
+  services: [AppRouter, DeployAccountRouter, DeployProjectLoader, DeployShell],
 });

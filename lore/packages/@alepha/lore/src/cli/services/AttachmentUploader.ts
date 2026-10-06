@@ -1,10 +1,10 @@
+import type { FolioAttachmentController } from "@lore/knowledge/api";
+import type { FolioController } from "@lore/knowledge/api";
 import type { QuestController } from "@lore/work/api";
 import { $inject, AlephaError, z } from "alepha";
 import { BadRequestError, HttpClient } from "alepha/server";
 import { $client } from "alepha/server/links";
 import { FileDetector, FileSystemProvider } from "alepha/system";
-import type { FolioAttachmentController } from "lore/api/controllers/FolioAttachmentController";
-import type { FolioController } from "lore/api/controllers/FolioController";
 
 import { LoreClientService } from "./LoreClientService.ts";
 

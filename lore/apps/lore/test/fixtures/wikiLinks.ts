@@ -6,10 +6,9 @@ import {
   type WikiLinkResolver,
   ElementReferenceRegistry,
 } from "@lore/core/web";
+import { KnowledgeShell } from "@lore/knowledge/web";
 import { WorkShell } from "@lore/work/web";
 import { Alepha } from "alepha";
-
-import { KnowledgeShell } from "../../src/web/app/shell/KnowledgeShell.ts";
 
 /**
  * The reference kinds as the app registers them (#E75, #Q2624): Knowledge's
