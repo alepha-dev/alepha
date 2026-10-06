@@ -37,13 +37,11 @@ class Probe {
  * Views and vitals, read back through the `$analytics()` datasets they are
  * now the only write for — see `SigilIngestService.absorbViews`'s doc.
  *
- * `groupBy` names every dimension the legacy tables carried as columns, so
- * these come back as close to "one row per hit-shape" as the dataset allows
- * — `readViews` mirrors `sigilViewsHourly`'s old grain exactly (one row per
- * `(hour, path, country)`); `readVitals` cannot: a bucket is a dimension on
- * the dataset rather than one of seven columns on one row, so a metric/path
- * with two populated buckets comes back as two rows, not one row with two
- * non-zero columns.
+ * `groupBy` names every dimension a hit carries, so these come back as close
+ * to "one row per hit-shape" as the dataset allows: `readViews` returns one
+ * row per `(hour, path, country)`; `readVitals` returns one row per bucket,
+ * since a bucket is a dimension on the dataset, so a metric/path with two
+ * populated buckets comes back as two rows.
  */
 const readReferrers = async (analytics: DeployAnalytics, sigilId: string) => {
   const result = await analytics.views.query({
@@ -580,65 +578,6 @@ describe("sigil ingest", () => {
         where: { projectId: { eq: project.id } },
       }),
     ).toHaveLength(0);
-  });
-
-  /*
-    Blights, Beacon and Vitals are the sigil's own decision now, gated only by
-    the project's `sigils` master switch — not by the three project-level
-    flags those trackers used to share. `SigilController.updateSigil` is the
-    per-app lever; the project flags are `@deprecated` and read by nothing.
-
-    One test per tracker, each with the project flag explicitly off, so the
-    only thing being proven is that it no longer has any effect.
-  */
-  it("writes views regardless of the retired Beacon project flag", async () => {
-    const { analytics, probe, sigil, post } = await setup();
-
-    const res = await post({
-      views: [{ path: "/home" }],
-      visitor: "v1",
-      country: "FR",
-    });
-    expect(res.status).toBe(204);
-
-    expect(sigil.kinds).toContain("beacon");
-    expect(await readViews(analytics, sigil.id)).toHaveLength(1);
-    // The daily visitor hash is a view-side write too, and it is the one that
-    // is personal data — it follows the same gate.
-    expect(
-      await probe.uniques.findMany({ where: { sigilId: { eq: sigil.id } } }),
-    ).toHaveLength(1);
-  });
-
-  it("writes vitals regardless of the retired Vitals project flag", async () => {
-    const { analytics, sigil, post } = await setup();
-
-    const res = await post({
-      vitals: [{ path: "/home", metric: "lcp", value: 900 }],
-    });
-    expect(res.status).toBe(204);
-
-    expect(sigil.kinds).toContain("vitals");
-    expect(await readVitals(analytics, sigil.id)).toHaveLength(1);
-  });
-
-  it("writes errors regardless of the retired Blights project flag", async () => {
-    const { probe, project, sigil, post } = await setup();
-
-    const res = await post({ errors: [anError()] });
-    expect(res.status).toBe(204);
-
-    expect(sigil.kinds).toContain("blights");
-    expect(
-      await probe.errorGroups.findMany({
-        where: { sigilId: { eq: sigil.id } },
-      }),
-    ).toHaveLength(1);
-    expect(
-      await probe.blights.findMany({
-        where: { projectId: { eq: project.id } },
-      }),
-    ).toHaveLength(1);
   });
 
   it("writes nothing at all when the sigils master switch is off", async () => {

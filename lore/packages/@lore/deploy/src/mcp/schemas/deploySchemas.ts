@@ -1,5 +1,5 @@
 import {
-  APP_NAME_MAX_LENGTH,
+  appNameSchema,
   releaseTagSchema,
   projectParamsSchema,
 } from "@lore/core/schemas";
@@ -10,16 +10,14 @@ import { z } from "alepha";
  *
  * Restated here rather than imported from `appInstanceSchemas.ts` because the
  * DESCRIPTIONS differ: there the pair names a row to read or edit, here it
- * names where code is about to run. The bound is imported either way, so the
+ * names where code is about to run. Both take core's `appNameSchema`, so the
  * two cannot promise different lengths.
  */
-const nameSchema = z.string().min(1).max(APP_NAME_MAX_LENGTH);
-
 const instanceParamsSchema = projectParamsSchema.extend({
-  app: nameSchema.describe(
+  app: appNameSchema.describe(
     "Which app to deploy. One of the names `app_instance_list` returns, never a new one: there is no app entity, so a typo is silently a different app with no deployed copy and no estate.",
   ),
-  env: nameSchema.describe(
+  env: appNameSchema.describe(
     "Which copy of it. `app_instance_list` returns the pairs that exist; a pair with no row is refused rather than created.",
   ),
 });
@@ -71,12 +69,12 @@ export const deployStatusParamsSchema = projectParamsSchema.extend({
     .uuid()
     .describe("The run's id, as `deploy_start` answered it.")
     .optional(),
-  app: nameSchema
+  app: appNameSchema
     .describe(
       "Instead of a run id: the app whose copy to read the newest run of.",
     )
     .optional(),
-  env: nameSchema
+  env: appNameSchema
     .describe("Instead of a run id: which copy of that app.")
     .optional(),
 });

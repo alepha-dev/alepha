@@ -139,11 +139,9 @@ const dayUtc = (ctx: TestContext, daysAgo: number): string => {
  * `SigilJobs` — the sweep that stops `sigil_uniques_daily` growing without
  * bound.
  *
- * Views used to be swept here too (`collapseViews`); that half was deleted
- * once `sigil_views_hourly` stopped being written or read at all, and
- * retention for its `$analytics()` replacement moved onto
- * `AnalyticsRollupJobs` in `alepha/api/analytics`, exercised by that package's
- * own suite rather than this one.
+ * Retention for views and vitals is not swept here: they live in
+ * `$analytics()` datasets, whose rollup is `AnalyticsRollupJobs` in
+ * `alepha/api/analytics`, exercised by that package's own suite.
  *
  * Driven through `DateTimeProvider.travel()` rather than by seeding
  * already-old rows: the sweep's whole contract is "what happens when a bucket

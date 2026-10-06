@@ -10,32 +10,11 @@ import type { InsightsController } from "../../../../../api/controllers/Insights
 import type { InsightsDimensionResource } from "../../../../../api/schemas/insightsDimensionResourceSchema.ts";
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
 import {
-  APP_INSIGHTS_FILTER_KEYS,
+  APP_INSIGHTS_ROW_FILTER,
   useAppInsightsFilters,
 } from "./useAppInsights.ts";
 
 type Dimension = InsightsDimensionResource["dimension"];
-
-/**
- * Which filter a row of this leaderboard sets when it is clicked.
- *
- * `entryPath` is the one that is not its own filter: it groups by `path` and
- * differs only in the measure, so filtering by a landing page is filtering by
- * that path. Getting this wrong would send `?entryPath=` to an endpoint that
- * declares no such dimension.
- */
-const ROW_FILTER: Record<Dimension, (typeof APP_INSIGHTS_FILTER_KEYS)[number]> =
-  {
-    country: "country",
-    path: "path",
-    entryPath: "path",
-    campaign: "campaign",
-    device: "device",
-    referrer: "referrer",
-    browser: "browser",
-    os: "os",
-    auth: "auth",
-  };
 
 // Literal key strings (not template-interpolated) so the i18n audit sees them.
 const TITLE: Record<
@@ -174,7 +153,10 @@ const AppAnalyticsDimension = () => {
               // The value becomes a filter on the overview. That is the loop:
               // the leaderboard is how a filter is reached, and the overview is
               // where it means something.
-              query: { ...filters, [ROW_FILTER[dimension]]: row.value },
+              query: {
+                ...filters,
+                [APP_INSIGHTS_ROW_FILTER[dimension]]: row.value,
+              },
             })
           }
           columns={{

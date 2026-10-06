@@ -1,4 +1,8 @@
-import { APP_NAME_MAX_LENGTH, projectParamsSchema } from "@lore/core/schemas";
+import {
+  APP_NAME_MAX_LENGTH,
+  appNameSchema,
+  projectParamsSchema,
+} from "@lore/core/schemas";
 import { z } from "alepha";
 
 import { appInstanceResourceSchema } from "../../api/schemas/appInstanceResourceSchema.ts";
@@ -10,8 +14,6 @@ import { appInstanceResourceSchema } from "../../api/schemas/appInstanceResource
  * `appNameSchema` on the way in, and a description promising more than the
  * handler accepts costs the caller a 400 it cannot see coming.
  */
-const nameSchema = z.string().min(1).max(APP_NAME_MAX_LENGTH);
-
 const APP_RULE = `A slug, not a title: lowercase letters, digits and interior hyphens only (\`^[a-z0-9]([a-z0-9-]*[a-z0-9])?$\`), at most ${APP_NAME_MAX_LENGTH} characters. Leading and trailing whitespace is trimmed and capitals are lowercased, so \`Club\` is accepted and stored as \`club\`; a space, an underscore or any other character is refused.`;
 
 /**
@@ -51,8 +53,8 @@ export const appInstanceListResultSchema = z.object({
 // -----------------------------------------------------------------------------
 
 export const appInstanceGetParamsSchema = projectParamsSchema.extend({
-  app: nameSchema.describe(`Which app. ${APP_RULE}`),
-  env: nameSchema.describe(`Which copy of it. ${APP_RULE}`),
+  app: appNameSchema.describe(`Which app. ${APP_RULE}`),
+  env: appNameSchema.describe(`Which copy of it. ${APP_RULE}`),
 });
 
 export const appInstanceGetResultSchema = appInstanceSchema;
@@ -62,10 +64,10 @@ export const appInstanceGetResultSchema = appInstanceSchema;
 // -----------------------------------------------------------------------------
 
 export const appInstanceCreateParamsSchema = projectParamsSchema.extend({
-  app: nameSchema.describe(
+  app: appNameSchema.describe(
     `Which app this is a copy of, e.g. \`club\`. ${APP_RULE} Required, with no default: there is no app entity to look one up from.`,
   ),
-  env: nameSchema.describe(
+  env: appNameSchema.describe(
     `Which copy, e.g. \`production\`, \`staging\`, \`b14-production\`. ${APP_RULE} **Required, and deliberately without a default**: omitting it on an app that already has a \`production\` would either collide or silently make a second copy, and both are worse than being asked.`,
   ),
   url: z
@@ -90,14 +92,14 @@ export const appInstanceCreateResultSchema = appInstanceSchema;
 // -----------------------------------------------------------------------------
 
 export const appInstanceUpdateParamsSchema = projectParamsSchema.extend({
-  app: nameSchema.describe("Which app the instance to change belongs to."),
-  env: nameSchema.describe("Which copy of it."),
-  newApp: nameSchema
+  app: appNameSchema.describe("Which app the instance to change belongs to."),
+  env: appNameSchema.describe("Which copy of it."),
+  newApp: appNameSchema
     .optional()
     .describe(
       `Rename the app half. ${APP_RULE} Omit to leave it alone. Both halves are the URL, so renaming either moves the page.`,
     ),
-  newEnv: nameSchema
+  newEnv: appNameSchema
     .optional()
     .describe(
       `Rename the env half. ${APP_RULE} Omit to leave it alone. Renaming does NOT touch the deployed key: \`SIGIL_KEY\` carries the project slug, not these names, so nothing has to be redeployed or rotated.`,
@@ -125,8 +127,8 @@ export const appInstanceUpdateResultSchema = appInstanceSchema;
 // -----------------------------------------------------------------------------
 
 export const appInstanceDeleteParamsSchema = projectParamsSchema.extend({
-  app: nameSchema.describe("Which app the instance to remove belongs to."),
-  env: nameSchema.describe("Which copy of it."),
+  app: appNameSchema.describe("Which app the instance to remove belongs to."),
+  env: appNameSchema.describe("Which copy of it."),
 });
 
 export const appInstanceDeleteResultSchema = z.object({ ok: z.boolean() });

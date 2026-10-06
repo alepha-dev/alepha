@@ -6,28 +6,19 @@
  *
  * @module
  */
-export {
-  packedArtifact,
-  type TarEntry,
-  gzip,
-  tar,
-  zstd,
-} from "./artifactTarball.ts";
+export { packedArtifact, type TarEntry, gzip, tar } from "./artifactTarball.ts";
 export { DeployTestEntities } from "./entities.ts";
 export { MemoryCloudflareProbeService } from "./MemoryCloudflareProbeService.ts";
 export {
   childManifest,
   dockerManifestList,
   MemoryRegistryTransport,
-  ociIndex,
-  type RegistryAnswer,
 } from "./MemoryRegistryTransport.ts";
 
 export { default as ProjectArtifacts } from "../web/app/components/project/artifacts/ProjectArtifacts.tsx";
 
 // Core's helpers, for a Deploy spec that needs a project or a member.
 export {
-  createTestMember,
   createTestMemberByProjectId,
   createTestProject,
 } from "@lore/core/testing";

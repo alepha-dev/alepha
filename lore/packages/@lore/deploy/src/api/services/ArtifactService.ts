@@ -703,8 +703,9 @@ export class ArtifactService {
   public static readonly MUTABLE_TAG = "latest";
 
   /**
-   * The two formats, as the service names them. `artifactFormatSchema` is the
-   * validated list; these are so a query filter cannot be a typo.
+   * The two formats an artifact row records in `artifacts.format`: `archive`
+   * (bytes Lore holds) and `image` (a reference only). Named here so a query
+   * filter cannot be a typo.
    */
   public static readonly ARCHIVE = "archive";
   public static readonly IMAGE = "image";

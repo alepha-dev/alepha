@@ -4,6 +4,7 @@ import { useClient, useQuery, useStore } from "alepha/react";
 import { useQueryParams } from "alepha/react/router";
 
 import type { InsightsController } from "../../../../../api/controllers/InsightsController.ts";
+import type { InsightsDimensionResource } from "../../../../../api/schemas/insightsDimensionResourceSchema.ts";
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
 import { appInsightsFiltersSchema } from "./appInsightsFiltersSchema.ts";
 
@@ -36,6 +37,30 @@ export const APP_INSIGHTS_FILTER_KEYS = [
 ] as const;
 
 export type AppInsightsFilterKey = (typeof APP_INSIGHTS_FILTER_KEYS)[number];
+
+/**
+ * Which filter a leaderboard row sets when it is clicked, on the overview and
+ * on a dimension's own page alike.
+ *
+ * `entryPath` is the one that is not its own filter: it groups by `path` and
+ * differs only in the measure, so filtering by a landing page is filtering by
+ * that path. Getting this wrong would send `?entryPath=` to an endpoint that
+ * declares no such dimension.
+ */
+export const APP_INSIGHTS_ROW_FILTER: Record<
+  InsightsDimensionResource["dimension"],
+  AppInsightsFilterKey
+> = {
+  country: "country",
+  path: "path",
+  entryPath: "path",
+  campaign: "campaign",
+  device: "device",
+  referrer: "referrer",
+  browser: "browser",
+  os: "os",
+  auth: "auth",
+};
 
 /**
  * The whole page state, read from and written to the URL.

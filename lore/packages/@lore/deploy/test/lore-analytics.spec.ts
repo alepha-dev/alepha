@@ -21,13 +21,9 @@ import { LoreDeployApi } from "../src/api/index.ts";
 import { sigils } from "../src/schemas/index.ts";
 
 /**
- * A provider that always fails to record. Used to prove that once
- * `SigilIngestService` writes views and vitals through `$analytics()` alone
- * (Task 14 retired the dual-write into `sigilViewsHourly` /
- * `sigilVitalsHourly` this file used to also assert on), a failure on that
- * write is no longer swallowed — see `SigilIngestService.absorbViews`'s doc
- * for why the old mirror's failure-isolating try/catch does not survive the
- * legacy write it used to protect.
+ * A provider that always fails to record. Used to prove that a failure on
+ * the `$analytics()` write, the only write for views and vitals, is not
+ * swallowed: see `SigilIngestService.absorbViews`'s doc.
  */
 class ThrowingAnalyticsProvider extends MemoryAnalyticsProvider {
   public override async record(
@@ -177,9 +173,8 @@ describe("Lore analytics datasets", () => {
   });
 
   /**
-   * A real ingest call lands in the dataset — the one and only write for
-   * views and vitals now that Task 14 retired the dual-write into
-   * `sigilViewsHourly` / `sigilVitalsHourly`.
+   * A real ingest call lands in the dataset, the one and only write for
+   * views and vitals.
    */
   it("writes a real ingest call into the dataset", async () => {
     const { analytics, sigil, post } = await setup();

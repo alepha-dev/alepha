@@ -37,35 +37,13 @@ import AppAnalyticsLeaderboard, {
   type AppAnalyticsLeaderboardSegment,
 } from "./AppAnalyticsLeaderboard.tsx";
 import AppInsightsControls from "./AppInsightsControls.tsx";
-import { type AppInsightsFilterKey, useAppInsights } from "./useAppInsights.ts";
+import { APP_INSIGHTS_ROW_FILTER, useAppInsights } from "./useAppInsights.ts";
 
 // Chart palette — `ChartContainer` exposes each key as a `--color-<key>`
 // CSS variable so the bars track the theme + dark mode.
 const viewsChartConfig = {
   views: { label: "Views", color: "var(--chart-1)" },
 } satisfies ChartConfig;
-
-/**
- * Which leaderboard row sets which filter.
- *
- * `entryPath` is the one that is not its own filter: it groups by `path` and
- * differs only in the measure, so narrowing to a landing page is narrowing to
- * that path.
- */
-const ROW_FILTER: Record<
-  InsightsDimensionResource["dimension"],
-  AppInsightsFilterKey
-> = {
-  country: "country",
-  path: "path",
-  entryPath: "path",
-  campaign: "campaign",
-  device: "device",
-  referrer: "referrer",
-  browser: "browser",
-  os: "os",
-  auth: "auth",
-};
 
 /**
  * Privacy-first pageview analytics for one app, in one dense overview.
@@ -139,7 +117,12 @@ const AppAnalytics = () => {
     dimension: InsightsDimensionResource["dimension"],
     value: string,
   ) =>
-    setFilters({ ...filters, range, traffic, [ROW_FILTER[dimension]]: value });
+    setFilters({
+      ...filters,
+      range,
+      traffic,
+      [APP_INSIGHTS_ROW_FILTER[dimension]]: value,
+    });
 
   /**
    * A row's share of the window's views, whole percent.
