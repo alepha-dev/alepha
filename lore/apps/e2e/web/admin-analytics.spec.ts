@@ -14,13 +14,13 @@ import { signInAsAdmin } from "./_helpers.ts";
  * live in an unmounted popup where `getByText` would resolve them and then
  * fail the visibility check.
  *
- * The admin account is auto-promoted on first login because
- * `playwright.config.ts` sets `ADMIN_EMAIL=admin@example.com` for the
- * webServer, the same pattern as `admin-user-detail.spec.ts`.
+ * The admin account is auto-promoted on first login because `_fixtures.ts`
+ * passes `ADMIN_EMAIL` to each worker's server, the same pattern as
+ * `admin-user-detail.spec.ts`.
  */
 test.describe("admin analytics", () => {
   test("lists datasets and runs an empty query", async ({ page }) => {
-    // The account is created once by `global-setup.ts`; this only signs in.
+    // The account is created once per worker by `_fixtures.ts`; this only signs in.
     await signInAsAdmin(page);
 
     await page.goto("/admin/analytics");

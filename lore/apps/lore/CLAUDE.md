@@ -1,6 +1,6 @@
 # Alepha Lore
 
-Project management app built with [Alepha](https://github.com/alepha-dev/alepha). Users create **projects**, forge **quests** with objectives, invite **members**, and progress together across **areas**. The RPG vocabulary describes the work, never the person — there is no XP, gold, level or achievement system (see "De-gamification" below).
+Project management app built with [Alepha](https://github.com/alepha-dev/alepha). Users create **projects**, forge **quests** with objectives, invite **members**, and progress together across **areas**. The RPG vocabulary describes the work, never the person — there is no XP, gold, level or achievement system (see "De-gamification" in [`packages/@lore/core/CLAUDE.md`](../../packages/@lore/core/CLAUDE.md)).
 
 It has since grown well past a quest tracker. The load-bearing surfaces today are **quests** (roadmap + in-flight work), **folios** (project memory, wiki-linked, optionally end-to-end encrypted, and — since the 2026-08 rename — including the directory tree + binary blobs that used to be a separate "Archive" module), **feedback** (inbound bug/feature triage), and **blights** (deduplicated crash telemetry from partner sites via **sigils**). All four are exposed over **MCP**, which is the primary consumer.
 
@@ -18,11 +18,11 @@ The production Alepha Lore instance hosts the project we actually use to run thi
 
 **Write back what's worth keeping.** When a session produces a non-obvious decision, gotcha, or architectural fact about Lore/Alepha, persist it as a folio (`folio_create` / `folio_update` with a good `summary`). When in-flight work changes scope or completes, reflect it on the matching quest. Conversation history is ephemeral; folios and quests are the project's long-term memory.
 
-Lore's vocabulary has been renamed twice. Originally the codebase used the plain technical names `project`/`task`/`package`/`players`/`analytics`/`complexity`; a first rename swapped every one of those for RPG flavor — `campaign`/`quest`/`zone`/`member`/`chronicles`/`difficulty` — across code identifiers, DB tables, HTTP routes, MCP tools and URL params. The **2026-08 great rename** partially reversed that: the top-level container went back to the plain, technical **`project`** (campaign → project, `/c/:campaignId` → `/:projectSlug`, `campaign_*` MCP tools → `project_*`), because "campaign" read as more RPG-themed than the container itself deserved. The RPG vocabulary that describes the _work inside_ a project was kept and in some cases sharpened: **quest**, member, folio, blight, sigil are all still RPG-flavored on purpose (the F/C/B/A/S difficulty ranks were part of that list until 2026-08-20, when the whole difficulty mechanic was erased: see "De-gamification" in `packages/@lore/core/CLAUDE.md`). A later de-RPG pass (2026-08-09) then took **zone → `area`**: it named the functional part of the system a quest belongs to — "analogous to an Epic in Jira" by its own MCP description — and the map metaphor was carrying no weight. Column, route, `$page` name, MCP param and both locales moved together (FR: _Domaine_); the CSV importer still accepts a `zone` header so pre-rename exports keep working. Three other nouns were renamed in the same pass for clarity rather than theme: Petitions → **Feedback**, Chapters → **Milestones**, and Chronicles → **Reports** (with Reports▸Party → Reports▸Members). The old standalone "Archive" module (directory tree + blobs) was folded entirely into **Folios** — same entities, same MCP tools, one mental model instead of two. A **user** is the account; a **member** is that user's membership row in a project. Identity (name, picture) always comes from the account — the per-project "character" concept was removed in the 2026-07 de-gamification pass.
+Lore's vocabulary has been renamed twice. Originally the codebase used the plain technical names `project`/`task`/`package`/`players`/`analytics`/`complexity`; a first rename swapped every one of those for RPG flavor — `campaign`/`quest`/`zone`/`member`/`chronicles`/`difficulty` — across code identifiers, DB tables, HTTP routes, MCP tools and URL params. The **2026-08 great rename** partially reversed that: the top-level container went back to the plain, technical **`project`** (campaign → project, `/c/:campaignId` → `/:projectSlug`, `campaign_*` MCP tools → `project_*`), because "campaign" read as more RPG-themed than the container itself deserved. The RPG vocabulary that describes the _work inside_ a project was kept and in some cases sharpened: **quest**, member, folio, blight, sigil are all still RPG-flavored on purpose (the F/C/B/A/S difficulty ranks were part of that list until 2026-08-20, when the whole difficulty mechanic was erased: see "De-gamification" in `packages/@lore/core/CLAUDE.md`). A later de-RPG pass (2026-08-09) then took **zone → `area`**: it named the functional part of the system a quest belongs to — "analogous to an Epic in Jira" by its own MCP description — and the map metaphor was carrying no weight. Column, route, `$page` name, MCP param and both locales moved together (FR: _Domaine_). Three other nouns were renamed in the same pass for clarity rather than theme: Petitions → **Feedback**, Chapters → **Milestones**, and Chronicles → **Reports** (with Reports▸Party → Reports▸Members). The old standalone "Archive" module (directory tree + blobs) was folded entirely into **Folios** — same entities, same MCP tools, one mental model instead of two. A **user** is the account; a **member** is that user's membership row in a project. Identity (name, picture) always comes from the account — the per-project "character" concept was removed in the 2026-07 de-gamification pass.
 
 A fourth pass (2026-08-30, epic #14) took **Milestone → `release`**: table, entity, controller, jobs, routes, `$page` names, components, both locales and the specs. It is a rename plus a **wipe** — every milestone row was deleted and Releases start empty in every project — because the two are not the same model. A milestone was a time window that collected whatever happened to complete inside it; a release is a named goal (`0.28.0`, `demo-1`) that **holds** the epics and quests due to ship in it. Membership is an assignment, not a window. Two identifiers deliberately did **not** move with it at the time, `projects.features.milestones` (a REQUIRED key inside a JSON column, see the incident below) and `projects.milestoneDuration`; both columns were dropped with #E74. Migration: `20260830112947_milestones_to_releases`, `DELETE` + two `RENAME`s, zero `DROP TABLE`.
 
-A project may name **one** of its open releases the **default** (epic #E48, `releases.defaultSince`): where a completed quest that names no release, and inherits none from its epic, lands, and what an epic begun without a release takes and carries down to its own release-less quests. ⚠️ **Not a third state.** A default release is still `open`, `ReleaseState` still has exactly two values, and the UI draws a second orthogonal chip beside the state one - folding it in would make the state filter lie. A fallback rather than a plan: zero defaults is normal, creating a release never picks one, publishing the default clears it on that row (otherwise the next completion could not close) and hands it to the release next in line - the lowest open release above it whose patch is 0, never a patch, a prerelease, a named tag or anything older (`DefaultReleaseService.successor`) - and reopening does not restore it. That hand-off is a second, best-effort write after the publish patch (D1 has no transaction): if it fails the project is left with no default, never with a failed publish. The swap is a single `UPDATE ... CASE ... RETURNING` in `DefaultReleaseService` with **no** partial unique index behind it - SQLite checks uniqueness per row as the update walks, so the guard would throw mid-swap. Written up in `docs/lore/1-guides/8-releases.md`.
+A project may name **one** of its open releases the **default** (epic #E48, `releases.defaultSince`): where a completed quest that names no release, and inherits none from its epic, lands, and what an epic begun without a release takes and carries down to its own release-less quests. ⚠️ **Not a third state.** A default release is still `open`, `ReleaseState` still has exactly two values, and the UI draws a second orthogonal chip beside the state one - folding it in would make the state filter lie. A fallback rather than a plan: zero defaults is normal, creating a release never picks one, publishing the default clears it on that row (otherwise the next completion could not close) and hands it to the release next in line - the lowest open release above it whose patch is 0, never a patch, a prerelease, a named tag or anything older (`DefaultReleaseService.successor`) - and reopening does not restore it. That hand-off is a second, best-effort write after the publish patch (D1 has no transaction): if it fails the project is left with no default, never with a failed publish. The swap is a single `UPDATE ... CASE ... RETURNING` in `DefaultReleaseService` with **no** partial unique index behind it - SQLite checks uniqueness per row as the update walks, so the guard would throw mid-swap. Written up in `docs/1-guides/8-releases.md`.
 
 All user-facing strings still go through `I18n.ts` for EN/FR localization.
 
@@ -48,9 +48,8 @@ apps/lore/
 │   ├── providers/        # LoreSigilSinkProvider: Lore reporting on itself, in process
 │   └── web/admin/        # Lore's pages inside the shared admin shell
 ├── test/                 # Scenario specs: they span several packages, and boot through bootLore()
-├── e2e/                  # Playwright specs (one file per feature)
 ├── migrations/sqlite/    # Drizzle migrations (D1 / SQLite), the whole app's
-├── scripts/              # inventory, rehearsal, benchmarks
+├── scripts/              # inventory, rehearsal, font fetch
 └── public/               # Static assets served at /
 ```
 
@@ -58,17 +57,15 @@ apps/lore/
 
 **Specs.** A spec whose subject is one package lives in that package's `test/` and boots its module alone. `apps/lore/test` holds the scenario specs, the ones that need several packages registered, and boots them with `bootLore(alepha, layers)` (`test/fixtures/bootLore.ts`): `api`, `mcp`, `web`, or `routes` (every router and account page, without the UI behind them). The migration specs live here too, because the migrations are the app's.
 
-`tw-animate-css` is the app's own dependency: generic enter/exit keyframe utilities used from Tailwind classes (replaces the old `animate.css`).
-
 ## Commands
 
 ```bash
 yarn dev               # Dev server (HMR) on http://localhost:3303
 yarn start             # Prod-like (build + node dist) on http://localhost:3000
 yarn build             # Production build
-yarn typecheck         # tsc --noEmit
-yarn lint              # oxlint --fix, then oxfmt
-yarn test              # vitest run
+yarn typecheck         # alepha typecheck
+yarn lint              # alepha lint
+yarn test              # alepha test
 yarn db:generate       # Generate new migration from entity changes
 yarn v                 # From the repo root: lint, typecheck, audits, unit tests, build, both e2e suites (apps/e2e)
 yarn v --fast          # The inner loop: stops after the unit tests. CI stays the gate
@@ -305,7 +302,7 @@ npx wrangler d1 execute lore-production --remote --json --command "SELECT name F
 ```
 
 The companion defect — why no blight was ever raised for any of it — is under
-"Sigils, Blights, Beacon, Vitals" above; both are written up in folio #82.
+"Sigils, Blights, Beacon, Vitals" in [`packages/@lore/deploy/CLAUDE.md`](../../packages/@lore/deploy/CLAUDE.md); both are written up in folio #82.
 
 ### ⚠️ Dropping a conjunct from a gate is a data migration with no SQL (accepted, 2026-08-06)
 
@@ -373,43 +370,19 @@ UPDATE alepha_sequences SET name = 'feedbackShortId' WHERE name = 'petitionShort
 
 ## Tests
 
-### ⚠️ Two vitest configs, and neither runner can catch what the other is missing (2026-08-06 / 2026-08-09)
+### Two vitest runners, one file list (2026-08-06 / 2026-08-09)
 
-**Verify with `yarn test` from the repo root.** That is what CI runs, and the workspace command does not stand in for it.
+**Verify with `yarn test` from the repo root**: that is what CI runs. It and `yarn w lore test` collect the same files with the same settings, because the root `vitest.config.ts` spreads each workspace's `projects` and every workspace config names only itself and a `jsdom` flag through `workspaceProjects` (`scripts/vitest.projects.ts`). A runner setting goes there, never in a caller.
 
-The root `vitest.config.ts`'s "node" project has no `include` filter (removed to keep WebStorm happy), so it collects every spec in the repo — lore's included — under the _root_ config. `apps/lore/vitest.config.ts` is never consulted from the root; it only applies to `yarn w lore test`. **One hazard, two faces** — it has now produced a red suite in each direction, and the direction is not the lesson:
+Before that, the two runners diverged twice, once in each direction: a path alias present only in the app config (a spec green in the workspace, dead at import time from the root), and Node ≥ 25's native `localStorage` shadowing jsdom's, disabled only at the root (`useFolioPanes.browser.spec.tsx` red in the workspace while CI stayed green). Both are the shape of the `ADD COLUMN … NOT NULL` trap above, a check that could not have gone red. Guarding the spec instead (`window.localStorage?.clear()`) was rejected: it would pass while running in the wrong environment.
 
-**Face 1 — root red, workspace green (`@/` alias).** It stayed hidden because no lore spec had ever imported `AppRouter.ts`, which is the first thing that reaches `@/`-aliased app source transitively. `test/app-routes.spec.ts` did, and died at import time under `yarn test` (`Cannot find package '@/api/schemas/…'`) while passing under `yarn w lore test` — the `@/` alias it needed had just been added to `apps/lore/vitest.config.ts`, the one file the workspace command loads and the root command ignores. The command used to verify the fix was structurally incapable of failing on it.
-
-**Face 2 — workspace red, root green (`execArgv`).** `useFolioPanes.browser.spec.tsx` failed all 8 cases under `yarn w lore test` with `Cannot read properties of undefined (reading 'clear')` on `window.localStorage.clear()`, and passed under `yarn test`. Node ≥ 25 ships a native Web Storage global; vitest's jsdom environment will not overwrite a global that already exists, so the unbacked native `localStorage` shadows jsdom's real `Storage`. The root config disables it with `execArgv: ["--no-experimental-webstorage"]`; the app config had never grown the line. CI runs the root command, so CI was green and had always been green — the failure only ever appeared under the command a developer working inside `apps/lore` reaches for first.
-
-Both are the same shape as the `ADD COLUMN … NOT NULL` trap below — a check that could not have gone red — with a different mechanism: wrong runner, not empty database.
-
-**The fix for face 2 was structural, not the missing line.** The browser project now comes from `workspaceProjects` in the `scripts/vitest.projects.ts`, which every workspace config calls with nothing but its own name and a `jsdom` flag. Add a jsdom setting there, never to a caller. Guarding the spec instead (`window.localStorage?.clear()`) was rejected: it would pass while still running in the wrong environment, so every assertion about persisted pane preferences would be testing nothing.
-
-Notable specs (Vitest, in-memory SQLite), in the `test/` of the package that owns their subject, or in `apps/lore/test` when they span packages:
+Notable specs in `apps/lore/test` (Vitest, in-memory SQLite). A spec whose subject is one package is listed in that package's `CLAUDE.md`:
 
 - `mcp-security.spec.ts` — MCP auth, API keys, user isolation
-- `project-reports.spec.ts` — reports aggregation
-- `project-leave.spec.ts` — `leaveProject` (owner-forbidden, no-op, member removal)
-- `project-capabilities.spec.ts` / `project-capabilities-read.spec.ts` / `project-capabilities-migration.spec.ts` / `capability-gate.spec.ts` / `route-capability-guards.spec.ts` - the capability model: the write path, the cached and memoised read, the backfill, the gate, and the route guards
-- `project-owns-guard.spec.ts` / `project-relations.spec.ts` — `$owns` gating and relational reads
-- `release-changelog.spec.ts` — the changelog reads what is ATTACHED to a release (`quests.releaseId`), not what completed inside a time window. Its `Probe` writes the FK directly because no user-facing surface sets it yet
-- `quest-csv-formatter.spec.ts` - the CSV export, read back through a test-only CSV reader (quest import, Trello included, was deleted in #E48)
-- `quest-objective-history.spec.ts` — objective state history tracking
-- `quest-reminder.spec.ts` — quest reminder/notification logic
-- `quest-feedback-link.spec.ts` — feedback-to-quest promotion linkage
-- `feedback-attachment.spec.ts` / `feedback-rate-limit.spec.ts` / `feedback-source.spec.ts` — the Feedback module (attachments, rate limits, `source` provenance)
-- `my-feedback.spec.ts` — reporter-scoped `/me` feedback endpoints
-- `folio-protected-history.spec.ts` — **regression guard**: the protection-domain invariant (no plaintext left in `folio_revisions` after encrypting; pinned revisions are not exempt)
-- `folio-*.spec.ts` — links, backlinks, tidy, pinning, permissions, history, activity, attachment links, directories (the old Archive-module coverage lives here now too)
-- `sigil-controller.spec.ts` / `sigil-ingest.spec.ts` / `sigil-entities.spec.ts` / `sigil-self-report.spec.ts` — sigil CRUD + rotation, token verification, capability gating, aggregate upserts, and Lore's own in-process self-report path
-- `sigil-jobs.spec.ts` — the analytics collapse sweep: the uniques hash-fold, the hourly→daily view fold, idempotency across re-runs, and what Insights reads on either side of a sweep. Drives `DateTimeProvider.travel()` over the window boundary, so it asserts end state and never call counts
-- `insights-controller.spec.ts` / `insights-tools.spec.ts` — beacon/vitals windows and the p75 walk (clock pinned with `DateTimeProvider.pause()`), the `?sigilId=` per-app filter including the cross-project refusal, plus the MCP surface
+- `project-capabilities-migration.spec.ts` / `capability-gate.spec.ts` / `route-capability-guards.spec.ts` - the capability model across packages: the backfill, the gate, and the route guards
+- `sigil-self-report.spec.ts` — Lore's own in-process self-report path
 - `app-routes.spec.ts` — **regression guard**: boots every router and resolves every route name the app passes the router as a plain string (every `router.path`/`push` call site and every `route: "…"` nav array in `src/`, including `projectSettingsSections.ts`'s — the array that broke once). `router.path()` takes `keyof VirtualRouter<T> | string`, so a deleted or renamed route is never a type error — this is the only thing that turns it into a red test instead of a production throw. Also asserts that **every static root segment in the route table is reserved** in `ProjectSlugService` — the invariant `/:projectSlug` creates
-- `project-slug-service.spec.ts` / `project-slug-controller.spec.ts` — slug derivation (accent folding, separator collapse, the reserved list and the `project-<id>` fallback) and its lifecycle: derived on create, recomputed on rename, 409 on a taken name across _any_ owner, freed on delete
 - `project-slug-migration.spec.ts` — **regression guard**: reads the backfill migration for `DROP TABLE` / `ADD COLUMN … NOT NULL`, then actually _applies_ it to a seeded database and asserts the slugs that come out (collision, accented title, CJK title, soft-deleted row). `migration-safety.spec.ts` stops at earlier migrations, so nothing else executes this SQL
-- `user-deletion-hook.spec.ts` — **regression guard**: `UserDeletionHook` refuses `deleteMyAccount` while the account still owns projects, and the account survives the refusal. Load-bearing because `projects.createdBy` is a bare `z.uuid()` with **no foreign key** — deleting an owner cascades nothing and warns about nothing, leaving a project pointing at a row that no longer exists and failing `assertOwner` for everybody. Nothing in the schema, the types or the migration snapshot can catch that. Also pins that the hook's message reaches the client as a 409 with its text intact (`MyAccountController` emits without `{ log: true }` precisely so it does)
 - `blight-tools.spec.ts` — the MCP triage surface
 - `migration-safety.spec.ts` — every dropped table needs a per-migration `SANCTIONED_DROPS` entry, a table with `CASCADE` or `SET NULL` children (read from the previous snapshot) cannot be dropped at all after `CASCADE_BASELINE`, historical replays keep their rows, and a fresh D1-shaped database boots with all migrations applied
 - Shared fixtures live in `test/fixtures/`
@@ -424,7 +397,7 @@ When you need to drive the app yourself with the Playwright MCP, use these short
 
 | Mode                        | Command      | URL                   | Database                                               |
 | --------------------------- | ------------ | --------------------- | ------------------------------------------------------ |
-| **Dev** (HMR, no build)     | `yarn dev`   | http://localhost:5173 | `node_modules/.alepha/sqlite.db` (persistent)          |
+| **Dev** (HMR, no build)     | `yarn dev`   | http://localhost:3303 | `node_modules/.alepha/sqlite.db` (persistent)          |
 | **Prod-like** (build + run) | `yarn start` | http://localhost:3000 | in-memory (`DATABASE_URL=:memory:`) — wiped on restart |
 
 Dev mode is what you usually want — it keeps state between runs and emails accumulate on disk.

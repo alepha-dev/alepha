@@ -35,7 +35,7 @@ const setup = async () => {
   alepha.with(AlephaSecurity);
   alepha.with(AlephaEmail);
   alepha.with(AlephaApiUsers);
-  // The substitution `main.server.ts` makes, before LoreApi puts the
+  // The substitution `main.server.ts` makes, before `LoreCoreApi` puts the
   // framework's default into use.
   alepha.with({
     provide: NotificationInboxRecipientProvider,

@@ -14,9 +14,8 @@
 @source "../../../packages/@lore/deploy/src/web";
 
 /* ────────────────────────────────────────────────────────────────────────
- * Page transition keyframes — referenced by `$page({ animation })` in
- * AppRouter. `tw-animate-css` only ships generic enter/exit keyframes
- * driven by utility classes, so the router needs its own named ones.
+ * Page transition keyframes — referenced by name from `$page({ animation })`
+ * in `@lore/core`'s `CoreRouter.ts` and `ProjectRouter.ts`.
  * ──────────────────────────────────────────────────────────────────────── */
 
 @keyframes fadeIn {
@@ -954,31 +953,6 @@ body::before {
   .lore-create-backdrop::after {
     animation: none;
   }
-}
-
-/*
- * The dashboard's canvas: a 16px dot grid, as the mockup draws it.
- *
- * A CSS class rather than an arbitrary Tailwind value because it is two
- * properties that only make sense together, and because the alpha has to
- * differ between themes. On the dark canvas the dots are a light wash at 5%
- * (the mockup's own value); on the light one the same idea needs a dark wash,
- * and a single colour that "worked in both" would be invisible in one and
- * dirty in the other.
- */
-.bg-dotted {
-  background-image: radial-gradient(
-    color-mix(in oklch, var(--foreground) 6%, transparent) 1px,
-    transparent 1px
-  );
-  background-size: 16px 16px;
-}
-
-.dark .bg-dotted {
-  background-image: radial-gradient(
-    color-mix(in oklch, var(--foreground) 5%, transparent) 1px,
-    transparent 1px
-  );
 }
 
 /*

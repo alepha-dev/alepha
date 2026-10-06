@@ -70,7 +70,7 @@ const OUT_DIR = join(REPO_ROOT, "public", "fonts");
 const FILES_DIR = join(OUT_DIR, "files");
 const THEMES_PROVIDER = join(
   REPO_ROOT,
-  "src/web/app/services/ThemesProvider.ts",
+  "../../packages/@lore/core/src/web/app/services/ThemesProvider.ts",
 );
 
 // Only the theme stylesheets are regenerated here, one per theme and

@@ -35,13 +35,3 @@ export class TestEntityRepositories extends WorkTestEntities {
   // `folios` is, for the same reason `quests`'s own FK closure is.
   folioDirectories = $repository(folioDirectories);
 }
-
-/**
- * These counters make fixture rows unique (project titles, quest `shortId`,
- * epic `number` all carry a `(projectId, ...)` unique index). A single
- * monotonic counter per entity is enough: it never repeats within a
- * process, so it never collides within any one project either. It does NOT
- * reproduce the real per-project 1-based numbering the app allocates via
- * `$sequence` — tests that care about that allocate their own numbers
- * through the real controller/service instead of these fixtures.
- */

@@ -13,7 +13,7 @@ The end-to-end suites (#Q2628). They drive built artefacts and import no `apps/l
 
 This suite used to run on **3303 — the same port as `yarn dev`**. With `reuseExistingServer` on, a dev server left running in another terminal was adopted by Playwright, and the whole suite ran against hot-reloaded sources and the dev database instead of `node dist` and `:memory:`. Two agents in two worktrees hit the same trap through each other's servers.
 
-`scripts/playwright.port.ts` — shared by all six Playwright configs, same pattern as `vitest.projects.ts` — makes both impossible. E2E allocates from a reserved **4300-4999** band that no dev server may use; within it the slot is derived from the **checkout path**, so two worktrees never meet; and the port is then **bind-tested**, stepping a full stride if anything answers. `reuseExistingServer` is `false` everywhere as a result: a port verified free has nothing legitimate to adopt.
+`scripts/playwright.port.ts`, which the one Playwright config's fixtures call, makes both impossible. E2E allocates from a reserved **4300-4999** band that no dev server may use; within it the slot is derived from the **checkout path**, so two worktrees never meet; and the port is then **bind-tested**, stepping a full stride if anything answers. There is no `webServer` and so no `reuseExistingServer` any more: each worker spawns its own server on a port verified free.
 
 ⚠️ **Lore asks for `e2eWorkerPort("lore", workerIndex)`, not `e2ePort("lore")`** — one port per Playwright worker, because it boots one server per worker (below). Each worker probes a **disjoint subsequence** of the same candidate list, which is not the same thing as rotating one shared list to a different start: that was the first implementation and it let a worker whose first choice was busy advance onto the base the next worker started from, so 14 workers produced 13 ports and one instance failed to bind for no visible reason. `playwright.port.spec.ts` holds the regression.
 
@@ -40,12 +40,12 @@ Why it is worth it: the suite used to share one server, one database, one realm
 and one mail directory, so `fullyParallel` could not be turned on, so tests
 inside a file ran one after another. `quest.spec.ts` and `folio-workspace.spec.ts`
 hold 23 tests each, and one of those files running serially set the wall clock
-for the entire `yarn e2e` step across every app. Measured:
+for the entire `yarn e2e` step. Measured:
 
 |                                | before | after |
 | ------------------------------ | ------ | ----- |
 | lore e2e, 133 tests, 7 workers | 228s   | ~126s |
-| `yarn v` e2e step, every app   | 234.5s | ~130s |
+| `yarn v` e2e step              | 234.5s | ~130s |
 | `yarn v`, whole pipeline       | ~465s  | ~345s |
 
 It is affordable because a Lore instance answers **325-386ms** after spawn and
@@ -94,7 +94,7 @@ Reaching the same end state from a session reused per worker took 2665ms against
 - `members.spec.ts` — settings members list, identity hover-card, dead `/character` + `/roster` URLs 404
 - `account.spec.ts` — the `/account` area (Lore's consumer of `@alepha/ui`'s `AccountRouter`, a root shell with a floating sidebar since #E68): lands on the profile, the sidebar lists the five built-in pages **and** Lore's `$pageAccount` ones with exactly one lit per page, the mobile sheet, the signed-out redirect, rename round-trip, password change, sessions, API-key create/reveal-once/revoke, and delete-account refused while a project is owned. ⚠️ The rename test waits for the success toast **before** reloading — without it the reload races the save and the assertion fails for the wrong reason
 - `roadmap.spec.ts` — the roadmap from its three audiences: a stranger with no account (through Playwright's isolated `request` fixture, never the page — the page's `fetch` carries the session bearer, so a page-driven "anonymous" request proves nothing), a member, and the crawler case (real HTML carrying the release tags, asserted against a Googlebot user agent). ⚠️ It creates **three projects at three visibilities** and never flips one: the response carries `max-age=60`, so "flip to off, ask again, expect 404" would be flaky for a reason a retry does not fix
-- `home.spec.ts`, `admin-user-detail.spec.ts` (its only test has been `test.skip` since 2026-05-28), `areas.spec.ts`, `dashboard.spec.ts`, `epics.spec.ts`, `releases.spec.ts` (many open at once, attach an epic and a loose quest, publish freezes the counts, `0.9.0` sorts before `0.10.0`), `quests-status-seed.spec.ts`, `admin-analytics.spec.ts`
+- `home.spec.ts`, `admin-user-detail.spec.ts` (un-skipped 2026-08-27, after catching a real `keepDirty` bug), `areas.spec.ts`, `dashboard.spec.ts`, `epics.spec.ts`, `releases.spec.ts` (many open at once, attach an epic and a loose quest, publish freezes the counts, `0.9.0` sorts before `0.10.0`), `quests-status-seed.spec.ts`, `admin-analytics.spec.ts`
 - `security-public-project.spec.ts` — regression guard: non-member account hits 403 on every project endpoint after the public-project purge (renamed from `security-public-campaign.spec.ts`)
 - `security-file-access.spec.ts` — regression guard: `/api/files/:id` IDOR fix via `LoreFileAccessProvider` (only owners/members can download an attachment)
 - `device-login.spec.ts` - `lore login` from the human's side: a signed-out visitor opens the device link, signs in, lands back on `/oauth/device` through the login bridge and `/oauth/continue`, approves, and the device's token answers `/api/users/me` as that account; then a signed-in visitor types a code by hand and denies it. The device half goes through Playwright's isolated `request` fixture, the way the CLI talks to Lore

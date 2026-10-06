@@ -376,9 +376,9 @@ export const ADMIN_PASSWORD = "GoodPassw0rd";
 /**
  * Sign in as the realm admin.
  *
- * The account is registered once by `global-setup.ts`, before any spec runs,
- * so this only ever signs in - and a failure here is a real failure rather
- * than "some other spec had not created it yet".
+ * The account is registered once per worker by `_fixtures.ts`, before any
+ * spec runs, so this only ever signs in - and a failure here is a real
+ * failure rather than "some other spec had not created it yet".
  *
  * Registering it per-spec is what reddened CI the moment
  * `admin-user-detail.spec.ts` was un-skipped and stopped being the only admin

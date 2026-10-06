@@ -99,7 +99,7 @@ describe("write controls under a rank", () => {
     alepha = Alepha.create()
       .with(AlephaLogger)
       .with(AlephaDateTime)
-      // What `LoreWebApp.register()` does in the app. Before `AlephaReact`,
+      // What `main.browser.ts` does in the app. Before `AlephaReact`,
       // for the reason every other spec here substitutes early.
       .with({ provide: ScopeGrantsProvider, use: ProjectScopeGrants })
       .with(AlephaReact)

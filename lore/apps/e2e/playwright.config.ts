@@ -1,23 +1,16 @@
 import { defineConfig, devices } from "@playwright/test";
 
 /*
- * The e2e port comes from the 4300-4999 band, which is reserved for e2e and
- * disjoint from every dev port in the repo — see `playwright.port.ts`. Never a
- * dev port (33xx) and never 5173/5174: those are Vite's default and its first
- * fallback, so an app running `yarn dev` would be adopted by this suite.
- * `e2ePort` derives the slot from the checkout (so two worktrees never share a
- * server), bind-tests it, and moves on if anything is listening. `E2E_PORT`
- * overrides.
+ * Each worker's port comes from `e2eWorkerPort` (`scripts/playwright.port.ts`),
+ * called by `web/_fixtures.ts`: the 4300-4999 band reserved for e2e, disjoint
+ * from every dev port, a slot derived from the checkout so two worktrees never
+ * share a server, bind-tested before use. `E2E_PORT` overrides.
  */
 
 export default defineConfig({
   testDir: "./web",
-  // PoC: fullyParallel, made safe by one Lore instance per worker.
-  //
-  // `globalSetup` and `webServer` are gone. Both existed to serve ONE shared
-  // server: global setup registered the realm admin against it, and webServer
-  // started it. `_fixtures.ts` now boots a server per worker, registers that
-  // worker's admin, and hands each spec its own `baseURL`.
+  // Safe because `_fixtures.ts` boots one Lore instance per worker, registers
+  // that worker's admin, and hands each spec its own `baseURL`.
   fullyParallel: true,
   timeout: 60_000,
   /**

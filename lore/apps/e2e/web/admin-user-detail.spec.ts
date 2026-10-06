@@ -9,10 +9,10 @@ import { registerAndVerify, signInAsAdmin } from "./_helpers.ts";
  * server-side guards (email-changed → emailVerified=false, unique
  * conflicts → friendly 409).
  *
- * The admin account is registered once by `web/global-setup.ts` and
- * auto-promoted on first login, because `playwright.config.ts` passes its
- * address as `ADMIN_EMAIL` to the webServer — the realm `adminEmails`
- * setting then matches it and grants the `admin` role.
+ * The admin account is registered once per worker by `_fixtures.ts` and
+ * auto-promoted on first login, because the fixture passes its address as
+ * `ADMIN_EMAIL` to that worker's server — the realm `adminEmails` setting
+ * then matches it and grants the `admin` role.
  */
 test.describe("admin user detail", () => {
   // Un-skipped 2026-08-27. It had been skipped since 2026-05-28 under two
@@ -47,7 +47,7 @@ test.describe("admin user detail", () => {
     await page.goto("/auth/logout");
     await page.waitForLoadState("domcontentloaded");
 
-    // 2. Sign in as admin. The account is created once by `global-setup.ts`;
+    // 2. Sign in as admin. The account is created once per worker by `_fixtures.ts`;
     //    signing in through the form is what grants the role.
     await signInAsAdmin(page);
 

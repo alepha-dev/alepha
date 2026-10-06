@@ -1,7 +1,7 @@
 {
   "name": "Lore",
   "short_name": "Lore",
-  "description": "This is a sample app to demonstrate Alepha's capabilities.",
+  "description": "Alepha Lore: planning memory, telemetry and deployments for Alepha applications.",
   "display": "standalone",
   "start_url": "/",
   "background_color": "#010409",
