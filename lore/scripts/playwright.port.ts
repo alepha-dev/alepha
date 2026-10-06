@@ -51,7 +51,6 @@ export type E2eApp = keyof typeof E2E_SLOTS;
  * |---------------|----------------------------------------------------------|
  * | 3300-3399     | dev servers (`dev.port` in each `alepha.config.ts`)       |
  * | 5173+         | dev servers with no `dev.port` (Vite default, multi-app)  |
- * | 11883/15432/16379/19090 | `compose.yml` test services                     |
  * | **4300-4999** | **e2e, and nothing else**                                 |
  *
  * Nothing else in the repo may allocate inside the e2e band. The answer is

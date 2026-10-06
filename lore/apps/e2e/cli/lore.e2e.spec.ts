@@ -17,11 +17,6 @@
  *      commands, but against the workspace container. Here a missing `dist/bin`
  *      or a botched `bin` mapping fails first, and for a different reason.
  *
- * ⚠️ This is a SUBSET of the release rehearsal, not a replacement for it. It
- * proves a local install with npm only. Yarn, pnpm and Bun each resolve and
- * link differently, and a global install has no host project to satisfy
- * anything from. That belongs on verdaccio, before a release.
- *
  * The tarball is installed ALONE, with no `alepha` beside it: `alepha` is an
  * optional peer and the bin carries its own (#Q2579), so a passing run here
  * is also the proof that the bin needs nothing else.

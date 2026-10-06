@@ -25,18 +25,11 @@ const APPS = Object.keys(E2E_SLOTS) as E2eApp[];
 /**
  * Every port a dev server can bind, which is the set an e2e port must never
  * intersect. 3300-3399 is the `dev.port` band in each app's
- * `alepha.config.ts` (docs 3302 … examples/ssr 3311); 5173+ is what an app
- * WITHOUT a `dev.port` gets from Vite, and what `alepha dev` hands each child
- * in multi-app mode (`5173 + index`). The four high ports are `compose.yml`.
+ * `alepha.config.ts` (Lore is 3303); 5173+ is what an app WITHOUT a
+ * `dev.port` gets from Vite, and what `alepha dev` hands each child in
+ * multi-app mode (`5173 + index`).
  */
-const RESERVED = new Set([
-  ...range(3300, 3399),
-  ...range(5173, 5199),
-  11883,
-  15432,
-  16379,
-  19090,
-]);
+const RESERVED = new Set([...range(3300, 3399), ...range(5173, 5199)]);
 
 describe("E2E_SLOTS", () => {
   it("never offers a port a dev server in this repo could be holding", ({
