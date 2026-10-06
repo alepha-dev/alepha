@@ -1171,7 +1171,9 @@ test.describe("Quest", () => {
     });
 
     await test.step("the created area reaches the quest", async () => {
-      await page.getByRole("textbox", { name: "Name" }).fill(`Q${t}`);
+      await page
+        .getByRole("textbox", { name: "Name", exact: true })
+        .fill(`Q${t}`);
       await page.locator("form button[type=submit]").click();
       await page.waitForURL(/\/quests\/\d+/, { timeout: 15_000 });
       await page.goto(`/${projectSlug}/settings/areas`);

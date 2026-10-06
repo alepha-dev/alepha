@@ -47,7 +47,7 @@ test.describe("Project slug routing", () => {
     await page.goto(`/${slug}/settings/`);
     await page.waitForLoadState("networkidle");
 
-    const name = page.getByRole("textbox", { name: "Name" });
+    const name = page.getByRole("textbox", { name: "Name", exact: true });
     const renamed = `Sum${ts}`.slice(0, 20);
     await name.fill(renamed);
 
@@ -59,7 +59,9 @@ test.describe("Project slug routing", () => {
     expect(new URL(page.url()).pathname).toBe(`/${slug}/settings/`);
 
     // Now go through with it.
-    await page.getByRole("textbox", { name: "Name" }).fill(renamed);
+    await page
+      .getByRole("textbox", { name: "Name", exact: true })
+      .fill(renamed);
     await page.getByRole("button", { name: "Save", exact: true }).click();
     await expect(
       page.getByRole("heading", { name: /rename this project/i }),
@@ -102,7 +104,7 @@ test.describe("Project slug routing", () => {
     await page.goto(`/${secondSlug}/settings/`);
     await page.waitForLoadState("networkidle");
 
-    await page.getByRole("textbox", { name: "Name" }).fill(first);
+    await page.getByRole("textbox", { name: "Name", exact: true }).fill(first);
     await page.getByRole("button", { name: "Save", exact: true }).click();
     await page.getByRole("button", { name: "Rename", exact: true }).click();
 
