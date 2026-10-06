@@ -7,7 +7,7 @@ import type { KanbanColumnSettings } from "@lore/core/schemas";
  */
 export interface ResolvedKanbanColumn {
   name: string;
-  status: "todo" | "in_progress" | "completed";
+  status: NonNullable<KanbanColumnSettings["status"]>;
   wipLimit?: number;
   /**
    * The operator's chosen dot colour, when they chose one. Absent leaves the

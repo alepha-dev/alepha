@@ -1,6 +1,6 @@
 import { Button } from "@alepha/ui";
 import { useDroppable } from "@dnd-kit/core";
-import type { PaletteColor } from "@lore/core/schemas";
+import type { KanbanColumnSettings, PaletteColor } from "@lore/core/schemas";
 import type { I18n, ProjectUser } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { ChevronsLeftRight } from "lucide-react";
@@ -13,7 +13,11 @@ import KanbanColumnMenu from "./KanbanColumnMenu.tsx";
 
 const PAGE_SIZE = 20;
 
-export type ColumnKind = "todo" | "in_progress" | "completed";
+/**
+ * The lifecycle state a column collapses to: core's column `status`, which
+ * the board always resolves (absent means `in_progress`).
+ */
+export type ColumnKind = NonNullable<KanbanColumnSettings["status"]>;
 
 export interface ColumnDescriptor {
   /**

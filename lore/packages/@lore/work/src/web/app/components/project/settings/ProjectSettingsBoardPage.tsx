@@ -12,6 +12,7 @@ import {
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import type { ProjectController } from "@lore/core/api";
+import type { KanbanColumnSettings } from "@lore/core/schemas";
 import {
   currentProjectAtom,
   setCurrentProject,
@@ -26,6 +27,7 @@ import { GripVertical, Plus, Trash2 } from "lucide-react";
 import { useId, useState } from "react";
 
 import type { KanbanController } from "../../../../../api/controllers/KanbanController.ts";
+import type { ColumnKind } from "../../kanban/KanbanColumn.tsx";
 import { useKanbanColumnOps } from "../../kanban/useKanbanColumnOps.ts";
 import { KanbanColumnOrder } from "./kanbanColumnOrder.ts";
 
@@ -99,13 +101,7 @@ const ProjectSettingsBoardPage = () => {
    * setting is cleared and a server-side merge has no way to say that.
    */
   const settingsAction = useAction<
-    [
-      name: string,
-      patch: {
-        status?: "todo" | "in_progress" | "completed";
-        wipLimit?: number;
-      },
-    ],
+    [name: string, patch: Pick<KanbanColumnSettings, "status" | "wipLimit">],
     void
   >(
     {
@@ -258,14 +254,13 @@ interface ColumnRowProps {
    * Which lifecycle state this column collapses to. The triple stays the
    * truth; a column only maps onto it (#1227).
    */
-  status: "todo" | "in_progress" | "completed";
+  status: ColumnKind;
   wipLimit?: number;
   onRename: (next: string) => void;
   onDelete: () => void;
-  onSettings: (patch: {
-    status?: "todo" | "in_progress" | "completed";
-    wipLimit?: number;
-  }) => void;
+  onSettings: (
+    patch: Pick<KanbanColumnSettings, "status" | "wipLimit">,
+  ) => void;
 }
 
 const ColumnRow = (props: ColumnRowProps) => {

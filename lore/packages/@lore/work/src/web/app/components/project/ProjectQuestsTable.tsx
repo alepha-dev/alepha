@@ -83,6 +83,22 @@ import QuestCreate from "./quest/QuestCreate.tsx";
 import { formatQuestSize } from "./quest/questSize.ts";
 import { releaseRowMenu } from "./releaseRowMenu.ts";
 
+/**
+ * The Quests page (`projectQuests`): the grouped quest table, and nothing
+ * else.
+ *
+ * It used to render the Kanban board instead when `questsViewAtom` said so,
+ * which is what made the board a *mode* rather than a place. The board is
+ * `projectKanban` at `/:projectSlug/kanban` now, and a bare `/:projectSlug`
+ * always lands here. (For a while `project.defaultSurface` could send it to
+ * the board through this route's loader; that setting went with feedback
+ * #2066.)
+ *
+ * The view bar that switches the two lives in `ProjectView`, not here
+ * (#153): a page rendered as the `NestedView` is necessarily to the RIGHT
+ * of the quest log, and the bar switches the whole surface, not the table
+ * inside it.
+ */
 const ProjectQuestsTable = () => {
   const [project] = useStore(currentProjectAtom);
   const [currentAreas] = useStore(currentAreasAtom);
@@ -580,7 +596,7 @@ const ProjectQuestsTable = () => {
   return (
     <div
       data-testid="quests-table"
-      className="flex flex-1 flex-col overflow-hidden"
+      className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
     >
       <DataTable<QuestResource, typeof filterFields>
         // The seed is part of the identity: `initialValues` are captured once

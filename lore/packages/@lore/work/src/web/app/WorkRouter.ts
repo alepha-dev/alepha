@@ -91,7 +91,7 @@ export class WorkRouter {
     head: (_props, previous) => ({
       title: `${previous?.title ?? ""} › Quests`,
     }),
-    lazy: () => import("./components/project/ProjectQuestsPage.tsx"),
+    lazy: () => import("./components/project/ProjectQuestsTable.tsx"),
     // ⚠️ The loader GATES and fetches nothing. It used to redirect to
     // `/kanban` when the project's `defaultSurface` said so; the setting is
     // gone (feedback #2066), and the prohibition is unchanged: a bare

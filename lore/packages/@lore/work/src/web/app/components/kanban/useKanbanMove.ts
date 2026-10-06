@@ -11,8 +11,6 @@ import type { QuestResource } from "../../../../api/schemas/questResourceSchema.
 import { useQuestMutations } from "../shared/useQuestMutations.ts";
 import type { ColumnDescriptor, ColumnKind } from "./KanbanColumn.tsx";
 
-type QuestStatus = "todo" | "in_progress" | "completed";
-
 export interface KanbanMoveInput {
   quests: QuestResource[];
   setQuests: Dispatch<SetStateAction<QuestResource[]>>;
@@ -147,7 +145,7 @@ export const useKanbanMove = (input: KanbanMoveInput) => {
         }
 
         const quest = questData.quest as QuestResource;
-        const fromStatus = quest.metadata.status as QuestStatus;
+        const fromStatus = quest.metadata.status;
         // A column droppable names its own lane; a card droppable does not,
         // so read the lane off the card that was landed on.
         const target =

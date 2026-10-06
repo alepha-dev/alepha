@@ -7,7 +7,10 @@ import { $action } from "alepha/server";
 import { FileSystemProvider } from "alepha/system";
 
 import { workRelations } from "../relations/workRelations.ts";
-import { QuestCsvFormatter } from "../services/QuestCsvFormatter.ts";
+import {
+  type ExportRow,
+  QuestCsvFormatter,
+} from "../services/QuestCsvFormatter.ts";
 
 /**
  * Quests on their way OUT of a project, as CSV.
@@ -65,7 +68,7 @@ export class ProjectQuestPortabilityController {
 
       const status = (
         q: (typeof projectQuests)[number],
-      ): "todo" | "in_progress" | "completed" =>
+      ): ExportRow["status"] =>
         q.completedAt ? "completed" : q.acceptedAt ? "in_progress" : "todo";
 
       const text = this.formatter.format(
