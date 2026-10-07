@@ -39,8 +39,15 @@ export const capacitorOptions = $atom({
     .optional(),
 });
 
+/**
+ * What `capacitor({ ... })` in `alepha.config.ts` takes: the base app's
+ * identity, its native settings and its variants.
+ */
 export type CapacitorOptions = NonNullable<
   Infer<typeof capacitorOptions.schema>
 >;
 
+/**
+ * A native platform the commands build and run for.
+ */
 export type CapacitorPlatform = "ios" | "android";

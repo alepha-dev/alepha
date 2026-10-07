@@ -56,4 +56,7 @@ export const capacitorBuildRecordSchema = z.object({
   builtAt: z.string(),
 });
 
+/**
+ * One successful native build, as `capacitor.builds.json` records it.
+ */
 export type CapacitorBuildRecord = Infer<typeof capacitorBuildRecordSchema>;

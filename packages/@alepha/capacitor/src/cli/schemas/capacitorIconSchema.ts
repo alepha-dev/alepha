@@ -21,4 +21,8 @@ export const capacitorIconSchema = z.object({
     .optional(),
 });
 
+/**
+ * The source image of the generated icons and splash, and the colour behind
+ * it.
+ */
 export type CapacitorIcon = Infer<typeof capacitorIconSchema>;

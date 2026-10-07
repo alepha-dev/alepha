@@ -1,6 +1,6 @@
 {
   "name": "@alepha/capacitor",
-  "private": true,
+  "version": "0.31.0",
   "description": "Native iOS and Android apps for Alepha: a Capacitor shell, native capabilities behind DI providers, and the alepha capacitor commands.",
   "keywords": [
     "alepha",
