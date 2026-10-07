@@ -242,7 +242,7 @@ jobs:
       - name: Publish to NPM
         if: inputs.resume_tag == ''
         run: |
-          yarn workspaces foreach --no-private -Apt npm publish --tolerate-republish --access public
+          yarn workspaces foreach --no-private -Apt npm publish --tolerate-republish --access public --provenance
 
       # ──────────────────────────────────────────────────────────────────
       #
