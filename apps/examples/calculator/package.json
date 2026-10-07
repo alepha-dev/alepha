@@ -1,0 +1,35 @@
+{
+  "name": "calculator",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "android": "alepha capacitor sync && cap run android",
+    "dev": "alepha dev",
+    "dev:android": "alepha capacitor dev android",
+    "dev:ios": "alepha capacitor dev ios",
+    "ios": "alepha capacitor sync && cap run ios",
+    "test": "alepha test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@alepha/capacitor": "workspace:*",
+    "@alepha/ui": "workspace:*",
+    "@aparajita/capacitor-secure-storage": "8.0.1",
+    "@capacitor/android": "8.5.2",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/core": "8.5.2",
+    "@capacitor/device": "8.0.3",
+    "@capacitor/haptics": "8.0.2",
+    "@capacitor/ios": "8.5.2",
+    "@capacitor/splash-screen": "8.0.2",
+    "alepha": "workspace:^",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.2",
+    "@tailwindcss/vite": "^4.3.3",
+    "tailwindcss": "^4.3.3",
+    "vite": "^8.3.3"
+  }
+}

@@ -3822,6 +3822,30 @@ __metadata:
   languageName: node
   linkType: hard
 
+"calculator@workspace:apps/examples/calculator":
+  version: 0.0.0-use.local
+  resolution: "calculator@workspace:apps/examples/calculator"
+  dependencies:
+    "@alepha/capacitor": "workspace:*"
+    "@alepha/ui": "workspace:*"
+    "@aparajita/capacitor-secure-storage": "npm:8.0.1"
+    "@capacitor/android": "npm:8.5.2"
+    "@capacitor/app": "npm:8.1.2"
+    "@capacitor/cli": "npm:8.5.2"
+    "@capacitor/core": "npm:8.5.2"
+    "@capacitor/device": "npm:8.0.3"
+    "@capacitor/haptics": "npm:8.0.2"
+    "@capacitor/ios": "npm:8.5.2"
+    "@capacitor/splash-screen": "npm:8.0.2"
+    "@tailwindcss/vite": "npm:^4.3.3"
+    alepha: "workspace:^"
+    react: "npm:^19.3.0"
+    react-dom: "npm:^19.3.0"
+    tailwindcss: "npm:^4.3.3"
+    vite: "npm:^8.3.3"
+  languageName: unknown
+  linkType: soft
+
 "callsite@npm:^1.0.0":
   version: 1.0.0
   resolution: "callsite@npm:1.0.0"
