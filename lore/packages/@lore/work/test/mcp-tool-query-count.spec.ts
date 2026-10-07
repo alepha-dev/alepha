@@ -16,12 +16,12 @@ import { describe, expect, it } from "vitest";
 
 import { LoreWorkApi } from "../src/api/index.ts";
 import { FeedbackTools, QuestTools } from "../src/mcp/index.ts";
+import { LoreWorkMcp } from "../src/mcp/index.ts";
 import {
   createTestEpic,
   createTestQuest,
   WorkTestEntities,
 } from "../src/testing/index.ts";
-import { LoreWorkMcp } from "../src/mcp/index.ts";
 
 /**
  * The number this file exists for.
