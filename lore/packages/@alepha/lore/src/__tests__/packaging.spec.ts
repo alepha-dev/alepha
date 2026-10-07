@@ -84,11 +84,12 @@ describe("@alepha/lore packaging", () => {
   });
 
   /**
-   * A caret, the range the sibling `@alepha/*` packages declare as a peer, and
-   * optional, so a global install of the bin is never asked for it.
+   * A floor, not a caret: on a 0.x line a caret pins the minor, so every
+   * Alepha minor made Yarn warn YN0060 on hosts that were fine (00bdd722).
+   * Optional, so a global install of the bin is never asked for it.
    */
-  it("takes alepha as an optional peer, by caret", () => {
-    expect(manifest.peerDependencies.alepha).toMatch(/^\^/);
+  it("takes alepha as an optional peer, by a floor", () => {
+    expect(manifest.peerDependencies.alepha).toMatch(/^>=/);
     expect(manifest.peerDependenciesMeta.alepha.optional).toBe(true);
   });
 
