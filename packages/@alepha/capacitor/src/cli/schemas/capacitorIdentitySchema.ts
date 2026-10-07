@@ -69,4 +69,8 @@ export const capacitorIdentitySchema = z.object({
   env: z.record(z.string(), z.string()).optional(),
 });
 
+/**
+ * The keys that tell one installable app from another: what a variant may
+ * override.
+ */
 export type CapacitorIdentity = Infer<typeof capacitorIdentitySchema>;

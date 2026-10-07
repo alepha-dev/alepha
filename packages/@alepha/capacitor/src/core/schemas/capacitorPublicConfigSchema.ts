@@ -46,4 +46,8 @@ export const capacitorPublicConfigSchema = z.object({
   env: z.record(z.text(), z.text()),
 });
 
+/**
+ * What a built shell knows about itself, baked in at build time and readable
+ * by the browser code.
+ */
 export type CapacitorPublicConfig = Infer<typeof capacitorPublicConfigSchema>;

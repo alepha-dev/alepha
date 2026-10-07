@@ -37,11 +37,15 @@ const graphOf = async (entry: string) => {
 };
 
 describe("@alepha/capacitor packaging", () => {
-  it("stays private until its documentation publishes it", ({ expect }) => {
-    // release.yml publishes every non-private workspace: a version here would
-    // ship a native package to npm before any device proof.
-    expect(pkg.private).toBe(true);
-    expect(pkg.version).toBeUndefined();
+  it("publishes with the framework's version", ({ expect }) => {
+    // release.yml bumps and publishes every non-private workspace together:
+    // a version of its own would drift from the alepha it peers on.
+    const framework = JSON.parse(
+      readFileSync(join(root, "..", "..", "alepha", "package.json"), "utf-8"),
+    );
+    expect(pkg.private).toBeUndefined();
+    expect(pkg.version).toBe(framework.version);
+    expect(pkg.peerDependencies.alepha).toBe(`^${framework.version}`);
   });
 
   it("exports the root, core and cli, and nothing an updater would add", ({
