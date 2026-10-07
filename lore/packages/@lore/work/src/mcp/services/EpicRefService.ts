@@ -32,9 +32,14 @@ export class EpicRefService {
 
   /**
    * `epicId -> EpicRef` for every epic in a project.
+   *
+   * Through `getEpicRefs`, never `getEpics`: the ref is three columns, and
+   * `getEpics` returns every epic with its `description` (222 KB on project
+   * Lore) plus two progress aggregates, one extra D1 round trip on every
+   * `quest_list` page and every `quest_get` of a quest in an epic (#Q2635).
    */
   async mapFor(projectId: number): Promise<Map<number, EpicRef>> {
-    const projectEpics = await this.epicController.getEpics({
+    const projectEpics = await this.epicController.getEpicRefs({
       params: { projectId },
     });
     return new Map(

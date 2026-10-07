@@ -15,7 +15,12 @@ import { AlephaFake } from "alepha/testing/faker";
 import { describe, expect, it } from "vitest";
 
 import { LoreWorkApi } from "../src/api/index.ts";
-import { FeedbackTools } from "../src/mcp/index.ts";
+import { FeedbackTools, QuestTools } from "../src/mcp/index.ts";
+import {
+  createTestEpic,
+  createTestQuest,
+  WorkTestEntities,
+} from "../src/testing/index.ts";
 import { LoreWorkMcp } from "../src/mcp/index.ts";
 
 /**
@@ -51,6 +56,8 @@ const setup = async () => {
 
   const counter = alepha.inject(ReadCounter);
   const feedbackTools = alepha.inject(FeedbackTools) as any;
+  const questTools = alepha.inject(QuestTools) as any;
+  alepha.inject(WorkTestEntities);
   const projectApi = alepha.inject(ProjectController);
   const users = alepha.inject(UserService);
   await alepha.start();
@@ -98,6 +105,7 @@ const setup = async () => {
     alepha,
     counter,
     feedbackTools,
+    questTools,
     projectApi,
     users,
     call,
@@ -141,6 +149,34 @@ describe("MCP tool query count", () => {
     // asserts the cold number, which is what a first call after a deploy
     // actually costs.
     expect(ctx.totalReads()).toBeLessThanOrEqual(6);
+
+    await ctx.alepha.stop();
+  });
+
+  it("names a quest's epic without reading every epic's description or progress", async () => {
+    const ctx = await setup();
+    const epic = await createTestEpic(ctx.alepha, ctx.project, {
+      description: "x".repeat(10_000),
+    });
+    const quest = await createTestQuest(ctx.alepha, ctx.project, {
+      epicId: epic.id,
+    });
+
+    ctx.counter.reset();
+    const result = await ctx.call(ctx.questTools.quest_get, { id: quest.id });
+
+    expect(result.epic).toEqual({
+      number: epic.number,
+      title: epic.title,
+      status: "draft",
+    });
+    // Two `quests` reads: the gate's row and the comments gate's re-read
+    // (#Q2636 takes the second). A third is `getEpics`' progress aggregate
+    // over the project's quests, paid to name one epic: `EpicRefService`
+    // reads `getEpicRefs`, four columns of `epics` and nothing else (#Q2635).
+    expect(ctx.counter.of("quests")).toBe(2);
+    expect(ctx.counter.of("epics")).toBe(1);
+    expect(ctx.totalReads()).toBeLessThanOrEqual(7);
 
     await ctx.alepha.stop();
   });
