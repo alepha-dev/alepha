@@ -26,7 +26,7 @@ __metadata:
     "@lore/deploy": "*"
     "@lore/knowledge": "*"
     "@lore/work": "*"
-    alepha: ^0.30.0
+    alepha: ">=0.30.0"
     react: "*"
     react-dom: "*"
   peerDependenciesMeta:
