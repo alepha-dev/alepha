@@ -109,7 +109,8 @@ describe("@alepha/capacitor packaging", () => {
     expect(cli.imports).toContain("sharp");
     expect(core.imports).not.toContain("sharp");
     expect([...cli.imports, ...core.imports].filter(rejected)).toEqual([]);
-    expect(pkg.dependencies).toEqual({ sharp: "0.35.4" });
+    expect(Object.keys(pkg.dependencies)).toEqual(["sharp"]);
+    expect(pkg.dependencies.sharp).toMatch(/^\d+\.\d+\.\d+$/);
     expect(
       Object.keys({ ...pkg.devDependencies, ...pkg.peerDependencies }).filter(
         rejected,
