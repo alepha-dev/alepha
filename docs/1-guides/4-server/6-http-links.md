@@ -7,9 +7,9 @@ Alepha's link system provides type-safe cross-service communication through `$cl
 `$client<T>()` creates a proxy object that mirrors the actions of a controller class. Property access on the proxy returns virtual actions that can be called like functions.
 
 ```typescript
-import { $client } from "alepha/server/links";
-import { $action } from "alepha/server";
 import { z } from "alepha";
+import { $action } from "alepha/server";
+import { $client } from "alepha/server/links";
 
 class ProductController {
   getProduct = $action({
@@ -223,8 +223,8 @@ action, and a scope never touches it.
 > **`$remote` or `$client({ hostname })`?** They overlap, and picking the wrong one is the usual mistake. `$remote` is service-to-service: it is declared as a primitive on a class, it belongs to an app you also run, and it can carry a service account and proxy the remote's endpoints through your own server. `$client({ hostname })` is a consumer calling an app it does not host - a CLI, a worker, a script - and it declares nothing, registers nothing and serves nothing.
 
 ```typescript check
-import { $remote } from "alepha/server/links";
 import { $env, z } from "alepha";
+import { $remote } from "alepha/server/links";
 
 class Gateway {
   env = $env(
@@ -246,8 +246,8 @@ class Gateway {
 For authenticated service-to-service communication, attach a service account:
 
 ```typescript
-import { $remote } from "alepha/server/links";
 import { $serviceAccount } from "alepha/security";
+import { $remote } from "alepha/server/links";
 
 class Gateway {
   sa = $serviceAccount({

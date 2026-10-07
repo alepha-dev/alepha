@@ -17,12 +17,12 @@ yarn add @alepha/discord
 ## Usage
 
 ```typescript
+import { AlephaDiscordNotifications, discordOptions } from "@alepha/discord";
 import { Alepha, z } from "alepha";
 import {
   $notification,
   AlephaApiNotifications,
 } from "alepha/api/notifications";
-import { AlephaDiscordNotifications, discordOptions } from "@alepha/discord";
 
 const alepha = Alepha.create()
   .with(AlephaApiNotifications)

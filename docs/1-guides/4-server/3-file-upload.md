@@ -21,8 +21,8 @@ automatically expects `multipart/form-data`:
 
 ```typescript check
 import { z } from "alepha";
-import { $action } from "alepha/server";
 import { $storage } from "alepha/api/files";
+import { $action } from "alepha/server";
 
 class UploadController {
   uploads = $storage();

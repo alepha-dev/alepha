@@ -67,6 +67,7 @@ Open the entry file. It wires up the two generated modules:
 
 ```typescript filename="src/main.server.ts"
 import { Alepha, run } from "alepha";
+
 import { ApiModule } from "./api/index.ts";
 import { WebModule } from "./web/index.ts";
 
@@ -132,8 +133,8 @@ OpenAPI documentation, and type-safe client calls.
 
 ```typescript filename="src/main.server.ts"
 import { z, run, $inject } from "alepha";
-import { $action } from "alepha/server";
 import { DateTimeProvider } from "alepha/datetime";
+import { $action } from "alepha/server";
 
 class App {
   dateTimeProvider = $inject(DateTimeProvider);

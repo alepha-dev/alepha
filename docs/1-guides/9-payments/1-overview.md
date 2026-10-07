@@ -59,10 +59,11 @@ The high-level service is `PaymentService`. A typical "buy a one-off thing" flow
 
 ```typescript
 import { $inject, z } from "alepha";
-import { $repository } from "alepha/orm";
-import { $action } from "alepha/server";
-import { $secure } from "alepha/security";
 import { PaymentService } from "alepha/api/payments";
+import { $repository } from "alepha/orm";
+import { $secure } from "alepha/security";
+import { $action } from "alepha/server";
+
 import { productEntity } from "./entities/product.ts";
 
 class CheckoutController {

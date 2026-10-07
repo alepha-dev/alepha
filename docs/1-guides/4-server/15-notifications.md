@@ -7,8 +7,8 @@ Two layers, and picking the wrong one is the most common mistake.
 trail, a suppression list and delivery receipts.
 
 ```typescript check
-import { $email } from "alepha/email";
 import { $notification } from "alepha/api/notifications";
+import { $email } from "alepha/email";
 ```
 
 Use `$email` when the app itself decides the words at the moment of sending

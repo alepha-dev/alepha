@@ -33,8 +33,8 @@ abstract class PaymentProvider {
 One implementation ships with the framework, `@alepha/payments-stripe`. It composes with `AlephaApiPayments` like this:
 
 ```typescript
-import { AlephaApiPayments } from "alepha/api/payments";
 import { AlephaPaymentsStripe } from "@alepha/payments-stripe";
+import { AlephaApiPayments } from "alepha/api/payments";
 
 const alepha = Alepha.create()
   .with(AlephaApiPayments)

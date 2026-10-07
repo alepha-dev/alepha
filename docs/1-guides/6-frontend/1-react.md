@@ -19,6 +19,7 @@ React, SSR and Tailwind are part of every Alepha project - there is no flag to e
 
 ```typescript
 import { Alepha, run } from "alepha";
+
 import { ApiModule } from "./api/index.ts";
 import { WebModule } from "./web/index.ts";
 
@@ -34,6 +35,7 @@ run(alepha);
 
 ```typescript
 import { Alepha, run } from "alepha";
+
 import { WebModule } from "./web/index.ts";
 
 const alepha = Alepha.create();
@@ -85,6 +87,7 @@ Type-safe API calls from React. Connects to server-side controllers via the link
 ```tsx
 import { useAction, useClient } from "alepha/react";
 import { useState } from "react";
+
 import type { CountApi } from "./CountApi.ts";
 
 interface HomeProps {

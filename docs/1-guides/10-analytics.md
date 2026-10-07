@@ -22,8 +22,8 @@ A dataset is `index` (which dimension Analytics Engine samples on), `dimensions`
 [below](#the-analytics-engine-slot-map-is-a-wire-format)), and an optional `retention`:
 
 ```typescript check
-import { $analytics } from "alepha/api/analytics";
 import { z } from "alepha";
+import { $analytics } from "alepha/api/analytics";
 
 class PageViews {
   views = $analytics({
@@ -198,8 +198,8 @@ as an ordinary dimension holding the bucket index, with `count` (or whatever you
 measure) as the thing you sum. This is exactly how Lore tracks Web Vitals:
 
 ```typescript
-import { $analytics } from "alepha/api/analytics";
 import { z } from "alepha";
+import { $analytics } from "alepha/api/analytics";
 
 class WebVitals {
   vitals = $analytics({
@@ -268,11 +268,11 @@ The hourly sweep that actually folds and prunes rows lives in a **separate modul
 `AlephaApiAnalyticsRollup`, which your app has to import explicitly alongside `AlephaApiAnalytics`:
 
 ```typescript
+import { Alepha } from "alepha";
 import {
   AlephaApiAnalytics,
   AlephaApiAnalyticsRollup,
 } from "alepha/api/analytics";
-import { Alepha } from "alepha";
 
 const alepha = Alepha.create()
   .with(AlephaApiAnalytics)
@@ -392,8 +392,9 @@ backlog.
 A real example, from [Lore](https://github.com/alepha-dev/lore):
 
 ```typescript
-import { AlephaApiAnalyticsRollup } from "alepha/api/analytics";
 import { $module } from "alepha";
+import { AlephaApiAnalyticsRollup } from "alepha/api/analytics";
+
 import { LoreAnalytics } from "./entities/loreAnalytics.ts";
 
 export const LoreApi = $module({
@@ -411,9 +412,10 @@ export const LoreApi = $module({
 `entities/loreAnalytics.ts` in the Lore repository:
 
 ```typescript
-import { $analytics } from "alepha/api/analytics";
 import { z } from "alepha";
+import { $analytics } from "alepha/api/analytics";
 import { db } from "alepha/orm";
+
 import { sigils } from "./sigils.ts";
 
 export class LoreAnalytics {

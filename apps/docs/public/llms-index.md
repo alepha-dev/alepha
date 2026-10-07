@@ -101,8 +101,8 @@ wired up - use utility classes, do not add another CSS framework.
 
 ```typescript
 import { z } from "alepha";
-import { $action } from "alepha/server";
 import { $entity, $repository, db } from "alepha/orm";
+import { $action } from "alepha/server";
 
 const userEntity = $entity({
   name: "users",
@@ -154,6 +154,7 @@ class UserController {
 ```tsx
 import { $page } from "alepha/react/router";
 import { $client } from "alepha/server/links";
+
 import type { UserController } from "./UserController.ts";
 
 class AppRouter {
@@ -178,6 +179,7 @@ class AppRouter {
 ```typescript
 // src/main.server.ts
 import { run } from "alepha";
+
 import { ApiModule } from "./api/index.ts";
 import { WebModule } from "./web/index.ts"; // React only
 
@@ -185,6 +187,7 @@ run([ApiModule, WebModule]);
 
 // src/api/index.ts
 import { $module } from "alepha";
+
 import { UserController } from "./controllers/UserController.ts";
 
 export const ApiModule = $module({
@@ -220,8 +223,8 @@ class AppRouter {
 ### Testing
 
 ```typescript
-import { describe, it, expect } from "vitest";
 import { Alepha } from "alepha";
+import { describe, it, expect } from "vitest";
 
 describe("UserService", () => {
   it("should create user", async () => {

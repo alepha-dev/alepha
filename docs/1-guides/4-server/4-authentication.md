@@ -7,9 +7,9 @@ Alepha provides JWT-based authentication through `$issuer` for token management 
 `$issuer` is the low-level primitive for creating and verifying JWT tokens. Use it when you manage users yourself or integrate with an external identity provider.
 
 ```typescript
+import { z } from "alepha";
 import { $issuer } from "alepha/security";
 import { $action } from "alepha/server";
-import { z } from "alepha";
 
 class AuthController {
   issuer = $issuer({

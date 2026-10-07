@@ -55,8 +55,8 @@ Define an API, call it from a React page. Typed end-to-end, no codegen, nothing 
 ```tsx
 // src/Api.ts
 import { z } from "alepha";
-import { $action } from "alepha/server";
 import { $entity, $repository, db } from "alepha/orm";
+import { $action } from "alepha/server";
 
 const viewEntity = $entity({
   name: "views",
@@ -85,9 +85,10 @@ export class Api {
 ```
 
 ```tsx
+import { $page } from "alepha/react/router";
 // src/AppRouter.tsx
 import { $client } from "alepha/server/links";
-import { $page } from "alepha/react/router";
+
 import type { Api } from "./Api.ts";
 
 export class AppRouter {

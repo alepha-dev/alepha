@@ -284,8 +284,8 @@ Register the `AlephaMcp` module and your tool/resource/prompt classes:
 
 ```typescript
 import { Alepha, run } from "alepha";
-import { AlephaServer } from "alepha/server";
 import { AlephaMcp } from "alepha/mcp";
+import { AlephaServer } from "alepha/server";
 
 run(
   Alepha.create()

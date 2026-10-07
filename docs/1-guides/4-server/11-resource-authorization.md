@@ -4,8 +4,8 @@
 
 ```typescript check
 import { $inject } from "alepha";
-import { $action } from "alepha/server";
 import { $owns, $secure, OwnedResourceProvider } from "alepha/security";
+import { $action } from "alepha/server";
 ```
 
 ## The problem

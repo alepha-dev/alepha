@@ -106,6 +106,7 @@ describe("Button", () => {
 Form helpers find inputs by test IDs constructed as `{formId}-{fieldName}`.
 
 ```tsx
+import { screen } from "@testing-library/react";
 import {
   renderWithAlepha,
   fillForm,
@@ -113,7 +114,6 @@ import {
   waitForFormSubmit,
   setupJsdomMocks,
 } from "alepha/testing/react";
-import { screen } from "@testing-library/react";
 
 beforeAll(() => setupJsdomMocks());
 

@@ -115,8 +115,8 @@ Alepha does not use decorators (like NestJS) or file-system magic (like Next.js)
 
 ```typescript check
 import { z } from "alepha";
-import { $action } from "alepha/server";
 import { $entity, $repository, db } from "alepha/orm";
+import { $action } from "alepha/server";
 
 const product = $entity({
   name: "products",

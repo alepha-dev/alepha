@@ -149,9 +149,9 @@ Apply rate limits directly on an action. The `rateLimit` route option is enforce
 registered the option is silently ignored:
 
 ```typescript check
+import { Alepha } from "alepha";
 import { $action } from "alepha/server";
 import { AlephaServerRateLimit } from "alepha/server/rate-limit";
-import { Alepha } from "alepha";
 
 class App {
   login = $action({

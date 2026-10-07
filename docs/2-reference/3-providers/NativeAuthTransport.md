@@ -13,7 +13,7 @@ the API's origin, the session in secure storage, a Bearer header instead of
 cookies.
 
 - Every auth request goes to the shell's `apiUrl` with `credentials:
-"omit"`: a cookie of the API's origin would never reach a WebView on
+  "omit"`: a cookie of the API's origin would never reach a WebView on
   `capacitor://localhost`, and asking for one needs a CORS grant a Bearer
   API does not give.
 - Every host-less `$client` call to the API carries the session's Bearer

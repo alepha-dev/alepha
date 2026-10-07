@@ -30,6 +30,7 @@ Wrap Services and Primitives into a Module.
 
 ```ts
 import { $module } from "alepha";
+
 import { MyService } from "./MyService.ts";
 
 export default $module({

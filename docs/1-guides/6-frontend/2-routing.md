@@ -18,6 +18,7 @@ A complete example from a real Alepha application:
 import { z } from "alepha";
 import { $page } from "alepha/react/router";
 import { $client } from "alepha/server/links";
+
 import type { CountApi } from "./CountApi.ts";
 
 export class AppRouter {

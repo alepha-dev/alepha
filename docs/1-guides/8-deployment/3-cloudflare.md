@@ -311,7 +311,7 @@ Two ways out, depending on what you need:
 - Register `AlephaApiJobsQueue` so the transport can hold the message.
 - For a payload that expires before the next tick - a verification code lives
   300 seconds while the sweep runs every 900 - use `push(payload, { inline:
-true })`, which runs the handler in front of the caller and fails terminally
+  true })`, which runs the handler in front of the caller and fails terminally
   instead of retrying something that will arrive stale.
 
 ## Limitations
