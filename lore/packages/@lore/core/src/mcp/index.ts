@@ -2,6 +2,7 @@ import { $module } from "alepha";
 import { StreamableHttpMcpTransport } from "alepha/mcp";
 
 import { McpCallRates } from "../api/services/McpCallRates.ts";
+import { McpCallTimings } from "../api/services/McpCallTimings.ts";
 import { ProjectResources } from "./resources/ProjectResources.ts";
 import { AttachmentContentService } from "./services/AttachmentContentService.ts";
 import { AttachmentPushCommand } from "./services/AttachmentPushCommand.ts";
@@ -22,6 +23,9 @@ export const LoreCoreMcp = $module({
     // here because nothing injects it: it is a `$hook` subscriber and the
     // event reaches it only if the class was constructed.
     McpCallRates,
+    // Logs every tool call's wall time and query count (#Q2634). Listed for
+    // the same reason: nothing injects it.
+    McpCallTimings,
     ProjectTools,
     ProjectResources,
     AttachmentContentService,
