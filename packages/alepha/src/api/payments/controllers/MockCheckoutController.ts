@@ -1,8 +1,10 @@
 import { $atom, $inject, $store, Alepha, type Infer, z } from "alepha";
+import { $secure } from "alepha/security";
 import { $route, type ServerReply } from "alepha/server";
 
 import { MemoryPaymentProvider } from "../providers/MemoryPaymentProvider.ts";
 import { PaymentProvider } from "../providers/PaymentProvider.ts";
+import { PaymentMethodService } from "../services/PaymentMethodService.ts";
 import { PaymentService } from "../services/PaymentService.ts";
 
 /**
@@ -196,6 +198,41 @@ export class MockCheckoutController {
     return FORBIDDEN_HTML;
   }
 
+  public readonly mockSetupPage = $route({
+    method: "GET",
+    path: "/payments/mock-setup/:id",
+    schema: {
+      params: z.object({ id: z.string() }),
+      query: z.object({ returnUrl: z.string().optional() }),
+    },
+    handler: async ({ params, query, reply }) => {
+      if (!this.isMemoryProvider()) return this.forbidden(reply);
+      reply.headers["content-type"] = "text/html; charset=utf-8";
+      return `<!doctype html><html lang="en"><title>Save test card</title><h1>Save test card</h1><p>VISA 4242, expires 12/2030</p><form method="post" action="/payments/mock-setup/${escapeHtml(params.id)}/confirm"><input type="hidden" name="returnUrl" value="${escapeHtml(query.returnUrl ?? "/")}"/><button type="submit">Save card</button></form></html>`;
+    },
+  });
+
+  public readonly mockSetupConfirm = $route({
+    method: "POST",
+    path: "/payments/mock-setup/:id/confirm",
+    use: [$secure()],
+    schema: {
+      params: z.object({ id: z.string() }),
+      body: z.object({ returnUrl: z.string().optional() }),
+    },
+    handler: async ({ params, body, user, reply }) => {
+      if (!this.isMemoryProvider()) return this.forbidden(reply);
+      if (!user) return this.forbidden(reply);
+      const methods = this.alepha.inject(PaymentMethodService);
+      await methods.reconcileSession(user.id, params.id);
+      await (this.provider as MemoryPaymentProvider).completeSetupSession(
+        params.id,
+      );
+      await methods.reconcileSession(user.id, params.id);
+      reply.redirect(appendStatusParam(body.returnUrl ?? "/", "success"), 302);
+    },
+  });
+
   public readonly mockCheckoutPage = $route({
     method: "GET",
     path: `${this.url}/:id`,
@@ -224,6 +261,10 @@ export class MockCheckoutController {
     },
     handler: async ({ params, body, reply }) => {
       if (!this.isMemoryProvider()) return this.forbidden(reply);
+      const intent = await this.payments.getIntent(params.id);
+      if (intent.saveCard && intent.providerRef) {
+        await this.provider.capturePayment(intent.providerRef, intent.amount);
+      }
       await this.payments.handleWebhookEvent(params.id, "captured");
       reply.redirect(appendStatusParam(body.returnUrl ?? "/", "success"), 302);
     },

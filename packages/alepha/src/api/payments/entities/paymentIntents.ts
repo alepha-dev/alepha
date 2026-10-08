@@ -29,6 +29,7 @@ export const paymentIntents = $entity({
      * intent must name it: the PSP knows the session only there.
      */
     providerAccount: z.text().optional(),
+    saveCard: z.boolean().optional(),
     providerRaw: z.json().optional(),
     metadata: z.json().optional(),
     paymentMethodId: z.uuid().optional(),

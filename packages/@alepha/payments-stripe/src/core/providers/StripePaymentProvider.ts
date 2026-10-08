@@ -5,6 +5,10 @@ import type {
   ElementSessionResult,
   PaymentIntentEntity,
   PaymentProvider,
+  ProviderAccountOptions,
+  SetupSessionOptions,
+  OffSessionOptions,
+  OffSessionResult,
   RefundResult,
   WebhookEvent,
 } from "alepha/api/payments";
@@ -82,26 +86,32 @@ export class StripePaymentProvider implements PaymentProvider {
    * Uses local cache first, then searches Stripe by metadata, and
    * creates a new customer if none is found.
    */
-  protected async getOrCreateCustomer(userId: string): Promise<string> {
-    const cached = await this.customerCache.get(userId);
+  protected async getOrCreateCustomer(
+    userId: string,
+    options: ProviderAccountOptions = {},
+  ): Promise<string> {
+    const key = `${options.stripeAccount ?? "platform"}:${userId}`;
+    const cached = await this.customerCache.get(key);
     if (cached) return cached;
-
-    const existing = await this.stripe.customers.search({
-      query: `metadata["alepha_user_id"]:"${userId}"`,
-      limit: 1,
-    });
-
-    if (existing.data.length > 0) {
-      const customerId = existing.data[0].id;
-      await this.customerCache.set(userId, customerId);
-      return customerId;
-    }
-
-    const customer = await this.stripe.customers.create({
-      metadata: { alepha_user_id: userId },
-    });
-
-    await this.customerCache.set(userId, customer.id);
+    const account = options.stripeAccount
+      ? { stripeAccount: options.stripeAccount }
+      : undefined;
+    const existing = await this.stripe.customers.search(
+      {
+        query: `metadata["alepha_user_id"]:"${userId}"`,
+        limit: 1,
+      },
+      account,
+    );
+    const customer =
+      existing.data[0] ??
+      (await this.stripe.customers.create(
+        {
+          metadata: { alepha_user_id: userId },
+        },
+        { ...account, idempotencyKey: `customer:${key}` },
+      ));
+    await this.customerCache.set(key, customer.id);
     return customer.id;
   }
 
@@ -110,21 +120,39 @@ export class StripePaymentProvider implements PaymentProvider {
     options: {
       returnUrl: string;
       authorize?: boolean;
+      saveCard?: boolean;
       stripeAccount?: string;
       applicationFeeAmount?: number;
+      idempotencyKey?: string;
       customerEmail?: string;
     },
   ): Promise<CreateSessionResult> {
-    // Customer objects live on the PLATFORM account — they don't exist on a
-    // connected account, so sessions created there (direct charges) must
-    // not reference one. `customer_email` carries the pre-fill instead.
+    if (options.saveCard && !intent.userId)
+      throw new AlephaError("Saving a card requires a user");
     const customer =
-      intent.userId && !options.stripeAccount
-        ? await this.getOrCreateCustomer(intent.userId)
+      intent.userId && (!options.stripeAccount || options.saveCard)
+        ? await this.getOrCreateCustomer(intent.userId, options)
         : undefined;
 
+    const metadata = intent.metadata as { type?: string; guaranteeId?: string };
+    const isGuaranteeRecovery =
+      metadata?.type === "booking_guarantee" && !!metadata.guaranteeId;
+    const checkoutMetadata = {
+      ...(isGuaranteeRecovery
+        ? Object.fromEntries(
+            Object.entries(metadata)
+              .filter(([, value]) =>
+                ["string", "number", "boolean"].includes(typeof value),
+              )
+              .map(([key, value]) => [key, String(value)]),
+          )
+        : {}),
+      intentId: intent.id,
+    };
     const paymentIntentData: Stripe.Checkout.SessionCreateParams["payment_intent_data"] =
       options.authorize ? { capture_method: "manual" } : {};
+    if (isGuaranteeRecovery) paymentIntentData.metadata = checkoutMetadata;
+    if (options.saveCard) paymentIntentData.setup_future_usage = "off_session";
     if (options.applicationFeeAmount && options.applicationFeeAmount > 0) {
       paymentIntentData.application_fee_amount = options.applicationFeeAmount;
     }
@@ -132,6 +160,9 @@ export class StripePaymentProvider implements PaymentProvider {
     const session = await this.stripe.checkout.sessions.create(
       {
         mode: "payment",
+        ...(options.saveCard
+          ? { allowed_payment_method_types: ["card" as const] }
+          : {}),
         customer,
         // Mutually exclusive with `customer` per Stripe's API.
         customer_email: customer ? undefined : options.customerEmail,
@@ -151,15 +182,18 @@ export class StripePaymentProvider implements PaymentProvider {
             : undefined,
         success_url: options.returnUrl,
         cancel_url: options.returnUrl,
-        metadata: { intentId: intent.id },
+        metadata: checkoutMetadata,
         // Force eager PaymentIntent creation. Without expand, Stripe may return
         // `payment_intent: null` for sessions that lazy-create the PI (depends
         // on enabled payment methods / account configuration).
         expand: ["payment_intent"],
       },
-      options.stripeAccount
-        ? { stripeAccount: options.stripeAccount }
-        : undefined,
+      {
+        stripeAccount: options.stripeAccount,
+        ...(options.idempotencyKey
+          ? { idempotencyKey: options.idempotencyKey }
+          : {}),
+      },
     );
 
     if (!session.url) {
@@ -251,27 +285,29 @@ export class StripePaymentProvider implements PaymentProvider {
 
   public async voidPayment(
     providerRef: string,
-    options: { stripeAccount?: string } = {},
+    options: { stripeAccount?: string; idempotencyKey?: string } = {},
   ): Promise<void> {
-    await this.stripe.paymentIntents.cancel(
-      providerRef,
-      undefined,
-      options.stripeAccount
-        ? { stripeAccount: options.stripeAccount }
-        : undefined,
-    );
+    await this.stripe.paymentIntents.cancel(providerRef, undefined, {
+      stripeAccount: options.stripeAccount,
+      ...(options.idempotencyKey
+        ? { idempotencyKey: options.idempotencyKey }
+        : {}),
+    });
   }
 
   public async refundPayment(
     providerRef: string,
     amount: number,
-    options: { stripeAccount?: string } = {},
+    options: { stripeAccount?: string; idempotencyKey?: string } = {},
   ): Promise<RefundResult> {
     const refund = await this.stripe.refunds.create(
       { payment_intent: providerRef, amount },
-      options.stripeAccount
-        ? { stripeAccount: options.stripeAccount }
-        : undefined,
+      {
+        stripeAccount: options.stripeAccount,
+        ...(options.idempotencyKey
+          ? { idempotencyKey: options.idempotencyKey }
+          : {}),
+      },
     );
     return { providerRef: refund.id };
   }
@@ -389,11 +425,18 @@ export class StripePaymentProvider implements PaymentProvider {
   public async createPaymentMethod(
     userId: string,
     token: string,
+    options: ProviderAccountOptions = {},
   ): Promise<CreatePaymentMethodResult> {
-    const customerId = await this.getOrCreateCustomer(userId);
-    const pm = await this.stripe.paymentMethods.attach(token, {
-      customer: customerId,
-    });
+    const customerId = await this.getOrCreateCustomer(userId, options);
+    const pm = await this.stripe.paymentMethods.attach(
+      token,
+      {
+        customer: customerId,
+      },
+      options.stripeAccount
+        ? { stripeAccount: options.stripeAccount }
+        : undefined,
+    );
 
     return {
       providerRef: pm.id,
@@ -405,8 +448,32 @@ export class StripePaymentProvider implements PaymentProvider {
     };
   }
 
-  public async deletePaymentMethod(providerRef: string): Promise<void> {
-    await this.stripe.paymentMethods.detach(providerRef);
+  public async deletePaymentMethod(
+    providerRef: string,
+    options: ProviderAccountOptions = {},
+  ): Promise<void> {
+    const account = options.stripeAccount
+      ? { stripeAccount: options.stripeAccount }
+      : undefined;
+    try {
+      const method = await this.stripe.paymentMethods.retrieve(
+        providerRef,
+        undefined,
+        account,
+      );
+      if (!method.customer) return;
+    } catch (error) {
+      const missing = error as { code?: string; statusCode?: number };
+      if (missing.code === "resource_missing" && missing.statusCode === 404)
+        return;
+      throw error;
+    }
+    await this.stripe.paymentMethods.detach(providerRef, undefined, {
+      ...account,
+      ...(options.idempotencyKey
+        ? { idempotencyKey: options.idempotencyKey }
+        : {}),
+    });
   }
 
   /**
@@ -593,6 +660,178 @@ export class StripePaymentProvider implements PaymentProvider {
       chargesEnabled: active,
       payoutsEnabled: active,
     };
+  }
+
+  public async retrieveSavedPaymentMethod(
+    userId: string,
+    providerRef: string,
+    options: ProviderAccountOptions = {},
+  ): Promise<CreatePaymentMethodResult | null> {
+    const account = options.stripeAccount
+      ? { stripeAccount: options.stripeAccount }
+      : undefined;
+    let intent: Stripe.PaymentIntent | Stripe.SetupIntent;
+    if (providerRef.startsWith("cs_")) {
+      const session = await this.stripe.checkout.sessions.retrieve(
+        providerRef,
+        { expand: ["setup_intent", "payment_intent"] },
+        account,
+      );
+      if (session.status !== "complete") return null;
+      const reference =
+        session.mode === "setup"
+          ? session.setup_intent
+          : session.payment_intent;
+      if (!reference) return null;
+      intent =
+        typeof reference !== "string"
+          ? reference
+          : session.mode === "setup"
+            ? await this.stripe.setupIntents.retrieve(
+                reference,
+                undefined,
+                account,
+              )
+            : await this.stripe.paymentIntents.retrieve(
+                reference,
+                undefined,
+                account,
+              );
+    } else {
+      intent = await this.stripe.paymentIntents.retrieve(
+        providerRef,
+        undefined,
+        account,
+      );
+    }
+    if (intent.status !== "succeeded") return null;
+    if (
+      intent.object === "payment_intent" &&
+      intent.setup_future_usage !== "off_session"
+    )
+      return null;
+    const customer = await this.getOrCreateCustomer(userId, options);
+    const customerId =
+      typeof intent.customer === "string"
+        ? intent.customer
+        : intent.customer?.id;
+    if (customerId !== customer)
+      throw new AlephaError("Saved card belongs to another customer");
+    if (!intent.payment_method) return null;
+    const method =
+      typeof intent.payment_method === "string"
+        ? await this.stripe.paymentMethods.retrieve(
+            intent.payment_method,
+            undefined,
+            account,
+          )
+        : intent.payment_method;
+    const methodCustomer =
+      typeof method.customer === "string"
+        ? method.customer
+        : method.customer?.id;
+    if (methodCustomer !== customer || method.type !== "card")
+      throw new AlephaError("Setup did not save a card for this customer");
+    return {
+      providerRef: method.id,
+      type: method.type,
+      brand: method.card?.brand,
+      last4: method.card?.last4,
+      expMonth: method.card?.exp_month,
+      expYear: method.card?.exp_year,
+    };
+  }
+
+  public async createSetupSession(
+    userId: string,
+    options: SetupSessionOptions,
+  ): Promise<CreateSessionResult> {
+    const customer = await this.getOrCreateCustomer(userId, options);
+    const session = await this.stripe.checkout.sessions.create(
+      {
+        mode: "setup",
+        currency: "eur",
+        customer,
+        allowed_payment_method_types: ["card"],
+        success_url: options.returnUrl,
+        cancel_url: options.returnUrl,
+        metadata: { ...options.metadata, alepha_user_id: userId },
+        setup_intent_data: {
+          metadata: { ...options.metadata, alepha_user_id: userId },
+        },
+      },
+      options.stripeAccount
+        ? { stripeAccount: options.stripeAccount }
+        : undefined,
+    );
+    if (!session.url)
+      throw new AlephaError("Stripe setup session is missing URL");
+    return { url: session.url, providerRef: session.id };
+  }
+
+  public async chargeOffSession(
+    userId: string,
+    paymentMethodRef: string,
+    amount: number,
+    options: OffSessionOptions,
+  ): Promise<OffSessionResult> {
+    if (!Number.isSafeInteger(amount) || amount <= 0)
+      throw new AlephaError("Charge amount must be a positive integer");
+    const customer = await this.getOrCreateCustomer(userId, options);
+    try {
+      const intent = await this.stripe.paymentIntents.create(
+        {
+          amount,
+          currency: options.currency ?? "eur",
+          customer,
+          payment_method: paymentMethodRef,
+          off_session: true,
+          confirm: true,
+          ...(options.applicationFeeAmount
+            ? { application_fee_amount: options.applicationFeeAmount }
+            : {}),
+          metadata: options.metadata,
+        },
+        {
+          ...(options.stripeAccount
+            ? { stripeAccount: options.stripeAccount }
+            : {}),
+          ...(options.idempotencyKey
+            ? { idempotencyKey: options.idempotencyKey }
+            : {}),
+        },
+      );
+      if (
+        intent.status !== "succeeded" &&
+        intent.status !== "requires_action" &&
+        intent.status !== "requires_payment_method" &&
+        intent.status !== "canceled"
+      ) {
+        throw new AlephaError(
+          `Off-session charge ${intent.id} has unresolved status ${intent.status}`,
+        );
+      }
+      return {
+        status:
+          intent.status === "succeeded"
+            ? "succeeded"
+            : intent.status === "requires_action"
+              ? "requires_action"
+              : "failed",
+        providerRef: intent.id,
+      };
+    } catch (error) {
+      const failure = error as Stripe.errors.StripeCardError;
+      if (failure.type !== "StripeCardError") throw error;
+      return {
+        status:
+          failure.code === "authentication_required"
+            ? "requires_action"
+            : "failed",
+        providerRef: failure.payment_intent?.id,
+        code: failure.code,
+      };
+    }
   }
 
   public async createCheckoutSetup(opts: {
