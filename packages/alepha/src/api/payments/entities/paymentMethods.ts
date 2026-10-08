@@ -16,8 +16,12 @@ export const paymentMethods = $entity({
     expYear: z.integer().optional(),
     isDefault: z.boolean(),
     providerRef: z.text(),
+    providerAccount: z.text().optional(),
   }),
-  indexes: ["userId"],
+  indexes: [
+    { columns: ["userId"] },
+    { columns: ["providerAccount", "providerRef"], unique: true },
+  ],
 });
 
 export type PaymentMethodEntity = Infer<typeof paymentMethods.schema>;
