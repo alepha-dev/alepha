@@ -226,10 +226,32 @@ export class HeadProvider {
     state.head = {
       ...state.head,
       ...head,
+      // Merged key by key, as `resolveGlobalHead` does for the early head:
+      // spread whole, a later global head's attributes replaced the earlier
+      // ones, so the browser lost i18n's `lang` the moment an app set any
+      // attribute of its own, and disagreed with the server's document.
+      htmlAttributes: this.mergeAttributes(
+        state.head.htmlAttributes,
+        head.htmlAttributes,
+      ),
+      bodyAttributes: this.mergeAttributes(
+        state.head.bodyAttributes,
+        head.bodyAttributes,
+      ),
       meta: [...(state.head.meta ?? []), ...meta, ...(head.meta ?? [])],
       link: [...(state.head.link ?? []), ...link, ...(head.link ?? [])],
       script: [...(state.head.script ?? []), ...(head.script ?? [])],
     };
+  }
+
+  protected mergeAttributes(
+    previous?: Record<string, string>,
+    next?: Record<string, string>,
+  ): Record<string, string> | undefined {
+    if (!previous || !next) {
+      return next ?? previous;
+    }
+    return { ...previous, ...next };
   }
 
   protected fillHeadByPage(
