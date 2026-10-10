@@ -40,6 +40,21 @@
       "import": "./src/cli/index.ts",
       "default": "./src/cli/index.ts"
     },
+    "./ota": {
+      "types": "./src/ota/index.ts",
+      "import": "./src/ota/index.ts",
+      "default": "./src/ota/index.ts"
+    },
+    "./ota-api": {
+      "types": "./src/ota-api/index.ts",
+      "import": "./src/ota-api/index.ts",
+      "default": "./src/ota-api/index.ts"
+    },
+    "./ota-admin": {
+      "types": "./src/ota-admin/index.ts",
+      "import": "./src/ota-admin/index.ts",
+      "default": "./src/ota-admin/index.ts"
+    },
     "./package.json": "./package.json"
   },
   "publishConfig": {
@@ -61,6 +76,21 @@
         "import": "./dist/cli/index.js",
         "default": "./dist/cli/index.js"
       },
+      "./ota": {
+        "types": "./dist/ota/index.d.ts",
+        "import": "./dist/ota/index.js",
+        "default": "./dist/ota/index.js"
+      },
+      "./ota-api": {
+        "types": "./dist/ota-api/index.d.ts",
+        "import": "./dist/ota-api/index.js",
+        "default": "./dist/ota-api/index.js"
+      },
+      "./ota-admin": {
+        "types": "./dist/ota-admin/index.d.ts",
+        "import": "./dist/ota-admin/index.js",
+        "default": "./dist/ota-admin/index.js"
+      },
       "./package.json": "./package.json"
     }
   },
@@ -79,6 +109,8 @@
     "@capacitor/device": "8.0.3",
     "@capacitor/haptics": "8.0.2",
     "@capacitor/splash-screen": "8.0.2",
+    "@capgo/capacitor-updater": "8.52.1",
+    "@capgo/cli": "8.75.2",
     "@types/bun": "^1.4.2",
     "@types/node": "^26.6.4",
     "@types/react": "^19.3.0",
@@ -97,6 +129,7 @@
     "@capacitor/device": "^8.0.0",
     "@capacitor/haptics": "^8.0.0",
     "@capacitor/splash-screen": "^8.0.0",
+    "@capgo/capacitor-updater": "8.52.1",
     "alepha": "^0.31.0"
   },
   "peerDependenciesMeta": {
@@ -116,6 +149,9 @@
       "optional": true
     },
     "@capacitor/splash-screen": {
+      "optional": true
+    },
+    "@capgo/capacitor-updater": {
       "optional": true
     }
   },

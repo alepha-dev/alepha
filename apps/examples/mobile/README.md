@@ -106,3 +106,31 @@ the iOS platform its SDK names (Xcode > Settings > Components).
 
 The full device run (simulators, an emulator and one physical phone per
 platform) is [#Q2525](https://lore.alepha.dev/alepha/quests/2525).
+
+## The OTA conformance harness
+
+`scripts/ota-conformance.ts` checks the pinned live updater
+(`@capgo/capacitor-updater` 8.52.1) on a simulator or emulator against a local
+fixture service, with no Capgo account and no `ota-api` in between
+([#Q2524](https://lore.alepha.dev/alepha/quests/2524)). It serves the
+updater's endpoints over HTTPS, logs every request it receives, and seals test
+bundles with the publisher's own code and a test-only key pair kept in
+`node_modules/.ota-conformance/`: healthy ones, a broken one that never
+acknowledges, one sealed with another key, a tampered one and one with
+another bundle's checksum.
+
+```bash
+mkcert -cert-file ota.pem -key-file ota-key.pem localhost 127.0.0.1
+OTA_TLS_CERT=$PWD/ota.pem OTA_TLS_KEY=$PWD/ota-key.pem node scripts/ota-conformance.ts
+```
+
+Then build the app with `alepha capacitor sync --variant base`, put the
+updater's settings (`autoUpdate: false`, the three URLs on
+`https://localhost:8444/ota/...`, `publicKey` from `/control/public-key`,
+`allowManualBundleError: true`) into the generated native
+`capacitor.config.json`, replace the native `public/` directory with
+`/harness.html?version=builtin` as `index.html`, and build with Xcode or
+Gradle. The harness page runs whatever `POST /control/command` queues
+(`{"op":"download","args":{...}}`, `next`, `setBundleError`, `current`, ...)
+against the plugin and posts the outcome to `/control/log`. An Android
+emulator reaches the service through `adb reverse tcp:8444 tcp:8444`.
