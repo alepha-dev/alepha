@@ -5,20 +5,19 @@ the opposite: **in-memory state that lives across messages, and an authoritative
 tick loop that advances the world on the server's clock, not the client's.**
 That is `$room`.
 
-A `$room` is one stateful actor, addressed by `channelPath:roomId`, with a
+A `$room` is one volatile stateful room, addressed by `channelPath:roomId`, with a
 lifecycle:
 
 - it comes to life on the first join (running its `state` factory once),
 - while a socket is connected and `tickHz > 0`, a loop calls `onTick(room, dt)`
   every `1000/tickHz` ms,
-- when the last socket leaves, `onEmpty` runs and the state is discarded - an
-  empty room costs nothing.
+- when the last socket leaves, `onEmpty` runs and the state is discarded.
 
 The **same code runs on both runtimes.** On a Node VPS the room is a plain
 object in a `Map` driven by `setInterval`. On Cloudflare it is one Durable
-Object per `channelPath:roomId`, the loop ticking off the DO's own clock (the
-isolate stays alive while it holds a socket, so the loop keeps running; an idle
-room hibernates for free). You never write a Durable Object.
+Object per `channelPath:roomId`, with its loop running inside that host. The
+framework owns the native host and socket lifecycle. Host recreation starts a new
+room engine, even when accepted sockets survive.
 
 ## An authoritative simulation room
 
@@ -46,7 +45,6 @@ class GameServer {
       }
     },
     onLeave: (room, conn) => room.state.despawn(conn.id),
-    onEmpty: (room) => room.state.persist(),
   });
 }
 ```
@@ -59,7 +57,7 @@ Key points:
   area-of-interest stream needs: each client gets a _different_ frame every tick.
   **`room.broadcast(msg, { exceptConnectionIds })`** fans out to all.
 - **`conn.data`** is a per-connection bag you own (last acked input seq, hero id,
-  AOI cursor…).
+  AOI cursor...). It is volatile and resets when the host is recreated.
 - **`onTick` never throws out of the loop**: an error is logged and the room
   keeps ticking. The tick loop is the speed limit; flooding messages buys no
   extra ticks.
@@ -120,22 +118,32 @@ touches it.
 |                      | Node (VPS)          | Cloudflare                                            |
 | -------------------- | ------------------- | ----------------------------------------------------- |
 | Room instance        | object in a `Map`   | one Durable Object per `channel:room`                 |
-| Tick loop            | `setInterval`       | `setInterval` inside the DO (alive while a socket is) |
-| `state` in memory    | one process, shared | per-DO; survives while the room is warm               |
+| Tick loop            | `setInterval`       | `setInterval` inside the DO; restarted after recovery |
+| `state` in memory    | one process, shared | volatile per-engine; reset on recreation              |
 | Coordinator `call()` | direct method call  | DO-to-DO RPC                                          |
 | Transactions         | full SQL            | D1 has no multi-statement transactions                |
 
-On a single VPS you have shared memory and real timers, so a coordinator/lease is
-just a headless room in the same process. On Cloudflare the same headless room is
-a Durable Object - durable state that outlives an isolate must be persisted
-inside a `method`/`onEmpty` (its `state` is in-memory and lost if the DO is
-evicted while idle). An actively-ticking world room stays warm and keeps its
-state for as long as it ticks.
+On a single VPS a coordinator/lease is a headless room in the same process.
+On Cloudflare it is a Durable Object host, but its `state` is still ordinary
+in-memory state. A process restart or native host recreation loses that state.
+An active tick loop does not provide persistence.
 
-**Watchdog.** A `$room` on Cloudflare relies on the isolate staying warm while it
-holds a socket. To recover from a rare mid-connection isolate reset, a Durable
-Object `alarm()` fires every ~10s while the room holds sockets: it re-hydrates
-any hibernation socket the fresh in-memory engine has forgotten (which restarts
-the tick loop) and re-arms itself. Connectivity and the loop come back
-automatically; the room _state_ does not (in-memory state cannot survive
-eviction), so persist anything durable in `onEmpty` or a `method`.
+Persist important changes through a repository or
+[`$actor`](/docs/guides-persistence-actors) as they happen in a method or callback.
+Room methods and callbacks can await actor calls; actor reducers themselves must
+remain pure and synchronous. `onEmpty` runs for the normal empty-room lifecycle;
+it is not a guaranteed callback before eviction, reset or process failure.
+
+**Watchdog.** On Cloudflare the existing Durable Object alarm runs about every
+10 seconds while the room holds sockets. After recreation it rehydrates accepted
+sockets the fresh engine has forgotten and restarts the tick loop. Connection
+attachments preserve the connection id, user id, room and query metadata; neither
+`room.state` nor `conn.data` is restored. Connectivity recovery is separate from
+application-state recovery. Headless room methods also create a fresh engine on
+their first call after recreation.
+
+Actor and WebSocket hosts share runtime resolution, namespace lookup and startup
+coordination. They keep separate state and the existing WebSocket class, binding
+and `channelPath:roomId` identities. See
+[namespace provisioning](/docs/guides-persistence-actors#build-and-namespace-provisioning)
+for declarative exports, explicit legacy history and prebuilt deployment.

@@ -11,6 +11,9 @@ export * from "./index.shared.ts";
  * Explicit Redis actor selection for Node and Bun. Requires a nonempty
  * ALEPHA_ACTOR_NAMESPACE before connecting. Durability depends on Redis
  * persistence, eviction and failover configuration, without exactly-once claims.
+ * REDIS_URL alone does not select this provider. Start the container before use.
+ * Only definite compare-and-set conflicts retry pure reducers; transport failures
+ * propagate without replay because a commit can have succeeded before the error.
  *
  * @module alepha.actor.redis
  */

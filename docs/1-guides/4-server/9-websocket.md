@@ -326,7 +326,7 @@ Because Cloudflare allows only one room per connection (see below), joining mult
 
 ## Cloudflare (Durable Objects)
 
-On Cloudflare, `alepha/websocket` is backed by one **Durable Object per `channelPath:roomId`**, using the WebSocket Hibernation API so idle rooms cost nothing and survive isolate eviction. Your `$websocket` handler runs _inside_ that Durable Object, so `reply()` is a local fan-out over the DO's own sockets - there is no cross-isolate hop, and no Redis or `alepha/topic` bus is needed. The Durable Object _is_ the topic bus.
+On Cloudflare, `alepha/websocket` is backed by one **Durable Object per `channelPath:roomId`**, using the WebSocket Hibernation API to retain accepted connections when the host is recreated. Room state and connection data bags are still volatile. Your `$websocket` handler runs _inside_ that Durable Object, so `reply()` is a local fan-out over the DO's own sockets - there is no cross-isolate hop, and no Redis or `alepha/topic` bus is needed. The Durable Object _is_ the topic bus.
 
 This gives the same channel/handler code as Node, with a few v1 limitations worth knowing:
 
@@ -336,7 +336,7 @@ This gives the same channel/handler code as Node, with a few v1 limitations wort
 
 **`exceptUserIds` is not honored on Cloudflare.** `reply()`'s and `emit()`'s `exceptConnectionIds` work as expected; `exceptUserIds` is silently ignored by the Cloudflare provider (it only tracks connections, not the user index Node maintains). Use `exceptConnectionIds` if you need to exclude specific clients.
 
-**Deployment is automatic.** `alepha build --runtime workerd` detects `$websocket` usage and generates the Durable Object binding and its SQLite migration into `wrangler.jsonc` - no manual wrangler configuration needed:
+**Host configuration is generated.** `alepha build --runtime workerd` collects generic host declarations from `$websocket`, `$room` and `$actor`. A socket-only or room-only app keeps the existing class and binding. Without an explicit legacy migration history, the generated `wrangler.jsonc` uses declarative SQLite exports:
 
 ```jsonc
 {
@@ -348,13 +348,29 @@ This gives the same channel/handler code as Node, with a few v1 limitations wort
       },
     ],
   },
-  "migrations": [
-    { "tag": "v1", "new_sqlite_classes": ["AlephaWebSocketDurableObject"] },
-  ],
+  "exports": {
+    "AlephaWebSocketDurableObject": {
+      "type": "durable-object",
+      "storage": "sqlite",
+    },
+  },
 }
 ```
 
-Deploy and test locally with:
+The class remains `AlephaWebSocketDurableObject`, the binding remains
+`ALEPHA_WEBSOCKET`, and the instance identity remains `channelPath + ":" + roomId`.
+Shared actor host/runtime facilities do not persist `RoomEngine.state` or `conn.data`.
+
+Use a Wrangler toolchain supporting declarative exports. An explicit
+`build.cloudflare.config.migrations` array keeps the legacy history path instead;
+DO exports and migrations cannot coexist. Conflicting bindings or a required-host
+tombstone reject the build. Switching a deployed Worker to exports is a one-way
+control-plane transition, not an application-state migration. Both Cloudflare
+deploy transports consume the same manifest declarations. See
+[actor state and namespace provisioning](/docs/guides-persistence-actors) for the
+configuration rules, prebuilt path and durability limits.
+
+Build and test locally with:
 
 ```bash
 yarn alepha build --runtime workerd
@@ -362,3 +378,6 @@ npx wrangler dev
 ```
 
 Open two browser tabs on the same room to see messages broadcast between them; a different room stays isolated.
+
+With an explicit environment configured through `alepha/cli/infra`, deploy through
+`alepha deploy`. `alepha deploy --prebuilt` uses the existing artifact.
