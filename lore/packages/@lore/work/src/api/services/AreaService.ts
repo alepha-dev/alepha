@@ -98,6 +98,18 @@ export class AreaService {
    * every quest whole — rich-text `description`, `history`, `objectives`
    * — to read four scalar fields.
    */
+  /**
+   * Every area of a project, by name, without the quest scan
+   * {@link listWithStats} pays for its counts and dates: what an index that
+   * shows only names and descriptions reads (`project_context`, #Q2636).
+   */
+  async list(projectId: number): Promise<Area[]> {
+    return await this.areas.findMany({
+      where: { projectId: { eq: projectId } },
+      orderBy: [{ column: "name", direction: "asc" }],
+    });
+  }
+
   async listWithStats(projectId: number): Promise<AreaStats[]> {
     const [rows, projectQuests] = await Promise.all([
       this.areas.findMany({

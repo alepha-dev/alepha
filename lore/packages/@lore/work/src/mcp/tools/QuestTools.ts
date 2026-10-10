@@ -100,8 +100,10 @@ export class QuestTools {
    * A quest's discussion, with authors resolved to names.
    *
    * `getProjectUsers` is one call for the whole thread, not one per comment,
-   * and it is skipped entirely when the thread is empty — the common case
-   * for a freshly filed quest.
+   * and it is read beside the comments rather than after them: on D1 a
+   * second step costs a round trip, which is dearer than reading a roster
+   * an empty thread does not need (#Q2636). The caller must already have
+   * read the quest through its gate.
    */
   protected async loadDiscussion(
     questId: number,
@@ -118,20 +120,16 @@ export class QuestTools {
     }>;
     discussionTruncated: boolean;
   }> {
-    const rows = await this.commentController.listQuestComments({
-      params: { id: questId },
-      query: { limit: this.discussionCap + 1 },
-    });
+    const [rows, users] = await Promise.all([
+      this.commentController.latestCommentsOf(questId, this.discussionCap + 1),
+      this.projectController.getProjectUsers({ params: { id: projectId } }),
+    ]);
     if (rows.length === 0) {
       return { discussion: [], discussionTruncated: false };
     }
 
     const discussionTruncated = rows.length > this.discussionCap;
     const kept = discussionTruncated ? rows.slice(-this.discussionCap) : rows;
-
-    const users = await this.projectController.getProjectUsers({
-      params: { id: projectId },
-    });
 
     return {
       discussion: kept.map((comment) => ({
@@ -323,36 +321,38 @@ export class QuestTools {
 
       const size = params.limit ?? 20;
 
-      const result = await this.questController.getQuests({
-        params: { projectId },
-        query: {
-          status: params.status,
-          search: params.search,
-          tag: params.tag,
-          epic: params.epic,
-          size,
-          // Honoured as given. It used to be divided into a page number, so
-          // `offset: 25, limit: 20` returned rows 20-39 while the tool doc
-          // promised 25-44.
-          offset: params.offset,
-          // Passed through, default off. This used to be a literal `true`,
-          // on the reasoning that an agent filing a quest into a draft
-          // epic must see it in its own next call. That reasoning is served
-          // by the `epic:` filter, which the controller never gates; what
-          // the literal actually did was make this list disagree with the
-          // backlog a member is looking at, with no parameter to reconcile
-          // the two (84 rows here against 5 in the UI, epic #31).
-          includeDrafts: params.includeDrafts,
-        },
-      });
-
-      // One extra call for the whole page rather than one per quest —
-      // `quest_list` can return up to 100 quests, and every one of them
-      // needs its epic stamped (design §5.3).
-      const epicRefs = await this.epicRefs.mapFor(projectId);
+      // The page and the epic refs in one step (#Q2636): the refs need
+      // nothing from the page. One call for the whole page rather than one
+      // per quest - `quest_list` can return up to 100 quests, and every one
+      // of them needs its epic stamped (design §5.3).
+      const [result, epicRefs] = await Promise.all([
+        this.questController.getQuests({
+          params: { projectId },
+          query: {
+            status: params.status,
+            search: params.search,
+            tag: params.tag,
+            epic: params.epic,
+            size,
+            // Honoured as given. It used to be divided into a page number, so
+            // `offset: 25, limit: 20` returned rows 20-39 while the tool doc
+            // promised 25-44.
+            offset: params.offset,
+            // Passed through, default off. This used to be a literal `true`,
+            // on the reasoning that an agent filing a quest into a draft
+            // epic must see it in its own next call. That reasoning is served
+            // by the `epic:` filter, which the controller never gates; what
+            // the literal actually did was make this list disagree with the
+            // backlog a member is looking at, with no parameter to reconcile
+            // the two (84 rows here against 5 in the UI, epic #31).
+            includeDrafts: params.includeDrafts,
+          },
+        }),
+        this.epicRefs.mapFor(projectId),
+      ]);
 
       // Same shape, second signal: one query for the page's whole
-      // discussion metadata. An agent listing a project has to be able to
+      // discussion metadata, keyed on the page's ids. An agent listing a project has to be able to
       // tell that someone spoke since it last looked, and the alternative
       // is a `quest_get` per row.
       const commentStats = await this.commentController.commentStatsFor(
@@ -829,46 +829,53 @@ export class QuestTools {
       result: questGetResultSchema,
     },
     handler: async ({ params }) => {
-      const id = await this.resolveQuestId(params);
-      const quest = await this.questController.getQuestById({
-        params: { id },
-      });
-
-      let dependsOn_shortId: number | undefined;
-      if (quest.dependsOn != null) {
-        const pred = await this.questController.getQuestById({
-          params: { id: quest.dependsOn },
-        });
-        dependsOn_shortId = pred.shortId;
-      }
-
-      // `quest_get` is direct addressing, so it never gates on the epic's
-      // status (design §5.3) — this is purely enrichment. Skip the extra
-      // call entirely when the quest has no epic, the common case.
-      const epic = await this.epicRefs.refFor(quest.projectId, quest.epicId);
-
-      // Read as well as write: an agent that can comment but cannot see the
-      // owner's reply has half the loop, and "do X differently" left on a
-      // quest is exactly what the next session must find.
-      const { discussion, discussionTruncated } = await this.loadDiscussion(
-        quest.id,
-        quest.projectId,
-      );
-
-      // Skipped entirely when the quest carries no files, the common case,
-      // and the same reasoning as the discussion load above.
-      const attachments = quest.attachments.length
-        ? (
-            await this.questController.listQuestAttachments({
-              params: { id: quest.id },
+      // The one gated read. A `shortId` is resolved by the project's gate
+      // and answers the whole quest, so it is not read a second time by id.
+      const quest =
+        params.id == null && params.shortId != null
+          ? await this.questController.getQuestByShortId({
+              params: {
+                projectId: await this.resolveProjectId(
+                  params.project,
+                  params.project_name,
+                ),
+                shortId: params.shortId,
+              },
             })
-          ).map((file) => ({
-            id: file.fileId,
-            name: file.name,
-            mimeType: file.mimeType,
-            size: file.size,
-          }))
-        : [];
+          : await this.questController.getQuestById({
+              params: { id: await this.resolveQuestId(params) },
+            });
+
+      // Everything else in one step (#Q2636): on D1 every sequential read
+      // is a round trip to the primary. None of these re-reads the quest
+      // through a gate of its own: the read above proved membership on its
+      // project, and each one is scoped to this quest or its project.
+      const [
+        dependsOn_shortId,
+        epic,
+        { discussion, discussionTruncated },
+        files,
+      ] = await Promise.all([
+        quest.dependsOn != null
+          ? this.questController.shortIdOf(quest.projectId, quest.dependsOn)
+          : undefined,
+        // `quest_get` is direct addressing, so it never gates on the
+        // epic's status (design §5.3): this is purely enrichment, and
+        // skipped when the quest has no epic, the common case.
+        this.epicRefs.refFor(quest.projectId, quest.epicId),
+        // Read as well as write: an agent that can comment but cannot see
+        // the owner's reply has half the loop, and "do X differently" left
+        // on a quest is exactly what the next session must find.
+        this.loadDiscussion(quest.id, quest.projectId),
+        // Skipped when the quest carries no files, the common case.
+        this.questController.attachmentFilesOf(quest.attachments ?? []),
+      ]);
+      const attachments = files.map((file) => ({
+        id: file.fileId,
+        name: file.name,
+        mimeType: file.mimeType,
+        size: file.size,
+      }));
 
       return {
         id: quest.id,

@@ -77,7 +77,9 @@ export interface ProjectContextSection {
 export interface ProjectContextInput {
   projectId: number;
   /**
-   * The viewer's open work, already read by core for the project response.
+   * The viewer's open work, as core reads it for the project response. A
+   * promise, so the sections start beside that read instead of after it
+   * (#Q2636): a section that needs it awaits it.
    */
-  assignedWork: AssignedWorkItem[];
+  assignedWork: Promise<AssignedWorkItem[]>;
 }

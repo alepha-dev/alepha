@@ -13,6 +13,7 @@ import { $action, BadRequestError, okSchema } from "alepha/server";
 
 import { type Epic, epics } from "../entities/epics.ts";
 import { quests } from "../entities/quests.ts";
+import { epicDetailSchema } from "../schemas/epicDetailSchema.ts";
 import { epicManualStatusSchema } from "../schemas/epicManualStatusSchema.ts";
 import { epicRefResourceSchema } from "../schemas/epicRefResourceSchema.ts";
 import {
@@ -167,19 +168,20 @@ export class EpicController {
       response: z.array(epicResourceSchema),
     },
     handler: async ({ params }) => {
-      const allEpics = await this.epics.findMany({
-        where: {
-          projectId: { eq: params.projectId },
-        },
-        orderBy: [{ column: "number", direction: "asc" }],
-      });
-
-      // Two aggregates for the whole page rather than four counts per row.
+      // One aggregate for the whole page rather than four counts per row.
       // The list used to fan a per-epic rollup out over every epic, which is
-      // where `GET /api/getEpics/1` got its 89 D1 round trips.
-      const progress = await this.computeProgressOf(
-        allEpics.map((epic) => epic.id),
-      );
+      // where `GET /api/getEpics/1` got its 89 D1 round trips. Keyed on the
+      // project, so it runs beside the epic read rather than after it
+      // (#Q2636).
+      const [allEpics, progress] = await Promise.all([
+        this.epics.findMany({
+          where: {
+            projectId: { eq: params.projectId },
+          },
+          orderBy: [{ column: "number", direction: "asc" }],
+        }),
+        this.epicProgress.computeProgressOfProject(params.projectId),
+      ]);
 
       // The `dependsOn` translation, batched for the same reason: one query
       // for the list rather than one per epic that has a predecessor. Every
@@ -264,6 +266,61 @@ export class EpicController {
       });
 
       return await this.buildEpicResource(epic);
+    },
+  });
+
+  /**
+   * {@link getEpicByNumber} with the folios the epic files, for `epic_get`:
+   * the predecessor, the rollup and the filed links in one step after the
+   * epic row, then the folios described (#Q2636). The folios are `filed`
+   * links in core's graph, described by the `folio` kind Knowledge
+   * registers (#E75, #Q2626, #Q2623), never a folio read from here. Pinned
+   * first, then most recently updated, at most a hundred, as the Epic
+   * detail page lists them.
+   */
+  getEpicDetailByNumber = $action({
+    use: [this.ownsProject("epic:read")],
+    schema: {
+      params: z.object({
+        projectId: z.integer(),
+        number: z.integer(),
+      }),
+      response: epicDetailSchema,
+    },
+    handler: async ({ params }) => {
+      const epic = await this.epics.getOne({
+        where: {
+          projectId: { eq: params.projectId },
+          number: { eq: params.number },
+        },
+      });
+
+      const [resource, folios] = await Promise.all([
+        this.buildEpicResource(epic),
+        this.linkService
+          .filedChildren({ kind: "epic", id: epic.id }, "folio")
+          .then((filed) =>
+            this.resources.describe("folio", params.projectId, filed),
+          ),
+      ]);
+
+      return {
+        ...resource,
+        folios: folios
+          .sort(
+            (a, b) =>
+              Number(b.pinned ?? false) - Number(a.pinned ?? false) ||
+              (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""),
+          )
+          .slice(0, 100)
+          .map((folio) => ({
+            shortId: folio.shortId,
+            title: folio.title,
+            summary: folio.summary,
+            updatedAt: folio.updatedAt,
+            pinned: folio.pinned,
+          })),
+      };
     },
   });
 
@@ -698,18 +755,21 @@ export class EpicController {
     // to the rollup beside it, and it is what stops every consumer holding
     // the epic list purely to turn an id into a `#7`. `getEpics` resolves the
     // same thing off the rows it already holds, with no query at all.
-    const predecessor =
-      epic.dependsOn != null
-        ? await this.epics.findOne({ where: { id: { eq: epic.dependsOn } } })
-        : undefined;
-
+    //
     // ⚠️ `computeProgressOf`, not `computeProgress`: one grouped aggregate
     // rather than four counts. The batched sibling was written for `getEpics`
     // after the 89-round-trip incident and this path simply never switched,
     // so every create, update and status hop paid four statements for a
     // rollup that costs one (#Q2146). `zeroProgress()` covers the epic with
     // no quests, for which `aggregate()` returns no row at all.
-    const progress = await this.computeProgressOf([epic.id]);
+    //
+    // The two in one step (#Q2636): neither needs the other.
+    const [predecessor, progress] = await Promise.all([
+      epic.dependsOn != null
+        ? this.epics.findOne({ where: { id: { eq: epic.dependsOn } } })
+        : undefined,
+      this.computeProgressOf([epic.id]),
+    ]);
 
     return this.toEpicResource(
       epic,

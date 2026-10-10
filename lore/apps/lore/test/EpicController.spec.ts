@@ -312,7 +312,7 @@ describe("EpicController", () => {
     expect(resource.questCount).toBe(0);
   });
 
-  it("lists nothing, and queries nothing, for a project with no epics", async ({
+  it("lists nothing, with one aggregate beside the empty read, for a project with no epics", async ({
     expect,
   }) => {
     const project = await createTestProject(ctx.alepha);
@@ -324,10 +324,13 @@ describe("EpicController", () => {
       { user },
     );
 
-    // `inArray: []` throws, so an empty epic list must never reach the
-    // aggregates at all.
+    // The rollup is keyed on the project, not on the epic ids, so it runs
+    // BESIDE the epic read rather than after it (#Q2636): one aggregate
+    // statement that finds no rows, and no extra round trip. It used to be
+    // skipped for an empty list because `inArray: []` throws; nothing here
+    // builds an `inArray` any more.
     expect(resources).toEqual([]);
-    expect(ctx.counter.of("quests")).toBe(0);
+    expect(ctx.counter.of("quests")).toBe(1);
   });
 
   it("gets an epic by its per-project number", async ({ expect }) => {

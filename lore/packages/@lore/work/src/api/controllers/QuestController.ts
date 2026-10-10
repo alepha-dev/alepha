@@ -983,46 +983,77 @@ export class QuestController {
         }),
       ),
     },
-    handler: async () => {
-      const quest = this.owned.get<Quest>();
-      const attachments = quest.attachments ?? [];
-      if (attachments.length === 0) {
-        return [];
-      }
-
-      // One lookup for the whole list, the same shape `attachmentNames`
-      // above already uses. It replaces a `getFileById` per attachment,
-      // which on D1 was a round trip each.
-      const rows = await this.fileService.fileRepository.findMany({
-        where: { id: { inArray: [...new Set(attachments)] } },
-        columns: ["id", "name", "mimeType", "size"],
-      });
-      const byId = new Map(rows.map((row) => [row.id, row]));
-
-      // A row can outlive its blob (purge job, manual delete), and one
-      // missing file must not take the whole list down with it — absent
-      // from the result set is exactly the old per-file catch. What it no
-      // longer swallows is a FAILING lookup: that used to drop the files it
-      // could not read and answer 200 with a short list, which reads as
-      // "the attachment is gone".
-      //
-      // Driven by `attachments` rather than by `rows` so the order the
-      // owner attached them in is preserved.
-      return attachments.flatMap((fileId) => {
-        const file = byId.get(fileId);
-        return file
-          ? [
-              {
-                fileId,
-                name: file.name,
-                mimeType: file.mimeType,
-                size: file.size,
-              },
-            ]
-          : [];
-      });
-    },
+    handler: async () =>
+      this.attachmentFilesOf(this.owned.get<Quest>().attachments ?? []),
   });
+
+  /**
+   * Name and type for each of a quest's attachments, in the order they were
+   * attached: the body of {@link listQuestAttachments}, without its gate.
+   *
+   * A plain method so `quest_get` can read the files in the same parallel
+   * step as the rest of its enrichment, instead of re-reading the quest
+   * through a second gate first (#Q2636). Every caller has already read the
+   * quest through one, and passes that row's own `attachments`, which is what
+   * keeps this from probing for arbitrary files by id.
+   */
+  async attachmentFilesOf(
+    attachments: readonly string[],
+  ): Promise<
+    Array<{ fileId: string; name: string; mimeType: string; size: number }>
+  > {
+    if (attachments.length === 0) {
+      return [];
+    }
+
+    // One lookup for the whole list, the same shape `attachmentNames`
+    // above already uses. It replaces a `getFileById` per attachment,
+    // which on D1 was a round trip each.
+    const rows = await this.fileService.fileRepository.findMany({
+      where: { id: { inArray: [...new Set(attachments)] } },
+      columns: ["id", "name", "mimeType", "size"],
+    });
+    const byId = new Map(rows.map((row) => [row.id, row]));
+
+    // A row can outlive its blob (purge job, manual delete), and one
+    // missing file must not take the whole list down with it — absent
+    // from the result set is exactly the old per-file catch. What it no
+    // longer swallows is a FAILING lookup: that used to drop the files it
+    // could not read and answer 200 with a short list, which reads as
+    // "the attachment is gone".
+    //
+    // Driven by `attachments` rather than by `rows` so the order the
+    // owner attached them in is preserved.
+    return attachments.flatMap((fileId) => {
+      const file = byId.get(fileId);
+      return file
+        ? [
+            {
+              fileId,
+              name: file.name,
+              mimeType: file.mimeType,
+              size: file.size,
+            },
+          ]
+        : [];
+    });
+  }
+
+  /**
+   * The `shortId` of one quest of a project, or `undefined` when there is no
+   * such row: how `quest_get` names a predecessor without a gated read of
+   * the predecessor (#Q2636). Ungated, so every caller has already proven
+   * membership on `projectId`; the project in the WHERE is what keeps an id
+   * from another project from naming anything.
+   */
+  async shortIdOf(projectId: number, id: number): Promise<number | undefined> {
+    const rows = await this.quests.findMany({
+      where: { id: { eq: id }, projectId: { eq: projectId } },
+      columns: ["shortId"],
+      limit: 1,
+    });
+    return rows[0]?.shortId;
+  }
 
   /**
    * One quest attachment's bytes (base64) plus its metadata.

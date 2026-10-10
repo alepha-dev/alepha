@@ -150,23 +150,34 @@ export class QuestCommentController {
       }),
       response: z.array(questCommentResourceSchema),
     },
-    handler: async ({ params, query }) => {
-      const rows = await this.comments.findMany({
-        where: { questId: { eq: params.id } },
-        // `id` breaks the tie, and it is not decoration: `createdAt` has
-        // millisecond resolution, so a burst of comments (an agent posting
-        // several in a loop, most obviously) lands several rows on the same
-        // stamp and the tail this takes would be an arbitrary subset of them.
-        orderBy: [
-          { column: "createdAt", direction: "desc" },
-          { column: "id", direction: "desc" },
-        ],
-        limit: query?.limit ?? 200,
-      });
-
-      return rows.toReversed();
-    },
+    handler: async ({ params, query }) =>
+      this.latestCommentsOf(params.id, query?.limit ?? 200),
   });
+
+  /**
+   * The most recent `limit` comments of a quest, oldest first: the body of
+   * {@link listQuestComments}, without its gate. A plain method, like
+   * {@link commentStatsFor}, so `quest_get` reads the thread in the same
+   * parallel step as the rest of its enrichment instead of re-reading the
+   * quest through a second gate first (#Q2636). Every caller must already
+   * have read the quest through one.
+   */
+  async latestCommentsOf(questId: number, limit: number) {
+    const rows = await this.comments.findMany({
+      where: { questId: { eq: questId } },
+      // `id` breaks the tie, and it is not decoration: `createdAt` has
+      // millisecond resolution, so a burst of comments (an agent posting
+      // several in a loop, most obviously) lands several rows on the same
+      // stamp and the tail this takes would be an arbitrary subset of them.
+      orderBy: [
+        { column: "createdAt", direction: "desc" },
+        { column: "id", direction: "desc" },
+      ],
+      limit,
+    });
+
+    return rows.toReversed();
+  }
 
   createQuestComment = $action({
     use: [this.ownsQuestForWork("quest:update")],

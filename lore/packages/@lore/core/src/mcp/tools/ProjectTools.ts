@@ -6,6 +6,8 @@ import { currentUserAtom } from "alepha/security";
 import { BadRequestError, ForbiddenError, NotFoundError } from "alepha/server";
 
 import { ProjectController } from "../../api/controllers/ProjectController.ts";
+import type { AssignedWorkItem } from "../../api/schemas/assignedWorkItemSchema.ts";
+import type { CapabilityKey } from "../../api/schemas/capabilityKeySchema.ts";
 import { ProjectSlugService } from "../../api/schemas/ProjectSlugService.ts";
 import { ProjectSecurityService } from "../../api/services/ProjectSecurityService.ts";
 import {
@@ -234,14 +236,19 @@ export class ProjectTools {
         params.project_name,
       );
 
-      const result = await this.projectController.getProjectById({
+      // The project and the modules' sections in one step (#Q2636): the
+      // sections need nothing of the project but the viewer's open work,
+      // which they await, and the resolver above already proved membership.
+      const project = this.projectController.getProjectById({
         params: { id: projectId },
       });
-
-      const sections = await this.contextSections.info({
-        projectId,
-        assignedWork: result.quests,
-      });
+      const [result, sections] = await Promise.all([
+        project,
+        this.contextSections.info({
+          projectId,
+          assignedWork: this.questsOf(project),
+        }),
+      ]);
 
       return {
         id: result.id,
@@ -297,9 +304,8 @@ export class ProjectTools {
       );
 
       // Reuse `getProjectById` so quest scoping (acceptedBy === user) and
-      // membership checks stay in one place. One round-trip for the project
-      // + membership + active quests.
-      const result = await this.projectController.getProjectById({
+      // membership checks stay in one place.
+      const project = this.projectController.getProjectById({
         params: { id: projectId },
       });
 
@@ -312,11 +318,22 @@ export class ProjectTools {
       // The sections themselves are the modules' (`ProjectContextRegistry`,
       // #E75 #Q2623): Work's areas, active quests, epics and open releases,
       // Knowledge's folio index and pinned folios, merged in their order.
+      //
+      // They run beside the project read rather than after it (#Q2636). The
+      // capability set is the one the resolver's gate already read, memoised
+      // for the request, so it costs no trip of its own.
+      const [result, sections] = await Promise.all([
+        project,
+        this.projectSecurity
+          .capabilitiesOf(projectId)
+          .then((enabled) =>
+            this.contextSections.context(
+              { projectId, assignedWork: this.questsOf(project) },
+              new Set(Object.keys(enabled) as CapabilityKey[]),
+            ),
+          ),
+      ]);
       const capabilities = result.capabilities;
-      const sections = await this.contextSections.context(
-        { projectId, assignedWork: result.quests },
-        new Set(capabilities.map((it) => it.key)),
-      );
 
       return {
         id: result.id,
@@ -416,6 +433,19 @@ export class ProjectTools {
       };
     },
   });
+
+  /**
+   * The viewer's open work off a pending project read, for the context
+   * sections. Its rejection is the project read's own, which the caller
+   * already awaits; a section that never asks must not leave it unobserved.
+   */
+  protected questsOf(
+    project: Promise<{ quests: AssignedWorkItem[] }>,
+  ): Promise<AssignedWorkItem[]> {
+    const quests = project.then((it) => it.quests);
+    quests.catch(() => undefined);
+    return quests;
+  }
 
   /**
    * One readable phrase for an event, so an agent does not have to decode

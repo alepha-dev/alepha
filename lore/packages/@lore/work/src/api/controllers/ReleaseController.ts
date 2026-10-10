@@ -198,6 +198,47 @@ export class ReleaseController {
   });
 
   /**
+   * The project's OPEN releases with `completed` / `total`, in creation
+   * order: the planning index `project_context` shows. Gated like
+   * {@link getReleases}, and answered by
+   * `ReleaseContentService.openProgressOf` in one parallel step instead of
+   * the list's three sequential ones (#Q2636).
+   */
+  getOpenReleaseProgress = $action({
+    use: [this.ownsProject("release:read")],
+    schema: {
+      params: z.object({
+        projectId: z.integer(),
+      }),
+      response: z.array(
+        releaseResourceSchema
+          .pick({
+            id: true,
+            number: true,
+            tag: true,
+            title: true,
+            targetDate: true,
+            defaultSince: true,
+          })
+          .extend({ completed: z.integer(), total: z.integer() }),
+      ),
+    },
+    handler: async ({ params }) =>
+      (await this.contents.openProgressOf(params.projectId))
+        .map(({ release, completed, total }) => ({
+          id: release.id,
+          number: release.number,
+          tag: release.tag,
+          title: release.title,
+          targetDate: release.targetDate,
+          defaultSince: release.defaultSince,
+          completed,
+          total,
+        }))
+        .sort((a, b) => a.number - b.number),
+  });
+
+  /**
    * The project's releases with their progress, in version order.
    *
    * A method rather than one action's handler body, because two actions

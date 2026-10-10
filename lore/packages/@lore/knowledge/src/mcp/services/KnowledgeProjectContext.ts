@@ -37,9 +37,12 @@ export class KnowledgeProjectContext {
   protected async folios(projectId: number): Promise<Record<string, unknown>> {
     const cap = KnowledgeProjectContext.FOLIO_INDEX_CAP;
     // Fetch one over the cap to detect truncation without a separate count
-    // query: cheap on D1 (single LIKE-free indexed range scan).
-    const folios = await this.folioController.list({
-      query: { projectId, limit: cap + 1 },
+    // query: cheap on D1 (single LIKE-free indexed range scan). The index
+    // rows carry no body; only the pinned ones do, read beside them, since
+    // those are the only bodies this call returns (#Q2636).
+    const folios = await this.folioController.index({
+      params: { projectId },
+      query: { limit: cap + 1, pinnedContent: true },
     });
     const capped = folios.length > cap;
     const shown = capped ? folios.slice(0, cap) : folios;
@@ -80,7 +83,7 @@ export class KnowledgeProjectContext {
           id: f.id,
           shortId: f.shortId,
           title: f.title,
-          content: f.content,
+          content: f.content ?? "",
         })),
       this.alepha.store.get(pinnedContentAtom).maxChars,
     );

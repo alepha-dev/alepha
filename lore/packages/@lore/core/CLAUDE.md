@@ -6,13 +6,13 @@
 
 The source keeps the directory structure it had in `apps/lore/src` (`api/`, `mcp/`, `web/`, `testing/`), so the package's own files import each other relatively and a move never rewrote them. Everything else reaches the package by name, through five barrels:
 
-| export               | holds                                                                                                                                                                |
-| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@lore/core/api`     | `LoreCoreApi`, controllers, services, providers, security, the resource registry: server only                                                                        |
-| `@lore/core/mcp`     | `LoreCoreMcp`, `ProjectTools`, the attachment commands, `ProjectContextRegistry`                                                                                     |
-| `@lore/core/web`     | `LoreCoreWeb`, `CoreRouter`, `$pageProject`, components, atoms, registries, the dictionaries' `I18n` service                                                         |
-| `@lore/core/schemas` | browser-loadable values: `api/schemas/*`, `mcp/schemas/*`, the entities, and the isomorphic classes (`CapabilityRegistry`, `DashboardMetricCatalog`, ...)            |
-| `@lore/core/testing` | `projectFixture`, `CoreTestEntities` and the project and member helpers, `ReadCounter`, `createPresetRanks`, and what specs render that the web barrel must not name |
+| export               | holds                                                                                                                                                                                                                           |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@lore/core/api`     | `LoreCoreApi`, controllers, services, providers, security, the resource registry: server only                                                                                                                                   |
+| `@lore/core/mcp`     | `LoreCoreMcp`, `ProjectTools`, the attachment commands, `ProjectContextRegistry`                                                                                                                                                |
+| `@lore/core/web`     | `LoreCoreWeb`, `CoreRouter`, `$pageProject`, components, atoms, registries, the dictionaries' `I18n` service                                                                                                                    |
+| `@lore/core/schemas` | browser-loadable values: `api/schemas/*`, `mcp/schemas/*`, the entities, and the isomorphic classes (`CapabilityRegistry`, `DashboardMetricCatalog`, ...)                                                                       |
+| `@lore/core/testing` | `projectFixture`, `CoreTestEntities` and the project and member helpers, `ReadCounter` (statements), `TripCounter` (sequential round trips, #E76), `createPresetRanks`, and what specs render that the web barrel must not name |
 
 ⚠️ **Three rules keep the barrels cheap.** They are what kept the Worker's boot at or under its pre-split cost (#Q2611's measurements).
 

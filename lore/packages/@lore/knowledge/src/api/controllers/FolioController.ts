@@ -139,6 +139,16 @@ export class FolioController {
    * to `update`: the protection-domain invariant is decided against the
    * EXISTING row, and that row is now read once, by the gate.
    */
+  /**
+   * The extras {@link getByShortId} and {@link getDetail} attach on request.
+   */
+  protected readonly detailQuerySchema = z.object({
+    withLinks: z.boolean().optional(),
+    withPath: z.boolean().optional(),
+    withAttachments: z.boolean().optional(),
+    withEpic: z.boolean().optional(),
+  });
+
   protected ownsFolio = (requires: string | string[]) =>
     $ownsProject({ requires, repository: () => this.folios, param: "id" });
 
@@ -305,43 +315,85 @@ export class FolioController {
       params: z.object({ projectId: z.integer() }),
       response: z.array(folioTreeEntrySchema),
     },
-    handler: async ({ params }) => {
-      const [rows, pinned] = await Promise.all([
-        this.folios.findMany({
-          where: { projectId: { eq: params.projectId } },
-          columns: [
-            "id",
-            "shortId",
-            "createdAt",
-            "updatedAt",
-            "projectId",
-            "title",
-            "protected",
-            "pinned",
-            "directoryId",
-            "summary",
-          ],
-          orderBy: [
-            { column: "pinned", direction: "desc" },
-            { column: "updatedAt", direction: "desc" },
-          ],
-        }),
-        this.folios.findMany({
-          where: {
-            projectId: { eq: params.projectId },
-            pinned: { eq: true },
-            protected: { eq: false },
-          },
-          columns: ["id", "content"],
-        }),
-      ]);
-      const bodies = new Map(pinned.map((row) => [row.id, row.content]));
-      return (await this.withEpics(rows)).map((row) => {
-        const content = bodies.get(row.id);
-        return content === undefined ? row : { ...row, content };
-      }) as FolioTreeEntry[];
-    },
+    handler: async ({ params }) => this.treeEntries(params.projectId),
   });
+
+  /**
+   * The newest `limit` folios of the project, pinned first, as the tree
+   * draws them: the folio index of `project_context` (#Q2636). The body of
+   * {@link tree} with a cap, so the index reads no `content` but a pinned,
+   * unprotected folio's, which `project_context` inlines.
+   */
+  index = $action({
+    use: [this.ownsProject("folio:read")],
+    description: "The newest folios of the project, without bodies.",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      query: z.object({
+        limit: z.integer().min(1).max(200),
+        /**
+         * Carry the pinned folios' bodies, which `project_context` inlines.
+         * `folio_list` shows none and leaves it off.
+         */
+        pinnedContent: z.boolean().optional(),
+      }),
+      response: z.array(folioTreeEntrySchema),
+    },
+    handler: async ({ params, query }) =>
+      this.treeEntries(
+        params.projectId,
+        query.limit,
+        query.pinnedContent ?? false,
+      ),
+  });
+
+  /**
+   * {@link tree}'s rows: every folio (or the newest `limit`) without its
+   * body, and in the same step the bodies of the pinned, unprotected ones.
+   */
+  protected async treeEntries(
+    projectId: number,
+    limit?: number,
+    pinnedContent = true,
+  ): Promise<FolioTreeEntry[]> {
+    const [rows, pinned] = await Promise.all([
+      this.folios.findMany({
+        where: { projectId: { eq: projectId } },
+        columns: [
+          "id",
+          "shortId",
+          "createdAt",
+          "updatedAt",
+          "projectId",
+          "title",
+          "protected",
+          "pinned",
+          "directoryId",
+          "summary",
+        ],
+        orderBy: [
+          { column: "pinned", direction: "desc" },
+          { column: "updatedAt", direction: "desc" },
+        ],
+        ...(limit != null ? { limit } : {}),
+      }),
+      pinnedContent
+        ? this.folios.findMany({
+            where: {
+              projectId: { eq: projectId },
+              pinned: { eq: true },
+              protected: { eq: false },
+            },
+            columns: ["id", "content"],
+          })
+        : [],
+    ]);
+    const bodies = new Map(pinned.map((row) => [row.id, row.content]));
+    return (await this.withEpics(rows)).map((row) => {
+      const content = bodies.get(row.id);
+      return content === undefined ? row : { ...row, content };
+    }) as FolioTreeEntry[];
+  }
 
   getByShortId = $action({
     // Gated on the PARAM, not on the folio it finds: the lookup is by
@@ -370,11 +422,7 @@ export class FolioController {
       // There was a `withRevisionCount` here too, feeding the meta bar's
       // "N revisions". It went with the meta bar — nothing outside the
       // History tab counts revisions now, and that tab has the rows.
-      query: z.object({
-        withLinks: z.boolean().optional(),
-        withPath: z.boolean().optional(),
-        withAttachments: z.boolean().optional(),
-      }),
+      query: this.detailQuerySchema,
       response: folioResourceSchema,
     },
     handler: async ({ params, query }) => {
@@ -385,36 +433,100 @@ export class FolioController {
         },
       });
       if (!found) throw new NotFoundError("Folio not found");
-      const [folio] = await this.withEpics([found]);
-      if (!query.withLinks && !query.withPath && !query.withAttachments) {
-        return folio;
-      }
-      // Every requested extra is independent of the others, so they run
-      // concurrently — the handler costs one round of queries, not one
-      // per flag.
-      //
-      // `withPath` and `withLinks` both need to turn directory ids into
-      // ancestor chains, and they used to do it two different ways: the
-      // link resolver read the project's directories in one shot, while
-      // the path resolver walked the chain one `findOne` per level. One
-      // loader now serves both, so the deeper the folio the more this
-      // saves — and it is lazy, so a folio at the project root with no
-      // links still reads no directories at all.
-      const loadDirectories = this.directoryMapLoader(folio.projectId);
-      const [links, path, attachments] = await Promise.all([
-        query.withLinks
-          ? this.resolveLinks(folio.id, folio.projectId, loadDirectories)
-          : undefined,
-        query.withPath
-          ? this.resolveDirectoryPath(folio.directoryId, loadDirectories)
-          : undefined,
-        query.withAttachments
-          ? this.attachmentService.listHydratedByFolio(folio.id)
-          : undefined,
-      ]);
-      return { ...folio, metadata: { links, path, attachments } };
+      return this.detailOf(found, query);
     },
   });
+
+  /**
+   * {@link getByShortId} by the folio's id: the folio and the extras asked
+   * for, in one round of queries after the gate's (#Q2636). `folio_get`
+   * reads it, so the folio is read once, by its own gate, rather than once
+   * per action it used to call.
+   */
+  getDetail = $action({
+    use: [this.ownsFolio("folio:read")],
+    description: "Get a single folio by id, with the extras asked for.",
+    schema: {
+      params: folioIdParamsSchema,
+      query: this.detailQuerySchema,
+      response: folioResourceSchema,
+    },
+    handler: async ({ query }) => this.detailOf(this.owned.get<Folio>(), query),
+  });
+
+  /**
+   * The folio a gate already read, stamped with its epic and carrying the
+   * extras asked for.
+   */
+  protected async detailOf(
+    found: Folio,
+    query: {
+      withLinks?: boolean;
+      withPath?: boolean;
+      withAttachments?: boolean;
+      withEpic?: boolean;
+    },
+  ) {
+    // Every extra is independent of the others and of the epic stamp, so
+    // they all run concurrently: the handler costs one round of queries
+    // (and the describes those need), not one per flag (#Q2636).
+    //
+    // `withPath` and `withLinks` both need to turn directory ids into
+    // ancestor chains, and they used to do it two different ways: the
+    // link resolver read the project's directories in one shot, while
+    // the path resolver walked the chain one `findOne` per level. One
+    // loader now serves both, so the deeper the folio the more this
+    // saves — and it is lazy, so a folio at the project root with no
+    // links still reads no directories at all.
+    const loadDirectories = this.directoryMapLoader(found.projectId);
+    const [[folio, epic], links, path, attachments] = await Promise.all([
+      this.withEpics([found]).then(
+        async ([row]) =>
+          [
+            row,
+            query.withEpic && row.epicId != null
+              ? (
+                  await this.linkService.describe("epic", row.projectId, [
+                    row.epicId,
+                  ])
+                )[0]
+              : undefined,
+          ] as const,
+      ),
+      query.withLinks
+        ? this.resolveLinks(found.id, found.projectId, loadDirectories)
+        : undefined,
+      query.withPath
+        ? this.resolveDirectoryPath(found.directoryId, loadDirectories)
+        : undefined,
+      query.withAttachments
+        ? this.attachmentService.listHydratedByFolio(found.id)
+        : undefined,
+    ]);
+    if (
+      !query.withLinks &&
+      !query.withPath &&
+      !query.withAttachments &&
+      !query.withEpic
+    ) {
+      return folio;
+    }
+    return {
+      ...folio,
+      metadata: {
+        links,
+        path,
+        attachments,
+        epic: epic
+          ? {
+              number: epic.shortId,
+              title: epic.title,
+              status: String(epic.status),
+            }
+          : undefined,
+      },
+    };
+  }
 
   /**
    * A lazily-resolved `id → directory` map for one project, fetched AT
