@@ -4,7 +4,7 @@
 Cloudflare gives you someone else's serverless infra, Bay runs your apps as ordinary long-lived
 processes on a machine you own, with TLS, rollback and process isolation handled for you.
 
-This page covers the framework's side: the `bay()` adapter of `alepha platform`, which deploys an app
+This page covers the framework's side: the `bay()` adapter used by `alepha deploy` and `alepha infra`, which deploys an app
 to a host that already runs Bay. Bay itself (installing it, running it, upgrading it, its own CLI) is
 documented in [its repository](https://github.com/alepha-dev/bay). The short version of installing
 it, on the host:
@@ -23,15 +23,9 @@ stay on hardware you control.
 alepha build --runtime=node
 ```
 
-That is the whole target-specific story: Bay has no `wrangler.jsonc` equivalent, because everything
-it needs is already in the build manifest. `alepha platform up` runs this for you.
+Bay reads the build manifest, so it needs no Wrangler configuration. The adapter builds a Node slice by default, or preserves `runtime: ["static"]` for a site. `alepha deploy` builds this artifact during the full lifecycle. A workerd-only artifact cannot run on Bay and is refused before upload.
 
-One exception: a workspace that declares `target: "static"` is built as static instead. Bay hosts a
-site with no process behind it - no port, no `.env`, no database, no health probe, because there is
-nothing to give them to - and the deploy commands below are otherwise identical. See
-[Static Deployment](/docs/guides-deployment-static), including `static.source` for a site Alepha did not render
-itself. Every other target is overridden to `bare`: a workerd bundle has no entry point node can
-run, so one reaching Bay would deploy, never boot, and report only "never became ready".
+`alepha infra deploy` authenticates and deploys a prebuilt Node or static artifact. It skips the separate local provision/build/migrate/secrets steps, while Bay's host still provisions from the uploaded manifest and Alepha still applies migrations on startup. See [Static Deployment](/docs/guides-deployment-static) for sites without a server process.
 
 ## Configuration
 
@@ -108,7 +102,7 @@ sudo usermod -aG bay-control deploy   # on the host; the user must then reopen t
 Check both in one command:
 
 ```bash
-alepha platform auth login --env production
+alepha infra login --env production
 ```
 
 It confirms the key, the group, and Bay's control socket itself: after checking that the user is in
@@ -117,14 +111,14 @@ that would prove no more than "ssh works and `bay` is on PATH". Those failures l
 only one of them is about SSH, so it is worth running once before the first deploy - the group problem
 otherwise surfaces halfway through as a permission error mentioning neither Bay nor the group.
 
-If that command (or `bay list`, behind `alepha platform status`) fails with a raw detail saying "no
+If that command (or `bay list`, behind `alepha infra status`) fails with a raw detail saying "no
 control socket found" rather than a plain permission error naming a `.sock` path, the group is not the
 problem - it means Bay never even tried to dial anything, because its own guess at the socket path
 missed entirely. Set `socket`, above, to the actual path. A permission error that _does_ name a `.sock`
 path is the genuine group problem instead: Bay found the socket file but refused to dial it for that
 user.
 
-`alepha platform auth logout` exists but always refuses: nothing was stored, so there is nothing to
+`alepha infra logout --env production` exists but always refuses: nothing was stored, so there is nothing to
 forget, and refusing loudly is safer than doing nothing quietly, which would look like access had been
 revoked. Revoke access for real by removing the key from `authorized_keys`, or drop the user from
 `bay-control` to stop deploys without closing the account.
@@ -132,7 +126,7 @@ revoked. Revoke access for real by removing the key from `authorized_keys`, or d
 ## Deploy
 
 ```bash
-alepha platform up --env production
+alepha deploy --env production
 ```
 
 Under the hood: `alepha build --runtime=node`, then `alepha pack` - which produces
@@ -154,7 +148,7 @@ to if readiness never arrives.
 
 ## Secrets
 
-`alepha platform up` pushes them, and **which keys** it pushes is decided by what your app declares
+`alepha deploy` pushes them, and **which keys** it pushes is decided by what your app declares
 via `$env` - captured into `dist/manifest.json` at build time. That list is the allowlist. Each
 value then resolves from `.env.<env>` (and `.env.<env>.local`) first, and from `process.env` second.
 
@@ -196,7 +190,7 @@ saying so:
 - **Framework infra knobs**: `LOG_LEVEL`, `DEBUG`, `NODE_ENV` and friends, which have defaults and
   are the platform's business rather than the app's.
 
-`alepha platform status` reports the names that are actually set on the host, asked of it with
+`alepha infra status` reports the names that are actually set on the host, asked of it with
 `bay env list` - names only; Bay never answers with a value.
 
 If there is nothing to send, the deploy says so rather than finishing quietly. A **static site** is
@@ -216,14 +210,14 @@ You do not provision anything from the CLI. Cloudflare needs `provision` because
 account-level resources created through an API; Bay creates what the manifest asks for on the machine
 itself, at deploy time.
 
-The practical consequence: `alepha platform status` reports the running app and its release, and
+The practical consequence: `alepha infra status` reports the running app and its release, and
 reports **empty** database and storage lists. That is deliberate honesty rather than a gap - Bay
 exposes no inventory of what it created, and listing what the manifest _asked for_ would report
 intent as fact.
 
 ## Migrations
 
-There is no migrate step, and `alepha platform migrate` is a no-op on Bay.
+The adapter's separate migrate step is a no-op, including `alepha infra db migrate --env production` on Bay.
 
 Migrations are the app's own business here: Alepha runs them during its own boot as soon as a
 `migrations/` directory sits next to the bundle, and `alepha pack` always includes one. Redeploying
@@ -232,8 +226,8 @@ the app _is_ migrating it.
 ## Status and teardown
 
 ```bash
-alepha platform status --env production
-alepha platform down --env production
+alepha infra status --env production
+alepha infra down --env production
 ```
 
 `down` unregisters the app and stops serving it. The database and the uploads are **kept**, in the
@@ -243,16 +237,16 @@ deliberate act on the host itself, with Bay's own CLI.
 
 ## Bay versus Cloudflare
 
-|              | Bay                                                     | Cloudflare                         |
-| ------------ | ------------------------------------------------------- | ---------------------------------- |
-| Runtime      | long-lived Node/Bun process                             | `workerd` isolate, per request     |
-| Build target | `bare`                                                  | `cloudflare` (forces `workerd`)    |
-| Provisioning | by Bay, from the manifest, at deploy                    | by the CLI, via the Cloudflare API |
-| Database     | SQLite file (or your own Postgres) in the app directory | D1, or Postgres via Hyperdrive     |
-| Migrations   | at app boot                                             | `alepha platform migrate`          |
-| Access       | SSH key + `bay-control` group membership                | `wrangler login`                   |
-| Rollback     | automatic on failed readiness                           | redeploy the previous version      |
-| Scaling      | one machine                                             | Cloudflare's edge                  |
+|                | Bay                                                     | Cloudflare                         |
+| -------------- | ------------------------------------------------------- | ---------------------------------- |
+| Runtime        | long-lived Node/Bun process                             | `workerd` isolate, per request     |
+| Build artifact | Node (or static)                                        | `workerd` slice                    |
+| Provisioning   | by Bay, from the manifest, at deploy                    | by the CLI, via the Cloudflare API |
+| Database       | SQLite file (or your own Postgres) in the app directory | D1, or Postgres via Hyperdrive     |
+| Migrations     | at app boot                                             | `alepha infra db migrate`          |
+| Access         | SSH key + `bay-control` group membership                | `wrangler login`                   |
+| Rollback       | automatic on failed readiness                           | redeploy the previous version      |
+| Scaling        | one machine                                             | Cloudflare's edge                  |
 
 Both provision from your `$repository` / `$storage` / `$cache` / `$job` declarations - you do not
 maintain infrastructure config by hand on either.
@@ -282,7 +276,7 @@ export default defineConfig({
 ```
 
 ```bash
-alepha platform auth login --env production   # checks the key and the group, changes nothing
-alepha platform plan --env production         # shows what will happen, touches nothing
-alepha platform up --env production
+alepha infra login --env production   # checks the key and the group, changes nothing
+alepha infra plan --env production         # shows what will happen, touches nothing
+alepha deploy --env production
 ```

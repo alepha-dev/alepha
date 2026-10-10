@@ -1,6 +1,6 @@
 # Init Command
 
-Start a new Alepha project in seconds. The `init` command sets up everything you need - configuration files, dependencies, and project structure - so you can focus on building, not configuring.
+Create an Alepha project. The `init` command sets up everything you need - configuration files, dependencies, and project structure - so you can focus on building, not configuring.
 
 ## Quick Start
 
@@ -43,11 +43,12 @@ This is the one axis worth branching on because it is the one you cannot easily 
 
 ## Options
 
-| Flag              | Description                                             |
-| ----------------- | ------------------------------------------------------- |
-| `--preset <name>` | Project shape: `default` (the default) or `saas`        |
-| `--pm <manager>`  | Package manager to use: `yarn`, `npm`, `pnpm`, or `bun` |
-| `--force`, `-f`   | Override existing files                                 |
+| Flag                 | Description                                             |
+| -------------------- | ------------------------------------------------------- |
+| `--infra <provider>` | Optional Cloudflare infra: `cf` or `cloudflare`         |
+| `--preset <name>`    | Project shape: `default` (the default) or `saas`        |
+| `--pm <manager>`     | Package manager to use: `yarn`, `npm`, `pnpm`, or `bun` |
+| `--force`, `-f`      | Override existing files                                 |
 
 The first positional argument is the target path:
 
@@ -159,11 +160,29 @@ alepha db migrations create
 
 Expo brings its own client runtime, so `init` skips the web module for it - and all three routers are React pages. `--preset=saas` in an Expo project fails rather than quietly scaffolding an API with no UI.
 
+## Cloudflare Infra
+
+```bash
+alepha init my-app --infra cf
+cd my-app
+alepha deploy
+```
+
+`--infra cloudflare` is equivalent. Both `default` and `saas` presets support it. The flag writes an active `infra({ environments: { production: cloudflare() } })` plugin and the canonical imports from `alepha/cli/config` and `alepha/cli/infra`. It does not force a general build runtime. With no flag, the optional plugin stays commented out. Init never authenticates or calls Cloudflare.
+
+`npm create alepha my-app -- --yes --infra cf` forwards the same typed choice without a provider question. Other providers and the old `--platform` and `--deploy` flags are rejected. `create-alepha` does not forward a force flag.
+
+In place, `alepha init --infra cf` makes a bounded edit to a direct `export default defineConfig({ ... })` configuration with literal options and a literal `plugins` array. It preserves import aliases, comments, unrelated plugins, services and build options. A single canonical production Cloudflare registration is already satisfied, including its domain/options and other environments, so rerunning preserves it byte for byte.
+
+The editor refuses legacy imports, conflicting production adapters, multiple or indirect infra registrations, and dynamic/spread config shapes before scaffolding writes or installation. Resolve the configuration explicitly, then rerun. It never evaluates the config to decide an edit. Naming an existing nonempty target still requires `--force`; the additive flag does not bypass that guard. Force is the broad scaffold replacement mode, including `alepha.config.ts`, while an existing `.env` is preserved.
+
+See [Infra](/docs/cli-plugins-infra) for auth, full versus granular deployment, and arbitrary environment names.
+
 ## Empty Directory Check
 
 When you name a target path, the directory must be empty (a lone `package.json` is allowed, since that's normal for a workspace package). Use `--force` to scaffold over existing files.
 
-A bare `alepha init` is the fill-in-the-gaps mode and is always safe to run - it only adds missing files and never overwrites without `--force`.
+A bare `alepha init` fills missing files without replacing them. The explicit `--infra` flag can also edit a supported existing config as described above; conflicting or dynamic config is refused.
 
 ## Package Manager Detection
 

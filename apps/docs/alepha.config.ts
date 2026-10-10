@@ -83,7 +83,7 @@ export default defineConfig({
       // `platform up` took the Worker and the apex domain over (#Q2576).
       project: "alepha",
       environments: {
-        // ⚠️ A Custom Domain, the only binding `alepha platform` makes. This
+        // ⚠️ A Custom Domain, the only binding `alepha deploy` makes. This
         // used to set a `zone` (a field since removed) to get a Worker Route
         // instead, because the apex still held the four GitHub Pages A
         // records and their AAAA counterparts: a Custom Domain owns its DNS

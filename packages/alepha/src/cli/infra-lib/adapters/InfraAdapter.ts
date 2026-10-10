@@ -202,10 +202,10 @@ export abstract class InfraAdapter<TOptions = unknown> {
   /**
    * Interactively obtain a credential and store it.
    *
-   * Separate from {@link authenticate}, which must never block: `up` runs in CI,
-   * where nothing can answer a prompt. This is what a human runs once, and each
-   * adapter answers it in its own currency  -  `wrangler login` for Cloudflare, a
-   * device-code flow for Bay.
+   * An explicit credential flow separate from the full lifecycle. Policy is
+   * adapter-specific: Cloudflare authenticate can initiate login locally,
+   * while Bay probes SSH access and stores no credential. CI callers supply
+   * their adapter's credentials through the environment.
    *
    * The default refuses rather than silently doing nothing: an adapter with no
    * interactive login has some other way in, and saying so beats a command that

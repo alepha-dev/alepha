@@ -132,13 +132,16 @@ Cron is anchored to the same clock, so the scheduled `$job` runs during the jump
 
 ## Deploy with one command
 
-Declare an environment, and `alepha platform up` authenticates, provisions what does not exist yet, builds, runs migrations, deploys and pushes secrets, in that order. The database, the bucket and the queue are not yours to create, and neither is the pipeline that would have created them.
+Declare an environment, and `alepha deploy` authenticates, provisions what does not exist yet, builds, runs migrations, deploys and pushes secrets, in that order. The database, the bucket and the queue are not yours to create, and neither is the pipeline that would have created them.
 
 ```ts
 // alepha.config.ts
+import { defineConfig } from "alepha/cli/config";
+import { cloudflare, infra } from "alepha/cli/infra";
+
 export default defineConfig({
   plugins: [
-    platform({
+    infra({
       environments: {
         production: cloudflare({
           domain: "example.com",
@@ -153,7 +156,7 @@ export default defineConfig({
 ```
 
 ```bash
-alepha platform up --env production
+alepha deploy --env production
 ```
 
 ## Getting Started
@@ -161,9 +164,11 @@ alepha platform up --env production
 Requirements: [Node.js](https://nodejs.org/) 22+ or [Bun](https://bun.sh/) 1.3+
 
 ```bash
-npx alepha init my-app                 # API + React (SSR) + Tailwind
-npx alepha init my-app --preset=saas   # the same, plus auth, account and admin
-cd my-app && npx alepha dev
+npx alepha init my-app --infra cf      # API + React (SSR) + Tailwind + Cloudflare
+# Add --preset saas for auth, account and admin
+cd my-app
+npx alepha deploy                     # full production lifecycle
+npx alepha dev                        # local development
 ```
 
 Every project gets the same structure. `--preset` only decides what is mounted on top of it,

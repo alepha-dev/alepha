@@ -1,195 +1,75 @@
 # Docker Deployment
 
-The `docker` build target packages your app for containerized deployment - a generated `Dockerfile` next to the bundled server, and optionally the image itself, built in the same command.
-
-## Build
+Build a runtime artifact, then turn it into a container image:
 
 ```bash
-alepha build && alepha image
+alepha build --runtime node
+alepha image --tag
 ```
 
-Produces:
+`alepha image` reads `dist/manifest.json` and packages the first declared runtime slice. A workerd or static primary slice is refused because it cannot start a container process. The docker CLI is required; this command belongs to a local machine or CI runner.
 
-```txt
-dist/
-  index.js       # Bundled server (single file)
-  public/        # Client assets (if React frontend exists)
-  migrations/    # Copied from your project (if present)
-  Dockerfile     # Generated - do not edit
-```
+## Dockerfile ownership
 
-The generated Dockerfile is minimal because the app is already bundled:
-
-```dockerfile
-FROM node:24-alpine
-WORKDIR /app
-
-LABEL "dev.alepha.runtime"="node"
-
-COPY --chown=1000:1000 . .
-ENV SERVER_HOST=0.0.0.0
-USER 1000
-CMD ["node", "index.js"]
-```
-
-`dev.alepha.runtime` is always there, in every generated Dockerfile. An image's runtime appears nowhere in its OCI index, so a registry cannot answer "what runs inside this" and a pusher's claim about it is not evidence - the image states it itself, and a reader gets it out of the config blob with one small GET. It is what lets `lore artifacts push-image` need no `--runtime` flag. It is not part of the `oci` opt-in below.
-
-With `--runtime=bun`, the base image becomes `oven/bun:alpine`, the command `bun`, and the label `"bun"`. An `npm install` / `bun install` layer is added only when `dist/package.json` declares runtime dependencies - Alepha apps normally bundle everything via Vite, so there's usually nothing to install.
-
-## Baking Defaults Into the Image
-
-`docker.env` and `docker.volumes` let the app decide what its image looks like out of the box, so `docker run` needs no flags:
-
-```typescript filename=alepha.config.ts
-import { defineConfig } from "alepha/cli/config";
-
-export default defineConfig({
-  build: {
-    docker: {
-      env: {
-        DATA_DIR: "/data",
-        DATABASE_URL: "sqlite:///data/app.db",
-      },
-      volumes: ["/data"],
-    },
-  },
-});
-```
-
-```dockerfile
-FROM node:24-alpine
-WORKDIR /app
-
-LABEL "dev.alepha.runtime"="node"
-
-COPY --chown=1000:1000 . .
-
-RUN mkdir -p "/data" && chown 1000:1000 "/data"
-
-ENV SERVER_HOST=0.0.0.0
-ENV DATA_DIR="/data"
-ENV DATABASE_URL="sqlite:///data/app.db"
-
-VOLUME ["/data"]
-
-USER 1000
-
-CMD ["node", "index.js"]
-```
-
-`env` entries are emitted **after** `SERVER_HOST`, so an app that sets `SERVER_HOST` itself wins. Values are escaped, and anything passed with `docker run -e` still overrides them. These are defaults, not secrets: everything here is readable with `docker inspect`.
-
-## The Container User
-
-The standard variant runs as **uid 1000**, which exists in both official bases (`node` and `bun`). A numeric id is emitted rather than a name because `docker.from` is a supported override and `USER node` fails the build outright on a base without that user.
-
-`COPY --chown` matches it, because the default `DATA_DIR` is `node_modules/.alepha` - inside `/app` - so an app that has not moved it needs a writable `/app`. Each declared volume is created and chowned _before_ its `VOLUME` line: a **named** volume inherits ownership from the image directory at that path.
-
-> **Bind mounts do not follow this.** `-v ./data:/data` keeps the host directory's ownership, so the host has to make it writable by uid 1000 itself. Named volumes (`-v app-data:/data`) need nothing.
-
-Override with `docker.user`, including back to root:
-
-```typescript filename=alepha.config.ts
-export default defineConfig({
-  build: {
-    docker: { user: "root" },
-  },
-});
-```
-
-Compile mode has no default and stays root, because the distroless base has no shell and a declared volume cannot be prepared at build time. Set `docker.user` explicitly there if the image needs a non-root user.
-
-## Build the Image Too
-
-Add `--image` to run `docker build` as the last step:
+With no Dockerfile in the app directory, Alepha generates one beside `alepha.config.ts`. Commit and edit that file. An existing Dockerfile is reused unchanged, with a warning if the manifest facts recorded in its header have moved. The build context is `dist/`, not the app directory.
 
 ```bash
-alepha image --tag           # <tag>:latest
-alepha image --tag=1.3.4     # <tag>:1.3.4
-alepha image --tag=myorg/app:v2   # full override
+alepha image --dockerfile         # generate without building an image
+alepha image --tag=1.3.4          # configured name, version 1.3.4
+alepha image --tag=myorg/app:v2   # complete tag override
 ```
 
-The default tag comes from config:
-
-```typescript filename=alepha.config.ts
-import { defineConfig } from "alepha/cli/config";
-
-export default defineConfig({
-  build: {
-    docker: {
-      image: {
-        tag: "ghcr.io/myorg/myapp",
-        args: "--platform linux/amd64",
-        oci: true, // add org.opencontainers.image.* labels (git revision, timestamp, version)
-        source: "https://github.com/myorg/myapp",
-        title: "My App",
-        description: "Self-hosted My App",
-        licenses: "Apache-2.0",
-      },
-    },
-  },
-});
-```
-
-`oci: true` derives three labels - `revision` (git commit SHA), `created` and `version` - and passes them to `docker build`, because each describes that particular build. The four config fields beside it go into the **generated Dockerfile** as `LABEL` lines instead, so they survive a build Alepha did not run:
-
-```dockerfile
-LABEL "org.opencontainers.image.source"="https://github.com/myorg/myapp"
-LABEL "org.opencontainers.image.title"="My App"
-```
-
-That matters as soon as something other than `--image` builds the image - a release pipeline running `docker buildx build` on `dist/` for two architectures, say. A field left unset produces no label rather than an empty one.
-
-`dev.alepha.runtime` is **not** part of this opt-in. It is emitted whether or not `oci` is set, because it is Alepha's own contract with its registry rather than an OCI annotation: an app that never configured `oci` would otherwise ship an image whose `lore artifacts push-image` is refused for a missing label, for a reason nothing in its config explains.
-
-`source` is the one that matters for a published package: it is what links a GHCR package to its repository, and without it the package page stands alone, with no README and no repo link. It is **never derived from the git remote** - an SSH remote is not a URL, a CI checkout may have no remote at all, and a fork would publish either the upstream's URL or its own with nothing inside the build able to tell which is meant. A wrong `source` on a published image is worse than a missing one.
+The artifact has an `index.<runtime>.js` wrapper, `server/<runtime>/` chunks, `public/` assets, its manifest and package metadata. Migrations are copied into the image context when present. There is no generated Dockerfile inside `dist/`.
 
 ## Configuration
 
-| Option           | Default                              | Description                                                                                       |
-| ---------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------- |
-| `docker.from`    | `node:24-alpine` / `oven/bun:alpine` | Base image for the `FROM` instruction                                                             |
-| `docker.command` | `node` / `bun`                       | Command that runs the server                                                                      |
-| `docker.install` | `[]`                                 | Extra packages installed into the image (e.g. `["wrangler"]` for an app that shells out to a CLI) |
-| `docker.env`     | `{}`                                 | `ENV` defaults baked into the image, emitted after `SERVER_HOST`                                  |
-| `docker.volumes` | `[]`                                 | `VOLUME` mount points, created and chowned to the container user first                            |
-| `docker.user`    | `1000` (root in compile mode)        | `USER` the server runs as                                                                         |
-| `docker.image`   | -                                    | Image tag, extra `docker build` args, OCI labels including `source` (used with `--image`)         |
-| `compile`        | -                                    | Single-binary compile mode, a build-level option, see below                                       |
+Image settings are top-level `image`, separate from `build`:
 
-## Compile Mode (Single Static Binary)
+```typescript check filename=alepha.config.ts
+import { defineConfig } from "alepha/cli/config";
 
-With `--runtime=bun --compile` (or `build.compile` in config), the app is compiled to one static binary via `bun build --compile`, client assets included, and packaged in a distroless base image. The compilation itself is the same as for the [bare target](/docs/guides-deployment-bare), for linux-musl:
+export default defineConfig({
+  build: { runtime: ["node"] },
+  image: {
+    env: {
+      DATA_DIR: "/data",
+      DATABASE_URL: "sqlite:///data/app.db",
+    },
+    volumes: ["/data"],
+    image: {
+      tag: "ghcr.io/myorg/myapp",
+      oci: true,
+      source: "https://github.com/myorg/myapp",
+    },
+  },
+});
+```
+
+| Setting              | Meaning                                                  |
+| -------------------- | -------------------------------------------------------- |
+| `image.from`         | Base image override                                      |
+| `image.command`      | Server command override                                  |
+| `image.install`      | Extra packages for the generated standard image          |
+| `image.env`          | Baked defaults, overridden by runtime environment values |
+| `image.volumes`      | Volume mount points                                      |
+| `image.user`         | Container user override (standard default: uid 1000)     |
+| `image.image.tag`    | Default image name                                       |
+| `image.image.args`   | Additional docker build arguments                        |
+| `image.image.oci`    | Revision, timestamp and version labels                   |
+| `image.image.source` | Repository URL label, set explicitly                     |
+
+The generated standard image uses a Node or Bun base and installs runtime dependencies only when the artifact declares them. Each declared volume is prepared before its `VOLUME` line. Named volumes inherit those permissions; bind mounts retain the host directory's permissions. Baked values are public image defaults, so deliver secrets at runtime.
+
+## Compiled image
 
 ```bash
-alepha build && alepha image --runtime=bun --compile --image
+alepha build --runtime bun
+alepha image --compile --tag
 ```
 
-```dockerfile
-FROM gcr.io/distroless/static-debian12
-WORKDIR /app
+This compiles the Bun slice first, then packages the binary on `gcr.io/distroless/cc-debian12` by default. `--compile my-app` names the binary. The base determines the Linux Bun target triple: a Bun binary needs libc and supporting libraries, so `scratch` and `distroless/static` are refused. A compiled image has no default user; set `image.user` when needed. Runtime dependencies must be bundled, and `image.install` is ignored in this mode.
 
-LABEL "dev.alepha.runtime"="bun"
-
-COPY app .
-ENV SERVER_HOST=0.0.0.0
-ENTRYPOINT ["/app/app"]
-```
-
-- The binary lands at `dist/app` (`dist/<name>` with `--compile <name>`, and the `COPY` and `ENTRYPOINT` follow). `dist/index.js`, `dist/server/`, `dist/package.json` and `dist/public/` are removed: the client assets are inside the binary, which serves them itself.
-- With `--image`, the image is built after the binary exists, at the end of the build.
-- The image runs as root unless `docker.user` says otherwise - distroless has no shell, so a declared volume cannot be created and chowned at build time. The generated file carries a comment saying so.
-- No package manager runs inside the image (distroless has no `npm`), so `docker.install` is ignored and any non-empty runtime `dependencies` fail the build loudly - compile requires fully-bundled output.
-- `compile` accepts a binary name (`--compile <name>` on the command line) or an object for the name, the Bun target triple (`bun-linux-arm64-musl`, ...) and minification. The base image is `docker.from`, distroless by default in this mode.
-
-The result is a minimal image with no shell, no package manager, and no interpreter - a small attack surface and a fast cold start.
-
-## Static File Headers
-
-Both images serve the client's files from the app itself, and both apply `dist/public/_headers` to
-them: the standard image reads it from `/app/public`, the compiled binary from inside itself. The
-headers a browser receives for a chunk, an image or a page are the ones Cloudflare and Bay send for the
-same build. See [Static File Headers](/docs/guides-deployment-headers).
+For a binary without an image, use [alepha compile](/docs/cli-commands-compile). For the complete image contract, see [alepha image](/docs/cli-commands-image).
 
 ## Running
 
@@ -197,12 +77,6 @@ same build. See [Static File Headers](/docs/guides-deployment-headers).
 docker run -p 3000:3000 --env-file .env.production ghcr.io/myorg/myapp:latest
 ```
 
-`SERVER_HOST=0.0.0.0` is baked into the image so the server binds correctly inside the container; set `SERVER_PORT` if you need a port other than 3000 - or let a host that injects `PORT` (Cloud Run, Fly) decide, which the server reads as a fallback when `SERVER_PORT` is unset. Migrations ship in the image under `/app/migrations` - run them on startup via your orchestration, or from a release step with `alepha db migrations apply` pointed at the same `DATABASE_URL`.
+The generated image sets `SERVER_HOST=0.0.0.0`; supply `SERVER_PORT` to change the listening port. Both standard and compiled apps serve their client assets and apply the artifact's `_headers` file. See [Static File Headers](/docs/guides-deployment-headers).
 
-## Tips
-
-**Use OCI labels in CI.** `image.oci: true` stamps the git revision and build time on the image - invaluable when you're staring at a registry full of `latest` tags. Add `source` before you publish anywhere public, or the package page will not link back to the repository.
-
-**Prefer compile mode for public-facing services.** Distroless plus a static binary removes whole vulnerability classes from the image.
-
-**Keep secrets out of the image.** Nothing in `dist/` should contain secrets - inject them at runtime via `--env-file` or your orchestrator's secret store.
+Container images are an artifact format. [alepha deploy](/docs/cli-plugins-infra) drives configured infrastructure adapters; it does not turn a Docker image into an implicit provider deployment.

@@ -1,6 +1,6 @@
 # Static Deployment
 
-The `static` build target generates a client-only bundle with no server code. This is for single-page applications (SPAs) that do not need server-side logic at runtime.
+The `static` runtime declaration generates a client-only bundle with no server code. This is for single-page applications (SPAs) that do not need server-side logic at runtime.
 
 ## Build
 
@@ -87,7 +87,7 @@ The directory is copied into `dist/public/` before the fallbacks are derived, so
 - **It must live outside `dist/`.** A source inside it is refused by name - the clean step deletes it before it can be read.
 - **It must contain an `index.html`.** Otherwise a static host has nothing to answer `/` with, and the build says so rather than failing later on a path you never wrote.
 
-A server entry is still required, because the build boots the workspace to analyze it. Nothing of it ships - the static target keeps only the client directory and the manifest - so a bare `run(Alepha.create())` is enough for a site with no server of its own.
+A server entry is still required, because the build boots the workspace to analyze it. Nothing of it ships - the static build keeps only the client directory and the manifest - so a bare `run(Alepha.create())` is enough for a site with no server of its own.
 
 ## Other Hosting Providers
 

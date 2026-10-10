@@ -17,7 +17,7 @@ Releasing an app that runs on both Node and Cloudflare used to mean building twi
 
 So the client bundle, the prerender, the compression, the headers, the PWA manifest and the build manifest all run **once**, and only the server link repeats. Measured on Lore: 15.2s for a workerd-only build against 15.4s for `node,workerd`, of which `build client` is 3.9s.
 
-⚠️ **Declared order is meaningful.** The first runtime is the **primary**: it is `manifest.runtime`, it is what `dist/package.json`'s `main` points at, and it is what a deployer spawns. `["bun", "node"]` and `["node", "bun"]` produce the same two slices and different behaviour.
+⚠️ **Declared order is meaningful.** The first runtime is the **primary**: it is `manifest.runtimes[0].runtime`, it is what `dist/package.json`'s `main` points at, and it is what a deployer spawns. `["bun", "node"]` and `["node", "bun"]` produce the same two slices and different behaviour.
 
 Then three commands turn that one `dist/` into the format you need:
 
@@ -98,7 +98,7 @@ Deploy anywhere that runs Node.js:
 scp -r dist/ user@server:/app
 
 # On the server
-cd /app && node index.js
+cd /app && node .
 ```
 
 ### Docker
@@ -125,7 +125,7 @@ The generated image runs as uid `1000`, not root (`image.user` overrides it). `i
 ### Cloudflare Workers
 
 ```bash
-alepha build --runtime=workerd    # or -t cf
+alepha build --runtime=workerd    # or --runtime workerd
 ```
 
 Creates Cloudflare Workers configuration:
@@ -140,7 +140,7 @@ dist/
 
 > **D1 Database Support**
 >
-> If your `DATABASE_URL` uses the `d1://` protocol (as injected by the [platform plugin](/docs/cli-plugins-platform)), the D1 binding is automatically configured in `wrangler.jsonc`.
+> If your `DATABASE_URL` uses the `d1://` protocol (as injected by the [infra plugin](/docs/cli-plugins-infra)), the D1 binding is automatically configured in `wrangler.jsonc`.
 
 Then deploy:
 
@@ -148,7 +148,7 @@ Then deploy:
 cd dist && wrangler deploy
 ```
 
-Or let `alepha p up` drive the whole pipeline - provisioning, build, migrations, deploy, and secrets.
+Or let `alepha deploy` drive the whole pipeline - provisioning, build, migrations, deploy, and secrets.
 
 ### Static Site
 
@@ -240,12 +240,8 @@ import { defineConfig } from "alepha/cli/config";
 
 export default defineConfig({
   build: {
-    runtime: "bun",
+    runtime: ["bun"],
     stats: true,
-    compile: "myapp",
-    docker: {
-      image: { tag: "ghcr.io/myorg/myapp", oci: true },
-    },
     pwa: {
       name: "My App",
       themeColor: "#0f172a",
@@ -254,13 +250,12 @@ export default defineConfig({
 });
 ```
 
-Available options mirror the flags (`stats`, `target`, `runtime`, `compile`) plus per-target configuration. `compile` takes `true`, a binary name, or `{ name, target, minify }` for the Bun target triple and minification:
+Build options include `stats`, `inspect` and `runtime`, plus the sections below. Binary compilation and container packaging belong to `alepha compile` and `alepha image`; configure images under top-level `image`, not `build`.
 
 | Section      | Description                                                                                                                    |
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------ |
 | `output`     | Override `dist` and `public` directory names                                                                                   |
 | `cloudflare` | Extra `wrangler.jsonc` config merged into the generated file                                                                   |
-| `docker`     | Base image, run command, global installs, baked `env`/`volumes`/`user`, image tag/args/OCI labels                              |
 | `static`     | Surge domain for the `CNAME` file; `source` to adopt a client directory the workspace built itself (must live outside `dist/`) |
 | `pwa`        | Web app manifest: name, short name, colors, display mode                                                                       |
 
@@ -285,7 +280,7 @@ The server build:
 
 > **Single File Deploy**
 >
-> Your production server is a single `index.js` file. No need to deploy `node_modules` - everything is bundled.
+> Deploy the complete `dist/` artifact: the entry wrappers import chunks under `server/<runtime>/`. Runtime dependencies, if externalized, are declared in `dist/package.json`.
 
 ## Backend-Only Projects
 
@@ -293,7 +288,7 @@ If your project has no browser entry, the build only creates the server:
 
 ```bash
 alepha build
-# → dist/index.js (your server/CLI/worker)
+# → dist/index.node.js and server/node/ chunks
 ```
 
 Perfect for:
@@ -314,8 +309,10 @@ alepha verify
 # 2. Build for production
 alepha build --runtime=workerd
 
-# 3. Deploy
-alepha platform up --env production
+# 3. Run the full pipeline with the existing bundle
+alepha deploy --env production --prebuilt
+# Or only authenticate and upload an appropriate existing artifact:
+# alepha infra deploy --env production
 ```
 
 ## Tips
@@ -324,6 +321,6 @@ alepha platform up --env production
 
 **Check bundle sizes.** Run `alepha build --stats` periodically. Large bundles slow down your users.
 
-**Test the production build locally.** After building, run `node dist/index.js` locally before deploying. Catch issues early.
+**Test the production build locally.** After building, run `node dist/index.node.js` locally for a Node slice before deploying. Catch issues early.
 
 **Environment variables matter.** Make sure your production `.env` is correct. Wrong API URLs are a common deployment bug.

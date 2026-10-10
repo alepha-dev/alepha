@@ -151,7 +151,7 @@ Three things read it:
   and every other declared key under `secrets`. The two lists are disjoint:
   each key lands in exactly one, with the description its schema declared.
 
-- **`alepha platform up`** pushes a declassified key to Cloudflare as a
+- **`alepha deploy`** pushes a declassified key to Cloudflare as a
   `plain_text` binding instead of an encrypted `secret_text` one. That makes it
   readable in the dashboard and - the actual point - **editable** there, which a
   write-only secret is not. A key the app never declassified is still encrypted,

@@ -62,7 +62,58 @@ export interface DocUnit {
  * `toTypeBoxSchema` (an internal devtools identifier) and the English word
  * "the" do not trip it.
  */
-export const BANNED_DOC_SYMBOLS: Array<{ pattern: string; reason: string }> = [
+export const BANNED_DOC_SYMBOLS: Array<{
+  pattern: string;
+  reason: string;
+  removedInfra?: boolean;
+}> = [
+  {
+    pattern: "alepha/cli/platform(?:-lib)?\\b",
+    reason: "removed infrastructure API - use the infra migration table",
+    removedInfra: true,
+  },
+  {
+    pattern: "platform\\s*\\(",
+    reason: "removed infrastructure API - use the infra migration table",
+    removedInfra: true,
+  },
+  {
+    pattern: "alepha\\s+(?:platform|p)\\b",
+    reason: "removed infrastructure API - use the infra migration table",
+    removedInfra: true,
+  },
+  {
+    pattern: "AlephaCliPlatform(?:Plugin)?",
+    reason: "removed infrastructure API - use the infra migration table",
+    removedInfra: true,
+  },
+  {
+    pattern: "AlephaPlatformLibPlugin",
+    reason: "removed infrastructure API - use the infra migration table",
+    removedInfra: true,
+  },
+  {
+    pattern:
+      "Platform(?:Options|Adapter(?:Class)?|Context|State|Inspector|Orchestrator|CacheProvider|Command|StatusOutput|PlanOutput)",
+    reason: "removed infrastructure API - use the infra migration table",
+    removedInfra: true,
+  },
+  {
+    pattern: "platformOptions",
+    reason: "removed infrastructure API - use the infra migration table",
+    removedInfra: true,
+  },
+  {
+    pattern: "platformStatus(?:Worker|Resource|Secret)?Schema",
+    reason: "removed infrastructure API - use the infra migration table",
+    removedInfra: true,
+  },
+  {
+    pattern: "platformPlan(?:AppResources|App|Environment|Resource)?Schema",
+    reason: "removed infrastructure API - use the infra migration table",
+    removedInfra: true,
+  },
+
   {
     pattern: "TypeBox",
     reason: "typebox is not a dependency; the schema layer is Zod 4",
@@ -119,11 +170,6 @@ export const BANNED_DOC_SYMBOLS: Array<{ pattern: string; reason: string }> = [
     pattern: "\\.schema\\(\\)",
     reason:
       "actions expose no `schema()` method - schemas are served over the `_links` route",
-  },
-  {
-    pattern: "AlephaCliPlatform",
-    reason:
-      "`AlephaCliPlatform` does not exist - use the `platform({...})` helper in `plugins: [...]` (module: `AlephaCliPlatformPlugin`)",
   },
   {
     pattern: "AlephaCliVendor",
@@ -217,7 +263,7 @@ export const BANNED_DOC_SYMBOLS: Array<{ pattern: string; reason: string }> = [
    */
   // --- style rules; the docs were swept free of em dashes on 2026-08-19 ---
   {
-    pattern: "—",
+    pattern: "\u2014",
     reason:
       "em dash - use ' - ' in prose or ':' after a bullet term (in docs/2-reference and 3-packages, fix the source JSDoc - `yarn copy` regenerates those files)",
   },
@@ -338,6 +384,7 @@ export class DocsChecker {
     for (const file of files) {
       const content = String(await this.fs.readFile(file));
       const lines = content.split("\n");
+      const infraHistory = this.infraHistoryLines(lines);
 
       for (let i = 0; i < lines.length; i++) {
         if (this.isIgnored(lines, i)) {
@@ -345,6 +392,9 @@ export class DocsChecker {
         }
 
         for (const banned of BANNED_DOC_SYMBOLS) {
+          if (banned.removedInfra && infraHistory.has(i)) {
+            continue;
+          }
           if (!this.matches(lines[i], banned.pattern)) {
             continue;
           }
@@ -369,6 +419,43 @@ export class DocsChecker {
     }
 
     return violations;
+  }
+
+  /**
+   * Only the removed infra API rules are exempt inside explicitly marked
+   * migration/history blocks. Other stale APIs and link checks still apply.
+   */
+  protected infraHistoryLines(lines: string[]): Set<number> {
+    const result = new Set<number>();
+    let block: { start: number; marker?: string; fence?: string } | undefined;
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const match = /^(`{3,})(.*)$/.exec(line);
+      if (!block) {
+        const open = /^\s*<!-- docs-check-(migration|historical) -->\s*$/.exec(
+          line,
+        );
+        if (open) {
+          block = { start: i, marker: open[1] };
+        } else if (
+          match &&
+          /\b(migration-before|historical)\b/.test(match[2])
+        ) {
+          block = { start: i, fence: match[1] };
+        }
+        continue;
+      }
+      const closed = block.marker
+        ? line.trim() === `<!-- /docs-check-${block.marker} -->`
+        : match && match[1].length >= block.fence!.length && !match[2].trim();
+      if (closed) {
+        for (let index = block.start; index <= i; index++) {
+          result.add(index);
+        }
+        block = undefined;
+      }
+    }
+    return result;
   }
 
   public isTypeScript(lang: string): boolean {
@@ -396,7 +483,7 @@ export class DocsChecker {
    * standalone `<!-- docs-check-ignore -->` is a block-level HTML comment and
    * every markdown formatter puts a blank line after one. Requiring strict
    * adjacency meant that running the formatter over `docs/` silently detached
-   * every marker from the line it exempts — the check then failed on prose
+   * every marker from the line it exempts  -  the check then failed on prose
    * nobody had touched.
    */
   protected isIgnored(lines: string[], index: number): boolean {

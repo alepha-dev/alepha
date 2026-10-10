@@ -127,9 +127,9 @@ alepha lint              # Format and lint
 alepha typecheck         # Type checking
 alepha test              # Run tests
 alepha build             # Build
-alepha platform plan     # Show planned cloud topology (requires platform plugin)
-alepha platform up       # Provision + deploy to a configured environment
-alepha platform status   # Inspect deployed resources
+alepha infra plan        # Show planned cloud topology (requires configured infra)
+alepha deploy            # Provision + deploy to a configured environment
+alepha infra status      # Inspect deployed resources
 \`\`\`
 ${saas}
 ## Testing
@@ -141,7 +141,7 @@ ${saas}
 
 ## Cloud deployment (Cloudflare Workers)
 
-Add the \`platform\` plugin to \`alepha.config.ts\` to manage cloud
+Add the \`infra\` plugin to \`alepha.config.ts\` to manage cloud
 provisioning, deploy, secrets, and DB migrations end-to-end:
 
 \`\`\`ts
@@ -162,12 +162,29 @@ export default defineConfig({
 });
 \`\`\`
 
-Then: \`alepha platform up --env production\` (auth via \`wrangler login\` on first run).
+Then: \`alepha deploy\` (production by default). Cloudflare can open login automatically; \`alepha infra login --env production\` probes credentials explicitly. Environment names are explicit keys, selected with \`--env\`.
 
-Supported adapters: \`cloudflare\`, \`bay\`. The Cloudflare adapter provisions
-D1 (or Hyperdrive when \`DATABASE_URL\` is postgres), KV, R2, Queues, and pushes
-secrets via \`wrangler secret bulk\`. Set \`build.target: "cloudflare"\` in
-\`alepha.config.ts\` if you only want the build artifact without the orchestrator.
+Built-in adapters are \`cloudflare\` and \`bay\`; external factories are supported.
+Cloudflare provisions D1 (or Hyperdrive for Postgres), KV, R2 and Queues.
+Secrets are selected from declared keys and the selected environment files.
+\`alepha infra deploy\` authenticates and deploys an existing artifact only;
+Bay's remote provisioning and startup migrations still happen.
+
+\`alepha init --infra cf\` can add a canonical Cloudflare production config
+without credentials, or pass it when creating the project. Omit it for local-only
+development. Plain \`alepha build --runtime workerd\` is credential-free, while
+\`alepha infra build\` may look up cloud bindings.
+
+## Builds and local checks
+
+Build runtime slices with \`alepha build --runtime node,workerd\`. The first
+slice is primary. \`alepha pack\` archives dist/, \`alepha compile\` creates
+a Bun binary, and \`alepha image\` creates a container image.
+
+Run lint, typecheck, tests and \`alepha db migrations check\` during development.
+Run build and the project's integration checks separately before deployment.
+Use the project's configured verification pipeline and read its CI results;
+a passing local check does not prove that deployment or SSR works.
 
 ## Documentation
 

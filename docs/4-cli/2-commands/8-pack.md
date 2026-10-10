@@ -1,6 +1,6 @@
 # Pack Command
 
-Pack a built workspace into a deployable `tar.zst`. The archive contains everything a remote runner needs to deploy the app - Alepha Bay, Alepha Rocket, or any `alepha platform ... --prebuilt` consumer - and nothing else.
+Pack a built workspace into a deployable `tar.zst`. The archive contains everything a remote runner needs to deploy the app - Alepha Bay, Alepha Rocket, or any `alepha infra ... --prebuilt` consumer - and nothing else.
 
 ## Quick Start
 
@@ -52,7 +52,7 @@ Source maps are excluded from the artifact and written to a sibling `<project>-<
 
 The project name comes from `package.json` `name`, slugified for the filename (`@acme/app` → `acme-app`).
 
-`--name` is what a deploy passes when the app is known by another name: `platform({ name })` sets the identity the deploy side uses, and it is free to differ from the package name. `alepha platform up` passes it for you, so `pack` writes the file the deploy then looks for. Unlike the `package.json` default it is used verbatim, so it has to be a plain filename: letters, digits, `.`, `_` and `-`.
+`--name` is what a deploy passes when the app is known by another name: `infra({ name })` sets the identity the deploy side uses, and it is free to differ from the package name. `alepha deploy` passes it for you, so `pack` writes the file the deploy then looks for. Unlike the `package.json` default it is used verbatim, so it has to be a plain filename: letters, digits, `.`, `_` and `-`.
 
 ## Deploying a Packed Artifact
 
@@ -60,7 +60,7 @@ On the consumer side, extract the archive and run the platform commands in prebu
 
 ```bash
 tar -xf my-app-0.0.2.tar.zst
-alepha p up --prebuilt
+alepha deploy --prebuilt
 ```
 
 `--prebuilt` skips the Vite bundle steps - only the deploy config (`wrangler.jsonc`) is regenerated from the manifest, so a bare artifact deploys without the app's source tree or its `node_modules`.

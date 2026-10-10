@@ -44,6 +44,7 @@ import { AlephaCliInfraCommands } from "./commands.ts";
  * Configuration in `alepha.config.ts`:
  *
  * ```typescript
+ * import { defineConfig } from "alepha/cli/config";
  * import { bay, cloudflare, infra } from "alepha/cli/infra";
  *
  * export default defineConfig({
