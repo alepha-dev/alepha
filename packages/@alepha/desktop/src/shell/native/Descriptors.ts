@@ -5,9 +5,12 @@ import { closeSync, openSync } from "node:fs";
  * Process-wide file descriptor plumbing, through libc.
  */
 export class Descriptors {
-  protected readonly libc = dlopen("/usr/lib/libSystem.B.dylib", {
-    dup2: { args: [FFIType.i32, FFIType.i32], returns: FFIType.i32 },
-  }).symbols;
+  protected readonly libc = dlopen(
+    process.platform === "darwin" ? "/usr/lib/libSystem.B.dylib" : "libc.so.6",
+    {
+      dup2: { args: [FFIType.i32, FFIType.i32], returns: FFIType.i32 },
+    },
+  ).symbols;
 
   /**
    * Make fd 1 and fd 2 append to `file` (created 0600).

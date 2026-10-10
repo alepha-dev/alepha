@@ -18,13 +18,15 @@ export class NativeLoopTerminator {
   >;
 
   /**
-   * Open the library ahead of need.
+   * Open the library ahead of need. Never rejects: a library that cannot be
+   * opened (a headless build on Linux has no window to terminate) is
+   * reported when, and only if, a terminate needs it.
    */
   public load(): Promise<unknown> {
     this.loading ??= import("../native/NativeLibrary.ts").then(
       ({ NativeLibrary }) => new NativeLibrary(),
     );
-    return this.loading;
+    return this.loading.catch(() => undefined);
   }
 
   /**
@@ -32,6 +34,10 @@ export class NativeLoopTerminator {
    */
   public terminate(handle: number): void {
     void this.load();
-    void this.loading?.then((library) => library.terminate(handle));
+    this.loading
+      ?.then((library) => library.terminate(handle))
+      .catch((error) => {
+        console.error("Cannot terminate the window loop:", error);
+      });
   }
 }

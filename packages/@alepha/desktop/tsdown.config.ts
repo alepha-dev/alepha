@@ -27,5 +27,8 @@ export default defineConfig({
   fixedExtension: false,
   sourcemap: true,
   dts: true,
-  deps: { neverBundle: [/^zod(\/|$)/], dts: { neverBundle: [/^zod(\/|$)/] } },
+  deps: {
+    neverBundle: [/^zod(\/|$)/, /^bun:/],
+    dts: { neverBundle: [/^zod(\/|$)/] },
+  },
 });

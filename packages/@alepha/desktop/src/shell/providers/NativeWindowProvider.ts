@@ -46,6 +46,12 @@ export class NativeWindowProvider extends WindowProvider {
     webview.title = options.title;
     objc.installMenu(options.appName);
     this.webview = webview;
+    // A Dock Quit or a logout ends the loop like closing the window does, so
+    // the server still stops through its hooks.
+    const handle = this.handle();
+    const { NativeLibrary } = await import("../native/NativeLibrary.ts");
+    const library = new NativeLibrary();
+    objc.onQuit(() => library.terminate(handle));
   }
 
   public navigate(url: string): void {

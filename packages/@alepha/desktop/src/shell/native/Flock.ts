@@ -8,9 +8,12 @@ import { closeSync, openSync } from "node:fs";
  * app refuse instead of racing the first one's secret and database.
  */
 export class Flock {
-  protected readonly libc = dlopen("/usr/lib/libSystem.B.dylib", {
-    flock: { args: [FFIType.i32, FFIType.i32], returns: FFIType.i32 },
-  }).symbols;
+  protected readonly libc = dlopen(
+    process.platform === "darwin" ? "/usr/lib/libSystem.B.dylib" : "libc.so.6",
+    {
+      flock: { args: [FFIType.i32, FFIType.i32], returns: FFIType.i32 },
+    },
+  ).symbols;
   protected fd?: number;
 
   /**

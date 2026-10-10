@@ -158,7 +158,19 @@ export class WorkspaceCompiler {
    * V1 targets the machine it runs on: macOS, its own architecture.
    */
   async compileDesktop(
-    options: WorkspaceCompileOptions & { config: unknown },
+    options: WorkspaceCompileOptions & {
+      config: unknown;
+      /**
+       * Compile-time fixture injection for the clean-room CI fixture
+       * (#Q2522), never a flag or an environment switch: `shell` replaces the
+       * generated shell entry (a headless window that drives the app over
+       * HTTP), the host's own Bun target is used on any platform, the macOS
+       * tools are not required, and no bundle is assembled (`migrations/` is
+       * copied beside the executable instead). The server
+       * Worker, the supervisor and the admission guard are the real ones.
+       */
+      headless?: { shell: string };
+    },
   ): Promise<string> {
     const distDir = options.output?.dist ?? "dist";
     const publicDir = options.output?.public ?? "public";
@@ -166,13 +178,15 @@ export class WorkspaceCompiler {
     const bunEntry = this.slices.entryFileName("bun");
     const native = `bun-darwin-${this.hostArch()}`;
 
-    if (this.hostPlatform() !== "darwin") {
+    const headless = options.headless;
+    if (!headless && this.hostPlatform() !== "darwin") {
       throw new AlephaError(
         `\`alepha compile --desktop\` builds a macOS app and runs on macOS only (this machine is ${this.hostPlatform()}).`,
       );
     }
-    const target = options.target ?? native;
-    if (target !== native) {
+    const target =
+      options.target ?? (headless ? this.defaultBunTarget() : native);
+    if (!headless && target !== native) {
       throw new AlephaError(
         `\`alepha compile --desktop\` targets this Mac only (${native}), not '${target}'. Run \`alepha compile --desktop\` without --target, on a Mac of the architecture you want.`,
       );
@@ -189,6 +203,7 @@ export class WorkspaceCompiler {
       root: options.root,
       config: options.config,
       target,
+      bundle: !headless,
     });
     const runtimes = options.runtimes ?? (await this.declaredRuntimes(dist));
 
@@ -210,6 +225,9 @@ export class WorkspaceCompiler {
         bunEntry,
       );
       const entries = await adapter.writeEntries({ dist: stagedDist, config });
+      if (headless) {
+        await this.fs.cp(headless.shell, this.fs.join(stagedDist, entries[0]));
+      }
       await this.shell.run(
         this.buildDesktopCompileCommand(
           options.name,
@@ -219,19 +237,26 @@ export class WorkspaceCompiler {
         ),
         { root: stagedDist },
       );
-      const staged = await adapter.assemble({
-        root: options.root,
-        stage,
-        dist: stagedDist,
-        binary: this.fs.join(stagedDist, options.name),
-        name: options.name,
-        config,
-      });
+      const staged = headless
+        ? this.fs.join(stagedDist, options.name)
+        : await adapter.assemble({
+            root: options.root,
+            stage,
+            dist: stagedDist,
+            binary: this.fs.join(stagedDist, options.name),
+            name: options.name,
+            config,
+          });
 
       const artifact = this.fs.join(dist, staged.split("/").pop() ?? "");
       await this.fs.rm(artifact, { recursive: true, force: true });
       await this.fs.cp(staged, artifact, { recursive: true });
       await this.cleanupPreCompileArtifacts(dist, publicDir, runtimes);
+      if (headless) {
+        // No bundle carries them: beside the executable, which is where a
+        // bare desktop executable looks for its resources.
+        await this.copyMigrations(options.root, dist);
+      }
       this.log.info(`Desktop app → ${artifact}`);
       return artifact;
     } finally {

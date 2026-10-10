@@ -23,6 +23,10 @@ export interface DesktopAdapter {
     root: string;
     config: unknown;
     target: string;
+    /**
+     * False when no bundle will be assembled: the macOS tools are not needed.
+     */
+    bundle?: boolean;
   }): Promise<Record<string, unknown>>;
 
   /**

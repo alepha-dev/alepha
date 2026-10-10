@@ -1,4 +1,4 @@
-import { dlopen, FFIType, type Pointer, ptr } from "bun:ffi";
+import { dlopen, FFIType, JSCallback, type Pointer, ptr } from "bun:ffi";
 
 /**
  * The few AppKit calls the desktop shell needs, made through the Objective-C
@@ -46,7 +46,15 @@ export class ObjcRuntime {
   protected readonly sendForInt = dlopen(this.lib, {
     objc_msgSend: { args: [FFIType.ptr, FFIType.ptr], returns: FFIType.i64 },
   }).symbols.objc_msgSend;
+  protected readonly runtime = dlopen(this.lib, {
+    object_getClass: { args: [FFIType.ptr], returns: FFIType.ptr },
+    class_replaceMethod: {
+      args: [FFIType.ptr, FFIType.ptr, FFIType.ptr, FFIType.cstring],
+      returns: FFIType.ptr,
+    },
+  }).symbols;
   protected readonly strings: Uint8Array[] = [];
+  protected quitCallback?: JSCallback;
 
   /**
    * The main menu: `<appName>` with `Quit <appName>` (Cmd+Q), and `Edit` with
@@ -86,6 +94,44 @@ export class ObjcRuntime {
       ]),
     );
     this.send1(this.app(), this.sel("setMainMenu:"), main);
+  }
+
+  /**
+   * Route a system quit (the Dock's Quit, logout, an AppleScript `quit`)
+   * through `onQuit` instead of an immediate exit.
+   *
+   * Those arrive as `[NSApp terminate:]`, which asks the application
+   * delegate `applicationShouldTerminate:` and, with webview's delegate
+   * answering nothing, exits on the spot: no stop hook runs (measured,
+   * #Q2522). This adds the method to the delegate's class: it calls
+   * `onQuit` (which ends the window loop, so the shell stops the server
+   * gracefully and exits itself) and answers NSTerminateCancel. The
+   * sender of an AppleScript `quit` reads that as "User canceled" although
+   * the app does exit; a logout may report the app as having interrupted
+   * it once, then proceeds when it is gone.
+   */
+  public onQuit(onQuit: () => void): void {
+    const delegate = this.msg(this.app(), "delegate");
+    if (!delegate) {
+      return;
+    }
+    this.quitCallback = new JSCallback(
+      () => {
+        onQuit();
+        // NSTerminateCancel: AppKit's own exit is refused, and the process
+        // exits by itself once the server has stopped. NSTerminateLater was
+        // measured to park AppKit in a modal wait where the window loop
+        // never stops.
+        return 0;
+      },
+      { args: [FFIType.ptr, FFIType.ptr, FFIType.ptr], returns: FFIType.u64 },
+    );
+    this.runtime.class_replaceMethod(
+      this.runtime.object_getClass(delegate),
+      this.sel("applicationShouldTerminate:"),
+      this.quitCallback.ptr,
+      this.cstr("Q@:@"),
+    );
   }
 
   /**

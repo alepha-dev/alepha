@@ -63,6 +63,7 @@ export class DesktopCompileAdapter {
     root: string;
     config: unknown;
     target: string;
+    bundle?: boolean;
   }): Promise<DesktopConfig> {
     const parsed = desktopConfigSchema.safeParse(input.config);
     if (!parsed.success) {
@@ -93,7 +94,7 @@ export class DesktopCompileAdapter {
     }
 
     const missing: string[] = [];
-    for (const tool of this.tools) {
+    for (const tool of input.bundle === false ? [] : this.tools) {
       if (!(await this.shell.isInstalled(tool))) {
         missing.push(tool);
       }
