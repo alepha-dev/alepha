@@ -9,8 +9,8 @@ import { D1MigrationsService } from "../services/D1MigrationsService.ts";
 /**
  * D1 migrations must NOT go through `wrangler d1 migrations apply`.
  *
- * That command runs each migration inside a transaction — its own help
- * says "this migration will be rolled back" on error — and SQLite
+ * That command runs each migration inside a transaction  -  its own help
+ * says "this migration will be rolled back" on error  -  and SQLite
  * **ignores `PRAGMA foreign_keys` inside a transaction**. drizzle-kit
  * opens every generated table-rebuild with `PRAGMA foreign_keys=OFF`
  * precisely so the `DROP TABLE` does not cascade, so under
@@ -51,7 +51,7 @@ const ROOT = "dist/migrations";
  * for both a known file and any directory that has something nested under
  * it. This is what makes the v1 folder-per-migration layout
  * (`<tag>/migration.sql`) distinguishable from a directory that merely
- * *looks* like it might hold one — the bug this whole suite guards against
+ * *looks* like it might hold one  -  the bug this whole suite guards against
  * was exactly that distinction being made carelessly.
  */
 class FakeFs {
@@ -63,7 +63,7 @@ class FakeFs {
 
   join(...parts: string[]) {
     // Match `NodeFileSystemProvider.join`'s real behavior (`path.join`),
-    // which normalizes away a leading `.` segment — `join(".", "dist/x")`
+    // which normalizes away a leading `.` segment  -  `join(".", "dist/x")`
     // is `"dist/x"`, not `"./dist/x"`. A naive `parts.join("/")` here would
     // silently desync this fixture's path keys from what the method under
     // test actually looks up.
@@ -348,7 +348,7 @@ describe("d1MigrationsApply", () => {
   /**
    * A stray non-migration file used to be silently ignored. Now that the
    * anti-silence guard fires on ANY unrecognized entry (see below), a
-   * directory that genuinely holds one has to fail loudly instead — the
+   * directory that genuinely holds one has to fail loudly instead  -  the
    * same reasoning that makes a corrupt migration folder unsafe to ignore
    * applies equally to a README nobody meant to leave there.
    */
@@ -361,7 +361,7 @@ describe("d1MigrationsApply", () => {
   });
 
   /**
-   * drizzle-kit v1 never produces the flat `<name>.sql` layout above — it
+   * drizzle-kit v1 never produces the flat `<name>.sql` layout above  -  it
    * writes one folder per migration (`<tag>/migration.sql`), and
    * `drizzle-orm@1`'s own runtime migrator refuses to even read the old
    * layout. Discovery must recognise this shape too, or (as happened before
@@ -390,7 +390,7 @@ describe("d1MigrationsApply", () => {
         ),
       ).toBe(true);
       // The bookkeeping name must be the folder, never the literal
-      // filename — `baseline` must record the exact same string for the two
+      // filename  -  `baseline` must record the exact same string for the two
       // methods to ever agree on "already applied".
       expect(bookkeeping.some((it) => it.includes("'migration.sql'"))).toBe(
         false,
@@ -430,7 +430,7 @@ describe("d1MigrationsApply", () => {
     it("ignores a bare 'meta/' directory (pre-v1 journal/snapshots, no SQL)", async ({
       expect,
     }) => {
-      // `meta/_journal.json` existing but nothing else in the directory —
+      // `meta/_journal.json` existing but nothing else in the directory  -
       // legitimately nothing to apply, not an error.
       const { sql, call } = capture(["meta/_journal.json"]);
       await call();
@@ -456,7 +456,7 @@ describe("d1MigrationsApply", () => {
      * aborted `generate`, a bad merge, a partial checkout) left
      * `migrations.length === 1`, so the guard stayed quiet and the corrupt
      * folder was silently dropped from the production deploy while the run
-     * reported success — the exact bug class this whole file guards
+     * reported success  -  the exact bug class this whole file guards
      * against, one abstraction layer up.
      */
     it("refuses to silently drop a corrupt migration alongside a valid one", async ({
@@ -474,7 +474,7 @@ describe("d1MigrationsApply", () => {
 
     /**
      * `.archive/` is baselining's own output (`archiveMigrations` in
-     * `db.ts`) and never a sign anything is wrong — a directory holding
+     * `db.ts`) and never a sign anything is wrong  -  a directory holding
      * only `.archive/` (plus the empty `meta/` that `archiveMigrations`
      * leaves in place) legitimately has zero pending migrations, the same
      * as a bare `meta/` above. `ls` must be able to SEE `.archive` to make
@@ -505,8 +505,8 @@ describe("d1MigrationsApply", () => {
     });
 
     /**
-     * Before `ls` was called with `{ hidden: true }`, ANY dotfile — not
-     * just `.archive` — was invisible to discovery, not only the ones this
+     * Before `ls` was called with `{ hidden: true }`, ANY dotfile  -  not
+     * just `.archive`  -  was invisible to discovery, not only the ones this
      * method explicitly recognises. A stray hidden entry that is neither
      * `.archive` nor `meta` (a leftover `.env.local`, an editor swap dir,
      * anything unexpected) used to be silently invisible right alongside a
@@ -530,7 +530,7 @@ describe("d1MigrationsApply", () => {
 
 /**
  * The baseline file is pure CREATE TABLE. Recording it must insert a
- * bookkeeping row and run no migration SQL — otherwise the first deploy
+ * bookkeeping row and run no migration SQL  -  otherwise the first deploy
  * after a baseline would try to recreate every table on a live database.
  */
 describe("d1MigrationsBaseline", () => {

@@ -103,11 +103,6 @@ export const BANNED_DOC_SYMBOLS: Array<{ pattern: string; reason: string }> = [
       "`$transaction` does not exist - use the `$transactional` middleware in `use: [...]`",
   },
   {
-    pattern: "alepha deploy",
-    reason:
-      "there is no top-level `alepha deploy` command - use `alepha p up` / `alepha p deploy`, or the target CLI (wrangler/vercel/surge) directly",
-  },
-  {
     pattern: "SERVER_API_PREFIX",
     reason:
       "no code reads `SERVER_API_PREFIX` - the /api prefix is the `serverApiOptions` atom",

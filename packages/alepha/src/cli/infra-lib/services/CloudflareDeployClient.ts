@@ -340,7 +340,7 @@ export class CloudflareDeployClient {
     const { expiresAt, singleAsset } = this.session(session.jwt);
     if (singleAsset) {
       throw new AlephaError(
-        "Cloudflare asked for single-asset uploads for this session, which this client does not implement. Deploy this app with `alepha platform up`, which shells out to wrangler and does.",
+        "Cloudflare asked for single-asset uploads for this session, which this client does not implement. Deploy this app with `alepha deploy`, which shells out to wrangler and does.",
       );
     }
 

@@ -8,6 +8,7 @@
  */
 import { $module } from "alepha";
 
+import { AlephaCliInfraCommands } from "../infra/commands.ts";
 import { appEntryOptions } from "./atoms/appEntryOptions.ts";
 import { buildOptions } from "./atoms/buildOptions.ts";
 import { desktopOptions } from "./atoms/desktopOptions.ts";
@@ -117,7 +118,7 @@ export * from "./tasks/BuildTask.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Services, providers, and build tasks — no commands.
+ * Services, providers, and build tasks  -  no commands.
  * Use this module when you need CLI utilities without registering commands.
  *
  * ⚠️ **The build tasks live here rather than in {@link AlephaCli}, and that is
@@ -181,7 +182,7 @@ export const AlephaCliServices = $module({
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Full CLI module — all services and commands.
+ * Full CLI module  -  all services and commands.
  *
  * It imports {@link AlephaCliServices} explicitly rather than picking it up
  * through whichever service happens to inject one of its members, so `alepha
@@ -190,7 +191,7 @@ export const AlephaCliServices = $module({
  */
 export const AlephaCli = $module({
   name: "alepha.cli",
-  imports: [AlephaCliServices],
+  imports: [AlephaCliServices, AlephaCliInfraCommands],
   atoms: [appEntryOptions, changelogOptions, devOptions, metaOptions],
   services: [
     AlephaCliExtensionProvider,

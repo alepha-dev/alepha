@@ -28,7 +28,7 @@ export const infraOptions = $atom({
        *
        * ⚠️ Adding or removing it renames every resource of the app. The next
        * `up` provisions fresh ones under the new names (an empty database
-       * included) and leaves the old ones behind, so read `alepha platform
+       * included) and leaves the old ones behind, so read `alepha infra
        * plan` first.
        */
       project: z.text().optional(),

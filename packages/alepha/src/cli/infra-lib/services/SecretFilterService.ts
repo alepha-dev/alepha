@@ -2,7 +2,7 @@
  * Filters environment variables for secret store syncing.
  *
  * Excludes platform-managed vars (NODE_ENV), build-time vars (VITE_*),
- * and empty values. Keeps everything else — including DATABASE_URL
+ * and empty values. Keeps everything else  -  including DATABASE_URL
  * and POSTGRES_SCHEMA which GitHub Actions needs.
  *
  * Also handles renaming GITHUB_* keys since GitHub Actions rejects

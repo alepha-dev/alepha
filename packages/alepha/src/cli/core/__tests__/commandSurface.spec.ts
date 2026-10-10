@@ -58,6 +58,8 @@ describe("the CLI's build tasks and its commands", () => {
 
     const names = cli.commands.map((command) => command.name);
     for (const command of [
+      "deploy",
+      "infra",
       "build",
       "clean",
       "db",

@@ -6,7 +6,7 @@ permissions:
 
 # One release at a time, and never cancel one.
 #
-# `cancel-in-progress: true` — what `verify.yml` uses, and right there — would be
+# `cancel-in-progress: true`  -  what `verify.yml` uses, and right there  -  would be
 # actively dangerous here: interrupting the job between `npm publish` and
 # `git push` leaves a published version whose tag exists on no remote, which is
 # the exact tear the step order further down is arranged to avoid. Two
@@ -127,7 +127,7 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Released version: $VERSION"
 
-      # The file IS the release body — `action-gh-release` reads it through
+      # The file IS the release body  -  `action-gh-release` reads it through
       # `body_path` further down. It used to be piped into `$GITHUB_OUTPUT`
       # under an `EOF` delimiter, which put a commit message in charge of where
       # the value ended: one line reading exactly `EOF` truncates the notes, and
@@ -183,7 +183,7 @@ jobs:
           cat CHANGELOG.md >> CHANGELOG.tmp
           mv CHANGELOG.tmp CHANGELOG.md
 
-      # Local only — nothing leaves the runner until the artifacts exist.
+      # Local only  -  nothing leaves the runner until the artifacts exist.
       #
       # The push and the GitHub Release used to sit right here, ahead of the
       # build. A red `yarn build` then left a tag on `main` and a public release
@@ -248,7 +248,7 @@ jobs:
       #
       # The push comes after `npm publish` on purpose. Of the two ways this can
       # tear, a published version whose tag has not been pushed is the mild one
-      # — push the tag and it is whole. The other way round leaves a public
+      #  -  push the tag and it is whole. The other way round leaves a public
       # release pointing at a version nobody can install, and only deleting it
       # by hand fixes that.
       # ──────────────────────────────────────────────────────────────────
@@ -260,7 +260,7 @@ jobs:
       # One step, not two: the release used to be created before the build and
       # have its assets bolted on afterwards, because that avoided reordering a
       # working pipeline. The reorder happened, so the split has no reason left
-      # — and a release that is born complete never exists in a half state.
+      #  -  and a release that is born complete never exists in a half state.
       - name: Create GitHub Release
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
@@ -273,7 +273,7 @@ jobs:
       # ──────────────────────────────────────────────────────────────
       # The docs rebuild and the Lore release, last.
       #
-      # `docs` is rebuilt here for workerd and deployed by `platform up
+      # `docs` is rebuilt here for workerd and deployed by `deploy
       # --prebuilt` at the very end (#Q2576).
       #
       # ⚠️ The docs rebuild sits HERE, at the very end, and cannot move earlier:
@@ -329,14 +329,14 @@ jobs:
       # Last, after every push and the publish: a red deploy then tears
       # nothing, and re-running the job redeploys the same build.
       # ──────────────────────────────────────────────────────────────
-      # `alepha-docs-production` (`platform({ project: "alepha" })`), the
+      # `alepha-docs-production` (`infra({ project: "alepha" })`), the
       # Worker Lore Deploy created for alepha.dev, taken over with its Custom
       # Domain (#Q2576). `--prebuilt`: the workerd build above carries the
       # llms.txt files `gen:llms` wrote after it, and a fresh build would drop
       # them.
       - name: Deploy docs
         working-directory: apps/docs
-        run: yarn alepha platform up --env production --prebuilt
+        run: yarn alepha deploy --env production --prebuilt
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

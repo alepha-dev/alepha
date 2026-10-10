@@ -7,18 +7,18 @@ import {
   AlephaError,
   type Alepha as AlephaInstance,
 } from "alepha";
-import {
-  BuildCloudflareTask,
-  type BuildManifest,
-  buildManifestSchema,
-  type BuildTaskContext,
-} from "alepha/cli";
 import { EnvUtils, Runner, type RunnerMethod } from "alepha/command";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
 import { S3mini } from "s3mini";
 
+import {
+  type BuildManifest,
+  buildManifestSchema,
+} from "../../core/schemas/buildManifest.ts";
+import { BuildCloudflareTask } from "../../core/tasks/BuildCloudflareTask.ts";
+import type { BuildTaskContext } from "../../core/tasks/BuildTask.ts";
 import { infraOptions } from "../atoms/infraOptions.ts";
 import { InfraCacheProvider } from "../providers/InfraCacheProvider.ts";
 import {
@@ -228,7 +228,7 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
         );
         if (!found) {
           throw new AlephaError(
-            `Hyperdrive config '${name}' does not exist. Run 'alepha platform provision' before building.`,
+            `Hyperdrive config '${name}' does not exist. Run 'alepha deploy' before building.`,
           );
         }
         this.provisionedHyperdriveId = found.id;
@@ -237,7 +237,7 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
         const found = (await this.api.listD1()).find((it) => it.name === name);
         if (!found) {
           throw new AlephaError(
-            `D1 database '${name}' does not exist. Run 'alepha platform provision' before building.`,
+            `D1 database '${name}' does not exist. Run 'alepha deploy' before building.`,
           );
         }
         this.provisionedD1Id = found.uuid;
@@ -250,7 +250,7 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
         const found = (await this.api.listKV()).find((it) => it.title === name);
         if (!found) {
           throw new AlephaError(
-            `KV namespace '${name}' does not exist. Run 'alepha platform provision' before building.`,
+            `KV namespace '${name}' does not exist. Run 'alepha deploy' before building.`,
           );
         }
         this.provisionedKVIds.set(name, found.id);
@@ -421,7 +421,7 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
     // still reports success. Refused by name here instead, where the fix is
     // rebuilding the artifact.
     //
-    // Refused, not fallen back on: unlike `platform.ts`'s `readManifest`, this
+    // Refused, not fallen back on: unlike `infra.ts`'s `readManifest`, this
     // path has no introspection to fall through to  -  prebuilt mode exists
     // precisely because the app cannot be booted here.
     const validated = buildManifestSchema.safeParse(manifest);
@@ -505,6 +505,7 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
     ctx: InfraContext<CloudflareEnvironmentOptions>,
     run: RunnerMethod,
   ): Promise<string | undefined> {
+    await this.validateDeployArtifact(ctx);
     this.configureApi(ctx);
     const workerName = ctx.naming.worker();
     const distDir = this.fs.join(ctx.root, "dist");
@@ -528,6 +529,41 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
     });
 
     return url;
+  }
+
+  /**
+   * Refuse incomplete local artifacts before Wrangler or secret-file writes.
+   * Granular deployment uploads build output without regenerating it.
+   */
+  protected async validateDeployArtifact(ctx: InfraContext): Promise<void> {
+    try {
+      const dist = this.fs.join(ctx.root, "dist");
+      const manifest = buildManifestSchema.parse(
+        JSON.parse(
+          await this.fs.readTextFile(this.fs.join(dist, "manifest.json")),
+        ),
+      );
+      const slice = manifest.runtimes.find(
+        (entry) => entry.runtime === "workerd",
+      );
+      const config = JSON.parse(
+        await this.fs.readTextFile(this.fs.join(dist, "wrangler.jsonc")),
+      );
+      if (
+        !slice?.entry ||
+        !(await this.fs.exists(this.fs.join(dist, slice.entry))) ||
+        typeof config.main !== "string" ||
+        !(await this.fs.exists(this.fs.join(dist, config.main)))
+      ) {
+        throw new AlephaError(
+          "Missing workerd slice or generated worker entry.",
+        );
+      }
+    } catch (error) {
+      throw new AlephaError(
+        `Cannot deploy the local Cloudflare artifact: ${error instanceof Error ? error.message : String(error)} Build it with alepha build --runtime workerd, or run alepha deploy for the full pipeline.`,
+      );
+    }
   }
 
   /**
@@ -585,7 +621,7 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
    *
    * The list itself moved to `../secretKeys.ts` when {@link BayAdapter} needed
    * the same answer; this alias stays because it is what every existing caller
-   * names (`platform.ts`'s plan output among them). Same Set, so nothing about
+   * names (`infra.ts`'s plan output among them). Same Set, so nothing about
    * this adapter's behaviour changed.
    */
   static readonly EXCLUDED_SECRET_KEYS = SHARED_EXCLUDED_SECRET_KEYS;
@@ -976,7 +1012,7 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
       // Rocket's v1 path is D1, which uses `wrangler d1 migrations
       // apply` and works fine in prebuilt mode.
       throw new AlephaError(
-        "Postgres migrations are not yet supported in prebuilt mode. Use the `alepha platform up` CLI for now.",
+        "Postgres migrations are not yet supported in prebuilt mode. Use the `alepha deploy` CLI for now.",
       );
     }
     await run({

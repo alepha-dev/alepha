@@ -161,7 +161,7 @@ describe("platform.detectResources  -  hasKV decision", () => {
 
 /**
  * Mirrors the inline check at `cli/infra/commands/infra.ts:1015-1022`
- * (`detectResources`'s `hasAnalytics`)  -  the live-boot path `alepha platform
+ * (`detectResources`'s `hasAnalytics`)  -  the live-boot path `alepha infra
  * up` actually runs, as opposed to `BuildManifestTask`, which only drives
  * `alepha build` / `--prebuilt` deploys. Both must agree on what a
  * `$analytics` primitive means, or `up` would build without the dataset

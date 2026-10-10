@@ -2,11 +2,14 @@ import { randomBytes } from "node:crypto";
 import { join } from "node:path";
 
 import { $inject, $store, AlephaError } from "alepha";
-import { BuildSlices, buildOptions, PackageManagerUtils } from "alepha/cli";
 import { EnvUtils, type RunnerMethod } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
 
+import { buildOptions } from "../../core/atoms/buildOptions.ts";
+import { buildManifestSchema } from "../../core/schemas/buildManifest.ts";
+import { BuildSlices } from "../../core/services/BuildSlices.ts";
+import { PackageManagerUtils } from "../../core/services/PackageManagerUtils.ts";
 import { infraOptions } from "../atoms/infraOptions.ts";
 import {
   type BayEnvironmentOptions,
@@ -573,6 +576,37 @@ export class BayAdapter extends InfraAdapter<BayEnvironmentOptions> {
   }
 
   /**
+   * Bay packs an existing node/static artifact and never bundles here.
+   */
+  protected async validateDeployArtifact(ctx: InfraContext): Promise<void> {
+    try {
+      const dist = this.fs.join(ctx.root, "dist");
+      const manifest = buildManifestSchema.parse(
+        JSON.parse(
+          await this.fs.readTextFile(this.fs.join(dist, "manifest.json")),
+        ),
+      );
+      const slice = manifest.runtimes.find(
+        (entry) => entry.runtime === "node" || entry.runtime === "static",
+      );
+      if (
+        !slice ||
+        (slice.runtime === "node" &&
+          (!slice.entry ||
+            !(await this.fs.exists(this.fs.join(dist, slice.entry))))) ||
+        (slice.runtime === "static" &&
+          !(await this.fs.exists(this.fs.join(dist, "public"))))
+      ) {
+        throw new AlephaError("Missing supported node/static artifact.");
+      }
+    } catch (error) {
+      throw new AlephaError(
+        `Cannot deploy the local Bay artifact: ${error instanceof Error ? error.message : String(error)} Build it with alepha build --runtime node (or static), or run alepha deploy for the full pipeline.`,
+      );
+    }
+  }
+
+  /**
    * Packs the artifact and pipes it into `bay deploy -` in one ssh invocation.
    *
    * Piped rather than staged: `scp` to a temp path would double the artifact on
@@ -592,6 +626,8 @@ export class BayAdapter extends InfraAdapter<BayEnvironmentOptions> {
     // below re-derives it once there is something to deploy.
     const domains = this.domains(ctx);
     this.socket(ctx);
+
+    await this.validateDeployArtifact(ctx);
 
     let artifact = "";
     await run({

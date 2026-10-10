@@ -57,7 +57,7 @@ export class DbCommand {
       // `Service not found: RepositoryProvider` stack trace this used to
       // throw. It also lets `alepha verify` run the check unconditionally:
       // gating it on a `migrations/` directory existing meant the one state
-      // worth catching — entities declared, no migrations generated yet —
+      // worth catching  -  entities declared, no migrations generated yet  -
       // was the exact state that skipped the check.
       const repositoryProvider = this.findRepositoryProvider(alepha);
       if (!repositoryProvider) {
@@ -106,7 +106,7 @@ export class DbCommand {
 
         const lastSnapshot = await this.resolveLastSnapshot(migrationDir);
 
-        // No snapshot is not "nothing to compare" — it is a comparison
+        // No snapshot is not "nothing to compare"  -  it is a comparison
         // against an empty database, and `generateMigration` already does
         // exactly that when `prevSnapshot` is undefined. Skipping it here
         // meant a project with entities and zero migrations reported clean
@@ -234,7 +234,7 @@ export class DbCommand {
           description:
             "JSON array of drizzle-kit hints resolving ambiguous diffs (e.g. rename-vs-create). drizzle-kit exits with code 2 and prints the exact JSON to pass when a hint is required.",
           // `z.text()` caps at 255 characters by default, which is roughly two
-          // hints — and drizzle-kit demands every ambiguity be resolved in a
+          // hints  -  and drizzle-kit demands every ambiguity be resolved in a
           // single invocation, so a rewrite of one entity family already blows
           // past it. The flag carries a JSON document, not a label.
           size: "rich",
@@ -330,7 +330,7 @@ export class DbCommand {
         seen.add(providerName);
         if (flags.provider && flags.provider !== providerName) continue;
 
-        // Cloudflare D1 doesn't go through drizzle's migrator at all — its
+        // Cloudflare D1 doesn't go through drizzle's migrator at all  -  its
         // deploy path keys off a filename-based bookkeeping table driven by
         // wrangler (see WranglerApi.d1MigrationsBaseline), which needs the
         // project/env naming that only the `platform` command tree
@@ -339,7 +339,7 @@ export class DbCommand {
         // error, which would wrongly suggest the capability doesn't exist.
         if (provider.driver === "d1") {
           throw new CommandError(
-            `'alepha db baseline mark' does not support Cloudflare D1 — use 'alepha platform db baseline mark' instead, which drives the wrangler bookkeeping table directly.`,
+            `'alepha db baseline mark' does not support Cloudflare D1  -  use 'alepha infra db baseline mark' instead, which drives the wrangler bookkeeping table directly.`,
           );
         }
 
@@ -793,10 +793,10 @@ export class DbCommand {
         : new Set<string>();
 
       const flags = options.commandFlags ? ` ${options.commandFlags}` : "";
-      // drizzle-kit ships embedded in `alepha` — resolve and run it from
+      // drizzle-kit ships embedded in `alepha`  -  resolve and run it from
       // alepha's own install, so the project never declares it.
       // `global: true` because the command starts with `node` (a system
-      // binary) — without it, exec tries to resolve `node` as a
+      // binary)  -  without it, exec tries to resolve `node` as a
       // node_modules bin and fails.
       const drizzleKit = this.utils.resolveBin("drizzle-kit");
       const drizzleOrm = await this.prepareDrizzleOrmResolution(rootDir);
@@ -938,13 +938,13 @@ if (typeof registerHooks === "function") {
    *
    * - pre-v1: the entry itself IS the SQL file (`<name>.sql`).
    * - v1: the entry is a folder holding `migration.sql`
-   *   (`<tag>/migration.sql`) — drizzle-kit v1 never produces a flat file.
+   *   (`<tag>/migration.sql`)  -  drizzle-kit v1 never produces a flat file.
    *
    * Returns `null` for anything that isn't a migration under either layout
    * (e.g. `meta/`, `.archive/`), so callers can skip it without guessing.
    *
    * Shared by `assertNoDestructiveMigrations` and
-   * `stripPublicSchemaFromMigrations` — both used to filter on
+   * `stripPublicSchemaFromMigrations`  -  both used to filter on
    * `.endsWith(".sql")` alone, which matched nothing once `generate`
    * started producing v1's folder layout: the destructive-migration guard
    * (the only automated defence against the D1 cascade-wipe bomb) ran
@@ -1034,7 +1034,7 @@ if (typeof registerHooks === "function") {
    * Drizzle rebuilds a SQLite table by dropping and recreating it. On
    * Cloudflare D1 that is a data-loss bomb: D1 ignores `PRAGMA
    * foreign_keys=OFF`, so dropping a table that other tables reference with
-   * `ON DELETE CASCADE` silently wipes every child row — with no error, on
+   * `ON DELETE CASCADE` silently wipes every child row  -  with no error, on
    * deploy, in production.
    *
    * The generated file is left on disk on purpose: the point is to force a
@@ -1185,7 +1185,7 @@ if (typeof registerHooks === "function") {
    * Move a provider's migration files and snapshot metadata into `.archive/`.
    *
    * Baselining rewrites history, so the previous files are preserved rather
-   * than deleted — they remain the only record of how the schema was reached.
+   * than deleted  -  they remain the only record of how the schema was reached.
    * Refuses to run twice: a second baseline would overwrite the first archive
    * and lose that record silently.
    */
@@ -1217,7 +1217,7 @@ if (typeof registerHooks === "function") {
 
     // drizzle-kit v1: one folder per migration, `<tag>/migration.sql`, no
     // flat `.sql` file anywhere. From this branch on, every project this
-    // command touches is v1-native — a flat-only archive silently no-ops on
+    // command touches is v1-native  -  a flat-only archive silently no-ops on
     // a first baseline (`sqlFiles.length === 0` returns `[]` without ever
     // creating `.archive/`), and `generate --name=baseline` then runs
     // against the still-present v1 history, producing an INCREMENTAL
@@ -1270,7 +1270,7 @@ if (typeof registerHooks === "function") {
     // Move each v1 folder's files (migration.sql, snapshot.json, ...) one
     // file at a time, mirroring the flat-`.sql`/`meta` archiving above,
     // rather than a directory-level `mv`. `MemoryFileSystemProvider` only
-    // tracks directories that were explicitly `mkdir`'d — every migration
+    // tracks directories that were explicitly `mkdir`'d  -  every migration
     // folder in these tests (and every one `writeFile` alone can produce)
     // is registered purely through its nested file paths, so a directory
     // `mv` would find nothing to move.
@@ -1304,13 +1304,13 @@ if (typeof registerHooks === "function") {
   /**
    * Which on-disk layout a migrations folder uses.
    *
-   * - `"v1"` — one directory per migration, each with its own `snapshot.json`.
-   * - `"legacy"` — the pre-v1 shape: flat `NNNN_name.sql` plus a `meta/`
+   * - `"v1"`  -  one directory per migration, each with its own `snapshot.json`.
+   * - `"legacy"`  -  the pre-v1 shape: flat `NNNN_name.sql` plus a `meta/`
    *   directory holding `_journal.json` and numbered snapshots.
-   * - `"none"` — nothing recorded yet.
+   * - `"none"`  -  nothing recorded yet.
    *
    * Worth distinguishing because drizzle v1 reads a legacy snapshot fine but
-   * *emits* constraints differently from the version that wrote it — named
+   * *emits* constraints differently from the version that wrote it  -  named
    * foreign keys, inline `UNIQUE`, no `NOT NULL` on an integer primary key. So
    * it derives a diff for tables nobody touched, and `check` reports drift that
    * looks exactly like a schema change. See {@link explainLegacyLayout}.
@@ -1337,8 +1337,8 @@ if (typeof registerHooks === "function") {
   /**
    * Say why a legacy folder is probably not the drift it looks like.
    *
-   * Without this the operator sees a full table rebuild — `DROP TABLE` and
-   * all — for entities they never edited, which on Cloudflare D1 is exactly
+   * Without this the operator sees a full table rebuild  -  `DROP TABLE` and
+   * all  -  for entities they never edited, which on Cloudflare D1 is exactly
    * the shape that has already cost one production database.
    */
   protected explainLegacyLayout(providerName: string): void {
@@ -1350,7 +1350,7 @@ if (typeof registerHooks === "function") {
       "Drizzle v1 emits constraints differently from the version that wrote those",
     );
     this.log.info(
-      "snapshots, so some — possibly all — of the statements above are a change of",
+      "snapshots, so some  -  possibly all  -  of the statements above are a change of",
     );
     this.log.info(
       "representation, not of schema. Compare them column by column before applying:",
@@ -1362,7 +1362,7 @@ if (typeof registerHooks === "function") {
     this.log.info("To resolve, upgrade the folder and collapse the history:");
     this.log.info("  npx drizzle-kit up --config=<generated config>");
     this.log.info("  alepha db baseline create");
-    this.log.info("  alepha platform db baseline mark --env <env> --reset");
+    this.log.info("  alepha infra db baseline mark --env <env> --reset");
     this.log.info("");
   }
 
@@ -1375,18 +1375,18 @@ if (typeof registerHooks === "function") {
    * - v1 (one `<tag>/` folder per migration, each with its own
    *   `snapshot.json`, no journal at all): what `drizzle-kit generate`
    *   produces now. `drizzle-orm@1`'s own `readMigrationFiles` refuses to
-   *   even look at the old layout — it throws telling the caller to run
-   *   `drizzle-kit up` — so once a project's migrations are in the new
+   *   even look at the old layout  -  it throws telling the caller to run
+   *   `drizzle-kit up`  -  so once a project's migrations are in the new
    *   layout, this method must be too, or `check` silently stops comparing
    *   anything.
    *
-   * v1 folders are checked FIRST, journal second — not the other way
+   * v1 folders are checked FIRST, journal second  -  not the other way
    * around. A project mid-upgrade (pre-v1 history on disk, then `alepha db
    * migrations create` run under v1) has both: a frozen `meta/_journal.json`
    * that v1's `generate` never touches again, and a v1 folder that is
    * unconditionally newer than anything the journal could describe the
    * moment it exists. Treating the journal as authoritative whenever it's
-   * present — the previous behavior — would compare against the stale
+   * present  -  the previous behavior  -  would compare against the stale
    * pre-v1 snapshot even after a v1 migration made it obsolete, reporting
    * drift a migration already covers and risking a duplicate on `create`.
    * The journal is therefore only consulted when there are no v1 folders
@@ -1397,7 +1397,7 @@ if (typeof registerHooks === "function") {
    */
   protected async resolveLastSnapshot(migrationDir: string): Promise<any> {
     // v1 layout: folder names are timestamp-prefixed (YYYYMMDDHHMMSS_name),
-    // so a plain string sort orders them chronologically — the same
+    // so a plain string sort orders them chronologically  -  the same
     // assumption drizzle-kit's own folder scan relies on.
     const entries = await this.fs.ls(migrationDir).catch(() => []);
     const folders: string[] = [];
@@ -1482,7 +1482,7 @@ if (typeof registerHooks === "function") {
     const config: Record<string, any> = {
       // drizzle-kit treats `schema` as a glob, and a backslash is an escape
       // character there rather than a separator. On Windows the path is
-      // perfectly valid and the file is right where it says — the glob simply
+      // perfectly valid and the file is right where it says  -  the glob simply
       // matches nothing, so the generated migration comes out empty.
       schema: entitiesJsPath.replaceAll("\\", "/"),
       out: `./migrations/${options.providerName}`,

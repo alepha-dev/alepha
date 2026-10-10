@@ -1,6 +1,7 @@
 import { pathToFileURL } from "node:url";
 
 import { $hook, $inject, Alepha } from "alepha";
+import { cliOptions } from "alepha/command";
 import { FileSystemProvider } from "alepha/system";
 
 export class AlephaCliExtensionProvider {
@@ -10,6 +11,24 @@ export class AlephaCliExtensionProvider {
   protected readonly onConfigure = $hook({
     on: "configure",
     handler: async () => {
+      const argv =
+        this.alepha.store.get(cliOptions)?.argv ?? process.argv.slice(2);
+      // Infra help is built into the Node CLI and must never evaluate app config.
+      const rootCommand = argv[0];
+      const infraHelp = argv.some((arg) => arg === "infra" || arg === "deploy");
+      if (
+        (rootCommand === "infra" && argv.length === 1) ||
+        ((infraHelp ||
+          rootCommand === "help" ||
+          !rootCommand ||
+          rootCommand === "--help" ||
+          rootCommand === "-h") &&
+          (!rootCommand ||
+            argv.some(
+              (arg) => arg === "--help" || arg === "-h" || arg === "help",
+            )))
+      )
+        return;
       const root = process.cwd();
       const extensionPath = this.fs.join(root, "alepha.config.ts");
       const hasExtension = await this.fs.exists(extensionPath);

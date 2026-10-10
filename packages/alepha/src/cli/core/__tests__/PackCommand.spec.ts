@@ -61,7 +61,7 @@ describe("PackCommand", () => {
   });
 
   it("should take --name over package.json", async () => {
-    // What a platform deploy passes: `platform({ name })` is the identity the
+    // What a platform deploy passes: `infra({ name })` is the identity the
     // deploy side knows the app by, and it is free to differ from the package
     // name. Without this flag `pack` wrote one filename and the caller looked
     // for another.

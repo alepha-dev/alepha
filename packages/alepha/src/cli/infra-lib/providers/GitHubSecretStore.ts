@@ -105,7 +105,7 @@ export class GitHubSecretStore implements SecretStoreProvider {
    *
    * Only a 404 qualifies. Everything else - an expired token, a rate limit, a
    * DNS failure - used to be swallowed into an empty list, and an empty list
-   * is not "unknown": `alepha platform` reads it as "no secret is set" and
+   * is not "unknown": `alepha infra` reads it as "no secret is set" and
    * goes on to report a clean state or push a duplicate.
    *
    * ⚠️ GitHub answers 404 for a private repository the token cannot see, so a
@@ -141,7 +141,7 @@ export class GitHubSecretStore implements SecretStoreProvider {
     // The plaintext secret briefly hits disk. Put it in a private,
     // unpredictably-named directory (mode 0700) instead of a guessable
     // /tmp path: on a shared machine any local user could otherwise read it
-    // — or pre-create the path and have us write into their file.
+    //  -  or pre-create the path and have us write into their file.
     const dir = this.fs.join(
       "node_modules",
       ".alepha",

@@ -16,6 +16,14 @@ import { CloudflareApi } from "../services/CloudflareApi.ts";
 import { NamingService } from "../services/NamingService.ts";
 
 /**
+ * These transport/secret tests model completed builds. The artifact preflight
+ * is exercised on the real adapters in localDeployArtifacts.spec.ts.
+ */
+class ArtifactReadyCloudflareAdapter extends CloudflareAdapter {
+  protected override async validateDeployArtifact(): Promise<void> {}
+}
+
+/**
  * In-memory CloudflareApi for testing.
  *
  * Stores resources in maps and implements the same interface
@@ -192,7 +200,11 @@ describe("CloudflareAdapter", () => {
     const alepha = Alepha.create()
       .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
       .with({ provide: ShellProvider, use: MemoryShellProvider })
-      .with({ provide: CloudflareApi, use: MemoryCloudflareApi });
+      .with({ provide: CloudflareApi, use: MemoryCloudflareApi })
+      .with({
+        provide: CloudflareAdapter,
+        use: ArtifactReadyCloudflareAdapter,
+      });
 
     const fs = alepha.inject(MemoryFileSystemProvider);
     const shell = alepha.inject(MemoryShellProvider);
@@ -224,7 +236,11 @@ describe("CloudflareAdapter", () => {
     const alepha = Alepha.create()
       .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
       .with({ provide: ShellProvider, use: MemoryShellProvider })
-      .with({ provide: CloudflareApi, use: MemoryCloudflareApi });
+      .with({ provide: CloudflareApi, use: MemoryCloudflareApi })
+      .with({
+        provide: CloudflareAdapter,
+        use: ArtifactReadyCloudflareAdapter,
+      });
 
     const fs = alepha.inject(MemoryFileSystemProvider);
     const adapter = alepha.inject(AdapterProbe);

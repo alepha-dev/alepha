@@ -1,7 +1,7 @@
 /**
- * The `alepha platform` plugin (`alepha p`): plan, provision, build, migrate,
- * deploy and tear down named environments on Cloudflare Workers or Bay, plus
- * `secrets` and `auth` management.
+ * Explicit infrastructure environments, managed with `alepha infra` and
+ * deployed through the full lifecycle with `alepha deploy`. Supports
+ * Cloudflare Workers, Bay and external adapters.
  *
  * @module alepha.cli.infra
  */
@@ -15,8 +15,7 @@ import {
   infraOptions,
 } from "alepha/cli/infra-lib";
 
-import { InfraCommand } from "./commands/infra.ts";
-import { SecretsCommand } from "./commands/SecretsCommand.ts";
+import { AlephaCliInfraCommands } from "./commands.ts";
 
 // ---------------------------------------------------------------------------
 
@@ -25,22 +24,22 @@ import { SecretsCommand } from "./commands/SecretsCommand.ts";
  *
  * Wraps `AlephaInfraLibPlugin` (the framework-agnostic deploy
  * services) with `$command` instances so the orchestration is
- * reachable from `alepha platform …`. Non-CLI consumers (e.g. Alepha
+ * reachable from `alepha infra …`. Non-CLI consumers (e.g. Alepha
  * Rocket) should depend on `alepha/cli/infra-lib` directly instead
  * of pulling in this command surface.
  *
  * Commands:
- * - `alepha platform plan`     -  show project topology and resource names
- * - `alepha platform up`       -  full deployment pipeline
- * - `alepha platform down`     -  teardown an environment
- * - `alepha platform status`   -  inspect deployed resources
- * - `alepha platform build`    -  build apps locally
- * - `alepha platform deploy`      -  deploy to cloud
- * - `alepha platform db migrate`  -  run database migrations
- * - `alepha platform db export`   -  pull the deployed DB into a local snapshot
- * - `alepha platform db baseline mark`  -  mark a baseline on the deployed DB
- * - `alepha platform secrets`     -  manage external secret stores
- * - `alepha platform auth login|logout`  -  manage the stored provider token
+ * - `alepha infra plan`     -  show project topology and resource names
+ * - `alepha deploy`       -  full deployment pipeline
+ * - `alepha infra down`     -  teardown an environment
+ * - `alepha infra status`   -  inspect deployed resources
+ * - `alepha infra build`    -  build apps locally
+ * - `alepha infra deploy`      -  deploy to cloud
+ * - `alepha infra db migrate`  -  run database migrations
+ * - `alepha infra db export`   -  pull the deployed DB into a local snapshot
+ * - `alepha infra db baseline mark`  -  mark a baseline on the deployed DB
+ * - `alepha infra secrets`     -  manage external secret stores
+ * - `alepha infra login|logout`  -  manage the stored provider token
  *
  * Configuration in `alepha.config.ts`:
  *
@@ -66,7 +65,7 @@ import { SecretsCommand } from "./commands/SecretsCommand.ts";
  */
 export const AlephaCliInfraPlugin = $module({
   name: "alepha.cli.infra",
-  services: [AlephaCli, AlephaInfraLibPlugin, InfraCommand, SecretsCommand],
+  imports: [AlephaCli, AlephaInfraLibPlugin, AlephaCliInfraCommands],
 });
 
 export const infra = (options: InfraOptions) => {

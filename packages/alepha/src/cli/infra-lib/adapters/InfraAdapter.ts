@@ -273,7 +273,7 @@ export abstract class InfraAdapter<TOptions = unknown> {
    * Whether this adapter provisions the app's resources as Cloudflare ones
    * named by `NamingService`: a D1 database (or Hyperdrive), R2, KV,
    * Analytics and queues. `plan` lists those names, and
-   * `platform db baseline mark`, which writes D1's own bookkeeping, refuses
+   * `infra db baseline mark`, which writes D1's own bookkeeping, refuses
    * any adapter without it.
    */
   readonly cloudflareResources: boolean = false;

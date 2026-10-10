@@ -27,7 +27,7 @@ import { WranglerApi } from "./services/WranglerApi.ts";
  *
  * Used by Alepha Rocket (and other non-CLI deploy orchestrators) to
  * call `orchestrator.up({ ... })` directly. For CLI usage
- * (`alepha platform up`), import `AlephaCliInfraPlugin` from
+ * (`alepha deploy`), import `AlephaCliInfraPlugin` from
  * `alepha/cli/infra`, which adds the command layer on top.
  *
  * @module alepha.cli.infra-lib

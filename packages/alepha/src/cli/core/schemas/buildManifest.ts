@@ -5,7 +5,7 @@ import { type Infer, z } from "alepha";
  * Written to `dist/manifest.json`.
  *
  * This is the artifact contract between `alepha build` and every deploy
- * consumer: `alepha platform up --prebuilt`, Lore Deploy, and Alepha Bay.
+ * consumer: `alepha deploy --prebuilt`, Lore Deploy, and Alepha Bay.
  * It exists so the deploy side never has to boot the app, re-evaluate
  * `alepha.config.ts`, or run the workspace's `npm install`: everything a
  * deployer needs to know is captured here, at build time, from the primitives

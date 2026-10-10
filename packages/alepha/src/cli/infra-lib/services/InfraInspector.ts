@@ -24,7 +24,7 @@ export interface ResolvedInfraConfig {
  * ViteBuildProvider.
  *
  * Each app self-declares its platform topology via its own
- * `alepha.config.ts`. Run `alepha platform <op>` from the app's
+ * `alepha.config.ts`. Run `alepha infra <op>` from the app's
  * directory; no monorepo-root orchestration here.
  */
 export class InfraInspector {
@@ -46,6 +46,8 @@ export class InfraInspector {
   public async resolveConfig(root: string): Promise<ResolvedInfraConfig> {
     if (this.options) {
       const opts = this.options;
+      if (Object.keys(opts.environments).length === 0)
+        this.missingConfiguration();
       const app = await this.resolveProjectName(root, opts.name);
       return {
         project: this.naming.slugify(
@@ -70,23 +72,21 @@ export class InfraInspector {
       };
     }
 
-    this.log.warn(` alepha.config.ts not found or missing platform config.
+    return this.missingConfiguration();
+  }
 
-Please register the platform plugin in alepha.config.ts:
+  /**
+   * Canonical guidance when an operation has no explicit environment map.
+   */
+  public missingConfiguration(): never {
+    throw new AlephaError(`Missing infra configuration. Register explicit environments in alepha.config.ts:
 
+import { defineConfig } from "alepha/cli/config";
 import { cloudflare, infra } from "alepha/cli/infra";
 
 export default defineConfig({
-  plugins: [
-    infra({
-      environments: {
-        production: cloudflare(),
-      },
-    }),
-  ],
-});
-        `);
-    throw new AlephaError("Missing platform configuration.");
+  plugins: [infra({ environments: { production: cloudflare() } })],
+});`);
   }
 
   /**
@@ -98,13 +98,11 @@ export default defineConfig({
     defaultEnv?: string;
   } | null> {
     try {
-      const fs = await import("node:fs/promises");
-      const path = await import("node:path");
-      const raw = await fs.readFile(
-        path.join(root, "dist", "manifest.json"),
-        "utf-8",
+      const raw = await this.fs.readTextFile(
+        this.fs.join(root, "dist", "manifest.json"),
       );
-      return JSON.parse(raw);
+      const manifest = JSON.parse(raw);
+      return typeof manifest?.project === "string" ? manifest : null;
     } catch {
       return null;
     }
@@ -118,6 +116,8 @@ export default defineConfig({
     envName: string,
   ): Promise<EnvironmentDescriptor> {
     const config = await this.resolveConfig(root);
+    if (Object.keys(config.environments).length === 0)
+      this.missingConfiguration();
     const descriptor = config.environments[envName];
 
     if (!descriptor) {

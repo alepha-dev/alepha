@@ -5,7 +5,7 @@
  * `InfraInspector` resolves: the app name, behind `infra({ project })`
  * when one is set, so `<app>-<env>` or `<project>-<app>-<env>`. All segments
  * are slugified (lowercase, alphanumeric + dashes, max 63 chars). One app per
- * workspace, see `alepha platform`.
+ * workspace, see `alepha infra`.
  */
 export class NamingService {
   public forContext(project: string, env: string): NamingContext {

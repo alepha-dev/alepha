@@ -1,12 +1,6 @@
 import { $inject, AlephaError, z } from "alepha";
 import {
-  type AppEntry,
-  AppEntryProvider,
-  type BuildManifest,
-  buildManifestSchema,
-  ViteBuildProvider,
-} from "alepha/cli";
-import {
+  BayAdapter,
   CloudflareAdapter,
   CloudflareApi,
   D1MigrationsService,
@@ -20,10 +14,21 @@ import {
 } from "alepha/cli/infra-lib";
 import { $command, EnvUtils, type RunnerMethod } from "alepha/command";
 import { ConsoleColorProvider } from "alepha/logger";
+import { FileSystemProvider } from "alepha/system";
 
+import {
+  type AppEntry,
+  AppEntryProvider,
+} from "../../core/providers/AppEntryProvider.ts";
+import { ViteBuildProvider } from "../../core/providers/ViteBuildProvider.ts";
+import {
+  type BuildManifest,
+  buildManifestSchema,
+} from "../../core/schemas/buildManifest.ts";
 import { SecretsCommand } from "./SecretsCommand.ts";
 
 export class InfraCommand {
+  protected readonly fs = $inject(FileSystemProvider);
   protected readonly orchestrator = $inject(InfraOrchestrator);
   protected readonly inspector = $inject(InfraInspector);
   protected readonly naming = $inject(NamingService);
@@ -57,7 +62,7 @@ export class InfraCommand {
   });
 
   // -----------------------------------------------------------------------
-  // alepha p plan
+  // alepha infra plan
   // -----------------------------------------------------------------------
 
   protected readonly plan = $command({
@@ -205,11 +210,11 @@ export class InfraCommand {
   });
 
   // -----------------------------------------------------------------------
-  // alepha p up
+  // alepha deploy
   // -----------------------------------------------------------------------
 
-  protected readonly up = $command({
-    name: "up",
+  public readonly deploy = $command({
+    name: "deploy",
     mode: "production",
     description: "Build, migrate, and deploy",
     flags: z.object({
@@ -261,7 +266,7 @@ export class InfraCommand {
   });
 
   // -----------------------------------------------------------------------
-  // alepha p down
+  // alepha infra down
   // -----------------------------------------------------------------------
 
   protected readonly down = $command({
@@ -325,7 +330,7 @@ export class InfraCommand {
   });
 
   // -----------------------------------------------------------------------
-  // alepha platform auth login|logout
+  // alepha infra login|logout
   // -----------------------------------------------------------------------
 
   /**
@@ -362,15 +367,15 @@ export class InfraCommand {
   }
 
   /**
-   * `alepha platform auth login`.
+   * `alepha infra login`.
    *
    * The mechanism belongs to the adapter  -  `wrangler login` for Cloudflare, a
-   * device-code flow for Bay  -  because credentials are the provider's
+   * SSH check for Bay  -  because credentials are the provider's
    * vocabulary, and a second store would drift from the one every other tool
    * reads.
    *
-   * Separate from `up`, which must never block: it runs in CI, where nothing
-   * can answer a prompt. This is what a human runs once.
+   * Authentication policy belongs to each adapter. Cloudflare authenticate
+   * can initiate OAuth automatically; Lore requires credentials without prompting.
    */
   protected readonly authLogin = $command({
     name: "login",
@@ -381,7 +386,7 @@ export class InfraCommand {
   });
 
   /**
-   * `alepha platform auth logout`.
+   * `alepha infra logout`.
    */
   protected readonly authLogout = $command({
     name: "logout",
@@ -391,17 +396,8 @@ export class InfraCommand {
       await this.runAuth("logout", { flags, root, run }),
   });
 
-  protected readonly auth = $command({
-    name: "auth",
-    description: "Manage platform credentials",
-    children: [this.authLogin, this.authLogout],
-    handler: async ({ help }) => {
-      help();
-    },
-  });
-
   // -----------------------------------------------------------------------
-  // alepha p status
+  // alepha infra status
   // -----------------------------------------------------------------------
 
   protected readonly status = $command({
@@ -596,7 +592,7 @@ export class InfraCommand {
     },
   });
 
-  protected readonly deploy = $command({
+  protected readonly deployOnly = $command({
     name: "deploy",
     description: "Deploy apps to cloud",
     flags: this.envFlags,
@@ -606,7 +602,10 @@ export class InfraCommand {
         flags.env,
       );
       const { config, adapter } = target;
-      const app = await this.resolveApp(root, config, adapter.serverless);
+      const app = await this.resolveApp(root, config, adapter.serverless, {
+        prebuilt:
+          adapter instanceof CloudflareAdapter || adapter instanceof BayAdapter,
+      });
       const ctx = this.orchestrator.createContext(target, { root, ...app });
 
       await adapter.authenticate(ctx, run);
@@ -717,7 +716,7 @@ export class InfraCommand {
 
       if (!adapter.cloudflareResources) {
         throw new AlephaError(
-          `'platform db baseline mark' only supports Cloudflare D1 today; '${env}' uses the '${descriptor.adapter.id}' adapter.`,
+          `'infra db baseline mark' only supports Cloudflare D1 today; '${env}' uses the '${descriptor.adapter.id}' adapter.`,
         );
       }
 
@@ -807,8 +806,7 @@ export class InfraCommand {
     description:
       "Deployed-database operations (export, migrate, baseline mark).",
     children: [this.dbExport, this.migrate, this.baseline],
-    handler: async ({ help, root }) => {
-      await this.inspector.resolveConfig(root);
+    handler: async ({ help }) => {
       help();
     },
   });
@@ -817,23 +815,21 @@ export class InfraCommand {
   // Parent command
   // -----------------------------------------------------------------------
 
-  public readonly platform = $command({
-    name: "platform",
-    aliases: ["p"],
+  public readonly infra = $command({
+    name: "infra",
     description: "Cloud deployment orchestrator",
     children: [
       this.plan,
-      this.up,
       this.down,
       this.status,
-      this.auth,
+      this.authLogin,
+      this.authLogout,
       this.build,
-      this.deploy,
+      this.deployOnly,
       this.db,
       this.secretsCommand.secrets,
     ],
-    handler: async ({ help, root }) => {
-      await this.inspector.resolveConfig(root);
+    handler: async ({ help }) => {
       help();
     },
   });
@@ -877,11 +873,12 @@ export class InfraCommand {
     if (isServerless) {
       process.env.ALEPHA_SERVERLESS = "true";
     }
-    const appAlepha = await this.viteBuild.init({ entry });
-    delete process.env.ALEPHA_SERVERLESS;
-    const resources = this.detectResources(appAlepha);
-
-    return { entry, resources };
+    try {
+      const appAlepha = await this.viteBuild.init({ entry });
+      return { entry, resources: this.detectResources(appAlepha) };
+    } finally {
+      delete process.env.ALEPHA_SERVERLESS;
+    }
   }
 
   /**
@@ -906,11 +903,8 @@ export class InfraCommand {
    */
   protected async readManifest(root: string): Promise<BuildManifest | null> {
     try {
-      const fs = await import("node:fs/promises");
-      const path = await import("node:path");
-      const raw = await fs.readFile(
-        path.join(root, "dist", "manifest.json"),
-        "utf-8",
+      const raw = await this.fs.readTextFile(
+        this.fs.join(root, "dist", "manifest.json"),
       );
       const parsed = buildManifestSchema.safeParse(JSON.parse(raw));
       return parsed.success ? parsed.data : null;

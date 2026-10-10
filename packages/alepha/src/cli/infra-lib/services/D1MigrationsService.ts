@@ -57,12 +57,12 @@ export class D1MigrationsService {
     "CREATE TABLE IF NOT EXISTS d1_migrations(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE, applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL);";
 
   protected async discoverD1Migrations(dir: string): Promise<D1Migration[]> {
-    // `ls` is a raw readdir and throws ENOENT for a missing directory — an
+    // `ls` is a raw readdir and throws ENOENT for a missing directory  -  an
     // app with no migrations folder is a valid state, not an error.
     // `{ hidden: true }`: `ls` hides dotfiles by default, so a directory
     // holding only `.archive/` (baselining's own output, alongside the
     // empty `meta/` it leaves behind) would otherwise read back as an
-    // EMPTY directory rather than an unusable one — indistinguishable from
+    // EMPTY directory rather than an unusable one  -  indistinguishable from
     // "nothing to do" instead of failing the guard below.
     const entries = (await this.fs.exists(dir))
       ? await this.fs.ls(dir, { hidden: true })
@@ -82,7 +82,7 @@ export class D1MigrationsService {
       }
 
       // drizzle-kit v1: one folder per migration, `<tag>/migration.sql`.
-      // The recorded name is the folder name — the only stable,
+      // The recorded name is the folder name  -  the only stable,
       // unambiguous identifier a v1 migration has (there is no longer a
       // `meta/_journal.json` `idx`/`tag` to key off).
       const nestedSqlPath = this.fs.join(dir, entry, "migration.sql");
@@ -91,10 +91,10 @@ export class D1MigrationsService {
         continue;
       }
 
-      // `meta/` is the pre-v1 layout's journal + snapshots directory — it
+      // `meta/` is the pre-v1 layout's journal + snapshots directory  -  it
       // carries no migration SQL by design, not a sign anything is wrong.
       // `.archive/` is baselining's own output (see `archiveMigrations` in
-      // `db.ts`) — visible now that `ls` above is called with
+      // `db.ts`)  -  visible now that `ls` above is called with
       // `{ hidden: true }`, and equally not a sign anything is wrong.
       if (entry === "meta" || entry === ".archive") {
         continue;
@@ -105,7 +105,7 @@ export class D1MigrationsService {
 
     // The bug this guards against: an empty *discovery result* used to be
     // indistinguishable from an empty *directory*. drizzle-kit v1's folder
-    // layout made that ambiguity real — every entry in the directory got
+    // layout made that ambiguity real  -  every entry in the directory got
     // silently filtered out by the old flat-`.sql`-only filter, "0 pending
     // migrations" was reported, and a deploy would apply nothing while
     // claiming success. If there's something here and none of it looks
@@ -114,7 +114,7 @@ export class D1MigrationsService {
     // This must fire whenever ANY entry is unrecognized, not only when
     // NOTHING was recognized. A directory with one valid migration next to
     // one corrupt folder (an aborted `generate`, a bad merge, a partial
-    // checkout) used to pass silently — `migrations.length` was 1, so the
+    // checkout) used to pass silently  -  `migrations.length` was 1, so the
     // old `migrations.length === 0 &&` guard never fired, and the corrupt
     // folder was quietly dropped from the deploy while it reported success.
     if (unrecognized.length > 0) {
@@ -125,7 +125,7 @@ export class D1MigrationsService {
 
     // Deploy order depends on this. `localeCompare` with no locale pinned
     // uses the host's default locale and ICU collation, which orders case
-    // and punctuation differently from plain code-unit order — the wrong
+    // and punctuation differently from plain code-unit order  -  the wrong
     // instrument for a deterministic ordering that decides whether a table
     // rebuild runs before its table exists. An explicit code-unit
     // comparator is locale-independent by construction.
@@ -277,7 +277,7 @@ export class D1MigrationsService {
    * unless `reset` is explicitly given.
    *
    * `reset` rewrites bookkeeping rows only. No table data is read or written,
-   * so it cannot lose application data — but it does discard the record of
+   * so it cannot lose application data  -  but it does discard the record of
    * which migrations were previously applied, which is why it is opt-in.
    */
   public async baseline(

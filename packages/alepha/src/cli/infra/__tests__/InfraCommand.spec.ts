@@ -17,7 +17,7 @@ import { InfraCommand } from "../commands/infra.ts";
 /**
  * `authenticate()` shells out to wrangler for login/version checks and hits
  * the real Cloudflare REST API for account resolution. None of that is
- * under test here  -  only that `platform db baseline mark` resolves the
+ * under test here  -  only that `infra db baseline mark` resolves the
  * right D1 database name (naming) and reaches
  * `D1MigrationsService.baseline` with the right arguments  -  so it is
  * stubbed to a no-op, same as a real `platform up` would have already
@@ -67,7 +67,7 @@ class FakeCloudflareApi {
  * folder-per-migration layout (`<tag>/migration.sql`) from an empty
  * directory or from a directory that merely looks like it might hold one  -
  * so this end-to-end suite could pass without ever exercising v1 discovery
- * through the actual `alepha platform db baseline mark` command surface,
+ * through the actual `alepha infra db baseline mark` command surface,
  * even after the underlying migration logic was fixed and unit-tested
  * elsewhere.
  */
@@ -158,7 +158,7 @@ describe("InfraCommand", () => {
     };
 
     /**
-     * The whole point of Task 4's CLI half: `--reset` on `alepha platform db
+     * The whole point of Task 4's CLI half: `--reset` on `alepha infra db
      * baseline mark` must actually reach `D1MigrationsService.baseline`
      * (previously it was declared on core `alepha db baseline mark` and read
      * by nothing). Proven end-to-end: real naming resolves the D1 database

@@ -32,7 +32,7 @@ export class SecretsCommand {
   });
 
   // -----------------------------------------------------------------------
-  // alepha p secrets list
+  // alepha infra secrets list
   // -----------------------------------------------------------------------
 
   protected readonly list = $command({
@@ -57,6 +57,7 @@ export class SecretsCommand {
     handler: async ({ flags, root, run }) => {
       const config = await this.inspector.resolveConfig(root);
       const env = flags.env ?? config.defaultEnv;
+      await this.inspector.resolveEnvironment(root, env);
       const envName = this.resolveEnvironmentName(config.project, env);
       const format = flags.format ?? "table";
 
@@ -117,7 +118,7 @@ export class SecretsCommand {
   });
 
   // -----------------------------------------------------------------------
-  // alepha p secrets diff
+  // alepha infra secrets diff
   // -----------------------------------------------------------------------
 
   protected readonly diff = $command({
@@ -128,6 +129,7 @@ export class SecretsCommand {
     handler: async ({ flags, root, run }) => {
       const config = await this.inspector.resolveConfig(root);
       const env = flags.env ?? config.defaultEnv;
+      await this.inspector.resolveEnvironment(root, env);
       const envName = this.resolveEnvironmentName(config.project, env);
 
       const envVars = await this.envUtils.parseEnv(root, [`.env.${env}`]);
@@ -200,7 +202,7 @@ export class SecretsCommand {
           `     ${c.set("GREY_LIGHT", "readable, so this compares timestamps: it may just be an unrelated")}\n`,
         );
         process.stdout.write(
-          `     ${c.set("GREY_LIGHT", "edit to the file. Re-push with `alepha platform secrets apply`.")}\n`,
+          `     ${c.set("GREY_LIGHT", "edit to the file. Re-push with `alepha infra secrets apply`.")}\n`,
         );
       }
 
@@ -215,7 +217,7 @@ export class SecretsCommand {
   });
 
   // -----------------------------------------------------------------------
-  // alepha p secrets apply
+  // alepha infra secrets apply
   // -----------------------------------------------------------------------
 
   protected readonly apply = $command({
@@ -237,6 +239,7 @@ export class SecretsCommand {
     handler: async ({ flags, root, run }) => {
       const config = await this.inspector.resolveConfig(root);
       const env = flags.env ?? config.defaultEnv;
+      await this.inspector.resolveEnvironment(root, env);
       const envName = this.resolveEnvironmentName(config.project, env);
       const dryRun = flags["dry-run"] ?? false;
 
@@ -301,7 +304,7 @@ export class SecretsCommand {
     name: "secrets",
     aliases: ["sec"],
     description:
-      "Sync secrets from .env.<env> to an external CI store (currently GitHub Actions environments via the `gh` CLI). Resolves the target environment name from `secrets.environmentPattern` (default `{project}-{env}`) and filters keys via SecretFilterService. Runtime secrets for Cloudflare Workers are pushed separately during `alepha platform up`.",
+      "Sync secrets from .env.<env> to an external CI store (currently GitHub Actions environments via the `gh` CLI). Resolves the target environment name from `secrets.environmentPattern` (default `{project}-{env}`) and filters keys via SecretFilterService. Runtime secrets for Cloudflare Workers are pushed separately during `alepha deploy`.",
     children: [this.list, this.diff, this.apply],
     handler: async ({ help }) => {
       help();

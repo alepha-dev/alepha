@@ -20,7 +20,7 @@ importing this subpath don't pull in the CLI argv-parser or Vite.
 
 Used by Alepha Rocket (and other non-CLI deploy orchestrators) to
 call `orchestrator.up({ ... })` directly. For CLI usage
-(`alepha platform up`), import `AlephaCliInfraPlugin` from
+(`alepha deploy`), import `AlephaCliInfraPlugin` from
 `alepha/cli/infra`, which adds the command layer on top.
 
 ## API Reference

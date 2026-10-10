@@ -1,14 +1,14 @@
 import { $inject, Alepha, AlephaError } from "alepha";
-import {
-  BuildCloudflareTask,
-  type BuildManifest,
-  buildManifestSchema,
-} from "alepha/cli";
 import type { RunnerMethod } from "alepha/command";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
 
+import {
+  type BuildManifest,
+  buildManifestSchema,
+} from "../../core/schemas/buildManifest.ts";
+import { BuildCloudflareTask } from "../../core/tasks/BuildCloudflareTask.ts";
 import {
   type EnvironmentOptions,
   environmentOptionsSchema,
@@ -410,7 +410,7 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
    * reproducible, which makes "recompute the name and delete it" the obvious
    * implementation and the wrong one: on a lent estate that deletes whatever
    * currently bears the name, including a database somebody created before
-   * Lore ever saw the account. `alepha platform down` may do that - it runs on
+   * Lore ever saw the account. `alepha infra down` may do that - it runs on
    * your own machine against your own account, at your own typing - but Lore
    * holds a credential lent for deploys, and must only ever remove what it can
    * show it created.
@@ -1016,14 +1016,14 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
 
   /**
    * ⚠️ Refused rather than implemented. `inspect` and `teardown` answer `plan`,
-   * `status` and `down`, which are `alepha platform`'s commands and run on a
+   * `status` and `down`, which are `alepha infra`'s commands and run on a
    * laptop with the full adapter. A Worker deploy has no surface for them, and
    * a half-answer here would make `plan` report an empty environment as an
    * empty one.
    */
   async inspect(): Promise<InfraState> {
     throw new AlephaError(
-      "The worker-side Cloudflare adapter does not inspect. Run `alepha platform status` locally, where the full adapter is.",
+      "The worker-side Cloudflare adapter does not inspect. Run `alepha infra status` locally, where the full adapter is.",
     );
   }
 
@@ -1167,7 +1167,7 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
    */
   async teardown(): Promise<void> {
     throw new AlephaError(
-      "The worker-side Cloudflare adapter tears down only what a deploy recorded, through `teardownRecorded`. `alepha platform down` is the one that derives names, and it runs locally against your own account.",
+      "The worker-side Cloudflare adapter tears down only what a deploy recorded, through `teardownRecorded`. `alepha infra down` is the one that derives names, and it runs locally against your own account.",
     );
   }
 }

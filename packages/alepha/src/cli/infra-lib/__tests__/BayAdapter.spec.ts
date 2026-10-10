@@ -20,6 +20,14 @@ import type { InfraContext } from "../adapters/InfraAdapter.ts";
 import { BAY_OWNED_SECRET_KEYS } from "../secretKeys.ts";
 
 /**
+ * These transport/secret tests model completed builds. The artifact preflight
+ * is exercised on the real adapters in localDeployArtifacts.spec.ts.
+ */
+class ArtifactReadyBayAdapter extends BayAdapter {
+  protected override async validateDeployArtifact(): Promise<void> {}
+}
+
+/**
  * Runs a task's handler straight through.
  *
  * What these tests are about is the command the adapter composes, not how the
@@ -45,7 +53,8 @@ const setup = async () => {
     // no tar was ever written for it to read.
     .with({ provide: ArchiveCompressor, use: MemoryArchiveCompressor })
     .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
-    .with({ provide: ShellProvider, use: MemoryShellProvider });
+    .with({ provide: ShellProvider, use: MemoryShellProvider })
+    .with({ provide: BayAdapter, use: ArtifactReadyBayAdapter });
   const fs = alepha.inject(MemoryFileSystemProvider);
   await fs.writeFile("/project/yarn.lock", "");
   // `alepha pack` is a recorded no-op under MemoryShellProvider, so the
@@ -793,7 +802,8 @@ describe("BayAdapter, the runtime it builds for", () => {
       // no tar was ever written for it to read.
       .with({ provide: ArchiveCompressor, use: MemoryArchiveCompressor })
       .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
-      .with({ provide: ShellProvider, use: MemoryShellProvider });
+      .with({ provide: ShellProvider, use: MemoryShellProvider })
+      .with({ provide: BayAdapter, use: ArtifactReadyBayAdapter });
     const fs = alepha.inject(MemoryFileSystemProvider);
     await fs.writeFile("/project/yarn.lock", "");
     if (runtime) {
@@ -849,7 +859,8 @@ describe("BayAdapter  -  the package manager it shells out to", () => {
       // no tar was ever written for it to read.
       .with({ provide: ArchiveCompressor, use: MemoryArchiveCompressor })
       .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
-      .with({ provide: ShellProvider, use: MemoryShellProvider });
+      .with({ provide: ShellProvider, use: MemoryShellProvider })
+      .with({ provide: BayAdapter, use: ArtifactReadyBayAdapter });
     const fs = alepha.inject(MemoryFileSystemProvider);
     await fs.writeFile(`/project/${lockfile}`, "");
     const adapter = alepha.inject(BayAdapter);
@@ -892,7 +903,8 @@ describe("BayAdapter  -  quoting", () => {
       // no tar was ever written for it to read.
       .with({ provide: ArchiveCompressor, use: MemoryArchiveCompressor })
       .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
-      .with({ provide: ShellProvider, use: MemoryShellProvider });
+      .with({ provide: ShellProvider, use: MemoryShellProvider })
+      .with({ provide: BayAdapter, use: ArtifactReadyBayAdapter });
     const adapter = alepha.inject(QuotingBayAdapter);
 
     // `'\''` closes the quote, escapes a literal `'` outside it, and reopens
