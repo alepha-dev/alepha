@@ -5,6 +5,7 @@ import { act } from "react";
 import { beforeEach, describe, it } from "vitest";
 
 import {
+  AlephaCapacitor,
   CapacitorConfigProvider,
   MemoryCapacitorConfigProvider,
 } from "../../core/index.ts";
@@ -58,6 +59,7 @@ const boot = async (path: string) => {
     })
     .with({ provide: UpdaterAdapter, use: MemoryUpdaterAdapter })
     .with({ provide: OtaProvider, use: NativeOtaProvider })
+    .with(AlephaCapacitor)
     .with(AlephaCapacitorOta)
     .with(AlephaReact)
     .with(App);

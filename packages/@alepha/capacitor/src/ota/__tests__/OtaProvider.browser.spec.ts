@@ -1,7 +1,9 @@
 import { Alepha } from "alepha";
+import { ReactBootHealth } from "alepha/react/router";
 import { afterEach, describe, it } from "vitest";
 
 import {
+  AlephaCapacitor,
   CapacitorConfigProvider,
   MemoryCapacitorConfigProvider,
   WebContentProvider,
@@ -56,6 +58,8 @@ const boot = async (
     })
     .with({ provide: UpdaterAdapter, use: MemoryUpdaterAdapter })
     .with({ provide: OtaProvider, use: NativeOtaProvider })
+    // In an app's order: core first, the updater after.
+    .with(AlephaCapacitor)
     .with(AlephaCapacitorOta);
   alepha.inject(MemoryCapacitorConfigProvider).config = config ?? undefined;
   const updater = alepha.inject(MemoryUpdaterAdapter);
@@ -64,7 +68,9 @@ const boot = async (
   started.push(alepha);
   await alepha.start();
   const settle = async (outcome: "healthy" | "failed" = "healthy") => {
-    await alepha.events.emit("react:boot:settled", { outcome });
+    alepha.inject(ReactBootHealth).report(outcome);
+    // The outcome is read asynchronously, then the check starts.
+    await new Promise((resolve) => setTimeout(resolve, 0));
     await ota.idle();
   };
   const resume = async () => {
@@ -111,6 +117,29 @@ describe("OtaProvider", () => {
       await settle();
       expect(updater.acknowledged).toBe(1);
       expect(updater.checks).toBeGreaterThanOrEqual(1);
+    });
+
+    it("acknowledges a first screen that settled before the updater was ready", async ({
+      expect,
+    }) => {
+      // Seen on the simulator: the boot outruns the updater's first native
+      // calls, and an event-only listener missed it.
+      const alepha = Alepha.create()
+        .with({
+          provide: CapacitorConfigProvider,
+          use: MemoryCapacitorConfigProvider,
+        })
+        .with({ provide: UpdaterAdapter, use: MemoryUpdaterAdapter })
+        .with({ provide: OtaProvider, use: NativeOtaProvider })
+        .with(AlephaCapacitor)
+        .with(AlephaCapacitorOta);
+      alepha.inject(MemoryCapacitorConfigProvider).config = shell;
+      started.push(alepha);
+      alepha.inject(ReactBootHealth).report("healthy");
+      await alepha.start();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await alepha.inject(OtaProvider).idle();
+      expect(alepha.inject(MemoryUpdaterAdapter).acknowledged).toBe(1);
     });
 
     it("never acknowledges a failed first screen, nor checks", async ({

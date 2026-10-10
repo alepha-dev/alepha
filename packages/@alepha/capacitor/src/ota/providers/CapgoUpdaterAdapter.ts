@@ -12,7 +12,7 @@ import { UpdaterAdapter } from "./UpdaterAdapter.ts";
  * updater never runs its module.
  */
 export class CapgoUpdaterAdapter extends UpdaterAdapter {
-  protected plugin?: Promise<CapacitorUpdaterPlugin>;
+  protected plugin?: Promise<{ updater: CapacitorUpdaterPlugin }>;
 
   public override available(): boolean {
     return true;
@@ -23,37 +23,36 @@ export class CapgoUpdaterAdapter extends UpdaterAdapter {
     statsUrl: string;
     channelUrl: string;
   }): Promise<void> {
-    const updater = await this.updater();
-    await updater.setUpdateUrl({ url: urls.updateUrl });
-    await updater.setStatsUrl({ url: urls.statsUrl });
-    await updater.setChannelUrl({ url: urls.channelUrl });
+    await this.call((it) => it.setUpdateUrl({ url: urls.updateUrl }));
+    await this.call((it) => it.setStatsUrl({ url: urls.statsUrl }));
+    await this.call((it) => it.setChannelUrl({ url: urls.channelUrl }));
   }
 
   public override async notifyAppReady(): Promise<void> {
-    await (await this.updater()).notifyAppReady();
+    await this.call((it) => it.notifyAppReady());
   }
 
   public override async current(): Promise<OtaBundle> {
-    return this.bundle((await (await this.updater()).current()).bundle);
+    return this.bundle((await this.call((it) => it.current())).bundle);
   }
 
   public override async list(): Promise<OtaBundle[]> {
-    const { bundles } = await (await this.updater()).list();
+    const { bundles } = await this.call((it) => it.list());
     return bundles.map((it) => this.bundle(it));
   }
 
   public override async next(): Promise<OtaBundle | undefined> {
-    const next = await (await this.updater()).getNextBundle();
+    const next = await this.call((it) => it.getNextBundle());
     return next ? this.bundle(next) : undefined;
   }
 
   public override async failed(): Promise<OtaBundle | undefined> {
-    const failed = await (await this.updater()).getFailedUpdate();
+    const failed = await this.call((it) => it.getFailedUpdate());
     return failed?.bundle ? this.bundle(failed.bundle) : undefined;
   }
 
   public override async check(): Promise<OtaLatest> {
-    const latest = await (await this.updater()).getLatest();
+    const latest = await this.call((it) => it.getLatest());
     return {
       version: latest.version,
       url: latest.url,
@@ -72,26 +71,26 @@ export class CapgoUpdaterAdapter extends UpdaterAdapter {
     sessionKey: string;
     checksum: string;
   }): Promise<OtaBundle> {
-    return this.bundle(await (await this.updater()).download(options));
+    return this.bundle(await this.call((it) => it.download(options)));
   }
 
   public override async setNext(id: string): Promise<void> {
-    await (await this.updater()).next({ id });
+    await this.call((it) => it.next({ id }));
   }
 
   public override async markFailed(id: string): Promise<void> {
-    await (await this.updater()).setBundleError({ id });
+    await this.call((it) => it.setBundleError({ id }));
   }
 
   public override async delete(id: string): Promise<void> {
-    await (await this.updater()).delete({ id });
+    await this.call((it) => it.delete({ id }));
   }
 
   public override async setChannel(
     channel: string,
   ): Promise<{ ok: boolean; error?: string }> {
     try {
-      const result = await (await this.updater()).setChannel({ channel });
+      const result = await this.call((it) => it.setChannel({ channel }));
       return result.error ? { ok: false, error: result.error } : { ok: true };
     } catch (error) {
       return {
@@ -101,11 +100,20 @@ export class CapgoUpdaterAdapter extends UpdaterAdapter {
     }
   }
 
-  protected updater(): Promise<CapacitorUpdaterPlugin> {
-    this.plugin ??= import("@capgo/capacitor-updater").then(
-      (it) => it.CapacitorUpdater,
-    );
-    return this.plugin;
+  /**
+   * Call the plugin, loaded once. The proxy never travels through a promise:
+   * a Capacitor plugin proxy answers every property, `then` included, so a
+   * promise resolved with it takes it for a thenable and never settles. It
+   * is held in an object and used synchronously.
+   */
+  protected async call<T>(
+    action: (updater: CapacitorUpdaterPlugin) => Promise<T>,
+  ): Promise<T> {
+    this.plugin ??= import("@capgo/capacitor-updater").then((it) => ({
+      updater: it.CapacitorUpdater,
+    }));
+    const { updater } = await this.plugin;
+    return action(updater);
   }
 
   protected bundle(it: {

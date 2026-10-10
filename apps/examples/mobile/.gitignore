@@ -8,3 +8,6 @@
 
 # @alepha/capacitor: the app shell and signing keys
 /.capacitor-lock
+
+# @alepha/capacitor: the publisher's private key
+/.ota/

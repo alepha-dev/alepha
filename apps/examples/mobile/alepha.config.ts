@@ -16,6 +16,7 @@ export default defineConfig({
   dev: { port: 3313 },
   plugins: [
     capacitor({
+      ota: { publicKey: "ota-public.pem" },
       appId: "dev.alepha.mobile",
       appName: "Alepha Mobile",
       scheme: "alephamobile",

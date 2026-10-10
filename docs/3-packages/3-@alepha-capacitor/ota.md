@@ -40,6 +40,6 @@ too.
 
 - [`CapgoUpdaterAdapter`](/docs/reference-providers-capgoupdateradapter) - The pinned `@capgo/capacitor-updater` 8.52.1, on a native shell whose
 - [`MemoryUpdaterAdapter`](/docs/reference-providers-memoryupdateradapter) - The pinned updater's behaviour, in memory, for specs of the real
-- [`OtaContentInspector`](/docs/reference-providers-otacontentinspector) - Core's content inspector, completed by the updater: a shell running a
+- [`OtaContentInspector`](/docs/reference-providers-otacontentinspector) - Completes core's content inspector with the updater: a bundled shell
 - [`OtaProvider`](/docs/reference-providers-otaprovider) - The device side of live updates: a manual, self-hosted policy over the
 - [`UpdaterAdapter`](/docs/reference-providers-updateradapter) - The live updater's native surface, as `OtaProvider` uses it: the subset

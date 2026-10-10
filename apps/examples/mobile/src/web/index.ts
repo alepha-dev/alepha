@@ -1,3 +1,4 @@
+import { OtaAdminRouter } from "@alepha/capacitor/ota-admin";
 import { AccountRouter } from "@alepha/ui/account";
 import { AdminRouter } from "@alepha/ui/admin";
 import { AuthRouter } from "@alepha/ui/auth";
@@ -20,5 +21,5 @@ import { AppRouter } from "./AppRouter.ts";
 export const WebModule = $module({
   name: "mobile.web",
   imports: [AlephaReactAuth, AlephaReactI18n, AlephaReactUi],
-  services: [AppRouter, AuthRouter, AccountRouter, AdminRouter],
+  services: [AppRouter, AuthRouter, AccountRouter, AdminRouter, OtaAdminRouter],
 });

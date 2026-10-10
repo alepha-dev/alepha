@@ -2,7 +2,6 @@ import { Capacitor } from "@capacitor/core";
 import { $module } from "alepha";
 
 import { AlephaCapacitor } from "../core/index.ts";
-import { ContentInspector } from "../core/providers/ContentInspector.ts";
 import { CapgoUpdaterAdapter } from "./providers/CapgoUpdaterAdapter.ts";
 import { OtaContentInspector } from "./providers/OtaContentInspector.ts";
 import { OtaProvider } from "./providers/OtaProvider.ts";
@@ -60,7 +59,6 @@ export const AlephaCapacitorOta = $module({
     if (Capacitor.isNativePlatform()) {
       alepha.with({ provide: UpdaterAdapter, use: CapgoUpdaterAdapter });
     }
-    alepha.with({ provide: ContentInspector, use: OtaContentInspector });
   },
-  services: [UpdaterAdapter, OtaLocalState, OtaProvider],
+  services: [UpdaterAdapter, OtaLocalState, OtaContentInspector, OtaProvider],
 });

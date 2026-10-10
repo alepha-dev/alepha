@@ -2,6 +2,7 @@ import { Capacitor } from "@capacitor/core";
 import { $hook, $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
+import { ReactBootHealth } from "alepha/react/router";
 
 import { CapacitorConfigProvider } from "../../core/providers/CapacitorConfigProvider.ts";
 import type { OtaBundle, OtaLatest } from "../interfaces/OtaBundle.ts";
@@ -48,6 +49,7 @@ export class OtaProvider {
   protected readonly updater = $inject(UpdaterAdapter);
   protected readonly state = $inject(OtaLocalState);
   protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly bootHealth = $inject(ReactBootHealth);
 
   protected enabled = false;
   protected acknowledged = false;
@@ -87,23 +89,10 @@ export class OtaProvider {
       } catch (error) {
         this.log.warn("Could not read the updater's last failure", error);
       }
-    },
-  });
-
-  protected readonly onSettled = $hook({
-    on: "react:boot:settled",
-    handler: async ({ outcome }) => {
-      if (!this.enabled) {
-        return;
-      }
-      if (outcome !== "healthy") {
-        this.log.error(
-          "The first screen failed: this web layer is not acknowledged, and the updater will roll it back",
-        );
-        return;
-      }
-      await this.acknowledge();
-      void this.check();
+      // Whenever the first screen settles, before this hook or after: the
+      // outcome is kept, so a boot faster than the updater's calls is never
+      // missed (on the simulator it was, and nothing was acknowledged).
+      void this.bootHealth.settled().then((outcome) => this.settled(outcome));
     },
   });
 
@@ -191,6 +180,17 @@ export class OtaProvider {
    */
   protected isNative(): boolean {
     return Capacitor.isNativePlatform();
+  }
+
+  protected async settled(outcome: "healthy" | "failed"): Promise<void> {
+    if (outcome !== "healthy") {
+      this.log.error(
+        "The first screen failed: this web layer is not acknowledged, and the updater will roll it back",
+      );
+      return;
+    }
+    await this.acknowledge();
+    await this.check();
   }
 
   protected async acknowledge(): Promise<void> {

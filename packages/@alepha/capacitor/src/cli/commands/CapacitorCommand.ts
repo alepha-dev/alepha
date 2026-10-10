@@ -7,6 +7,7 @@ import { CapacitorDev } from "../services/CapacitorDev.ts";
 import { CapacitorInit } from "../services/CapacitorInit.ts";
 import { CapacitorLock } from "../services/CapacitorLock.ts";
 import { CapacitorNativeBuild } from "../services/CapacitorNativeBuild.ts";
+import { CapacitorOtaSetup } from "../services/CapacitorOtaSetup.ts";
 import { CapacitorPackages } from "../services/CapacitorPackages.ts";
 import { CapacitorProject } from "../services/CapacitorProject.ts";
 import { CapacitorRelease } from "../services/CapacitorRelease.ts";
@@ -27,6 +28,7 @@ export class CapacitorCommand {
   protected readonly lock = $inject(CapacitorLock);
   protected readonly identity = $inject(NativeIdentity);
   protected readonly releaseService = $inject(CapacitorRelease);
+  protected readonly otaSetup = $inject(CapacitorOtaSetup);
 
   /**
    * `--variant`, on every command: which identity it works on.
@@ -49,19 +51,33 @@ export class CapacitorCommand {
           "Only this platform, instead of every platform the config declares",
         )
         .optional(),
+      ota: z
+        .boolean()
+        .describe(
+          "Also wire live updates: the updater, ota-api on the server, the device client, the admin when there is one, and a publisher key pair",
+        )
+        .optional(),
       variant: this.variant,
     }),
     handler: async ({ flags, run, root }) => {
       this.project.select(flags.variant);
-      await this.lock.hold(root, () =>
-        this.initService.run({
+      await this.lock.hold(root, async () => {
+        if (flags.ota) {
+          // Planned first: a file it cannot edit refuses before init writes
+          // anything.
+          await this.otaSetup.plan(root);
+        }
+        await this.initService.run({
           root,
           run,
           platforms: flags.platform
             ? [flags.platform as CapacitorPlatform]
             : undefined,
-        }),
-      );
+        });
+        if (flags.ota) {
+          await this.otaSetup.run({ root, run });
+        }
+      });
     },
   });
 

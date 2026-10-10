@@ -16,6 +16,11 @@ const config: CapacitorConfig = {
       updateUrl: "",
       statsUrl: "",
       channelUrl: "",
+      publicKey:
+        "-----BEGIN RSA PUBLIC KEY-----\nMIIBCgKCAQEA3d8fxgFfV4+Hk6idxUMK+bJlM1pyFVqdmsllDXkYT25Z0C3Isnhu\nfYAMzPlnqLA9Ryx6q3YFJixHXj659ERYhTrUMvAn/qmUg7B7wUIyiq8xZnhk0ZiK\n38p17OishLcUyw/QBo71k/xVGuKHLshzX8Gp4MFafQzLwc1nlLwnTTm2J5p68krS\nRadfJRl9CP1FoDu9jssCMKd3TC2p4Y3i9wkGOV+4/OI/XBjzWMrUFNCN4mDS5hN2\nqDBrhaQPY3G63EvT7iZepJPeYr5jI7AK2muMS/CE0X7UTVwF1v/FWeuTlDU1QWKF\nBTyPU1bUI1d9MRMIYbZzi+mH5yjlmgJNAwIDAQAB\n-----END RSA PUBLIC KEY-----\n",
+      allowModifyUrl: true,
+      allowManualBundleError: true,
+      appReadyTimeout: 10000,
     },
   },
 };
