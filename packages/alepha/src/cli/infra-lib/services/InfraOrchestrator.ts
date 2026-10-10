@@ -147,10 +147,18 @@ export class InfraOrchestrator {
     resources: DetectedResources;
     run: RunnerMethod;
     action: "login" | "logout";
+    /**
+     * Ask the adapter for a device-code login (`login` only).
+     */
+    device?: boolean;
   }): Promise<void> {
     const target = await this.resolveEnvironment(options.root, options.env);
     const ctx = this.createContext(target, options);
-    await target.adapter[options.action](ctx, options.run);
+    if (options.action === "login") {
+      await target.adapter.login(ctx, options.run, { device: options.device });
+      return;
+    }
+    await target.adapter.logout(ctx, options.run);
   }
 
   // -------------------------------------------------------------------------

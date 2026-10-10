@@ -8,7 +8,8 @@ import { ShellProvider } from "alepha/system";
  *
  * Only used for operations where wrangler provides value
  * beyond a raw API call: OAuth login, and worker deploy (bundling/upload,
- * secrets included).
+ * secrets included). With `CLOUDFLARE_API_TOKEN` set nothing here runs for
+ * authentication: see `CloudflareCredentialSource`.
  *
  * ⚠️ **Every method here spawns a process**, so nothing on this class can run
  * inside a Worker. That is why D1 migrations left (#1514) and why the
@@ -62,23 +63,45 @@ export class WranglerApi {
   }
 
   /**
-   * Open the browser-based OAuth login flow.
+   * Open the OAuth login flow.
+   *
+   * `device` asks for the RFC 8628 device flow (`wrangler login --device`): a
+   * code to type on another machine, for SSH sessions and containers with no
+   * browser. It needs wrangler 4.119.0 or later; an older one refuses the
+   * flag, and that refusal is named rather than left as a yargs error.
    */
-  public async login(): Promise<void> {
-    await this.runShell("wrangler login", { resolve: true });
+  public async login(options: { device?: boolean } = {}): Promise<void> {
+    const command = options.device
+      ? "wrangler login --device"
+      : "wrangler login";
+    try {
+      await this.runShell(command, { resolve: true });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (options.device && /unknown argument.*device/i.test(message)) {
+        throw new AlephaError(
+          "This project's wrangler does not know `wrangler login --device`. Upgrade wrangler to 4.119.0 or later.",
+          { cause: error },
+        );
+      }
+      throw error;
+    }
   }
 
   /**
    * Get the current auth token from wrangler (auto-refreshes if expired).
+   *
+   * Answered with its `type`: `oauth` and `api_token` carry a bearer `token`,
+   * while `api_key` is a global key and an email, which no caller here can
+   * send. `CloudflareCredentialSource` refuses that one by name.
    */
-  public async getAuthToken(): Promise<string> {
+  public async getAuthToken(): Promise<{ type: string; token?: string }> {
     const output = await this.shell.run("wrangler auth token --json", {
       resolve: true,
       capture: true,
     });
 
-    const parsed = JSON.parse(output) as { type: string; token: string };
-    return parsed.token;
+    return JSON.parse(output) as { type: string; token?: string };
   }
 
   // -------------------------------------------------------------------------

@@ -9,6 +9,7 @@ import { MemorySecretStore } from "./providers/MemorySecretStore.ts";
 import type { BayEnvironmentOptions } from "./schemas/bayEnvironmentOptions.ts";
 import type { CloudflareEnvironmentOptions } from "./schemas/cloudflareEnvironmentOptions.ts";
 import { CloudflareApi } from "./services/CloudflareApi.ts";
+import { CloudflareCredentialSource } from "./services/CloudflareCredentialSource.ts";
 import { D1MigrationsService } from "./services/D1MigrationsService.ts";
 import { InfraInspector } from "./services/InfraInspector.ts";
 import { InfraOrchestrator } from "./services/InfraOrchestrator.ts";
@@ -38,6 +39,7 @@ export const AlephaInfraLibPlugin = $module({
     BayAdapter,
     CloudflareAdapter,
     CloudflareApi,
+    CloudflareCredentialSource,
     D1MigrationsService,
     WranglerApi,
     InfraCacheProvider,
@@ -113,6 +115,7 @@ export * from "./schemas/infra.ts";
 export * from "./secretKeys.ts";
 export * from "./services/CloudflareApi.ts";
 export * from "./services/CloudflareAssetManifest.ts";
+export * from "./services/CloudflareCredentialSource.ts";
 export * from "./services/CloudflareProvisionClient.ts";
 export * from "./services/CloudflareDeployClient.ts";
 export * from "./services/D1MigrationsService.ts";

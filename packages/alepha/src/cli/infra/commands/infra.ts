@@ -337,7 +337,11 @@ export class InfraCommand {
    */
   protected async runAuth(
     action: "login" | "logout",
-    ctx: { flags: { env?: string }; root: string; run: RunnerMethod },
+    ctx: {
+      flags: { env?: string; device?: boolean };
+      root: string;
+      run: RunnerMethod;
+    },
   ): Promise<void> {
     if (!ctx.flags.env) {
       // Credentials are per-environment because environments can live on
@@ -359,6 +363,7 @@ export class InfraCommand {
       resources: app.resources,
       run: ctx.run,
       action,
+      device: ctx.flags.device,
     });
   }
 
@@ -376,7 +381,15 @@ export class InfraCommand {
   protected readonly authLogin = $command({
     name: "login",
     description: "Log in to the platform for an environment",
-    flags: this.envFlags,
+    flags: z.object({
+      ...this.envFlags.shape,
+      device: z
+        .boolean()
+        .describe(
+          "Log in with a device code instead of a browser redirect, for SSH sessions and containers (Cloudflare: `wrangler login --device`, wrangler 4.119.0 or later).",
+        )
+        .optional(),
+    }),
     handler: async ({ flags, root, run }) =>
       await this.runAuth("login", { flags, root, run }),
   });

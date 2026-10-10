@@ -2,6 +2,17 @@ import { Alepha } from "alepha";
 import { describe, it } from "vitest";
 
 import { CloudflareApi } from "../services/CloudflareApi.ts";
+import { CloudflareCredentialSource } from "../services/CloudflareCredentialSource.ts";
+
+/**
+ * A run whose token is already settled. Where it came from is
+ * `CloudflareCredentialSource.spec.ts`'s business, not this file's.
+ */
+class SettledCredentialSource extends CloudflareCredentialSource {
+  public override async token() {
+    return { token: "test-token", origin: "env" as const };
+  }
+}
 
 /**
  * The transport half of #1514: what actually goes over the wire when a
@@ -43,14 +54,12 @@ describe("the D1 query transport", () => {
       );
     }) as typeof globalThis.fetch;
 
-    const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } });
-    const api = alepha.inject(CloudflareApi);
-    // The token comes from `wrangler auth token`, which is a shell-out and not
-    // what this file is about.
-    Object.assign(api as unknown as Record<string, unknown>, {
-      token: "test-token",
-      accountId: "acct-1",
+    const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } }).with({
+      provide: CloudflareCredentialSource,
+      use: SettledCredentialSource,
     });
+    const api = alepha.inject(CloudflareApi);
+    api.setAccountId("acct-1");
 
     return { api, calls, restore: () => (globalThis.fetch = original) };
   };

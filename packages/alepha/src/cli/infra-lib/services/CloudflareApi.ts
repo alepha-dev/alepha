@@ -2,7 +2,6 @@ import { md5 } from "@noble/hashes/legacy.js";
 import { $inject, Alepha, AlephaError, type ZType, z } from "alepha";
 
 import type {
-  CloudflareAccount,
   CloudflareApiError,
   CloudflareD1,
   CloudflareD1Import,
@@ -19,7 +18,6 @@ import type {
   CloudflareWorker,
 } from "../schemas/cloudflare.ts";
 import {
-  cloudflareAccountSchema,
   cloudflareD1Schema,
   cloudflareDeploymentListSchema,
   cloudflareHyperdriveSchema,
@@ -40,7 +38,7 @@ import {
   d1QueryBodySchema,
   putSecretBodySchema,
 } from "../schemas/cloudflare.ts";
-import { WranglerApi } from "./WranglerApi.ts";
+import { CloudflareCredentialSource } from "./CloudflareCredentialSource.ts";
 
 export type {
   CloudflareD1,
@@ -65,16 +63,17 @@ export type {
 /**
  * Thin wrapper over the Cloudflare REST API.
  *
- * Uses `wrangler auth token` to obtain credentials,
- * then calls `fetch()` directly for all CRUD operations.
+ * Takes its credential from `CloudflareCredentialSource` (an environment
+ * token, else wrangler's login), then calls `fetch()` directly for all CRUD
+ * operations.
  */
 export class CloudflareApi {
   protected static readonly BASE = "https://api.cloudflare.com/client/v4";
 
   protected readonly alepha = $inject(Alepha);
-  protected readonly wrangler = $inject(WranglerApi);
+  protected readonly credentials = $inject(CloudflareCredentialSource);
 
-  protected token?: string;
+  protected root?: string;
   protected accountId?: string;
   protected jurisdiction?: "eu" | "fedramp";
 
@@ -93,11 +92,19 @@ export class CloudflareApi {
   /**
    * Override the Cloudflare account ID (from platform config).
    *
-   * When unset, `resolveAccountId` falls back to `CLOUDFLARE_ACCOUNT_ID` env
-   * var or the token's single account.
+   * When unset, `CloudflareCredentialSource` resolves it: the
+   * `CLOUDFLARE_ACCOUNT_ID` env var, then the token's single account.
    */
   public setAccountId(accountId?: string): void {
     this.accountId = accountId;
+  }
+
+  /**
+   * The project root, where a wrangler login can be installed and its account
+   * cached.
+   */
+  public setRoot(root?: string): void {
+    this.root = root;
   }
 
   // -------------------------------------------------------------------------
@@ -105,52 +112,24 @@ export class CloudflareApi {
   // -------------------------------------------------------------------------
 
   /**
-   * Obtain the current auth token from wrangler.
+   * The bearer token, from the run's `CloudflareCredentialSource`.
    */
   public async resolveToken(): Promise<string> {
-    if (this.token) {
-      return this.token;
-    }
-
-    this.token = await this.wrangler.getAuthToken();
-    return this.token;
+    return (await this.credentials.token(this.root)).token;
   }
 
   /**
-   * Resolve the Cloudflare account ID.
-   *
-   * Calls /accounts and picks the first one. Cached after first call.
+   * Resolve the Cloudflare account ID: the configured one, else whatever the
+   * run's `CloudflareCredentialSource` settles on.
    */
   public async resolveAccountId(): Promise<string> {
     if (this.accountId) {
       return this.accountId;
     }
-
-    const fromEnv = process.env.CLOUDFLARE_ACCOUNT_ID;
-    if (fromEnv) {
-      this.accountId = fromEnv;
-      return this.accountId;
-    }
-
-    const res = await this.fetch<CloudflareAccount[]>("/accounts", {
-      schema: z.array(cloudflareAccountSchema),
+    const { credential } = await this.credentials.resolve({
+      root: this.root ?? process.cwd(),
     });
-
-    if (res.length === 0) {
-      throw new AlephaError("No Cloudflare accounts found for this token.");
-    }
-
-    if (res.length > 1) {
-      const list = res.map((a) => `  - ${a.id}  ${a.name}`).join("\n");
-      throw new AlephaError(
-        `Cloudflare token has access to ${res.length} accounts; set ` +
-          `\`CLOUDFLARE_ACCOUNT_ID\` or the \`accountId\` field in your ` +
-          `platform config to pick one:\n${list}`,
-      );
-    }
-
-    this.accountId = res[0].id;
-    return this.accountId;
+    return credential.accountId;
   }
 
   // -------------------------------------------------------------------------

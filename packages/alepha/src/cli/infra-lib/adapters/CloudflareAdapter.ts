@@ -20,7 +20,6 @@ import { FileSystemProvider, ShellProvider } from "alepha/system";
 import { S3mini } from "s3mini";
 
 import { infraOptions } from "../atoms/infraOptions.ts";
-import { InfraCacheProvider } from "../providers/InfraCacheProvider.ts";
 import {
   type CloudflareEnvironmentOptions,
   cloudflareEnvironmentOptionsSchema,
@@ -32,6 +31,7 @@ import {
   selectSecrets,
 } from "../secretKeys.ts";
 import { CloudflareApi } from "../services/CloudflareApi.ts";
+import { CloudflareCredentialSource } from "../services/CloudflareCredentialSource.ts";
 import { D1MigrationsService } from "../services/D1MigrationsService.ts";
 import {
   DurableObjectLifecycle,
@@ -44,6 +44,7 @@ import {
   type ExportDbOptions,
   InfraAdapter,
   type InfraContext,
+  type InfraLoginOptions,
   type InfraState,
 } from "./InfraAdapter.ts";
 
@@ -52,7 +53,9 @@ import {
  *
  * Uses the Cloudflare REST API (via CloudflareApi) for resource provisioning
  * and teardown, and wrangler CLI (via WranglerApi) for login and deploy.
- * The deploy carries the secrets, see `deploy`.
+ * The deploy carries the secrets, see `deploy`. The credential comes from
+ * `CloudflareCredentialSource`: `CLOUDFLARE_API_TOKEN` first, wrangler only
+ * when it is absent.
  */
 export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions> {
   static readonly id = "cloudflare";
@@ -65,11 +68,11 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
   protected readonly naming = $inject(NamingService);
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly shell = $inject(ShellProvider);
-  protected readonly cache = $inject(InfraCacheProvider);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly envUtils = $inject(EnvUtils);
   protected readonly api = $inject(CloudflareApi);
   protected readonly wrangler = $inject(WranglerApi);
+  protected readonly credentials = $inject(CloudflareCredentialSource);
   protected readonly durableObjectLifecycle = $inject(DurableObjectLifecycle);
   protected readonly d1Migrations = $inject(D1MigrationsService);
   protected readonly runner = $inject(Runner);
@@ -107,6 +110,7 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
   ): void {
     this.api.setJurisdiction(ctx.options.jurisdiction);
     this.api.setAccountId(ctx.options.accountId);
+    this.api.setRoot(ctx.root);
   }
 
   protected async runShell(
@@ -132,23 +136,26 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
    * Hands off to `wrangler login`, which owns Cloudflare credentials.
    *
    * Deliberately not reimplemented: wrangler already stores, refreshes and
-   * scopes the token, and a second store would drift from the one every other
-   * wrangler invocation reads.
+   * scopes the token, and Cloudflare opens its device grant to first-party
+   * clients only (folio #F1374). `--device` is passed through for SSH
+   * sessions and containers with no browser.
    */
-  async login(
+  override async login(
     ctx: InfraContext<CloudflareEnvironmentOptions>,
     run: RunnerMethod,
+    options: InfraLoginOptions = {},
   ): Promise<void> {
     await run({
-      name: "wrangler login",
+      name: options.device ? "wrangler login --device" : "wrangler login",
       handler: async () => {
         await this.wrangler.ensureInstalled(ctx.root);
-        await this.wrangler.login();
+        await this.wrangler.login({ device: options.device });
+        this.credentials.reset();
       },
     });
   }
 
-  async logout(
+  override async logout(
     ctx: InfraContext<CloudflareEnvironmentOptions>,
     run: RunnerMethod,
   ): Promise<void> {
@@ -157,10 +164,19 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
       handler: async () => {
         await this.wrangler.ensureInstalled(ctx.root);
         await this.shell.run("wrangler logout", { root: ctx.root });
+        this.credentials.reset();
       },
     });
   }
 
+  /**
+   * Settle the run's credential, token and account both.
+   *
+   * ⚠️ With `CLOUDFLARE_API_TOKEN` set, wrangler is neither called nor
+   * installed. Without it, wrangler's stored login is read once; and only on
+   * a TTY does a missing one start `wrangler login`. See
+   * `CloudflareCredentialSource`.
+   */
   async authenticate(
     ctx: InfraContext<CloudflareEnvironmentOptions>,
     run: RunnerMethod,
@@ -169,34 +185,11 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
     await run({
       name: "authenticate",
       handler: async () => {
-        await this.wrangler.ensureInstalled(ctx.root);
-
-        // Always validate the token  -  refresh tokens can expire between runs
-        // even when the cache TTL hasn't elapsed.
-        let needsLogin = false;
-
-        try {
-          await this.wrangler.getAuthToken();
-        } catch {
-          needsLogin = true;
-        }
-
-        if (needsLogin) {
-          await this.wrangler.login();
-        }
-
-        // Skip account resolution if cache is fresh
-        if (await this.cache.isLoginFresh(ctx.root, "cloudflare")) {
-          return;
-        }
-
-        // Resolve account ID via REST API (typed, no regex)
-        try {
-          const accountId = await this.api.resolveAccountId();
-          await this.cache.recordLogin(ctx.root, "cloudflare", accountId);
-        } catch {
-          await this.cache.recordLogin(ctx.root, "cloudflare");
-        }
+        await this.credentials.resolve({
+          root: ctx.root,
+          accountId: ctx.options.accountId,
+          jurisdiction: ctx.options.jurisdiction,
+        });
       },
     });
   }

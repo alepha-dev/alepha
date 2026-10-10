@@ -180,6 +180,17 @@ export interface EnvironmentDescriptor<TOptions = any> {
   options: TOptions;
 }
 
+/**
+ * What `alepha infra login` passes through to an adapter's login.
+ */
+export interface InfraLoginOptions {
+  /**
+   * Ask for a device-code flow, for a terminal with no browser (SSH, a
+   * container). An adapter with no such flow ignores it.
+   */
+  device?: boolean;
+}
+
 // ---------------------------------------------------------------------------
 // Adapter contract
 // ---------------------------------------------------------------------------
@@ -215,7 +226,11 @@ export abstract class InfraAdapter<TOptions = unknown> {
    * interactive login has some other way in, and saying so beats a command that
    * appears to succeed and changes nothing.
    */
-  async login(_ctx: InfraContext<TOptions>, _run: RunnerMethod): Promise<void> {
+  async login(
+    _ctx: InfraContext<TOptions>,
+    _run: RunnerMethod,
+    _options: InfraLoginOptions = {},
+  ): Promise<void> {
     throw new AlephaError(
       `The '${this.constructor.name}' adapter has no interactive login. ` +
         "Authenticate with the provider's own CLI, or supply its token through " +

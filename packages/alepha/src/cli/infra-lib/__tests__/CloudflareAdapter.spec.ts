@@ -281,60 +281,9 @@ describe("CloudflareAdapter", () => {
     ...overrides,
   });
 
-  describe("authenticate", () => {
-    test("always validates token but skips account resolution when cache is fresh", async ({
-      expect,
-    }) => {
-      const { adapter, shell, dateTime, naming, api } = createTestEnv();
-      const ctx = makeCtx(naming);
-
-      dateTime.pause();
-      shell.outputs.set(
-        "wrangler auth token --json",
-        JSON.stringify({ type: "oauth", token: "test-token" }),
-      );
-
-      let resolveAccountCalls = 0;
-      const originalResolve = api.resolveAccountId.bind(api);
-      api.resolveAccountId = async () => {
-        resolveAccountCalls++;
-        return originalResolve();
-      };
-
-      const run = createMockRun();
-      await adapter.authenticate(ctx, run);
-      expect(resolveAccountCalls).toBe(1);
-
-      // Second call  -  token still validated, but account resolution skipped
-      shell.calls.length = 0;
-      resolveAccountCalls = 0;
-      await adapter.authenticate(ctx, run);
-
-      expect(shell.wasCalled("wrangler auth token --json")).toBe(true);
-      expect(resolveAccountCalls).toBe(0);
-    });
-
-    test("checks auth token when cache is stale", async ({ expect }) => {
-      const { adapter, shell, dateTime, naming } = createTestEnv();
-      const ctx = makeCtx(naming);
-
-      shell.outputs.set(
-        "wrangler auth token --json",
-        JSON.stringify({ type: "oauth", token: "test-token" }),
-      );
-      dateTime.pause();
-
-      const run = createMockRun();
-      await adapter.authenticate(ctx, run);
-
-      await dateTime.travel(5 * 60 * 60 * 1000); // 5 hours
-      shell.calls.length = 0;
-
-      await adapter.authenticate(ctx, run);
-
-      expect(shell.wasCalled("wrangler auth token --json")).toBe(true);
-    });
-  });
+  // `authenticate` is `CloudflareCredentialSource.resolve`, and its three
+  // branches (environment token, wrangler token once per run, login on a TTY
+  // only) are covered in `CloudflareCredentialSource.spec.ts`.
 
   describe("provision", () => {
     test("creates D1 database via REST API when app has database", async ({
