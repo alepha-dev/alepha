@@ -368,6 +368,12 @@ sign-in. Sign in with Apple is the recommended way to add social login later. Th
 [`cap build` reference](https://capacitorjs.com/docs/cli/commands/build) covers the signing options
 the release builds use.
 
+Live updates (`alepha capacitor release`) replace the web layer only, the HTML, JavaScript, CSS and
+assets the binary already runs, never its native code. Guideline 2.5.2 allows interpreted code
+that does not change the app's primary purpose, features or functionality, nor add a store or
+bypass review: use them for fixes and content, and ship features through the stores. That is the
+intended use, not a promise of approval.
+
 ## Not yet
 
 Push notifications, sign-in through a browser redirect, universal links and app links, and live

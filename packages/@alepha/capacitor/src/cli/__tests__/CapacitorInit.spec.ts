@@ -366,6 +366,7 @@ describe("capacitor()", () => {
       "build",
       "dev",
       "open",
+      "release",
     ]);
     expect(alepha.store.get(capacitorOptions)?.appId).toBe("dev.alepha.mobile");
   });

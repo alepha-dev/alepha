@@ -12,6 +12,7 @@ import { CapacitorLock } from "./services/CapacitorLock.ts";
 import { CapacitorNativeBuild } from "./services/CapacitorNativeBuild.ts";
 import { CapacitorPackages } from "./services/CapacitorPackages.ts";
 import { CapacitorProject } from "./services/CapacitorProject.ts";
+import { CapacitorRelease } from "./services/CapacitorRelease.ts";
 import { CapacitorSync } from "./services/CapacitorSync.ts";
 import { NativeAssets } from "./services/NativeAssets.ts";
 import { NativeBuildRecords } from "./services/NativeBuildRecords.ts";
@@ -33,6 +34,7 @@ export * from "./services/CapacitorLock.ts";
 export * from "./services/CapacitorNativeBuild.ts";
 export * from "./services/CapacitorPackages.ts";
 export * from "./services/CapacitorProject.ts";
+export * from "./services/CapacitorRelease.ts";
 export * from "./services/CapacitorSync.ts";
 export * from "./services/NativeAssets.ts";
 export * from "./services/NativeBuildRecords.ts";
@@ -40,6 +42,8 @@ export * from "./services/NativeFingerprint.ts";
 export * from "./services/NativeGuard.ts";
 export * from "./services/NativeIdentity.ts";
 export * from "./services/NativeSchemes.ts";
+export * from "./services/OtaArchiveWriter.ts";
+export * from "./services/OtaEnvelope.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -107,6 +111,7 @@ export const AlephaCliCapacitorPlugin = $module({
     CapacitorSync,
     CapacitorNativeBuild,
     CapacitorDev,
+    CapacitorRelease,
     CapacitorCommand,
   ],
 });
