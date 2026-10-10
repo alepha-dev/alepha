@@ -3,6 +3,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import { login } from "../../worker/__tests__/fixtures/admission.ts";
 import { WorkerSupervisorProvider } from "../providers/WorkerSupervisorProvider.ts";
 
 const supervisorUrl = new URL("./fixtures/supervisor.ts", import.meta.url).href;
@@ -60,9 +61,8 @@ describe("WorkerSupervisorProvider with real supervisor and server Workers", () 
     const started = await provider.start(init, workerUrl);
     expect(started.ok).toBe(true);
     if (!started.ok) return;
-    expect(await (await fetch(`${started.origin}/hello`)).text()).toBe(
-      "hello from the worker",
-    );
+    const app = await login(started.origin, init.capability);
+    expect(await (await app("/hello")).text()).toBe("hello from the worker");
     provider.attachWindow(11);
 
     expect(await provider.stop()).toEqual({
@@ -80,7 +80,9 @@ describe("WorkerSupervisorProvider with real supervisor and server Workers", () 
     const started = await provider.start(init, workerUrl);
     if (!started.ok) throw new Error(started.message);
     provider.attachWindow(11);
-    await fetch(`${started.origin}/crash`);
+    await (
+      await login(started.origin, init.capability)
+    )("/crash");
     await Bun.sleep(300);
 
     expect(provider.terminated).toEqual([11]);

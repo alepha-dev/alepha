@@ -1,5 +1,7 @@
 import { AlephaError } from "alepha";
 
+import type { DesktopAdmission } from "./DesktopAdmission.ts";
+
 /**
  * The app's HTTP server, as seen from the desktop Worker.
  *
@@ -13,6 +15,15 @@ import { AlephaError } from "alepha";
 export class DesktopServer {
   protected server?: { hostname?: string; port?: number };
   protected original?: typeof Bun.serve;
+  protected admission?: DesktopAdmission;
+
+  /**
+   * Put {@link DesktopAdmission} in front of every request the app's server
+   * receives. The host does this before the app is imported.
+   */
+  public guard(admission: DesktopAdmission): void {
+    this.admission = admission;
+  }
 
   /**
    * Wrap `Bun.serve`. Idempotent; {@link uninstall} restores it.
@@ -70,6 +81,11 @@ export class DesktopServer {
         "A desktop app listens on 127.0.0.1, not on a unix socket. Remove the socket from the app's server configuration.",
       );
     }
+    if (options?.routes || options?.static) {
+      throw new AlephaError(
+        "A desktop app serves every request through its fetch handler, where the desktop admission guard runs: Bun.serve's routes and static options would bypass it.",
+      );
+    }
     const hostname = String(options?.hostname ?? "");
     const port = Number(options?.port ?? -1);
     if (hostname !== "127.0.0.1" || port !== 0) {
@@ -78,6 +94,19 @@ export class DesktopServer {
           "Remove SERVER_HOST and SERVER_PORT from the app's own configuration: the desktop shell sets them.",
       );
     }
-    return options;
+    const admission = this.admission;
+    if (!admission || typeof options.fetch !== "function") {
+      return options;
+    }
+    const fetch = options.fetch;
+    return {
+      ...options,
+      fetch(this: unknown, request: Request, server: { port: number }) {
+        return (
+          admission.admit(request, server.port) ??
+          fetch.call(this, request, server)
+        );
+      },
+    };
   }
 }

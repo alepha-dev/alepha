@@ -10,6 +10,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { DesktopSupervisor } from "../../core/DesktopSupervisor.ts";
+import { login } from "./fixtures/admission.ts";
 
 const bootstrap = new URL("./fixtures/bootstrap.ts", import.meta.url).href;
 const capability = "ab".repeat(32);
@@ -65,7 +66,8 @@ describe("DesktopWorkerHost in a real Bun Worker", () => {
     if (!started.ok) return;
     expect(started.origin).toMatch(/^http:\/\/127\.0\.0\.1:\d+$/);
 
-    const response = await fetch(`${started.origin}/hello`);
+    const app = await login(started.origin, capability);
+    const response = await app("/hello");
     expect(await response.text()).toBe("hello from the worker");
 
     const stopped = await supervisor.stop();
@@ -86,7 +88,8 @@ describe("DesktopWorkerHost in a real Bun Worker", () => {
       const { supervisor, start } = setup("normal", undefined, { dir });
       const started = await start();
       if (!started.ok) throw new Error(started.message);
-      hashes.push(await (await fetch(`${started.origin}/secret`)).text());
+      const app = await login(started.origin, capability);
+      hashes.push(await (await app("/secret")).text());
       expect((await supervisor.stop()).graceful).toBe(true);
     }
     expect(statSync(join(dir, "secret")).mode & 0o777).toBe(0o600);
@@ -100,7 +103,8 @@ describe("DesktopWorkerHost in a real Bun Worker", () => {
     });
     const started = await start();
     if (!started.ok) throw new Error(started.message);
-    const hash = await (await fetch(`${started.origin}/secret`)).text();
+    const app = await login(started.origin, capability);
+    const hash = await (await app("/secret")).text();
     expect(hash).toBe(
       new Bun.CryptoHasher("sha256").update("x".repeat(40)).digest("hex"),
     );
@@ -172,7 +176,9 @@ describe("DesktopWorkerHost in a real Bun Worker", () => {
 
     const started = await start();
     if (!started.ok) throw new Error(started.message);
-    await fetch(`${started.origin}/crash`);
+    await (
+      await login(started.origin, capability)
+    )("/crash");
     await Bun.sleep(300);
 
     expect(crashes).toHaveLength(1);

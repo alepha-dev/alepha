@@ -13,6 +13,7 @@
  *
  * @module alepha.desktop.worker
  */
+export * from "./DesktopAdmission.ts";
 export * from "./DesktopDataDefaults.ts";
 export * from "./DesktopServer.ts";
 export * from "./DesktopWorkerHost.ts";

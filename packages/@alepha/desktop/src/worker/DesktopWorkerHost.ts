@@ -4,6 +4,7 @@ import { AlephaError } from "alepha";
 import { DesktopProtocol } from "../core/DesktopProtocol.ts";
 import type { DesktopShellMessage } from "../core/schemas/desktopShellMessageSchema.ts";
 import type { DesktopWorkerMessage } from "../core/schemas/desktopWorkerMessageSchema.ts";
+import { DesktopAdmission } from "./DesktopAdmission.ts";
 import { DesktopDataDefaults } from "./DesktopDataDefaults.ts";
 import { DesktopServer } from "./DesktopServer.ts";
 
@@ -141,6 +142,12 @@ export class DesktopWorkerHost implements RunHost {
         }
       }
       (globalThis as any)[Symbol.for("alepha.run.host")] = this;
+      this.server.guard(
+        new DesktopAdmission({
+          capability: message.capability,
+          identifier: message.identifier,
+        }),
+      );
       this.server.install();
 
       await this.entry();

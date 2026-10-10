@@ -1,5 +1,6 @@
 import { describe, it } from "vitest";
 
+import { DesktopAdmission } from "../DesktopAdmission.ts";
 import { DesktopServer } from "../DesktopServer.ts";
 
 const fakeBun = () => {
@@ -43,6 +44,64 @@ describe("DesktopServer", () => {
       );
       expect(calls).toHaveLength(0);
     }
+  });
+
+  it("refuses routes and static options, which would bypass the guard", ({
+    expect,
+  }) => {
+    for (const extra of [
+      { routes: { "/": new Response("x") } },
+      { static: { "/": new Response("x") } },
+    ]) {
+      const { bun } = fakeBun();
+      new DesktopServer().install(bun);
+      expect(() =>
+        bun.serve({
+          hostname: "127.0.0.1",
+          port: 0,
+          fetch: () => {},
+          ...extra,
+        }),
+      ).toThrow("would bypass it");
+    }
+  });
+
+  it("runs admission before the app's fetch, so a refused or bootstrap request never reaches the app", async ({
+    expect,
+  }) => {
+    const { bun, calls } = fakeBun();
+    const server = new DesktopServer();
+    const capability = "ab".repeat(32);
+    server.guard(new DesktopAdmission({ capability, identifier: "a.b" }));
+    server.install(bun);
+    const seen: string[] = [];
+    bun.serve({
+      hostname: "127.0.0.1",
+      port: 0,
+      fetch: (request: Request) => {
+        seen.push(new URL(request.url).pathname);
+        return new Response("app");
+      },
+    });
+    const fetch = calls[0].fetch;
+    const at = (path: string, headers: Record<string, string> = {}) =>
+      fetch(
+        new Request(`http://127.0.0.1:50000${path}`, {
+          headers: { host: "127.0.0.1:50000", ...headers },
+        }),
+        {
+          port: 50000,
+        },
+      );
+
+    expect((await at("/hello")).status).toBe(403);
+    const boot = await at(
+      `/__alepha_desktop/bootstrap?capability=${capability}`,
+    );
+    expect(boot.status).toBe(303);
+    const cookie = boot.headers.get("set-cookie")!.split(";")[0];
+    expect(await (await at("/hello", { cookie })).text()).toBe("app");
+    expect(seen).toEqual(["/hello"]);
   });
 
   it("refuses a second server, and uninstall restores Bun.serve", ({
