@@ -41,6 +41,19 @@ export const capacitorPublicConfigSchema = z.object({
   apiUrl: z.text().optional(),
 
   /**
+   * The live updater, when the app ships one (`capacitor({ ota })`): the
+   * origin of the server mounting `@alepha/capacitor/ota-api`, `apiUrl`
+   * unless declared apart. `@alepha/capacitor/ota` points the updater at its
+   * `/ota` endpoints on boot; the public key stays in the native config.
+   * Absent, `@alepha/capacitor/ota` stays inert.
+   */
+  ota: z
+    .object({
+      url: z.text(),
+    })
+    .optional(),
+
+  /**
    * Public values the app declared for the browser, by name.
    */
   env: z.record(z.text(), z.text()),

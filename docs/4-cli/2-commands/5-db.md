@@ -60,7 +60,7 @@ Apply pending migrations to the database. Boots your app in production mode with
 alepha db migrations apply
 ```
 
-For a _deployed_ database (Cloudflare D1, Hyperdrive), use `alepha platform db migrate` instead - it resolves the environment, adapter, and resource naming.
+For a _deployed_ database (Cloudflare D1, Hyperdrive), use `alepha infra db migrate` instead - it resolves the environment, adapter, and resource naming.
 
 ### push
 
@@ -90,7 +90,7 @@ alepha db baseline mark
 
 > **Cloudflare D1**
 >
-> `alepha db baseline mark` does not support D1 - its deploy path uses wrangler's filename-based bookkeeping table. Use `alepha platform db baseline mark` instead.
+> `alepha db baseline mark` does not support D1 - its deploy path uses wrangler's filename-based bookkeeping table. Use `alepha infra db baseline mark` instead.
 
 ### studio
 
@@ -102,13 +102,13 @@ alepha db studio
 
 ## Local vs Deployed
 
-The `alepha db` commands operate on the database your app connects to locally (`DATABASE_URL`, or the default dev SQLite database). Operations against a _deployed_ database live under the [platform plugin](/docs/cli-plugins-platform):
+The `alepha db` commands operate on the database your app connects to locally (`DATABASE_URL`, or the default dev SQLite database). Operations against a _deployed_ database live under the [infra plugin](/docs/cli-plugins-infra):
 
-| Local                        | Deployed                                                    |
-| ---------------------------- | ----------------------------------------------------------- |
-| `alepha db migrations apply` | `alepha p db migrate`                                       |
-| `alepha db baseline mark`    | `alepha p db baseline mark`                                 |
-| -                            | `alepha p db export` (pull remote DB into a local snapshot) |
+| Local                        | Deployed                                                        |
+| ---------------------------- | --------------------------------------------------------------- |
+| `alepha db migrations apply` | `alepha infra db migrate`                                       |
+| `alepha db baseline mark`    | `alepha infra db baseline mark`                                 |
+| -                            | `alepha infra db export` (pull remote DB into a local snapshot) |
 
 ## Workflow
 

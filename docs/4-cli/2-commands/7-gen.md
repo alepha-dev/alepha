@@ -41,7 +41,7 @@ Each variable comes with its description, its default value, whether it's requir
 | ------------- | -------------------------------------- |
 | `--out`, `-o` | Output file path (e.g. `.env.example`) |
 
-This is the same `$env` metadata the [platform plugin](/docs/cli-plugins-platform) uses as its secret allowlist - declare variables with `$env` and every tool in the chain knows about them.
+This is the same `$env` metadata the [infra plugin](/docs/cli-plugins-infra) uses as its secret allowlist - declare variables with `$env` and every tool in the chain knows about them.
 
 ## changelog
 

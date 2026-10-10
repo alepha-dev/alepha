@@ -1,8 +1,8 @@
 import { defineConfig } from "alepha/cli/config";
-import { cloudflare, platform } from "alepha/cli/platform";
+import { cloudflare, infra } from "alepha/cli/infra";
 
 /*
- * shop.alepha.dev is a demo: `deploy-shop-production` runs `platform up` on
+ * shop.alepha.dev is a demo: `deploy-shop-production` runs `alepha deploy` on
  * every green main, its data is disposable, and its secrets (APP_SECRET and
  * the Stripe test keys) come from the `shop-production` GitHub environment.
  */
@@ -13,7 +13,7 @@ export default defineConfig({
   // without a `dev.port` binds 5173.
   dev: { port: 3305 },
   plugins: [
-    platform({
+    infra({
       // Worker, D1 and bucket `alepha-shop-production`: the names Lore Deploy
       // gave them, so the Custom Domain moved over without a 409 (#Q2576).
       project: "alepha",

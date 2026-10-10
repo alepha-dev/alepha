@@ -103,7 +103,7 @@ describe("analytics resource detection", () => {
   }) => {
     /*
       ⚠️ Regression guard for a production outage (2026-08-11). The manifest's
-      `secrets` is the allowlist `alepha platform up` pushes worker secrets from, and it
+      `secrets` is the allowlist `alepha deploy` pushes worker secrets from, and it
       comes from `alepha.dump().env`  -  the env keys of the graph as
       instantiated HERE, under node. `CLOUDFLARE_ANALYTICS_TOKEN` is declared
       by `WaeAnalyticsProvider`, which only ever exists under workerd, so it

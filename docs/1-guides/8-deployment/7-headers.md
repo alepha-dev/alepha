@@ -12,7 +12,7 @@ writes it, and every host applies it the same way.
 
 | Host                                                                 | Applies `_headers`                                                    | Applies `_redirects` |
 | -------------------------------------------------------------------- | --------------------------------------------------------------------- | -------------------- |
-| Cloudflare, through `alepha platform up` (wrangler)                  | yes, to every file of the asset store                                 | yes                  |
+| Cloudflare, through `alepha deploy` (wrangler)                       | yes, to every file of the asset store                                 | yes                  |
 | Cloudflare, through `lore apps deploy`                               | yes, to every file of the asset store                                 | yes                  |
 | [Bay](/docs/guides-deployment-bay)                                   | yes, to every file it serves from disk, fallback pages included       | no                   |
 | The app's own server: `node dist/index.js`, Bun, Docker, `--compile` | yes, to every file its static server answers, from disk or the binary | no                   |

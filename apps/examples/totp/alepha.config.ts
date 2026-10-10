@@ -1,5 +1,5 @@
 import { defineConfig } from "alepha/cli/config";
-import { cloudflare, platform } from "alepha/cli/platform";
+import { cloudflare, infra } from "alepha/cli/infra";
 
 export default defineConfig({
   // Dev ports live in the 33xx band, which `playwright.port.ts` keeps strictly
@@ -7,7 +7,7 @@ export default defineConfig({
   // 3306 errors, 3308 ui, 3311 ssr, so this one takes 3307.
   dev: { port: 3307 },
   plugins: [
-    platform({
+    infra({
       /*
        * Worker secrets are auto-detected from the build manifest's `env` list
        * (every `$env`-declared key) and resolved from `process.env` at deploy

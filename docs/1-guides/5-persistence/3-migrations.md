@@ -73,7 +73,7 @@ When running multiple application instances (e.g., behind a load balancer), use 
 
 ## Cloudflare D1 (SQLite)
 
-For Cloudflare Workers using D1, migrations run against the deployed database before your code ships. If you deploy with the [platform plugin](/docs/cli-plugins-platform), `alepha p up` handles this for you; to run them alone, use `alepha p db migrate`.
+For Cloudflare Workers using D1, migrations run against the deployed database before your code ships. If you deploy with the [infra plugin](/docs/cli-plugins-infra), `alepha deploy` handles this for you; to run them alone, use `alepha infra db migrate`.
 
 Under the hood each migration file is applied with `wrangler d1 execute --file` - deliberately **not** `wrangler d1 migrations apply`, which wraps each migration in a transaction where SQLite ignores `PRAGMA foreign_keys=OFF`, so a table rebuild cascade-deletes child rows. The same hazard is why `alepha db migrations create` refuses to write a migration containing a bare `DROP TABLE`: on D1, dropping a table that CASCADE children reference silently wipes those child rows. If you hit that refusal, restructure the change (rename + copy, or drop the children first) instead of forcing the statement through.
 

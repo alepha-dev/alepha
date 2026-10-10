@@ -7,6 +7,9 @@ import {
   actorRedisOptions,
 } from "alepha/actor/redis";
 
+import { ActorContract } from "../../core/__tests__/ActorContract.ts";
+import { ContractActors } from "../../core/__tests__/ContractActors.ts";
+
 const count = $atom({ name: "redis-counter", schema: z.integer(), default: 0 });
 const nested = $atom({
   name: "redis-session",
@@ -97,10 +100,30 @@ export class RedisActorContract {
         .with({ provide: RedisActorProvider, use: FaultProvider })
         .with(AlephaActorRedis);
     const containers = Array.from({ length: 4 }, () => make());
-    containers.push(make("other"));
+    containers.push(make(":contract"));
     try {
       const actors = containers.map((container) => container.inject(Actors));
+      const contractActors = containers.map((container) =>
+        container.inject(ContractActors),
+      );
       await Promise.all(containers.map((container) => container.start()));
+      let contractIndex = 0;
+      await ActorContract.run({
+        call: (name, method, args = [], key, other) => {
+          let actor =
+            contractActors[other ? 4 : contractIndex++ % 4].byName(name);
+          if (key !== undefined) actor = actor.get(key);
+          return method === undefined ? actor.read() : actor[method](...args);
+        },
+        local: async (value) => {
+          if (value !== undefined)
+            containers[0].store.set(ContractActors.counterAtom, value);
+          return containers[0].store.get(ContractActors.counterAtom);
+        },
+        put: (raw) =>
+          containers[0].inject(FaultProvider).corrupt("contract.corrupt", raw),
+        raw: () => containers[0].inject(FaultProvider).raw("contract.corrupt"),
+      });
       expect(
         await Promise.all(
           actors.slice(0, 4).map((actor) => actor.counter.read()),

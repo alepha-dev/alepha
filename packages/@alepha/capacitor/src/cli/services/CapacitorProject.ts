@@ -305,14 +305,85 @@ export class CapacitorProject {
     mode: "bundled" | "dev",
     apiUrl: string | undefined,
   ): CapacitorPublicConfig {
+    const otaUrl = options.ota
+      ? this.originOf("ota.url", options.ota.url ?? apiUrl)
+      : undefined;
+    if (options.ota && !otaUrl && mode === "bundled") {
+      throw new AlephaError(
+        "capacitor({ ota }) needs the origin of the server mounting ota-api: set ota.url, or apiUrl.",
+      );
+    }
     return {
       appId: options.appId,
       variant: this.variant(),
       scheme: options.scheme,
       mode,
       apiUrl,
+      ...(otaUrl ? { ota: { url: otaUrl } } : {}),
       env: { ...options.env },
     };
+  }
+
+  /**
+   * The publisher's public key `capacitor({ ota })` declares: the PEM
+   * itself, or read from the file it names.
+   */
+  public async otaPublicKey(
+    root: string,
+    options: CapacitorOptions,
+  ): Promise<string | undefined> {
+    const declared = options.ota?.publicKey;
+    if (!declared) {
+      return undefined;
+    }
+    const pem = declared.includes("-----BEGIN")
+      ? declared
+      : await this.fs.readTextFile(this.fs.join(root, declared)).catch(() => {
+          throw new AlephaError(
+            `capacitor({ ota }) names the public key file ${declared}, which cannot be read.`,
+          );
+        });
+    if (!pem.includes("-----BEGIN RSA PUBLIC KEY-----")) {
+      throw new AlephaError(
+        "capacitor({ ota }).publicKey must be the publisher's RSA public key in PKCS#1 PEM (-----BEGIN RSA PUBLIC KEY-----). Never put the private key here.",
+      );
+    }
+    return `${pem.trim()}\n`;
+  }
+
+  /**
+   * Whether the project depends on the live updater plugin.
+   */
+  public async hasUpdater(root: string): Promise<boolean> {
+    try {
+      const pkg = JSON.parse(
+        await this.fs.readTextFile(this.fs.join(root, "package.json")),
+      );
+      return !!(
+        pkg.dependencies?.["@capgo/capacitor-updater"] ??
+        pkg.devDependencies?.["@capgo/capacitor-updater"]
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  protected originOf(name: string, value?: string): string | undefined {
+    if (!value) {
+      return undefined;
+    }
+    let url: URL;
+    try {
+      url = new URL(value);
+    } catch {
+      throw new AlephaError(`${name} "${value}" is not an absolute URL.`);
+    }
+    if (url.protocol !== "https:" && url.protocol !== "http:") {
+      throw new AlephaError(
+        `${name} "${value}" must be an http or https origin.`,
+      );
+    }
+    return url.origin;
   }
 
   /**
@@ -329,7 +400,10 @@ export class CapacitorProject {
    * identifier keys), so formatting the project does not turn the next
    * command into a rewrite.
    */
-  public renderCapacitorConfig(options: CapacitorOptions): string {
+  public renderCapacitorConfig(
+    options: CapacitorOptions,
+    updater: { installed?: boolean; publicKey?: string } = {},
+  ): string {
     const extra: Record<string, unknown> = { ...options.config };
     for (const key of ["appId", "appName", "webDir"]) {
       if (key in extra) {
@@ -355,6 +429,12 @@ export class CapacitorProject {
       ...(plugins.SplashScreen as Record<string, unknown>),
     };
 
+    if (updater.installed || updater.publicKey) {
+      plugins.CapacitorUpdater = this.updaterConfig(updater.publicKey, {
+        ...(plugins.CapacitorUpdater as Record<string, unknown>),
+      });
+    }
+
     const config = {
       appId: options.appId,
       appName: options.appName,
@@ -376,6 +456,37 @@ export class CapacitorProject {
   }
 
   /**
+   * The updater's native settings: manual and silent, whatever else is
+   * declared, so the plugin never calls its vendor's cloud. `autoUpdate`
+   * off, every vendor URL blanked (`statsUrl: ""` turns stats off). With a
+   * public key, the self-hosted policy of `@alepha/capacitor/ota`: it sets
+   * the `/ota` URLs on boot (`allowModifyUrl`), from the shell's public
+   * config, so the native config holds nothing machine-specific; it
+   * cancels a pending bundle with `setBundleError`
+   * (`allowManualBundleError`).
+   */
+  protected updaterConfig(
+    publicKey: string | undefined,
+    declared: Record<string, unknown>,
+  ): Record<string, unknown> {
+    return {
+      ...declared,
+      autoUpdate: false,
+      updateUrl: "",
+      statsUrl: "",
+      channelUrl: "",
+      ...(publicKey
+        ? {
+            publicKey,
+            allowModifyUrl: true,
+            allowManualBundleError: true,
+            appReadyTimeout: 10000,
+          }
+        : {}),
+    };
+  }
+
+  /**
    * Write `capacitor.config.ts` from the options, unless it already says the
    * same thing. A file without the generated marker is the user's and is
    * refused, never overwritten.
@@ -385,7 +496,10 @@ export class CapacitorProject {
     options: CapacitorOptions,
   ): Promise<void> {
     const path = this.configPath(root);
-    const content = this.renderCapacitorConfig(options);
+    const content = this.renderCapacitorConfig(options, {
+      installed: await this.hasUpdater(root),
+      publicKey: await this.otaPublicKey(root, options),
+    });
 
     if (await this.fs.exists(path)) {
       const current = await this.fs.readTextFile(path);
@@ -441,7 +555,13 @@ export class CapacitorProject {
         const name = /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key)
           ? key
           : JSON.stringify(key);
-        return `${indent}${name}: ${this.toLiteral(v, depth + 1)},`;
+        const literal = this.toLiteral(v, depth + 1);
+        const line = `${indent}${name}: ${literal},`;
+        // A string past the print width moves under its key, as oxfmt does.
+        if (typeof v === "string" && line.length > 80) {
+          return `${indent}${name}:\n${indent}  ${literal},`;
+        }
+        return line;
       });
       return `{\n${lines.join("\n")}\n${closing}}`;
     }

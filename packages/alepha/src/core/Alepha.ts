@@ -1806,7 +1806,7 @@ export interface Env {
    *
    * Used to render absolute links — emails, OAuth callbacks, sitemap. On the
    * Cloudflare platform it is auto-derived from the configured production
-   * domain and pushed as a Worker secret by `alepha platform up`; otherwise
+   * domain and pushed as a Worker secret by `alepha deploy`; otherwise
    * set it explicitly in `.env.<env>`. Unset → empty, and absolute-link
    * builders fall back to relative URLs.
    */

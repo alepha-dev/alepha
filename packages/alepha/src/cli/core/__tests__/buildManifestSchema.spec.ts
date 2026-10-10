@@ -1,12 +1,8 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-
 import { Alepha, AlephaError } from "alepha";
 import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
-import { afterAll, describe, it } from "vitest";
+import { describe, it } from "vitest";
 
-import { PlatformCommand } from "../../platform/commands/platform.ts";
+import { InfraCommand } from "../../infra/commands/infra.ts";
 import {
   type BuildManifest,
   buildManifestSchema,
@@ -372,33 +368,23 @@ describe("the build manifest schema", () => {
     });
   });
 
-  /**
-   * `readManifest` reads through `node:fs/promises` directly rather than
-   * `FileSystemProvider`, so a memory provider cannot stand in for the disk
-   * here and these cases use a real temporary directory.
-   */
   describe("the deploy-side reader", () => {
-    class TestPlatformCommand extends PlatformCommand {
+    class TestInfraCommand extends InfraCommand {
       public testReadManifest = this.readManifest.bind(this);
     }
 
-    const roots: string[] = [];
-
-    afterAll(async () => {
-      for (const root of roots)
-        await rm(root, { recursive: true, force: true });
-    });
-
+    let alepha = Alepha.create();
     const rootWith = async (contents: string) => {
-      const root = await mkdtemp(join(tmpdir(), "alepha-manifest-"));
-      roots.push(root);
-      const { mkdir } = await import("node:fs/promises");
-      await mkdir(join(root, "dist"), { recursive: true });
-      await writeFile(join(root, "dist", "manifest.json"), contents, "utf-8");
-      return root;
+      alepha = Alepha.create().with({
+        provide: FileSystemProvider,
+        use: MemoryFileSystemProvider,
+      });
+      await alepha
+        .inject(MemoryFileSystemProvider)
+        .writeFile("/project/dist/manifest.json", contents);
+      return "/project";
     };
-
-    const command = () => Alepha.create().inject(TestPlatformCommand);
+    const command = () => alepha.inject(TestInfraCommand);
 
     it("reads a valid manifest", async ({ expect }) => {
       const root = await rootWith(JSON.stringify(valid()));
@@ -424,8 +410,8 @@ describe("the build manifest schema", () => {
     });
 
     it("answers null when there is no manifest at all", async ({ expect }) => {
-      const root = await mkdtemp(join(tmpdir(), "alepha-manifest-"));
-      roots.push(root);
+      alepha = Alepha.create();
+      const root = "/empty";
       expect(await command().testReadManifest(root)).toBeNull();
     });
 

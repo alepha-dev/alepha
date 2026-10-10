@@ -7,8 +7,10 @@ import { CapacitorDev } from "../services/CapacitorDev.ts";
 import { CapacitorInit } from "../services/CapacitorInit.ts";
 import { CapacitorLock } from "../services/CapacitorLock.ts";
 import { CapacitorNativeBuild } from "../services/CapacitorNativeBuild.ts";
+import { CapacitorOtaSetup } from "../services/CapacitorOtaSetup.ts";
 import { CapacitorPackages } from "../services/CapacitorPackages.ts";
 import { CapacitorProject } from "../services/CapacitorProject.ts";
+import { CapacitorRelease } from "../services/CapacitorRelease.ts";
 import { CapacitorSync } from "../services/CapacitorSync.ts";
 import { NativeIdentity } from "../services/NativeIdentity.ts";
 
@@ -25,6 +27,8 @@ export class CapacitorCommand {
   protected readonly pm = $inject(PackageManagerUtils);
   protected readonly lock = $inject(CapacitorLock);
   protected readonly identity = $inject(NativeIdentity);
+  protected readonly releaseService = $inject(CapacitorRelease);
+  protected readonly otaSetup = $inject(CapacitorOtaSetup);
 
   /**
    * `--variant`, on every command: which identity it works on.
@@ -47,19 +51,33 @@ export class CapacitorCommand {
           "Only this platform, instead of every platform the config declares",
         )
         .optional(),
+      ota: z
+        .boolean()
+        .describe(
+          "Also wire live updates: the updater, ota-api on the server, the device client, the admin when there is one, and a publisher key pair",
+        )
+        .optional(),
       variant: this.variant,
     }),
     handler: async ({ flags, run, root }) => {
       this.project.select(flags.variant);
-      await this.lock.hold(root, () =>
-        this.initService.run({
+      await this.lock.hold(root, async () => {
+        if (flags.ota) {
+          // Planned first: a file it cannot edit refuses before init writes
+          // anything.
+          await this.otaSetup.plan(root);
+        }
+        await this.initService.run({
           root,
           run,
           platforms: flags.platform
             ? [flags.platform as CapacitorPlatform]
             : undefined,
-        }),
-      );
+        });
+        if (flags.ota) {
+          await this.otaSetup.run({ root, run });
+        }
+      });
     },
   });
 
@@ -226,10 +244,60 @@ export class CapacitorCommand {
     },
   });
 
+  public readonly release = $command({
+    name: "release",
+    mode: "production",
+    description: [
+      "Build the app shell, seal it with OTA_SIGNING_KEY and publish it as a live update to the app's own server (OTA_API_KEY), for the exact native builds recorded with the current native fingerprint.",
+      "Live updates change the web layer only (HTML, JavaScript, CSS, assets) that the binary already runs, and never its native code: App Store Review Guideline 2.5.2 allows interpreted code that does not change the app's primary purpose, features or functionality, nor add a store or bypass review. Use them for fixes and content, ship features through the stores. This is the intended use, not a promise of approval.",
+    ].join("\n\n"),
+    args: z.text({ title: "platform" }),
+    flags: z.object({
+      channel: z
+        .string()
+        .describe("The channel to publish to, e.g. production"),
+      rollout: z
+        .number()
+        .describe(
+          "The share of the channel's devices that get it, 0 to 100 (default: 10; 100 is explicit)",
+        )
+        .optional(),
+      dryRun: z
+        .boolean()
+        .meta({ aliases: ["dry-run"] })
+        .describe(
+          "Write the sealed bundle and its manifest under dist-capacitor/, and upload nothing (the OTA admin accepts them)",
+        )
+        .optional(),
+      variant: this.variant,
+    }),
+    handler: async ({ args, flags, run, root }) => {
+      this.project.select(flags.variant);
+      const platform = this.platformOf(args);
+      await this.lock.hold(root, () =>
+        this.releaseService.run({
+          root,
+          run,
+          platform,
+          channel: flags.channel,
+          rollout: flags.rollout ?? 10,
+          dryRun: flags.dryRun,
+        }),
+      );
+    },
+  });
+
   public readonly capacitor = $command({
     name: "capacitor",
     description: "Build and run the native app (iOS and Android)",
-    children: [this.init, this.sync, this.build, this.dev, this.open],
+    children: [
+      this.init,
+      this.sync,
+      this.build,
+      this.dev,
+      this.open,
+      this.release,
+    ],
     handler: async ({ help }) => {
       help();
     },

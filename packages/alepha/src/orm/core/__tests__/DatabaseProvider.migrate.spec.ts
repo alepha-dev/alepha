@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { DatabaseProvider } from "../providers/drivers/DatabaseProvider.ts";
 
 /**
- * Minimal concrete `DatabaseProvider` that never touches a real database —
+ * Minimal concrete `DatabaseProvider` that never touches a real database  -
  * only `migrate()`'s pre-`executeMigrations` guard is under test here, so
  * `executeMigrations` is stubbed to record whether it was ever reached
  * instead of actually running drizzle's migrator.
@@ -45,18 +45,18 @@ class FakeDatabaseProvider extends DatabaseProvider {
 
 /**
  * `drizzle-orm@1`'s migrator (`readMigrationFiles`) hard-throws a bare
- * `Error` the instant it finds `<folder>/meta/_journal.json` — the
+ * `Error` the instant it finds `<folder>/meta/_journal.json`  -  the
  * bookkeeping file every pre-v1 drizzle-kit project has:
  *
  *   "We detected that you have old drizzle-kit migration folders. You must
  *    upgrade drizzle-kit and run \"drizzle-kit up\""
  *
- * `drizzle-kit up` is not an Alepha command — no downstream consumer of
+ * `drizzle-kit up` is not an Alepha command  -  no downstream consumer of
  * `alepha` who hasn't yet baselined onto v1 has any idea what that means.
  * `DatabaseProvider.migrate()` must catch this before it ever reaches
  * drizzle's migrator and point at the real remedy instead.
  */
-describe("DatabaseProvider.migrate — pre-v1 layout guard", () => {
+describe("DatabaseProvider.migrate  -  pre-v1 layout guard", () => {
   let migrationsFolder: string;
 
   beforeEach(() => {
@@ -87,9 +87,7 @@ describe("DatabaseProvider.migrate — pre-v1 layout guard", () => {
     expect(error).toBeInstanceOf(AlephaError);
     expect((error as Error).message).toMatch(/alepha db baseline create/);
     expect((error as Error).message).toMatch(/alepha db baseline mark/);
-    expect((error as Error).message).toMatch(
-      /alepha platform db baseline mark/,
-    );
+    expect((error as Error).message).toMatch(/alepha infra db baseline mark/);
     // The whole point: never even reach drizzle's migrator.
     expect(provider.executeMigrationsCalls).toBe(0);
   });
@@ -121,7 +119,7 @@ describe("DatabaseProvider.migrate — pre-v1 layout guard", () => {
 /**
  * Production has no push-sync fallback: `synchronize()` lives in the dev/test
  * branch. So in production an absent migrations folder does not mean "push the
- * schema for me", it means "create nothing" — and an app with entities then
+ * schema for me", it means "create nothing"  -  and an app with entities then
  * boots green with no tables and throws `DbTableNotFoundError` on its first
  * query. A warning in startup logs is not where that should surface.
  *
@@ -131,7 +129,7 @@ describe("DatabaseProvider.migrate — pre-v1 layout guard", () => {
  * means "I manage the schema myself", which is the difference between an
  * intentional choice and an omission.
  */
-describe("DatabaseProvider.migrate — missing migrations in production", () => {
+describe("DatabaseProvider.migrate  -  missing migrations in production", () => {
   let migrationsFolder: string;
 
   beforeEach(() => {

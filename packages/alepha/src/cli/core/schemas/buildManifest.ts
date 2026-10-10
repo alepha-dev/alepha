@@ -7,7 +7,7 @@ import { actorHostDeclarationSchema } from "./actorHostDeclarationSchema.ts";
  * Written to `dist/manifest.json`.
  *
  * This is the artifact contract between `alepha build` and every deploy
- * consumer: `alepha platform up --prebuilt`, Lore Deploy, and Alepha Bay.
+ * consumer: `alepha deploy --prebuilt`, Lore Deploy, and Alepha Bay.
  * It exists so the deploy side never has to boot the app, re-evaluate
  * `alepha.config.ts`, or run the workspace's `npm install`: everything a
  * deployer needs to know is captured here, at build time, from the primitives
@@ -175,7 +175,7 @@ export const buildManifestSchema = z
      * `workerd` slice, absent otherwise.
      *
      * Lore Deploy regenerates `wrangler.jsonc` and the worker entry from the
-     * manifest alone (`PlatformOrchestrator.up({ prebuilt: true })` inside its
+     * manifest alone (`InfraOrchestrator.up({ prebuilt: true })` inside its
      * own Worker), with no app to introspect, so everything that regeneration
      * cannot derive is captured here at build time.
      */

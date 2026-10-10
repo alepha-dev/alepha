@@ -48,11 +48,17 @@ describe("@alepha/capacitor packaging", () => {
     expect(pkg.peerDependencies.alepha).toBe(`^${framework.version}`);
   });
 
-  it("exports the root, core and cli, and nothing an updater would add", ({
-    expect,
-  }) => {
+  it("exports the root, core, cli and the three OTA entries", ({ expect }) => {
     expect(Object.keys(pkg.exports).sort()).toEqual(
-      [".", "./cli", "./core", "./package.json"].sort(),
+      [
+        ".",
+        "./cli",
+        "./core",
+        "./ota",
+        "./ota-api",
+        "./ota-admin",
+        "./package.json",
+      ].sort(),
     );
     expect(Object.keys(pkg.publishConfig.exports).sort()).toEqual(
       Object.keys(pkg.exports).sort(),
@@ -85,6 +91,83 @@ describe("@alepha/capacitor packaging", () => {
           id.startsWith("alepha/cli") ||
           id === "sharp" ||
           id.startsWith("@capacitor/cli"),
+      ),
+    ).toEqual([]);
+  });
+
+  it("keeps core free of every OTA entry", async ({ expect }) => {
+    // core must run without any updater: an app that never imports `ota`
+    // ships no updater code and no server or admin code.
+    const { modules, imports } = await graphOf("src/core/index.ts");
+
+    expect(
+      modules.filter((id) => /\/src\/ota(-api|-admin)?\//.test(id)),
+    ).toEqual([]);
+    expect(imports.filter((id) => id.startsWith("@capgo/"))).toEqual([]);
+  });
+
+  it("keeps the device client free of server and admin code", async ({
+    expect,
+  }) => {
+    const { modules, imports } = await graphOf("src/ota/index.ts");
+
+    expect(
+      modules.filter((id) => /\/src\/(ota-api|ota-admin|cli)\//.test(id)),
+    ).toEqual([]);
+    expect(
+      imports.filter(
+        (id) =>
+          id.startsWith("node:") ||
+          builtinModules.includes(id) ||
+          id.startsWith("alepha/orm") ||
+          id.startsWith("alepha/cli") ||
+          id.startsWith("@capgo/cli"),
+      ),
+    ).toEqual([]);
+  });
+
+  it("keeps ota-api to ota's protocol schemas, and away from ota-admin", async ({
+    expect,
+  }) => {
+    const { modules, imports } = await graphOf("src/ota-api/index.ts");
+
+    expect(
+      modules.filter(
+        (id) =>
+          (id.includes("/src/ota/") && !id.includes("/src/ota/protocol/")) ||
+          id.includes("/src/ota-admin/") ||
+          id.includes("/src/cli/"),
+      ),
+    ).toEqual([]);
+    // The server runs on workerd too: no Node built-in, and never the
+    // publisher's tooling.
+    expect(
+      imports.filter(
+        (id) =>
+          id.startsWith("node:") ||
+          builtinModules.includes(id) ||
+          id.startsWith("@capgo/") ||
+          id.startsWith("@capacitor/"),
+      ),
+    ).toEqual([]);
+  });
+
+  it("keeps ota-admin to browser code: the server is only a type", async ({
+    expect,
+  }) => {
+    const { modules, imports } = await graphOf("src/ota-admin/index.ts");
+
+    expect(modules.filter((id) => /\/src\/(ota-api|cli)\//.test(id))).toEqual(
+      [],
+    );
+    expect(
+      imports.filter(
+        (id) =>
+          id.startsWith("node:") ||
+          builtinModules.includes(id) ||
+          id.startsWith("alepha/orm") ||
+          id.startsWith("alepha/api/") ||
+          id.startsWith("@capgo/"),
       ),
     ).toEqual([]);
   });

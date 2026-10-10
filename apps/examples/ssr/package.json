@@ -8,7 +8,7 @@
     "typecheck": "tsc --noEmit",
     "check:migrations": "alepha db migrations check",
     "build:docker": "alepha build --stats=json",
-    "deploy": "alepha platform up --env production",
+    "deploy": "alepha deploy --env production",
     "studio": "alepha db studio --mode=production",
     "db:generate": "alepha db generate",
     "db:migrate": "alepha db migrate --mode=production",

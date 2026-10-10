@@ -5,7 +5,7 @@ import { describe, it } from "vitest";
 
 /**
  * What a Cloudflare Worker can bundle out of `alepha/cli` and
- * `alepha/cli/platform-lib`, asserted by walking the real import graph.
+ * `alepha/cli/infra-lib`, asserted by walking the real import graph.
  *
  * ⚠️ **A build-time property with no runtime symptom to test for.** The code
  * that reaches `node:child_process` would run correctly if it ever ran; it
@@ -46,9 +46,9 @@ describe("the workerd entries of the CLI", () => {
    * Import and re-export specifiers, minus the ones erased at compile time.
    *
    * Comments and template literals are stripped first. Both are load-bearing:
-   * `PlatformInspector` prints a config example containing an `import` line
+   * `InfraInspector` prints a config example containing an `import` line
    * inside a template literal, and a naive match reports it as a dependency on
-   * `alepha/cli/platform` - which is how this walker first "found" the entire
+   * `alepha/cli/infra` - which is how this walker first "found" the entire
    * CLI in the orchestrator's closure.
    */
   const specifiersOf = (source: string): string[] => {
@@ -123,10 +123,7 @@ describe("the workerd entries of the CLI", () => {
 
   const entries = {
     "alepha/cli": join(pkgRoot, "src/cli/core/index.workerd.ts"),
-    "alepha/cli/platform-lib": join(
-      pkgRoot,
-      "src/cli/platform-lib/index.workerd.ts",
-    ),
+    "alepha/cli/infra-lib": join(pkgRoot, "src/cli/infra-lib/index.workerd.ts"),
   };
 
   for (const [name, entry] of Object.entries(entries)) {
@@ -169,11 +166,11 @@ describe("the workerd entries of the CLI", () => {
     ).toBe(true);
   });
 
-  it("keeps PlatformOrchestrator reachable from platform-lib", ({ expect }) => {
-    const { visited } = walk(entries["alepha/cli/platform-lib"]);
+  it("keeps InfraOrchestrator reachable from platform-lib", ({ expect }) => {
+    const { visited } = walk(entries["alepha/cli/infra-lib"]);
 
     expect(
-      [...visited].some((file) => file.endsWith("/PlatformOrchestrator.ts")),
+      [...visited].some((file) => file.endsWith("/InfraOrchestrator.ts")),
     ).toBe(true);
   });
 
@@ -184,7 +181,7 @@ describe("the workerd entries of the CLI", () => {
     // reaching nothing at all - and `resolveAdapter("cloudflare")` would then
     // refuse a deploy with "this container has no platform adapter", which
     // reads as a config problem rather than as a missing export.
-    const { visited } = walk(entries["alepha/cli/platform-lib"]);
+    const { visited } = walk(entries["alepha/cli/infra-lib"]);
     const reached = (file: string) =>
       [...visited].some((it) => it.endsWith(`/${file}`));
 

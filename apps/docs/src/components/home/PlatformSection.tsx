@@ -11,7 +11,7 @@ import DocLink from "./DocLink.tsx";
  * argument is that one invocation does all of this in order and you watch none
  * of it.
  *
- * The order is the orchestrator's own, not a guess: `PlatformOrchestrator.up()`
+ * The order is the orchestrator's own, not a guess: `InfraOrchestrator.up()`
  * runs authenticate → provision → build → migrate → deploy → secrets. Secrets
  * really are last - `secret put` needs the worker to exist, so on a first
  * deploy there is nothing to attach them to.
@@ -88,7 +88,7 @@ const PlatformSection = () => {
             <div className="deploy-term-body">
               <div className="deploy-cmd">
                 <span className="deploy-prompt">$</span>
-                <code>alepha platform up --env production</code>
+                <code>alepha deploy --env production</code>
               </div>
 
               {/* Every stage is on screen from the start, dim, and brightens
@@ -137,9 +137,10 @@ const PlatformSection = () => {
           too, from pushing{" "}
           <DocLink to="guides-core-configurations">secrets</DocLink> to running{" "}
           <DocLink to="guides-persistence-migrations">migrations</DocLink>.{" "}
-          <DocLink to="cli-plugins-platform">Alepha Platform</DocLink> targets{" "}
+          <DocLink to="cli-plugins-infra">Alepha Infra</DocLink> targets{" "}
           <DocLink to="guides-deployment-cloudflare">Cloudflare</DocLink> and{" "}
-          <DocLink to="guides-deployment-bay">Bay (VPS)</DocLink> only.
+          <DocLink to="guides-deployment-bay">Bay (VPS)</DocLink>, with external
+          adapters supported.
         </p>
       </div>
     </section>

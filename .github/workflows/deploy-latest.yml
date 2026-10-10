@@ -66,7 +66,7 @@ concurrency:
   # them against each other.
   group: deploy-latest-${{ github.event.workflow_run.head_branch }}
   # Deliberately NOT cancel-in-progress. A deploy that is halfway through
-  # `platform up` has already run migrations; cancelling it leaves the
+  # `deploy` has already run migrations; cancelling it leaves the
   # database ahead of the Worker. A superseded deploy is wasteful, an
   # interrupted one is a broken production.
   cancel-in-progress: false
@@ -91,10 +91,10 @@ env:
 jobs:
   # ---------------------------------------------------------------------------
   # The component showcase at `ui.alepha.dev`, and the shop demo at
-  # `shop.alepha.dev`, deployed with `alepha platform up` (#Q2576).
+  # `shop.alepha.dev`, deployed with `alepha deploy` (#Q2576).
   #
   # They went through Lore Deploy from #E1 until Lore left this repository
-  # (#E72). `platform({ project: "alepha" })` gives them the names Lore had
+  # (#E72). `infra({ project: "alepha" })` gives them the names Lore had
   # given their Workers (`alepha-<app>-production`), so the first `up` took
   # each Worker and its Custom Domain over instead of colliding with it.
   # Cloudflare credentials are repository secrets; each app's own secrets live
@@ -125,11 +125,11 @@ jobs:
       - name: Prepare
         run: yarn copy
 
-      # `alepha-ui-production` (`platform({ project: "alepha" })`), the Worker
+      # `alepha-ui-production` (`infra({ project: "alepha" })`), the Worker
       # Lore Deploy created, taken over with its Custom Domain (#Q2576).
       - name: Deploy
         working-directory: apps/ui
-        run: yarn alepha platform up --env production
+        run: yarn alepha deploy --env production
 
   deploy-shop-production:
     if: >-
@@ -157,10 +157,10 @@ jobs:
         run: yarn copy
 
       # A demo: its data is disposable. Secrets come from the `shop-production`
-      # environment and are resolved from the job env by `platform up`.
+      # environment and are resolved from the job env by `deploy`.
       - name: Deploy
         working-directory: apps/examples/shop
-        run: yarn alepha platform up --env production
+        run: yarn alepha deploy --env production
         env:
           APP_SECRET: ${{ secrets.APP_SECRET }}
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}

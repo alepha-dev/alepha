@@ -110,4 +110,74 @@ describe("CapacitorProject", () => {
       ).toThrow(/cannot set appId/);
     });
   });
+
+  describe("the live updater", () => {
+    const pem =
+      "-----BEGIN RSA PUBLIC KEY-----\nMIIBCgKCAQEAtest\n-----END RSA PUBLIC KEY-----\n";
+
+    it("silences an installed updater the app does not use", ({ expect }) => {
+      const content = project().renderCapacitorConfig(options, {
+        installed: true,
+      });
+      expect(content).toContain("CapacitorUpdater: {");
+      expect(content).toContain("autoUpdate: false,");
+      // No vendor default: every URL blanked, stats off.
+      expect(content).toContain('updateUrl: "",');
+      expect(content).toContain('statsUrl: "",');
+      expect(content).toContain('channelUrl: "",');
+      expect(content).not.toContain("publicKey");
+    });
+
+    it("writes the self-hosted policy with the publisher's public key", ({
+      expect,
+    }) => {
+      const content = project().renderCapacitorConfig(
+        {
+          ...options,
+          config: { plugins: { CapacitorUpdater: { autoUpdate: true } } },
+        },
+        { installed: true, publicKey: pem },
+      );
+      expect(content).toContain("autoUpdate: false,");
+      expect(content).toContain("allowModifyUrl: true,");
+      expect(content).toContain("allowManualBundleError: true,");
+      expect(content).toContain(`${JSON.stringify(pem)},`);
+
+      // A real key is past the print width: under its key, as oxfmt writes
+      // it, or every build would undo the formatter.
+      const long = `-----BEGIN RSA PUBLIC KEY-----\n${"A".repeat(360)}\n-----END RSA PUBLIC KEY-----\n`;
+      expect(
+        project().renderCapacitorConfig(options, {
+          installed: true,
+          publicKey: long,
+        }),
+      ).toContain(`      publicKey:\n        ${JSON.stringify(long)},`);
+    });
+
+    it("leaves a project without the updater alone", ({ expect }) => {
+      expect(project().renderCapacitorConfig(options)).not.toContain(
+        "CapacitorUpdater",
+      );
+    });
+
+    it("tells the shell where the OTA server is", ({ expect }) => {
+      const ota = { ...options, ota: { publicKey: pem } };
+      expect(
+        project().publicConfig(ota, "bundled", "https://api.test").ota,
+      ).toEqual({ url: "https://api.test" });
+      expect(
+        project().publicConfig(
+          { ...ota, ota: { publicKey: pem, url: "https://ota.test/x" } },
+          "bundled",
+          "https://api.test",
+        ).ota,
+      ).toEqual({ url: "https://ota.test" });
+      expect(() => project().publicConfig(ota, "bundled", undefined)).toThrow(
+        /ota\.url, or apiUrl/,
+      );
+      expect(
+        project().publicConfig(options, "bundled", "https://api.test").ota,
+      ).toBeUndefined();
+    });
+  });
 });

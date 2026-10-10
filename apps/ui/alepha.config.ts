@@ -1,5 +1,5 @@
 import { defineConfig } from "alepha/cli/config";
-import { cloudflare, platform } from "alepha/cli/platform";
+import { cloudflare, infra } from "alepha/cli/infra";
 
 import pkg from "../../packages/alepha/package.json" with { type: "json" };
 
@@ -50,7 +50,7 @@ export default defineConfig({
     },
   },
   plugins: [
-    platform({
+    infra({
       // Worker `alepha-ui-production`: the name Lore Deploy gave it, so
       // `platform up` took the Worker and its Custom Domain over (#Q2576).
       project: "alepha",

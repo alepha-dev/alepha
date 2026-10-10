@@ -1,5 +1,5 @@
 import { defineConfig } from "alepha/cli/config";
-import { cloudflare, platform } from "alepha/cli/platform";
+import { cloudflare, infra } from "alepha/cli/infra";
 
 import pkg from "../../packages/alepha/package.json" with { type: "json" };
 import { CheckDocsCommand } from "./scripts/check-docs.ts";
@@ -78,12 +78,12 @@ export default defineConfig({
     },
   },
   plugins: [
-    platform({
+    infra({
       // Worker `alepha-docs-production`: the name Lore Deploy gave it, so
       // `platform up` took the Worker and the apex domain over (#Q2576).
       project: "alepha",
       environments: {
-        // ⚠️ A Custom Domain, the only binding `alepha platform` makes. This
+        // ⚠️ A Custom Domain, the only binding `alepha deploy` makes. This
         // used to set a `zone` (a field since removed) to get a Worker Route
         // instead, because the apex still held the four GitHub Pages A
         // records and their AAAA counterparts: a Custom Domain owns its DNS

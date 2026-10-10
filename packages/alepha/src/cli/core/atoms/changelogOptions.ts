@@ -88,7 +88,7 @@ export type ChangelogOptions = Infer<typeof changelogOptions.schema>;
  * `defineConfig` has a typed field for `entry`, `services`, `plugins`,
  * `build`, `dev`, `meta` and `env`, and none for an arbitrary atom, so the
  * declarative form had no way to reach {@link changelogOptions}. This plugin
- * is that way. Same shape as `vendor()` and `platform()`, with nothing to
+ * is that way. Same shape as `vendor()` and `infra()`, with nothing to
  * register: `gen changelog` lives in `alepha/cli` and is always there, so the
  * only thing to do is set the atom.
  *

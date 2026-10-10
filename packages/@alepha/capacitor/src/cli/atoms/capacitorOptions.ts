@@ -27,6 +27,25 @@ export const capacitorOptions = $atom({
       config: z.record(z.string(), z.any()).optional(),
 
       /**
+       * Live updates of the web layer from the app's own server
+       * (`@alepha/capacitor/ota-api`), through `@capgo/capacitor-updater`.
+       * Written by `alepha capacitor init --ota`.
+       *
+       * - `publicKey`: the publisher's RSA public key, PKCS#1 PEM, or the
+       *   path of a `.pem` file holding it, relative to the project. Public:
+       *   it ships in the native config. Its private half stays with the
+       *   publisher (`OTA_SIGNING_KEY`), never here;
+       * - `url`: the origin of the server mounting `ota-api`, `apiUrl` by
+       *   default.
+       */
+      ota: z
+        .object({
+          publicKey: z.string(),
+          url: z.string().optional(),
+        })
+        .optional(),
+
+      /**
        * Other installable apps built from this one, by name: each overrides
        * identity keys of the base (`appId`, `appName`, `scheme`, `apiUrl`,
        * `icon`, `iosTeamId`, `env`). Once any is declared, every command

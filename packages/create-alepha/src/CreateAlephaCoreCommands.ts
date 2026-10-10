@@ -1,5 +1,9 @@
 import { $inject, AlephaError, z } from "alepha";
-import { ProjectScaffolder, presetSchema } from "alepha/cli";
+import {
+  ProjectScaffolder,
+  presetSchema,
+  infraProviderSchema,
+} from "alepha/cli";
 import { $command } from "alepha/command";
 import { FileSystemProvider } from "alepha/system";
 
@@ -17,7 +21,7 @@ export class CreateAlephaCoreCommands {
    * was removed along with them when `init` settled on a single shape.
    *
    * `--preset` is not that question coming back. The old flags cut *below* the
-   * project skeleton — whether you got an API, a client, Tailwind — which is
+   * project skeleton  -  whether you got an API, a client, Tailwind  -  which is
    * exactly the axis that made two Alepha projects unrecognisable to each
    * other. A preset cuts above it: every project still has `src/api/`,
    * `src/web/` and Tailwind in the same places, and `saas` only decides
@@ -38,7 +42,7 @@ export class CreateAlephaCoreCommands {
    * reads `npm_config_user_agent`, which every manager sets when it runs a
    * binary, so `yarn create alepha` resolves to yarn and `pnpm create alepha`
    * to pnpm without anyone being asked. Prompting on top of that could only
-   * produce a worse answer — a project installed with a manager the user did
+   * produce a worse answer  -  a project installed with a manager the user did
    * not invoke. `--pm` still overrides, for the case where the two genuinely
    * differ.
    *
@@ -59,6 +63,7 @@ export class CreateAlephaCoreCommands {
       })
       .optional(),
     flags: z.object({
+      infra: infraProviderSchema.optional(),
       preset: presetSchema
         .describe(
           "Project shape: 'default' (API + web + Tailwind) or 'saas' (adds @alepha/ui with auth, account and admin)",
@@ -127,7 +132,7 @@ export class CreateAlephaCoreCommands {
       await this.fs.mkdir(name);
 
       // `pm` is passed through undefined unless the user forced one, so that
-      // `init` runs its own resolution — lockfiles, then workspace, then the
+      // `init` runs its own resolution  -  lockfiles, then workspace, then the
       // invoking manager via `npm_config_user_agent`. Prompting for it would
       // replace a good answer with a worse one.
       //
@@ -139,6 +144,7 @@ export class CreateAlephaCoreCommands {
         root,
         flags: {
           pm: flags.pm,
+          infra: flags.infra,
           preset,
         },
         args: name,

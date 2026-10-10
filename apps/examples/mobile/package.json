@@ -24,6 +24,7 @@
     "@capacitor/haptics": "8.0.2",
     "@capacitor/ios": "8.5.2",
     "@capacitor/splash-screen": "8.0.2",
+    "@capgo/capacitor-updater": "8.52.1",
     "alepha": "workspace:^",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"

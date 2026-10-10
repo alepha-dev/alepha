@@ -179,16 +179,16 @@
       "import": "./src/cli/i18n/index.ts",
       "default": "./src/cli/i18n/index.ts"
     },
-    "./cli/platform": {
-      "types": "./src/cli/platform/index.ts",
-      "import": "./src/cli/platform/index.ts",
-      "default": "./src/cli/platform/index.ts"
+    "./cli/infra": {
+      "types": "./src/cli/infra/index.ts",
+      "import": "./src/cli/infra/index.ts",
+      "default": "./src/cli/infra/index.ts"
     },
-    "./cli/platform-lib": {
-      "types": "./src/cli/platform-lib/index.ts",
-      "workerd": "./src/cli/platform-lib/index.workerd.ts",
-      "import": "./src/cli/platform-lib/index.ts",
-      "default": "./src/cli/platform-lib/index.ts"
+    "./cli/infra-lib": {
+      "types": "./src/cli/infra-lib/index.ts",
+      "workerd": "./src/cli/infra-lib/index.workerd.ts",
+      "import": "./src/cli/infra-lib/index.ts",
+      "default": "./src/cli/infra-lib/index.ts"
     },
     "./cli/vendor": {
       "types": "./src/cli/vendor/index.ts",
@@ -648,16 +648,16 @@
         "import": "./dist/cli/i18n/index.js",
         "default": "./dist/cli/i18n/index.js"
       },
-      "./cli/platform": {
-        "types": "./dist/cli/platform/index.d.ts",
-        "import": "./dist/cli/platform/index.js",
-        "default": "./dist/cli/platform/index.js"
+      "./cli/infra": {
+        "types": "./dist/cli/infra/index.d.ts",
+        "import": "./dist/cli/infra/index.js",
+        "default": "./dist/cli/infra/index.js"
       },
-      "./cli/platform-lib": {
-        "types": "./dist/cli/platform-lib/index.d.ts",
-        "workerd": "./dist/cli/platform-lib/index.workerd.js",
-        "import": "./dist/cli/platform-lib/index.js",
-        "default": "./dist/cli/platform-lib/index.js"
+      "./cli/infra-lib": {
+        "types": "./dist/cli/infra-lib/index.d.ts",
+        "workerd": "./dist/cli/infra-lib/index.workerd.js",
+        "import": "./dist/cli/infra-lib/index.js",
+        "default": "./dist/cli/infra-lib/index.js"
       },
       "./cli/vendor": {
         "types": "./dist/cli/vendor/index.d.ts",

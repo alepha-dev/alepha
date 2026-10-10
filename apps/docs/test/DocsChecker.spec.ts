@@ -16,6 +16,89 @@ describe("DocsChecker", () => {
     };
   };
 
+  describe("removed infra API", () => {
+    it.each([
+      'import { platform } from "alepha/cli/platform";',
+      'import { PlatformAdapter } from "alepha/cli/platform-lib";',
+      "platform({ environments: {} })",
+      "alepha platform up",
+      "alepha p status",
+      "AlephaPlatformLibPlugin",
+      "platformOptions",
+      "platformPlanAppResourcesSchema",
+      "platformStatusWorkerSchema",
+    ])("rejects active removed instructions: %s", async (content) => {
+      const { checker, fs } = boot();
+      await fs.writeFile("/guide.md", content);
+      expect(await checker.check(["/guide.md"])).not.toHaveLength(0);
+    });
+
+    it("allows current commands and ordinary platform terminology", async () => {
+      const { checker, fs } = boot();
+      await fs.writeFile(
+        "/guide.md",
+        [
+          'import { infra } from "alepha/cli/infra";',
+          "alepha deploy --env staging",
+          "alepha infra login --env production",
+          "The operating system platform and provider platform are independent.",
+        ].join("\n"),
+      );
+      expect(await checker.check(["/guide.md"])).toEqual([]);
+    });
+
+    it.each(["migration", "historical"])(
+      "scopes a %s exemption to the removed API",
+      async (marker) => {
+        const { checker, fs } = boot();
+        await fs.writeFile(
+          "/guide.md",
+          [
+            `<!-- docs-check-${marker} -->`,
+            "alepha platform up",
+            "TypeBox",
+            `<!-- /docs-check-${marker} -->`,
+            "alepha platform up",
+          ].join("\n"),
+        );
+        const violations = await checker.check(["/guide.md"]);
+        expect(violations.map((entry) => entry.line)).toEqual([3, 5]);
+      },
+    );
+
+    it("does not let an unclosed history marker hide the rest of the page", async () => {
+      const { checker, fs } = boot();
+      await fs.writeFile(
+        "/guide.md",
+        "<!-- docs-check-historical -->\nalepha platform up",
+      );
+      expect(
+        (await checker.check(["/guide.md"])).map((entry) => entry.line),
+      ).toEqual([2]);
+    });
+
+    it.each(["migration-before", "historical"])(
+      "allows a marked %s fence and checks the next example",
+      async (marker) => {
+        const { checker, fs } = boot();
+        await fs.writeFile(
+          "/guide.md",
+          [
+            "```bash " + marker,
+            "alepha platform up",
+            "```",
+            "```bash",
+            "alepha platform up",
+            "```",
+          ].join("\n"),
+        );
+        expect(
+          (await checker.check(["/guide.md"])).map((entry) => entry.line),
+        ).toEqual([5]);
+      },
+    );
+  });
+
   describe("parseFences", () => {
     it("should record the language, the marker and the 1-based start line", () => {
       // The line number is what makes a violation actionable - a report that

@@ -44,7 +44,7 @@ class TestDbCommand extends DbCommand {
 
 /**
  * Stands in for the Vite-backed loader so `baselineMark` can be driven
- * against a pre-built user container instead of a real project on disk —
+ * against a pre-built user container instead of a real project on disk  -
  * same pattern as `GenCommands.spec.ts`.
  */
 class FakeCliUtils extends AlephaCliUtils {
@@ -206,7 +206,7 @@ describe("DbCommand", () => {
      * diff), not filenames. Under drizzle-kit v1 a newly generated
      * migration is a folder (`<tag>/migration.sql`), so an entry-name
      * filter of `.endsWith(".sql")` drops it before its content is ever
-     * read — the guard runs, finds nothing, and reports clean regardless
+     * read  -  the guard runs, finds nothing, and reports clean regardless
      * of what the migration actually contains. This is the only automated
      * defence against the D1 cascade-wipe bomb, so a v1-layout migration
      * containing DROP TABLE must be caught, not silently waved through.
@@ -429,7 +429,7 @@ describe("DbCommand", () => {
    * drizzle-kit generates `REFERENCES "public"."table"(...)` even for
    * schema-free models, which breaks a non-public `search_path` deploy.
    * Like the destructive-migration guard above, this used to filter
-   * directory entries by `.endsWith(".sql")` — dead on arrival for
+   * directory entries by `.endsWith(".sql")`  -  dead on arrival for
    * drizzle-kit v1's folder-per-migration layout.
    */
   describe("stripPublicSchemaFromMigrations", () => {
@@ -502,7 +502,7 @@ describe("DbCommand", () => {
   });
 
   /**
-   * Baselining must never destroy history — the old migrations move aside so
+   * Baselining must never destroy history  -  the old migrations move aside so
    * they stay readable in git, rather than being deleted.
    */
   describe("archiveMigrations", () => {
@@ -566,7 +566,7 @@ describe("DbCommand", () => {
     });
 
     /**
-     * Every project this branch touches is v1-native from here on — a flat
+     * Every project this branch touches is v1-native from here on  -  a flat
      * `.sql`-only archive silently no-ops on a first baseline (returns `[]`,
      * never creates `.archive/`) and `generate --name=baseline` then runs
      * against the still-present v1 history, producing an INCREMENTAL
@@ -722,7 +722,7 @@ describe("DbCommand", () => {
      * A project mid-upgrade has both: a `meta/_journal.json` from before
      * v1, and a v1 folder from an `alepha db migrations create` run after
      * upgrading. v1's `generate` never touches `meta/_journal.json` again,
-     * so the journal is frozen the instant a v1 folder exists — it can only
+     * so the journal is frozen the instant a v1 folder exists  -  it can only
      * be stale from that point on. The v1 folder must win, or `check`
      * compares against a snapshot a later migration already superseded,
      * reports drift that migration already covers, and `create` would
@@ -739,7 +739,7 @@ describe("DbCommand", () => {
         "/app/migrations/sqlite/meta/0000_snapshot.json",
         JSON.stringify({ id: "stale-pre-v1" }),
       );
-      // A v1 migration generated after the upgrade — newer, but the
+      // A v1 migration generated after the upgrade  -  newer, but the
       // journal has no idea it exists.
       await fs.writeFile(
         "/app/migrations/sqlite/20260729140502_add_widgets/migration.sql",
@@ -759,9 +759,9 @@ describe("DbCommand", () => {
   });
 
   /**
-   * Cloudflare D1 doesn't go through drizzle's migrator at all — its
+   * Cloudflare D1 doesn't go through drizzle's migrator at all  -  its
    * deploy path is driven by `WranglerApi.d1MigrationsBaseline`, reachable
-   * only via `alepha platform db baseline mark` (it needs project/env/
+   * only via `alepha infra db baseline mark` (it needs project/env/
    * resource naming that core `alepha db` can't resolve; see Task 4's
    * report). Core `baseline mark` must redirect a D1-driver provider there
    * instead of letting it fall through to `DatabaseProvider`'s generic
@@ -775,7 +775,7 @@ describe("DbCommand", () => {
      * ever gets control, so most tests here use `MemoryFileSystemProvider`
      * with a stub entry file written into it. The one test that needs
      * drizzle's migrator to see a real migration file on real disk opts out
-     * via `realFs` instead — drizzle reads real `node:fs`, not Alepha's
+     * via `realFs` instead  -  drizzle reads real `node:fs`, not Alepha's
      * `FileSystemProvider` abstraction.
      */
     const createWithUserApp = (options: { realFs?: boolean } = {}) => {
@@ -883,7 +883,7 @@ describe("DbCommand", () => {
       });
     });
 
-    it("redirects a D1 provider to 'alepha platform db baseline mark' instead of connecting", async () => {
+    it("redirects a D1 provider to 'alepha infra db baseline mark' instead of connecting", async () => {
       const { alepha, utils, cli, cmd } = createWithUserApp();
       const fs = alepha.inject(MemoryFileSystemProvider);
       await fs.writeFile("/project/src/main.server.ts", "export default {};");
@@ -894,14 +894,14 @@ describe("DbCommand", () => {
       class App {
         widgets = $repository(widgets);
       }
-      // Deliberately not started — a D1 connect would fail outside a real
+      // Deliberately not started  -  a D1 connect would fail outside a real
       // Workers runtime anyway; the point is the guard fires before that.
       userAlepha.inject(App);
       utils.userAlepha = userAlepha;
 
       await expect(
         cli.run(cmd.testBaselineMark, { root: "/project", argv: "" }),
-      ).rejects.toThrow(/alepha platform db baseline mark/);
+      ).rejects.toThrow(/alepha infra db baseline mark/);
     });
 
     /**
@@ -927,7 +927,7 @@ describe("DbCommand", () => {
       );
       // `entryProvider.getAppEntry(root)` runs against the real
       // FileSystemProvider before `loadAlephaFromServerEntryFile` (which is
-      // faked) ever gets control — it still needs *something* to find.
+      // faked) ever gets control  -  it still needs *something* to find.
       const srcDir = join(root, "src");
       mkdirSync(srcDir, { recursive: true });
       writeFileSync(join(srcDir, "main.server.ts"), "export default {};");
@@ -935,7 +935,7 @@ describe("DbCommand", () => {
       try {
         const { utils, cli, cmd } = createWithUserApp({ realFs: true });
 
-        // File-backed, not `:memory:` — `baselineMark` closes the
+        // File-backed, not `:memory:`  -  `baselineMark` closes the
         // connection when it's done (mirroring `push --dry-run`), and an
         // in-memory sqlite database's contents vanish on close. A real
         // file lets this test reconnect afterwards to verify the row.
@@ -948,7 +948,7 @@ describe("DbCommand", () => {
         }
         userAlepha.inject(App);
         // Deliberately not started, mirroring the CLI's real precondition
-        // (see baseline-mark.spec.ts) — `baselineMark` connects explicitly.
+        // (see baseline-mark.spec.ts)  -  `baselineMark` connects explicitly.
         utils.userAlepha = userAlepha;
 
         await cli.run(cmd.testBaselineMark, { root, argv: "" });
@@ -983,7 +983,7 @@ describe("DbCommand", () => {
      * `--hints` carries a JSON document, not a label. drizzle-kit demands
      * every ambiguous rename-vs-create in a diff be resolved in a SINGLE
      * invocation, so rewriting one entity family already needs a dozen
-     * entries — far past `z.text()`'s default 255-character cap, which
+     * entries  -  far past `z.text()`'s default 255-character cap, which
      * rejected the flag outright rather than truncating it.
      */
     it("accepts a --hints array long enough to resolve a whole entity family", () => {
@@ -1099,7 +1099,7 @@ describe("DbCommand", () => {
    * Drizzle v1 reads a pre-v1 snapshot happily but emits constraints
    * differently from the version that wrote it, so `check` derives a diff for
    * tables nobody touched. Knowing which layout the folder uses is what lets
-   * the command say that out loud instead of reporting it as schema drift —
+   * the command say that out loud instead of reporting it as schema drift  -
    * on D1 the difference is a table rebuild that cascades to child rows.
    */
   describe("migrationsLayout", () => {

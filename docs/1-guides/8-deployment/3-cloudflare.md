@@ -1,6 +1,6 @@
 # Cloudflare Workers Deployment
 
-The `cloudflare` build target generates a Cloudflare Workers bundle with a `wrangler.jsonc` configuration.
+A `workerd` runtime slice generates a Cloudflare Workers bundle with a `wrangler.jsonc` configuration.
 
 ## Build
 
@@ -25,11 +25,13 @@ Required for deployment:
 
 ## Deploy
 
-The recommended path is the [platform plugin](/docs/cli-plugins-platform), which provisions resources, builds, migrates, deploys, and pushes secrets in one command (installing Wrangler automatically if missing):
+The recommended path is the [infra plugin](/docs/cli-plugins-infra), which provisions resources, builds, migrates, deploys, and pushes secrets in one command (installing Wrangler automatically if missing):
 
 ```bash
-alepha p up
+alepha deploy
 ```
+
+`alepha deploy` authenticates automatically when needed, then provisions, builds, migrates, deploys and handles secrets. `alepha infra login --env production` probes credentials without deploying. Plain `alepha build --runtime workerd` needs no cloud credentials; `alepha infra build` may look up existing resource bindings.
 
 To deploy a build manually instead:
 
@@ -159,7 +161,7 @@ enabling it without the flag, changes nothing on its own.
 
 ## R2 Buckets
 
-The R2 binding is added to `wrangler.jsonc` when `R2_BUCKET_NAME` is set at build time - the platform plugin sets it automatically when your app declares any `$storage`; for a manual build, set it yourself in the environment. R2 keys every object as `{prefix}/{tenantId}/{storage}/{fileId}` inside that one bucket - a storage is a prefix, not a bucket of its own. The leading prefix comes from `S3_KEY_PREFIX`, falling back to `APP_NAME`.
+The R2 binding is added to `wrangler.jsonc` when `R2_BUCKET_NAME` is set at build time - the infra plugin sets it automatically when your app declares any `$storage`; for a manual build, set it yourself in the environment. R2 keys every object as `{prefix}/{tenantId}/{storage}/{fileId}` inside that one bucket - a storage is a prefix, not a bucket of its own. The leading prefix comes from `S3_KEY_PREFIX`, falling back to `APP_NAME`.
 
 ## Cron Triggers
 

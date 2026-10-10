@@ -336,7 +336,7 @@ This gives the same channel/handler code as Node, with a few v1 limitations wort
 
 **`exceptUserIds` is not honored on Cloudflare.** `reply()`'s and `emit()`'s `exceptConnectionIds` work as expected; `exceptUserIds` is silently ignored by the Cloudflare provider (it only tracks connections, not the user index Node maintains). Use `exceptConnectionIds` if you need to exclude specific clients.
 
-**Deployment is automatic.** `alepha build -t cloudflare` detects `$websocket` usage and generates the Durable Object binding and its SQLite migration into `wrangler.jsonc` - no manual wrangler configuration needed:
+**Deployment is automatic.** `alepha build --runtime workerd` detects `$websocket` usage and generates the Durable Object binding and its SQLite migration into `wrangler.jsonc` - no manual wrangler configuration needed:
 
 ```jsonc
 {
@@ -357,7 +357,7 @@ This gives the same channel/handler code as Node, with a few v1 limitations wort
 Deploy and test locally with:
 
 ```bash
-yarn alepha build -t cloudflare
+yarn alepha build --runtime workerd
 npx wrangler dev
 ```
 

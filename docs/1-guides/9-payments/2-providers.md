@@ -66,7 +66,11 @@ Stripe signs webhook payloads with HMAC-SHA256. `StripePaymentProvider.parseWebh
 
 Provision the webhook endpoint yourself using the Stripe SDK - `stripe.webhookEndpoints.create({ url, enabled_events })` where `url` is `${baseUrl}/api/payments/webhook`. Store the returned signing secret as `STRIPE_WEBHOOK_SECRET` on the deployed worker so `StripePaymentProvider.parseWebhook` can verify incoming payloads.
 
+<!-- docs-check-historical -->
+
 Earlier versions shipped an `AlephaCliPlatformStripePlugin` that registered a `PlatformHook` to do this during `alepha platform up`. That mechanism was removed: deploy frequency and webhook lifetime are different concerns. Webhook setup happens once per environment, not on every deploy - handle it from your provisioning code.
+
+<!-- /docs-check-historical -->
 
 ### Customer mapping
 

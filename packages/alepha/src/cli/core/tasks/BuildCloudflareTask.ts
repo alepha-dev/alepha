@@ -147,7 +147,7 @@ export class BuildCloudflareTask extends BuildTask {
     //
     // Consequence worth knowing: pointing wrangler at this config picks
     // the wrong worker and reports a baffling "Worker does not exist".
-    // Use the name printed by `alepha platform up`, e.g.
+    // Use the name printed by `alepha deploy`, e.g.
     // `wrangler tail my-app-production`. The file cannot carry a comment
     // saying so  -  example-ssr's build-artifacts spec pins it as strict
     // JSON-parseable.
@@ -768,7 +768,6 @@ export class BuildCloudflareTask extends BuildTask {
     // bundle the Worker cannot run.
     const workerdEntry = this.slices.entryFileName("workerd");
 
-    // Re-exports the room Durable Object class so wrangler's
     // Only the workerd slice exports native classes registered by the app graph.
     const doExport = this.hosts
       .map(
@@ -906,7 +905,7 @@ const bindEnv = (env) => {
 //
 // Cloudflare's CDN sits in front of an ORIGIN, not in front of a Worker: a
 // response this Worker generates is never stored, no matter what its
-// Cache-Control says. Measured against lore.alepha.dev before this existed  -
+// Cache-Control says. Measured against lore.alepha.dev before this existed -
 // \`/api/public/files/:id\` returned \`public, max-age=1y, immutable\` and no
 // \`cf-cache-status\` header at all, while a static asset on the same zone came
 // back \`cf-cache-status: HIT\`. So the header only ever reached browsers, and

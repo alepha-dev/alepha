@@ -1,7 +1,14 @@
 # Getting Started
 
-This guide takes you from zero to a running Alepha server in under five minutes.
-No Webpack, no Babel, no ESLint configuration.
+Create a full-stack app with an explicit Cloudflare production environment, then deploy it:
+
+```bash
+npx alepha init my-app --infra cf
+cd my-app
+npx alepha deploy
+```
+
+Initialization installs dependencies and writes configuration without cloud credentials. Deployment authenticates with Cloudflare and runs the full lifecycle. For local development without infra, omit `--infra`.
 
 ## Prerequisites
 
@@ -13,7 +20,7 @@ You need one of the following:
 ## Create a Project
 
 ```bash
-npx alepha@latest init my-app
+npx alepha init my-app --infra cf
 ```
 
 This creates a `my-app` directory with:
@@ -36,8 +43,7 @@ project, human or AI, already knows where things live. If you don't need the
 frontend, delete `src/web/`. A [preset](#presets) can add more on top of this
 base, but never moves it around.
 
-The flag that changes what is scaffolded is `--preset`; `--pm` (package
-manager) and `--force` (overwrite existing files) control how:
+`--preset` adds features, and `--infra cf` (also `--infra cloudflare`) adds the Cloudflare production environment. `--pm` selects the package manager; `--force` replaces scaffolded files. The same optional infra flag works with `npm create alepha`, without a provider prompt:
 
 ```bash
 npx alepha@latest init my-app --pm=bun
@@ -48,7 +54,7 @@ prompts at all - a CI, a Dockerfile, any script with no stdin - pass `--yes`,
 which answers every remaining question with its default:
 
 ```bash
-npm create alepha my-app -- --yes    # or -y
+npm create alepha my-app -- --yes --infra cloudflare    # or -y
 ```
 
 Flags still win over `--yes`, so `--yes --preset saas` is promptless too. The
@@ -196,7 +202,7 @@ App starts up just like in development mode, but without HMR and with better per
 > In production, default port is 3000 instead of 5173 to avoid conflicts with development servers.
 > `SERVER_PORT` environment variable can override this.
 
-### Build Targets
+### Runtime Slices
 
 Alepha adapts the build output based on where you deploy:
 
@@ -207,7 +213,7 @@ npm run build -- --runtime=bun         # Optimizes for Bun runtime
 npx alepha build --runtime=workerd
 ```
 
-Build targets and runtime can also be set in `alepha.config.ts`:
+Runtime slices can also be set in `alepha.config.ts`:
 
 ```typescript filename="alepha.config.ts"
 import { defineConfig } from "alepha/cli/config";
@@ -215,7 +221,6 @@ import { defineConfig } from "alepha/cli/config";
 export default defineConfig({
   build: {
     runtime: ["workerd"],
-    runtime: "workerd",
   },
 });
 ```
@@ -224,15 +229,15 @@ export default defineConfig({
 
 Once your app builds, you can deploy it to Cloudflare Workers in one command.
 
-Add the platform plugin to your config:
+`init --infra cf` already adds this configuration. For an existing project, register the infra plugin:
 
 ```typescript filename="alepha.config.ts"
 import { defineConfig } from "alepha/cli/config";
-import { cloudflare, platform } from "alepha/cli/platform";
+import { cloudflare, infra } from "alepha/cli/infra";
 
 export default defineConfig({
   plugins: [
-    platform({
+    infra({
       environments: {
         production: cloudflare(),
       },
@@ -244,7 +249,7 @@ export default defineConfig({
 Then deploy:
 
 ```bash
-npx alepha p up
+npx alepha deploy
 ```
 
 Alepha scans your code for primitives (`$entity`, `$storage`, `$job`, etc.), provisions the matching Cloudflare resources (D1, R2, Queue), builds for Workers, runs migrations, and deploys - all in one step.
@@ -252,10 +257,16 @@ Alepha scans your code for primitives (`$entity`, `$storage`, `$job`, etc.), pro
 Preview what will be created before deploying:
 
 ```bash
-npx alepha p plan
+npx alepha infra plan
 ```
 
-See the [Platform Plugin](/docs/cli-plugins-platform) guide for full configuration, secrets, monorepo support, and teardown.
+The default environment is `production`. Names are arbitrary explicit keys: add `staging`, `prod`, or another name under `environments`, and select it with `--env` (`-e`). Set `default: "prod"` if that key should be the default. An undeclared name fails before deployment.
+
+Operations read `.env.<env>` and its `.local` override, with process variables supplying missing values. The config helper only defaults `PUBLIC_URL` from `environments.production.options.domain` when `NODE_ENV` (or `MODE`) is `production` and no URL is set. It does not select a staging domain on import; set the staging URL explicitly.
+
+Plain `alepha build --runtime workerd` creates a Worker artifact without cloud credentials. `alepha infra build` uses the configured adapter and may look up existing bindings. `alepha infra deploy` authenticates and deploys an existing suitable artifact; use `alepha deploy` for the full pipeline.
+
+See the [Infra Plugin](/docs/cli-plugins-infra) guide for full configuration, secrets, monorepo support, and teardown.
 
 ## Project Structure
 

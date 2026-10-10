@@ -3,7 +3,7 @@
 ## Import
 
 ```typescript
-import { MemorySecretStore } from "alepha/cli/platform-lib";
+import { MemorySecretStore } from "alepha/cli/infra-lib";
 ```
 
 ## Overview

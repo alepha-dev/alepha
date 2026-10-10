@@ -1,0 +1,37 @@
+import { $inject, z } from "alepha";
+import { $channel, $room, $websocket, type WebSocketHandshake } from "alepha/websocket";
+
+import { ContractActors } from "./ContractActors.ts";
+
+export class RealtimeFixture {
+  protected readonly actors = __ACTOR__ ? $inject(ContractActors) : undefined;
+  public readonly chat = $channel({ path: "/ws/stateless", schema: { in: z.object({ type: z.text(), count: z.integer() }), out: z.object({ type: z.text() }) } });
+  public readonly world = $channel({ path: "/ws/world", schema: { in: z.object({ type: z.text(), count: z.integer().optional(), id: z.text().optional(), userId: z.text().optional(), hero: z.text().optional(), data: z.text().optional(), word: z.text().optional() }), out: z.object({ type: z.text() }) } });
+  public readonly socket = __SOCKET__ ? $websocket({
+    channel: this.chat, authorize: (request) => this.authorize(request),
+    handler: async (context) => {
+      const count = this.actors ? await this.actors.counter.get("socket").add() : 0;
+      await context.reply({ message: { type: "reply", count } });
+    },
+  }) : undefined;
+  public readonly room = __ROOM__ ? $room({
+    channel: this.world, authorize: (request) => this.authorize(request),
+    state: () => ({ moves: 0 }),
+    onJoin: (room, connection) => {
+      room.broadcast({ type: "joined", id: connection.id, userId: connection.userId, hero: connection.query?.hero ?? "", data: JSON.stringify(connection.data) });
+    },
+    onMessage: async (room, connection) => {
+      room.state.moves++;
+      connection.data.marker = "volatile";
+      const count = this.actors ? await this.actors.counter.get("room").add() : 0;
+      room.broadcast({ type: "message", count });
+    },
+    methods: {
+      inspect: (room) => ({ moves: room.state.moves, connections: room.connections.map((connection) => ({ id: connection.id, userId: connection.userId, query: connection.query, data: connection.data })) }),
+      announce: (room, word: string) => { room.broadcast({ type: "broadcast", word }); return room.size; },
+    },
+  }) : undefined;
+  protected authorize(request: WebSocketHandshake) {
+    return request.headers.authorization === "Bearer accepted" ? { userId: "fixture-user", roomId: "lobby" } : undefined;
+  }
+}
