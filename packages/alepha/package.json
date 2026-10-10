@@ -39,6 +39,14 @@
   "main": "./src/core/index.ts",
   "types": "./src/core/index.ts",
   "exports": {
+    "./actor": {
+      "types": "./src/actor/core/index.ts",
+      "react-native": "./src/actor/core/index.browser.ts",
+      "workerd": "./src/actor/core/index.workerd.ts",
+      "browser": "./src/actor/core/index.browser.ts",
+      "import": "./src/actor/core/index.ts",
+      "default": "./src/actor/core/index.ts"
+    },
     "./api/analytics": {
       "types": "./src/api/analytics/index.ts",
       "workerd": "./src/api/analytics/index.workerd.ts",
@@ -494,6 +502,14 @@
     "main": "./dist/core/index.js",
     "types": "./dist/core/index.d.ts",
     "exports": {
+      "./actor": {
+        "types": "./dist/actor/core/index.d.ts",
+        "react-native": "./dist/actor/core/index.browser.js",
+        "workerd": "./dist/actor/core/index.workerd.js",
+        "browser": "./dist/actor/core/index.browser.js",
+        "import": "./dist/actor/core/index.js",
+        "default": "./dist/actor/core/index.js"
+      },
       "./api/analytics": {
         "types": "./dist/api/analytics/index.d.ts",
         "workerd": "./dist/api/analytics/index.workerd.js",
