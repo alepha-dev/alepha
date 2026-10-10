@@ -71,6 +71,21 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@alepha/desktop@workspace:packages/@alepha/desktop":
+  version: 0.0.0-use.local
+  resolution: "@alepha/desktop@workspace:packages/@alepha/desktop"
+  dependencies:
+    "@types/bun": "npm:^1.4.2"
+    "@types/node": "npm:^26.6.4"
+    alepha: "npm:0.31.0"
+    tsdown: "npm:^0.23.0"
+    typescript: "npm:^7.0.2"
+    vitest: "npm:^5.0.3"
+  peerDependencies:
+    alepha: ^0.31.0
+  languageName: unknown
+  linkType: soft
+
 "@alepha/devtools@workspace:packages/@alepha/devtools":
   version: 0.0.0-use.local
   resolution: "@alepha/devtools@workspace:packages/@alepha/devtools"

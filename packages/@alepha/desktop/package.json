@@ -1,0 +1,77 @@
+{
+  "name": "@alepha/desktop",
+  "version": "0.31.0",
+  "description": "Native macOS window for a compiled Alepha app: a webview shell, a supervised server Worker on loopback, and alepha compile --desktop.",
+  "keywords": [
+    "alepha",
+    "bun",
+    "desktop",
+    "macos",
+    "typescript",
+    "webview"
+  ],
+  "homepage": "https://alepha.dev",
+  "license": "MIT",
+  "author": "Nicolas Foures",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alepha-dev/alepha.git"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "type": "module",
+  "main": "./src/core/index.ts",
+  "types": "./src/core/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/core/index.ts",
+      "import": "./src/core/index.ts",
+      "default": "./src/core/index.ts"
+    },
+    "./worker": {
+      "types": "./src/worker/index.ts",
+      "import": "./src/worker/index.ts",
+      "default": "./src/worker/index.ts"
+    },
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "main": "./dist/core/index.js",
+    "types": "./dist/core/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/core/index.d.ts",
+        "import": "./dist/core/index.js",
+        "default": "./dist/core/index.js"
+      },
+      "./worker": {
+        "types": "./dist/worker/index.d.ts",
+        "import": "./dist/worker/index.js",
+        "default": "./dist/worker/index.js"
+      },
+      "./package.json": "./package.json"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "test": "alepha test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.2",
+    "@types/node": "^26.6.4",
+    "alepha": "0.31.0",
+    "tsdown": "^0.23.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.3"
+  },
+  "peerDependencies": {
+    "alepha": "^0.31.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "llms": "https://alepha.dev/llms.txt"
+}

@@ -3,6 +3,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 
 import { Alepha } from "./Alepha.ts";
 import type { RunOptions } from "./interfaces/Run.ts";
+import type { RunHost } from "./interfaces/RunHost.ts";
 import type { Service } from "./interfaces/Service.ts";
 import { AlsProvider } from "./providers/AlsProvider.ts";
 
@@ -57,6 +58,16 @@ export const run = (
   }
 
   if (alepha.isServerless() || alepha.isViteDev() || env.ALEPHA_CLI_IMPORT) {
+    return alepha;
+  }
+
+  // A host (the @alepha/desktop Worker) owns start, stop and exit: nothing is
+  // scheduled and no signal is trapped here. See RunHost.
+  const host = (globalThis as any)[Symbol.for("alepha.run.host")] as
+    | RunHost
+    | undefined;
+  if (host) {
+    host.attach(alepha, opts);
     return alepha;
   }
 
