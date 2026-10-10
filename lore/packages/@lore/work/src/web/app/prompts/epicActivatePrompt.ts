@@ -54,11 +54,9 @@ The epic: {{url}}
 
 Do not start the next quest while the current one is red.
 
-Push the branch as you go rather than only at the end. If the project verifies on CI, that run is the source of truth and a green local check is not; pushing after each quest means a failure names the quest that caused it, instead of arriving at the end attached to the whole epic. You do not have to wait for it before starting the next quest.
-
 ## After the last quest
 
-1. Push, and wait for CI this time. Fix and push again until it is green.
+1. Verify the code: run the project's full check (its CLAUDE.md names it) on the branch. Fix and run it again until it is green.
 2. Only when it is green: merge the branch into main and push, then delete the branch locally and on the remote, and remove the worktree.
 3. File an outcome folio under the epic (\`folio_create\` with \`epic_number\` {{number}}): what shipped, where it diverged from the plan and why, what was left. It lands in the directory of the epic's other folios; pass \`directory_shortId\` only to put it somewhere else.
 

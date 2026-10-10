@@ -63,8 +63,9 @@ describe("epicActivatePromptDefault", () => {
     );
   });
 
-  it("closes with a green CI run, a merge and an outcome folio", () => {
-    expect(prompt).toContain("wait for CI this time");
+  it("closes with a green full check, a merge and an outcome folio", () => {
+    expect(prompt).toContain("Verify the code");
+    expect(prompt).not.toContain("CI");
     expect(prompt).toContain("merge the branch into main and push");
     expect(prompt).toContain("folio_create");
     expect(prompt).toContain("`epic_number` 41");
@@ -79,14 +80,12 @@ describe("epicActivatePromptDefault", () => {
   });
 
   /**
-   * Pushing per quest rather than once at the end is the whole reason this
-   * differs from the quest template: a failure that arrives at the end of an
-   * epic is attached to every quest in it at once.
+   * The gate is the project's full local check, not a CI run: pushing per
+   * quest to get one billed Verify runs on every push of every epic (#Q2640).
    */
-  it("pushes per quest, and makes the CI run the source of truth", () => {
-    expect(prompt).toContain("Push the branch as you go");
-    expect(prompt).toContain("that run is the source of truth");
-    expect(prompt).toContain("names the quest that caused it");
+  it("gates the merge on the full local check, not on CI", () => {
+    expect(prompt).not.toContain("Push the branch as you go");
+    expect(prompt).toContain("run the project's full check");
     expect(prompt).toContain("Only when it is green");
   });
 
