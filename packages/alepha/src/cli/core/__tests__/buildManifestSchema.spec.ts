@@ -6,7 +6,7 @@ import { Alepha, AlephaError } from "alepha";
 import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
 import { afterAll, describe, it } from "vitest";
 
-import { PlatformCommand } from "../../platform/commands/platform.ts";
+import { InfraCommand } from "../../infra/commands/infra.ts";
 import {
   type BuildManifest,
   buildManifestSchema,
@@ -49,7 +49,7 @@ describe("the build manifest schema", () => {
     /**
      * ⚠️ The defect the quest was filed for. `{}` is what `PackCommand.spec.ts`
      * writes as a manifest, and it used to sail through `readManifest`'s
-     * `try/catch` — which only ever covered an unreadable or unparseable file.
+     * `try/catch`  -  which only ever covered an unreadable or unparseable file.
      * `resources` then reached a deployer as `undefined` typed
      * `DetectedResources`, so every `hasX` read `undefined` and a deploy
      * provisioned nothing while reporting success.
@@ -377,7 +377,7 @@ describe("the build manifest schema", () => {
    * here and these cases use a real temporary directory.
    */
   describe("the deploy-side reader", () => {
-    class TestPlatformCommand extends PlatformCommand {
+    class TestPlatformCommand extends InfraCommand {
       public testReadManifest = this.readManifest.bind(this);
     }
 
@@ -406,7 +406,7 @@ describe("the build manifest schema", () => {
     });
 
     /**
-     * ⚠️ Without the schema this returned `{}` — truthy — and `resources`
+     * ⚠️ Without the schema this returned `{}`  -  truthy  -  and `resources`
      * flowed on as `undefined`. `null` is what the caller already knows how to
      * handle: it falls through to introspecting the app for real.
      */

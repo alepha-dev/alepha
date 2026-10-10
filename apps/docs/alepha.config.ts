@@ -1,5 +1,5 @@
 import { defineConfig } from "alepha/cli/config";
-import { cloudflare, platform } from "alepha/cli/platform";
+import { cloudflare, infra } from "alepha/cli/infra";
 
 import pkg from "../../packages/alepha/package.json" with { type: "json" };
 import { CheckDocsCommand } from "./scripts/check-docs.ts";
@@ -78,7 +78,7 @@ export default defineConfig({
     },
   },
   plugins: [
-    platform({
+    infra({
       // Worker `alepha-docs-production`: the name Lore Deploy gave it, so
       // `platform up` took the Worker and the apex domain over (#Q2576).
       project: "alepha",

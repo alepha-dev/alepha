@@ -4,15 +4,15 @@ Deploy your full-stack app to the cloud in one command. The platform plugin prov
 
 ## Quick Start
 
-Register the plugin in `alepha.config.ts` with the `platform()` helper:
+Register the plugin in `alepha.config.ts` with the `infra()` helper:
 
 ```typescript check filename=alepha.config.ts
 import { defineConfig } from "alepha/cli/config";
-import { cloudflare, platform } from "alepha/cli/platform";
+import { cloudflare, infra } from "alepha/cli/infra";
 
 export default defineConfig({
   plugins: [
-    platform({
+    infra({
       environments: {
         production: cloudflare({ domain: "myapp.com" }),
       },
@@ -37,7 +37,7 @@ The deployment lifecycle runs in a fixed order:
 authenticate → provision → build → migrate → deploy → secrets
 ```
 
-Each step is handled by an **adapter**, and an environment names its adapter by calling the adapter's factory: `cloudflare()` (Workers, recommended) and `bay()` (self-hosted) ship with `alepha/cli/platform`. There is no list of adapter names to extend: an adapter is an import, so [writing your own](#writing-an-adapter) needs nothing from the framework.
+Each step is handled by an **adapter**, and an environment names its adapter by calling the adapter's factory: `cloudflare()` (Workers, recommended) and `bay()` (self-hosted) ship with `alepha/cli/infra`. There is no list of adapter names to extend: an adapter is an import, so [writing your own](#writing-an-adapter) needs nothing from the framework.
 
 Alias: `alepha p` (or `alepha platform`).
 
@@ -53,7 +53,7 @@ Common flags accepted by most subcommands:
 
 ## Configuration
 
-`platform()` accepts the following options:
+`infra()` accepts the following options:
 
 | Option         | Type     | Default             | Description                                                                                          |
 | -------------- | -------- | ------------------- | ---------------------------------------------------------------------------------------------------- |
@@ -67,7 +67,7 @@ Common flags accepted by most subcommands:
 
 ### `cloudflare()`
 
-From `alepha/cli/platform`. Node only.
+From `alepha/cli/infra`. Node only.
 
 | Option         | Type                          | Description                                                                                                                 |
 | -------------- | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
@@ -78,7 +78,7 @@ From `alepha/cli/platform`. Node only.
 
 ### `bay()`
 
-From `alepha/cli/platform`. Node only.
+From `alepha/cli/infra`. Node only.
 
 | Option   | Type     | Description                                                                                                                                           |
 | -------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -88,11 +88,11 @@ From `alepha/cli/platform`. Node only.
 
 ```typescript check filename=alepha.config.ts
 import { defineConfig } from "alepha/cli/config";
-import { bay, cloudflare, platform } from "alepha/cli/platform";
+import { bay, cloudflare, infra } from "alepha/cli/infra";
 
 export default defineConfig({
   plugins: [
-    platform({
+    infra({
       name: "myapp",
       environments: {
         production: cloudflare({ domain: "myapp.com", jurisdiction: "eu" }),
@@ -128,7 +128,7 @@ All cloud resources follow a deterministic naming convention:
 
 ```txt
 <app>-<env>
-<project>-<app>-<env>   (with platform({ project }))
+<project>-<app>-<env>   (with infra({ project }))
 ```
 
 For an app named `acme` deployed to `production`:
@@ -143,7 +143,7 @@ For an app named `acme` deployed to `production`:
 
 Names are slugified - lowercase, alphanumeric and dashes, max 63 characters.
 
-When several apps share one Cloudflare account, `project` keeps their names apart. With `platform({ project: "alepha", name: "docs" })`, the Worker is `alepha-docs-production`. It only prefixes names; nothing else reads it.
+When several apps share one Cloudflare account, `project` keeps their names apart. With `infra({ project: "alepha", name: "docs" })`, the Worker is `alepha-docs-production`. It only prefixes names; nothing else reads it.
 
 ⚠️ Adding or removing `project` renames every resource of the app. The next `up` provisions fresh ones under the new names, an empty database included, and leaves the old ones in place. Read `alepha platform plan` before the first `up` after the change.
 
@@ -277,7 +277,7 @@ alepha p secrets diff           # compare local .env.{env} keys against the remo
 alepha p secrets apply          # push local secrets (upsert; never deletes) - --dry-run to preview
 ```
 
-Configure the store in `platform()`:
+Configure the store in `infra()`:
 
 | Option                       | Type       | Default             | Description                                               |
 | ---------------------------- | ---------- | ------------------- | --------------------------------------------------------- |
@@ -383,11 +383,11 @@ Deploys via `wrangler deploy` using the generated `dist/wrangler.jsonc`. Returns
 
 ```typescript check filename=alepha.config.ts
 import { defineConfig } from "alepha/cli/config";
-import { cloudflare, platform } from "alepha/cli/platform";
+import { cloudflare, infra } from "alepha/cli/infra";
 
 export default defineConfig({
   plugins: [
-    platform({
+    infra({
       environments: {
         production: cloudflare({
           domain: "myapp.com",
@@ -428,38 +428,36 @@ alepha p down --env tmp-pr-42   # no confirmation
 
 ## Writing an adapter
 
-An adapter is a class extending `PlatformAdapter<TOptions>`, with two statics: `id`, its display name in `plan` and `status`, and `options`, the schema its environment's options are validated against. It reads them from `ctx.options`.
+An adapter is a class extending `InfraAdapter<TOptions>`, with two statics: `id`, its display name in `plan` and `status`, and `options`, the schema its environment's options are validated against. It reads them from `ctx.options`.
 
 ```typescript check filename=src/ExampleAdapter.ts
 import { $module, z } from "alepha";
 import {
   type EnvironmentDescriptor,
-  PlatformAdapter,
-  type PlatformContext,
-  type PlatformState,
-} from "alepha/cli/platform-lib";
+  InfraAdapter,
+  type InfraContext,
+  type InfraState,
+} from "alepha/cli/infra-lib";
 
 export interface ExampleOptions {
   region: string;
 }
 
-export class ExampleAdapter extends PlatformAdapter<ExampleOptions> {
+export class ExampleAdapter extends InfraAdapter<ExampleOptions> {
   static readonly id = "example";
   static readonly options = z.object({ region: z.text() });
 
-  async authenticate(ctx: PlatformContext<ExampleOptions>): Promise<void> {
+  async authenticate(ctx: InfraContext<ExampleOptions>): Promise<void> {
     // Never prompt: `up` runs in CI.
   }
 
-  async build(ctx: PlatformContext<ExampleOptions>): Promise<void> {}
+  async build(ctx: InfraContext<ExampleOptions>): Promise<void> {}
 
-  async deploy(
-    ctx: PlatformContext<ExampleOptions>,
-  ): Promise<string | undefined> {
+  async deploy(ctx: InfraContext<ExampleOptions>): Promise<string | undefined> {
     return `https://${ctx.project}.${ctx.options.region}.example.com`;
   }
 
-  async inspect(): Promise<PlatformState> {
+  async inspect(): Promise<InfraState> {
     return {
       workers: [],
       databases: [],
@@ -488,9 +486,9 @@ export const example = (
 
 Three rules keep it a good citizen:
 
-- **Its own `$module`, with no `$command`.** `platform()` registers each environment's adapter class when the config loads, which registers the module that declares it. A command declared in that module would appear in `alepha --help`.
+- **Its own `$module`, with no `$command`.** `infra()` registers each environment's adapter class when the config loads, which registers the module that declares it. A command declared in that module would appear in `alepha --help`.
 - **The factory's declared return type is the generic `EnvironmentDescriptor`**, so a published `.d.ts` names neither the adapter class nor anything it injects.
-- **Secrets ride the deploy.** The pipeline runs `deploy` then `secrets`, so an adapter pushes them inside `deploy()` and leaves `secrets()` empty, or the new build boots once without them. `resolveSecretKeySet` and `selectSecrets` from `alepha/cli/platform-lib` resolve the same key set every adapter uses.
+- **Secrets ride the deploy.** The pipeline runs `deploy` then `secrets`, so an adapter pushes them inside `deploy()` and leaves `secrets()` empty, or the new build boots once without them. `resolveSecretKeySet` and `selectSecrets` from `alepha/cli/infra-lib` resolve the same key set every adapter uses.
 
 Override `provision`, `migrate`, `login`, `logout` or `exportDb` when the target has one, and set `controlsDomain = false` when the adapter does not put the environment's domain into effect itself.
 

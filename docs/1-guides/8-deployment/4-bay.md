@@ -1,7 +1,7 @@
 # Bay Deployment
 
 [Bay](https://github.com/alepha-dev/bay) is a self-hosted application server for Alepha apps. Where
-Cloudflare gives you someone else's serverless platform, Bay runs your apps as ordinary long-lived
+Cloudflare gives you someone else's serverless infra, Bay runs your apps as ordinary long-lived
 processes on a machine you own, with TLS, rollback and process isolation handled for you.
 
 This page covers the framework's side: the `bay()` adapter of `alepha platform`, which deploys an app
@@ -36,7 +36,7 @@ run, so one reaching Bay would deploy, never boot, and report only "never became
 ## Configuration
 
 ```typescript
-platform({
+infra({
   environments: {
     production: bay({
       host: "deploy@bay.example.com",
@@ -165,7 +165,7 @@ the machine running a deploy has other people's credentials in its environment -
 comes from `process.env`**: an undeclared variable is never looked up, so it can never travel. With
 no manifest and no `.env.<env>` file there is no allowlist at all, and nothing is pushed.
 
-`platform({ secrets: { keys: [...] } })` in `alepha.config.ts` overrides the allowlist outright - to
+`infra({ secrets: { keys: [...] } })` in `alepha.config.ts` overrides the allowlist outright - to
 narrow it, or to add a key the app reads through `process.env` rather than `$env`.
 
 **They travel with the deploy, not after it.** The values are staged to a 0600 file on the host and
@@ -262,11 +262,11 @@ maintain infrastructure config by hand on either.
 ```typescript
 // alepha.config.ts
 import { defineConfig } from "alepha/cli/config";
-import { bay, platform } from "alepha/cli/platform";
+import { bay, infra } from "alepha/cli/infra";
 
 export default defineConfig({
   plugins: [
-    platform({
+    infra({
       environments: {
         production: bay({
           host: "deploy@bay.example.com",

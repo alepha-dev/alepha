@@ -172,7 +172,7 @@ export const buildManifestSchema = z
      * `workerd` slice, absent otherwise.
      *
      * Lore Deploy regenerates `wrangler.jsonc` and the worker entry from the
-     * manifest alone (`PlatformOrchestrator.up({ prebuilt: true })` inside its
+     * manifest alone (`InfraOrchestrator.up({ prebuilt: true })` inside its
      * own Worker), with no app to introspect, so everything that regeneration
      * cannot derive is captured here at build time.
      */

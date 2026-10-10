@@ -3,7 +3,7 @@
 ## Import
 
 ```typescript
-import { GitHubSecretStore } from "alepha/cli/platform-lib";
+import { GitHubSecretStore } from "alepha/cli/infra-lib";
 ```
 
 ## Overview

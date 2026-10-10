@@ -228,11 +228,11 @@ Add the platform plugin to your config:
 
 ```typescript filename="alepha.config.ts"
 import { defineConfig } from "alepha/cli/config";
-import { cloudflare, platform } from "alepha/cli/platform";
+import { cloudflare, infra } from "alepha/cli/infra";
 
 export default defineConfig({
   plugins: [
-    platform({
+    infra({
       environments: {
         production: cloudflare(),
       },

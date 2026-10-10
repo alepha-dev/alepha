@@ -6,7 +6,7 @@
  */
 export const alephaConfigTs = () => {
   return `import { defineConfig } from "alepha/cli/config";
-// import { cloudflare, platform } from "alepha/cli/platform";
+// import { cloudflare, infra } from "alepha/cli/infra";
 
 export default defineConfig({
   //
@@ -19,14 +19,14 @@ export default defineConfig({
   // How \`alepha build\` packages dist/. Unset, you get "bare": the plain
   // Node server you run with \`node dist/index.node.js\` (or \`node dist\`).
   //
-  //   target: "bare"        dist/ only — deploy it yourself           (default)
+  //   target: "bare"        dist/ only  -  deploy it yourself           (default)
   //          | "docker"     also writes a Dockerfile for dist/
   //          | "cloudflare" Workers bundle + wrangler config (forces workerd)
   //          | "static"     prerendered client only, no server
   //
   //   runtime: "node"       (default) | "bun" | "workerd"
   //
-  // Pick "docker" and \`alepha build\` leaves a Dockerfile beside dist/ — that
+  // Pick "docker" and \`alepha build\` leaves a Dockerfile beside dist/  -  that
   // is the whole container story, there is nothing else to write. For CI,
   // \`alepha verify\` is the one command worth running on a pull request: it
   // chains clean, lint, typecheck, test, migration check and build.
@@ -48,9 +48,9 @@ export default defineConfig({
   // Deploy to Cloudflare in ~10s: \`alepha platform up --env production\`
   // Requires \`wrangler login\` once. D1, R2, KV, Queues and cron triggers
   // are auto-provisioned from your $repository / $storage / $cache / $job
-  // declarations — no wrangler.toml to maintain.
+  // declarations  -  no wrangler.toml to maintain.
   // plugins: [
-  //   platform({
+  //   infra({
   //     environments: {
   //       production: cloudflare({ domain: "myapp.com" }),
   //       preview: cloudflare(), // workers.dev subdomain

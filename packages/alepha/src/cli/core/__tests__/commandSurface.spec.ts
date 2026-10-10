@@ -1,4 +1,5 @@
 import { Alepha } from "alepha";
+import { AlephaInfraLibPlugin } from "alepha/cli/infra-lib";
 import { AlephaCommand, CliProvider } from "alepha/command";
 import { describe, expect, it } from "vitest";
 
@@ -43,6 +44,11 @@ describe("the CLI's build tasks and its commands", () => {
     // `commands`, not `getTopLevelCommands`: the latter subtracts by
     // `children`, so a command merely absent from the help still runs.
     expect(cli.commands.map((command) => command.name)).toEqual([]);
+  });
+
+  it("registers no commands for the infrastructure library alone", () => {
+    const cli = cliOf((alepha) => alepha.with(AlephaInfraLibPlugin));
+    expect(cli.commands).toEqual([]);
   });
 
   it("keeps every one of them when the full CLI module is registered", () => {

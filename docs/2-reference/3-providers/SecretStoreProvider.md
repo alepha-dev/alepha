@@ -3,7 +3,7 @@
 ## Import
 
 ```typescript
-import { SecretStoreProvider } from "alepha/cli/platform-lib";
+import { SecretStoreProvider } from "alepha/cli/infra-lib";
 ```
 
 ## Overview
