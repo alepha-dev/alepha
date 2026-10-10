@@ -227,6 +227,8 @@ alepha infra build --env production
 
 Authenticates, then calls the adapter's deploy step only. It skips the CLI's separate provision, build, migrate and secrets steps. Cloudflare requires a readable `dist/manifest.json` with a workerd slice, the generated Worker entry and `dist/wrangler.jsonc`. Bay requires a readable manifest with a Node entry or a static public directory. Missing or unsuitable artifacts fail before transport with build/full-deploy guidance. External adapters can use source context and are not forced to have local `dist/`.
 
+`--json` is accepted here but currently adds no CLI summary or synthesized URL; adapter output remains the deploy output. Root `alepha deploy --json` emits `status`, `project`, `env`, `urls` and an optional controlled `domain`.
+
 This is a boundary on local orchestration, not remote behavior: Bay still packs/uploads and its host provisions resources and runs startup migrations. An external Lore adapter may still invoke remote latest-build and secret attachment behavior. Those policies are unchanged.
 
 ```bash
@@ -528,6 +530,7 @@ This is a source-breaking rename with no legacy command aliases or import barrel
 | `PlatformContext`                                                         | `InfraContext`                                               |
 | `PlatformState`                                                           | `InfraState`                                                 |
 | `PlatformInspector`                                                       | `InfraInspector`                                             |
+| `ResolvedPlatformConfig`                                                  | `ResolvedInfraConfig`                                        |
 | `PlatformOrchestrator`                                                    | `InfraOrchestrator`                                          |
 | `PlatformCacheProvider`                                                   | `InfraCacheProvider`                                         |
 | `PlatformCommand`                                                         | `InfraCommand`                                               |

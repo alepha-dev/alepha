@@ -8,7 +8,6 @@
  */
 import { $module } from "alepha";
 
-import { AlephaCliInfraCommands } from "../infra/commands.ts";
 import { appEntryOptions } from "./atoms/appEntryOptions.ts";
 import { buildOptions } from "./atoms/buildOptions.ts";
 import { desktopOptions } from "./atoms/desktopOptions.ts";
@@ -194,7 +193,7 @@ export const AlephaCliServices = $module({
  */
 export const AlephaCli = $module({
   name: "alepha.cli",
-  imports: [AlephaCliServices, AlephaCliInfraCommands],
+  imports: [AlephaCliServices],
   atoms: [appEntryOptions, changelogOptions, devOptions, metaOptions],
   services: [
     AlephaCliExtensionProvider,

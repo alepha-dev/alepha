@@ -260,7 +260,7 @@ export class BuildManifestTask extends BuildTask {
       A key declared only by a provider that exists only on workerd is
       therefore absent from it, and since this list is the allowlist the
       deploy `secrets` step pushes from, such a key can never reach the
-      worker. The operator sets it in `.env.production`, `platform up` reports
+      worker. The operator sets it in `.env.production`, `alepha deploy` reports
       success, and the worker boots without it.
 
       That is the same node-cannot-see-workerd hazard the bucket and dataset

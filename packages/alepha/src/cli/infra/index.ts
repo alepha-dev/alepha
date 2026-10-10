@@ -116,3 +116,10 @@ export { bay, cloudflare };
 
 export * from "./commands/infra.ts";
 export * from "./commands/SecretsCommand.ts";
+
+/**
+ * Shared command module loaded by the Node CLI during configuration.
+ *
+ * @internal
+ */
+export { AlephaCliInfraCommands };

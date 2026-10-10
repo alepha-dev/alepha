@@ -2,14 +2,16 @@ import { randomBytes } from "node:crypto";
 import { join } from "node:path";
 
 import { $inject, $store, AlephaError } from "alepha";
+import {
+  buildOptions,
+  buildManifestSchema,
+  BuildSlices,
+  PackageManagerUtils,
+} from "alepha/cli";
 import { EnvUtils, type RunnerMethod } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
 
-import { buildOptions } from "../../core/atoms/buildOptions.ts";
-import { buildManifestSchema } from "../../core/schemas/buildManifest.ts";
-import { BuildSlices } from "../../core/services/BuildSlices.ts";
-import { PackageManagerUtils } from "../../core/services/PackageManagerUtils.ts";
 import { infraOptions } from "../atoms/infraOptions.ts";
 import {
   type BayEnvironmentOptions,
@@ -59,7 +61,7 @@ export class BayAdapter extends InfraAdapter<BayEnvironmentOptions> {
   // The workspace's resolved build configuration, read for one question only:
   // whether this app is a static site. See `build` and `secrets`.
   protected readonly buildOptions = $store(buildOptions);
-  // Read for `platform.secrets.keys` alone  -  the explicit allowlist override,
+  // Read for `infra().secrets.keys` alone  -  the explicit allowlist override,
   // the same one `CloudflareAdapter` honours.
   protected readonly options = $store(infraOptions);
 
@@ -897,7 +899,7 @@ export class BayAdapter extends InfraAdapter<BayEnvironmentOptions> {
     platformOwned: string[];
   }> {
     // The key set every adapter resolves the same way (`../secretKeys.ts`):
-    // `platform.secrets.keys`, else the manifest's `env` (or the `.env.<env>`
+    // `infra().secrets.keys`, else the manifest's `env` (or the `.env.<env>`
     // keys) unioned with the `.env.<env>.local` keys.
     const { keys, envVars } = await resolveSecretKeySet({
       fs: this.fs,

@@ -8,9 +8,20 @@ export class AlephaCliExtensionProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly fs = $inject(FileSystemProvider);
 
+  /**
+   * Load the built-in Node commands before reading app configuration or help.
+   * A dynamic module edge keeps command-free build services usable from an
+   * adapter without a constant-initialization cycle through the CLI barrel.
+   */
+  protected async loadInfraCommands(): Promise<void> {
+    const { AlephaCliInfraCommands } = await import("alepha/cli/infra");
+    this.alepha.with(AlephaCliInfraCommands);
+  }
+
   protected readonly onConfigure = $hook({
     on: "configure",
     handler: async () => {
+      await this.loadInfraCommands();
       const argv =
         this.alepha.store.get(cliOptions)?.argv ?? process.argv.slice(2);
       // Infra help is built into the Node CLI and must never evaluate app config.

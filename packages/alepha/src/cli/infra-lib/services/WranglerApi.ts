@@ -1,9 +1,7 @@
 import { $inject, AlephaError } from "alepha";
+import { AlephaCliUtils, PackageManagerUtils } from "alepha/cli";
 import { $logger } from "alepha/logger";
 import { ShellProvider } from "alepha/system";
-
-import { AlephaCliUtils } from "../../core/services/AlephaCliUtils.ts";
-import { PackageManagerUtils } from "../../core/services/PackageManagerUtils.ts";
 
 /**
  * Wraps wrangler CLI commands that are kept as shell-outs.

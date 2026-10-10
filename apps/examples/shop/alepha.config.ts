@@ -2,7 +2,7 @@ import { defineConfig } from "alepha/cli/config";
 import { cloudflare, infra } from "alepha/cli/infra";
 
 /*
- * shop.alepha.dev is a demo: `deploy-shop-production` runs `platform up` on
+ * shop.alepha.dev is a demo: `deploy-shop-production` runs `alepha deploy` on
  * every green main, its data is disposable, and its secrets (APP_SECRET and
  * the Stripe test keys) come from the `shop-production` GitHub environment.
  */

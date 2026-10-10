@@ -6,6 +6,7 @@ import { CliProvider } from "alepha/command";
 import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
 import { describe, it } from "vitest";
 
+import { AlephaCliExtensionProvider } from "../../core/providers/AlephaCliExtensionProvider.ts";
 import {
   InfraAdapter,
   type InfraContext,
@@ -99,12 +100,17 @@ class TestCli extends CliProvider {
   readonly roots = this.getTopLevelCommands.bind(this);
 }
 
-const setup = (configured = true) => {
+class TestExtension extends AlephaCliExtensionProvider {
+  public loadBuiltIns = this.loadInfraCommands.bind(this);
+}
+
+const setup = async (configured = true) => {
   const alepha = Alepha.create()
     .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
     .with({ provide: CliProvider, use: TestCli })
     .with({ provide: InfraCommand, use: TestInfraCommand })
     .with(AlephaCli);
+  await alepha.inject(TestExtension).loadBuiltIns();
   if (configured) {
     defineConfig({
       plugins: [
@@ -127,11 +133,11 @@ const setup = (configured = true) => {
 };
 
 describe("Infra and Deploy lifecycle", () => {
-  it("discovers both roots once with or without configured infra", ({
+  it("discovers both roots once with or without configured infra", async ({
     expect,
   }) => {
     for (const configured of [false, true]) {
-      const { cli } = setup(configured);
+      const { cli } = await setup(configured);
       const names = cli.roots().map((entry) => entry.name);
       expect(names.filter((name) => name === "deploy")).toHaveLength(1);
       expect(names.filter((name) => name === "infra")).toHaveLength(1);
@@ -143,7 +149,7 @@ describe("Infra and Deploy lifecycle", () => {
   it("shows bare infra help without config or source boot", async ({
     expect,
   }) => {
-    const { cli, command, adapter } = setup(false);
+    const { cli, command, adapter } = await setup(false);
     await cli.run(command.infra, { root: "/project" });
     expect(command.boots).toEqual([]);
     expect(adapter.calls).toEqual([]);
@@ -152,7 +158,7 @@ describe("Infra and Deploy lifecycle", () => {
   it("requires canonical config before any operation or boot", async ({
     expect,
   }) => {
-    const { cli, command, adapter } = setup(false);
+    const { cli, command, adapter } = await setup(false);
     await expect(cli.run(command.deploy, { root: "/project" })).rejects.toThrow(
       /defineConfig[\s\S]*alepha\/cli\/infra[\s\S]*production: cloudflare/,
     );
@@ -163,7 +169,7 @@ describe("Infra and Deploy lifecycle", () => {
   it("refuses an empty explicit environment map with canonical guidance", async ({
     expect,
   }) => {
-    const { alepha, cli, command, adapter } = setup();
+    const { alepha, cli, command, adapter } = await setup();
     alepha.set(infraOptions, { environments: {} });
     await expect(cli.run(command.deploy, { root: "/project" })).rejects.toThrow(
       /Missing infra configuration/,
@@ -182,7 +188,7 @@ describe("Infra and Deploy lifecycle", () => {
     it(`runs the complete existing pipeline for ${argv || "the default"}`, async ({
       expect,
     }) => {
-      const { cli, command, adapter } = setup();
+      const { cli, command, adapter } = await setup();
       await cli.run(command.deploy, { root: "/project", argv });
       expect(adapter.calls).toEqual([
         "authenticate",
@@ -213,7 +219,7 @@ describe("Infra and Deploy lifecycle", () => {
     "secrets",
   ]) {
     it(`stops the full pipeline when ${step} fails`, async ({ expect }) => {
-      const { cli, command, adapter } = setup();
+      const { cli, command, adapter } = await setup();
       adapter.fail = step;
       await expect(
         cli.run(command.deploy, { root: "/project" }),
@@ -233,7 +239,7 @@ describe("Infra and Deploy lifecycle", () => {
   it("honors an explicitly configured arbitrary default environment", async ({
     expect,
   }) => {
-    const { alepha, cli, command, adapter } = setup();
+    const { alepha, cli, command, adapter } = await setup();
     alepha.set(infraOptions, {
       name: "demo",
       default: "prod",
@@ -249,7 +255,7 @@ describe("Infra and Deploy lifecycle", () => {
   it("keeps granular deploy at authentication and deployment only", async ({
     expect,
   }) => {
-    const { cli, command, adapter } = setup();
+    const { cli, command, adapter } = await setup();
     await cli.run(command.granularDeploy, { root: "/project" });
     expect(adapter.calls).toEqual(["authenticate", "deploy"]);
     expect(command.boots).toEqual([{ prebuilt: false }]);
@@ -261,7 +267,7 @@ describe("Infra and Deploy lifecycle", () => {
   it("keeps granular build at the adapter build method only", async ({
     expect,
   }) => {
-    const { cli, command, adapter } = setup();
+    const { cli, command, adapter } = await setup();
     await cli.run(command.granularBuild, { root: "/project" });
     expect(adapter.calls).toEqual(["build"]);
   });
@@ -269,7 +275,7 @@ describe("Infra and Deploy lifecycle", () => {
   it("requires explicit env for login/logout/down and rejects invalid inputs before mutation", async ({
     expect,
   }) => {
-    const { cli, command, adapter } = setup();
+    const { cli, command, adapter } = await setup();
     for (const entry of [command.login, command.logout, command.teardown]) {
       await expect(cli.run(entry, { root: "/project" })).rejects.toThrow(
         /--env is required/,

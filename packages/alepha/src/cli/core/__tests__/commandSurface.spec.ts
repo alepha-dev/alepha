@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import { buildOptions } from "../atoms/buildOptions.ts";
 import { AlephaCli, AlephaCliServices } from "../index.ts";
+import { AlephaCliExtensionProvider } from "../providers/AlephaCliExtensionProvider.ts";
 import { BuildCloudflareTask } from "../tasks/BuildCloudflareTask.ts";
 
 /**
@@ -21,6 +22,10 @@ import { BuildCloudflareTask } from "../tasks/BuildCloudflareTask.ts";
  * asserts the same property from the consumer's side. This half fails in the package that caused it, so the
  * next person to add a task learns the rule where the task is written.
  */
+class TestExtension extends AlephaCliExtensionProvider {
+  public loadBuiltIns = this.loadInfraCommands.bind(this);
+}
+
 class TestCliProvider extends CliProvider {
   public testGetTopLevelCommands = this.getTopLevelCommands.bind(this);
 }
@@ -51,11 +56,14 @@ describe("the CLI's build tasks and its commands", () => {
     expect(cli.commands).toEqual([]);
   });
 
-  it("keeps every one of them when the full CLI module is registered", () => {
+  it("keeps every one of them when the full CLI configures", async () => {
+    let container: Alepha | undefined;
     const cli = cliOf((alepha) => {
+      container = alepha;
       alepha.with(AlephaCommand).with(AlephaCli);
     });
 
+    await container!.inject(TestExtension).loadBuiltIns();
     const names = cli.commands.map((command) => command.name);
     for (const command of [
       "deploy",

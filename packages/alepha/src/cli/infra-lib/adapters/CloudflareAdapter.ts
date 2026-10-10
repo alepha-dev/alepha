@@ -7,18 +7,18 @@ import {
   AlephaError,
   type Alepha as AlephaInstance,
 } from "alepha";
+import {
+  type BuildManifest,
+  buildManifestSchema,
+  BuildCloudflareTask,
+  type BuildTaskContext,
+} from "alepha/cli";
 import { EnvUtils, Runner, type RunnerMethod } from "alepha/command";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
 import { S3mini } from "s3mini";
 
-import {
-  type BuildManifest,
-  buildManifestSchema,
-} from "../../core/schemas/buildManifest.ts";
-import { BuildCloudflareTask } from "../../core/tasks/BuildCloudflareTask.ts";
-import type { BuildTaskContext } from "../../core/tasks/BuildTask.ts";
 import { infraOptions } from "../atoms/infraOptions.ts";
 import { InfraCacheProvider } from "../providers/InfraCacheProvider.ts";
 import {
@@ -650,7 +650,7 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
     secrets: Record<string, string>;
     vars: Record<string, string>;
   }> {
-    // The key set: `platform.secrets.keys`, else the manifest's `env` (or the
+    // The key set: `infra().secrets.keys`, else the manifest's `env` (or the
     // `.env.<env>` keys) unioned with the `.env.<env>.local` keys. Shared with
     // every adapter (`../secretKeys.ts`); the value resolves from
     // `.env.<env>[.local]` first, then `process.env`, so ambient runner vars
@@ -697,7 +697,7 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
     //
     // The allowlist is intersected rather than trusted wholesale: `variables`
     // is part of the manifest's allowlist, but `keys` may come from
-    // `platform.secrets.keys` or `.env.<env>.local` instead, and a key an
+    // `infra().secrets.keys` or `.env.<env>.local` instead, and a key an
     // orchestrator injected is not something the app vouched for.
     const publicKeys = new Set([
       ...CloudflareAdapter.ALWAYS_PUBLIC_KEYS,

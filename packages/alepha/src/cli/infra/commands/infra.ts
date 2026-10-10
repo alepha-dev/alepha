@@ -1,4 +1,7 @@
 import { $inject, AlephaError, z } from "alepha";
+import { type AppEntry, AppEntryProvider } from "alepha/cli";
+import { ViteBuildProvider } from "alepha/cli";
+import { type BuildManifest, buildManifestSchema } from "alepha/cli";
 import {
   BayAdapter,
   CloudflareAdapter,
@@ -16,15 +19,6 @@ import { $command, EnvUtils, type RunnerMethod } from "alepha/command";
 import { ConsoleColorProvider } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
 
-import {
-  type AppEntry,
-  AppEntryProvider,
-} from "../../core/providers/AppEntryProvider.ts";
-import { ViteBuildProvider } from "../../core/providers/ViteBuildProvider.ts";
-import {
-  type BuildManifest,
-  buildManifestSchema,
-} from "../../core/schemas/buildManifest.ts";
 import { SecretsCommand } from "./SecretsCommand.ts";
 
 export class InfraCommand {

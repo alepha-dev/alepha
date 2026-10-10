@@ -1,14 +1,14 @@
 import { $inject, Alepha, AlephaError } from "alepha";
+import {
+  type BuildManifest,
+  buildManifestSchema,
+  BuildCloudflareTask,
+} from "alepha/cli";
 import type { RunnerMethod } from "alepha/command";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
 
-import {
-  type BuildManifest,
-  buildManifestSchema,
-} from "../../core/schemas/buildManifest.ts";
-import { BuildCloudflareTask } from "../../core/tasks/BuildCloudflareTask.ts";
 import {
   type EnvironmentOptions,
   environmentOptionsSchema,

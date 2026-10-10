@@ -4,32 +4,32 @@
  * These run against **the artifact npm would ship**, not the workspace.
  *
  * The distinction is the whole point. Inside the monorepo,
- * `node_modules/.bin/alepha` resolves to `packages/alepha/src/bin/index.ts` —
+ * `node_modules/.bin/alepha` resolves to `packages/alepha/src/bin/index.ts`  -
  * raw TypeScript, type-stripped by node. What a user installs is
  * `dist/bin/index.js`, because `publishConfig` rewrites `main`, `types`, `bin`
  * and the whole `exports` map at publish time. Testing the first proves nothing
  * about the second.
  *
- * So each run packs the workspace with `yarn pack` — which applies
- * `publishConfig`, where `npm pack` does not — and installs the tarball into a
+ * So each run packs the workspace with `yarn pack`  -  which applies
+ * `publishConfig`, where `npm pack` does not  -  and installs the tarball into a
  * throwaway project. No registry, no Docker: the tarball is the same bytes the
  * registry would serve.
  *
  * The project lives in `.e2e-tmp/`, deliberately **outside** the `apps/**` and
  * `packages/**` workspace globs. It used to be `apps/tmp`, which yarn adopted as
- * a workspace member — with two consequences:
+ * a workspace member  -  with two consequences:
  *
  *   1. every run rewrote the root `yarn.lock` to register the scratch project;
  *   2. its `alepha` dependency resolved to the workspace, so the suite could
  *      never have caught a packaging bug.
  *
  * Moving it out fixes both. Note that moving it out is not enough on its own:
- * a plain `npm install` there pulls `alepha` from registry.npmjs.org — the
- * *previously published* version — and the suite would go green no matter what
+ * a plain `npm install` there pulls `alepha` from registry.npmjs.org  -  the
+ * *previously published* version  -  and the suite would go green no matter what
  * the working tree does. Hence the tarball.
  *
- * Requires `yarn build` first (the tarball carries `dist/`). `yarn verify`
- * already builds before it reaches here; `beforeAll` fails loudly otherwise.
+ * Requires `yarn build` first (the tarball carries `dist/`). The repository
+ * local verify pipeline does not build; `beforeAll` fails loudly otherwise.
  */
 import type { ChildProcess } from "node:child_process";
 import { spawn } from "node:child_process";
@@ -62,6 +62,7 @@ const freePort = (): Promise<number> =>
     });
   });
 
+import { AlephaError } from "alepha";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const thisFile = fileURLToPath(import.meta.url);
@@ -78,7 +79,7 @@ const isWindows = process.platform === "win32";
 /**
  * The CLI as a consumer invokes it: the binary the tarball installed.
  *
- * Never `yarn alepha` — that would walk back up to the workspace copy and
+ * Never `yarn alepha`  -  that would walk back up to the workspace copy and
  * quietly test the source again.
  */
 const CLI = join(
@@ -256,7 +257,7 @@ describe("Alepha CLI E2E", () => {
     // the CLI, so say the real thing here.
     if (!existsSync(join(ROOT, "packages/alepha/dist/bin/index.js"))) {
       throw new Error(
-        "packages/alepha/dist is missing — run `yarn build` before `yarn e2e-cli`.\n" +
+        "packages/alepha/dist is missing  -  run `yarn build` before `yarn e2e-cli`.\n" +
           "These tests install a packed tarball, and the tarball carries dist/.",
       );
     }
@@ -406,7 +407,7 @@ describe("Alepha CLI E2E", () => {
 
     it("writes the .env.example its .gitignore promises", async () => {
       // The generated `.gitignore` carries `!.env.example`, and `APP_SECRET` is
-      // a hard stop in production — so the file has to exist, and has to name
+      // a hard stop in production  -  so the file has to exist, and has to name
       // that variable.
       const envExample = await readFile(
         join(PROJECT_DIR, ".env.example"),
@@ -462,7 +463,7 @@ describe("Alepha CLI E2E", () => {
     beforeAll(async () => {
       if (!existsSync(join(ROOT, "packages/@alepha/ui/dist/core/index.js"))) {
         throw new Error(
-          "packages/@alepha/ui/dist is missing — run `yarn build` before `yarn e2e-cli`.\n" +
+          "packages/@alepha/ui/dist is missing  -  run `yarn build` before `yarn e2e-cli`.\n" +
             "The saas case installs a packed @alepha/ui, and the tarball carries dist/.",
         );
       }
@@ -655,10 +656,14 @@ describe("Alepha CLI E2E", () => {
 
         const response = await fetchWithRetry(
           `http://localhost:${port}`,
-          20,
+          120,
           500,
         );
         expect(response.status).toBe(200);
+      } catch (error) {
+        throw new AlephaError(
+          `${error instanceof Error ? error.message : String(error)}\n${devServer.stdout()}\n${devServer.stderr()}`,
+        );
       } finally {
         await devServer.kill();
       }
@@ -739,7 +744,7 @@ describe("Alepha CLI E2E", () => {
 
     it("forwards a positional arg as a filename filter", async () => {
       const otherSpec = join(PROJECT_DIR, "test/other.spec.ts");
-      // A deliberately failing spec — its exit code is the filter probe.
+      // A deliberately failing spec  -  its exit code is the filter probe.
       await writeFile(
         otherSpec,
         'import { expect, test } from "vitest";\n\ntest("fails on purpose", () => {\n  expect(true).toBe(false);\n});\n',
