@@ -11,6 +11,12 @@ const config: CapacitorConfig = {
       launchAutoHide: true,
       launchShowDuration: 8000,
     },
+    CapacitorUpdater: {
+      autoUpdate: false,
+      updateUrl: "",
+      statsUrl: "",
+      channelUrl: "",
+    },
   },
 };
 
