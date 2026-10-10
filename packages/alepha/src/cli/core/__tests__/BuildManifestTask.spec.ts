@@ -1,5 +1,6 @@
 import { Alepha, AlephaError } from "alepha";
 import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
+import { WebSocketHost } from "alepha/websocket";
 import { describe, expect, it } from "vitest";
 
 import { BuildManifestTask } from "../tasks/BuildManifestTask.ts";
@@ -14,7 +15,7 @@ class TestBuildManifestTask extends BuildManifestTask {
 }
 
 /**
- * Minimal fake of the workspace's live `ctx.alepha` — only `primitives` is
+ * Minimal fake of the workspace's live `ctx.alepha`  -  only `primitives` is
  * exercised meaningfully; every other lookup `writeManifest` makes (`inject`,
  * `dump`) is wrapped in try/catch there, so a throwing stub is enough to
  * exercise the "resource absent" paths without a real Alepha instance.
@@ -24,8 +25,10 @@ const fakeAlepha = {
     name === "$websocket"
       ? [{ options: { channel: { options: { path: "/ws/chat" } } } }]
       : [],
-  inject: () => {
-    throw new AlephaError("not available in this fake");
+  inject: (name: string) => {
+    if (name === "ActorHostRegistry")
+      return { list: () => [WebSocketHost.declaration] };
+    throw new AlephaError(`Service not found: ${name}`);
   },
   dump: () => {
     throw new AlephaError("not available in this fake");
@@ -33,7 +36,7 @@ const fakeAlepha = {
 } as any;
 
 /**
- * Same fake, but with the primitive answers parameterized per name — for the
+ * Same fake, but with the primitive answers parameterized per name  -  for the
  * `$websocket` / `$room` union cases.
  */
 const fakeAlephaWithPrimitives = (byName: Record<string, string[]>) =>
@@ -42,8 +45,15 @@ const fakeAlephaWithPrimitives = (byName: Record<string, string[]>) =>
       (byName[name] ?? []).map((path) => ({
         options: { channel: { options: { path } } },
       })),
-    inject: () => {
-      throw new AlephaError("not available in this fake");
+    inject: (name: string) => {
+      if (name === "ActorHostRegistry")
+        return {
+          list: () =>
+            Object.values(byName).some((paths) => paths.length)
+              ? [WebSocketHost.declaration]
+              : [],
+        };
+      throw new AlephaError(`Service not found: ${name}`);
     },
     dump: () => {
       throw new AlephaError("not available in this fake");
@@ -51,14 +61,15 @@ const fakeAlephaWithPrimitives = (byName: Record<string, string[]>) =>
   }) as any;
 
 /**
- * Same fake, but answering `dump()` with a declared env surface — the shape
+ * Same fake, but answering `dump()` with a declared env surface  -  the shape
  * `writeManifest` reads to fill `env` and `secrets`.
  */
 const fakeAlephaWithEnv = (env: Record<string, { secret?: boolean }>) =>
   ({
     primitives: () => [],
-    inject: () => {
-      throw new AlephaError("not available in this fake");
+    inject: (name: string) => {
+      if (name === "ActorHostRegistry") return { list: () => [] };
+      throw new AlephaError(`Service not found: ${name}`);
     },
     dump: () => ({ env, providers: {} }),
   }) as any;
@@ -135,7 +146,7 @@ describe("BuildManifestTask", () => {
     /**
      * A `$room` rides the same worker upgrade branch and the same Durable
      * Object as a `$websocket`, so an app whose realtime layer is rooms-only
-     * must still record `hasWebSocket` + its channel paths — otherwise the
+     * must still record `hasWebSocket` + its channel paths  -  otherwise the
      * `--prebuilt` deploy path emits a worker with no WebSocket wiring.
      */
     it("unions $room channel paths into websocketPaths", async () => {

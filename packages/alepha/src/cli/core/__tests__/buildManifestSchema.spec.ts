@@ -49,7 +49,7 @@ describe("the build manifest schema", () => {
     /**
      * ⚠️ The defect the quest was filed for. `{}` is what `PackCommand.spec.ts`
      * writes as a manifest, and it used to sail through `readManifest`'s
-     * `try/catch` — which only ever covered an unreadable or unparseable file.
+     * `try/catch`  -  which only ever covered an unreadable or unparseable file.
      * `resources` then reached a deployer as `undefined` typed
      * `DetectedResources`, so every `hasX` read `undefined` and a deploy
      * provisioned nothing while reporting success.
@@ -235,8 +235,8 @@ describe("the build manifest schema", () => {
 
     const fakeAlepha = {
       primitives: () => [],
-      inject: () => {
-        throw new AlephaError("not available in this fake");
+      inject: (name: string) => {
+        throw new AlephaError(`Service not found: ${name}`);
       },
       dump: () => {
         throw new AlephaError("not available in this fake");
@@ -367,6 +367,7 @@ describe("the build manifest schema", () => {
       expect(written.cloudflare).toEqual({
         config: { limits: { cpu_ms: 300_000 } },
         websocketPaths: [],
+        durableObjects: [],
       });
     });
   });
@@ -406,7 +407,7 @@ describe("the build manifest schema", () => {
     });
 
     /**
-     * ⚠️ Without the schema this returned `{}` — truthy — and `resources`
+     * ⚠️ Without the schema this returned `{}`  -  truthy  -  and `resources`
      * flowed on as `undefined`. `null` is what the caller already knows how to
      * handle: it falls through to introspecting the app for real.
      */

@@ -6,19 +6,20 @@ import {
   type BuildManifest,
   buildManifestSchema,
 } from "../schemas/buildManifest.ts";
+import { ActorHostCollection } from "../services/ActorHostCollection.ts";
 import { BuildSlices } from "../services/BuildSlices.ts";
 import { MetaResolver } from "../services/MetaResolver.ts";
 import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
 
 /**
- * Write `dist/manifest.json` — a build-time snapshot of everything downstream
+ * Write `dist/manifest.json`  -  a build-time snapshot of everything downstream
  * tooling needs to know about the app without re-booting it.
  *
  * Runs for **every** target, not just Cloudflare. The manifest describes the
  * app, not the destination: which resources it declares, which crons it
  * registers, which runtime it was built for. Every deploy consumer needs the
- * same answers — `alepha platform up --prebuilt`, Alepha Rocket and Alepha Bay
- * alike — and a self-hosted deployer has no `package.json` in the artifact to
+ * same answers  -  `alepha platform up --prebuilt`, Alepha Rocket and Alepha Bay
+ * alike  -  and a self-hosted deployer has no `package.json` in the artifact to
  * fall back on.
  *
  * It used to live inside `BuildCloudflareTask`, which meant a bare or
@@ -28,6 +29,7 @@ import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
  * one exists to make impossible.
  */
 export class BuildManifestTask extends BuildTask {
+  protected readonly hostCollection = $inject(ActorHostCollection);
   // Looked up by class name string (not by class identity) because build tasks
   // run in the CLI's Alepha context while ctx.alepha is the workspace's separate
   // context. Two module graphs = two distinct `CloudflareEmailProvider` class
@@ -63,7 +65,7 @@ export class BuildManifestTask extends BuildTask {
    * redeploying every app.
    *
    * `engines` is the declared intent and wins. Falling back to the major of
-   * the process that ran the build is the honest second answer — it is the
+   * the process that ran the build is the honest second answer  -  it is the
    * runtime the bundle's export conditions and syntax level were resolved
    * against.
    */
@@ -71,7 +73,7 @@ export class BuildManifestTask extends BuildTask {
     root: string,
     runtime: "node" | "bun" | "workerd",
   ): Promise<string | undefined> {
-    // workerd has no user-visible version to pin — Cloudflare picks it via
+    // workerd has no user-visible version to pin  -  Cloudflare picks it via
     // `compatibility_date`.
     if (runtime === "workerd") {
       return undefined;
@@ -112,7 +114,7 @@ export class BuildManifestTask extends BuildTask {
     const name = this.meta.slug(root);
 
     // Discover the same primitive shapes the Cloudflare enhance* methods read.
-    // Errors are silently swallowed — an absent primitive class just
+    // Errors are silently swallowed  -  an absent primitive class just
     // means the app doesn't use that resource.
     let hasDatabase = false;
     let hasBucket = false;
@@ -139,7 +141,7 @@ export class BuildManifestTask extends BuildTask {
     //
     // It cannot be detected from here either. The build introspects the
     // app under **node**, where `alepha/bucket` binds Local/Memory/S3; the
-    // R2 binding — and its hard `R2_BUCKET_NAME` requirement — only exists
+    // R2 binding  -  and its hard `R2_BUCKET_NAME` requirement  -  only exists
     // in the **workerd** variant. So nothing observable at build time says
     // "this app will need R2 at runtime".
     //
@@ -159,7 +161,7 @@ export class BuildManifestTask extends BuildTask {
     } catch {}
 
     // Same escape hatch as R2 above, for the same reason: an app can want
-    // the dataset provisioned without a `$analytics` primitive to detect —
+    // the dataset provisioned without a `$analytics` primitive to detect  -
     // typically because `CLOUDFLARE_ANALYTICS_DATASET` is already set by
     // hand from before this mechanism existed. There is no equivalent to
     // R2's "inject the provider directly" route here (`WaeAnalyticsProvider`
@@ -205,13 +207,14 @@ export class BuildManifestTask extends BuildTask {
       hasQueue = !!ctx.alepha.inject("JobQueueProvider");
     } catch {}
 
+    const durableObjects = this.hostCollection.collect(ctx.alepha);
     let hasWebSocket = false;
     let websocketPaths: string[] = [];
     try {
       // Union of both realtime primitives: a `$room` rides the same worker
       // upgrade branch and the same `AlephaWebSocketDurableObject` as a
       // `$websocket`, so a rooms-only app must still record its channel
-      // paths — otherwise the `--prebuilt` deploy path emits a worker with
+      // paths  -  otherwise the `--prebuilt` deploy path emits a worker with
       // no WebSocket wiring. Dedup'd: a `$room` may share its `$channel`
       // path with a `$websocket`.
       const realtimePrimitives = [
@@ -256,7 +259,7 @@ export class BuildManifestTask extends BuildTask {
     } catch {}
 
     /*
-      ⚠️ The env surface above is the graph as instantiated HERE — under node.
+      ⚠️ The env surface above is the graph as instantiated HERE  -  under node.
       A key declared only by a provider that exists only on workerd is
       therefore absent from it, and since this list is the allowlist the
       deploy `secrets` step pushes from, such a key can never reach the
@@ -265,7 +268,7 @@ export class BuildManifestTask extends BuildTask {
 
       That is the same node-cannot-see-workerd hazard the bucket and dataset
       detection above document, one layer over: not a missing binding, a
-      missing SECRET — and a missing secret fails at request time rather than
+      missing SECRET  -  and a missing secret fails at request time rather than
       at boot, so it surfaces as a broken feature rather than a failed deploy.
       It cost a production outage: `WaeAnalyticsProvider` declares
       `CLOUDFLARE_ANALYTICS_TOKEN`, is selected only under workerd, and every
@@ -275,7 +278,7 @@ export class BuildManifestTask extends BuildTask {
       Detection is the right fix because detection is the one thing that DOES
       work from node: `hasAnalytics` is already known above, and it is exactly
       the condition under which the runtime will demand these keys.
-      `CLOUDFLARE_ANALYTICS_DATASET` is deliberately not added — the platform
+      `CLOUDFLARE_ANALYTICS_DATASET` is deliberately not added  -  the platform
       supplies it as a plain var and `EXCLUDED_SECRET_KEYS` drops it from
       every push.
     */
@@ -336,6 +339,7 @@ export class BuildManifestTask extends BuildTask {
         hasQueue,
         hasCron: crons.length > 0,
         hasWebSocket,
+        hasDurableObjects: durableObjects.length > 0,
       },
       crons,
       secrets: envOf(true),
@@ -349,6 +353,7 @@ export class BuildManifestTask extends BuildTask {
               | Record<string, unknown>
               | undefined,
             websocketPaths,
+            durableObjects,
             email,
           }
         : undefined,
@@ -362,7 +367,7 @@ export class BuildManifestTask extends BuildTask {
     const validated = buildManifestSchema.parse(manifest);
 
     // `writeFile` does not create parent directories. This used to be safe by
-    // accident — the manifest was written from the Cloudflare task, which only
+    // accident  -  the manifest was written from the Cloudflare task, which only
     // ever ran after the bundle steps had created `dist/`. Running for every
     // target means no such guarantee.
     await this.fs.mkdir(this.fs.join(root, distDir), { recursive: true });

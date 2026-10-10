@@ -79,3 +79,30 @@ startup facilities are runtime-neutral. Native host imports stay workerd-only.
 [Cloudflare storage documentation](https://developers.cloudflare.com/durable-objects/api/sqlite-storage-api/)
 describes the underlying storage guarantees. Local workerd recovery evidence does
 not prove live provisioning or production hibernation.
+
+## Build and namespace provisioning
+
+Generic host declarations drive workerd facades, slice wrappers and Worker exports.
+The loose build manifest records `cloudflare.durableObjects` and
+`resources.hasDurableObjects`; WebSocket paths remain transport metadata.
+Node and Bun slices contain no native host exports. Rebuild older prebuilt realtime
+artifacts that lack host declarations before regenerating deployment configuration.
+
+With no explicit `build.cloudflare.config.migrations`, the build generates
+Durable Object `exports`. Use a Wrangler release with declarative exports support
+(the repository tests Wrangler 4.147.0). The build rejects a locally installed
+Wrangler schema without that feature. An external application's Wrangler is not
+pinned by the framework; check its toolchain before deploying.
+
+An explicit migrations array selects the legacy path. Historical ordered tags and
+steps are preserved; new host classes are appended under a fresh `alepha-hosts-vN`
+tag. Durable Object exports and legacy migrations cannot coexist. Compatible user
+exports preserve their storage backend. Conflicting local bindings or required-host
+lifecycle tombstones fail before artifacts are written.
+
+Existing sockets keep `AlephaWebSocketDurableObject`, `ALEPHA_WEBSOCKET` and
+`channelPath + ":" + roomId` namespace identity. Moving framework-generated
+SQLite provisioning to exports is a one-way control-plane transition. Applications
+that need legacy history must configure it explicitly. The framework does not
+migrate application state or infer deletes, renames or transfers from removed
+host declarations. See [Cloudflare class lifecycle](https://developers.cloudflare.com/durable-objects/reference/durable-objects-migrations/).

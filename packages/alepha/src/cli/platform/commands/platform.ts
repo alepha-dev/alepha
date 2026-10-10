@@ -1,4 +1,5 @@
 import { $inject, AlephaError, z } from "alepha";
+import { ActorHostCollection } from "alepha/cli";
 import {
   type AppEntry,
   AppEntryProvider,
@@ -24,6 +25,7 @@ import { ConsoleColorProvider } from "alepha/logger";
 import { SecretsCommand } from "./SecretsCommand.ts";
 
 export class PlatformCommand {
+  protected readonly hostCollection = $inject(ActorHostCollection);
   protected readonly orchestrator = $inject(PlatformOrchestrator);
   protected readonly inspector = $inject(PlatformInspector);
   protected readonly naming = $inject(NamingService);
@@ -140,7 +142,7 @@ export class PlatformCommand {
           mode: "standalone",
           // Still an array: `apps` is part of the JSON contract
           // (`platformPlanSchema`), and a project has exactly one app since
-          // the `apps:` collapse — so the array is always exactly one entry.
+          // the `apps:` collapse  -  so the array is always exactly one entry.
           apps: [
             {
               name: config.project,
@@ -273,7 +275,7 @@ export class PlatformCommand {
         .boolean()
         .meta({ aliases: ["y"] })
         .describe(
-          "Skip the interactive confirmation. Required for non-interactive callers (CI, Alepha Rocket). The caller is responsible for not invoking this accidentally — there's no second chance.",
+          "Skip the interactive confirmation. Required for non-interactive callers (CI, Alepha Rocket). The caller is responsible for not invoking this accidentally  -  there's no second chance.",
         )
         .optional(),
     }),
@@ -364,8 +366,8 @@ export class PlatformCommand {
   /**
    * `alepha platform auth login`.
    *
-   * The mechanism belongs to the adapter — `wrangler login` for Cloudflare, a
-   * device-code flow for Bay — because credentials are the provider's
+   * The mechanism belongs to the adapter  -  `wrangler login` for Cloudflare, a
+   * device-code flow for Bay  -  because credentials are the provider's
    * vocabulary, and a second store would drift from the one every other tool
    * reads.
    *
@@ -687,7 +689,7 @@ export class PlatformCommand {
    * Record the baseline migration as already applied on a deployed
    * Cloudflare D1 database, without executing it.
    *
-   * D1's deploy path doesn't go through drizzle's migrator at all — it
+   * D1's deploy path doesn't go through drizzle's migrator at all  -  it
    * keys off a filename-based `d1_migrations` bookkeeping table (see
    * `D1MigrationsService.baseline`), which needs the project/env resource
    * naming that only this command tree can resolve. That's also why
@@ -721,11 +723,11 @@ export class PlatformCommand {
         );
       }
 
-      // Deliberately `.env.<env>` only — no `process.env.DATABASE_URL`
+      // Deliberately `.env.<env>` only  -  no `process.env.DATABASE_URL`
       // fallback. Unlike `plan`'s use of the same lookup (a display label
       // only), this gates a hard refusal: a deployed D1 environment's
       // `DATABASE_URL` is a Cloudflare secret, not a local env var, so it's
-      // routinely absent from `.env.<env>` — and falling back to whatever
+      // routinely absent from `.env.<env>`  -  and falling back to whatever
       // the operator happens to have exported would make this guard trip on
       // an unrelated local Postgres database, sending a real D1 deploy to
       // `alepha db baseline mark`, which then hard-refuses D1 with no
@@ -740,7 +742,7 @@ export class PlatformCommand {
       const namingCtx = this.naming.forContext(config.project, env);
       const dbName = namingCtx.d1();
 
-      // No app boot needed below this point — unlike `migrate`/`export`,
+      // No app boot needed below this point  -  unlike `migrate`/`export`,
       // this command never calls an adapter method that reads `entry` or
       // `resources`, so those are stubbed rather than paying for a Vite
       // boot (or requiring dist/manifest.json) just to baseline-mark.
@@ -797,7 +799,7 @@ export class PlatformCommand {
   });
 
   /**
-   * `db` subgroup — operations against the *deployed* database (export,
+   * `db` subgroup  -  operations against the *deployed* database (export,
    * migrate, baseline mark). They live under `platform` (not core
    * `alepha db`) because they need the env config, adapter, and
    * resource naming.
@@ -859,7 +861,7 @@ export class PlatformCommand {
     // Prebuilt + manifest fast-path: read `dist/manifest.json` produced
     // by the original `alepha build` instead of re-booting the workspace
     // via Vite. Lets external orchestrators (Alepha Rocket) avoid the
-    // workspace's runtime `npm install` — the app source is never
+    // workspace's runtime `npm install`  -  the app source is never
     // imported here, so missing deps (react-dom, etc.) don't matter.
     if (options.prebuilt) {
       const manifest = await this.readManifest(root);
@@ -869,7 +871,7 @@ export class PlatformCommand {
           resources: manifest.resources,
         };
       }
-      // No manifest — fall through to introspection. Useful for older
+      // No manifest  -  fall through to introspection. Useful for older
       // artifacts that pre-date the manifest emission.
     }
 
@@ -886,13 +888,13 @@ export class PlatformCommand {
 
   /**
    * Read `dist/manifest.json` if present. Returns `null` when the file
-   * doesn't exist, isn't parseable, or doesn't satisfy `buildManifestSchema` —
+   * doesn't exist, isn't parseable, or doesn't satisfy `buildManifestSchema`  -
    * caller falls back to the Vite-introspection path.
    *
    * ⚠️ The schema check is the point, and the `try/catch` never was. A
    * truncated or pre-`resources` manifest parses as JSON perfectly well, so
    * the old `JSON.parse` returned an object, `if (manifest)` passed, and
-   * `manifest.resources` — `undefined` — flowed downstream typed as
+   * `manifest.resources`  -  `undefined`  -  flowed downstream typed as
    * `DetectedResources`. Every `resources.hasX` then read `undefined`, and a
    * deploy provisioned no database, no bucket and no queue while reporting
    * success. `safeParse` turns that into the same `null` an absent file
@@ -941,7 +943,7 @@ export class PlatformCommand {
       // Same primitive check as `BuildManifestTask`. Note there is no
       // `CLOUDFLARE_ANALYTICS_DATASET` escape hatch here, deliberately: the
       // `hasBucket` check just above has never had an `R2_BUCKET_NAME` one
-      // either, even though `BuildManifestTask` does — this live-boot path
+      // either, even though `BuildManifestTask` does  -  this live-boot path
       // only ever sees primitives, matching how R2 detection already works
       // here today.
       const datasets = alepha.primitives("$analytics");
@@ -951,8 +953,8 @@ export class PlatformCommand {
     try {
       // Provision KV only when the user actually wants it: a `$cache` declared
       // *without* an explicit `provider` falls back to the runtime default.
-      // Any explicit choice — `"memory"`, `DatabaseCacheProvider`, a Redis
-      // provider, or a custom one — opts out of the platform default and
+      // Any explicit choice  -  `"memory"`, `DatabaseCacheProvider`, a Redis
+      // provider, or a custom one  -  opts out of the platform default and
       // therefore should not trigger KV provisioning.
       //
       // ⚠️ Since #Q2151 the workerd default is `CloudflareCacheProvider`, so
@@ -973,13 +975,13 @@ export class PlatformCommand {
     } catch {}
 
     try {
-      // There is no queue primitive to count — `$queue` has not existed for a
+      // There is no queue primitive to count  -  `$queue` has not existed for a
       // while, so the old `primitives("queue")` lookup was structurally always
       // zero and this command silently under-reported the resource. A Queue
       // binding is needed only when `$job` dispatch is routed through a broker,
       // which is exactly what registering `JobQueueProvider` (via
       // `AlephaApiJobsQueue`) means. Same rule as `BuildManifestTask`, which is
-      // what actually drives provisioning — the two must agree or `plan` lies
+      // what actually drives provisioning  -  the two must agree or `plan` lies
       // about what `up` will create.
       hasQueue = !!alepha.inject("JobQueueProvider");
     } catch {}
@@ -1005,6 +1007,7 @@ export class PlatformCommand {
       hasQueue,
       hasCron,
       hasWebSocket,
+      hasDurableObjects: this.hostCollection.collect(alepha).length > 0,
     };
   }
 }

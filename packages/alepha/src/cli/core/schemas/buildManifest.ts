@@ -1,5 +1,7 @@
 import { type Infer, z } from "alepha";
 
+import { actorHostDeclarationSchema } from "./actorHostDeclarationSchema.ts";
+
 /**
  * Build-time snapshot describing what the workspace needs at deploy time.
  * Written to `dist/manifest.json`.
@@ -117,6 +119,7 @@ export const buildManifestSchema = z
         hasQueue: z.boolean(),
         hasCron: z.boolean(),
         hasWebSocket: z.boolean(),
+        hasDurableObjects: z.boolean().optional(),
       })
       .loose(),
     /**
@@ -204,6 +207,7 @@ export const buildManifestSchema = z
          * Empty when `resources.hasWebSocket` is false.
          */
         websocketPaths: z.array(z.string()),
+        durableObjects: z.array(actorHostDeclarationSchema).optional(),
         /**
          * The `send_email` binding, captured when the app registers
          * `CloudflareEmailProvider`. Absent when it does not.

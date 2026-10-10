@@ -1,5 +1,6 @@
 import { Alepha } from "alepha";
 import { AlephaCache } from "alepha/cache";
+import { DateTimeProvider } from "alepha/datetime";
 import { $action, AlephaServer, type ServerRequest } from "alepha/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -50,7 +51,7 @@ describe("ServerRateLimitProvider", () => {
     const { ServerProvider } = await import("alepha/server");
     const hostname = app.inject(ServerProvider).hostname;
 
-    // No rate limit was configured anywhere — merely importing the module
+    // No rate limit was configured anywhere  -  merely importing the module
     // must not silently cap the app at the (former) 100 req / 15 min
     // fallback.
     let lastStatus = 0;
@@ -142,6 +143,8 @@ describe("ServerRateLimitProvider", () => {
   });
 
   it("should return correct resetTime within the fixed window", async () => {
+    const dateTime = alepha.inject(DateTimeProvider);
+    dateTime.pause();
     const windowMs = 60000;
     const options = { max: 10, windowMs };
     const req = createMockRequest();
@@ -149,7 +152,7 @@ describe("ServerRateLimitProvider", () => {
     const result = await provider.checkLimit(req, options);
 
     // resetTime should be at the end of the current window
-    const now = Date.now();
+    const now = dateTime.nowMillis();
     const windowStart = Math.floor(now / windowMs) * windowMs;
     const expectedResetTime = windowStart + windowMs;
 

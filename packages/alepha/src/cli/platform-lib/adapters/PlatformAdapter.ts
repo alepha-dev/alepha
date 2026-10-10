@@ -9,7 +9,7 @@ import type { NamingContext } from "../services/NamingService.ts";
  */
 export interface ExportDbOptions {
   /**
-   * Destination file for the local snapshot. Adapter-specific default —
+   * Destination file for the local snapshot. Adapter-specific default  -
    * Cloudflare/D1 writes the dev SQLite at
    * `node_modules/.alepha/sqlite.db`.
    */
@@ -51,6 +51,10 @@ export interface DetectedResources {
    * difference decides whether a script delete may be forced.
    */
   hasWebSocket?: boolean;
+  /**
+   * Native host presence, captured independently of WebSocket transport usage.
+   */
+  hasDurableObjects?: boolean;
 }
 
 /**
@@ -88,7 +92,7 @@ export interface PlatformContext<TOptions = unknown> {
   entry: AppEntry;
 
   /**
-   * Cloud resources the workspace uses — discovered at build time, read
+   * Cloud resources the workspace uses  -  discovered at build time, read
    * from `dist/manifest.json` at deploy time.
    */
   resources: DetectedResources;
@@ -204,7 +208,7 @@ export abstract class PlatformAdapter<TOptions = unknown> {
    *
    * Separate from {@link authenticate}, which must never block: `up` runs in CI,
    * where nothing can answer a prompt. This is what a human runs once, and each
-   * adapter answers it in its own currency — `wrangler login` for Cloudflare, a
+   * adapter answers it in its own currency  -  `wrangler login` for Cloudflare, a
    * device-code flow for Bay.
    *
    * The default refuses rather than silently doing nothing: an adapter with no
@@ -259,7 +263,7 @@ export abstract class PlatformAdapter<TOptions = unknown> {
    * Cloudflare attaches it as a route and Bay registers it with the app, so for
    * both the config is the CAUSE of the host, and reporting it back is stating
    * something the deploy made true. An adapter that leaves host composition to
-   * something else instead — a machine that names itself from the app — has no
+   * something else instead  -  a machine that names itself from the app  -  has no
    * channel for it, so the same line there would be a claim about a decision
    * taken somewhere else.
    *
@@ -302,7 +306,7 @@ export abstract class PlatformAdapter<TOptions = unknown> {
   ): Promise<void> {}
 
   /**
-   * Export the deployed database to a local file — the remote → local dev
+   * Export the deployed database to a local file  -  the remote → local dev
    * snapshot workflow. Adapter/dialect specific; the default refuses.
    */
   async exportDb(

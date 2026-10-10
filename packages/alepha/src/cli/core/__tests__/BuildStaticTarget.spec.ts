@@ -22,8 +22,8 @@ class TestBuildManifestTask extends BuildManifestTask {
  */
 const fakeAlepha = {
   primitives: () => [],
-  inject: () => {
-    throw new AlephaError("not available in this fake");
+  inject: (name: string) => {
+    throw new AlephaError(`Service not found: ${name}`);
   },
   dump: () => {
     throw new AlephaError("not available in this fake");
@@ -86,7 +86,7 @@ describe('a static build, declared as runtime: ["static"]', () => {
   describe("adopting a client the app built itself", () => {
     /*
       Bay can host a site with no process behind it. This target is the only
-      thing that produces one — and until now it could only ship what Alepha
+      thing that produces one  -  and until now it could only ship what Alepha
       itself rendered: its own Vite client build, or a `$page` at `/`. A site
       built by anything else (a hand-written `index.html` through plain Vite,
       an Astro export, a docs generator) had no way in, because `alepha build`
@@ -157,7 +157,7 @@ describe('a static build, declared as runtime: ["static"]', () => {
     });
 
     it("takes an absolute source as written", async () => {
-      // `join(root, "/elsewhere/site")` yields `<root>/elsewhere/site` — a
+      // `join(root, "/elsewhere/site")` yields `<root>/elsewhere/site`  -  a
       // directory that does not exist, reported as a client the author never
       // built, for a path they gave correctly.
       const fs = await runStaticTask("/elsewhere/site", async (fs) => {
@@ -171,7 +171,7 @@ describe('a static build, declared as runtime: ["static"]', () => {
     it("refuses a source inside dist, which the build has already deleted", async () => {
       /*
         The trap worth naming: `dist/public` is the obvious place to point a
-        client build at, and it is the one place that cannot work — the clean
+        client build at, and it is the one place that cannot work  -  the clean
         step removes it before this task ever runs. Left to the copy, the
         error would be a bare ENOENT on a path the author did write, which
         reads as "my build didn't run" rather than "it ran and was deleted".
@@ -191,7 +191,7 @@ describe('a static build, declared as runtime: ["static"]', () => {
 
     it("refuses a source with no index.html", async () => {
       // Otherwise the failure surfaces further down as ENOENT on
-      // `dist/public/index.html` — a path the author never wrote.
+      // `dist/public/index.html`  -  a path the author never wrote.
       await expect(
         runStaticTask("dist-client", async (fs) => {
           await fs.mkdir("/root/my-app/dist-client");
@@ -208,7 +208,7 @@ describe('a static build, declared as runtime: ["static"]', () => {
     it("emits the sidecars the proxy looks for", async () => {
       /*
         Bay serves a `.br`/`.gz` sidecar when the request carries a matching
-        Accept-Encoding, rather than recompressing per request — the build is
+        Accept-Encoding, rather than recompressing per request  -  the build is
         expected to have emitted them.
 
         `BuildCompressTask` skipped on `!hasClient`, which is exactly what an
@@ -260,7 +260,7 @@ describe('a static build, declared as runtime: ["static"]', () => {
         The bug this exists for.
 
         `BuildStaticTask` runs AFTER `BuildManifestTask` in the pipeline and
-        removed every `dist/` entry that was not `public/` — so a static build
+        removed every `dist/` entry that was not `public/`  -  so a static build
         shipped no manifest at all, and `alepha pack` produced an archive Bay
         rejects with "read manifest: no such file".
       */

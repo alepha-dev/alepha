@@ -1,5 +1,6 @@
 import { Alepha, AlephaError } from "alepha";
 import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
+import { WebSocketHost } from "alepha/websocket";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { BuildCloudflareTask } from "../tasks/BuildCloudflareTask.ts";
@@ -33,6 +34,7 @@ class TestBuildCloudflareTask extends BuildCloudflareTask {
 
   public setHasWebSocket(value: boolean): void {
     this.hasWebSocket = value;
+    this.hosts = value ? [WebSocketHost.declaration] : [];
   }
 
   public setWebsocketPaths(paths: string[]): void {
@@ -145,7 +147,7 @@ describe("BuildCloudflareTask", () => {
   describe("enhanceD1", () => {
     it("does not emit `jurisdiction` on the D1 binding (wrangler rejects it)", () => {
       // D1 jurisdiction is applied at database-creation time, not on the
-      // binding — wrangler warns on the unexpected field. See CloudflareApi.
+      // binding  -  wrangler warns on the unexpected field. See CloudflareApi.
       process.env.DATABASE_URL = "d1://my-db:db-id-123";
       process.env.CLOUDFLARE_JURISDICTION = "eu";
 
@@ -220,7 +222,7 @@ describe("BuildCloudflareTask", () => {
   describe("enhanceQueue", () => {
     /**
      * The worker's queue handler calls `msg.retry()` on any throw. Without a
-     * `dead_letter_queue`, CF burns its retries and then DISCARDS the message —
+     * `dead_letter_queue`, CF burns its retries and then DISCARDS the message  -
      * a poison job disappears with no record and no signal.
      */
     it("gives the consumer a dead-letter queue and a retry ceiling", () => {
@@ -326,7 +328,7 @@ describe("BuildCloudflareTask", () => {
   });
 
   describe("enhanceDurableObjects", () => {
-    it("emits the DO binding + sqlite migration when websocket is present", () => {
+    it("emits the DO binding and declarative SQLite export for a registered host", () => {
       const task = createTask();
       task.setHasWebSocket(true);
 
@@ -339,9 +341,12 @@ describe("BuildCloudflareTask", () => {
           class_name: "AlephaWebSocketDurableObject",
         },
       ]);
-      expect(wrangler.migrations).toEqual([
-        { tag: "v1", new_sqlite_classes: ["AlephaWebSocketDurableObject"] },
-      ]);
+      expect(wrangler.exports).toEqual({
+        AlephaWebSocketDurableObject: {
+          type: "durable-object",
+          storage: "sqlite",
+        },
+      });
     });
 
     it("no-ops when websocket is absent", () => {
@@ -395,7 +400,10 @@ describe("BuildCloudflareTask", () => {
 
       expect(wrangler.migrations).toEqual([
         { tag: "v1", new_classes: ["MyOwnDurableObject"] },
-        { tag: "v2", new_sqlite_classes: ["AlephaWebSocketDurableObject"] },
+        {
+          tag: "alepha-hosts-v1",
+          new_sqlite_classes: ["AlephaWebSocketDurableObject"],
+        },
       ]);
     });
 
@@ -426,7 +434,7 @@ describe("BuildCloudflareTask", () => {
      * A single CF isolate serves concurrent invocations. Stashing the
      * per-invocation `executionCtx.waitUntil` on the shared Alepha store means
      * request B overwrites request A's, and A's background work then calls B's
-     * (already-returned) context — "waitUntil after response" — silently
+     * (already-returned) context  -  "waitUntil after response"  -  silently
      * killing it. The handle must ride the per-invocation async context.
      */
     it("does not stash waitUntil on the shared global store", async () => {
@@ -852,7 +860,7 @@ describe("BuildCloudflareTask", () => {
 
       /**
        * A `$room` registers on the provider's room registry, not the
-       * `$websocket` endpoint registry — `getEndpoint(path)` returns
+       * `$websocket` endpoint registry  -  `getEndpoint(path)` returns
        * `undefined` for a room-only path, which silently skipped the 401
        * check and let anonymous sockets into a `$room({ secure: true })`.
        */
@@ -887,7 +895,7 @@ describe("BuildCloudflareTask", () => {
         );
 
         // A forged inbound `x-alepha-ws-user` header must be deleted before
-        // the trusted value is conditionally set — otherwise an anonymous
+        // the trusted value is conditionally set  -  otherwise an anonymous
         // client on a non-secure endpoint could forge its identity.
         expect(deleteIndex).toBeGreaterThan(-1);
         expect(setIndex).toBeGreaterThan(-1);
@@ -911,7 +919,7 @@ describe("BuildCloudflareTask", () => {
   describe("generateCloudflare (manifest/prebuilt mode)", () => {
     /**
      * In `--prebuilt`/manifest mode there is no live Alepha to probe, so
-     * `websocketPaths` must come from `ctx.manifest` instead — otherwise the
+     * `websocketPaths` must come from `ctx.manifest` instead  -  otherwise the
      * emitted worker's `wsPaths` routing guard stays empty and WebSocket
      * upgrades silently fail to route even though the DO binding and
      * migration are still emitted (see FIX 3).
@@ -937,7 +945,10 @@ describe("BuildCloudflareTask", () => {
           crons: [],
           secrets: [],
           variables: [],
-          cloudflare: { websocketPaths: ["/ws/chat"] },
+          cloudflare: {
+            websocketPaths: ["/ws/chat"],
+            durableObjects: [WebSocketHost.declaration],
+          },
         },
       } as any;
 
@@ -1006,8 +1017,15 @@ describe("BuildCloudflareTask", () => {
           (byName[name] ?? []).map((path) => ({
             options: { channel: { options: { path } } },
           })),
-        inject: () => {
-          throw new Error("not available in this fake");
+        inject: (name: string) => {
+          if (name === "ActorHostRegistry")
+            return {
+              list: () =>
+                Object.values(byName).some((paths) => paths.length)
+                  ? [WebSocketHost.declaration]
+                  : [],
+            };
+          throw new AlephaError(`Service not found: ${name}`);
         },
       }) as any;
 
@@ -1112,7 +1130,7 @@ describe("BuildCloudflareTask", () => {
      * Prebuilt deploys never load the workspace's `alepha.config.ts`, so the
      * artifact has to remember what it declared. Without this, the build wrote
      * a correct `wrangler.jsonc` and the deploy silently regenerated it with
-     * the defaults — no error, and the only symptom was in production.
+     * the defaults  -  no error, and the only symptom was in production.
      */
     it("recovers the app's cloudflare config from the manifest in prebuilt mode", async () => {
       const { task, fs } = createTaskWithFs();
@@ -1160,9 +1178,12 @@ describe("BuildCloudflareTask", () => {
           class_name: "AlephaWebSocketDurableObject",
         },
       ]);
-      expect(wrangler.migrations).toEqual([
-        { tag: "v1", new_sqlite_classes: ["AlephaWebSocketDurableObject"] },
-      ]);
+      expect(wrangler.exports).toEqual({
+        AlephaWebSocketDurableObject: {
+          type: "durable-object",
+          storage: "sqlite",
+        },
+      });
 
       expect(
         fs.wasWrittenMatching(

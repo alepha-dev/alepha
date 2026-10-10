@@ -1,4 +1,4 @@
-import { Alepha } from "alepha";
+import { Alepha, AlephaError } from "alepha";
 import { afterEach, describe, it } from "vitest";
 
 import { BuildManifestTask } from "../tasks/BuildManifestTask.ts";
@@ -6,7 +6,7 @@ import { BuildManifestTask } from "../tasks/BuildManifestTask.ts";
 /**
  * Mirrors `r2Detection.spec.ts` for the Analytics Engine resource.
  *
- * `$analytics` (alepha/analytics) is a primitive, so the build can see it —
+ * `$analytics` (alepha/analytics) is a primitive, so the build can see it  -
  * that is the common case and needs no escape hatch. But a workspace can
  * also already have `CLOUDFLARE_ANALYTICS_DATASET` set by hand in
  * `.env.production`, from before this mechanism existed (that hand-edit is
@@ -46,8 +46,8 @@ describe("analytics resource detection", () => {
           name === "$analytics"
             ? Array.from({ length: opts.analyticsPrimitives }, () => ({}))
             : [],
-        inject: () => {
-          throw new Error("not available");
+        inject: (name: string) => {
+          throw new AlephaError(`Service not found: ${name}`);
         },
       },
       options: {},
@@ -104,12 +104,12 @@ describe("analytics resource detection", () => {
     /*
       ⚠️ Regression guard for a production outage (2026-08-11). The manifest's
       `secrets` is the allowlist `alepha platform up` pushes worker secrets from, and it
-      comes from `alepha.dump().env` — the env keys of the graph as
+      comes from `alepha.dump().env`  -  the env keys of the graph as
       instantiated HERE, under node. `CLOUDFLARE_ANALYTICS_TOKEN` is declared
       by `WaeAnalyticsProvider`, which only ever exists under workerd, so it
       was never in the list and `platform up` silently filtered it out of
       every push. The operator sets it in `.env.production`, the deploy
-      reports success, and the worker boots without it — then throws
+      reports success, and the worker boots without it  -  then throws
       "CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_ANALYTICS_TOKEN must both be set"
       on every analytics read.
 

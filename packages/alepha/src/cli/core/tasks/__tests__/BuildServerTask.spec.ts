@@ -1,5 +1,6 @@
 import { Alepha } from "alepha";
 import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
+import { WebSocketHost } from "alepha/websocket";
 import { describe, it } from "vitest";
 
 import { BuildServerTask } from "../BuildServerTask.ts";
@@ -12,8 +13,8 @@ class TestServerTask extends BuildServerTask {
   public testExportLine = (serverDir: string, entryFile: string) =>
     this.durableObjectReexport(serverDir, entryFile);
 
-  public testUsesWebSocket = (alepha: unknown) =>
-    this.usesWebSocket(alepha as any);
+  public testHasHosts = (alepha: unknown) =>
+    this.hostCollection.collect(alepha as any).length > 0;
 
   public testNeutralize = (code: string) =>
     this.neutralizeWorkerdCreateRequire(code);
@@ -29,12 +30,14 @@ class TestServerTask extends BuildServerTask {
 }
 
 /**
- * Minimal fake of the workspace's live Alepha — only `primitives` is probed
+ * Minimal fake of the workspace's live Alepha  -  only `primitives` is probed
  * by {@link BuildServerTask.usesWebSocket}.
  */
 const fakeAlephaWithPrimitives = (names: string[]) =>
   ({
-    primitives: (name: string) => (names.includes(name) ? [{}] : []),
+    inject: () => ({
+      list: () => (names.length ? [WebSocketHost.declaration] : []),
+    }),
   }) as any;
 
 describe("BuildServerTask DO re-export", () => {
@@ -46,7 +49,7 @@ describe("BuildServerTask DO re-export", () => {
       use: MemoryFileSystemProvider,
     });
     const task = alepha.inject(TestServerTask) as any;
-    task.exportDurableObject = true;
+    task.hosts = [WebSocketHost.declaration];
     // The slice's own chunk directory, never a flat `server/`: the workerd
     // chunks and the node chunks live side by side in one `dist/`.
     expect(task.testExportLine("server/workerd", "abc123.js")).toBe(
@@ -60,7 +63,7 @@ describe("BuildServerTask DO re-export", () => {
       use: MemoryFileSystemProvider,
     });
     const task = alepha.inject(TestServerTask) as any;
-    task.exportDurableObject = false;
+    task.hosts = [];
     expect(task.testExportLine("server/workerd", "abc123.js")).toBe("");
   });
 
@@ -70,7 +73,7 @@ describe("BuildServerTask DO re-export", () => {
    * re-export in `dist/index.workerd.js` wrangler cannot resolve the migration's
    * `class_name` at deploy time.
    */
-  describe("usesWebSocket", () => {
+  describe("host declarations", () => {
     const createTask = () => {
       const alepha = Alepha.create().with({
         provide: FileSystemProvider,
@@ -81,20 +84,18 @@ describe("BuildServerTask DO re-export", () => {
 
     it("is true for a $websocket app", ({ expect }) => {
       expect(
-        createTask().testUsesWebSocket(
-          fakeAlephaWithPrimitives(["$websocket"]),
-        ),
+        createTask().testHasHosts(fakeAlephaWithPrimitives(["$websocket"])),
       ).toBe(true);
     });
 
     it("is true for a $room-only app", ({ expect }) => {
       expect(
-        createTask().testUsesWebSocket(fakeAlephaWithPrimitives(["$room"])),
+        createTask().testHasHosts(fakeAlephaWithPrimitives(["$room"])),
       ).toBe(true);
     });
 
     it("is false when neither primitive is registered", ({ expect }) => {
-      expect(createTask().testUsesWebSocket(fakeAlephaWithPrimitives([]))).toBe(
+      expect(createTask().testHasHosts(fakeAlephaWithPrimitives([]))).toBe(
         false,
       );
     });
@@ -175,7 +176,7 @@ describe("BuildServerTask DO re-export", () => {
    * but on Cloudflare `import.meta.url` is `undefined` during deploy-time
    * script validation, so any module-scope occurrence throws
    * `Uncaught TypeError: Invalid URL string.` (validation error 10021) before
-   * the worker ever runs — e.g. a browser-only sprite module statically
+   * the worker ever runs  -  e.g. a browser-only sprite module statically
    * reachable from a `$page` tree. The workerd plugin therefore stubs every
    * remaining `import.meta.url` with the chunk's own stable `file:///` URL.
    */
@@ -241,7 +242,7 @@ describe("BuildServerTask DO re-export", () => {
    * git history, and the commit that added the stub is literally titled "stub
    * import.meta.url in workerd server chunks…". A textual rewrite terminates
    * that string early, the chunk stops parsing, rolldown drops it, and the
-   * build still exits 0 — the app entry silently ships as a 37-byte file with
+   * build still exits 0  -  the app entry silently ships as a 37-byte file with
    * nothing but a sourcemap comment, so `run()` never executes and Cloudflare
    * refuses the upload with `ReferenceError: __alepha is not defined`.
    *
@@ -304,7 +305,7 @@ describe("BuildServerTask DO re-export", () => {
   /**
    * The backstop for the whole class of failure above, whatever future cause
    * produces it: when a `renderChunk` rewrite corrupts the entry chunk,
-   * rolldown does not fail the build — it emits an empty file and exits 0. The
+   * rolldown does not fail the build  -  it emits an empty file and exits 0. The
    * app then ships with no `run()` call at all, and the first sign of trouble
    * is Cloudflare rejecting the upload. An entry chunk with no top-level
    * statements is never legitimate, so the build must refuse it.

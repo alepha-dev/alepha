@@ -1,4 +1,4 @@
-import { Alepha } from "alepha";
+import { Alepha, AlephaError } from "alepha";
 import { afterEach, describe, it } from "vitest";
 
 import { BuildManifestTask } from "../tasks/BuildManifestTask.ts";
@@ -9,7 +9,7 @@ import { BuildManifestTask } from "../tasks/BuildManifestTask.ts";
  *
  * `$storage` (alepha/api/files) is a primitive, so the build can see it.
  * But `alepha/bucket` also documents injecting `FileStorageProvider`
- * directly — "blobs without a database" — and that declares no
+ * directly  -  "blobs without a database"  -  and that declares no
  * primitive. Worse, it cannot be inferred: the build introspects the app
  * under **node**, where `alepha/bucket` binds Local/Memory/S3, while the
  * hard `R2_BUCKET_NAME` requirement only exists in the **workerd**
@@ -17,7 +17,7 @@ import { BuildManifestTask } from "../tasks/BuildManifestTask.ts";
  *
  * The result was a worker that built and uploaded but could not boot,
  * rejected with a bare `SchemaValidationError: 'R2_BUCKET_NAME' is
- * required` — after the migrate step had already run against production.
+ * required`  -  after the migrate step had already run against production.
  *
  * So setting `R2_BUCKET_NAME` is a first-class way to declare the need.
  */
@@ -50,8 +50,8 @@ describe("R2 resource detection", () => {
           name === "$storage"
             ? Array.from({ length: opts.storagePrimitives }, () => ({}))
             : [],
-        inject: () => {
-          throw new Error("not available");
+        inject: (name: string) => {
+          throw new AlephaError(`Service not found: ${name}`);
         },
       },
       options: {},

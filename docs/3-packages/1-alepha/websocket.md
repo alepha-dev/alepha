@@ -34,6 +34,7 @@ Real-time bidirectional communication.
 - [`AlephaWebSocketDurableObject`](/docs/reference-providers-alephawebsocketdurableobject) - Durable Object that hosts one room's WebSocket connections on Cloudflare.
 - [`CloudflareDurableObjectWebSocketServerProvider`](/docs/reference-providers-cloudflaredurableobjectwebsocketserverprovider) - WebSocket server provider backed by Cloudflare Durable Objects.
 - [`RoomEngine`](/docs/reference-providers-roomengine) - Runtime-neutral heart of a stateful room: it owns the in-memory state, the
+- [`WebSocketHost`](/docs/reference-providers-websockethost) - Stable specialized WebSocket native host identity for generic build wiring.
 - [`WebSocketRoom`](/docs/reference-providers-websocketroom) - All the logic for hosting one room's hibernatable WebSockets on Cloudflare.
 - [`WebSocketServerProvider`](/docs/reference-providers-websocketserverprovider) - Abstract WebSocket server provider
 
