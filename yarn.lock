@@ -19,6 +19,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@alepha/capacitor@workspace:packages/@alepha/capacitor"
   dependencies:
+    "@alepha/ui": "workspace:*"
     "@aparajita/capacitor-secure-storage": "npm:8.0.1"
     "@capacitor/app": "npm:8.1.2"
     "@capacitor/core": "npm:8.5.2"
@@ -31,7 +32,9 @@ __metadata:
     "@types/node": "npm:^26.6.4"
     "@types/react": "npm:^19.3.0"
     alepha: "npm:0.31.0"
+    lucide-react: "npm:^1.52.0"
     react: "npm:^19.3.0"
+    react-dom: "npm:^19.3.0"
     rolldown: "npm:~1.2.12"
     sharp: "npm:0.35.5"
     tsdown: "npm:^0.23.0"
@@ -39,6 +42,7 @@ __metadata:
     vite: "npm:^8.3.3"
     vitest: "npm:^5.0.3"
   peerDependencies:
+    "@alepha/ui": ^0.31.0
     "@aparajita/capacitor-secure-storage": ^8.0.0
     "@capacitor/app": ^8.0.0
     "@capacitor/core": ^8.4.0
@@ -47,7 +51,10 @@ __metadata:
     "@capacitor/splash-screen": ^8.0.0
     "@capgo/capacitor-updater": 8.52.1
     alepha: ^0.31.0
+    lucide-react: ^1.52.0
   peerDependenciesMeta:
+    "@alepha/ui":
+      optional: true
     "@aparajita/capacitor-secure-storage":
       optional: true
     "@capacitor/app":
@@ -61,6 +68,8 @@ __metadata:
     "@capacitor/splash-screen":
       optional: true
     "@capgo/capacitor-updater":
+      optional: true
+    lucide-react:
       optional: true
   languageName: unknown
   linkType: soft

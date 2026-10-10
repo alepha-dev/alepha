@@ -103,6 +103,7 @@
     "sharp": "0.35.5"
   },
   "devDependencies": {
+    "@alepha/ui": "workspace:*",
     "@aparajita/capacitor-secure-storage": "8.0.1",
     "@capacitor/app": "8.1.2",
     "@capacitor/core": "8.5.2",
@@ -115,7 +116,9 @@
     "@types/node": "^26.6.4",
     "@types/react": "^19.3.0",
     "alepha": "0.31.0",
+    "lucide-react": "^1.52.0",
     "react": "^19.3.0",
+    "react-dom": "^19.3.0",
     "rolldown": "~1.2.12",
     "tsdown": "^0.23.0",
     "typescript": "^7.0.2",
@@ -123,6 +126,7 @@
     "vitest": "^5.0.3"
   },
   "peerDependencies": {
+    "@alepha/ui": "^0.31.0",
     "@aparajita/capacitor-secure-storage": "^8.0.0",
     "@capacitor/app": "^8.0.0",
     "@capacitor/core": "^8.4.0",
@@ -130,9 +134,13 @@
     "@capacitor/haptics": "^8.0.0",
     "@capacitor/splash-screen": "^8.0.0",
     "@capgo/capacitor-updater": "8.52.1",
-    "alepha": "^0.31.0"
+    "alepha": "^0.31.0",
+    "lucide-react": "^1.52.0"
   },
   "peerDependenciesMeta": {
+    "@alepha/ui": {
+      "optional": true
+    },
     "@aparajita/capacitor-secure-storage": {
       "optional": true
     },
@@ -152,6 +160,9 @@
       "optional": true
     },
     "@capgo/capacitor-updater": {
+      "optional": true
+    },
+    "lucide-react": {
       "optional": true
     }
   },

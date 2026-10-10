@@ -152,6 +152,26 @@ describe("@alepha/capacitor packaging", () => {
     ).toEqual([]);
   });
 
+  it("keeps ota-admin to browser code: the server is only a type", async ({
+    expect,
+  }) => {
+    const { modules, imports } = await graphOf("src/ota-admin/index.ts");
+
+    expect(modules.filter((id) => /\/src\/(ota-api|cli)\//.test(id))).toEqual(
+      [],
+    );
+    expect(
+      imports.filter(
+        (id) =>
+          id.startsWith("node:") ||
+          builtinModules.includes(id) ||
+          id.startsWith("alepha/orm") ||
+          id.startsWith("alepha/api/") ||
+          id.startsWith("@capgo/"),
+      ),
+    ).toEqual([]);
+  });
+
   it("builds the cli entry on its own", async ({ expect }) => {
     const { modules, imports } = await graphOf("src/cli/index.ts");
 

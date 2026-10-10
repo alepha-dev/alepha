@@ -52,6 +52,18 @@ export class OtaAdminController {
       (await this.admin.listApps()).map((it) => this.app(it)),
   });
 
+  public readonly otaGetApp = $action({
+    path: `${this.url}/apps/:id`,
+    group: this.group,
+    description: "Get a live update app",
+    use: [$secure({ permissions: ["ota:read"] })],
+    schema: {
+      params: z.object({ id: z.uuid() }),
+      response: otaAppResourceSchema,
+    },
+    handler: async ({ params }) => this.app(await this.admin.getApp(params.id)),
+  });
+
   public readonly otaCreateApp = $action({
     method: "POST",
     path: `${this.url}/apps`,

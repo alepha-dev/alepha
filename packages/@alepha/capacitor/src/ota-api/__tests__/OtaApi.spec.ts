@@ -585,6 +585,29 @@ describe.each(["sqlite", "postgres"] as const)("ota-api on %s", (dialect) => {
       ).rejects.toThrow("ota:read");
     });
 
+    it("bounds a rollout to 0-100", async ({ expect }) => {
+      const ctx = await createOtaTestApp(dialect);
+      const app = await ctx.app();
+      await ctx.publish(ctx.release(app.appId));
+      const channel = (
+        await ctx.admin.otaListChannels(
+          { params: { id: app.id } },
+          { user: operator },
+        )
+      )[0];
+      for (const rollout of [-1, 101]) {
+        await expect(
+          ctx.admin.otaSetRollout(
+            {
+              params: { id: channel.id },
+              body: { cohort: channel.cohorts[0].key, rollout },
+            },
+            { user: operator },
+          ),
+        ).rejects.toThrow();
+      }
+    });
+
     it("refuses a public key that is not one", async ({ expect }) => {
       const ctx = await createOtaTestApp(dialect);
       await expect(ctx.app({ publicKey: ctx.keys.privateKey })).rejects.toThrow(
