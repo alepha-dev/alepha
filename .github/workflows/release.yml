@@ -127,6 +127,23 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Released version: $VERSION"
 
+      # The gate on what ships (#Q2589). 0.31.0 was published at 47/66, because
+      # the only Lore call was the publish at the very end, which never looked
+      # at progress. This fails while the open Lore release carrying the tag has
+      # unfinished quests (shelved ones excluded), and passes with a log line
+      # when no release carries it.
+      #
+      # It sits after the bump only because the bump is what names the version:
+      # nothing above is committed, pushed or published, so a red run here
+      # leaves the repository and npm untouched. Skipped on a resume, whose
+      # version is already on npm.
+      - name: Check the Lore release is complete
+        if: inputs.resume_tag == ''
+        run: yarn lore releases check --tag "$VERSION"
+        env:
+          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
+          VERSION: ${{ steps.version.outputs.version }}
+
       # The file IS the release body  -  `action-gh-release` reads it through
       # `body_path` further down. It used to be piped into `$GITHUB_OUTPUT`
       # under an `EOF` delimiter, which put a commit message in charge of where
