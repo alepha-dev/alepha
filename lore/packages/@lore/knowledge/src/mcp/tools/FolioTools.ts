@@ -98,10 +98,15 @@ export class FolioTools {
         params.project,
         params.project_name,
       );
-      const folio = await this.folioController.getByShortId({
-        params: { projectId, shortId: params.shortId },
-      });
-      return folio.id;
+      // The id alone (#Q2637): every caller hands it to an action gated on
+      // the folio, which reads the row itself. The resolver above proved
+      // membership on the project.
+      const id = await this.folioController.idOfShortId(
+        projectId,
+        params.shortId,
+      );
+      if (id == null) throw new NotFoundError("Folio not found");
+      return id;
     }
     throw new BadRequestError(
       "Folio reference required: pass `id` (global UUID) or `shortId` (per-project — also requires `project` or `project_name`).",

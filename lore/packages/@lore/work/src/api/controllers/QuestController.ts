@@ -29,7 +29,7 @@ import {
   okSchema,
 } from "alepha/server";
 
-import { epics } from "../entities/epics.ts";
+import { type Epic, epics } from "../entities/epics.ts";
 import { feedback } from "../entities/feedback.ts";
 import { questComments } from "../entities/questComments.ts";
 import {
@@ -39,7 +39,7 @@ import {
   REMINDER_INTERVAL_MS,
   REMINDER_INTERVAL_VALUES,
 } from "../entities/quests.ts";
-import { releases } from "../entities/releases.ts";
+import { type Release, releases } from "../entities/releases.ts";
 import { questCommitSchema } from "../schemas/questCommitSchema.ts";
 import { questCreateSchema } from "../schemas/questCreateSchema.ts";
 import {
@@ -2126,16 +2126,26 @@ export class QuestController {
       // be accepted only while its epic is ready or in progress, and a ready
       // epic's predecessor must be completed, since this accept is what
       // starts it.
-      await this.epicWorkflow.assertQuestWorkable(quest, "accept");
+      //
+      // The epic and the predecessor are read together, and the epic once
+      // for both of its rules (#Q2637); the refusals keep their order.
+      const [epic, predecessor] = await Promise.all([
+        this.epicWorkflow.epicOf(quest),
+        quest.dependsOn != null
+          ? this.quests.findOne({ where: { id: { eq: quest.dependsOn } } })
+          : undefined,
+      ]);
+      await this.epicWorkflow.assertQuestWorkable(
+        quest,
+        "accept",
+        epic ?? null,
+      );
 
       // Questline gate (Lore #32): refuse to accept while a non-null
       // predecessor is still in flight. The dependent quest stays
-      // visible in the "todo" lane — the UI flips its badge to
+      // visible in the "todo" lane: the UI flips its badge to
       // "Unblocked" once the predecessor completes.
       if (quest.dependsOn != null) {
-        const predecessor = await this.quests.findOne({
-          where: { id: { eq: quest.dependsOn } },
-        });
         if (predecessor && !predecessor.completedAt) {
           throw new BadRequestError(
             `Cannot accept quest: blocked by ${formatReference("quest", predecessor.shortId)}`,
@@ -2169,11 +2179,18 @@ export class QuestController {
       });
 
       await this.quests.save(quest);
-      await this.logQuest("accept", quest, user);
+      // The audit and the epic's start together (#Q2637): neither reads the
+      // other. The audit is best effort; the start is one guarded statement,
+      // healed by `EpicWorkflowService.sweep` if it fails, and a failure
+      // fails the action after the accept landed, as it did before.
+      //
       // The first accepted quest of a ready epic starts it (#Q2223). After
       // the save, so a refusal above never leaves an epic started with
       // nothing accepted in it.
-      const cascade = await this.epicWorkflow.startIfReady(quest, user);
+      const [, cascade] = await Promise.all([
+        this.logQuest("accept", quest, user),
+        this.epicWorkflow.startIfReady(quest, user, epic ?? null),
+      ]);
       return this.mapQuestToResource(await this.afterCascade(quest, cascade));
     },
   });
@@ -2447,15 +2464,16 @@ export class QuestController {
     quest: Quest,
     userId: string,
     now: string,
+    epic: Pick<Epic, "releaseId"> | undefined,
+    openDefault: Promise<Release | undefined>,
   ): Promise<void> {
     if (quest.releaseId != null) return;
+    if (epic?.releaseId != null) return;
 
-    if (quest.epicId != null) {
-      const epic = await this.epics.findById(quest.epicId).catch(() => null);
-      if (epic?.releaseId != null) return;
-    }
-
-    const fallback = await this.defaults.openDefault(quest.projectId);
+    // Read by the caller beside the epic, before it is known to be needed
+    // (#Q2637): `openDefault` never throws, and one statement too many costs
+    // less than a round trip on D1.
+    const fallback = await openDefault;
     if (!fallback) return;
 
     quest.releaseId = fallback.id;
@@ -2528,11 +2546,23 @@ export class QuestController {
     },
     handler: async ({ params, body, user }) => {
       const { quest } = this.getQuestForTransition("complete", ["in_progress"]);
+      // The epic, read ONCE for every rule below (#Q2637), and beside it the
+      // default release the completion may land in.
+      const [epic, openDefault] = await Promise.all([
+        this.epicWorkflow.epicOf(quest),
+        quest.releaseId == null
+          ? this.defaults.openDefault(quest.projectId)
+          : undefined,
+      ]);
       // Mostly settled by the accept already: a quest is accepted only in a
       // ready or in-progress epic, and a completed epic has no accepted
       // quest. Rows that pre-date epic #31 can still be here, and the
       // refusal has to be right for them too.
-      await this.epicWorkflow.assertQuestWorkable(quest, "complete");
+      await this.epicWorkflow.assertQuestWorkable(
+        quest,
+        "complete",
+        epic ?? null,
+      );
 
       const now = this.dt.nowISOString();
 
@@ -2599,7 +2629,13 @@ export class QuestController {
       // of a planning convenience is a worse bug than a missed attachment,
       // which is why this reads the row and branches rather than going
       // through `ReleaseAttachmentService.resolve`, which throws by design.
-      await this.attachToDefaultRelease(quest, user.id, now);
+      await this.attachToDefaultRelease(
+        quest,
+        user.id,
+        now,
+        epic,
+        Promise.resolve(openDefault),
+      );
 
       quest.completedAt = now;
       quest.completedBy = user.id;
@@ -2608,6 +2644,7 @@ export class QuestController {
       quest.reminderInterval = undefined;
       quest.reminderNextAt = undefined;
       const message = body?.message?.trim();
+      const textChanged = !!message && message !== quest.completionMessage;
       if (message) {
         quest.completionMessage = message;
         quest.completionMessageUpdatedAt = now;
@@ -2625,17 +2662,40 @@ export class QuestController {
       }
 
       await this.quests.save(quest);
-      await this.bestEffort.run("completeQuest: link sync failed", () =>
-        this.syncQuestLinks(quest),
-      );
-      await this.logQuest("complete", quest, user);
 
-      // The epic's two automatic moves (#Q2223), after the save so both see
-      // this quest completed. The first only fires for a quest accepted in a
-      // ready epic before that epic could start, which only old rows do; the
-      // second completes an in-progress epic whose last open quest this was.
-      await this.epicWorkflow.startIfReady(quest, user);
-      await this.epicWorkflow.completeIfResolved(quest, user);
+      // The tail, concurrently (#Q2637): none of the three reads what
+      // another writes. What a failure halfway leaves behind is what the
+      // sequence always left on D1, which rolls nothing back:
+      // - the link sync is best effort, and only runs when the completion
+      //   message changed the text it reads; a failure leaves the quest's
+      //   mentions as they were, re-synced by its next text edit;
+      // - the audit is best effort (`LoreAuditService.record`);
+      // - the epic moves are each one guarded statement, so a failure leaves
+      //   a ready epic unstarted or an in-progress one with no open quest,
+      //   both healed by `EpicWorkflowService.sweep`. A thrown move fails
+      //   the action after the quest completed, as it did before.
+      await Promise.all([
+        textChanged
+          ? this.bestEffort.run("completeQuest: link sync failed", () =>
+              this.syncQuestLinks(quest),
+            )
+          : undefined,
+        this.logQuest("complete", quest, user),
+        // The epic's two automatic moves (#Q2223), after the save so both
+        // see this quest completed. The first only fires for a quest
+        // accepted in a ready epic before that epic could start, which only
+        // old rows do; the second completes an in-progress epic whose last
+        // open quest this was. In order: a ready epic the first one starts
+        // is re-read by the second, which then sees it in progress.
+        (async () => {
+          await this.epicWorkflow.startIfReady(quest, user, epic ?? null);
+          await this.epicWorkflow.completeIfResolved(
+            quest,
+            user,
+            epic?.status === "ready" ? undefined : (epic ?? null),
+          );
+        })(),
+      ]);
 
       return this.mapQuestToResource(quest);
     },
@@ -2981,17 +3041,29 @@ export class QuestController {
         }
       }
       await this.quests.save(updated);
-      await this.bestEffort.run("updateQuestById: link sync failed", () =>
-        this.syncQuestLinks(updated),
-      );
-      // The field NAMES only, never the values. `diffQuest` carries `from` /
-      // `to` for the quest's own history, which is member-gated behind the
-      // quest; an audit row is read on a page listing every project the
-      // reader belongs to, and a description's before-and-after has no
-      // business being duplicated there. The names are what the feed prints.
-      await this.logQuest("update", updated, user, {
-        fields: changes.map((change) => change.field),
-      });
+      // The tail, concurrently (#Q2637), both best effort: a failure of one
+      // leaves the other written, and the quest saved either way. The link
+      // sync runs only when the text it reads changed, and a failed one
+      // leaves the old mentions until the next text edit re-syncs them.
+      const textChanged =
+        updated.description !== quest.description ||
+        updated.completionMessage !== quest.completionMessage;
+      await Promise.all([
+        textChanged
+          ? this.bestEffort.run("updateQuestById: link sync failed", () =>
+              this.syncQuestLinks(updated),
+            )
+          : undefined,
+        // The field NAMES only, never the values. `diffQuest` carries `from`
+        // / `to` for the quest's own history, which is member-gated behind
+        // the quest; an audit row is read on a page listing every project
+        // the reader belongs to, and a description's before-and-after has
+        // no business being duplicated there. The names are what the feed
+        // prints.
+        this.logQuest("update", updated, user, {
+          fields: changes.map((change) => change.field),
+        }),
+      ]);
 
       return this.mapQuestToResource(updated);
     },

@@ -47,6 +47,12 @@ export interface RevisionPlan {
    * The same author's open revision to fold into, if any.
    */
   open?: FolioRevision;
+  /**
+   * The folio's first revision, recorded as it is created: there is nothing
+   * to fold into, no live row to fill and no cap to enforce, so
+   * {@link FolioHistoryService.recordRevision} reads nothing (#Q2637).
+   */
+  first?: boolean;
 }
 
 interface RevisionInput {
@@ -209,12 +215,16 @@ export class FolioHistoryService {
     // fold into the edit revision that preceded it, overwriting the very
     // snapshot being reverted away from and leaving no trace that a revert
     // happened at all.
-    const open =
+    // The open revision and the live rows in one step (#Q2637): neither
+    // read needs the other, only the fill below needs both.
+    const [open, live] = await Promise.all([
       action === "revert"
         ? undefined
-        : await this.findOpenRevision(folioId, byUserId);
+        : this.findOpenRevision(folioId, byUserId),
+      this.liveRevisionIds(folioId),
+    ]);
 
-    await this.materializeLive(folioId, previousContent, open?.id);
+    await this.fillLive(live, previousContent, open?.id);
     return { action, open };
   }
 
@@ -259,16 +269,23 @@ export class FolioHistoryService {
     // cap (a user can pin all 10, then every new revision is dropped on
     // the next sweep — acceptable, the user chose to freeze the history
     // by pinning).
+    //
+    // Ids only, and one delete for whatever is over (#Q2637): this used to
+    // read every snapshot body to count them, then delete one row per trip.
+    // Skipped for a folio's first revision, which cannot be over the cap.
+    if (plan.first) {
+      return { created: true, revision: inserted };
+    }
     const cap = this.alepha.store.get(folioHistoryAtom).maxRevisions;
     const nonPinned = await this.revisions.findMany({
       where: { folioId: { eq: folio.id }, pinned: { eq: false } },
       orderBy: [{ column: "at", direction: "desc" }],
+      columns: ["id"],
     });
     if (nonPinned.length > cap) {
-      const toDrop = nonPinned.slice(cap);
-      for (const rev of toDrop) {
-        await this.revisions.deleteById(rev.id);
-      }
+      await this.revisions.deleteMany({
+        id: { inArray: nonPinned.slice(cap).map((rev) => rev.id) },
+      });
     }
 
     return { created: true, revision: inserted };
@@ -291,10 +308,33 @@ export class FolioHistoryService {
     previousContent: string | undefined,
     keep: string | undefined,
   ): Promise<void> {
-    const live = await this.revisions.findMany({
+    await this.fillLive(
+      await this.liveRevisionIds(folioId),
+      previousContent,
+      keep,
+    );
+  }
+
+  /**
+   * The ids of a folio's live revisions, the rows {@link fillLive} fills.
+   */
+  protected async liveRevisionIds(
+    folioId: string,
+  ): Promise<Array<{ id: string }>> {
+    return await this.revisions.findMany({
       where: { folioId: { eq: folioId }, snapshotIsLive: { eq: true } },
       columns: ["id"],
     });
+  }
+
+  /**
+   * {@link materializeLive} on rows already read.
+   */
+  protected async fillLive(
+    live: Array<{ id: string }>,
+    previousContent: string | undefined,
+    keep: string | undefined,
+  ): Promise<void> {
     const stale = live.filter((row) => row.id !== keep);
     if (stale.length === 0) return;
     if (previousContent === undefined) {

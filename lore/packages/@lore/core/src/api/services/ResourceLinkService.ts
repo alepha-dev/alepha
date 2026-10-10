@@ -179,12 +179,19 @@ export class ResourceLinkService {
     for (const token of tokens) {
       numbers.set(token.type, [...(numbers.get(token.type) ?? []), token.id]);
     }
-    const maps = new Map<string, Map<number, string>>();
-    for (const [kind, wanted] of numbers) {
-      const resolve = this.resources.get(kind)?.resolveNumbers;
-      maps.set(kind, resolve ? await resolve(projectId, wanted) : new Map());
-    }
-    return maps;
+    // Every kind at once (#Q2637): a body naming quests and folios used to
+    // wait for the quests before it asked for the folios.
+    return new Map(
+      await Promise.all(
+        [...numbers].map(async ([kind, wanted]) => {
+          const resolve = this.resources.get(kind)?.resolveNumbers;
+          return [
+            kind,
+            resolve ? await resolve(projectId, wanted) : new Map(),
+          ] as [string, Map<number, string>];
+        }),
+      ),
+    );
   }
 
   /**
@@ -215,21 +222,26 @@ export class ResourceLinkService {
   ): Promise<void> {
     const fromId = String(source.id);
     const tokens = this.parseTokens(content);
-    const targets = await this.resolveTokenIds(tokens, source.projectId, {
-      kind: source.kind,
-      id: fromId,
-    });
-
-    // Mentions only: a `filed` row is an explicit act no body holds, and an
-    // epic whose description is saved must keep the folios it files
-    // (#Q2626).
-    if (!opts.created) {
-      await this.links.deleteMany({
-        fromType: { eq: source.kind },
-        fromId: { eq: fromId },
-        relation: { isNull: true },
-      });
-    }
+    // The lookup and the delete of the old rows in one step (#Q2637): the
+    // delete does not depend on what the body names. A failure of either
+    // leaves what the delete-then-insert always could on D1, a source with
+    // fewer link rows than its body, which its next save re-syncs.
+    const [targets] = await Promise.all([
+      this.resolveTokenIds(tokens, source.projectId, {
+        kind: source.kind,
+        id: fromId,
+      }),
+      // Mentions only: a `filed` row is an explicit act no body holds, and
+      // an epic whose description is saved must keep the folios it files
+      // (#Q2626).
+      opts.created
+        ? undefined
+        : this.links.deleteMany({
+            fromType: { eq: source.kind },
+            fromId: { eq: fromId },
+            relation: { isNull: true },
+          }),
+    ]);
 
     if (targets.length === 0) return;
 

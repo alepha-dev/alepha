@@ -455,6 +455,25 @@ export class FolioController {
   });
 
   /**
+   * The id of the folio a per-project `shortId` names, or `undefined`. One
+   * column, no epic stamp: what a tool that addresses a folio by `shortId`
+   * needs before calling an action gated on the folio, which reads the row
+   * itself (#Q2637). Ungated, so the caller must already have proven
+   * membership on `projectId`.
+   */
+  async idOfShortId(
+    projectId: number,
+    shortId: number,
+  ): Promise<string | undefined> {
+    const [row] = await this.folios.findMany({
+      where: { projectId: { eq: projectId }, shortId: { eq: shortId } },
+      columns: ["id"],
+      limit: 1,
+    });
+    return row?.id;
+  }
+
+  /**
    * The folio a gate already read, stamped with its epic and carrying the
    * extras asked for.
    */
@@ -954,26 +973,34 @@ export class FolioController {
       // Sync outbound `[[...]]` references. Skipped for protected folios
       // since `content` is ciphertext — scanning it for `[[...]]` would
       // generate noisy junk links from base64 chars.
-      if (!isProtected) {
-        // A brand-new id has no links to clear, so the delete is skipped.
-        await this.bestEffort.run("createFolio: link sync failed", () =>
-          this.linkService.syncLinks(this.folioSource(created), content, {
-            created: true,
+      //
+      // The three run concurrently (#Q2637), each best effort, so a failure
+      // of one leaves the other two written and the folio created: a missed
+      // link sync is redone by the next save, a missed revision leaves the
+      // History tab without its baseline, a missed audit leaves the feed
+      // without the line.
+      await Promise.all([
+        isProtected
+          ? undefined
+          : // A brand-new id has no links to clear, so the delete is skipped.
+            this.bestEffort.run("createFolio: link sync failed", () =>
+              this.linkService.syncLinks(this.folioSource(created), content, {
+                created: true,
+              }),
+            ),
+        // Seed the revision log with a `create` entry. Snapshot is the folio
+        // as it stands right after insert: the History tab's baseline to
+        // diff later edits against. A new folio has no revision to fold
+        // into, no live row to fill and nothing over the cap, so nothing is
+        // read first.
+        this.bestEffort.run("createFolio: create revision failed", () =>
+          this.historyService.recordRevision(created, user.id, {
+            action: "create",
+            first: true,
           }),
-        );
-      }
-      // Seed the revision log with a `create` entry. Snapshot is the
-      // folio as it stands right after insert — gives the History tab a
-      // baseline to diff later edits against.
-      await this.bestEffort.run("createFolio: create revision failed", () =>
-        this.historyService.appendRevision(
-          created,
-          user.id,
-          "create",
-          undefined,
         ),
-      );
-      await this.logFolio("create", folio, user, { protected: isProtected });
+        this.logFolio("create", folio, user, { protected: isProtected }),
+      ]);
 
       // Always true here: a brand-new folio has nothing to fold into. Sent
       // anyway so the two save paths answer the same shape and the client
@@ -1194,31 +1221,49 @@ export class FolioController {
       // A rename touches no other element: a folio is referenced by its
       // number (`[[#F12]]`, epic #32), which a title change leaves intact.
       // Re-sync this folio's own outbound links whenever content changed.
-      if (!isProtected) {
-        await this.bestEffort.run("updateFolio: link sync failed", () =>
-          this.linkService.syncLinks(this.folioSource(updated), content),
-        );
-      }
+      // The tail runs concurrently (#Q2637), with the epic stamp of the
+      // response beside it. Each step is best effort and none reads what
+      // another writes, so a failure halfway leaves the others written and
+      // the folio saved: a missed link sync is redone by the next save that
+      // changes the content, a missed revision leaves the live head already
+      // materialized by step 3, a missed audit leaves the feed without the
+      // line.
+      //
+      // The link sync runs only when the content changed: a rename, a move
+      // or a pin leaves the body, and so its links, as they were.
       const revisionPlan = plan;
-      const appended = revisionPlan
-        ? await this.bestEffort.run("updateFolio: revision failed", () =>
-            this.historyService.recordRevision(updated, user.id, revisionPlan),
-          )
-        : undefined;
-      // See `folioSavedSchema` for why the purge is an equal partner here
-      // and why this is not named `revisionCreated`. A purge with no insert
-      // is rare but real: it empties the list, and a client told only about
-      // insertions would keep rendering revisions the server has deleted.
-      await this.logFolio("update", updated, user, {
-        // What the update actually touched, from the revision decision that
-        // has already computed it. `undefined` when nothing recordable moved
-        // (a pin, a reparent), which is exactly the distinction the feed
-        // wants to draw.
-        change: plan?.action,
-      });
+      const [, appended, , [stamped]] = await Promise.all([
+        !isProtected && content !== existing.content
+          ? this.bestEffort.run("updateFolio: link sync failed", () =>
+              this.linkService.syncLinks(this.folioSource(updated), content),
+            )
+          : undefined,
+        revisionPlan
+          ? this.bestEffort.run("updateFolio: revision failed", () =>
+              this.historyService.recordRevision(
+                updated,
+                user.id,
+                revisionPlan,
+              ),
+            )
+          : undefined,
+        // See `folioSavedSchema` for why the purge is an equal partner here
+        // and why this is not named `revisionCreated`. A purge with no
+        // insert is rare but real: it empties the list, and a client told
+        // only about insertions would keep rendering revisions the server
+        // has deleted.
+        this.logFolio("update", updated, user, {
+          // What the update actually touched, from the revision decision
+          // that has already computed it. `undefined` when nothing
+          // recordable moved (a pin, a reparent), which is exactly the
+          // distinction the feed wants to draw.
+          change: plan?.action,
+        }),
+        this.withEpics([updated]),
+      ]);
 
       return {
-        ...(await this.withEpics([updated]))[0],
+        ...stamped,
         revisionsChanged: purged || appended?.created === true,
       };
     },
