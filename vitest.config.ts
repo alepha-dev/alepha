@@ -8,6 +8,7 @@ import { projects as shop } from "./apps/examples/shop/vitest.config.ts";
 import { projects as uiApp } from "./apps/ui/vitest.config.ts";
 import { projects as capacitor } from "./packages/@alepha/capacitor/vitest.config.ts";
 import { projects as commerce } from "./packages/@alepha/commerce/vitest.config.ts";
+import { projects as desktop } from "./packages/@alepha/desktop/vitest.config.ts";
 import { projects as devtools } from "./packages/@alepha/devtools/vitest.config.ts";
 import { projects as discord } from "./packages/@alepha/discord/vitest.config.ts";
 import { projects as paymentsStripe } from "./packages/@alepha/payments-stripe/vitest.config.ts";
@@ -90,6 +91,7 @@ export default defineConfig({
       ...alepha,
       ...calculator,
       ...capacitor,
+      ...desktop,
       ...commerce,
       ...createAlepha,
       ...devtools,

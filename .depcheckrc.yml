@@ -48,6 +48,7 @@ ignores:
   - "@fontsource/spectral"
   - "@types/bun"
   - "bun"
+  - "bun:ffi"
   - "bun:sqlite"
   - "bun:test"
   - "cloudflare:workers"
@@ -74,3 +75,7 @@ ignores:
 ignore-patterns:
   - "dist"
   - "assets"
+  # The desktop e2e's fixture app is copied into a throwaway project that
+  # installs its own dependencies (react, the packed @alepha/desktop); none of
+  # them belong to the e2e-cli workspace that carries the files.
+  - "src/fixtures/desktop"

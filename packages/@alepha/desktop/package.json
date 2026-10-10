@@ -1,0 +1,103 @@
+{
+  "name": "@alepha/desktop",
+  "version": "0.31.0",
+  "description": "Native macOS window for a compiled Alepha app: a webview shell, a supervised server Worker on loopback, and alepha compile --desktop.",
+  "keywords": [
+    "alepha",
+    "bun",
+    "desktop",
+    "macos",
+    "typescript",
+    "webview"
+  ],
+  "homepage": "https://alepha.dev",
+  "license": "MIT",
+  "author": "Nicolas Foures",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alepha-dev/alepha.git"
+  },
+  "files": [
+    "assets",
+    "dist",
+    "src",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "type": "module",
+  "main": "./src/core/index.ts",
+  "types": "./src/core/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/core/index.ts",
+      "import": "./src/core/index.ts",
+      "default": "./src/core/index.ts"
+    },
+    "./worker": {
+      "types": "./src/worker/index.ts",
+      "import": "./src/worker/index.ts",
+      "default": "./src/worker/index.ts"
+    },
+    "./shell": {
+      "types": "./src/shell/index.ts",
+      "import": "./src/shell/index.ts",
+      "default": "./src/shell/index.ts"
+    },
+    "./cli": {
+      "types": "./src/cli/index.ts",
+      "import": "./src/cli/index.ts",
+      "default": "./src/cli/index.ts"
+    },
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "main": "./dist/core/index.js",
+    "types": "./dist/core/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/core/index.d.ts",
+        "import": "./dist/core/index.js",
+        "default": "./dist/core/index.js"
+      },
+      "./worker": {
+        "types": "./dist/worker/index.d.ts",
+        "import": "./dist/worker/index.js",
+        "default": "./dist/worker/index.js"
+      },
+      "./shell": {
+        "types": "./dist/shell/index.d.ts",
+        "import": "./dist/shell/index.js",
+        "default": "./dist/shell/index.js"
+      },
+      "./cli": {
+        "types": "./dist/cli/index.d.ts",
+        "import": "./dist/cli/index.js",
+        "default": "./dist/cli/index.js"
+      },
+      "./package.json": "./package.json"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "test": "alepha test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "webview-bun": "2.4.0"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.2",
+    "@types/node": "^26.6.4",
+    "alepha": "0.31.0",
+    "rolldown": "~1.2.12",
+    "tsdown": "^0.23.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.3"
+  },
+  "peerDependencies": {
+    "alepha": "^0.31.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "llms": "https://alepha.dev/llms.txt"
+}

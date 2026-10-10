@@ -10,6 +10,7 @@ import { $module } from "alepha";
 
 import { appEntryOptions } from "./atoms/appEntryOptions.ts";
 import { buildOptions } from "./atoms/buildOptions.ts";
+import { desktopOptions } from "./atoms/desktopOptions.ts";
 import { devOptions } from "./atoms/devOptions.ts";
 import { imageOptions } from "./atoms/imageOptions.ts";
 import { metaOptions } from "./atoms/metaOptions.ts";
@@ -40,6 +41,7 @@ import { AlephaCliUtils } from "./services/AlephaCliUtils.ts";
 import { ArchiveCompressor } from "./services/ArchiveCompressor.ts";
 import { BuildPipeline } from "./services/BuildPipeline.ts";
 import { BuildSlices } from "./services/BuildSlices.ts";
+import { DesktopAdapterResolver } from "./services/DesktopAdapterResolver.ts";
 import { DockerImageBuilder } from "./services/DockerImageBuilder.ts";
 import { PackageManagerUtils } from "./services/PackageManagerUtils.ts";
 import { ProjectScaffolder } from "./services/ProjectScaffolder.ts";
@@ -64,6 +66,7 @@ export * from "./atoms/appEntryOptions.ts";
 export * from "./atoms/buildOptions.ts";
 export * from "./atoms/changelogOptions.ts";
 export * from "./atoms/devOptions.ts";
+export * from "./atoms/desktopOptions.ts";
 export * from "./atoms/imageOptions.ts";
 export * from "./atoms/metaOptions.ts";
 export * from "./commands/build.ts";
@@ -96,6 +99,7 @@ export * from "./services/BuildPipeline.ts";
 export * from "./services/BuildSlices.ts";
 export * from "./services/DockerImageBuilder.ts";
 export * from "./services/ViteUtils.ts";
+export * from "./services/DesktopAdapterResolver.ts";
 export * from "./services/WorkspaceCompiler.ts";
 export * from "./services/WorkspacePacker.ts";
 export * from "./tasks/BuildAssetsTask.ts";
@@ -140,7 +144,7 @@ export const AlephaCliServices = $module({
   // The tasks resolve `buildOptions`, so it belongs to whichever module
   // declares them. Left behind on `AlephaCli` it would read as unregistered
   // from a container that has the tasks and not the commands.
-  atoms: [buildOptions, imageOptions],
+  atoms: [buildOptions, desktopOptions, imageOptions],
   services: [
     // Services & providers
     AlephaCliUtils,
@@ -156,6 +160,7 @@ export const AlephaCliServices = $module({
     BuildSlices,
     BuildPipeline,
     DockerImageBuilder,
+    DesktopAdapterResolver,
     WorkspaceCompiler,
     WorkspacePacker,
     // Build tasks. `BuildCommand` orchestrates these and stays in `AlephaCli`:

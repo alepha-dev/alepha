@@ -1,7 +1,8 @@
-import { $inject, z } from "alepha";
+import { $inject, $store, z } from "alepha";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 
+import { desktopOptions } from "../atoms/desktopOptions.ts";
 import { WorkspaceCompiler } from "../services/WorkspaceCompiler.ts";
 
 /**
@@ -26,6 +27,16 @@ import { WorkspaceCompiler } from "../services/WorkspaceCompiler.ts";
  * that produced `dist/` is the one thing that can say which slices are in it,
  * and an archive would need decompressing before this could even look.
  *
+ * ## `--desktop`: a native macOS app
+ *
+ *     alepha compile --desktop --out loom   # dist/<desktop.name>.app
+ *
+ * Reads the top-level `desktop` config (and nothing else does), resolves
+ * `@alepha/desktop` from the app's dependencies, and builds the app in a
+ * staging copy of `dist/`: `dist/` is consumed only once the bundle is
+ * complete. macOS only, for this Mac's architecture. See
+ * `WorkspaceCompiler.compileDesktop`.
+ *
  * ## The options are flags, and there is no `compile:` config key
  *
  * Three settings — the binary name, the Bun triple, minification — and a key
@@ -38,6 +49,7 @@ import { WorkspaceCompiler } from "../services/WorkspaceCompiler.ts";
 export class CompileCommand {
   protected readonly log = $logger();
   protected readonly compiler = $inject(WorkspaceCompiler);
+  protected readonly desktop = $store(desktopOptions);
 
   public readonly compile = $command({
     name: "compile",
@@ -62,6 +74,12 @@ export class CompileCommand {
         .boolean()
         .describe("Minify the compiled output (default: on).")
         .optional(),
+      desktop: z
+        .boolean()
+        .describe(
+          "Build a native macOS app, dist/<name>.app, from the top-level `desktop` config. Needs @alepha/desktop; macOS only, for this Mac's architecture.",
+        )
+        .optional(),
     }),
     handler: async ({ flags, root, run }) => {
       const name = flags.out ?? "app";
@@ -69,6 +87,25 @@ export class CompileCommand {
         throw new (await import("alepha")).AlephaError(
           `Invalid binary name '${name}': use lowercase letters, digits, '.', '_' and '-', starting with a letter or a digit.`,
         );
+      }
+
+      if (flags.desktop) {
+        let app = "";
+        await run({
+          name: `compile --desktop → ${name}`,
+          handler: async () => {
+            app = await this.compiler.compileDesktop({
+              root,
+              name,
+              target: flags.target,
+              minify: flags.minify ?? true,
+              // An unset atom is `{}`: no name means no desktop config.
+              config: this.desktop.name ? { ...this.desktop } : undefined,
+            });
+          },
+        });
+        this.log.info(`Compiled ${name} → ${app}`);
+        return;
       }
 
       const target = flags.target ?? this.compiler.defaultBunTarget();
