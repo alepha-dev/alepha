@@ -1,6 +1,3 @@
-import { randomBytes } from "node:crypto";
-import { tmpdir } from "node:os";
-
 import {
   $inject,
   $store,
@@ -32,11 +29,8 @@ import {
 } from "../secretKeys.ts";
 import { CloudflareApi } from "../services/CloudflareApi.ts";
 import { CloudflareCredentialSource } from "../services/CloudflareCredentialSource.ts";
+import { CloudflareProvisionClient } from "../services/CloudflareProvisionClient.ts";
 import { D1MigrationsService } from "../services/D1MigrationsService.ts";
-import {
-  DurableObjectLifecycle,
-  type DurableObjectLifecycleConfig,
-} from "../services/DurableObjectLifecycle.ts";
 import { NamingService } from "../services/NamingService.ts";
 import { StoragePlaceholderService } from "../services/StoragePlaceholderService.ts";
 import { WranglerApi } from "../services/WranglerApi.ts";
@@ -47,15 +41,19 @@ import {
   type InfraLoginOptions,
   type InfraState,
 } from "./InfraAdapter.ts";
+import {
+  type WorkerCloudflareCredential,
+  WorkerCloudflareAdapter,
+} from "./WorkerCloudflareAdapter.ts";
 
 /**
  * Cloudflare Workers adapter.
  *
  * Uses the Cloudflare REST API (via CloudflareApi) for resource provisioning
- * and teardown, and wrangler CLI (via WranglerApi) for login and deploy.
- * The deploy carries the secrets, see `deploy`. The credential comes from
- * `CloudflareCredentialSource`: `CLOUDFLARE_API_TOKEN` first, wrangler only
- * when it is absent.
+ * and teardown, and uploads through `WorkerCloudflareAdapter`, the code Lore
+ * deploys with, so there is one deploy path. The deploy carries the secrets,
+ * see `deploy`. The credential comes from `CloudflareCredentialSource`:
+ * `CLOUDFLARE_API_TOKEN` first, wrangler only for an interactive login.
  */
 export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions> {
   static readonly id = "cloudflare";
@@ -73,7 +71,21 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
   protected readonly api = $inject(CloudflareApi);
   protected readonly wrangler = $inject(WranglerApi);
   protected readonly credentials = $inject(CloudflareCredentialSource);
-  protected readonly durableObjectLifecycle = $inject(DurableObjectLifecycle);
+  /**
+   * The upload, which is Lore's code (#Q2612).
+   *
+   * ⚠️ **Transient, and that is what keeps the container acyclic.** The
+   * Worker adapter injects `D1MigrationsService`, whose module is this one's:
+   * a container that injects `WorkerCloudflareAdapter` FIRST (Lore's
+   * `DeployRunner` does) registers that module while the Worker adapter is
+   * still being built, which builds this adapter, which asked for the
+   * singleton being built. A transient is a fresh instance, so there is no
+   * cycle to find; it is also what the Worker adapter asks of its runners,
+   * one instance per deploy.
+   */
+  protected readonly workerAdapter = $inject(WorkerCloudflareAdapter, {
+    lifetime: "transient",
+  });
   protected readonly d1Migrations = $inject(D1MigrationsService);
   protected readonly runner = $inject(Runner);
   protected readonly buildTask = $inject(BuildCloudflareTask);
@@ -472,32 +484,39 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
   }
 
   // -------------------------------------------------------------------------
-  // deploy (wrangler  -  handles bundling/upload)
+  // deploy (Cloudflare API, through WorkerCloudflareAdapter)
   // -------------------------------------------------------------------------
 
   /**
    * Upload the Worker, with its secrets and variables in the same upload.
    *
+   * ## One deploy path (#Q2612)
+   *
+   * What is Node-side stays here: the artifact check, the secret set read
+   * from `.env.<env>`, the declassified values written into the config. The
+   * upload itself is `WorkerCloudflareAdapter.deploy` with `dist/` as its
+   * root, the code Lore runs: modules scoped by the config's `rules`,
+   * bindings, assets with `_headers` / `_redirects`, Durable Object
+   * migrations, crons, the custom domain or `workers_dev`, queue consumers.
+   * No wrangler process runs.
+   *
    * ## ⚠️ One upload, one version, no window
    *
-   * The secrets used to follow in a second step, a bulk `PATCH` of the
-   * settings after `wrangler deploy`, because `secret put` needs the Worker to
-   * exist. That cost a second Worker version on every `up`, and a window in
-   * which the new build ran against the previous secret set: a deploy
-   * introducing a newly required secret booted without it, and a first deploy
-   * booted with no secret at all. `wrangler deploy --secrets-file` sends them
-   * as `secret_text` bindings of the upload itself, first deploy included.
-   *
+   * Secrets are `secret_text` bindings of the upload itself, first deploy
+   * included, so the new build never runs against the previous secret set.
    * The declassified values (`variables`, `PUBLIC_URL`) are written into the
    * deploy config's `vars`, so they are `plain_text` bindings of the same
-   * upload. They had to be: `wrangler deploy` without `keep_vars` drops every
-   * `plain_text` binding its config does not name, which is also why the old
-   * `ALEPHA_SECRETS_HASH` fingerprint never survived to the next deploy and
-   * the PATCH it was meant to skip ran every time.
+   * upload.
    *
-   * ⚠️ `--secrets-file` is additive, like the PATCH was: a secret dropped from
-   * the set stays on the Worker until it is deleted there. A rotation is a
-   * new value in the file, and wins.
+   * ## ⚠️ Secrets add, they do not replace
+   *
+   * A secret the upload does not name stays on the Worker: Cloudflare carries
+   * secret bindings over from the previous version (measured 2026-10-11, a
+   * secret left out of the next upload was still bound to the new version).
+   * That is what `wrangler deploy --secrets-file` did too, so a secret the
+   * environment stopped declaring, or one set by hand in the dashboard, is
+   * kept. Every such secret is named before the upload, so it is visible
+   * rather than silently live.
    */
   async deploy(
     ctx: InfraContext<CloudflareEnvironmentOptions>,
@@ -505,41 +524,89 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
   ): Promise<string | undefined> {
     await this.validateDeployArtifact(ctx);
     this.configureApi(ctx);
-    const workerName = ctx.naming.worker();
+    const { credential } = await this.credentials.resolve({
+      root: ctx.root,
+      accountId: ctx.options.accountId,
+      jurisdiction: ctx.options.jurisdiction,
+    });
     const distDir = this.fs.join(ctx.root, "dist");
-    const configPath = `${distDir}/wrangler.jsonc`;
-    const config =
-      await this.fs.readJsonFile<DurableObjectLifecycleConfig>(configPath);
-    this.durableObjectLifecycle.validate(config);
-    this.durableObjectLifecycle.bindings(config);
-    if (config.migrations !== undefined)
-      this.durableObjectLifecycle.migrations(
-        config,
-        await this.api.getWorkerMigrationTag(workerName),
-      );
+    const configPath = this.fs.join(distDir, "wrangler.jsonc");
     const { secrets, vars } = await this.resolveSecrets(ctx);
 
-    let url: string | undefined;
+    if (Object.keys(vars).length > 0) {
+      await this.writeDeployVars(configPath, vars);
+    }
+    await this.reportUndeclaredSecrets(ctx, credential, secrets, configPath);
 
-    await run({
-      name: `deploy worker ${ctx.project}`,
-      handler: async () => {
-        if (Object.keys(vars).length > 0) {
-          await this.writeDeployVars(configPath, vars);
-        }
-        url = await this.withSecretsFile(secrets, (secretsFile) =>
-          this.wrangler.deploy(workerName, configPath, ctx.root, {
-            secretsFile,
-          }),
-        );
-      },
-    });
-
-    return url;
+    return await this.workerAdapter
+      .use(credential)
+      .withSecrets(secrets)
+      .deploy({ ...ctx, root: distDir }, run);
   }
 
   /**
-   * Refuse incomplete local artifacts before Wrangler or secret-file writes.
+   * Log, by name, every secret the Worker holds that this environment no
+   * longer declares, and answer those names.
+   *
+   * The upload leaves them bound (see {@link deploy}), so this is the only
+   * place they surface: a stale credential still readable by the app, or a
+   * value set by hand that no `.env` file records.
+   *
+   * ⚠️ Names only, never a value, and never a failure: a Worker that does not
+   * exist yet holds nothing, and a listing that fails must not stop a deploy
+   * that would otherwise succeed.
+   */
+  protected async reportUndeclaredSecrets(
+    ctx: InfraContext<CloudflareEnvironmentOptions>,
+    credential: WorkerCloudflareCredential,
+    secrets: Record<string, string>,
+    configPath: string,
+  ): Promise<string[]> {
+    let current: Array<{ name: string; type: string }>;
+    try {
+      current = await this.provisioner(credential).listSecrets(
+        ctx.naming.worker(),
+      );
+    } catch (error) {
+      this.log.debug(
+        `Could not list the Worker's current secrets: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return [];
+    }
+    const config = JSON.parse(await this.fs.readTextFile(configPath)) as {
+      vars?: Record<string, unknown>;
+    };
+    const kept = new Set([
+      ...Object.keys(secrets),
+      ...Object.keys(config.vars ?? {}),
+    ]);
+    // `WorkerCloudflareAdapter` derives PUBLIC_URL from the domain itself.
+    if (ctx.options.domain) {
+      kept.add("PUBLIC_URL");
+    }
+    const undeclared = current
+      .filter((it) => it.type === "secret_text" && !kept.has(it.name))
+      .map((it) => it.name)
+      .sort();
+    if (undeclared.length > 0) {
+      this.log.warn(
+        `The Worker keeps ${undeclared.length} secret(s) the environment no longer declares: ${undeclared.join(", ")}. A deploy never removes a secret; delete one with \`wrangler secret delete <name> --name ${ctx.naming.worker()}\` or in the dashboard, or declare it in .env.${ctx.env}.`,
+      );
+    }
+    return undeclared;
+  }
+
+  /**
+   * A provisioning client under the run's credential.
+   */
+  protected provisioner(
+    credential: WorkerCloudflareCredential,
+  ): CloudflareProvisionClient {
+    return new CloudflareProvisionClient(credential);
+  }
+
+  /**
+   * Refuse incomplete local artifacts before any upload or config write.
    * Granular deployment uploads build output without regenerating it.
    */
   protected async validateDeployArtifact(ctx: InfraContext): Promise<void> {
@@ -589,33 +656,6 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
     };
     config.vars = { ...config.vars, ...vars };
     await this.fs.writeFile(configPath, JSON.stringify(config, null, 2));
-  }
-
-  /**
-   * Hand `wrangler deploy` the secrets as a file, and remove it whatever
-   * happens.
-   *
-   * ⚠️ A fresh name under the OS temp directory, created `0600`: the mode only
-   * applies to a file that is new, and the values are the Worker's secrets.
-   * Nothing at all is written when there is nothing to send.
-   */
-  protected async withSecretsFile<T>(
-    secrets: Record<string, string>,
-    upload: (secretsFile: string | undefined) => Promise<T>,
-  ): Promise<T> {
-    if (Object.keys(secrets).length === 0) {
-      return await upload(undefined);
-    }
-    const path = this.fs.join(
-      tmpdir(),
-      `alepha-secrets-${randomBytes(16).toString("hex")}.json`,
-    );
-    await this.fs.writeFile(path, JSON.stringify(secrets), { mode: 0o600 });
-    try {
-      return await upload(path);
-    } finally {
-      await this.fs.rm(path, { force: true });
-    }
   }
 
   // -------------------------------------------------------------------------

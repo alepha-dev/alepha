@@ -2,13 +2,13 @@ import assert from "node:assert/strict";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { $inject, Alepha } from "alepha";
+import { Alepha } from "alepha";
 import {
   CloudflareAdapter,
+  CloudflareCredentialSource,
   CloudflareDeployClient,
   NamingService,
   WorkerCloudflareAdapter,
-  WranglerApi,
 } from "alepha/cli/infra-lib";
 import {
   FileSystemProvider,
@@ -17,20 +17,10 @@ import {
   ShellProvider,
 } from "alepha/system";
 
-class CapturedWrangler extends WranglerApi {
-  fs = $inject(FileSystemProvider);
-  configs = [];
-  async deploy(_name, path) {
-    this.configs.push(await this.fs.readJsonFile(path));
-    return "https://fixture.workers.dev";
-  }
-}
+// One transport since #Q2612: `alepha deploy` hands its `dist/` to the upload
+// Lore runs. This captures the multipart metadata of both callers for the same
+// artifact and asserts they agree.
 
-const app = Alepha.create({ env: { LOG_LEVEL: "error" } })
-  .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
-  .with({ provide: ShellProvider, use: MemoryShellProvider })
-  .with({ provide: WranglerApi, use: CapturedWrangler });
-const fs = app.inject(MemoryFileSystemProvider);
 const captures = [];
 const noOp = async () => ({});
 const api = {
@@ -52,10 +42,44 @@ const client = new CloudflareDeployClient({
   accountId: "fixture",
   client: api,
 });
+const provisioner = {
+  getWorkerMigrationTag: async () => undefined,
+  listQueues: async () => [],
+  listSecrets: async () => [],
+};
+
+class CapturedWorker extends WorkerCloudflareAdapter {
+  deployer() {
+    return client;
+  }
+  provisioner() {
+    return provisioner;
+  }
+}
+class CapturedLocal extends CloudflareAdapter {
+  provisioner() {
+    return provisioner;
+  }
+}
+class FixtureCredential extends CloudflareCredentialSource {
+  async resolve() {
+    return {
+      credential: { apiToken: "fixture", accountId: "fixture" },
+      origin: "env",
+    };
+  }
+}
+
+const app = Alepha.create({ env: { LOG_LEVEL: "error" } })
+  .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
+  .with({ provide: ShellProvider, use: MemoryShellProvider })
+  .with({ provide: CloudflareCredentialSource, use: FixtureCredential })
+  .with({ provide: WorkerCloudflareAdapter, use: CapturedWorker })
+  .with({ provide: CloudflareAdapter, use: CapturedLocal });
+const fs = app.inject(MemoryFileSystemProvider);
 const worker = app
   .inject(WorkerCloudflareAdapter)
   .use({ apiToken: "fixture", accountId: "fixture" });
-worker.deployer = () => client;
 const local = app.inject(CloudflareAdapter);
 const run = Object.assign(
   async (task) => {
@@ -65,6 +89,7 @@ const run = Object.assign(
   { end: () => {} },
 );
 const naming = app.inject(NamingService);
+const classes = [];
 
 for (const variant of ["actor", "combined"]) {
   const dist = join(process.cwd(), variant, "dist");
@@ -98,12 +123,17 @@ for (const variant of ["actor", "combined"]) {
   await worker.build(context("/worker"), run);
   await local.build(context("/local"), run);
   await worker.deploy(context("/worker"), run);
+  const lore = captures.at(-1);
   await local.deploy(context("/local"), run);
-  const metadata = captures.at(-1);
-  const config = app.inject(CapturedWrangler).configs.at(-1);
-  assert.deepEqual(metadata.exports, config.exports);
+  const cli = captures.at(-1);
+  assert.notEqual(cli, lore);
+  assert.deepEqual(cli, lore);
+  const config = JSON.parse(
+    await fs.readTextFile("/local/dist/wrangler.jsonc"),
+  );
+  assert.deepEqual(lore.exports, config.exports);
   assert.deepEqual(
-    metadata.bindings.filter(
+    lore.bindings.filter(
       (binding) => binding.type === "durable_object_namespace",
     ),
     config.durable_objects.bindings.map((binding) => ({
@@ -111,13 +141,14 @@ for (const variant of ["actor", "combined"]) {
       ...binding,
     })),
   );
-  assert.equal(metadata.migrations, undefined);
+  assert.equal(lore.migrations, undefined);
   assert.equal(worker.provisionedResources.durableObjects, true);
+  classes.push(Object.keys(lore.exports));
 }
 console.log(
   JSON.stringify({
     uploads: captures.length,
-    classes: captures.map((metadata) => Object.keys(metadata.exports)),
-    transports: ["Wrangler configuration", "multipart metadata"],
+    classes,
+    transports: ["multipart metadata"],
   }),
 );

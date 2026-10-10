@@ -137,8 +137,11 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
    * `PUT`, which is why {@link InfraAdapter.secrets} stays the inherited
    * no-op here: a deploy is ONE Worker version, first deploy included, and
    * the build never runs against the previous secret set. The CLI's
-   * `CloudflareAdapter` does the same through `wrangler deploy
-   * --secrets-file`; see the note in `InfraOrchestrator.up()`.
+   * `CloudflareAdapter` hands its secrets to this same upload (#Q2612); see
+   * the note in `InfraOrchestrator.up()`.
+   *
+   * ⚠️ A secret left out of the set is NOT removed: Cloudflare carries secret
+   * bindings over from the previous version (measured 2026-10-11).
    *
    * ⚠️ Never logged, never put in a progress line, never returned. The values
    * exist on this instance for the length of one deploy.
@@ -530,7 +533,7 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
           // window `InfraOrchestrator.up()`'s two-step ordering leaves open.
           // `putScript` turns each entry into a `secret_text` binding beside
           // the resource bindings above.
-          secrets: this.secretsFor(ctx),
+          secrets: this.secretsFor(ctx, config),
           migrations,
           exports: config.exports,
           observability: config.observability,
@@ -650,12 +653,21 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
    * An explicit value always wins. On this path it is a variable the operator
    * set on the copy, and a copy deployed behind a proxy or under a vanity host
    * has to be able to say so.
+   *
+   * ⚠️ A `PUBLIC_URL` already in the config's `vars` wins too: the CLI writes
+   * it there as `plain_text`, and a second binding of the same name as a
+   * secret is an upload Cloudflare refuses.
    */
   protected secretsFor(
     ctx: InfraContext<EnvironmentOptions>,
+    config: WranglerConfig = {},
   ): Record<string, string> {
     const domain = ctx.options.domain;
-    if (!domain || this.appSecrets.PUBLIC_URL) {
+    if (
+      !domain ||
+      this.appSecrets.PUBLIC_URL ||
+      config.vars?.PUBLIC_URL !== undefined
+    ) {
       return this.appSecrets;
     }
     return { ...this.appSecrets, PUBLIC_URL: `https://${domain}` };

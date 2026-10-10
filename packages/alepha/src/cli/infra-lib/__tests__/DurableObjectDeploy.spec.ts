@@ -1,4 +1,4 @@
-import { $inject, Alepha, AlephaError, type ZType } from "alepha";
+import { Alepha, AlephaError, type ZType } from "alepha";
 import { ActorHostRegistry } from "alepha/actor";
 import type { RunnerMethod } from "alepha/command";
 import {
@@ -14,6 +14,7 @@ import { CloudflareAdapter } from "../adapters/CloudflareAdapter.ts";
 import type { InfraContext } from "../adapters/InfraAdapter.ts";
 import { WorkerCloudflareAdapter } from "../adapters/WorkerCloudflareAdapter.ts";
 import { CloudflareApi } from "../services/CloudflareApi.ts";
+import { CloudflareCredentialSource } from "../services/CloudflareCredentialSource.ts";
 import {
   CloudflareDeployClient,
   type CloudflareDeployPlan,
@@ -21,7 +22,6 @@ import {
 import { CloudflareProvisionClient } from "../services/CloudflareProvisionClient.ts";
 import { DurableObjectLifecycle } from "../services/DurableObjectLifecycle.ts";
 import { NamingService } from "../services/NamingService.ts";
-import { WranglerApi } from "../services/WranglerApi.ts";
 
 class RecordedProvisioner extends CloudflareProvisionClient {
   public tag?: string;
@@ -34,6 +34,9 @@ class RecordedProvisioner extends CloudflareProvisionClient {
   public override async deleteWorker(name: string): Promise<void> {
     if (this.refused) throw new AlephaError("delete refused");
     this.deleted.push(name);
+  }
+  public override async listSecrets() {
+    return [];
   }
 }
 class RecordedDeployClient extends CloudflareDeployClient {
@@ -62,21 +65,30 @@ class RecordedWorkerAdapter extends WorkerCloudflareAdapter {
     return this.source;
   }
 }
-class RecordedWrangler extends WranglerApi {
-  protected readonly fs = $inject(FileSystemProvider);
-  public configs: any[] = [];
-  public override async deploy(_name: string, path: string) {
-    this.configs.push(await this.fs.readJsonFile(path));
-    return "https://fixture.workers.dev";
+/**
+ * The CLI adapter, listing the Worker's secrets through the same recorded
+ * provisioner rather than over the network.
+ */
+class RecordedCloudflareAdapter extends CloudflareAdapter {
+  /**
+   * Its own Worker adapter: transient, so not the container's.
+   */
+  public get worker(): RecordedWorkerAdapter {
+    return this.workerAdapter as RecordedWorkerAdapter;
+  }
+  protected override provisioner() {
+    return this.worker.source;
   }
 }
-class RecordedApi extends CloudflareApi {
-  public tag?: string;
-  public refused = false;
-  public paths: string[] = [];
-  public override async getWorkerMigrationTag() {
-    if (this.refused) throw new AlephaError("lookup refused");
-    return this.tag;
+/**
+ * A run whose credential is already settled.
+ */
+class SettledCredentialSource extends CloudflareCredentialSource {
+  public override async resolve() {
+    return {
+      credential: { apiToken: "fixture", accountId: "fixture" },
+      origin: "env" as const,
+    };
   }
 }
 class MetadataApi extends CloudflareApi {
@@ -115,8 +127,12 @@ describe("Durable Object deployment", () => {
     const app = Alepha.create({ env: { LOG_LEVEL: "error" } })
       .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
       .with({ provide: ShellProvider, use: MemoryShellProvider })
-      .with({ provide: CloudflareApi, use: RecordedApi })
-      .with({ provide: WranglerApi, use: RecordedWrangler });
+      .with({
+        provide: CloudflareCredentialSource,
+        use: SettledCredentialSource,
+      })
+      .with({ provide: WorkerCloudflareAdapter, use: RecordedWorkerAdapter })
+      .with({ provide: CloudflareAdapter, use: RecordedCloudflareAdapter });
     return {
       app,
       fs: app.inject(MemoryFileSystemProvider),
@@ -172,14 +188,14 @@ describe("Durable Object deployment", () => {
   };
 
   for (const combined of [false, true])
-    it(`carries ${combined ? "combined" : "actor-only"} prebuilt declarations through both adapters`, async ({
+    it(`carries ${combined ? "combined" : "actor-only"} prebuilt declarations the same way from a Lore artifact and a local dist/`, async ({
       expect,
     }) => {
       const { app, fs, naming } = setup();
       const worker = app
         .inject(RecordedWorkerAdapter)
         .use({ apiToken: "fixture", accountId: "fixture" });
-      const local = app.inject(CloudflareAdapter);
+      const local = app.inject(RecordedCloudflareAdapter);
       const workerCtx = context(naming, "/worker", combined);
       const localCtx = context(naming, "/local", combined);
       const data = manifest(workerCtx);
@@ -191,16 +207,21 @@ describe("Durable Object deployment", () => {
       await localArtifact(fs, data);
       await worker.deploy(workerCtx, runner);
       await local.deploy(localCtx, runner);
-      const plan = worker.recording.plans[0];
-      const config = app.inject(RecordedWrangler).configs[0];
+      // One transport since #Q2612: the CLI hands `dist/` to the same upload,
+      // so the two plans must agree on everything the artifact decides.
+      const [plan] = worker.recording.plans;
+      const [localPlan] = local.worker.recording.plans;
+      const config = await fs.readJsonFile<any>("/local/dist/wrangler.jsonc");
+      expect(worker.recording.plans).toHaveLength(1);
+      expect(local.worker.recording.plans).toHaveLength(1);
+      expect(localPlan.exports).toEqual(plan.exports);
       expect(plan.exports).toEqual(config.exports);
       expect(plan.migrations).toBeUndefined();
-      expect(config.migrations).toBeUndefined();
-      expect(
-        plan.bindings?.filter(
-          (item) => item.type === "durable_object_namespace",
-        ),
-      ).toEqual(
+      expect(localPlan.migrations).toBeUndefined();
+      const namespaces = (it: CloudflareDeployPlan) =>
+        it.bindings?.filter((item) => item.type === "durable_object_namespace");
+      expect(namespaces(localPlan)).toEqual(namespaces(plan));
+      expect(namespaces(plan)).toEqual(
         config.durable_objects.bindings.map((binding: any) => ({
           type: "durable_object_namespace",
           ...binding,
@@ -273,24 +294,27 @@ describe("Durable Object deployment", () => {
     await expect(worker.deploy(ctx, runner)).rejects.toThrow("lookup refused");
     expect(worker.recording.plans.length).toBe(before);
 
+    // The CLI's `dist/`, through the same upload.
     await fs.writeFile("/local/dist/wrangler.jsonc", JSON.stringify(config));
     await localArtifact(fs, manifest(context(naming, "/local", true)));
-    const local = app.inject(CloudflareAdapter);
-    const api = app.inject(RecordedApi);
-    api.tag = "lost";
+    const local = app.inject(RecordedCloudflareAdapter);
+    const cli = local.worker;
+    cli.source.tag = "lost";
     await expect(
       local.deploy(context(naming, "/local", true), runner),
     ).rejects.toThrow("missing from the supplied history");
-    api.tag = "original";
+    cli.source.tag = "original";
     await local.deploy(context(naming, "/local", true), runner);
-    expect(app.inject(RecordedWrangler).configs[0].migrations).toEqual(
-      config.migrations,
-    );
-    api.refused = true;
+    expect(cli.recording.plans.at(-1)?.migrations).toEqual({
+      old_tag: "original",
+      new_tag: "alepha-hosts-v1",
+      steps: [{ new_sqlite_classes: ["AlephaActorDurableObject"] }],
+    });
+    cli.source.refused = true;
     await expect(
       local.deploy(context(naming, "/local", true), runner),
     ).rejects.toThrow("lookup refused");
-    expect(app.inject(RecordedWrangler).configs.length).toBe(1);
+    expect(cli.recording.plans.length).toBe(1);
   });
 
   it("preserves supported external fields and rejects mixed lifecycle configuration before upload", async ({
@@ -327,11 +351,12 @@ describe("Durable Object deployment", () => {
     await expect(
       worker.deploy(context(naming, "/worker"), runner),
     ).rejects.toThrow("mutually exclusive");
+    const local = app.inject(RecordedCloudflareAdapter);
     await expect(
-      app.inject(CloudflareAdapter).deploy(context(naming, "/local"), runner),
+      local.deploy(context(naming, "/local"), runner),
     ).rejects.toThrow("mutually exclusive");
     expect(worker.recording.plans).toEqual([]);
-    expect(app.inject(RecordedWrangler).configs).toEqual([]);
+    expect(local.worker.recording.plans).toEqual([]);
   });
 
   it("reads migration tags from successful metadata and propagates permission failures on both clients", async ({

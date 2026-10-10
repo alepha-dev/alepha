@@ -367,6 +367,22 @@ export class CloudflareProvisionClient {
   }
 
   /**
+   * The names and types of the secrets a Worker holds, never their values
+   * (Cloudflare does not answer those).
+   *
+   * Read before a deploy so the CLI can name every secret the Worker keeps
+   * though the environment no longer declares it: an upload never removes a
+   * secret, Cloudflare carries it over to the new version.
+   */
+  public async listSecrets(
+    scriptName: string,
+  ): Promise<Array<{ name: string; type: string }>> {
+    return await this.fetch<Array<{ name: string; type: string }>>(
+      `/accounts/${this.accountId}/workers/scripts/${scriptName}/secrets`,
+    );
+  }
+
+  /**
    * Read the applied migration tag from a successful Worker metadata list.
    * Lookup failures propagate rather than masquerading as a first deployment.
    */

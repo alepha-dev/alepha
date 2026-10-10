@@ -410,24 +410,109 @@ describe("the Cloudflare deploy client", () => {
       const token = (payload: Record<string, unknown>) =>
         `x.${btoa(JSON.stringify(payload)).replace(/=+$/, "")}.y`;
 
-      it("refuses a session that wants single-asset uploads", async ({
+      /**
+       * Every request a single-asset session sends, answered the way
+       * Cloudflare answers them: the completion token on the last one.
+       */
+      const singleAssetFetch = (wanted: number) => {
+        const calls: Array<{
+          url: string;
+          headers: Record<string, string>;
+          body: string;
+        }> = [];
+        const original = globalThis.fetch;
+        globalThis.fetch = (async (url: string, init: RequestInit = {}) => {
+          // A real request reads its body later than the call, which is the
+          // window in which a reused buffer would already hold the next file.
+          await new Promise((resolve) => setTimeout(resolve, 1));
+          calls.push({
+            url: String(url),
+            headers: init.headers as Record<string, string>,
+            body: new TextDecoder().decode(init.body as Uint8Array),
+          });
+          const done = calls.length === wanted;
+          return new Response(
+            JSON.stringify({
+              success: true,
+              result: done ? { jwt: "completion" } : {},
+              errors: [],
+            }),
+          );
+        }) as typeof globalThis.fetch;
+        return { calls, restore: () => (globalThis.fetch = original) };
+      };
+
+      it("uploads a single-asset session one raw file per request, under the session token", async ({
         expect,
       }) => {
         // That mode is one request per file against a different path, with
-        // the bytes raw and the type as a request header. Sending it
-        // multipart anyway is a wrong protocol failing namelessly, which is
-        // the exact shape this file keeps paying for.
+        // the bytes raw and the type as a request header. It used to be
+        // refused with a pointer at `wrangler deploy`, which the CLI no
+        // longer runs (#Q2612).
+        const session = token({ wrangler_single_asset_uploads: true });
+        const { client, of } = fake(
+          { jwt: session, buckets: [["aaaa", "bbbb"]] },
+          [],
+        );
+        const { calls, restore } = singleAssetFetch(2);
+        let answer: unknown;
+        try {
+          answer = await client.uploadAssets("my-app-staging", {
+            manifest,
+            read,
+          });
+        } finally {
+          restore();
+        }
+
+        expect(answer).toEqual({ jwt: "completion" });
+        // Not the multipart endpoint.
+        expect(of("assets.upload")).toHaveLength(0);
+        expect(calls.map((it) => it.url).sort()).toEqual([
+          "https://api.cloudflare.com/client/v4/accounts/estate-account/workers/assets/upload/aaaa",
+          "https://api.cloudflare.com/client/v4/accounts/estate-account/workers/assets/upload/bbbb",
+        ]);
+        const app = calls.find((it) => it.url.endsWith("/bbbb"))!;
+        expect(app.body).toBe("bytes of /app.js");
+        expect(app.headers.authorization).toBe(`Bearer ${session}`);
+        expect(app.headers["content-type"]).toBe(
+          "text/javascript; charset=utf-8",
+        );
+      });
+
+      it("copies pushed bytes, since a pushed view is valid only for its callback", async ({
+        expect,
+      }) => {
         const { client } = fake(
           {
             jwt: token({ wrangler_single_asset_uploads: true }),
-            buckets: [["bbbb"]],
+            buckets: [["aaaa", "bbbb"]],
           },
-          ["completion"],
+          [],
         );
+        const { calls, restore } = singleAssetFetch(2);
+        try {
+          // One buffer, overwritten for every file: what an archive walk does.
+          const shared = new Uint8Array(32);
+          await client.uploadAssets("my-app-staging", {
+            manifest,
+            read,
+            readAll: async (keys, onFile) => {
+              for (const key of keys) {
+                const text = bytes(`pushed ${key}`);
+                shared.fill(0).set(text);
+                await onFile(key, shared.subarray(0, text.length));
+              }
+            },
+          });
+        } finally {
+          restore();
+        }
 
-        await expect(
-          client.uploadAssets("my-app-staging", { manifest, read }),
-        ).rejects.toThrow(/single-asset uploads/);
+        expect(calls.map((it) => it.body).sort()).toEqual([
+          "pushed /app.js",
+          "pushed /index.html",
+        ]);
       });
 
       it("says an expired session kept what it already took", async ({

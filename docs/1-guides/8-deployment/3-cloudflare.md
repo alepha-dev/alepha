@@ -33,6 +33,8 @@ alepha deploy
 
 `alepha deploy` authenticates automatically when needed, then provisions, builds, migrates, deploys and handles secrets. `alepha infra login --env production` probes credentials without deploying. Plain `alepha build --runtime workerd` needs no cloud credentials; `alepha infra build` may look up existing resource bindings.
 
+The upload goes through the Cloudflare API, not `wrangler deploy`: the script, its bindings, its secrets and its static assets are one Worker version. **Secrets add, they do not replace.** A secret the environment no longer declares, or one set by hand in the dashboard or with `wrangler secret put`, stays on the Worker: Cloudflare carries it over to each new version. Each deploy names those secrets in a warning; delete one with `wrangler secret delete <name>` or in the dashboard.
+
 To deploy a build manually instead:
 
 ```bash
@@ -336,6 +338,8 @@ export default defineConfig({
   },
 });
 ```
+
+`alepha deploy` sends only the fields its API upload knows: compatibility settings, `vars`, `triggers`, one custom-domain route, `assets` (`not_found_handling`, `run_worker_first`), `observability`, `placement`, `limits`, and the D1, R2, KV, queue, Analytics Engine, `send_email`, service, Hyperdrive and Durable Object bindings. Any other top-level field (`ai`, `vectorize`, `tail_consumers`, a zone route...) fails the deploy by name before anything is uploaded, rather than shipping a Worker without it.
 
 ## Full Example
 

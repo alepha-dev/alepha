@@ -238,6 +238,21 @@ export class CloudflareDeployClient {
   protected static readonly UPLOAD_CONCURRENCY = 3;
   protected static readonly MAX_UPLOAD_ATTEMPTS = 5;
 
+  /**
+   * How many single-asset uploads may be in flight.
+   *
+   * ⚠️ **Lower than wrangler's 50 (`EDGE_KV_UPLOAD_CONCURRENCY`), and the
+   * session can only lower it further.** wrangler streams each file from a
+   * disk; this client holds every in-flight file's bytes, inside Lore's
+   * 128 MB isolate, and a single asset can be 25 MiB. The session's own
+   * `edge_kv_upload_concurrency` is honoured when it asks for less.
+   */
+  protected static readonly SINGLE_UPLOAD_CONCURRENCY = 8;
+
+  protected static readonly BASE = "https://api.cloudflare.com/client/v4";
+
+  protected readonly baseURL: string;
+
   protected readonly manifest = new CloudflareAssetManifest();
   protected readonly accountId: string;
   protected readonly client: CloudflareDeployApi;
@@ -275,6 +290,7 @@ export class CloudflareDeployClient {
       );
     }
     this.accountId = options.accountId;
+    this.baseURL = options.baseURL ?? CloudflareDeployClient.BASE;
     this.now = options.now;
     this.client =
       options.client ??
@@ -338,18 +354,7 @@ export class CloudflareDeployClient {
       return session.jwt ? { jwt: session.jwt } : undefined;
     }
 
-    // ⚠️ Refused rather than attempted. A session in this mode wants one
-    // request per file against `/workers/assets/upload/{hash}`, with the raw
-    // bytes as the body and the type as a request header - a different
-    // transport, not a different batch size. Sending it multipart anyway is
-    // the shape of failure this whole file has been paying for: something the
-    // API does not accept, failing in a way that names nothing.
-    const { expiresAt, singleAsset } = this.session(session.jwt);
-    if (singleAsset) {
-      throw new AlephaError(
-        "Cloudflare asked for single-asset uploads for this session, which this client does not implement. Deploy this app with `alepha deploy`, which shells out to wrangler and does.",
-      );
-    }
+    const { expiresAt, singleAsset, concurrency } = this.session(session.jwt);
 
     // The manifest is keyed by served path and the buckets by hash, so the
     // upload needs the inverse. Built once rather than searched per file.
@@ -359,6 +364,20 @@ export class CloudflareDeployClient {
     }
 
     let completion = session.jwt;
+
+    // ⚠️ A different transport, not a different batch size: one request per
+    // file, raw bytes, the type as a request header. Sending this session
+    // multipart anyway fails in a way that names nothing.
+    if (singleAsset) {
+      return await this.uploadSingleAssets(
+        assets,
+        wanted,
+        byHash,
+        session.jwt,
+        expiresAt,
+        concurrency,
+      );
+    }
 
     // ⚠️ The streaming path, when the caller can push. It uploads a batch the
     // moment that batch is full rather than reading files one at a time, so
@@ -489,6 +508,7 @@ export class CloudflareDeployClient {
   protected session(jwt: string | undefined): {
     expiresAt?: number;
     singleAsset: boolean;
+    concurrency?: number;
   } {
     if (!jwt) {
       return { singleAsset: false };
@@ -503,12 +523,133 @@ export class CloudflareDeployClient {
         expiresAt:
           typeof payload.exp === "number" ? payload.exp * 1000 : undefined,
         singleAsset: payload.wrangler_single_asset_uploads === true,
+        concurrency:
+          Number(payload.edge_kv_upload_concurrency) > 0
+            ? Math.floor(Number(payload.edge_kv_upload_concurrency))
+            : undefined,
       };
     } catch {
       // A token this cannot read is still a token the API may accept, so this
       // is not a refusal: it only costs the deadline and the mode.
       return { singleAsset: false };
     }
+  }
+
+  /**
+   * The single-asset mode of an upload session: every wanted file in its own
+   * request, a few at a time.
+   *
+   * Cloudflare picks the mode per session, through a claim in the session's
+   * JWT (`wrangler_single_asset_uploads`), so any deploy may be handed it.
+   * Until #Q2612 this client refused it and pointed at `wrangler deploy`,
+   * which the CLI no longer has to fall back on.
+   *
+   * ⚠️ The pushed bytes are copied before the callback returns: `readAll`
+   * may hand out a view into a buffer it is about to move past, and the
+   * upload outlives the callback while other files are in flight.
+   */
+  protected async uploadSingleAssets(
+    assets: CloudflareDeployAssets,
+    wanted: string[],
+    byHash: Map<string, string>,
+    jwt: string | undefined,
+    expiresAt: number | undefined,
+    sessionConcurrency: number | undefined,
+  ): Promise<{ jwt: string }> {
+    const keys = new Set<string>();
+    for (const hash of wanted) {
+      const key = byHash.get(hash);
+      if (!key) {
+        throw new AlephaError(
+          `Cloudflare asked for an asset hash (${hash}) that is not in the manifest we sent. Refusing to guess which file it meant.`,
+        );
+      }
+      keys.add(key);
+    }
+
+    const limit = Math.min(
+      sessionConcurrency ?? CloudflareDeployClient.SINGLE_UPLOAD_CONCURRENCY,
+      CloudflareDeployClient.SINGLE_UPLOAD_CONCURRENCY,
+    );
+    let completion: string | undefined;
+    const inFlight = new Set<Promise<unknown>>();
+    const send = async (key: string, bytes: Uint8Array) => {
+      const hash = assets.manifest[key]?.hash;
+      if (!hash) return;
+      const pending = this.withRetry(expiresAt, () =>
+        this.postSingleAsset(hash, bytes, this.manifest.contentType(key), jwt),
+      )
+        .then((answer) => {
+          completion = answer.jwt ?? completion;
+          return answer;
+        })
+        .finally(() => inFlight.delete(pending));
+      inFlight.add(pending);
+      if (inFlight.size >= limit) {
+        await Promise.race(inFlight);
+      }
+    };
+
+    if (assets.readAll) {
+      await assets.readAll(keys, async (key, raw) => {
+        await send(key, raw.slice());
+      });
+    } else {
+      for (const key of keys) {
+        await send(key, await assets.read(key));
+      }
+    }
+    await Promise.all(inFlight);
+
+    if (!completion) {
+      throw new AlephaError(
+        "Cloudflare accepted every asset upload but returned no completion token, so the script upload has nothing to reference.",
+      );
+    }
+    return { jwt: completion };
+  }
+
+  /**
+   * One file of a single-asset session, under the session's own JWT.
+   *
+   * Raw `fetch` rather than the SDK: the body is the file's bytes and its
+   * `Content-Type` is the asset's own, which is what Cloudflare serves it
+   * with. `application/null` asks it to serve none, as wrangler does.
+   */
+  protected async postSingleAsset(
+    hash: string,
+    bytes: Uint8Array,
+    contentType: string,
+    jwt: string | undefined,
+  ): Promise<{ jwt?: string }> {
+    const path = `/accounts/${this.accountId}/workers/assets/upload/${hash}`;
+    const response = await globalThis.fetch(`${this.baseURL}${path}`, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${jwt}`,
+        "content-type": contentType,
+      },
+      body: bytes as unknown as BodyInit,
+    });
+    const text = await response.text();
+    let json: {
+      success?: boolean;
+      result?: { jwt?: string } | null;
+      errors?: Array<{ message: string }>;
+    };
+    try {
+      json = JSON.parse(text);
+    } catch {
+      throw new AlephaError(
+        `Cloudflare returned a non-JSON response (POST ${path}, HTTP ${response.status}): ${text.slice(0, 200).replace(/\s+/g, " ").trim() || "<empty body>"}`,
+      );
+    }
+    if (!json.success) {
+      throw new AlephaError(
+        `Cloudflare API error (POST ${path}): ${(json.errors ?? []).map((it) => it.message).join(", ") || `HTTP ${response.status}`}`,
+      );
+    }
+    return { jwt: json.result?.jwt };
   }
 
   /**
@@ -525,6 +666,17 @@ export class CloudflareDeployClient {
     jwt: string | undefined,
     expiresAt: number | undefined,
   ): Promise<{ jwt?: string }> {
+    return await this.withRetry(expiresAt, () => this.postAssets(body, jwt));
+  }
+
+  /**
+   * One asset request, retried with wrangler's backoff, and never past the
+   * session's deadline.
+   */
+  protected async withRetry(
+    expiresAt: number | undefined,
+    request: () => Promise<{ jwt?: string }>,
+  ): Promise<{ jwt?: string }> {
     for (let attempt = 0; ; attempt++) {
       if (expiresAt !== undefined && (this.now?.() ?? 0) >= expiresAt) {
         throw new AlephaError(
@@ -532,7 +684,7 @@ export class CloudflareDeployClient {
         );
       }
       try {
-        return await this.postAssets(body, jwt);
+        return await request();
       } catch (error) {
         if (attempt >= CloudflareDeployClient.MAX_UPLOAD_ATTEMPTS - 1) {
           throw error;

@@ -10,9 +10,11 @@ import { describe, test } from "vitest";
 
 import { CloudflareAdapter } from "../adapters/CloudflareAdapter.ts";
 import type { InfraContext } from "../adapters/InfraAdapter.ts";
+import { WorkerCloudflareAdapter } from "../adapters/WorkerCloudflareAdapter.ts";
 import { infraOptions } from "../atoms/infraOptions.ts";
 import { cloudflare } from "../index.ts";
 import { CloudflareApi } from "../services/CloudflareApi.ts";
+import { CloudflareCredentialSource } from "../services/CloudflareCredentialSource.ts";
 import { NamingService } from "../services/NamingService.ts";
 
 /**
@@ -20,7 +22,62 @@ import { NamingService } from "../services/NamingService.ts";
  * is exercised on the real adapters in localDeployArtifacts.spec.ts.
  */
 class ArtifactReadyCloudflareAdapter extends CloudflareAdapter {
+  /**
+   * The secrets the Worker already holds, as Cloudflare would list them.
+   */
+  public currentSecrets: Array<{ name: string; type: string }> = [];
+
   protected override async validateDeployArtifact(): Promise<void> {}
+
+  protected override provisioner() {
+    return {
+      listSecrets: async () => this.currentSecrets,
+    } as unknown as ReturnType<CloudflareAdapter["provisioner"]>;
+  }
+
+  public undeclaredSecrets(
+    ...args: Parameters<CloudflareAdapter["reportUndeclaredSecrets"]>
+  ) {
+    return this.reportUndeclaredSecrets(...args);
+  }
+}
+
+/**
+ * The upload, recorded rather than sent: what the CLI hands the one deploy
+ * path. What that path makes of it is `WorkerCloudflareAdapter.spec.ts`.
+ */
+class CapturingWorkerAdapter extends WorkerCloudflareAdapter {
+  public uploads: Array<{
+    root: string;
+    secrets: Record<string, string>;
+    apiToken?: string;
+  }> = [];
+
+  override async deploy(ctx: InfraContext<any>): Promise<string | undefined> {
+    this.uploads.push({
+      root: ctx.root,
+      secrets: { ...this.appSecrets },
+      apiToken: this.credential?.apiToken,
+    });
+    return undefined;
+  }
+}
+
+/**
+ * A run whose credential is already settled; where it comes from is
+ * `CloudflareCredentialSource.spec.ts`.
+ */
+class SettledCredentialSource extends CloudflareCredentialSource {
+  public override async token() {
+    return { token: "test-token", origin: "env" as const };
+  }
+
+  public override async resolve() {
+    return {
+      credential: { apiToken: "test-token", accountId: "test-account-id" },
+      origin: "env" as const,
+    };
+  }
 }
 
 /**
@@ -202,6 +259,11 @@ describe("CloudflareAdapter", () => {
       .with({ provide: ShellProvider, use: MemoryShellProvider })
       .with({ provide: CloudflareApi, use: MemoryCloudflareApi })
       .with({
+        provide: CloudflareCredentialSource,
+        use: SettledCredentialSource,
+      })
+      .with({ provide: WorkerCloudflareAdapter, use: CapturingWorkerAdapter })
+      .with({
         provide: CloudflareAdapter,
         use: ArtifactReadyCloudflareAdapter,
       });
@@ -210,6 +272,10 @@ describe("CloudflareAdapter", () => {
     const shell = alepha.inject(MemoryShellProvider);
     const dateTime = alepha.inject(DateTimeProvider);
     const adapter = alepha.inject(CloudflareAdapter);
+    // Transient, so it is the adapter's own instance and not the container's.
+    const worker = (
+      adapter as unknown as { workerAdapter: CapturingWorkerAdapter }
+    ).workerAdapter;
     const naming = alepha.inject(NamingService);
     const api = alepha.inject(MemoryCloudflareApi);
 
@@ -224,7 +290,7 @@ describe("CloudflareAdapter", () => {
       ),
     );
 
-    return { alepha, fs, shell, dateTime, adapter, naming, api };
+    return { alepha, fs, shell, dateTime, adapter, naming, api, worker };
   };
 
   /**
@@ -279,6 +345,23 @@ describe("CloudflareAdapter", () => {
     root: "/project",
     naming: naming.forContext("acme-portal", "production"),
     ...overrides,
+  });
+
+  describe("container", () => {
+    test("builds in either order, Lore's (the Worker adapter first) included", async ({
+      expect,
+    }) => {
+      // The CLI adapter injects the Worker adapter, whose dependencies
+      // register this module. A singleton there made Lore's order a
+      // CircularDependencyError (#Q2612).
+      const workerFirst = Alepha.create();
+      expect(workerFirst.inject(WorkerCloudflareAdapter)).toBeTruthy();
+      expect(workerFirst.inject(CloudflareAdapter)).toBeTruthy();
+
+      const cliFirst = Alepha.create();
+      expect(cliFirst.inject(CloudflareAdapter)).toBeTruthy();
+      expect(cliFirst.inject(WorkerCloudflareAdapter)).toBeTruthy();
+    });
   });
 
   // `authenticate` is `CloudflareCredentialSource.resolve`, and its three
@@ -613,7 +696,7 @@ describe("CloudflareAdapter", () => {
   describe("secrets", () => {
     /**
      * Deploy the way `up()` does after `build`: a freshly generated config,
-     * then `wrangler deploy`, which carries the secrets (#Q2459).
+     * then the one upload, which carries the secrets (#Q2459, #Q2612).
      */
     const deployed = async (
       adapter: CloudflareAdapter,
@@ -629,21 +712,14 @@ describe("CloudflareAdapter", () => {
     };
 
     /**
-     * What the last `wrangler deploy` uploaded: the secrets file it was
-     * handed as `secret_text`, the config's `vars` as `plain_text`.
+     * What the last upload carried: the secrets it was handed as
+     * `secret_text`, the config's `vars` as `plain_text`.
      */
     const sent = (
       fs: MemoryFileSystemProvider,
-      shell: MemoryShellProvider,
+      worker: CapturingWorkerAdapter,
     ): Array<{ type: string; name: string; text: string }> => {
-      const command =
-        shell.calls.findLast((it) => it.command.startsWith("wrangler deploy"))
-          ?.command ?? "";
-      const file = /--secrets-file=(\S+)/.exec(command)?.[1];
-      const written = file
-        ? fs.writeFileCalls.findLast((it) => it.path === file)?.data
-        : undefined;
-      const secrets = JSON.parse(written ?? "{}") as Record<string, string>;
+      const secrets = worker.uploads.at(-1)?.secrets ?? {};
       const config = JSON.parse(
         fs.getFileContent("/project/dist/wrangler.jsonc") ?? "{}",
       ) as { vars?: Record<string, string> };
@@ -664,7 +740,7 @@ describe("CloudflareAdapter", () => {
     test("pushes non-binding env vars via REST putSecret", async ({
       expect,
     }) => {
-      const { adapter, fs, naming, shell } = createTestEnv();
+      const { adapter, fs, naming, worker } = createTestEnv();
       const ctx = makeCtx(naming, {
         entry: { root: "/project", server: "src/main.ts" },
         resources: {
@@ -694,7 +770,7 @@ describe("CloudflareAdapter", () => {
       const run = createMockRun();
       await deployed(adapter, fs, ctx, run);
 
-      const pushed = sent(fs, shell).filter((b) => b.type === "secret_text");
+      const pushed = sent(fs, worker).filter((b) => b.type === "secret_text");
       const names = pushed.map((s) => s.name).sort();
       expect(names).toEqual(["APP_SECRET", "GOOGLE_API_KEY"]);
     });
@@ -702,7 +778,7 @@ describe("CloudflareAdapter", () => {
     test("with platform.secrets.keys, resolves the allowlist from process.env (no .env file) and ignores ambient vars", async ({
       expect,
     }) => {
-      const { adapter, alepha, fs, naming, shell } = createTestEnv();
+      const { adapter, alepha, fs, naming, worker } = createTestEnv();
       // Declare an explicit allowlist  -  the CI shape: secrets arrive via the
       // job environment, there is no .env.production on the runner.
       alepha.set(infraOptions, {
@@ -736,7 +812,7 @@ describe("CloudflareAdapter", () => {
         delete process.env.AMBIENT_RUNNER_VAR;
       }
 
-      const pushed = sent(fs, shell).filter((b) => b.type === "secret_text");
+      const pushed = sent(fs, worker).filter((b) => b.type === "secret_text");
       const names = pushed.map((s) => s.name).sort();
       expect(names).toEqual(["APP_SECRET", "GOOGLE_CLIENT_ID"]);
     });
@@ -744,7 +820,7 @@ describe("CloudflareAdapter", () => {
     test("with platform.secrets.keys, the .env file overrides process.env per key", async ({
       expect,
     }) => {
-      const { adapter, alepha, fs, naming, shell } = createTestEnv();
+      const { adapter, alepha, fs, naming, worker } = createTestEnv();
       alepha.set(infraOptions, {
         secrets: { keys: ["APP_SECRET", "GOOGLE_CLIENT_ID"] },
         environments: { production: cloudflare() },
@@ -779,7 +855,7 @@ describe("CloudflareAdapter", () => {
 
       // Secret *values* land in the full binding set (api.bindings); the
       // api.secrets projection only keeps names.
-      const bindings = sent(fs, shell);
+      const bindings = sent(fs, worker);
       const byName = Object.fromEntries(
         bindings
           .filter((b) => b.type === "secret_text")
@@ -792,7 +868,7 @@ describe("CloudflareAdapter", () => {
     test("uses dist/manifest.json `secrets` and `variables` as the default allowlist, resolved from process.env", async ({
       expect,
     }) => {
-      const { adapter, fs, naming, shell } = createTestEnv();
+      const { adapter, fs, naming, worker } = createTestEnv();
       // No platform.secrets.keys and no .env file → the manifest's declared
       // env list is the allowlist. This is the CI shape.
       const ctx = makeCtx(naming, {
@@ -833,7 +909,7 @@ describe("CloudflareAdapter", () => {
         delete process.env.HYPERDRIVE_ID;
       }
 
-      const pushed = sent(fs, shell).filter((b) => b.type === "secret_text");
+      const pushed = sent(fs, worker).filter((b) => b.type === "secret_text");
       expect(pushed.map((s) => s.name).sort()).toEqual([
         "APP_SECRET",
         "GOOGLE_CLIENT_ID",
@@ -843,7 +919,7 @@ describe("CloudflareAdapter", () => {
     test("pushes per-deploy keys from .env.<env>.local even when not in the manifest", async ({
       expect,
     }) => {
-      const { adapter, fs, naming, shell } = createTestEnv();
+      const { adapter, fs, naming, worker } = createTestEnv();
       const ctx = makeCtx(naming, {
         entry: { root: "/project", server: "src/main.ts" },
         resources: {
@@ -871,7 +947,7 @@ describe("CloudflareAdapter", () => {
       const run = createMockRun();
       await deployed(adapter, fs, ctx, run);
 
-      const pushed = sent(fs, shell).filter((b) => b.type === "secret_text");
+      const pushed = sent(fs, worker).filter((b) => b.type === "secret_text");
       expect(pushed.map((s) => s.name).sort()).toEqual([
         "APP_SECRET",
         "CLUB_CONFIG_JSON",
@@ -881,7 +957,7 @@ describe("CloudflareAdapter", () => {
     test("platform.secrets.keys overrides the manifest `env` allowlist", async ({
       expect,
     }) => {
-      const { adapter, alepha, fs, naming, shell } = createTestEnv();
+      const { adapter, alepha, fs, naming, worker } = createTestEnv();
       alepha.set(infraOptions, {
         secrets: { keys: ["APP_SECRET"] }, // narrow override
         environments: { production: cloudflare() },
@@ -918,14 +994,14 @@ describe("CloudflareAdapter", () => {
         delete process.env.GOOGLE_CLIENT_ID;
       }
 
-      const pushed = sent(fs, shell).filter((b) => b.type === "secret_text");
+      const pushed = sent(fs, worker).filter((b) => b.type === "secret_text");
       expect(pushed.map((s) => s.name)).toEqual(["APP_SECRET"]);
     });
 
     test("auto-derives PUBLIC_URL from the configured domain", async ({
       expect,
     }) => {
-      const { adapter, fs, naming, shell } = createTestEnv();
+      const { adapter, fs, naming, worker } = createTestEnv();
       const ctx = makeCtx(naming, {
         options: { domain: "lore.alepha.dev" },
       });
@@ -938,7 +1014,7 @@ describe("CloudflareAdapter", () => {
       const run = createMockRun();
       await deployed(adapter, fs, ctx, run);
 
-      const bindings = sent(fs, shell);
+      const bindings = sent(fs, worker);
       const publicUrl = bindings.find((b) => b.name === "PUBLIC_URL");
       expect(publicUrl?.text).toBe("https://lore.alepha.dev");
     });
@@ -946,7 +1022,7 @@ describe("CloudflareAdapter", () => {
     test("honors an explicit PUBLIC_URL over the derived one", async ({
       expect,
     }) => {
-      const { adapter, fs, naming, shell } = createTestEnv();
+      const { adapter, fs, naming, worker } = createTestEnv();
       const ctx = makeCtx(naming, {
         options: { domain: "lore.alepha.dev" },
       });
@@ -959,13 +1035,13 @@ describe("CloudflareAdapter", () => {
       const run = createMockRun();
       await deployed(adapter, fs, ctx, run);
 
-      const bindings = sent(fs, shell);
+      const bindings = sent(fs, worker);
       const publicUrl = bindings.find((b) => b.name === "PUBLIC_URL");
       expect(publicUrl?.text).toBe("https://custom.example.com");
     });
 
     test("skips when no env file exists", async ({ expect }) => {
-      const { adapter, fs, naming, shell } = createTestEnv();
+      const { adapter, fs, naming, worker } = createTestEnv();
       const ctx = makeCtx(naming, {
         entry: { root: "/project", server: "src/main.ts" },
         resources: {
@@ -981,12 +1057,11 @@ describe("CloudflareAdapter", () => {
       const run = createMockRun();
       await deployed(adapter, fs, ctx, run);
 
-      expect(sent(fs, shell)).toEqual([]);
-      expect(shell.wasCalledMatching(/--secrets-file/)).toBe(false);
+      expect(sent(fs, worker)).toEqual([]);
     });
 
     test("skips comments and empty lines", async ({ expect }) => {
-      const { adapter, fs, naming, shell } = createTestEnv();
+      const { adapter, fs, naming, worker } = createTestEnv();
       const ctx = makeCtx(naming, {
         entry: { root: "/project", server: "src/main.ts" },
         resources: {
@@ -1007,14 +1082,14 @@ describe("CloudflareAdapter", () => {
       const run = createMockRun();
       await deployed(adapter, fs, ctx, run);
 
-      const pushed = sent(fs, shell).filter((b) => b.type === "secret_text");
+      const pushed = sent(fs, worker).filter((b) => b.type === "secret_text");
       expect(pushed.map((s) => s.name)).toEqual(["ONLY_SECRET"]);
     });
 
     test("pushes manifest `variables` as plain_text, everything else encrypted", async ({
       expect,
     }) => {
-      const { adapter, fs, naming, shell } = createTestEnv();
+      const { adapter, fs, naming, worker } = createTestEnv();
       const ctx = makeCtx(naming, {
         entry: { root: "/project", server: "src/main.ts" },
         resources: {
@@ -1045,7 +1120,7 @@ describe("CloudflareAdapter", () => {
 
       await deployed(adapter, fs, ctx, createMockRun());
 
-      const bindings = sent(fs, shell);
+      const bindings = sent(fs, worker);
       const byName = Object.fromEntries(bindings.map((b) => [b.name, b]));
 
       // Declassified → readable and editable in the dashboard.
@@ -1061,7 +1136,7 @@ describe("CloudflareAdapter", () => {
     test("does not declassify a key the app never vouched for", async ({
       expect,
     }) => {
-      const { adapter, fs, naming, shell } = createTestEnv();
+      const { adapter, fs, naming, worker } = createTestEnv();
       const ctx = makeCtx(naming, {
         entry: { root: "/project", server: "src/main.ts" },
         resources: {
@@ -1089,14 +1164,14 @@ describe("CloudflareAdapter", () => {
 
       await deployed(adapter, fs, ctx, createMockRun());
 
-      const bindings = sent(fs, shell);
+      const bindings = sent(fs, worker);
       expect(bindings.every((b) => b.type === "secret_text")).toBe(true);
     });
 
     test("pushes the auto-derived PUBLIC_URL as plain_text", async ({
       expect,
     }) => {
-      const { adapter, fs, naming, shell } = createTestEnv();
+      const { adapter, fs, naming, worker } = createTestEnv();
       const ctx = makeCtx(naming, {
         options: { domain: "lore.alepha.dev" },
       });
@@ -1108,7 +1183,7 @@ describe("CloudflareAdapter", () => {
 
       await deployed(adapter, fs, ctx, createMockRun());
 
-      const bindings = sent(fs, shell);
+      const bindings = sent(fs, worker);
       const publicUrl = bindings.find((b) => b.name === "PUBLIC_URL");
       expect(publicUrl?.type).toBe("plain_text");
       expect(publicUrl?.text).toBe("https://lore.alepha.dev");
@@ -1123,10 +1198,10 @@ describe("CloudflareAdapter", () => {
        * Worker version on every `up`, and a window in which the new build ran
        * against the previous secret set, or, on a first deploy, with none.
        */
-      test("a first deploy sends its secrets in the wrangler deploy, and patches nothing", async ({
+      test("a first deploy sends its secrets in the one upload, from dist/, and nothing after", async ({
         expect,
       }) => {
-        const { adapter, fs, naming, shell, api } = createTestEnv();
+        const { adapter, fs, naming, worker, shell } = createTestEnv();
         const ctx = makeCtx(naming);
         await fs.writeFile(
           "/project/.env.production",
@@ -1135,29 +1210,26 @@ describe("CloudflareAdapter", () => {
 
         await deployed(adapter, fs, ctx, createMockRun());
 
-        const deploys = shell.getCallsMatching(/^wrangler deploy/);
-        expect(deploys).toHaveLength(1);
-        const file = /--secrets-file=(\S+)/.exec(deploys[0]!.command)?.[1];
-        expect(file).toBeTruthy();
-        // Owner-only, and gone once wrangler has read it.
-        expect(fs.wasWrittenWithMode(file as string, 0o600)).toBe(true);
-        expect(fs.wasDeleted(file as string)).toBe(true);
-        expect(fs.getFileContent(file as string)).toBeUndefined();
+        expect(worker.uploads).toHaveLength(1);
+        expect(worker.uploads[0]).toEqual({
+          root: "/project/dist",
+          secrets: { APP_SECRET: "s1", GOOGLE_API_KEY: "g1" },
+          apiToken: "test-token",
+        });
+        // No wrangler process, and no secret ever written to a file.
+        expect(shell.calls).toEqual([]);
         expect(
-          Object.fromEntries(sent(fs, shell).map((b) => [b.name, b.text])),
-        ).toEqual({ APP_SECRET: "s1", GOOGLE_API_KEY: "g1" });
-        // No second step, so no second version.
-        expect(api.bindings.size).toBe(0);
+          fs.writeFileCalls.some((it) => it.path.includes("secrets")),
+        ).toBe(false);
         await expect(adapter.secrets(ctx, createMockRun())).resolves.toBe(
           undefined,
         );
-        expect(api.bindings.size).toBe(0);
       });
 
       test("a redeploy carries a rotated value in the same single upload", async ({
         expect,
       }) => {
-        const { adapter, fs, naming, shell, api } = createTestEnv();
+        const { adapter, fs, naming, worker } = createTestEnv();
         const ctx = makeCtx(naming);
 
         await fs.writeFile("/project/.env.production", "APP_SECRET=v1");
@@ -1165,17 +1237,16 @@ describe("CloudflareAdapter", () => {
         await fs.writeFile("/project/.env.production", "APP_SECRET=v2");
         await deployed(adapter, fs, ctx, createMockRun());
 
-        expect(shell.getCallsMatching(/^wrangler deploy/)).toHaveLength(2);
-        expect(sent(fs, shell)).toEqual([
+        expect(worker.uploads).toHaveLength(2);
+        expect(sent(fs, worker)).toEqual([
           { type: "secret_text", name: "APP_SECRET", text: "v2" },
         ]);
-        expect(api.bindings.size).toBe(0);
       });
 
       test("a key declassified since the last deploy leaves the secrets file for the config vars", async ({
         expect,
       }) => {
-        const { adapter, fs, naming, shell } = createTestEnv();
+        const { adapter, fs, naming, worker } = createTestEnv();
         const ctx = makeCtx(naming);
         await fs.writeFile(
           "/project/dist/manifest.json",
@@ -1190,7 +1261,7 @@ describe("CloudflareAdapter", () => {
         );
         await deployed(adapter, fs, ctx, createMockRun());
         expect(
-          sent(fs, shell).find((b) => b.name === "SIGIL_CONFIG")?.type,
+          sent(fs, worker).find((b) => b.name === "SIGIL_CONFIG")?.type,
         ).toBe("secret_text");
 
         await fs.writeFile(
@@ -1202,7 +1273,7 @@ describe("CloudflareAdapter", () => {
         );
         await deployed(adapter, fs, ctx, createMockRun());
 
-        const after = sent(fs, shell);
+        const after = sent(fs, worker);
         expect(after.filter((b) => b.name === "SIGIL_CONFIG")).toEqual([
           {
             type: "plain_text",
@@ -1236,6 +1307,63 @@ describe("CloudflareAdapter", () => {
           BUILT: "kept",
           PUBLIC_URL: "https://lore.alepha.dev",
         });
+      });
+    });
+
+    /**
+     * Cloudflare keeps a secret the upload does not name, as
+     * `wrangler deploy --secrets-file` did (measured live for #Q2612). A
+     * secret the environment stopped declaring, or one set by hand in the
+     * dashboard, stays bound - so it is named on every deploy.
+     */
+    describe("undeclared secrets", () => {
+      test("names every secret the Worker keeps that the environment no longer declares", async ({
+        expect,
+      }) => {
+        const { adapter, fs, naming } = createTestEnv();
+        const ctx = makeCtx(naming, { options: { domain: "acme.dev" } });
+        await fs.writeFile(
+          "/project/dist/wrangler.jsonc",
+          JSON.stringify({ vars: { SIGIL_CONFIG: "{}" } }),
+        );
+        const probe = adapter as unknown as ArtifactReadyCloudflareAdapter;
+        probe.currentSecrets = [
+          { name: "APP_SECRET", type: "secret_text" },
+          { name: "HAND_SET", type: "secret_text" },
+          { name: "OLD_KEY", type: "secret_text" },
+          // Now a plain var, and still on the Worker: not removed.
+          { name: "SIGIL_CONFIG", type: "secret_text" },
+          // Derived from the domain by the upload itself.
+          { name: "PUBLIC_URL", type: "secret_text" },
+        ];
+
+        const undeclared = await probe.undeclaredSecrets(
+          ctx,
+          { apiToken: "t", accountId: "a" },
+          { APP_SECRET: "s1" },
+          "/project/dist/wrangler.jsonc",
+        );
+
+        expect(undeclared).toEqual(["HAND_SET", "OLD_KEY"]);
+      });
+
+      test("a Worker that cannot be listed has nothing to report, and the deploy goes on", async ({
+        expect,
+      }) => {
+        const { adapter, fs, naming, worker } = createTestEnv();
+        const probe = adapter as unknown as ArtifactReadyCloudflareAdapter;
+        Object.assign(probe, {
+          provisioner: () => ({
+            listSecrets: async () => {
+              throw new Error("workers.api.error.script_not_found");
+            },
+          }),
+        });
+        await fs.writeFile("/project/.env.production", "APP_SECRET=s1");
+
+        await deployed(adapter, fs, makeCtx(naming), createMockRun());
+
+        expect(worker.uploads).toHaveLength(1);
       });
     });
   });

@@ -197,9 +197,9 @@ export class InfraOrchestrator {
     await adapter.migrate(ctx, run);
     // NOTE: on Cloudflare the secrets travel IN the upload, so `deploy` is
     // one Worker version and `secrets` is a no-op there. Both adapters send
-    // them as `secret_text` bindings of the script: `WorkerCloudflareAdapter`
-    // in its own multipart upload, `CloudflareAdapter` through
-    // `wrangler deploy --secrets-file`. That closes the window the old order
+    // them as `secret_text` bindings of the script, in one multipart upload:
+    // `CloudflareAdapter` hands them to `WorkerCloudflareAdapter`'s (#Q2612).
+    // That closes the window the old order
     // opened, in which the new build ran against the previous secret set (a
     // newly required secret missing, APP_SECRET failing closed) and a first
     // deploy served with none at all, and it removes the second version

@@ -452,7 +452,7 @@ run(app);
     }
   });
 
-  it("captures both published deployment transports from actual prebuilt artifacts", async () => {
+  it("uploads the same metadata from a Lore artifact and a local dist/, from actual prebuilt artifacts", async () => {
     const script = await readFile(
       join(ROOT, "apps/e2e-cli/src/fixtures/actor/CaptureDeploy.mjs"),
       "utf8",
@@ -464,7 +464,8 @@ run(app);
       CONSUMER,
     );
     const record = JSON.parse(output.trim().split("\n").at(-1)!);
-    expect(record.uploads).toBe(2);
+    // Two artifacts, each uploaded by both callers of the one transport.
+    expect(record.uploads).toBe(4);
     expect(record.classes).toEqual([
       ["AlephaActorDurableObject"],
       ["AlephaActorDurableObject", "AlephaWebSocketDurableObject"],
