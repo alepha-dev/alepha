@@ -35,3 +35,4 @@ export {
 
 export { createPresetRanks } from "./presetRanks.ts";
 export { ReadCounter } from "./ReadCounter.ts";
+export { TripCounter } from "./TripCounter.ts";

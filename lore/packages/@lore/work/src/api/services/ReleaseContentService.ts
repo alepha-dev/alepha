@@ -3,7 +3,7 @@ import { $repository } from "alepha/orm";
 
 import { type Epic, epics } from "../entities/epics.ts";
 import { type Quest, quests } from "../entities/quests.ts";
-import type { Release } from "../entities/releases.ts";
+import { type Release, releases } from "../entities/releases.ts";
 
 export interface ReleaseContents {
   /**
@@ -47,6 +47,7 @@ export interface ReleaseContents {
 export class ReleaseContentService {
   epics = $repository(epics);
   quests = $repository(quests);
+  releases = $repository(releases);
 
   /**
    * {@link contentsOf} for a whole list, in TWO queries rather than two per
@@ -246,5 +247,75 @@ export class ReleaseContentService {
     );
 
     return { epics: attachedEpics, quests: all, looseQuests, shelvedQuests };
+  }
+
+  /**
+   * Every OPEN release of a project with its `completed` / `total`, for the
+   * orientation index (`project_context`), in one parallel step (#Q2636).
+   *
+   * {@link contentsOfMany} reads the releases, then their epics, then the
+   * quests those name: three round trips, and every quest row, to count
+   * them. This reads the open releases, the project's epic-to-release map
+   * and one aggregate of the quests grouped by `(releaseId, epicId)` at
+   * once, and applies the same membership rule as the partition: named
+   * directly, or reached through one of the release's epics while naming no
+   * release of its own; shelved quests are outside `total`, as in
+   * {@link progressOf}.
+   */
+  async openProgressOf(
+    projectId: number,
+  ): Promise<Array<{ release: Release; completed: number; total: number }>> {
+    const [open, epicRows, buckets] = await Promise.all([
+      this.releases.findMany({
+        where: {
+          projectId: { eq: projectId },
+          releasedAt: { isNull: true },
+        },
+      }),
+      this.epics.findMany({
+        where: {
+          projectId: { eq: projectId },
+          releaseId: { isNotNull: true },
+        },
+        columns: ["id", "releaseId"],
+      }),
+      this.quests.aggregate({
+        select: {
+          releaseId: true,
+          epicId: true,
+          id: { count: true },
+          completedAt: { count: true },
+        },
+        where: {
+          projectId: { eq: projectId },
+          shelvedAt: { isNull: true },
+          or: [
+            { releaseId: { isNotNull: true } },
+            { epicId: { isNotNull: true } },
+          ],
+        },
+        groupBy: ["releaseId", "epicId"],
+      }),
+    ]);
+
+    const releaseOfEpic = new Map(
+      epicRows.map((epic) => [epic.id, epic.releaseId]),
+    );
+    const totals = new Map<number, { completed: number; total: number }>();
+    for (const bucket of buckets) {
+      const releaseId =
+        bucket.releaseId ??
+        (bucket.epicId != null ? releaseOfEpic.get(bucket.epicId) : undefined);
+      if (releaseId == null) continue;
+      const sum = totals.get(releaseId) ?? { completed: 0, total: 0 };
+      sum.completed += bucket.completedAt.count;
+      sum.total += bucket.id.count;
+      totals.set(releaseId, sum);
+    }
+
+    return open.map((release) => ({
+      release,
+      ...(totals.get(release.id) ?? { completed: 0, total: 0 }),
+    }));
   }
 }

@@ -112,25 +112,12 @@ export class EpicTools {
         params.project_name,
       );
 
-      const epic = await this.epicController.getEpicByNumber({
+      // The epic, its rollup and its filed folios in one action, so the
+      // folios are read beside the rollup rather than after it (#Q2636).
+      const epic = await this.epicController.getEpicDetailByNumber({
         params: { projectId, number: params.number },
       });
-
-      // The folios it files: `filed` links in core's graph, described by the
-      // `folio` kind Knowledge registers (#E75, #Q2626 and #Q2623), never a
-      // folio read from here. Pinned first, then most recently updated, at
-      // most a hundred, as the Epic detail page lists them.
-      const filed = await this.links.filedChildren(
-        { kind: "epic", id: epic.id },
-        "folio",
-      );
-      const folios = (await this.resources.describe("folio", projectId, filed))
-        .sort(
-          (a, b) =>
-            Number(b.pinned ?? false) - Number(a.pinned ?? false) ||
-            (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""),
-        )
-        .slice(0, 100);
+      const folios = epic.folios;
 
       return {
         id: epic.id,

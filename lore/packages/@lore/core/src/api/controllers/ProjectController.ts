@@ -15,6 +15,7 @@ import { $repository, db, pageQuerySchema } from "alepha/orm";
 import {
   $secure,
   OwnedResourceProvider,
+  ResourceGateMemoProvider,
   type UserAccountToken,
 } from "alepha/security";
 import {
@@ -128,6 +129,7 @@ export class ProjectController {
   auditService = $inject(AuditService);
   counts = $inject(ProjectCountRegistry);
   assignedWork = $inject(AssignedWorkRegistry);
+  gateMemo = $inject(ResourceGateMemoProvider);
   recency = $inject(ProjectRecencyService);
   projectPermissions = $inject(ProjectPermissions);
   ranks = $inject(RankService);
@@ -1028,26 +1030,41 @@ export class ProjectController {
     },
     handler: async ({ params, user }) => {
       const project = this.owned.get<Project>();
+      const organizationId = project.organizationId!;
 
-      const member = await this.organizationMembers.findOne({
-        where: {
-          organizationId: { eq: project.organizationId! },
-          userId: { eq: user.id },
-        },
-      });
-
-      const memberCount = await this.organizationMembers.count({
-        organizationId: { eq: project.organizationId! },
-      });
+      // One step (#Q2636): on D1, and on MCP above all, every sequential read
+      // is a round trip to the primary, and none of these needs another.
+      const [member, memberCount, capabilityRows, quests] = await Promise.all([
+        // Under the key the gate read it with, so this is the gate's row and
+        // not a second query.
+        this.gateMemo.resolve(
+          ResourceGateMemoProvider.membershipKey({
+            table: "organization_members",
+            resourceColumn: "organizationId",
+            resourceId: organizationId,
+            userColumn: "userId",
+            userId: user.id,
+          }),
+          () =>
+            this.organizationMembers.findOne({
+              where: {
+                organizationId: { eq: organizationId },
+                userId: { eq: user.id },
+              },
+            }),
+        ),
+        this.organizationMembers.count({
+          organizationId: { eq: organizationId },
+        }),
+        // The gate already read these for this request, so the memo answers
+        // without a second query.
+        this.projectSecurity.capabilityRowsOf(params.id),
+        this.assignedWork.of(project.id, user.id),
+      ]);
 
       return {
-        ...this.projectMapper.toResource(
-          project,
-          // The gate already read these for this request, so the memo answers
-          // without a second query.
-          await this.projectSecurity.capabilityRowsOf(params.id),
-        ),
-        quests: await this.assignedWork.of(project.id, user.id),
+        ...this.projectMapper.toResource(project, capabilityRows),
+        quests,
         member,
         memberCount,
         // Off the membership row the gate already read, and the definitions

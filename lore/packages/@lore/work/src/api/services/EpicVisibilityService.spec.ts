@@ -42,9 +42,10 @@ class TestApp {
 }
 
 describe("EpicVisibilityService", () => {
-  it("is a no-op when the project has no draft epic", async ({ expect }) => {
-    // Trap 2: `notInArray: []` THROWS. A project with zero draft epics is
-    // the normal case, so the clause must be omitted, never passed empty.
+  it("hides nothing when the project has no draft epic", async ({ expect }) => {
+    // Trap 2 was `notInArray: []`, which THROWS. The draft epics are a
+    // subquery since #Q2636, and `NOT IN` over an empty subquery is true,
+    // so a project with zero draft epics (the normal case) lists every row.
     const alepha = Alepha.create({
       // Pinned, like every other lore spec: the ROOT vitest config — the one
       // CI runs — sets DATABASE_URL to a Postgres URL, which this app's
@@ -62,10 +63,9 @@ describe("EpicVisibilityService", () => {
     await expect(
       app.epicVisibility.applyBacklogGate(where, project.id),
     ).resolves.toBeUndefined();
-    expect(where.or).toBeUndefined();
 
-    // And the omission has to survive contact with the query builder: an
-    // empty `notInArray` fails at `toSQL`, not at assignment.
+    // And it has to survive contact with the query builder: an empty
+    // `notInArray` failed at `toSQL`, not at assignment.
     const quest = await createTestQuest(alepha, project);
     expect((await app.listVisibleQuests(project.id)).map((q) => q.id)).toEqual([
       quest.id,

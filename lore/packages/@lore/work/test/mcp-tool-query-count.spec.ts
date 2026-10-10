@@ -170,13 +170,18 @@ describe("MCP tool query count", () => {
       title: epic.title,
       status: "draft",
     });
-    // Two `quests` reads: the gate's row and the comments gate's re-read
-    // (#Q2636 takes the second). A third is `getEpics`' progress aggregate
-    // over the project's quests, paid to name one epic: `EpicRefService`
-    // reads `getEpicRefs`, four columns of `epics` and nothing else (#Q2635).
-    expect(ctx.counter.of("quests")).toBe(2);
+    // One `quests` read: the gate's row. The comments gate's re-read went
+    // with #Q2636, which reads the thread through a service beside the rest.
+    // A second would be `getEpics`' progress aggregate over the project's
+    // quests, paid to name one epic: `EpicRefService` reads `getEpicRefs`,
+    // four columns of `epics` and nothing else (#Q2635).
+    expect(ctx.counter.of("quests")).toBe(1);
     expect(ctx.counter.of("epics")).toBe(1);
-    expect(ctx.totalReads()).toBeLessThanOrEqual(7);
+    // Eight, one more than before #Q2636 and on purpose: the roster is read
+    // beside the comments rather than after them, so an empty thread pays a
+    // statement it does not need and every thread saves a round trip, which
+    // is the dearer of the two on D1.
+    expect(ctx.totalReads()).toBeLessThanOrEqual(8);
 
     await ctx.alepha.stop();
   });

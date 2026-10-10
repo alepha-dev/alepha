@@ -106,4 +106,46 @@ export class EpicProgressService {
 
     return progress;
   }
+
+  /**
+   * {@link computeProgressOf} for every epic of a project, keyed on the
+   * project rather than on epic ids: it needs nothing from the epic rows, so
+   * a list reads it BESIDE them instead of after (#Q2636). Same four
+   * buckets, same aggregate, one statement and no chunking.
+   */
+  async computeProgressOfProject(
+    projectId: number,
+  ): Promise<Map<number, EpicProgress>> {
+    const rows = await this.quests.aggregate({
+      select: {
+        epicId: true,
+        id: { count: true },
+        completedAt: { count: true },
+        shelvedAt: { count: true },
+        inProgress: {
+          count: {
+            column: "id",
+            where: {
+              acceptedAt: { isNotNull: true },
+              completedAt: { isNull: true },
+            },
+          },
+        },
+      },
+      where: { projectId: { eq: projectId }, epicId: { isNotNull: true } },
+      groupBy: ["epicId"],
+    });
+
+    const progress = new Map<number, EpicProgress>();
+    for (const row of rows) {
+      if (row.epicId == null) continue;
+      progress.set(row.epicId, {
+        completed: row.completedAt.count,
+        inProgress: row.inProgress.count,
+        shelved: row.shelvedAt.count,
+        total: row.id.count,
+      });
+    }
+    return progress;
+  }
 }

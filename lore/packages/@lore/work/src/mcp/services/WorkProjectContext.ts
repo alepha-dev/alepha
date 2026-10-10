@@ -38,7 +38,7 @@ export class WorkProjectContext {
       capability: "work",
       context: async ({ projectId, assignedWork }) => ({
         areas: await this.areas(projectId),
-        activeQuests: assignedWork.map((quest) => ({
+        activeQuests: (await assignedWork).map((quest) => ({
           id: quest.id,
           shortId: quest.shortId,
           title: quest.title,
@@ -54,21 +54,19 @@ export class WorkProjectContext {
       order: 20,
       capability: "work",
       context: async ({ projectId }) => {
-        // The epic index. Never gated on an epic's STATUS (same as an
-        // epic's own view of itself): orientation is exactly what failed for
-        // the work that motivated this, thirteen quests parked under one
-        // epic read as noise with no signal they were one subject.
-        const epics = await this.epicController.getEpics({
-          params: { projectId },
-        });
-        // The open releases, so an agent opens a session already knowing
-        // what `0.28.0` is meant to contain. Published ones are dropped:
-        // this index is for planning into, and a shipped release is not.
-        const openReleases = (
-          await this.releaseController.getReleases({ params: { projectId } })
-        )
-          .filter((release) => !release.releasedAt)
-          .sort((a, b) => a.number - b.number);
+        // In one step (#Q2636). The epic index is never gated on an epic's
+        // STATUS (same as an epic's own view of itself): orientation is
+        // exactly what failed for the work that motivated this, thirteen
+        // quests parked under one epic read as noise with no signal they
+        // were one subject. The open releases, so an agent opens a session
+        // already knowing what `0.28.0` is meant to contain; published ones
+        // are dropped, since this index is for planning into.
+        const [epics, openReleases] = await Promise.all([
+          this.epicController.getEpics({ params: { projectId } }),
+          this.releaseController.getOpenReleaseProgress({
+            params: { projectId },
+          }),
+        ]);
         return {
           epics: epics.map((epic) => ({
             number: epic.number,
@@ -85,8 +83,8 @@ export class WorkProjectContext {
             tag: release.tag,
             title: release.title,
             targetDate: release.targetDate,
-            completed: release.progress.completed,
-            total: release.progress.total,
+            completed: release.completed,
+            total: release.total,
             // Omitted rather than `false` on every other release: an
             // orientation payload pays for every key on every row.
             ...(release.defaultSince ? { default: true } : {}),
@@ -104,7 +102,7 @@ export class WorkProjectContext {
     projectId: number,
   ): Promise<Array<{ name: string; description: string }>> {
     const max = WorkProjectContext.AREA_DESCRIPTION_MAX_CHARS;
-    return (await this.areaService.listWithStats(projectId)).map((area) => ({
+    return (await this.areaService.list(projectId)).map((area) => ({
       name: area.name,
       description:
         area.description.length > max

@@ -139,6 +139,16 @@ export class FolioController {
    * to `update`: the protection-domain invariant is decided against the
    * EXISTING row, and that row is now read once, by the gate.
    */
+  /**
+   * The extras {@link getByShortId} and {@link getDetail} attach on request.
+   */
+  protected readonly detailQuerySchema = z.object({
+    withLinks: z.boolean().optional(),
+    withPath: z.boolean().optional(),
+    withAttachments: z.boolean().optional(),
+    withEpic: z.boolean().optional(),
+  });
+
   protected ownsFolio = (requires: string | string[]) =>
     $ownsProject({ requires, repository: () => this.folios, param: "id" });
 
@@ -305,43 +315,85 @@ export class FolioController {
       params: z.object({ projectId: z.integer() }),
       response: z.array(folioTreeEntrySchema),
     },
-    handler: async ({ params }) => {
-      const [rows, pinned] = await Promise.all([
-        this.folios.findMany({
-          where: { projectId: { eq: params.projectId } },
-          columns: [
-            "id",
-            "shortId",
-            "createdAt",
-            "updatedAt",
-            "projectId",
-            "title",
-            "protected",
-            "pinned",
-            "directoryId",
-            "summary",
-          ],
-          orderBy: [
-            { column: "pinned", direction: "desc" },
-            { column: "updatedAt", direction: "desc" },
-          ],
-        }),
-        this.folios.findMany({
-          where: {
-            projectId: { eq: params.projectId },
-            pinned: { eq: true },
-            protected: { eq: false },
-          },
-          columns: ["id", "content"],
-        }),
-      ]);
-      const bodies = new Map(pinned.map((row) => [row.id, row.content]));
-      return (await this.withEpics(rows)).map((row) => {
-        const content = bodies.get(row.id);
-        return content === undefined ? row : { ...row, content };
-      }) as FolioTreeEntry[];
-    },
+    handler: async ({ params }) => this.treeEntries(params.projectId),
   });
+
+  /**
+   * The newest `limit` folios of the project, pinned first, as the tree
+   * draws them: the folio index of `project_context` (#Q2636). The body of
+   * {@link tree} with a cap, so the index reads no `content` but a pinned,
+   * unprotected folio's, which `project_context` inlines.
+   */
+  index = $action({
+    use: [this.ownsProject("folio:read")],
+    description: "The newest folios of the project, without bodies.",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      query: z.object({
+        limit: z.integer().min(1).max(200),
+        /**
+         * Carry the pinned folios' bodies, which `project_context` inlines.
+         * `folio_list` shows none and leaves it off.
+         */
+        pinnedContent: z.boolean().optional(),
+      }),
+      response: z.array(folioTreeEntrySchema),
+    },
+    handler: async ({ params, query }) =>
+      this.treeEntries(
+        params.projectId,
+        query.limit,
+        query.pinnedContent ?? false,
+      ),
+  });
+
+  /**
+   * {@link tree}'s rows: every folio (or the newest `limit`) without its
+   * body, and in the same step the bodies of the pinned, unprotected ones.
+   */
+  protected async treeEntries(
+    projectId: number,
+    limit?: number,
+    pinnedContent = true,
+  ): Promise<FolioTreeEntry[]> {
+    const [rows, pinned] = await Promise.all([
+      this.folios.findMany({
+        where: { projectId: { eq: projectId } },
+        columns: [
+          "id",
+          "shortId",
+          "createdAt",
+          "updatedAt",
+          "projectId",
+          "title",
+          "protected",
+          "pinned",
+          "directoryId",
+          "summary",
+        ],
+        orderBy: [
+          { column: "pinned", direction: "desc" },
+          { column: "updatedAt", direction: "desc" },
+        ],
+        ...(limit != null ? { limit } : {}),
+      }),
+      pinnedContent
+        ? this.folios.findMany({
+            where: {
+              projectId: { eq: projectId },
+              pinned: { eq: true },
+              protected: { eq: false },
+            },
+            columns: ["id", "content"],
+          })
+        : [],
+    ]);
+    const bodies = new Map(pinned.map((row) => [row.id, row.content]));
+    return (await this.withEpics(rows)).map((row) => {
+      const content = bodies.get(row.id);
+      return content === undefined ? row : { ...row, content };
+    }) as FolioTreeEntry[];
+  }
 
   getByShortId = $action({
     // Gated on the PARAM, not on the folio it finds: the lookup is by
@@ -370,11 +422,7 @@ export class FolioController {
       // There was a `withRevisionCount` here too, feeding the meta bar's
       // "N revisions". It went with the meta bar — nothing outside the
       // History tab counts revisions now, and that tab has the rows.
-      query: z.object({
-        withLinks: z.boolean().optional(),
-        withPath: z.boolean().optional(),
-        withAttachments: z.boolean().optional(),
-      }),
+      query: this.detailQuerySchema,
       response: folioResourceSchema,
     },
     handler: async ({ params, query }) => {
@@ -385,36 +433,119 @@ export class FolioController {
         },
       });
       if (!found) throw new NotFoundError("Folio not found");
-      const [folio] = await this.withEpics([found]);
-      if (!query.withLinks && !query.withPath && !query.withAttachments) {
-        return folio;
-      }
-      // Every requested extra is independent of the others, so they run
-      // concurrently — the handler costs one round of queries, not one
-      // per flag.
-      //
-      // `withPath` and `withLinks` both need to turn directory ids into
-      // ancestor chains, and they used to do it two different ways: the
-      // link resolver read the project's directories in one shot, while
-      // the path resolver walked the chain one `findOne` per level. One
-      // loader now serves both, so the deeper the folio the more this
-      // saves — and it is lazy, so a folio at the project root with no
-      // links still reads no directories at all.
-      const loadDirectories = this.directoryMapLoader(folio.projectId);
-      const [links, path, attachments] = await Promise.all([
-        query.withLinks
-          ? this.resolveLinks(folio.id, folio.projectId, loadDirectories)
-          : undefined,
-        query.withPath
-          ? this.resolveDirectoryPath(folio.directoryId, loadDirectories)
-          : undefined,
-        query.withAttachments
-          ? this.attachmentService.listHydratedByFolio(folio.id)
-          : undefined,
-      ]);
-      return { ...folio, metadata: { links, path, attachments } };
+      return this.detailOf(found, query);
     },
   });
+
+  /**
+   * {@link getByShortId} by the folio's id: the folio and the extras asked
+   * for, in one round of queries after the gate's (#Q2636). `folio_get`
+   * reads it, so the folio is read once, by its own gate, rather than once
+   * per action it used to call.
+   */
+  getDetail = $action({
+    use: [this.ownsFolio("folio:read")],
+    description: "Get a single folio by id, with the extras asked for.",
+    schema: {
+      params: folioIdParamsSchema,
+      query: this.detailQuerySchema,
+      response: folioResourceSchema,
+    },
+    handler: async ({ query }) => this.detailOf(this.owned.get<Folio>(), query),
+  });
+
+  /**
+   * The id of the folio a per-project `shortId` names, or `undefined`. One
+   * column, no epic stamp: what a tool that addresses a folio by `shortId`
+   * needs before calling an action gated on the folio, which reads the row
+   * itself (#Q2637). Ungated, so the caller must already have proven
+   * membership on `projectId`.
+   */
+  async idOfShortId(
+    projectId: number,
+    shortId: number,
+  ): Promise<string | undefined> {
+    const [row] = await this.folios.findMany({
+      where: { projectId: { eq: projectId }, shortId: { eq: shortId } },
+      columns: ["id"],
+      limit: 1,
+    });
+    return row?.id;
+  }
+
+  /**
+   * The folio a gate already read, stamped with its epic and carrying the
+   * extras asked for.
+   */
+  protected async detailOf(
+    found: Folio,
+    query: {
+      withLinks?: boolean;
+      withPath?: boolean;
+      withAttachments?: boolean;
+      withEpic?: boolean;
+    },
+  ) {
+    // Every extra is independent of the others and of the epic stamp, so
+    // they all run concurrently: the handler costs one round of queries
+    // (and the describes those need), not one per flag (#Q2636).
+    //
+    // `withPath` and `withLinks` both need to turn directory ids into
+    // ancestor chains, and they used to do it two different ways: the
+    // link resolver read the project's directories in one shot, while
+    // the path resolver walked the chain one `findOne` per level. One
+    // loader now serves both, so the deeper the folio the more this
+    // saves — and it is lazy, so a folio at the project root with no
+    // links still reads no directories at all.
+    const loadDirectories = this.directoryMapLoader(found.projectId);
+    const [[folio, epic], links, path, attachments] = await Promise.all([
+      this.withEpics([found]).then(
+        async ([row]) =>
+          [
+            row,
+            query.withEpic && row.epicId != null
+              ? (
+                  await this.linkService.describe("epic", row.projectId, [
+                    row.epicId,
+                  ])
+                )[0]
+              : undefined,
+          ] as const,
+      ),
+      query.withLinks
+        ? this.resolveLinks(found.id, found.projectId, loadDirectories)
+        : undefined,
+      query.withPath
+        ? this.resolveDirectoryPath(found.directoryId, loadDirectories)
+        : undefined,
+      query.withAttachments
+        ? this.attachmentService.listHydratedByFolio(found.id)
+        : undefined,
+    ]);
+    if (
+      !query.withLinks &&
+      !query.withPath &&
+      !query.withAttachments &&
+      !query.withEpic
+    ) {
+      return folio;
+    }
+    return {
+      ...folio,
+      metadata: {
+        links,
+        path,
+        attachments,
+        epic: epic
+          ? {
+              number: epic.shortId,
+              title: epic.title,
+              status: String(epic.status),
+            }
+          : undefined,
+      },
+    };
+  }
 
   /**
    * A lazily-resolved `id → directory` map for one project, fetched AT
@@ -842,26 +973,34 @@ export class FolioController {
       // Sync outbound `[[...]]` references. Skipped for protected folios
       // since `content` is ciphertext — scanning it for `[[...]]` would
       // generate noisy junk links from base64 chars.
-      if (!isProtected) {
-        // A brand-new id has no links to clear, so the delete is skipped.
-        await this.bestEffort.run("createFolio: link sync failed", () =>
-          this.linkService.syncLinks(this.folioSource(created), content, {
-            created: true,
+      //
+      // The three run concurrently (#Q2637), each best effort, so a failure
+      // of one leaves the other two written and the folio created: a missed
+      // link sync is redone by the next save, a missed revision leaves the
+      // History tab without its baseline, a missed audit leaves the feed
+      // without the line.
+      await Promise.all([
+        isProtected
+          ? undefined
+          : // A brand-new id has no links to clear, so the delete is skipped.
+            this.bestEffort.run("createFolio: link sync failed", () =>
+              this.linkService.syncLinks(this.folioSource(created), content, {
+                created: true,
+              }),
+            ),
+        // Seed the revision log with a `create` entry. Snapshot is the folio
+        // as it stands right after insert: the History tab's baseline to
+        // diff later edits against. A new folio has no revision to fold
+        // into, no live row to fill and nothing over the cap, so nothing is
+        // read first.
+        this.bestEffort.run("createFolio: create revision failed", () =>
+          this.historyService.recordRevision(created, user.id, {
+            action: "create",
+            first: true,
           }),
-        );
-      }
-      // Seed the revision log with a `create` entry. Snapshot is the
-      // folio as it stands right after insert — gives the History tab a
-      // baseline to diff later edits against.
-      await this.bestEffort.run("createFolio: create revision failed", () =>
-        this.historyService.appendRevision(
-          created,
-          user.id,
-          "create",
-          undefined,
         ),
-      );
-      await this.logFolio("create", folio, user, { protected: isProtected });
+        this.logFolio("create", folio, user, { protected: isProtected }),
+      ]);
 
       // Always true here: a brand-new folio has nothing to fold into. Sent
       // anyway so the two save paths answer the same shape and the client
@@ -1082,31 +1221,49 @@ export class FolioController {
       // A rename touches no other element: a folio is referenced by its
       // number (`[[#F12]]`, epic #32), which a title change leaves intact.
       // Re-sync this folio's own outbound links whenever content changed.
-      if (!isProtected) {
-        await this.bestEffort.run("updateFolio: link sync failed", () =>
-          this.linkService.syncLinks(this.folioSource(updated), content),
-        );
-      }
+      // The tail runs concurrently (#Q2637), with the epic stamp of the
+      // response beside it. Each step is best effort and none reads what
+      // another writes, so a failure halfway leaves the others written and
+      // the folio saved: a missed link sync is redone by the next save that
+      // changes the content, a missed revision leaves the live head already
+      // materialized by step 3, a missed audit leaves the feed without the
+      // line.
+      //
+      // The link sync runs only when the content changed: a rename, a move
+      // or a pin leaves the body, and so its links, as they were.
       const revisionPlan = plan;
-      const appended = revisionPlan
-        ? await this.bestEffort.run("updateFolio: revision failed", () =>
-            this.historyService.recordRevision(updated, user.id, revisionPlan),
-          )
-        : undefined;
-      // See `folioSavedSchema` for why the purge is an equal partner here
-      // and why this is not named `revisionCreated`. A purge with no insert
-      // is rare but real: it empties the list, and a client told only about
-      // insertions would keep rendering revisions the server has deleted.
-      await this.logFolio("update", updated, user, {
-        // What the update actually touched, from the revision decision that
-        // has already computed it. `undefined` when nothing recordable moved
-        // (a pin, a reparent), which is exactly the distinction the feed
-        // wants to draw.
-        change: plan?.action,
-      });
+      const [, appended, , [stamped]] = await Promise.all([
+        !isProtected && content !== existing.content
+          ? this.bestEffort.run("updateFolio: link sync failed", () =>
+              this.linkService.syncLinks(this.folioSource(updated), content),
+            )
+          : undefined,
+        revisionPlan
+          ? this.bestEffort.run("updateFolio: revision failed", () =>
+              this.historyService.recordRevision(
+                updated,
+                user.id,
+                revisionPlan,
+              ),
+            )
+          : undefined,
+        // See `folioSavedSchema` for why the purge is an equal partner here
+        // and why this is not named `revisionCreated`. A purge with no
+        // insert is rare but real: it empties the list, and a client told
+        // only about insertions would keep rendering revisions the server
+        // has deleted.
+        this.logFolio("update", updated, user, {
+          // What the update actually touched, from the revision decision
+          // that has already computed it. `undefined` when nothing
+          // recordable moved (a pin, a reparent), which is exactly the
+          // distinction the feed wants to draw.
+          change: plan?.action,
+        }),
+        this.withEpics([updated]),
+      ]);
 
       return {
-        ...(await this.withEpics([updated]))[0],
+        ...stamped,
         revisionsChanged: purged || appended?.created === true,
       };
     },

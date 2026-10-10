@@ -82,6 +82,19 @@ const folioMetadataSchema = z.object({
    * could only start once the folio's `id` was known.
    */
   attachments: z.array(hydratedFolioAttachmentSchema).optional(),
+  /**
+   * The epic that files the folio, named: opt-in via `withEpic=true`, for
+   * `folio_get`, which reports it and would otherwise pay a round trip for
+   * it after the folio came back (#Q2636). Absent when nothing files it, or
+   * without Work.
+   */
+  epic: z
+    .object({
+      number: z.integer(),
+      title: z.string(),
+      status: z.string(),
+    })
+    .optional(),
 });
 
 /**

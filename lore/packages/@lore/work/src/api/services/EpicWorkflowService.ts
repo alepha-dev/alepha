@@ -98,6 +98,20 @@ export class EpicWorkflowService {
   }
 
   /**
+   * The epic a caller already read with {@link epicOf}, or a read of it
+   * when it passed none (`undefined`). A quest action reads its epic once
+   * and hands it to every rule below (#Q2637): `completeQuest` used to read
+   * the same row four times. `null` is "read, and there is none".
+   */
+  protected async epicFor(
+    quest: Pick<Quest, "epicId">,
+    known: Epic | null | undefined,
+  ): Promise<Epic | undefined> {
+    if (known === null) return undefined;
+    return known ?? (await this.epicOf(quest));
+  }
+
+  /**
    * You can work on a quest only if its epic is `ready` or `in_progress`.
    *
    * Called first thing by every action that opens or advances work: accept,
@@ -132,8 +146,9 @@ export class EpicWorkflowService {
   async assertQuestWorkable(
     quest: Pick<Quest, "shortId" | "epicId">,
     verb: EpicWorkflowVerb,
+    known?: Epic | null,
   ): Promise<void> {
-    const epic = await this.epicOf(quest);
+    const epic = await this.epicFor(quest, known);
     if (!epic || epic.status === "in_progress") return;
 
     const reopensPlan = verb === "unshelve" || verb === "unhold";
@@ -302,8 +317,9 @@ export class EpicWorkflowService {
   async startIfReady(
     quest: Pick<Quest, "shortId" | "epicId">,
     user: UserAccountToken | undefined,
+    known?: Epic | null,
   ): Promise<ReleaseCascade | undefined> {
-    const epic = await this.epicOf(quest);
+    const epic = await this.epicFor(quest, known);
     if (!epic || epic.status !== "ready") return undefined;
     return await this.start(epic, user, { quest: quest.shortId });
   }
@@ -378,8 +394,9 @@ export class EpicWorkflowService {
   async completeIfResolved(
     quest: Pick<Quest, "shortId" | "epicId">,
     user: UserAccountToken | undefined,
+    known?: Epic | null,
   ): Promise<void> {
-    const epic = await this.epicOf(quest);
+    const epic = await this.epicFor(quest, known);
     if (!epic || epic.status !== "in_progress") return;
 
     if (await this.finish(epic)) {

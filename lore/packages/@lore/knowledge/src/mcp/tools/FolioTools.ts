@@ -98,10 +98,15 @@ export class FolioTools {
         params.project,
         params.project_name,
       );
-      const folio = await this.folioController.getByShortId({
-        params: { projectId, shortId: params.shortId },
-      });
-      return folio.id;
+      // The id alone (#Q2637): every caller hands it to an action gated on
+      // the folio, which reads the row itself. The resolver above proved
+      // membership on the project.
+      const id = await this.folioController.idOfShortId(
+        projectId,
+        params.shortId,
+      );
+      if (id == null) throw new NotFoundError("Folio not found");
+      return id;
     }
     throw new BadRequestError(
       "Folio reference required: pass `id` (global UUID) or `shortId` (per-project — also requires `project` or `project_name`).",
@@ -280,13 +285,19 @@ export class FolioTools {
         params.project,
         params.project_name,
       );
-      const folios = await this.folioController.list({
-        query: {
-          limit: params.limit ?? 20,
-          projectId,
-          ...(params.epic != null ? { epicId: params.epic } : {}),
-        },
-      });
+      // The index rows, without bodies (#Q2636): this list shows none, and
+      // `list` reads every row whole. An epic's folios still go through
+      // `list`, which pages the epic's filed links.
+      const limit = params.limit ?? 20;
+      const folios =
+        params.epic != null
+          ? await this.folioController.list({
+              query: { limit, projectId, epicId: params.epic },
+            })
+          : await this.folioController.index({
+              params: { projectId },
+              query: { limit },
+            });
       // One extra call for the whole page rather than one per folio, the
       // same way quest_list stamps its rows.
       const epicRefs = await this.epicRefsFor(
@@ -376,11 +387,27 @@ export class FolioTools {
       result: folioFullSchema,
     },
     handler: async ({ params }) => {
-      const id = await this.resolveFolioId(params);
-      const [folio, links] = await Promise.all([
-        this.folioController.get({ params: { id } }),
-        this.folioController.getLinks({ params: { id } }),
-      ]);
+      // Read once, by one gate, with its links and its epic in the same
+      // round of queries after it (#Q2636). A `shortId` is resolved by the
+      // project's gate and never re-read by id.
+      const query = { withLinks: true, withEpic: true };
+      const folio =
+        params.id == null && params.shortId != null
+          ? await this.folioController.getByShortId({
+              params: {
+                projectId: await this.resolveProjectId(
+                  params.project,
+                  params.project_name,
+                ),
+                shortId: params.shortId,
+              },
+              query,
+            })
+          : await this.folioController.getDetail({
+              params: { id: await this.resolveFolioId(params) },
+              query,
+            });
+      const epic = folio.metadata?.epic;
       return {
         id: folio.id,
         shortId: folio.shortId,
@@ -389,8 +416,14 @@ export class FolioTools {
         content: folio.content,
         createdAt: folio.createdAt,
         updatedAt: folio.updatedAt,
-        epic: await this.epicRefFor(folio.projectId, folio.epicId),
-        links,
+        epic: epic
+          ? {
+              number: epic.number,
+              title: epic.title,
+              status: epic.status as FolioEpicRef["status"],
+            }
+          : undefined,
+        links: folio.metadata?.links ?? { outbound: [], inbound: [] },
       };
     },
   });

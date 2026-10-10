@@ -60,21 +60,23 @@ export class EpicVisibilityService {
    * The top-level `or` is ANDed with the caller's sibling keys by
    * `QueryManager.toSQL`, so the caller's `projectId` scoping survives.
    *
-   * See the class comment for the two traps this encodes.
+   * The draft epics are a SUBQUERY of the listing's own statement, not a
+   * read before it (#Q2636): on D1 that read was a round trip of its own in
+   * front of every backlog page. Trap 1 of the class comment still holds and
+   * the `isNull` branch stays; trap 2 does not arise, since `NOT IN` over an
+   * empty subquery is simply true. Soft-deleted epics are left out, as the
+   * repository read left them out.
+   *
+   * Async and awaited by its callers for the shape it has always had.
    */
   async applyBacklogGate(
     where: PgQueryWhere<typeof quests.schema>,
     projectId: number,
   ): Promise<void> {
-    const draftIds = await this.draftEpicIds(projectId);
-
-    if (draftIds.length === 0) {
-      return;
-    }
-
+    const epic = this.epics.table;
     where.or = [
       { epicId: { isNull: true } },
-      { epicId: { notInArray: draftIds } },
+      sql`${this.quests.table.epicId} NOT IN (SELECT ${epic.id} FROM ${epic} WHERE ${epic.projectId} = ${projectId} AND ${epic.status} = 'draft' AND ${epic.deletedAt} IS NULL)` as any,
     ];
   }
 
