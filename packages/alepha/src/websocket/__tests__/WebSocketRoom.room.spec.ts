@@ -72,6 +72,10 @@ function fakeCtx() {
   };
 }
 
+class ExposedRoom extends WebSocketRoom {
+  public socket = this.roomSocket.bind(this);
+}
+
 /**
  * Build an Alepha app whose room is registered, publish it into the global the
  * WebSocketRoom reads (`__alepha`), and return a room bound to a fake DO ctx +
@@ -122,13 +126,13 @@ async function setup() {
 
   const clock = new FakeClock();
   const ctx = fakeCtx();
-  const room = new WebSocketRoom(ctx as any, {}, clock);
+  const room = new ExposedRoom(ctx as any, {}, clock);
   return { room, ctx, clock, events, queries };
 }
 
 /**
  * Simulate a hibernation-socket admission the way `fetch` does after accepting
- * the pair — but without the Workers-only `WebSocketPair`/101-`Response` that
+ * the pair  -  but without the Workers-only `WebSocketPair`/101-`Response` that
  * cannot run under Node/Vitest.
  */
 async function join(
@@ -201,7 +205,7 @@ describe("WebSocketRoom hosting a $room engine", () => {
     clock.advance(50);
     await room.webSocketClose(ws);
     const before = ws.sent.length;
-    clock.advance(50); // no live timer — no further ticks
+    clock.advance(50); // no live timer  -  no further ticks
 
     expect(events).toContain("leave:c1");
     expect(ws.sent.length).toBe(before);
@@ -226,7 +230,7 @@ describe("WebSocketRoom hosting a $room engine", () => {
     const clock2 = new FakeClock();
     const room2 = new WebSocketRoom(ctx as any, {}, clock2);
 
-    clock2.advance(50); // engine is gone — nothing ticks
+    clock2.advance(50); // engine is gone  -  nothing ticks
     const beforeAlarm = ws.sent.length;
 
     await room2.alarm(); // watchdog re-hydrates c1, restarting the loop
@@ -240,9 +244,25 @@ describe("WebSocketRoom hosting a $room engine", () => {
    * The watchdog rebuilds a `RoomSocket` from the deserialized attachment, not
    * from the original `fetch` request, so the query hint an application relied
    * on to identify the joining entity (e.g. lindocara's `?hero=`) must survive
-   * that round-trip too — otherwise a room that outlives one isolate reset
+   * that round-trip too  -  otherwise a room that outlives one isolate reset
    * loses `conn.query` on every connection it rehydrates.
    */
+  it("resets volatile room state and data bags while retaining attachment identity", async () => {
+    const { room, ctx } = await setup();
+    const ws = await join(room, ctx, "lobby", "c1", { hero: "h-42" });
+    const attachment = ws.deserializeAttachment();
+    room.socket(ws, attachment).data.score = 42;
+    await room.webSocketMessage(ws, JSON.stringify({ move: "left" }));
+    expect(await room.callRoom("/ws/world", "lobby", "moveCount")).toBe(1);
+
+    const recreated = new ExposedRoom(ctx as any, {}, new FakeClock());
+    await recreated.alarm();
+    expect(await recreated.callRoom("/ws/world", "lobby", "moveCount")).toBe(0);
+    expect(recreated.socket(ws, attachment).data).toEqual({});
+    expect(ws.deserializeAttachment()).toEqual(attachment);
+    expect(recreated.socket(ws, attachment).query).toEqual({ hero: "h-42" });
+  });
+
   it("still exposes the upgrade query on a connection rehydrated after an isolate reset", async () => {
     const { room, ctx, queries } = await setup();
     await join(room, ctx, "lobby", "c1", { hero: "h-42", roomId: "lobby" });

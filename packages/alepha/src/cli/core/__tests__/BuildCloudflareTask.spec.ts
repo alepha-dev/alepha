@@ -43,6 +43,24 @@ class TestBuildCloudflareTask extends BuildCloudflareTask {
 }
 
 describe("BuildCloudflareTask", () => {
+  it("routes specialized upgrades through the shared host runtime", async ({
+    expect,
+  }) => {
+    const app = Alepha.create().with({
+      provide: FileSystemProvider,
+      use: MemoryFileSystemProvider,
+    });
+    const task = app.inject(TestBuildCloudflareTask);
+    task.setHasWebSocket(true);
+    await task.testWriteWorkerEntryPoint("/app", "dist");
+    const source = await app
+      .inject(MemoryFileSystemProvider)
+      .readTextFile("/app/dist/main.cloudflare.js");
+    expect(source).toContain("hostRuntime.ensureStarted(env)");
+    expect(source).toContain('hostRuntime.namespace("ALEPHA_WEBSOCKET")');
+    expect(source).toContain('idFromName(url.pathname + ":" + roomId)');
+  });
+
   const createTask = () => {
     const alepha = Alepha.create().with({
       provide: FileSystemProvider,

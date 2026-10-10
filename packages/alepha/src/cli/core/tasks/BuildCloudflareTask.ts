@@ -704,21 +704,8 @@ export class BuildCloudflareTask extends BuildTask {
   }
 
   /**
-   * Durable Object binding + SQLite migration for the `$websocket`/`$room`
-   * primitives on Cloudflare. Gated on `hasWebSocket` (resolved in
-   * `generateCloudflare` from `ctx.manifest` or a live `ctx.alepha` probe)  -
-   * a workerd app with no realtime usage gets no binding and no migration.
-   *
-   * `new_sqlite_classes` (rather than `new_classes`) is required because
-   * `AlephaWebSocketDurableObject` uses the SQLite-backed Durable Object
-   * storage API.
-   *
-   * The user's `cloudflare.config` is spread into the wrangler BEFORE the
-   * enhancers run, so a user-supplied `migrations`/`durable_objects` block is
-   * already present here. The push must be idempotent: skip when a user
-   * migration already declares the DO class, and never reuse an occupied
-   * migration tag  -  a duplicated tag or class declaration is a wrangler
-   * deploy error.
+   * Provision every declared native host through the common lifecycle policy.
+   * The same serializable declarations are used by live and prebuilt builds.
    */
   protected enhanceDurableObjects(
     ctx: BuildTaskContext,
@@ -782,10 +769,7 @@ export class BuildCloudflareTask extends BuildTask {
     const workerdEntry = this.slices.entryFileName("workerd");
 
     // Re-exports the room Durable Object class so wrangler's
-    // `new_sqlite_classes` migration (see enhanceDurableObjects) resolves a
-    // real binding target. This only resolves at deploy time once the workerd
-    // entry wrapper itself re-exports the class  -  emitted here regardless,
-    // gated on `hasWebSocket` alone.
+    // Only the workerd slice exports native classes registered by the app graph.
     const doExport = this.hosts
       .map(
         (host) => `\nexport { ${host.exportName} } from "./${workerdEntry}";\n`,
@@ -802,10 +786,10 @@ export class BuildCloudflareTask extends BuildTask {
       const url = new URL(request.url);
       const wsPaths = ${JSON.stringify(this.websocketPaths)};
       if (wsPaths.includes(url.pathname)) {
-        bindEnv(env);
+        const hostRuntime = __alepha.inject("ActorHostRuntime");
 
         try {
-          await __alepha.start();
+          await hostRuntime.ensureStarted(env);
         } catch (err) {
           __alepha.log.error("Failed to start Alepha for websocket upgrade", err);
           return new Response("Internal Server Error", { status: 500 });
@@ -856,7 +840,7 @@ export class BuildCloudflareTask extends BuildTask {
           "default";
 
         const connectionId = "ws-" + crypto.randomUUID();
-        const ns = env.ALEPHA_WEBSOCKET;
+        const ns = hostRuntime.namespace("ALEPHA_WEBSOCKET");
         const stub = ns.get(ns.idFromName(url.pathname + ":" + roomId));
         const forward = new Request(request, {
           headers: new Headers(request.headers),

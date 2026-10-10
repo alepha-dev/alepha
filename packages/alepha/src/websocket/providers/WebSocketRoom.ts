@@ -1,4 +1,5 @@
 import { type Alepha, AlephaError, SchemaValidator } from "alepha";
+import { ActorHostRuntime } from "alepha/actor";
 
 import type {
   RoomClock,
@@ -98,15 +99,15 @@ const ALARM_INTERVAL_MS = 10_000;
  * Node provider.
  */
 export class WebSocketRoom {
-  protected started = false;
-
   /**
    * One {@link RoomEngine} per `channelPath:roomId` hosted in this Durable
    * Object (in practice a DO is a single room, but keyed for safety).
+   * Engines and their application state reset when this host is recreated.
    */
   protected readonly roomEngines = new Map<string, RoomEngine<any, any, any>>();
   /**
-   * Per-connection application data bags, keyed by connectionId.
+   * Volatile per-connection application data bags, keyed by connectionId.
+   * Attachments retain identity, but these values reset on host recreation.
    */
   protected readonly dataBags = new Map<string, Record<string, unknown>>();
   /**
@@ -227,8 +228,8 @@ export class WebSocketRoom {
 
   /**
    * Watchdog entry point, invoked by the Durable Object runtime. Re-hydrates
-   * any sockets the in-memory engine forgot (after an isolate reset) — which
-   * restarts the tick loop — then re-arms itself while the room still holds
+   * any sockets the in-memory engine forgot (after an isolate reset)  -  which
+   * restarts the tick loop  -  then re-arms itself while the room still holds
    * sockets. Never throws: a throwing alarm would be retried in a hot loop.
    */
   async alarm(): Promise<void> {
@@ -246,7 +247,7 @@ export class WebSocketRoom {
    * Re-join every hibernation socket the engine does not currently know about.
    * `RoomEngine.join` restarts the tick loop, so this is what brings a room
    * back to life after its isolate was reset. The room *state* is not restored
-   * (in-memory state cannot survive eviction) — connectivity and the loop are.
+   * (in-memory state cannot survive eviction)  -  connectivity and the loop are.
    */
   protected async rehydrate(): Promise<void> {
     for (const ws of this.ctx.getWebSockets()) {
@@ -338,7 +339,7 @@ export class WebSocketRoom {
   /**
    * RPC invoked by the Cloudflare provider to run a server-side room method
    * (the coordinator/presence seam). The channel/room come as arguments because
-   * an RPC — unlike an upgrade — carries no headers.
+   * an RPC  -  unlike an upgrade  -  carries no headers.
    */
   async callRoom(
     channelPath: string,
@@ -375,7 +376,7 @@ export class WebSocketRoom {
    * providers behave the same way from the client's point of view: malformed
    * JSON is logged and dropped, and any error thrown by schema validation or
    * the user's handler is logged, reported back to the offending socket on a
-   * best-effort basis, and swallowed — never rethrown. On real Durable Object
+   * best-effort basis, and swallowed  -  never rethrown. On real Durable Object
    * hibernation, an uncaught throw out of `webSocketMessage` closes the
    * socket with code 1011 and no client-visible reason, so this connection
    * must stay open through handler errors the same way the Node path does.
@@ -435,7 +436,7 @@ export class WebSocketRoom {
             }),
           );
         } catch {
-          // socket may already be closing/closed — nothing more we can do
+          // socket may already be closing/closed  -  nothing more we can do
         }
       }
     });
@@ -443,7 +444,7 @@ export class WebSocketRoom {
 
   /**
    * Guard for `reply({ roomId })` on Cloudflare. `reply()` always fans out
-   * over THIS Durable Object's own room (see `broadcastLocal`) — there is no
+   * over THIS Durable Object's own room (see `broadcastLocal`)  -  there is no
    * cross-DO hop like the Node provider's `$topic` bus has. So a handler
    * that requests a *different* room's id would otherwise be silently
    * ignored and the message would land in the sender's own room instead of
@@ -459,7 +460,7 @@ export class WebSocketRoom {
   ): void {
     if (optsRoomId != null && optsRoomId !== attRoomId) {
       throw new AlephaError(
-        `Cloudflare WebSocket provider: reply() cannot target a different room (roomId '${optsRoomId}' != connection room '${attRoomId}'); cross-room targeting is not supported — use the same room or emit() from a server handler.`,
+        `Cloudflare WebSocket provider: reply() cannot target a different room (roomId '${optsRoomId}' != connection room '${attRoomId}'); cross-room targeting is not supported  -  use the same room or emit() from a server handler.`,
       );
     }
   }
@@ -508,18 +509,14 @@ export class WebSocketRoom {
   }
 
   protected getAlepha(): Alepha {
-    const alepha = (globalThis as any).__alepha as Alepha | undefined;
-    if (!alepha) {
-      throw new AlephaError("__alepha not found in Durable Object isolate");
-    }
-    return alepha;
+    return ActorHostRuntime.resolve(this.env);
   }
 
   /**
    * Best-effort structured log via the app logger (`Alepha.log`). Never
-   * throws: if no Alepha instance is available yet — `broadcastLocal` can be
+   * throws: if no Alepha instance is available yet  -  `broadcastLocal` can be
    * reached from the public `broadcast()` RPC before any socket has ever
-   * called `withEndpoint` in this isolate — this silently no-ops rather than
+   * called `withEndpoint` in this isolate  -  this silently no-ops rather than
    * crashing the caller over a logging convenience.
    */
   protected safeLog(
@@ -530,7 +527,7 @@ export class WebSocketRoom {
     try {
       this.getAlepha().log?.[level]?.(message, data);
     } catch {
-      // no Alepha instance available yet — nothing to log to
+      // no Alepha instance available yet  -  nothing to log to
     }
   }
 
@@ -642,14 +639,7 @@ export class WebSocketRoom {
    * Idempotent and re-entrant, so cold-start safe.
    */
   protected async ensureStarted(): Promise<Alepha> {
-    const alepha = this.getAlepha();
-    if (!this.started) {
-      alepha.set("cloudflare.env", this.env);
-      alepha.loadEnv(this.env);
-      await alepha.start();
-      this.started = true;
-    }
-    return alepha;
+    return this.getAlepha().inject(ActorHostRuntime).ensureStarted(this.env);
   }
 
   /**
@@ -689,7 +679,7 @@ export class WebSocketRoom {
 
   /**
    * Adapt one hibernation WebSocket into a {@link RoomSocket}. The per-
-   * connection data bag is held in-memory keyed by connectionId — it survives
+   * connection data bag is held in-memory keyed by connectionId  -  it survives
    * for as long as the isolate stays warm (an actively-ticking room never
    * hibernates), and is rebuilt on an explicit rehydrate after an isolate
    * reset.
