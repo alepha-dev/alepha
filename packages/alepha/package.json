@@ -47,6 +47,12 @@
       "import": "./src/actor/core/index.ts",
       "default": "./src/actor/core/index.ts"
     },
+    "./actor/redis": {
+      "types": "./src/actor/redis/index.ts",
+      "bun": "./src/actor/redis/index.bun.ts",
+      "import": "./src/actor/redis/index.ts",
+      "default": "./src/actor/redis/index.ts"
+    },
     "./api/analytics": {
       "types": "./src/api/analytics/index.ts",
       "workerd": "./src/api/analytics/index.workerd.ts",
@@ -509,6 +515,12 @@
         "browser": "./dist/actor/core/index.browser.js",
         "import": "./dist/actor/core/index.js",
         "default": "./dist/actor/core/index.js"
+      },
+      "./actor/redis": {
+        "types": "./dist/actor/redis/index.d.ts",
+        "bun": "./dist/actor/redis/index.bun.js",
+        "import": "./dist/actor/redis/index.js",
+        "default": "./dist/actor/redis/index.js"
       },
       "./api/analytics": {
         "types": "./dist/api/analytics/index.d.ts",

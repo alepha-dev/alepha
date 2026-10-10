@@ -596,6 +596,9 @@ export async function analyzeModules(
           const files = await getAllFiles(modulePath);
 
           for (const file of files) {
+            // Test-only imports are not part of a published module graph.
+            if (/\.spec\.(ts|tsx)$/.test(file) || file.includes("/__tests__/"))
+              continue;
             const content = await readFile(file, "utf-8");
             detectEscapingImports(content, file, modulePath, moduleName);
             const deps = extractAlephaDependencies(content, packageName);

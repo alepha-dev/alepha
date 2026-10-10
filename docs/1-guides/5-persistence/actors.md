@@ -34,3 +34,27 @@ supported; explicit undefined, nonfinite numbers, negative zero, sparse arrays,
 accessors, class instances and cycles are rejected. Optional trailing arguments may
 be omitted. Async schemas and Promise reducer results are unsupported. Stored schema
 incompatibility fails closed without resetting to the default.
+
+## Redis on Node and Bun
+
+Select `AlephaActorRedis` from `alepha/actor/redis` explicitly with
+`alepha.with(AlephaActorRedis)`. Set `ALEPHA_ACTOR_NAMESPACE` to a nonempty stable
+application namespace before selection. `REDIS_URL` alone leaves Memory selected.
+The provider uses the existing runtime Redis variants with a dedicated connection
+and offline command replay disabled. Start the container before calling actors.
+
+Each transition validates its candidate locally, then commits one key with an exact
+observed-byte Lua compare-and-set. Only definite conflicts retry, from fresh state
+and the original detached arguments. `actorRedisOptions` configures positive
+`maxAttempts` (default 32). Exhaustion throws `ActorContentionError`.
+
+State has no TTL or local read cache. Redis persistence and failover configuration
+determine restart durability; eviction loses state. A transport failure after a
+commit can leave its outcome unknown. The provider does not retry that invocation,
+and callers must not assume exactly-once delivery. Corrupt, incompatible or
+unknown-version stored data fails closed. Changing namespace or atom name selects
+new state without migrating or deleting old state.
+
+See [Redis scripting](https://redis.io/docs/latest/develop/programmability/eval-intro/),
+[Redis persistence](https://redis.io/docs/latest/management/persistence/) and
+[Node Redis production behavior](https://redis.io/docs/latest/develop/clients/nodejs/produsage/).

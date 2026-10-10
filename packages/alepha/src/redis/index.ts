@@ -41,20 +41,24 @@ export const AlephaRedis = $module({
     if (alepha.isBun()) {
       alepha
         .with({
+          optional: true,
           provide: RedisProvider,
           use: BunRedisProvider,
         })
         .with({
+          optional: true,
           provide: RedisSubscriberProvider,
           use: BunRedisSubscriberProvider,
         });
     } else {
       alepha
         .with({
+          optional: true,
           provide: RedisProvider,
           use: NodeRedisProvider,
         })
         .with({
+          optional: true,
           provide: RedisSubscriberProvider,
           use: NodeRedisSubscriberProvider,
         });
