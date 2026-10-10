@@ -19,7 +19,8 @@
   },
   "files": [
     "dist",
-    "src"
+    "src",
+    "THIRD_PARTY_NOTICES.md"
   ],
   "type": "module",
   "main": "./src/core/index.ts",
@@ -34,6 +35,11 @@
       "types": "./src/worker/index.ts",
       "import": "./src/worker/index.ts",
       "default": "./src/worker/index.ts"
+    },
+    "./shell": {
+      "types": "./src/shell/index.ts",
+      "import": "./src/shell/index.ts",
+      "default": "./src/shell/index.ts"
     },
     "./package.json": "./package.json"
   },
@@ -51,6 +57,11 @@
         "import": "./dist/worker/index.js",
         "default": "./dist/worker/index.js"
       },
+      "./shell": {
+        "types": "./dist/shell/index.d.ts",
+        "import": "./dist/shell/index.js",
+        "default": "./dist/shell/index.js"
+      },
       "./package.json": "./package.json"
     }
   },
@@ -59,10 +70,14 @@
     "test": "alepha test",
     "typecheck": "tsc --noEmit"
   },
+  "dependencies": {
+    "webview-bun": "2.4.0"
+  },
   "devDependencies": {
     "@types/bun": "^1.4.2",
     "@types/node": "^26.6.4",
     "alepha": "0.31.0",
+    "rolldown": "~1.2.12",
     "tsdown": "^0.23.0",
     "typescript": "^7.0.2",
     "vitest": "^5.0.3"

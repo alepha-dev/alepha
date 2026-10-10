@@ -49,6 +49,12 @@ class FixtureApp {
 
 if (process.env.FIXTURE_MODE !== "no-run") {
   run([AlephaServer, FixtureApp], {
+    env:
+      process.env.FIXTURE_MODE === "fixed-port"
+        ? { SERVER_PORT: 3000 }
+        : process.env.FIXTURE_MODE === "public-host"
+          ? { SERVER_HOST: "0.0.0.0" }
+          : undefined,
     once: process.env.FIXTURE_MODE === "once",
     configure: (alepha) => {
       alepha.store.set("fixture.configured" as any, true);

@@ -75,6 +75,17 @@ describe("DesktopWorkerHost in a real Bun Worker", () => {
     expect(started).toEqual({ ok: false, message: "injected startup failure" });
   });
 
+  it("refuses an app whose own configuration asks for a fixed port or a public host", async () => {
+    for (const mode of ["fixed-port", "public-host"]) {
+      const started = await setup(mode).start();
+      expect(started.ok).toBe(false);
+      if (started.ok) return;
+      expect(started.message).toContain(
+        "A desktop app listens on 127.0.0.1 on a random port",
+      );
+    }
+  });
+
   it("refuses run({ once: true })", async () => {
     const { start } = setup("once");
 

@@ -17,5 +17,6 @@
  */
 export * from "./DesktopProtocol.ts";
 export * from "./DesktopSupervisor.ts";
+export * from "./schemas/desktopConfigSchema.ts";
 export * from "./schemas/desktopShellMessageSchema.ts";
 export * from "./schemas/desktopWorkerMessageSchema.ts";

@@ -48,6 +48,7 @@ ignores:
   - "@fontsource/spectral"
   - "@types/bun"
   - "bun"
+  - "bun:ffi"
   - "bun:sqlite"
   - "bun:test"
   - "cloudflare:workers"

@@ -78,9 +78,11 @@ __metadata:
     "@types/bun": "npm:^1.4.2"
     "@types/node": "npm:^26.6.4"
     alepha: "npm:0.31.0"
+    rolldown: "npm:~1.2.12"
     tsdown: "npm:^0.23.0"
     typescript: "npm:^7.0.2"
     vitest: "npm:^5.0.3"
+    webview-bun: "npm:2.4.0"
   peerDependencies:
     alepha: ^0.31.0
   languageName: unknown
@@ -8962,6 +8964,13 @@ __metadata:
   version: 8.0.1
   resolution: "webidl-conversions@npm:8.0.1"
   checksum: 10c0/3f6f327ca5fa0c065ed8ed0ef3b72f33623376e68f958e9b7bd0df49fdb0b908139ac2338d19fb45bd0e05595bda96cb6d1622222a8b413daa38a17aacc4dd46
+  languageName: node
+  linkType: hard
+
+"webview-bun@npm:2.4.0":
+  version: 2.4.0
+  resolution: "webview-bun@npm:2.4.0"
+  checksum: 10c0/51a8e8994fd2296086ba0059c71aefd95d2febd4eef7fc842d5798a59aa7bec7328c13bd8e4668bd526343e26bbedbf98ea4be526f151b64e59281e25ff7cac4
   languageName: node
   linkType: hard
 

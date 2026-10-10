@@ -57,8 +57,27 @@ export class DesktopServer {
 
   /**
    * The options the app's server actually starts with.
+   *
+   * ⚠️ **127.0.0.1 on an ephemeral port, or nothing.** The shell sets
+   * `SERVER_HOST` and `SERVER_PORT` for that, but an app can still override
+   * them in its own configuration. Silently rebinding would hide the conflict
+   * and silently accepting would expose the app to the network, so an app
+   * asking for anything else fails to start with the reason.
    */
   protected serveOptions(options: any): any {
+    if (options?.unix) {
+      throw new AlephaError(
+        "A desktop app listens on 127.0.0.1, not on a unix socket. Remove the socket from the app's server configuration.",
+      );
+    }
+    const hostname = String(options?.hostname ?? "");
+    const port = Number(options?.port ?? -1);
+    if (hostname !== "127.0.0.1" || port !== 0) {
+      throw new AlephaError(
+        `A desktop app listens on 127.0.0.1 on a random port, and this app asked for ${hostname || "(no host)"}:${options?.port ?? "(no port)"}. ` +
+          "Remove SERVER_HOST and SERVER_PORT from the app's own configuration: the desktop shell sets them.",
+      );
+    }
     return options;
   }
 }
