@@ -3,3 +3,7 @@ export * from "./primitives/$actor.ts";
 export * from "./providers/ActorCodec.ts";
 export * from "./providers/ActorProvider.ts";
 export * from "./providers/ActorRegistry.ts";
+export * from "./interfaces/ActorHostDeclaration.ts";
+export * from "./providers/ActorHostRegistry.ts";
+export * from "./providers/ActorHostRuntime.ts";
+export * from "./providers/ActorHost.ts";

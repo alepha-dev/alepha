@@ -58,3 +58,24 @@ new state without migrating or deleting old state.
 See [Redis scripting](https://redis.io/docs/latest/develop/programmability/eval-intro/),
 [Redis persistence](https://redis.io/docs/latest/management/persistence/) and
 [Node Redis production behavior](https://redis.io/docs/latest/develop/clients/nodejs/produsage/).
+
+## Cloudflare workerd
+
+Workerd selects the shared `AlephaActorDurableObject` host with the `ALEPHA_ACTOR`
+binding. Each encoded namespace/name/default-or-key tuple has its own instance.
+The namespace defaults to the empty string within the Worker/class namespace;
+`ALEPHA_ACTOR_NAMESPACE` may add a stable application scope. A missing binding
+fails without falling back to Memory.
+
+The host resolves registered pure reducers without starting the full application,
+so an application start hook can call an actor without recursively starting itself.
+It serializes initialization, reads and transitions and awaits validated protocol-v1
+KV writes on SQLite-backed storage before success. Restarted hosts read persisted
+state. Failed transitions retain the previous snapshot; corrupt or incompatible
+stored state fails closed. No native SQL API, alarms or subscriptions are exposed.
+
+Generic `ActorHostRegistry` declarations and `ActorHostRuntime` namespace and
+startup facilities are runtime-neutral. Native host imports stay workerd-only.
+[Cloudflare storage documentation](https://developers.cloudflare.com/durable-objects/api/sqlite-storage-api/)
+describes the underlying storage guarantees. Local workerd recovery evidence does
+not prove live provisioning or production hibernation.

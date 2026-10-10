@@ -1,6 +1,7 @@
 import { $module } from "alepha";
 
 import { $actor } from "./primitives/$actor.ts";
+import { ActorHostRegistry } from "./providers/ActorHostRegistry.ts";
 import { ActorProvider } from "./providers/ActorProvider.ts";
 import { MemoryActorProvider } from "./providers/MemoryActorProvider.ts";
 export * from "./index.shared.ts";
@@ -18,6 +19,7 @@ export const AlephaActor = $module({
   services: [ActorProvider],
   variants: [MemoryActorProvider],
   register: (alepha) => {
+    alepha.inject(ActorHostRegistry).register(ActorHostRegistry.actor);
     alepha.with({
       optional: true,
       provide: ActorProvider,

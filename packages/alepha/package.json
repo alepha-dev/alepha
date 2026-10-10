@@ -1019,6 +1019,7 @@
     "cron-schedule": "^6.0.0",
     "jose": "^6.2.12",
     "jsdom": "^30.1.2",
+    "miniflare": "5.20261001.0-alpha",
     "nodemailer": "^10.0.15",
     "openid-client": "^6.8.8",
     "react": "^19.3.0",
