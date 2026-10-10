@@ -15,6 +15,9 @@ export class AlephaCliExtensionProvider {
         this.alepha.store.get(cliOptions)?.argv ?? process.argv.slice(2);
       // Infra help is built into the Node CLI and must never evaluate app config.
       const rootCommand = argv[0];
+      // Init preflights source text itself, including legacy or dynamic configs.
+      // Importing that config here would evaluate it before the bounded edit.
+      if (argv.includes("init")) return;
       const infraHelp = argv.some((arg) => arg === "infra" || arg === "deploy");
       if (
         (rootCommand === "infra" && argv.length === 1) ||

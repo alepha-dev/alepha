@@ -1,12 +1,14 @@
+import type { InfraProvider } from "../schemas/infraProviderSchema.ts";
+
 /**
  * Template for alepha.config.ts with documented options.
  *
  * The `plugins` array is emitted fully commented, so the project starts with
  * no plugin and uncommenting the `platform` entry is the whole opt-in.
  */
-export const alephaConfigTs = () => {
+export const alephaConfigTs = (opts: { infra?: InfraProvider } = {}) => {
   return `import { defineConfig } from "alepha/cli/config";
-// import { cloudflare, infra } from "alepha/cli/infra";
+${opts.infra ? "" : "// "}import { cloudflare, infra } from "alepha/cli/infra";
 
 export default defineConfig({
   //
@@ -49,14 +51,24 @@ export default defineConfig({
   // Requires \`wrangler login\` once. D1, R2, KV, Queues and cron triggers
   // are auto-provisioned from your $repository / $storage / $cache / $job
   // declarations  -  no wrangler.toml to maintain.
-  // plugins: [
+${
+  opts.infra
+    ? `  plugins: [
+    infra({
+      environments: {
+        production: cloudflare(),
+      },
+    }),
+  ],`
+    : `  // plugins: [
   //   infra({
   //     environments: {
   //       production: cloudflare({ domain: "myapp.com" }),
   //       preview: cloudflare(), // workers.dev subdomain
   //     },
   //   }),
-  // ],
+  // ],`
+}
 });
 `;
 };

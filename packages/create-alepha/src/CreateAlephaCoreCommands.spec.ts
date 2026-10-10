@@ -15,15 +15,15 @@ import { CreateAlephaCoreCommands } from "./CreateAlephaCoreCommands.ts";
  * seam the real terminal uses: `createPromptInterface()`. That is the one
  * protected hook `Asker` exposes for this (mirroring `TestAsker` in
  * `Asker.spec.ts`), so the actual `chooseOne` / `confirmValue` / `promptValue`
- * parsing still runs — this only replaces the `readline` interface underneath
+ * parsing still runs  -  this only replaces the `readline` interface underneath
  * it, not the `ask.*` methods themselves. An empty answer resolves to
  * whatever `default` the question was given, exactly like a real user
  * pressing Enter, so tests that supply `name` via `args` and reach only the
  * preset question get its `default` preset for free.
  *
  * `questionCount` lets a test assert that a fully flagged invocation reaches
- * `scaffolder.init` without asking anything at all — the promptless path
- * this fix exists to restore — rather than merely asserting the double
+ * `scaffolder.init` without asking anything at all  -  the promptless path
+ * this fix exists to restore  -  rather than merely asserting the double
  * wasn't left unused.
  *
  * Without this substitution the real `Asker` opens a `readline` interface on
@@ -35,7 +35,7 @@ import { CreateAlephaCoreCommands } from "./CreateAlephaCoreCommands.ts";
  * (name, preset) in one run, so this has generous headroom for the
  * current command while staying bounded. If a regression made any question
  * re-ask on an empty answer, exhausting the supply reproduces real EOF
- * behaviour — `question()` never resolves and the interface closes, which is
+ * behaviour  -  `question()` never resolves and the interface closes, which is
  * what turns the hang into a fast, readable `NoInputError` instead of a
  * suite timeout.
  */
@@ -77,7 +77,7 @@ class AutoAnswerAsker extends Asker {
 
 /**
  * `create-alepha` is a thin wrapper over `ProjectScaffolder.init`, so these
- * assert the wiring — that a flag typed at the prompt reaches the scaffolder —
+ * assert the wiring  -  that a flag typed at the prompt reaches the scaffolder  -
  * rather than re-testing what `init-preset.spec.ts` already covers.
  */
 describe("create-alepha", () => {
@@ -102,6 +102,52 @@ describe("create-alepha", () => {
       )
     ).dependencies;
 
+  for (const preset of ["default", "saas"]) {
+    for (const flag of [
+      "--infra cf",
+      "--infra=cf",
+      "--infra cloudflare",
+      "--infra=cloudflare",
+    ]) {
+      it(`forwards ${flag} with ${preset} without a provider prompt`, async () => {
+        const { fs, cli, cmd, asker } = createTestEnv();
+        await cli.run(cmd.root, {
+          root: "/project",
+          argv: `my-app --yes --preset ${preset} --pm npm ${flag}`,
+        });
+        expect(asker.questionCount).toBe(0);
+        expect(fs.getFileContent("/project/my-app/alepha.config.ts")).toContain(
+          "production: cloudflare(),",
+        );
+        expect(
+          fs.getFileContent("/project/my-app/alepha.config.ts"),
+        ).not.toContain("// import { cloudflare, infra }");
+        expect(await readDependencies(fs)).toHaveProperty("alepha");
+        if (preset === "saas")
+          expect(await readDependencies(fs)).toHaveProperty("@alepha/ui");
+      });
+    }
+  }
+
+  it("rejects an unsupported infra provider before asking or creating files", async () => {
+    const { fs, cli, cmd, asker } = createTestEnv();
+    await expect(
+      cli.run(cmd.root, { root: "/project", argv: "my-app --yes --infra bay" }),
+    ).rejects.toThrow();
+    expect(asker.questionCount).toBe(0);
+    expect(fs.writeFileCalls).toHaveLength(0);
+  });
+
+  it("adds no force flag to create-alepha", async () => {
+    const { cli, cmd } = createTestEnv();
+    await expect(
+      cli.run(cmd.root, {
+        root: "/project",
+        argv: "my-app --yes --infra cf --force",
+      }),
+    ).rejects.toThrow(/Unknown flag/);
+  });
+
   it("should scaffold the default preset when no flag is given", async () => {
     const { fs, cli, cmd } = createTestEnv();
 
@@ -112,7 +158,7 @@ describe("create-alepha", () => {
 
   /**
    * Space-separated on purpose: this is the form `npm create alepha my-app
-   * --preset saas` produces, and it is the one that can go wrong — the parser
+   * --preset saas` produces, and it is the one that can go wrong  -  the parser
    * has to consume `saas` as the flag's value rather than leave it in the
    * positional list, where it would become the project name.
    */
