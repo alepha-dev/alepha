@@ -1,4 +1,7 @@
 import { describe, expect, it } from "bun:test";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import { WorkerSupervisorProvider } from "../providers/WorkerSupervisorProvider.ts";
 
@@ -29,6 +32,17 @@ const init = {
   name: "Fixture",
   identifier: "dev.alepha.fixture",
   capability: "ab".repeat(32),
+  defaults: {
+    APP_SECRET_FILE: join(
+      mkdtempSync(join(tmpdir(), "alepha-desktop-")),
+      "secret",
+    ),
+  },
+  paths: {
+    data: "/tmp/alepha-desktop-data",
+    logs: "/tmp/alepha-desktop-logs",
+    resources: "/tmp",
+  },
   env: {
     NODE_ENV: "production",
     LOG_LEVEL: "silent",

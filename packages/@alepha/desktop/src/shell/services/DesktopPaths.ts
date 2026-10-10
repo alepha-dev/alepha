@@ -26,6 +26,11 @@ export class DesktopPaths {
    */
   public execPath = process.execPath;
 
+  /**
+   * Change the working directory. A field, so a spec can record it instead.
+   */
+  public changeDirectory = (dir: string): void => process.chdir(dir);
+
   public dataDir(identifier: string): string {
     return join(this.home, "Library", "Application Support", identifier);
   }
@@ -52,6 +57,15 @@ export class DesktopPaths {
       return join(dirname(dir), "Resources");
     }
     return dir;
+  }
+
+  /**
+   * Work from the read-only resources: the app reads `migrations/` (and any
+   * other file it opens by relative path) from inside the bundle, whatever
+   * directory Finder or a shell launched it from.
+   */
+  public enterResources(): void {
+    this.changeDirectory(this.resourcesDir());
   }
 
   /**

@@ -57,6 +57,43 @@ const setup = () => {
 };
 
 describe("DesktopSupervisorWorker", () => {
+  it("rotates the log file periodically while the app runs", async ({
+    expect,
+  }) => {
+    const rotated: string[] = [];
+    let send: (data: any) => void = () => {};
+    const worker = new DesktopSupervisorWorker(
+      {
+        postMessage: () => {},
+        addEventListener: (_type, listener) =>
+          (send = (data) => listener({ data })),
+      },
+      () => {},
+      () => new MemoryWorker(),
+      async (file) => void rotated.push(file),
+    );
+    worker.rotateEveryMs = 5;
+    worker.listen();
+
+    send({
+      type: "start",
+      workerUrl: "w",
+      logFile: "/logs/app.log",
+      init: {
+        name: "F",
+        identifier: "a.b",
+        env: {},
+        defaults: {},
+        paths: { data: "/d", logs: "/l", resources: "/r" },
+        capability: "ab".repeat(32),
+      },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    expect(rotated.length).toBeGreaterThan(1);
+    expect(new Set(rotated)).toEqual(new Set(["/logs/app.log"]));
+  });
+
   it("relays a start and a graceful stop", async ({ expect }) => {
     const { events, terminated, send, settle, init } = setup();
 

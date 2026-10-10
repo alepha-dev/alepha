@@ -12,6 +12,8 @@ describe("DesktopProtocol", () => {
       name: "Loom",
       identifier: "dev.alepha.loom",
       env: { NODE_ENV: "production" },
+      defaults: {},
+      paths: { data: "/a", logs: "/b", resources: "/c" },
       capability: "0f".repeat(32),
     };
     expect(protocol.parseShellMessage(init)).toEqual(init);

@@ -19,6 +19,7 @@ export class MemorySupervisorProvider extends SupervisorProvider {
   public stopResult: DesktopShutdown = { kind: "stopped", graceful: true };
   public init?: DesktopInit;
   public workerUrl?: string;
+  public logFile?: string;
   public handle?: number;
   public stopped = false;
   public window?: MemoryWindowProvider;
@@ -27,9 +28,11 @@ export class MemorySupervisorProvider extends SupervisorProvider {
   public async start(
     init: DesktopInit,
     workerUrl: string,
+    logFile?: string,
   ): Promise<DesktopStartResult> {
     this.init = init;
     this.workerUrl = workerUrl;
+    this.logFile = logFile;
     return this.startResult;
   }
 

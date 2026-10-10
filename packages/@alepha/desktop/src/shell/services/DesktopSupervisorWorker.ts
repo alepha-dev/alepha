@@ -10,7 +10,7 @@ import type { DesktopInit } from "../providers/SupervisorProvider.ts";
  * What the shell sends the supervisor Worker.
  */
 export type DesktopSupervisorCommand =
-  | { type: "start"; init: DesktopInit; workerUrl: string }
+  | { type: "start"; init: DesktopInit; workerUrl: string; logFile?: string }
   | { type: "window"; handle: number }
   | { type: "stop" };
 
@@ -31,6 +31,9 @@ export type DesktopSupervisorEvent =
  * loop through `terminate(handle)`, which the webview library allows from any
  * thread; the shell then shows the error and exits nonzero. A crash before
  * the window handle arrived terminates the loop as soon as it does.
+ *
+ * It also rotates the log file once a minute when given a `rotate`
+ * function, since the main thread cannot while the window is open.
  */
 export class DesktopSupervisorWorker {
   protected readonly scope: {
@@ -42,6 +45,12 @@ export class DesktopSupervisorWorker {
   };
   protected readonly terminate: (handle: number) => void;
   protected readonly spawn: (url: string) => DesktopWorkerLike;
+  protected readonly rotate?: (logFile: string) => Promise<void>;
+
+  /**
+   * How often the log file is checked for rotation.
+   */
+  public rotateEveryMs = 60_000;
   protected supervisor?: DesktopSupervisor;
   protected handle?: number;
   protected crashed?: string;
@@ -51,10 +60,12 @@ export class DesktopSupervisorWorker {
     terminate: (handle: number) => void,
     spawn: (url: string) => DesktopWorkerLike = (url) =>
       new Worker(url) as unknown as DesktopWorkerLike,
+    rotate?: (logFile: string) => Promise<void>,
   ) {
     this.scope = scope;
     this.terminate = terminate;
     this.spawn = spawn;
+    this.rotate = rotate;
   }
 
   /**
@@ -69,6 +80,17 @@ export class DesktopSupervisorWorker {
 
   protected async onCommand(command: DesktopSupervisorCommand): Promise<void> {
     if (command.type === "start") {
+      const { logFile } = command;
+      const rotate = this.rotate;
+      if (logFile && rotate) {
+        // This thread's event loop keeps turning while the window's loop
+        // blocks the main thread, so the log stays bounded in a long session.
+        const timer = setInterval(
+          () => void rotate(logFile),
+          this.rotateEveryMs,
+        );
+        (timer as { unref?: () => void }).unref?.();
+      }
       const supervisor = new DesktopSupervisor(this.spawn(command.workerUrl));
       this.supervisor = supervisor;
       supervisor.onCrash((message) => this.onCrash(message));

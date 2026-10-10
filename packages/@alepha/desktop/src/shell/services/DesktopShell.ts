@@ -9,6 +9,7 @@ import {
 import { InstanceLockProvider } from "../providers/InstanceLockProvider.ts";
 import { SupervisorProvider } from "../providers/SupervisorProvider.ts";
 import { WindowProvider } from "../providers/WindowProvider.ts";
+import { DesktopLogs } from "./DesktopLogs.ts";
 import { DesktopPaths } from "./DesktopPaths.ts";
 
 /**
@@ -34,12 +35,13 @@ export interface DesktopShellOptions {
 /**
  * The main thread of a desktop app: one window, one supervised server.
  *
- * 1. Validate the config; create the data and log folders; take the
- *    instance lock. A second launch shows an alert and exits 4, before any
+ * 1. Validate the config; create the data and log folders; send stdout and
+ *    stderr to the log file (rotated at 10 MiB); work from the bundle's
+ *    read-only `Contents/Resources`; take the instance lock. A second launch shows an alert and exits 4, before any
  *    secret or database is touched.
  * 2. Start the server Worker (through the supervisor) with
- *    `SERVER_HOST=127.0.0.1`, `SERVER_PORT=0` and a fresh one-use launch
- *    capability. Not ready within 30 s, or failed: alert, exit 1.
+ *    `SERVER_HOST=127.0.0.1`, `SERVER_PORT=0`, `APP_SECRET_FILE` in the
+ *    data folder unless set, and a fresh one-use launch capability. Not ready within 30 s, or failed: alert, exit 1.
  * 3. Open the window, hand its loop handle to the supervisor, load the
  *    bootstrap URL, and block in the window loop.
  * 4. The loop returns when the window closes (Cmd+Q included) or when the
@@ -56,6 +58,7 @@ export class DesktopShell {
   protected readonly lock = $inject(InstanceLockProvider);
   protected readonly supervisor = $inject(SupervisorProvider);
   protected readonly paths = $inject(DesktopPaths);
+  protected readonly logs = $inject(DesktopLogs);
   protected readonly protocol = $inject(DesktopProtocol);
 
   /**
@@ -79,6 +82,8 @@ export class DesktopShell {
     const logFile = this.paths.logFile(config.identifier);
 
     await this.paths.prepare(config.identifier);
+    await this.logs.open(logFile);
+    this.paths.enterResources();
     if (!(await this.lock.acquire(this.paths.lockFile(config.identifier)))) {
       await this.window.alert(
         `${name} is already running`,
@@ -101,11 +106,20 @@ export class DesktopShell {
   ): Promise<number> {
     const name = config.name;
     const capability = this.capability();
+    const data = this.paths.dataDir(config.identifier);
     const started = await this.supervisor.start(
       {
         name,
         identifier: config.identifier,
         capability,
+        paths: {
+          data,
+          logs: this.paths.logDir(config.identifier),
+          resources: this.paths.resourcesDir(),
+        },
+        // Only where unset: an APP_SECRET_FILE the user exported still wins,
+        // and an APP_SECRET, set anywhere, wins over both.
+        defaults: { APP_SECRET_FILE: `${data}/secret` },
         env: {
           NODE_ENV: "production",
           ...options.env,
@@ -116,6 +130,7 @@ export class DesktopShell {
         },
       },
       options.workerUrl,
+      logFile,
     );
     if (!started.ok) {
       this.log.error("The app failed to start", { message: started.message });

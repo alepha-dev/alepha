@@ -1,12 +1,22 @@
+import { createHash } from "node:crypto";
 import { writeFileSync } from "node:fs";
 
-import { $hook, AlephaError, run } from "alepha";
+import { $hook, $inject, AlephaError, run } from "alepha";
+import { SecretProvider } from "alepha/crypto";
 import { $route, AlephaServer } from "alepha/server";
 
 /**
  * A production app for the real-Worker spec, steered by FIXTURE_MODE.
  */
 class FixtureApp {
+  protected readonly secrets = $inject(SecretProvider);
+
+  protected readonly secret = $route({
+    path: "/secret",
+    handler: () =>
+      createHash("sha256").update(this.secrets.secretKey).digest("hex"),
+  });
+
   protected readonly hello = $route({
     path: "/hello",
     handler: () => "hello from the worker",

@@ -34,6 +34,12 @@ const init = {
   name: "Fixture",
   identifier: "dev.alepha.fixture",
   env: {},
+  defaults: {},
+  paths: {
+    data: "/tmp/alepha-desktop-data",
+    logs: "/tmp/alepha-desktop-logs",
+    resources: "/tmp",
+  },
   capability: "ab".repeat(32),
 };
 

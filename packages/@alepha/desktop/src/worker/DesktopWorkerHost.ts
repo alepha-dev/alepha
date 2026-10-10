@@ -4,6 +4,7 @@ import { AlephaError } from "alepha";
 import { DesktopProtocol } from "../core/DesktopProtocol.ts";
 import type { DesktopShellMessage } from "../core/schemas/desktopShellMessageSchema.ts";
 import type { DesktopWorkerMessage } from "../core/schemas/desktopWorkerMessageSchema.ts";
+import { DesktopDataDefaults } from "./DesktopDataDefaults.ts";
 import { DesktopServer } from "./DesktopServer.ts";
 
 /**
@@ -43,6 +44,7 @@ export interface DesktopWorkerScope {
  */
 export class DesktopWorkerHost implements RunHost {
   protected readonly protocol = new DesktopProtocol();
+  protected readonly dataDefaults = new DesktopDataDefaults();
   protected state: "idle" | "starting" | "ready" | "stopping" | "stopped" =
     "idle";
   protected app?: { alepha: Alepha; options?: RunOptions };
@@ -131,6 +133,13 @@ export class DesktopWorkerHost implements RunHost {
       >) {
         this.env[key] = value;
       }
+      for (const [key, value] of Object.entries(message.defaults) as Array<
+        [string, string]
+      >) {
+        if (this.env[key] === undefined || this.env[key] === "") {
+          this.env[key] = value;
+        }
+      }
       (globalThis as any)[Symbol.for("alepha.run.host")] = this;
       this.server.install();
 
@@ -142,6 +151,9 @@ export class DesktopWorkerHost implements RunHost {
         );
       }
       const { alepha, options } = this.app;
+      // Before configure: an app's own configure hook still sees, and may
+      // override, the desktop defaults.
+      this.dataDefaults.apply(alepha, message.paths);
       await options?.configure?.(alepha);
       await alepha.start();
       await options?.ready?.(alepha);

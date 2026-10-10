@@ -7,7 +7,9 @@ import {
   DesktopPaths,
   DesktopShell,
   InstanceLockProvider,
+  LogFileProvider,
   MemoryInstanceLockProvider,
+  MemoryLogFileProvider,
   MemorySupervisorProvider,
   MemoryWindowProvider,
   SupervisorProvider,
@@ -29,10 +31,14 @@ const setup = () => {
   ) as MemoryInstanceLockProvider;
   const paths = alepha.inject(DesktopPaths);
   paths.home = "/Users/test";
+  paths.execPath = "/Applications/Fixture.app/Contents/MacOS/fixture";
+  const directories: string[] = [];
+  paths.changeDirectory = (dir) => void directories.push(dir);
   supervisor.window = window;
   const shell = alepha.inject(DesktopShell);
   const fs = alepha.inject(MemoryFileSystemProvider);
-  return { alepha, window, supervisor, lock, shell, fs };
+  const logFiles = alepha.inject(LogFileProvider) as MemoryLogFileProvider;
+  return { alepha, window, supervisor, lock, shell, fs, directories, logFiles };
 };
 
 describe("DesktopShell", () => {
@@ -93,6 +99,33 @@ describe("DesktopShell", () => {
     expect(window.destroyed).toBe(true);
     expect(lock.released).toBe(true);
     expect(window.alerts).toEqual([]);
+  });
+
+  it("logs to the per-user file, works from the bundle's resources and hands the Worker the data paths", async ({
+    expect,
+  }) => {
+    const { window, supervisor, shell, directories, logFiles } = setup();
+
+    const exit = shell.run({ config, workerUrl: "w" });
+    await window.waitForRun();
+
+    const logFile = "/Users/test/Library/Logs/dev.alepha.fixture/app.log";
+    expect(logFiles.redirects).toEqual([logFile]);
+    expect(directories).toEqual([
+      "/Applications/Fixture.app/Contents/Resources",
+    ]);
+    expect(supervisor.logFile).toBe(logFile);
+    expect(supervisor.init?.paths).toEqual({
+      data: "/Users/test/Library/Application Support/dev.alepha.fixture",
+      logs: "/Users/test/Library/Logs/dev.alepha.fixture",
+      resources: "/Applications/Fixture.app/Contents/Resources",
+    });
+    expect(supervisor.init?.defaults).toEqual({
+      APP_SECRET_FILE:
+        "/Users/test/Library/Application Support/dev.alepha.fixture/secret",
+    });
+    window.close();
+    await exit;
   });
 
   it("uses a fresh capability per launch", async ({ expect }) => {

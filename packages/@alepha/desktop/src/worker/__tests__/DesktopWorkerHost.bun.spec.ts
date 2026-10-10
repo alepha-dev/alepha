@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it } from "bun:test";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  statSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -15,9 +21,10 @@ describe("DesktopWorkerHost in a real Bun Worker", () => {
   const setup = (
     mode: string,
     deadlines?: { readyTimeoutMs?: number; stopTimeoutMs?: number },
+    extra: { dir?: string; env?: Record<string, string> } = {},
   ) => {
-    const dir = mkdtempSync(join(tmpdir(), "alepha-desktop-"));
-    dirs.push(dir);
+    const dir = extra.dir ?? mkdtempSync(join(tmpdir(), "alepha-desktop-"));
+    if (!extra.dir) dirs.push(dir);
     const marker = join(dir, "stopped");
     const supervisor = new DesktopSupervisor(new Worker(bootstrap), deadlines);
     supervisors.push(supervisor);
@@ -26,6 +33,8 @@ describe("DesktopWorkerHost in a real Bun Worker", () => {
         name: "Fixture",
         identifier: "dev.alepha.fixture",
         capability,
+        defaults: { APP_SECRET_FILE: join(dir, "secret") },
+        paths: { data: dir, logs: dir, resources: dir },
         env: {
           NODE_ENV: "production",
           LOG_LEVEL: "silent",
@@ -33,6 +42,7 @@ describe("DesktopWorkerHost in a real Bun Worker", () => {
           SERVER_PORT: "0",
           FIXTURE_MODE: mode,
           FIXTURE_MARKER: marker,
+          ...extra.env,
         },
       });
     return { supervisor, marker, start };
@@ -66,6 +76,35 @@ describe("DesktopWorkerHost in a real Bun Worker", () => {
       () => true,
     );
     expect(closed).toBe(true);
+  });
+
+  it("generates the secret owner-only in the data folder and keeps it across launches", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "alepha-desktop-"));
+    dirs.push(dir);
+    const hashes: string[] = [];
+    for (let launch = 0; launch < 2; launch++) {
+      const { supervisor, start } = setup("normal", undefined, { dir });
+      const started = await start();
+      if (!started.ok) throw new Error(started.message);
+      hashes.push(await (await fetch(`${started.origin}/secret`)).text());
+      expect((await supervisor.stop()).graceful).toBe(true);
+    }
+    expect(statSync(join(dir, "secret")).mode & 0o777).toBe(0o600);
+    expect(hashes[0]).toMatch(/^[0-9a-f]{64}$/);
+    expect(hashes[1]).toBe(hashes[0]);
+  });
+
+  it("lets an explicit APP_SECRET win over the desktop secret file", async () => {
+    const { supervisor, start } = setup("normal", undefined, {
+      env: { APP_SECRET: "x".repeat(40) },
+    });
+    const started = await start();
+    if (!started.ok) throw new Error(started.message);
+    const hash = await (await fetch(`${started.origin}/secret`)).text();
+    expect(hash).toBe(
+      new Bun.CryptoHasher("sha256").update("x".repeat(40)).digest("hex"),
+    );
+    await supervisor.stop();
   });
 
   it("reports a startup failure by its message alone and does not leave the app running", async () => {

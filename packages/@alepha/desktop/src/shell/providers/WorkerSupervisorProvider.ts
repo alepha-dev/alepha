@@ -28,6 +28,7 @@ export class WorkerSupervisorProvider extends SupervisorProvider {
   public start(
     init: DesktopInit,
     workerUrl: string,
+    logFile?: string,
   ): Promise<DesktopStartResult> {
     if (!this.supervisorUrl) {
       throw new AlephaError("WorkerSupervisorProvider needs a supervisorUrl.");
@@ -44,7 +45,7 @@ export class WorkerSupervisorProvider extends SupervisorProvider {
     const started = this.next((event) =>
       event.type === "started" ? event.result : undefined,
     );
-    worker.postMessage({ type: "start", init, workerUrl });
+    worker.postMessage({ type: "start", init, workerUrl, logFile });
     return started;
   }
 

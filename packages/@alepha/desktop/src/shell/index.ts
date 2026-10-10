@@ -3,20 +3,27 @@ import { AlephaSystem } from "alepha/system";
 
 import { DesktopProtocol } from "../core/DesktopProtocol.ts";
 import { InstanceLockProvider } from "./providers/InstanceLockProvider.ts";
+import { LogFileProvider } from "./providers/LogFileProvider.ts";
 import { MemoryInstanceLockProvider } from "./providers/MemoryInstanceLockProvider.ts";
+import { MemoryLogFileProvider } from "./providers/MemoryLogFileProvider.ts";
 import { MemorySupervisorProvider } from "./providers/MemorySupervisorProvider.ts";
 import { MemoryWindowProvider } from "./providers/MemoryWindowProvider.ts";
 import { NativeInstanceLockProvider } from "./providers/NativeInstanceLockProvider.ts";
+import { NativeLogFileProvider } from "./providers/NativeLogFileProvider.ts";
 import { NativeWindowProvider } from "./providers/NativeWindowProvider.ts";
 import { SupervisorProvider } from "./providers/SupervisorProvider.ts";
 import { WindowProvider } from "./providers/WindowProvider.ts";
 import { WorkerSupervisorProvider } from "./providers/WorkerSupervisorProvider.ts";
+import { DesktopLogs } from "./services/DesktopLogs.ts";
 import { DesktopPaths } from "./services/DesktopPaths.ts";
 import { DesktopShell } from "./services/DesktopShell.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export * from "./providers/InstanceLockProvider.ts";
+export * from "./providers/LogFileProvider.ts";
+export * from "./providers/MemoryLogFileProvider.ts";
+export * from "./providers/NativeLogFileProvider.ts";
 export * from "./providers/MemoryInstanceLockProvider.ts";
 export * from "./providers/MemorySupervisorProvider.ts";
 export * from "./providers/MemoryWindowProvider.ts";
@@ -25,6 +32,8 @@ export * from "./providers/NativeWindowProvider.ts";
 export * from "./providers/SupervisorProvider.ts";
 export * from "./providers/WindowProvider.ts";
 export * from "./providers/WorkerSupervisorProvider.ts";
+export * from "./services/DesktopLogRotator.ts";
+export * from "./services/DesktopLogs.ts";
 export * from "./services/DesktopMain.ts";
 export * from "./services/DesktopPaths.ts";
 export * from "./services/DesktopShell.ts";
@@ -56,9 +65,11 @@ export const AlephaDesktopShell = $module({
     AlephaSystem,
     DesktopProtocol,
     DesktopPaths,
+    DesktopLogs,
     DesktopShell,
     WindowProvider,
     InstanceLockProvider,
+    LogFileProvider,
     SupervisorProvider,
   ],
   variants: [
@@ -66,6 +77,8 @@ export const AlephaDesktopShell = $module({
     MemoryWindowProvider,
     NativeInstanceLockProvider,
     MemoryInstanceLockProvider,
+    NativeLogFileProvider,
+    MemoryLogFileProvider,
     WorkerSupervisorProvider,
     MemorySupervisorProvider,
   ],
@@ -81,6 +94,11 @@ export const AlephaDesktopShell = $module({
         optional: true,
         provide: InstanceLockProvider,
         use: test ? MemoryInstanceLockProvider : NativeInstanceLockProvider,
+      })
+      .with({
+        optional: true,
+        provide: LogFileProvider,
+        use: test ? MemoryLogFileProvider : NativeLogFileProvider,
       })
       .with({
         optional: true,

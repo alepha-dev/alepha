@@ -27,10 +27,13 @@ macOS only.
 ### Providers
 
 - [`InstanceLockProvider`](/docs/reference-providers-instancelockprovider) - One running instance per app identifier.
+- [`LogFileProvider`](/docs/reference-providers-logfileprovider) - Points the process's stdout and stderr at a file.
 - [`MemoryInstanceLockProvider`](/docs/reference-providers-memoryinstancelockprovider) - `InstanceLockProvider` for specs: `held` plays another process
+- [`MemoryLogFileProvider`](/docs/reference-providers-memorylogfileprovider) - `LogFileProvider` for specs: records the redirects, and fails when
 - [`MemorySupervisorProvider`](/docs/reference-providers-memorysupervisorprovider) - A scripted supervisor for specs. `crash` plays the server dying
 - [`MemoryWindowProvider`](/docs/reference-providers-memorywindowprovider) - A window that only records what was asked of it.
 - [`NativeInstanceLockProvider`](/docs/reference-providers-nativeinstancelockprovider) - `InstanceLockProvider` on an exclusive `flock`, which the kernel
+- [`NativeLogFileProvider`](/docs/reference-providers-nativelogfileprovider) - `LogFileProvider` with `dup2`.
 - [`NativeWindowProvider`](/docs/reference-providers-nativewindowprovider) - The macOS window: webview-bun on the main thread, plus a menu and alerts
 - [`SupervisorProvider`](/docs/reference-providers-supervisorprovider) - The shell's view of the supervisor: the thread that owns the server Worker
 - [`WindowProvider`](/docs/reference-providers-windowprovider) - The native window of a desktop app, behind which the webview binding and

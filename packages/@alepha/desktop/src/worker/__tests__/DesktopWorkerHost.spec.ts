@@ -61,11 +61,14 @@ describe("DesktopWorkerHost", () => {
       name: "A",
       identifier: "a.b",
       env: { FOO: "bar" },
+      defaults: { FOO: "ignored", BAZ: "qux" },
+      paths: { data: "/d", logs: "/l", resources: "/r" },
       capability,
     });
     await settle();
 
     expect(env.FOO).toBe("bar");
+    expect(env.BAZ).toBe("qux");
     expect(order).toEqual(["entry", "configure", "ready"]);
     expect(posted).toEqual([
       { type: "ready", version: 1, origin: "http://127.0.0.1:4321" },
@@ -102,6 +105,8 @@ describe("DesktopWorkerHost", () => {
       name: "A",
       identifier: "a.b",
       env: {},
+      defaults: {},
+      paths: { data: "/d", logs: "/l", resources: "/r" },
       capability,
     });
     await settle();
@@ -111,6 +116,8 @@ describe("DesktopWorkerHost", () => {
       name: "A",
       identifier: "a.b",
       env: {},
+      defaults: {},
+      paths: { data: "/d", logs: "/l", resources: "/r" },
       capability,
     });
     await settle();
@@ -148,6 +155,8 @@ describe("DesktopWorkerHost", () => {
       name: "A",
       identifier: "a.b",
       env: {},
+      defaults: {},
+      paths: { data: "/d", logs: "/l", resources: "/r" },
       capability,
     });
     await settle();

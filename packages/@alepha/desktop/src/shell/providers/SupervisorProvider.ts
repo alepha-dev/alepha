@@ -24,11 +24,12 @@ export type DesktopShutdown =
 export abstract class SupervisorProvider {
   /**
    * Start the server Worker at `workerUrl` and wait for it to be ready,
-   * within the readiness deadline.
+   * within the readiness deadline. `logFile` is rotated while the app runs.
    */
   public abstract start(
     init: DesktopInit,
     workerUrl: string,
+    logFile?: string,
   ): Promise<DesktopStartResult>;
 
   /**
