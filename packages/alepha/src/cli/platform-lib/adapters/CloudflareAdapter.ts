@@ -33,6 +33,10 @@ import {
 } from "../secretKeys.ts";
 import { CloudflareApi } from "../services/CloudflareApi.ts";
 import { D1MigrationsService } from "../services/D1MigrationsService.ts";
+import {
+  DurableObjectLifecycle,
+  type DurableObjectLifecycleConfig,
+} from "../services/DurableObjectLifecycle.ts";
 import { NamingService } from "../services/NamingService.ts";
 import { StoragePlaceholderService } from "../services/StoragePlaceholderService.ts";
 import { WranglerApi } from "../services/WranglerApi.ts";
@@ -66,6 +70,7 @@ export class CloudflareAdapter extends PlatformAdapter<CloudflareEnvironmentOpti
   protected readonly envUtils = $inject(EnvUtils);
   protected readonly api = $inject(CloudflareApi);
   protected readonly wrangler = $inject(WranglerApi);
+  protected readonly durableObjectLifecycle = $inject(DurableObjectLifecycle);
   protected readonly d1Migrations = $inject(D1MigrationsService);
   protected readonly runner = $inject(Runner);
   protected readonly buildTask = $inject(BuildCloudflareTask);
@@ -166,7 +171,7 @@ export class CloudflareAdapter extends PlatformAdapter<CloudflareEnvironmentOpti
       handler: async () => {
         await this.wrangler.ensureInstalled(ctx.root);
 
-        // Always validate the token — refresh tokens can expire between runs
+        // Always validate the token  -  refresh tokens can expire between runs
         // even when the cache TTL hasn't elapsed.
         let needsLogin = false;
 
@@ -207,8 +212,8 @@ export class CloudflareAdapter extends PlatformAdapter<CloudflareEnvironmentOpti
    * `provision()` and `build()` share process state, so a full `platform
    * deploy` had the ids in hand. The granular commands (`platform build`,
    * `platform deploy`) never call provision, so those fields were empty and the
-   * generated `wrangler.jsonc` silently came out with no D1 binding — or a KV
-   * binding with an empty id — and the deploy shipped a worker with no
+   * generated `wrangler.jsonc` silently came out with no D1 binding  -  or a KV
+   * binding with an empty id  -  and the deploy shipped a worker with no
    * database. Nothing failed; the worker just 500'd on first query.
    *
    * Lookup only: this never creates anything (that is `provision`'s job). A
@@ -220,7 +225,7 @@ export class CloudflareAdapter extends PlatformAdapter<CloudflareEnvironmentOpti
   ): Promise<void> {
     if (ctx.resources.hasDatabase && !this.provisionedD1Id) {
       if (this.provisionedHyperdriveId) {
-        // Hyperdrive already resolved — nothing to look up.
+        // Hyperdrive already resolved  -  nothing to look up.
       } else if (await this.isPostgres(ctx)) {
         const name = ctx.naming.hyperdrive();
         const found = (await this.api.listHyperdrive()).find(
@@ -270,7 +275,7 @@ export class CloudflareAdapter extends PlatformAdapter<CloudflareEnvironmentOpti
 
     // An app can declare object storage either with `$storage` or by
     // setting R2_BUCKET_NAME itself (the "blobs without a database" route,
-    // where nothing observable at build time reveals the need — see
+    // where nothing observable at build time reveals the need  -  see
     // BuildCloudflareTask.writeManifest). Forward an explicit value into
     // the build so resource detection can see it.
     const declaredBucket = (
@@ -284,7 +289,7 @@ export class CloudflareAdapter extends PlatformAdapter<CloudflareEnvironmentOpti
     // (`BuildManifestTask`'s `CLOUDFLARE_ANALYTICS_DATASET` check). Without
     // this, a value set only in `.env.<env>` on disk would never reach the
     // spawned `alepha build` below, whose own resource detection reads
-    // `process.env` — not this file.
+    // `process.env`  -  not this file.
     const declaredDataset = (
       await this.envUtils.parseEnv(ctx.root, [`.env.${ctx.env}`])
     ).CLOUDFLARE_ANALYTICS_DATASET;
@@ -320,7 +325,7 @@ export class CloudflareAdapter extends PlatformAdapter<CloudflareEnvironmentOpti
       // resource here, there is no `ensureAnalytics()` step and never will
       // be: Cloudflare has no API to create an Analytics Engine dataset
       // ahead of time. It materializes on the first `writeDataPoint()`,
-      // with no id to pair with a name the way D1 and KV need one — so
+      // with no id to pair with a name the way D1 and KV need one  -  so
       // "provisioning" it is exactly this line, computing the name and
       // setting the env var, with nothing left to call.
       env.CLOUDFLARE_ANALYTICS_DATASET ??= ctx.naming.analytics();
@@ -359,7 +364,7 @@ export class CloudflareAdapter extends PlatformAdapter<CloudflareEnvironmentOpti
     //    per-deploy values from process.env (set below), and writes a
     //    fresh `dist/wrangler.jsonc` + `dist/main.cloudflare.js`. No
     //    Vite, no spawn, no `alepha` binary needed at the workspace
-    //    cwd — required for Rocket, which deploys a bare prebuilt
+    //    cwd  -  required for Rocket, which deploys a bare prebuilt
     //    tarball with no `node_modules`.
     //  - non-prebuilt: spawn the full `alepha build` for the CLI flow,
     //    which still needs Vite analyze + bundle.
@@ -390,7 +395,7 @@ export class CloudflareAdapter extends PlatformAdapter<CloudflareEnvironmentOpti
    * pre-built `dist/manifest.json` through `this.fs`, puts the per-deploy env
    * vars ON THE CONTEXT, then runs `BuildCloudflareTask` against it.
    *
-   * `ctx.alepha` is intentionally null — in manifest mode the task
+   * `ctx.alepha` is intentionally null  -  in manifest mode the task
    * reads resources/crons/containers from `ctx.manifest` and never
    * dereferences `ctx.alepha`. Same for `entry` and `hasClient`:
    * prebuilt mode skips the bundle tasks; only the wrangler.jsonc /
@@ -422,7 +427,7 @@ export class CloudflareAdapter extends PlatformAdapter<CloudflareEnvironmentOpti
     // rebuilding the artifact.
     //
     // Refused, not fallen back on: unlike `platform.ts`'s `readManifest`, this
-    // path has no introspection to fall through to — prebuilt mode exists
+    // path has no introspection to fall through to  -  prebuilt mode exists
     // precisely because the app cannot be booted here.
     const validated = buildManifestSchema.safeParse(manifest);
     if (!validated.success) {
@@ -439,7 +444,7 @@ export class CloudflareAdapter extends PlatformAdapter<CloudflareEnvironmentOpti
     manifest = validated.data;
 
     const ctx: BuildTaskContext = {
-      // null at runtime — task takes the manifest path and never
+      // null at runtime  -  task takes the manifest path and never
       // dereferences alepha. Cast keeps the type signature happy.
       alepha: null as unknown as AlephaInstance,
       options: {
@@ -474,7 +479,7 @@ export class CloudflareAdapter extends PlatformAdapter<CloudflareEnvironmentOpti
   }
 
   // -------------------------------------------------------------------------
-  // deploy (wrangler — handles bundling/upload)
+  // deploy (wrangler  -  handles bundling/upload)
   // -------------------------------------------------------------------------
 
   /**
@@ -509,6 +514,15 @@ export class CloudflareAdapter extends PlatformAdapter<CloudflareEnvironmentOpti
     const workerName = ctx.naming.worker();
     const distDir = this.fs.join(ctx.root, "dist");
     const configPath = `${distDir}/wrangler.jsonc`;
+    const config =
+      await this.fs.readJsonFile<DurableObjectLifecycleConfig>(configPath);
+    this.durableObjectLifecycle.validate(config);
+    this.durableObjectLifecycle.bindings(config);
+    if (config.migrations !== undefined)
+      this.durableObjectLifecycle.migrations(
+        config,
+        await this.api.getWorkerMigrationTag(workerName),
+      );
     const { secrets, vars } = await this.resolveSecrets(ctx);
 
     let url: string | undefined;
@@ -638,7 +652,7 @@ export class CloudflareAdapter extends PlatformAdapter<CloudflareEnvironmentOpti
     });
 
     // Auto-derive PUBLIC_URL from the configured domain so absolute links
-    // (emails, OAuth callbacks, sitemap) resolve at runtime — the Worker
+    // (emails, OAuth callbacks, sitemap) resolve at runtime  -  the Worker
     // entrypoint lifts it into `alepha.env` via `loadEnv`. Honors an explicit
     // PUBLIC_URL in `.env.<env>` (already collected above); never overrides it.
     if (!secrets.PUBLIC_URL) {
@@ -654,7 +668,7 @@ export class CloudflareAdapter extends PlatformAdapter<CloudflareEnvironmentOpti
 
     // Split off the keys the app declassified with `secret: false`. They are
     // pushed as `plain_text` bindings instead of `secret_text`: readable in the
-    // dashboard, and — the point — editable there, which a write-only secret is
+    // dashboard, and  -  the point  -  editable there, which a write-only secret is
     // not. Everything not on the list stays encrypted, so a manifest without
     // the field (older artifact, or an app that annotated nothing) behaves
     // exactly as before.
@@ -784,7 +798,7 @@ export class CloudflareAdapter extends PlatformAdapter<CloudflareEnvironmentOpti
   }
 
   // -------------------------------------------------------------------------
-  // migrate (wrangler — D1 migration runner)
+  // migrate (wrangler  -  D1 migration runner)
   // -------------------------------------------------------------------------
 
   override async migrate(
@@ -812,19 +826,19 @@ export class CloudflareAdapter extends PlatformAdapter<CloudflareEnvironmentOpti
     this.configureApi(ctx);
     if (!ctx.resources.hasDatabase) {
       throw new AlephaError(
-        "No database detected for this app — nothing to export.",
+        "No database detected for this app  -  nothing to export.",
       );
     }
     if (await this.isPostgres(ctx)) {
       throw new AlephaError(
-        "Database export currently supports Cloudflare D1 only — Postgres/Hyperdrive export (pg_dump) is not implemented yet.",
+        "Database export currently supports Cloudflare D1 only  -  Postgres/Hyperdrive export (pg_dump) is not implemented yet.",
       );
     }
 
     const dbName = ctx.naming.d1();
     const tmpDir = this.fs.join(ctx.root, "node_modules", ".alepha");
     const sqlPath = this.fs.join(tmpDir, `${dbName}.sql`);
-    // D1 is SQLite — the natural local snapshot is the dev DB file that
+    // D1 is SQLite  -  the natural local snapshot is the dev DB file that
     // `yarn dev` reads, so dev runs against a real remote snapshot.
     const dbPath = options.output ?? this.fs.join(tmpDir, "sqlite.db");
 
@@ -837,12 +851,12 @@ export class CloudflareAdapter extends PlatformAdapter<CloudflareEnvironmentOpti
     const escaped = await this.escapeNulBytes(sqlPath);
     if (escaped) {
       this.log.warn(
-        `Escaped ${escaped} raw NUL byte(s) in the dump — sqlite3 would have refused it.`,
+        `Escaped ${escaped} raw NUL byte(s) in the dump  -  sqlite3 would have refused it.`,
       );
     }
 
     // `sqlite3 '<db>' < dump.sql` aborts if the target already holds a
-    // conflicting schema — start from a clean file. run() bypasses the
+    // conflicting schema  -  start from a clean file. run() bypasses the
     // shell, so wrap the `<` redirection in `sh -c`.
     //
     // The clean file is a scratch one, NOT `dbPath`: sqlite3 commits every
@@ -927,7 +941,7 @@ export class CloudflareAdapter extends PlatformAdapter<CloudflareEnvironmentOpti
         const env = { DATABASE_URL: dbUrl };
 
         // In prebuilt mode (Rocket) the tarball ships `migrations/`
-        // straight from the build artifact — already checked + frozen
+        // straight from the build artifact  -  already checked + frozen
         // at pack time. Skip the live check/create cycle, which would
         // need to boot the user's app to introspect schema definitions
         // (impossible without the workspace's node_modules). For
@@ -972,7 +986,7 @@ export class CloudflareAdapter extends PlatformAdapter<CloudflareEnvironmentOpti
     if (ctx.prebuilt) {
       // Postgres + Hyperdrive prebuilt deploys need a separate
       // migration story (an alepha-CLI-free `apply` against the
-      // packed `migrations/postgres/` dir) — not implemented yet.
+      // packed `migrations/postgres/` dir)  -  not implemented yet.
       // Rocket's v1 path is D1, which uses `wrangler d1 migrations
       // apply` and works fine in prebuilt mode.
       throw new AlephaError(
@@ -1225,7 +1239,7 @@ export class CloudflareAdapter extends PlatformAdapter<CloudflareEnvironmentOpti
             const queues = await this.api.listQueues();
             const queue = queues.find((q) => q.queue_name === name);
             if (!queue) {
-              this.log.debug(`Queue ${name} not found — skipping.`);
+              this.log.debug(`Queue ${name} not found  -  skipping.`);
               return;
             }
             await this.api.deleteQueue(queue.queue_id);
@@ -1246,7 +1260,7 @@ export class CloudflareAdapter extends PlatformAdapter<CloudflareEnvironmentOpti
             const namespaces = await this.api.listKV();
             const existing = namespaces.find((ns) => ns.title === name);
             if (!existing) {
-              this.log.debug(`KV namespace ${name} not found — skipping.`);
+              this.log.debug(`KV namespace ${name} not found  -  skipping.`);
               return;
             }
             await this.api.deleteKV(existing.id);
@@ -1261,7 +1275,7 @@ export class CloudflareAdapter extends PlatformAdapter<CloudflareEnvironmentOpti
 
     // 5. Delete R2 bucket. An empty bucket is removed by the REST DELETE
     // directly; only a non-empty one needs an S3 wipe first. Crucially the
-    // wipe is NOT a precondition of the delete — a wipe that can't run (no
+    // wipe is NOT a precondition of the delete  -  a wipe that can't run (no
     // creds) must never strand an otherwise-deletable bucket.
     const needsBucket = ctx.resources.hasBucket;
     if (needsBucket) {
@@ -1274,7 +1288,7 @@ export class CloudflareAdapter extends PlatformAdapter<CloudflareEnvironmentOpti
           } catch (error: any) {
             const msg = String(error.message || "");
             if (this.isMissingBucketError(msg)) {
-              this.log.debug(`Bucket ${name} not found — skipping.`);
+              this.log.debug(`Bucket ${name} not found  -  skipping.`);
             } else {
               this.log.warn(`Failed to delete r2 ${name}: ${msg}`);
             }
@@ -1295,7 +1309,7 @@ export class CloudflareAdapter extends PlatformAdapter<CloudflareEnvironmentOpti
               const configs = await this.api.listHyperdrive();
               const existing = configs.find((c) => c.name === name);
               if (!existing) {
-                this.log.debug(`Hyperdrive ${name} not found — skipping.`);
+                this.log.debug(`Hyperdrive ${name} not found  -  skipping.`);
                 return;
               }
               await this.api.deleteHyperdrive(existing.id);
@@ -1315,7 +1329,7 @@ export class CloudflareAdapter extends PlatformAdapter<CloudflareEnvironmentOpti
               const databases = await this.api.listD1();
               const existing = databases.find((db) => db.name === name);
               if (!existing) {
-                this.log.debug(`D1 database ${name} not found — skipping.`);
+                this.log.debug(`D1 database ${name} not found  -  skipping.`);
                 return;
               }
               await this.api.deleteD1(existing.uuid);
@@ -1384,7 +1398,7 @@ export class CloudflareAdapter extends PlatformAdapter<CloudflareEnvironmentOpti
    * Resolve S3 credentials for wiping an R2 bucket over the S3 protocol.
    *
    * Prefers the account's R2 S3 credentials from the environment
-   * (`S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY`) — these are already
+   * (`S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY`)  -  these are already
    * provisioned for the deploy (artifact registry) and are account-scoped,
    * so they can empty any bucket without minting anything. Returns `null`
    * when not configured, letting the caller fall back to token minting.
@@ -1406,7 +1420,7 @@ export class CloudflareAdapter extends PlatformAdapter<CloudflareEnvironmentOpti
    *
    * Cloudflare's REST `DELETE /r2/buckets/:name` succeeds on an empty bucket
    * but rejects a non-empty one. So we attempt the delete directly (the
-   * common teardown case — no objects, no creds needed), and only on failure
+   * common teardown case  -  no objects, no creds needed), and only on failure
    * empty the bucket over the S3 protocol and retry. A missing bucket is a
    * no-op, so teardown is idempotent.
    */
@@ -1422,7 +1436,7 @@ export class CloudflareAdapter extends PlatformAdapter<CloudflareEnvironmentOpti
       if (this.isMissingBucketError(msg)) {
         return; // already gone
       }
-      // Most often the bucket is non-empty — empty it then retry once.
+      // Most often the bucket is non-empty  -  empty it then retry once.
       this.log.debug(
         `Direct delete of r2 ${name} failed (${msg}); emptying then retrying.`,
       );
@@ -1444,15 +1458,15 @@ export class CloudflareAdapter extends PlatformAdapter<CloudflareEnvironmentOpti
   /**
    * Empty an R2 bucket via the S3-compatible API.
    *
-   * Cloudflare's REST API has no object-level endpoints — objects must be
+   * Cloudflare's REST API has no object-level endpoints  -  objects must be
    * listed and deleted over the S3 protocol. We use the account's R2 S3
    * credentials (`S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY`) when present;
    * otherwise we fall back to minting a short-lived bucket-scoped token via
    * the CF API (requires a user-scoped `CLOUDFLARE_API_TOKEN`) and revoke it
-   * after. When neither is available the wipe is skipped with a warning —
+   * after. When neither is available the wipe is skipped with a warning  -
    * the caller still attempts the delete, which succeeds for empty buckets.
    *
-   * Also aborts any pending multipart uploads — those count as bucket
+   * Also aborts any pending multipart uploads  -  those count as bucket
    * contents from R2's perspective and would otherwise block the delete.
    */
   protected async wipeR2Bucket(
@@ -1463,7 +1477,7 @@ export class CloudflareAdapter extends PlatformAdapter<CloudflareEnvironmentOpti
     let mintedTokenId: string | undefined;
 
     if (!creds) {
-      // No env S3 creds — try minting a bucket-scoped token. This needs a
+      // No env S3 creds  -  try minting a bucket-scoped token. This needs a
       // user-scoped `CLOUDFLARE_API_TOKEN`; an account-scoped one (or the
       // wrangler OAuth bearer) can't mint, so we skip rather than throw and
       // let the caller's delete attempt proceed (fine for empty buckets).
@@ -1560,7 +1574,7 @@ export class CloudflareAdapter extends PlatformAdapter<CloudflareEnvironmentOpti
         this.log.info(`Emptied ${total} object(s) from bucket ${bucketName}.`);
       }
     } finally {
-      // Revoke only a token we minted here — env S3 creds are long-lived and
+      // Revoke only a token we minted here  -  env S3 creds are long-lived and
       // must not be deleted. Always revoke, even if the wipe failed mid-way.
       if (mintedTokenId) {
         try {
@@ -1605,7 +1619,7 @@ export class CloudflareAdapter extends PlatformAdapter<CloudflareEnvironmentOpti
   > {
     const deployments = await this.api.listDeployments(workerName);
 
-    // API ordering is not guaranteed across releases — sort explicitly.
+    // API ordering is not guaranteed across releases  -  sort explicitly.
     const sorted = [...deployments].sort((a, b) =>
       b.created_on.localeCompare(a.created_on),
     );

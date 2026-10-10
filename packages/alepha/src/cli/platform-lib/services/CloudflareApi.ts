@@ -82,7 +82,7 @@ export class CloudflareApi {
    * Set the Cloudflare data jurisdiction for R2 and D1 resources.
    *
    * R2 buckets and D1 databases created under a jurisdiction live in a
-   * separate namespace — every R2 API call (list/create/delete) must include
+   * separate namespace  -  every R2 API call (list/create/delete) must include
    * the `cf-r2-jurisdiction` header, and D1 create must include the field
    * in the request body. Omit / pass `undefined` for the default (global).
    */
@@ -576,6 +576,21 @@ export class CloudflareApi {
     }
   }
 
+  /**
+   * Read the applied Durable Object migration tag from Worker metadata.
+   * A failed lookup propagates rather than guessing that the Worker is new.
+   */
+  public async getWorkerMigrationTag(
+    scriptName: string,
+  ): Promise<string | undefined> {
+    const accountId = await this.resolveAccountId();
+    const workers = await this.paginate<CloudflareWorker>(
+      `/accounts/${accountId}/workers/scripts`,
+      cloudflareWorkerSchema,
+    );
+    return workers.find((worker) => worker.id === scriptName)?.migration_tag;
+  }
+
   public async deleteWorker(scriptName: string): Promise<void> {
     const accountId = await this.resolveAccountId();
     await this.fetch(`/accounts/${accountId}/workers/scripts/${scriptName}`, {
@@ -638,7 +653,7 @@ export class CloudflareApi {
    * Fetch the current worker bindings via the script-settings endpoint.
    * Used to merge new secrets into the existing binding set in one PATCH
    * (avoids the per-secret `putSecret` calls, each of which creates a
-   * Cloudflare deployment — pushing 7 secrets meant 7 deployment rows).
+   * Cloudflare deployment  -  pushing 7 secrets meant 7 deployment rows).
    *
    * Secret bindings come back with `name` + `type` but no `text` (they're
    * write-only on Cloudflare's side); to preserve them across a PATCH we
@@ -659,7 +674,7 @@ export class CloudflareApi {
    * deployment, regardless of how many secrets are being updated).
    *
    * The endpoint expects multipart FormData with a `settings` field whose
-   * value is a JSON-encoded `{ bindings: [...] }` — the `fetch` helper
+   * value is a JSON-encoded `{ bindings: [...] }`  -  the `fetch` helper
    * above is JSON-only, so this one bypasses it and calls `globalThis.fetch`
    * directly. Mirrors what `wrangler secret bulk` does internally.
    */

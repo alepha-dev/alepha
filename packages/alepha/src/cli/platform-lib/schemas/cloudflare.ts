@@ -135,6 +135,7 @@ export type CloudflareHyperdrive = Infer<typeof cloudflareHyperdriveSchema>;
 
 export const cloudflareWorkerSchema = z.object({
   id: z.string(),
+  migration_tag: z.text().min(1).optional(),
   created_on: z.string(),
   modified_on: z.string(),
 });

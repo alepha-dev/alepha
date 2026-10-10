@@ -8,6 +8,7 @@ import type {
   CloudflareKV,
   CloudflareQueue,
   CloudflareR2,
+  CloudflareWorker,
 } from "../schemas/cloudflare.ts";
 
 /**
@@ -366,6 +367,22 @@ export class CloudflareProvisionClient {
   }
 
   /**
+   * Read the applied migration tag from a successful Worker metadata list.
+   * Lookup failures propagate rather than masquerading as a first deployment.
+   */
+  public async getWorkerMigrationTag(
+    name: string,
+  ): Promise<string | undefined> {
+    const workers = await this.paginate<CloudflareWorker>(
+      `/accounts/${this.accountId}/workers/scripts`,
+    );
+    const tag = workers.find((worker) => worker.id === name)?.migration_tag;
+    if (tag !== undefined && (typeof tag !== "string" || !tag))
+      throw new AlephaError("Invalid deployed Durable Object migration tag");
+    return tag;
+  }
+
+  /**
    * Delete a Worker script.
    *
    * ## ⚠️ `force`, always - and the reason is what a websocket DO actually holds
@@ -375,13 +392,10 @@ export class CloudflareProvisionClient {
    * `$websocket` or `$room` always has one, so an unforced delete would leave
    * every realtime app permanently undestroyable.
    *
-   * That is safe here because `AlephaWebSocketDurableObject` **persists
-   * nothing**. Its `ctx.storage` is used for exactly one thing - arming the
-   * tick-loop watchdog alarm - and there is no `put`, no `get` and no SQL
-   * anywhere in `alepha/websocket`. What the namespace holds is live
-   * connections, under the hibernation API, and deleting the Worker drops
-   * those regardless. There is no data to lose, so this is not the same
-   * question as a D1 database.
+   * An explicit forced Worker deletion also deletes its actor snapshots.
+   * WebSocket room state is volatile, but generic actor state is persistent.
+   * Callers must authorize destroying the recorded Worker and its state;
+   * there is no separate namespace deletion operation in this client.
    *
    * ⚠️ It also detaches service bindings other Workers hold, which is the real
    * cost of forcing and is why it is stated here rather than assumed.

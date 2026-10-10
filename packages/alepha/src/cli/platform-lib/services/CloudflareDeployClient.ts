@@ -7,6 +7,7 @@ import {
   type CloudflareAssetEntry,
   CloudflareAssetManifest,
 } from "./CloudflareAssetManifest.ts";
+import { DurableObjectLifecycle } from "./DurableObjectLifecycle.ts";
 
 /**
  * Everything one Worker deploy needs, already resolved.
@@ -33,7 +34,7 @@ export interface CloudflareDeployPlan {
    * The script and everything it imports. With `no_bundle` this is a glob
    * result, not an import-graph walk: the generated config sets
    * `rules: [{ type: "ESModule", globs: ["index.workerd.js", "server/workerd/*.js"] }]`
-   * — scoped to the workerd slice, since a multi-runtime build leaves the
+   *  -  scoped to the workerd slice, since a multi-runtime build leaves the
    * other slices in the same `dist/`.
    */
   modules: Array<{ name: string; bytes: Uint8Array; type?: string }>;
@@ -55,6 +56,7 @@ export interface CloudflareDeployPlan {
   secrets?: Record<string, string>;
 
   migrations?: Record<string, unknown>;
+  exports?: Record<string, Record<string, unknown>>;
   observability?: Record<string, unknown>;
   placement?: Record<string, unknown>;
   limits?: Record<string, unknown>;
@@ -207,6 +209,7 @@ export interface CloudflareDeployAssets {
  * deploy never emits a route.
  */
 export class CloudflareDeployClient {
+  protected readonly durableObjectLifecycle = new DurableObjectLifecycle();
   /**
    * How much base64 to put in one asset upload request.
    *
@@ -291,6 +294,10 @@ export class CloudflareDeployClient {
   public async deploy(
     plan: CloudflareDeployPlan,
   ): Promise<{ versionId?: string; subdomainError?: string }> {
+    this.durableObjectLifecycle.validate({
+      exports: plan.exports,
+      migrations: plan.migrations === undefined ? undefined : [],
+    });
     const assets = plan.assets
       ? await this.uploadAssets(plan.scriptName, plan.assets)
       : undefined;
@@ -578,6 +585,10 @@ export class CloudflareDeployClient {
     plan: CloudflareDeployPlan,
     assets?: { jwt: string },
   ): Promise<string | undefined> {
+    this.durableObjectLifecycle.validate({
+      exports: plan.exports,
+      migrations: plan.migrations === undefined ? undefined : [],
+    });
     const bindings = [
       ...(plan.bindings ?? []),
       ...Object.entries(plan.secrets ?? {}).map(([name, text]) => ({
@@ -593,6 +604,7 @@ export class CloudflareDeployClient {
       compatibility_flags: plan.compatibilityFlags,
       bindings: bindings.length > 0 ? bindings : undefined,
       migrations: plan.migrations,
+      exports: plan.exports,
       observability: plan.observability,
       placement: plan.placement,
       limits: plan.limits,

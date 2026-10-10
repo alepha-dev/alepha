@@ -111,6 +111,50 @@ describe("the Cloudflare deploy client", () => {
     ...over,
   });
 
+  it("forwards declarative exports or resolved legacy steps in multipart metadata", async ({
+    expect,
+  }) => {
+    for (const lifecycle of [
+      {
+        exports: {
+          AlephaActorDurableObject: {
+            type: "durable-object",
+            storage: "sqlite",
+          },
+        },
+      },
+      {
+        migrations: {
+          old_tag: "sockets",
+          new_tag: "actors",
+          steps: [{ new_sqlite_classes: ["AlephaActorDurableObject"] }],
+        },
+      },
+    ]) {
+      const { client, of } = fake();
+      const binding = {
+        type: "durable_object_namespace",
+        name: "ALEPHA_ACTOR",
+        class_name: "AlephaActorDurableObject",
+      };
+      await client.putScript(
+        plan({ ...lifecycle, bindings: [binding] }) as never,
+      );
+      const metadata = await metadataOf(of("script.put")[0]);
+      expect(metadata.bindings).toEqual([binding]);
+      expect(metadata.exports).toEqual(lifecycle.exports);
+      expect(metadata.migrations).toEqual(lifecycle.migrations);
+    }
+    const { client, calls } = fake();
+    const mixed = plan({
+      exports: { Actor: { type: "durable-object", storage: "sqlite" } },
+      migrations: { steps: [] },
+    }) as never;
+    await expect(client.deploy(mixed)).rejects.toThrow("mutually exclusive");
+    await expect(client.putScript(mixed)).rejects.toThrow("mutually exclusive");
+    expect(calls).toEqual([]);
+  });
+
   describe("the credential", () => {
     it("refuses to be built without a token or an account", ({ expect }) => {
       // ⚠️ The one thing that must never fall back to the environment.
@@ -1089,6 +1133,8 @@ describe("the Cloudflare deploy client", () => {
     const options = call.args[1] as { body: FormData };
     const part = options.body.get("metadata") as File;
     return JSON.parse(await part.text()) as {
+      exports?: Record<string, unknown>;
+      migrations?: Record<string, unknown>;
       main_module?: string;
       bindings?: Array<Record<string, unknown>>;
       assets?: { jwt?: string; keep_assets?: boolean };

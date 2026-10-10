@@ -106,3 +106,14 @@ SQLite provisioning to exports is a one-way control-plane transition. Applicatio
 that need legacy history must configure it explicitly. The framework does not
 migrate application state or infer deletes, renames or transfers from removed
 host declarations. See [Cloudflare class lifecycle](https://developers.cloudflare.com/durable-objects/reference/durable-objects-migrations/).
+
+Both Cloudflare deploy adapters read these same manifest declarations. Wrangler
+receives the complete legacy configuration history. The direct Worker upload
+forwards local `durable_object_namespace` bindings and declarative exports. For
+legacy history it reads the applied migration tag, sends only later steps with
+`old_tag`/`new_tag`, and sends no steps on a repeat deployment. Unknown tags and
+failed metadata lookups refuse deployment before upload.
+
+An explicit forced Worker deletion also destroys its actor snapshots. Durable
+Object presence is recorded for actor-only artifacts, and a failed Worker deletion
+keeps that namespace record. There is no separately deletable namespace resource.

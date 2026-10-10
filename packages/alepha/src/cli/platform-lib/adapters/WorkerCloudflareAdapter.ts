@@ -29,6 +29,10 @@ import {
   D1MigrationsService,
 } from "../services/D1MigrationsService.ts";
 import {
+  DurableObjectLifecycle,
+  type DurableObjectLifecycleConfig,
+} from "../services/DurableObjectLifecycle.ts";
+import {
   PlatformAdapter,
   type PlatformContext,
   type PlatformState,
@@ -99,6 +103,7 @@ export class WorkerCloudflareAdapter extends PlatformAdapter<EnvironmentOptions>
   protected readonly alepha = $inject(Alepha);
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly buildTask = $inject(BuildCloudflareTask);
+  protected readonly durableObjectLifecycle = $inject(DurableObjectLifecycle);
   protected readonly migrations = $inject(D1MigrationsService);
   protected readonly assetManifest = $inject(CloudflareAssetManifest);
   protected readonly dateTime = $inject(DateTimeProvider);
@@ -458,6 +463,8 @@ export class WorkerCloudflareAdapter extends PlatformAdapter<EnvironmentOptions>
       await this.fs.readTextFile(this.fs.join(distDir, "wrangler.jsonc")),
     ) as WranglerConfig;
 
+    this.durableObjectLifecycle.validate(config);
+
     // Set by the upload step below and read after it, because `run` does not
     // carry a return value across both of its implementations - the CLI's
     // runner answers a string and Lore's shim answers the handler's value.
@@ -467,7 +474,10 @@ export class WorkerCloudflareAdapter extends PlatformAdapter<EnvironmentOptions>
     // still exists at Cloudflare, and a teardown that cannot name it is how an
     // orphan becomes permanent.
     this.provisionedResources.worker = worker;
-    if (ctx.resources.hasWebSocket) {
+    if (
+      ctx.resources.hasDurableObjects ||
+      (config.durable_objects?.bindings?.length ?? 0) > 0
+    ) {
       this.provisionedResources.durableObjects = true;
     }
 
@@ -498,6 +508,14 @@ export class WorkerCloudflareAdapter extends PlatformAdapter<EnvironmentOptions>
         // does not have refuses the deploy while nothing has changed yet.
         const queueConsumers = await this.queueConsumers(config);
 
+        const migrationTag =
+          config.migrations !== undefined
+            ? await this.provisioner().getWorkerMigrationTag(worker)
+            : undefined;
+        const migrations =
+          config.migrations !== undefined
+            ? this.durableObjectLifecycle.migrations(config, migrationTag)
+            : undefined;
         const answer = await this.deployer().deploy({
           scriptName: worker,
           mainModule,
@@ -510,7 +528,8 @@ export class WorkerCloudflareAdapter extends PlatformAdapter<EnvironmentOptions>
           // `putScript` turns each entry into a `secret_text` binding beside
           // the resource bindings above.
           secrets: this.secretsFor(ctx),
-          migrations: config.migrations?.[0],
+          migrations,
+          exports: config.exports,
           observability: config.observability,
           placement: config.placement,
           limits: config.limits,
@@ -871,8 +890,8 @@ export class WorkerCloudflareAdapter extends PlatformAdapter<EnvironmentOptions>
         disagree about what an artifact contains.
       */
       // ⚠️ The entry module is always uploaded, whatever the globs say.
-      // wrangler EXCLUDES `main` from `rules` by design — it is the main
-      // module, not a matched one — so a glob set that happens not to cover it
+      // wrangler EXCLUDES `main` from `rules` by design  -  it is the main
+      // module, not a matched one  -  so a glob set that happens not to cover it
       // is correct config and would still make the upload reject itself with
       // "the entry must be one of the modules".
       if (
@@ -898,7 +917,7 @@ export class WorkerCloudflareAdapter extends PlatformAdapter<EnvironmentOptions>
    * The generated config's bindings, as the API's own binding objects.
    */
   protected bindings(config: WranglerConfig): Array<Record<string, unknown>> {
-    const bindings: Array<Record<string, unknown>> = [];
+    const bindings = this.durableObjectLifecycle.bindings(config);
     for (const database of config.d1_databases ?? []) {
       bindings.push({
         type: "d1",
@@ -1179,7 +1198,7 @@ export class WorkerCloudflareAdapter extends PlatformAdapter<EnvironmentOptions>
  * owns its shape, and pinning a second definition here is how the two come to
  * disagree about a field one of them emits.
  */
-interface WranglerConfig {
+interface WranglerConfig extends DurableObjectLifecycleConfig {
   main?: string;
   /**
    * Module rules, as `BuildCloudflareTask` writes them.
