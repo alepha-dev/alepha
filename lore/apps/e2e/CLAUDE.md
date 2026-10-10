@@ -86,6 +86,7 @@ Reaching the same end state from a session reused per worker took 2665ms against
 - `settings-features.spec.ts` - the capability switches in General ▸ Capabilities and on the section pages
 - `capabilities.spec.ts` - a Knowledge-only project, an Apps-only one, and a project with everything turned off and Work turned back on
 - `theme-flicker.spec.ts` — theme no-flash boot
+- `login-hydration.spec.ts` - `/auth/login` hydrates with no React #418, anonymous (light, dark, French, with `redirect` and `error`) and signed in (#Q2642)
 - `invitation.spec.ts` — owner invites → user accepts → joins project as a member (drives the email-link round-trip)
 - `protected-folio.spec.ts` — end-to-end encrypted folios (passphrase round-trip, wrong-passphrase rejection, no plaintext on the wire)
 - `quest-export.spec.ts` — Data settings page CSV export. Renamed from `quest-import-export.spec.ts` when quest import was deleted in epic #E48; it only ever held the export test
