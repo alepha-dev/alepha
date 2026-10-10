@@ -357,6 +357,142 @@ machine:
 
 No cleartext exception is involved, so the network rules under test are the release ones.
 
+## Live updates
+
+A shipped binary can take a new web layer (the HTML, JavaScript, CSS and assets it runs) from the
+app's own server, without a store release. Native code never changes this way: a new plugin, a
+native setting or a new build number still goes through a build and a store.
+
+Three entries carry it, on top of `@alepha/capacitor`:
+
+| Entry                         | Where it runs                       | What it does                                                   |
+| ----------------------------- | ----------------------------------- | -------------------------------------------------------------- |
+| `@alepha/capacitor/ota`       | the browser entry, inside the shell | asks the server, downloads, applies, acknowledges              |
+| `@alepha/capacitor/ota-api`   | the server                          | stores bundles, picks each device's bundle, signs its download |
+| `@alepha/capacitor/ota-admin` | the admin, beside `AdminRouter`     | channels, rollout, kill switch, rollback, device overrides     |
+
+The device side is [`@capgo/capacitor-updater`](https://capgo.app/docs/plugin/) 8.52.1, pinned, in
+manual mode and pointed at your server: no Capgo account and no hosted service are involved.
+
+### Set it up
+
+```bash
+yarn alepha capacitor init --ota
+```
+
+On top of `init`, it:
+
+- adds `ota: { publicKey: "ota-public.pem" }` to `capacitor({ ... })`;
+- registers `AlephaCapacitorOtaApi` in `src/main.server.ts`, and `AlephaCapacitor` then
+  `AlephaCapacitorOta` in `src/main.browser.ts`;
+- adds `OtaAdminRouter` beside `AdminRouter` when the app has an admin, and nothing otherwise;
+- installs the updater and links it into the native projects;
+- mints the publisher's key pair: `ota-public.pem`, committed, and `.ota/signing-key.pem`, mode
+  0600 and gitignored;
+- adds `OTA_DOWNLOAD_SECRET=` to `.env.example`.
+
+Every edit is planned first: a file it does not recognise (an entry that does not build its
+container the scaffold's way, a config without one `capacitor({ ... })` call) refuses the whole run
+with the change to make by hand, and nothing is written. A second run changes nothing, and keys are
+never minted again over an existing private key.
+
+Then, once, in the admin's **Live updates** page: register the app with the content of
+`ota-public.pem`, create an API key with the `ota:release` permission, and list that key on the
+app. Nothing grants OTA permissions on its own: `ota:read`, `ota:manage` and `ota:release` go to
+the roles that need them.
+
+### Who holds which key
+
+| Secret                 | Held by                                                             | Never in                 |
+| ---------------------- | ------------------------------------------------------------------- | ------------------------ |
+| `.ota/signing-key.pem` | whoever publishes, as `OTA_SIGNING_KEY` (a CI secret)               | the app, the server, git |
+| `OTA_API_KEY`          | whoever publishes: an API key with `ota:release`, listed on the app | the app, the server      |
+| `OTA_DOWNLOAD_SECRET`  | the server, set in every environment                                | the app, the publisher   |
+| `ota-public.pem`       | everyone: it ships in the native config                             | (public)                 |
+
+Bundles use Capgo's v2 encryption: the archive is encrypted with a fresh AES key, and that key and
+the archive's checksum are encrypted with the publisher's private key. A device opens them with the
+public key in its native config and refuses a bundle sealed with another key, altered, or carrying
+another bundle's checksum. The server opens each upload with the same public key before accepting
+it, so a bundle the devices would refuse never reaches them.
+
+### Publish
+
+```bash
+OTA_SIGNING_KEY=.ota/signing-key.pem OTA_API_KEY=<key> \
+  yarn alepha capacitor release android --channel production
+```
+
+`release` builds the shell, seals it and uploads it to `ota-api` on the app's `apiUrl` (or
+`capacitor({ ota: { url } })`). `--rollout` sets the share of devices that take it, 10 percent by
+default; `--variant` names the variant once there are any. An upload that fails on the network or
+with a 5xx is retried with the same release id, so a retry never publishes twice.
+
+`--dry-run` stops before uploading and leaves the release in
+`dist-capacitor/ota/<version>-<platform>/`: `bundle.zip`, the encrypted archive, and
+`manifest.json`, which describes it. The admin's upload takes those two files, so a release sealed
+on one machine can be published from the browser. The browser never sees the private key: it only
+uploads what was sealed already.
+
+A release refuses, before sealing anything:
+
+- a native project with no recorded build (`capacitor.builds.json`), or one that changed since its
+  recorded builds: no shipped binary could run that web layer, so bump the build number and build
+  again;
+- development residue that would ship, such as a `server.url`;
+- a signing key that is not the private half of `ota-public.pem`;
+- a symlink in the shell.
+
+### Which bundle a device gets
+
+A bundle carries the exact native build numbers it was sealed for and a fingerprint of the native
+project, never a minimum version. A device whose build no bundle lists is told it is blocked, and
+keeps what it runs.
+
+Each channel (`production` to begin with) holds one cohort per platform and native fingerprint:
+an `active` bundle, the share of devices that take it, and a `fallback` for the others. A device's
+place in the rollout is a stable hash of the app, the channel and the device, so raising the
+rollout only adds devices. From the admin:
+
+- **Rollout**: change the share of a cohort's devices that take `active`.
+- **Promote** an older bundle, or **roll back** to one: it becomes `active` again.
+- **Kill** a bundle: no device is sent it any more, and devices fall back to the cohort's
+  `fallback`. With no usable fallback, a device running the killed bundle returns to the web layer
+  built into its binary.
+- **Device overrides** pin one device to a bundle or a channel, for support or a tester.
+
+A device may move itself to a channel marked self-assignable (`OtaProvider.setChannel("beta")`);
+every other channel is an operator's choice. Download links are signed with
+`OTA_DOWNLOAD_SECRET` and expire after ten minutes. The newest 10 bundles of each cohort are kept,
+along with every bundle a cohort, an override or a live link still names.
+
+### On the device
+
+`AlephaCapacitorOta` is inert in a browser, in a `dev` shell, and in a shell built without
+`capacitor({ ota })`, and says why in the log.
+
+- **Checks** run at boot, on every return to the foreground, and every ten minutes while the app
+  stays in front, one at a time. A failed check backs off.
+- **A new bundle downloads in the background and applies on the next background or restart**, never
+  as a reload in front of the user.
+- **Acknowledgment.** A bundle counts as healthy once its first screen settles healthy, and the
+  device then tells the updater so. A first screen that fails is never acknowledged, and the
+  updater puts the previous web layer back by itself: the readiness timeout is 10 seconds, and on
+  Android the rollback came about 30 seconds after the switch in testing. A bundle the device
+  rolled back from is never downloaded again on that device.
+- **Offline is healthy.** The local "server cannot be reached" or "taking too long" screen counts
+  as a healthy first screen: an unreachable or stalled API never rolls a good bundle back, and the
+  session is kept. Retry takes the app back to its routes once the API answers.
+- **The kill switch reaches a device at its next contact.** A killed bundle that is downloaded and
+  waiting is withdrawn by the next check; one already running gives way on the next background
+  after a check. A device that stays offline keeps what it has.
+
+### Apple and Google
+
+Live updates change interpreted code only, which is what both stores allow; Apple's guideline 2.5.2
+draws the line (see [App Store and Play Store](#app-store-and-play-store)). Ship fixes and content
+this way, and features through the stores.
+
 ## App Store and Play Store
 
 This package builds and signs binaries; it does not submit them, and nothing it does guarantees
@@ -376,5 +512,5 @@ intended use, not a promise of approval.
 
 ## Not yet
 
-Push notifications, sign-in through a browser redirect, universal links and app links, and live
-updates of the web layer are future work.
+Push notifications, sign-in through a browser redirect, universal links and app links are future
+work, and so are delta live updates and a hosted update service.

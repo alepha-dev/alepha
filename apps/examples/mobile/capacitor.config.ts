@@ -17,7 +17,7 @@ const config: CapacitorConfig = {
       statsUrl: "",
       channelUrl: "",
       publicKey:
-        "-----BEGIN RSA PUBLIC KEY-----\nMIIBCgKCAQEA3d8fxgFfV4+Hk6idxUMK+bJlM1pyFVqdmsllDXkYT25Z0C3Isnhu\nfYAMzPlnqLA9Ryx6q3YFJixHXj659ERYhTrUMvAn/qmUg7B7wUIyiq8xZnhk0ZiK\n38p17OishLcUyw/QBo71k/xVGuKHLshzX8Gp4MFafQzLwc1nlLwnTTm2J5p68krS\nRadfJRl9CP1FoDu9jssCMKd3TC2p4Y3i9wkGOV+4/OI/XBjzWMrUFNCN4mDS5hN2\nqDBrhaQPY3G63EvT7iZepJPeYr5jI7AK2muMS/CE0X7UTVwF1v/FWeuTlDU1QWKF\nBTyPU1bUI1d9MRMIYbZzi+mH5yjlmgJNAwIDAQAB\n-----END RSA PUBLIC KEY-----\n",
+        "-----BEGIN RSA PUBLIC KEY-----\nMIIBCgKCAQEAy6yeX+2e7RU9k+Kl3oeQ0wB2ipJ20kUOWxdXu8gQWTJgBJmoJIso\nZ9yKcAeHUI4Sb8yQRuOUwupccWxnWjEzX4jip+KKvnH/SKyTevFBwg6jG0/U/fQZ\njfBCURFeS4jnVJCGa97P9s2Ugxlxoej+D1XN1qqp7JTA2kMz8OxGy5NY6LWEe68v\nwcZjfS9k1XCjOyAwXcYcVUIEXkctNAb5AYPwWsh7L87xvkFuWn00Twl1VaqWKrxD\nBxuQ6poocdPEmi6EjuP53Il10wzUzN/rmZrf3iemmRS6iyQybXlWNphdoQn36lL+\nhvCZgb0rNCGJGi3e0bY23MNtnbbWF+oJJQIDAQAB\n-----END RSA PUBLIC KEY-----\n",
       allowModifyUrl: true,
       allowManualBundleError: true,
       appReadyTimeout: 10000,
