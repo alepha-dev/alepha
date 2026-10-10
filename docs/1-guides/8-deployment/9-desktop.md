@@ -144,6 +144,30 @@ Two consequences of a fresh random port per launch: browser storage tied to the 
 (`localStorage`, IndexedDB) does not survive a relaunch, and an external OAuth provider cannot be
 registered with a fixed callback URL. Keep durable state on the server side, in the database.
 
+## Moving an existing local tool
+
+Loom, a local dashboard built with Alepha, was a compiled binary that a LaunchAgent kept serving on
+a fixed localhost port. It moved to `alepha compile --desktop`, and what it had to change applies
+to any tool that used to run in the background:
+
+- **The app owns its server.** There is no attaching a window to a server that is already running:
+  closing the window stops the server and whatever the app started. A browser tab or a `curl` on
+  the old port stops working, since the admission refuses anything but the window. Retire the old
+  service rather than run both, or two processes write the same data.
+- **Move the data, and keep the old copy.** Files the app manages itself (Loom's `projects.json`
+  and `.env`) belong in `~/Library/Application Support/<identifier>`, next to the secret the shell
+  already puts there. Loom's install script copies them over once, never overwriting what the app
+  has, and leaves the old folder and service definition where they can be restored.
+- **Finder launches get launchd's bare `PATH`**, `/usr/bin:/bin:/usr/sbin:/sbin`. An app that runs
+  `git`, `gh`, `node` or `yarn` has to set its own: Loom asks the user's login shell for its
+  `PATH` at startup when it sees that default, and names a missing tool and the `PATH` it searched
+  when a command fails.
+- **Let the environment's port win.** The shell sets `SERVER_PORT=0` before the app is created, so
+  a default the app applies only when the variable is unset
+  (`process.env.SERVER_PORT || 27483`) keeps working outside the desktop.
+
+Loom's bundle measures 64 MB, 27 MB zipped, and listens about 0.3 s after `open`.
+
 ## Not included
 
 No Developer ID signing or notarization, no installer or updater, no tray icon, no second window,
