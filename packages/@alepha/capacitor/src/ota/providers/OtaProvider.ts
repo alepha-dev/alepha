@@ -1,6 +1,10 @@
 import { Capacitor } from "@capacitor/core";
 import { $hook, $inject } from "alepha";
-import { DateTimeProvider } from "alepha/datetime";
+import {
+  DateTimeProvider,
+  type DurationLike,
+  type Interval,
+} from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { ReactBootHealth } from "alepha/react/router";
 
@@ -20,7 +24,8 @@ import { UpdaterAdapter } from "./UpdaterAdapter.ts";
  * back, and nothing waits for the API, the session or a protected loader.
  * A failed first screen is never acknowledged, so the updater reverts it.
  *
- * **Checks.** On boot and on every return to the foreground, one at a time:
+ * **Checks.** On boot, on every return to the foreground, and every ten
+ * minutes while the app stays in front, one at a time:
  * the server names the bundle this device should run, and the device
  * reconciles:
  *
@@ -38,7 +43,10 @@ import { UpdaterAdapter } from "./UpdaterAdapter.ts";
  * have expired), then on later resumes with a growing delay. A bundle the
  * updater rolled back from, or that failed to download twice, is never
  * fetched again on this device. The kill switch reaches a device at its next
- * contact: nothing can undo a bundle on a device that stays offline.
+ * contact: nothing can undo a bundle on a device that stays offline. A
+ * bundle downloaded and still waiting is withdrawn by the foreground check;
+ * one the background already activated runs until the resume check, then
+ * gives way on the next background.
  *
  * Inert, and saying why in the log, in a browser, in `dev` mode, and in a
  * shell built without the updater.
@@ -51,8 +59,17 @@ export class OtaProvider {
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly bootHealth = $inject(ReactBootHealth);
 
+  /**
+   * How often a check runs while the app stays in the foreground. Activation
+   * happens on background, before the resume check can see a kill: only a
+   * check in front can withdraw a waiting bundle in time.
+   */
+  protected readonly foregroundCheckEvery: DurationLike = [10, "minutes"];
+
   protected enabled = false;
   protected acknowledged = false;
+  protected foreground = true;
+  protected interval?: Interval;
   protected inFlight?: Promise<void>;
 
   protected readonly onReady = $hook({
@@ -99,8 +116,19 @@ export class OtaProvider {
   protected readonly onAppState = $hook({
     on: "capacitor:app:state",
     handler: ({ active }) => {
+      this.foreground = active;
       if (this.enabled && active && this.acknowledged) {
         void this.check();
+      }
+    },
+  });
+
+  protected readonly onStop = $hook({
+    on: "stop",
+    handler: () => {
+      if (this.interval) {
+        this.dateTime.clearInterval(this.interval);
+        this.interval = undefined;
       }
     },
   });
@@ -190,6 +218,15 @@ export class OtaProvider {
       return;
     }
     await this.acknowledge();
+    this.interval ??= this.dateTime.createInterval(
+      () => {
+        if (this.foreground) {
+          void this.check();
+        }
+      },
+      this.foregroundCheckEvery,
+      true,
+    );
     await this.check();
   }
 

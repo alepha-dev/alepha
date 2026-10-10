@@ -82,10 +82,7 @@ export const otaWireFixtures = {
   updateBuiltin: {
     owner: "Q1312",
     status: 200,
-    body: {
-      version: "builtin",
-      message: "Reset to the built-in bundle",
-    },
+    body: { version: "builtin" },
   },
   updateBlocked: {
     owner: "Q1312",

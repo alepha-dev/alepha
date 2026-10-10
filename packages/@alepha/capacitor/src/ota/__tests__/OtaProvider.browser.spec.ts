@@ -1,4 +1,5 @@
 import { Alepha } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { ReactBootHealth } from "alepha/react/router";
 import { afterEach, describe, it } from "vitest";
 
@@ -239,6 +240,37 @@ describe("OtaProvider", () => {
       expect(updater.bundles.has(pending!.id)).toBe(false);
       updater.background();
       expect((await updater.current()).id).toBe("builtin");
+    });
+
+    it("withdraws a waiting bundle killed while the app stays in front", async ({
+      expect,
+    }) => {
+      // Seen on the simulator: activation happens on background, before the
+      // resume check could see the kill, so only a check in front is in time.
+      const { alepha, updater, ota, settle } = await boot();
+      updater.answers.push(available("2.0.0"));
+      await settle();
+      const pending = await updater.next();
+      expect(pending?.version).toBe("2.0.0");
+
+      updater.answers.push(none());
+      await alepha.inject(DateTimeProvider).travel([10, "minutes"]);
+      await ota.idle();
+      expect(updater.bundles.has(pending!.id)).toBe(false);
+      updater.background();
+      expect((await updater.current()).id).toBe("builtin");
+    });
+
+    it("never checks on a timer while in the background", async ({
+      expect,
+    }) => {
+      const { alepha, updater, ota, settle } = await boot();
+      await settle();
+      const checks = updater.checks;
+      await alepha.events.emit("capacitor:app:state", { active: false });
+      await alepha.inject(DateTimeProvider).travel([30, "minutes"]);
+      await ota.idle();
+      expect(updater.checks).toBe(checks);
     });
 
     it("resets to the built-in layer when told to", async ({ expect }) => {

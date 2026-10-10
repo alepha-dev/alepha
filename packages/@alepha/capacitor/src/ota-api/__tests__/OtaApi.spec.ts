@@ -164,10 +164,9 @@ describe.each(["sqlite", "postgres"] as const)("ota-api on %s", (dialect) => {
             ctx.device(app.appId, { version_name: bundle.version }),
           )
         ).body,
-      ).toEqual({
-        version: "builtin",
-        message: "Reset to the built-in web layer",
-      });
+        // Nothing but the version: the updater rejects a check carrying a
+        // `message`, and the device never reset.
+      ).toEqual({ version: "builtin" });
       // A device on its built-in layer (maybe holding it, pending) is told
       // it is up to date, which cancels what it holds.
       expect((await ctx.check(ctx.device(app.appId))).body).toMatchObject({

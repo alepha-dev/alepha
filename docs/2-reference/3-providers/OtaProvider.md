@@ -18,7 +18,8 @@ included: an unreachable or stalled API never rolls a working bundle
 back, and nothing waits for the API, the session or a protected loader.
 A failed first screen is never acknowledged, so the updater reverts it.
 
-**Checks.** On boot and on every return to the foreground, one at a time:
+**Checks.** On boot, on every return to the foreground, and every ten
+minutes while the app stays in front, one at a time:
 the server names the bundle this device should run, and the device
 reconciles:
 
@@ -36,7 +37,10 @@ A failed download is retried once at once with a fresh check (a link may
 have expired), then on later resumes with a growing delay. A bundle the
 updater rolled back from, or that failed to download twice, is never
 fetched again on this device. The kill switch reaches a device at its next
-contact: nothing can undo a bundle on a device that stays offline.
+contact: nothing can undo a bundle on a device that stays offline. A
+bundle downloaded and still waiting is withdrawn by the foreground check;
+one the background already activated runs until the resume check, then
+gives way on the next background.
 
 Inert, and saying why in the log, in a browser, in `dev` mode, and in a
 shell built without the updater.

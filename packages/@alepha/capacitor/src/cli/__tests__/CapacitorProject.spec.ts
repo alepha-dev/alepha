@@ -141,7 +141,17 @@ describe("CapacitorProject", () => {
       expect(content).toContain("autoUpdate: false,");
       expect(content).toContain("allowModifyUrl: true,");
       expect(content).toContain("allowManualBundleError: true,");
-      expect(content).toContain(`publicKey: ${JSON.stringify(pem)},`);
+      expect(content).toContain(`${JSON.stringify(pem)},`);
+
+      // A real key is past the print width: under its key, as oxfmt writes
+      // it, or every build would undo the formatter.
+      const long = `-----BEGIN RSA PUBLIC KEY-----\n${"A".repeat(360)}\n-----END RSA PUBLIC KEY-----\n`;
+      expect(
+        project().renderCapacitorConfig(options, {
+          installed: true,
+          publicKey: long,
+        }),
+      ).toContain(`      publicKey:\n        ${JSON.stringify(long)},`);
     });
 
     it("leaves a project without the updater alone", ({ expect }) => {

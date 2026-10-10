@@ -555,7 +555,13 @@ export class CapacitorProject {
         const name = /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key)
           ? key
           : JSON.stringify(key);
-        return `${indent}${name}: ${this.toLiteral(v, depth + 1)},`;
+        const literal = this.toLiteral(v, depth + 1);
+        const line = `${indent}${name}: ${literal},`;
+        // A string past the print width moves under its key, as oxfmt does.
+        if (typeof v === "string" && line.length > 80) {
+          return `${indent}${name}:\n${indent}  ${literal},`;
+        }
+        return line;
       });
       return `{\n${lines.join("\n")}\n${closing}}`;
     }

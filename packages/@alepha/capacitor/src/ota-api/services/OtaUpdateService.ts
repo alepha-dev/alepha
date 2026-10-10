@@ -158,10 +158,7 @@ export class OtaUpdateService {
     if (current && (current.killedAt || failed.has(current.version))) {
       return {
         status: 200,
-        body: {
-          version: "builtin",
-          message: "Reset to the built-in web layer",
-        },
+        body: { version: "builtin" },
       };
     }
     return this.none();
