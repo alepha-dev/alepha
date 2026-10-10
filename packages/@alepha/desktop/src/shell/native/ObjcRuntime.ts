@@ -43,6 +43,9 @@ export class ObjcRuntime {
       returns: FFIType.ptr,
     },
   }).symbols.objc_msgSend;
+  protected readonly sendForInt = dlopen(this.lib, {
+    objc_msgSend: { args: [FFIType.ptr, FFIType.ptr], returns: FFIType.i64 },
+  }).symbols.objc_msgSend;
   protected readonly strings: Uint8Array[] = [];
 
   /**
@@ -92,9 +95,14 @@ export class ObjcRuntime {
   public alert(title: string, message: string): void {
     const app = this.app();
     this.msg(app, "finishLaunching");
-    // NSApplicationActivationPolicyRegular: a Dock icon, and an alert that
-    // can come to the front outside a bundle too.
-    this.sendInt(app, this.sel("setActivationPolicy:"), 0);
+    // NSApplicationActivationPolicyRegular (0): a Dock icon, and an alert
+    // that can come to the front outside a bundle too. Only when it is not
+    // already: a bundle launched by Finder is regular, and setting the policy
+    // again before activating makes runModal abort after about a second
+    // (measured under `open`, #Q2237).
+    if (this.int(app, "activationPolicy") !== 0n) {
+      this.sendInt(app, this.sel("setActivationPolicy:"), 0);
+    }
     this.sendInt(app, this.sel("activateIgnoringOtherApps:"), 1);
     const alert = this.msg(this.msg(this.cls("NSAlert"), "alloc"), "init");
     this.send1(alert, this.sel("setMessageText:"), this.ns(title));
@@ -162,6 +170,10 @@ export class ObjcRuntime {
       this.sel("stringWithUTF8String:"),
       this.cstr(value),
     ) as Pointer;
+  }
+
+  protected int(target: Pointer, selector: string): bigint {
+    return BigInt(this.sendForInt(target, this.sel(selector)));
   }
 
   protected msg(target: Pointer, selector: string): Pointer {

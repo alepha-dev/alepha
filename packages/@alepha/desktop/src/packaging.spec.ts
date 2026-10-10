@@ -98,6 +98,14 @@ describe("@alepha/desktop packaging", () => {
     expect(graph.lazyImports).toContain("webview-bun/build/libwebview.dylib");
   });
 
+  it("ships the default icon the bundle falls back to", ({ expect }) => {
+    expect(pkg.files).toContain("assets");
+    const icns = readFileSync(join(root, "assets", "app.icns"));
+    // An ICNS file starts with its magic, then its own length.
+    expect(icns.subarray(0, 4).toString("latin1")).toBe("icns");
+    expect(icns.readUInt32BE(4)).toBe(icns.length);
+  });
+
   it("has the embedded library where the shell imports it from", ({
     expect,
   }) => {

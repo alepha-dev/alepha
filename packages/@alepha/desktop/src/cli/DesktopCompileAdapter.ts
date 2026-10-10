@@ -8,6 +8,7 @@ import {
   type DesktopConfig,
   desktopConfigSchema,
 } from "../core/schemas/desktopConfigSchema.ts";
+import { DesktopBundleBuilder } from "./DesktopBundleBuilder.ts";
 
 /**
  * The three entries `alepha compile --desktop` compiles into one executable.
@@ -28,7 +29,8 @@ export interface DesktopEntryNames {
  *    and the macOS tools the bundle needs, before `dist/` is touched;
  * 2. {@link writeEntries}: the generated shell, supervisor and server Worker
  *    entries, written into the staged `dist/`;
- * 3. {@link assemble}: the compiled executable into the final artifact.
+ * 3. {@link assemble}: the compiled executable into a signed
+ *    `<Name>.app` ({@link DesktopBundleBuilder}).
  *
  * The generated entries import this package by absolute path, resolved from
  * where it is installed, so they resolve the same `@alepha/desktop` (and its
@@ -147,9 +149,13 @@ export class DesktopCompileAdapter {
     name: string;
     config: DesktopConfig;
   }): Promise<string> {
-    const target = this.fs.join(input.stage, input.name);
-    await this.fs.cp(input.binary, target);
-    return target;
+    return new DesktopBundleBuilder({ fs: this.fs, shell: this.shell }).build({
+      root: input.root,
+      stage: input.stage,
+      binary: input.binary,
+      executable: input.name,
+      config: input.config,
+    });
   }
 
   /**

@@ -8,4 +8,5 @@
  *
  * @module alepha.desktop.cli
  */
+export * from "./DesktopBundleBuilder.ts";
 export * from "./DesktopCompileAdapter.ts";

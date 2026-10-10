@@ -18,6 +18,7 @@
     "url": "git+https://github.com/alepha-dev/alepha.git"
   },
   "files": [
+    "assets",
     "dist",
     "src",
     "THIRD_PARTY_NOTICES.md"
