@@ -6,6 +6,7 @@ import {
   rmSync,
   statSync,
 } from "node:fs";
+import { connect } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -73,11 +74,17 @@ describe("DesktopWorkerHost in a real Bun Worker", () => {
     const stopped = await supervisor.stop();
     expect(stopped).toEqual({ graceful: true });
     expect(readFileSync(marker, "utf8")).toBe("stopped");
-    const closed = await fetch(`${started.origin}/hello`).then(
-      () => false,
-      () => true,
-    );
-    expect(closed).toBe(true);
+    // A NEW connection, not fetch: its pool may reuse a keep-alive socket,
+    // which a non-forced Bun server stop leaves open.
+    const refused = await new Promise<boolean>((resolve) => {
+      const socket = connect(Number(new URL(started.origin).port), "127.0.0.1");
+      socket.once("connect", () => {
+        socket.destroy();
+        resolve(false);
+      });
+      socket.once("error", () => resolve(true));
+    });
+    expect(refused).toBe(true);
   });
 
   it("generates the secret owner-only in the data folder and keeps it across launches", async () => {
