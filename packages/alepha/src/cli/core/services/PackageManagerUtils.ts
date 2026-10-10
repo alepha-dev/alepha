@@ -341,7 +341,11 @@ export class PackageManagerUtils {
       run?: RunnerMethod;
       exec?: (
         cmd: string,
-        opts?: { global?: boolean; root?: string },
+        opts?: {
+          global?: boolean;
+          root?: string;
+          env?: Record<string, string>;
+        },
       ) => Promise<void>;
     } = {},
   ): Promise<void> {
@@ -372,7 +376,15 @@ export class PackageManagerUtils {
       await options.run(cmd, { alias: `add ${packageName}`, root });
     } else if (options.exec) {
       this.log.debug(`Installing ${packageName}`);
-      await options.exec(cmd, { global: true, root });
+      // `alepha deploy` sets `NODE_ENV=production` before it installs
+      // wrangler, and the child inherits it. Under it npm and pnpm omit dev
+      // dependencies: the package lands in package.json but not in
+      // node_modules, and every installed devDependency is removed (#Q2610).
+      await options.exec(cmd, {
+        global: true,
+        root,
+        env: { NODE_ENV: "development" },
+      });
     }
   }
 
