@@ -9,6 +9,7 @@ import { defineConfig } from "tsdown";
  * `shell` is the main thread; its native modules are lazy `import()`s, and
  * `webview-bun` (a dependency) stays external so its `libwebview.dylib` is
  * resolved from the app's own `node_modules` when the app is compiled.
+ * `cli` is what `alepha compile --desktop` resolves and calls.
  *
  * zod stays external for both the JS and the declarations, as in the root
  * config: its `v4/locales/*.d.cts` files cannot be bundled into a `.d.ts`.
@@ -18,6 +19,7 @@ export default defineConfig({
     "core/index": "src/core/index.ts",
     "worker/index": "src/worker/index.ts",
     "shell/index": "src/shell/index.ts",
+    "cli/index": "src/cli/index.ts",
   },
   outDir: "dist",
   format: ["esm"],

@@ -43,10 +43,10 @@ describe("@alepha/desktop packaging", () => {
     expect(pkg.peerDependencies.alepha).toBe(`^${framework.version}`);
   });
 
-  it("exports the root, worker and shell, in dev and in publishConfig", ({
+  it("exports the root, worker, shell and cli, in dev and in publishConfig", ({
     expect,
   }) => {
-    const subpaths = [".", "./package.json", "./shell", "./worker"];
+    const subpaths = [".", "./cli", "./package.json", "./shell", "./worker"];
     expect(Object.keys(pkg.exports).sort()).toEqual(subpaths);
     expect(Object.keys(pkg.publishConfig.exports).sort()).toEqual(subpaths);
   });
@@ -63,10 +63,14 @@ describe("@alepha/desktop packaging", () => {
     expect(notices).toContain("Permission is hereby granted, free of charge");
   });
 
-  it("keeps the protocol and the Worker side free of native code", async ({
+  it("keeps the protocol, the Worker side and the CLI adapter free of native code", async ({
     expect,
   }) => {
-    for (const entry of ["src/core/index.ts", "src/worker/index.ts"]) {
+    for (const entry of [
+      "src/core/index.ts",
+      "src/worker/index.ts",
+      "src/cli/index.ts",
+    ]) {
       const graph = await graphOf(entry);
       expect(graph.lazyImports).not.toContain("bun:ffi");
       expect(graph.lazyImports.some((id) => id.startsWith("webview-bun"))).toBe(

@@ -25,6 +25,7 @@ export * from "./providers/NativeWindowProvider.ts";
 export * from "./providers/SupervisorProvider.ts";
 export * from "./providers/WindowProvider.ts";
 export * from "./providers/WorkerSupervisorProvider.ts";
+export * from "./services/DesktopMain.ts";
 export * from "./services/DesktopPaths.ts";
 export * from "./services/DesktopShell.ts";
 export * from "./services/DesktopSupervisorWorker.ts";

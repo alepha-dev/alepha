@@ -41,6 +41,11 @@
       "import": "./src/shell/index.ts",
       "default": "./src/shell/index.ts"
     },
+    "./cli": {
+      "types": "./src/cli/index.ts",
+      "import": "./src/cli/index.ts",
+      "default": "./src/cli/index.ts"
+    },
     "./package.json": "./package.json"
   },
   "publishConfig": {
@@ -61,6 +66,11 @@
         "types": "./dist/shell/index.d.ts",
         "import": "./dist/shell/index.js",
         "default": "./dist/shell/index.js"
+      },
+      "./cli": {
+        "types": "./dist/cli/index.d.ts",
+        "import": "./dist/cli/index.js",
+        "default": "./dist/cli/index.js"
       },
       "./package.json": "./package.json"
     }
