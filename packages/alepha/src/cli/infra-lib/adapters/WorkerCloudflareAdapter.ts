@@ -464,6 +464,9 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
     ) as WranglerConfig;
 
     this.durableObjectLifecycle.validate(config);
+    // Before anything is uploaded, so a config this upload cannot honour
+    // changes nothing at Cloudflare.
+    this.refuseUnsupported(config);
 
     // Set by the upload step below and read after it, because `run` does not
     // carry a return value across both of its implementations - the CLI's
@@ -953,6 +956,26 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
         dataset: dataset.dataset,
       });
     }
+    // Worker-to-worker bindings, from `cloudflare({ services })`. Until #Q2615
+    // they reached Cloudflare only through `wrangler deploy`, so a Lore deploy
+    // of an app with one shipped a Worker whose `env.<BINDING>` was absent.
+    for (const service of config.services ?? []) {
+      bindings.push({
+        type: "service",
+        name: service.binding,
+        service: service.service,
+        ...(service.environment ? { environment: service.environment } : {}),
+        ...(service.entrypoint ? { entrypoint: service.entrypoint } : {}),
+      });
+    }
+    // The Postgres path: `DATABASE_URL=hyperdrive://<binding>` names this.
+    for (const entry of config.hyperdrive ?? []) {
+      bindings.push({
+        type: "hyperdrive",
+        name: entry.binding,
+        id: entry.id,
+      });
+    }
     // ⚠️ wrangler carries `send_email` on its own, and this upload does not:
     // an app with `AlephaEmailCloudflare` deployed through Lore would lose
     // `env.SEND_EMAIL` and fail every send behind a green deploy. The address
@@ -970,6 +993,81 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
       bindings.push({ type: "assets", name: config.assets.binding });
     }
     return bindings;
+  }
+
+  /**
+   * Every top-level key of a generated `wrangler.jsonc` this upload knows
+   * what to do with.
+   *
+   * ⚠️ **The contract with `build.cloudflare.config`.** That object is spread
+   * into the config wholesale, and `wrangler deploy` honoured any key in it.
+   * The API upload maps a fixed list, so a key outside it (`ai`, `vectorize`,
+   * `browser`, `tail_consumers`, ...) would ship a Worker without it behind a
+   * green deploy. Refused by name instead, by {@link refuseUnsupported}.
+   *
+   * The first five are wrangler's own and need no API counterpart: `name` is
+   * the script name the deploy already passes, the module rules are applied by
+   * {@link modules}.
+   */
+  public static readonly SUPPORTED_CONFIG_KEYS: ReadonlySet<string> = new Set([
+    "$schema",
+    "name",
+    "main",
+    "rules",
+    "no_bundle",
+    "compatibility_date",
+    "compatibility_flags",
+    "workers_dev",
+    "vars",
+    "triggers",
+    "routes",
+    "assets",
+    "observability",
+    "placement",
+    "limits",
+    "d1_databases",
+    "r2_buckets",
+    "kv_namespaces",
+    "queues",
+    "analytics_engine_datasets",
+    "send_email",
+    "services",
+    "hyperdrive",
+    "durable_objects",
+    "migrations",
+    "exports",
+  ]);
+
+  /**
+   * Refuse a config this upload would silently deploy less of.
+   *
+   * Two shapes: a top-level key outside {@link SUPPORTED_CONFIG_KEYS}, and a
+   * route the API path cannot attach. Only custom domains are attached, and
+   * only one (`workers.domains.update`, account-level); a zone route pattern
+   * needs `workers.routes`, which is zone-scoped and is not this deploy's to
+   * make.
+   */
+  protected refuseUnsupported(config: WranglerConfig): void {
+    const unknown = Object.keys(config).filter(
+      (key) => !WorkerCloudflareAdapter.SUPPORTED_CONFIG_KEYS.has(key),
+    );
+    if (unknown.length > 0) {
+      throw new AlephaError(
+        `The deploy config carries ${unknown.map((key) => `\`${key}\``).join(", ")}, which the Cloudflare API upload does not send. Remove ${unknown.length === 1 ? "it" : "them"} from \`build.cloudflare.config\` rather than deploy a Worker without ${unknown.length === 1 ? "it" : "them"}.`,
+      );
+    }
+    const routes = config.routes ?? [];
+    const zoneRoutes = routes.filter((route) => !route.custom_domain);
+    if (zoneRoutes.length > 0) {
+      throw new AlephaError(
+        `The deploy config routes ${zoneRoutes.map((route) => `\`${route.pattern}\``).join(", ")} without \`custom_domain\`. The API upload attaches custom domains only; use the environment's \`domain\` option instead.`,
+      );
+    }
+    if (routes.length > 1) {
+      throw new AlephaError(
+        `The deploy config names ${routes.length} custom domains (${routes.map((route) => `\`${route.pattern}\``).join(", ")}); the API upload attaches one. Keep the environment's \`domain\`.`,
+      );
+    }
   }
 
   /**
@@ -1249,6 +1347,21 @@ interface WranglerConfig extends DurableObjectLifecycleConfig {
     }>;
   };
   analytics_engine_datasets?: Array<{ binding: string; dataset: string }>;
+  /**
+   * Worker-to-worker bindings, as `BuildCloudflareTask.enhanceServices` writes
+   * them from `cloudflare({ services })`.
+   */
+  services?: Array<{
+    binding: string;
+    service: string;
+    environment?: string;
+    entrypoint?: string;
+  }>;
+  /**
+   * The Postgres path's binding, as `BuildCloudflareTask.enhanceHyperdrive`
+   * writes it.
+   */
+  hyperdrive?: Array<{ binding: string; id: string }>;
   migrations?: Array<Record<string, unknown>>;
   observability?: Record<string, unknown>;
   placement?: Record<string, unknown>;

@@ -1172,4 +1172,155 @@ describe("the worker-side Cloudflare adapter", () => {
       expect(result.removed).toEqual(["durableObjects"]);
     });
   });
+
+  /**
+   * #Q2615: the API upload sends what the build emits, and refuses what it
+   * cannot send. `wrangler deploy` honoured every key of `wrangler.jsonc`,
+   * including whatever `build.cloudflare.config` spread into it, so a key this
+   * upload dropped would deploy a Worker without it behind a green deploy.
+   */
+  describe("binding parity with wrangler", () => {
+    const deployConfig = async (
+      fs: MemoryFileSystemProvider,
+      extra: Record<string, unknown>,
+    ) => {
+      await fs.writeFile(
+        "/deploy/wrangler.jsonc",
+        JSON.stringify({
+          name: "my-app",
+          main: "./main.cloudflare.js",
+          compatibility_date: "2025-11-17",
+          compatibility_flags: ["nodejs_compat"],
+          no_bundle: true,
+          rules: [
+            {
+              type: "ESModule",
+              globs: ["index.workerd.js", "server/workerd/*.js"],
+            },
+          ],
+          ...extra,
+        }),
+      );
+      await fs.writeFile("/deploy/main.cloudflare.js", "export default {};");
+      await fs.writeFile("/deploy/index.workerd.js", "export const a = 1;");
+    };
+
+    it("binds the services cloudflare({ services }) declares", async ({
+      expect,
+    }) => {
+      const { adapter, fs, naming } = setup();
+      adapter.use(credential);
+      await deployConfig(fs, {
+        services: [
+          { binding: "CLUB", service: "club-staging" },
+          { binding: "AUTH", service: "auth", entrypoint: "Sessions" },
+        ],
+      });
+      const calls = recordingDeployer(adapter);
+
+      await adapter.deploy(context(naming), run);
+
+      expect(calls[0]!.bindings).toContainEqual({
+        type: "service",
+        name: "CLUB",
+        service: "club-staging",
+      });
+      expect(calls[0]!.bindings).toContainEqual({
+        type: "service",
+        name: "AUTH",
+        service: "auth",
+        entrypoint: "Sessions",
+      });
+    });
+
+    it("binds the Hyperdrive config the Postgres path names", async ({
+      expect,
+    }) => {
+      const { adapter, fs, naming } = setup();
+      adapter.use(credential);
+      await deployConfig(fs, {
+        hyperdrive: [{ binding: "HYPERDRIVE", id: "hd-123" }],
+        vars: { DATABASE_URL: "hyperdrive://HYPERDRIVE" },
+      });
+      const calls = recordingDeployer(adapter);
+
+      await adapter.deploy(context(naming), run);
+
+      expect(calls[0]!.bindings).toContainEqual({
+        type: "hyperdrive",
+        name: "HYPERDRIVE",
+        id: "hd-123",
+      });
+      expect(calls[0]!.bindings).toContainEqual({
+        type: "plain_text",
+        name: "DATABASE_URL",
+        text: "hyperdrive://HYPERDRIVE",
+      });
+    });
+
+    it("refuses a key it cannot send, by name, before uploading anything", async ({
+      expect,
+    }) => {
+      const { adapter, fs, naming } = setup();
+      adapter.use(credential);
+      await deployConfig(fs, {
+        ai: { binding: "AI" },
+        tail_consumers: [{ service: "logs" }],
+      });
+      const calls = recordingDeployer(adapter);
+
+      await expect(adapter.deploy(context(naming), run)).rejects.toThrow(
+        /`ai`, `tail_consumers`.*build\.cloudflare\.config/,
+      );
+      expect(calls).toHaveLength(0);
+    });
+
+    it("refuses a zone route, which only wrangler could attach", async ({
+      expect,
+    }) => {
+      const { adapter, fs, naming } = setup();
+      adapter.use(credential);
+      await deployConfig(fs, {
+        routes: [{ pattern: "example.com/api/*", zone_name: "example.com" }],
+      });
+      const calls = recordingDeployer(adapter);
+
+      await expect(adapter.deploy(context(naming), run)).rejects.toThrow(
+        /`example\.com\/api\/\*` without `custom_domain`/,
+      );
+      expect(calls).toHaveLength(0);
+    });
+
+    it("deploys the config apps/docs and apps/ui build, asset behaviour included", async ({
+      expect,
+    }) => {
+      // `build.cloudflare.config` of both apps, merged the way
+      // `BuildCloudflareTask` merges it, plus the keys the build adds itself.
+      const { adapter, fs, naming } = setup();
+      adapter.use(credential);
+      await deployConfig(fs, {
+        assets: {
+          directory: "./public",
+          binding: "ASSETS",
+          run_worker_first: ["/api/*"],
+          not_found_handling: "404-page",
+        },
+        observability: { enabled: true, head_sampling_rate: 1 },
+        workers_dev: false,
+        routes: [{ pattern: "alepha.dev", custom_domain: true }],
+        vars: { NODE_ENV: "production" },
+      });
+      await fs.writeFile("/deploy/public/index.html", "<h1>hi</h1>");
+      const calls = recordingDeployer(adapter);
+
+      await adapter.deploy(context(naming), run);
+
+      expect(calls[0]!.assets.config).toEqual({
+        run_worker_first: ["/api/*"],
+        not_found_handling: "404-page",
+      });
+      expect(calls[0]!.domain).toEqual({ hostname: "alepha.dev" });
+      expect(calls[0]!.workersDev).toBe(false);
+    });
+  });
 });
