@@ -120,14 +120,13 @@ A table rebuild is how drizzle-kit changes what SQLite cannot alter in place (`C
 
 1. **The framework marker.** `check:migrations` (and `platform up`) refuses any `DROP TABLE` without a `-- alepha-allow-drop-table: <why>` comment on the line above it.
 2. **`test/migration-safety.spec.ts`.** Every dropped table needs a per-migration `SANCTIONED_DROPS` entry, and since `CASCADE_BASELINE` a table whose previous snapshot shows a `CASCADE` or `SET NULL` child is refused **whatever the entry says**. Only a leaf can be rebuilt or dropped (precedent: `folio_blobs` in `20261004225050_drop_dead_folio_columns`).
-3. **The `Rehearse migration` workflow** (`workflow_dispatch`, run it on the branch carrying the migration and link the run from the quest). `alepha rehearse` copies lore-production into a throwaway remote D1, applies the pending migrations through `D1MigrationsService` (production's transport), and fails when a surviving table's row count moves or a table vanishes that no marker names. A backfill that grows its table on purpose says so with `-- alepha-rehearse-allow-insert: <why>` directly above its `INSERT` (#Q2626): growth is then accepted for that table, a shrink still fails. The copy and the dump never leave the runner and are deleted whatever happens.
-4. **The Time Travel bookmark.** `Deploy latest` prints `wrangler d1 time-travel info lore-production` before every deploy; the restore is the one command it prints.
+3. **The Time Travel bookmark.** `Deploy` prints `wrangler d1 time-travel info lore-production` before every deploy; the restore is the one command it prints.
 
 **A column stops being read before it is dropped,** and the drop ships alone, in its own push to `main`.
 
 **The migrate-before-deploy window is accepted.** `platform up` migrates, then deploys, so for a few seconds the previous Worker still SELECTs a dropped column and its reads of that table fail. With one user, the owner accepted it (2026-10-04): a drop simply deploys, with no quiet hour and no post-deploy migration phase.
 
-**Why local testing won't catch it:** every database the suites build is empty or seeded by hand, so a cascade only shows up where rows exist. The rehearsal is the step that has them.
+**Limits of local testing:** every database the suites build is empty or seeded by hand, so passing tests cannot prove that production data survives a migration. The manual migration rehearsal workflow was removed at the owner's request on 2026-10-10; CI no longer checks migrations against a copy of production. The `alepha rehearse` command remains available for an explicitly arranged run on an ephemeral CI runner, with cleanup even if the process is interrupted.
 
 **CI auto-deploys to prod on every push to `main` whose Verify succeeds** (this repository's `.github/workflows/verify.yml`, workflow **Verify**, then `.github/workflows/deploy-latest.yml` → `deploy-lore-production` job, a `workflow_run` on Verify → `yarn alepha platform up --env production` from `apps/lore`). A Verify cancelled by a newer push skips that commit's deploy; the next green push ships it. There is no human gate between push and prod migration. Treat every D1 migration as you would a `DROP DATABASE` — read every line before pushing.
 

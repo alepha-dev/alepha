@@ -1,4 +1,4 @@
-name: Deploy latest
+name: Deploy
 
 permissions:
   contents: read

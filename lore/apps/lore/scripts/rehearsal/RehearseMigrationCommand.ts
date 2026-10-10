@@ -22,11 +22,11 @@ import { RehearsalDiff } from "./RehearsalDiff.ts";
  * endpoint did not, so a rehearsal on local SQLite, or through `wrangler d1
  * execute --command`, would rehearse a different transport (folio #F1359).
  *
- * Runs from the `Rehearse migration` workflow, never from a laptop: the export
+ * Run only on an ephemeral CI runner, never from a laptop: the export
  * is every production row, users and emails included, and it must not leave
  * an ephemeral runner. It prints table names and counts only, and deletes the
- * copy and the dump whatever happens; the workflow repeats that cleanup in an
- * `always()` step in case this process dies first.
+ * copy and the dump in its finally block. The runner must also clean up if
+ * this process is interrupted before that block runs.
  */
 export class RehearseMigrationCommand {
   protected readonly log = $logger();
@@ -40,7 +40,7 @@ export class RehearseMigrationCommand {
 
   /**
    * The throwaway database. A fixed name, so a copy a crashed run left behind
-   * is found and deleted by the next one, and by the workflow's cleanup step.
+   * is found and deleted by the next one, and by the runner's cleanup step.
    */
   public static readonly COPY = "lore-rehearsal";
 

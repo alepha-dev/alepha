@@ -48,7 +48,7 @@ core <- deploy
 
 A small edit (a few lines, no decision anyone would look for later) goes straight to `main` with no quest.
 
-⚠️ **`main` deploys to production with no human gate.** `Deploy latest` runs `alepha platform up` on `lore-production` once `Verify` succeeds on a push to `main`. Lore migrations target D1, which cascade-wipes children on `DROP TABLE`: read "Migration safety on D1" in `apps/lore/CLAUDE.md` before pushing one.
+⚠️ **`main` deploys to production with no human gate.** `Deploy` runs `alepha platform up` on `lore-production` once `Verify` succeeds on a push to `main`. Lore migrations target D1, which cascade-wipes children on `DROP TABLE`: read "Migration safety on D1" in `apps/lore/CLAUDE.md` before pushing one.
 
 ### Verifying
 

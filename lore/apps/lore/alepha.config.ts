@@ -302,8 +302,8 @@ export default defineConfig({
       ],
     }),
     // `alepha rehearse`: the pending migrations applied to a throwaway copy
-    // of lore-production, row counts compared (#Q2603). Run by the
-    // `Rehearse migration` workflow, never from a laptop.
+    // of lore-production, row counts compared (#Q2603). Run only on an
+    // ephemeral CI runner with interruption cleanup, never from a laptop.
     RehearseMigrationCommand,
   ],
 });
