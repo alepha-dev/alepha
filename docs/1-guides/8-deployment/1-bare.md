@@ -81,7 +81,7 @@ cd dist && APP_SECRET=... SERVER_HOST=127.0.0.1 ./myapp
 - The binary serves its assets from inside itself, ETag and precompressed brotli included, and ignores any `public/` directory next to it.
 - It targets the machine that builds it (`bun-darwin-arm64` on an Apple Silicon Mac). Cross-compile with `--target`, for example `alepha compile --target bun-linux-x64` for a Linux server built on a Mac.
 - Expect about 60 MB, almost all of it the Bun runtime. Windows is untested.
-- `alepha compile --desktop` builds a native macOS app instead, `dist/<Name>.app`, from a top-level `desktop: { name, identifier }` in `alepha.config.ts` and the `@alepha/desktop` package. Declaring `desktop` changes nothing else: only the flag reads it. Like an ordinary compile, it consumes `dist/`, but only once the app is complete; a failure leaves `dist/` as the build wrote it.
+- `alepha compile --desktop` builds a [native macOS app](/docs/guides-deployment-desktop) instead, `dist/<Name>.app`, from a top-level `desktop: { name, identifier }` in `alepha.config.ts` and the `@alepha/desktop` package. Declaring `desktop` changes nothing else: only the flag reads it. Like an ordinary compile, it consumes `dist/`, but only once the app is complete; a failure leaves `dist/` as the build wrote it.
 
 Declare the slice in `alepha.config.ts` so the build needs no flag:
 
