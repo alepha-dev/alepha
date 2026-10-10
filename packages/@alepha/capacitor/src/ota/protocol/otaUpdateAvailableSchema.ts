@@ -4,7 +4,7 @@ import { type Infer, z } from "alepha";
  * An update check's answer when the device should run another bundle: what
  * the pinned updater's `download()` needs, as it reads it.
  *
- * - `url` is a short-lived download link (`/ota/bundles/:id/download?t=`);
+ * - `url` is a short-lived download link (`/ota/bundles/:id/download?token=`);
  * - `session_key` is Capgo v2's `<iv>:<encrypted AES key>`, both base64,
  *   the key encrypted with the publisher's private key;
  * - `checksum` is the plugin's encrypted checksum: the SHA-256 of the plain

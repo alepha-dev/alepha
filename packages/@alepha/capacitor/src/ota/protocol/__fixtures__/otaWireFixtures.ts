@@ -63,7 +63,7 @@ export const otaWireFixtures = {
     status: 200,
     body: {
       version: "1.0.0-20261010T121500",
-      url: "https://api.example.test/ota/bundles/0199d6a2-7f3b-7c1e-9d4f-5a6b7c8d9e0f/download?t=eyJ.signed",
+      url: "https://api.example.test/ota/bundles/0199d6a2-7f3b-7c1e-9d4f-5a6b7c8d9e0f/download?token=1760099100000.5f2c",
       session_key:
         "c9CtcTiefMacBCB7+Qk9SQ==:lqNKFGVy9WK0QbBXwcIGPnshUnn8FVxmmIMcagSDjHZ2",
       checksum:

@@ -334,14 +334,11 @@ export class OtaBundleInspector {
    */
   protected rsaPublicDecrypt(publicKey: string, data: Uint8Array): Uint8Array {
     const { n, e, length } = this.parsePublicKey(publicKey);
-    if (data.length !== length) {
-      throw new OtaBundleError(
-        "A value encrypted for this bundle does not fit this app's public key.",
-      );
-    }
     const c = this.toBigInt(data);
-    if (c >= n) {
-      throw new OtaBundleError("A value encrypted for this bundle is invalid.");
+    if (data.length !== length || c >= n) {
+      throw new OtaBundleError(
+        "A value in this bundle was not encrypted with this app's key.",
+      );
     }
     const m = this.modPow(c, e, n);
     const block = this.fromBigInt(m, length);
