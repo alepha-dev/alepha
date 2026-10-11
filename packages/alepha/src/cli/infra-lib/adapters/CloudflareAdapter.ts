@@ -27,10 +27,13 @@ import {
   resolveSecretKeySet,
   selectSecrets,
 } from "../secretKeys.ts";
-import { CloudflareApi } from "../services/CloudflareApi.ts";
 import { CloudflareCredentialSource } from "../services/CloudflareCredentialSource.ts";
+import { CloudflareDeployClient } from "../services/CloudflareDeployClient.ts";
 import { CloudflareProvisionClient } from "../services/CloudflareProvisionClient.ts";
-import { D1MigrationsService } from "../services/D1MigrationsService.ts";
+import {
+  type D1MigrationTransport,
+  D1MigrationsService,
+} from "../services/D1MigrationsService.ts";
 import { NamingService } from "../services/NamingService.ts";
 import { StoragePlaceholderService } from "../services/StoragePlaceholderService.ts";
 import { WranglerApi } from "../services/WranglerApi.ts";
@@ -49,9 +52,9 @@ import {
 /**
  * Cloudflare Workers adapter.
  *
- * Uses the Cloudflare REST API (via CloudflareApi) for resource provisioning
- * and teardown, and uploads through `WorkerCloudflareAdapter`, the code Lore
- * deploys with, so there is one deploy path. The deploy carries the secrets,
+ * Provisions, inspects and tears down through `CloudflareProvisionClient`
+ * and uploads through `WorkerCloudflareAdapter`: the clients Lore deploys
+ * with, so there is one Cloudflare path (#E75). The deploy carries the secrets,
  * see `deploy`. The credential comes from `CloudflareCredentialSource`:
  * `CLOUDFLARE_API_TOKEN` first, wrangler only for an interactive login.
  */
@@ -68,7 +71,6 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
   protected readonly shell = $inject(ShellProvider);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly envUtils = $inject(EnvUtils);
-  protected readonly api = $inject(CloudflareApi);
   protected readonly wrangler = $inject(WranglerApi);
   protected readonly credentials = $inject(CloudflareCredentialSource);
   /**
@@ -111,18 +113,37 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
   }
 
   /**
-   * Propagate the environment's data-jurisdiction setting to the API client.
-   *
-   * Must be invoked at the top of every entry point (authenticate, build,
-   * deploy, secrets, provision, migrate, inspect, teardown) because
-   * CloudflareApi is a singleton reused across env invocations.
+   * The credential this environment runs under: the run's token, its account
+   * and the environment's jurisdiction. See `CloudflareCredentialSource`.
    */
-  protected configureApi(
+  protected async credentialFor(
     ctx: InfraContext<CloudflareEnvironmentOptions>,
-  ): void {
-    this.api.setJurisdiction(ctx.options.jurisdiction);
-    this.api.setAccountId(ctx.options.accountId);
-    this.api.setRoot(ctx.root);
+  ): Promise<WorkerCloudflareCredential> {
+    const { credential } = await this.credentials.resolve({
+      root: ctx.root,
+      accountId: ctx.options.accountId,
+      jurisdiction: ctx.options.jurisdiction,
+    });
+    return credential;
+  }
+
+  /**
+   * A provisioning client under this environment's credential.
+   */
+  protected async provisionerFor(
+    ctx: InfraContext<CloudflareEnvironmentOptions>,
+  ): Promise<CloudflareProvisionClient> {
+    return this.provisioner(await this.credentialFor(ctx));
+  }
+
+  /**
+   * The D1 migration transport for this environment's database, which is
+   * the provisioning client (`alepha infra db baseline mark` drives it).
+   */
+  public async d1Transport(
+    ctx: InfraContext<CloudflareEnvironmentOptions>,
+  ): Promise<D1MigrationTransport> {
+    return await this.provisionerFor(ctx);
   }
 
   protected async runShell(
@@ -193,7 +214,6 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
     ctx: InfraContext<CloudflareEnvironmentOptions>,
     run: RunnerMethod,
   ): Promise<void> {
-    this.configureApi(ctx);
     await run({
       name: "authenticate",
       handler: async () => {
@@ -228,12 +248,25 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
   protected async resolveExistingResourceIds(
     ctx: InfraContext<CloudflareEnvironmentOptions>,
   ): Promise<void> {
+    const needsDatabase =
+      ctx.resources.hasDatabase &&
+      !this.provisionedD1Id &&
+      !this.provisionedHyperdriveId;
+    const needsKV =
+      ctx.resources.hasKV && !this.provisionedKVIds.has(ctx.naming.kv());
+    if (!needsDatabase && !needsKV) {
+      // Nothing to look up, so no credential: `alepha infra build` of an app
+      // with no resources stays offline.
+      return;
+    }
+    const api = await this.provisionerFor(ctx);
+
     if (ctx.resources.hasDatabase && !this.provisionedD1Id) {
       if (this.provisionedHyperdriveId) {
         // Hyperdrive already resolved  -  nothing to look up.
       } else if (await this.isPostgres(ctx)) {
         const name = ctx.naming.hyperdrive();
-        const found = (await this.api.listHyperdrive()).find(
+        const found = (await api.listHyperdrive()).find(
           (it) => it.name === name,
         );
         if (!found) {
@@ -244,7 +277,7 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
         this.provisionedHyperdriveId = found.id;
       } else {
         const name = ctx.naming.d1();
-        const found = (await this.api.listD1()).find((it) => it.name === name);
+        const found = (await api.listD1()).find((it) => it.name === name);
         if (!found) {
           throw new AlephaError(
             `D1 database '${name}' does not exist. Run 'alepha deploy' before building.`,
@@ -257,7 +290,7 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
     if (ctx.resources.hasKV) {
       const name = ctx.naming.kv();
       if (!this.provisionedKVIds.has(name)) {
-        const found = (await this.api.listKV()).find((it) => it.title === name);
+        const found = (await api.listKV()).find((it) => it.title === name);
         if (!found) {
           throw new AlephaError(
             `KV namespace '${name}' does not exist. Run 'alepha deploy' before building.`,
@@ -272,7 +305,6 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
     ctx: InfraContext<CloudflareEnvironmentOptions>,
     run: RunnerMethod,
   ): Promise<void> {
-    this.configureApi(ctx);
     await this.resolveExistingResourceIds(ctx);
     const appDir = ctx.root;
 
@@ -523,7 +555,6 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
     run: RunnerMethod,
   ): Promise<string | undefined> {
     await this.validateDeployArtifact(ctx);
-    this.configureApi(ctx);
     const { credential } = await this.credentials.resolve({
       root: ctx.root,
       accountId: ctx.options.accountId,
@@ -603,6 +634,19 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
     credential: WorkerCloudflareCredential,
   ): CloudflareProvisionClient {
     return new CloudflareProvisionClient(credential);
+  }
+
+  /**
+   * A deploy client under the run's credential, for the deployment reads
+   * `inspect` makes.
+   */
+  protected deployer(
+    credential: WorkerCloudflareCredential,
+  ): CloudflareDeployClient {
+    return new CloudflareDeployClient({
+      ...credential,
+      now: () => this.dateTime.nowMillis(),
+    });
   }
 
   /**
@@ -800,7 +844,7 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
     ctx: InfraContext<CloudflareEnvironmentOptions>,
     run: RunnerMethod,
   ): Promise<void> {
-    this.configureApi(ctx);
+    const api = await this.provisionerFor(ctx);
     const needsDB = ctx.resources.hasDatabase;
     const needsBucket = ctx.resources.hasBucket;
     const postgres = needsDB && (await this.isPostgres(ctx));
@@ -817,10 +861,9 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
         tasks.push({
           name: `provision hyperdrive (${hdName})`,
           handler: async () => {
-            this.provisionedHyperdriveId = await this.ensureHyperdrive(
-              hdName,
-              dbUrl,
-            );
+            this.provisionedHyperdriveId = (
+              await api.ensureHyperdrive(hdName, dbUrl)
+            ).id;
           },
         });
       } else {
@@ -828,7 +871,11 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
         tasks.push({
           name: `provision d1 (${dbName})`,
           handler: async () => {
-            this.provisionedD1Id = await this.ensureD1(dbName);
+            // `weur`, what the CLI has always created with; making it
+            // configurable is not #E75's (#Q2613).
+            this.provisionedD1Id = (
+              await api.ensureD1(dbName, { locationHint: "weur" })
+            ).uuid;
           },
         });
       }
@@ -839,7 +886,7 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
       tasks.push({
         name: `provision r2 (${bucketName})`,
         handler: async () => {
-          await this.ensureR2(bucketName);
+          await api.ensureR2(bucketName);
         },
       });
     }
@@ -848,7 +895,7 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
       tasks.push({
         name: `provision kv (${kvName})`,
         handler: async () => {
-          this.provisionedKVIds.set(kvName, await this.ensureKV(kvName));
+          this.provisionedKVIds.set(kvName, (await api.ensureKV(kvName)).id);
         },
       });
     }
@@ -858,7 +905,13 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
       tasks.push({
         name: `provision queue (${queueName})`,
         handler: async () => {
-          await this.ensureQueue(queueName);
+          // The dead-letter queue too: the build names `<queue>-dlq` as the
+          // consumer's, and the API refuses a consumer whose DLQ does not
+          // exist. wrangler used to get away without it (#Q2613).
+          await Promise.all([
+            api.ensureQueue(queueName),
+            api.ensureQueue(this.dlqName(queueName)),
+          ]);
         },
       });
     }
@@ -874,7 +927,6 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
     ctx: InfraContext<CloudflareEnvironmentOptions>,
     run: RunnerMethod,
   ): Promise<void> {
-    this.configureApi(ctx);
     const needsDB = ctx.resources.hasDatabase;
     if (!needsDB) {
       return;
@@ -892,7 +944,6 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
     run: RunnerMethod,
     options: ExportDbOptions = {},
   ): Promise<void> {
-    this.configureApi(ctx);
     if (!ctx.resources.hasDatabase) {
       throw new AlephaError(
         "No database detected for this app  -  nothing to export.",
@@ -1036,7 +1087,7 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
         await this.fs.cp(migrationsDir, distMigrations);
 
         await this.d1Migrations.apply(
-          this.api,
+          await this.provisionerFor(ctx),
           dbName,
           ctx.root,
           // Where the copy above put them.
@@ -1094,7 +1145,8 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
     ctx: InfraContext<CloudflareEnvironmentOptions>,
     run: RunnerMethod,
   ): Promise<InfraState> {
-    this.configureApi(ctx);
+    const credential = await this.credentialFor(ctx);
+    const api = this.provisioner(credential);
     const state: InfraState = {
       workers: [],
       databases: [],
@@ -1114,7 +1166,8 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
         name: `inspect worker (${name})`,
         handler: async () => {
           try {
-            const deployment = await this.getActiveDeployment(name);
+            const deployment =
+              await this.deployer(credential).activeDeployment(name);
             if (deployment) {
               state.workers.push({
                 name,
@@ -1141,7 +1194,7 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
         tasks.push({
           name: `inspect hyperdrive (${hdName})`,
           handler: async () => {
-            const configs = await this.api.listHyperdrive();
+            const configs = await api.listHyperdrive();
             const existing = configs.find((c) => c.name === hdName);
             state.databases.push({
               name: hdName,
@@ -1156,7 +1209,7 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
         tasks.push({
           name: `inspect d1 (${dbName})`,
           handler: async () => {
-            const databases = await this.api.listD1();
+            const databases = await api.listD1();
             const existing = databases.find((db) => db.name === dbName);
             state.databases.push({
               name: dbName,
@@ -1175,7 +1228,7 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
       tasks.push({
         name: `inspect r2 (${bucketName})`,
         handler: async () => {
-          const buckets = await this.api.listR2();
+          const buckets = await api.listR2();
           const existing = buckets.find((b) => b.name === bucketName);
           state.buckets.push({
             name: bucketName,
@@ -1190,7 +1243,7 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
       tasks.push({
         name: `inspect kv (${kvName})`,
         handler: async () => {
-          const namespaces = await this.api.listKV();
+          const namespaces = await api.listKV();
           const existing = namespaces.find((ns) => ns.title === kvName);
           state.kvNamespaces.push({
             name: kvName,
@@ -1202,16 +1255,19 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
     }
     if (ctx.resources.hasQueue) {
       const queueName = ctx.naming.queue();
+      const names = [queueName, this.dlqName(queueName)];
       tasks.push({
-        name: `inspect queue (${queueName})`,
+        name: `inspect queue (${names.join(", ")})`,
         handler: async () => {
-          const queues = await this.api.listQueues();
-          const existing = queues.find((q) => q.queue_name === queueName);
-          state.queues.push({
-            name: queueName,
-            exists: !!existing,
-            id: existing?.queue_id,
-          });
+          const queues = await api.listQueues();
+          for (const name of names) {
+            const existing = queues.find((q) => q.queue_name === name);
+            state.queues.push({
+              name,
+              exists: !!existing,
+              id: existing?.queue_id,
+            });
+          }
         },
       });
     }
@@ -1231,7 +1287,7 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
         name: "inspect secrets",
         handler: async () => {
           try {
-            const deployed = await this.api.listSecrets(workerName);
+            const deployed = await api.listSecrets(workerName);
             const deployedNames = new Set(deployed.map((s) => s.name));
             for (const key of expectedSecrets) {
               state.secrets.push({
@@ -1261,7 +1317,7 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
     ctx: InfraContext<CloudflareEnvironmentOptions>,
     run: RunnerMethod,
   ): Promise<void> {
-    this.configureApi(ctx);
+    const api = await this.provisionerFor(ctx);
     if (ctx.resources.hasQueue) {
       const workerName = ctx.naming.worker();
       const queueName = ctx.naming.queue();
@@ -1269,10 +1325,10 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
         name: `unbind queue consumer ${queueName}`,
         handler: async () => {
           try {
-            const queues = await this.api.listQueues();
+            const queues = await api.listQueues();
             const queue = queues.find((q) => q.queue_name === queueName);
             if (queue) {
-              await this.api.deleteQueueConsumer(queue.queue_id, workerName);
+              await api.deleteQueueConsumer(queue.queue_id, workerName);
             }
           } catch (error: any) {
             this.log.warn(
@@ -1290,7 +1346,7 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
         name: `delete worker ${name}`,
         handler: async () => {
           try {
-            await this.api.deleteWorker(name);
+            await api.deleteWorker(name);
           } catch (error: any) {
             this.log.warn(
               `Failed to delete worker ${name}: ${String(error.message || "")}`,
@@ -1300,25 +1356,25 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
       });
     }
     if (ctx.resources.hasQueue) {
-      const name = ctx.naming.queue();
-      await run({
-        name: `delete queue ${name}`,
-        handler: async () => {
-          try {
-            const queues = await this.api.listQueues();
-            const queue = queues.find((q) => q.queue_name === name);
-            if (!queue) {
-              this.log.debug(`Queue ${name} not found  -  skipping.`);
-              return;
+      // The queue, then its dead-letter queue, which `provision` made beside
+      // it. `deleteQueue` resolves the name and is quiet when it is gone.
+      for (const name of [
+        ctx.naming.queue(),
+        this.dlqName(ctx.naming.queue()),
+      ]) {
+        await run({
+          name: `delete queue ${name}`,
+          handler: async () => {
+            try {
+              await api.deleteQueue(name);
+            } catch (error: any) {
+              this.log.warn(
+                `Failed to delete queue ${name}: ${String(error.message || "")}`,
+              );
             }
-            await this.api.deleteQueue(queue.queue_id);
-          } catch (error: any) {
-            this.log.warn(
-              `Failed to delete queue ${name}: ${String(error.message || "")}`,
-            );
-          }
-        },
-      });
+          },
+        });
+      }
     }
     if (ctx.resources.hasKV) {
       const name = ctx.naming.kv();
@@ -1326,13 +1382,13 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
         name: `delete kv ${name}`,
         handler: async () => {
           try {
-            const namespaces = await this.api.listKV();
+            const namespaces = await api.listKV();
             const existing = namespaces.find((ns) => ns.title === name);
             if (!existing) {
               this.log.debug(`KV namespace ${name} not found  -  skipping.`);
               return;
             }
-            await this.api.deleteKV(existing.id);
+            await api.deleteKV(existing.id);
           } catch (error: any) {
             this.log.warn(
               `Failed to delete kv ${name}: ${String(error.message || "")}`,
@@ -1353,7 +1409,7 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
         name: `delete r2 ${name}`,
         handler: async () => {
           try {
-            await this.deleteR2Bucket(name, ctx);
+            await this.deleteR2Bucket(api, name, ctx);
           } catch (error: any) {
             const msg = String(error.message || "");
             if (this.isMissingBucketError(msg)) {
@@ -1375,13 +1431,13 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
           name: `delete hyperdrive ${name}`,
           handler: async () => {
             try {
-              const configs = await this.api.listHyperdrive();
+              const configs = await api.listHyperdrive();
               const existing = configs.find((c) => c.name === name);
               if (!existing) {
                 this.log.debug(`Hyperdrive ${name} not found  -  skipping.`);
                 return;
               }
-              await this.api.deleteHyperdrive(existing.id);
+              await api.deleteHyperdrive(existing.id);
             } catch (error: any) {
               this.log.warn(
                 `Failed to delete hyperdrive ${name}: ${String(error.message || "")}`,
@@ -1395,13 +1451,13 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
           name: `delete d1 ${name}`,
           handler: async () => {
             try {
-              const databases = await this.api.listD1();
+              const databases = await api.listD1();
               const existing = databases.find((db) => db.name === name);
               if (!existing) {
                 this.log.debug(`D1 database ${name} not found  -  skipping.`);
                 return;
               }
-              await this.api.deleteD1(existing.uuid);
+              await api.deleteD1(existing.uuid);
             } catch (error: any) {
               this.log.warn(
                 `Failed to delete d1 ${name}: ${String(error.message || "")}`,
@@ -1417,39 +1473,13 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
   // Resource helpers (REST API)
   // -------------------------------------------------------------------------
 
-  protected async ensureD1(name: string): Promise<string> {
-    const databases = await this.api.listD1();
-    const existing = databases.find((db) => db.name === name);
-    if (existing) {
-      return existing.uuid;
-    }
-
-    const created = await this.api.createD1(name);
-    return created.uuid;
-  }
-
-  protected async ensureHyperdrive(
-    name: string,
-    connectionString: string,
-  ): Promise<string> {
-    const configs = await this.api.listHyperdrive();
-    const existing = configs.find((c) => c.name === name);
-    if (existing) {
-      return existing.id;
-    }
-
-    const created = await this.api.createHyperdrive(name, connectionString);
-    return created.id;
-  }
-
-  protected async ensureR2(name: string): Promise<void> {
-    const buckets = await this.api.listR2();
-    const existing = buckets.find((b) => b.name === name);
-    if (existing) {
-      return;
-    }
-
-    await this.api.createR2(name);
+  /**
+   * The dead-letter queue `BuildCloudflareTask.enhanceQueue` names for the
+   * job queue, unless `CLOUDFLARE_QUEUE_DLQ_NAME` overrides it (a queue the
+   * app then owns).
+   */
+  protected dlqName(queueName: string): string {
+    return `${queueName}-dlq`;
   }
 
   /**
@@ -1494,11 +1524,12 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
    * no-op, so teardown is idempotent.
    */
   protected async deleteR2Bucket(
+    api: CloudflareProvisionClient,
     name: string,
     ctx: InfraContext<CloudflareEnvironmentOptions>,
   ): Promise<void> {
     try {
-      await this.api.deleteR2(name);
+      await api.deleteR2Bucket(name);
       return;
     } catch (error: any) {
       const msg = String(error.message || "");
@@ -1511,10 +1542,10 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
       );
     }
 
-    await this.wipeR2Bucket(name, ctx);
+    await this.wipeR2Bucket(api, name, ctx);
 
     try {
-      await this.api.deleteR2(name);
+      await api.deleteR2Bucket(name);
     } catch (error: any) {
       const msg = String(error.message || "");
       if (this.isMissingBucketError(msg)) {
@@ -1539,6 +1570,7 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
    * contents from R2's perspective and would otherwise block the delete.
    */
   protected async wipeR2Bucket(
+    api: CloudflareProvisionClient,
     bucketName: string,
     ctx: InfraContext<CloudflareEnvironmentOptions>,
   ): Promise<void> {
@@ -1561,7 +1593,7 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
       }
       try {
         const tokenName = `alepha-teardown-${bucketName}-${this.dateTime.nowMillis()}`;
-        const token = await this.api.createR2Token(tokenName, bucketName);
+        const token = await api.createR2Token(tokenName, bucketName);
         mintedTokenId = token.id;
         creds = {
           accessKeyId: token.accessKeyId,
@@ -1578,7 +1610,7 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
     }
 
     try {
-      const accountId = await this.api.resolveAccountId();
+      const accountId = api.account;
       const jur = ctx.options.jurisdiction;
       const host = jur
         ? `${accountId}.${jur}.r2.cloudflarestorage.com`
@@ -1647,7 +1679,7 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
       // must not be deleted. Always revoke, even if the wipe failed mid-way.
       if (mintedTokenId) {
         try {
-          await this.api.deleteR2Token(mintedTokenId);
+          await api.deleteR2Token(mintedTokenId);
         } catch (error: any) {
           this.log.warn(
             `Failed to revoke ephemeral R2 token ${mintedTokenId}: ${String(error.message || "")}`,
@@ -1655,57 +1687,5 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
         }
       }
     }
-  }
-
-  protected async ensureKV(name: string): Promise<string> {
-    const namespaces = await this.api.listKV();
-    const existing = namespaces.find((ns) => ns.title === name);
-    if (existing) {
-      return existing.id;
-    }
-
-    const created = await this.api.createKV(name);
-    return created.id;
-  }
-
-  protected async ensureQueue(name: string): Promise<void> {
-    const queues = await this.api.listQueues();
-    const existing = queues.find((q) => q.queue_name === name);
-    if (existing) {
-      return;
-    }
-
-    await this.api.createQueue(name);
-  }
-
-  /**
-   * Get the currently active deployment for a worker.
-   */
-  protected async getActiveDeployment(
-    workerName: string,
-  ): Promise<
-    { versionId: string; tag?: string; createdAt?: string } | undefined
-  > {
-    const deployments = await this.api.listDeployments(workerName);
-
-    // API ordering is not guaranteed across releases  -  sort explicitly.
-    const sorted = [...deployments].sort((a, b) =>
-      b.created_on.localeCompare(a.created_on),
-    );
-    const latest = sorted[0];
-    if (!latest?.versions?.[0]) {
-      return undefined;
-    }
-
-    const activeVersionId = latest.versions[0].version_id;
-
-    const versions = await this.api.listVersions(workerName);
-    const version = versions.find((v) => v.id === activeVersionId);
-
-    return {
-      versionId: activeVersionId,
-      tag: version?.annotations?.["workers/tag"],
-      createdAt: version?.metadata.created_on,
-    };
   }
 }

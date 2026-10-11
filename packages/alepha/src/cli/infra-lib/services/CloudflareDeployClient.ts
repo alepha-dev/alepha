@@ -1061,6 +1061,41 @@ export class CloudflareDeployClient {
   }
 
   /**
+   * The Worker's live version, with its tag and creation date, or
+   * `undefined` for a Worker that has never been deployed.
+   *
+   * What `alepha infra status` prints for the Worker. The newest deployment
+   * is chosen by `created_on` rather than by the API's order, which is not
+   * documented as stable.
+   */
+  public async activeDeployment(
+    scriptName: string,
+  ): Promise<
+    { versionId: string; tag?: string; createdAt?: string } | undefined
+  > {
+    const answer = await this.client.workers.scripts.deployments.list(
+      scriptName,
+      { account_id: this.accountId },
+    );
+    const latest = [...(answer?.result?.deployments ?? [])].sort((a, b) =>
+      (b.created_on ?? "").localeCompare(a.created_on ?? ""),
+    )[0];
+    const versionId = latest?.versions?.[0]?.version_id;
+    if (!versionId) {
+      return undefined;
+    }
+    const version = await this.client.workers.scripts.versions.get(versionId, {
+      account_id: this.accountId,
+      script_name: scriptName,
+    });
+    return {
+      versionId,
+      tag: version?.annotations?.["workers/tag"],
+      createdAt: version?.metadata?.created_on,
+    };
+  }
+
+  /**
    * Point the Worker's live deployment at one version, wholly.
    *
    * ⚠️ **Seconds, with no artifact and no upload**, which is the whole reason
@@ -1198,8 +1233,33 @@ export interface CloudflareDeployApi {
         ) => Promise<{
           result?: { items?: Array<{ id: string; created_on?: string }> };
         }>;
+        /**
+         * ⚠️ The version id first, the script name in the params.
+         */
+        get: (
+          versionId: string,
+          params: { account_id: string; script_name: string },
+        ) => Promise<{
+          annotations?: Record<string, string>;
+          metadata?: { created_on?: string };
+        }>;
       };
       deployments: {
+        /**
+         * ⚠️ `result` is `{ deployments }`, an object wrapping the list, the
+         * same `V4PagePagination` shape as `versions.list`.
+         */
+        list: (
+          name: string,
+          params: { account_id: string },
+        ) => Promise<{
+          result?: {
+            deployments?: Array<{
+              created_on?: string;
+              versions?: Array<{ version_id: string; percentage?: number }>;
+            }>;
+          };
+        }>;
         create: (
           name: string,
           params: {

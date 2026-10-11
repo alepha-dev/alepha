@@ -52,8 +52,26 @@ describe("the Cloudflare deploy client", () => {
             list: record("versions.list", {
               result: { items: versions },
             }) as never,
+            get: record("versions.get", {
+              annotations: { "workers/tag": "v1.2.0" },
+              metadata: { created_on: "2026-10-11T00:00:00Z" },
+            }) as never,
           },
           deployments: {
+            list: record("deployments.list", {
+              result: {
+                deployments: [
+                  {
+                    created_on: "2026-10-10T00:00:00Z",
+                    versions: [{ version_id: "old" }],
+                  },
+                  {
+                    created_on: "2026-10-11T00:00:00Z",
+                    versions: [{ version_id: "live" }],
+                  },
+                ],
+              },
+            }) as never,
             create: record("deployments.create") as never,
           },
           subdomain: { create: record("subdomain.create") as never },
@@ -103,6 +121,24 @@ describe("the Cloudflare deploy client", () => {
       of: (name: string) => calls.filter((it) => it.name === name),
     };
   };
+
+  it("answers the newest deployment's version, with its tag and date", async ({
+    expect,
+  }) => {
+    // What `alepha infra status` prints for the Worker (#Q2613). The newest by
+    // `created_on`, not by the API's order.
+    const { client, of } = fake();
+
+    expect(await client.activeDeployment("my-app-staging")).toEqual({
+      versionId: "live",
+      tag: "v1.2.0",
+      createdAt: "2026-10-11T00:00:00Z",
+    });
+    expect(of("versions.get")[0]!.args).toEqual([
+      "live",
+      { account_id: "estate-account", script_name: "my-app-staging" },
+    ]);
+  });
 
   const plan = (over: Record<string, unknown> = {}) => ({
     scriptName: "my-app-staging",

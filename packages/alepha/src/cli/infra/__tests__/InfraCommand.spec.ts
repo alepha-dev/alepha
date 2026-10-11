@@ -24,7 +24,13 @@ import { InfraCommand } from "../commands/infra.ts";
  * authenticated in an earlier step.
  */
 class FakeCloudflareAdapter extends CloudflareAdapter {
+  public transport?: FakeCloudflareApi;
+
   public override async authenticate(): Promise<void> {}
+
+  public override async d1Transport() {
+    return this.transport as never;
+  }
 }
 
 class TestInfraCommand extends InfraCommand {
@@ -118,15 +124,13 @@ describe("InfraCommand", () => {
       const migrationsFs = new FakeFs(
         new Set(migrationPaths.map((p) => nodeJoin("/project", p))),
       );
-      // The filesystem is the service's own; the TRANSPORT is the command's,
+      // The filesystem is the service's own; the TRANSPORT is the adapter's,
       // because it carries the credential (#288). So the fake goes on the
-      // command, not on the service.
+      // adapter, not on the service.
       Object.assign(migrations as unknown as Record<string, unknown>, {
         fs: migrationsFs,
       });
-      Object.assign(cmd as unknown as Record<string, unknown>, {
-        cloudflare: api,
-      });
+      alepha.inject(FakeCloudflareAdapter).transport = api;
 
       alepha.set(infraOptions, {
         name: "my-app",

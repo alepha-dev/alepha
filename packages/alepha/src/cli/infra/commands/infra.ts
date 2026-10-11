@@ -6,7 +6,6 @@ import { type BuildManifest, buildManifestSchema } from "alepha/cli";
 import {
   BayAdapter,
   CloudflareAdapter,
-  CloudflareApi,
   D1MigrationsService,
   type DetectedResources,
   NamingService,
@@ -34,10 +33,6 @@ export class InfraCommand {
   protected readonly envUtils = $inject(EnvUtils);
   protected readonly secretsCommand = $inject(SecretsCommand);
   protected readonly d1Migrations = $inject(D1MigrationsService);
-  // The transport the migration service is driven with. It carries the
-  // Cloudflare credential, which is why the service takes it as an argument
-  // rather than injecting one of its own.
-  protected readonly cloudflare = $inject(CloudflareApi);
 
   /**
    * Common flags for env targeting.
@@ -723,7 +718,7 @@ export class InfraCommand {
       );
       const { config, env, descriptor, adapter } = target;
 
-      if (!adapter.cloudflareResources) {
+      if (!(adapter instanceof CloudflareAdapter)) {
         throw new AlephaError(
           `'infra db baseline mark' only supports Cloudflare D1 today; '${env}' uses the '${descriptor.adapter.id}' adapter.`,
         );
@@ -768,8 +763,10 @@ export class InfraCommand {
 
       await adapter.authenticate(ctx, run);
 
+      // The transport carries the Cloudflare credential, which is why the
+      // service takes it as an argument rather than injecting one of its own.
       const result = await this.d1Migrations.baseline(
-        this.cloudflare,
+        await adapter.d1Transport(ctx),
         dbName,
         root,
         undefined,

@@ -13,8 +13,8 @@ import type { InfraContext } from "../adapters/InfraAdapter.ts";
 import { WorkerCloudflareAdapter } from "../adapters/WorkerCloudflareAdapter.ts";
 import { infraOptions } from "../atoms/infraOptions.ts";
 import { cloudflare } from "../index.ts";
-import { CloudflareApi } from "../services/CloudflareApi.ts";
 import { CloudflareCredentialSource } from "../services/CloudflareCredentialSource.ts";
+import { CloudflareProvisionClient } from "../services/CloudflareProvisionClient.ts";
 import { NamingService } from "../services/NamingService.ts";
 
 /**
@@ -23,16 +23,20 @@ import { NamingService } from "../services/NamingService.ts";
  */
 class ArtifactReadyCloudflareAdapter extends CloudflareAdapter {
   /**
-   * The secrets the Worker already holds, as Cloudflare would list them.
+   * The account, in memory.
    */
-  public currentSecrets: Array<{ name: string; type: string }> = [];
+  public readonly memory = new MemoryProvisionClient();
 
   protected override async validateDeployArtifact(): Promise<void> {}
 
   protected override provisioner() {
+    return this.memory;
+  }
+
+  protected override deployer() {
     return {
-      listSecrets: async () => this.currentSecrets,
-    } as unknown as ReturnType<CloudflareAdapter["provisioner"]>;
+      activeDeployment: async () => undefined,
+    } as unknown as ReturnType<CloudflareAdapter["deployer"]>;
   }
 
   public undeclaredSecrets(
@@ -81,16 +85,17 @@ class SettledCredentialSource extends CloudflareCredentialSource {
 }
 
 /**
- * In-memory CloudflareApi for testing.
- *
- * Stores resources in maps and implements the same interface
- * without making any HTTP calls.
+ * An in-memory Cloudflare account, behind the provisioning client the
+ * adapter uses (#Q2613). No HTTP call is made.
  */
-class MemoryCloudflareApi extends CloudflareApi {
+class MemoryProvisionClient extends CloudflareProvisionClient {
   public d1Databases: Array<{ uuid: string; name: string }> = [];
+  public d1Hints: Record<string, string | undefined> = {};
   public kvNamespaces: Array<{ id: string; title: string }> = [];
   public r2Buckets: Array<{ name: string; creation_date: string }> = [];
   public queues: Array<{ queue_id: string; queue_name: string }> = [];
+  public unbound: Array<{ queueId: string; script: string }> = [];
+  public deletedWorkers: string[] = [];
   public hyperdriveConfigs: Array<{
     id: string;
     name: string;
@@ -99,22 +104,24 @@ class MemoryCloudflareApi extends CloudflareApi {
   public secrets: Map<string, Array<{ name: string; type: string }>> =
     new Map();
 
-  public override async resolveToken(): Promise<string> {
-    return "test-token";
-  }
-
-  public override async resolveAccountId(): Promise<string> {
-    return "test-account-id";
+  constructor() {
+    super({ apiToken: "test-token", accountId: "test-account-id" });
   }
 
   public override async listD1() {
-    return this.d1Databases;
+    return this.d1Databases as never;
   }
 
-  public override async createD1(name: string) {
+  public override async ensureD1(
+    name: string,
+    options: { locationHint?: string } = {},
+  ) {
+    const existing = this.d1Databases.find((db) => db.name === name);
+    if (existing) return existing as never;
     const db = { uuid: `d1-${name}-uuid`, name };
     this.d1Databases.push(db);
-    return db;
+    this.d1Hints[name] = options.locationHint;
+    return db as never;
   }
 
   public override async deleteD1(databaseId: string) {
@@ -122,13 +129,15 @@ class MemoryCloudflareApi extends CloudflareApi {
   }
 
   public override async listKV() {
-    return this.kvNamespaces;
+    return this.kvNamespaces as never;
   }
 
-  public override async createKV(title: string) {
+  public override async ensureKV(title: string) {
+    const existing = this.kvNamespaces.find((ns) => ns.title === title);
+    if (existing) return existing as never;
     const ns = { id: `kv-${title}-id`, title };
     this.kvNamespaces.push(ns);
-    return ns;
+    return ns as never;
   }
 
   public override async deleteKV(namespaceId: string) {
@@ -136,45 +145,49 @@ class MemoryCloudflareApi extends CloudflareApi {
   }
 
   public override async listR2() {
-    return this.r2Buckets;
+    return this.r2Buckets as never;
   }
 
-  public override async createR2(name: string) {
-    this.r2Buckets.push({ name, creation_date: new Date().toISOString() });
+  public override async ensureR2(name: string) {
+    if (!this.r2Buckets.some((b) => b.name === name)) {
+      this.r2Buckets.push({ name, creation_date: "2026-10-11T00:00:00Z" });
+    }
   }
 
-  public override async deleteR2(name: string) {
+  public override async deleteR2Bucket(name: string) {
     this.r2Buckets = this.r2Buckets.filter((b) => b.name !== name);
   }
 
   public override async listQueues() {
-    return this.queues;
+    return this.queues as never;
   }
 
-  public override async createQueue(name: string) {
+  public override async ensureQueue(name: string) {
+    const existing = this.queues.find((q) => q.queue_name === name);
+    if (existing) return existing as never;
     const queue = { queue_id: `q-${name}-id`, queue_name: name };
     this.queues.push(queue);
-    return queue;
+    return queue as never;
   }
 
-  public override async deleteQueue(queueId: string) {
-    this.queues = this.queues.filter((q) => q.queue_id !== queueId);
+  public override async deleteQueue(name: string) {
+    this.queues = this.queues.filter((q) => q.queue_name !== name);
   }
 
-  public override async listQueueConsumers() {
-    return [];
+  public override async deleteQueueConsumer(queueId: string, script: string) {
+    this.unbound.push({ queueId, script });
   }
-
-  public override async deleteQueueConsumer() {}
 
   public override async listHyperdrive() {
-    return this.hyperdriveConfigs;
+    return this.hyperdriveConfigs as never;
   }
 
-  public override async createHyperdrive(name: string) {
+  public override async ensureHyperdrive(name: string) {
+    const existing = this.hyperdriveConfigs.find((c) => c.name === name);
+    if (existing) return existing as never;
     const config = { id: `hd-${name}-id`, name, origin: { host: "localhost" } };
     this.hyperdriveConfigs.push(config);
-    return config;
+    return config as never;
   }
 
   public override async deleteHyperdrive(configId: string) {
@@ -187,57 +200,16 @@ class MemoryCloudflareApi extends CloudflareApi {
     return this.secrets.get(scriptName) ?? [];
   }
 
-  public override async putSecret(
-    scriptName: string,
-    name: string,
-    _value: string,
-  ) {
-    const existing = this.secrets.get(scriptName) ?? [];
-    if (!existing.some((s) => s.name === name)) {
-      existing.push({ name, type: "secret_text" });
-    }
-    this.secrets.set(scriptName, existing);
+  public override async deleteWorker(name: string) {
+    this.deletedWorkers.push(name);
   }
-
-  // Full binding set (all types), used by the bulk-PATCH path. Existing
-  // tests read `api.secrets` which we keep as a secret_text-only projection
-  // of this map.
-  public bindings: Map<
-    string,
-    Array<{ type: string; name: string; text?: string }>
-  > = new Map();
-
-  public override async getWorkerSettings(scriptName: string) {
-    return { bindings: this.bindings.get(scriptName) ?? [] };
-  }
-
-  public override async patchWorkerBindings(
-    scriptName: string,
-    bindings: Array<{ type: string; name: string; text?: string }>,
-  ) {
-    this.bindings.set(scriptName, bindings);
-    const secretView = bindings
-      .filter((b) => b.type === "secret_text")
-      .map((b) => ({ name: b.name, type: "secret_text" as const }));
-    this.secrets.set(scriptName, secretView);
-  }
-
-  public override async listDeployments() {
-    return [];
-  }
-
-  public override async listVersions() {
-    return [];
-  }
-
-  public override async deleteWorker() {}
 }
 
 /**
  * Exposes the resource-id resolution `build()` performs, so the standalone
  * build path can be asserted without driving a full bundle.
  */
-class AdapterProbe extends CloudflareAdapter {
+class AdapterProbe extends ArtifactReadyCloudflareAdapter {
   public resolveIds(ctx: InfraContext<any>) {
     return this.resolveExistingResourceIds(ctx);
   }
@@ -257,7 +229,6 @@ describe("CloudflareAdapter", () => {
     const alepha = Alepha.create()
       .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
       .with({ provide: ShellProvider, use: MemoryShellProvider })
-      .with({ provide: CloudflareApi, use: MemoryCloudflareApi })
       .with({
         provide: CloudflareCredentialSource,
         use: SettledCredentialSource,
@@ -277,7 +248,7 @@ describe("CloudflareAdapter", () => {
       adapter as unknown as { workerAdapter: CapturingWorkerAdapter }
     ).workerAdapter;
     const naming = alepha.inject(NamingService);
-    const api = alepha.inject(MemoryCloudflareApi);
+    const api = (adapter as unknown as ArtifactReadyCloudflareAdapter).memory;
 
     // Pre-seed package.json so ensureDependency finds wrangler already installed
     fs.files.set(
@@ -302,7 +273,10 @@ describe("CloudflareAdapter", () => {
     const alepha = Alepha.create()
       .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
       .with({ provide: ShellProvider, use: MemoryShellProvider })
-      .with({ provide: CloudflareApi, use: MemoryCloudflareApi })
+      .with({
+        provide: CloudflareCredentialSource,
+        use: SettledCredentialSource,
+      })
       .with({
         provide: CloudflareAdapter,
         use: ArtifactReadyCloudflareAdapter,
@@ -311,7 +285,7 @@ describe("CloudflareAdapter", () => {
     const fs = alepha.inject(MemoryFileSystemProvider);
     const adapter = alepha.inject(AdapterProbe);
     const naming = alepha.inject(NamingService);
-    const api = alepha.inject(MemoryCloudflareApi);
+    const api = adapter.memory;
 
     fs.files.set(
       "/project/package.json",
@@ -487,8 +461,64 @@ describe("CloudflareAdapter", () => {
       const run = createMockRun();
       await adapter.provision(ctx, run);
 
-      expect(api.queues).toHaveLength(1);
-      expect(api.queues[0].queue_name).toBe("acme-portal-production");
+      // The dead-letter queue beside it: the build names it as the
+      // consumer's, and the API refuses a consumer whose DLQ is missing.
+      expect(api.queues.map((q) => q.queue_name).sort()).toEqual([
+        "acme-portal-production",
+        "acme-portal-production-dlq",
+      ]);
+    });
+
+    test("creates D1 with the weur location hint the CLI has always used", async ({
+      expect,
+    }) => {
+      const { adapter, naming, api } = createTestEnv();
+      const ctx = makeCtx(naming, {
+        resources: {
+          hasDatabase: true,
+          hasBucket: false,
+          hasAnalytics: false,
+          hasKV: false,
+          hasQueue: false,
+          hasCron: false,
+        },
+      });
+
+      await adapter.provision(ctx, createMockRun());
+
+      expect(api.d1Hints).toEqual({ "acme-portal-production": "weur" });
+    });
+
+    test("a second provision creates nothing", async ({ expect }) => {
+      const { adapter, naming, api } = createTestEnv();
+      const ctx = makeCtx(naming, {
+        resources: {
+          hasDatabase: true,
+          hasBucket: true,
+          hasAnalytics: false,
+          hasKV: true,
+          hasQueue: true,
+          hasCron: false,
+        },
+      });
+
+      await adapter.provision(ctx, createMockRun());
+      const first = JSON.stringify([
+        api.d1Databases,
+        api.r2Buckets,
+        api.kvNamespaces,
+        api.queues,
+      ]);
+      await adapter.provision(ctx, createMockRun());
+
+      expect(
+        JSON.stringify([
+          api.d1Databases,
+          api.r2Buckets,
+          api.kvNamespaces,
+          api.queues,
+        ]),
+      ).toBe(first);
     });
   });
 
@@ -1327,7 +1357,7 @@ describe("CloudflareAdapter", () => {
           JSON.stringify({ vars: { SIGIL_CONFIG: "{}" } }),
         );
         const probe = adapter as unknown as ArtifactReadyCloudflareAdapter;
-        probe.currentSecrets = [
+        probe.memory.secrets.set("acme-portal-production", [
           { name: "APP_SECRET", type: "secret_text" },
           { name: "HAND_SET", type: "secret_text" },
           { name: "OLD_KEY", type: "secret_text" },
@@ -1335,7 +1365,7 @@ describe("CloudflareAdapter", () => {
           { name: "SIGIL_CONFIG", type: "secret_text" },
           // Derived from the domain by the upload itself.
           { name: "PUBLIC_URL", type: "secret_text" },
-        ];
+        ]);
 
         const undeclared = await probe.undeclaredSecrets(
           ctx,
@@ -1450,6 +1480,48 @@ describe("CloudflareAdapter", () => {
       expect(api.d1Databases).toHaveLength(0);
       // expect(api.r2Buckets).toHaveLength(0); DISABLED FOR NOW
       expect(api.kvNamespaces).toHaveLength(0);
+      expect(api.deletedWorkers).toEqual(["acme-portal-production"]);
+    });
+
+    test("unbinds the consumer, then deletes the queue and its dead-letter queue", async ({
+      expect,
+    }) => {
+      const { adapter, naming, api } = createTestEnv();
+      const ctx = makeCtx(naming, {
+        resources: {
+          hasDatabase: false,
+          hasBucket: false,
+          hasAnalytics: false,
+          hasKV: false,
+          hasQueue: true,
+          hasCron: false,
+        },
+      });
+      await adapter.provision(ctx, createMockRun());
+
+      const state = await adapter.inspect(ctx, createMockRun());
+      expect(state.queues).toEqual([
+        {
+          name: "acme-portal-production",
+          exists: true,
+          id: "q-acme-portal-production-id",
+        },
+        {
+          name: "acme-portal-production-dlq",
+          exists: true,
+          id: "q-acme-portal-production-dlq-id",
+        },
+      ]);
+
+      await adapter.teardown(ctx, createMockRun());
+
+      expect(api.unbound).toEqual([
+        {
+          queueId: "q-acme-portal-production-id",
+          script: "acme-portal-production",
+        },
+      ]);
+      expect(api.queues).toEqual([]);
     });
   });
 

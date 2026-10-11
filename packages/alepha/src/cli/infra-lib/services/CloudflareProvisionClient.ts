@@ -5,9 +5,12 @@ import type {
   CloudflareD1,
   CloudflareD1Import,
   CloudflareD1QueryResult,
+  CloudflareHyperdrive,
   CloudflareKV,
   CloudflareQueue,
+  CloudflareQueueConsumer,
   CloudflareR2,
+  CloudflareR2Token,
   CloudflareWorker,
 } from "../schemas/cloudflare.ts";
 
@@ -36,6 +39,13 @@ import type {
  * multipart script upload, which is the fiddliest part of that flow.
  * Provisioning is plain JSON, so the SDK would buy nothing and cost the
  * `D1`, `KV`, `R2` and `Queues` resource trees in Lore's bundle.
+ *
+ * ## One client for both callers (#Q2613)
+ *
+ * The CLI's `CloudflareAdapter` provisions, inspects and tears down through
+ * this class too, with the credential `CloudflareCredentialSource` resolved:
+ * Hyperdrive, the R2 token a teardown mints, the plain bucket delete and the
+ * queue consumer unbinding are here for it. Lore calls none of those.
  *
  * ## It is also the migration transport
  *
@@ -90,8 +100,15 @@ export class CloudflareProvisionClient {
    * ⚠️ Idempotent on purpose. A deploy runs `provision` every time, and a
    * second `up` against the same environment must find the database it made
    * rather than refuse or make a second one.
+   *
+   * `locationHint` is the `primary_location_hint` a NEW database is created
+   * with. The CLI passes `"weur"`, what it has always created with; Lore
+   * passes nothing and lets Cloudflare pick.
    */
-  public async ensureD1(name: string): Promise<CloudflareD1> {
+  public async ensureD1(
+    name: string,
+    options: { locationHint?: string } = {},
+  ): Promise<CloudflareD1> {
     const existing = (await this.listD1()).find((it) => it.name === name);
     if (existing) {
       return existing;
@@ -102,6 +119,8 @@ export class CloudflareProvisionClient {
     const body: Record<string, unknown> = { name };
     if (this.jurisdiction) {
       body.jurisdiction = this.jurisdiction;
+    } else if (options.locationHint) {
+      body.primary_location_hint = options.locationHint;
     }
     return await this.fetch<CloudflareD1>(
       `/accounts/${this.accountId}/d1/database`,
@@ -203,11 +222,30 @@ export class CloudflareProvisionClient {
   // R2, KV, queues
   // -------------------------------------------------------------------------
 
+  /**
+   * Every bucket of the account.
+   *
+   * ⚠️ Cursor-paged, at 1000 a page. The API answers 20 by default, so an
+   * account with more buckets than that made `ensureR2` miss one it already
+   * had and try to create it again.
+   */
   public async listR2(): Promise<CloudflareR2[]> {
-    const answer = await this.fetch<{ buckets?: CloudflareR2[] }>(
-      `/accounts/${this.accountId}/r2/buckets`,
-    );
-    return answer.buckets ?? [];
+    const all: CloudflareR2[] = [];
+    let cursor: string | undefined;
+    for (let page = 0; page < 50; page++) {
+      const answer = await this.fetch<{
+        buckets?: CloudflareR2[];
+        cursor?: string;
+      }>(`/accounts/${this.accountId}/r2/buckets`, {
+        query: cursor ? { per_page: "1000", cursor } : { per_page: "1000" },
+      });
+      all.push(...(answer.buckets ?? []));
+      cursor = answer.cursor || undefined;
+      if (!cursor || (answer.buckets ?? []).length === 0) {
+        break;
+      }
+    }
+    return all;
   }
 
   public async ensureR2(name: string): Promise<void> {
@@ -254,6 +292,151 @@ export class CloudflareProvisionClient {
       `/accounts/${this.accountId}/queues`,
       { method: "POST", body: { queue_name: name } },
     );
+  }
+
+  /**
+   * Remove this Worker's consumer from a queue, if it holds one.
+   *
+   * A queue cannot be deleted while a Worker consumes it, so `alepha infra
+   * down` unbinds first. Matched by script, never "the queue's consumer":
+   * another Worker's consumer is not this teardown's to remove. The field is
+   * spelled three ways across the API, the SDK and wrangler; all are read.
+   */
+  public async deleteQueueConsumer(
+    queueId: string,
+    scriptName: string,
+  ): Promise<void> {
+    const consumers = await this.paginate<
+      CloudflareQueueConsumer & { script_name?: string; script?: string }
+    >(`/accounts/${this.accountId}/queues/${queueId}/consumers`);
+    const consumer = consumers.find((it) =>
+      [it.script_name, it.script, it.service].includes(scriptName),
+    );
+    if (!consumer) {
+      return;
+    }
+    await this.fetch(
+      `/accounts/${this.accountId}/queues/${queueId}/consumers/${consumer.consumer_id}`,
+      { method: "DELETE" },
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // Hyperdrive (the CLI's Postgres path)
+  // -------------------------------------------------------------------------
+
+  public async listHyperdrive(): Promise<CloudflareHyperdrive[]> {
+    return await this.paginate<CloudflareHyperdrive>(
+      `/accounts/${this.accountId}/hyperdrive/configs`,
+    );
+  }
+
+  /**
+   * The Hyperdrive config of that name, creating it from a `postgres://` URL
+   * if the account has none.
+   */
+  public async ensureHyperdrive(
+    name: string,
+    connectionString: string,
+  ): Promise<CloudflareHyperdrive> {
+    const existing = (await this.listHyperdrive()).find(
+      (it) => it.name === name,
+    );
+    if (existing) {
+      return existing;
+    }
+    return await this.fetch<CloudflareHyperdrive>(
+      `/accounts/${this.accountId}/hyperdrive/configs`,
+      {
+        method: "POST",
+        body: { name, origin: this.hyperdriveOrigin(connectionString) },
+      },
+    );
+  }
+
+  public async deleteHyperdrive(configId: string): Promise<void> {
+    await this.fetch(
+      `/accounts/${this.accountId}/hyperdrive/configs/${configId}`,
+      { method: "DELETE" },
+    );
+  }
+
+  /**
+   * A `postgres://` URL as Hyperdrive's origin fields.
+   */
+  protected hyperdriveOrigin(connectionString: string): {
+    scheme: string;
+    host: string;
+    port: number;
+    database: string;
+    user: string;
+    password: string;
+  } {
+    const url = new URL(connectionString);
+    return {
+      scheme: "postgres",
+      host: url.hostname,
+      port: Number(url.port) || 5432,
+      database: url.pathname.slice(1),
+      user: decodeURIComponent(url.username),
+      password: decodeURIComponent(url.password),
+    };
+  }
+
+  // -------------------------------------------------------------------------
+  // R2 tokens and the plain bucket delete (the CLI's teardown)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Delete a bucket as it is, with no wipe: Cloudflare refuses a non-empty
+   * one. `alepha infra down` tries this first and empties the bucket over S3
+   * only when it fails; {@link deleteR2} is the wipe-then-delete Lore uses
+   * for an ephemeral copy.
+   */
+  public async deleteR2Bucket(name: string): Promise<void> {
+    await this.fetch(`/accounts/${this.accountId}/r2/buckets/${name}`, {
+      method: "DELETE",
+    });
+  }
+
+  /**
+   * Mint a bucket-scoped R2 API token (an S3 access key and secret), for a
+   * teardown to empty a bucket over the S3 protocol. Revoke it with
+   * {@link deleteR2Token} as soon as the wipe is done.
+   */
+  public async createR2Token(
+    name: string,
+    bucket: string,
+  ): Promise<CloudflareR2Token> {
+    return await this.fetch<CloudflareR2Token>(
+      `/accounts/${this.accountId}/r2/api-tokens`,
+      {
+        method: "POST",
+        body: {
+          name,
+          policies: [
+            {
+              effect: "allow",
+              permissions: ["admin-read-write"],
+              buckets: [bucket],
+            },
+          ],
+        },
+      },
+    );
+  }
+
+  public async deleteR2Token(tokenId: string): Promise<void> {
+    await this.fetch(`/accounts/${this.accountId}/r2/api-tokens/${tokenId}`, {
+      method: "DELETE",
+    });
+  }
+
+  /**
+   * The account this client acts on.
+   */
+  public get account(): string {
+    return this.accountId;
   }
 
   // -------------------------------------------------------------------------
