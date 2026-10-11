@@ -24,7 +24,7 @@ import { InfraCommand } from "../commands/infra.ts";
  * authenticated in an earlier step.
  */
 class FakeCloudflareAdapter extends CloudflareAdapter {
-  public transport?: FakeCloudflareApi;
+  public transport?: FakeD1Transport;
 
   public override async authenticate(): Promise<void> {}
 
@@ -44,7 +44,7 @@ class TestInfraCommand extends InfraCommand {
  * the D1 query API) actually works end-to-end, not just that the right method
  * gets called.
  */
-class FakeCloudflareApi {
+class FakeD1Transport {
   public readonly sql: string[] = [];
   public appliedNames: string[] = [];
 
@@ -120,7 +120,7 @@ describe("InfraCommand", () => {
       const cmd = alepha.inject(TestInfraCommand);
 
       const migrations = alepha.inject(D1MigrationsService);
-      const api = new FakeCloudflareApi();
+      const api = new FakeD1Transport();
       const migrationsFs = new FakeFs(
         new Set(migrationPaths.map((p) => nodeJoin("/project", p))),
       );

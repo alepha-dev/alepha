@@ -1,4 +1,4 @@
-import { Alepha, AlephaError, type ZType } from "alepha";
+import { Alepha, AlephaError } from "alepha";
 import { ActorHostRegistry } from "alepha/actor";
 import type { RunnerMethod } from "alepha/command";
 import {
@@ -13,7 +13,6 @@ import { describe, it } from "vitest";
 import { CloudflareAdapter } from "../adapters/CloudflareAdapter.ts";
 import type { InfraContext } from "../adapters/InfraAdapter.ts";
 import { WorkerCloudflareAdapter } from "../adapters/WorkerCloudflareAdapter.ts";
-import { CloudflareApi } from "../services/CloudflareApi.ts";
 import { CloudflareCredentialSource } from "../services/CloudflareCredentialSource.ts";
 import {
   CloudflareDeployClient,
@@ -70,14 +69,25 @@ class RecordedWorkerAdapter extends WorkerCloudflareAdapter {
  * provisioner rather than over the network.
  */
 class RecordedCloudflareAdapter extends CloudflareAdapter {
+  public readonly recording = new RecordedDeployClient({
+    apiToken: "fixture",
+    accountId: "fixture",
+  });
+  public readonly source = new RecordedProvisioner({
+    apiToken: "fixture",
+    accountId: "fixture",
+  });
   /**
-   * Its own Worker adapter: transient, so not the container's.
+   * The upload it inherits since #Q2614, recorded like the Worker adapter's.
    */
-  public get worker(): RecordedWorkerAdapter {
-    return this.workerAdapter as RecordedWorkerAdapter;
+  public get worker(): RecordedCloudflareAdapter {
+    return this;
+  }
+  protected override deployer() {
+    return this.recording;
   }
   protected override provisioner() {
-    return this.worker.source;
+    return this.source;
   }
 }
 /**
@@ -89,19 +99,6 @@ class SettledCredentialSource extends CloudflareCredentialSource {
       credential: { apiToken: "fixture", accountId: "fixture" },
       origin: "env" as const,
     };
-  }
-}
-class MetadataApi extends CloudflareApi {
-  public rows: unknown[] = [];
-  public refused = false;
-  public path = "";
-  protected override async paginate<T>(
-    path: string,
-    _schema: ZType,
-  ): Promise<T[]> {
-    this.path = path;
-    if (this.refused) throw new AlephaError("permission refused");
-    return this.rows as T[];
   }
 }
 class MetadataProvisioner extends CloudflareProvisionClient {
@@ -359,16 +356,14 @@ describe("Durable Object deployment", () => {
     expect(local.worker.recording.plans).toEqual([]);
   });
 
-  it("reads migration tags from successful metadata and propagates permission failures on both clients", async ({
+  it("reads migration tags from successful metadata and propagates permission failures", async ({
     expect,
   }) => {
-    const api = Alepha.create().inject(MetadataApi);
-    api.setAccountId("fixture");
     const provisioner = new MetadataProvisioner({
       apiToken: "fixture",
       accountId: "fixture",
     });
-    for (const client of [api, provisioner]) {
+    for (const client of [provisioner]) {
       client.rows = [{ id: "worker", migration_tag: "v2" }];
       expect(await client.getWorkerMigrationTag("worker")).toBe("v2");
       expect(await client.getWorkerMigrationTag("new")).toBeUndefined();

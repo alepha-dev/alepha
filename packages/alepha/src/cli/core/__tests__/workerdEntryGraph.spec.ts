@@ -189,7 +189,9 @@ describe("the workerd entries of the CLI", () => {
     expect(reached("CloudflareProvisionClient.ts")).toBe(true);
     expect(reached("CloudflareDeployClient.ts")).toBe(true);
     expect(reached("D1MigrationsService.ts")).toBe(true);
-    // ...and the one it exists to avoid.
-    expect(reached("CloudflareApi.ts")).toBe(false);
+    // ...and the Node shell over them, which reads the developer's
+    // environment and shells out to wrangler for a login (#E75).
+    expect(reached("CloudflareAdapter.ts")).toBe(false);
+    expect(reached("CloudflareCredentialSource.ts")).toBe(false);
   });
 });

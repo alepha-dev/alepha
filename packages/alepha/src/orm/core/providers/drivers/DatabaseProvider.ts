@@ -736,10 +736,10 @@ export abstract class DatabaseProvider {
    * both migrate fine through their own flows, they just don't support
    * baseline-mark's driver-dispatch shape yet.
    *
-   * D1 now has a baseline-mark path  -  `WranglerApi.d1MigrationsBaseline`,
+   * D1 now has a baseline-mark path  -  `D1MigrationsService.baseline`,
    * reachable via `alepha infra db baseline mark`  -  but it does not go
-   * through this method at all (it drives wrangler's own bookkeeping table
-   * directly, with no drizzle migrator involved). `alepha db baseline mark`
+   * through this method at all (it drives the `d1_migrations` bookkeeping
+   * table directly over the D1 API, with no drizzle migrator involved). `alepha db baseline mark`
    * (the core command that calls `markBaselineApplied`) redirects D1
    * providers to that command before ever reaching here; this default throw
    * still guards a direct `provider.markBaselineApplied()` call and remains

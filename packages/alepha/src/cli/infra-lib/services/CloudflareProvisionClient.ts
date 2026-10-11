@@ -17,17 +17,17 @@ import type {
 /**
  * Creating the resources a Worker binds, from inside a Worker.
  *
- * ## ⚠️ Why this is not `CloudflareApi`
+ * ## ⚠️ The credential is a constructor argument
  *
  * Two reasons, and the second is a security one rather than a layering one.
  *
- * `CloudflareApi` injects `WranglerApi` for its token, which injects
- * `ShellProvider`, which reaches `node:child_process`. It can never enter a
- * Worker bundle.
+ * Reading a token from wrangler means `ShellProvider`, which reaches
+ * `node:child_process`; such a client could never enter a Worker bundle.
  *
- * And its `resolveAccountId` falls back to `process.env.CLOUDFLARE_ACCOUNT_ID`,
- * which inside Lore's Worker is **Lore's own account**, set for Analytics
- * Engine. A provisioning client that resolved its account that way would create
+ * And an account id that fell back to `process.env.CLOUDFLARE_ACCOUNT_ID`
+ * would read, inside Lore's Worker, **Lore's own account**, set for Analytics
+ * Engine. (The deleted `CloudflareApi` did both; the CLI's environment
+ * fallback now lives in `CloudflareCredentialSource`, outside this class.) A provisioning client that resolved its account that way would create
  * a user's D1 database in the operator's account and bill it to them. So the
  * token and the account id are constructor arguments, from the estate row, and
  * nothing here reads the environment. Same contract as
@@ -50,8 +50,8 @@ import type {
  * ## It is also the migration transport
  *
  * `d1Query`, `d1Import` and `resolveD1Id` satisfy `D1MigrationTransport`, so
- * the migrate step of a Worker deploy runs through this client rather than
- * through `CloudflareApi`. ⚠️ The two D1 methods are **not** interchangeable:
+ * the migrate step of a deploy, Lore's or the CLI's, runs through this client.
+ * ⚠️ The two D1 methods are **not** interchangeable:
  * see `D1MigrationsService` for what `/query` does to a table rebuild, measured.
  */
 export class CloudflareProvisionClient {
@@ -598,7 +598,7 @@ export class CloudflareProvisionClient {
    *
    * ⚠️ It also detaches service bindings other Workers hold, which is the real
    * cost of forcing and is why it is stated here rather than assumed.
-   * `CloudflareApi.deleteWorker` has always forced, on the same reasoning.
+   * The CLI's `alepha infra down` forces through this same method.
    */
   public async deleteWorker(name: string): Promise<void> {
     await this.fetch(`/accounts/${this.accountId}/workers/scripts/${name}`, {

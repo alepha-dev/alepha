@@ -901,7 +901,7 @@ describe("the Cloudflare deploy client", () => {
        * The store is canonical and the list PRESENTS the script under a
        * configurable field, because the sources disagree on its name: the
        * API reference and the SDK say `script_name`, wrangler reads `script`,
-       * and this repo's own `CloudflareApi` reads `service`.
+       * and this repo's old `CloudflareApi` read `service`.
        */
       const queueApi = (
         seeded: Array<{

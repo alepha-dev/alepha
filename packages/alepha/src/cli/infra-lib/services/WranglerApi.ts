@@ -4,12 +4,15 @@ import { $logger } from "alepha/logger";
 import { ShellProvider } from "alepha/system";
 
 /**
- * Wraps wrangler CLI commands that are kept as shell-outs.
+ * Wraps the wrangler commands kept as shell-outs: interactive login and
+ * logout, and reading the token a login left.
  *
- * Only used for operations where wrangler provides value
- * beyond a raw API call: OAuth login, and worker deploy (bundling/upload,
- * secrets included). With `CLOUDFLARE_API_TOKEN` set nothing here runs for
- * authentication: see `CloudflareCredentialSource`.
+ * Wrangler stays for login only (folio #F1374): Cloudflare opens its device
+ * grant to first-party clients only, and wrangler already stores, refreshes
+ * and scopes the OAuth token. Deploying, provisioning and migrating go over
+ * the API (#E75), and with `CLOUDFLARE_API_TOKEN` set nothing here runs at
+ * all: see `CloudflareCredentialSource`. The one other shell-out left is
+ * `alepha infra db export`'s `wrangler d1 export` (#Q2616).
  *
  * ⚠️ **Every method here spawns a process**, so nothing on this class can run
  * inside a Worker. That is why D1 migrations left (#1514) and why the
@@ -53,16 +56,6 @@ export class WranglerApi {
   }
 
   /**
-   * Check if the user is authenticated. Returns the whoami output.
-   */
-  public async whoami(): Promise<string> {
-    return await this.runShell("wrangler whoami", {
-      resolve: true,
-      capture: true,
-    });
-  }
-
-  /**
    * Open the OAuth login flow.
    *
    * `device` asks for the RFC 8628 device flow (`wrangler login --device`): a
@@ -89,6 +82,13 @@ export class WranglerApi {
   }
 
   /**
+   * Discard wrangler's stored login.
+   */
+  public async logout(root?: string): Promise<void> {
+    await this.shell.run("wrangler logout", { root });
+  }
+
+  /**
    * Get the current auth token from wrangler (auto-refreshes if expired).
    *
    * Answered with its `type`: `oauth` and `api_token` carry a bearer `token`,
@@ -102,51 +102,6 @@ export class WranglerApi {
     });
 
     return JSON.parse(output) as { type: string; token?: string };
-  }
-
-  // -------------------------------------------------------------------------
-  // Deploy
-  // -------------------------------------------------------------------------
-
-  /**
-   * Deploy a worker via wrangler (handles bundling and upload).
-   *
-   * Returns the workers.dev URL if found in the output.
-   *
-   * `secretsFile` is a JSON file of secrets uploaded WITH the script, as
-   * `secret_text` bindings of the same version (`--secrets-file`). It needs a
-   * wrangler that knows the flag, which every wrangler 4 this repository pins
-   * does; an older one refuses it, and the refusal is named rather than left
-   * as a yargs error.
-   */
-  public async deploy(
-    workerName: string,
-    configPath: string,
-    root?: string,
-    options: { secretsFile?: string } = {},
-  ): Promise<string | undefined> {
-    const secretsFlag = options.secretsFile
-      ? ` --secrets-file=${options.secretsFile}`
-      : "";
-    let output: string;
-    try {
-      output = await this.runShell(
-        `wrangler deploy --name=${workerName} --no-bundle --config=${configPath}${secretsFlag}`,
-        { resolve: true, capture: true, root },
-      );
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      if (secretsFlag && /unknown argument.*secrets-file/i.test(message)) {
-        throw new AlephaError(
-          "This project's wrangler does not know `wrangler deploy --secrets-file`, which is how a deploy uploads its secrets with the code. Upgrade wrangler to a current 4.x.",
-          { cause: error },
-        );
-      }
-      throw error;
-    }
-
-    const match = output.match(/https:\/\/[^\s]*\.workers\.dev/);
-    return match?.[0];
   }
 
   // -------------------------------------------------------------------------

@@ -237,16 +237,16 @@ deliberate act on the host itself, with Bay's own CLI.
 
 ## Bay versus Cloudflare
 
-|                | Bay                                                     | Cloudflare                         |
-| -------------- | ------------------------------------------------------- | ---------------------------------- |
-| Runtime        | long-lived Node/Bun process                             | `workerd` isolate, per request     |
-| Build artifact | Node (or static)                                        | `workerd` slice                    |
-| Provisioning   | by Bay, from the manifest, at deploy                    | by the CLI, via the Cloudflare API |
-| Database       | SQLite file (or your own Postgres) in the app directory | D1, or Postgres via Hyperdrive     |
-| Migrations     | at app boot                                             | `alepha infra db migrate`          |
-| Access         | SSH key + `bay-control` group membership                | `wrangler login`                   |
-| Rollback       | automatic on failed readiness                           | redeploy the previous version      |
-| Scaling        | one machine                                             | Cloudflare's edge                  |
+|                | Bay                                                     | Cloudflare                                 |
+| -------------- | ------------------------------------------------------- | ------------------------------------------ |
+| Runtime        | long-lived Node/Bun process                             | `workerd` isolate, per request             |
+| Build artifact | Node (or static)                                        | `workerd` slice                            |
+| Provisioning   | by Bay, from the manifest, at deploy                    | by the CLI, via the Cloudflare API         |
+| Database       | SQLite file (or your own Postgres) in the app directory | D1, or Postgres via Hyperdrive             |
+| Migrations     | at app boot                                             | `alepha infra db migrate`                  |
+| Access         | SSH key + `bay-control` group membership                | `CLOUDFLARE_API_TOKEN` or `wrangler login` |
+| Rollback       | automatic on failed readiness                           | redeploy the previous version              |
+| Scaling        | one machine                                             | Cloudflare's edge                          |
 
 Both provision from your `$repository` / `$storage` / `$cache` / `$job` declarations - you do not
 maintain infrastructure config by hand on either.

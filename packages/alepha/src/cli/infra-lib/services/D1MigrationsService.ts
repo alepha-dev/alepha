@@ -31,15 +31,15 @@ export interface D1Migration {
  * Cloudflare credential, and inside Lore's Worker that credential belongs to
  * the estate being deployed to rather than to the process - the same reason
  * `CloudflareDeployClient` takes its token and account id in its constructor.
- * Injecting `CloudflareApi` here also made this service unreachable from a
- * Worker at all, since that class pulls in `WranglerApi` and so
- * `node:child_process`.
+ * Injecting a client here also made this service unreachable from a Worker
+ * at all, back when the CLI's client (`CloudflareApi`, deleted in #E75)
+ * pulled in `WranglerApi` and so `node:child_process`.
  *
  * ⚠️ **The two transports are not interchangeable, and picking the wrong one
  * loses data silently.** A migration FILE goes through
- * {@link CloudflareApi.d1Import}, which is what `wrangler d1 execute --remote
- * --file` uses; the bookkeeping statements go through
- * {@link CloudflareApi.d1Query}, which is what `--command` uses. Measured
+ * `CloudflareProvisionClient.d1Import`, which is what `wrangler d1 execute
+ * --remote --file` uses; the bookkeeping statements go through
+ * `CloudflareProvisionClient.d1Query`, which is what `--command` uses. Measured
  * 2026-09-07 against a real D1 with a five-row CASCADE child: the query
  * endpoint kept 0 of 5, the import flow kept 5 of 5. `PRAGMA
  * foreign_keys=OFF` is void under the first and honoured under the second.
@@ -338,8 +338,8 @@ export class D1MigrationsService {
  * What a migration run needs from a Cloudflare client, and nothing else.
  *
  * Named as an interface so this service can be driven by whichever client the
- * runtime has: `CloudflareApi` on a laptop, `CloudflareProvisionClient` inside
- * a Worker. Both satisfy it structurally.
+ * runtime has. Since #E75 that is `CloudflareProvisionClient` on a laptop and
+ * inside a Worker alike; a spec's fake satisfies it structurally.
  *
  * ⚠️ The two methods are not interchangeable - see the class doc. `d1Import` is
  * for a migration file, `d1Query` for the bookkeeping.

@@ -3,7 +3,7 @@ import { join as nodeJoin } from "node:path";
 import { Alepha } from "alepha";
 import { describe, it } from "vitest";
 
-import type { CloudflareD1QueryResult } from "../services/CloudflareApi.ts";
+import type { CloudflareD1QueryResult } from "../schemas/cloudflare.ts";
 import { D1MigrationsService } from "../services/D1MigrationsService.ts";
 
 /**
@@ -118,7 +118,7 @@ class FakeFs {
  * which is both closer to what actually reaches Cloudflare and enough to see
  * a wrapper somebody added around a migration.
  */
-class FakeCloudflareApi {
+class FakeD1Transport {
   /**
    * Everything sent through the QUERY endpoint - the bookkeeping.
    */
@@ -170,7 +170,7 @@ describe("d1MigrationsApply", () => {
     const paths = new Set(relativePaths.map((p) => `${ROOT}/${p}`));
     const alepha = Alepha.create();
     const service = alepha.inject(D1MigrationsService);
-    const api = new FakeCloudflareApi(appliedNames);
+    const api = new FakeD1Transport(appliedNames);
     // Swap the collaborators the method actually uses.
     Object.assign(service as unknown as Record<string, unknown>, {
       api,
@@ -329,7 +329,7 @@ describe("d1MigrationsApply", () => {
       }
       const alepha = Alepha.create();
       const service = alepha.inject(D1MigrationsService);
-      const api = new FakeCloudflareApi();
+      const api = new FakeD1Transport();
       Object.assign(service as unknown as Record<string, unknown>, {
         fs: new UnterminatedFs(
           new Set([`${ROOT}/0001_a.sql`, `${ROOT}/0002_b.sql`]),
@@ -538,7 +538,7 @@ describe("d1MigrationsBaseline", () => {
     const paths = new Set(relativePaths.map((p) => `${ROOT}/${p}`));
     const alepha = Alepha.create();
     const service = alepha.inject(D1MigrationsService);
-    const api = new FakeCloudflareApi(appliedNames);
+    const api = new FakeD1Transport(appliedNames);
     Object.assign(service as unknown as Record<string, unknown>, {
       api,
       fs: new FakeFs(paths),
@@ -644,7 +644,7 @@ describe("d1MigrationsBaseline", () => {
       // SQL against a live, already-baselined database.
       const alepha = Alepha.create();
       const service = alepha.inject(D1MigrationsService);
-      const api = new FakeCloudflareApi([recordedName as string]);
+      const api = new FakeD1Transport([recordedName as string]);
       Object.assign(service as unknown as Record<string, unknown>, {
         api,
         fs: new FakeFs(

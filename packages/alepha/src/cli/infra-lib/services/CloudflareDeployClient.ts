@@ -162,17 +162,17 @@ export interface CloudflareDeployAssets {
  *
  * ## ⚠️ Credentials are constructor arguments. Nothing here reads the environment
  *
- * `CloudflareApi` in this same directory cannot be this class, and the reason
- * is a security one rather than a layering one. It injects `WranglerApi`, which
- * injects `ShellProvider`, so it never enters a Worker bundle; and its
- * `resolveAccountId` falls back to `process.env.CLOUDFLARE_ACCOUNT_ID`, which
- * inside Lore's Worker is **Lore's own account**, set for Analytics Engine. A
- * client that read its credential from the environment would deploy a user's
- * artifact into the operator's Cloudflare account.
+ * The reason is a security one rather than a layering one. Inside Lore's
+ * Worker, `process.env.CLOUDFLARE_ACCOUNT_ID` is **Lore's own account**, set
+ * for Analytics Engine, so a client that read its credential from the
+ * environment would deploy a user's artifact into the operator's Cloudflare
+ * account. And a token read from wrangler means a shell, which never enters a
+ * Worker bundle.
  *
- * So the token and the account id come in from the estate row, at the moment of
- * use, and this file imports neither `CloudflareApi` nor anything that reads
- * `process.env`. `workerdEntryGraph.spec.ts` is what keeps that true.
+ * So the token and the account id come in from the estate row (Lore) or from
+ * `CloudflareCredentialSource` (the CLI), at the moment of use, and this file
+ * imports nothing that reads `process.env` or spawns a process.
+ * `workerdEntryGraph.spec.ts` is what keeps that true.
  *
  * ## Seven calls, not one
  *
@@ -1019,7 +1019,7 @@ export class CloudflareDeployClient {
    *
    * ⚠️ **Three spellings of one field.** The API reference and the SDK name
    * the Worker `script_name`, wrangler matches `script` or `service`, and
-   * this repo's own `CloudflareApi` reads `service`. Missing whichever one
+   * this repo's old `CloudflareApi` read `service`. Missing whichever one
    * the API happens to answer would send a create, which is the refusal this
    * exists to avoid, so all three are accepted.
    */

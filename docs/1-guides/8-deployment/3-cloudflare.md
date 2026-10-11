@@ -12,26 +12,36 @@ Declaring a `workerd` slice is what asks for the Cloudflare deploy config: `wran
 
 A build may carry other slices beside it. `alepha build --runtime workerd,node` produces one `dist/` holding both, and the Worker upload takes only the workerd one.
 
-## Environment Variables
+## Credentials
 
-Required for deployment:
+`alepha deploy` talks to the Cloudflare API directly. It takes its credential from the first source that has one:
 
-| Variable                | Description                                                                |
-| ----------------------- | -------------------------------------------------------------------------- |
-| `CLOUDFLARE_ACCOUNT_ID` | Your Cloudflare account ID                                                 |
-| `CLOUDFLARE_API_TOKEN`  | API token with Workers permissions (or run `wrangler login` interactively) |
+1. **`CLOUDFLARE_API_TOKEN`**, an API token with Workers, D1, R2, KV and Queues permissions. Used as is: Wrangler is neither run nor installed. This is the CI path.
+2. **An existing `wrangler login`**, read once per run with `wrangler auth token`.
+3. **A new `wrangler login`**, started automatically, but only in an interactive terminal. Off a terminal (CI, a pipe) with no token, the deploy fails and names `CLOUDFLARE_API_TOKEN` instead of opening a browser nobody can reach.
 
-`CLOUDFLARE_ANALYTICS_TOKEN` is **not** a deploy credential - it is the optional, app-runtime Analytics Engine read token (scope: Account Analytics · Read). It is deliberately named differently from `CLOUDFLARE_API_TOKEN`: wrangler treats that name as its own credential, so putting a read-only token there makes every provisioning call fail with an authentication error.
+Each run logs which source it used, never the token. The account is the environment's `accountId` option, else `CLOUDFLARE_ACCOUNT_ID`, else the only account the token can see (set one of the first two when it sees several).
+
+Wrangler is kept for the interactive login only, because Cloudflare opens its OAuth device flow to its own clients alone. Log in ahead of time, or from an SSH session or a container with no browser:
+
+```bash
+alepha infra login --env production
+alepha infra login --env production --device
+```
+
+`--device` prints a code to enter on another machine (`wrangler login --device`, Wrangler 4.119.0 or later). `alepha infra logout --env production` discards the stored login. With `CLOUDFLARE_API_TOKEN` set, none of this is needed. The one command that still runs Wrangler with a token set is `alepha infra db export` (`wrangler d1 export`).
+
+`CLOUDFLARE_ANALYTICS_TOKEN` is **not** a deploy credential - it is the optional, app-runtime Analytics Engine read token (scope: Account Analytics · Read). It is deliberately named differently from `CLOUDFLARE_API_TOKEN`: that name is the deploy credential, so putting a read-only token there makes every provisioning call fail with an authentication error.
 
 ## Deploy
 
-The recommended path is the [infra plugin](/docs/cli-plugins-infra), which provisions resources, builds, migrates, deploys, and pushes secrets in one command (installing Wrangler automatically if missing):
+The recommended path is the [infra plugin](/docs/cli-plugins-infra), which provisions resources, builds, migrates, deploys, and pushes secrets in one command:
 
 ```bash
 alepha deploy
 ```
 
-`alepha deploy` authenticates automatically when needed, then provisions, builds, migrates, deploys and handles secrets. `alepha infra login --env production` probes credentials without deploying. Plain `alepha build --runtime workerd` needs no cloud credentials; `alepha infra build` may look up existing resource bindings.
+`alepha deploy` authenticates (see above), then provisions, builds, migrates, deploys and handles secrets. Plain `alepha build --runtime workerd` needs no cloud credentials; `alepha infra build` may look up existing resource bindings.
 
 The upload goes through the Cloudflare API, not `wrangler deploy`: the script, its bindings, its secrets and its static assets are one Worker version. **Secrets add, they do not replace.** A secret the environment no longer declares, or one set by hand in the dashboard or with `wrangler secret put`, stays on the Worker: Cloudflare carries it over to each new version. Each deploy names those secrets in a warning; delete one with `wrangler secret delete <name>` or in the dashboard.
 

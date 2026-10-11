@@ -86,8 +86,9 @@ export interface WorkerCloudflareCredential {
  */
 export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
   /**
-   * The same display name as the wrangler-driven adapter: to an operator both
-   * deploy to Cloudflare, and which one ran is a question of runtime.
+   * The same display name as `CloudflareAdapter`, the Node shell over this
+   * class: to an operator both deploy to Cloudflare, and which one ran is a
+   * question of runtime.
    */
   static readonly id = "cloudflare";
   /**
@@ -186,7 +187,10 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
    * so the only thing to check is that one was supplied - and the first real
    * call answers 401 if it is wrong, which is a better error than a probe's.
    */
-  async authenticate(): Promise<void> {
+  async authenticate(
+    _ctx?: InfraContext<EnvironmentOptions>,
+    _run?: RunnerMethod,
+  ): Promise<void> {
     void this.estate;
   }
 
@@ -1150,7 +1154,10 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
    * a half-answer here would make `plan` report an empty environment as an
    * empty one.
    */
-  async inspect(): Promise<InfraState> {
+  async inspect(
+    _ctx?: InfraContext<EnvironmentOptions>,
+    _run?: RunnerMethod,
+  ): Promise<InfraState> {
     throw new AlephaError(
       "The worker-side Cloudflare adapter does not inspect. Run `alepha infra status` locally, where the full adapter is.",
     );
@@ -1294,7 +1301,10 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
    * that is the delete this class exists to refuse - see
    * {@link teardownRecorded}, which takes what a deploy wrote down instead.
    */
-  async teardown(): Promise<void> {
+  async teardown(
+    _ctx?: InfraContext<EnvironmentOptions>,
+    _run?: RunnerMethod,
+  ): Promise<void> {
     throw new AlephaError(
       "The worker-side Cloudflare adapter tears down only what a deploy recorded, through `teardownRecorded`. `alepha infra down` is the one that derives names, and it runs locally against your own account.",
     );

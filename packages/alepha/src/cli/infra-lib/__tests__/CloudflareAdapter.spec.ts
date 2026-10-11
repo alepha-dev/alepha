@@ -33,9 +33,32 @@ class ArtifactReadyCloudflareAdapter extends CloudflareAdapter {
     return this.memory;
   }
 
+  /**
+   * Every upload, recorded rather than sent: what the CLI hands the one
+   * deploy path it inherits (#Q2614). What Cloudflare makes of a plan is
+   * `WorkerCloudflareAdapter.spec.ts` and `CloudflareDeployClient.spec.ts`.
+   */
+  public uploads: Array<{
+    secrets: Record<string, string>;
+    modules: string[];
+    apiToken: string;
+  }> = [];
+
   protected override deployer() {
     return {
       activeDeployment: async () => undefined,
+      getSubdomain: async () => "acme",
+      deploy: async (plan: {
+        secrets?: Record<string, string>;
+        modules: Array<{ name: string }>;
+      }) => {
+        this.uploads.push({
+          secrets: { ...plan.secrets },
+          modules: plan.modules.map((it) => it.name),
+          apiToken: this.estate.apiToken,
+        });
+        return { versionId: "v1" };
+      },
     } as unknown as ReturnType<CloudflareAdapter["deployer"]>;
   }
 
@@ -43,27 +66,6 @@ class ArtifactReadyCloudflareAdapter extends CloudflareAdapter {
     ...args: Parameters<CloudflareAdapter["reportUndeclaredSecrets"]>
   ) {
     return this.reportUndeclaredSecrets(...args);
-  }
-}
-
-/**
- * The upload, recorded rather than sent: what the CLI hands the one deploy
- * path. What that path makes of it is `WorkerCloudflareAdapter.spec.ts`.
- */
-class CapturingWorkerAdapter extends WorkerCloudflareAdapter {
-  public uploads: Array<{
-    root: string;
-    secrets: Record<string, string>;
-    apiToken?: string;
-  }> = [];
-
-  override async deploy(ctx: InfraContext<any>): Promise<string | undefined> {
-    this.uploads.push({
-      root: ctx.root,
-      secrets: { ...this.appSecrets },
-      apiToken: this.credential?.apiToken,
-    });
-    return undefined;
   }
 }
 
@@ -233,7 +235,6 @@ describe("CloudflareAdapter", () => {
         provide: CloudflareCredentialSource,
         use: SettledCredentialSource,
       })
-      .with({ provide: WorkerCloudflareAdapter, use: CapturingWorkerAdapter })
       .with({
         provide: CloudflareAdapter,
         use: ArtifactReadyCloudflareAdapter,
@@ -243,12 +244,16 @@ describe("CloudflareAdapter", () => {
     const shell = alepha.inject(MemoryShellProvider);
     const dateTime = alepha.inject(DateTimeProvider);
     const adapter = alepha.inject(CloudflareAdapter);
-    // Transient, so it is the adapter's own instance and not the container's.
-    const worker = (
-      adapter as unknown as { workerAdapter: CapturingWorkerAdapter }
-    ).workerAdapter;
+    // The adapter is its own upload since #Q2614: the recorder is on it.
+    const worker = adapter as unknown as ArtifactReadyCloudflareAdapter;
     const naming = alepha.inject(NamingService);
     const api = (adapter as unknown as ArtifactReadyCloudflareAdapter).memory;
+
+    // The workerd slice's entry, which the inherited upload reads from dist/.
+    fs.files.set(
+      "/project/dist/index.workerd.js",
+      Buffer.from("export default {};"),
+    );
 
     // Pre-seed package.json so ensureDependency finds wrangler already installed
     fs.files.set(
@@ -747,7 +752,7 @@ describe("CloudflareAdapter", () => {
      */
     const sent = (
       fs: MemoryFileSystemProvider,
-      worker: CapturingWorkerAdapter,
+      worker: ArtifactReadyCloudflareAdapter,
     ): Array<{ type: string; name: string; text: string }> => {
       const secrets = worker.uploads.at(-1)?.secrets ?? {};
       const config = JSON.parse(
@@ -1242,8 +1247,9 @@ describe("CloudflareAdapter", () => {
 
         expect(worker.uploads).toHaveLength(1);
         expect(worker.uploads[0]).toEqual({
-          root: "/project/dist",
           secrets: { APP_SECRET: "s1", GOOGLE_API_KEY: "g1" },
+          // Read from dist/, the root the CLI hands the inherited upload.
+          modules: ["index.workerd.js"],
           apiToken: "test-token",
         });
         // No wrangler process, and no secret ever written to a file.
@@ -1369,7 +1375,6 @@ describe("CloudflareAdapter", () => {
 
         const undeclared = await probe.undeclaredSecrets(
           ctx,
-          { apiToken: "t", accountId: "a" },
           { APP_SECRET: "s1" },
           "/project/dist/wrangler.jsonc",
         );

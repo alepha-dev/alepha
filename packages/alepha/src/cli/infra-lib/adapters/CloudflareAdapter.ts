@@ -7,13 +7,10 @@ import {
 import {
   type BuildManifest,
   buildManifestSchema,
-  BuildCloudflareTask,
   type BuildTaskContext,
 } from "alepha/cli";
 import { EnvUtils, Runner, type RunnerMethod } from "alepha/command";
-import { DateTimeProvider } from "alepha/datetime";
-import { $logger } from "alepha/logger";
-import { FileSystemProvider, ShellProvider } from "alepha/system";
+import { ShellProvider } from "alepha/system";
 import { S3mini } from "s3mini";
 
 import { infraOptions } from "../atoms/infraOptions.ts";
@@ -28,21 +25,16 @@ import {
   selectSecrets,
 } from "../secretKeys.ts";
 import { CloudflareCredentialSource } from "../services/CloudflareCredentialSource.ts";
-import { CloudflareDeployClient } from "../services/CloudflareDeployClient.ts";
-import { CloudflareProvisionClient } from "../services/CloudflareProvisionClient.ts";
-import {
-  type D1MigrationTransport,
-  D1MigrationsService,
-} from "../services/D1MigrationsService.ts";
+import type { CloudflareProvisionClient } from "../services/CloudflareProvisionClient.ts";
+import type { D1MigrationTransport } from "../services/D1MigrationsService.ts";
 import { NamingService } from "../services/NamingService.ts";
 import { StoragePlaceholderService } from "../services/StoragePlaceholderService.ts";
 import { WranglerApi } from "../services/WranglerApi.ts";
-import {
-  type ExportDbOptions,
-  InfraAdapter,
-  type InfraContext,
-  type InfraLoginOptions,
-  type InfraState,
+import type {
+  ExportDbOptions,
+  InfraContext,
+  InfraLoginOptions,
+  InfraState,
 } from "./InfraAdapter.ts";
 import {
   type WorkerCloudflareCredential,
@@ -50,47 +42,36 @@ import {
 } from "./WorkerCloudflareAdapter.ts";
 
 /**
- * Cloudflare Workers adapter.
+ * Cloudflare Workers adapter, for `alepha deploy` on a laptop or in CI.
  *
- * Provisions, inspects and tears down through `CloudflareProvisionClient`
- * and uploads through `WorkerCloudflareAdapter`: the clients Lore deploys
- * with, so there is one Cloudflare path (#E75). The deploy carries the secrets,
- * see `deploy`. The credential comes from `CloudflareCredentialSource`:
- * `CLOUDFLARE_API_TOKEN` first, wrangler only for an interactive login.
+ * ## A Node shell over `WorkerCloudflareAdapter` (#E75)
+ *
+ * The upload, the Durable Object lifecycle, the module and asset sets, the
+ * bindings and the queue consumers are the parent's: the code Lore deploys
+ * with, so there is one Cloudflare path. This class keeps only what needs
+ * Node or the developer's own account:
+ *
+ * - the credential, from `CloudflareCredentialSource` (`CLOUDFLARE_API_TOKEN`
+ *   first, wrangler only for an interactive login), set with the inherited
+ *   `use()` at each entry point;
+ * - `dist/` as the root the inherited `deploy` reads, and the secrets read
+ *   from `.env.<env>`;
+ * - the non-prebuilt `build` (spawns `alepha build`) and `migrate` (`alepha
+ *   db migrations`, the Postgres path);
+ * - Hyperdrive, the D1 `weur` location hint, the job queue's dead-letter
+ *   queue, the dev database export and the R2 wipe with `S3mini`;
+ * - `inspect` and the name-derived `teardown`, which the parent refuses.
  */
-export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions> {
-  static readonly id = "cloudflare";
-  static readonly options = cloudflareEnvironmentOptionsSchema;
+export class CloudflareAdapter extends WorkerCloudflareAdapter {
+  static override readonly id = "cloudflare";
+  static override readonly options = cloudflareEnvironmentOptionsSchema;
 
-  override readonly serverless = true;
-  override readonly cloudflareResources = true;
-
-  protected readonly log = $logger();
   protected readonly naming = $inject(NamingService);
-  protected readonly fs = $inject(FileSystemProvider);
   protected readonly shell = $inject(ShellProvider);
-  protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly envUtils = $inject(EnvUtils);
   protected readonly wrangler = $inject(WranglerApi);
   protected readonly credentials = $inject(CloudflareCredentialSource);
-  /**
-   * The upload, which is Lore's code (#Q2612).
-   *
-   * ⚠️ **Transient, and that is what keeps the container acyclic.** The
-   * Worker adapter injects `D1MigrationsService`, whose module is this one's:
-   * a container that injects `WorkerCloudflareAdapter` FIRST (Lore's
-   * `DeployRunner` does) registers that module while the Worker adapter is
-   * still being built, which builds this adapter, which asked for the
-   * singleton being built. A transient is a fresh instance, so there is no
-   * cycle to find; it is also what the Worker adapter asks of its runners,
-   * one instance per deploy.
-   */
-  protected readonly workerAdapter = $inject(WorkerCloudflareAdapter, {
-    lifetime: "transient",
-  });
-  protected readonly d1Migrations = $inject(D1MigrationsService);
   protected readonly runner = $inject(Runner);
-  protected readonly buildTask = $inject(BuildCloudflareTask);
   protected readonly placeholders = $inject(StoragePlaceholderService);
   protected readonly options = $store(infraOptions);
 
@@ -128,12 +109,19 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
   }
 
   /**
-   * A provisioning client under this environment's credential.
+   * Put this environment's credential in effect, through the inherited
+   * `use()`, and answer the provisioning client it opens.
+   *
+   * ⚠️ Called at each entry point rather than once: `alepha infra` runs one
+   * command per process, but `orchestrator.up()` runs five steps on this one
+   * instance, and the parent's state is per credential. The credential source
+   * resolves once per run, so a repeat costs nothing.
    */
   protected async provisionerFor(
     ctx: InfraContext<CloudflareEnvironmentOptions>,
   ): Promise<CloudflareProvisionClient> {
-    return this.provisioner(await this.credentialFor(ctx));
+    this.use(await this.credentialFor(ctx));
+    return this.provisioner();
   }
 
   /**
@@ -196,7 +184,7 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
       name: "wrangler logout",
       handler: async () => {
         await this.wrangler.ensureInstalled(ctx.root);
-        await this.shell.run("wrangler logout", { root: ctx.root });
+        await this.wrangler.logout(ctx.root);
         this.credentials.reset();
       },
     });
@@ -210,7 +198,7 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
    * a TTY does a missing one start `wrangler login`. See
    * `CloudflareCredentialSource`.
    */
-  async authenticate(
+  override async authenticate(
     ctx: InfraContext<CloudflareEnvironmentOptions>,
     run: RunnerMethod,
   ): Promise<void> {
@@ -301,7 +289,7 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
     }
   }
 
-  async build(
+  override async build(
     ctx: InfraContext<CloudflareEnvironmentOptions>,
     run: RunnerMethod,
   ): Promise<void> {
@@ -550,16 +538,12 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
    * kept. Every such secret is named before the upload, so it is visible
    * rather than silently live.
    */
-  async deploy(
+  override async deploy(
     ctx: InfraContext<CloudflareEnvironmentOptions>,
     run: RunnerMethod,
   ): Promise<string | undefined> {
     await this.validateDeployArtifact(ctx);
-    const { credential } = await this.credentials.resolve({
-      root: ctx.root,
-      accountId: ctx.options.accountId,
-      jurisdiction: ctx.options.jurisdiction,
-    });
+    const credential = await this.credentialFor(ctx);
     const distDir = this.fs.join(ctx.root, "dist");
     const configPath = this.fs.join(distDir, "wrangler.jsonc");
     const { secrets, vars } = await this.resolveSecrets(ctx);
@@ -567,12 +551,12 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
     if (Object.keys(vars).length > 0) {
       await this.writeDeployVars(configPath, vars);
     }
-    await this.reportUndeclaredSecrets(ctx, credential, secrets, configPath);
+    this.use(credential);
+    await this.reportUndeclaredSecrets(ctx, secrets, configPath);
 
-    return await this.workerAdapter
-      .use(credential)
-      .withSecrets(secrets)
-      .deploy({ ...ctx, root: distDir }, run);
+    // The parent's upload, with `dist/` as the artifact root.
+    this.withSecrets(secrets);
+    return await super.deploy({ ...ctx, root: distDir }, run);
   }
 
   /**
@@ -589,15 +573,12 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
    */
   protected async reportUndeclaredSecrets(
     ctx: InfraContext<CloudflareEnvironmentOptions>,
-    credential: WorkerCloudflareCredential,
     secrets: Record<string, string>,
     configPath: string,
   ): Promise<string[]> {
     let current: Array<{ name: string; type: string }>;
     try {
-      current = await this.provisioner(credential).listSecrets(
-        ctx.naming.worker(),
-      );
+      current = await this.provisioner().listSecrets(ctx.naming.worker());
     } catch (error) {
       this.log.debug(
         `Could not list the Worker's current secrets: ${error instanceof Error ? error.message : String(error)}`,
@@ -625,28 +606,6 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
       );
     }
     return undeclared;
-  }
-
-  /**
-   * A provisioning client under the run's credential.
-   */
-  protected provisioner(
-    credential: WorkerCloudflareCredential,
-  ): CloudflareProvisionClient {
-    return new CloudflareProvisionClient(credential);
-  }
-
-  /**
-   * A deploy client under the run's credential, for the deployment reads
-   * `inspect` makes.
-   */
-  protected deployer(
-    credential: WorkerCloudflareCredential,
-  ): CloudflareDeployClient {
-    return new CloudflareDeployClient({
-      ...credential,
-      now: () => this.dateTime.nowMillis(),
-    });
   }
 
   /**
@@ -920,7 +879,7 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
   }
 
   // -------------------------------------------------------------------------
-  // migrate (wrangler  -  D1 migration runner)
+  // migrate (D1 over the API through D1MigrationsService, or Postgres)
   // -------------------------------------------------------------------------
 
   override async migrate(
@@ -1086,7 +1045,7 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
         const distMigrations = this.fs.join(ctx.root, "dist", "migrations");
         await this.fs.cp(migrationsDir, distMigrations);
 
-        await this.d1Migrations.apply(
+        await this.migrations.apply(
           await this.provisionerFor(ctx),
           dbName,
           ctx.root,
@@ -1107,8 +1066,8 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
       // Postgres + Hyperdrive prebuilt deploys need a separate
       // migration story (an alepha-CLI-free `apply` against the
       // packed `migrations/postgres/` dir)  -  not implemented yet.
-      // Rocket's v1 path is D1, which uses `wrangler d1 migrations
-      // apply` and works fine in prebuilt mode.
+      // Rocket's v1 path is D1, which migrates over the D1 API
+      // (`D1MigrationsService`) and works fine in prebuilt mode.
       throw new AlephaError(
         "Postgres migrations are not yet supported in prebuilt mode. Use the `alepha deploy` CLI for now.",
       );
@@ -1141,12 +1100,19 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
   // inspect (REST API)
   // -------------------------------------------------------------------------
 
-  async inspect(
+  /**
+   * What exists for this environment, found by the names it derives.
+   *
+   * ⚠️ Overrides a deliberate refusal. The parent refuses because Lore holds
+   * a LENT credential and must not reason by name about an account it does
+   * not own; `alepha infra status` runs against your own account at your own
+   * typing, which is the case the refusal leaves to this class.
+   */
+  override async inspect(
     ctx: InfraContext<CloudflareEnvironmentOptions>,
     run: RunnerMethod,
   ): Promise<InfraState> {
-    const credential = await this.credentialFor(ctx);
-    const api = this.provisioner(credential);
+    const api = await this.provisionerFor(ctx);
     const state: InfraState = {
       workers: [],
       databases: [],
@@ -1166,8 +1132,7 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
         name: `inspect worker (${name})`,
         handler: async () => {
           try {
-            const deployment =
-              await this.deployer(credential).activeDeployment(name);
+            const deployment = await this.deployer().activeDeployment(name);
             if (deployment) {
               state.workers.push({
                 name,
@@ -1313,7 +1278,16 @@ export class CloudflareAdapter extends InfraAdapter<CloudflareEnvironmentOptions
   // teardown (REST API)
   // -------------------------------------------------------------------------
 
-  async teardown(
+  /**
+   * Delete everything this environment's names derive, data included.
+   *
+   * ⚠️ Overrides a deliberate refusal. The parent tears down only what a
+   * deploy recorded (`teardownRecorded`), because on a lent estate a name
+   * can belong to somebody else's database. `alepha infra down` runs against
+   * your own account, behind a typed confirmation, which is exactly the
+   * name-derived delete the parent leaves to this class.
+   */
+  override async teardown(
     ctx: InfraContext<CloudflareEnvironmentOptions>,
     run: RunnerMethod,
   ): Promise<void> {

@@ -8,7 +8,6 @@ import { InfraCacheProvider } from "./providers/InfraCacheProvider.ts";
 import { MemorySecretStore } from "./providers/MemorySecretStore.ts";
 import type { BayEnvironmentOptions } from "./schemas/bayEnvironmentOptions.ts";
 import type { CloudflareEnvironmentOptions } from "./schemas/cloudflareEnvironmentOptions.ts";
-import { CloudflareApi } from "./services/CloudflareApi.ts";
 import { CloudflareCredentialSource } from "./services/CloudflareCredentialSource.ts";
 import { D1MigrationsService } from "./services/D1MigrationsService.ts";
 import { InfraInspector } from "./services/InfraInspector.ts";
@@ -38,7 +37,6 @@ export const AlephaInfraLibPlugin = $module({
   services: [
     BayAdapter,
     CloudflareAdapter,
-    CloudflareApi,
     CloudflareCredentialSource,
     D1MigrationsService,
     WranglerApi,
@@ -99,8 +97,9 @@ export * from "./adapters/BayAdapter.ts";
 export * from "./adapters/CloudflareAdapter.ts";
 export * from "./adapters/InfraAdapter.ts";
 // ⚠️ Exported here as well as from the `workerd` entry, but no factory names
-// it: under node `cloudflare()` is the wrangler-driven adapter. A consumer that
-// means to run this one - Lore's `DeployRunner` - writes its descriptor itself.
+// it: under node `cloudflare()` is `CloudflareAdapter`, the Node shell over this
+// one (#E75). A consumer that means to run this one alone - Lore's
+// `DeployRunner` - writes its descriptor itself.
 export * from "./adapters/WorkerCloudflareAdapter.ts";
 export * from "./atoms/infraOptions.ts";
 export * from "./schemas/bayEnvironmentOptions.ts";
@@ -113,7 +112,6 @@ export * from "./providers/SecretStoreProvider.ts";
 export * from "./schemas/cloudflare.ts";
 export * from "./schemas/infra.ts";
 export * from "./secretKeys.ts";
-export * from "./services/CloudflareApi.ts";
 export * from "./services/CloudflareAssetManifest.ts";
 export * from "./services/CloudflareCredentialSource.ts";
 export * from "./services/CloudflareProvisionClient.ts";

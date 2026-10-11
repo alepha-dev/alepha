@@ -1,18 +1,6 @@
-import { Alepha } from "alepha";
 import { describe, it } from "vitest";
 
-import { CloudflareApi } from "../services/CloudflareApi.ts";
-import { CloudflareCredentialSource } from "../services/CloudflareCredentialSource.ts";
-
-/**
- * A run whose token is already settled. Where it came from is
- * `CloudflareCredentialSource.spec.ts`'s business, not this file's.
- */
-class SettledCredentialSource extends CloudflareCredentialSource {
-  public override async token() {
-    return { token: "test-token", origin: "env" as const };
-  }
-}
+import { CloudflareProvisionClient } from "../services/CloudflareProvisionClient.ts";
 
 /**
  * The transport half of #1514: what actually goes over the wire when a
@@ -33,7 +21,9 @@ class SettledCredentialSource extends CloudflareCredentialSource {
  * uses); `d1Import` is for a migration file (what `--file` uses).
  *
  * `d1MigrationsApply.spec.ts` covers discovery, ordering and which of the two
- * each statement takes. This file covers the requests themselves.
+ * each statement takes. This file covers the requests themselves, made by
+ * `CloudflareProvisionClient`, the one transport the CLI and Lore share since
+ * `CloudflareApi` was deleted (#Q2614).
  */
 describe("the D1 query transport", () => {
   const capture = (result: unknown = []) => {
@@ -54,12 +44,10 @@ describe("the D1 query transport", () => {
       );
     }) as typeof globalThis.fetch;
 
-    const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } }).with({
-      provide: CloudflareCredentialSource,
-      use: SettledCredentialSource,
+    const api = new CloudflareProvisionClient({
+      apiToken: "test-token",
+      accountId: "acct-1",
     });
-    const api = alepha.inject(CloudflareApi);
-    api.setAccountId("acct-1");
 
     return { api, calls, restore: () => (globalThis.fetch = original) };
   };

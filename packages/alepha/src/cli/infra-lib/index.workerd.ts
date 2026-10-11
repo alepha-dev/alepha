@@ -11,9 +11,10 @@
  * - `BayAdapter` and `WranglerApi` shell out (`node:child_process` through
  *   `ShellProvider`). A Bay deploy is a websocket command from Lore, not a
  *   local process, and `alepha deploy` on a laptop keeps both.
- * - `CloudflareAdapter` and `CloudflareApi` reach `WranglerApi`, `node:crypto`
- *   and `node:fs/promises`. {@link WorkerCloudflareAdapter} is what replaces
- *   them here, composing #1517's deploy client, #288's provisioning client and
+ * - `CloudflareAdapter`, the Node shell over {@link WorkerCloudflareAdapter},
+ *   reaches `WranglerApi` (for a login) and the developer's environment
+ *   through `CloudflareCredentialSource`. {@link WorkerCloudflareAdapter} is
+ *   what runs here, composing #1517's deploy client, #288's provisioning client and
  *   the migration service.
  * - `GitHubSecretStore` and `InfraCacheProvider` read the disk.
  *

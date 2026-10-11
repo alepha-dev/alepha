@@ -503,7 +503,8 @@ export class BuildCloudflareTask extends BuildTask {
     const binding = BuildCloudflareTask.D1_BINDING;
     // No `jurisdiction` here: unlike r2_buckets, the wrangler D1 binding schema
     // has no jurisdiction field (it warns on the unexpected key). D1 data
-    // residency is fixed when the database is created  -  see CloudflareApi  -
+    // residency is fixed when the database is created  -  see
+    // CloudflareProvisionClient.ensureD1  -
     // and the binding just references it by `database_id`.
     wrangler.d1_databases = wrangler.d1_databases || [];
     wrangler.d1_databases.push({

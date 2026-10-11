@@ -165,7 +165,8 @@ describe("BuildCloudflareTask", () => {
   describe("enhanceD1", () => {
     it("does not emit `jurisdiction` on the D1 binding (wrangler rejects it)", () => {
       // D1 jurisdiction is applied at database-creation time, not on the
-      // binding  -  wrangler warns on the unexpected field. See CloudflareApi.
+      // binding  -  wrangler warns on the unexpected field. See
+      // CloudflareProvisionClient.ensureD1.
       process.env.DATABASE_URL = "d1://my-db:db-id-123";
       process.env.CLOUDFLARE_JURISDICTION = "eu";
 

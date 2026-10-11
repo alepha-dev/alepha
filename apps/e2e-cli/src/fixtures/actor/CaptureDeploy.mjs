@@ -56,7 +56,12 @@ class CapturedWorker extends WorkerCloudflareAdapter {
     return provisioner;
   }
 }
+// The CLI adapter inherits the Worker adapter's upload since #Q2614, so it
+// records through the same client.
 class CapturedLocal extends CloudflareAdapter {
+  deployer() {
+    return client;
+  }
   provisioner() {
     return provisioner;
   }
