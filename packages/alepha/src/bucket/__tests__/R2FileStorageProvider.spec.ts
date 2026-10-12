@@ -254,13 +254,16 @@ describe("R2FileStorageProvider", () => {
       ]);
     });
 
-    test("omits the prefix when APP_NAME is unset", async () => {
+    test("keys under alepha.name when APP_NAME is unset, never the bucket root", async () => {
       const id = await provider.upload(
         TEST_IMAGES_BUCKET,
         fileOf("x", "a.png", "image/png"),
       );
 
-      expect([...r2.objects.keys()]).toEqual([`${TEST_IMAGES_BUCKET}/${id}`]);
+      // No build ran, so alepha.name is "app".
+      expect([...r2.objects.keys()]).toEqual([
+        `app/${TEST_IMAGES_BUCKET}/${id}`,
+      ]);
     });
 
     test("round-trips the original filename through customMetadata", async () => {

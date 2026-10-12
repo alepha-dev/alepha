@@ -99,13 +99,14 @@ export class R2FileStorageProvider implements FileStorageProvider {
   }
 
   /**
-   * Get the optional key prefix, for multi-app setups sharing one R2 bucket.
+   * The key prefix, for multi-app setups sharing one R2 bucket.
    *
-   * `S3_KEY_PREFIX` first, `APP_NAME` as the fallback: the fallback is what
-   * keeps every already-deployed app's objects exactly where they are.
+   * `S3_KEY_PREFIX` first, then `alepha.name` (`APP_NAME`, else the build's app
+   * name, else `"app"`): never the bucket root, so two apps with neither
+   * variable no longer write over each other.
    */
-  public get prefix(): string | undefined {
-    return this.env.S3_KEY_PREFIX || this.alepha.env.APP_NAME;
+  public get prefix(): string {
+    return this.env.S3_KEY_PREFIX || this.alepha.name;
   }
 
   protected readonly onStart = $hook({
@@ -129,9 +130,8 @@ export class R2FileStorageProvider implements FileStorageProvider {
 
       this.r2 = binding;
 
-      const prefixStr = this.prefix ? `${this.prefix}/` : "";
       this.log.info(
-        `R2 storage ready (bucket: ${this.bucketName}, prefix: ${prefixStr || "(none)"})`,
+        `R2 storage ready (bucket: ${this.bucketName}, prefix: ${this.prefix}/)`,
       );
     },
   });
@@ -317,11 +317,7 @@ export class R2FileStorageProvider implements FileStorageProvider {
   protected key(bucketName: string, fileId: string): string {
     this.assertKeySegment(bucketName, "bucket name");
     this.assertKeySegment(fileId, "file id");
-    const parts = [bucketName, fileId];
-    if (this.prefix) {
-      parts.unshift(this.prefix);
-    }
-    return parts.join("/");
+    return [this.prefix, bucketName, fileId].join("/");
   }
 
   protected getR2(): R2Bucket {

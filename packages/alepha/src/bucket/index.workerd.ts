@@ -35,8 +35,9 @@ export * from "./providers/S3FileStorageProvider.ts";
  * value also wins over the derived name, so a pre-existing bucket keeps
  * its keys.
  *
- * R2 keys every object as `{APP_NAME}/{container}/{fileId}` inside the single
- * bucket bound as `R2_BUCKET_NAME`.
+ * R2 keys every object as `{prefix}/{container}/{fileId}` inside the single
+ * bucket bound as `R2_BUCKET_NAME`, the prefix being `S3_KEY_PREFIX`, else
+ * `alepha.name`.
  *
  * @module alepha.bucket
  */

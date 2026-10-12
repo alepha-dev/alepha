@@ -117,13 +117,20 @@ same bucket without seeing each other's keys:
 S3_KEY_PREFIX=apps/myapp/production/blobs
 ```
 
-`APP_NAME` is the fallback when it is unset, which is how this worked before
-`S3_KEY_PREFIX` existed - already-deployed objects stay exactly where they are.
+When it is unset the prefix is [`alepha.name`](/docs/guides-core-alepha-instance):
+`APP_NAME`, else the build's app name, else `"app"`. Nothing is ever written at
+the bucket root, so two apps with neither variable no longer overwrite each
+other.
 
 Prefer `S3_KEY_PREFIX` when a deployment platform sets the value for you.
-`APP_NAME` also namespaces **cookies** and the `Server-Timing` header, so
-changing it to lay out object storage renames every cookie and ends every
-session as a side effect.
+`alepha.name` also namespaces **cookies** and the `Server-Timing` header, so
+changing `APP_NAME` to lay out object storage renames every cookie and ends
+every session as a side effect.
+
+> Objects an app wrote at the bucket root while it set neither variable no
+> longer resolve. Move each storage under the prefix, once per storage:
+> `aws s3 mv s3://my-bucket/<storage>/ s3://my-bucket/<name>/<storage>/ --recursive`
+> (any S3-compatible CLI works the same way; on R2 pass its `--endpoint-url`).
 
 ## Methods
 

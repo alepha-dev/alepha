@@ -20,8 +20,8 @@ import { S3FileStorageProvider } from "../providers/S3FileStorageProvider.ts";
  * `{...process.env, ...state.env}`, so the in-code value wins — which means a
  * host can never be sure the value it exported is the one keying its objects.
  *
- * `S3_KEY_PREFIX` exists so the two can be decided separately. Unset, nothing
- * changes.
+ * `S3_KEY_PREFIX` exists so the two can be decided separately. Unset, the
+ * prefix is `alepha.name`, the same namespace as the cookies.
  */
 
 const s3Env = {
@@ -64,8 +64,9 @@ describe("blob key prefix", () => {
       expect(s3Prefix({ APP_NAME: "RDM" })).toBe("RDM");
     });
 
-    it("should have no prefix when neither is set", () => {
-      expect(s3Prefix({})).toBeUndefined();
+    it("should fall back to alepha.name when neither is set, never the root", () => {
+      // No build ran, so alepha.name is "app".
+      expect(s3Prefix({})).toBe("app");
     });
   });
 
@@ -92,8 +93,8 @@ describe("blob key prefix", () => {
       expect(r2Prefix({ APP_NAME: "RDM" })).toBe("RDM");
     });
 
-    it("should have no prefix when neither is set", () => {
-      expect(r2Prefix({})).toBeUndefined();
+    it("should fall back to alepha.name when neither is set, never the root", () => {
+      expect(r2Prefix({})).toBe("app");
     });
   });
 
