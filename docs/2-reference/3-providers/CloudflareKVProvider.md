@@ -11,8 +11,10 @@ import { CloudflareKVProvider } from "alepha/cache";
 Cloudflare KV cache provider.
 
 Uses a KV namespace binding for all cache operations.
-Keys are stored as: `cache:{name}:{key}`, with `{key}` escaped so a `:` in
-it cannot be read as part of the name.
+Keys are stored as: `{alepha.name}:cache:{name}:{key}`, with `{key}`
+escaped so a `:` in it cannot be read as part of the name. Two apps binding
+one KV namespace never read each other's entries, and `clear()` deletes
+this app's entries only.
 
 **Required Cloudflare binding:**
 

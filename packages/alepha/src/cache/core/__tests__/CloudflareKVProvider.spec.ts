@@ -139,3 +139,42 @@ describe("CloudflareKVProvider", () => {
     });
   });
 });
+
+describe("CloudflareKVProvider: one namespace per alepha.name", () => {
+  const boot = async (kv: FakeKV, name: string) => {
+    const alepha = Alepha.create({ env: { APP_NAME: name } })
+      .with(AlephaLogger)
+      .with({ provide: CacheProvider, use: CloudflareKVProvider });
+
+    class App {
+      users = $cache({ name: "users", ttl: [10, "minutes"] });
+    }
+
+    alepha.inject(App);
+    alepha.store.set("cloudflare.env", { [KV_DEFAULT_BINDING]: kv });
+    await alepha.start();
+    return alepha.inject(CacheProvider);
+  };
+
+  it("keys entries under <name>:cache:, and never reads or clears another name's", async () => {
+    const kv = new FakeKV();
+    const shop = await boot(kv, "shop");
+    const blog = await boot(kv, "blog");
+
+    await shop.set("users", "1", new TextEncoder().encode("shop-user"));
+    await blog.set("users", "1", new TextEncoder().encode("blog-user"));
+
+    expect(kv.puts.map((it) => it.key).sort()).toEqual([
+      "blog:cache:users:1",
+      "shop:cache:users:1",
+    ]);
+    expect(new TextDecoder().decode(await shop.get("users", "1"))).toBe(
+      "shop-user",
+    );
+
+    await shop.clear();
+
+    expect(await shop.has("users", "1")).toBe(false);
+    expect(await blog.has("users", "1")).toBe(true);
+  });
+});

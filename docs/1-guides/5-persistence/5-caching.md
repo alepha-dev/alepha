@@ -235,25 +235,24 @@ const alepha = Alepha.create()
   .with({ provide: CacheProvider, use: RedisCacheProvider });
 ```
 
-### Redis Key Prefix
+### Key Namespace
 
-Set a prefix for all Redis cache keys via the `redisCacheOptions` atom - useful for multi-tenant applications or isolating test environments:
+Redis and Cloudflare KV store every entry as `<alepha.name>:cache:<container>:<key>`, where [`alepha.name`](/docs/guides-core-alepha-instance) is `APP_NAME`, else the build's app name, else `"app"`. Two apps sharing one Redis or one KV namespace never read each other's entries, and `clear()` deletes the calling app's entries only. Set `APP_NAME` to keep two environments of one app apart:
 
 ```typescript
-import { redisCacheOptions } from "alepha/cache/redis";
-
-alepha.store.mut(redisCacheOptions, () => ({ prefix: "tenant-a" }));
+const alepha = Alepha.create({ env: { APP_NAME: "shop-staging" } });
 ```
+
+The database cache is not namespaced: its `cache_entries` table lives in the app's own database.
 
 ## Global Configuration
 
 Caching is configured through state atoms, not environment variables:
 
-| Atom                | Field        | Default | Description                            |
-| ------------------- | ------------ | ------- | -------------------------------------- |
-| `cacheOptions`      | `enabled`    | `true`  | Enable or disable all caching globally |
-| `cacheOptions`      | `defaultTtl` | `300`   | Default TTL in seconds                 |
-| `redisCacheOptions` | `prefix`     | -       | Prefix for all Redis cache keys        |
+| Atom           | Field        | Default | Description                            |
+| -------------- | ------------ | ------- | -------------------------------------- |
+| `cacheOptions` | `enabled`    | `true`  | Enable or disable all caching globally |
+| `cacheOptions` | `defaultTtl` | `300`   | Default TTL in seconds                 |
 
 ```typescript
 import { cacheOptions } from "alepha/cache";

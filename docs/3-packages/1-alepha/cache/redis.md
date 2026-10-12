@@ -11,3 +11,9 @@ npm install alepha
 ## Overview
 
 Plugin for Alepha Cache that provides Redis caching capabilities.
+
+## API Reference
+
+### Providers
+
+- [`RedisCacheProvider`](/docs/reference-providers-rediscacheprovider) - Cache entries in Redis.

@@ -1,41 +1,19 @@
-import { $atom, $inject, $store, Alepha, type Infer, z } from "alepha";
+import { $inject, Alepha } from "alepha";
 import { CacheProvider } from "alepha/cache";
 import { $logger } from "alepha/logger";
 import { RedisProvider } from "alepha/redis";
 
-// ---------------------------------------------------------------------------------------------------------------------
-
 /**
- * Redis cache configuration atom.
+ * Cache entries in Redis.
+ *
+ * Every key is `<alepha.name>:cache:<container>:<key>`, so two apps on one
+ * Redis never read or overwrite each other's entries, and `clear()` deletes
+ * this app's namespace only. Set `APP_NAME` to separate two environments of
+ * one app.
  */
-export const redisCacheOptions = $atom({
-  name: "alepha.cache.redis.options",
-  schema: z.object({
-    prefix: z
-      .text({
-        description:
-          "Prefix for all cache keys in Redis. Useful for testing or multi-tenant applications.",
-      })
-      .optional(),
-  }),
-  default: {},
-  serverOnly: true,
-});
-
-export type RedisCacheOptions = Infer<typeof redisCacheOptions.schema>;
-
-declare module "alepha" {
-  interface State {
-    [redisCacheOptions.key]: RedisCacheOptions;
-  }
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
-
 export class RedisCacheProvider extends CacheProvider {
   protected readonly log = $logger();
   protected readonly redisProvider = $inject(RedisProvider);
-  protected readonly options = $store(redisCacheOptions);
   protected readonly alepha = $inject(Alepha);
 
   public async get(name: string, key: string): Promise<Uint8Array | undefined> {
@@ -89,7 +67,7 @@ export class RedisCacheProvider extends CacheProvider {
     if (keys.length === 0) {
       const matched = this.ownKeys(
         `${nameKey}:`,
-        await this.redisProvider.keys(`${nameKey}:*`),
+        await this.redisProvider.keys(`${this.pattern(name)}:*`),
       );
       if (matched.length > 0) {
         await this.redisProvider.del(matched);
@@ -115,14 +93,16 @@ export class RedisCacheProvider extends CacheProvider {
   public async keys(name: string, filter?: string): Promise<string[]> {
     const prefix = `${this.prefix(name)}:`;
     const pattern = filter
-      ? `${prefix}${this.escapeKey(filter)}*`
-      : `${prefix}*`;
+      ? `${this.pattern(name)}:${this.escapeKey(filter)}*`
+      : `${this.pattern(name)}:*`;
     return this.callerKeys(prefix, await this.redisProvider.keys(pattern));
   }
 
   public async clear(): Promise<void> {
     this.log.debug("Clearing all cache");
-    const pattern = `${this.prefix()}:*`;
+    // This app's namespace only: `cache:*` used to wipe every app's cache
+    // on a shared Redis.
+    const pattern = `${this.pattern()}:*`;
     const keys = await this.redisProvider.keys(pattern);
     if (keys.length > 0) {
       await this.redisProvider.del(keys);
@@ -139,13 +119,22 @@ export class RedisCacheProvider extends CacheProvider {
     return this.redisProvider.incr(keyWithPrefix, amount, ttl);
   }
 
+  /**
+   * The Redis key: `<alepha.name>:cache:<path...>`.
+   */
   protected prefix(...path: string[]): string {
-    const parts = ["cache", ...path];
+    return [this.alepha.name, "cache", ...path].join(":");
+  }
 
-    if (this.options.prefix) {
-      parts.unshift(this.options.prefix);
-    }
-
-    return parts.join(":");
+  /**
+   * {@link prefix} as a `KEYS` pattern: the app name is glob-escaped, so an
+   * `APP_NAME` holding `*`, `?` or `[` matches only itself.
+   */
+  protected pattern(...path: string[]): string {
+    return [
+      this.alepha.name.replace(/[*?[\]\\]/g, "\\$&"),
+      "cache",
+      ...path,
+    ].join(":");
   }
 }

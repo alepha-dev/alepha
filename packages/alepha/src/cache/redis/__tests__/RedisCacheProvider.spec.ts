@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
-import type { Alepha } from "alepha";
+import { Alepha } from "alepha";
+import { $cache, CacheProvider } from "alepha/cache";
 import { describe, it } from "vitest";
 
 import {
@@ -28,11 +29,12 @@ import {
   testCacheStop,
   testSimpleKeyMappingHandler,
 } from "../../core/__tests__/shared.ts";
-import { RedisCacheProvider, redisCacheOptions } from "../index.ts";
+import { AlephaCacheRedis, RedisCacheProvider } from "../index.ts";
 
 const provider = RedisCacheProvider;
 const configure = () => (app: Alepha) => {
-  app.store.mut(redisCacheOptions, () => ({ prefix: randomUUID() }));
+  // One namespace per test: the provider keys every entry with alepha.name.
+  app.loadEnv({ APP_NAME: randomUUID() });
 };
 
 describe("$cache - redis", () => {
@@ -126,5 +128,40 @@ describe("$cache - redis", () => {
 
   it("should handle different types with compression", async () => {
     await testCacheCompressTypes(configure(), provider);
+  });
+});
+
+describe("RedisCacheProvider: one namespace per alepha.name", () => {
+  const boot = async (name: string) => {
+    const alepha = Alepha.create({ env: { APP_NAME: name } }).with(
+      AlephaCacheRedis,
+    );
+
+    class App {
+      users = $cache({ name: "users", ttl: [10, "minutes"] });
+    }
+
+    alepha.inject(App);
+    await alepha.start();
+    return alepha.inject(CacheProvider);
+  };
+
+  it("never reads another name's entries, and clear() deletes its own namespace only", async ({
+    expect,
+  }) => {
+    const a = await boot(`a-${randomUUID()}`);
+    const b = await boot(`b-${randomUUID()}`);
+    const other = await boot(`c-${randomUUID()}`);
+
+    await a.set("users", "1", new TextEncoder().encode("a"));
+    await b.set("users", "1", new TextEncoder().encode("b"));
+
+    expect(new TextDecoder().decode(await a.get("users", "1"))).toBe("a");
+    expect(await other.has("users", "1")).toBe(false);
+
+    await a.clear();
+
+    expect(await a.has("users", "1")).toBe(false);
+    expect(await b.has("users", "1")).toBe(true);
   });
 });
