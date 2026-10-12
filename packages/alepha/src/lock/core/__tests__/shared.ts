@@ -7,7 +7,6 @@ import {
   LockPrimitive,
   LockProvider,
   LockTopicProvider,
-  lockOptions,
   MemoryLockProvider,
 } from "alepha/lock";
 import {
@@ -47,9 +46,8 @@ export const testLockBasic = async (
   const prefix = randomUUID();
 
   const createApp = async () => {
-    const app = Alepha.create();
-    app.store.mut(lockOptions, () => ({ prefixKey: prefix }));
-    return app
+    // One namespace per run: on Redis the provider keys every lock with it.
+    return Alepha.create({ env: { APP_NAME: prefix } })
       .with({
         provide: LockTopicProvider,
         use: topicProvider,
