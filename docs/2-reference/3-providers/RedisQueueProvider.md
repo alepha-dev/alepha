@@ -19,3 +19,7 @@ a local timer (see `QueuePushOptions.delaySeconds`). That fallback
 is still the right answer for any backend without a delay tier, and it is
 still what happens if this one is unreachable, because the caller's outbox
 row and its sweep remain the truth either way.
+
+Every key is `<alepha.name>:queue:<queue>` (plus `:delayed`), so two apps
+on one Redis never pop each other's jobs. Set `APP_NAME` to separate two
+environments of one app.

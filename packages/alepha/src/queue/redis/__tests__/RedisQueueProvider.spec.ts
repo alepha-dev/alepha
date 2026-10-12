@@ -133,3 +133,39 @@ describe("RedisQueueProvider", () => {
     expect(await b.provider.pop(queue)).toBeUndefined();
   });
 });
+
+describe("RedisQueueProvider: one namespace per alepha.name", () => {
+  const boot = async (name: string) => {
+    const alepha = Alepha.create({ env: { APP_NAME: name } })
+      .with({ provide: QueueProvider, use: RedisQueueProvider })
+      .with(AlephaRedis)
+      .with(AlephaQueue);
+    await alepha.start();
+    return alepha.inject(QueueProvider) as RedisQueueProvider;
+  };
+
+  test("keys the list and the delay tier under <name>:queue:", async () => {
+    const alepha = Alepha.create({ env: { APP_NAME: "shop" } });
+    const provider = alepha.inject(RedisQueueProvider);
+
+    expect(provider.prefix("api:jobs:dispatch")).toBe(
+      "shop:queue:api:jobs:dispatch",
+    );
+    expect(provider.delayKey("api:jobs:dispatch")).toBe(
+      "shop:queue:api:jobs:dispatch:delayed",
+    );
+  });
+
+  test("never hands one name's jobs to another, and does within one", async () => {
+    const name = `a-${randomUUID()}`;
+    const producer = await boot(name);
+    const sibling = await boot(name);
+    const other = await boot(`b-${randomUUID()}`);
+    const queue = "api:jobs:dispatch";
+
+    await producer.push(queue, "job-of-a");
+
+    expect(await other.pop(queue)).toBeUndefined();
+    expect(await sibling.pop(queue)).toBe("job-of-a");
+  });
+});

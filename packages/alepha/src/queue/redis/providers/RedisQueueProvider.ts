@@ -1,4 +1,4 @@
-import { $atom, $inject, $store, type Infer, z } from "alepha";
+import { $atom, $inject, $store, Alepha, type Infer, z } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { QueueProvider, type QueuePushOptions } from "alepha/queue";
@@ -12,10 +12,6 @@ import { RedisProvider } from "alepha/redis";
 export const redisQueueOptions = $atom({
   name: "alepha.queue.redis.options",
   schema: z.object({
-    prefix: z.text({
-      default: "queue",
-      description: "Prefix for all queue keys in Redis.",
-    }),
     delayScanBatch: z
       .integer()
       .min(1)
@@ -24,7 +20,6 @@ export const redisQueueOptions = $atom({
       ),
   }),
   default: {
-    prefix: "queue",
     delayScanBatch: 50,
   },
   serverOnly: true,
@@ -52,15 +47,23 @@ declare module "alepha" {
  * is still the right answer for any backend without a delay tier, and it is
  * still what happens if this one is unreachable, because the caller's outbox
  * row and its sweep remain the truth either way.
+ *
+ * Every key is `<alepha.name>:queue:<queue>` (plus `:delayed`), so two apps
+ * on one Redis never pop each other's jobs. Set `APP_NAME` to separate two
+ * environments of one app.
  */
 export class RedisQueueProvider extends QueueProvider {
   protected readonly options = $store(redisQueueOptions);
+  protected readonly alepha = $inject(Alepha);
   protected readonly redisProvider: RedisProvider = $inject(RedisProvider);
   protected readonly dt = $inject(DateTimeProvider);
   protected readonly crypto = $inject(CryptoProvider);
 
+  /**
+   * The Redis list of a queue: `<alepha.name>:queue:<queue>`.
+   */
   public prefix(queue: string): string {
-    return `${this.options.prefix}:${queue}`;
+    return `${this.alepha.name}:queue:${queue}`;
   }
 
   /**
