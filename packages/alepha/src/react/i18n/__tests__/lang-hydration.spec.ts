@@ -53,8 +53,9 @@ describe("i18n language hydration", () => {
    * later request resolves it on the SERVER — so the two sides have to agree on
    * the cookie's name.
    *
-   * They did not. The server namespaces cookie names with `APP_NAME`, the
-   * browser variant cannot (`APP_NAME` is neither bundled nor hydrated), so the
+   * They did not. The server namespaces cookie names with `alepha.name`, the
+   * browser variant cannot (the runtime `APP_NAME` is neither bundled nor
+   * hydrated), so the
    * browser wrote `lang` while the server looked for `myapp.lang`. An explicit
    * choice never survived a page load: SSR kept rendering in the
    * `Accept-Language` language and the browser repainted to the chosen one —

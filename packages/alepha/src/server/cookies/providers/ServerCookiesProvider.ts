@@ -91,8 +91,8 @@ export class ServerCookiesProvider {
   }
 
   /**
-   * Namespaces a cookie name with the app's `APP_NAME` (lowercased) so that
-   * two Alepha apps sharing a cookie jar do not collide.
+   * Namespaces a cookie name with `alepha.name` (lowercased) so that two
+   * Alepha apps sharing a cookie jar do not collide.
    *
    * Cookies are scoped by host + path only — never by port — so two apps on
    * `localhost:3000` and `localhost:4000` would otherwise both read/write a
@@ -100,20 +100,18 @@ export class ServerCookiesProvider {
    * because each encrypts with its own `APP_SECRET`, the foreign cookie fails
    * to decrypt and gets deleted, logging the user out).
    *
-   * When `APP_NAME` is unset the name is returned unchanged, so existing
-   * single-app deployments keep their current cookie names. Same convention as
-   * the `APP_NAME` prefix used by R2 storage and server-timing.
+   * `alepha.name` is `APP_NAME`, else the build's app name, else `"app"`, so
+   * every server cookie is namespaced, whether `APP_NAME` is set or not.
    *
-   * Pass `prefix = false` to skip the namespace entirely — used for
-   * `persist: "cookie"` atoms, whose browser-side counterpart cannot see
-   * `APP_NAME` and therefore always uses the bare name. See
-   * `CookiePrimitiveOptions.prefix`.
+   * Pass `prefix = false` to skip the namespace entirely — used for every
+   * cookie the browser also reads or writes (`persist: "cookie"` atoms, the
+   * i18n `lang` cookie, the UI preferences): the browser only knows the baked
+   * build name, which can differ from the server's runtime `APP_NAME`, so
+   * both sides use the bare name. See `CookiePrimitiveOptions.prefix`.
    */
   protected prefixName(name: string, prefix = true): string {
     if (!prefix) return name;
-    const app = this.alepha.env.APP_NAME;
-    if (!app) return name;
-    return `${String(app).toLowerCase()}.${name}`;
+    return `${this.alepha.name.toLowerCase()}.${name}`;
   }
 
   public getCookie<T extends ZType>(

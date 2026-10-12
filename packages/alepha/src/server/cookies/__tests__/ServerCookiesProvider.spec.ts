@@ -114,7 +114,7 @@ describe("ServerCookiesProvider", () => {
 
   test("should correctly read an incoming cookie", async () => {
     const sessionData = { userId: 456, role: "user" };
-    const cookieHeader = `session=${encodeURIComponent(JSON.stringify(sessionData))}`;
+    const cookieHeader = `app.session=${encodeURIComponent(JSON.stringify(sessionData))}`;
 
     const { data } = await makeRequest(cookieHeader);
 
@@ -127,7 +127,7 @@ describe("ServerCookiesProvider", () => {
     const signedCookie = setCookieHeader!.match(/signed_session=([^;]*)/)![1];
 
     // Make a new request with the signed cookie
-    const { data } = await makeRequest(`signed_session=${signedCookie}`);
+    const { data } = await makeRequest(`app.signed_session=${signedCookie}`);
 
     // The `get` method should successfully validate the signature and return the value
     expect(app.signed.get({ cookies: data.reqCookies })).toBe("i-am-signed");
@@ -138,7 +138,7 @@ describe("ServerCookiesProvider", () => {
     let tamperedCookie = setCookieHeader!.match(/signed_session=([^;]*)/)![1];
     tamperedCookie += "tampered"; // alter the cookie value
 
-    const { data } = await makeRequest(`signed_session=${tamperedCookie}`);
+    const { data } = await makeRequest(`app.signed_session=${tamperedCookie}`);
 
     // The get should fail and return undefined
     expect(app.signed.get({ cookies: data.reqCookies })).toBeUndefined();
@@ -153,7 +153,9 @@ describe("ServerCookiesProvider", () => {
     // The value should not be plain text
     expect(decodeURIComponent(encryptedCookie)).not.toContain("secret-key");
 
-    const { data } = await makeRequest(`encrypted_secret=${encryptedCookie}`);
+    const { data } = await makeRequest(
+      `app.encrypted_secret=${encryptedCookie}`,
+    );
 
     expect(app.encrypted.get({ cookies: data.reqCookies })).toEqual({
       apiKey: "secret-key",
@@ -167,7 +169,7 @@ describe("ServerCookiesProvider", () => {
     )![1];
 
     const { data } = await makeRequest(
-      `encrypted_secret=aa${tamperedCookie}aa`,
+      `app.encrypted_secret=aa${tamperedCookie}aa`,
     );
 
     // The get should fail (throw internally) and return undefined
@@ -178,7 +180,7 @@ describe("ServerCookiesProvider", () => {
     const { setCookieHeader } = await makeRequest();
     const secureCookie = setCookieHeader!.match(/ultra_secure=([^;]*)/)![1];
 
-    const { data } = await makeRequest(`ultra_secure=${secureCookie}`);
+    const { data } = await makeRequest(`app.ultra_secure=${secureCookie}`);
 
     expect(app.secure_all.get({ cookies: data.reqCookies })).toEqual({
       data: "super sensitive data",
@@ -187,7 +189,7 @@ describe("ServerCookiesProvider", () => {
 
   test("should delete a cookie", async () => {
     const sessionData = { userId: 789, role: "guest" };
-    const cookieHeader = `session=${encodeURIComponent(JSON.stringify(sessionData))}`;
+    const cookieHeader = `app.session=${encodeURIComponent(JSON.stringify(sessionData))}`;
 
     const { setCookieHeader } = await makeRequest(cookieHeader);
 
@@ -271,6 +273,21 @@ describe("ServerCookiesProvider", () => {
 
       // Cookie is written under the namespaced name, not the bare "tokens".
       expect(setCookieHeader).toContain("appa.tokens=");
+      expect(setCookieHeader).not.toMatch(/(^|; )tokens=/);
+    });
+
+    test("prefixes with alepha.name when APP_NAME is unset: never the bare name", async () => {
+      const app = Alepha.create({ env: { COOKIE_SECRET: TEST_COOKIE_SECRET } })
+        .with(AlephaServer)
+        .with(AlephaServerCookies)
+        .with(TokenApp);
+      await app.start();
+
+      const response = await app.inject(TokenApp).set.fetch();
+      const setCookieHeader = response.headers.get("set-cookie");
+
+      // No build ran, so alepha.name is "app".
+      expect(setCookieHeader).toContain("app.tokens=");
       expect(setCookieHeader).not.toMatch(/(^|; )tokens=/);
     });
 

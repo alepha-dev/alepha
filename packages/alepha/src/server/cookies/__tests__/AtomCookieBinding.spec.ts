@@ -48,7 +48,7 @@ class CookieBoundApp {
 const alepha = Alepha.create().with(AlephaServer).with(AlephaServerCookies);
 const app = alepha.inject(CookieBoundApp);
 
-const cookieHeader = `test-cookie-binding-theme=${encodeURIComponent(
+const cookieHeader = `app.test-cookie-binding-theme=${encodeURIComponent(
   JSON.stringify({ theme: "dark" }),
 )}`;
 

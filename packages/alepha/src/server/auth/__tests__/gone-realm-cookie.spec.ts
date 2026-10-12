@@ -71,7 +71,7 @@ const boot = async (realm: string) => {
 const tokensCookie = (response: Response) =>
   response.headers
     .getSetCookie()
-    .find((it) => it.startsWith("tokens="))
+    .find((it) => it.startsWith("app.tokens="))
     ?.split(";")[0];
 
 /**
@@ -110,7 +110,7 @@ describe("a tokens cookie whose realm is gone", () => {
     // No bearer: the cookie named nobody this app can verify.
     expect(await response.text()).toBe("");
     // Deleted, so the next request does not pay for it again.
-    expect(tokensCookie(response)).toBe("tokens=");
+    expect(tokensCookie(response)).toBe("app.tokens=");
   });
 
   it("can still log out", async ({ expect }) => {
@@ -124,7 +124,7 @@ describe("a tokens cookie whose realm is gone", () => {
     });
 
     expect(response.status).toBe(302);
-    expect(tokensCookie(response)).toBe("tokens=");
+    expect(tokensCookie(response)).toBe("app.tokens=");
   });
 
   it("answers userinfo with no user", async ({ expect }) => {

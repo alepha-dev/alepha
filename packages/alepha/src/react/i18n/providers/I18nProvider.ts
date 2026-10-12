@@ -49,8 +49,9 @@ export class I18nProvider<
   /**
    * `prefix: false` because this cookie is written by the BROWSER (`setLang`)
    * and read by the SERVER (`onRender`). The server namespaces cookie names
-   * with `APP_NAME`; the browser cannot — `APP_NAME` is neither baked into the
-   * client bundle nor hydrated — so a prefixed declaration had the browser
+   * with `alepha.name`; the browser cannot — the server's runtime `APP_NAME`
+   * is neither baked into the client bundle nor hydrated — so a prefixed
+   * declaration had the browser
    * write `lang` while the server looked for `myapp.lang` and never found it.
    * Choosing a language then persisted client-side only: every full page load
    * server-rendered in the `Accept-Language` language and repainted to the

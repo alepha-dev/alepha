@@ -133,13 +133,13 @@ describe("blob key prefix", () => {
       return response.headers.get("set-cookie");
     };
 
-    it("should not namespace cookies when only S3_KEY_PREFIX is set", async () => {
+    it("should not namespace cookies with S3_KEY_PREFIX when only it is set", async () => {
       const header = await setCookieHeaderFor({
         S3_KEY_PREFIX: "apps/lore/production/blobs",
       });
 
-      // Bare name — the blob layout said nothing about the cookie jar.
-      expect(header).toMatch(/(^|; )tokens=/);
+      // alepha.name ("app" with no build), never the blob layout.
+      expect(header).toContain("app.tokens=");
       expect(header).not.toContain("apps/lore/production/blobs");
     });
 

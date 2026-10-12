@@ -88,7 +88,7 @@ describe("token refresh across realms", () => {
     const tokensCookie = (response: Response) => {
       const header = response.headers
         .getSetCookie()
-        .find((it) => it.startsWith("tokens="));
+        .find((it) => it.startsWith("app.tokens="));
       return header?.split(";")[0];
     };
 

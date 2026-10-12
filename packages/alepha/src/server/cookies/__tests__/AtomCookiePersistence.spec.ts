@@ -176,15 +176,15 @@ describe("registration order: atoms declared on a $module, before the adapter ex
 
 describe("cookie-name symmetry with APP_NAME set", () => {
   // ServerCookiesProvider.getCookie/setCookie normally namespace every
-  // cookie under `${APP_NAME.toLowerCase()}.${name}`. The browser variant
-  // of this adapter (AtomCookiePersistence.browser.ts) can never see
-  // APP_NAME — it is not baked into the client bundle and not part of SSR
-  // hydration — so it always reads/writes the BARE atom key. Without the
+  // cookie under `${alepha.name.toLowerCase()}.${name}`. The browser variant
+  // of this adapter (AtomCookiePersistence.browser.ts) can never see the
+  // server's runtime APP_NAME — it is not baked into the client bundle and
+  // not part of SSR hydration — so it always reads/writes the BARE atom key. Without the
   // `prefix: false` override in AtomCookiePersistence.cookieOptions(), a
   // client-side mutation would write `theme`, the server would look for
   // `rdm.theme`, miss, and SSR the default — flash of wrong state on every
-  // reload. These tests must run with APP_NAME set: without it, both sides
-  // collapse to the bare key and the asymmetry is invisible.
+  // reload. APP_NAME is set here to mirror a deploy, whose runtime name the
+  // browser never learns; without it the server would still prefix "app.".
   const appNameSettingsAtom = $atom({
     name: "test.cookie.appname",
     schema: z.object({ theme: z.string() }),

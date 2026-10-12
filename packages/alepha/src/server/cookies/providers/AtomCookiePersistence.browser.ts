@@ -17,15 +17,14 @@ import { CookieParser } from "../services/CookieParser.ts";
  * boot; `state:register` covers atoms that first register later (lazily, on
  * first read).
  *
- * Cookie names are NOT APP_NAME-prefixed here, because `APP_NAME` is not
- * reachable in the browser: `BuildClientTask` only `define`s
- * `process.env.NODE_ENV` for the client bundle, and the SSR hydration
- * payload (`ReactServerTemplateProvider.buildHydrationData`) only carries
- * registered atom values + router layers — never the raw `env` store key.
- * The server variant (`AtomCookiePersistence.ts`) matches this by passing
- * `prefix: false` to `ServerCookiesProvider`, specifically for atom-cookie
- * traffic — every other server cookie ($cookie primitive) still gets the
- * APP_NAME namespace. See `ServerCookiesProvider.prefixName`.
+ * Cookie names are NOT prefixed with `alepha.name` here, because the browser
+ * cannot know the server's: it has only the baked build name, while the
+ * server's runtime `APP_NAME` (a deploy's `<name>-<env>`) is neither bundled
+ * nor part of the SSR hydration payload. The server variant
+ * (`AtomCookiePersistence.ts`) matches this by passing `prefix: false` to
+ * `ServerCookiesProvider`, specifically for atom-cookie traffic — every
+ * other server cookie ($cookie primitive) still gets the namespace. See
+ * `ServerCookiesProvider.prefixName`.
  */
 export class AtomCookiePersistence {
   protected readonly alepha = $inject(Alepha);

@@ -31,7 +31,8 @@ export class UiPersistence {
   /**
    * `prefix: false` because everything except the server reads and writes this
    * cookie under its bare name: the browser `$cookie` variant (which cannot see
-   * `APP_NAME` — it is neither bundled nor hydrated) and {@link colorSchemeBoot},
+   * the server's `alepha.name` — the runtime `APP_NAME` is neither bundled nor
+   * hydrated) and {@link colorSchemeBoot},
    * whose regex is a literal `alepha-ui`. Left prefixed, the server wrote and
    * looked for `myapp.alepha-ui`, so a theme chosen in the browser was invisible
    * to SSR and to the very boot script that exists to prevent the flash.
