@@ -35,6 +35,27 @@ alepha.env.APP_NAME; // "My SaaS"
 >
 > While `alepha.env` gives raw access, use the `$env` primitive inside services for type-safe, validated environment variables.
 
+### The App Name
+
+`alepha.name` is the app's namespace: the one identity modules key a shared resource with (a Redis, a KV namespace, a bucket), so two apps, or two environments of one app, on the same backend never read each other's keys.
+
+```typescript check
+import { Alepha } from "alepha";
+
+Alepha.create().name; // "app"
+Alepha.create({ env: { APP_NAME: "hello" } }).name; // "hello"
+```
+
+The first hit wins:
+
+1. `APP_NAME`: in code, then `process.env`, then a Worker binding lifted by `loadEnv()`.
+2. The name `alepha build` and `alepha dev` bake into the bundles: the slugified app directory, or `meta.name` in `alepha.config.ts`. The same string as `/version`'s `name` and the Worker name.
+3. `"app"`, when no build produced the code (Vitest, a `tsx` script).
+
+It is read on every call and never written into `env`, so `env.APP_NAME` keeps meaning "set explicitly". A deploy usually sets `APP_NAME` to `<name>-<env>`, which keeps staging and production apart on one Redis.
+
+> In the browser only the baked name exists, and it can differ from the server's `APP_NAME`. Never use `alepha.name` for anything the browser and the server must agree on.
+
 ## Dependency Injection
 
 Alepha is built on a dependency injection container. You register classes and Alepha wires them together.

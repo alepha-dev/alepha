@@ -131,8 +131,14 @@ class RecordingViteUtils extends ViteUtils {
  * A build record without the git calls behind the real one.
  */
 class FixedMetaResolver extends MetaResolver {
+  public installed: AlephaMeta[] = [];
+
   public async resolve(): Promise<AlephaMeta> {
-    return {} as AlephaMeta;
+    return { name: "shop" } as AlephaMeta;
+  }
+
+  public install(meta: AlephaMeta): void {
+    this.installed.push(meta);
   }
 }
 
@@ -184,6 +190,27 @@ describe("ViteDevServerProvider: host, constants and CORS", () => {
     });
 
     expect(config.define.__APP_CONFIG__).toBe('{"mode":"dev"}');
+  });
+
+  it("installs the build record in this process, for an alepha Vite SSR externalizes", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create()
+      .with({ provide: ViteUtils, use: RecordingViteUtils })
+      .with({ provide: MetaResolver, use: FixedMetaResolver });
+    await alepha
+      .inject(ViteDevServerProvider)
+      .init({
+        root: "/app",
+        entry: { root: "/app", server: "src/main.server.ts" },
+        port: 4321,
+      } as DevServerOptions)
+      .catch(() => undefined);
+
+    // `define` never reaches `alepha` loaded from node_modules downstream.
+    expect(alepha.inject(FixedMetaResolver).installed).toEqual([
+      { name: "shop" },
+    ]);
   });
 
   it("hands the caller's constants to the browser as globals, and nothing without them", async ({

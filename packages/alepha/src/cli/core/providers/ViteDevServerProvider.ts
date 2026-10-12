@@ -269,6 +269,13 @@ export class ViteDevServerProvider {
       override: this.metaOverride,
     });
 
+    // `define` below only reaches modules Vite transforms. In a downstream app
+    // `alepha` comes from node_modules, which Vite SSR externalizes, so the
+    // core would read the no-build fallback: `/version` and `alepha.name`
+    // would say "unknown" and "app". The SSR render runs in this process, so a
+    // global binding reaches it, as it does for the prerender.
+    this.metaResolver.install(this.devMeta);
+
     this.server = await createServer({
       root: this.options.root,
       plugins,
