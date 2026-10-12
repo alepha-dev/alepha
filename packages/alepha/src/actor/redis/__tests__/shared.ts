@@ -63,27 +63,15 @@ class FaultProvider extends RedisActorProvider {
     return super.compareAndSet(identity, raw, next);
   }
   async corrupt(name: string, raw: string) {
-    await this.redis.set(
-      this.codec.identity(String(this.alepha.env.ALEPHA_ACTOR_NAMESPACE), name),
-      raw,
-    );
+    await this.redis.set(this.codec.identity(this.alepha.name, name), raw);
   }
   async raw(name: string) {
     return (
-      await this.redis.get(
-        this.codec.identity(
-          String(this.alepha.env.ALEPHA_ACTOR_NAMESPACE),
-          name,
-        ),
-      )
+      await this.redis.get(this.codec.identity(this.alepha.name, name))
     )?.toString("utf8");
   }
   async clean() {
-    await this.redis.del(
-      await this.redis.keys(
-        "*" + String(this.alepha.env.ALEPHA_ACTOR_NAMESPACE) + "*",
-      ),
-    );
+    await this.redis.del(await this.redis.keys("*" + this.alepha.name + "*"));
   }
 }
 
@@ -93,7 +81,7 @@ export class RedisActorContract {
     const make = (suffix = "") =>
       Alepha.create({
         env: {
-          ALEPHA_ACTOR_NAMESPACE: namespace + suffix,
+          APP_NAME: namespace + suffix,
           REDIS_URL: process.env.REDIS_URL ?? "redis://localhost:16379",
         },
       })
@@ -196,11 +184,8 @@ export class RedisActorContract {
       expect(codec.identity(namespace, "a:b", "c")).not.toBe(
         codec.identity(namespace, "a", "b:c"),
       );
-      expect(() =>
-        Alepha.create({ env: { ALEPHA_ACTOR_NAMESPACE: "" } }).with(
-          AlephaActorRedis,
-        ),
-      ).toThrow("ALEPHA_ACTOR_NAMESPACE");
+      // alepha.name is never empty, so selecting Redis needs no variable.
+      expect(() => Alepha.create().with(AlephaActorRedis)).not.toThrow();
       const memory = Alepha.create({ env: { REDIS_URL: "redis://invalid:1" } });
       memory.inject(Actors);
       // REDIS_URL must not select a Redis provider or open a connection.

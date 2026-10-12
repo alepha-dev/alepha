@@ -194,7 +194,7 @@ export default { async fetch(request, env, context) {
     };
     const worker = (name: string, scope: string) => {
       const env: Record<string, any> = {
-        ALEPHA_ACTOR_NAMESPACE: { type: "json", value: scope },
+        APP_NAME: { type: "json", value: scope },
         LOG_LEVEL: { type: "json", value: "error" },
       };
       for (const binding of config.durable_objects?.bindings ?? [])

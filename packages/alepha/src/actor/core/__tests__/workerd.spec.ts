@@ -31,7 +31,7 @@ export default { async fetch(request, env) {
  const input = await request.json();
  try {
   if (input.raw) {
-   const identity = app.inject(ActorCodec).identity(env.ALEPHA_ACTOR_NAMESPACE, input.name ?? "counter", input.key);
+   const identity = app.inject(ActorCodec).identity(env.APP_NAME, input.name ?? "counter", input.key);
    const stub = env.ALEPHA_ACTOR.get(env.ALEPHA_ACTOR.idFromName(input.target ?? identity));
    return Response.json(await stub.executeActor(identity, { name: input.name ?? "counter", key: input.key, method: input.method, args: input.args ?? [] }));
   }
@@ -65,7 +65,7 @@ export default { async fetch(request, env) {
                   worker: "actor-fixture",
                   exportName: "AlephaActorDurableObject",
                 },
-                ALEPHA_ACTOR_NAMESPACE: { type: "json", value: namespace },
+                APP_NAME: { type: "json", value: namespace },
               },
               exports: {
                 AlephaActorDurableObject: {

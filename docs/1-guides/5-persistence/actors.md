@@ -36,7 +36,7 @@ if it was the first call, the validated default has already been initialized.
 
 For example, `alepha.store.set(counter, 100)` leaves `service.counter.read()`
 unchanged, and `service.counter.add()` leaves the ordinary store value unchanged
-when `service` is the injected `CounterService`. Changing a namespace
+when `service` is the injected `CounterService`. Changing the app name
 or atom name selects new state; it does not migrate or delete previous snapshots.
 Two distinct actor declarations cannot reuse the same atom name in one container.
 Method names are own properties and cannot shadow `get`, `read`, `then`, primitive
@@ -120,8 +120,9 @@ Revision overflow refuses further transitions. There is no automatic data migrat
 ## Redis on Node and Bun
 
 Select `AlephaActorRedis` from `alepha/actor/redis` explicitly with
-`alepha.with(AlephaActorRedis)`. Set `ALEPHA_ACTOR_NAMESPACE` to a nonempty stable
-application namespace before selection. `REDIS_URL` alone leaves Memory selected.
+`alepha.with(AlephaActorRedis)`. Every actor identity carries
+[`alepha.name`](/docs/guides-core-alepha-instance): `APP_NAME`, else the build's app
+name, else `"app"`. `REDIS_URL` alone leaves Memory selected.
 The provider uses the existing runtime Redis variants with a dedicated connection
 and offline command replay disabled. Start the container before calling actors.
 
@@ -131,16 +132,17 @@ import { AlephaActorRedis } from "alepha/actor/redis";
 
 const alepha = Alepha.create({
   env: {
-    ALEPHA_ACTOR_NAMESPACE: "my-app:production",
+    APP_NAME: "my-app-production",
     REDIS_URL: "redis://localhost:6379",
   },
 }).with(AlephaActorRedis);
 await alepha.start();
 ```
 
-Independent applications share state only when their Redis server, namespace,
-atom name and default-or-key identity agree. Use separate stable namespaces for
-unrelated applications or environments. Memory instead owns one container's state;
+Independent applications share state only when their Redis server, app name,
+atom name and default-or-key identity agree. Give unrelated applications and
+environments distinct `APP_NAME`s; specs and unbuilt scripts are all `"app"`, so
+two of them on one Redis share actors. Memory instead owns one container's state;
 stopping the process or creating a new container loses it.
 
 Each transition validates its candidate locally, then commits one key with an exact
@@ -154,7 +156,7 @@ commit can leave its outcome unknown. The provider does not retry that invocatio
 and callers must not assume exactly-once delivery. Blindly retrying a failed
 increment can apply it twice; resolving an unknown business operation requires an
 application-level protocol. Corrupt, incompatible or
-unknown-version stored data fails closed. Changing namespace or atom name selects
+unknown-version stored data fails closed. Changing the app name or atom name selects
 new state without migrating or deleting old state.
 
 See [Redis scripting](https://redis.io/docs/latest/develop/programmability/eval-intro/),
@@ -165,8 +167,8 @@ See [Redis scripting](https://redis.io/docs/latest/develop/programmability/eval-
 
 Workerd selects the shared `AlephaActorDurableObject` host with the `ALEPHA_ACTOR`
 binding. Each encoded namespace/name/default-or-key tuple has its own instance.
-The namespace defaults to the empty string within the Worker/class namespace;
-`ALEPHA_ACTOR_NAMESPACE` may add a stable application scope. A missing binding
+The identity carries `alepha.name`, as on every other provider; an `APP_NAME`
+binding wins over the built name. A missing binding
 fails without falling back to Memory.
 
 The host resolves registered pure reducers without starting the full application,

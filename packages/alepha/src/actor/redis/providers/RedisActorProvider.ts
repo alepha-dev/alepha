@@ -33,12 +33,11 @@ redis.call('SET', KEYS[1], ARGV[3])
 return 1`;
 
   public override execute(request: ActorRequest): Promise<unknown> {
-    const namespace = String(this.alepha.env.ALEPHA_ACTOR_NAMESPACE ?? "");
-    if (!namespace.trim())
-      return Promise.reject(
-        new AlephaError("Redis actors require ALEPHA_ACTOR_NAMESPACE"),
-      );
-    const identity = this.codec.identity(namespace, request.name, request.key);
+    const identity = this.codec.identity(
+      this.alepha.name,
+      request.name,
+      request.key,
+    );
     const args = this.codec.copy(request.args);
     const operation = (this.queues.get(identity) ?? Promise.resolve())
       .catch(() => {})

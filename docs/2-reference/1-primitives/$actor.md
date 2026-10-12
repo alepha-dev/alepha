@@ -11,8 +11,9 @@ import { $actor } from "alepha/actor";
 Declare independent default and keyed actor state from an atom descriptor.
 
 The atom supplies a stable name, schema and default, not live actor storage.
-Node and Bun default to per-container Memory; Redis requires explicit selection
-and a namespace. Workerd uses a native Durable Object and fails if unbound.
+Node and Bun default to per-container Memory; Redis requires explicit
+selection. Every identity carries `alepha.name`, so two apps on one backend
+never share state. Workerd uses a native Durable Object and fails if unbound.
 Browser and native client execution is unsupported.
 
 Methods are pure synchronous reducers of readonly JSON state and arguments.
@@ -25,7 +26,8 @@ frozen; callers may mutate returned snapshots without changing stored state.
 Omit optional values instead of passing undefined. Invalid, thrown or Promise
 transitions preserve state. Incompatible persisted data fails without resetting.
 A transport error can leave the commit outcome unknown; delivery is not exactly
-once. Changing a namespace or name selects new state without migrating old data.
+once. Changing the app name or atom name selects new state without migrating
+old data.
 
 ## Examples
 

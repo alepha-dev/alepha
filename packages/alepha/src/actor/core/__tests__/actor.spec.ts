@@ -141,7 +141,7 @@ describe("actor Memory contract", () => {
     const actor = alepha.inject(Counters).value;
     const provider = alepha.inject(InspectMemory);
     const codec = alepha.inject(ActorCodec);
-    const identity = codec.identity("", "counter");
+    const identity = codec.identity(alepha.name, "counter");
     for (const raw of [
       "{",
       '{"version":2,"revision":0,"state":0}',

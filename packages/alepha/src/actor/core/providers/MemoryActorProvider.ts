@@ -17,7 +17,7 @@ export class MemoryActorProvider extends ActorProvider {
 
   public override execute(request: ActorRequest): Promise<unknown> {
     const identity = this.codec.identity(
-      String(this.alepha.env.ALEPHA_ACTOR_NAMESPACE ?? ""),
+      this.alepha.name,
       request.name,
       request.key,
     );

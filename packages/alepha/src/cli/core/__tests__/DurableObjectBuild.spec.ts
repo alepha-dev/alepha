@@ -151,11 +151,7 @@ describe("generic Durable Object build contracts", () => {
         "methods",
       );
     }
-    const redis = Alepha.create({
-      env: { ALEPHA_ACTOR_NAMESPACE: "build-only" },
-    })
-      .with(AlephaActorRedis)
-      .with(ActorApp);
+    const redis = Alepha.create().with(AlephaActorRedis).with(ActorApp);
     expect(cli.inject(ActorHostCollection).collect(redis)).toEqual([
       ActorHostRegistry.actor,
     ]);

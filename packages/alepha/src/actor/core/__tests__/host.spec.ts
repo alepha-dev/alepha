@@ -52,7 +52,7 @@ describe("shared actor host runtime", () => {
     const previous = (globalThis as any).__alepha;
     const app = Alepha.create().with(App);
     (globalThis as any).__alepha = app;
-    const identity = app.inject(ActorCodec).identity("", "host");
+    const identity = app.inject(ActorCodec).identity(app.name, "host");
     const env = {
       ALEPHA_ACTOR: {
         idFromName: (name: string) => ({ toString: () => name }),
@@ -84,7 +84,7 @@ describe("shared actor host runtime", () => {
       await expect(
         host.execute(identity, { name: "host", key: "other", args: [] }),
       ).rejects.toThrow("identity mismatch");
-      const unknown = app.inject(ActorCodec).identity("", "missing");
+      const unknown = app.inject(ActorCodec).identity(app.name, "missing");
       await expect(
         new ActorHost(storage, env, { toString: () => unknown }).execute(
           unknown,

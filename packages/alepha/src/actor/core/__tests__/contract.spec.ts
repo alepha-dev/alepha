@@ -7,10 +7,15 @@ import { ContractActors } from "./ContractActors.ts";
 
 class ContractMemoryProvider extends MemoryActorProvider {
   public put(raw: string): void {
-    this.snapshots.set(this.codec.identity("", "contract.corrupt"), raw);
+    this.snapshots.set(
+      this.codec.identity(this.alepha.name, "contract.corrupt"),
+      raw,
+    );
   }
   public raw(): string | undefined {
-    return this.snapshots.get(this.codec.identity("", "contract.corrupt"));
+    return this.snapshots.get(
+      this.codec.identity(this.alepha.name, "contract.corrupt"),
+    );
   }
 }
 
@@ -22,7 +27,7 @@ describe("Memory shared actor contract", () => {
       .with({ provide: MemoryActorProvider, use: ContractMemoryProvider })
       .with(ContractActors);
     const other = Alepha.create({
-      env: { ALEPHA_ACTOR_NAMESPACE: ":contract" },
+      env: { APP_NAME: ":contract" },
     }).with(ContractActors);
     const storage = primary.inject(ContractMemoryProvider);
     await ActorContract.run({
@@ -41,7 +46,7 @@ describe("Memory shared actor contract", () => {
       put: async (raw) => storage.put(raw),
       raw: async () => storage.raw(),
     });
-    primary.loadEnv({ ALEPHA_ACTOR_NAMESPACE: ":contract" });
+    primary.loadEnv({ APP_NAME: ":contract" });
     const fresh = await primary
       .inject(ContractActors)
       .namespaceCollision.get("c")

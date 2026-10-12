@@ -41,11 +41,7 @@ export class ActorHost {
     )
       return Promise.reject(new AlephaError("Invalid actor dispatch"));
     const namespace = app.inject(ActorHostRuntime).namespace("ALEPHA_ACTOR");
-    const expected = codec.identity(
-      String(app.env.ALEPHA_ACTOR_NAMESPACE ?? ""),
-      request.name,
-      request.key,
-    );
+    const expected = codec.identity(app.name, request.name, request.key);
     if (
       expected !== identity ||
       namespace.idFromName(identity).toString() !== this.id.toString()

@@ -10,8 +10,9 @@ npm install alepha
 
 ## Overview
 
-Explicit Redis actor selection for Node and Bun. Requires a nonempty
-ALEPHA_ACTOR_NAMESPACE before connecting. Durability depends on Redis
+Explicit Redis actor selection for Node and Bun. Every actor identity
+carries `alepha.name` (APP_NAME, else the build's app name, else "app"),
+so two apps on one Redis never share actor state. Durability depends on Redis
 persistence, eviction and failover configuration, without exactly-once claims.
 REDIS_URL alone does not select this provider. Start the container before use.
 Only definite compare-and-set conflicts retry pure reducers; transport failures
