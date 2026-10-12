@@ -42,7 +42,6 @@ export class Logger implements LoggerInterface {
 
   protected readonly service: string;
   protected readonly module: string;
-  protected readonly app?: string;
 
   protected appLogLevel: string = "INFO";
   protected logLevel: LogLevel = "INFO";
@@ -50,7 +49,21 @@ export class Logger implements LoggerInterface {
   constructor(service: string, module: string) {
     this.service = service;
     this.module = module;
-    this.app = this.alepha.env.APP_NAME;
+  }
+
+  /**
+   * The `app` field of every entry: `alepha.name`, read per entry rather than
+   * at construction, because on workerd a logger can be built before
+   * `loadEnv()` lifts the Worker's `APP_NAME` binding.
+   *
+   * Absent when the name is only the no-build `"app"` fallback (specs, `tsx`
+   * scripts): printed on every line there, it would say nothing.
+   */
+  protected get app(): string | undefined {
+    if (!this.alepha.env.APP_NAME && this.alepha.meta.name === "unknown") {
+      return undefined;
+    }
+    return this.alepha.name;
   }
 
   public get context(): string | undefined {

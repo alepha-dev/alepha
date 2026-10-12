@@ -10,11 +10,20 @@ export class ServerTimingProvider {
   protected readonly alepha = $inject(Alepha);
 
   public options = {
-    prefix: this.alepha.env.APP_NAME
-      ? `${this.alepha.env.APP_NAME.toLowerCase()}-`
-      : "",
+    /**
+     * Prefix of every metric name. Defaults to `alepha.name` lowercased, read
+     * when the header is written so a Worker's `APP_NAME` binding counts.
+     */
+    prefix: undefined as string | undefined,
     disabled: this.alepha.isProduction(),
   };
+
+  /**
+   * {@link options.prefix}, else `<alepha.name>-` lowercased.
+   */
+  protected get prefix(): string {
+    return this.options.prefix ?? `${this.alepha.name.toLowerCase()}-`;
+  }
 
   public readonly onRequest = $hook({
     priority: "first",
@@ -53,7 +62,7 @@ export class ServerTimingProvider {
           }
 
           const formattedName =
-            this.options.prefix + name.replace(/[^a-zA-Z0-9-]/g, "-");
+            this.prefix + name.replace(/[^a-zA-Z0-9-]/g, "-");
           timings.push(`${formattedName};dur=${duration}`);
         }
 

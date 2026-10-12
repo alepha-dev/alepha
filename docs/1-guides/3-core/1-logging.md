@@ -28,13 +28,13 @@ class App {
 }
 ```
 
-You can add an `app` field to all log entries by setting the `APP_NAME` environment variable:
+Every log entry carries an `app` field: [`alepha.name`](/docs/guides-core-alepha-instance), which is `APP_NAME` when set, else the app name `alepha build` or `alepha dev` baked in. Set it to tell environments apart:
 
 ```bash
-APP_NAME=my-app
+APP_NAME=my-app-production
 ```
 
-This is useful for identifying logs from different applications in a shared logging system.
+This is useful for identifying logs from different applications in a shared logging system. Specs and unbuilt scripts, whose name is only the `"app"` fallback, leave the field out.
 
 ## Log Levels
 
@@ -155,7 +155,7 @@ interface LogEntry {
   service: string; // class name, e.g. "UserService"
   module: string; // module name, e.g. "app" or "my.project.users"
   context?: string; // request-scoped correlation ID (from AsyncLocalStorage)
-  app?: string; // APP_NAME env variable
+  app?: string; // alepha.name, absent for the no-build "app" fallback
   data?: unknown; // arbitrary payload or Error object
   timestamp: number; // milliseconds since epoch
 }
