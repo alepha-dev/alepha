@@ -162,7 +162,7 @@ export class RateLimitPrimitive<TInput = string> extends Primitive<
               ? `ip:${request.ip || "unknown"}`
               : "ip:global";
           const result = await this.consume(key);
-          if (result.reason === "store")
+          if (!result.allowed && result.reason === "store")
             throw new HttpError({
               status: 503,
               message: "Rate limiter unavailable",

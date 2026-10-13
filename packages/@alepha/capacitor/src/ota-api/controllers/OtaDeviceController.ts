@@ -1,7 +1,7 @@
 import { $inject, Alepha, z } from "alepha";
 import { $repository } from "alepha/orm";
+import { $rateLimit } from "alepha/rate-limit";
 import { $route, type ServerRequest } from "alepha/server";
-import { $rateLimit } from "alepha/server/rate-limit";
 
 import { otaChannelGetResponseSchema } from "../../ota/protocol/otaChannelGetResponseSchema.ts";
 import { otaChannelListResponseSchema } from "../../ota/protocol/otaChannelListResponseSchema.ts";
@@ -34,10 +34,53 @@ export class OtaDeviceController {
   protected readonly publisher = $inject(OtaPublishService);
   protected readonly bundles = $repository(otaBundles);
 
+  // One counter per endpoint per address, one-minute windows. Every limit
+  // lets calls through when the counter store is down (`onStoreError:
+  // "allow"`): a device that cannot fetch an update during an outage is worse
+  // off than an unthrottled one. Contention keeps the default `deny`: only
+  // Redis contends, and a contended per-address key is a burst from one
+  // address.
+  protected readonly updatesLimit = $rateLimit({
+    name: "ota:updates",
+    limit: 120,
+    window: 60_000,
+    onStoreError: "allow",
+  });
+  protected readonly statsLimit = $rateLimit({
+    name: "ota:stats",
+    limit: 120,
+    window: 60_000,
+    onStoreError: "allow",
+  });
+  protected readonly setChannelLimit = $rateLimit({
+    name: "ota:channel-set",
+    limit: 30,
+    window: 60_000,
+    onStoreError: "allow",
+  });
+  protected readonly getChannelLimit = $rateLimit({
+    name: "ota:channel-get",
+    limit: 30,
+    window: 60_000,
+    onStoreError: "allow",
+  });
+  protected readonly listChannelsLimit = $rateLimit({
+    name: "ota:channel-list",
+    limit: 30,
+    window: 60_000,
+    onStoreError: "allow",
+  });
+  protected readonly downloadLimit = $rateLimit({
+    name: "ota:download",
+    limit: 60,
+    window: 60_000,
+    onStoreError: "allow",
+  });
+
   public readonly checkForUpdate = $route({
     method: "POST",
     path: "/ota/updates",
-    use: [$rateLimit({ max: 120, windowMs: 60_000 })],
+    use: [this.updatesLimit.middleware()],
     schema: {
       body: otaDeviceSchema,
       response: otaUpdateResponseSchema,
@@ -55,7 +98,7 @@ export class OtaDeviceController {
   public readonly stats = $route({
     method: "POST",
     path: "/ota/stats",
-    use: [$rateLimit({ max: 120, windowMs: 60_000 })],
+    use: [this.statsLimit.middleware()],
     schema: {
       body: otaStatsRequestSchema,
       response: z.object({ status: z.text() }),
@@ -69,7 +112,7 @@ export class OtaDeviceController {
   public readonly setChannel = $route({
     method: "POST",
     path: "/ota/channel",
-    use: [$rateLimit({ max: 30, windowMs: 60_000 })],
+    use: [this.setChannelLimit.middleware()],
     schema: {
       body: otaDeviceSchema,
       response: otaChannelSetResponseSchema,
@@ -84,7 +127,7 @@ export class OtaDeviceController {
   public readonly getChannel = $route({
     method: "PUT",
     path: "/ota/channel",
-    use: [$rateLimit({ max: 30, windowMs: 60_000 })],
+    use: [this.getChannelLimit.middleware()],
     schema: {
       body: otaDeviceSchema,
       response: otaChannelGetResponseSchema,
@@ -95,7 +138,7 @@ export class OtaDeviceController {
   public readonly listChannels = $route({
     method: "GET",
     path: "/ota/channel",
-    use: [$rateLimit({ max: 30, windowMs: 60_000 })],
+    use: [this.listChannelsLimit.middleware()],
     schema: {
       // The plugin sends its whole device record as a query string; only
       // the app is needed to answer.
@@ -108,7 +151,7 @@ export class OtaDeviceController {
   public readonly download = $route({
     method: "GET",
     path: "/ota/bundles/:id/download",
-    use: [$rateLimit({ max: 60, windowMs: 60_000 })],
+    use: [this.downloadLimit.middleware()],
     schema: {
       params: z.object({ id: z.uuid() }),
       query: z.object({ token: z.text({ maxLength: 256 }) }),

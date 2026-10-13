@@ -1,8 +1,8 @@
 import { $module } from "alepha";
 import { AlephaApiFiles } from "alepha/api/files";
 import { AlephaApiJobs } from "alepha/api/jobs";
+import { AlephaRateLimit } from "alepha/rate-limit";
 import { AlephaSecurity } from "alepha/security";
-import { AlephaServerRateLimit } from "alepha/server/rate-limit";
 
 import { OtaAdminController } from "./controllers/OtaAdminController.ts";
 import { OtaDeviceController } from "./controllers/OtaDeviceController.ts";
@@ -85,12 +85,7 @@ export * from "./services/OtaUpdateService.ts";
  */
 export const AlephaCapacitorOtaApi = $module({
   name: "alepha.capacitor.ota.api",
-  imports: [
-    AlephaSecurity,
-    AlephaApiFiles,
-    AlephaApiJobs,
-    AlephaServerRateLimit,
-  ],
+  imports: [AlephaSecurity, AlephaApiFiles, AlephaApiJobs, AlephaRateLimit],
   services: [
     OtaPermissions,
     OtaBundleInspector,

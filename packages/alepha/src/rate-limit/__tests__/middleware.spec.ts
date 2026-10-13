@@ -51,6 +51,12 @@ class Service {
   perUser = $rateLimit({ name: "mw:user", limit: 1, window: 60_000 });
   failures = $rateLimit({ name: "mw:failures", limit: 2, window: 60_000 });
   successes = $rateLimit({ name: "mw:successes", limit: 2, window: 60_000 });
+  lenient = $rateLimit({
+    name: "mw:lenient",
+    limit: 1,
+    window: 60_000,
+    onStoreError: "allow",
+  });
 
   limited = $pipeline({
     use: [this.two.middleware()],
@@ -77,6 +83,10 @@ class Service {
       if (!ok) throw new AlephaError("crashed");
       return "ok";
     },
+  });
+  open = $pipeline({
+    use: [this.lenient.middleware()],
+    handler: async () => "open",
   });
   action = $action({
     use: [this.two.middleware()],
@@ -200,6 +210,24 @@ describe("$rateLimit middleware", () => {
       const contended = await service.limited().catch((e: unknown) => e);
       expect((contended as HttpError).status).toBe(429);
       expect(headers["Retry-After"]).toBe("1");
+    });
+  });
+
+  it("lets the call through uncounted on a store error under allow", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with({
+      provide: ActorProvider,
+      use: BrokenActorProvider,
+    });
+    const { service } = await boot(alepha);
+    const request = fakeRequest();
+    await inRequest(alepha, request, async () => {
+      expect(await service.open()).toBe("open");
+      expect(await service.open()).toBe("open");
+      expect((request.reply as any)._headers["X-RateLimit-Limit"]).toBe(
+        undefined,
+      );
     });
   });
 

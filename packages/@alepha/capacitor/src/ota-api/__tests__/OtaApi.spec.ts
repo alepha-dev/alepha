@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
 
+import { AlephaError } from "alepha";
+import { ActorProvider, type ActorRequest } from "alepha/actor";
 import { describe, it } from "vitest";
 
 import { otaWireFixtures } from "../../ota/protocol/__fixtures__/otaWireFixtures.ts";
@@ -26,6 +28,15 @@ class FlakyPublishService extends OtaPublishService {
       throw new Error("storage down");
     }
     return super.store(app, manifest, ciphertext);
+  }
+}
+
+/**
+ * A counter store that is down: every actor call fails.
+ */
+class BrokenActorProvider extends ActorProvider {
+  public override async execute(_request: ActorRequest): Promise<unknown> {
+    throw new AlephaError("actor store down");
   }
 }
 
@@ -552,6 +563,47 @@ describe.each(["sqlite", "postgres"] as const)("ota-api on %s", (dialect) => {
       expect(await list.json()).toEqual([
         { id: 1, name: "production", public: true, allow_self_set: false },
       ]);
+    });
+  });
+
+  describe("rate limits", () => {
+    const getChannel = (hostname: string, body: unknown) =>
+      fetch(`${hostname}/ota/channel`, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+    it("answers 429 past an endpoint's limit, per endpoint", async ({
+      expect,
+    }) => {
+      const ctx = await createOtaTestApp(dialect);
+      const app = await ctx.app();
+      const device = ctx.device(app.appId);
+      for (let i = 0; i < 30; i++)
+        expect((await getChannel(ctx.hostname, device)).status).toBe(200);
+      const refused = await getChannel(ctx.hostname, device);
+      expect(refused.status).toBe(429);
+      expect(refused.headers.get("retry-after")).toBeTruthy();
+      // Another endpoint keeps its own counter for the same address.
+      const updates = await fetch(`${ctx.hostname}/ota/updates`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(device),
+      });
+      expect(updates.status).toBe(200);
+    });
+
+    it("lets devices through when the counter store is down", async ({
+      expect,
+    }) => {
+      const ctx = await createOtaTestApp(dialect, (alepha) =>
+        alepha.with({ provide: ActorProvider, use: BrokenActorProvider }),
+      );
+      const app = await ctx.app();
+      const device = ctx.device(app.appId);
+      for (let i = 0; i < 31; i++)
+        expect((await getChannel(ctx.hostname, device)).status).toBe(200);
     });
   });
 
