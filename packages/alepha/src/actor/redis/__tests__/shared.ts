@@ -36,6 +36,11 @@ class Actors {
       asyncResult: () => Promise.resolve(1) as any,
     },
   });
+  expiring = $actor({
+    atom: $atom({ name: "redis-expiring", schema: z.integer(), default: 0 }),
+    methods: { set: (_, value: number) => value },
+    expiresAt: (state) => (state > 0 ? state : undefined),
+  });
   session = $actor({
     atom: nested,
     methods: {
@@ -89,6 +94,13 @@ class FaultProvider extends RedisActorProvider {
   async corrupt(name: string, raw: string) {
     await this.redis.set(this.codec.identity(this.alepha.name, name), raw);
   }
+  async expireTime(name: string) {
+    return this.redis.eval(
+      "return redis.call('PEXPIRETIME', KEYS[1])",
+      [this.codec.identity(this.alepha.name, name)],
+      [],
+    );
+  }
   async raw(name: string) {
     return (
       await this.redis.get(this.codec.identity(this.alepha.name, name))
@@ -103,6 +115,7 @@ const attempts = (maxAttempts: number) => ({
   maxAttempts,
   baseDelayMs: 1,
   maxDelayMs: 50,
+  expiryGraceMs: 60_000,
 });
 
 export class RedisActorContract {
@@ -216,6 +229,13 @@ export class RedisActorContract {
       expect([fault.gets, fault.writes]).toEqual([1, 2]);
       containers[0].store.set(actorRedisOptions, attempts(2));
       fault.mode = "normal";
+      fault.writes = 0;
+      // An expiring envelope sets PXAT at expiresAt + grace; v1 clears it.
+      const until = 4_000_000_000_000;
+      expect(await actors[0].expiring.set(until)).toBe(until);
+      expect(await fault.expireTime("redis-expiring")).toBe(until + 60_000);
+      expect(await actors[0].expiring.set(-1)).toBe(-1);
+      expect(await fault.expireTime("redis-expiring")).toBe(-1);
       fault.writes = 0;
       // A no-op transition issues no compare-and-set at all.
       expect(await actors[0].counter.add(0)).toBe(40);

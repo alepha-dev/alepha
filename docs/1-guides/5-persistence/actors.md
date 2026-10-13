@@ -170,8 +170,22 @@ version 1 byte for byte, so existing data needs no migration. A return that is
 neither `undefined` nor a safe integer fails the transition and preserves the
 state, like an invalid state. An asynchronous `expiresAt` is refused at declaration.
 
-Expiry is lazy: an expired envelope stays stored until it is overwritten. On Redis,
-a transition on an expired key compares and sets against the bytes still present.
+Expiry is lazy, so reading is always correct, and storage is reclaimed separately:
+a key touched once and never again would otherwise stay forever.
+
+- **Memory** keeps each `expiresAt` beside its snapshot and, on every write, checks
+  at most eight entries from a cursor and deletes the expired ones. The sweep is
+  deterministic, so specs need no probability knob.
+- **Redis** writes an expiring envelope with `PXAT expiresAt + expiryGraceMs`
+  (Redis 6.2+; `expiryGraceMs` defaults to one minute in `actorRedisOptions`), so
+  clock skew never drops a key the app still reads as live. A version 1 write
+  clears the expiry. Until Redis drops it, a transition on an expired key compares
+  and sets against the bytes still present.
+- **Durable Objects** arm the instance's alarm at `expiresAt` plus one second, only
+  when `expiresAt` changes: an alarm write is billed as a row written, and a
+  counter's expiry changes once per window, not once per call. The alarm deletes
+  the storage of an expired actor and re-arms one that moved on. It needs no
+  Wrangler configuration and no Durable Object migration.
 
 ## Redis on Node and Bun
 
@@ -214,7 +228,9 @@ the per-identity queue already serializes calls, so only replicas contend.
 (default 1) and `maxDelayMs` (default 50). Exhaustion throws `ActorContentionError`.
 
 State has no local read cache, and expiry is lazy (see above). Redis persistence and failover configuration
-determine restart durability; eviction loses state. A transport failure after a
+determine restart durability; eviction loses state. Keys written with an expiry
+(expiring actors) are candidates for the `volatile-*` eviction policies as well
+as the `allkeys-*` ones. A transport failure after a
 commit can leave its outcome unknown. The provider does not retry that invocation,
 and callers must not assume exactly-once delivery. Blindly retrying a failed
 increment can apply it twice; resolving an unknown business operation requires an
@@ -241,8 +257,9 @@ SQLite-backed storage before success. A read of a missing actor writes nothing.
 Restarted hosts read persisted state. Failed transitions retain the previous
 snapshot; corrupt or incompatible stored state fails closed. Each successful
 transition awaits storage before returning. This does not make RPC delivery exactly once: a lost
-response can leave the caller uncertain whether its transition committed. No
-native SQL API, alarms or subscriptions are exposed.
+response can leave the caller uncertain whether its transition committed. The
+host's alarm is used only to reclaim expired actors (see Expiry); no native SQL
+API, alarm or subscription is exposed to applications.
 
 Generic `ActorHostRegistry` declarations and `ActorHostRuntime` namespace and
 startup facilities are runtime-neutral. Native host imports stay workerd-only.

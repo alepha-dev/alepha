@@ -16,7 +16,8 @@ import { ActorRedisConnection } from "./ActorRedisConnection.ts";
  * One-key exact-byte CAS of validated actor envelopes using Redis eval.
  * Only a definite CAS conflict retries a pure reducer. Transport errors have
  * an unknown outcome and propagate without retry. Expiry is lazy: an expired
- * envelope reads as missing. No local cache.
+ * envelope reads as missing, and Redis drops the key at `expiresAt` plus
+ * `expiryGraceMs`. No local cache.
  */
 export class RedisActorProvider extends ActorProvider {
   protected readonly alepha = $inject(Alepha);
@@ -29,7 +30,9 @@ export class RedisActorProvider extends ActorProvider {
   /**
    * Exact-byte compare-and-set. On a conflict it returns the value present, so
    * a retry needs no GET; `{0}` alone means the key is gone (deleted or
-   * evicted meanwhile) and the retry treats it as missing.
+   * evicted meanwhile) and the retry treats it as missing. An expiring (v2)
+   * envelope is written with `PXAT` (Redis 6.2+); a v1 envelope with a plain
+   * SET, which also clears any expiry the key had.
    */
   protected static readonly cas = `local current = redis.call('GET', KEYS[1])
 if ARGV[1] == 'missing' then
@@ -40,7 +43,11 @@ else
     return {0}
   end
 end
-redis.call('SET', KEYS[1], ARGV[3])
+if ARGV[4] == '' then
+  redis.call('SET', KEYS[1], ARGV[3])
+else
+  redis.call('SET', KEYS[1], ARGV[3], 'PXAT', ARGV[4])
+end
 return {1}`;
 
   public override execute(request: ActorRequest): Promise<unknown> {
@@ -146,6 +153,9 @@ return {1}`;
         raw === undefined ? "missing" : "present",
         raw ?? "",
         JSON.stringify(next),
+        next.expiresAt === undefined
+          ? ""
+          : String(next.expiresAt + this.settings.expiryGraceMs),
       ],
     );
     if (!Array.isArray(result) || (result[0] !== 0 && result[0] !== 1))

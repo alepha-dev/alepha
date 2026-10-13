@@ -22,7 +22,7 @@ Node and Bun use volatile per-container Memory unless Redis is selected.
 ### Providers
 
 - [`ActorCodec`](/docs/reference-providers-actorcodec) - Lossless JSON snapshots and protocol-v1 validation shared by actor providers.
-- [`ActorHost`](/docs/reference-providers-actorhost) - One instance's serialized protocol-v1 KV snapshots on SQLite-backed storage.
+- [`ActorHost`](/docs/reference-providers-actorhost) - One instance's serialized protocol KV snapshots on SQLite-backed storage.
 - [`ActorHostRegistry`](/docs/reference-providers-actorhostregistry) - Runtime-neutral native-host declarations, visible without starting the app.
 - [`ActorHostRuntime`](/docs/reference-providers-actorhostruntime) - Common app/environment resolution, namespace lookup and specialized startup.
 - [`ActorProvider`](/docs/reference-providers-actorprovider) - Actor snapshot transport. Browser and native execution is unsupported.

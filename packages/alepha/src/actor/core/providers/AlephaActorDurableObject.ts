@@ -17,4 +17,10 @@ export class AlephaActorDurableObject extends DurableObject {
   ): Promise<string> {
     return JSON.stringify(await this.actor.execute(identity, request));
   }
+  /**
+   * Reclaims an expired actor's storage; armed by the host on expiring writes.
+   */
+  public async alarm(): Promise<void> {
+    await this.actor.alarm();
+  }
 }

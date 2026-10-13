@@ -17,6 +17,20 @@ class Expiring {
     methods: { set: (_, until: number) => until },
     expiresAt: (state) => (state > 0 ? state : undefined),
   });
+  window = $actor({
+    atom: $atom({
+      name: "window",
+      schema: z.object({ count: z.integer(), resetAt: z.integer() }),
+      default: { count: 0, resetAt: 0 },
+    }),
+    methods: {
+      hit: (state, now: number, windowMs: number) =>
+        state.resetAt <= now
+          ? { count: 1, resetAt: now + windowMs }
+          : { count: state.count + 1, resetAt: state.resetAt },
+    },
+    expiresAt: (state) => state.resetAt,
+  });
 }
 class App {
   value = $actor({
@@ -32,12 +46,24 @@ class App {
 class Storage implements ActorStorage {
   raw?: string;
   fail = false;
+  alarm?: number;
+  alarms: number[] = [];
   async get<T>(): Promise<T | undefined> {
     return this.raw as T;
   }
   async put(_key: string, value: string) {
     if (this.fail) throw new AlephaError("disk failed");
     this.raw = value;
+  }
+  async setAlarm(scheduledTime: number) {
+    this.alarm = scheduledTime;
+    this.alarms.push(scheduledTime);
+  }
+  async deleteAlarm() {
+    this.alarm = undefined;
+  }
+  async deleteAll() {
+    this.raw = undefined;
   }
 }
 describe("shared actor host runtime", () => {
@@ -159,6 +185,54 @@ describe("shared actor host runtime", () => {
       expect(await host.execute(identity, { name: "expiring", args: [] })).toBe(
         0,
       );
+    } finally {
+      (globalThis as any).__alepha = previous;
+    }
+  });
+  it("arms one alarm per expiry change and reclaims expired storage on alarm", async () => {
+    const previous = (globalThis as any).__alepha;
+    const app = Alepha.create().with(Expiring);
+    (globalThis as any).__alepha = app;
+    const identity = app.inject(ActorCodec).identity(app.name, "window");
+    const env = {
+      ALEPHA_ACTOR: {
+        idFromName: (name: string) => ({ toString: () => name }),
+        get: () => ({}),
+      },
+    };
+    const storage = new Storage();
+    const host = new ActorHost(storage, env, { toString: () => identity });
+    const dateTime = app.inject(DateTimeProvider);
+    dateTime.pause();
+    const hit = () =>
+      host.execute(identity, {
+        name: "window",
+        method: "hit",
+        args: [dateTime.nowMillis(), 60_000],
+      });
+    try {
+      const start = dateTime.nowMillis();
+      // Ten consumes in one window: one alarm write, at expiresAt + grace.
+      for (let i = 0; i < 10; i++) await hit();
+      expect(storage.alarms).toEqual([start + 61_000]);
+      // An alarm firing before expiry (here: early) re-arms and keeps state.
+      await host.alarm();
+      expect(storage.raw).toBeDefined();
+      expect(storage.alarms).toEqual([start + 61_000, start + 61_000]);
+      // The next window changes expiresAt: one more alarm write.
+      await dateTime.travel(60_000);
+      await hit();
+      await hit();
+      expect(storage.alarms).toHaveLength(3);
+      expect(storage.alarms[2]).toBe(start + 121_000);
+      // Past expiry, the alarm deletes the alarm and the storage.
+      await dateTime.travel(61_000);
+      await host.alarm();
+      expect(storage.raw).toBeUndefined();
+      expect(storage.alarm).toBeUndefined();
+      // An alarm on empty storage does nothing.
+      await host.alarm();
+      expect(storage.alarms).toHaveLength(3);
     } finally {
       (globalThis as any).__alepha = previous;
     }

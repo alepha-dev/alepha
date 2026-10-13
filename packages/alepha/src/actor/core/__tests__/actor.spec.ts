@@ -68,6 +68,9 @@ class InspectMemory extends MemoryActorProvider {
   raw(identity: string) {
     return this.snapshots.get(identity);
   }
+  size() {
+    return this.snapshots.size;
+  }
 }
 
 describe("actor Memory contract", () => {
@@ -236,6 +239,30 @@ describe("actor Memory contract", () => {
     // An expiry that is not a safe integer fails the transition, state kept.
     await expect(actor.broken()).rejects.toThrow("safe integer");
     expect(await actor.read()).toEqual({ count: 1, resetAt: now + 1000 });
+  });
+
+  it("reclaims expired snapshots with a bounded sweep on writes", async () => {
+    const alepha = Alepha.create().with({
+      provide: MemoryActorProvider,
+      use: InspectMemory,
+    });
+    const actor = alepha.inject(Windows).value;
+    const memory = alepha.inject(InspectMemory);
+    const dateTime = alepha.inject(DateTimeProvider);
+    dateTime.pause();
+    // Twenty one-shot keys, never touched again.
+    for (let i = 0; i < 20; i++)
+      await actor.get(`ip-${i}`).hit(dateTime.nowMillis(), 1000);
+    expect(memory.size()).toBe(20);
+    await dateTime.travel(1000);
+    // Each write checks at most eight entries, so one write cannot clear all.
+    await actor.get("live").hit(dateTime.nowMillis(), 1000);
+    expect(memory.size()).toBeGreaterThanOrEqual(21 - 8);
+    // The cursor walks the whole Map within ceil(21 / 8) + 1 writes.
+    for (let i = 0; i < 3; i++)
+      await actor.get("live").hit(dateTime.nowMillis(), 1000);
+    expect(memory.size()).toBe(1);
+    expect(await actor.get("live").read()).toMatchObject({ count: 4 });
   });
 
   it("refuses an asynchronous or non-function expiresAt at declaration", () => {

@@ -18,18 +18,26 @@ describe("native actor workerd persistence", () => {
       entry,
       `
 import { $atom, $hook, Alepha, AlephaError, run, z } from "alepha";
-import { $actor, ActorCodec, ActorHostRuntime, AlephaActorDurableObject } from "alepha/actor";
+import { $actor, ActorCodec, ActorHostRuntime, AlephaActorDurableObject as NativeActor } from "alepha/actor";
 class App {
  counter = $actor({ atom: $atom({ name: "counter", schema: z.integer(), default: 0 }), methods: { add: (s, n = 1) => s+n, fail: () => { throw new AlephaError("refused"); }, invalid: () => 0.5 } });
  session = $actor({ atom: $atom({ name: "nested", schema: z.object({ names: z.array(z.text()) }), default: { names: [] } }), methods: { append: (s, name) => ({ names: [...s.names, name] }) } });
+ ttl = $actor({ atom: $atom({ name: "ttl", schema: z.integer(), default: 0 }), methods: { set: (_, until) => until }, expiresAt: (s) => (s > 0 ? s : undefined) });
  start = $hook({ on: "start", handler: () => this.counter.get("startup").add(10) });
 }
 const app = run(Alepha.create().with(App));
-export { AlephaActorDurableObject };
+// Test-only read of raw storage, around the real host and its alarm().
+export class AlephaActorDurableObject extends NativeActor {
+ async dump() { return (await this.ctx.storage.get("actor")) ?? null; }
+}
 export default { async fetch(request, env) {
  ActorHostRuntime.resolve(env);
  const input = await request.json();
  try {
+  if (input.dump) {
+   const identity = app.inject(ActorCodec).identity(env.APP_NAME, input.name, input.key);
+   return Response.json(await env.ALEPHA_ACTOR.get(env.ALEPHA_ACTOR.idFromName(identity)).dump());
+  }
   if (input.raw) {
    const identity = app.inject(ActorCodec).identity(env.APP_NAME, input.name ?? "counter", input.key);
    const stub = env.ALEPHA_ACTOR.get(env.ALEPHA_ACTOR.idFromName(input.target ?? identity));
@@ -131,6 +139,23 @@ export default { async fetch(request, env) {
           .data,
       ).toEqual({ names: ["kept"] });
       expect((await call({ start: true })).data).toBe(10);
+      // Expiry: the alarm deletes an expired actor's storage. Miniflare runs
+      // the Durable Object in its own isolate, out of travel()'s reach, so this
+      // uses a short real expiry (the alarm fires at expiresAt + 1 s of grace).
+      const until = Date.now() + 300;
+      expect(
+        (await call({ actor: "ttl", method: "set", args: [until] })).data,
+      ).toBe(until);
+      expect(
+        JSON.parse((await call({ dump: true, name: "ttl" })).data as string),
+      ).toMatchObject({ version: 2, expiresAt: until });
+      let stored: unknown = "pending";
+      for (let i = 0; i < 40 && stored !== null; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        stored = (await call({ dump: true, name: "ttl" })).data;
+      }
+      expect(stored).toBeNull();
+      expect((await call({ actor: "ttl" })).data).toBe(0);
       await runtime.dispose();
       runtime = boot();
       expect((await call({ raw: true, name: "missing" })).status).toBe(400);
