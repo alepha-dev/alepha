@@ -139,6 +139,11 @@ export class ActorCodec {
     };
   }
 
+  /**
+   * Apply one reducer to an envelope. A result canonically equal to the
+   * current state returns `envelope` itself, revision untouched: callers
+   * compare by identity and commit nothing for a no-op.
+   */
   public transition(
     declaration: ActorDeclaration,
     envelope: ActorEnvelope,
@@ -153,10 +158,13 @@ export class ActorCodec {
       this.freeze(this.copy(envelope.state)),
       ...this.freeze(this.copy(args)),
     );
+    const state = this.validate(declaration.atom.schema, next);
+    if (this.canonical(state) === this.canonical(envelope.state))
+      return envelope;
     return {
       version: 1,
       revision: envelope.revision + 1,
-      state: this.validate(declaration.atom.schema, next),
+      state,
     };
   }
 

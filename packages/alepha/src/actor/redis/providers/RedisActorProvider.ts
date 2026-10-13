@@ -76,6 +76,8 @@ return 1`;
         request.method,
         request.args,
       );
+      // An unchanged state issues no CAS, on a missing key too.
+      if (next === envelope) return this.codec.copy(envelope.state);
       if (await this.compareAndSet(identity, raw, next))
         return this.codec.copy(next.state);
     }

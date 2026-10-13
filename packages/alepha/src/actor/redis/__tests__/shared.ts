@@ -156,6 +156,11 @@ export class RedisActorContract {
         ActorContentionError,
       );
       expect(fault.writes).toBe(2);
+      fault.mode = "normal";
+      fault.writes = 0;
+      // A no-op transition issues no compare-and-set at all.
+      expect(await actors[0].counter.add(0)).toBe(40);
+      expect(fault.writes).toBe(0);
       fault.mode = "transport";
       fault.writes = 0;
       await expect(actors[0].counter.add()).rejects.toThrow(

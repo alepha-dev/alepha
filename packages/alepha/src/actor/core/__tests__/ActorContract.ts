@@ -77,7 +77,14 @@ export class ActorContract {
     // A read of a missing key returns the default and stores nothing.
     assert.equal(await fixture.call("contract.corrupt"), 0);
     assert.equal(await fixture.raw(), undefined);
+    // A transition returning the current state commits nothing: no key is
+    // created, and a stored key keeps its revision and bytes.
+    assert.equal(await fixture.call("contract.corrupt", "keep"), 0);
+    assert.equal(await fixture.raw(), undefined);
     assert.equal(await fixture.call("contract.corrupt", "add"), 1);
+    const committed = await fixture.raw();
+    assert.equal(await fixture.call("contract.corrupt", "keep"), 1);
+    assert.equal(await fixture.raw(), committed);
     for (const raw of [
       "{",
       '{"version":2,"revision":0,"state":0}',

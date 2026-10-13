@@ -113,6 +113,11 @@ keys, hidden properties, accessors, sparse or extended arrays, class instances
 (including Date, Map and Set) and cycles are rejected. Omit optional properties and
 trailing arguments instead of passing `undefined`. Async schemas are unsupported.
 
+A reducer that returns its current state unchanged (canonically equal JSON) commits
+nothing: no write, no compare-and-set on Redis, and the revision stays where it was.
+On a missing key that means nothing is created. The revision therefore counts state
+changes, not calls, and a flood of calls that leave the state alone costs reads only.
+
 Stored envelopes have protocol version 1 and a nonnegative safe integer revision.
 Corrupt data, unknown versions, invalid revisions and schema incompatibility fail
 closed without resetting state. Stored validation must preserve the JSON value;

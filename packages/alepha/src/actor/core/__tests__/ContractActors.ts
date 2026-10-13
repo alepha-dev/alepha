@@ -57,7 +57,7 @@ export class ContractActors {
   });
   public corrupt = $actor({
     atom: $atom({ name: "contract.corrupt", schema: z.integer(), default: 0 }),
-    methods: { add: (state) => state + 1 },
+    methods: { add: (state) => state + 1, keep: (state) => state },
   });
   public byName(name: string): any {
     for (const actor of [

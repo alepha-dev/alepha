@@ -39,7 +39,9 @@ export class MemoryActorProvider extends ActorProvider {
           request.method,
           request.args,
         );
-        this.snapshots.set(identity, JSON.stringify(updated));
+        // An unchanged state commits nothing, on a missing key too.
+        if (updated !== envelope)
+          this.snapshots.set(identity, JSON.stringify(updated));
         return this.codec.copy(updated.state);
       });
     this.queues.set(identity, operation);

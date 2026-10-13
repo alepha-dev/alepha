@@ -65,6 +65,15 @@ describe("shared actor host runtime", () => {
       expect(await host.execute(identity, { name: "host", args: [] })).toBe(0);
       // A read of a missing key stores nothing.
       expect(storage.raw).toBeUndefined();
+      // Neither does a transition that leaves the default unchanged.
+      expect(
+        await host.execute(identity, {
+          name: "host",
+          method: "add",
+          args: [0],
+        }),
+      ).toBe(0);
+      expect(storage.raw).toBeUndefined();
       expect(
         await Promise.all(
           Array.from({ length: 20 }, () =>

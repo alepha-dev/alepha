@@ -68,7 +68,9 @@ export class ActorHost {
         request.method,
         args,
       );
-      await this.storage.put("actor", JSON.stringify(updated));
+      // An unchanged state commits nothing, on a missing key too.
+      if (updated !== envelope)
+        await this.storage.put("actor", JSON.stringify(updated));
       return codec.copy(updated.state);
     });
     this.tail = operation.then(
