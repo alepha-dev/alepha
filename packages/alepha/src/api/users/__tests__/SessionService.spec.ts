@@ -1,6 +1,6 @@
 import { Alepha, AlephaError } from "alepha";
+import { ActorProvider, type ActorRequest } from "alepha/actor";
 import { CacheProvider } from "alepha/cache";
-import { DatabaseCacheProvider } from "alepha/cache/database";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import {
@@ -55,44 +55,43 @@ class UninitializedKvProvider extends CacheProvider {
 }
 
 /**
- * Exposes the lockout counter so it can be driven without `login`'s random
+ * Exposes the account limiter so it can be driven without `login`'s random
  * anti-timing delay in the way.
  */
 class TestSessionService extends SessionService {
-  public testRecordFailedLogin = this.recordFailedLogin.bind(this);
-  public testIsLoginLocked = this.isLoginLocked.bind(this);
+  public testLoginAccount = this.loginAccount;
+}
+
+/**
+ * A counter store that is down: every actor call fails.
+ */
+class BrokenActorProvider extends ActorProvider {
+  public override async execute(_request: ActorRequest): Promise<unknown> {
+    throw new AlephaError("Actor store unavailable");
+  }
 }
 
 const setup = async (options?: {
   username?: "optional" | "required";
-  brokenCache?: boolean;
+  brokenStore?: boolean;
   workerdDefaultCache?: boolean;
 }) => {
   const alepha = Alepha.create({
     env: { LOG_LEVEL: "error" },
   });
 
-  if (options?.brokenCache) {
-    // Substitutes the provider the limiter actually injects — the SQL one.
-    // Substituting `CacheProvider` would no longer reach it.
-    class BrokenCacheProvider extends DatabaseCacheProvider {
-      public override async getTyped(): Promise<never> {
-        throw new Error("Cache unavailable");
-      }
-      public override async setTyped(): Promise<never> {
-        throw new Error("Cache unavailable");
-      }
-      public override async incr(): Promise<never> {
-        throw new Error("Cache unavailable");
-      }
-    }
-    alepha.with({ provide: DatabaseCacheProvider, use: BrokenCacheProvider });
+  if (options?.brokenStore) {
+    // The login counters are actor state: the store they ride is the
+    // ActorProvider, whatever the app's caches are.
+    alepha.with({ provide: ActorProvider, use: BrokenActorProvider });
   }
 
   if (options?.workerdDefaultCache) {
     alepha.with({ provide: CacheProvider, use: UninitializedKvProvider });
   }
 
+  // One instance: its limiters are declared once per container.
+  alepha.with({ provide: SessionService, use: TestSessionService });
   alepha.with(AlephaOrmPostgres);
   alepha.with(AlephaSecurity);
   alepha.with(AlephaApiUsers);
@@ -658,7 +657,7 @@ describe("alepha/api/users - SessionService.login", () => {
       expect,
     }) => {
       const { sessionService, userService, cryptoProvider, identities } =
-        await setup({ brokenCache: true });
+        await setup({ brokenStore: true });
 
       const user = await userService.users().create({
         email: "cachefail@example.com",
@@ -687,7 +686,7 @@ describe("alepha/api/users - SessionService.login", () => {
     }) => {
       // Regression for the production failure: on workerd the default
       // `CacheProvider` is an uninitialized `CloudflareKVProvider` that throws
-      // on every call. The lockout must not ride it — it is pinned to SQL, so
+      // on every call. The lockout must not ride it — it rides the actor store, so
       // it keeps working while the default provider is entirely unusable.
       //
       // Both halves below are needed to pin the behaviour down. Only a limiter
@@ -868,23 +867,30 @@ describe("alepha/api/users - SessionService.login", () => {
       // read-modify-write usually serialises, so a test driven through `login`
       // passes either way and proves nothing.
       //
-      // `incr` is one `INSERT ... ON CONFLICT DO UPDATE`, so all 20 land. The
-      // read-modify-write this replaced would have most of them read the same
-      // value and write the same `count + 1`, leaving the counter far short of
-      // the threshold — a lockout bypassable by anyone sending their guesses
-      // at once rather than in sequence.
+      // The counter is an actor serialized per key, so all 20 land. A
+      // read-modify-write would have most of them read the same value and
+      // write the same `count + 1`, leaving the counter far short of the
+      // threshold — a lockout bypassable by anyone sending their guesses at
+      // once rather than in sequence.
       const { testSessionService: service } = await setup();
 
-      const key = "login:account:default:concurrent-user";
-      const max = 20;
+      const budget = {
+        key: "default:concurrent-user",
+        max: 20,
+        windowMs: 900_000,
+      };
 
-      await Promise.all(
-        Array.from({ length: max }, () =>
-          service.testRecordFailedLogin(key, max, 900_000),
+      const results = await Promise.all(
+        Array.from({ length: budget.max }, () =>
+          service.testLoginAccount.consume(budget),
         ),
       );
+      expect(results.every((result) => result.allowed)).toBe(true);
 
-      expect(await service.testIsLoginLocked(key, max)).toBe(true);
+      expect(await service.testLoginAccount.consume(budget)).toMatchObject({
+        allowed: false,
+        reason: "limit",
+      });
     });
   });
 });

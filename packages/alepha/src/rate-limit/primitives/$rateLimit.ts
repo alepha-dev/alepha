@@ -89,7 +89,12 @@ export class RateLimitPrimitive<TInput = string> extends Primitive<
   protected readonly windows = $inject(RateLimitWindows);
   protected readonly dateTime = $inject(DateTimeProvider);
 
+  protected registered = false;
+
   protected override onInit(): void {
+    // A primitive reachable under two properties is initialized twice; it is
+    // still one limiter.
+    if (this.registered) return;
     const { name, algorithm, onStoreError, onContention } = this.options;
     if (typeof name !== "string" || !name)
       throw new AlephaError("A rate limiter needs a nonempty name");
@@ -103,6 +108,7 @@ export class RateLimitPrimitive<TInput = string> extends Primitive<
           `Rate limiter '${name}': failure modes are "deny" or "allow"`,
         );
     this.windows.register(name);
+    this.registered = true;
   }
 
   public get name(): string {

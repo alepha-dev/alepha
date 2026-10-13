@@ -54,6 +54,7 @@ export * from "./controllers/UserController.ts";
 export * from "./entities/identities.ts";
 export * from "./entities/sessions.ts";
 export * from "./entities/users.ts";
+export * from "./interfaces/AttemptBudget.ts";
 export * from "./jobs/UserJobs.ts";
 export * from "./notifications/UserNotifications.ts";
 export * from "./primitives/$realm.ts";
