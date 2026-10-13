@@ -16,9 +16,16 @@ export type ActorMethods<T> = Record<
   (state: ActorReadonly<T>, ...args: any[]) => T
 >;
 
+/**
+ * Expiry as a pure synchronous function of the state: an epoch-millisecond
+ * instant after which the state reads as missing, or undefined for none.
+ */
+export type ActorExpiry<T> = (state: ActorReadonly<T>) => number | undefined;
+
 export interface ActorDeclaration<T extends ZType = ZType> {
   atom: Atom<T, string>;
   methods: ActorMethods<Infer<T>>;
+  expiresAt?: ActorExpiry<Infer<T>>;
 }
 
 export interface ActorRequest {
@@ -28,10 +35,15 @@ export interface ActorRequest {
   args: unknown[];
 }
 
+/**
+ * Stored protocol envelope. Version 2 exactly when the declaration's
+ * `expiresAt` returned a number for this state; version 1 otherwise.
+ */
 export interface ActorEnvelope {
-  version: 1;
+  version: 1 | 2;
   revision: number;
   state: unknown;
+  expiresAt?: number;
 }
 
 /**

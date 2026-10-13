@@ -7,9 +7,17 @@ import {
   ActorHostRuntime,
   type ActorStorage,
 } from "alepha/actor";
+import { DateTimeProvider } from "alepha/datetime";
 import { describe, expect, it } from "vitest";
 
 import { CloudflareActorProvider } from "../providers/CloudflareActorProvider.ts";
+class Expiring {
+  value = $actor({
+    atom: $atom({ name: "expiring", schema: z.integer(), default: 0 }),
+    methods: { set: (_, until: number) => until },
+    expiresAt: (state) => (state > 0 ? state : undefined),
+  });
+}
 class App {
   value = $actor({
     atom: $atom({ name: "host", schema: z.integer(), default: 0 }),
@@ -115,6 +123,42 @@ describe("shared actor host runtime", () => {
         expect(storage.raw).toBe(raw);
       }
       expect(app.isStarted()).toBe(false);
+    } finally {
+      (globalThis as any).__alepha = previous;
+    }
+  });
+  it("reads expired state as missing through the app's DateTimeProvider", async () => {
+    const previous = (globalThis as any).__alepha;
+    const app = Alepha.create().with(Expiring);
+    (globalThis as any).__alepha = app;
+    const identity = app.inject(ActorCodec).identity(app.name, "expiring");
+    const env = {
+      ALEPHA_ACTOR: {
+        idFromName: (name: string) => ({ toString: () => name }),
+        get: () => ({}),
+      },
+    };
+    const storage = new Storage();
+    const host = new ActorHost(storage, env, { toString: () => identity });
+    const dateTime = app.inject(DateTimeProvider);
+    dateTime.pause();
+    try {
+      const until = dateTime.nowMillis() + 1000;
+      expect(
+        await host.execute(identity, {
+          name: "expiring",
+          method: "set",
+          args: [until],
+        }),
+      ).toBe(until);
+      expect(JSON.parse(storage.raw!)).toMatchObject({
+        version: 2,
+        expiresAt: until,
+      });
+      await dateTime.travel(1000);
+      expect(await host.execute(identity, { name: "expiring", args: [] })).toBe(
+        0,
+      );
     } finally {
       (globalThis as any).__alepha = previous;
     }

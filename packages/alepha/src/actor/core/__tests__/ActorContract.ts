@@ -85,9 +85,51 @@ export class ActorContract {
     const committed = await fixture.raw();
     assert.equal(await fixture.call("contract.corrupt", "keep"), 1);
     assert.equal(await fixture.raw(), committed);
+    // Expiry derives from the state: an expiring state is a v2 envelope.
+    const future = 4_000_000_000_000;
+    const past = 1_000_000_000_000;
+    assert.equal(
+      await fixture.call("contract.corrupt", "set", [future]),
+      future,
+    );
+    assert.deepEqual(JSON.parse((await fixture.raw())!), {
+      version: 2,
+      revision: 2,
+      state: future,
+      expiresAt: future,
+    });
+    const live = JSON.stringify({
+      version: 2,
+      revision: 5,
+      state: future,
+      expiresAt: future,
+    });
+    await fixture.put(live);
+    assert.equal(await fixture.call("contract.corrupt"), future);
+    // Expired state reads as missing, and the read leaves it in place.
+    const expired = JSON.stringify({
+      version: 2,
+      revision: 7,
+      state: past,
+      expiresAt: past,
+    });
+    await fixture.put(expired);
+    assert.equal(await fixture.call("contract.corrupt"), 0);
+    assert.equal(await fixture.call("contract.corrupt", "keep"), 0);
+    assert.equal(await fixture.raw(), expired);
+    // A transition on expired-but-present state starts from the default and
+    // restarts the revision; a non-expiring state is written as v1 again.
+    assert.equal(await fixture.call("contract.corrupt", "add"), 1);
+    assert.deepEqual(JSON.parse((await fixture.raw())!), {
+      version: 1,
+      revision: 1,
+      state: 1,
+    });
     for (const raw of [
       "{",
       '{"version":2,"revision":0,"state":0}',
+      '{"version":2,"revision":0,"state":0,"expiresAt":4000000000000.5}',
+      '{"version":1,"revision":0,"state":0,"expiresAt":4000000000000}',
       '{"version":1,"revision":0,"state":0.5}',
       '{"version":1,"revision":9007199254740991,"state":0}',
     ]) {

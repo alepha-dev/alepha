@@ -1,4 +1,5 @@
 import { AlephaError } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 
 import type { ActorRequest } from "../interfaces/ActorInterfaces.ts";
 import { ActorCodec } from "./ActorCodec.ts";
@@ -56,10 +57,11 @@ export class ActorHost {
       return Promise.reject(new AlephaError("Unknown actor method"));
     const operation = this.tail.then(async () => {
       const raw = await this.storage.get<string>("actor");
-      const envelope =
-        raw === undefined
-          ? codec.initial(declaration)
-          : codec.decode(raw, declaration);
+      const envelope = codec.current(
+        raw,
+        declaration,
+        app.inject(DateTimeProvider).nowMillis(),
+      );
       // A read never writes: a missing key stays missing.
       if (request.method === undefined) return codec.copy(envelope.state);
       const updated = codec.transition(

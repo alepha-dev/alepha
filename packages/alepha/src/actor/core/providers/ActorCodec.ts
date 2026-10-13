@@ -109,21 +109,53 @@ export class ActorCodec {
     return JSON.stringify(value);
   }
 
-  public decode(raw: string, declaration: ActorDeclaration): ActorEnvelope {
+  /**
+   * The envelope a call starts from: the stored one, or the initial envelope
+   * when nothing is stored or the stored state expired at or before `now`.
+   * Logically missing is not physically absent: callers that compare-and-set
+   * keep the raw bytes they read.
+   */
+  public current(
+    raw: string | undefined,
+    declaration: ActorDeclaration,
+    now: number,
+  ): ActorEnvelope {
+    if (raw === undefined) return this.initial(declaration);
+    return this.decode(raw, declaration, now) ?? this.initial(declaration);
+  }
+
+  /**
+   * Decode a stored envelope, v1 or v2. Returns undefined for a v2 envelope
+   * whose `expiresAt` is at or before `now`: expired state reads as missing and
+   * is not validated against the schema.
+   */
+  public decode(
+    raw: string,
+    declaration: ActorDeclaration,
+    now: number,
+  ): ActorEnvelope | undefined {
     let envelope: ActorEnvelope;
     try {
       envelope = JSON.parse(raw);
     } catch (error) {
       throw new AlephaError("Corrupt actor envelope", { cause: error });
     }
+    const keys =
+      envelope && typeof envelope === "object"
+        ? Object.keys(envelope).sort().join(",")
+        : "";
     if (
-      !envelope ||
-      Object.keys(envelope).sort().join(",") !== "revision,state,version" ||
-      envelope.version !== 1 ||
+      !(
+        (envelope?.version === 1 && keys === "revision,state,version") ||
+        (envelope?.version === 2 &&
+          keys === "expiresAt,revision,state,version" &&
+          Number.isSafeInteger(envelope.expiresAt))
+      ) ||
       !Number.isSafeInteger(envelope.revision) ||
       envelope.revision < 0
     )
       throw new AlephaError("Invalid actor protocol envelope");
+    if (envelope.version === 2 && envelope.expiresAt! <= now) return undefined;
     this.validate(declaration.atom.schema, envelope.state, true);
     return envelope;
   }
@@ -161,11 +193,26 @@ export class ActorCodec {
     const state = this.validate(declaration.atom.schema, next);
     if (this.canonical(state) === this.canonical(envelope.state))
       return envelope;
-    return {
-      version: 1,
-      revision: envelope.revision + 1,
-      state,
-    };
+    return this.envelope(declaration, envelope.revision + 1, state);
+  }
+
+  /**
+   * Stamp a validated state: v2 with `expiresAt` when the declaration's expiry
+   * returns a number for it, v1 byte for byte otherwise. A return that is
+   * neither undefined nor a safe integer fails the transition.
+   */
+  protected envelope(
+    declaration: ActorDeclaration,
+    revision: number,
+    state: unknown,
+  ): ActorEnvelope {
+    const expiresAt = declaration.expiresAt?.(this.freeze(this.copy(state)));
+    if (expiresAt === undefined) return { version: 1, revision, state };
+    if (!Number.isSafeInteger(expiresAt))
+      throw new AlephaError(
+        "Actor expiresAt must return a safe integer or undefined",
+      );
+    return { version: 2, revision, state, expiresAt };
   }
 
   public identity(namespace: string, name: string, key?: string): string {

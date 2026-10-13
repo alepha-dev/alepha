@@ -30,6 +30,12 @@ A transport error can leave the commit outcome unknown; delivery is not exactly
 once. Changing the app name or atom name selects new state without migrating
 old data.
 
+`expiresAt` derives an expiry from the state, never from the clock: a pure
+synchronous function returning an epoch-millisecond instant, or undefined for
+none. Once `DateTimeProvider` reaches it, the state reads as missing: the
+default, with the revision restarting. Expiring states are stored as
+protocol v2 envelopes; every other state keeps protocol v1 byte for byte.
+
 ## Examples
 
 ```ts check

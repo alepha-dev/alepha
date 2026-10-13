@@ -57,7 +57,14 @@ export class ContractActors {
   });
   public corrupt = $actor({
     atom: $atom({ name: "contract.corrupt", schema: z.integer(), default: 0 }),
-    methods: { add: (state) => state + 1, keep: (state) => state },
+    methods: {
+      add: (state) => state + 1,
+      keep: (state) => state,
+      set: (_, value: number) => value,
+    },
+    // A state that is an epoch-millisecond instant expires at itself, so the
+    // contract drives expiry with fixed instants and no clock.
+    expiresAt: (state) => (state >= 1_000_000_000_000 ? state : undefined),
   });
   public byName(name: string): any {
     for (const actor of [

@@ -118,11 +118,60 @@ nothing: no write, no compare-and-set on Redis, and the revision stays where it 
 On a missing key that means nothing is created. The revision therefore counts state
 changes, not calls, and a flood of calls that leave the state alone costs reads only.
 
-Stored envelopes have protocol version 1 and a nonnegative safe integer revision.
-Corrupt data, unknown versions, invalid revisions and schema incompatibility fail
-closed without resetting state. Stored validation must preserve the JSON value;
+Stored envelopes have protocol version 1 or 2 and a nonnegative safe integer
+revision. Version 2 carries `expiresAt` and is written only for expiring states (see
+below). Corrupt data, unknown versions, invalid revisions and schema incompatibility
+fail closed without resetting state. Stored validation must preserve the JSON value;
 a changed schema that would strip or transform existing data is incompatible.
 Revision overflow refuses further transitions. There is no automatic data migration.
+
+## Expiry
+
+State never expires unless its declaration says so. `expiresAt` is a pure
+synchronous function of the state returning an epoch-millisecond instant, or
+`undefined` for none. Reducers stay pure: the instant is part of the state, usually
+computed from a `now` the caller passes in, never read from a clock inside the
+reducer.
+
+```typescript check
+import { $atom, $inject, z } from "alepha";
+import { $actor } from "alepha/actor";
+import { DateTimeProvider } from "alepha/datetime";
+
+const window = $atom({
+  name: "window",
+  schema: z.object({ count: z.integer(), resetAt: z.integer() }),
+  default: { count: 0, resetAt: 0 },
+});
+class Windows {
+  dateTime = $inject(DateTimeProvider);
+  hits = $actor({
+    atom: window,
+    methods: {
+      hit: (state, now: number, windowMs: number) =>
+        state.resetAt <= now
+          ? { count: 1, resetAt: now + windowMs }
+          : { count: state.count + 1, resetAt: state.resetAt },
+    },
+    expiresAt: (state) => state.resetAt,
+  });
+  hit(key: string) {
+    return this.hits.get(key).hit(this.dateTime.nowMillis(), 60_000);
+  }
+}
+```
+
+Once `DateTimeProvider` reaches `expiresAt`, the state reads as missing on every
+provider: `read()` returns the default and a method starts from it, with the
+revision restarting at 1. `travel()` drives this in tests. An expiring state is
+stored as a version 2 envelope `{ version, revision, state, expiresAt }`; a state
+whose `expiresAt` returns `undefined`, or a declaration without one, keeps writing
+version 1 byte for byte, so existing data needs no migration. A return that is
+neither `undefined` nor a safe integer fails the transition and preserves the
+state, like an invalid state. An asynchronous `expiresAt` is refused at declaration.
+
+Expiry is lazy: an expired envelope stays stored until it is overwritten. On Redis,
+a transition on an expired key compares and sets against the bytes still present.
 
 ## Redis on Node and Bun
 
@@ -157,7 +206,7 @@ observed-byte Lua compare-and-set. Only definite conflicts retry, from fresh sta
 and the original detached arguments. `actorRedisOptions` configures positive
 `maxAttempts` (default 32). Exhaustion throws `ActorContentionError`.
 
-State has no TTL or local read cache. Redis persistence and failover configuration
+State has no local read cache, and expiry is lazy (see above). Redis persistence and failover configuration
 determine restart durability; eviction loses state. A transport failure after a
 commit can leave its outcome unknown. The provider does not retry that invocation,
 and callers must not assume exactly-once delivery. Blindly retrying a failed

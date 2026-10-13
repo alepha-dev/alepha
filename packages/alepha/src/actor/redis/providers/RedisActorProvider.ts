@@ -6,6 +6,7 @@ import {
   type ActorRequest,
   type ActorEnvelope,
 } from "alepha/actor";
+import { DateTimeProvider } from "alepha/datetime";
 
 import { actorRedisOptions } from "../actorRedisOptions.ts";
 import { ActorContentionError } from "../errors/ActorContentionError.ts";
@@ -14,12 +15,14 @@ import { ActorRedisConnection } from "./ActorRedisConnection.ts";
 /**
  * One-key exact-byte CAS of validated actor envelopes using Redis eval.
  * Only a definite CAS conflict retries a pure reducer. Transport errors have
- * an unknown outcome and propagate without retry. No cache, expiry or eviction.
+ * an unknown outcome and propagate without retry. Expiry is lazy: an expired
+ * envelope reads as missing. No local cache.
  */
 export class RedisActorProvider extends ActorProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly codec = $inject(ActorCodec);
   protected readonly registry = $inject(ActorRegistry);
+  protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly settings = $store(actorRedisOptions);
   protected readonly redis = $inject(ActorRedisConnection);
   protected readonly queues = new Map<string, Promise<unknown>>();
@@ -64,10 +67,13 @@ return 1`;
       );
     for (let attempt = 0; attempt < max; attempt++) {
       const raw = (await this.redis.get(identity))?.toString("utf8");
-      const envelope =
-        raw === undefined
-          ? this.codec.initial(declaration)
-          : this.codec.decode(raw, declaration);
+      // An expired envelope reads as the initial state, but the CAS below still
+      // compares against the raw bytes present, never against "missing".
+      const envelope = this.codec.current(
+        raw,
+        declaration,
+        this.dateTime.nowMillis(),
+      );
       // A read never writes: a missing key stays missing.
       if (request.method === undefined) return this.codec.copy(envelope.state);
       const next = this.codec.transition(

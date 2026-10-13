@@ -1,4 +1,5 @@
 import { $inject, Alepha } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 
 import type { ActorRequest } from "../interfaces/ActorInterfaces.ts";
 import { ActorCodec } from "./ActorCodec.ts";
@@ -12,6 +13,7 @@ export class MemoryActorProvider extends ActorProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly codec = $inject(ActorCodec);
   protected readonly registry = $inject(ActorRegistry);
+  protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly snapshots = new Map<string, string>();
   protected readonly queues = new Map<string, Promise<unknown>>();
 
@@ -26,10 +28,11 @@ export class MemoryActorProvider extends ActorProvider {
       .then(() => {
         const declaration = this.registry.get(request.name);
         const raw = this.snapshots.get(identity);
-        const envelope =
-          raw === undefined
-            ? this.codec.initial(declaration)
-            : this.codec.decode(raw, declaration);
+        const envelope = this.codec.current(
+          raw,
+          declaration,
+          this.dateTime.nowMillis(),
+        );
         // A read never writes: a missing key stays missing.
         if (request.method === undefined)
           return this.codec.copy(envelope.state);

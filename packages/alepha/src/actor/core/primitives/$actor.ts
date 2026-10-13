@@ -10,6 +10,7 @@ import {
 
 import type {
   ActorDeclaration,
+  ActorExpiry,
   ActorHandle,
   ActorMethods,
 } from "../interfaces/ActorInterfaces.ts";
@@ -40,6 +41,12 @@ import { ActorRegistry } from "../providers/ActorRegistry.ts";
  * once. Changing the app name or atom name selects new state without migrating
  * old data.
  *
+ * `expiresAt` derives an expiry from the state, never from the clock: a pure
+ * synchronous function returning an epoch-millisecond instant, or undefined for
+ * none. Once `DateTimeProvider` reaches it, the state reads as missing: the
+ * default, with the revision restarting. Expiring states are stored as
+ * protocol v2 envelopes; every other state keeps protocol v1 byte for byte.
+ *
  * @example
  * ```ts check
  * import { $atom, Alepha, z } from "alepha";
@@ -64,6 +71,7 @@ export const $actor = <
 >(options: {
   atom: ActorDeclaration<T>["atom"];
   methods: M;
+  expiresAt?: ActorExpiry<Infer<T>>;
 }): Omit<ActorPrimitive<T>, "get"> & ActorHandle<Infer<T>, M> => {
   return createPrimitive(ActorPrimitive<T>, options) as Omit<
     ActorPrimitive<T>,
@@ -73,7 +81,9 @@ export const $actor = <
 };
 
 export class ActorPrimitive<T extends ZType = ZType> extends Primitive<
-  ActorDeclaration<T>
+  Omit<ActorDeclaration<T>, "expiresAt"> & {
+    expiresAt?: ActorExpiry<Infer<T>>;
+  }
 > {
   protected readonly provider = $inject(ActorProvider);
   protected readonly registry = $inject(ActorRegistry);
@@ -108,9 +118,17 @@ export class ActorPrimitive<T extends ZType = ZType> extends Primitive<
         value: (...args: unknown[]) => this.invoke(undefined, name, args),
       });
     }
+    const expiresAt = this.options.expiresAt;
+    if (
+      expiresAt !== undefined &&
+      (typeof expiresAt !== "function" ||
+        expiresAt.constructor.name === "AsyncFunction")
+    )
+      throw new AlephaError("Actor expiresAt must be a synchronous function");
     this.declaration = {
       atom: this.options.atom,
       methods: Object.freeze(methods),
+      ...(expiresAt ? { expiresAt } : {}),
     };
     this.registry.register(this.declaration);
   }

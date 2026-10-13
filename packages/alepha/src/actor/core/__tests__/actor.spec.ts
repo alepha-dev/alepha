@@ -5,6 +5,7 @@ import {
   ActorRegistry,
   MemoryActorProvider,
 } from "alepha/actor";
+import { DateTimeProvider } from "alepha/datetime";
 import { describe, it, expect } from "vitest";
 
 const counter = $atom({ name: "counter", schema: z.integer(), default: 0 });
@@ -42,9 +43,30 @@ class Sessions {
     },
   });
 }
+const windowed = $atom({
+  name: "windowed",
+  schema: z.object({ count: z.integer(), resetAt: z.integer() }),
+  default: { count: 0, resetAt: 0 },
+});
+class Windows {
+  value = $actor({
+    atom: windowed,
+    methods: {
+      hit: (state, now: number, windowMs: number) =>
+        state.resetAt <= now
+          ? { count: 1, resetAt: now + windowMs }
+          : { count: state.count + 1, resetAt: state.resetAt },
+      broken: (state) => ({ count: -1, resetAt: state.resetAt }),
+    },
+    expiresAt: (state) => (state.count < 0 ? 1.5 : state.resetAt),
+  });
+}
 class InspectMemory extends MemoryActorProvider {
   put(identity: string, raw: string) {
     this.snapshots.set(identity, raw);
+  }
+  raw(identity: string) {
+    return this.snapshots.get(identity);
   }
 }
 
@@ -173,6 +195,62 @@ describe("actor Memory contract", () => {
     await expect(
       Alepha.create().inject(AsyncSchema).value.read(),
     ).rejects.toThrow();
+  });
+
+  it("expires state derived from the state once the clock reaches it", async () => {
+    const alepha = Alepha.create().with({
+      provide: MemoryActorProvider,
+      use: InspectMemory,
+    });
+    const actor = alepha.inject(Windows).value;
+    const memory = alepha.inject(InspectMemory);
+    const identity = alepha
+      .inject(ActorCodec)
+      .identity(alepha.name, "windowed");
+    const dateTime = alepha.inject(DateTimeProvider);
+    dateTime.pause();
+    const start = dateTime.nowMillis();
+    expect(await actor.hit(start, 1000)).toEqual({
+      count: 1,
+      resetAt: start + 1000,
+    });
+    expect(await actor.hit(start, 1000)).toEqual({
+      count: 2,
+      resetAt: start + 1000,
+    });
+    expect(JSON.parse(memory.raw(identity)!)).toEqual({
+      version: 2,
+      revision: 2,
+      state: { count: 2, resetAt: start + 1000 },
+      expiresAt: start + 1000,
+    });
+    await dateTime.travel(999);
+    expect(await actor.read()).toEqual({ count: 2, resetAt: start + 1000 });
+    await dateTime.travel(1);
+    // At expiresAt the state reads as missing; the read leaves it stored.
+    expect(await actor.read()).toEqual({ count: 0, resetAt: 0 });
+    expect(memory.raw(identity)).toBeDefined();
+    const now = dateTime.nowMillis();
+    await actor.hit(now, 1000);
+    expect(JSON.parse(memory.raw(identity)!).revision).toBe(1);
+    // An expiry that is not a safe integer fails the transition, state kept.
+    await expect(actor.broken()).rejects.toThrow("safe integer");
+    expect(await actor.read()).toEqual({ count: 1, resetAt: now + 1000 });
+  });
+
+  it("refuses an asynchronous or non-function expiresAt at declaration", () => {
+    class AsyncExpiry {
+      value = $actor({
+        atom: counter,
+        methods: {},
+        expiresAt: (async () => 1) as any,
+      });
+    }
+    class NotFunction {
+      value = $actor({ atom: counter, methods: {}, expiresAt: 5 as any });
+    }
+    expect(() => Alepha.create().inject(AsyncExpiry)).toThrow("expiresAt");
+    expect(() => Alepha.create().inject(NotFunction)).toThrow("expiresAt");
   });
 
   it("uses lossless JSON and injective versioned identities", () => {
