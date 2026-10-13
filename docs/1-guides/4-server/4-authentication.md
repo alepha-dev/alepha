@@ -248,6 +248,29 @@ provider is the authority.
 Leave `isPreAuthorized` unset and a closed realm behaves exactly as it did
 before this existed.
 
+### Attempt Limits Follow the Actor Store
+
+Every attempt limit of `alepha/api/users` is a [`$rateLimit`](/docs/guides-server-rate-limiting):
+login per address (`login:ip`) and per account (`login:account`), second-factor codes
+(`mfa`), registration and password reset per address, OAuth dynamic client
+registration and device codes. Login and MFA take their limit and window from the
+realm's `loginRateLimit` settings. All of them fail closed: a counter store that
+cannot answer refuses the login (or answers 503 on the other endpoints) rather than
+waving attempts through.
+
+Their counters are actor state, so the topology is the actor provider's:
+
+- without `AlephaActorRedis`, an app is a **single instance**. Run two Node instances
+  and each counts on its own, so five failed passwords per account become five per
+  instance;
+- with `AlephaActorRedis`, every instance shares one count;
+- on workerd, each counter is a Durable Object behind the `ALEPHA_ACTOR` binding,
+  which the build generates.
+
+`REDIS_URL` alone does not select `AlephaActorRedis`: a multi-instance app with a
+Redis cache still counts per instance until it registers the actor module. See
+[the topology rule](/docs/guides-persistence-actors).
+
 ### The First Account Owns a Self-Hosted Instance
 
 An app distributed as an image has a bootstrap problem: someone runs the

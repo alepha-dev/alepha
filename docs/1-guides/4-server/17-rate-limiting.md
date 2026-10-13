@@ -127,4 +127,6 @@ provider decides who shares a counter.
 - **Durable Objects** on workerd, one per counter key, through the `ALEPHA_ACTOR`
   binding the build generates.
 
-No Redis means one instance. Nothing falls back to SQL for counters.
+No Redis means one instance. Nothing falls back to SQL for counters: an app that
+scales out without `AlephaActorRedis` lets each instance count on its own, so a
+limit of five becomes five per instance. See [the topology rule](/docs/guides-persistence-actors).

@@ -187,6 +187,27 @@ a key touched once and never again would otherwise stay forever.
   the storage of an expired actor and re-arms one that moved on. It needs no
   Wrangler configuration and no Durable Object migration.
 
+## Topology: no Redis means one instance
+
+Where actor state lives decides who shares it, and the rule is the provider's:
+
+- **Memory** (the default on Node and Bun) is one process. It is right for an app
+  that runs a single instance.
+- **Redis** (`AlephaActorRedis`) is for several instances: every one of them sees
+  the same state.
+- **Durable Objects** on workerd, one per actor identity.
+
+An app without `AlephaActorRedis` is a single-instance app, and every actor in it
+assumes so: the login and MFA lockouts of `alepha/api/users`, every
+[`$rateLimit`](/docs/guides-server-rate-limiting) and your own actors. Run two Node
+instances without Redis and each keeps its own state, so a limit of five becomes
+five per instance. Nothing falls back to SQL to paper over it.
+
+⚠️ `REDIS_URL` alone does not select `AlephaActorRedis`. An app that runs several
+instances with a Redis cache or queue, but never added the actor module, still
+keeps actor state per instance. Add `alepha.with(AlephaActorRedis)` before scaling
+out.
+
 ## Redis on Node and Bun
 
 Select `AlephaActorRedis` from `alepha/actor/redis` explicitly with

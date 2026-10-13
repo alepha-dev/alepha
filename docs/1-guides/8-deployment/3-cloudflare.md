@@ -227,6 +227,22 @@ Apps registering `$websocket` or `$room` primitives get their realtime wiring au
 - the server bundle re-exports the `AlephaWebSocketDurableObject` class so wrangler can resolve it
 - `secure: true` on either primitive rejects unauthenticated upgrades with a 401
 
+## Actors and Rate Limits
+
+Apps that declare an `$actor` get the `ALEPHA_ACTOR` Durable Object automatically,
+and that includes every app using `alepha/api/users` or a `$rateLimit`: login, MFA,
+registration and password-reset limits are actors.
+
+- `wrangler.jsonc` gets the `ALEPHA_ACTOR` binding and the `AlephaActorDurableObject`
+  class (declarative exports, or a migration step on the legacy path)
+- the server bundle re-exports `AlephaActorDurableObject` from `alepha/actor`
+- each actor identity, each counter key for a limiter, is its own instance, with
+  SQLite storage; expired counters delete themselves through the instance's alarm
+
+An app that already deployed without actors adds the class on its first deploy after
+the upgrade. Nothing has to be declared by hand, and an app that also runs
+WebSockets keeps `ALEPHA_WEBSOCKET` beside it.
+
 ## Static Assets
 
 If your project has a React frontend, the built client assets are placed in `dist/public/` and served via Cloudflare's asset binding.
