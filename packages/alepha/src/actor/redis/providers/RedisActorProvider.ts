@@ -1,6 +1,7 @@
 import { $inject, $store, Alepha, AlephaError } from "alepha";
 import {
   ActorCodec,
+  ActorContentionError,
   ActorProvider,
   ActorRegistry,
   type ActorRequest,
@@ -9,7 +10,6 @@ import {
 import { DateTimeProvider } from "alepha/datetime";
 
 import { actorRedisOptions } from "../actorRedisOptions.ts";
-import { ActorContentionError } from "../errors/ActorContentionError.ts";
 import { ActorRedisConnection } from "./ActorRedisConnection.ts";
 
 /**

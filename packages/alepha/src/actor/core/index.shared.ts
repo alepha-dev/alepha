@@ -1,3 +1,4 @@
+export * from "./errors/ActorContentionError.ts";
 export * from "./interfaces/ActorInterfaces.ts";
 export * from "./primitives/$actor.ts";
 export * from "./providers/ActorCodec.ts";

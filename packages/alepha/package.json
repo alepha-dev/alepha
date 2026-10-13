@@ -294,6 +294,11 @@
       "import": "./src/queue/redis/index.ts",
       "default": "./src/queue/redis/index.ts"
     },
+    "./rate-limit": {
+      "types": "./src/rate-limit/index.ts",
+      "import": "./src/rate-limit/index.ts",
+      "default": "./src/rate-limit/index.ts"
+    },
     "./react/auth": {
       "types": "./src/react/auth/index.ts",
       "react-native": "./src/react/auth/index.browser.ts",
@@ -762,6 +767,11 @@
         "types": "./dist/queue/redis/index.d.ts",
         "import": "./dist/queue/redis/index.js",
         "default": "./dist/queue/redis/index.js"
+      },
+      "./rate-limit": {
+        "types": "./dist/rate-limit/index.d.ts",
+        "import": "./dist/rate-limit/index.js",
+        "default": "./dist/rate-limit/index.js"
       },
       "./react/auth": {
         "types": "./dist/react/auth/index.d.ts",

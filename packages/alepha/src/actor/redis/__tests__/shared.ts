@@ -1,7 +1,11 @@
 import { $atom, Alepha, AlephaError, z } from "alepha";
-import { $actor, ActorCodec, type ActorEnvelope } from "alepha/actor";
 import {
+  $actor,
+  ActorCodec,
   ActorContentionError,
+  type ActorEnvelope,
+} from "alepha/actor";
+import {
   AlephaActorRedis,
   RedisActorProvider,
   actorRedisOptions,
