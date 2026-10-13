@@ -3,37 +3,60 @@
 ## Import
 
 ```typescript
-import { $rateLimit } from "alepha/server/rate-limit";
+import { $rateLimit } from "alepha/rate-limit";
 ```
 
 ## Overview
 
-Middleware that enforces rate limiting.
+Declare a transport-agnostic, fail-closed rate limiter.
 
-**Key resolution** (in order):
+Counters are actor state (`alepha/actor`), so topology is the actor
+provider's: Memory is one instance, `AlephaActorRedis` is several, and a
+Durable Object on workerd. An app that runs several instances without Redis
+counts per instance.
 
-1. Explicit `key` function - user controls the key. Works anywhere (`$action`, `$job`, `$pipeline`).
-2. Auto-detect `request.ip` from ALS - default for `$action` context.
-3. `"global"` fallback - when no request context and no `key`. All calls share one bucket.
+`consume(input)` counts one hit in a fixed window anchored on its first hit.
+A counted result carries a `ticket`; `refund(ticket)` gives that hit back,
+within the same window only, and never throws. A refused hit is not counted:
+past the limit the counter saturates and a flood costs reads, not writes.
 
-Sets `X-RateLimit-*` response headers when a request context is available.
-Throws `HttpError(429)` when the limit is exceeded.
+`limit`, `window` and `key` are numbers or synchronous functions of the
+consume input: load anything asynchronous (realm settings) before consuming
+and pass it in. A store error or `ActorContentionError` resolves a result
+with `reason: "store" | "contention"`, refused under `deny` (the default for
+both) or allowed uncounted under `allow`. `consume` never rejects for them.
 
-```typescript
-// In $action: automatically rate limits by IP
-$action({ use: [$rateLimit({ max: 100, windowMs: 60000 })] });
+Every refusal emits `rate-limit:consume:denied`. Callers audit lockouts
+themselves from `count`: whether a hit "crossed" depends on whether they
+compare before or after counting.
 
-// In $action: rate limit by custom key
-$action({
-  use: [$rateLimit({ max: 10, windowMs: 60000, key: (req) => req.user?.id })],
-});
+`middleware()` puts a string-keyed limiter in front of an `$action`, `$job`
+or `$pipeline`: 429 on the limit, 503 on a store error.
 
-// In $job: rate limit all executions globally
-$job({ use: [$rateLimit({ max: 5, windowMs: 3600000 })] });
+## Examples
+
+```ts check
+import { $rateLimit } from "alepha/rate-limit";
+
+interface Attempt {
+  userId: string;
+  max: number;
+}
+
+class Auth {
+  account = $rateLimit({
+    name: "login:account",
+    limit: (input: Attempt) => input.max,
+    window: [15, "minutes"],
+    key: (input: Attempt) => input.userId,
+  });
+
+  async attempt(userId: string, ok: () => Promise<boolean>) {
+    const result = await this.account.consume({ userId, max: 5 });
+    if (!result.allowed) return false;
+    if (!(await ok())) return false;
+    if (result.ticket) await this.account.refund(result.ticket);
+    return true;
+  }
+}
 ```
-
-## Options
-
-| Option | Type     | Required | Description         |
-| ------ | -------- | -------- | ------------------- |
-| `key`  | `Object` | No       | Custom key function |

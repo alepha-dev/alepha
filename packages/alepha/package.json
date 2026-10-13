@@ -439,11 +439,6 @@
       "import": "./src/server/proxy/index.ts",
       "default": "./src/server/proxy/index.ts"
     },
-    "./server/rate-limit": {
-      "types": "./src/server/rate-limit/index.ts",
-      "import": "./src/server/rate-limit/index.ts",
-      "default": "./src/server/rate-limit/index.ts"
-    },
     "./server/static": {
       "types": "./src/server/static/index.ts",
       "import": "./src/server/static/index.ts",
@@ -912,11 +907,6 @@
         "types": "./dist/server/proxy/index.d.ts",
         "import": "./dist/server/proxy/index.js",
         "default": "./dist/server/proxy/index.js"
-      },
-      "./server/rate-limit": {
-        "types": "./dist/server/rate-limit/index.d.ts",
-        "import": "./dist/server/rate-limit/index.js",
-        "default": "./dist/server/rate-limit/index.js"
       },
       "./server/static": {
         "types": "./dist/server/static/index.d.ts",

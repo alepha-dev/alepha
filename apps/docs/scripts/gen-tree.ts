@@ -943,7 +943,7 @@ export class TreeCommand {
 
   /**
    * Namespaces whose sub-modules were written with a dash before `/` settled
-   * as the separator. `server-rate-limit` is `server/rate-limit`, and only the
+   * as the separator. `server-cookies` is `server/cookies`, and only the
    * FIRST dash separates - the rest belong to the module's own name.
    *
    * `payments` is deliberately absent: `payments-stripe` is the published

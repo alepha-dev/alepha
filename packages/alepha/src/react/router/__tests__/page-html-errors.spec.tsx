@@ -234,7 +234,7 @@ describe("$page html errors", () => {
       home = $page({ path: "/", component: () => "home" });
 
       /**
-       * The shape `ServerNotReadyProvider` and `ServerRateLimitProvider` take.
+       * The shape `ServerNotReadyProvider` and `ServerAuthProvider` take.
        * These run before the route handler, so `withGuardDenial` never sees
        * them — they were the JSON that reached a real first-time visitor.
        */

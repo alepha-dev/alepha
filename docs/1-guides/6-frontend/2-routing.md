@@ -440,8 +440,8 @@ errorHandler: (error) => {
 ```
 
 The same handler also covers failures thrown _around_ the render - a `use:`
-middleware, or a server hook such as the rate limiter or the not-ready guard
-that answers while the app is still booting. Those never run a loader, so there
+middleware such as a `$rateLimit` answering 429, or a server hook such as the
+not-ready guard that answers while the app is still booting. Those never run a loader, so there
 is no layer to fail; the router still resolves the nearest `errorHandler` and
 renders its result as a full HTML page.
 
