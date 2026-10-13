@@ -68,10 +68,19 @@ return {1}`;
     request: ActorRequest,
   ): Promise<unknown> {
     const declaration = this.registry.get(request.name);
-    const max = this.settings.maxAttempts;
+    const { maxAttempts: max, baseDelayMs, maxDelayMs } = this.settings;
     if (!Number.isSafeInteger(max) || max < 1)
       throw new AlephaError(
         "Actor maxAttempts must be a positive safe integer",
+      );
+    if (
+      !Number.isSafeInteger(baseDelayMs) ||
+      !Number.isSafeInteger(maxDelayMs) ||
+      baseDelayMs < 0 ||
+      maxDelayMs < baseDelayMs
+    )
+      throw new AlephaError(
+        "Actor baseDelayMs and maxDelayMs must be integers with 0 <= baseDelayMs <= maxDelayMs",
       );
     // One GET, then one CAS per attempt: a conflict returns the current value.
     let raw = await this.load(identity);
@@ -96,8 +105,29 @@ return {1}`;
       const result = await this.compareAndSet(identity, raw, next);
       if (result.committed) return this.codec.copy(next.state);
       raw = result.current;
+      // A definite conflict: back off before the next attempt, so replicas
+      // contending on one hot key do not exhaust their attempts together.
+      // Transport errors never get here: they propagate without retry.
+      if (attempt + 1 < max) await this.backoff(attempt);
     }
     throw new ActorContentionError("Actor transition contention exhausted");
+  }
+
+  /**
+   * Full-jitter exponential backoff after the given failed attempt (0-based),
+   * slept through `DateTimeProvider` so specs control it.
+   */
+  protected backoff(attempt: number): Promise<void> {
+    const { baseDelayMs, maxDelayMs } = this.settings;
+    const cap = Math.min(maxDelayMs, baseDelayMs * 2 ** attempt);
+    return this.dateTime.wait(Math.floor(this.random() * cap));
+  }
+
+  /**
+   * The jitter's randomness, in [0, 1). Reducers never see it.
+   */
+  protected random(): number {
+    return Math.random();
   }
 
   protected async load(identity: string): Promise<string | undefined> {

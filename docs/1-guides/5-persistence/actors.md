@@ -205,8 +205,13 @@ Each transition validates its candidate locally, then commits one key with an ex
 observed-byte Lua compare-and-set: one GET and one script call, a missing key
 included. Only definite conflicts retry, from the value the failed compare-and-set
 returned (no second GET) and the original detached arguments; a key deleted or
-evicted meanwhile retries as missing. `actorRedisOptions` configures positive
-`maxAttempts` (default 32). Exhaustion throws `ActorContentionError`.
+evicted meanwhile retries as missing. Between two attempts the provider sleeps a
+full-jitter exponential backoff, a random delay below `min(maxDelayMs, baseDelayMs *
+2^attempt)` milliseconds, so replicas contending on one hot key do not exhaust their
+attempts together; the sleep goes through `DateTimeProvider`. Within one process
+the per-identity queue already serializes calls, so only replicas contend.
+`actorRedisOptions` configures positive `maxAttempts` (default 32), `baseDelayMs`
+(default 1) and `maxDelayMs` (default 50). Exhaustion throws `ActorContentionError`.
 
 State has no local read cache, and expiry is lazy (see above). Redis persistence and failover configuration
 determine restart durability; eviction loses state. A transport failure after a

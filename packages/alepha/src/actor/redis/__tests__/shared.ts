@@ -47,6 +47,16 @@ class FaultProvider extends RedisActorProvider {
   mode = "normal";
   writes = 0;
   gets = 0;
+  delays: number[] = [];
+  protected override backoff(attempt: number): Promise<void> {
+    const { baseDelayMs, maxDelayMs } = this.settings;
+    this.delays.push(Math.min(maxDelayMs, baseDelayMs * 2 ** attempt));
+    return super.backoff(attempt);
+  }
+  // The upper bound of every jitter window, so the delays are exact.
+  protected override random(): number {
+    return 0.999;
+  }
   protected override load(identity: string): Promise<string | undefined> {
     this.gets++;
     return super.load(identity);
@@ -88,6 +98,12 @@ class FaultProvider extends RedisActorProvider {
     await this.redis.del(await this.redis.keys("*" + this.alepha.name + "*"));
   }
 }
+
+const attempts = (maxAttempts: number) => ({
+  maxAttempts,
+  baseDelayMs: 1,
+  maxDelayMs: 50,
+});
 
 export class RedisActorContract {
   static async run(expect: (value: any) => any): Promise<void> {
@@ -161,15 +177,24 @@ export class RedisActorContract {
       expect(await actors[1].counter.read()).toBe(40);
       const fault = containers[0].inject(FaultProvider);
       expect(() =>
-        containers[0].store.set(actorRedisOptions, { maxAttempts: 0 }),
+        containers[0].store.set(actorRedisOptions, attempts(0)),
       ).toThrow();
-      containers[0].store.set(actorRedisOptions, { maxAttempts: 2 });
+      expect(() =>
+        containers[0].store.set(actorRedisOptions, {
+          ...attempts(2),
+          baseDelayMs: -1,
+        }),
+      ).toThrow();
+      // Conflicts back off exponentially, capped, with no wait after the last.
+      containers[0].store.set(actorRedisOptions, attempts(8));
       fault.mode = "conflict";
       fault.writes = 0;
+      fault.delays = [];
       await expect(actors[0].counter.add()).rejects.toBeInstanceOf(
         ActorContentionError,
       );
-      expect(fault.writes).toBe(2);
+      expect(fault.writes).toBe(8);
+      expect(fault.delays).toEqual([1, 2, 4, 8, 16, 32, 50]);
       // A first mutation on a missing key is one GET and one CAS.
       fault.mode = "normal";
       fault.writes = 0;
@@ -177,7 +202,7 @@ export class RedisActorContract {
       expect(await actors[0].counter.get("fresh").add(2)).toBe(2);
       expect([fault.gets, fault.writes]).toEqual([1, 1]);
       // A conflict returns the current value: the retry is one more CAS, no GET.
-      containers[0].store.set(actorRedisOptions, { maxAttempts: 32 });
+      containers[0].store.set(actorRedisOptions, attempts(32));
       fault.mode = "race";
       fault.writes = 0;
       fault.gets = 0;
@@ -189,18 +214,21 @@ export class RedisActorContract {
       fault.gets = 0;
       expect(await actors[0].counter.get("fresh").add(1)).toBe(1);
       expect([fault.gets, fault.writes]).toEqual([1, 2]);
-      containers[0].store.set(actorRedisOptions, { maxAttempts: 2 });
+      containers[0].store.set(actorRedisOptions, attempts(2));
       fault.mode = "normal";
       fault.writes = 0;
       // A no-op transition issues no compare-and-set at all.
       expect(await actors[0].counter.add(0)).toBe(40);
       expect(fault.writes).toBe(0);
+      // A transport error is never retried, so it never waits.
       fault.mode = "transport";
       fault.writes = 0;
+      fault.delays = [];
       await expect(actors[0].counter.add()).rejects.toThrow(
         "transport unknown",
       );
       expect(fault.writes).toBe(1);
+      expect(fault.delays).toEqual([]);
       fault.mode = "postcommit";
       fault.writes = 0;
       await expect(actors[0].counter.add()).rejects.toThrow(
