@@ -26,21 +26,21 @@ export class MemoryActorProvider extends ActorProvider {
       .then(() => {
         const declaration = this.registry.get(request.name);
         const raw = this.snapshots.get(identity);
-        let envelope =
+        const envelope =
           raw === undefined
             ? this.codec.initial(declaration)
             : this.codec.decode(raw, declaration);
-        if (raw === undefined)
-          this.snapshots.set(identity, JSON.stringify(envelope));
-        if (request.method !== undefined)
-          envelope = this.codec.transition(
-            declaration,
-            envelope,
-            request.method,
-            request.args,
-          );
-        this.snapshots.set(identity, JSON.stringify(envelope));
-        return this.codec.copy(envelope.state);
+        // A read never writes: a missing key stays missing.
+        if (request.method === undefined)
+          return this.codec.copy(envelope.state);
+        const updated = this.codec.transition(
+          declaration,
+          envelope,
+          request.method,
+          request.args,
+        );
+        this.snapshots.set(identity, JSON.stringify(updated));
+        return this.codec.copy(updated.state);
       });
     this.queues.set(identity, operation);
     void operation

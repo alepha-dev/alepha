@@ -28,7 +28,8 @@ import { ActorRegistry } from "../providers/ActorRegistry.ts";
  *
  * Methods are pure synchronous reducers of readonly JSON state and arguments.
  * Calls resolve to detached committed state. get(key) is synchronous; read()
- * lazily initializes state. Actor snapshots never synchronize with alepha.store.
+ * returns the default for a missing key without storing it. Actor snapshots
+ * never synchronize with alepha.store.
  * Redis can rerun reducers on definite conflicts, so reducers must have no I/O,
  * mutable captured dependencies, time/random reads or other side effects.
  * Arguments are captured before the call waits. Reducer inputs are recursively
@@ -115,7 +116,8 @@ export class ActorPrimitive<T extends ZType = ZType> extends Primitive<
   }
 
   /**
-   * Lazily initialize the default instance and return its observed snapshot.
+   * Return the default instance's observed snapshot, or the default state when
+   * nothing is stored. A read never writes, so a missing key stays missing.
    * This does not read, write or subscribe to the ordinary local atom store.
    */
   public read(): Promise<Infer<T>> {

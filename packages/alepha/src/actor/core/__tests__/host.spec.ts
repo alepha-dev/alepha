@@ -62,6 +62,9 @@ describe("shared actor host runtime", () => {
     const storage = new Storage();
     const host = new ActorHost(storage, env, { toString: () => identity });
     try {
+      expect(await host.execute(identity, { name: "host", args: [] })).toBe(0);
+      // A read of a missing key stores nothing.
+      expect(storage.raw).toBeUndefined();
       expect(
         await Promise.all(
           Array.from({ length: 20 }, () =>

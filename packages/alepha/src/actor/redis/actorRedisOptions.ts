@@ -1,6 +1,6 @@
 import { $atom, z } from "alepha";
 /**
- * Positive maximum compare-and-set attempts per initialization or transition.
+ * Positive maximum compare-and-set attempts per transition.
  */
 export const actorRedisOptions = $atom({
   name: "alepha.actor.redis.options",

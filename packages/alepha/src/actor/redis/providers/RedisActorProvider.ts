@@ -62,32 +62,13 @@ return 1`;
       throw new AlephaError(
         "Actor maxAttempts must be a positive safe integer",
       );
-    let initialized = false;
     for (let attempt = 0; attempt < max; attempt++) {
       const raw = (await this.redis.get(identity))?.toString("utf8");
-      if (raw === undefined) {
-        const initial = this.codec.initial(declaration);
-        const result = await this.compareAndSet(identity, undefined, initial);
-        if (!result) continue;
-        initialized = true;
-        if (request.method === undefined) return this.codec.copy(initial.state);
-        // The default is committed even when this first reducer fails.
-        break;
-      }
-      initialized = true;
-      break;
-    }
-    if (!initialized)
-      throw new ActorContentionError(
-        "Actor initialization contention exhausted",
-      );
-    for (let attempt = 0; attempt < max; attempt++) {
-      const raw = (await this.redis.get(identity))?.toString("utf8");
-      if (raw === undefined)
-        throw new AlephaError(
-          "Actor state disappeared during an operation (Redis eviction or deletion)",
-        );
-      const envelope = this.codec.decode(raw, declaration);
+      const envelope =
+        raw === undefined
+          ? this.codec.initial(declaration)
+          : this.codec.decode(raw, declaration);
+      // A read never writes: a missing key stays missing.
       if (request.method === undefined) return this.codec.copy(envelope.state);
       const next = this.codec.transition(
         declaration,

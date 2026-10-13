@@ -90,8 +90,9 @@ describe("actor Memory contract", () => {
   it("preserves state and recovers queues after reducer, schema and async-result failures", async () => {
     const actor = Alepha.create().inject(Counters).value;
     await expect(actor.fail()).rejects.toThrow("refused");
+    // A failed first call stores nothing: the key still reads the default.
     counter.options.default = 100;
-    expect(await actor.read()).toBe(0);
+    expect(await actor.read()).toBe(100);
     counter.options.default = 0;
     await actor.add(4);
     await expect(actor.fail()).rejects.toThrow("refused");

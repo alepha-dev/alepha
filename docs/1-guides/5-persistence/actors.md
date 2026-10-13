@@ -27,12 +27,14 @@ class CounterService {
 ```
 
 `get(key)` is synchronous and requires a nonempty string. The default actor and
-`get("default")` are separate instances. `read()` and method calls lazily initialize
-state and return detached snapshots. A method resolves to the state committed by
-that call, even if a later concurrent call has already changed the stored state.
-`read()` returns the state observed by that read. Neither returns a method-specific
-result or a live subscription. A failed transition preserves the previous state;
-if it was the first call, the validated default has already been initialized.
+`get("default")` are separate instances. `read()` and method calls return detached
+snapshots. A method resolves to the state committed by that call, even if a later
+concurrent call has already changed the stored state. `read()` returns the state
+observed by that read: for a key with nothing stored, the validated default, and
+it stores nothing, so reading arbitrary keys never creates state. A method on a
+missing key starts from the default. Neither returns a method-specific result or a
+live subscription. A failed transition preserves the previous state; if it was the
+first call, nothing is stored.
 
 For example, `alepha.store.set(counter, 100)` leaves `service.counter.read()`
 unchanged, and `service.counter.add()` leaves the ordinary store value unchanged
@@ -173,11 +175,11 @@ fails without falling back to Memory.
 
 The host resolves registered pure reducers without starting the full application,
 so an application start hook can call an actor without recursively starting itself.
-It serializes initialization, reads and transitions and awaits validated protocol-v1
-KV writes on SQLite-backed storage before success. Restarted hosts read persisted
-state. Failed transitions retain the previous snapshot; corrupt or incompatible
-stored state fails closed. Initialization and each successful transition await
-storage before returning. This does not make RPC delivery exactly once: a lost
+It serializes reads and transitions and awaits validated protocol-v1 KV writes on
+SQLite-backed storage before success. A read of a missing actor writes nothing.
+Restarted hosts read persisted state. Failed transitions retain the previous
+snapshot; corrupt or incompatible stored state fails closed. Each successful
+transition awaits storage before returning. This does not make RPC delivery exactly once: a lost
 response can leave the caller uncertain whether its transition committed. No
 native SQL API, alarms or subscriptions are exposed.
 

@@ -74,6 +74,9 @@ export class ActorContract {
       nested: { count: 1 },
     });
     assert.equal(await counter("add"), 41);
+    // A read of a missing key returns the default and stores nothing.
+    assert.equal(await fixture.call("contract.corrupt"), 0);
+    assert.equal(await fixture.raw(), undefined);
     assert.equal(await fixture.call("contract.corrupt", "add"), 1);
     for (const raw of [
       "{",

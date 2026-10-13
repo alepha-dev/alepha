@@ -56,22 +56,20 @@ export class ActorHost {
       return Promise.reject(new AlephaError("Unknown actor method"));
     const operation = this.tail.then(async () => {
       const raw = await this.storage.get<string>("actor");
-      let envelope =
+      const envelope =
         raw === undefined
           ? codec.initial(declaration)
           : codec.decode(raw, declaration);
-      if (raw === undefined)
-        await this.storage.put("actor", JSON.stringify(envelope));
-      if (request.method !== undefined) {
-        envelope = codec.transition(
-          declaration,
-          envelope,
-          request.method,
-          args,
-        );
-        await this.storage.put("actor", JSON.stringify(envelope));
-      }
-      return codec.copy(envelope.state);
+      // A read never writes: a missing key stays missing.
+      if (request.method === undefined) return codec.copy(envelope.state);
+      const updated = codec.transition(
+        declaration,
+        envelope,
+        request.method,
+        args,
+      );
+      await this.storage.put("actor", JSON.stringify(updated));
+      return codec.copy(updated.state);
     });
     this.tail = operation.then(
       () => undefined,
