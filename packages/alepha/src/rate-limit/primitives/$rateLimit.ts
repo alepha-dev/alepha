@@ -1,9 +1,19 @@
-import { $inject, AlephaError, createPrimitive, KIND, Primitive } from "alepha";
+import {
+  $inject,
+  AlephaError,
+  createMiddleware,
+  createPrimitive,
+  KIND,
+  type Middleware,
+  Primitive,
+} from "alepha";
 import { ActorContentionError } from "alepha/actor";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
+import { HttpError, type ServerRequest } from "alepha/server";
 
 import type {
+  RateLimitMiddlewareOptions,
   RateLimitPrimitiveOptions,
   RateLimitResult,
   RateLimitTicket,
@@ -32,6 +42,9 @@ import { RateLimitWindows } from "../services/RateLimitWindows.ts";
  * Every refusal emits `rate-limit:consume:denied`. Callers audit lockouts
  * themselves from `count`: whether a hit "crossed" depends on whether they
  * compare before or after counting.
+ *
+ * `middleware()` puts a string-keyed limiter in front of an `$action`, `$job`
+ * or `$pipeline`: 429 on the limit, 503 on a store error.
  *
  * @example
  * ```ts check
@@ -94,6 +107,110 @@ export class RateLimitPrimitive<TInput = string> extends Primitive<
 
   public get name(): string {
     return this.options.name;
+  }
+
+  /**
+   * A middleware for `use: [...]` on `$action`, `$job` and `$pipeline`,
+   * counting one hit per call. Declare the limiter as a class field above the
+   * actions that use it.
+   *
+   * **Key**, in order: `key(...args)`; else `ip:<request.ip>` inside an HTTP
+   * request (`ip:unknown` for an empty ip); else `ip:global`, one bucket shared
+   * by every call (a `$job`). The resolved string is the consume input.
+   *
+   * **Allowed:** the handler runs, with `X-RateLimit-Limit`,
+   * `X-RateLimit-Remaining` and `X-RateLimit-Reset` (epoch seconds) set when a
+   * request is present. **Refused by the limit or by contention:**
+   * `HttpError(429)` with `Retry-After` in seconds. **Refused by a store
+   * error:** `HttpError(503)`, no limit headers: an outage is not a limit the
+   * client exceeded.
+   *
+   * `skipFailedRequests` / `skipSuccessfulRequests` refund the hit once the
+   * outcome is known: failed means the handler threw anything but an
+   * `HttpError` below 400.
+   *
+   * @example
+   * ```ts check
+   * import { $action } from "alepha/server";
+   * import { $rateLimit } from "alepha/rate-limit";
+   *
+   * class Api {
+   *   search = $rateLimit({ name: "api:search", limit: 60, window: 60_000 });
+   *
+   *   find = $action({
+   *     use: [this.search.middleware()],
+   *     handler: async () => [],
+   *   });
+   * }
+   * ```
+   */
+  public middleware(
+    this: RateLimitPrimitive<string>,
+    options: RateLimitMiddlewareOptions = {},
+  ): Middleware {
+    return createMiddleware({
+      name: "$rateLimit",
+      options: { name: this.options.name, ...options },
+      handler: ({ alepha, next }) => {
+        return async (...args: any[]) => {
+          const request = alepha.get("alepha.http.request") as
+            | ServerRequest
+            | undefined;
+          const key = options.key
+            ? options.key(...args)
+            : request
+              ? `ip:${request.ip || "unknown"}`
+              : "ip:global";
+          const result = await this.consume(key);
+          if (result.reason === "store")
+            throw new HttpError({
+              status: 503,
+              message: "Rate limiter unavailable",
+            });
+          if (request && result.resetAt !== undefined) {
+            request.reply.setHeader("X-RateLimit-Limit", String(result.limit));
+            request.reply.setHeader(
+              "X-RateLimit-Remaining",
+              String(result.remaining),
+            );
+            request.reply.setHeader(
+              "X-RateLimit-Reset",
+              String(Math.ceil(result.resetAt / 1000)),
+            );
+          }
+          if (!result.allowed) {
+            request?.reply.setHeader(
+              "Retry-After",
+              String(Math.max(1, Math.ceil((result.retryAfterMs ?? 0) / 1000))),
+            );
+            throw new HttpError({
+              status: 429,
+              message: "Too Many Requests",
+            });
+          }
+          const ticket = result.ticket;
+          if (
+            !ticket ||
+            (!options.skipFailedRequests && !options.skipSuccessfulRequests)
+          )
+            return next(...args);
+          try {
+            const value = await next(...args);
+            if (options.skipSuccessfulRequests) await this.refund(ticket);
+            return value;
+          } catch (error) {
+            const failed = !(error instanceof HttpError) || error.status >= 400;
+            if (
+              failed
+                ? options.skipFailedRequests
+                : options.skipSuccessfulRequests
+            )
+              await this.refund(ticket);
+            throw error;
+          }
+        };
+      },
+    });
   }
 
   /**

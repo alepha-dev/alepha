@@ -120,55 +120,42 @@ Responses always carry `Vary: Origin`, since the allowed origin is reflected fro
 
 ### Rate Limiting
 
-Rate limiting comes from the `AlephaServerRateLimit` module. Register it and configure the `rateLimitOptions` atom for a global limit, or attach the `$rateLimit` middleware to individual actions:
+Rate limiting is not part of `AlephaServer`: it comes from `alepha/rate-limit`, whose
+limiters work on any call, HTTP or not. Declare a `$rateLimit` as a class field above
+the actions that use it, and put its `middleware()` in their `use`:
 
 ```typescript check
+import { $rateLimit } from "alepha/rate-limit";
 import { $action } from "alepha/server";
-import { $rateLimit } from "alepha/server/rate-limit";
 
 class App {
+  loginLimit = $rateLimit({ name: "login", limit: 5, window: [1, "minutes"] });
+
   login = $action({
-    use: [$rateLimit({ max: 100, windowMs: 15 * 60 * 1000 })],
+    method: "POST",
+    path: "/auth/login",
+    use: [this.loginLimit.middleware({ skipSuccessfulRequests: true })],
     handler: async () => "ok",
   });
 }
 ```
 
-| Option                   | Default           | Description                                             |
-| ------------------------ | ----------------- | ------------------------------------------------------- |
-| `max`                    | `100`             | Maximum requests per window                             |
-| `windowMs`               | `900000` (15 min) | Window duration in milliseconds                         |
-| `keyGenerator`           | -                 | Custom function to generate rate limit keys per request |
-| `skipFailedRequests`     | `false`           | Do not count failed requests                            |
-| `skipSuccessfulRequests` | `false`           | Do not count successful requests                        |
+Each call counts one hit against the key: `key(...args)` when given, else
+`ip:<request.ip>` in an HTTP request, else `ip:global` (one bucket for a `$job`).
+An allowed call sets `X-RateLimit-Limit`, `X-RateLimit-Remaining` and
+`X-RateLimit-Reset`. Past the limit the middleware throws `HttpError(429)` with
+`Retry-After`; if the counter store is down it throws `HttpError(503)` instead, since
+an outage is not a limit the client exceeded.
 
-#### Per-Action Rate Limiting
+| Middleware option        | Default | Description                                                    |
+| ------------------------ | ------- | -------------------------------------------------------------- |
+| `key`                    | -       | Key from the handler's arguments, instead of the request ip    |
+| `skipFailedRequests`     | `false` | Refund the hit when the handler fails                          |
+| `skipSuccessfulRequests` | `false` | Refund the hit when the handler succeeds (only failures count) |
 
-Apply rate limits directly on an action. The `rateLimit` route option is enforced by
-`AlephaServerRateLimit` - it is not part of the base `AlephaServer`, so without the module
-registered the option is silently ignored:
-
-```typescript check
-import { Alepha } from "alepha";
-import { $action } from "alepha/server";
-import { AlephaServerRateLimit } from "alepha/server/rate-limit";
-
-class App {
-  login = $action({
-    method: "POST",
-    path: "/auth/login",
-    rateLimit: {
-      max: 5,
-      windowMs: 60 * 1000, // 5 attempts per minute
-    },
-    handler: async ({ body }) => {
-      /* ... */
-    },
-  });
-}
-
-Alepha.create().with(AlephaServerRateLimit).with(App);
-```
+The limit, the window, the failure modes and where counters live (one instance on
+Memory, several on Redis, Durable Objects on workerd) belong to the limiter: see
+[Rate limiting](/docs/guides-server-rate-limiting).
 
 ### Health Check
 
@@ -354,24 +341,14 @@ Register multiple modules together:
 
 ```typescript check
 import { Alepha } from "alepha";
+import { AlephaRateLimit } from "alepha/rate-limit";
 import { AlephaServerCors, corsOptions } from "alepha/server/cors";
-import {
-  AlephaServerRateLimit,
-  rateLimitOptions,
-} from "alepha/server/rate-limit";
 
-const alepha = Alepha.create()
-  .with(AlephaServerCors)
-  .with(AlephaServerRateLimit);
+const alepha = Alepha.create().with(AlephaServerCors).with(AlephaRateLimit);
 
 alepha.store.mut(corsOptions, (o) => ({
   ...o,
   origin: "https://app.example.com",
-}));
-alepha.store.mut(rateLimitOptions, (o) => ({
-  ...o,
-  max: 100,
-  windowMs: 15 * 60 * 1000,
 }));
 
 await alepha.start();

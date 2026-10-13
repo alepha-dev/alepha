@@ -41,6 +41,24 @@ export interface RateLimitPrimitiveOptions<TInput = string> {
   onContention?: RateLimitFailureMode;
 }
 
+export interface RateLimitMiddlewareOptions {
+  /**
+   * The key from the handler's arguments. Without it: `ip:<request.ip>` in an
+   * HTTP request, else `ip:global`.
+   */
+  key?: (...args: any[]) => string;
+  /**
+   * Refund the hit when the handler fails (throws anything but an
+   * `HttpError` below 400).
+   */
+  skipFailedRequests?: boolean;
+  /**
+   * Refund the hit when the handler succeeds: only failures count, as on a
+   * login endpoint.
+   */
+  skipSuccessfulRequests?: boolean;
+}
+
 /**
  * Proof that a consume was counted, and the only way to refund it. It pins the
  * window it was counted in: a refund after the window rolled does nothing.
