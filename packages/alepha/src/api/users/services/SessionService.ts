@@ -297,6 +297,40 @@ export class SessionService {
   }
 
   /**
+   * Which IP budget an HTTP login attempt is counted against.
+   *
+   * No address is not a reason to skip the budget: `getRequestIp` answers
+   * nothing without `TRUST_PROXY` on a runtime with no socket, and every
+   * pre-compare failure then wrote an audit row with nothing bounding it. One
+   * shared bucket keeps those attempts bounded, as OAuth DCR does. A call with
+   * no HTTP request at all (a script, a spec) is not counted per IP.
+   */
+  protected ipBucket(ip: string | undefined): string {
+    if (ip) return ip;
+    this.log.warn(
+      "Login attempt with no client address; counting it against the shared bucket. Set TRUST_PROXY if this app is behind a proxy.",
+    );
+    return "unknown";
+  }
+
+  /**
+   * Audit an IP lock, once: when the failure that filled the counter is seen.
+   */
+  protected async auditIpLock(
+    realmName: string,
+    ip: string | undefined,
+    userRealmName?: string,
+  ): Promise<void> {
+    await this.sessionAudits(userRealmName)?.security.log("rate_limited", {
+      userRealm: realmName,
+      success: false,
+      description:
+        "IP temporarily locked due to too many failed login attempts",
+      metadata: { ip },
+    });
+  }
+
+  /**
    * Validate user credentials and return the user if valid.
    */
   public async login(
@@ -321,7 +355,7 @@ export class SessionService {
 
     // IP rate limit check (global, cross-realm) — before any DB work
     const request = this.alepha.store.get("alepha.http.request");
-    const ipKey = request?.ip ? `login:ip:${request.ip}` : undefined;
+    const ipKey = request ? `login:ip:${this.ipBucket(request.ip)}` : undefined;
 
     if (ipKey) {
       const ipLocked = await this.isLoginLocked(
@@ -398,7 +432,7 @@ export class SessionService {
           realm: name,
         });
 
-        // Only increment IP counter (no user ID to track). Counted before
+        // Only the IP counter: there is no user ID to track. Counted before
         // the attempt is audited: an audit write that fails must never be
         // what lets an attempt go uncounted.
         const justLocked = ipKey
@@ -415,19 +449,8 @@ export class SessionService {
           description: "User not found",
           metadata: { provider, username },
         });
-
-        if (justLocked) {
-          await this.sessionAudits(userRealmName)?.security.log(
-            "rate_limited",
-            {
-              userRealm: name,
-              success: false,
-              description:
-                "IP temporarily locked due to too many failed login attempts",
-              metadata: { ip: request?.ip },
-            },
-          );
-        }
+        if (justLocked)
+          await this.auditIpLock(name, request?.ip, userRealmName);
 
         throw new InvalidCredentialsError();
       }
@@ -439,6 +462,18 @@ export class SessionService {
           realm: name,
         });
 
+        // Counted against the IP like a user not found: otherwise one
+        // address writes an audit row per attempt on a disabled account, with
+        // nothing to stop it. Once the IP locks, the check at the top refuses
+        // before any row is written.
+        const justLocked = ipKey
+          ? await this.recordFailedLogin(
+              ipKey,
+              loginRateLimit.ipMaxAttempts,
+              loginRateLimit.windowMs,
+            )
+          : false;
+
         await this.sessionAudits(userRealmName)?.auth.log("login", {
           userRealm: name,
           success: false,
@@ -446,6 +481,8 @@ export class SessionService {
           description: "Login attempt for disabled account",
           metadata: { provider, username },
         });
+        if (justLocked)
+          await this.auditIpLock(name, request?.ip, userRealmName);
 
         throw new InvalidCredentialsError();
       }
