@@ -46,19 +46,33 @@ class Actors {
 class FaultProvider extends RedisActorProvider {
   mode = "normal";
   writes = 0;
+  gets = 0;
+  protected override load(identity: string): Promise<string | undefined> {
+    this.gets++;
+    return super.load(identity);
+  }
   protected override async compareAndSet(
     identity: string,
     raw: string | undefined,
     next: ActorEnvelope,
-  ): Promise<boolean> {
-    if (next.revision > 0) {
-      this.writes++;
-      if (this.mode === "conflict") return false;
-      if (this.mode === "transport") throw new AlephaError("transport unknown");
-      if (this.mode === "postcommit") {
-        await super.compareAndSet(identity, raw, next);
-        throw new AlephaError("transport unknown");
-      }
+  ): Promise<{ committed: boolean; current?: string }> {
+    this.writes++;
+    if (this.mode === "conflict") return { committed: false, current: raw };
+    if (this.mode === "transport") throw new AlephaError("transport unknown");
+    if (this.mode === "postcommit") {
+      await super.compareAndSet(identity, raw, next);
+      throw new AlephaError("transport unknown");
+    }
+    // Another replica writes (or deletes) the key between our GET and CAS once.
+    if (this.mode === "race" || this.mode === "vanish") {
+      const mode = this.mode;
+      this.mode = "normal";
+      if (mode === "race")
+        await this.redis.set(
+          identity,
+          JSON.stringify({ version: 1, revision: 99, state: 1000 }),
+        );
+      else await this.redis.del([identity]);
     }
     return super.compareAndSet(identity, raw, next);
   }
@@ -156,6 +170,26 @@ export class RedisActorContract {
         ActorContentionError,
       );
       expect(fault.writes).toBe(2);
+      // A first mutation on a missing key is one GET and one CAS.
+      fault.mode = "normal";
+      fault.writes = 0;
+      fault.gets = 0;
+      expect(await actors[0].counter.get("fresh").add(2)).toBe(2);
+      expect([fault.gets, fault.writes]).toEqual([1, 1]);
+      // A conflict returns the current value: the retry is one more CAS, no GET.
+      containers[0].store.set(actorRedisOptions, { maxAttempts: 32 });
+      fault.mode = "race";
+      fault.writes = 0;
+      fault.gets = 0;
+      expect(await actors[0].counter.get("fresh").add(1)).toBe(1001);
+      expect([fault.gets, fault.writes]).toEqual([1, 2]);
+      // A conflict on a key deleted meanwhile retries it as missing.
+      fault.mode = "vanish";
+      fault.writes = 0;
+      fault.gets = 0;
+      expect(await actors[0].counter.get("fresh").add(1)).toBe(1);
+      expect([fault.gets, fault.writes]).toEqual([1, 2]);
+      containers[0].store.set(actorRedisOptions, { maxAttempts: 2 });
       fault.mode = "normal";
       fault.writes = 0;
       // A no-op transition issues no compare-and-set at all.

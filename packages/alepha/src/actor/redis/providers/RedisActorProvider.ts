@@ -26,14 +26,22 @@ export class RedisActorProvider extends ActorProvider {
   protected readonly settings = $store(actorRedisOptions);
   protected readonly redis = $inject(ActorRedisConnection);
   protected readonly queues = new Map<string, Promise<unknown>>();
+  /**
+   * Exact-byte compare-and-set. On a conflict it returns the value present, so
+   * a retry needs no GET; `{0}` alone means the key is gone (deleted or
+   * evicted meanwhile) and the retry treats it as missing.
+   */
   protected static readonly cas = `local current = redis.call('GET', KEYS[1])
 if ARGV[1] == 'missing' then
-  if current then return 0 end
+  if current then return {0, current} end
 else
-  if current ~= ARGV[2] then return 0 end
+  if current ~= ARGV[2] then
+    if current then return {0, current} end
+    return {0}
+  end
 end
 redis.call('SET', KEYS[1], ARGV[3])
-return 1`;
+return {1}`;
 
   public override execute(request: ActorRequest): Promise<unknown> {
     const identity = this.codec.identity(
@@ -65,8 +73,9 @@ return 1`;
       throw new AlephaError(
         "Actor maxAttempts must be a positive safe integer",
       );
+    // One GET, then one CAS per attempt: a conflict returns the current value.
+    let raw = await this.load(identity);
     for (let attempt = 0; attempt < max; attempt++) {
-      const raw = (await this.redis.get(identity))?.toString("utf8");
       // An expired envelope reads as the initial state, but the CAS below still
       // compares against the raw bytes present, never against "missing".
       const envelope = this.codec.current(
@@ -84,17 +93,22 @@ return 1`;
       );
       // An unchanged state issues no CAS, on a missing key too.
       if (next === envelope) return this.codec.copy(envelope.state);
-      if (await this.compareAndSet(identity, raw, next))
-        return this.codec.copy(next.state);
+      const result = await this.compareAndSet(identity, raw, next);
+      if (result.committed) return this.codec.copy(next.state);
+      raw = result.current;
     }
     throw new ActorContentionError("Actor transition contention exhausted");
+  }
+
+  protected async load(identity: string): Promise<string | undefined> {
+    return (await this.redis.get(identity))?.toString("utf8");
   }
 
   protected async compareAndSet(
     identity: string,
     raw: string | undefined,
     next: ActorEnvelope,
-  ): Promise<boolean> {
+  ): Promise<{ committed: boolean; current?: string }> {
     const result = await this.redis.eval(
       RedisActorProvider.cas,
       [identity],
@@ -104,8 +118,17 @@ return 1`;
         JSON.stringify(next),
       ],
     );
-    if (result !== 0 && result !== 1)
+    if (!Array.isArray(result) || (result[0] !== 0 && result[0] !== 1))
       throw new AlephaError("Unexpected actor CAS response");
-    return result === 1;
+    if (result[0] === 1) return { committed: true };
+    const current = result[1];
+    if (current === undefined || current === null) return { committed: false };
+    return {
+      committed: false,
+      current:
+        typeof current === "string"
+          ? current
+          : new TextDecoder().decode(current as Uint8Array),
+    };
   }
 }

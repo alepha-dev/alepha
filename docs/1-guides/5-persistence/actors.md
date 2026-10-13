@@ -202,8 +202,10 @@ two of them on one Redis share actors. Memory instead owns one container's state
 stopping the process or creating a new container loses it.
 
 Each transition validates its candidate locally, then commits one key with an exact
-observed-byte Lua compare-and-set. Only definite conflicts retry, from fresh state
-and the original detached arguments. `actorRedisOptions` configures positive
+observed-byte Lua compare-and-set: one GET and one script call, a missing key
+included. Only definite conflicts retry, from the value the failed compare-and-set
+returned (no second GET) and the original detached arguments; a key deleted or
+evicted meanwhile retries as missing. `actorRedisOptions` configures positive
 `maxAttempts` (default 32). Exhaustion throws `ActorContentionError`.
 
 State has no local read cache, and expiry is lazy (see above). Redis persistence and failover configuration
