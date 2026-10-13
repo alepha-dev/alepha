@@ -95,14 +95,13 @@ export { OAuthJobs } from "./jobs/OAuthJobs.ts";
 export const AlephaOAuth = $module({
   name: "alepha.api.oauth",
   /**
-   * ⚠️ **Declared, though injecting `DatabaseCacheProvider` already registers
-   * it.** Alepha registers a service's own module on first injection, so this
-   * module has always pulled `alepha.cache.database` in as a side effect of
-   * one field initializer deep in a service. Since #Q2151 that incidental
-   * registration decides the Cloudflare cache backend for the whole app -
-   * `CloudflareCacheProvider` picks the database cache exactly when the
-   * container has one - and a dependency that load-bearing must not rest on
-   * a line somebody could tidy away.
+   * ⚠️ **Declared, and nothing else registers it any more.** This module used
+   * to pull `alepha.cache.database` in as a side effect of one field
+   * initializer, the DCR limiter's `DatabaseCacheProvider`, which moved to
+   * `$rateLimit` (#Q2627). Since #Q2151 that registration decides the
+   * Cloudflare cache backend for the whole app - `CloudflareCacheProvider`
+   * picks the database cache exactly when the container has one - so it is
+   * kept here, explicitly, rather than changing every OAuth app's backend.
    */
   imports: [AlephaCacheDatabase],
   services: [

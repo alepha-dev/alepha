@@ -5,6 +5,7 @@ import { DatabaseCacheProvider } from "alepha/cache/database";
 import { CaptchaProvider } from "alepha/captcha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
+import { $rateLimit } from "alepha/rate-limit";
 import { CryptoProvider } from "alepha/security";
 import { BadRequestError, HttpError } from "alepha/server";
 
@@ -104,22 +105,22 @@ export class CredentialService {
    * primitive pointed at other people's inboxes. Registration already has
    * `registrationIpMaxAttempts`; this is the same idea for the reset flow.
    *
-   * SQL-backed so `incr()` is atomic, matching RegistrationService.
+   * Counted, then compared; never refunded.
    */
-  protected readonly resetIpCache = $cache<number>({
-    provider: DatabaseCacheProvider,
-    name: "api:users:password-reset-ip-rate-limit",
-    ttl: [15, "minutes"],
+  protected readonly resetIp = $rateLimit({
+    name: "password-reset:ip",
+    limit: this.resetIpMaxAttempts,
+    window: [15, "minutes"],
   });
 
   /**
    * Per-IP throttle for password-reset completions. Its own bucket, so a
    * user who requested a few resets is not locked out of completing one.
    */
-  protected readonly completeIpCache = $cache<number>({
-    provider: DatabaseCacheProvider,
-    name: "api:users:password-reset-complete-ip-rate-limit",
-    ttl: [15, "minutes"],
+  protected readonly completeIp = $rateLimit({
+    name: "password-reset-complete:ip",
+    limit: this.completeIpMaxAttempts,
+    window: [15, "minutes"],
   });
 
   public users(userRealmName?: string) {
@@ -191,12 +192,19 @@ export class CredentialService {
       .add(this.intentTtlMinutes, "minutes")
       .toISOString();
 
-    // Per-IP cap, before any work. See `resetIpCache` for why the per-target
+    // Per-IP cap, before any work. See `resetIp` for why the per-target
     // limits are not enough on their own.
     const request = this.alepha.store.get("alepha.http.request");
     if (request?.ip) {
-      const attempts = await this.resetIpCache.incr(`reset:ip:${request.ip}`);
-      if (attempts > this.resetIpMaxAttempts) {
+      const attempt = await this.resetIp.consume(request.ip);
+      // An outage answers 503: a silent "success" would lie to a real user,
+      // and a 503 says nothing about the address.
+      if (attempt.reason === "store" && !attempt.allowed)
+        throw new HttpError({
+          status: 503,
+          message: "Password reset is temporarily unavailable",
+        });
+      if (!attempt.allowed) {
         this.log.warn("Password reset rate limit exceeded", { ip: request.ip });
         // Same shape as the success path: never reveal whether the address
         // exists, and do not tell a prober they hit a limit either.
@@ -336,13 +344,16 @@ export class CredentialService {
   ): Promise<void> {
     this.log.trace("Completing password reset", { intentId: body.intentId });
 
-    // Per-IP cap, before any work. See `completeIpCache`.
+    // Per-IP cap, before any work. See `completeIp`.
     const request = this.alepha.store.get("alepha.http.request");
     if (request?.ip) {
-      const attempts = await this.completeIpCache.incr(
-        `reset-complete:ip:${request.ip}`,
-      );
-      if (attempts > this.completeIpMaxAttempts) {
+      const attempt = await this.completeIp.consume(request.ip);
+      if (attempt.reason === "store" && !attempt.allowed)
+        throw new HttpError({
+          status: 503,
+          message: "Password reset is temporarily unavailable",
+        });
+      if (!attempt.allowed) {
         this.log.warn("Password reset completion rate limit exceeded", {
           ip: request.ip,
         });

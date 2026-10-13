@@ -1,7 +1,6 @@
 import { $atom, $inject, $store, Alepha, AlephaError, z } from "alepha";
-import { $cache } from "alepha/cache";
-import { DatabaseCacheProvider } from "alepha/cache/database";
 import { $logger } from "alepha/logger";
+import { $rateLimit } from "alepha/rate-limit";
 import {
   JwtProvider,
   SecurityProvider,
@@ -313,22 +312,19 @@ export class OAuthController {
    * discovering this server has no credential yet), which leaves the write
    * path open: every call creates a row, and nothing bounded how many.
    *
-   * The SQL-backed cache, for the same reason the registration limiter uses
-   * it: `incr()` is atomic there, and Cloudflare KV coalesces concurrent
-   * writes to one key, which is precisely the burst a limiter exists to stop.
+   * Actor state, not the cache: a disabled cache answered `incr` with 1, so
+   * the old limiter could not see its own absence. This one cannot be
+   * switched off by the cache.
+   *
+   * Ten per address per 15 minutes. Conservative: a real client registers
+   * ONCE and keeps its id, so anything above a handful is a retry loop or an
+   * attack, never normal use.
    */
-  protected readonly registerRateLimit = $cache<number>({
-    provider: DatabaseCacheProvider,
-    name: "api:oauth:dcr-rate-limit",
-    ttl: [15, "minutes"],
+  protected readonly registerRateLimit = $rateLimit({
+    name: "oauth:dcr",
+    limit: 10,
+    window: [15, "minutes"],
   });
-
-  /**
-   * How many clients one address may register per window. Conservative: a
-   * real client registers ONCE and keeps its id, so anything above a handful
-   * is a retry loop or an attack, never normal use.
-   */
-  protected readonly registerMaxPerWindow = 10;
 
   /**
    * Which budget a registration is counted against.
@@ -375,31 +371,15 @@ export class OAuthController {
       // anybody meets by accident.
       const bucket = this.registrationBucket(ip);
 
-      // Asked, not inferred. A disabled cache answers `incr` with `1`, which
-      // is indistinguishable from a first call, so the limiter cannot detect
-      // its own absence through the count. `cacheOptions.enabled` is an
-      // operator-facing atom, so turning caching off — a reasonable thing to
-      // do while debugging — silently removed the only bound on this
-      // endpoint.
-      if (!this.registerRateLimit.enabled) {
-        if (this.alepha.isProduction()) {
-          // Refuse rather than serve it unprotected. DCR is unauthenticated,
-          // and an unbounded row count is the failure this limiter exists for.
-          throw new HttpError({
-            message:
-              "Client registration is unavailable: its rate limiter requires the cache, which is disabled.",
-            status: 503,
-          });
-        }
-        // Outside production, a developer running with caching off should
-        // still be able to register a client.
-        this.log.warn(
-          "Cache is disabled, so dynamic client registration is unbounded. Do not run this configuration in production.",
-        );
-      }
-
-      const count = await this.registerRateLimit.incr(`dcr:ip:${bucket}`);
-      if (count > this.registerMaxPerWindow) {
+      const attempt = await this.registerRateLimit.consume(`ip:${bucket}`);
+      // An outage is not a limit the client exceeded: retrying in a few
+      // seconds is the right move, and a 503 says nothing about the address.
+      if (attempt.reason === "store" && !attempt.allowed)
+        throw new HttpError({
+          message: "Client registration is temporarily unavailable",
+          status: 503,
+        });
+      if (!attempt.allowed) {
         this.log.warn("Dynamic client registration rate limit exceeded", {
           ip: bucket,
         });

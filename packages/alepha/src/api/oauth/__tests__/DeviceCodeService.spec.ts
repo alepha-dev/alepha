@@ -1,4 +1,5 @@
-import { Alepha } from "alepha";
+import { Alepha, AlephaError } from "alepha";
+import { ActorProvider, type ActorRequest } from "alepha/actor";
 import { AlephaCache } from "alepha/cache";
 import { DateTimeProvider } from "alepha/datetime";
 import { describe, expect, it } from "vitest";
@@ -9,9 +10,34 @@ import {
   DeviceCodeService,
 } from "../services/DeviceCodeService.ts";
 
-const start = async () => {
-  const alepha = Alepha.create().with(AlephaCache);
-  const service = alepha.inject(DeviceCodeService);
+/**
+ * Counts the user-code lookups that actually reach the store.
+ */
+class CountingDeviceCodeService extends DeviceCodeService {
+  public lookups = 0;
+
+  public override normalize(userCode: string): string {
+    this.lookups += 1;
+    return super.normalize(userCode);
+  }
+}
+
+/**
+ * A counter store that is down: every actor call fails.
+ */
+class BrokenActorProvider extends ActorProvider {
+  public override async execute(_request: ActorRequest): Promise<unknown> {
+    throw new AlephaError("actor store down");
+  }
+}
+
+const start = async (options: { brokenStore?: boolean } = {}) => {
+  const alepha = Alepha.create();
+  if (options.brokenStore)
+    alepha.with({ provide: ActorProvider, use: BrokenActorProvider });
+  alepha.with({ provide: DeviceCodeService, use: CountingDeviceCodeService });
+  alepha.with(AlephaCache);
+  const service = alepha.inject(DeviceCodeService) as CountingDeviceCodeService;
   const time = alepha.inject(DateTimeProvider);
   await alepha.start();
   return { alepha, service, time };
@@ -162,10 +188,6 @@ describe("DeviceCodeService", () => {
       expect(await service.byUserCode("XXXX-XXXX", "guesser")).toBeUndefined();
     }
 
-    expect(await service.failureCount("guesser")).toBe(
-      DEVICE_USER_CODE_MAX_ATTEMPTS,
-    );
-
     // Even the RIGHT code, once the ceiling is reached. Answering it would
     // make the ceiling a speed bump rather than a limit.
     expect(
@@ -197,17 +219,49 @@ describe("DeviceCodeService", () => {
     const record = await service.start(anyClient);
 
     await service.byUserCode(record.userCode, "typist");
-    expect(await service.failureCount("typist")).toBe(0);
+    // Had the right code counted, this would be the sixth attempt.
+    for (let i = 0; i < DEVICE_USER_CODE_MAX_ATTEMPTS - 1; i++) {
+      await service.byUserCode("XXXX-XXXX", "typist");
+    }
+    const found = await service.byUserCode(record.userCode, "typist");
+    expect(found?.deviceCode).toBe(record.deviceCode);
   });
 
   it("leaves the ceiling off when nobody is named", async () => {
     const { service } = await start();
+    const record = await service.start(anyClient);
 
     // No `by`, no accountability, no counter — an application that wants the
     // ceiling has to say who is asking.
     for (let i = 0; i < DEVICE_USER_CODE_MAX_ATTEMPTS + 3; i++) {
-      expect(await service.byUserCode("XXXX-XXXX")).toBeUndefined();
+      expect(await service.byUserCode("XXXX-XXXX", "")).toBeUndefined();
     }
-    expect(await service.failureCount("")).toBe(0);
+    const found = await service.byUserCode(record.userCode, "");
+    expect(found?.deviceCode).toBe(record.deviceCode);
+  });
+
+  it("compares no more than the ceiling under a burst of parallel guesses", async () => {
+    const { service } = await start();
+
+    // Counted before the lookup: a burst cannot all read a count under the
+    // ceiling, as the old check-then-count did.
+    await Promise.all(
+      Array.from({ length: 20 }, () =>
+        service.byUserCode("XXXX-XXXX", "burst"),
+      ),
+    );
+    expect(service.lookups).toBe(DEVICE_USER_CODE_MAX_ATTEMPTS);
+  });
+
+  it("answers 503 when the counter store is down", async () => {
+    const { service } = await start({ brokenStore: true });
+    const record = await service.start(anyClient);
+
+    await expect(
+      service.byUserCode(record.userCode, "someone"),
+    ).rejects.toMatchObject({ status: 503 });
+    // Without an asker there is no counter to fail.
+    const found = await service.byUserCode(record.userCode);
+    expect(found?.deviceCode).toBe(record.deviceCode);
   });
 });

@@ -3,6 +3,8 @@ import { randomBytes, randomInt } from "node:crypto";
 import { $inject, AlephaError } from "alepha";
 import { $cache } from "alepha/cache";
 import { DateTimeProvider } from "alepha/datetime";
+import { $rateLimit } from "alepha/rate-limit";
+import { HttpError } from "alepha/server";
 
 /**
  * How long a device authorization stays usable, in seconds.
@@ -123,16 +125,19 @@ export class DeviceCodeService {
   });
 
   /**
-   * Failed user-code lookups, keyed by whoever was doing the looking.
+   * Wrong user codes per asker, keyed by whoever was doing the looking.
    *
    * Not on the authorization record, which is where a counter first looks
    * like it belongs: a wrong code resolves to no record at all, so there is
-   * nothing there to increment. The guess has to be counted against the
-   * guesser instead. Same TTL as the codes, so the window closes on its own.
+   * nothing there to count. The guess is counted against the guesser instead,
+   * BEFORE the lookup, so a burst of parallel guesses cannot all slip under
+   * the ceiling (#Q2529); a code that resolves gives its slot back. Same
+   * window as the codes' lifetime.
    */
-  protected readonly failures = $cache<number>({
-    name: "oauth-device-user-code-failures",
-    ttl: [DEVICE_CODE_TTL_SECONDS, "seconds"],
+  protected readonly attempts = $rateLimit({
+    name: "oauth:device-user-code",
+    limit: DEVICE_USER_CODE_MAX_ATTEMPTS,
+    window: [DEVICE_CODE_TTL_SECONDS, "seconds"],
   });
 
   /**
@@ -177,7 +182,15 @@ export class DeviceCodeService {
     userCode: string,
     by?: string,
   ): Promise<DeviceAuthorization | undefined> {
-    if (by && (await this.failureCount(by)) >= DEVICE_USER_CODE_MAX_ATTEMPTS) {
+    const attempt = by ? await this.attempts.consume(by) : undefined;
+    if (attempt && !attempt.allowed) {
+      // An outage is not a wrong code: answering "unknown" would send a real
+      // user back to retype a right one.
+      if (attempt.reason === "store")
+        throw new HttpError({
+          status: 503,
+          message: "Device authorization is temporarily unavailable",
+        });
       // Indistinguishable from a wrong code on purpose. Saying "too many
       // attempts" would tell someone enumerating codes that they are being
       // counted, and which of their guesses were even considered.
@@ -187,18 +200,10 @@ export class DeviceCodeService {
     const deviceCode = await this.byUser.get(this.normalize(userCode));
     const record = deviceCode ? await this.byDevice.get(deviceCode) : undefined;
 
-    if (!record && by) {
-      await this.failures.incr(by);
-    }
+    // Only wrong codes count: a code that resolves gives its slot back.
+    if (record && attempt?.ticket) await this.attempts.refund(attempt.ticket);
 
     return record;
-  }
-
-  /**
-   * Wrong codes tried by this asker so far in the current window.
-   */
-  async failureCount(by: string): Promise<number> {
-    return (await this.failures.get(by)) ?? 0;
   }
 
   /**

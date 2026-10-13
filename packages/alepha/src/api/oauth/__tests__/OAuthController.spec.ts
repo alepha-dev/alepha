@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 
-import { Alepha } from "alepha";
+import { Alepha, AlephaError } from "alepha";
+import { ActorProvider, type ActorRequest } from "alepha/actor";
 import { cacheOptions } from "alepha/cache";
 import { DateTimeProvider } from "alepha/datetime";
 import {
@@ -1845,11 +1846,14 @@ describe("OAuthController — the DCR limiter cannot silently disappear", () => 
       public testBucket = this.registrationBucket.bind(this);
     }
 
+    // Substituted, not injected beside it: one controller declares the
+    // `oauth:dcr` limiter once per container.
     const alepha = Alepha.create()
       .with({
         provide: LogDestinationProvider,
         use: MemoryDestinationProvider,
       })
+      .with({ provide: OAuthController, use: TestOAuthController })
       .with(AlephaServer)
       .with(AlephaOrmPostgres)
       .with(AlephaOAuth);
@@ -1872,46 +1876,40 @@ describe("OAuthController — the DCR limiter cannot silently disappear", () => 
     expect(warnings[0].message).toContain("TRUST_PROXY");
   });
 
-  it("refuses registration in production when the cache is disabled", async ({
-    expect,
-  }) => {
-    // `incr` answers 1 from a disabled cache, which is indistinguishable from
-    // a first call — so without asking, the endpoint would serve an unlimited
-    // registration path and report success.
-    // Two more env vars, both about getting a production container to boot
-    // at all rather than about the limiter: production refuses the built-in
-    // `APP_SECRET`, and it refuses to push a schema, which this app has no
-    // migrations for. Neither is reached — the 503 fires before any query.
-    const alepha = await boot(
-      {
-        NODE_ENV: "production",
-        APP_SECRET: "a-strong-unique-secret",
-        DATABASE_SYNC: false,
-      },
-      { enabled: false },
-    );
-    const { hostname } = alepha.inject(ServerProvider);
-
-    const resp = await register(hostname, "Claude");
-    expect(resp.status).toBe(503);
-  });
-
-  it("warns but still registers outside production with the cache disabled", async ({
-    expect,
-  }) => {
-    // A developer running with caching off must not be blocked; only a
-    // production deploy is refused.
+  it("stays limited with caching disabled", async ({ expect }) => {
+    // The old limiter rode the cache: a disabled cache answered `incr` with 1,
+    // so it could not see its own absence and had to refuse DCR outright in
+    // production. On `$rateLimit` the counter is actor state, untouched by
+    // `cacheOptions`.
     const alepha = await boot(undefined, { enabled: false });
     const { hostname } = alepha.inject(ServerProvider);
-    const logs = alepha.inject(MemoryDestinationProvider);
 
-    const resp = await register(hostname, "Claude");
-    expect(resp.status).toBe(201);
-    expect(
-      logs.logs.some(
-        (l) => l.level === "WARN" && l.message.includes("unbounded"),
-      ),
-    ).toBe(true);
+    for (let n = 0; n < 10; n++) {
+      expect((await register(hostname, `Client ${n}`)).status).toBe(201);
+    }
+    expect((await register(hostname, "Client 11")).status).toBe(429);
+  });
+
+  it("answers 503 when the counter store is down", async ({ expect }) => {
+    class BrokenActorProvider extends ActorProvider {
+      public override async execute(_request: ActorRequest): Promise<unknown> {
+        throw new AlephaError("actor store down");
+      }
+    }
+    const alepha = Alepha.create()
+      .with({ provide: ActorProvider, use: BrokenActorProvider })
+      .with(AlephaServer)
+      .with(AlephaOrmPostgres)
+      .with(AlephaOAuth);
+    alepha.set(oauthOptions, {
+      realm: "users",
+      resource: "/mcp",
+      loginPath: "/login",
+    });
+    await alepha.start();
+    const { hostname } = alepha.inject(ServerProvider);
+
+    expect((await register(hostname, "Claude")).status).toBe(503);
   });
 });
 
