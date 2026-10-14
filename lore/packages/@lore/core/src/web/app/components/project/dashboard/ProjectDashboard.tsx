@@ -14,6 +14,7 @@ import type { DashboardCardResource } from "../../../../../api/schemas/dashboard
 import { DashboardMetricCatalog } from "../../../../../api/schemas/DashboardMetricCatalog.ts";
 import type { DashboardScope } from "../../../../../api/schemas/dashboardScopeSchema.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
+import { dashboardWindowAtom } from "../../../atoms/dashboardWindowAtom.ts";
 import { projectDashboardAtom } from "../../../atoms/projectDashboardAtom.ts";
 import { DashboardPickerRegistry } from "../../../registries/DashboardPickerRegistry.ts";
 import type { I18n } from "../../../services/I18n.ts";
@@ -155,6 +156,7 @@ const ProjectDashboard = () => {
         if (!projectId) return;
         const board = await boardApi.getProjectDashboard({
           params: { projectId },
+          query: { window: alepha.store.get(dashboardWindowAtom).days },
         });
         if (signal.aborted) return;
         alepha.store.set(projectDashboardAtom, {
@@ -454,6 +456,11 @@ const ProjectDashboard = () => {
             onToggleEditing={() => setEditMode((on) => !on)}
             onAdd={openCatalogue}
             onCustomize={() => void customizeAction.run()}
+            onWindowChange={(days) => {
+              // One resolve per change, never an interval (folio #1057).
+              alepha.store.set(dashboardWindowAtom, { days });
+              void loadAction.refetch();
+            }}
             onReset={() => void resetAction.run()}
             busy={busy}
           />

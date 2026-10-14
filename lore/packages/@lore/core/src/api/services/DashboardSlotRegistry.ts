@@ -137,6 +137,7 @@ export class DashboardSlotRegistry {
   async compute(
     project: Project,
     user: UserAccountToken,
+    windowDays: number = DashboardMetricRegistry.DEFAULT_WINDOW_DAYS,
   ): Promise<ComputedDashboard> {
     const capabilities = await this.metrics.capabilitiesOf([project.id]);
 
@@ -186,6 +187,7 @@ export class DashboardSlotRegistry {
             user,
             project,
             capabilities,
+            windowDays,
           )
         : [];
     const valueOf = new Map(values.map((it) => [it.cardId, it]));

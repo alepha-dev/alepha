@@ -14,6 +14,7 @@ import type { ProjectController } from "../../api/controllers/ProjectController.
 import type { ProjectDashboardController } from "../../api/controllers/ProjectDashboardController.ts";
 import { $pageProject, $pageProjectSettings } from "./$pageProject.ts";
 import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
+import { dashboardWindowAtom } from "./atoms/dashboardWindowAtom.ts";
 import { homeBoardAtom } from "./atoms/homeBoardAtom.ts";
 import { projectDashboardAtom } from "./atoms/projectDashboardAtom.ts";
 import { realmSettingsAtom } from "./atoms/realmSettingsAtom.ts";
@@ -366,7 +367,10 @@ export class CoreRouter {
       // The whole board, values included, in the one request a load makes:
       // stored cards when there are any, else the computed default (#Q2652).
       const board = await this.projectDashboardApi
-        .getProjectDashboard({ params: { projectId: project.id } })
+        .getProjectDashboard({
+          params: { projectId: project.id },
+          query: { window: this.alepha.store.get(dashboardWindowAtom).days },
+        })
         .catch(() => undefined);
       this.alepha.store.set(projectDashboardAtom, {
         projectId: project.id,

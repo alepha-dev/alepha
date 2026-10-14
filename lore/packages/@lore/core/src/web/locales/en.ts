@@ -2407,6 +2407,8 @@ export default {
   "dashboard.reset.confirm": "Reset this board to the default?",
   "dashboard.reset.description":
     "Every card on it is deleted, and every member sees the board computed from what this project does again.",
+  "dashboard.window": "Time window",
+  "dashboard.window.days": "Last $1 days",
   "dashboard.refreshed": "Refreshed $1.",
   "dashboard.addCard": "Add card",
 

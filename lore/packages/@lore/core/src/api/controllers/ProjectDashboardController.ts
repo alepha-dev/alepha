@@ -305,6 +305,13 @@ export class ProjectDashboardController {
     path: "/projects/:projectId/dashboard",
     schema: {
       params: z.object({ projectId: z.integer() }),
+      query: z.object({
+        /**
+         * The board's window in days (#Q2661), one for every tile. The
+         * reader's preference, never stored on the board.
+         */
+        window: z.enum(["7", "14", "30"]).optional(),
+      }),
       response: z.object({
         computed: z.boolean(),
         cards: z.array(dashboardCardResourceSchema),
@@ -312,21 +319,28 @@ export class ProjectDashboardController {
         refreshedAt: z.string(),
       }),
     },
-    handler: async ({ params, user }) => {
+    handler: async ({ params, query, user }) => {
       const project = await this.projectOf(params.projectId);
       const stored = await this.cards.list(params.projectId);
       const refreshedAt = this.dateTime.now().toISOString();
+      const windowDays = Number(query.window ?? 14);
 
       if (stored.length > 0) {
         return {
           computed: false,
           cards: stored,
-          values: await this.registry.resolveForProject(stored, user, project),
+          values: await this.registry.resolveForProject(
+            stored,
+            user,
+            project,
+            undefined,
+            windowDays,
+          ),
           refreshedAt,
         };
       }
 
-      const board = await this.slots.compute(project, user);
+      const board = await this.slots.compute(project, user, windowDays);
       return { computed: true, ...board, refreshedAt };
     },
   });

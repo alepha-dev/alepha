@@ -6,6 +6,7 @@ import { Check, LayoutGrid, Pencil, Plus } from "lucide-react";
 
 import type { I18n } from "../../../services/I18n.ts";
 import ProjectDashboardMenu from "./ProjectDashboardMenu.tsx";
+import ProjectDashboardWindow from "./ProjectDashboardWindow.tsx";
 
 export interface ProjectDashboardHeaderProps {
   cardCount: number;
@@ -38,6 +39,10 @@ export interface ProjectDashboardHeaderProps {
    * Delete the stored cards, back to the computed board (#Q2660).
    */
   onReset: () => void;
+  /**
+   * The reader picked another time window (#Q2661).
+   */
+  onWindowChange: (days: "7" | "14" | "30") => void;
   /**
    * True while a board write runs.
    */
@@ -96,6 +101,9 @@ const ProjectDashboardHeader = (props: ProjectDashboardHeaderProps) => {
       </div>
       {/* Inert in the stacked direction, so it is not drawn there. */}
       <span className="hidden flex-1 sm:block" />
+      <div className="w-32 shrink-0">
+        <ProjectDashboardWindow onChange={props.onWindowChange} />
+      </div>
       {props.canEdit && !props.computed && (
         <Button
           variant="outlined"

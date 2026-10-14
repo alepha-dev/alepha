@@ -2400,6 +2400,8 @@ export default {
   "dashboard.reset.confirm": "Revenir au tableau par défaut ?",
   "dashboard.reset.description":
     "Toutes ses cartes sont supprimées, et chaque membre retrouve le tableau calculé d'après ce que fait ce projet.",
+  "dashboard.window": "Période",
+  "dashboard.window.days": "$1 derniers jours",
   "dashboard.refreshed": "Actualise $1.",
   "dashboard.addCard": "Ajouter une carte",
 
