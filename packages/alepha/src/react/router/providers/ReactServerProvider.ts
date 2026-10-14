@@ -9,14 +9,17 @@ import {
   Alepha,
   type Infer,
   type Middleware,
-  OPTIONS,
   PipelineHandler,
   ReadRecorder,
   z,
 } from "alepha";
 import { $logger } from "alepha/logger";
 import { ServerHeadProvider, type SimpleHead } from "alepha/react/head";
-import { type ServerHandler, ServerRouterProvider } from "alepha/server";
+import {
+  type ServerHandler,
+  type ServerRequest,
+  ServerRouterProvider,
+} from "alepha/server";
 import { ServerLinksProvider } from "alepha/server/links";
 import {
   EmbeddedStaticFileSource,
@@ -34,6 +37,11 @@ import {
   type PagePrimitiveRenderResult,
 } from "../primitives/$page.ts";
 import { ReactDomServerProvider } from "./ReactDomServerProvider.ts";
+import {
+  type PageCacheEntry,
+  PageCacheSink,
+  ReactPageCacheProvider,
+} from "./ReactPageCacheProvider.ts";
 import {
   type PageRoute,
   ReactPageProvider,
@@ -78,6 +86,7 @@ export class ReactServerProvider {
   protected readonly ssrManifestProvider = $inject(SSRManifestProvider);
   protected readonly localeProvider = $inject(RouterLocaleProvider);
   protected readonly reactDomServer = $inject(ReactDomServerProvider);
+  protected readonly pageCache = $inject(ReactPageCacheProvider);
 
   /**
    * Cached check for ServerLinksProvider - avoids has() lookup per request.
@@ -161,20 +170,11 @@ export class ReactServerProvider {
         this.log.debug(`+ ${page.match} -> ${page.name}`);
 
         // Collect middleware from the entire parent chain + own page.
-        // Parent middleware runs first (outermost → innermost).
-        const allMiddleware = this.collectMiddleware(page);
+        // Parent middleware runs first (outermost → innermost). A page
+        // `$cache` is refused by `$page` itself: the page cache is automatic.
+        const serverMiddleware = this.collectMiddleware(page);
 
-        // Separate $cache from server-level middleware.
-        // $cache is applied inside createHandler around the render function,
-        // not around the entire server handler (which works via side effects).
-        const cacheMiddleware = allMiddleware.filter(
-          (m) => m[OPTIONS]?.name === "$cache",
-        );
-        const serverMiddleware = allMiddleware.filter(
-          (m) => m[OPTIONS]?.name !== "$cache",
-        );
-
-        const rawHandler = this.createHandler(page, cacheMiddleware);
+        const rawHandler = this.createHandler(page);
         const handler = this.withStaticFileSkip(
           page,
           this.withReadRecording(
@@ -689,22 +689,12 @@ export class ReactServerProvider {
   /**
    * Create the request handler for a page route.
    *
-   * When cacheMiddleware is provided, uses a non-streaming path that renders
-   * to a string so the result can be cached. Otherwise uses early HTML streaming.
+   * Streams with an early head, or renders to a string first for a
+   * `stream: false` page. Either way it goes through the automatic page
+   * cache: a hit answers without rendering, a miss tees its shared bytes into
+   * an entry written at the end if the render may be shared.
    */
-  protected createHandler(
-    route: PageRoute,
-    cacheMiddleware: Middleware[] = [],
-  ): ServerHandler {
-    /*
-     * Buffer when caching demands it, or when the page asked for it.
-     *
-     * `stream: false` exists so a page can choose its status code: the buffered
-     * path calls `onServerResponse` *after* the render, whereas the streaming path
-     * has already flushed the head by then. See `$page`'s `stream` option.
-     */
-    const buffered = cacheMiddleware.length > 0 || route.stream === false;
-
+  protected createHandler(route: PageRoute): ServerHandler {
     return async (serverRequest) => {
       const { url, reply, query, params } = serverRequest;
 
@@ -770,45 +760,60 @@ export class ReactServerProvider {
       // Apply SSR headers early
       Object.assign(reply.headers, this.SSR_HEADERS);
 
-      if (buffered) {
-        // When $cache middleware is present, render to string so the result
-        // is serializable. Streaming is not compatible with $cache since
-        // ReadableStream cannot be serialized/deserialized.
-        const renderFn = async (
-          _url: string,
-        ): Promise<{ html: string; redirect?: string }> => {
-          const { redirect, reactStream } = await this.renderPage(route, state);
-          if (redirect) {
-            return { redirect, html: "" };
-          }
-          const htmlStream = this.templateProvider.createHtmlStream(
-            reactStream!,
-            state,
-            { hydration: true },
-          );
-          return { html: await this.streamToString(htmlStream) };
-        };
+      const dev = !this.alepha.isProduction();
 
-        const result = await new PipelineHandler(renderFn, cacheMiddleware).run(
-          url.href,
-        );
+      // The automatic page cache (#E78). Looked up here, after everything a
+      // hit still needs: the middleware (guards), the api links and the
+      // `render:begin` hooks, which together fill the private script.
+      const plan = this.pageCache.plan(route, serverRequest);
+      if (plan && "bypass" in plan) {
+        this.log.debug("Page cache bypassed", {
+          name: route.name,
+          reason: plan.bypass,
+        });
+      }
+      const cached = plan && "key" in plan ? plan : undefined;
+      if (cached) {
+        const entry = await this.pageCache.read(cached.key);
+        if (entry) {
+          this.serveCachedPage(serverRequest, entry);
+          return;
+        }
+      }
+      const sink = cached && recorder ? new PageCacheSink() : undefined;
+      const outcome = cached ? "miss" : plan ? "bypass" : "off";
 
-        if (result.redirect) {
+      if (route.stream === false) {
+        // `stream: false` exists so a page can choose its status code: this
+        // path calls `onServerResponse` *after* the render, whereas the
+        // streaming path has already flushed the head by then.
+        const { redirect, reactStream } = await this.renderPage(route, state);
+        if (redirect) {
           reply.status = 302;
-          reply.headers.location = result.redirect;
+          reply.headers.location = redirect;
           return;
         }
 
+        const html = await this.streamToString(
+          this.templateProvider.createHtmlStream(reactStream!, state, {
+            hydration: true,
+            sink,
+          }),
+        );
+
         route.onServerResponse?.(serverRequest);
         // Buffered: the verdict exists before the headers leave.
-        if (recorder && !this.alepha.isProduction()) {
+        if (recorder && dev) {
           reply.headers["x-alepha-cache"] = this.describeVerdict(
             recorder,
-            "miss",
+            outcome,
           );
           this.logVerdict(route, recorder);
         }
-        reply.body = result.html;
+        reply.body = html;
+        if (sink && cached && recorder) {
+          await this.storePage(serverRequest, state, recorder, sink, cached);
+        }
         return;
       }
 
@@ -857,6 +862,7 @@ export class ReactServerProvider {
           hydration: true,
           state,
           earlyHead: preloadHead,
+          sink,
           onError: (error) => {
             if (error instanceof Redirection) {
               this.log.debug("Streaming resulted in redirection", {
@@ -875,19 +881,113 @@ export class ReactServerProvider {
       route.onServerResponse?.(serverRequest);
       // Streamed: the headers leave before the verdict exists, so the header
       // says only "miss" and the verdict goes to the stream-end log.
-      if (recorder && !this.alepha.isProduction()) {
-        reply.headers["x-alepha-cache"] = "miss";
+      if (recorder && dev) {
+        reply.headers["x-alepha-cache"] = outcome;
       }
       reply.body = htmlStream.pipeThrough(
         new TransformStream({
           flush: () => {
             this.log.info("Page streaming completed", { name: route.name });
             this.logVerdict(route, recorder);
+            if (sink && cached && recorder) {
+              // Written after the last byte left: the visitor never waits.
+              this.storePage(
+                serverRequest,
+                state,
+                recorder,
+                sink,
+                cached,
+              ).catch((error) =>
+                this.log.warn("Page cache write failed", error),
+              );
+            }
           },
         }),
       );
     };
   }
+
+  /**
+   * Answer from the page cache: the stored shared bytes, a private script
+   * built for this request, the closing tags. No loader, no React.
+   */
+  protected serveCachedPage(
+    serverRequest: ServerRequest,
+    entry: PageCacheEntry,
+  ): void {
+    const { reply } = serverRequest;
+    reply.status = entry.status;
+    Object.assign(reply.headers, entry.headers, this.SSR_HEADERS);
+    if (!this.alepha.isProduction()) {
+      reply.headers["x-alepha-cache"] = `hit; verdict=${entry.verdict}`;
+    }
+    reply.body =
+      entry.head + this.templateProvider.renderPrivateScript() + entry.tail;
+  }
+
+  /**
+   * Write a finished render to the page cache, if it may be shared: a clean
+   * render (no error page, no meta-refresh redirect, no layer error), a 200,
+   * no `Set-Cookie`, and a verdict that is not personal.
+   */
+  protected async storePage(
+    serverRequest: ServerRequest,
+    state: ReactRouterState,
+    recorder: ReadRecorder,
+    sink: PageCacheSink,
+    plan: { key: string; ttlMs: number },
+  ): Promise<void> {
+    const clean = await sink.finished;
+    const { reply } = serverRequest;
+    const status = reply.status ?? 200;
+    const verdict = recorder.verdict();
+    const setsCookie =
+      reply.headers["set-cookie"] !== undefined ||
+      Object.keys(
+        (serverRequest as { cookies?: { res?: object } }).cookies?.res ?? {},
+      ).length > 0;
+
+    if (
+      !clean ||
+      verdict === "personal" ||
+      status !== 200 ||
+      setsCookie ||
+      state.layers.some((layer) => layer.error)
+    ) {
+      return;
+    }
+
+    const headers: Record<string, string | string[]> = {};
+    for (const [name, value] of Object.entries(reply.headers)) {
+      if (
+        value !== undefined &&
+        !ReactServerProvider.UNCACHED_HEADERS.has(name.toLowerCase())
+      ) {
+        headers[name] = value as string | string[];
+      }
+    }
+
+    await this.pageCache.write(
+      plan.key,
+      { ...sink.parts(), status, verdict, headers },
+      plan.ttlMs,
+    );
+  }
+
+  /**
+   * Headers a cached page never replays: they belong to one response.
+   */
+  protected static readonly UNCACHED_HEADERS = new Set([
+    "set-cookie",
+    "cache-control",
+    "pragma",
+    "expires",
+    "content-length",
+    "content-encoding",
+    "server-timing",
+    "x-alepha-cache",
+    "date",
+  ]);
 
   // ---------------------------------------------------------------------------
   // Core rendering logic - shared between SSR handler and static prerendering

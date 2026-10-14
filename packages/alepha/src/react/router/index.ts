@@ -1,4 +1,5 @@
 import { $module } from "alepha";
+import { AlephaCache } from "alepha/cache";
 import { AlephaDateTime } from "alepha/datetime";
 import { AlephaReact } from "alepha/react";
 import { AlephaReactHead } from "alepha/react/head";
@@ -10,6 +11,7 @@ import type { ReactNode } from "react";
 import { $page, type PageAnimation } from "./primitives/$page.ts";
 import type { ReactHydrationState } from "./providers/ReactBrowserProvider.ts";
 import { ReactDomServerProvider } from "./providers/ReactDomServerProvider.ts";
+import { ReactPageCacheProvider } from "./providers/ReactPageCacheProvider.ts";
 import {
   ReactPageProvider,
   type ReactRouterState,
@@ -34,6 +36,7 @@ export * from "./providers/ReactPageProvider.ts";
 export * from "./providers/ReactPreloadProvider.ts";
 export * from "./providers/ReactServerErrorProvider.ts";
 export * from "./providers/ReactServerProvider.ts";
+export * from "./providers/ReactPageCacheProvider.ts";
 export * from "./providers/ReactServerTemplateProvider.ts";
 export * from "./providers/RouterLocaleProvider.ts";
 export * from "./providers/SSRManifestProvider.ts";
@@ -183,6 +186,7 @@ export const AlephaReactRouter = $module({
     ReactServerErrorProvider,
     ReactServerProvider,
     ReactServerTemplateProvider,
+    ReactPageCacheProvider,
     RouterLocaleProvider,
     SSRManifestProvider,
     ReactPageServerService,
@@ -200,6 +204,8 @@ export const AlephaReactRouter = $module({
         use: ReactPageServerService,
       })
       .with(SSRManifestProvider)
+      .with(AlephaCache)
+      .with(ReactPageCacheProvider)
       .with(ReactServerTemplateProvider)
       .with(ReactPreloadProvider)
       .with(ReactServerProvider)

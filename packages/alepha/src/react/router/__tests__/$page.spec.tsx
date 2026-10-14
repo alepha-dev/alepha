@@ -373,7 +373,7 @@ describe("$page primitive tests", () => {
     expect(staticWithEntriesRendered.html).toBe("Infer page 1");
   });
 
-  test("$page - static page sets default cache configuration", async ({
+  test("$page - static page adds no $cache, the page cache is automatic", async ({
     expect,
   }) => {
     class App {
@@ -390,12 +390,7 @@ describe("$page primitive tests", () => {
     const cacheMw = app.staticPage.options.use?.find(
       (m) => m[OPTIONS]?.name === "$cache",
     );
-    expect(cacheMw).toBeDefined();
-    expect(cacheMw?.[OPTIONS]?.options).toEqual({
-      name: "page:staticPage",
-      provider: "memory",
-      ttl: [1, "week"],
-    });
+    expect(cacheMw).toBeUndefined();
 
     const rendered = await app.staticPage.render();
     expect(rendered.html).toBe("Infer content");
@@ -655,7 +650,8 @@ describe("$page primitive tests", () => {
     expect(rendered.redirect).toBe("/dashboard");
   });
 
-  test("$page - cache configuration without static", async ({ expect }) => {
+  test("$page - a raw $cache in use is refused", async ({ expect }) => {
+    // It stored the whole document, the visitor's private state included.
     class App {
       cached = $page({
         path: "/cached",
@@ -669,16 +665,6 @@ describe("$page primitive tests", () => {
       });
     }
 
-    const app = alepha.inject(App);
-    await alepha.start();
-
-    const cacheMw = app.cached.options.use?.find(
-      (m) => m[OPTIONS]?.name === "$cache",
-    );
-    expect(cacheMw).toBeDefined();
-    expect(app.cached.options.static).toBeUndefined();
-
-    const rendered = await app.cached.render();
-    expect(rendered.html).toBe("Cached content");
+    expect(() => alepha.inject(App)).toThrow(/uses \$cache in `use`/);
   });
 });

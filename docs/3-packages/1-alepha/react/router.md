@@ -39,6 +39,7 @@ This module enables:
 - [`ReactBrowserRendererProvider`](/docs/reference-providers-reactbrowserrendererprovider) - Browser specific React renderer (react-dom/client interface)
 - [`ReactBrowserRouterProvider`](/docs/reference-providers-reactbrowserrouterprovider) - Implementation of AlephaRouter for React in browser environment.
 - [`ReactDomServerProvider`](/docs/reference-providers-reactdomserverprovider) - The renderer half of React, loaded only once something actually renders.
+- [`ReactPageCacheProvider`](/docs/reference-providers-reactpagecacheprovider) - The automatic page cache (#E78).
 - [`ReactPageProvider`](/docs/reference-providers-reactpageprovider) - Handle page routes for React applications. (Browser and Server)
 - [`ReactPreloadProvider`](/docs/reference-providers-reactpreloadprovider) - Adds HTTP Link headers for preloading entry assets.
 - [`ReactServerErrorProvider`](/docs/reference-providers-reactservererrorprovider) - Answers a browser navigation with an HTML error page instead of JSON.
@@ -54,4 +55,5 @@ Environment variables used to configure this module. These can be set in your `.
 
 | Variable            | Type    | Default | Description                                                                                                            |
 | ------------------- | ------- | ------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `REACT_PAGE_CACHE`  | boolean | -       | Turn the automatic SSR page cache off (false) without a code change, for an incident.                                  |
 | `REACT_SSR_ENABLED` | boolean | -       | Enable or disable server-side rendering (SSR) for React pages. When set to false, pages are rendered client-side only. |

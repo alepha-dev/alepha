@@ -1,5 +1,6 @@
 import {
   $inject,
+  AlephaError,
   type Async,
   createPrimitive,
   type Infer,
@@ -9,7 +10,7 @@ import {
   Primitive,
   type ZType,
 } from "alepha";
-import { $cache } from "alepha/cache";
+import type { DurationLike } from "alepha/datetime";
 import type { Head } from "alepha/react/head";
 import type { ServerRequest } from "alepha/server";
 import type { FC, ReactNode } from "react";
@@ -46,7 +47,8 @@ import { ReactPageService } from "../services/ReactPageService.ts";
  *
  * **Performance Optimization**
  * - Infer generation for pre-rendered pages at build time
- * - Server-side caching via the `$cache` middleware in `use: [...]`
+ * - Automatic page cache: a page that reads nothing about its visitor is
+ *   cached for everyone, signed in or not (see the `cache` option)
  * - Code splitting through lazy component loading
  *
  * **Error Handling**
@@ -319,15 +321,37 @@ export interface PagePrimitiveOptions<
    *
    * Browser-side: it only works with the build pipeline, which can pre-render the page at build time.
    *
-   * Server-side: the page is cached automatically — `static: true` pushes a
-   * `$cache({ provider: "memory", ttl: [1, "week"] })` middleware into `use`.
-   * Attach your own `$cache` in `use: [...]` to customize the behavior.
+   * Server-side: the page goes through the automatic page cache like any
+   * other (see `cache`), and lives there until the next deploy whether or not
+   * it has a loader.
    */
   static?:
     | boolean
     | {
         entries?: Array<Partial<PageRequestConfig<TConfig>>>;
       };
+
+  /**
+   * The automatic page cache, for this page. (server only)
+   *
+   * Every page whose render reads nothing about its visitor is cached with no
+   * option: the framework records what a render reads (the user, a cookie,
+   * the raw request, a remote call carrying the visitor's credential) and
+   * caches only the pages that read none of it, keyed by build, page,
+   * params, declared query and language. A signed-in visitor gets the shared
+   * page followed by their own private hydration script.
+   *
+   * - Omitted: a page with no loader in its layer chain is kept until the
+   *   next deploy, one with a loader for 60 seconds.
+   * - `{ ttl }`: this lifetime instead.
+   * - `false`: never cached, for a page whose content must be fresh on every
+   *   request (a payment status, a live counter).
+   *
+   * A personal page is never cached, whatever this says. A raw `$cache` in
+   * `use` is refused: it would store the whole document, the visitor's
+   * private state included.
+   */
+  cache?: false | PageCacheOptions;
 
   /**
    * Enable or disable server-side rendering for this page.
@@ -539,17 +563,15 @@ export class PagePrimitive<
   protected readonly reactPageService = $inject(ReactPageService);
 
   protected onInit() {
-    if (this.options.static) {
-      this.options.use ??= [];
-      if (!this.options.use.some((m) => m[OPTIONS]?.name === "$cache")) {
-        this.options.use.push(
-          $cache({
-            name: `page:${this.name}`,
-            provider: "memory",
-            ttl: [1, "week"],
-          }),
-        );
-      }
+    // A page `$cache` stored the whole document, the visitor's private
+    // hydration state included: one visitor's identity served to the next
+    // (#Q2643). The automatic page cache replaces it (#E78).
+    if (this.options.use?.some((m) => m[OPTIONS]?.name === "$cache")) {
+      throw new AlephaError(
+        `Page "${this.name}" uses $cache in \`use\`. A page is cached automatically when ` +
+          "its render reads nothing personal; set `cache: { ttl }` for another lifetime, " +
+          "`cache: false` to opt out, or put $cache on the data the loader reads.",
+      );
     }
 
     this.deriveCanFromGuards();
@@ -637,6 +659,17 @@ $page[KIND] = PagePrimitive;
  * Context passed to {@link PagePrimitiveOptions.can} — a permission probe
  * (equivalent to `useAuth().has`) supplied by the navigation builder.
  */
+/**
+ * Options of the automatic page cache for one page. See `$page`'s `cache`.
+ */
+export interface PageCacheOptions {
+  /**
+   * How long an entry lives, instead of the default (until the next deploy
+   * for a page without a loader, 60 seconds for one with a loader).
+   */
+  ttl?: DurationLike;
+}
+
 export interface PageCanContext {
   has: (permission: string) => boolean;
 }

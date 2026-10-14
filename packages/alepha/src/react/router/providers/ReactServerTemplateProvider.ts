@@ -7,6 +7,7 @@ import { createElement, type ReactNode } from "react";
 import ErrorViewer from "../components/ErrorViewer.tsx";
 import { Redirection } from "../errors/Redirection.ts";
 import { ReactDomServerProvider } from "./ReactDomServerProvider.ts";
+import type { PageCacheSink } from "./ReactPageCacheProvider.ts";
 import type { ReactRouterState } from "./ReactPageProvider.ts";
 
 /**
@@ -352,7 +353,7 @@ export class ReactServerTemplateProvider {
     reactStream: ReadableStream<Uint8Array>,
     state: ReactRouterState,
     hydration: boolean,
-  ): Promise<void> {
+  ): Promise<boolean> {
     const { encoder, SLOTS: slots } = this;
 
     // Body open
@@ -364,7 +365,7 @@ export class ReactServerTemplateProvider {
 
     // Root + React content
     controller.enqueue(slots.ROOT_OPEN);
-    await this.pipeReactStream(controller, reactStream, state);
+    const ok = await this.pipeReactStream(controller, reactStream, state);
     controller.enqueue(slots.ROOT_CLOSE);
 
     // Hydration
@@ -378,6 +379,7 @@ export class ReactServerTemplateProvider {
     }
 
     controller.enqueue(slots.BODY_HTML_CLOSE);
+    return ok;
   }
 
   /**
@@ -388,10 +390,41 @@ export class ReactServerTemplateProvider {
   protected enqueuePrivateScript(
     controller: ReadableStreamDefaultController<Uint8Array>,
   ): void {
+    const sink = (controller as TeeController).sink;
+    sink?.beginPrivate();
     const script = this.renderPrivateScript();
     if (script) {
       controller.enqueue(this.encoder.encode(script));
     }
+    sink?.endPrivate();
+  }
+
+  /**
+   * A controller that also writes every chunk into the page cache's sink.
+   * Without a sink it is the controller itself.
+   */
+  protected tee(
+    controller: ReadableStreamDefaultController<Uint8Array>,
+    sink: PageCacheSink | undefined,
+  ): ReadableStreamDefaultController<Uint8Array> {
+    if (!sink) {
+      return controller;
+    }
+    const tee: TeeController = {
+      sink,
+      get desiredSize() {
+        return controller.desiredSize;
+      },
+      enqueue: (chunk?: Uint8Array) => {
+        if (chunk) {
+          sink.write(chunk);
+        }
+        controller.enqueue(chunk);
+      },
+      close: () => controller.close(),
+      error: (reason?: unknown) => controller.error(reason),
+    };
+    return tee;
   }
 
   // ---------------------------------------------------------------------------
@@ -426,9 +459,15 @@ export class ReactServerTemplateProvider {
        */
       earlyHead?: string;
       onError?: (error: unknown) => void;
+      /**
+       * The page cache's tee. Told at the end whether the render finished
+       * cleanly: an error page or a meta-refresh redirect closes the stream
+       * like a success.
+       */
+      sink?: PageCacheSink;
     } = {},
   ): ReadableStream<Uint8Array> {
-    const { hydration = true, onError } = options;
+    const { hydration = true, onError, sink } = options;
     const { encoder, SLOTS: slots } = this;
 
     let headClosed = false;
@@ -436,7 +475,8 @@ export class ReactServerTemplateProvider {
     let routerState: ReactRouterState | undefined = options.state;
 
     return new ReadableStream<Uint8Array>({
-      start: async (controller) => {
+      start: async (output) => {
+        const controller = this.tee(output, sink);
         try {
           // === EARLY PHASE (before async work) ===
           controller.enqueue(slots.DOCTYPE);
@@ -470,6 +510,7 @@ export class ReactServerTemplateProvider {
             }
             controller.enqueue(slots.HEAD_CLOSE);
             controller.enqueue(encoder.encode("<body></body></html>"));
+            sink?.done(false);
             controller.close();
             return;
           }
@@ -485,14 +526,16 @@ export class ReactServerTemplateProvider {
           headClosed = true;
           bodyStarted = true;
 
-          await this.streamBodyAndClose(
+          const ok = await this.streamBodyAndClose(
             controller,
             reactStream,
             state,
             hydration,
           );
+          sink?.done(ok);
           controller.close();
         } catch (error) {
+          sink?.done(false);
           onError?.(error);
           try {
             this.injectErrorHtml(controller, error, routerState, {
@@ -514,13 +557,18 @@ export class ReactServerTemplateProvider {
   public createHtmlStream(
     reactStream: ReadableStream<Uint8Array>,
     state: ReactRouterState,
-    options: { hydration?: boolean; onError?: (error: unknown) => void } = {},
+    options: {
+      hydration?: boolean;
+      onError?: (error: unknown) => void;
+      sink?: PageCacheSink;
+    } = {},
   ): ReadableStream<Uint8Array> {
-    const { hydration = true, onError } = options;
+    const { hydration = true, onError, sink } = options;
     const { encoder, SLOTS: slots } = this;
 
     return new ReadableStream<Uint8Array>({
-      start: async (controller) => {
+      start: async (output) => {
+        const controller = this.tee(output, sink);
         try {
           // Head
           controller.enqueue(slots.DOCTYPE);
@@ -539,14 +587,16 @@ export class ReactServerTemplateProvider {
           controller.enqueue(slots.HEAD_CLOSE);
 
           // Body (shared logic)
-          await this.streamBodyAndClose(
+          const ok = await this.streamBodyAndClose(
             controller,
             reactStream,
             state,
             hydration,
           );
+          sink?.done(ok);
           controller.close();
         } catch (error) {
+          sink?.done(false);
           onError?.(error);
           controller.error(error);
         }
@@ -711,6 +761,13 @@ export class ReactServerTemplateProvider {
       return error.message;
     }
   }
+}
+
+/**
+ * A stream controller teeing into the page cache. See `tee`.
+ */
+interface TeeController extends ReadableStreamDefaultController<Uint8Array> {
+  sink?: PageCacheSink;
 }
 
 /**

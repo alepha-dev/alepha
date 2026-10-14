@@ -38,7 +38,8 @@ It provides a declarative way to define pages with powerful features:
 **Performance Optimization**
 
 - Infer generation for pre-rendered pages at build time
-- Server-side caching via the `$cache` middleware in `use: [...]`
+- Automatic page cache: a page that reads nothing about its visitor is
+  cached for everyone, signed in or not (see the `cache` option)
 - Code splitting through lazy component loading
 
 **Error Handling**
@@ -64,6 +65,7 @@ It provides a declarative way to define pages with powerful features:
 | `can`              | `Object`                                                              | No       | UI-affordance predicate for this page's navigation entry - **NOT security**                                                                      |
 | `nav`              | `PageNav`                                                             | No       | Navigation metadata - declares this page's presence in navigation surfaces: the sidebar, the breadcrumb trail, and a command palette (Spotlight) |
 | `errorHandler`     | `ErrorHandler`                                                        | No       | Catch any error from the `loader` function or during `rendering`                                                                                 |
+| `cache`            | `false \| PageCacheOptions`                                           | No       | The automatic page cache, for this page                                                                                                          |
 | `ssr`              | `boolean`                                                             | No       | Enable or disable server-side rendering for this page                                                                                            |
 | `stream`           | `boolean`                                                             | No       | Buffer the HTML instead of streaming it, so the page can choose its status code                                                                  |
 | `onServerResponse` | `Object`                                                              | No       | Called before the server response is sent to the client                                                                                          |
