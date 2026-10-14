@@ -581,17 +581,22 @@ export class ProjectController {
       }),
       response: z.array(users.schema),
     },
-    handler: async ({ params }) => {
-      // One statement: the membership hop through `members` is the
-      // relation's business, not the handler's. No duplicates to guard
-      // against — `members` is unique on (userId, projectId).
-      const project = await this.projectsWith.findById(params.id, {
-        include: { members: true },
-      });
-
-      return project?.members ?? [];
-    },
+    handler: ({ params }) => this.membersOf(params.id),
   });
+
+  /**
+   * A project's members, gate already passed.
+   */
+  async membersOf(projectId: number) {
+    // One statement: the membership hop through `members` is the
+    // relation's business, not the handler's. No duplicates to guard
+    // against — `members` is unique on (userId, projectId).
+    const project = await this.projectsWith.findById(projectId, {
+      include: { members: true },
+    });
+
+    return project?.members ?? [];
+  }
 
   /**
    * The project's Activity table: every recorded write, newest first.
@@ -670,53 +675,72 @@ export class ProjectController {
       }),
       response: db.page(projectActivityRowSchema),
     },
-    handler: async ({ params, query }) => {
-      const window = this.activityWindow(query.createdAt);
-      const page = await this.auditService.find({
-        ...query,
-        ...window,
-        type: await this.activityTypes(params.id, query.type),
-        // Both halves, always: every project-layer index leads on the pair,
-        // and a `scopeId` alone would fall off them onto a scan.
-        scopeType: "project",
-        scopeId: String(params.id),
-      });
-
-      // One lookup for the whole page, and only when something needs a name.
-      const actorIds = new Set(
-        page.content.map((row) => row.userId).filter(Boolean),
-      );
-      const people = actorIds.size
-        ? await this.getProjectUsers({ params: { id: params.id } })
-        : [];
-
-      return {
-        ...page,
-        content: page.content.map((row) => ({
-          id: row.id,
-          createdAt: row.createdAt,
-          type: row.type,
-          action: row.action,
-          userId: row.userId,
-          resourceType: row.resourceType,
-          resourceId: row.resourceId,
-          description: row.description,
-          metadata: row.metadata,
-          // A coalesced burst and its span (#1872). Defaulted rather than
-          // passed through, because rows written before the column existed
-          // read as null and every consumer would need the same guard.
-          eventCount: row.eventCount ?? 1,
-          updatedAt: row.updatedAt,
-          actor: row.userId
-            ? displayName(
-                people.find((person) => person.id === row.userId),
-                row.userId,
-              )
-            : undefined,
-        })),
-      };
-    },
+    handler: ({ params, query }) => this.activityPage(params.id, query),
   });
+
+  /**
+   * The Activity table's read, gate already passed: the action above, and
+   * the dashboard's activity tile (#Q2659), which must be narrowed to the
+   * enabled capabilities and name actors exactly as the page does.
+   */
+  async activityPage(
+    projectId: number,
+    query: {
+      page?: number;
+      size?: number;
+      sort?: string;
+      userId?: string;
+      type?: string;
+      action?: string;
+      resourceType?: string;
+      resourceId?: string;
+      after?: string;
+      createdAt?: string[];
+    },
+  ) {
+    const window = this.activityWindow(query.createdAt);
+    const page = await this.auditService.find({
+      ...query,
+      ...window,
+      type: await this.activityTypes(projectId, query.type),
+      // Both halves, always: every project-layer index leads on the pair,
+      // and a `scopeId` alone would fall off them onto a scan.
+      scopeType: "project",
+      scopeId: String(projectId),
+    } as never);
+
+    // One lookup for the whole page, and only when something needs a name.
+    const actorIds = new Set(
+      page.content.map((row) => row.userId).filter(Boolean),
+    );
+    const people = actorIds.size ? await this.membersOf(projectId) : [];
+
+    return {
+      ...page,
+      content: page.content.map((row) => ({
+        id: row.id,
+        createdAt: row.createdAt,
+        type: row.type,
+        action: row.action,
+        userId: row.userId,
+        resourceType: row.resourceType,
+        resourceId: row.resourceId,
+        description: row.description,
+        metadata: row.metadata,
+        // A coalesced burst and its span (#1872). Defaulted rather than
+        // passed through, because rows written before the column existed
+        // read as null and every consumer would need the same guard.
+        eventCount: row.eventCount ?? 1,
+        updatedAt: row.updatedAt,
+        actor: row.userId
+          ? displayName(
+              people.find((person) => person.id === row.userId),
+              row.userId,
+            )
+          : undefined,
+      })),
+    };
+  }
 
   /**
    * What the Activity table's two dropdowns offer.

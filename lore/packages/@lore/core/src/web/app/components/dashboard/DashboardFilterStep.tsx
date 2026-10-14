@@ -4,6 +4,7 @@ import { useI18n } from "alepha/react/i18n";
 import type { DashboardMetricDescriptor } from "../../../../api/schemas/DashboardMetricCatalog.ts";
 import type { I18n } from "../../services/I18n.ts";
 import { dashboardFilterFields } from "./dashboardFilterFields.ts";
+import DashboardFilterText from "./DashboardFilterText.tsx";
 
 export interface DashboardFilterStepProps {
   metric: DashboardMetricDescriptor;
@@ -65,37 +66,51 @@ const DashboardFilterStep = (props: DashboardFilterStepProps) => {
           <div className="text-muted-foreground text-[10.5px] font-semibold tracking-[0.08em] uppercase">
             {tr(`dashboard.filterField.${field.name}` as never)}
           </div>
-          <div className="flex flex-wrap gap-1.5">
-            {optionsOf(field).map((option) => {
-              const value = props.values[field.name];
-              const on = field.multiple
-                ? ((value as string[]) ?? []).includes(option)
-                : value === option;
-              return (
-                <button
-                  key={option}
-                  type="button"
-                  data-testid="dashboard-filter-option"
-                  onClick={() => toggle(field.name, option, field.multiple)}
-                  className={cn(
-                    "h-7 rounded-full px-3 text-[11.5px] transition-colors",
-                    on
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {field.source
-                    ? option
-                    : tr(`dashboard.filterValue.${option}` as never)}
-                </button>
-              );
-            })}
-            {optionsOf(field).length === 0 && (
-              <div className="text-muted-foreground rounded-[9px] border border-dashed px-2.5 py-3 text-[11.5px]">
-                {tr("dashboard.filter.noTags")}
-              </div>
-            )}
-          </div>
+          {field.text ? (
+            <DashboardFilterText
+              name={field.name}
+              value={
+                typeof props.values[field.name] === "string"
+                  ? (props.values[field.name] as string)
+                  : ""
+              }
+              onChange={(next) =>
+                props.onChange({ ...props.values, [field.name]: next })
+              }
+            />
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              {optionsOf(field).map((option) => {
+                const value = props.values[field.name];
+                const on = field.multiple
+                  ? ((value as string[]) ?? []).includes(option)
+                  : value === option;
+                return (
+                  <button
+                    key={option}
+                    type="button"
+                    data-testid="dashboard-filter-option"
+                    onClick={() => toggle(field.name, option, field.multiple)}
+                    className={cn(
+                      "h-7 rounded-full px-3 text-[11.5px] transition-colors",
+                      on
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {field.source
+                      ? option
+                      : tr(`dashboard.filterValue.${option}` as never)}
+                  </button>
+                );
+              })}
+              {optionsOf(field).length === 0 && (
+                <div className="text-muted-foreground rounded-[9px] border border-dashed px-2.5 py-3 text-[11.5px]">
+                  {tr("dashboard.filter.noTags")}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       ))}
     </div>

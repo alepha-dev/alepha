@@ -12,6 +12,10 @@ export interface DashboardFilterField {
   options: string[];
   multiple: boolean;
   /**
+   * A free-text field, drawn as a textarea: a note's markdown (#Q2659).
+   */
+  text?: boolean;
+  /**
    * Where the options come from, when the schema could not say.
    *
    * ⚠️ Set only for a field the metric declared in `filterSources`. Its
@@ -66,6 +70,11 @@ export const dashboardFilterFields = (
       continue;
     }
 
+    if (z.schema.isString(field)) {
+      fields.push({ name, options: [], multiple: false, text: true });
+      continue;
+    }
+
     if (z.schema.isArray(field)) {
       const element = z.schema.unwrap(z.schema.element(field));
       if (element && z.schema.isEnum(element)) {
@@ -80,5 +89,7 @@ export const dashboardFilterFields = (
 
   // A source-backed field keeps its place with zero options: they arrive at
   // the step, not here. Everything else with fewer than two is not a choice.
-  return fields.filter((field) => field.source || field.options.length > 1);
+  return fields.filter(
+    (field) => field.source || field.text || field.options.length > 1,
+  );
 };

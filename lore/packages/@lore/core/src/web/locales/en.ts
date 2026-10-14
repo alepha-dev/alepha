@@ -2391,6 +2391,16 @@ export default {
   "dashboard.metric.foliosByDirectory": "Folios by directory",
   "dashboard.metric.foliosByDirectory.hint":
     "how many folios each top-level directory holds",
+  "dashboard.metric.activityFeed": "Activity",
+  "dashboard.metric.activityFeed.hint": "the project's last recorded writes",
+  "dashboard.metric.momentum": "Momentum",
+  "dashboard.metric.momentum.hint": "recorded writes per day, as bars",
+  "dashboard.metric.note": "Note",
+  "dashboard.metric.note.hint":
+    "markdown you write, for everyone who reads the board",
+  "dashboard.filterField.markdown": "Note",
+  "dashboard.filter.markdownPlaceholder":
+    "Write in markdown. Everyone who reads the board sees it.",
   "dashboard.refreshed": "Refreshed $1.",
   "dashboard.addCard": "Add card",
 

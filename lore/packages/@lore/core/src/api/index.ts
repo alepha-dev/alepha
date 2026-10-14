@@ -39,6 +39,8 @@ import { CapabilityRegistry } from "./schemas/CapabilityRegistry.ts";
 import { CoreDashboardMetrics } from "./schemas/CoreDashboardMetrics.ts";
 import { LorePermissions } from "./security/LorePermissions.ts";
 import { ProjectRankPresets } from "./security/ProjectRankPresets.ts";
+import { ActivityFeedMetric } from "./services/ActivityFeedMetric.ts";
+import { CoreDashboard } from "./services/CoreDashboard.ts";
 import { DashboardAttentionRegistry } from "./services/DashboardAttentionRegistry.ts";
 import { DashboardCardService } from "./services/DashboardCardService.ts";
 import { DashboardMetricRegistry } from "./services/DashboardMetricRegistry.ts";
@@ -46,9 +48,12 @@ import { DashboardScopeService } from "./services/DashboardScopeService.ts";
 import { DashboardSlotRegistry } from "./services/DashboardSlotRegistry.ts";
 import { LoreAudits } from "./services/LoreAudits.ts";
 import { LoreAuditService } from "./services/LoreAuditService.ts";
+import { MomentumMetric } from "./services/MomentumMetric.ts";
 import { NeedsYouMetric } from "./services/NeedsYouMetric.ts";
+import { NoteMetric } from "./services/NoteMetric.ts";
 import { ProjectDashboardCardService } from "./services/ProjectDashboardCardService.ts";
 import { ProjectLimits } from "./services/ProjectLimits.ts";
+import { ProjectMomentumService } from "./services/ProjectMomentumService.ts";
 import { ProjectRoster } from "./services/ProjectRoster.ts";
 import { ProjectSecurityService } from "./services/ProjectSecurityService.ts";
 import { ResourceLinkService } from "./services/ResourceLinkService.ts";
@@ -171,6 +176,12 @@ export const LoreCoreApi = $module({
     DashboardAttentionRegistry,
     CoreDashboardMetrics,
     NeedsYouMetric,
+    // The core tiles of #Q2659, and the momentum read Home shares.
+    ProjectMomentumService,
+    ActivityFeedMetric,
+    MomentumMetric,
+    NoteMetric,
+    CoreDashboard,
     ProjectController,
     // The landing page's own reads: the momentum bars and the activity panel.
     // Off `ProjectController` because neither is about one project, and off
@@ -252,6 +263,7 @@ export { BestEffort } from "./services/BestEffort.ts";
 export { BoundParameters } from "./services/BoundParameters.ts";
 export { DashboardCardService } from "./services/DashboardCardService.ts";
 export { DashboardMetricRegistry } from "./services/DashboardMetricRegistry.ts";
+export { ProjectMomentumService } from "./services/ProjectMomentumService.ts";
 export {
   type DashboardAttentionItem,
   type DashboardAttentionItems,

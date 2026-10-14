@@ -83,8 +83,8 @@ export class WorkDashboard {
   /**
    * Work's candidates for the computed board (#Q2652, folio #F1364).
    *
-   * Needs you: the merged list of #Q2656. Flow: the Reports tiles of
-   * #Q2653, then the open quests.
+   * Flow: the Reports tiles of #Q2653, then the open quests. "Needs you" is
+   * core's own metric and slot (`CoreDashboard`).
    */
   protected registerSlots(): void {
     // Headline (#Q2654): the release with work, else the releases waiting on
@@ -156,16 +156,6 @@ export class WorkDashboard {
     });
     const above = (min: number) => (value: { value?: number }) =>
       (value.value ?? 0) >= min;
-
-    // Needs you (#Q2656): core's merged list, which every module feeds;
-    // hidden at zero by its own `empty`.
-    this.slots.register({
-      slot: "needsYou",
-      rank: 10,
-      metric: "needsYou",
-      size: 2,
-      height: 2,
-    });
 
     // Flow (#Q2653): board columns, then completed per week, then the
     // burn-up, each only once the window holds five completions: below that

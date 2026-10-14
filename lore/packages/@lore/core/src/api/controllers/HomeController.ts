@@ -11,10 +11,10 @@ import { $secure } from "alepha/security";
 import { $action } from "alepha/server";
 import { $etag } from "alepha/server/etag";
 
-import { ProjectAnalytics } from "../entities/projectAnalytics.ts";
 import { coreRelations } from "../relations/coreRelations.ts";
 import { homeBoardSchema } from "../schemas/homeBoardSchema.ts";
 import { ProjectCountRegistry } from "../services/ProjectCountRegistry.ts";
+import { ProjectMomentumService } from "../services/ProjectMomentumService.ts";
 import { ProjectRecencyService } from "../services/ProjectRecencyService.ts";
 
 /**
@@ -50,7 +50,10 @@ export class HomeController {
   auditRows = $repository(audits);
   counts = $inject(ProjectCountRegistry);
   usersWith = $repository(coreRelations, "users");
-  datasets = $inject(ProjectAnalytics);
+  /**
+   * The bars' read, shared with the dashboard's momentum tile (#Q2659).
+   */
+  momentumReader = $inject(ProjectMomentumService);
   log = $logger();
   database = $inject(DatabaseProvider);
   sqlx = $inject(SqlExpressionProvider);
@@ -207,40 +210,14 @@ export class HomeController {
     scopeIds: string[],
     days: string[],
   ): Promise<Array<{ projectId: number; counts: number[] }> | undefined> {
-    const index = new Map(days.map((label, position) => [label, position]));
-    const byProject = new Map<number, number[]>(
-      scopeIds.map((id) => [Number(id), days.map(() => 0)]),
-    );
-
     try {
-      const result = await this.datasets.activity.query({
-        since: days[0],
-        where: { project: { inArray: scopeIds } },
-        groupBy: ["day", "project"],
-        select: { count: "sum" },
-      });
-
-      for (const row of result.rows) {
-        const counts = byProject.get(Number(row.project));
-        const position = index.get(String(row.day));
-        // A bucket outside the labels is a boundary case, not an error: the
-        // window is asked for by day and the labels are generated from the
-        // clock, so the two can disagree by one at the edge.
-        if (counts && position !== undefined) {
-          counts[position] = Number(row.count) || 0;
-        }
-      }
+      return await this.momentumReader.read(scopeIds, days);
     } catch (error) {
       this.log.warn("Momentum unavailable, rendering Home without the bars", {
         error: error instanceof Error ? error.message : String(error),
       });
       return undefined;
     }
-
-    return [...byProject].map(([projectId, counts]) => ({
-      projectId,
-      counts,
-    }));
   }
 
   /**
@@ -252,12 +229,6 @@ export class HomeController {
    * test that travels sees the window move with it.
    */
   protected momentumDays(): string[] {
-    const today = this.dt.nowMillis();
-    const dayMs = 24 * 60 * 60 * 1000;
-    const labels: string[] = [];
-    for (let back = HomeController.MOMENTUM_DAYS - 1; back >= 0; back--) {
-      labels.push(new Date(today - back * dayMs).toISOString().slice(0, 10));
-    }
-    return labels;
+    return this.momentumReader.days(HomeController.MOMENTUM_DAYS);
   }
 }

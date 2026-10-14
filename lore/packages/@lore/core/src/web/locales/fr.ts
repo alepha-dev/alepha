@@ -2382,6 +2382,18 @@ export default {
   "dashboard.metric.foliosByDirectory": "Folios par dossier",
   "dashboard.metric.foliosByDirectory.hint":
     "combien de folios contient chaque dossier de premier niveau",
+  "dashboard.metric.activityFeed": "Activité",
+  "dashboard.metric.activityFeed.hint":
+    "les dernières écritures enregistrées du projet",
+  "dashboard.metric.momentum": "Dynamique",
+  "dashboard.metric.momentum.hint":
+    "écritures enregistrées par jour, en barres",
+  "dashboard.metric.note": "Note",
+  "dashboard.metric.note.hint":
+    "du markdown que vous écrivez, pour tous ceux qui lisent le tableau",
+  "dashboard.filterField.markdown": "Note",
+  "dashboard.filter.markdownPlaceholder":
+    "Écrivez en markdown. Tous ceux qui lisent le tableau le verront.",
   "dashboard.refreshed": "Actualise $1.",
   "dashboard.addCard": "Ajouter une carte",
 

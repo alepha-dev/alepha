@@ -74,6 +74,11 @@ describe("dashboard drill-through links", () => {
           tag: params.tag,
         },
       );
+      // A note written on the board is the destination itself (#Q2659).
+      if (metric.key === "note") {
+        expect(link).toBeUndefined();
+        continue;
+      }
       expect(link, `metric '${metric.key}' produced no link`).toBeDefined();
       expect(
         router.path(link!.route, { params, query: link!.query }),
