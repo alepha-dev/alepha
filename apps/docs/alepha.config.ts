@@ -1,5 +1,6 @@
+import { lore } from "@alepha/lore/cli";
 import { defineConfig } from "alepha/cli/config";
-import { cloudflare, infra } from "alepha/cli/infra";
+import { infra } from "alepha/cli/infra";
 
 import pkg from "../../packages/alepha/package.json" with { type: "json" };
 import { CheckDocsCommand } from "./scripts/check-docs.ts";
@@ -81,26 +82,24 @@ export default defineConfig({
     LlmsCommand,
     CheckDocsCommand,
     infra({
-      // Worker `alepha-docs-production`: the name Lore Deploy gave it, so
-      // `platform up` took the Worker and the apex domain over (#Q2576).
-      project: "alepha",
+      // Deployed by Lore (#Q2701): `lore()` names the copy `docs/production`
+      // in Lore project `alepha`, and Lore derives the Worker name
+      // `alepha-docs-production` from the project slug, which is the Worker
+      // `alepha.dev` already runs on, so the first deploy takes it over in
+      // place. The domain is the copy's `url` in Lore, not a field here.
+      //
+      // Lore mints the sigil on deploy (the manifest declares `SIGIL_KEY`),
+      // keeps the copy's secrets, and archives each build as a versioned
+      // artifact with rollback. The cost: the adapter runs on this
+      // repository's `alepha/cli/infra-lib` while it was compiled against
+      // Lore's vendored framework, so an `infra-lib` change can break the
+      // docs deploy until `@alepha/lore` republishes.
+      //
+      // ⚠️ No infra-level `project` here: it would prefix the app name Lore
+      // receives (`alepha-docs`), and Lore prefixes its own project slug on
+      // top, giving `alepha-alepha-docs-production`, a new Worker.
       environments: {
-        // ⚠️ A Custom Domain, the only binding `alepha deploy` makes. This
-        // used to set a `zone` (a field since removed) to get a Worker Route
-        // instead, because the apex still held the four GitHub Pages A
-        // records and their AAAA counterparts: a Custom Domain owns its DNS
-        // record, so Cloudflare would have refused to create one while they
-        // were there.
-        //
-        // Those eight records were deleted when docs moved onto Lore Deploy,
-        // which only ever attaches a Custom Domain, and docs came back to
-        // `alepha platform` in #E72 with the same Worker. Cloudflare owns the
-        // apex record and its certificate now.
-        //
-        // Rolling back means re-creating those eight records by hand before
-        // anything can serve the apex again, so it is no longer the free
-        // undo it was while they existed.
-        production: cloudflare({ domain: "alepha.dev" }),
+        production: lore({ project: "alepha", estate: "cf-feunard" }),
       },
     }),
   ],
