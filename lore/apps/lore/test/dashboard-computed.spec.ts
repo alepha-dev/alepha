@@ -117,7 +117,7 @@ describe("the computed project board", () => {
 
       expect(board.computed).toBe(true);
       expect(board.cards.map((card) => [card.slot, card.metric])).toEqual([
-        ["needsYou", "heldQuests"],
+        ["needsYou", "needsYou"],
         ["flow", "activeQuests"],
       ]);
       // Every value is a real measurement: the computed board never carries

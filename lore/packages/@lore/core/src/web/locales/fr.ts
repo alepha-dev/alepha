@@ -2348,6 +2348,17 @@ export default {
   "dashboard.badge.held": "en pause",
   "dashboard.badge.overdue": "en retard",
   "dashboard.badge.dueSoon": "bientôt",
+  "dashboard.metric.needsYou": "À traiter",
+  "dashboard.metric.needsYou.hint":
+    "travail en pause, en souffrance ou en retard, plantages et retours, en une liste",
+  "dashboard.more": "$1 de plus : $2",
+  "dashboard.source.quests": "quêtes",
+  "dashboard.source.feedback": "retours",
+  "dashboard.source.blights": "plantages",
+  "dashboard.badge.stale": "en souffrance",
+  "dashboard.badge.unassigned": "sans responsable",
+  "dashboard.badge.blight": "plantage",
+  "dashboard.badge.untriaged": "à trier",
   "dashboard.refreshed": "Actualise $1.",
   "dashboard.addCard": "Ajouter une carte",
 

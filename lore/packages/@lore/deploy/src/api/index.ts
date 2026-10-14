@@ -35,6 +35,7 @@ import { BlightRuleService } from "./services/BlightRuleService.ts";
 import { CloudflareProbeService } from "./services/CloudflareProbeService.ts";
 import { CredentialSealService } from "./services/CredentialSealService.ts";
 import { DailyVisitorsService } from "./services/DailyVisitorsService.ts";
+import { DeployAttentionSources } from "./services/DeployAttentionSources.ts";
 import { DeployDashboard } from "./services/DeployDashboard.ts";
 import { DeployDashboardMetrics } from "./services/DeployDashboardMetrics.ts";
 import { DeployGate } from "./services/DeployGate.ts";
@@ -87,6 +88,8 @@ export const LoreDeployApi = $module({
     DeployDashboardMetrics,
     BlightQuestHandBack,
     DeployDashboard,
+    // Deploy's "needs you" source (#Q2656).
+    DeployAttentionSources,
     DeployProjectCounts,
     BlightJobs,
     SigilJobs,

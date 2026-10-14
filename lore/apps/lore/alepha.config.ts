@@ -238,6 +238,8 @@ export default defineConfig({
         "dashboard.badge.",
         "dashboard.marker.",
         "dashboard.segment.",
+        // tr(`dashboard.source.${key}`): a "needs you" source's "N more".
+        "dashboard.source.",
         // tr(`account.notifications.category.${category}`) and its
         // `.description`. A category is a string a `$notification` template
         // registers, so the set is the DECLARATIONS: a plugin can add one

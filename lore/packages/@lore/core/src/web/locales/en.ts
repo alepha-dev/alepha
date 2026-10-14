@@ -2358,6 +2358,17 @@ export default {
   "dashboard.badge.held": "on hold",
   "dashboard.badge.overdue": "overdue",
   "dashboard.badge.dueSoon": "due soon",
+  "dashboard.metric.needsYou": "Needs you",
+  "dashboard.metric.needsYou.hint":
+    "held, stale and overdue work, crashes and feedback, in one list",
+  "dashboard.more": "$1 more $2",
+  "dashboard.source.quests": "quests",
+  "dashboard.source.feedback": "feedback items",
+  "dashboard.source.blights": "blights",
+  "dashboard.badge.stale": "stale",
+  "dashboard.badge.unassigned": "unassigned",
+  "dashboard.badge.blight": "crash",
+  "dashboard.badge.untriaged": "untriaged",
   "dashboard.refreshed": "Refreshed $1.",
   "dashboard.addCard": "Add card",
 

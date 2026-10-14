@@ -38,7 +38,20 @@ const DashboardTileRow = (props: DashboardTileRowProps) => {
   const row = props.row;
   const link = row.link;
 
-  const content = (
+  // A "N more" row closing a merged list (#Q2656): its title is the source's
+  // code, and the locale says what there is more of.
+  const more = row.badge === "more";
+
+  const content = more ? (
+    <span className="text-primary-text text-[12px]">
+      {tr("dashboard.more", {
+        args: [
+          String(row.value ?? 0),
+          tr(`dashboard.source.${row.title}` as never),
+        ],
+      })}
+    </span>
+  ) : (
     <>
       {row.id && (
         <span className="bg-muted text-muted-foreground shrink-0 rounded px-1 font-mono text-[10.5px] leading-4">

@@ -92,8 +92,9 @@ test.describe("Project dashboard", () => {
       const held = page.locator(
         '[data-testid="dashboard-card"][data-slot="needsYou"]',
       );
-      await expect(held).toHaveAttribute("data-metric", "heldQuests");
-      await expect(held.getByText("1", { exact: true })).toBeVisible({
+      // The merged "needs you" list (#Q2656), naming the held quest.
+      await expect(held).toHaveAttribute("data-metric", "needsYou");
+      await expect(held.getByText(`Parked${t}`)).toBeVisible({
         timeout: 15_000,
       });
       // Read-only: no card menu and no edit mode on a computed board.

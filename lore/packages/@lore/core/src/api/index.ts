@@ -36,14 +36,17 @@ import { LoreInboxRecipientProvider } from "./providers/LoreInboxRecipientProvid
 import { LoreNotificationPreferences } from "./providers/LoreNotificationPreferences.ts";
 import { LoreOrganizationPolicyProvider } from "./providers/LoreOrganizationPolicyProvider.ts";
 import { CapabilityRegistry } from "./schemas/CapabilityRegistry.ts";
+import { CoreDashboardMetrics } from "./schemas/CoreDashboardMetrics.ts";
 import { LorePermissions } from "./security/LorePermissions.ts";
 import { ProjectRankPresets } from "./security/ProjectRankPresets.ts";
+import { DashboardAttentionRegistry } from "./services/DashboardAttentionRegistry.ts";
 import { DashboardCardService } from "./services/DashboardCardService.ts";
 import { DashboardMetricRegistry } from "./services/DashboardMetricRegistry.ts";
 import { DashboardScopeService } from "./services/DashboardScopeService.ts";
 import { DashboardSlotRegistry } from "./services/DashboardSlotRegistry.ts";
 import { LoreAudits } from "./services/LoreAudits.ts";
 import { LoreAuditService } from "./services/LoreAuditService.ts";
+import { NeedsYouMetric } from "./services/NeedsYouMetric.ts";
 import { ProjectDashboardCardService } from "./services/ProjectDashboardCardService.ts";
 import { ProjectLimits } from "./services/ProjectLimits.ts";
 import { ProjectRoster } from "./services/ProjectRoster.ts";
@@ -164,6 +167,10 @@ export const LoreCoreApi = $module({
     ProjectDashboardCardService,
     DashboardMetricRegistry,
     DashboardSlotRegistry,
+    // "Needs you" (#Q2656): core's own metric over the modules' sources.
+    DashboardAttentionRegistry,
+    CoreDashboardMetrics,
+    NeedsYouMetric,
     ProjectController,
     // The landing page's own reads: the momentum bars and the activity panel.
     // Off `ProjectController` because neither is about one project, and off
@@ -245,6 +252,12 @@ export { BestEffort } from "./services/BestEffort.ts";
 export { BoundParameters } from "./services/BoundParameters.ts";
 export { DashboardCardService } from "./services/DashboardCardService.ts";
 export { DashboardMetricRegistry } from "./services/DashboardMetricRegistry.ts";
+export {
+  type DashboardAttentionItem,
+  type DashboardAttentionItems,
+  type DashboardAttentionSource,
+  DashboardAttentionRegistry,
+} from "./services/DashboardAttentionRegistry.ts";
 export {
   type ComputedDashboard,
   type DashboardSlot,

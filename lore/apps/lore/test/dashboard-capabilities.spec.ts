@@ -379,7 +379,9 @@ describe("dashboard cards and capabilities", () => {
         openBlights: { capability: "apps", option: "track" },
         uniqueVisitors: { capability: "apps", option: "track" },
       });
+      // Core's own metrics (`needsYou`) gate per SOURCE instead.
       for (const metric of catalog.on("project")) {
+        if (metric.group === "core") continue;
         expect(
           metric.needs,
           `${metric.key} declares no capability`,

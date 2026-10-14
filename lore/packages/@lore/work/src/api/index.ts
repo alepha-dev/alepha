@@ -58,6 +58,7 @@ import { RoadmapService } from "./services/RoadmapService.ts";
 import { TagCompletionMetric } from "./services/TagCompletionMetric.ts";
 import { UntriagedFeedbackMetric } from "./services/UntriagedFeedbackMetric.ts";
 import { WorkAssignedWork } from "./services/WorkAssignedWork.ts";
+import { WorkAttentionSources } from "./services/WorkAttentionSources.ts";
 import { WorkDashboard } from "./services/WorkDashboard.ts";
 import { WorkDashboardMetrics } from "./services/WorkDashboardMetrics.ts";
 import { WorkFileAccess } from "./services/WorkFileAccess.ts";
@@ -167,6 +168,8 @@ export const LoreWorkApi = $module({
     RemindersDueMetric,
     DueSoonMetric,
     RecentlyShippedMetric,
+    // Work's "needs you" sources (#Q2656).
+    WorkAttentionSources,
     // Controllers
     QuestController,
     QuestCommentController,

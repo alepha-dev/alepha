@@ -6,6 +6,7 @@ import { I18nProvider } from "alepha/react/i18n";
 import { AlephaReactUi } from "alepha/react/ui";
 import { createElement, lazy, Suspense } from "react";
 
+import { CoreDashboardMetrics } from "../api/schemas/CoreDashboardMetrics.ts";
 import { currentProjectAtom } from "./app/atoms/currentProjectAtom.ts";
 import { currentProjectMemberAtom } from "./app/atoms/currentProjectMemberAtom.ts";
 import { projectPromptsAtom } from "./app/atoms/projectPromptsAtom.ts";
@@ -48,6 +49,8 @@ export const LoreCoreWeb = $module({
     // component imports from, so a spec rendering one `AccountRouter` page,
     // or reading the dictionaries, would boot Lore's whole page tree.
     alepha.inject(I18n);
+    // Core's own dashboard metric descriptors (#Q2656), as each module's are.
+    alepha.inject(CoreDashboardMetrics);
     alepha.inject(ThemesProvider);
     alepha.inject(CoreRouter);
     alepha.inject(AccountRouter);
