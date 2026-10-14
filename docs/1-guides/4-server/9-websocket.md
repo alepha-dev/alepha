@@ -328,7 +328,7 @@ Alepha.create({ [websocketOptions.key]: { maxPayload: 4 * 1024 * 1024 } });
 
 A connection can join multiple rooms at once (e.g. `?roomIds=room-1,room-2`) - `useRoom`/`WebSocketClient` sends all active room subscriptions as query params when it connects.
 
-For horizontal scaling across multiple Node instances, server-initiated messages (`reply()`, `emit()`) are distributed via `alepha/topic` (in-memory locally, Redis in production via `alepha/topic/redis`): one instance publishes, every instance receives, and each forwards to its own local connections that match.
+For horizontal scaling across multiple Node instances, server-initiated messages (`reply()`, `emit()`) are distributed via `alepha/topic` (in memory without `REDIS_URL`, Redis once it is set): one instance publishes, every instance receives, and each forwards to its own local connections that match.
 
 Because Cloudflare allows only one room per connection (see below), joining multiple rooms on Node is **not portable**. The Node provider logs a dev-only warning when a connection joins more than one room, so you notice before deploying to Cloudflare.
 

@@ -157,7 +157,7 @@ an outage is not a limit the client exceeded.
 | `skipSuccessfulRequests` | `false` | Refund the hit when the handler succeeds (only failures count) |
 
 The limit, the window, the failure modes and where counters live (one instance on
-Memory, several on Redis, Durable Objects on workerd) belong to the limiter: see
+Memory, several once `REDIS_URL` is set, Durable Objects on workerd) belong to the limiter: see
 [Rate limiting](/docs/guides-server-rate-limiting).
 
 ### Health Check

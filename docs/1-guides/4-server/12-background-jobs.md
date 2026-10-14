@@ -213,11 +213,11 @@ Declining is not the same as ignoring. For a push transport, ignoring a delay
 means _delivering now_, and for a retry that is worse than doing nothing at
 all: no backoff whatsoever against a downstream that has just failed.
 
-| Backend           | Delay                                                                  |
-| ----------------- | ---------------------------------------------------------------------- |
-| Cloudflare Queues | native, clamped at its 12-hour ceiling                                 |
-| Redis             | a sorted set scored by due-time, promoted into the list when it is due |
-| in-memory         | a due timestamp, filtered on pop                                       |
+| Backend                 | Delay                                                                  |
+| ----------------------- | ---------------------------------------------------------------------- |
+| Cloudflare Queues       | native, clamped at its 12-hour ceiling                                 |
+| Redis (`REDIS_URL` set) | a sorted set scored by due-time, promoted into the list when it is due |
+| in-memory               | a due timestamp, filtered on pop                                       |
 
 Every backend that ships with Alepha honours a delay, so nothing declines in
 practice today. The rule still matters: it is what a custom `QueueProvider` is
@@ -405,7 +405,8 @@ How a pushed execution reaches its handler depends on which modules are loaded:
   sweep re-dispatches. Best for single-instance Node and Cloudflare Workers,
   where standing up a broker is overkill.
 - **queue**: add `AlephaApiJobsQueue` and dispatch goes through a real broker
-  (Cloudflare Queues, Redis) so a worker pool consumes the work.
+  (Cloudflare Queues on workerd, Redis on Node and Bun once `REDIS_URL` is set)
+  so a worker pool consumes the work.
 
 ```typescript
 import { AlephaApiJobs, AlephaApiJobsQueue } from "alepha/api/jobs";

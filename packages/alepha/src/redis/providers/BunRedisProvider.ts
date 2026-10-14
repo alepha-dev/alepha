@@ -193,7 +193,7 @@ export class BunRedisProvider extends RedisProvider {
     // Build SET command arguments
     const args: string[] = [key, buf.toString("binary")];
 
-    // Handle expiration object format (from alepha/cache-redis, alepha/lock-redis)
+    // Handle expiration object format (from RedisCacheProvider, RedisLockProvider)
     if (options?.expiration) {
       if (options.expiration.type === "KEEPTTL") {
         args.push("KEEPTTL");

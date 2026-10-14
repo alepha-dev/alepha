@@ -145,7 +145,7 @@ export abstract class RedisProvider {
   public abstract zrem(key: string, member: string): Promise<number>;
 
   // ---------------------------------------------------------
-  // Pub/Sub operations (for alepha/topic-redis)
+  // Pub/Sub operations (for RedisTopicProvider)
   // ---------------------------------------------------------
 
   /**

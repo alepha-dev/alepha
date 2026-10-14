@@ -78,7 +78,7 @@ The full command surface - `alepha db push [--dry-run]` for prototyping without 
 
 ## Multi-Instance Safety
 
-On PostgreSQL, the startup migration already runs under `$lock({ name: "postgres:migrate" })`. The default lock provider is in-memory, so it only serializes within one process: when several instances boot at once (e.g. behind a load balancer), register `AlephaLockRedis` from `alepha/lock/redis` so the lock is shared and only one instance migrates at a time. The SQLite drivers take no lock.
+On PostgreSQL, the startup migration already runs under `$lock({ name: "postgres:migrate" })`. The default lock provider is in-memory, so it only serializes within one process: when several instances boot at once (e.g. behind a load balancer), set `REDIS_URL` so the lock is shared through Redis and only one instance migrates at a time. The SQLite drivers take no lock.
 
 ## Cloudflare D1 (SQLite)
 

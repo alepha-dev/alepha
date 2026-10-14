@@ -187,48 +187,50 @@ a key touched once and never again would otherwise stay forever.
   the storage of an expired actor and re-arms one that moved on. It needs no
   Wrangler configuration and no Durable Object migration.
 
-## Topology: no Redis means one instance
+## Topology: no `REDIS_URL` means one instance
 
 Where actor state lives decides who shares it, and the rule is the provider's:
 
-- **Memory** (the default on Node and Bun) is one process. It is right for an app
-  that runs a single instance.
-- **Redis** (`AlephaActorRedis`) is for several instances: every one of them sees
-  the same state.
+- **Memory** (Node and Bun without `REDIS_URL`) is one process. It is right for
+  an app that runs a single instance.
+- **Redis** (Node and Bun with `REDIS_URL` set) is for several instances: every
+  one of them sees the same state.
 - **Durable Objects** on workerd, one per actor identity.
 
-An app without `AlephaActorRedis` is a single-instance app, and every actor in it
+An app without `REDIS_URL` is a single-instance app, and every actor in it
 assumes so: the login and MFA lockouts of `alepha/api/users`, every
 [`$rateLimit`](/docs/guides-server-rate-limiting) and your own actors. Run two Node
-instances without Redis and each keeps its own state, so a limit of five becomes
+instances without it and each keeps its own state, so a limit of five becomes
 five per instance. Nothing falls back to SQL to paper over it.
 
-⚠️ `REDIS_URL` alone does not select `AlephaActorRedis`. An app that runs several
-instances with a Redis cache or queue, but never added the actor module, still
-keeps actor state per instance. Add `alepha.with(AlephaActorRedis)` before scaling
-out.
+Set `REDIS_URL` and the same variable that shares the cache, queue, topics and
+locks shares actor state too: there is no actor module to register. Run that
+Redis with `noeviction`, since actor state and rate-limit counters must not be
+evicted: see [one Redis for every role](/docs/guides-deployment-bare#one-redis-for-every-role).
 
 ## Redis on Node and Bun
 
-Select `AlephaActorRedis` from `alepha/actor/redis` explicitly with
-`alepha.with(AlephaActorRedis)`. Every actor identity carries
-[`alepha.name`](/docs/guides-core-alepha-instance): `APP_NAME`, else the build's app
-name, else `"app"`. `REDIS_URL` alone leaves Memory selected.
-The provider uses the existing runtime Redis variants with a dedicated connection
-and offline command replay disabled. Start the container before calling actors.
+`REDIS_URL` selects `RedisActorProvider` when `alepha/actor` registers. Every
+actor identity carries [`alepha.name`](/docs/guides-core-alepha-instance):
+`APP_NAME`, else the build's app name, else `"app"`. The provider uses the
+existing runtime Redis variants with a dedicated connection and offline command
+replay disabled. Start the container before calling actors.
 
 ```typescript check
 import { Alepha } from "alepha";
-import { AlephaActorRedis } from "alepha/actor/redis";
 
 const alepha = Alepha.create({
   env: {
     APP_NAME: "my-app-production",
     REDIS_URL: "redis://localhost:6379",
   },
-}).with(AlephaActorRedis);
+});
 await alepha.start();
 ```
+
+An app that sets `REDIS_URL` for its cache but wants actors per instance keeps
+them in memory with a substitution, which wins over `REDIS_URL`:
+`alepha.with({ provide: ActorProvider, use: MemoryActorProvider })`.
 
 Independent applications share state only when their Redis server, app name,
 atom name and default-or-key identity agree. Give unrelated applications and

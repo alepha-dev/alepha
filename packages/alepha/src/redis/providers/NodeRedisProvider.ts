@@ -139,7 +139,7 @@ export class NodeRedisProvider extends RedisProvider {
     // Convert RedisSetOptions to @redis/client SetOptions
     const setOptions: SetOptions = {};
 
-    // Handle expiration object format (from alepha/cache-redis, alepha/lock-redis)
+    // Handle expiration object format (from RedisCacheProvider, RedisLockProvider)
     if (options?.expiration) {
       if (options.expiration.type === "KEEPTTL") {
         setOptions.KEEPTTL = true;

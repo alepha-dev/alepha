@@ -36,9 +36,9 @@ export class SessionService {
    * The login lockout counters: `login:ip` (global, cross-realm) and
    * `login:account` (per realm and user), limit and window from the realm's
    * `loginRateLimit` settings. They are actor state, so they are shared exactly
-   * as far as the app's actors are: one process on Memory, every instance with
-   * `AlephaActorRedis`, a Durable Object per key on workerd. No Redis means one
-   * instance (the topology rule of the rate-limit guide). Both fail closed: a
+   * as far as the app's actors are: one process on Memory, every instance once
+   * `REDIS_URL` is set, a Durable Object per key on workerd. No `REDIS_URL`
+   * means one instance (the topology rule of the rate-limit guide). Both fail closed: a
    * counter store that cannot answer refuses the login.
    */
   protected readonly loginIp = $rateLimit({
