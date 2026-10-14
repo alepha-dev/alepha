@@ -16,6 +16,12 @@ export interface DashboardResolvable {
    * The metric's filters, already parsed against its own schema.
    */
   filters: Record<string, unknown>;
+  /**
+   * The board's time window, in days (#E77): what a delta compares against
+   * and how far back a series reaches. One window for the whole board, so
+   * every tile's deltas and sparklines agree.
+   */
+  windowDays: number;
 }
 
 /**

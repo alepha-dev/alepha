@@ -1,4 +1,5 @@
 import { $inject, AlephaError } from "alepha";
+import { RankService } from "alepha/api/organizations";
 import { $logger } from "alepha/logger";
 import type { UserAccountToken } from "alepha/security";
 
@@ -62,6 +63,12 @@ export class DashboardMetricRegistry {
   protected readonly scopes = $inject(DashboardScopeService);
   protected readonly security = $inject(ProjectSecurityService);
   protected readonly registry = $inject(CapabilityRegistry);
+  protected readonly ranks = $inject(RankService);
+
+  /**
+   * The window a board resolves over when the caller names none (#E77).
+   */
+  static readonly DEFAULT_WINDOW_DAYS = 14;
 
   /**
    * Every resolver, by metric key, registered by the module that owns the
@@ -131,8 +138,16 @@ export class DashboardMetricRegistry {
     user: UserAccountToken,
     project: Project,
     capabilities?: Map<number, ProjectCapability[]>,
+    windowDays: number = DashboardMetricRegistry.DEFAULT_WINDOW_DAYS,
   ): Promise<DashboardCardValue[]> {
-    return this.resolveOn(cards, user, [project], "project", capabilities);
+    return this.resolveOn(
+      cards,
+      user,
+      [project],
+      "project",
+      capabilities,
+      windowDays,
+    );
   }
 
   /**
@@ -178,6 +193,7 @@ export class DashboardMetricRegistry {
     visible: Project[],
     board: DashboardBoard,
     preloaded?: Map<number, ProjectCapability[]>,
+    windowDays: number = DashboardMetricRegistry.DEFAULT_WINDOW_DAYS,
   ): Promise<DashboardCardValue[]> {
     const resolvers = this.resolvers();
     const values = new Map<number, DashboardCardValue>();
@@ -191,6 +207,22 @@ export class DashboardMetricRegistry {
       (await this.security.capabilityRowsForProjects(
         visible.map((project) => project.id),
       ));
+
+    // The permission gate (#Q2653), once per permission for the board: a
+    // metric that `requires` one the reader lacks answers `noAccess` and is
+    // never resolved. Only a project board has one organization to ask.
+    const granted = new Map<string, boolean>();
+    const organizationId =
+      board === "project" ? visible[0]?.organizationId : undefined;
+    for (const card of cards) {
+      const permission = this.catalog.find(card.metric)?.requires;
+      if (!permission || granted.has(permission)) continue;
+      granted.set(
+        permission,
+        !!organizationId &&
+          (await this.ranks.can(organizationId, permission, user)),
+      );
+    }
 
     // Group first, resolve second. Each card's scope is proven here, once —
     // a resolver never sees an id the caller may not read.
@@ -210,11 +242,22 @@ export class DashboardMetricRegistry {
         continue;
       }
 
+      if (descriptor.requires && !granted.get(descriptor.requires)) {
+        values.set(card.id, {
+          cardId: card.id,
+          ok: true,
+          empty: "noAccess",
+          detail: {},
+          scopeNames: [],
+        });
+        continue;
+      }
+
       try {
         const proven = await this.scopes.resolve(card.scope, user, visible);
         const scope = this.narrow(descriptor, proven, capabilities);
         const group = byMetric.get(card.metric) ?? [];
-        group.push({ card, scope, filters: card.filters });
+        group.push({ card, scope, filters: card.filters, windowDays });
         byMetric.set(card.metric, group);
       } catch (error) {
         // A project or app the caller has since lost, or one that was

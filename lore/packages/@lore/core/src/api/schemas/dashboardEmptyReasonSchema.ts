@@ -14,6 +14,7 @@ import { type Infer, z } from "alepha";
  * - `noFolio`: a Knowledge tile in a project with no folio.
  * - `noActivity`: nothing happened in the window.
  * - `noQuests`: the reader holds no open quest, or the project has none.
+ * - `noAccess`: the reader lacks the permission the metric `requires`.
  */
 export const dashboardEmptyReasonSchema = z.enum([
   "noData",
@@ -25,6 +26,7 @@ export const dashboardEmptyReasonSchema = z.enum([
   "noFolio",
   "noActivity",
   "noQuests",
+  "noAccess",
 ]);
 
 export type DashboardEmptyReason = Infer<typeof dashboardEmptyReasonSchema>;

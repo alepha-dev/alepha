@@ -23,6 +23,12 @@ import { QuestResourceKind } from "./resources/QuestResourceKind.ts";
 import { ReleaseResourceKind } from "./resources/ReleaseResourceKind.ts";
 import { ActiveQuestsMetric } from "./services/ActiveQuestsMetric.ts";
 import { AreaService } from "./services/AreaService.ts";
+import { BoardColumnsMetric } from "./services/BoardColumnsMetric.ts";
+import { BurnupMetric } from "./services/BurnupMetric.ts";
+import { CompletedPerWeekMetric } from "./services/CompletedPerWeekMetric.ts";
+import { CompletedThisWeekMetric } from "./services/CompletedThisWeekMetric.ts";
+import { CycleTimeMetric } from "./services/CycleTimeMetric.ts";
+import { DashboardFlowSeries } from "./services/DashboardFlowSeries.ts";
 import { EpicDependencyService } from "./services/EpicDependencyService.ts";
 import { EpicProgressMetric } from "./services/EpicProgressMetric.ts";
 import { EpicProgressService } from "./services/EpicProgressService.ts";
@@ -31,6 +37,8 @@ import { FeedbackRateLimiter } from "./services/FeedbackRateLimiter.ts";
 import { HeldQuestsMetric } from "./services/HeldQuestsMetric.ts";
 import { MentionNotifier } from "./services/MentionNotifier.ts";
 import { OpenQuestScope } from "./services/OpenQuestScope.ts";
+import { ProjectReportsService } from "./services/ProjectReportsService.ts";
+import { QuestBreakdownMetric } from "./services/QuestBreakdownMetric.ts";
 import { QuestCsvFormatter } from "./services/QuestCsvFormatter.ts";
 import { QuestProjectDeletion } from "./services/QuestProjectDeletion.ts";
 import { QuestService } from "./services/QuestService.ts";
@@ -46,6 +54,7 @@ import { WorkAssignedWork } from "./services/WorkAssignedWork.ts";
 import { WorkDashboard } from "./services/WorkDashboard.ts";
 import { WorkDashboardMetrics } from "./services/WorkDashboardMetrics.ts";
 import { WorkFileAccess } from "./services/WorkFileAccess.ts";
+import { WorkFlowDashboardMetrics } from "./services/WorkFlowDashboardMetrics.ts";
 import { WorkProjectCounts } from "./services/WorkProjectCounts.ts";
 
 /**
@@ -67,6 +76,7 @@ export const LoreWorkApi = $module({
     // scope proof read on the server (the browser gets it from
     // `LoreWorkWeb`).
     WorkDashboardMetrics,
+    WorkFlowDashboardMetrics,
     ReleaseAttachmentService,
     ReleaseContentService,
     RoadmapService,
@@ -127,6 +137,14 @@ export const LoreWorkApi = $module({
     // one in-memory tally and it lives here.
     QuestTagTallyService,
     UntriagedFeedbackMetric,
+    // The flow tiles of #E77 (#Q2653), wrapping the Reports queries.
+    DashboardFlowSeries,
+    BurnupMetric,
+    CompletedPerWeekMetric,
+    CompletedThisWeekMetric,
+    CycleTimeMetric,
+    QuestBreakdownMetric,
+    BoardColumnsMetric,
     // Controllers
     QuestController,
     QuestCommentController,
@@ -136,6 +154,7 @@ export const LoreWorkApi = $module({
     EpicController,
     AreaController,
     ProjectReportsController,
+    ProjectReportsService,
     ProjectQuestPortabilityController,
     KanbanController,
     FeedbackController,

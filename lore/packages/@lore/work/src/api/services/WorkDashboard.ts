@@ -84,8 +84,8 @@ export class WorkDashboard {
    * Work's candidates for the computed board (#Q2652, folio #F1364).
    *
    * Needs you: held quests, then untriaged feedback, each hidden at zero
-   * (the merged list of #Q2656 takes the slot's first rank). Flow: the open
-   * quests, last, behind the Reports tiles of #Q2653.
+   * (the merged list of #Q2656 takes the slot's first rank). Flow: the
+   * Reports tiles of #Q2653, then the open quests.
    */
   protected registerSlots(): void {
     const above = (min: number) => (value: { value?: number }) =>
@@ -102,6 +102,31 @@ export class WorkDashboard {
       rank: 60,
       metric: "untriagedFeedback",
       keep: above(1),
+    });
+    // Flow (#Q2653): board columns, then completed per week, then the
+    // burn-up, each only once the window holds five completions: below that
+    // a flow chart is a few dots and says nothing.
+    const flowing = (value: { detail: Record<string, unknown> }) =>
+      Number(value.detail.windowCompletions ?? 0) >= 5;
+    this.slots.register({
+      slot: "flow",
+      rank: 10,
+      metric: "boardColumns",
+      keep: flowing,
+    });
+    this.slots.register({
+      slot: "flow",
+      rank: 20,
+      metric: "completedPerWeek",
+      keep: flowing,
+      size: 2,
+    });
+    this.slots.register({
+      slot: "flow",
+      rank: 30,
+      metric: "burnup",
+      keep: flowing,
+      size: 2,
     });
     this.slots.register({
       slot: "flow",

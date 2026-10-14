@@ -271,6 +271,13 @@ export class CapabilityRegistry {
         "epicProgress",
         "releaseProgress",
         "tagCompletion",
+        // The flow tiles of #E77 (#Q2653).
+        "burnup",
+        "completedPerWeek",
+        "completedThisWeek",
+        "cycleTime",
+        "questBreakdown",
+        "boardColumns",
       ],
       // Areas belong here: quests carry one, blights forward into one, and
       // `project_context` files them beside the epic index.

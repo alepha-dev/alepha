@@ -153,7 +153,7 @@ export interface DashboardMetricDescriptor {
   /**
    * Catalogue section in the Add-card panel.
    */
-  group: "quests" | "epics" | "inbox" | "apps";
+  group: "quests" | "flow" | "epics" | "inbox" | "apps" | "knowledge" | "core";
   /**
    * i18n key for the catalogue row.
    */
@@ -221,6 +221,14 @@ export interface DashboardMetricDescriptor {
    * `metric.key === "uniqueVisitors"` in two components, which is what it was.
    */
   needsBeacon?: boolean;
+  /**
+   * A project permission the READER must hold for this tile to show them
+   * anything: `stats:read` for the tiles that wrap the Reports queries
+   * (#Q2653), the same gate the Reports tabs have. A reader without it gets
+   * `empty: "noAccess"`, which a computed board drops and a customized one
+   * shows in edit mode only.
+   */
+  requires?: string;
   /**
    * Where clicking goes.
    *

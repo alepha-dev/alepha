@@ -164,6 +164,25 @@ const DashboardCardFooter = (props: DashboardCardFooterProps) => {
         args: [`${delta > 0 ? "+" : ""}${delta}`],
       });
     }
+    if (props.metric === "burnup") {
+      return tr("dashboard.footer.burnup", {
+        args: [String(props.value?.value ?? 0), String(detail.created ?? 0)],
+      });
+    }
+    if (props.metric === "completedPerWeek") {
+      return tr("dashboard.footer.completedPerWeek");
+    }
+    if (props.metric === "completedThisWeek") {
+      return tr("dashboard.footer.completedThisWeek", {
+        args: [String(detail.lastWeek ?? 0)],
+      });
+    }
+    if (props.metric === "cycleTime") return tr("dashboard.footer.cycleTime");
+    if (props.metric === "boardColumns") {
+      return tr("dashboard.footer.boardColumns", {
+        args: [String(props.value?.value ?? 0)],
+      });
+    }
     return "";
   })();
 
