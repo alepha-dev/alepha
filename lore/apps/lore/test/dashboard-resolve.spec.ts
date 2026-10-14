@@ -6,6 +6,7 @@ import {
 } from "@lore/core/api";
 import {
   dashboardCards,
+  DashboardMetricCatalog,
   dashboardSettings,
   type Project,
 } from "@lore/core/schemas";
@@ -1450,11 +1451,19 @@ describe("dashboard resolve", () => {
       // scope, so only the board argument reaching `accepts()` can refuse
       // this. Without it the card would resolve and put a cross-project
       // metric on a project's board.
+      // No shipped metric is home-only since #Q2650; one registered here.
+      const catalog = ctx.alepha.inject(DashboardMetricCatalog);
+      catalog.register({
+        ...catalog.get("uniqueVisitors"),
+        key: "testHomeOnly",
+        order: 999,
+        boards: ["home"],
+      });
       const values = await registry.resolveForProject(
         [
           {
             id: 1,
-            metric: "uniqueVisitors",
+            metric: "testHomeOnly",
             scope: { kind: "apps", sigilIds: [sigil.id] },
             filters: { period: "yesterday" },
             size: 1,

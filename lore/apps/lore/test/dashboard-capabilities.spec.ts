@@ -317,15 +317,75 @@ describe("dashboard cards and capabilities", () => {
       expect,
     }) => {
       const catalog = ctx.alepha.inject(DashboardMetricCatalog);
-
-      // `uniqueVisitors` is home's: its scope is a set of apps that may span
-      // projects, which inside one project is a question with a different
-      // answer. The scope kind is accepted on home and the metric is not
-      // offered at all on a project board, and `accepts` refuses on the
+      // No shipped metric is home-only since #Q2650, so the rule is pinned on
+      // one registered here: the scope kind is accepted on home, the metric
+      // is not offered on a project board, and `accepts` refuses on the
       // second ground even though the first would have passed.
-      expect(catalog.accepts("uniqueVisitors", "apps", "home")).toBe(true);
-      expect(catalog.accepts("uniqueVisitors", "apps", "project")).toBe(false);
-      expect(catalog.offers("uniqueVisitors", "project")).toBe(false);
+      catalog.register({
+        ...catalog.get("uniqueVisitors"),
+        key: "testHomeOnly",
+        order: 999,
+        boards: ["home"],
+      });
+
+      expect(catalog.accepts("testHomeOnly", "apps", "home")).toBe(true);
+      expect(catalog.accepts("testHomeOnly", "apps", "project")).toBe(false);
+      expect(catalog.offers("testHomeOnly", "project")).toBe(false);
+    });
+
+    it("offers blights, visitors and feedback on a project board", ({
+      expect,
+    }) => {
+      const catalog = ctx.alepha.inject(DashboardMetricCatalog);
+
+      for (const key of [
+        "openBlights",
+        "uniqueVisitors",
+        "untriagedFeedback",
+      ]) {
+        expect(catalog.offers(key, "project"), key).toBe(true);
+      }
+      // The project itself, or some of its apps, for the two that can name
+      // apps; nothing to ask for feedback, which no flow attributes to an app.
+      expect(catalog.pickableScopeKinds("openBlights", "project")).toEqual([
+        "projects",
+        "apps",
+      ]);
+      expect(catalog.pickableScopeKinds("uniqueVisitors", "project")).toEqual([
+        "projects",
+        "apps",
+      ]);
+      expect(catalog.forcedScope("untriagedFeedback", "project", 7)).toEqual({
+        kind: "projects",
+        projectIds: [7],
+      });
+    });
+
+    it("declares the capability and option every project-board metric depends on", ({
+      expect,
+    }) => {
+      const catalog = ctx.alepha.inject(DashboardMetricCatalog);
+      const needs = Object.fromEntries(
+        catalog.on("project").map((it) => [it.key, it.needs]),
+      );
+
+      expect(needs).toMatchObject({
+        activeQuests: { capability: "work" },
+        heldQuests: { capability: "work" },
+        epicProgress: { capability: "work", option: "epics" },
+        releaseProgress: { capability: "work", option: "releases" },
+        tagCompletion: { capability: "work" },
+        untriagedFeedback: { capability: "support" },
+        openBlights: { capability: "apps", option: "track" },
+        uniqueVisitors: { capability: "apps", option: "track" },
+      });
+      for (const metric of catalog.on("project")) {
+        expect(
+          metric.needs,
+          `${metric.key} declares no capability`,
+        ).toBeDefined();
+      }
+      expect(catalog.get("uniqueVisitors").needsBeacon).toBe(true);
     });
 
     it("offers On hold only inside a project, beside Active quests", ({

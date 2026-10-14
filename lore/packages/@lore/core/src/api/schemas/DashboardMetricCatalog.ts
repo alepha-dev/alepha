@@ -352,7 +352,21 @@ export class DashboardMetricCatalog {
     if (board === "home") {
       return kinds;
     }
-    return kinds.filter((kind) => kind !== "all" && kind !== "projects");
+    const narrower = kinds.filter(
+      (kind) => kind !== "all" && kind !== "projects",
+    );
+    // ⚠️ A metric that takes the whole project AND something narrower (open
+    // blights, visitors: the project, or some of its apps) keeps "this
+    // project" as a choice beside the narrower one (#Q2650). Dropping it
+    // would make every blights card on a project board name an app, and a
+    // project with one app would be asked a question with one answer.
+    if (
+      narrower.length > 0 &&
+      (kinds.includes("projects") || kinds.includes("all"))
+    ) {
+      return ["projects", ...narrower];
+    }
+    return narrower;
   }
 
   /**

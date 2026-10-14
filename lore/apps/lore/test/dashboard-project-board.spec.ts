@@ -1,5 +1,8 @@
 import { ProjectController, ProjectDashboardController } from "@lore/core/api";
-import { projectDashboardCards } from "@lore/core/schemas";
+import {
+  DashboardMetricCatalog,
+  projectDashboardCards,
+} from "@lore/core/schemas";
 import { createPresetRanks } from "@lore/core/testing";
 import { Alepha } from "alepha";
 import { RankService } from "alepha/api/organizations";
@@ -236,12 +239,20 @@ describe("the project dashboard controller", () => {
       expect,
     }) => {
       const { owner, projectId } = await ownedProject(ctx);
+      // No shipped metric is home-only since #Q2650; one registered here.
+      const catalog = ctx.alepha.inject(DashboardMetricCatalog);
+      catalog.register({
+        ...catalog.get("uniqueVisitors"),
+        key: "testHomeOnly",
+        order: 999,
+        boards: ["home"],
+      });
 
       await expect(
         ctx.board.addProjectDashboardCard.fetch(
           {
             params: { projectId },
-            body: { metric: "uniqueVisitors", scope: { kind: "all" } },
+            body: { metric: "testHomeOnly", scope: { kind: "all" } },
           },
           { user: owner },
         ),

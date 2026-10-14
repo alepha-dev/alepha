@@ -203,7 +203,11 @@ export class WorkDashboardMetrics {
     this.catalog.register({
       key: "untriagedFeedback",
       order: 70,
-      boards: ["home"],
+      /**
+       * On project boards too since #Q2650: a project that watches its apps
+       * or takes feedback has as much reason to see it as its owner's home.
+       */
+      boards: ["home", "project"],
       group: "inbox",
       labelKey: "dashboard.metric.untriagedFeedback",
       cardLabelKey: "dashboard.metric.untriagedFeedback.card",

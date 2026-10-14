@@ -182,7 +182,14 @@ const DashboardCatalogue = (props: DashboardCatalogueProps) => {
       return { kind: "all" };
     }
     if (kinds.includes("projects")) {
-      return { kind: "projects", projectIds: [] };
+      // On a project board "projects" means this one, so it starts chosen.
+      return {
+        kind: "projects",
+        projectIds:
+          props.board === "project" && props.boardProjectId
+            ? [props.boardProjectId]
+            : [],
+      };
     }
     // ⚠️ Every kind gets a branch, and the fallback is `apps` because it is
     // the last one left rather than because it is a safe default. It used to

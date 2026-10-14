@@ -20,7 +20,11 @@ export class DeployDashboardMetrics {
     this.catalog.register({
       key: "openBlights",
       order: 60,
-      boards: ["home"],
+      /**
+       * On project boards too since #Q2650: a project that watches its apps
+       * or takes feedback has as much reason to see it as its owner's home.
+       */
+      boards: ["home", "project"],
       group: "inbox",
       labelKey: "dashboard.metric.openBlights",
       hintKey: "dashboard.metric.openBlights.hint",
@@ -46,7 +50,11 @@ export class DeployDashboardMetrics {
     this.catalog.register({
       key: "uniqueVisitors",
       order: 80,
-      boards: ["home"],
+      /**
+       * On project boards too since #Q2650: a project that watches its apps
+       * or takes feedback has as much reason to see it as its owner's home.
+       */
+      boards: ["home", "project"],
       group: "apps",
       labelKey: "dashboard.metric.uniqueVisitors",
       hintKey: "dashboard.metric.uniqueVisitors.hint",

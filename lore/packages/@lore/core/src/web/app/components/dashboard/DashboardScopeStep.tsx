@@ -96,7 +96,10 @@ const DashboardScopeStep = (props: DashboardScopeStepProps) => {
   const kinds = catalog.pickableScopeKinds(props.metric.key, props.board);
 
   const projects = eligibleProjects(props.metric, props.projects);
-  const apps = eligibleApps(props.metric, props.apps, props.projects);
+  const eligible = eligibleApps(props.metric, props.apps, props.projects);
+  // On a project board one app IS the project, so the app rows only appear
+  // when there is a real choice between several (#Q2650).
+  const apps = props.board === "project" && eligible.length < 2 ? [] : eligible;
 
   const selectProject = (projectId: number) =>
     props.onChange({ kind: "projects", projectIds: [projectId] });
