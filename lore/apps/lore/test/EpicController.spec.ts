@@ -486,34 +486,61 @@ describe("EpicController", () => {
     expect(after.updatedAt).toEqual(before.updatedAt);
   });
 
-  it("orphans its quests and folios on delete instead of writing to them", async ({
+  it("deletes its quests with it while draft or ready, and keeps its folios unfiled", async ({
     expect,
   }) => {
     const project = await createTestProject(ctx.alepha);
     const user = ownerToken(project);
+    for (const status of ["draft", "ready"] as const) {
+      const epic = await createTestEpic(ctx.alepha, project, { status });
+      const first = await createTestQuest(ctx.alepha, project, {
+        epicId: epic.id,
+      });
+      const second = await createTestQuest(ctx.alepha, project, {
+        epicId: epic.id,
+      });
+      // A loose quest that waited on one of the epic's: the delete path
+      // clears the edge, as `deleteQuest` does.
+      const dependent = await createTestQuest(ctx.alepha, project, {
+        dependsOn: first.id,
+      });
+      const folio = await createTestFolio(ctx.alepha, project, {
+        epicId: epic.id,
+      });
+
+      const result = await ctx.controller.deleteEpic(
+        { params: { id: epic.id } },
+        { user },
+      );
+
+      expect(result).toEqual({ ok: true, count: 2 });
+      for (const quest of [first, second]) {
+        expect(
+          await ctx.repos.quests.findOne({ where: { id: { eq: quest.id } } }),
+        ).toBeUndefined();
+      }
+      expect(
+        (await ctx.repos.quests.getById(dependent.id)).dependsOn,
+      ).toBeUndefined();
+      expect(await ctx.repos.folios.getById(folio.id)).toBeDefined();
+      expect(await filedEpicOf(ctx.alepha, folio.id)).toBeUndefined();
+      expect(
+        await ctx.repos.epics.findOne({ where: { id: { eq: epic.id } } }),
+      ).toBeUndefined();
+    }
+  });
+
+  it("answers a zero count for an epic with no quests", async ({ expect }) => {
+    const project = await createTestProject(ctx.alepha);
+    const user = ownerToken(project);
     const epic = await createTestEpic(ctx.alepha, project);
-    const quest = await createTestQuest(ctx.alepha, project, {
-      epicId: epic.id,
-    });
-    const folio = await createTestFolio(ctx.alepha, project, {
-      epicId: epic.id,
-    });
-    const questUpdatedAtBefore = (await ctx.repos.quests.getById(quest.id))
-      .updatedAt;
-    const folioUpdatedAtBefore = (await ctx.repos.folios.getById(folio.id))
-      .updatedAt;
 
-    await ctx.controller.deleteEpic({ params: { id: epic.id } }, { user });
+    const result = await ctx.controller.deleteEpic(
+      { params: { id: epic.id } },
+      { user },
+    );
 
-    const survivingQuest = await ctx.repos.quests.getById(quest.id);
-    const survivingFolio = await ctx.repos.folios.getById(folio.id);
-    expect(survivingQuest.epicId).toBeUndefined();
-    expect(await filedEpicOf(ctx.alepha, folio.id)).toBeUndefined();
-    // The FK's `ON DELETE SET NULL` fires at the database level, not
-    // through an application-level UPDATE — `updatedAt` (an app-maintained
-    // column) proves no application code iterated and wrote these rows.
-    expect(survivingQuest.updatedAt).toEqual(questUpdatedAtBefore);
-    expect(survivingFolio.updatedAt).toEqual(folioUpdatedAtBefore);
+    expect(result).toEqual({ ok: true, count: 0 });
   });
 
   it("attaches and detaches a quest, updating the progress rollup", async ({
@@ -700,22 +727,29 @@ describe("EpicController", () => {
     expect(result.progress.total).toBe(1);
   });
 
-  it("still deletes an in-progress or completed epic, detaching its quests", async ({
+  it("refuses to delete an in-progress or completed epic, and touches none of its quests", async ({
     expect,
   }) => {
-    // Deleting a plan is not editing one: the freeze refuses attach, detach
-    // and quest deletion, never the destructive, audited act on the epic.
+    // Deleting the epic deletes its quests, so it takes the rule deleting one
+    // quest out of an epic already follows: draft or ready only. Started or
+    // shipped work is shelved instead.
     const project = await createTestProject(ctx.alepha);
     const user = ownerToken(project);
-    for (const status of ["in_progress", "completed"] as const) {
+    for (const [status, message] of [
+      ["in_progress", /is in progress.*Shelve the epic instead/],
+      ["completed", /is completed/],
+    ] as const) {
       const epic = await createTestEpic(ctx.alepha, project, { status });
       const quest = await createTestQuest(ctx.alepha, project, {
         epicId: epic.id,
       });
 
-      await ctx.controller.deleteEpic({ params: { id: epic.id } }, { user });
+      await expect(
+        ctx.controller.deleteEpic({ params: { id: epic.id } }, { user }),
+      ).rejects.toThrow(message);
 
-      expect((await ctx.repos.quests.getById(quest.id)).epicId).toBeUndefined();
+      expect((await ctx.repos.quests.getById(quest.id)).epicId).toBe(epic.id);
+      expect(await ctx.repos.epics.getById(epic.id)).toBeDefined();
     }
   });
 

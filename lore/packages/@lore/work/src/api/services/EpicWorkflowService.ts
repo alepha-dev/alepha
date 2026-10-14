@@ -257,6 +257,30 @@ export class EpicWorkflowService {
   }
 
   /**
+   * An epic is deleted only while it is `draft` or `ready` (#Q2666).
+   *
+   * Deleting an epic deletes its quests, and that is the rule
+   * {@link assertPlanEditable} already applies to deleting one quest out of
+   * an epic, one level up. An `in_progress` epic holds started work and a
+   * `completed` one is the record of shipped work (commits, changelog
+   * entries): neither is a mis-created plan, so the refusal names shelving,
+   * which keeps the record and takes the work out of the backlog.
+   */
+  assertEpicDeletable(epic: Pick<Epic, "number" | "status">): void {
+    if (epic.status === "draft" || epic.status === "ready") return;
+
+    const reference = formatReference("epic", epic.number);
+    if (epic.status === "completed") {
+      throw new BadRequestError(
+        `Cannot delete Epic ${reference}: it is completed, and its quests are the record of shipped work.`,
+      );
+    }
+    throw new BadRequestError(
+      `Cannot delete Epic ${reference}: it is in progress, and deleting it would delete started work. Shelve the epic instead.`,
+    );
+  }
+
+  /**
    * The only status moves a person makes: `draft` to `ready` and back.
    *
    * `ready` to `draft` stays open because nothing has started: the epic

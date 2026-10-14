@@ -6,10 +6,18 @@ import {
   LoreAudits,
   ResourceLinkService,
 } from "@lore/core/api";
+import { type Project } from "@lore/core/schemas";
+import { formatReference } from "@lore/core/web";
 import { $inject, z } from "alepha";
+import { RankService } from "alepha/api/organizations";
 import { $repository, $sequence } from "alepha/orm";
 import { OwnedResourceProvider, type UserAccountToken } from "alepha/security";
-import { $action, BadRequestError, okSchema } from "alepha/server";
+import {
+  $action,
+  BadRequestError,
+  ForbiddenError,
+  okSchema,
+} from "alepha/server";
 
 import { type Epic, epics } from "../entities/epics.ts";
 import { quests } from "../entities/quests.ts";
@@ -30,6 +38,7 @@ import {
   EpicProgressService,
 } from "../services/EpicProgressService.ts";
 import { EpicWorkflowService } from "../services/EpicWorkflowService.ts";
+import { QuestDeletionService } from "../services/QuestDeletionService.ts";
 import { ReleaseAttachmentService } from "../services/ReleaseAttachmentService.ts";
 import { ReleaseCascadeService } from "../services/ReleaseCascadeService.ts";
 
@@ -84,6 +93,8 @@ export class EpicController {
   workflow = $inject(EpicWorkflowService);
   audits = $inject(LoreAudits);
   owned = $inject(OwnedResourceProvider);
+  questDeletion = $inject(QuestDeletionService);
+  protected readonly ranks = $inject(RankService);
 
   /**
    * One project-layer audit row for something that happened to an epic.
@@ -530,13 +541,31 @@ export class EpicController {
   });
 
   /**
-   * Relies on the `epicId` FK's `ON DELETE SET NULL` to orphan the epic's
-   * quests; its folios are `filed` links, which the link delete below
-   * removes with its mentions (#Q2626). `epics` carries `deletedAt` (soft delete), so a
-   * plain `deleteById` would only UPDATE the row and never reach the
-   * physical DELETE that fires the FK action — `force: true` is what
-   * makes this a real delete. Must never iterate quests/folios to clear
-   * them by hand.
+   * Delete the epic AND its quests (#Q2666), while it is `draft` or `ready`.
+   *
+   * It used to delete the epic alone and let `quests.epicId`'s
+   * `ON DELETE SET NULL` drop every quest into the backlog as an orphan, so
+   * deleting a mis-created plan left its whole quest set to clean up by
+   * hand. A started or completed epic is refused
+   * (`EpicWorkflowService.assertEpicDeletable`): it holds work, and is
+   * shelved instead.
+   *
+   * - **Each quest goes through `QuestDeletionService`**, the path
+   *   `QuestController.deleteQuest` takes (dependents, the registry, links,
+   *   audit). Never a hand-written `DELETE` on the rows. Deleting them needs
+   *   `quest:delete` as well as the gate's `epic:write`.
+   * - **Folios are unfiled, never deleted**: they are knowledge and outlive
+   *   plans, and `@lore/work` does not reach into `@lore/knowledge`. The
+   *   `filed` links go with the epic's outbound links below (#Q2626).
+   * - **No transaction (D1 has none), so the epic goes LAST.** A failure
+   *   halfway leaves the epic in place with the quests not yet deleted, and
+   *   a retry finishes the job.
+   *
+   * `epics` carries `deletedAt` (soft delete), so a plain `deleteById` would
+   * only UPDATE the row; `force: true` makes it a real delete, which is what
+   * fires `dependsOn`'s `SET NULL` on the epics that came after it.
+   *
+   * Answers the number of quests deleted, as `count`.
    */
   deleteEpic = $action({
     use: [this.ownsEpicForWork("epic:write")],
@@ -546,16 +575,37 @@ export class EpicController {
     },
     handler: async ({ params, user }) => {
       const epic = this.owned.get<Epic>();
+      const project = this.owned.authority<Project>();
 
-      // `folio_links.from_id` is not a foreign key, so the FK cascade this
-      // delete relies on for quests does not reach the link graph — see
-      // `ResourceLinkService.deleteLinksFrom`. Every row from the epic goes:
-      // its mentions, and the `filed` rows that held its folios.
+      this.workflow.assertEpicDeletable(epic);
+
+      const doomed = await this.quests.findMany({
+        where: { epicId: { eq: epic.id } },
+      });
+      if (
+        doomed.length > 0 &&
+        !(await this.ranks.can(project.organizationId!, "quest:delete", user))
+      ) {
+        throw new ForbiddenError(
+          `Deleting Epic ${formatReference("epic", epic.number)} deletes its ${doomed.length} quests, which needs the right to delete quests here.`,
+        );
+      }
+
+      for (const quest of doomed) {
+        await this.questDeletion.delete(quest, user);
+      }
+
+      // `folio_links.from_id` is not a foreign key, so no FK action reaches
+      // the link graph — see `ResourceLinkService.deleteLinksFrom`. Every
+      // row from the epic goes: its mentions, and the `filed` rows that held
+      // its folios.
       await this.linkService.deleteLinksFrom({ kind: "epic", id: params.id });
       await this.epics.deleteById(params.id, { force: true });
-      await this.logEpic("delete", epic, user);
+      await this.logEpic("delete", epic, user, {
+        deletedQuests: doomed.length,
+      });
 
-      return { ok: true };
+      return { ok: true, count: doomed.length };
     },
   });
 

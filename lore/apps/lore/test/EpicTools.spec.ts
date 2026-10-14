@@ -450,13 +450,13 @@ describe("Lore MCP — epics", () => {
   });
 
   describe("epic_delete", () => {
-    it("detaches the epic's quests and folios instead of deleting them", async ({
+    it("deletes the epic's quests and keeps its folios, unfiled", async ({
       expect,
     }) => {
-      // The FK's `ON DELETE SET NULL` is the whole contract of this tool, and
-      // the reason its description has to say so: an agent reading only the
-      // tool list must not have to guess whether it is about to erase the
-      // work filed under the epic.
+      // Deleting an epic deletes its quests (#Q2666), and the tool's
+      // description has to say so: an agent reading only the tool list must
+      // not have to guess whether it is about to erase the work filed under
+      // the epic. Folios are knowledge and survive the plan.
       const { alepha, repos, project, epicTools, call } = await setup();
       const epic = await createTestEpic(alepha, project);
       const quest = await createTestQuest(alepha, project, { epicId: epic.id });
@@ -468,7 +468,10 @@ describe("Lore MCP — epics", () => {
       });
 
       expect(result.ok).toBe(true);
-      expect((await repos.quests.getById(quest.id)).epicId).toBeUndefined();
+      expect(
+        await repos.quests.findOne({ where: { id: { eq: quest.id } } }),
+      ).toBeUndefined();
+      expect(await repos.folios.getById(folio.id)).toBeDefined();
       expect(await filedEpicOf(alepha, folio.id)).toBeUndefined();
     });
 

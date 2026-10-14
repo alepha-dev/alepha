@@ -365,8 +365,12 @@ export const quests = $entity({
       onDelete: "set null",
     }),
     /**
-     * Optional owning epic. `SET NULL` on delete: removing an epic orphans
-     * its quests, it never deletes them.
+     * Optional owning epic. The FK is `SET NULL`, but `deleteEpic` deletes
+     * the epic's quests itself before the epic goes (#Q2666), through
+     * `QuestDeletionService`, so the FK action only ever meets a quest that
+     * was already soft-deleted. The column is never changed to `CASCADE`:
+     * that is a rebuild of `quests`, and a cascade would skip the path that
+     * clears dependents and links.
      *
      * ⚠️ Declared optional with NO `db.default(...)` so the migration is a
      * plain additive `ALTER TABLE ADD COLUMN`. A column DEFAULT triggers a
