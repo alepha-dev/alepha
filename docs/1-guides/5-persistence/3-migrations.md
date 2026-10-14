@@ -59,7 +59,7 @@ Apply generated migrations to the database:
 alepha db migrations apply
 ```
 
-It boots the app in production mode with `MIGRATE=true`, which applies the migrations and exits. A built app does the same with `MIGRATE=true node dist/index.<runtime>.js` (or `MODE=MIGRATE`).
+It boots the app in production mode with `MIGRATE=true`, which applies the migrations of every provider and exits (it takes no `--provider`). A built app does the same with `MIGRATE=true node dist/index.<runtime>.js` (or `MODE=MIGRATE`).
 
 ### Environment Selection
 

@@ -16,11 +16,11 @@ Migrations are written to `migrations/<provider>/` - one directory per database 
 
 ## Common Flags
 
-All subcommands accept:
+Every subcommand except `migrations apply` accepts:
 
-| Flag         | Description                                                                                                                                                                                                   |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--provider` | Target a single database provider by name (e.g. `postgres`, `sqlite`). Default: all providers with repositories. `migrations apply` accepts it but always boots the whole app, so every provider is migrated. |
+| Flag         | Description                                                                                                      |
+| ------------ | ---------------------------------------------------------------------------------------------------------------- |
+| `--provider` | Target a single database provider by name (e.g. `postgres`, `sqlite`). Default: all providers with repositories. |
 
 ## Commands
 
