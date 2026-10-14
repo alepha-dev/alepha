@@ -80,6 +80,27 @@ export class ReactPageCacheProvider {
   }
 
   /**
+   * Whether a page about to be cached is first rendered again as nobody, to
+   * catch personal data that reached the markup without a tracked read
+   * (#E78). Development and tests only: it doubles the cost of a miss.
+   */
+  public get anonymousCheck(): boolean {
+    return this.options.anonymousCheck && !this.alepha.isProduction();
+  }
+
+  /**
+   * The raw state key marking the anonymous re-render's fork: the cache is
+   * off inside it.
+   */
+  public static readonly CHECK_KEY = "alepha.react.page.check";
+
+  /**
+   * Keys whose last write the anonymous check refused, reported as
+   * `refused` by the development header until a write succeeds.
+   */
+  public readonly refused = new Set<string>();
+
+  /**
    * The build segment of every key: a deploy misses every entry the previous
    * code rendered, with no purge.
    */
@@ -138,7 +159,11 @@ export class ReactPageCacheProvider {
       url: URL;
     },
   ): PageCachePlan | undefined {
-    if (!this.enabled || route.cache === false) {
+    if (
+      !this.enabled ||
+      route.cache === false ||
+      this.alepha.context.get(ReactPageCacheProvider.CHECK_KEY)
+    ) {
       return undefined;
     }
 
@@ -452,7 +477,7 @@ export class ReactPageCacheProvider {
    * The language segment: present whenever `alepha/react/i18n` is installed,
    * since `__ssr` carries it and `<html lang>` is in the body.
    */
-  protected lang(): string | undefined {
+  public lang(): string | undefined {
     const value = this.alepha.store.getUntracked(
       "alepha.react.i18n.lang" as never,
     ) as unknown;
@@ -633,10 +658,16 @@ export const reactPageCacheOptions = $atom({
       .describe(
         "Most entries the in-process tier keeps before evicting the least recently used.",
       ),
+    anonymousCheck: z
+      .boolean()
+      .describe(
+        "Outside production, render a page again as an anonymous visitor before its first cache write, and refuse the write when the two differ.",
+      ),
   }),
   default: {
     enabled: true,
     max: 1000,
+    anonymousCheck: true,
   },
   serverOnly: true,
 });

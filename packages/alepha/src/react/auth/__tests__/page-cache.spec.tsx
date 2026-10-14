@@ -196,6 +196,12 @@ describe("automatic page cache", () => {
       .with(AlephaSecurity)
       .with(AlephaReactAuth)
       .with(App);
+    // These count loader runs; the anonymous re-render runs them twice and
+    // has its own spec (page-anonymous-check).
+    alepha.store.mut(reactPageCacheOptions, (it) => ({
+      ...it,
+      anonymousCheck: false,
+    }));
     const app = alepha.inject(App);
     await alepha.start();
     const base = alepha.inject(ServerProvider).hostname;

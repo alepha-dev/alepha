@@ -17,6 +17,7 @@ import { $logger } from "alepha/logger";
 import { ServerHeadProvider, type SimpleHead } from "alepha/react/head";
 import {
   type ServerHandler,
+  ServerReply,
   type ServerRequest,
   ServerRouterProvider,
 } from "alepha/server";
@@ -781,7 +782,15 @@ export class ReactServerProvider {
         }
       }
       const sink = cached && recorder ? new PageCacheSink() : undefined;
-      const outcome = cached ? "miss" : plan ? "bypass" : "off";
+      const outcome = cached
+        ? this.pageCache.refused.has(cached.key) && dev
+          ? "refused"
+          : "miss"
+        : plan
+          ? "bypass"
+          : "off";
+      // Read now: the stream-end write may run outside the request's context.
+      const lang = this.pageCache.lang();
 
       if (route.stream === false) {
         // `stream: false` exists so a page can choose its status code: this
@@ -812,7 +821,10 @@ export class ReactServerProvider {
         }
         reply.body = html;
         if (sink && cached && recorder) {
-          await this.storePage(serverRequest, state, recorder, sink, cached);
+          await this.storePage(route, serverRequest, state, recorder, sink, {
+            ...cached,
+            lang,
+          });
         }
         return;
       }
@@ -891,13 +903,10 @@ export class ReactServerProvider {
             this.logVerdict(route, recorder);
             if (sink && cached && recorder) {
               // Written after the last byte left: the visitor never waits.
-              this.storePage(
-                serverRequest,
-                state,
-                recorder,
-                sink,
-                cached,
-              ).catch((error) =>
+              this.storePage(route, serverRequest, state, recorder, sink, {
+                ...cached,
+                lang,
+              }).catch((error) =>
                 this.log.warn("Page cache write failed", error),
               );
             }
@@ -931,11 +940,12 @@ export class ReactServerProvider {
    * no `Set-Cookie`, and a verdict that is not personal.
    */
   protected async storePage(
+    route: PageRoute,
     serverRequest: ServerRequest,
     state: ReactRouterState,
     recorder: ReadRecorder,
     sink: PageCacheSink,
-    plan: { key: string; ttlMs: number },
+    plan: { key: string; ttlMs: number; lang?: string },
   ): Promise<void> {
     const clean = await sink.finished;
     const { reply } = serverRequest;
@@ -967,11 +977,104 @@ export class ReactServerProvider {
       }
     }
 
+    const parts = sink.parts();
+
+    // Outside production, the read tracker gets a second opinion before the
+    // first write: the same page rendered for nobody must be byte for byte
+    // the same. A difference is personal data that reached the markup through
+    // a channel the tracker cannot see (#E78).
+    if (this.pageCache.anonymousCheck) {
+      const difference = await this.renderAnonymously(
+        route,
+        serverRequest,
+        plan.lang,
+        parts.head + parts.tail,
+      );
+      if (difference) {
+        this.pageCache.refused.add(plan.key);
+        this.log.error(
+          `Page "${route.name}" was not cached: rendered again for an anonymous visitor, it differs. ` +
+            "Something personal reached the markup without a tracked read (a service keyed by user, " +
+            "a module variable, a value read from the raw request), or the markup is not deterministic " +
+            "(a time, a random value). Fix the page, or set `cache: false`.",
+          { key: plan.key, ...difference },
+        );
+        reply.headers["x-alepha-cache"] = "refused";
+        return;
+      }
+    }
+
+    this.pageCache.refused.delete(plan.key);
     await this.pageCache.write(
       plan.key,
-      { ...sink.parts(), status, verdict, headers },
+      { ...parts, status, verdict, headers },
       plan.ttlMs,
     );
+  }
+
+  /**
+   * Render `route` again for nobody, in a fresh store fork that cannot see
+   * the visitor's: no user, no session cookie, no `authorization`, no
+   * cookie-bound atom; the same URL and the same language. Returns where the
+   * shared bytes first differ from `shared`, or nothing when they match.
+   *
+   * Loaders run a second time. Development and tests only.
+   */
+  protected async renderAnonymously(
+    route: PageRoute,
+    serverRequest: ServerRequest,
+    lang: string | undefined,
+    shared: string,
+  ): Promise<{ at: number; cached: string; anonymous: string } | undefined> {
+    const html = await this.alepha.context.runIsolated(async () => {
+      const headers = { ...serverRequest.headers };
+      delete headers.cookie;
+      delete headers.authorization;
+      const reply = new ServerReply();
+      const request = {
+        ...serverRequest,
+        headers,
+        reply,
+        user: undefined,
+        cookies: { req: {}, res: {} },
+        metadata: {},
+      } as ServerRequest;
+
+      this.alepha.context.set(ReactPageCacheProvider.CHECK_KEY, true);
+      this.alepha.context.set("alepha.http.request", request);
+      if (lang !== undefined) {
+        this.alepha.context.set("alepha.react.i18n.lang", lang);
+      }
+
+      await this.createHandler(route)(request);
+      const body = reply.body as
+        | string
+        | ReadableStream<Uint8Array>
+        | undefined;
+      if (body === undefined) {
+        return "";
+      }
+      return typeof body === "string" ? body : this.streamToString(body);
+    });
+
+    const anonymous = html.replace(
+      /<script id="__ssr_private" type="application\/json">[\s\S]*?<\/script>/,
+      "",
+    );
+    if (anonymous === shared) {
+      return undefined;
+    }
+
+    let at = 0;
+    while (at < shared.length && shared[at] === anonymous[at]) {
+      at++;
+    }
+    const from = Math.max(0, at - 40);
+    return {
+      at,
+      cached: shared.slice(from, at + 80),
+      anonymous: anonymous.slice(from, at + 80),
+    };
   }
 
   /**

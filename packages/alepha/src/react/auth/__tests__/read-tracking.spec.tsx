@@ -34,8 +34,10 @@ describe("read tracking", () => {
     protected readonly onBegin = $hook({
       on: "react:server:render:begin",
       handler: ({ request }) => {
-        if (request) {
-          this.last = this.alepha.store.recorder();
+        // The page cache's anonymous re-render runs without a recorder.
+        const recorder = this.alepha.store.recorder();
+        if (request && recorder) {
+          this.last = recorder;
         }
       },
     });

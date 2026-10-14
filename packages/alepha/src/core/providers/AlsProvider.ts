@@ -54,6 +54,25 @@ export class AlsProvider {
   }
 
   /**
+   * Run `callback` in a fresh root context: like {@link run}, but with no
+   * parent, so nothing the caller's context holds is visible inside.
+   *
+   * For work that must not see the request it was started from, such as the
+   * page cache's anonymous re-render of a page (#E78): reading through to the
+   * caller would hand it the visitor's user and cookies.
+   */
+  public runIsolated<R>(callback: () => R, data: Record<string, any> = {}): R {
+    if (!this.als) {
+      return callback();
+    }
+
+    data.registry ??= new Map();
+    data.context ??= this.createContextId();
+
+    return this.als.run({ ...data }, callback);
+  }
+
+  /**
    * Run `callback` in a child layer that keeps the caller's identity.
    *
    * The difference from {@link run} is what this layer does *not* mint: no new

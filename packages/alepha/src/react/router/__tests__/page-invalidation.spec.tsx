@@ -3,7 +3,11 @@ import { CacheProvider, MemoryCacheProvider } from "alepha/cache";
 import { $action, ServerProvider } from "alepha/server";
 import { describe, it } from "vitest";
 
-import { AlephaReactRouter, ReactPageCacheProvider } from "../index.ts";
+import {
+  AlephaReactRouter,
+  ReactPageCacheProvider,
+  reactPageCacheOptions,
+} from "../index.ts";
 import { $page } from "../primitives/$page.ts";
 
 /**
@@ -103,6 +107,11 @@ describe("page cache invalidation", () => {
       alepha.with({ provide: CacheProvider, use: RemoteCacheProvider });
     }
     alepha.with(AlephaReactRouter).with(App);
+    // Counts renders; the anonymous re-render would double them.
+    alepha.store.mut(reactPageCacheOptions, (it) => ({
+      ...it,
+      anonymousCheck: false,
+    }));
     const app = alepha.inject(App);
     await alepha.start();
     const base = alepha.inject(ServerProvider).hostname;

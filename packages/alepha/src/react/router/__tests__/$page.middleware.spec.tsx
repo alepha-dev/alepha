@@ -133,8 +133,9 @@ describe("$page middleware", () => {
     const result = await app.child.fetch({ html: true });
     expect(result.html).toContain("hello");
 
-    // Parent middleware should run before child middleware
-    expect(calls).toEqual(["parent", "child", "loader"]);
+    // Parent middleware should run before child middleware. (The page cache's
+    // anonymous re-render may run the loader once more afterwards, #E78.)
+    expect(calls.slice(0, 3)).toEqual(["parent", "child", "loader"]);
   });
 
   test("is still a PagePrimitive", ({ expect }) => {

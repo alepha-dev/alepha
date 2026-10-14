@@ -9,6 +9,7 @@ import {
   PagePrimitive,
   type ReactRouterState,
   Redirection,
+  reactPageCacheOptions,
 } from "../index.ts";
 
 describe("$page primitive tests", () => {
@@ -407,6 +408,12 @@ describe("$page primitive tests", () => {
       });
     }
 
+    // The markup prints the time, which the anonymous re-render would refuse
+    // (#E78): switched off to show the page cache itself keeps the first copy.
+    alepha.store.mut(reactPageCacheOptions, (it) => ({
+      ...it,
+      anonymousCheck: false,
+    }));
     const app = alepha.inject(App);
     await alepha.start();
 
