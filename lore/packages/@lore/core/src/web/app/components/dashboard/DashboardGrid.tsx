@@ -102,6 +102,7 @@ const DashboardGrid = (props: DashboardGridProps) => {
             }
             icon={descriptor?.icon ?? "circle-dashed"}
             presentation={descriptor?.presentation}
+            chartStyle={descriptor?.chartStyle}
             boardProjectId={props.boardProjectId}
             canEdit={canEdit}
             armed={armed === index}

@@ -8,14 +8,13 @@ import type { DashboardCardResource } from "../../../../api/schemas/dashboardCar
 import type { DashboardCardValue as CardValue } from "../../../../api/schemas/dashboardCardValueSchema.ts";
 import type { DashboardPresentation } from "../../../../api/schemas/DashboardMetricCatalog.ts";
 import type { I18n } from "../../services/I18n.ts";
-import DashboardCardFooter from "./DashboardCardFooter.tsx";
 import DashboardCardMenu from "./DashboardCardMenu.tsx";
-import DashboardCardValue from "./DashboardCardValue.tsx";
 import {
   dashboardFilterChipKeys,
   dashboardFilterChipLabels,
 } from "./dashboardChips.ts";
 import { dashboardMetricIcon } from "./dashboardMetricIcon.ts";
+import DashboardTileBody from "./tiles/DashboardTileBody.tsx";
 
 export interface DashboardCardProps {
   card: DashboardCardResource;
@@ -36,6 +35,10 @@ export interface DashboardCardProps {
    * metric's number is a percentage and is drawn as one.
    */
   presentation?: DashboardPresentation;
+  /**
+   * A `chart` metric's drawing, from the catalogue.
+   */
+  chartStyle?: "area" | "bars";
   /**
    * The project this board belongs to, on a project board.
    *
@@ -129,6 +132,25 @@ const DashboardCard = (props: DashboardCardProps) => {
     );
   })();
 
+  /**
+   * A tile whose rows are links cannot also be one: a button cannot hold a
+   * button. Its own drill-through moves to a "See all" under the rows.
+   */
+  const rowsLink =
+    (props.presentation === "list" ||
+      props.presentation === "feed" ||
+      props.presentation === "status") &&
+    (props.value?.rows ?? []).some((row) => row.link);
+
+  const body = (
+    <DashboardTileBody
+      card={props.card}
+      value={props.value}
+      presentation={props.presentation}
+      chartStyle={props.chartStyle}
+    />
+  );
+
   const open = () => {
     if (!link) return;
     void router.push(
@@ -217,26 +239,28 @@ const DashboardCard = (props: DashboardCardProps) => {
           </span>
         ))}
       </div>
-      {link ? (
+      {link && !rowsLink ? (
         <button
           type="button"
           onClick={open}
           data-testid="dashboard-card-open"
-          className="flex flex-1 flex-col items-start justify-start gap-1 text-left"
+          className="flex min-h-0 flex-1 flex-col items-start justify-start gap-1.5 overflow-hidden text-left"
         >
-          <DashboardCardValue
-            value={props.value}
-            presentation={props.presentation}
-          />
-          <DashboardCardFooter metric={props.card.metric} value={props.value} />
+          {body}
         </button>
       ) : (
-        <div className="flex flex-1 flex-col items-start justify-start gap-1">
-          <DashboardCardValue
-            value={props.value}
-            presentation={props.presentation}
-          />
-          <DashboardCardFooter metric={props.card.metric} value={props.value} />
+        <div className="flex min-h-0 flex-1 flex-col items-start justify-start gap-1.5 overflow-hidden">
+          {body}
+          {link && (
+            <button
+              type="button"
+              onClick={open}
+              data-testid="dashboard-card-open"
+              className="text-primary-text mt-auto text-xs hover:underline"
+            >
+              {tr("dashboard.card.seeAll")}
+            </button>
+          )}
         </div>
       )}
     </div>

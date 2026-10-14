@@ -2258,6 +2258,24 @@ export default {
   "project.dashboard.standfirst.one": "1 carte sur le tableau du projet.",
   "project.dashboard.card.delete.shared":
     "Le tableau appartient au projet : la carte disparait pour tout le monde.",
+  "dashboard.card.seeAll": "Tout voir",
+  "dashboard.empty.noData": "Rien à mesurer ici pour l'instant.",
+  "dashboard.empty.noEpic": "Aucune épopée avec des quêtes dans ce projet.",
+  "dashboard.empty.noRelease": "Aucune version avec des quêtes dans ce projet.",
+  "dashboard.empty.noSigil": "Aucune application ne remonte vers ce projet.",
+  "dashboard.empty.noBeacon":
+    "Aucune application ici ne mesure les pages vues.",
+  "dashboard.empty.silent":
+    "Aucune application n'a donné signe de vie depuis 30 jours.",
+  "dashboard.empty.noFolio": "Ce projet n'a pas encore de folio.",
+  "dashboard.empty.noActivity": "Rien ne s'est passé sur cette période.",
+  "dashboard.empty.noQuests": "Aucune quête ouverte à afficher.",
+  "dashboard.segment.done": "terminées",
+  "dashboard.segment.inProgress": "en cours",
+  "dashboard.segment.todo": "à faire",
+  "dashboard.segment.shelved": "écartées",
+  "dashboard.segment.held": "en pause",
+  "dashboard.marker.deploy": "Déployé",
   "dashboard.refreshed": "Actualise $1.",
   "dashboard.addCard": "Ajouter une carte",
 

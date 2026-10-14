@@ -1,5 +1,6 @@
-import { Skeleton } from "@alepha/ui";
+import { cn, Skeleton } from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
+import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 
 import type { DashboardCardValue as CardValue } from "../../../../api/schemas/dashboardCardValueSchema.ts";
 import type { DashboardPresentation } from "../../../../api/schemas/DashboardMetricCatalog.ts";
@@ -58,11 +59,31 @@ const DashboardCardValue = (props: DashboardCardValueProps) => {
     );
   }
 
+  const delta = props.value.delta;
+
   return (
-    <div className="mt-0.5 text-[32px] leading-none font-semibold tracking-[-0.025em] tabular-nums">
-      {l(props.value.value)}
-      {props.presentation === "progress" && (
-        <span className="text-muted-foreground text-[20px]">%</span>
+    <div className="mt-0.5 flex items-baseline gap-2">
+      <span className="text-[32px] leading-none font-semibold tracking-[-0.025em] tabular-nums">
+        {l(props.value.value)}
+        {props.presentation === "progress" && (
+          <span className="text-muted-foreground text-[20px]">%</span>
+        )}
+      </span>
+      {/* The delta as a direction and a sign, never colour alone. Muted
+          rather than red or green: whether more is better depends on the
+          metric (more visitors, more blights), and the arrow says which way
+          without passing judgement. */}
+      {delta !== undefined && props.presentation !== "progress" && (
+        <span
+          data-testid="tile-delta"
+          className={cn(
+            "text-muted-foreground inline-flex items-center text-xs tabular-nums",
+          )}
+        >
+          {delta > 0 && <ArrowUpRight className="size-3.5" />}
+          {delta < 0 && <ArrowDownRight className="size-3.5" />}
+          {`${delta > 0 ? "+" : ""}${l(delta)}%`}
+        </span>
       )}
     </div>
   );

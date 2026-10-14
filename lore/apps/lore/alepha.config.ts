@@ -229,6 +229,15 @@ export default defineConfig({
         "../../.vendor/@alepha/ui/src",
       ],
       dynamicPrefixes: [
+        // The dashboard tiles of #E77: tr(`dashboard.empty.${reason}`) over
+        // the closed `dashboardEmptyReasonSchema` set, tr(`dashboard.badge.${code}`)
+        // and tr(`dashboard.marker.${kind}`) over codes a resolver puts on a
+        // row or a marker, tr(`dashboard.segment.${label}`) over the named
+        // progress segments. All four are values on the wire, never literals.
+        "dashboard.empty.",
+        "dashboard.badge.",
+        "dashboard.marker.",
+        "dashboard.segment.",
         // tr(`account.notifications.category.${category}`) and its
         // `.description`. A category is a string a `$notification` template
         // registers, so the set is the DECLARATIONS: a plugin can add one

@@ -177,6 +177,11 @@ export interface DashboardMetricDescriptor {
   icon: string;
   presentation: DashboardPresentation;
   /**
+   * How a `chart` draws its series: `bars` for a count per day, `area` for a
+   * running total. Ignored by every other presentation; `area` when absent.
+   */
+  chartStyle?: "area" | "bars";
+  /**
    * The scope kinds this metric accepts. A card whose scope kind is absent
    * here is invalid by construction — visitors take `apps`, never `epic`;
    * active quests take `projects`, never `apps`.
