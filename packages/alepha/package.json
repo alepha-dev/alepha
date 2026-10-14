@@ -243,13 +243,9 @@
     },
     "./lock": {
       "types": "./src/lock/core/index.ts",
+      "workerd": "./src/lock/core/index.workerd.ts",
       "import": "./src/lock/core/index.ts",
       "default": "./src/lock/core/index.ts"
-    },
-    "./lock/redis": {
-      "types": "./src/lock/redis/index.ts",
-      "import": "./src/lock/redis/index.ts",
-      "default": "./src/lock/redis/index.ts"
     },
     "./logger": {
       "types": "./src/logger/index.ts",
@@ -697,13 +693,9 @@
       },
       "./lock": {
         "types": "./dist/lock/core/index.d.ts",
+        "workerd": "./dist/lock/core/index.workerd.js",
         "import": "./dist/lock/core/index.js",
         "default": "./dist/lock/core/index.js"
-      },
-      "./lock/redis": {
-        "types": "./dist/lock/redis/index.d.ts",
-        "import": "./dist/lock/redis/index.js",
-        "default": "./dist/lock/redis/index.js"
       },
       "./logger": {
         "types": "./dist/logger/index.d.ts",

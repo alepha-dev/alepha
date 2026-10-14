@@ -18,7 +18,12 @@ Resource locking for distributed systems.
 - Time-based lock expiration
 - Automatic release on scope exit
 - Distributed coordination via Redis
-- Providers: Memory (dev), Redis (production)
+- Providers: Redis when `REDIS_URL` is set, Memory otherwise
+
+Set `REDIS_URL` and a lock held on one instance is held for all of them:
+each `$job` cron tick runs on one instance. Leave it unset and locks only
+exclude callers inside this process. An app's own `LockProvider` or
+`LockTopicProvider` substitution wins over both.
 
 ## API Reference
 
@@ -30,3 +35,4 @@ Resource locking for distributed systems.
 
 - [`LockProvider`](/docs/reference-providers-lockprovider) - Store Provider Interface
 - [`MemoryLockProvider`](/docs/reference-providers-memorylockprovider) - A simple in-memory store provider.
+- [`RedisLockProvider`](/docs/reference-providers-redislockprovider) - Locks over Redis `SET NX PX`.

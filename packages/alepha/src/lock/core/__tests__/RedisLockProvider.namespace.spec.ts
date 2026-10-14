@@ -3,12 +3,12 @@ import { randomUUID } from "node:crypto";
 import { Alepha } from "alepha";
 import { $job, AlephaApiJobs } from "alepha/api/jobs";
 import { DateTimeProvider } from "alepha/datetime";
-import { LockProvider } from "alepha/lock";
+import { AlephaLock, LockProvider } from "alepha/lock";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { CronProvider } from "alepha/scheduler";
 import { describe, it } from "vitest";
 
-import { AlephaLockRedis, RedisLockProvider } from "../index.ts";
+import { RedisLockProvider } from "../index.ts";
 
 // The shared test env sets no REDIS_URL, so nothing else turns Redis on; this
 // file runs against the compose `redis` service (16379, CI's port too). A
@@ -16,13 +16,14 @@ import { AlephaLockRedis, RedisLockProvider } from "../index.ts";
 process.env.REDIS_URL ??= "redis://localhost:16379";
 
 /**
- * Two apps on one Redis, told apart by `alepha.name` alone.
+ * Two apps on one Redis, told apart by `alepha.name` alone. Every container
+ * here registers only `AlephaLock`: `REDIS_URL` is what selects Redis, so two
+ * containers of one name never hold one lock at once and one cron tick runs
+ * once between them.
  */
 describe("RedisLockProvider: one namespace per alepha.name", () => {
   const boot = async (name: string) => {
-    const alepha = Alepha.create({ env: { APP_NAME: name } }).with(
-      AlephaLockRedis,
-    );
+    const alepha = Alepha.create({ env: { APP_NAME: name } }).with(AlephaLock);
     await alepha.start();
     return alepha.inject(LockProvider);
   };
@@ -74,7 +75,7 @@ describe("RedisLockProvider: one namespace per alepha.name", () => {
         });
       }
       const alepha = Alepha.create({ env: { APP_NAME: name } })
-        .with(AlephaLockRedis)
+        .with(AlephaLock)
         .with(AlephaOrmPostgres)
         .with(AlephaApiJobs);
       alepha.inject(App);

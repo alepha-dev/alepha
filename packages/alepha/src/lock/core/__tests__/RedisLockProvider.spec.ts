@@ -1,17 +1,18 @@
 import { randomUUID } from "node:crypto";
 
 import { Alepha } from "alepha";
-import { AlephaLock, LockProvider } from "alepha/lock";
-import { RedisTopicProvider } from "alepha/topic";
+import { AlephaLock, LockProvider, LockTopicProvider } from "alepha/lock";
+import { RedisProvider } from "alepha/redis";
+import { MemoryTopicProvider, RedisTopicProvider } from "alepha/topic";
 import { describe, expect, test } from "vitest";
 
+import { MemoryLockProvider, RedisLockProvider } from "../index.ts";
 import {
   testDelIfOwner,
   testLockBasic,
   testLockGracePeriod,
   testLockWait,
-} from "../../core/__tests__/shared.ts";
-import { RedisLockProvider } from "../index.ts";
+} from "./shared.ts";
 
 // The shared test env sets no REDIS_URL, so nothing else turns Redis on; this
 // file runs against the compose `redis` service (16379, CI's port too). A
@@ -141,5 +142,39 @@ describe("RedisLockProvider", () => {
     expect(await lock.get(key)).toContain("owner-2");
 
     await lock.del(key);
+  });
+});
+
+describe("AlephaLock: REDIS_URL picks the provider", () => {
+  test("is Redis, lock and lock topic, when REDIS_URL is set", () => {
+    const alepha = Alepha.create({
+      env: { REDIS_URL: process.env.REDIS_URL },
+    }).with(AlephaLock);
+
+    expect(alepha.inject(LockProvider)).toBeInstanceOf(RedisLockProvider);
+    expect(alepha.inject(LockTopicProvider)).toBeInstanceOf(RedisTopicProvider);
+  });
+
+  test("is Memory without REDIS_URL, and registers no Redis client", async () => {
+    const alepha = Alepha.create({ env: { REDIS_URL: undefined } }).with(
+      AlephaLock,
+    );
+    await alepha.start();
+
+    expect(alepha.inject(LockProvider)).toBeInstanceOf(MemoryLockProvider);
+    expect(alepha.inject(LockTopicProvider)).toBeInstanceOf(
+      MemoryTopicProvider,
+    );
+    expect(alepha.has(RedisProvider)).toBe(false);
+
+    await alepha.stop();
+  });
+
+  test("keeps an app's explicit substitution over REDIS_URL", () => {
+    const alepha = Alepha.create({ env: { REDIS_URL: process.env.REDIS_URL } })
+      .with({ provide: LockProvider, use: MemoryLockProvider })
+      .with(AlephaLock);
+
+    expect(alepha.inject(LockProvider)).toBeInstanceOf(MemoryLockProvider);
   });
 });

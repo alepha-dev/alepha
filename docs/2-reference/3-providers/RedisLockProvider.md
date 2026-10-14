@@ -3,7 +3,7 @@
 ## Import
 
 ```typescript
-import { RedisLockProvider } from "alepha/lock/redis";
+import { RedisLockProvider } from "alepha/lock";
 ```
 
 ## Overview
