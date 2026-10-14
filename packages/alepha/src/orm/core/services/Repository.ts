@@ -669,7 +669,7 @@ export abstract class Repository<T extends ZObject> {
   public async paginate<R extends PgRelationMap<T>>(
     pagination: PageQuery = {},
     query: Omit<PgQueryRelations<T, R>, "where"> & {
-      where?: PgQueryWhere<T>;
+      where?: PgQueryWhere<T, R>;
     } = {},
     opts: StatementOptions & { count?: boolean } = {},
   ): Promise<Page<PgStatic<T, R>>> {

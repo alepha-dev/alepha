@@ -966,7 +966,7 @@ export const testPaginateCountWithJoinFilter = async (alepha: Alepha) => {
           on: ["cityId", cities.cols.id],
         },
       },
-      where: { city: { name: { eq: "Toronto" } } } as never,
+      where: { city: { name: { eq: "Toronto" } } },
       orderBy: { column: "name", direction: "asc" },
     },
     { count: true },
@@ -997,7 +997,7 @@ export const testPaginateCountWithFanOutJoin = async (alepha: Alepha) => {
           on: ["id", posts.cols.authorId],
         },
       },
-      where: { id: { eq: testUsers.alice.id } } as never,
+      where: { id: { eq: testUsers.alice.id } },
     },
     { count: true },
   );

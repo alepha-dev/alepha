@@ -1,5 +1,5 @@
 import { Alepha } from "alepha";
-import { $repositories, $repository } from "alepha/orm";
+import { $repositories, $repository, DbEntityNotFoundError } from "alepha/orm";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { characters } from "./entities/characters.ts";
@@ -508,7 +508,7 @@ describe("relations", () => {
 
       await expect(
         app.db.campaigns.getOne({ where: { title: { eq: "nope" } } }),
-      ).rejects.toThrow(/No 'campaigns'/);
+      ).rejects.toThrow(DbEntityNotFoundError);
     });
 
     it("findById and getById resolve relations", async () => {
@@ -529,7 +529,7 @@ describe("relations", () => {
       await seed(app);
 
       await expect(app.db.campaigns.getById(9999)).rejects.toThrow(
-        /No 'campaigns' with id/,
+        DbEntityNotFoundError,
       );
     });
 
