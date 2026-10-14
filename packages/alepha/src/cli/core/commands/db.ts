@@ -1561,9 +1561,18 @@ if (typeof registerHooks === "function") {
    * `migrations check` and the CLI itself take, rather than importing the
    * entry with plain Node: that used to fail on anything only Vite
    * understands in the server's import graph (an `?raw` asset, a CSS import),
-   * so `create` broke on apps that `check` passed. The ORM classes come from
-   * the app's graph for the same reason {@link ViteUtils.importFromAppGraph}
-   * exists: a native import of `alepha/orm` can be a second copy of them.
+   * so `create` broke on apps that `check` passed.
+   *
+   * The ORM services are found BY NAME, as `check` and `create` find them in
+   * the CLI's own process, never by a class object. In an installed project
+   * `alepha` lives in `node_modules` and Vite SSR externalizes the app's
+   * imports of it, while `importFromAppGraph("alepha/orm")` evaluates the
+   * module itself: a second copy, whose `Repository` none of the app's
+   * repositories is an instance of. Through that copy `services(Repository)`
+   * found nothing, and its `DrizzleKitProvider` built a parallel ORM holding
+   * `alepha_sequences` alone, so every saas scaffold froze a one-table
+   * migration (#Q2641). In the monorepo `alepha` is source and inlined, so
+   * class identity held there and no workspace app could show it.
    */
   public generateEntitiesJs(
     entry: AppEntry,
@@ -1590,9 +1599,11 @@ const vite = Alepha.create().inject(ViteUtils);
 let models;
 try {
   const alepha = await vite.runAlepha({ entry: ${appEntry}, mode: "development" });
-  const { DrizzleKitProvider, Repository } = await vite.importFromAppGraph("alepha/orm");
-  const kit = alepha.inject(DrizzleKitProvider);
-  const provider = alepha.services(Repository).find((it) => it.provider.name === ${providerName}).provider;
+  const kit = alepha.inject("DrizzleKitProvider");
+  const provider = alepha
+    .inject("RepositoryProvider")
+    .getRepositories()
+    .find((it) => it.provider.name === ${providerName}).provider;
   models = ${getModelsCall};
 } finally {
   await vite.close();

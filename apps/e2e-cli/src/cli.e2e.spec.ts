@@ -539,6 +539,48 @@ describe("Alepha CLI E2E", () => {
       );
     });
 
+    /**
+     * Init freezes the schema it scaffolded, and `migrations check` must agree
+     * with it. `create` runs in drizzle-kit's own process, where `alepha` is
+     * this installed package and Vite SSR externalizes the app's imports of
+     * it: the ORM classes `importFromAppGraph` returned there were a second
+     * copy of `alepha/orm`, so the migration held `alepha_sequences` alone and
+     * every saas project failed its own `verify` (#Q2641). Asking `create`
+     * again proves nothing, since it is the half that was blind.
+     */
+    it("freezes every table of the scaffold in the initial migration", async () => {
+      const migrations = join(SAAS_DIR, "migrations", "sqlite");
+      const [initial] = await readdir(migrations);
+      const sql = await readFile(
+        join(migrations, initial, "migration.sql"),
+        "utf-8",
+      );
+      for (const table of [
+        "users",
+        "sessions",
+        "identities",
+        "job_executions",
+      ]) {
+        expect(sql).toContain(`CREATE TABLE \`${table}\``);
+      }
+
+      const result = await run(
+        `"${SAAS_CLI}" db migrations check`,
+        SAAS_DIR,
+        300_000,
+      );
+
+      if (result.exitCode !== 0) {
+        console.log("SAAS MIGRATIONS CHECK:", result.stdout.slice(-3000));
+        console.log(
+          "SAAS MIGRATIONS CHECK STDERR:",
+          result.stderr.slice(-3000),
+        );
+      }
+
+      expect(result.exitCode).toBe(0);
+    });
+
     it("builds", async () => {
       const result = await run(`"${SAAS_CLI}" build`, SAAS_DIR, 300_000);
 
