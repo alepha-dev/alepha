@@ -67,6 +67,14 @@ export type EpicPlanEdit =
  * 400 the questline gate in `acceptQuest` throws, so the wording reaches the
  * caller on every transport, MCP included.
  *
+ * ## `shelved` (#E78)
+ *
+ * A fifth status, outside the two pairs above: the whole plan set aside.
+ * `EpicController.shelveEpic` and `unshelveEpic` move it; while it holds,
+ * every verb that opens work and every plan edit is refused here, and
+ * `dependsOn` keeps blocking because the gate tests `completed`. Design in
+ * folio #1365.
+ *
  * ⚠️ **No status is ever written to a quest row.** Moving an epic out of
  * `draft` releases its quests because the backlog gate stops matching them,
  * not because anything about them changed. The one carve-out is the default
@@ -168,6 +176,15 @@ export class EpicWorkflowService {
       return;
     }
 
+    // A shelved epic refuses every verb that opens work, unshelve and unhold
+    // included (#E78): its quests come back together, with the epic, or the
+    // `shelvedWithEpic` mark goes stale (folio #1365).
+    if (epic.status === "shelved") {
+      throw new BadRequestError(
+        `Cannot ${verb} quest ${formatReference("quest", quest.shortId)}: Epic ${formatReference("epic", epic.number)} is shelved. Unshelve the epic first.`,
+      );
+    }
+
     throw new BadRequestError(
       `Cannot ${verb} quest ${formatReference("quest", quest.shortId)}: Epic ${formatReference("epic", epic.number)} is completed. File this in a new epic.`,
     );
@@ -224,6 +241,18 @@ export class EpicWorkflowService {
   ): void {
     if (epic.status === "draft" || epic.status === "ready") return;
 
+    // Shelved (#E78): no quest enters or leaves a parked plan, so that
+    // unshelving brings back exactly what shelving set aside.
+    if (epic.status === "shelved") {
+      const subject =
+        edit.kind === "add"
+          ? "add a quest"
+          : `${edit.kind} quest ${formatReference("quest", edit.quest.shortId)}`;
+      throw new BadRequestError(
+        `Cannot ${subject}: Epic ${formatReference("epic", epic.number)} is shelved. Unshelve the epic first.`,
+      );
+    }
+
     const frozen = epic.status === "in_progress";
     const phase = frozen
       ? "is in progress. Its plan is frozen."
@@ -270,6 +299,11 @@ export class EpicWorkflowService {
     if (epic.status === "draft" || epic.status === "ready") return;
 
     const reference = formatReference("epic", epic.number);
+    if (epic.status === "shelved") {
+      throw new BadRequestError(
+        `Cannot delete Epic ${reference}: it is shelved. Unshelve it first; only a draft or ready epic can be deleted.`,
+      );
+    }
     if (epic.status === "completed") {
       throw new BadRequestError(
         `Cannot delete Epic ${reference}: it is completed, and its quests are the record of shipped work.`,
@@ -301,6 +335,9 @@ export class EpicWorkflowService {
     if (epic.status === "ready" && to === "draft") return;
 
     const move = `Cannot move Epic ${formatReference("epic", epic.number)} from ${epic.status} to ${to}.`;
+    if (epic.status === "shelved") {
+      throw new BadRequestError(`${move} It is shelved. Unshelve it first.`);
+    }
     if (epic.status === "completed") {
       throw new BadRequestError(
         `${move} It is completed. Create a new epic that depends on it.`,

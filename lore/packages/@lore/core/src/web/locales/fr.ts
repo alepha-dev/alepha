@@ -2075,6 +2075,7 @@ export default {
   "epic.status.ready": "Prête",
   "epic.status.inProgress": "En cours",
   "epic.status.completed": "Terminée",
+  "epic.status.shelved": "Mise de côté",
   "epic.list.empty": "Aucune épopée pour le moment.",
   "epic.list.column.title": "Épopée",
   "epic.list.column.updated": "Mise à jour",
@@ -2188,6 +2189,8 @@ export default {
     "L'épopée $1 n'est pas encore prête pour le développement.",
   "quest.view.accept.epicCompleted":
     "L'épopée $1 est terminée. Créez une nouvelle épopée pour cette quête.",
+  "quest.view.accept.epicShelved":
+    "L'épopée $1 est mise de côté. Reprenez d'abord l'épopée.",
   "epic.tab.overview": "Aperçu",
   "epic.tab.quests": "Quêtes",
   "epic.tab.flow": "Flux",
@@ -2345,6 +2348,7 @@ export default {
   "dashboard.footer.epic.specified": "$1 specifiees, aucune publiee",
   "dashboard.footer.epic.completed": "terminée le $1",
   "dashboard.footer.epic.completedUndated": "terminée",
+  "dashboard.footer.epic.shelved": "mise de côté, $1 terminées",
   "dashboard.footer.epic.nothing": "rien a compter pour l'instant",
   "dashboard.footer.epic.hidden": "les epics sont desactives ici",
   "dashboard.footer.release.done": "$1 sur $2 terminees, hors abandonnees",

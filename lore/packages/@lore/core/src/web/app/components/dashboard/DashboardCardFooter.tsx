@@ -61,6 +61,13 @@ const DashboardCardFooter = (props: DashboardCardFooterProps) => {
       // completed, and a ready or in-progress one gets the ratio. See
       // `ProjectEpicsProgress`.
       if (detail.hidden) return tr("dashboard.footer.epic.hidden");
+      // Before the ratio: a shelved epic's open quests are shelved and drop
+      // out of the denominator, so "2 of 2 done" would read as finished.
+      if (detail.status === "shelved") {
+        return tr("dashboard.footer.epic.shelved", {
+          args: [String(detail.completed ?? 0)],
+        });
+      }
       const denominator = Number(detail.denominator ?? 0);
       if (denominator === 0) return tr("dashboard.footer.epic.nothing");
       if (detail.status === "completed") {

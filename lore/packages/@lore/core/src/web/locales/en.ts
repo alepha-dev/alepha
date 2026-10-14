@@ -2089,6 +2089,7 @@ export default {
   "epic.status.ready": "Ready",
   "epic.status.inProgress": "In progress",
   "epic.status.completed": "Completed",
+  "epic.status.shelved": "Shelved",
   "epic.list.empty": "No epics yet.",
   "epic.list.column.title": "Epic",
   "epic.list.column.updated": "Updated",
@@ -2203,6 +2204,8 @@ export default {
   "quest.view.accept.epicDraft": "Epic $1 is not ready for development yet.",
   "quest.view.accept.epicCompleted":
     "Epic $1 is completed. File this in a new epic.",
+  "quest.view.accept.epicShelved":
+    "Epic $1 is shelved. Unshelve the epic first.",
   "epic.tab.overview": "Overview",
   "epic.tab.quests": "Quests",
   "epic.tab.flow": "Flow",
@@ -2362,6 +2365,7 @@ export default {
   "dashboard.footer.epic.specified": "$1 specified, none released yet",
   "dashboard.footer.epic.completed": "completed $1",
   "dashboard.footer.epic.completedUndated": "completed",
+  "dashboard.footer.epic.shelved": "shelved, $1 done",
   "dashboard.footer.epic.nothing": "nothing to count yet",
   "dashboard.footer.epic.hidden": "epics are turned off here",
   "dashboard.footer.release.done": "$1 of $2 done, shelved excluded",

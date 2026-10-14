@@ -5,6 +5,7 @@ import {
   CircleCheck,
   CircleDashed,
   CircleDotDashed,
+  CircleSlash,
 } from "lucide-react";
 
 import type { EpicResource } from "../../../../../api/schemas/epicResourceSchema.ts";
@@ -15,7 +16,8 @@ export type EpicStatusLabelKey =
   | "epic.status.draft"
   | "epic.status.ready"
   | "epic.status.inProgress"
-  | "epic.status.completed";
+  | "epic.status.completed"
+  | "epic.status.shelved";
 
 /**
  * Badge copy for an epic's current status. Shared by every surface that
@@ -31,6 +33,7 @@ export const STATUS_LABEL_KEYS: Record<EpicStatus, EpicStatusLabelKey> = {
   ready: "epic.status.ready",
   in_progress: "epic.status.inProgress",
   completed: "epic.status.completed",
+  shelved: "epic.status.shelved",
 };
 
 /**
@@ -41,7 +44,9 @@ export const STATUS_LABEL_KEYS: Record<EpicStatus, EpicStatusLabelKey> = {
  * `success`. An epic and the quests inside it therefore read as the same
  * colour when they are at the same stage, which is the whole point of naming
  * meanings instead of hexes. `draft` sits below all of them as `neutral`:
- * nothing in it can be worked yet.
+ * nothing in it can be worked yet. `shelved` (#E78) is `neutral` too, as a
+ * shelved quest is (`questChips.ts`): it is the absence of a state, and
+ * never the `success` of a completed one.
  *
  * This replaced a `variant` map (`outline` / `default` / `secondary`),
  * where the in-flight status was a solid primary chip: the loudest thing in
@@ -52,6 +57,7 @@ export const STATUS_TONE: Record<EpicStatus, BadgeTone> = {
   ready: "info",
   in_progress: "warning",
   completed: "success",
+  shelved: "neutral",
 };
 
 /**
@@ -59,17 +65,20 @@ export const STATUS_TONE: Record<EpicStatus, BadgeTone> = {
  * by anyone who does not separate amber from emerald. The four are one
  * shape deliberately: a circle that is dashed while the epic is being
  * specified, whole once it is ready, broken into motion while it runs, and
- * closed with a tick when it completes.
+ * closed with a tick when it completes. A shelved epic is the circle struck
+ * through: set aside, and visibly not the tick.
  */
 export const STATUS_ICONS: Record<EpicStatus, LucideIcon> = {
   draft: CircleDashed,
   ready: Circle,
   in_progress: CircleDotDashed,
   completed: CircleCheck,
+  shelved: CircleSlash,
 };
 
 /**
- * The display order of the four statuses, which is the lifecycle's order.
+ * The display order of the statuses, which is the lifecycle's order, with
+ * `shelved` after `completed`: it is off the path rather than a step on it.
  * Sorting them alphabetically would read as arbitrary (completed, in
  * progress, draft, ready).
  */
@@ -78,6 +87,7 @@ export const STATUS_ORDER: Record<EpicStatus, number> = {
   ready: 1,
   in_progress: 2,
   completed: 3,
+  shelved: 4,
 };
 
 /**

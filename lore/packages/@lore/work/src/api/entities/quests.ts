@@ -109,6 +109,21 @@ export const quests = $entity({
       onDelete: "set null",
     }),
     /**
+     * Whether `shelvedAt` was set by shelving the quest's EPIC (#E78), so
+     * `unshelveEpic` brings back exactly these and leaves alone the quests
+     * that were shelved one by one before. Set with `shelvedAt` by
+     * `shelveEpic`, cleared by `unshelveEpic`; absent reads as false, which
+     * is every row written before it existed. While the epic is shelved
+     * nothing else can unshelve, accept, move or delete one of its quests
+     * (`EpicWorkflowService`), so the mark cannot go stale. A column and not
+     * a `history` entry because unshelve finds them with one `WHERE`
+     * (folio #1365).
+     *
+     * ⚠️ Optional with NO `db.default(...)`, so the migration is a plain
+     * additive `ALTER TABLE ADD COLUMN`: same reasoning as `heldAt` below.
+     */
+    shelvedWithEpic: z.boolean().optional(),
+    /**
      * Set when the quest is put on hold: blocked on something outside
      * itself, with a reason, until somebody lifts it. `dependsOn` covers
      * "waiting on another quest" and nothing else; this covers waiting on
