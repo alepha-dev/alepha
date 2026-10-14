@@ -3,7 +3,7 @@
 ## Import
 
 ```typescript
-import { ActorRedisConnection } from "alepha/actor/redis";
+import { ActorRedisConnection } from "alepha/actor";
 ```
 
 ## Overview

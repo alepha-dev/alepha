@@ -5,7 +5,6 @@ import { dirname, join } from "node:path";
 import { Ajv } from "ajv";
 import { $atom, $hook, Alepha, AlephaError, z } from "alepha";
 import { $actor, ActorHostRegistry } from "alepha/actor";
-import { AlephaActorRedis } from "alepha/actor/redis";
 import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
 import { $channel, $room, $websocket, WebSocketHost } from "alepha/websocket";
 import { describe, expect, it } from "vitest";
@@ -151,11 +150,11 @@ describe("generic Durable Object build contracts", () => {
         "methods",
       );
     }
+    // A developer's REDIS_URL in .env selects Redis actors, and collecting the
+    // app's hosts during `alepha build` must still dial nothing.
     const redis = Alepha.create({
       env: { REDIS_URL: "redis://localhost:16379" },
-    })
-      .with(AlephaActorRedis)
-      .with(ActorApp);
+    }).with(ActorApp);
     expect(cli.inject(ActorHostCollection).collect(redis)).toEqual([
       ActorHostRegistry.actor,
     ]);

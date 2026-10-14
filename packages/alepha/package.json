@@ -44,14 +44,9 @@
       "react-native": "./src/actor/core/index.browser.ts",
       "workerd": "./src/actor/core/index.workerd.ts",
       "browser": "./src/actor/core/index.browser.ts",
+      "bun": "./src/actor/core/index.bun.ts",
       "import": "./src/actor/core/index.ts",
       "default": "./src/actor/core/index.ts"
-    },
-    "./actor/redis": {
-      "types": "./src/actor/redis/index.ts",
-      "bun": "./src/actor/redis/index.bun.ts",
-      "import": "./src/actor/redis/index.ts",
-      "default": "./src/actor/redis/index.ts"
     },
     "./api/analytics": {
       "types": "./src/api/analytics/index.ts",
@@ -503,14 +498,9 @@
         "react-native": "./dist/actor/core/index.browser.js",
         "workerd": "./dist/actor/core/index.workerd.js",
         "browser": "./dist/actor/core/index.browser.js",
+        "bun": "./dist/actor/core/index.bun.js",
         "import": "./dist/actor/core/index.js",
         "default": "./dist/actor/core/index.js"
-      },
-      "./actor/redis": {
-        "types": "./dist/actor/redis/index.d.ts",
-        "bun": "./dist/actor/redis/index.bun.js",
-        "import": "./dist/actor/redis/index.js",
-        "default": "./dist/actor/redis/index.js"
       },
       "./api/analytics": {
         "types": "./dist/api/analytics/index.d.ts",

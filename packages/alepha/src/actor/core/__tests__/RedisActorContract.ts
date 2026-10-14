@@ -4,15 +4,15 @@ import {
   ActorCodec,
   ActorContentionError,
   type ActorEnvelope,
-} from "alepha/actor";
-import {
-  AlephaActorRedis,
+  ActorProvider,
+  AlephaActor,
+  MemoryActorProvider,
   RedisActorProvider,
   actorRedisOptions,
-} from "alepha/actor/redis";
+} from "alepha/actor";
 
-import { ActorContract } from "../../core/__tests__/ActorContract.ts";
-import { ContractActors } from "../../core/__tests__/ContractActors.ts";
+import { ActorContract } from "./ActorContract.ts";
+import { ContractActors } from "./ContractActors.ts";
 
 const count = $atom({ name: "redis-counter", schema: z.integer(), default: 0 });
 const nested = $atom({
@@ -133,7 +133,7 @@ export class RedisActorContract {
         },
       })
         .with({ provide: RedisActorProvider, use: FaultProvider })
-        .with(AlephaActorRedis);
+        .with(AlephaActor);
     const containers = Array.from({ length: 4 }, () => make());
     containers.push(make(":contract"));
     try {
@@ -275,16 +275,15 @@ export class RedisActorContract {
       expect(codec.identity(namespace, "a:b", "c")).not.toBe(
         codec.identity(namespace, "a", "b:c"),
       );
-      // alepha.name is never empty, so selecting Redis needs no variable
-      // beyond REDIS_URL itself.
-      expect(() =>
-        Alepha.create({
-          env: { REDIS_URL: "redis://localhost:16379" },
-        }).with(AlephaActorRedis),
-      ).not.toThrow();
-      const memory = Alepha.create({ env: { REDIS_URL: "redis://invalid:1" } });
+      // alepha.name is never empty, so REDIS_URL alone selects Redis.
+      const selected = Alepha.create({
+        env: { REDIS_URL: "redis://invalid:1" },
+      }).with(AlephaActor);
+      expect(selected.inject(ActorProvider)).toBeInstanceOf(RedisActorProvider);
+      // Without REDIS_URL, Memory, and no Redis connection to open.
+      const memory = Alepha.create({ env: { REDIS_URL: undefined } });
       memory.inject(Actors);
-      // REDIS_URL must not select a Redis provider or open a connection.
+      expect(memory.inject(ActorProvider)).toBeInstanceOf(MemoryActorProvider);
       expect(await memory.inject(Actors).counter.add()).toBe(1);
     } finally {
       await Promise.all(

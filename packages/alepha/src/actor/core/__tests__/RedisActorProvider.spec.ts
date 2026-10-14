@@ -2,10 +2,9 @@ import { randomUUID } from "node:crypto";
 
 import { $atom, Alepha, z } from "alepha";
 import { $actor } from "alepha/actor";
-import { AlephaActorRedis } from "alepha/actor/redis";
 import { describe, expect, it } from "vitest";
 
-import { RedisActorContract } from "./shared.ts";
+import { RedisActorContract } from "./RedisActorContract.ts";
 describe("Redis actor Node contract", () => {
   it("commits independent-container transitions and fails closed without uncertain replay", async () => {
     await RedisActorContract.run(expect);
@@ -30,9 +29,7 @@ describe("Redis actors: one namespace per alepha.name", () => {
         APP_NAME: name,
         REDIS_URL: process.env.REDIS_URL ?? "redis://localhost:16379",
       },
-    })
-      .with(AlephaActorRedis)
-      .with(Counters);
+    }).with(Counters);
     await alepha.start();
     return alepha.inject(Counters).counter;
   };

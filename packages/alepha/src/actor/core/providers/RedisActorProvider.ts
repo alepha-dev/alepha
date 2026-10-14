@@ -1,16 +1,16 @@
 import { $inject, $store, Alepha, AlephaError } from "alepha";
-import {
-  ActorCodec,
-  ActorContentionError,
-  ActorProvider,
-  ActorRegistry,
-  type ActorRequest,
-  type ActorEnvelope,
-} from "alepha/actor";
 import { DateTimeProvider } from "alepha/datetime";
 
-import { actorRedisOptions } from "../actorRedisOptions.ts";
+import { actorRedisOptions } from "../atoms/actorRedisOptions.ts";
+import { ActorContentionError } from "../errors/ActorContentionError.ts";
+import type {
+  ActorEnvelope,
+  ActorRequest,
+} from "../interfaces/ActorInterfaces.ts";
+import { ActorCodec } from "./ActorCodec.ts";
+import { ActorProvider } from "./ActorProvider.ts";
 import { ActorRedisConnection } from "./ActorRedisConnection.ts";
+import { ActorRegistry } from "./ActorRegistry.ts";
 
 /**
  * One-key exact-byte CAS of validated actor envelopes using Redis eval.

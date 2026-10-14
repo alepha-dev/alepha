@@ -3,7 +3,7 @@
 ## Import
 
 ```typescript
-import { NodeActorRedisProvider } from "alepha/actor/redis";
+import { NodeActorRedisProvider } from "alepha/actor";
 ```
 
 ## Overview
