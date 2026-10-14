@@ -38,11 +38,12 @@ export default defineConfig({
   // fallback: the asset manifest is consulted first, and a match is served from
   // the edge without invoking the worker - free and unlimited on every plan.
   //
-  // The worker serves nothing a reader asks for. It existed for
-  // `POST /api/sigil/ingest`, the endpoint `@alepha/lore` posted page views
-  // to, and that reporter left with Lore (#E72), so a page load, an asset and
-  // a 404 never invoke it. The adapter has no assets-only mode yet, which is
-  // the only reason a `main` is still deployed at all.
+  // The worker serves nothing a reader asks for. It exists for
+  // `POST /api/sigil/ingest`, where `AlephaSigil` (from the npm
+  // `@alepha/lore`) receives page views, Web Vitals and errors: the visitor IP
+  // becomes a salted hash there and the `SIGIL_KEY` secret stays on the
+  // worker, which a purely static host cannot offer. A page load, an asset and
+  // a 404 never invoke it; only the beacon does.
   // ---------------------------------------------------------------------------
   // ---------------------------------------------------------------------------
   // Static routing: the worker is invoked for `/api/*` and nothing else.
@@ -61,11 +62,9 @@ export default defineConfig({
   // reachable and serve the prerendered `404.html` with a real 404.
   //
   // Safe here because every route is prerendered (`static: true`, and
-  // `static.entries` for `/docs/:slug`), so nothing needs to reach the worker.
-  // `/api/*` stays listed because listing a route is what moves a miss to
-  // `404-page`; no client code posts there any more. An app with a `$route` at
-  // a root path - which never lives under `/api` - would need that path listed
-  // here too.
+  // `static.entries` for `/docs/:slug`), so nothing but the sigil endpoint
+  // needs to reach the worker. An app with a `$route` at a root path - which
+  // never lives under `/api` - would need that path listed here too.
   // ---------------------------------------------------------------------------
   build: {
     cloudflare: {

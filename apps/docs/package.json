@@ -17,6 +17,7 @@
     "typecheck": "alepha typecheck"
   },
   "dependencies": {
+    "@alepha/lore": "^0.32.0",
     "@fontsource/jetbrains-mono": "^5.3.0",
     "@tabler/icons-react": "^3.49.0",
     "alepha": "^0.32.0",
