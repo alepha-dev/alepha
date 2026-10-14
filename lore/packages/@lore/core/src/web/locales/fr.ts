@@ -2147,12 +2147,14 @@ export default {
   "agentPrompts.copyError": "Impossible de copier l’invite.",
   "epic.delete.title": "Supprimer cette épopée ?",
   "epic.delete.confirm":
-    'Ses quêtes et folios sont conservés, détachés de "$1". Cette action est irréversible.',
+    'Supprimer "$1" supprime aussi ses $2 quêtes. Ses folios sont conservés, détachés. Cette action est irréversible.',
   "epic.toast.deleted": "Épopée supprimée.",
   "epic.bulk.delete.title": "Supprimer $1 épopées ?",
   "epic.bulk.delete.confirm": "Supprimer $1 épopées",
   "epic.bulk.delete.description":
-    "Leurs quêtes et folios sont conservés, détachés de celles-ci. Cette action est irréversible.",
+    "Leurs $1 quêtes sont supprimées avec elles. Leurs folios sont conservés, détachés. Cette action est irréversible.",
+  "epic.bulk.delete.skipped":
+    "Exclues, car le travail y a commencé ou est terminé : $1. Mettez-les plutôt de côté.",
   "epic.bulk.ready.title": "Marquer $1 épopées comme prêtes ?",
   "epic.bulk.ready.confirm": "Marquer $1 épopées comme prêtes",
   "epic.bulk.ready.description":

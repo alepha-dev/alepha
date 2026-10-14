@@ -2163,12 +2163,14 @@ export default {
   "agentPrompts.copyError": "Could not copy the prompt.",
   "epic.delete.title": "Delete this epic?",
   "epic.delete.confirm":
-    'Its quests and folios stay, detached from "$1". This cannot be undone.',
+    'Deleting "$1" deletes its $2 quests with it. Its folios are kept, unfiled. This cannot be undone.',
   "epic.toast.deleted": "Epic deleted.",
   "epic.bulk.delete.title": "Delete $1 epics?",
   "epic.bulk.delete.confirm": "Delete $1 epics",
   "epic.bulk.delete.description":
-    "Their quests and folios stay, detached from them. This cannot be undone.",
+    "Their $1 quests are deleted with them. Their folios are kept, unfiled. This cannot be undone.",
+  "epic.bulk.delete.skipped":
+    "Left out, because work on them has started or finished: $1. Shelve those instead.",
   "epic.bulk.ready.title": "Mark $1 epics as ready?",
   "epic.bulk.ready.confirm": "Mark $1 epics as ready",
   "epic.bulk.ready.description":

@@ -6,8 +6,9 @@ folios, and ends. It is not a category. An **area** is where work happens
 that holds epics and quests), and an epic is what is being built: it is
 specified, it is worked, and it completes.
 
-Its status is the permission on everything inside it. There are four. You
-set the first two; the other two follow from the work.
+Its status is the permission on everything inside it. There are five. You
+set the first two, the next two follow from the work, and the fifth,
+shelved, sets the whole plan aside.
 
 ## Draft, ready, in progress, completed
 
@@ -40,7 +41,40 @@ So the epic page offers two moves, and only while nobody has started: **Mark
 as ready** on a draft epic, **Back to draft** on a ready one. Mark as
 ready asks first, because it changes what everyone else sees in the backlog
 and the first accept after it freezes the plan. An epic that has started
-offers nothing, since its remaining move happens when its work is done.
+offers no status move, since its remaining one happens when its work is
+done; it offers **Shelve** instead (see below).
+
+## Shelving an epic
+
+**Shelved** is a plan set aside: it will not be worked now. Shelve is offered
+on a draft, ready or in-progress epic, and refused on a completed one. It
+asks first, naming how many open quests it sets aside.
+
+Every open quest in the epic (to do, in progress, on hold) is handed back to
+to do, with its assignee cleared and its hold lifted, and shelved. Completed
+quests stay completed, and quests already shelved stay as they were. A
+shelved epic is not completed: an epic that depends on it stays blocked,
+and nothing inside it can be accepted, completed, moved in or out, or
+deleted until it comes back.
+
+**Unshelve** brings back exactly the quests the epic's shelve set aside, as
+to do and unassigned. A quest that was shelved on its own before stays
+shelved. The epic returns to in progress if work on it had started, and to
+ready otherwise, a shelved draft included.
+
+Shelving one quest at a time is still how a single piece of work is
+declined. Shelving them all that way completes an in-progress epic, which
+says the work was done; shelving the epic says it was set aside.
+
+## Deleting an epic
+
+**Deleting an epic deletes its quests with it.** It is meant for a plan that
+was created by mistake or abandoned before anyone started it, so it is
+allowed only while the epic is a draft or ready. A started or completed
+epic holds work, and is shelved instead. The epic's folios are kept: they
+are unfiled from it, never deleted. The confirmation names how many quests
+go with it, and the bulk delete leaves out, and names, any selected epic
+that has started.
 
 ## The predecessor gate
 
@@ -100,6 +134,11 @@ names the epic, so an agent knows what happened.
 - `epic_set_status` takes `ready` or `draft`, and nothing else. Deciding
   that a spec is done is the owner's call, so an agent refused because an
   epic is a draft should say so rather than mark it ready itself.
+- `epic_shelve` and `epic_unshelve` set a whole plan aside and bring it
+  back, and say how many quests moved. Under a shelved epic, quest calls
+  answer "Unshelve the epic first".
+- `epic_delete` deletes the epic and its quests, while it is draft or ready,
+  and says how many quests went.
 - `quest_accept` and `quest_complete` work the quests. The first accept of a
   ready epic starts it; under a draft epic they answer that it is not
   ready for development yet; under a completed one, "File this in a new
