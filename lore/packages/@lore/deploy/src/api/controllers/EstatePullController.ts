@@ -1,6 +1,6 @@
 import { $inject, z } from "alepha";
 import { $storage, FileService } from "alepha/api/files";
-import { BAY_OWNED_SECRET_KEYS } from "alepha/cli/platform-lib";
+import { BAY_OWNED_SECRET_KEYS } from "alepha/cli/infra-lib";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";

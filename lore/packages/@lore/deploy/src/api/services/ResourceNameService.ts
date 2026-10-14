@@ -160,7 +160,7 @@ export class ResourceNameService {
 
   /**
    * ⚠️ Must match `NamingService.slugify`, which is what actually names the
-   * Cloudflare resources. It lives in `alepha/cli/platform-lib` beside a class
+   * Cloudflare resources. It lives in `alepha/cli/infra-lib` beside a class
    * that pulls a Cloudflare client in, so it is restated rather than imported
    * - and the 63-character slice is part of the contract, not a detail.
    */

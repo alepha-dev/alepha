@@ -1,9 +1,11 @@
 import { $inject, createPrimitive, KIND, Primitive } from "alepha";
+import { ActorHostRegistry } from "alepha/actor";
 
 import type {
   EmitOptions,
   WebSocketPrimitiveOptions,
 } from "../interfaces/WebSocketInterfaces.ts";
+import { WebSocketHost } from "../providers/WebSocketHost.ts";
 import { WebSocketServerProvider } from "../providers/WebSocketServerProvider.ts";
 import type { TWSObject } from "./$channel.ts";
 
@@ -66,6 +68,7 @@ export class WebSocketPrimitive<
   protected readonly webSocketServerProvider = $inject(WebSocketServerProvider);
 
   protected onInit() {
+    this.alepha.inject(ActorHostRegistry).register(WebSocketHost.declaration);
     this.webSocketServerProvider.registerEndpoint(this.options);
   }
 

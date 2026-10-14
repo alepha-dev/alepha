@@ -10,6 +10,7 @@ import { $module } from "alepha";
 
 import { appEntryOptions } from "./atoms/appEntryOptions.ts";
 import { buildOptions } from "./atoms/buildOptions.ts";
+import { desktopOptions } from "./atoms/desktopOptions.ts";
 import { devOptions } from "./atoms/devOptions.ts";
 import { imageOptions } from "./atoms/imageOptions.ts";
 import { metaOptions } from "./atoms/metaOptions.ts";
@@ -38,8 +39,11 @@ import { ViteBuildProvider } from "./providers/ViteBuildProvider.ts";
 import { ViteDevServerProvider } from "./providers/ViteDevServerProvider.ts";
 import { AlephaCliUtils } from "./services/AlephaCliUtils.ts";
 import { ArchiveCompressor } from "./services/ArchiveCompressor.ts";
+import { BuildPipeline } from "./services/BuildPipeline.ts";
 import { BuildSlices } from "./services/BuildSlices.ts";
+import { DesktopAdapterResolver } from "./services/DesktopAdapterResolver.ts";
 import { DockerImageBuilder } from "./services/DockerImageBuilder.ts";
+import { InfraConfigEditor } from "./services/InfraConfigEditor.ts";
 import { PackageManagerUtils } from "./services/PackageManagerUtils.ts";
 import { ProjectScaffolder } from "./services/ProjectScaffolder.ts";
 import { ViteUtils } from "./services/ViteUtils.ts";
@@ -63,6 +67,7 @@ export * from "./atoms/appEntryOptions.ts";
 export * from "./atoms/buildOptions.ts";
 export * from "./atoms/changelogOptions.ts";
 export * from "./atoms/devOptions.ts";
+export * from "./atoms/desktopOptions.ts";
 export * from "./atoms/imageOptions.ts";
 export * from "./atoms/metaOptions.ts";
 export * from "./commands/build.ts";
@@ -86,14 +91,17 @@ export * from "./providers/ViteBuildProvider.ts";
 export * from "./providers/ViteDevServerProvider.ts";
 export * from "./schemas/buildManifest.ts";
 export * from "./schemas/presetSchema.ts";
+export * from "./schemas/infraProviderSchema.ts";
 export * from "./services/AlephaCliUtils.ts";
 export * from "./services/GitMessageParser.ts";
 export * from "./services/PackageManagerUtils.ts";
 export * from "./services/ProjectScaffolder.ts";
 export * from "./services/ArchiveCompressor.ts";
+export * from "./services/BuildPipeline.ts";
 export * from "./services/BuildSlices.ts";
 export * from "./services/DockerImageBuilder.ts";
 export * from "./services/ViteUtils.ts";
+export * from "./services/DesktopAdapterResolver.ts";
 export * from "./services/WorkspaceCompiler.ts";
 export * from "./services/WorkspacePacker.ts";
 export * from "./tasks/BuildAssetsTask.ts";
@@ -111,7 +119,7 @@ export * from "./tasks/BuildTask.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Services, providers, and build tasks — no commands.
+ * Services, providers, and build tasks  -  no commands.
  * Use this module when you need CLI utilities without registering commands.
  *
  * ⚠️ **The build tasks live here rather than in {@link AlephaCli}, and that is
@@ -138,13 +146,14 @@ export const AlephaCliServices = $module({
   // The tasks resolve `buildOptions`, so it belongs to whichever module
   // declares them. Left behind on `AlephaCli` it would read as unregistered
   // from a container that has the tasks and not the commands.
-  atoms: [buildOptions, imageOptions],
+  atoms: [buildOptions, desktopOptions, imageOptions],
   services: [
     // Services & providers
     AlephaCliUtils,
     PackageManagerUtils,
     ViteUtils,
     ProjectScaffolder,
+    InfraConfigEditor,
     AppEntryProvider,
     GitMessageParser,
     GitProvider,
@@ -152,7 +161,9 @@ export const AlephaCliServices = $module({
     ViteBuildProvider,
     ArchiveCompressor,
     BuildSlices,
+    BuildPipeline,
     DockerImageBuilder,
+    DesktopAdapterResolver,
     WorkspaceCompiler,
     WorkspacePacker,
     // Build tasks. `BuildCommand` orchestrates these and stays in `AlephaCli`:
@@ -173,7 +184,7 @@ export const AlephaCliServices = $module({
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Full CLI module — all services and commands.
+ * Full CLI module  -  all services and commands.
  *
  * It imports {@link AlephaCliServices} explicitly rather than picking it up
  * through whichever service happens to inject one of its members, so `alepha
@@ -203,3 +214,6 @@ export const AlephaCli = $module({
     GenCommand,
   ],
 });
+
+export * from "./services/ActorHostCollection.ts";
+export * from "./services/DurableObjectConfig.ts";

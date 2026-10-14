@@ -18,7 +18,7 @@ import { LoreProjectResolver } from "./LoreProjectResolver.ts";
  * adapter's `build()` all store an artifact, and they must store it the same
  * way: the packing, the maps sibling, the `--force` semantics and the cleanup
  * on one path. `lore deploy` used to reach it by running the command object
- * through `CliProvider`, which a platform adapter cannot do, so the body moved
+ * through `CliProvider`, which a infra adapter cannot do, so the body moved
  * here and the command became its flag parser.
  *
  * It packs rather than taking a tarball, and that is not a convenience:

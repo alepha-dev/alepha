@@ -2,9 +2,9 @@ import { LoreAudits } from "@lore/core/api";
 import { $inject, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
+import { $rateLimit } from "alepha/rate-limit";
 import { $secure } from "alepha/security";
 import { $action, BadRequestError, okSchema } from "alepha/server";
-import { $rateLimit } from "alepha/server/rate-limit";
 
 import { estates } from "../entities/estates.ts";
 import { cloudflareTokenSchema } from "../schemas/cloudflareCredentialSchema.ts";
@@ -62,6 +62,16 @@ export class EstateController {
   protected readonly stats = $inject(EstateStatsService);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly audits = $inject(LoreAudits);
+
+  /**
+   * The polite limit on {@link refreshEstate}, keyed per estate. Declared
+   * above the action because `middleware()` reads a field of this class.
+   */
+  protected readonly refreshLimit = $rateLimit({
+    name: "lore:estate-refresh",
+    limit: 6,
+    window: 60_000,
+  });
 
   /**
    * Every estate the caller owns, newest first, each with the projects it
@@ -249,9 +259,7 @@ export class EstateController {
   refreshEstate = $action({
     use: [
       $secure({ permissions: ["estate:update"] }),
-      $rateLimit({
-        max: 6,
-        windowMs: 60_000,
+      this.refreshLimit.middleware({
         key: (input: { params: { estateId: string } }) =>
           `estate-refresh:${input.params.estateId}`,
       }),

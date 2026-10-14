@@ -58,6 +58,17 @@ export class JsonFormatterProvider extends LogFormatterProvider {
     return out;
   }
 
+  /**
+   * A log entry's `data` made JSON-safe the way this formatter writes it:
+   * every Error, top-level or nested, expanded to name, message, stack and
+   * cause. For a consumer that serializes entries itself.
+   */
+  public serializeData(data: unknown): unknown {
+    return data instanceof Error
+      ? this.formatJsonError(data)
+      : this.expandErrors(data, new WeakSet());
+  }
+
   public formatJsonError(error: Error): object {
     return {
       name: error.name,

@@ -2,6 +2,8 @@ import * as React from "react";
 
 void React;
 
+import { DateTimeProvider } from "alepha/datetime";
+import { useInject } from "alepha/react";
 import {
   type BaseInputField,
   parseField,
@@ -84,6 +86,7 @@ export interface ControlDateProps {
 export const ControlDate = (props: ControlDateProps) => {
   const form = useFormState(props.input, ["error"]);
   const [value, setValue] = useFieldValue(props.input);
+  const dateTime = useInject(DateTimeProvider);
 
   if (!props.input?.props) return null;
 
@@ -121,7 +124,7 @@ export const ControlDate = (props: ControlDateProps) => {
     );
   }
 
-  const thisYear = new Date().getFullYear();
+  const thisYear = dateTime.now().toDate().getFullYear();
 
   return (
     <FormField

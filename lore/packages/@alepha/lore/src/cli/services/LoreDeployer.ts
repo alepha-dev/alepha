@@ -55,7 +55,7 @@ export interface LoreDestroyResult {
  *
  * ## ⚠️ Why this is a service and not the commands' bodies
  *
- * `lore deploy` and the platform adapter (`lore()` in `alepha.config.ts`) are
+ * `lore deploy` and the infra adapter (`lore()` in `alepha.config.ts`) are
  * one deploy with two front doors. Left in `AppsCommand`, the adapter would
  * either reach into a command object or grow a second implementation, and two
  * deploys drift. The commands keep what is theirs: flag parsing, refusals worded
@@ -217,10 +217,10 @@ export class LoreDeployer {
    *
    * ⚠️ `lore deploy` never calls this: its `--env` is free text, and a typo
    * there must not become a copy. A caller whose env names come from a
-   * committed file (the platform adapter) may.
+   * committed file (the infra adapter) may.
    *
    * Created with nothing optional: no domain (the estate owns the host), not
-   * ephemeral (a copy made this way keeps its data, which `platform down`
+   * ephemeral (a copy made this way keeps its data, which `infra down`
    * relies on), and no sigil (the deploy mints one from the manifest). Two
    * calls, because `createApp` takes no estate: pointing the row at one is a
    * separate, validated act. The estate is chosen, and refused, before the
@@ -330,7 +330,7 @@ export class LoreDeployer {
    * silent overwrite rather than an error.
    *
    * `alepha` is how the `alepha` binary is invoked: `npx alepha` from the
-   * `lore` binary, the running binary itself from inside `alepha platform`.
+   * `lore` binary, the running binary itself from inside `alepha infra`.
    */
   public async buildOnce(
     root: string,

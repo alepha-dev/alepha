@@ -110,13 +110,14 @@ export class S3FileStorageProvider implements FileStorageProvider {
   protected client?: S3mini;
 
   /**
-   * Optional key prefix, so several apps can share one bucket.
+   * Key prefix, so several apps can share one bucket.
    *
-   * `S3_KEY_PREFIX` first, `APP_NAME` as the fallback: the fallback is what
-   * keeps every already-deployed app's objects exactly where they are.
+   * `S3_KEY_PREFIX` first, then `alepha.name` (`APP_NAME`, else the build's app
+   * name, else `"app"`): never the bucket root, so two apps with neither
+   * variable no longer write over each other.
    */
-  public get prefix(): string | undefined {
-    return this.env.S3_KEY_PREFIX || this.alepha.env.APP_NAME;
+  public get prefix(): string {
+    return this.env.S3_KEY_PREFIX || this.alepha.name;
   }
 
   protected getClient(): S3mini {
@@ -133,18 +134,13 @@ export class S3FileStorageProvider implements FileStorageProvider {
   }
 
   /**
-   * Object key: `{prefix}/{container}/{fileId}`, with the optional prefix
-   * omitted when absent. Mirrors R2 exactly so a container means the same
-   * thing on every backend.
+   * Object key: `{prefix}/{container}/{fileId}`. Mirrors R2 exactly so a
+   * container means the same thing on every backend.
    */
   protected key(container: string, fileId: string): string {
     this.assertKeySegment(container, "bucket name");
     this.assertKeySegment(fileId, "file id");
-    const parts = [container, fileId];
-    if (this.prefix) {
-      parts.unshift(this.prefix);
-    }
-    return parts.join("/");
+    return [this.prefix, container, fileId].join("/");
   }
 
   /**

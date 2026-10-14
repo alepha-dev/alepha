@@ -61,6 +61,12 @@ interface ChangelogSection {
   type: string;
   title: string;
   commits: Commit[];
+  /**
+   * False for the one section that holds the breaking commits of types that
+   * are not configured: they print under Breaking Changes, never under a
+   * heading of their own.
+   */
+  listed: boolean;
 }
 
 // =============================================================================
@@ -196,7 +202,7 @@ export class ChangelogCommand {
     }
 
     for (const section of entry) {
-      if (section.commits.length === 0) continue;
+      if (!section.listed || section.commits.length === 0) continue;
 
       lines.push(`### ${section.title}\n`);
       for (const commit of section.commits) {
@@ -215,9 +221,10 @@ export class ChangelogCommand {
   /**
    * Parse git log output into a changelog entry.
    *
-   * One section per configured type, in the order they were configured — the
-   * parser has already refused everything else, so a commit that arrives here
-   * always has a section to land in.
+   * One section per configured type, in the order they were configured, then
+   * one unlisted section for the breaking commits of every other type: the
+   * parser keeps a declared break whatever its type (#Q2640) and refuses the
+   * rest, so a commit that arrives here always has a section to land in.
    */
   protected parseCommits(commitsOutput: string): ChangelogSection[] {
     const types = this.config.types ?? DEFAULT_TYPES;
@@ -225,7 +232,14 @@ export class ChangelogCommand {
       type,
       title: this.sectionTitles[type] ?? type[0].toUpperCase() + type.slice(1),
       commits: [],
+      listed: true,
     }));
+    const unlisted: ChangelogSection = {
+      type: "",
+      title: "",
+      commits: [],
+      listed: false,
+    };
 
     for (const record of commitsOutput.split("\x1e")) {
       if (!record.trim()) continue;
@@ -242,11 +256,12 @@ export class ChangelogCommand {
       this.log.trace("Parsed commit", { commit });
 
       // Breaking flag is preserved on the commit itself.
-      const section = sections.find((it) => it.type === commit.type);
-      section?.commits.push(commit);
+      const section =
+        sections.find((it) => it.type === commit.type) ?? unlisted;
+      section.commits.push(commit);
     }
 
-    return sections;
+    return [...sections, unlisted];
   }
 
   /**

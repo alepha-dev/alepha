@@ -59,6 +59,26 @@ declare module "alepha" {
       state: ReactRouterState;
     };
     /**
+     * Asks the server renderer for the application's document with an empty
+     * root, rendered without any page (no loader runs). The handler fills
+     * `html`. Emitted by the static build of an app shell; `viewport`, when
+     * set, replaces the app's own (a native shell's `viewport-fit=cover`).
+     */
+    "react:server:shell": {
+      html?: string;
+      viewport?: string;
+    };
+    /**
+     * The first screen of a browser boot settled, once per boot: `healthy`
+     * when a page or the offline screen is on the screen, `failed` when an
+     * error is. Distinct from `ready` and from `react:transition:end`, which
+     * both fire before React has rendered anything. See `ReactBootHealth`.
+     */
+    "react:boot:settled": {
+      outcome: "healthy" | "failed";
+      error?: unknown;
+    };
+    /**
      * Fires when the React application has been rendered on the server.
      */
     "react:server:render:end": {

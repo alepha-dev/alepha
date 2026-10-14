@@ -1,4 +1,5 @@
-import { AlephaError } from "alepha";
+import { $inject, AlephaError } from "alepha";
+import { ActorHostRuntime, type ActorNamespace } from "alepha/actor";
 import { $logger } from "alepha/logger";
 
 import type { RoomPrimitiveOptions } from "../interfaces/RoomInterfaces.ts";
@@ -18,20 +19,17 @@ export const WEBSOCKET_DEFAULT_BINDING = "ALEPHA_WEBSOCKET";
 /**
  * Minimal shape of the CF DurableObjectNamespace we depend on.
  */
-interface DurableObjectNamespaceLike {
-  idFromName(name: string): unknown;
-  get(id: unknown): {
-    broadcast(
-      message: unknown,
-      criteria: { exceptConnectionIds?: string[] },
-    ): Promise<void>;
-    callRoom(
-      channelPath: string,
-      roomId: string,
-      method: string,
-      args: unknown[],
-    ): Promise<unknown>;
-  };
+interface WebSocketHostStub {
+  broadcast(
+    message: unknown,
+    criteria: { exceptConnectionIds?: string[] },
+  ): Promise<void>;
+  callRoom(
+    channelPath: string,
+    roomId: string,
+    method: string,
+    args: unknown[],
+  ): Promise<unknown>;
 }
 
 /**
@@ -45,6 +43,7 @@ interface DurableObjectNamespaceLike {
  */
 export class CloudflareDurableObjectWebSocketServerProvider extends WebSocketServerProvider {
   protected readonly log = $logger();
+  protected readonly hostRuntime = $inject(ActorHostRuntime);
   protected readonly endpoints = new Map<
     string,
     WebSocketPrimitiveOptions<any, any>
@@ -156,7 +155,7 @@ export class CloudflareDurableObjectWebSocketServerProvider extends WebSocketSer
    * Not supported on this runtime.
    *
    * Connections live inside room Durable Objects, and the main isolate holds
-   * no handle to them — there is nothing here to close. It used to return
+   * no handle to them  -  there is nothing here to close. It used to return
    * silently, so a caller believed it had disconnected someone when it had
    * not. Warn instead: a no-op that looks like success is worse than one that
    * says what it is.
@@ -170,23 +169,9 @@ export class CloudflareDurableObjectWebSocketServerProvider extends WebSocketSer
     );
   }
 
-  protected getNamespace(): DurableObjectNamespaceLike {
-    const env = this.alepha.store.get("cloudflare.env") as
-      | Record<string, unknown>
-      | undefined;
-    if (!env) {
-      throw new AlephaError(
-        "Cloudflare Workers environment not found in Alepha store under 'cloudflare.env'.",
-      );
-    }
-    const binding = env[WEBSOCKET_DEFAULT_BINDING] as
-      | DurableObjectNamespaceLike
-      | undefined;
-    if (!binding) {
-      throw new AlephaError(
-        `Durable Object binding '${WEBSOCKET_DEFAULT_BINDING}' not found in Cloudflare Workers environment.`,
-      );
-    }
-    return binding;
+  protected getNamespace(): ActorNamespace<WebSocketHostStub> {
+    return this.hostRuntime.namespace<WebSocketHostStub>(
+      WEBSOCKET_DEFAULT_BINDING,
+    );
   }
 }

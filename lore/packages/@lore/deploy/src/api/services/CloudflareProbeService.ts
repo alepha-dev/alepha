@@ -31,7 +31,7 @@ export interface CloudflareProbeResponse {
 /**
  * The whole Cloudflare client Lore has: one authenticated `GET`.
  *
- * ⚠️ **Not `alepha/cli/platform-lib`'s `CloudflareApi`.** That one injects
+ * ⚠️ **Not `alepha/cli/infra-lib`'s `CloudflareApi`.** That one injects
  * `WranglerApi`, which injects `ShellProvider`, so it cannot enter a Worker
  * bundle at all; and its `resolveAccountId` reads
  * `process.env.CLOUDFLARE_ACCOUNT_ID`, which on Lore's own Worker is **Lore's

@@ -9,7 +9,7 @@ import { type LoreToken, LoreTokenStore } from "./LoreTokenStore.ts";
 /**
  * The OAuth 2.0 device flow (RFC 8628) against a Lore instance, so a laptop
  * can talk to Lore without pasting a token into a shell: the body of
- * `lore login` and `lore logout`, and of the platform adapter's own.
+ * `lore login` and `lore logout`, and of the infra adapter's own.
  *
  * ## ⚠️ This is NOT the CI path, and the difference is load-bearing
  *

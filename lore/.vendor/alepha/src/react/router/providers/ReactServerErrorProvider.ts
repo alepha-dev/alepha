@@ -26,7 +26,7 @@ import { ReactServerTemplateProvider } from "./ReactServerTemplateProvider.ts";
  * `errorHandler`. What never reached it is everything thrown *around* the
  * render: `use:` middleware, and every `server:onRequest` hook. Those are not
  * exotic. `ServerNotReadyProvider` throws 503 while the app is still booting,
- * `ServerRateLimitProvider` throws 429, `ServerAuthProvider` throws 401 on a
+ * a `$rateLimit` middleware throws 429, `ServerAuthProvider` throws 401 on a
  * stale token. All three land on a first-time visitor, and all three used to
  * answer with JSON.
  *

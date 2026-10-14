@@ -52,3 +52,4 @@ declare module "alepha" {
     };
   }
 }
+export * from "./providers/WebSocketHost.ts";

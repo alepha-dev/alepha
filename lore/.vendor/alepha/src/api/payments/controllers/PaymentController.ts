@@ -19,6 +19,32 @@ export class PaymentController {
   protected readonly payments = $inject(PaymentService);
   protected readonly paymentMethods = $inject(PaymentMethodService);
 
+  public readonly createSetupSession = $action({
+    method: "POST",
+    path: `${this.url}/payment-methods/setup`,
+    group: this.group,
+    use: [$secure()],
+    schema: {
+      body: z.object({ returnUrl: z.url() }),
+      response: z.object({ url: z.string(), providerRef: z.string() }),
+    },
+    handler: ({ body, user }) =>
+      this.paymentMethods.createSetupSession(user.id, body.returnUrl),
+  });
+
+  public readonly reconcileSetupSession = $action({
+    method: "POST",
+    path: `${this.url}/payment-methods/reconcile`,
+    group: this.group,
+    use: [$secure()],
+    schema: {
+      body: z.object({ providerRef: z.string() }),
+      response: paymentMethodResourceSchema.nullable(),
+    },
+    handler: ({ body, user }) =>
+      this.paymentMethods.reconcileSession(user.id, body.providerRef),
+  });
+
   /**
    * List the current user's saved payment methods.
    */

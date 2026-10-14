@@ -29,11 +29,12 @@ export class HeadProvider {
   /**
    * Resolve global head configuration (from $head primitives only).
    *
-   * This is used to get htmlAttributes early, before page loaders run.
-   * Only htmlAttributes from global $head are allowed; page-level htmlAttributes
-   * are ignored for early streaming optimization.
+   * This is used to get what the document starts with early, before page
+   * loaders run: `htmlAttributes`, `charset` and `viewport`. Only global
+   * `$head` entries can set them; page-level values are ignored for early
+   * streaming optimization.
    *
-   * @returns Merged global head with htmlAttributes
+   * @returns Merged global head with htmlAttributes, charset and viewport
    */
   public resolveGlobalHead(): Head {
     const head: Head = {
@@ -50,6 +51,14 @@ export class HeadProvider {
           ...head.htmlAttributes,
           ...resolved.htmlAttributes,
         };
+      }
+      // The early head writes these two before any page renders: dropped
+      // here, `$head({ viewport })` never reached the document.
+      if (resolved.charset) {
+        head.charset = resolved.charset;
+      }
+      if (resolved.viewport) {
+        head.viewport = resolved.viewport;
       }
     }
 
@@ -217,10 +226,32 @@ export class HeadProvider {
     state.head = {
       ...state.head,
       ...head,
+      // Merged key by key, as `resolveGlobalHead` does for the early head:
+      // spread whole, a later global head's attributes replaced the earlier
+      // ones, so the browser lost i18n's `lang` the moment an app set any
+      // attribute of its own, and disagreed with the server's document.
+      htmlAttributes: this.mergeAttributes(
+        state.head.htmlAttributes,
+        head.htmlAttributes,
+      ),
+      bodyAttributes: this.mergeAttributes(
+        state.head.bodyAttributes,
+        head.bodyAttributes,
+      ),
       meta: [...(state.head.meta ?? []), ...meta, ...(head.meta ?? [])],
       link: [...(state.head.link ?? []), ...link, ...(head.link ?? [])],
       script: [...(state.head.script ?? []), ...(head.script ?? [])],
     };
+  }
+
+  protected mergeAttributes(
+    previous?: Record<string, string>,
+    next?: Record<string, string>,
+  ): Record<string, string> | undefined {
+    if (!previous || !next) {
+      return next ?? previous;
+    }
+    return { ...previous, ...next };
   }
 
   protected fillHeadByPage(

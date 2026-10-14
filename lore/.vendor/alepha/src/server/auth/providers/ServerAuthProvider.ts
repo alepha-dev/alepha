@@ -285,7 +285,7 @@ export class ServerAuthProvider {
       }),
       body: z.object({
         username: z.text(),
-        password: z.text(),
+        password: z.text({ trim: false }),
       }),
       response: tokenResponseSchema,
     },

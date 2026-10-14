@@ -16,9 +16,9 @@ renders:
 
 ```ts
 import { Button, cn, useToast } from "@alepha/ui";
+import { AdminRouter } from "@alepha/ui/admin";
 import { AutoForm } from "@alepha/ui/form";
 import { DataTable } from "@alepha/ui/table";
-import { AdminRouter } from "@alepha/ui/admin";
 ```
 
 Load the stylesheet once, at your app's entry point:

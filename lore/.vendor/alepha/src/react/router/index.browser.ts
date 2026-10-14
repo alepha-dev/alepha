@@ -11,6 +11,7 @@ import { ReactBrowserRendererProvider } from "./providers/ReactBrowserRendererPr
 import { ReactBrowserRouterProvider } from "./providers/ReactBrowserRouterProvider.ts";
 import { ReactPageProvider } from "./providers/ReactPageProvider.ts";
 import { RouterLocaleProvider } from "./providers/RouterLocaleProvider.ts";
+import { ReactBootHealth } from "./services/ReactBootHealth.ts";
 import { ReactPageService } from "./services/ReactPageService.ts";
 import { ReactRouter } from "./services/ReactRouter.ts";
 
@@ -35,6 +36,7 @@ export const AlephaReactRouter = $module({
     ReactBrowserRendererProvider,
     RouterLocaleProvider,
     ReactPageService,
+    ReactBootHealth,
   ],
   register: (alepha) =>
     alepha

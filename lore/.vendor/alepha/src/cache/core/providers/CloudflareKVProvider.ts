@@ -64,8 +64,10 @@ export const KV_MIN_EXPIRATION_TTL = 60;
  * Cloudflare KV cache provider.
  *
  * Uses a KV namespace binding for all cache operations.
- * Keys are stored as: `cache:{name}:{key}`, with `{key}` escaped so a `:` in
- * it cannot be read as part of the name.
+ * Keys are stored as: `{alepha.name}:cache:{name}:{key}`, with `{key}`
+ * escaped so a `:` in it cannot be read as part of the name. Two apps binding
+ * one KV namespace never read each other's entries, and `clear()` deletes
+ * this app's entries only.
  *
  * **Required Cloudflare binding:**
  * - `KV_CACHE` - A KV namespace binding in wrangler configuration
@@ -235,7 +237,7 @@ export class CloudflareKVProvider extends CacheProvider {
   public async clear(): Promise<void> {
     this.log.debug("Clearing all cache");
     const kv = this.getKV();
-    const allKeys = await this.listAllKeys("cache:");
+    const allKeys = await this.listAllKeys(`${this.prefix()}:`);
     for (const key of allKeys) {
       await kv.delete(key);
     }
@@ -307,11 +309,11 @@ export class CloudflareKVProvider extends CacheProvider {
   }
 
   /**
-   * Build the full KV key: `cache:{name}:{key}`. Callers pass the key through
-   * {@link CacheProvider.escapeKey} first - this only joins.
+   * Build the full KV key: `{alepha.name}:cache:{name}:{key}`. Callers pass
+   * the key through {@link CacheProvider.escapeKey} first - this only joins.
    */
   protected prefix(...path: string[]): string {
-    return ["cache", ...path].join(":");
+    return [this.alepha.name, "cache", ...path].join(":");
   }
 
   protected getKV(): KVNamespace {

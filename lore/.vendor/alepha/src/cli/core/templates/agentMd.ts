@@ -36,12 +36,12 @@ account page frames itself with \`AccountPage\` (\`variant="table"\` or
 
 \`src/api/Realm.ts\` is the switchboard for all of it:
 
-- \`settings.adminEmails\` — the first registration matching one of these is
+- \`settings.adminEmails\`  -  the first registration matching one of these is
   promoted to admin. It reads \`ADMIN_EMAIL\`; init wrote your \`git config
 user.email\` into \`.env\`, so registering with that address locally makes you
   admin. Every deployed environment must set its own \`ADMIN_EMAIL\`, and one
   that does not promotes nobody.
-- \`features\` — \`audits\` and \`apiKeys\` are on; \`jobs\`, \`notifications\`,
+- \`features\`  -  \`audits\` and \`apiKeys\` are on; \`jobs\`, \`notifications\`,
   \`avatars\`, \`parameters\` and \`oauth\` each need a provider first. Turning one
   on registers its module _and_ makes its admin/account screens appear.
 - \`verifyEmailRequired\` / \`verifyPhoneRequired\` / \`resetPasswordAllowed\`
@@ -62,7 +62,7 @@ This is an **Alepha** project.
 
 ## Structure
 
-Every Alepha project has the same layout. There are no variants — put new
+Every Alepha project has the same layout. There are no variants  -  put new
 code where this table says it goes. Directories marked \`(create)\` are not
 scaffolded, because there is nothing to put in them yet; create them under
 that exact name when you write the first file.
@@ -76,7 +76,7 @@ src/
 │   ├── schemas/          # Request/response schemas${
       opts.saas
         ? `
-│   ├── Realm.ts          # $realm — auth settings & features`
+│   ├── Realm.ts          # $realm  -  auth settings & features`
         : ""
     }
 │   └── index.ts          # ApiModule ($module)
@@ -90,10 +90,10 @@ src/
 \`\`\`
 
 \`src/api/\` and \`src/web/\` each have an \`index.ts\` exporting the \`$module\`
-that groups everything below it — register new services there. The
+that groups everything below it  -  register new services there. The
 subdirectories are plain folders; they have no \`index.ts\` of their own.
 
-Tailwind is already wired up through \`vite.config.ts\` — style with utility
+Tailwind is already wired up through \`vite.config.ts\`  -  style with utility
 classes, don't add another CSS framework. The scaffolded home page renders
 \`GettingStarted\` from the framework and carries no classes of its own, so
 there is no house style to match: the first component you write sets it.
@@ -127,30 +127,30 @@ alepha lint              # Format and lint
 alepha typecheck         # Type checking
 alepha test              # Run tests
 alepha build             # Build
-alepha platform plan     # Show planned cloud topology (requires platform plugin)
-alepha platform up       # Provision + deploy to a configured environment
-alepha platform status   # Inspect deployed resources
+alepha infra plan        # Show planned cloud topology (requires configured infra)
+alepha deploy            # Provision + deploy to a configured environment
+alepha infra status      # Inspect deployed resources
 \`\`\`
 ${saas}
 ## Testing
 
 - Specs live in \`test/\`, named \`*.spec.ts\`.
-- Run with \`alepha test\` (Vitest, embedded in alepha — nothing to install).
+- Run with \`alepha test\` (Vitest, embedded in alepha  -  nothing to install).
 - \`test/dummy.spec.ts\` is the starting example; \`Alepha.create()\` is the
   entry point and \`.inject(...)\` resolves providers.
 
 ## Cloud deployment (Cloudflare Workers)
 
-Add the \`platform\` plugin to \`alepha.config.ts\` to manage cloud
+Add the \`infra\` plugin to \`alepha.config.ts\` to manage cloud
 provisioning, deploy, secrets, and DB migrations end-to-end:
 
 \`\`\`ts
 import { defineConfig } from "alepha/cli/config";
-import { cloudflare, platform } from "alepha/cli/platform";
+import { cloudflare, infra } from "alepha/cli/infra";
 
 export default defineConfig({
   plugins: [
-    platform({
+    infra({
       environments: {
         production: cloudflare({
           domain: "yourapp.com",
@@ -162,12 +162,29 @@ export default defineConfig({
 });
 \`\`\`
 
-Then: \`alepha platform up --env production\` (auth via \`wrangler login\` on first run).
+Then: \`alepha deploy\` (production by default). Cloudflare can open login automatically; \`alepha infra login --env production\` probes credentials explicitly. Environment names are explicit keys, selected with \`--env\`.
 
-Supported adapters: \`cloudflare\`, \`bay\`. The Cloudflare adapter provisions
-D1 (or Hyperdrive when \`DATABASE_URL\` is postgres), KV, R2, Queues, and pushes
-secrets via \`wrangler secret bulk\`. Set \`build.target: "cloudflare"\` in
-\`alepha.config.ts\` if you only want the build artifact without the orchestrator.
+Built-in adapters are \`cloudflare\` and \`bay\`; external factories are supported.
+Cloudflare provisions D1 (or Hyperdrive for Postgres), KV, R2 and Queues.
+Secrets are selected from declared keys and the selected environment files.
+\`alepha infra deploy\` authenticates and deploys an existing artifact only;
+Bay's remote provisioning and startup migrations still happen.
+
+\`alepha init --infra cf\` can add a canonical Cloudflare production config
+without credentials, or pass it when creating the project. Omit it for local-only
+development. Plain \`alepha build --runtime workerd\` is credential-free, while
+\`alepha infra build\` may look up cloud bindings.
+
+## Builds and local checks
+
+Build runtime slices with \`alepha build --runtime node,workerd\`. The first
+slice is primary. \`alepha pack\` archives dist/, \`alepha compile\` creates
+a Bun binary, and \`alepha image\` creates a container image.
+
+Run lint, typecheck, tests and \`alepha db migrations check\` during development.
+Run build and the project's integration checks separately before deployment.
+Use the project's configured verification pipeline and read its CI results;
+a passing local check does not prove that deployment or SSR works.
 
 ## Documentation
 

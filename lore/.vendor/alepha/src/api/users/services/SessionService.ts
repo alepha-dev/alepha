@@ -2,9 +2,9 @@ import { randomInt } from "node:crypto";
 
 import { $inject, Alepha } from "alepha";
 import type { FileController } from "alepha/api/files";
-import { DatabaseCacheProvider } from "alepha/cache/database";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
+import { $rateLimit, type RateLimitResult } from "alepha/rate-limit";
 import {
   CryptoProvider,
   InvalidCredentialsError,
@@ -18,6 +18,7 @@ import { FileSystemProvider } from "alepha/system";
 import { SessionAudits } from "../audits/SessionAudits.ts";
 import { UserAudits } from "../audits/UserAudits.ts";
 import type { UserEntity } from "../entities/users.ts";
+import type { AttemptBudget } from "../interfaces/AttemptBudget.ts";
 import { UserNotifications } from "../notifications/UserNotifications.ts";
 import { RealmProvider } from "../providers/RealmProvider.ts";
 import { UsernameSlugger } from "./UsernameSlugger.ts";
@@ -32,22 +33,26 @@ export class SessionService {
   protected readonly realmProvider = $inject(RealmProvider);
   protected readonly fileController = $client<FileController>();
   /**
-   * The login lockout counters, pinned to SQL rather than the app's default
-   * cache.
-   *
-   * The default is runtime-dependent: memory on Node, Cloudflare KV on
-   * workerd. Neither is acceptable here. Memory is per-process, so a counter
-   * written on one instance is invisible to the next request on another. KV is
-   * worse: it is bound as the workerd default whether or not the app ever
-   * provisioned a namespace, and when it wasn't it skips its own
-   * initialization and throws on every call — which is exactly how this
-   * lockout came to be silently disabled in production.
-   *
-   * SQL is the only backend that is present wherever this service is (it
-   * already owns the `users` table it is protecting) and strongly consistent
-   * on every runtime, D1 included.
+   * The login lockout counters: `login:ip` (global, cross-realm) and
+   * `login:account` (per realm and user), limit and window from the realm's
+   * `loginRateLimit` settings. They are actor state, so they are shared exactly
+   * as far as the app's actors are: one process on Memory, every instance with
+   * `AlephaActorRedis`, a Durable Object per key on workerd. No Redis means one
+   * instance (the topology rule of the rate-limit guide). Both fail closed: a
+   * counter store that cannot answer refuses the login.
    */
-  protected readonly cacheProvider = $inject(DatabaseCacheProvider);
+  protected readonly loginIp = $rateLimit({
+    name: "login:ip",
+    limit: (input: AttemptBudget) => input.max,
+    window: (input: AttemptBudget) => input.windowMs,
+    key: (input: AttemptBudget) => input.key,
+  });
+  protected readonly loginAccount = $rateLimit({
+    name: "login:account",
+    limit: (input: AttemptBudget) => input.max,
+    window: (input: AttemptBudget) => input.windowMs,
+    key: (input: AttemptBudget) => input.key,
+  });
   protected readonly usernameSlugger = $inject(UsernameSlugger);
   protected readonly userService = $inject(UserService);
 
@@ -170,134 +175,61 @@ export class SessionService {
     return new Promise((resolve) => setTimeout(resolve, randomInt(50, 201)));
   }
 
-  protected static readonly LOGIN_CACHE_NAME = "login-rate-limit";
-
   /**
-   * Check if a login key is currently locked out.
-   * Read-only — does not increment the counter.
+   * Which IP budget an HTTP login attempt is counted against.
    *
-   * **Fails closed.** A counter store that cannot be read cannot say an
-   * attacker is under the threshold, and answering "not locked" turns an
-   * outage into an open door — brute force with the rate limiter removed, for
-   * as long as the store is down and with nothing in the response to show it.
-   * Refusing instead costs legitimate users their logins, loudly, which is the
-   * failure someone will actually come and fix.
+   * No address is not a reason to skip the budget: `getRequestIp` answers
+   * nothing without `TRUST_PROXY` on a runtime with no socket, and every
+   * pre-compare failure then wrote an audit row with nothing bounding it. One
+   * shared bucket keeps those attempts bounded, as OAuth DCR does. A call with
+   * no HTTP request at all (a script, a spec) is not counted per IP.
    */
-  protected async isLoginLocked(key: string, max: number): Promise<boolean> {
-    try {
-      const count = await this.cacheProvider.getTyped<number>(
-        SessionService.LOGIN_CACHE_NAME,
-        key,
-      );
-      return count != null && count >= max;
-    } catch (error) {
-      this.log.error(
-        "Failed to check login rate limit, denying attempt",
-        error,
-      );
-      return true;
-    }
+  protected ipBucket(ip: string | undefined): string {
+    if (ip) return ip;
+    this.log.warn(
+      "Login attempt with no client address; counting it against the shared bucket. Set TRUST_PROXY if this app is behind a proxy.",
+    );
+    return "unknown";
   }
 
   /**
-   * Record a failed login attempt.
-   *
-   * Returns `true` if this failure just crossed the lockout threshold.
-   *
-   * **Atomic, and a fixed window.** `incr` is one
-   * `INSERT ... ON CONFLICT DO UPDATE` against `cache_entries`, so concurrent
-   * attempts cannot interleave. The read-modify-write this replaces could:
-   * a hundred parallel attempts all read the same count and all wrote
-   * `count + 1`, moving the counter by one — the lockout was bypassable by
-   * anyone willing to send their guesses at once rather than in sequence.
-   *
-   * That read-modify-write bought a sliding window, because each write
-   * re-armed the TTL. `incr` stamps the expiry when the counter is created and
-   * never extends it, so the window is now fixed — and that is the better
-   * behaviour anyway: under a sliding window anyone who knows a username can
-   * hold that account locked forever by failing one login just inside every
-   * window. A fixed window bounds the lockout to `windowMs`.
-   *
-   * A write that fails is logged at `error` and swallowed: the attempt it
-   * belongs to is being rejected either way, and the return value only decides
-   * whether to raise the "just locked" audit and notification. The door it
-   * would otherwise leave open is closed by {@link isLoginLocked}, which
-   * denies when the same store cannot be read.
+   * Audit an IP lock, once: when a failure that keeps its IP slot is the one
+   * that filled the counter.
    */
-  protected async recordFailedLogin(
-    key: string,
+  protected async auditIpLock(
+    ip: RateLimitResult | undefined,
     max: number,
-    windowMs: number,
-  ): Promise<boolean> {
-    try {
-      const count = await this.cacheProvider.incr(
-        SessionService.LOGIN_CACHE_NAME,
-        key,
-        1,
-        windowMs,
-      );
-      return count === max;
-    } catch (error) {
-      this.log.error("Failed to record failed login attempt", error);
-      return false;
-    }
-  }
-
-  /**
-   * Take one attempt from a login counter BEFORE the password is compared,
-   * and answer the counter's new value (#Q2529).
-   *
-   * Checking first and counting after a failure let a burst of parallel
-   * guesses all read the counter under the cap and each get a compare: the
-   * lockout overshot by the burst's width. Taking first means every compare
-   * holds a slot, and a guess past the cap is refused before it is checked.
-   * A success gives its slot back ({@link refundLoginAttempt}), so the
-   * counter still counts failures only.
-   *
-   * Fails closed, like {@link isLoginLocked}: a counter that cannot be
-   * written answers "past any cap", so an outage refuses logins rather than
-   * removing the limit.
-   */
-  protected async takeLoginAttempt(
-    key: string,
-    windowMs: number,
-  ): Promise<number> {
-    try {
-      return await this.cacheProvider.incr(
-        SessionService.LOGIN_CACHE_NAME,
-        key,
-        1,
-        windowMs,
-      );
-    } catch (error) {
-      this.log.error("Failed to take a login attempt, denying", error);
-      return Number.POSITIVE_INFINITY;
-    }
-  }
-
-  /**
-   * Give back the slot {@link takeLoginAttempt} took, for an attempt that
-   * succeeded or was never compared. Best effort: a refund that fails costs
-   * the user one slot of the window, never the limit.
-   */
-  protected async refundLoginAttempt(
-    key: string,
-    windowMs: number,
+    realmName: string,
+    userRealmName?: string,
   ): Promise<void> {
-    try {
-      await this.cacheProvider.incr(
-        SessionService.LOGIN_CACHE_NAME,
-        key,
-        -1,
-        windowMs,
-      );
-    } catch (error) {
-      this.log.warn("Failed to refund a login attempt", error);
-    }
+    if (ip?.count !== max) return;
+    const request = this.alepha.store.get("alepha.http.request");
+    await this.sessionAudits(userRealmName)?.security.log("rate_limited", {
+      userRealm: realmName,
+      success: false,
+      description:
+        "IP temporarily locked due to too many failed login attempts",
+      metadata: { ip: request?.ip },
+    });
   }
 
   /**
    * Validate user credentials and return the user if valid.
+   *
+   * Two counters, both taken before the password is compared (#Q2529), and
+   * given back only by a right password:
+   *
+   * 1. `login:ip`, first, before the anti-timing delay and any DB work. A
+   *    refusal throws and writes nothing. Every later failure keeps the slot,
+   *    so a failure before the compare (bad format, unknown user, disabled
+   *    account, no password) is bounded too.
+   * 2. `login:account`, immediately before the compare, once the identity is
+   *    known to have a password: an account that signs in through a provider
+   *    only never spends account slots on attempts that cannot succeed.
+   *
+   * Lock audits are written here, not by the limiter: the limit-th attempt
+   * fills the counter before its compare, and a right password on it must
+   * raise nothing.
    */
   public async login(
     provider: string,
@@ -319,21 +251,21 @@ export class SessionService {
     const identities = this.identities(userRealmName);
     const users = this.users(userRealmName);
 
-    // IP rate limit check (global, cross-realm) — before any DB work
+    // IP budget (global, cross-realm), taken before any DB work.
     const request = this.alepha.store.get("alepha.http.request");
-    const ipKey = request?.ip ? `login:ip:${request.ip}` : undefined;
-
-    if (ipKey) {
-      const ipLocked = await this.isLoginLocked(
-        ipKey,
-        loginRateLimit.ipMaxAttempts,
-      );
-      if (ipLocked) {
-        this.log.warn("Login blocked — IP rate limit exceeded", {
-          ip: request?.ip,
-        });
-        throw new InvalidCredentialsError();
-      }
+    const ip = request
+      ? await this.loginIp.consume({
+          key: this.ipBucket(request.ip),
+          max: loginRateLimit.ipMaxAttempts,
+          windowMs: loginRateLimit.windowMs,
+        })
+      : undefined;
+    if (ip && !ip.allowed) {
+      this.log.warn("Login blocked — IP rate limit exceeded", {
+        ip: request?.ip,
+        reason: ip.reason,
+      });
+      throw new InvalidCredentialsError();
     }
 
     await this.randomDelay();
@@ -360,6 +292,12 @@ export class SessionService {
               description: "Username does not match required format",
               metadata: { provider, username },
             });
+            await this.auditIpLock(
+              ip,
+              loginRateLimit.ipMaxAttempts,
+              name,
+              userRealmName,
+            );
 
             throw new InvalidCredentialsError();
           }
@@ -386,6 +324,12 @@ export class SessionService {
           description: "Invalid login identifier format",
           metadata: { provider, username },
         });
+        await this.auditIpLock(
+          ip,
+          loginRateLimit.ipMaxAttempts,
+          name,
+          userRealmName,
+        );
 
         throw new InvalidCredentialsError();
       }
@@ -398,36 +342,18 @@ export class SessionService {
           realm: name,
         });
 
-        // Only increment IP counter (no user ID to track). Counted before
-        // the attempt is audited: an audit write that fails must never be
-        // what lets an attempt go uncounted.
-        const justLocked = ipKey
-          ? await this.recordFailedLogin(
-              ipKey,
-              loginRateLimit.ipMaxAttempts,
-              loginRateLimit.windowMs,
-            )
-          : false;
-
         await this.sessionAudits(userRealmName)?.auth.log("login", {
           userRealm: name,
           success: false,
           description: "User not found",
           metadata: { provider, username },
         });
-
-        if (justLocked) {
-          await this.sessionAudits(userRealmName)?.security.log(
-            "rate_limited",
-            {
-              userRealm: name,
-              success: false,
-              description:
-                "IP temporarily locked due to too many failed login attempts",
-              metadata: { ip: request?.ip },
-            },
-          );
-        }
+        await this.auditIpLock(
+          ip,
+          loginRateLimit.ipMaxAttempts,
+          name,
+          userRealmName,
+        );
 
         throw new InvalidCredentialsError();
       }
@@ -446,21 +372,13 @@ export class SessionService {
           description: "Login attempt for disabled account",
           metadata: { provider, username },
         });
+        await this.auditIpLock(
+          ip,
+          loginRateLimit.ipMaxAttempts,
+          name,
+          userRealmName,
+        );
 
-        throw new InvalidCredentialsError();
-      }
-
-      // Account rate limit check (per-realm)
-      const accountKey = `login:account:${name}:${user.id}`;
-      const accountLocked = await this.isLoginLocked(
-        accountKey,
-        loginRateLimit.accountMaxAttempts,
-      );
-      if (accountLocked) {
-        this.log.warn("Login blocked — account rate limit exceeded", {
-          userId: user.id,
-          realm: name,
-        });
         throw new InvalidCredentialsError();
       }
 
@@ -474,40 +392,35 @@ export class SessionService {
       const storedPassword = identity.password;
       if (!storedPassword) {
         // An account that signs in through a provider only: a refusal, not
-        // a fault.
+        // a fault, and no account slot is spent on it.
         this.log.warn("Identity has no password configured", {
           provider,
           username,
           identityId: identity.id,
           realm: name,
         });
+        await this.auditIpLock(
+          ip,
+          loginRateLimit.ipMaxAttempts,
+          name,
+          userRealmName,
+        );
         throw new InvalidCredentialsError();
       }
 
-      // Both counters take this attempt before the password is compared,
-      // so concurrent guesses cannot all slip under the cap (#Q2529). The
-      // checks above are the cheap early refusal; these are the limit. And
-      // it happens before anything is audited, so an audit write that fails
-      // can never be what lets a guess go uncounted.
-      const accountCount = await this.takeLoginAttempt(
-        accountKey,
-        loginRateLimit.windowMs,
-      );
-      if (accountCount > loginRateLimit.accountMaxAttempts) {
+      // Account budget (per realm), taken just before the compare so
+      // concurrent guesses cannot all slip under the cap (#Q2529). A refusal
+      // keeps the IP slot and writes nothing.
+      const account = await this.loginAccount.consume({
+        key: `${name}:${user.id}`,
+        max: loginRateLimit.accountMaxAttempts,
+        windowMs: loginRateLimit.windowMs,
+      });
+      if (!account.allowed) {
         this.log.warn("Login blocked — account rate limit exceeded", {
           userId: user.id,
           realm: name,
-        });
-        throw new InvalidCredentialsError();
-      }
-      const ipCount = ipKey
-        ? await this.takeLoginAttempt(ipKey, loginRateLimit.windowMs)
-        : 0;
-      if (ipKey && ipCount > loginRateLimit.ipMaxAttempts) {
-        // Never compared, so the account's slot goes back.
-        await this.refundLoginAttempt(accountKey, loginRateLimit.windowMs);
-        this.log.warn("Login blocked — IP rate limit exceeded", {
-          ip: request?.ip,
+          reason: account.reason,
         });
         throw new InvalidCredentialsError();
       }
@@ -524,13 +437,6 @@ export class SessionService {
           realm: name,
         });
 
-        // The attempt is already counted; this one filling the counter is
-        // what "just locked" means.
-        const ipJustLocked =
-          ipKey !== undefined && ipCount === loginRateLimit.ipMaxAttempts;
-        const accountJustLocked =
-          accountCount === loginRateLimit.accountMaxAttempts;
-
         await this.sessionAudits(userRealmName)?.auth.log("login", {
           userRealm: name,
           success: false,
@@ -538,21 +444,15 @@ export class SessionService {
           description: "Invalid password",
           metadata: { provider, username },
         });
+        await this.auditIpLock(
+          ip,
+          loginRateLimit.ipMaxAttempts,
+          name,
+          userRealmName,
+        );
 
-        if (ipJustLocked) {
-          await this.sessionAudits(userRealmName)?.security.log(
-            "rate_limited",
-            {
-              userRealm: name,
-              success: false,
-              description:
-                "IP temporarily locked due to too many failed login attempts",
-              metadata: { ip: request?.ip },
-            },
-          );
-        }
-
-        if (accountJustLocked) {
+        // This failure filling the counter is what "just locked" means.
+        if (account.count === loginRateLimit.accountMaxAttempts) {
           await this.sessionAudits(userRealmName)?.security.log(
             "rate_limited",
             {
@@ -586,10 +486,8 @@ export class SessionService {
       }
 
       // A right password costs nothing: both slots go back.
-      await this.refundLoginAttempt(accountKey, loginRateLimit.windowMs);
-      if (ipKey) {
-        await this.refundLoginAttempt(ipKey, loginRateLimit.windowMs);
-      }
+      if (account.ticket) await this.loginAccount.refund(account.ticket);
+      if (ip?.ticket) await this.loginIp.refund(ip.ticket);
 
       await this.sessionAudits(userRealmName)?.auth.log("login", {
         userId: user.id,

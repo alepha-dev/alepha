@@ -1,8 +1,8 @@
 import { $inject, Alepha } from "alepha";
 import {
-  AlephaPlatformLibPlugin,
+  AlephaInfraLibPlugin,
   WorkerCloudflareAdapter,
-} from "alepha/cli/platform-lib";
+} from "alepha/cli/infra-lib";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 import { BadRequestError } from "alepha/server";
@@ -50,7 +50,7 @@ export interface RecordedResources {
  * also the wrong one, and the reason is the whole design: an **estate is
  * LENT**. Its Cloudflare account holds resources Lore never created, and one
  * of them may legitimately bear the name a copy would compute. `alepha
- * platform down` may delete by name - it runs on the operator's own machine,
+ * infra down` may delete by name - it runs on the operator's own machine,
  * against their own account, at their own typing. Lore holds a credential lent
  * for deploys, and deletes only what a deploy wrote down.
  *
@@ -150,7 +150,7 @@ export class TeardownService {
     const record = this.read(instance);
     if (!record) {
       throw new BadRequestError(
-        `Lore has no record of what it created for ${instance.app}/${instance.env}, so it will not delete anything: the names are derived and an estate holds resources Lore never made. Deploy it once to record them, or remove them with \`alepha platform down\` or from the Cloudflare dashboard.`,
+        `Lore has no record of what it created for ${instance.app}/${instance.env}, so it will not delete anything: the names are derived and an estate holds resources Lore never made. Deploy it once to record them, or remove them with \`alepha infra down\` or from the Cloudflare dashboard.`,
       );
     }
     if (Object.keys(record).length === 0) {
@@ -196,7 +196,7 @@ export class TeardownService {
    *
    * ## ⚠️ NOT `$inject`ed from Lore's container, and that is not a style choice
    *
-   * `WorkerCloudflareAdapter` resolves only where `AlephaPlatformLibPlugin` has
+   * `WorkerCloudflareAdapter` resolves only where `AlephaInfraLibPlugin` has
    * been registered, and Lore's own container never registers it - the deploy
    * path builds a fresh container for the same reason (`DeployRunner.container`).
    *
@@ -210,7 +210,7 @@ export class TeardownService {
    */
   protected adapter(): WorkerCloudflareAdapter {
     return Alepha.create({ env: { LOG_LEVEL: "error" } })
-      .with(AlephaPlatformLibPlugin)
+      .with(AlephaInfraLibPlugin)
       .inject(WorkerCloudflareAdapter);
   }
 

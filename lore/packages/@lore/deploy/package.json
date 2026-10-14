@@ -24,7 +24,7 @@
     "@lore/core": "workspace:*",
     "alepha": "workspace:*",
     "fzstd": "0.1.1",
-    "lucide-react": "^1.48.0",
+    "lucide-react": "^1.56.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "recharts": "^3.10.1"
@@ -32,11 +32,11 @@
   "devDependencies": {
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",
-    "@types/bun": "^1.4.2",
+    "@types/bun": "^1.4.3",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "@types/ws": "^8.18.1",
-    "vitest": "^5.0.2",
+    "@types/ws": "^8.18.2",
+    "vitest": "^5.0.4",
     "ws": "^8.22.0"
   }
 }

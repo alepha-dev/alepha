@@ -2,12 +2,14 @@ import { createRequire } from "node:module";
 import { isAbsolute, join } from "node:path";
 
 import { $inject, Alepha, AlephaError } from "alepha";
+import type { ActorHostDeclaration } from "alepha/actor";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
 import type * as vite from "vite";
 import type { UserConfig } from "vite";
 
 import type { BuildRuntime } from "../atoms/buildOptions.ts";
+import { ActorHostCollection } from "../services/ActorHostCollection.ts";
 import { BuildSlices } from "../services/BuildSlices.ts";
 import { MetaResolver } from "../services/MetaResolver.ts";
 import {
@@ -18,7 +20,7 @@ import { ViteUtils } from "../services/ViteUtils.ts";
 import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
 
 /**
- * Build the server-side SSR bundle with Vite — one **slice** per runtime.
+ * Build the server-side SSR bundle with Vite  -  one **slice** per runtime.
  *
  * Compiles the server code for production, generates the externals
  * `package.json`, and writes one `dist/index.<runtime>.js` entry wrapper per
@@ -31,7 +33,7 @@ import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
  * re-exporting the Durable Object class. Everything else about the Vite config
  * is identical. `BuildClientTask` never reads the runtime at all and
  * `BuildPrerenderTask` renders from the live container rather than from a
- * built bundle, so neither has a slice question — which is the whole point of
+ * built bundle, so neither has a slice question  -  which is the whole point of
  * the epic: the slow steps run once and only the server link repeats.
  *
  * ## ⚠️ What must happen exactly once, inside a loop
@@ -64,7 +66,8 @@ export class BuildServerTask extends BuildTask {
    * the `$websocket` primitive. Any other build leaves this `false`, so the
    * generated bundle and the slice's entry wrapper carry nothing extra.
    */
-  protected exportDurableObject = false;
+  protected hosts: ActorHostDeclaration[] = [];
+  protected readonly hostCollection = $inject(ActorHostCollection);
 
   /**
    * Memoized chunk parser, resolved on first use by {@link importParseAst}.
@@ -91,9 +94,22 @@ export class BuildServerTask extends BuildTask {
     // Declared order, straight from the resolved options. Never sorted: the
     // first entry is the primary, and reordering it here would change what
     // `dist/package.json` points at and what a deployer spawns.
-    const runtimes = this.slices.resolve(
-      ctx.options.runtimes ?? ctx.options.runtime,
-    );
+    //
+    // ⚠️ Through `fromOptions`, not `resolve(runtimes ?? runtime)`. A static
+    // build resolves `runtimes` to `[]`, and `[] ?? runtime` is `[]`, which
+    // `resolve` reads as "nothing declared" and answers with the default
+    // `["node"]`: every static build compiled a node slice and then deleted it.
+    const runtimes = this.slices.fromOptions(ctx.options);
+
+    // A static build links no server, but its static task still renders `/`
+    // in this process, and that render needs what the client build left
+    // behind: the preload table (entry script, stylesheets) and the favicon.
+    if (runtimes.length === 0) {
+      if (clientBuilt) {
+        await this.prepareStaticRender(ctx, distDir, publicDir);
+      }
+      return;
+    }
 
     // Read once and reused by every slice: the client bundle is
     // runtime-agnostic, so its manifests answer the same for all of them, and
@@ -121,6 +137,7 @@ export class BuildServerTask extends BuildTask {
             meta: ctx.meta ? this.metaResolver.define(ctx.meta) : undefined,
             allowUnresolvedPreloads: ctx.options.preload?.allowUnresolved,
             ssr,
+            inspect: this.inspects(ctx, runtime),
           });
           ssr ??= built.ssr;
           if (runtime === this.slices.primary(runtimes)) {
@@ -132,7 +149,7 @@ export class BuildServerTask extends BuildTask {
 
     // `main` names ONE file, and the primary is the honest answer: it is what
     // the manifest declares and what a deployer without slice support spawns.
-    // The externals are the primary's too — a workerd slice externalizes
+    // The externals are the primary's too  -  a workerd slice externalizes
     // nothing and a bun slice externalizes less, so taking any other slice's
     // list would under-declare what `node .` needs.
     await this.generateExternals(
@@ -152,6 +169,57 @@ export class BuildServerTask extends BuildTask {
     }
   }
 
+  /**
+   * Hand a static build's renderer the client manifests, then remove what the
+   * server would have consumed.
+   *
+   * The same two steps {@link run} takes after linking slices, without the
+   * link: the SSR manifest goes into the app's store (where
+   * `ReactServerProvider` reads its entry assets), the client `index.html` is
+   * removed so the static task renders its own, and `.vite` is deleted.
+   */
+  protected async prepareStaticRender(
+    ctx: BuildTaskContext,
+    distDir: string,
+    publicDir: string,
+  ): Promise<void> {
+    await ctx.run({
+      name: "read client manifests",
+      handler: async () => {
+        const { resolveConfig } = await this.viteUtils.importVite();
+        const resolved = await resolveConfig(
+          { mode: "production", logLevel: "silent" },
+          "build",
+        );
+        const ssr = await this.readSsrManifest({
+          distDir,
+          clientDir: publicDir,
+          base: resolved.base,
+          allowUnresolvedPreloads: ctx.options.preload?.allowUnresolved,
+        });
+        ctx.alepha.store.set("alepha.react.ssr.manifest" as any, ssr.data);
+        await this.fs.rm(
+          this.fs.join(ctx.root, distDir, publicDir, "index.html"),
+        );
+        await this.fs.rm(ssr.viteDir, { recursive: true });
+      },
+    });
+  }
+
+  /**
+   * Whether a slice carries the inspector: asked for with `--inspect`, and a
+   * runtime that can serve its socket. workerd has no filesystem to put one
+   * on, so it is left out there, with one line saying so.
+   */
+  protected inspects(ctx: BuildTaskContext, runtime: BuildRuntime): boolean {
+    if (!ctx.options.inspect) return false;
+    if (runtime === "workerd") {
+      this.log.info("--inspect: the workerd slice carries no inspector");
+      return false;
+    }
+    return true;
+  }
+
   protected async buildServer(opts: {
     root: string;
     entry: string;
@@ -169,7 +237,7 @@ export class BuildServerTask extends BuildTask {
      * The client manifests, already read and resolved by an earlier slice.
      *
      * Present for every slice after the first. The client bundle is
-     * runtime-agnostic, so re-reading would produce the same answer — and
+     * runtime-agnostic, so re-reading would produce the same answer  -  and
      * cannot anyway, since the directory it reads is deleted once the build is
      * over.
      */
@@ -184,6 +252,10 @@ export class BuildServerTask extends BuildTask {
      * the build.
      */
     allowUnresolvedPreloads?: string[];
+    /**
+     * Bundle `alepha/inspector` and register it before the app starts.
+     */
+    inspect?: boolean;
   }): Promise<{ entryFile: string; externals: string[]; ssr?: SsrManifest }> {
     const serverDir = this.slices.serverDir(opts.runtime);
     const conditions: string[] = [];
@@ -231,28 +303,39 @@ export class BuildServerTask extends BuildTask {
     // the wrangler `durable_objects`/`migrations` config to be reachable at the
     // edge, it must ride out through the app's own server bundle as a real
     // named export. Only do this for a workerd build of an app that actually
-    // uses `$websocket` or `$room` — every other build stays untouched.
-    this.exportDurableObject =
-      conditions.includes("workerd") && this.usesWebSocket(opts.alepha);
+    // uses `$websocket` or `$room`  -  every other build stays untouched.
+    this.hosts = conditions.includes("workerd")
+      ? this.hostCollection.collect(opts.alepha)
+      : [];
 
     // For the entry chunk to carry the named export, build from a generated
     // entry that both runs the real app entry (for its side effects) and
     // re-exports the DO class. The same `entry` is passed to `build.ssr` and
     // to `extractEntryFromBundle`, so the facade chunk is found.
+    //
+    // `--inspect` goes through the same generated entry. Imports evaluate in
+    // order, so the app entry runs first: `run()` publishes the app on
+    // `globalThis.__alepha` and defers its start to a timer, and the inspector
+    // is registered here, synchronously, before that timer fires.
     let entry = opts.entry;
-    if (this.exportDurableObject) {
+    if (this.hosts.length > 0 || opts.inspect) {
       const entryAbsolute = isAbsolute(opts.entry)
         ? opts.entry
         : join(opts.root, opts.entry);
       // Named after the runtime: two slices generating the same file would
       // race, and only one of them builds what it thinks it built.
       const generated = `${opts.distDir}/.alepha-${opts.runtime}-entry.mjs`;
+      let source = `import ${JSON.stringify(entryAbsolute)};\n`;
+      for (const host of this.hosts) {
+        source += `export { ${host.moduleExport} as ${host.exportName} } from ${JSON.stringify(host.module)};\n`;
+      }
+      if (opts.inspect) {
+        source +=
+          `import { AlephaInspector } from "alepha/inspector";\n` +
+          `globalThis.__alepha?.with(AlephaInspector);\n`;
+      }
       await this.fs.mkdir(opts.distDir);
-      await this.fs.writeFile(
-        generated,
-        `import ${JSON.stringify(entryAbsolute)};\n` +
-          `export { AlephaWebSocketDurableObject } from "alepha/websocket";\n`,
-      );
+      await this.fs.writeFile(generated, source);
       entry = generated;
     }
 
@@ -285,7 +368,7 @@ export class BuildServerTask extends BuildTask {
         sourcemap: true,
         chunkSizeWarningLimit: 10000,
         // ⚠️ Namespaced by runtime. Two slices in one `server/` do not
-        // collide — their content hashes differ — so both sets sit there and
+        // collide  -  their content hashes differ  -  so both sets sit there and
         // the wrangler `server/*.js` glob sweeps the Node chunks into the
         // Worker upload. See BuildSlices.serverDir.
         outDir: `${opts.distDir}/${serverDir}`,
@@ -296,7 +379,7 @@ export class BuildServerTask extends BuildTask {
             chunkFileNames: "[hash].js",
             assetFileNames: "[hash][extname]",
             format: "esm",
-            // No `codeSplitting.groups` on purpose — default splitting wins here.
+            // No `codeSplitting.groups` on purpose  -  default splitting wins here.
             //
             // This used to force everything matching `node_modules/react(/|-dom/)`
             // into one chunk. That regex covers `react` AND `react-dom/server`,
@@ -311,8 +394,8 @@ export class BuildServerTask extends BuildTask {
             // Measured on Lore (workerd): dropping the group moved the
             // renderer to a genuinely async chunk and took the eagerly-parsed
             // server bundle from ~1556KB to ~1329KB. Splitting the group in two
-            // instead — a `react-dom-server` group ahead of a `react` group with
-            // a negative lookahead — did NOT work and produced byte-identical
+            // instead  -  a `react-dom-server` group ahead of a `react` group with
+            // a negative lookahead  -  did NOT work and produced byte-identical
             // output, so reach for a measurement before reintroducing any group
             // here rather than assuming the pattern is what decides.
 
@@ -348,6 +431,12 @@ export class BuildServerTask extends BuildTask {
     }
 
     const entryFile = this.extractEntryFromBundle(opts.root, entry, result);
+
+    // The generated entry is a build input, not part of the artifact: it
+    // names the app's entry by its absolute path on this machine.
+    if (entry !== opts.entry) {
+      await this.fs.rm(entry, { force: true });
+    }
 
     // Read once per BUILD, not once per slice. The directory it reads is
     // deleted by `run` after the last slice, so a second read would find
@@ -454,23 +543,12 @@ export class BuildServerTask extends BuildTask {
     serverDir: string,
     entryFile: string,
   ): string {
-    if (!this.exportDurableObject) {
-      return "";
-    }
-    return `export { AlephaWebSocketDurableObject } from "./${serverDir}/${entryFile}";\n`;
-  }
-
-  /**
-   * Whether the workspace's realtime layer needs the Durable Object export:
-   * true when it registers `$websocket` OR `$room` primitives. A rooms-only
-   * app (no `$websocket` at all) still runs inside
-   * `AlephaWebSocketDurableObject`, so it needs the exact same re-export.
-   */
-  protected usesWebSocket(alepha: Alepha): boolean {
-    return (
-      alepha.primitives("$websocket").length > 0 ||
-      alepha.primitives("$room").length > 0
-    );
+    return this.hosts
+      .map(
+        (host) =>
+          `export { ${host.exportName} } from "./${serverDir}/${entryFile}";\n`,
+      )
+      .join("");
   }
 
   /**
@@ -479,7 +557,7 @@ export class BuildServerTask extends BuildTask {
    * require factory (see {@link neutralizeWorkerdCreateRequire}).
    *
    * Rolldown injects that exact call as a top-of-chunk CJS-interop banner
-   * whenever a bundled CommonJS module references `require` — and on
+   * whenever a bundled CommonJS module references `require`  -  and on
    * Cloudflare, `import.meta.url` is `undefined` during script validation, so
    * `createRequire(undefined)` throws before the worker ever runs
    * (`Uncaught TypeError: The argument 'path' must be a file URL…`, deploy
@@ -489,7 +567,7 @@ export class BuildServerTask extends BuildTask {
    *
    * The same undefined `import.meta.url` also breaks the standard Vite asset
    * idiom `new URL("./rel.png", import.meta.url)`, which Vite's SSR build
-   * leaves untouched (it is valid on Node) — any module-scope occurrence in a
+   * leaves untouched (it is valid on Node)  -  any module-scope occurrence in a
    * workerd chunk throws `Uncaught TypeError: Invalid URL string.` at
    * validation. After the createRequire calls are neutralized (their pattern
    * matches on the literal `import.meta.url` token, so order matters), every
@@ -582,8 +660,8 @@ export class BuildServerTask extends BuildTask {
    *
    * On Cloudflare, `import.meta.url` is `undefined` during deploy-time script
    * validation (and stays useless at runtime), so any module-scope
-   * `new URL(rel, import.meta.url)` — the standard Vite asset idiom, which
-   * the SSR build deliberately leaves untouched — kills the upload with
+   * `new URL(rel, import.meta.url)`  -  the standard Vite asset idiom, which
+   * the SSR build deliberately leaves untouched  -  kills the upload with
    * `Invalid URL string.` (error 10021). Stubbing in the chunk's own module
    * URL keeps the closest possible Node semantics: relative asset paths
    * resolve to deterministic (if fictional) `file:///` URLs instead of
@@ -616,7 +694,7 @@ export class BuildServerTask extends BuildTask {
    * hypothetical: that token is also ordinary *data*. `apps/docs` renders its
    * changelog from commit messages, two of which name the token verbatim, so
    * the rewrite terminated a string literal early. The chunk stopped parsing,
-   * rolldown dropped it, and the build still exited 0 — the app entry shipped
+   * rolldown dropped it, and the build still exited 0  -  the app entry shipped
    * as a 37-byte file holding nothing but a sourcemap comment, `run()` never
    * executed, and Cloudflare refused the upload with `ReferenceError:
    * __alepha is not defined`.
@@ -758,7 +836,7 @@ export class BuildServerTask extends BuildTask {
       type: "module",
       // The primary slice. `node .` has to resolve to something runnable, and
       // there is exactly one `main` to name it with, so the first declared
-      // runtime is the answer — the same one the manifest gives.
+      // runtime is the answer  -  the same one the manifest gives.
       main,
       dependencies: deps,
     };
@@ -817,7 +895,7 @@ export class BuildServerTask extends BuildTask {
    *
    * A `renderChunk` rewrite that corrupts a chunk does not fail the build:
    * rolldown drops the unparseable content and emits an empty file, and the
-   * build exits 0. What ships is an app whose `run()` never executes — a
+   * build exits 0. What ships is an app whose `run()` never executes  -  a
    * failure that first surfaces as Cloudflare refusing the upload with
    * `ReferenceError: __alepha is not defined`, a message that points nowhere
    * near the bundler. An entry chunk always at minimum imports the chunk
@@ -834,7 +912,7 @@ export class BuildServerTask extends BuildTask {
       return;
     }
     throw new AlephaError(
-      `The server entry chunk "${entryFile}" is empty — it holds no statement ` +
+      `The server entry chunk "${entryFile}" is empty  -  it holds no statement ` +
         "at all, so the application would never start. This means a chunk " +
         "transform produced code the bundler could not parse and silently " +
         "dropped. Refusing to ship the build.",

@@ -4,6 +4,8 @@ import {
   appEntryOptions,
   type BuildOptions,
   buildOptions,
+  type DesktopOptions,
+  desktopOptions,
   type DevOptions,
   devOptions,
   type ImageOptions,
@@ -50,6 +52,14 @@ export interface AlephaCliConfig {
    * `wrangler.jsonc` really is written by the build.
    */
   image?: ImageOptions;
+
+  /**
+   * A native macOS window for `alepha compile --desktop`: `name` and
+   * reverse-DNS `identifier` (both required), an optional PNG `icon` and
+   * `window` options. Read by that command only; it changes nothing about
+   * `build`, an ordinary `compile`, or `image`. Needs `@alepha/desktop`.
+   */
+  desktop?: DesktopOptions;
 
   /**
    * Override what `alepha.meta` reports about this build.
@@ -103,6 +113,10 @@ export const defineConfig = (config: AlephaCliConfig) => {
 
     if (config.image) {
       alepha.set(imageOptions, config.image);
+    }
+
+    if (config.desktop) {
+      alepha.set(desktopOptions, config.desktop);
     }
 
     if (config.meta) {

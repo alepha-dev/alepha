@@ -25,9 +25,7 @@ export const useAuth = <T extends object = any>() => {
 
   return {
     user,
-    logout: () => {
-      alepha.inject(ReactAuth).logout();
-    },
+    logout: () => alepha.inject(ReactAuth).logout(),
     login: async (
       provider: keyof T,
       options: {

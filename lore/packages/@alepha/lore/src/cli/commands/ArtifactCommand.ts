@@ -19,7 +19,7 @@ import { LoreProjectResolver } from "../services/LoreProjectResolver.ts";
  * ```
  *
  * The push itself is {@link LoreArtifactPusher}, which `lore deploy` and the
- * platform adapter call too: one packing and one upload for every caller.
+ * infra adapter call too: one packing and one upload for every caller.
  *
  * ## It packs for you, and that is not a convenience
  *

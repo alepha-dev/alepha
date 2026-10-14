@@ -132,7 +132,7 @@ export interface CachePrimitiveOptions<
   /**
    * The cache name. This is useful for invalidating multiple caches at once.
    *
-   * Store key as `cache:$name:$key`.
+   * Store key as `<alepha.name>:cache:$name:$key` on a shared backend.
    *
    * @default Name of the key of the class.
    */

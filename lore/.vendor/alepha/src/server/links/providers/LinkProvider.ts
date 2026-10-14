@@ -93,6 +93,54 @@ export class LinkProvider {
   protected readonly options = $store(linkOptionsAtom);
 
   /**
+   * The credential host-less browser calls carry once the container names a
+   * default origin. See {@link setDefaultAuthorization}.
+   */
+  protected defaultAuthorization?: () => Async<string | undefined>;
+
+  /**
+   * Install the credential every host-less browser call sends to the default
+   * origin ({@link linkOptionsAtom} `hostname`), the registry fetch included.
+   *
+   * A thunk, awaited per request, so a refreshed token is the one sent. It
+   * only ever reaches the default origin: a client whose scope or call names
+   * a hostname of its own never inherits it, and with no default origin it is
+   * never read. Pass nothing to remove it.
+   */
+  public setDefaultAuthorization(
+    thunk?: () => Async<string | undefined>,
+  ): void {
+    this.defaultAuthorization = thunk;
+  }
+
+  /**
+   * The origin host-less browser calls go to, when the container names one.
+   *
+   * In a plain browser the page's own origin is the API and every host-less
+   * call is relative. A native shell runs on `capacitor://localhost` or
+   * `https://localhost`, which serves nothing but the shell, so it names the
+   * API's origin here. Precedence is the call's hostname, then the client's
+   * scope, then this default.
+   *
+   * Browser only. On the server a host-less link is a local handler, and a
+   * default origin there would turn in-process calls into network ones.
+   */
+  public defaultOrigin(): string | undefined {
+    const hostname = this.options.hostname;
+    if (!hostname || !this.alepha.isBrowser()) {
+      return undefined;
+    }
+    return this.normalizeHost(hostname);
+  }
+
+  /**
+   * The default credential, resolved for one request to the default origin.
+   */
+  protected async resolveDefaultAuthorization(): Promise<string | undefined> {
+    return (await this.defaultAuthorization?.()) || undefined;
+  }
+
+  /**
    * Get applicative links registered on the server.
    * This does not include lazy-loaded remote links.
    */
@@ -230,10 +278,22 @@ export class LinkProvider {
       return [...registry.links.values()];
     }
 
+    // With a default origin the registry comes from it, with its credential:
+    // `/api/_links` prunes what an anonymous caller may not call.
+    const origin = this.defaultOrigin();
+    const headers = new Headers();
+    const authorization = origin
+      ? await this.resolveDefaultAuthorization()
+      : undefined;
+    if (authorization) {
+      headers.set("authorization", authorization);
+    }
+
     const { data } = await this.httpClient.fetch(
-      `${LinkProvider.path.apiLinks}`,
+      `${origin ?? ""}${LinkProvider.path.apiLinks}`,
       {
         method: "GET",
+        headers,
         schema: {
           response: apiRegistryResponseSchema,
         },
@@ -670,8 +730,17 @@ export class LinkProvider {
       service: link.service,
     });
 
-    // Browser-only: use batch collector for calls without explicit host
-    if (this.options.batch && this.alepha.isBrowser() && !link.host) {
+    // Browser-only: use batch collector for calls without explicit host.
+    //
+    // Not with a default origin: `BatchCollector` posts to a relative
+    // `/api/_batch`, which in a native shell is the WebView's own origin.
+    // Calls to a default origin are not batched.
+    if (
+      this.options.batch &&
+      this.alepha.isBrowser() &&
+      !link.host &&
+      !this.defaultOrigin()
+    ) {
       this.batchCollector ??= this.alepha.inject(BatchCollector);
       return this.batchCollector.add({
         action: name,
@@ -731,7 +800,8 @@ export class LinkProvider {
   ): Promise<FetchResponse> {
     // Weakest first, each source overwriting the one before it:
     //
-    //   ALS  <  scope.headers  <  scope.authorization  <  per-call headers
+    //   ALS  <  default origin credential  <  scope.headers
+    //        <  scope.authorization  <  per-call headers
     const headers = new Headers();
 
     // The ambient incoming request. Exactly right when a server proxies on
@@ -742,6 +812,16 @@ export class LinkProvider {
     const als = this.alepha.store.get("alepha.http.request");
     if (als?.headers.authorization) {
       headers.set("authorization", als.headers.authorization);
+    }
+
+    // A host-less link in a browser with a default origin goes there, with
+    // the default credential: below the scope's own, which wins.
+    const origin = link.host ? undefined : this.defaultOrigin();
+    const defaultAuthorization = origin
+      ? await this.resolveDefaultAuthorization()
+      : undefined;
+    if (defaultAuthorization) {
+      headers.set("authorization", defaultAuthorization);
     }
 
     for (const [name, value] of this.scopeHeaders(options)) {
@@ -796,7 +876,7 @@ export class LinkProvider {
 
     // else, make a request
     return this.httpClient.fetchAction({
-      host: link.host,
+      host: link.host ?? origin,
       config,
       options: forwarded,
       action: action as any, // schema.body ZodAny is not accepted

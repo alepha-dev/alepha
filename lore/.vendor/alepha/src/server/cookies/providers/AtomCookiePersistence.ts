@@ -136,10 +136,10 @@ export class AtomCookiePersistence {
       path: "/",
       sameSite: "lax" as const,
       ttl: [365, "days"] as DurationLike,
-      // The browser variant of this adapter cannot see APP_NAME (not baked
-      // into the client bundle, not part of SSR hydration — see
-      // AtomCookiePersistence.browser.ts), so it always reads/writes the
-      // bare atom key. Skip the APP_NAME prefix here too — specifically for
+      // The browser variant of this adapter cannot know the server's
+      // alepha.name (the runtime APP_NAME is not bundled, not part of SSR
+      // hydration — see AtomCookiePersistence.browser.ts), so it always
+      // reads/writes the bare atom key. Skip the prefix here too — specifically for
       // atom-persisted cookies — so both sides agree on the same cookie
       // name. Every other server cookie ($cookie primitive) still gets the
       // namespace; see ServerCookiesProvider.prefixName.

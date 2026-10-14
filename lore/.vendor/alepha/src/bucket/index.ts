@@ -36,7 +36,8 @@ export * from "./providers/S3FileStorageProvider.ts";
  *
  * All backends treat the container name as a **key prefix inside one bucket**
  * (`{prefix}/{container}/{fileId}` - the leading prefix comes from
- * `S3_KEY_PREFIX`, or `APP_NAME` as a fallback) or one directory on disk.
+ * `S3_KEY_PREFIX`, else `alepha.name`, never the bucket root) or one
+ * directory on disk.
  * A container is never a separate cloud bucket.
  *
  * **Providers:** Memory (testing), Local filesystem, S3-compatible

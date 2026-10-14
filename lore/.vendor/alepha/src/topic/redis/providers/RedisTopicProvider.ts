@@ -1,4 +1,4 @@
-import { $atom, $hook, $inject, $store, Alepha, type Infer, z } from "alepha";
+import { $hook, $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
 import { RedisProvider, RedisSubscriberProvider } from "alepha/redis";
 import {
@@ -9,37 +9,15 @@ import {
   type UnSubscribeFn,
 } from "alepha/topic";
 
-// ---------------------------------------------------------------------------------------------------------------------
-
 /**
- * Redis topic configuration atom.
+ * Topics over Redis pub/sub.
+ *
+ * Every channel and retained key is `<alepha.name>:topic:<name>`, so two apps
+ * (or two environments of one app) on the same Redis never receive each
+ * other's messages, the framework's own `websocket:broadcast`,
+ * `parameter:sync` and `lock:end` included. Set `APP_NAME` to separate them.
  */
-export const redisTopicOptions = $atom({
-  name: "alepha.topic.redis.options",
-  schema: z.object({
-    prefix: z.text({
-      default: "topic",
-      description: "Prefix for all topic channels in Redis.",
-    }),
-  }),
-  default: {
-    prefix: "topic",
-  },
-  serverOnly: true,
-});
-
-export type RedisTopicOptions = Infer<typeof redisTopicOptions.schema>;
-
-declare module "alepha" {
-  interface State {
-    [redisTopicOptions.key]: RedisTopicOptions;
-  }
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
-
 export class RedisTopicProvider extends TopicProvider {
-  protected readonly options = $store(redisTopicOptions);
   protected readonly alepha = $inject(Alepha);
   protected readonly redisProvider = $inject(RedisProvider);
   protected readonly redisSubscriberProvider = $inject(RedisSubscriberProvider);
@@ -63,8 +41,28 @@ export class RedisTopicProvider extends TopicProvider {
     return "*";
   }
 
-  public prefix(queue: string): string {
-    return `${this.options.prefix}:${queue}`;
+  /**
+   * The Redis channel of a topic: `<alepha.name>:topic:<name>`.
+   */
+  public prefix(name: string): string {
+    return `${this.namespace()}${name}`;
+  }
+
+  /**
+   * `<alepha.name>:topic:`, read on every call like `alepha.name` itself.
+   */
+  protected namespace(): string {
+    return `${this.alepha.name}:topic:`;
+  }
+
+  /**
+   * The PSUBSCRIBE pattern of a parameterized topic.
+   *
+   * The namespace is glob-escaped, so an `APP_NAME` holding `*`, `?` or `[`
+   * matches only itself; the topic's own wildcards stay live.
+   */
+  protected pattern(name: string): string {
+    return `${this.namespace().replace(/[*?[\]\\]/g, "\\$&")}${name}`;
   }
 
   /**
@@ -103,16 +101,18 @@ export class RedisTopicProvider extends TopicProvider {
     callback: SubscribeCallback,
     _options?: TopicSubscribeOptions,
   ): Promise<UnSubscribeFn> {
-    const topic = this.prefix(name);
-
     const listener: SubscribeCallback = (message, channel) =>
       callback(message, channel === undefined ? name : this.unprefix(channel));
     this.listeners.set(callback, listener);
 
     // Subscribe first to avoid message loss window
     if (this.isPattern(name)) {
-      await this.redisSubscriberProvider.pSubscribe(topic, listener);
+      await this.redisSubscriberProvider.pSubscribe(
+        this.pattern(name),
+        listener,
+      );
     } else {
+      const topic = this.prefix(name);
       await this.redisSubscriberProvider.subscribe(topic, listener);
 
       // Then deliver retained message if exists (literal channels only —
@@ -133,16 +133,21 @@ export class RedisTopicProvider extends TopicProvider {
     name: string,
     callback?: SubscribeCallback,
   ): Promise<void> {
-    const topic = this.prefix(name);
     const listener = callback ? this.listeners.get(callback) : undefined;
     if (callback) {
       this.listeners.delete(callback);
     }
 
     if (this.isPattern(name)) {
-      await this.redisSubscriberProvider.pUnsubscribe(topic, listener);
+      await this.redisSubscriberProvider.pUnsubscribe(
+        this.pattern(name),
+        listener,
+      );
     } else {
-      await this.redisSubscriberProvider.unsubscribe(topic, listener);
+      await this.redisSubscriberProvider.unsubscribe(
+        this.prefix(name),
+        listener,
+      );
     }
   }
 
@@ -152,7 +157,7 @@ export class RedisTopicProvider extends TopicProvider {
   }
 
   protected unprefix(channel: string): string {
-    const prefix = `${this.options.prefix}:`;
+    const prefix = this.namespace();
     return channel.startsWith(prefix) ? channel.slice(prefix.length) : channel;
   }
 }

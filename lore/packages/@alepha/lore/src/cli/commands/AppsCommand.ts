@@ -19,7 +19,7 @@ import { LoreProjectResolver } from "../services/LoreProjectResolver.ts";
  *
  * The deploy itself - loading the copy, resolving its runtime, building,
  * pushing, starting and following, tearing down - is {@link LoreDeployer},
- * shared with the platform adapter so there is one deploy with two front doors.
+ * shared with the infra adapter so there is one deploy with two front doors.
  * This command keeps what is its own: flags, refusals worded for a terminal,
  * and output.
  *
@@ -51,7 +51,7 @@ import { LoreProjectResolver } from "../services/LoreProjectResolver.ts";
  *
  * ## ⚠️ Why the client builds at all
  *
- * Lore's Worker cannot run Vite. Lore absorbs `alepha platform`, never `alepha
+ * Lore's Worker cannot run Vite. Lore absorbs `alepha infra`, never `alepha
  * build`, so the artifact is always produced on the machine holding the source.
  *
  * ## ⚠️ It runs `alepha build`. It does not reimplement it.
@@ -259,7 +259,7 @@ export class AppsCommand {
         flags.confirm.trim(),
       );
 
-      // The same report `alepha platform down` prints for a Lore copy:
+      // The same report `alepha infra down` prints for a Lore copy:
       // `kept` on every run, and a failed resource exits non-zero.
       this.deployer.report(result, `${app}/${env}`);
     },

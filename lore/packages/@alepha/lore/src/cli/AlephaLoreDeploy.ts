@@ -20,7 +20,7 @@ import { LoreTokenStore } from "./services/LoreTokenStore.ts";
  * `Alepha.inject` registers the module that DECLARES a service, through its
  * `[MODULE]` back-reference. When every service here was declared in
  * `AlephaLoreCli`, beside the twelve `lore` commands, anything that injected
- * one - the platform adapter injecting `LoreClientService` from inside the
+ * one - the infra adapter injecting `LoreClientService` from inside the
  * `alepha` binary, say - registered that module whole, and `alepha --help`
  * grew every Lore verb.
  *
@@ -47,7 +47,7 @@ export const AlephaLoreDeploy = $module({
     LoreDeployer,
     LoreSecretsService,
     LoreDeviceLogin,
-    // The platform adapter itself: `platform()` registers it by class, which
+    // The infra adapter itself: `infra()` registers it by class, which
     // registers this module, and so none of the `lore` commands.
     LoreAdapter,
   ],

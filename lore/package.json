@@ -32,15 +32,15 @@
   },
   "devDependencies": {
     "@alepha/lore": "workspace:*",
-    "@playwright/test": "^1.63.0",
-    "@types/bun": "^1.4.2",
-    "@types/node": "^26.6.3",
-    "@vitest/coverage-v8": "^5.0.2",
+    "@playwright/test": "^1.64.0",
+    "@types/bun": "^1.4.3",
+    "@types/node": "^26.6.5",
+    "@vitest/coverage-v8": "^5.0.4",
     "alepha": "workspace:*",
     "depcheck": "^1.4.7",
     "typescript": "^7.0.2",
-    "vite": "^8.3.1",
-    "vitest": "^5.0.2"
+    "vite": "^8.3.4",
+    "vitest": "^5.0.4"
   },
   "dependenciesMeta": {
     "esbuild": {

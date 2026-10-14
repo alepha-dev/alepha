@@ -5,7 +5,7 @@ import { $atom, type Infer, z } from "alepha";
  *
  * - `node` - Node.js runtime (default)
  * - `bun` - Bun runtime (uses bun export conditions)
- * - `workerd` - Cloudflare Workers runtime (auto-set with cloudflare target)
+ * - `workerd` - Cloudflare Workers runtime
  */
 export type BuildRuntime = "node" | "bun" | "workerd";
 
@@ -46,6 +46,16 @@ export const buildOptions = $atom({
     stats: z.union([z.boolean(), z.enum(["json"])]).optional(),
 
     /**
+     * Bundle `alepha/inspector` into the server, registered before the app
+     * starts, so the production build can be inspected by devtools.
+     *
+     * It still stays off until the process is started with
+     * `ALEPHA_INSPECT=1`. A build without this flag carries none of it. No
+     * effect on a workerd slice, which has no socket to serve it on.
+     */
+    inspect: z.boolean().optional(),
+
+    /**
      * The runtime, or runtimes, the server is linked for.
      *
      * - `node` - Node.js (the default, and the universal floor: it runs under
@@ -60,7 +70,7 @@ export const buildOptions = $atom({
      *
      * ## ⚠️ Order is meaningful
      *
-     * The first declared runtime is the **primary**: it is `manifest.runtime`,
+     * The first declared runtime is the **primary**: it is `manifest.runtimes[0].runtime`,
      * it is what `dist/package.json`'s `main` points at, and it is what a
      * deployer spawns. `["bun", "node"]` and `["node", "bun"]` produce the same
      * two slices and different behaviour.
@@ -70,7 +80,7 @@ export const buildOptions = $atom({
      *
      * ## `static` is the fourth answer: no server at all
      *
-     * `runtime: ["static"]` declares an app with nothing to spawn — a
+     * `runtime: ["static"]` declares an app with nothing to spawn  -  a
      * prerendered client, served from disk. It produces no server slice, and
      * the manifest records it in the same field, where `static` has always
      * meant "nothing to do, serve the files".
@@ -91,7 +101,7 @@ export const buildOptions = $atom({
       .optional(),
 
     /**
-     * The resolved, ordered slice set — written by `alepha build`, never by an
+     * The resolved, ordered slice set  -  written by `alepha build`, never by an
      * app.
      *
      * `runtime` above is the declaration and accepts a scalar or a list;
@@ -179,7 +189,7 @@ export const buildOptions = $atom({
          * Directory holding a client the workspace built itself, copied into
          * `dist/<public>` before the static site is assembled.
          *
-         * Without it this target can only ship what Alepha rendered — its own
+         * Without it this target can only ship what Alepha rendered  -  its own
          * Vite client build, or a `$page` at `/`. That leaves out every site
          * built by something else: a hand-written `index.html` through plain
          * Vite, an Astro export, a docs generator. Bay can host a site with no
@@ -187,7 +197,7 @@ export const buildOptions = $atom({
          *
          * **Must live outside `dist/`.** The build cleans `dist/` before any
          * task runs, so a client written there is deleted before it can be
-         * adopted — pointing at `dist/public` is refused by name rather than
+         * adopted  -  pointing at `dist/public` is refused by name rather than
          * failing later as a missing file.
          *
          * A server entry is still required (the build boots the workspace to

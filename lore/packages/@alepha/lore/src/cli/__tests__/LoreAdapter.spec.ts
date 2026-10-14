@@ -1,5 +1,5 @@
 import { Alepha } from "alepha";
-import { PlatformOrchestrator, platformOptions } from "alepha/cli/platform-lib";
+import { InfraOrchestrator, infraOptions } from "alepha/cli/infra-lib";
 import { HttpError } from "alepha/server";
 import {
   FileSystemProvider,
@@ -16,7 +16,7 @@ import { LoreDeployer } from "../services/LoreDeployer.ts";
 import { LoreSecretsService } from "../services/LoreSecretsService.ts";
 
 /**
- * `alepha platform up` against a `lore()` environment, driven through the real
+ * `alepha deploy` against a `lore()` environment, driven through the real
  * orchestrator with Lore faked at the `$client` seams.
  *
  * ⚠️ The two load-bearing cases: the secrets land BEFORE the run starts (a
@@ -64,10 +64,10 @@ describe("LoreAdapter", () => {
     })
       .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
       .with({ provide: ShellProvider, use: MemoryShellProvider })
-      // What `platform()` does for every environment, at configure time.
+      // What `infra()` does for every environment, at configure time.
       .with(LoreAdapter);
 
-    alepha.set(platformOptions, {
+    alepha.set(infraOptions, {
       name: "docs",
       environments: {
         production: options.descriptor ?? lore({ project: "alepha" }),
@@ -228,11 +228,11 @@ describe("LoreAdapter", () => {
         { end: () => {} },
       ) as never,
     };
-    const orchestrator = alepha.inject(PlatformOrchestrator);
+    const orchestrator = alepha.inject(InfraOrchestrator);
 
     const up = () => orchestrator.up({ ...parts, env: "production" });
     /**
-     * `alepha platform down`, as `--yes` answers its prompt: with the env's
+     * `alepha infra down`, as `--yes` answers its prompt: with the env's
      * own name, which is what a typed confirmation would have been.
      */
     const down = (env = "production") =>

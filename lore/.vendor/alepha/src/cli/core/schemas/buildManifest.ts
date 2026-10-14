@@ -1,11 +1,13 @@
 import { type Infer, z } from "alepha";
 
+import { actorHostDeclarationSchema } from "./actorHostDeclarationSchema.ts";
+
 /**
  * Build-time snapshot describing what the workspace needs at deploy time.
  * Written to `dist/manifest.json`.
  *
  * This is the artifact contract between `alepha build` and every deploy
- * consumer: `alepha platform up --prebuilt`, Lore Deploy, and Alepha Bay.
+ * consumer: `alepha deploy --prebuilt`, Lore Deploy, and Alepha Bay.
  * It exists so the deploy side never has to boot the app, re-evaluate
  * `alepha.config.ts`, or run the workspace's `npm install`: everything a
  * deployer needs to know is captured here, at build time, from the primitives
@@ -117,6 +119,7 @@ export const buildManifestSchema = z
         hasQueue: z.boolean(),
         hasCron: z.boolean(),
         hasWebSocket: z.boolean(),
+        hasDurableObjects: z.boolean().optional(),
       })
       .loose(),
     /**
@@ -172,10 +175,16 @@ export const buildManifestSchema = z
      * `workerd` slice, absent otherwise.
      *
      * Lore Deploy regenerates `wrangler.jsonc` and the worker entry from the
-     * manifest alone (`PlatformOrchestrator.up({ prebuilt: true })` inside its
+     * manifest alone (`InfraOrchestrator.up({ prebuilt: true })` inside its
      * own Worker), with no app to introspect, so everything that regeneration
      * cannot derive is captured here at build time.
      */
+    /**
+     * Whether the server slices carry `alepha/inspector` (`alepha build
+     * --inspect`). Even then it stays off until `ALEPHA_INSPECT=1`. Absent
+     * when they do not.
+     */
+    inspect: z.boolean().optional(),
     cloudflare: z
       .object({
         /**
@@ -198,6 +207,7 @@ export const buildManifestSchema = z
          * Empty when `resources.hasWebSocket` is false.
          */
         websocketPaths: z.array(z.string()),
+        durableObjects: z.array(actorHostDeclarationSchema).optional(),
         /**
          * The `send_email` binding, captured when the app registers
          * `CloudflareEmailProvider`. Absent when it does not.

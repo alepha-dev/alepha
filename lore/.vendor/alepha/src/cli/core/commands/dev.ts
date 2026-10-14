@@ -2,14 +2,17 @@ import { spawn } from "node:child_process";
 import { readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 
-import { $inject, $store, z } from "alepha";
+import { $inject, $store, type Alepha, z } from "alepha";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
 
 import { devOptions } from "../atoms/devOptions.ts";
 import { AppEntryProvider } from "../providers/AppEntryProvider.ts";
-import { ViteDevServerProvider } from "../providers/ViteDevServerProvider.ts";
+import {
+  type OnAlephaLoadedHook,
+  ViteDevServerProvider,
+} from "../providers/ViteDevServerProvider.ts";
 import { PackageManagerUtils } from "../services/PackageManagerUtils.ts";
 import { ProjectScaffolder } from "../services/ProjectScaffolder.ts";
 
@@ -110,6 +113,8 @@ export class DevCommand {
 
     const options = this.options;
 
+    this.viteDevServer.onAlephaLoaded(this.injectInspector);
+
     await this.viteDevServer.init({
       root,
       entry,
@@ -119,6 +124,36 @@ export class DevCommand {
 
     await this.viteDevServer.start();
   }
+
+  /**
+   * Put `alepha/inspector` into the app this dev server runs, on every load.
+   *
+   * No app imports the inspector: `alepha dev` is how it gets in, which is
+   * what makes every app on the machine visible to a tool without a line of
+   * configuration. Loaded through Vite's SSR loader rather than imported here,
+   * so the module comes from the app's own graph, the same `alepha` instance
+   * the app runs on, and the CLI never pulls the inspector's dependencies.
+   *
+   * A failure is a warning, not a failed boot: the app still runs without it.
+   * The module applies its own guard, so a production or test `NODE_ENV`
+   * still leaves it out.
+   */
+  protected readonly injectInspector: OnAlephaLoadedHook = async (
+    app: Alepha,
+    server,
+  ) => {
+    try {
+      const mod = await server.ssrLoadModule("alepha/inspector");
+      app.with(mod.AlephaInspector);
+    } catch (error) {
+      this.log.warn(
+        "Could not load alepha/inspector, devtools cannot see this app",
+        {
+          error,
+        },
+      );
+    }
+  };
 
   /**
    * Assign each app its port and apply the `--only` filter.

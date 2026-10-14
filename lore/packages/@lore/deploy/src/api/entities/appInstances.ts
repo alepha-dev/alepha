@@ -166,7 +166,7 @@ export const appInstances = $entity({
      * reproducible, which makes "recompute the name and delete it" the obvious
      * implementation and the wrong one. An estate is LENT: the account holds
      * resources Lore never created, and one of them may legitimately bear the
-     * name a copy would compute. `alepha platform down` may delete by name -
+     * name a copy would compute. `alepha infra down` may delete by name -
      * it runs on your own machine, against your own account, at your own
      * typing - and Lore may not.
      *

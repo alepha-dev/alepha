@@ -8,7 +8,7 @@ import { LoreClientService } from "./LoreClientService.ts";
 
 /**
  * Write secrets into one deployed copy's sealed set: what `lore secrets set`
- * does, and what the platform adapter does before it deploys.
+ * does, and what the infra adapter does before it deploys.
  *
  * ## ⚠️ Additive, always
  *
@@ -52,7 +52,7 @@ export class LoreSecretsService {
    * {@link IMPORT_SKIPPED} and empty values are always dropped. `reserved`
    * drops more, on the client, for a caller that knows Lore would refuse them
    * (`EXCLUDED_SECRET_KEYS`, which Lore's `AppSecretService` answers with a
-   * 400): the platform adapter passes it, since a refusal there would fail a
+   * 400): the infra adapter passes it, since a refusal there would fail a
    * deploy over a key the app never meant to send. `lore secrets set --file`
    * does not, so an operator who typed one hears Lore's own refusal.
    */

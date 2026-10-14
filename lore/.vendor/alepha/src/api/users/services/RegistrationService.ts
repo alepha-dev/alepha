@@ -8,12 +8,14 @@ import { DatabaseCacheProvider } from "alepha/cache/database";
 import { CaptchaProvider } from "alepha/captcha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
+import { $rateLimit } from "alepha/rate-limit";
 import { CryptoProvider } from "alepha/security";
 import { BadRequestError, ConflictError, HttpError } from "alepha/server";
 import { $client } from "alepha/server/links";
 
 import { UserAudits } from "../audits/UserAudits.ts";
 import type { UserEntity } from "../entities/users.ts";
+import type { AttemptBudget } from "../interfaces/AttemptBudget.ts";
 import { UserNotifications } from "../notifications/UserNotifications.ts";
 import {
   RealmProvider,
@@ -92,14 +94,17 @@ export class RegistrationService {
     ttl: [this.intentTtlMinutes, "minutes"],
   });
 
-  protected readonly rateLimitCache = $cache<number>({
-    // Use the SQL-backed cache so `incr()` is atomic (`INSERT ... ON CONFLICT
-    // DO UPDATE SET count = count + 1`). Cloudflare KV silently coalesces
-    // concurrent writes to the same key, which makes the limiter useless
-    // against bursts.
-    provider: DatabaseCacheProvider,
-    name: "api:users:registration-rate-limit",
-    ttl: [15, "minutes"],
+  /**
+   * Registration intents per address per 15 minutes, the limit from the
+   * realm's `registrationIpMaxAttempts`. Counted, then compared; never
+   * refunded. Actor state: it does not ride the cache, so a disabled cache
+   * cannot switch it off.
+   */
+  protected readonly registrationIp = $rateLimit({
+    name: "registration:ip",
+    limit: (input: Pick<AttemptBudget, "key" | "max">) => input.max,
+    window: [15, "minutes"],
+    key: (input: Pick<AttemptBudget, "key" | "max">) => input.key,
   });
 
   protected userAudits(realmName?: string) {
@@ -146,14 +151,20 @@ export class RegistrationService {
     // bump it (a single localhost IP otherwise burns through the default 10
     // before the suite finishes).
     const request = this.alepha.store.get("alepha.http.request");
-    const ipKey = request?.ip ? `register:ip:${request.ip}` : undefined;
-    if (ipKey) {
-      // Atomic incr — a get-then-set counter lets a concurrent burst sail
-      // past the threshold (all callers read the same count). The counter
-      // expires with the cache TTL (fixed 15-minute window).
-      const count = await this.rateLimitCache.incr(ipKey);
-      if (count > realmSettings.registrationIpMaxAttempts) {
-        this.log.warn("Registration rate limit exceeded", { ip: request?.ip });
+    if (request?.ip) {
+      const attempt = await this.registrationIp.consume({
+        key: request.ip,
+        max: realmSettings.registrationIpMaxAttempts,
+      });
+      // An outage is not a limit this address hit: "too many attempts" would
+      // lie, and a 503 says nothing about the address.
+      if (attempt.reason === "store" && !attempt.allowed)
+        throw new HttpError({
+          status: 503,
+          message: "Registration is temporarily unavailable",
+        });
+      if (!attempt.allowed) {
+        this.log.warn("Registration rate limit exceeded", { ip: request.ip });
         throw new BadRequestError(
           "Too many registration attempts, please try again later",
         );

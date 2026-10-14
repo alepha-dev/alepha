@@ -12,7 +12,6 @@ ignores:
   - "@lore/knowledge"
   - "@lore/deploy"
   - "@vitest/coverage-v8"
-  - "drizzle-kit"
   - "vite"
   - "@types/react"
   - "@types/react-dom"
@@ -24,7 +23,6 @@ ignores:
   - "wrangler"
   - "tailwindcss"
   - "@tailwindcss/vite"
-  - "tw-animate-css"
 
 ignore-patterns:
   - "dist"

@@ -77,23 +77,23 @@
   "devDependencies": {
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",
-    "@types/bun": "^1.4.2",
-    "@types/node": "^26.6.3",
+    "@types/bun": "^1.4.3",
+    "@types/node": "^26.6.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "alepha": "0.30.0",
+    "alepha": "0.32.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "rolldown": "~1.2.11",
-    "tsdown": "^0.23.0",
-    "vitest": "^5.0.2"
+    "rolldown": "~1.2.13",
+    "tsdown": "^0.23.1",
+    "vitest": "^5.0.4"
   },
   "peerDependencies": {
     "@lore/core": "*",
     "@lore/deploy": "*",
     "@lore/knowledge": "*",
     "@lore/work": "*",
-    "alepha": ">=0.30.0",
+    "alepha": ">=0.32.0",
     "react": "*",
     "react-dom": "*"
   },

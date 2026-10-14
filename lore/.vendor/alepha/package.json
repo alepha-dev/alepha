@@ -1,6 +1,6 @@
 {
   "name": "alepha",
-  "version": "0.30.0",
+  "version": "0.32.0",
   "description": "A full-stack TypeScript framework. One schema, everywhere.",
   "keywords": [
     "aleph",
@@ -39,6 +39,20 @@
   "main": "./src/core/index.ts",
   "types": "./src/core/index.ts",
   "exports": {
+    "./actor": {
+      "types": "./src/actor/core/index.ts",
+      "react-native": "./src/actor/core/index.browser.ts",
+      "workerd": "./src/actor/core/index.workerd.ts",
+      "browser": "./src/actor/core/index.browser.ts",
+      "import": "./src/actor/core/index.ts",
+      "default": "./src/actor/core/index.ts"
+    },
+    "./actor/redis": {
+      "types": "./src/actor/redis/index.ts",
+      "bun": "./src/actor/redis/index.bun.ts",
+      "import": "./src/actor/redis/index.ts",
+      "default": "./src/actor/redis/index.ts"
+    },
     "./api/analytics": {
       "types": "./src/api/analytics/index.ts",
       "workerd": "./src/api/analytics/index.workerd.ts",
@@ -160,26 +174,21 @@
       "import": "./src/cli/core/index.ts",
       "default": "./src/cli/core/index.ts"
     },
-    "./cli/devtools": {
-      "types": "./src/cli/devtools/index.ts",
-      "import": "./src/cli/devtools/index.ts",
-      "default": "./src/cli/devtools/index.ts"
-    },
     "./cli/i18n": {
       "types": "./src/cli/i18n/index.ts",
       "import": "./src/cli/i18n/index.ts",
       "default": "./src/cli/i18n/index.ts"
     },
-    "./cli/platform": {
-      "types": "./src/cli/platform/index.ts",
-      "import": "./src/cli/platform/index.ts",
-      "default": "./src/cli/platform/index.ts"
+    "./cli/infra": {
+      "types": "./src/cli/infra/index.ts",
+      "import": "./src/cli/infra/index.ts",
+      "default": "./src/cli/infra/index.ts"
     },
-    "./cli/platform-lib": {
-      "types": "./src/cli/platform-lib/index.ts",
-      "workerd": "./src/cli/platform-lib/index.workerd.ts",
-      "import": "./src/cli/platform-lib/index.ts",
-      "default": "./src/cli/platform-lib/index.ts"
+    "./cli/infra-lib": {
+      "types": "./src/cli/infra-lib/index.ts",
+      "workerd": "./src/cli/infra-lib/index.workerd.ts",
+      "import": "./src/cli/infra-lib/index.ts",
+      "default": "./src/cli/infra-lib/index.ts"
     },
     "./cli/vendor": {
       "types": "./src/cli/vendor/index.ts",
@@ -233,6 +242,13 @@
       "import": "./src/email/smtp/index.ts",
       "default": "./src/email/smtp/index.ts"
     },
+    "./inspector": {
+      "types": "./src/inspector/index.ts",
+      "react-native": "./src/inspector/index.browser.ts",
+      "browser": "./src/inspector/index.browser.ts",
+      "import": "./src/inspector/index.ts",
+      "default": "./src/inspector/index.ts"
+    },
     "./lock": {
       "types": "./src/lock/core/index.ts",
       "import": "./src/lock/core/index.ts",
@@ -277,6 +293,11 @@
       "types": "./src/queue/redis/index.ts",
       "import": "./src/queue/redis/index.ts",
       "default": "./src/queue/redis/index.ts"
+    },
+    "./rate-limit": {
+      "types": "./src/rate-limit/index.ts",
+      "import": "./src/rate-limit/index.ts",
+      "default": "./src/rate-limit/index.ts"
     },
     "./react/auth": {
       "types": "./src/react/auth/index.ts",
@@ -418,11 +439,6 @@
       "import": "./src/server/proxy/index.ts",
       "default": "./src/server/proxy/index.ts"
     },
-    "./server/rate-limit": {
-      "types": "./src/server/rate-limit/index.ts",
-      "import": "./src/server/rate-limit/index.ts",
-      "default": "./src/server/rate-limit/index.ts"
-    },
     "./server/static": {
       "types": "./src/server/static/index.ts",
       "import": "./src/server/static/index.ts",
@@ -492,6 +508,20 @@
     "main": "./dist/core/index.js",
     "types": "./dist/core/index.d.ts",
     "exports": {
+      "./actor": {
+        "types": "./dist/actor/core/index.d.ts",
+        "react-native": "./dist/actor/core/index.browser.js",
+        "workerd": "./dist/actor/core/index.workerd.js",
+        "browser": "./dist/actor/core/index.browser.js",
+        "import": "./dist/actor/core/index.js",
+        "default": "./dist/actor/core/index.js"
+      },
+      "./actor/redis": {
+        "types": "./dist/actor/redis/index.d.ts",
+        "bun": "./dist/actor/redis/index.bun.js",
+        "import": "./dist/actor/redis/index.js",
+        "default": "./dist/actor/redis/index.js"
+      },
       "./api/analytics": {
         "types": "./dist/api/analytics/index.d.ts",
         "workerd": "./dist/api/analytics/index.workerd.js",
@@ -613,26 +643,21 @@
         "import": "./dist/cli/core/index.js",
         "default": "./dist/cli/core/index.js"
       },
-      "./cli/devtools": {
-        "types": "./dist/cli/devtools/index.d.ts",
-        "import": "./dist/cli/devtools/index.js",
-        "default": "./dist/cli/devtools/index.js"
-      },
       "./cli/i18n": {
         "types": "./dist/cli/i18n/index.d.ts",
         "import": "./dist/cli/i18n/index.js",
         "default": "./dist/cli/i18n/index.js"
       },
-      "./cli/platform": {
-        "types": "./dist/cli/platform/index.d.ts",
-        "import": "./dist/cli/platform/index.js",
-        "default": "./dist/cli/platform/index.js"
+      "./cli/infra": {
+        "types": "./dist/cli/infra/index.d.ts",
+        "import": "./dist/cli/infra/index.js",
+        "default": "./dist/cli/infra/index.js"
       },
-      "./cli/platform-lib": {
-        "types": "./dist/cli/platform-lib/index.d.ts",
-        "workerd": "./dist/cli/platform-lib/index.workerd.js",
-        "import": "./dist/cli/platform-lib/index.js",
-        "default": "./dist/cli/platform-lib/index.js"
+      "./cli/infra-lib": {
+        "types": "./dist/cli/infra-lib/index.d.ts",
+        "workerd": "./dist/cli/infra-lib/index.workerd.js",
+        "import": "./dist/cli/infra-lib/index.js",
+        "default": "./dist/cli/infra-lib/index.js"
       },
       "./cli/vendor": {
         "types": "./dist/cli/vendor/index.d.ts",
@@ -686,6 +711,13 @@
         "import": "./dist/email/smtp/index.js",
         "default": "./dist/email/smtp/index.js"
       },
+      "./inspector": {
+        "types": "./dist/inspector/index.d.ts",
+        "react-native": "./dist/inspector/index.browser.js",
+        "browser": "./dist/inspector/index.browser.js",
+        "import": "./dist/inspector/index.js",
+        "default": "./dist/inspector/index.js"
+      },
       "./lock": {
         "types": "./dist/lock/core/index.d.ts",
         "import": "./dist/lock/core/index.js",
@@ -730,6 +762,11 @@
         "types": "./dist/queue/redis/index.d.ts",
         "import": "./dist/queue/redis/index.js",
         "default": "./dist/queue/redis/index.js"
+      },
+      "./rate-limit": {
+        "types": "./dist/rate-limit/index.d.ts",
+        "import": "./dist/rate-limit/index.js",
+        "default": "./dist/rate-limit/index.js"
       },
       "./react/auth": {
         "types": "./dist/react/auth/index.d.ts",
@@ -871,11 +908,6 @@
         "import": "./dist/server/proxy/index.js",
         "default": "./dist/server/proxy/index.js"
       },
-      "./server/rate-limit": {
-        "types": "./dist/server/rate-limit/index.d.ts",
-        "import": "./dist/server/rate-limit/index.js",
-        "default": "./dist/server/rate-limit/index.js"
-      },
       "./server/static": {
         "types": "./dist/server/static/index.d.ts",
         "import": "./dist/server/static/index.js",
@@ -951,28 +983,28 @@
   },
   "dependencies": {
     "@noble/hashes": "^2.4.0",
-    "@redis/client": "^6.2.1",
-    "@vitejs/plugin-react": "^6.1.1",
-    "cloudflare": "^7.2.0",
+    "@redis/client": "^6.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "cloudflare": "^7.3.0",
     "dayjs": "^1.11.23",
     "drizzle-kit": "1.0.0-rc.4",
     "drizzle-orm": "1.0.0-rc.4",
-    "magic-string": "^1.4.2",
-    "oxfmt": "^0.70.0",
-    "oxlint": "^1.85.0",
+    "magic-string": "^1.4.3",
+    "oxfmt": "^0.72.0",
+    "oxlint": "^1.87.0",
     "oxlint-tsgolint": "^7.0.2003",
     "postgres": "^3.4.9",
     "s3mini": "^1.0.2",
     "typescript": "^7.0.2",
     "uqr": "^0.1.3",
-    "vite": "^8.3.1",
+    "vite": "^8.3.3",
     "vite-bundle-analyzer": "^1.3.9",
-    "vitest": "^5.0.2",
+    "vitest": "^5.0.3",
     "ws": "^8.22.0",
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^5.20260927.1",
+    "@cloudflare/workers-types": "^5.20261006.1",
     "@electric-sql/pglite": "^0.5.8",
     "@faker-js/faker": "^10.6.0",
     "@prometheus-io/client": "^0.16.1",
@@ -980,24 +1012,26 @@
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",
     "@types/bun": "^1.4.2",
-    "@types/node": "^26.6.3",
+    "@types/node": "^26.6.4",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "@types/ws": "^8.18.1",
+    "@types/ws": "^8.18.2",
+    "ajv": "8.20.0",
     "cron-schedule": "^6.0.0",
     "jose": "^6.2.12",
-    "jsdom": "^30.1.1",
-    "nodemailer": "^10.0.11",
+    "jsdom": "^30.1.2",
+    "miniflare": "5.20261001.0-alpha",
+    "nodemailer": "^10.0.15",
     "openid-client": "^6.8.8",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "swagger-ui-dist": "^5.33.0",
+    "swagger-ui-dist": "^5.33.1",
     "tailwindcss": "^4.3.3",
     "tsdown": "^0.23.0"
   },
   "peerDependencies": {
-    "react": "^19",
-    "react-dom": "^19"
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
   },
   "peerDependenciesMeta": {
     "react": {

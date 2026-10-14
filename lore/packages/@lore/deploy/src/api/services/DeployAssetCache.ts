@@ -3,7 +3,7 @@ import { FileStorageProvider } from "alepha/bucket";
 import {
   CloudflareAssetManifest,
   type CloudflareAssetEntry,
-} from "alepha/cli/platform-lib";
+} from "alepha/cli/infra-lib";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import type { MemoryFileSystemProvider } from "alepha/system";

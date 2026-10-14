@@ -1,5 +1,5 @@
 import { $inject, AlephaError } from "alepha";
-import { CloudflareDeployClient } from "alepha/cli/platform-lib";
+import { CloudflareDeployClient } from "alepha/cli/infra-lib";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 import { BadRequestError, NotFoundError } from "alepha/server";

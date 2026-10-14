@@ -74,6 +74,15 @@ export class BunRedisProvider extends RedisProvider {
   });
 
   /**
+   * Configure Redis connection behavior.
+   */
+  protected getClientOptions(): ConstructorParameters<
+    typeof Bun.RedisClient
+  >[1] {
+    return { autoReconnect: true, enableAutoPipelining: true };
+  }
+
+  /**
    * Connect to the Redis server.
    */
   public override async connect(): Promise<void> {
@@ -86,10 +95,7 @@ export class BunRedisProvider extends RedisProvider {
 
     this.log.debug("Connecting...");
 
-    this.client = new Bun.RedisClient(this.getUrl(), {
-      autoReconnect: true,
-      enableAutoPipelining: true,
-    });
+    this.client = new Bun.RedisClient(this.getUrl(), this.getClientOptions());
 
     this.client.onconnect = () => {
       this.log.trace("Redis connected");

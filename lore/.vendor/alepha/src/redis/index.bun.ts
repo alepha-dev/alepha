@@ -21,10 +21,12 @@ export const AlephaRedis = $module({
   register: (alepha: Alepha) => {
     alepha
       .with({
+        optional: true,
         provide: RedisProvider,
         use: BunRedisProvider,
       })
       .with({
+        optional: true,
         provide: RedisSubscriberProvider,
         use: BunRedisSubscriberProvider,
       });

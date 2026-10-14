@@ -1,5 +1,5 @@
 import { $module } from "alepha";
-import type { EnvironmentDescriptor } from "alepha/cli/platform-lib";
+import type { EnvironmentDescriptor } from "alepha/cli/infra-lib";
 import { AlephaServerLinksClient } from "alepha/server/links";
 
 import { LoreAdapter } from "./adapters/LoreAdapter.ts";
@@ -70,7 +70,7 @@ import { QualityReportReader } from "./services/QualityReportReader.ts";
 export const AlephaLoreCli = $module({
   name: "alepha.lore.cli",
   // ⚠️ The deploy path's services are declared in `AlephaLoreDeploy`, not
-  // here, so the platform adapter can inject them without registering this
+  // here, so the infra adapter can inject them without registering this
   // module and its twelve commands. See that module's doc.
   imports: [AlephaServerLinksClient, AlephaLoreDeploy],
   services: [
@@ -109,13 +109,13 @@ export const AlephaLoreCli = $module({
 // ---------------------------------------------------------------------------
 
 /**
- * An `alepha platform` environment that deploys through Lore.
+ * An `alepha infra` environment that deploys through Lore.
  *
  * ```ts
- * import { platform } from "alepha/cli/platform";
+ * import { infra } from "alepha/cli/infra";
  * import { lore } from "@alepha/lore/cli";
  *
- * platform({
+ * infra({
  *   name: "docs",
  *   environments: {
  *     production: lore({ project: "alepha" }),
@@ -123,9 +123,9 @@ export const AlephaLoreCli = $module({
  * });
  * ```
  *
- * `alepha platform up --env production` then builds the runtime the copy's
+ * `alepha deploy --env production` then builds the runtime the copy's
  * estate accepts, pushes it as `latest`, seals the local secrets into the copy
- * and deploys, following the run. The copy is `platform().name` and the
+ * and deploys, following the run. The copy is `infra().name` and the
  * environment's key; `LORE_PROJECT` and `LORE_URL` override `project` and
  * `url`, so `lore()` with no arguments is legal in CI.
  *

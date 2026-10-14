@@ -1,11 +1,11 @@
 import { AlephaError } from "alepha";
-import { NamingContext, NamingService } from "alepha/cli/platform-lib";
+import { NamingContext, NamingService } from "alepha/cli/infra-lib";
 
 /**
  * The naming a Lore deploy provisions under: the copy's stored name, as is.
  *
  * `NamingService` composes `<project>-<env>` from the platform config, which
- * is right for `alepha platform` and wrong for a copy Lore has already named.
+ * is right for `alepha infra` and wrong for a copy Lore has already named.
  * The name is decided on the copy's first deploy (`appInstances.resourceName`)
  * and must survive everything that could make a recomputation disagree with
  * it: a project rename, and an `app` or `env` renamed on the copy itself.

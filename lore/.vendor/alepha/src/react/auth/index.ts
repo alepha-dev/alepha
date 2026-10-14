@@ -6,6 +6,7 @@ import { AlephaServerLinks } from "alepha/server/links";
 
 import { ReactAuthProvider } from "./providers/ReactAuthProvider.ts";
 import { ReactAuth } from "./services/ReactAuth.ts";
+import { ReactAuthTransport } from "./services/ReactAuthTransport.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -41,6 +42,7 @@ export const AlephaReactAuth = $module({
     AlephaServerLinks,
     AlephaServerAuth,
     ReactAuthProvider,
+    ReactAuthTransport,
     ReactAuth,
   ],
 });

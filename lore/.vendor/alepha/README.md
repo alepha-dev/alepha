@@ -28,16 +28,6 @@ One small surface covers the server, the database, auth, background work and Rea
 - **Multi-runtime**: the same code runs on Node, Bun, and Cloudflare Workers
 - **Deploy anywhere**: Cloudflare, Vercel, Docker, bare metal
 
-## Three products
-
-Everything below is MIT. The framework is developed in this repository; Lore and Bay each live in a repository of their own, built on the published framework. They are not demos: they are the applications that keep the framework honest.
-
-|                      |                                                                                                                                        |                                                       |
-| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| **Alepha Framework** | The framework itself, on npm as [`alepha`](https://www.npmjs.com/package/alepha)                                                       | [alepha.dev](https://alepha.dev)                      |
-| **Alepha Lore**      | Project management, for agents too: quests, folios, feedback and crash telemetry, every one of them readable and writable over MCP     | [alepha-dev/lore](https://github.com/alepha-dev/lore) |
-| **Alepha Bay**       | A self-hosted application server. One small Go binary that gives an Alepha app TLS, backups and process isolation on a machine you own | [alepha-dev/bay](https://github.com/alepha-dev/bay)   |
-
 ## Architecture
 
 Each layer builds on the previous. Use only what you need: Foundation alone is enough for a CLI tool.
@@ -65,8 +55,8 @@ Define an API, call it from a React page. Typed end-to-end, no codegen, nothing 
 ```tsx
 // src/Api.ts
 import { z } from "alepha";
-import { $action } from "alepha/server";
 import { $entity, $repository, db } from "alepha/orm";
+import { $action } from "alepha/server";
 
 const viewEntity = $entity({
   name: "views",
@@ -95,9 +85,10 @@ export class Api {
 ```
 
 ```tsx
+import { $page } from "alepha/react/router";
 // src/AppRouter.tsx
 import { $client } from "alepha/server/links";
-import { $page } from "alepha/react/router";
+
 import type { Api } from "./Api.ts";
 
 export class AppRouter {
@@ -141,19 +132,22 @@ Cron is anchored to the same clock, so the scheduled `$job` runs during the jump
 
 ## Deploy with one command
 
-Declare an environment, and `alepha platform up` authenticates, provisions what does not exist yet, builds, runs migrations, deploys and pushes secrets, in that order. The database, the bucket and the queue are not yours to create, and neither is the pipeline that would have created them.
+Declare an environment, and `alepha deploy` authenticates, provisions what does not exist yet, builds, runs migrations, deploys and pushes secrets, in that order. The database, the bucket and the queue are not yours to create, and neither is the pipeline that would have created them.
 
 ```ts
 // alepha.config.ts
+import { defineConfig } from "alepha/cli/config";
+import { cloudflare, infra } from "alepha/cli/infra";
+
 export default defineConfig({
   plugins: [
-    platform({
+    infra({
       environments: {
         production: cloudflare({
-          domain: "lore.alepha.dev",
+          domain: "example.com",
         }),
-        staging: bay({
-          host: "deploy@bay.example.com",
+        staging: cloudflare({
+          domain: "staging.example.com",
         }),
       },
     }),
@@ -162,7 +156,7 @@ export default defineConfig({
 ```
 
 ```bash
-alepha platform up --env production
+alepha deploy --env production
 ```
 
 ## Getting Started
@@ -170,9 +164,11 @@ alepha platform up --env production
 Requirements: [Node.js](https://nodejs.org/) 22+ or [Bun](https://bun.sh/) 1.3+
 
 ```bash
-npx alepha init my-app                 # API + React (SSR) + Tailwind
-npx alepha init my-app --preset=saas   # the same, plus auth, account and admin
-cd my-app && npx alepha dev
+npx alepha init my-app --infra cf      # API + React (SSR) + Tailwind + Cloudflare
+# Add --preset saas for auth, account and admin
+cd my-app
+npx alepha deploy                     # full production lifecycle
+npx alepha dev                        # local development
 ```
 
 Every project gets the same structure. `--preset` only decides what is mounted on top of it,

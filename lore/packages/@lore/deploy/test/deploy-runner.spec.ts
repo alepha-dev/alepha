@@ -1,5 +1,5 @@
 import { Alepha } from "alepha";
-import { WorkerCloudflareAdapter } from "alepha/cli/platform-lib";
+import { WorkerCloudflareAdapter } from "alepha/cli/infra-lib";
 import { AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
@@ -28,7 +28,7 @@ import { gzip, type TarEntry, tar } from "../src/testing/index.ts";
  * guard ever runs under them. A replay driven through these fakes never
  * exercises what makes a replay safe. It is checked in two places instead:
  *
- * - `src/cli/platform-lib/__tests__/deployIdempotence.spec.ts` in alepha-dev/alepha
+ * - `src/cli/infra-lib/__tests__/deployIdempotence.spec.ts` in alepha-dev/alepha
  *   runs one Worker deploy twice through the real clients, against a fake
  *   account behind `fetch` that refuses a duplicate the way Cloudflare does.
  * - `deployments.spec.ts`, beside this file, holds the half that is Lore's
@@ -240,7 +240,7 @@ describe("deploying an artifact from inside the Worker", () => {
   it("takes the environment from the request, not from the artifact", async ({
     expect,
   }) => {
-    // ⚠️ The epic's founding difference. `alepha platform` reads
+    // ⚠️ The epic's founding difference. `alepha infra` reads
     // `config.environments[env]` from a file the app committed; Lore has a ROW,
     // so an artifact built before this environment existed deploys to it with
     // no rebuild. The manifest here declares no environments at all.

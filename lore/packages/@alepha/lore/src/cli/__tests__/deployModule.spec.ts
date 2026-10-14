@@ -31,7 +31,7 @@ import { LoreTokenStore } from "../services/LoreTokenStore.ts";
  * brings with it.
  *
  * ⚠️ `Alepha.inject` registers the module that DECLARES a service. The
- * platform adapter injects these from inside the `alepha` binary, so if any of
+ * infra adapter injects these from inside the `alepha` binary, so if any of
  * them were declared beside the `lore` commands, `alepha --help` would grow
  * every Lore verb. `AlephaLoreDeploy` holds them for exactly that reason, and
  * this is what keeps it command-free.
@@ -47,7 +47,7 @@ describe("the Lore deploy module", () => {
     ["LoreDeployer", LoreDeployer],
     ["LoreSecretsService", LoreSecretsService],
     ["LoreDeviceLogin", LoreDeviceLogin],
-    // What `platform()` registers from inside the `alepha` binary.
+    // What `infra()` registers from inside the `alepha` binary.
     ["LoreAdapter", LoreAdapter],
   ];
 

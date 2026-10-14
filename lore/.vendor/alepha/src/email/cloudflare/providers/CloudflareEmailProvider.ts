@@ -79,9 +79,31 @@ export interface CloudflareEmailSendMessage {
   }>;
 }
 
+/**
+ * What the binding's `send()` resolves to: one id for the whole message
+ * (`EmailSendResult` in `@cloudflare/workers-types`), and nothing else.
+ *
+ * ⚠️ It was declared `{ id, status }` until #Q2560, a shape the binding never
+ * returned: the provider read `result.id`, got `undefined`, and every
+ * delivery receipt was written with no `messageId`, so no delivery,
+ * bounce or complaint event could ever be matched back to its row.
+ *
+ * @see https://developers.cloudflare.com/email-service/api/send-emails/workers-api/
+ */
 export interface CloudflareEmailSendResult {
-  id?: string;
-  status?: "queued" | "sent" | "bounced" | (string & {});
+  messageId: string;
+}
+
+/**
+ * What the REST API's `result` holds: the recipients grouped by outcome,
+ * and no message id at all (unlike the binding).
+ *
+ * @see https://developers.cloudflare.com/email-service/api/send-emails/rest-api/
+ */
+export interface CloudflareEmailRestResult {
+  delivered?: string[];
+  permanent_bounces?: string[];
+  queued?: string[];
 }
 
 /**
@@ -191,26 +213,51 @@ export class CloudflareEmailProvider implements EmailProvider {
       // Binding first: on Workers it is the cheaper path (no egress, no
       // token to rotate). REST exists so the same provider still works on
       // Node — `yarn start`, a container, a cron box.
-      const result = this.binding
-        ? await this.binding.send(message)
-        : await this.sendViaRest(message);
-
-      if (result?.status === "bounced") {
-        throw new EmailError(
-          `Cloudflare email bounced (id=${result.id ?? "unknown"})`,
-        );
+      if (this.binding) {
+        const result = await this.binding.send(message);
+        const messageId = result?.messageId;
+        this.log.info("Email sent successfully via Cloudflare", {
+          to,
+          subject,
+          messageId,
+        });
+        // One id per message, not per recipient: Cloudflare takes the whole
+        // `to` array as a single message (limit 50). It is what a delivery
+        // event later names, so it is what the receipt must keep.
+        return { messageId };
       }
 
+      /*
+       * REST answers per recipient and carries no id, so a delivery event
+       * cannot be matched to a receipt on this path. What it does carry is
+       * a synchronous hard bounce: when every recipient bounced, nothing was
+       * sent, and that is a failure the caller has to see.
+       */
+      const result = await this.sendViaRest(message);
+      const recipients = [
+        ...[message.to].flat(),
+        ...[message.cc ?? []].flat(),
+        ...[message.bcc ?? []].flat(),
+      ];
+      const bounced = result.permanent_bounces ?? [];
+      if (bounced.length > 0 && bounced.length >= recipients.length) {
+        throw new EmailError(
+          `Cloudflare email bounced permanently (${bounced.join(", ")})`,
+        );
+      }
+      if (bounced.length > 0) {
+        this.log.warn("Some recipients bounced permanently", {
+          subject,
+          bounced,
+        });
+      }
       this.log.info("Email sent successfully via Cloudflare", {
         to,
         subject,
-        id: result?.id,
-        status: result?.status,
+        delivered: result.delivered?.length ?? 0,
+        queued: result.queued?.length ?? 0,
       });
-
-      // One id per message, not per recipient: Cloudflare takes the whole
-      // `to` array as a single message (limit 50).
-      return { messageId: result?.id };
+      return {};
     } catch (error) {
       if (error instanceof EmailError) {
         throw error;
@@ -280,7 +327,7 @@ export class CloudflareEmailProvider implements EmailProvider {
    */
   protected async sendViaRest(
     message: CloudflareEmailSendMessage,
-  ): Promise<CloudflareEmailSendResult> {
+  ): Promise<CloudflareEmailRestResult> {
     const accountId = this.env.CLOUDFLARE_ACCOUNT_ID;
     const apiToken = this.env.CLOUDFLARE_API_TOKEN;
     if (!accountId || !apiToken) {
@@ -304,7 +351,7 @@ export class CloudflareEmailProvider implements EmailProvider {
     const payload = (await response.json().catch(() => undefined)) as
       | {
           success?: boolean;
-          result?: CloudflareEmailSendResult;
+          result?: CloudflareEmailRestResult | null;
           errors?: Array<{ code?: number; message?: string }>;
         }
       | undefined;

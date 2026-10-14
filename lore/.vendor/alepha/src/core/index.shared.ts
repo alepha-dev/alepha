@@ -20,6 +20,8 @@ export * from "./helpers/ref.ts";
 export * from "./interfaces/AlephaMeta.ts";
 export * from "./interfaces/Async.ts";
 export * from "./interfaces/LoggerInterface.ts";
+export * from "./interfaces/Run.ts";
+export * from "./interfaces/RunHost.ts";
 export * from "./interfaces/Service.ts";
 export * from "./primitives/$atom.ts";
 export * from "./primitives/$computed.ts";

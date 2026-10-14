@@ -2,7 +2,7 @@ import { ProjectCapabilityController, ProjectController } from "@lore/core/api";
 import { projects } from "@lore/core/schemas";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
-import { CloudflareDeployClient } from "alepha/cli/platform-lib";
+import { CloudflareDeployClient } from "alepha/cli/infra-lib";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail } from "alepha/email";
 import { $repository, AlephaOrm } from "alepha/orm";

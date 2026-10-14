@@ -14,7 +14,7 @@ import {
   z,
 } from "alepha";
 import { $logger } from "alepha/logger";
-import { ServerHeadProvider } from "alepha/react/head";
+import { ServerHeadProvider, type SimpleHead } from "alepha/react/head";
 import { type ServerHandler, ServerRouterProvider } from "alepha/server";
 import { ServerLinksProvider } from "alepha/server/links";
 import {
@@ -257,8 +257,11 @@ export class ReactServerProvider {
    * This content is sent immediately when streaming starts, before page loaders run,
    * allowing the browser to start downloading entry.js and CSS files early.
    */
-  protected setupEarlyHeadContent(): void {
-    const globalHead = this.serverHeadProvider.resolveGlobalHead();
+  protected setupEarlyHeadContent(override?: SimpleHead): void {
+    const globalHead = {
+      ...this.serverHeadProvider.resolveGlobalHead(),
+      ...override,
+    };
     const manifest = this.ssrManifestProvider.getManifest();
     const faviconTag = this.buildFaviconTag(manifest.favicon);
 
@@ -324,6 +327,54 @@ export class ReactServerProvider {
     this.log.debug("Early head content set", {
       parts: parts.length,
     });
+  }
+
+  /**
+   * Answers `react:server:shell`, the way a build reaches {@link renderShell}.
+   *
+   * An event rather than a call because the build runs in the CLI's process,
+   * which loads the application through Vite: the app's `ReactServerProvider`
+   * is another module instance than any class the CLI could import, so
+   * `alepha.inject(ReactServerProvider)` from there would build a second,
+   * unconfigured provider. An event name crosses that boundary.
+   */
+  protected readonly onShell = $hook({
+    on: "react:server:shell",
+    handler: (event) => {
+      event.html = this.renderShell({ viewport: event.viewport });
+    },
+  });
+
+  /**
+   * The application's document with an empty root, rendered without any page.
+   *
+   * No loader runs, which is the point: an app shell (the `index.html` a
+   * native WebView boots from) is built where the API may not exist, and
+   * whatever a page loaded would be stripped from the shell anyway. Global
+   * `$head` entries and the entry assets still apply, so the document is what
+   * a server-rendered page would start with.
+   *
+   * `viewport` replaces the app's own: a native shell declares
+   * `viewport-fit=cover`, which the same app served as a website must not.
+   */
+  public renderShell(opts: { viewport?: string } = {}): string {
+    this.setupEarlyHeadContent(
+      opts.viewport ? { viewport: opts.viewport } : undefined,
+    );
+
+    const head = this.serverHeadProvider.resolveGlobal();
+    head.title ??= "App";
+    head.htmlAttributes = { lang: "en", ...head.htmlAttributes };
+
+    try {
+      return this.templateProvider.renderShellDocument(head);
+    } finally {
+      // The early head is the server's, shared by every page it renders: the
+      // shell's viewport must not outlive the shell.
+      if (opts.viewport) {
+        this.setupEarlyHeadContent();
+      }
+    }
   }
 
   /**

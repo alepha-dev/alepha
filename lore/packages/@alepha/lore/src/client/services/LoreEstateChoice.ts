@@ -12,7 +12,7 @@ export interface LentEstate {
  * Which estate a newly created copy deploys to: the one rule, shared.
  *
  * Both creators of a copy reach it: `LoreDeployService.ensureInstance` (the
- * Worker-safe client) and the `lore()` platform adapter's first `up` (through
+ * Worker-safe client) and the `lore()` infra adapter's first `up` (through
  * `LoreDeployer`). A second hand-written copy of the rule is how the two would
  * come to put the same app on different estates.
  *

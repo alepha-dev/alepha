@@ -190,6 +190,26 @@ export class ServerProvider {
   }
 
   /**
+   * `ALEPHA_INSPECT=1` asks for something only a build made with
+   * `alepha build --inspect` carries. Without it nothing listens, and silence
+   * would read as "on", so the server says so once. `AlephaInspector` marks
+   * the container when it is present, enabled or not.
+   */
+  protected readonly onReadyInspect = $hook({
+    on: "ready",
+    handler: () => {
+      const asked = ["1", "true"].includes(
+        String(this.alepha.env.ALEPHA_INSPECT ?? "").toLowerCase(),
+      );
+      if (asked && !this.alepha.store.get("alepha.inspector.bundled" as any)) {
+        this.log.warn(
+          "ALEPHA_INSPECT is set, but this build carries no inspector: rebuild with `alepha build --inspect`.",
+        );
+      }
+    },
+  });
+
+  /**
    * When a Node.js HTTP request is received from outside. (Vercel, AWS Lambda, etc.)
    */
   protected readonly onNodeRequest = $hook({

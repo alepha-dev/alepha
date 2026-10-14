@@ -1,13 +1,14 @@
 import { $inject, Alepha, AlephaError } from "alepha";
 import { VerificationService } from "alepha/api/verifications";
-import { DatabaseCacheProvider } from "alepha/cache/database";
 import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
+import { $rateLimit } from "alepha/rate-limit";
 import { SecurityProvider } from "alepha/security";
 import { BadRequestError } from "alepha/server";
 
 import type { RealmAuthSettings } from "../atoms/realmAuthSettingsAtom.ts";
+import type { AttemptBudget } from "../interfaces/AttemptBudget.ts";
 import { UserNotifications } from "../notifications/UserNotifications.ts";
 import { RealmProvider } from "../providers/RealmProvider.ts";
 import { TotpService } from "./TotpService.ts";
@@ -91,7 +92,17 @@ export class MfaService {
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly alepha = $inject(Alepha);
   protected readonly verificationService = $inject(VerificationService);
-  protected readonly cacheProvider = $inject(DatabaseCacheProvider);
+  /**
+   * Second-factor guesses per user, limit and window from the realm's
+   * `loginRateLimit` (`accountMaxAttempts`, `windowMs`). Its own counter,
+   * separate from the password one. Fails closed, like the login counters.
+   */
+  protected readonly attempts = $rateLimit({
+    name: "mfa",
+    limit: (input: AttemptBudget) => input.max,
+    window: (input: AttemptBudget) => input.windowMs,
+    key: (input: AttemptBudget) => input.key,
+  });
 
   /**
    * The notifications service, but only for a realm that opted into it.
@@ -463,7 +474,7 @@ export class MfaService {
     const { accountMaxAttempts, windowMs } = settings.loginRateLimit;
     // The resolved realm's name, not a literal: an omitted realm is the
     // default one, whatever it is called (it was `default` until #Q2264).
-    const key = `mfa:${resolved.name}:${userId}`;
+    const key = `${resolved.name}:${userId}`;
 
     // A six-digit code is a one-in-a-million guess, which is only tolerable
     // while the number of guesses is bounded. Its own counter, separate from
@@ -473,8 +484,16 @@ export class MfaService {
     // The attempt is taken BEFORE the code is compared (#Q2529): checking
     // first and counting after a failure let a burst of parallel guesses all
     // read the counter under the cap. A pass gives the slot back.
-    if ((await this.takeAttempt(key, windowMs)) > accountMaxAttempts) {
-      this.log.warn("Second factor blocked, too many attempts", { userId });
+    const attempt = await this.attempts.consume({
+      key,
+      max: accountMaxAttempts,
+      windowMs,
+    });
+    if (!attempt.allowed) {
+      this.log.warn("Second factor blocked, too many attempts", {
+        userId,
+        reason: attempt.reason,
+      });
       return false;
     }
 
@@ -483,52 +502,11 @@ export class MfaService {
         ? await this.verifyTotp(userId, code, realm)
         : await this.verifyEmailCode(userId, code, realm);
 
-    if (passed) {
-      await this.refundAttempt(key, windowMs);
+    if (passed && attempt.ticket) {
+      await this.attempts.refund(attempt.ticket);
     }
 
     return passed;
-  }
-
-  protected static readonly RATE_LIMIT_CACHE = "mfa-rate-limit";
-
-  /**
-   * Take one attempt from the counter and answer its new value.
-   *
-   * Fails closed, for the same reason `SessionService.takeLoginAttempt`
-   * does: a counter store that cannot be written cannot report an attacker
-   * as under the threshold, and answering "not locked" would turn an outage
-   * into an open door.
-   */
-  protected async takeAttempt(key: string, windowMs: number): Promise<number> {
-    try {
-      return await this.cacheProvider.incr(
-        MfaService.RATE_LIMIT_CACHE,
-        key,
-        1,
-        windowMs,
-      );
-    } catch (error) {
-      this.log.error("Could not take a second-factor attempt", error);
-      return Number.POSITIVE_INFINITY;
-    }
-  }
-
-  /**
-   * Give back the slot of a code that passed. Best effort: a refund that
-   * fails costs the user one slot of the window, never the limit.
-   */
-  protected async refundAttempt(key: string, windowMs: number): Promise<void> {
-    try {
-      await this.cacheProvider.incr(
-        MfaService.RATE_LIMIT_CACHE,
-        key,
-        -1,
-        windowMs,
-      );
-    } catch (error) {
-      this.log.warn("Could not refund a second-factor attempt", error);
-    }
   }
 
   /**

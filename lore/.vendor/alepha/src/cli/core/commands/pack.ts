@@ -8,12 +8,12 @@ import { WorkspacePacker } from "../services/WorkspacePacker.ts";
  * Pack the workspace into a deployable `tar.zst`.
  *
  * The tar contains everything a remote runner (Alepha Rocket, or any
- * `alepha platform <op> --prebuilt` consumer) needs to deploy the app:
+ * `alepha deploy --prebuilt` consumer) needs to deploy the app:
  *
  *   dist/                 pre-built output (incl. manifest.json)
  *   migrations/           SQL files (if present)
  *
- * No source, no `alepha.config.ts`, no `package.json` — the deploy
+ * No source, no `alepha.config.ts`, no `package.json`  -  the deploy
  * side reads everything from `dist/manifest.json` and never touches
  * source. Excludes: `node_modules`, `.DS_Store`, macOS AppleDouble
  * (`._*`), `.alepha` build cache, `e2e`, `playwright-report`,
@@ -39,7 +39,7 @@ export class PackCommand {
   public readonly pack = $command({
     name: "pack",
     description:
-      "Pack the workspace into a deployable tar.zst (for `alepha platform --prebuilt` consumers like Alepha Bay and Alepha Rocket).",
+      "Pack the workspace into a deployable tar.zst (for `alepha deploy --prebuilt` consumers like Alepha Bay and Alepha Rocket).",
     flags: z.object({
       tag: z
         .text({
@@ -59,7 +59,7 @@ export class PackCommand {
         .text({
           aliases: ["n"],
           description:
-            "Project name for the artifact filename (default: `package.json` `name`, slugified). `alepha platform` passes the deploy-side project name, which `platform({ name })` is free to make differ from the package name.",
+            "Project name for the artifact filename (default: `package.json` `name`, slugified). `alepha infra` passes the deploy-side project name, which `infra({ name })` is free to make differ from the package name.",
         })
         .optional(),
     }),

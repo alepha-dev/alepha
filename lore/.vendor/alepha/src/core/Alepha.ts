@@ -455,6 +455,49 @@ export class Alepha {
    */
   protected cacheMeta?: AlephaMeta;
 
+  /**
+   * The app's namespace: the one identity every module keys a shared
+   * resource with (Redis, KV, a bucket), so two apps, or two environments of
+   * one app, on the same backend never read each other's keys.
+   *
+   * First hit wins:
+   *
+   * 1. `env.APP_NAME`: in code, then `process.env`, then a Worker binding
+   *    lifted by {@link loadEnv}.
+   * 2. `meta.name`, baked by `alepha build` and `alepha dev`: the slugified
+   *    app directory, or `meta.name` in `alepha.config.ts`. The same string as
+   *    the manifest's `project`, the Worker name, and `/version`.
+   * 3. `"app"`, when no build produced this code (vitest, a `tsx` script).
+   *
+   * Read on every call and never written back into `env`, so a binding that
+   * arrives after `create()` still wins, and `env.APP_NAME` keeps meaning
+   * "set explicitly". Verbatim: each consumer formats it for its backend.
+   *
+   * ⚠️ In the browser only the baked name exists, and it can differ from the
+   * server's runtime `APP_NAME` (a deploy writing `<name>-<env>`). Never use it
+   * for anything the browser and the server must agree on.
+   *
+   * @example
+   * ```ts
+   * Alepha.create().name;                               // "app"
+   * Alepha.create({ env: { APP_NAME: "hello" } }).name; // "hello"
+   * $inject(Alepha).name;                               // "shop", once built
+   * ```
+   */
+  public get name(): string {
+    const fromEnv = this.env.APP_NAME;
+    if (typeof fromEnv === "string" && fromEnv) {
+      return fromEnv;
+    }
+
+    const baked = this.meta.name;
+    if (baked && baked !== ALEPHA_META_FALLBACK.name) {
+      return baked;
+    }
+
+    return "app";
+  }
+
   constructor(state: Partial<State> = {}) {
     this.store = this.inject(StateManager, {
       args: [state],
@@ -1806,7 +1849,7 @@ export interface Env {
    *
    * Used to render absolute links — emails, OAuth callbacks, sitemap. On the
    * Cloudflare platform it is auto-derived from the configured production
-   * domain and pushed as a Worker secret by `alepha platform up`; otherwise
+   * domain and pushed as a Worker secret by `alepha deploy`; otherwise
    * set it explicitly in `.env.<env>`. Unset → empty, and absolute-link
    * builders fall back to relative URLs.
    */

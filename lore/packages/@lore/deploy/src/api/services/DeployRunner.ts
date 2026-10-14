@@ -1,15 +1,15 @@
 import { $inject, Alepha, AlephaError } from "alepha";
 import { FileService } from "alepha/api/files";
 import {
-  AlephaPlatformLibPlugin,
+  AlephaInfraLibPlugin,
   type CloudflareAssetEntry,
   CloudflareAssetManifest,
   type CloudflareDeployAssets,
   NamingService,
-  PlatformOrchestrator,
-  platformOptions,
+  InfraOrchestrator,
+  infraOptions,
   WorkerCloudflareAdapter,
-} from "alepha/cli/platform-lib";
+} from "alepha/cli/infra-lib";
 import { $logger } from "alepha/logger";
 import { BadRequestError } from "alepha/server";
 import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
@@ -42,7 +42,7 @@ export interface DeployRequest {
    * then must not move it: Cloudflare has no rename, so a new prefix is an
    * empty database beside the live one.
    *
-   * ⚠️ `alepha platform` names `<name>-<env>` from its config and must keep
+   * ⚠️ `alepha infra` names `<name>-<env>` from its config and must keep
    * doing so: it has no project, it runs against the operator's own account,
    * and changing its scheme would point every existing deploy at a database
    * that does not exist yet.
@@ -52,7 +52,7 @@ export interface DeployRequest {
   /**
    * The environment, from the `app_instances` row. ⚠️ Not from the artifact:
    * an environment is a ROW in Lore, which is the whole difference between
-   * this and `alepha platform`, where it is a declaration in a config file.
+   * this and `alepha infra`, where it is a declaration in a config file.
    */
   env: string;
 
@@ -98,7 +98,7 @@ export interface DeployRequest {
  * 1. Fetch the artifact's bytes from `$storage`.
  * 2. Unpack them into a `MemoryFileSystemProvider` - guarded, see
  *    `ArtifactTarReader.extract`.
- * 3. Drive `PlatformOrchestrator.up()` against that filesystem, with the
+ * 3. Drive `InfraOrchestrator.up()` against that filesystem, with the
  *    worker-side Cloudflare adapter.
  * 4. Write status and log lines as it goes.
  *
@@ -113,9 +113,9 @@ export interface DeployRequest {
  *
  * ## ⚠️ The environment is INJECTED, not read from the artifact
  *
- * `PlatformInspector.resolveConfig` prefers the `platformOptions` atom over
+ * `InfraInspector.resolveConfig` prefers the `infraOptions` atom over
  * `dist/manifest.json`, and the runner sets that atom. That is the epic's
- * founding difference in one line: `alepha platform` reads
+ * founding difference in one line: `alepha infra` reads
  * `config.environments[env]` from a file the app committed, and Lore has a
  * ROW. An artifact built before this environment existed deploys to it
  * without a rebuild, which is the entire point of a preview environment.
@@ -192,14 +192,14 @@ export class DeployRunner {
       );
 
       // ⚠️ The stored name, handed to the naming the container substituted.
-      // `platformOptions.name` is only a label past this point: nothing that
+      // `infraOptions.name` is only a label past this point: nothing that
       // names a resource reads it once `NamingService` is replaced.
       this.naming(alepha).use(request.name);
 
       // ⚠️ Before the orchestrator resolves anything. The environment is a
       // Lore row, and this atom is how it reaches an engine that otherwise
       // reads a config file the artifact does not carry.
-      alepha.set(platformOptions, {
+      alepha.set(infraOptions, {
         name: request.name,
         environments: {
           [request.env]: {
@@ -218,7 +218,7 @@ export class DeployRunner {
         adapter.useAssets(assets);
       }
 
-      const result = await alepha.inject(PlatformOrchestrator).up({
+      const result = await alepha.inject(InfraOrchestrator).up({
         root: DeployRunner.ROOT,
         env: request.env,
         // Prebuilt: Lore's Worker cannot run Vite, so `dist/` always arrives
@@ -277,7 +277,7 @@ export class DeployRunner {
         // ⚠️ Before the plugin, which registers `NamingService` itself: a
         // substitution recorded after it would lose to the original.
         .with({ provide: NamingService, use: StoredNamingService })
-        .with(AlephaPlatformLibPlugin)
+        .with(AlephaInfraLibPlugin)
     );
   }
 

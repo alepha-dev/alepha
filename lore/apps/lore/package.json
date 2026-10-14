@@ -16,7 +16,7 @@
     "check:migrations": "alepha db migrations check",
     "db:generate": "alepha db migrations create",
     "build:docker": "alepha build && alepha image --tag",
-    "deploy": "alepha platform up -e production",
+    "deploy": "alepha deploy -e production",
     "fonts": "node scripts/fetch-fonts.ts",
     "inventory": "node --import tsx --import ./scripts/css-stub.mjs scripts/print-app-inventory.ts",
     "start": "yarn build && LOG_LEVEL=trace LOG_FORMAT=pretty DATABASE_URL=:memory: node dist"
@@ -29,7 +29,7 @@
     "@lore/knowledge": "workspace:*",
     "@lore/work": "workspace:*",
     "alepha": "workspace:*",
-    "lucide-react": "^1.48.0",
+    "lucide-react": "^1.56.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-is": "^19.3.0",
@@ -39,14 +39,13 @@
     "@tailwindcss/vite": "^4.3.3",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",
-    "@types/bun": "^1.4.2",
+    "@types/bun": "^1.4.3",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "drizzle-kit": "1.0.0-rc.4",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.23.15",
-    "vite": "^8.3.1",
-    "vitest": "^5.0.2",
-    "wrangler": "^4.142.0"
+    "vite": "^8.3.4",
+    "vitest": "^5.0.4",
+    "wrangler": "^4.150.0"
   }
 }

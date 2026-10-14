@@ -22,6 +22,7 @@ import {
   type WebhookEvent,
 } from "../providers/PaymentProvider.ts";
 import { paymentsConfig } from "../schemas/paymentsConfigAtom.ts";
+import { PaymentMethodService } from "./PaymentMethodService.ts";
 
 export class PaymentService {
   protected readonly alepha = $inject(Alepha);
@@ -199,6 +200,8 @@ export class PaymentService {
     options?: {
       stripeAccount?: string;
       applicationFeeAmount?: number;
+      idempotencyKey?: string;
+      saveCard?: boolean;
       /**
        * Pre-fills the payer's email on the PSP checkout page. Useful when
        * the session runs on a sub-account (Stripe connected account) where
@@ -225,6 +228,7 @@ export class PaymentService {
         { id: { eq: intent.id }, status: { eq: "created" } },
         {
           status: "processing",
+          saveCard: options?.saveCard,
           ...(userId && !intent.userId ? { userId } : {}),
         },
       );
@@ -238,18 +242,27 @@ export class PaymentService {
     }
 
     try {
-      const result = await this.provider.createSession(intent, {
-        returnUrl,
-        authorize,
-        stripeAccount: options?.stripeAccount,
-        applicationFeeAmount: options?.applicationFeeAmount,
-        customerEmail: options?.customerEmail,
-      });
+      const result = await this.provider.createSession(
+        { ...intent, userId: intent.userId ?? userId },
+        {
+          returnUrl,
+          authorize,
+          stripeAccount: options?.stripeAccount,
+          applicationFeeAmount: options?.applicationFeeAmount,
+          idempotencyKey: options?.idempotencyKey,
+          customerEmail: options?.customerEmail,
+          saveCard: options?.saveCard,
+        },
+      );
 
       // The account is recorded with the ref, because every later call
       // about this session (poll, expiry, capture, refund) must name it.
       await this.intentRepo.updateById(intent.id, {
+        // Keep the URL with the provider reference so callers can resume a
+        // session after their own booking update was interrupted.
+        metadata: { ...intent.metadata, checkoutUrl: result.url },
         providerRef: result.providerRef,
+        saveCard: options?.saveCard,
         ...(options?.stripeAccount
           ? { providerAccount: options.stripeAccount }
           : {}),
@@ -356,6 +369,24 @@ export class PaymentService {
     failed: ["authorized", "captured"],
   };
 
+  protected async reconcileSavedCard(
+    intent: PaymentIntentEntity,
+  ): Promise<void> {
+    if (!intent.saveCard || intent.paymentMethodId) return;
+    if (!intent.userId || !intent.providerRef)
+      throw new PaymentError("Saved-card session is not persisted yet");
+    const method = await this.alepha
+      .inject(PaymentMethodService)
+      .reconcileSession(
+        intent.userId,
+        intent.providerRef,
+        intent.providerAccount,
+      );
+    if (!method)
+      throw new PaymentError("Captured payment has not saved its card yet");
+    await this.intentRepo.updateById(intent.id, { paymentMethodId: method.id });
+  }
+
   /**
    * Process a webhook event by updating the intent status and emitting
    * the corresponding payment event.
@@ -380,6 +411,15 @@ export class PaymentService {
     }
 
     const webhookStatus = status as WebhookStatus;
+    if (
+      status === "captured" &&
+      (intent.status === "captured" ||
+        PaymentService.VALID_WEBHOOK_TRANSITIONS[intent.status]?.includes(
+          "captured",
+        ))
+    ) {
+      await this.reconcileSavedCard(intent);
+    }
 
     // Validate status transition
     const allowed = PaymentService.VALID_WEBHOOK_TRANSITIONS[intent.status];
@@ -538,6 +578,7 @@ export class PaymentService {
       );
     }
 
+    await this.reconcileSavedCard(intent);
     const updated = await this.transition(
       intent.id,
       "authorized",

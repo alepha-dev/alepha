@@ -1,6 +1,6 @@
 import { Alepha, AlephaError } from "alepha";
 import { FileStorageProvider, MemoryFileStorageProvider } from "alepha/bucket";
-import { CloudflareAssetManifest } from "alepha/cli/platform-lib";
+import { CloudflareAssetManifest } from "alepha/cli/infra-lib";
 import { MemoryFileSystemProvider } from "alepha/system";
 import { describe, it } from "vitest";
 

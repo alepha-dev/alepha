@@ -2,7 +2,7 @@ import { $inject } from "alepha";
 import {
   BAY_OWNED_SECRET_KEYS,
   EXCLUDED_SECRET_KEYS,
-} from "alepha/cli/platform-lib";
+} from "alepha/cli/infra-lib";
 import { CryptoProvider } from "alepha/crypto";
 import { $repository, sql } from "alepha/orm";
 import { BadRequestError } from "alepha/server";

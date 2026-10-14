@@ -1,13 +1,13 @@
 import { $inject, $store, AlephaError } from "alepha";
 import {
   EXCLUDED_SECRET_KEYS,
-  PlatformAdapter,
-  type PlatformContext,
-  type PlatformState,
-  platformOptions,
+  InfraAdapter,
+  type InfraContext,
+  type InfraState,
+  infraOptions,
   resolveSecretKeySet,
   selectSecrets,
-} from "alepha/cli/platform-lib";
+} from "alepha/cli/infra-lib";
 import { EnvUtils, type RunnerMethod } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
@@ -24,7 +24,7 @@ import { LoreProjectResolver } from "../services/LoreProjectResolver.ts";
 import { LoreSecretsService } from "../services/LoreSecretsService.ts";
 
 /**
- * `alepha platform` deploying through Lore: an environment written
+ * `alepha infra` deploying through Lore: an environment written
  * `lore({ project })` in `alepha.config.ts`.
  *
  * It fits the pipeline every adapter runs - authenticate, provision, build,
@@ -47,11 +47,11 @@ import { LoreSecretsService } from "../services/LoreSecretsService.ts";
  *
  * ## ⚠️ Declared in `AlephaLoreDeploy`, never beside the commands
  *
- * `platform()` registers this class when the config loads, which registers the
+ * `infra()` registers this class when the config loads, which registers the
  * module declaring it. That module is services-only, so the `alepha` binary
  * gains an adapter and not a single `lore` verb.
  */
-export class LoreAdapter extends PlatformAdapter<LoreEnvironmentOptions> {
+export class LoreAdapter extends InfraAdapter<LoreEnvironmentOptions> {
   static readonly id = "lore";
   static readonly options = loreEnvironmentOptionsSchema;
 
@@ -70,7 +70,7 @@ export class LoreAdapter extends PlatformAdapter<LoreEnvironmentOptions> {
   protected readonly artifacts = $inject(LoreArtifactPusher);
   protected readonly sealed = $inject(LoreSecretsService);
   protected readonly device = $inject(LoreDeviceLogin);
-  protected readonly platform = $store(platformOptions);
+  protected readonly platform = $store(infraOptions);
 
   /**
    * The tag `up` builds and pushes: the mutable one. A pinned tag is a
@@ -93,7 +93,7 @@ export class LoreAdapter extends PlatformAdapter<LoreEnvironmentOptions> {
    * refreshed if it expired, else an error naming both fixes.
    */
   async authenticate(
-    ctx: PlatformContext<LoreEnvironmentOptions>,
+    ctx: InfraContext<LoreEnvironmentOptions>,
     _run: RunnerMethod,
   ): Promise<void> {
     this.configure(ctx);
@@ -104,7 +104,7 @@ export class LoreAdapter extends PlatformAdapter<LoreEnvironmentOptions> {
    * The device-code flow `lore login` runs, against this environment's Lore.
    */
   override async login(
-    ctx: PlatformContext<LoreEnvironmentOptions>,
+    ctx: InfraContext<LoreEnvironmentOptions>,
     _run: RunnerMethod,
   ): Promise<void> {
     this.configure(ctx);
@@ -112,7 +112,7 @@ export class LoreAdapter extends PlatformAdapter<LoreEnvironmentOptions> {
   }
 
   override async logout(
-    ctx: PlatformContext<LoreEnvironmentOptions>,
+    ctx: InfraContext<LoreEnvironmentOptions>,
     _run: RunnerMethod,
   ): Promise<void> {
     this.configure(ctx);
@@ -125,7 +125,7 @@ export class LoreAdapter extends PlatformAdapter<LoreEnvironmentOptions> {
    * ## ⚠️ Why creating is safe here when `lore deploy` refuses
    *
    * `lore deploy` refuses a missing copy because a typo in its free `--env`
-   * flag would create one nobody meant. `alepha platform up --env prdo` never
+   * flag would create one nobody meant. `alepha deploy --env prdo` never
    * reaches Lore: the orchestrator refuses any env that is not a key of
    * `alepha.config.ts`. So the names this can create are exactly the committed
    * config, and committing an environment key is the explicit act the refusal
@@ -135,7 +135,7 @@ export class LoreAdapter extends PlatformAdapter<LoreEnvironmentOptions> {
    * as it is, and never becomes a copy.
    */
   override async provision(
-    ctx: PlatformContext<LoreEnvironmentOptions>,
+    ctx: InfraContext<LoreEnvironmentOptions>,
     _run: RunnerMethod,
   ): Promise<void> {
     await this.target(ctx, { create: true });
@@ -150,7 +150,7 @@ export class LoreAdapter extends PlatformAdapter<LoreEnvironmentOptions> {
    * only the push runs.
    */
   async build(
-    ctx: PlatformContext<LoreEnvironmentOptions>,
+    ctx: InfraContext<LoreEnvironmentOptions>,
     run: RunnerMethod,
   ): Promise<void> {
     const { project, projectId, instance } = await this.target(ctx);
@@ -185,7 +185,7 @@ export class LoreAdapter extends PlatformAdapter<LoreEnvironmentOptions> {
    * the reason is much harder to read.
    */
   async deploy(
-    ctx: PlatformContext<LoreEnvironmentOptions>,
+    ctx: InfraContext<LoreEnvironmentOptions>,
     run: RunnerMethod,
   ): Promise<string | undefined> {
     const { projectId, instance } = await this.target(ctx);
@@ -226,21 +226,21 @@ export class LoreAdapter extends PlatformAdapter<LoreEnvironmentOptions> {
    * them after the run would boot the new build without them.
    */
   override async secrets(
-    _ctx: PlatformContext<LoreEnvironmentOptions>,
+    _ctx: InfraContext<LoreEnvironmentOptions>,
     _run: RunnerMethod,
   ): Promise<void> {}
 
   /**
-   * The copy, in the shape `alepha platform status` prints for every adapter.
+   * The copy, in the shape `alepha infra status` prints for every adapter.
    *
    * Lore owns the resources behind a copy and does not list them to a client,
    * so the one row is the copy itself: its name on the estate, what it runs
    * and where. The secrets are the keys of its sealed set, never a value.
    */
   async inspect(
-    ctx: PlatformContext<LoreEnvironmentOptions>,
+    ctx: InfraContext<LoreEnvironmentOptions>,
     _run: RunnerMethod,
-  ): Promise<PlatformState> {
+  ): Promise<InfraState> {
     const project = this.configure(ctx);
     const projectId = await this.projects.resolve(project);
     const instance = await this.deployer.findInstance(
@@ -248,7 +248,7 @@ export class LoreAdapter extends PlatformAdapter<LoreEnvironmentOptions> {
       ctx.project,
       ctx.env,
     );
-    const state: PlatformState = {
+    const state: InfraState = {
       workers: [],
       databases: [],
       buckets: [],
@@ -293,7 +293,7 @@ export class LoreAdapter extends PlatformAdapter<LoreEnvironmentOptions> {
    *
    * A copy that is not **ephemeral** loses its Worker, queue and cache, and
    * keeps its database and bucket: the next `up` rebuilds everything it lost.
-   * For it, `platform down`'s own gate (type the env, or `--yes`) is the gate,
+   * For it, `infra down`'s own gate (type the env, or `--yes`) is the gate,
    * and the `app/env` confirmation Lore's endpoint requires is written here.
    *
    * An ephemeral copy loses its database and its bucket too, with no backup,
@@ -304,7 +304,7 @@ export class LoreAdapter extends PlatformAdapter<LoreEnvironmentOptions> {
    * here would make that confirmation meaningless exactly where the data is.
    */
   async teardown(
-    ctx: PlatformContext<LoreEnvironmentOptions>,
+    ctx: InfraContext<LoreEnvironmentOptions>,
     _run: RunnerMethod,
   ): Promise<void> {
     const project = this.configure(ctx);
@@ -324,7 +324,7 @@ export class LoreAdapter extends PlatformAdapter<LoreEnvironmentOptions> {
 
     if (instance.ephemeral) {
       throw new AlephaError(
-        `${label} is EPHEMERAL: tearing it down also deletes its database and its bucket, and there is no backup. \`alepha platform down\` will not do that, even with --yes. Run \`lore apps destroy --app ${ctx.project} --env ${ctx.env} --confirm ${label}\` to destroy it.`,
+        `${label} is EPHEMERAL: tearing it down also deletes its database and its bucket, and there is no backup. \`alepha infra down\` will not do that, even with --yes. Run \`lore apps destroy --app ${ctx.project} --env ${ctx.env} --confirm ${label}\` to destroy it.`,
       );
     }
 
@@ -343,7 +343,7 @@ export class LoreAdapter extends PlatformAdapter<LoreEnvironmentOptions> {
    * `LORE_PROJECT` and `LORE_URL` win over the config, so CI needs no edit to a
    * committed file.
    */
-  protected configure(ctx: PlatformContext<LoreEnvironmentOptions>): string {
+  protected configure(ctx: InfraContext<LoreEnvironmentOptions>): string {
     this.client.useUrl(ctx.options.url);
     const project = this.client.projectFromEnv() ?? ctx.options.project;
     if (!project) {
@@ -358,7 +358,7 @@ export class LoreAdapter extends PlatformAdapter<LoreEnvironmentOptions> {
    * This environment's project id and copy, resolved once per run.
    */
   protected async target(
-    ctx: PlatformContext<LoreEnvironmentOptions>,
+    ctx: InfraContext<LoreEnvironmentOptions>,
     options: { create?: boolean } = {},
   ): Promise<{ project: string; projectId: number; instance: LoreInstance }> {
     const project = this.configure(ctx);
@@ -369,7 +369,7 @@ export class LoreAdapter extends PlatformAdapter<LoreEnvironmentOptions> {
     }
     const projectId = await this.projects.resolve(project);
     // Created only from `provision`, the step `up` runs first. A granular
-    // `platform build` or `platform deploy` on a missing copy is refused,
+    // `infra build` or `infra deploy` on a missing copy is refused,
     // with `lore deploy`'s own message.
     const instance = options.create
       ? ((await this.deployer.findInstance(projectId, ctx.project, ctx.env)) ??
@@ -389,7 +389,7 @@ export class LoreAdapter extends PlatformAdapter<LoreEnvironmentOptions> {
    * The app's secrets into the copy's sealed set.
    *
    * The key set is the one every adapter resolves (`resolveSecretKeySet`):
-   * `platform().secrets.keys`, else the manifest's `env` (or the `.env.<env>`
+   * `infra().secrets.keys`, else the manifest's `env` (or the `.env.<env>`
    * keys) plus the `.env.<env>.local` keys, each value from the file first and
    * then `process.env`. Additive: a key Lore holds that this set lacks is left
    * alone. `SIGIL_KEY` is never written, and a name Lore reserves is dropped
@@ -400,7 +400,7 @@ export class LoreAdapter extends PlatformAdapter<LoreEnvironmentOptions> {
    * `cloudflare()` to `lore()` would deploy with no secrets and fail at boot.
    */
   protected async pushSecrets(
-    ctx: PlatformContext<LoreEnvironmentOptions>,
+    ctx: InfraContext<LoreEnvironmentOptions>,
     projectId: number,
     instanceId: string,
   ): Promise<void> {

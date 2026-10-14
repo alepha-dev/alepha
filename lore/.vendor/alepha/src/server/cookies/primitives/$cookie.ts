@@ -96,14 +96,14 @@ export interface CookiePrimitiveOptions<T extends ZType> {
 
   /**
    * Internal escape hatch: when explicitly set to `false`, the server skips
-   * the `APP_NAME` cookie-name namespace applied by
+   * the `alepha.name` cookie-name namespace applied by
    * `ServerCookiesProvider.prefixName()`.
    *
    * Used by `AtomCookiePersistence` so the cookie name the server
    * reads/writes for a `persist: "cookie"` atom matches the bare name its
-   * browser variant uses — `APP_NAME` is not reachable client-side (not
-   * baked into the client bundle, not part of SSR hydration), so the
-   * browser can only ever use the bare atom key.
+   * browser variant uses — the server's runtime `APP_NAME` is not reachable
+   * client-side (not bundled, not part of SSR hydration), so the browser can
+   * only ever use the bare atom key.
    *
    * Application code declaring `$cookie(...)` directly should leave this
    * unset — it defaults to `true` (prefixed), matching every other cookie.

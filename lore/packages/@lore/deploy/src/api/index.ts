@@ -1,6 +1,6 @@
 import { LoreCoreApi } from "@lore/core/api";
 import { $module } from "alepha";
-import { AlephaServerRateLimit } from "alepha/server/rate-limit";
+import { AlephaRateLimit } from "alepha/rate-limit";
 import { AlephaWebSocket } from "alepha/websocket";
 
 import { AdminEstateController } from "./controllers/AdminEstateController.ts";
@@ -78,11 +78,10 @@ export const LoreDeployApi = $module({
     // migration from the `$websocket` below, and the `workerd` export
     // condition picks the Durable Object provider over the Node one.
     AlephaWebSocket,
-    // `$rateLimit` on `EstateController.refreshEstate`. Imported rather than
-    // left to the middleware: it injects `ServerRateLimitProvider` at request
-    // time, when the container is already locked, so an unregistered module
-    // is a 500 on the first click rather than a boot failure.
-    AlephaServerRateLimit,
+    // `$rateLimit` on `EstateController.refreshEstate`. Its counters are actors,
+    // a Durable Object on workerd, which the Cloudflare build derives from the
+    // registered graph, so the module is imported explicitly.
+    AlephaRateLimit,
   ],
   services: [
     DeployDashboardMetrics,

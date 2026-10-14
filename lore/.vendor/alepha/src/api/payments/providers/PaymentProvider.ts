@@ -68,6 +68,7 @@ export interface ProviderAccountOptions {
    * Stripe connected account (`acct_…`). Omitted for the platform account.
    */
   stripeAccount?: string;
+  idempotencyKey?: string;
 }
 
 export interface CreatePaymentMethodResult {
@@ -79,7 +80,41 @@ export interface CreatePaymentMethodResult {
   expYear?: number;
 }
 
+export interface SetupSessionOptions extends ProviderAccountOptions {
+  returnUrl: string;
+  metadata?: Record<string, string>;
+}
+
+export interface OffSessionOptions extends ProviderAccountOptions {
+  currency?: string;
+  applicationFeeAmount?: number;
+  metadata?: Record<string, string>;
+  idempotencyKey?: string;
+}
+
+export interface OffSessionResult {
+  status: "succeeded" | "requires_action" | "failed";
+  providerRef?: string;
+  code?: string;
+}
+
 export abstract class PaymentProvider {
+  abstract retrieveSavedPaymentMethod(
+    userId: string,
+    providerRef: string,
+    options?: ProviderAccountOptions,
+  ): Promise<CreatePaymentMethodResult | null>;
+  abstract createSetupSession(
+    userId: string,
+    options: SetupSessionOptions,
+  ): Promise<CreateSessionResult>;
+  abstract chargeOffSession(
+    userId: string,
+    paymentMethodRef: string,
+    amount: number,
+    options: OffSessionOptions,
+  ): Promise<OffSessionResult>;
+
   /**
    * Create a checkout session with the PSP.
    * Returns a URL to redirect the user to, and the PSP's reference ID.
@@ -89,8 +124,10 @@ export abstract class PaymentProvider {
     options: {
       returnUrl: string;
       authorize?: boolean;
+      saveCard?: boolean;
       stripeAccount?: string;
       applicationFeeAmount?: number;
+      idempotencyKey?: string;
       /**
        * Pre-fill the payer's email on the hosted checkout page.
        */
@@ -172,13 +209,17 @@ export abstract class PaymentProvider {
   abstract createPaymentMethod(
     userId: string,
     token: string,
+    options?: ProviderAccountOptions,
   ): Promise<CreatePaymentMethodResult>;
 
   /**
    * Delete a stored payment method from the PSP. Implementations that
    * don't manage payment methods directly MAY no-op.
    */
-  abstract deletePaymentMethod(providerRef: string): Promise<void>;
+  abstract deletePaymentMethod(
+    providerRef: string,
+    options?: ProviderAccountOptions,
+  ): Promise<void>;
 
   /**
    * Expire/cancel a checkout session on the PSP side.

@@ -3,7 +3,7 @@ import { type Infer, z } from "alepha";
 /**
  * What `lore()` takes in `alepha.config.ts`.
  *
- * No `app` and no `env`: they are `platform().name` and the environment's key.
+ * No `app` and no `env`: they are `infra().name` and the environment's key.
  * No `sigil`: Lore mints one from the manifest's lore-client variables.
  */
 export const loreEnvironmentOptionsSchema = z.object({

@@ -32,7 +32,7 @@ export const estateCommandPayloadSchema = z.object({
    * so without it two projects that each call an app `api` and deploy
    * `production` to one Bay share all three.
    *
-   * Optional because `alepha platform` sends none and because an older Lore
+   * Optional because `alepha infra` sends none and because an older Lore
    * sent none: absent degrades to `<app>-<env>`, the previous behaviour.
    */
   project: z.string().min(1).max(100).optional(),

@@ -1,6 +1,6 @@
 import { defineConfig } from "alepha/cli/config";
 import { i18n } from "alepha/cli/i18n";
-import { cloudflare, platform } from "alepha/cli/platform";
+import { cloudflare, infra } from "alepha/cli/infra";
 
 // Lore's own version, since it left the Alepha monorepo (#E72): the release
 // workflow bumps `apps/lore` and `@alepha/lore` together. /version still
@@ -197,7 +197,7 @@ export default defineConfig({
     },
   },
   plugins: [
-    platform({
+    infra({
       // ⚠️ Pinned, and never a `project`: the Worker is `lore-production`, and
       // any other name provisions an empty D1 and moves lore.alepha.dev onto
       // it. The package name says the same today; this keeps a rename of the

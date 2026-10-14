@@ -1,12 +1,9 @@
 import {
-  $atom,
   $context,
   $inject,
-  $store,
   AlephaError,
   type AsyncFn,
   createMiddleware,
-  type Infer,
   type Middleware,
   Primitive,
   z,
@@ -391,39 +388,11 @@ export interface LockPrimitiveOptions<TFunc extends AsyncFn> {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-/**
- * Lock configuration atom.
- */
-export const lockOptions = $atom({
-  name: "alepha.lock.options",
-  schema: z.object({
-    prefixKey: z.text({
-      default: "",
-      description: "Prefix for all lock keys.",
-    }),
-  }),
-  default: {
-    prefixKey: "",
-  },
-  serverOnly: true,
-});
-
-export type LockAtomOptions = Infer<typeof lockOptions.schema>;
-
-declare module "alepha" {
-  interface State {
-    [lockOptions.key]: LockAtomOptions;
-  }
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
-
 export class LockPrimitive<TFunc extends AsyncFn> extends Primitive<
   LockPrimitiveOptions<TFunc>
 > {
   protected readonly log = $logger();
   protected readonly provider = $inject(LockProvider);
-  protected readonly settings = $store(lockOptions);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
 
   public readonly maxDuration = this.dateTimeProvider.duration(
@@ -431,7 +400,7 @@ export class LockPrimitive<TFunc extends AsyncFn> extends Primitive<
   );
 
   protected readonly topicLockEnd = $topic({
-    name: `${this.settings.prefixKey}lock:end`,
+    name: "lock:end",
     provider: LockTopicProvider,
     schema: {
       payload: z.object({
@@ -569,7 +538,7 @@ export class LockPrimitive<TFunc extends AsyncFn> extends Primitive<
       base = `${this.config.service.name}:${this.config.propertyKey}`;
     }
 
-    return `${this.settings.prefixKey}${base}`;
+    return base;
   }
 
   protected parse(value: string): LockResult {

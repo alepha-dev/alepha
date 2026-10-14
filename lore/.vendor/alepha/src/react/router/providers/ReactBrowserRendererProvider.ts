@@ -2,6 +2,7 @@ import { $hook, $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
 import { createRoot, hydrateRoot, type Root } from "react-dom/client";
 
+import { ReactBootHealth } from "../services/ReactBootHealth.ts";
 import type { ReactRouterState } from "./ReactPageProvider.ts";
 
 /**
@@ -10,7 +11,24 @@ import type { ReactRouterState } from "./ReactPageProvider.ts";
 export class ReactBrowserRendererProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
+  protected readonly bootHealth = $inject(ReactBootHealth);
   protected root?: Root;
+
+  /**
+   * An error React caught in a boundary, or could not catch at all, during
+   * the first screen is a failed boot. Later ones are the app's to handle.
+   */
+  protected onCaughtError = (error: unknown) => {
+    this.bootHealth.report("failed", error);
+    // React's own default for a caught error is console.error.
+    console.error(error);
+  };
+
+  protected onUncaughtError = (error: unknown) => {
+    this.bootHealth.report("failed", error);
+    // React's own default reports it to the window.
+    reportError(error);
+  };
 
   /**
    * Stamped on `<html>` once React has taken over the server-rendered DOM.
@@ -39,6 +57,8 @@ export class ReactBrowserRendererProvider {
         this.root = hydrateRoot(root, element, {
           onRecoverableError: (error, errorInfo) =>
             this.onRecoverableError(error, errorInfo, state),
+          onCaughtError: this.onCaughtError,
+          onUncaughtError: this.onUncaughtError,
         });
         document.documentElement.setAttribute(
           ReactBrowserRendererProvider.HYDRATED_ATTRIBUTE,
@@ -49,6 +69,8 @@ export class ReactBrowserRendererProvider {
         this.root ??= createRoot(root, {
           onRecoverableError: (error, errorInfo) =>
             this.onRecoverableError(error, errorInfo, state),
+          onCaughtError: this.onCaughtError,
+          onUncaughtError: this.onUncaughtError,
         });
         this.root.render(element);
         this.log.info("Created root element");

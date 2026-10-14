@@ -83,7 +83,7 @@ export interface CloudflarePermissionProbe {
  *
  * ⚠️ **The token is an argument, never an environment variable.** It lives
  * as a sealed column, is opened at the moment of use and passed in. There is
- * no `CLOUDFLARE_API_TOKEN` and no import from `alepha/cli/platform-lib`;
+ * no `CLOUDFLARE_API_TOKEN` and no import from `alepha/cli/infra-lib`;
  * see `CloudflareProbeService` for why that client in particular cannot be
  * the one.
  */

@@ -65,7 +65,7 @@ export interface LoreDeployInput {
    *
    * **The same `domain` `alepha.config.ts` declares per environment.** The
    * static path reads it from a committed file and this one reads it from the
-   * copy's row, but it lands in the same place: `platformOptions
+   * copy's row, but it lands in the same place: `infraOptions
    * .environments[env].domain`, then the adapter's `custom_domain` route.
    *
    * A bare host: no scheme, no port, no path. It is stored on the copy as an
@@ -134,7 +134,7 @@ export interface LoreDeployInput {
  * ## What this is for
  *
  * An app whose environments have a lifecycle of their own: one copy per tenant,
- * per branch, per customer. The static path (`alepha platform up`) cannot
+ * per branch, per customer. The static path (`alepha deploy`) cannot
  * express that, because its environments are a list in a committed file. Lore's
  * are rows, and this is the seam that creates one and ships to it.
  *
@@ -435,7 +435,7 @@ export class LoreDeployService {
     }>("GET", `/api/projects/${projectId}/estates`);
     const items = lent?.items ?? [];
 
-    // The rule itself is shared with the CLI's platform adapter, which creates
+    // The rule itself is shared with the CLI's infra adapter, which creates
     // copies too: see `LoreEstateChoice`.
     const chosen = LoreEstateChoice.pick(
       items,

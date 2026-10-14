@@ -1,6 +1,7 @@
 import { $inject, z } from "alepha";
 import { $command } from "alepha/command";
 
+import { infraProviderSchema } from "../schemas/infraProviderSchema.ts";
 import { presetSchema } from "../schemas/presetSchema.ts";
 import { ProjectScaffolder } from "../services/ProjectScaffolder.ts";
 
@@ -11,7 +12,7 @@ export class InitCommand {
    * Ensure the project has the necessary Alepha configuration files.
    * Add the correct dependencies to package.json and install them.
    *
-   * Every project gets the same full-stack shape — API (`src/api/`), web
+   * Every project gets the same full-stack shape  -  API (`src/api/`), web
    * (`src/web/`) and Tailwind. A single canonical layout is what makes an
    * Alepha project legible at a glance, to humans and to AI assistants alike.
    *
@@ -30,6 +31,7 @@ export class InitCommand {
       })
       .optional(),
     flags: z.object({
+      infra: infraProviderSchema.optional(),
       preset: presetSchema
         .describe(
           "Project shape: 'default' (API + web + Tailwind) or 'saas' (adds @alepha/ui with auth, account and admin)",

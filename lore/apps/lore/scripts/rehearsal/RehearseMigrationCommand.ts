@@ -1,10 +1,12 @@
 import { $inject, AlephaError, z } from "alepha";
 import {
-  CloudflareApi,
+  type CloudflareEnvironmentOptions,
+  CloudflareCredentialSource,
+  CloudflareProvisionClient,
   D1MigrationsService,
+  InfraOrchestrator,
   NamingService,
-  PlatformOrchestrator,
-} from "alepha/cli/platform-lib";
+} from "alepha/cli/infra-lib";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
@@ -17,7 +19,7 @@ import { RehearsalDiff } from "./RehearsalDiff.ts";
  * production and prove that no row moved (#Q2603, #E74).
  *
  * ⚠️ **The copy is a REMOTE D1 and the migrations go through
- * `D1MigrationsService.apply`**, the import flow `platform up` uses. That flow
+ * `D1MigrationsService.apply`**, the import flow `alepha deploy` uses. That flow
  * honoured `PRAGMA foreign_keys=OFF` when measured on 2026-09-07 and the query
  * endpoint did not, so a rehearsal on local SQLite, or through `wrangler d1
  * execute --command`, would rehearse a different transport (folio #F1359).
@@ -31,12 +33,18 @@ import { RehearsalDiff } from "./RehearsalDiff.ts";
 export class RehearseMigrationCommand {
   protected readonly log = $logger();
   protected readonly fs = $inject(FileSystemProvider);
-  protected readonly orchestrator = $inject(PlatformOrchestrator);
+  protected readonly orchestrator = $inject(InfraOrchestrator);
   protected readonly naming = $inject(NamingService);
-  protected readonly cloudflare = $inject(CloudflareApi);
+  protected readonly credentials = $inject(CloudflareCredentialSource);
   protected readonly migrations = $inject(D1MigrationsService);
   protected readonly diff = $inject(RehearsalDiff);
   protected readonly splitter = $inject(DumpSplitter);
+
+  /**
+   * The Cloudflare API, opened by the handler under the environment's own
+   * credential: `CLOUDFLARE_API_TOKEN` first, then a wrangler login.
+   */
+  protected cloudflare?: CloudflareProvisionClient;
 
   /**
    * The throwaway database. A fixed name, so a copy a crashed run left behind
@@ -63,6 +71,14 @@ export class RehearseMigrationCommand {
         .d1();
       const dir = this.fs.join(root, "node_modules", ".alepha", "rehearsal");
       const dump = this.fs.join(dir, `${source}.sql`);
+      const options = target.options as CloudflareEnvironmentOptions;
+      const { credential } = await this.credentials.resolve({
+        root,
+        accountId: options.accountId,
+        jurisdiction: options.jurisdiction,
+      });
+      const cloudflare = new CloudflareProvisionClient(credential);
+      this.cloudflare = cloudflare;
 
       await this.deleteCopy();
       await this.fs.mkdir(dir, { recursive: true });
@@ -74,9 +90,7 @@ export class RehearseMigrationCommand {
         await this.escapeNulBytes(dump);
         await this.prepareDump(dump);
 
-        const copy = await this.cloudflare.createD1(
-          RehearseMigrationCommand.COPY,
-        );
+        const copy = await cloudflare.ensureD1(RehearseMigrationCommand.COPY);
         // The dump goes in through wrangler's own `--file` path, the same
         // import flow, which names what it refuses: D1's import endpoint
         // driven directly answered a production dump with an error and no
@@ -97,7 +111,7 @@ export class RehearseMigrationCommand {
         );
 
         await this.migrations.apply(
-          this.cloudflare,
+          cloudflare,
           RehearseMigrationCommand.COPY,
           root,
         );
@@ -131,14 +145,24 @@ export class RehearseMigrationCommand {
   });
 
   /**
+   * The client the handler opened. Every helper below runs inside it.
+   */
+  protected api(): CloudflareProvisionClient {
+    if (!this.cloudflare) {
+      throw new AlephaError("The Cloudflare client is opened by the handler.");
+    }
+    return this.cloudflare;
+  }
+
+  /**
    * Delete the copy if one exists. Idempotent, so it runs before a rehearsal
    * (a leftover) and after one (this run's).
    */
   protected async deleteCopy(): Promise<void> {
-    const databases = await this.cloudflare.listD1();
+    const databases = await this.api().listD1();
     for (const database of databases) {
       if (database.name === RehearseMigrationCommand.COPY) {
-        await this.cloudflare.deleteD1(database.uuid);
+        await this.api().deleteD1(database.uuid);
         this.log.info(`Deleted ${RehearseMigrationCommand.COPY}`);
       }
     }
@@ -151,7 +175,7 @@ export class RehearseMigrationCommand {
   protected async countRows(
     databaseId: string,
   ): Promise<Record<string, number>> {
-    const [listed] = await this.cloudflare.d1Query(
+    const [listed] = await this.api().d1Query(
       databaseId,
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite\\_%' ESCAPE '\\' AND name NOT LIKE '\\_cf\\_%' ESCAPE '\\' ORDER BY name;",
     );
@@ -173,7 +197,7 @@ export class RehearseMigrationCommand {
             `SELECT '${table.replace(/'/g, "''")}' AS name, COUNT(*) AS n FROM "${table.replace(/"/g, '""')}";`,
         )
         .join("\n");
-      for (const answer of await this.cloudflare.d1Query(databaseId, sql)) {
+      for (const answer of await this.api().d1Query(databaseId, sql)) {
         for (const row of answer.results ?? []) {
           counts[String(row.name)] = Number(row.n);
         }
@@ -191,7 +215,7 @@ export class RehearseMigrationCommand {
     root: string,
     databaseId: string,
   ): Promise<Array<{ name: string; sql: string }>> {
-    const [answer] = await this.cloudflare.d1Query(
+    const [answer] = await this.api().d1Query(
       databaseId,
       "SELECT name FROM d1_migrations;",
     );
@@ -241,7 +265,7 @@ export class RehearseMigrationCommand {
 
   /**
    * `wrangler d1 export` writes a raw NUL byte where a text value holds one,
-   * which a SQL text import cannot carry. Escaped the way `alepha platform db
+   * which a SQL text import cannot carry. Escaped the way `alepha infra db
    * export` does it (`CloudflareAdapter.escapeNulBytes`, protected there): it
    * alters such a value in the copy and moves no row count.
    */

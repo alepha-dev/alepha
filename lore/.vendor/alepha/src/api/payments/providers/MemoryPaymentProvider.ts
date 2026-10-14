@@ -1,4 +1,4 @@
-import { $inject } from "alepha";
+import { $inject, AlephaError } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 
 import type { PaymentIntentEntity } from "../entities/paymentIntents.ts";
@@ -7,6 +7,10 @@ import type {
   CreateSessionResult,
   ElementSessionResult,
   PaymentProvider,
+  ProviderAccountOptions,
+  SetupSessionOptions,
+  OffSessionOptions,
+  OffSessionResult,
   RefundResult,
   WebhookEvent,
 } from "./PaymentProvider.ts";
@@ -26,31 +30,154 @@ interface MemoryRefund {
 export class MemoryPaymentProvider implements PaymentProvider {
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly charges: Map<string, MemoryCharge> = new Map();
+  protected readonly sessionResults = new Map<string, CreateSessionResult>();
+  protected readonly refundResults = new Map<string, RefundResult>();
   protected readonly refundRecords: Map<string, MemoryRefund> = new Map();
   protected readonly methods: Map<string, CreatePaymentMethodResult> =
     new Map();
   protected readonly expiredSessions: Set<string> = new Set();
+
+  protected readonly methodOwners = new Map<
+    string,
+    { userId: string; account?: string; token: string }
+  >();
+  protected readonly savedSessions = new Map<
+    string,
+    {
+      userId: string;
+      account?: string;
+      method: CreatePaymentMethodResult;
+      completed: boolean;
+    }
+  >();
+  protected readonly offSessionResults = new Map<string, OffSessionResult>();
+
+  public async createSetupSession(
+    userId: string,
+    options: SetupSessionOptions,
+  ): Promise<CreateSessionResult> {
+    const providerRef = `mem_setup_${this.crypto.randomUUID()}`;
+    const method = await this.createPaymentMethod(userId, "4242", options);
+    this.savedSessions.set(providerRef, {
+      userId,
+      account: options.stripeAccount,
+      method,
+      completed: false,
+    });
+    return {
+      providerRef,
+      url: `/payments/mock-setup/${providerRef}?returnUrl=${encodeURIComponent(options.returnUrl)}`,
+    };
+  }
+
+  public async completeSetupSession(providerRef: string): Promise<void> {
+    const session = this.savedSessions.get(providerRef);
+    if (!session || !providerRef.startsWith("mem_setup_"))
+      throw new AlephaError("Unknown setup session");
+    session.completed = true;
+  }
+
+  public async retrieveSavedPaymentMethod(
+    userId: string,
+    providerRef: string,
+    options: ProviderAccountOptions = {},
+  ): Promise<CreatePaymentMethodResult | null> {
+    const session = this.savedSessions.get(providerRef);
+    if (!session) return null;
+    if (session.userId !== userId || session.account !== options.stripeAccount)
+      throw new AlephaError("Saved card belongs to another user or account");
+    return session.completed && this.methods.has(session.method.providerRef)
+      ? session.method
+      : null;
+  }
+
+  public async chargeOffSession(
+    userId: string,
+    paymentMethodRef: string,
+    amount: number,
+    options: OffSessionOptions,
+  ): Promise<OffSessionResult> {
+    const owner = this.methodOwners.get(paymentMethodRef);
+    if (
+      !owner ||
+      owner.userId !== userId ||
+      owner.account !== options.stripeAccount
+    )
+      throw new AlephaError(
+        "Payment method belongs to another user or account",
+      );
+    if (!Number.isSafeInteger(amount) || amount <= 0)
+      throw new AlephaError("Charge amount must be a positive integer");
+    const key = options.idempotencyKey
+      ? `${options.stripeAccount ?? "platform"}:${options.idempotencyKey}`
+      : undefined;
+    if (key && this.offSessionResults.has(key))
+      return this.offSessionResults.get(key)!;
+    const status =
+      owner.token === "authentication_required"
+        ? "requires_action"
+        : owner.token === "card_declined"
+          ? "failed"
+          : "succeeded";
+    const providerRef = `mem_pi_${this.crypto.randomUUID()}`;
+    const result: OffSessionResult = {
+      status,
+      providerRef,
+      ...(status !== "succeeded" ? { code: owner.token } : {}),
+    };
+    this.charges.set(providerRef, {
+      providerRef,
+      amount,
+      status: status === "succeeded" ? "captured" : status,
+    });
+    if (key) this.offSessionResults.set(key, result);
+    return result;
+  }
 
   public async createSession(
     intent: PaymentIntentEntity,
     options: {
       returnUrl: string;
       authorize?: boolean;
+      saveCard?: boolean;
       stripeAccount?: string;
       applicationFeeAmount?: number;
+      idempotencyKey?: string;
     },
   ): Promise<CreateSessionResult> {
+    const key = options.idempotencyKey
+      ? `${options.stripeAccount ?? "platform"}:${options.idempotencyKey}`
+      : undefined;
+    if (key && this.sessionResults.has(key))
+      return this.sessionResults.get(key)!;
     const providerRef = `mem_session_${this.crypto.randomUUID()}`;
     const status = options.authorize ? "authorized" : "captured";
+    if (options.saveCard) {
+      if (!intent.userId)
+        throw new AlephaError("Saving a card requires a user");
+      const method = await this.createPaymentMethod(
+        intent.userId,
+        "4242",
+        options,
+      );
+      this.savedSessions.set(providerRef, {
+        userId: intent.userId,
+        account: options.stripeAccount,
+        method,
+        completed: false,
+      });
+    }
     this.charges.set(providerRef, {
       providerRef,
       amount: intent.amount,
       status,
     });
-    return {
+    const result = {
       url: `/payments/mock-checkout/${intent.id}?returnUrl=${encodeURIComponent(options.returnUrl)}`,
       providerRef,
     };
+    if (key) this.sessionResults.set(key, result);
+    return result;
   }
 
   /**
@@ -84,6 +211,8 @@ export class MemoryPaymentProvider implements PaymentProvider {
   ): Promise<void> {
     const charge = this.charges.get(providerRef);
     if (charge) {
+      const saved = this.savedSessions.get(providerRef);
+      if (saved) saved.completed = true;
       charge.status = "captured";
       charge.amount = amount;
     }
@@ -99,14 +228,21 @@ export class MemoryPaymentProvider implements PaymentProvider {
   public async refundPayment(
     providerRef: string,
     amount: number,
+    options?: ProviderAccountOptions,
   ): Promise<RefundResult> {
+    const key = options?.idempotencyKey
+      ? `${options.stripeAccount ?? "platform"}:${options.idempotencyKey}`
+      : undefined;
+    if (key && this.refundResults.has(key)) return this.refundResults.get(key)!;
     const refundRef = `mem_refund_${this.crypto.randomUUID()}`;
     this.refundRecords.set(refundRef, {
       providerRef: refundRef,
       chargeRef: providerRef,
       amount,
     });
-    return { providerRef: refundRef };
+    const result = { providerRef: refundRef };
+    if (key) this.refundResults.set(key, result);
+    return result;
   }
 
   public async parseWebhook(request: Request): Promise<WebhookEvent> {
@@ -122,8 +258,9 @@ export class MemoryPaymentProvider implements PaymentProvider {
   }
 
   public async createPaymentMethod(
-    _userId: string,
-    _token: string,
+    userId: string,
+    token: string,
+    options: ProviderAccountOptions = {},
   ): Promise<CreatePaymentMethodResult> {
     const providerRef = `mem_pm_${this.crypto.randomUUID()}`;
     const result: CreatePaymentMethodResult = {
@@ -135,11 +272,23 @@ export class MemoryPaymentProvider implements PaymentProvider {
       expYear: 2030,
     };
     this.methods.set(providerRef, result);
+    this.methodOwners.set(providerRef, {
+      userId,
+      account: options.stripeAccount,
+      token,
+    });
     return result;
   }
 
-  public async deletePaymentMethod(providerRef: string): Promise<void> {
+  public async deletePaymentMethod(
+    providerRef: string,
+    options: ProviderAccountOptions = {},
+  ): Promise<void> {
+    if (!this.methods.has(providerRef)) return;
+    if (this.methodOwners.get(providerRef)?.account !== options.stripeAccount)
+      throw new AlephaError("Wrong payment account");
     this.methods.delete(providerRef);
+    this.methodOwners.delete(providerRef);
   }
 
   /**

@@ -7,6 +7,7 @@ import {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+export * from "./constants/CAPACITOR_ORIGINS.ts";
 export * from "./primitives/$cors.ts";
 export * from "./providers/ServerCorsProvider.ts";
 
@@ -30,6 +31,7 @@ declare module "alepha/server" {
  *
  * **Features:**
  * - CORS policy definition
+ * - `CAPACITOR_ORIGINS`, the two WebView origins of a Capacitor app
  *
  * @module alepha.server.cors
  */

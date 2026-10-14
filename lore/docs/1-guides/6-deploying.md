@@ -7,7 +7,7 @@ This page is the whole story, from an empty project to a rollback.
 
 ## What Lore adds, and what it does not replace
 
-Alepha already deploys. `alepha platform up -e production` reads your
+Alepha already deploys. `alepha deploy -e production` reads your
 `alepha.config.ts`, finds the environment declared there, and ships to it using
 credentials on the machine running the command. That is the **static** path: the
 environments are a list in a file you commit, and it works with no Lore account
@@ -20,7 +20,7 @@ customer, expressible at all.
 
 You do not need Lore to deploy an Alepha app, and you never will. If your
 environments are a short fixed list and the credentials live on your CI runner,
-`alepha platform` is the simpler answer and it is not going anywhere. Reach for
+`alepha infra` is the simpler answer and it is not going anywhere. Reach for
 Lore when the list stops being fixed.
 
 ## The pieces
@@ -273,7 +273,7 @@ been dropped anyway.
 
 That is also what makes this reversible. Resources are looked up by name, so a
 copy destroyed and recreated under the same name **reattaches its own database
-with every row still in it**. Deleting those two is `alepha platform down`,
+with every row still in it**. Deleting those two is `alepha infra down`,
 which runs on your machine against your own account.
 
 ⚠️ **Lore deletes only what it recorded creating.** The names are derived from

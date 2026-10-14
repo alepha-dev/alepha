@@ -346,10 +346,18 @@ export class NodeRedisProvider extends RedisProvider {
   }
 
   /**
+   * Configure Redis connection behavior.
+   */
+  protected getClientOptions(): { disableOfflineQueue?: boolean } {
+    return {};
+  }
+
+  /**
    * Redis client factory method.
    */
   protected createClient(): NodeRedisClient {
     const client = createClient({
+      ...this.getClientOptions(),
       url: this.getUrl(),
       RESP: 3,
     }).withTypeMapping({

@@ -45,8 +45,13 @@ export const changelogOptions = $atom({
      * Commit types to publish, in the order their sections appear.
      *
      * Defaults to {@link DEFAULT_TYPES}. Listing a type is the only way it
-     * reaches the output: `types: ["feat", "fix", "perf"]` adds a Performance
+     * gets a section: `types: ["feat", "fix", "perf"]` adds a Performance
      * section, and dropping `fix` removes Bug Fixes entirely.
+     *
+     * A commit that declares a break (`refactor(server)!: ...`, or a
+     * `BREAKING CHANGE:` footer) is published whatever its type, under
+     * Breaking Changes only: a break concerns every reader, however it was
+     * made.
      */
     types: z.array(z.string()).optional(),
     /**
@@ -88,7 +93,7 @@ export type ChangelogOptions = Infer<typeof changelogOptions.schema>;
  * `defineConfig` has a typed field for `entry`, `services`, `plugins`,
  * `build`, `dev`, `meta` and `env`, and none for an arbitrary atom, so the
  * declarative form had no way to reach {@link changelogOptions}. This plugin
- * is that way. Same shape as `vendor()` and `platform()`, with nothing to
+ * is that way. Same shape as `vendor()` and `infra()`, with nothing to
  * register: `gen changelog` lives in `alepha/cli` and is always there, so the
  * only thing to do is set the atom.
  *

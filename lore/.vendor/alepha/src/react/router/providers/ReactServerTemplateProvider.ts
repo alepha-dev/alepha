@@ -123,6 +123,25 @@ export class ReactServerTemplateProvider {
   }
 
   /**
+   * The document with an empty root: the early head, the given head, and no
+   * page content or hydration data.
+   *
+   * What an app shell ships, a WebView or a static host booting the client
+   * with nothing rendered on the server. Body attributes are kept, so a global
+   * `$head` that styles the body applies before the first render.
+   */
+  public renderShellDocument(head: SimpleHead): string {
+    return (
+      "<!DOCTYPE html>\n" +
+      `<html${this.renderAttributes(head.htmlAttributes)}>\n` +
+      `<head>${this.earlyHeadContent}${this.renderHeadContent(head)}</head>\n` +
+      `<body${this.renderAttributes(head.bodyAttributes)}>\n` +
+      `<div id="${this.rootId}"></div>\n` +
+      "</body>\n</html>"
+    );
+  }
+
+  /**
    * Render attributes record to HTML string.
    */
   public renderAttributes(attrs?: Record<string, string>): string {

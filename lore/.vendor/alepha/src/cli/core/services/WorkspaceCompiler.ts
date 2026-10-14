@@ -5,6 +5,7 @@ import { FileSystemProvider, ShellProvider } from "alepha/system";
 
 import type { BuildRuntime } from "../atoms/buildOptions.ts";
 import { BuildSlices } from "./BuildSlices.ts";
+import { DesktopAdapterResolver } from "./DesktopAdapterResolver.ts";
 
 /**
  * What `alepha compile` produces: one executable holding the app, its server
@@ -90,6 +91,7 @@ export class WorkspaceCompiler {
   protected readonly shell = $inject(ShellProvider);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly slices = $inject(BuildSlices);
+  protected readonly desktopAdapters = $inject(DesktopAdapterResolver);
   protected readonly log = $logger();
 
   /**
@@ -137,6 +139,166 @@ export class WorkspaceCompiler {
     const binary = this.fs.join(dist, options.name);
     await this.logBinary(binary);
     return binary;
+  }
+
+  /**
+   * Compile `dist/` into a native macOS app, `dist/<name>.app`, with
+   * `@alepha/desktop` resolved from the app's own dependencies.
+   *
+   * ⚠️ **Nothing in `dist/` changes until everything succeeded.** Every check
+   * (the config, the host, the target, the bun slice, the package, the tools)
+   * runs first. Then `dist/` is copied into a staging directory, where the
+   * public files are embedded, the shell, supervisor and server Worker
+   * entries are generated and compiled, and the bundle is assembled. Only a
+   * finished bundle is promoted into `dist/`, after which the inputs the
+   * binary now carries are removed, as an ordinary compile does. A failure
+   * anywhere leaves `dist/` exactly as the build wrote it, so the command can
+   * simply be run again.
+   *
+   * V1 targets the machine it runs on: macOS, its own architecture.
+   */
+  async compileDesktop(
+    options: WorkspaceCompileOptions & {
+      config: unknown;
+      /**
+       * Compile-time fixture injection for the clean-room CI fixture
+       * (#Q2522), never a flag or an environment switch: `shell` replaces the
+       * generated shell entry (a headless window that drives the app over
+       * HTTP), the host's own Bun target is used on any platform, the macOS
+       * tools are not required, and no bundle is assembled (`migrations/` is
+       * copied beside the executable instead). The server
+       * Worker, the supervisor and the admission guard are the real ones.
+       */
+      headless?: { shell: string };
+    },
+  ): Promise<string> {
+    const distDir = options.output?.dist ?? "dist";
+    const publicDir = options.output?.public ?? "public";
+    const dist = this.fs.join(options.root, distDir);
+    const bunEntry = this.slices.entryFileName("bun");
+    const native = `bun-darwin-${this.hostArch()}`;
+
+    const headless = options.headless;
+    if (!headless && this.hostPlatform() !== "darwin") {
+      throw new AlephaError(
+        `\`alepha compile --desktop\` builds a macOS app and runs on macOS only (this machine is ${this.hostPlatform()}).`,
+      );
+    }
+    const target =
+      options.target ?? (headless ? this.defaultBunTarget() : native);
+    if (!headless && target !== native) {
+      throw new AlephaError(
+        `\`alepha compile --desktop\` targets this Mac only (${native}), not '${target}'. Run \`alepha compile --desktop\` without --target, on a Mac of the architecture you want.`,
+      );
+    }
+    if (!options.config || typeof options.config !== "object") {
+      throw new AlephaError(
+        "`alepha compile --desktop` needs a top-level `desktop: { name, identifier }` in alepha.config.ts.",
+      );
+    }
+    await this.assertBunSlice(dist, bunEntry);
+    await this.assertNoExternals(dist);
+    const adapter = await this.desktopAdapters.resolve(options.root);
+    const config = await adapter.preflight({
+      root: options.root,
+      config: options.config,
+      target,
+      bundle: !headless,
+    });
+    const runtimes = options.runtimes ?? (await this.declaredRuntimes(dist));
+
+    const stage = this.fs.join(
+      options.root,
+      "node_modules",
+      ".alepha",
+      "desktop-stage",
+    );
+    const stagedDist = this.fs.join(stage, "dist");
+    await this.fs.rm(stage, { recursive: true, force: true });
+    try {
+      await this.fs.mkdir(stage, { recursive: true });
+      await this.fs.cp(dist, stagedDist, { recursive: true });
+      await this.embedPublicFiles(
+        stagedDist,
+        publicDir,
+        options.builtAt ?? this.dateTime.nowMillis(),
+        bunEntry,
+      );
+      const entries = await adapter.writeEntries({ dist: stagedDist, config });
+      if (headless) {
+        await this.fs.cp(headless.shell, this.fs.join(stagedDist, entries[0]));
+      }
+      await this.shell.run(
+        this.buildDesktopCompileCommand(
+          options.name,
+          target,
+          options.minify ?? true,
+          entries,
+        ),
+        { root: stagedDist },
+      );
+      const staged = headless
+        ? this.fs.join(stagedDist, options.name)
+        : await adapter.assemble({
+            root: options.root,
+            stage,
+            dist: stagedDist,
+            binary: this.fs.join(stagedDist, options.name),
+            name: options.name,
+            config,
+          });
+
+      const artifact = this.fs.join(dist, staged.split("/").pop() ?? "");
+      await this.fs.rm(artifact, { recursive: true, force: true });
+      await this.fs.cp(staged, artifact, { recursive: true });
+      await this.cleanupPreCompileArtifacts(dist, publicDir, runtimes);
+      if (headless) {
+        // No bundle carries them: beside the executable, which is where a
+        // bare desktop executable looks for its resources.
+        await this.copyMigrations(options.root, dist);
+      }
+      this.log.info(`Desktop app → ${artifact}`);
+      return artifact;
+    } finally {
+      await this.fs.rm(stage, { recursive: true, force: true });
+    }
+  }
+
+  /**
+   * The `bun build --compile` invocation for a desktop app: the shell is the
+   * main entry, the supervisor and the server Worker bootstrap are embedded
+   * beside it. An argv array, never a parsed string: nothing here is
+   * re-split on a space.
+   */
+  protected buildDesktopCompileCommand(
+    name: string,
+    target: string,
+    minify: boolean,
+    entries: string[],
+  ): string[] {
+    return [
+      "bun",
+      "build",
+      "--compile",
+      `--target=${target}`,
+      ...(minify ? ["--minify"] : []),
+      `--outfile=${name}`,
+      ...entries,
+    ];
+  }
+
+  /**
+   * The machine's platform. A method, so a spec can play another one.
+   */
+  protected hostPlatform(): string {
+    return process.platform;
+  }
+
+  /**
+   * The machine's architecture. A method, so a spec can play another one.
+   */
+  protected hostArch(): string {
+    return process.arch;
   }
 
   /**
