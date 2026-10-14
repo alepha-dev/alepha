@@ -44,13 +44,19 @@ const DashboardTileBody = (props: DashboardTileBodyProps) => {
   const { tr } = useI18n<I18n, "en">();
   const value = props.value;
 
+  // A note is the card's own markdown (the owner's, #Q2659) or, for a
+  // resolved note such as the pinned folio (#Q2658), what the resolver put
+  // in `detail.markdown`. Only the second waits for a resolve.
   if (props.presentation === "note") {
-    const markdown = props.card.filters.markdown;
-    return (
-      <DashboardTileNote
-        markdown={typeof markdown === "string" ? markdown : ""}
-      />
-    );
+    const own = props.card.filters.markdown;
+    if (typeof own === "string" && own.length > 0) {
+      return <DashboardTileNote markdown={own} />;
+    }
+    const resolved =
+      value?.ok && !value.empty ? value.detail.markdown : undefined;
+    if (typeof resolved === "string") {
+      return <DashboardTileNote markdown={resolved} />;
+    }
   }
 
   if (!value) {

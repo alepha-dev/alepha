@@ -330,7 +330,13 @@ export class CapabilityRegistry {
       ],
       searchKinds: ["folio", "directory"],
       activityKinds: ["folio"],
-      dashboardCards: [],
+      dashboardCards: [
+        // The Knowledge tiles of #E77 (#Q2658).
+        "pinnedFolio",
+        "recentFolios",
+        "foliosThisMonth",
+        "foliosByDirectory",
+      ],
       permissionGroups: ["folio"],
     },
     {

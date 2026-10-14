@@ -2380,6 +2380,17 @@ export default {
   "dashboard.footer.appHealth": "$1 of $2 copies healthy",
   "dashboard.footer.errorTrend": "$1 occurrences, $2 deployments",
   "dashboard.footer.qualityTrend": "$1 of $2 tests passing",
+  "dashboard.metric.pinnedFolio": "Pinned",
+  "dashboard.metric.pinnedFolio.hint": "the first pinned folio, its summary",
+  "dashboard.metric.recentFolios": "Recently edited",
+  "dashboard.metric.recentFolios.hint":
+    "the last folios edited, by whom and when",
+  "dashboard.metric.foliosThisMonth": "New folios",
+  "dashboard.metric.foliosThisMonth.hint":
+    "folios created in the window, where decisions land",
+  "dashboard.metric.foliosByDirectory": "Folios by directory",
+  "dashboard.metric.foliosByDirectory.hint":
+    "how many folios each top-level directory holds",
   "dashboard.refreshed": "Refreshed $1.",
   "dashboard.addCard": "Add card",
 

@@ -1,6 +1,7 @@
 import { LoreCoreWeb } from "@lore/core/web";
 import { $module } from "alepha";
 
+import { KnowledgeDashboardMetrics } from "../api/services/KnowledgeDashboardMetrics.ts";
 import { folioTreeCollapsedAtom } from "./app/atoms/folioTreeCollapsedAtom.ts";
 import { projectDirectoriesAtom } from "./app/atoms/projectDirectoriesAtom.ts";
 import { KnowledgeRouter } from "./app/KnowledgeRouter.ts";
@@ -32,6 +33,8 @@ export const LoreKnowledgeWeb = $module({
     // settings, create menu, references, the epic's Folios tab, the document
     // sink) on core's registries, which nothing else would construct.
     alepha.inject(KnowledgeRouter);
+    // The Knowledge dashboard metrics' descriptors (#Q2658).
+    alepha.inject(KnowledgeDashboardMetrics);
     alepha.inject(KnowledgeShell);
   },
 });

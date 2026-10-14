@@ -10,8 +10,6 @@ import { FolioAttachmentService } from "./services/FolioAttachmentService.ts";
 import { FolioDirectoryService } from "./services/FolioDirectoryService.ts";
 import { FolioHistoryService } from "./services/FolioHistoryService.ts";
 import { FolioNameService } from "./services/FolioNameService.ts";
-import { KnowledgeFileAccess } from "./services/KnowledgeFileAccess.ts";
-
 /**
  * The server half of `@lore/knowledge`, Lore as Obsidian: folios, their directories, attachments, revisions and names.
  *
@@ -21,7 +19,14 @@ import { KnowledgeFileAccess } from "./services/KnowledgeFileAccess.ts";
  * substitution.
  *
  * @module
- */
+ */ import { FoliosByDirectoryMetric } from "./services/FoliosByDirectoryMetric.ts";
+import { FoliosThisMonthMetric } from "./services/FoliosThisMonthMetric.ts";
+import { KnowledgeDashboard } from "./services/KnowledgeDashboard.ts";
+import { KnowledgeDashboardMetrics } from "./services/KnowledgeDashboardMetrics.ts";
+import { KnowledgeFileAccess } from "./services/KnowledgeFileAccess.ts";
+import { PinnedFolioMetric } from "./services/PinnedFolioMetric.ts";
+import { RecentFoliosMetric } from "./services/RecentFoliosMetric.ts";
+
 export const LoreKnowledgeApi = $module({
   name: "lore.knowledge.api",
   // Core first: booting this module alone boots what it depends on.
@@ -37,6 +42,13 @@ export const LoreKnowledgeApi = $module({
     FolioController,
     DirectoryController,
     FolioAttachmentController,
+    // The Knowledge tiles of #E77 (#Q2658), and their slots.
+    KnowledgeDashboardMetrics,
+    PinnedFolioMetric,
+    RecentFoliosMetric,
+    FoliosThisMonthMetric,
+    FoliosByDirectoryMetric,
+    KnowledgeDashboard,
   ],
 });
 
