@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { Alepha } from "alepha";
 import { AlephaLock, LockProvider } from "alepha/lock";
-import { RedisTopicProvider } from "alepha/topic/redis";
+import { RedisTopicProvider } from "alepha/topic";
 import { describe, expect, test } from "vitest";
 
 import {

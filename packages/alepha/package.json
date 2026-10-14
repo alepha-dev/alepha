@@ -481,13 +481,11 @@
     },
     "./topic": {
       "types": "./src/topic/core/index.ts",
+      "react-native": "./src/topic/core/index.browser.ts",
+      "workerd": "./src/topic/core/index.workerd.ts",
+      "browser": "./src/topic/core/index.browser.ts",
       "import": "./src/topic/core/index.ts",
       "default": "./src/topic/core/index.ts"
-    },
-    "./topic/redis": {
-      "types": "./src/topic/redis/index.ts",
-      "import": "./src/topic/redis/index.ts",
-      "default": "./src/topic/redis/index.ts"
     },
     "./websocket": {
       "types": "./src/websocket/index.ts",
@@ -947,13 +945,11 @@
       },
       "./topic": {
         "types": "./dist/topic/core/index.d.ts",
+        "react-native": "./dist/topic/core/index.browser.js",
+        "workerd": "./dist/topic/core/index.workerd.js",
+        "browser": "./dist/topic/core/index.browser.js",
         "import": "./dist/topic/core/index.js",
         "default": "./dist/topic/core/index.js"
-      },
-      "./topic/redis": {
-        "types": "./dist/topic/redis/index.d.ts",
-        "import": "./dist/topic/redis/index.js",
-        "default": "./dist/topic/redis/index.js"
       },
       "./websocket": {
         "types": "./dist/websocket/index.d.ts",

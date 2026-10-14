@@ -18,7 +18,12 @@ Publish/subscribe messaging for event-driven architectures.
 - Topic subscription handlers
 - Multiple subscriber support
 - Message filtering and routing
-- Providers: Memory (dev), Redis (production)
+- Providers: Redis when `REDIS_URL` is set, Memory otherwise
+
+Set `REDIS_URL` and a message published on one instance reaches every
+instance: WebSocket broadcasts, `parameter:sync` and `lock:end` included.
+Leave it unset and topics stay inside this process. An app's own
+`TopicProvider` substitution wins over both.
 
 ## API Reference
 
@@ -29,4 +34,5 @@ Publish/subscribe messaging for event-driven architectures.
 
 ### Providers
 
+- [`RedisTopicProvider`](/docs/reference-providers-redistopicprovider) - Topics over Redis pub/sub.
 - [`TopicProvider`](/docs/reference-providers-topicprovider) - Base class for topic providers.

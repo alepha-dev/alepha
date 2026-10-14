@@ -57,7 +57,7 @@ const webSocketMessageSchema = {
  *
  * This enables:
  * - Multiple server instances handling WebSocket connections
- * - Redis-backed message distribution (with alepha/topic/redis)
+ * - Redis-backed message distribution (when REDIS_URL is set)
  * - Horizontal scaling without losing messages
  */
 export class WebSocketTopicService {
