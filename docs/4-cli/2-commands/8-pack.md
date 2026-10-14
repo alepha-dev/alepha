@@ -1,6 +1,6 @@
 # Pack Command
 
-Pack a built workspace into a deployable `tar.zst`. The archive contains everything a remote runner needs to deploy the app - Alepha Bay, Alepha Rocket, or any `alepha deploy --prebuilt` consumer - and nothing else.
+Pack a built workspace into a deployable `tar.zst`. The archive contains everything a remote runner needs to deploy the app - Alepha Bay, Alepha Rocket, or `alepha deploy --prebuilt` in the app's checkout - and nothing else.
 
 ## Quick Start
 
@@ -56,13 +56,14 @@ The project name comes from `package.json` `name`, slugified for the filename (`
 
 ## Deploying a Packed Artifact
 
-On the consumer side, extract the archive and run the platform commands in prebuilt mode:
+`alepha deploy --prebuilt` reads its environments from `alepha.config.ts`: an environment names an adapter class, which no manifest can carry. Extract the archive into the `dist/` of a checkout that holds that config:
 
 ```bash
-tar -xf my-app-0.0.2.tar.zst
+mkdir -p dist
+tar -xf my-app-0.0.2.tar.zst -C dist
 alepha deploy --prebuilt
 ```
 
-`--prebuilt` skips the Vite bundle steps - only the deploy config (`wrangler.jsonc`) is regenerated from the manifest, so a bare artifact deploys without the app's source tree or its `node_modules`.
+`--prebuilt` skips the Vite bundle steps and reads the detected resources from `dist/manifest.json`, so the app's source is never imported. Only the deploy config (`wrangler.jsonc`) is regenerated.
 
-This is the workflow external orchestrators (like Alepha Rocket) use: build once, pack once, deploy the same artifact to many environments or tenants.
+Extracted on its own, the archive has no environments, and `alepha deploy --prebuilt` stops on "Missing infra configuration". An orchestrator that deploys the bare artifact (Alepha Rocket, Lore's deploy runner) supplies the environments itself. This is the workflow those orchestrators run: build once, pack once, deploy the same artifact to many environments or tenants.
