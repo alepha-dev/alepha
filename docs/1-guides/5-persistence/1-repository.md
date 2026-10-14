@@ -47,7 +47,7 @@ indexes: [
   { column: "email", unique: true },         // unique index on one column
   { columns: ["tenantId", "name"], unique: true }, // composite unique index
   { column: "status", name: "idx_status" },  // index with custom name
-  { column: "email", unique: true, where: sql`deleted_at IS NULL` }, // partial index
+  { column: "email", unique: true, where: { deletedAt: { isNull: true } } }, // partial index
   {
     // expression index; `name` is required here
     expressions: (self, ctx) => [self.realm, ctx.caseInsensitive(self.username)],
@@ -57,7 +57,11 @@ indexes: [
 ],
 ```
 
-`where` (a `sql` fragment) makes any form a partial index. `expressions` receives the table's columns and a context: prefer `ctx.caseInsensitive(col)` over a hand-written `LOWER()`, since it emits `LOWER(col)` on PostgreSQL and `col COLLATE NOCASE` on SQLite, the only form drizzle-kit can introspect there in a multi-column unique index.
+`where` makes any form a partial index. Write it as a where-object: it is compiled against the entity's own columns, so a renamed column cannot leave the predicate stale, and its values are inlined (`{ status: { eq: "draft" } }` lands as `'draft'`), since an index predicate binds no parameters. Column operators and `and` / `or` / `not` are allowed; a subquery (`exists`, an `inArray` subquery), a join or a raw fragment inside the object is refused with the index named. No soft-delete filter is added: the predicate is exactly what you write. A raw `sql` fragment is still accepted as the whole `where`.
+
+Moving an existing hand-typed predicate (`` sql`deleted_at IS NULL` ``) to the object changes its stored text, so the next generated migration recreates that index once.
+
+`expressions` receives the table's columns and a context: prefer `ctx.caseInsensitive(col)` over a hand-written `LOWER()`, since it emits `LOWER(col)` on PostgreSQL and `col COLLATE NOCASE` on SQLite, the only form drizzle-kit can introspect there in a multi-column unique index.
 
 ### Constraints
 
