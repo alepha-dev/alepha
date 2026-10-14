@@ -6,7 +6,7 @@ import {
 } from "@lore/core/schemas";
 import { $inject, type FileLike } from "alepha";
 import { FileService } from "alepha/api/files";
-import { $repository, sql } from "alepha/orm";
+import { $repository } from "alepha/orm";
 import { BadRequestError, ConflictError } from "alepha/server";
 
 import { type Artifact, artifacts } from "../entities/artifacts.ts";
@@ -305,13 +305,13 @@ export class ArtifactService {
         artifact: await this.rows.updateById(existing.id, {
           reference: image.reference,
           sha256: image.digest,
-          // ⚠️ `sql`NULL`` for the same reason the archive replace uses it:
-          // the ORM reads an explicit `undefined` as an absent key, so a
+          // ⚠️ `null` for the same reason the archive replace uses it: the
+          // ORM reads an explicit `undefined` as an absent key, so a
           // re-push whose image answers no size would leave the row stating
           // the size of bytes it no longer names.
-          size: image.size ?? sql`NULL`,
-          commitSha: input.commitSha ?? sql`NULL`,
-          manifest: this.serialiseDocument(image.document) ?? sql`NULL`,
+          size: image.size ?? null,
+          commitSha: input.commitSha ?? null,
+          manifest: this.serialiseDocument(image.document) ?? null,
         }),
         stored: true,
       };
@@ -427,20 +427,20 @@ export class ArtifactService {
         sha256: next.sha256,
         size: next.size,
         fileId: stored.id,
-        // ⚠️ `sql\`NULL\`` for the same reason `commitSha` uses it below: a
+        // ⚠️ `null` for the same reason `commitSha` uses it below: a
         // replace whose build produced no maps must stop naming the PREVIOUS
         // build's maps, and an explicit `undefined` reads as an absent key.
-        mapsFileId: storedMaps?.id ?? sql`NULL`,
-        // ⚠️ `sql\`NULL\``, not `undefined`. The ORM reads an explicit
+        mapsFileId: storedMaps?.id ?? null,
+        // ⚠️ `null`, not `undefined`. The ORM reads an explicit
         // `undefined` as an absent key and leaves the column alone, so a
         // replace pushed without a commit would leave the row still naming the
         // commit that produced the PREVIOUS bytes - a claim nothing else in
         // the system could contradict.
-        commitSha: next.commitSha ?? sql`NULL`,
+        commitSha: next.commitSha ?? null,
         // ⚠️ Rewritten with the bytes. A `--force` swaps what this tag points
         // at, and a row still describing the PREVIOUS build is worse than one
         // describing none: every reader would trust it.
-        manifest: this.serialise(next.manifest) ?? sql`NULL`,
+        manifest: this.serialise(next.manifest) ?? null,
       });
     } catch (error) {
       await this.files.deleteFile(stored.id);

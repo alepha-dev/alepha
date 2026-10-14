@@ -1,10 +1,9 @@
 import { FileAccessRegistry } from "@lore/core/api";
 import { $inject } from "alepha";
-import { $repository, DatabaseProvider, sql } from "alepha/orm";
+import { $repository } from "alepha/orm";
 
 import { feedback } from "../entities/feedback.ts";
 import { quests } from "../entities/quests.ts";
-import { attachmentLookupSchema } from "../schemas/attachmentLookupSchema.ts";
 import { FeedbackRateLimiter } from "./FeedbackRateLimiter.ts";
 
 /**
@@ -20,7 +19,6 @@ export class WorkFileAccess {
   public static readonly QUEST_ATTACHMENT_BUCKET = "attachments";
 
   protected readonly registry = $inject(FileAccessRegistry);
-  protected readonly database = $inject(DatabaseProvider);
   protected readonly feedback = $repository(feedback);
   protected readonly quests = $repository(quests);
 
@@ -28,7 +26,9 @@ export class WorkFileAccess {
     this.registry.register(
       FeedbackRateLimiter.ATTACHMENT_BUCKET,
       async (fileId) => {
-        const row = await this.findByAttachment(this.feedback.table, fileId);
+        const [row] = await this.feedback.findMany(this.listing(fileId), {
+          force: true,
+        });
         return row
           ? { projectId: row.projectId, permission: "feedback:triage" }
           : undefined;
@@ -37,7 +37,9 @@ export class WorkFileAccess {
     this.registry.register(
       WorkFileAccess.QUEST_ATTACHMENT_BUCKET,
       async (fileId) => {
-        const row = await this.findByAttachment(this.quests.table, fileId);
+        const [row] = await this.quests.findMany(this.listing(fileId), {
+          force: true,
+        });
         return row
           ? { projectId: row.projectId, permission: "quest:read" }
           : undefined;
@@ -49,16 +51,15 @@ export class WorkFileAccess {
    * The row that lists `fileId` in its `attachments` JSON array. A LIKE
    * against the JSON text: rows are small and the id is a UUID, so a false
    * hit would need a UUID inside another value.
+   *
+   * Read with `force` by both callers: a soft-deleted row still owns its
+   * files, and who may read them is still its project's question.
    */
-  protected async findByAttachment(
-    table: typeof this.feedback.table | typeof this.quests.table,
-    fileId: string,
-  ) {
-    const needle = `%"${fileId}"%`;
-    const [row] = await this.database.run(
-      sql`SELECT id, project_id as "projectId" FROM ${table} WHERE attachments LIKE ${needle} LIMIT 1`,
-      attachmentLookupSchema,
-    );
-    return row;
+  protected listing(fileId: string) {
+    return {
+      where: { attachments: { like: `%"${fileId}"%` } },
+      columns: ["id", "projectId"] as Array<"id" | "projectId">,
+      limit: 1,
+    };
   }
 }

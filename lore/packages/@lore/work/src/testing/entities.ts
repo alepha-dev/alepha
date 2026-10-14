@@ -6,6 +6,7 @@ import { $repository } from "alepha/orm";
 import { areas } from "../api/entities/areas.ts";
 import { type Epic, epics } from "../api/entities/epics.ts";
 import { feedback } from "../api/entities/feedback.ts";
+import { questComments } from "../api/entities/questComments.ts";
 import {
   type Quest,
   type QuestInsert,
@@ -18,8 +19,9 @@ type EpicInsert = Infer<typeof epics.insertSchema>;
 /**
  * Work's repository bag (#E75, #Q2613): core's tables plus the ones a quest
  * reaches through its foreign keys (`releases`, `feedback`, `areas`,
- * `epics`), constructed before `start()` so the whole FK closure is
- * registered up front. The app's fixture extends it with Knowledge's tables.
+ * `epics`), plus `questComments`, the one table of `workRelations` no
+ * foreign key reaches: a relational read needs every table its map names.
+ * Constructed before `start()` so the whole closure is registered up front. The app's fixture extends it with Knowledge's tables.
  */
 export class WorkTestEntities extends CoreTestEntities {
   releases = $repository(releases);
@@ -27,6 +29,7 @@ export class WorkTestEntities extends CoreTestEntities {
   areas = $repository(areas);
   epics = $repository(epics);
   quests = $repository(quests);
+  questComments = $repository(questComments);
 
   /**
    * The bag the container constructed, when it is a Work one or a subclass

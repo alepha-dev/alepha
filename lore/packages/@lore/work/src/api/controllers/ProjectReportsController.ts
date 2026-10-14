@@ -12,6 +12,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import {
   $repository,
   DatabaseProvider,
+  type PgQueryWhere,
   SqlExpressionProvider,
   sql,
 } from "alepha/orm";
@@ -19,7 +20,10 @@ import { $action } from "alepha/server";
 import { $etag } from "alepha/server/etag";
 
 import { quests } from "../entities/quests.ts";
-import { QUEST_PRIORITY_ORDER } from "../schemas/questPriority.ts";
+import {
+  byPriorityDesc,
+  QUEST_PRIORITY_ORDER,
+} from "../schemas/questPriority.ts";
 import { EpicVisibilityService } from "../services/EpicVisibilityService.ts";
 import { QuestTagTallyService } from "../services/QuestTagTallyService.ts";
 
@@ -95,6 +99,32 @@ export class ProjectReportsController {
   }
 
   /**
+   * {@link questInScope} as a where-object, for the reads that go through the
+   * repository. Same rule, same two traps: the soft delete is the
+   * repository's own filter, the `isNull` branch keeps a quest with no epic
+   * (`epic_id NOT IN (…)` is NULL for it), and an empty draft set adds no
+   * clause at all. `QuestTagTallyService.rowsFor` spells the same rule for
+   * several projects.
+   */
+  protected questScope(
+    projectId: number,
+    draftEpicIds: number[],
+  ): PgQueryWhere<typeof quests.schema> {
+    const where: PgQueryWhere<typeof quests.schema> = {
+      projectId: { eq: projectId },
+      shelvedAt: { isNull: true },
+    };
+    if (draftEpicIds.length > 0) {
+      where.or = [
+        { completedAt: { isNotNull: true } },
+        { epicId: { isNull: true } },
+        { epicId: { notInArray: draftEpicIds } },
+      ];
+    }
+    return where;
+  }
+
+  /**
    * Reports "Overview" tab: KPI tiles, a cumulative created-vs-completed
    * burn-up chart, a weekly completion-rate trend, and counts of quests that
    * need attention (stale, unassigned, blocked).
@@ -164,16 +194,9 @@ export class ProjectReportsController {
         }),
       );
 
-      const [memberAgg] = await this.database.run(
-        sql`
-					SELECT COUNT(*) as active_members
-					FROM ${this.members.table}
-					WHERE ${this.members.table.organizationId} = ${organizationId}
-				`,
-        z.object({
-          active_members: z.coerce.number(),
-        }),
-      );
+      const activeMembers = await this.members.count({
+        organizationId: { eq: organizationId },
+      });
 
       const kpis = {
         totalQuests: Number(kpiAgg?.total_quests) || 0,
@@ -182,7 +205,7 @@ export class ProjectReportsController {
         completedThisWeek: Number(kpiAgg?.completed_this_week) || 0,
         completedLastWeek: Number(kpiAgg?.completed_last_week) || 0,
         avgCycleTimeHours: Number(kpiAgg?.avg_cycle_time_hours) || 0,
-        activeMembers: Number(memberAgg?.active_members) || 0,
+        activeMembers,
       };
 
       // Daily created counts over the project's lifetime.
@@ -332,9 +355,9 @@ export class ProjectReportsController {
       response: reportsQuestsSchema,
     },
     handler: async ({ params, user }) => {
-      const inScope = this.questInScope(
-        await this.epicVisibility.draftEpicIds(params.id),
-      );
+      const draftEpicIds = await this.epicVisibility.draftEpicIds(params.id);
+      const inScope = this.questInScope(draftEpicIds);
+      const scope = this.questScope(params.id, draftEpicIds);
 
       const cycleHours = sql`COALESCE(AVG(${this.sqlx.dateDiff(
         this.quests.table.completedAt,
@@ -354,84 +377,84 @@ export class ProjectReportsController {
 				END
 			`;
 
+      // The two halves every breakdown splits on. `column: "id"` because a
+      // conditioned COUNT skips NULLs of the column it counts, and the key is
+      // never null.
+      const completedCount = {
+        count: { column: "id", where: { completedAt: { isNotNull: true } } },
+      } as const;
+      const remainingCount = {
+        count: { column: "id", where: { completedAt: { isNull: true } } },
+      } as const;
+
       // Lifecycle funnel — single pass over the project's live quests.
-      const [funnelAgg] = await this.database.run(
-        sql`
-					SELECT
-						COUNT(CASE WHEN ${this.quests.table.acceptedAt} IS NULL AND ${this.quests.table.completedAt} IS NULL THEN 1 END) as todo_count,
-						COUNT(CASE WHEN ${this.quests.table.acceptedAt} IS NOT NULL AND ${this.quests.table.completedAt} IS NULL THEN 1 END) as in_progress_count,
-						COUNT(CASE WHEN ${this.quests.table.completedAt} IS NOT NULL THEN 1 END) as completed_count
-					FROM ${this.quests.table}
-					WHERE ${this.quests.table.projectId} = ${params.id}
-						AND ${inScope}
-				`,
-        z.object({
-          todo_count: z.coerce.number(),
-          in_progress_count: z.coerce.number(),
-          completed_count: z.coerce.number(),
-        }),
-      );
+      const [funnelAgg] = await this.quests.aggregate({
+        select: {
+          todo: {
+            count: {
+              column: "id",
+              where: {
+                acceptedAt: { isNull: true },
+                completedAt: { isNull: true },
+              },
+            },
+          },
+          inProgress: {
+            count: {
+              column: "id",
+              where: {
+                acceptedAt: { isNotNull: true },
+                completedAt: { isNull: true },
+              },
+            },
+          },
+          completed: completedCount,
+        },
+        where: scope,
+      });
 
       const funnel = {
-        todo: Number(funnelAgg?.todo_count) || 0,
-        inProgress: Number(funnelAgg?.in_progress_count) || 0,
-        completed: Number(funnelAgg?.completed_count) || 0,
+        todo: funnelAgg?.todo.count ?? 0,
+        inProgress: funnelAgg?.inProgress.count ?? 0,
+        completed: funnelAgg?.completed.count ?? 0,
       };
 
-      // Completed vs remaining per area — top 8 busiest areas.
-      const byAreaQuery = await this.database.run(
-        sql`
-					SELECT
-						COALESCE(${this.quests.table.area}, 'Unassigned') as area,
-						COUNT(CASE WHEN ${this.quests.table.completedAt} IS NOT NULL THEN 1 END) as completed,
-						COUNT(CASE WHEN ${this.quests.table.completedAt} IS NULL THEN 1 END) as remaining
-					FROM ${this.quests.table}
-					WHERE ${this.quests.table.projectId} = ${params.id}
-						AND ${inScope}
-					GROUP BY ${this.quests.table.area}
-					ORDER BY (
-						COUNT(CASE WHEN ${this.quests.table.completedAt} IS NOT NULL THEN 1 END)
-						+ COUNT(CASE WHEN ${this.quests.table.completedAt} IS NULL THEN 1 END)
-					) DESC
-					LIMIT 8
-				`,
-        z.object({
-          area: z.string(),
-          completed: z.coerce.number(),
-          remaining: z.coerce.number(),
-        }),
-      );
+      // Completed vs remaining per area — top 8 busiest areas. Busiest is the
+      // row count, which is completed + remaining by construction.
+      const byAreaQuery = await this.quests.aggregate({
+        select: {
+          area: true,
+          id: { count: true },
+          completed: completedCount,
+          remaining: remainingCount,
+        },
+        where: scope,
+        groupBy: ["area"],
+        orderBy: { column: "id.count", direction: "desc" },
+        limit: 8,
+      });
 
       const byArea = byAreaQuery.map((row) => ({
-        area: String(row.area),
-        completed: Number(row.completed) || 0,
-        remaining: Number(row.remaining) || 0,
+        area: row.area ?? "Unassigned",
+        completed: row.completed.count,
+        remaining: row.remaining.count,
       }));
 
-      // Completed vs remaining per priority.
-      const byPriorityQuery = await this.database.run(
-        sql`
-					SELECT
-						${this.quests.table.priority},
-						COUNT(CASE WHEN ${this.quests.table.completedAt} IS NOT NULL THEN 1 END) as completed,
-						COUNT(CASE WHEN ${this.quests.table.completedAt} IS NULL THEN 1 END) as remaining
-					FROM ${this.quests.table}
-					WHERE ${this.quests.table.projectId} = ${params.id}
-						AND ${inScope}
-					GROUP BY ${this.quests.table.priority}
-					ORDER BY ${priorityOrder}
-				`,
-        z.object({
-          priority: z.string(),
-          completed: z.coerce.number(),
-          remaining: z.coerce.number(),
-        }),
-      );
+      // Completed vs remaining per priority, most urgent first.
+      const byPriorityQuery = await this.quests.aggregate({
+        select: {
+          priority: true,
+          completed: completedCount,
+          remaining: remainingCount,
+        },
+        where: scope,
+        groupBy: ["priority"],
+      });
 
-      const byPriority = byPriorityQuery.map((row) => ({
-        priority: String(row.priority),
-        completed: Number(row.completed) || 0,
-        remaining: Number(row.remaining) || 0,
+      const byPriority = byPriorityQuery.sort(byPriorityDesc).map((row) => ({
+        priority: row.priority,
+        completed: row.completed.count,
+        remaining: row.remaining.count,
       }));
 
       /*
@@ -450,22 +473,15 @@ export class ProjectReportsController {
        * ⚠️ A quest is counted once per tag it holds, so these rows do not sum
        * to the project's quest count. See `reportsQuestsSchema`.
        */
-      const tagRows = await this.database.run(
-        sql`
-					SELECT
-						${this.quests.table.tags} as tags,
-						${this.quests.table.completedAt} as completed_at
-					FROM ${this.quests.table}
-					WHERE ${this.quests.table.projectId} = ${params.id}
-						AND ${inScope}
-				`,
-        z.object({ tags: z.any(), completed_at: z.any() }),
-      );
+      const tagRows = await this.quests.findMany({
+        where: scope,
+        columns: ["tags", "completedAt"],
+      });
 
       const tally = this.tagTally.tally(
         tagRows.map((row) => ({
           tags: row.tags,
-          completed: row.completed_at != null,
+          completed: row.completedAt != null,
         })),
       );
 
@@ -506,44 +522,28 @@ export class ProjectReportsController {
       }));
 
       // Oldest still-open (accepted, not completed) quests.
-      const agingQuery = await this.database.run(
-        sql`
-					SELECT
-						${this.quests.table.shortId} as short_id,
-						${this.quests.table.title} as title,
-						${this.quests.table.area} as area,
-						${this.quests.table.priority} as priority,
-						${this.quests.table.acceptedAt} as accepted_at
-					FROM ${this.quests.table}
-					WHERE ${this.quests.table.projectId} = ${params.id}
-						AND ${inScope}
-						AND ${this.quests.table.acceptedAt} IS NOT NULL
-						AND ${this.quests.table.completedAt} IS NULL
-					ORDER BY ${this.quests.table.acceptedAt} ASC
-					LIMIT 10
-				`,
-        z.object({
-          short_id: z.coerce.number(),
-          title: z.string(),
-          area: z.string().nullish(),
-          priority: z.string(),
-          accepted_at: z.union([z.string(), z.number()]),
-        }),
-      );
+      const agingQuery = await this.quests.findMany({
+        where: {
+          ...scope,
+          acceptedAt: { isNotNull: true },
+          completedAt: { isNull: true },
+        },
+        columns: ["shortId", "title", "area", "priority", "acceptedAt"],
+        orderBy: { column: "acceptedAt", direction: "asc" },
+        limit: 10,
+      });
 
       const now = this.dt.nowMillis();
       const aging = agingQuery.map((row) => {
-        // `accepted_at` is epoch-ms from SQLite and an ISO timestamp from
-        // Postgres — `new Date()` parses both (a numeric-ms string is
-        // coerced to a number first).
-        const acceptedMs = Number.isNaN(Number(row.accepted_at))
-          ? new Date(row.accepted_at).getTime()
-          : Number(row.accepted_at);
+        // The where above guarantees it; the column is optional in the schema.
+        const acceptedMs = row.acceptedAt
+          ? this.dt.of(row.acceptedAt).valueOf()
+          : now;
         return {
-          shortId: Number(row.short_id) || 0,
-          title: String(row.title),
+          shortId: row.shortId,
+          title: row.title,
           area: row.area ?? "Unassigned",
-          priority: String(row.priority),
+          priority: row.priority,
           ageDays: Math.floor((now - acceptedMs) / 86400000),
         };
       });
@@ -586,9 +586,9 @@ export class ProjectReportsController {
       const organizationId = (
         await this.projects.getOne({ where: { id: { eq: params.id } } })
       ).organizationId!;
-      const inScope = this.questInScope(
-        await this.epicVisibility.draftEpicIds(params.id),
-      );
+      const draftEpicIds = await this.epicVisibility.draftEpicIds(params.id);
+      const inScope = this.questInScope(draftEpicIds);
+      const scope = this.questScope(params.id, draftEpicIds);
 
       // Compose a user's display name: "first last" trimmed, else username,
       // else a short fallback derived from the uuid.
@@ -704,44 +704,25 @@ export class ProjectReportsController {
 
       // Idle members — most recent completed quest older than 14 days, or
       // never completed one.
-      const lastCompletedQuery = await this.database.run(
-        sql`
-					SELECT
-						${this.quests.table.completedBy} as completed_by,
-						MAX(${this.quests.table.completedAt}) as last_completed_at
-					FROM ${this.quests.table}
-					WHERE ${this.quests.table.projectId} = ${params.id}
-						AND ${this.quests.table.completedAt} IS NOT NULL
-						AND ${inScope}
-					GROUP BY ${this.quests.table.completedBy}
-				`,
-        z.object({
-          completed_by: z.string().nullish(),
-          last_completed_at: z.union([z.string(), z.number()]).nullish(),
-        }),
-      );
+      const lastCompletedQuery = await this.quests.aggregate({
+        select: { completedBy: true, completedAt: { max: true } },
+        where: { ...scope, completedAt: { isNotNull: true } },
+        groupBy: ["completedBy"],
+      });
 
       const lastCompletedByUserId = new Map<string, string>();
       for (const row of lastCompletedQuery) {
-        if (row.completed_by && row.last_completed_at != null) {
-          lastCompletedByUserId.set(
-            String(row.completed_by),
-            String(row.last_completed_at),
-          );
+        if (row.completedBy && row.completedAt.max != null) {
+          lastCompletedByUserId.set(row.completedBy, row.completedAt.max);
         }
       }
 
       const now = this.dt.nowMillis();
       const idle = leaderboard
         .map((member) => {
+          // Decoded by the column, so an ISO timestamp on both dialects.
           const raw = lastCompletedByUserId.get(member.userId);
-          // `raw` is epoch-ms from SQLite, an ISO timestamp from Postgres.
-          const lastMs =
-            raw == null
-              ? undefined
-              : Number.isNaN(Number(raw))
-                ? new Date(raw).getTime()
-                : Number(raw);
+          const lastMs = raw == null ? undefined : this.dt.of(raw).valueOf();
           return { member, raw, lastMs };
         })
         .filter(

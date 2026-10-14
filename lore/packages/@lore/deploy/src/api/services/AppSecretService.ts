@@ -4,7 +4,7 @@ import {
   EXCLUDED_SECRET_KEYS,
 } from "alepha/cli/infra-lib";
 import { CryptoProvider } from "alepha/crypto";
-import { $repository, sql } from "alepha/orm";
+import { $repository } from "alepha/orm";
 import { BadRequestError } from "alepha/server";
 
 import { appInstances } from "../entities/appInstances.ts";
@@ -247,14 +247,14 @@ export class AppSecretService {
       valueSealed: this.seal.seal(input.value, AppSecretService.PURPOSE),
       // Sealed only, and the readable copy cleared, when it is a secret: a key
       // that stopped being a variable must not keep its plaintext.
-      value: variable ? input.value : sql`NULL`,
+      value: variable ? input.value : null,
       valuePrefix: variable ? "" : this.mask(input.value),
       keyVersion: CredentialSealService.KEY_VERSION,
       updatedBy: input.updatedBy,
     };
 
     if (existing) {
-      return await this.rows.updateById(existing.id, values as never);
+      return await this.rows.updateById(existing.id, values);
     }
     return await this.rows.create({
       instanceId: input.instanceId,

@@ -8,6 +8,7 @@ import { BadRequestError } from "alepha/server";
 
 import { type Epic, epics } from "../entities/epics.ts";
 import { type Quest, quests } from "../entities/quests.ts";
+import { workRelations } from "../relations/workRelations.ts";
 import type { ReleaseCascade } from "../schemas/releaseCascadeSchema.ts";
 import { DefaultReleaseService } from "./DefaultReleaseService.ts";
 import { ReleaseCascadeService } from "./ReleaseCascadeService.ts";
@@ -73,6 +74,7 @@ export type EpicPlanEdit =
  */
 export class EpicWorkflowService {
   protected readonly epics = $repository(epics);
+  protected readonly epicsWith = $repository(workRelations, "epics");
   protected readonly quests = $repository(quests);
   protected readonly dt = $inject(DateTimeProvider);
   protected readonly audits = $inject(LoreAudits);
@@ -455,10 +457,17 @@ export class EpicWorkflowService {
     let started = 0;
     let completed = 0;
 
-    const stuckReady = await this.epics.findMany({
+    // A relation filter is an EXISTS over the epic's quests, read through
+    // the quests repository, so a soft-deleted quest never matches.
+    const stuckReady = await this.epicsWith.findMany({
       where: {
         status: { eq: "ready" },
-        exists: sql`(SELECT 1 FROM ${q} WHERE ${q.epicId} = ${this.epics.table.id} AND ${q.deletedAt} IS NULL AND (${q.acceptedAt} IS NOT NULL OR ${q.completedAt} IS NOT NULL))`,
+        quests: {
+          or: [
+            { acceptedAt: { isNotNull: true } },
+            { completedAt: { isNotNull: true } },
+          ],
+        },
       },
     });
     for (const epic of stuckReady) {

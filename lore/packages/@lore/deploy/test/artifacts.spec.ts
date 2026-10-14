@@ -1132,7 +1132,7 @@ describe("artifacts", () => {
     it("stops naming the previous build's maps when the new one has none", async ({
       expect,
     }) => {
-      // ⚠️ The `sql`NULL`` case. An explicit `undefined` reads as an absent key
+      // ⚠️ The explicit `null` case. An explicit `undefined` reads as an absent key
       // to the ORM, so the row would keep pointing at maps that describe bytes
       // it no longer holds.
       const { owner, projectId } = await aProject();
