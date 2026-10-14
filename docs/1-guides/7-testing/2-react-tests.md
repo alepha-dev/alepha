@@ -4,18 +4,32 @@ Alepha provides testing utilities for React components through `alepha/testing/r
 
 ## File Naming Convention
 
-Browser test files use the `.browser.spec.ts` or `.browser.spec.tsx` extension. Configure a Vitest project in the `test` block of your `vite.config.ts` that routes these files to the jsdom environment:
+Browser test files use the `.browser.spec.ts` or `.browser.spec.tsx` extension. Route them to jsdom with `jsdomProject` from `alepha/testing/vitest`, in the `test` block of your `vite.config.ts`, beside a node project that excludes them:
 
-```typescript
-projects: [
-  {
-    test: {
-      include: ["src/**/*.browser.spec.{ts,tsx}"],
-      environment: "jsdom",
-    },
+```typescript check
+import { jsdomProject } from "alepha/testing/vitest";
+import { defineConfig } from "vitest/config";
+
+export default defineConfig({
+  test: {
+    root: ".",
+    globals: true,
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: "node",
+          environment: "node",
+          exclude: ["**/node_modules/**", "**/*.browser.spec.{ts,tsx}"],
+        },
+      },
+      jsdomProject(["src/**/*.browser.spec.{ts,tsx}"]),
+    ],
   },
-];
+});
 ```
+
+`jsdomProject` carries every setting a jsdom project needs to agree on: the environment, the browser resolve conditions (so a package's `browser` entry is picked), a Node flag that lets jsdom install its own `localStorage`, and a setup file polyfilling `matchMedia`. A config contributes only its `include`.
 
 ```txt
 src/
@@ -59,7 +73,7 @@ describe("Greeting", () => {
 });
 ```
 
-`renderWithAlepha` creates an Alepha instance, starts it, and wraps the component in `AlephaContext.Provider`. It returns the standard `@testing-library/react` render result plus the `alepha` instance.
+`renderWithAlepha` creates an Alepha instance, starts it, and wraps the component in `AlephaContext.Provider`. It returns the standard `@testing-library/react` render result plus the `alepha` instance. Its options are the `@testing-library/react` render options plus `alepha` (a pre-configured instance), `autoStart` (default `true`; `false` for `renderWithAlephaSync`) and `wrapper`.
 
 ## Custom Alepha Configuration
 
@@ -69,7 +83,7 @@ Pass a pre-configured Alepha instance to swap services or providers:
 import { renderWithAlepha } from "alepha/testing/react";
 
 describe("UserProfile", () => {
-  it("should render with mocked service", async () => {
+  it("should render with a substituted service", async () => {
     const alepha = Alepha.create().with({
       provide: UserService,
       use: FakeUserService,
@@ -103,7 +117,7 @@ describe("Button", () => {
 
 ## Form Testing
 
-Form helpers find inputs by test IDs constructed as `{formId}-{fieldName}`.
+Form helpers find inputs by test IDs constructed as `{formId}-{fieldName}`. `useForm` sets both the `id` and the `data-testid` of each field to that value, so pass the form an explicit `id` (`useForm({ id: "login-form", ... })`); without one the prefix is a generated `useId()` value. `fillForm` accepts a fourth `{ timeout }` argument (default 1000 ms) for fields that appear late, and `waitForFormSubmit` takes a timeout as its third argument (default 5000 ms).
 
 ```tsx
 import { screen } from "@testing-library/react";
@@ -166,7 +180,7 @@ await toggleSwitch(screen, "switch", "Enable notifications");
 
 ## jsdom Mocks
 
-Call `setupJsdomMocks()` in `beforeAll` to mock browser APIs that jsdom does not implement. This is required for components that use responsive styles, scroll behavior, or intersection observers.
+Call `setupJsdomMocks()` in `beforeAll` to mock browser APIs that jsdom does not implement. This is required for components that use responsive styles, scroll behavior, or intersection observers. Each mock is installed only when the global is missing, so it is safe beside `jsdomProject`, whose setup file already provides `matchMedia`.
 
 ```typescript
 import { setupJsdomMocks } from "alepha/testing/react";

@@ -231,7 +231,7 @@ Three things it deliberately is not:
 
 - **Not a rate-limit bypass.** The per-IP registration cap runs before the
   closed check, so a pre-authorized address is throttled like any other.
-- **Not a captcha bypass.** `captchaRequired` is enforced after it. An
+- **Not a captcha bypass.** [`captchaRequired`](#captcha) is enforced after it. An
   invitation proves an address, not a human.
 - **Not a different answer.** A refusal produces the message a closed realm
   has always produced, so a prober cannot tell an invited address from any
@@ -270,6 +270,64 @@ Their counters are actor state, so the topology is the actor provider's:
 `REDIS_URL` alone does not select `AlephaActorRedis`: a multi-instance app with a
 Redis cache still counts per instance until it registers the actor module. See
 [the topology rule](/docs/guides-persistence-actors).
+
+### Captcha
+
+`captchaRequired` puts a captcha in front of the two flows that create work
+for an anonymous caller: registration (`POST /users/register`) and password
+reset (`POST /users/password-reset`), both of which send mail in your name.
+Login is not gated. The token is checked before any lookup or side effect, so
+a bot cannot probe which addresses exist without solving it, and a missing or
+refused token answers **400**.
+
+```typescript check
+import { $realm } from "alepha/api/users";
+
+class App {
+  realm = $realm({
+    settings: { captchaRequired: true },
+  });
+}
+```
+
+Verification goes through `CaptchaProvider` from `alepha/captcha`. The one real
+implementation is Cloudflare Turnstile, bound by substitution:
+
+```typescript
+import { CaptchaProvider, TurnstileCaptchaProvider } from "alepha/captcha";
+
+alepha.with({ provide: CaptchaProvider, use: TurnstileCaptchaProvider });
+```
+
+| Variable                      | Required | Purpose                                             |
+| ----------------------------- | -------- | --------------------------------------------------- |
+| `TURNSTILE_SECRET_KEY`        | yes      | Server-side verification against siteverify         |
+| `TURNSTILE_SITE_KEY`          | yes      | Public key the browser renders the widget with      |
+| `TURNSTILE_EXPECTED_HOSTNAME` | no       | Refuse a token solved on any other hostname         |
+| `TURNSTILE_EXPECTED_ACTION`   | no       | Refuse a token solved for any other widget `action` |
+
+Without the two optional pins, a token solved on one of your pages is accepted
+on any other. Pin them once you know every hostname the app is served from.
+
+With no provider bound, the default is `UnconfiguredCaptchaProvider`, which
+refuses every token, and a realm that sets `captchaRequired: true` **refuses to
+boot** rather than letting every registration fail later.
+
+**Client side.** `GET /api/realms/config` returns `captchaSiteKey` when the
+realm requires a captcha. Send the solved token as `captchaToken` in the
+request body. `@alepha/ui/auth` ships `TurnstileWidget` (`siteKey`, `onToken`,
+and a `ref` whose `reset()` asks for a fresh challenge, since tokens are
+single-use), and its registration and password reset screens render it on
+their own whenever the realm config carries a site key.
+
+**Testing.** Under test, `alepha/captcha` binds `MemoryCaptchaProvider`, which
+accepts every token and records each attempt:
+
+```typescript
+const captcha = alepha.inject(MemoryCaptchaProvider);
+captcha.reject(); // every later verify() fails, until accept()
+expect(captcha.wasVerified("token-1")).toBe(true); // `records`, `last` too
+```
 
 ### The First Account Owns a Self-Hosted Instance
 
@@ -890,7 +948,7 @@ adminManage = $action({
 On the server, `$secure` throws errors (401/403). In the browser, it returns `undefined` instead - the handler is never called. On `$client` virtual actions, `can()` checks authorization without calling:
 
 ```typescript
-// Browser: returns undefined if unauthorized, "ok" if authorized
+// Browser: undefined if unauthorized, the handler's result otherwise
 const result = await action();
 
 // $client actions expose can() to check without calling
@@ -956,6 +1014,9 @@ and the permissions a token granted it may use:
 import { oauthOptions } from "alepha/api/oauth";
 
 alepha.set(oauthOptions, {
+  realm: "users",
+  resource: "/mcp",
+  loginPath: "/login",
   scopes: {
     openid: { label: "Who you are", permissions: [] },
     projects: {

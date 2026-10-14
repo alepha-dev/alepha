@@ -1,10 +1,10 @@
 # Payment Providers
 
-A `PaymentProvider` is the bridge between Alepha's lifecycle and a real payment service provider. The abstract class defines eight required methods covering the full intent lifecycle, plus two a real provider should implement:
+A `PaymentProvider` is the bridge between Alepha's lifecycle and a real payment service provider. The abstract class defines eleven required methods covering the intent lifecycle and saved cards, plus two a real provider should implement:
 
 ```typescript
 abstract class PaymentProvider {
-  createSession(intent, { returnUrl, authorize, ... }): Promise<{ url, providerRef }>;
+  createSession(intent, { returnUrl, authorize, saveCard, ... }): Promise<{ url, providerRef }>;
   capturePayment(providerRef, amount, options?): Promise<void>;
   voidPayment(providerRef, options?): Promise<void>;
   refundPayment(providerRef, amount, options?): Promise<{ providerRef }>;
@@ -12,6 +12,12 @@ abstract class PaymentProvider {
   createPaymentMethod(userId, token): Promise<CreatePaymentMethodResult>;
   deletePaymentMethod(providerRef): Promise<void>;
   expireSession(providerRef, options?): Promise<void>;
+
+  // saved cards: a setup session saves a card without a payment, and the
+  // saved card can later be charged with the payer absent
+  createSetupSession(userId, { returnUrl, metadata? }): Promise<{ url, providerRef }>;
+  retrieveSavedPaymentMethod(userId, providerRef, options?): Promise<CreatePaymentMethodResult | null>;
+  chargeOffSession(userId, paymentMethodRef, amount, options): Promise<{ status, providerRef?, code? }>;
 
   // optional: embedded card fields (Stripe Payment Element and friends);
   // PaymentService.supportsEmbeddedPayment() dispatches on its presence
@@ -28,7 +34,7 @@ abstract class PaymentProvider {
 
 `createElementSession` returns a `providerRef` too: the PSP's own id for the payment the browser confirms (a Stripe PaymentIntent). `PaymentService` stores it, with the account, before handing the client secret back, so the webhook that settles the payment matches the intent the same way a redirect session's does, and the stale-intent sweep can poll it. `expireSession` receives that ref for an abandoned embedded payment and must leave it unpayable: the Stripe provider cancels the PaymentIntent (`cancellation_reason: "abandoned"`), since a PaymentIntent, unlike a Checkout session, never expires on its own.
 
-`PaymentService` and `PaymentMethodService` call these methods; you never call them directly.
+`PaymentService` and `PaymentMethodService` call these methods; you never call them directly. The one exception is `chargeOffSession`, which no framework service wraps: inject `PaymentProvider` to charge a saved card off-session. It answers `succeeded`, `failed`, or `requires_action` when the bank wants the payer back (3-D Secure).
 
 One implementation ships with the framework, `@alepha/payments-stripe`. It composes with `AlephaApiPayments` like this:
 
@@ -80,9 +86,13 @@ Earlier versions shipped an `AlephaCliPlatformStripePlugin` that registered a `P
 
 Stripe's tokenize-then-attach model maps directly: the client tokenizes a card via Stripe.js, posts the token to `POST /api/payments/payment-methods`, and `StripePaymentProvider.createPaymentMethod` calls `paymentMethods.attach(token, { customer })`.
 
+### Beyond the contract
+
+`StripePaymentProvider` also exposes Stripe-only helpers outside the `PaymentProvider` contract, reached by injecting `StripePaymentProvider` itself: Connect (`createConnectAccount`, `getConnectAccount`, `getConnectAccountStatus`, `createAccountSession`, `createAccountOnboardingLink`, `parseConnectWebhook`), subscriptions (`createCheckoutSubscription`, `retrieveSubscription`, `updateSubscriptionPrice`, `setSubscriptionCancelAt`, `cancelSubscription`, `createBillingPortalSession`), `createCheckoutSetup` and `constructPlatformEvent`. They are how an application lets Stripe own recurring billing, as the [overview](/docs/guides-payments-overview) recommends.
+
 ## Writing your own provider
 
-Implement the contract and register it the same way. Both shipped providers use `implements` rather than `extends` - note that with `implements`, the normally-optional `retrieveSessionStatus` becomes required, which is a feature: it forces the reconciliation path to exist.
+Implement the contract and register it the same way. Both shipped providers (`MemoryPaymentProvider` and `StripePaymentProvider`) use `implements` rather than `extends` - note that with `implements`, the normally-optional `retrieveSessionStatus` becomes required, which is a feature: it forces the reconciliation path to exist.
 
 ```typescript
 import { $module } from "alepha";

@@ -71,6 +71,8 @@ The compiled variant stays root: the base has no shell, so a declared volume can
 | `--compile`, `-c` | Compile the bun slice first and ship an image holding the binary. `--compile name` names it               |
 | `--dockerfile`    | Write the Dockerfile and stop, without building an image                                                  |
 
+Building needs a name: `image.image.tag` in the config, unless `--tag` is a complete `name:tag`. `--tag=:1.3.4` is the same as `--tag=1.3.4`.
+
 ## Configuration
 
 `image:` is a **top-level** key in `alepha.config.ts`, not `build.docker`: config follows the command that reads it.

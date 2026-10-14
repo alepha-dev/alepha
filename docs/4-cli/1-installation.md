@@ -25,6 +25,8 @@ npx alepha build
 
 Lost? Run `npx alepha -h` to see every command at your disposal. It's the cheat sheet you didn't know you needed.
 
+Every command takes `--help` (`-h`) and `--verbose` (trace-level logs, with task output streamed live). `npx alepha --version` (`-v`) prints the bare version on its first line, so `VERSION=$(npx alepha --version)` captures exactly that; on a terminal a second line names the Node or Bun runtime.
+
 ## Why Not Global Install?
 
 Global installation (`npm install -g alepha`) is not recommended. When working on multiple projects, each may require a different Alepha version. Using `npx` or project-local scripts ensures each project uses its own version.

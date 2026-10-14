@@ -322,8 +322,8 @@ that need legacy history must configure it explicitly. The framework does not
 migrate application state or infer deletes, renames or transfers from removed
 host declarations. See [Cloudflare class lifecycle](https://developers.cloudflare.com/durable-objects/reference/durable-objects-migrations/).
 
-The E73 command surface uses `alepha/cli/infra` for explicit infrastructure
-configuration and `alepha deploy` for the full build/migrate/deploy lifecycle.
+The [infra plugin](/docs/cli-plugins-infra) (`alepha/cli/infra`) handles explicit infrastructure
+configuration, and `alepha deploy` the full build/migrate/deploy lifecycle.
 `alepha deploy --prebuilt` consumes an existing artifact and regenerates its deploy
 configuration; it needs the manifest and its declared runtime slice. Shared adapters
 are exported from `alepha/cli/infra-lib`.
@@ -339,7 +339,7 @@ An explicit forced Worker deletion also destroys its actor snapshots. Durable
 Object presence is recorded for actor-only artifacts, and a failed Worker deletion
 keeps that namespace record. There is no separately deletable namespace resource.
 
-Lore and Bay are separate repositories. Their consumers must upgrade the framework,
-adopt E73's infra imports/commands if needed, and rebuild older prebuilt realtime
-artifacts to carry generic host declarations. A framework change does not upgrade
-those applications, preserve undocumented deployment history or deploy them.
+Applications built against an older framework release must upgrade, move to the
+infra plugin's imports and commands if needed, and rebuild older prebuilt realtime
+artifacts so they carry generic host declarations. A framework upgrade does not
+redeploy an application or preserve undocumented deployment history.

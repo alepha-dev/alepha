@@ -57,11 +57,15 @@ A timestamp truncated to its day, as sortable `'YYYY-MM-DD'` **text**.
 
 Text on both dialects is deliberate. Postgres `DATE(col)` decodes to a `Date` while SQLite yields a string, so a single result schema could not describe both. Returning text means one `z.text()` covers every database.
 
+### `dateHour(column)`
+
+A timestamp truncated to its hour, as sortable `'YYYY-MM-DDTHH'` text (a `T`, not a space). Its day is a prefix of its hour, and it is the bucket key `alepha/api/analytics` stores, so a query can fold a table into analytics buckets with no date arithmetic. Timezone handling is `dateDay`'s, so the two never disagree about which day an hour belongs to.
+
 ### `dateWeek(column)`
 
 A sortable ISO year-week label, e.g. `'2026-W11'`.
 
-ISO on both dialects, also deliberate. Postgres `IYYY-IW` and SQLite `%Y-%W` are _different numbering schemes_ - `%W` counts Monday-started weeks from the first Monday of the year (`00`–`53`), ISO weeks run `01`–`53` with different year-boundary rules. Hand-written code that pairs them produces different labels for the same row depending on where it runs.
+ISO on both dialects, also deliberate. Postgres `IYYY-IW` and SQLite `%Y-%W` are _different numbering schemes_ - `%W` counts Monday-started weeks from the first Monday of the year (`00` to `53`), ISO weeks run `01` to `53` with different year-boundary rules. Hand-written code that pairs them produces different labels for the same row depending on where it runs.
 
 SQLite has no ISO week function, so this uses the Thursday rule: the ISO week of a date is the week containing the Thursday of that date's Monday-started week, and the ISO year is that Thursday's calendar year.
 

@@ -46,6 +46,41 @@ before a cache middleware serialises the misses; placed after it, only the
 handler is serialised and the cache answers concurrently. Both are reasonable.
 Only one is what you meant.
 
+## Writing a middleware
+
+A middleware is a function that takes the next handler and returns a wrapped one. `createMiddleware` builds it with the container already resolved, and attaches the `name` and `options` that tooling reads back from `primitive.middlewares`:
+
+```typescript check
+import { $pipeline, createMiddleware, type Middleware } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
+
+const $timed = (label: string): Middleware =>
+  createMiddleware({
+    name: "$timed",
+    options: { label },
+    handler: ({ alepha, next }) => {
+      const time = alepha.inject(DateTimeProvider);
+      return async (...args) => {
+        const start = time.nowMillis();
+        try {
+          return await next(...args);
+        } finally {
+          console.log(`${label}: ${time.nowMillis() - start}ms`);
+        }
+      };
+    },
+  });
+
+class ReportService {
+  build = $pipeline({
+    use: [$timed("report")],
+    handler: async (month: string) => ({ month }),
+  });
+}
+```
+
+`createMiddleware` calls [`$context()`](/docs/guides-core-alepha-instance#writing-your-own-primitive-with-context), so it must run where a primitive would: inside a property initializer, which is where a `use` array is written. A `meta` record of free-form capability flags can be attached as well, for consumers that react to what a middleware does without knowing which one it is.
+
 ## `$scope`
 
 Host primitives run their handler inside an AsyncLocalStorage scope, which is

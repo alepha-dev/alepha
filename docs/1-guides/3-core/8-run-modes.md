@@ -116,6 +116,10 @@ a flag's help line is its description. `env` is validated before the handler
 runs, so a missing token is a clear failure at second zero rather than a
 `undefined` three API calls in.
 
+`name` defaults to the property key, and `""` (or `root: true`) makes the
+command the root one, run when no command is named. `aliases` adds other names
+for it, and `hide: true` leaves it out of the help.
+
 ### Flag syntax
 
 `--name value` and `--name=value` are equivalent. A boolean flag needs no value:
@@ -209,6 +213,7 @@ in a spec, and `MemoryFileSystemProvider` for the files.
 | `glob`  | `node:fs/promises`' `glob`                                        |
 | `root`  | The directory the command is running in                           |
 | `help`  | Prints this command's help                                        |
+| `mode`  | The `--mode` value, on a command declared with `mode`             |
 
 **`print` is not the logger, and the distinction matters.** Output is what a
 command _produces_; the logger is what it _reports_. They go to different

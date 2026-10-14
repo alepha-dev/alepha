@@ -246,3 +246,22 @@ alepha.with({
 ```
 
 Alepha ships with standard providers for common needs: file storage (`alepha/bucket`), job queues (`alepha/queue`), logging (`alepha/logger`), caching (`alepha/cache`), and more. Each has memory implementations for testing.
+
+## Writing Your Own Primitive with $context
+
+A primitive is a plain function that reads the container it is being built in. `$context()` returns that container (`alepha`), the class declaring the property (`service`, the class itself, not the instance) and its `$module` (`module`, if any). `$env`, `$mode` and `createMiddleware` are built on it.
+
+```typescript check
+import { $context } from "alepha";
+
+const $flag = (name: string): boolean => {
+  const { alepha } = $context();
+  return alepha.isEnvEnabled(name);
+};
+
+class Checkout {
+  beta = $flag("CHECKOUT_BETA"); // true for CHECKOUT_BETA=1, false for CHECKOUT_BETA=false
+}
+```
+
+`$context()` only answers while the container is instantiating a class, synchronously, which is exactly when a property initializer runs. Called anywhere else (in a method, after an `await`, at module top level) it throws `MissingContextError`.

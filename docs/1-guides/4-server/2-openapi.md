@@ -84,10 +84,12 @@ Each `$action` with a schema becomes an OpenAPI operation:
 
 - **Operation ID**: The action name (property key or explicit `name`).
 - **Tag**: The action group (class name or explicit `group`). Colons render as separators: group `admin:files` becomes tag `admin / files`, while `excludeTags` still matches the raw `admin:files`.
-- **Summary/Description**: From the `summary` and `description` options on `$action`. Registering `$swagger` also adds `hide` and `deprecated` options to `$action` - `hide: true` drops the operation from the document.
+- **Summary/Description**: From the `summary` and `description` options on `$action`. Importing `alepha/server/swagger` adds `summary`, `hide` and `deprecated` to the `$action` options: `hide: true` drops the operation from the document, `deprecated: true` flags it.
 - **Parameters**: Generated from `schema.params` (path) and `schema.query` (query).
 - **Request Body**: Generated from `schema.body`. Objects become `application/json`, file schemas become `multipart/form-data`.
-- **Response**: Generated from `schema.response`.
+- **Response**: Generated from `schema.response`. A `400 Bad Request` is added when the action validates a body, query or params, and an action with no `response` schema is documented as `204 No Content`.
+
+A schema carrying a `title` in its metadata (`z.object({...}).meta({ title: "Product" })`) is hoisted into `components/schemas` and referenced with `$ref`, so a shared schema appears once in the document.
 
 Schema descriptions propagate to OpenAPI field descriptions:
 

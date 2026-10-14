@@ -1,6 +1,6 @@
 # Bare Deployment
 
-The default deployment target. `alepha build` produces a self-contained `dist/` folder that runs on any machine with Node.js or Bun installed.
+The default deployment. `alepha build` produces a self-contained `dist/` folder that runs on any machine with Node.js or Bun installed.
 
 ## Build
 
@@ -31,13 +31,16 @@ always wins over `PORT`.
 
 ```txt
 dist/
-  index.js       # Server entry point
-  public/        # Client assets (if React frontend exists)
+  index.node.js    # Server entry wrapper of the node slice
+  server/node/     # The slice's chunks
+  public/          # Client assets (if React frontend exists)
+  manifest.json    # What the build declared
+  package.json     # `main` points at the primary slice
 ```
 
-Database migrations stay in your project's `migrations/` directory - run them with `alepha db migrations apply` against the target database (the docker target copies them into the image for you).
+Database migrations stay in your project's `migrations/` directory - run them with `alepha db migrations apply` against the target database ([`alepha image`](/docs/guides-deployment-docker) copies them into the image for you).
 
-If no React frontend is present, only `index.js` is generated.
+If no React frontend is present, only the server slice is built.
 
 ## Static File Headers
 
@@ -99,7 +102,7 @@ export default defineConfig({
 
 ## Configuration
 
-Set the target in `alepha.config.ts` to avoid passing flags:
+Declare the runtime in `alepha.config.ts` to avoid passing flags:
 
 ```typescript check
 import { defineConfig } from "alepha/cli/config";
@@ -111,7 +114,7 @@ export default defineConfig({
 });
 ```
 
-`bare` is the default target. You do not need to set it explicitly unless you want to override a different default.
+`node` is the default runtime. You do not need to set it unless you want a list (`["node", "workerd"]`) or another primary.
 
 ## Deployment
 

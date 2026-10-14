@@ -40,6 +40,15 @@ class App {
 
 A key is sent as `Authorization: Bearer ak_...` or as `?api_key=ak_...`. The
 token is shown once, at creation or rotation; the database keeps a hash.
+`createResolver({ prefix, priority })` changes the `ak` prefix the resolver
+matches (default `"ak"`) and its position among the issuer's resolvers
+(default `50`, before the JWT resolver's `100`).
+
+`createResolver` also takes `resolveOwner(userId)`, called on every
+validation: returning `undefined` or `{ enabled: false }` refuses the key, and
+the returned `roles` cap the key's stored roles. A realm wires it to its users
+table. A plain `$issuer` that omits it gets neither check, so a key keeps
+working after its owner is disabled, deleted or demoted.
 
 ## The lifecycle
 
@@ -51,6 +60,7 @@ token is shown once, at creation or rotation; the database keeps a hash.
 | `POST /api/api-keys/:id/rotate`   | `api-key:create`, a session | a new secret on the same key, returns it once         |
 | `DELETE /api/api-keys/:id`        | `api-key:delete`, a session | revoke                                                |
 | `GET /api/admin/api-keys`         | `admin:api-key:read`        | every key, filtered by `status` and `userId`          |
+| `GET /api/admin/api-keys/:id`     | `admin:api-key:read`        | one key, with its owner                               |
 | `DELETE /api/admin/api-keys/:id`  | `admin:api-key:delete`      | revoke anyone's key; there is no admin rotate         |
 | `POST /api/admin/api-keys/revoke` | `admin:api-key:delete`      | revoke several                                        |
 
@@ -64,14 +74,14 @@ A key is created with `expiresIn`, one of `7d`, `30d`, `60d`, `90d`, `180d`,
 does not expire, as every key did before expiry existed. The policy lives in
 the server-only `apiKeyOptions` atom:
 
-| Option                      | Default | Meaning                                                                 |
-| --------------------------- | ------- | ----------------------------------------------------------------------- |
-| `defaultExpiresIn`          | `90d`   | the duration a client preselects, and a rotation's when it names none   |
-| `maxExpiryDays`             | `0`     | the longest a key may live; `0` is unlimited                            |
-| `expiryWarningDays`         | `7`     | a key this close to expiry reads `expiring`, and its owner is told once |
-| `purgeExpiredAfterDays`     | `90`    | days an expired key stays listed before the daily purge deletes it      |
-| `purgeRevokedAfterDays`     | `90`    | the same for a revoked key                                              |
-| `usageWriteIntervalMinutes` | `5`     | minutes between two usage writes for one key                            |
+| Option                      | Default | Meaning                                                                                  |
+| --------------------------- | ------- | ---------------------------------------------------------------------------------------- |
+| `defaultExpiresIn`          | `90d`   | the duration a client preselects, and a rotation's when it names none                    |
+| `maxExpiryDays`             | `0`     | the longest a key may live; `0` is unlimited                                             |
+| `expiryWarningDays`         | `7`     | a key this close to expiry reads `expiring`, and its owner is told once; `0` disables it |
+| `purgeExpiredAfterDays`     | `90`    | days an expired key stays listed before the daily purge deletes it; `0` keeps it forever |
+| `purgeRevokedAfterDays`     | `90`    | the same for a revoked key                                                               |
+| `usageWriteIntervalMinutes` | `5`     | minutes between two usage writes for one key                                             |
 
 The cap applies whichever way the expiry was asked for, and under a cap `never`
 and an omitted expiry are refused too. A request over it is refused with a

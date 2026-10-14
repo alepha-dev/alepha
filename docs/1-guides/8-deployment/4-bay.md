@@ -129,7 +129,7 @@ revoked. Revoke access for real by removing the key from `authorized_keys`, or d
 alepha deploy --env production
 ```
 
-Under the hood: `alepha build --runtime=node`, then `alepha pack` - which produces
+Under the hood: `alepha build --runtime=node`, then `alepha pack --name <project>` - which produces
 `<project>-latest.tar.zst` containing the bundle and its `migrations/` directory - then one `ssh`
 invocation that pipes the artifact straight into the Bay's own CLI:
 
@@ -169,7 +169,7 @@ that file's path is handed to `bay deploy`:
 ssh -o BatchMode=yes deploy@bay.example.com 'umask 077; cat > /tmp/.bay-secrets-<random>' \
   < the-filtered-assignments
 ssh -o BatchMode=yes deploy@bay.example.com \
-  'bay deploy - --name myapp --secrets-file /tmp/.bay-secrets-<random>' < myapp-latest.tar.zst
+  'bay deploy - --name myapp --env production --secrets-file /tmp/.bay-secrets-<random>' < myapp-latest.tar.zst
 ```
 
 Bay merges that file into the instance's `.env` before the release is swapped in and before the

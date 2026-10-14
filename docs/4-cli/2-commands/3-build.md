@@ -39,8 +39,10 @@ The build runs a fixed pipeline of tasks:
 4. **Copies assets**: Moves static files to the right places
 5. **Generates the PWA manifest**: If `pwa` is configured
 6. **Prerenders pages**: Sitemap and static pages, when applicable
-7. **Generates deployment configs**: `wrangler.jsonc` when a workerd slice was built
-8. **Pre-compresses assets**: Writes `.br` (Brotli) copies of client assets
+7. **Writes the build manifest**: `dist/manifest.json`
+8. **Generates deployment configs**: `wrangler.jsonc` when a workerd slice was built, the static site files for `runtime: ["static"]`
+9. **Writes `dist/public/_headers`**: security and cache headers for hosts that serve files without the app (see [Static File Headers](/docs/guides-deployment-headers))
+10. **Pre-compresses assets**: Writes `.br` (Brotli) copies of client assets
 
 ## Output Structure
 
@@ -74,12 +76,14 @@ node dist/index.node.js   # or name the slice
 
 ## Options
 
-| Flag              | Description                                                                                                                                                     |
-| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--runtime`, `-r` | Runtimes to link the server for, comma-separated and in order: `node`, `bun`, `workerd`. The first is the primary. `static` declares an app with no server.     |
-| `--stats`         | Generate build statistics report (use `--stats=json` for JSON output)                                                                                           |
-| `--inspect`       | Bundle `alepha/inspector` so devtools can inspect the production build. Off until started with `ALEPHA_INSPECT=1`. See [Inspector](/docs/guides-core-inspector) |
-| `--prebuilt`      | Skip the bundle steps; only regenerate the target-specific deploy config (e.g. `wrangler.jsonc`) when `dist/` is already built                                  |
+| Flag              | Description                                                                                                                                                      |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--runtime`, `-r` | Runtimes to link the server for, comma-separated and in order: `node`, `bun`, `workerd`. The first is the primary. `static` declares an app with no server.      |
+| `--stats`         | Generate build statistics report (use `--stats=json` for JSON output)                                                                                            |
+| `--inspect`       | Bundle `alepha/inspector` so devtools can inspect the production build. Off until started with `ALEPHA_INSPECT=1`. See [Inspector](/docs/guides-core-inspector)  |
+| `--prebuilt`      | Skip the bundle steps; only regenerate the target-specific deploy config (e.g. `wrangler.jsonc`) when `dist/` is already built                                   |
+| `--if-stale`      | Build only when `dist/` is missing or older than its sources (the app's `src/`, `public/`, `migrations/`, `package.json`, and the workspace packages it bundles) |
+| `--mode`, `-m`    | Environment mode, `production` by default: loads `.env`, `.env.<mode>` and `.env.<mode>.local`                                                                   |
 
 Declaring a `workerd` slice is what writes the Cloudflare deploy config; `runtime: ["static"]` is what makes a static site. There is no `--target`: the build is described by what it produces.
 
@@ -132,7 +136,9 @@ Creates Cloudflare Workers configuration:
 
 ```txt
 dist/
-├── main.cloudflare.js  # Worker entry point
+├── main.cloudflare.js  # Worker entry point (wrangler's `main`)
+├── index.workerd.js    # the workerd slice's entry wrapper
+├── server/workerd/     # the workerd slice's chunks
 ├── wrangler.jsonc      # Wrangler configuration
 ├── manifest.json       # Build manifest (detected resources, declared env keys)
 └── public/             # Static assets (if any)
@@ -205,8 +211,8 @@ Generates interactive reports about your bundles:
 # View client bundle analysis
 open dist/public/stats.html
 
-# View server bundle analysis
-open dist/stats.html
+# View server bundle analysis (one report per slice)
+open dist/server/node/stats.html
 ```
 
 The reports show:
@@ -255,6 +261,7 @@ Build options include `stats`, `inspect` and `runtime`, plus the sections below.
 | Section      | Description                                                                                                                    |
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------ |
 | `output`     | Override `dist` and `public` directory names                                                                                   |
+| `preload`    | `allowUnresolved`: source paths of pages allowed to resolve to no preloaded chunks (refused by default)                        |
 | `cloudflare` | Extra `wrangler.jsonc` config merged into the generated file                                                                   |
 | `static`     | Surge domain for the `CNAME` file; `source` to adopt a client directory the workspace built itself (must live outside `dist/`) |
 | `pwa`        | Web app manifest: name, short name, colors, display mode                                                                       |

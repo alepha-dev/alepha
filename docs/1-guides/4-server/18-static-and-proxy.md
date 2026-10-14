@@ -35,7 +35,9 @@ container that starts in the right place already does something useful.
 | `historyApiFallback` | `false`         | Serve `index.html` for anything not found       |
 | `ignoreDotEnvFiles`  | `true`          | Skip dot files                                  |
 | `cacheControl`       | off             | `Cache-Control` headers, see below              |
+| `headersFile`        | `false`         | Apply the root `_headers` file, see below       |
 | `disabled`           | `false`         | Skip the primitive entirely                     |
+| `name`               | the field name  | Name used in logs                               |
 | `silent`             | `false`         | Suppress this primitive's logging               |
 
 ### Single-page apps want `historyApiFallback`
@@ -84,6 +86,19 @@ class Assets {
 `app.js` rather than `app.4f2a1c.js` and marks it immutable for a year has just
 made that file unfixable in every browser that saw it.
 
+### `_headers` files
+
+`headersFile: true` applies the Cloudflare-style `_headers` file at the root of
+the served directory to every response, so one build sends the same headers on
+every host. `alepha build` writes that file into `dist/public`, and the app's
+own public server turns this on; any other `$serve` leaves it off.
+
+The file is read once at boot, and a line that does not parse fails the boot.
+Its matching rules are applied after every other response hook; a response no
+rule caches gets `public, max-age=0, must-revalidate`, and `cacheControl` is
+ignored. Whether or not the option is on, `/_headers`, `/_redirects` and
+`/.assetsignore` are never served.
+
 ## `$proxy`
 
 `$proxy` forwards a path family to another origin: an API gateway in front of
@@ -107,9 +122,14 @@ import { AlephaServerProxy } from "alepha/server/proxy";
 alepha.with(AlephaServerProxy);
 ```
 
-**`path` must end in `/*`.** The wildcard is not decoration: it is what captures
-the rest of the path to forward upstream. A `path` without it matches one exact
-URL and forwards nothing beyond it.
+**`path` must end in `/*`.** A `path` without the wildcard throws
+`Proxy path should end with '/*'` when the server configures, rather than
+quietly matching one URL. The proxy answers every method on that path family.
+
+The upstream URL is `target` plus the **full** request path, prefix included,
+plus the query string: `/legacy/users?page=2` goes to
+`https://legacy.example.com/legacy/users?page=2`. Strip the prefix with
+`rewrite` when the upstream does not know it is mounted under one.
 
 `target` takes a string or a function, and the function is re-read per request,
 so it can resolve from configuration rather than being frozen at boot.
@@ -145,11 +165,16 @@ class Gateway {
   the prefix that routed the request here, since the upstream service does not
   know it is mounted under `/secure`.
 - `beforeRequest(request, proxyRequest)` mutates the outgoing `RequestInit`.
-  This is where a service token or a forwarding header goes.
-- `afterResponse(request, proxyResponse)` observes the response.
+  This is where a service token or a forwarding header goes. On workerd it may
+  also set `fetcher` to a service binding, which routes the subrequest through
+  that Worker.
+- `afterResponse(request, proxyResponse)` observes the response, after its
+  status, headers (minus hop-by-hop ones, with every `set-cookie` kept) and
+  body have been copied onto the reply.
 
-`disabled` takes a boolean, which makes a proxy a feature flag: point `/v2/*` at
-a new service and turn it off without removing the declaration.
+`disabled` takes a boolean, read once when the server configures, which makes a
+proxy a feature flag: point `/v2/*` at a new service and turn it off without
+removing the declaration.
 
 ### It is a proxy, so it is a hole
 

@@ -135,18 +135,20 @@ import { useAction } from "alepha/react";
 
 **Options:**
 
-| Option        | Type                        | Description                                                                                                                                                                                                                                                                                                               |
-| ------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `handler`     | `(...args, ctx) => Promise` | The async function to execute. Receives an `ActionContext` with an `AbortSignal` as the last argument.                                                                                                                                                                                                                    |
-| `onError`     | `(error) => void`           | Custom error handler. Passing one marks the failure handled: `react:action:error` still fires, with `handled: true`, and `ActionErrorToaster` does not toast it (see below). Errors are never re-thrown by `run` - they land in `error` state and the event, so fire-and-forget calls can't produce unhandled rejections. |
-| `onSuccess`   | `(result) => void`          | Called after successful execution.                                                                                                                                                                                                                                                                                        |
-| `id`          | `string`                    | Identifier for debugging and analytics.                                                                                                                                                                                                                                                                                   |
-| `debounce`    | `number`                    | Delay in milliseconds before executing.                                                                                                                                                                                                                                                                                   |
-| `runOnInit`   | `boolean`                   | Run once when the component mounts.                                                                                                                                                                                                                                                                                       |
-| `runEvery`    | `DurationLike`              | Run periodically at the given interval.                                                                                                                                                                                                                                                                                   |
-| `invalidates` | `string[]`                  | Query-cache keys to invalidate after success - see [Invalidating after a write](#invalidating-after-a-write).                                                                                                                                                                                                             |
+| Option        | Type                                     | Description                                                                                                                                                                                                                                                                                                               |
+| ------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `handler`     | `(...args, ctx) => Promise`              | The async function to execute. Receives an `ActionContext` with an `AbortSignal` as the last argument.                                                                                                                                                                                                                    |
+| `onError`     | `(error) => void`                        | Custom error handler. Passing one marks the failure handled: `react:action:error` still fires, with `handled: true`, and `ActionErrorToaster` does not toast it (see below). Errors are never re-thrown by `run` - they land in `error` state and the event, so fire-and-forget calls can't produce unhandled rejections. |
+| `onSuccess`   | `(result) => void`                       | Called after successful execution.                                                                                                                                                                                                                                                                                        |
+| `id`          | `string`                                 | Identifier for debugging and analytics.                                                                                                                                                                                                                                                                                   |
+| `debounce`    | `number`                                 | Delay in milliseconds before executing.                                                                                                                                                                                                                                                                                   |
+| `runOnInit`   | `boolean`                                | Run once when the component mounts.                                                                                                                                                                                                                                                                                       |
+| `runEvery`    | `DurationLike`                           | Run periodically at the given interval.                                                                                                                                                                                                                                                                                   |
+| `invalidates` | `unknown[][] \| (result) => unknown[][]` | Query-cache keys to invalidate after success - see [Invalidating after a write](#invalidating-after-a-write).                                                                                                                                                                                                             |
 
-By default, concurrent executions are prevented - calling `run` while already executing is a no-op.
+By default, concurrent executions are prevented - calling `run` while already executing is a no-op, and that dropped call resolves `undefined` (as does a failed one). Disable the controls that trigger the action on `loading`, and put follow-ups inside the handler rather than after `await action.run()`. `refetch` and a `debounce`d call are the exceptions: they abort the in-flight run and replace it.
+
+⚠️ The handler receives `{ signal }` as its **last** argument. Never give it an optional or defaulted trailing parameter: that parameter would receive the `{ signal }` object, and TypeScript does not catch it. Make every parameter required, or take one object, and type the hook explicitly when needed (`useAction<[id: string], boolean>`).
 
 **Debounce example (search input):**
 
@@ -293,7 +295,7 @@ in an effect after mount.
 
 ## Data fetching and cache invalidation
 
-`useQuery` works without a cache - pass a handler, get `data` / `loading` / `error` / `refetch`. Pass a `key` and it joins a shared cache.
+`useQuery` (from `alepha/react`) is `useAction` pre-wired for reads: it runs on mount and whenever its dependency list changes, and returns `{ data, loading, error, refetch, cancel, isStale }`. It works without a cache - pass a handler, get `data` / `loading` / `error` / `refetch`. Pass a `key` and it joins a shared cache.
 
 ```tsx
 const { data, loading, isStale } = useQuery(
@@ -305,6 +307,23 @@ const { data, loading, isStale } = useQuery(
   [campaignId],
 );
 ```
+
+**Options** (besides `handler`, which receives `{ signal }`):
+
+| Option             | Default | Description                                                                                            |
+| ------------------ | ------- | ------------------------------------------------------------------------------------------------------ |
+| `key`              | none    | Cache key (an array). Without it, nothing is shared or cached.                                         |
+| `staleTime`        | `0`     | `DurationLike`. While an entry is fresh, mounting renders it from cache without fetching.              |
+| `keepPreviousData` | `false` | Keep rendering the previous key's data while a new key loads (pagination, filters). Requires `key`.    |
+| `enabled`          | `true`  | `false` skips the automatic runs (mount, dependency change, `runEvery`); `refetch()` still works.      |
+| `initialData`      | none    | Value of `data` before the first successful fetch.                                                     |
+| `runEvery`         | none    | Poll at this interval, as in `useAction`.                                                              |
+| `debounce`         | none    | Debounce delay in milliseconds.                                                                        |
+| `onSuccess`        | none    | Called with the resolved value.                                                                        |
+| `onError`          | none    | Marks the failure handled: `onError: () => {}` is how a read that can do without its data stays quiet. |
+| `id`               | none    | Identifier carried by the `react:action:*` events.                                                     |
+
+`loading` is already `true` on the very first render of an enabled query with no `initialData`, so a skeleton renders without a flash of empty content. `isStale` is `true` when a cached entry outlived `staleTime` and is being revalidated in the background.
 
 A key buys four things:
 
@@ -347,6 +366,7 @@ const queries = useQueryClient();
 
 queries.invalidate(["folios", campaignId]);
 queries.setData(["folio", id], (previous) => ({ ...previous, pinned: true }));
+queries.get(["folio", id]); // read without subscribing
 queries.clear(); // on logout
 ```
 
@@ -358,6 +378,29 @@ Both fetch. The dividing line is whether the route can render without the data:
 - **`useQuery`**: a component owns the data and can render a skeleton while it arrives (a sidebar, a backlinks panel, a tag list). It is also the right choice for anything a mutation should be able to invalidate.
 
 Mixing them is normal: load the subject in the route, query its satellites in components.
+
+## ClientOnly and ErrorBoundary
+
+Two components ship with `alepha/react`:
+
+```tsx check
+import { ClientOnly, ErrorBoundary } from "alepha/react";
+
+const Clock = () => (
+  <ErrorBoundary
+    fallback={(error, reset) => (
+      <button onClick={reset}>{error.message}</button>
+    )}
+  >
+    <ClientOnly fallback={<span>--:--</span>}>
+      {new Date().toLocaleTimeString()}
+    </ClientOnly>
+  </ErrorBoundary>
+);
+```
+
+- `<ClientOnly fallback? disabled?>` renders its children only after hydration, and `fallback` during the server render and the hydration pass. Use it for browser-only reads (see [Hydration mismatches](#hydration-mismatches)).
+- `<ErrorBoundary fallback onError? resetKeys?>` catches render errors below it. `fallback(error, reset)` is required; `resetKeys` clears a caught error when any of the values changes, without remounting the children. Every page is already wrapped in one by the router.
 
 ## AlephaProvider
 

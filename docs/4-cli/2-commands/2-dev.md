@@ -12,9 +12,10 @@ That's it. Your app is running. Make changes and watch them appear instantly.
 
 ## Options
 
-| Flag     | Description                                                              |
-| -------- | ------------------------------------------------------------------------ |
-| `--only` | Run only specific apps in a monorepo (comma-separated: `--only api,web`) |
+| Flag           | Description                                                                                     |
+| -------------- | ----------------------------------------------------------------------------------------------- |
+| `--only`       | Run only specific apps in a monorepo (comma-separated: `--only api,web`)                        |
+| `--mode`, `-m` | Also load `.env.<mode>` and `.env.<mode>.local`. In workspace mode it is forwarded to every app |
 
 ## What It Does
 

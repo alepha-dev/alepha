@@ -31,14 +31,17 @@ class MediaService {
 
 ### Options
 
-| Option        | Type                    | Default          | Description                                                            |
-| ------------- | ----------------------- | ---------------- | ---------------------------------------------------------------------- |
-| `name`        | `string`                | Property key     | Key prefix in the backend, and the `bucket` value on every `files` row |
-| `mimeTypes`   | `string[]`              | any              | Allowed MIME types; anything else throws `InvalidFileError`            |
-| `maxSize`     | `number`                | `10`             | Maximum size in **megabytes**                                          |
-| `ttl`         | `DurationLike`          | none             | Default retention; files are purged after it elapses                   |
-| `description` | `string`                | -                | Shown in devtools and the admin UI                                     |
-| `provider`    | `Service` or `"memory"` | injected default | Override the backend for this storage                                  |
+| Option          | Type                    | Default          | Description                                                             |
+| --------------- | ----------------------- | ---------------- | ----------------------------------------------------------------------- |
+| `name`          | `string`                | Property key     | Key prefix in the backend, and the `bucket` value on every `files` row  |
+| `mimeTypes`     | `string[]`              | any              | Allowed MIME types; anything else throws `InvalidFileError`             |
+| `maxSize`       | `number`                | `10`             | Maximum size in **megabytes**                                           |
+| `ttl`           | `DurationLike`          | none             | Default retention; files are purged after it elapses                    |
+| `clientUploads` | `boolean`               | `false`          | Let a client name this storage in `POST /api/files?bucket=` (see below) |
+| `description`   | `string`                | -                | Shown in devtools and the admin UI                                      |
+| `provider`      | `Service` or `"memory"` | injected default | Override the backend for this storage                                   |
+
+`mimeTypes` is checked against the client-supplied type: a usability guard, not a security control.
 
 > `maxSize` is in megabytes. `maxSize: 5 * 1024 * 1024` is not "5 MB" - it is
 > five million megabytes, i.e. no limit at all.
@@ -105,8 +108,12 @@ Every backend keys objects as `{prefix}/{storage}/{fileId}` inside
 nothing and provisions nothing - there is no per-storage cloud bucket and no
 account bucket limit to worry about.
 
-You create that one bucket yourself and point the provider at it
-(`S3_BUCKET_NAME` / `R2_BUCKET_NAME`).
+On S3 you create that one bucket yourself and point the provider at it:
+`S3_ENDPOINT`, `S3_BUCKET_NAME`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, and
+optionally `S3_REGION` (default `auto`). On Cloudflare, an app that declares a
+`$storage` gets its R2 bucket and binding provisioned by the build;
+`R2_BUCKET_NAME` names it explicitly (and is required when you inject the
+provider directly, since nothing then tells the build a bucket is needed).
 
 ### Sharing one bucket between apps
 
@@ -156,6 +163,12 @@ const file = await this.images.download(stored.id);
 
 Takes the row id, or an already-loaded row (which skips the lookup).
 
+Every read and delete on a storage is scoped to it: an id belonging to another
+storage is a `NotFoundError`. `download`, `get`, `delete` and `deleteMany` also
+take `{ creator: userId }`, which narrows the lookup to files that user
+uploaded, so an ownership check cannot be forgotten between reading the row and
+checking it.
+
 ### list
 
 ```typescript
@@ -178,6 +191,8 @@ await this.images.delete(id); // removes row + blob
 await this.images.deleteMany([id1, id2]); // batched where supported
 ```
 
+`deleteMany` ignores ids outside the storage and returns the ids it deleted.
+
 ## Expiry
 
 A storage-level `ttl` stamps `expirationDate` on every row it accepts. The
@@ -192,8 +207,13 @@ endpoint takes that date from the client.
 The default depends on the environment:
 
 - **Cloudflare Workers**: `R2FileStorageProvider` (`MemoryFileStorageProvider` under test) - the workerd bundle decides this first, so the rules below never apply there
-- **Test**: `MemoryFileStorageProvider` (in-memory, lost on restart)
-- **Otherwise**: `S3FileStorageProvider` when `S3_ENDPOINT` is set, else `LocalFileStorageProvider`
+- **Test**: `MemoryFileStorageProvider` (in-memory, lost on restart), even when `S3_ENDPOINT` is set
+- **Otherwise**: `S3FileStorageProvider` when `S3_ENDPOINT` is set, else `MemoryFileStorageProvider` on a serverless runtime and `LocalFileStorageProvider` everywhere else
+
+`LocalFileStorageProvider` writes to `node_modules/.alepha/buckets` by default,
+inside the deployed bundle, so a host that unpacks each release into its own
+directory loses every file on redeploy. Point it outside the bundle with
+`STORAGE_PATH`, or `DATA_DIR` (blobs then land in `<DATA_DIR>/buckets`).
 
 | Provider                    | Description                                                                     |
 | --------------------------- | ------------------------------------------------------------------------------- |
@@ -221,6 +241,18 @@ class MediaService {
   tempFiles = $storage({ provider: "memory" });
 }
 ```
+
+## Transforming uploads
+
+The `files:beforeUpload` hook fires once the storage's own MIME and size rules
+have passed and before anything is written. A subscriber may replace `ev.file`
+(resize, re-encode, strip metadata); `ev.storage` is the target `$storage`. It
+only fires for uploads small enough to be buffered (10 MB); larger ones stream
+straight to the backend. No subscriber ships with the framework.
+
+`StoragePrimitiveOptions` is open for augmentation, so a package adding such a
+concern declares its own typed `$storage` option and reads it from
+`ev.storage.options`.
 
 ## Blobs without a database
 

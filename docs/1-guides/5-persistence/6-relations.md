@@ -259,7 +259,7 @@ const team = await repos.teams.create({
 });
 ```
 
-Ordering is forced by where each foreign key lives: a **to-one** related row is created first, because this row's key points at it; a **to-many** child is created after, because its key points back. A failure part-way through leaves no half-built graph behind.
+Ordering is forced by where each foreign key lives: a **to-one** related row is created first, because this row's key points at it; a **to-many** child is created after, because its key points back. A failure part-way through leaves no half-built graph behind, except on a driver without transactions (Cloudflare D1), where the rows written before the failure stay.
 
 `update` takes `where` / `data` as an options object; `upsert` takes `create` / `update` / `target`. Both accept `include` on the result:
 
@@ -271,11 +271,21 @@ await repos.teams.update({
 });
 ```
 
-`createMany`, `save`, `aggregate` and raw `query` are on the relational repository too - they just ignore relations. `.base` is the fully typed plain repository when you need the rest (`count`, `findById`, `updateMany`, `deleteMany`, `transaction`, …):
+The other methods are on the relational repository too, and ignore relations. Writes take one options object, like the reads:
 
 ```typescript
+await repos.teams.createMany({ data: [{ name: "A" }, { name: "B" }] });
+await repos.teams.updateMany({
+  where: { name: { eq: "A" } },
+  data: { name: "C" },
+});
+await repos.teams.delete({ where: { name: { eq: "C" } } }); // first match
+await repos.teams.deleteMany({ where: { name: { like: "Z%" } }, force: true });
+await repos.teams.count({ where: { name: { like: "R%" } } });
 await repos.teams.aggregate({ select: { id: { count: true } } });
 ```
+
+`findById(id, { include })`, `getById`, `getOne`, `updateById(id, data)`, `deleteById(id, { force })`, `save(entity)`, `query`, `transaction` and `paginate(page, query, { count })` keep their plain shapes. `.base` is the fully typed plain repository, for anything that takes statement options (`tx`, `for`, `cache`, ...).
 
 ## What it costs
 

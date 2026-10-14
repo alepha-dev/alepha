@@ -124,6 +124,12 @@ class TaskTools {
 | `schema.result` | `ZType`    | Zod schema for the return value.                      |
 | `handler`       | `function` | Receives `{ params, context }`. Returns the result.   |
 | `name`          | `string`   | Override the tool name. Defaults to the property key. |
+| `title`         | `string`   | Human-friendly display name for client tool pickers.  |
+| `annotations`   | `object`   | Behavior hints, see below.                            |
+| `icons`         | `array`    | Icons shown in client tool palettes.                  |
+| `_meta`         | `object`   | Arbitrary metadata passed through on the descriptor.  |
+
+`annotations` are hints for the client, not guarantees: `readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint` (and a `title`). A client may ask for confirmation before running a tool marked `destructiveHint: true`.
 
 Parameters and results are validated automatically. If validation fails, the client receives a JSON-RPC error.
 
@@ -277,6 +283,22 @@ class Prompts {
 | `args`        | `ZObject`  | Zod schema for template arguments.                      |
 | `handler`     | `function` | Returns an array of `{ role, content }` messages.       |
 | `name`        | `string`   | Override the prompt name. Defaults to the property key. |
+| `complete`    | `function` | Suggests values for an argument, see below.             |
+
+**Argument completion.** A `complete` handler on a `$prompt` (or a `$resourceTemplate`, for its variables) answers `completion/complete`, so a client can offer values as the user types. It receives `{ argument: { name, value }, arguments?, context? }` and returns candidate strings. Declaring one anywhere is what makes the server advertise the `completions` capability.
+
+```typescript
+codeReview = $prompt({
+  args: z.object({ code: z.text(), language: z.text() }),
+  complete: async ({ argument }) =>
+    argument.name === "language"
+      ? ["typescript", "python", "go"].filter((l) =>
+          l.startsWith(argument.value),
+        )
+      : [],
+  handler: async ({ args }) => [{ role: "user", content: args.code }],
+});
+```
 
 ## Wiring It Up
 
@@ -527,7 +549,14 @@ Transports are opt-in: wire the one you need.
 - `POST /mcp`: JSON-RPC endpoint; single responses return `application/json`
 - `GET /mcp` and `DELETE /mcp`: return `405 Method Not Allowed` (no standalone SSE stream, no session to end)
 
-The path is configurable (keep it outside `/api`, which belongs to the `$action` dispatcher):
+The `mcpStreamableHttpOptions` atom configures it:
+
+| Option                 | Default                                   | Description                                                                                                                                                                                  |
+| ---------------------- | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `path`                 | `"/mcp"`                                  | Endpoint path. Keep it outside `/api`, which belongs to the `$action` dispatcher.                                                                                                            |
+| `allowedOrigins`       | `[]` (any)                                | `Origin` values a browser request may carry; any other is a 403 (DNS-rebinding guard). Requests with no `Origin` always pass.                                                                |
+| `requireAuth`          | `false`                                   | Refuse an unauthenticated POST with `401` and an RFC 9728 `WWW-Authenticate` challenge, which MCP clients use to find the OAuth server. `$realm({ features: { oauth: true } })` turns it on. |
+| `resourceMetadataPath` | `"/.well-known/oauth-protected-resource"` | Protected-resource metadata document advertised in that challenge.                                                                                                                           |
 
 ```typescript
 import { mcpStreamableHttpOptions } from "alepha/mcp";
@@ -554,7 +583,7 @@ Then point the client at the built binary:
   "mcpServers": {
     "my-app": {
       "command": "node",
-      "args": ["/path/to/my-app/dist/index.js"],
+      "args": ["/path/to/my-app/dist/index.node.js"],
       "env": { "DATABASE_URL": "..." }
     }
   }
@@ -687,6 +716,17 @@ descriptor blob is what you are trying to keep out of the model's context:
 
 ```typescript
 alepha.inject(McpServerProvider).pageSize = 25;
+```
+
+### Observing tool calls
+
+Every `tools/call` emits `mcp:tool:end` once, with `{ name, outcome, context }`. `outcome` is `"ok"`, `"refused"` (bad arguments, a missing row, a caller who may not: usually a misleading description or schema) or `"error"` (a fault). `name` is what the client asked for, registered or not. It is awaited inside the call, so a subscriber must be fast and must not throw.
+
+```typescript
+toolUsage = $hook({
+  on: "mcp:tool:end",
+  handler: ({ name, outcome }) => this.metrics.count(name, outcome),
+});
 ```
 
 ## Naming Convention

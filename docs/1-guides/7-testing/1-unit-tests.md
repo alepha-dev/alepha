@@ -49,7 +49,10 @@ still lands last on the command line.
 
 ## Lifecycle Management
 
-`Alepha.create()` handles start and stop automatically in test environments. You do not need `beforeAll`/`afterAll` for lifecycle.
+`Alepha.create()` wires itself to Vitest's hooks in test environments (this needs `globals: true`). You do not need `beforeAll`/`afterAll` for lifecycle:
+
+- Created at module or `describe` scope, the container is started in `beforeAll` and stopped in `afterAll`.
+- Created inside an `it`, it is stopped when that test finishes, but `beforeAll` has already run: call `await alepha.start()` yourself, as below.
 
 ```typescript
 describe("Lifecycle", () => {
@@ -84,14 +87,18 @@ describe("UserController", () => {
   it("should return user by id", async () => {
     const alepha = Alepha.create().with(UserController);
     const ctrl = alepha.inject(UserController);
+    await alepha.start();
+
+    const id = "0b3c3d6e-6f1a-4c3e-9d2b-8a7f5e4d3c2b";
 
     // Local call - no HTTP overhead
-    const result = await ctrl.getUser.run({ params: { id: "abc-123" } });
+    const result = await ctrl.getUser.run({ params: { id } });
     expect(result.name).toBe("Alice");
 
     // HTTP simulation - goes through the full request pipeline
-    const response = await ctrl.getUser.fetch({ params: { id: "abc-123" } });
+    const response = await ctrl.getUser.fetch({ params: { id } });
     expect(response.status).toBe(200);
+    expect(response.data.name).toBe("Alice");
   });
 });
 ```
@@ -114,21 +121,24 @@ const svc = alepha.inject(PaymentService);
 
 Alepha ships memory implementations for all I/O-bound services. These run in-process with no external dependencies and include test assertion helpers.
 
-| Provider                    | Import          | Replaces                    |
-| --------------------------- | --------------- | --------------------------- |
-| `MemoryFileSystemProvider`  | `alepha/system` | File system                 |
-| `MemoryShellProvider`       | `alepha/system` | Shell commands              |
-| `MemoryQueueProvider`       | `alepha/queue`  | Job queues                  |
-| `MemoryTopicProvider`       | `alepha/topic`  | Pub/sub topics              |
-| `MemoryLockProvider`        | `alepha/lock`   | Distributed locks           |
-| `MemoryCacheProvider`       | `alepha/cache`  | Caching layer               |
-| `MemoryFileStorageProvider` | `alepha/bucket` | File storage (S3, R2, etc.) |
-| `MemoryEmailProvider`       | `alepha/email`  | Email sending               |
-| `MemorySmsProvider`         | `alepha/sms`    | SMS sending                 |
+| Provider                    | Import                | Replaces                                                                                    |
+| --------------------------- | --------------------- | ------------------------------------------------------------------------------------------- |
+| `MemoryFileSystemProvider`  | `alepha/system`       | File system                                                                                 |
+| `MemoryShellProvider`       | `alepha/system`       | Shell commands                                                                              |
+| `MemoryQueueProvider`       | `alepha/queue`        | Job queues                                                                                  |
+| `MemoryTopicProvider`       | `alepha/topic`        | Pub/sub topics                                                                              |
+| `MemoryLockProvider`        | `alepha/lock`         | Distributed locks                                                                           |
+| `MemoryCacheProvider`       | `alepha/cache`        | Caching layer                                                                               |
+| `MemoryFileStorageProvider` | `alepha/bucket`       | File storage (S3, R2, etc.)                                                                 |
+| `MemoryEmailProvider`       | `alepha/email`        | Email sending                                                                               |
+| `MemorySmsProvider`         | `alepha/sms`          | SMS sending                                                                                 |
+| `MemoryCaptchaProvider`     | `alepha/captcha`      | Captcha verification                                                                        |
+| `MemoryPaymentProvider`     | `alepha/api/payments` | Payment service provider (see [Payments](/docs/guides-payments-overview#local-development)) |
 
 In test environments, `FileSystemProvider` and `ShellProvider` both default to
-their memory implementations automatically - file writes and shell commands
-stay inside the container unless a test opts back into the real thing:
+their memory implementations automatically (so do email, SMS and captcha) - file
+writes and shell commands stay inside the container unless a test opts back into
+the real thing:
 
 ```typescript
 import { FileSystemProvider, NodeFileSystemProvider } from "alepha/system";
@@ -200,9 +210,11 @@ await dateTime.travel([2, "hours"]); // jump forward
 
 ## Database Testing
 
-Alepha can run tests against real Postgres. Each test file gets its own schema. Migrations run automatically before tests and the schema is dropped after tests complete.
+Without a `DATABASE_URL`, a test container uses an in-memory SQLite database, fresh for each container.
 
-Point `DATABASE_URL` at your test database via the `env` block of `vite.config.ts`'s `test` section (the scaffolded config doesn't set one - without it, tests use the default embedded SQLite database):
+Alepha can also run tests against real Postgres, with the `alepha/orm/postgres` module (`AlephaOrmPostgres`) registered. Under test, each container creates its own throwaway schema (`test_alepha_<epoch>_<random>`), runs the migrations into it, and drops it on stop; schemas older than an hour left by a crashed run are swept on the next start.
+
+Point `DATABASE_URL` at your test database via the `env` block of `vite.config.ts`'s `test` section (the scaffolded config doesn't set one):
 
 ```typescript
 env: {
@@ -219,12 +231,12 @@ Cloudflare D1 has no transactions: `$transactional()` runs its body in place the
 To reproduce a failure halfway, substitute the collaborator that fails rather than mocking it:
 
 ```typescript
-import { Alepha } from "alepha";
+import { Alepha, AlephaError } from "alepha";
 import { AuditService } from "alepha/api/audits";
 
 class ThrowingAuditService extends AuditService {
   public override async create(): Promise<never> {
-    throw new Error("audit insert failed");
+    throw new AlephaError("audit insert failed");
   }
 }
 

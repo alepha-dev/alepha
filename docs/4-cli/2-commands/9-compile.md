@@ -44,13 +44,14 @@ It never unpacks an archive. If you have one, unpack it first.
 
 ## Options
 
-| Flag             | Description                                                            |
-| ---------------- | ---------------------------------------------------------------------- |
-| `--out`, `-o`    | File name of the binary inside `dist/` (default: `app`)                |
-| `--target`, `-t` | Bun target triple, e.g. `bun-linux-arm64-musl` (default: this machine) |
-| `--minify`       | Minify the compiled output (default: on)                               |
+| Flag             | Description                                                                                                                                                                                            |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `--out`, `-o`    | File name of the binary inside `dist/` (default: `app`)                                                                                                                                                |
+| `--target`, `-t` | Bun target triple, e.g. `bun-linux-arm64-musl` (default: this machine)                                                                                                                                 |
+| `--minify`       | Minify the compiled output (default: on)                                                                                                                                                               |
+| `--desktop`      | Build a native macOS app, `dist/<name>.app`, from the top-level `desktop` config. Needs `@alepha/desktop`; macOS only, for this Mac's architecture. See [Desktop App](/docs/guides-deployment-desktop) |
 
-⚠️ There is no `compile:` config key. Three settings, all flags: a key nobody sets is worse than three flags, and `alepha image` drives the triple itself rather than reading one from config.
+⚠️ There is no `compile:` config key. Three settings, all flags (`--desktop` reads the top-level `desktop` key, and nothing else does): a key nobody sets is worse than three flags, and `alepha image` drives the triple itself rather than reading one from config.
 
 ⚠️ **The triple picks the libc.** A Bun `--compile` binary is not static: it needs an interpreter, `libstdc++` and `libgcc`. Building for a container means naming the triple its base provides, which is what [`alepha image`](/docs/cli-commands-image) does for you.
 

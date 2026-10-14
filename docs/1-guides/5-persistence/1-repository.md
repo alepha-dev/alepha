@@ -4,7 +4,7 @@ Alepha ORM is built on top of [Drizzle ORM](https://orm.drizzle.team/) and Drizz
 
 `$entity` defines a database table. `$repository` creates a type-safe data access layer for that table.
 
-Alepha's main target is PostgreSQL, but SQLite is also supported.
+PostgreSQL and SQLite (including Cloudflare D1) are both supported. SQLite is the default driver of `alepha/orm`; PostgreSQL drivers live in `alepha/orm/postgres` and must be registered explicitly with `AlephaOrmPostgres` (see [Database URL Configuration](/docs/guides-persistence-migrations#database-url-configuration)).
 
 The API is mostly database-agnostic, but some features (e.g. certain column types or operators) may be database-specific.
 
@@ -47,8 +47,17 @@ indexes: [
   { column: "email", unique: true },         // unique index on one column
   { columns: ["tenantId", "name"], unique: true }, // composite unique index
   { column: "status", name: "idx_status" },  // index with custom name
+  { column: "email", unique: true, where: sql`deleted_at IS NULL` }, // partial index
+  {
+    // expression index; `name` is required here
+    expressions: (self, ctx) => [self.realm, ctx.caseInsensitive(self.username)],
+    unique: true,
+    name: "users_realm_username_ci_idx",
+  },
 ],
 ```
+
+`where` (a `sql` fragment) makes any form a partial index. `expressions` receives the table's columns and a context: prefer `ctx.caseInsensitive(col)` over a hand-written `LOWER()`, since it emits `LOWER(col)` on PostgreSQL and `col COLLATE NOCASE` on SQLite, the only form drizzle-kit can introspect there in a multi-column unique index.
 
 ### Constraints
 
@@ -103,7 +112,7 @@ Relations between tables are NOT handled by `$entity`. Declare them separately w
 
 ### findMany
 
-Find multiple records. Supports where, limit, offset, orderBy, groupBy, distinct, columns, and with (joins).
+Find multiple records. Supports `where`, `limit`, `offset`, `orderBy`, `groupBy`, `distinct`, `columns`, and `with` (joins). There is no `sort` or `size` here: those belong to `paginate`.
 
 ```typescript
 const items = await this.repo.findMany({
@@ -114,9 +123,11 @@ const items = await this.repo.findMany({
 });
 ```
 
+`orderBy` takes a column name (`"name"`, ascending), one `{ column, direction }` clause, or an array of them. `columns` projects the row to the listed columns (the primary key is always read). `distinct` cannot be combined with `with`.
+
 ### findOne
 
-Find a single record. Returns `undefined` if not found.
+Find a single record. Returns `undefined` if not found. Takes `where` and `with` only.
 
 ```typescript
 const item = await this.repo.findOne({
@@ -160,7 +171,7 @@ const page = await this.repo.paginate(
 // page.page.totalPages    -> number (when count: true)
 ```
 
-The `sort` string is a comma-separated column list; prefix a column with `-` for descending order: `"name"`, `"-createdAt"`, `"role,-name"`.
+The first argument is the page query: `page` (0-based, default `0`), `size` (default `10`) and `sort`. The `sort` string is a comma-separated column list; prefix a column with `-` for descending order: `"name"`, `"-createdAt"`, `"role,-name"`. An `orderBy`, `limit` or `offset` in the second argument wins over them. Without `{ count: true }` no count query runs, and `totalElements` / `totalPages` stay unset.
 
 ### count
 
@@ -182,10 +193,12 @@ const results = await this.repo.query(
 );
 ```
 
+A raw statement skips everything the other methods do for a write: it does not stamp `updatedAt`, bump a `db.version()` column, invalidate the query cache or emit repository events. For dialect-neutral date expressions, see [Portable SQL](/docs/guides-persistence-portable-sql).
+
 ### aggregate
 
-Grouped aggregations (`sum`, `avg`, `min`, `max`, count) without writing raw SQL -
-see [Joins](/docs/guides-persistence-joins) for the aggregation pipeline it powers.
+Grouped aggregations (`sum`, `avg`, `min`, `max`, `count`) without writing raw SQL.
+It cannot be combined with `with` joins.
 
 A select key is normally a column, and `true` selects it as-is (which is what a
 `groupBy` key wants):
@@ -197,6 +210,8 @@ await this.repo.aggregate({
 });
 // -> [{ category: "books", amount: { sum: 500, avg: 25 } }]
 ```
+
+The query also takes `where` (applied before grouping, with the soft-delete filter), `having` (per aggregate, e.g. `{ amount: { sum: { gt: 100 } } }`), `orderBy` (dot notation reaches an aggregate: `"amount.sum"`), `limit` and `offset`.
 
 **Conditional buckets.** An operation can instead take `{ column, where }`,
 which compiles to `COUNT(CASE WHEN <where> THEN <column> END)`. Supplying
@@ -257,7 +272,7 @@ const created = await this.repo.create({
 
 ### createMany
 
-Batch-create entities. Inserts are batched in chunks of 1000 by default.
+Batch-create entities. Inserts are batched in chunks of 1000 by default, and fewer when a chunk would bind more values than the driver accepts (100 on Cloudflare D1). The returned array is in the same order as the input. The batches are not one atomic unit unless the call runs inside `$transactional`.
 
 ```typescript
 const items = await this.repo.createMany(
@@ -359,7 +374,7 @@ If the row was written since the entity was fetched (by `save` or any other upda
 
 ### deleteOne
 
-Delete a single entity matching the where clause. Returns an array of deleted IDs.
+Delete a single entity matching the where clause. Returns an array of deleted IDs (empty when nothing matched: unlike `deleteById`, it does not throw).
 
 ```typescript
 await this.repo.deleteOne({ name: { eq: "Widget" } });
@@ -400,7 +415,7 @@ await this.repo.clear();
 
 ### Soft Delete
 
-If the entity schema includes a `db.deletedAt()` column, all delete operations automatically perform a soft delete by setting the `deletedAt` timestamp instead of removing the row. All query operations automatically filter out soft-deleted records.
+If the entity schema includes a `db.deletedAt()` column, all delete operations automatically perform a soft delete by setting the `deletedAt` timestamp instead of removing the row. All query operations automatically filter out soft-deleted records. A soft delete is an update: it emits the `repository:update:*` events, not `repository:delete:*`.
 
 To perform a hard delete on a soft-deletable entity, pass `{ force: true }`:
 
@@ -475,16 +490,18 @@ if (status) where.status = status;
 
 ### String Operators
 
-| Operator        | Description                                                        |
-| --------------- | ------------------------------------------------------------------ |
-| `like`          | Pattern match (case-sensitive)                                     |
-| `notLike`       | Negated pattern match (case-sensitive)                             |
-| `ilike`         | Pattern match (case-insensitive)                                   |
-| `notIlike`      | Negated pattern match (case-insensitive)                           |
-| `eqInsensitive` | Case-insensitive equality                                          |
-| `contains`      | Case-insensitive substring match. Equivalent to `ilike: '%value%'` |
-| `startsWith`    | Case-insensitive prefix match. Equivalent to `ilike: 'value%'`     |
-| `endsWith`      | Case-insensitive suffix match. Equivalent to `ilike: '%value'`     |
+| Operator        | Description                                               |
+| --------------- | --------------------------------------------------------- |
+| `like`          | Pattern match (case-sensitive)                            |
+| `notLike`       | Negated pattern match (case-sensitive)                    |
+| `ilike`         | Pattern match (case-insensitive)                          |
+| `notIlike`      | Negated pattern match (case-insensitive)                  |
+| `eqInsensitive` | Case-insensitive equality                                 |
+| `contains`      | Case-insensitive substring match, like `ilike: '%value%'` |
+| `startsWith`    | Case-insensitive prefix match, like `ilike: 'value%'`     |
+| `endsWith`      | Case-insensitive suffix match, like `ilike: '%value'`     |
+
+`contains`, `startsWith` and `endsWith` escape `%` and `_` in the value, so user input is matched literally; `like` / `ilike` take a pattern as-is. Use `eqInsensitive`, never `ilike`, for a case-insensitive identifier lookup.
 
 ### PostgreSQL Array Operators
 
@@ -523,7 +540,7 @@ await this.repo.transaction(async (tx) => {
 });
 ```
 
-All repository methods accept `{ tx }` in their options parameter to participate in the transaction. Beyond `tx`, that options parameter also takes `force` (include soft-deleted rows), `for` (row locks, e.g. `{ for: "update" }`), `now` (override the timestamp used for `updatedAt`), and `cache` (per-statement cache control).
+All repository methods accept `{ tx }` in their options parameter to participate in the transaction (`tx: null` forces a statement outside the ambient `$transactional` one). Beyond `tx`, that options parameter also takes `force` (include soft-deleted rows), `for` (row locks, e.g. `{ for: "update" }`), `now` (override the timestamp used for `updatedAt`), and `cache` (see [Query cache](#query-cache)).
 
 On drivers without interactive transaction support - Cloudflare D1 - `transaction()` throws and tells you to use `$transactional()` instead.
 
@@ -587,6 +604,39 @@ class OrderService {
 
 Because nested `transactional()` blocks join the outermost transaction, the callback waits for the _outermost_ commit - even when the method is called from inside someone else's transaction. Callbacks run in registration order and are discarded if the transaction rolls back. Outside any transaction, `afterCommit` runs its callback immediately.
 
+## Query cache
+
+Read methods (`findMany` and the ones built on it) take a `cache` option that keeps the result in an in-process map:
+
+```typescript
+const items = await this.repo.findMany(
+  { where: { status: { eq: "active" } } },
+  { cache: { ttl: 60_000 } }, // milliseconds; `key` overrides the derived key
+);
+```
+
+Any write through the repository to the same table invalidates every cached query for it. The cache is per process (not shared between instances, and unrelated to `$cache`), and capped at 5000 entries. A raw `query()` write does not invalidate it.
+
+## Sequences
+
+`$sequence` declares a portable numeric counter, for human-readable numbers next to a UUID key (an order number, a ticket id). It works the same on PostgreSQL, SQLite and D1, backed by one shared `alepha_sequences` table:
+
+```typescript
+import { $sequence } from "alepha/orm";
+
+class Orders {
+  number = $sequence(); // name defaults to the property key
+
+  async next(shopId: string) {
+    const global = await this.number.next(); // the "default" scope
+    const perShop = await this.number.next(shopId); // one counter per scope
+    return { global, perShop };
+  }
+}
+```
+
+Options are `name`, `startWith` (default `1`) and `incrementBy` (default `1`). Besides `next(scope?)` there are `current(scope?)` (`null` before the first `next`) and `reset(value, scope?)`. The increment is one atomic statement: inside a real transaction a rollback returns the value; without one (D1) a failed insert leaves a gap, never a duplicate.
+
 ## Repository.of
 
 For inline repository creation without a separate entity variable:
@@ -619,15 +669,17 @@ Repository operations emit lifecycle events:
 
 ## Error Types
 
-| Error                    | Thrown When                                                  |
-| ------------------------ | ------------------------------------------------------------ |
-| `DbEntityNotFoundError`  | `getOne`, `getById`, `updateOne`, `deleteById` find no match |
-| `DbVersionMismatchError` | `save` detects a version conflict (optimistic locking)       |
-| `DbConflictError`        | Unique constraint violation                                  |
-| `DbForeignKeyError`      | Foreign key constraint violation                             |
-| `DbNotNullError`         | NOT NULL constraint violation                                |
-| `DbDeadlockError`        | Database deadlock detected                                   |
-| `DbTableNotFoundError`   | Referenced table does not exist                              |
-| `DbColumnNotFoundError`  | Referenced column does not exist                             |
-| `DbConnectionError`      | The database cannot be reached                               |
-| `DbMigrationError`       | A migration fails to apply                                   |
+| Error                      | HTTP | Thrown When                                                                    |
+| -------------------------- | ---- | ------------------------------------------------------------------------------ |
+| `DbEntityNotFoundError`    | 404  | `getOne`, `getById`, `updateOne`, `updateById`, `deleteById` find no match     |
+| `DbVersionMismatchError`   | 409  | `save` detects a version conflict (optimistic locking)                         |
+| `DbConflictError`          | 409  | Unique constraint violation                                                    |
+| `DbForeignKeyError`        | 409  | Foreign key constraint violation                                               |
+| `DbNotNullError`           | 400  | NOT NULL constraint violation                                                  |
+| `DbDeadlockError`          | 409  | Database deadlock detected                                                     |
+| `DbTooManyParametersError` | 400  | A statement binds more values than the driver accepts (split a long `inArray`) |
+| `DbTimeoutError`           | 503  | A query outlived its budget (`DATABASE_TIMEOUT` on D1)                         |
+| `DbTableNotFoundError`     | 500  | Referenced table does not exist                                                |
+| `DbColumnNotFoundError`    | 500  | Referenced column does not exist                                               |
+| `DbConnectionError`        | 503  | The database cannot be reached                                                 |
+| `DbMigrationError`         | -    | A migration fails to apply at startup                                          |

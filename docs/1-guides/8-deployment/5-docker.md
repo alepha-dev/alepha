@@ -7,7 +7,7 @@ alepha build --runtime node
 alepha image --tag
 ```
 
-`alepha image` reads `dist/manifest.json` and packages the first declared runtime slice. A workerd or static primary slice is refused because it cannot start a container process. The docker CLI is required; this command belongs to a local machine or CI runner.
+`alepha image` reads `dist/manifest.json` and packages the first declared runtime slice. Building needs an image name: `image.image.tag` in the config (see below), unless `--tag` is a complete `name:tag`. A workerd or static primary slice is refused because it cannot start a container process. The docker CLI is required; this command belongs to a local machine or CI runner.
 
 ## Dockerfile ownership
 

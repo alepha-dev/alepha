@@ -25,8 +25,8 @@ class ProductController {
     path: "/products",
     schema: {
       query: z.object({
-        page: z.integer().default(1).optional(),
-        limit: z.integer().default(10).optional(),
+        page: z.integer().default(1),
+        limit: z.integer().default(10),
       }),
       // good practice is to move complex schemas to separate files (api/schemas/*) and import them
       response: z.array(

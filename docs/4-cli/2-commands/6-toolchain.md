@@ -12,10 +12,12 @@ alepha test user                  # only specs whose path matches "user"
 alepha test test/auth.spec.ts     # a single file
 ```
 
-| Flag             | Description                                                                         |
-| ---------------- | ----------------------------------------------------------------------------------- |
-| `--config`, `-c` | Path to a Vitest config file                                                        |
-| `--shard`        | One slice of the spec files, `<index>/<count>` (e.g. `2/6`): one leg of a CI matrix |
+| Flag              | Description                                                                                                           |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `--config`, `-c`  | Path to a Vitest config file                                                                                          |
+| `--shard`         | One slice of the spec files, `<index>/<count>` (e.g. `2/6`): one leg of a CI matrix                                   |
+| `--project`, `-p` | Only run these Vitest projects, comma-separated. Accepts globs (`api*`)                                               |
+| `--coverage`      | Measure coverage and write `coverage/coverage-summary.json` and `coverage/test-results.json`, keeping the HTML report |
 
 Extra Vitest arguments go through the `VITEST_ARGS` environment variable:
 

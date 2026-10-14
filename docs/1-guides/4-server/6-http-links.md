@@ -288,17 +288,29 @@ In React, use `useClient<T>()` to call server actions from the browser:
 ```typescript
 import { useClient } from "alepha/react";
 
-function ProductPage() {
+const ProductPage = () => {
   const api = useClient<ProductController>();
 
   const loadProduct = async (id: string) => {
     const product = await api.getProduct({ params: { id } });
     // product is fully typed
   };
-}
+};
 ```
 
 In the browser, all calls go through HTTP. During SSR, local actions are called directly.
+
+### Batching
+
+Browser calls made within the same 10 ms window are coalesced into one `POST /api/_batch` request (at most 20 per batch, split beyond that). A lone call in its window goes out directly, identical calls (same action, params, query and body) share one result, and multipart uploads always bypass the batch. Each sub-action keeps its own status and error, sanitized like any other response (see [Error Handling](/docs/guides-server-error-handling)). Turn it off with the links options atom:
+
+```typescript
+import { linkOptionsAtom } from "alepha/server/links";
+
+alepha.store.mut(linkOptionsAtom, (o) => ({ ...o, batch: false }));
+```
+
+The same atom carries `hostname`: the origin every host-less browser call goes to. Leave it unset on the web, where the page's own origin is the API; set it in a native shell (Capacitor), whose WebView origin is not. Calls to that origin are not batched.
 
 ## How Links Work
 

@@ -103,7 +103,21 @@ All HTTP errors are serialized as JSON with a consistent structure:
 }
 ```
 
-The `error` field is the class name (e.g. `NotFoundError`, `ConflictError`). For plain `HttpError` instances, it is derived from the status code.
+The `error` field is the class name (e.g. `NotFoundError`, `ConflictError`). For plain `HttpError` instances, it is derived from the status code (or taken from an explicit `error` option).
+
+Two optional fields carry more than the message:
+
+- `details`: longer prose about the failure.
+- `data`: a machine-readable record for an error the client has to act on rather than display (the second-factor challenge uses it). `HttpClient` reads it back on the client.
+
+```typescript
+throw new HttpError({
+  status: 409,
+  message: "Slug already taken",
+  details: "Pick another slug or rename the existing page.",
+  data: { field: "slug" },
+});
+```
 
 ## Production Sanitization
 
@@ -148,6 +162,8 @@ Use the `server:onError` hook below to ship the unsanitized error to your logger
 
 Less common codes map too: 405 `MethodNotAllowedError`, 410 `GoneError`, 415 `UnsupportedMediaTypeError`, 501 `NotImplementedError`, 504 `GatewayTimeoutError`.
 
+An error that is not an `HttpError` but carries a numeric `status` from this table (common in upstream libraries) is answered with that status and name, under the same 5xx sanitization. Anything else becomes a `500 InternalServerError`.
+
 > Outside production, a handler that throws a bare `Error` triggers an explicit dev warning telling you it will surface as `"Internal Server Error"` once deployed - the sanitization above is invisible locally, so the warning is the only signal you get before production.
 
 ## Global Error Handling
@@ -174,7 +190,7 @@ class ErrorHandler {
 }
 ```
 
-The `server:onError` hook fires after the error is caught but before the response is sent. The response body is reset at this point and can be modified via `request.reply`.
+The `server:onError` hook receives `{ error, request, route }` and fires after the error is caught but before the response is sent. The reply's body and status are reset at this point. A hook that sets `request.reply.status` (a custom error page, for instance) owns the response, and the default JSON error is not written.
 
 ## Schema Validation Errors
 

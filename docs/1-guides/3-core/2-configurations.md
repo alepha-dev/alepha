@@ -61,6 +61,8 @@ class Config {
 }
 ```
 
+A value that must keep a literal `$KEY` escapes it as `$$KEY`: with `PORT` declared, a password set to `pa$$PORTss` reads `pa$PORTss` rather than `pa5432ss`. Only keys declared in the same schema are substituted; an unknown `$NAME` stays as written.
+
 ### Reading a variable under another name
 
 `aliases` lets a variable be read from other names when it is not set itself.
@@ -257,5 +259,7 @@ alepha.events.on("state:mutate", ({ key, value, prevValue }) => {
 });
 ```
 
-> Atoms is not only about configuration !
-> This powers SSR hydration, React integration, and devtools.
+> Atoms are not only about configuration.
+> They power SSR hydration, React integration, and devtools.
+
+For a value derived from one or more atoms, `$computed({ name, deps, get })` declares a read-only value recomputed on every read (`alepha.store.get(computed)`), never stored or hydrated. See [State Management](/docs/guides-frontend-state-management).

@@ -31,7 +31,8 @@ This creates a `my-app` directory with:
 - `.oxlintrc.json` and `.oxfmtrc.json` for linting and formatting
 - `src/api/` with an example controller
 - `src/web/` with a React router and page
-- `src/main.server.ts` and `src/main.browser.ts` as the entry files
+- `src/main.server.ts` and `src/main.browser.ts` as the entry files, plus `src/main.css`
+- `vite.config.ts` with the Tailwind plugin
 - `AGENTS.md` and `CLAUDE.md` so AI assistants know the project's conventions
 - the supporting files: `.gitignore`, `.editorconfig`, `.env.example`,
   `.vscode/` settings, `public/favicon.svg`, and a starter `test/dummy.spec.ts`
@@ -307,8 +308,8 @@ npx alepha init my-app --preset=saas
 
 `saas` adds `@alepha/ui` and three routers - sign-in at `/auth/*`, an account
 area at `/account/*`, an admin console at `/admin/*` - plus the `$realm` in
-`src/api/Realm.ts` that configures them. Nothing moves; you get one extra file
-and a longer `src/web/index.ts`.
+`src/api/Realm.ts` that configures them. Nothing moves; you get that one extra source file,
+a longer `src/web/index.ts`, and a gitignored `.env` carrying `ADMIN_EMAIL`.
 
 Full details in the [init command reference](/docs/cli-commands-init).
 

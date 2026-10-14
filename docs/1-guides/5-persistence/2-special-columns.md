@@ -18,9 +18,12 @@ db.primaryKey(); // UUID, app-generated time-ordered UUIDv7 - default
 db.primaryKey(z.uuid()); // UUID, same app-side UUIDv7 generation
 db.primaryKey(z.integer()); // integer with identity (auto-increment)
 db.primaryKey(z.bigint()); // bigint with identity
+db.primaryKey(z.text()); // natural key (a slug, an external id): no default
 ```
 
 Calling `db.primaryKey()` with no argument creates a UUID column. Ids are generated in the application as [UUIDv7](https://www.rfc-editor.org/rfc/rfc9562) - time-ordered, so `ORDER BY id` matches insertion order and index locality stays as good as an integer key - and work identically on PostgreSQL, SQLite, and Cloudflare D1, on any database version. Unlike integer keys, they never leak row counts, can be generated before the row is inserted, and merge safely across databases.
+
+A text primary key other than `z.uuid()` has no generated value: the caller supplies it on every insert, and omitting it fails validation.
 
 Note that a UUIDv7 embeds its creation timestamp: anyone holding an id can read when the row was created. If that matters - or when humans need to read the ids - use an integer identity key instead, with a `$sequence` for display numbers.
 
@@ -28,9 +31,11 @@ There are also explicit shortcut methods:
 
 ```typescript
 db.identityPrimaryKey(); // integer with identity
-db.bigIdentityPrimaryKey(); // bigint with identity
+db.bigIdentityPrimaryKey(); // 64-bit integer with identity, read as a JS number
 db.uuidPrimaryKey(); // UUID
 ```
+
+The identity forms take optional PostgreSQL identity options (e.g. `{ mode: "byDefault" }`) as their last argument.
 
 Every entity must have exactly one primary key. Multiple primary keys are not supported.
 
@@ -98,6 +103,28 @@ To store as a TEXT column instead of a real PostgreSQL ENUM, use `mode: "text"`:
 status: z.enum(["pending", "active", "archived"]).meta({ mode: "text" }),
 ```
 
+Without a `name`, the PostgreSQL type is named `<table>_<column>_enum`. SQLite has no enum type: there the column is always TEXT, and the schema validates the value.
+
+## Column Types
+
+Plain Zod schemas map to columns without a helper:
+
+| Schema                                   | PostgreSQL                 | SQLite               |
+| ---------------------------------------- | -------------------------- | -------------------- |
+| `z.text()`, `z.email()`, ...             | `text`                     | `text`               |
+| `z.uuid()`                               | `uuid`                     | `text`               |
+| `z.integer()`                            | `integer`                  | `integer`            |
+| `z.number()`                             | `double precision`         | `real`               |
+| `z.boolean()`                            | `boolean`                  | `integer` (0 / 1)    |
+| `z.datetime()`                           | `timestamptz`              | `integer` (epoch ms) |
+| `z.date()`                               | `date`                     | `integer` (epoch ms) |
+| `z.binary()` (base64 string)             | `bytea`                    | JSON text            |
+| `z.object()`, `z.record()`, `z.any()`    | `jsonb`                    | JSON text            |
+| `z.array()` of objects                   | `jsonb`                    | JSON text            |
+| `z.array()` of text / numbers / booleans | native array (`text[]`...) | JSON text            |
+
+The different storage of timestamps is why raw date SQL is not portable: see [Portable SQL](/docs/guides-persistence-portable-sql).
+
 ## Default Values
 
 `db.default()` wraps a schema with a default value at the database level.
@@ -144,7 +171,7 @@ By default, `db.ref()` infers the `onDelete` action from the column type:
 - If the column is optional (`.optional()`), the default is `"set null"`.
 - If the column is required, the default is `"cascade"`.
 
-You can override this behavior with explicit actions:
+Passing an actions object replaces that inference entirely: `{ onUpdate: "cascade" }` alone leaves `onDelete` unset. You can override this behavior with explicit actions:
 
 ```typescript
 teamId: db.ref(z.uuid().optional(), () => team.cols.id, {
@@ -154,6 +181,8 @@ teamId: db.ref(z.uuid().optional(), () => team.cols.id, {
 ```
 
 Available actions: `"cascade"`, `"restrict"`, `"no action"`, `"set null"`, `"set default"`.
+
+⚠️ `.optional()` goes **inside** `db.ref(...)`, on the type argument. Written outside (`db.ref(z.uuid(), ...).optional()`), the column is still nullable but no foreign key is generated, silently, and the migration check cannot catch it.
 
 ## Full Example
 

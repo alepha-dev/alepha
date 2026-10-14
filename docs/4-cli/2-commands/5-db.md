@@ -18,9 +18,9 @@ Migrations are written to `migrations/<provider>/` - one directory per database 
 
 All subcommands accept:
 
-| Flag         | Description                                                                                                      |
-| ------------ | ---------------------------------------------------------------------------------------------------------------- |
-| `--provider` | Target a single database provider by name (e.g. `postgres`, `sqlite`). Default: all providers with repositories. |
+| Flag         | Description                                                                                                                                                                                                   |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--provider` | Target a single database provider by name (e.g. `postgres`, `sqlite`). Default: all providers with repositories. `migrations apply` accepts it but always boots the whole app, so every provider is migrated. |
 
 ## Commands
 
@@ -99,6 +99,19 @@ Launch [Drizzle Studio](https://orm.drizzle.team/drizzle-studio/overview), a bro
 ```bash
 alepha db studio
 ```
+
+### doctor
+
+Report SQLite rows whose stored type disagrees with their column's declared type.
+
+```bash
+alepha db doctor
+alepha db doctor --print     # print the audit statements instead of running them
+```
+
+`migrations check` compares the schema to the entities and never reads a row. `doctor` is the other half: a SQLite table that is not `STRICT` stores a wrong-typed value verbatim, and one text row in an integer column sorts ahead of the whole table. It exits non-zero when a column holds values of the wrong storage class, naming each one. Postgres rejects a wrong-typed value on write, so it is skipped, and an app with no database has nothing to audit.
+
+`--print` emits the statements for a database this machine cannot reach, to run with `wrangler d1 execute --remote --command`.
 
 ## Local vs Deployed
 

@@ -1,6 +1,6 @@
 # Caching
 
-`$cache` provides a caching system with two modes: automatic function result caching and manual key-value store operations. In-memory by default, with Redis support for distributed environments.
+`$cache` provides a caching system with two modes: automatic function result caching, and a key-value store that also works as a middleware. In-memory by default on Node and Bun, with Redis, database and Cloudflare backends.
 
 ```typescript check
 import { $cache } from "alepha/cache";
@@ -30,7 +30,7 @@ Call it like a regular function. The first call executes the handler and caches 
 const user = await this.getUserData("some-uuid");
 ```
 
-The cache key is derived from the function arguments by default (via `JSON.stringify`). If the handler throws an error, the result is not cached.
+The cache key is derived from the function arguments by default (via `JSON.stringify`). If the handler throws an error, the result is not cached. Concurrent misses on the same key share one handler call (single-flight), and a failed cache write is logged, never thrown: the computed result is still returned.
 
 ## Manual Store Operations
 
@@ -54,27 +54,51 @@ class SessionService {
 }
 ```
 
+### As a middleware
+
+Without a `handler`, the cache is also a middleware: put it in the `use` array of a `$pipeline` (or anything that takes middlewares) and it caches that handler's result, with the same key derivation, single-flight and `stale` behavior. The same object remains a store, so it can invalidate what it cached:
+
+```typescript
+class UserService {
+  userCache = $cache({ name: "users", ttl: [10, "minutes"] });
+
+  fetchUser = $pipeline({
+    use: [this.userCache],
+    handler: async (userId: string) => this.repo.getById(userId),
+  });
+
+  async rename(userId: string, name: string) {
+    await this.repo.updateById(userId, { name });
+    await this.userCache.invalidate(JSON.stringify([userId]));
+  }
+}
+```
+
+A cache is a no-op until the container has started, when it is `disabled`, or when `cacheOptions.enabled` is `false`: reads miss, writes are dropped, and `incr` returns `amount`. The `enabled` getter tells you which, for code that uses the cache as infrastructure rather than as an optimisation.
+
 ## Options
 
-| Option     | Type                  | Default                    | Description                                              |
-| ---------- | --------------------- | -------------------------- | -------------------------------------------------------- |
-| `name`     | `string`              | `ClassName:propertyKey`    | Cache namespace. Keys are stored as `cache:<name>:<key>` |
-| `handler`  | `Function`            | -                          | Function whose results are cached automatically          |
-| `ttl`      | `DurationLike`        | `[300, "seconds"]` (5 min) | Time-to-live. Set `0` to disable expiration              |
-| `key`      | `Function`            | `JSON.stringify(args)`     | Custom key generator from handler arguments              |
-| `provider` | `Class` or `"memory"` | Injected `CacheProvider`   | Override the cache backend                               |
-| `compress` | `boolean`             | `false`                    | Enable gzip compression (60-80% size reduction)          |
-| `disabled` | `boolean`             | `false`                    | Disable caching entirely                                 |
-| `memory`   | `true` or options     | off                        | Add an in-process L1 memory tier in front of `provider`  |
-| `stale`    | `DurationLike`        | off                        | Stale-while-revalidate window after `ttl` expires        |
+| Option     | Type                  | Default                    | Description                                             |
+| ---------- | --------------------- | -------------------------- | ------------------------------------------------------- |
+| `name`     | `string`              | `ClassName:propertyKey`    | Cache namespace (the container part of every key)       |
+| `handler`  | `Function`            | -                          | Function whose results are cached automatically         |
+| `ttl`      | `DurationLike`        | `[300, "seconds"]` (5 min) | Time-to-live. Set `0` to disable expiration             |
+| `key`      | `Function`            | `JSON.stringify(args)`     | Custom key generator from handler arguments             |
+| `provider` | `Class` or `"memory"` | Injected `CacheProvider`   | Override the cache backend                              |
+| `compress` | `boolean`             | `false`                    | Enable gzip compression (60-80% size reduction)         |
+| `disabled` | `boolean`             | `false`                    | Disable caching entirely                                |
+| `memory`   | `true` or options     | off                        | Add an in-process L1 memory tier in front of `provider` |
+| `stale`    | `DurationLike`        | off                        | Stale-while-revalidate window after `ttl` expires       |
 
 ### L1 Memory Tier
 
 `memory: true` puts a process-local memory cache in front of the provider. Reads check memory first and fall back to the provider on miss; writes go to both tiers, so your own writes are immediately visible. Each process/isolate has its own L1 - `invalidate()` clears the local L1 plus the remote provider, but other processes keep their L1 until its TTL expires, so use a short L1 TTL to bound the staleness window.
 
+Pass an object instead of `true` to tune it: `ttl` (default the smaller of the cache's `ttl` and 30 seconds), `max` (LRU bound, default 500 entries) and `negative` (also remember provider misses for that duration, off by default).
+
 ### Stale-While-Revalidate
 
-With `stale` set, a value that outlived its `ttl` remains servable for the `stale` window: reads return the stale value immediately and trigger one background refresh (single-flight per key). Requires a `handler`, since the cache needs to know how to recompute.
+With `stale` set, a value that outlived its `ttl` remains servable for the `stale` window: reads return the stale value immediately and trigger one background refresh (single-flight per key). Requires a `handler`, or middleware mode, since the cache needs to know how to recompute.
 
 ```typescript
 getPrices = $cache({
@@ -212,7 +236,10 @@ Compression adds CPU overhead but reduces storage by 60-80% for typical JSON dat
 
 By default, caching uses in-memory storage (`MemoryCacheProvider`). For distributed caching across multiple instances, switch to Redis.
 
-Memory and Redis are not the only backends: on Cloudflare Workers the default is `CloudflareKVProvider` (backed by Workers KV), and `DatabaseCacheProvider` stores entries in the app's own database - useful when you want durable caching with no extra infrastructure.
+Memory and Redis are not the only backends:
+
+- `DatabaseCacheProvider` (`alepha/cache/database`, module `AlephaCacheDatabase`) stores entries in a `cache_entries` table of the app's own database, with an atomic `incr`. Registering the module does not change the default: pass `provider: DatabaseCacheProvider` to a `$cache`, or substitute it for `CacheProvider`.
+- On Cloudflare Workers the default is `CloudflareCacheProvider`, which resolves at start to the database cache when the app has a database, and to `CloudflareKVProvider` (Workers KV) only when it does not. KV is eventually consistent, has a 60 second TTL floor, and its `incr` can lose an update under concurrency.
 
 ### Module Registration
 
@@ -259,6 +286,10 @@ import { cacheOptions } from "alepha/cache";
 
 alepha.store.mut(cacheOptions, (c) => ({ ...c, enabled: false }));
 ```
+
+## Events
+
+Every cache emits `cache:hit`, `cache:miss` and `cache:set` (`{ container, key }`, plus `ttlMs` on `set`), and with `stale`, `cache:stale` when a stale value is served and `cache:revalidate` when its background refresh lands.
 
 ## Serialization
 

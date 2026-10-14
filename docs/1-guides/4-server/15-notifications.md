@@ -23,6 +23,15 @@ asked "did it arrive?" about.
 
 ## 1. Declaring a template
 
+`$notification` needs `AlephaApiNotifications` registered, which brings
+`alepha/api/jobs` and `alepha/api/parameters` with it:
+
+```typescript
+import { AlephaApiNotifications } from "alepha/api/notifications";
+
+alepha.with(AlephaApiNotifications);
+```
+
 ```typescript
 import { z } from "alepha";
 import { $notification } from "alepha/api/notifications";
@@ -41,6 +50,7 @@ class Notifications {
 
 | option         | what it changes at send time                                              |
 | -------------- | ------------------------------------------------------------------------- |
+| `name`         | the template's identity in receipts and the admin (default: property key) |
 | `schema`       | validates `variables` on every push                                       |
 | `category`     | what an unsubscribe link switches off                                     |
 | `critical`     | bypasses `unsubscribed`, carries no unsubscribe header                    |
@@ -49,6 +59,11 @@ class Notifications {
 
 `critical` is for messages the recipient needs in order to use their account:
 a password reset, a sign-in code. It is not a way to make marketing arrive.
+
+Channel blocks sit flat beside these options: `email: { subject, body, text? }`,
+`sms: { message }`, `inbox: { ... }` (section 13), plus any channel a plugin
+adds (section 12). One template may declare several; each push writes one job
+per declared channel.
 
 ## 2. Writing the body, and its three sharp edges
 
@@ -59,7 +74,8 @@ a template edited in an admin UI is unversioned state that no longer matches
 the code deployed against it.
 
 `subject` and `text` take the same union, and see the same variables plus
-`unsubscribeUrl`. Build the subject whenever the message is about something
+`unsubscribeUrl`. `text` is optional: without it the sender derives a plain-text
+part from the rendered HTML. Build the subject whenever the message is about something
 in particular: the subject line is what a phone shows in its notification, so
 a sign-in code that is only in the body is a code the recipient has to open a
 mail client to read.
@@ -150,7 +166,16 @@ await this.reminder.pushMany({
 });
 ```
 
-`push` also takes `scheduledAt`, `delay` and `key`.
+`push` also takes `lang`, `scheduledAt`, `delay`, `key`, `inline` and
+`attachments` (section 8). `pushMany` takes `scheduledAt`, `delay` and a `key`
+function `(contact) => string`.
+
+> **`inline: true` sends now and waits.** The promise resolves once the
+> provider accepted the message and rejects if it refused; nothing retries it.
+> It exists for codes that expire before a retry could land. A template with
+> several channels blocks on each in turn, and a send addressed to somebody
+> other than the caller must not use it: response time would reveal whether
+> the account exists. See [Background Jobs](/docs/guides-server-background-jobs).
 
 > **`scheduledAt` is bounded by the sweep, not the minute.** A future date
 > writes a `scheduled` row that the sweep promotes on its next tick (every 15
@@ -164,8 +189,10 @@ await this.reminder.pushMany({
 > second row and sends a second message. For "at most one reminder per day",
 > keep your own marker on the subject row.
 
-Outside a request there is no language to infer, so give each contact its own
-`lang` if it matters.
+Without `lang`, `push` takes the language from the current request (the `lang`
+cookie, then `Accept-Language`). Outside a request there is no language to
+infer, and `pushMany` never guesses, so give each contact its own `lang` if it
+matters.
 
 ## 5. Suppression and preferences
 
@@ -271,6 +298,10 @@ To ingest bounces and complaints:
   unset secret refuses every call.
 - **SMTP**: no async events exist. Bounces arrive as mail to the `From`
   address and are out of scope.
+
+A custom transport feeds the same pipeline by emitting the
+`notification:delivery` hook with `{ provider, messageId, contact, channel,
+status, bounce?, raw, occurredAt }`; the built-in webhooks do exactly that.
 
 Only a **hard** bounce suppresses. Cloudflare marks every `message.bounced`
 terminal, including ones that merely exhausted temporary retries; the split

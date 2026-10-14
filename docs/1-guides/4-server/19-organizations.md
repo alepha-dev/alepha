@@ -22,8 +22,17 @@ created with an owner membership.
 ## Organizations and members
 
 `OrganizationController` provides create, list, read, update, and delete
-actions. `MemberController` lists, adds, removes, and ranks members, and owns
-the explicit leave and ownership transfer actions.
+actions under `/organizations`. `MemberController` lists and removes members
+(`/organizations/:organizationId/members`) and owns the explicit `leave` and
+ownership `transfer` actions. There is no "add member" endpoint: a member joins
+by accepting an invitation, and assigning a rank belongs to
+`OrganizationRankController` (see [Ranks](#ranks)). Server code can call
+`MemberService.add()` directly.
+
+`AdminOrganizationController` (`/admin/organizations`, gated by
+`admin:organization:read`, `:update`, `:delete`) and
+`AdminOrganizationInvitationController` (`/admin/organization-invitations`,
+`admin:invitation:read`) serve the back office.
 
 Ownership is transferred, never assigned as an ordinary rank. The transfer
 updates the old and new owner together, so an organization is not left with
@@ -90,6 +99,13 @@ Here `$owns` loads the project, then matches memberships with
 `project.organizationId`. A missing or null key fails closed. `through` is
 also available for routes whose row belongs to another authority row.
 
+`$ownsOrganization` also passes `from`, `resolve`, `secure`, `cache` and
+`message` straight to `$owns` (see
+[Resource Authorization](/docs/guides-server-resource-authorization)). It has
+no `owner` option: membership is the whole answer, and the owner is simply the
+member holding the `owner` rank. The default denial message is
+`Not a member of this organization`.
+
 ## Ranks
 
 A rank answers what somebody may do inside one organization. Roles remain
@@ -128,6 +144,11 @@ An organization invitation is keyed by email rather than user ID, so it can
 address someone who has no account without creating a placeholder user. Its
 status moves from `pending` to `accepted`, `declined`, `expired`, or `revoked`.
 
+`OrganizationInvitationController` creates, lists and revokes invitations under
+`/organizations/:organizationId/invitations`, and serves the recipient's side
+under `/organizations/invitations`: `me` (my pending invitations), `preview`,
+and `:invitationId/accept` / `:invitationId/decline`.
+
 Creating an invitation checks the inviter's rank, validates the target rank,
 checks organization capacity through `OrganizationPolicyProvider.assertRoom`,
 and enforces the configured pending caps. Acceptance checks capacity again,
@@ -149,6 +170,11 @@ $hook({
   },
 });
 ```
+
+The module emits a hook at every step: `organization:invitation:created`,
+`:accepted`, `:declined`, `:expired` and `:revoked`, plus
+`organization:member:removed` (with `leave: true` when the member left) and
+`organization:ownership:transferred`.
 
 The token is valid only while the invitation is pending, unexpired, and bound
 to the registering email address. Revocation changes status instead of
@@ -175,11 +201,27 @@ verification message.
 
 ## Configuration and jobs
 
-`organizationConfigAtom` configures the member default, permission floor,
-owner-only ceiling, invitation expiry, pending caps, and resolved-invitation
-retention. `OrganizationInvitationJobs` expires overdue invitations and
-purges old resolved rows hourly. Set `invitationPurgeDays` to `0` to keep the
-audit rows indefinitely.
+`organizationConfigAtom` configures:
+
+| Key                                    | Default                   |
+| -------------------------------------- | ------------------------- |
+| `memberPermissions`                    | `[]`                      |
+| `floor`                                | `[]`                      |
+| `ownerOnly`                            | `["organization:delete"]` |
+| `invitationExpirationDays`             | `7`                       |
+| `maxPendingInvitationsPerOrganization` | `50`                      |
+| `maxPendingInvitationsPerInviter`      | `100`                     |
+| `invitationPurgeDays`                  | `90`                      |
+
+`OrganizationInvitationJobs` expires overdue invitations
+(`system.organization-invitations.expire`) and purges old resolved rows
+(`system.organization-invitations.purge-resolved`), both hourly. Set
+`invitationPurgeDays` to `0` to keep the audit rows indefinitely.
+
+Registering the module substitutes `RankGrantsProvider` for
+`ResourceGrantsProvider`, so every `requires` in the application becomes
+rank-aware. It must be registered before the classes whose `$owns` gates use
+`requires`; the wrong order throws at boot.
 
 ## See also
 

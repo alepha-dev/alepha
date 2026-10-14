@@ -22,12 +22,14 @@ Atoms must contain only serializable data. Avoid storing class instances, functi
 
 **Options:**
 
-| Option        | Type       | Description                                              |
-| ------------- | ---------- | -------------------------------------------------------- |
-| `name`        | `string`   | Unique identifier for the atom.                          |
-| `schema`      | `ZType`    | Zod schema for validation.                               |
-| `default`     | `Infer<T>` | Default value. Required unless schema is fully optional. |
-| `description` | `string`   | Optional description for documentation.                  |
+| Option        | Type                                             | Description                                                                   |
+| ------------- | ------------------------------------------------ | ----------------------------------------------------------------------------- |
+| `name`        | `string`                                         | Unique identifier for the atom.                                               |
+| `schema`      | `ZType`                                          | Zod schema for validation.                                                    |
+| `default`     | `Infer<T>`                                       | Default value. Required unless schema is fully optional.                      |
+| `description` | `string`                                         | Optional description for documentation.                                       |
+| `persist`     | `"cookie" \| "localStorage" \| "sessionStorage"` | Keep the value across requests or reloads - see [Persistence](#persistence).  |
+| `serverOnly`  | `boolean`                                        | Keep the atom out of the SSR hydration payload - see [Utilities](#utilities). |
 
 ## useStore Hook
 
@@ -48,6 +50,8 @@ const Counter = () => {
 ```
 
 When the state changes (from any source), the component re-renders automatically.
+
+The setter takes the next value, not an updater function: write `setState({ ...state, count: state.count + 1 })`, never `setState((prev) => ...)`.
 
 ### Using with Atom
 

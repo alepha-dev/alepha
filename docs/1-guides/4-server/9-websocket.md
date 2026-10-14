@@ -259,6 +259,8 @@ function Chat() {
 
 `useRoom` returns `{ send, isConnected, isConnecting, isError, error, reconnect, disconnect }`. On the server (SSR), it no-ops safely.
 
+Besides `roomId`, `channel` and `handler`, `useRoom` takes `url`, `autoReconnect`, `reconnectInterval`, `maxReconnectAttempts` and the callbacks `onConnect`, `onDisconnect` and `onError`.
+
 The connection URL is auto-detected from `window.location` by default. Override it with the `url` option, or via environment variables:
 
 | Env Var                            | Default            | Description                                       |
@@ -285,7 +287,7 @@ chat = $websocket({
 Identity is resolved from the WebSocket handshake through `alepha/security`'s usual resolver chain, fed with the handshake's URL and headers (including `cookie`). Browsers cannot set custom headers on a WebSocket handshake, so in practice this means:
 
 - A session **cookie** is sent automatically by the browser and works out of the box.
-- Any other credential (e.g. a bearer token) must travel as a query parameter - `?token=` or `?api_key=` - since it can't go in an `Authorization` header.
+- An API key (with the realm's `apiKeys` feature on) can travel as the `?api_key=` query parameter, since it can't go in an `Authorization` header. There is no query parameter for a JWT: a non-browser client that can set headers sends `Authorization: Bearer ...` on the handshake instead.
 
 An unauthenticated connection to a `secure: true` endpoint is rejected before the upgrade completes. This works identically on both the Node and Cloudflare providers.
 
@@ -318,7 +320,13 @@ Three things follow from returning `{ roomId }` rather than a user:
 
 ## Node / VPS
 
-On Node, `alepha/websocket` runs on top of the `ws` package, attached to the same HTTP server as the rest of your app. A connection can join multiple rooms at once (e.g. `?roomIds=room-1,room-2`) - `useRoom`/`WebSocketClient` sends all active room subscriptions as query params when it connects.
+On Node, `alepha/websocket` runs on top of the `ws` package, attached to the same HTTP server as the rest of your app. A frame larger than `maxPayload` on the `websocketOptions` atom (1 MiB by default) closes the connection with code `1009` before it is parsed:
+
+```typescript
+Alepha.create({ [websocketOptions.key]: { maxPayload: 4 * 1024 * 1024 } });
+```
+
+A connection can join multiple rooms at once (e.g. `?roomIds=room-1,room-2`) - `useRoom`/`WebSocketClient` sends all active room subscriptions as query params when it connects.
 
 For horizontal scaling across multiple Node instances, server-initiated messages (`reply()`, `emit()`) are distributed via `alepha/topic` (in-memory locally, Redis in production via `alepha/topic/redis`): one instance publishes, every instance receives, and each forwards to its own local connections that match.
 

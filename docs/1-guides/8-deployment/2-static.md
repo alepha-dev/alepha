@@ -14,7 +14,7 @@ The build process:
 2. Pre-renders the root `/` page to `index.html`
 3. Generates `404.html` and `200.html` as SPA shells (empty `<div id="root"></div>`)
 4. Writes a `CNAME` file for Surge deployment
-5. Removes all server artifacts, keeping only the `public/` directory
+5. Removes all server artifacts, keeping only the `public/` directory and the manifest
 
 ## Output Structure
 
@@ -26,6 +26,7 @@ dist/
     404.html         # Not-found fallback
     CNAME            # Surge domain
     entry.*.js, chunk.*.js, asset.*   # JS, CSS, images, at the root
+  manifest.json      # What the build declared
 ```
 
 ## Deploy

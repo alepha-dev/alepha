@@ -88,6 +88,7 @@ my-app/
 │   └── main.css                     # @import "tailwindcss"
 ├── test/dummy.spec.ts
 ├── public/favicon.svg
+├── .env.example                     # committed template for .env
 ├── alepha.config.ts
 ├── vite.config.ts                   # Tailwind plugin + Vitest config
 ├── tsconfig.json
@@ -150,7 +151,7 @@ Admin and account pages follow the same rule automatically. Each one resolves it
 
 The preset mounts `AlephaOrm`, so `.env.example` carries a `DATABASE_URL` defaulting to a local sqlite file. In development `DATABASE_SYNC` defaults to `true`: your entities are pushed to the database on boot, and there is nothing to generate before the first `alepha dev`.
 
-Before deploying, freeze the schema:
+`init` also freezes the schema it just mounted: it runs `alepha db migrations create --name=initial_schema`, so the project passes `alepha verify` (which always runs `db migrations check`) on commit zero, and a production boot finds migrations to apply. If that step fails, `init` warns and continues; run it yourself before your first `verify` or deploy. After changing an entity, generate the next one:
 
 ```bash
 alepha db migrations create

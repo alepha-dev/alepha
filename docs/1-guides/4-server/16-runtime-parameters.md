@@ -193,7 +193,9 @@ await this.pricing.rollback(3, { user, changeDescription: "revert bad edit" });
 
 `rollback()` does not delete anything. It copies the target version's content
 into a new version at the head, so the mistake and the reversal are both in the
-history.
+history. `delete()` is the one call that does: it removes every version of the
+parameter, which then reads its `default` again. `reload()` forces a re-read
+from the database without waiting for the cache to expire.
 
 `getVersionAt()` is the one worth knowing about:
 

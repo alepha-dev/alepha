@@ -64,6 +64,8 @@ The `challenge` is a signed, five-minute assertion that the password was verifie
 
 `POST /_auth/mfa` with `{ challenge, code }` mints the real session and answers with the same body a plain sign-in does, so a client only branches once.
 
+`POST /_auth/mfa/resend` with `{ challenge }` sends an out-of-band code again and answers `{ sentTo }`. It is a no-op for TOTP, whose code never leaves the user's device.
+
 ### From React
 
 ```typescript
@@ -83,7 +85,9 @@ try {
 }
 ```
 
-`@alepha/ui`'s `AuthLogin` already does this: it swaps its form for the code step on a challenge, and offers a resend button when the method is `emailCode`. Applications with a hand-rolled login page use the two calls above.
+`useAuth()` also returns `resendMfaCode(challenge)`, the client side of the resend route.
+
+`@alepha/ui`'s `AuthLogin` already does this: it swaps its form for the code step on a challenge, and offers a resend button when the method is `emailCode`. Applications with a hand-rolled login page use the calls above.
 
 ## Enrollment
 
@@ -114,7 +118,7 @@ Set `displayName`. Without it the issuer is the realm name, which for every sing
 realm = $realm({
   settings: {
     displayName: "Customer Portal", // ← what the phone will show
-    mfa: { totp: "required" },
+    mfa: { totp: "required", emailCode: "disabled" },
   },
 });
 ```

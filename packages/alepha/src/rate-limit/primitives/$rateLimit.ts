@@ -145,7 +145,7 @@ export class RateLimitPrimitive<TInput = string> extends Primitive<
    *
    *   find = $action({
    *     use: [this.search.middleware()],
-   *     handler: async () => [],
+   *     handler: async () => "ok",
    *   });
    * }
    * ```

@@ -110,14 +110,23 @@ const executionId = await this.welcome.push({ userId: "u1" });
 
 `push()` accepts a second options argument:
 
-| Option        | Type           | Description                              |
-| ------------- | -------------- | ---------------------------------------- |
-| `delay`       | `DurationLike` | Run no earlier than now + delay          |
-| `scheduledAt` | `Date`         | Run no earlier than this instant         |
-| `key`         | `string`       | Deduplication key - see the caveat below |
+| Option            | Type           | Description                                                                               |
+| ----------------- | -------------- | ----------------------------------------------------------------------------------------- |
+| `delay`           | `DurationLike` | Run no earlier than now + delay                                                           |
+| `scheduledAt`     | `Date`         | Run no earlier than this instant                                                          |
+| `key`             | `string`       | Deduplication key - see the caveat below                                                  |
+| `inline`          | `boolean`      | Run now and wait, no retry - see [`inline`](#inline-when-a-retry-is-worse-than-a-failure) |
+| `triggeredBy`     | `string`       | Who pushed it (user id), shown in the admin                                               |
+| `triggeredByName` | `string`       | Display name for `triggeredBy`                                                            |
 
 `pushMany()` takes an array of `{ payload, key?, delay?, scheduledAt? }`
 and writes them in a batched INSERT.
+
+`trigger()` runs a job now, outside its schedule: a cron job fires its handler
+once (see [Multi-replica deployments](#multi-replica-deployments) for how it
+avoids overlapping a tick), a queue job takes `{ payload }` and is pushed like
+any other. Both accept `triggeredBy` / `triggeredByName`; it is what the
+admin's "run now" button calls.
 
 ### `key` dedups in-flight work, not completed work
 

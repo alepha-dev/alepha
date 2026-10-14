@@ -107,8 +107,10 @@ class ArchiveController {
 Three consequences worth knowing before you reach for it:
 
 - **The bytes can be read once.** There is no going back for a second pass.
-- **`size` is `0`.** The length is not known until the stream has been read, and
-  it is not guessed.
+- **There is no `size`.** The handler receives the raw part (`name`,
+  `filename`, `mediaType`, `headers` and the byte iterable `data`), not a
+  `FileLike`: the length is not known until the stream has been read, and it is
+  not guessed.
 - **Parsing stops at the streamed part.** Whatever follows it in the message is
   never read, because the handler - not the parser - is driving. A client that
   wants other fields honoured must send them _before_ the file. This is inherent

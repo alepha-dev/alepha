@@ -207,7 +207,8 @@ Shows: workers (deployed/not deployed, version, date), databases, buckets, KV na
 Manage the deploy credential explicitly:
 
 ```bash
-alepha infra login --env production    # opens the Wrangler OAuth flow; probes with a real API call
+alepha infra login --env production            # opens the Wrangler OAuth flow; probes with a real API call
+alepha infra login --env production --device   # device code instead of a browser redirect (SSH, containers)
 alepha infra logout --env production
 ```
 
@@ -280,7 +281,7 @@ dev database, since the storage directory only serves the dev server.
 Sync secrets from `.env.{env}` to an external CI secret store - currently GitHub Actions environments via the `gh` CLI. This is separate from the runtime secrets pushed during `alepha deploy`. Alias: `alepha infra sec`.
 
 ```bash
-alepha infra secrets list           # list remote secret names (--format=gha for a ready-to-paste env: block)
+alepha infra secrets list           # alias ls; remote secret names (--format=gha for a ready-to-paste env: block)
 alepha infra secrets diff           # compare local .env.{env} keys against the remote store
 alepha infra secrets apply          # push local secrets (upsert; never deletes) - --dry-run to preview
 ```

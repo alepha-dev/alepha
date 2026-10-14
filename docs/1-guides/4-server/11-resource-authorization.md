@@ -216,6 +216,35 @@ $owns({
 
 A body value is caller-controlled in a way a path segment is not. That widens nothing: it is still just an id handed to `findById`, and the gate is what decides access - a caller naming somebody else's row gets a 403 for it.
 
+When no request source names the row at all (a single-tenant deployment with exactly one container row), compute the id with `resolve` instead of `param`:
+
+```typescript
+$owns({
+  repository: () => this.clubs,
+  resolve: async () => (await this.clubs.getOne({})).id,
+  via: {
+    repository: () => this.members,
+    resource: "clubId",
+    user: "userId",
+  },
+});
+```
+
+`resolve` receives the guard context (`user`, `params`, `query`, `body`, `alepha`). Exactly one of `param` and `resolve` is required, and `from` or `cast` beside `resolve` is refused: each of these mistakes throws when the class is constructed. A resolver that returns nothing throws rather than denying, because a gate that cannot name its resource is misconfigured, which is not a 403.
+
+## Layering `$secure` checks: `secure`
+
+`$owns` is itself a `$secure` middleware, so it already requires an authenticated caller. `secure` adds the usual `$secure` options (roles, permissions, issuers; not `guard`, which the gate owns) without a second middleware:
+
+```typescript
+$owns({
+  repository: () => this.campaigns,
+  param: "id",
+  owner: "createdBy",
+  secure: { permissions: ["campaign:read"] },
+});
+```
+
 ## Caching the authority read
 
 `cache` is passed straight through to the authority read - the row the gate decides against, which is the resource itself when there is no `through`:

@@ -51,11 +51,16 @@ class GameServer {
 
 Key points:
 
-- **`room.state`** is your world - created by the factory, never serialized by
-  the framework. Keep authoritative collections (players, monsters, loot) here.
+- **`room.state`** is your world - created by the factory (which receives
+  `{ roomId }` and may be async), never serialized by the framework. Keep
+  authoritative collections (players, monsters, loot) here.
+- **`dt`** in `onTick` is the elapsed time since the previous tick, in
+  **milliseconds**.
 - **`room.send(id, msg)`** targets one connection. This is what a per-recipient
   area-of-interest stream needs: each client gets a _different_ frame every tick.
-  **`room.broadcast(msg, { exceptConnectionIds })`** fans out to all.
+  **`room.broadcast(msg, { exceptConnectionIds })`** fans out to all, and
+  **`room.close(id, code?, reason?)`** drops one connection. `room.roomId`,
+  `room.connections` and `room.size` describe the room.
 - **`conn.data`** is a per-connection bag you own (last acked input seq, hero id,
   AOI cursor...). It is volatile and resets when the host is recreated.
 - **`onTick` never throws out of the loop**: an error is logged and the room
@@ -96,7 +101,18 @@ class Party {
 ```
 
 On Cloudflare `call()` is a Durable Object RPC; on Node it is a direct in-process
-call. Either way the room comes to life lazily on its first call.
+call. Either way the room comes to life lazily on its first call. `call()`
+resolves `Promise<unknown>`: the method's return type is not carried through, so
+cast what you read back. The primitive's `broadcast(roomId, msg)` reaches the
+sockets of one live room and is a no-op when that room holds none.
+
+## Admission
+
+`$room` takes the same admission options as `$websocket` (see
+[Authentication](/docs/guides-server-websocket#authentication)): `secure: true`
+to require a signed-in user, `maxConnectionsPerUser` to cap their sockets, or an
+`authorize` hook whose returned `roomId` is the room the socket joins. `secure`
+and `authorize` together are refused at registration.
 
 ## Mapping a sharded game server onto `$room`
 

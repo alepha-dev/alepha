@@ -84,6 +84,39 @@ never weaker.
 `limit`, `window` and `key` are synchronous. Load anything asynchronous, such as
 realm settings, before calling `consume` and pass it in the input.
 
+## As a middleware
+
+`middleware()` turns a string-keyed limiter into a `use: [...]` entry for
+`$action`, `$job` or `$pipeline`, counting one hit per call:
+
+```typescript check
+import { $rateLimit } from "alepha/rate-limit";
+import { $action } from "alepha/server";
+
+class Api {
+  search = $rateLimit({ name: "api:search", limit: 60, window: 60_000 });
+
+  find = $action({
+    use: [this.search.middleware()],
+    handler: async () => "ok",
+  });
+}
+```
+
+Declare the limiter as a field above the actions that use it. The key is
+`key(...args)` when the middleware options give one, else `ip:<request.ip>`
+inside an HTTP request, else `ip:global` (one bucket for every call, as for a
+`$job`).
+
+An allowed call sets `X-RateLimit-Limit`, `X-RateLimit-Remaining` and
+`X-RateLimit-Reset` (epoch seconds). A full window or contention throws a `429`
+with `Retry-After`; a store failure throws a `503` with no limit headers, since
+an outage is not a limit the client exceeded.
+
+`skipFailedRequests` refunds the hit when the handler throws (anything but an
+`HttpError` below 400); `skipSuccessfulRequests` refunds it when the handler
+succeeds, so only failures count, as on a login endpoint.
+
 ## Fixed windows
 
 A window opens on the key's first hit and lasts `window`; the next hit after it

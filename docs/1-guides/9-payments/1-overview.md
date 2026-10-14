@@ -8,11 +8,11 @@ The same application code works against any provider - swap implementations with
 
 Three entities anchor the data:
 
-| Entity           | Role                                                                                                                                                                                      |
-| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `paymentIntents` | The unit of value transfer. Tracks status across the lifecycle: `created → processing → authorized → captured → refunded` (with branches for `failed`, `voided`, `cancelled`, `expired`). |
-| `paymentMethods` | Saved cards / mandates tied to a user, with provider reference + masked metadata (`brand`, `last4`, `expMonth`, `expYear`).                                                               |
-| `refunds`        | Per-refund records linked to a captured intent. Supports partial and multi-step refunds.                                                                                                  |
+| Entity           | Role                                                                                                                                                                                                            |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `paymentIntents` | The unit of value transfer. Tracks status across the lifecycle: `created → processing → authorized → captured → refunded` (with branches for `partially_refunded`, `failed`, `voided`, `cancelled`, `expired`). |
+| `paymentMethods` | Saved cards / mandates tied to a user, with provider reference + masked metadata (`brand`, `last4`, `expMonth`, `expYear`).                                                                                     |
+| `refunds`        | Per-refund records linked to a captured intent. Supports partial and multi-step refunds.                                                                                                                        |
 
 Every state transition emits a hook on Alepha's event bus:
 
@@ -46,7 +46,7 @@ const alepha = Alepha.create().with(AlephaApiPayments);
 Out of the box this gives you:
 
 - `POST /api/payments/checkout`: create a checkout session, returns redirect URL.
-- `GET/POST/DELETE/PATCH /api/payments/payment-methods/...`: list, add, remove, set default.
+- `GET/POST/DELETE/PATCH /api/payments/payment-methods/...`: list, add, remove, set default, plus `POST .../setup` (open a PSP setup session to save a card without paying) and `POST .../reconcile` (record the card that setup session saved).
 - `POST /api/payments/webhook`: PSP webhook ingress (no `$secure` middleware; the provider verifies authenticity).
 - `/api/admin/payments/...`: capture, void, refund, cancel, list intents, record cash payments.
 - A cron running every 15 minutes (`system.payments.expire-stale-intents`, configurable via the `paymentsConfig` atom's `expireStaleIntentsCron`) that expires intents stuck in `processing` for more than 30 minutes.
@@ -127,6 +127,12 @@ await this.payments.capture(intent.id, finalAmountCents);
 ```
 
 `capture()` accepts an amount lower than the authorized amount (partial capture). Higher amounts throw a `PaymentError`.
+
+`void(intentId)` releases an authorization instead of capturing it, and `cancel(intentId)` abandons an intent still in `created` (before a session was opened for it). Every method checks the intent's current status first and throws a `PaymentError` on a transition that is not allowed.
+
+## Embedded card fields
+
+A redirect to the PSP's hosted page works with every provider. When the provider also has an embeddable card field (Stripe's Payment Element), `PaymentService.supportsEmbeddedPayment()` returns `true` and `createElementSession(intentId)` returns `{ clientSecret, publishableKey, provider, providerRef, intentId }` for the browser SDK, keeping the payer on your own domain. The payment then settles through the same webhook and hooks as a redirect session.
 
 ## Refunds
 

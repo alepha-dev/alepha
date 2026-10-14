@@ -66,6 +66,7 @@ The build produces:
 
 - `dist/wrangler.jsonc`: Wrangler configuration with worker name, compatibility flags, and bindings
 - `dist/main.cloudflare.js`: Worker entry point that bootstraps Alepha and handles `fetch`, `scheduled`, and `queue` events
+- `dist/index.workerd.js` and `dist/server/workerd/`: the workerd slice it imports. The upload rules match only these, so a `node` slice in the same `dist/` never reaches the Worker
 
 The `wrangler.jsonc` includes `nodejs_compat` compatibility flag and `no_bundle: true` (Alepha bundles the code itself).
 

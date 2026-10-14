@@ -52,6 +52,7 @@ alepha.store.mut(helmetOptions, (old) => ({
 | `disabled`                | `false`                                         | Disable security headers entirely |
 | `isSecure`                | -                                               | Force secure context (HSTS)       |
 | `strictTransportSecurity` | `{ maxAge: 15552000, includeSubDomains: true }` | HSTS configuration                |
+| `xContentTypeOptions`     | `true` (`nosniff`)                              | X-Content-Type-Options header     |
 | `xFrameOptions`           | `"SAMEORIGIN"`                                  | X-Frame-Options header            |
 | `xXssProtection`          | `false`                                         | X-XSS-Protection header           |
 | `referrerPolicy`          | `"strict-origin-when-cross-origin"`             | Referrer-Policy header            |
@@ -76,11 +77,11 @@ alepha.store.mut(multipartOptions, (old) => ({
 }));
 ```
 
-| Option      | Default           | Description                                   |
-| ----------- | ----------------- | --------------------------------------------- |
-| `limit`     | `10000000` (10MB) | Maximum total multipart request size in bytes |
-| `fileLimit` | `5000000` (5MB)   | Maximum single file size in bytes             |
-| `fileCount` | `10`              | Maximum number of files per request           |
+| Option      | Default           | Description                                               |
+| ----------- | ----------------- | --------------------------------------------------------- |
+| `limit`     | `10000000` (10MB) | Maximum total multipart request size in bytes             |
+| `fileLimit` | `5000000` (5MB)   | Maximum single file size in bytes                         |
+| `fileCount` | `10`              | Maximum number of parts per request, text fields included |
 
 ## Optional Modules
 
@@ -115,6 +116,8 @@ For per-action CORS, attach the `$cors` middleware instead: `use: [$cors({ origi
 Alepha automatically creates an `OPTIONS` preflight route for every path when the CORS module is active - including `GET`-only paths, which browsers preflight as soon as the request carries a non-simple header such as `Authorization`.
 
 Responses always carry `Vary: Origin`, since the allowed origin is reflected from the request.
+
+A Capacitor app calls the API from its WebView's origin. `CAPACITOR_ORIGINS` (from `alepha/server/cors`) is the two of them, `capacitor://localhost` (iOS) and `https://localhost` (Android), in the comma-separated form `origin` takes: `origin: CAPACITOR_ORIGINS`.
 
 **`credentials` requires an explicit origin.** With `origin: "*"` the allowed origin is reflected back, so pairing it with `credentials: true` would let _any_ site read authenticated responses - the exact thing the browser's own ban on `Access-Control-Allow-Origin: *` plus credentials prevents. Alepha refuses that combination: `Access-Control-Allow-Credentials` is omitted and a warning is logged at startup. List the origins you trust to enable credentials.
 
@@ -243,7 +246,7 @@ Serves metrics in Prometheus text format at `/metrics`.
 
 Opt-in, unlike `/health`: it pulls in `@prometheus-io/client`, and an app that nothing scrapes should not carry it.
 
-Set `METRICS_TOKEN` if the app itself is reachable from the network. Alepha warns at startup when it is - production, no token, and `SERVER_HOST` bound to something other than loopback. An app on loopback behind a proxy gets no warning: the proxy decides what the internet sees.
+Set `METRICS_TOKEN` if the app itself is reachable from the network: the scraper then sends `Authorization: Bearer <token>`, and anything else answers 401. Alepha warns at startup when it is - production, no token, and `SERVER_HOST` bound to something other than loopback. An app on loopback behind a proxy gets no warning: the proxy decides what the internet sees.
 
 ### ETag and Conditional Responses
 

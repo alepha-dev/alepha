@@ -27,7 +27,7 @@ Your `.vendor/` directory now contains the vendored source, plus a `vendor.json`
 
 ## What It Does
 
-The vendor plugin shallow-clones the Alepha repository, copies the packages you specify into your project's vendor directory (`.vendor/` by default), strips test files and build artifacts, records the synced commit in `vendor.json`, and runs your package manager's `install` so everything resolves correctly.
+The vendor plugin shallow-clones the Alepha repository, copies the packages you specify into your project's vendor directory (`.vendor/` by default), strips test files and build artifacts, records the synced commit in `vendor.json`, runs your package manager's `install` so everything resolves correctly, then builds each synced package (unless `build: false`).
 
 Use cases:
 
@@ -41,12 +41,13 @@ Use cases:
 
 `vendor()` accepts the following options:
 
-| Option     | Type       | Default                                  | Description                                                                                             |
-| ---------- | ---------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `packages` | `string[]` | -                                        | Package directory names to vendor (required)                                                            |
-| `remote`   | `string`   | `"https://github.com/alepha-dev/alepha"` | Git remote URL to clone from                                                                            |
-| `branch`   | `string`   | `"main"`                                 | Branch to sync from                                                                                     |
-| `dir`      | `string`   | `".vendor"`                              | Directory holding the vendored packages (relative to project root); also where `vendor.json` is written |
+| Option     | Type       | Default                                  | Description                                                                                                    |
+| ---------- | ---------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `packages` | `string[]` | -                                        | Package directory names to vendor (required)                                                                   |
+| `remote`   | `string`   | `"https://github.com/alepha-dev/alepha"` | Git remote URL to clone from                                                                                   |
+| `branch`   | `string`   | `"main"`                                 | Branch to sync from                                                                                            |
+| `dir`      | `string`   | `".vendor"`                              | Directory holding the vendored packages (relative to project root); also where `vendor.json` is written        |
+| `build`    | `boolean`  | `true`                                   | Build each synced package after the install and point its manifest at `dist`, so Node can load it outside Vite |
 
 ```typescript check filename=alepha.config.ts
 import { defineConfig } from "alepha/cli/config";
@@ -80,6 +81,7 @@ The command:
 4. Removes test files and build artifacts
 5. Updates `vendor.json` with the new commit hash
 6. Runs the package manager install
+7. Builds each synced package and points its manifest at `dist` (skipped with `build: false`). A package that fails to build fails the sync
 
 | Flag            | Description                                                                                                                         |
 | --------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
@@ -121,11 +123,11 @@ This pins the baseline used by `diff` and the local-modification check, and lets
 
 The plugin strips non-production files during sync and ignores them during diff:
 
-**Files:** `*.spec.ts`, `*.spec.tsx`, `LICENSE`, `tsdown.config.ts`
+**Files:** `*.spec.ts`, `*.spec.tsx`, `LICENSE`
 
 **Directories:** `__tests__/`, `node_modules/`, `dist/`, `assets/swagger-ui/`
 
-The vendored packages contain only source code.
+`tsdown.config.ts` is kept, because a vendored package builds itself with it, but the diff ignores it, as it does the `dist/` that build produces.
 
 ## Workflow
 

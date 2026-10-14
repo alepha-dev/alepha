@@ -116,6 +116,10 @@ const result = await this.views.query({
 });
 ```
 
+`since` (required) and `until` (optional) are inclusive UTC days, `YYYY-MM-DD`. Omitting `until`
+reads up to the newest bucket; set it to compare complete days (yesterday against the day before)
+rather than a window that ends mid-day.
+
 `where` supports equality and `{ inArray: [...] }` - the same operator name the ORM's
 [repository filters](/docs/guides-persistence-repository) use, no ranges. `groupBy` takes any
 declared dimension, plus the pseudo-dimensions `"hour"` and `"day"` - grouping by `"day"` folds
@@ -319,11 +323,11 @@ happened to be running.
 The bound provider is a runtime decision the module makes, never something application code
 chooses:
 
-| Environment                              | Provider                  | Behavior                                     |
-| ---------------------------------------- | ------------------------- | -------------------------------------------- |
-| Tests (`alepha.isTest()`)                | `MemoryAnalyticsProvider` | In-memory, exact, no sampling                |
-| Node / Bun, no Cloudflare binding        | `OrmAnalyticsProvider`    | Relational tables, exact, no sampling        |
-| Cloudflare Worker with a dataset binding | `WaeAnalyticsProvider`    | Workers Analytics Engine, samples under load |
+| Environment                                    | Provider                  | Behavior                                     |
+| ---------------------------------------------- | ------------------------- | -------------------------------------------- |
+| Tests (`alepha.isTest()`)                      | `MemoryAnalyticsProvider` | In-memory, exact, no sampling                |
+| Worker with `CLOUDFLARE_ANALYTICS_DATASET` set | `WaeAnalyticsProvider`    | Workers Analytics Engine, samples under load |
+| Node / Bun, or a Worker without that variable  | `OrmAnalyticsProvider`    | Relational tables, exact, no sampling        |
 
 `AlephaApiAnalytics` and most other Alepha modules ship a memory implementation as the
 substitutable default - see [Unit Tests](/docs/guides-testing-unit-tests) for the general

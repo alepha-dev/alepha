@@ -72,12 +72,12 @@ interface ResolvedCompile {
  * 2. Compile - packages the single binary `BuildCompileTask` produces inside
  *    a minimal distroless image. No `node_modules` are ever installed. This
  *    task only writes that Dockerfile: the binary does not exist yet when it
- *    runs, so in this mode `--image` is built by `BuildCompileTask`, after.
+ *    runs, so in this mode `--tag` is built by `BuildCompileTask`, after.
  *
  * Creates:
  * - Dockerfile (compile or standard variant)
  * - Copies migrations directory if it exists
- * - Builds Docker image when `--image` flag is provided (standard mode)
+ * - Builds Docker image when `--tag` flag is provided (standard mode)
  */
 export class DockerImageBuilder {
   protected readonly slices = $inject(BuildSlices);
@@ -250,7 +250,7 @@ export class DockerImageBuilder {
    * The standard variant defaults to uid 1000 — present in both official
    * bases (`node:x:1000:1000`, `bun:x:1000:1000`) — so a public image does
    * not serve HTTP as root. Emitted numerically rather than by name because
-   * `build.docker.from` is a supported override and `USER node` fails the
+   * `image.from` is a supported override and `USER node` fails the
    * build outright on a base without that user.
    *
    * Compile mode has no default: distroless has no shell, so a declared
@@ -415,12 +415,12 @@ export class DockerImageBuilder {
     let dockerfile: string;
 
     if (opts.compile) {
-      // Root unless `build.docker.user` says otherwise, and the generated
+      // Root unless `image.user` says otherwise, and the generated
       // file says so itself so it does not read as an oversight.
       const userLine = opts.user
         ? `USER ${opts.user}\n\n`
         : "# Runs as root: the distroless base has no shell, so a declared volume\n" +
-          "# cannot be created and chowned at build time. Set `build.docker.user`\n" +
+          "# cannot be created and chowned at build time. Set `image.user`\n" +
           "# to run as someone else.\n";
       // `install` is ignored in compile mode: distroless has no npm.
       dockerfile = `${header}FROM ${opts.compile.base}
@@ -491,7 +491,7 @@ ${userLine}CMD ["${command}", "${entry}"]
    *
    * ⚠️ Emitted UNCONDITIONALLY, and deliberately not through
    * {@link staticOciLabels}: that one returns nothing unless
-   * `build.docker.image.oci` is set, so routing this through it would mean
+   * `image.image.oci` is set, so routing this through it would mean
    * an app that never opted into OCI annotations ships an image whose push
    * is refused for a missing label, for a reason nothing in its config
    * explains. This label is Alepha's contract with its own registry, not an
@@ -607,7 +607,7 @@ ${userLine}CMD ["${command}", "${entry}"]
     if (!flagValue) {
       if (!imageConfig?.tag) {
         throw new AlephaError(
-          "Flag '--image' requires 'build.docker.image.tag' in config",
+          "Flag '--tag' requires 'image.image.tag' in config",
         );
       }
       version = "latest";
@@ -615,7 +615,7 @@ ${userLine}CMD ["${command}", "${entry}"]
     } else if (flagValue.startsWith(":")) {
       if (!imageConfig?.tag) {
         throw new AlephaError(
-          "Flag '--image=:version' requires 'build.docker.image.tag' in config",
+          "Flag '--tag=:version' requires 'image.image.tag' in config",
         );
       }
       version = flagValue.slice(1);
@@ -628,10 +628,10 @@ ${userLine}CMD ["${command}", "${entry}"]
     } else {
       // A bare value is a VERSION, as the flag documents ("-i=<version> for
       // specific version"). It used to become the image *name*, so
-      // `--image=1.3.4` silently built `1.3.4:latest`.
+      // `--tag=1.3.4` silently built `1.3.4:latest`.
       if (!imageConfig?.tag) {
         throw new AlephaError(
-          "Flag '--image=<version>' requires 'build.docker.image.tag' in config. Pass a full 'name:tag' to name the image explicitly.",
+          "Flag '--tag=<version>' requires 'image.image.tag' in config. Pass a full 'name:tag' to name the image explicitly.",
         );
       }
       version = flagValue;

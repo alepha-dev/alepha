@@ -407,4 +407,5 @@ These are limitations of `with`, not of relations - [Relations](/docs/guides-per
 - **No `orderBy` on joined columns.** Sorting is limited to columns on the base table. `include` orders each relation independently.
 - **No `columns` selection on joined tables.** The full joined entity is always returned. `include` takes a `select` per relation.
 - **No aggregate queries with joins.** Use `repository.aggregate()` separately or raw SQL via `repository.query()`.
+- **No `distinct` with joins.** A `findMany` that sets both is refused.
 - **SQL join conditions require PostgreSQL.** SQLite only supports the tuple syntax `["localCol", entity.cols.foreignCol]`.

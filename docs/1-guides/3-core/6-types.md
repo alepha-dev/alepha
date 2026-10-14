@@ -280,6 +280,20 @@ z.record(k, v)      // Record<K, V>
 z.json()            // Record<string, any> - convenience for JSON blobs
 ```
 
+## Helpers
+
+```typescript
+z.coerce.number(); // zod's coercion namespace, for string boundaries (query, headers, env)
+z.constantCase(); // text matching ^[A-Z_-]+$, e.g. "ORDER_PAID"
+z.binary(); // string tagged with the "binary" format
+z.valueLabel(); // { value: constantCase, label: text, description?: longText }
+z.page(itemSchema); // the pagination envelope: { content: T[], page: { number, size, ... } }
+z.toJSONSchema(schema); // JSON Schema export, with Alepha's internal metadata stripped
+z.custom<MyType>(); // a typed passthrough: carries a type, validates nothing
+```
+
+`z.custom<T>()` is for a value whose shape is already owned and checked elsewhere (an `$atom` over a type an API client produces). Never use it for anything crossing a trust boundary: a request body, a query parameter or an env var declared this way is unvalidated input that reads as if something checked it.
+
 ## Validation
 
 Alepha validates data through `alepha.codec.validate()`. This is the same validation used internally by `$action`, `$env`, and other primitives.

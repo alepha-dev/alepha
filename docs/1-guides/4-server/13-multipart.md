@@ -46,6 +46,27 @@ A part's `data` must be consumed - fully or not at all - before advancing to the
 next one. The parser drains whatever is left behind, because the delimiter of
 the next part can only be found by walking past this one's content.
 
+Driving it by hand takes a boundary, read off the `Content-Type` with
+`boundaryOf()` (`undefined` when the header is not multipart at all), and a
+`ReadableStream`. One parser instance parses one body:
+
+```typescript
+const parser = new MultipartStreamParser({ maxFileBytes: 50_000_000 });
+const boundary = parser.boundaryOf(request.headers.get("content-type"));
+if (boundary && request.body) {
+  for await (const part of parser.parse(request.body, boundary)) {
+    for await (const chunk of part.data) {
+      // write chunk somewhere
+    }
+  }
+}
+```
+
+The constructor takes `maxHeaderBytes` (16 KB), `maxFileBytes` (5 MiB),
+`maxParts` (10) and `maxTotalBytes` (10 MiB). A malformed body throws
+`MultipartParseError`; a blown limit throws `MultipartLimitError` (see
+[Refusals](#refusals)).
+
 ## Scalar Fields Are Coerced
 
 A form can carry more than files, and the fields beside them are declared the
@@ -67,8 +88,9 @@ be coerced is passed through unchanged, so the schema is still what rejects it:
 
 Three levels, most specific last:
 
-1. **`multipartOptions`**: the application-wide default (5 MB per file, 10 MB
-   per request, 10 parts).
+1. **`multipartOptions`** (an atom exported by `alepha/server`): the
+   application-wide default, `fileLimit` 5 MB per file, `limit` 10 MB per
+   request, `fileCount` 10 parts (text fields count too).
 2. **`z.file({ maxBytes })` / `z.stream({ maxBytes })`**: what the route itself
    declares, in bytes.
 3. **`MultipartCapProvider`**: a resolver, which is the only level that knows

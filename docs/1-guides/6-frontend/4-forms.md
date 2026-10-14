@@ -33,18 +33,19 @@ Spread `form.props` on the `<form>` element and `form.input.<field>.props` on ea
 
 ## useForm Options
 
-| Option          | Type                                    | Description                                                                                                 |
-| --------------- | --------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `schema`        | `ZObject`                               | Zod schema defining fields and validation.                                                                  |
-| `handler`       | `(values) => unknown`                   | Called on submit with validated values.                                                                     |
-| `initialValues` | `Partial<Infer<T>>`                     | Pre-populate fields with existing data.                                                                     |
-| `id`            | `string`                                | Prefix for field IDs and `data-testid` attributes.                                                          |
-| `onChange`      | `(key, value, store) => void`           | Called on every field change.                                                                               |
-| `onError`       | `(error) => void`                       | Called when submission throws an error. Marks the error handled, so `ActionErrorToaster` does not toast it. |
-| `onReset`       | `() => void`                            | Called when the form is reset.                                                                              |
-| `onCreateField` | `(name, schema) => InputHTMLAttributes` | Customize generated input attributes.                                                                       |
+| Option          | Type                                    | Description                                                                                                         |
+| --------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `schema`        | `ZObject`                               | Zod schema defining fields and validation.                                                                          |
+| `handler`       | `(values) => unknown`                   | Called on submit with validated values.                                                                             |
+| `initialValues` | `Partial<Infer<T>>`                     | Pre-populate fields with existing data.                                                                             |
+| `keepDirty`     | `boolean` (default `true`)              | When `initialValues` changes (a refetch after a save), keep the fields the user edited instead of overwriting them. |
+| `id`            | `string`                                | Prefix for field IDs and `data-testid` attributes.                                                                  |
+| `onChange`      | `(key, value, store) => void`           | Called on every field change.                                                                                       |
+| `onError`       | `(error) => void`                       | Called when submission throws an error. Marks the error handled, so `ActionErrorToaster` does not toast it.         |
+| `onReset`       | `() => void`                            | Called when the form is reset.                                                                                      |
+| `onCreateField` | `(name, schema) => InputHTMLAttributes` | Customize generated input attributes.                                                                               |
 
-The second argument to `useForm` is a dependency array (defaults to `[]`). When dependencies change, the form is re-created.
+The second argument to `useForm` is a dependency array (defaults to `[]`). When dependencies change, the form is re-created. To switch the form to another record (editing A, then B), put the record id in the dependencies rather than swapping `initialValues`. The latest `handler`, `onError`, `onChange`, `onReset` and `onCreateField` are always used, so a handler may close over render state.
 
 ## FormModel
 
@@ -56,6 +57,7 @@ Spread on the `<form>` element. Includes:
 
 - `id`: unique form identifier
 - `noValidate`: set to `true` (validation is handled by the schema)
+- `method`: `"post"`, so a submit that happens before hydration (slow bundle, Enter in a text field) never serialises the fields, a password included, into the URL
 - `onSubmit`: calls `form.submit()` with `preventDefault`
 - `onReset`: calls `form.reset()`
 
@@ -98,20 +100,20 @@ const { loading } = useFormState(form, ["loading"]);
 
 Input types are automatically inferred from the schema:
 
-| Schema Type            | Input Type       |
-| ---------------------- | ---------------- |
-| `z.integer()`          | `number`         |
-| `z.number()`           | `number`         |
-| `z.boolean()`          | `checkbox`       |
-| `z.text()`             | `text`           |
-| Field named `password` | `password`       |
-| Field named `email`    | `email`          |
-| Field named `url`      | `url`            |
-| `z.date()`             | `date`           |
-| `z.dateRange()`        | range picker     |
-| `z.time()`             | `time`           |
-| `z.datetime()`         | `datetime-local` |
-| `z.binary()`           | `file`           |
+| Schema Type            | Input Type                                 |
+| ---------------------- | ------------------------------------------ |
+| `z.integer()`          | `number`                                   |
+| `z.number()`           | `number`                                   |
+| `z.boolean()`          | `checkbox`                                 |
+| `z.text()`             | `text`                                     |
+| Field named `password` | `password`                                 |
+| Field named `email`    | `email`                                    |
+| Field named `url`      | `url`                                      |
+| `z.date()`             | `date`                                     |
+| `z.dateRange()`        | range picker (`@alepha/ui` `Control` only) |
+| `z.time()`             | `time`                                     |
+| `z.datetime()`         | `datetime-local`                           |
+| `z.binary()`           | `file`                                     |
 
 Note that `email`/`password`/`url` are detected from the **field name**, not the schema - a `z.email()` schema on a field named `contact` renders as plain `text`.
 
@@ -162,7 +164,7 @@ const MyForm = () => {
 
 **useFormState options:**
 
-The first argument is the form model (or `{ form, path }` to track a specific field). The second argument is an array of keys to track:
+The first argument is the form model (or `{ form, path }` to track a specific field). The second argument is an array of keys to track, `["loading", "dirty", "error"]` by default (`values` is only tracked when asked for):
 
 ```typescript
 // Track only loading and error
@@ -183,6 +185,33 @@ const { values } = useFormState(form, ["values"]);
 | `dirty`   | `boolean`             | True after any field change. Resets on successful submit. |
 | `error`   | `Error \| undefined`  | Error from the last failed submit.                        |
 | `values`  | `Record \| undefined` | Current form values (updated on change and submit).       |
+
+## Reading Values
+
+`useForm` keeps values in the model, not in React state, so typing does not re-render the form. Subscribe only where a component needs them:
+
+- `useFieldValue(form.input.email)` returns `[value, setValue]` for one field and re-renders on that field only.
+- `useFormValues(form)` returns every current value and re-renders on every change. Keep it for live previews and debug panels.
+- `<FormState form={form}>{({ loading, dirty }) => ...}</FormState>` is a render-prop wrapper around `useFormState`.
+
+`useFormQuerySync(form, { keys: ["status", "q"] })` mirrors the listed fields to the URL query (`?status=new&q=foo`) and back, so a filter form survives a reload, a shared link and back/forward. It replaces the history entry rather than pushing one, and leaves query params it does not own alone.
+
+All four are exported from `alepha/react/form`.
+
+## With `@alepha/ui`
+
+Raw `<input {...props}>` is the bare layer. In an application using `@alepha/ui`, render each field with `Control` from `@alepha/ui/form`, which picks the widget from the schema (select, date, date range, number, switch, upload, ...) and shows the label, description and field error. Flags force a variant (`<Control input={form.input.status} select />`). `AutoForm` renders a whole form from the schema.
+
+```tsx
+import { Control } from "@alepha/ui/form";
+
+<form {...form.props}>
+  <Control input={form.input.email} />
+  <Control input={form.input.role} select />
+</form>;
+```
+
+A picker with local state is still a form: make it a one-field `useForm` (`initialValues` for what the server says, `onChange` to save on change) rather than a hand-built control.
 
 ## Form Events
 

@@ -50,6 +50,10 @@ export class AppRouter {
 
 ## Page Options
 
+### name
+
+The page's route name, used by `router.push("home")`, `router.path("home")` and `useRouter<AppRouter>()`'s type-safe names. Defaults to the class property key (`home`, `about` above) and must be unique.
+
 ### path
 
 URL pattern with parameter support. If omitted, defaults to the root (`/`).
@@ -252,7 +256,7 @@ When `static: true` is set, the framework automatically applies `$cache({ provid
 
 ### can
 
-UI-affordance predicate for the page's navigation entry - **not security**. Navigation surfaces (sidebar, breadcrumbs, command palette) consult it to hide or disable the entry; the router never does, and nothing returns a 403. For real access control, gate the page with `use: [$secure({ permissions })]`, which is server-enforced.
+UI-affordance predicate for the page's navigation entry - **not security**. Navigation surfaces (sidebar, breadcrumbs, command palette) consult it to hide or disable the entry; the router never does, and nothing returns a 403. For real access control, gate the page with `use: [$secure({ permissions })]`, which is server-enforced. A page guarded that way with no `can` of its own gets one derived from the guard's permissions, so navigation surfaces hide it without the permissions being declared twice; an explicit `can` always wins.
 
 ```typescript
 can: ({ has }) => has("admin"); // hide the nav entry
@@ -537,18 +541,23 @@ const Nav = () => {
 
 **Key methods and properties:**
 
-| Method/Property          | Description                                                                      |
-| ------------------------ | -------------------------------------------------------------------------------- |
-| `push(path, opts)`       | Navigate to a path or page name. Options: `replace`, `params`, `query`, `force`. |
-| `back()`                 | Go back in history.                                                              |
-| `forward()`              | Go forward in history.                                                           |
-| `reload()`               | Reload the current page.                                                         |
-| `isActive(href)`         | Check if the given path is the current route.                                    |
-| `pathname`               | Current pathname string.                                                         |
-| `query`                  | Current query parameters as `Record<string, string>`.                            |
-| `path(name, cfg)`        | Resolve a page name to its URL path.                                             |
-| `anchor(path)`           | Returns `{ href, onClick }` props for anchor elements.                           |
-| `setQueryParams(record)` | Update URL query parameters without navigation.                                  |
+| Method/Property                     | Description                                                                                                                                         |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `push(path, opts)`                  | Navigate to a path or page name. Options: `replace`, `params`, `query`, `force`.                                                                    |
+| `back()`                            | Go back in history.                                                                                                                                 |
+| `forward()`                         | Go forward in history.                                                                                                                              |
+| `reload()`                          | Reload the current page.                                                                                                                            |
+| `isActive(href, { startWith? })`    | Check if the given path is the current route (`startWith` matches on a segment boundary).                                                           |
+| `pathname`                          | Current pathname string.                                                                                                                            |
+| `query`                             | Current query parameters as `Record<string, string>`.                                                                                               |
+| `path(name, cfg)`                   | Resolve a page name to its URL path.                                                                                                                |
+| `anchor(path)`                      | Returns `{ href, onClick }` props for anchor elements.                                                                                              |
+| `setQueryParams(record, { push? })` | Update URL query parameters without navigation. Accepts a record or an updater `(current) => next`; replaces the history entry unless `push: true`. |
+| `invalidate(props?)`                | Re-run the current route's loaders without navigating (after a mutation the loader computes).                                                       |
+| `canGoBack`                         | Whether there is an in-app history entry to go back to.                                                                                             |
+| `state`                             | The current `ReactRouterState` (`url`, `params`, `query`, `layers`, ...).                                                                           |
+
+`useRouter()` does not re-render on navigation by itself. A component that renders from the current location reads it with `useRouterState()`, which subscribes to the router state and returns the `ReactRouterState`.
 
 ### useActive
 
@@ -648,7 +657,11 @@ To force a hard navigation on a same-origin link, opt out per-anchor:
 ```
 
 To disable the global interceptor, set `interceptAnchorClicks: false` on
-the `alepha.react.browser.options` atom.
+the `reactBrowserOptions` atom (`alepha.react.browser.options`, exported from
+`alepha/react/router`). The same atom holds `scrollRestoration`: `"auto"` (the
+default) scrolls a new navigation to the top or to its `#hash` and restores the
+saved position on back and forward, `"top"` always jumps to the top, and
+`"manual"` leaves scrolling to you.
 
 ### `<Link>` component
 

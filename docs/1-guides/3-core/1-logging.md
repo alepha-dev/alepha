@@ -85,6 +85,18 @@ Defaults by environment:
 - **prod**: `info` (server) / `warn` (browser)
 - **test**: `trace` (but logs go to memory, only printed on test failure)
 
+### DEBUG
+
+`DEBUG` is a shorthand following the `debug` package convention. It derives a level and sets the format to `pretty`, but only where `LOG_LEVEL` and `LOG_FORMAT` are unset:
+
+```bash
+DEBUG=1            # LOG_LEVEL=trace
+DEBUG=alepha:*     # LOG_LEVEL=alepha.*:debug,info
+DEBUG=alepha:orm*  # debug for alepha.orm and its submodules, info elsewhere
+```
+
+`DEBUG=false` and `DEBUG=0` leave it off.
+
 ### LOG_FORMAT
 
 Set via the `LOG_FORMAT` environment variable.
@@ -257,9 +269,12 @@ describe("$logger", () => {
     expect(output.logs[0].message).toBe("Test log message");
     expect(output.logs[0].level).toBe("INFO");
     expect(output.logs[0].service).toBe("App");
+    expect(output.wasLogged(/Test log/, "INFO")).toBe(true);
   });
 });
 ```
+
+`wasLogged(pattern, level?)` matches the message (a string is a substring, a `RegExp` is tested), never the formatted line, so a spec does not depend on `LOG_FORMAT`. The memory destination is a ring: `dropped` counts entries it evicted, which tells "never logged" from "logged and pushed out".
 
 ## Custom Destination
 

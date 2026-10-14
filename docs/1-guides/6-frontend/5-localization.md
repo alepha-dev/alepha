@@ -35,7 +35,9 @@ export default {
 };
 ```
 
-Interpolation uses positional placeholders: `$1`, `$2`, `$3`, etc.
+Interpolation uses positional placeholders: `$1`, `$2`, `$3`, etc. A placeholder can appear several times, and one with no matching argument is left as written.
+
+Register the i18n module in your web module's `imports`: `AlephaReactI18n` from `alepha/react/i18n`. It is required as soon as `@alepha/ui` components are mounted, even in a single-language app with no dictionary, because every `@alepha/ui` string goes through `useI18n()`. Without it the server render looks right and hydration fails in the browser.
 
 ## $dictionary Options
 
@@ -248,6 +250,16 @@ The current language code string.
 
 Array of all available language codes, derived from registered dictionaries.
 
+## Translate Component
+
+`<Translate>` (also exported as `<Tr>`) is `tr()` as JSX:
+
+```tsx
+import { Tr } from "alepha/react/i18n";
+
+<Tr k="welcome" args={["Alice"]} fallback="Welcome, $1" />;
+```
+
 ## Localize Component
 
 A component wrapper around `l()` for inline use in JSX:
@@ -303,6 +315,9 @@ the fallback language for first-time visitors:
 i18n.options.autoDetect = false;
 ```
 
+If no dictionary is registered for `fallbackLang`, the first registered
+language is used as the fallback instead.
+
 ## Locale-prefix routing (SEO)
 
 By default the active language lives in a cookie and the URL is the same for
@@ -350,6 +365,14 @@ language gets a `/<lang>` path prefix. With prefix routing on:
   Google's guidance discourages auto-redirecting by perceived language, and it
   would hide content from crawlers. Use a soft "View in Français?" banner if you
   want to nudge first-time visitors.
+
+Subtrees with nothing to crawl (a back office behind a sign-in) can stay
+unprefixed with `routingExclude`, matched on a segment boundary. Inside them the
+language is carried by the cookie, as with the default routing:
+
+```typescript
+i18n.options.routingExclude = ["/admin", "/account"];
+```
 
 Prefix routing requires the router module (`alepha/react/router`). Apps that are
 fully behind authentication (not indexed) generally do not need it - the
