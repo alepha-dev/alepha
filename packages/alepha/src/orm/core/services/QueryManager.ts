@@ -310,6 +310,12 @@ export class QueryManager {
         return value;
       }
 
+      // A column or an SQL fragment (a subquery, `sqlx.ago()`) is compared
+      // as it is: drizzle renders it, and there is nothing to encode.
+      if (isSQLWrapper(value)) {
+        return value;
+      }
+
       // If we have schema information, encode the value properly
       if (columnSchema && columnName) {
         try {
@@ -392,14 +398,20 @@ export class QueryManager {
       conditions.push(lte(column, encodeValue(operator.lte)));
     }
 
-    if (operator?.inArray != null) {
+    // A subquery (`repository.subquery(where, "id")`) is a list the database
+    // computes: the non-empty guard is for literal arrays only.
+    if (operator?.inArray != null && isSQLWrapper(operator.inArray)) {
+      conditions.push(inArray(column, operator.inArray));
+    } else if (operator?.inArray != null) {
       if (!Array.isArray(operator.inArray) || operator.inArray.length === 0) {
         throw new AlephaError("inArray operator requires at least one value");
       }
       conditions.push(inArray(column, encodeArray(operator.inArray)));
     }
 
-    if (operator?.notInArray != null) {
+    if (operator?.notInArray != null && isSQLWrapper(operator.notInArray)) {
+      conditions.push(notInArray(column, operator.notInArray));
+    } else if (operator?.notInArray != null) {
       if (
         !Array.isArray(operator.notInArray) ||
         operator.notInArray.length === 0

@@ -33,16 +33,17 @@ import {
   sql,
   sum,
 } from "drizzle-orm";
-import type {
-  LockConfig,
-  LockStrength,
-  PgAsyncDatabase,
-  PgAsyncTransaction,
-  PgColumn,
-  PgInsertValue,
-  PgTable,
-  PgTableWithColumns,
-  PgUpdateSetSource,
+import {
+  alias,
+  type LockConfig,
+  type LockStrength,
+  type PgAsyncDatabase,
+  type PgAsyncTransaction,
+  type PgColumn,
+  type PgInsertValue,
+  type PgTable,
+  type PgTableWithColumns,
+  type PgUpdateSetSource,
 } from "drizzle-orm/pg-core";
 import type { PgTransactionConfig } from "drizzle-orm/pg-core/session";
 
@@ -304,6 +305,121 @@ export abstract class Repository<T extends ZObject> {
    */
   public excluded<K extends keyof Infer<T>>(key: K): SQL<Infer<T>[K]> {
     return sql<Infer<T>[K]>`excluded.${sql.identifier(this.col(key).name)}`;
+  }
+
+  /**
+   * A subquery over this table, compiled from a where-object, for `exists`,
+   * `notExists`, `inArray` and `notInArray` of another query.
+   *
+   * Without `column` it is `(SELECT 1 FROM <table> WHERE ...)`, for
+   * `exists` / `notExists`; with one it selects that column, for `inArray` /
+   * `notInArray`. The soft-delete filter is added like on any read, unless
+   * `opts.force`.
+   *
+   * It correlates through a column of the outer query used as a comparison
+   * value. The subquery's own table is always aliased (`<table>_sq`), so a
+   * subquery over the outer query's own table works: its columns render as
+   * `"quests_sq"."id"`, the outer ones as `"quests"."depends_on"`.
+   *
+   * ⚠️ A subquery of this table cannot nest another subquery of this same
+   * table: the two aliases would collide, and it throws.
+   *
+   * @example
+   * ```ts
+   * // Epics with no open quest left.
+   * await epics.findMany({
+   *   where: {
+   *     notExists: quests.subquery({
+   *       epicId: { eq: epics.table.id },
+   *       completedAt: { isNull: true },
+   *     }),
+   *   },
+   * });
+   *
+   * // Quests outside draft epics.
+   * await quests.findMany({
+   *   where: {
+   *     epicId: { notInArray: epics.subquery({ status: { eq: "draft" } }, "id") },
+   *   },
+   * });
+   * ```
+   */
+  public subquery(
+    where: PgQueryWhereOrSQL<T>,
+    column?: keyof Infer<T>,
+    opts: { force?: boolean } = {},
+  ): SQL {
+    const aliasName = `${this.tableName}_sq`;
+    this.assertNoNestedSubquery(where, aliasName);
+
+    const inner = alias(this.table as PgTable, aliasName) as any;
+    const col = (key: string): PgColumn => {
+      const found = inner[key];
+      if (!found) {
+        throw new AlephaError(
+          `Invalid access. Column '${key}' not found in table '${this.tableName}'`,
+        );
+      }
+      return found;
+    };
+
+    const condition = this.queryManager.toSQL(
+      this.withDeletedAt(where, opts) as PgQueryWhereOrSQL<ZObject>,
+      {
+        schema: this.entity.schema,
+        col,
+        dialect: this.provider.dialect,
+      },
+    );
+
+    const selection = column
+      ? { value: col(column as string) }
+      : { value: sql`1` };
+    let builder = this.provider.db.select(selection).from(inner);
+    if (condition) {
+      builder = builder.where(condition) as any;
+    }
+
+    const result = sql`${builder}`;
+    Object.defineProperty(result, Repository.SUBQUERY_ALIAS, {
+      value: aliasName,
+    });
+    return result;
+  }
+
+  /**
+   * Where `subquery()` records the alias it used on the SQL it returns, so a
+   * nested subquery of the same table is caught by name.
+   */
+  protected static readonly SUBQUERY_ALIAS = Symbol("alepha.orm.subquery");
+
+  /**
+   * Refuse a where-object that carries a subquery of this same table: both
+   * would be aliased `<table>_sq`, and the inner one would bind to the outer
+   * alias silently.
+   */
+  protected assertNoNestedSubquery(value: unknown, aliasName: string): void {
+    if (value == null || typeof value !== "object") {
+      return;
+    }
+    if ((value as any)[Repository.SUBQUERY_ALIAS] === aliasName) {
+      throw new AlephaError(
+        `A subquery of '${this.tableName}' cannot nest another subquery of '${this.tableName}': ` +
+          `both would be aliased '${aliasName}'. Split it into two queries.`,
+      );
+    }
+    // Only the where-object's own structure: plain objects and arrays. A
+    // column, a date or any other value is a leaf.
+    const proto = Object.getPrototypeOf(value);
+    if (
+      isSQLWrapper(value) ||
+      (!Array.isArray(value) && proto !== Object.prototype && proto !== null)
+    ) {
+      return;
+    }
+    for (const nested of Object.values(value)) {
+      this.assertNoNestedSubquery(nested, aliasName);
+    }
   }
 
   /**

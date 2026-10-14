@@ -501,12 +501,23 @@ if (status) where.status = status;
 | `lt`     | Less than             |
 | `lte`    | Less than or equal    |
 
+The value may also be another column or an SQL fragment, compared as it is:
+
+```typescript
+// Quests created after the quest they depend on.
+await this.quests.findMany({
+  where: { id: { gt: this.quests.table.dependsOn } },
+});
+```
+
 ### Array Operators
 
 | Operator     | Description       |
 | ------------ | ----------------- |
 | `inArray`    | Value in list     |
 | `notInArray` | Value not in list |
+
+Both also take a subquery (see [Subqueries](#subqueries)); the "at least one value" check applies to a literal array only.
 
 ### Null Operators
 
@@ -561,7 +572,34 @@ Combine conditions with `and`, `or`, or negate with `not`:
 }
 ```
 
-Where clauses also support `exists` / `notExists` subquery conditions at the top level, and you can pass a raw Drizzle `SQLWrapper` as the where clause for full SQL control.
+You can also pass a raw Drizzle `SQLWrapper` as the where clause for full SQL control.
+
+### Subqueries
+
+`repository.subquery(where, column?, opts?)` compiles a where-object against that repository's table into a subquery, soft-delete filter included unless `opts.force`. Without `column` it is `SELECT 1 ...`, for `exists` / `notExists`; with a column it selects that column, for `inArray` / `notInArray`. A column of the outer query used as a comparison value correlates it:
+
+```typescript
+// Epics with no open quest left.
+const finished = await this.epics.findMany({
+  where: {
+    notExists: this.quests.subquery({
+      epicId: { eq: this.epics.table.id },
+      completedAt: { isNull: true },
+    }),
+  },
+});
+
+// Quests outside draft epics.
+const visible = await this.quests.findMany({
+  where: {
+    epicId: {
+      notInArray: this.epics.subquery({ status: { eq: "draft" } }, "id"),
+    },
+  },
+});
+```
+
+The subquery's table is always aliased `<table>_sq`, so a subquery over the outer query's own table reads the outer row correctly (`exists: this.quests.subquery({ id: { eq: this.quests.table.dependsOn } })`). Nesting a subquery of a table inside another subquery of the same table throws, since the aliases would collide.
 
 ## Transactions
 
