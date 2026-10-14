@@ -3741,8 +3741,8 @@ __metadata:
     ws: "npm:^8.22.0"
     zod: "npm:^4.6.5"
   peerDependencies:
-    react: ^19
-    react-dom: ^19
+    react: ^19.3.0
+    react-dom: ^19.3.0
   peerDependenciesMeta:
     react:
       optional: true
