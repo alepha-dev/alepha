@@ -30,6 +30,12 @@ export const dashboardCardResourceSchema = z.object({
    */
   section: z.string().optional(),
   position: z.integer(),
+  /**
+   * The slot of the computed board this tile fills (#Q2652): `headline`,
+   * `needsYou`, `yourWork`, `flow`, `plan`, `apps`, `knowledge`, `feed`.
+   * Absent on a stored card, which belongs to no slot.
+   */
+  slot: z.string().optional(),
 });
 
 export type DashboardCardResource = Infer<typeof dashboardCardResourceSchema>;

@@ -1,4 +1,8 @@
-import { DashboardCardService, DashboardScopeService } from "@lore/core/api";
+import {
+  DashboardCardService,
+  DashboardScopeService,
+  DashboardSlotRegistry,
+} from "@lore/core/api";
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 import { NotFoundError } from "alepha/server";
@@ -13,9 +17,15 @@ import { sigils } from "../entities/sigils.ts";
 export class DeployDashboard {
   protected readonly scopes = $inject(DashboardScopeService);
   protected readonly cards = $inject(DashboardCardService);
+  protected readonly slots = $inject(DashboardSlotRegistry);
   protected readonly sigils = $repository(sigils);
 
   constructor() {
+    // The apps slot of the computed board (#Q2652): open blights, then
+    // visitors. Their own data gate (`empty` for no app, a silent one, no
+    // beacon) is what keeps the slot off a project that watches nothing.
+    this.slots.register({ slot: "apps", rank: 20, metric: "openBlights" });
+    this.slots.register({ slot: "apps", rank: 30, metric: "uniqueVisitors" });
     // Yesterday's visitors, when the user actually has an app that reports
     // them: the first beacon-carrying app. Beacon and not merely "an app":
     // the visitors metric reads page traffic, an app without the `beacon`

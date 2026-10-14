@@ -18,6 +18,11 @@ export interface ProjectDashboardHeaderProps {
    */
   canEdit: boolean;
   /**
+   * Whether the reader is looking at the computed default board (#Q2652),
+   * which has no edit mode: it is not stored, so there is nothing to edit.
+   */
+  computed?: boolean;
+  /**
    * Whether the board is in edit mode: Add, the card menus and drag, and the
    * tiles that have nothing to show, collapsed with their reason (#Q2649).
    */
@@ -48,12 +53,14 @@ const ProjectDashboardHeader = (props: ProjectDashboardHeaderProps) => {
   // whole page (feedback #P2180), which is why there is no empty standfirst.
   const standfirst = (
     <>
-      {tr(
-        props.cardCount === 1
-          ? "project.dashboard.standfirst.one"
-          : "project.dashboard.standfirst",
-        { args: [String(props.cardCount)] },
-      )}{" "}
+      {props.computed
+        ? tr("project.dashboard.standfirst.computed")
+        : tr(
+            props.cardCount === 1
+              ? "project.dashboard.standfirst.one"
+              : "project.dashboard.standfirst",
+            { args: [String(props.cardCount)] },
+          )}{" "}
       {props.refreshedAt && (
         <ClientOnly>
           {tr("dashboard.refreshed", {
@@ -76,7 +83,7 @@ const ProjectDashboardHeader = (props: ProjectDashboardHeaderProps) => {
       </div>
       {/* Inert in the stacked direction, so it is not drawn there. */}
       <span className="hidden flex-1 sm:block" />
-      {props.canEdit && (
+      {props.canEdit && !props.computed && (
         <Button
           variant="outlined"
           onClick={props.onToggleEditing}
@@ -92,7 +99,7 @@ const ProjectDashboardHeader = (props: ProjectDashboardHeaderProps) => {
           {tr(props.editing ? "dashboard.edit.done" : "dashboard.edit")}
         </Button>
       )}
-      {props.canEdit && props.editing && (
+      {props.canEdit && (props.editing || props.computed) && (
         <Button
           onClick={props.onAdd}
           data-testid="dashboard-add"

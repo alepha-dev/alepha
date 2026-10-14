@@ -123,4 +123,39 @@ describe("ProjectDashboard", () => {
       screen.queryByText("The board order could not be saved (spec)"),
     ).toBeNull();
   });
+  it("renders a computed board read-only, with no card menu or edit mode", async () => {
+    alepha = Alepha.create()
+      .with(AlephaLogger)
+      .with(AlephaDateTime)
+      .with({ provide: LinkProvider, use: FakeLinkProvider })
+      .with(AlephaReact)
+      .with(AlephaReactRouter)
+      .with(AlephaReactI18n);
+    alepha.inject(I18n);
+    alepha.inject(DashboardMetricCatalog);
+    alepha.inject(DashboardPickerRegistry);
+    await alepha.start();
+    await alepha.inject(I18nProvider).setLang("en");
+    const project = projectFixture();
+    alepha.store.set(currentProjectAtom, project as never);
+    alepha.store.set(projectDashboardAtom, {
+      projectId: project.id,
+      computed: true,
+      cards: [{ ...card(-1), slot: "flow" }],
+      values: [{ cardId: -1, ok: true, value: 4, detail: {}, scopeNames: [] }],
+    } as never);
+
+    render(
+      <AlephaContext.Provider value={alepha}>
+        <DialogProvider>
+          <ProjectDashboard />
+        </DialogProvider>
+      </AlephaContext.Provider>,
+    );
+
+    const tile = await screen.findByTestId("dashboard-card");
+    expect(tile.dataset.slot).toBe("flow");
+    expect(screen.queryByLabelText("Card options")).toBeNull();
+    expect(screen.queryByTestId("dashboard-edit")).toBeNull();
+  });
 });

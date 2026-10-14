@@ -170,6 +170,7 @@ const DashboardCard = (props: DashboardCardProps) => {
     <div
       data-testid="dashboard-card"
       data-metric={props.card.metric}
+      data-slot={props.card.slot}
       draggable={(canEdit && props.armed) || undefined}
       onDragStart={props.onDragStart}
       onDragOver={props.onDragOver}

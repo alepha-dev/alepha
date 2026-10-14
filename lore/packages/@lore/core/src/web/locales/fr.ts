@@ -2254,6 +2254,8 @@ export default {
   "project.dashboard.empty.body.noMetrics":
     "Ce projet ne fait encore rien qu'une carte puisse compter. Activez une capacite dans les parametres et le tableau aura de quoi afficher.",
   "project.dashboard.empty.docs": "Comment fonctionnent les tableaux de projet",
+  "project.dashboard.standfirst.computed":
+    "Le tableau par défaut, calculé d'après ce que ce projet fait et contient.",
   "project.dashboard.standfirst": "$1 cartes sur le tableau du projet.",
   "project.dashboard.standfirst.one": "1 carte sur le tableau du projet.",
   "project.dashboard.card.delete.shared":

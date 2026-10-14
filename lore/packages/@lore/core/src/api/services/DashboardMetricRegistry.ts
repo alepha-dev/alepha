@@ -130,8 +130,46 @@ export class DashboardMetricRegistry {
     cards: DashboardCardResource[],
     user: UserAccountToken,
     project: Project,
+    capabilities?: Map<number, ProjectCapability[]>,
   ): Promise<DashboardCardValue[]> {
-    return this.resolveOn(cards, user, [project], "project");
+    return this.resolveOn(cards, user, [project], "project", capabilities);
+  }
+
+  /**
+   * The capability rows of some projects, in one batched read. Exposed so a
+   * caller that gates on them first (the computed board, #Q2652) hands the
+   * same rows to {@link resolveForProject} instead of reading them twice.
+   */
+  async capabilitiesOf(
+    projectIds: number[],
+  ): Promise<Map<number, ProjectCapability[]>> {
+    return this.security.capabilityRowsForProjects(projectIds);
+  }
+
+  /**
+   * Whether one project has what a metric needs: its capability, and the
+   * option when it names one. The capability gate, in one place: `narrow()`
+   * asks it per target, the computed board per candidate.
+   */
+  answers(
+    descriptor: DashboardMetricDescriptor,
+    projectId: number,
+    capabilities: Map<number, ProjectCapability[]>,
+  ): boolean {
+    const needs = descriptor.needs;
+    if (!needs) return true;
+    const row = (capabilities.get(projectId) ?? []).find(
+      (it) => it.key === needs.capability,
+    );
+    if (!row) return false;
+    if (!needs.option) return true;
+    // Through `optionsOf` rather than reading the JSON directly: an absent
+    // key reads as `false` there, which is the epic's read rule, and a key
+    // this build no longer knows is stripped rather than trusted.
+    return (
+      this.registry.optionsOf(needs.capability, row.options)[needs.option] ===
+      true
+    );
   }
 
   protected async resolveOn(
@@ -139,16 +177,20 @@ export class DashboardMetricRegistry {
     user: UserAccountToken,
     visible: Project[],
     board: DashboardBoard,
+    preloaded?: Map<number, ProjectCapability[]>,
   ): Promise<DashboardCardValue[]> {
     const resolvers = this.resolvers();
     const values = new Map<number, DashboardCardValue>();
 
     // The capability rows for those projects, once: one batched `inArray` for
     // the board rather than one read per card. On a project board that is one
-    // id, and the read still happens — `narrow()` needs it.
-    const capabilities = await this.security.capabilityRowsForProjects(
-      visible.map((project) => project.id),
-    );
+    // id, and the read still happens — `narrow()` needs it — unless the
+    // caller already read them.
+    const capabilities =
+      preloaded ??
+      (await this.security.capabilityRowsForProjects(
+        visible.map((project) => project.id),
+      ));
 
     // Group first, resolve second. Each card's scope is proven here, once —
     // a resolver never sees an id the caller may not read.
@@ -244,27 +286,13 @@ export class DashboardMetricRegistry {
     scope: ResolvedDashboardScope,
     capabilities: Map<number, ProjectCapability[]>,
   ): ResolvedDashboardScope {
-    const needs = descriptor.needs;
-    if (!needs) {
+    if (!descriptor.needs) {
       return scope;
     }
 
-    const answers = (projectId: number) => {
-      const row = (capabilities.get(projectId) ?? []).find(
-        (it) => it.key === needs.capability,
-      );
-      if (!row) return false;
-      if (!needs.option) return true;
-      // Through `optionsOf` rather than reading the JSON directly: an absent
-      // key reads as `false` there, which is the epic's read rule, and a key
-      // this build no longer knows is stripped rather than trusted.
-      return (
-        this.registry.optionsOf(needs.capability, row.options)[needs.option] ===
-        true
-      );
-    };
-
-    const projects = scope.projects.filter((project) => answers(project.id));
+    const projects = scope.projects.filter((project) =>
+      this.answers(descriptor, project.id, capabilities),
+    );
     const projectIds = new Set(projects.map((project) => project.id));
     // ⚠️ Subjects are dropped WITH their project rather than carried through
     // it. An epic card added while `work.epics` was on must resolve to zero

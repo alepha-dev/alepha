@@ -116,6 +116,11 @@ const ProjectDashboard = () => {
    * paint for a frame on the way in.
    */
   const cards = board.projectId === projectId ? board.cards : [];
+  /**
+   * The computed default board (#Q2652): read-only for everyone, no card
+   * menu, no drag. Curation starts from Customize.
+   */
+  const computed = board.projectId === projectId && !!board.computed;
   const values = board.projectId === projectId ? board.values : undefined;
 
   /**
@@ -133,64 +138,48 @@ const ProjectDashboard = () => {
   }, [cards, values, editMode]);
 
   /**
-   * One list-and-resolve per project, and a resolve after each mutation.
+   * The board, in one request: stored cards and their values, or the
+   * computed default when the project has none (#Q2652).
    *
-   * Lists only when the store does not already hold this project's cards, so
-   * a mutation (which writes them first and calls this through `refetch`)
-   * resolves without listing again. A project change supersedes the run in
-   * flight, and the `signal` check keeps its late answer out of the store.
+   * Runs on mount only when the route loader did not already fill the store
+   * for this project (a client-side navigation whose loader failed, say), and
+   * after every mutation through `refetch`. A project change supersedes the
+   * run in flight, and the `signal` check keeps its late answer out.
    *
-   * ⚠️ Reads the cards from the store, never from a dependency: keying this on
-   * state it writes is precisely how a loader turns into a request loop.
+   * ⚠️ Reads the store, never a dependency it writes: keying this on state
+   * it sets is precisely how a loader turns into a request loop (folio #1057).
    */
   const loadAction = useAction<[], void>(
     {
       handler: async ({ signal }) => {
         if (!projectId) return;
-        const held = alepha.store.get(projectDashboardAtom);
-        const listed =
-          held.projectId === projectId
-            ? held.cards
-            : (
-                await boardApi.listProjectDashboardCards({
-                  params: { projectId },
-                })
-              ).cards;
-        if (signal.aborted) return;
-        if (listed.length === 0) {
-          alepha.store.set(projectDashboardAtom, {
-            projectId,
-            cards: listed,
-            values: [],
-          });
-          return;
-        }
-        const resolved = await boardApi.resolveProjectDashboardCards({
+        const board = await boardApi.getProjectDashboard({
           params: { projectId },
-          body: {},
         });
         if (signal.aborted) return;
-        const current = alepha.store.get(projectDashboardAtom);
         alepha.store.set(projectDashboardAtom, {
           projectId,
-          // A mutation that landed while this resolved wrote the newer list.
-          cards: current.projectId === projectId ? current.cards : listed,
-          values: resolved.values,
-          refreshedAt: resolved.refreshedAt,
+          computed: board.computed,
+          cards: board.cards,
+          values: board.values,
+          refreshedAt: board.refreshedAt,
         });
       },
-      // Quiet on purpose: a board that cannot list or resolve renders its
-      // cards empty (or its empty state), and error reporting still sees it.
+      // Quiet on purpose: a board that cannot load renders its empty state,
+      // and error reporting still sees it.
       onError: () => {
         if (!projectId) return;
         const held = alepha.store.get(projectDashboardAtom);
         alepha.store.set(projectDashboardAtom, {
           projectId,
+          computed: held.projectId === projectId ? held.computed : undefined,
           cards: held.projectId === projectId ? held.cards : [],
           values: [],
         });
       },
-      runOnInit: true,
+      // Only when the route loader did not fill the store for this project.
+      runOnInit:
+        !!projectId && (board.projectId !== projectId || !board.values),
     },
     [alepha, boardApi, projectId],
   );
@@ -233,9 +222,13 @@ const ProjectDashboard = () => {
     void loadAction.refetch();
   };
 
+  /**
+   * The STORED cards the store holds: none while it shows the computed board,
+   * whose tiles are not rows and must never be written back as if they were.
+   */
   const currentCards = () => {
     const held = alepha.store.get(projectDashboardAtom);
-    return held.projectId === projectId ? held.cards : [];
+    return held.projectId === projectId && !held.computed ? held.cards : [];
   };
 
   const reorderAction = useAction<[ids: number[]], void>(
@@ -408,7 +401,8 @@ const ProjectDashboard = () => {
             cardCount={shown.length}
             refreshedAt={board.refreshedAt}
             canEdit={canEdit}
-            editing={editMode}
+            computed={computed}
+            editing={editMode && !computed}
             onToggleEditing={() => setEditMode((on) => !on)}
             onAdd={openCatalogue}
           />
@@ -418,7 +412,7 @@ const ProjectDashboard = () => {
             values={values}
             metrics={metrics}
             boardProjectId={projectId}
-            canEdit={canEdit && editMode}
+            canEdit={canEdit && editMode && !computed}
             onReorder={(ids) => void reorderAction.run(ids)}
             onAdd={openCatalogue}
             onChangeScope={(card) => {

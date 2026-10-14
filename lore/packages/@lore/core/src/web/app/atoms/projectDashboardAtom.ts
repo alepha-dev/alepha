@@ -28,6 +28,11 @@ export const projectDashboardAtom = $atom({
   name: "lor.project.dashboard",
   schema: z.object({
     projectId: z.integer().optional(),
+    /**
+     * Whether `cards` is the computed default board (#Q2652) rather than the
+     * project's stored cards. A computed board is read-only.
+     */
+    computed: z.boolean().optional(),
     cards: z.array(dashboardCardResourceSchema),
     values: z.array(dashboardCardValueSchema).optional(),
     refreshedAt: z.string().optional(),

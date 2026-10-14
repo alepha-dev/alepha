@@ -79,26 +79,26 @@ test.describe("Project dashboard", () => {
       // ⚠️ The URL must not move. The board owns `/` by BEING the page at
       // `/`; a redirect there is the shape #156 was about.
       expect(new URL(page.url()).pathname).toBe(`/${slug}`);
-      await expect(page.getByTestId("dashboard-empty")).toBeVisible({
+      await expect(page.getByTestId("dashboard-card").first()).toBeVisible({
         timeout: 15_000,
       });
     });
 
-    await test.step("a fresh project's board is empty, with the way in on screen", async () => {
-      // Nothing seeds, so this is the first impression rather than a corner
-      // case. Asserted as the empty state carrying the Add card button, never
-      // as a card count that a seeder could satisfy. Feedback #P2168 deleted
-      // the dashed Add tile; feedback #P2180 took the header off the empty
-      // board as well, so the empty state is the whole page and the one Add
-      // button lives inside it.
-      const empty = page.getByTestId("dashboard-empty");
-      await expect(page.getByTestId("dashboard-card")).toHaveCount(0);
-      await expect(empty.getByTestId("dashboard-add")).toBeVisible();
-      await expect(page.getByTestId("dashboard-add")).toHaveCount(1);
-      await expect(
-        page.getByRole("heading", { level: 1, name: "Dashboard" }),
-      ).toHaveCount(0);
-      await expect(empty.getByTestId("dashboard-empty-docs")).toBeVisible();
+    await test.step("a project with no stored card gets the computed board", async () => {
+      // Nothing seeds and nothing is written (#E77, #Q2652): the held quest
+      // fills the "needs you" slot of a board computed on this load, and
+      // the empty state is only for a project where every slot is empty.
+      await expect(page.getByTestId("dashboard-empty")).toHaveCount(0);
+      const held = page.locator(
+        '[data-testid="dashboard-card"][data-slot="needsYou"]',
+      );
+      await expect(held).toHaveAttribute("data-metric", "heldQuests");
+      await expect(held.getByText("1", { exact: true })).toBeVisible({
+        timeout: 15_000,
+      });
+      // Read-only: no card menu and no edit mode on a computed board.
+      await expect(page.getByLabel("Card options")).toHaveCount(0);
+      await expect(page.getByTestId("dashboard-edit")).toHaveCount(0);
     });
 
     await test.step("Activity is still there, one path down", async () => {

@@ -345,11 +345,12 @@ export class CoreRouter {
    * state - and a gate on the project root would lock people out of their own
    * project.
    *
-   * The loader fills the card list so the grid lays out with the right tiles
-   * before a single number exists; the page resolves them once on mount. It
-   * catches to an empty board rather than failing the route: a board that
-   * could not be read costs a board, and this is the page the project opens
-   * on.
+   * The loader reads the whole board, values included, in one request
+   * (`getProjectDashboard`): the stored cards, or the default board computed
+   * from the project's capabilities and data when it has none (#E77). The
+   * page does not fetch again on mount. It catches to an empty board rather
+   * than failing the route: a board that could not be read costs a board,
+   * and this is the page the project opens on.
    */
   projectDashboard = $pageProject({
     path: "/",
@@ -362,12 +363,17 @@ export class CoreRouter {
       if (!project) {
         throw new NotFoundError("Project not found");
       }
-      const listed = await this.projectDashboardApi
-        .listProjectDashboardCards({ params: { projectId: project.id } })
+      // The whole board, values included, in the one request a load makes:
+      // stored cards when there are any, else the computed default (#Q2652).
+      const board = await this.projectDashboardApi
+        .getProjectDashboard({ params: { projectId: project.id } })
         .catch(() => undefined);
       this.alepha.store.set(projectDashboardAtom, {
         projectId: project.id,
-        cards: listed?.cards ?? [],
+        computed: board?.computed,
+        cards: board?.cards ?? [],
+        values: board?.values,
+        refreshedAt: board?.refreshedAt,
       });
     },
   });

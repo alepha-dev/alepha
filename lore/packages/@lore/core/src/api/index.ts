@@ -41,6 +41,7 @@ import { ProjectRankPresets } from "./security/ProjectRankPresets.ts";
 import { DashboardCardService } from "./services/DashboardCardService.ts";
 import { DashboardMetricRegistry } from "./services/DashboardMetricRegistry.ts";
 import { DashboardScopeService } from "./services/DashboardScopeService.ts";
+import { DashboardSlotRegistry } from "./services/DashboardSlotRegistry.ts";
 import { LoreAudits } from "./services/LoreAudits.ts";
 import { LoreAuditService } from "./services/LoreAuditService.ts";
 import { ProjectDashboardCardService } from "./services/ProjectDashboardCardService.ts";
@@ -162,6 +163,7 @@ export const LoreCoreApi = $module({
     // every query here names a project and none of them names a user.
     ProjectDashboardCardService,
     DashboardMetricRegistry,
+    DashboardSlotRegistry,
     ProjectController,
     // The landing page's own reads: the momentum bars and the activity panel.
     // Off `ProjectController` because neither is about one project, and off
@@ -243,6 +245,12 @@ export { BestEffort } from "./services/BestEffort.ts";
 export { BoundParameters } from "./services/BoundParameters.ts";
 export { DashboardCardService } from "./services/DashboardCardService.ts";
 export { DashboardMetricRegistry } from "./services/DashboardMetricRegistry.ts";
+export {
+  type ComputedDashboard,
+  type DashboardSlot,
+  type DashboardSlotCandidate,
+  DashboardSlotRegistry,
+} from "./services/DashboardSlotRegistry.ts";
 export type {
   DashboardMetricResolver,
   DashboardResolvable,

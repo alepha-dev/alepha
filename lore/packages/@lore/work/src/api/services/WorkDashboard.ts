@@ -1,4 +1,8 @@
-import { DashboardCardService, DashboardScopeService } from "@lore/core/api";
+import {
+  DashboardCardService,
+  DashboardScopeService,
+  DashboardSlotRegistry,
+} from "@lore/core/api";
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 import { NotFoundError } from "alepha/server";
@@ -14,10 +18,12 @@ import { releases } from "../entities/releases.ts";
 export class WorkDashboard {
   protected readonly scopes = $inject(DashboardScopeService);
   protected readonly cards = $inject(DashboardCardService);
+  protected readonly slots = $inject(DashboardSlotRegistry);
   protected readonly epics = $repository(epics);
   protected readonly releases = $repository(releases);
 
   constructor() {
+    this.registerSlots();
     this.cards.registerSeed({
       order: 20,
       cards: async () => [
@@ -71,6 +77,37 @@ export class WorkDashboard {
           row: release,
         },
       ];
+    });
+  }
+
+  /**
+   * Work's candidates for the computed board (#Q2652, folio #F1364).
+   *
+   * Needs you: held quests, then untriaged feedback, each hidden at zero
+   * (the merged list of #Q2656 takes the slot's first rank). Flow: the open
+   * quests, last, behind the Reports tiles of #Q2653.
+   */
+  protected registerSlots(): void {
+    const above = (min: number) => (value: { value?: number }) =>
+      (value.value ?? 0) >= min;
+
+    this.slots.register({
+      slot: "needsYou",
+      rank: 50,
+      metric: "heldQuests",
+      keep: above(1),
+    });
+    this.slots.register({
+      slot: "needsYou",
+      rank: 60,
+      metric: "untriagedFeedback",
+      keep: above(1),
+    });
+    this.slots.register({
+      slot: "flow",
+      rank: 90,
+      metric: "activeQuests",
+      keep: above(1),
     });
   }
 }

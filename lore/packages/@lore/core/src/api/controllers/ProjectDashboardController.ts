@@ -14,6 +14,7 @@ import {
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { DashboardMetricRegistry } from "../services/DashboardMetricRegistry.ts";
 import { DashboardScopeService } from "../services/DashboardScopeService.ts";
+import { DashboardSlotRegistry } from "../services/DashboardSlotRegistry.ts";
 import { ProjectDashboardCardService } from "../services/ProjectDashboardCardService.ts";
 
 /**
@@ -50,16 +51,22 @@ import { ProjectDashboardCardService } from "../services/ProjectDashboardCardSer
  * mirror and nothing here should grow one. Removing a card at a time is the
  * way back, and it is also the way anybody got there.
  *
- * ## Nothing seeds
+ * ## Nothing seeds, and a board with no cards is COMPUTED (#E77)
  *
- * {@link listCards} returns what is stored, which on a new project is an empty
- * array, and it writes nothing on the way. See `projectDashboardCards` for
- * why that means there is no marker table either.
+ * {@link listProjectDashboardCards} returns what is stored, which on a new
+ * project is an empty array, and it writes nothing on the way. See
+ * `projectDashboardCards` for why that means there is no marker table either.
+ *
+ * {@link getProjectDashboard} is what the page loads: the stored cards and
+ * their values when there are any, and otherwise the default board
+ * `DashboardSlotRegistry` computes from the project's capabilities and data,
+ * resolved live and never written (folio #F1364).
  */
 export class ProjectDashboardController {
   protected readonly cards = $inject(ProjectDashboardCardService);
   protected readonly scopes = $inject(DashboardScopeService);
   protected readonly registry = $inject(DashboardMetricRegistry);
+  protected readonly slots = $inject(DashboardSlotRegistry);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly projects = $repository(projects);
 
@@ -223,6 +230,49 @@ export class ProjectDashboardController {
         values: await this.registry.resolveForProject(cards, user, project),
         refreshedAt: this.dateTime.now().toISOString(),
       };
+    },
+  });
+
+  /**
+   * The whole board in one request: what the page's loader calls.
+   *
+   * ⚠️ **Stored cards win.** A project with at least one stored card is a
+   * customized board and gets exactly those, resolved. Only a project with
+   * none gets the computed board, so `computed` says which the reader is
+   * looking at, and a computed board is read-only for everyone.
+   *
+   * One request per load, and one resolve inside it grouped by metric
+   * (folio #1057). No polling.
+   */
+  getProjectDashboard = $action({
+    use: [this.ownsProject("project:read")],
+    method: "GET",
+    path: "/projects/:projectId/dashboard",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      response: z.object({
+        computed: z.boolean(),
+        cards: z.array(dashboardCardResourceSchema),
+        values: z.array(dashboardCardValueSchema),
+        refreshedAt: z.string(),
+      }),
+    },
+    handler: async ({ params, user }) => {
+      const project = await this.projectOf(params.projectId);
+      const stored = await this.cards.list(params.projectId);
+      const refreshedAt = this.dateTime.now().toISOString();
+
+      if (stored.length > 0) {
+        return {
+          computed: false,
+          cards: stored,
+          values: await this.registry.resolveForProject(stored, user, project),
+          refreshedAt,
+        };
+      }
+
+      const board = await this.slots.compute(project, user);
+      return { computed: true, ...board, refreshedAt };
     },
   });
 

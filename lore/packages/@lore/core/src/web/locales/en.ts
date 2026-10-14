@@ -2269,6 +2269,8 @@ export default {
   "project.dashboard.empty.body.noMetrics":
     "This project does not do anything a card can count yet. Turn on a capability in Settings and the board has something to show.",
   "project.dashboard.empty.docs": "How project dashboards work",
+  "project.dashboard.standfirst.computed":
+    "The default board, computed from what this project does and holds.",
   "project.dashboard.standfirst": "$1 cards on this project's board.",
   "project.dashboard.standfirst.one": "1 card on this project's board.",
   "project.dashboard.card.delete.shared":
