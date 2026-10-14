@@ -63,7 +63,8 @@ export class AtomCookiePersistence {
 
       // Only the lazy, mid-request case is handled here — every atom already
       // registered when the request started was swept by `onRequest` above.
-      if (this.alepha.store.get("alepha.http.request")) {
+      // Untracked (#E78): "is there a request" is not a read of it.
+      if (this.alepha.store.getUntracked("alepha.http.request")) {
         this.read(atom);
       }
     },

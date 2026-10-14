@@ -229,7 +229,13 @@ export class LinkProvider {
   }
 
   public get links(): HttpClientLink[] {
-    const registry = this.alepha.store.get("alepha.server.request.apiLinks");
+    // Untracked (#E78): resolving which link a call goes to is routing. An
+    // in-process call is judged by what its action reads (its own guards),
+    // not by the registry lookup on the way. `can()` stays tracked: a page
+    // that shows a button only to who may use it is personal.
+    const registry = this.alepha.store.getUntracked(
+      "alepha.server.request.apiLinks",
+    );
 
     if (registry) {
       if (this.alepha.isBrowser()) {
@@ -809,8 +815,17 @@ export class LinkProvider {
     // a credential of its own — the point of a scope credential is that it is
     // not the visitor's. Weakest, so it only fills a gap; unchanged for every
     // caller that sets nothing, which is every caller that exists today.
-    const als = this.alepha.store.get("alepha.http.request");
+    //
+    // Read untracked, then reported only when it forwards a credential
+    // (#E78): a remote call carrying the visitor's authorization returns
+    // whatever the remote decides for them, which nothing here can observe,
+    // so the page is personal. One without a credential is the same for
+    // every visitor.
+    const als = this.alepha.store.getUntracked("alepha.http.request");
     if (als?.headers.authorization) {
+      this.alepha.store
+        .recorder()
+        ?.personal({ kind: "remote", key: link.name });
       headers.set("authorization", als.headers.authorization);
     }
 
@@ -898,7 +913,7 @@ export class LinkProvider {
 
     if (
       this.alepha.isBrowser() &&
-      !this.alepha.store.get("alepha.server.request.apiLinks")
+      !this.alepha.store.getUntracked("alepha.server.request.apiLinks")
     ) {
       await this.fetchLinks();
     }
@@ -913,7 +928,11 @@ export class LinkProvider {
     // otherwise stay empty and a forbidden action would report 401 on the
     // server and 403 in the browser — the page would redirect to login on
     // first paint and only then render the refusal.
-    const registry = this.alepha.store.get("alepha.server.request.apiLinks");
+    //
+    // Untracked (#E78), like `links`: the action's own guards decide.
+    const registry = this.alepha.store.getUntracked(
+      "alepha.server.request.apiLinks",
+    );
     if (registry && registry !== this.lastLoadedRegistry) {
       this.loadRegistry(registry);
     }

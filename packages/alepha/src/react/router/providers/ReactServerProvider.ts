@@ -11,6 +11,7 @@ import {
   type Middleware,
   OPTIONS,
   PipelineHandler,
+  ReadRecorder,
   z,
 } from "alepha";
 import { $logger } from "alepha/logger";
@@ -176,12 +177,14 @@ export class ReactServerProvider {
         const rawHandler = this.createHandler(page, cacheMiddleware);
         const handler = this.withStaticFileSkip(
           page,
-          serverMiddleware.length
-            ? this.withGuardDenial(
-                page,
-                new PipelineHandler(rawHandler, serverMiddleware),
-              )
-            : rawHandler,
+          this.withReadRecording(
+            serverMiddleware.length
+              ? this.withGuardDenial(
+                  page,
+                  new PipelineHandler(rawHandler, serverMiddleware),
+                )
+              : rawHandler,
+          ),
         );
 
         // Canonical (default-locale) route, served unprefixed.
@@ -525,6 +528,51 @@ export class ReactServerProvider {
   }
 
   /**
+   * Install the request's {@link ReadRecorder} before anything of the page
+   * runs: the server middleware (`$secure`, `$owns`), the
+   * `react:server:render:begin` hooks, the loaders, the in-process actions
+   * they call and the React render all report to it (#E78).
+   *
+   * It starts here, after `server:onRequest`, because that event is where the
+   * framework seeds the request: the session is decoded and the cookie-bound
+   * atoms are written. Those writes are the same on a cache hit and are not
+   * page reads.
+   */
+  protected withReadRecording(handler: ServerHandler): ServerHandler {
+    return async (serverRequest) => {
+      this.alepha.store.startRecording(
+        new ReadRecorder(!this.alepha.isProduction()),
+      );
+      return handler(serverRequest);
+    };
+  }
+
+  /**
+   * The development `x-alepha-cache` value for a render whose verdict is
+   * known: the cache outcome, the verdict, and the first personal read.
+   */
+  protected describeVerdict(recorder: ReadRecorder, outcome: string): string {
+    const read = recorder.describe();
+    return `${outcome}; verdict=${recorder.verdict()}${read ? `; read=${read}` : ""}`;
+  }
+
+  /**
+   * Report a finished render's verdict, in development only: the stream-end
+   * log names what made a page personal and where it was read.
+   */
+  protected logVerdict(route: PageRoute, recorder: ReadRecorder | undefined) {
+    if (!recorder || this.alepha.isProduction()) {
+      return;
+    }
+    this.log.info("Page verdict", {
+      name: route.name,
+      verdict: recorder.verdict(),
+      read: recorder.describe(),
+      source: recorder.first?.source,
+    });
+  }
+
+  /**
    * Collect middleware from the entire parent chain + the page itself.
    * Parent middleware runs first (outermost → innermost → page).
    */
@@ -711,6 +759,14 @@ export class ReactServerProvider {
         state,
       });
 
+      // Everything above runs again on a cache hit, so its writes reach the
+      // private script either way; from here on, the render proper starts
+      // and a write to a personal atom would be lost on a hit (#E78).
+      const recorder = this.alepha.store.recorder();
+      if (recorder) {
+        recorder.writesTracked = true;
+      }
+
       // Apply SSR headers early
       Object.assign(reply.headers, this.SSR_HEADERS);
 
@@ -744,6 +800,14 @@ export class ReactServerProvider {
         }
 
         route.onServerResponse?.(serverRequest);
+        // Buffered: the verdict exists before the headers leave.
+        if (recorder && !this.alepha.isProduction()) {
+          reply.headers["x-alepha-cache"] = this.describeVerdict(
+            recorder,
+            "miss",
+          );
+          this.logVerdict(route, recorder);
+        }
         reply.body = result.html;
         return;
       }
@@ -809,10 +873,16 @@ export class ReactServerProvider {
 
       this.log.trace("Page streaming started (early head optimization)");
       route.onServerResponse?.(serverRequest);
+      // Streamed: the headers leave before the verdict exists, so the header
+      // says only "miss" and the verdict goes to the stream-end log.
+      if (recorder && !this.alepha.isProduction()) {
+        reply.headers["x-alepha-cache"] = "miss";
+      }
       reply.body = htmlStream.pipeThrough(
         new TransformStream({
           flush: () => {
             this.log.info("Page streaming completed", { name: route.name });
+            this.logVerdict(route, recorder);
           },
         }),
       );

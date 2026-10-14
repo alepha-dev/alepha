@@ -366,7 +366,10 @@ export class ActionPrimitive<
     // world, and no client ever limited per address. The HTTP request that
     // is actually paying for this work is on an ancestor context layer;
     // inherit its address so the budget comes out of the right bucket.
-    const parentIp = this.alepha.store.get("alepha.http.request")?.ip;
+    //
+    // Untracked (#E78): the address keys a rate limit and never reaches a
+    // page, so an in-process call from a loader must not make it personal.
+    const parentIp = this.alepha.store.getUntracked("alepha.http.request")?.ip;
 
     const serverActionRequest: Partial<ServerRequest> = {
       method,

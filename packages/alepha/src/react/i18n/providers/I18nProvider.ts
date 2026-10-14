@@ -214,6 +214,17 @@ export class I18nProvider<
     },
   });
 
+  /**
+   * A page that reads the language varies by it, and by nothing else (#E78):
+   * the page cache keys every entry by language anyway.
+   */
+  protected readonly langIsVariant = $hook({
+    on: "configure",
+    handler: () => {
+      this.alepha.store.markVariant("alepha.react.i18n.lang");
+    },
+  });
+
   protected readonly onRender = $hook({
     on: "server:onRequest",
     priority: "last",

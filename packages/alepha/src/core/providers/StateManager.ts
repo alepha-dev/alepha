@@ -11,6 +11,7 @@ import { $inject } from "../primitives/$inject.ts";
 import { AlsProvider, type StateScope } from "./AlsProvider.ts";
 import { EventManager } from "./EventManager.ts";
 import { JsonSchemaCodec } from "./JsonSchemaCodec.ts";
+import { ReadRecorder } from "./ReadRecorder.ts";
 import { SchemaValidator } from "./SchemaValidator.ts";
 import type { Infer, ZObject } from "./ZodProvider.ts";
 
@@ -122,6 +123,59 @@ export class StateManager<State extends object = AlephaState> {
   }
 
   protected readonly personalKeys = new Set<string>();
+
+  /**
+   * Mark a state key whose reads make a page vary by language only (the
+   * language atom). See {@link ReadRecorder.lang}.
+   */
+  public markVariant(key: string): this {
+    this.variantKeys.add(key);
+    return this;
+  }
+
+  protected readonly variantKeys = new Set<string>();
+
+  /**
+   * The raw state key the request's {@link ReadRecorder} lives under, in the
+   * request's own store fork.
+   */
+  public static readonly RECORDER_KEY = "alepha.state.recorder";
+
+  /**
+   * Install a recorder in the current store fork: from now on, every read of
+   * personal state in this fork, or in any fork nested in it, is reported to
+   * it. Called by the page handler at the start of a request (#E78).
+   */
+  public startRecording(recorder = new ReadRecorder()): ReadRecorder {
+    if (this.als?.exists()) {
+      this.als.set(StateManager.RECORDER_KEY, recorder);
+    }
+    return recorder;
+  }
+
+  /**
+   * The recorder of the current request, if a page handler installed one.
+   */
+  public recorder(): ReadRecorder | undefined {
+    if (!this.als?.exists()) {
+      return undefined;
+    }
+    return this.als.get(StateManager.RECORDER_KEY) as ReadRecorder | undefined;
+  }
+
+  protected recordRead(key: string, atom: Atom | undefined): void {
+    if (this.variantKeys.has(key)) {
+      this.recorder()?.lang();
+      return;
+    }
+    const personal = atom ? this.isPersonal(atom) : this.personalKeys.has(key);
+    if (personal) {
+      this.recorder()?.personal({
+        kind: key === "alepha.http.request" ? "request" : "atom",
+        key,
+      });
+    }
+  }
 
   public getAtoms(context = true): Array<AtomWithValue> {
     const atoms: Array<AtomWithValue> = [];
@@ -446,8 +500,40 @@ export class StateManager<State extends object = AlephaState> {
     scope?: StateScope,
   ): State[Key] | undefined;
   public get(target: string | object, scope?: StateScope): any {
+    return this.read(target, scope, true);
+  }
+
+  /**
+   * {@link get}, without reporting the read to the request's
+   * {@link ReadRecorder}.
+   *
+   * For framework bookkeeping only: a read whose value never reaches the
+   * markup, such as the caller's IP for rate limiting or the request's
+   * `Server-Timing` metadata. Page code never uses it. Every call site is a
+   * claim that the value cannot change what a page renders, so the list is
+   * kept short and named in the page cache guide.
+   */
+  public getUntracked<T extends TAtomObject>(
+    target: Atom<T>,
+    scope?: StateScope,
+  ): Infer<T>;
+  public getUntracked<Key extends keyof State>(
+    target: Key,
+    scope?: StateScope,
+  ): State[Key] | undefined;
+  public getUntracked(target: string | object, scope?: StateScope): any {
+    return this.read(target, scope, false);
+  }
+
+  protected read(
+    target: string | object,
+    scope: StateScope | undefined,
+    track: boolean,
+  ): any {
     if (target instanceof Computed) {
-      return target.compute((dep: AnyDep) => this.get(dep as any, scope));
+      return target.compute((dep: AnyDep) =>
+        this.read(dep as any, scope, track),
+      );
     }
 
     if (target instanceof Atom) {
@@ -456,6 +542,13 @@ export class StateManager<State extends object = AlephaState> {
 
     const key = target instanceof Atom ? target.key : target;
     const store = this.store as Record<string, any>;
+
+    if (track) {
+      this.recordRead(
+        key as string,
+        target instanceof Atom ? target : undefined,
+      );
+    }
 
     if (scope === "app") {
       return store[key];
@@ -508,9 +601,15 @@ export class StateManager<State extends object = AlephaState> {
       value = this.validator.validate(atom.schema, value);
     }
 
-    const prevValue = this.get(key);
+    // Untracked: comparing with the previous value is the store's own
+    // business, not a read by the caller.
+    const prevValue = this.read(key, undefined, false);
     if (prevValue === value && typeof value !== "object") {
       return this;
+    }
+
+    if (atom && this.isPersonal(atom)) {
+      this.recorder()?.personal({ kind: "write", key: String(key) });
     }
 
     if (options?.skipContext !== true && this.als?.exists()) {

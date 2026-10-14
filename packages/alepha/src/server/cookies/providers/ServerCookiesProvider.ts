@@ -80,7 +80,9 @@ export class ServerCookiesProvider {
   });
 
   protected getCookiesFromContext(cookies?: Cookies): Cookies {
-    const contextCookies = this.alepha.store.get(
+    // Untracked (#E78): the callers below report what they do with the jar,
+    // a named cookie read or a Set-Cookie, which says more than "the request".
+    const contextCookies = this.alepha.store.getUntracked(
       "alepha.http.request",
     )?.cookies;
     if (cookies) return cookies;
@@ -121,6 +123,10 @@ export class ServerCookiesProvider {
   ): Infer<T> | undefined {
     const cookies = this.getCookiesFromContext(contextCookies);
     const prefixed = options.prefix !== false;
+    // A cookie is the visitor's: read during a page render, the page is
+    // personal (#E78). The seeding done at `server:onRequest` runs before any
+    // recorder exists and is not counted.
+    this.alepha.store.recorder()?.personal({ kind: "cookie", key: name });
     let rawValue = cookies.req[this.prefixName(name, prefixed)];
 
     if (!rawValue) return undefined;
@@ -171,6 +177,8 @@ export class ServerCookiesProvider {
     contextCookies?: Cookies,
   ): void {
     const cookies = this.getCookiesFromContext(contextCookies);
+    // A response that sets a cookie is about its visitor (#E78).
+    this.alepha.store.recorder()?.personal({ kind: "set-cookie", key: name });
     let value = JSON.stringify(this.alepha.codec.decode(options.schema, data));
 
     if (options.compress) {
@@ -217,6 +225,7 @@ export class ServerCookiesProvider {
     scope?: { path?: string; domain?: string },
   ): void {
     const cookies = this.getCookiesFromContext(contextCookies);
+    this.alepha.store.recorder()?.personal({ kind: "set-cookie", key: name });
 
     cookies.res[this.prefixName(name, prefix)] = {
       value: "",

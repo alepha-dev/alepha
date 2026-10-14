@@ -68,7 +68,8 @@ export const $etag = (options?: EtagMiddlewareOptions): Middleware => {
         // `$transactional()` nested in between.
         const request =
           alepha.store.get("alepha.action.request", "fork") ??
-          alepha.get("alepha.http.request") ??
+          // Untracked (#E78): cache headers, not page content.
+          alepha.store.getUntracked("alepha.http.request") ??
           args[0];
 
         // Set etag options on request metadata for hooks to read

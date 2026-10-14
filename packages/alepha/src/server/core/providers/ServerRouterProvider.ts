@@ -2,6 +2,7 @@ import { Readable as NodeStream } from "node:stream";
 import { ReadableStream as NodeWebStream } from "node:stream/web";
 
 import {
+  $hook,
   $inject,
   Alepha,
   coerceScalar,
@@ -51,6 +52,17 @@ const NULL_BODY_STATUSES = new Set([101, 204, 205, 304]);
 export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
+
+  /**
+   * The raw request is the visitor: a page render that reads it is personal
+   * (#E78). Framework bookkeeping reads it with `getUntracked`.
+   */
+  protected readonly requestIsPersonal = $hook({
+    on: "configure",
+    handler: () => {
+      this.alepha.store.markPersonal("alepha.http.request");
+    },
+  });
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly routes: ServerRoute[] = [];
   protected readonly serverTimingProvider = $inject(ServerTimingProvider);

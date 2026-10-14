@@ -159,7 +159,8 @@ export class RateLimitPrimitive<TInput = string> extends Primitive<
       options: { name: this.options.name, ...options },
       handler: ({ alepha, next }) => {
         return async (...args: any[]) => {
-          const request = alepha.get("alepha.http.request") as
+          // Untracked (#E78): the limiter's key never reaches a page.
+          const request = alepha.store.getUntracked("alepha.http.request") as
             | ServerRequest
             | undefined;
           const key = options.key
