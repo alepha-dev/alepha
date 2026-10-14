@@ -136,9 +136,17 @@ export class AppSecurityProvider {
       // operator closes an instance permanently from the UI, not by editing
       // a compose file nobody re-reads.
       registrationAllowed: this.env.REGISTRATION_ALLOWED !== false,
-      registrationIpMaxAttempts: this.env.REGISTRATION_IP_MAX_ATTEMPTS
-        ? Number(this.env.REGISTRATION_IP_MAX_ATTEMPTS)
-        : undefined,
+      // Omitted, never `undefined`, when the env var is unset: an explicit
+      // `undefined` overrides the realm's default of 10, the first boot seeds
+      // it into the parameter row as is, and `$rateLimit` refuses a limit
+      // that is not an integer, so every registration answered 500 (#Q2645).
+      ...(this.env.REGISTRATION_IP_MAX_ATTEMPTS
+        ? {
+            registrationIpMaxAttempts: Number(
+              this.env.REGISTRATION_IP_MAX_ATTEMPTS,
+            ),
+          }
+        : {}),
       adminEmails: this.env.ADMIN_EMAIL ? [this.env.ADMIN_EMAIL] : [],
       // Sliding idle window: a session (web login or OAuth/MCP connection)
       // unused for 30 days is invalidated even before the absolute ceiling.
