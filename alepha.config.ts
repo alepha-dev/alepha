@@ -28,6 +28,7 @@ export default defineConfig({
       types: ["feat", "fix"],
       scopes: [
         // alepha: modules
+        "actor",
         "api",
         "background",
         "bucket",
@@ -45,6 +46,7 @@ export default defineConfig({
         "mcp",
         "orm",
         "queue",
+        "rate-limit",
         "react",
         "redis",
         "router",
@@ -70,6 +72,8 @@ export default defineConfig({
         "users",
         "verifications",
         // published packages
+        "capacitor",
+        "desktop",
         "devtools",
         "payments-stripe",
         "protobuf",
@@ -78,6 +82,7 @@ export default defineConfig({
         // surfaces that live inside a module and are named on their own
         "auth",
         "cookies",
+        "infra",
         "platform",
       ],
     }),
