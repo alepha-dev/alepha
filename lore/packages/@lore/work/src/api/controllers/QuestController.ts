@@ -62,6 +62,7 @@ import { OpenQuestScope } from "../services/OpenQuestScope.ts";
 import { QuestDeletionService } from "../services/QuestDeletionService.ts";
 import { QuestResourceMapper } from "../services/QuestResourceMapper.ts";
 import { QuestService } from "../services/QuestService.ts";
+import { QuestShelvingService } from "../services/QuestShelvingService.ts";
 import { ReleaseAttachmentService } from "../services/ReleaseAttachmentService.ts";
 
 export class QuestController {
@@ -184,6 +185,7 @@ export class QuestController {
   questMapper = $inject(QuestResourceMapper);
   questService = $inject(QuestService);
   deletion = $inject(QuestDeletionService);
+  shelving = $inject(QuestShelvingService);
   areaService = $inject(AreaService);
   releaseAttachment = $inject(ReleaseAttachmentService);
   linkService = $inject(ResourceLinkService);
@@ -1875,16 +1877,9 @@ export class QuestController {
         return this.mapQuestToResource(quest);
       }
 
-      quest.shelvedAt = this.dt.nowISOString();
-      quest.shelvedBy = user.id;
-      quest.history.push({
-        at: this.dt.nowISOString(),
-        by: user.id,
-        action: "shelved",
-      });
-
-      await this.quests.save(quest);
-      await this.logQuest("shelve", quest, user);
+      // The write is `QuestShelvingService`, shared with the epic shelve
+      // (#E78), so both shelve a quest the same way.
+      await this.shelving.shelve(quest, user);
       // After the save, so the count sees this quest resolved.
       await this.epicWorkflow.completeIfResolved(quest, user);
       return this.mapQuestToResource(quest);
@@ -1909,16 +1904,7 @@ export class QuestController {
       // plan, and it starts nothing.
       await this.epicWorkflow.assertQuestWorkable(quest, "unshelve");
 
-      quest.shelvedAt = undefined;
-      quest.shelvedBy = undefined;
-      quest.history.push({
-        at: this.dt.nowISOString(),
-        by: user.id,
-        action: "unshelved",
-      });
-
-      await this.quests.save(quest);
-      await this.logQuest("unshelve", quest, user);
+      await this.shelving.unshelve(quest, user);
       return this.mapQuestToResource(quest);
     },
   });

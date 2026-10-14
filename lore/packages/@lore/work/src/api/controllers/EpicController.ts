@@ -28,6 +28,7 @@ import {
   type EpicResource,
   epicResourceSchema,
 } from "../schemas/epicResourceSchema.ts";
+import { epicShelveResultSchema } from "../schemas/epicShelveResultSchema.ts";
 import {
   type ReleaseCascade,
   releaseCascadeSchema,
@@ -39,6 +40,7 @@ import {
 } from "../services/EpicProgressService.ts";
 import { EpicWorkflowService } from "../services/EpicWorkflowService.ts";
 import { QuestDeletionService } from "../services/QuestDeletionService.ts";
+import { QuestShelvingService } from "../services/QuestShelvingService.ts";
 import { ReleaseAttachmentService } from "../services/ReleaseAttachmentService.ts";
 import { ReleaseCascadeService } from "../services/ReleaseCascadeService.ts";
 
@@ -94,6 +96,7 @@ export class EpicController {
   audits = $inject(LoreAudits);
   owned = $inject(OwnedResourceProvider);
   questDeletion = $inject(QuestDeletionService);
+  shelving = $inject(QuestShelvingService);
   protected readonly ranks = $inject(RankService);
 
   /**
@@ -539,6 +542,118 @@ export class EpicController {
       return await this.buildEpicResource(updated);
     },
   });
+
+  /**
+   * Shelve the epic and every open quest in it (#E78, folio #1365).
+   *
+   * From `draft`, `ready` or `in_progress`; `completed` is refused. The epic
+   * is written FIRST (`EpicWorkflowService.shelve`), so shelving its last
+   * open quest cannot complete it, then each open quest (`todo`,
+   * `in_progress`, `on_hold`) is handed back to `todo` and shelved through
+   * `QuestShelvingService`, the path `shelveQuest` takes, marked
+   * `shelvedWithEpic`. Completed quests and quests already shelved are left
+   * alone. With no transaction, a failure halfway leaves the epic `shelved`
+   * with some quests open, and calling this again finishes them: an epic
+   * already shelved is a retry, not a refusal.
+   *
+   * Moving the quests needs `quest:update` beside the gate's `epic:write`.
+   * Answers the number of quests shelved, as `movedQuests`.
+   */
+  shelveEpic = $action({
+    use: [this.ownsEpicForWork("epic:write")],
+    schema: {
+      params: z.object({ id: z.integer() }),
+      response: epicShelveResultSchema,
+    },
+    handler: async ({ user }) => {
+      const epic = this.owned.get<Epic>();
+      const project = this.owned.authority<Project>();
+      this.workflow.assertShelvable(epic);
+
+      const open = await this.quests.findMany({
+        where: {
+          epicId: { eq: epic.id },
+          completedAt: { isNull: true },
+          shelvedAt: { isNull: true },
+        },
+      });
+      await this.assertMayMoveQuests(epic, project, user, open.length);
+
+      const shelved = await this.workflow.shelve(epic, user);
+      for (const quest of open) {
+        this.shelving.release(quest, user);
+        await this.shelving.shelve(quest, user, { withEpic: true });
+      }
+
+      return {
+        ...(await this.buildEpicResource(shelved)),
+        movedQuests: open.length,
+      };
+    },
+  });
+
+  /**
+   * Unshelve the epic and exactly the quests its shelve set aside (#E78).
+   *
+   * Only from `shelved`. The quests carrying `shelvedWithEpic` come back as
+   * `todo`, unassigned (they were handed back before being shelved), and a
+   * quest shelved one by one before stays shelved. They are written FIRST and
+   * the epic LAST (`EpicWorkflowService.unshelve`), so a failure halfway
+   * leaves the epic `shelved` with the rest still marked for a retry. The
+   * epic returns to `in_progress` when it had started, `ready` otherwise.
+   *
+   * Answers the number of quests unshelved, as `movedQuests`.
+   */
+  unshelveEpic = $action({
+    use: [this.ownsEpicForWork("epic:write")],
+    schema: {
+      params: z.object({ id: z.integer() }),
+      response: epicShelveResultSchema,
+    },
+    handler: async ({ user }) => {
+      const epic = this.owned.get<Epic>();
+      const project = this.owned.authority<Project>();
+      this.workflow.assertUnshelvable(epic);
+
+      const marked = await this.quests.findMany({
+        where: {
+          epicId: { eq: epic.id },
+          shelvedAt: { isNotNull: true },
+          shelvedWithEpic: { eq: true },
+        },
+      });
+      await this.assertMayMoveQuests(epic, project, user, marked.length);
+
+      for (const quest of marked) {
+        await this.shelving.unshelve(quest, user, { withEpic: true });
+      }
+      const restored = await this.workflow.unshelve(epic, user);
+
+      return {
+        ...(await this.buildEpicResource(restored)),
+        movedQuests: marked.length,
+      };
+    },
+  });
+
+  /**
+   * Shelving an epic shelves its quests, so it needs what shelving one quest
+   * needs. Asked only when there is a quest to move.
+   */
+  protected async assertMayMoveQuests(
+    epic: Pick<Epic, "number">,
+    project: Project,
+    user: UserAccountToken,
+    count: number,
+  ): Promise<void> {
+    if (count === 0) return;
+    if (await this.ranks.can(project.organizationId!, "quest:update", user)) {
+      return;
+    }
+    throw new ForbiddenError(
+      `Shelving or unshelving Epic ${formatReference("epic", epic.number)} moves ${count} quests, which needs the right to update quests here.`,
+    );
+  }
 
   /**
    * Delete the epic AND its quests (#Q2666), while it is `draft` or `ready`.

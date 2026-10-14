@@ -20,6 +20,8 @@ import { useAction, useAlepha, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import {
+  Archive,
+  ArchiveRestore,
   Bot,
   CircleDot,
   ClipboardCheck,
@@ -52,6 +54,7 @@ import {
   STATUS_LABEL_KEYS,
   STATUS_ORDER,
   STATUS_TONE,
+  openQuestsOf,
 } from "./epicStatus.ts";
 import ProjectEpicsProgress from "./ProjectEpicsProgress.tsx";
 
@@ -177,6 +180,44 @@ const ProjectEpics = () => {
           params: { id: epic.id },
           body: { status },
         });
+        refresh();
+      },
+    },
+    [epicApi, dialog, tr],
+  );
+
+  /**
+   * Shelve or Unshelve the whole epic (#E78), the same two writes the epic
+   * page's `EpicShelveControl` makes, with its confirmation copy from the
+   * same keys: Shelve names how many open quests it sets aside.
+   */
+  const shelveAction = useAction<
+    [epic: EpicResource, shelve: boolean, refresh: () => void],
+    void
+  >(
+    {
+      handler: async (epic, shelve, refresh) => {
+        const ok = shelve
+          ? await dialog.confirm({
+              title: tr("epic.shelve.title"),
+              description: tr("epic.shelve.confirm", {
+                args: [epic.title, String(openQuestsOf(epic))],
+              }),
+              confirmLabel: tr("epic.status.actions.shelve"),
+              cancelLabel: tr("common.cancel"),
+              destructive: true,
+            })
+          : await dialog.confirm({
+              title: tr("epic.unshelve.title"),
+              description: tr("epic.unshelve.confirm", { args: [epic.title] }),
+              confirmLabel: tr("epic.status.actions.unshelve"),
+              cancelLabel: tr("common.cancel"),
+            });
+        if (!ok) return;
+        const params = { params: { id: epic.id } };
+        await (shelve
+          ? epicApi.shelveEpic(params)
+          : epicApi.unshelveEpic(params));
         refresh();
       },
     },
@@ -334,6 +375,7 @@ const ProjectEpics = () => {
   const busy =
     setReleaseAction.loading ||
     setStatusAction.loading ||
+    shelveAction.loading ||
     deleteAction.loading ||
     bulkReleaseAction.loading ||
     bulkReadyAction.loading ||
@@ -868,6 +910,36 @@ const ProjectEpics = () => {
                     row: EpicResource,
                     { refresh }: { refresh: () => void },
                   ) => void setStatusAction.run(row, "draft", refresh),
+                },
+              ]
+            : []),
+          // Shelve sets the whole plan aside, from any status but
+          // completed; Unshelve brings it back (#E78).
+          ...(epic.status !== "completed" &&
+          epic.status !== "shelved" &&
+          epicApi.shelveEpic.can()
+            ? [
+                {
+                  icon: Archive,
+                  label: tr("epic.status.actions.shelve"),
+                  disabled: () => busy,
+                  onClick: (
+                    row: EpicResource,
+                    { refresh }: { refresh: () => void },
+                  ) => void shelveAction.run(row, true, refresh),
+                },
+              ]
+            : []),
+          ...(epic.status === "shelved" && epicApi.unshelveEpic.can()
+            ? [
+                {
+                  icon: ArchiveRestore,
+                  label: tr("epic.status.actions.unshelve"),
+                  disabled: () => busy,
+                  onClick: (
+                    row: EpicResource,
+                    { refresh }: { refresh: () => void },
+                  ) => void shelveAction.run(row, false, refresh),
                 },
               ]
             : []),

@@ -172,7 +172,7 @@ export const epicUpdateResultSchema = z.object({
 
 export const epicSetStatusParamsSchema = epicRefSchema.extend({
   status: epicManualStatusSchema.describe(
-    "`ready` (the spec is done: the quests join the backlog and can be accepted) or `draft` (back to specifying: the quests leave the backlog again). Only those two, and only between each other. `in_progress` and `completed` are never set by hand: the first quest accepted or assigned starts the epic, and the last open quest completed or shelved completes it. The same status again is a no-op.",
+    "`ready` (the spec is done: the quests join the backlog and can be accepted) or `draft` (back to specifying: the quests leave the backlog again). Only those two, and only between each other. `in_progress` and `completed` are never set by hand: the first quest accepted or assigned starts the epic, and the last open quest completed or shelved completes it. `shelved` has its own tools, epic_shelve and epic_unshelve. The same status again is a no-op.",
   ),
 });
 
@@ -181,6 +181,28 @@ export const epicSetStatusResultSchema = z.object({
   number: z.integer(),
   title: z.string(),
   status: epicStatusSchema,
+});
+
+// -----------------------------------------------------------------------------
+// epic_shelve / epic_unshelve
+// -----------------------------------------------------------------------------
+
+export const epicShelveParamsSchema = epicRefSchema;
+
+/**
+ * The epic's status after the move, and how many of its quests moved: the
+ * number an agent reports back (#E78).
+ */
+export const epicShelveResultSchema = z.object({
+  id: z.integer(),
+  number: z.integer(),
+  title: z.string(),
+  status: epicStatusSchema,
+  movedQuests: z
+    .integer()
+    .describe(
+      "How many quests this call shelved (epic_shelve) or brought back (epic_unshelve).",
+    ),
 });
 
 // -----------------------------------------------------------------------------

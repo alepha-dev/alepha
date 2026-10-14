@@ -449,6 +449,52 @@ describe("Lore MCP — epics", () => {
     });
   });
 
+  describe("epic_shelve and epic_unshelve", () => {
+    it("shelves the open quests, reports the count, and brings them back", async ({
+      expect,
+    }) => {
+      const { alepha, repos, project, epicTools, call } = await setup();
+      const epic = await createTestEpic(alepha, project, { status: "ready" });
+      const quest = await createTestQuest(alepha, project, { epicId: epic.id });
+
+      const shelved = await call(epicTools.epic_shelve, {
+        project: project.id,
+        number: epic.number,
+      });
+      expect(shelved).toMatchObject({
+        number: epic.number,
+        status: "shelved",
+        movedQuests: 1,
+      });
+      expect((await repos.quests.getById(quest.id)).shelvedAt).toBeDefined();
+
+      const back = await call(epicTools.epic_unshelve, {
+        project: project.id,
+        number: epic.number,
+      });
+      expect(back).toMatchObject({ status: "ready", movedQuests: 1 });
+      expect((await repos.quests.getById(quest.id)).shelvedAt).toBeUndefined();
+    });
+
+    it("refuses a completed epic with a message naming it", async ({
+      expect,
+    }) => {
+      const { alepha, project, epicTools, call } = await setup();
+      const epic = await createTestEpic(alepha, project, {
+        status: "completed",
+      });
+
+      await expect(
+        call(epicTools.epic_shelve, {
+          project: project.id,
+          number: epic.number,
+        }),
+      ).rejects.toThrow(
+        `Cannot shelve Epic #E${epic.number}: it is completed.`,
+      );
+    });
+  });
+
   describe("epic_delete", () => {
     it("deletes the epic's quests and keeps its folios, unfiled", async ({
       expect,

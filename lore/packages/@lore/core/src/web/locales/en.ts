@@ -2196,6 +2196,14 @@ export default {
   "epic.start.blocked": "Blocked by Epic $1",
   "epic.status.actions.markReady": "Mark as ready",
   "epic.status.actions.backToDraft": "Back to draft",
+  "epic.status.actions.shelve": "Shelve",
+  "epic.status.actions.unshelve": "Unshelve",
+  "epic.shelve.title": "Shelve this epic?",
+  "epic.shelve.confirm":
+    "Shelving $1 sets aside its $2 open quests: they are unassigned and shelved, and nothing in the epic can be worked until it is unshelved. Completed quests stay completed, and epics that depend on it stay blocked.",
+  "epic.unshelve.title": "Unshelve this epic?",
+  "epic.unshelve.confirm":
+    "Unshelving $1 brings back the quests shelved with it, as to do and unassigned. Quests shelved on their own before stay shelved.",
   "epic.aside.predecessor": "Depends on",
   "epic.aside.predecessor.after": "After Epic $1",
   "epic.aside.predecessor.blocked": "Blocked by Epic $1",

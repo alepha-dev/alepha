@@ -108,3 +108,12 @@ export const epicBlockedBy = (
   epic.dependsOnStatus !== "completed"
     ? epic.dependsOnNumber
     : undefined;
+
+/**
+ * The quests an epic shelve would move (#E78): neither completed nor
+ * already shelved. The progress buckets are disjoint
+ * (`epicResourceSchema`), so this is a subtraction rather than a second
+ * read. The page control and the list row both confirm with it.
+ */
+export const openQuestsOf = (epic: Pick<EpicResource, "progress">): number =>
+  epic.progress.total - epic.progress.completed - epic.progress.shelved;

@@ -2180,6 +2180,14 @@ export default {
   "epic.start.blocked": "Bloquée par l'épopée $1",
   "epic.status.actions.markReady": "Marquer comme prête",
   "epic.status.actions.backToDraft": "Repasser en brouillon",
+  "epic.status.actions.shelve": "Mettre de côté",
+  "epic.status.actions.unshelve": "Reprendre",
+  "epic.shelve.title": "Mettre cette épopée de côté ?",
+  "epic.shelve.confirm":
+    "Mettre $1 de côté met aussi de côté ses $2 quêtes ouvertes : elles sont désassignées et mises de côté, et rien dans l'épopée ne peut avancer avant qu'elle soit reprise. Les quêtes terminées le restent, et les épopées qui en dépendent restent bloquées.",
+  "epic.unshelve.title": "Reprendre cette épopée ?",
+  "epic.unshelve.confirm":
+    "Reprendre $1 ramène les quêtes mises de côté avec elle, à faire et sans assignation. Les quêtes mises de côté individuellement avant restent de côté.",
   "epic.aside.predecessor": "Dépend de",
   "epic.aside.predecessor.after": "Après l'épopée $1",
   "epic.aside.predecessor.blocked": "Bloquée par l'épopée $1",
