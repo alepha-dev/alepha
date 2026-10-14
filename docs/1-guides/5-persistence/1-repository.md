@@ -378,6 +378,20 @@ const ids = await this.repo.updateMany(
 );
 ```
 
+### Leaving `updatedAt` alone
+
+Every update method stamps the `db.updatedAt()` column. A write that is bookkeeping rather than an edit can opt out with `touch: false`, so a reader of `updatedAt` (an activity feed, a "recently changed" list) does not see it as a change:
+
+```typescript
+await this.releases.updateMany(
+  { projectId: { eq: projectId }, defaultSince: { isNotNull: true } },
+  { defaultSince: null },
+  { touch: false },
+);
+```
+
+`touch` is accepted by `updateOne`, `updateMany`, `updateById` and `save`, and skips the stamp only: a `db.version()` column is still bumped, events still fire and the query cache is still invalidated. An `updatedAt` written in the patch itself is stored as given. Reads and upserts do not take it; an upsert's conflict branch always stamps `updatedAt`.
+
 ### save
 
 Save a previously fetched entity. Uses optimistic locking when a `version` column is present. Unlike `updateOne`/`updateById`, `save` expects the full entity object and sets `undefined` fields to `null`.

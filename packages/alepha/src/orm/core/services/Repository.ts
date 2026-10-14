@@ -1393,11 +1393,14 @@ export abstract class Repository<T extends ZObject> {
 
   /**
    * Find an entity and update it.
+   *
+   * Stamps the `db.updatedAt()` column unless `opts.touch` is `false`; see
+   * {@link UpdateOptions.touch}.
    */
   public async updateOne(
     where: PgQueryWhereOrSQL<T>,
     data: WithSQL<Infer<TObjectUpdate<T>>>,
-    opts: StatementOptions = {},
+    opts: UpdateOptions = {},
   ): Promise<Infer<T>> {
     await this.alepha.events.emit("repository:update:before", {
       tableName: this.tableName,
@@ -1416,7 +1419,7 @@ export abstract class Repository<T extends ZObject> {
     // across calls, or is validated/audited by the caller afterwards.
     let row: any = { ...(data as Record<string, unknown>) };
 
-    if (updatedAtField) {
+    if (updatedAtField && opts.touch !== false) {
       row[updatedAtField.key] =
         opts.now ?? this.dateTimeProvider.nowISOString();
     }
@@ -1480,10 +1483,7 @@ export abstract class Repository<T extends ZObject> {
    *
    * @see {@link DbVersionMismatchError}
    */
-  public async save(
-    entity: Infer<T>,
-    opts: StatementOptions = {},
-  ): Promise<void> {
+  public async save(entity: Infer<T>, opts: UpdateOptions = {}): Promise<void> {
     // A copy, assigned back only once the write succeeded: on a version
     // mismatch the caller's object is exactly what it loaded, so a retry of
     // it fails again instead of matching the concurrent writer's version and
@@ -1553,22 +1553,39 @@ export abstract class Repository<T extends ZObject> {
 
   /**
    * Find an entity by ID and update it.
+   *
+   * Takes {@link UpdateOptions}, so `{ touch: false }` leaves `updatedAt`
+   * alone.
    */
   public async updateById(
     id: string | number,
     data: WithSQL<Infer<TObjectUpdate<T>>>,
-    opts: StatementOptions = {},
+    opts: UpdateOptions = {},
   ): Promise<Infer<T>> {
     return await this.updateOne(this.getWhereId(id), data, opts);
   }
 
   /**
    * Find many entities and update all of them.
+   *
+   * Stamps the `db.updatedAt()` column unless `opts.touch` is `false`; see
+   * {@link UpdateOptions.touch}.
+   *
+   * @example
+   * ```ts
+   * // Bookkeeping, not an edit: an activity feed scanning `updatedAt`
+   * // must not report every release as changed.
+   * await releases.updateMany(
+   *   { projectId: { eq: projectId }, defaultSince: { isNotNull: true } },
+   *   { defaultSince: null },
+   *   { touch: false },
+   * );
+   * ```
    */
   public async updateMany(
     where: PgQueryWhereOrSQL<T>,
     data: WithSQL<Infer<TObjectUpdate<T>>>,
-    opts: StatementOptions = {},
+    opts: UpdateOptions = {},
   ): Promise<Array<number | string>> {
     await this.alepha.events.emit("repository:update:before", {
       tableName: this.tableName,
@@ -1581,7 +1598,7 @@ export abstract class Repository<T extends ZObject> {
       PG_UPDATED_AT,
     )?.[0];
 
-    if (updatedAtField) {
+    if (updatedAtField && opts.touch !== false) {
       // Shallow-copy before stamping: writing into the caller's object means a
       // reused patch carries a stale `updatedAt` into the next call.
       data = {
@@ -2591,6 +2608,32 @@ export abstract class Repository<T extends ZObject> {
 /**
  * The options for a statement.
  */
+/**
+ * Options of the update methods (`updateOne`, `updateMany`, `updateById`,
+ * `save`).
+ *
+ * A type of its own rather than a field of {@link StatementOptions}, which
+ * every read also takes: `findMany(q, { touch: false })` would compile and mean
+ * nothing. `upsert` / `upsertMany` do not take it either, on purpose: their
+ * conflict branch stamps `updatedAt` so a caller can tell an insert from a
+ * no-op.
+ */
+export interface UpdateOptions extends StatementOptions {
+  /**
+   * Stamp the `db.updatedAt()` column. Defaults to `true`.
+   *
+   * `false` skips that stamp and nothing else: a `db.version()` column is
+   * still bumped, events still fire and the query cache is still invalidated.
+   * Use it for a write that is bookkeeping rather than an edit, which a reader
+   * of `updatedAt` should not see as a change.
+   *
+   * With `false`, an `updatedAt` written in the patch itself is stored as
+   * given, and `now` has nothing to stamp. On a table without an `updatedAt`
+   * column it changes nothing.
+   */
+  touch?: boolean;
+}
+
 export interface StatementOptions {
   /**
    * Transaction to use.
