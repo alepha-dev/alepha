@@ -209,7 +209,9 @@ const ProjectEpics = () => {
             })
           : await dialog.confirm({
               title: tr("epic.unshelve.title"),
-              description: tr("epic.unshelve.confirm", { args: [epic.title] }),
+              description: tr("epic.unshelve.confirm", {
+                args: [epic.title, String(epic.progress.shelvedWithEpic ?? 0)],
+              }),
               confirmLabel: tr("epic.status.actions.unshelve"),
               cancelLabel: tr("common.cancel"),
             });
@@ -220,6 +222,12 @@ const ProjectEpics = () => {
           : epicApi.unshelveEpic(params));
         refresh();
       },
+      // The quests moved too: the quest list, the board and the agent
+      // prompt gate read these keys.
+      invalidates: [
+        ["quests", project?.id],
+        ["epics", project?.id],
+      ],
     },
     [epicApi, dialog, tr],
   );

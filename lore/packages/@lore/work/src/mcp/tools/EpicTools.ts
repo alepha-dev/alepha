@@ -57,7 +57,7 @@ export class EpicTools {
    */
   epic_list = $tool({
     description:
-      "List all epics for a project: draft, ready, in progress and completed alike (unlike quest_list's default view, nothing is hidden here). An epic is a bounded initiative that spans several areas and owns quests and folios. Sorted by epic number ascending. Each entry includes id, number, title, description, status, questCount, and the completed/total progress rollup, counted over EVERY quest in the epic, including ones a draft epic keeps out of the human-facing backlog.",
+      "List all epics for a project: draft, ready, in progress, completed and shelved alike (unlike quest_list's default view, nothing is hidden here). An epic is a bounded initiative that spans several areas and owns quests and folios. Sorted by epic number ascending. Each entry includes id, number, title, description, status, questCount, and the completed/total progress rollup, counted over EVERY quest in the epic, including ones a draft epic keeps out of the human-facing backlog.",
     title: "List epics",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
@@ -173,7 +173,7 @@ export class EpicTools {
    */
   epic_create = $tool({
     description:
-      "Create a new epic in the project, in the 'draft' status. The status IS the permission. While 'draft' the epic is being specified: quests are filed into it (quest_create / quest_update's `epic_number`) and stay out of the human-facing backlog, kanban, reports and quest_list's default view (quest_list's `epic:` filter or `includeDrafts: true` reads them), and none of them can be accepted. epic_set_status 'ready' says the spec is done: the quests join the backlog and can be accepted, and the plan can still be edited. The first quest accepted or assigned moves the epic to 'in_progress' by itself and freezes its quest set; the last open quest completed or shelved moves it to 'completed', which is terminal. Anything discovered once it is in progress is an objective on a quest already in the epic, or a new epic with dependsOn_number pointing at this one. Any project member may create one.",
+      "Create a new epic in the project, in the 'draft' status. The status IS the permission. While 'draft' the epic is being specified: quests are filed into it (quest_create / quest_update's `epic_number`) and stay out of the human-facing backlog, kanban, reports and quest_list's default view (quest_list's `epic:` filter or `includeDrafts: true` reads them), and none of them can be accepted. epic_set_status 'ready' says the spec is done: the quests join the backlog and can be accepted, and the plan can still be edited. The first quest accepted or assigned moves the epic to 'in_progress' by itself and freezes its quest set; the last open quest completed or shelved moves it to 'completed', which is terminal. epic_shelve sets the whole plan aside as 'shelved' (not done) and epic_unshelve brings it back. Anything discovered once it is in progress is an objective on a quest already in the epic, or a new epic with dependsOn_number pointing at this one. Any project member may create one.",
     title: "Create epic",
     annotations: { readOnlyHint: false, destructiveHint: false },
     schema: {
@@ -328,7 +328,7 @@ export class EpicTools {
    */
   epic_unshelve = $tool({
     description:
-      "Bring a shelved epic back. Only the quests epic_shelve set aside return, as to do and unassigned; a quest that was shelved on its own before stays shelved. The epic returns to 'in_progress' if work on it had started, else to 'ready' (a shelved draft comes back ready). Refused unless the epic is 'shelved'. Returns how many quests were brought back.",
+      "Bring a shelved epic back with ONLY the quests epic_shelve set aside, as to do and unassigned; a quest that was shelved on its own before stays shelved. The epic returns to 'in_progress' if work on it had started, else to 'ready' (a shelved draft comes back ready). Refused unless the epic is 'shelved'. Returns how many quests were brought back.",
     title: "Unshelve epic",
     annotations: { readOnlyHint: false },
     schema: {

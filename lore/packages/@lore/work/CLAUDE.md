@@ -164,9 +164,9 @@ page says "Blocked by" off `dependsOnStatus`. MCP speaks in per-project
 numbers (`dependsOn_number`, `0` clears), the HTTP API in ids, the same split
 `quest_*` makes.
 
-**An epic's status is the permission (epic #31), and only two of its four
+**An epic's status is the permission (epic #31), and only two of its five
 statuses are set by hand (#Q2223).** `draft | ready | in_progress |
-completed`: `setEpicStatus` moves between `draft` and `ready`, both ways,
+completed | shelved` (`shelved` since #E78, below): `setEpicStatus` moves between `draft` and `ready`, both ways,
 and takes no other value; the first quest of a ready epic accepted or
 assigned moves it to `in_progress` (`EpicWorkflowService.startIfReady`, which
 also attaches the default release), and the request that completes or
@@ -181,6 +181,41 @@ only under `completed`. Folios attach in every status. The refusal strings
 are the interface an agent reads, so they name the epic; a draft epic's
 refusal deliberately does NOT tell the agent to mark it ready, since whether
 a spec is done is the owner's call.
+
+⚠️ **`shelved` parks a whole plan (#E78, folio #1365).** `shelveEpic` /
+`unshelveEpic` (`epic_shelve` / `epic_unshelve`, Shelve / Unshelve on the
+epic page and the list row menu) are its only writers; `setEpicStatus`
+still takes `draft` and `ready` alone. Shelve is allowed from `draft`,
+`ready` and `in_progress`, refused on `completed`. It writes the epic
+FIRST, so `completeIfResolved` (which only fires on `in_progress`) cannot
+complete it as its last open quest goes, then hands every open quest back
+to `todo` (hold lifted, assignee cleared, through
+`QuestShelvingService.release`) and shelves it with
+`quests.shelvedWithEpic = true`: `shelvedAt` stays todo-only, which the
+derived status and the progress and release buckets rely on. Unshelve
+brings back only the marked quests (as `todo`, unassigned), THEN moves the
+epic to `in_progress` when `startedAt` is set and `ready` otherwise, a
+shelved draft included. Both orders leave a retryable state with no D1
+transaction: a second call finishes the job. While shelved,
+`EpicWorkflowService` refuses every verb that opens work (unshelve and
+unhold included) and every plan edit, so the mark cannot go stale; a
+dependent epic stays blocked, because the gate tests `completed`. Nothing
+counts a shelved epic as done: the dashboard card says "shelved, N done"
+rather than a ratio. `quests.shelvedWithEpic` is a plain nullable column
+(`20261014204900_quest_shelved_with_epic`); `shelved` itself needed no SQL,
+since `epics.status` is `mode: "text"`.
+
+⚠️ **Deleting an epic deletes its quests (#Q2666), and only while it is
+`draft` or `ready`** (`EpicWorkflowService.assertEpicDeletable`): a
+started, completed or shelved epic is refused, the first pointing at
+shelving. Every quest goes through `QuestDeletionService`, the path
+`deleteQuest` shares (dependents, registry, links, audit), the epic LAST so
+a failure halfway is retryable; it also needs `quest:delete` beside
+`epic:write`. Folios are unfiled through the link delete and never deleted.
+`quests.epicId` stays `ON DELETE SET NULL`: it only ever meets an already
+deleted quest now, and a `CASCADE` would be a rebuild of `quests` that
+skips that path. The web offers Delete on draft and ready epics only, with
+the quest count in the confirm.
 
 ⚠️ It replaced epic #31's `planned | active | done` ratchet, whose Begin and
 Conclude clicks carried no decision: the Work-on-it prompt told the agent to
@@ -281,6 +316,6 @@ What this package holds, with the notes that are not obvious from the code. Move
 
 **Entities (5)** - `feedback`, `feedbackComments`, `releases`, `questComments`, `quests`.
 
-**Services (4)** - `FeedbackRateLimiter`, `QuestCsvFormatter`, `QuestResourceMapper`, `QuestService`.
+**Services (6)** - `FeedbackRateLimiter`, `QuestCsvFormatter`, `QuestDeletionService` (the one quest delete, shared by `deleteQuest` and `deleteEpic`), `QuestResourceMapper`, `QuestService`, `QuestShelvingService` (the quest shelve and unshelve writes, shared with the epic shelve).
 
 **MCP tools (4)** - `EpicTools`, `FeedbackTools` (`feedback_comment_add`, plus the thread inlined on `feedback_get`), `ReleaseTools` (`release_list` / `_get` / `_create` / `_update` / `_publish` / `_reopen` / `_attach` / `_detach` / `_changelog` / `_delete`, every one naming the release by its TAG), `QuestTools` (`quest_comment_add`, `quest_objective_set`, `quest_unassign`, `quest_attachment_get` / `_add`, `quest_commit_add`, and the discussion inlined on `quest_get`).
