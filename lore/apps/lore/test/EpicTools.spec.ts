@@ -476,6 +476,22 @@ describe("Lore MCP — epics", () => {
       expect((await repos.quests.getById(quest.id)).shelvedAt).toBeUndefined();
     });
 
+    it("say what moves in their first sentence, and the status lists name shelved", async ({
+      expect,
+    }) => {
+      // Agents decide from the tool list alone (#Q2671).
+      const { epicTools } = await setup();
+      const first = (description: string) => description.split(". ")[0];
+      expect(first(epicTools.epic_shelve.description)).toMatch(
+        /every open quest in it/,
+      );
+      expect(first(epicTools.epic_unshelve.description)).toMatch(
+        /ONLY the quests epic_shelve set aside/,
+      );
+      expect(epicTools.epic_list.description).toMatch(/completed and shelved/);
+      expect(epicTools.epic_set_status.description).toMatch(/epic_shelve/);
+    });
+
     it("refuses a completed epic with a message naming it", async ({
       expect,
     }) => {
