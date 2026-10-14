@@ -2369,6 +2369,17 @@ export default {
   "dashboard.badge.unassigned": "unassigned",
   "dashboard.badge.blight": "crash",
   "dashboard.badge.untriaged": "untriaged",
+  "dashboard.metric.appHealth": "App health",
+  "dashboard.metric.appHealth.hint":
+    "one pill per copy: its last deploy, and whether it reports",
+  "dashboard.metric.errorTrend": "Errors",
+  "dashboard.metric.errorTrend.hint":
+    "occurrences per day, deployments as rules",
+  "dashboard.metric.qualityTrend": "Coverage",
+  "dashboard.metric.qualityTrend.hint": "line coverage over the recorded runs",
+  "dashboard.footer.appHealth": "$1 of $2 copies healthy",
+  "dashboard.footer.errorTrend": "$1 occurrences, $2 deployments",
+  "dashboard.footer.qualityTrend": "$1 of $2 tests passing",
   "dashboard.refreshed": "Refreshed $1.",
   "dashboard.addCard": "Add card",
 

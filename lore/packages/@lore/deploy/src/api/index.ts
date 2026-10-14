@@ -26,6 +26,7 @@ import { EstateCredentialJobs } from "./jobs/EstateCredentialJobs.ts";
 import { QualityJobs } from "./jobs/QualityJobs.ts";
 import { SigilJobs } from "./jobs/SigilJobs.ts";
 import { EstateNotifications } from "./notifications/EstateNotifications.ts";
+import { AppHealthMetric } from "./services/AppHealthMetric.ts";
 import { AppSecretService } from "./services/AppSecretService.ts";
 import { AppService } from "./services/AppService.ts";
 import { ArtifactService } from "./services/ArtifactService.ts";
@@ -35,6 +36,7 @@ import { BlightRuleService } from "./services/BlightRuleService.ts";
 import { CloudflareProbeService } from "./services/CloudflareProbeService.ts";
 import { CredentialSealService } from "./services/CredentialSealService.ts";
 import { DailyVisitorsService } from "./services/DailyVisitorsService.ts";
+import { DeployAppsDashboardMetrics } from "./services/DeployAppsDashboardMetrics.ts";
 import { DeployAttentionSources } from "./services/DeployAttentionSources.ts";
 import { DeployDashboard } from "./services/DeployDashboard.ts";
 import { DeployDashboardMetrics } from "./services/DeployDashboardMetrics.ts";
@@ -44,6 +46,7 @@ import { DeployProjectCounts } from "./services/DeployProjectCounts.ts";
 import { DeployRegistry } from "./services/DeployRegistry.ts";
 import { DeployRunner } from "./services/DeployRunner.ts";
 import { DeployService } from "./services/DeployService.ts";
+import { ErrorTrendMetric } from "./services/ErrorTrendMetric.ts";
 import { EstateCloudflareService } from "./services/EstateCloudflareService.ts";
 import { EstateCommandService } from "./services/EstateCommandService.ts";
 import { EstateCommandTransport } from "./services/EstateCommandTransport.ts";
@@ -53,6 +56,7 @@ import { EstateTokenService } from "./services/EstateTokenService.ts";
 import { OpenBlightCounter } from "./services/OpenBlightCounter.ts";
 import { OpenBlightsMetric } from "./services/OpenBlightsMetric.ts";
 import { QualityService } from "./services/QualityService.ts";
+import { QualityTrendMetric } from "./services/QualityTrendMetric.ts";
 import { RollbackService } from "./services/RollbackService.ts";
 import { SigilIngestService } from "./services/SigilIngestService.ts";
 import { SigilTokenService } from "./services/SigilTokenService.ts";
@@ -90,6 +94,11 @@ export const LoreDeployApi = $module({
     DeployDashboard,
     // Deploy's "needs you" source (#Q2656).
     DeployAttentionSources,
+    // The apps tiles of #E77 (#Q2657).
+    DeployAppsDashboardMetrics,
+    AppHealthMetric,
+    ErrorTrendMetric,
+    QualityTrendMetric,
     DeployProjectCounts,
     BlightJobs,
     SigilJobs,

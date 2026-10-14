@@ -181,6 +181,45 @@ export class LoreAnalyticsStore {
   }
 
   /**
+   * Distinct visitors per day in the window, oldest first: the visitors
+   * tile's sparkline (#Q2657). The same two halves as
+   * {@link uniqueVisitors}, grouped by day; a day nobody visited is absent
+   * and the caller zero-fills it.
+   */
+  async uniqueVisitorsByDay(
+    window: LoreAnalyticsWindow,
+  ): Promise<Array<{ day: string; uniques: number }>> {
+    if (window.sigilIds.length === 0) return [];
+    const rows = await this.database.run(
+      sql`
+        SELECT
+          ${this.uniques.table.day} AS day,
+          COUNT(DISTINCT CASE
+            WHEN ${this.uniques.table.visitorHash} <> ${UNIQUES_COLLAPSED_HASH}
+            THEN ${this.uniques.table.visitorHash}
+          END)
+          + COALESCE(SUM(CASE
+            WHEN ${this.uniques.table.visitorHash} = ${UNIQUES_COLLAPSED_HASH}
+            THEN ${this.uniques.table.count} ELSE 0
+          END), 0) AS uniques
+        FROM ${this.uniques.table}
+        WHERE ${this.uniques.table.sigilId} IN (${this.scope(window)})
+          AND ${this.uniques.table.day} >= ${window.since}
+          ${
+            window.until
+              ? sql`AND ${this.uniques.table.day} <= ${window.until}`
+              : sql``
+          }
+          ${this.trafficClause(window.traffic)}
+        GROUP BY ${this.uniques.table.day}
+        ORDER BY ${this.uniques.table.day}
+      `,
+      z.object({ day: z.string(), uniques: z.coerce.number() }),
+    );
+    return rows.map((row) => ({ day: row.day, uniques: Number(row.uniques) }));
+  }
+
+  /**
    * The `AND traffic …` term, or nothing at all for `all`.
    *
    * `humans` is expressed as **not a bot** rather than as an equality, which

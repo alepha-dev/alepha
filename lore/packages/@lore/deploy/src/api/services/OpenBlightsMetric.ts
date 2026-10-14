@@ -95,12 +95,18 @@ export class OpenBlightsMetric implements DashboardMetricResolver {
         status,
       });
 
+      const scoped = this.appsOf(entry, apps);
       out.set(entry.card.id, {
-        ...(result.count === 0
-          ? this.emptyOf(this.appsOf(entry, apps), since)
-          : {}),
+        ...(result.count === 0 ? this.emptyOf(scoped, since) : {}),
         value: result.count,
-        detail: { occurrences: result.occurrences, apps: result.apps },
+        detail: {
+          occurrences: result.occurrences,
+          apps: result.apps,
+          // The apps slot's data gate (#Q2657): an app heard from in 30 days.
+          heard: scoped.some(
+            (app) => !!app.lastSeenAt && app.lastSeenAt >= since,
+          ),
+        },
         link: this.catalog.get(this.metric).link(entry.card.scope, {
           projectSlug: entry.scope.projects.find(
             (project) => project.id === result.topProjectId,

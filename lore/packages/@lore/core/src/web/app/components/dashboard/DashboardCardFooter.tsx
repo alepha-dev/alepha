@@ -186,6 +186,24 @@ const DashboardCardFooter = (props: DashboardCardFooterProps) => {
         ],
       })}`;
     }
+    if (props.metric === "appHealth") {
+      return tr("dashboard.footer.appHealth", {
+        args: [String(props.value?.value ?? 0), String(detail.copies ?? 0)],
+      });
+    }
+    if (props.metric === "errorTrend") {
+      return tr("dashboard.footer.errorTrend", {
+        args: [
+          String(props.value?.value ?? 0),
+          String(detail.deployments ?? 0),
+        ],
+      });
+    }
+    if (props.metric === "qualityTrend") {
+      return tr("dashboard.footer.qualityTrend", {
+        args: [String(detail.testsPassed ?? 0), String(detail.testsTotal ?? 0)],
+      });
+    }
     if (props.metric === "burnup") {
       return tr("dashboard.footer.burnup", {
         args: [String(props.value?.value ?? 0), String(detail.created ?? 0)],

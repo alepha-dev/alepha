@@ -1,6 +1,7 @@
 import { LoreCoreWeb } from "@lore/core/web";
 import { $module } from "alepha";
 
+import { DeployAppsDashboardMetrics } from "../api/services/DeployAppsDashboardMetrics.ts";
 import { DeployDashboardMetrics } from "../api/services/DeployDashboardMetrics.ts";
 import { DeployAccountRouter } from "./app/components/account/DeployAccountRouter.ts";
 import { DeployRouter } from "./app/DeployRouter.ts";
@@ -37,6 +38,7 @@ export const LoreDeployWeb = $module({
     alepha.inject(DeployProjectLoader);
     alepha.inject(DeployShell);
     alepha.inject(DeployDashboardMetrics);
+    alepha.inject(DeployAppsDashboardMetrics);
   },
 });
 

@@ -21,11 +21,31 @@ export class DeployDashboard {
   protected readonly sigils = $repository(sigils);
 
   constructor() {
-    // The apps slot of the computed board (#Q2652): open blights, then
-    // visitors. Their own data gate (`empty` for no app, a silent one, no
-    // beacon) is what keeps the slot off a project that watches nothing.
-    this.slots.register({ slot: "apps", rank: 20, metric: "openBlights" });
-    this.slots.register({ slot: "apps", rank: 30, metric: "uniqueVisitors" });
+    // The apps slot of the computed board (#Q2652, #Q2657): per-copy
+    // health, then open blights, then visitors, each only while an app of
+    // the project has reported in 30 days. Everyday (no sigil) and
+    // Lindocara (silent since Sep 8) get no apps tile (folio #F1364).
+    const heard = (value: { detail: Record<string, unknown> }) =>
+      value.detail.heard === true;
+    this.slots.register({
+      slot: "apps",
+      rank: 10,
+      metric: "appHealth",
+      size: 2,
+      keep: heard,
+    });
+    this.slots.register({
+      slot: "apps",
+      rank: 20,
+      metric: "openBlights",
+      keep: heard,
+    });
+    this.slots.register({
+      slot: "apps",
+      rank: 30,
+      metric: "uniqueVisitors",
+      keep: heard,
+    });
     // Yesterday's visitors, when the user actually has an app that reports
     // them: the first beacon-carrying app. Beacon and not merely "an app":
     // the visitors metric reads page traffic, an app without the `beacon`

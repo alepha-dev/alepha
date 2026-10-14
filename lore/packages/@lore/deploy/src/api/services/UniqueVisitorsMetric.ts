@@ -8,11 +8,13 @@ import {
   DashboardMetricCatalog,
 } from "@lore/core/schemas";
 import { $inject } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 
 import { appInstances } from "../entities/appInstances.ts";
 import { type Sigil, sigils } from "../entities/sigils.ts";
 import { DailyVisitorsService } from "./DailyVisitorsService.ts";
+import { LoreAnalyticsStore } from "./LoreAnalyticsStore.ts";
 
 /**
  * Yesterday's audience, against the day before.
@@ -58,6 +60,8 @@ export class UniqueVisitorsMetric implements DashboardMetricResolver {
   protected readonly sigils = $repository(sigils);
   protected readonly instances = $repository(appInstances);
   protected readonly visitors = $inject(DailyVisitorsService);
+  protected readonly analytics = $inject(LoreAnalyticsStore);
+  protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly catalog = $inject(DashboardMetricCatalog);
 
   async resolveAll(
@@ -94,7 +98,32 @@ export class UniqueVisitorsMetric implements DashboardMetricResolver {
       };
     }
 
-    const daily = await this.visitors.read(beacons.map((it) => it.id));
+    const ids = beacons.map((it) => it.id);
+    const daily = await this.visitors.read(ids);
+    // The sparkline (#Q2657): one point per complete day of the board's
+    // window, ending on the day the headline counts, zero-filled.
+    const days = Array.from({ length: entry.windowDays }, (_, index) =>
+      new Date(
+        Date.parse(`${daily.day}T00:00:00.000Z`) -
+          (entry.windowDays - 1 - index) * 86_400_000,
+      )
+        .toISOString()
+        .slice(0, 10),
+    );
+    const byDay = new Map(
+      (
+        await this.analytics.uniqueVisitorsByDay({
+          sigilIds: ids,
+          since: days[0]!,
+          until: daily.day,
+        })
+      ).map((row) => [row.day, row.uniques]),
+    );
+    // The apps slot's data gate (#Q2657): an app heard from in 30 days.
+    const since = this.dateTime.now().subtract(30, "day").toISOString();
+    const heard = apps.some(
+      (app) => !!app.lastSeenAt && app.lastSeenAt >= since,
+    );
     const project = entry.scope.projects.find(
       (it) => it.id === beacons[0]!.projectId,
     );
@@ -108,9 +137,11 @@ export class UniqueVisitorsMetric implements DashboardMetricResolver {
     return {
       value: daily.uniqueVisitors,
       delta: daily.delta,
+      series: days.map((at) => ({ at, value: byDay.get(at) ?? 0 })),
       detail: {
         day: daily.day,
         previous: daily.previousUniqueVisitors,
+        heard,
       },
       // A single app has one destination. With several, the link targets the
       // first beacon app in scope rather than nothing: there is no

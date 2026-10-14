@@ -2359,6 +2359,18 @@ export default {
   "dashboard.badge.unassigned": "sans responsable",
   "dashboard.badge.blight": "plantage",
   "dashboard.badge.untriaged": "à trier",
+  "dashboard.metric.appHealth": "Santé des applications",
+  "dashboard.metric.appHealth.hint":
+    "une pastille par copie : son dernier déploiement, et si elle remonte",
+  "dashboard.metric.errorTrend": "Erreurs",
+  "dashboard.metric.errorTrend.hint":
+    "occurrences par jour, déploiements en repères",
+  "dashboard.metric.qualityTrend": "Couverture",
+  "dashboard.metric.qualityTrend.hint":
+    "couverture des lignes sur les exécutions enregistrées",
+  "dashboard.footer.appHealth": "$1 copies sur $2 en bonne santé",
+  "dashboard.footer.errorTrend": "$1 occurrences, $2 déploiements",
+  "dashboard.footer.qualityTrend": "$1 tests sur $2 passent",
   "dashboard.refreshed": "Actualise $1.",
   "dashboard.addCard": "Ajouter une carte",
 

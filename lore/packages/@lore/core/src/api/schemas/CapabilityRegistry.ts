@@ -379,7 +379,14 @@ export class CapabilityRegistry {
       ],
       searchKinds: [],
       activityKinds: ["app", "sigil", "estate"],
-      dashboardCards: ["openBlights", "uniqueVisitors"],
+      dashboardCards: [
+        "openBlights",
+        "uniqueVisitors",
+        // The apps tiles of #E77 (#Q2657).
+        "appHealth",
+        "errorTrend",
+        "qualityTrend",
+      ],
       permissionGroups: [
         "app",
         // Epic #1's. Beside `app` rather than folded into it, because letting

@@ -59,7 +59,8 @@ export class DeployDashboardMetrics {
       labelKey: "dashboard.metric.uniqueVisitors",
       hintKey: "dashboard.metric.uniqueVisitors.hint",
       icon: "users",
-      presentation: "scalar",
+      // A sparkline of the board's window since #Q2657.
+      presentation: "trend",
       scopeKinds: ["apps", "projects"],
       filters: uniqueVisitorsFiltersSchema,
       needs: { capability: "apps", option: "track" },
