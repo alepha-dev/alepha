@@ -211,6 +211,8 @@ describe("EpicController", () => {
       completed: 1,
       inProgress: 0,
       shelved: 0,
+      // None of them shelved by an epic shelve (#Q2672).
+      shelvedWithEpic: 0,
       total: 2,
     });
     expect(resource.questCount).toBe(2);
@@ -250,6 +252,8 @@ describe("EpicController", () => {
       completed: 1,
       inProgress: 1,
       shelved: 1,
+      // None of them shelved by an epic shelve (#Q2672).
+      shelvedWithEpic: 0,
       total: 4,
     });
   });

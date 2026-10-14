@@ -79,6 +79,16 @@ export class EpicProgressService {
           id: { count: true },
           completedAt: { count: true },
           shelvedAt: { count: true },
+          // What an unshelve of the epic would bring back (#Q2672).
+          shelvedByEpic: {
+            count: {
+              column: "id",
+              where: {
+                shelvedAt: { isNotNull: true },
+                shelvedWithEpic: { eq: true },
+              },
+            },
+          },
           inProgress: {
             count: {
               column: "id",
@@ -100,6 +110,7 @@ export class EpicProgressService {
         completed: row.completedAt.count,
         inProgress: row.inProgress.count,
         shelved: row.shelvedAt.count,
+        shelvedWithEpic: row.shelvedByEpic.count,
         total: row.id.count,
       });
     }
@@ -122,6 +133,15 @@ export class EpicProgressService {
         id: { count: true },
         completedAt: { count: true },
         shelvedAt: { count: true },
+        shelvedByEpic: {
+          count: {
+            column: "id",
+            where: {
+              shelvedAt: { isNotNull: true },
+              shelvedWithEpic: { eq: true },
+            },
+          },
+        },
         inProgress: {
           count: {
             column: "id",
@@ -143,6 +163,7 @@ export class EpicProgressService {
         completed: row.completedAt.count,
         inProgress: row.inProgress.count,
         shelved: row.shelvedAt.count,
+        shelvedWithEpic: row.shelvedByEpic.count,
         total: row.id.count,
       });
     }

@@ -360,7 +360,11 @@ const ProjectEpic = (props: ProjectEpicProps) => {
           <EpicShelveControl
             epic={epic}
             onChange={applyStatusChange}
-            invalidates={[questsKey]}
+            invalidates={[
+              questsKey,
+              ["quests", project?.id],
+              ["epics", project?.id],
+            ]}
           />
         </>
       }

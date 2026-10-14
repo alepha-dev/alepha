@@ -977,6 +977,46 @@ describe("ProjectEpics - the status filter", () => {
       expect(confirm.textContent).not.toContain("#E1 Draft epic");
     });
 
+    it("names the open quests a Shelve sets aside, and the quests an Unshelve brings back", async () => {
+      await mount(
+        [],
+        [
+          {
+            ...epicOf(1, "Started epic", "in_progress"),
+            progress: { completed: 1, inProgress: 1, shelved: 1, total: 5 },
+          } as EpicResource,
+          {
+            ...epicOf(2, "Parked epic", "shelved"),
+            progress: {
+              completed: 0,
+              inProgress: 0,
+              shelved: 4,
+              shelvedWithEpic: 3,
+              total: 4,
+            },
+          } as EpicResource,
+        ],
+      );
+
+      fireEvent.click(
+        (await menuOf("#E1 - Started epic")).find(
+          (item) => item.textContent === "Shelve",
+        )!,
+      );
+      const shelve = await screen.findByRole("alertdialog");
+      expect(shelve.textContent).toContain("sets aside its 3 open quests");
+      fireEvent.click(within(shelve).getByRole("button", { name: "Cancel" }));
+      await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+
+      fireEvent.click(
+        (await menuOf("#E2 - Parked epic")).find(
+          (item) => item.textContent === "Unshelve",
+        )!,
+      );
+      const unshelve = await screen.findByRole("alertdialog");
+      expect(unshelve.textContent).toContain("brings back the 3 quests");
+    });
+
     it("hides the bulk delete when nothing selected can be deleted", async () => {
       await mount([], fixture());
 

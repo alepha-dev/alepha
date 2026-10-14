@@ -11,7 +11,9 @@ export interface EpicShelveControlProps {
   epic: EpicResource;
   onChange: (epic: EpicResource) => void;
   /**
-   * The query keys holding this epic's quests, which the move rewrites.
+   * The query keys the move rewrites: this epic's quests, and the project's
+   * quest and epic reads, so the quest list, the board and the agent prompt
+   * gate do not show the old state.
    */
   invalidates: unknown[][];
 }
@@ -24,7 +26,8 @@ export interface EpicShelveControlProps {
  * Unshelve while it is `shelved`, and nothing once it is `completed`. Both
  * confirm, because both move quests other people may be looking at: the
  * Shelve copy names how many open quests it sets aside (the epic's progress
- * already counts them), and the Unshelve copy says what comes back and how.
+ * already counts them), and the Unshelve copy names how many come back
+ * (`progress.shelvedWithEpic`) and how.
  * A refusal is the server's sentence, toasted by the root
  * `ActionErrorToaster`.
  */
@@ -50,7 +53,10 @@ const EpicShelveControl = (props: EpicShelveControlProps) => {
           : await dialog.confirm({
               title: tr("epic.unshelve.title"),
               description: tr("epic.unshelve.confirm", {
-                args: [props.epic.title],
+                args: [
+                  props.epic.title,
+                  String(props.epic.progress.shelvedWithEpic ?? 0),
+                ],
               }),
               confirmLabel: tr("epic.status.actions.unshelve"),
               cancelLabel: tr("common.cancel"),
