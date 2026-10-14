@@ -2292,6 +2292,8 @@ export default {
   "dashboard.edit": "Edit board",
   "dashboard.edit.done": "Done",
   "dashboard.footer.release.ready": "all $1 done, ready to publish",
+  "dashboard.card.size": "Size",
+  "dashboard.card.size.option": "$1 wide, $2 tall",
   "dashboard.refreshed": "Refreshed $1.",
   "dashboard.addCard": "Add card",
 

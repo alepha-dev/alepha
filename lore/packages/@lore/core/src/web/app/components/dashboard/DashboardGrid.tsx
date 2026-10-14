@@ -25,6 +25,13 @@ export interface DashboardGridProps {
   onReorder: (ids: number[]) => void;
   onAdd: () => void;
   onChangeScope: (card: DashboardCardResource) => void;
+  /**
+   * Resize a card from its menu (#Q2651). Absent, the menu offers no size.
+   */
+  onResize?: (
+    card: DashboardCardResource,
+    size: { size: number; height: number },
+  ) => void;
   onDuplicate: (card: DashboardCardResource) => void;
   onRemove: (card: DashboardCardResource) => void;
   /**
@@ -53,6 +60,13 @@ export interface DashboardGridProps {
  * the tiles rather than adding one. Below roughly 1440px the clamp floors at
  * the mockup's `216px` and nothing about the old layout changes; above it
  * the tiles widen instead of multiplying, up to `300px`.
+ *
+ * ## Height and sections (#Q2651)
+ *
+ * A card spans `height` rows as well as `size` columns, and consecutive
+ * cards carrying the same `section` render under one heading, each run its
+ * own grid. At phone width the grid is one column and every tile one row:
+ * the spans are applied from `sm` up only (see `DashboardCard`).
  *
  * ## Drag
  *
@@ -83,54 +97,94 @@ const DashboardGrid = (props: DashboardGridProps) => {
     props.onReorder(ids);
   };
 
+  /**
+   * Runs of consecutive cards sharing a section, each with the index its
+   * first card has in the whole list, so a drag still moves by global index.
+   */
+  const runs: Array<{
+    section?: string;
+    start: number;
+    cards: DashboardCardResource[];
+  }> = [];
+  props.cards.forEach((card, index) => {
+    const last = runs[runs.length - 1];
+    if (last && last.section === card.section) {
+      last.cards.push(card);
+    } else {
+      runs.push({ section: card.section, start: index, cards: [card] });
+    }
+  });
+
   return (
-    <div className="grid auto-rows-[168px] grid-cols-[repeat(auto-fill,minmax(clamp(216px,15cqw,300px),1fr))] items-stretch gap-3">
-      {props.cards.map((card, index) => {
-        const descriptor = props.metrics.get(card.metric);
-        return (
-          <DashboardCard
-            key={card.id}
-            card={card}
-            value={resolvedValue(card.id)}
-            // A card whose metric this build does not know still renders: the
-            // resolver marks it failed, and the tile says so rather than
-            // vanishing from a layout the reader arranged.
-            labelKey={
-              descriptor?.cardLabelKey ??
-              descriptor?.labelKey ??
-              "dashboard.metric.unknown"
-            }
-            icon={descriptor?.icon ?? "circle-dashed"}
-            presentation={descriptor?.presentation}
-            chartStyle={descriptor?.chartStyle}
-            boardProjectId={props.boardProjectId}
-            canEdit={canEdit}
-            armed={armed === index}
-            dragging={dragging === index}
-            over={over === index && dragging !== index}
-            onArm={() => setArmed(index)}
-            onDisarm={() => setArmed(undefined)}
-            onDragStart={() => setDragging(index)}
-            onDragOver={(event) => {
-              event.preventDefault();
-              if (over !== index) setOver(index);
-            }}
-            onDrop={(event) => {
-              event.preventDefault();
-              move(dragging, index);
-            }}
-            onDragEnd={() => {
-              setDragging(undefined);
-              setOver(undefined);
-              setArmed(undefined);
-            }}
-            onChangeScope={() => props.onChangeScope(card)}
-            onDuplicate={() => props.onDuplicate(card)}
-            onRemove={() => props.onRemove(card)}
-            busy={props.busy}
-          />
-        );
-      })}
+    <div className="flex flex-col gap-5">
+      {runs.map((run) => (
+        <section
+          key={`${run.start}-${run.section ?? ""}`}
+          className="flex flex-col gap-2.5"
+          data-testid="dashboard-section"
+        >
+          {run.section && (
+            <h2 className="text-muted-foreground text-[12px] font-medium tracking-[0.05em] uppercase">
+              {run.section}
+            </h2>
+          )}
+          <div className="grid auto-rows-[168px] grid-cols-1 items-stretch gap-3 sm:grid-cols-[repeat(auto-fill,minmax(clamp(216px,15cqw,300px),1fr))]">
+            {run.cards.map((card, offset) => {
+              const index = run.start + offset;
+              const descriptor = props.metrics.get(card.metric);
+              return (
+                <DashboardCard
+                  key={card.id}
+                  card={card}
+                  value={resolvedValue(card.id)}
+                  // A card whose metric this build does not know still
+                  // renders: the resolver marks it failed, and the tile says
+                  // so rather than vanishing from a layout the reader
+                  // arranged.
+                  labelKey={
+                    descriptor?.cardLabelKey ??
+                    descriptor?.labelKey ??
+                    "dashboard.metric.unknown"
+                  }
+                  icon={descriptor?.icon ?? "circle-dashed"}
+                  presentation={descriptor?.presentation}
+                  chartStyle={descriptor?.chartStyle}
+                  boardProjectId={props.boardProjectId}
+                  canEdit={canEdit}
+                  armed={armed === index}
+                  dragging={dragging === index}
+                  over={over === index && dragging !== index}
+                  onArm={() => setArmed(index)}
+                  onDisarm={() => setArmed(undefined)}
+                  onDragStart={() => setDragging(index)}
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    if (over !== index) setOver(index);
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    move(dragging, index);
+                  }}
+                  onDragEnd={() => {
+                    setDragging(undefined);
+                    setOver(undefined);
+                    setArmed(undefined);
+                  }}
+                  onChangeScope={() => props.onChangeScope(card)}
+                  onResize={
+                    props.onResize
+                      ? (size) => props.onResize?.(card, size)
+                      : undefined
+                  }
+                  onDuplicate={() => props.onDuplicate(card)}
+                  onRemove={() => props.onRemove(card)}
+                  busy={props.busy}
+                />
+              );
+            })}
+          </div>
+        </section>
+      ))}
     </div>
   );
 };

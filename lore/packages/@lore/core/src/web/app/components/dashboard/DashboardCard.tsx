@@ -2,7 +2,7 @@ import { cn } from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { GripVertical } from "lucide-react";
-import type { DragEvent } from "react";
+import type { CSSProperties, DragEvent } from "react";
 
 import type { DashboardCardResource } from "../../../../api/schemas/dashboardCardResourceSchema.ts";
 import type { DashboardCardValue as CardValue } from "../../../../api/schemas/dashboardCardValueSchema.ts";
@@ -72,6 +72,10 @@ export interface DashboardCardProps {
   onDrop: (event: DragEvent) => void;
   onDragEnd: () => void;
   onChangeScope: () => void;
+  /**
+   * Set the tile's width (columns) and height (rows), from the card menu.
+   */
+  onResize?: (size: { size: number; height: number }) => void;
   onDuplicate: () => void;
   onRemove: () => void;
   /**
@@ -171,7 +175,15 @@ const DashboardCard = (props: DashboardCardProps) => {
       onDragOver={props.onDragOver}
       onDrop={props.onDrop}
       onDragEnd={props.onDragEnd}
-      style={{ gridColumn: `span ${props.card.size}` }}
+      // Width and height as variables, applied from `sm` up only: at phone
+      // width the grid is one column and every tile one row (#Q2651), and an
+      // inline `span 2` there would add an implicit column off the screen.
+      style={
+        {
+          "--tile-cols": props.card.size,
+          "--tile-rows": props.card.height ?? 1,
+        } as CSSProperties
+      }
       // The edge is the kit's one border (feedback #P2179): `--border` at
       // rest, `--border-hover` under the pointer, eased on the same default
       // duration and curve as a field's `transition-colors`. Read from the
@@ -179,7 +191,7 @@ const DashboardCard = (props: DashboardCardProps) => {
       // drag-over swaps it for the 2px primary ring - which is why hover is
       // off while `over`, so the ring always wins.
       className={cn(
-        "bg-card relative flex h-full flex-col gap-2.5 rounded-xl p-3.5 shadow-[inset_0_0_0_1px_var(--border)] transition-shadow",
+        "bg-card relative flex h-full flex-col gap-2.5 rounded-xl p-3.5 shadow-[inset_0_0_0_1px_var(--border)] transition-shadow sm:[grid-column:span_var(--tile-cols)] sm:[grid-row:span_var(--tile-rows)]",
         !props.over && "hover:shadow-[inset_0_0_0_1px_var(--border-hover)]",
         props.dragging && "opacity-45",
         props.over && "shadow-[inset_0_0_0_2px_var(--primary)]",
@@ -214,6 +226,9 @@ const DashboardCard = (props: DashboardCardProps) => {
             <GripVertical className="text-muted-foreground/45 size-[13px] shrink-0" />
             <DashboardCardMenu
               onChangeScope={props.onChangeScope}
+              size={props.card.size}
+              height={props.card.height ?? 1}
+              onResize={props.onResize}
               onDuplicate={props.onDuplicate}
               onRemove={props.onRemove}
               busy={props.busy}

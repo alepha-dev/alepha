@@ -51,6 +51,21 @@ export const dashboardCards = $entity({
      * Ordering within the grid, ascending. Ties break on `id`.
      */
     position: db.default(z.integer().min(0), 0),
+    /**
+     * Grid height in rows, 1 or 2 (#Q2651). A burn-up or a feed sits beside a
+     * column of small numbers at 2.
+     *
+     * ⚠️ Optional with NO `db.default`, read as 1 when absent: a plain
+     * additive `ADD COLUMN`, never a table rebuild (see "Migration safety on
+     * D1" in `apps/lore/CLAUDE.md`).
+     */
+    height: z.integer().min(1).max(2).optional(),
+    /**
+     * A heading the card sits under (#Q2651). Consecutive cards carrying the
+     * same section render under one heading. Optional, no default, for the
+     * same reason as {@link height}.
+     */
+    section: z.string().max(60).optional(),
     createdAt: db.createdAt(),
   }),
   indexes: [{ columns: ["userId", "position"] }],

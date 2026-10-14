@@ -2,16 +2,27 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
-import { Copy, Crosshair, MoreVertical, Trash2 } from "lucide-react";
+import { Check, Copy, Crosshair, MoreVertical, Trash2 } from "lucide-react";
 
 import type { I18n } from "../../services/I18n.ts";
 
 export interface DashboardCardMenuProps {
   onChangeScope: () => void;
+  /**
+   * The tile's current width (columns) and height (rows).
+   */
+  size?: number;
+  height?: number;
+  /**
+   * Resize from the menu rather than by dragging an edge (#Q2651). Absent,
+   * the size entries are not drawn.
+   */
+  onResize?: (size: { size: number; height: number }) => void;
   onDuplicate: () => void;
   onRemove: () => void;
   /**
@@ -58,6 +69,34 @@ const DashboardCardMenu = (props: DashboardCardMenuProps) => {
           <Copy className="text-muted-foreground size-3.5" />
           {tr("dashboard.card.duplicate")}
         </DropdownMenuItem>
+        {props.onResize && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel className="text-muted-foreground text-[11px]">
+              {tr("dashboard.card.size")}
+            </DropdownMenuLabel>
+            {SIZES.map((option) => {
+              const current =
+                option.size === (props.size ?? 1) &&
+                option.height === (props.height ?? 1);
+              return (
+                <DropdownMenuItem
+                  key={`${option.size}x${option.height}`}
+                  data-testid="dashboard-card-size"
+                  disabled={props.busy || current}
+                  onClick={() => props.onResize?.(option)}
+                >
+                  <span className="text-muted-foreground w-3.5">
+                    {current && <Check className="size-3.5" />}
+                  </span>
+                  {tr("dashboard.card.size.option", {
+                    args: [String(option.size), String(option.height)],
+                  })}
+                </DropdownMenuItem>
+              );
+            })}
+          </>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem
           variant="destructive"
@@ -71,5 +110,19 @@ const DashboardCardMenu = (props: DashboardCardMenuProps) => {
     </DropdownMenu>
   );
 };
+
+/**
+ * The sizes a tile may take: width in columns, height in rows. Six presets
+ * rather than two free inputs, because a 5-wide tile on a 4-column grid is a
+ * size nobody chose on purpose.
+ */
+const SIZES = [
+  { size: 1, height: 1 },
+  { size: 2, height: 1 },
+  { size: 3, height: 1 },
+  { size: 1, height: 2 },
+  { size: 2, height: 2 },
+  { size: 3, height: 2 },
+];
 
 export default DashboardCardMenu;

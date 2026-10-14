@@ -61,6 +61,8 @@ export class ProjectDashboardCardService {
       scope: DashboardScope;
       filters?: Record<string, unknown>;
       size?: number;
+      height?: number;
+      section?: string;
     },
   ): Promise<DashboardCardResource> {
     const filters = this.validate(input.metric, input.scope, input.filters);
@@ -77,6 +79,8 @@ export class ProjectDashboardCardService {
       scope: input.scope,
       filters,
       size: input.size ?? 1,
+      height: input.height,
+      section: input.section,
       position: (last[0]?.position ?? -1) + 1,
     });
 
@@ -94,6 +98,8 @@ export class ProjectDashboardCardService {
       scope?: DashboardScope;
       filters?: Record<string, unknown>;
       size?: number;
+      height?: number;
+      section?: string;
     },
   ): Promise<DashboardCardResource> {
     const current = await this.own(projectId, cardId);
@@ -109,7 +115,17 @@ export class ProjectDashboardCardService {
 
     const row = await this.cards.updateOne(
       { id: { eq: current.id } },
-      { metric, scope, filters, size: input.size ?? current.size },
+      {
+        metric,
+        scope,
+        filters,
+        size: input.size ?? current.size,
+        height: input.height ?? current.height,
+        // An empty string clears the heading, as `null`: the ORM drops an
+        // `undefined` key from an update. Absent leaves it alone.
+        section:
+          input.section === undefined ? current.section : input.section || null,
+      },
     );
 
     return this.toResource(row);
@@ -218,6 +234,8 @@ export class ProjectDashboardCardService {
       scope: row.scope,
       filters,
       size: row.size ?? 1,
+      height: row.height ?? 1,
+      section: row.section ?? undefined,
       position: row.position ?? 0,
     };
   }

@@ -100,6 +100,8 @@ export class ProjectDashboardController {
         scope: dashboardScopeSchema,
         filters: z.record(z.text(), z.any()).optional(),
         size: z.integer().min(1).max(6).optional(),
+        height: z.integer().min(1).max(2).optional(),
+        section: z.string().max(60).optional(),
       }),
       response: dashboardCardResourceSchema,
     },
@@ -109,6 +111,8 @@ export class ProjectDashboardController {
         scope: await this.proveScope(params.projectId, body.scope, user),
         filters: body.filters,
         size: body.size,
+        height: body.height,
+        section: body.section,
       }),
   });
 
@@ -123,6 +127,8 @@ export class ProjectDashboardController {
         scope: dashboardScopeSchema.optional(),
         filters: z.record(z.text(), z.any()).optional(),
         size: z.integer().min(1).max(6).optional(),
+        height: z.integer().min(1).max(2).optional(),
+        section: z.string().max(60).optional(),
       }),
       response: dashboardCardResourceSchema,
     },
@@ -134,6 +140,8 @@ export class ProjectDashboardController {
           : undefined,
         filters: body.filters,
         size: body.size,
+        height: body.height,
+        section: body.section,
       }),
   });
 

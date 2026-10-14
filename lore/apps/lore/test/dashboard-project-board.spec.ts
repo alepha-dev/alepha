@@ -260,6 +260,87 @@ describe("the project dashboard controller", () => {
     });
   });
 
+  describe("height and section", () => {
+    it("stores a tile's height and section, and reads 1 and none by default", async ({
+      expect,
+    }) => {
+      const { owner, projectId } = await ownedProject(ctx);
+      const plain = await addHeldCard(ctx, projectId, owner);
+      const tall = await ctx.board.addProjectDashboardCard.fetch(
+        {
+          params: { projectId },
+          body: {
+            metric: "activeQuests",
+            scope: { kind: "projects", projectIds: [projectId] },
+            size: 2,
+            height: 2,
+            section: "Flow",
+          },
+        },
+        { user: owner },
+      );
+
+      expect(plain.data.height).toBe(1);
+      expect(plain.data.section).toBeUndefined();
+      expect(tall.data).toMatchObject({ size: 2, height: 2, section: "Flow" });
+    });
+
+    it("resizes a tile and clears its section with an empty string", async ({
+      expect,
+    }) => {
+      const { owner, projectId } = await ownedProject(ctx);
+      const made = await ctx.board.addProjectDashboardCard.fetch(
+        {
+          params: { projectId },
+          body: {
+            metric: "heldQuests",
+            scope: { kind: "projects", projectIds: [projectId] },
+            section: "Plan",
+          },
+        },
+        { user: owner },
+      );
+
+      const resized = await ctx.board.updateProjectDashboardCard.fetch(
+        {
+          params: { projectId, cardId: made.data.id },
+          body: { size: 3, height: 2 },
+        },
+        { user: owner },
+      );
+      expect(resized.data).toMatchObject({
+        size: 3,
+        height: 2,
+        section: "Plan",
+      });
+
+      const cleared = await ctx.board.updateProjectDashboardCard.fetch(
+        { params: { projectId, cardId: made.data.id }, body: { section: "" } },
+        { user: owner },
+      );
+      expect(cleared.data.section).toBeUndefined();
+      expect(cleared.data.height).toBe(2);
+    });
+
+    it("refuses a height outside 1 or 2", async ({ expect }) => {
+      const { owner, projectId } = await ownedProject(ctx);
+
+      await expect(
+        ctx.board.addProjectDashboardCard.fetch(
+          {
+            params: { projectId },
+            body: {
+              metric: "heldQuests",
+              scope: { kind: "projects", projectIds: [projectId] },
+              height: 3,
+            },
+          },
+          { user: owner },
+        ),
+      ).rejects.toThrow();
+    });
+  });
+
   describe("filters", () => {
     it("degrades an unreadable stored filter set to the metric's defaults", async ({
       expect,

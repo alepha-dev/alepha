@@ -2279,6 +2279,8 @@ export default {
   "dashboard.edit": "Modifier le tableau",
   "dashboard.edit.done": "Terminé",
   "dashboard.footer.release.ready": "les $1 terminées, prête à publier",
+  "dashboard.card.size": "Taille",
+  "dashboard.card.size.option": "$1 de large, $2 de haut",
   "dashboard.refreshed": "Actualise $1.",
   "dashboard.addCard": "Ajouter une carte",
 

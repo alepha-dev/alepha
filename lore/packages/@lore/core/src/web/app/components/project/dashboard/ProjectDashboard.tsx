@@ -350,13 +350,34 @@ const ProjectDashboard = () => {
   );
 
   /**
+   * Width and height from the card menu (#Q2651).
+   */
+  const resizeAction = useAction<
+    [card: DashboardCardResource, size: { size: number; height: number }],
+    void
+  >(
+    {
+      handler: async (card, size) => {
+        if (!projectId) return;
+        const updated = await boardApi.updateProjectDashboardCard({
+          params: { projectId, cardId: card.id },
+          body: size,
+        });
+        apply(currentCards().map((it) => (it.id === card.id ? updated : it)));
+      },
+    },
+    [alepha, boardApi, projectId],
+  );
+
+  /**
    * Every card control waits while a write runs (#E59 rule 10).
    */
   const busy =
     removeAction.loading ||
     duplicateAction.loading ||
     addAction.loading ||
-    updateAction.loading;
+    updateAction.loading ||
+    resizeAction.loading;
 
   const openCatalogue = () => {
     setEditing(undefined);
@@ -404,6 +425,7 @@ const ProjectDashboard = () => {
               setEditing(card);
               setCatalogueOpen(true);
             }}
+            onResize={(card, size) => void resizeAction.run(card, size)}
             onDuplicate={(card) => void duplicateAction.run(card)}
             onRemove={(card) => void removeAction.run(card)}
             busy={busy}

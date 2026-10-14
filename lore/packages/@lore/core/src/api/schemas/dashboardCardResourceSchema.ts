@@ -20,6 +20,15 @@ export const dashboardCardResourceSchema = z.object({
    */
   filters: z.record(z.text(), z.any()),
   size: z.integer(),
+  /**
+   * Rows the tile spans, 1 or 2 (#Q2651). Absent reads as 1: a stored row
+   * from before the column, or a tile the computed board built.
+   */
+  height: z.integer().optional(),
+  /**
+   * The heading this card sits under, when it has one (#Q2651).
+   */
+  section: z.string().optional(),
   position: z.integer(),
 });
 
