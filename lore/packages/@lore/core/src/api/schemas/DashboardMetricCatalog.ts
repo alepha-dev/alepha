@@ -361,7 +361,11 @@ export class DashboardMetricCatalog {
       return kinds;
     }
     const narrower = kinds.filter(
-      (kind) => kind !== "all" && kind !== "projects",
+      (kind) =>
+        kind !== "all" &&
+        kind !== "projects" &&
+        // The reader alone is not a choice; beside the project it is.
+        !(kind === "viewer" && kinds.length === 1),
     );
     // ⚠️ A metric that takes the whole project AND something narrower (open
     // blights, visitors: the project, or some of its apps) keeps "this
@@ -394,6 +398,12 @@ export class DashboardMetricCatalog {
     }
     if (this.pickableScopeKinds(key, board).length > 0) {
       return undefined;
+    }
+    // A metric about the reader and nothing else (#Q2655) is forced to the
+    // reader, exactly as a project metric is forced to the project.
+    const kinds = this.find(key)?.scopeKinds ?? [];
+    if (kinds.length === 1 && kinds[0] === "viewer") {
+      return { kind: "viewer" };
     }
     return { kind: "projects", projectIds: [projectId] };
   }

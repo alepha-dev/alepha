@@ -283,6 +283,11 @@ export class CapabilityRegistry {
         "releasesToPublish",
         "epicsInFlight",
         "draftEpics",
+        // The "your work" tiles of #E77 (#Q2655).
+        "yourQuests",
+        "remindersDue",
+        "dueSoon",
+        "recentlyShipped",
       ],
       // Areas belong here: quests carry one, blights forward into one, and
       // `project_context` files them beside the epic index.

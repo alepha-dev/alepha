@@ -2343,6 +2343,21 @@ export default {
     "$1 days left, needs $2 a day, doing $3",
   "dashboard.badge.readyToPublish": "ready",
   "dashboard.badge.draft": "draft",
+  "dashboard.scope.viewer": "You, whoever reads the board",
+  "dashboard.scope.you": "you",
+  "dashboard.metric.yourQuests": "Your quests",
+  "dashboard.metric.yourQuests.hint":
+    "what the reader has accepted and not finished",
+  "dashboard.metric.remindersDue": "Reminders due",
+  "dashboard.metric.remindersDue.hint": "your reminders in the next seven days",
+  "dashboard.metric.dueSoon": "Due soon",
+  "dashboard.metric.dueSoon.hint": "open quests due in the next seven days",
+  "dashboard.metric.recentlyShipped": "Recently shipped",
+  "dashboard.metric.recentlyShipped.hint":
+    "the last completions, with their message",
+  "dashboard.badge.held": "on hold",
+  "dashboard.badge.overdue": "overdue",
+  "dashboard.badge.dueSoon": "due soon",
   "dashboard.refreshed": "Refreshed $1.",
   "dashboard.addCard": "Add card",
 

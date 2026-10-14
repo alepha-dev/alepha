@@ -143,6 +143,18 @@ const DashboardScopeStep = (props: DashboardScopeStepProps) => {
         </button>
       )}
 
+      {kinds.includes("viewer") && (
+        <button
+          type="button"
+          data-testid="dashboard-scope-viewer"
+          onClick={() => props.onChange({ kind: "viewer" })}
+          className={rowClass(props.scope.kind === "viewer")}
+        >
+          <span className="flex-1">{tr("dashboard.scope.viewer")}</span>
+          {props.scope.kind === "viewer" && <Check className="size-3.5" />}
+        </button>
+      )}
+
       {kinds.includes("projects") &&
         projects.map((project) => {
           const selected =

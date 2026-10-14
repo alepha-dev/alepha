@@ -200,6 +200,9 @@ const DashboardCatalogue = (props: DashboardCatalogueProps) => {
     if (kinds.includes("epic")) {
       return { kind: "epic" };
     }
+    if (kinds.includes("viewer")) {
+      return { kind: "viewer" };
+    }
     if (kinds.includes("release")) {
       return { kind: "release" };
     }

@@ -34,6 +34,11 @@ export interface ResolvedDashboardScope {
    * land on somebody else's epic, silently.
    */
   subjects: DashboardScopeSubject[];
+  /**
+   * The reader, for a `viewer` scope (#Q2655): whoever reads the board on
+   * this request, never a stored id.
+   */
+  viewerId?: string;
 }
 
 /**
@@ -124,6 +129,7 @@ export class DashboardScopeService {
       apps: "sigilIds",
       epic: "epicId",
       release: "releaseId",
+      viewer: undefined,
     };
     const wanted = expected[scope.kind];
 
@@ -183,6 +189,18 @@ export class DashboardScopeService {
         projectIds: visible.map((it) => it.id),
         projects: visible,
         subjects: [],
+      };
+    }
+
+    if (scope.kind === "viewer") {
+      // The reader, inside every project the board can see: on a project
+      // board that is the route's project. Taken from the request, never
+      // from the stored scope, which holds no id.
+      return {
+        projectIds: visible.map((it) => it.id),
+        projects: visible,
+        subjects: [],
+        viewerId: user.id,
       };
     }
 

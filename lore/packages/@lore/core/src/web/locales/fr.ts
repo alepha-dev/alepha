@@ -2332,6 +2332,22 @@ export default {
     "encore $1 jours, il en faut $2 par jour, le rythme est de $3",
   "dashboard.badge.readyToPublish": "prête",
   "dashboard.badge.draft": "brouillon",
+  "dashboard.scope.viewer": "Vous, quiconque lit le tableau",
+  "dashboard.scope.you": "vous",
+  "dashboard.metric.yourQuests": "Vos quêtes",
+  "dashboard.metric.yourQuests.hint":
+    "ce que le lecteur a accepté et pas terminé",
+  "dashboard.metric.remindersDue": "Rappels à venir",
+  "dashboard.metric.remindersDue.hint": "vos rappels des sept prochains jours",
+  "dashboard.metric.dueSoon": "Échéances proches",
+  "dashboard.metric.dueSoon.hint":
+    "quêtes ouvertes à rendre dans les sept jours",
+  "dashboard.metric.recentlyShipped": "Livré récemment",
+  "dashboard.metric.recentlyShipped.hint":
+    "les dernières quêtes terminées, avec leur message",
+  "dashboard.badge.held": "en pause",
+  "dashboard.badge.overdue": "en retard",
+  "dashboard.badge.dueSoon": "bientôt",
   "dashboard.refreshed": "Actualise $1.",
   "dashboard.addCard": "Ajouter une carte",
 

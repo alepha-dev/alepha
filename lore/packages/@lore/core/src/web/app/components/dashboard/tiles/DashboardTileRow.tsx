@@ -67,7 +67,7 @@ const DashboardTileRow = (props: DashboardTileRowProps) => {
           />
         </span>
       )}
-      {props.variant === "feed" && row.at ? (
+      {row.at && (props.variant === "feed" || !row.meta) ? (
         <span className="text-muted-foreground shrink-0 text-[11px]">
           <ClientOnly>{dateTime.of(row.at).fromNow()}</ClientOnly>
         </span>
@@ -84,10 +84,21 @@ const DashboardTileRow = (props: DashboardTileRowProps) => {
   const className =
     "flex w-full min-w-0 items-center gap-1.5 py-[3px] text-left";
 
+  // A feed row's second line: a completion message, say. Muted, one line.
+  const excerpt = row.excerpt && (
+    <span
+      data-testid="tile-row-excerpt"
+      className="text-muted-foreground block w-full truncate pb-0.5 text-left text-[11.5px]"
+    >
+      {row.excerpt}
+    </span>
+  );
+
   if (!link) {
     return (
-      <li data-testid="tile-row" className={className}>
-        {content}
+      <li data-testid="tile-row">
+        <div className={className}>{content}</div>
+        {excerpt}
       </li>
     );
   }
@@ -96,7 +107,7 @@ const DashboardTileRow = (props: DashboardTileRowProps) => {
     <li data-testid="tile-row">
       <button
         type="button"
-        className={cn(className, "hover:bg-muted/60 -mx-1 rounded px-1")}
+        className="hover:bg-muted/60 -mx-1 block w-full rounded px-1"
         onClick={() =>
           void router.push(
             link.route as never,
@@ -104,7 +115,8 @@ const DashboardTileRow = (props: DashboardTileRowProps) => {
           )
         }
       >
-        {content}
+        <span className={className}>{content}</span>
+        {excerpt}
       </button>
     </li>
   );

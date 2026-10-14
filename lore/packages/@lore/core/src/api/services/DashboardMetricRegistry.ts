@@ -355,6 +355,7 @@ export class DashboardMetricRegistry {
         ? subjects.filter((it) => it.kind === "app").map((it) => it.id)
         : undefined,
       subjects,
+      viewerId: scope.viewerId,
     };
   }
 

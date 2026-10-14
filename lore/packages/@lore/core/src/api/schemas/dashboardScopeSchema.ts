@@ -30,10 +30,17 @@ import { type Infer, z } from "alepha";
  * `DashboardCatalogue.initialScope` (falls through to another kind),
  * `DashboardCatalogue.canSave` (refuses on the wrong grounds), and
  * `DashboardScopeStep` (renders an empty step).
+ *
+ * `viewer` (#Q2655) is the reader of the board, whoever that is: "your
+ * quests" on a board every member shares. It carries no payload and is
+ * resolved against the request's user on every read, so a stored card never
+ * holds a user id. Its branches: `assertWellFormed` and `resolve` (no
+ * payload, the visible projects plus `viewerId`), `initialScope` (starts on
+ * it), `canSave` (nothing to fill), `DashboardScopeStep` (a "You" row).
  */
 export const dashboardScopeSchema = z.object({
   kind: z
-    .enum(["all", "projects", "apps", "epic", "release"])
+    .enum(["all", "projects", "apps", "epic", "release", "viewer"])
     .meta({ mode: "text" }),
   /**
    * `kind: "projects"` — one or more project ids the caller is a member of.

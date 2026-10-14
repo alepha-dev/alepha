@@ -116,6 +116,23 @@ export class WorkDashboard {
       keep: (value) =>
         (value.value ?? 0) > 0 || Number(value.detail.lastWeek ?? 0) > 0,
     });
+    // Your work (#Q2655): your quests, then your reminders due. Both are
+    // `viewer` tiles, and their own `empty` is the data gate: the reader
+    // holds no row.
+    this.slots.register({
+      slot: "yourWork",
+      rank: 10,
+      metric: "yourQuests",
+      size: 2,
+      height: 2,
+    });
+    this.slots.register({
+      slot: "yourWork",
+      rank: 20,
+      metric: "remindersDue",
+      size: 2,
+      height: 2,
+    });
     // Plan: epics in flight, then draft epics, then releases to publish.
     this.slots.register({
       slot: "plan",

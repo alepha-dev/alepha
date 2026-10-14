@@ -116,6 +116,7 @@ const DashboardCard = (props: DashboardCardProps) => {
 
   const scopeChip = (() => {
     if (props.card.scope.kind === "all") return tr("dashboard.scope.all");
+    if (props.card.scope.kind === "viewer") return tr("dashboard.scope.you");
     if (
       props.boardProjectId !== undefined &&
       props.card.scope.kind === "projects" &&

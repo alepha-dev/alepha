@@ -160,10 +160,12 @@ export class DashboardSlotRegistry {
           card: {
             id: -(offered.length + 1),
             metric: candidate.metric,
-            scope: candidate.scope?.(project) ?? {
-              kind: "projects",
-              projectIds: [project.id],
-            },
+            scope: candidate.scope?.(project) ??
+              this.catalog.forcedScope(
+                candidate.metric,
+                "project",
+                project.id,
+              ) ?? { kind: "projects", projectIds: [project.id] },
             filters: this.catalog.parseFilters(
               candidate.metric,
               candidate.filters ?? {},

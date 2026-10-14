@@ -104,7 +104,10 @@ export const dashboardCardValueSchema = z.object({
    * - `title` — the row's own name, data rather than copy.
    * - `meta` — a short right-aligned fact (an assignee, an area), data.
    * - `badge` — a code the locale names (`held`, `stale`, `overdue`).
-   * - `at` — an ISO datetime, rendered relative on a feed.
+   * - `at` — an ISO datetime, rendered relative on a feed, and on a list row
+   *   that has no meta (a due date, a reminder).
+   * - `excerpt` — a second, muted line on a feed (a completion message's
+   *   first line), data.
    * - `value` / `progress` — a count, and a 0-100 bar for a row that has one.
    * - `state` — the pill's tone.
    */
@@ -116,6 +119,7 @@ export const dashboardCardValueSchema = z.object({
         meta: z.string().optional(),
         badge: z.string().optional(),
         at: z.string().optional(),
+        excerpt: z.string().max(200).optional(),
         value: z.number().optional(),
         progress: z.number().min(0).max(100).optional(),
         state: dashboardTileStateSchema.optional(),
