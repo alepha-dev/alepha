@@ -42,36 +42,86 @@ export class StateManager<State extends object = AlephaState> {
    *     current request set, without leaking parent-fork state.
    *   - `"app"`: Only the root (app-level) store.
    */
-  public exportAtoms(scope?: "current" | "app"): Record<string, unknown> {
+  public exportAtoms(
+    scope?: "current" | "app",
+    options: ExportAtomsOptions = {},
+  ): Record<string, unknown> {
     const exported: Record<string, unknown> = {};
+    const keep = (atom: Atom): boolean => {
+      if (atom.options.serverOnly) {
+        return false;
+      }
+      if (options.personal === undefined) {
+        return true;
+      }
+      return this.isPersonal(atom) === options.personal;
+    };
+    const write = (atom: Atom, value: unknown): void => {
+      exported[atom.key as string] = atom.options.serialize
+        ? atom.options.serialize(value as never)
+        : value;
+    };
 
     if (scope === "current") {
       if (this.als?.exists()) {
         for (const atom of this.atoms.values()) {
-          if (atom.options.serverOnly) {
+          if (!keep(atom)) {
             continue;
           }
           const value = this.als.get(atom.key, "current");
           if (value !== undefined) {
-            exported[atom.key as string] = value;
+            write(atom, value);
           }
         }
       }
       return exported;
     }
 
-    for (const [key, atom] of this.atoms.entries()) {
-      if (atom.options.serverOnly) {
+    for (const atom of this.atoms.values()) {
+      if (!keep(atom)) {
         continue;
       }
       const value = this.get(atom, scope);
       if (value !== undefined) {
-        exported[key as string] = value;
+        write(atom, value);
       }
     }
 
     return exported;
   }
+
+  /**
+   * Whether an atom's value belongs to the visitor rather than to the page.
+   *
+   * An explicit `personal` option wins. Otherwise a cookie-bound atom is
+   * personal: `persist: "cookie"`, or a key marked by {@link markPersonal}
+   * (an explicit `$cookie({ key })` binding). See `AtomOptions.personal`.
+   */
+  public isPersonal(target: Atom | string): boolean {
+    const atom =
+      typeof target === "string"
+        ? this.atoms.get(target as keyof State)
+        : target;
+    const key = typeof target === "string" ? target : target.key;
+    if (atom?.options.personal !== undefined) {
+      return atom.options.personal;
+    }
+    return (
+      atom?.options.persist === "cookie" || this.personalKeys.has(String(key))
+    );
+  }
+
+  /**
+   * Mark a state key as personal although its atom does not say so: the
+   * cookie module calls it for every `$cookie({ key })` binding, which core
+   * cannot see. An atom declaring `personal: false` still wins.
+   */
+  public markPersonal(key: string): this {
+    this.personalKeys.add(key);
+    return this;
+  }
+
+  protected readonly personalKeys = new Set<string>();
 
   public getAtoms(context = true): Array<AtomWithValue> {
     const atoms: Array<AtomWithValue> = [];
@@ -624,6 +674,14 @@ export class StateManager<State extends object = AlephaState> {
 type OnlyArray<T extends object> = {
   [K in keyof T]: NonNullable<T[K]> extends Array<any> ? K : never;
 };
+
+export interface ExportAtomsOptions {
+  /**
+   * `true` exports personal atoms only, `false` the shared ones only;
+   * omitted, both. See `AtomOptions.personal`.
+   */
+  personal?: boolean;
+}
 
 export interface SetStateOptions {
   skipContext?: boolean;

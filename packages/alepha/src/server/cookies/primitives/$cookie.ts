@@ -130,6 +130,9 @@ export class CookiePrimitive<T extends ZType>
 
   protected onInit() {
     if (this.options.key) {
+      // A cookie is the visitor's: the atom it feeds is personal, unless the
+      // atom itself says `personal: false` (#E78).
+      this.alepha.store.markPersonal(this.options.key);
       this.alepha.events.on("state:mutate", ({ key, value }) => {
         if (key === this.options.key) {
           this.set(value);

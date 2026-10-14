@@ -43,10 +43,12 @@ If you need to store complex data, consider using identifiers or references inst
 
 ## Options
 
-| Option        | Type          | Required | Description                                   |
-| ------------- | ------------- | -------- | --------------------------------------------- |
-| `name`        | `N`           | Yes      |                                               |
-| `schema`      | `T`           | Yes      |                                               |
-| `description` | `string`      | No       |                                               |
-| `persist`     | `AtomPersist` | No       | Persist this atom outside the in-memory store |
-| `serverOnly`  | `boolean`     | No       | Keep this atom's _value_ server-side          |
+| Option        | Type          | Required | Description                                           |
+| ------------- | ------------- | -------- | ----------------------------------------------------- |
+| `name`        | `N`           | Yes      |                                                       |
+| `schema`      | `T`           | Yes      |                                                       |
+| `description` | `string`      | No       |                                                       |
+| `persist`     | `AtomPersist` | No       | Persist this atom outside the in-memory store         |
+| `serverOnly`  | `boolean`     | No       | Keep this atom's _value_ server-side                  |
+| `personal`    | `boolean`     | No       | The value belongs to the visitor, not to the page     |
+| `serialize`   | `Object`      | No       | Shape the value written into the HTML for the browser |

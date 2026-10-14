@@ -49,7 +49,8 @@ export const useSidebarState = () => {
     }
     const fallback = uiAtom.options.default!.sidebar.collapsed;
     try {
-      const text = document.getElementById("__ssr")?.textContent;
+      // `uiAtom` is personal, so it travels in the private script (#E78).
+      const text = document.getElementById("__ssr_private")?.textContent;
       if (!text) {
         return fallback;
       }

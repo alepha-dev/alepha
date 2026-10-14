@@ -137,6 +137,36 @@ export type AtomOptions<T extends ZType, N extends string> = {
    * server-side (`alepha.store.get`), or derive it from atoms that ship.
    */
   serverOnly?: boolean;
+
+  /**
+   * The value belongs to the visitor, not to the page.
+   *
+   * A personal atom still reaches the browser, but never through the shared
+   * `<script id="__ssr">` payload: the SSR template writes it into a separate
+   * `<script id="__ssr_private">` built for each request. A cached page can
+   * therefore only ever hold the shared part, and a page cache cannot serve
+   * one visitor's identity to the next.
+   *
+   * The current user, the API links and the UI preferences are personal.
+   * An atom with `persist: "cookie"`, or bound to a cookie through
+   * `$cookie({ key })`, is personal unless it says `personal: false`: a cookie
+   * is the visitor's by definition.
+   *
+   * Personal is also what read tracking watches: a page whose render reads a
+   * personal atom is not shared.
+   */
+  personal?: boolean;
+
+  /**
+   * Shape the value written into the HTML for the browser.
+   *
+   * The server keeps the full value in the store; only the serialized copy
+   * goes through this function. Use it to drop fields the browser has no
+   * business seeing (the user's `realm` or `credential`), never to change
+   * their meaning: the browser validates the result against `schema`, so a
+   * field the schema requires cannot be removed.
+   */
+  serialize?: (value: Infer<T>) => Infer<T>;
 } & (T extends zod.ZodOptional<any>
   ? {
       default?: Infer<T>;

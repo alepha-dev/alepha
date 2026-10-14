@@ -46,6 +46,7 @@ describe("ReactBrowserProvider", () => {
 
     // Clean up any leftover script tags
     document.getElementById("__ssr")?.remove();
+    document.getElementById("__ssr_private")?.remove();
   });
 
   describe("getHydrationState", () => {
@@ -104,6 +105,47 @@ describe("ReactBrowserProvider", () => {
       expect(consoleSpy).toHaveBeenCalledOnce();
 
       consoleSpy.mockRestore();
+    });
+
+    it("should merge the private script into the shared payload", () => {
+      const shared = document.createElement("script");
+      shared.id = "__ssr";
+      shared.type = "application/json";
+      shared.textContent = JSON.stringify({
+        "alepha.react.router.layers": [{ name: "home" }],
+        "alepha.react.i18n.lang": "fr",
+      });
+      document.body.appendChild(shared);
+      const own = document.createElement("script");
+      own.id = "__ssr_private";
+      own.type = "application/json";
+      own.textContent = JSON.stringify({
+        "alepha.security.user": { id: "u1" },
+      });
+      document.body.appendChild(own);
+
+      const result = provider.testGetHydrationState();
+
+      expect(result?.["alepha.react.router.layers"]).toHaveLength(1);
+      expect(result?.["alepha.react.i18n.lang"]).toBe("fr");
+      expect(result?.["alepha.security.user"]).toEqual({ id: "u1" });
+    });
+
+    it("should keep the shared payload when the private script is broken", () => {
+      const shared = document.createElement("script");
+      shared.id = "__ssr";
+      shared.type = "application/json";
+      shared.textContent = JSON.stringify({ "alepha.react.router.layers": [] });
+      document.body.appendChild(shared);
+      const own = document.createElement("script");
+      own.id = "__ssr_private";
+      own.type = "application/json";
+      own.textContent = "{broken";
+      document.body.appendChild(own);
+
+      const result = provider.testGetHydrationState();
+
+      expect(result).toEqual({ "alepha.react.router.layers": [] });
     });
 
     it("should handle hydration data with multiple layers and atoms", () => {

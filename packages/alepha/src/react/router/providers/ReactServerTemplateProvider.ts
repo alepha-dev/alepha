@@ -43,6 +43,9 @@ export class ReactServerTemplateProvider {
       '<script id="__ssr" type="application/json">',
     ),
     HYDRATION_SUFFIX: this.encoder.encode("</script>"),
+    PRIVATE_PREFIX: this.encoder.encode(
+      '<script id="__ssr_private" type="application/json">',
+    ),
   } as const;
 
   /**
@@ -240,7 +243,9 @@ export class ReactServerTemplateProvider {
   }
 
   /**
-   * Build hydration data from router state.
+   * Build the shared hydration data: the router layers and every atom that
+   * is not personal. This is what the page shows, the same for every visitor
+   * of the same URL, and the only payload a page cache may store.
    */
   public buildHydrationData(state: ReactRouterState): HydrationData {
     const layers = state.layers.map((layer) => ({
@@ -266,8 +271,33 @@ export class ReactServerTemplateProvider {
 
     return {
       "alepha.react.router.layers": layers,
-      ...this.alepha.store.exportAtoms("current"),
+      ...this.alepha.store.exportAtoms("current", { personal: false }),
     };
+  }
+
+  /**
+   * Build the private hydration data: the personal atoms of this request
+   * (the user, the API links, the UI preferences, every cookie-bound atom
+   * but the language). Who the page is for, written to its own
+   * `<script id="__ssr_private">` and rebuilt for every request, so a cached
+   * page never carries it. See `AtomOptions.personal`.
+   */
+  public buildPrivateData(): Record<string, unknown> {
+    return this.alepha.store.exportAtoms("current", { personal: true });
+  }
+
+  /**
+   * The `<script id="__ssr_private">` element for the current request, or
+   * an empty string when the request has no personal state.
+   *
+   * Public because a page cache hit appends it to bytes it did not render.
+   */
+  public renderPrivateScript(): string {
+    const data = this.buildPrivateData();
+    if (Object.keys(data).length === 0) {
+      return "";
+    }
+    return `<script id="__ssr_private" type="application/json">${this.safeJsonSerialize(data)}</script>`;
   }
 
   // ---------------------------------------------------------------------------
@@ -344,9 +374,24 @@ export class ReactServerTemplateProvider {
         encoder.encode(this.safeJsonSerialize(this.buildHydrationData(state))),
       );
       controller.enqueue(slots.HYDRATION_SUFFIX);
+      this.enqueuePrivateScript(controller);
     }
 
     controller.enqueue(slots.BODY_HTML_CLOSE);
+  }
+
+  /**
+   * Write the private script, the one part of a document that is never
+   * shared. Everything enqueued before it is the same for every visitor of
+   * the URL; it is followed only by the closing tags.
+   */
+  protected enqueuePrivateScript(
+    controller: ReadableStreamDefaultController<Uint8Array>,
+  ): void {
+    const script = this.renderPrivateScript();
+    if (script) {
+      controller.enqueue(this.encoder.encode(script));
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -561,6 +606,7 @@ export class ReactServerTemplateProvider {
         ),
       );
       controller.enqueue(slots.HYDRATION_SUFFIX);
+      this.enqueuePrivateScript(controller);
     }
 
     controller.enqueue(slots.BODY_HTML_CLOSE);
@@ -668,7 +714,8 @@ export class ReactServerTemplateProvider {
 }
 
 /**
- * Hydration state serialized to a JSON script tag with id="__ssr"
+ * Shared hydration state serialized to a JSON script tag with id="__ssr".
+ * The personal atoms travel apart, in id="__ssr_private".
  */
 export interface HydrationData {
   "alepha.react.router.layers": Array<{
