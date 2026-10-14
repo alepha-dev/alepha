@@ -190,11 +190,14 @@ export const epicSetStatusResultSchema = z.object({
 export const epicDeleteParamsSchema = epicRefSchema;
 
 /**
- * Acknowledgement, like `quest_delete`. Nothing about the epic is worth
- * echoing back once it is gone. `EpicController.deleteEpic` deletes the
- * epic's quests with it (#Q2666) and answers how many as `count`; its
- * folios are unfiled, never deleted.
+ * Acknowledgement, like `quest_delete`, plus the one number an agent needs
+ * to report what it just did: how many quests went with the epic (#Q2667).
+ * `EpicController.deleteEpic` answers it as `count`; its folios are unfiled,
+ * never deleted, so they are not counted.
  */
 export const epicDeleteResultSchema = z.object({
   ok: z.boolean(),
+  deletedQuests: z
+    .integer()
+    .describe("How many quests were deleted with the epic."),
 });

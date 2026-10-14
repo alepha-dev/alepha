@@ -287,17 +287,18 @@ export class EpicTools {
   });
 
   /**
-   * Delete an epic, orphaning its quests and folios.
+   * Delete an epic AND its quests, while it is `draft` or `ready` (#Q2666).
    *
-   * The description carries the child semantics in its first two sentences
-   * on purpose. An agent decides whether to call a tool from the tool list
+   * The description carries the child semantics in its first sentence on
+   * purpose, and it used to promise the opposite (quests DETACHED, never
+   * deleted), so a stale reading of it is the expensive mistake. An agent decides whether to call a tool from the tool list
    * alone, and "delete the container" reads as "delete what is in it" unless
    * something says otherwise. An epic_delete that stayed quiet about it
    * would simply go unused, which is the same outcome as not having it.
    */
   epic_delete = $tool({
     description:
-      "Permanently delete an epic. Its quests and folios are DETACHED, never deleted: every one of them survives with its epic link cleared, keeping its own status, objectives and history. Use this to remove a mis-created epic or to restructure a plan. Only the epic itself is lost, and it cannot be recovered. Note that quests parked under a `draft` epic rejoin the human-facing backlog, kanban and reports once the epic is gone, because the gate that was hiding them no longer exists. To release them deliberately use epic_set_status 'ready'; to keep them out of the backlog use quest_shelve.",
+      "Permanently delete an epic AND every quest filed under it; irreversible. Allowed only while the epic is `draft` or `ready`: an `in_progress` or `completed` epic is refused, because it holds started or shipped work - use epic_shelve to set an in-progress plan aside instead. Its folios are unfiled and kept, never deleted. Use this to remove a mis-created or abandoned plan; to keep the quests, move them out first with quest_update `epic_number: 0`. Returns how many quests were deleted.",
     title: "Delete epic",
     annotations: {
       destructiveHint: true,
@@ -316,9 +317,10 @@ export class EpicTools {
         params: { projectId, number: params.number },
       });
 
-      return await this.epicController.deleteEpic({
+      const result = await this.epicController.deleteEpic({
         params: { id: target.id },
       });
+      return { ok: result.ok, deletedQuests: result.count ?? 0 };
     },
   });
 }

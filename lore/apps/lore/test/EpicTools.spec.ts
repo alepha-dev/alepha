@@ -467,12 +467,42 @@ describe("Lore MCP — epics", () => {
         number: epic.number,
       });
 
-      expect(result.ok).toBe(true);
+      expect(result).toEqual({ ok: true, deletedQuests: 1 });
       expect(
         await repos.quests.findOne({ where: { id: { eq: quest.id } } }),
       ).toBeUndefined();
       expect(await repos.folios.getById(folio.id)).toBeDefined();
       expect(await filedEpicOf(alepha, folio.id)).toBeUndefined();
+    });
+
+    it("refuses an in-progress epic, names it, and points at epic_shelve", async ({
+      expect,
+    }) => {
+      const { alepha, repos, project, epicTools, call } = await setup();
+      const epic = await createTestEpic(alepha, project, {
+        status: "in_progress",
+      });
+      const quest = await createTestQuest(alepha, project, { epicId: epic.id });
+
+      await expect(
+        call(epicTools.epic_delete, {
+          project: project.id,
+          number: epic.number,
+        }),
+      ).rejects.toThrow(
+        `Cannot delete Epic #E${epic.number}: it is in progress, and deleting it would delete started work. Shelve the epic instead.`,
+      );
+      expect((await repos.quests.getById(quest.id)).epicId).toBe(epic.id);
+    });
+
+    it("says in its first sentence that the quests are deleted", async ({
+      expect,
+    }) => {
+      // Agents decide from the tool list alone, and this description used to
+      // promise the opposite.
+      const { epicTools } = await setup();
+      const firstSentence = epicTools.epic_delete.description.split(". ")[0];
+      expect(firstSentence).toMatch(/AND every quest filed under it/);
     });
 
     it("removes the epic from epic_list, epic_get and project_context", async ({
