@@ -1,4 +1,5 @@
 import type { Infer, ZObject } from "alepha";
+import type { SQL } from "drizzle-orm";
 
 import type { PgQueryWhereOrSQL } from "./PgQueryWhere.ts";
 
@@ -28,13 +29,38 @@ export type AggregateOp = "count" | "sum" | "avg" | "min" | "max";
  * condition", point `column` at a column that is never null, such as the
  * primary key. Pointing it at a nullable column asks a different question -
  * a useful one, but a different one.
+ *
+ * `expr` is the third source, beside the key and `column`: an SQL expression
+ * (`sqlx.dateDiff(t.completedAt, t.acceptedAt, "hours")`) aggregated instead
+ * of a column. It turns the key into an alias exactly like `column`, the two
+ * are mutually exclusive, and `where` wraps it in the same CASE.
  */
 export type AggregateOpSelect<T extends ZObject> =
   | true
   | {
       column?: keyof Infer<T>;
+      expr?: never;
+      where?: PgQueryWhereOrSQL<T>;
+    }
+  | {
+      expr: SQL<any>;
+      column?: never;
       where?: PgQueryWhereOrSQL<T>;
     };
+
+/**
+ * A select key computed by an SQL expression rather than read from a column:
+ * a date bucket (`{ expr: sqlx.dateDay(t.createdAt) }`) to group by.
+ *
+ * The key is an alias, so it may not be spelled like one of the entity's
+ * columns. In `groupBy` and `orderBy` it renders as that alias, never as the
+ * expression again: re-rendering binds the expression's parameters a second
+ * time, and Postgres then refuses the SELECT as not grouped. Its result type
+ * is the `T` of the expression's `SQL<T>`, `unknown` for an untyped `SQL`.
+ */
+export interface AggregateExprSelect {
+  expr: SQL<any>;
+}
 
 /**
  * Select definition for aggregate queries.
@@ -44,6 +70,7 @@ export type AggregateOpSelect<T extends ZObject> =
  */
 export type AggregateColumnSelect<T extends ZObject> =
   | true
+  | AggregateExprSelect
   | Partial<Record<AggregateOp, AggregateOpSelect<T>>>;
 
 /**
@@ -85,14 +112,18 @@ export type AggregateOpValue<Op extends AggregateOp, TValue> = Op extends
  * present, otherwise the one the key names.
  */
 export type AggregateSourceValue<T extends ZObject, K, TSpec> = TSpec extends {
-  column: infer C;
+  expr: SQL<infer V>;
 }
-  ? C extends keyof Infer<T>
-    ? Infer<T>[C]
-    : unknown
-  : K extends keyof Infer<T>
-    ? Infer<T>[K]
-    : unknown;
+  ? V
+  : TSpec extends {
+        column: infer C;
+      }
+    ? C extends keyof Infer<T>
+      ? Infer<T>[C]
+      : unknown
+    : K extends keyof Infer<T>
+      ? Infer<T>[K]
+      : unknown;
 
 /**
  * Maps a single key's select definition to its result type.
@@ -114,19 +145,21 @@ export type AggregateColumnResult<
   ? K extends keyof Infer<T>
     ? Infer<T>[K]
     : unknown
-  : {
-      [
-        Op in AggregateOp as TSelect extends Record<Op, AggregateOpSelect<T>>
-          ? Op
-          : never
-      ]: Op extends "count" | "sum" | "avg"
-        ? number
-        :
-            | (TSelect extends Record<Op, infer TSpec>
-                ? AggregateSourceValue<T, K, TSpec>
-                : never)
-            | null;
-    };
+  : TSelect extends { expr: SQL<infer V> }
+    ? V
+    : {
+        [
+          Op in AggregateOp as TSelect extends Record<Op, AggregateOpSelect<T>>
+            ? Op
+            : never
+        ]: Op extends "count" | "sum" | "avg"
+          ? number
+          :
+              | (TSelect extends Record<Op, infer TSpec>
+                  ? AggregateSourceValue<T, K, TSpec>
+                  : never)
+              | null;
+      };
 
 /**
  * Result type for an aggregate query.
@@ -140,7 +173,7 @@ export type AggregateResult<T extends ZObject, S extends AggregateSelect<T>> = {
  * Only applies to keys with aggregate operations (not `true`).
  */
 export type AggregateHaving<T extends ZObject, S extends AggregateSelect<T>> = {
-  [K in keyof S]?: S[K] extends true
+  [K in keyof S]?: S[K] extends true | AggregateExprSelect
     ? never
     : {
         [
@@ -177,6 +210,14 @@ export type AggregateHavingValue<
     : never;
 
 /**
+ * The keys of a select that carry `{ expr }`: what `groupBy` accepts beside
+ * the entity's columns.
+ */
+export type AggregateExprKeys<S> = {
+  [K in keyof S]: S[K] extends AggregateExprSelect ? K : never;
+}[keyof S];
+
+/**
  * Full aggregate query definition.
  */
 export interface AggregateQuery<
@@ -198,9 +239,11 @@ export interface AggregateQuery<
   where?: PgQueryWhereOrSQL<T>;
 
   /**
-   * Columns to group by. Always real columns, never a select alias.
+   * What to group by: columns of the entity, or select keys carrying
+   * `{ expr }`. An `expr` key groups by its select alias, never by the
+   * expression rendered a second time. Any other alias is refused.
    */
-  groupBy?: (keyof Infer<T>)[];
+  groupBy?: Array<keyof Infer<T> | AggregateExprKeys<S>>;
 
   /**
    * HAVING clause to filter groups after aggregation.

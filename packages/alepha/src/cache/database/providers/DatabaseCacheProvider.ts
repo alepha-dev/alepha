@@ -254,10 +254,10 @@ export class DatabaseCacheProvider extends CacheProvider {
       {
         target: ["container", "cacheKey"],
         set: {
-          // `excluded.count` references the value being inserted on conflict.
-          // `expiresAt` is deliberately NOT in the set — increments must not
-          // extend the window.
-          count: sql`coalesce(${table.count}, 0) + ${amount}`,
+          // `excluded("count")` is the value this call tried to insert, so
+          // the statement binds `amount` once. `expiresAt` is deliberately
+          // NOT in the set: increments must not extend the window.
+          count: sql`coalesce(${table.count}, 0) + ${this.repository.excluded("count")}`,
           value: null,
         },
       },

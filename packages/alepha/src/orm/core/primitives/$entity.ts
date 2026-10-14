@@ -6,6 +6,7 @@ import type {
   PgTableExtraConfigValue,
 } from "drizzle-orm/pg-core";
 
+import type { PgQueryWhere } from "../interfaces/PgQueryWhere.ts";
 import { insertSchema, type TObjectInsert } from "../schemas/insertSchema.ts";
 import { type TObjectUpdate, updateSchema } from "../schemas/updateSchema.ts";
 import type { IndexExpressionContext } from "../services/ModelBuilder.ts";
@@ -70,9 +71,22 @@ export interface EntityPrimitiveOptions<
          */
         name?: string;
         /**
-         * Partial index condition. Only rows matching this SQL expression are indexed.
+         * Partial index condition: only rows matching it are indexed.
+         *
+         * A where-object (`{ deletedAt: { isNull: true } }`) is compiled
+         * against this entity's columns, so a column rename cannot leave it
+         * stale; its values are inlined, since an index predicate binds no
+         * parameters. Column operators and `and` / `or` / `not` only: a
+         * subquery, a join or a nested raw fragment is refused. No soft-delete
+         * filter is added. A raw `SQL` is still accepted as the whole
+         * condition.
+         *
+         * ⚠️ Moving a hand-typed predicate (`deleted_at IS NULL` in a raw
+         * `sql` template) to the object changes its text (identifiers come
+         * out quoted), so the next generated migration recreates the index
+         * once.
          */
-        where?: SQL;
+        where?: IndexWhere<T>;
       }
     | {
         /**
@@ -88,9 +102,22 @@ export interface EntityPrimitiveOptions<
          */
         name?: string;
         /**
-         * Partial index condition. Only rows matching this SQL expression are indexed.
+         * Partial index condition: only rows matching it are indexed.
+         *
+         * A where-object (`{ deletedAt: { isNull: true } }`) is compiled
+         * against this entity's columns, so a column rename cannot leave it
+         * stale; its values are inlined, since an index predicate binds no
+         * parameters. Column operators and `and` / `or` / `not` only: a
+         * subquery, a join or a nested raw fragment is refused. No soft-delete
+         * filter is added. A raw `SQL` is still accepted as the whole
+         * condition.
+         *
+         * ⚠️ Moving a hand-typed predicate (`deleted_at IS NULL` in a raw
+         * `sql` template) to the object changes its text (identifiers come
+         * out quoted), so the next generated migration recreates the index
+         * once.
          */
-        where?: SQL;
+        where?: IndexWhere<T>;
       }
     | {
         /**
@@ -129,9 +156,22 @@ export interface EntityPrimitiveOptions<
          */
         name: string;
         /**
-         * Partial index condition. Only rows matching this SQL expression are indexed.
+         * Partial index condition: only rows matching it are indexed.
+         *
+         * A where-object (`{ deletedAt: { isNull: true } }`) is compiled
+         * against this entity's columns, so a column rename cannot leave it
+         * stale; its values are inlined, since an index predicate binds no
+         * parameters. Column operators and `and` / `or` / `not` only: a
+         * subquery, a join or a nested raw fragment is refused. No soft-delete
+         * filter is added. A raw `SQL` is still accepted as the whole
+         * condition.
+         *
+         * ⚠️ Moving a hand-typed predicate (`deleted_at IS NULL` in a raw
+         * `sql` template) to the object changes its text (identifiers come
+         * out quoted), so the next generated migration recreates the index
+         * once.
          */
-        where?: SQL;
+        where?: IndexWhere<T>;
       }
   )[];
 
@@ -366,3 +406,9 @@ export type EntityColumn<T extends ZObject> = {
 export type EntityColumns<T extends ZObject> = {
   [key in keyof T["shape"]]: EntityColumn<T>;
 };
+
+/**
+ * A partial index condition: a raw `SQL`, or a where-object compiled against
+ * the entity's columns with its values inlined.
+ */
+export type IndexWhere<T extends ZObject> = SQL | PgQueryWhere<T>;

@@ -80,19 +80,19 @@ type PgQueryWhereConditions<
   /**
    * Test whether a subquery evaluates to have any rows.
    *
+   * Build the subquery with `repository.subquery(where)`: it compiles a
+   * where-object against the other table, soft-delete filter included, and a
+   * column of the outer table as a comparison value correlates it.
+   *
    * ## Examples
    *
    * ```ts
-   * // Users whose `homeCity` column has a match in a cities
-   * // table.
-   * db
-   *   .select()
-   *   .from(users)
-   *   .where(
-   *     exists(db.select()
-   *       .from(cities)
-   *       .where(eq(users.homeCity, cities.id))),
-   *   );
+   * // Users whose `homeCity` has a match in the cities table.
+   * await users.findMany({
+   *   where: {
+   *     exists: cities.subquery({ id: { eq: users.table.homeCity } }),
+   *   },
+   * });
    * ```
    *
    * @see notExists for the inverse of this test
@@ -101,6 +101,20 @@ type PgQueryWhereConditions<
 
   /**
    * Test whether a subquery evaluates to have no rows.
+   *
+   * ## Examples
+   *
+   * ```ts
+   * // Epics with no open quest left.
+   * await epics.findMany({
+   *   where: {
+   *     notExists: quests.subquery({
+   *       epicId: { eq: epics.table.id },
+   *       completedAt: { isNull: true },
+   *     }),
+   *   },
+   * });
+   * ```
    *
    * @see exists for the inverse of this test
    */
