@@ -29,9 +29,11 @@ import { CompletedPerWeekMetric } from "./services/CompletedPerWeekMetric.ts";
 import { CompletedThisWeekMetric } from "./services/CompletedThisWeekMetric.ts";
 import { CycleTimeMetric } from "./services/CycleTimeMetric.ts";
 import { DashboardFlowSeries } from "./services/DashboardFlowSeries.ts";
+import { DraftEpicsMetric } from "./services/DraftEpicsMetric.ts";
 import { EpicDependencyService } from "./services/EpicDependencyService.ts";
 import { EpicProgressMetric } from "./services/EpicProgressMetric.ts";
 import { EpicProgressService } from "./services/EpicProgressService.ts";
+import { EpicsInFlightMetric } from "./services/EpicsInFlightMetric.ts";
 import { EpicWorkflowService } from "./services/EpicWorkflowService.ts";
 import { FeedbackRateLimiter } from "./services/FeedbackRateLimiter.ts";
 import { HeldQuestsMetric } from "./services/HeldQuestsMetric.ts";
@@ -46,7 +48,9 @@ import { QuestTagTallyService } from "./services/QuestTagTallyService.ts";
 import { ReleaseAttachmentService } from "./services/ReleaseAttachmentService.ts";
 import { ReleaseContentService } from "./services/ReleaseContentService.ts";
 import { ReleaseNotifier } from "./services/ReleaseNotifier.ts";
+import { ReleaseOutlookMetric } from "./services/ReleaseOutlookMetric.ts";
 import { ReleaseProgressMetric } from "./services/ReleaseProgressMetric.ts";
+import { ReleasesToPublishMetric } from "./services/ReleasesToPublishMetric.ts";
 import { RoadmapService } from "./services/RoadmapService.ts";
 import { TagCompletionMetric } from "./services/TagCompletionMetric.ts";
 import { UntriagedFeedbackMetric } from "./services/UntriagedFeedbackMetric.ts";
@@ -55,6 +59,7 @@ import { WorkDashboard } from "./services/WorkDashboard.ts";
 import { WorkDashboardMetrics } from "./services/WorkDashboardMetrics.ts";
 import { WorkFileAccess } from "./services/WorkFileAccess.ts";
 import { WorkFlowDashboardMetrics } from "./services/WorkFlowDashboardMetrics.ts";
+import { WorkPlanDashboardMetrics } from "./services/WorkPlanDashboardMetrics.ts";
 import { WorkProjectCounts } from "./services/WorkProjectCounts.ts";
 
 /**
@@ -77,6 +82,7 @@ export const LoreWorkApi = $module({
     // `LoreWorkWeb`).
     WorkDashboardMetrics,
     WorkFlowDashboardMetrics,
+    WorkPlanDashboardMetrics,
     ReleaseAttachmentService,
     ReleaseContentService,
     RoadmapService,
@@ -145,6 +151,11 @@ export const LoreWorkApi = $module({
     CycleTimeMetric,
     QuestBreakdownMetric,
     BoardColumnsMetric,
+    // The plan tiles of #E77 (#Q2654).
+    ReleaseOutlookMetric,
+    ReleasesToPublishMetric,
+    EpicsInFlightMetric,
+    DraftEpicsMetric,
     // Controllers
     QuestController,
     QuestCommentController,

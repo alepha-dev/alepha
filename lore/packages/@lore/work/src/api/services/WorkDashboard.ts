@@ -88,6 +88,56 @@ export class WorkDashboard {
    * Reports tiles of #Q2653, then the open quests.
    */
   protected registerSlots(): void {
+    // Headline (#Q2654): the release with work, else the releases waiting on
+    // a publish, else the epic in progress, else the week's completions.
+    this.slots.register({
+      slot: "headline",
+      rank: 10,
+      metric: "releaseOutlook",
+      size: 2,
+    });
+    this.slots.register({
+      slot: "headline",
+      rank: 20,
+      metric: "releasesToPublish",
+      size: 2,
+    });
+    this.slots.register({
+      slot: "headline",
+      rank: 30,
+      metric: "epicsInFlight",
+      size: 2,
+    });
+    this.slots.register({
+      slot: "headline",
+      rank: 40,
+      metric: "completedThisWeek",
+      size: 2,
+      keep: (value) =>
+        (value.value ?? 0) > 0 || Number(value.detail.lastWeek ?? 0) > 0,
+    });
+    // Plan: epics in flight, then draft epics, then releases to publish.
+    this.slots.register({
+      slot: "plan",
+      rank: 10,
+      metric: "epicsInFlight",
+      size: 2,
+      height: 2,
+    });
+    this.slots.register({
+      slot: "plan",
+      rank: 20,
+      metric: "draftEpics",
+      size: 2,
+      height: 2,
+    });
+    this.slots.register({
+      slot: "plan",
+      rank: 30,
+      metric: "releasesToPublish",
+      size: 2,
+      height: 2,
+    });
     const above = (min: number) => (value: { value?: number }) =>
       (value.value ?? 0) >= min;
 

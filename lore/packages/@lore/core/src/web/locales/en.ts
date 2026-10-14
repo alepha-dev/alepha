@@ -2327,6 +2327,22 @@ export default {
   "dashboard.filterValue.medium": "Medium",
   "dashboard.filterValue.low": "Low",
   "dashboard.filterValue.optional": "Optional",
+  "dashboard.metric.releaseOutlook": "Release",
+  "dashboard.metric.releaseOutlook.hint":
+    "the release this project is heading for, and its pace",
+  "dashboard.metric.releasesToPublish": "Ready to publish",
+  "dashboard.metric.releasesToPublish.hint":
+    "open releases whose every quest is done",
+  "dashboard.metric.epicsInFlight": "Epics in flight",
+  "dashboard.metric.epicsInFlight.hint": "epics in progress, with their bar",
+  "dashboard.metric.draftEpics": "Draft epics",
+  "dashboard.metric.draftEpics.hint": "epics still being specified",
+  "dashboard.footer.releaseOutlook": "$1, $2 of $3 done",
+  "dashboard.footer.releaseOutlook.ready": "Ready to publish",
+  "dashboard.footer.releaseOutlook.pace":
+    "$1 days left, needs $2 a day, doing $3",
+  "dashboard.badge.readyToPublish": "ready",
+  "dashboard.badge.draft": "draft",
   "dashboard.refreshed": "Refreshed $1.",
   "dashboard.addCard": "Add card",
 

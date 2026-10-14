@@ -278,6 +278,11 @@ export class CapabilityRegistry {
         "cycleTime",
         "questBreakdown",
         "boardColumns",
+        // The plan tiles of #E77 (#Q2654).
+        "releaseOutlook",
+        "releasesToPublish",
+        "epicsInFlight",
+        "draftEpics",
       ],
       // Areas belong here: quests carry one, blights forward into one, and
       // `project_context` files them beside the epic index.

@@ -2316,6 +2316,22 @@ export default {
   "dashboard.filterValue.medium": "Moyenne",
   "dashboard.filterValue.low": "Basse",
   "dashboard.filterValue.optional": "Optionnelle",
+  "dashboard.metric.releaseOutlook": "Version",
+  "dashboard.metric.releaseOutlook.hint":
+    "la version visée par ce projet, et son rythme",
+  "dashboard.metric.releasesToPublish": "Prêtes à publier",
+  "dashboard.metric.releasesToPublish.hint":
+    "versions ouvertes dont toutes les quêtes sont terminées",
+  "dashboard.metric.epicsInFlight": "Épopées en cours",
+  "dashboard.metric.epicsInFlight.hint": "épopées en cours, avec leur barre",
+  "dashboard.metric.draftEpics": "Épopées en brouillon",
+  "dashboard.metric.draftEpics.hint": "épopées encore en cours de rédaction",
+  "dashboard.footer.releaseOutlook": "$1 : $2 sur $3 terminées",
+  "dashboard.footer.releaseOutlook.ready": "Prête à publier",
+  "dashboard.footer.releaseOutlook.pace":
+    "encore $1 jours, il en faut $2 par jour, le rythme est de $3",
+  "dashboard.badge.readyToPublish": "prête",
+  "dashboard.badge.draft": "brouillon",
   "dashboard.refreshed": "Actualise $1.",
   "dashboard.addCard": "Ajouter une carte",
 

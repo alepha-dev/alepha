@@ -3,6 +3,7 @@ import { $module } from "alepha";
 
 import { WorkDashboardMetrics } from "../api/services/WorkDashboardMetrics.ts";
 import { WorkFlowDashboardMetrics } from "../api/services/WorkFlowDashboardMetrics.ts";
+import { WorkPlanDashboardMetrics } from "../api/services/WorkPlanDashboardMetrics.ts";
 import { currentAssignedQuestsAtom } from "./app/atoms/currentAssignedQuestsAtom.ts";
 import { currentEpicsAtom } from "./app/atoms/currentEpicsAtom.ts";
 import { currentQuestAtom } from "./app/atoms/currentQuestAtom.ts";
@@ -61,6 +62,7 @@ export const LoreWorkWeb = $module({
     alepha.inject(WorkShell);
     alepha.inject(WorkDashboardMetrics);
     alepha.inject(WorkFlowDashboardMetrics);
+    alepha.inject(WorkPlanDashboardMetrics);
   },
 });
 

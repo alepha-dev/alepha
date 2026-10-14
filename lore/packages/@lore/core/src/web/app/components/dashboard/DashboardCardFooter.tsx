@@ -164,6 +164,28 @@ const DashboardCardFooter = (props: DashboardCardFooterProps) => {
         args: [`${delta > 0 ? "+" : ""}${delta}`],
       });
     }
+    if (props.metric === "releaseOutlook") {
+      const done = tr("dashboard.footer.releaseOutlook", {
+        args: [
+          String(detail.tag ?? ""),
+          String(detail.completed ?? 0),
+          String(detail.total ?? 0),
+        ],
+      });
+      if (detail.readyToPublish) {
+        return `${done}. ${tr("dashboard.footer.releaseOutlook.ready")}`;
+      }
+      if (detail.daysLeft === undefined || detail.daysLeft === null) {
+        return done;
+      }
+      return `${done}. ${tr("dashboard.footer.releaseOutlook.pace", {
+        args: [
+          String(detail.daysLeft),
+          l(Number(detail.neededPerDay ?? 0)),
+          l(Number(detail.doingPerDay ?? 0)),
+        ],
+      })}`;
+    }
     if (props.metric === "burnup") {
       return tr("dashboard.footer.burnup", {
         args: [String(props.value?.value ?? 0), String(detail.created ?? 0)],
