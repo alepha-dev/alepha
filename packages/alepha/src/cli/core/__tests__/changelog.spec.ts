@@ -284,6 +284,59 @@ describe("changelog", () => {
       }
     });
 
+    test("should keep a declared break whatever its type", () => {
+      // 0.32.0 carried eight of these, and the type filter dropped all eight
+      // with their migration notes before anyone looked at the `!` (#Q2640).
+      const parser = getParser();
+
+      const bang = parser.parseCommit(
+        "abc12345 refactor(server)!: delete the rate-limit module",
+        defaultConfig,
+      );
+      expect(bang).toEqual({
+        hash: "abc12345",
+        type: "refactor",
+        scope: "server",
+        description: "delete the rate-limit module",
+        breaking: true,
+        breakingNotes: [],
+      });
+
+      const footer = parser.parseCommit(
+        [
+          "def45678 chore(devtools): remove the in-app devtools",
+          "",
+          "BREAKING CHANGE: run npx @alepha/devtools instead",
+        ].join("\n"),
+        defaultConfig,
+      );
+      expect(footer?.breaking).toBe(true);
+      expect(footer?.breakingNotes).toEqual([
+        "run npx @alepha/devtools instead",
+      ]);
+    });
+
+    test("should refuse an unlisted type that only mentions breaking", () => {
+      // The word is a guess, not a declaration.
+      const parser = getParser();
+      const result = parser.parseCommit(
+        "abc12345 test(orm): cover the non-breaking path",
+        defaultConfig,
+      );
+
+      expect(result).toBeNull();
+    });
+
+    test("should apply the scope allowlist to a declared break", () => {
+      const parser = getParser();
+      const result = parser.parseCommit(
+        "abc12345 refactor(lore)!: move the folio store",
+        { scopes: ["orm"] },
+      );
+
+      expect(result).toBeNull();
+    });
+
     test("should parse a type once it is configured", () => {
       const parser = getParser();
       const result = parser.parseCommit("abc12345 perf(orm): faster reads", {
@@ -479,6 +532,28 @@ describe("changelog", () => {
 
       expect(output).toContain(
         "### Breaking Changes\n\n- **core**: remove the old API (`abc12345`)",
+      );
+    });
+
+    test("prints a break of an unlisted type under Breaking Changes only", async () => {
+      const output = await render([
+        "abc12345 feat(core): a feature",
+        {
+          line: "def45678 refactor(server)!: delete the old module",
+          body: "BREAKING CHANGE: import alepha/rate-limit instead",
+        },
+        "aaa11111 refactor(orm): tidy the query builder",
+      ]);
+
+      expect(output).toBe(
+        [
+          "### Breaking Changes\n",
+          "- **server**: import alepha/rate-limit instead (`def45678`)",
+          "",
+          "### Features\n",
+          "- **core**: a feature (`abc12345`)",
+          "",
+        ].join("\n"),
       );
     });
 

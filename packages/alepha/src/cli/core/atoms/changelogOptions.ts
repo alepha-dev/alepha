@@ -45,8 +45,13 @@ export const changelogOptions = $atom({
      * Commit types to publish, in the order their sections appear.
      *
      * Defaults to {@link DEFAULT_TYPES}. Listing a type is the only way it
-     * reaches the output: `types: ["feat", "fix", "perf"]` adds a Performance
+     * gets a section: `types: ["feat", "fix", "perf"]` adds a Performance
      * section, and dropping `fix` removes Bug Fixes entirely.
+     *
+     * A commit that declares a break (`refactor(server)!: ...`, or a
+     * `BREAKING CHANGE:` footer) is published whatever its type, under
+     * Breaking Changes only: a break concerns every reader, however it was
+     * made.
      */
     types: z.array(z.string()).optional(),
     /**

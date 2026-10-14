@@ -34,6 +34,15 @@ export class GitMessageParser {
    * the word "breaking" in the subject, or a marker in the BODY — see
    * {@link breakingNotes}.
    *
+   * A commit that declares a break, by `!` or by a marker in its body, is
+   * kept whatever its type. `types` says which kinds of change get a section
+   * of their own, and a break concerns every reader however it was made:
+   * 0.32.0 carried eight `refactor(...)!` and `chore(...)!` breaks, and
+   * filtering on the type first dropped all eight with their migration notes
+   * (#Q2640). The command prints such a commit under Breaking Changes only.
+   * The word "breaking" in the subject is not enough for an unlisted type,
+   * and the scope allowlist still applies.
+   *
    * @param record One commit: the `--oneline` subject on the first line,
    *   the body on the rest. A bare subject still parses, which is what
    *   keeps every existing caller and spec working.
@@ -65,7 +74,18 @@ export class GitMessageParser {
     const [, rawType, rawScope, breakingMark, description] = conventionalMatch;
     const type = rawType.toLowerCase();
 
-    if (!types.includes(type)) {
+    // Breaking change detection, before the type filter (see above):
+    // 1. Explicit `!` marker: feat(api)!: change
+    // 2. Word "breaking" in description: feat(api): breaking change to auth
+    // 3. A marker in the BODY, which is where both conventional commits and
+    //    this repository actually declare them.
+    const notes = this.breakingNotes(body);
+    const declared = breakingMark === "!" || notes.length > 0;
+    const breaking = declared || description.toLowerCase().includes("breaking");
+
+    // An unlisted type needs a declared break: the word alone is a guess,
+    // and `test(orm): cover the non-breaking path` is not a release note.
+    if (!declared && !types.includes(type)) {
       return null;
     }
 
@@ -73,17 +93,6 @@ export class GitMessageParser {
     if (!scope) {
       return null;
     }
-
-    // Breaking change detection:
-    // 1. Explicit `!` marker: feat(api)!: change
-    // 2. Word "breaking" in description: feat(api): breaking change to auth
-    // 3. A marker in the BODY, which is where both conventional commits and
-    //    this repository actually declare them.
-    const notes = this.breakingNotes(body);
-    const breaking =
-      breakingMark === "!" ||
-      description.toLowerCase().includes("breaking") ||
-      notes.length > 0;
 
     return {
       hash: hash.substring(0, 8),
