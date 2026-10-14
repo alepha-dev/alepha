@@ -144,7 +144,9 @@
     },
     "./cache": {
       "types": "./src/cache/core/index.ts",
+      "react-native": "./src/cache/core/index.browser.ts",
       "workerd": "./src/cache/core/index.workerd.ts",
+      "browser": "./src/cache/core/index.browser.ts",
       "import": "./src/cache/core/index.ts",
       "default": "./src/cache/core/index.ts"
     },
@@ -152,11 +154,6 @@
       "types": "./src/cache/database/index.ts",
       "import": "./src/cache/database/index.ts",
       "default": "./src/cache/database/index.ts"
-    },
-    "./cache/redis": {
-      "types": "./src/cache/redis/index.ts",
-      "import": "./src/cache/redis/index.ts",
-      "default": "./src/cache/redis/index.ts"
     },
     "./captcha": {
       "types": "./src/captcha/index.ts",
@@ -613,7 +610,9 @@
       },
       "./cache": {
         "types": "./dist/cache/core/index.d.ts",
+        "react-native": "./dist/cache/core/index.browser.js",
         "workerd": "./dist/cache/core/index.workerd.js",
+        "browser": "./dist/cache/core/index.browser.js",
         "import": "./dist/cache/core/index.js",
         "default": "./dist/cache/core/index.js"
       },
@@ -621,11 +620,6 @@
         "types": "./dist/cache/database/index.d.ts",
         "import": "./dist/cache/database/index.js",
         "default": "./dist/cache/database/index.js"
-      },
-      "./cache/redis": {
-        "types": "./dist/cache/redis/index.d.ts",
-        "import": "./dist/cache/redis/index.js",
-        "default": "./dist/cache/redis/index.js"
       },
       "./captcha": {
         "types": "./dist/captcha/index.d.ts",

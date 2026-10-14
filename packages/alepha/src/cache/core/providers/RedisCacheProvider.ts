@@ -1,7 +1,8 @@
 import { $inject, Alepha } from "alepha";
-import { CacheProvider } from "alepha/cache";
 import { $logger } from "alepha/logger";
 import { RedisProvider } from "alepha/redis";
+
+import { CacheProvider } from "./CacheProvider.ts";
 
 /**
  * Cache entries in Redis.

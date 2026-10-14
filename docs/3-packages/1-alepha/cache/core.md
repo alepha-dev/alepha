@@ -18,7 +18,12 @@ Type-safe caching with TTL support.
 - Configurable TTL
 - Cache invalidation
 - Automatic cache population
-- Providers: Memory (default on Node), Cloudflare KV (default on workerd), Redis, Database
+- Providers: Redis when `REDIS_URL` is set, Memory otherwise (Node, Bun),
+  Cloudflare (workerd), Database (per `$cache`)
+
+Set `REDIS_URL` and every instance shares one cache; leave it unset and the
+cache is this process's memory. An app's own `CacheProvider` substitution
+wins over both.
 
 ## API Reference
 
@@ -32,3 +37,4 @@ Type-safe caching with TTL support.
 - [`CloudflareCacheProvider`](/docs/reference-providers-cloudflarecacheprovider) - Cloudflare cache provider: the database cache when the app has one, else KV.
 - [`CloudflareKVProvider`](/docs/reference-providers-cloudflarekvprovider) - Cloudflare KV cache provider.
 - [`MemoryCacheProvider`](/docs/reference-providers-memorycacheprovider) - In-memory implementation of CacheProvider for testing.
+- [`RedisCacheProvider`](/docs/reference-providers-rediscacheprovider) - Cache entries in Redis.

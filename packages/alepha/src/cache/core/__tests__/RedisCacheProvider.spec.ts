@@ -2,8 +2,14 @@ import { randomUUID } from "node:crypto";
 
 import { Alepha } from "alepha";
 import { $cache, CacheProvider } from "alepha/cache";
+import { RedisProvider } from "alepha/redis";
 import { describe, it } from "vitest";
 
+import {
+  AlephaCache,
+  MemoryCacheProvider,
+  RedisCacheProvider,
+} from "../index.ts";
 import {
   testCacheBasic,
   testCacheClear,
@@ -28,8 +34,7 @@ import {
   testCacheSetDisabled,
   testCacheStop,
   testSimpleKeyMappingHandler,
-} from "../../core/__tests__/shared.ts";
-import { AlephaCacheRedis, RedisCacheProvider } from "../index.ts";
+} from "./shared.ts";
 
 // The shared test env sets no REDIS_URL, so nothing else turns Redis on; this
 // file runs against the compose `redis` service (16379, CI's port too). A
@@ -138,9 +143,7 @@ describe("$cache - redis", () => {
 
 describe("RedisCacheProvider: one namespace per alepha.name", () => {
   const boot = async (name: string) => {
-    const alepha = Alepha.create({ env: { APP_NAME: name } }).with(
-      AlephaCacheRedis,
-    );
+    const alepha = Alepha.create({ env: { APP_NAME: name } }).with(AlephaCache);
 
     class App {
       users = $cache({ name: "users", ttl: [10, "minutes"] });
@@ -168,5 +171,41 @@ describe("RedisCacheProvider: one namespace per alepha.name", () => {
 
     expect(await a.has("users", "1")).toBe(false);
     expect(await b.has("users", "1")).toBe(true);
+  });
+});
+
+describe("AlephaCache: REDIS_URL picks the provider", () => {
+  it("is Redis when REDIS_URL is set", async ({ expect }) => {
+    const alepha = Alepha.create({
+      env: { REDIS_URL: process.env.REDIS_URL, APP_NAME: randomUUID() },
+    }).with(AlephaCache);
+
+    expect(alepha.inject(CacheProvider)).toBeInstanceOf(RedisCacheProvider);
+  });
+
+  it("is Memory without REDIS_URL, and opens no Redis connection", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create({ env: { REDIS_URL: undefined } }).with(
+      AlephaCache,
+    );
+    await alepha.start();
+
+    expect(alepha.inject(CacheProvider)).toBeInstanceOf(MemoryCacheProvider);
+    expect(alepha.has(RedisProvider)).toBe(false);
+
+    await alepha.stop();
+  });
+
+  it("keeps an app's explicit substitution over REDIS_URL", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create({
+      env: { REDIS_URL: process.env.REDIS_URL },
+    })
+      .with({ provide: CacheProvider, use: MemoryCacheProvider })
+      .with(AlephaCache);
+
+    expect(alepha.inject(CacheProvider)).toBeInstanceOf(MemoryCacheProvider);
   });
 });
