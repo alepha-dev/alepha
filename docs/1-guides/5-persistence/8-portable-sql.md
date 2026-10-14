@@ -128,11 +128,10 @@ z.object({ total: z.coerce.number() });
 
 These helpers are date-shaped on purpose. Reach for raw `sql` when the expression is not:
 
-- upserts and counter increments (`SET count = count + 1`)
 - `LIKE` / JSON containment scans
 - window functions, `CASE` ladders, recursive CTEs
 
-Those are portable already, or portable enough that a helper would add indirection without removing a branch. The test for whether something belongs here is simple: **does it need a `dialect ===` check?** If yes, it is a candidate. If no, write the SQL.
+Those are portable already, or portable enough that a helper would add indirection without removing a branch. Upserts and counter increments are no longer on this list: `upsert` / `upsertMany` take a typed `set`, and `repository.excluded(key)` reads the incoming value of a column (see [upsertMany](/docs/guides-persistence-repository#upsertmany)). The test for whether something belongs here is simple: **does it need a `dialect ===` check?** If yes, it is a candidate. If no, write the SQL.
 
 ## Testing
 

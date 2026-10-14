@@ -318,8 +318,28 @@ If the entity has an `updatedAt` column, it is automatically set on conflict.
 
 Batch upsert. Same options as `upsert`, with two batch-only rules: every row must
 resolve to the same conflict target, and a counter-style `set` must read from
-`excluded` (the incoming row) rather than the table, or every row after the first
-sees stale values.
+`excluded` (the incoming row) rather than add a constant, or the batch adds one
+per row whatever each row carried.
+
+`repository.excluded(key)` names the incoming value of a column. It resolves the
+physical column name from the entity, so a renamed column cannot leave a
+hand-typed `excluded.<name>` stale:
+
+```typescript
+const t = this.pageViews.table;
+await this.pageViews.upsertMany(
+  [
+    { path: "/", hour, count: 4 },
+    { path: "/about", hour, count: 1 },
+  ],
+  {
+    target: ["path", "hour"],
+    set: { count: sql`${t.count} + ${this.pageViews.excluded("count")}` },
+  },
+);
+```
+
+`excluded()` only means something inside an `upsert` or `upsertMany` `set`.
 
 It sends one statement when the rows fit, and otherwise splits them the way
 `createMany` does, so no statement binds more values than the driver accepts

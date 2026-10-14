@@ -280,6 +280,33 @@ export abstract class Repository<T extends ZObject> {
   }
 
   /**
+   * The value a conflicting row arrived with, as an SQL fragment: the
+   * `excluded` pseudo-table both Postgres and SQLite expose inside
+   * `ON CONFLICT ... DO UPDATE`.
+   *
+   * It names the column by its physical name, read off the table, so a
+   * property whose column is spelled differently (`createdAt` stored as
+   * `created_at`) or a later rename cannot leave a hand-typed
+   * `excluded.<name>` stale.
+   *
+   * ⚠️ Meaningful only inside the `set` of {@link upsert} or
+   * {@link upsertMany}. Anywhere else the database refuses it, or worse,
+   * resolves it against a table that happens to be called `excluded`.
+   *
+   * @example
+   * ```ts
+   * const t = repo.table;
+   * await repo.upsertMany(rows, {
+   *   target: ["path", "hour"],
+   *   set: { count: sql`${t.count} + ${repo.excluded("count")}` },
+   * });
+   * ```
+   */
+  public excluded<K extends keyof Infer<T>>(key: K): SQL<Infer<T>[K]> {
+    return sql<Infer<T>[K]>`excluded.${sql.identifier(this.col(key).name)}`;
+  }
+
+  /**
    * True when every column of `this.table` is excluded from INSERT column
    * lists — i.e. an identity ("always") or generated-always column, the
    * only shape drizzle-orm allows to make a column non-insertable.
@@ -1082,6 +1109,12 @@ export abstract class Repository<T extends ZObject> {
    *   { id: "abc", name: "Alice", role: "admin" },
    *   { set: { role: "admin" } },
    * );
+   *
+   * // Update from the incoming row: `excluded()` names its value
+   * await repo.upsert(
+   *   { email: "alice@example.com", name: "Alice" },
+   *   { target: ["email"], set: { name: repo.excluded("name") } },
+   * );
    * ```
    */
   public async upsert(
@@ -1219,8 +1252,8 @@ export abstract class Repository<T extends ZObject> {
    * 2. **Counter updates must read `excluded`.** `set: { hits: sql`hits + 1` }`
    *    is correct for one row and wrong for a batch: it adds one no matter how
    *    many the batch carried. Use the incoming value instead, via the
-   *    `excluded` pseudo-table both engines expose:
-   *    `set: { hits: sql`${t.hits} + excluded.hits` }`.
+   *    `excluded` pseudo-table both engines expose, through {@link excluded}:
+   *    `set: { hits: sql`${t.hits} + ${repo.excluded("hits")}` }`.
    *
    * @param values The rows to insert. Empty array is a no-op.
    * @param opts.target The column(s) to detect conflicts on. Defaults to the primary key.
@@ -1237,7 +1270,7 @@ export abstract class Repository<T extends ZObject> {
    *   ],
    *   {
    *     target: ["path", "hour"],
-   *     set: { count: sql`${repo.table.count} + excluded.count` },
+   *     set: { count: sql`${repo.table.count} + ${repo.excluded("count")}` },
    *   },
    * );
    * ```
@@ -1275,7 +1308,7 @@ export abstract class Repository<T extends ZObject> {
       for (const key of Object.keys(sample)) {
         if (targetKeys.includes(key as keyof Infer<T>)) continue;
         if (key === this.id.key) continue;
-        setData[key] = sql`excluded.${sql.identifier(this.col(key).name)}`;
+        setData[key] = this.excluded(key);
       }
     }
 
@@ -1293,8 +1326,7 @@ export abstract class Repository<T extends ZObject> {
     // nothing to set, and `DO NOTHING` would not return the conflicting rows.
     if (Object.keys(setData).length === 0) {
       for (const key of targetKeys) {
-        setData[key as string] =
-          sql`excluded.${sql.identifier(this.col(key as string).name)}`;
+        setData[key as string] = this.excluded(key);
       }
     }
 
