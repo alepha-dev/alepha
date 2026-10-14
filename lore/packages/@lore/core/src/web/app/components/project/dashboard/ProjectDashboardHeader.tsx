@@ -2,9 +2,10 @@ import { Button } from "@alepha/ui";
 import { DateTimeProvider } from "alepha/datetime";
 import { ClientOnly, useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Check, Pencil, Plus } from "lucide-react";
+import { Check, LayoutGrid, Pencil, Plus } from "lucide-react";
 
 import type { I18n } from "../../../services/I18n.ts";
+import ProjectDashboardMenu from "./ProjectDashboardMenu.tsx";
 
 export interface ProjectDashboardHeaderProps {
   cardCount: number;
@@ -29,6 +30,18 @@ export interface ProjectDashboardHeaderProps {
   editing: boolean;
   onToggleEditing: () => void;
   onAdd: () => void;
+  /**
+   * Copy the computed board into stored cards and open edit mode (#Q2660).
+   */
+  onCustomize: () => void;
+  /**
+   * Delete the stored cards, back to the computed board (#Q2660).
+   */
+  onReset: () => void;
+  /**
+   * True while a board write runs.
+   */
+  busy?: boolean;
 }
 
 /**
@@ -99,7 +112,21 @@ const ProjectDashboardHeader = (props: ProjectDashboardHeaderProps) => {
           {tr(props.editing ? "dashboard.edit.done" : "dashboard.edit")}
         </Button>
       )}
-      {props.canEdit && (props.editing || props.computed) && (
+      {/* The computed board is not stored, so it is not edited: it is
+          customized, which copies it, once (#Q2660). */}
+      {props.canEdit && props.computed && (
+        <Button
+          variant="outlined"
+          onClick={props.onCustomize}
+          disabled={props.busy}
+          data-testid="dashboard-customize"
+          className="h-8 shrink-0 rounded-[9px] px-3 text-[12.5px]"
+        >
+          <LayoutGrid className="size-3.5" />
+          {tr("dashboard.customize")}
+        </Button>
+      )}
+      {props.canEdit && props.editing && !props.computed && (
         <Button
           onClick={props.onAdd}
           data-testid="dashboard-add"
@@ -108,6 +135,9 @@ const ProjectDashboardHeader = (props: ProjectDashboardHeaderProps) => {
           <Plus className="size-3.5" />
           {tr("dashboard.addCard")}
         </Button>
+      )}
+      {props.canEdit && !props.computed && (
+        <ProjectDashboardMenu onReset={props.onReset} busy={props.busy} />
       )}
     </div>
   );

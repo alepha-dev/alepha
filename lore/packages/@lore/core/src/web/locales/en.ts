@@ -2401,6 +2401,12 @@ export default {
   "dashboard.filterField.markdown": "Note",
   "dashboard.filter.markdownPlaceholder":
     "Write in markdown. Everyone who reads the board sees it.",
+  "dashboard.customize": "Customize",
+  "dashboard.menu": "Board options",
+  "dashboard.reset": "Reset to default",
+  "dashboard.reset.confirm": "Reset this board to the default?",
+  "dashboard.reset.description":
+    "Every card on it is deleted, and every member sees the board computed from what this project does again.",
   "dashboard.refreshed": "Refreshed $1.",
   "dashboard.addCard": "Add card",
 

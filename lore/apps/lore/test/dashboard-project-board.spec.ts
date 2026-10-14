@@ -569,13 +569,18 @@ describe("the project dashboard controller", () => {
   });
 
   /**
-   * ⚠️ There is no reset, on either board. On a shared one it is a member
-   * discarding everybody's configuration in one click, and home's is deleted
-   * in #Q2145 - so there is no surface left to mirror.
+   * Reset is back, and only here (#E77, #Q2660): a project board now has a
+   * default to return to, the computed board, so "Reset to default" no
+   * longer means discarding everybody's configuration for an empty page.
+   * Home still has none (#Q2145).
    */
-  it("declares no reset action", ({ expect }) => {
+  it("declares reset only on the project board, behind project:update", ({
+    expect,
+  }) => {
     expect(
-      Object.keys(ctx.board).some((key) => key.toLowerCase().includes("reset")),
-    ).toBe(false);
+      Object.keys(ctx.board).filter((key) =>
+        key.toLowerCase().includes("reset"),
+      ),
+    ).toEqual(["resetProjectDashboard"]);
   });
 });

@@ -2394,6 +2394,12 @@ export default {
   "dashboard.filterField.markdown": "Note",
   "dashboard.filter.markdownPlaceholder":
     "Écrivez en markdown. Tous ceux qui lisent le tableau le verront.",
+  "dashboard.customize": "Personnaliser",
+  "dashboard.menu": "Options du tableau",
+  "dashboard.reset": "Revenir au tableau par défaut",
+  "dashboard.reset.confirm": "Revenir au tableau par défaut ?",
+  "dashboard.reset.description":
+    "Toutes ses cartes sont supprimées, et chaque membre retrouve le tableau calculé d'après ce que fait ce projet.",
   "dashboard.refreshed": "Actualise $1.",
   "dashboard.addCard": "Ajouter une carte",
 

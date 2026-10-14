@@ -109,25 +109,36 @@ test.describe("Project dashboard", () => {
       await expect(page.getByTestId("dashboard-empty")).toHaveCount(0);
     });
 
-    await test.step("a card added through the wizard is still there after a reload", async () => {
+    await test.step("Customize copies the computed board, and Add extends it", async () => {
       await page.goto(`/${slug}`);
       await page.waitForLoadState("networkidle");
+      const computed = await page.getByTestId("dashboard-card").count();
+      expect(computed).toBeGreaterThan(0);
+
+      // ⚠️ Armed BEFORE the click: Lore batches through `/api/_batch`, so a
+      // DOM assertion afterwards passes before the write is even sent.
+      const copied = page.waitForResponse(
+        (r) => r.url().includes("/api/") && r.request().method() === "POST",
+        { timeout: 15_000 },
+      );
+      await page.getByTestId("dashboard-customize").click();
+      expect((await copied).ok()).toBe(true);
+
+      // Edit mode opens on the copied tiles (#Q2660).
+      await expect(page.getByTestId("dashboard-edit")).toHaveAttribute(
+        "aria-pressed",
+        "true",
+        { timeout: 15_000 },
+      );
       await page.getByTestId("dashboard-add").click();
       await expect(page.getByTestId("dashboard-catalogue")).toBeVisible({
         timeout: 10_000,
       });
-
       await page
         .locator(
           '[data-testid="dashboard-catalogue-row"][data-metric="heldQuests"]',
         )
         .click();
-
-      // ⚠️ Armed BEFORE the click, never asserted after it. Lore batches its
-      // calls through `/api/_batch`, so an assertion that reads the DOM
-      // afterwards passes before the save is even sent - a race of a few
-      // milliseconds, which is what a green CI over a red local run on this
-      // shape means.
       const saved = page.waitForResponse(
         (r) => r.url().includes("/api/") && r.request().method() === "POST",
         { timeout: 15_000 },
@@ -135,24 +146,37 @@ test.describe("Project dashboard", () => {
       await page.getByTestId("dashboard-catalogue-save").click();
       expect((await saved).ok()).toBe(true);
 
-      await expect(page.getByTestId("dashboard-card")).toHaveCount(1, {
-        timeout: 15_000,
-      });
-
       // ⚠️ Base UI leaves `pointer-events: none` on the body after a drawer
       // closes, so the next interaction can be swallowed. A reload is the
       // assertion this step wants anyway.
       await page.reload();
       await page.waitForLoadState("networkidle");
 
-      const card = page.getByTestId("dashboard-card");
-      await expect(card).toHaveCount(1, { timeout: 15_000 });
-      await expect(card).toHaveAttribute("data-metric", "heldQuests");
+      await expect(page.getByTestId("dashboard-card")).toHaveCount(
+        computed + 1,
+        { timeout: 15_000 },
+      );
+      const held = page.locator('[data-metric="heldQuests"]');
       // With its NUMBER, not just its frame: a card that renders and never
       // resolves is the failure a count alone would miss.
-      await expect(card.getByText("1", { exact: true })).toBeVisible({
+      await expect(held.getByText("1", { exact: true })).toBeVisible({
         timeout: 15_000,
       });
+      await expect(page.getByTestId("dashboard-customize")).toHaveCount(0);
+    });
+
+    await test.step("Reset to default brings the computed board back", async () => {
+      await page.getByTestId("dashboard-menu").click();
+      await page.getByTestId("dashboard-reset").click();
+      await page
+        .getByRole("button", { name: "Reset to default" })
+        .last()
+        .click();
+
+      await expect(page.getByTestId("dashboard-customize")).toBeVisible({
+        timeout: 15_000,
+      });
+      await expect(page.locator('[data-metric="heldQuests"]')).toHaveCount(0);
     });
   });
 
@@ -280,6 +304,10 @@ test.describe("Project dashboard", () => {
         // cannot curate, which is exactly what the empty state says once
         // instead.
         await expect(reader.page.getByTestId("dashboard-add")).toHaveCount(0);
+        await expect(reader.page.getByTestId("dashboard-menu")).toHaveCount(0);
+        await expect(
+          reader.page.getByTestId("dashboard-customize"),
+        ).toHaveCount(0);
         await expect(
           reader.page.getByRole("button", { name: /card options/i }),
         ).toHaveCount(0);
@@ -387,10 +415,22 @@ test.describe("Project dashboard", () => {
     const addCard = async (metric: string, scopeTestId: string) => {
       await page.goto(`/${slug}`);
       await page.waitForLoadState("networkidle");
-      // A board with cards curates in edit mode (#Q2649); an empty one
+      // A computed board is customized first, which opens edit mode
+      // (#Q2660); a stored board curates in edit mode (#Q2649); an empty one
       // carries Add itself.
+      const customize = page.getByTestId("dashboard-customize");
       const edit = page.getByTestId("dashboard-edit");
-      if (await edit.isVisible()) await edit.click();
+      if (await customize.isVisible()) {
+        await customize.click();
+        await expect(edit).toHaveAttribute("aria-pressed", "true", {
+          timeout: 15_000,
+        });
+      } else if (
+        (await edit.isVisible()) &&
+        (await edit.getAttribute("aria-pressed")) !== "true"
+      ) {
+        await edit.click();
+      }
       await page.getByTestId("dashboard-add").click();
       await expect(page.getByTestId("dashboard-catalogue")).toBeVisible({
         timeout: 10_000,

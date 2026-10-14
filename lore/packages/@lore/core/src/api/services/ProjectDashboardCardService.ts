@@ -132,6 +132,63 @@ export class ProjectDashboardCardService {
   }
 
   /**
+   * Copy the computed board into storage: "Customize" (#Q2660).
+   *
+   * Refused when the project already has stored cards: the computed board
+   * only exists while it has none, so a second copy can only be a stale
+   * click, and appending it would double the board.
+   *
+   * ⚠️ **No transaction on D1.** The copy is ONE `createMany`, which is one
+   * INSERT for a board of this size (a computed board has at most one tile
+   * per slot, eight, and D1 binds about eleven rows of this width per
+   * statement). Should a future board outgrow one statement, a copy that
+   * fails half-way is harmless by construction: the stored board simply
+   * has fewer cards, every one of them valid, and the owner can add or
+   * reset.
+   */
+  async copy(
+    projectId: number,
+    cards: Array<{
+      metric: string;
+      scope: DashboardScope;
+      filters: Record<string, unknown>;
+      size: number;
+      height?: number;
+      section?: string;
+    }>,
+  ): Promise<DashboardCardResource[]> {
+    const existing = await this.cards.findMany({
+      where: { projectId: { eq: projectId } },
+      columns: ["id"],
+      limit: 1,
+    });
+    if (existing.length > 0) {
+      throw new BadRequestError("This board is already customized");
+    }
+    const rows = await this.cards.createMany(
+      cards.map((card, position) => ({
+        projectId,
+        metric: card.metric,
+        scope: card.scope,
+        filters: this.validate(card.metric, card.scope, card.filters),
+        size: card.size,
+        height: card.height,
+        section: card.section,
+        position,
+      })),
+    );
+    return rows.map((row) => this.toResource(row));
+  }
+
+  /**
+   * Delete every stored card: "Reset to default" (#Q2660). The project is
+   * back on the computed board on the next load.
+   */
+  async reset(projectId: number): Promise<void> {
+    await this.cards.deleteMany({ projectId: { eq: projectId } });
+  }
+
+  /**
    * Remove one card from this project's board.
    */
   async remove(projectId: number, cardId: number): Promise<void> {

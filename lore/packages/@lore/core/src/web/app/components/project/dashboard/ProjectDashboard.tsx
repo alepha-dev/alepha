@@ -363,6 +363,52 @@ const ProjectDashboard = () => {
   );
 
   /**
+   * "Customize" (#Q2660): copy the computed tiles into stored cards in one
+   * write, then open edit mode on them.
+   */
+  const customizeAction = useAction<[], void>(
+    {
+      handler: async () => {
+        if (!projectId) return;
+        const made = await boardApi.customizeProjectDashboard({
+          params: { projectId },
+        });
+        alepha.store.set(projectDashboardAtom, {
+          ...alepha.store.get(projectDashboardAtom),
+          projectId,
+          computed: false,
+          cards: made.cards,
+        });
+        setEditMode(true);
+        void loadAction.refetch();
+      },
+    },
+    [alepha, boardApi, projectId],
+  );
+
+  /**
+   * "Reset to default" (#Q2660): every member sees the computed board again.
+   */
+  const resetAction = useAction<[], void>(
+    {
+      handler: async () => {
+        if (!projectId) return;
+        const confirmed = await dialog.confirm({
+          title: tr("dashboard.reset.confirm"),
+          description: tr("dashboard.reset.description"),
+          confirmLabel: tr("dashboard.reset"),
+          destructive: true,
+        });
+        if (!confirmed) return;
+        await boardApi.resetProjectDashboard({ params: { projectId } });
+        setEditMode(false);
+        await loadAction.refetch();
+      },
+    },
+    [alepha, boardApi, dialog, projectId, tr],
+  );
+
+  /**
    * Every card control waits while a write runs (#E59 rule 10).
    */
   const busy =
@@ -370,7 +416,9 @@ const ProjectDashboard = () => {
     duplicateAction.loading ||
     addAction.loading ||
     updateAction.loading ||
-    resizeAction.loading;
+    resizeAction.loading ||
+    customizeAction.loading ||
+    resetAction.loading;
 
   const openCatalogue = () => {
     setEditing(undefined);
@@ -405,6 +453,9 @@ const ProjectDashboard = () => {
             editing={editMode && !computed}
             onToggleEditing={() => setEditMode((on) => !on)}
             onAdd={openCatalogue}
+            onCustomize={() => void customizeAction.run()}
+            onReset={() => void resetAction.run()}
+            busy={busy}
           />
 
           <DashboardGrid

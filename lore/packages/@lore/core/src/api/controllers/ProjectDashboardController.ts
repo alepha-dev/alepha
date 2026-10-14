@@ -44,12 +44,13 @@ import { ProjectDashboardCardService } from "../services/ProjectDashboardCardSer
  * rank matrix - which is the same click a minted `dashboard:manage` would
  * have needed anyway.
  *
- * ## ⚠️ No reset
+ * ## Reset came back with the computed board (#Q2660)
  *
- * On a shared board, Reset is one member discarding everybody's configuration
- * in one click. Home's is gone too (#Q2145), so there is no surface left to
- * mirror and nothing here should grow one. Removing a card at a time is the
- * way back, and it is also the way anybody got there.
+ * It was refused while a project board had no default to return to: Reset
+ * meant one member discarding everybody's configuration for an empty page
+ * (#Q2145). Since #E77 the default is the computed board, so "Reset to
+ * default" returns the project to something, and Customize is its inverse:
+ * both are `project:update`, both behind the board's own controls.
  *
  * ## Nothing seeds, and a board with no cards is COMPUTED (#E77)
  *
@@ -230,6 +231,60 @@ export class ProjectDashboardController {
         values: await this.registry.resolveForProject(cards, user, project),
         refreshedAt: this.dateTime.now().toISOString(),
       };
+    },
+  });
+
+  /**
+   * "Customize": copy the tiles the computed board renders into stored cards,
+   * in one write, and return them (#Q2660). From then on the stored cards
+   * win and the slots no longer apply.
+   *
+   * The tiles copied are the ones the computed board shows the caller right
+   * now: a `viewer` tile is copied as the viewer scope, which carries no id,
+   * so it keeps showing each reader their own.
+   */
+  customizeProjectDashboard = $action({
+    use: [this.ownsProject("project:update")],
+    method: "POST",
+    path: "/projects/:projectId/dashboard/customize",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      response: z.object({ cards: z.array(dashboardCardResourceSchema) }),
+    },
+    handler: async ({ params, user }) => {
+      const project = await this.projectOf(params.projectId);
+      const computed = await this.slots.compute(project, user);
+      return {
+        cards: await this.cards.copy(
+          params.projectId,
+          computed.cards.map((card) => ({
+            metric: card.metric,
+            scope: card.scope,
+            filters: card.filters,
+            size: card.size,
+            height: card.height,
+            section: card.section,
+          })),
+        ),
+      };
+    },
+  });
+
+  /**
+   * "Reset to default": delete every stored card, so every member sees the
+   * computed board again on their next load (#Q2660).
+   */
+  resetProjectDashboard = $action({
+    use: [this.ownsProject("project:update")],
+    method: "DELETE",
+    path: "/projects/:projectId/dashboard/cards",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      response: okSchema,
+    },
+    handler: async ({ params }) => {
+      await this.cards.reset(params.projectId);
+      return { ok: true };
     },
   });
 
