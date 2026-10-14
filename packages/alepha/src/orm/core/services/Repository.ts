@@ -1952,6 +1952,31 @@ export abstract class Repository<T extends ZObject> {
    * rows are seen at all. A key is
    * either a column or an alias, never both and never neither; see
    * {@link AggregateOpSelect} and `assertAggregateKey`.
+   *
+   * A key may also be computed: `{ expr: SQL }` selects an expression under
+   * that alias, to group and order by, and an operation may read an
+   * expression instead of a column with `{ expr }` in place of `column`:
+   *
+   * @example
+   * ```ts
+   * const t = quests.table;
+   * await quests.aggregate({
+   *   select: {
+   *     day: { expr: sqlx.dateDay(t.createdAt) },
+   *     id: { count: true },
+   *     cycle: { avg: { expr: sqlx.dateDiff(t.completedAt, t.acceptedAt, "hours") } },
+   *   },
+   *   where: { createdAt: { gte: dateTime.now().subtract(7, "day").toISOString() } },
+   *   groupBy: ["day"],
+   *   orderBy: "day",
+   * });
+   * // -> Array<{ day: string; id: { count: number }; cycle: { avg: number } }>
+   * ```
+   *
+   * An `expr` key groups and orders by its alias, never by the expression
+   * rendered again (Postgres would refuse it once the expression binds a
+   * parameter), so it may not be spelled like a column. `min` / `max` over an
+   * expression are typed and decoded as the expression's `SQL<T>`.
    */
   public async aggregate<S extends AggregateSelect<T>>(
     query: AggregateQuery<T, S>,
@@ -1993,20 +2018,34 @@ export abstract class Repository<T extends ZObject> {
      * would resurrect soft-deleted rows.
      */
     const aggExpr = (key: string, op: AggregateOp, spec: any) => {
+      const source =
+        spec && typeof spec === "object" && spec.expr ? spec.expr : undefined;
       const columnName =
         spec && typeof spec === "object" && spec.column ? spec.column : key;
-      const column = this.col(columnName);
+      const column = source ?? this.col(columnName);
       const condition =
         spec && typeof spec === "object" && spec.where
           ? this.toSQL(spec.where)
           : undefined;
+      const value = condition
+        ? sql`CASE WHEN ${condition} THEN ${column} END`
+        : column;
+
+      // An expression has no column to decode with, and drizzle's `min` /
+      // `max` fall back to `String` for anything that is not a column: a
+      // numeric min would come back as "3". Emitted bare, they decode as the
+      // driver returns them, which is what `SQL<T>` types them as.
+      if (source && (op === "min" || op === "max")) {
+        return op === "min" ? sql`min(${value})` : sql`max(${value})`;
+      }
+
       // No condition means no CASE at all: `{ count: { column: "id" } }` is
       // just a renamed plain aggregate.
       if (!condition) {
         return aggFn(op, column as any);
       }
 
-      const expr = aggFn(op, sql`CASE WHEN ${condition} THEN ${column} END`);
+      const expr = aggFn(op, value);
 
       // ⚠️ Re-attach the column's decoder. drizzle's `min` / `max` map with
       // the column only when the expression IS a column, and fall back to
@@ -2019,12 +2058,21 @@ export abstract class Repository<T extends ZObject> {
         : expr;
     };
 
+    // Keys computed by `{ expr }`: grouped and ordered by their alias.
+    const exprKeys = new Set<string>();
+
     for (const [key, select] of Object.entries(query.select)) {
       if (select === true) {
         flatFields[key] = this.col(key);
         continue;
       }
       if (typeof select !== "object" || select === null) {
+        continue;
+      }
+      if ("expr" in select) {
+        this.assertAggregateAlias(key);
+        exprKeys.add(key);
+        flatFields[key] = sql`${(select as { expr: SQL }).expr}`.as(key);
         continue;
       }
       this.assertAggregateKey(key, select);
@@ -2057,9 +2105,17 @@ export abstract class Repository<T extends ZObject> {
     }
 
     // GROUP BY
+    // An `expr` key groups by its select alias. Rendering the expression a
+    // second time would bind its parameters again ($1 in the SELECT, $2 in
+    // the GROUP BY), and Postgres refuses a SELECT expression that is not
+    // textually the grouped one.
     if (query.groupBy) {
       builder = builder.groupBy(
-        ...query.groupBy.map((key) => this.col(key as string)),
+        ...query.groupBy.map((key) =>
+          exprKeys.has(key as string)
+            ? sql`${sql.identifier(key as string)}`
+            : this.col(key as string),
+        ),
       ) as any;
     }
 
@@ -2119,7 +2175,9 @@ export abstract class Repository<T extends ZObject> {
           const colName = clause.column.includes(".")
             ? clause.column.replace(".", AGG_SEPARATOR)
             : clause.column;
-          const col = flatFields[colName];
+          const col = exprKeys.has(colName)
+            ? sql`${sql.identifier(colName)}`
+            : flatFields[colName];
           if (!col) {
             throw new AlephaError(
               `Invalid orderBy column '${clause.column}' in aggregate query`,
@@ -2195,7 +2253,13 @@ export abstract class Repository<T extends ZObject> {
 
     for (const [op, spec] of Object.entries(select)) {
       if (!spec) continue;
-      (spec && typeof spec === "object" && spec.column
+      if (spec && typeof spec === "object" && spec.column && spec.expr) {
+        throw new AlephaError(
+          `Aggregate select key '${key}' on '${this.tableName}' names both 'column' and 'expr' (on: ${op}). ` +
+            "An operation reads one source: keep one of them.",
+        );
+      }
+      (spec && typeof spec === "object" && (spec.column || spec.expr)
         ? withColumn
         : withoutColumn
       ).push(op);
@@ -2203,7 +2267,7 @@ export abstract class Repository<T extends ZObject> {
 
     if (isColumn && withColumn.length > 0) {
       throw new AlephaError(
-        `Aggregate select key '${key}' on '${this.tableName}' is a real column, so it cannot also carry 'column' ` +
+        `Aggregate select key '${key}' on '${this.tableName}' is a real column, so it cannot also carry 'column' or 'expr' ` +
           `(on: ${withColumn.join(", ")}). Rename the key to a free-form alias, or drop 'column' to aggregate '${key}' itself.`,
       );
     }
@@ -2211,12 +2275,36 @@ export abstract class Repository<T extends ZObject> {
     if (!isColumn && withoutColumn.length > 0) {
       throw new AlephaError(
         `Aggregate select key '${key}' is not a column of '${this.tableName}', so it is an alias and every operation ` +
-          `under it must name the column it reads (missing on: ${withoutColumn.join(", ")}). ` +
+          `under it must name the column or expression it reads (missing on: ${withoutColumn.join(", ")}). ` +
           "If you meant a column, check the spelling.",
       );
     }
 
     if (!isColumn && key.includes("___")) {
+      throw new AlephaError(
+        `Aggregate select alias '${key}' contains '___', which separates the key from the operation in the flat ` +
+          "result and would make the row impossible to re-nest. Pick a name without it.",
+      );
+    }
+  }
+
+  /**
+   * A select key carrying `{ expr }` is an alias, and it is grouped and
+   * ordered by that name. Spelled like one of the entity's columns, by its
+   * property or its physical name, it would shadow the column in the result,
+   * and Postgres would resolve `GROUP BY <name>` to the input column instead.
+   */
+  protected assertAggregateAlias(key: string): void {
+    const physical = Object.values(getTableColumns(this.table as PgTable)).some(
+      (column) => column.name === key,
+    );
+    if ((this.table as any)[key] != null || physical) {
+      throw new AlephaError(
+        `Aggregate select key '${key}' carries 'expr', so it is an alias, and it is spelled like a column of ` +
+          `'${this.tableName}'. Pick a name that is not a column.`,
+      );
+    }
+    if (key.includes("___")) {
       throw new AlephaError(
         `Aggregate select alias '${key}' contains '___', which separates the key from the operation in the flat ` +
           "result and would make the row impossible to re-nest. Pick a name without it.",

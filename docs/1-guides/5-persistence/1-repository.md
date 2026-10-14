@@ -257,6 +257,38 @@ Four things to know about that form:
 - A bucket that matches nothing is `0` for `count` / `sum` / `avg`, and `null`
   for `min` / `max` - the same empty-set answers as an unconditioned aggregate.
 
+**Computed values.** A select key may carry `{ expr }`, an SQL expression to
+group and order by, and an operation may aggregate an expression with `{ expr }`
+in place of `column`. With [`SqlExpressionProvider`](/docs/guides-persistence-portable-sql)
+that covers date buckets and durations on every dialect:
+
+```typescript
+const t = this.quests.table;
+const cycle = this.sqlx.dateDiff(t.completedAt, t.acceptedAt, "hours");
+
+await this.quests.aggregate({
+  select: {
+    day: { expr: this.sqlx.dateDay(t.createdAt) },
+    id: { count: true },
+    cycle: { avg: { expr: cycle }, max: { expr: cycle } },
+  },
+  where: {
+    createdAt: { gte: this.dateTime.now().subtract(7, "day").toISOString() },
+  },
+  groupBy: ["day"],
+  orderBy: "day",
+});
+// -> [{ day: "2026-03-09", id: { count: 2 }, cycle: { avg: 4, max: 6 } }]
+```
+
+- An `expr` key is an alias: it may not be spelled like a column, and `groupBy`
+  / `orderBy` render it as that alias, never as the expression a second time.
+- `expr` and `column` are exclusive within one operation; `where` wraps an
+  `expr` in the same `CASE`, and `having` compares the same expression.
+- The result type comes from the expression's `SQL<T>` (`dateDay` is
+  `SQL<string>`, `dateDiff` `SQL<number>`, `` sql<number>`...` `` your own);
+  an untyped `SQL` is `unknown`. `count` / `sum` / `avg` stay `number`.
+
 ## Create Methods
 
 ### create

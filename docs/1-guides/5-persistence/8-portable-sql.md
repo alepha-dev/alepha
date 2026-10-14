@@ -1,6 +1,6 @@
 # Portable SQL
 
-Repository methods cover most queries, but analytics work - grouping by day, measuring elapsed time, bounding a rolling window - needs raw SQL. Written by hand, that SQL is not portable.
+Analytics work - grouping by day, measuring elapsed time, bounding a rolling window - needs date expressions, and written by hand those are not portable. `SqlExpressionProvider` writes them once for every dialect. Its expressions go straight into [`repository.aggregate()`](/docs/guides-persistence-repository#aggregate) as `{ expr }`, or into raw SQL when the query leaves the repository's model.
 
 ```typescript check
 import { $inject, z } from "alepha";
@@ -30,7 +30,29 @@ Two branches, two chances to get it wrong, and no test catches a divergence unti
 
 ## `SqlExpressionProvider`
 
-Inject it and write the expression once:
+Inject it and write the expression once. Through `aggregate()`, typed from the expression:
+
+```typescript
+class CampaignStatsController {
+  protected readonly sqlx = $inject(SqlExpressionProvider);
+  protected readonly quests = $repository(quests);
+
+  questsPerDay = async () => {
+    const t = this.quests.table;
+    return this.quests.aggregate({
+      select: {
+        day: { expr: this.sqlx.dateDay(t.createdAt) },
+        id: { count: true },
+      },
+      groupBy: ["day"],
+      orderBy: "day",
+    });
+    // -> Array<{ day: string; id: { count: number } }>
+  };
+}
+```
+
+Or in raw SQL:
 
 ```typescript
 class CampaignStatsController {
@@ -104,6 +126,19 @@ The Postgres form is cast to `double precision`. Without it, `EXTRACT(EPOCH …)
 
 A timestamp `amount × unit` before now, comparable against a timestamp column.
 
+Prefer a bound computed from `DateTimeProvider` instead:
+
+```typescript
+const [recent] = await this.quests.aggregate({
+  select: { id: { count: true } },
+  where: {
+    completedAt: { gte: this.dateTime.now().subtract(7, "day").toISOString() },
+  },
+});
+```
+
+`ago()` reads the database clock (`NOW()` on Postgres, `STRFTIME('%s', 'now')` on SQLite), so `DateTimeProvider.travel()` cannot move it and a "last 7 days" test is not reproducible. A bound from `DateTimeProvider` reads the application clock, which tests control. `ago()` stays for raw SQL that wants the database's own notion of now:
+
 ```typescript
 const recent = await this.database.run(
   sql`SELECT COUNT(*) AS n FROM ${this.quests.table}
@@ -116,7 +151,7 @@ Instant-aligned on both dialects, not midnight-aligned. If you want calendar-day
 
 ## `COUNT` and `AVG` still need coercion
 
-The helpers cover their own output, not yours. Postgres returns `COUNT(*)` (bigint) and bare `AVG(numeric)` as strings; SQLite returns numbers. For aggregates you write yourself, decode with `z.coerce.number()`:
+`aggregate()` coerces `count`, `sum` and `avg` itself. In raw SQL, the helpers cover their own output, not yours. Postgres returns `COUNT(*)` (bigint) and bare `AVG(numeric)` as strings; SQLite returns numbers. For aggregates you write yourself, decode with `z.coerce.number()`:
 
 ```typescript
 z.object({ total: z.coerce.number() });
