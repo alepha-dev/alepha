@@ -24,12 +24,27 @@ import type {
 export type DashboardBoard = "home" | "project";
 
 /**
- * How a card renders its value. Taken from the mockup, which shows all four.
- * Only `scalar` is used by the v1 metrics; the other three exist so the
- * deferred tiles (epic progress, page views with a sparkline, needs
- * attention) slot in as a registry entry rather than as a new field.
+ * How a card renders its value: one renderer per presentation, picked by the
+ * catalogue and never by the metric key (#E77).
+ *
+ * - `scalar` — the number, and `delta` as a direction.
+ * - `trend` — the number over a sparkline drawn from `series`.
+ * - `progress` — a percent over a stacked bar from `segments`.
+ * - `list` — `rows`, each with a typed reference and a state pill.
+ * - `chart` — `series` as an area or bars, `markers` as rules.
+ * - `status` — one pill per row (an app copy and its state).
+ * - `feed` — `rows` with a relative time.
+ * - `note` — markdown, from the card's own filters.
  */
-export type DashboardPresentation = "scalar" | "trend" | "progress" | "list";
+export type DashboardPresentation =
+  | "scalar"
+  | "trend"
+  | "progress"
+  | "list"
+  | "chart"
+  | "status"
+  | "feed"
+  | "note";
 
 /**
  * Where clicking a card goes.

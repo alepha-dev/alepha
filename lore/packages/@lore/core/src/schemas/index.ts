@@ -28,6 +28,11 @@ export {
   type CapabilityKey,
 } from "../api/schemas/capabilityKeySchema.ts";
 export { type DashboardCardValue } from "../api/schemas/dashboardCardValueSchema.ts";
+export {
+  type DashboardEmptyReason,
+  dashboardEmptyReasonSchema,
+} from "../api/schemas/dashboardEmptyReasonSchema.ts";
+export { type DashboardTileState } from "../api/schemas/dashboardTileStateSchema.ts";
 export { type DashboardScope } from "../api/schemas/dashboardScopeSchema.ts";
 export { type KanbanColumnSettings } from "../api/schemas/kanbanColumnSchema.ts";
 export {
