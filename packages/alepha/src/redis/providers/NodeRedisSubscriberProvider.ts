@@ -28,10 +28,10 @@ export class NodeRedisSubscriberProvider extends RedisSubscriberProvider {
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
   protected readonly redisProvider = $inject(NodeRedisProvider);
-  protected readonly client: NodeRedisClient = this.createClient();
+  protected client?: NodeRedisClient;
 
   public get subscriber(): NodeRedisClient {
-    if (!this.client.isReady) {
+    if (!this.client?.isReady) {
       throw new AlephaError("Redis subscriber client is not ready");
     }
 
@@ -39,7 +39,7 @@ export class NodeRedisSubscriberProvider extends RedisSubscriberProvider {
   }
 
   public override get isReady(): boolean {
-    return this.client.isReady;
+    return this.client?.isReady ?? false;
   }
 
   protected readonly start = $hook({
@@ -54,12 +54,13 @@ export class NodeRedisSubscriberProvider extends RedisSubscriberProvider {
 
   public override async connect(): Promise<void> {
     this.log.debug("Connecting subscriber...");
+    this.client ??= await this.createClient();
     await this.client.connect();
     this.log.info("Subscriber connection OK");
   }
 
   public override async close(): Promise<void> {
-    if (!this.client.isReady) {
+    if (!this.client?.isReady) {
       this.log.debug("Subscriber client not ready, skipping close");
       return;
     }
@@ -99,8 +100,8 @@ export class NodeRedisSubscriberProvider extends RedisSubscriberProvider {
   /**
    * Redis subscriber client factory method.
    */
-  protected createClient(): NodeRedisClient {
-    const client = this.redisProvider.duplicate();
+  protected async createClient(): Promise<NodeRedisClient> {
+    const client = await this.redisProvider.duplicate();
 
     client.on("error", (error) => {
       if (this.alepha.isStarted()) {

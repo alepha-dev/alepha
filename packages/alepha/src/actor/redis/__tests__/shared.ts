@@ -275,8 +275,13 @@ export class RedisActorContract {
       expect(codec.identity(namespace, "a:b", "c")).not.toBe(
         codec.identity(namespace, "a", "b:c"),
       );
-      // alepha.name is never empty, so selecting Redis needs no variable.
-      expect(() => Alepha.create().with(AlephaActorRedis)).not.toThrow();
+      // alepha.name is never empty, so selecting Redis needs no variable
+      // beyond REDIS_URL itself.
+      expect(() =>
+        Alepha.create({
+          env: { REDIS_URL: "redis://localhost:16379" },
+        }).with(AlephaActorRedis),
+      ).not.toThrow();
       const memory = Alepha.create({ env: { REDIS_URL: "redis://invalid:1" } });
       memory.inject(Actors);
       // REDIS_URL must not select a Redis provider or open a connection.

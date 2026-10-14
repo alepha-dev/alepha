@@ -6,6 +6,11 @@ import { describe, expect, it } from "vitest";
 import { AlephaRedis, RedisProvider } from "../index.ts";
 import { NodeRedisProvider } from "../providers/NodeRedisProvider.ts";
 
+// The shared test env sets no REDIS_URL, so nothing else turns Redis on; this
+// file runs against the compose `redis` service (16379, CI's port too). A
+// test file runs in its own process, so this reaches no other file.
+process.env.REDIS_URL ??= "redis://localhost:16379";
+
 /**
  * `keys(pattern)` ran the blocking `KEYS` command. On a shared or large Redis
  * that stalls every other client for the duration of a full keyspace walk —

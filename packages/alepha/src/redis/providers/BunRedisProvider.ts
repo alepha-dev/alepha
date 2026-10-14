@@ -13,8 +13,8 @@ import { RedisProvider, type RedisSetOptions } from "./RedisProvider.ts";
 
 const envSchema = z.object({
   REDIS_URL: z.text({
-    default: "redis://localhost:6379",
-    description: "Redis connection URL",
+    description:
+      "Redis connection URL. Setting it turns Redis on for cache, queue, topic, lock and actors.",
   }),
 });
 
@@ -30,7 +30,7 @@ declare module "alepha" {
  *
  * @example
  * ```ts
- * // Set REDIS_URL environment variable (default: redis://localhost:6379)
+ * // Set the REDIS_URL environment variable (required, no default)
  * // REDIS_URL=redis://:password@myredis.example.com:6379
  *
  * // Or configure programmatically

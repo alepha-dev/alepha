@@ -10,6 +10,11 @@ import { describe, it } from "vitest";
 
 import { AlephaLockRedis, RedisLockProvider } from "../index.ts";
 
+// The shared test env sets no REDIS_URL, so nothing else turns Redis on; this
+// file runs against the compose `redis` service (16379, CI's port too). A
+// test file runs in its own process, so this reaches no other file.
+process.env.REDIS_URL ??= "redis://localhost:16379";
+
 /**
  * Two apps on one Redis, told apart by `alepha.name` alone.
  */
