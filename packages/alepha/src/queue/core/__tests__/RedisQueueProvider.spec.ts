@@ -2,15 +2,16 @@ import { randomUUID } from "node:crypto";
 
 import { Alepha } from "alepha";
 import { AlephaQueue, QueueProvider } from "alepha/queue";
-import { AlephaRedis } from "alepha/redis";
+import { AlephaRedis, RedisProvider } from "alepha/redis";
 import { describe, expect, test } from "vitest";
 
+import { MemoryQueueProvider, RedisQueueProvider } from "../index.ts";
 import {
   testQueueBasic,
   testQueueHasConsumer,
   testQueueKillWorkerSleep,
-} from "../../core/__tests__/shared.ts";
-import { RedisQueueProvider } from "../index.ts";
+  uniqueQueueName,
+} from "./shared.ts";
 
 // The shared test env sets no REDIS_URL, so nothing else turns Redis on; this
 // file runs against the compose `redis` service (16379, CI's port too). A
@@ -172,5 +173,47 @@ describe("RedisQueueProvider: one namespace per alepha.name", () => {
 
     expect(await other.pop(queue)).toBeUndefined();
     expect(await sibling.pop(queue)).toBe("job-of-a");
+  });
+});
+
+describe("AlephaQueue: REDIS_URL picks the provider", () => {
+  test("a job pushed by one container is popped by another sharing REDIS_URL", async () => {
+    const name = `select-${randomUUID()}`;
+    const boot = async () => {
+      const alepha = Alepha.create({
+        env: { REDIS_URL: process.env.REDIS_URL, APP_NAME: name },
+      }).with(AlephaQueue);
+      await alepha.start();
+      return alepha;
+    };
+    const producer = await boot();
+    const consumer = await boot();
+    const queue = uniqueQueueName("select");
+
+    expect(producer.inject(QueueProvider)).toBeInstanceOf(RedisQueueProvider);
+    await producer.inject(QueueProvider).push(queue, "across");
+    expect(await consumer.inject(QueueProvider).pop(queue)).toBe("across");
+
+    await Promise.all([producer.stop(), consumer.stop()]);
+  });
+
+  test("is Memory without REDIS_URL, and registers no Redis client", async () => {
+    const alepha = Alepha.create({ env: { REDIS_URL: undefined } }).with(
+      AlephaQueue,
+    );
+    await alepha.start();
+
+    expect(alepha.inject(QueueProvider)).toBeInstanceOf(MemoryQueueProvider);
+    expect(alepha.has(RedisProvider)).toBe(false);
+
+    await alepha.stop();
+  });
+
+  test("keeps an app's explicit substitution over REDIS_URL", () => {
+    const alepha = Alepha.create({ env: { REDIS_URL: process.env.REDIS_URL } })
+      .with({ provide: QueueProvider, use: MemoryQueueProvider })
+      .with(AlephaQueue);
+
+    expect(alepha.inject(QueueProvider)).toBeInstanceOf(MemoryQueueProvider);
   });
 });

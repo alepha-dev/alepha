@@ -1,8 +1,9 @@
 import { $atom, $inject, $store, Alepha, type Infer, z } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
-import { QueueProvider, type QueuePushOptions } from "alepha/queue";
 import { RedisProvider } from "alepha/redis";
+
+import { QueueProvider, type QueuePushOptions } from "./QueueProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 

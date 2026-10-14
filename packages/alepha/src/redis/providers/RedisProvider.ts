@@ -109,7 +109,7 @@ export abstract class RedisProvider {
    * unique themselves.
    *
    * @param key The sorted-set key.
-   * @param score The score to sort by. `alepha/queue/redis` uses a due-time
+   * @param score The score to sort by. `RedisQueueProvider` uses a due-time
    * in epoch milliseconds.
    * @param member The member to add.
    */

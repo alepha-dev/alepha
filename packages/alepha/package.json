@@ -286,11 +286,6 @@
       "import": "./src/queue/core/index.ts",
       "default": "./src/queue/core/index.ts"
     },
-    "./queue/redis": {
-      "types": "./src/queue/redis/index.ts",
-      "import": "./src/queue/redis/index.ts",
-      "default": "./src/queue/redis/index.ts"
-    },
     "./rate-limit": {
       "types": "./src/rate-limit/index.ts",
       "import": "./src/rate-limit/index.ts",
@@ -749,11 +744,6 @@
         "workerd": "./dist/queue/core/index.workerd.js",
         "import": "./dist/queue/core/index.js",
         "default": "./dist/queue/core/index.js"
-      },
-      "./queue/redis": {
-        "types": "./dist/queue/redis/index.d.ts",
-        "import": "./dist/queue/redis/index.js",
-        "default": "./dist/queue/redis/index.js"
       },
       "./rate-limit": {
         "types": "./dist/rate-limit/index.d.ts",

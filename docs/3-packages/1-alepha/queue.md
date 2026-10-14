@@ -27,7 +27,12 @@ Queues adds broker-level retry/DLQ, configured on the binding.)
 - Consumers registered imperatively via `WorkerProvider.register`
 - Polling worker loop with configurable concurrency and backoff
 - Batch send where the backend supports it (`QueueProvider.pushMany`)
-- Providers: Memory (dev), Redis (production), Cloudflare Queues
+- Providers: Redis when `REDIS_URL` is set, Memory otherwise (Node, Bun),
+  Cloudflare Queues (workerd)
+
+Set `REDIS_URL` and a job pushed by one instance is popped by any of them;
+leave it unset and the queue lives in this process. An app's own
+`QueueProvider` substitution wins over both.
 
 ## API Reference
 
@@ -36,4 +41,5 @@ Queues adds broker-level retry/DLQ, configured on the binding.)
 - [`CloudflareQueueProvider`](/docs/reference-providers-cloudflarequeueprovider) - Cloudflare Queue provider.
 - [`QueueCodec`](/docs/reference-providers-queuecodec) - Owns the on-the-wire shape of a queue message.
 - [`QueueProvider`](/docs/reference-providers-queueprovider) - Minimalist Queue interface.
+- [`RedisQueueProvider`](/docs/reference-providers-redisqueueprovider) - Redis-backed queue: a LIST for what is deliverable now, and a **sorted set
 - [`WorkerdWorkerProvider`](/docs/reference-providers-workerdworkerprovider) - Cloudflare Workers queue consumer provider.
