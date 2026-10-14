@@ -1,9 +1,11 @@
 import {
   $atom,
   $env,
+  $hook,
   $inject,
   $store,
   Alepha,
+  AlephaError,
   type Infer,
   type ReadVerdict,
   z,
@@ -11,8 +13,13 @@ import {
 import { CacheProvider, MemoryCacheProvider } from "alepha/cache";
 import { DateTimeProvider, type DurationLike } from "alepha/datetime";
 import { $logger } from "alepha/logger";
+import { $action } from "alepha/server";
 
-import type { PageRoute } from "./ReactPageProvider.ts";
+import type {
+  PageInvalidation,
+  PageInvalidationEvent,
+} from "../primitives/$page.ts";
+import { type PageRoute, ReactPageProvider } from "./ReactPageProvider.ts";
 
 /**
  * The automatic page cache (#E78).
@@ -226,6 +233,176 @@ export class ReactPageCacheProvider {
       `${prefix}*`,
     ]);
   }
+
+  /**
+   * Purge one page, or one page's params, in the current build: every query
+   * and every language. `params`, when given, must be the page's full param
+   * set, since a prefix purge cannot skip a segment; a partial set throws
+   * rather than silently purging nothing. Entries of older builds are never
+   * read again and are left to expire.
+   */
+  public async invalidatePage(
+    route: PageRoute,
+    params?: Record<string, unknown>,
+  ): Promise<void> {
+    if (params) {
+      const expected = this.paramNames(route);
+      const given = Object.keys(params).filter(
+        (name) => params[name] !== undefined,
+      );
+      const missing = expected.filter((name) => !given.includes(name));
+      const unknown = given.filter((name) => !expected.includes(name));
+      if (missing.length || unknown.length) {
+        throw new AlephaError(
+          `Cannot invalidate page "${route.name}" with params {${given.join(", ")}}: ` +
+            `it takes exactly {${expected.join(", ")}}. Pass them all, or none to purge every entry of the page.`,
+        );
+      }
+    }
+    await this.invalidate(this.prefix(route, params));
+    this.log.debug("Page cache invalidated", { name: route.name, params });
+  }
+
+  /**
+   * The names of a page's route params, in its full matched path.
+   */
+  public paramNames(route: PageRoute): string[] {
+    const names: string[] = [];
+    for (const match of route.match.matchAll(/[:{]([A-Za-z0-9_]+)\}?/g)) {
+      names.push(match[1]);
+    }
+    if (route.match.includes("*")) {
+      names.push("*");
+    }
+    return names;
+  }
+
+  // ---------------------------------------------------------------------------
+  // `$page({ cache: { invalidatedBy } })`
+  // ---------------------------------------------------------------------------
+
+  /**
+   * An action run in process (`.run()`, a `$client` call on the server).
+   */
+  protected readonly onActionResponse = $hook({
+    on: "action:onResponse",
+    handler: async ({ action, request, response }) => {
+      await this.invalidateAfter(action.name, {
+        result: response,
+        params: request.params ?? {},
+        query: request.query ?? {},
+        body: request.body,
+      });
+    },
+  });
+
+  /**
+   * An action called over HTTP: its route handler emits no action event, so
+   * the response is matched back to the action by method and path. Emitted
+   * before the response leaves, so the writer reads its own write.
+   */
+  protected readonly onHttpResponse = $hook({
+    on: "server:onResponse",
+    // Before compression replaces the JSON body with a compressed stream.
+    priority: "first",
+    handler: async ({ request, response }) => {
+      if (response.status >= 400 || this.invalidations().size === 0) {
+        return;
+      }
+      const name = this.actionsByRoute().get(
+        `${request.method} ${request.metadata?.routePath}`,
+      );
+      if (!name) {
+        return;
+      }
+      let result: unknown = response.body;
+
+      if (ArrayBuffer.isView(result)) {
+        result = new TextDecoder().decode(result);
+      }
+      if (typeof result === "string") {
+        try {
+          result = JSON.parse(result);
+        } catch {
+          // a non-JSON body: handed over as is
+        }
+      }
+      await this.invalidateAfter(name, {
+        result,
+        params: request.params ?? {},
+        query: request.query ?? {},
+        body: request.body,
+      });
+    },
+  });
+
+  protected async invalidateAfter(
+    action: string,
+    event: PageInvalidationEvent,
+  ): Promise<void> {
+    for (const { route, params } of this.invalidations().get(action) ?? []) {
+      try {
+        await this.invalidatePage(route, params ? params(event) : undefined);
+      } catch (error) {
+        this.log.error("Page invalidation failed", {
+          page: route.name,
+          action,
+          error,
+        });
+      }
+    }
+  }
+
+  /**
+   * Action name to the pages it invalidates, built once from every page's
+   * `cache.invalidatedBy`.
+   */
+  protected invalidations(): Map<
+    string,
+    Array<{ route: PageRoute; params?: PageInvalidation["params"] }>
+  > {
+    if (this.invalidationMap) {
+      return this.invalidationMap;
+    }
+    const map = new Map<
+      string,
+      Array<{ route: PageRoute; params?: PageInvalidation["params"] }>
+    >();
+    for (const route of this.alepha.inject(ReactPageProvider).getPages()) {
+      const cache = route.cache;
+      if (!cache) {
+        continue;
+      }
+      for (const it of cache.invalidatedBy ?? []) {
+        const name = typeof it.action === "string" ? it.action : it.action.name;
+        const list = map.get(name) ?? [];
+        list.push({ route, params: it.params });
+        map.set(name, list);
+      }
+    }
+    this.invalidationMap = map;
+    return map;
+  }
+
+  protected invalidationMap?: Map<
+    string,
+    Array<{ route: PageRoute; params?: PageInvalidation["params"] }>
+  >;
+
+  /**
+   * `"<METHOD> <path>"` of every `$action` route to its action name.
+   */
+  protected actionsByRoute(): Map<string, string> {
+    if (!this.routeMap) {
+      this.routeMap = new Map();
+      for (const action of this.alepha.primitives($action)) {
+        this.routeMap.set(`${action.method} ${action.route.path}`, action.name);
+      }
+    }
+    return this.routeMap;
+  }
+
+  protected routeMap?: Map<string, string>;
 
   /**
    * How many entries the in-process tier holds. For tests and diagnostics.

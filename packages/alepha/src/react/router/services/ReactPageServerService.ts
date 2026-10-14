@@ -5,6 +5,8 @@ import type {
   PagePrimitiveRenderOptions,
   PagePrimitiveRenderResult,
 } from "../primitives/$page.ts";
+import { ReactPageCacheProvider } from "../providers/ReactPageCacheProvider.ts";
+import { ReactPageProvider } from "../providers/ReactPageProvider.ts";
 import { ReactServerProvider } from "../providers/ReactServerProvider.ts";
 import { ReactServerTemplateProvider } from "../providers/ReactServerTemplateProvider.ts";
 import { ReactPageService } from "./ReactPageService.ts";
@@ -16,6 +18,15 @@ export class ReactPageServerService extends ReactPageService {
   protected readonly reactServerProvider = $inject(ReactServerProvider);
   protected readonly templateProvider = $inject(ReactServerTemplateProvider);
   protected readonly serverProvider = $inject(ServerProvider);
+  protected readonly pageCache = $inject(ReactPageCacheProvider);
+  protected readonly pageApi = $inject(ReactPageProvider);
+
+  public async invalidate(
+    name: string,
+    params?: Record<string, unknown>,
+  ): Promise<void> {
+    await this.pageCache.invalidatePage(this.pageApi.page(name), params);
+  }
 
   public async render(
     name: string,

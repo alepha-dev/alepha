@@ -643,6 +643,16 @@ export class PagePrimitive<
     return this.reactPageService.render(this.name, options);
   }
 
+  /**
+   * Purge this page from the automatic page cache (server only): every
+   * entry, or with `params` (the page's full param set) the entries of those
+   * params, in every query and every language. Call it from the handler that
+   * changed what the page shows, or declare `cache.invalidatedBy` instead.
+   */
+  public async invalidate(params?: Record<string, unknown>): Promise<void> {
+    await this.reactPageService.invalidate(this.name, params);
+  }
+
   public async fetch(options?: PagePrimitiveRenderOptions): Promise<{
     html: string;
     response: Response;
@@ -668,6 +678,60 @@ export interface PageCacheOptions {
    * for a page without a loader, 60 seconds for one with a loader).
    */
   ttl?: DurationLike;
+
+  /**
+   * The writes that make this page stale, purged as soon as one succeeds,
+   * whether the action is called over HTTP or in process.
+   *
+   * Declared on the page rather than on the action: the writing action often
+   * lives in a package that cannot know the app's pages, while the page can
+   * always name the action. Without `params`, every entry of the page is
+   * purged; with it, the entries of those params (every query, every
+   * language). `params` must return the page's full param set.
+   *
+   * ```ts
+   * product = $page({
+   *   path: "/product/:slug",
+   *   cache: {
+   *     ttl: [1, "hour"],
+   *     invalidatedBy: [
+   *       { action: "productUpdate", params: ({ result }) => ({ slug: result.slug }) },
+   *     ],
+   *   },
+   * });
+   * ```
+   */
+  invalidatedBy?: PageInvalidation[];
+}
+
+/**
+ * One write that makes a page stale. See `PageCacheOptions.invalidatedBy`.
+ */
+export interface PageInvalidation {
+  /**
+   * The action, or its name. A name keeps a server controller out of a page
+   * module the browser loads.
+   */
+  action: string | { name: string };
+
+  /**
+   * The params of the entries to purge, from the call. Omitted: the whole
+   * page.
+   */
+  params?: (event: PageInvalidationEvent) => Record<string, unknown>;
+}
+
+/**
+ * What a successful write hands to `PageInvalidation.params`.
+ */
+export interface PageInvalidationEvent {
+  /**
+   * The action's response.
+   */
+  result: any;
+  params: Record<string, any>;
+  query: Record<string, any>;
+  body: any;
 }
 
 export interface PageCanContext {

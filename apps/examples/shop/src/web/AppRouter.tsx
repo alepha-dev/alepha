@@ -128,6 +128,24 @@ export class AppRouter {
      * page whose existence depends on a row.
      */
     stream: false,
+    /*
+     * Cached for everyone like any page that reads no visitor (60 s, it has a
+     * loader), and purged as soon as the back office changes what it shows.
+     *
+     * Every entry of the page rather than one slug: an update can rename the
+     * slug, and the stock actions answer with a quantity, not the product.
+     * Purging the catalogue's product pages after an admin write costs a
+     * render each, which is nothing next to serving a stale price.
+     */
+    cache: {
+      invalidatedBy: [
+        { action: "commerceAdminProductUpdate" },
+        { action: "commerceAdminProductPublish" },
+        { action: "commerceAdminProductRestock" },
+        { action: "commerceAdminProductAdjustStock" },
+        { action: "commerceAdminProductDelete" },
+      ],
+    },
     loader: async ({ params }) => {
       try {
         const produit = await this.produits.commerceProductGetBySlug({

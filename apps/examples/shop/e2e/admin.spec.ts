@@ -132,6 +132,11 @@ test.describe("catalogue management", () => {
   test("a price edited in the admin shows on the storefront", async ({
     page,
   }) => {
+    // Seen first, so the product page is in the page cache when the price
+    // changes: what this proves is that the edit purges it (#E78).
+    await page.goto("/produit/boucles-eclipse");
+    await expect(page.getByText("145 €")).toBeVisible();
+
     await page.goto("/admin/produits");
     await page.getByRole("cell", { name: "Boucles Éclipse" }).click();
     await expect(page).toHaveURL(/\/admin\/produits\/[0-9a-f-]{36}/);
