@@ -67,10 +67,20 @@ export type EpicPlanEdit =
  * 400 the questline gate in `acceptQuest` throws, so the wording reaches the
  * caller on every transport, MCP included.
  *
+ * ## `shelved` (#E78)
+ *
+ * A fifth status, outside the two pairs above: the whole plan set aside.
+ * `EpicController.shelveEpic` and `unshelveEpic` move it; while it holds,
+ * every verb that opens work and every plan edit is refused here, and
+ * `dependsOn` keeps blocking because the gate tests `completed`. Design in
+ * folio #1365.
+ *
  * ⚠️ **No status is ever written to a quest row.** Moving an epic out of
  * `draft` releases its quests because the backlog gate stops matching them,
- * not because anything about them changed. The one carve-out is the default
- * release on {@link startIfReady}, which writes `releaseId` and nothing else.
+ * not because anything about them changed. Two carve-outs: the default
+ * release on {@link startIfReady}, which writes `releaseId` and nothing else,
+ * and the epic shelve, whose whole point is to shelve the quests themselves
+ * (`EpicController.shelveEpic`, through `QuestShelvingService`).
  */
 export class EpicWorkflowService {
   protected readonly epics = $repository(epics);
@@ -168,6 +178,15 @@ export class EpicWorkflowService {
       return;
     }
 
+    // A shelved epic refuses every verb that opens work, unshelve and unhold
+    // included (#E78): its quests come back together, with the epic, or the
+    // `shelvedWithEpic` mark goes stale (folio #1365).
+    if (epic.status === "shelved") {
+      throw new BadRequestError(
+        `Cannot ${verb} quest ${formatReference("quest", quest.shortId)}: Epic ${formatReference("epic", epic.number)} is shelved. Unshelve the epic first.`,
+      );
+    }
+
     throw new BadRequestError(
       `Cannot ${verb} quest ${formatReference("quest", quest.shortId)}: Epic ${formatReference("epic", epic.number)} is completed. File this in a new epic.`,
     );
@@ -224,6 +243,18 @@ export class EpicWorkflowService {
   ): void {
     if (epic.status === "draft" || epic.status === "ready") return;
 
+    // Shelved (#E78): no quest enters or leaves a parked plan, so that
+    // unshelving brings back exactly what shelving set aside.
+    if (epic.status === "shelved") {
+      const subject =
+        edit.kind === "add"
+          ? "add a quest"
+          : `${edit.kind} quest ${formatReference("quest", edit.quest.shortId)}`;
+      throw new BadRequestError(
+        `Cannot ${subject}: Epic ${formatReference("epic", epic.number)} is shelved. Unshelve the epic first.`,
+      );
+    }
+
     const frozen = epic.status === "in_progress";
     const phase = frozen
       ? "is in progress. Its plan is frozen."
@@ -257,6 +288,35 @@ export class EpicWorkflowService {
   }
 
   /**
+   * An epic is deleted only while it is `draft` or `ready` (#Q2666).
+   *
+   * Deleting an epic deletes its quests, and that is the rule
+   * {@link assertPlanEditable} already applies to deleting one quest out of
+   * an epic, one level up. An `in_progress` epic holds started work and a
+   * `completed` one is the record of shipped work (commits, changelog
+   * entries): neither is a mis-created plan, so the refusal names shelving,
+   * which keeps the record and takes the work out of the backlog.
+   */
+  assertEpicDeletable(epic: Pick<Epic, "number" | "status">): void {
+    if (epic.status === "draft" || epic.status === "ready") return;
+
+    const reference = formatReference("epic", epic.number);
+    if (epic.status === "shelved") {
+      throw new BadRequestError(
+        `Cannot delete Epic ${reference}: it is shelved. Unshelve it first; only a draft or ready epic can be deleted.`,
+      );
+    }
+    if (epic.status === "completed") {
+      throw new BadRequestError(
+        `Cannot delete Epic ${reference}: it is completed, and its quests are the record of shipped work.`,
+      );
+    }
+    throw new BadRequestError(
+      `Cannot delete Epic ${reference}: it is in progress, and deleting it would delete started work. Shelve the epic instead.`,
+    );
+  }
+
+  /**
    * The only status moves a person makes: `draft` to `ready` and back.
    *
    * `ready` to `draft` stays open because nothing has started: the epic
@@ -277,6 +337,9 @@ export class EpicWorkflowService {
     if (epic.status === "ready" && to === "draft") return;
 
     const move = `Cannot move Epic ${formatReference("epic", epic.number)} from ${epic.status} to ${to}.`;
+    if (epic.status === "shelved") {
+      throw new BadRequestError(`${move} It is shelved. Unshelve it first.`);
+    }
     if (epic.status === "completed") {
       throw new BadRequestError(
         `${move} It is completed. Create a new epic that depends on it.`,
@@ -435,6 +498,96 @@ export class EpicWorkflowService {
       if (error instanceof DbEntityNotFoundError) return false;
       throw error;
     }
+  }
+
+  /**
+   * An epic is shelved from `draft`, `ready` or `in_progress` (#E78).
+   * `completed` is terminal, and shelving would misreport shipped work as
+   * set aside. An epic already `shelved` passes: a second `shelveEpic` is
+   * how a shelve that failed halfway finishes its quests.
+   */
+  assertShelvable(epic: Pick<Epic, "number" | "status">): void {
+    if (epic.status !== "completed") return;
+    throw new BadRequestError(
+      `Cannot shelve Epic ${formatReference("epic", epic.number)}: it is completed. Completed is terminal.`,
+    );
+  }
+
+  /**
+   * Only a `shelved` epic is unshelved. Its status is all this reads: the
+   * quests it brings back are the ones carrying `quests.shelvedWithEpic`.
+   */
+  assertUnshelvable(epic: Pick<Epic, "number" | "status">): void {
+    if (epic.status === "shelved") return;
+    throw new BadRequestError(
+      `Cannot unshelve Epic ${formatReference("epic", epic.number)}: it is ${epic.status.replace("_", " ")}, not shelved.`,
+    );
+  }
+
+  /**
+   * Move an epic to `shelved`, in ONE guarded statement, BEFORE its quests
+   * are shelved (folio #1365): with the epic already `shelved`,
+   * {@link completeIfResolved} cannot complete it as its last open quest
+   * goes, and a failure halfway leaves a shelved epic that a second
+   * `shelveEpic` finishes. Answers the row, written or not.
+   */
+  async shelve(epic: Epic, user: UserAccountToken): Promise<Epic> {
+    if (epic.status === "shelved") return epic;
+
+    let updated: Epic;
+    try {
+      updated = await this.epics.updateOne(
+        { id: { eq: epic.id }, status: { eq: epic.status } },
+        { status: "shelved" },
+      );
+    } catch (error) {
+      if (error instanceof DbEntityNotFoundError) {
+        throw new BadRequestError(
+          `Cannot shelve Epic ${formatReference("epic", epic.number)}: it changed while this request ran. Read it again.`,
+        );
+      }
+      throw error;
+    }
+
+    await this.logStatus(epic, "shelved", user, {});
+    return updated;
+  }
+
+  /**
+   * Move a `shelved` epic back, AFTER its quests are unshelved, so a failure
+   * halfway leaves it `shelved` with the rest still marked for a retry.
+   *
+   * The target is the epic description's rule (folio #1365): `in_progress`
+   * when `startedAt` is set, since that is exactly "one of its quests had
+   * started" and is never cleared, and `ready` otherwise. Back in progress,
+   * it completes on the spot when nothing is left open, as
+   * {@link completeIfResolved} would have.
+   */
+  async unshelve(epic: Epic, user: UserAccountToken): Promise<Epic> {
+    const to = epic.startedAt ? "in_progress" : "ready";
+
+    let updated: Epic;
+    try {
+      updated = await this.epics.updateOne(
+        { id: { eq: epic.id }, status: { eq: "shelved" } },
+        { status: to },
+      );
+    } catch (error) {
+      if (error instanceof DbEntityNotFoundError) {
+        throw new BadRequestError(
+          `Cannot unshelve Epic ${formatReference("epic", epic.number)}: it changed while this request ran. Read it again.`,
+        );
+      }
+      throw error;
+    }
+
+    await this.logStatus(epic, to, user, {});
+
+    if (to === "in_progress" && (await this.finish(updated))) {
+      await this.logStatus(updated, "completed", user, {});
+      return await this.epics.getById(epic.id);
+    }
+    return updated;
   }
 
   /**

@@ -619,12 +619,15 @@ describe("ProjectEpics - the status filter", () => {
     it("offers no group at all on a completed epic", async () => {
       await mount();
 
-      const top = (await openRowMenu("#E4 - Completed epic")).map(
-        (item) => item.textContent,
-      );
-      expect(top.join(" ")).not.toContain("Agent Prompts");
-      expect(top.join(" ")).not.toContain("Review Epic");
-      expect(top.join(" ")).not.toContain("Work on it");
+      // Since #Q2668 a completed epic offers no Delete either, so its row
+      // has no entry at all and the table draws no menu button: the
+      // strongest form of "no group".
+      const row = screen
+        .getByRole("link", { name: "#E4 - Completed epic" })
+        .closest("tr");
+      expect(
+        within(row!).queryByRole("button", { name: "Open row actions" }),
+      ).toBeNull();
     });
 
     /**
@@ -881,6 +884,110 @@ describe("ProjectEpics - the status filter", () => {
       expect(screen.getAllByText(message)).toHaveLength(1);
       expect(fake.deleteCalls).toBe(1);
       expect(row.isConnected).toBe(true);
+    });
+  });
+
+  /**
+   * Deleting an epic deletes its quests (#Q2666), so every confirm names how
+   * many, and a started or finished epic offers Shelve instead of a Delete
+   * the server would refuse (#Q2668).
+   */
+  describe("the delete confirm", () => {
+    const withQuests = (epic: EpicResource, total: number): EpicResource =>
+      ({
+        ...epic,
+        progress: { completed: 0, inProgress: 0, shelved: 0, total },
+      }) as EpicResource;
+
+    const fixture = () => [
+      withQuests(epicOf(1, "Draft epic", "draft"), 2),
+      withQuests(epicOf(2, "Ready epic", "ready"), 1),
+      withQuests(epicOf(3, "Started epic", "in_progress"), 4),
+      withQuests(epicOf(4, "Completed epic", "completed"), 5),
+    ];
+
+    const menuOf = async (name: string) => {
+      const row = screen.getByRole("link", { name }).closest("tr");
+      fireEvent.click(
+        within(row!).getByRole("button", { name: "Open row actions" }),
+      );
+      return await waitFor(() => {
+        const found = [...document.querySelectorAll('[role="menuitem"]')];
+        if (found.length === 0) throw new Error("not open yet");
+        return found;
+      });
+    };
+
+    const selectRow = (name: string) => {
+      const row = screen.getByRole("link", { name }).closest("tr");
+      fireEvent.click(within(row!).getByRole("checkbox"));
+    };
+
+    it("names the quests the row delete takes with it, and keeps the folios", async () => {
+      await mount([], fixture());
+
+      const remove = (await menuOf("#E1 - Draft epic")).find(
+        (item) => item.textContent === "Delete",
+      );
+      fireEvent.click(remove!);
+      const confirm = await screen.findByRole("alertdialog");
+
+      expect(confirm.textContent).toContain(
+        'Deleting "Draft epic" deletes its 2 quests with it.',
+      );
+      expect(confirm.textContent).toContain("Its folios are kept, unfiled.");
+    });
+
+    it("offers Shelve and no Delete on a started epic, and neither on a completed one", async () => {
+      await mount([], fixture());
+
+      const started = (await menuOf("#E3 - Started epic")).map(
+        (item) => item.textContent,
+      );
+      expect(started).toContain("Shelve");
+      expect(started).not.toContain("Delete");
+      fireEvent.keyDown(document.activeElement ?? document.body, {
+        key: "Escape",
+      });
+      await waitFor(() =>
+        expect(document.querySelectorAll('[role="menuitem"]')).toHaveLength(0),
+      );
+
+      // A completed epic has nothing left to offer: no row menu at all.
+      const completed = screen
+        .getByRole("link", { name: "#E4 - Completed epic" })
+        .closest("tr");
+      expect(
+        within(completed!).queryByRole("button", { name: "Open row actions" }),
+      ).toBeNull();
+    });
+
+    it("sums the quests of the epics it can delete, and names the ones it leaves out", async () => {
+      await mount([], fixture());
+
+      selectRow("#E1 - Draft epic");
+      selectRow("#E2 - Ready epic");
+      selectRow("#E3 - Started epic");
+      fireEvent.click(await screen.findByRole("button", { name: "Delete" }));
+      const confirm = await screen.findByRole("alertdialog");
+
+      expect(confirm.textContent).toContain("Delete 2 epics?");
+      expect(confirm.textContent).toContain("Their 3 quests are deleted");
+      expect(confirm.textContent).toContain("#E3 Started epic");
+      expect(confirm.textContent).not.toContain("#E1 Draft epic");
+    });
+
+    it("hides the bulk delete when nothing selected can be deleted", async () => {
+      await mount([], fixture());
+
+      selectRow("#E3 - Started epic");
+
+      await waitFor(() =>
+        expect(
+          screen.getByRole("button", { name: /Add to release/ }),
+        ).toBeTruthy(),
+      );
+      expect(screen.queryByRole("button", { name: "Delete" })).toBeNull();
     });
   });
 });

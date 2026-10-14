@@ -30,6 +30,7 @@ import { currentEpicAtom } from "../../../atoms/currentEpicAtom.ts";
 import { currentEpicCountAtom } from "../../../atoms/currentEpicCountAtom.ts";
 import { useWorkPromptSubject } from "../prompts/useWorkPromptSubject.ts";
 import EpicCreateSheet from "./EpicCreateSheet.tsx";
+import EpicShelveControl from "./EpicShelveControl.tsx";
 import EpicStatusControl from "./EpicStatusControl.tsx";
 import ProjectEpicAside from "./ProjectEpicAside.tsx";
 import ProjectEpicDescription from "./ProjectEpicDescription.tsx";
@@ -356,6 +357,11 @@ const ProjectEpic = (props: ProjectEpicProps) => {
               </Button>
             )}
           <EpicStatusControl epic={epic} onChange={applyStatusChange} />
+          <EpicShelveControl
+            epic={epic}
+            onChange={applyStatusChange}
+            invalidates={[questsKey]}
+          />
         </>
       }
     >

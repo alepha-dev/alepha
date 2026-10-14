@@ -2089,6 +2089,7 @@ export default {
   "epic.status.ready": "Ready",
   "epic.status.inProgress": "In progress",
   "epic.status.completed": "Completed",
+  "epic.status.shelved": "Shelved",
   "epic.list.empty": "No epics yet.",
   "epic.list.column.title": "Epic",
   "epic.list.column.updated": "Updated",
@@ -2162,12 +2163,14 @@ export default {
   "agentPrompts.copyError": "Could not copy the prompt.",
   "epic.delete.title": "Delete this epic?",
   "epic.delete.confirm":
-    'Its quests and folios stay, detached from "$1". This cannot be undone.',
+    'Deleting "$1" deletes its $2 quests with it. Its folios are kept, unfiled. This cannot be undone.',
   "epic.toast.deleted": "Epic deleted.",
   "epic.bulk.delete.title": "Delete $1 epics?",
   "epic.bulk.delete.confirm": "Delete $1 epics",
   "epic.bulk.delete.description":
-    "Their quests and folios stay, detached from them. This cannot be undone.",
+    "Their $1 quests are deleted with them. Their folios are kept, unfiled. This cannot be undone.",
+  "epic.bulk.delete.skipped":
+    "Left out, because work on them has started or finished: $1. Shelve those instead.",
   "epic.bulk.ready.title": "Mark $1 epics as ready?",
   "epic.bulk.ready.confirm": "Mark $1 epics as ready",
   "epic.bulk.ready.description":
@@ -2195,6 +2198,14 @@ export default {
   "epic.start.blocked": "Blocked by Epic $1",
   "epic.status.actions.markReady": "Mark as ready",
   "epic.status.actions.backToDraft": "Back to draft",
+  "epic.status.actions.shelve": "Shelve",
+  "epic.status.actions.unshelve": "Unshelve",
+  "epic.shelve.title": "Shelve this epic?",
+  "epic.shelve.confirm":
+    "Shelving $1 sets aside its $2 open quests: they are unassigned and shelved, and nothing in the epic can be worked until it is unshelved. Completed quests stay completed, and epics that depend on it stay blocked.",
+  "epic.unshelve.title": "Unshelve this epic?",
+  "epic.unshelve.confirm":
+    "Unshelving $1 brings back the quests shelved with it, as to do and unassigned. Quests shelved on their own before stay shelved.",
   "epic.aside.predecessor": "Depends on",
   "epic.aside.predecessor.after": "After Epic $1",
   "epic.aside.predecessor.blocked": "Blocked by Epic $1",
@@ -2203,6 +2214,8 @@ export default {
   "quest.view.accept.epicDraft": "Epic $1 is not ready for development yet.",
   "quest.view.accept.epicCompleted":
     "Epic $1 is completed. File this in a new epic.",
+  "quest.view.accept.epicShelved":
+    "Epic $1 is shelved. Unshelve the epic first.",
   "epic.tab.overview": "Overview",
   "epic.tab.quests": "Quests",
   "epic.tab.flow": "Flow",
@@ -2362,6 +2375,7 @@ export default {
   "dashboard.footer.epic.specified": "$1 specified, none released yet",
   "dashboard.footer.epic.completed": "completed $1",
   "dashboard.footer.epic.completedUndated": "completed",
+  "dashboard.footer.epic.shelved": "shelved, $1 done",
   "dashboard.footer.epic.nothing": "nothing to count yet",
   "dashboard.footer.epic.hidden": "epics are turned off here",
   "dashboard.footer.release.done": "$1 of $2 done, shelved excluded",

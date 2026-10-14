@@ -20,6 +20,8 @@ import { useAction, useAlepha, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import {
+  Archive,
+  ArchiveRestore,
   Bot,
   CircleDot,
   ClipboardCheck,
@@ -52,6 +54,7 @@ import {
   STATUS_LABEL_KEYS,
   STATUS_ORDER,
   STATUS_TONE,
+  openQuestsOf,
 } from "./epicStatus.ts";
 import ProjectEpicsProgress from "./ProjectEpicsProgress.tsx";
 
@@ -183,15 +186,57 @@ const ProjectEpics = () => {
     [epicApi, dialog, tr],
   );
 
+  /**
+   * Shelve or Unshelve the whole epic (#E78), the same two writes the epic
+   * page's `EpicShelveControl` makes, with its confirmation copy from the
+   * same keys: Shelve names how many open quests it sets aside.
+   */
+  const shelveAction = useAction<
+    [epic: EpicResource, shelve: boolean, refresh: () => void],
+    void
+  >(
+    {
+      handler: async (epic, shelve, refresh) => {
+        const ok = shelve
+          ? await dialog.confirm({
+              title: tr("epic.shelve.title"),
+              description: tr("epic.shelve.confirm", {
+                args: [epic.title, String(openQuestsOf(epic))],
+              }),
+              confirmLabel: tr("epic.status.actions.shelve"),
+              cancelLabel: tr("common.cancel"),
+              destructive: true,
+            })
+          : await dialog.confirm({
+              title: tr("epic.unshelve.title"),
+              description: tr("epic.unshelve.confirm", { args: [epic.title] }),
+              confirmLabel: tr("epic.status.actions.unshelve"),
+              cancelLabel: tr("common.cancel"),
+            });
+        if (!ok) return;
+        const params = { params: { id: epic.id } };
+        await (shelve
+          ? epicApi.shelveEpic(params)
+          : epicApi.unshelveEpic(params));
+        refresh();
+      },
+    },
+    [epicApi, dialog, tr],
+  );
+
   const deleteAction = useAction<
     [epic: EpicResource, refresh: () => void],
     void
   >(
     {
       handler: async (epic, refresh) => {
+        // Deleting an epic deletes its quests (#Q2666), so the confirm says
+        // how many, and that the folios stay.
         const ok = await dialog.confirm({
           title: tr("epic.delete.title"),
-          description: tr("epic.delete.confirm", { args: [epic.title] }),
+          description: tr("epic.delete.confirm", {
+            args: [epic.title, String(epic.progress.total)],
+          }),
           confirmLabel: tr("epic.action.delete"),
           cancelLabel: tr("common.cancel"),
           destructive: true,
@@ -302,20 +347,41 @@ const ProjectEpics = () => {
   >(
     {
       handler: async (selected, ctx) => {
-        const n = String(selected.length);
+        // Only a draft or ready epic is deleted (#Q2666): the rest are left
+        // out of the count and named, rather than sent to be refused one by
+        // one. The plural of the row menu's own warning, and it says the
+        // same true thing: the quests go with the epics, the folios stay.
+        const deletable = selected.filter(isDeletable);
+        const skipped = selected.filter((epic) => !isDeletable(epic));
+        const n = String(deletable.length);
+        const quests = deletable.reduce(
+          (sum, epic) => sum + epic.progress.total,
+          0,
+        );
+        const description = [
+          tr("epic.bulk.delete.description", { args: [String(quests)] }),
+          ...(skipped.length > 0
+            ? [
+                tr("epic.bulk.delete.skipped", {
+                  args: [
+                    skipped
+                      .map((epic) => `#E${epic.number} ${epic.title}`)
+                      .join(", "),
+                  ],
+                }),
+              ]
+            : []),
+        ].join(" ");
         const confirmed = await dialog.confirm({
           title: tr("epic.bulk.delete.title", { args: [n] }),
-          // The plural of the row menu's own warning, and it says the same
-          // true thing: `deleteEpic` detaches the quests and folios, it
-          // does not delete them.
-          description: tr("epic.bulk.delete.description"),
+          description,
           confirmLabel: tr("epic.bulk.delete.confirm", { args: [n] }),
           cancelLabel: tr("common.cancel"),
           destructive: true,
         });
         if (!confirmed) return;
         const outcome = await settleBulk(
-          selected.map((epic) => epic.id),
+          deletable.map((epic) => epic.id),
           (id) => epicApi.deleteEpic({ params: { id } }),
         );
         reportBulk(
@@ -334,6 +400,7 @@ const ProjectEpics = () => {
   const busy =
     setReleaseAction.loading ||
     setStatusAction.loading ||
+    shelveAction.loading ||
     deleteAction.loading ||
     bulkReleaseAction.loading ||
     bulkReadyAction.loading ||
@@ -573,7 +640,7 @@ const ProjectEpics = () => {
       icon: Trash2,
       label: tr("board.bulk.delete"),
       destructive: true,
-      visible: () => !busy,
+      visible: (selected) => !busy && selected.some(isDeletable),
       onClick: (selected, ctx) => void bulkDeleteAction.run(selected, ctx),
     });
   }
@@ -871,16 +938,53 @@ const ProjectEpics = () => {
                 },
               ]
             : []),
-          {
-            icon: Trash2,
-            label: tr("epic.action.delete"),
-            destructive: true,
-            disabled: () => busy,
-            onClick: (
-              epic: EpicResource,
-              { refresh }: { refresh: () => void },
-            ) => void deleteAction.run(epic, refresh),
-          },
+          // Shelve sets the whole plan aside, from any status but
+          // completed; Unshelve brings it back (#E78).
+          ...(epic.status !== "completed" &&
+          epic.status !== "shelved" &&
+          epicApi.shelveEpic.can()
+            ? [
+                {
+                  icon: Archive,
+                  label: tr("epic.status.actions.shelve"),
+                  disabled: () => busy,
+                  onClick: (
+                    row: EpicResource,
+                    { refresh }: { refresh: () => void },
+                  ) => void shelveAction.run(row, true, refresh),
+                },
+              ]
+            : []),
+          ...(epic.status === "shelved" && epicApi.unshelveEpic.can()
+            ? [
+                {
+                  icon: ArchiveRestore,
+                  label: tr("epic.status.actions.unshelve"),
+                  disabled: () => busy,
+                  onClick: (
+                    row: EpicResource,
+                    { refresh }: { refresh: () => void },
+                  ) => void shelveAction.run(row, false, refresh),
+                },
+              ]
+            : []),
+          // Only while the plan is open (#Q2666): deleting an epic deletes
+          // its quests, so a started or finished one offers Shelve above
+          // instead of a Delete the server would refuse.
+          ...(isDeletable(epic)
+            ? [
+                {
+                  icon: Trash2,
+                  label: tr("epic.action.delete"),
+                  destructive: true,
+                  disabled: () => busy,
+                  onClick: (
+                    row: EpicResource,
+                    { refresh }: { refresh: () => void },
+                  ) => void deleteAction.run(row, refresh),
+                },
+              ]
+            : []),
         ]}
       />
 
@@ -991,3 +1095,10 @@ const releaseOf = (
   if (!epic.releaseId) return undefined;
   return releases?.find((release) => release.id === epic.releaseId);
 };
+
+/**
+ * Whether the server will delete this epic: only while its plan is open,
+ * `draft` or `ready` (`EpicWorkflowService.assertEpicDeletable`, #Q2666).
+ */
+const isDeletable = (epic: Pick<EpicResource, "status">): boolean =>
+  epic.status === "draft" || epic.status === "ready";

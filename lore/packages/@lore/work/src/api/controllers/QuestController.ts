@@ -1,5 +1,4 @@
 import {
-  ResourceRegistry,
   $ownsProject,
   BestEffort,
   BoundParameters,
@@ -60,8 +59,10 @@ import { EpicVisibilityService } from "../services/EpicVisibilityService.ts";
 import { EpicWorkflowService } from "../services/EpicWorkflowService.ts";
 import { MentionNotifier } from "../services/MentionNotifier.ts";
 import { OpenQuestScope } from "../services/OpenQuestScope.ts";
+import { QuestDeletionService } from "../services/QuestDeletionService.ts";
 import { QuestResourceMapper } from "../services/QuestResourceMapper.ts";
 import { QuestService } from "../services/QuestService.ts";
+import { QuestShelvingService } from "../services/QuestShelvingService.ts";
 import { ReleaseAttachmentService } from "../services/ReleaseAttachmentService.ts";
 
 export class QuestController {
@@ -132,7 +133,6 @@ export class QuestController {
   log = $logger();
   quests = $repository(quests);
   feedback = $repository(feedback);
-  resources = $inject(ResourceRegistry);
   /**
    * Read-only here, and only so a history line can name the epic or release a
    * quest moved to by its `number` / `tag` rather than by a row id nobody
@@ -184,6 +184,8 @@ export class QuestController {
   fileService = $inject(FileService);
   questMapper = $inject(QuestResourceMapper);
   questService = $inject(QuestService);
+  deletion = $inject(QuestDeletionService);
+  shelving = $inject(QuestShelvingService);
   areaService = $inject(AreaService);
   releaseAttachment = $inject(ReleaseAttachmentService);
   linkService = $inject(ResourceLinkService);
@@ -1875,16 +1877,9 @@ export class QuestController {
         return this.mapQuestToResource(quest);
       }
 
-      quest.shelvedAt = this.dt.nowISOString();
-      quest.shelvedBy = user.id;
-      quest.history.push({
-        at: this.dt.nowISOString(),
-        by: user.id,
-        action: "shelved",
-      });
-
-      await this.quests.save(quest);
-      await this.logQuest("shelve", quest, user);
+      // The write is `QuestShelvingService`, shared with the epic shelve
+      // (#E78), so both shelve a quest the same way.
+      await this.shelving.shelve(quest, user);
       // After the save, so the count sees this quest resolved.
       await this.epicWorkflow.completeIfResolved(quest, user);
       return this.mapQuestToResource(quest);
@@ -1909,16 +1904,7 @@ export class QuestController {
       // plan, and it starts nothing.
       await this.epicWorkflow.assertQuestWorkable(quest, "unshelve");
 
-      quest.shelvedAt = undefined;
-      quest.shelvedBy = undefined;
-      quest.history.push({
-        at: this.dt.nowISOString(),
-        by: user.id,
-        action: "unshelved",
-      });
-
-      await this.quests.save(quest);
-      await this.logQuest("unshelve", quest, user);
+      await this.shelving.unshelve(quest, user);
       return this.mapQuestToResource(quest);
     },
   });
@@ -3208,12 +3194,9 @@ export class QuestController {
   });
 
   deleteQuest = $action({
-    // It writes three times before the row goes: it clears dependents'
-    // `dependsOn`, hands any forwarded blight back to the inbox, then
-    // deletes. No transaction (D1 has none), and none is needed: the order
-    // is the safe one. A failure partway leaves dependencies severed or a
-    // blight reopened next to a quest that still exists, and a retry of the
-    // delete converges on the intended end state.
+    // What a delete does is `QuestDeletionService`, shared with
+    // `EpicController.deleteEpic` (#Q2666); this handler is who may, and
+    // whether the epic allows it.
     use: [this.ownsQuestForWork("quest:delete")],
     schema: {
       params: z.object({
@@ -3221,7 +3204,7 @@ export class QuestController {
       }),
       response: okSchema,
     },
-    handler: async ({ params, user }) => {
+    handler: async ({ user }) => {
       const quest = this.owned.get<Quest>();
       const project = this.owned.authority<Project>();
 
@@ -3245,38 +3228,7 @@ export class QuestController {
       // ready.
       await this.epicWorkflow.assertQuestDeletable(quest);
 
-      // Clear dependents' `dependsOn` so the dependency graph does not keep
-      // edges to a deleted quest. `null`, not `undefined`: the repository
-      // strips undefined keys from an update, which made this a no-op.
-      //
-      // One statement rather than a read plus an update per dependent: on
-      // D1 each of those was a round trip.
-      await this.quests.updateMany(
-        { dependsOn: { eq: params.id } },
-        { dependsOn: null },
-      );
-
-      // Whoever subscribed to a quest's deletion runs now, with the row
-      // still readable: Deploy hands a forwarded blight back to its inbox
-      // (`BlightQuestHandBack`). Through the registry, so this module never
-      // reads `blights` (#E75, #Q2610).
-      await this.resources.deleted({
-        kind: "quest",
-        id: params.id,
-        projectId: quest.projectId,
-        row: quest,
-      });
-
-      // `folio_links.from_id` is not a foreign key, so nothing in the
-      // database clears this quest's outbound links — see
-      // `ResourceLinkService.deleteLinksFrom`. Inbound rows are left alone on
-      // purpose: a reference to a deleted quest is a broken link, which is
-      // what the reader should see.
-      await this.linkService.deleteLinksFrom({ kind: "quest", id: params.id });
-      await this.quests.deleteById(params.id);
-      // Logged from the row read at the top of the handler: once it is gone,
-      // an id names nothing and the feed has no title to print.
-      await this.logQuest("delete", quest, user);
+      await this.deletion.delete(quest, user);
 
       return { ok: true };
     },
