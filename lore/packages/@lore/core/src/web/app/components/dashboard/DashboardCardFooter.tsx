@@ -99,6 +99,12 @@ const DashboardCardFooter = (props: DashboardCardFooterProps) => {
       }
       const denominator = Number(detail.denominator ?? 0);
       if (denominator === 0) return tr("dashboard.footer.release.empty");
+      // Every quest done and still open: waiting on a publish, not finished.
+      if (detail.readyToPublish) {
+        return tr("dashboard.footer.release.ready", {
+          args: [String(denominator)],
+        });
+      }
       return tr("dashboard.footer.release.done", {
         args: [String(detail.completed ?? 0), String(denominator)],
       });

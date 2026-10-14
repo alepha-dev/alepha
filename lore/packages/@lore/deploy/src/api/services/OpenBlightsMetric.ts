@@ -8,7 +8,10 @@ import {
   DashboardMetricCatalog,
 } from "@lore/core/schemas";
 import { $inject } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
+import { $repository } from "alepha/orm";
 
+import { type Sigil, sigils } from "../entities/sigils.ts";
 import type { OpenBlightsFilters } from "../schemas/openBlightsFiltersSchema.ts";
 import { OpenBlightCounter } from "./OpenBlightCounter.ts";
 
@@ -50,6 +53,14 @@ export class OpenBlightsMetric implements DashboardMetricResolver {
 
   protected readonly counter = $inject(OpenBlightCounter);
   protected readonly catalog = $inject(DashboardMetricCatalog);
+  protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly sigils = $repository(sigils);
+
+  /**
+   * How long an app may stay quiet before its zero stops meaning "nothing
+   * is wrong" and starts meaning "nobody is listening" (#Q2649).
+   */
+  protected readonly silentAfterDays = 30;
 
   async resolveAll(
     cards: DashboardResolvable[],
@@ -61,6 +72,21 @@ export class OpenBlightsMetric implements DashboardMetricResolver {
       Omit<DashboardCardValue, "cardId" | "ok" | "scopeNames">
     >();
 
+    // The apps behind every card, once, for the data gate.
+    const projectIds = [
+      ...new Set(cards.flatMap((entry) => entry.scope.projectIds)),
+    ];
+    const apps =
+      projectIds.length > 0
+        ? await this.sigils.findMany({
+            where: { projectId: { inArray: projectIds } },
+          })
+        : [];
+    const since = this.dateTime
+      .now()
+      .subtract(this.silentAfterDays, "day")
+      .toISOString();
+
     for (const entry of cards) {
       const { status } = entry.filters as OpenBlightsFilters;
       const result = await this.counter.count({
@@ -70,6 +96,9 @@ export class OpenBlightsMetric implements DashboardMetricResolver {
       });
 
       out.set(entry.card.id, {
+        ...(result.count === 0
+          ? this.emptyOf(this.appsOf(entry, apps), since)
+          : {}),
         value: result.count,
         detail: { occurrences: result.occurrences, apps: result.apps },
         link: this.catalog.get(this.metric).link(entry.card.scope, {
@@ -81,5 +110,36 @@ export class OpenBlightsMetric implements DashboardMetricResolver {
     }
 
     return out;
+  }
+
+  /**
+   * The apps a card measures: the ones it names, or every app of its
+   * projects.
+   */
+  protected appsOf(entry: DashboardResolvable, apps: Sigil[]): Sigil[] {
+    if (entry.scope.sigilIds) {
+      const named = new Set(entry.scope.sigilIds);
+      return apps.filter((app) => named.has(app.id));
+    }
+    const projects = new Set(entry.scope.projectIds);
+    return apps.filter((app) => projects.has(app.projectId));
+  }
+
+  /**
+   * The data gate (#Q2649), asked only of a zero.
+   *
+   * ⚠️ **Never of a count above zero.** An app that went quiet with three
+   * crashes still open has three things wrong, and hiding them behind
+   * "silent" would be the one answer worse than a stale number. A zero is
+   * different: with no app, or none that reported in 30 days, it means
+   * nobody is listening, not that nothing is wrong.
+   */
+  protected emptyOf(
+    apps: Sigil[],
+    since: string,
+  ): Pick<DashboardCardValue, "empty"> {
+    if (apps.length === 0) return { empty: "noSigil" };
+    const heard = apps.some((app) => app.lastSeenAt && app.lastSeenAt >= since);
+    return heard ? {} : { empty: "silent" };
   }
 }

@@ -2,7 +2,7 @@ import { Button } from "@alepha/ui";
 import { DateTimeProvider } from "alepha/datetime";
 import { ClientOnly, useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Plus } from "lucide-react";
+import { Check, Pencil, Plus } from "lucide-react";
 
 import type { I18n } from "../../../services/I18n.ts";
 
@@ -17,6 +17,12 @@ export interface ProjectDashboardHeaderProps {
    * not rendered at all, rather than rendered disabled.
    */
   canEdit: boolean;
+  /**
+   * Whether the board is in edit mode: Add, the card menus and drag, and the
+   * tiles that have nothing to show, collapsed with their reason (#Q2649).
+   */
+  editing: boolean;
+  onToggleEditing: () => void;
   onAdd: () => void;
 }
 
@@ -71,6 +77,22 @@ const ProjectDashboardHeader = (props: ProjectDashboardHeaderProps) => {
       {/* Inert in the stacked direction, so it is not drawn there. */}
       <span className="hidden flex-1 sm:block" />
       {props.canEdit && (
+        <Button
+          variant="outlined"
+          onClick={props.onToggleEditing}
+          data-testid="dashboard-edit"
+          aria-pressed={props.editing}
+          className="h-8 shrink-0 rounded-[9px] px-3 text-[12.5px]"
+        >
+          {props.editing ? (
+            <Check className="size-3.5" />
+          ) : (
+            <Pencil className="size-3.5" />
+          )}
+          {tr(props.editing ? "dashboard.edit.done" : "dashboard.edit")}
+        </Button>
+      )}
+      {props.canEdit && props.editing && (
         <Button
           onClick={props.onAdd}
           data-testid="dashboard-add"

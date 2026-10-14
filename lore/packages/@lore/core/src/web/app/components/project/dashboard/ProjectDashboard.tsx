@@ -74,6 +74,12 @@ const ProjectDashboard = () => {
   const [board] = useStore(projectDashboardAtom);
   const [catalogueOpen, setCatalogueOpen] = useState(false);
   const [editing, setEditing] = useState<DashboardCardResource | undefined>();
+  /**
+   * Edit mode: Add, the card menus and drag, and the tiles that have nothing
+   * to show (#Q2649). Out of it the board is a reading surface for everyone,
+   * curators included.
+   */
+  const [editMode, setEditMode] = useState(false);
 
   const projectId = project?.id;
   /**
@@ -111,6 +117,20 @@ const ProjectDashboard = () => {
    */
   const cards = board.projectId === projectId ? board.cards : [];
   const values = board.projectId === projectId ? board.values : undefined;
+
+  /**
+   * The cards a reader sees: every card but the ones whose metric answered
+   * `empty` (#Q2649), which only edit mode shows, collapsed, with the
+   * reason. A reader never sees a permanent zero. Before the first resolve
+   * every card shows, as a skeleton.
+   */
+  const shown = useMemo(() => {
+    if (editMode || !values) return cards;
+    const empty = new Set(
+      values.filter((value) => value.empty).map((value) => value.cardId),
+    );
+    return cards.filter((card) => !empty.has(card.id));
+  }, [cards, values, editMode]);
 
   /**
    * One list-and-resolve per project, and a resolve after each mutation.
@@ -364,18 +384,20 @@ const ProjectDashboard = () => {
       ) : (
         <>
           <ProjectDashboardHeader
-            cardCount={cards.length}
+            cardCount={shown.length}
             refreshedAt={board.refreshedAt}
             canEdit={canEdit}
+            editing={editMode}
+            onToggleEditing={() => setEditMode((on) => !on)}
             onAdd={openCatalogue}
           />
 
           <DashboardGrid
-            cards={cards}
+            cards={shown}
             values={values}
             metrics={metrics}
             boardProjectId={projectId}
-            canEdit={canEdit}
+            canEdit={canEdit && editMode}
             onReorder={(ids) => void reorderAction.run(ids)}
             onAdd={openCatalogue}
             onChangeScope={(card) => {

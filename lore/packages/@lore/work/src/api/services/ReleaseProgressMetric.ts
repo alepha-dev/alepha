@@ -110,7 +110,10 @@ export class ReleaseProgressMetric implements DashboardMetricResolver {
       if (!release) {
         // The project turned `work.releases` off after the card was added.
         // Zero-ish rather than unreadable, the same answer the epic card gives.
-        out.set(entry.card.id, { detail: { hidden: true } });
+        out.set(entry.card.id, {
+          empty: "noRelease",
+          detail: { hidden: true },
+        });
         continue;
       }
 
@@ -127,12 +130,32 @@ export class ReleaseProgressMetric implements DashboardMetricResolver {
         progress.total - progress.completed - progress.inProgress,
       );
 
+      // ⚠️ An OPEN release whose every quest is done is not "100%": it is
+      // waiting on somebody to publish it (Lore's 0.33.0 at 24 of 24 on
+      // 2026-10-14, folio #F1364). The card says that instead of a figure
+      // that reads as finished.
+      const readyToPublish =
+        !release.releasedAt &&
+        denominator > 0 &&
+        progress.completed === denominator;
+
       out.set(entry.card.id, {
+        // Nothing attached to an open release is nothing to measure (#Q2649).
+        // A published one keeps its card: it reports the date.
+        ...(denominator === 0 && !release.releasedAt
+          ? { empty: "noRelease" as const }
+          : {}),
         value:
-          denominator > 0
+          denominator > 0 && !readyToPublish
             ? Math.round((progress.completed / denominator) * 100)
             : undefined,
+        segments: [
+          { label: "done", value: progress.completed, state: "ok" },
+          { label: "inProgress", value: progress.inProgress, state: "accent" },
+          { label: "todo", value: open, state: "neutral" },
+        ],
         detail: {
+          readyToPublish,
           completed: progress.completed,
           inProgress: progress.inProgress,
           shelved: progress.shelved,

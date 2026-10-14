@@ -386,6 +386,10 @@ test.describe("Project dashboard", () => {
     const addCard = async (metric: string, scopeTestId: string) => {
       await page.goto(`/${slug}`);
       await page.waitForLoadState("networkidle");
+      // A board with cards curates in edit mode (#Q2649); an empty one
+      // carries Add itself.
+      const edit = page.getByTestId("dashboard-edit");
+      if (await edit.isVisible()) await edit.click();
       await page.getByTestId("dashboard-add").click();
       await expect(page.getByTestId("dashboard-catalogue")).toBeVisible({
         timeout: 10_000,

@@ -736,7 +736,11 @@ describe("dashboard resolve", () => {
       // EPICS, so a direct `releaseId` count would report 0 of 0 here and
       // disagree with the changelog beside it.
       expect(value.detail.total).toBe(1);
-      expect(value.value).toBe(100);
+      // Its one quest is done and the release is still open: ready to
+      // publish rather than "100%" (#Q2649).
+      expect(value.detail.completed).toBe(1);
+      expect(value.detail.readyToPublish).toBe(true);
+      expect(value.value).toBeUndefined();
     });
 
     it("reads a published release's frozen columns and never recounts it", async ({

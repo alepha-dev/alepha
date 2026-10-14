@@ -95,7 +95,9 @@ export class EpicProgressMetric implements DashboardMetricResolver {
         // Zero rather than unreadable: the project genuinely has no Epics
         // surface any more, the same answer every other metric gives when
         // narrowing empties its scope.
-        out.set(entry.card.id, { detail: { hidden: true } });
+        // `empty` is the data gate (#Q2649): a computed board drops the
+        // tile, a customized one shows the reason in edit mode only.
+        out.set(entry.card.id, { empty: "noEpic", detail: { hidden: true } });
         continue;
       }
 
@@ -117,6 +119,11 @@ export class EpicProgressMetric implements DashboardMetricResolver {
       );
 
       out.set(entry.card.id, {
+        // An epic with no quest at all is nothing to measure (#Q2649). One
+        // whose every quest is shelved still has quests, and keeps its
+        // no-value glyph below.
+        ...(progress.total === 0 ? { empty: "noEpic" as const } : {}),
+        segments: this.segmentsOf(progress, open),
         // An epic with nothing to count, or one whose every quest is shelved,
         // divides by zero. `undefined` renders as the card's no-value glyph
         // rather than as `NaN`, `Infinity` or a misleading 0%.
@@ -148,6 +155,21 @@ export class EpicProgressMetric implements DashboardMetricResolver {
     }
 
     return out;
+  }
+
+  /**
+   * Done, in progress and still to do, for the stacked bar. Shelved quests
+   * are outside the denominator and outside the bar.
+   */
+  protected segmentsOf(
+    progress: { completed: number; inProgress: number },
+    open: number,
+  ): NonNullable<DashboardCardValue["segments"]> {
+    return [
+      { label: "done", value: progress.completed, state: "ok" },
+      { label: "inProgress", value: progress.inProgress, state: "accent" },
+      { label: "todo", value: open, state: "neutral" },
+    ];
   }
 
   /**

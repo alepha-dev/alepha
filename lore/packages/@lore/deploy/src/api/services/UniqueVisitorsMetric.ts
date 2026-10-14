@@ -80,14 +80,18 @@ export class UniqueVisitorsMetric implements DashboardMetricResolver {
   protected async resolveOne(
     entry: DashboardResolvable,
   ): Promise<Omit<DashboardCardValue, "cardId" | "ok" | "scopeNames">> {
-    const beacons = (await this.scopedApps(entry)).filter((sigil) =>
-      sigil.kinds?.includes("beacon"),
-    );
+    const apps = await this.scopedApps(entry);
+    const beacons = apps.filter((sigil) => sigil.kinds?.includes("beacon"));
 
     if (beacons.length === 0) {
       // Deliberately not `value: 0`. "No app is reporting" and "nobody
       // visited" are different facts and only one of them is about traffic.
-      return { detail: { noBeaconApp: true } };
+      // `empty` is the data gate (#Q2649): no app at all, or none with the
+      // beacon kind, and the board never shows this tile as a zero.
+      return {
+        empty: apps.length === 0 ? "noSigil" : "noBeacon",
+        detail: { noBeaconApp: true },
+      };
     }
 
     const daily = await this.visitors.read(beacons.map((it) => it.id));

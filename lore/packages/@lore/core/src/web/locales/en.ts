@@ -2289,6 +2289,9 @@ export default {
   "dashboard.segment.shelved": "shelved",
   "dashboard.segment.held": "on hold",
   "dashboard.marker.deploy": "Deployed",
+  "dashboard.edit": "Edit board",
+  "dashboard.edit.done": "Done",
+  "dashboard.footer.release.ready": "all $1 done, ready to publish",
   "dashboard.refreshed": "Refreshed $1.",
   "dashboard.addCard": "Add card",
 

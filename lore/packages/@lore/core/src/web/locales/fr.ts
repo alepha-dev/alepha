@@ -2276,6 +2276,9 @@ export default {
   "dashboard.segment.shelved": "écartées",
   "dashboard.segment.held": "en pause",
   "dashboard.marker.deploy": "Déployé",
+  "dashboard.edit": "Modifier le tableau",
+  "dashboard.edit.done": "Terminé",
+  "dashboard.footer.release.ready": "les $1 terminées, prête à publier",
   "dashboard.refreshed": "Actualise $1.",
   "dashboard.addCard": "Ajouter une carte",
 

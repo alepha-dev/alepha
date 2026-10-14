@@ -183,6 +183,11 @@ const DashboardCard = (props: DashboardCardProps) => {
         !props.over && "hover:shadow-[inset_0_0_0_1px_var(--border-hover)]",
         props.dragging && "opacity-45",
         props.over && "shadow-[inset_0_0_0_2px_var(--primary)]",
+        // Collapsed: a tile with nothing to show, which only edit mode
+        // renders at all (#Q2649). Dimmed and dashed, so it reads as a slot
+        // waiting for data rather than as a measurement.
+        props.value?.empty &&
+          "border-border border border-dashed bg-transparent opacity-70 shadow-none hover:shadow-none",
       )}
     >
       {/* A drag affordance, pointer-only by nature; the card it belongs to is reachable and actionable by keyboard on its own. */}
