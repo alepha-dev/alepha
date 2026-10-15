@@ -111,7 +111,7 @@ export class LoreAnalyticsStore {
         // returning visitor conflicts on all four or none.
         target: ["sigilId", "day", "visitorHash", "traffic"],
         set: {
-          day: sql`excluded.${sql.raw(this.uniques.table.day.name)}`,
+          day: this.uniques.excluded("day"),
         },
       },
     );

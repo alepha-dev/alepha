@@ -1,4 +1,3 @@
-import { z } from "alepha";
 import { $repository, sql } from "alepha/orm";
 
 import { type Release, releases } from "../entities/releases.ts";
@@ -56,12 +55,6 @@ import { compareReleaseTags, parseReleaseTag } from "../releaseOrder.ts";
  */
 export class DefaultReleaseService {
   releases = $repository(releases);
-
-  /**
-   * The one column the two statements below return. A field rather than a
-   * module-level const, because this repository forbids code outside classes.
-   */
-  protected readonly idOnly = z.object({ id: z.integer() });
 
   /**
    * The row that carries `defaultSince`, whatever state it is in.
@@ -156,25 +149,16 @@ export class DefaultReleaseService {
    *
    * ⚠️ **One statement per direction, and that is the whole design.** See the
    * class doc: a clear-then-set pair has no transaction to make it atomic on
-   * D1.
+   * D1. The swap is one `updateMany` whose `SET` is a `CASE` on the row id.
    *
-   * ⚠️ `RETURNING` is not decoration. `Repository.query` throws `DbError` on a
-   * result that is not an array of rows, which is what an `UPDATE` without it
-   * answers. One column, with its own schema: `RETURNING *` decodes through
-   * the entity schema and SQLite hands `createdAt` back as a number, so the
-   * statement succeeds and the decode throws, which reads as a failed write
-   * that already happened.
-   *
-   * ⚠️ `sql.identifier(t.defaultSince.name)` on the left of the `SET`, not
-   * `${t.defaultSince}`. Interpolating the column object renders it qualified
-   * (`"releases"."default_since"`), which SQLite rejects there. On the right
-   * of `WHERE` the qualified form is what you want, and is what the precedent
-   * does.
+   * `touch: false` because moving intake is bookkeeping, not an edit of either
+   * release: the activity feed reads `updatedAt` (`releaseEvents`), and must
+   * not report both rows as changed.
    *
    * ⚠️ **The target must still be unpublished, and the statement says so**
    * (#Q2550). The caller read it unpublished, but a publish landing in
    * between (which clears `defaultSince` on that row) would otherwise be
-   * overwritten with a default on a published release. The `EXISTS` skips
+   * overwritten with a default on a published release. The `exists` skips
    * the whole swap instead, and the answer says whether the target is now
    * the default.
    *
@@ -188,38 +172,30 @@ export class DefaultReleaseService {
     now: string,
   ): Promise<boolean> {
     if (releaseId == null) {
-      await this.releases.query(
-        (t) => sql`
-          UPDATE ${t}
-          SET ${sql.identifier(t.defaultSince.name)} = NULL
-          WHERE ${t.projectId} = ${projectId}
-            AND ${t.defaultSince} IS NOT NULL
-          RETURNING ${t.id}
-        `,
-        this.idOnly,
+      await this.releases.updateMany(
+        { projectId: { eq: projectId }, defaultSince: { isNotNull: true } },
+        { defaultSince: null },
+        { touch: false },
       );
       return true;
     }
 
-    const rows = await this.releases.query(
-      (t) => sql`
-        UPDATE ${t}
-        SET ${sql.identifier(t.defaultSince.name)} = CASE
-          WHEN ${t.id} = ${releaseId} THEN ${now}
-          ELSE NULL
-        END
-        WHERE ${t.projectId} = ${projectId}
-          AND (${t.id} = ${releaseId} OR ${t.defaultSince} IS NOT NULL)
-          AND EXISTS (
-            SELECT 1 FROM ${t} AS target
-            WHERE target.${sql.identifier(t.id.name)} = ${releaseId}
-              AND target.${sql.identifier(t.projectId.name)} = ${projectId}
-              AND target.${sql.identifier(t.releasedAt.name)} IS NULL
-          )
-        RETURNING ${t.id}
-      `,
-      this.idOnly,
+    const t = this.releases.table;
+    const ids = await this.releases.updateMany(
+      {
+        projectId: { eq: projectId },
+        or: [{ id: { eq: releaseId } }, { defaultSince: { isNotNull: true } }],
+        exists: this.releases.subquery({
+          id: { eq: releaseId },
+          projectId: { eq: projectId },
+          releasedAt: { isNull: true },
+        }),
+      },
+      {
+        defaultSince: sql`CASE WHEN ${t.id} = ${releaseId} THEN ${now} ELSE NULL END`,
+      },
+      { touch: false },
     );
-    return rows.some((row) => row.id === releaseId);
+    return ids.includes(releaseId);
   }
 }

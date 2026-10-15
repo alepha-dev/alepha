@@ -17,10 +17,7 @@ import {
 } from "alepha/orm";
 
 import { quests } from "../entities/quests.ts";
-import {
-  byPriorityDesc,
-  QUEST_PRIORITY_ORDER,
-} from "../schemas/questPriority.ts";
+import { byPriorityDesc } from "../schemas/questPriority.ts";
 import { EpicVisibilityService } from "./EpicVisibilityService.ts";
 import { QuestTagTallyService } from "./QuestTagTallyService.ts";
 
@@ -133,32 +130,31 @@ export class ProjectReportsService {
    * Quests created per day over the project's lifetime, in scope.
    *
    * The burn-up's left half, and the dashboard's burn-up tile (#Q2653) reads
-   * it from here rather than restating the query. `inScope` defaults to the
-   * project's own `questInScope`.
+   * it from here rather than restating the query. `scope` defaults to the
+   * project's own {@link questScope}.
    */
   async createdByDay(
     projectId: number,
-    inScope?: ReturnType<typeof sql>,
+    scope?: PgQueryWhere<typeof quests.schema>,
   ): Promise<Array<{ date: string; count: number }>> {
-    const scope =
-      inScope ??
-      this.questInScope(await this.epicVisibility.draftEpicIds(projectId));
-    const createdAtDay = this.sqlx.dateDay(this.quests.table.createdAt);
-    return this.database.run(
-      sql`
-				SELECT
-					${createdAtDay} as date,
-					COUNT(*) as count
-				FROM ${this.quests.table}
-				WHERE ${this.quests.table.projectId} = ${projectId}
-					AND ${scope}
-				GROUP BY ${createdAtDay}
-			`,
-      z.object({
-        date: z.string(),
-        count: z.coerce.number(),
-      }),
-    );
+    const where =
+      scope ??
+      this.questScope(
+        projectId,
+        await this.epicVisibility.draftEpicIds(projectId),
+      );
+    const rows = await this.quests.aggregate({
+      select: {
+        date: { expr: this.sqlx.dateDay(this.quests.table.createdAt) },
+        quests: { count: { column: "id" } },
+      },
+      where,
+      groupBy: ["date"],
+    });
+    return rows.map((row) => ({
+      date: String(row.date),
+      count: row.quests.count,
+    }));
   }
 
   /**
@@ -167,28 +163,26 @@ export class ProjectReportsService {
    */
   async completedByDay(
     projectId: number,
-    inScope?: ReturnType<typeof sql>,
+    scope?: PgQueryWhere<typeof quests.schema>,
   ): Promise<Array<{ date: string; count: number }>> {
-    const scope =
-      inScope ??
-      this.questInScope(await this.epicVisibility.draftEpicIds(projectId));
-    const completedAtDay = this.sqlx.dateDay(this.quests.table.completedAt);
-    return this.database.run(
-      sql`
-				SELECT
-					${completedAtDay} as date,
-					COUNT(*) as count
-				FROM ${this.quests.table}
-				WHERE ${this.quests.table.projectId} = ${projectId}
-					AND ${scope}
-					AND ${this.quests.table.completedAt} IS NOT NULL
-				GROUP BY ${completedAtDay}
-			`,
-      z.object({
-        date: z.string(),
-        count: z.coerce.number(),
-      }),
-    );
+    const where =
+      scope ??
+      this.questScope(
+        projectId,
+        await this.epicVisibility.draftEpicIds(projectId),
+      );
+    const rows = await this.quests.aggregate({
+      select: {
+        date: { expr: this.sqlx.dateDay(this.quests.table.completedAt) },
+        quests: { count: { column: "id" } },
+      },
+      where: { ...where, completedAt: { isNotNull: true } },
+      groupBy: ["date"],
+    });
+    return rows.map((row) => ({
+      date: String(row.date),
+      count: row.quests.count,
+    }));
   }
 
   /**
@@ -207,65 +201,79 @@ export class ProjectReportsService {
     const organizationId = (
       await this.projects.getOne({ where: { id: { eq: params.id } } })
     ).organizationId!;
-    const inScope = this.questInScope(
+    const scope = this.questScope(
+      params.id,
       await this.epicVisibility.draftEpicIds(params.id),
     );
 
-    const daysAgo = (days: number) => this.sqlx.ago(days, "days");
-    const cycleHours = sql`AVG(${this.sqlx.dateDiff(
+    // Week windows bound on the app clock (`DateTimeProvider`), not the
+    // database's: the where-object encodes them for the column on both
+    // dialects.
+    const weekAgo = this.dt.now().subtract(7, "day").toISOString();
+    const twoWeeksAgo = this.dt.now().subtract(14, "day").toISOString();
+    const cycleHours = this.sqlx.dateDiff(
       this.quests.table.completedAt,
       this.quests.table.acceptedAt,
       "hours",
-    )})`;
-
-    // KPI aggregate — single pass over the project's live quests.
-    const [kpiAgg] = await this.database.run(
-      sql`
-					SELECT
-						COUNT(*) as total_quests,
-						COUNT(CASE WHEN ${this.quests.table.completedAt} IS NOT NULL THEN 1 END) as completed_quests,
-						COUNT(CASE WHEN ${this.quests.table.acceptedAt} IS NOT NULL AND ${this.quests.table.completedAt} IS NULL THEN 1 END) as open_quests,
-						COUNT(CASE WHEN ${this.quests.table.completedAt} >= ${daysAgo(7)} THEN 1 END) as completed_this_week,
-						COUNT(CASE WHEN ${this.quests.table.completedAt} >= ${daysAgo(14)} AND ${this.quests.table.completedAt} < ${daysAgo(7)} THEN 1 END) as completed_last_week,
-						COALESCE((
-							SELECT ${cycleHours}
-							FROM ${this.quests.table}
-							WHERE ${this.quests.table.projectId} = ${params.id}
-								AND ${inScope}
-								AND ${this.quests.table.acceptedAt} IS NOT NULL
-								AND ${this.quests.table.completedAt} IS NOT NULL
-						), 0) as avg_cycle_time_hours
-					FROM ${this.quests.table}
-					WHERE ${this.quests.table.projectId} = ${params.id}
-						AND ${inScope}
-				`,
-      z.object({
-        total_quests: z.coerce.number(),
-        completed_quests: z.coerce.number(),
-        open_quests: z.coerce.number(),
-        completed_this_week: z.coerce.number(),
-        completed_last_week: z.coerce.number(),
-        avg_cycle_time_hours: z.coerce.number(),
-      }),
     );
+
+    // KPI aggregate: single pass over the project's live quests. `column:
+    // "id"` because a conditioned COUNT skips NULLs of the column it counts,
+    // and the key is never null.
+    const [kpiAgg] = await this.quests.aggregate({
+      select: {
+        totalQuests: { count: { column: "id" } },
+        completedQuests: {
+          count: { column: "id", where: { completedAt: { isNotNull: true } } },
+        },
+        openQuests: {
+          count: {
+            column: "id",
+            where: {
+              acceptedAt: { isNotNull: true },
+              completedAt: { isNull: true },
+            },
+          },
+        },
+        completedThisWeek: {
+          count: { column: "id", where: { completedAt: { gte: weekAgo } } },
+        },
+        completedLastWeek: {
+          count: {
+            column: "id",
+            where: { completedAt: { gte: twoWeeksAgo, lt: weekAgo } },
+          },
+        },
+        cycleTime: {
+          avg: {
+            expr: cycleHours,
+            where: {
+              acceptedAt: { isNotNull: true },
+              completedAt: { isNotNull: true },
+            },
+          },
+        },
+      },
+      where: scope,
+    });
 
     const activeMembers = await this.members.count({
       organizationId: { eq: organizationId },
     });
 
     const kpis = {
-      totalQuests: Number(kpiAgg?.total_quests) || 0,
-      completedQuests: Number(kpiAgg?.completed_quests) || 0,
-      openQuests: Number(kpiAgg?.open_quests) || 0,
-      completedThisWeek: Number(kpiAgg?.completed_this_week) || 0,
-      completedLastWeek: Number(kpiAgg?.completed_last_week) || 0,
-      avgCycleTimeHours: Number(kpiAgg?.avg_cycle_time_hours) || 0,
+      totalQuests: Number(kpiAgg?.totalQuests.count) || 0,
+      completedQuests: Number(kpiAgg?.completedQuests.count) || 0,
+      openQuests: Number(kpiAgg?.openQuests.count) || 0,
+      completedThisWeek: Number(kpiAgg?.completedThisWeek.count) || 0,
+      completedLastWeek: Number(kpiAgg?.completedLastWeek.count) || 0,
+      avgCycleTimeHours: Number(kpiAgg?.cycleTime.avg) || 0,
       activeMembers,
     };
 
     // Daily created and completed counts over the project's lifetime.
-    const createdByDay = await this.createdByDay(params.id, inScope);
-    const completedByDay = await this.completedByDay(params.id, inScope);
+    const createdByDay = await this.createdByDay(params.id, scope);
+    const completedByDay = await this.completedByDay(params.id, scope);
 
     // Merge into a sorted date axis and accumulate running totals.
     const createdMap = new Map(
@@ -318,33 +326,49 @@ export class ProjectReportsService {
       });
     }
 
-    // Attention counts.
-    const [attentionAgg] = await this.database.run(
-      sql`
-					SELECT
-						COUNT(CASE WHEN ${this.quests.table.acceptedAt} IS NOT NULL AND ${this.quests.table.completedAt} IS NULL AND ${this.quests.table.acceptedAt} < ${daysAgo(14)} THEN 1 END) as stale_quests,
-						COUNT(CASE WHEN ${this.quests.table.acceptedAt} IS NULL AND ${this.quests.table.completedAt} IS NULL THEN 1 END) as unassigned_quests,
-						COUNT(CASE WHEN ${this.quests.table.completedAt} IS NULL AND ${this.quests.table.dependsOn} IS NOT NULL AND EXISTS (
-							SELECT 1 FROM ${this.quests.table} d
-							WHERE d.id = ${this.quests.table.dependsOn}
-								AND d.completed_at IS NULL
-								AND d.deleted_at IS NULL
-						) THEN 1 END) as blocked_quests
-					FROM ${this.quests.table}
-					WHERE ${this.quests.table.projectId} = ${params.id}
-						AND ${inScope}
-				`,
-      z.object({
-        stale_quests: z.coerce.number(),
-        unassigned_quests: z.coerce.number(),
-        blocked_quests: z.coerce.number(),
-      }),
-    );
+    // Attention counts. A quest is blocked while the one it depends on is
+    // still open: `subquery` correlates through the outer `depends_on`.
+    const [attentionAgg] = await this.quests.aggregate({
+      select: {
+        staleQuests: {
+          count: {
+            column: "id",
+            where: {
+              acceptedAt: { isNotNull: true, lt: twoWeeksAgo },
+              completedAt: { isNull: true },
+            },
+          },
+        },
+        unassignedQuests: {
+          count: {
+            column: "id",
+            where: {
+              acceptedAt: { isNull: true },
+              completedAt: { isNull: true },
+            },
+          },
+        },
+        blockedQuests: {
+          count: {
+            column: "id",
+            where: {
+              completedAt: { isNull: true },
+              dependsOn: { isNotNull: true },
+              exists: this.quests.subquery({
+                id: { eq: this.quests.table.dependsOn },
+                completedAt: { isNull: true },
+              }),
+            },
+          },
+        },
+      },
+      where: scope,
+    });
 
     const attention = {
-      staleQuests: Number(attentionAgg?.stale_quests) || 0,
-      unassignedQuests: Number(attentionAgg?.unassigned_quests) || 0,
-      blockedQuests: Number(attentionAgg?.blocked_quests) || 0,
+      staleQuests: Number(attentionAgg?.staleQuests.count) || 0,
+      unassignedQuests: Number(attentionAgg?.unassignedQuests.count) || 0,
+      blockedQuests: Number(attentionAgg?.blockedQuests.count) || 0,
     };
 
     return {
@@ -369,26 +393,7 @@ export class ProjectReportsService {
   ): Promise<Infer<typeof reportsQuestsSchema>> {
     const params = { id: projectId };
     const draftEpicIds = await this.epicVisibility.draftEpicIds(params.id);
-    const inScope = this.questInScope(draftEpicIds);
     const scope = this.questScope(params.id, draftEpicIds);
-
-    const cycleHours = sql`COALESCE(AVG(${this.sqlx.dateDiff(
-      this.quests.table.completedAt,
-      this.quests.table.acceptedAt,
-      "hours",
-    )}), 0)`;
-    // Built from the shared ordinal rather than restating it, so the one
-    // place that knows `priority` is a text enum stays the only place
-    // that knows. Negated because higher rank means higher urgency and
-    // this ORDER BY is ascending.
-    const priorityOrder = sql`
-				CASE ${this.quests.table.priority}
-					WHEN 'high' THEN ${-QUEST_PRIORITY_ORDER.high}
-					WHEN 'medium' THEN ${-QUEST_PRIORITY_ORDER.medium}
-					WHEN 'low' THEN ${-QUEST_PRIORITY_ORDER.low}
-					WHEN 'optional' THEN ${-QUEST_PRIORITY_ORDER.optional}
-				END
-			`;
 
     // The two halves every breakdown splits on. `column: "id"` because a
     // conditioned COUNT skips NULLs of the column it counts, and the key is
@@ -509,30 +514,35 @@ export class ProjectReportsService {
       )
       .slice(0, 8);
 
-    // Average cycle time per priority — only quests with both timestamps.
-    const cycleTimeQuery = await this.database.run(
-      sql`
-					SELECT
-						${this.quests.table.priority},
-						${cycleHours} as avg_hours
-					FROM ${this.quests.table}
-					WHERE ${this.quests.table.projectId} = ${params.id}
-						AND ${inScope}
-						AND ${this.quests.table.acceptedAt} IS NOT NULL
-						AND ${this.quests.table.completedAt} IS NOT NULL
-					GROUP BY ${this.quests.table.priority}
-					ORDER BY ${priorityOrder}
-				`,
-      z.object({
-        priority: z.string(),
-        avg_hours: z.coerce.number(),
-      }),
-    );
+    // Average cycle time per priority, only quests with both timestamps,
+    // most urgent first.
+    const cycleTimeQuery = await this.quests.aggregate({
+      select: {
+        priority: true,
+        cycleTime: {
+          avg: {
+            expr: this.sqlx.dateDiff(
+              this.quests.table.completedAt,
+              this.quests.table.acceptedAt,
+              "hours",
+            ),
+          },
+        },
+      },
+      where: {
+        ...scope,
+        acceptedAt: { isNotNull: true },
+        completedAt: { isNotNull: true },
+      },
+      groupBy: ["priority"],
+    });
 
-    const cycleTimeByPriority = cycleTimeQuery.map((row) => ({
-      priority: String(row.priority),
-      avgHours: Number(row.avg_hours) || 0,
-    }));
+    const cycleTimeByPriority = cycleTimeQuery
+      .sort(byPriorityDesc)
+      .map((row) => ({
+        priority: String(row.priority),
+        avgHours: Number(row.cycleTime.avg) || 0,
+      }));
 
     // Oldest still-open (accepted, not completed) quests.
     const agingQuery = await this.quests.findMany({
@@ -654,28 +664,25 @@ export class ProjectReportsService {
 
     // Weekly completion buckets per user over (roughly) the last 8 weeks.
     // `week` is a sortable ISO label ("2026-W11") on both dialects.
-    const weekBucket = this.sqlx.dateWeek(this.quests.table.completedAt);
-    const weeksAgo = this.sqlx.ago(56, "days");
-
-    const contributionQuery = await this.database.run(
-      sql`
-					SELECT
-						${weekBucket} as week,
-						${this.quests.table.completedBy} as completed_by,
-						COUNT(*) as count
-					FROM ${this.quests.table}
-					WHERE ${this.quests.table.projectId} = ${params.id}
-						AND ${this.quests.table.completedAt} IS NOT NULL
-						AND ${inScope}
-						AND ${this.quests.table.completedAt} >= ${weeksAgo}
-					GROUP BY week, ${this.quests.table.completedBy}
-				`,
-      z.object({
-        week: z.string(),
-        completed_by: z.string().nullish(),
-        count: z.coerce.number(),
-      }),
-    );
+    const eightWeeksAgo = this.dt.now().subtract(56, "day").toISOString();
+    const contributionQuery = (
+      await this.quests.aggregate({
+        select: {
+          week: { expr: this.sqlx.dateWeek(this.quests.table.completedAt) },
+          completedBy: true,
+          quests: { count: { column: "id" } },
+        },
+        where: {
+          ...scope,
+          completedAt: { isNotNull: true, gte: eightWeeksAgo },
+        },
+        groupBy: ["week", "completedBy"],
+      })
+    ).map((row) => ({
+      week: String(row.week),
+      completed_by: row.completedBy,
+      count: row.quests.count,
+    }));
 
     // Pivot: week axis × contributor name → count.
     const weeks = Array.from(

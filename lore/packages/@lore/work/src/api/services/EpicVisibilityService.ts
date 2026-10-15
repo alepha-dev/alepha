@@ -73,10 +73,16 @@ export class EpicVisibilityService {
     where: PgQueryWhere<typeof quests.schema>,
     projectId: number,
   ): Promise<void> {
-    const epic = this.epics.table;
     where.or = [
       { epicId: { isNull: true } },
-      sql`${this.quests.table.epicId} NOT IN (SELECT ${epic.id} FROM ${epic} WHERE ${epic.projectId} = ${projectId} AND ${epic.status} = 'draft' AND ${epic.deletedAt} IS NULL)` as any,
+      {
+        epicId: {
+          notInArray: this.epics.subquery(
+            { projectId: { eq: projectId }, status: { eq: "draft" } },
+            "id",
+          ),
+        },
+      },
     ];
   }
 

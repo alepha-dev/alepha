@@ -2,7 +2,7 @@ import { projects } from "@lore/core/schemas";
 import { prioritySchema } from "@lore/core/schemas";
 import { type Infer, z } from "alepha";
 import { users } from "alepha/api/users";
-import { $entity, db, sql } from "alepha/orm";
+import { $entity, db } from "alepha/orm";
 
 import { questCommitSchema } from "../schemas/questCommitSchema.ts";
 import { questSourceSchema } from "../schemas/questSourceSchema.ts";
@@ -489,7 +489,8 @@ export const quests = $entity({
      * one term that is not an equality (`IS NULL OR NOT IN (...)`).
      *
      * ⚠️ The three terms in `where` are spelled exactly as `OpenQuestScope`
-     * spells them, as top-level conjuncts. SQLite uses a partial index only
+     * spells them, as top-level conjuncts, and as a where-object (#Q2674) so
+     * they compile the way that scope's own where-object does. SQLite uses a partial index only
      * when it can prove the query's `WHERE` implies the index's, and an
      * identical conjunct is the case it supports. A fourth term added to
      * that scope without being added here is harmless; changing one of these
@@ -498,7 +499,11 @@ export const quests = $entity({
     {
       columns: ["projectId", "deletedAt", "completedAt", "shelvedAt", "epicId"],
       name: "quests_open_idx",
-      where: sql`deleted_at IS NULL AND completed_at IS NULL AND shelved_at IS NULL`,
+      where: {
+        deletedAt: { isNull: true },
+        completedAt: { isNull: true },
+        shelvedAt: { isNull: true },
+      },
     },
   ],
 });

@@ -336,7 +336,10 @@ export class SigilIngestService {
         // clause serves every row in the batch, so `+ ${seen}` would add one
         // row's count to all of them. `excluded` is the row being inserted.
         set: {
-          count: this.cappedSum(this.errorGroups.table.count),
+          count: this.cappedSum(
+            this.errorGroups.table.count,
+            this.errorGroups.excluded("count"),
+          ),
           lastSeenAt: now,
         },
       },
@@ -359,7 +362,10 @@ export class SigilIngestService {
       {
         target: ["projectId", "fingerprint"],
         set: {
-          count: this.cappedSum(this.blights.table.count),
+          count: this.cappedSum(
+            this.blights.table.count,
+            this.blights.excluded("count"),
+          ),
           lastSeenAt: now,
           // Which app reported it last. Deliberately overwritten:
           // "still happening, most recently over there" is the useful fact
@@ -396,13 +402,17 @@ export class SigilIngestService {
   }
 
   /**
-   * `column + excluded.count`, never past {@link maxCount}.
+   * `column + incoming` (the upsert's `excluded.count`), never past
+   * {@link maxCount}.
    *
    * A `CASE` rather than `MIN(a, b)` / `LEAST(a, b)`: SQLite (D1) has only the
    * first and Postgres only the second, and this runs on both.
    */
-  protected cappedSum(column: typeof this.blights.table.count) {
-    return sql`CASE WHEN ${column} + excluded.count > ${this.maxCount} THEN ${this.maxCount} ELSE ${column} + excluded.count END`;
+  protected cappedSum(
+    column: typeof this.blights.table.count,
+    incoming: ReturnType<typeof sql>,
+  ) {
+    return sql`CASE WHEN ${column} + ${incoming} > ${this.maxCount} THEN ${this.maxCount} ELSE ${column} + ${incoming} END`;
   }
 
   /**

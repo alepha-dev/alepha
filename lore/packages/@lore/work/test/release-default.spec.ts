@@ -2,6 +2,7 @@ import { ProjectController } from "@lore/core/api";
 import { Alepha, z } from "alepha";
 import { AuditService } from "alepha/api/audits";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
+import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail } from "alepha/email";
 import { $repository, AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
@@ -15,6 +16,7 @@ import {
   ReleaseController,
 } from "../src/api/index.ts";
 import { LoreWorkApi } from "../src/api/index.ts";
+import { DefaultReleaseService } from "../src/api/services/DefaultReleaseService.ts";
 import { releases } from "../src/schemas/index.ts";
 
 /**
@@ -260,6 +262,64 @@ describe("ReleaseController: the default release", () => {
     const cleared = await setDefault(ctx, user, project.id, null);
 
     expect(cleared.filter((it) => it.defaultSince)).toEqual([]);
+  });
+
+  /**
+   * #Q2674: the swap is `updateMany` with `touch: false`. Moving intake is
+   * bookkeeping, so neither release reads as edited in the activity feed.
+   */
+  it("moves the default without touching either release's updatedAt", async ({
+    expect,
+  }) => {
+    const user = await createTestUser(ctx);
+    const project = await createTestProject(ctx, user);
+    const first = await createRelease(ctx, user, project.id, "0.28.0");
+    const second = await createRelease(ctx, user, project.id, "0.29.0");
+    await setDefault(ctx, user, project.id, first.id);
+    const before = await ctx.probe.releases.findMany({
+      where: { projectId: { eq: project.id } },
+      orderBy: [{ column: "id", direction: "asc" }],
+    });
+
+    await ctx.alepha.inject(DateTimeProvider).travel(60_000);
+    await setDefault(ctx, user, project.id, second.id);
+
+    const after = await ctx.probe.releases.findMany({
+      where: { projectId: { eq: project.id } },
+      orderBy: [{ column: "id", direction: "asc" }],
+    });
+    expect(after.map((it) => it.updatedAt)).toEqual(
+      before.map((it) => it.updatedAt),
+    );
+    expect(after.map((it) => Boolean(it.defaultSince))).toEqual([false, true]);
+  });
+
+  /**
+   * The `exists` guard (#Q2550): a target published between the caller's
+   * read and the swap leaves the old default exactly where it was.
+   */
+  it("swaps nothing when the target was published in between", async ({
+    expect,
+  }) => {
+    const user = await createTestUser(ctx);
+    const project = await createTestProject(ctx, user);
+    const first = await createRelease(ctx, user, project.id, "0.28.0");
+    const second = await createRelease(ctx, user, project.id, "0.29.0");
+    await setDefault(ctx, user, project.id, first.id);
+    await ctx.probe.releases.updateById(second.id, {
+      releasedAt: ctx.alepha.inject(DateTimeProvider).nowISOString(),
+    });
+
+    const swapped = await ctx.alepha
+      .inject(DefaultReleaseService)
+      .set(
+        project.id,
+        second.id,
+        ctx.alepha.inject(DateTimeProvider).nowISOString(),
+      );
+
+    expect(swapped).toBe(false);
+    expect(await defaultTags(ctx, user, project.id)).toEqual(["0.28.0"]);
   });
 
   it("refuses a published release with the reopen-it-first wording", async ({
@@ -703,7 +763,7 @@ describe("QuestController: completing into the default release", () => {
     // The race `publishRelease` itself cannot leave behind, written directly:
     // a row that is published AND still flagged default.
     await ctx.probe.releases.updateById(release.id, {
-      releasedAt: new Date().toISOString(),
+      releasedAt: ctx.alepha.inject(DateTimeProvider).nowISOString(),
     });
 
     const quest = await createQuest(ctx, user, project.id);

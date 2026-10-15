@@ -2,7 +2,7 @@ import { LoreAudits } from "@lore/core/api";
 import { formatReference } from "@lore/core/web";
 import { $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { $repository, DbEntityNotFoundError, sql } from "alepha/orm";
+import { $repository, DbEntityNotFoundError } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 import { BadRequestError } from "alepha/server";
 
@@ -470,6 +470,20 @@ export class EpicWorkflowService {
   }
 
   /**
+   * The open quests of an epic, as a subquery for `notExists`: not completed,
+   * not shelved, not deleted (the repository's own soft-delete filter).
+   * `epicId` is a value for one epic, or the outer `epics.id` column to
+   * correlate over every epic a query reads.
+   */
+  protected openQuestsOf(epicId: number | typeof this.epics.table.id) {
+    return this.quests.subquery({
+      epicId: { eq: epicId },
+      completedAt: { isNull: true },
+      shelvedAt: { isNull: true },
+    });
+  }
+
+  /**
    * Move an `in_progress` epic with no open quest to `completed`, in ONE
    * guarded statement, and say whether it moved (#Q2547).
    *
@@ -480,13 +494,12 @@ export class EpicWorkflowService {
    * changed the row logs it.
    */
   protected async finish(epic: Pick<Epic, "id">): Promise<boolean> {
-    const q = this.quests.table;
     try {
       await this.epics.updateOne(
         {
           id: { eq: epic.id },
           status: { eq: "in_progress" },
-          notExists: sql`(SELECT 1 FROM ${q} WHERE ${q.epicId} = ${epic.id} AND ${q.deletedAt} IS NULL AND ${q.completedAt} IS NULL AND ${q.shelvedAt} IS NULL)`,
+          notExists: this.openQuestsOf(epic.id),
         },
         {
           status: "completed",
@@ -606,7 +619,6 @@ export class EpicWorkflowService {
    * Runs from `EpicJobs.sweep`. No user: the audit row names nobody.
    */
   async sweep(): Promise<{ started: number; completed: number }> {
-    const q = this.quests.table;
     let started = 0;
     let completed = 0;
 
@@ -631,7 +643,7 @@ export class EpicWorkflowService {
     const stuckInProgress = await this.epics.findMany({
       where: {
         status: { eq: "in_progress" },
-        notExists: sql`(SELECT 1 FROM ${q} WHERE ${q.epicId} = ${this.epics.table.id} AND ${q.deletedAt} IS NULL AND ${q.completedAt} IS NULL AND ${q.shelvedAt} IS NULL)`,
+        notExists: this.openQuestsOf(this.epics.table.id),
       },
     });
     for (const epic of stuckInProgress) {
