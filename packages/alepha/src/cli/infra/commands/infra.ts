@@ -907,7 +907,7 @@ export class InfraCommand {
     let hasCron = false;
 
     try {
-      const repo = alepha.inject("RepositoryProvider");
+      const repo = alepha.inject("alepha.orm.RepositoryProvider");
       hasDatabase = repo.getRepositories().length > 0;
     } catch {}
 
@@ -941,7 +941,9 @@ export class InfraCommand {
       // create.
       let hasDatabaseCache = false;
       try {
-        hasDatabaseCache = !!alepha.inject("DatabaseCacheProvider");
+        hasDatabaseCache = !!alepha.inject(
+          "alepha.cache.DatabaseCacheProvider",
+        );
       } catch {}
 
       hasKV =
@@ -960,11 +962,11 @@ export class InfraCommand {
       // `AlephaApiJobsQueue`) means. Same rule as `BuildManifestTask`, which is
       // what actually drives provisioning  -  the two must agree or `plan` lies
       // about what `up` will create.
-      hasQueue = !!alepha.inject("JobQueueProvider");
+      hasQueue = !!alepha.inject("alepha.jobs.JobQueueProvider");
     } catch {}
 
     try {
-      const cron = alepha.inject("CronProvider");
+      const cron = alepha.inject("alepha.scheduler.CronProvider");
       hasCron = cron.getCronJobs().length > 0;
     } catch {}
 

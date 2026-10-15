@@ -22,7 +22,7 @@ class TestDrizzleKitProvider extends DrizzleKitProvider {
   } as any;
 }
 
-describe("DrizzleKitProvider", () => {
+describe("alepha.orm.DrizzleKitProvider", () => {
   /**
    * drizzle-kit v1 moved the programmatic API from `drizzle-kit/api` to
    * per-dialect `drizzle-kit/payload/<dialect>` modules, and dropped the

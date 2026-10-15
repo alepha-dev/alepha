@@ -158,7 +158,9 @@ describe("generic Durable Object build contracts", () => {
     expect(cli.inject(ActorHostCollection).collect(redis)).toEqual([
       ActorHostRegistry.actor,
     ]);
-    expect(redis.inject<any>("NodeActorRedisProvider").isReady).toBe(false);
+    expect(
+      redis.inject<any>("alepha.actor.NodeActorRedisProvider").isReady,
+    ).toBe(false);
     await redis.stop();
   });
 

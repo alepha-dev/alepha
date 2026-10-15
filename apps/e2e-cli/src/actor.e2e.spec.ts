@@ -167,7 +167,7 @@ export class AlephaActorDurableObject extends NativeActor {
   if (action === "put") { await this.ctx.storage.put("actor", value); return; }
   if (action === "raw") return this.ctx.storage.get("actor");
   const app = globalThis.__alepha;
-  const atom = app.inject("ActorRegistry").get("contract.counter").atom;
+  const atom = app.inject("alepha.actor.ActorRegistry").get("contract.counter").atom;
   if (value !== undefined) app.store.set(atom, value);
   return app.store.get(atom);
  }
@@ -183,8 +183,8 @@ export default { async fetch(request, env, context) {
  if (new URL(request.url).pathname !== "/__test/room") return main.fetch(request, env, context);
  const input = await request.json();
  const app = globalThis.__alepha;
- await app.inject("ActorHostRuntime").ensureStarted(env);
- const provider = app.inject("WebSocketServerProvider");
+ await app.inject("alepha.actor.ActorHostRuntime").ensureStarted(env);
+ const provider = app.inject("alepha.websocket.WebSocketServerProvider");
  const result = input.broadcast
   ? await provider.broadcastToRoom("/ws/world", "lobby", input.broadcast)
   : await provider.callRoom("/ws/world", "lobby", input.method, input.args ?? []);

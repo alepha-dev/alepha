@@ -29,6 +29,7 @@ import {
 import { JwtProvider, type SigningConfig } from "./JwtProvider.ts";
 
 export class SecurityProvider {
+  public static readonly id: string = "alepha.security.SecurityProvider";
   protected readonly UNKNOWN_USER_NAME = "Anonymous User";
   protected readonly PERMISSION_REGEXP = /^[\w-]+((:[\w-]+)+)?$/;
   protected readonly PERMISSION_REGEXP_WILDCARD =

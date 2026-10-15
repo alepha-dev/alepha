@@ -40,6 +40,7 @@ export type JobDispatchMessage = Infer<typeof jobDispatchSchema>;
  * internal transport under `$job`, not something an application declares.
  */
 export class JobQueueProvider extends JobDispatcher {
+  public static readonly id: string = "alepha.jobs.JobQueueProvider";
   public readonly kind = "queue" as const;
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();

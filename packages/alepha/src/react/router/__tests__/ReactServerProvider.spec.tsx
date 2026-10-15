@@ -86,7 +86,7 @@ const setup = (env?: any) => {
   return { provider };
 };
 
-describe("ReactServerProvider", () => {
+describe("alepha.react.ReactServerProvider", () => {
   it("preprocessTemplate with existing root div", async ({ expect }) => {
     const { provider } = setup();
 

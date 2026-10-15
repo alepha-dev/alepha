@@ -383,3 +383,9 @@ publish command can load production files without anyone typing
   that ship with the CLI
 - [The Alepha Instance](/docs/guides-core-alepha-instance) for the lifecycle
   `$mode` is pruning
+
+Workerd and native `run()` accept only `{ env }`. The host owns startup on those
+runtimes, so `configure`, `ready` and `once` are not supported. Explicit `env`
+values also apply when the entry is an existing Alepha container. Workerd stores
+the instance in `globalThis.__alepha` for its generated entry; that handshake is
+internal and application code uses its own container reference.

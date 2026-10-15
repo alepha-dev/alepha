@@ -31,7 +31,7 @@ import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
  */
 export class BuildManifestTask extends BuildTask {
   protected readonly hostCollection = $inject(ActorHostCollection);
-  // Looked up by class name string (not by class identity) because build tasks
+  // Looked up by stable service id (not by class identity) because build tasks
   // run in the CLI's Alepha context while ctx.alepha is the workspace's separate
   // context. Two module graphs = two distinct `CloudflareEmailProvider` class
   // objects, so an imported reference here wouldn't match the one the workspace
@@ -143,7 +143,7 @@ export class BuildManifestTask extends BuildTask {
     let crons: string[] = [];
 
     try {
-      const repo = ctx.alepha.inject("RepositoryProvider") as {
+      const repo = ctx.alepha.inject("alepha.orm.RepositoryProvider") as {
         getRepositories?: () => unknown[];
       };
       hasDatabase = (repo.getRepositories?.() ?? []).length > 0;
@@ -204,7 +204,9 @@ export class BuildManifestTask extends BuildTask {
       // answers, which is the ordinary no-database-cache case.
       let hasDatabaseCache = false;
       try {
-        hasDatabaseCache = !!ctx.alepha.inject("DatabaseCacheProvider");
+        hasDatabaseCache = !!ctx.alepha.inject(
+          "alepha.cache.DatabaseCacheProvider",
+        );
       } catch {}
 
       // Explicit memory / Redis / database providers opt out either way.
@@ -223,7 +225,7 @@ export class BuildManifestTask extends BuildTask {
       // There is no queue primitive to count. A Queue binding is needed only
       // when `$job` dispatch is routed through a broker, which is exactly
       // what registering `JobQueueProvider` (via `AlephaApiJobsQueue`) means.
-      hasQueue = !!ctx.alepha.inject("JobQueueProvider");
+      hasQueue = !!ctx.alepha.inject("alepha.jobs.JobQueueProvider");
     } catch {}
 
     const durableObjects = this.hostCollection.collect(ctx.alepha);
@@ -249,7 +251,9 @@ export class BuildManifestTask extends BuildTask {
     } catch {}
 
     try {
-      const cronProvider = ctx.alepha.inject("CronProvider") as {
+      const cronProvider = ctx.alepha.inject(
+        "alepha.scheduler.CronProvider",
+      ) as {
         getCronJobs?: () => Array<{ expression: string }>;
       };
       crons = [

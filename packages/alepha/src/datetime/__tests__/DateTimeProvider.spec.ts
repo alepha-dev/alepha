@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { DateTimeProvider } from "../index.ts";
 
-describe("DateTimeProvider", () => {
+describe("alepha.datetime.DateTimeProvider", () => {
   it("should pause time and reset", async () => {
     const app = Alepha.create();
     const dt = app.inject(DateTimeProvider);

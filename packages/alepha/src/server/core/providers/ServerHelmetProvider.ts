@@ -103,6 +103,7 @@ export interface HstsOptions {
  * to every server response, without external dependencies.
  */
 export class ServerHelmetProvider {
+  public static readonly id: string = "alepha.server.ServerHelmetProvider";
   protected readonly alepha = $inject(Alepha);
 
   /**

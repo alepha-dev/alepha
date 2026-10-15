@@ -1199,7 +1199,7 @@ describe("BuildCloudflareTask", () => {
             options: { channel: { options: { path } } },
           })),
         inject: (name: string) => {
-          if (name === "ActorHostRegistry")
+          if (name === "alepha.actor.ActorHostRegistry")
             return {
               list: () =>
                 Object.values(byName).some((paths) => paths.length)
@@ -1432,7 +1432,7 @@ describe("BuildCloudflareTask", () => {
         manifest: null,
         alepha: {
           inject: (name: string) => {
-            if (name === "JobProvider") {
+            if (name === "alepha.jobs.JobProvider") {
               return {
                 getRegisteredJobs: () =>
                   new Map(
@@ -1443,7 +1443,7 @@ describe("BuildCloudflareTask", () => {
                   ),
               };
             }
-            if (name === "DateTimeProvider") {
+            if (name === "alepha.datetime.DateTimeProvider") {
               return { duration: (value: number) => ({ as: () => value }) };
             }
             throw new AlephaError(`${name} is not in this fake`);

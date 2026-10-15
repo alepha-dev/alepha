@@ -7,21 +7,6 @@ import { CloudflareKVProvider } from "./CloudflareKVProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-/**
- * The name the database cache plugin registers its provider under.
- *
- * ⚠️ **A string, and it has to be.** `alepha/cache/database` imports
- * `alepha/cache`, which under workerd IS this barrel, so naming the class
- * here would be a two-module cycle the build's analyser rejects. The
- * container's own by-name lookup is the seam that carries the reference
- * without the import, and it is the idiom `BuildManifestTask` already uses
- * for `RepositoryProvider` and `JobQueueProvider`.
- *
- * It is therefore a rename hazard with nothing in the type system holding it:
- * `CloudflareCacheProvider.spec.ts` asserts the real class answers to it.
- */
-const DATABASE_CACHE_PROVIDER = "DatabaseCacheProvider";
-
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
@@ -81,6 +66,11 @@ const DATABASE_CACHE_PROVIDER = "DatabaseCacheProvider";
  * underneath it.
  */
 export class CloudflareCacheProvider extends CacheProvider {
+  /**
+   * A stable id avoids a runtime import cycle with alepha/cache/database.
+   */
+  protected static readonly databaseCacheProviderId =
+    "alepha.cache.DatabaseCacheProvider";
   protected readonly alepha = $inject(Alepha);
   protected readonly kv = $inject(CloudflareKVProvider);
   protected readonly log = $logger();
@@ -186,16 +176,15 @@ export class CloudflareCacheProvider extends CacheProvider {
   /**
    * The database cache provider, if this container has one.
    *
-   * `inject()` by name throws when nothing answers to it, which is the
-   * ordinary "this app has no database cache" case rather than a fault, so
-   * the throw is swallowed. The `instanceof` is not belt and braces: the
-   * lookup walks the registry by class NAME, so an unrelated class that
-   * happens to be called `DatabaseCacheProvider` would otherwise be returned
-   * and used as a cache.
+   * Lookup uses the stable id without importing the database module. Absence
+   * is ordinary for an app without a database cache. The instance guard also
+   * refuses an unrelated service that incorrectly declares the cache's id.
    */
   protected resolveDatabaseCache(): CacheProvider | undefined {
     try {
-      const found = this.alepha.inject(DATABASE_CACHE_PROVIDER);
+      const found = this.alepha.inject(
+        CloudflareCacheProvider.databaseCacheProviderId,
+      );
       return found instanceof CacheProvider ? found : undefined;
     } catch {
       return undefined;

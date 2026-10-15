@@ -50,6 +50,7 @@ import { userinfoResponseSchema } from "../schemas/userinfoResponseSchema.ts";
 import { OAuthTokenNormalizer } from "../services/OAuthTokenNormalizer.ts";
 
 export class ServerAuthProvider {
+  public static readonly id: string = "alepha.server.ServerAuthProvider";
   protected readonly tokenNormalizer = $inject(OAuthTokenNormalizer);
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);

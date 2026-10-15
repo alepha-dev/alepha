@@ -3,10 +3,13 @@
 /**
  * In Alepha, a service is a class that can be instantiated or an abstract class. Nothing more, nothing less...
  */
-export type Service<T extends object = any> =
+export type Service<T extends object = any> = (
   | InstantiableClass<T>
   | AbstractClass<T>
-  | RunFunction<T>;
+  | RunFunction<T>
+) & {
+  readonly id?: string;
+};
 
 export type RunFunction<T extends object = any> = (
   ...args: any[]

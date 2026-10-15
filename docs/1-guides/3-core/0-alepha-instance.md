@@ -314,3 +314,13 @@ browser without `Buffer`; its `files` map stores byte arrays. A `FileLike` and
 `readFileStream()` return Web `ReadableStream<Uint8Array>`. Node integrations
 convert native streams at the boundary with `Readable.toWeb()` and
 `Readable.fromWeb()`.
+
+## Stable service IDs
+
+Ordinary application code injects a class: `alepha.inject(MyService)`. Tooling
+that loads a separately bundled application can use a stable string ID instead.
+Declare `static readonly id: string = "myApp.MyService"` on the service and call
+`alepha.inject<MyService>(MyService.id)`. Class names are never matched, so
+minification and renaming do not change the contract. Subclasses inherit the ID,
+and `provide`/`use` substitutions resolve through the same ID. An unknown ID
+throws an error naming it.

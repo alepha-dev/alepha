@@ -273,6 +273,7 @@ export const isDateTime = (value: unknown): value is DateTime => {
  * releasing `CronProvider` waits so scheduled work can be exercised in tests.
  */
 export class DateTimeProvider {
+  public static readonly id: string = "alepha.datetime.DateTimeProvider";
   protected locale = "en";
   protected alepha = $inject(Alepha);
   protected ref: DateTime | null = null;

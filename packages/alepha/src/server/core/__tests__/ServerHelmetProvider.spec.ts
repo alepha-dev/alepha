@@ -11,7 +11,7 @@ class TestApp {
   ping = $action({ method: "GET", handler: () => "pong" });
 }
 
-describe("ServerHelmetProvider", () => {
+describe("alepha.server.ServerHelmetProvider", () => {
   const setupServer = async (options?: HelmetOptions) => {
     const alepha = Alepha.create({
       env: { LOG_LEVEL: "error", SERVER_PORT: 0 },

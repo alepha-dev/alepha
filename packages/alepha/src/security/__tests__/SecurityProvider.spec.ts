@@ -9,7 +9,7 @@ import {
   SecurityProvider,
 } from "../index.ts";
 
-describe("SecurityProvider", () => {
+describe("alepha.security.SecurityProvider", () => {
   it("refuses the default APP_SECRET in production", async () => {
     // AlephaCrypto no longer creates SecretProvider on registration. This
     // module's injection of it is what brings the production guard along.

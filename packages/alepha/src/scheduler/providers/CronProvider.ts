@@ -13,6 +13,7 @@ import { type Cron, parseCronExpression } from "cron-schedule";
  * unless a database is genuinely unavailable.
  */
 export class CronProvider {
+  public static readonly id: string = "alepha.scheduler.CronProvider";
   protected readonly dt = $inject(DateTimeProvider);
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();

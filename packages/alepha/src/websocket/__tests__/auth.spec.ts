@@ -104,6 +104,7 @@ describe("WebSocketServerProvider.resolveUserId with a session cookie", () => {
     const jwt = alepha.inject(JwtProvider);
     let token = "";
     class ServerAuthProvider {
+      public static readonly id: string = "alepha.server.ServerAuthProvider";
       async accessTokenFromCookieHeader(): Promise<string> {
         return token;
       }

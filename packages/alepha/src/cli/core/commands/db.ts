@@ -64,8 +64,9 @@ export class DbCommand {
         this.log.info("No database configured; nothing to check.");
         return;
       }
-      const drizzleKitProvider =
-        alepha.inject<DrizzleKitProvider>("DrizzleKitProvider");
+      const drizzleKitProvider = alepha.inject<DrizzleKitProvider>(
+        "alepha.orm.DrizzleKitProvider",
+      );
       const accepted = new Set<string>([]);
       const drifted: Array<{
         provider: string;
@@ -382,8 +383,9 @@ export class DbCommand {
         });
 
         const repositoryProvider = this.requireDatabase(alepha, "push to");
-        const drizzleKitProvider =
-          alepha.inject<DrizzleKitProvider>("DrizzleKitProvider");
+        const drizzleKitProvider = alepha.inject<DrizzleKitProvider>(
+          "alepha.orm.DrizzleKitProvider",
+        );
         const accepted = new Set<string>([]);
 
         for (const primitive of repositoryProvider.getRepositories()) {
@@ -550,10 +552,10 @@ export class DbCommand {
         this.log.info("No database configured; nothing to audit.");
         return;
       }
-      // By name, like `DrizzleKitProvider` above: the user's container comes
+      // By stable id, like `DrizzleKitProvider` above: the user's container comes
       // from Vite's module graph, so its classes are not the CLI's objects.
       const audit = alepha.inject<SqliteTypeAuditService>(
-        "SqliteTypeAuditService",
+        "alepha.orm.SqliteTypeAuditService",
       );
 
       const seen = new Set<string>();
@@ -670,7 +672,7 @@ export class DbCommand {
     alepha: Alepha,
   ): RepositoryProvider | undefined {
     try {
-      return alepha.inject<RepositoryProvider>("RepositoryProvider");
+      return alepha.inject<RepositoryProvider>("alepha.orm.RepositoryProvider");
     } catch (error) {
       if (!/Service not found/i.test((error as Error)?.message ?? "")) {
         throw error;
@@ -742,8 +744,9 @@ export class DbCommand {
       // 'generate' has nothing to run against.
       this.drizzleActions[options.command] ?? "work with",
     );
-    const drizzleKitProvider =
-      alepha.inject<DrizzleKitProvider>("DrizzleKitProvider");
+    const drizzleKitProvider = alepha.inject<DrizzleKitProvider>(
+      "alepha.orm.DrizzleKitProvider",
+    );
     const accepted = new Set<string>([]);
 
     for (const primitive of repositoryProvider.getRepositories()) {
@@ -1599,9 +1602,9 @@ const vite = Alepha.create().inject(ViteUtils);
 let models;
 try {
   const alepha = await vite.runAlepha({ entry: ${appEntry}, mode: "development" });
-  const kit = alepha.inject("DrizzleKitProvider");
+  const kit = alepha.inject("alepha.orm.DrizzleKitProvider");
   const provider = alepha
-    .inject("RepositoryProvider")
+    .inject("alepha.orm.RepositoryProvider")
     .getRepositories()
     .find((it) => it.provider.name === ${providerName}).provider;
   models = ${getModelsCall};

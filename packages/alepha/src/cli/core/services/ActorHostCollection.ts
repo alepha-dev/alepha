@@ -3,7 +3,7 @@ import type { ActorHostDeclaration, ActorHostRegistry } from "alepha/actor";
 
 import { actorHostDeclarationSchema } from "../schemas/actorHostDeclarationSchema.ts";
 /**
- * Collect serializable declarations from the user's existing graph by name.
+ * Collect serializable declarations from the user's existing graph by stable id.
  * Build probes can have a different class identity from the CLI container.
  */
 export class ActorHostCollection {
@@ -11,11 +11,13 @@ export class ActorHostCollection {
     if (!app) return [];
     let registry: ActorHostRegistry;
     try {
-      registry = app.inject<ActorHostRegistry>("ActorHostRegistry");
+      registry = app.inject<ActorHostRegistry>(
+        "alepha.actor.ActorHostRegistry",
+      );
     } catch (error) {
       if (
         error instanceof Error &&
-        error.message === "Service not found: ActorHostRegistry"
+        error.message === "Service not found: alepha.actor.ActorHostRegistry"
       )
         return [];
       throw error;

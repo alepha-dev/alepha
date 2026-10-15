@@ -67,6 +67,7 @@ import { SSRManifestProvider } from "./SSRManifestProvider.ts";
  * Uses `react-dom/server` under the hood.
  */
 export class ReactServerProvider {
+  public static readonly id: string = "alepha.react.ReactServerProvider";
   /**
    * SSR response headers - pre-allocated to avoid object creation per request.
    */

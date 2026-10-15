@@ -220,7 +220,7 @@ export class ViteDevServerProvider {
    */
   public hasReact(): boolean {
     try {
-      this.alepha?.inject("ReactServerProvider");
+      this.alepha?.inject("alepha.react.ReactServerProvider");
       return true;
     } catch {
       return false;

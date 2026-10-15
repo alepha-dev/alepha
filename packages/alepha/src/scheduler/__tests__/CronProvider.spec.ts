@@ -7,7 +7,7 @@ import { describe, it } from "vitest";
 import "../index.ts";
 import { CronProvider } from "../providers/CronProvider.ts";
 
-describe("CronProvider", () => {
+describe("alepha.scheduler.CronProvider", () => {
   it("should skip overlapping invocations when handler is still running", async ({
     expect,
   }) => {

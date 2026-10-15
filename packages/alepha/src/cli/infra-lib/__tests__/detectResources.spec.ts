@@ -21,7 +21,7 @@ const detectHasKV = (alepha: Alepha): boolean => {
   // that nothing ever wrote to.
   let hasDatabaseCache = false;
   try {
-    hasDatabaseCache = !!alepha.inject("DatabaseCacheProvider");
+    hasDatabaseCache = !!alepha.inject("alepha.cache.DatabaseCacheProvider");
   } catch {}
 
   return (

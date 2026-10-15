@@ -149,7 +149,7 @@ export class BuildHeadersTask extends BuildTask {
    * The headers `ServerHelmetProvider` adds to every response of the app, or
    * none when the app runs without it or turned it off.
    *
-   * Asked for by name, the way `BuildManifestTask` asks for providers: the CLI
+   * Asked for by stable id, the way `BuildManifestTask` asks for providers: the CLI
    * and the app are two module graphs, so a class imported here would never be
    * the one the app registered.
    *
@@ -158,7 +158,9 @@ export class BuildHeadersTask extends BuildTask {
   protected securityHeaders(ctx: BuildTaskContext): Record<string, string> {
     let helmet: { getHeaders?: () => Record<string, string> } | undefined;
     try {
-      helmet = ctx.alepha.inject("ServerHelmetProvider") as typeof helmet;
+      helmet = ctx.alepha.inject(
+        "alepha.server.ServerHelmetProvider",
+      ) as typeof helmet;
     } catch {
       return {};
     }

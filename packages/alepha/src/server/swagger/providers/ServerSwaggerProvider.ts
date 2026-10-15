@@ -63,6 +63,7 @@ declare module "alepha" {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class ServerSwaggerProvider {
+  public static readonly id: string = "alepha.server.ServerSwaggerProvider";
   protected readonly serverStaticProvider = $inject(ServerStaticProvider);
   protected readonly serverRouterProvider = $inject(ServerRouterProvider);
   protected readonly serverProvider = $inject(ServerProvider);

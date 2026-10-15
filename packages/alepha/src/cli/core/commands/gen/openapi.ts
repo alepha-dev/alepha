@@ -105,7 +105,7 @@ export class OpenApiCommand {
    */
   protected async injectSwaggerProvider(alepha: Alepha): Promise<unknown> {
     try {
-      return alepha.inject("ServerSwaggerProvider");
+      return alepha.inject("alepha.server.ServerSwaggerProvider");
     } catch (err) {
       if (!(err instanceof Error) || !err.message.includes("Service not found"))
         throw err;
@@ -116,7 +116,7 @@ export class OpenApiCommand {
 
       alepha.with(AlephaServerSwagger);
 
-      return alepha.inject("ServerSwaggerProvider");
+      return alepha.inject("alepha.server.ServerSwaggerProvider");
     }
   }
 }

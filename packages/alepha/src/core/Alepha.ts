@@ -1213,6 +1213,9 @@ export class Alepha {
 
   /**
    * Get an instance of the specified service from the container.
+   * A string matches the service's stable static `id`, never its class name.
+   * Use strings only across separate module graphs; ordinary code passes a class.
+   * Unknown ids throw an AlephaError naming the requested id.
    *
    * @see {@link InjectOptions} for the available options.
    */
@@ -1257,18 +1260,18 @@ export class Alepha {
 
     if (typeof service === "string") {
       for (const [key, value] of registry.entries()) {
-        if (key.name === service) {
+        if (key.id === service) {
           return value.instance as T;
         }
       }
       // A `provide`/`use` substitution keys the registry by the SUBSTITUTE
-      // class, so a by-name lookup for the substituted base class finds no
+      // class, so a by-id lookup for the substituted base class finds no
       // registry entry — follow the substitution through the class-keyed
       // path exactly as `inject(BaseClass)` would (e.g. the generated
-      // Cloudflare worker entry injecting "WebSocketServerProvider" by name
+      // Cloudflare worker entry injecting "alepha.websocket.WebSocketServerProvider" by id
       // while the websocket module provides it via a substitution).
       for (const key of this.substitutions.keys()) {
-        if (key.name === service) {
+        if (key.id === service) {
           return this.inject(key as Service<T>, { parent, lifetime });
         }
       }

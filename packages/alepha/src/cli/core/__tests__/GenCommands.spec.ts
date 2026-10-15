@@ -76,6 +76,8 @@ describe("gen commands", () => {
   const stubSwagger = (utils: FakeCliUtils) => {
     utils.appGraphModules["alepha/server/swagger"] = {
       AlephaServerSwagger: class ServerSwaggerProvider {
+        public static readonly id: string =
+          "alepha.server.ServerSwaggerProvider";
         public json = undefined;
         public generateSwaggerDoc() {
           return { openapi: "3.0.0", paths: { "/api/hello": {} } };
@@ -94,6 +96,7 @@ describe("gen commands", () => {
     const { cli, openapi, utils, fs } = create();
 
     class ServerSwaggerProvider {
+      public static readonly id: string = "alepha.server.ServerSwaggerProvider";
       public json = undefined;
       public generateSwaggerDoc() {
         return { openapi: "3.0.0", paths: { "/api/hello": {} } };
@@ -131,6 +134,7 @@ describe("gen commands", () => {
 
     // Fails INSIDE the try block, which is where the swallowing happened.
     class ServerSwaggerProvider {
+      public static readonly id: string = "alepha.server.ServerSwaggerProvider";
       public json = undefined;
       public generateSwaggerDoc(): never {
         throw new Error("schema is broken");

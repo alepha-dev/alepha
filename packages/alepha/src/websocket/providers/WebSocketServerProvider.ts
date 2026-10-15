@@ -27,6 +27,8 @@ import type { TWSObject } from "../primitives/$channel.ts";
  * platform-specific providers (Node.js, Browser, etc.)
  */
 export abstract class WebSocketServerProvider {
+  public static readonly id: string =
+    "alepha.websocket.WebSocketServerProvider";
   protected readonly alepha = $inject(Alepha);
   protected readonly originPolicy = $inject(RequestOriginPolicy);
 
@@ -140,7 +142,7 @@ export abstract class WebSocketServerProvider {
   }): Promise<string | undefined> {
     let security: { resolveUserFromServerRequest: Function } | undefined;
     try {
-      security = this.alepha.inject("SecurityProvider") as any;
+      security = this.alepha.inject("alepha.security.SecurityProvider") as any;
     } catch {
       return undefined;
     }
@@ -187,7 +189,7 @@ export abstract class WebSocketServerProvider {
       this.isTrustedHandshakeOrigin(handshake)
     ) {
       try {
-        const auth = this.alepha.inject("ServerAuthProvider") as {
+        const auth = this.alepha.inject("alepha.server.ServerAuthProvider") as {
           accessTokenFromCookieHeader(
             header: string,
           ): Promise<string | undefined>;

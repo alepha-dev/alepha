@@ -53,7 +53,7 @@ export class ViteBuildProvider {
       return true;
     }
     try {
-      this.alepha.inject("ReactServerProvider");
+      this.alepha.inject("alepha.react.ReactServerProvider");
       return true;
     } catch {
       return false;

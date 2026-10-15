@@ -63,6 +63,7 @@ export interface PushSchemaResult {
 }
 
 export class DrizzleKitProvider {
+  public static readonly id: string = "alepha.orm.DrizzleKitProvider";
   protected readonly log = $logger();
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly alepha = $inject(Alepha);

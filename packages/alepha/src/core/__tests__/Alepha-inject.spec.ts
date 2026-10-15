@@ -56,16 +56,17 @@ describe("Alepha#inject", () => {
 
   /**
    * A `provide`/`use` substitution keys the registry by the SUBSTITUTE class,
-   * so a by-name lookup for the substituted base class must follow the
+   * so a by-id lookup for the substituted base class must follow the
    * substitution exactly as an inject-by-class does. The generated Cloudflare
-   * worker entry injects `"WebSocketServerProvider"` by name while the
+   * worker entry injects `"alepha.websocket.WebSocketServerProvider"` by id while the
    * websocket module registers it as `{ provide: WebSocketServerProvider,
    * use: CloudflareDurableObjectWebSocketServerProvider }` — without the
    * fallback every WebSocket upgrade on workerd died with
    * `Service not found: WebSocketServerProvider`.
    */
-  it("should resolve a substituted service by name", ({ expect }) => {
+  it("should resolve a substituted service by id", ({ expect }) => {
     class BaseProvider {
+      public static readonly id: string = "test.BaseProvider";
       who(): string {
         return "base";
       }
@@ -82,12 +83,12 @@ describe("Alepha#inject", () => {
       use: EdgeProvider,
     });
 
-    const byName = alepha.inject<BaseProvider>("BaseProvider");
-    expect(byName).toBeInstanceOf(EdgeProvider);
-    expect(byName.who()).toBe("edge");
+    const byId = alepha.inject<BaseProvider>("test.BaseProvider");
+    expect(byId).toBeInstanceOf(EdgeProvider);
+    expect(byId.who()).toBe("edge");
 
     // Same singleton as the class-keyed path.
-    expect(byName).toBe(alepha.inject(BaseProvider));
+    expect(byId).toBe(alepha.inject(BaseProvider));
   });
 
   it("should handle scoped lifetime", ({ expect }) => {

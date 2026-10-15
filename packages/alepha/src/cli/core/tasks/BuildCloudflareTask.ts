@@ -26,7 +26,7 @@ interface WranglerConfig {
 export class BuildCloudflareTask extends BuildTask {
   protected readonly slices = $inject(BuildSlices);
 
-  // Looked up by class name string (not by class identity) because
+  // Looked up by stable service id (not by class identity) because
   // BuildCloudflareTask runs in the CLI's Alepha context while ctx.alepha
   // is the workspace's separate context. Two module graphs = two distinct
   // `CloudflareEmailProvider` class objects, so the imported reference
@@ -460,12 +460,12 @@ export class BuildCloudflareTask extends BuildTask {
     ctx: BuildTaskContext,
   ): Array<{ name: string; timeoutMs?: number }> {
     try {
-      const provider = ctx.alepha.inject("JobProvider") as {
+      const provider = ctx.alepha.inject("alepha.jobs.JobProvider") as {
         getRegisteredJobs?: () => Map<string, { options: { timeout?: any } }>;
       };
       const registry = provider.getRegisteredJobs?.();
       if (!registry) return [];
-      const dt = ctx.alepha.inject("DateTimeProvider") as {
+      const dt = ctx.alepha.inject("alepha.datetime.DateTimeProvider") as {
         duration: (value: any) => { as: (unit: string) => number };
       };
       return [...registry.entries()].map(([name, registration]) => ({
@@ -486,7 +486,9 @@ export class BuildCloudflareTask extends BuildTask {
     // for an app whose scheduled work is all `$job`.
     let cronProvider: CronProvider | undefined;
     try {
-      cronProvider = ctx.alepha.inject("CronProvider") as WorkerdCronProvider;
+      cronProvider = ctx.alepha.inject(
+        "alepha.scheduler.CronProvider",
+      ) as WorkerdCronProvider;
     } catch {}
     const crons = cronProvider?.getCronJobs();
     if (!crons || crons.length === 0) {
@@ -887,7 +889,7 @@ const pageEdgeFresh = async (cache, key, at) => {
       const url = new URL(request.url);
       const wsPaths = ${JSON.stringify(this.websocketPaths)};
       if (wsPaths.includes(url.pathname)) {
-        const hostRuntime = __alepha.inject("ActorHostRuntime");
+        const hostRuntime = __alepha.inject("alepha.actor.ActorHostRuntime");
 
         try {
           await hostRuntime.ensureStarted(env);
@@ -896,7 +898,7 @@ const pageEdgeFresh = async (cache, key, at) => {
           return new Response("Internal Server Error", { status: 500 });
         }
 
-        const wsProvider = __alepha.inject("WebSocketServerProvider");
+        const wsProvider = __alepha.inject("alepha.websocket.WebSocketServerProvider");
 
         // \`getEndpoint\` covers \`$websocket\` endpoints; a \`$room\` registers on
         // the provider's room registry instead, so fall back to

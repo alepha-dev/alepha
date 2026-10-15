@@ -67,16 +67,11 @@ const bytes = (text: string) => new TextEncoder().encode(text);
  * container has one, KV when it does not.
  */
 describe("CloudflareCacheProvider", () => {
-  /**
-   * ⚠️ The provider reaches the database cache **by class name**, because
-   * importing it would be a two-module cycle. Nothing in the type system
-   * holds that string to the class, so this is the only thing standing
-   * between a rename and a silent, total fallback to KV - which would look
-   * like nothing at all until the next Cloudflare invoice.
-   */
-  describe("the by-name reference", () => {
-    it("names the class alepha/cache/database actually exports", () => {
-      expect(DatabaseCacheProvider.name).toBe("DatabaseCacheProvider");
+  describe("the stable-id reference", () => {
+    it("matches the id exported by alepha/cache/database", () => {
+      expect(DatabaseCacheProvider.id).toBe(
+        "alepha.cache.DatabaseCacheProvider",
+      );
     });
   });
 

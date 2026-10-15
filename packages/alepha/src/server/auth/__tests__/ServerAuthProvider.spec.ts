@@ -103,7 +103,7 @@ class TestAuthApp {
 // Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe("ServerAuthProvider", () => {
+describe("alepha.server.ServerAuthProvider", () => {
   const createApp = () => {
     const alepha = Alepha.create();
     alepha.with(TestAuthApp);
