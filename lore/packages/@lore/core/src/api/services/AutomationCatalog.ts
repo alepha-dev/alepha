@@ -18,6 +18,7 @@ import { AutomationAccess } from "./AutomationAccess.ts";
 import { AutomationChannels } from "./AutomationChannels.ts";
 import { AutomationPersistence } from "./AutomationPersistence.ts";
 import { AutomationReferences } from "./AutomationReferences.ts";
+import { CoreAutomationReferences } from "./CoreAutomationReferences.ts";
 import { DashboardMetricRegistry } from "./DashboardMetricRegistry.ts";
 
 /**
@@ -33,6 +34,7 @@ export class AutomationCatalog {
   protected readonly persistence = $inject(AutomationPersistence);
   protected readonly channels = $inject(AutomationChannels);
   protected readonly references = $inject(AutomationReferences);
+  protected readonly coreReferences = $inject(CoreAutomationReferences);
   protected readonly tokens = $inject(AutomationTemplateTokens);
 
   public entries(): AutomationDescriptor[] {
@@ -109,6 +111,7 @@ export class AutomationCatalog {
     projectId: number,
     user: UserAccountToken,
     input: AutomationRule,
+    overrides: Map<string, AutomationVariable> = new Map(),
   ): Promise<AutomationRule> {
     const parsedRule = automationRuleSchema.safeParse(input);
     if (!parsedRule.success)
@@ -133,9 +136,13 @@ export class AutomationCatalog {
         })
       : [];
     const variables = new Map(
-      (await Promise.all(rows.map((row) => this.variable(context, row)))).map(
-        (row) => [row.key, row],
-      ),
+      (
+        await Promise.all(
+          rows.map((row) =>
+            this.variable(context, overrides.get(row.key) ?? row),
+          ),
+        )
+      ).map((row) => [row.key, row]),
     );
     let source: AutomationDescriptor;
     if (rule.trigger.kind === "event") {
@@ -227,7 +234,7 @@ export class AutomationCatalog {
         `actions[${index}].kind`,
       );
       const { kind, ...values } = action;
-      await this.slots(
+      const resolved = await this.slots(
         projectId,
         descriptor,
         values,
@@ -236,6 +243,15 @@ export class AutomationCatalog {
         `actions[${index}]`,
       );
       if (kind === "notify") {
+        if (typeof resolved.values.recipient === "string") {
+          const reason = await this.coreReferences.recipientReason(
+            projectId,
+            resolved.values.recipient,
+            source,
+          );
+          if (reason)
+            throw new BadRequestError(`actions[${index}].recipient: ${reason}`);
+        }
         if (
           action.category === "releases" &&
           (rule.trigger.kind !== "event" ||
@@ -352,6 +368,19 @@ export class AutomationCatalog {
     return entry;
   }
 
+  public async inspectVariable(
+    projectId: number,
+    user: UserAccountToken,
+    row: AutomationVariable,
+  ) {
+    const context = await this.access.authorize(
+      projectId,
+      user,
+      "automation:read",
+    );
+    return this.variable(context, row);
+  }
+
   protected async variable(
     context: AutomationCatalogContext,
     row: AutomationVariable,
@@ -394,7 +423,7 @@ export class AutomationCatalog {
     };
   }
 
-  protected names(rule: AutomationRule): Set<string> {
+  public names(rule: AutomationRule): Set<string> {
     const names = new Set<string>();
     const visit = (value: unknown): void => {
       if (typeof value === "string")

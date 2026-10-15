@@ -95,6 +95,7 @@ describe("Automation catalogue", () => {
         { key: "apps", options: { track: true, deploy: true } },
       ],
     });
+    await entities.users.updateById(project.createdBy, { roles: ["user"] });
     user = { id: project.createdBy, roles: ["user"] } as UserAccountToken;
   });
   afterEach(async () => {
