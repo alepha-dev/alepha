@@ -2700,6 +2700,17 @@ export default {
   "rank.preset.admin": "Administrateur",
   "rank.preset.contributor": "Contributeur",
   "rank.preset.viewer": "Lecteur",
+  "uptime.since": "Depuis $1",
+  "uptime.certExpiry": "Le certificat expire le $1",
+  "uptime.chartTitle": "Latence moyenne",
+  "uptime.chartNote":
+    "Contrôles réussis uniquement. Les interruptions indiquent une absence de données réussies. La vue sur 24 heures utilise les heures ; les autres utilisent les jours calendaires.",
+  "uptime.incidents": "Historique des incidents",
+  "uptime.incidentLimit":
+    "Les 100 derniers incidents. La mise en pause conserve tout incident en cours.",
+  "uptime.ongoing": "En cours",
+  "uptime.duration": "$1 secondes",
+  "uptime.noIncidents": "Aucun incident enregistré.",
   "uptime.title": "Disponibilité",
   "uptime.empty": "Aucun moniteur pour le moment.",
   "project.capability.apps.option.uptime.label": "Contrôles de santé",

@@ -2709,6 +2709,17 @@ export default {
   "rank.preset.admin": "Admin",
   "rank.preset.contributor": "Contributor",
   "rank.preset.viewer": "Viewer",
+  "uptime.since": "Since $1",
+  "uptime.certExpiry": "Certificate expires $1",
+  "uptime.chartTitle": "Mean latency",
+  "uptime.chartNote":
+    "Successful checks only. Gaps mean no successful samples. The 24-hour view uses hours; longer views use calendar days.",
+  "uptime.incidents": "Incident history",
+  "uptime.incidentLimit":
+    "The latest 100 incidents. Pausing a monitor keeps an existing outage open.",
+  "uptime.ongoing": "Ongoing",
+  "uptime.duration": "$1 seconds",
+  "uptime.noIncidents": "No incidents recorded.",
   "uptime.title": "Uptime",
   "uptime.empty": "No monitors yet.",
   "project.capability.apps.option.uptime.label": "Healthchecks",

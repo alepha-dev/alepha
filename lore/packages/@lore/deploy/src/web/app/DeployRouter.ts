@@ -253,6 +253,18 @@ export class DeployRouter {
     },
   });
 
+  projectMonitor = $pageProject({
+    name: "projectMonitor",
+    path: "/uptime/:monitorId",
+    schema: { params: z.object({ monitorId: z.uuid() }) },
+    lazy: () => import("./components/project/uptime/ProjectMonitor.tsx"),
+    loader: async ({ params }) => {
+      if (!hasCapability(this.alepha.store.get(currentProjectAtom), "apps"))
+        throw new NotFoundError("Apps are not enabled for this project");
+      return { monitorId: params.monitorId };
+    },
+  });
+
   projectApps = $pageProject({
     name: "projectApps",
     path: "/apps",

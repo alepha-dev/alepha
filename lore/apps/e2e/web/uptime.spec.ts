@@ -72,6 +72,15 @@ test.describe("Uptime healthchecks", () => {
       .click();
     let row = page.getByRole("listitem").filter({ hasText: "Web probe" });
     await expect(row).toBeVisible();
+    await row.getByRole("link", { name: "Web probe", exact: true }).click();
+    await expect(
+      page.getByRole("heading", { name: "Web probe", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Incident history", exact: true }),
+    ).toBeVisible();
+    await page.goBack();
+    await expect(row).toBeVisible();
     await row.getByRole("button", { name: "Edit", exact: true }).click();
     dialog = page.getByRole("dialog");
     await dialog

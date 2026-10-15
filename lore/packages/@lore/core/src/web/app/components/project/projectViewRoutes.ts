@@ -78,6 +78,7 @@ const ROUTES_SETTINGS = [
 
 export const ROUTES_FULL_WIDTH = new Set([
   "projectUptime",
+  "projectMonitor",
   // The project's landing page since #Q2104. Full width because it is a grid
   // that lays its own columns out from the space it is given (`auto-fill` over
   // a container query), and a centred 1024px column would both cap the tiles
@@ -161,6 +162,7 @@ export const SECTION_HREF_ROUTES: Record<
   | "projectEpics"
   | "projectQuests"
   | "projectApps"
+  | "projectUptime"
   | "projectReleases"
 > = {
   projectFolios: "projectFolios",
@@ -170,6 +172,7 @@ export const SECTION_HREF_ROUTES: Record<
   projectQuest: "projectQuests",
   projectQuestGraph: "projectQuests",
   projectRelease: "projectReleases",
+  projectMonitor: "projectUptime",
   projectApp: "projectApps",
   projectAppRedirect: "projectApps",
   app: "projectApps",
@@ -186,6 +189,7 @@ export const SECTION_HREF_ROUTES: Record<
 
 export const SECTION_LABEL_KEYS: Record<string, string> = {
   projectUptime: "uptime.title",
+  projectMonitor: "uptime.title",
   // ⚠️ A leaf and the whole section, so it is deliberately absent from
   // `SECTION_HREF_ROUTES` above: an href there would link the page to itself.
   // Same reading as `projectActivity` and `projectInbox` below.

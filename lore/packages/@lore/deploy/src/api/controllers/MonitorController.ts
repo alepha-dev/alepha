@@ -7,6 +7,7 @@ import { $action, okSchema } from "alepha/server";
 import { type Monitor, monitors } from "../entities/monitors.ts";
 import { monitorConfigSchema } from "../schemas/monitorConfigSchema.ts";
 import { monitorCreateResourceSchema } from "../schemas/monitorCreateResourceSchema.ts";
+import { monitorDetailResourceSchema } from "../schemas/monitorDetailResourceSchema.ts";
 import { monitorListQuerySchema } from "../schemas/monitorListQuerySchema.ts";
 import { monitorListResourceSchema } from "../schemas/monitorListResourceSchema.ts";
 import { monitorResourceSchema } from "../schemas/monitorResourceSchema.ts";
@@ -30,6 +31,25 @@ export class MonitorController {
     },
     handler: async ({ params, query }) =>
       this.reads.list(params.projectId, query.window),
+  });
+
+  public readonly getMonitorDetail = $action({
+    method: "GET",
+    path: "/monitors/:monitorId",
+    use: [
+      $ownsProject({
+        repository: () => this.monitors,
+        param: "monitorId",
+        requires: "app:read",
+      }),
+    ],
+    schema: {
+      params: z.object({ monitorId: z.uuid() }),
+      query: monitorListQuerySchema,
+      response: monitorDetailResourceSchema,
+    },
+    handler: async ({ query }) =>
+      this.reads.detail(this.owned.get<Monitor>(), query.window),
   });
 
   public readonly createMonitor = $action({

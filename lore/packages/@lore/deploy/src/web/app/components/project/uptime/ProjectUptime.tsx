@@ -164,6 +164,7 @@ const ProjectUptime = () => {
               <MonitorListRow
                 key={monitor.id}
                 monitor={monitor}
+                href={`/${project.slug}/uptime/${monitor.id}`}
                 canManage={canManage}
                 busy={busy}
                 onEdit={setEditing}

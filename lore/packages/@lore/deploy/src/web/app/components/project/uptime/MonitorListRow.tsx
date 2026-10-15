@@ -7,6 +7,7 @@ import MonitorBeatBar from "./MonitorBeatBar.tsx";
 
 export interface MonitorListRowProps {
   monitor: MonitorListItem;
+  href?: string;
   canManage: boolean;
   busy: boolean;
   onEdit: (monitor: MonitorListItem) => void;
@@ -32,7 +33,15 @@ const MonitorListRow = (props: MonitorListRowProps) => {
   return (
     <li className="grid grid-cols-2 items-center gap-3 border-b p-3 last:border-b-0 xl:grid-cols-[minmax(150px,1.4fr)_85px_85px_85px_minmax(100px,1fr)_auto]">
       <div className="col-span-2 min-w-0 xl:col-span-1">
-        <div className="font-medium">{monitor.name}</div>
+        <div className="font-medium">
+          {props.href ? (
+            <a className="hover:underline" href={props.href}>
+              {monitor.name}
+            </a>
+          ) : (
+            monitor.name
+          )}
+        </div>
         <div
           className="text-muted-foreground truncate text-xs"
           title={monitor.target}

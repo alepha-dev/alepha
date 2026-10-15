@@ -6,6 +6,7 @@ import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
 import { afterEach, describe, it } from "vitest";
 
 import { monitorListItemSchema } from "../src/api/schemas/monitorListItemSchema.ts";
+import MonitorDetailBody from "../src/web/app/components/project/uptime/MonitorDetailBody.tsx";
 import MonitorListRow from "../src/web/app/components/project/uptime/MonitorListRow.tsx";
 
 describe("Monitor list row", () => {
@@ -48,6 +49,7 @@ describe("Monitor list row", () => {
         },
       ],
     });
+    // The same seeded monitor drives the complete detail body, including its chart.
     const props = {
       monitor,
       canManage: true,
@@ -82,6 +84,47 @@ describe("Monitor list row", () => {
           .getAllByRole("button")
           .every((button) => (button as HTMLButtonElement).disabled),
       ).toBe(true);
+      cleanup();
+      const detail = {
+        monitor: { ...monitor, certExpiresAt: "2027-01-15T10:00:00Z" },
+        beats: monitor.beats,
+        uptime: (["24h", "7d", "30d"] as const).map((window) => ({
+          window,
+          uptimePct: 75,
+        })),
+        points: [
+          { bucket: "2026-10-15T09", latencyMs: 100, count: 1 },
+          { bucket: "2026-10-15T10", latencyMs: 120, count: 1 },
+        ],
+        incidents: [
+          {
+            id: crypto.randomUUID(),
+            startedAt: "2026-10-15T09:00:00Z",
+            endedAt: "2026-10-15T09:03:00Z",
+            cause: "timeout",
+            lastError: "Deadline exceeded",
+            durationSecs: 180,
+          },
+        ],
+        estimated: true,
+      };
+      const body = render(
+        <AlephaContext.Provider value={alepha}>
+          <MonitorDetailBody data={detail} />
+        </AlephaContext.Provider>,
+      );
+      expect(body.getAllByText("75%")).toHaveLength(3);
+      expect(body.getByRole("img", { name: "Mean latency" })).toBeTruthy();
+      expect(body.getByText("Deadline exceeded")).toBeTruthy();
+      expect(body.getByText("180 seconds: timeout")).toBeTruthy();
+      expect(body.getByText(/Certificate expires/)).toBeTruthy();
+      expect(body.getByText("Estimated from sampled history.")).toBeTruthy();
+      body.rerender(
+        <AlephaContext.Provider value={alepha}>
+          <MonitorDetailBody data={{ ...detail, estimated: false }} />
+        </AlephaContext.Provider>,
+      );
+      expect(body.queryByText("Estimated from sampled history.")).toBeNull();
     } finally {
       await alepha.stop();
     }

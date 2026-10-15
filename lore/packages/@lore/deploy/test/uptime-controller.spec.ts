@@ -7,6 +7,7 @@ import { afterEach, describe, it } from "vitest";
 import { MonitorController } from "../src/api/controllers/MonitorController.ts";
 import { DeployAnalytics } from "../src/api/entities/deployAnalytics.ts";
 import { monitorHeartbeats } from "../src/api/entities/monitorHeartbeats.ts";
+import { monitorIncidents } from "../src/api/entities/monitorIncidents.ts";
 import { monitors } from "../src/api/entities/monitors.ts";
 import { LoreDeployApi } from "../src/api/index.ts";
 import { DeployTestEntities } from "../src/testing/entities.ts";
@@ -14,6 +15,7 @@ import { DeployTestEntities } from "../src/testing/entities.ts";
 class Repositories extends DeployTestEntities {
   monitors = $repository(monitors);
   beats = $repository(monitorHeartbeats);
+  incidents = $repository(monitorIncidents);
 }
 
 const config = {
@@ -136,6 +138,77 @@ describe("Monitor API", () => {
     expect(listed.data.estimated).toBe(false);
     expect(JSON.stringify(listed.data)).not.toContain(push.data.token!);
     expect(JSON.stringify(listed.data)).not.toContain("pushTokenHash");
+  });
+
+  it("reads exact window ratios, successful latency means, gap buckets and incident durations", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    const created = await ctx.api.createMonitor.fetch(
+      { params: { projectId: ctx.project.id }, body: config },
+      { user: ctx.user },
+    );
+    const monitorId = created.data.monitor.id;
+    const now = ctx.clock.nowMillis();
+    const hour = new Date(now).toISOString().slice(0, 13);
+    const analytics = ctx.alepha.inject(DeployAnalytics);
+    await analytics.probes.record({
+      monitorId,
+      hour,
+      count: 4,
+      up: 3,
+      latencyMs: 360,
+    });
+    await analytics.probes.record({
+      monitorId,
+      hour: new Date(now - 48 * 3_600_000).toISOString().slice(0, 13),
+      count: 6,
+      up: 2,
+      latencyMs: 400,
+    });
+    await ctx.repos.beats.create({
+      monitorId,
+      at: new Date(now).toISOString(),
+      ok: true,
+      latencyMs: 120,
+    });
+    await ctx.repos.incidents.create({
+      monitorId,
+      startedAt: new Date(now - 240_000).toISOString(),
+      endedAt: new Date(now - 60_000).toISOString(),
+      cause: "timeout",
+      lastError: "Deadline exceeded",
+    });
+    const result = (
+      await ctx.api.getMonitorDetail.fetch(
+        { params: { monitorId }, query: { window: "24h" } },
+        { user: ctx.user },
+      )
+    ).data;
+    expect(result.estimated).toBe(false);
+    expect(result.uptime.map((card) => card.uptimePct)).toEqual([75, 50, 50]);
+    expect(result.points).toHaveLength(24);
+    expect(result.points.at(-1)?.latencyMs).toBe(120);
+    expect(result.points[0]?.latencyMs).toBeNull();
+    expect(result.beats).toHaveLength(1);
+    expect(result.incidents[0]?.durationSecs).toBe(180);
+    expect(JSON.stringify(result)).not.toContain("pushTokenHash");
+    const daily = (
+      await ctx.api.getMonitorDetail.fetch(
+        { params: { monitorId }, query: { window: "7d" } },
+        { user: ctx.user },
+      )
+    ).data;
+    expect(daily.points).toHaveLength(7);
+    expect(daily.points.at(-1)?.latencyMs).toBe(120);
+    expect(daily.points.at(-3)?.latencyMs).toBe(200);
+    const stranger = await createTestProject(ctx.alepha);
+    await expect(
+      ctx.api.getMonitorDetail.fetch(
+        { params: { monitorId }, query: { window: "24h" } },
+        { user: { id: stranger.createdBy, roles: ["user"] } },
+      ),
+    ).rejects.toThrow();
   });
 
   it("validates targets and refuses disabled features and another project's monitor", async ({
