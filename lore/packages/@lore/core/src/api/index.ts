@@ -40,6 +40,7 @@ import { CoreDashboardMetrics } from "./schemas/CoreDashboardMetrics.ts";
 import { LorePermissions } from "./security/LorePermissions.ts";
 import { ProjectRankPresets } from "./security/ProjectRankPresets.ts";
 import { ActivityFeedMetric } from "./services/ActivityFeedMetric.ts";
+import { AutomationPersistence } from "./services/AutomationPersistence.ts";
 import { CoreDashboard } from "./services/CoreDashboard.ts";
 import { DashboardAttentionRegistry } from "./services/DashboardAttentionRegistry.ts";
 import { DashboardCardService } from "./services/DashboardCardService.ts";
@@ -143,6 +144,7 @@ export const LoreCoreApi = $module({
     ProjectRankPresets,
     UserDeletionHook,
     OrganizationHooks,
+    AutomationPersistence,
     InvitationNotifications,
     // The inbox half: two templates, and the one HTML escaper the four
     // notification classes share.

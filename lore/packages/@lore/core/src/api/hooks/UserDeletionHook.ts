@@ -1,5 +1,9 @@
 import { $hook, $inject } from "alepha";
 import { NotificationInboxService } from "alepha/api/notifications";
+import { $repository } from "alepha/orm";
+import { ConflictError } from "alepha/server";
+
+import { automations } from "../entities/automations.ts";
 
 /**
  * Refuses to delete an account that still owns projects.
@@ -43,6 +47,7 @@ import { NotificationInboxService } from "alepha/api/notifications";
  * read filters it out — nothing can `assertOwner` on a row nothing returns.
  */
 export class UserDeletionHook {
+  protected readonly automations = $repository(automations);
   protected readonly inbox = $inject(NotificationInboxService);
 
   /**
@@ -69,6 +74,18 @@ export class UserDeletionHook {
       // The organizations module registered its ownership refusal before
       // this application hook, so reaching this handler means deletion will
       // proceed and inbox cleanup cannot run for a refused account.
+      // Include soft-deleted rules: the restrictive FK still preserves their
+      // evidence. Refuse before inbox cleanup, so a refused deletion is inert.
+      if (
+        await this.automations.findOne(
+          { where: { authorUserId: userId } },
+          { force: true },
+        )
+      ) {
+        throw new ConflictError(
+          "Delete your authored automations and their retained evidence before deleting your account",
+        );
+      }
       await this.inbox.deleteForUser(userId);
     },
   });
