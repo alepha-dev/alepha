@@ -24,7 +24,15 @@ export const automationReceipts = $entity({
     }),
     identity: z.string().min(1).max(255),
     kind: z
-      .enum(["occurrence", "action", "recipient", "roster", "chunk", "guard"])
+      .enum([
+        "occurrence",
+        "action",
+        "recipient",
+        "roster",
+        "chunk",
+        "guard",
+        "job_origin",
+      ])
       .meta({ mode: "text" }),
     status: z
       .enum([

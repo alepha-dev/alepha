@@ -1019,6 +1019,7 @@ export class AutomationClaims {
     const now = this.dateTime.nowISOString();
     const rows = await this.persistence.receipts.findMany({
       where: {
+        kind: { ne: "job_origin" },
         status: {
           inArray: ["committed", "skipped", "refused", "failed", "unknown"],
         },
@@ -1031,6 +1032,7 @@ export class AutomationClaims {
     if (!rows.length) return 0;
     return (
       await this.persistence.receipts.deleteMany({
+        kind: { ne: "job_origin" },
         id: { inArray: rows.map((row) => row.id) },
         status: {
           inArray: ["committed", "skipped", "refused", "failed", "unknown"],

@@ -1,10 +1,11 @@
 import { LoreAudits } from "@lore/core/api";
+import type { Project } from "@lore/core/schemas";
 import { formatReference } from "@lore/core/web";
 import { $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, DbEntityNotFoundError } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
-import { BadRequestError } from "alepha/server";
+import { BadRequestError, ConflictError } from "alepha/server";
 
 import { type Epic, epics } from "../entities/epics.ts";
 import { type Quest, quests } from "../entities/quests.ts";
@@ -12,6 +13,7 @@ import { workRelations } from "../relations/workRelations.ts";
 import type { ReleaseCascade } from "../schemas/releaseCascadeSchema.ts";
 import { DefaultReleaseService } from "./DefaultReleaseService.ts";
 import { ReleaseCascadeService } from "./ReleaseCascadeService.ts";
+import { WorkAutomationSources } from "./WorkAutomationSources.ts";
 
 /**
  * The action a caller is about to take on a quest, as the word the refusal
@@ -83,6 +85,7 @@ export type EpicPlanEdit =
  * (`EpicController.shelveEpic`, through `QuestShelvingService`).
  */
 export class EpicWorkflowService {
+  protected readonly automationSources = $inject(WorkAutomationSources);
   protected readonly epics = $repository(epics);
   protected readonly epicsWith = $repository(workRelations, "epics");
   protected readonly quests = $repository(quests);
@@ -460,11 +463,12 @@ export class EpicWorkflowService {
     quest: Pick<Quest, "shortId" | "epicId">,
     user: UserAccountToken | undefined,
     known?: Epic | null,
+    project?: Project,
   ): Promise<void> {
     const epic = await this.epicFor(quest, known);
     if (!epic || epic.status !== "in_progress") return;
 
-    if (await this.finish(epic)) {
+    if (await this.finish(epic, project)) {
       await this.logStatus(epic, "completed", user, { quest: quest.shortId });
     }
   }
@@ -493,22 +497,34 @@ export class EpicWorkflowService {
    * completions would both log the move. Only the request whose statement
    * changed the row logs it.
    */
-  protected async finish(epic: Pick<Epic, "id">): Promise<boolean> {
+  protected async finish(epic: Epic, project?: Project): Promise<boolean> {
     try {
-      await this.epics.updateOne(
+      await this.automationSources.completeEpic(
+        epic,
         {
           id: { eq: epic.id },
           status: { eq: "in_progress" },
           notExists: this.openQuestsOf(epic.id),
         },
-        {
-          status: "completed",
-          completedAt: this.dt.nowISOString(),
-        },
+        this.dt.nowISOString(),
+        project,
       );
       return true;
     } catch (error) {
       if (error instanceof DbEntityNotFoundError) return false;
+      if (error instanceof ConflictError) {
+        const current = await this.epics.findById(epic.id);
+        if (
+          !current ||
+          current.status !== "in_progress" ||
+          (await this.quests.count({
+            epicId: epic.id,
+            completedAt: { isNull: true },
+            shelvedAt: { isNull: true },
+          })) > 0
+        )
+          return false;
+      }
       throw error;
     }
   }

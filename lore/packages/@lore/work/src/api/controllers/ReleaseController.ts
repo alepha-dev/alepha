@@ -33,8 +33,10 @@ import {
   ReleaseContentService,
 } from "../services/ReleaseContentService.ts";
 import { ReleaseNotifier } from "../services/ReleaseNotifier.ts";
+import { WorkAutomationSources } from "../services/WorkAutomationSources.ts";
 
 export class ReleaseController {
+  protected readonly automationSources = $inject(WorkAutomationSources);
   releases = $repository(releases);
   quests = $repository(quests);
   dt = $inject(DateTimeProvider);
@@ -391,27 +393,32 @@ export class ReleaseController {
       const { markdown, groups } = this.renderChangelog(withTitle, contents);
       const progress = this.contents.progressOf(release, contents);
 
-      const published = await this.releases.updateById(release.id, {
-        releasedAt: this.dt.nowISOString(),
-        // Publishing is the natural end of being the intake point, and
-        // clearing it here is not optional: without it the next quest
-        // completion tries to attach to a published release,
-        // `ReleaseAttachmentService.assertOpen` refuses, and the quest cannot
-        // close. In the patch this action already builds rather than a second
-        // write, because there is no transaction on D1 to make two atomic.
-        // Handing it on to the next release is `handDefaultOn`, below, and
-        // is the part allowed to fail.
-        //
-        // `reopenRelease` deliberately does NOT restore it: reopening says the
-        // record was wrong, not that intake should resume here.
-        defaultSince: null,
-        changelog: markdown,
-        // Frozen TOGETHER with the markdown. See `releaseChangelogGroupSchema`
-        // for the asymmetry this replaces.
-        changelogGroups: groups,
-        ...progress,
-        ...(body.title ? { title: body.title } : {}),
-      });
+      const published = await this.automationSources.publish(
+        release,
+        {
+          releasedAt: this.dt.nowISOString(),
+          // Publishing is the natural end of being the intake point, and
+          // clearing it here is not optional: without it the next quest
+          // completion tries to attach to a published release,
+          // `ReleaseAttachmentService.assertOpen` refuses, and the quest cannot
+          // close. In the patch this action already builds rather than a second
+          // write, because there is no transaction on D1 to make two atomic.
+          // Handing it on to the next release is `handDefaultOn`, below, and
+          // is the part allowed to fail.
+          //
+          // `reopenRelease` deliberately does NOT restore it: reopening says the
+          // record was wrong, not that intake should resume here.
+          defaultSince: null,
+          changelog: markdown,
+          // Frozen TOGETHER with the markdown. See `releaseChangelogGroupSchema`
+          // for the asymmetry this replaces.
+          changelogGroups: groups,
+          ...progress,
+          ...(body.title ? { title: body.title } : {}),
+        },
+        user.id,
+        contents.quests.length,
+      );
 
       // Publishing is one-way and freezes the record, which is exactly what
       // makes it worth a row.

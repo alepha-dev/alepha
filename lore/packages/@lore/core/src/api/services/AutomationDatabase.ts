@@ -1,7 +1,8 @@
 import { $inject, Alepha, AlephaError } from "alepha";
-import { DatabaseProvider, type SQLLike } from "alepha/orm";
+import { DatabaseProvider, sql, type SQLLike } from "alepha/orm";
 
 import { AutomationD1Provider } from "../providers/AutomationD1Provider.ts";
+import { AutomationSqliteProvider } from "../providers/AutomationSqliteProvider.ts";
 
 /**
  * Bounded internal statements only. There is no public SQL or callback
@@ -25,6 +26,26 @@ export class AutomationDatabase {
     return this.database.dialect === "sqlite" ? millis : value;
   }
 
+  public numberFields(
+    payload: object,
+    fields: Record<string, SQLLike>,
+  ): SQLLike {
+    let value = sql`${JSON.stringify(payload)}`;
+    for (const [name, expression] of Object.entries(fields)) {
+      if (!/^[A-Za-z0-9_]+$/.test(name))
+        throw new AlephaError("Invalid computed source field");
+      const query =
+        typeof expression === "string"
+          ? sql.raw(expression)
+          : expression.getSQL();
+      value =
+        this.database.dialect === "sqlite"
+          ? sql`json_set(${value}, ${`$.fields.${name}`}, ${query})`
+          : sql`jsonb_set((${value})::jsonb, ${`{fields,${name}}`}, COALESCE(to_jsonb(${query}), 'null'::jsonb))`;
+    }
+    return value;
+  }
+
   public async batch(
     statements: SQLLike[],
   ): Promise<Array<Record<string, unknown>[]>> {
@@ -34,7 +55,10 @@ export class AutomationDatabase {
       );
     return this.primary(async () => {
       try {
-        if (this.database instanceof AutomationD1Provider)
+        if (
+          this.database instanceof AutomationD1Provider ||
+          this.database instanceof AutomationSqliteProvider
+        )
           return await this.database.atomicBatch(statements);
         if (!this.database.supportsTransactions)
           throw new AlephaError(

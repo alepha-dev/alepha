@@ -3,12 +3,16 @@ import { DateTimeProvider } from "alepha/datetime";
 import { DbCacheProvider, sql, type SQLLike } from "alepha/orm";
 import { ConflictError } from "alepha/server";
 
-import type { AutomationEvent } from "../entities/automationEvents.ts";
+import {
+  type AutomationEvent,
+  automationEvents,
+} from "../entities/automationEvents.ts";
 import {
   automationEventPayloadSchema,
   type AutomationEventPayload,
 } from "../schemas/automationEventPayloadSchema.ts";
 import { AutomationAtomic } from "./AutomationAtomic.ts";
+import { AutomationBatchRepository } from "./AutomationBatchRepository.ts";
 import { AutomationCatalog } from "./AutomationCatalog.ts";
 import { AutomationDatabase } from "./AutomationDatabase.ts";
 import { AutomationPersistence } from "./AutomationPersistence.ts";
@@ -18,6 +22,9 @@ import { AutomationPersistence } from "./AutomationPersistence.ts";
  * the same native batch. Dispatch is recoverable from the table after a crash.
  */
 export class AutomationEvents {
+  protected readonly eventRows = $inject(
+    AutomationBatchRepository.of(automationEvents),
+  );
   protected readonly atomic = $inject(AutomationAtomic);
   protected readonly database = $inject(AutomationDatabase);
   protected readonly persistence = $inject(AutomationPersistence);
@@ -45,22 +52,58 @@ export class AutomationEvents {
     condition: SQLLike;
     mutation: SQLLike;
     changedTables: string[];
-  }): Promise<{ event: AutomationEvent; committed: boolean }> {
+    numbers?: Record<string, SQLLike>;
+  }): Promise<{
+    event: AutomationEvent;
+    committed: boolean;
+    rows?: Record<string, unknown>[];
+  }> {
     return this.database.primary(async () => {
-      const existing = await this.persistence.events.findOne({
-        where: { projectId: input.projectId, identity: input.identity },
-      });
-      if (existing) return { event: existing, committed: false };
       const now = this.dateTime.nowISOString();
       const replayUntil = this.dateTime.now().add(90, "days").toISOString();
       const id = crypto.randomUUID();
-      const payload = this.payload(input.name, input.fields);
+      const payload = this.payload(input.name, {
+        ...input.fields,
+        ...Object.fromEntries(
+          Object.keys(input.numbers ?? {}).map((key) => [
+            key,
+            Number.MIN_SAFE_INTEGER,
+          ]),
+        ),
+      });
+      for (const key of Object.keys(input.numbers ?? {})) {
+        const descriptor = this.catalog
+          .entries()
+          .find((entry) => entry.key === input.name);
+        if (descriptor?.fields[key] !== "number")
+          throw new AlephaError(
+            "Computed event fields must be declared numbers",
+          );
+      }
+      const encoded = input.numbers
+        ? this.database.numberFields(
+            payload,
+            Object.fromEntries(
+              Object.entries(input.numbers).filter(
+                ([key]) => !payload.omitted.includes(key),
+              ),
+            ),
+          )
+        : JSON.stringify(payload);
+      let rows: Record<string, unknown>[] | undefined;
+      let event: AutomationEvent;
       try {
-        await this.atomic.guarded(input.projectId, input.condition, [
-          input.mutation,
-          sql`INSERT INTO automation_events (id, version, project_id, identity, name, occurred_at, replay_until, payload, created_at, updated_at)
-              VALUES (${id}, 0, ${input.projectId}, ${input.identity}, ${input.name}, ${this.database.timestamp(now)}, ${this.database.timestamp(replayUntil)}, ${JSON.stringify(payload)}, ${this.database.timestamp(now)}, ${this.database.timestamp(now)})`,
-        ]);
+        const batch = await this.atomic.guarded(
+          input.projectId,
+          input.condition,
+          [
+            input.mutation,
+            sql`INSERT INTO automation_events (id, version, project_id, identity, name, occurred_at, replay_until, payload, created_at, updated_at)
+              VALUES (${id}, 0, ${input.projectId}, ${input.identity}, ${input.name}, ${this.database.timestamp(now)}, ${this.database.timestamp(replayUntil)}, ${encoded}, ${this.database.timestamp(now)}, ${this.database.timestamp(now)}) RETURNING *`,
+          ],
+        );
+        rows = batch[1];
+        event = this.eventRows.decodeRaw(batch[2][0]);
       } catch {
         const recorded = await this.persistence.events.findOne({
           where: { projectId: input.projectId, identity: input.identity },
@@ -77,8 +120,9 @@ export class AutomationEvents {
       ]))
         await this.cache.invalidateTable(table);
       return {
-        event: await this.persistence.events.getById(id),
+        event,
         committed: true,
+        rows,
       };
     });
   }

@@ -4,6 +4,7 @@ import {
   AutomationDatabase,
   AutomationDispatchRegistry,
   AutomationEvents,
+  AutomationEventDispatch,
   AutomationPersistence,
   AutomationRoster,
   AutomationRunEvidence,
@@ -20,6 +21,8 @@ import {
   TestEntityRepositories,
   createTestProject,
 } from "./fixtures/entities.ts";
+
+class DeferredEventDispatch {}
 
 describe("Durable automation dispatch", () => {
   let alepha: Alepha;
@@ -121,6 +124,10 @@ describe("Durable automation dispatch", () => {
   beforeEach(async () => {
     alepha = Alepha.create({
       env: { DATABASE_URL: ":memory:", SERVER_PORT: 0, LOG_LEVEL: "error" },
+    });
+    alepha.with({
+      provide: AutomationEventDispatch,
+      use: DeferredEventDispatch,
     });
     bootLore(alepha, ["api"]);
     entities = alepha.inject(TestEntityRepositories);

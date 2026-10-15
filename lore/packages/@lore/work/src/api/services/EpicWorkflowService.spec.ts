@@ -1,5 +1,7 @@
+import { AutomationSqliteProvider } from "@lore/core/api";
 import { $inject, Alepha } from "alepha";
 import { audits } from "alepha/api/audits";
+import { DatabaseProvider } from "alepha/orm";
 import { $repository } from "alepha/orm";
 import { describe, it } from "vitest";
 
@@ -710,6 +712,7 @@ describe("EpicWorkflowService without transactions", () => {
         DATABASE_TRANSACTIONS: false,
       },
     });
+    alepha.with({ provide: DatabaseProvider, use: AutomationSqliteProvider });
     const app = alepha.inject(TestApp);
     const log = alepha.inject(StatusAudits);
     await alepha.start();

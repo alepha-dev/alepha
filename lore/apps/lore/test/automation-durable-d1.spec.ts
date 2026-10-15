@@ -12,6 +12,7 @@ import {
   AutomationRunEvidence,
 } from "@lore/core/api";
 import type { AutomationRule } from "@lore/core/schemas";
+import { FeedbackController } from "@lore/work/api";
 import { Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { DatabaseProvider, sql, type D1Database } from "alepha/orm";
@@ -126,6 +127,25 @@ describe("Durable automation primitives on local D1", () => {
       await provider.execute(
         "CREATE TABLE automation_d1_effects (id TEXT PRIMARY KEY NOT NULL, hits INTEGER NOT NULL)",
       );
+      const submitted = await alepha
+        .inject(FeedbackController)
+        .submitFeedback.fetch(
+          {
+            params: { projectId: project.id },
+            body: {
+              title: "Native D1 feedback",
+              description: "Source adapter proof",
+            },
+          },
+          { user: { id: project.createdBy, roles: ["user"] } },
+        );
+      const captured = await persistence.events.getOne({
+        where: { name: "feedback.created" },
+      });
+      expect(captured.payload.fields).toMatchObject({
+        feedback_id: submitted.data.id,
+        title: "Native D1 feedback",
+      });
       const rule: AutomationRule = {
         version: 1,
         trigger: { kind: "event", event: "feedback.created" },

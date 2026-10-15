@@ -777,9 +777,9 @@ describe("a deployment", () => {
       await expect(
         registry.line(crypto.randomUUID(), "against a row that is not there"),
       ).resolves.toBeUndefined();
-      await expect(
-        registry.failed(crypto.randomUUID(), "gone"),
-      ).resolves.toBeUndefined();
+      await expect(registry.failed(crypto.randomUUID(), "gone")).resolves.toBe(
+        false,
+      );
     });
 
     it("runs with no row at all", async ({ expect }) => {

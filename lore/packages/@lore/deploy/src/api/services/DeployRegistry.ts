@@ -4,6 +4,7 @@ import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 
 import { type Deployment, deployments } from "../entities/deployments.ts";
+import { DeployAutomationSources } from "./DeployAutomationSources.ts";
 
 /**
  * One line of a deploy's log.
@@ -43,6 +44,7 @@ export class DeployRegistry {
   protected readonly log = $logger();
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly rows = $repository(deployments);
+  protected readonly automationSources = $inject(DeployAutomationSources);
 
   /**
    * How many lines one deploy's log keeps.
@@ -88,11 +90,11 @@ export class DeployRegistry {
   public async succeeded(
     deploymentId: string | undefined,
     outcome: { url?: string; versionId?: string } = {},
-  ): Promise<void> {
+  ): Promise<boolean> {
     if (outcome.url) {
       await this.line(deploymentId, `Deployed to ${outcome.url}`);
     }
-    await this.patch(deploymentId, {
+    return this.patch(deploymentId, {
       status: "succeeded",
       url: outcome.url,
       versionId: outcome.versionId,
@@ -103,11 +105,11 @@ export class DeployRegistry {
   public async failed(
     deploymentId: string | undefined,
     reason?: string,
-  ): Promise<void> {
+  ): Promise<boolean> {
     if (reason) {
       await this.line(deploymentId, `Failed: ${reason}`);
     }
-    await this.patch(deploymentId, {
+    return this.patch(deploymentId, {
       status: "failed",
       error: reason?.slice(0, 2_000),
       finishedAt: new Date(this.dateTime.nowMillis()).toISOString(),
@@ -202,14 +204,19 @@ export class DeployRegistry {
   protected async patch(
     deploymentId: string | undefined,
     values: Partial<Deployment>,
-  ): Promise<void> {
-    if (!deploymentId) {
-      return;
-    }
+  ): Promise<boolean> {
+    if (!deploymentId) return false;
     try {
+      if (values.status === "succeeded" || values.status === "failed")
+        return await this.automationSources.terminal(deploymentId, values);
       await this.rows.updateById(deploymentId, values as never);
+      return true;
     } catch (error) {
-      this.log.warn("Could not record a deploy status", { error });
+      this.log.warn(
+        "Could not record a deploy status and its automation event",
+        { deploymentId, requestedStatus: values.status, error },
+      );
+      return false;
     }
   }
 }

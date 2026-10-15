@@ -218,3 +218,5 @@ export { QuestCsvFormatter } from "./services/QuestCsvFormatter.ts";
 export { QuestService } from "./services/QuestService.ts";
 export { QuestTagTallyService } from "./services/QuestTagTallyService.ts";
 export { ReleaseContentService } from "./services/ReleaseContentService.ts";
+
+export { EpicWorkflowService } from "./services/EpicWorkflowService.ts";

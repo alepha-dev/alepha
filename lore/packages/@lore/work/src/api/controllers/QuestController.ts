@@ -64,8 +64,10 @@ import { QuestResourceMapper } from "../services/QuestResourceMapper.ts";
 import { QuestService } from "../services/QuestService.ts";
 import { QuestShelvingService } from "../services/QuestShelvingService.ts";
 import { ReleaseAttachmentService } from "../services/ReleaseAttachmentService.ts";
+import { WorkAutomationSources } from "../services/WorkAutomationSources.ts";
 
 export class QuestController {
+  protected readonly automationSources = $inject(WorkAutomationSources);
   /**
    * What `updateQuestById` still accepts once a quest is completed.
    *
@@ -2647,7 +2649,10 @@ export class QuestController {
         );
       }
 
-      await this.quests.save(quest);
+      await this.automationSources.completeQuest(
+        quest,
+        this.owned.authority<Project>(),
+      );
 
       // The tail, concurrently (#Q2637): none of the three reads what
       // another writes. What a failure halfway leaves behind is what the
@@ -2679,6 +2684,7 @@ export class QuestController {
             quest,
             user,
             epic?.status === "ready" ? undefined : (epic ?? null),
+            this.owned.authority<Project>(),
           );
         })(),
       ]);
