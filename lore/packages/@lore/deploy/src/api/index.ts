@@ -25,6 +25,7 @@ import { EstateCommandJobs } from "./jobs/EstateCommandJobs.ts";
 import { EstateCredentialJobs } from "./jobs/EstateCredentialJobs.ts";
 import { QualityJobs } from "./jobs/QualityJobs.ts";
 import { SigilJobs } from "./jobs/SigilJobs.ts";
+import { UptimeRetentionJobs } from "./jobs/UptimeRetentionJobs.ts";
 import { EstateNotifications } from "./notifications/EstateNotifications.ts";
 import { AppHealthMetric } from "./services/AppHealthMetric.ts";
 import { AppSecretService } from "./services/AppSecretService.ts";
@@ -101,6 +102,7 @@ export const LoreDeployApi = $module({
     QualityTrendMetric,
     DeployProjectCounts,
     BlightJobs,
+    UptimeRetentionJobs,
     SigilJobs,
     QualityJobs,
     EstateCommandJobs,
