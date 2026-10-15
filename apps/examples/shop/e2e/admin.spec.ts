@@ -383,6 +383,42 @@ test.describe("the header's way in", () => {
 
     await expect(page).toHaveURL(/\/admin\/produits/);
   });
+
+  /**
+   * The header reads the visitor, yet the page is shared (#E78): the account
+   * button sits in `<Personal>`, so the cached HTML holds a placeholder and
+   * each visitor's own button appears after hydration, from their own private
+   * state. A page cached by an anonymous visitor must give an administrator
+   * their account menu, and give the next anonymous visitor the sign-in icon.
+   */
+  test("a cached page shows each visitor their own account button", async ({
+    page,
+    browser,
+  }) => {
+    const anonymous = await browser.newPage();
+    await anonymous.goto("/atelier");
+    // Filled at stream end, after the last byte left.
+    await anonymous.waitForTimeout(200);
+
+    await signInAsAdmin(page);
+    const response = await page.goto("/atelier");
+    expect(response?.headers()["x-alepha-cache"]).toBe("hit; verdict=variant");
+    await expect(
+      page.getByRole("button", { name: "Mon compte" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /Se connecter|Sign in/ }),
+    ).toHaveCount(0);
+
+    await anonymous.reload();
+    await expect(
+      anonymous.getByRole("button", { name: /Se connecter|Sign in/ }),
+    ).toBeVisible();
+    await expect(
+      anonymous.getByRole("button", { name: "Mon compte" }),
+    ).toHaveCount(0);
+    await anonymous.close();
+  });
 });
 
 /**

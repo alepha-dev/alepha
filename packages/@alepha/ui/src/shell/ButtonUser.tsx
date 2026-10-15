@@ -1,24 +1,12 @@
-import * as React from "react";
-
-void React;
-
-import { useAuth } from "alepha/react/auth";
-import { LogIn, User } from "lucide-react";
+import { Personal } from "alepha/react";
 import type { ReactNode } from "react";
 
-import { Button } from "../core/Button.tsx";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "../core/DropdownMenu.tsx";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../core/Tooltip.tsx";
-import { UserAvatar } from "../core/UserAvatar.tsx";
 import { ButtonUserAccountMenuItem } from "./ButtonUserAccountMenuItem.tsx";
 import { ButtonUserAdminMenuItem } from "./ButtonUserAdminMenuItem.tsx";
-import { ButtonUserDefaultMenu } from "./ButtonUserDefaultMenu.tsx";
+import { ButtonUserContent } from "./ButtonUserContent.tsx";
 import { ButtonUserEmail } from "./ButtonUserEmail.tsx";
 import { ButtonUserLogoutMenuItem } from "./ButtonUserLogoutMenuItem.tsx";
+import { ButtonUserPlaceholder } from "./ButtonUserPlaceholder.tsx";
 
 export interface ButtonUserProps {
   /**
@@ -105,71 +93,18 @@ export interface ButtonUserProps {
  *   <DropdownMenuSeparator />
  *   <ButtonUser.LogoutMenuItem />
  * </ButtonUser>
+ *
+ * The button reads the visitor, so it is wrapped in `<Personal>`: a page
+ * showing it is still cached for everyone (#E78), with a placeholder of the
+ * same size in the shared HTML, replaced by the real button right after
+ * hydration from the visitor's own state. On a page that is personal anyway,
+ * the server renders the real button.
  */
-export const ButtonUser = (props: ButtonUserProps) => {
-  const auth = useAuth();
-
-  if (!auth.user) {
-    const signInLabel = props.signInLabel ?? "Sign in";
-    return (
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <Button
-              variant={props.variant ?? "minimal"}
-              size="icon"
-              aria-label={signInLabel}
-              disabled={!props.onSignIn}
-              onClick={props.onSignIn}
-            />
-          }
-        >
-          <LogIn className="size-4" />
-        </TooltipTrigger>
-        <TooltipContent>{signInLabel}</TooltipContent>
-      </Tooltip>
-    );
-  }
-
-  const menuLabel = props.menuLabel ?? "Account menu";
-  const face =
-    props.avatar ??
-    (auth.user.picture ? (
-      <UserAvatar fileId={auth.user.picture} className="size-7" />
-    ) : (
-      <User className="size-4" />
-    ));
-  return (
-    <DropdownMenu>
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <DropdownMenuTrigger
-              render={
-                <Button
-                  variant={props.variant ?? "minimal"}
-                  size="icon"
-                  aria-label={menuLabel}
-                />
-              }
-            />
-          }
-        >
-          {/* The tooltip and `aria-label` are untouched by the avatar: a
-              face is not a label, and "Account menu" is still the accessible
-              name of the button. */}
-          {face}
-        </TooltipTrigger>
-        <TooltipContent>{menuLabel}</TooltipContent>
-      </Tooltip>
-      <DropdownMenuContent align="end" className="w-56">
-        {props.children ?? (
-          <ButtonUserDefaultMenu onAdminClick={props.onAdminClick} />
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-};
+export const ButtonUser = (props: ButtonUserProps) => (
+  <Personal fallback={<ButtonUserPlaceholder variant={props.variant} />}>
+    <ButtonUserContent {...props} />
+  </Personal>
+);
 
 ButtonUser.Email = ButtonUserEmail;
 ButtonUser.AdminMenuItem = ButtonUserAdminMenuItem;
