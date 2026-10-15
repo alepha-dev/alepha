@@ -9,6 +9,7 @@ export * from "./errors/ValidationError.ts";
 export * from "./helpers/isMultipart.ts";
 export * from "./helpers/ServerReply.ts";
 export * from "./interfaces/ServerRequest.ts";
+export * from "./primitives/$error.ts";
 export * from "./schemas/errorSchema.ts";
 export * from "./schemas/healthSchema.ts";
 export * from "./schemas/versionSchema.ts";

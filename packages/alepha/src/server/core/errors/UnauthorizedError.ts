@@ -1,6 +1,12 @@
 import { HttpError } from "./HttpError.ts";
 
 export class UnauthorizedError extends HttpError {
+  static readonly code = "UnauthorizedError";
+
+  static {
+    HttpError.register(this);
+  }
+
   readonly name = "UnauthorizedError";
 
   constructor(

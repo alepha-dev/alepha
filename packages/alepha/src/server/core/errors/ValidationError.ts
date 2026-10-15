@@ -3,6 +3,12 @@ import { SchemaValidationError } from "alepha";
 import { HttpError } from "./HttpError.ts";
 
 export class ValidationError extends HttpError {
+  static readonly code = "ValidationError";
+
+  static {
+    HttpError.register(this);
+  }
+
   constructor(message = "Validation has failed", cause?: unknown) {
     let fullMessage = message;
     let details: string | undefined;

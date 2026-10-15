@@ -330,8 +330,10 @@ if (subpathViolations.length > 0) {
  * touch" this file warns about above. Add a tree here once it is clean,
  * never an exemption inside one.
  *
- * Only service-shaped directories count. A `schemas/`, `entities/` or
- * `atoms/` file is module-level constants by definition - that IS the file.
+ * Only service-shaped directories count. A `schemas/`, `entities/`,
+ * `atoms/` or `errors/` file is module-level constants by definition - that
+ * IS the file (an `$error` constant is declared once at module level, like
+ * an `$atom`).
  * `controllers/` and `jobs/` ARE service-shaped: both hold DI classes whose
  * members a test substitutes, so a helper beside one is as unreachable as a
  * helper beside a provider.
