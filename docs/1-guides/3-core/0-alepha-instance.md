@@ -285,3 +285,9 @@ class PayloadSigner {
   }
 }
 ```
+
+Password hashes carry their scrypt parameters in a PHC string. After a successful
+`verifyPassword`, use `needsRehash` to decide whether to replace a stored hash;
+the built-in password login does this automatically. Existing `salt:hex` hashes
+remain readable. Encryption writes `v1:iv:tag:ct` and reads both that form and the
+legacy three-part form. Passphrase envelopes require `v: 1`.

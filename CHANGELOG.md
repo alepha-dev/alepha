@@ -2,6 +2,8 @@
 
 ### Breaking Changes
 
+- **crypto formats**: new password hashes use PHC `$scrypt$ln=14,r=8,p=1$<salt base64>$<hash base64>` with raw salt bytes. Legacy `salt:hex` hashes still verify, and successful password logins upgrade legacy or weaker hashes through `needsRehash`. New AES-GCM ciphertexts are `v1:iv:tag:ct`; legacy three-part strings still decrypt. Unknown ciphertext and passphrase-envelope versions are refused. Deploy readers that understand the new formats before sharing newly written values with older instances.
+
 - **crypto**: `hash`, `hmac`, `verifyHmac`, `encrypt` and `decrypt` return promises on every runtime. Await each call. Digest names are `sha256`, `sha384` or `sha512` (default `sha256`); browser callers replace uppercase names such as `SHA-256` with `sha256`. MD5 is refused. ETags change once to SHA-256 truncated to 32 hex characters. `ServerEtagProvider.generateETag`, notification `urlFor`/`mint`/`verify`, OTA link `create`/`verify`, and cart `lineKey` also become async. Browser password operations reject with the existing unsupported-operation error.
 
 - **cli**: `defineConfig` now validates configuration at import time and refuses unknown keys deeply. Retired paths name their replacements: `build.docker` to top-level `image`, `build.target` to `alepha build --runtime`, `image.image` to flat `image`, and `services` to `plugins`. A plain object default export is refused; export `defineConfig({ ... })` or an explicit custom function.

@@ -19,13 +19,12 @@ import {
 } from "./CryptoProviderBase.ts";
 
 export class CryptoProvider extends CryptoProviderBase {
-  protected static readonly SCRYPT_OPTIONS: ScryptOptions = {
+  protected static readonly LEGACY_SCRYPT_OPTIONS: ScryptOptions = {
     N: 16384,
     r: 8,
     p: 1,
   };
-  protected static readonly SCRYPT_KEY_LENGTH = 64;
-  protected static readonly SALT_LENGTH = 16;
+  protected static readonly LEGACY_SCRYPT_KEY_LENGTH = 64;
   protected static readonly AES_ALGORITHM = "aes-256-gcm";
   protected static readonly AES_IV_LENGTH = 12;
   protected static readonly AES_TAG_LENGTH = 16;
@@ -39,53 +38,54 @@ export class CryptoProvider extends CryptoProviderBase {
   protected uuidV7Counter = 0;
 
   public async hashPassword(password: string): Promise<string> {
-    const salt = randomBytes(CryptoProvider.SALT_LENGTH).toString("hex");
-    const derivedKey = (await this.scryptAsync(
+    const salt = randomBytes(this.passwordParameters.saltLength);
+    const derivedKey = await this.scryptAsync(
       password,
       salt,
-      CryptoProvider.SCRYPT_KEY_LENGTH,
-      CryptoProvider.SCRYPT_OPTIONS,
-    )) as Buffer;
-    return `${salt}:${derivedKey.toString("hex")}`;
+      this.passwordParameters.keyLength,
+      {
+        N: 2 ** this.passwordParameters.ln,
+        r: this.passwordParameters.r,
+        p: this.passwordParameters.p,
+      },
+    );
+    return this.encodePasswordHash(salt, derivedKey);
   }
 
   public async verifyPassword(
     password: string,
     stored: string,
   ): Promise<boolean> {
-    if (!stored || typeof stored !== "string") {
-      return false;
-    }
-
-    const parts = stored.split(":");
-    if (parts.length !== 2) {
-      return false;
-    }
-
-    const [salt, originalHex] = parts;
-
-    if (!salt || !originalHex) {
-      return false;
-    }
-
-    if (originalHex.length % 2 !== 0 || !/^[0-9a-f]+$/i.test(originalHex)) {
-      return false;
-    }
-
+    if (!stored || typeof stored !== "string") return false;
     try {
-      const derivedKey = (await this.scryptAsync(
-        password,
-        salt,
-        CryptoProvider.SCRYPT_KEY_LENGTH,
-        CryptoProvider.SCRYPT_OPTIONS,
-      )) as Buffer;
-      const originalKey = Buffer.from(originalHex, "hex");
-
-      if (derivedKey.length !== originalKey.length) {
-        return false;
+      const parsed = this.parsePasswordHash(stored);
+      if (parsed) {
+        const derived = await this.scryptAsync(
+          password,
+          parsed.salt,
+          parsed.hash.length,
+          { N: 2 ** parsed.ln, r: parsed.r, p: parsed.p },
+        );
+        return timingSafeEqual(derived, parsed.hash);
       }
-
-      return timingSafeEqual(derivedKey, originalKey);
+      // Legacy salts were hex text, not decoded bytes. Preserve that derivation.
+      const parts = stored.split(":");
+      if (
+        parts.length !== 2 ||
+        !parts[0] ||
+        !/^(?:[0-9a-f]{2})+$/i.test(parts[1]!)
+      )
+        return false;
+      const original = Buffer.from(parts[1]!, "hex");
+      const derived = await this.scryptAsync(
+        password,
+        parts[0],
+        CryptoProvider.LEGACY_SCRYPT_KEY_LENGTH,
+        CryptoProvider.LEGACY_SCRYPT_OPTIONS,
+      );
+      return (
+        derived.length === original.length && timingSafeEqual(derived, original)
+      );
     } catch {
       return false;
     }
@@ -129,16 +129,15 @@ export class CryptoProvider extends CryptoProviderBase {
       cipher.final(),
     ]);
     const tag = cipher.getAuthTag();
-    return `${iv.toString("hex")}:${tag.toString("hex")}:${encrypted.toString("hex")}`;
+    return this.encodeCiphertext(
+      iv.toString("hex"),
+      tag.toString("hex"),
+      encrypted.toString("hex"),
+    );
   }
 
   public async decrypt(ciphertext: string, key: string): Promise<string> {
-    const parts = ciphertext.split(":");
-    if (parts.length !== 3) {
-      throw new AlephaError("Invalid ciphertext format");
-    }
-
-    const [ivHex, tagHex, encryptedHex] = parts;
+    const [ivHex, tagHex, encryptedHex] = this.decodeCiphertext(ciphertext);
     const keyBuffer = this.deriveAesKey(key);
     const decipher = createDecipheriv(
       CryptoProvider.AES_ALGORITHM,
@@ -259,7 +258,7 @@ export class CryptoProvider extends CryptoProviderBase {
 
   protected scryptAsync(
     password: string,
-    salt: string,
+    salt: string | Uint8Array,
     keylen: number,
     options: ScryptOptions,
   ): Promise<Buffer> {
@@ -343,6 +342,7 @@ export class CryptoProvider extends CryptoProviderBase {
     const subtle = (globalThis as { crypto: { subtle: SubtleCrypto } }).crypto
       .subtle;
     let parsed: {
+      v?: number;
       salt?: string;
       iv?: string;
       ciphertext?: string;
@@ -353,6 +353,7 @@ export class CryptoProvider extends CryptoProviderBase {
     } catch {
       throw new AlephaError("Invalid protected envelope");
     }
+    this.assertEnvelopeVersion(parsed?.v);
     if (!parsed.salt || !parsed.iv || !parsed.ciphertext) {
       throw new AlephaError("Invalid protected envelope");
     }

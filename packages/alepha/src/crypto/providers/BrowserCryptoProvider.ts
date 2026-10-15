@@ -87,16 +87,15 @@ export class BrowserCryptoProvider extends CryptoProviderBase {
     const encryptedBytes = new Uint8Array(encrypted);
     const ciphertext = encryptedBytes.slice(0, -16);
     const tag = encryptedBytes.slice(-16);
-    return `${this.toHex(iv)}:${this.toHex(tag)}:${this.toHex(ciphertext)}`;
+    return this.encodeCiphertext(
+      this.toHex(iv),
+      this.toHex(tag),
+      this.toHex(ciphertext),
+    );
   }
 
   public async decrypt(ciphertext: string, key: string): Promise<string> {
-    const parts = ciphertext.split(":");
-    if (parts.length !== 3) {
-      throw new AlephaError("Invalid ciphertext format");
-    }
-
-    const [ivHex, tagHex, encryptedHex] = parts;
+    const [ivHex, tagHex, encryptedHex] = this.decodeCiphertext(ciphertext);
     const iv = this.fromHex(ivHex!);
     const tag = this.fromHex(tagHex!);
     const encrypted = this.fromHex(encryptedHex!);
@@ -372,6 +371,7 @@ export class BrowserCryptoProvider extends CryptoProviderBase {
     } catch {
       throw new AlephaError("Invalid passphrase envelope");
     }
+    this.assertEnvelopeVersion(parsed?.v);
     if (!parsed.salt || !parsed.iv || !parsed.ciphertext) {
       throw new AlephaError("Invalid passphrase envelope");
     }

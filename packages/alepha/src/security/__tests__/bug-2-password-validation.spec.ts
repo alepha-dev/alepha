@@ -215,8 +215,10 @@ describe("Bug #2: Password Verification Missing Input Validation", () => {
     for (const password of passwords) {
       const hashed = await crypto.hashPassword(password);
 
-      // Verify format is correct (salt:hash with 128 hex chars for hash)
-      expect(hashed).toMatch(/^[0-9a-f]+:[0-9a-f]{128}$/i);
+      // PHC carries the scrypt parameters, a 16-byte salt and a 64-byte hash.
+      expect(hashed).toMatch(
+        /^\$scrypt\$ln=14,r=8,p=1\$[A-Za-z0-9+/]{22}\$[A-Za-z0-9+/]{86}$/,
+      );
 
       // Correct password should verify
       expect(await crypto.verifyPassword(password, hashed)).toBe(true);

@@ -8,7 +8,7 @@ describe("CryptoProvider", () => {
     const crypto = Alepha.create().inject(CryptoProvider);
 
     const hash = await crypto.hashPassword("secret123");
-    expect(hash).toContain(":");
+    expect(hash).toMatch(/^\$scrypt\$ln=14,r=8,p=1\$/);
     expect(await crypto.verifyPassword("secret123", hash)).toBe(true);
   });
 

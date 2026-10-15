@@ -1,3 +1,5 @@
+import { scryptSync } from "node:crypto";
+
 import { Alepha, AlephaError } from "alepha";
 import { ActorProvider, type ActorRequest } from "alepha/actor";
 import { CacheProvider } from "alepha/cache";
@@ -125,6 +127,45 @@ const setup = async (options?: {
 };
 
 describe("alepha/api/users - SessionService.login", () => {
+  for (const format of ["legacy", "weak"] as const) {
+    it(`upgrades a ${format} password only after successful login`, async ({
+      expect,
+    }) => {
+      const { sessionService, userService, cryptoProvider, identities } =
+        await setup();
+      const email = `rehash-${format}@example.com`;
+      const user = await userService
+        .users()
+        .create({ username: `rehash-${format}`, email, roles: ["user"] });
+      const salt = "00112233445566778899aabbccddeeff";
+      const password = "securePassword123!";
+      const rawSalt = Buffer.from(salt, "hex");
+      const stored =
+        format === "legacy"
+          ? `${salt}:${scryptSync(password, salt, 64, { N: 16384, r: 8, p: 1 }).toString("hex")}`
+          : `$scrypt$ln=13,r=8,p=1$${rawSalt.toString("base64").replace(/=+$/, "")}$${scryptSync(password, rawSalt, 64, { N: 8192, r: 8, p: 1 }).toString("base64").replace(/=+$/, "")}`;
+      const identity = await identities.create({
+        provider: "local",
+        providerUserId: email,
+        userId: user.id,
+        password: stored,
+      });
+      await expect(
+        sessionService.login("local", email, "wrong"),
+      ).rejects.toThrow(InvalidCredentialsError);
+      expect((await identities.getById(identity.id)).password).toBe(stored);
+      expect((await sessionService.login("local", email, password)).id).toBe(
+        user.id,
+      );
+      const upgraded = (await identities.getById(identity.id)).password!;
+      expect(upgraded).toMatch(/^\$scrypt\$ln=14,r=8,p=1\$/);
+      expect(cryptoProvider.needsRehash(upgraded)).toBe(false);
+      expect(await cryptoProvider.verifyPassword(password, upgraded)).toBe(
+        true,
+      );
+    });
+  }
+
   it("should login successfully with valid credentials", async ({ expect }) => {
     const { sessionService, userService, cryptoProvider, identities } =
       await setup();
