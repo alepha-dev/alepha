@@ -14,6 +14,8 @@ import {
   metaOptions,
 } from "alepha/cli";
 
+import { CliConfigValidator } from "./CliConfigValidator.ts";
+
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface AlephaCliConfig {
@@ -78,7 +80,8 @@ export interface AlephaCliConfig {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export const defineConfig = (config: AlephaCliConfig) => {
+export const defineConfig = (input: AlephaCliConfig) => {
+  const config = CliConfigValidator.parse(input);
   return (alepha: Alepha) => {
     if (config.plugins) {
       for (const it of config.plugins) {

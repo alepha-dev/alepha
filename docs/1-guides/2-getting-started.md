@@ -360,3 +360,7 @@ src/
 | `schemas/`     | Shared Zod schemas              | `userSchema.ts`      |
 | `atoms/`       | State definitions with `$atom`  | `currentUserAtom.ts` |
 | `components/`  | React components                | `UserCard.tsx`       |
+
+## Configuration validation
+
+Export `defineConfig({ ... })` from `alepha.config.ts`. It validates the CLI atom schemas when imported, before applying any setting. Unknown keys are refused at every declared object level with their full path, and retired keys name their replacements. Arbitrary Cloudflare config and environment maps keep their open keys. `plugins` is an array of services or plugin factories; a custom function default export opts out of `defineConfig` validation. A plain object default export is refused.

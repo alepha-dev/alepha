@@ -2,6 +2,8 @@
 
 ### Breaking Changes
 
+- **cli**: `defineConfig` now validates configuration at import time and refuses unknown keys deeply. Retired paths name their replacements: `build.docker` to top-level `image`, `build.target` to `alepha build --runtime`, `image.image` to flat `image`, and `services` to `plugins`. A plain object default export is refused; export `defineConfig({ ... })` or an explicit custom function.
+
 - **cli**: `-t` means `--tag` only. Use long `compile --target` and `gen changelog --to`. Rename `compile --out` and `gen env/openapi --out` to `--output` (`-o` stays). Replace config `services` with `plugins`; `build.runtimes` is internal, use `build.runtime`. Camel-case flags also parse as kebab-case, which help displays. Image and pack read `build.output.dist`.
 
 - **cli**: artifacts require `manifestVersion: 2`. Every CLI reader refuses missing or unsupported majors; rebuild old artifacts. Lore and Bay must accept and require version 2. Additive fields keep the same major. Flatten `image.image` into `image`, move OCI fields into `image.labels`, and pass `image.args` as an array of separate arguments.
