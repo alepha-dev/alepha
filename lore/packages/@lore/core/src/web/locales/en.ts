@@ -2443,6 +2443,11 @@ export default {
   "dashboard.clause.appHealth.one": "1 app copy needs a look",
   "dashboard.clause.recentFolios": "$1 folios were edited lately",
   "dashboard.clause.recentFolios.one": "1 folio was edited lately",
+  "dashboard.archived.title": "This project is archived",
+  "dashboard.archived.body":
+    "It has no board any more. What it kept is still here to read.",
+  "dashboard.archived.folios": "Open its folios",
+  "dashboard.archived.quests": "Open its quests",
   "dashboard.refreshed": "Refreshed $1.",
   "dashboard.addCard": "Add card",
 

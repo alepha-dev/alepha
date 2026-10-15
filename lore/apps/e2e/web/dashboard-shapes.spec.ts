@@ -183,6 +183,25 @@ test.describe("Computed project board", () => {
       expect(shown.some(([slot]) => slot === "apps")).toBe(false);
     });
 
+    await test.step("an archived project's root is a notice linking its folios, not a redirect", async () => {
+      const { id, slug } = await createProjectViaWizard(
+        page,
+        `PSE${t}`.slice(0, 20),
+      );
+      await send(page, "POST", `/api/projects/${id}/archive`, {});
+
+      await page.goto(`/${slug}`);
+      await page.waitForLoadState("networkidle");
+      // The URL does not move (#Q2662): the root renders, it never redirects.
+      expect(new URL(page.url()).pathname).toBe(`/${slug}`);
+      await expect(page.getByTestId("dashboard-archived")).toBeVisible();
+      await expect(page.getByTestId("dashboard-card")).toHaveCount(0);
+      await expect(page.getByTestId("dashboard-archived-link")).toHaveAttribute(
+        "href",
+        new RegExp(`/${slug}/folios`),
+      );
+    });
+
     await test.step("turning Releases on changes the board on the next visit, writing nothing", async () => {
       await setCapability(page, workProject.id, "work", {
         options: { releases: true },

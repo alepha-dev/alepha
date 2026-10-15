@@ -364,6 +364,16 @@ export class CoreRouter {
       if (!project) {
         throw new NotFoundError("Project not found");
       }
+      // An archived project has no board to read (#Q2662): the page renders
+      // its notice, and nothing redirects.
+      if (project.archivedAt) {
+        this.alepha.store.set(projectDashboardAtom, {
+          projectId: project.id,
+          cards: [],
+          values: [],
+        });
+        return;
+      }
       // The whole board, values included, in the one request a load makes:
       // stored cards when there are any, else the computed default (#Q2652).
       const board = await this.projectDashboardApi

@@ -22,6 +22,7 @@ import DashboardCatalogue from "../../dashboard/DashboardCatalogue.tsx";
 import { projectAnswers } from "../../dashboard/dashboardEligibility.ts";
 import DashboardGrid from "../../dashboard/DashboardGrid.tsx";
 import { useRank } from "../../shared/useRank.ts";
+import ProjectDashboardArchived from "./ProjectDashboardArchived.tsx";
 import ProjectDashboardDormant from "./ProjectDashboardDormant.tsx";
 import ProjectDashboardEmpty from "./ProjectDashboardEmpty.tsx";
 import ProjectDashboardHeader from "./ProjectDashboardHeader.tsx";
@@ -183,8 +184,11 @@ const ProjectDashboard = () => {
         });
       },
       // Only when the route loader did not fill the store for this project.
+      // Never for an archived project: it has no board to load (#Q2662).
       runOnInit:
-        !!projectId && (board.projectId !== projectId || !board.values),
+        !!projectId &&
+        !project?.archivedAt &&
+        (board.projectId !== projectId || !board.values),
     },
     [alepha, boardApi, projectId],
   );
@@ -434,6 +438,27 @@ const ProjectDashboard = () => {
   // header, no heading, no Add button up top. It carries Add card itself, and
   // the page stretches so it can centre on both axes of the content area.
   const empty = cards.length === 0;
+
+  // An archived project has no board (#Q2662): a notice and a link to what
+  // it kept, rendered here, never a redirect.
+  if (project?.archivedAt) {
+    const has = (key: string) =>
+      project.capabilities.some((capability) => capability.key === key);
+    return (
+      <div className="@container flex min-h-0 w-full flex-1 flex-col px-8 pt-6 pb-10">
+        <ProjectDashboardArchived
+          projectSlug={project.slug ?? ""}
+          destination={
+            has("knowledge")
+              ? "projectFolios"
+              : has("work")
+                ? "projectQuests"
+                : undefined
+          }
+        />
+      </div>
+    );
+  }
 
   return (
     <div

@@ -2441,6 +2441,11 @@ export default {
     "une copie d'application demande un coup d'œil",
   "dashboard.clause.recentFolios": "$1 folios ont été modifiés récemment",
   "dashboard.clause.recentFolios.one": "un folio a été modifié récemment",
+  "dashboard.archived.title": "Ce projet est archivé",
+  "dashboard.archived.body":
+    "Il n'a plus de tableau. Ce qu'il a conservé reste consultable.",
+  "dashboard.archived.folios": "Ouvrir ses folios",
+  "dashboard.archived.quests": "Ouvrir ses quêtes",
   "dashboard.refreshed": "Actualise $1.",
   "dashboard.addCard": "Ajouter une carte",
 

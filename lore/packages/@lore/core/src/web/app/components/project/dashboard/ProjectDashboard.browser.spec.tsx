@@ -158,4 +158,40 @@ describe("ProjectDashboard", () => {
     expect(screen.queryByLabelText("Card options")).toBeNull();
     expect(screen.queryByTestId("dashboard-edit")).toBeNull();
   });
+  it("renders an archived project's notice and loads no board", async () => {
+    alepha = Alepha.create()
+      .with(AlephaLogger)
+      .with(AlephaDateTime)
+      .with({ provide: LinkProvider, use: FakeLinkProvider })
+      .with(AlephaReact)
+      .with(AlephaReactRouter)
+      .with(AlephaReactI18n);
+    alepha.inject(I18n);
+    alepha.inject(DashboardMetricCatalog);
+    alepha.inject(DashboardPickerRegistry);
+    await alepha.start();
+    await alepha.inject(I18nProvider).setLang("en");
+    const project = {
+      ...projectFixture(),
+      archivedAt: "2026-09-01T00:00:00.000Z",
+      // No Knowledge and no Work: the notice has nowhere to link, and this
+      // spec registers neither router. The link is the e2e's.
+      capabilities: [],
+    };
+    alepha.store.set(currentProjectAtom, project as never);
+    const fake = alepha.inject(FakeLinkProvider);
+
+    render(
+      <AlephaContext.Provider value={alepha}>
+        <DialogProvider>
+          <ProjectDashboard />
+        </DialogProvider>
+      </AlephaContext.Provider>,
+    );
+
+    expect(await screen.findByTestId("dashboard-archived")).toBeTruthy();
+    expect(screen.queryByTestId("dashboard-card")).toBeNull();
+    // Rendered, never redirected (#Q2662), and nothing to resolve.
+    expect(fake.calls).not.toContain("getProjectDashboard");
+  });
 });
