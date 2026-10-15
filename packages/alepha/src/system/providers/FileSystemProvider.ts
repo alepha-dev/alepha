@@ -19,13 +19,13 @@ export interface CreateFileFromPathOptions {
 }
 
 /**
- * Options for creating a file from a Buffer
+ * Options for creating a file from bytes
  */
 export interface CreateFileFromBufferOptions {
   /**
-   * The Buffer containing the file data
+   * The bytes containing the file data
    */
-  buffer: Buffer;
+  buffer: Uint8Array;
   /**
    * The MIME type of the file (optional, will be detected from name if not provided)
    */
@@ -320,9 +320,9 @@ export abstract class FileSystemProvider {
    * Reads the content of a file.
    *
    * @param path - The file path to read
-   * @returns The file content as a Buffer
+   * @returns The file content as bytes
    */
-  abstract readFile(path: string): Promise<Buffer>;
+  abstract readFile(path: string): Promise<Uint8Array>;
 
   /**
    * Opens a readable stream over the content of a file.
@@ -339,12 +339,12 @@ export abstract class FileSystemProvider {
    * Writes data to a file.
    *
    * @param path - The file path to write to
-   * @param data - The data to write (Buffer or string)
+   * @param data - The data to write (bytes or string)
    * @param options - Creation options, currently the file `mode`
    */
   abstract writeFile(
     path: string,
-    data: Uint8Array | Buffer | string | FileLike,
+    data: Uint8Array | string | FileLike,
     options?: WriteFileOptions,
   ): Promise<void>;
 
@@ -358,12 +358,9 @@ export abstract class FileSystemProvider {
    * themselves; nothing here bounds its size.
    *
    * @param path - The file path to append to
-   * @param data - The data to append (Buffer or string)
+   * @param data - The data to append (bytes or string)
    */
-  abstract appendFile(
-    path: string,
-    data: Uint8Array | Buffer | string,
-  ): Promise<void>;
+  abstract appendFile(path: string, data: Uint8Array | string): Promise<void>;
 
   /**
    * Reads the content of a file as a string.

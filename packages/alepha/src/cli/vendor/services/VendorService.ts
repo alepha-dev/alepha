@@ -463,10 +463,10 @@ export class VendorService {
     pkgDir: string,
   ): Promise<Record<string, any> | undefined> {
     try {
-      const content = await this.fs.readFile(
+      const content = await this.fs.readTextFile(
         this.fs.join(pkgDir, "package.json"),
       );
-      return JSON.parse(content.toString());
+      return JSON.parse(content);
     } catch {
       return undefined;
     }
@@ -605,8 +605,8 @@ export class VendorService {
     if (!exists) {
       return undefined;
     }
-    const content = await this.fs.readFile(lockPath);
-    return JSON.parse(content.toString());
+    const content = await this.fs.readTextFile(lockPath);
+    return JSON.parse(content);
   }
 
   /**
@@ -695,10 +695,13 @@ export class VendorService {
           this.fs.readFile(this.fs.join(remoteDir, file)),
         ]);
 
-        if (!localContent.equals(remoteContent)) {
+        if (
+          localContent.length !== remoteContent.length ||
+          !localContent.every((byte, index) => byte === remoteContent[index])
+        ) {
           const changes = this.computeLineDiff(
-            remoteContent.toString(),
-            localContent.toString(),
+            new TextDecoder().decode(remoteContent),
+            new TextDecoder().decode(localContent),
           );
           modified.push({ file, changes });
         }

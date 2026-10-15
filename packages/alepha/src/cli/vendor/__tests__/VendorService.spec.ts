@@ -228,8 +228,8 @@ describe("VendorService", () => {
       });
 
       expect(fs.wasWritten("/project/packages/vendor.json")).toBe(true);
-      const content = await fs.readFile("/project/packages/vendor.json");
-      const lock = JSON.parse(content.toString());
+      const content = await fs.readTextFile("/project/packages/vendor.json");
+      const lock = JSON.parse(content);
       expect(lock.commit).toBe("abc123");
       expect(lock.remote).toBe("remote");
     });
@@ -606,8 +606,7 @@ describe("VendorService", () => {
     const readManifest = async (
       fs: MemoryFileSystemProvider,
       dir: string,
-    ): Promise<any> =>
-      JSON.parse((await fs.readFile(`${dir}/package.json`)).toString());
+    ): Promise<any> => JSON.parse(await fs.readTextFile(`${dir}/package.json`));
 
     const vendored = {
       name: "alepha",

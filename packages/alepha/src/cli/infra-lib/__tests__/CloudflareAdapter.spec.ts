@@ -1721,7 +1721,7 @@ describe("CloudflareAdapter", () => {
           (it) => it[0] === "sqlite3" && it[1] === "/tmp/snap.db.import",
         ),
       ).toBe(true);
-      expect(fs.files.get("/tmp/snap.db")?.toString()).toBe("-- rows\n");
+      expect(fs.getFileContent("/tmp/snap.db")).toBe("-- rows\n");
       // The scratch file never survives a run.
       expect(fs.files.has("/tmp/snap.db.import")).toBe(false);
     });
@@ -1750,8 +1750,8 @@ describe("CloudflareAdapter", () => {
       expect(imported.includes(0x00)).toBe(false);
       // Escaped, not stripped: a backslash is not special inside a SQLite
       // string literal, so the two characters survive into the data.
-      expect(imported.toString()).toContain("VALUES('a\\0b')");
-      expect(imported.toString()).toContain("VALUES('next')");
+      expect(new TextDecoder().decode(imported)).toContain("VALUES('a\\0b')");
+      expect(new TextDecoder().decode(imported)).toContain("VALUES('next')");
     });
 
     test("leaves a clean dump alone", async ({ expect }) => {
@@ -1789,7 +1789,7 @@ describe("CloudflareAdapter", () => {
       // The whole point: a failed import used to leave a silently partial
       // database where a working one had been, because `dbPath` was removed
       // up front and sqlite3 commits what it parsed before the error.
-      expect(fs.files.get("/tmp/snap.db")?.toString()).toBe("WORKING DEV DB");
+      expect(fs.getFileContent("/tmp/snap.db")).toBe("WORKING DEV DB");
       expect(fs.files.has("/tmp/snap.db.import")).toBe(false);
     });
 

@@ -449,10 +449,8 @@ export class CheckDocsCommand {
 
     const guides = await this.listMarkdown(join(root, "docs/1-guides"));
     const corpus = (
-      await Promise.all(guides.map((file) => this.fs.readFile(file)))
-    )
-      .map(String)
-      .join("\n");
+      await Promise.all(guides.map((file) => this.fs.readTextFile(file)))
+    ).join("\n");
 
     const uncovered = primitives.filter(
       // `\b` after the name, so `$auth` is not considered covered by a guide
@@ -516,7 +514,7 @@ export class CheckDocsCommand {
       /\]\((?:https:\/\/alepha\.dev)?\/docs\/(reference-[a-z0-9$@.-]+)\)/gi;
 
     for (const file of files) {
-      const content = String(await this.fs.readFile(file));
+      const content = await this.fs.readTextFile(file);
       for (const [index, line] of content.split("\n").entries()) {
         for (const match of line.matchAll(link)) {
           if (!slugs.has(match[1].toLowerCase())) {

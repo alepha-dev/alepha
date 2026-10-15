@@ -1,6 +1,4 @@
 import { Buffer } from "node:buffer";
-import { Readable } from "node:stream";
-import type { ReadableStream as NodeWebStream } from "node:stream/web";
 
 import {
   $env,
@@ -335,7 +333,7 @@ export class S3FileStorageProvider implements FileStorageProvider {
     }
 
     return this.fileSystem.createFile({
-      stream: Readable.fromWeb(response.body as unknown as NodeWebStream),
+      stream: response.body,
       name,
       type: mimeType,
       size,

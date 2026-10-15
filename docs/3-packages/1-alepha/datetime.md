@@ -17,7 +17,7 @@ Date and time operations.
 - Recurring interval definitions
 - Duration helpers (numbers, `[n, unit]` tuples and `Duration` objects)
 - Timezone support
-- Dayjs integration
+- Portable date-time and duration values
 
 ## API Reference
 

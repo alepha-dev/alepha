@@ -53,10 +53,8 @@ describe("DesktopBundleBuilder", () => {
 
     expect(await builder.build(input)).toBe(app);
 
-    expect(fs.files.get(`${app}/Contents/MacOS/loom`)?.toString()).toBe(
-      "executable",
-    );
-    expect(fs.files.get(`${app}/Contents/Resources/app.icns`)?.toString()).toBe(
+    expect(fs.getFileContent(`${app}/Contents/MacOS/loom`)).toBe("executable");
+    expect(fs.getFileContent(`${app}/Contents/Resources/app.icns`)).toBe(
       "default-icns",
     );
     expect(
@@ -65,11 +63,9 @@ describe("DesktopBundleBuilder", () => {
       ),
     ).toBe(true);
     expect(
-      fs.files
-        .get(`${app}/Contents/Resources/THIRD_PARTY_NOTICES.md`)
-        ?.toString(),
+      fs.getFileContent(`${app}/Contents/Resources/THIRD_PARTY_NOTICES.md`),
     ).toBe("MIT");
-    const plist = fs.files.get(`${app}/Contents/Info.plist`)!.toString();
+    const plist = fs.getFileContent(`${app}/Contents/Info.plist`)!;
     expect(plist).toContain(
       "<key>CFBundleName</key>\n  <string>Loom &amp; Co</string>",
     );

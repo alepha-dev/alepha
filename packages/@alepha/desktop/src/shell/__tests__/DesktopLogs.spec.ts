@@ -39,7 +39,7 @@ describe("DesktopLogs", () => {
     expect(await logs.open(file)).toBe(true);
 
     expect(files.redirects).toEqual([file]);
-    expect(fs.files.get(file)?.toString()).toBe("short");
+    expect(fs.getFileContent(file)).toBe("short");
     expect(fs.files.has(`${file}.1`)).toBe(false);
   });
 
@@ -52,7 +52,7 @@ describe("DesktopLogs", () => {
 
     await logs.rotate(file);
 
-    expect(fs.files.get(`${file}.1`)?.toString()).toBe("0123456789-full");
+    expect(fs.getFileContent(`${file}.1`)).toBe("0123456789-full");
     expect(fs.files.has(file)).toBe(false);
     expect(files.redirects).toEqual([file]);
   });

@@ -63,9 +63,11 @@ describe("filesOptions.maxTotalSize", () => {
     // anything past its 10 MB buffer threshold takes the streaming path.
     const streamed = (megabytes: number) =>
       fs.createFile({
-        stream: Readable.from(
-          Array.from({ length: megabytes }, () => Buffer.alloc(MB)),
-        ),
+        stream: Readable.toWeb(
+          Readable.from(
+            Array.from({ length: megabytes }, () => Buffer.alloc(MB)),
+          ),
+        ) as unknown as ReadableStream<Uint8Array>,
         name: "big.bin",
         type: "application/octet-stream",
       });

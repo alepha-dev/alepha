@@ -139,7 +139,9 @@ describe("NodeFileSystem", () => {
 
     describe("from stream", () => {
       it("should create a file from a Readable stream", async ({ expect }) => {
-        const stream = Readable.from(Buffer.from("Stream data"));
+        const stream = Readable.toWeb(
+          Readable.from(Buffer.from("Stream data")),
+        ) as unknown as ReadableStream<Uint8Array>;
         const file = fs.createFile({
           stream,
           name: "data.txt",
@@ -153,7 +155,9 @@ describe("NodeFileSystem", () => {
       });
 
       it("should detect content type from filename", async ({ expect }) => {
-        const stream = Readable.from(Buffer.from("{}"));
+        const stream = Readable.toWeb(
+          Readable.from(Buffer.from("{}")),
+        ) as unknown as ReadableStream<Uint8Array>;
         const file = fs.createFile({
           stream,
           name: "config.json",

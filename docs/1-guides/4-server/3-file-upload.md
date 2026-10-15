@@ -211,3 +211,9 @@ class FileService {
 persist it in your own tables. Backends: local filesystem, S3-compatible
 services and Cloudflare R2. See [File Storage](/docs/guides-persistence-storage)
 for constraints, TTL and querying.
+
+`StreamLike` is a Web `ReadableStream<Uint8Array>` on every runtime. A Node
+integration handing a native stream to `createFile({ stream })` first converts
+it with `Readable.toWeb()`. Convert the other direction with
+`Readable.fromWeb()` when a Node-only SDK requires a native stream. File storage
+and static file providers handle these conversions at their own boundaries.

@@ -38,8 +38,10 @@ class InMemorySource implements StaticFileSource {
     return this.paths.includes(path);
   }
 
-  public async open(): Promise<Readable> {
-    return Readable.from([Buffer.from("from the binary")]);
+  public async open(): Promise<ReadableStream<Uint8Array>> {
+    return Readable.toWeb(
+      Readable.from([Buffer.from("from the binary")]),
+    ) as unknown as ReadableStream<Uint8Array>;
   }
 }
 

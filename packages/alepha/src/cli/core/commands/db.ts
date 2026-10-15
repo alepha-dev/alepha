@@ -978,8 +978,8 @@ if (typeof registerHooks === "function") {
       const sqlPath = await this.resolveMigrationSqlPath(migrationsDir, entry);
       if (!sqlPath) continue;
 
-      const content = await this.fs.readFile(sqlPath);
-      const sql = content.toString("utf-8");
+      const content = await this.fs.readTextFile(sqlPath);
+      const sql = content;
       const cleaned = sql.replaceAll('"public".', "");
 
       if (cleaned !== sql) {
@@ -1170,8 +1170,8 @@ if (typeof registerHooks === "function") {
       const sqlPath = await this.resolveMigrationSqlPath(migrationsDir, entry);
       if (!sqlPath) continue;
 
-      const content = await this.fs.readFile(sqlPath);
-      const drops = this.findDropTableStatements(content.toString("utf-8"));
+      const content = await this.fs.readTextFile(sqlPath);
+      const drops = this.findDropTableStatements(content);
 
       for (const drop of drops) {
         offenders.push(`  ${entry}: ${drop}`);
@@ -1415,34 +1415,34 @@ if (typeof registerHooks === "function") {
     if (folders.length > 0) {
       folders.sort();
       const lastFolder = folders[folders.length - 1];
-      const snapshotBuffer = await this.fs.readFile(
+      const snapshotBuffer = await this.fs.readTextFile(
         this.fs.join(migrationDir, lastFolder, "snapshot.json"),
       );
-      return JSON.parse(snapshotBuffer.toString("utf-8"));
+      return JSON.parse(snapshotBuffer);
     }
 
     // Pre-v1 layout, and only reached when no v1 folder exists.
     const journalBuffer = await this.fs
-      .readFile(this.fs.join(migrationDir, "meta", "_journal.json"))
+      .readTextFile(this.fs.join(migrationDir, "meta", "_journal.json"))
       .catch(() => null);
 
     if (!journalBuffer) {
       return null;
     }
 
-    const journal = JSON.parse(journalBuffer.toString("utf-8"));
+    const journal = JSON.parse(journalBuffer);
     const lastMigration = journal.entries?.[journal.entries.length - 1];
     if (!lastMigration) {
       return null;
     }
-    const snapshotBuffer = await this.fs.readFile(
+    const snapshotBuffer = await this.fs.readTextFile(
       this.fs.join(
         migrationDir,
         "meta",
         `${String(lastMigration.idx).padStart(4, "0")}_snapshot.json`,
       ),
     );
-    return JSON.parse(snapshotBuffer.toString("utf-8"));
+    return JSON.parse(snapshotBuffer);
   }
 
   /**

@@ -148,7 +148,9 @@ const setup = async (options: { installed?: boolean } = {}) => {
   const distUnchanged = () =>
     [...fs.files.keys()].filter((key) => key.startsWith("/my project/dist/"))
       .length === [...before.keys()].length &&
-    [...before].every(([key, value]) => fs.files.get(key)?.equals(value));
+    [...before].every(([key, value]) =>
+      Buffer.from(fs.files.get(key) ?? []).equals(value),
+    );
 
   return { fs, shell, adapter, compiler, distUnchanged };
 };

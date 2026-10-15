@@ -63,7 +63,7 @@ export class BuildStaticTask extends BuildTask {
           await this.renderRootPage(ctx, publicDir);
         }
 
-        const indexHtml = (await this.fs.readFile(indexPath)).toString();
+        const indexHtml = await this.fs.readTextFile(indexPath);
         const shell = this.stripRootContent(indexHtml);
 
         if (!isPrerendered) {
@@ -231,9 +231,9 @@ export class BuildStaticTask extends BuildTask {
   protected async generateDomain(root: string): Promise<string> {
     let name = "app";
     try {
-      const content = (
-        await this.fs.readFile(this.fs.join(root, "package.json"))
-      ).toString();
+      const content = await this.fs.readTextFile(
+        this.fs.join(root, "package.json"),
+      );
       const pkg = JSON.parse(content);
       if (pkg.name) {
         name = pkg.name

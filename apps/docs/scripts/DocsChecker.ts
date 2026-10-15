@@ -358,8 +358,8 @@ export class DocsChecker {
     const units: DocUnit[] = [];
 
     for (const file of files) {
-      const content = await this.fs.readFile(file);
-      for (const fence of this.parseFences(String(content))) {
+      const content = await this.fs.readTextFile(file);
+      for (const fence of this.parseFences(content)) {
         if (!fence.checked || !this.isTypeScript(fence.lang)) {
           continue;
         }
@@ -382,7 +382,7 @@ export class DocsChecker {
     const violations: DocViolation[] = [];
 
     for (const file of files) {
-      const content = String(await this.fs.readFile(file));
+      const content = await this.fs.readTextFile(file);
       const lines = content.split("\n");
       const infraHistory = this.infraHistoryLines(lines);
 

@@ -55,7 +55,7 @@ describe("alepha init --preset", () => {
   };
 
   const readFile = async (fs: MemoryFileSystemProvider, path: string) =>
-    (await fs.readFile(path)).toString();
+    await fs.readTextFile(path);
 
   // ───────────────────────────────────────────────────────────────────────────
   // default preset

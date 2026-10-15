@@ -451,7 +451,7 @@ export class WorkspaceCompiler {
     }
     let pkg: { dependencies?: Record<string, string> };
     try {
-      pkg = JSON.parse((await this.fs.readFile(pkgPath)).toString());
+      pkg = JSON.parse(await this.fs.readTextFile(pkgPath));
     } catch {
       return;
     }
@@ -504,7 +504,7 @@ export class WorkspaceCompiler {
       .join(", ");
 
     const indexPath = this.fs.join(dist, entry);
-    const index = (await this.fs.readFile(indexPath)).toString();
+    const index = await this.fs.readTextFile(indexPath);
     await this.fs.writeFile(
       indexPath,
       `${index.trimEnd()}\n\n` +

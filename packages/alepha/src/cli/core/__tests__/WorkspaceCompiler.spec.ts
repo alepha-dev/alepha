@@ -306,7 +306,7 @@ describe("WorkspaceCompiler", () => {
   it("leaves dist untouched when the compile fails, so a retry succeeds", async () => {
     const { fs, shell, task } = await createTestEnv();
     const entry = "/project/dist/index.bun.js";
-    const before = fs.files.get(entry)?.toString();
+    const before = fs.getFileContent(entry);
     const command = [...shell.calls];
     shell.errors.set(
       `bun build --compile --target=${task.defaultBunTarget()} --minify --outfile=loom index.bun.js`,
@@ -316,7 +316,7 @@ describe("WorkspaceCompiler", () => {
     await expect(task.compile(bare)).rejects.toThrow(/bun build failed/);
 
     expect(command).toEqual([]);
-    expect(fs.files.get(entry)?.toString()).toBe(before);
+    expect(fs.getFileContent(entry)).toBe(before);
     expect(await fs.exists("/project/node_modules/.alepha/compile-stage")).toBe(
       false,
     );

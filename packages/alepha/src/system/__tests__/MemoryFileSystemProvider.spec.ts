@@ -16,14 +16,14 @@ describe("MemoryFileSystemProvider", () => {
     it("should write and read string data", async () => {
       await fs.writeFile("/test.txt", "hello world");
       const content = await fs.readFile("/test.txt");
-      expect(content.toString("utf-8")).toBe("hello world");
+      expect(new TextDecoder().decode(content)).toBe("hello world");
     });
 
     it("should write and read buffer data", async () => {
       const buf = Buffer.from("binary data");
       await fs.writeFile("/file.bin", buf);
       const content = await fs.readFile("/file.bin");
-      expect(content).toEqual(buf);
+      expect(content).toEqual(new Uint8Array(buf));
     });
 
     it("should overwrite existing files", async () => {

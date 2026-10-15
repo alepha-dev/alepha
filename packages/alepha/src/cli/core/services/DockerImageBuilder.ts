@@ -197,7 +197,7 @@ export class DockerImageBuilder {
   ): Promise<void> {
     let body: string;
     try {
-      body = (await this.fs.readFile(dockerfile)).toString();
+      body = await this.fs.readTextFile(dockerfile);
     } catch {
       return;
     }

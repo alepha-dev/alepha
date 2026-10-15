@@ -43,12 +43,16 @@ class MemoryStaticFileSource implements StaticFileSource {
     return path in this.files;
   }
 
-  public async open(path: string): Promise<Readable | undefined> {
+  public async open(
+    path: string,
+  ): Promise<ReadableStream<Uint8Array> | undefined> {
     const file = this.files[path];
     if (!file || file.gone) {
       return undefined;
     }
-    return Readable.from([Buffer.from(file.body)]);
+    return Readable.toWeb(
+      Readable.from([Buffer.from(file.body)]),
+    ) as unknown as ReadableStream<Uint8Array>;
   }
 }
 

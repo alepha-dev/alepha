@@ -123,7 +123,7 @@ describe("DesktopCompileAdapter.writeEntries", () => {
       "desktop-supervisor.js",
       "desktop-worker.js",
     ]);
-    const shell = fs.files.get("/s/dist/desktop-shell.js")!.toString();
+    const shell = fs.getFileContent("/s/dist/desktop-shell.js")!;
     expect(shell).toMatch(
       /import \{ DesktopMain \} from "\/.+\/src\/shell\/index\.ts";/,
     );
@@ -135,14 +135,12 @@ describe("DesktopCompileAdapter.writeEntries", () => {
       'supervisorUrl: new URL("./desktop-supervisor.js", import.meta.url).href',
     );
 
-    const supervisor = fs.files
-      .get("/s/dist/desktop-supervisor.js")!
-      .toString();
+    const supervisor = fs.getFileContent("/s/dist/desktop-supervisor.js")!;
     expect(supervisor).toContain(
       "new DesktopSupervisorWorker(self, (handle) => terminator.terminate(handle)).listen();",
     );
 
-    const worker = fs.files.get("/s/dist/desktop-worker.js")!.toString();
+    const worker = fs.getFileContent("/s/dist/desktop-worker.js")!;
     expect(worker).toMatch(
       /import \{ DesktopWorkerHost \} from "\/.+\/src\/worker\/index\.ts";/,
     );

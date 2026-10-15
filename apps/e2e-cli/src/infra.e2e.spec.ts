@@ -486,7 +486,7 @@ class RecordingAdapter extends InfraAdapter {
   protected readonly fs = $inject(FileSystemProvider);
   protected async step(step: string, ctx: InfraContext) {
     const path = this.fs.join(ctx.root, "calls.ndjson");
-    const before = await this.fs.exists(path) ? String(await this.fs.readFile(path)) : "";
+    const before = await this.fs.exists(path) ? await this.fs.readTextFile(path) : "";
     await this.fs.writeFile(path, before + JSON.stringify({ step, env: ctx.env, prebuilt: ctx.prebuilt ?? false }) + "\\n");
     if (process.env.INFRA_TEST_FAIL === step) throw new AlephaError("stopped at " + step);
   }

@@ -297,3 +297,20 @@ in `alepha/internal` are implementation details with no semver guarantee.
 Use `alepha.with(...)` to register a service and `z.literal(...)` for literal
 schemas. Schema walkers use `z.schema.enumOptions`, `requiredInputKeys` and
 `defaultValue`; required input fields differ from nullable database columns.
+
+## Portable dates and files
+
+`DateTimeProvider` creates immutable `DateTime` and `Duration` values. Unit types
+are Alepha-owned `DateTimeUnit` and `DurationUnit`; no date engine is part of the
+public contract. Pass a string, timestamp, `Date` or `DateTime` to `of()` or
+`utc()`. A provider owns its locale: `setLocale("en")` affects only that
+container, and `date.locale("en")` returns a per-call override. Existing values
+keep their locale. A paused clock applies the provider's current locale when
+read. `of(existingDateTime)` preserves identity when its locale already matches.
+
+`FileSystemProvider.readFile()` returns `Uint8Array`. Use `readTextFile()` for
+text, or decode bytes with `TextDecoder`. `MemoryFileSystemProvider` works in a
+browser without `Buffer`; its `files` map stores byte arrays. A `FileLike` and
+`readFileStream()` return Web `ReadableStream<Uint8Array>`. Node integrations
+convert native streams at the boundary with `Readable.toWeb()` and
+`Readable.fromWeb()`.

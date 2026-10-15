@@ -236,7 +236,7 @@ describe("ensurePnpm — hoisting", () => {
 
   const npmrc = async (fs: MemoryFileSystemProvider): Promise<string | null> =>
     (await fs.exists("/app/.npmrc"))
-      ? (await fs.readFile("/app/.npmrc")).toString("utf-8")
+      ? await fs.readTextFile("/app/.npmrc")
       : null;
 
   it("writes node-linker=hoisted into a fresh project", async () => {

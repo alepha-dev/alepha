@@ -239,7 +239,9 @@ describe("FileService", () => {
     // A one-shot stream: it can only be read once. The old code drained it
     // for the checksum before bucket.upload re-read it, storing an empty blob.
     const file = fs.createFile({
-      stream: Readable.from(Buffer.from(content)),
+      stream: Readable.toWeb(
+        Readable.from(Buffer.from(content)),
+      ) as unknown as ReadableStream<Uint8Array>,
       name: "stream.txt",
       type: "text/plain",
     });
@@ -282,7 +284,9 @@ describe("FileService", () => {
     // (empty) stream and record size 0.
     await assets.images.upload(
       fs.createFile({
-        stream: Readable.from(Buffer.from(content)),
+        stream: Readable.toWeb(
+          Readable.from(Buffer.from(content)),
+        ) as unknown as ReadableStream<Uint8Array>,
         name: "hook.txt",
         type: "text/plain",
       }),

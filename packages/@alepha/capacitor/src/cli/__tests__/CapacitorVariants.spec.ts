@@ -113,7 +113,7 @@ const setup = async (options: CapacitorOptions = base) => {
       CONFIG,
       ...assets,
     ];
-    const files: Record<string, Buffer | undefined> = {};
+    const files: Record<string, Uint8Array | undefined> = {};
     for (const path of paths) {
       files[path] = (await fs.exists(path))
         ? await fs.readFile(path)
@@ -314,9 +314,9 @@ describe("capacitor variants", () => {
       const again = await owned();
 
       for (const [path, content] of Object.entries(first)) {
-        expect(again[path]?.equals(content as Buffer), path).toBe(true);
+        expect(again[path], path).toEqual(content);
       }
-      expect(middle[PLIST]?.equals(first[PLIST] as Buffer)).toBe(false);
+      expect(middle[PLIST]).not.toEqual(first[PLIST]);
     });
 
     it("refuses an unsupported layout before writing anything", async ({
@@ -383,7 +383,7 @@ describe("capacitor variants", () => {
 
       const after = await owned();
       for (const [path, content] of Object.entries(before)) {
-        expect(after[path]?.equals(content as Buffer), path).toBe(true);
+        expect(after[path], path).toEqual(content);
       }
       expect(fs.getFileContent(PBXPROJ)).toContain("dev.alepha.mobile;");
     });

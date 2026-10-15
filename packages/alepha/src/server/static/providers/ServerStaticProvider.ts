@@ -1,6 +1,4 @@
 import { basename, isAbsolute, join } from "node:path";
-import type { Readable as NodeStream } from "node:stream";
-import type { ReadableStream as NodeWebStream } from "node:stream/web";
 
 import { $hook, $inject, Alepha } from "alepha";
 import { DateTimeProvider, type DurationLike } from "alepha/datetime";
@@ -270,7 +268,7 @@ export class ServerStaticProvider {
     const contentType = this.fileDetector.getContentType(filename);
     const cacheControl = this.getCacheControl(filename, options);
 
-    return async (request): Promise<NodeStream | NodeWebStream | undefined> => {
+    return async (request): Promise<ReadableStream<Uint8Array> | undefined> => {
       const { headers, reply } = request;
       let path = filepath;
 

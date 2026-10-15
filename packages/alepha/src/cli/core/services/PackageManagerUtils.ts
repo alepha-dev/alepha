@@ -187,10 +187,10 @@ export class PackageManagerUtils {
   ): Promise<boolean> {
     let patterns: string[];
     try {
-      const raw = await this.fs.readFile(
+      const raw = await this.fs.readTextFile(
         this.fs.join(candidate, "package.json"),
       );
-      const pkg = JSON.parse(raw.toString("utf-8")) as {
+      const pkg = JSON.parse(raw) as {
         workspaces?: string[] | { packages?: string[] };
       };
       patterns = Array.isArray(pkg.workspaces)
@@ -435,7 +435,7 @@ export class PackageManagerUtils {
   protected async ensurePnpmHoisting(root: string): Promise<void> {
     const npmrcPath = this.fs.join(root, ".npmrc");
     const current = (await this.fs.exists(npmrcPath))
-      ? (await this.fs.readFile(npmrcPath)).toString("utf-8")
+      ? await this.fs.readTextFile(npmrcPath)
       : "";
 
     if (/^\s*node-linker\s*=/m.test(current)) {

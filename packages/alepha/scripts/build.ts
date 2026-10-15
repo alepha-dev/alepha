@@ -53,8 +53,8 @@ class AlephaPackageBuilderCli {
     handler: async ({ run, root, flags }) => {
       const modules: Array<Module> = [];
 
-      const pkgBuffer = await this.fs.readFile("package.json");
-      const pkgData = JSON.parse(pkgBuffer.toString("utf-8"));
+      const pkgBuffer = await this.fs.readTextFile("package.json");
+      const pkgData = JSON.parse(pkgBuffer);
       const packageName = pkgData.name as string;
 
       await run("analyze modules", async () => {

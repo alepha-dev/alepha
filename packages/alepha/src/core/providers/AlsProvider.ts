@@ -1,6 +1,13 @@
-import type { AsyncLocalStorage } from "node:async_hooks";
-
 export type AsyncLocalStorageData = any;
+
+/**
+ * The runtime adapter needed by the container, independent of Node types.
+ */
+interface ContextStorage {
+  getStore(): AsyncLocalStorageData;
+  run<R>(store: AsyncLocalStorageData, callback: () => R): R;
+}
+
 /**
  * Which layers a read resolves through.
  *
@@ -24,11 +31,11 @@ export const ALS_PARENT = Symbol("als.parent");
 export const ALS_NESTED = Symbol("als.nested");
 
 export class AlsProvider {
-  static create = (): AsyncLocalStorage<AsyncLocalStorageData> | undefined => {
+  static create = (): ContextStorage | undefined => {
     return undefined;
   };
 
-  public als?: AsyncLocalStorage<AsyncLocalStorageData>;
+  public als?: ContextStorage;
 
   constructor() {
     this.als = AlsProvider.create();

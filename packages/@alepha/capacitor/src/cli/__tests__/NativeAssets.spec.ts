@@ -217,7 +217,7 @@ describe("NativeAssets", () => {
     await assets.generate(ROOT, x, [...platforms]);
     const again = await snapshot();
 
-    expect(again.every((buffer, i) => buffer.equals(first[i]))).toBe(true);
+    expect(again).toEqual(first);
     // A run from the same source writes nothing at all.
     expect(await assets.generate(ROOT, x, [...platforms])).toEqual([]);
   });

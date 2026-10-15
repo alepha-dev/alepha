@@ -73,7 +73,7 @@ export class NativeIdentity {
         ? this.assets.outputs(present).map((path) => this.fs.join(root, path))
         : []),
     ];
-    const originals = new Map<string, Buffer | undefined>();
+    const originals = new Map<string, Uint8Array | undefined>();
     for (const path of touched) {
       originals.set(
         path,
@@ -83,7 +83,10 @@ export class NativeIdentity {
 
     try {
       for (const edit of edits) {
-        const current = originals.get(edit.path)?.toString("utf-8");
+        const original = originals.get(edit.path);
+        const current = original
+          ? new TextDecoder().decode(original)
+          : undefined;
         if (current !== edit.content) {
           await this.fs.writeFile(edit.path, edit.content);
         }
