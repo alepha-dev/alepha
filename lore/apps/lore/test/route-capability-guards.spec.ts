@@ -145,6 +145,46 @@ describe("route guards on a capability", () => {
     await expect(loader?.({} as never)).resolves.toBeUndefined();
   });
 
+  it("requires both read and write permission for the automation gallery", async ({
+    expect,
+  }) => {
+    const alepha = await bootRouter();
+    const loader = loaderOf(alepha, "projectAutomationGallery");
+    for (const permissions of [
+      ["project:read"],
+      ["project:read", "automation:read"],
+      ["project:read", "automation:write"],
+    ]) {
+      alepha.store.set(
+        currentProjectAtom,
+        projectFixture({
+          capabilities: ["work"],
+          options: { work: { automations: true } },
+          permissions,
+        }) as never,
+      );
+      await expect(loader?.({} as never)).rejects.toThrow("Automation presets");
+    }
+    alepha.store.set(
+      currentProjectAtom,
+      projectFixture({
+        capabilities: ["work"],
+        options: { work: { automations: true } },
+        permissions: ["project:read", "automation:read", "automation:write"],
+      }) as never,
+    );
+    await expect(loader?.({} as never)).resolves.toBeUndefined();
+    alepha.store.set(
+      currentProjectAtom,
+      projectFixture({
+        capabilities: ["work"],
+        options: { work: { automations: false } },
+        permissions: ["project:read", "automation:read", "automation:write"],
+      }) as never,
+    );
+    await expect(loader?.({} as never)).rejects.toThrow("Automation presets");
+  });
+
   it("leaves the epic, board and release routes unguarded", async ({
     expect,
   }) => {

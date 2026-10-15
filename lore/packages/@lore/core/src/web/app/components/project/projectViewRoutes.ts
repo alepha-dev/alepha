@@ -201,6 +201,7 @@ export const SECTION_LABEL_KEYS: Record<string, string> = {
   // reader is. The key is `capabilityNav`'s own, so the two cannot drift.
   projectInbox: "project.menu.inbox",
   projectAutomations: "project.capability.work.option.automations.label",
+  projectAutomationGallery: "automation.gallery.title",
   projectQuests: "project.menu.quests",
   projectQuest: "project.menu.quests",
   // ⚠️ It had NO entry until #Q2104, so the questline page's crumb read

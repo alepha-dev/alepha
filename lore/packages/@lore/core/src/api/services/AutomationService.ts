@@ -580,7 +580,12 @@ export class AutomationService {
     const last = (
       await this.persistence.runs.findMany({
         where: { automationId: rule.id, occurrenceId: { notLike: "health:%" } },
-        columns: ["id", "status", "createdAt"],
+        columns: [
+          "id",
+          "status",
+          "createdAt",
+          ...(!reason ? ["snapshot" as const] : []),
+        ],
         orderBy: [
           { column: "createdAt", direction: "desc" },
           { column: "id", direction: "desc" },
@@ -619,7 +624,21 @@ export class AutomationService {
       createdAt: rule.createdAt,
       updatedAt: rule.updatedAt,
       ...(last
-        ? { lastRun: { id: last.id, status: last.status, at: last.createdAt } }
+        ? {
+            lastRun: {
+              id: last.id,
+              status: last.status,
+              at: last.createdAt,
+              ...(!reason
+                ? {
+                    capped:
+                      last.snapshot.counts.truncated ||
+                      !last.snapshot.counts.totalIsExact,
+                    noData: last.snapshot.noData ?? false,
+                  }
+                : {}),
+            },
+          }
         : {}),
       canEdit: own && write,
       canEnable: own && write,

@@ -745,3 +745,19 @@ receipts in two primary queries, preserving pending-retry state separately from
 the last attempt. `automation_runs` delegates to shared offset pagination,
 including retained history for soft-deleted rules. MCP catalogue and preview
 preserve the HTTP service's current permission gates and complete schemas.
+
+## Automation list (#E43, #Q2037)
+
+The Automations page uses `DataTable` with bounded server pagination and a
+project-keyed `QueryCache.dedupe` read inside its fetch handler. Unknown totals
+stay unknown. Revisioned enable and delete actions use `useAction`, disable all
+related controls while pending, and invalidate then refresh on both success and
+failure. They never display an unconfirmed enable state. The root toaster reports
+failures, and the refreshed server response owns health and available controls.
+
+The list shows immutable author, trigger, effective state and reason, last run,
+no-data and capped indicators. Source-restricted rows omit the last-run payload
+flags. Gallery navigation requires both automation read and write; its initial
+catalogue destination is extended by the typed setup quest. Browser coverage
+waits for the actual direct or batched mutation and verifies a real revision
+conflict against a separate server write, plus empty/search/gallery behavior.

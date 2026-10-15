@@ -24,4 +24,21 @@ export class AutomationRouter {
         );
     },
   });
+  projectAutomationGallery = $pageProject({
+    name: "projectAutomationGallery",
+    path: "/automations/presets",
+    lazy: () =>
+      import("./components/project/automations/AutomationGalleryPage.tsx"),
+    loader: async () => {
+      const project = this.alepha.store.get(currentProjectAtom);
+      if (
+        !capabilityOption(project, "work", "automations") ||
+        !canInProject(project, "automation:read") ||
+        !canInProject(project, "automation:write")
+      )
+        throw new NotFoundError(
+          "Automation presets are not available for this project and rank",
+        );
+    },
+  });
 }

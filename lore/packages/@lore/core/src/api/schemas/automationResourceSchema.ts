@@ -31,6 +31,8 @@ export const automationResourceSchema = z
         id: z.uuid(),
         status: automationRunStatusSchema,
         at: z.datetime(),
+        capped: z.boolean().optional(),
+        noData: z.boolean().optional(),
       })
       .strict()
       .optional(),
