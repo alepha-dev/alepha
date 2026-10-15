@@ -1,6 +1,7 @@
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -72,29 +73,33 @@ const DashboardCardMenu = (props: DashboardCardMenuProps) => {
         {props.onResize && (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuLabel className="text-muted-foreground text-[11px]">
-              {tr("dashboard.card.size")}
-            </DropdownMenuLabel>
-            {SIZES.map((option) => {
-              const current =
-                option.size === (props.size ?? 1) &&
-                option.height === (props.height ?? 1);
-              return (
-                <DropdownMenuItem
-                  key={`${option.size}x${option.height}`}
-                  data-testid="dashboard-card-size"
-                  disabled={props.busy || current}
-                  onClick={() => props.onResize?.(option)}
-                >
-                  <span className="text-muted-foreground w-3.5">
-                    {current && <Check className="size-3.5" />}
-                  </span>
-                  {tr("dashboard.card.size.option", {
-                    args: [String(option.size), String(option.height)],
-                  })}
-                </DropdownMenuItem>
-              );
-            })}
+            {/* A group, not a fragment: Base UI's label throws (error #31)
+                outside a `Menu.Group`. */}
+            <DropdownMenuGroup>
+              <DropdownMenuLabel className="text-muted-foreground text-[11px]">
+                {tr("dashboard.card.size")}
+              </DropdownMenuLabel>
+              {SIZES.map((option) => {
+                const current =
+                  option.size === (props.size ?? 1) &&
+                  option.height === (props.height ?? 1);
+                return (
+                  <DropdownMenuItem
+                    key={`${option.size}x${option.height}`}
+                    data-testid="dashboard-card-size"
+                    disabled={props.busy || current}
+                    onClick={() => props.onResize?.(option)}
+                  >
+                    <span className="text-muted-foreground w-3.5">
+                      {current && <Check className="size-3.5" />}
+                    </span>
+                    {tr("dashboard.card.size.option", {
+                      args: [String(option.size), String(option.height)],
+                    })}
+                  </DropdownMenuItem>
+                );
+              })}
+            </DropdownMenuGroup>
           </>
         )}
         <DropdownMenuSeparator />
