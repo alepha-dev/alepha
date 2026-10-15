@@ -89,6 +89,7 @@ export const ROUTES_FULL_WIDTH = new Set([
   "projectActivity",
   "projectQuest",
   "projectKanban",
+  "projectAutomations",
   "projectEpics",
   "projectEpic",
   "projectReleases",
@@ -199,6 +200,7 @@ export const SECTION_LABEL_KEYS: Record<string, string> = {
   // (#Q2006): this crumb is now the only thing on screen naming where the
   // reader is. The key is `capabilityNav`'s own, so the two cannot drift.
   projectInbox: "project.menu.inbox",
+  projectAutomations: "project.capability.work.option.automations.label",
   projectQuests: "project.menu.quests",
   projectQuest: "project.menu.quests",
   // ⚠️ It had NO entry until #Q2104, so the questline page's crumb read

@@ -95,6 +95,8 @@ export class ProjectRankPresets {
     "quality:push",
     "estate:read",
     "feedback:read",
+    "automation:read",
+    "automation:write",
   ];
 
   /**
@@ -117,6 +119,7 @@ export class ProjectRankPresets {
     "quality:read",
     "estate:read",
     "feedback:read",
+    "automation:read",
   ];
 
   /**

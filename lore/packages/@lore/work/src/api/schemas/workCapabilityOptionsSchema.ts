@@ -35,6 +35,7 @@ export const workCapabilityOptionsSchema = z.object({
   chrono: z.boolean().default(false),
   reminder: z.boolean().default(false),
   agentPrompts: z.boolean().default(false),
+  automations: z.boolean().default(false),
 });
 
 export type WorkCapabilityOptions = Infer<typeof workCapabilityOptionsSchema>;

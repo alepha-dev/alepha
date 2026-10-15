@@ -133,6 +133,9 @@ export class LorePermissions {
     "blight:triage",
     "estate:lend",
     "feedback:triage",
+    "automation:read",
+    "automation:write",
+    "automation:manage",
   ];
 
   /**
@@ -155,6 +158,24 @@ export class LorePermissions {
    * The floor. Every rank holds it, and the editor renders it all-on and
    * non-editable.
    */
+  automationRead = $permission({
+    group: "automation",
+    name: "read",
+    label: "permission.automation.read",
+    groupLabel: "permission.group.automation",
+    groupOrder: 20,
+  });
+  automationWrite = $permission({
+    group: "automation",
+    name: "write",
+    label: "permission.automation.write",
+  });
+  automationManage = $permission({
+    group: "automation",
+    name: "manage",
+    label: "permission.automation.manage",
+  });
+
   projectRead = $permission({
     group: "project",
     name: "read",

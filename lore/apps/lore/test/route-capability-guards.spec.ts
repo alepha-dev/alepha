@@ -112,6 +112,39 @@ describe("route guards on a capability", () => {
     ).resolves.toBeUndefined();
   });
 
+  it("requires the automation option and read permission on the automation route", async ({
+    expect,
+  }) => {
+    const alepha = await bootRouter();
+    const loader = loaderOf(alepha, "projectAutomations");
+    alepha.store.set(
+      currentProjectAtom,
+      projectFixture({
+        capabilities: ["work"],
+        options: { work: { automations: false } },
+      }) as never,
+    );
+    await expect(loader?.({} as never)).rejects.toThrow("Automations");
+    alepha.store.set(
+      currentProjectAtom,
+      projectFixture({
+        capabilities: ["work"],
+        options: { work: { automations: true } },
+        permissions: ["project:read"],
+      }) as never,
+    );
+    await expect(loader?.({} as never)).rejects.toThrow("Automations");
+    alepha.store.set(
+      currentProjectAtom,
+      projectFixture({
+        capabilities: ["work"],
+        options: { work: { automations: true } },
+        permissions: ["project:read", "automation:read"],
+      }) as never,
+    );
+    await expect(loader?.({} as never)).resolves.toBeUndefined();
+  });
+
   it("leaves the epic, board and release routes unguarded", async ({
     expect,
   }) => {

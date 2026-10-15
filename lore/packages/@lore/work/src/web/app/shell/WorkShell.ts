@@ -26,6 +26,7 @@ import {
   ScrollText,
   Swords,
   Wrench,
+  Workflow,
 } from "lucide-react";
 
 import { currentEpicAtom } from "../atoms/currentEpicAtom.ts";
@@ -127,6 +128,15 @@ export class WorkShell {
         option: "releases",
         activeOn: (name) =>
           name === "projectReleases" || name === "projectRelease",
+      },
+      {
+        route: "projectAutomations",
+        permission: "automation:read",
+        labelKey: "project.capability.work.option.automations.label",
+        icon: Workflow,
+        group: "work",
+        order: 35,
+        option: "automations",
       },
     ]);
 

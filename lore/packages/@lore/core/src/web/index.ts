@@ -11,6 +11,7 @@ import { currentProjectAtom } from "./app/atoms/currentProjectAtom.ts";
 import { currentProjectMemberAtom } from "./app/atoms/currentProjectMemberAtom.ts";
 import { projectPromptsAtom } from "./app/atoms/projectPromptsAtom.ts";
 import { userProjectsAtom } from "./app/atoms/userProjectsAtom.ts";
+import { AutomationRouter } from "./app/AutomationRouter.ts";
 import AccountDeleteWarning from "./app/components/account/AccountDeleteWarning.tsx";
 import { LoreAccountRouter } from "./app/components/account/LoreAccountRouter.ts";
 import { CoreRouter } from "./app/CoreRouter.ts";
@@ -53,6 +54,7 @@ export const LoreCoreWeb = $module({
     alepha.inject(CoreDashboardMetrics);
     alepha.inject(ThemesProvider);
     alepha.inject(CoreRouter);
+    alepha.inject(AutomationRouter);
     alepha.inject(AccountRouter);
     alepha.inject(LoreAccountRouter);
 
@@ -243,3 +245,5 @@ export { canInProject } from "./app/services/projectRank.ts";
 // `@lore/core/testing`, which nothing at runtime imports.
 export type { MarkdownEditorMode } from "./app/components/shared/markdown-editor/MarkdownEditorInner.client.tsx";
 export { default as LazyProjectActivityPage } from "./app/components/project/activity/LazyProjectActivityPage.tsx";
+
+export { AutomationRouter } from "./app/AutomationRouter.ts";

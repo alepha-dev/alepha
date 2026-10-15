@@ -222,8 +222,27 @@ export class CapabilityRegistry {
           wizard: false,
           preselected: false,
         },
+        {
+          key: "automations",
+          labelKey: "project.capability.work.option.automations.label",
+          descriptionKey:
+            "project.capability.work.option.automations.description",
+          wizard: false,
+          preselected: false,
+        },
       ],
       mcpTools: [
+        "automation_create",
+        "automation_list",
+        "automation_get",
+        "automation_update",
+        "automation_delete",
+        "automation_variable_set",
+        "automation_variable_list",
+        "automation_variable_delete",
+        "automation_test",
+        "automation_runs",
+        "automation_catalog",
         "quest_list",
         "quest_get",
         "quest_create",
@@ -293,7 +312,7 @@ export class CapabilityRegistry {
       ],
       // Areas belong here: quests carry one, blights forward into one, and
       // `project_context` files them beside the epic index.
-      permissionGroups: ["quest", "epic", "release", "area"],
+      permissionGroups: ["quest", "epic", "release", "area", "automation"],
     },
     {
       key: "knowledge",

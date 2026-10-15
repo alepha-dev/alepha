@@ -14,6 +14,7 @@ import {
 
 import { AdminMcpController } from "./controllers/AdminMcpController.ts";
 import { AdminProjectController } from "./controllers/AdminProjectController.ts";
+import { AutomationDiagnosticController } from "./controllers/AutomationDiagnosticController.ts";
 import { DashboardController } from "./controllers/DashboardController.ts";
 import { HomeController } from "./controllers/HomeController.ts";
 import { InvitationController } from "./controllers/InvitationController.ts";
@@ -145,6 +146,7 @@ export const LoreCoreApi = $module({
     UserDeletionHook,
     OrganizationHooks,
     AutomationPersistence,
+    AutomationDiagnosticController,
     InvitationNotifications,
     // The inbox half: two templates, and the one HTML escaper the four
     // notification classes share.

@@ -1,9 +1,14 @@
 import { useInject, useStore } from "alepha/react";
+import { lazy, Suspense } from "react";
 
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { ProjectShellRegistry } from "../../../registries/ProjectShellRegistry.ts";
 import ProjectUpdate from "../ProjectUpdate.tsx";
 import ProjectSettingsDangerZoneSection from "./ProjectSettingsDangerZoneSection.tsx";
+
+const AutomationDiagnosticPanel = lazy(
+  () => import("./AutomationDiagnosticPanel.tsx"),
+);
 
 const ProjectSettingsGeneralPage = () => {
   const [project] = useStore(currentProjectAtom);
@@ -24,6 +29,9 @@ const ProjectSettingsGeneralPage = () => {
         <panel.component key={panel.key} />
       ))}
 
+      <Suspense fallback={null}>
+        <AutomationDiagnosticPanel />
+      </Suspense>
       <ProjectSettingsDangerZoneSection />
     </div>
   );

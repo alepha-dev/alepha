@@ -1,4 +1,25 @@
 export default {
+  "automation.previous": "Previous",
+  "automation.next": "Next",
+
+  "project.capability.work.option.automations.label": "Automations",
+  "project.capability.work.option.automations.description":
+    "Run project rules with the author's current permissions.",
+  "permission.group.automation": "Automations",
+  "permission.automation.read": "Read automations",
+  "permission.automation.write": "Create and edit your own automations",
+  "permission.automation.manage":
+    "Manage shared variables and disable or delete any automation",
+  "automation.diagnostics.title": "Automation diagnostics",
+  "automation.diagnostics.description":
+    "Rule status stays visible here when Automations is off. This view cannot run or edit rules.",
+  "automation.diagnostics.empty": "No automations in this project.",
+  "automation.diagnostics.more": "More rules are available on the next page.",
+  "automation.state.disabled": "Disabled",
+  "automation.state.active": "Active",
+  "automation.state.paused": "Paused",
+  "automation.state.broken": "Broken",
+
   en: "English",
   fr: "Français",
 

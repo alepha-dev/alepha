@@ -4,6 +4,29 @@ import { uiFr } from "@alepha/ui/i18n/fr";
  * Lore's French, over `@alepha/ui`'s: a key both declare reads Lore's.
  */
 export default {
+  "automation.previous": "Précédent",
+  "automation.next": "Suivant",
+
+  "project.capability.work.option.automations.label": "Automatisations",
+  "project.capability.work.option.automations.description":
+    "Exécuter les règles du projet avec les droits actuels de leur auteur.",
+  "permission.group.automation": "Automatisations",
+  "permission.automation.read": "Consulter les automatisations",
+  "permission.automation.write":
+    "Créer et modifier ses propres automatisations",
+  "permission.automation.manage":
+    "Gérer les variables partagées et désactiver ou supprimer toute automatisation",
+  "automation.diagnostics.title": "Diagnostic des automatisations",
+  "automation.diagnostics.description":
+    "L’état des règles reste visible ici lorsque les automatisations sont désactivées. Cette vue ne permet ni de les exécuter ni de les modifier.",
+  "automation.diagnostics.empty": "Aucune automatisation dans ce projet.",
+  "automation.diagnostics.more":
+    "D’autres règles sont disponibles sur la page suivante.",
+  "automation.state.disabled": "Désactivée",
+  "automation.state.active": "Active",
+  "automation.state.paused": "En pause",
+  "automation.state.broken": "Invalide",
+
   ...uiFr,
   "language.en": "English",
   "language.fr": "Français",
