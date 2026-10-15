@@ -18,7 +18,7 @@ export class UptimeProber {
     if (monitor.kind === "http") return this.http.probe(monitor);
     if (monitor.kind !== "push") return this.socket.probe(monitor);
     // A tick is not a push. Keep the receipt clock separate from lastCheckedAt.
-    const lastReceipt = Date.parse(monitor.lastPushedAt ?? monitor.statusSince);
+    const lastReceipt = Date.parse(monitor.lastPushedAt ?? monitor.createdAt);
     const ok =
       this.clock.nowMillis() - lastReceipt <= monitor.intervalSecs * 1000;
     return {

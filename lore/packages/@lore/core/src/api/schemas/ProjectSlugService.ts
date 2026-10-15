@@ -33,6 +33,8 @@ export class ProjectSlugService {
     "p",
     "q",
     "sigils",
+    // The receipt route owns /uptime/push/:token.
+    "uptime",
     // The machine-facing roots: the estates websocket lives under /ws and the
     // artifact and secret pulls under /estates (epic #20). Both are server
     // routes, never pages, so a project slugged "ws" or "estates" would have

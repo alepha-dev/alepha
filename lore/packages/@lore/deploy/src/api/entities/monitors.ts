@@ -20,6 +20,7 @@ export const monitors = $entity({
     name: z.string().min(1).max(200),
     kind: z.enum(["http", "tcp", "cert", "push"]),
     target: z.string().max(2048),
+    pushTokenHash: z.string().max(256).optional(),
     intervalSecs: db.default(z.integer().min(60).multipleOf(60), 60),
     timeoutSecs: db.default(z.integer().min(1).max(30), 10),
     confirmations: db.default(z.integer().min(1).max(100), 2),
@@ -36,7 +37,11 @@ export const monitors = $entity({
     lastError: z.string().max(4096).optional(),
     certExpiresAt: z.string().optional(),
   }),
-  indexes: [{ columns: ["projectId"] }, { columns: ["active", "nextCheckAt"] }],
+  indexes: [
+    { columns: ["pushTokenHash"], unique: true },
+    { columns: ["projectId"] },
+    { columns: ["active", "nextCheckAt"] },
+  ],
 });
 
 export type Monitor = Infer<typeof monitors.schema>;

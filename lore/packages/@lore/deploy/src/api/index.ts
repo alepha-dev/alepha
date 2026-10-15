@@ -19,6 +19,7 @@ import { QualityController } from "./controllers/QualityController.ts";
 import { SigilAnalyticsController } from "./controllers/SigilAnalyticsController.ts";
 import { SigilController } from "./controllers/SigilController.ts";
 import { SigilIngestController } from "./controllers/SigilIngestController.ts";
+import { UptimePushController } from "./controllers/UptimePushController.ts";
 import { BlightJobs } from "./jobs/BlightJobs.ts";
 import { DeployJobs } from "./jobs/DeployJobs.ts";
 import { EstateCommandJobs } from "./jobs/EstateCommandJobs.ts";
@@ -180,6 +181,7 @@ export const LoreDeployApi = $module({
     AppSecretController,
     SigilController,
     SigilIngestController,
+    UptimePushController,
     EstateController,
     ProjectEstateController,
     EstateCommandController,
@@ -251,3 +253,6 @@ export { UptimeSocketProber } from "./services/UptimeSocketProber.ts";
 export { UptimeJobs } from "./jobs/UptimeJobs.ts";
 export { UptimeProber } from "./services/UptimeProber.ts";
 export { UptimeStateService } from "./services/UptimeStateService.ts";
+
+export { UptimePushController } from "./controllers/UptimePushController.ts";
+export { UptimePushService } from "./services/UptimePushService.ts";
