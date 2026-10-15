@@ -97,9 +97,9 @@ test.describe("Project dashboard", () => {
       await expect(held.getByText(`Parked${t}`)).toBeVisible({
         timeout: 15_000,
       });
-      // Read-only: no card menu and no edit mode on a computed board.
+      // Read-only: no card menu and no Add card on a computed board.
       await expect(page.getByLabel("Card options")).toHaveCount(0);
-      await expect(page.getByTestId("dashboard-edit")).toHaveCount(0);
+      await expect(page.getByTestId("dashboard-add")).toHaveCount(0);
     });
 
     await test.step("Activity is still there, one path down", async () => {
@@ -430,21 +430,17 @@ test.describe("Project dashboard", () => {
     const addCard = async (metric: string, scopeTestId: string) => {
       await page.goto(`/${slug}`);
       await page.waitForLoadState("networkidle");
-      // A computed board is customized first, which opens edit mode
-      // (#Q2660); a stored board curates in edit mode (#Q2649); an empty one
-      // carries Add itself.
+      // A computed board is customized first (#Q2660); a stored board offers
+      // Add card in and out of edit mode, and adding one turns it on; an
+      // empty one carries Add itself.
       const customize = page.getByTestId("dashboard-customize");
-      const edit = page.getByTestId("dashboard-edit");
       if (await customize.isVisible()) {
         await customize.click();
-        await expect(edit).toHaveAttribute("aria-pressed", "true", {
-          timeout: 15_000,
-        });
-      } else if (
-        (await edit.isVisible()) &&
-        (await edit.getAttribute("aria-pressed")) !== "true"
-      ) {
-        await edit.click();
+        await expect(page.getByTestId("dashboard-edit")).toHaveAttribute(
+          "aria-pressed",
+          "true",
+          { timeout: 15_000 },
+        );
       }
       await page.getByTestId("dashboard-add").click();
       await expect(page.getByTestId("dashboard-catalogue")).toBeVisible({

@@ -2261,7 +2261,6 @@ export default {
   "epic.quests.column.updated": "Mise à jour",
 
   // -- Tableau de bord (page d'accueil connectee) ---------------------------
-  "project.dashboard.title": "Tableau de bord",
   "project.dashboard.empty.title": "Rien sur ce tableau pour l'instant",
   "project.dashboard.empty.body":
     "Un tableau, c'est quelques chiffres a verifier sans rien ouvrir. Ajoutez la premiere carte.",
@@ -2270,10 +2269,6 @@ export default {
   "project.dashboard.empty.body.noMetrics":
     "Ce projet ne fait encore rien qu'une carte puisse compter. Activez une capacite dans les parametres et le tableau aura de quoi afficher.",
   "project.dashboard.empty.docs": "Comment fonctionnent les tableaux de projet",
-  "project.dashboard.standfirst.computed":
-    "Le tableau par défaut, calculé d'après ce que ce projet fait et contient.",
-  "project.dashboard.standfirst": "$1 cartes sur le tableau du projet.",
-  "project.dashboard.standfirst.one": "1 carte sur le tableau du projet.",
   "project.dashboard.card.delete.shared":
     "Le tableau appartient au projet : la carte disparait pour tout le monde.",
   "dashboard.card.seeAll": "Tout voir",
@@ -2294,8 +2289,6 @@ export default {
   "dashboard.segment.shelved": "écartées",
   "dashboard.segment.held": "en pause",
   "dashboard.marker.deploy": "Déployé",
-  "dashboard.edit": "Modifier le tableau",
-  "dashboard.edit.done": "Terminé",
   "dashboard.footer.release.ready": "les $1 terminées, prête à publier",
   "dashboard.card.size": "Taille",
   "dashboard.card.size.option": "$1 de large, $2 de haut",
@@ -2410,6 +2403,8 @@ export default {
   "dashboard.filterField.markdown": "Note",
   "dashboard.filter.markdownPlaceholder":
     "Écrivez en markdown. Tous ceux qui lisent le tableau le verront.",
+  "dashboard.edit": "Modifier",
+  "dashboard.save": "Enregistrer",
   "dashboard.customize": "Personnaliser",
   "dashboard.menu": "Options du tableau",
   "dashboard.reset": "Revenir au tableau par défaut",
@@ -2449,7 +2444,6 @@ export default {
     "Il n'a plus de tableau. Ce qu'il a conservé reste consultable.",
   "dashboard.archived.folios": "Ouvrir ses folios",
   "dashboard.archived.quests": "Ouvrir ses quêtes",
-  "dashboard.refreshed": "Actualise $1.",
   "dashboard.addCard": "Ajouter une carte",
 
   "dashboard.card.options": "Options de la carte",

@@ -2276,7 +2276,6 @@ export default {
   "epic.quests.column.updated": "Updated",
 
   // -- Dashboard (the signed-in landing page) -------------------------------
-  "project.dashboard.title": "Dashboard",
   "project.dashboard.empty.title": "Nothing on this board yet",
   "project.dashboard.empty.body":
     "A board is a few numbers worth checking without opening anything. Add the first card.",
@@ -2285,10 +2284,6 @@ export default {
   "project.dashboard.empty.body.noMetrics":
     "This project does not do anything a card can count yet. Turn on a capability in Settings and the board has something to show.",
   "project.dashboard.empty.docs": "How project dashboards work",
-  "project.dashboard.standfirst.computed":
-    "The default board, computed from what this project does and holds.",
-  "project.dashboard.standfirst": "$1 cards on this project's board.",
-  "project.dashboard.standfirst.one": "1 card on this project's board.",
   "project.dashboard.card.delete.shared":
     "The board belongs to the project, so this removes the card for everyone in it.",
   "dashboard.card.seeAll": "See all",
@@ -2307,8 +2302,6 @@ export default {
   "dashboard.segment.shelved": "shelved",
   "dashboard.segment.held": "on hold",
   "dashboard.marker.deploy": "Deployed",
-  "dashboard.edit": "Edit board",
-  "dashboard.edit.done": "Done",
   "dashboard.footer.release.ready": "all $1 done, ready to publish",
   "dashboard.card.size": "Size",
   "dashboard.card.size.option": "$1 wide, $2 tall",
@@ -2417,6 +2410,8 @@ export default {
   "dashboard.filterField.markdown": "Note",
   "dashboard.filter.markdownPlaceholder":
     "Write in markdown. Everyone who reads the board sees it.",
+  "dashboard.edit": "Edit",
+  "dashboard.save": "Save",
   "dashboard.customize": "Customize",
   "dashboard.menu": "Board options",
   "dashboard.reset": "Reset to default",
@@ -2451,7 +2446,6 @@ export default {
     "It has no board any more. What it kept is still here to read.",
   "dashboard.archived.folios": "Open its folios",
   "dashboard.archived.quests": "Open its quests",
-  "dashboard.refreshed": "Refreshed $1.",
   "dashboard.addCard": "Add card",
 
   "dashboard.card.options": "Card options",
