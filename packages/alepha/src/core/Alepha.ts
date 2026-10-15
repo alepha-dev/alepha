@@ -509,7 +509,7 @@ export class Alepha {
     this.codec = this.inject(CodecManager);
   }
 
-  public fork<R>(callback: () => R, data: Record<string, any> = {}): R {
+  public fork<R>(callback: () => R, data: Record<string, unknown> = {}): R {
     return this.context.run(callback, data);
   }
 
@@ -1988,28 +1988,28 @@ export interface State {
    * Used for testing purposes.
    * This is automatically attached if Alepha#create() detects a test environment and global 'beforeAll' is available.
    */
-  "alepha.test.beforeAll"?: (run: any) => any;
+  "alepha.test.beforeAll"?: (fn: () => unknown) => void;
 
   /**
    * Bind to Vitest 'afterAll' hook.
    * Used for testing purposes.
    * This is automatically attached if Alepha#create() detects a test environment and global 'afterAll' is available.
    */
-  "alepha.test.afterAll"?: (run: any) => any;
+  "alepha.test.afterAll"?: (fn: () => unknown) => void;
 
   /**
    * Bind to Vitest 'afterEach' hook.
    * Used for testing purposes.
    * This is automatically attached if Alepha#create() detects a test environment and global 'afterEach' is available.
    */
-  "alepha.test.afterEach"?: (run: any) => any;
+  "alepha.test.afterEach"?: (fn: () => unknown) => void;
 
   /**
    * Bind to Vitest 'onTestFinished' hook.
    * Used for testing purposes.
    * This is automatically attached if Alepha#create() detects a test environment and global 'onTestFinished' is available.
    */
-  "alepha.test.onTestFinished"?: (run: any) => any;
+  "alepha.test.onTestFinished"?: (fn: () => unknown) => void;
 
   /**
    * List of static assets to be copied to the output directory during the build process.

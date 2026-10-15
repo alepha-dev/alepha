@@ -1265,11 +1265,11 @@ export class ReactServerProvider {
   }
 
   // ---------------------------------------------------------------------------
-  // Testing utilities - kept for backwards compatibility with tests
+  // Server-side rendering test API
   // ---------------------------------------------------------------------------
 
   /**
-   * For testing purposes, renders a page to HTML string.
+   * Test API: render a registered page to an HTML string.
    * Uses the same streaming code path as production, then collects to string.
    *
    * @param name - Page name to render

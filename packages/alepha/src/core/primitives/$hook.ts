@@ -82,7 +82,11 @@ export interface HookOptions<T extends keyof Hooks> {
 export class HookPrimitive<T extends keyof Hooks> extends Primitive<
   HookOptions<T>
 > {
-  public called = 0;
+  protected callCount = 0;
+
+  public get called(): number {
+    return this.callCount;
+  }
 
   protected onInit() {
     // Enforce the documented contract ("you can't register a hook after the
@@ -126,7 +130,7 @@ export class HookPrimitive<T extends keyof Hooks> extends Primitive<
       before: resolveDeps(this.options.before),
       after: resolveDeps(this.options.after),
       callback: (args: any) => {
-        this.called += 1;
+        this.callCount += 1;
         return handler(args);
       },
     });

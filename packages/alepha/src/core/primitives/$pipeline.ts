@@ -31,8 +31,14 @@ export function $pipeline<T extends (...args: any[]) => any>(
   options: PipelineOptions<T>,
 ): PipelinePrimitiveFn<T> {
   const instance = createPrimitive(PipelinePrimitive, options);
-  const fn = (...args: Parameters<T>): any => instance.run(...args);
-  return Object.setPrototypeOf(fn, instance) as PipelinePrimitiveFn<T>;
+  const fn = async (...args: Parameters<T>): Promise<Awaited<ReturnType<T>>> =>
+    instance.run(...args);
+  // Host primitives such as SSE may expose a synchronous stream runner.
+  // The standalone pipeline's callable and .run share the async contract.
+  return Object.setPrototypeOf(
+    Object.assign(fn, { run: fn }),
+    instance,
+  ) as PipelinePrimitiveFn<T>;
 }
 
 // -----------------------------------------------------------------------------------------------------------------
@@ -210,6 +216,7 @@ export interface PipelinePrimitiveFn<
   T extends (...args: any[]) => any = (...args: any[]) => any,
 > extends PipelinePrimitive<PipelineOptions<T>> {
   (...args: Parameters<T>): Promise<Awaited<ReturnType<T>>>;
+  run(...args: Parameters<T>): Promise<Awaited<ReturnType<T>>>;
 }
 
 $pipeline[KIND] = PipelinePrimitive;

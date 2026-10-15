@@ -197,3 +197,29 @@ Mocked APIs:
 - `window.IntersectionObserver`
 - `window.scrollTo`
 - `window.getComputedStyle`
+
+## Server-side rendering
+
+`ReactServerProvider.render()` is a supported test API. It renders a registered
+page through the production streaming path and collects the HTML for assertions.
+It does not require a browser. The default result is page markup; `{ html: true }`
+includes the document wrapper, and `{ hydration: false }` omits hydration data.
+
+```typescript check
+import { Alepha } from "alepha";
+import { $page, ReactServerProvider } from "alepha/react/router";
+import { describe, it } from "vitest";
+
+class TestPages {
+  home = $page({ path: "/", component: () => "Hello from SSR" });
+}
+
+describe("the home page", () => {
+  it("renders on the server", async ({ expect }) => {
+    const alepha = Alepha.create({ env: { SERVER_PORT: 0 } }).with(TestPages);
+    await alepha.start();
+    const result = await alepha.inject(ReactServerProvider).render("home");
+    expect(result.html).toContain("Hello from SSR");
+  });
+});
+```
