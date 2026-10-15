@@ -42,6 +42,7 @@ class CookieTestApp {
 
   // An action to test the cookie functionality in a request cycle
   cookie_test = $action({
+    path: "/cookie_test",
     method: "GET",
     schema: {
       response: z.object({
@@ -211,6 +212,7 @@ describe("ServerCookiesProvider", () => {
         domain: "example.com",
       });
       test = $action({
+        path: "/test",
         method: "GET",
         handler: () => {
           this.advanced.set("value");
@@ -244,12 +246,14 @@ describe("ServerCookiesProvider", () => {
         schema: z.object({ value: z.text() }),
       });
       set = $action({
+        path: "/set",
         method: "GET",
         handler: () => {
           this.tokens.set({ value: "from-app" });
         },
       });
       read = $action({
+        path: "/read",
         method: "GET",
         schema: {
           response: z.object({ value: z.text().optional() }),
@@ -340,6 +344,7 @@ describe("ServerCookiesProvider", () => {
         });
 
         set = $action({
+          path: "/set",
           method: "GET",
           handler: () => {
             this.lang.set("fr");
@@ -347,6 +352,7 @@ describe("ServerCookiesProvider", () => {
         });
 
         read = $action({
+          path: "/read",
           method: "GET",
           schema: { response: z.object({ value: z.text().optional() }) },
           handler: ({ cookies }) => ({ value: this.lang.get({ cookies }) }),
@@ -402,6 +408,7 @@ describe("ServerCookiesProvider", () => {
       });
 
       logout = $action({
+        path: "/logout",
         method: "GET",
         schema: { response: z.text() },
         handler: () => {

@@ -28,6 +28,8 @@ or an order in which a failure leaves harmless state.
 ```typescript
 class OrderService {
   createOrder = $action({
+    method: "POST",
+    path: "/createOrder",
     use: [$transactional()],
     handler: async ({ body }) => {
       await this.orders.create(body);      // auto-uses tx

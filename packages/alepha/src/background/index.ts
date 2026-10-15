@@ -18,11 +18,15 @@ export * from "./providers/WorkerdBackgroundTaskProvider.ts";
  * ```ts
  * protected readonly background = $inject(BackgroundTaskProvider);
  *
- * createUser = $action({ handler: async ({ body }) => {
- *   const user = await this.users.create(body);
- *   this.background.defer(() => this.email.send(welcome(user))); // don't block
- *   return user;
- * }});
+ * createUser = $action({
+ *   method: "POST",
+ *   path: "/users",
+ *   handler: async ({ body }) => {
+ *     const user = await this.users.create(body);
+ *     this.background.defer(() => this.email.send(welcome(user))); // don't block
+ *     return user;
+ *   },
+ * });
  * ```
  *
  * On Node/Vercel the event loop keeps the task alive. On Cloudflare Workers the

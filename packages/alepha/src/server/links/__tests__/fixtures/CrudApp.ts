@@ -95,6 +95,7 @@ export class CrudApp {
   });
 
   create = $action({
+    method: "POST",
     path: "/users",
     schema: {
       body: z.object({
@@ -114,6 +115,7 @@ export class CrudApp {
   });
 
   internalError = $action({
+    path: "/internalError",
     method: "GET",
     schema: {
       response: z.void(),

@@ -21,6 +21,7 @@ class CookieAtomApp {
   settings = $store(settingsAtom);
 
   read = $action({
+    path: "/read",
     method: "GET",
     schema: {
       response: z.object({ theme: z.string() }),
@@ -29,6 +30,8 @@ class CookieAtomApp {
   });
 
   update = $action({
+    method: "POST",
+    path: "/update",
     schema: {
       body: z.object({ theme: z.string() }),
       response: z.object({ ok: z.boolean() }),
@@ -107,6 +110,7 @@ describe("registration order: atoms declared on a $module, before the adapter ex
     protected readonly alepha = $inject(Alepha);
 
     read = $action({
+      path: "/read",
       method: "GET",
       schema: {
         response: z.object({ theme: z.string() }),
@@ -115,6 +119,8 @@ describe("registration order: atoms declared on a $module, before the adapter ex
     });
 
     update = $action({
+      method: "POST",
+      path: "/update",
       schema: {
         body: z.object({ theme: z.string() }),
         response: z.object({ ok: z.boolean() }),
@@ -200,6 +206,7 @@ describe("cookie-name symmetry with APP_NAME set", () => {
     settings = $store(appNameSettingsAtom);
 
     read = $action({
+      path: "/read",
       method: "GET",
       schema: {
         response: z.object({ theme: z.string() }),
@@ -208,6 +215,8 @@ describe("cookie-name symmetry with APP_NAME set", () => {
     });
 
     update = $action({
+      method: "POST",
+      path: "/update",
       schema: {
         body: z.object({ theme: z.string() }),
         response: z.object({ ok: z.boolean() }),

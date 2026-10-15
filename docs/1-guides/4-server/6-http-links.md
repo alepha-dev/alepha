@@ -13,6 +13,7 @@ import { $client } from "alepha/server/links";
 
 class ProductController {
   getProduct = $action({
+    method: "GET",
     path: "/products/:id",
     schema: {
       params: z.object({ id: z.uuid() }),

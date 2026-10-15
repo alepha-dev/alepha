@@ -50,6 +50,7 @@ describe("server rendering keeps the caller's realm in the auth context", () => 
     });
 
     handle = $action({
+      path: "/handle",
       method: "GET",
       use: [$secure({ permissions: ["staff:handle"] })],
       handler: () => "handled",

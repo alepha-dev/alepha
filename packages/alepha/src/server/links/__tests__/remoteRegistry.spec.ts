@@ -11,6 +11,7 @@ import {
 
 class Weather {
   forecast = $action({
+    path: "/forecast",
     method: "GET",
     schema: { response: z.text() },
     handler: () => "rain",
@@ -19,6 +20,7 @@ class Weather {
 
 class Almanac {
   sunrise = $action({
+    path: "/sunrise",
     method: "GET",
     schema: { response: z.text() },
     handler: () => "06:12",

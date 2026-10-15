@@ -108,6 +108,7 @@ describe("HttpClient", () => {
       const alepha = Alepha.create();
       class TestApp {
         counter = $action({
+          path: "/counter",
           method: "POST",
           handler: () => {
             callCount++;

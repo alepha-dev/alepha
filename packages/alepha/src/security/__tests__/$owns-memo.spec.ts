@@ -119,17 +119,18 @@ const createApp = (cache?: { ttl: number }) => {
     // Seven separate actions, so the fan-out below runs seven separate
     // `$action.run()` forks - the arrangement that made a lazily-created memo
     // invisible to all but one of them.
-    readQ1 = this.read();
-    readQ2 = this.read();
-    readQ3 = this.read();
-    readQ4 = this.read();
-    readQ5 = this.read();
-    readQ6 = this.read();
-    readQ7 = this.read();
+    readQ1 = this.read("/readQ1/:id");
+    readQ2 = this.read("/readQ2/:id");
+    readQ3 = this.read("/readQ3/:id");
+    readQ4 = this.read("/readQ4/:id");
+    readQ5 = this.read("/readQ5/:id");
+    readQ6 = this.read("/readQ6/:id");
+    readQ7 = this.read("/readQ7/:id");
 
-    protected read() {
+    protected read(path: string) {
       return $action({
         method: "GET",
+        path,
         schema: {
           params: z.object({ id: z.text() }),
           response: z.text(),

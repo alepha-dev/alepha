@@ -15,6 +15,8 @@ describe("ServerBodyParserProvider", () => {
 
     class TestApp {
       json = $action({
+        method: "POST",
+        path: "/json",
         schema: {
           body: z.object({
             message: z.text(),
@@ -46,6 +48,8 @@ describe("ServerBodyParserProvider", () => {
 
     class TestApp {
       text = $action({
+        method: "POST",
+        path: "/text",
         schema: {
           body: z.text(),
           response: z.object({
@@ -75,6 +79,8 @@ describe("ServerBodyParserProvider", () => {
 
     class TestApp {
       test = $action({
+        method: "POST",
+        path: "/test",
         schema: {
           body: z.object({
             message: z.text({

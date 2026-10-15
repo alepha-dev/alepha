@@ -18,6 +18,8 @@ import { LockProvider } from "../providers/LockProvider.ts";
  *
  * ```ts
  * processOrder = $action({
+ *   method: "POST",
+ *   path: "/processOrder",
  *   use: [$lock({ name: "process-order" })],
  *   handler: async ({ body }) => { ... },
  * });

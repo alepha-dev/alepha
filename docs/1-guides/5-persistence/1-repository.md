@@ -665,6 +665,8 @@ import { $transactional } from "alepha/orm";
 
 class OrderService {
   processOrder = $action({
+    method: "POST",
+    path: "/processOrder",
     use: [$transactional()],
     handler: async ({ body }) => {
       await this.orders.create(body);       // auto-uses the transaction

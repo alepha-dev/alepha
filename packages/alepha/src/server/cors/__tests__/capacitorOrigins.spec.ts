@@ -10,10 +10,7 @@ import {
 } from "../index.ts";
 
 class NativeApi {
-  notes = $action({
-    method: "POST",
-    handler: () => "notes",
-  });
+  notes = $action({ path: "/notes", method: "POST", handler: () => "notes" });
 
   /**
    * Narrowed to the native app on the route itself, under a global policy

@@ -8,6 +8,7 @@ class TestApp {
   protected readonly log = $logger();
 
   boom = $action({
+    path: "/boom",
     method: "GET",
     handler: () => {
       this.log.debug("step one");

@@ -22,6 +22,7 @@ import { $action } from "alepha/server";
 
 class ProductController {
   list = $action({
+    method: "GET",
     path: "/products",
     schema: {
       query: z.object({
@@ -80,33 +81,25 @@ alepha.store.mut(serverApiOptions, (o) => ({ ...o, prefix: "/v1" }));
 // now: GET /v1/users
 ```
 
-If `path` is omitted, the property key is used:
-
-```typescript
-class App {
-  listUsers = $action({ method: "GET", handler: () => [] });
-  // GET /api/listUsers
-}
-```
-
-When a `params` schema is provided and no `path` is set, path parameters are appended automatically:
+`path` is required. It never derives from the property name, so renaming `getUser` to `findUser` cannot move a public URL. Every `:name` in it is declared in `schema.params`:
 
 ```typescript
 class App {
   getUser = $action({
     method: "GET",
+    path: "/users/:id",
     schema: { params: z.object({ id: z.uuid() }) },
     handler: async ({ params }) => {
       /* ... */
     },
   });
-  // GET /api/getUser/:id
+  // GET /api/users/:id
 }
 ```
 
 ## HTTP Method
 
-The method defaults to `POST`, with or without a body. A read declares `method: "GET"`: it is a claim that the call changes nothing, which is what the HTTP client's ETag cache and request deduplication rely on, and what keeps a state-changing endpoint out of reach of a cross-site link (browsers send the `SameSite=Lax` session cookie on a top-level GET). Any other method is set the same way:
+`method` is required, with or without a body. A read declares `method: "GET"`: it is a claim that the call changes nothing, which is what the HTTP client's ETag cache and request deduplication rely on, and what keeps a state-changing endpoint out of reach of a cross-site link (browsers send the `SameSite=Lax` session cookie on a top-level GET). Any other method is set the same way:
 
 ```typescript
 update = $action({
@@ -159,6 +152,8 @@ class AdminController {
   group = "admin";
 
   listUsers = $action({
+    method: "GET",
+    path: "/listUsers",
     group: this.group,
     handler: () => {
       /* ... */
@@ -166,6 +161,8 @@ class AdminController {
   });
 
   deleteUser = $action({
+    method: "POST",
+    path: "/deleteUser",
     group: this.group,
     handler: () => {
       /* ... */
@@ -187,6 +184,8 @@ class App {
   );
 
   beta = $action({
+    method: "POST",
+    path: "/beta",
     disabled: !this.env.ENABLE_BETA,
     handler: () => "beta feature",
   });

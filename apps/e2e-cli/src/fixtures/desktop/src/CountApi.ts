@@ -21,6 +21,8 @@ const viewEntity = $entity({
 export class CountApi {
   views = $repository(viewEntity);
   inc = $action({
+    method: "POST",
+    path: "/inc",
     schema: {
       response: z.object({
         count: z.integer(),

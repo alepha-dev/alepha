@@ -606,10 +606,14 @@ Actions are public by default. To require authentication, add the `$secure()` mi
 import { $secure } from "alepha/security";
 
 publicEndpoint = $action({
+  method: "POST",
+  path: "/publicEndpoint",
   handler: () => "anyone can access this",
 });
 
 protectedEndpoint = $action({
+  method: "POST",
+  path: "/protectedEndpoint",
   use: [$secure()],
   handler: () => "only authenticated users",
 });
@@ -619,6 +623,7 @@ The authenticated user is on the request object. `user` is optional on a request
 
 ```typescript
 profile = $action({
+  method: "GET",
   path: "/me",
   use: [$secure()],
   handler: async ({ user }) => {
@@ -631,11 +636,15 @@ You can also restrict access to a specific issuer or role:
 
 ```typescript
 adminOnly = $action({
+  method: "POST",
+  path: "/adminOnly",
   use: [$secure({ issuers: ["admin"] })],
   handler: () => "admin issuer only",
 });
 
 managersOnly = $action({
+  method: "POST",
+  path: "/managersOnly",
   use: [$secure({ roles: ["manager", "admin"] })],
   handler: () => "managers and admins only",
 });
@@ -908,12 +917,16 @@ When multiple options are provided, checks run in this fixed order. Each check m
 ```typescript
 // Auth only - any authenticated user
 profile = $action({
+  method: "GET",
+  path: "/profile",
   use: [$secure()],
   handler: ({ user }) => user,
 });
 
 // Role check (OR) - admin or manager
 dashboard = $action({
+  method: "GET",
+  path: "/dashboard",
   use: [$secure({ roles: ["admin", "manager"] })],
   handler: () => {
     /* ... */
@@ -922,6 +935,8 @@ dashboard = $action({
 
 // Permission check (AND) - must have both
 publish = $action({
+  method: "POST",
+  path: "/publish",
   use: [$secure({ permissions: ["articles:create", "articles:publish"] })],
   handler: () => {
     /* ... */
@@ -930,6 +945,8 @@ publish = $action({
 
 // Issuer restriction
 adminPanel = $action({
+  method: "POST",
+  path: "/adminPanel",
   use: [$secure({ issuers: ["admin"] })],
   handler: () => {
     /* ... */
@@ -938,6 +955,8 @@ adminPanel = $action({
 
 // Custom guard - runs after all other checks
 ownProfile = $action({
+  method: "POST",
+  path: "/ownProfile",
   use: [$secure({ guard: ({ user, params }) => user.id === params.id })],
   handler: () => {
     /* ... */
@@ -946,6 +965,8 @@ ownProfile = $action({
 
 // Combining options - all must pass
 adminManage = $action({
+  method: "POST",
+  path: "/adminManage",
   use: [
     $secure({
       issuers: ["main"],
@@ -1071,6 +1092,8 @@ class WebhookController {
   protected readonly env = $env(z.object({ WEBHOOK_SECRET: z.text() }));
 
   webhook = $action({
+    method: "POST",
+    path: "/webhook",
     use: [
       $basicAuth({ username: "stripe", password: this.env.WEBHOOK_SECRET }),
     ],

@@ -45,6 +45,7 @@ describe("read tracking", () => {
 
   class Api {
     hello = $action({
+      path: "/hello",
       method: "GET",
       schema: { response: z.text() },
       handler: () => "hello",
@@ -53,6 +54,7 @@ describe("read tracking", () => {
 
   class Remote {
     whoami = $action({
+      path: "/whoami",
       method: "GET",
       schema: { response: z.text() },
       handler: () => "remote",

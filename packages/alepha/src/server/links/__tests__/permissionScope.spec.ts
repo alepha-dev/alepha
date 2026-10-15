@@ -52,6 +52,7 @@ class App {
   export = $permission({ group: "docs", name: "export" });
 
   read = $action({
+    path: "/read",
     method: "GET",
     use: [$secure({ permissions: ["docs:read"] })],
     schema: { response: z.text() },
@@ -59,6 +60,7 @@ class App {
   });
 
   write = $action({
+    path: "/write",
     method: "GET",
     use: [$secure({ permissions: ["docs:write"] })],
     schema: { response: z.text() },

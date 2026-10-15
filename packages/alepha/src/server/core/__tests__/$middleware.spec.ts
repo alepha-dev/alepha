@@ -27,6 +27,7 @@ describe("$middleware", () => {
       });
 
       hello = $action({
+        path: "/hello",
         method: "GET",
         schema: { response: z.object({ message: z.text() }) },
         handler: () => {
@@ -57,6 +58,7 @@ describe("$middleware", () => {
       });
 
       hello = $action({
+        path: "/hello",
         method: "GET",
         schema: { response: z.text() },
         handler: () => {
@@ -86,6 +88,7 @@ describe("$middleware", () => {
       });
 
       hello = $action({
+        path: "/hello",
         method: "GET",
         schema: { response: z.text() },
         handler: () => {
@@ -114,6 +117,7 @@ describe("$middleware", () => {
       });
 
       getAction = $action({
+        path: "/getAction",
         method: "GET",
         schema: { response: z.text() },
         handler: () => {
@@ -123,6 +127,7 @@ describe("$middleware", () => {
       });
 
       postAction = $action({
+        path: "/postAction",
         method: "POST",
         schema: {
           body: z.object({ value: z.text() }),
@@ -168,6 +173,7 @@ describe("$middleware", () => {
       });
 
       hello = $action({
+        path: "/hello",
         method: "GET",
         schema: { response: z.text() },
         handler: () => {
@@ -199,6 +205,7 @@ describe("$middleware", () => {
       });
 
       hello = $action({
+        path: "/hello",
         method: "GET",
         use: [$track(log, "local")],
         schema: { response: z.text() },

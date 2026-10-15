@@ -6,6 +6,7 @@ import { AlephaServerLinks, LinkProvider, linkOptionsAtom } from "../index.ts";
 
 class Api {
   ping = $action({
+    path: "/ping",
     method: "GET",
     schema: { response: z.text() },
     handler: () => "pong",

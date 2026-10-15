@@ -10,6 +10,8 @@ import {
 
 class App {
   upload = $action({
+    method: "POST",
+    path: "/upload",
     schema: {
       body: z.object({
         file: z.file(),
@@ -56,6 +58,8 @@ describe("ServerMultipartProvider", () => {
   test("should read file content via text()", async ({ expect }) => {
     class TextApp {
       upload = $action({
+        method: "POST",
+        path: "/upload",
         schema: {
           body: z.object({ file: z.file() }),
           response: z.text(),
@@ -82,6 +86,8 @@ describe("ServerMultipartProvider", () => {
   test("should read file content via arrayBuffer()", async ({ expect }) => {
     class BufferApp {
       upload = $action({
+        method: "POST",
+        path: "/upload",
         schema: {
           body: z.object({ file: z.file() }),
           response: z.text(),
@@ -108,6 +114,8 @@ describe("ServerMultipartProvider", () => {
   test("should handle binary file uploads", async ({ expect }) => {
     class BinaryApp {
       upload = $action({
+        method: "POST",
+        path: "/upload",
         schema: {
           body: z.object({ file: z.file() }),
           response: z.text(),
@@ -149,6 +157,8 @@ describe("ServerMultipartProvider", () => {
   test("should handle mixed file and text fields", async ({ expect }) => {
     class MixedApp {
       upload = $action({
+        method: "POST",
+        path: "/upload",
         schema: {
           body: z.object({
             name: z.text(),
@@ -181,6 +191,8 @@ describe("ServerMultipartProvider", () => {
   test("should not have filepath (no filesystem)", async ({ expect }) => {
     class PathApp {
       upload = $action({
+        method: "POST",
+        path: "/upload",
         schema: {
           body: z.object({ file: z.file() }),
           response: z.text(),
@@ -235,6 +247,8 @@ describe("ServerMultipartProvider - Size Limits", () => {
   }) => {
     class MultiFileApp {
       upload = $action({
+        method: "POST",
+        path: "/upload",
         schema: {
           body: z.object({
             file1: z.file(),
@@ -336,6 +350,8 @@ describe("ServerMultipartProvider - Size Limits", () => {
   test("should reject request with too many files", async ({ expect }) => {
     class ManyFilesApp {
       upload = $action({
+        method: "POST",
+        path: "/upload",
         schema: {
           body: z.object({
             file1: z.file(),
@@ -446,6 +462,8 @@ describe("ServerMultipartProvider - Size Limits", () => {
   }) => {
     class TextAndFilesApp {
       upload = $action({
+        method: "POST",
+        path: "/upload",
         schema: {
           body: z.object({
             field1: z.text(),
@@ -516,6 +534,8 @@ describe("ServerMultipartProvider - scalar fields", () => {
    */
   class ScalarApp {
     submit = $action({
+      method: "POST",
+      path: "/submit",
       schema: {
         body: z.object({
           file: z.file(),

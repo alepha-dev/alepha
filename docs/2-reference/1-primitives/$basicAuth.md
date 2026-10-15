@@ -16,6 +16,8 @@ validates credentials using timing-safe comparison, and throws 401 if invalid.
 ```typescript
 class DevToolsController {
   dashboard = $action({
+    method: "GET",
+    path: "/dashboard",
     use: [$basicAuth({ username: "admin", password: "secret" })],
     handler: async () => { ... },
   });

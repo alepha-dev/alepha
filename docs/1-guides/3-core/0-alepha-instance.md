@@ -203,6 +203,8 @@ class UserService {
   email = $inject(EmailProvider);
 
   register = $action({
+    method: "POST",
+    path: "/register",
     handler: async ({ body }) => {
       await this.email.send(body.email, "Welcome!");
     },

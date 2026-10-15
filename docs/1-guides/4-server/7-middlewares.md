@@ -260,6 +260,7 @@ import { $etag } from "alepha/server/etag";
 
 class Articles {
   get = $action({
+    method: "GET",
     path: "/articles/:id",
     use: [$etag()],
     handler: async () => "an article",
@@ -286,6 +287,7 @@ import { $etag } from "alepha/server/etag";
 
 class Stats {
   get = $action({
+    method: "GET",
     path: "/stats",
     use: [
       $etag({

@@ -5,26 +5,43 @@ import { describe, test } from "vitest";
 import { $action } from "../index.ts";
 
 describe("$action", () => {
-  test("is POST without a method, with or without a body", ({ expect }) => {
+  test("serves the declared method and path, nothing derived", ({ expect }) => {
     class App {
-      bare = $action({ handler: () => "ok" });
-      withBody = $action({
-        schema: { body: z.object({ name: z.text() }) },
+      read = $action({
+        method: "GET",
+        path: "/items/:id",
+        schema: { params: z.object({ id: z.text() }) },
         handler: () => "ok",
       });
-      read = $action({ method: "GET", handler: () => "ok" });
     }
 
     const app = Alepha.create().inject(App);
 
-    expect(app.bare.method).toBe("POST");
-    expect(app.withBody.method).toBe("POST");
     expect(app.read.method).toBe("GET");
+    expect(app.read.path).toBe("/items/:id");
+    expect(app.read.route.path).toBe("/api/items/:id");
+  });
+
+  test("refuses an untyped action missing its method or path", ({ expect }) => {
+    class NoMethod {
+      bare = $action({ path: "/bare", handler: () => "ok" } as any);
+    }
+    class NoPath {
+      bare = $action({ method: "POST", handler: () => "ok" } as any);
+    }
+
+    expect(() => Alepha.create().inject(NoMethod)).toThrow(
+      "Action 'bare' must declare both 'method' and 'path'.",
+    );
+    expect(() => Alepha.create().inject(NoPath)).toThrow(
+      "Action 'bare' must declare both 'method' and 'path'.",
+    );
   });
 
   test("should expose api", async ({ expect }) => {
     class Api {
       hello = $action({
+        path: "/hello/:name",
         method: "GET",
         schema: {
           params: z.object({
@@ -87,11 +104,9 @@ describe("$action", () => {
   test("should not be exposed when disabled", async ({ expect }) => {
     const alepha = Alepha.create();
     class TestApp {
-      a1 = $action({
-        method: "GET",
-        handler: () => "ok:a1",
-      });
+      a1 = $action({ path: "/a1", method: "GET", handler: () => "ok:a1" });
       a2 = $action({
+        path: "/a2",
         method: "GET",
         handler: () => "ok:a2",
         disabled: true,
@@ -110,6 +125,7 @@ describe("$action", () => {
     const alepha = Alepha.create();
     class TestApp {
       test = $action({
+        path: "/test",
         method: "GET",
         schema: {
           response: z.void(), // force no response
@@ -133,6 +149,7 @@ describe("$action", () => {
     const alepha = Alepha.create();
     class TestApp {
       test = $action({
+        path: "/test",
         method: "GET",
         schema: {
           response: z.json(),
@@ -157,6 +174,7 @@ describe("$action", () => {
     const fileSystem = alepha.inject(FileSystemProvider);
     class TestApp {
       test = $action({
+        path: "/test",
         method: "GET",
         schema: {
           response: z.file(), // expect a file response
@@ -186,6 +204,8 @@ describe("$action", () => {
     alepha.inject(FileSystemProvider);
     class TestApp {
       test = $action({
+        method: "POST",
+        path: "/test",
         schema: {
           body: z.object({
             extra: z.text(),

@@ -54,6 +54,7 @@ import {
  * ```typescript
  * class CampaignController {
  *   read = $action({
+ *     method: "GET",
  *     path: "/campaigns/:id",
  *     use: [
  *       $secure(),

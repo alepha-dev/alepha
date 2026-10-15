@@ -10,11 +10,14 @@ describe("POST /api/_batch", () => {
   }) => {
     class App {
       ping = $action({
+        path: "/ping",
         method: "GET",
         schema: { response: z.text() },
         handler: () => "pong",
       });
       echo = $action({
+        method: "POST",
+        path: "/echo",
         schema: {
           body: z.object({ message: z.text() }),
           response: z.text(),
@@ -58,6 +61,7 @@ describe("POST /api/_batch", () => {
   }) => {
     class App {
       ping = $action({
+        path: "/ping",
         method: "GET",
         schema: { response: z.text() },
         handler: () => "pong",
@@ -94,6 +98,7 @@ describe("POST /api/_batch", () => {
   }) => {
     class App {
       slow = $action({
+        path: "/slow",
         method: "GET",
         schema: { response: z.text() },
         handler: async () => {
@@ -102,6 +107,7 @@ describe("POST /api/_batch", () => {
         },
       });
       fast = $action({
+        path: "/fast",
         method: "GET",
         schema: { response: z.text() },
         handler: () => "fast",
@@ -137,10 +143,7 @@ describe("POST /api/_batch", () => {
 
   it("should reject batches exceeding max size", async ({ expect }) => {
     class App {
-      ping = $action({
-        method: "GET",
-        handler: () => "pong",
-      });
+      ping = $action({ path: "/ping", method: "GET", handler: () => "pong" });
     }
 
     const alepha = Alepha.create().with(App).with(ServerLinksProvider);
@@ -163,6 +166,7 @@ describe("POST /api/_batch", () => {
   it("should not leak a 5xx message in production", async ({ expect }) => {
     class App {
       boom = $action({
+        path: "/boom",
         method: "GET",
         schema: { response: z.text() },
         handler: () => {
@@ -208,6 +212,7 @@ describe("POST /api/_batch", () => {
   }) => {
     class App {
       nope = $action({
+        path: "/nope",
         method: "GET",
         schema: { response: z.text() },
         handler: () => {
@@ -303,6 +308,7 @@ describe("POST /api/_batch", () => {
     // outage in which every analytics read was 500ing.
     class App {
       boom = $action({
+        path: "/boom",
         method: "GET",
         schema: { response: z.text() },
         handler: () => {

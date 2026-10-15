@@ -14,6 +14,7 @@ import { currentResourceAtom } from "../atoms/currentResourceAtom.ts";
  *   protected readonly owned = $inject(OwnedResourceProvider);
  *
  *   read = $action({
+ *     method: "GET",
  *     path: "/campaigns/:id",
  *     use: [$secure(), $owns({ repository: () => this.campaigns, param: "id", owner: "createdBy" })],
  *     handler: async () => this.owned.get<Campaign>(),

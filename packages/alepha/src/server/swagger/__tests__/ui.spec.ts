@@ -17,6 +17,7 @@ class App {
   });
 
   hello = $action({
+    path: "/hello",
     method: "GET",
     schema: {
       response: z.object({

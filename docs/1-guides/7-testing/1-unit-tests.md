@@ -77,6 +77,7 @@ import { $action } from "alepha/server";
 
 class UserController {
   getUser = $action({
+    method: "GET",
     path: "/users/:id",
     schema: { params: z.object({ id: z.uuid() }) },
     handler: async ({ params }) => ({ id: params.id, name: "Alice" }),

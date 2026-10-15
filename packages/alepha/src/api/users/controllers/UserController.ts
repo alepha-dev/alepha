@@ -113,6 +113,7 @@ export class UserController {
    * @param method - The verification method: "code" (default) sends a numeric code, "link" sends a clickable verification link built from the realm's `verifyEmailUrl` setting.
    */
   public requestEmailVerification = $action({
+    method: "POST",
     path: "/users/email-verification/request",
     group: this.group,
     schema: {
@@ -158,6 +159,7 @@ export class UserController {
    * Updates the user's emailVerified status.
    */
   public verifyEmail = $action({
+    method: "POST",
     path: "/users/email-verification/verify",
     group: this.group,
     schema: {

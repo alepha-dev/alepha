@@ -145,6 +145,8 @@ export class RateLimitPrimitive<TInput = string> extends Primitive<
    *   search = $rateLimit({ name: "api:search", limit: 60, window: 60_000 });
    *
    *   find = $action({
+   *     method: "GET",
+   *     path: "/find",
    *     use: [this.search.middleware()],
    *     handler: async () => "ok",
    *   });

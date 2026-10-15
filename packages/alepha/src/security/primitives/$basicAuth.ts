@@ -20,6 +20,8 @@ export interface BasicAuthOptions {
  * ```typescript
  * class DevToolsController {
  *   dashboard = $action({
+ *     method: "GET",
+ *     path: "/dashboard",
  *     use: [$basicAuth({ username: "admin", password: "secret" })],
  *     handler: async () => { ... },
  *   });

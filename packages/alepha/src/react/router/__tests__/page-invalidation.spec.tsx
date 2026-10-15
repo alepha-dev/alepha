@@ -74,6 +74,7 @@ describe("page cache invalidation", () => {
       });
 
       catalogueReset = $action({
+        path: "/catalogueReset",
         method: "POST",
         handler: () => "ok",
       });

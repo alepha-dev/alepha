@@ -14,6 +14,7 @@ describe("ServerLinksProvider", () => {
     }) => {
       class App {
         publicAction = $action({
+          path: "/publicAction",
           method: "GET",
           handler: () => "PUBLIC",
         });
@@ -34,6 +35,7 @@ describe("ServerLinksProvider", () => {
     }) => {
       class App {
         securedAction = $action({
+          path: "/securedAction",
           method: "GET",
           use: [$secure()],
           handler: () => "SECURED",
@@ -55,6 +57,7 @@ describe("ServerLinksProvider", () => {
     }) => {
       class App {
         realmAction = $action({
+          path: "/realmAction",
           method: "GET",
           use: [$secure({ issuers: ["admin"] })],
           handler: () => "REALM",
@@ -78,6 +81,7 @@ describe("ServerLinksProvider", () => {
     }) => {
       class App {
         publicAction = $action({
+          path: "/publicAction",
           method: "GET",
           schema: { response: z.text() },
           handler: () => "PUBLIC",
@@ -108,6 +112,7 @@ describe("ServerLinksProvider", () => {
     }) => {
       class App {
         securedAction = $action({
+          path: "/securedAction",
           method: "GET",
           use: [$secure()],
           schema: { response: z.text() },
@@ -138,6 +143,7 @@ describe("ServerLinksProvider", () => {
     }) => {
       class App {
         securedAction = $action({
+          path: "/securedAction",
           method: "GET",
           use: [$secure()],
           schema: { response: z.text() },
@@ -171,11 +177,13 @@ describe("ServerLinksProvider", () => {
     }) => {
       class App {
         publicAction = $action({
+          path: "/publicAction",
           method: "GET",
           schema: { response: z.text() },
           handler: () => "PUBLIC",
         });
         securedAction = $action({
+          path: "/securedAction",
           method: "GET",
           use: [$secure()],
           schema: { response: z.text() },
@@ -207,12 +215,14 @@ describe("ServerLinksProvider", () => {
     }) => {
       class App {
         adminOnly = $action({
+          path: "/adminOnly",
           method: "GET",
           use: [$secure({ permissions: ["admin:manage"] })],
           schema: { response: z.text() },
           handler: () => "ADMIN",
         });
         userAction = $action({
+          path: "/userAction",
           method: "GET",
           use: [$secure({ permissions: ["user:read"] })],
           schema: { response: z.text() },
@@ -257,6 +267,7 @@ describe("ServerLinksProvider", () => {
     }) => {
       class App {
         authOnly = $action({
+          path: "/authOnly",
           method: "GET",
           use: [$secure()],
           schema: { response: z.text() },
@@ -297,6 +308,7 @@ describe("ServerLinksProvider", () => {
           handler: () => ["user1", "user2"],
         });
         createUser = $action({
+          method: "POST",
           path: "/users",
           use: [$secure()],
           schema: {
@@ -385,6 +397,8 @@ describe("ServerLinksProvider", () => {
     it("should return schemas for requested actions", async ({ expect }) => {
       class App {
         ping = $action({
+          method: "POST",
+          path: "/ping",
           schema: {
             body: z.object({ message: z.text() }),
             response: z.object({ pong: z.boolean() }),
@@ -417,6 +431,7 @@ describe("ServerLinksProvider", () => {
     it("should return empty for unknown actions", async ({ expect }) => {
       class App {
         ping = $action({
+          path: "/ping",
           method: "GET",
           schema: { response: z.text() },
           handler: () => "pong",
@@ -443,6 +458,8 @@ describe("ServerLinksProvider", () => {
     it("should filter based on user permissions", async ({ expect }) => {
       class App {
         publicAction = $action({
+          method: "POST",
+          path: "/publicAction",
           schema: {
             body: z.object({ name: z.text() }),
             response: z.text(),
@@ -450,6 +467,8 @@ describe("ServerLinksProvider", () => {
           handler: () => "PUBLIC",
         });
         securedAction = $action({
+          method: "POST",
+          path: "/securedAction",
           use: [$secure()],
           schema: {
             body: z.object({ secret: z.text() }),
@@ -491,10 +510,7 @@ describe("ServerLinksProvider", () => {
   describe("caching and ETag", () => {
     it("should return ETag header on first request", async ({ expect }) => {
       class App {
-        ping = $action({
-          method: "GET",
-          handler: () => "pong",
-        });
+        ping = $action({ path: "/ping", method: "GET", handler: () => "pong" });
       }
 
       const alepha = Alepha.create().with(App).with(ServerLinksProvider);
@@ -513,10 +529,7 @@ describe("ServerLinksProvider", () => {
       expect,
     }) => {
       class App {
-        ping = $action({
-          method: "GET",
-          handler: () => "pong",
-        });
+        ping = $action({ path: "/ping", method: "GET", handler: () => "pong" });
       }
 
       const alepha = Alepha.create().with(App).with(ServerLinksProvider);
@@ -540,10 +553,7 @@ describe("ServerLinksProvider", () => {
 
     it("should return same ETag for same roles", async ({ expect }) => {
       class App {
-        ping = $action({
-          method: "GET",
-          handler: () => "pong",
-        });
+        ping = $action({ path: "/ping", method: "GET", handler: () => "pong" });
       }
 
       const alepha = Alepha.create().with(App).with(ServerLinksProvider);
@@ -562,6 +572,7 @@ describe("ServerLinksProvider", () => {
     }) => {
       class App {
         authOnly = $action({
+          path: "/authOnly",
           method: "GET",
           use: [$secure()],
           schema: { response: z.text() },
@@ -603,6 +614,7 @@ describe("ServerLinksProvider", () => {
     it("should serve cached response on second request", async ({ expect }) => {
       class App {
         ping = $action({
+          path: "/ping",
           method: "GET",
           schema: { response: z.text() },
           handler: () => "pong",

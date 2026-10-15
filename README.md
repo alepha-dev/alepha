@@ -43,6 +43,8 @@ export class Api {
   views = $repository(views);
 
   inc = $action({
+    method: "POST",
+    path: "/inc",
     schema: { response: z.object({ count: z.number() }) },
     handler: async () => {
       await this.views.create({});

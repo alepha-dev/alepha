@@ -13,6 +13,7 @@ describe("requestId", () => {
   it("should propagate requestId across multiple remote service calls", async () => {
     class Puppeteer {
       print = $action({
+        path: "/print",
         method: "GET",
         handler: () => {
           return "Puppeteer is not available in this environment.";
@@ -54,6 +55,7 @@ describe("requestId", () => {
       puppeteerApi = $client<Puppeteer>();
 
       exportPdf = $action({
+        path: "/exportPdf",
         method: "GET",
         handler: () => {
           return this.puppeteerApi.print();
@@ -82,6 +84,7 @@ describe("requestId", () => {
       reportingApi = $client<Reporting>();
 
       download = $action({
+        path: "/download",
         method: "GET",
         handler: () => {
           return this.reportingApi.exportPdf();

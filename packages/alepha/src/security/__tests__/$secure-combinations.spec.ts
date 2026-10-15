@@ -62,24 +62,28 @@ function setup() {
     // ---------------------------------------------------------------------------------------------------------------
 
     authOnly = $action({
+      path: "/authOnly",
       method: "GET",
       use: [$secure()],
       handler: () => "auth-only",
     });
 
     requireViewer = $action({
+      path: "/requireViewer",
       method: "GET",
       use: [$secure({ roles: ["viewer"] })],
       handler: () => "viewer",
     });
 
     requireRead = $action({
+      path: "/requireRead",
       method: "GET",
       use: [$secure({ permissions: ["posts:read"] })],
       handler: () => "read",
     });
 
     requireMainIssuer = $action({
+      path: "/requireMainIssuer",
       method: "GET",
       use: [$secure({ issuers: ["main"] })],
       handler: () => "main-issuer",
@@ -90,18 +94,21 @@ function setup() {
     // ---------------------------------------------------------------------------------------------------------------
 
     issuerAndRole = $action({
+      path: "/issuerAndRole",
       method: "GET",
       use: [$secure({ issuers: ["main"], roles: ["editor"] })],
       handler: () => "issuer+role",
     });
 
     issuerAndPermission = $action({
+      path: "/issuerAndPermission",
       method: "GET",
       use: [$secure({ issuers: ["main"], permissions: ["posts:create"] })],
       handler: () => "issuer+permission",
     });
 
     issuerAndGuard = $action({
+      path: "/issuerAndGuard",
       method: "GET",
       use: [
         $secure({
@@ -113,12 +120,14 @@ function setup() {
     });
 
     roleAndPermission = $action({
+      path: "/roleAndPermission",
       method: "GET",
       use: [$secure({ roles: ["editor"], permissions: ["posts:create"] })],
       handler: () => "role+permission",
     });
 
     roleAndGuard = $action({
+      path: "/roleAndGuard",
       method: "GET",
       use: [
         $secure({
@@ -130,6 +139,7 @@ function setup() {
     });
 
     permissionAndGuard = $action({
+      path: "/permissionAndGuard",
       method: "GET",
       use: [
         $secure({
@@ -145,6 +155,7 @@ function setup() {
     // ---------------------------------------------------------------------------------------------------------------
 
     issuerRolePermission = $action({
+      path: "/issuerRolePermission",
       method: "GET",
       use: [
         $secure({
@@ -157,6 +168,7 @@ function setup() {
     });
 
     issuerRoleGuard = $action({
+      path: "/issuerRoleGuard",
       method: "GET",
       use: [
         $secure({
@@ -169,6 +181,7 @@ function setup() {
     });
 
     issuerPermissionGuard = $action({
+      path: "/issuerPermissionGuard",
       method: "GET",
       use: [
         $secure({
@@ -181,6 +194,7 @@ function setup() {
     });
 
     rolePermissionGuard = $action({
+      path: "/rolePermissionGuard",
       method: "GET",
       use: [
         $secure({
@@ -197,6 +211,7 @@ function setup() {
     // ---------------------------------------------------------------------------------------------------------------
 
     allOptions = $action({
+      path: "/allOptions",
       method: "GET",
       use: [
         $secure({
@@ -214,6 +229,7 @@ function setup() {
     // ---------------------------------------------------------------------------------------------------------------
 
     multiplePermissions = $action({
+      path: "/multiplePermissions",
       method: "GET",
       use: [$secure({ permissions: ["posts:read", "posts:delete"] })],
       handler: () => "multi-perm",
@@ -224,6 +240,7 @@ function setup() {
     // ---------------------------------------------------------------------------------------------------------------
 
     multipleIssuers = $action({
+      path: "/multipleIssuers",
       method: "GET",
       use: [$secure({ issuers: ["main", "external"] })],
       handler: () => "multi-issuer",
@@ -234,6 +251,7 @@ function setup() {
     // ---------------------------------------------------------------------------------------------------------------
 
     multipleRoles = $action({
+      path: "/multipleRoles",
       method: "GET",
       use: [$secure({ roles: ["editor", "moderator"] })],
       handler: () => "multi-role",

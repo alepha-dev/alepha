@@ -25,6 +25,7 @@ const shellConfig = {
 
 class Api {
   hello = $action({
+    path: "/hello",
     method: "GET",
     schema: { response: z.text() },
     handler: () => "hi",

@@ -8,6 +8,8 @@ describe("$proxy", () => {
   it("should proxy requests to target server with headers and query params", async () => {
     class App {
       hello = $action({
+        method: "POST",
+        path: "/hello",
         schema: {
           headers: z.object({
             prefix: z.text().optional(),

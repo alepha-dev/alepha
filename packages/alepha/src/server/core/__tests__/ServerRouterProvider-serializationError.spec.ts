@@ -5,6 +5,7 @@ import { $action, ServerProvider } from "../index.ts";
 
 class TestApp {
   badResponse = $action({
+    path: "/badResponse",
     method: "GET",
     schema: {
       response: z.object({

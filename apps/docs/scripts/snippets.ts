@@ -19,6 +19,8 @@ export class Api {
   tasks = $repository(taskEntity);
 
   list = $action({
+    method: "GET",
+    path: "/list",
     schema: { response: z.array(taskEntity.schema) },
     handler: () => this.tasks.findMany({ limit: 20 }),
   });

@@ -23,6 +23,7 @@ class OrganizationGateApp {
   public readonly containers = $repository(organizationContainers);
 
   public readonly readOrganization = $action({
+    path: "/readOrganization/:organizationId",
     method: "GET",
     use: [$ownsOrganization({ param: "organizationId" })],
     schema: {
@@ -33,6 +34,7 @@ class OrganizationGateApp {
   });
 
   public readonly readOrganizationContainer = $action({
+    path: "/readOrganizationContainer/:id",
     method: "GET",
     use: [
       $ownsOrganization({

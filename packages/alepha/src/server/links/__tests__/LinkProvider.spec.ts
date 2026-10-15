@@ -6,6 +6,7 @@ import { LinkProvider, ServerLinksProvider } from "../index.ts";
 
 class App {
   ping = $action({
+    path: "/ping",
     method: "GET",
     schema: {
       response: z.object({
@@ -169,11 +170,9 @@ describe("LinkProvider", () => {
 
   it("should throw on duplicate local action names", async ({ expect }) => {
     class DuplicateApp {
-      ping = $action({
-        method: "GET",
-        handler: () => "first",
-      });
+      ping = $action({ path: "/ping", method: "GET", handler: () => "first" });
       ping2 = $action({
+        path: "/ping",
         method: "GET",
         name: "ping",
         handler: () => "second",
