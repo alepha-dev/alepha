@@ -25,7 +25,7 @@ import type { InjectOptions } from "./primitives/$inject.ts";
 import { Module, type WithModule } from "./primitives/$module.ts";
 import { AlsProvider, type StateScope } from "./providers/AlsProvider.ts";
 import { CodecManager } from "./providers/CodecManager.ts";
-import { EventManager } from "./providers/EventManager.ts";
+import { type EmitReport, EventManager } from "./providers/EventManager.ts";
 import { StateManager } from "./providers/StateManager.ts";
 import {
   type Infer,
@@ -651,10 +651,10 @@ export class Alepha {
       return true;
     }
 
-    // Cloudflare Workers support
+    // Cloudflare Workers support. `globalThis`, not `global`: workerd
+    // without `nodejs_compat` has no `global`, and the detection was skipped.
     if (
-      typeof global === "object" &&
-      typeof (global as { Cloudflare?: unknown }).Cloudflare === "object"
+      typeof (globalThis as { Cloudflare?: unknown }).Cloudflare === "object"
     ) {
       return true;
     }
@@ -693,7 +693,24 @@ export class Alepha {
    * Any new invocation that sees an older-than-STARTUP_TIMEOUT promise
    * discards it and boots fresh.
    */
-  protected static readonly STARTUP_TIMEOUT = 30_000;
+  protected static readonly STARTUP_TIMEOUT: number = 30_000;
+
+  /**
+   * Max time (ms) `stop()` waits for its hooks, background flush included.
+   *
+   * `docker stop` and Cloud Run send SIGKILL 10 s after SIGTERM, Kubernetes
+   * after 30 s: 8 s leaves time to log what was still pending and exit on
+   * all three. Not an env var on purpose: one more public setting to freeze.
+   */
+  protected static readonly STOP_TIMEOUT: number = 8_000;
+
+  /**
+   * Incremented by every reset of the startup state. A boot remembers the
+   * value it started under, and once it differs, the boot was reset while it
+   * was suspended (a stale serverless boot resuming): it may no longer emit
+   * `start` or `ready`, nor mark the app started or ready.
+   */
+  protected bootGeneration = 0;
 
   /**
    * Starts the App.
@@ -717,7 +734,14 @@ export class Alepha {
 
     if (this.startPromise) {
       const elapsed = performance.now() - this.startedAt;
-      if (elapsed > Alepha.STARTUP_TIMEOUT) {
+      // Only in serverless, the case it exists for: an invocation killed
+      // mid-boot leaves a promise that never settles. A long-lived process
+      // with a slow boot always joins it; resetting there booted the app a
+      // second time while the first boot was still running.
+      if (
+        elapsed > (this.constructor as typeof Alepha).STARTUP_TIMEOUT &&
+        this.isServerless()
+      ) {
         this.log?.warn(
           `Previous start attempt is stale (${Math.round(elapsed)}ms ago), resetting...`,
         );
@@ -755,6 +779,8 @@ export class Alepha {
     this.log?.info("Starting App...");
 
     let startEmitted = false;
+    const generation = this.bootGeneration;
+    const superseded = () => generation !== this.bootGeneration;
 
     try {
       for (const [key] of this.substitutions.entries()) {
@@ -793,6 +819,7 @@ export class Alepha {
       this.locked = true;
 
       await this.events.emit("configure", this, { log: true });
+      if (superseded()) return this;
 
       this.configured = true;
 
@@ -801,10 +828,12 @@ export class Alepha {
       startEmitted = true;
 
       await this.events.emit("start", this, { log: true });
+      if (superseded()) return this;
 
       this.started = true;
 
       await this.events.emit("ready", this, { log: true });
+      if (superseded()) return this;
 
       // A `ready` hook may stop the app from inside this emit — `$mode` does
       // exactly that for one-shot commands. Flipping `ready` afterwards
@@ -829,7 +858,9 @@ export class Alepha {
         await this.events.emit("stop", this, { log: true, catch: true });
       }
 
-      this.resetStartup();
+      if (!superseded()) {
+        this.resetStartup();
+      }
       throw error;
     }
   }
@@ -868,6 +899,7 @@ export class Alepha {
    * - a stale startPromise is detected (serverless invocation was killed)
    */
   protected resetStartup(): void {
+    this.bootGeneration += 1;
     this.startPromise = undefined;
     this.startedAt = 0;
     this.locked = false;
@@ -908,13 +940,61 @@ export class Alepha {
     }
 
     this.log?.info("Stopping App...");
-    await this.events.emit("stop", this, { log: true });
-    this.log?.info("App is now off");
 
-    this.started = false;
-    this.ready = false;
-    this.startPromise = undefined;
-    this.startedAt = 0;
+    // Every stop hook runs, even after one throws: stopping at the first
+    // failure left the other modules' connections open and `started` true,
+    // so `run()`'s SIGTERM trap exited without cleaning up. Bounded too,
+    // since one hook awaiting forever (a background flush) would otherwise
+    // hold the process until the orchestrator kills it.
+    const stopTimeout = (this.constructor as typeof Alepha).STOP_TIMEOUT;
+    const report: EmitReport = { completed: [], failed: [] };
+    const callers = this.events.callers("stop");
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let timedOut = false;
+    try {
+      timedOut = await Promise.race([
+        this.events
+          .emit("stop", this, { log: true, catch: true, report })
+          .then(() => false),
+        new Promise<boolean>((resolve) => {
+          timer = setTimeout(() => resolve(true), stopTimeout);
+          (timer as { unref?: () => void }).unref?.();
+        }),
+      ]);
+    } finally {
+      if (timer) clearTimeout(timer);
+      this.started = false;
+      this.ready = false;
+      this.startPromise = undefined;
+      this.startedAt = 0;
+    }
+
+    if (timedOut) {
+      const pending = [...callers];
+      for (const done of [
+        ...report.completed,
+        ...report.failed.map((it) => it.caller),
+      ]) {
+        const index = pending.indexOf(done);
+        if (index >= 0) pending.splice(index, 1);
+      }
+      this.log?.error(
+        `App stop timed out after ${stopTimeout}ms, still pending: ${pending.join(", ") || "unknown"}`,
+      );
+      throw new AlephaError(
+        `stop() timed out after ${stopTimeout}ms; hooks still pending: ${pending.join(", ") || "unknown"}`,
+      );
+    }
+
+    if (report.failed.length > 0) {
+      this.log?.info("App is now off, with errors");
+      throw new AlephaError(
+        `stop() ran every hook, but ${report.failed.length} failed: ${report.failed.map((it) => it.caller).join(", ")}`,
+        { cause: report.failed[0].error },
+      );
+    }
+
+    this.log?.info("App is now off");
   }
 
   /**

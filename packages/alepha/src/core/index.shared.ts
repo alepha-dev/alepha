@@ -9,6 +9,7 @@ export * from "./errors/AlephaError.ts";
 export * from "./errors/AppNotStartedError.ts";
 export * from "./errors/CircularDependencyError.ts";
 export * from "./errors/ContainerLockedError.ts";
+export * from "./errors/MissingContextError.ts";
 export * from "./errors/SchemaValidationError.ts";
 export * from "./errors/TooLateSubstitutionError.ts";
 export * from "./helpers/coerceStrings.ts";
