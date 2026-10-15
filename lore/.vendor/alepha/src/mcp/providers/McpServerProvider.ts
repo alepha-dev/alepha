@@ -401,10 +401,12 @@ export class McpServerProvider {
    */
   public checkModernRequest(modern: McpRequestMeta): McpError | undefined {
     if (!this.protocolVersions.includes(modern.protocolVersion)) {
-      return new McpUnsupportedProtocolVersionError(
-        modern.protocolVersion,
-        this.getSupportedVersions(),
-      );
+      return new McpUnsupportedProtocolVersionError({
+        rpcData: {
+          supported: this.getSupportedVersions(),
+          requested: modern.protocolVersion,
+        },
+      });
     }
     return undefined;
   }
@@ -534,11 +536,11 @@ export class McpServerProvider {
       // the model can self-correct.)
       if (error instanceof SchemaValidationError) {
         const invalid = new McpInvalidParamsError(
-          `Invalid params: ${error.value?.message ?? error.message}` +
-            (error.value?.path ? ` at ${error.value.path}` : ""),
+          `Invalid params: ${error.data.message ?? error.message}` +
+            (error.data.path ? ` at ${error.data.path}` : ""),
         );
         return createErrorResponse(id, {
-          code: invalid.code,
+          code: invalid.data.code,
           message: invalid.message,
         });
       }
@@ -649,9 +651,9 @@ export class McpServerProvider {
    */
   protected toJsonRpcError(error: McpError): JsonRpcError {
     return {
-      code: error.code,
+      code: error.data.code,
       message: error.message,
-      ...(error.data !== undefined ? { data: error.data } : {}),
+      ...(error.data.rpcData !== undefined ? { data: error.data.rpcData } : {}),
     };
   }
 
@@ -706,7 +708,7 @@ export class McpServerProvider {
     // exactly the answer a dual-era stdio client reads as "this server is
     // legacy"), `ping` only to a legacy one.
     if (!this.handlesMethod(method, context?.protocolVersion !== undefined)) {
-      throw new McpMethodNotFoundError(method);
+      throw new McpMethodNotFoundError({ method });
     }
 
     switch (method) {
@@ -733,7 +735,7 @@ export class McpServerProvider {
       case "completion/complete":
         return this.handleCompletionComplete(params, context);
       default:
-        throw new McpMethodNotFoundError(method);
+        throw new McpMethodNotFoundError({ method });
     }
   }
 
@@ -933,7 +935,7 @@ export class McpServerProvider {
       // to see, and it is the one outcome that never reaches the `catch`
       // below.
       await this.announceToolEnd(name, "refused", context);
-      throw new McpToolNotFoundError(name);
+      throw new McpToolNotFoundError({ tool: name });
     }
 
     try {
@@ -1016,8 +1018,8 @@ export class McpServerProvider {
       // reach here — the output encode throws McpToolOutputError, handled
       // above.
       if (error instanceof SchemaValidationError) {
-        const path = error.value?.path || "/";
-        const message = error.value?.message || error.message;
+        const path = error.data.path || "/";
+        const message = error.data.message || error.message;
         // A refusal: the model is expected to correct the argument and try
         // again, which is why this is returned rather than thrown.
         await this.announceToolEnd(name, "refused", context);
@@ -1110,7 +1112,11 @@ export class McpServerProvider {
     context?: McpContext,
   ): Promise<void> {
     try {
-      await this.alepha.events.emit("mcp:tool:end", { name, outcome, context });
+      await this.alepha.events.emit("mcp:tool:call:end", {
+        name,
+        outcome,
+        context,
+      });
     } catch (error) {
       this.log.warn(`MCP tool "${name}" end hook failed`, {
         error: error instanceof Error ? error.message : String(error),
@@ -1218,7 +1224,7 @@ export class McpServerProvider {
       return this.toReadResult(uri, template.mimeType, content);
     }
 
-    throw new McpResourceNotFoundError(uri);
+    throw new McpResourceNotFoundError({ uri });
   }
 
   /**
@@ -1275,13 +1281,13 @@ export class McpServerProvider {
     if (ref?.type === "ref/prompt") {
       const prompt = this.prompts.get(ref.name);
       if (!prompt) {
-        throw new McpPromptNotFoundError(ref.name);
+        throw new McpPromptNotFoundError({ prompt: ref.name });
       }
       candidates = await prompt.complete(args);
     } else if (ref?.type === "ref/resource") {
       const template = this.resourceTemplates.get(ref.uri);
       if (!template) {
-        throw new McpResourceNotFoundError(ref.uri);
+        throw new McpResourceNotFoundError({ uri: ref.uri });
       }
       candidates = await template.complete(args);
     } else {
@@ -1324,7 +1330,7 @@ export class McpServerProvider {
 
     const prompt = this.prompts.get(name);
     if (!prompt) {
-      throw new McpPromptNotFoundError(name);
+      throw new McpPromptNotFoundError({ prompt: name });
     }
 
     const messages = await prompt.get(args, context);

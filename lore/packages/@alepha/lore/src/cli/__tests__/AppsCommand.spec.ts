@@ -119,7 +119,7 @@ const create = (
         if (!found) {
           // What the real client does with `AppService.load`'s 404, which is
           // the case that must never become a create.
-          throw new HttpError({ status: 404, message: "App not found" });
+          throw new HttpError({ status: 404 }, { message: "App not found" });
         }
         return found;
       },
@@ -139,7 +139,10 @@ const create = (
           throw deploy.refusal;
         }
         if (deploy.refuseFor?.includes(params.instanceId)) {
-          throw new HttpError({ status: 409, message: "Estate is frozen." });
+          throw new HttpError(
+            { status: 409 },
+            { message: "Estate is frozen." },
+          );
         }
         started.push({
           instanceId: params.instanceId,

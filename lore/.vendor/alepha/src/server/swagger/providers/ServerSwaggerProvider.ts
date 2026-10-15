@@ -10,6 +10,9 @@ import {
   type Infer,
   isTypeFile,
   isTypeStream,
+  MIDDLEWARE_PROTECTED,
+  MIDDLEWARE_RESPONSES,
+  type MiddlewareMetadata,
   type ZObject,
   type ZType,
   z,
@@ -18,10 +21,14 @@ import { $logger } from "alepha/logger";
 import {
   $action,
   type ActionPrimitive,
+  errorSchema,
+  type HttpErrorClass,
+  InternalServerError,
   isMultipart,
   type RequestConfigSchema,
   ServerProvider,
   ServerRouterProvider,
+  statusTextByStatus,
 } from "alepha/server";
 import { ServerStaticProvider } from "alepha/server/static";
 import { FileSystemProvider } from "alepha/system";
@@ -63,6 +70,7 @@ declare module "alepha" {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class ServerSwaggerProvider {
+  public static readonly id: string = "alepha.server.ServerSwaggerProvider";
   protected readonly serverStaticProvider = $inject(ServerStaticProvider);
   protected readonly serverRouterProvider = $inject(ServerRouterProvider);
   protected readonly serverProvider = $inject(ServerProvider);
@@ -238,7 +246,11 @@ export class ServerSwaggerProvider {
         },
       };
 
-      const isSecured = route.middlewares.some((m) => m?.name === "$secure");
+      // The capability flag, not the middleware's name: anything that turns
+      // a visitor away for who they are is documented the same way.
+      const isSecured = route.middlewares.some(
+        (m) => m?.meta?.[MIDDLEWARE_PROTECTED] === "true",
+      );
 
       if (isSecured) {
         operation.security = [{ bearerAuth: [] }];
@@ -283,7 +295,7 @@ export class ServerSwaggerProvider {
 
       if (z.schema.isObject(route.options.schema.query)) {
         operation.parameters ??= [];
-        const requiredKeys: string[] = z.schema.requiredKeys(
+        const requiredKeys: string[] = z.schema.requiredInputKeys(
           route.options.schema.query,
         );
         for (const [key, value] of Object.entries(
@@ -337,6 +349,10 @@ export class ServerSwaggerProvider {
         };
       }
 
+      if (route.errors !== undefined) {
+        this.documentErrors(operation, route, schema);
+      }
+
       const url = route.prefix + this.replacePathParams(route.path);
 
       openApi.paths[url] = {
@@ -360,6 +376,96 @@ export class ServerSwaggerProvider {
     if (openApi.components) openApi.components.schemas = schemas;
 
     return JSON.parse(JSON.stringify(openApi));
+  }
+
+  /**
+   * Document the responses of a strict action (one declaring `errors`):
+   * what its middlewares answer instead of running it (their
+   * `MIDDLEWARE_RESPONSES` meta), each declared error with its code and
+   * `data` schema, and the 500 an undeclared error becomes.
+   *
+   * Two declared errors sharing a status are a `oneOf` on that status.
+   * Actions without `errors` never reach this, so their output is unchanged.
+   */
+  protected documentErrors(
+    operation: OpenApiOperation,
+    route: ActionPrimitive<RequestConfigSchema>,
+    schema: (source: ZType) => any,
+  ): void {
+    for (const status of this.getMiddlewareResponses(route.middlewares)) {
+      operation.responses[String(status)] ??= {
+        description: this.getStatusDescription(status),
+      };
+    }
+
+    const byStatus = new Map<string, any[]>();
+    for (const cls of [...(route.errors ?? []), InternalServerError]) {
+      const { code, status } = this.getErrorIdentity(cls);
+      const key = status === undefined ? "default" : String(status);
+      const refs = byStatus.get(key) ?? [];
+      refs.push(schema(this.getErrorSchema(cls, code)));
+      byStatus.set(key, refs);
+    }
+
+    for (const [key, refs] of byStatus) {
+      const unique = [...new Map(refs.map((r) => [JSON.stringify(r), r]))];
+      const values = unique.map(([, r]) => r);
+      operation.responses[key] = {
+        description:
+          key === "default" ? "Error" : this.getStatusDescription(Number(key)),
+        content: {
+          "application/json": {
+            schema: values.length === 1 ? values[0] : { oneOf: values },
+          },
+        },
+      };
+    }
+  }
+
+  /**
+   * The statuses the middlewares declare in their `MIDDLEWARE_RESPONSES`
+   * meta, deduplicated and sorted.
+   */
+  protected getMiddlewareResponses(
+    middlewares: Array<MiddlewareMetadata | undefined>,
+  ): number[] {
+    const statuses = new Set<number>();
+    for (const middleware of middlewares) {
+      const value = middleware?.meta?.[MIDDLEWARE_RESPONSES];
+      for (const part of value?.split(",") ?? []) {
+        const status = Number(part.trim());
+        if (Number.isInteger(status)) statuses.add(status);
+      }
+    }
+    return [...statuses].sort((a, b) => a - b);
+  }
+
+  /**
+   * The name and status of a declared error class: its `name`, and the
+   * `status` its defaults give (none for an error that takes it at runtime).
+   */
+  protected getErrorIdentity(cls: HttpErrorClass): {
+    code: string;
+    status?: number;
+  } {
+    const statics = cls as unknown as { defaults?: { status?: number } };
+    return { code: cls.name, status: statics.defaults?.status };
+  }
+
+  /**
+   * The JSON body of one declared error, `{ name, message, data, cause? }`:
+   * `name` fixed, `data` typed by the class's merged schema, titled by the
+   * name so it is hoisted into `components/schemas`.
+   */
+  protected getErrorSchema(cls: HttpErrorClass, code: string): ZType {
+    const data = (cls as unknown as { schema?: ZObject }).schema;
+    return errorSchema
+      .extend({
+        name: z.literal(code),
+        ...(data ? { data } : {}),
+      })
+      .meta({ title: code })
+      .describe(`The ${code} error`);
   }
 
   public replacePathParams(url: string): string {
@@ -451,7 +557,7 @@ export class ServerSwaggerProvider {
     if (meta.example !== undefined) {
       return meta.example;
     }
-    const def = z.schema.getDefault(schema);
+    const def = z.schema.defaultValue(schema);
     if (def !== undefined) {
       return def;
     }
@@ -477,7 +583,7 @@ export class ServerSwaggerProvider {
       case 500:
         return "Internal Server Error";
       default:
-        return "";
+        return statusTextByStatus[status] ?? "";
     }
   }
 

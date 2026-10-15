@@ -72,7 +72,7 @@ const ProjectSettingsTagColors = () => {
     void
   >(
     {
-      handler: async (tag, color) => {
+      handler: async (_ctx, tag, color) => {
         if (!project) return;
         // The whole map goes over the wire, not a patch: deleting a key is how
         // a colour is cleared, and a merge on the server has no way to express

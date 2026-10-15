@@ -213,7 +213,7 @@ export class ServerProvider {
    * When a Node.js HTTP request is received from outside. (Vercel, AWS Lambda, etc.)
    */
   protected readonly onNodeRequest = $hook({
-    on: "node:request",
+    on: "node:request:before",
     handler: (ev) => this.handleNodeRequest(ev),
   });
 
@@ -221,7 +221,7 @@ export class ServerProvider {
    * When a Web (Fetch API) request is received from outside. (Netlify, Cloudflare Workers, etc.)
    */
   protected readonly onWebRequest = $hook({
-    on: "web:request",
+    on: "web:request:before",
     handler: (ev) => {
       return this.handleWebRequest(ev);
     },
@@ -318,7 +318,7 @@ export class ServerProvider {
 
     // Any other binary: an `ArrayBuffer`, or a view onto one that is not a
     // `Buffer`. The router's serializer already turns these into a `Buffer`,
-    // but a body a hook sets after it ran (`server:onSend`, an error page)
+    // but a body a hook sets after it ran (`server:response:before`, an error page)
     // arrives as it is, and used to fall through to the 500 at the bottom.
     // `res.end` takes neither an `ArrayBuffer` nor a `DataView`.
     if (

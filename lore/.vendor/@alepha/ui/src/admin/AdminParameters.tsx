@@ -156,7 +156,7 @@ export const AdminParameters = (props: AdminParametersProps = {}) => {
 
   const importParams = useAction<[File], void>(
     {
-      handler: async (file) => {
+      handler: async (_ctx, file) => {
         let parsed: unknown;
         try {
           parsed = JSON.parse(await file.text());
@@ -227,7 +227,7 @@ export const AdminParameters = (props: AdminParametersProps = {}) => {
 
   const rollback = useAction<[number], void>(
     {
-      handler: async (version) => {
+      handler: async (_ctx, version) => {
         if (!selected) return;
         const ok = await dialog.confirm({
           title: tr("admin.parameters.rollbackTitle", {
@@ -274,8 +274,8 @@ export const AdminParameters = (props: AdminParametersProps = {}) => {
         nodes={visibleNodes}
         selected={selected}
         onSelect={setSelected}
-        onExportAll={exportAll.run}
-        onImport={importParams.run}
+        onExportAll={() => exportAll.run()}
+        onImport={(file) => importParams.run(file)}
         exporting={exportAll.loading}
         importing={importParams.loading}
         orphanCount={orphanCount}
@@ -315,7 +315,9 @@ export const AdminParameters = (props: AdminParametersProps = {}) => {
           key={`history-${selected}`}
           name={selected}
           reloadKey={reloadKey}
-          onRollback={rollback.run}
+          onRollback={async (version) => {
+            await rollback.run(version);
+          }}
           onCollapse={toggleHistory}
           className={historyCollapsed ? "lg:hidden" : undefined}
         />

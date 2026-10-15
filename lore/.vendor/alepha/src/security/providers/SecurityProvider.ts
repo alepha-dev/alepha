@@ -29,6 +29,7 @@ import {
 import { JwtProvider, type SigningConfig } from "./JwtProvider.ts";
 
 export class SecurityProvider {
+  public static readonly id: string = "alepha.security.SecurityProvider";
   protected readonly UNKNOWN_USER_NAME = "Anonymous User";
   protected readonly PERMISSION_REGEXP = /^[\w-]+((:[\w-]+)+)?$/;
   protected readonly PERMISSION_REGEXP_WILDCARD =
@@ -194,7 +195,7 @@ export class SecurityProvider {
     if (this.alepha.isStarted()) {
       for (const name of realms) {
         if (!this.realms.some((realm) => realm.name === name)) {
-          throw new RealmNotFoundError(name);
+          throw new RealmNotFoundError({ realm: name });
         }
       }
     }
@@ -222,7 +223,7 @@ export class SecurityProvider {
     for (const { name } of role.permissions) {
       if (!this.alepha.isStarted()) {
         if (name !== "*" && !this.PERMISSION_REGEXP_WILDCARD.test(name)) {
-          throw new InvalidPermissionError(name);
+          throw new InvalidPermissionError({ permission: name });
         }
         continue;
       }
@@ -364,7 +365,7 @@ export class SecurityProvider {
     let permission: Permission;
     if (typeof raw === "string") {
       if (!this.PERMISSION_REGEXP.test(raw)) {
-        throw new InvalidPermissionError(raw);
+        throw new InvalidPermissionError({ permission: raw });
       }
 
       const parts = raw.split(":");
@@ -396,7 +397,7 @@ export class SecurityProvider {
 
     const asString = this.permissionToString(permission);
     if (!this.PERMISSION_REGEXP.test(asString)) {
-      throw new InvalidPermissionError(asString);
+      throw new InvalidPermissionError({ permission: asString });
     }
 
     const existing = this.permissions.find(
@@ -597,7 +598,7 @@ export class SecurityProvider {
 
     const realmInstance = this.realms.find((it) => it.name === realm);
     if (!realmInstance) {
-      throw new RealmNotFoundError(realm);
+      throw new RealmNotFoundError({ realm: realm });
     }
 
     realmInstance.roles = roles;
@@ -790,7 +791,7 @@ export class SecurityProvider {
     const realm = this.realms.find((it) => it.name === realmName);
 
     if (!realm) {
-      throw new RealmNotFoundError(realmName);
+      throw new RealmNotFoundError({ realm: realmName });
     }
 
     return realm;
@@ -826,7 +827,7 @@ export class SecurityProvider {
     }
 
     if (this.realms.length === 0) {
-      throw new RealmNotFoundError("default");
+      throw new RealmNotFoundError({ realm: "default" });
     }
 
     throw new AlephaError(

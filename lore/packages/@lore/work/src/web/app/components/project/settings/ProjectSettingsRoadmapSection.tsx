@@ -39,7 +39,7 @@ const ProjectSettingsRoadmapSection = () => {
 
   const applyAction = useAction<[next: RoadmapVisibility], void>(
     {
-      handler: async (next) => {
+      handler: async (_ctx, next) => {
         if (!project || next === current) return;
 
         if (next === "public") {

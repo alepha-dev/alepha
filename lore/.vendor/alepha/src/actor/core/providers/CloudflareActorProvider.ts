@@ -1,15 +1,25 @@
-import { $inject, Alepha } from "alepha";
+import { $inject, Alepha, AlephaError } from "alepha";
 
 import type { ActorRequest } from "../interfaces/ActorInterfaces.ts";
 import { ActorCodec } from "./ActorCodec.ts";
 import { ActorHostRuntime } from "./ActorHostRuntime.ts";
 import { ActorProvider } from "./ActorProvider.ts";
+/**
+ * What `executeActor` answers: the committed state, or the error it refused
+ * with, carried as data.
+ */
+export interface ActorReply {
+  value?: unknown;
+  error?: { name: string; message: string };
+}
 export interface ActorStub {
   executeActor(identity: string, request: ActorRequest): Promise<string>;
 }
 /**
  * Routes independent encoded actor identities to the shared native host.
  * A missing ALEPHA_ACTOR binding is an error, never a Memory fallback.
+ * A refused call rethrows an `AlephaError` carrying the host error's message
+ * and name; its class does not cross the Durable Object boundary.
  */
 export class CloudflareActorProvider extends ActorProvider {
   protected readonly alepha = $inject(Alepha);
@@ -30,6 +40,12 @@ export class CloudflareActorProvider extends ActorProvider {
       });
     // RPC annotates object results with disposers. JSON text keeps the wire
     // result primitive and leaves application JSON validation strict.
-    return this.codec.copy(JSON.parse(result));
+    const reply: ActorReply = JSON.parse(result);
+    if (reply.error) {
+      const error = new AlephaError(reply.error.message);
+      error.name = reply.error.name;
+      throw error;
+    }
+    return this.codec.copy(reply.value);
   }
 }

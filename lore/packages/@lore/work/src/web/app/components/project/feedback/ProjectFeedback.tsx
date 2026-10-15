@@ -120,7 +120,7 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
    */
   const reloadAction = useAction<[next: StatusFilter], void>(
     {
-      handler: async (next, { signal }) => {
+      handler: async ({ signal }, next) => {
         if (!project) return;
         const res = await feedbackApi.listFeedback({
           params: { projectId: project.id },

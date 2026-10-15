@@ -7,7 +7,7 @@ import { WorkspacePacker } from "../services/WorkspacePacker.ts";
 /**
  * Pack the workspace into a deployable `tar.zst`.
  *
- * The tar contains everything a remote runner (Alepha Rocket, or any
+ * The tar contains everything a remote runner (Lore Deploy, or any
  * `alepha deploy --prebuilt` consumer) needs to deploy the app:
  *
  *   dist/                 pre-built output (incl. manifest.json)
@@ -39,7 +39,7 @@ export class PackCommand {
   public readonly pack = $command({
     name: "pack",
     description:
-      "Pack the workspace into a deployable tar.zst (for `alepha deploy --prebuilt` consumers like Alepha Bay and Alepha Rocket).",
+      "Pack the workspace into a deployable tar.zst (for `alepha deploy --prebuilt` consumers like Alepha Bay and Lore Deploy).",
     flags: z.object({
       tag: z
         .text({

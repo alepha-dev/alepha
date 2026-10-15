@@ -90,7 +90,7 @@ const ProjectBlights = () => {
     void
   >(
     {
-      handler: async (selected, ctx) => {
+      handler: async (_ctx, selected, ctx) => {
         if (!project || selected.length === 0) return;
         const ok = await dialog.confirm({
           title: tr("blights.deleteSelectedConfirm", {
@@ -122,7 +122,7 @@ const ProjectBlights = () => {
     void
   >(
     {
-      handler: async (blight, refresh) => {
+      handler: async (_ctx, blight, refresh) => {
         if (!project) return;
         await blightApi.resolveBlight({
           params: { projectId: project.id, blightId: blight.id },
@@ -139,7 +139,7 @@ const ProjectBlights = () => {
     void
   >(
     {
-      handler: async (blight, refresh) => {
+      handler: async (_ctx, blight, refresh) => {
         if (!project) return;
         const res = await blightApi.forwardBlightToQuest({
           params: { projectId: project.id, blightId: blight.id },
@@ -166,7 +166,7 @@ const ProjectBlights = () => {
     void
   >(
     {
-      handler: async (blight, refresh) => {
+      handler: async (_ctx, blight, refresh) => {
         if (!project) return;
         const ok = await dialog.confirm({
           title: tr("blights.deleteConfirm"),

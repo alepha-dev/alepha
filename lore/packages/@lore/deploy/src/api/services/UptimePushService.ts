@@ -29,16 +29,16 @@ export class UptimePushService {
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly clock = $inject(DateTimeProvider);
 
-  protected mint(): { token: string; hash: string } {
+  protected async mint(): Promise<{ token: string; hash: string }> {
     const token = `up_${this.crypto.randomText(32)}`;
-    return { token, hash: this.crypto.hash(token) };
+    return { token, hash: await this.crypto.hash(token) };
   }
 
   public async create(
     projectId: number,
     config: PushMonitorConfig,
   ): Promise<{ monitor: Monitor; token: string }> {
-    const minted = this.mint();
+    const minted = await this.mint();
     const now = this.clock.nowISOString();
     const monitor = await this.monitors.create({
       ...config,
@@ -55,7 +55,7 @@ export class UptimePushService {
   public async rotate(monitor: Monitor): Promise<string> {
     if (monitor.kind !== "push")
       throw new BadRequestError("Only push monitors have a receipt token");
-    const minted = this.mint();
+    const minted = await this.mint();
     monitor.pushTokenHash = minted.hash;
     await this.monitors.save(monitor);
     return minted.token;
@@ -64,7 +64,7 @@ export class UptimePushService {
   public async accept(token: string): Promise<void> {
     if (!/^up_[a-zA-Z0-9_-]{32,128}$/.test(token))
       throw new NotFoundError("Unknown push token");
-    const hash = this.crypto.hash(token);
+    const hash = await this.crypto.hash(token);
     for (let attempt = 0; attempt < 3; attempt++) {
       const monitor = await this.monitors.findOne({
         where: { pushTokenHash: hash, kind: "push" },

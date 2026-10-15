@@ -5,7 +5,7 @@ import { useAlepha, useClient } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { HttpError } from "alepha/server";
+import { isHttpError } from "alepha/server";
 import { GitBranch, Languages, Tag } from "lucide-react";
 import { useMemo } from "react";
 
@@ -146,7 +146,7 @@ const ProjectUpdate = (props: ProjectUpdateProps) => {
           // alone reached only the action row's popover, an icon the user has
           // to click. Caught by the "a name already taken is refused" e2e,
           // which asserted on a message that was never on the page.
-          if (HttpError.is(error, 409)) {
+          if (isHttpError(error, 409)) {
             throw new AlephaError(tr("project.update.slug.taken"));
           }
           throw error;

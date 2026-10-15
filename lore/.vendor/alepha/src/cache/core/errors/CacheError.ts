@@ -1,3 +1,11 @@
-import { AlephaError } from "alepha";
+import { $error } from "alepha";
 
-export class CacheError extends AlephaError {}
+/**
+ * A cache provider failure.
+ */
+export const CacheError = $error({
+  name: "CACHE",
+  message: "Cache error",
+});
+
+export type CacheError = InstanceType<typeof CacheError>;

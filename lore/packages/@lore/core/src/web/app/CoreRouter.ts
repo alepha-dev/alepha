@@ -4,7 +4,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $head, type Head } from "alepha/react/head";
 import { $page, NotFound, ReactRouter, Redirection } from "alepha/react/router";
 import { $secure, currentUserAtom } from "alepha/security";
-import { HttpError, NotFoundError } from "alepha/server";
+import { isHttpError, NotFoundError } from "alepha/server";
 import { $client } from "alepha/server/links";
 import { createElement } from "react";
 
@@ -106,10 +106,10 @@ export class CoreRouter {
       }
     },
     errorHandler: (error, state) => {
-      if (HttpError.is(error, 401) && state.url.pathname !== "/auth/login") {
-        return new Redirection(
-          `/auth/login?redirect=${encodeURIComponent(state.url.pathname)}`,
-        );
+      if (isHttpError(error, 401) && state.url.pathname !== "/auth/login") {
+        return new Redirection({
+          redirect: `/auth/login?redirect=${encodeURIComponent(state.url.pathname)}`,
+        });
       }
 
       if (!this.alepha.isProduction()) {
@@ -123,16 +123,16 @@ export class CoreRouter {
   // -------------------------------------------------------------------------------------------------------------------
 
   onFetchError = $hook({
-    on: "client:onError",
+    on: "client:request:error",
     handler: async ({ error }) => {
       const loginPath = this.router.path("login");
       if (
         this.alepha.isBrowser() &&
-        HttpError.is(error, 401) &&
+        isHttpError(error, 401) &&
         this.router.state.url.pathname !== loginPath
       ) {
         this.alepha.store.set(currentUserAtom, undefined);
-        await this.router.push(loginPath, {
+        await this.router.push(loginPath as `/${string}`, {
           query: {
             redirect: this.router.state.url.pathname,
           },
@@ -173,9 +173,9 @@ export class CoreRouter {
       const redirectUri = query.redirect_uri;
       if (isOAuthReturnTarget(redirectUri) && !query.redirect) {
         const bridge = `/oauth/continue?to=${encodeURIComponent(redirectUri)}`;
-        throw new Redirection(
-          `/auth/login?redirect=${encodeURIComponent(bridge)}`,
-        );
+        throw new Redirection({
+          redirect: `/auth/login?redirect=${encodeURIComponent(bridge)}`,
+        });
       }
       const realmConfig = await this.realmApi.getRealmConfig();
       return { realmConfig };

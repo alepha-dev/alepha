@@ -21,7 +21,11 @@ export const useActive = (args: string | UseActiveOptions): UseActiveHook => {
 
   const options: UseActiveOptions =
     typeof args === "string" ? { href: args } : { ...args, href: args.href };
-  const href = options.href;
+  // A path, or a page name resolved to its path: the same two forms as
+  // `router.push`, and an unknown name throws there too.
+  const href = options.href.startsWith("/")
+    ? options.href
+    : router.path(options.href);
   const isActive = router.isActive(href, options);
 
   return {
@@ -41,7 +45,7 @@ export const useActive = (args: string | UseActiveOptions): UseActiveHook => {
 
         setPending(true);
         try {
-          await router.push(href);
+          await router.push(href as `/${string}`);
         } finally {
           setPending(false);
         }

@@ -193,7 +193,10 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
               persistenceKey={`lor.epicQuests.${props.projectId}`}
               onRowClick={(quest) =>
                 router.push("projectQuest", {
-                  params: { shortId: String(quest.shortId) },
+                  params: {
+                    projectSlug: router.state.params.projectSlug,
+                    shortId: String(quest.shortId),
+                  },
                 })
               }
               // Status first, then the anchor, then the two most consulted
@@ -236,7 +239,10 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
                     // the whole of it the link, only the dash muted.
                     <Link
                       href={router.path("projectQuest", {
-                        params: { shortId: String(quest.shortId) },
+                        params: {
+                          projectSlug: router.state.params.projectSlug,
+                          shortId: String(quest.shortId),
+                        },
                       })}
                       onClick={(e) => e.stopPropagation()}
                       className={`block truncate text-sm font-medium ${quest.completedAt ? "text-muted-foreground line-through" : ""}`}

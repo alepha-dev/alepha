@@ -1,5 +1,3 @@
-import type { ReadableStream as NodeWebStream } from "node:stream/web";
-
 import { AlephaError } from "alepha";
 
 import type {
@@ -48,11 +46,15 @@ export class EmbeddedStaticFileSource implements StaticFileSource {
     return Object.hasOwn(this.files, path);
   }
 
-  public async open(path: string): Promise<NodeWebStream | undefined> {
+  public async open(
+    path: string,
+  ): Promise<ReadableStream<Uint8Array> | undefined> {
     if (!Object.hasOwn(this.files, path)) {
       return undefined;
     }
-    return Bun.file(this.files[path]).stream() as unknown as NodeWebStream;
+    return Bun.file(
+      this.files[path],
+    ).stream() as unknown as ReadableStream<Uint8Array>;
   }
 
   protected embeddedPath(path: string): string {

@@ -59,7 +59,7 @@ const MyFeedback = () => {
 
   const withdraw = useAction<[feedbackId: number, refresh: () => void], void>(
     {
-      handler: async (feedbackId, refresh) => {
+      handler: async (_ctx, feedbackId, refresh) => {
         const confirmed = await dialog.confirm({
           title: tr("myFeedback.delete.title"),
           description: tr("myFeedback.delete.description"),

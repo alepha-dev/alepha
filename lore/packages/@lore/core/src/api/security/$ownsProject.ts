@@ -1,10 +1,12 @@
-import { $context, createMiddleware, type Middleware, OPTIONS } from "alepha";
+import { $context, createMiddleware, type Middleware } from "alepha";
 import { $ownsOrganization } from "alepha/api/organizations";
+import { OPTIONS } from "alepha/internal";
 import type { Repository } from "alepha/orm";
 import {
   currentAuthorityAtom,
   type OwnsHop,
   type OwnsOptions,
+  type SecureMiddleware,
 } from "alepha/security";
 
 import type { CapabilityKey } from "../schemas/capabilityKeySchema.ts";
@@ -77,7 +79,7 @@ import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
  * framework must not guess it. A second Alepha app writes its own version of
  * this file.
  */
-export const $ownsProject = (options: OwnsProjectOptions): Middleware => {
+export const $ownsProject = (options: OwnsProjectOptions): SecureMiddleware => {
   const { alepha } = $context();
   const security = alepha.inject(ProjectSecurityService);
 
@@ -170,7 +172,7 @@ export const $ownsProject = (options: OwnsProjectOptions): Middleware => {
   const composed = ((handler: any) =>
     gate(withCapability(handler))) as never as Middleware;
   (composed as any)[OPTIONS] = (gate as any)[OPTIONS];
-  return composed;
+  return composed as SecureMiddleware;
 };
 
 // ---------------------------------------------------------------------------------------------------------------------

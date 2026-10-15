@@ -429,17 +429,9 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
  * it wants the feature. Jobs and audits add neither: an audit trail nobody
  * asked for is a security baseline, and a session table nobody purges is a
  * leak. So the realm always registers its audit types and its session purge,
- * and the `jobs` and `audits` keys below are kept only so the applications
- * that set them keep compiling.
+ * independently of optional features.
  */
 export interface RealmFeatures {
-  /**
-   * @deprecated Ignored. The realm's jobs (the expired-session purge) are
-   * always registered: `UserJobs` is the only thing that deletes session rows,
-   * and turning it off grew the `sessions` table forever. Remove the key.
-   */
-  jobs?: boolean;
-
   /**
    * Enable notification system for password reset, verification emails, etc.
    *
@@ -499,13 +491,6 @@ export interface RealmFeatures {
    * @default false
    */
   avatars?: boolean;
-
-  /**
-   * @deprecated Ignored. The user and session audit types are always
-   * registered and always written, `audits: false` included: an audit trail
-   * is a security baseline, not a feature. Remove the key.
-   */
-  audits?: boolean;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

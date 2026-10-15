@@ -30,6 +30,7 @@ export class ProjectReportsController {
    * in tests).
    */
   getReportsOverview = $action({
+    method: "GET",
     use: [
       $etag({
         control: { private: true, maxAge: 60, staleWhileRevalidate: 300 },
@@ -55,6 +56,7 @@ export class ProjectReportsController {
    * timestamps on node).
    */
   getReportsQuests = $action({
+    method: "GET",
     use: [
       $etag({
         control: { private: true, maxAge: 60, staleWhileRevalidate: 300 },
@@ -81,6 +83,7 @@ export class ProjectReportsController {
    * timestamps on node).
    */
   getReportsMembers = $action({
+    method: "GET",
     use: [
       $etag({
         control: { private: true, maxAge: 60, staleWhileRevalidate: 300 },

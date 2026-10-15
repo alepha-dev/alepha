@@ -15,6 +15,8 @@ import type { DatabaseProvider } from "./drivers/DatabaseProvider.ts";
  * drizzle-kit v1 splits its programmatic API per dialect. Both modules
  * export the same names, but their `pushSchema` arities differ — postgres
  * takes an extra `EntitiesFilterConfig` — so call sites still narrow.
+ *
+ * @internal Driver plumbing, outside semver.
  */
 export type DrizzleKitPayload =
   | typeof DrizzleKitPostgres
@@ -61,6 +63,7 @@ export interface PushSchemaResult {
 }
 
 export class DrizzleKitProvider {
+  public static readonly id: string = "alepha.orm.DrizzleKitProvider";
   protected readonly log = $logger();
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly alepha = $inject(Alepha);
@@ -212,6 +215,8 @@ export class DrizzleKitProvider {
    * dialect branch — only a shape normalization, since postgres's `up`
    * wraps the result as `{ snapshot, hints }` while sqlite's returns the
    * snapshot directly.
+   *
+   * @internal Driver plumbing, outside semver.
    */
   protected ensureV7Snapshot(kit: DrizzleKitPayload, snapshot: any): any {
     if (Array.isArray(snapshot?.ddl)) {
@@ -364,6 +369,8 @@ export class DrizzleKitProvider {
    * Postgres takes an `EntitiesFilterConfig` object where v0 took a plain
    * `string[]` of schemas; all four of its keys are required even when
    * undefined. SQLite has no such parameter.
+   *
+   * @internal Driver plumbing, outside semver.
    */
   protected async callPushSchema(
     kit: DrizzleKitPayload,
@@ -438,6 +445,8 @@ export class DrizzleKitProvider {
    * here, each one named in a warning, and the push runs again on a diff
    * that only adds. Development data in a dropped column is lost, as it
    * would have been had drizzle-kit's own prompt been answered "create".
+   *
+   * @internal Driver plumbing, outside semver.
    */
   protected async push(
     kit: DrizzleKitPayload,
@@ -851,6 +860,8 @@ export class DrizzleKitProvider {
    *
    * v1 removed the single `drizzle-kit/api` entrypoint. `api-*` now holds
    * only `startStudioServer`; the real surface is `payload/<dialect>`.
+   *
+   * @internal Driver plumbing, outside semver.
    */
   public importDrizzleKit(dialect: "postgresql" | "sqlite"): DrizzleKitPayload {
     const specifier =

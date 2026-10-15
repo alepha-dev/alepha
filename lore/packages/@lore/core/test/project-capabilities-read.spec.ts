@@ -31,7 +31,7 @@ import { createTestProject, CoreTestEntities } from "../src/testing/index.ts";
  *
  * The probe route below is the harness, not the subject: it exists so seven
  * concurrent gates happen inside one real HTTP request, with the real
- * `server:onRequest` hook seeding the real memo. Reaching the same shape by
+ * `server:request:before` hook seeding the real memo. Reaching the same shape by
  * seeding a `Map` by hand would prove the `Map` and not the wiring — and the
  * wiring is exactly where this fails, since a memo created lazily inside a
  * gate lands in that action's own ALS fork and is invisible to its siblings.

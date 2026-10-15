@@ -307,7 +307,7 @@ export class SigilIngestService {
     // ingest against ~10ms of CPU — the request was almost entirely spent
     // waiting. The envelope caps `errors` at 20, so one statement per table is
     // always enough and there is nothing here to chunk.
-    const folded = this.foldByFingerprint(errors, ignoreRules);
+    const folded = await this.foldByFingerprint(errors, ignoreRules);
     if (folded.length === 0) {
       return;
     }
@@ -431,10 +431,10 @@ export class SigilIngestService {
    * already-stored row, so a batch behaves identically whether its fingerprint
    * was seen a moment ago in this envelope or an hour ago in another.
    */
-  protected foldByFingerprint(
+  protected async foldByFingerprint(
     errors: NonNullable<SigilForwarded["errors"]>,
     ignoreRules: Awaited<ReturnType<BlightRuleService["listForProject"]>>,
-  ): FoldedError[] {
+  ): Promise<FoldedError[]> {
     const folded = new Map<string, FoldedError>();
 
     for (const error of errors) {
@@ -444,7 +444,7 @@ export class SigilIngestService {
 
       // Hashed from the shared source string, so the group this lands in is the
       // same one the sender aggregated under.
-      const fingerprint = this.crypto.hash(
+      const fingerprint = await this.crypto.hash(
         sigilFingerprintSource(error.name, error.stack),
       );
       const seen = error.count ?? 1;

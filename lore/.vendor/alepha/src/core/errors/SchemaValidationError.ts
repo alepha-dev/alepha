@@ -1,35 +1,20 @@
-import { AlephaError } from "./AlephaError.ts";
+import { $error } from "../primitives/$error.ts";
+import { z } from "../providers/ZodProvider.ts";
 
 /**
- * Minimal validation-error shape (decoupled from any schema lib).
+ * A value that does not match its schema: the failure's message and the
+ * path (JSON pointer, `""` for the root) it applies to.
  */
-export interface ValidationErrorLike {
-  message: string;
-  instancePath?: string;
-  params?: unknown;
-}
+export const SchemaValidationError = $error({
+  name: "SCHEMA_VALIDATION",
+  schema: z.object({
+    message: z.text({ size: "rich" }),
+    path: z.text({ size: "long" }),
+    params: z.any().optional(),
+  }),
+  default: { path: "" },
+  message: (data) =>
+    `Invalid input: ${data.message}${data.path ? ` at ${data.path}` : ""}`,
+});
 
-export class SchemaValidationError extends AlephaError {
-  name = "SchemaValidationError";
-
-  public readonly cause: ValidationErrorLike;
-  public readonly value: {
-    path: string;
-    message: string;
-  };
-
-  constructor(error: ValidationErrorLike) {
-    super(
-      `Invalid input: ${error.message}${error.instancePath ? ` at ${error.instancePath}` : ""}`,
-      {
-        cause: error,
-      },
-    );
-    this.value = {
-      path: error.instancePath ?? "",
-      message: error.message,
-    };
-
-    this.cause = error;
-  }
-}
+export type SchemaValidationError = InstanceType<typeof SchemaValidationError>;

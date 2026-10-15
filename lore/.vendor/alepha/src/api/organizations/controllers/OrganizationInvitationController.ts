@@ -34,6 +34,7 @@ export class OrganizationInvitationController {
   });
 
   public readonly getOrganizationInvitations = $action({
+    method: "GET",
     path: "/organizations/:organizationId/invitations",
     use: [
       $ownsOrganization({
@@ -77,6 +78,7 @@ export class OrganizationInvitationController {
   });
 
   public readonly getMyOrganizationInvitations = $action({
+    method: "GET",
     path: "/organizations/invitations/me",
     use: [$secure()],
     schema: {
@@ -116,6 +118,7 @@ export class OrganizationInvitationController {
   });
 
   public readonly previewOrganizationInvitationToken = $action({
+    method: "GET",
     path: "/organizations/invitations/preview",
     schema: {
       query: z.object({ token: z.text() }),

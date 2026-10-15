@@ -363,7 +363,7 @@ export class FileService {
       // Only this branch. The streaming path below never holds the whole file,
       // and a subscriber that cannot see the bytes cannot transform them.
       const ev = { file, storage };
-      await this.alepha.events.emit("files:beforeUpload", ev);
+      await this.alepha.events.emit("files:upload:before", ev);
       file = ev.file;
 
       // After the subscribers, unlike the storage's own cap: a resize can make

@@ -110,7 +110,7 @@ const ProjectSettingsAgentPrompts = () => {
     boolean
   >(
     {
-      handler: async (kind, template) => {
+      handler: async (_ctx, kind, template) => {
         if (!project) return false;
         await promptApi.setProjectPrompt({
           params: { projectId: project.id, kind },
@@ -126,7 +126,7 @@ const ProjectSettingsAgentPrompts = () => {
 
   const resetAction = useAction<[kind: AgentPromptKind], boolean>(
     {
-      handler: async (kind) => {
+      handler: async (_ctx, kind) => {
         if (!project) return false;
         await promptApi.resetProjectPrompt({
           params: { projectId: project.id, kind },
@@ -183,8 +183,14 @@ const ProjectSettingsAgentPrompts = () => {
               key={kind}
               kind={kind}
               stored={prompts?.[kind]}
-              onSave={saveAction.run}
-              onReset={resetAction.run}
+              onSave={async (kind, template) => {
+                const result = await saveAction.run(kind, template);
+                return result.ok ? result.value : undefined;
+              }}
+              onReset={async (kind) => {
+                const result = await resetAction.run(kind);
+                return result.ok ? result.value : undefined;
+              }}
               // One save and one reset for the four editors, so every editor
               // waits while either runs (#E59 rule 10).
               busy={saveAction.loading || resetAction.loading}

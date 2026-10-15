@@ -11,7 +11,7 @@ import {
  * Writes and updates the receipt that says what happened to a notification.
  *
  * Two writers feed it. The sender writes one at send time, on all three
- * outcomes. Provider events arrive later on the `notification:delivery` hook
+ * outcomes. Provider events arrive later on the `notification:delivery:reported` hook
  * and update it in place.
  */
 export class NotificationDeliveryService {
@@ -150,7 +150,7 @@ export class NotificationDeliveryService {
    * would put a row in the operator's list that no send ever produced.
    */
   protected readonly onDeliveryEvent = $hook({
-    on: "notification:delivery",
+    on: "notification:delivery:reported",
     handler: async (event) => {
       const receipt = await this.findByMessageId(event.messageId);
       if (!receipt) {

@@ -9,7 +9,7 @@ import {
 import { AlephaEmail } from "alepha/email";
 import { AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
-import { AlephaServer, HttpError } from "alepha/server";
+import { AlephaServer, HttpError, isHttpError } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
@@ -121,7 +121,7 @@ const expectConflict = async (promise: Promise<unknown>, message?: string) => {
     () => undefined,
     (caught: unknown) => caught,
   );
-  if (!HttpError.is(error, 409)) {
+  if (!isHttpError(error, 409)) {
     throw new Error(`expected a 409, got ${String(error)}`);
   }
   if (message && !(error as HttpError).message.includes(message)) {

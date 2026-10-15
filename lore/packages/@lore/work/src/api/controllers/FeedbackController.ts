@@ -1145,10 +1145,10 @@ export class FeedbackController {
       }),
     );
     if (found.length !== ids.length) {
-      throw new HttpError({
-        status: 400,
-        message: "One or more attachments are invalid",
-      });
+      throw new HttpError(
+        { status: 400 },
+        { message: "One or more attachments are invalid" },
+      );
     }
   }
 

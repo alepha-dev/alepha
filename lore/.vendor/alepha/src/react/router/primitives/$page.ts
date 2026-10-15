@@ -4,13 +4,12 @@ import {
   type Async,
   createPrimitive,
   type Infer,
-  KIND,
   type Middleware,
-  OPTIONS,
   Primitive,
   type ZType,
 } from "alepha";
 import type { DurationLike } from "alepha/datetime";
+import { KIND, OPTIONS } from "alepha/internal";
 import type { Head } from "alepha/react/head";
 import type { ServerRequest } from "alepha/server";
 import type { FC, ReactNode } from "react";
@@ -82,7 +81,7 @@ import { ReactPageService } from "../services/ReactPageService.ts";
  *     return { project };
  *   },
  *   errorHandler: (error) => {
- *     if (HttpError.is(error, 404)) {
+ *     if (isHttpError(error, 404)) {
  *       return <ProjectNotFound />;
  *     }
  *   }
@@ -293,7 +292,7 @@ export interface PagePrimitiveOptions<
    *    api.fetch("/api/resource", { params, query });
    * },
    * errorHandler: (error, context) => {
-   *   if (HttpError.is(error, 404)) {
+   *   if (isHttpError(error, 404)) {
    *     return <ResourceNotFound />;
    *   }
    * }
@@ -306,9 +305,9 @@ export interface PagePrimitiveOptions<
    *   api.fetch("/api/resource", { params, query });
    * },
    * errorHandler: (error, context) => {
-   *   if (HttpError.is(error, 401)) {
+   *   if (isHttpError(error, 401)) {
    *     // throwing a Redirection is also valid!
-   *     return new Redirection("/login");
+   *     return new Redirection({ redirect: "/login" });
    *   }
    * }
    * ```

@@ -68,7 +68,7 @@ class Sink {
       this.attempts += 1;
       const failure = this.failures.shift();
       if (failure) {
-        throw new HttpError({ status: failure, message: "not now" });
+        throw new HttpError({ status: failure }, { message: "not now" });
       }
 
       this.received = {

@@ -2,12 +2,12 @@ import {
   $inject,
   createPrimitive,
   type Infer,
-  KIND,
   Primitive,
   type ZObject,
 } from "alepha";
 import type { PushManyItem } from "alepha/api/jobs";
 import type { DurationLike } from "alepha/datetime";
+import { KIND } from "alepha/internal";
 
 import { NotificationChannel } from "../channels/NotificationChannel.ts";
 import { NotificationJobs } from "../jobs/NotificationJobs.ts";

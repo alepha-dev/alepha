@@ -135,7 +135,7 @@ const ProjectEpics = () => {
     void
   >(
     {
-      handler: async (epic, releaseId, refresh) => {
+      handler: async (_ctx, epic, releaseId, refresh) => {
         const updated = await epicApi.updateEpic({
           params: { id: epic.id },
           body: { releaseId },
@@ -166,7 +166,7 @@ const ProjectEpics = () => {
     void
   >(
     {
-      handler: async (epic, status, refresh) => {
+      handler: async (_ctx, epic, status, refresh) => {
         if (status === "ready") {
           const ok = await dialog.confirm({
             title: tr("epic.ready.title"),
@@ -196,7 +196,7 @@ const ProjectEpics = () => {
     void
   >(
     {
-      handler: async (epic, shelve, refresh) => {
+      handler: async (_ctx, epic, shelve, refresh) => {
         const ok = shelve
           ? await dialog.confirm({
               title: tr("epic.shelve.title"),
@@ -237,7 +237,7 @@ const ProjectEpics = () => {
     void
   >(
     {
-      handler: async (epic, refresh) => {
+      handler: async (_ctx, epic, refresh) => {
         // Deleting an epic deletes its quests (#Q2666), so the confirm says
         // how many, and that the folios stay.
         const ok = await dialog.confirm({
@@ -270,7 +270,7 @@ const ProjectEpics = () => {
     void
   >(
     {
-      handler: async (release, selected, ctx) => {
+      handler: async (_ctx, release, selected, ctx) => {
         const outcome = await settleBulk(
           selected.map((epic) => epic.id),
           (id) =>
@@ -297,7 +297,7 @@ const ProjectEpics = () => {
     void
   >(
     {
-      handler: async (selected, ctx) => {
+      handler: async (_ctx, selected, ctx) => {
         const n = String(selected.length);
         // One epic asks the row menu's own question, word for word. A few
         // are named, since they fit in a dialog; past that the count is the
@@ -354,7 +354,7 @@ const ProjectEpics = () => {
     void
   >(
     {
-      handler: async (selected, ctx) => {
+      handler: async (_ctx, selected, ctx) => {
         // Only a draft or ready epic is deleted (#Q2666): the rest are left
         // out of the count and named, rather than sent to be refused one by
         // one. The plural of the row menu's own warning, and it says the
@@ -666,7 +666,10 @@ const ProjectEpics = () => {
         fetch={fetchEpics}
         onRowClick={(epic) =>
           router.push("projectEpic", {
-            params: { epicNumber: String(epic.number) },
+            params: {
+              projectSlug: router.state.params.projectSlug,
+              epicNumber: String(epic.number),
+            },
           })
         }
         actions={[
@@ -717,7 +720,10 @@ const ProjectEpics = () => {
                     Quests table reads better for leaving the title still. */}
                 <Link
                   href={router.path("projectEpic", {
-                    params: { epicNumber: String(epic.number) },
+                    params: {
+                      projectSlug: router.state.params.projectSlug,
+                      epicNumber: String(epic.number),
+                    },
                   })}
                   onClick={(e) => e.stopPropagation()}
                   className="truncate text-sm font-medium"
@@ -780,7 +786,10 @@ const ProjectEpics = () => {
               return (
                 <Link
                   href={router.path("projectEpic", {
-                    params: { epicNumber: String(epic.dependsOnNumber) },
+                    params: {
+                      projectSlug: router.state.params.projectSlug,
+                      epicNumber: String(epic.dependsOnNumber),
+                    },
                   })}
                   onClick={(e) => e.stopPropagation()}
                   title={tr(STATUS_LABEL_KEYS[epic.dependsOnStatus])}

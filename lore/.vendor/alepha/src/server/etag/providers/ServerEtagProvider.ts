@@ -19,15 +19,15 @@ export class ServerEtagProvider {
     name: "http:server",
   });
 
-  public generateETag(content: string | Buffer): string {
+  public async generateETag(content: string | Buffer): Promise<string> {
     const data = typeof content === "string" ? content : content.toString();
-    return `"${this.crypto.hash(data, "md5")}"`;
+    return `"${(await this.crypto.hash(data)).slice(0, 32)}"`;
   }
 
   public async invalidate(route: ServerRoute) {
     // Wildcard: entries are keyed by route + params + query + caller identity,
     // so the bare key would only clear the anonymous, parameterless one.
-    await this.cache.invalidate(`${this.createCacheKey(route)}*`);
+    await this.cache.invalidate(`${await this.createCacheKey(route)}*`);
   }
 
   /**
@@ -57,7 +57,7 @@ export class ServerEtagProvider {
         String(actionRequest?.url ?? request.url ?? ""),
     } as ServerRoute;
 
-    const key = this.createCacheKey(keySource, actionRequest ?? request);
+    const key = await this.createCacheKey(keySource, actionRequest ?? request);
     const cached = await this.cache.get(key);
 
     if (!cached) {
@@ -116,7 +116,7 @@ export class ServerEtagProvider {
    * After an action response, store it in cache if store is enabled.
    */
   protected readonly onActionResponse = $hook({
-    on: "action:onResponse",
+    on: "action:response:after",
     handler: async ({ action, request, response }) => {
       const options = request.metadata
         ?.etagOptions as EtagMiddlewareOptionsResolved;
@@ -143,10 +143,10 @@ export class ServerEtagProvider {
       const body =
         contentType === "text/plain" ? response : JSON.stringify(response);
 
-      const generatedEtag = this.generateETag(body);
+      const generatedEtag = await this.generateETag(body);
       const lastModified = this.time.toISOString();
 
-      const key = this.createCacheKey(action.route, request);
+      const key = await this.createCacheKey(action.route, request);
 
       this.log.trace("Storing action response", {
         key,
@@ -177,8 +177,8 @@ export class ServerEtagProvider {
    * This handles the case where etag is enabled but store is not.
    */
   protected readonly onSend = $hook({
-    on: "server:onSend",
-    handler: ({ request }) => {
+    on: "server:response:before",
+    handler: async ({ request }) => {
       const options = request.metadata
         ?.etagOptions as EtagMiddlewareOptionsResolved;
       if (!options) {
@@ -200,7 +200,7 @@ export class ServerEtagProvider {
         (typeof request.reply.body === "string" ||
           Buffer.isBuffer(request.reply.body))
       ) {
-        const generatedEtag = this.generateETag(request.reply.body);
+        const generatedEtag = await this.generateETag(request.reply.body);
 
         if (request.headers["if-none-match"] === generatedEtag) {
           request.reply.status = 304;
@@ -220,7 +220,7 @@ export class ServerEtagProvider {
    * After the response is generated, store it and set ETag headers.
    */
   protected readonly onResponse = $hook({
-    on: "server:onResponse",
+    on: "server:response:after",
     priority: "first",
     handler: async ({ route, request, response }) => {
       const options = request.metadata
@@ -261,7 +261,7 @@ export class ServerEtagProvider {
         return;
       }
 
-      const key = this.createCacheKey(route, request);
+      const key = await this.createCacheKey(route, request);
 
       // Handle ReadableStream responses (e.g., SSR streaming)
       if (response.body instanceof ReadableStream && shouldStore) {
@@ -299,7 +299,7 @@ export class ServerEtagProvider {
         return;
       }
 
-      const generatedEtag = this.generateETag(response.body);
+      const generatedEtag = await this.generateETag(response.body);
       const lastModified = this.time.toISOString();
 
       // Store response if storing is enabled
@@ -449,7 +449,10 @@ export class ServerEtagProvider {
     return this.time.duration(duration).asSeconds();
   }
 
-  protected createCacheKey(route: ServerRoute, config?: ServerRequest): string {
+  protected async createCacheKey(
+    route: ServerRoute,
+    config?: ServerRequest,
+  ): Promise<string> {
     const params: string[] = [];
     for (const [key, value] of Object.entries(config?.params ?? {})) {
       params.push(`${key}=${value}`);
@@ -458,7 +461,7 @@ export class ServerEtagProvider {
       params.push(`${key}=${value}`);
     }
 
-    return `${route.method}:${(route.path ?? "").replaceAll(":", "")}:${params.join(",").replaceAll(":", "")}${this.identityScope(config)}`;
+    return `${route.method}:${(route.path ?? "").replaceAll(":", "")}:${params.join(",").replaceAll(":", "")}${await this.identityScope(config)}`;
   }
 
   /**
@@ -469,7 +472,7 @@ export class ServerEtagProvider {
    * everyone else. Anonymous callers (no authorization, no cookie) share one
    * entry, which is the intended behaviour for public routes.
    */
-  protected identityScope(config?: ServerRequest): string {
+  protected async identityScope(config?: ServerRequest): Promise<string> {
     const headers = config?.headers as Record<string, string> | undefined;
 
     const auth = headers?.authorization ?? "";
@@ -479,7 +482,7 @@ export class ServerEtagProvider {
       return "";
     }
 
-    return `:${this.crypto.hash(`${auth}${cookie}`, "md5")}`;
+    return `:${(await this.crypto.hash(`${auth}${cookie}`)).slice(0, 32)}`;
   }
 
   /**
@@ -511,7 +514,7 @@ export class ServerEtagProvider {
           .map((chunk) => decoder.decode(chunk, { stream: true }))
           .join("") + decoder.decode(); // Flush remaining
 
-      const hash = this.generateETag(body);
+      const hash = await this.generateETag(body);
       const lastModified = this.time.toISOString();
 
       this.log.trace("Storing streamed response", { key });

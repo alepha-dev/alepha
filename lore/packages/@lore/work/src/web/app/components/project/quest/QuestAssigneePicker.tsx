@@ -48,7 +48,7 @@ const QuestAssigneePicker = (props: QuestAssigneePickerProps) => {
   // by the root `ActionErrorToaster`, and the trigger is disabled meanwhile.
   const assignAction = useAction<[userId: string], void>(
     {
-      handler: async (userId) => {
+      handler: async (_ctx, userId) => {
         if (userId === quest.acceptedBy) return;
         props.onUpdate(
           await questApi.assignQuest({

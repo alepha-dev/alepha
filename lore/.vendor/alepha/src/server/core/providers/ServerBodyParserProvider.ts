@@ -48,7 +48,7 @@ export class ServerBodyParserProvider {
   protected readonly options = $store(bodyParserOptions);
 
   public readonly onRequest = $hook({
-    on: "server:onRequest",
+    on: "server:request:before",
     handler: ({ route, request }) => {
       if (request.body) {
         return; // already parsed
@@ -119,10 +119,10 @@ export class ServerBodyParserProvider {
           if (contentLength) {
             const size = Number.parseInt(contentLength, 10);
             if (!Number.isNaN(size) && size > this.options.limit) {
-              throw new HttpError({
-                status: 413,
-                message: "Request body size limit exceeded",
-              });
+              throw new HttpError(
+                { status: 413 },
+                { message: "Request body size limit exceeded" },
+              );
             }
           }
         }
@@ -142,11 +142,8 @@ export class ServerBodyParserProvider {
                 throw error;
               }
               throw new HttpError(
-                {
-                  status: 400,
-                  message: "Failed to parse request body",
-                },
-                error,
+                { status: 400 },
+                { message: "Failed to parse request body", cause: error },
               );
             })
         );
@@ -217,10 +214,10 @@ export class ServerBodyParserProvider {
     encoding: string | undefined,
   ): Promise<Buffer> {
     if (!this.options.inflate && encoding) {
-      throw new HttpError({
-        status: 415,
-        message: `Content-Encoding ${encoding} not allowed`,
-      });
+      throw new HttpError(
+        { status: 415 },
+        { message: `Content-Encoding ${encoding} not allowed` },
+      );
     }
 
     switch (encoding) {
@@ -234,10 +231,10 @@ export class ServerBodyParserProvider {
       case "identity":
         return buffer;
       default:
-        throw new HttpError({
-          status: 415,
-          message: `Unsupported Content-Encoding: ${encoding}`,
-        });
+        throw new HttpError(
+          { status: 415 },
+          { message: `Unsupported Content-Encoding: ${encoding}` },
+        );
     }
   }
 
@@ -258,10 +255,10 @@ export class ServerBodyParserProvider {
           if (size > maxDecompressed) {
             transform.destroy();
             reject(
-              new HttpError({
-                status: 413,
-                message: "Decompressed body size limit exceeded",
-              }),
+              new HttpError(
+                { status: 413 },
+                { message: "Decompressed body size limit exceeded" },
+              ),
             );
             return;
           }
@@ -301,10 +298,10 @@ export class ServerBodyParserProvider {
               `Body size limit exceeded: ${totalLength} > ${limit}`,
             );
 
-            throw new HttpError({
-              status: 413,
-              message: "Request body size limit exceeded",
-            });
+            throw new HttpError(
+              { status: 413 },
+              { message: "Request body size limit exceeded" },
+            );
           }
 
           chunks.push(value);

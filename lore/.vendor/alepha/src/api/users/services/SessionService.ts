@@ -485,6 +485,12 @@ export class SessionService {
         throw new InvalidCredentialsError();
       }
 
+      if (this.cryptoProvider.needsRehash(storedPassword)) {
+        await identities.updateById(identity.id, {
+          password: await this.cryptoProvider.hashPassword(password),
+        });
+      }
+
       // A right password costs nothing: both slots go back.
       if (account.ticket) await this.loginAccount.refund(account.ticket);
       if (ip?.ticket) await this.loginIp.refund(ip.ticket);

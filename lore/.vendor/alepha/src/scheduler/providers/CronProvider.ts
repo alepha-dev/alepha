@@ -13,6 +13,7 @@ import { type Cron, parseCronExpression } from "cron-schedule";
  * unless a database is genuinely unavailable.
  */
 export class CronProvider {
+  public static readonly id: string = "alepha.scheduler.CronProvider";
   protected readonly dt = $inject(DateTimeProvider);
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
@@ -53,12 +54,12 @@ export class CronProvider {
 
   /**
    * Generic serverless cron trigger. Vercel's platform-emitted entry
-   * point fires `serverless:cron` with the job name; we run the matching
+   * point fires `serverless:cron:triggered` with the job name; we run the matching
    * job in-process. On long-running runtimes this listener is harmless
    * (no one fires the event).
    */
   protected readonly onServerlessCron = $hook({
-    on: "serverless:cron",
+    on: "serverless:cron:triggered",
     handler: async ({ name }) => {
       await this.trigger(name);
     },

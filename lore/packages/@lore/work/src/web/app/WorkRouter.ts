@@ -8,7 +8,7 @@ import {
 } from "@lore/core/web";
 import { $inject, Alepha, z } from "alepha";
 import { $page, NotFound, Redirection } from "alepha/react/router";
-import { HttpError, NotFoundError } from "alepha/server";
+import { isHttpError, NotFoundError } from "alepha/server";
 import { $client } from "alepha/server/links";
 import { createElement } from "react";
 
@@ -198,7 +198,7 @@ export class WorkRouter {
       this.alepha.store.set(currentQuestAtom, undefined);
     },
     errorHandler: (error) => {
-      if (HttpError.is(error, 404)) {
+      if (isHttpError(error, 404)) {
         return createElement(NotFound, { style: { height: "100%" } });
       }
     },
@@ -255,7 +255,9 @@ export class WorkRouter {
       if (epic) {
         // `?tab=flow` is what `useDetailTab` reads on the epic page, so this
         // lands on the Flow tab rather than the epic's default one.
-        throw new Redirection(`/${project.slug}/epics/${epic.number}?tab=flow`);
+        throw new Redirection({
+          redirect: `/${project.slug}/epics/${epic.number}?tab=flow`,
+        });
       }
 
       // The focus quest is in the component by construction - it is the
@@ -264,7 +266,7 @@ export class WorkRouter {
       return { quest, quests };
     },
     errorHandler: (error) => {
-      if (HttpError.is(error, 404)) {
+      if (isHttpError(error, 404)) {
         return createElement(NotFound, { style: { height: "100%" } });
       }
     },
@@ -318,7 +320,7 @@ export class WorkRouter {
       this.alepha.store.set(currentEpicAtom, undefined);
     },
     errorHandler: (error) => {
-      if (HttpError.is(error, 404)) {
+      if (isHttpError(error, 404)) {
         return createElement(NotFound, { style: { height: "100%" } });
       }
     },
@@ -450,7 +452,7 @@ export class WorkRouter {
     // A deleted or foreign area is a 404, like the sibling detail routes,
     // not the generic error page.
     errorHandler: (error) => {
-      if (HttpError.is(error, 404)) {
+      if (isHttpError(error, 404)) {
         return createElement(NotFound, { style: { height: "100%" } });
       }
     },
@@ -543,7 +545,7 @@ export class WorkRouter {
       this.alepha.store.set(currentQuestAtom, undefined);
     },
     errorHandler: (error) => {
-      if (HttpError.is(error, 404)) {
+      if (isHttpError(error, 404)) {
         return createElement(NotFound, { style: { height: "100%" } });
       }
     },
@@ -676,7 +678,7 @@ export class WorkRouter {
     errorHandler: (error) => {
       // Same shape as the `project` route's: a 404 renders the real
       // not-found page rather than the layout's generic ErrorPage.
-      if (HttpError.is(error, 404)) {
+      if (isHttpError(error, 404)) {
         return createElement(NotFound, { style: { height: "100%" } });
       }
     },
@@ -707,7 +709,7 @@ export class WorkRouter {
         // links into the member-gated release pages.
         return { roadmap, member: false };
       } catch (error) {
-        if (HttpError.is(error, 404)) {
+        if (isHttpError(error, 404)) {
           // The only way to tell `onServerResponse` what happened: it gets
           // the request and nothing about the loader. See
           // `roadmapNotFoundAtom`.

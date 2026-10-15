@@ -2,6 +2,7 @@ import {
   $context,
   createMiddleware,
   MIDDLEWARE_PROTECTED,
+  MIDDLEWARE_RESPONSES,
   type Middleware,
 } from "alepha";
 
@@ -64,7 +65,13 @@ export function $secure(options?: SecureOptions): Middleware {
     // Must match the server variant: the router reads this to pick a page's
     // rendering mode, and a page that disagreed across the two bundles would
     // server-render HTML the client then decided not to.
-    meta: { [MIDDLEWARE_PROTECTED]: "true" },
+    meta: {
+      [MIDDLEWARE_PROTECTED]: "true",
+      [MIDDLEWARE_RESPONSES]:
+        options?.roles?.length || options?.permissions?.length
+          ? "401,403"
+          : "401",
+    },
     handler: ({ alepha, next }) => {
       return async (...args: any[]) => {
         const user: UserAccountToken | undefined =

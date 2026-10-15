@@ -68,7 +68,10 @@ const ReleaseFlow = (props: ReleaseFlowProps) => {
   const hrefOf = useCallback(
     (node: QuestlineNode<ReleaseContentQuest>) =>
       router.path("projectQuest", {
-        params: { shortId: String(node.quest.shortId) },
+        params: {
+          projectSlug: router.state.params.projectSlug,
+          shortId: String(node.quest.shortId),
+        },
       }),
     [router],
   );
@@ -144,7 +147,10 @@ const ReleaseFlow = (props: ReleaseFlowProps) => {
               areaColor={areaColor}
               hrefOf={hrefOf}
               epicHref={router.path("projectEpic", {
-                params: { epicNumber: String(group.epic.number) },
+                params: {
+                  projectSlug: router.state.params.projectSlug,
+                  epicNumber: String(group.epic.number),
+                },
               })}
             />
           ))}

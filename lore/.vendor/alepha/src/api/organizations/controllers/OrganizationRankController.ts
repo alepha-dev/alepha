@@ -11,6 +11,7 @@ export class OrganizationRankController {
   protected readonly security = $inject(SecurityProvider);
 
   public readonly getOrganizationRankCatalogue = $action({
+    method: "GET",
     path: "/organizations/:organizationId/ranks/catalogue",
     use: [
       $ownsOrganization({
@@ -26,6 +27,7 @@ export class OrganizationRankController {
   });
 
   public readonly getOrganizationRanks = $action({
+    method: "GET",
     path: "/organizations/:organizationId/ranks",
     use: [
       $ownsOrganization({

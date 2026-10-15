@@ -43,7 +43,6 @@ export class BuildCommand {
         // follow and `--ifStale` reads badly. The alias is the spelling meant
         // to be used and written down; the key stays camelCase because that
         // is what the schema and `flags.ifStale` need.
-        .meta({ aliases: ["if-stale"] })
         .describe(
           "Build only when `dist/` is missing or older than the sources it was built from (the app's own src/public/migrations plus every workspace dependency it bundles). Use in a pipeline that builds and then runs the build, so the second invocation is a no-op instead of a full rebuild.",
         )

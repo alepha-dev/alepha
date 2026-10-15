@@ -93,7 +93,10 @@ const ProjectEpicAside = (props: ProjectEpicAsideProps) => {
             value: (
               <Link
                 href={router.path("projectEpic", {
-                  params: { epicNumber: String(props.epic.dependsOnNumber) },
+                  params: {
+                    projectSlug: router.state.params.projectSlug,
+                    epicNumber: String(props.epic.dependsOnNumber),
+                  },
                 })}
                 className="text-sm underline-offset-4 hover:underline"
               >

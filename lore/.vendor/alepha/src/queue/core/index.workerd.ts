@@ -18,7 +18,7 @@ export * from "./providers/WorkerProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-// The `cloudflare:queue` hook is declared in `index.ts`, not here: a
+// The `cloudflare:queue:received` hook is declared in `index.ts`, not here: a
 // listener can live in any module, and those modules are typechecked
 // without this workerd-only entry. Declared only here, the hook name would
 // not exist as far as their compiler is concerned.
@@ -33,14 +33,14 @@ export * from "./providers/WorkerProvider.ts";
  * dispatch to travel through Cloudflare Queues instead of running in-process.
  *
  * On Cloudflare, consumption is push-based: the Worker's `queue` handler
- * emits `cloudflare:queue` and calls `msg.retry()` when handling throws, so
+ * emits `cloudflare:queue:received` and calls `msg.retry()` when handling throws, so
  * undeliverable messages reach the `dead_letter_queue` the build writes into
  * `wrangler.jsonc`. A `$job` handler that throws is caught and recorded by
  * `JobProvider` instead, and retried by the outbox sweep.
  *
  * **Features:**
  * - Consumers registered imperatively via `WorkerProvider.register`
- * - Push-based delivery via the `cloudflare:queue` event (no polling)
+ * - Push-based delivery via the `cloudflare:queue:received` event (no polling)
  * - Batch send via `sendBatch` (`QueueProvider.pushMany`, chunked at 100)
  * - Providers: Memory (test), Cloudflare Queue (workerd)
  *

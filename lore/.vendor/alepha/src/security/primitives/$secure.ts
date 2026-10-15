@@ -4,7 +4,8 @@ import {
   type Async,
   createMiddleware,
   MIDDLEWARE_PROTECTED,
-  type Middleware,
+  MIDDLEWARE_RESPONSES,
+  type ProvidingMiddleware,
 } from "alepha";
 import {
   ForbiddenError,
@@ -89,6 +90,13 @@ export interface SecureOptions {
  * is one, falling back to the raw HTTP request — so the same guard works over
  * HTTP, over `action.run()`, and over the MCP transport.
  */
+/**
+ * What `$secure` returns: a middleware that guarantees an authenticated user
+ * to the handler it wraps, so a `$action` behind it gets a non-optional
+ * `user`. `$owns` and `$ownsOrganization` return the same type.
+ */
+export type SecureMiddleware = ProvidingMiddleware<{ user: UserAccountToken }>;
+
 export interface SecureGuardContext {
   /**
    * The authenticated caller, after issuer/role/permission checks have passed.
@@ -130,7 +138,8 @@ export interface SecureGuardContext {
  * Stores the resolved user in `currentUserAtom` and `request.user` for downstream access.
  *
  * Works across all transports (atom-first resolution):
- * 1. `currentUserAtom`: set by `action.run()` fork, MCP transport, pipelines, jobs
+ * 1. `currentUserAtom`: set by the global `server:request:before` hook
+ *    (`ServerSecurityProvider`), an `action.run()` fork, pipelines and jobs
  * 2. `request.user`: set by previous middleware
  * 3. HTTP headers - JWT/API key resolution
  *
@@ -185,7 +194,7 @@ export interface SecureGuardContext {
  * }
  * ```
  */
-export function $secure(options?: SecureOptions): Middleware {
+export function $secure(options?: SecureOptions): SecureMiddleware {
   const { alepha } = $context();
   const securityProvider = alepha.inject(SecurityProvider);
 
@@ -203,12 +212,19 @@ export function $secure(options?: SecureOptions): Middleware {
     // so consumers (the router's rendering-mode default) never match on
     // `"$secure"`. Any middleware that turns a visitor away for who they are
     // should set the same flag.
-    meta: { [MIDDLEWARE_PROTECTED]: "true" },
+    meta: {
+      [MIDDLEWARE_PROTECTED]: "true",
+      [MIDDLEWARE_RESPONSES]:
+        options?.roles?.length || options?.permissions?.length
+          ? "401,403"
+          : "401",
+    },
     handler: ({ alepha, next }) => {
       return async (...args: any[]) => {
         let user: UserAccountToken | undefined;
 
-        // 1. Atom-first (set by action.run fork, MCP transport, pipelines, jobs)
+        // 1. Atom-first (set by the server:request:before hook, an action.run fork,
+        //    pipelines, jobs)
         user = alepha.store.get(currentUserAtom);
 
         // 2. HTTP request fallback (walks up fork tree to find real HTTP request)
@@ -353,5 +369,5 @@ export function $secure(options?: SecureOptions): Middleware {
         return next(...args);
       };
     },
-  });
+  }) as SecureMiddleware;
 }

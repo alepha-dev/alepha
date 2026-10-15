@@ -1,9 +1,10 @@
-import { createMiddleware, type Middleware } from "alepha";
+import { createMiddleware } from "alepha";
 
 // Type-only on purpose — the server implementation imports `alepha/orm` and
 // `alepha/server`, neither of which belongs in a browser bundle. Erased at
 // compile time.
 import type { OwnsOptions } from "./$owns.ts";
+import type { SecureMiddleware } from "./$secure.ts";
 
 export type { OwnsOptions };
 
@@ -19,12 +20,12 @@ export type { OwnsOptions };
  * Exists so isomorphic code using `$owns` in `use: [...]` type-checks and
  * runs in a browser bundle instead of crashing on a missing export.
  */
-export function $owns(options: OwnsOptions): Middleware {
+export function $owns(options: OwnsOptions): SecureMiddleware {
   return createMiddleware({
     name: "$owns",
     options: options as unknown as Record<string, unknown>,
     handler: () => {
       return async () => undefined;
     },
-  });
+  }) as SecureMiddleware;
 }

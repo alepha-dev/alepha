@@ -28,7 +28,7 @@ export class SchemaValidator {
       }
       throw new SchemaValidationError({
         message,
-        instancePath: path ? `/${path}` : "",
+        path: path ? `/${path}` : "",
         params: issue,
       });
     }

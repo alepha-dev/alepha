@@ -119,7 +119,10 @@ test.describe("Members settings page", () => {
         await apiPath(member.page, "acceptQuest")
       ).replace(":id", String(quest.id));
       const acceptQuestStatus = await member.page.evaluate(async (url) => {
-        const response = await fetch(url, { credentials: "include" });
+        const response = await fetch(url, {
+          method: "POST",
+          credentials: "include",
+        });
         return response.status;
       }, acceptQuestUrl);
       expect(acceptQuestStatus).toBe(200);

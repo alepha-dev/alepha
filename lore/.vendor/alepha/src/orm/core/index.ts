@@ -1,11 +1,12 @@
 import { $module, type Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
-import type { PgAsyncTransaction } from "drizzle-orm/pg-core";
 
 import type {
   D1DatabaseSession,
   D1SessionState,
 } from "./interfaces/D1Database.ts";
+import type { DbTransaction } from "./interfaces/DbTransaction.ts";
+import type { TransactionOptions } from "./interfaces/TransactionOptions.ts";
 import { DbMigrationMode } from "./modes/DbMigrationMode.ts";
 import { $entity } from "./primitives/$entity.ts";
 import { $sequence } from "./primitives/$sequence.ts";
@@ -27,7 +28,15 @@ import { SqliteTypeAuditService } from "./services/SqliteTypeAuditService.ts";
 
 declare module "alepha" {
   interface State {
-    "alepha.orm.tx"?: PgAsyncTransaction<any>;
+    /**
+     * The transaction of the current `$transactional` block.
+     */
+    "alepha.orm.tx"?: DbTransaction;
+    /**
+     * The options the current transaction was opened with, which a nested
+     * `$transactional` is checked against before it joins.
+     */
+    "alepha.orm.txOptions"?: TransactionOptions;
     /**
      * Callbacks queued by `DatabaseProvider.afterCommit()`, created by the
      * outermost `transactional()` block and drained once its COMMIT returns.

@@ -48,7 +48,7 @@ export const useHomeSearch = (projects: ProjectOverviewResource[]) => {
 
   const search = useAction<[string], void>(
     {
-      handler: async (q) => {
+      handler: async (_ctx, q) => {
         const settled = await Promise.allSettled(
           projects.map((project) =>
             searchApi.search({

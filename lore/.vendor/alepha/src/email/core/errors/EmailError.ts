@@ -1,9 +1,11 @@
-import { AlephaError } from "alepha";
+import { $error } from "alepha";
 
-export class EmailError extends AlephaError {
-  constructor(message: string, cause?: Error) {
-    super(message);
-    this.name = "EmailError";
-    this.cause = cause;
-  }
-}
+/**
+ * An email a provider could not send.
+ */
+export const EmailError = $error({
+  name: "EMAIL",
+  message: "Failed to send email",
+});
+
+export type EmailError = InstanceType<typeof EmailError>;

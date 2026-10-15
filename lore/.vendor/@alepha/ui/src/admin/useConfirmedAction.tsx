@@ -1,5 +1,5 @@
-import { useAction } from "alepha/react";
-import type { DependencyList } from "react";
+import { type RunResult, useAction } from "alepha/react";
+import { type DependencyList, useCallback } from "react";
 
 import { type ConfirmOptions, useDialog } from "../core/useDialog.tsx";
 import { useToast } from "../core/useToast.tsx";
@@ -24,7 +24,12 @@ export interface UseConfirmedActionConfig<TArgs extends unknown[]> {
 }
 
 export interface UseConfirmedActionReturn<TArgs extends unknown[]> {
-  run: (...args: TArgs) => Promise<void | undefined>;
+  /**
+   * Ask, then run. Resolves `{ ok: true }` when the mutation ran,
+   * `{ ok: false, reason: "cancelled" }` when the user declined the confirm,
+   * and `useAction`'s other results otherwise.
+   */
+  run: (...args: TArgs) => Promise<RunResult<void>>;
   loading: boolean;
 }
 
@@ -62,18 +67,15 @@ export function useConfirmedAction<TArgs extends unknown[]>(
   const dialog = useDialog();
   const toast = useToast();
 
-  const action = useAction<TArgs, void>(
+  const action = useAction<TArgs, boolean>(
     {
-      handler: async (...argsWithCtx) => {
-        // useAction appends an ActionContext as the last argument — strip it so
-        // the caller's `confirm` / `handler` / `success` see only their args.
-        const args = argsWithCtx.slice(0, -1) as unknown as TArgs;
+      handler: async (_ctx, ...args) => {
         const options =
           typeof config.confirm === "function"
             ? config.confirm(...args)
             : config.confirm;
         const confirmed = await dialog.confirm(options);
-        if (!confirmed) return;
+        if (!confirmed) return false;
         await config.handler(...args);
         if (config.success != null) {
           toast.success(
@@ -82,10 +84,22 @@ export function useConfirmedAction<TArgs extends unknown[]>(
               : config.success,
           );
         }
+        return true;
       },
     },
     deps,
   );
 
-  return { run: action.run, loading: action.loading };
+  const run = useCallback(
+    async (...args: TArgs): Promise<RunResult<void>> => {
+      const result = await action.run(...args);
+      if (!result.ok) return result;
+      return result.value
+        ? { ok: true, value: undefined }
+        : { ok: false, reason: "cancelled" };
+    },
+    [action.run],
+  );
+
+  return { run, loading: action.loading };
 }

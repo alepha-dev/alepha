@@ -16,6 +16,7 @@ import type { SQLiteBunDatabase } from "drizzle-orm/bun-sqlite";
 import type { PgAsyncDatabase } from "drizzle-orm/pg-core";
 
 import { DbError } from "../../errors/DbError.ts";
+import type { TransactionOptions } from "../../interfaces/TransactionOptions.ts";
 import { databaseEnvSchema } from "../../schemas/databaseEnvSchema.ts";
 import { SqliteModelBuilder } from "../../services/SqliteModelBuilder.ts";
 import { DatabaseProvider, type SQLLike } from "./DatabaseProvider.ts";
@@ -77,10 +78,16 @@ declare module "alepha" {
  */
 export class BunSqliteProvider extends DatabaseProvider {
   protected readonly env = $env(envSchema);
+  /**
+   * @internal Driver plumbing, outside semver.
+   */
   protected readonly builder = $inject(SqliteModelBuilder);
   protected readonly options = $store(bunSqliteOptions);
 
   protected sqlite?: Database;
+  /**
+   * @internal Driver plumbing, outside semver.
+   */
   protected bunDb?: SQLiteBunDatabase;
 
   public get name() {
@@ -107,6 +114,9 @@ export class BunSqliteProvider extends DatabaseProvider {
     }
   }
 
+  /**
+   * @internal Driver plumbing, outside semver.
+   */
   public override get db(): PgAsyncDatabase<any> {
     if (!this.bunDb) {
       throw new AlephaError("Database not initialized");
@@ -130,9 +140,13 @@ export class BunSqliteProvider extends DatabaseProvider {
    * could never happen. Use awaited BEGIN/COMMIT/ROLLBACK on the native
    * connection, serialized on the single shared connection.
    */
-  public override async transactional<R>(fn: () => Promise<R>): Promise<R> {
+  public override async transactional<R>(
+    fn: () => Promise<R>,
+    options?: TransactionOptions,
+  ): Promise<R> {
     const existing = this.alepha.get("alepha.orm.tx");
     if (existing) {
+      this.assertJoinable(options);
       return fn();
     }
 
@@ -147,7 +161,11 @@ export class BunSqliteProvider extends DatabaseProvider {
       throw new AlephaError("Database not initialized");
     }
 
-    return this.runExclusiveNativeTransaction((sql) => sqlite.run(sql), fn);
+    return this.runExclusiveNativeTransaction(
+      (sql) => sqlite.run(sql),
+      fn,
+      options,
+    );
   }
 
   public override async execute(

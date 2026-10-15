@@ -1,3 +1,5 @@
+import { $error, z } from "alepha";
+
 import {
   JsonRpcErrorCodes,
   McpProtocolErrorCodes,
@@ -30,185 +32,153 @@ export const McpErrorCodes = {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export class McpError extends Error {
-  name = "McpError";
-  code: number;
-
-  /**
-   * The JSON-RPC error's `data` member, sent only when set.
-   */
-  data?: unknown;
-
-  constructor(
-    message: string,
-    code: number = JsonRpcErrorCodes.INTERNAL_ERROR,
-  ) {
-    super(message);
-    this.code = code;
-  }
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
-
 /**
- * A modern request's HTTP headers are missing, malformed, or disagree with its
- * body (spec 2026-07-28, Streamable HTTP "Server Validation").
+ * An MCP error: a JSON-RPC error `code`, and the error's `data` member
+ * (`rpcData`) when it has one. The server answers it as a JSON-RPC error
+ * response rather than an internal error.
  *
- * `-32020` with HTTP 400. The headers exist so an intermediary can route on
- * them without parsing the body, which is only safe if the server refuses a
- * request whose headers say something the body does not: otherwise a load
- * balancer and this server act on two different requests.
+ * ```ts
+ * throw new McpError("Busy", { cause }); // -32603 Internal error
+ * throw new McpError({ code: -31010 }, { message: "Quota exceeded" });
+ * ```
  */
-export class McpHeaderMismatchError extends McpError {
-  name = "McpHeaderMismatchError";
+export const McpError = $error({
+  name: "MCP",
+  schema: z.object({
+    code: z.integer(),
+    rpcData: z.any().optional(),
+  }),
+  default: { code: JsonRpcErrorCodes.INTERNAL_ERROR },
+  message: "MCP error",
+});
 
-  constructor(detail: string) {
-    super(`Header mismatch: ${detail}`, McpProtocolErrorCodes.HEADER_MISMATCH);
-  }
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
+export type McpError = InstanceType<typeof McpError>;
 
 /**
- * A modern request (2026-07-28 and later) named a protocol version this
- * server does not serve.
- *
- * `-32022` with the versions it does serve, per spec. On HTTP the status is
- * 400. This error is itself the signal that the server is modern, so it is
- * only ever sent while the modern path is on: with it off, an unsupported
- * version gets a plain non-JSON-RPC 400 instead, which is what lets a
- * dual-era client fall back to `initialize`.
+ * An `Mcp-Method` / `Mcp-Name` header that does not match the request body.
  */
-export class McpUnsupportedProtocolVersionError extends McpError {
-  name = "McpUnsupportedProtocolVersionError";
-  data: { supported: string[]; requested: string };
+export const McpHeaderMismatchError = McpError.extend({
+  name: "MCP_HEADER_MISMATCH",
+  schema: z.object({ detail: z.text({ size: "long" }) }),
+  default: { code: McpProtocolErrorCodes.HEADER_MISMATCH },
+  message: (data) => `Header mismatch: ${data.detail}`,
+});
 
-  constructor(requested: string, supported: string[]) {
-    super(
-      "Unsupported protocol version",
-      McpProtocolErrorCodes.UNSUPPORTED_PROTOCOL_VERSION,
-    );
-    this.data = { supported, requested };
-  }
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-export class McpMethodNotFoundError extends McpError {
-  name = "McpMethodNotFoundError";
-
-  constructor(method: string) {
-    super(`Method not found: ${method}`, JsonRpcErrorCodes.METHOD_NOT_FOUND);
-  }
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
+export type McpHeaderMismatchError = InstanceType<
+  typeof McpHeaderMismatchError
+>;
 
 /**
- * A named primitive the server does not have.
- *
- * These carry `-32602 Invalid params`, NOT `-32601 Method not found`.
- * `-32601` says the *method* — `tools/call` — does not exist, from which a
- * conforming client can reasonably conclude the server exposes no tools at
- * all. The spec spells the correct shape out for tools ("Unknown tool:
- * invalid_tool_name" with code `-32602`); resource-not-found used `-32002` in
- * 2025-11-25 and became `-32602` in 2026-07-28, so `-32601` is wrong under
- * every revision.
+ * A protocol version the server does not speak; `rpcData` lists the ones it
+ * does.
  */
-export class McpToolNotFoundError extends McpError {
-  name = "McpToolNotFoundError";
-  tool: string;
+export const McpUnsupportedProtocolVersionError = McpError.extend({
+  name: "MCP_UNSUPPORTED_PROTOCOL_VERSION",
+  default: { code: McpProtocolErrorCodes.UNSUPPORTED_PROTOCOL_VERSION },
+  message: "Unsupported protocol version",
+});
 
-  constructor(tool: string) {
-    super(`Unknown tool: ${tool}`, JsonRpcErrorCodes.INVALID_PARAMS);
-    this.tool = tool;
-  }
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
+export type McpUnsupportedProtocolVersionError = InstanceType<
+  typeof McpUnsupportedProtocolVersionError
+>;
 
 /**
- * See {@link McpToolNotFoundError} for why this is `-32602`.
+ * A JSON-RPC method the server does not implement.
  */
-export class McpResourceNotFoundError extends McpError {
-  name = "McpResourceNotFoundError";
-  uri: string;
+export const McpMethodNotFoundError = McpError.extend({
+  name: "MCP_METHOD_NOT_FOUND",
+  schema: z.object({ method: z.text() }),
+  default: { code: JsonRpcErrorCodes.METHOD_NOT_FOUND },
+  message: (data) => `Method not found: ${data.method}`,
+});
 
-  constructor(uri: string) {
-    super(`Unknown resource: ${uri}`, JsonRpcErrorCodes.INVALID_PARAMS);
-    this.uri = uri;
-  }
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
+export type McpMethodNotFoundError = InstanceType<
+  typeof McpMethodNotFoundError
+>;
 
 /**
- * See {@link McpToolNotFoundError} for why this is `-32602`.
+ * A tool the server does not declare.
  */
-export class McpPromptNotFoundError extends McpError {
-  name = "McpPromptNotFoundError";
-  prompt: string;
+export const McpToolNotFoundError = McpError.extend({
+  name: "MCP_TOOL_NOT_FOUND",
+  schema: z.object({ tool: z.text() }),
+  default: { code: JsonRpcErrorCodes.INVALID_PARAMS },
+  message: (data) => `Unknown tool: ${data.tool}`,
+});
 
-  constructor(prompt: string) {
-    super(`Unknown prompt: ${prompt}`, JsonRpcErrorCodes.INVALID_PARAMS);
-    this.prompt = prompt;
-  }
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
+export type McpToolNotFoundError = InstanceType<typeof McpToolNotFoundError>;
 
 /**
- * A tool returned a value that violates its own declared `schema.result`.
- *
- * This is a SERVER bug, not a caller mistake, and the distinction is the whole
- * point of the class. Both validations in `ToolPrimitive.execute()` throw the
- * same `SchemaValidationError`, so an output failure used to surface through
- * the SEP-1303 tool-execution-error path as `Validation error at /n` — naming
- * a path that is not an input parameter. The model, told its arguments were
- * wrong, retries forever adjusting arguments that were never the problem.
- *
- * Carrying `-32603 Internal error` instead says the honest thing: the call
- * failed for reasons on the server side and there is nothing to self-correct.
+ * A resource the server does not declare.
  */
-export class McpToolOutputError extends McpError {
-  name = "McpToolOutputError";
-  tool: string;
+export const McpResourceNotFoundError = McpError.extend({
+  name: "MCP_RESOURCE_NOT_FOUND",
+  schema: z.object({ uri: z.text({ size: "long" }) }),
+  default: { code: JsonRpcErrorCodes.INVALID_PARAMS },
+  message: (data) => `Unknown resource: ${data.uri}`,
+});
 
-  constructor(tool: string, detail: string) {
-    super(
-      `Server error: tool "${tool}" returned a value violating its declared output schema (${detail})`,
-      JsonRpcErrorCodes.INTERNAL_ERROR,
-    );
-    this.tool = tool;
-  }
-}
+export type McpResourceNotFoundError = InstanceType<
+  typeof McpResourceNotFoundError
+>;
 
-// ---------------------------------------------------------------------------------------------------------------------
+/**
+ * A prompt the server does not declare.
+ */
+export const McpPromptNotFoundError = McpError.extend({
+  name: "MCP_PROMPT_NOT_FOUND",
+  schema: z.object({ prompt: z.text() }),
+  default: { code: JsonRpcErrorCodes.INVALID_PARAMS },
+  message: (data) => `Unknown prompt: ${data.prompt}`,
+});
 
-export class McpInvalidParamsError extends McpError {
-  name = "McpInvalidParamsError";
+export type McpPromptNotFoundError = InstanceType<
+  typeof McpPromptNotFoundError
+>;
 
-  constructor(message: string) {
-    super(message, JsonRpcErrorCodes.INVALID_PARAMS);
-  }
-}
+/**
+ * A tool whose result violates its own declared output schema: the tool is
+ * wrong, not the caller.
+ */
+export const McpToolOutputError = McpError.extend({
+  name: "MCP_TOOL_OUTPUT",
+  schema: z.object({ tool: z.text(), detail: z.text({ size: "rich" }) }),
+  default: { code: JsonRpcErrorCodes.INTERNAL_ERROR },
+  message: (data) =>
+    `Server error: tool "${data.tool}" returned a value violating its declared output schema (${data.detail})`,
+});
 
-// ---------------------------------------------------------------------------------------------------------------------
+export type McpToolOutputError = InstanceType<typeof McpToolOutputError>;
 
-export class McpUnauthorizedError extends McpError {
-  name = "McpUnauthorizedError";
+/**
+ * Params the method cannot read: -32602 Invalid params.
+ */
+export const McpInvalidParamsError = McpError.extend({
+  name: "MCP_INVALID_PARAMS",
+  default: { code: JsonRpcErrorCodes.INVALID_PARAMS },
+  message: "Invalid params",
+});
 
-  constructor(message = "Unauthorized") {
-    super(message, McpErrorCodes.UNAUTHORIZED);
-  }
-}
+export type McpInvalidParamsError = InstanceType<typeof McpInvalidParamsError>;
 
-// ---------------------------------------------------------------------------------------------------------------------
+/**
+ * A caller without a credential the request needs.
+ */
+export const McpUnauthorizedError = McpError.extend({
+  name: "MCP_UNAUTHORIZED",
+  default: { code: McpErrorCodes.UNAUTHORIZED },
+  message: "Unauthorized",
+});
 
-export class McpForbiddenError extends McpError {
-  name = "McpForbiddenError";
+export type McpUnauthorizedError = InstanceType<typeof McpUnauthorizedError>;
 
-  constructor(message = "Forbidden") {
-    super(message, McpErrorCodes.FORBIDDEN);
-  }
-}
+/**
+ * A caller who may not do what it asked.
+ */
+export const McpForbiddenError = McpError.extend({
+  name: "MCP_FORBIDDEN",
+  default: { code: McpErrorCodes.FORBIDDEN },
+  message: "Forbidden",
+});
+
+export type McpForbiddenError = InstanceType<typeof McpForbiddenError>;

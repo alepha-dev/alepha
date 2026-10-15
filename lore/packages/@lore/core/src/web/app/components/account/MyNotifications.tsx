@@ -60,7 +60,7 @@ const MyNotifications = () => {
     void
   >(
     {
-      handler: async (patch) => {
+      handler: async (_ctx, patch) => {
         // Optimistic, so the switch answers the click. The server is the
         // authority and its answer replaces this a moment later; a refusal
         // puts back what was on screen and rethrows, which is what toasts.

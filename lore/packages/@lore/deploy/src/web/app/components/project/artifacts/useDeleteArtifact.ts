@@ -69,7 +69,7 @@ export const useDeleteArtifact = (): DeleteArtifact => {
   // `ActionErrorToaster` shows the server's message.
   const removeAction = useAction<[artifact: DeletableArtifact], boolean>(
     {
-      handler: async (artifact) => {
+      handler: async (_ctx, artifact) => {
         const label = name(artifact);
         const running = runningOn(artifact);
         const ok = await dialog.confirm({
@@ -104,7 +104,7 @@ export const useDeleteArtifact = (): DeleteArtifact => {
 
   const removeManyAction = useAction<[selected: DeletableArtifact[]], boolean>(
     {
-      handler: async (selected) => {
+      handler: async (_ctx, selected) => {
         if (selected.length === 0) return false;
         const n = String(selected.length);
         const ok = await dialog.confirm({
@@ -147,8 +147,14 @@ export const useDeleteArtifact = (): DeleteArtifact => {
   return {
     can: artifactApi.deleteArtifact.can(),
     busy: removeAction.loading || removeManyAction.loading,
-    remove: removeAction.run,
-    removeMany: removeManyAction.run,
+    remove: async (...args: Parameters<typeof removeAction.run>) => {
+      const result = await removeAction.run(...args);
+      return result.ok ? result.value : undefined;
+    },
+    removeMany: async (...args: Parameters<typeof removeManyAction.run>) => {
+      const result = await removeManyAction.run(...args);
+      return result.ok ? result.value : undefined;
+    },
   };
 };
 

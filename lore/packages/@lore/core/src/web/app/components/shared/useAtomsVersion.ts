@@ -10,7 +10,7 @@ import { useCallback, useRef, useSyncExternalStore } from "react";
  * entries cannot call it once per entry: a hook in a loop breaks the rules of
  * hooks, and the list is not fixed. The project shell (#E75, #Q2624) reads
  * module atoms through registered functions instead, and subscribes to every
- * atom they declare here, in one `useSyncExternalStore` on `state:mutate`.
+ * atom they declare here, in one `useSyncExternalStore` on `state:mutated`.
  */
 export const useAtomsVersion = (atoms: readonly Atom<any>[]): number => {
   const alepha = useAlepha();
@@ -23,7 +23,7 @@ export const useAtomsVersion = (atoms: readonly Atom<any>[]): number => {
         return () => {};
       }
       const watched = new Set(keys.split("\n"));
-      return alepha.events.on("state:mutate", (ev) => {
+      return alepha.events.on("state:mutated", (ev) => {
         if (watched.has(String(ev.key))) {
           version.current += 1;
           onStoreChange();

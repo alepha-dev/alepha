@@ -1,5 +1,5 @@
 import type { Infer, ZObject } from "alepha";
-import type { SQLWrapper } from "drizzle-orm";
+import type { SQL } from "drizzle-orm";
 
 import type { PgQueryWhereOrSQL } from "./PgQueryWhere.ts";
 
@@ -70,7 +70,7 @@ export type PgRelation<Base extends ZObject> = {
   // shape for `["userId", users.cols.id]`) satisfies the type without an
   // explicit cast. The relation manager only reads the indices.
   on:
-    | SQLWrapper
+    | SQL
     | readonly [
         keyof Infer<Base>,
         {

@@ -88,6 +88,19 @@ describe("LoreAdapter", () => {
     await fs.writeFile(
       "/project/dist/manifest.json",
       JSON.stringify({
+        manifestVersion: 2,
+        project: "my-app",
+        runtimes: [{ runtime: "workerd", entry: "index.workerd.js" }],
+        resources: {
+          hasDatabase: false,
+          hasBucket: false,
+          hasAnalytics: false,
+          hasKV: false,
+          hasQueue: false,
+          hasCron: false,
+          hasWebSocket: false,
+        },
+        crons: [],
         secrets: [
           { name: "APP_SECRET" },
           { name: "SIGIL_KEY" },
@@ -125,7 +138,7 @@ describe("LoreAdapter", () => {
             throw options.readError;
           }
           if (!instance) {
-            throw new HttpError({ status: 404, message: "App not found" });
+            throw new HttpError({ status: 404 }, { message: "App not found" });
           }
           return instance;
         },
@@ -151,10 +164,10 @@ describe("LoreAdapter", () => {
         }) => {
           const expected = `${instance?.app ?? params.app}/${instance?.env ?? params.env}`;
           if (body.confirm !== expected) {
-            throw new HttpError({
-              status: 400,
-              message: `Type "${expected}" to confirm.`,
-            });
+            throw new HttpError(
+              { status: 400 },
+              { message: `Type "${expected}" to confirm.` },
+            );
           }
           events.push(`destroy ${body.confirm}`);
           return (
@@ -507,7 +520,7 @@ describe("LoreAdapter", () => {
 
     it("rethrows a 403 and creates nothing: only a 404 means missing", async () => {
       const { events, shell, up } = await create({
-        readError: new HttpError({ status: 403, message: "Forbidden" }),
+        readError: new HttpError({ status: 403 }, { message: "Forbidden" }),
       });
 
       await expect(up()).rejects.toThrow(/Forbidden/);

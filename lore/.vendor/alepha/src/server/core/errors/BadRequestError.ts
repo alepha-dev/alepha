@@ -1,15 +1,12 @@
 import { HttpError } from "./HttpError.ts";
 
-export class BadRequestError extends HttpError {
-  readonly name = "BadRequestError";
+/**
+ * A request the server refuses as malformed.
+ */
+export const BadRequestError = HttpError.extend({
+  name: "BAD_REQUEST",
+  default: { status: 400 },
+  message: "Invalid request body",
+});
 
-  constructor(message = "Invalid request body", cause?: unknown) {
-    super(
-      {
-        message,
-        status: 400,
-      },
-      cause,
-    );
-  }
-}
+export type BadRequestError = InstanceType<typeof BadRequestError>;

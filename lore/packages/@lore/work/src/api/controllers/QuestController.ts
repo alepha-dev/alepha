@@ -8,7 +8,7 @@ import {
 } from "@lore/core/api";
 import { type Project } from "@lore/core/schemas";
 import { formatReference } from "@lore/core/web";
-import { $inject, z } from "alepha";
+import { $inject, createPagination, z } from "alepha";
 import { $storage, FileService } from "alepha/api/files";
 import { RankService } from "alepha/api/organizations";
 import { DateTimeProvider } from "alepha/datetime";
@@ -418,7 +418,7 @@ export class QuestController {
    * collapsed so `?status=todo,todo` is one condition.
    */
   protected parseStatusList(value: string | undefined): QuestStatus[] {
-    const known = new Set<string>(z.schema.enumValues(questStatusSchema));
+    const known = new Set<string>(z.schema.enumOptions(questStatusSchema));
     return [...new Set(this.parseList(value))].filter(
       (entry): entry is QuestStatus => known.has(entry),
     );
@@ -971,6 +971,7 @@ export class QuestController {
    * arbitrary files by id.
    */
   listQuestAttachments = $action({
+    method: "GET",
     use: [this.ownsQuest("quest:read")],
     schema: {
       params: z.object({
@@ -1072,6 +1073,7 @@ export class QuestController {
    * can see. The 10 MB storage cap bounds the base64 payload (~13.4 MB).
    */
   getQuestAttachment = $action({
+    method: "GET",
     use: [this.ownsQuest("quest:read")],
     schema: {
       params: z.object({
@@ -1215,6 +1217,7 @@ export class QuestController {
   });
 
   getQuests = $action({
+    method: "GET",
     use: [this.ownsProject("quest:read")],
     schema: {
       params: z.object({
@@ -1420,16 +1423,11 @@ export class QuestController {
 
       query.sort ??= "-updatedAt";
 
-      const result = await this.quests.paginate(
-        query,
-        {
-          where,
-          // Passed through rather than folded into `page`: `paginate` already
-          // prefers `query.offset` over `page * limit`.
-          ...(query.offset !== undefined ? { offset: query.offset } : {}),
-        },
-        { count: true },
-      );
+      const { offset, ...pageQuery } = query;
+      const result =
+        offset === undefined
+          ? await this.quests.paginate(pageQuery, { where }, { count: true })
+          : await this.rawOffsetPage(pageQuery, where, offset);
 
       return {
         ...result,
@@ -1437,6 +1435,40 @@ export class QuestController {
       };
     },
   });
+
+  /**
+   * One window of the quest list from a raw `offset` (MCP `quest_list`), which
+   * need not be a multiple of the page size: `offset: 3, size: 4` is rows 3
+   * to 6. `paginate` pages only by `page * size`, so this reads the window
+   * with `findMany` and counts beside it, in the same `Page` shape.
+   */
+  protected async rawOffsetPage(
+    query: { size?: number; sort?: string },
+    where: Record<string, any>,
+    offset: number,
+  ) {
+    const size = query.size ?? 10;
+    const orderBy = (query.sort ?? "-updatedAt").split(",").map((part) => {
+      const column = part.trim().replace(/^-/, "");
+      return {
+        column,
+        direction: part.trim().startsWith("-") ? "desc" : "asc",
+      } as const;
+    });
+    const [rows, total] = await Promise.all([
+      this.quests.findMany({
+        where,
+        limit: size + 1,
+        offset,
+        orderBy: orderBy as any,
+      }),
+      this.quests.count(where),
+    ]);
+    const page = createPagination(rows, size, offset, orderBy);
+    page.page.totalElements = total;
+    page.page.totalPages = Math.ceil(total / size);
+    return page;
+  }
 
   /**
    * Open-quest count for the sidebar badge. "Open" is everything neither
@@ -1459,6 +1491,7 @@ export class QuestController {
    * asks for it beside the project now, in the same batched round.
    */
   getMyActiveQuests = $action({
+    method: "GET",
     use: [this.ownsProject("quest:read")],
     path: "/projects/:projectId/my-active-quests",
     schema: {
@@ -1478,6 +1511,7 @@ export class QuestController {
   });
 
   countOpenQuests = $action({
+    method: "GET",
     use: [this.ownsProject("quest:read")],
     path: "/projects/:projectId/quests/count",
     schema: {
@@ -1586,6 +1620,7 @@ export class QuestController {
    * read entirely to be thrown away.
    */
   getQuestline = $action({
+    method: "GET",
     use: [this.ownsProject("quest:read")],
     path: "/projects/:projectId/quests/:shortId/questline",
     schema: {
@@ -1695,6 +1730,7 @@ export class QuestController {
   }
 
   getQuestLine = $action({
+    method: "GET",
     use: [this.ownsQuest("quest:read")],
     schema: {
       params: z.object({ id: z.integer() }),
@@ -1761,6 +1797,7 @@ export class QuestController {
    * are a property of the project's quest taxonomy, not the user's).
    */
   listQuestTags = $action({
+    method: "GET",
     use: [this.ownsProjectFromQuery("quest:read")],
     description: "Return the distinct set of tags used in a project.",
     schema: {
@@ -2688,6 +2725,7 @@ export class QuestController {
   });
 
   getQuestById = $action({
+    method: "GET",
     use: [this.ownsQuest("quest:read")],
     schema: {
       params: z.object({
@@ -2699,6 +2737,7 @@ export class QuestController {
   });
 
   getQuestByShortId = $action({
+    method: "GET",
     use: [this.ownsProject("quest:read")],
     path: "/projects/:projectId/quests/:shortId",
     schema: {

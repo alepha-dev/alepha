@@ -32,7 +32,7 @@ export class ServerMetricsProvider {
     handler: ({ headers }) => {
       const token = this.env.METRICS_TOKEN;
       if (token && headers.authorization !== `Bearer ${token}`) {
-        throw new HttpError({ status: 401, message: "Unauthorized" });
+        throw new HttpError({ status: 401 }, { message: "Unauthorized" });
       }
       return this.register.metrics();
     },
@@ -88,7 +88,7 @@ export class ServerMetricsProvider {
   }
 
   protected readonly onRequest = $hook({
-    on: "server:onRequest",
+    on: "server:request:before",
     priority: "first",
     handler: ({ request }) => {
       const end = this.httpRequestDuration?.startTimer();
@@ -97,7 +97,7 @@ export class ServerMetricsProvider {
   });
 
   protected readonly onResponse = $hook({
-    on: "server:onResponse",
+    on: "server:response:after",
     priority: "last",
     handler: ({ request, response, route }) => {
       const timerEnd = request.metadata.metricsTimer as

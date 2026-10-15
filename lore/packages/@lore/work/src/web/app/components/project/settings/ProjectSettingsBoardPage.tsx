@@ -105,7 +105,7 @@ const ProjectSettingsBoardPage = () => {
     void
   >(
     {
-      handler: async (name, patch) => {
+      handler: async (_ctx, name, patch) => {
         if (!project) return;
         const current = project.kanbanColumnConfig ?? {};
         const merged = { ...current[name], ...patch };
@@ -137,7 +137,7 @@ const ProjectSettingsBoardPage = () => {
 
   const reorderAction = useAction<[next: string[], previous: string[]], void>(
     {
-      handler: async (next, previous) => {
+      handler: async (_ctx, next, previous) => {
         if (!project) return;
         // Optimistic: the row has to follow the cursor's release immediately,
         // so the new order is painted first, and a refusal puts the persisted

@@ -65,6 +65,7 @@ export class AdminMcpController {
   protected readonly dt = $inject(DateTimeProvider);
 
   public readonly readMcpCalls = $action({
+    method: "GET",
     path: `${this.url}/calls`,
     group: this.group,
     use: [

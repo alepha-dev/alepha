@@ -25,7 +25,7 @@ export const useUiState = (): [UiState, (next: UiState) => void] => {
       if (!alepha.isBrowser()) {
         return () => {};
       }
-      return alepha.events.on("state:mutate", (ev) => {
+      return alepha.events.on("state:mutated", (ev) => {
         if (ev.key === uiAtom.key) {
           onChange();
         }

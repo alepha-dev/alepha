@@ -1,6 +1,7 @@
+import { KIND } from "alepha/internal";
+import { MODULE } from "alepha/internal";
+
 import type { Alepha } from "../Alepha.ts";
-import { KIND } from "../constants/KIND.ts";
-import { MODULE } from "../constants/MODULE.ts";
 import { AlephaError } from "../errors/AlephaError.ts";
 import type { PrimitiveFactoryLike } from "../helpers/primitive.ts";
 import type { Service } from "../interfaces/Service.ts";

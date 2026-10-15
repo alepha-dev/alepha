@@ -1,4 +1,6 @@
 import { $inject, $store, AlephaError } from "alepha";
+import type { BuildManifest } from "alepha/cli";
+import { BuildManifestReader } from "alepha/cli";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
 
@@ -28,6 +30,7 @@ export interface ResolvedInfraConfig {
  * directory; no monorepo-root orchestration here.
  */
 export class InfraInspector {
+  protected readonly manifestReader = $inject(BuildManifestReader);
   protected readonly log = $logger();
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly options = $store(infraOptions);
@@ -40,7 +43,7 @@ export class InfraInspector {
    *   1. `infraOptions` atom (set by `alepha.config.ts` during the
    *      configure hook)  -  local dev / from-source deploys.
    *   2. `dist/manifest.json` (written by `alepha build`)  -  pre-built
-   *      deploys via Alepha Rocket or any `--prebuilt` consumer that
+   *      deploys via Lore Deploy or any `--prebuilt` consumer that
    *      ships only the build artifact without `alepha.config.ts`.
    */
   public async resolveConfig(root: string): Promise<ResolvedInfraConfig> {
@@ -67,7 +70,10 @@ export class InfraInspector {
     if (manifest) {
       return {
         project: this.naming.slugify(manifest.project),
-        defaultEnv: manifest.defaultEnv ?? "production",
+        defaultEnv:
+          typeof manifest.defaultEnv === "string"
+            ? manifest.defaultEnv
+            : "production",
         environments: {},
       };
     }
@@ -90,22 +96,12 @@ export default defineConfig({
   }
 
   /**
-   * Read `dist/manifest.json` if present. Returns null on any error so
-   * callers fall back to the strict alepha.config.ts path.
+   * Probe for an artifact, refusing incompatible existing manifests.
    */
-  protected async readManifest(root: string): Promise<{
-    project: string;
-    defaultEnv?: string;
-  } | null> {
-    try {
-      const raw = await this.fs.readTextFile(
-        this.fs.join(root, "dist", "manifest.json"),
-      );
-      const manifest = JSON.parse(raw);
-      return typeof manifest?.project === "string" ? manifest : null;
-    } catch {
-      return null;
-    }
+  protected async readManifest(root: string): Promise<BuildManifest | null> {
+    return this.manifestReader.readOptional(
+      this.fs.join(root, "dist", "manifest.json"),
+    );
   }
 
   /**

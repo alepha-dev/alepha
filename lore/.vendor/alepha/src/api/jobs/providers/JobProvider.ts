@@ -194,6 +194,7 @@ export interface SweepEntry {
  *     retry latency - running it every sweep is wasted work for most apps.
  */
 export class JobProvider {
+  public static readonly id: string = "alepha.jobs.JobProvider";
   protected readonly alepha = $inject(Alepha);
   protected readonly dt = $inject(DateTimeProvider);
   protected readonly cronProvider = $inject(CronProvider);

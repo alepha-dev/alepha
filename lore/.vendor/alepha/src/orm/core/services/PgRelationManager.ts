@@ -29,7 +29,7 @@ export class PgRelationManager {
       const from = provider.table(join.join as EntityPrimitive);
       const on = isSQLWrapper(join.on)
         ? (join.on as SQL)
-        : sql`${table[join.on[0] as string]} = ${from[join.on[1].name]}`;
+        : sql`${table[(join.on as readonly [string, { name: string }])[0]]} = ${from[(join.on as readonly [string, { name: string }])[1].name]}`;
 
       if (join.type === "right") {
         builder.rightJoin(from, on);

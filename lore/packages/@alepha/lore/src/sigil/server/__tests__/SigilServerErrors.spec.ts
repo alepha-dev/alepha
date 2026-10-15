@@ -26,7 +26,7 @@ const make = () =>
   }).with({ provide: SigilSinkProvider, use: FakeSink });
 
 const emitError = (alepha: Alepha, error: unknown) =>
-  alepha.events.emit("server:onError", {
+  alepha.events.emit("server:request:error", {
     route: { path: "/x" },
     request: {},
     error,
@@ -164,7 +164,7 @@ describe("SigilServerErrors — batched actions", () => {
     /*
       ⚠️ Regression guard for a production blind spot (2026-08-11). The batch
       endpoint answers 200 with a per-entry error, so for as long as it kept
-      its sub-request failures to itself, `server:onError` never fired for
+      its sub-request failures to itself, `server:request:error` never fired for
       them and this class never saw them. That is the path the React client
       uses by default: on a client-rendered app every API failure went
       unreported, and Lore's own crash inbox stayed empty through an outage in

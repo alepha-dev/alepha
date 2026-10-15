@@ -7,7 +7,7 @@ import { MemoryFileStorageProvider } from "alepha/bucket";
 import { AlephaEmail } from "alepha/email";
 import { $repository, AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
-import { AlephaServer, HttpError } from "alepha/server";
+import { AlephaServer, isHttpError } from "alepha/server";
 import { AlephaFake, FakeProvider } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
@@ -214,7 +214,7 @@ describe("artifacts", () => {
     try {
       await call;
     } catch (error) {
-      return HttpError.is(error) ? error.status : 500;
+      return isHttpError(error) ? error.status : 500;
     }
     return 200;
   };

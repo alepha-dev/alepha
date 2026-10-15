@@ -201,7 +201,7 @@ const FolioHistoryTab = (props: FolioHistoryTabProps): ReactElement => {
   // unhandled rejections.
   const revertAction = useAction<[revisionId: string], void>(
     {
-      handler: async (revisionId) => {
+      handler: async (_ctx, revisionId) => {
         const confirmed = await dialog.confirm({
           title: tr("folios.history.revert-confirm-title"),
           description: tr("folios.history.revert-confirm-body"),
@@ -229,7 +229,7 @@ const FolioHistoryTab = (props: FolioHistoryTabProps): ReactElement => {
     void
   >(
     {
-      handler: async (revision) => {
+      handler: async (_ctx, revision) => {
         await folioApi.pinHistory({
           params: { id: props.folio.id, revisionId: revision.id },
           body: { pinned: !revision.pinned },

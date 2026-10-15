@@ -137,7 +137,7 @@ export class RollbackService {
     // and offering a fast rollback onto a version that is not there fails after
     // the operator has already confirmed.
     const client = new CloudflareDeployClient({
-      apiToken: this.seal.open(
+      apiToken: await this.seal.open(
         estate.credential as string,
         CredentialSealService.ESTATE_PURPOSE,
       ),
@@ -193,7 +193,7 @@ export class RollbackService {
     const instance = await this.instances.findById(plan.deployment.instanceId);
     const estate = await this.gate.assert(instance as never);
     const client = new CloudflareDeployClient({
-      apiToken: this.seal.open(
+      apiToken: await this.seal.open(
         estate.credential as string,
         CredentialSealService.ESTATE_PURPOSE,
       ),

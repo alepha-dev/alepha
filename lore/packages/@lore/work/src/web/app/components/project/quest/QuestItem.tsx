@@ -26,7 +26,12 @@ const QuestItem = (props: QuestItemProps) => {
   const [project] = useStore(currentProjectAtom);
   const questEstimateEnabled = capabilityOption(project, "work", "estimate");
   const { isActive, anchorProps } = useActive(
-    router.path("projectQuest", { params: { shortId: quest.shortId } }),
+    router.path("projectQuest", {
+      params: {
+        projectSlug: router.state.params.projectSlug,
+        shortId: quest.shortId,
+      },
+    }),
   );
 
   const isTimerRunning = () => {

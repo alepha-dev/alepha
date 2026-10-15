@@ -40,7 +40,7 @@ function useStore(target: any, defaultValue?: any): any {
         return () => {};
       }
 
-      return alepha.events.on("state:mutate", (ev) => {
+      return alepha.events.on("state:mutated", (ev) => {
         if (ev.key === key) {
           onStoreChange();
         }

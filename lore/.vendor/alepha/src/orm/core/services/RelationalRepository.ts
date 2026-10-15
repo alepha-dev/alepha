@@ -8,9 +8,11 @@ import {
 } from "alepha";
 
 import { DbEntityNotFoundError } from "../errors/DbEntityNotFoundError.ts";
+import type { DbTransaction } from "../interfaces/DbTransaction.ts";
 import type {
   IncludeArg,
   RelationalQueryArgs,
+  RelationalReadOptions,
   Resolve,
 } from "../interfaces/RelationInclude.ts";
 import type {
@@ -22,6 +24,7 @@ import type {
   UpdateOf,
   UpsertArgs,
 } from "../interfaces/RelationWrite.ts";
+import type { TransactionOptions } from "../interfaces/TransactionOptions.ts";
 import type { EntityPrimitive } from "../primitives/$entity.ts";
 import type {
   EntitySchema,
@@ -54,7 +57,13 @@ export class RelationalRepository<
   TKey extends keyof ZType & string,
 > {
   protected readonly repositories = $inject(RepositoryProvider);
+  /**
+   * @internal Driver plumbing, outside semver.
+   */
   protected readonly rqb = $inject(RqbExecutor);
+  /**
+   * @internal Driver plumbing, outside semver.
+   */
   protected readonly queryManager = $inject(QueryManager);
 
   public readonly relations: RelationsPrimitive<ZType, TMap>;
@@ -82,12 +91,22 @@ export class RelationalRepository<
     return this.repositories.getRepository(this.entity);
   }
 
+  /**
+   * Every match, with relations resolved.
+   *
+   * `options` takes `tx`, `force` and `now`, as `Repository` does; `for` and
+   * `cache` are not offered on a relational read (see
+   * {@link RelationalReadOptions}).
+   */
   public async findMany<
     const TArgs extends RelationalQueryArgs<ZType, TMap, TKey> = {},
   >(
     query: TArgs = {} as TArgs,
+    options: RelationalReadOptions = {},
   ): Promise<Array<Resolve<ZType, TMap, TKey, TArgs>>> {
-    return (await this.rows(query)) as Array<Resolve<ZType, TMap, TKey, TArgs>>;
+    return (await this.rows(query, options)) as Array<
+      Resolve<ZType, TMap, TKey, TArgs>
+    >;
   }
 
   /**
@@ -101,8 +120,9 @@ export class RelationalRepository<
     const TArgs extends RelationalQueryArgs<ZType, TMap, TKey> = {},
   >(
     query: TArgs = {} as TArgs,
+    options: RelationalReadOptions = {},
   ): Promise<Resolve<ZType, TMap, TKey, TArgs> | undefined> {
-    const [row] = await this.findMany({ ...query, limit: 1 } as TArgs);
+    const [row] = await this.findMany({ ...query, limit: 1 } as TArgs, options);
     return row;
   }
 
@@ -112,10 +132,13 @@ export class RelationalRepository<
    */
   public async getOne<
     const TArgs extends RelationalQueryArgs<ZType, TMap, TKey> = {},
-  >(query: TArgs = {} as TArgs): Promise<Resolve<ZType, TMap, TKey, TArgs>> {
-    const row = await this.findOne(query);
+  >(
+    query: TArgs = {} as TArgs,
+    options: RelationalReadOptions = {},
+  ): Promise<Resolve<ZType, TMap, TKey, TArgs>> {
+    const row = await this.findOne(query, options);
     if (!row) {
-      throw new DbEntityNotFoundError(this.base.tableName);
+      throw new DbEntityNotFoundError({ entity: this.base.tableName });
     }
     return row;
   }
@@ -128,12 +151,16 @@ export class RelationalRepository<
   >(
     id: string | number,
     query: TArgs = {} as TArgs,
+    options: RelationalReadOptions = {},
   ): Promise<Resolve<ZType, TMap, TKey, TArgs> | undefined> {
     const primaryKey = this.base.id.key as string;
-    return (await this.findOne({
-      ...(query as object),
-      where: { [primaryKey]: { eq: id } },
-    } as never)) as Resolve<ZType, TMap, TKey, TArgs> | undefined;
+    return (await this.findOne(
+      {
+        ...(query as object),
+        where: { [primaryKey]: { eq: id } },
+      } as never,
+      options,
+    )) as Resolve<ZType, TMap, TKey, TArgs> | undefined;
   }
 
   public async getById<
@@ -144,10 +171,11 @@ export class RelationalRepository<
   >(
     id: string | number,
     query: TArgs = {} as TArgs,
+    options: RelationalReadOptions = {},
   ): Promise<Resolve<ZType, TMap, TKey, TArgs>> {
-    const row = await this.findById(id, query);
+    const row = await this.findById(id, query, options);
     if (!row) {
-      throw new DbEntityNotFoundError(this.base.tableName);
+      throw new DbEntityNotFoundError({ entity: this.base.tableName });
     }
     return row;
   }
@@ -160,42 +188,47 @@ export class RelationalRepository<
    * size.
    */
   public async paginate<
-    const TArgs extends RelationalQueryArgs<ZType, TMap, TKey> = {},
+    const TArgs extends Omit<
+      RelationalQueryArgs<ZType, TMap, TKey>,
+      "limit" | "offset"
+    > = {},
   >(
     pagination: PageQuery = {},
     query: TArgs = {} as TArgs,
-    options: { count?: boolean } = {},
+    options: RelationalReadOptions & { count?: boolean } = {},
   ): Promise<Page<Resolve<ZType, TMap, TKey, TArgs>>> {
+    this.assertNoRootForce(query);
     if (!this.delegates(query)) {
       const page = await this.base.paginate(
         pagination,
         this.toBaseQuery(query) as never,
-        { ...options, ...this.toBaseOptions(query) },
+        options,
       );
 
       return page as Page<Resolve<ZType, TMap, TKey, TArgs>>;
     }
 
     const args = query as Record<string, any>;
-    const limit = args.limit ?? pagination.size ?? 10;
-    const offset = args.offset ?? (pagination.page ?? 0) * limit;
-    const orderBy =
-      args.orderBy ??
-      (pagination.sort
-        ? this.queryManager.parsePaginationSort(pagination.sort)
-        : undefined);
+    const { limit, offset, orderBy } = this.queryManager.pageWindow(
+      pagination,
+      args,
+      this.base.tableName,
+    );
 
     const [rows, total] = await Promise.all([
-      this.rows({
-        ...args,
-        orderBy,
-        offset,
-        // one extra row is the next-page sentinel `createPagination` looks for
-        limit: limit + 1,
-      } as TArgs),
+      this.rows(
+        {
+          ...args,
+          orderBy,
+          offset,
+          // one extra row is the next-page sentinel `createPagination` looks for
+          limit: limit + 1,
+        } as never,
+        options,
+      ),
       options.count
         ? (this.assertCountable(args.where),
-          this.base.count(args.where as never, this.toBaseOptions(query)))
+          this.base.count(args.where as never, options))
         : undefined,
     ]);
 
@@ -203,7 +236,9 @@ export class RelationalRepository<
       rows,
       limit,
       offset,
-      orderBy ? this.queryManager.normalizeOrderBy(orderBy) : undefined,
+      orderBy
+        ? this.queryManager.normalizeOrderBy(orderBy as never)
+        : undefined,
     );
 
     page.page.totalElements = total;
@@ -224,9 +259,10 @@ export class RelationalRepository<
    */
   public async count(
     query: Pick<RelationalQueryArgs<ZType, TMap, TKey>, "where"> = {},
+    options: Omit<RelationalReadOptions, "now"> = {},
   ): Promise<number> {
     this.assertCountable(query.where);
-    return await this.base.count(query.where as never);
+    return await this.base.count(query.where as never, options);
   }
 
   protected assertCountable(where: unknown): void {
@@ -357,7 +393,7 @@ export class RelationalRepository<
   // --- escape hatches -------------------------------------------------------
 
   /**
-   * The drizzle table, for raw SQL.
+   * The table, as a reference for raw SQL (see `Repository.table`).
    */
   public get table() {
     return this.base.table;
@@ -421,8 +457,11 @@ export class RelationalRepository<
   /**
    * Run a callback inside a transaction.
    */
-  public transaction<R>(fn: (tx: any) => Promise<R>): Promise<R> {
-    return this.base.transaction(fn as never) as Promise<R>;
+  public transaction<R>(
+    fn: (tx: DbTransaction) => Promise<R>,
+    options?: TransactionOptions,
+  ): Promise<R> {
+    return this.base.transaction(fn, options);
   }
 
   /**
@@ -601,20 +640,35 @@ export class RelationalRepository<
    */
   protected async rows(
     query: RelationalQueryArgs<ZType, TMap, TKey>,
+    options: RelationalReadOptions,
   ): Promise<Array<Record<string, any>>> {
+    this.assertNoRootForce(query);
     if (this.delegates(query)) {
       return await this.rqb.findMany({
         relations: this.relations as never,
         entityKey: this.key,
         provider: this.base.provider,
-        query: query as never,
+        query: { ...(query as object), force: options.force } as never,
+        tx: options.tx,
       });
     }
 
     return (await this.base.findMany(
       this.toBaseQuery(query) as never,
-      this.toBaseOptions(query),
+      options,
     )) as Array<Record<string, any>>;
+  }
+
+  /**
+   * Refuse a root-level `force` in the query: it is a statement option since
+   * #Q2670, and ignoring it would un-hide nothing, silently.
+   */
+  protected assertNoRootForce(query: object): void {
+    if ((query as { force?: unknown }).force !== undefined) {
+      throw new AlephaError(
+        `'force' moved out of the query on '${this.base.tableName}': pass it as a statement option, findMany(query, { force: true }). A relation still takes its own in include.`,
+      );
+    }
   }
 
   /**
@@ -666,22 +720,9 @@ export class RelationalRepository<
    * `select` becomes `columns`; `include` is handled separately.
    */
   protected toBaseQuery(query: RelationalQueryArgs<ZType, TMap, TKey>) {
-    const {
-      include: _include,
-      force: _force,
-      select,
-      ...rest
-    } = query as Record<string, any>;
+    const { include: _include, select, ...rest } = query as Record<string, any>;
     if (!select) return rest;
     return { ...rest, columns: select };
-  }
-
-  /**
-   * `force` is a statement option on the plain repository rather than part of
-   * the query, so it is peeled back off on the way down.
-   */
-  protected toBaseOptions(query: RelationalQueryArgs<ZType, TMap, TKey>) {
-    return { force: (query as { force?: boolean }).force };
   }
 }
 

@@ -169,10 +169,12 @@ export abstract class TopicProvider {
       ref.timeout = this.dateTimeProvider.createTimeout(() => {
         settle(() =>
           reject(
-            new TopicTimeoutError(
-              name,
-              this.dateTimeProvider.duration(timeoutDuration).asMilliseconds(),
-            ),
+            new TopicTimeoutError({
+              topic: name,
+              timeout: this.dateTimeProvider
+                .duration(timeoutDuration)
+                .asMilliseconds(),
+            }),
           ),
         );
       }, timeoutDuration);

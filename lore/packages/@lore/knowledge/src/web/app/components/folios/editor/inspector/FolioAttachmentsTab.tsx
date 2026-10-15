@@ -88,7 +88,7 @@ const FolioAttachmentsTab = (props: FolioAttachmentsTabProps): ReactElement => {
    */
   const uploadAction = useAction<[files: File[]], void>(
     {
-      handler: async (files) => {
+      handler: async (_ctx, files) => {
         const { folioId, projectId } = props;
         if (!canUpload || !folioId || !projectId || files.length === 0) {
           return;
@@ -135,7 +135,7 @@ const FolioAttachmentsTab = (props: FolioAttachmentsTabProps): ReactElement => {
 
   const removeAction = useAction<[id: string, name: string], void>(
     {
-      handler: async (id, name) => {
+      handler: async (_ctx, id, name) => {
         const confirmed = await dialog.confirm({
           title: tr("folios.editor.inspector.attachments-confirm-delete-title"),
           description: tr(
@@ -156,7 +156,7 @@ const FolioAttachmentsTab = (props: FolioAttachmentsTabProps): ReactElement => {
 
   const renameAction = useAction<[id: string, current: string], void>(
     {
-      handler: async (id, current) => {
+      handler: async (_ctx, id, current) => {
         const next = await dialog.prompt({
           title: tr("folios.editor.inspector.attachments-rename-title"),
           description: tr("folios.editor.inspector.attachments-rename-body"),

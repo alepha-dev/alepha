@@ -519,7 +519,7 @@ export class ReactBrowserProvider {
    * the dictionaries for the active language; with the payload unapplied it
    * read `lang` as empty, fell back to `fallbackLang`, and preloaded the wrong
    * dictionary. `applyHydration` then set the real language in `ready` — but
-   * `StateManager.set` emits `state:mutate` fire-and-forget, so the loader for
+   * `StateManager.set` emits `state:mutated` fire-and-forget, so the loader for
    * the real language was still in flight when `render()` hydrated React one
    * line later. `translate()` found the active dictionary empty, fell through
    * to the loaded fallback one, and rendered the whole page in the fallback
@@ -763,7 +763,7 @@ export class ReactBrowserProvider {
 
       const element = this.router.root(this.state);
 
-      await this.alepha.events.emit("react:browser:render", {
+      await this.alepha.events.emit("react:browser:render:before", {
         element,
         root: this.getRootElement(),
         hydration,

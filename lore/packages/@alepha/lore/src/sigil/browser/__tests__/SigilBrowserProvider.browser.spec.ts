@@ -83,8 +83,8 @@ describe("SigilBrowserProvider", () => {
       configAt: Date.now(),
     });
     // Hydration first — a transition before it is the hydration render itself,
-    // which `react:browser:render` owns.
-    await (alepha.events as any).emit("react:browser:render", {});
+    // which `react:browser:render:before` owns.
+    await (alepha.events as any).emit("react:browser:render:before", {});
     await (alepha.events as any).emit("react:transition:end", {
       state: { url: { pathname: "/dash" } },
     });
@@ -214,7 +214,7 @@ describe("SigilBrowserProvider", () => {
         id: "quest-create",
         error: new SchemaValidationError({
           message: "'id' is required",
-          instancePath: "/id",
+          path: "/id",
         }),
       });
       expect(provider.debugPendingErrors()).toEqual([
@@ -228,7 +228,7 @@ describe("SigilBrowserProvider", () => {
         type: "action",
         error: new SchemaValidationError({
           message: "'items' is required",
-          instancePath: "/items",
+          path: "/items",
         }),
       });
       expect(provider.debugPendingErrors()).toEqual([
@@ -271,7 +271,7 @@ describe("SigilBrowserProvider", () => {
 
     it("appends the component stack to the stack the sink fingerprints on", async () => {
       const { alepha, provider } = await startedProvider();
-      await (alepha.events as any).emit("react:recoverable:error", {
+      await (alepha.events as any).emit("react:render:recovered", {
         error: Object.assign(new Error("Hydration failed"), {
           stack: "Error: Hydration failed\n    at hydrateRoot",
         }),
@@ -286,7 +286,7 @@ describe("SigilBrowserProvider", () => {
 
     it("reports one with no component stack rather than dropping it", async () => {
       const { alepha, provider } = await startedProvider();
-      await (alepha.events as any).emit("react:recoverable:error", {
+      await (alepha.events as any).emit("react:render:recovered", {
         error: new Error("Recovered, no stack"),
       });
       expect(provider.debugPendingErrors()).toEqual(["Recovered, no stack"]);
@@ -297,7 +297,7 @@ describe("SigilBrowserProvider", () => {
     // inbox nobody opens.
     it("drops a 4xx like every other source", async () => {
       const { alepha, provider } = await startedProvider();
-      await (alepha.events as any).emit("react:recoverable:error", {
+      await (alepha.events as any).emit("react:render:recovered", {
         error: Object.assign(new Error("Forbidden"), { status: 403 }),
       });
       expect(provider.debugPendingErrors()).toEqual([]);
@@ -311,7 +311,7 @@ describe("SigilBrowserProvider", () => {
       const provider = alepha.inject(SigilBrowserProvider);
       await alepha.start();
 
-      await (alepha.events as any).emit("react:browser:render", {});
+      await (alepha.events as any).emit("react:browser:render:before", {});
 
       expect(provider.debugPendingViews()).toEqual(["/"]);
       // Host only. The path and query belong to a third-party page.
@@ -335,7 +335,7 @@ describe("SigilBrowserProvider", () => {
         configAt: Date.now(),
       });
 
-      await (alepha.events as any).emit("react:browser:render", {});
+      await (alepha.events as any).emit("react:browser:render:before", {});
       await (alepha.events as any).emit("react:transition:end", {
         state: { url: { pathname: "/docs" } },
       });
@@ -368,7 +368,7 @@ describe("SigilBrowserProvider", () => {
       const provider = alepha.inject(SigilBrowserProvider);
       await alepha.start();
 
-      await (alepha.events as any).emit("react:browser:render", {});
+      await (alepha.events as any).emit("react:browser:render:before", {});
 
       expect(provider.debugPendingViewReferrers()).toEqual([undefined]);
     } finally {
@@ -390,7 +390,7 @@ describe("SigilBrowserProvider", () => {
       });
 
       history.replaceState({}, "", "/?utm_source=HN&token=secret");
-      await (alepha.events as any).emit("react:browser:render", {});
+      await (alepha.events as any).emit("react:browser:render:before", {});
       await (alepha.events as any).emit("react:transition:end", {
         state: { url: { pathname: "/docs" } },
       });
@@ -425,7 +425,7 @@ describe("SigilBrowserProvider", () => {
         configAt: Date.now(),
       });
 
-      await (alepha.events as any).emit("react:browser:render", {});
+      await (alepha.events as any).emit("react:browser:render:before", {});
       expect(provider.debugPendingEngagements()).toEqual([]);
 
       window.dispatchEvent(new Event("scroll"));
@@ -455,7 +455,7 @@ describe("SigilBrowserProvider", () => {
         configAt: Date.now(),
       });
 
-      await (alepha.events as any).emit("react:browser:render", {});
+      await (alepha.events as any).emit("react:browser:render:before", {});
       window.dispatchEvent(new Event("scroll"));
 
       await (alepha.events as any).emit("react:transition:end", {
@@ -487,7 +487,7 @@ describe("SigilBrowserProvider", () => {
       });
 
       provider.testSetDwell(5);
-      await (alepha.events as any).emit("react:browser:render", {});
+      await (alepha.events as any).emit("react:browser:render:before", {});
       expect(provider.debugPendingEngagements()).toEqual([]);
 
       await new Promise((r) => setTimeout(r, 25));
@@ -510,7 +510,7 @@ describe("SigilBrowserProvider", () => {
       configAt: Date.now(),
     });
 
-    await (alepha.events as any).emit("react:browser:render", {});
+    await (alepha.events as any).emit("react:browser:render:before", {});
     window.dispatchEvent(new Event("scroll"));
 
     // An `engaged` total outliving the `count` it divides into would be worse
@@ -543,7 +543,7 @@ describe("SigilBrowserProvider", () => {
     await (alepha.events as any).emit("react:transition:end", {
       state: { url: { pathname: "/" } },
     });
-    await (alepha.events as any).emit("react:browser:render", {});
+    await (alepha.events as any).emit("react:browser:render:before", {});
 
     expect(provider.debugPendingViews()).toEqual(["/"]);
 
@@ -571,7 +571,7 @@ describe("SigilBrowserProvider", () => {
       feedbackButtonExcludedPaths: [],
       configAt: Date.now(),
     });
-    await (alepha.events as any).emit("react:browser:render", {});
+    await (alepha.events as any).emit("react:browser:render:before", {});
     await (alepha.events as any).emit("react:transition:end", {
       state: { url: { pathname: "/dash" } },
     });
@@ -608,7 +608,7 @@ describe("SigilBrowserProvider", () => {
     await alepha.start();
     // `configAt: 0` is the atom's default — stale by construction, which is
     // exactly what a prerendered page carries.
-    await (alepha.events as any).emit("react:browser:render", {});
+    await (alepha.events as any).emit("react:browser:render:before", {});
 
     expect(provider.debugPendingViews()).toEqual(["/"]);
   });
@@ -623,7 +623,7 @@ describe("SigilBrowserProvider", () => {
     });
     const provider = alepha.inject(TestSigilBrowserProvider);
     await alepha.start();
-    await (alepha.events as any).emit("react:browser:render", {});
+    await (alepha.events as any).emit("react:browser:render:before", {});
     expect(provider.debugPendingViews()).toEqual(["/"]);
 
     provider.testLcpArrived();
@@ -647,7 +647,7 @@ describe("SigilBrowserProvider", () => {
     const provider = alepha.inject(TestSigilBrowserProvider);
     await alepha.start();
     provider.testSetFirstIngestDelay(5);
-    await (alepha.events as any).emit("react:browser:render", {});
+    await (alepha.events as any).emit("react:browser:render:before", {});
     expect(provider.debugPendingViews()).toEqual(["/"]);
 
     await new Promise((r) => setTimeout(r, 40));
@@ -675,7 +675,7 @@ describe("SigilBrowserProvider", () => {
     provider.testLcpArrived();
     expect(provider.debugPendingViews()).toEqual([]);
 
-    await (alepha.events as any).emit("react:browser:render", {});
+    await (alepha.events as any).emit("react:browser:render:before", {});
 
     expect(provider.debugPendingViews()).toEqual([]);
   });
@@ -719,7 +719,7 @@ describe("SigilBrowserProvider - one request per page load", () => {
       freshConfig(alepha);
       provider.testSetDwell(5);
 
-      await (alepha.events as any).emit("react:browser:render", {});
+      await (alepha.events as any).emit("react:browser:render:before", {});
 
       // Held: the debounce is not armed, so nothing can leave before the
       // verdict is in.
@@ -753,7 +753,7 @@ describe("SigilBrowserProvider - one request per page load", () => {
       // Long enough that the verdict cannot be what sends this.
       provider.testSetDwell(60_000);
 
-      await (alepha.events as any).emit("react:browser:render", {});
+      await (alepha.events as any).emit("react:browser:render:before", {});
       expect(sent()).toHaveLength(0);
 
       window.dispatchEvent(new Event("pagehide"));
@@ -784,7 +784,7 @@ describe("SigilBrowserProvider - one request per page load", () => {
       // exactly what a prerendered page carries.
       provider.testSetDwell(5);
 
-      await (alepha.events as any).emit("react:browser:render", {});
+      await (alepha.events as any).emit("react:browser:render:before", {});
       expect(sent()).toHaveLength(0);
 
       provider.testLcpArrived();
@@ -820,7 +820,7 @@ describe("SigilBrowserProvider - one request per page load", () => {
       freshConfig(alepha);
       provider.testSetDwell(5);
 
-      await (alepha.events as any).emit("react:browser:render", {});
+      await (alepha.events as any).emit("react:browser:render:before", {});
       provider.testLcpArrived();
 
       expect(sent()).toHaveLength(0);
@@ -850,7 +850,7 @@ describe("SigilBrowserProvider - one request per page load", () => {
       freshConfig(alepha, { views: false, errors: true, vitals: true });
       provider.testSetDwell(5);
 
-      await (alepha.events as any).emit("react:browser:render", {});
+      await (alepha.events as any).emit("react:browser:render:before", {});
       expect(provider.debugQueueHeld()).toBe(true);
 
       await new Promise((r) => setTimeout(r, 25));
@@ -880,11 +880,11 @@ describe("SigilBrowserProvider - one request per page load", () => {
       freshConfig(alepha);
       provider.testSetDwell(5);
 
-      await (alepha.events as any).emit("react:browser:render", {});
+      await (alepha.events as any).emit("react:browser:render:before", {});
       await new Promise((r) => setTimeout(r, 25));
       expect(sent()).toHaveLength(1);
 
-      await (alepha.events as any).emit("react:browser:render", {});
+      await (alepha.events as any).emit("react:browser:render:before", {});
 
       expect(provider.debugQueueHeld()).toBe(false);
     } finally {

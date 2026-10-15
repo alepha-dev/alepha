@@ -26,7 +26,9 @@ const ProjectSettingsAreaHeader = (props: ProjectSettingsAreaHeaderProps) => {
   return (
     <div className="flex flex-col gap-2">
       <Link
-        href={router.path("projectSettingsAreas")}
+        href={router.path("projectSettingsAreas", {
+          params: { projectSlug: router.state.params.projectSlug },
+        })}
         className="text-muted-foreground text-xs"
       >
         {tr("area.detail.back")}

@@ -12,6 +12,7 @@ export class AdminOrganizationController {
   protected readonly service = $inject(OrganizationService);
 
   public readonly getAdminOrganizations = $action({
+    method: "GET",
     path: "/admin/organizations",
     use: [$secure({ permissions: ["admin:organization:read"] })],
     schema: { response: z.array(organizations.schema) },
@@ -19,6 +20,7 @@ export class AdminOrganizationController {
   });
 
   public readonly getAdminOrganization = $action({
+    method: "GET",
     path: "/admin/organizations/:organizationId",
     use: [$secure({ permissions: ["admin:organization:read"] })],
     schema: {

@@ -167,7 +167,7 @@ const ProjectQuestsTable = () => {
     void
   >(
     {
-      handler: async (quest, releaseId, refresh) => {
+      handler: async (_ctx, quest, releaseId, refresh) => {
         await questApi.updateQuestById({
           params: { id: quest.id },
           body: { releaseId },
@@ -185,7 +185,7 @@ const ProjectQuestsTable = () => {
     void
   >(
     {
-      handler: async (quest, refresh) => {
+      handler: async (_ctx, quest, refresh) => {
         await questMutations.accept(quest.id);
         refresh();
       },
@@ -198,7 +198,7 @@ const ProjectQuestsTable = () => {
     void
   >(
     {
-      handler: async (quest, refresh) => {
+      handler: async (_ctx, quest, refresh) => {
         // Same warning QuestView gives: shelving a quest others depend on
         // leaves them blocked with no path forward. The questline is fetched
         // on click rather than per row - a table of 25 quests should not
@@ -237,7 +237,7 @@ const ProjectQuestsTable = () => {
     void
   >(
     {
-      handler: async (quest, refresh) => {
+      handler: async (_ctx, quest, refresh) => {
         await questMutations.unshelve(quest.id);
         refresh();
       },
@@ -250,7 +250,7 @@ const ProjectQuestsTable = () => {
     void
   >(
     {
-      handler: async (quest, refresh) => {
+      handler: async (_ctx, quest, refresh) => {
         const confirmed = await dialog.confirm({
           title: tr("board.confirm-delete-title"),
           description: tr("board.confirm-delete-message"),
@@ -274,7 +274,7 @@ const ProjectQuestsTable = () => {
     void
   >(
     {
-      handler: async (selected, ctx) => {
+      handler: async (_ctx, selected, ctx) => {
         // Only a `todo` quest can be shelved, and the server refuses the
         // rest one by one. They are counted here and never sent, so an
         // accepted row in the selection costs a note, not the batch.
@@ -309,7 +309,7 @@ const ProjectQuestsTable = () => {
     void
   >(
     {
-      handler: async (selected, ctx) => {
+      handler: async (_ctx, selected, ctx) => {
         const eligible = selected.filter((quest) => quest.shelvedAt);
         const skipped = selected.length - eligible.length;
         if (eligible.length === 0) {
@@ -342,7 +342,7 @@ const ProjectQuestsTable = () => {
     void
   >(
     {
-      handler: async (release, selected, ctx) => {
+      handler: async (_ctx, release, selected, ctx) => {
         const outcome = await questMutations.attachToRelease(
           selected.map((quest) => quest.id),
           release.id,
@@ -365,7 +365,7 @@ const ProjectQuestsTable = () => {
     void
   >(
     {
-      handler: async (selected, ctx) => {
+      handler: async (_ctx, selected, ctx) => {
         const n = String(selected.length);
         const confirmed = await dialog.confirm({
           title: tr("board.bulk.delete.title", { args: [n] }),
@@ -682,7 +682,10 @@ const ProjectQuestsTable = () => {
         }}
         onRowClick={(quest) =>
           router.push("projectQuest", {
-            params: { shortId: String(quest.shortId) },
+            params: {
+              projectSlug: router.state.params.projectSlug,
+              shortId: String(quest.shortId),
+            },
           })
         }
         columns={{
@@ -763,7 +766,10 @@ const ProjectQuestsTable = () => {
                     the table's own checkbox cell already uses. */}
                 <Link
                   href={router.path("projectQuest", {
-                    params: { shortId: String(quest.shortId) },
+                    params: {
+                      projectSlug: router.state.params.projectSlug,
+                      shortId: String(quest.shortId),
+                    },
                   })}
                   onClick={(e) => e.stopPropagation()}
                   className={`truncate text-sm font-medium ${quest.completedAt ? "text-muted-foreground line-through" : ""}`}
@@ -855,7 +861,10 @@ const ProjectQuestsTable = () => {
                       // quest.
                       <Link
                         href={router.path("projectEpic", {
-                          params: { epicNumber: String(epic.number) },
+                          params: {
+                            projectSlug: router.state.params.projectSlug,
+                            epicNumber: String(epic.number),
+                          },
                         })}
                         onClick={(e) => e.stopPropagation()}
                         className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs"

@@ -2,9 +2,11 @@ import { $inject, $store, AlephaError, z } from "alepha";
 import { $command } from "alepha/command";
 import { FileSystemProvider } from "alepha/system";
 
+import { buildOptions } from "../atoms/buildOptions.ts";
 import type { BuildRuntime } from "../atoms/buildOptions.ts";
 import { imageOptions } from "../atoms/imageOptions.ts";
 import type { BuildManifest } from "../schemas/buildManifest.ts";
+import { BuildManifestReader } from "../services/BuildManifestReader.ts";
 import { DockerImageBuilder } from "../services/DockerImageBuilder.ts";
 import { WorkspaceCompiler } from "../services/WorkspaceCompiler.ts";
 
@@ -43,10 +45,12 @@ import { WorkspaceCompiler } from "../services/WorkspaceCompiler.ts";
  * of its own.
  */
 export class ImageCommand {
+  protected readonly manifestReader = $inject(BuildManifestReader);
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly builder = $inject(DockerImageBuilder);
   protected readonly compiler = $inject(WorkspaceCompiler);
   protected readonly options = $store(imageOptions);
+  protected readonly build = $store(buildOptions);
 
   /**
    * Bases that provide musl rather than glibc.
@@ -126,7 +130,7 @@ export class ImageCommand {
 
       await this.builder.run({
         root,
-        distDir: "dist",
+        distDir: this.build.output?.dist ?? "dist",
         // A compiled image runs a Bun binary whatever the manifest's primary
         // slice is, because `bun build --compile` is the only compiler there
         // is. The label and the base defaults follow that, not the manifest.
@@ -173,6 +177,7 @@ export class ImageCommand {
           // The image's own `COPY migrations` line handles them, and the
           // builder copies them into the context itself.
           migrations: false,
+          output: this.build.output,
         });
       },
     });
@@ -219,14 +224,9 @@ export class ImageCommand {
    * in `dist/` — this command never boots the app.
    */
   protected async readManifest(root: string): Promise<BuildManifest> {
-    const path = this.fs.join(root, "dist", "manifest.json");
-    try {
-      return await this.fs.readJsonFile<BuildManifest>(path);
-    } catch {
-      throw new AlephaError(
-        `Cannot read ${path}. \`alepha image\` reads ./dist — run \`alepha build\` first.`,
-      );
-    }
+    return this.manifestReader.read(
+      this.fs.join(root, this.build.output?.dist ?? "dist", "manifest.json"),
+    );
   }
 
   /**

@@ -1,6 +1,7 @@
-import { $inject, AlephaError, z } from "alepha";
+import { $inject, AlephaError, type ZType, z } from "alepha";
 import { isSQLWrapper, type SQL, sql } from "drizzle-orm";
 
+import type { PgRefOptions } from "../constants/PG_SYMBOLS.ts";
 import type { EntityPrimitive } from "../primitives/$entity.ts";
 import type { SequencePrimitive } from "../primitives/$sequence.ts";
 import { QueryManager } from "./QueryManager.ts";
@@ -68,6 +69,9 @@ export abstract class ModelBuilder {
    */
   protected abstract readonly dialect: "postgresql" | "sqlite";
 
+  /**
+   * @internal Driver plumbing, outside semver.
+   */
   protected readonly queryManager = $inject(QueryManager);
 
   /**
@@ -106,6 +110,22 @@ export abstract class ModelBuilder {
           ? sql`${column} COLLATE NOCASE`
           : sql`LOWER(${column})`,
     };
+  }
+
+  /**
+   * The foreign key actions of a `db.ref()` column: the declared ones, or
+   * `onDelete: "set null"` for an optional column and `"cascade"` for a
+   * required one.
+   */
+  protected refActions(
+    column: unknown,
+    config: PgRefOptions,
+  ): NonNullable<PgRefOptions["actions"]> {
+    return (
+      config.actions ?? {
+        onDelete: z.schema.isOptional(column as ZType) ? "set null" : "cascade",
+      }
+    );
   }
 
   /**
@@ -294,25 +314,22 @@ export abstract class ModelBuilder {
 
   /**
    * Build the table configuration function for any database.
-   * This includes indexes, foreign keys, constraints, and custom config.
+   * This includes indexes, foreign keys and constraints.
    *
    * @param entity - The entity primitive
    * @param builders - Database-specific builder functions
    * @param tableResolver - Function to resolve entity references to table columns
-   * @param customConfigHandler - Optional handler for custom config
    */
   protected buildTableConfig<TConfig, TSelf>(
     entity: EntityPrimitive,
     builders: TableConfigBuilders<TConfig>,
     tableResolver?: (entityName: string) => any,
-    customConfigHandler?: (config: any, self: TSelf) => TConfig[],
   ): ((self: TSelf) => TConfig[]) | undefined {
     // If no extra config is needed, return undefined
     if (
       !entity.options.indexes &&
       !entity.options.foreignKeys &&
-      !entity.options.constraints &&
-      !entity.options.config
+      !entity.options.constraints
     ) {
       return undefined;
     }
@@ -486,17 +503,6 @@ export abstract class ModelBuilder {
 
             configs.push(builders.check(constraintName, constraintDef.check));
           }
-        }
-      }
-
-      // Add custom config if provided
-      if (entity.options.config && customConfigHandler) {
-        configs.push(...customConfigHandler(entity.options.config, self));
-      } else if (entity.options.config) {
-        // Default behavior: call the config function directly
-        const customConfigs = entity.options.config(self as any);
-        if (Array.isArray(customConfigs)) {
-          configs.push(...(customConfigs as any));
         }
       }
 

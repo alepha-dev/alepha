@@ -481,7 +481,7 @@ export const useFolioTreeModel = (
 
   const renameAction = useAction<[string, string], void>(
     {
-      handler: async (id: string, name: string) => {
+      handler: async (_ctx, id: string, name: string) => {
         const node = nodeById.get(id);
         if (!node) return;
         const trimmed = name.trim();
@@ -521,11 +521,13 @@ export const useFolioTreeModel = (
   );
 
   // `useTreeState` clears `renamingId` once this resolves.
-  renameActionRef.current = (id, name) => renameAction.run(id, name);
+  renameActionRef.current = async (id, name) => {
+    await renameAction.run(id, name);
+  };
 
   const moveFolioAction = useAction<[string, string | undefined], void>(
     {
-      handler: async (id: string, parentId: string | undefined) => {
+      handler: async (_ctx, id: string, parentId: string | undefined) => {
         // Asymmetry 1: a folio moving to the project root needs an
         // EXPLICIT `directoryId: null` — `undefined` is dropped by the ORM
         // update layer (`"directoryId" in body"` reads false) and the
@@ -543,7 +545,7 @@ export const useFolioTreeModel = (
 
   const moveDirectoryAction = useAction<[string, string | undefined], void>(
     {
-      handler: async (id: string, parentId: string | undefined) => {
+      handler: async (_ctx, id: string, parentId: string | undefined) => {
         // Asymmetry 2: a directory moving to the project root sends
         // `parentId: undefined` (omitted) — `moveDirectory`'s body schema
         // has no nullable variant, unlike the folio endpoint above. No
@@ -594,7 +596,7 @@ export const useFolioTreeModel = (
 
   const createFolioAction = useAction<[string | undefined], void>(
     {
-      handler: async (parentId?: string) => {
+      handler: async (_ctx, parentId?: string) => {
         const created = await folioApi.create({
           body: {
             projectId: input.projectId,
@@ -635,7 +637,7 @@ export const useFolioTreeModel = (
 
   const createDirectoryAction = useAction<[string | undefined], void>(
     {
-      handler: async (parentId?: string) => {
+      handler: async (_ctx, parentId?: string) => {
         const created = await directoryApi.createDirectory({
           params: { projectId: input.projectId },
           body: {
@@ -658,7 +660,7 @@ export const useFolioTreeModel = (
 
   const deleteFolioAction = useAction<[string], void>(
     {
-      handler: async (id: string) => {
+      handler: async (_ctx, id: string) => {
         await folioApi.delete({ params: { id } });
         setFolios(folios.filter((f) => f.id !== id));
         if (input.currentFolioId === id) {
@@ -688,6 +690,7 @@ export const useFolioTreeModel = (
   >(
     {
       handler: async (
+        _ctx,
         id: string,
         removedDirIds: Set<string>,
         removedFolioIds: Set<string>,
@@ -756,7 +759,7 @@ export const useFolioTreeModel = (
 
   const duplicateAction = useAction<[FolioTreeNode], void>(
     {
-      handler: async (node: FolioTreeNode) => {
+      handler: async (_ctx, node: FolioTreeNode) => {
         if (node.data.kind === "directory") return;
         // The source's `content` is copied AS-IS, whether plaintext or a
         // protected envelope — a passphrase-encrypted envelope is opaque
@@ -804,7 +807,7 @@ export const useFolioTreeModel = (
 
   const pinAction = useAction<[FolioTreeNode], void>(
     {
-      handler: async (node: FolioTreeNode) => {
+      handler: async (_ctx, node: FolioTreeNode) => {
         if (node.data.kind === "directory") return;
         const updated = await folioApi.update({
           params: { id: node.id },
@@ -871,7 +874,7 @@ export const useFolioTreeModel = (
    */
   const encryptAction = useAction<[string], string | null>(
     {
-      handler: async (passphrase: string) => {
+      handler: async (_ctx, passphrase: string) => {
         const target = encrypting;
         if (!target) return null;
         try {
@@ -923,7 +926,9 @@ export const useFolioTreeModel = (
   );
 
   const confirmEncrypt = (passphrase: string): Promise<string | null> =>
-    encryptAction.run(passphrase).then((result) => result ?? null);
+    encryptAction
+      .run(passphrase)
+      .then((result) => (result.ok ? result.value : null));
 
   /**
    * The current implementation of every command, rebuilt on each render

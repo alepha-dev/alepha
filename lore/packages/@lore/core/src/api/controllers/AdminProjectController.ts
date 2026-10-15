@@ -49,6 +49,7 @@ export class AdminProjectController {
   protected readonly dateTime = $inject(DateTimeProvider);
 
   public readonly findProjects = $action({
+    method: "GET",
     path: this.url,
     group: this.group,
     use: [$secure({ permissions: ["admin:project:read"] })],

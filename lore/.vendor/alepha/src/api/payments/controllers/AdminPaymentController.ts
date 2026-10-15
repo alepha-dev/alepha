@@ -14,9 +14,7 @@ import { PaymentService } from "../services/PaymentService.ts";
 
 /**
  * Permissions follow the `admin:<module>:<verb>` convention every other admin
- * controller uses, so a role granting `admin:*` covers this surface too. The
- * legacy `payments:read` / `payments:write` names are kept alongside as
- * aliases so existing roles keep working.
+ * controller uses, so a role granting `admin:*` covers this surface too.
  */
 export class AdminPaymentController {
   protected readonly url = "/admin/payments";
@@ -27,9 +25,10 @@ export class AdminPaymentController {
    * List payment intents with pagination and filtering.
    */
   public readonly listIntents = $action({
+    method: "GET",
     path: `${this.url}/intents`,
     group: this.group,
-    use: [$secure({ permissions: ["admin:payment:read", "payments:read"] })],
+    use: [$secure({ permissions: ["admin:payment:read"] })],
     description: "List payment intents",
     schema: {
       query: intentQuerySchema,
@@ -42,9 +41,10 @@ export class AdminPaymentController {
    * Get a payment intent by ID.
    */
   public readonly getIntent = $action({
+    method: "GET",
     path: `${this.url}/intents/:id`,
     group: this.group,
-    use: [$secure({ permissions: ["admin:payment:read", "payments:read"] })],
+    use: [$secure({ permissions: ["admin:payment:read"] })],
     description: "Get payment intent details",
     schema: {
       params: z.object({ id: z.uuid() }),
@@ -60,7 +60,7 @@ export class AdminPaymentController {
     method: "POST",
     path: `${this.url}/intents/:id/capture`,
     group: this.group,
-    use: [$secure({ permissions: ["admin:payment:write", "payments:write"] })],
+    use: [$secure({ permissions: ["admin:payment:write"] })],
     description: "Capture an authorized payment intent",
     schema: {
       params: z.object({ id: z.uuid() }),
@@ -78,7 +78,7 @@ export class AdminPaymentController {
     method: "POST",
     path: `${this.url}/intents/:id/void`,
     group: this.group,
-    use: [$secure({ permissions: ["admin:payment:write", "payments:write"] })],
+    use: [$secure({ permissions: ["admin:payment:write"] })],
     description: "Void an authorized payment intent",
     schema: {
       params: z.object({ id: z.uuid() }),
@@ -94,7 +94,7 @@ export class AdminPaymentController {
     method: "POST",
     path: `${this.url}/intents/:id/refund`,
     group: this.group,
-    use: [$secure({ permissions: ["admin:payment:write", "payments:write"] })],
+    use: [$secure({ permissions: ["admin:payment:write"] })],
     description: "Issue partial or full refund",
     schema: {
       params: z.object({ id: z.uuid() }),
@@ -112,7 +112,7 @@ export class AdminPaymentController {
     method: "POST",
     path: `${this.url}/intents/:id/cancel`,
     group: this.group,
-    use: [$secure({ permissions: ["admin:payment:write", "payments:write"] })],
+    use: [$secure({ permissions: ["admin:payment:write"] })],
     description: "Cancel a created payment intent",
     schema: {
       params: z.object({ id: z.uuid() }),
@@ -128,7 +128,7 @@ export class AdminPaymentController {
     method: "POST",
     path: `${this.url}/cash`,
     group: this.group,
-    use: [$secure({ permissions: ["admin:payment:write", "payments:write"] })],
+    use: [$secure({ permissions: ["admin:payment:write"] })],
     description: "Record a cash payment",
     schema: {
       body: recordCashSchema,

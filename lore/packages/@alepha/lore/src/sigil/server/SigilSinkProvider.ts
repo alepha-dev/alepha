@@ -456,7 +456,7 @@ export class SigilSinkProvider {
    * quiet and empty.
    */
   protected readonly onResponse = $hook({
-    on: "server:onResponse",
+    on: "server:response:after",
     handler: () => {
       if (!this.alepha.isServerless()) return;
       if (!this.hasPending()) return;

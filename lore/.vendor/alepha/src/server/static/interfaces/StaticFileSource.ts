@@ -1,6 +1,3 @@
-import type { Readable as NodeStream } from "node:stream";
-import type { ReadableStream as NodeWebStream } from "node:stream/web";
-
 /**
  * What the static server needs to know about one file, read once at boot.
  */
@@ -48,5 +45,5 @@ export interface StaticFileSource {
    * Open a file for reading, or `undefined` when it is gone (listed at boot,
    * removed since), which the server answers with a 404.
    */
-  open(path: string): Promise<NodeStream | NodeWebStream | undefined>;
+  open(path: string): Promise<ReadableStream<Uint8Array> | undefined>;
 }

@@ -2,9 +2,9 @@ import {
   AlephaError,
   createPrimitive,
   type InstantiableClass,
-  KIND,
   Primitive,
 } from "alepha";
+import { KIND } from "alepha/internal";
 
 import type {
   EmailSendOptions,
@@ -19,7 +19,7 @@ import { EmailHeaderPolicy } from "../services/EmailHeaderPolicy.ts";
 /**
  * Declares an email channel for sending mail through the configured provider.
  *
- * The `name` identifies the channel in the `email:sending` / `email:sent`
+ * The `name` identifies the channel in the `email:send:before` / `email:sent`
  * hooks. `send()` takes the full message (`to`, `subject`, `body`, …); which
  * provider delivers it is a module decision (SMTP, Brevo, Cloudflare, or the
  * in-memory provider under test).
@@ -50,7 +50,7 @@ export interface EmailPrimitiveOptions {
 /**
  * Email primitive for sending emails through various providers.
  *
- * The primitive's `name` identifies the channel in the `email:sending` /
+ * The primitive's `name` identifies the channel in the `email:send:before` /
  * `email:sent` hooks; it does not select a template — `send()` expects an
  * already-rendered `subject` and `body`.
  *
@@ -85,10 +85,10 @@ export class EmailPrimitive extends Primitive<EmailPrimitiveOptions> {
    */
   public async send(options: EmailSendOptions): Promise<EmailSendResult> {
     // Before the hook, so a refused header never produces an
-    // `email:sending` a listener would have to compensate for.
+    // `email:send:before` a listener would have to compensate for.
     this.headerPolicy.assertSafe(options.headers);
 
-    await this.alepha.events.emit("email:sending", {
+    await this.alepha.events.emit("email:send:before", {
       to: options.to,
       template: this.name,
       provider: this.provider,

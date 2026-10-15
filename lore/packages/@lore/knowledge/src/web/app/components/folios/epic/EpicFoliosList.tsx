@@ -75,7 +75,10 @@ const EpicFoliosList = (props: EpicFoliosListProps) => {
                 >
                   <Link
                     href={router.path("projectFoliosFolio", {
-                      params: { shortId: folio.shortId },
+                      params: {
+                        projectSlug: router.state.params.projectSlug,
+                        shortId: folio.shortId,
+                      },
                     })}
                     className="min-w-0 flex-1 truncate text-sm hover:underline"
                   >

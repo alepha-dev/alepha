@@ -1,5 +1,6 @@
 import type { Hook, Hooks } from "../Alepha.ts";
 import { AlephaError } from "../errors/AlephaError.ts";
+import { HookNamePolicy } from "../helpers/HookNamePolicy.ts";
 import type { Async } from "../interfaces/Async.ts";
 import type { LoggerInterface } from "../interfaces/LoggerInterface.ts";
 import type { Service } from "../interfaces/Service.ts";
@@ -61,6 +62,7 @@ export class EventManager {
     event: T,
     hookOrFunc: Hook<T> | ((payload: Hooks[T]) => Async<void>),
   ): () => void {
+    HookNamePolicy.assertCurrent(event);
     if (!this.events[event]) {
       this.events[event] = { first: [], normal: [], last: [] };
     }
@@ -326,8 +328,8 @@ export class EventManager {
    * Report a listener that threw, without feeding the failure back into the
    * event it came from.
    *
-   * A `log` listener that threw used to be reported through the logger, and
-   * the logger's own emit dispatches `log` again - so the same listener threw
+   * A `log:entry` listener that threw used to be reported through the logger, and
+   * the logger's own emit dispatches `log:entry` again - so the same listener threw
    * again, and again, until the stack ran out. One misbehaving devtools or
    * telemetry subscriber took the process down on the first log line after it
    * registered.
@@ -342,7 +344,7 @@ export class EventManager {
     error: unknown,
   ): void {
     const message = `${event}(${caller ?? "unknown"}) ERROR`;
-    if (event === "log") {
+    if (event === "log:entry") {
       console.error(message, error);
       return;
     }
@@ -374,6 +376,7 @@ export class EventManager {
       report?: EmitReport;
     } = {},
   ): Promise<void> {
+    HookNamePolicy.assertCurrent(event);
     // Fast path: auto-compiled executor
     if (!options.log) {
       const cacheKey = options.catch

@@ -64,6 +64,9 @@ export type D1SessionConstraint = "first-unconstrained" | "first-primary";
  */
 export interface D1SessionState {
   session: D1DatabaseSession;
+  /**
+   * @internal Driver plumbing, outside semver.
+   */
   db: PgAsyncDatabase<any>;
 }
 

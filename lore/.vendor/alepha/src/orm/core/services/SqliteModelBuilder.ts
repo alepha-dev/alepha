@@ -31,6 +31,7 @@ import {
   type PgGeneratedOptions,
   type PgRefOptions,
 } from "../constants/PG_SYMBOLS.ts";
+import { getAttr, hasAttr } from "../helpers/pgAttr.ts";
 import type { EntityPrimitive } from "../primitives/$entity.ts";
 import type { SequencePrimitive } from "../primitives/$sequence.ts";
 import { ModelBuilder, type TableConfigBuilders } from "./ModelBuilder.ts";
@@ -110,11 +111,6 @@ export class SqliteModelBuilder extends ModelBuilder {
       // empty array (see its `foreignKeys` loop), so this narrows safely.
       sqliteBuilders as TableConfigBuilders<any>,
       tableResolver,
-      (config, self) => {
-        // SQLite custom config handler
-        const customConfigs = (config as any)(self);
-        return Array.isArray(customConfigs) ? customConfigs : [];
-      },
     );
   }
 
@@ -131,42 +127,45 @@ export class SqliteModelBuilder extends ModelBuilder {
     >((columns, [key, value]) => {
       let col = this.mapFieldToSqliteColumn(tableName, key, value, enums);
 
-      const defaultValue = z.schema.getDefault(value);
+      const defaultValue = z.schema.defaultValue(value);
       if (defaultValue != null) {
         col = col.default(defaultValue as any);
       }
 
-      if (PG_PRIMARY_KEY in value) {
+      if (hasAttr(value, PG_PRIMARY_KEY)) {
         col = col.primaryKey();
       }
 
-      if (PG_REF in value) {
-        const config = value[PG_REF] as PgRefOptions;
-        col = col.references(() => {
-          const ref = config.ref();
-          const table = tables.get(
-            ref.entity.name,
-          ) as SQLiteTableWithColumns<any>;
+      if (hasAttr(value, PG_REF)) {
+        const config = getAttr(value, PG_REF) as PgRefOptions;
+        col = col.references(
+          () => {
+            const ref = config.ref();
+            const table = tables.get(
+              ref.entity.name,
+            ) as SQLiteTableWithColumns<any>;
 
-          if (!table) {
-            throw new AlephaError(
-              `Referenced table ${ref.entity.name} not found for ${tableName}.${key}`,
-            );
-          }
+            if (!table) {
+              throw new AlephaError(
+                `Referenced table ${ref.entity.name} not found for ${tableName}.${key}`,
+              );
+            }
 
-          const target = table[ref.name];
-          if (!target) {
-            throw new AlephaError(
-              `Referenced column ${ref.name} not found in table ${ref.entity.name} for ${tableName}.${key}`,
-            );
-          }
+            const target = table[ref.name];
+            if (!target) {
+              throw new AlephaError(
+                `Referenced column ${ref.name} not found in table ${ref.entity.name} for ${tableName}.${key}`,
+              );
+            }
 
-          return target;
-        }, config.actions);
+            return target;
+          },
+          this.refActions(value, config),
+        );
       }
 
-      if (PG_GENERATED in value) {
-        const gen = value[PG_GENERATED] as PgGeneratedOptions;
+      if (hasAttr(value, PG_GENERATED)) {
+        const gen = getAttr(value, PG_GENERATED) as PgGeneratedOptions;
         col = col.generatedAlwaysAs(gen.expression, {
           mode: gen.mode ?? "virtual",
         });
@@ -197,7 +196,7 @@ export class SqliteModelBuilder extends ModelBuilder {
     value = z.schema.unwrap(value);
 
     if (z.schema.isInteger(value)) {
-      if (PG_IDENTITY in value) {
+      if (hasAttr(value, PG_IDENTITY)) {
         return pg
           .integer(key, { mode: "number" })
           .primaryKey({ autoIncrement: true });
@@ -207,7 +206,7 @@ export class SqliteModelBuilder extends ModelBuilder {
     }
 
     if (z.schema.isBigInt(value)) {
-      if (PG_PRIMARY_KEY in value || PG_IDENTITY in value) {
+      if (hasAttr(value, PG_PRIMARY_KEY) || hasAttr(value, PG_IDENTITY)) {
         // Auto-increment rowid — must stay INTEGER; sequential ids won't
         // reach 2^53 in practice.
         return pg
@@ -223,7 +222,7 @@ export class SqliteModelBuilder extends ModelBuilder {
     }
 
     if (z.schema.isNumber(value)) {
-      if (PG_IDENTITY in value) {
+      if (hasAttr(value, PG_IDENTITY)) {
         return pg
           .integer(key, { mode: "number" })
           .primaryKey({ autoIncrement: true });
@@ -292,7 +291,7 @@ export class SqliteModelBuilder extends ModelBuilder {
 
   mapStringToSqliteColumn = (key: string, value: any) => {
     if (z.schema.format(value) === "uuid") {
-      if (PG_PRIMARY_KEY in value) {
+      if (hasAttr(value, PG_PRIMARY_KEY)) {
         // App-side UUIDv7: time-ordered ids on every runtime (node, bun,
         // Cloudflare D1), clocked by DateTimeProvider so `travel()` applies.
         return pg
@@ -311,12 +310,12 @@ export class SqliteModelBuilder extends ModelBuilder {
     }
 
     if (z.schema.format(value) === "date-time") {
-      if (PG_CREATED_AT in value) {
+      if (hasAttr(value, PG_CREATED_AT)) {
         return this.sqliteDateTime(key, {}).default(
           sql`(unixepoch('subsec') * 1000)`,
         );
       }
-      if (PG_UPDATED_AT in value) {
+      if (hasAttr(value, PG_UPDATED_AT)) {
         return this.sqliteDateTime(key, {}).default(
           sql`(unixepoch('subsec') * 1000)`,
         );

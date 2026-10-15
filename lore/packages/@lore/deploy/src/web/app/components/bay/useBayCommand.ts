@@ -50,7 +50,7 @@ export const useBayCommand = (estate: Estate | undefined) => {
     EstateCommandResource | undefined
   >(
     {
-      handler: async (body, { signal }) => {
+      handler: async ({ signal }, body) => {
         if (!estate) {
           return undefined;
         }

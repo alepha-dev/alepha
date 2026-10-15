@@ -22,8 +22,9 @@ export class UptimeRetentionJobs {
     timeout: [2, "minutes"],
     handler: async () => {
       // One statement avoids a read/delete race and an unbounded IN list.
+      const beats = this.beats.table;
       await this.beats.query(
-        (beats) => sql`
+        sql`
           DELETE FROM ${beats} WHERE ${beats.id} IN (
             SELECT id FROM (
               SELECT id, ROW_NUMBER() OVER (

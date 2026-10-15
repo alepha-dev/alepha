@@ -9,7 +9,7 @@ import { WorkspaceCompiler } from "../services/WorkspaceCompiler.ts";
  * Compile `./dist` into one executable, its `public/` files inside it.
  *
  *     alepha build --runtime bun
- *     alepha compile --out my-app
+ *     alepha compile --output my-app
  *
  * ## Why this is a command and not a build flag
  *
@@ -29,7 +29,7 @@ import { WorkspaceCompiler } from "../services/WorkspaceCompiler.ts";
  *
  * ## `--desktop`: a native macOS app
  *
- *     alepha compile --desktop --out loom   # dist/<desktop.name>.app
+ *     alepha compile --desktop --output loom   # dist/<desktop.name>.app
  *
  * Reads the top-level `desktop` config (and nothing else does), resolves
  * `@alepha/desktop` from the app's dependencies, and builds the app in a
@@ -56,16 +56,15 @@ export class CompileCommand {
     description:
       "Compile ./dist into one executable with its public/ files inside it. Needs a bun slice: `alepha build --runtime bun`.",
     flags: z.object({
-      out: z
+      output: z
         .text({
           aliases: ["o"],
           description:
-            "File name of the binary inside dist/ (default: `app`). `--out loom` produces `dist/loom`.",
+            "File name of the binary inside dist/ (default: `app`). `--output loom` produces `dist/loom`.",
         })
         .optional(),
       target: z
         .text({
-          aliases: ["t"],
           description:
             "Bun target triple, e.g. `bun-linux-arm64-musl` (default: this machine). ⚠️ A Bun binary is not fully static — the triple picks the libc — so a binary meant for a musl container must say so.",
         })
@@ -82,7 +81,7 @@ export class CompileCommand {
         .optional(),
     }),
     handler: async ({ flags, root, run }) => {
-      const name = flags.out ?? "app";
+      const name = flags.output ?? "app";
       if (!/^[a-z0-9][a-z0-9._-]*$/.test(name)) {
         throw new (await import("alepha")).AlephaError(
           `Invalid binary name '${name}': use lowercase letters, digits, '.', '_' and '-', starting with a letter or a digit.`,

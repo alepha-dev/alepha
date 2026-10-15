@@ -390,7 +390,7 @@ export interface DataTableBaseProps<
   onSortChange?: (sort: SortState | null) => void;
   /**
    * When true (default when `filters` is set), the table refetches on
-   * every `form:change` event, debounced by 250ms. Set to `false` to
+   * every `form:changed` event, debounced by 250ms. Set to `false` to
    * require an explicit submit.
    */
   autoApplyFilters?: boolean;

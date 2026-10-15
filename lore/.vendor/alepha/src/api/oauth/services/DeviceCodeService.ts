@@ -187,10 +187,10 @@ export class DeviceCodeService {
       // An outage is not a wrong code: answering "unknown" would send a real
       // user back to retype a right one.
       if (attempt.reason === "store")
-        throw new HttpError({
-          status: 503,
-          message: "Device authorization is temporarily unavailable",
-        });
+        throw new HttpError(
+          { status: 503 },
+          { message: "Device authorization is temporarily unavailable" },
+        );
       // Indistinguishable from a wrong code on purpose. Saying "too many
       // attempts" would tell someone enumerating codes that they are being
       // counted, and which of their guesses were even considered.

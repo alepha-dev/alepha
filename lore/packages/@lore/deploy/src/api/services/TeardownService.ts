@@ -174,7 +174,7 @@ export class TeardownService {
 
     const result = await this.adapter()
       .use({
-        apiToken: this.seal.open(
+        apiToken: await this.seal.open(
           estate.credential,
           CredentialSealService.ESTATE_PURPOSE,
         ),

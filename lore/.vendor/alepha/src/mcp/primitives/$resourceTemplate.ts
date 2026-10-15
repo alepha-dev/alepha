@@ -4,10 +4,10 @@ import {
   type Async,
   createPrimitive,
   type Infer,
-  KIND,
   Primitive,
   type ZObject,
 } from "alepha";
+import { KIND } from "alepha/internal";
 
 import type {
   CompletionHandler,

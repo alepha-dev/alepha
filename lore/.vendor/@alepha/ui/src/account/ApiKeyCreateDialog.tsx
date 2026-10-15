@@ -175,26 +175,18 @@ export const ApiKeyCreateDialog = (props: ApiKeyCreateDialogProps) => {
           });
         }
 
-        try {
-          const created: any = await api.createApiKey({
-            body: {
-              name,
-              description: values.description?.trim() || undefined,
-              expiresIn: values.expiresIn as never,
-              permissions,
-            },
-          });
-          await props.onCreated(created.token);
-          props.onOpenChange(false);
-        } catch (error: any) {
-          toaster.show(
-            error?.message ??
-              tr("account.keys.createError", {
-                default: "Could not create that key",
-              }),
-            "danger",
-          );
-        }
+        // A refusal is toasted by the app's ActionErrorToaster: the form
+        // emits it, so a toast here put it on screen twice.
+        const created = await api.createApiKey({
+          body: {
+            name,
+            description: values.description?.trim() || undefined,
+            expiresIn: values.expiresIn as never,
+            permissions,
+          },
+        });
+        await props.onCreated(created.token);
+        props.onOpenChange(false);
       },
     },
     // Not keyed on the options: rebuilt when they arrive, the form dropped

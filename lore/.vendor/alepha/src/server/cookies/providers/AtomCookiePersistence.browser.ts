@@ -10,11 +10,11 @@ import { CookieParser } from "../services/CookieParser.ts";
  *
  * Like the server variant, atoms are resolved from the `StateManager`
  * registry (`alepha.store.listAtoms()`) rather than from a map fed by
- * `state:register` — that event fires once, is never replayed, and
+ * `state:registered` , that event fires once, is never replayed, and
  * `$module.register()` registers `atoms[]` before the module's `services[]`
  * exist, so an event-sourced map would miss every atom declared the
  * documented way. The `configure` hook sweeps everything registered up to
- * boot; `state:register` covers atoms that first register later (lazily, on
+ * boot; `state:registered` covers atoms that first register later (lazily, on
  * first read).
  *
  * Cookie names are NOT prefixed with `alepha.name` here, because the browser
@@ -41,7 +41,7 @@ export class AtomCookiePersistence {
   });
 
   protected readonly onRegister = $hook({
-    on: "state:register",
+    on: "state:registered",
     handler: ({ atom }) => {
       if (atom.options.persist !== "cookie") {
         return;
@@ -51,7 +51,7 @@ export class AtomCookiePersistence {
   });
 
   protected readonly onMutate = $hook({
-    on: "state:mutate",
+    on: "state:mutated",
     handler: ({ key, value }) => {
       const atom = this.alepha.store.getAtom(String(key));
       if (!atom || atom.options.persist !== "cookie") {

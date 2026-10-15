@@ -259,8 +259,10 @@ describe("ProjectFeedback - Show more", () => {
       expect(rendered.container.textContent).toContain(`body ${TOTAL}`),
     );
 
-    await router.push("projectFeedback", {
+    const feedbackPath = router.path("projectFeedback", {
       params: { projectSlug: "lore" },
+    }) as `/${string}`;
+    await router.push(feedbackPath, {
       query: { feedback: String(ACCEPTED.shortId) },
     });
 

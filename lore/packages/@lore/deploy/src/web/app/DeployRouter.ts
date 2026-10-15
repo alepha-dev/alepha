@@ -10,7 +10,7 @@ import {
 import { $inject, Alepha, z } from "alepha";
 import { $page, NotFound, ReactRouter, Redirection } from "alepha/react/router";
 import { $secure } from "alepha/security";
-import { HttpError, NotFoundError } from "alepha/server";
+import { isHttpError, NotFoundError } from "alepha/server";
 import { $client } from "alepha/server/links";
 import { createElement } from "react";
 
@@ -111,7 +111,7 @@ export class DeployRouter {
       this.alepha.store.set(currentEstateAtom, undefined);
     },
     errorHandler: (error) => {
-      if (HttpError.is(error, 404)) {
+      if (isHttpError(error, 404)) {
         return createElement(NotFound, { style: { height: "100%" } });
       }
     },
@@ -279,7 +279,7 @@ export class DeployRouter {
       }
     },
     errorHandler: (error) => {
-      if (HttpError.is(error, 404)) {
+      if (isHttpError(error, 404)) {
         return createElement(NotFound, { style: { height: "100%" } });
       }
     },
@@ -376,7 +376,7 @@ export class DeployRouter {
       this.alepha.store.set(currentInstanceAtom, undefined);
     },
     errorHandler: (error) => {
-      if (HttpError.is(error, 404)) {
+      if (isHttpError(error, 404)) {
         return createElement(NotFound, { style: { height: "100%" } });
       }
     },
@@ -429,18 +429,18 @@ export class DeployRouter {
         throw new NotFoundError("App not found");
       }
 
-      throw new Redirection(
-        this.router.path("app", {
+      throw new Redirection({
+        redirect: this.router.path("app", {
           params: {
             projectSlug: project.slug,
             app: target.app,
             env: target.env,
           },
         }),
-      );
+      });
     },
     errorHandler: (error) => {
-      if (HttpError.is(error, 404)) {
+      if (isHttpError(error, 404)) {
         return createElement(NotFound, { style: { height: "100%" } });
       }
     },
@@ -531,7 +531,7 @@ export class DeployRouter {
       return { dimension: params.analyticsDimension };
     },
     errorHandler: (error) => {
-      if (HttpError.is(error, 404)) {
+      if (isHttpError(error, 404)) {
         return createElement(NotFound, { style: { height: "100%" } });
       }
     },

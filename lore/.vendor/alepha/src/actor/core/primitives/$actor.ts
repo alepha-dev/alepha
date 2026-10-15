@@ -2,11 +2,11 @@ import {
   $inject,
   AlephaError,
   createPrimitive,
-  KIND,
   Primitive,
   type Infer,
   type ZType,
 } from "alepha";
+import { KIND } from "alepha/internal";
 
 import type {
   ActorDeclaration,

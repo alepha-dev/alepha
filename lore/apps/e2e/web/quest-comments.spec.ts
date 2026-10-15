@@ -31,14 +31,17 @@ const callWithId = async <T>(
 ): Promise<{ status: number; data: T }> => {
   return await page.evaluate(
     async ({ action, id, body }) => {
-      // Reads are GET, writes are POST — an `$action` whose schema carries no
-      // `body` is routed as a GET, so posting to it 404s on the method.
-      const method = body === undefined ? "GET" : "POST";
+      // Reads are GET, writes are POST: an `$action` is POST unless it
+      // declares `method: "GET"`, which Lore's reads (`list*`, `get*`) do.
+      const method =
+        body === undefined && /^(get|list|find|count)/.test(action)
+          ? "GET"
+          : "POST";
       const r = await fetch(`/api/${action}/${id}`, {
         method,
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: method === "GET" ? undefined : JSON.stringify(body),
+        body: method === "GET" ? undefined : JSON.stringify(body ?? {}),
       });
       return {
         status: r.status,

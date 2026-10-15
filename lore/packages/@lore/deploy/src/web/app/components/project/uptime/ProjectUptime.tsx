@@ -68,7 +68,7 @@ const ProjectUptime = () => {
   >(
     {
       invalidates: [["uptime-monitors", project?.id]],
-      handler: async (request) => {
+      handler: async (_ctx, request) => {
         const monitorId = request.monitor.id;
         if (request.kind === "toggle")
           await api.setMonitorActive({

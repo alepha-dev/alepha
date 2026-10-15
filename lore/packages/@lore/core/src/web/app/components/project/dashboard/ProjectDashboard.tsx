@@ -249,7 +249,7 @@ const ProjectDashboard = () => {
 
   const reorderAction = useAction<[ids: number[]], void>(
     {
-      handler: async (ids) => {
+      handler: async (_ctx, ids) => {
         if (!projectId) return;
         // Optimistic: the drop already moved the tile under the reader's
         // cursor, and putting it back for the length of a round-trip would
@@ -277,7 +277,7 @@ const ProjectDashboard = () => {
 
   const removeAction = useAction<[card: DashboardCardResource], void>(
     {
-      handler: async (card) => {
+      handler: async (_ctx, card) => {
         if (!projectId) return;
         const confirmed = await dialog.confirm({
           title: tr("dashboard.card.delete.confirm"),
@@ -297,7 +297,7 @@ const ProjectDashboard = () => {
 
   const duplicateAction = useAction<[card: DashboardCardResource], void>(
     {
-      handler: async (card) => {
+      handler: async (_ctx, card) => {
         if (!projectId) return;
         const made = await boardApi.addProjectDashboardCard({
           params: { projectId },
@@ -324,7 +324,7 @@ const ProjectDashboard = () => {
     void
   >(
     {
-      handler: async (input) => {
+      handler: async (_ctx, input) => {
         if (!projectId) return;
         const made = await boardApi.addProjectDashboardCard({
           params: { projectId },
@@ -348,7 +348,7 @@ const ProjectDashboard = () => {
     void
   >(
     {
-      handler: async (card, input) => {
+      handler: async (_ctx, card, input) => {
         if (!projectId) return;
         const updated = await boardApi.updateProjectDashboardCard({
           params: { projectId, cardId: card.id },
@@ -369,7 +369,7 @@ const ProjectDashboard = () => {
     void
   >(
     {
-      handler: async (card, size) => {
+      handler: async (_ctx, card, size) => {
         if (!projectId) return;
         const updated = await boardApi.updateProjectDashboardCard({
           params: { projectId, cardId: card.id },

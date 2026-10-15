@@ -791,7 +791,6 @@ export const uiFr: Record<string, string> = {
   "admin.userDetail.avatar.replaced": "Avatar remplacé.",
   "admin.userDetail.avatar.remove": "Retirer",
   "admin.userDetail.avatar.removed": "Avatar retiré.",
-  "admin.userDetail.avatar.failed": "Impossible de changer l'avatar.",
   "admin.userDetail.credentials": "Identifiants",
   "admin.userDetail.credentialsHasPassword":
     "Un mot de passe est défini. Vous ne pouvez pas le retirer, mais vous pouvez en définir un nouveau.",
@@ -950,7 +949,6 @@ export const uiFr: Record<string, string> = {
   "account.delete.currentPassword": "Mot de passe actuel",
   "account.delete.description":
     "Cela supprime définitivement votre compte, ses méthodes de connexion et toutes vos sessions. C'est irréversible.",
-  "account.delete.error": "Impossible de supprimer votre compte",
   "account.delete.submit": "Supprimer le compte",
   "account.delete.title": "Supprimer votre compte",
   "account.keys.access": "Accès",
@@ -974,7 +972,6 @@ export const uiFr: Record<string, string> = {
   "account.keys.statusAll": "Tous les statuts",
   "account.keys.copied": "Copiée",
   "account.keys.copy": "Copier",
-  "account.keys.createError": "Impossible de créer cette clé",
   "account.keys.description":
     "Une clé agit en votre nom. Révoquez celles que vous ne reconnaissez plus.",
   "account.keys.descriptionLabel": "Description",
@@ -1032,7 +1029,6 @@ export const uiFr: Record<string, string> = {
   "account.mfa.copyCodes": "Copier les codes",
   "account.mfa.enrollError":
     "Impossible de démarrer l'activation. Fermez cette fenêtre et réessayez.",
-  "account.mfa.invalidCode": "Ce code n'est pas valide",
   "account.mfa.preparing": "Préparation…",
   "account.mfa.recoveryCopied": "Codes de secours copiés",
   "account.mfa.recoveryDescription":
@@ -1064,7 +1060,6 @@ export const uiFr: Record<string, string> = {
     "Mot de passe changé - $1 autre(s) session(s) déconnectée(s)",
   "account.password.confirm": "Confirmer le nouveau mot de passe",
   "account.password.current": "Mot de passe actuel",
-  "account.password.error": "Impossible d'enregistrer ce mot de passe",
   "account.password.mismatch": "Les deux mots de passe ne correspondent pas",
   "account.password.new": "Nouveau mot de passe",
   "account.password.set": "Mot de passe défini",
@@ -1078,9 +1073,7 @@ export const uiFr: Record<string, string> = {
   "account.profile.avatarChange": "Changer l'avatar",
   "account.profile.avatarDescription": "PNG, JPEG, GIF ou WebP, jusqu'à 5 Mo.",
   "account.profile.avatarRemove": "Supprimer",
-  "account.profile.avatarRemoveError": "Impossible de supprimer votre avatar",
   "account.profile.avatarUpdated": "Avatar mis à jour",
-  "account.profile.avatarUploadError": "Impossible d'envoyer cette image",
   "account.profile.email": "E-mail",
   "account.profile.emailDescription":
     "Changer d'e-mail demande une vérification, ce n'est donc pas une modification de profil.",
@@ -1104,7 +1097,6 @@ export const uiFr: Record<string, string> = {
   "account.security.deleteButton": "Supprimer le compte",
   "account.security.deleteDescription":
     "Supprime votre compte, ses méthodes de connexion et toutes vos sessions.",
-  "account.security.invalidCode": "Ce code n'est pas valide",
   "account.security.methodsDescription":
     "Il doit en rester au moins une. Supprimer la dernière vous priverait définitivement d'accès.",
   "account.security.methodsTitle": "Méthodes de connexion",
@@ -1137,7 +1129,6 @@ export const uiFr: Record<string, string> = {
   "account.security.unlinkAria": "Supprimer $1",
   "account.security.unlinkDescription":
     "Vous ne pourrez plus vous connecter avec $1.",
-  "account.security.unlinkError": "Impossible de supprimer cette méthode",
   "account.security.unlinkTitle": "Supprimer $1 ?",
   "account.sessions.colDevice": "Appareil",
   "account.sessions.colIp": "IP",

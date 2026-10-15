@@ -24,6 +24,8 @@ export * from "./atoms/currentResourceAtom.ts";
 export * from "./atoms/currentUserAtom.ts";
 export * from "./errors/InvalidCredentialsError.ts";
 export * from "./errors/InvalidPermissionError.ts";
+export * from "./errors/InvalidTokenError.ts";
+export * from "./errors/RealmNotFoundError.ts";
 export * from "./errors/SecurityError.ts";
 export * from "./interfaces/IssuerResolver.ts";
 export * from "./interfaces/UserAccountToken.ts";
@@ -80,7 +82,12 @@ declare module "alepha/server" {
   }
 
   interface ServerActionRequest<TConfig> {
-    user: UserAccountToken; // for actions, user is always present
+    /**
+     * The authenticated user. Optional on its own: a `$action` whose `use`
+     * lists `$secure`, `$owns` or `$ownsOrganization` receives it
+     * non-optional, since those refuse an anonymous call.
+     */
+    user?: UserAccountToken;
   }
 
   interface ClientRequestOptions extends FetchOptions {

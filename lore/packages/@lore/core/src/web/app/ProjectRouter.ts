@@ -3,7 +3,7 @@ import { $inject, Alepha, z } from "alepha";
 import type { NotificationInboxController } from "alepha/api/notifications";
 import { $page, NotFound } from "alepha/react/router";
 import { $secure } from "alepha/security";
-import { HttpError } from "alepha/server";
+import { isHttpError } from "alepha/server";
 import { $client } from "alepha/server/links";
 import { createElement } from "react";
 
@@ -175,7 +175,7 @@ export class ProjectRouter {
       // mistypes a URL gets the layout's generic ErrorPage in production
       // instead of a 404. (An anonymous one is bounced to login by `$secure()`
       // before the loader runs at all — see the note on `use` above.)
-      if (HttpError.is(error, 404)) {
+      if (isHttpError(error, 404)) {
         return createElement(NotFound, { style: { height: "100%" } });
       }
     },

@@ -1,5 +1,6 @@
-import { createPrimitive, KIND, Primitive } from "alepha";
+import { createPrimitive, Primitive } from "alepha";
 import type { DurationLike } from "alepha/datetime";
+import { KIND } from "alepha/internal";
 
 /**
  * Create a new static file handler.
@@ -77,7 +78,7 @@ export interface ServePrimitiveOptions {
    *
    * - it is read once at boot, and a file that does not parse fails the boot,
    *   naming the line;
-   * - after every other `server:onResponse` hook (helmet's included), the
+   * - after every other `server:response:after` hook (helmet's included), the
    *   rules matching the request's percent-encoded path, relative to
    *   {@link path}, are applied on top of the response's headers: a file, the
    *   `index.html` alias, the history fallback, a 304;

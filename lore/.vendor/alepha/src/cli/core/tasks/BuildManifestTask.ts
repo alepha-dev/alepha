@@ -19,7 +19,7 @@ import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
  * Runs for **every** target, not just Cloudflare. The manifest describes the
  * app, not the destination: which resources it declares, which crons it
  * registers, which runtime it was built for. Every deploy consumer needs the
- * same answers  -  `alepha deploy --prebuilt`, Alepha Rocket and Alepha Bay
+ * same answers  -  `alepha deploy --prebuilt`, Lore Deploy and Alepha Bay
  * alike  -  and a self-hosted deployer has no `package.json` in the artifact to
  * fall back on.
  *
@@ -31,7 +31,7 @@ import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
  */
 export class BuildManifestTask extends BuildTask {
   protected readonly hostCollection = $inject(ActorHostCollection);
-  // Looked up by class name string (not by class identity) because build tasks
+  // Looked up by stable service id (not by class identity) because build tasks
   // run in the CLI's Alepha context while ctx.alepha is the workspace's separate
   // context. Two module graphs = two distinct `CloudflareEmailProvider` class
   // objects, so an imported reference here wouldn't match the one the workspace
@@ -102,7 +102,7 @@ export class BuildManifestTask extends BuildTask {
 
   /**
    * The page cache's pre-boot lookup config, asked of the app through
-   * `react:server:edge` (#E78), so a prebuilt deploy writes the same worker
+   * `react:edge:configure:before` (#E78), so a prebuilt deploy writes the same worker
    * as a build. Nothing for an app with no pages or the cache off.
    */
   protected async pageEdgeOf(
@@ -110,7 +110,10 @@ export class BuildManifestTask extends BuildTask {
   ): Promise<Record<string, unknown> | undefined> {
     const pageEdge: Record<string, unknown> = {};
     try {
-      await ctx.alepha.events.emit("react:server:edge" as any, pageEdge);
+      await ctx.alepha.events.emit(
+        "react:edge:configure:before" as any,
+        pageEdge,
+      );
     } catch {
       return undefined;
     }
@@ -143,7 +146,7 @@ export class BuildManifestTask extends BuildTask {
     let crons: string[] = [];
 
     try {
-      const repo = ctx.alepha.inject("RepositoryProvider") as {
+      const repo = ctx.alepha.inject("alepha.orm.RepositoryProvider") as {
         getRepositories?: () => unknown[];
       };
       hasDatabase = (repo.getRepositories?.() ?? []).length > 0;
@@ -204,7 +207,9 @@ export class BuildManifestTask extends BuildTask {
       // answers, which is the ordinary no-database-cache case.
       let hasDatabaseCache = false;
       try {
-        hasDatabaseCache = !!ctx.alepha.inject("DatabaseCacheProvider");
+        hasDatabaseCache = !!ctx.alepha.inject(
+          "alepha.cache.DatabaseCacheProvider",
+        );
       } catch {}
 
       // Explicit memory / Redis / database providers opt out either way.
@@ -223,7 +228,7 @@ export class BuildManifestTask extends BuildTask {
       // There is no queue primitive to count. A Queue binding is needed only
       // when `$job` dispatch is routed through a broker, which is exactly
       // what registering `JobQueueProvider` (via `AlephaApiJobsQueue`) means.
-      hasQueue = !!ctx.alepha.inject("JobQueueProvider");
+      hasQueue = !!ctx.alepha.inject("alepha.jobs.JobQueueProvider");
     } catch {}
 
     const durableObjects = this.hostCollection.collect(ctx.alepha);
@@ -249,7 +254,9 @@ export class BuildManifestTask extends BuildTask {
     } catch {}
 
     try {
-      const cronProvider = ctx.alepha.inject("CronProvider") as {
+      const cronProvider = ctx.alepha.inject(
+        "alepha.scheduler.CronProvider",
+      ) as {
         getCronJobs?: () => Array<{ expression: string }>;
       };
       crons = [
@@ -348,6 +355,7 @@ export class BuildManifestTask extends BuildTask {
         );
 
     const manifest: BuildManifest = {
+      manifestVersion: 2,
       project: name,
       runtimes,
       resources: {

@@ -49,6 +49,7 @@ export class PaymentController {
    * List the current user's saved payment methods.
    */
   public readonly listPaymentMethods = $action({
+    method: "GET",
     path: `${this.url}/payment-methods`,
     group: this.group,
     use: [$secure()],

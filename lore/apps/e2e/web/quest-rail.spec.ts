@@ -90,6 +90,7 @@ test.describe("Quest rail", () => {
     // Accepted, the block is there.
     await page.evaluate(async (id) => {
       const r = await fetch(`/api/acceptQuest/${id}`, {
+        method: "POST",
         credentials: "include",
       });
       if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);

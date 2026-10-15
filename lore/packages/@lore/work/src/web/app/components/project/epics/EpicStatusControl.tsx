@@ -62,7 +62,7 @@ const EpicStatusControl = (props: EpicStatusControlProps) => {
 
   const changeAction = useAction<[status: "draft" | "ready"], void>(
     {
-      handler: async (status) => {
+      handler: async (_ctx, status) => {
         if (
           status === "ready" &&
           !(await dialog.confirm({

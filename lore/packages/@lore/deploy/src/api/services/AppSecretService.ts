@@ -244,7 +244,7 @@ export class AppSecretService {
     const variable = variables.has(key);
 
     const values = {
-      valueSealed: this.seal.seal(input.value, AppSecretService.PURPOSE),
+      valueSealed: await this.seal.seal(input.value, AppSecretService.PURPOSE),
       // Sealed only, and the readable copy cleared, when it is a secret: a key
       // that stopped being a variable must not keep its plaintext.
       value: variable ? input.value : null,
@@ -442,7 +442,7 @@ export class AppSecretService {
         continue;
       }
       try {
-        set[row.key] = this.seal.open(
+        set[row.key] = await this.seal.open(
           row.valueSealed,
           AppSecretService.PURPOSE,
         );

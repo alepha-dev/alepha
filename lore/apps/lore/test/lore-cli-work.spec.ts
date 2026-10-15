@@ -248,7 +248,7 @@ describe("lore project, quest and folio, against Lore", () => {
     // Completing a quest nobody accepted is the server's refusal, in its own
     // words, and exits 1.
     const early = await lore.fail("quest complete", [String(created.shortId)]);
-    expect(early.error?.exitCode).toBe(1);
+    expect(early.error?.data.exitCode).toBe(1);
     expect(early.error?.message).toContain(`Project ${project.slug}:`);
 
     const accepted = JSON.parse(
@@ -323,7 +323,7 @@ describe("lore project, quest and folio, against Lore", () => {
       "--objective",
       "9",
     ]);
-    expect(unknown.error?.name).toBe("UsageError");
+    expect(unknown.error?.name).toBe("USAGE");
     expect(unknown.error?.message).toContain(`${done.id} (Write the code)`);
 
     expect(
@@ -349,13 +349,13 @@ describe("lore project, quest and folio, against Lore", () => {
       "--waive",
       "no-equals-sign",
     ]);
-    expect(badWaive.error?.name).toBe("UsageError");
+    expect(badWaive.error?.name).toBe("USAGE");
     const badSha = await lore.fail("quest complete", [
       ref,
       "--commit",
       "not-a-sha",
     ]);
-    expect(badSha.error?.name).toBe("UsageError");
+    expect(badSha.error?.name).toBe("USAGE");
 
     expect(
       await lore.run("quest complete", [
@@ -423,7 +423,7 @@ describe("lore project, quest and folio, against Lore", () => {
     expect(after.priority).toBe("low");
 
     const nothing = await lore.fail("quest update", [`Q${created.shortId}`]);
-    expect(nothing.error?.name).toBe("UsageError");
+    expect(nothing.error?.name).toBe("USAGE");
   });
 
   it("refuses before writing when the epic's status already says no", async () => {
@@ -445,7 +445,7 @@ describe("lore project, quest and folio, against Lore", () => {
       "--accept",
     ]);
 
-    expect(refused.error?.exitCode).toBe(1);
+    expect(refused.error?.data.exitCode).toBe(1);
     expect(refused.error?.message).toContain("Nothing written");
     expect(refused.stdout).toBe("");
     const quests = await ctx.questController.getQuests.fetch(
@@ -494,7 +494,7 @@ describe("lore project, quest and folio, against Lore", () => {
 
     const printed = JSON.parse(partial.stdout);
     expect(printed.shortId).toBeGreaterThan(0);
-    expect(partial.error?.exitCode).toBe(1);
+    expect(partial.error?.data.exitCode).toBe(1);
     expect(partial.error?.message).toContain(
       `Created Q${printed.shortId}, but did not accept it:`,
     );
@@ -515,7 +515,7 @@ describe("lore project, quest and folio, against Lore", () => {
 
     const refused = await lore.fail("quest list", []);
 
-    expect(refused.error?.exitCode).toBe(4);
+    expect(refused.error?.data.exitCode).toBe(4);
     expect(refused.error?.message).toContain(`Project ${project.slug}:`);
   });
 
@@ -524,7 +524,7 @@ describe("lore project, quest and folio, against Lore", () => {
 
     const missing = await lore.fail("quest get", ["Q999"]);
 
-    expect(missing.error?.exitCode).toBe(1);
+    expect(missing.error?.data.exitCode).toBe(1);
   });
 
   it("creates a folio from a file, filed under an epic, and reads it back with its links", async () => {

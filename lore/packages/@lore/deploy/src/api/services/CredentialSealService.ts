@@ -76,11 +76,11 @@ export class CredentialSealService {
   /**
    * Seals a credential, returning `iv:tag:ciphertext` in hex.
    */
-  seal(plaintext: string, purpose: string): string {
+  async seal(plaintext: string, purpose: string): Promise<string> {
     if (!plaintext) {
       throw new AlephaError("Refusing to seal an empty credential");
     }
-    return this.crypto.encrypt(plaintext, this.keyFor(purpose));
+    return await this.crypto.encrypt(plaintext, await this.keyFor(purpose));
   }
 
   /**
@@ -90,8 +90,8 @@ export class CredentialSealService {
    * fail the same way, as an authentication tag mismatch: AES-GCM cannot
    * tell a wrong key from a wrong message, and neither can this.
    */
-  open(sealed: string, purpose: string): string {
-    return this.crypto.decrypt(sealed, this.keyFor(purpose));
+  async open(sealed: string, purpose: string): Promise<string> {
+    return await this.crypto.decrypt(sealed, await this.keyFor(purpose));
   }
 
   /**
@@ -105,7 +105,7 @@ export class CredentialSealService {
    * everyone knows is not sealed. Specs that seal pass an `APP_SECRET` in
    * `Alepha.create({ env })`; `apps/e2e/web/_fixtures.ts` already does.
    */
-  protected keyFor(purpose: string): string {
+  protected async keyFor(purpose: string): Promise<string> {
     const secret = this.secrets.secretKey;
     if (!secret || secret === DEFAULT_SECRET_KEY_VALUE) {
       throw new AlephaError(
@@ -114,6 +114,6 @@ export class CredentialSealService {
           "credential sealed with it is readable by anyone holding the database.",
       );
     }
-    return this.crypto.hmac(purpose, secret);
+    return await this.crypto.hmac(purpose, secret);
   }
 }

@@ -111,39 +111,36 @@ const AccountSecurity = (props: AccountSecurityProps) => {
    * A session alone is not proof: someone at an unattended signed-in browser
    * could otherwise strip the factor and come back later at leisure.
    */
-  const disableMfa = async () => {
-    const code = await dialog.prompt({
-      title: tr("account.security.mfaDisableTitle", {
-        default: "Turn off two-factor authentication?",
-      }),
-      description: tr("account.security.mfaDisableDescription", {
-        default:
-          "Enter a code from your authenticator app, or one of your recovery codes.",
-      }),
-      confirmLabel: tr("account.security.mfaTurnOff", { default: "Turn off" }),
-    });
-    if (!code) {
-      return;
-    }
-    try {
-      await mfaApi.disableTotp({ body: { code: String(code) } });
-      await reloadMfa();
-      toaster.show(
-        tr("account.security.mfaDisabled", {
-          default: "Two-factor authentication is off",
-        }),
-        "success",
-      );
-    } catch (error: any) {
-      toaster.show(
-        error?.message ??
-          tr("account.security.invalidCode", {
-            default: "That code is not valid",
+  const disableMfa = useAction<[]>(
+    {
+      handler: async () => {
+        const code = await dialog.prompt({
+          title: tr("account.security.mfaDisableTitle", {
+            default: "Turn off two-factor authentication?",
           }),
-        "danger",
-      );
-    }
-  };
+          description: tr("account.security.mfaDisableDescription", {
+            default:
+              "Enter a code from your authenticator app, or one of your recovery codes.",
+          }),
+          confirmLabel: tr("account.security.mfaTurnOff", {
+            default: "Turn off",
+          }),
+        });
+        if (!code) {
+          return;
+        }
+        await mfaApi.disableTotp({ body: { code: String(code) } });
+        await reloadMfa();
+        toaster.show(
+          tr("account.security.mfaDisabled", {
+            default: "Two-factor authentication is off",
+          }),
+          "success",
+        );
+      },
+    },
+    [dialog, mfaApi, reloadMfa, toaster, tr],
+  );
 
   const [newCodes, setNewCodes] = useState<string[]>();
 
@@ -181,37 +178,33 @@ const AccountSecurity = (props: AccountSecurityProps) => {
     [mfaApi, dialog],
   );
 
-  const unlink = async (identity: MyIdentity) => {
-    const label = PROVIDER_LABELS[identity.provider] ?? identity.provider;
-    const ok = await dialog.confirm({
-      title: tr("account.security.unlinkTitle", {
-        default: "Remove $1?",
-        args: [label],
-      }),
-      description: tr("account.security.unlinkDescription", {
-        default: "You will no longer be able to sign in with $1.",
-        args: [label],
-      }),
-      confirmLabel: tr("account.security.unlink", { default: "Remove" }),
-      destructive: true,
-    });
-    if (!ok) {
-      return;
-    }
-    try {
-      await api.unlinkMyIdentity({ params: { id: identity.id } });
-      await reload();
-    } catch (error: any) {
-      // Includes the last-identity refusal, whose message is the whole point.
-      toaster.show(
-        error?.message ??
-          tr("account.security.unlinkError", {
-            default: "Could not remove that method",
+  // The last-identity refusal arrives as an error whose message is the whole
+  // point; the app's ActionErrorToaster shows it verbatim.
+  const unlink = useAction<[identity: MyIdentity]>(
+    {
+      handler: async (_ctx, identity) => {
+        const label = PROVIDER_LABELS[identity.provider] ?? identity.provider;
+        const ok = await dialog.confirm({
+          title: tr("account.security.unlinkTitle", {
+            default: "Remove $1?",
+            args: [label],
           }),
-        "danger",
-      );
-    }
-  };
+          description: tr("account.security.unlinkDescription", {
+            default: "You will no longer be able to sign in with $1.",
+            args: [label],
+          }),
+          confirmLabel: tr("account.security.unlink", { default: "Remove" }),
+          destructive: true,
+        });
+        if (!ok) {
+          return;
+        }
+        await api.unlinkMyIdentity({ params: { id: identity.id } });
+        await reload();
+      },
+    },
+    [api, dialog, tr],
+  );
 
   return (
     <AccountPage variant="form">
@@ -237,7 +230,7 @@ const AccountSecurity = (props: AccountSecurityProps) => {
               <Button
                 variant="minimal"
                 size="sm"
-                onClick={() => unlink(identity)}
+                onClick={() => unlink.run(identity)}
                 aria-label={tr("account.security.unlinkAria", {
                   default: "Remove $1",
                   args: [identity.provider],
@@ -298,7 +291,7 @@ const AccountSecurity = (props: AccountSecurityProps) => {
                   variant="solid"
                   intent="none"
                   size="sm"
-                  onClick={disableMfa}
+                  onClick={() => disableMfa.run()}
                 >
                   <ShieldOff className="size-4" />
                   {tr("account.security.mfaTurnOff", { default: "Turn off" })}

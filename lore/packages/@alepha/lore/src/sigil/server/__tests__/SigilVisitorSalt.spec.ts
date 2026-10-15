@@ -60,8 +60,10 @@ describe("visitor hash salting", () => {
       env: { NODE_ENV: "production", APP_SECRET: "x", SERVER_PORT: 0 },
     }).inject(CryptoProvider);
     const utcDate = new Date().toISOString().slice(0, 10);
-    const publicSalt = crypto.hash(`alepha-sigil:${utcDate}`);
-    const guessable = crypto.hash(`app.example.com:1.2.3.4:UA:${publicSalt}`);
+    const publicSalt = await crypto.hash(`alepha-sigil:${utcDate}`);
+    const guessable = await crypto.hash(
+      `app.example.com:1.2.3.4:UA:${publicSalt}`,
+    );
 
     expect(visitor).not.toBe(guessable);
   });
@@ -130,8 +132,8 @@ describe("visitor hash salting", () => {
       env: { NODE_ENV: "production", APP_SECRET: secret, SERVER_PORT: 0 },
     }).inject(CryptoProvider);
     const utcDate = new Date().toISOString().slice(0, 10);
-    const unlabelled = crypto.hash(
-      `app.example.com:1.2.3.4:UA:${crypto.hash(`${secret}:${utcDate}`)}`,
+    const unlabelled = await crypto.hash(
+      `app.example.com:1.2.3.4:UA:${await crypto.hash(`${secret}:${utcDate}`)}`,
     );
 
     expect(visitor).not.toBe(unlabelled);

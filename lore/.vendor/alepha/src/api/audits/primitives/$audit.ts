@@ -1,4 +1,5 @@
-import { $inject, AlephaError, createPrimitive, KIND, Primitive } from "alepha";
+import { $inject, AlephaError, createPrimitive, Primitive } from "alepha";
+import { KIND } from "alepha/internal";
 
 import {
   AuditService,

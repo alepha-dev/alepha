@@ -7,6 +7,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import {
   $repository,
+  DbEntityNotFoundError,
   type Page,
   type PgQueryWhere,
   RepositoryProvider,
@@ -21,6 +22,7 @@ import {
 import {
   BadRequestError,
   ForbiddenError,
+  NotFoundError,
   type ServerRequest,
 } from "alepha/server";
 
@@ -660,7 +662,6 @@ export class ApiKeyService {
   public async findAll(query: {
     userId?: string;
     status?: ApiKeyStatus[];
-    includeRevoked?: boolean;
     page?: number;
     size?: number;
     sort?: string;
@@ -673,11 +674,10 @@ export class ApiKeyService {
       where.userId = { eq: query.userId };
     }
 
-    // `status` owns the rule when given; `includeRevoked` is the deprecated
-    // spelling of "everything but revoked" and is ignored then.
+    // Explicit statuses select the filter; otherwise revoked keys are hidden.
     if (query.status?.length) {
       where.and = [this.statusWhere(query.status)];
-    } else if (!query.includeRevoked) {
+    } else {
       where.revokedAt = { isNull: true };
     }
 
@@ -702,10 +702,28 @@ export class ApiKeyService {
   }
 
   /**
+   * One key by id, or a `NotFoundError`.
+   *
+   * The repository answers a missing row with `DbEntityNotFoundError`, which
+   * carries a 404 but is not an `HttpError`: the controllers declare their
+   * `errors` (strict mode), so it would reach the caller as a 500.
+   */
+  protected async getKey(id: string): Promise<ApiKeyEntity> {
+    try {
+      return await this.repo.getById(id);
+    } catch (error) {
+      if (error instanceof DbEntityNotFoundError) {
+        throw new NotFoundError("API key was not found", { cause: error });
+      }
+      throw error;
+    }
+  }
+
+  /**
    * Get an API key by ID (admin only).
    */
   public async getById(id: string): Promise<AdminApiKeyResource> {
-    return this.toView(await this.repo.getById(id));
+    return this.toView(await this.getKey(id));
   }
 
   /**
@@ -714,7 +732,7 @@ export class ApiKeyService {
    * @param actorId - The admin revoking it, recorded on the audit row.
    */
   public async revokeByAdmin(id: string, actorId?: string): Promise<void> {
-    const apiKey = await this.repo.getById(id);
+    const apiKey = await this.getKey(id);
 
     if (apiKey.revokedAt) {
       return; // Already revoked
@@ -800,7 +818,7 @@ export class ApiKeyService {
    * Revoke an API key. Only the owner can revoke their own keys.
    */
   public async revoke(id: string, userId: string): Promise<void> {
-    const apiKey = await this.repo.getById(id);
+    const apiKey = await this.getKey(id);
 
     if (apiKey.userId !== userId) {
       throw new ForbiddenError("Not your API key");
@@ -857,7 +875,7 @@ export class ApiKeyService {
     userId: string,
     options: { expiresIn?: ApiKeyExpiresIn } = {},
   ): Promise<{ apiKey: ApiKeyEntity; token: string }> {
-    const apiKey = await this.repo.getById(id);
+    const apiKey = await this.getKey(id);
 
     if (apiKey.userId !== userId) {
       throw new ForbiddenError("Not your API key");
@@ -925,7 +943,7 @@ export class ApiKeyService {
    * refuses the key (owner disabled or deleted).
    * @param ip - The client address of the request being authenticated,
    * checked against the key's `ipAllowlist` and recorded as its `lastUsedIp`. Pass it whenever the request is at
-   * hand: the issuer resolver runs in `server:onRequest`, before the router
+   * hand: the issuer resolver runs in `server:request:before`, before the router
    * stores the request, so the fallback (the stored request's IP) only
    * reaches a caller inside a route handler.
    */
@@ -981,7 +999,7 @@ export class ApiKeyService {
     }
 
     // The caller's `ip` comes first: the resolver calls this from
-    // `server:onRequest`, before the router stores the request.
+    // `server:request:before`, before the router stores the request.
     const clientIp = ip ?? this.alepha.store.get("alepha.http.request")?.ip;
 
     // Before the owner lookup and before any usage is recorded: a request

@@ -1,6 +1,6 @@
 import { pathToFileURL } from "node:url";
 
-import { $hook, $inject, Alepha } from "alepha";
+import { $hook, $inject, Alepha, AlephaError, type Service } from "alepha";
 import { cliOptions } from "alepha/command";
 import { FileSystemProvider } from "alepha/system";
 
@@ -16,6 +16,15 @@ export class AlephaCliExtensionProvider {
   protected async loadInfraCommands(): Promise<void> {
     const { AlephaCliInfraCommands } = await import("alepha/cli/infra");
     this.alepha.with(AlephaCliInfraCommands);
+  }
+
+  protected applyExtension(extension: unknown, path: string): void {
+    if (typeof extension !== "function") {
+      throw new AlephaError(
+        `${path} must default-export a function. Use export default defineConfig({ ... }).`,
+      );
+    }
+    this.alepha.inject(extension as Service, { args: [this.alepha] });
   }
 
   protected readonly onConfigure = $hook({
@@ -53,13 +62,7 @@ export class AlephaCliExtensionProvider {
       // import (use file:// URL for Windows compatibility)
       const extensionUrl = pathToFileURL(extensionPath).href;
       const { default: Extension } = await import(extensionUrl);
-      if (typeof Extension !== "function") {
-        return;
-      }
-
-      this.alepha.inject(Extension, {
-        args: [this.alepha],
-      });
+      this.applyExtension(Extension, extensionPath);
     },
   });
 }

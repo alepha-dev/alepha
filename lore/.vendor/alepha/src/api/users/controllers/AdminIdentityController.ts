@@ -17,6 +17,7 @@ export class AdminIdentityController {
    * Find identities with pagination and filtering.
    */
   public readonly findIdentities = $action({
+    method: "GET",
     path: this.url,
     group: this.group,
     use: [$secure({ permissions: ["admin:identity:read"] })],
@@ -41,6 +42,7 @@ export class AdminIdentityController {
    * Get an identity by ID.
    */
   public readonly getIdentity = $action({
+    method: "GET",
     path: `${this.url}/:id`,
     group: this.group,
     use: [$secure({ permissions: ["admin:identity:read"] })],

@@ -66,13 +66,6 @@ const postStatus = async (
     { path, body },
   );
 
-const get = async (page: Page, path: string): Promise<void> => {
-  await page.evaluate(async (path) => {
-    const r = await fetch(path, { credentials: "include" });
-    if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
-  }, path);
-};
-
 interface Release {
   id: number;
   number: number;
@@ -105,7 +98,7 @@ const createQuest = async (page: Page, projectId: number, title: string) =>
   });
 
 const completeQuest = async (page: Page, id: number) => {
-  await get(page, `/api/acceptQuest/${id}`);
+  await post(page, `/api/acceptQuest/${id}`, {});
   await post(page, `/api/completeQuest/${id}`, {});
 };
 

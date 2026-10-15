@@ -3,7 +3,7 @@ import type { AppSecretController } from "@lore/deploy/api";
 import { $inject, AlephaError, z } from "alepha";
 import { $command, EnvUtils } from "alepha/command";
 import { $logger } from "alepha/logger";
-import { HttpError } from "alepha/server";
+import { isHttpError } from "alepha/server";
 import { $client } from "alepha/server/links";
 import { FileSystemProvider } from "alepha/system";
 
@@ -238,7 +238,7 @@ export class SecretsCommand {
         return { projectId, instanceId: instance.id, label };
       }
     } catch (error) {
-      if (!HttpError.is(error, 404)) {
+      if (!isHttpError(error, 404)) {
         throw error;
       }
     }

@@ -1,6 +1,6 @@
 import { $inject, AlephaError } from "alepha";
 import { CommandError } from "alepha/command";
-import { ForbiddenError, HttpError, UnauthorizedError } from "alepha/server";
+import { ForbiddenError, isHttpError, UnauthorizedError } from "alepha/server";
 
 import { LoreClientService } from "./LoreClientService.ts";
 
@@ -49,12 +49,13 @@ export interface LoreRefusalContext {
  * this is what that looks like. A self-hosted Lore older than the action says
  * the same thing, so the sentence names both.
  *
- * ## Registry refusals are told apart by CLASS
+ * ## Registry refusals are told apart by their missing `requestId`
  *
  * `LinkProvider` throws `ForbiddenError` and `UnauthorizedError` itself,
- * before the action's request leaves. A refused request never arrives as
- * either: `HttpClient` builds the base `HttpError` from the response body. So
- * the subclass is the registry, and a bare status is the server.
+ * before the action's request leaves. A refused request rebuilds as the same
+ * classes (`HttpClient` rebuilds every registered error from the response
+ * body), but a response always carries the `requestId` the router stamped in
+ * `data`, and the registry's own refusals never do.
  *
  * ⚠️ Not re-exported from `index.ts`: it is part of how the `lore` binary
  * behaves, not an API. The nine verbs older than epic #45 are not guarded by
@@ -101,56 +102,74 @@ export class LoreRefusals {
 
     const host = this.client.hostname();
 
-    if (error instanceof ForbiddenError) {
+    if (error instanceof ForbiddenError && !error.data.requestId) {
       return new CommandError(
-        `${error.message} The role of this account on ${host}, or the permission scope of LORE_API_KEY, does not grant ${this.actionOf(error)}.`,
-        { cause: error, exitCode: LoreRefusals.EXIT_FORBIDDEN },
+        { exitCode: LoreRefusals.EXIT_FORBIDDEN },
+        {
+          message: `${error.message} The role of this account on ${host}, or the permission scope of LORE_API_KEY, does not grant ${this.actionOf(error)}.`,
+          cause: error,
+        },
       );
     }
 
-    if (error instanceof UnauthorizedError) {
+    if (error instanceof UnauthorizedError && !error.data.requestId) {
       const action = this.actionOf(error);
       return new CommandError(
-        `${error.message} Either the credential for ${host} was not accepted (it expired or was revoked: run \`lore login\` again, or check LORE_API_KEY), or this Lore does not have ${action}.`,
-        { cause: error, exitCode: LoreRefusals.EXIT_NOT_AUTHENTICATED },
+        { exitCode: LoreRefusals.EXIT_NOT_AUTHENTICATED },
+        {
+          message: `${error.message} Either the credential for ${host} was not accepted (it expired or was revoked: run \`lore login\` again, or check LORE_API_KEY), or this Lore does not have ${action}.`,
+          cause: error,
+        },
       );
     }
 
-    if (HttpError.is(error, 401)) {
+    if (isHttpError(error, 401)) {
       return new CommandError(
-        `${error.message} The credential for ${host} was not accepted: run \`lore login\` again, or check LORE_API_KEY.`,
-        { cause: error, exitCode: LoreRefusals.EXIT_NOT_AUTHENTICATED },
+        { exitCode: LoreRefusals.EXIT_NOT_AUTHENTICATED },
+        {
+          message: `${error.message} The credential for ${host} was not accepted: run \`lore login\` again, or check LORE_API_KEY.`,
+          cause: error,
+        },
       );
     }
 
-    if (HttpError.is(error, 403)) {
+    if (isHttpError(error, 403)) {
       // The server's sentence already names the rank and who can grant it
       // (`RankService.refusal`). The project is the one thing it leaves out,
       // so it is prefixed and the sentence is never rewritten.
       return new CommandError(
-        context.project
-          ? `Project ${context.project}: ${error.message}`
-          : error.message,
-        { cause: error, exitCode: LoreRefusals.EXIT_FORBIDDEN },
+        { exitCode: LoreRefusals.EXIT_FORBIDDEN },
+        {
+          message: context.project
+            ? `Project ${context.project}: ${error.message}`
+            : error.message,
+          cause: error,
+        },
       );
     }
 
-    if (HttpError.is(error) && error.status >= 400 && error.status < 500) {
+    if (isHttpError(error) && error.status >= 400 && error.status < 500) {
       // Everything else the server refused with a sentence of its own: a
       // quest that does not exist, an objective still open, a frozen epic.
       // Exit 1, and the sentence as the server wrote it.
       return new CommandError(
-        context.project
-          ? `Project ${context.project}: ${error.message}`
-          : error.message,
-        { cause: error, exitCode: LoreRefusals.EXIT_FAILURE },
+        { exitCode: LoreRefusals.EXIT_FAILURE },
+        {
+          message: context.project
+            ? `Project ${context.project}: ${error.message}`
+            : error.message,
+          cause: error,
+        },
       );
     }
 
     if (this.isUnreachable(error)) {
       return new CommandError(
-        `Could not reach Lore at ${host}. Check LORE_URL, and that the instance is up.`,
-        { cause: error, exitCode: LoreRefusals.EXIT_FAILURE },
+        { exitCode: LoreRefusals.EXIT_FAILURE },
+        {
+          message: `Could not reach Lore at ${host}. Check LORE_URL, and that the instance is up.`,
+          cause: error,
+        },
       );
     }
 

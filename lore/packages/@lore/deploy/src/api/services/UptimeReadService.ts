@@ -141,8 +141,9 @@ export class UptimeReadService {
         sum.up += Number(point.up);
         totals.set(id, sum);
       }
+      const table = this.beats.table;
       const recent = await this.beats.query(
-        (table) => sql`
+        sql`
         SELECT * FROM (
           SELECT *, ROW_NUMBER() OVER (PARTITION BY monitor_id ORDER BY at DESC, id DESC) AS position
           FROM ${table} WHERE ${table.monitorId} IN (${sql.join(

@@ -1,4 +1,4 @@
-import { $context, AlephaError, type Async, type Middleware } from "alepha";
+import { $context, AlephaError, type Async } from "alepha";
 // Type-only on purpose. Authorization may depend on repository shapes without
 // creating a runtime module edge from security back to the ORM. Erased at
 // compile time, this import does not participate in module initialization.
@@ -12,6 +12,7 @@ import { ResourceGrantsProvider } from "../providers/ResourceGrantsProvider.ts";
 import {
   $secure,
   type SecureGuardContext,
+  type SecureMiddleware,
   type SecureOptions,
 } from "./$secure.ts";
 
@@ -73,7 +74,7 @@ import {
  * }
  * ```
  */
-export function $owns(options: OwnsOptions): Middleware {
+export function $owns(options: OwnsOptions): SecureMiddleware {
   const { alepha } = $context();
   const memo = alepha.inject(ResourceGateMemoProvider);
 

@@ -1,4 +1,4 @@
-import { AlephaError } from "alepha";
+import { $error } from "alepha";
 
 /**
  * Per-send options.
@@ -43,7 +43,14 @@ export interface QueuePushOptions {
  * limited backend could do, which is the one behaviour this whole interface
  * exists to forbid.
  */
-export class QueueDelayNotSupportedError extends AlephaError {}
+export const QueueDelayNotSupportedError = $error({
+  name: "QUEUE_DELAY_NOT_SUPPORTED",
+  message: "This queue provider does not support delayed messages",
+});
+
+export type QueueDelayNotSupportedError = InstanceType<
+  typeof QueueDelayNotSupportedError
+>;
 
 /**
  * Minimalist Queue interface.

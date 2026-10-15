@@ -17,7 +17,7 @@ export * from "./services/prettyName.ts";
 
 declare module "alepha" {
   interface Hooks {
-    "form:change": {
+    "form:changed": {
       id: string;
       path: string;
       value: any;

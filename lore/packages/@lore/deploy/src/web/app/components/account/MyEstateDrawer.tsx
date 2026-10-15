@@ -91,7 +91,7 @@ const MyEstateDrawer = (props: MyEstateDrawerProps) => {
   // credential writes, which render theirs beside the field (their `onError`).
   const updateAction = useAction<[body: EstateSwitches], void>(
     {
-      handler: async (body) => {
+      handler: async (_ctx, body) => {
         if (!estate) return;
         const updated = await api.updateEstate({
           params: { estateId: estate.id },
@@ -209,7 +209,7 @@ const MyEstateDrawer = (props: MyEstateDrawerProps) => {
     void
   >(
     {
-      handler: async (loan) => {
+      handler: async (_ctx, loan) => {
         if (!estate) return;
         const ok = await dialog.confirm({
           title: tr("account.estates.detach.confirmTitle", {

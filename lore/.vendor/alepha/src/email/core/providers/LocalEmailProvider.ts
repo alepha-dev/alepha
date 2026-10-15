@@ -57,10 +57,9 @@ export class LocalEmailProvider implements EmailProvider {
       } catch (error) {
         const message = `Failed to create email directory: ${error instanceof Error ? error.message : String(error)}`;
         this.log.error(message, { at: this.directory });
-        throw new EmailError(
-          message,
-          error instanceof Error ? error : undefined,
-        );
+        throw new EmailError(message, {
+          cause: error instanceof Error ? error : undefined,
+        });
       }
     },
   });
@@ -110,7 +109,9 @@ export class LocalEmailProvider implements EmailProvider {
     } catch (error) {
       const message = `Failed to save email to local file: ${error instanceof Error ? error.message : String(error)}`;
       this.log.error(message, { to, subject, directory: this.directory });
-      throw new EmailError(message, error instanceof Error ? error : undefined);
+      throw new EmailError(message, {
+        cause: error instanceof Error ? error : undefined,
+      });
     }
 
     return { messageId };

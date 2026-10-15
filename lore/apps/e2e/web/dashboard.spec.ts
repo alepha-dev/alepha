@@ -421,6 +421,7 @@ test.describe("Project dashboard", () => {
     // One of the two done → 1/2.
     await page.evaluate(async (id) => {
       const r = await fetch(`/api/acceptQuest/${id}`, {
+        method: "POST",
         credentials: "include",
       });
       if (!r.ok) throw new Error(`accept ${r.status}`);

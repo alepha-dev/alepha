@@ -1,5 +1,10 @@
 export { type Page, type PageQuery, pageQuerySchema, pageSchema } from "alepha";
-export { sql } from "drizzle-orm";
+/**
+ * drizzle's `sql` tag and its `SQL` type: the one drizzle surface `alepha/orm`
+ * re-exports and keeps stable. Everything else from drizzle lives in
+ * `alepha/orm/drizzle`, outside semver.
+ */
+export { type SQL, sql } from "drizzle-orm";
 export * from "./errors/DbColumnNotFoundError.ts";
 export * from "./errors/DbConnectionError.ts";
 export * from "./errors/DbDeadlockError.ts";
@@ -11,11 +16,16 @@ export * from "./errors/DbTimeoutError.ts";
 export * from "./errors/DbTooManyParametersError.ts";
 export * from "./helpers/pgAttr.ts";
 export * from "./interfaces/AggregateQuery.ts";
+export * from "./interfaces/DbTable.ts";
+export * from "./interfaces/DbTransaction.ts";
 export * from "./interfaces/FilterOperators.ts";
+export * from "./interfaces/ForeignKeyAction.ts";
 export * from "./interfaces/PgQuery.ts";
 export * from "./interfaces/PgQueryWhere.ts";
 export * from "./interfaces/RelationInclude.ts";
 export * from "./interfaces/RelationWrite.ts";
+export * from "./interfaces/RowLock.ts";
+export * from "./interfaces/TransactionOptions.ts";
 export * from "./primitives/$entity.ts";
 export * from "./primitives/$relations.ts";
 export * from "./providers/DatabaseTypeProvider.ts";

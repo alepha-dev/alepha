@@ -1,11 +1,11 @@
-import { AlephaError } from "./AlephaError.ts";
+import { $error } from "../primitives/$error.ts";
 
-export class ContainerLockedError extends AlephaError {
-  readonly name = "ContainerLockedError";
+/**
+ * A service registered after the container has started.
+ */
+export const ContainerLockedError = $error({
+  name: "CONTAINER_LOCKED",
+  message: "Container is locked. No more providers can be added.",
+});
 
-  constructor(
-    message = "Container is locked. No more providers can be added.",
-  ) {
-    super(message);
-  }
-}
+export type ContainerLockedError = InstanceType<typeof ContainerLockedError>;

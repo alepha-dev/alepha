@@ -1,4 +1,4 @@
-import { AlephaError } from "alepha";
+import { $error, z } from "alepha";
 
 /**
  * One part of a multipart message, delivered before its content is read.
@@ -42,47 +42,31 @@ export interface MultipartPart {
  * Thrown when a limit is exceeded. Named per limit, because the operator's
  * next move differs: a too-large file is a client to reject, too many parts is
  * usually an attack, and an oversized header is always one.
+ *
+ * `kind` says which budget was spent, as data rather than prose, so a caller
+ * can phrase the refusal in its own vocabulary (an HTTP layer naming the
+ * field that overflowed, say).
  */
-export class MultipartLimitError extends AlephaError {
-  public readonly limit: number;
+export const MultipartLimitError = $error({
+  name: "MULTIPART_LIMIT",
+  schema: z.object({
+    limit: z.number(),
+    kind: z.enum(["header", "file", "parts", "total"]),
+  }),
+  message: "Multipart limit exceeded",
+});
 
-  /**
-   * Which budget was spent.
-   *
-   * Carried as data rather than left to be read out of the message, so a
-   * caller can phrase the refusal in its own vocabulary — an HTTP layer
-   * naming the field that overflowed, say — without matching on prose that
-   * was never meant to be an interface.
-   */
-  public readonly kind: "header" | "file" | "parts" | "total";
-
-  /**
-   * ⚠️ Assigned in the body rather than declared as constructor parameter
-   * properties, which is what this was.
-   *
-   * A parameter property is the one piece of TypeScript that Node's
-   * type-stripping loader cannot handle: it is not a type annotation to erase
-   * but a declaration plus an assignment to emit. `alepha.config.ts` is loaded
-   * by that stripper, so any config importing something that reaches this file
-   * died with `ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX` — pointing at a multipart
-   * parser it had never heard of. This was the only occurrence in the
-   * framework; keep it that way.
-   */
-  constructor(
-    message: string,
-    limit: number,
-    kind: "header" | "file" | "parts" | "total",
-  ) {
-    super(message);
-    this.limit = limit;
-    this.kind = kind;
-  }
-}
+export type MultipartLimitError = InstanceType<typeof MultipartLimitError>;
 
 /**
  * Thrown when the bytes are not a well-formed multipart message.
  */
-export class MultipartParseError extends AlephaError {}
+export const MultipartParseError = $error({
+  name: "MULTIPART_PARSE",
+  message: "Malformed multipart body",
+});
+
+export type MultipartParseError = InstanceType<typeof MultipartParseError>;
 
 export interface MultipartParserOptions {
   /**
@@ -240,9 +224,8 @@ export class MultipartStreamParser {
 
         if (++this.partCount > this.maxParts) {
           throw new MultipartLimitError(
-            `More than ${this.maxParts} parts`,
-            this.maxParts,
-            "parts",
+            { limit: this.maxParts, kind: "parts" },
+            { message: `More than ${this.maxParts} parts` },
           );
         }
 
@@ -346,9 +329,8 @@ export class MultipartStreamParser {
   protected count(length: number, sizeSoFar: number): void {
     if (sizeSoFar + length > this.maxFileBytes) {
       throw new MultipartLimitError(
-        `A part exceeds ${this.maxFileBytes} bytes`,
-        this.maxFileBytes,
-        "file",
+        { limit: this.maxFileBytes, kind: "file" },
+        { message: `A part exceeds ${this.maxFileBytes} bytes` },
       );
     }
     this.spend(length);
@@ -370,9 +352,8 @@ export class MultipartStreamParser {
     this.totalSize += length;
     if (this.totalSize > this.maxTotalBytes) {
       throw new MultipartLimitError(
-        `The message exceeds ${this.maxTotalBytes} bytes`,
-        this.maxTotalBytes,
-        "total",
+        { limit: this.maxTotalBytes, kind: "total" },
+        { message: `The message exceeds ${this.maxTotalBytes} bytes` },
       );
     }
   }
@@ -432,9 +413,8 @@ export class MultipartStreamParser {
       }
       if (this.buffer.length > this.maxHeaderBytes) {
         throw new MultipartLimitError(
-          `Part headers exceed ${this.maxHeaderBytes} bytes`,
-          this.maxHeaderBytes,
-          "header",
+          { limit: this.maxHeaderBytes, kind: "header" },
+          { message: `Part headers exceed ${this.maxHeaderBytes} bytes` },
         );
       }
       if (!(await this.pull())) {

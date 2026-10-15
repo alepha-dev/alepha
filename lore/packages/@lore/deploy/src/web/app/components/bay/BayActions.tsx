@@ -2,7 +2,7 @@ import { Button, useDialog, useToast } from "@alepha/ui";
 import type { I18n } from "@lore/core/web";
 import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { HttpError } from "alepha/server";
+import { isHttpError } from "alepha/server";
 import { Play, RefreshCw, RotateCw, Save, Square } from "lucide-react";
 
 import type { EstateController } from "../../../../api/controllers/EstateController.ts";
@@ -61,7 +61,7 @@ const BayActions = (props: BayActionsProps) => {
         try {
           await estateApi.refreshEstate({ params: { estateId: estate.id } });
         } catch (error) {
-          if (HttpError.is(error, 429)) {
+          if (isHttpError(error, 429)) {
             // Six a minute per estate. A cooldown, not a failure: said in
             // this page's own words, and not reported as a crash.
             toaster.error(tr("bay.actions.refresh.cooldown"));
@@ -99,7 +99,7 @@ const BayActions = (props: BayActionsProps) => {
     // The inventory moved if anything did: a restart changes the uptime, a
     // backup moves lastBackupAt. Bay pushes one after every command, so this
     // only asks Lore for what it already has.
-    if (result?.status === "done") {
+    if (result.ok && result.value?.status === "done") {
       await refetch();
     }
   };

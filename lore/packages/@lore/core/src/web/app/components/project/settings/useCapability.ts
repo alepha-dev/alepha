@@ -57,7 +57,7 @@ export const useCapabilityToggle = (key: CapabilityKey): CapabilitySwitch => {
 
   const action = useAction<[value: boolean], void>(
     {
-      handler: async (value) => {
+      handler: async (_ctx, value) => {
         if (!project) return;
         setPending(value);
         const stored = optionsOf(project, key);
@@ -98,7 +98,9 @@ export const useCapabilityToggle = (key: CapabilityKey): CapabilitySwitch => {
   return {
     canToggle: api.setCapability.can(),
     enabled: pending ?? hasCapability(project, key),
-    toggle: action.run,
+    toggle: async (value: boolean) => {
+      await action.run(value);
+    },
     busy: action.loading,
   };
 };
@@ -121,7 +123,7 @@ export const useCapabilityOption = (
 
   const action = useAction<[value: boolean], void>(
     {
-      handler: async (value) => {
+      handler: async (_ctx, value) => {
         if (!project) return;
         setPending(value);
         try {
@@ -146,7 +148,9 @@ export const useCapabilityOption = (
   return {
     canToggle: api.setCapability.can(),
     enabled: pending ?? capabilityOption(project, key, option),
-    toggle: action.run,
+    toggle: async (value: boolean) => {
+      await action.run(value);
+    },
     busy: action.loading,
   };
 };

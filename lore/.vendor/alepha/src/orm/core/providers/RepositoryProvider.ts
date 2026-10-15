@@ -5,6 +5,7 @@ import { Repository } from "../services/Repository.ts";
 import type { DatabaseProvider } from "./drivers/DatabaseProvider.ts";
 
 export class RepositoryProvider {
+  public static readonly id: string = "alepha.orm.RepositoryProvider";
   protected readonly alepha = $inject(Alepha);
   protected readonly registry = new Map<
     EntityPrimitive<any>,

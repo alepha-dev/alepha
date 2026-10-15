@@ -1,28 +1,25 @@
 import { type Infer, z } from "alepha";
 
+/**
+ * A failed request's body: a declared error as `DeclaredError.toJSON` writes
+ * it. The HTTP status is `data.status`.
+ */
 export const errorSchema = z
   .object({
-    error: z.text({ description: "HTTP error name" }),
-    status: z.integer().describe("HTTP status code"),
+    name: z.text({
+      description: "The error's name, SCREAMING_SNAKE (NOT_FOUND)",
+    }),
     message: z.text({
       description: "Short text which describe the error",
       size: "rich",
     }),
-    details: z
-      .text({
-        description: "Detailed description of the error",
-        size: "rich",
-      })
-      .optional(),
     data: z
       .record(z.text(), z.any())
       .describe(
-        "Structured payload an error carries when the client has to act on " +
-          "it rather than just display it. `details` is prose; this is the " +
-          "machine-readable half. Used by the second-factor challenge.",
+        "The error's data: `status`, `requestId` and `details` for every " +
+          "HTTP error, plus the fields its own schema declares.",
       )
       .optional(),
-    requestId: z.text().optional(),
     cause: z
       .object({
         name: z.text(),

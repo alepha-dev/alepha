@@ -13,7 +13,7 @@ export class GenEnvCommand {
     name: "env",
     description: "Extract environment variables from server entry file",
     flags: z.object({
-      out: z
+      output: z
         .text({
           aliases: ["o"],
           description: "Output file path (e.g., .env)",
@@ -57,11 +57,14 @@ export class GenEnvCommand {
           dotEnvFile += `#${key}=${value.default ?? ""}\n\n`;
         }
 
-        if (flags.out) {
-          // `resolve`, not `join`: an absolute `--out` used to be reparented
+        if (flags.output) {
+          // `resolve`, not `join`: an absolute `--output` used to be reparented
           // under the project root, so `-o /tmp/.env` failed on
           // `<root>/tmp/.env`.
-          await this.fs.writeFile(this.fs.resolve(root, flags.out), dotEnvFile);
+          await this.fs.writeFile(
+            this.fs.resolve(root, flags.output),
+            dotEnvFile,
+          );
         } else {
           // The template is what this command *produces*, so it goes through
           // the output provider — never the logger, which prefixes a timestamp

@@ -31,7 +31,7 @@ const EpicFoliosPanel = (props: EpicFoliosPanelProps) => {
   // handler, so backing out sends nothing.
   const attach = useAction<[folioId: string], void>(
     {
-      handler: async (folioId) => {
+      handler: async (_ctx, folioId) => {
         await filingApi.fileResource({
           params: { kind: "epic", id: subject.id },
           body: { childKind: "folio", childId: folioId },
@@ -44,7 +44,7 @@ const EpicFoliosPanel = (props: EpicFoliosPanelProps) => {
 
   const detach = useAction<[folio: FolioResource], void>(
     {
-      handler: async (folio) => {
+      handler: async (_ctx, folio) => {
         const ok = await dialog.confirm({
           title: tr("epic.folios.detach.title"),
           description: tr("epic.folios.detach.confirm", {

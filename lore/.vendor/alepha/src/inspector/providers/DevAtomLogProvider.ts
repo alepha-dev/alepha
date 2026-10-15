@@ -9,7 +9,7 @@ export interface AtomMutationEntry {
 }
 
 /**
- * In-memory ring buffer of `state:mutate` events, powering the devtools
+ * In-memory ring buffer of `state:mutated` events, powering the devtools
  * "Recent mutations" panel. Dev-only, capped at 200 entries.
  *
  * `serverOnly` atoms are never buffered: `serverOnly` is documented as a
@@ -26,7 +26,7 @@ export class DevAtomLogProvider {
   protected readonly buffer: AtomMutationEntry[] = [];
 
   protected readonly onMutate = $hook({
-    on: "state:mutate",
+    on: "state:mutated",
     handler: ({ key, value, prevValue }) => {
       const atom = this.state.getAtom(String(key));
       if (atom?.options.serverOnly) {

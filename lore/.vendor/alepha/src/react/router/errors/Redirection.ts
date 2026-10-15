@@ -1,28 +1,17 @@
-import { AlephaError } from "alepha";
+import { $error, z } from "alepha";
 
 /**
- * Used for Redirection during the page loading.
+ * Thrown (or returned) by a page's loader or resolver to send the visitor
+ * elsewhere: the router answers with a redirect to `data.redirect`.
  *
- * Depends on the context, it can be thrown or just returned.
- *
- * @example
  * ```ts
- * import { Redirection } from "alepha/react";
- *
- * const MyPage = $page({
- *   loader: async () => {
- *    if (needRedirect) {
- *      throw new Redirection("/new-path");
- *    }
- *   },
- * });
+ * throw new Redirection({ redirect: "/new-path" });
  * ```
  */
-export class Redirection extends AlephaError {
-  public readonly redirect: string;
+export const Redirection = $error({
+  name: "REDIRECTION",
+  schema: z.object({ redirect: z.text({ size: "long" }) }),
+  message: "Redirection",
+});
 
-  constructor(redirect: string) {
-    super("Redirection");
-    this.redirect = redirect;
-  }
-}
+export type Redirection = InstanceType<typeof Redirection>;

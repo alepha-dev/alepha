@@ -1,4 +1,12 @@
-# DateTime — Refactoring Roadmap
+# DateTime Refactoring Roadmap
+
+## V1 boundary completed in #E82 #Q2668
+
+The engine remains dayjs. Public unit types and constructor inputs now belong
+to Alepha. Engine instances are held by an unexported adapter; `toDayjs` and the
+plugin list are absent from declarations. Locale is per container. These API
+changes shipped before the freeze, so a future engine swap need not expose
+engine types. The cleanup entries below for those former exports are complete.
 
 ## Context
 

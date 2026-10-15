@@ -19,7 +19,7 @@ import { LogBuffer } from "../services/LogBuffer.ts";
  *   protected readonly logBuffer = $inject(LogBufferProvider);
  *
  *   public readonly onError = $hook({
- *     on: "server:onError",
+ *     on: "server:request:error",
  *     handler: ({ request, error }) => {
  *       report(error, { breadcrumbs: this.logBuffer.snapshot() });
  *     },

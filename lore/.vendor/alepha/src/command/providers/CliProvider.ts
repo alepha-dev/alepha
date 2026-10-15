@@ -412,7 +412,7 @@ export class CliProvider {
     this.log.debug("Task failure detail", error);
 
     if (typeof process === "object") {
-      process.exitCode = error.exitCode ?? 1;
+      process.exitCode = error.data.exitCode ?? 1;
     }
   }
 
@@ -923,7 +923,7 @@ export class CliProvider {
       const extra: string[] = meta.aliases ?? (meta.alias ? [meta.alias] : []);
       return {
         key,
-        aliases: [key, ...extra],
+        aliases: [...new Set([key, this.kebabFlag(key), ...extra])],
         description: meta.description,
         schema: value as ZType,
       };
@@ -994,7 +994,7 @@ export class CliProvider {
     // apply manually defaults for optional properties that have defaults
     for (const [key, value] of Object.entries(z.schema.shape(schema))) {
       if (!(key in parsed)) {
-        const def = z.schema.getDefault(value);
+        const def = z.schema.defaultValue(value);
         if (def !== undefined) {
           parsed[key] = def;
         }
@@ -1006,7 +1006,7 @@ export class CliProvider {
     } catch (error) {
       if (error instanceof SchemaValidationError) {
         throw new UsageError(
-          `Invalid flag: ${error.cause.instancePath || "command"} ${error.cause.message}`,
+          `Invalid flag: ${error.data.path || "command"} ${error.data.message}`,
         );
       }
       throw error;
@@ -1041,7 +1041,7 @@ export class CliProvider {
           throw error;
         }
       } else {
-        const def = z.schema.getDefault(propSchema);
+        const def = z.schema.defaultValue(propSchema);
         if (def !== undefined) {
           result[key] = def;
         } else if (z.schema.isOptional(propSchema)) {
@@ -1064,7 +1064,7 @@ export class CliProvider {
     } catch (error) {
       if (error instanceof SchemaValidationError) {
         throw new UsageError(
-          `Invalid environment variable: ${error.cause.instancePath || "env"} ${error.cause.message}`,
+          `Invalid environment variable: ${error.data.path || "env"} ${error.data.message}`,
         );
       }
       throw error;
@@ -1557,7 +1557,7 @@ export class CliProvider {
       if (this.isOptionalOrDefaulted(schema)) {
         // Handle optional args: z.text().optional(), z.number().default(1)
         if (argsOnly.length === 0) {
-          return z.schema.getDefault(schema);
+          return z.schema.defaultValue(schema);
         }
         return this.alepha.codec.decode(
           schema,
@@ -1572,7 +1572,7 @@ export class CliProvider {
           if (i < argsOnly.length) {
             result.push(this.parseArgumentValue(argsOnly[i], itemSchema));
           } else if (this.isOptionalOrDefaulted(itemSchema)) {
-            result.push(z.schema.getDefault(itemSchema));
+            result.push(z.schema.defaultValue(itemSchema));
           } else {
             throw new UsageError(
               `Missing required argument at position ${i + 1}`,
@@ -1592,7 +1592,7 @@ export class CliProvider {
       }
     } catch (error) {
       if (error instanceof SchemaValidationError) {
-        throw new UsageError(`Invalid argument: ${error.value.message}`);
+        throw new UsageError(`Invalid argument: ${error.data.message}`);
       }
       throw error;
     }
@@ -1604,7 +1604,7 @@ export class CliProvider {
    */
   protected isOptionalOrDefaulted(schema: ZType): boolean {
     return (
-      z.schema.isOptional(schema) || z.schema.getDefault(schema) !== undefined
+      z.schema.isOptional(schema) || z.schema.defaultValue(schema) !== undefined
     );
   }
 
@@ -1785,7 +1785,8 @@ export class CliProvider {
 
       const maxFlagLength = this.getMaxFlagLength(flags);
       for (const flag of flags) {
-        const { aliases, description } = flag;
+        const { description } = flag;
+        const aliases = this.displayFlagAliases(flag.aliases);
         const schema = "schema" in flag ? (flag.schema as ZType) : undefined;
         // Sort aliases by length (shorter first: -t before --target)
         const sortedAliases = (Array.isArray(aliases) ? aliases : [aliases])
@@ -1868,7 +1869,7 @@ export class CliProvider {
       ];
       const maxFlagLength = this.getMaxFlagLength(globalFlags);
       for (const { aliases, description, schema } of globalFlags) {
-        const flagStr = aliases
+        const flagStr = this.displayFlagAliases(aliases)
           .map((a) => (a.length === 1 ? `-${a}` : `--${a}`))
           .join(", ");
         const coloredFlag = c.set("GREY_LIGHT", flagStr);
@@ -2026,12 +2027,33 @@ export class CliProvider {
   }
 
   /**
-   * Calculate max display length for flags (for help alignment)
+   * Canonical help spelling for a flag key.
+   */
+  protected kebabFlag(key: string): string {
+    return key
+      .replace(/([A-Z])([A-Z][a-z])/g, "$1-$2")
+      .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
+      .toLowerCase();
+  }
+
+  /**
+   * Keep accepted camel-case spellings out of help when kebab-case is available.
+   */
+  protected displayFlagAliases(aliases: string[]): string[] {
+    return aliases.filter(
+      (alias) =>
+        alias === this.kebabFlag(alias) ||
+        !aliases.includes(this.kebabFlag(alias)),
+    );
+  }
+
+  /**
+   * Calculate the maximum displayed flag length for help alignment.
    */
   protected getMaxFlagLength(flags: { aliases: string[] }[]): number {
     return Math.max(
       ...flags.map((f) => {
-        const aliases = Array.isArray(f.aliases) ? f.aliases : [f.aliases];
+        const aliases = this.displayFlagAliases(f.aliases);
         return aliases
           .map((a) => (a.length === 1 ? `-${a}` : `--${a}`))
           .join(", ").length;
@@ -2050,7 +2072,7 @@ export class CliProvider {
 
     // A zod enum (`z.enum`).
     if (z.schema.isEnum(base)) {
-      const values = z.schema.enumValues(base);
+      const values = z.schema.enumOptions(base);
       return values.length > 0 && values.every((v) => typeof v === "string")
         ? values
         : undefined;

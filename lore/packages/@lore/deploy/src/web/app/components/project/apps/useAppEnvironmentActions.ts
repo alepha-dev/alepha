@@ -46,7 +46,7 @@ export const useAppEnvironmentActions = (target: {
 
   const editAction = useAction<[item: AppEnvironmentItem], boolean>(
     {
-      handler: async (item) => {
+      handler: async (_ctx, item) => {
         const variable = item.kind === "variable";
         const value = await dialog.prompt({
           title: tr(
@@ -84,7 +84,7 @@ export const useAppEnvironmentActions = (target: {
 
   const removeAction = useAction<[item: AppEnvironmentItem], boolean>(
     {
-      handler: async (item) => {
+      handler: async (_ctx, item) => {
         const confirmed = await dialog.confirm({
           title: tr("app.environment.remove.title"),
           description: tr("app.environment.remove.description", {
@@ -112,8 +112,14 @@ export const useAppEnvironmentActions = (target: {
   );
 
   return {
-    edit: editAction.run,
-    remove: removeAction.run,
+    edit: async (...args: Parameters<typeof editAction.run>) => {
+      const result = await editAction.run(...args);
+      return result.ok ? result.value : undefined;
+    },
+    remove: async (...args: Parameters<typeof removeAction.run>) => {
+      const result = await removeAction.run(...args);
+      return result.ok ? result.value : undefined;
+    },
     busy: editAction.loading || removeAction.loading,
   };
 };

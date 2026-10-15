@@ -9,7 +9,7 @@ import { WorkerProvider } from "./WorkerProvider.ts";
  * Cloudflare Workers queue consumer provider.
  *
  * Replaces the polling-based `WorkerProvider` in Cloudflare Workers.
- * Instead of running a polling loop, this provider hooks into `cloudflare:queue`
+ * Instead of running a polling loop, this provider hooks into `cloudflare:queue:received`
  * events emitted by the CF Workers `queue` handler.
  *
  * @see https://developers.cloudflare.com/queues/
@@ -22,7 +22,7 @@ export class WorkerdWorkerProvider extends WorkerProvider {
    * Override the start hook — consumers register themselves via
    * `WorkerProvider.register`; here we must only make sure the polling
    * workers never start. Cloudflare delivers messages push-based through
-   * the `cloudflare:queue` event instead.
+   * the `cloudflare:queue:received` event instead.
    */
   protected override readonly start = $hook({
     on: "start",
@@ -59,7 +59,7 @@ export class WorkerdWorkerProvider extends WorkerProvider {
    * outbox sweep rather than through the broker.
    */
   protected readonly onQueueMessage = $hook({
-    on: "cloudflare:queue",
+    on: "cloudflare:queue:received",
     handler: async (event) => {
       if (
         typeof event.queue !== "string" ||

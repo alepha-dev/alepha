@@ -25,7 +25,7 @@ declare module "alepha" {
      * event instead (matched by cron expression), see
      * `WorkerdCronProvider`.
      */
-    "serverless:cron": { name: string };
+    "serverless:cron:triggered": { name: string };
   }
 }
 
@@ -45,7 +45,7 @@ declare module "alepha" {
  *
  * **Features:**
  * - Cron expression scheduling (e.g., `0 0 * * *`)
- * - Serverless cron dispatch via the `serverless:cron` hook (Cloudflare, generic)
+ * - Serverless cron dispatch via the `serverless:cron:triggered` hook (Cloudflare, generic)
  *
  * For distributed locking and retries around scheduled work, use `$job({ cron })`
  * from `alepha/api/jobs` - it layers durability on top of this scheduler.

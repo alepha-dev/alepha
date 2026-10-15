@@ -2,6 +2,7 @@ import { $inject, Alepha, AlephaError } from "alepha";
 import { $logger } from "alepha/logger";
 import { defineRelations } from "drizzle-orm";
 
+import type { DbTransaction } from "../interfaces/DbTransaction.ts";
 import type { EntityPrimitive } from "../primitives/$entity.ts";
 import type {
   EntitySchema,
@@ -74,14 +75,18 @@ export class RqbExecutor {
     entityKey: string;
     provider: DatabaseProvider;
     query: RqbQuery;
+    /**
+     * An explicit transaction, `null` for none, or the ambient one.
+     */
+    tx?: DbTransaction | null;
   }): Promise<Array<Record<string, any>>> {
-    const { relations, entityKey, provider, query } = options;
+    const { relations, entityKey, provider, query, tx } = options;
 
     const repository = this.repositories.getRepository(
       relations.schema[entityKey] as EntityPrimitive,
     );
 
-    const db = this.databaseFor(relations, provider) as any;
+    const db = this.databaseFor(relations, provider, tx) as any;
     const builder = db.query[entityKey];
 
     if (!builder) {
@@ -505,8 +510,9 @@ export class RqbExecutor {
   protected databaseFor(
     relations: RelationsPrimitive<EntitySchema, RelationMapFor<EntitySchema>>,
     provider: DatabaseProvider,
+    tx?: DbTransaction | null,
   ): unknown {
-    const owner = this.sessionOwner(provider);
+    const owner = this.sessionOwner(provider, tx);
 
     let perSession = this.built.get(relations);
     if (!perSession) {
@@ -567,8 +573,12 @@ export class RqbExecutor {
    * Whatever currently owns the live session: the open transaction, or the
    * connection itself.
    */
-  protected sessionOwner(provider: DatabaseProvider): any {
-    return this.alepha.get("alepha.orm.tx") ?? (provider.db as any);
+  protected sessionOwner(
+    provider: DatabaseProvider,
+    tx?: DbTransaction | null,
+  ): any {
+    if (tx === null) return provider.db as any;
+    return tx ?? this.alepha.get("alepha.orm.tx") ?? (provider.db as any);
   }
 
   /**

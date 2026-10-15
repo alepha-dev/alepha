@@ -122,7 +122,7 @@ export class ServerMultipartProvider {
   protected static readonly DEFAULT_MAX_HEADER_SIZE = 16 * 1024;
 
   public readonly onRequest = $hook({
-    on: "server:onRequest",
+    on: "server:request:before",
     handler: async ({ route, request }) => {
       if (request.body) {
         return;
@@ -146,10 +146,12 @@ export class ServerMultipartProvider {
           this.log.warn(
             `Multipart request size limit exceeded: ${size} > ${caps.maxTotalBytes}`,
           );
-          throw new HttpError({
-            status: 413,
-            message: `Request body size limit exceeded. Maximum allowed: ${caps.maxTotalBytes} bytes`,
-          });
+          throw new HttpError(
+            { status: 413 },
+            {
+              message: `Request body size limit exceeded. Maximum allowed: ${caps.maxTotalBytes} bytes`,
+            },
+          );
         }
       }
 
@@ -158,10 +160,12 @@ export class ServerMultipartProvider {
           return;
         }
 
-        throw new HttpError({
-          status: 415,
-          message: `Invalid content-type: ${contentType} - only "multipart/form-data" is accepted`,
-        });
+        throw new HttpError(
+          { status: 415 },
+          {
+            message: `Invalid content-type: ${contentType} - only "multipart/form-data" is accepted`,
+          },
+        );
       }
 
       // Built here, not at the top of the hook. Wrapping the node request in a
@@ -407,31 +411,31 @@ export class ServerMultipartProvider {
       // The caller's upload was too large: a 413, not a fault.
       this.log.warn(error.message);
       const message = this.limitMessage(error, field);
-      return new HttpError({ status: 413, message }, error);
+      return new HttpError({ status: 413 }, { message, cause: error });
     }
 
     return new HttpError(
-      { status: 400, message: "Malformed multipart/form-data" },
-      error,
+      { status: 400 },
+      { message: "Malformed multipart/form-data", cause: error },
     );
   }
 
   protected limitMessage(error: MultipartLimitError, field?: string): string {
-    switch (error.kind) {
+    switch (error.data.kind) {
       case "file":
         return field
-          ? `File "${field}" exceeds size limit. Maximum allowed: ${error.limit} bytes`
-          : `File exceeds size limit. Maximum allowed: ${error.limit} bytes`;
+          ? `File "${field}" exceeds size limit. Maximum allowed: ${error.data.limit} bytes`
+          : `File exceeds size limit. Maximum allowed: ${error.data.limit} bytes`;
       case "total":
         // The same sentence the `Content-Length` check above uses. It is one
         // condition — the body is bigger than the budget — and it used to
         // carry two different messages depending on which guard happened to
         // notice first, which made the same refusal look like two.
-        return `Request body size limit exceeded. Maximum allowed: ${error.limit} bytes`;
+        return `Request body size limit exceeded. Maximum allowed: ${error.data.limit} bytes`;
       case "parts":
-        return `Too many files. Maximum allowed: ${error.limit}`;
+        return `Too many files. Maximum allowed: ${error.data.limit}`;
       case "header":
-        return `Part headers exceed size limit. Maximum allowed: ${error.limit} bytes`;
+        return `Part headers exceed size limit. Maximum allowed: ${error.data.limit} bytes`;
     }
   }
 

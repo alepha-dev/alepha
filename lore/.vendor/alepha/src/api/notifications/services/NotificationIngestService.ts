@@ -46,7 +46,7 @@ export class NotificationIngestService {
    * from an app's reach.
    */
   protected readonly onDeliveryEvent = $hook({
-    on: "notification:delivery",
+    on: "notification:delivery:reported",
     handler: async (event) => {
       const reason = this.reasonFor(event);
       if (!reason) {
@@ -82,13 +82,13 @@ export class NotificationIngestService {
 
   /**
    * Recognise Cloudflare's Email Sending events on the shared
-   * `cloudflare:queue` hook and republish them in the normalized shape.
+   * `cloudflare:queue:received` hook and republish them in the normalized shape.
    *
    * Returns quietly on anything else: `$job`'s own messages arrive here too,
    * and so would any other queue this Worker consumes.
    */
   protected readonly onCloudflareQueue = $hook({
-    on: "cloudflare:queue",
+    on: "cloudflare:queue:received",
     handler: async (body) => {
       const type = typeof body.type === "string" ? body.type : undefined;
       if (!type?.startsWith("cf.email.sending.")) {
@@ -105,7 +105,7 @@ export class NotificationIngestService {
         return;
       }
 
-      await this.alepha.events.emit("notification:delivery", event);
+      await this.alepha.events.emit("notification:delivery:reported", event);
     },
   });
 

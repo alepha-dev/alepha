@@ -1,4 +1,4 @@
-import { AlephaError } from "alepha";
+import { $error } from "alepha";
 
 import type {
   JsonRpcError,
@@ -249,6 +249,9 @@ export function isNotification(request: JsonRpcRequest): boolean {
 // Errors
 // ---------------------------------------------------------------------------------------------------------------------
 
-export class JsonRpcParseError extends AlephaError {
-  name = "JsonRpcParseError";
-}
+export const JsonRpcParseError = $error({
+  name: "JSON_RPC_PARSE",
+  message: "Invalid JSON-RPC message",
+});
+
+export type JsonRpcParseError = InstanceType<typeof JsonRpcParseError>;

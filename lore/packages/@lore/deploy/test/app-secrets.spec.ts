@@ -361,12 +361,15 @@ describe("a deployed copy's environment", () => {
       const seal = alepha.inject(CredentialSealService);
       // Opens under this quest's label...
       expect(
-        seal.open(row.valueSealed, CredentialSealService.APP_SECRETS_PURPOSE),
+        await seal.open(
+          row.valueSealed,
+          CredentialSealService.APP_SECRETS_PURPOSE,
+        ),
       ).toBe("sk_live_abcdefghijkl");
       // ...and not under the estate's, which is the whole point of having two.
-      expect(() =>
+      await expect(
         seal.open(row.valueSealed, CredentialSealService.ESTATE_PURPOSE),
-      ).toThrow();
+      ).rejects.toThrow();
     });
 
     it("replaces rather than duplicating when a name is set twice", async ({
@@ -379,7 +382,7 @@ describe("a deployed copy's environment", () => {
       const rows = await alepha.inject(TestRows).secrets.findMany({});
       expect(rows).toHaveLength(1);
       expect(
-        alepha
+        await alepha
           .inject(CredentialSealService)
           .open(rows[0].valueSealed, CredentialSealService.APP_SECRETS_PURPOSE),
       ).toBe("second-value-here");
@@ -601,7 +604,7 @@ describe("a deployed copy's environment", () => {
         type: "cloudflare",
         deployAllowed: true,
         accountId: "acct-1",
-        credential: alepha
+        credential: await alepha
           .inject(CredentialSealService)
           .seal("cf-token", CredentialSealService.ESTATE_PURPOSE),
         credentialKeyVersion: CredentialSealService.KEY_VERSION,
@@ -846,7 +849,7 @@ describe("a deployed copy's environment", () => {
         type: "cloudflare",
         deployAllowed: true,
         accountId: "acct-1",
-        credential: alepha
+        credential: await alepha
           .inject(CredentialSealService)
           .seal("cf-token", CredentialSealService.ESTATE_PURPOSE),
         credentialKeyVersion: CredentialSealService.KEY_VERSION,

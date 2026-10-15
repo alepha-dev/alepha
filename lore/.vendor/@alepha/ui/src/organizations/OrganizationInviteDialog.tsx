@@ -46,7 +46,7 @@ export const OrganizationInviteDialog = (
     props.onBusyChange?.(true);
     try {
       const invited = await invite.invite(props.organizationId, email, rank);
-      if (!invited) return;
+      if (!invited.ok) return;
       setEmail("");
       form.input.rank.set("member");
       props.onOpenChange(false);

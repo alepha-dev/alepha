@@ -139,7 +139,7 @@ describe("tearing a copy's resources down", () => {
       // ⚠️ Sealed for real. `destroy` OPENS this, so a literal string fails as
       // "Invalid ciphertext format" - which reads like a teardown bug and is a
       // fixture bug.
-      credential: alepha
+      credential: await alepha
         .inject(CredentialSealService)
         .seal("cf-token", CredentialSealService.ESTATE_PURPOSE),
     } as never);

@@ -15,7 +15,7 @@ export * from "./providers/DateTimeProvider.ts";
  * - Recurring interval definitions
  * - Duration helpers (numbers, `[n, unit]` tuples and `Duration` objects)
  * - Timezone support
- * - Dayjs integration
+ * - Portable date-time and duration values
  *
  * @module alepha.datetime
  */

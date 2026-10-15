@@ -2,12 +2,12 @@ import {
   $inject,
   createPrimitive,
   type FileLike,
-  KIND,
   Primitive,
   type Service,
 } from "alepha";
 import { FileStorageProvider, MemoryFileStorageProvider } from "alepha/bucket";
 import type { DateTime, DurationLike } from "alepha/datetime";
+import { KIND } from "alepha/internal";
 import type { Page } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 
@@ -129,7 +129,7 @@ export interface StoragePrimitiveOptions {
   /**
    * This interface is **open for augmentation**: a package that adds an
    * upload-time concern declares its own option here rather than getting a
-   * field reserved for it in core. Pair it with a `files:beforeUpload`
+   * field reserved for it in core. Pair it with a `files:upload:before`
    * subscriber that reads `storage.options` and acts on it, and core carries
    * neither the option nor the dependency behind it.
    *

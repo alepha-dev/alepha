@@ -91,15 +91,15 @@ export class JobService {
     const registry = this.jobProvider.getRegisteredJobs();
 
     const aggRows = await this.executions.query(
-      (e) => sql`
+      sql`
         SELECT
-          ${e.jobName} AS job_name,
-          ${e.status} AS status,
+          ${this.executions.table.jobName} AS job_name,
+          ${this.executions.table.status} AS status,
           COUNT(*) AS count,
-          MAX(${e.completedAt}) AS last_run
-        FROM ${e}
-        WHERE ${e.status} IN ('ok', 'error')
-        GROUP BY ${e.jobName}, ${e.status}
+          MAX(${this.executions.table.completedAt}) AS last_run
+        FROM ${this.executions.table}
+        WHERE ${this.executions.table.status} IN ('ok', 'error')
+        GROUP BY ${this.executions.table.jobName}, ${this.executions.table.status}
       `,
       z.object({
         job_name: z.string(),

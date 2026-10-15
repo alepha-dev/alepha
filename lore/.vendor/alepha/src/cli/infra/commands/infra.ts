@@ -2,7 +2,8 @@ import { $inject, AlephaError, z } from "alepha";
 import { ActorHostCollection } from "alepha/cli";
 import { type AppEntry, AppEntryProvider } from "alepha/cli";
 import { ViteBuildProvider } from "alepha/cli";
-import { type BuildManifest, buildManifestSchema } from "alepha/cli";
+import { type BuildManifest } from "alepha/cli";
+import { BuildManifestReader } from "alepha/cli";
 import {
   BayAdapter,
   CloudflareAdapter,
@@ -22,6 +23,7 @@ import { FileSystemProvider } from "alepha/system";
 import { SecretsCommand } from "./SecretsCommand.ts";
 
 export class InfraCommand {
+  protected readonly manifestReader = $inject(BuildManifestReader);
   protected readonly hostCollection = $inject(ActorHostCollection);
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly orchestrator = $inject(InfraOrchestrator);
@@ -213,7 +215,7 @@ export class InfraCommand {
       prebuilt: z
         .boolean()
         .describe(
-          "Pre-built mode. Skips the Vite bundle steps; only regenerates the target deploy config (wrangler.jsonc) so it reflects current bindings and per-deploy overrides. Use when `dist/` is already produced upstream (e.g. inside Alepha Rocket).",
+          "Pre-built mode. Skips the Vite bundle steps; only regenerates the target deploy config (wrangler.jsonc) so it reflects current bindings and per-deploy overrides. Use when `dist/` is already produced upstream (e.g. inside Lore Deploy).",
         )
         .optional(),
     }),
@@ -269,7 +271,7 @@ export class InfraCommand {
         .boolean()
         .meta({ aliases: ["y"] })
         .describe(
-          "Skip the interactive confirmation. Required for non-interactive callers (CI, Alepha Rocket). The caller is responsible for not invoking this accidentally  -  there's no second chance.",
+          "Skip the interactive confirmation. Required for non-interactive callers (CI, Lore Deploy). The caller is responsible for not invoking this accidentally  -  there's no second chance.",
         )
         .optional(),
     }),
@@ -860,7 +862,7 @@ export class InfraCommand {
   ): Promise<{ entry: AppEntry; resources: DetectedResources }> {
     // Prebuilt + manifest fast-path: read `dist/manifest.json` produced
     // by the original `alepha build` instead of re-booting the workspace
-    // via Vite. Lets external orchestrators (Alepha Rocket) avoid the
+    // via Vite. Lets external orchestrators (Lore Deploy) avoid the
     // workspace's runtime `npm install`  -  the app source is never
     // imported here, so missing deps (react-dom, etc.) don't matter.
     if (options.prebuilt) {
@@ -888,35 +890,12 @@ export class InfraCommand {
   }
 
   /**
-   * Read `dist/manifest.json` if present. Returns `null` when the file
-   * doesn't exist, isn't parseable, or doesn't satisfy `buildManifestSchema`  -
-   * caller falls back to the Vite-introspection path.
-   *
-   * ⚠️ The schema check is the point, and the `try/catch` never was. A
-   * truncated or pre-`resources` manifest parses as JSON perfectly well, so
-   * the old `JSON.parse` returned an object, `if (manifest)` passed, and
-   * `manifest.resources`  -  `undefined`  -  flowed downstream typed as
-   * `DetectedResources`. Every `resources.hasX` then read `undefined`, and a
-   * deploy provisioned no database, no bucket and no queue while reporting
-   * success. `safeParse` turns that into the same `null` an absent file
-   * produces, which the caller already knows how to handle by introspecting
-   * the app for real.
-   *
-   * `safeParse`, not `parse`: a manifest this deployer cannot read is a reason
-   * to fall back, never a reason to fail the deploy. The schema is `.loose()`,
-   * so a NEWER manifest carrying fields this build has never heard of is read,
-   * not refused.
+   * Probe for an artifact, refusing incompatible existing manifests.
    */
   protected async readManifest(root: string): Promise<BuildManifest | null> {
-    try {
-      const raw = await this.fs.readTextFile(
-        this.fs.join(root, "dist", "manifest.json"),
-      );
-      const parsed = buildManifestSchema.safeParse(JSON.parse(raw));
-      return parsed.success ? parsed.data : null;
-    } catch {
-      return null;
-    }
+    return this.manifestReader.readOptional(
+      this.fs.join(root, "dist", "manifest.json"),
+    );
   }
 
   protected detectResources(alepha: any): DetectedResources {
@@ -928,7 +907,7 @@ export class InfraCommand {
     let hasCron = false;
 
     try {
-      const repo = alepha.inject("RepositoryProvider");
+      const repo = alepha.inject("alepha.orm.RepositoryProvider");
       hasDatabase = repo.getRepositories().length > 0;
     } catch {}
 
@@ -962,7 +941,9 @@ export class InfraCommand {
       // create.
       let hasDatabaseCache = false;
       try {
-        hasDatabaseCache = !!alepha.inject("DatabaseCacheProvider");
+        hasDatabaseCache = !!alepha.inject(
+          "alepha.cache.DatabaseCacheProvider",
+        );
       } catch {}
 
       hasKV =
@@ -981,11 +962,11 @@ export class InfraCommand {
       // `AlephaApiJobsQueue`) means. Same rule as `BuildManifestTask`, which is
       // what actually drives provisioning  -  the two must agree or `plan` lies
       // about what `up` will create.
-      hasQueue = !!alepha.inject("JobQueueProvider");
+      hasQueue = !!alepha.inject("alepha.jobs.JobQueueProvider");
     } catch {}
 
     try {
-      const cron = alepha.inject("CronProvider");
+      const cron = alepha.inject("alepha.scheduler.CronProvider");
       hasCron = cron.getCronJobs().length > 0;
     } catch {}
 

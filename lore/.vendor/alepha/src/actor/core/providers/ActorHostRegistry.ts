@@ -5,6 +5,7 @@ import type { ActorHostDeclaration } from "../interfaces/ActorHostDeclaration.ts
  * Runtime-neutral native-host declarations, visible without starting the app.
  */
 export class ActorHostRegistry {
+  public static readonly id: string = "alepha.actor.ActorHostRegistry";
   public static readonly actor: ActorHostDeclaration = Object.freeze({
     exportName: "AlephaActorDurableObject",
     module: "alepha/actor",

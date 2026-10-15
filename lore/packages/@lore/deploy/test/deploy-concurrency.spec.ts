@@ -236,7 +236,7 @@ describe("a deploy that finds no free slot", () => {
       deployAllowed: true,
       credentialStatus: "valid",
       accountId: "acct",
-      credential: alepha
+      credential: await alepha
         .inject(CredentialSealService)
         .seal("token", CredentialSealService.ESTATE_PURPOSE),
     } as never);

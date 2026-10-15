@@ -71,6 +71,7 @@ describe("deploying an artifact from inside the Worker", () => {
         // ⚠️ It names no environment at all: Lore reads the environment out
         // of a ROW, never out of the artifact.
         "manifest.json": JSON.stringify({
+          manifestVersion: 2,
           project: "my-app",
           runtimes: [
             { runtime: "node", entry: "index.node.js" },

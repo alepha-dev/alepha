@@ -77,6 +77,7 @@ declare module "alepha" {
  * @see {@link CacheProvider}
  */
 export class DatabaseCacheProvider extends CacheProvider {
+  public static readonly id: string = "alepha.cache.DatabaseCacheProvider";
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);

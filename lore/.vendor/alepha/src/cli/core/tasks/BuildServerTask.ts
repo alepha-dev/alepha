@@ -825,7 +825,7 @@ export class BuildServerTask extends BuildTask {
       try {
         const requirePath = require.resolve(dep);
         const pkgPath = `${requirePath.split(`node_modules/${dep}`)[0]}node_modules/${dep}/package.json`;
-        const pkg = JSON.parse((await this.fs.readFile(pkgPath)).toString());
+        const pkg = JSON.parse(await this.fs.readTextFile(pkgPath));
         deps[dep] = `^${pkg.version}`;
       } catch {
         this.log.warn(`Cannot find '${dep}' in node_modules`);
@@ -850,7 +850,7 @@ export class BuildServerTask extends BuildTask {
 
   protected async loadJsonFile(path: string): Promise<any> {
     try {
-      const content = (await this.fs.readFile(path)).toString();
+      const content = await this.fs.readTextFile(path);
       return JSON.parse(content);
     } catch {
       return undefined;

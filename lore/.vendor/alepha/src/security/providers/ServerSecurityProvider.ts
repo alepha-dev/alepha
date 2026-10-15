@@ -16,7 +16,7 @@ export class ServerSecurityProvider {
   protected readonly crypto = $inject(CryptoProvider);
 
   protected readonly onServerRequest = $hook({
-    on: "server:onRequest",
+    on: "server:request:before",
     /**
      * Last, and that is load-bearing.
      *
@@ -34,7 +34,7 @@ export class ServerSecurityProvider {
      * working and no unit test covered the cookie path. There is one now.
      *
      * The cost of running last is real and worth naming: `request.user` is not
-     * available to `server:onRequest` consumers that run before this, so a
+     * available to `server:request:before` consumers that run before this, so a
      * `MultipartCapProvider` resolver cannot key a size budget on the caller.
      * Fixing that means ordering against the cookie hook explicitly rather than
      * hoisting this one blindly — see the `before`/`after` constraints the hook
@@ -69,11 +69,11 @@ export class ServerSecurityProvider {
   });
 
   // ---------------------------------------------------------------------------------------------------------------
-  // action:onRequest — resolve user from options, request fork for ALS isolation
+  // action:request:before , resolve user from options, request fork for ALS isolation
   // ---------------------------------------------------------------------------------------------------------------
 
   protected readonly onActionRequest = $hook({
-    on: "action:onRequest",
+    on: "action:request:before",
     handler: async (data) => {
       if (!data.options.user) return;
 
@@ -95,7 +95,7 @@ export class ServerSecurityProvider {
   });
 
   // ---------------------------------------------------------------------------------------------------------------
-  // client:onRequest — automatic test token creation for .fetch()
+  // client:request:before , automatic test token creation for .fetch()
   // ---------------------------------------------------------------------------------------------------------------
 
   protected createTestUser(): UserAccountToken {
@@ -107,7 +107,7 @@ export class ServerSecurityProvider {
   }
 
   protected readonly onClientRequest = $hook({
-    on: "client:onRequest",
+    on: "client:request:before",
     handler: async ({ request, options }) => {
       if (!this.alepha.isTest()) {
         return;

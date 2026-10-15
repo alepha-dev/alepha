@@ -1,9 +1,11 @@
-import { $inject, AlephaError } from "alepha";
+import { $inject, $store, AlephaError } from "alepha";
 import type { RunnerMethod } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
 
+import { buildOptions } from "../atoms/buildOptions.ts";
 import { ArchiveCompressor } from "./ArchiveCompressor.ts";
+import { BuildManifestReader } from "./BuildManifestReader.ts";
 
 export interface WorkspacePackOptions {
   /**
@@ -71,7 +73,7 @@ export interface WorkspacePackResult {
 /**
  * Pack a built workspace into a deployable `tar.zst`.
  *
- * The tar contains everything a remote runner (Alepha Rocket, Alepha Bay, or
+ * The tar contains everything a remote runner (Lore Deploy, Alepha Bay, or
  * any `alepha deploy --prebuilt` consumer) needs to deploy the app:
  *
  *   public/               client bundle and prerendered HTML
@@ -127,6 +129,8 @@ export interface WorkspacePackResult {
  * that wants to pack can inject packing rather than the whole CLI.
  */
 export class WorkspacePacker {
+  protected readonly build = $store(buildOptions);
+  protected readonly manifestReader = $inject(BuildManifestReader);
   protected readonly log = $logger();
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly shell = $inject(ShellProvider);
@@ -260,7 +264,9 @@ export class WorkspacePacker {
     for (const include of includes) {
       if (include === "dist") {
         // Unwrapped: its contents ARE the archive root.
-        parts.push(`-C '${this.fs.join(root, include)}' .`);
+        parts.push(
+          `-C '${this.fs.join(root, this.build.output?.dist ?? "dist")}' .`,
+        );
       } else {
         // Named, because a deployer looks for `migrations/<dialect>`.
         parts.push(`-C '${root}' '${include}'`);
@@ -345,7 +351,7 @@ export class WorkspacePacker {
   ): Promise<WorkspacePackResult["maps"]> {
     // `dist` only. Maps are a build output, `migrations/` is SQL, and
     // searching a tree that cannot contain one is a shell call for nothing.
-    const distDir = this.fs.join(root, "dist");
+    const distDir = this.fs.join(root, this.build.output?.dist ?? "dist");
     const listed = await this.shell.run(
       `sh -c "find . -name '*.map' -type f -print"`,
       { root: distDir, capture: true },
@@ -426,7 +432,16 @@ export class WorkspacePacker {
   protected async resolveIncludes(root: string): Promise<string[]> {
     const includes: string[] = [];
     for (const candidate of WorkspacePacker.CANDIDATES) {
-      if (await this.fs.exists(this.fs.join(root, candidate))) {
+      if (
+        await this.fs.exists(
+          this.fs.join(
+            root,
+            candidate === "dist"
+              ? (this.build.output?.dist ?? "dist")
+              : candidate,
+          ),
+        )
+      ) {
         includes.push(candidate);
       }
     }
@@ -436,7 +451,11 @@ export class WorkspacePacker {
         "dist/ missing  -  run `alepha build` before `alepha pack`.",
       );
     }
-    const manifestPath = this.fs.join(root, "dist", "manifest.json");
+    const manifestPath = this.fs.join(
+      root,
+      this.build.output?.dist ?? "dist",
+      "manifest.json",
+    );
     if (!(await this.fs.exists(manifestPath))) {
       throw new AlephaError(
         `dist/manifest.json missing  -  required for prebuilt deploys. Rebuild with the current alepha version (\`alepha build\`).`,
@@ -452,9 +471,7 @@ export class WorkspacePacker {
     // deployable workspace is `apps/<name>`, and a self-hosted runtime
     // resolves `migrations/<dialect>` relative to its own working directory  -
     // so only what `pack` includes ever exists.
-    const manifest = await this.fs.readJsonFile<{
-      resources?: { hasDatabase?: boolean };
-    }>(manifestPath);
+    const manifest = await this.manifestReader.read(manifestPath);
     if (manifest.resources?.hasDatabase && !includes.includes("migrations")) {
       throw new AlephaError(
         "This app declares a database but there is no `migrations/` next to " +

@@ -21,14 +21,18 @@ describe("CredentialSealService", () => {
     const service = await sealer();
     const token = "cfut_abcdefghijklmnopqrstuvwxyz0123456789ABCD";
 
-    const sealed = service.seal(token, CredentialSealService.ESTATE_PURPOSE);
+    const sealed = await service.seal(
+      token,
+      CredentialSealService.ESTATE_PURPOSE,
+    );
 
     // The point of the column: what lands in the database is not the token.
     expect(sealed).not.toContain(token);
-    expect(sealed.split(":")).toHaveLength(3);
-    expect(service.open(sealed, CredentialSealService.ESTATE_PURPOSE)).toBe(
-      token,
-    );
+    // `v1:iv:tag:ciphertext`: the format is versioned since alepha 0.33.
+    expect(sealed.split(":")).toHaveLength(4);
+    expect(
+      await service.open(sealed, CredentialSealService.ESTATE_PURPOSE),
+    ).toBe(token);
   });
 
   it("should not open a credential sealed under another purpose", async ({
@@ -36,32 +40,32 @@ describe("CredentialSealService", () => {
   }) => {
     const service = await sealer();
 
-    const sealed = service.seal("cfut_secret", OTHER_PURPOSE);
+    const sealed = await service.seal("cfut_secret", OTHER_PURPOSE);
 
     // What keeps an estate token and #1813's app secrets on separate keys:
     // a ciphertext moved between the two columns fails rather than
     // decrypting into the wrong context.
-    expect(() =>
+    await expect(
       service.open(sealed, CredentialSealService.ESTATE_PURPOSE),
-    ).toThrow();
+    ).rejects.toThrow();
   });
 
   it("should refuse a tampered ciphertext", async ({ expect }) => {
     const service = await sealer();
-    const sealed = service.seal(
+    const sealed = await service.seal(
       "cfut_secret",
       CredentialSealService.ESTATE_PURPOSE,
     );
 
-    const [iv, tag, body] = sealed.split(":");
+    const [version, iv, tag, body] = sealed.split(":");
     const flipped = `${body!.slice(0, -1)}${body!.endsWith("a") ? "b" : "a"}`;
 
-    expect(() =>
+    await expect(
       service.open(
-        `${iv}:${tag}:${flipped}`,
+        `${version}:${iv}:${tag}:${flipped}`,
         CredentialSealService.ESTATE_PURPOSE,
       ),
-    ).toThrow();
+    ).rejects.toThrow();
   });
 
   it("should refuse to seal under the built-in default secret", async ({
@@ -76,12 +80,12 @@ describe("CredentialSealService", () => {
     const service = alepha.inject(CredentialSealService);
     await alepha.start();
 
-    expect(() =>
+    await expect(
       service.seal("cfut_secret", CredentialSealService.ESTATE_PURPOSE),
-    ).toThrow(/APP_SECRET/);
-    expect(() =>
+    ).rejects.toThrow(/APP_SECRET/);
+    await expect(
       service.open("iv:tag:body", CredentialSealService.ESTATE_PURPOSE),
-    ).toThrow(/APP_SECRET/);
+    ).rejects.toThrow(/APP_SECRET/);
   });
 
   it("should refuse to seal nothing", async ({ expect }) => {
@@ -89,8 +93,8 @@ describe("CredentialSealService", () => {
 
     // An empty credential would round-trip perfectly and mean nothing; the
     // caller has a bug, and a sealed empty string hides it until a deploy.
-    expect(() =>
+    await expect(
       service.seal("", CredentialSealService.ESTATE_PURPOSE),
-    ).toThrow();
+    ).rejects.toThrow();
   });
 });

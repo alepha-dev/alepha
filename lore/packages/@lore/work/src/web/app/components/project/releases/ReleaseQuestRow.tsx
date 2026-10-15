@@ -34,7 +34,10 @@ const ReleaseQuestRow = (props: ReleaseQuestRowProps) => {
   return (
     <Link
       href={router.path("projectQuest", {
-        params: { shortId: String(quest.shortId) },
+        params: {
+          projectSlug: router.state.params.projectSlug,
+          shortId: String(quest.shortId),
+        },
       })}
       className="hover:bg-hover flex items-center gap-3 rounded-md px-2 py-1.5 text-[13px] transition-colors"
     >

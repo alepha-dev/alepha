@@ -41,7 +41,7 @@ export class ServerCookiesProvider {
   protected readonly SIGNATURE_LENGTH = 32; // For SHA256
 
   public readonly onRequest = $hook({
-    on: "server:onRequest",
+    on: "server:request:before",
     handler: ({ request }) => {
       request.cookies = {
         req: this.cookieParser.parseRequestCookies(
@@ -53,7 +53,7 @@ export class ServerCookiesProvider {
   });
 
   public readonly onAction = $hook({
-    on: "action:onRequest",
+    on: "action:request:before",
     handler: ({ request }) => {
       request.cookies = {
         req: this.cookieParser.parseRequestCookies(
@@ -65,7 +65,7 @@ export class ServerCookiesProvider {
   });
 
   public readonly onSend = $hook({
-    on: "server:onSend",
+    on: "server:response:before",
     handler: ({ request }) => {
       if (request.cookies && Object.keys(request.cookies.res).length > 0) {
         const setCookieHeaders = this.cookieParser.serializeResponseCookies(
@@ -124,7 +124,7 @@ export class ServerCookiesProvider {
     const cookies = this.getCookiesFromContext(contextCookies);
     const prefixed = options.prefix !== false;
     // A cookie is the visitor's: read during a page render, the page is
-    // personal (#E78). The seeding done at `server:onRequest` runs before any
+    // personal (#E78). The seeding done at `server:request:before` runs before any
     // recorder exists and is not counted.
     this.alepha.store.recorder()?.personal({ kind: "cookie", key: name });
     let rawValue = cookies.req[this.prefixName(name, prefixed)];

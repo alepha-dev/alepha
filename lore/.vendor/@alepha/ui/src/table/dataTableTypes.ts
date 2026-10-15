@@ -103,7 +103,7 @@ export interface RowActionContext {
 export interface RowAction<T> {
   label: string;
   icon?: IconType;
-  onClick: (item: T, ctx: RowActionContext) => void | Promise<void>;
+  onClick: (item: T, ctx: RowActionContext) => unknown;
   destructive?: boolean;
   disabled?: (item: T) => boolean;
   /**
@@ -159,7 +159,7 @@ export interface BulkActionContext {
 export interface BulkAction<T> {
   label: string;
   icon?: IconType;
-  onClick: (selected: T[], ctx: BulkActionContext) => void | Promise<void>;
+  onClick: (selected: T[], ctx: BulkActionContext) => unknown;
   destructive?: boolean;
   /**
    * Whether the action is offered for this selection. Absent means always.
@@ -626,7 +626,7 @@ export interface DataTableFilters<
    * component's `key` to re-seed on a later arrival.
    *
    * **Transient, and by construction.** Persistence is written from
-   * `form:change` / `form:submit:success` only, never on mount — so a seed
+   * `form:changed` / `form:submit:success` only, never on mount , so a seed
    * shows in the toolbar and narrows the fetch without overwriting the
    * filter the reader chose for themselves last time. Touch any control and
    * the resulting values (seed included) become the stored choice, which is

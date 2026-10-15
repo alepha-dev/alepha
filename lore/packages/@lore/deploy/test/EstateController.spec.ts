@@ -172,7 +172,7 @@ describe("EstateController, the credential", () => {
     const row = (await ctx.repos.estates.findOne({
       where: { id: { eq: minted.id } },
     })) as Estate;
-    expect(row.secretHash).toBe(ctx.crypto.hash(minted.secret!));
+    expect(row.secretHash).toBe(await ctx.crypto.hash(minted.secret!));
 
     const listed = await ctx.controller.listMyEstates({}, { user });
     expect(listed.items).toHaveLength(1);
@@ -243,7 +243,10 @@ describe("EstateController, the credential", () => {
     expect(row.credential).toBeTruthy();
     expect(row.credential).not.toContain(CF_TOKEN);
     expect(
-      ctx.seal.open(row.credential!, CredentialSealService.ESTATE_PURPOSE),
+      await ctx.seal.open(
+        row.credential!,
+        CredentialSealService.ESTATE_PURPOSE,
+      ),
     ).toBe(CF_TOKEN);
     expect(row.credentialKeyVersion).toBe(CredentialSealService.KEY_VERSION);
     // The check ran before the insert, so an estate that exists has passed.
@@ -321,7 +324,7 @@ describe("EstateController, the credential", () => {
       where: { id: { eq: created.id } },
     })) as Estate;
     expect(
-      ctx.seal.open(
+      await ctx.seal.open(
         untouched.credential!,
         CredentialSealService.ESTATE_PURPOSE,
       ),
@@ -342,7 +345,10 @@ describe("EstateController, the credential", () => {
       where: { id: { eq: created.id } },
     })) as Estate;
     expect(
-      ctx.seal.open(row.credential!, CredentialSealService.ESTATE_PURPOSE),
+      await ctx.seal.open(
+        row.credential!,
+        CredentialSealService.ESTATE_PURPOSE,
+      ),
     ).toBe(replacement);
   });
 

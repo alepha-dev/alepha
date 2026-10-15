@@ -67,7 +67,7 @@ const setup = async () => {
   const asUser = <R>(userId: string, fn: () => R): R =>
     alepha.context.run(() => {
       alepha.store.set(currentUserAtom, { id: userId, roles: ["user"] } as any);
-      // Seeded the way `server:onRequest` seeds it. MCP is served over HTTP,
+      // Seeded the way `server:request:before` seeds it. MCP is served over HTTP,
       // so a real tool call always has this Map; a bare `context.run` does
       // not, and without it every gate read happens twice over and the number
       // below would be measuring the harness rather than the call.

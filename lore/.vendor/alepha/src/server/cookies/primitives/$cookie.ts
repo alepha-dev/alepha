@@ -2,11 +2,11 @@ import {
   $inject,
   createPrimitive,
   type Infer,
-  KIND,
   Primitive,
   type ZType,
 } from "alepha";
 import type { DurationLike } from "alepha/datetime";
+import { KIND } from "alepha/internal";
 
 import { ServerCookiesProvider } from "../providers/ServerCookiesProvider.ts";
 
@@ -133,12 +133,12 @@ export class CookiePrimitive<T extends ZType>
       // A cookie is the visitor's: the atom it feeds is personal, unless the
       // atom itself says `personal: false` (#E78).
       this.alepha.store.markPersonal(this.options.key);
-      this.alepha.events.on("state:mutate", ({ key, value }) => {
+      this.alepha.events.on("state:mutated", ({ key, value }) => {
         if (key === this.options.key) {
           this.set(value);
         }
       });
-      this.alepha.events.on("server:onRequest", ({ request }) => {
+      this.alepha.events.on("server:request:before", ({ request }) => {
         try {
           const value = this.get(request);
           if (value !== undefined) {

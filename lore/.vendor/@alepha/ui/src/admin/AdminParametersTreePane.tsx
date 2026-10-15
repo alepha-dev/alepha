@@ -17,8 +17,8 @@ export interface AdminParametersTreePaneProps {
   nodes: ParamNode[] | undefined;
   selected: string | undefined;
   onSelect: (name: string) => void;
-  onExportAll: () => void | Promise<void>;
-  onImport: (file: File) => void | Promise<void>;
+  onExportAll: () => unknown;
+  onImport: (file: File) => unknown;
   exporting?: boolean;
   importing?: boolean;
   /**

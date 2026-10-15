@@ -241,6 +241,11 @@
       "import": "./src/inspector/index.ts",
       "default": "./src/inspector/index.ts"
     },
+    "./internal": {
+      "types": "./src/internal/index.ts",
+      "import": "./src/internal/index.ts",
+      "default": "./src/internal/index.ts"
+    },
     "./lock": {
       "types": "./src/lock/core/index.ts",
       "workerd": "./src/lock/core/index.workerd.ts",
@@ -264,6 +269,11 @@
       "bun": "./src/orm/core/index.bun.ts",
       "import": "./src/orm/core/index.ts",
       "default": "./src/orm/core/index.ts"
+    },
+    "./orm/drizzle": {
+      "types": "./src/orm/drizzle/index.ts",
+      "import": "./src/orm/drizzle/index.ts",
+      "default": "./src/orm/drizzle/index.ts"
     },
     "./orm/postgres": {
       "types": "./src/orm/postgres/index.ts",
@@ -691,6 +701,11 @@
         "import": "./dist/inspector/index.js",
         "default": "./dist/inspector/index.js"
       },
+      "./internal": {
+        "types": "./dist/internal/index.d.ts",
+        "import": "./dist/internal/index.js",
+        "default": "./dist/internal/index.js"
+      },
       "./lock": {
         "types": "./dist/lock/core/index.d.ts",
         "workerd": "./dist/lock/core/index.workerd.js",
@@ -714,6 +729,11 @@
         "bun": "./dist/orm/core/index.bun.js",
         "import": "./dist/orm/core/index.js",
         "default": "./dist/orm/core/index.js"
+      },
+      "./orm/drizzle": {
+        "types": "./dist/orm/drizzle/index.d.ts",
+        "import": "./dist/orm/drizzle/index.js",
+        "default": "./dist/orm/drizzle/index.js"
       },
       "./orm/postgres": {
         "types": "./dist/orm/postgres/index.d.ts",

@@ -260,10 +260,6 @@ export const z = {
   void: zod.void,
   undefined: zod.undefined,
   literal: zod.literal,
-  /**
-   * Alias for `zod.literal` (legacy `t.const`).
-   */
-  const: zod.literal,
   enum: zod.enum,
   /**
    * Integer — native `z.int()` (format `safeint`, drives PG INT column).
@@ -614,9 +610,9 @@ export const z = {
       return Array.isArray(items) ? (items as ZType[]) : [];
     },
     /**
-     * The string values of a `ZodEnum` (typebox-compat for `value.enum`).
+     * The string options accepted by a `ZodEnum`.
      */
-    enumValues: (s: any): string[] => {
+    enumOptions: (s: any): string[] => {
       const opts = s?.options;
       if (Array.isArray(opts)) return opts as string[];
       const entries = s?._zod?.def?.entries;
@@ -642,10 +638,10 @@ export const z = {
     /**
      * Read a schema's default value (peeling optional/nullable wrappers), or
      * `undefined` if there is none. In zod, defaults are a `ZodDefault` wrapper
-     * (not a `default` data property as in typebox), so `"default" in schema`
-     * is NOT a valid test — every schema has a `.default()` method.
+     * so `"default" in schema`
+     * is not a valid test: every schema has a `.default()` method.
      */
-    getDefault: (s: any): unknown => {
+    defaultValue: (s: any): unknown => {
       // An explicit own `default` property (attached by the ORM's `default()`
       // helper via Object.assign) takes precedence over a zod ZodDefault
       // wrapper.
@@ -679,7 +675,7 @@ export const z = {
       return undefined;
     },
     /**
-     * typebox-compat: the object's required field names, meaning the keys a
+     * The object's required input field names, meaning the keys a
      * caller has to supply for the object to parse.
      *
      * A key is required unless its schema is optional or carries a default,
@@ -694,7 +690,7 @@ export const z = {
      * is still `NOT NULL` - the default is what fills it - so the ORM model
      * builders ask `isOptional` directly rather than reading this array.
      */
-    requiredKeys: (s: any): string[] => {
+    requiredInputKeys: (s: any): string[] => {
       const shape = s?.shape;
       if (!shape) return [];
       return Object.keys(shape).filter((k) => {

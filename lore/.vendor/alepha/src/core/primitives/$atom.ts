@@ -1,6 +1,6 @@
+import { KIND } from "alepha/internal";
 import type { z as zod } from "zod";
 
-import { KIND } from "../constants/KIND.ts";
 import { AlephaError } from "../errors/AlephaError.ts";
 import type { Infer, ZObject, ZType } from "../providers/ZodProvider.ts";
 

@@ -90,8 +90,8 @@ export const AlephaLogger = $module({
       // in test mode, if no LOG_LEVEL is set, use MemoryDestinationProvider to capture logs for inspection.
       // logs will be printed to console only if the test fails.
       if (alepha.isTest() && !logLevel) {
-        const printOnError = (ev: any) => {
-          if (ev.task?.result?.state === "fail") {
+        const printOnError = (ev?: any) => {
+          if (ev?.task?.result?.state === "fail") {
             const output = alepha.inject(MemoryDestinationProvider);
             for (const log of output.logs) {
               console.log(log.formatted);
@@ -272,7 +272,7 @@ declare module "alepha" {
   }
 
   export interface Hooks {
-    log: {
+    "log:entry": {
       message?: string;
       entry: LogEntry;
     };

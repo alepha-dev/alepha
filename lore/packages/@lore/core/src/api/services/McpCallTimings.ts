@@ -3,7 +3,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 
 /**
- * What one request has spent, counted from `server:onRequest`.
+ * What one request has spent, counted from `server:request:before`.
  */
 export interface McpCallTally {
   startedAt: number;
@@ -20,13 +20,13 @@ export interface McpCallTally {
  * A tool call on the Worker spends 5 to 15 times its CPU waiting on D1
  * (#F1362), and the cause is how many queries it makes one after another.
  * Nothing in production said which tool made how many: Server-Timing is off,
- * `mcp:tool:end` carries no duration, and `wrangler tail` gives one
+ * `mcp:tool:call:end` carries no duration, and `wrangler tail` gives one
  * `wallTime` per HTTP request with nothing about the queries inside it. Every
  * quest of #E76 is judged on this line, before and after.
  *
  * ## How it counts
  *
- * A tally is seeded on `server:onRequest`, on the request layer of the ALS
+ * A tally is seeded on `server:request:before`, on the request layer of the ALS
  * context, for the reason `ResourceGateMemoProvider` gives: `$action.run()`
  * forks a layer per action, and a value created lazily inside one would be
  * invisible to the next. Every nested action then finds the same object and
@@ -47,7 +47,7 @@ export interface McpCallTally {
  *
  * ## Best effort
  *
- * Like `McpCallRates`, the `mcp:tool:end` handler is awaited in front of the
+ * Like `McpCallRates`, the `mcp:tool:call:end` handler is awaited in front of the
  * agent's answer, so it does no I/O and cannot throw.
  */
 export class McpCallTimings {
@@ -61,7 +61,7 @@ export class McpCallTimings {
   static readonly KEY = "lore.mcp.callTally";
 
   protected readonly onServerRequest = $hook({
-    on: "server:onRequest",
+    on: "server:request:before",
     priority: "first",
     handler: () => {
       this.alepha.context.set(McpCallTimings.KEY, {
@@ -96,7 +96,7 @@ export class McpCallTimings {
   });
 
   protected readonly onToolEnd = $hook({
-    on: "mcp:tool:end",
+    on: "mcp:tool:call:end",
     handler: ({ name, outcome }) => {
       const tally = this.tally();
       if (!tally) return;

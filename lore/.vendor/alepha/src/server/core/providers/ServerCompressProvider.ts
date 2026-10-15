@@ -83,7 +83,7 @@ export class ServerCompressProvider {
   protected readonly log = $logger();
 
   public readonly onResponse = $hook({
-    on: "server:onResponse",
+    on: "server:response:after",
     handler: async ({ request, response }) => {
       if (this.options.disabled) {
         return;

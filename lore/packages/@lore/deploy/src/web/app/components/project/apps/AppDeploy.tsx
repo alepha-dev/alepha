@@ -61,7 +61,7 @@ const AppDeploy = () => {
   // clauses are written for somebody who often cannot fix them from here.
   const deployAction = useAction<[group: ArtifactGroup], void>(
     {
-      handler: async (group) => {
+      handler: async (_ctx, group) => {
         if (!project || !instance) return;
         await deployApi.startDeploy({
           params: { projectId: project.id, instanceId: instance.id },

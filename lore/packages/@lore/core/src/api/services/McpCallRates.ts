@@ -25,7 +25,7 @@ import { ProjectAnalytics } from "../entities/projectAnalytics.ts";
  * auto-wire, by `LoreCoreMcp`, and explicitly by several specs - so whether it
  * took effect depended on the order the container happened to be assembled
  * in, and `mcp-security.spec.ts` threw `TooLateSubstitutionError` as soon as
- * it existed. `mcp:tool:end` is the framework seam that replaced it: emitted
+ * it existed. `mcp:tool:call:end` is the framework seam that replaced it: emitted
  * once per call on every path out of `handleToolsCall`, with no ordering
  * requirement at all.
  *
@@ -44,7 +44,7 @@ export class McpCallRates {
   protected readonly datasets = $inject(ProjectAnalytics);
 
   public readonly onToolEnd = $hook({
-    on: "mcp:tool:end",
+    on: "mcp:tool:call:end",
     handler: async ({ name, outcome, context }) => {
       try {
         await this.datasets.mcpCalls.record({

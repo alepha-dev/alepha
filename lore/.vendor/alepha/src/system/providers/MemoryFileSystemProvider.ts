@@ -46,7 +46,7 @@ import type {
  *
  * // Verify the file was written
  * const memoryFs = alepha.inject(MemoryFileSystemProvider);
- * expect(memoryFs.files.get("test.txt")?.toString()).toBe("Hello World");
+ * expect(memoryFs.getFileContent("test.txt")).toBe("Hello World");
  * ```
  */
 export class MemoryFileSystemProvider implements FileSystemProvider {
@@ -57,7 +57,7 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
   /**
    * In-memory storage for files (path -> content)
    */
-  public files = new Map<string, Buffer>();
+  public files = new Map<string, Uint8Array>();
 
   /**
    * In-memory storage for directories
@@ -309,14 +309,14 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
     }
 
     if ("arrayBuffer" in options) {
-      return this.fileLikeFromBuffer(Buffer.from(options.arrayBuffer), {
+      return this.fileLikeFromBuffer(new Uint8Array(options.arrayBuffer), {
         name: options.name ?? "file",
         type: options.type,
       });
     }
 
     if ("text" in options) {
-      return this.fileLikeFromBuffer(Buffer.from(options.text, "utf-8"), {
+      return this.fileLikeFromBuffer(new TextEncoder().encode(options.text), {
         name: options.name ?? "file.txt",
         type: options.type ?? "text/plain",
       });
@@ -441,7 +441,7 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
               `EEXIST: file already exists, cp '${newPath}'`,
             );
           }
-          this.files.set(newPath, Buffer.from(content));
+          this.files.set(newPath, new Uint8Array(content));
           this.mtimes.set(newPath, this.dateTime.nowMillis());
         }
       }
@@ -455,7 +455,7 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
     if (!force && this.files.has(to)) {
       throw new AlephaError(`EEXIST: file already exists, cp '${dest}'`);
     }
-    this.files.set(to, Buffer.from(content));
+    this.files.set(to, new Uint8Array(content));
     this.mtimes.set(to, this.dateTime.nowMillis());
   }
 
@@ -621,7 +621,7 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
   /**
    * Read a file from memory.
    */
-  public async readFile(path: string): Promise<Buffer> {
+  public async readFile(path: string): Promise<Uint8Array> {
     if (this.readFileError) {
       throw this.readFileError;
     }
@@ -648,7 +648,7 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
    */
   public async readTextFile(path: string): Promise<string> {
     const buffer = await this.readFile(path);
-    return buffer.toString("utf-8");
+    return new TextDecoder().decode(buffer);
   }
 
   /**
@@ -671,7 +671,7 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
    */
   public async writeFile(
     path: string,
-    data: Uint8Array | Buffer | string | FileLike,
+    data: Uint8Array | string | FileLike,
     options?: WriteFileOptions,
   ): Promise<void> {
     // Materialise ONCE — FileLike sources may be single-shot streams, so
@@ -679,12 +679,10 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
     // stored an empty payload.
     const buffer =
       typeof data === "string"
-        ? Buffer.from(data, "utf-8")
-        : data instanceof Buffer
-          ? data
-          : data instanceof Uint8Array
-            ? Buffer.from(data)
-            : Buffer.from(await data.arrayBuffer());
+        ? new TextEncoder().encode(data)
+        : data instanceof Uint8Array
+          ? new Uint8Array(data)
+          : new Uint8Array(await data.arrayBuffer());
 
     // `mode` applies at creation only, matching `fs.writeFile`: writing over
     // an existing file leaves the mode it already has.
@@ -698,12 +696,12 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
     // Recorded on success only — see `rm`.
     this.writeFileCalls.push({
       path,
-      data: buffer.toString("utf-8"),
+      data: new TextDecoder().decode(buffer),
       mode: options?.mode,
     });
   }
 
-  protected async storeFile(path: string, buffer: Buffer): Promise<void> {
+  protected async storeFile(path: string, buffer: Uint8Array): Promise<void> {
     if (this.writeFileError) {
       throw this.writeFileError;
     }
@@ -715,21 +713,22 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
 
   public async appendFile(
     path: string,
-    data: Uint8Array | Buffer | string,
+    data: Uint8Array | string,
   ): Promise<void> {
     const buffer =
       typeof data === "string"
-        ? Buffer.from(data, "utf-8")
-        : data instanceof Buffer
-          ? data
-          : Buffer.from(data);
+        ? new TextEncoder().encode(data)
+        : new Uint8Array(data);
 
     await this.appendToFile(path, buffer);
     // Recorded on success only — see `rm`.
-    this.appendFileCalls.push({ path, data: buffer.toString("utf-8") });
+    this.appendFileCalls.push({ path, data: new TextDecoder().decode(buffer) });
   }
 
-  protected async appendToFile(path: string, buffer: Buffer): Promise<void> {
+  protected async appendToFile(
+    path: string,
+    buffer: Uint8Array,
+  ): Promise<void> {
     if (this.writeFileError) {
       throw this.writeFileError;
     }
@@ -738,7 +737,7 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
     const existing = this.files.get(normalized);
     this.files.set(
       normalized,
-      existing ? Buffer.concat([existing, buffer]) : buffer,
+      existing ? this.concatBytes([existing, buffer]) : buffer,
     );
     this.mtimes.set(normalized, this.dateTime.nowMillis());
   }
@@ -858,7 +857,8 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
    * Get the content of a file as a string (convenience method for testing).
    */
   public getFileContent(path: string): string | undefined {
-    return this.files.get(this.normalizePath(path))?.toString("utf-8");
+    const bytes = this.files.get(this.normalizePath(path));
+    return bytes ? new TextDecoder().decode(bytes) : undefined;
   }
 
   /**
@@ -871,7 +871,7 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
    * @protected
    */
   protected fileLikeFromBuffer(
-    buffer: Buffer,
+    buffer: Uint8Array,
     options: { name: string; type?: string; lastModified?: number },
   ): FileLike {
     const bytes = new Uint8Array(
@@ -888,7 +888,7 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
       stream: () => this.bufferToStream(buffer),
       arrayBuffer: async (): Promise<ArrayBuffer> =>
         bytes.buffer as ArrayBuffer,
-      text: async () => buffer.toString("utf-8"),
+      text: async () => new TextDecoder().decode(buffer),
     };
   }
 
@@ -902,16 +902,16 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
     source: StreamLike,
     options: { name: string; type?: string; size?: number },
   ): FileLike {
-    let buffer: Buffer | null = null;
-    const consume = async (): Promise<Buffer> => {
+    let buffer: Uint8Array | null = null;
+    const consume = async (): Promise<Uint8Array> => {
       if (buffer) {
         return buffer;
       }
-      const chunks: Buffer[] = [];
+      const chunks: Uint8Array[] = [];
       for await (const chunk of source as AsyncIterable<Uint8Array>) {
-        chunks.push(Buffer.from(chunk));
+        chunks.push(new Uint8Array(chunk));
       }
-      buffer = Buffer.concat(chunks);
+      buffer = this.concatBytes(chunks);
       return buffer;
     };
 
@@ -928,7 +928,7 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
           b.byteOffset + b.byteLength,
         ) as ArrayBuffer;
       },
-      text: async () => (await consume()).toString("utf-8"),
+      text: async () => new TextDecoder().decode(await consume()),
     };
   }
 
@@ -937,13 +937,30 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
    *
    * @protected
    */
-  protected bufferToStream(buffer: Buffer): StreamLike {
+  protected concatBytes(chunks: Uint8Array[]): Uint8Array {
+    const bytes = new Uint8Array(
+      chunks.reduce((size, chunk) => size + chunk.byteLength, 0),
+    );
+    let offset = 0;
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    return bytes;
+  }
+
+  protected bufferToStream(buffer: Uint8Array): StreamLike {
     const bytes = new Uint8Array(
       buffer.buffer.slice(
         buffer.byteOffset,
         buffer.byteOffset + buffer.byteLength,
       ) as ArrayBuffer,
     );
-    return new Blob([bytes]).stream();
+    return new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(bytes);
+        controller.close();
+      },
+    });
   }
 }

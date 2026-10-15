@@ -19,6 +19,7 @@ export class AdminJobController {
   protected readonly jobService = $inject(JobService);
 
   public readonly listJobs = $action({
+    method: "GET",
     path: this.url,
     group: this.group,
     use: [$secure({ permissions: ["admin:job:read"] })],
@@ -29,6 +30,7 @@ export class AdminJobController {
   });
 
   public readonly listExecutions = $action({
+    method: "GET",
     path: `${this.url}/:name/executions`,
     group: this.group,
     use: [$secure({ permissions: ["admin:job:read"] })],
@@ -42,6 +44,7 @@ export class AdminJobController {
   });
 
   public readonly getExecution = $action({
+    method: "GET",
     path: `${this.url}/executions/:id`,
     group: this.group,
     use: [$secure({ permissions: ["admin:job:read"] })],

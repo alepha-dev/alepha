@@ -1,9 +1,6 @@
 import { $inject, Alepha, AlephaError } from "alepha";
-import {
-  type BuildManifest,
-  buildManifestSchema,
-  BuildCloudflareTask,
-} from "alepha/cli";
+import { BuildCloudflareTask } from "alepha/cli";
+import { BuildManifestReader } from "alepha/cli";
 import type { RunnerMethod } from "alepha/command";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
@@ -85,6 +82,7 @@ export interface WorkerCloudflareCredential {
  * is saved and restored around a call is a race the second deploy wins.
  */
 export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
+  protected readonly manifestReader = $inject(BuildManifestReader);
   /**
    * The same display name as `CloudflareAdapter`, the Node shell over this
    * class: to an operator both deploy to Cloudflare, and which one ran is a
@@ -302,37 +300,7 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
     run: RunnerMethod,
   ): Promise<void> {
     const manifestPath = this.fs.join(ctx.root, "manifest.json");
-    let raw: unknown;
-    try {
-      raw = JSON.parse(await this.fs.readTextFile(manifestPath));
-    } catch (error) {
-      throw new AlephaError(
-        `Cannot read ${manifestPath}: ${(error as Error).message}. A deploy needs the manifest the artifact was packed with.`,
-      );
-    }
-
-    // ⚠️ **Parsed, not cast.** Everything below builds a Worker out of this
-    // object with no live Alepha to check it against, so a manifest that is
-    // truncated or from a different tool emits a Worker with no bindings and
-    // still reports success. Parsing also applies the schema's defaults, which
-    // is what stops an absent `crons` from being a crash rather than an empty
-    // list.
-    //
-    // Refused rather than fallen back on: unlike a local deploy there is no
-    // introspection to fall through to, because the app cannot be booted here.
-    const validated = buildManifestSchema.safeParse(raw);
-    if (!validated.success) {
-      throw new AlephaError(
-        `${manifestPath} is not a valid build manifest: ${validated.error.issues
-          .map(
-            (issue) => `${issue.path.join(".") || "(root)"} ${issue.message}`,
-          )
-          .join(
-            "; ",
-          )}. Rebuild the artifact with \`alepha build --runtime=workerd\`.`,
-      );
-    }
-    const manifest = validated.data as BuildManifest;
+    const manifest = await this.manifestReader.read(manifestPath);
 
     await this.buildTask.run({
       // Never dereferenced in prebuilt mode: the task reads resources, crons

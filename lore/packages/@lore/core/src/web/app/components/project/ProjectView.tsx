@@ -188,7 +188,8 @@ const ProjectView = () => {
     const crumb = contribution.crumb({
       ...context,
       projectSlug,
-      path: (route, params) => router.path(route as never, { params }),
+      path: (route, params) =>
+        router.path(route as never, { params: { projectSlug, ...params } }),
     });
     if (crumb) breadcrumbs.push(crumb);
   }

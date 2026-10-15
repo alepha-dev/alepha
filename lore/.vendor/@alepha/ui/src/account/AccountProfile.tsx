@@ -5,7 +5,7 @@ import type {
   RealmConfig,
 } from "alepha/api/users";
 import { updateMyProfileBodySchema } from "alepha/api/users";
-import { useClient } from "alepha/react";
+import { useAction, useClient } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { AtSign, Camera, Trash2, User } from "lucide-react";
@@ -53,7 +53,29 @@ const AccountProfile = (props: AccountProfileProps) => {
   const fileInput = useRef<HTMLInputElement>(null);
 
   const [profile, setProfile] = useState<MyProfile | undefined>(props.profile);
-  const [uploading, setUploading] = useState(false);
+  // A refused image (too large, a type the realm does not take) is toasted
+  // by the app's ActionErrorToaster with the server's message.
+  const uploadAvatar = useAction<[file: File]>(
+    {
+      handler: async (_ctx, file) => {
+        setProfile(await avatarApi.updateMyAvatar({ body: { file } }));
+        toaster.show(
+          tr("account.profile.avatarUpdated", { default: "Avatar updated" }),
+          "success",
+        );
+      },
+    },
+    [avatarApi, toaster, tr],
+  );
+  const removeAvatar = useAction<[]>(
+    {
+      handler: async () => {
+        setProfile(await avatarApi.deleteMyAvatar());
+      },
+    },
+    [avatarApi],
+  );
+  const uploading = uploadAvatar.loading || removeAvatar.loading;
 
   /*
    * Does this realm have usernames at all?
@@ -150,50 +172,14 @@ const AccountProfile = (props: AccountProfileProps) => {
     return null;
   }
 
-  const onPickAvatar = async (event: ChangeEvent<HTMLInputElement>) => {
+  const onPickAvatar = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
+    // Cleared at once, so picking the same file again still fires a change.
+    event.target.value = "";
     if (!file) {
       return;
     }
-    setUploading(true);
-    try {
-      setProfile(await avatarApi.updateMyAvatar({ body: { file } }));
-      toaster.show(
-        tr("account.profile.avatarUpdated", { default: "Avatar updated" }),
-        "success",
-      );
-    } catch (error: any) {
-      toaster.show(
-        error?.message ??
-          tr("account.profile.avatarUploadError", {
-            default: "Could not upload that image",
-          }),
-        "danger",
-      );
-    } finally {
-      setUploading(false);
-      // Reset so picking the same file again still fires a change event.
-      if (fileInput.current) {
-        fileInput.current.value = "";
-      }
-    }
-  };
-
-  const removeAvatar = async () => {
-    setUploading(true);
-    try {
-      setProfile(await avatarApi.deleteMyAvatar());
-    } catch (error: any) {
-      toaster.show(
-        error?.message ??
-          tr("account.profile.avatarRemoveError", {
-            default: "Could not remove your avatar",
-          }),
-        "danger",
-      );
-    } finally {
-      setUploading(false);
-    }
+    void uploadAvatar.run(file);
   };
 
   // Realms opt into avatars (`features.avatars`, off by default), and an
@@ -254,7 +240,7 @@ const AccountProfile = (props: AccountProfileProps) => {
                   <Button
                     variant="minimal"
                     size="sm"
-                    onClick={removeAvatar}
+                    onClick={() => removeAvatar.run()}
                     disabled={uploading}
                   >
                     <Trash2 className="size-4" />

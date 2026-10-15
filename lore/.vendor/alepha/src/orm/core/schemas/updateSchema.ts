@@ -8,6 +8,7 @@ import {
 } from "alepha";
 
 import { PG_GENERATED } from "../constants/PG_SYMBOLS.ts";
+import { hasAttr } from "../helpers/pgAttr.ts";
 
 /**
  * Transforms a ZObject schema for update operations.
@@ -37,7 +38,7 @@ export const updateSchema = <T extends ZObject>(
     const prop = schema.shape[key];
 
     // Skip generated columns — they are computed by the database
-    if (PG_GENERATED in prop) {
+    if (hasAttr(prop, PG_GENERATED)) {
       continue;
     }
 
