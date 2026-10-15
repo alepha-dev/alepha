@@ -730,8 +730,14 @@ describe.each(["sqlite", "postgres"] as const)("ota-api on %s", (dialect) => {
         lastLinkAt: ctx.dateTime.nowISOString(),
       });
       expect((await ctx.retention.run()).deleted).toBe(0);
+      // travel() fires every cron it crosses, the nightly retention job
+      // included, so this run may find the bundle already gone: assert the
+      // end state, not what this run counted.
       await ctx.dateTime.travel(11, "minutes");
-      expect((await ctx.retention.run()).deleted).toBe(1);
+      await ctx.retention.run();
+      expect((await ctx.publisher["bundles"].findById(old.id)).status).toBe(
+        "deleted",
+      );
     });
   });
 });
