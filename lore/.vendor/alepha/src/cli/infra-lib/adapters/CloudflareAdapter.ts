@@ -923,8 +923,18 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
 
     await this.fs.mkdir(tmpDir, { recursive: true });
 
-    await run(`wrangler d1 export ${dbName} --remote --output="${sqlPath}"`, {
-      alias: `export D1 ${dbName} → ${sqlPath}`,
+    await run({
+      name: `export D1 ${dbName} → ${sqlPath}`,
+      handler: async () => {
+        await this.shell.run([
+          "wrangler",
+          "d1",
+          "export",
+          dbName,
+          "--remote",
+          `--output=${sqlPath}`,
+        ]);
+      },
     });
 
     const escaped = await this.escapeNulBytes(sqlPath);
@@ -934,9 +944,10 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
       );
     }
 
-    // `sqlite3 '<db>' < dump.sql` aborts if the target already holds a
-    // conflicting schema  -  start from a clean file. run() bypasses the
-    // shell, so wrap the `<` redirection in `sh -c`.
+    // `sqlite3 <db>` with the dump on stdin aborts if the target already
+    // holds a conflicting schema  -  start from a clean file. An argv with the
+    // dump as `stdin`, not `sh -c "sqlite3 '<db>' < '<dump>'"`: a path with a
+    // quote broke the quoting.
     //
     // The clean file is a scratch one, NOT `dbPath`: sqlite3 commits every
     // statement it parsed before an error, so importing straight into the dev
@@ -945,8 +956,13 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
     const stagingPath = `${dbPath}.import`;
     await this.fs.rm(stagingPath, { force: true });
     try {
-      await run(`sh -c "sqlite3 '${stagingPath}' < '${sqlPath}'"`, {
-        alias: `import dump → ${dbPath}`,
+      await run({
+        name: `import dump → ${dbPath}`,
+        handler: async () => {
+          await this.shell.run(["sqlite3", stagingPath], {
+            stdin: await this.fs.readFile(sqlPath),
+          });
+        },
       });
       await this.fs.cp(stagingPath, dbPath);
     } finally {

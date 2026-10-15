@@ -1,9 +1,4 @@
-import {
-  createClient,
-  RESP_TYPES,
-  type RedisClientType,
-  type SetOptions,
-} from "@redis/client";
+import type { createClient, RedisClientType, SetOptions } from "@redis/client";
 import {
   $env,
   $hook,
@@ -19,8 +14,8 @@ import { RedisProvider, type RedisSetOptions } from "./RedisProvider.ts";
 
 const envSchema = z.object({
   REDIS_URL: z.text({
-    default: "redis://localhost:6379",
-    description: "Redis connection URL",
+    description:
+      "Redis connection URL. Setting it turns Redis on for cache, queue, topic, lock and actors.",
   }),
 });
 
@@ -40,11 +35,13 @@ export type NodeRedisClientOptions = Parameters<typeof createClient>[0];
 /**
  * Node.js Redis client provider using `@redis/client`.
  *
- * This provider uses the official Redis client for Node.js runtime.
+ * This provider uses the official Redis client for Node.js runtime. The client
+ * library is loaded on connect, so a Node app that never sets `REDIS_URL`
+ * never loads it.
  *
  * @example
  * ```ts
- * // Set REDIS_URL environment variable (default: redis://localhost:6379)
+ * // Set the REDIS_URL environment variable (required, no default)
  * // REDIS_URL=redis://:password@myredis.example.com:6379
  *
  * // Or configure programmatically
@@ -58,7 +55,7 @@ export class NodeRedisProvider extends RedisProvider {
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
   protected readonly env = $env(envSchema);
-  protected readonly client = this.createClient();
+  protected client?: NodeRedisClient;
 
   /**
    * Keys examined per SCAN round-trip. A hint, not a page size — Redis may
@@ -68,7 +65,7 @@ export class NodeRedisProvider extends RedisProvider {
   protected static readonly SCAN_COUNT = 500;
 
   public get publisher(): NodeRedisClient {
-    if (!this.client.isReady) {
+    if (!this.client?.isReady) {
       throw new AlephaError("Redis client is not ready");
     }
 
@@ -76,7 +73,7 @@ export class NodeRedisProvider extends RedisProvider {
   }
 
   public override get isReady(): boolean {
-    return this.client.isReady;
+    return this.client?.isReady ?? false;
   }
 
   protected readonly start = $hook({
@@ -94,6 +91,7 @@ export class NodeRedisProvider extends RedisProvider {
    */
   public override async connect(): Promise<void> {
     this.log.debug("Connecting...");
+    this.client ??= await this.createClient();
     await this.client.connect();
     this.log.info("Connection OK");
   }
@@ -104,21 +102,20 @@ export class NodeRedisProvider extends RedisProvider {
   public override async close(): Promise<void> {
     // A client that never connected (a start that failed before ready, a
     // second stop) has nothing to close, and node-redis throws on it.
-    if (!this.client.isOpen) return;
+    if (!this.client?.isOpen) return;
     this.log.debug("Closing connection...");
     await this.client.close();
     this.log.info("Connection closed");
   }
 
-  public duplicate(options?: Partial<NodeRedisClientOptions>): NodeRedisClient {
-    return this.client
-      .duplicate({
-        ...options,
-        RESP: 3,
-      })
-      .withTypeMapping({
-        [RESP_TYPES.BLOB_STRING]: Buffer,
-      });
+  /**
+   * A new, unconnected client on the same URL and options, for a connection
+   * that must stay apart (a subscriber).
+   */
+  public async duplicate(
+    options?: Partial<NodeRedisClientOptions>,
+  ): Promise<NodeRedisClient> {
+    return this.createClient(options);
   }
 
   public override async get(key: string): Promise<Buffer | undefined> {
@@ -142,7 +139,7 @@ export class NodeRedisProvider extends RedisProvider {
     // Convert RedisSetOptions to @redis/client SetOptions
     const setOptions: SetOptions = {};
 
-    // Handle expiration object format (from alepha/cache-redis, alepha/lock-redis)
+    // Handle expiration object format (from RedisCacheProvider, RedisLockProvider)
     if (options?.expiration) {
       if (options.expiration.type === "KEEPTTL") {
         setOptions.KEEPTTL = true;
@@ -354,10 +351,18 @@ export class NodeRedisProvider extends RedisProvider {
 
   /**
    * Redis client factory method.
+   *
+   * `@redis/client` is imported here, not at the top of the file: it bundles
+   * to 447 KB minified, and an app that never sets `REDIS_URL` never reaches
+   * this line, so the server build keeps it in a chunk nobody loads.
    */
-  protected createClient(): NodeRedisClient {
+  protected async createClient(
+    options?: Partial<NodeRedisClientOptions>,
+  ): Promise<NodeRedisClient> {
+    const { createClient, RESP_TYPES } = await import("@redis/client");
     const client = createClient({
       ...this.getClientOptions(),
+      ...options,
       url: this.getUrl(),
       RESP: 3,
     }).withTypeMapping({

@@ -154,6 +154,9 @@ async function authorize(
     headers: {
       "content-type": "application/x-www-form-urlencoded",
       authorization: `Bearer ${sessionToken}`,
+      // The consent page's own form post: the framework refuses a decision
+      // naming no same-host origin (alepha 5d9055dc8, RequestOriginPolicy).
+      origin: baseUrl,
     },
     body: new URLSearchParams({
       decision: "allow",

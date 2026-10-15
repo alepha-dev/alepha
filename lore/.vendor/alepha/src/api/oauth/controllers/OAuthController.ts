@@ -6,7 +6,7 @@ import {
   SecurityProvider,
   type UserAccountToken,
 } from "alepha/security";
-import { $route, HttpError } from "alepha/server";
+import { $route, HttpError, RequestOriginPolicy } from "alepha/server";
 
 import type { OAuthClientEntity } from "../entities/oauthClientEntity.ts";
 import { OAuthClientMetadataError } from "../errors/OAuthClientMetadataError.ts";
@@ -121,6 +121,7 @@ export class OAuthController {
   protected readonly deviceCodes = $inject(DeviceCodeService);
   protected readonly jwt = $inject(JwtProvider);
   protected readonly security = $inject(SecurityProvider);
+  protected readonly originPolicy = $inject(RequestOriginPolicy);
 
   /**
    * The signed-in session behind a request, or `undefined`.
@@ -221,29 +222,23 @@ export class OAuthController {
   /**
    * Whether a post came from a page on this host.
    *
-   * The device approval POST needs this and the consent POST does not. A
-   * forged consent can only mint a code bound by PKCE, which the forger cannot
-   * redeem. A forged device approval hands the forger's own device a token for
-   * the victim's account, with nothing left to redeem.
+   * Both decision posts need it, the consent POST and the device approval
+   * POST. A forged device approval hands the forger's own device a token for
+   * the victim's account. A forged consent is no better: PKCE does not save
+   * it, because the forger posts the `code_challenge` of its own choosing, so
+   * it holds the matching verifier, and `/oauth/register` is open dynamic
+   * registration, so the client and its redirect URI can be its own too.
    *
    * The session cookie is `SameSite=Lax`, which already keeps a cross-SITE
    * post from carrying it. This closes what Lax leaves open: a sibling on the
    * same site (another subdomain) posting with the victim's cookie attached.
    * Every browser sends `Origin` on a form post, so a post naming no origin
-   * at all is refused rather than trusted.
-   *
-   * Hosts are compared, not whole origins, so a proxy that terminates TLS
-   * without forwarding the scheme cannot refuse every legitimate post.
+   * at all is refused rather than trusted. The rule itself is
+   * `RequestOriginPolicy.isSameHostRequest`, shared with the HTTP cookie
+   * path and the WebSocket upgrade.
    */
   protected isSameOrigin(headers: Record<string, string>, url: URL): boolean {
-    const source = headers.origin ?? headers.referer;
-    if (!source) return false;
-    try {
-      return new URL(source).host === url.host;
-    } catch {
-      // `Origin: null` - a sandboxed frame, a privacy-sensitive redirect.
-      return false;
-    }
+    return this.originPolicy.isSameHostRequest(headers, url.host);
   }
 
   /**
@@ -595,18 +590,22 @@ export class OAuthController {
    * POST /oauth/authorize — consent decision. On "allow", mint an
    * authorization code and redirect back to the client's redirect_uri.
    *
-   * CSRF: this route carries no CSRF token and relies solely on the session
-   * cookie to identify the user. This is a deliberate MVP/MCP tradeoff — a
-   * forged consent submit can still only issue an authorization code to an
-   * already-registered client, and that code is bound by PKCE, so the
-   * attacker cannot redeem it without the matching code_verifier.
+   * CSRF: the post must come from a page on this host ({@link isSameOrigin}),
+   * checked first, before the session. PKCE does not protect a forged
+   * consent: the `code_challenge` is in the posted body, so a forger picks it
+   * and holds the verifier. The origin check is what does.
    */
   authorizeDecision = $route({
     method: "POST",
     path: "/oauth/authorize",
     schema: { body: authorizeDecisionBodySchema },
     use: [],
-    handler: async ({ body, user: requestUser, reply }) => {
+    handler: async ({ body, user: requestUser, url, headers, reply }) => {
+      if (!this.isSameOrigin(headers, url)) {
+        reply.status = 403;
+        reply.body = "cross-origin request refused";
+        return;
+      }
       const user = this.sessionUser(requestUser);
       if (!user) {
         reply.status = 401;
@@ -802,7 +801,7 @@ export class OAuthController {
   /**
    * POST /oauth/device - the answer from the approval page.
    *
-   * ⚠️ Unlike the consent POST, this one checks where it came from: see
+   * Like the consent POST, this one checks where it came from: see
    * {@link isSameOrigin}. The origin is checked before the session, so a
    * forged post learns nothing about whether its victim was signed in.
    */

@@ -9,13 +9,20 @@ import {
   Alepha,
   type Infer,
   type Middleware,
-  OPTIONS,
   PipelineHandler,
+  ReadRecorder,
   z,
 } from "alepha";
+import { BackgroundTaskProvider } from "alepha/background";
+import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { ServerHeadProvider, type SimpleHead } from "alepha/react/head";
-import { type ServerHandler, ServerRouterProvider } from "alepha/server";
+import {
+  type ServerHandler,
+  ServerReply,
+  type ServerRequest,
+  ServerRouterProvider,
+} from "alepha/server";
 import { ServerLinksProvider } from "alepha/server/links";
 import {
   EmbeddedStaticFileSource,
@@ -33,6 +40,11 @@ import {
   type PagePrimitiveRenderResult,
 } from "../primitives/$page.ts";
 import { ReactDomServerProvider } from "./ReactDomServerProvider.ts";
+import {
+  type PageCacheEntry,
+  PageCacheSink,
+  ReactPageCacheProvider,
+} from "./ReactPageCacheProvider.ts";
 import {
   type PageRoute,
   ReactPageProvider,
@@ -77,6 +89,9 @@ export class ReactServerProvider {
   protected readonly ssrManifestProvider = $inject(SSRManifestProvider);
   protected readonly localeProvider = $inject(RouterLocaleProvider);
   protected readonly reactDomServer = $inject(ReactDomServerProvider);
+  protected readonly pageCache = $inject(ReactPageCacheProvider);
+  protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly background = $inject(BackgroundTaskProvider);
 
   /**
    * Cached check for ServerLinksProvider - avoids has() lookup per request.
@@ -160,28 +175,21 @@ export class ReactServerProvider {
         this.log.debug(`+ ${page.match} -> ${page.name}`);
 
         // Collect middleware from the entire parent chain + own page.
-        // Parent middleware runs first (outermost → innermost).
-        const allMiddleware = this.collectMiddleware(page);
+        // Parent middleware runs first (outermost → innermost). A page
+        // `$cache` is refused by `$page` itself: the page cache is automatic.
+        const serverMiddleware = this.collectMiddleware(page);
 
-        // Separate $cache from server-level middleware.
-        // $cache is applied inside createHandler around the render function,
-        // not around the entire server handler (which works via side effects).
-        const cacheMiddleware = allMiddleware.filter(
-          (m) => m[OPTIONS]?.name === "$cache",
-        );
-        const serverMiddleware = allMiddleware.filter(
-          (m) => m[OPTIONS]?.name !== "$cache",
-        );
-
-        const rawHandler = this.createHandler(page, cacheMiddleware);
+        const rawHandler = this.createHandler(page);
         const handler = this.withStaticFileSkip(
           page,
-          serverMiddleware.length
-            ? this.withGuardDenial(
-                page,
-                new PipelineHandler(rawHandler, serverMiddleware),
-              )
-            : rawHandler,
+          this.withReadRecording(
+            serverMiddleware.length
+              ? this.withGuardDenial(
+                  page,
+                  new PipelineHandler(rawHandler, serverMiddleware),
+                )
+              : rawHandler,
+          ),
         );
 
         // Canonical (default-locale) route, served unprefixed.
@@ -525,6 +533,51 @@ export class ReactServerProvider {
   }
 
   /**
+   * Install the request's {@link ReadRecorder} before anything of the page
+   * runs: the server middleware (`$secure`, `$owns`), the
+   * `react:server:render:begin` hooks, the loaders, the in-process actions
+   * they call and the React render all report to it (#E78).
+   *
+   * It starts here, after `server:onRequest`, because that event is where the
+   * framework seeds the request: the session is decoded and the cookie-bound
+   * atoms are written. Those writes are the same on a cache hit and are not
+   * page reads.
+   */
+  protected withReadRecording(handler: ServerHandler): ServerHandler {
+    return async (serverRequest) => {
+      this.alepha.store.startRecording(
+        new ReadRecorder(!this.alepha.isProduction()),
+      );
+      return handler(serverRequest);
+    };
+  }
+
+  /**
+   * The development `x-alepha-cache` value for a render whose verdict is
+   * known: the cache outcome, the verdict, and the first personal read.
+   */
+  protected describeVerdict(recorder: ReadRecorder, outcome: string): string {
+    const read = recorder.describe();
+    return `${outcome}; verdict=${recorder.verdict()}${read ? `; read=${read}` : ""}`;
+  }
+
+  /**
+   * Report a finished render's verdict, in development only: the stream-end
+   * log names what made a page personal and where it was read.
+   */
+  protected logVerdict(route: PageRoute, recorder: ReadRecorder | undefined) {
+    if (!recorder || this.alepha.isProduction()) {
+      return;
+    }
+    this.log.info("Page verdict", {
+      name: route.name,
+      verdict: recorder.verdict(),
+      read: recorder.describe(),
+      source: recorder.first?.source,
+    });
+  }
+
+  /**
    * Collect middleware from the entire parent chain + the page itself.
    * Parent middleware runs first (outermost → innermost → page).
    */
@@ -641,22 +694,12 @@ export class ReactServerProvider {
   /**
    * Create the request handler for a page route.
    *
-   * When cacheMiddleware is provided, uses a non-streaming path that renders
-   * to a string so the result can be cached. Otherwise uses early HTML streaming.
+   * Streams with an early head, or renders to a string first for a
+   * `stream: false` page. Either way it goes through the automatic page
+   * cache: a hit answers without rendering, a miss tees its shared bytes into
+   * an entry written at the end if the render may be shared.
    */
-  protected createHandler(
-    route: PageRoute,
-    cacheMiddleware: Middleware[] = [],
-  ): ServerHandler {
-    /*
-     * Buffer when caching demands it, or when the page asked for it.
-     *
-     * `stream: false` exists so a page can choose its status code: the buffered
-     * path calls `onServerResponse` *after* the render, whereas the streaming path
-     * has already flushed the head by then. See `$page`'s `stream` option.
-     */
-    const buffered = cacheMiddleware.length > 0 || route.stream === false;
-
+  protected createHandler(route: PageRoute): ServerHandler {
     return async (serverRequest) => {
       const { url, reply, query, params } = serverRequest;
 
@@ -711,40 +754,82 @@ export class ReactServerProvider {
         state,
       });
 
+      // Everything above runs again on a cache hit, so its writes reach the
+      // private script either way; from here on, the render proper starts
+      // and a write to a personal atom would be lost on a hit (#E78).
+      const recorder = this.alepha.store.recorder();
+      if (recorder) {
+        recorder.writesTracked = true;
+      }
+
       // Apply SSR headers early
       Object.assign(reply.headers, this.SSR_HEADERS);
 
-      if (buffered) {
-        // When $cache middleware is present, render to string so the result
-        // is serializable. Streaming is not compatible with $cache since
-        // ReadableStream cannot be serialized/deserialized.
-        const renderFn = async (
-          _url: string,
-        ): Promise<{ html: string; redirect?: string }> => {
-          const { redirect, reactStream } = await this.renderPage(route, state);
-          if (redirect) {
-            return { redirect, html: "" };
-          }
-          const htmlStream = this.templateProvider.createHtmlStream(
-            reactStream!,
-            state,
-            { hydration: true },
-          );
-          return { html: await this.streamToString(htmlStream) };
-        };
+      const dev = !this.alepha.isProduction();
 
-        const result = await new PipelineHandler(renderFn, cacheMiddleware).run(
-          url.href,
-        );
+      // The automatic page cache (#E78). Looked up here, after everything a
+      // hit still needs: the middleware (guards), the api links and the
+      // `render:begin` hooks, which together fill the private script.
+      const plan = this.pageCache.plan(route, serverRequest);
+      if (plan && "bypass" in plan) {
+        this.log.debug("Page cache bypassed", {
+          name: route.name,
+          reason: plan.bypass,
+        });
+      }
+      const cached = plan && "key" in plan ? plan : undefined;
+      if (cached) {
+        const entry = await this.pageCache.read(cached.key);
+        if (entry) {
+          this.serveCachedPage(serverRequest, entry, cached);
+          return;
+        }
+      }
+      const sink = cached && recorder ? new PageCacheSink() : undefined;
+      const outcome = cached
+        ? this.pageCache.refused.has(cached.key) && dev
+          ? "refused"
+          : "miss"
+        : plan
+          ? "bypass"
+          : "off";
+      // Read now: the stream-end write may run outside the request's context.
+      const lang = this.pageCache.lang();
 
-        if (result.redirect) {
+      if (route.stream === false) {
+        // `stream: false` exists so a page can choose its status code: this
+        // path calls `onServerResponse` *after* the render, whereas the
+        // streaming path has already flushed the head by then.
+        const { redirect, reactStream } = await this.renderPage(route, state);
+        if (redirect) {
           reply.status = 302;
-          reply.headers.location = result.redirect;
+          reply.headers.location = redirect;
           return;
         }
 
+        const html = await this.streamToString(
+          this.templateProvider.createHtmlStream(reactStream!, state, {
+            hydration: true,
+            sink,
+          }),
+        );
+
         route.onServerResponse?.(serverRequest);
-        reply.body = result.html;
+        // Buffered: the verdict exists before the headers leave.
+        if (recorder && dev) {
+          reply.headers["x-alepha-cache"] = this.describeVerdict(
+            recorder,
+            outcome,
+          );
+          this.logVerdict(route, recorder);
+        }
+        reply.body = html;
+        if (sink && cached && recorder) {
+          await this.storePage(route, serverRequest, state, recorder, sink, {
+            ...cached,
+            lang,
+          });
+        }
         return;
       }
 
@@ -793,6 +878,7 @@ export class ReactServerProvider {
           hydration: true,
           state,
           earlyHead: preloadHead,
+          sink,
           onError: (error) => {
             if (error instanceof Redirection) {
               this.log.debug("Streaming resulted in redirection", {
@@ -809,15 +895,247 @@ export class ReactServerProvider {
 
       this.log.trace("Page streaming started (early head optimization)");
       route.onServerResponse?.(serverRequest);
+      // Streamed: the headers leave before the verdict exists, so the header
+      // says only "miss" and the verdict goes to the stream-end log.
+      if (recorder && dev) {
+        reply.headers["x-alepha-cache"] = outcome;
+      }
+      // The write waits for the template to finish (`sink.finished`), so it
+      // is registered as background work now, while the request's context is
+      // at hand: on workerd that is `waitUntil`, without which the isolate is
+      // frozen mid-write once the response ends. The visitor never waits.
+      if (sink && cached && recorder) {
+        this.background.defer(() =>
+          this.storePage(route, serverRequest, state, recorder, sink, {
+            ...cached,
+            lang,
+          }),
+        );
+      }
       reply.body = htmlStream.pipeThrough(
         new TransformStream({
           flush: () => {
             this.log.info("Page streaming completed", { name: route.name });
+            this.logVerdict(route, recorder);
           },
         }),
       );
     };
   }
+
+  /**
+   * Answer from the page cache: the stored shared bytes, a private script
+   * built for this request, the closing tags. No loader, no React.
+   */
+  protected serveCachedPage(
+    serverRequest: ServerRequest,
+    entry: PageCacheEntry,
+    plan: { key: string; ttlMs: number },
+  ): void {
+    const { reply } = serverRequest;
+    reply.status = entry.status;
+    const { at, ...stored } = entry;
+    Object.assign(reply.headers, stored.headers, this.SSR_HEADERS);
+    if (!this.alepha.isProduction()) {
+      reply.headers["x-alepha-cache"] = `hit; verdict=${entry.verdict}`;
+    }
+    reply.body =
+      entry.head + this.templateProvider.renderPrivateScript() + entry.tail;
+
+    // workerd: tell the generated worker what it may do with this response
+    // (#E78). It strips these headers before the response leaves.
+    if (this.pageCache.edge()) {
+      // A hit reads no D1 bookmark and must not rewrite the visitor's.
+      reply.headers[ReactServerProvider.EDGE_HIT_HEADER] = "1";
+      // A visitor with no cookie, no credential and no query gets the same
+      // private script as every other such visitor: the worker may keep the
+      // whole response, and serve it before the app boots.
+      const headers = serverRequest.headers;
+      if (
+        !headers.cookie &&
+        !headers.authorization &&
+        !serverRequest.url.search &&
+        at !== undefined
+      ) {
+        const remaining =
+          at + this.pageCache.edgeTtlMs(plan.ttlMs) - this.dateTime.nowMillis();
+        if (remaining > 1000) {
+          reply.headers[ReactServerProvider.EDGE_STORE_HEADER] =
+            `${Math.floor(remaining / 1000)};${at};${encodeURIComponent(plan.key)}`;
+        }
+      }
+    }
+  }
+
+  /**
+   * Internal header: this response is a page cache hit. Read and removed by
+   * the generated Cloudflare worker, which then leaves the D1 bookmark alone.
+   */
+  public static readonly EDGE_HIT_HEADER = "x-alepha-page-hit";
+
+  /**
+   * Internal header: `<seconds>;<written at>;<key>`, the edge may store this
+   * whole response for that long. Read and removed by the generated worker.
+   */
+  public static readonly EDGE_STORE_HEADER = "x-alepha-page-edge";
+
+  /**
+   * Write a finished render to the page cache, if it may be shared: a clean
+   * render (no error page, no meta-refresh redirect, no layer error), a 200,
+   * no `Set-Cookie`, and a verdict that is not personal.
+   */
+  protected async storePage(
+    route: PageRoute,
+    serverRequest: ServerRequest,
+    state: ReactRouterState,
+    recorder: ReadRecorder,
+    sink: PageCacheSink,
+    plan: { key: string; ttlMs: number; lang?: string },
+  ): Promise<void> {
+    const clean = await sink.finished;
+    const { reply } = serverRequest;
+    const status = reply.status ?? 200;
+    const verdict = recorder.verdict();
+    const setsCookie =
+      reply.headers["set-cookie"] !== undefined ||
+      Object.keys(
+        (serverRequest as { cookies?: { res?: object } }).cookies?.res ?? {},
+      ).length > 0;
+
+    if (
+      !clean ||
+      verdict === "personal" ||
+      status !== 200 ||
+      setsCookie ||
+      state.layers.some((layer) => layer.error)
+    ) {
+      return;
+    }
+
+    const headers: Record<string, string | string[]> = {};
+    for (const [name, value] of Object.entries(reply.headers)) {
+      if (
+        value !== undefined &&
+        !ReactServerProvider.UNCACHED_HEADERS.has(name.toLowerCase())
+      ) {
+        headers[name] = value as string | string[];
+      }
+    }
+
+    const parts = sink.parts();
+
+    // Outside production, the read tracker gets a second opinion before the
+    // first write: the same page rendered for nobody must be byte for byte
+    // the same. A difference is personal data that reached the markup through
+    // a channel the tracker cannot see (#E78).
+    if (this.pageCache.anonymousCheck) {
+      const difference = await this.renderAnonymously(
+        route,
+        serverRequest,
+        plan.lang,
+        parts.head + parts.tail,
+      );
+      if (difference) {
+        this.pageCache.refused.add(plan.key);
+        this.log.error(
+          `Page "${route.name}" was not cached: rendered again for an anonymous visitor, it differs. ` +
+            "Something personal reached the markup without a tracked read (a service keyed by user, " +
+            "a module variable, a value read from the raw request), or the markup is not deterministic " +
+            "(a time, a random value). Fix the page, or set `cache: false`.",
+          { key: plan.key, ...difference },
+        );
+        reply.headers["x-alepha-cache"] = "refused";
+        return;
+      }
+    }
+
+    this.pageCache.refused.delete(plan.key);
+    await this.pageCache.write(
+      plan.key,
+      { ...parts, status, verdict, headers },
+      plan.ttlMs,
+    );
+  }
+
+  /**
+   * Render `route` again for nobody, in a fresh store fork that cannot see
+   * the visitor's: no user, no session cookie, no `authorization`, no
+   * cookie-bound atom; the same URL and the same language. Returns where the
+   * shared bytes first differ from `shared`, or nothing when they match.
+   *
+   * Loaders run a second time. Development and tests only.
+   */
+  protected async renderAnonymously(
+    route: PageRoute,
+    serverRequest: ServerRequest,
+    lang: string | undefined,
+    shared: string,
+  ): Promise<{ at: number; cached: string; anonymous: string } | undefined> {
+    const html = await this.alepha.context.runIsolated(async () => {
+      const headers = { ...serverRequest.headers };
+      delete headers.cookie;
+      delete headers.authorization;
+      const reply = new ServerReply();
+      const request = {
+        ...serverRequest,
+        headers,
+        reply,
+        user: undefined,
+        cookies: { req: {}, res: {} },
+        metadata: {},
+      } as ServerRequest;
+
+      this.alepha.context.set(ReactPageCacheProvider.CHECK_KEY, true);
+      this.alepha.context.set("alepha.http.request", request);
+      if (lang !== undefined) {
+        this.alepha.context.set("alepha.react.i18n.lang", lang);
+      }
+
+      await this.createHandler(route)(request);
+      const body = reply.body as
+        | string
+        | ReadableStream<Uint8Array>
+        | undefined;
+      if (body === undefined) {
+        return "";
+      }
+      return typeof body === "string" ? body : this.streamToString(body);
+    });
+
+    const anonymous = html.replace(
+      /<script id="__ssr_private" type="application\/json">[\s\S]*?<\/script>/,
+      "",
+    );
+    if (anonymous === shared) {
+      return undefined;
+    }
+
+    let at = 0;
+    while (at < shared.length && shared[at] === anonymous[at]) {
+      at++;
+    }
+    const from = Math.max(0, at - 40);
+    return {
+      at,
+      cached: shared.slice(from, at + 80),
+      anonymous: anonymous.slice(from, at + 80),
+    };
+  }
+
+  /**
+   * Headers a cached page never replays: they belong to one response.
+   */
+  protected static readonly UNCACHED_HEADERS = new Set([
+    "set-cookie",
+    "cache-control",
+    "pragma",
+    "expires",
+    "content-length",
+    "content-encoding",
+    "server-timing",
+    "x-alepha-cache",
+    "date",
+  ]);
 
   // ---------------------------------------------------------------------------
   // Core rendering logic - shared between SSR handler and static prerendering

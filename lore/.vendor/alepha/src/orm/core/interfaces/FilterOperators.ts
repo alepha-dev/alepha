@@ -1,3 +1,16 @@
+import type { SQLWrapper } from "drizzle-orm";
+
+/**
+ * What a comparison operator (`eq`, `ne`, `gt`, `gte`, `lt`, `lte`) compares
+ * against: a value of the column's type, another column, or an SQL fragment.
+ *
+ * A column is how a correlated subquery refers to its outer row
+ * (`{ epicId: { eq: this.epics.table.id } }`); a fragment is a computed bound
+ * (`{ createdAt: { gte: this.sqlx.ago(7, "days") } }`) or a scalar subquery.
+ * Neither is encoded: drizzle renders it as it is.
+ */
+export type FilterValue<TValue> = TValue | SQLWrapper;
+
 export interface FilterOperators<TValue> {
   /**
    * Test that two values are equal.
@@ -16,7 +29,7 @@ export interface FilterOperators<TValue> {
    *
    * @see isNull for a way to test equality to NULL.
    */
-  eq?: TValue;
+  eq?: FilterValue<TValue>;
 
   /**
    * Test that two values are not equal.
@@ -35,7 +48,7 @@ export interface FilterOperators<TValue> {
    *
    * @see isNotNull for a way to test whether a value is not null.
    */
-  ne?: TValue;
+  ne?: FilterValue<TValue>;
 
   /**
    * Test that the first expression passed is greater than
@@ -50,7 +63,7 @@ export interface FilterOperators<TValue> {
    *
    * @see gte for greater-than-or-equal
    */
-  gt?: TValue;
+  gt?: FilterValue<TValue>;
 
   /**
    * Test that the first expression passed is greater than
@@ -67,7 +80,7 @@ export interface FilterOperators<TValue> {
    *
    * @see gt for a strictly greater-than condition
    */
-  gte?: TValue;
+  gte?: FilterValue<TValue>;
 
   /**
    * Test that the first expression passed is less than
@@ -82,7 +95,7 @@ export interface FilterOperators<TValue> {
    *
    * @see lte for greater-than-or-equal
    */
-  lt?: TValue;
+  lt?: FilterValue<TValue>;
 
   /**
    * Test that the first expression passed is less than
@@ -97,7 +110,7 @@ export interface FilterOperators<TValue> {
    *
    * @see lt for a strictly less-than condition
    */
-  lte?: TValue;
+  lte?: FilterValue<TValue>;
 
   /**
    * Test whether the first parameter, a column or expression,
@@ -113,11 +126,19 @@ export interface FilterOperators<TValue> {
    * ```ts
    * // Select cars made by Ford or GM.
    * repository.findMany({ where: { make: { inArray: ["Ford", "GM"] } } })
+   *
+   * // Or against a list the database computes: `repository.subquery()`
+   * // with a column selects that column.
+   * quests.findMany({
+   *   where: { epicId: { inArray: epics.subquery({ status: { eq: "ready" } }, "id") } },
+   * })
    * ```
+   *
+   * The empty-list guard applies to a literal array only.
    *
    * @see notInArray for the inverse of this test
    */
-  inArray?: TValue[];
+  inArray?: TValue[] | SQLWrapper;
 
   /**
    * Test whether the first parameter, a column or expression,
@@ -136,9 +157,11 @@ export interface FilterOperators<TValue> {
    * repository.findMany({ where: { make: { notInArray: ["Ford", "GM"] } } })
    * ```
    *
+   * Like `inArray`, it also takes a subquery (`repository.subquery(where, "id")`).
+   *
    * @see inArray for the inverse of this test
    */
-  notInArray?: TValue[];
+  notInArray?: TValue[] | SQLWrapper;
 
   /**
    * Test whether an expression is not NULL. By the SQL standard,

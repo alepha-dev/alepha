@@ -5,6 +5,9 @@ import { DateTimeProvider } from "alepha/datetime";
  * Database query cache using a simple in-memory Map.
  *
  * Uses `{tableName}:{cacheKey}` as the storage key.
+ * Per process: a write on another instance invalidates nothing here.
+ * `get` and `set` copy the value (`structuredClone`), so a cached result is
+ * never shared by reference.
  * Provides per-table invalidation for write-through cache busting.
  *
  * This is intentionally self-contained (no external cache dependencies)
@@ -53,7 +56,9 @@ export class DbCacheProvider {
       return undefined;
     }
 
-    return entry.value as T;
+    // A copy, both ways: a caller mutating the rows it got back must not
+    // rewrite what the next caller reads.
+    return structuredClone(entry.value) as T;
   }
 
   /**
@@ -67,7 +72,7 @@ export class DbCacheProvider {
   ): Promise<void> {
     const key = this.storeKey(tableName, cacheKey);
     this.store.set(key, {
-      value,
+      value: structuredClone(value),
       expiresAt: ttl ? this.dateTime.nowMillis() + ttl : undefined,
     });
     this.evict();

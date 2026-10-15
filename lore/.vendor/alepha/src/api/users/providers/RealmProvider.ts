@@ -209,7 +209,11 @@ export class RealmProvider {
         sessions: realmOptions.entities?.sessions ?? this.defaultSessions,
         users: realmOptions.entities?.users ?? this.defaultUsers,
       },
-      // TODO: Remove deep merge when alepha supports it natively
+      // Merged by hand, two levels deep: the realm's settings over the atom's
+      // defaults, then `passwordPolicy` and `loginRateLimit`, the only nested
+      // objects, so a realm naming one field of either keeps the rest. A
+      // generic deep merge is not planned: it would also merge what a realm
+      // means to replace.
       settings: {
         ...realmAuthSettingsAtom.options.default,
         ...realmOptions.settings,

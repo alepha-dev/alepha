@@ -24,7 +24,28 @@ export class ReactAuthProvider {
         // right answer; it disables the second realm completely.
         const { token, realm, ...clientUser } = request.user;
         this.alepha.store.set(currentUserAtom, request.user);
-        state.user = clientUser;
+        // A recording getter (#E78): loaders receive the router state as
+        // their context, so `state.user` is a second channel to the visitor
+        // that the atom tracking alone would miss. Reading it makes the page
+        // personal.
+        Object.defineProperty(state, "user", {
+          configurable: true,
+          enumerable: true,
+          get: () => {
+            this.alepha.store
+              .recorder()
+              ?.personal({ kind: "user", key: "state.user" });
+            return clientUser;
+          },
+          set: (value) => {
+            Object.defineProperty(state, "user", {
+              configurable: true,
+              enumerable: true,
+              writable: true,
+              value,
+            });
+          },
+        });
       }
     },
   });

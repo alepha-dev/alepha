@@ -7,6 +7,7 @@ import { createElement, type ReactNode } from "react";
 import ErrorViewer from "../components/ErrorViewer.tsx";
 import { Redirection } from "../errors/Redirection.ts";
 import { ReactDomServerProvider } from "./ReactDomServerProvider.ts";
+import type { PageCacheSink } from "./ReactPageCacheProvider.ts";
 import type { ReactRouterState } from "./ReactPageProvider.ts";
 
 /**
@@ -43,6 +44,9 @@ export class ReactServerTemplateProvider {
       '<script id="__ssr" type="application/json">',
     ),
     HYDRATION_SUFFIX: this.encoder.encode("</script>"),
+    PRIVATE_PREFIX: this.encoder.encode(
+      '<script id="__ssr_private" type="application/json">',
+    ),
   } as const;
 
   /**
@@ -240,7 +244,9 @@ export class ReactServerTemplateProvider {
   }
 
   /**
-   * Build hydration data from router state.
+   * Build the shared hydration data: the router layers and every atom that
+   * is not personal. This is what the page shows, the same for every visitor
+   * of the same URL, and the only payload a page cache may store.
    */
   public buildHydrationData(state: ReactRouterState): HydrationData {
     const layers = state.layers.map((layer) => ({
@@ -266,8 +272,33 @@ export class ReactServerTemplateProvider {
 
     return {
       "alepha.react.router.layers": layers,
-      ...this.alepha.store.exportAtoms("current"),
+      ...this.alepha.store.exportAtoms("current", { personal: false }),
     };
+  }
+
+  /**
+   * Build the private hydration data: the personal atoms of this request
+   * (the user, the API links, the UI preferences, every cookie-bound atom
+   * but the language). Who the page is for, written to its own
+   * `<script id="__ssr_private">` and rebuilt for every request, so a cached
+   * page never carries it. See `AtomOptions.personal`.
+   */
+  public buildPrivateData(): Record<string, unknown> {
+    return this.alepha.store.exportAtoms("current", { personal: true });
+  }
+
+  /**
+   * The `<script id="__ssr_private">` element for the current request, or
+   * an empty string when the request has no personal state.
+   *
+   * Public because a page cache hit appends it to bytes it did not render.
+   */
+  public renderPrivateScript(): string {
+    const data = this.buildPrivateData();
+    if (Object.keys(data).length === 0) {
+      return "";
+    }
+    return `<script id="__ssr_private" type="application/json">${this.safeJsonSerialize(data)}</script>`;
   }
 
   // ---------------------------------------------------------------------------
@@ -322,7 +353,7 @@ export class ReactServerTemplateProvider {
     reactStream: ReadableStream<Uint8Array>,
     state: ReactRouterState,
     hydration: boolean,
-  ): Promise<void> {
+  ): Promise<boolean> {
     const { encoder, SLOTS: slots } = this;
 
     // Body open
@@ -334,7 +365,7 @@ export class ReactServerTemplateProvider {
 
     // Root + React content
     controller.enqueue(slots.ROOT_OPEN);
-    await this.pipeReactStream(controller, reactStream, state);
+    const ok = await this.pipeReactStream(controller, reactStream, state);
     controller.enqueue(slots.ROOT_CLOSE);
 
     // Hydration
@@ -344,9 +375,56 @@ export class ReactServerTemplateProvider {
         encoder.encode(this.safeJsonSerialize(this.buildHydrationData(state))),
       );
       controller.enqueue(slots.HYDRATION_SUFFIX);
+      this.enqueuePrivateScript(controller);
     }
 
     controller.enqueue(slots.BODY_HTML_CLOSE);
+    return ok;
+  }
+
+  /**
+   * Write the private script, the one part of a document that is never
+   * shared. Everything enqueued before it is the same for every visitor of
+   * the URL; it is followed only by the closing tags.
+   */
+  protected enqueuePrivateScript(
+    controller: ReadableStreamDefaultController<Uint8Array>,
+  ): void {
+    const sink = (controller as TeeController).sink;
+    sink?.beginPrivate();
+    const script = this.renderPrivateScript();
+    if (script) {
+      controller.enqueue(this.encoder.encode(script));
+    }
+    sink?.endPrivate();
+  }
+
+  /**
+   * A controller that also writes every chunk into the page cache's sink.
+   * Without a sink it is the controller itself.
+   */
+  protected tee(
+    controller: ReadableStreamDefaultController<Uint8Array>,
+    sink: PageCacheSink | undefined,
+  ): ReadableStreamDefaultController<Uint8Array> {
+    if (!sink) {
+      return controller;
+    }
+    const tee: TeeController = {
+      sink,
+      get desiredSize() {
+        return controller.desiredSize;
+      },
+      enqueue: (chunk?: Uint8Array) => {
+        if (chunk) {
+          sink.write(chunk);
+        }
+        controller.enqueue(chunk);
+      },
+      close: () => controller.close(),
+      error: (reason?: unknown) => controller.error(reason),
+    };
+    return tee;
   }
 
   // ---------------------------------------------------------------------------
@@ -381,9 +459,15 @@ export class ReactServerTemplateProvider {
        */
       earlyHead?: string;
       onError?: (error: unknown) => void;
+      /**
+       * The page cache's tee. Told at the end whether the render finished
+       * cleanly: an error page or a meta-refresh redirect closes the stream
+       * like a success.
+       */
+      sink?: PageCacheSink;
     } = {},
   ): ReadableStream<Uint8Array> {
-    const { hydration = true, onError } = options;
+    const { hydration = true, onError, sink } = options;
     const { encoder, SLOTS: slots } = this;
 
     let headClosed = false;
@@ -391,7 +475,8 @@ export class ReactServerTemplateProvider {
     let routerState: ReactRouterState | undefined = options.state;
 
     return new ReadableStream<Uint8Array>({
-      start: async (controller) => {
+      start: async (output) => {
+        const controller = this.tee(output, sink);
         try {
           // === EARLY PHASE (before async work) ===
           controller.enqueue(slots.DOCTYPE);
@@ -425,6 +510,7 @@ export class ReactServerTemplateProvider {
             }
             controller.enqueue(slots.HEAD_CLOSE);
             controller.enqueue(encoder.encode("<body></body></html>"));
+            sink?.done(false);
             controller.close();
             return;
           }
@@ -440,14 +526,16 @@ export class ReactServerTemplateProvider {
           headClosed = true;
           bodyStarted = true;
 
-          await this.streamBodyAndClose(
+          const ok = await this.streamBodyAndClose(
             controller,
             reactStream,
             state,
             hydration,
           );
+          sink?.done(ok);
           controller.close();
         } catch (error) {
+          sink?.done(false);
           onError?.(error);
           try {
             this.injectErrorHtml(controller, error, routerState, {
@@ -469,13 +557,18 @@ export class ReactServerTemplateProvider {
   public createHtmlStream(
     reactStream: ReadableStream<Uint8Array>,
     state: ReactRouterState,
-    options: { hydration?: boolean; onError?: (error: unknown) => void } = {},
+    options: {
+      hydration?: boolean;
+      onError?: (error: unknown) => void;
+      sink?: PageCacheSink;
+    } = {},
   ): ReadableStream<Uint8Array> {
-    const { hydration = true, onError } = options;
+    const { hydration = true, onError, sink } = options;
     const { encoder, SLOTS: slots } = this;
 
     return new ReadableStream<Uint8Array>({
-      start: async (controller) => {
+      start: async (output) => {
+        const controller = this.tee(output, sink);
         try {
           // Head
           controller.enqueue(slots.DOCTYPE);
@@ -494,14 +587,16 @@ export class ReactServerTemplateProvider {
           controller.enqueue(slots.HEAD_CLOSE);
 
           // Body (shared logic)
-          await this.streamBodyAndClose(
+          const ok = await this.streamBodyAndClose(
             controller,
             reactStream,
             state,
             hydration,
           );
+          sink?.done(ok);
           controller.close();
         } catch (error) {
+          sink?.done(false);
           onError?.(error);
           controller.error(error);
         }
@@ -561,6 +656,7 @@ export class ReactServerTemplateProvider {
         ),
       );
       controller.enqueue(slots.HYDRATION_SUFFIX);
+      this.enqueuePrivateScript(controller);
     }
 
     controller.enqueue(slots.BODY_HTML_CLOSE);
@@ -668,7 +764,15 @@ export class ReactServerTemplateProvider {
 }
 
 /**
- * Hydration state serialized to a JSON script tag with id="__ssr"
+ * A stream controller teeing into the page cache. See `tee`.
+ */
+interface TeeController extends ReadableStreamDefaultController<Uint8Array> {
+  sink?: PageCacheSink;
+}
+
+/**
+ * Shared hydration state serialized to a JSON script tag with id="__ssr".
+ * The personal atoms travel apart, in id="__ssr_private".
  */
 export interface HydrationData {
   "alepha.react.router.layers": Array<{

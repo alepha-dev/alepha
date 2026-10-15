@@ -227,7 +227,7 @@ test.describe("Ranks", () => {
         String(projectId),
       );
       const updateMethod = await b.page.evaluate(() => {
-        const node = document.getElementById("__ssr");
+        const node = document.getElementById("__ssr_private");
         const parsed = JSON.parse(node!.textContent!) as {
           "alepha.server.request.apiLinks": {
             actions: Record<string, { method?: string }>;

@@ -33,16 +33,17 @@ import {
   sql,
   sum,
 } from "drizzle-orm";
-import type {
-  LockConfig,
-  LockStrength,
-  PgAsyncDatabase,
-  PgAsyncTransaction,
-  PgColumn,
-  PgInsertValue,
-  PgTable,
-  PgTableWithColumns,
-  PgUpdateSetSource,
+import {
+  alias,
+  type LockConfig,
+  type LockStrength,
+  type PgAsyncDatabase,
+  type PgAsyncTransaction,
+  type PgColumn,
+  type PgInsertValue,
+  type PgTable,
+  type PgTableWithColumns,
+  type PgUpdateSetSource,
 } from "drizzle-orm/pg-core";
 import type { PgTransactionConfig } from "drizzle-orm/pg-core/session";
 
@@ -280,6 +281,148 @@ export abstract class Repository<T extends ZObject> {
   }
 
   /**
+   * The value a conflicting row arrived with, as an SQL fragment: the
+   * `excluded` pseudo-table both Postgres and SQLite expose inside
+   * `ON CONFLICT ... DO UPDATE`.
+   *
+   * It names the column by its physical name, read off the table, so a
+   * property whose column is spelled differently (`createdAt` stored as
+   * `created_at`) or a later rename cannot leave a hand-typed
+   * `excluded.<name>` stale.
+   *
+   * ⚠️ Meaningful only inside the `set` of {@link upsert} or
+   * {@link upsertMany}. Anywhere else the database refuses it, or worse,
+   * resolves it against a table that happens to be called `excluded`.
+   *
+   * @example
+   * ```ts
+   * const t = repo.table;
+   * await repo.upsertMany(rows, {
+   *   target: ["path", "hour"],
+   *   set: { count: sql`${t.count} + ${repo.excluded("count")}` },
+   * });
+   * ```
+   */
+  public excluded<K extends keyof Infer<T>>(key: K): SQL<Infer<T>[K]> {
+    return sql<Infer<T>[K]>`excluded.${sql.identifier(this.col(key).name)}`;
+  }
+
+  /**
+   * A subquery over this table, compiled from a where-object, for `exists`,
+   * `notExists`, `inArray` and `notInArray` of another query.
+   *
+   * Without `column` it is `(SELECT 1 FROM <table> WHERE ...)`, for
+   * `exists` / `notExists`; with one it selects that column, for `inArray` /
+   * `notInArray`. The soft-delete filter is added like on any read, unless
+   * `opts.force`.
+   *
+   * It correlates through a column of the outer query used as a comparison
+   * value. The subquery's own table is always aliased (`<table>_sq`), so a
+   * subquery over the outer query's own table works: its columns render as
+   * `"quests_sq"."id"`, the outer ones as `"quests"."depends_on"`.
+   *
+   * ⚠️ A subquery of this table cannot nest another subquery of this same
+   * table: the two aliases would collide, and it throws.
+   *
+   * @example
+   * ```ts
+   * // Epics with no open quest left.
+   * await epics.findMany({
+   *   where: {
+   *     notExists: quests.subquery({
+   *       epicId: { eq: epics.table.id },
+   *       completedAt: { isNull: true },
+   *     }),
+   *   },
+   * });
+   *
+   * // Quests outside draft epics.
+   * await quests.findMany({
+   *   where: {
+   *     epicId: { notInArray: epics.subquery({ status: { eq: "draft" } }, "id") },
+   *   },
+   * });
+   * ```
+   */
+  public subquery(
+    where: PgQueryWhereOrSQL<T>,
+    column?: keyof Infer<T>,
+    opts: { force?: boolean } = {},
+  ): SQL {
+    const aliasName = `${this.tableName}_sq`;
+    this.assertNoNestedSubquery(where, aliasName);
+
+    const inner = alias(this.table as PgTable, aliasName) as any;
+    const col = (key: string): PgColumn => {
+      const found = inner[key];
+      if (!found) {
+        throw new AlephaError(
+          `Invalid access. Column '${key}' not found in table '${this.tableName}'`,
+        );
+      }
+      return found;
+    };
+
+    const condition = this.queryManager.toSQL(
+      this.withDeletedAt(where, opts) as PgQueryWhereOrSQL<ZObject>,
+      {
+        schema: this.entity.schema,
+        col,
+        dialect: this.provider.dialect,
+      },
+    );
+
+    const selection = column
+      ? { value: col(column as string) }
+      : { value: sql`1` };
+    let builder = this.provider.db.select(selection).from(inner);
+    if (condition) {
+      builder = builder.where(condition) as any;
+    }
+
+    const result = sql`${builder}`;
+    Object.defineProperty(result, Repository.SUBQUERY_ALIAS, {
+      value: aliasName,
+    });
+    return result;
+  }
+
+  /**
+   * Where `subquery()` records the alias it used on the SQL it returns, so a
+   * nested subquery of the same table is caught by name.
+   */
+  protected static readonly SUBQUERY_ALIAS = Symbol("alepha.orm.subquery");
+
+  /**
+   * Refuse a where-object that carries a subquery of this same table: both
+   * would be aliased `<table>_sq`, and the inner one would bind to the outer
+   * alias silently.
+   */
+  protected assertNoNestedSubquery(value: unknown, aliasName: string): void {
+    if (value == null || typeof value !== "object") {
+      return;
+    }
+    if ((value as any)[Repository.SUBQUERY_ALIAS] === aliasName) {
+      throw new AlephaError(
+        `A subquery of '${this.tableName}' cannot nest another subquery of '${this.tableName}': ` +
+          `both would be aliased '${aliasName}'. Split it into two queries.`,
+      );
+    }
+    // Only the where-object's own structure: plain objects and arrays. A
+    // column, a date or any other value is a leaf.
+    const proto = Object.getPrototypeOf(value);
+    if (
+      isSQLWrapper(value) ||
+      (!Array.isArray(value) && proto !== Object.prototype && proto !== null)
+    ) {
+      return;
+    }
+    for (const nested of Object.values(value)) {
+      this.assertNoNestedSubquery(nested, aliasName);
+    }
+  }
+
+  /**
    * True when every column of `this.table` is excluded from INSERT column
    * lists — i.e. an identity ("always") or generated-always column, the
    * only shape drizzle-orm allows to make a column non-insertable.
@@ -476,10 +619,11 @@ export abstract class Repository<T extends ZObject> {
     query: PgQueryRelations<T, R> = {},
     opts: StatementOptions = {},
   ): Promise<PgStatic<T, R>[]> {
-    // Check cache
-    if (opts.cache) {
-      const cacheKey =
-        opts.cache.key ?? this.buildCacheKey("findMany", query, opts);
+    // Check cache. Never inside a transaction: a read there can see rows the
+    // transaction wrote and may still roll back, and a hit would hide them.
+    const cache = this.inTransaction(opts) ? undefined : opts.cache;
+    if (cache) {
+      const cacheKey = cache.key ?? this.buildCacheKey("findMany", query, opts);
       const cached = await this.dbCache.get<PgStatic<T, R>[]>(
         this.tableName,
         cacheKey,
@@ -615,15 +759,10 @@ export abstract class Repository<T extends ZObject> {
       const result = rows as PgStatic<T, R>[];
 
       // Store in cache
-      if (opts.cache) {
+      if (cache) {
         const cacheKey =
-          opts.cache.key ?? this.buildCacheKey("findMany", query, opts);
-        await this.dbCache.set(
-          this.tableName,
-          cacheKey,
-          result,
-          opts.cache.ttl,
-        );
+          cache.key ?? this.buildCacheKey("findMany", query, opts);
+        await this.dbCache.set(this.tableName, cacheKey, result, cache.ttl);
       }
 
       return result;
@@ -669,7 +808,7 @@ export abstract class Repository<T extends ZObject> {
   public async paginate<R extends PgRelationMap<T>>(
     pagination: PageQuery = {},
     query: Omit<PgQueryRelations<T, R>, "where"> & {
-      where?: PgQueryWhere<T>;
+      where?: PgQueryWhere<T, R>;
     } = {},
     opts: StatementOptions & { count?: boolean } = {},
   ): Promise<Page<PgStatic<T, R>>> {
@@ -893,9 +1032,7 @@ export abstract class Repository<T extends ZObject> {
             .returning(this.table)
             .then(([it]) => this.clean(it, this.entity.schema));
 
-      this.dbCache
-        .invalidateTable(this.tableName)
-        .catch((err) => this.log.warn("Cache invalidation failed", err));
+      await this.invalidateCache(opts);
 
       await this.alepha.events.emit("repository:create:after", {
         tableName: this.tableName,
@@ -960,9 +1097,7 @@ export abstract class Repository<T extends ZObject> {
         allEntities.push(...entities);
       }
 
-      this.dbCache
-        .invalidateTable(this.tableName)
-        .catch((err) => this.log.warn("Cache invalidation failed", err));
+      await this.invalidateCache(opts);
 
       await this.alepha.events.emit("repository:create:after", {
         tableName: this.tableName,
@@ -1082,6 +1217,12 @@ export abstract class Repository<T extends ZObject> {
    *   { id: "abc", name: "Alice", role: "admin" },
    *   { set: { role: "admin" } },
    * );
+   *
+   * // Update from the incoming row: `excluded()` names its value
+   * await repo.upsert(
+   *   { email: "alice@example.com", name: "Alice" },
+   *   { target: ["email"], set: { name: repo.excluded("name") } },
+   * );
    * ```
    */
   public async upsert(
@@ -1176,9 +1317,7 @@ export abstract class Repository<T extends ZObject> {
           return this.clean(it, this.entity.schema);
         });
 
-      this.dbCache
-        .invalidateTable(this.tableName)
-        .catch((err) => this.log.warn("Cache invalidation failed", err));
+      await this.invalidateCache(opts);
 
       await this.alepha.events.emit("repository:create:after", {
         tableName: this.tableName,
@@ -1219,8 +1358,8 @@ export abstract class Repository<T extends ZObject> {
    * 2. **Counter updates must read `excluded`.** `set: { hits: sql`hits + 1` }`
    *    is correct for one row and wrong for a batch: it adds one no matter how
    *    many the batch carried. Use the incoming value instead, via the
-   *    `excluded` pseudo-table both engines expose:
-   *    `set: { hits: sql`${t.hits} + excluded.hits` }`.
+   *    `excluded` pseudo-table both engines expose, through {@link excluded}:
+   *    `set: { hits: sql`${t.hits} + ${repo.excluded("hits")}` }`.
    *
    * @param values The rows to insert. Empty array is a no-op.
    * @param opts.target The column(s) to detect conflicts on. Defaults to the primary key.
@@ -1237,7 +1376,7 @@ export abstract class Repository<T extends ZObject> {
    *   ],
    *   {
    *     target: ["path", "hour"],
-   *     set: { count: sql`${repo.table.count} + excluded.count` },
+   *     set: { count: sql`${repo.table.count} + ${repo.excluded("count")}` },
    *   },
    * );
    * ```
@@ -1275,7 +1414,7 @@ export abstract class Repository<T extends ZObject> {
       for (const key of Object.keys(sample)) {
         if (targetKeys.includes(key as keyof Infer<T>)) continue;
         if (key === this.id.key) continue;
-        setData[key] = sql`excluded.${sql.identifier(this.col(key).name)}`;
+        setData[key] = this.excluded(key);
       }
     }
 
@@ -1293,8 +1432,7 @@ export abstract class Repository<T extends ZObject> {
     // nothing to set, and `DO NOTHING` would not return the conflicting rows.
     if (Object.keys(setData).length === 0) {
       for (const key of targetKeys) {
-        setData[key as string] =
-          sql`excluded.${sql.identifier(this.col(key as string).name)}`;
+        setData[key as string] = this.excluded(key);
       }
     }
 
@@ -1341,9 +1479,7 @@ export abstract class Repository<T extends ZObject> {
         this.clean(row, this.entity.schema),
       );
 
-      this.dbCache
-        .invalidateTable(this.tableName)
-        .catch((err) => this.log.warn("Cache invalidation failed", err));
+      await this.invalidateCache(opts);
 
       await this.alepha.events.emit("repository:create:after", {
         tableName: this.tableName,
@@ -1361,11 +1497,14 @@ export abstract class Repository<T extends ZObject> {
 
   /**
    * Find an entity and update it.
+   *
+   * Stamps the `db.updatedAt()` column unless `opts.touch` is `false`; see
+   * {@link UpdateOptions.touch}.
    */
   public async updateOne(
     where: PgQueryWhereOrSQL<T>,
     data: WithSQL<Infer<TObjectUpdate<T>>>,
-    opts: StatementOptions = {},
+    opts: UpdateOptions = {},
   ): Promise<Infer<T>> {
     await this.alepha.events.emit("repository:update:before", {
       tableName: this.tableName,
@@ -1384,7 +1523,7 @@ export abstract class Repository<T extends ZObject> {
     // across calls, or is validated/audited by the caller afterwards.
     let row: any = { ...(data as Record<string, unknown>) };
 
-    if (updatedAtField) {
+    if (updatedAtField && opts.touch !== false) {
       row[updatedAtField.key] =
         opts.now ?? this.dateTimeProvider.nowISOString();
     }
@@ -1411,9 +1550,7 @@ export abstract class Repository<T extends ZObject> {
     try {
       const entity = this.clean(response[0], this.entity.schema);
 
-      this.dbCache
-        .invalidateTable(this.tableName)
-        .catch((err) => this.log.warn("Cache invalidation failed", err));
+      await this.invalidateCache(opts);
 
       await this.alepha.events.emit("repository:update:after", {
         tableName: this.tableName,
@@ -1448,10 +1585,7 @@ export abstract class Repository<T extends ZObject> {
    *
    * @see {@link DbVersionMismatchError}
    */
-  public async save(
-    entity: Infer<T>,
-    opts: StatementOptions = {},
-  ): Promise<void> {
+  public async save(entity: Infer<T>, opts: UpdateOptions = {}): Promise<void> {
     // A copy, assigned back only once the write succeeded: on a version
     // mismatch the caller's object is exactly what it loaded, so a retry of
     // it fails again instead of matching the concurrent writer's version and
@@ -1521,22 +1655,39 @@ export abstract class Repository<T extends ZObject> {
 
   /**
    * Find an entity by ID and update it.
+   *
+   * Takes {@link UpdateOptions}, so `{ touch: false }` leaves `updatedAt`
+   * alone.
    */
   public async updateById(
     id: string | number,
     data: WithSQL<Infer<TObjectUpdate<T>>>,
-    opts: StatementOptions = {},
+    opts: UpdateOptions = {},
   ): Promise<Infer<T>> {
     return await this.updateOne(this.getWhereId(id), data, opts);
   }
 
   /**
    * Find many entities and update all of them.
+   *
+   * Stamps the `db.updatedAt()` column unless `opts.touch` is `false`; see
+   * {@link UpdateOptions.touch}.
+   *
+   * @example
+   * ```ts
+   * // Bookkeeping, not an edit: an activity feed scanning `updatedAt`
+   * // must not report every release as changed.
+   * await releases.updateMany(
+   *   { projectId: { eq: projectId }, defaultSince: { isNotNull: true } },
+   *   { defaultSince: null },
+   *   { touch: false },
+   * );
+   * ```
    */
   public async updateMany(
     where: PgQueryWhereOrSQL<T>,
     data: WithSQL<Infer<TObjectUpdate<T>>>,
-    opts: StatementOptions = {},
+    opts: UpdateOptions = {},
   ): Promise<Array<number | string>> {
     await this.alepha.events.emit("repository:update:before", {
       tableName: this.tableName,
@@ -1549,7 +1700,7 @@ export abstract class Repository<T extends ZObject> {
       PG_UPDATED_AT,
     )?.[0];
 
-    if (updatedAtField) {
+    if (updatedAtField && opts.touch !== false) {
       // Shallow-copy before stamping: writing into the caller's object means a
       // reused patch carries a stale `updatedAt` into the next call.
       data = {
@@ -1569,9 +1720,7 @@ export abstract class Repository<T extends ZObject> {
         .where(this.toSQL(where))
         .returning();
 
-      this.dbCache
-        .invalidateTable(this.tableName)
-        .catch((err) => this.log.warn("Cache invalidation failed", err));
+      await this.invalidateCache(opts);
 
       await this.alepha.events.emit("repository:update:after", {
         tableName: this.tableName,
@@ -1616,9 +1765,7 @@ export abstract class Repository<T extends ZObject> {
         .returning({ id: (this.table as any)[this.id.key] });
       const ids = result.map((row) => row.id);
 
-      this.dbCache
-        .invalidateTable(this.tableName)
-        .catch((err) => this.log.warn("Cache invalidation failed", err));
+      await this.invalidateCache(opts);
 
       await this.alepha.events.emit("repository:delete:after", {
         tableName: this.tableName,
@@ -1787,6 +1934,31 @@ export abstract class Repository<T extends ZObject> {
    * rows are seen at all. A key is
    * either a column or an alias, never both and never neither; see
    * {@link AggregateOpSelect} and `assertAggregateKey`.
+   *
+   * A key may also be computed: `{ expr: SQL }` selects an expression under
+   * that alias, to group and order by, and an operation may read an
+   * expression instead of a column with `{ expr }` in place of `column`:
+   *
+   * @example
+   * ```ts
+   * const t = quests.table;
+   * await quests.aggregate({
+   *   select: {
+   *     day: { expr: sqlx.dateDay(t.createdAt) },
+   *     id: { count: true },
+   *     cycle: { avg: { expr: sqlx.dateDiff(t.completedAt, t.acceptedAt, "hours") } },
+   *   },
+   *   where: { createdAt: { gte: dateTime.now().subtract(7, "day").toISOString() } },
+   *   groupBy: ["day"],
+   *   orderBy: "day",
+   * });
+   * // -> Array<{ day: string; id: { count: number }; cycle: { avg: number } }>
+   * ```
+   *
+   * An `expr` key groups and orders by its alias, never by the expression
+   * rendered again (Postgres would refuse it once the expression binds a
+   * parameter), so it may not be spelled like a column. `min` / `max` over an
+   * expression are typed and decoded as the expression's `SQL<T>`.
    */
   public async aggregate<S extends AggregateSelect<T>>(
     query: AggregateQuery<T, S>,
@@ -1828,20 +2000,34 @@ export abstract class Repository<T extends ZObject> {
      * would resurrect soft-deleted rows.
      */
     const aggExpr = (key: string, op: AggregateOp, spec: any) => {
+      const source =
+        spec && typeof spec === "object" && spec.expr ? spec.expr : undefined;
       const columnName =
         spec && typeof spec === "object" && spec.column ? spec.column : key;
-      const column = this.col(columnName);
+      const column = source ?? this.col(columnName);
       const condition =
         spec && typeof spec === "object" && spec.where
           ? this.toSQL(spec.where)
           : undefined;
+      const value = condition
+        ? sql`CASE WHEN ${condition} THEN ${column} END`
+        : column;
+
+      // An expression has no column to decode with, and drizzle's `min` /
+      // `max` fall back to `String` for anything that is not a column: a
+      // numeric min would come back as "3". Emitted bare, they decode as the
+      // driver returns them, which is what `SQL<T>` types them as.
+      if (source && (op === "min" || op === "max")) {
+        return op === "min" ? sql`min(${value})` : sql`max(${value})`;
+      }
+
       // No condition means no CASE at all: `{ count: { column: "id" } }` is
       // just a renamed plain aggregate.
       if (!condition) {
         return aggFn(op, column as any);
       }
 
-      const expr = aggFn(op, sql`CASE WHEN ${condition} THEN ${column} END`);
+      const expr = aggFn(op, value);
 
       // ⚠️ Re-attach the column's decoder. drizzle's `min` / `max` map with
       // the column only when the expression IS a column, and fall back to
@@ -1854,12 +2040,21 @@ export abstract class Repository<T extends ZObject> {
         : expr;
     };
 
+    // Keys computed by `{ expr }`: grouped and ordered by their alias.
+    const exprKeys = new Set<string>();
+
     for (const [key, select] of Object.entries(query.select)) {
       if (select === true) {
         flatFields[key] = this.col(key);
         continue;
       }
       if (typeof select !== "object" || select === null) {
+        continue;
+      }
+      if ("expr" in select) {
+        this.assertAggregateAlias(key);
+        exprKeys.add(key);
+        flatFields[key] = sql`${(select as { expr: SQL }).expr}`.as(key);
         continue;
       }
       this.assertAggregateKey(key, select);
@@ -1892,9 +2087,17 @@ export abstract class Repository<T extends ZObject> {
     }
 
     // GROUP BY
+    // An `expr` key groups by its select alias. Rendering the expression a
+    // second time would bind its parameters again ($1 in the SELECT, $2 in
+    // the GROUP BY), and Postgres refuses a SELECT expression that is not
+    // textually the grouped one.
     if (query.groupBy) {
       builder = builder.groupBy(
-        ...query.groupBy.map((key) => this.col(key as string)),
+        ...query.groupBy.map((key) =>
+          exprKeys.has(key as string)
+            ? sql`${sql.identifier(key as string)}`
+            : this.col(key as string),
+        ),
       ) as any;
     }
 
@@ -1954,7 +2157,9 @@ export abstract class Repository<T extends ZObject> {
           const colName = clause.column.includes(".")
             ? clause.column.replace(".", AGG_SEPARATOR)
             : clause.column;
-          const col = flatFields[colName];
+          const col = exprKeys.has(colName)
+            ? sql`${sql.identifier(colName)}`
+            : flatFields[colName];
           if (!col) {
             throw new AlephaError(
               `Invalid orderBy column '${clause.column}' in aggregate query`,
@@ -2030,7 +2235,13 @@ export abstract class Repository<T extends ZObject> {
 
     for (const [op, spec] of Object.entries(select)) {
       if (!spec) continue;
-      (spec && typeof spec === "object" && spec.column
+      if (spec && typeof spec === "object" && spec.column && spec.expr) {
+        throw new AlephaError(
+          `Aggregate select key '${key}' on '${this.tableName}' names both 'column' and 'expr' (on: ${op}). ` +
+            "An operation reads one source: keep one of them.",
+        );
+      }
+      (spec && typeof spec === "object" && (spec.column || spec.expr)
         ? withColumn
         : withoutColumn
       ).push(op);
@@ -2038,7 +2249,7 @@ export abstract class Repository<T extends ZObject> {
 
     if (isColumn && withColumn.length > 0) {
       throw new AlephaError(
-        `Aggregate select key '${key}' on '${this.tableName}' is a real column, so it cannot also carry 'column' ` +
+        `Aggregate select key '${key}' on '${this.tableName}' is a real column, so it cannot also carry 'column' or 'expr' ` +
           `(on: ${withColumn.join(", ")}). Rename the key to a free-form alias, or drop 'column' to aggregate '${key}' itself.`,
       );
     }
@@ -2046,12 +2257,36 @@ export abstract class Repository<T extends ZObject> {
     if (!isColumn && withoutColumn.length > 0) {
       throw new AlephaError(
         `Aggregate select key '${key}' is not a column of '${this.tableName}', so it is an alias and every operation ` +
-          `under it must name the column it reads (missing on: ${withoutColumn.join(", ")}). ` +
+          `under it must name the column or expression it reads (missing on: ${withoutColumn.join(", ")}). ` +
           "If you meant a column, check the spelling.",
       );
     }
 
     if (!isColumn && key.includes("___")) {
+      throw new AlephaError(
+        `Aggregate select alias '${key}' contains '___', which separates the key from the operation in the flat ` +
+          "result and would make the row impossible to re-nest. Pick a name without it.",
+      );
+    }
+  }
+
+  /**
+   * A select key carrying `{ expr }` is an alias, and it is grouped and
+   * ordered by that name. Spelled like one of the entity's columns, by its
+   * property or its physical name, it would shadow the column in the result,
+   * and Postgres would resolve `GROUP BY <name>` to the input column instead.
+   */
+  protected assertAggregateAlias(key: string): void {
+    const physical = Object.values(getTableColumns(this.table as PgTable)).some(
+      (column) => column.name === key,
+    );
+    if ((this.table as any)[key] != null || physical) {
+      throw new AlephaError(
+        `Aggregate select key '${key}' carries 'expr', so it is an alias, and it is spelled like a column of ` +
+          `'${this.tableName}'. Pick a name that is not a column.`,
+      );
+    }
+    if (key.includes("___")) {
       throw new AlephaError(
         `Aggregate select alias '${key}' contains '___', which separates the key from the operation in the flat ` +
           "result and would make the row impossible to re-nest. Pick a name without it.",
@@ -2473,6 +2708,42 @@ export abstract class Repository<T extends ZObject> {
   }
 
   /**
+   * Whether a statement with these options runs inside a transaction: an
+   * explicit `opts.tx`, or the ambient one `transactional()` set. `tx: null`
+   * opts out of the ambient one.
+   */
+  protected inTransaction(opts: StatementOptions): boolean {
+    if (opts.tx === null) {
+      return false;
+    }
+    return (
+      opts.tx !== undefined || this.alepha.get("alepha.orm.tx") !== undefined
+    );
+  }
+
+  /**
+   * Drop this table's cached queries after a write.
+   *
+   * Inside an ambient transaction the drop waits for the COMMIT
+   * (`DatabaseProvider.afterCommit`), and is discarded with a rollback.
+   * Dropped at write time, a concurrent reader outside the transaction could
+   * re-cache the pre-commit rows in between, and they would then outlive the
+   * commit. Outside a transaction it is awaited, so the write returns with the
+   * cache already clean.
+   *
+   * An explicit `opts.tx` with no ambient transaction has no commit to hook
+   * into: the drop happens now, as it always did.
+   */
+  protected async invalidateCache(opts: StatementOptions): Promise<void> {
+    const invalidate = () => this.dbCache.invalidateTable(this.tableName);
+    if (opts.tx === null) {
+      await invalidate();
+      return;
+    }
+    await this.provider.afterCommit(invalidate);
+  }
+
+  /**
    * Build a cache key from the method name, the caller's query, AND the
    * predicate this repository adds on top of it.
    *
@@ -2559,6 +2830,32 @@ export abstract class Repository<T extends ZObject> {
 /**
  * The options for a statement.
  */
+/**
+ * Options of the update methods (`updateOne`, `updateMany`, `updateById`,
+ * `save`).
+ *
+ * A type of its own rather than a field of {@link StatementOptions}, which
+ * every read also takes: `findMany(q, { touch: false })` would compile and mean
+ * nothing. `upsert` / `upsertMany` do not take it either, on purpose: their
+ * conflict branch stamps `updatedAt` so a caller can tell an insert from a
+ * no-op.
+ */
+export interface UpdateOptions extends StatementOptions {
+  /**
+   * Stamp the `db.updatedAt()` column. Defaults to `true`.
+   *
+   * `false` skips that stamp and nothing else: a `db.version()` column is
+   * still bumped, events still fire and the query cache is still invalidated.
+   * Use it for a write that is bookkeeping rather than an edit, which a reader
+   * of `updatedAt` should not see as a change.
+   *
+   * With `false`, an `updatedAt` written in the patch itself is stored as
+   * given, and `now` has nothing to stamp. On a table without an `updatedAt`
+   * column it changes nothing.
+   */
+  touch?: boolean;
+}
+
 export interface StatementOptions {
   /**
    * Transaction to use.
@@ -2588,7 +2885,14 @@ export interface StatementOptions {
    * Cache configuration for query results.
    *
    * When set, results are stored in an in-memory cache keyed by query parameters.
-   * Any write to this table automatically invalidates all cached queries.
+   * A write to this table through this repository invalidates all its cached
+   * queries: after the COMMIT inside a transaction, at once outside one. A
+   * read inside a transaction never uses the cache.
+   *
+   * ⚠️ The cache is per process. A write on another instance invalidates
+   * nothing here, so `ttl` is what bounds the staleness when several
+   * instances run, unless `DbCacheProvider` is substituted with a shared
+   * implementation. A hit is a copy: mutating it does not touch the cache.
    *
    * @example
    * ```ts

@@ -479,7 +479,27 @@ export class ReactBrowserProvider {
     try {
       const el = this.document.getElementById("__ssr");
       if (el?.textContent) {
-        return JSON.parse(el.textContent) as ReactHydrationState;
+        const shared = JSON.parse(el.textContent) as ReactHydrationState;
+        // The personal atoms travel apart (#E78): a page served from a cache
+        // carries a private script built for this visitor, and a page with
+        // none (a prerendered static file) simply has no personal state.
+        return { ...shared, ...this.readPrivateState() } as ReactHydrationState;
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  /**
+   * The `#__ssr_private` payload, or nothing. Read apart from the shared one
+   * so that a broken private script costs the visitor's state, never the
+   * page's.
+   */
+  protected readPrivateState(): Record<string, unknown> | undefined {
+    try {
+      const el = this.document.getElementById("__ssr_private");
+      if (el?.textContent) {
+        return JSON.parse(el.textContent) as Record<string, unknown>;
       }
     } catch (error) {
       console.error(error);

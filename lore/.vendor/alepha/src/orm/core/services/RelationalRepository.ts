@@ -7,6 +7,7 @@ import {
   type ZObject,
 } from "alepha";
 
+import { DbEntityNotFoundError } from "../errors/DbEntityNotFoundError.ts";
 import type {
   IncludeArg,
   RelationalQueryArgs,
@@ -106,14 +107,15 @@ export class RelationalRepository<
   }
 
   /**
-   * First match, or throw.
+   * First match. Throws `DbEntityNotFoundError` (a 404), like
+   * `Repository.getOne`.
    */
   public async getOne<
     const TArgs extends RelationalQueryArgs<ZType, TMap, TKey> = {},
   >(query: TArgs = {} as TArgs): Promise<Resolve<ZType, TMap, TKey, TArgs>> {
     const row = await this.findOne(query);
     if (!row) {
-      throw new AlephaError(`No '${this.key}' matched the given query.`);
+      throw new DbEntityNotFoundError(this.base.tableName);
     }
     return row;
   }
@@ -145,7 +147,7 @@ export class RelationalRepository<
   ): Promise<Resolve<ZType, TMap, TKey, TArgs>> {
     const row = await this.findById(id, query);
     if (!row) {
-      throw new AlephaError(`No '${this.key}' with id '${id}'.`);
+      throw new DbEntityNotFoundError(this.base.tableName);
     }
     return row;
   }

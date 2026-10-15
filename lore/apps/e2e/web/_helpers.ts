@@ -83,10 +83,13 @@ export const extractInviteUrl = (json: string): string | null => {
  * Resolve an Alepha API endpoint by inspecting the SSR-injected `apiLinks`
  * map embedded in the HTML. Avoids hard-coding paths the framework derives
  * from action names.
+ *
+ * ⚠️ `__ssr_private`, not `__ssr`: since alepha 185bd574a the links are
+ * per-visitor state, kept out of the page a shared cache may serve.
  */
 export const apiPath = async (page: Page, action: string): Promise<string> => {
   const result = await page.evaluate(() => {
-    const node = document.getElementById("__ssr");
+    const node = document.getElementById("__ssr_private");
     if (!node?.textContent) return null;
     try {
       const parsed = JSON.parse(node.textContent) as {

@@ -90,7 +90,8 @@ export class ServerTimingProvider {
       return;
     }
 
-    const request = this.alepha.store.get("alepha.http.request");
+    // Untracked (#E78): timing metadata never reaches a page's markup.
+    const request = this.alepha.store.getUntracked("alepha.http.request");
     if (!request) {
       return;
     }
@@ -105,7 +106,8 @@ export class ServerTimingProvider {
       return;
     }
 
-    const request = this.alepha.store.get("alepha.http.request");
+    // Untracked (#E78): timing metadata never reaches a page's markup.
+    const request = this.alepha.store.getUntracked("alepha.http.request");
     if (!request) {
       return;
     }

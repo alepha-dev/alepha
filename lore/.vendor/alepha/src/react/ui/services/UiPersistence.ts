@@ -7,13 +7,20 @@ import { uiAtom } from "../atoms/uiAtom.ts";
  * Inline `<script>` rendered by SSR into the document `<head>`. Runs
  * synchronously before any CSS or React hydration: reads the `alepha-ui`
  * cookie, resolves `mode === "system"` via `prefers-color-scheme`, and
- * applies `class="dark"` (and optional `theme-<name>`) on `<html>`.
+ * applies `class="dark"` (and optional `theme-<name>`) on `<html>`, with
+ * `data-color-mode` (the unresolved preference, for three-state controls)
+ * and `data-sidebar` (`collapsed` or `expanded`).
+ *
+ * Those attributes are what lets the server render the same markup for every
+ * visitor and still paint each one's preferences on the first frame: the
+ * hooks never read the preferences on the server (`useUiState`), so a page
+ * stays shareable by the page cache (#E78).
  *
  * This is what kills the flash-of-wrong-theme (FOUC) you'd otherwise get
  * with React-effect-based theming. Failures are swallowed silently — at
  * worst the page paints in light mode for one frame.
  */
-const colorSchemeBoot = `(function(){try{var m=document.cookie.match(/(?:^|;\\s*)alepha-ui=([^;]+)/);var s=m?JSON.parse(decodeURIComponent(m[1])):{};var mode=s.mode||"system";var dark=mode==="dark"||(mode==="system"&&window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches);var r=document.documentElement;if(dark)r.classList.add("dark");if(s.theme&&s.theme!=="default")r.classList.add("theme-"+s.theme);}catch(e){}})();`;
+const colorSchemeBoot = `(function(){try{var m=document.cookie.match(/(?:^|;\\s*)alepha-ui=([^;]+)/);var s=m?JSON.parse(decodeURIComponent(m[1])):{};var mode=s.mode||"system";var dark=mode==="dark"||(mode==="system"&&window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches);var r=document.documentElement;if(dark)r.classList.add("dark");if(s.theme&&s.theme!=="default")r.classList.add("theme-"+s.theme);r.setAttribute("data-color-mode",mode);r.setAttribute("data-sidebar",s.sidebar&&s.sidebar.collapsed?"collapsed":"expanded");}catch(e){}})();`;
 
 /**
  * Binds the {@link uiAtom} to an `alepha-ui` cookie + injects an inline

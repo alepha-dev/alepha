@@ -18,8 +18,6 @@ export class ServerReply {
     this.headers.location = url;
   }
 
-  // TODO: check if status / header is already set and throw an error if so (for allow to override with force flag)
-
   /**
    * Set the response status code.
    */

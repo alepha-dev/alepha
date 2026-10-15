@@ -14,6 +14,7 @@ export { default as Translate, Tr } from "./components/Translate.tsx";
 export * from "./hooks/useI18n.ts";
 export * from "./primitives/$dictionary.ts";
 export * from "./providers/I18nProvider.ts";
+export * from "./services/RequestLangResolver.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 

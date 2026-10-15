@@ -449,7 +449,8 @@ export class DbCommand {
     name: "apply",
     mode: true,
     description: "Apply pending migrations to the database",
-    flags: this.drizzleCommandFlags,
+    // No `--provider`: the app boots whole and migrates every provider on
+    // start, so a filter here would be accepted and ignored.
     handler: async ({ root, run }) => {
       const entry = await this.entryProvider.getAppEntry(root);
 

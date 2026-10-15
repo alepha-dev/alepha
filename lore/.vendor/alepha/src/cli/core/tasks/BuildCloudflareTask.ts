@@ -85,6 +85,12 @@ export class BuildCloudflareTask extends BuildTask {
    */
   protected websocketPaths: string[] = [];
 
+  /**
+   * The page cache's pre-boot lookup config (`react:server:edge`), when the
+   * app has pages and the cache is on. See `pageEdgeCode`.
+   */
+  protected pageEdge?: Record<string, any>;
+
   async run(ctx: BuildTaskContext): Promise<void> {
     /*
       Triggered by a workerd SLICE, not by `--target=cloudflare`.
@@ -221,7 +227,17 @@ export class BuildCloudflareTask extends BuildTask {
     if (ctx.manifest) {
       this.hasWebSocket = ctx.manifest.resources.hasWebSocket;
       this.websocketPaths = ctx.manifest.cloudflare?.websocketPaths ?? [];
+      this.pageEdge = ctx.manifest.cloudflare?.pageEdge;
     } else {
+      // Asked of the app itself: the page cache and i18n answer with their
+      // options and the source of the functions the worker embeds (#E78).
+      const pageEdge: Record<string, unknown> = {};
+      try {
+        await ctx.alepha.events.emit("react:server:edge" as any, pageEdge);
+        this.pageEdge = pageEdge.enabled ? pageEdge : undefined;
+      } catch {
+        this.pageEdge = undefined;
+      }
       try {
         // Union of both realtime primitives: a `$room` registers on its
         // `$channel` path exactly like a `$websocket`, and a rooms-only app
@@ -759,6 +775,91 @@ export class BuildCloudflareTask extends BuildTask {
     wrangler.send_email.push({ name: binding });
   }
 
+  /**
+   * The page cache's edge tier in the generated worker (#E78), or nothing
+   * when the app has no pages or the cache is off.
+   *
+   * A page cache hit served to a visitor with no cookie, no credential and no
+   * query is the same response for every such visitor, private script
+   * included: the app marks it (`x-alepha-page-edge`), the worker keeps it in
+   * `caches.default`, and the next such request in this colo is answered
+   * BEFORE the app boots, which is the cold-start cost. Its key is the URL,
+   * the build and the language, the language resolved by the app's own
+   * function (`resolveLang`), embedded here from its source so the two
+   * cannot drift. Entries live 60 s at most; an invalidation in this colo
+   * leaves a marker the lookup checks. A signed-in visitor goes through the
+   * app, whose page cache reads the shared entry from `caches.default` too.
+   */
+  protected pageEdgeCode(): string {
+    const edge = this.pageEdge;
+    const fn = edge?.functions as Record<string, string> | undefined;
+    if (
+      !edge?.enabled ||
+      !fn?.builtId ||
+      !fn.markerUrlOf ||
+      !fn.prefixesOf ||
+      !fn.anonymousUrlOf
+    ) {
+      return "const pageEdgeUrl = () => undefined;\nconst pageEdgeFresh = async () => false;";
+    }
+    const lang = edge.lang ? JSON.stringify(edge.lang) : "undefined";
+    const langFunctions =
+      edge.lang && fn.resolveLang && fn.langFromHeader
+        ? `const pageResolveLang = ${fn.resolveLang};\nconst pageLangFromHeader = ${fn.langFromHeader};`
+        : "const pageResolveLang = undefined;\nconst pageLangFromHeader = undefined;";
+    return `
+const PAGE_EDGE_LANG = ${lang};
+const pageBuiltId = ${fn.builtId};
+const pageMarkerUrlOf = ${fn.markerUrlOf};
+const pagePrefixesOf = ${fn.prefixesOf};
+const pageAnonymousUrlOf = ${fn.anonymousUrlOf};
+${langFunctions}
+
+// The edge key of a request that may share a whole page response, or
+// undefined: a GET with no cookie, no credential and no query, in a built app.
+const pageEdgeUrl = (request) => {
+  if (request.method !== "GET") return undefined;
+  if (request.headers.has("authorization") || request.headers.has("cookie")) {
+    return undefined;
+  }
+  const url = new URL(request.url);
+  if (url.search) return undefined;
+  const build = pageBuiltId(__alepha.meta);
+  if (!build) return undefined;
+  let lang = "-";
+  if (PAGE_EDGE_LANG) {
+    if (PAGE_EDGE_LANG.prefix === "unsupported" || !pageResolveLang) {
+      return undefined;
+    }
+    let urlLocale;
+    if (PAGE_EDGE_LANG.prefix) {
+      const first = url.pathname.split("/")[1];
+      urlLocale = PAGE_EDGE_LANG.prefix.locales.includes(first)
+        ? first
+        : PAGE_EDGE_LANG.prefix.defaultLocale;
+    }
+    lang = pageResolveLang({
+      urlLocale,
+      cookieLang: undefined,
+      headerLang: pageLangFromHeader(request.headers.get("accept-language")),
+      languages: PAGE_EDGE_LANG.languages,
+      fallbackLang: PAGE_EDGE_LANG.fallbackLang,
+      autoDetect: PAGE_EDGE_LANG.autoDetect,
+    });
+  }
+  return pageAnonymousUrlOf(url.origin + url.pathname, build, lang);
+};
+
+// Whether no invalidation reached this colo since the entry was written.
+const pageEdgeFresh = async (cache, key, at) => {
+  for (const prefix of pagePrefixesOf(key)) {
+    const marker = await cache.match(pageMarkerUrlOf(prefix));
+    if (marker && Number(await marker.text()) >= at) return false;
+  }
+  return true;
+};`;
+  }
+
   protected async writeWorkerEntryPoint(
     root: string,
     distDir: string,
@@ -897,9 +998,21 @@ const readOnPrimary = () => {
 // Bind the per-invocation Worker \`env\`: keep the full binding (D1, R2, KV, …)
 // in the store for providers, and lift its string values (secrets/vars like
 // PUBLIC_URL) into \`alepha.env\` so \`$env\` resolves them at runtime.
+//
+// \`REDIS_URL\` selects Redis on Node and Bun only: no Redis client runs in a
+// Worker, and the env reaches \`alepha.env\` here, after every module chose
+// its providers. Setting it on a Worker is a configuration mistake, so it is
+// named once per isolate, never refused.
+let redisUrlWarned = false;
 const bindEnv = (env) => {
   __alepha.set("cloudflare.env", env);
   __alepha.loadEnv(env);
+  if (!redisUrlWarned && typeof env?.REDIS_URL === "string" && env.REDIS_URL !== "") {
+    redisUrlWarned = true;
+    __alepha.log.warn(
+      "REDIS_URL is set on a Cloudflare Worker, where it selects nothing: cache, queue, topic, lock and actors use the Cloudflare providers.",
+    );
+  }
 };
 
 // --- Edge cache -------------------------------------------------------------
@@ -918,6 +1031,30 @@ const bindEnv = (env) => {
 // keeps a route out by construction.
 const edgeCache = () =>
   typeof caches !== "undefined" && caches.default ? caches.default : undefined;
+
+// --- Page cache edge tier (#E78) ---------------------------------------------
+${this.pageEdgeCode()}
+
+// The page cache's internal headers, never sent to a browser.
+const PAGE_HIT_HEADER = "x-alepha-page-hit";
+const PAGE_EDGE_HEADER = "x-alepha-page-edge";
+const PAGE_KEY_HEADER = "x-alepha-page-key";
+const PAGE_AT_HEADER = "x-alepha-page-at";
+
+// What a stored page goes back to before it leaves: the SSR headers it was
+// served with, so the browser never caches a page the edge keeps.
+const servePageFromEdge = (stored) => {
+  const headers = new Headers(stored.headers);
+  headers.delete(PAGE_KEY_HEADER);
+  headers.delete(PAGE_AT_HEADER);
+  headers.set("cache-control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  headers.set("pragma", "no-cache");
+  headers.set("expires", "0");
+  // Development builds carry the page cache header: say where this came from.
+  const outcome = headers.get("x-alepha-cache");
+  if (outcome) headers.set("x-alepha-cache", "edge; " + outcome);
+  return new Response(stored.body, { status: stored.status, headers });
+};
 
 // --- D1 read replication ----------------------------------------------------
 //
@@ -1014,6 +1151,22 @@ export default {
       if (hit) return hit;
     }
 
+    // A shared page for a visitor with no cookie, no credential and no query,
+    // answered without booting the app (#E78). Its key carries the build and
+    // the language; an invalidation in this colo since it was stored wins.
+    const pageUrl = cache ? pageEdgeUrl(request) : undefined;
+    if (pageUrl) {
+      const stored = await cache.match(pageUrl);
+      if (stored) {
+        const key = stored.headers.get(PAGE_KEY_HEADER);
+        const at = Number(stored.headers.get(PAGE_AT_HEADER));
+        if (key && (await pageEdgeFresh(cache, key, at))) {
+          return servePageFromEdge(stored);
+        }
+        await cache.delete(pageUrl);
+      }
+    }
+
     bindEnv(env);
 
     try {
@@ -1060,8 +1213,44 @@ export default {
     // one caller's read position.
     const cacheable = cache && isEdgeCacheable(request, ctx.res);
 
-    if (!cacheable && outgoingBookmark && ctx.res) {
+    // A page cache hit read no bookmark and leaves the visitor's as it was;
+    // the internal headers are read here and never leave (#E78).
+    let pageHit = false;
+    let pageEdge = null;
+    if (ctx.res) {
+      pageHit = ctx.res.headers.has(PAGE_HIT_HEADER);
+      pageEdge = ctx.res.headers.get(PAGE_EDGE_HEADER);
+      try {
+        ctx.res.headers.delete(PAGE_HIT_HEADER);
+        ctx.res.headers.delete(PAGE_EDGE_HEADER);
+      } catch {
+        // An immutable response: the headers stay, harmless.
+      }
+    }
+
+    if (!cacheable && !pageHit && outgoingBookmark && ctx.res) {
       writeBookmarkCookie(ctx.res, outgoingBookmark);
+    }
+
+    // \`<seconds>;<written at>;<key>\`: the app says this whole response may be
+    // kept for that long under the request's page URL.
+    if (cache && pageUrl && pageEdge && ctx.res && ctx.res.status === 200) {
+      const [seconds, at, key] = pageEdge.split(";");
+      const kept = ctx.res.clone();
+      const headers = new Headers(kept.headers);
+      headers.set("cache-control", "public, max-age=" + seconds);
+      headers.set(PAGE_AT_HEADER, at);
+      headers.set(PAGE_KEY_HEADER, decodeURIComponent(key));
+      headers.delete("set-cookie");
+      const put = cache.put(
+        pageUrl,
+        new Response(kept.body, { status: 200, headers }),
+      );
+      if (executionCtx && typeof executionCtx.waitUntil === "function") {
+        executionCtx.waitUntil(put);
+      } else {
+        await put;
+      }
     }
 
     if (cacheable) {

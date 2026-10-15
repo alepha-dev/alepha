@@ -100,6 +100,16 @@ export class EventManager {
   }
 
   /**
+   * The callers of an event's hooks, in the order they run. A caller with
+   * several hooks on the event appears once per hook.
+   */
+  public callers(event: keyof Hooks): string[] {
+    return this.resolve(event as string).map(
+      (hook) => hook.caller?.name ?? "unknown",
+    );
+  }
+
+  /**
    * Resolves the final ordered hook list for an event.
    * Applies topological sort (Kahn's algorithm) within each priority tier
    * based on before/after constraints.
@@ -355,6 +365,13 @@ export class EventManager {
        * @default false
        */
       catch?: boolean;
+      /**
+       * Filled as the hooks run, with `log: true` only: the callers of the
+       * hooks that finished and of those that threw (caught under `catch`).
+       * `Alepha.stop()` reads it to name the hooks that failed, or that were
+       * still pending when its budget ran out.
+       */
+      report?: EmitReport;
     } = {},
   ): Promise<void> {
     // Fast path: auto-compiled executor
@@ -391,6 +408,7 @@ export class EventManager {
       } catch (error) {
         if (options.catch) {
           this.reportListenerError(String(event), name, error);
+          options.report?.failed.push({ caller: name, error });
           continue;
         }
         // Rethrown as it was thrown. This used to wrap, so a hook failing
@@ -411,6 +429,7 @@ export class EventManager {
         throw error;
       }
 
+      options.report?.completed.push(name);
       this.log?.debug(
         `${String(event)}(${name}) OK [${(performance.now() - hookStart).toFixed(1)}ms]`,
       );
@@ -420,4 +439,14 @@ export class EventManager {
       `${String(event)} OK [${(performance.now() - now).toFixed(1)}ms]`,
     );
   }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * What an `emit({ log: true, report })` call observed, hook by hook.
+ */
+export interface EmitReport {
+  completed: string[];
+  failed: Array<{ caller: string; error: unknown }>;
 }

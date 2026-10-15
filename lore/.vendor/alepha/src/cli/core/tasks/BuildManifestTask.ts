@@ -7,6 +7,7 @@ import {
   buildManifestSchema,
 } from "../schemas/buildManifest.ts";
 import { ActorHostCollection } from "../services/ActorHostCollection.ts";
+import { BuildFreshness } from "../services/BuildFreshness.ts";
 import { BuildSlices } from "../services/BuildSlices.ts";
 import { MetaResolver } from "../services/MetaResolver.ts";
 import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
@@ -39,6 +40,7 @@ export class BuildManifestTask extends BuildTask {
 
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly meta = $inject(MetaResolver);
+  protected readonly freshness = $inject(BuildFreshness);
   protected readonly slices = $inject(BuildSlices);
 
   async run(ctx: BuildTaskContext): Promise<void> {
@@ -96,6 +98,23 @@ export class BuildManifestTask extends BuildTask {
     // Bun exposes its version the same way when the build runs under Bun; a
     // node-run build targeting bun simply has nothing to say.
     return (process.versions as Record<string, string>).bun?.split(".")[0];
+  }
+
+  /**
+   * The page cache's pre-boot lookup config, asked of the app through
+   * `react:server:edge` (#E78), so a prebuilt deploy writes the same worker
+   * as a build. Nothing for an app with no pages or the cache off.
+   */
+  protected async pageEdgeOf(
+    ctx: BuildTaskContext,
+  ): Promise<Record<string, unknown> | undefined> {
+    const pageEdge: Record<string, unknown> = {};
+    try {
+      await ctx.alepha.events.emit("react:server:edge" as any, pageEdge);
+    } catch {
+      return undefined;
+    }
+    return pageEdge.enabled ? pageEdge : undefined;
   }
 
   protected async writeManifest(
@@ -345,6 +364,7 @@ export class BuildManifestTask extends BuildTask {
       secrets: envOf(true),
       variables: envOf(false),
       inspect: ctx.options.inspect ? true : undefined,
+      optionsHash: this.freshness.optionsHash(ctx.options),
       // Only what a Worker deploy reads, and only when there is a Worker slice
       // to deploy: a node-only artifact carries no Cloudflare noise.
       cloudflare: runtimes.some((slice) => slice.runtime === "workerd")
@@ -355,6 +375,7 @@ export class BuildManifestTask extends BuildTask {
             websocketPaths,
             durableObjects,
             email,
+            pageEdge: await this.pageEdgeOf(ctx),
           }
         : undefined,
     };

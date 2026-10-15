@@ -12,6 +12,7 @@ import {
 import {
   $route,
   BadRequestError,
+  RequestOriginPolicy,
   type ServerRawRequest,
   type ServerReply,
 } from "alepha/server";
@@ -52,6 +53,7 @@ export class ServerAuthProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly serverCookiesProvider = $inject(ServerCookiesProvider);
   protected readonly cookieParser = $inject(CookieParser);
+  protected readonly originPolicy = $inject(RequestOriginPolicy);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly serverLinksProvider = $inject(ServerLinksProvider);
   protected readonly securityProvider = $inject(SecurityProvider);
@@ -155,7 +157,17 @@ export class ServerAuthProvider {
       // with nothing anywhere saying so. The provider fallback below has
       // always had this rule; the cookie is the same kind of default and
       // now follows it.
-      if (cookies && !request.headers.authorization) {
+      //
+      // And only when the request comes from the app's own origin, for a
+      // method that writes (see `RequestOriginPolicy.allowsCookieCredentials`).
+      // The browser attaches the cookie whatever page sent the request, and
+      // `SameSite=Lax` lets a sibling subdomain through. A refused request
+      // stays anonymous, so `$secure` answers 401, never 403.
+      if (
+        cookies &&
+        !request.headers.authorization &&
+        this.originPolicy.allowsCookieCredentials(request)
+      ) {
         const tokens = await this.cookiesToTokens(cookies);
         if (tokens) {
           request.headers.authorization = `Bearer ${this.extractAccessToken(tokens)}`;
@@ -257,10 +269,23 @@ export class ServerAuthProvider {
         realm: query.realm,
       });
 
+      const previous = this.getTokens(cookies);
+      const result = await provider.refresh(
+        body.refresh_token,
+        body.access_token,
+      );
+      // RFC 6749 section 6 lets a provider omit `refresh_token` on refresh
+      // (Google does), and `id_token` too. Dropped, the next expiry found no
+      // refresh token and the session died.
       const tokens = {
         provider: query.provider,
         realm: query.realm,
-        ...(await provider.refresh(body.refresh_token, body.access_token)),
+        ...result,
+        refresh_token: result.refresh_token ?? body.refresh_token,
+        // Not in `AccessTokenResponse`, but an OIDC provider's refresh
+        // answer carries it when it re-issues one.
+        id_token:
+          (result as { id_token?: string }).id_token ?? previous?.id_token,
       };
 
       // for web applications, we store tokens in cookies
@@ -1291,8 +1316,15 @@ export class ServerAuthProvider {
             // The realm rides along: the refreshed tokens are written back
             // to the cookie, and dropping it here would make only the first
             // refresh land on the right issuer.
+            //
+            // A provider may omit `refresh_token` (and `id_token`) on refresh
+            // (RFC 6749 section 6; Google does): the previous ones stay, or
+            // the second expiry finds nothing to refresh with.
             const newTokens = {
               ...result,
+              refresh_token: result.refresh_token ?? tokens.refresh_token,
+              id_token:
+                (result as { id_token?: string }).id_token ?? tokens.id_token,
               provider: tokens.provider,
               realm: tokens.realm,
               issued_at: this.dateTimeProvider.now().unix(),

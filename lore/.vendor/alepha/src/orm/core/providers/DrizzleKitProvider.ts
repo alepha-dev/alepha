@@ -805,7 +805,11 @@ export class DrizzleKitProvider {
 
   // -------------------------------------------------------------------------------------------------------------------
 
-  // TODO: remove when Drizzle Kit fixes postgres.js compatibility
+  // Kept for as long as drizzle-kit's `pushSchema` reads `execute()` as
+  // node-postgres does (`{ rows }`). postgres.js returns the rows as the
+  // result itself, so without this the push sees no rows. Remove it once
+  // drizzle-kit accepts a postgres.js result, which its own postgres.js
+  // driver path would then exercise.
 
   /**
    * Wrap a Drizzle PgDatabase instance for compatibility with Drizzle Kit.

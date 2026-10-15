@@ -30,8 +30,8 @@ const upload = async (
 ): Promise<{ fileId: string }> => {
   return await page.evaluate(
     async ({ projectId }) => {
-      const node = document.getElementById("__ssr");
-      if (!node?.textContent) throw new Error("__ssr missing");
+      const node = document.getElementById("__ssr_private");
+      if (!node?.textContent) throw new Error("__ssr_private missing");
       const parsed = JSON.parse(node.textContent);
       const links = parsed["alepha.server.request.apiLinks"];
       const action = links?.actions?.uploadAttachment;
@@ -71,8 +71,8 @@ const attachToQuest = async (
 ): Promise<{ id: number }> => {
   return await page.evaluate(
     async ({ projectId, fileId }) => {
-      const node = document.getElementById("__ssr");
-      if (!node?.textContent) throw new Error("__ssr missing");
+      const node = document.getElementById("__ssr_private");
+      if (!node?.textContent) throw new Error("__ssr_private missing");
       const parsed = JSON.parse(node.textContent);
       const links = parsed["alepha.server.request.apiLinks"];
       const action = links?.actions?.createQuest;
@@ -106,8 +106,8 @@ const attachToQuest = async (
  *  `MyProfileController`; this is the same upload through that endpoint. */
 const uploadAvatar = async (page: Page): Promise<string> => {
   return await page.evaluate(async () => {
-    const node = document.getElementById("__ssr");
-    if (!node?.textContent) throw new Error("__ssr missing");
+    const node = document.getElementById("__ssr_private");
+    if (!node?.textContent) throw new Error("__ssr_private missing");
     const parsed = JSON.parse(node.textContent);
     const links = parsed["alepha.server.request.apiLinks"];
     const action = links?.actions?.updateMyAvatar;

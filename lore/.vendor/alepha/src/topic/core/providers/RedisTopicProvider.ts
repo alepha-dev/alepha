@@ -1,13 +1,14 @@
 import { $hook, $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
 import { RedisProvider, RedisSubscriberProvider } from "alepha/redis";
+
 import {
   type SubscribeCallback,
   TopicProvider,
   type TopicPublishOptions,
   type TopicSubscribeOptions,
   type UnSubscribeFn,
-} from "alepha/topic";
+} from "./TopicProvider.ts";
 
 /**
  * Topics over Redis pub/sub.

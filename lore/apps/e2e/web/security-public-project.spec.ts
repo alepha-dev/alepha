@@ -22,7 +22,7 @@ import {
 
 const patchApiLinks = async (page: Page, targetId: number) => {
   await page.evaluate((id) => {
-    const node = document.getElementById("__ssr");
+    const node = document.getElementById("__ssr_private");
     if (!node?.textContent) return;
     const parsed = JSON.parse(node.textContent);
     const links = parsed["alepha.server.request.apiLinks"];
@@ -44,8 +44,8 @@ const callAction = async (
 ): Promise<{ status: number; text: string }> => {
   return await page.evaluate(
     async ({ action, body }) => {
-      const node = document.getElementById("__ssr");
-      if (!node?.textContent) throw new Error("__ssr missing");
+      const node = document.getElementById("__ssr_private");
+      if (!node?.textContent) throw new Error("__ssr_private missing");
       const parsed = JSON.parse(node.textContent) as {
         "alepha.server.request.apiLinks"?: {
           prefix?: string;

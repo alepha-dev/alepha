@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import { $inject } from "alepha";
 import { FileSystemProvider } from "alepha/system";
 
@@ -34,7 +36,50 @@ export class BuildFreshness {
    * `public` and `migrations` are copied into the build, so a changed asset
    * or a new migration invalidates it exactly as a `.tsx` does.
    */
-  static readonly APP_INPUTS = ["src", "public", "migrations", "package.json"];
+  static readonly APP_INPUTS = [
+    "src",
+    "public",
+    "migrations",
+    "package.json",
+    "index.html",
+  ];
+
+  /**
+   * Configuration files at the top of a package that change what is built:
+   * `alepha.config.ts`, `tsconfig*.json`, `.env*`, `vite.config.*`. Matched
+   * by name, since most of them come in variants. Missing them made a build
+   * for an edited config answer "up to date".
+   */
+  static readonly CONFIG_FILES = [
+    /^alepha\.config\./,
+    /^tsconfig.*\.json$/,
+    /^\.env/,
+    /^vite\.config\./,
+  ];
+
+  /**
+   * A hash of the resolved options that shape the artifact but live in no
+   * file: the runtime declaration (server or static), its slices in declared
+   * order (the first is the primary), and `inspect`. Written into
+   * `manifest.json` by the build and compared by {@link staleReason}, so
+   * `build --runtime bun --if-stale` after a node build rebuilds.
+   */
+  public optionsHash(options: {
+    runtime?: unknown;
+    runtimes?: readonly string[];
+    inspect?: boolean;
+  }): string {
+    return createHash("sha256")
+      .update(
+        JSON.stringify({
+          runtime: options.runtime ?? null,
+          runtimes: options.runtimes ?? [],
+          inspect: options.inspect === true,
+        }),
+      )
+      .digest("hex")
+      .slice(0, 16);
+  }
 
   /**
    * Why `dist` is stale, or null when it is current.
@@ -42,7 +87,15 @@ export class BuildFreshness {
    * A string rather than a boolean so the command can say what changed:
    * "skipping build" with no reason is indistinguishable from a broken check.
    */
-  async staleReason(root: string, distDir: string): Promise<string | null> {
+  async staleReason(
+    root: string,
+    distDir: string,
+    /**
+     * {@link optionsHash} of the build being asked for. A manifest that
+     * records another one (or none, from an older build) is stale.
+     */
+    optionsHash?: string,
+  ): Promise<string | null> {
     /*
       `manifest.json` rather than an entry file, because there is no longer one
       name an entry is guaranteed to have: a build produces `index.node.js`,
@@ -56,6 +109,20 @@ export class BuildFreshness {
       return `${distDir}/manifest.json is missing`;
     }
     const builtAt = (await this.fs.stat(artifact)).mtimeMs;
+
+    if (optionsHash !== undefined) {
+      let recorded: unknown;
+      try {
+        recorded = (
+          await this.fs.readJsonFile<{ optionsHash?: unknown }>(artifact)
+        ).optionsHash;
+      } catch {
+        recorded = undefined;
+      }
+      if (recorded !== optionsHash) {
+        return "the build options changed since the last build (runtimes or inspect)";
+      }
+    }
 
     const inputs = await this.inputRoots(root);
     // No readable input at all is not "nothing changed", it is "this check
@@ -99,6 +166,7 @@ export class BuildFreshness {
           roots.push(path);
         }
       }
+      roots.push(...(await this.configFiles(dir)));
 
       // Only `workspace:` dependencies are followed. A published package is
       // pinned by version and reinstalled rather than edited, and walking
@@ -111,6 +179,23 @@ export class BuildFreshness {
       }
     }
     return roots;
+  }
+
+  /**
+   * The configuration files at the top of `dir` (see {@link CONFIG_FILES}).
+   */
+  protected async configFiles(dir: string): Promise<string[]> {
+    let names: string[];
+    try {
+      names = await this.fs.ls(dir, { hidden: true });
+    } catch {
+      return [];
+    }
+    return names
+      .filter((name) =>
+        BuildFreshness.CONFIG_FILES.some((pattern) => pattern.test(name)),
+      )
+      .map((name) => this.fs.join(dir, name));
   }
 
   /**

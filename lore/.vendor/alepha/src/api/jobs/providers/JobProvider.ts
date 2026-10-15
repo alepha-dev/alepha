@@ -572,10 +572,20 @@ export class JobProvider {
     expectedStatuses: JobStatus[],
     patch: Parameters<typeof this.executions.updateById>[1],
     label: string,
+    /**
+     * The claim this write belongs to. Every write made on behalf of a run
+     * passes it, so a run that lost its lease can no longer finalize the
+     * attempt the sweep re-dispatched in its place. See {@link fenceWhere}.
+     */
+    fence?: JobClaimFence,
   ): Promise<boolean> {
     try {
       await this.executions.updateOne(
-        { id: { eq: executionId }, status: { inArray: expectedStatuses } },
+        {
+          id: { eq: executionId },
+          status: { inArray: expectedStatuses },
+          ...this.fenceWhere(fence),
+        },
         patch,
       );
       return true;
@@ -588,6 +598,35 @@ export class JobProvider {
       }
       throw e;
     }
+  }
+
+  /**
+   * The where-clause of a fenced write: the row must still hold the claim
+   * `fence` names, `attempt` AND `startedAt` together.
+   *
+   * Status alone let a stale run write over a newer one. Attempt N loses its
+   * lease (a frozen process, a GC pause, a partition), the sweep re-dispatches
+   * and attempt N+1 runs; N finishing late then wrote `ok` or `error` over
+   * N+1, or deleted its row, and N's heartbeat kept N+1's lease fresh.
+   *
+   * Both columns, because neither is enough alone. `attempt` is not
+   * monotonic: `reschedule()` resets it to 0, so attempt 1 before a
+   * reschedule and attempt 1 after it look identical. `startedAt` is written
+   * by `claim()` only, never by the heartbeat, and two claims of one row
+   * cannot share a millisecond (the second needs the first lease expired),
+   * so the pair names exactly one claim. No claim-token column: that is a
+   * schema change every downstream app would have to migrate.
+   */
+  protected fenceWhere(fence: JobClaimFence | undefined) {
+    if (!fence) {
+      return {};
+    }
+    return {
+      attempt: { eq: fence.attempt },
+      startedAt: fence.startedAt
+        ? { eq: fence.startedAt }
+        : { isNull: true as const },
+    };
   }
 
   /**
@@ -634,6 +673,10 @@ export class JobProvider {
    * Unlike the run lock, a same-process double tick cannot slip through
    * either: the stored value is unique per attempt, not per process, so only
    * the caller that actually created the key sees its own token back.
+   *
+   * Not fenced on `attempt`/`startedAt` like the queue path (`fenceWhere`):
+   * the instant row is keyed on a unique value, so a claim already names
+   * exactly one run.
    */
   protected async claimCronInstant(
     registration: JobRuntimeRegistration,
@@ -968,6 +1011,7 @@ export class JobProvider {
   protected startLeaseHeartbeat(
     executionId: string,
     registration: JobRuntimeRegistration,
+    fence?: JobClaimFence,
   ): ReturnType<typeof setInterval> {
     const intervalMs = Math.max(
       250,
@@ -976,10 +1020,7 @@ export class JobProvider {
     const timer = setInterval(() => {
       void (async () => {
         try {
-          await this.executions.updateOne(
-            { id: { eq: executionId }, status: { eq: "running" } },
-            { status: "running" },
-          );
+          await this.renewLease(executionId, fence);
         } catch (error) {
           if (this.shouldStopHeartbeat(error)) {
             clearInterval(timer);
@@ -993,6 +1034,26 @@ export class JobProvider {
       })();
     }, intervalMs);
     return timer;
+  }
+
+  /**
+   * One lease renewal: bump `updatedAt` on a row still `running` under this
+   * claim. Fenced, so a stale run's heartbeat cannot keep the lease of the
+   * attempt that replaced it fresh: its renewal finds no row, and the
+   * heartbeat stops (see {@link shouldStopHeartbeat}).
+   */
+  protected async renewLease(
+    executionId: string,
+    fence?: JobClaimFence,
+  ): Promise<void> {
+    await this.executions.updateOne(
+      {
+        id: { eq: executionId },
+        status: { eq: "running" },
+        ...this.fenceWhere(fence),
+      },
+      { status: "running" },
+    );
   }
 
   /**
@@ -1310,6 +1371,7 @@ export class JobProvider {
     jobName: string,
     executionId: string,
     next: RescheduleIntent,
+    fence?: JobClaimFence,
   ): Promise<void> {
     const parked = await this.guardedUpdate(
       executionId,
@@ -1322,6 +1384,7 @@ export class JobProvider {
         redispatchCount: 0,
       },
       "reschedule",
+      fence,
     );
     if (!parked) return;
     this.log.debug(`Job '${jobName}' rescheduled`, {
@@ -1522,7 +1585,17 @@ export class JobProvider {
       const ms = this.dt.duration(opts.timeout).as("milliseconds");
       timeoutId = setTimeout(() => abortController.abort(), ms);
     }
-    const leaseTimer = this.startLeaseHeartbeat(executionId, registration);
+    // The claim this run holds. Every write it makes after this point is
+    // fenced on it (see `fenceWhere`).
+    const fence: JobClaimFence = {
+      attempt: execution.attempt,
+      startedAt: execution.startedAt,
+    };
+    const leaseTimer = this.startLeaseHeartbeat(
+      executionId,
+      registration,
+      fence,
+    );
 
     const now = this.dt.now();
 
@@ -1560,7 +1633,7 @@ export class JobProvider {
             });
 
             if (parkAgain) {
-              await this.park(jobName, executionId, parkAgain);
+              await this.park(jobName, executionId, parkAgain, fence);
               return;
             }
 
@@ -1579,11 +1652,13 @@ export class JobProvider {
                   logs: this.logBuffer.snapshot(),
                 },
                 "success",
+                fence,
               );
             } else {
               await this.executions.deleteMany({
                 id: { eq: executionId },
                 status: { eq: "running" },
+                ...this.fenceWhere(fence),
               });
             }
 
@@ -1645,11 +1720,13 @@ export class JobProvider {
                     logs: this.logBuffer.snapshot(),
                   },
                   "inline-failure",
+                  fence,
                 );
               } else {
                 await this.executions.deleteMany({
                   id: { eq: executionId },
                   status: { eq: "running" },
+                  ...this.fenceWhere(fence),
                 });
               }
               await this.alepha.events.emit(
@@ -1666,6 +1743,7 @@ export class JobProvider {
               execution.attempt,
               err,
               this.logBuffer.snapshot(),
+              fence,
             );
           } finally {
             if (timeoutId) clearTimeout(timeoutId);
@@ -1794,6 +1872,12 @@ export class JobProvider {
      * (a request, another job) onto the row it is repairing.
      */
     logs?: LogEntry[],
+    /**
+     * The claim that failed: every write below is fenced on it, so a stale
+     * run (or a sweep that read the row before a re-claim) cannot fail the
+     * attempt that replaced it.
+     */
+    fence?: JobClaimFence,
   ): Promise<void> {
     const jobName = registration.name;
     const opts = registration.options;
@@ -1837,7 +1921,7 @@ export class JobProvider {
       );
       // Guard with `status: running` so a concurrent cancel that has already
       // flipped the row to 'cancelled' is not overwritten by the retry write.
-      await this.guardedUpdate(
+      const retried = await this.guardedUpdate(
         executionId,
         ["running"],
         {
@@ -1847,8 +1931,13 @@ export class JobProvider {
           logs,
         },
         "retry-after-failure",
+        fence,
       );
-      await this.dispatchDelayed(jobName, executionId, nextScheduledAt);
+      // Not when the write was refused: the row is not this claim's to
+      // schedule any more (a cancel won, or a newer attempt holds it).
+      if (retried) {
+        await this.dispatchDelayed(jobName, executionId, nextScheduledAt);
+      }
     } else {
       this.log.info(
         `Job '${jobName}' dead after ${currentAttempt} attempt(s)`,
@@ -1866,6 +1955,7 @@ export class JobProvider {
             logs,
           },
           "terminal-failure",
+          fence,
         );
       } else {
         // The job records no failures, so its outbox row ends here. Guarded
@@ -1873,6 +1963,7 @@ export class JobProvider {
         await this.executions.deleteMany({
           id: { eq: executionId },
           status: { eq: "running" },
+          ...this.fenceWhere(fence),
         });
       }
     }
@@ -2076,11 +2167,16 @@ export class JobProvider {
             key: null,
           },
           "redispatch-exhausted",
+          { attempt: exec.attempt, startedAt: exec.startedAt },
         );
       } else {
         await this.executions.deleteMany({
           id: { eq: exec.id },
           status: { eq: "pending" },
+          ...this.fenceWhere({
+            attempt: exec.attempt,
+            startedAt: exec.startedAt,
+          }),
         });
       }
       await this.alepha.events.emit(
@@ -2137,7 +2233,16 @@ export class JobProvider {
     // Per-row containment: one unrecoverable row must not strand the
     // remaining crashed executions until the next tick.
     try {
-      await this.handleFailure(exec.id, registration, exec.attempt, error);
+      // Fenced on the values just read: a worker that re-claimed the row
+      // between the sweep's read and this write is left alone.
+      await this.handleFailure(
+        exec.id,
+        registration,
+        exec.attempt,
+        error,
+        undefined,
+        { attempt: exec.attempt, startedAt: exec.startedAt },
+      );
     } catch (e) {
       this.log.error(`Sweep failed to recover crashed execution ${exec.id}`, {
         error: e,
@@ -2291,22 +2396,38 @@ export class JobProvider {
    * sharing a database, or a script that started a container with only some
    * of the application's modules. Give each its own database, or its own
    * schema.
+   *
+   * **The names present are read first, from an index.** The purge used to
+   * ask for `id where jobName NOT IN (<registered>)` straight away: a `NOT IN`
+   * cannot seek and `id` is in no index, so in the usual case, nothing to
+   * purge, the database walked every row, `logs` included, to prove it. On D1
+   * that timed out every tick once the table grew. A `GROUP BY jobName` is
+   * answered from the `(jobName, …)` indexes alone, and the delete then seeks
+   * on the few unknown names.
    */
   protected async purgeUnregistered(): Promise<void> {
-    const names = [...this.jobs.keys()];
-    if (names.length === 0) return;
+    if (this.jobs.size === 0) return;
 
     let deleted = 0;
     try {
+      const present = (await this.executions.aggregate({
+        select: { jobName: true },
+        groupBy: ["jobName"],
+      })) as Array<{ jobName: string }>;
+      const unknown = present
+        .map((row) => row.jobName)
+        .filter((name) => !this.jobs.has(name));
+      if (unknown.length === 0) return;
+
       while (deleted < this.trimMaxPerTick) {
         const chunk = Math.min(
           this.trimChunkSize,
           this.trimMaxPerTick - deleted,
         );
-        // The registered names are a few dozen bound parameters on top of a
+        // The unknown names are a handful of bound parameters on top of a
         // chunk of ids, which keeps the delete under D1's 999.
         const rows = await this.executions.findMany({
-          where: { jobName: { notInArray: names } },
+          where: { jobName: { inArray: unknown } },
           columns: ["id"],
           limit: chunk,
         });
@@ -2595,4 +2716,15 @@ export class JobProvider {
     }
     return registration;
   }
+}
+
+/**
+ * One claim of an execution row: the `attempt` and `startedAt` that
+ * `claim()` wrote. Writes made on its behalf are fenced on it.
+ *
+ * @see JobProvider.fenceWhere
+ */
+export interface JobClaimFence {
+  attempt: number;
+  startedAt?: string | null;
 }

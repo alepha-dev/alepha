@@ -64,11 +64,11 @@ export class SqlExpressionProvider {
    * otherwise decode to a Date while SQLite yields a string, forcing callers
    * to declare two result schemas for one query.
    */
-  public dateDay(column: SqlLike): SQL {
+  public dateDay(column: SqlLike): SQL<string> {
     if (this.isEpochMillis) {
-      return sql`STRFTIME('%Y-%m-%d', ${this.toEpochSeconds(column)}, 'unixepoch')`;
+      return sql<string>`STRFTIME('%Y-%m-%d', ${this.toEpochSeconds(column)}, 'unixepoch')`;
     }
-    return sql`TO_CHAR(${column}, 'YYYY-MM-DD')`;
+    return sql<string>`TO_CHAR(${column}, 'YYYY-MM-DD')`;
   }
 
   /**
@@ -89,11 +89,11 @@ export class SqlExpressionProvider {
    * Timezone handling is {@link dateDay}'s, exactly: a query that buckets by
    * both must not have the two disagree about which day an hour belongs to.
    */
-  public dateHour(column: SqlLike): SQL {
+  public dateHour(column: SqlLike): SQL<string> {
     if (this.isEpochMillis) {
-      return sql`STRFTIME('%Y-%m-%dT%H', ${this.toEpochSeconds(column)}, 'unixepoch')`;
+      return sql<string>`STRFTIME('%Y-%m-%dT%H', ${this.toEpochSeconds(column)}, 'unixepoch')`;
     }
-    return sql`TO_CHAR(${column}, 'YYYY-MM-DD"T"HH24')`;
+    return sql<string>`TO_CHAR(${column}, 'YYYY-MM-DD"T"HH24')`;
   }
 
   /**
@@ -107,16 +107,16 @@ export class SqlExpressionProvider {
    * (a January date belonging to the previous ISO year, and vice versa) come
    * out right.
    */
-  public dateWeek(column: SqlLike): SQL {
+  public dateWeek(column: SqlLike): SQL<string> {
     if (this.isEpochMillis) {
       const thursday = sql`DATE(${this.toEpochSeconds(column)}, 'unixepoch', '-3 days', 'weekday 4')`;
-      return sql`(
+      return sql<string>`(
         STRFTIME('%Y', ${thursday})
         || '-W'
         || PRINTF('%02d', (CAST(STRFTIME('%j', ${thursday}) AS INTEGER) - 1) / 7 + 1)
       )`;
     }
-    return sql`TO_CHAR(${column}, 'IYYY-"W"IW')`;
+    return sql<string>`TO_CHAR(${column}, 'IYYY-"W"IW')`;
   }
 
   /**
@@ -133,12 +133,16 @@ export class SqlExpressionProvider {
    * so without the cast the same query decodes as a number on SQLite and a
    * string on Postgres, and every caller has to paper over the difference.
    */
-  public dateDiff(end: SqlLike, start: SqlLike, unit: SqlDateUnit): SQL {
+  public dateDiff(
+    end: SqlLike,
+    start: SqlLike,
+    unit: SqlDateUnit,
+  ): SQL<number> {
     const seconds = SqlExpressionProvider.UNIT_SECONDS[unit];
     if (this.isEpochMillis) {
-      return sql`((${end} - ${start}) / ${sql.raw(String(seconds * 1000))}.0)`;
+      return sql<number>`((${end} - ${start}) / ${sql.raw(String(seconds * 1000))}.0)`;
     }
-    return sql`((EXTRACT(EPOCH FROM (${end} - ${start})) / ${sql.raw(String(seconds))}.0)::double precision)`;
+    return sql<number>`((EXTRACT(EPOCH FROM (${end} - ${start})) / ${sql.raw(String(seconds))}.0)::double precision)`;
   }
 
   /**
@@ -149,6 +153,13 @@ export class SqlExpressionProvider {
    * calendar-day boundaries should bucket with {@link dateDay} rather than
    * relying on this — mixing the two is how a "last 7 days" window silently
    * means different things on different databases.
+   *
+   * ⚠️ Prefer a bound computed from `DateTimeProvider`:
+   * `where: { createdAt: { gte: this.dateTime.now().subtract(7, "day") } }`.
+   * `ago()` reads the DATABASE clock (`NOW()`, `STRFTIME('%s', 'now')`), so
+   * `DateTimeProvider.travel()` cannot move it and a "last 7 days" spec is not
+   * reproducible; the bound reads the application clock, which tests control.
+   * `ago()` stays for raw SQL that wants the database's own notion of now.
    */
   public ago(amount: number, unit: SqlDateUnit): SQL {
     const seconds = SqlExpressionProvider.UNIT_SECONDS[unit] * amount;

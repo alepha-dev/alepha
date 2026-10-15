@@ -29,6 +29,8 @@ export const uiAtom = $atom({
     theme: "default",
     sidebar: { collapsed: false },
   },
+  // A visitor's preferences: cookie-bound, so personal anyway, said outright.
+  personal: true,
 });
 
 export type UiState = Infer<typeof uiAtom.schema>;

@@ -110,17 +110,67 @@ export class ServerCompressProvider {
         return;
       }
 
-      for (const encoding of ["zstd", "br", "gzip"] as const) {
-        if (
-          acceptEncoding.includes(encoding) &&
-          ServerCompressProvider.compressors[encoding]
-        ) {
-          await this.compress(encoding, response);
-          return;
-        }
+      const encoding = this.pickEncoding(acceptEncoding);
+      if (encoding) {
+        await this.compress(encoding, response);
       }
     },
   });
+
+  /**
+   * The encoding to answer with, from an `Accept-Encoding` header, per
+   * RFC 9110 section 12.5.3. `undefined` sends the body uncompressed.
+   *
+   * - Tokens are case-insensitive and whitespace-tolerant; a missing `q` is
+   *   1, and a malformed one makes that token unacceptable.
+   * - `q=0` refuses an encoding. `*` gives its q to every encoding the header
+   *   does not name; an encoding neither named nor covered by `*` is refused.
+   * - The highest q wins; a tie goes to the server's order (zstd, br, gzip),
+   *   among the compressors this runtime has.
+   * - Nothing acceptable, `identity;q=0` included, sends identity rather than
+   *   a 406: RFC 9110 allows it, and a 406 on a JSON API is worse than an
+   *   ignored preference.
+   *
+   * It used to pick the first of zstd, br, gzip whose name appeared anywhere
+   * in the header, so `br;q=0, gzip` was answered in br.
+   */
+  protected pickEncoding(
+    acceptEncoding: string,
+  ): "zstd" | "br" | "gzip" | undefined {
+    const named = new Map<string, number>();
+    let wildcard: number | undefined;
+
+    for (const part of acceptEncoding.split(",")) {
+      const [rawName, ...params] = part.split(";");
+      const name = rawName.trim().toLowerCase();
+      if (!name) continue;
+
+      let q = 1;
+      for (const param of params) {
+        const [key, value] = param.split("=").map((it) => it.trim());
+        if (key.toLowerCase() !== "q") continue;
+        q = /^(0(\.\d{0,3})?|1(\.0{0,3})?)$/.test(value ?? "")
+          ? Number(value)
+          : 0;
+      }
+
+      if (name === "*") {
+        wildcard = q;
+      } else {
+        named.set(name, q);
+      }
+    }
+
+    let best: { encoding: "zstd" | "br" | "gzip"; q: number } | undefined;
+    for (const encoding of ["zstd", "br", "gzip"] as const) {
+      if (!ServerCompressProvider.compressors[encoding]) continue;
+      const q = named.get(encoding) ?? wildcard ?? 0;
+      if (q > 0 && (!best || q > best.q)) {
+        best = { encoding, q };
+      }
+    }
+    return best?.encoding;
+  }
 
   protected isAllowedContentType(contentType: string | undefined): boolean {
     if (!contentType) {

@@ -119,8 +119,8 @@ export class LocalFileStorageProvider implements FileStorageProvider {
 
     this.log.trace(`Uploading file to ${bucketName}`);
 
-    // The per-tenant sub-directory isn't pre-created by `onStart` (which only
-    // knows the un-scoped bucket name), so ensure it exists before writing.
+    // Ensure the bucket's directory exists before writing: `onStart` creates
+    // it, but it may have been removed since (a test wiping the root).
     await this.fileSystemProvider.mkdir(this.path(bucketName));
     await this.fileSystemProvider.writeFile(
       this.path(bucketName, fileId),

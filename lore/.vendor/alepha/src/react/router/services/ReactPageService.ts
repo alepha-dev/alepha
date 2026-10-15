@@ -25,4 +25,13 @@ export abstract class ReactPageService {
   ): Promise<PagePrimitiveRenderResult> {
     throw new AlephaError("Render is not available for this environment.");
   }
+
+  public invalidate(
+    name: string,
+    params?: Record<string, unknown>,
+  ): Promise<void> {
+    throw new AlephaError(
+      "Page invalidation is server-side only: call it from an action or a job.",
+    );
+  }
 }

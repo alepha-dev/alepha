@@ -374,6 +374,28 @@ class AlephaPackageBuilderCli {
           ].join(" "),
         );
       });
+
+      // Files a built module reaches through `new URL("<file>", import.meta.url)`
+      // at runtime. The bundler never sees them, so they are copied next to
+      // the entry that names them. `jsdomProject` points Vitest at
+      // `setup.ts`, which Vitest transforms itself: the source file ships as
+      // is, so the URL stays identical in `src` and `dist`.
+      //
+      // Only where the file exists: this script builds every package of the
+      // workspace, and only `alepha` has a `testing/vitest`.
+      const vitestSetup = this.fs.join(
+        root,
+        this.src,
+        "testing/vitest/setup.ts",
+      );
+      if (await this.fs.exists(vitestSetup)) {
+        await run("runtime files", async () => {
+          await this.fs.cp(
+            vitestSetup,
+            this.fs.join(root, this.dist, "testing/vitest/setup.ts"),
+          );
+        });
+      }
     },
   });
 }

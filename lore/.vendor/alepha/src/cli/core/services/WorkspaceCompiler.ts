@@ -108,23 +108,54 @@ export class WorkspaceCompiler {
 
     await this.assertBunSlice(dist, bunEntry);
     await this.assertNoExternals(dist);
-    await this.embedPublicFiles(
-      dist,
-      publicDir,
-      options.builtAt ?? this.dateTime.nowMillis(),
-      bunEntry,
-    );
 
-    const target = options.target ?? this.defaultBunTarget();
-    await this.shell.run(
-      this.buildCompileCommand(
-        options.name,
-        target,
-        options.minify ?? true,
-        bunEntry,
-      ),
-      { root: dist },
+    // Staged, like the desktop path: `dist/` is copied, the public files are
+    // embedded into the COPY's entry and the copy is compiled, so a failure
+    // leaves `dist/` exactly as the build wrote it. Embedding in place
+    // appended the imports to `dist/index.bun.js` before `bun build`, nothing
+    // rolled it back on failure, and a retry appended `import a0` again: a
+    // SyntaxError that only a rebuild cured.
+    const stage = this.fs.join(
+      options.root,
+      "node_modules",
+      ".alepha",
+      "compile-stage",
     );
+    const stagedDist = this.fs.join(stage, "dist");
+    const binary = this.fs.join(dist, options.name);
+    await this.fs.rm(stage, { recursive: true, force: true });
+    try {
+      await this.fs.mkdir(stage, { recursive: true });
+      await this.fs.cp(dist, stagedDist, { recursive: true });
+      await this.embedPublicFiles(
+        stagedDist,
+        publicDir,
+        options.builtAt ?? this.dateTime.nowMillis(),
+        bunEntry,
+      );
+
+      const target = options.target ?? this.defaultBunTarget();
+      await this.shell.run(
+        this.buildCompileCommand(
+          options.name,
+          target,
+          options.minify ?? true,
+          bunEntry,
+        ),
+        { root: stagedDist },
+      );
+
+      const staged = this.fs.join(stagedDist, options.name);
+      if (!(await this.fs.exists(staged))) {
+        throw new AlephaError(
+          `\`bun build --compile\` finished but wrote no '${options.name}' in ${stagedDist}.`,
+        );
+      }
+      await this.fs.rm(binary, { force: true });
+      await this.fs.cp(staged, binary);
+    } finally {
+      await this.fs.rm(stage, { recursive: true, force: true });
+    }
 
     await this.cleanupPreCompileArtifacts(
       dist,
@@ -136,7 +167,6 @@ export class WorkspaceCompiler {
       await this.copyMigrations(options.root, dist);
     }
 
-    const binary = this.fs.join(dist, options.name);
     await this.logBinary(binary);
     return binary;
   }
@@ -481,7 +511,7 @@ export class WorkspaceCompiler {
     await this.fs.writeFile(
       indexPath,
       `${index.trimEnd()}\n\n` +
-        "// Embedded by `alepha build --compile`: every public file, read from inside the binary.\n" +
+        "// Embedded by `alepha compile`: every public file, read from inside the binary.\n" +
         `${imports.join("\n")}\n` +
         `__alepha.set("alepha.server.static.embedded", { builtAt: ${builtAt}, files: { ${map} } });\n`,
     );

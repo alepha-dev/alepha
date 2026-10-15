@@ -44,14 +44,9 @@
       "react-native": "./src/actor/core/index.browser.ts",
       "workerd": "./src/actor/core/index.workerd.ts",
       "browser": "./src/actor/core/index.browser.ts",
+      "bun": "./src/actor/core/index.bun.ts",
       "import": "./src/actor/core/index.ts",
       "default": "./src/actor/core/index.ts"
-    },
-    "./actor/redis": {
-      "types": "./src/actor/redis/index.ts",
-      "bun": "./src/actor/redis/index.bun.ts",
-      "import": "./src/actor/redis/index.ts",
-      "default": "./src/actor/redis/index.ts"
     },
     "./api/analytics": {
       "types": "./src/api/analytics/index.ts",
@@ -144,7 +139,9 @@
     },
     "./cache": {
       "types": "./src/cache/core/index.ts",
+      "react-native": "./src/cache/core/index.browser.ts",
       "workerd": "./src/cache/core/index.workerd.ts",
+      "browser": "./src/cache/core/index.browser.ts",
       "import": "./src/cache/core/index.ts",
       "default": "./src/cache/core/index.ts"
     },
@@ -152,11 +149,6 @@
       "types": "./src/cache/database/index.ts",
       "import": "./src/cache/database/index.ts",
       "default": "./src/cache/database/index.ts"
-    },
-    "./cache/redis": {
-      "types": "./src/cache/redis/index.ts",
-      "import": "./src/cache/redis/index.ts",
-      "default": "./src/cache/redis/index.ts"
     },
     "./captcha": {
       "types": "./src/captcha/index.ts",
@@ -251,13 +243,9 @@
     },
     "./lock": {
       "types": "./src/lock/core/index.ts",
+      "workerd": "./src/lock/core/index.workerd.ts",
       "import": "./src/lock/core/index.ts",
       "default": "./src/lock/core/index.ts"
-    },
-    "./lock/redis": {
-      "types": "./src/lock/redis/index.ts",
-      "import": "./src/lock/redis/index.ts",
-      "default": "./src/lock/redis/index.ts"
     },
     "./logger": {
       "types": "./src/logger/index.ts",
@@ -288,11 +276,6 @@
       "workerd": "./src/queue/core/index.workerd.ts",
       "import": "./src/queue/core/index.ts",
       "default": "./src/queue/core/index.ts"
-    },
-    "./queue/redis": {
-      "types": "./src/queue/redis/index.ts",
-      "import": "./src/queue/redis/index.ts",
-      "default": "./src/queue/redis/index.ts"
     },
     "./rate-limit": {
       "types": "./src/rate-limit/index.ts",
@@ -484,13 +467,11 @@
     },
     "./topic": {
       "types": "./src/topic/core/index.ts",
+      "react-native": "./src/topic/core/index.browser.ts",
+      "workerd": "./src/topic/core/index.workerd.ts",
+      "browser": "./src/topic/core/index.browser.ts",
       "import": "./src/topic/core/index.ts",
       "default": "./src/topic/core/index.ts"
-    },
-    "./topic/redis": {
-      "types": "./src/topic/redis/index.ts",
-      "import": "./src/topic/redis/index.ts",
-      "default": "./src/topic/redis/index.ts"
     },
     "./websocket": {
       "types": "./src/websocket/index.ts",
@@ -513,14 +494,9 @@
         "react-native": "./dist/actor/core/index.browser.js",
         "workerd": "./dist/actor/core/index.workerd.js",
         "browser": "./dist/actor/core/index.browser.js",
+        "bun": "./dist/actor/core/index.bun.js",
         "import": "./dist/actor/core/index.js",
         "default": "./dist/actor/core/index.js"
-      },
-      "./actor/redis": {
-        "types": "./dist/actor/redis/index.d.ts",
-        "bun": "./dist/actor/redis/index.bun.js",
-        "import": "./dist/actor/redis/index.js",
-        "default": "./dist/actor/redis/index.js"
       },
       "./api/analytics": {
         "types": "./dist/api/analytics/index.d.ts",
@@ -613,7 +589,9 @@
       },
       "./cache": {
         "types": "./dist/cache/core/index.d.ts",
+        "react-native": "./dist/cache/core/index.browser.js",
         "workerd": "./dist/cache/core/index.workerd.js",
+        "browser": "./dist/cache/core/index.browser.js",
         "import": "./dist/cache/core/index.js",
         "default": "./dist/cache/core/index.js"
       },
@@ -621,11 +599,6 @@
         "types": "./dist/cache/database/index.d.ts",
         "import": "./dist/cache/database/index.js",
         "default": "./dist/cache/database/index.js"
-      },
-      "./cache/redis": {
-        "types": "./dist/cache/redis/index.d.ts",
-        "import": "./dist/cache/redis/index.js",
-        "default": "./dist/cache/redis/index.js"
       },
       "./captcha": {
         "types": "./dist/captcha/index.d.ts",
@@ -720,13 +693,9 @@
       },
       "./lock": {
         "types": "./dist/lock/core/index.d.ts",
+        "workerd": "./dist/lock/core/index.workerd.js",
         "import": "./dist/lock/core/index.js",
         "default": "./dist/lock/core/index.js"
-      },
-      "./lock/redis": {
-        "types": "./dist/lock/redis/index.d.ts",
-        "import": "./dist/lock/redis/index.js",
-        "default": "./dist/lock/redis/index.js"
       },
       "./logger": {
         "types": "./dist/logger/index.d.ts",
@@ -757,11 +726,6 @@
         "workerd": "./dist/queue/core/index.workerd.js",
         "import": "./dist/queue/core/index.js",
         "default": "./dist/queue/core/index.js"
-      },
-      "./queue/redis": {
-        "types": "./dist/queue/redis/index.d.ts",
-        "import": "./dist/queue/redis/index.js",
-        "default": "./dist/queue/redis/index.js"
       },
       "./rate-limit": {
         "types": "./dist/rate-limit/index.d.ts",
@@ -953,13 +917,11 @@
       },
       "./topic": {
         "types": "./dist/topic/core/index.d.ts",
+        "react-native": "./dist/topic/core/index.browser.js",
+        "workerd": "./dist/topic/core/index.workerd.js",
+        "browser": "./dist/topic/core/index.browser.js",
         "import": "./dist/topic/core/index.js",
         "default": "./dist/topic/core/index.js"
-      },
-      "./topic/redis": {
-        "types": "./dist/topic/redis/index.d.ts",
-        "import": "./dist/topic/redis/index.js",
-        "default": "./dist/topic/redis/index.js"
       },
       "./websocket": {
         "types": "./dist/websocket/index.d.ts",
@@ -990,7 +952,7 @@
     "drizzle-kit": "1.0.0-rc.4",
     "drizzle-orm": "1.0.0-rc.4",
     "magic-string": "^1.4.3",
-    "oxfmt": "^0.72.0",
+    "oxfmt": "^0.73.0",
     "oxlint": "^1.87.0",
     "oxlint-tsgolint": "^7.0.2003",
     "postgres": "^3.4.9",
@@ -1043,7 +1005,7 @@
   },
   "engines": {
     "bun": ">=1.3.0",
-    "node": ">=22.0.0"
+    "node": ">=24.0.0"
   },
   "llms": "https://alepha.dev/llms.txt",
   "scarfSettings": {

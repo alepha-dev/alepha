@@ -1,7 +1,8 @@
 import { $inject, Alepha } from "alepha";
-import { LockProvider } from "alepha/lock";
 import { $logger } from "alepha/logger";
 import { RedisProvider, type RedisSetOptions } from "alepha/redis";
+
+import { LockProvider } from "./LockProvider.ts";
 
 /**
  * Locks over Redis `SET NX PX`.

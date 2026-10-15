@@ -16,13 +16,15 @@ export class JsonFormatterProvider extends LogFormatterProvider {
     if (entry.data instanceof Error) {
       json.error = this.formatJsonError(entry.data);
     } else {
-      json.data = this.expandErrors(entry.data, new WeakSet());
+      json.data = this.expandErrors(entry.data, new Set());
     }
 
     try {
       return JSON.stringify(json);
     } catch {
-      // Circular or BigInt-bearing data must never crash the logging caller.
+      // A last resort: cycles and BigInts are handled by `expandErrors`, but
+      // a class instance is passed through as is and may still not serialize.
+      // Whatever it is, it must never crash the logging caller.
       json.data = "[Unserializable Object]";
       return JSON.stringify(json);
     }
@@ -33,29 +35,47 @@ export class JsonFormatterProvider extends LogFormatterProvider {
    * and `log.error("...", { error })` is the common shape across the
    * framework. Walk the data and expand every nested Error the same way a
    * top-level one is.
+   *
+   * `ancestors` holds the objects on the CURRENT path, added before
+   * descending and removed after. A revisit on the path is a cycle and
+   * writes `"[Circular]"` at that spot only; an object shared by two
+   * branches is expanded in both. It used to be one set for the whole walk,
+   * which returned the raw value on any second visit: a shared Error printed
+   * as `{}`, and a real cycle reached `JSON.stringify`, which threw and
+   * replaced the WHOLE data with `"[Unserializable Object]"`. A BigInt, which
+   * `JSON.stringify` refuses too, becomes its decimal string.
    */
-  protected expandErrors(value: unknown, seen: WeakSet<object>): unknown {
-    if (value instanceof Error) {
-      return this.formatJsonError(value);
+  protected expandErrors(value: unknown, ancestors: Set<object>): unknown {
+    if (typeof value === "bigint") {
+      return value.toString();
     }
     if (value === null || typeof value !== "object") {
       return value;
     }
-    if (seen.has(value)) {
+    if (ancestors.has(value)) {
+      return "[Circular]";
+    }
+    if (value instanceof Error) {
+      return this.formatJsonError(value);
+    }
+    const plain =
+      Array.isArray(value) || Object.getPrototypeOf(value) === Object.prototype;
+    if (!plain) {
       return value;
     }
-    seen.add(value);
-    if (Array.isArray(value)) {
-      return value.map((item) => this.expandErrors(item, seen));
+    ancestors.add(value);
+    try {
+      if (Array.isArray(value)) {
+        return value.map((item) => this.expandErrors(item, ancestors));
+      }
+      const out: Record<string, unknown> = {};
+      for (const [key, item] of Object.entries(value)) {
+        out[key] = this.expandErrors(item, ancestors);
+      }
+      return out;
+    } finally {
+      ancestors.delete(value);
     }
-    if (Object.getPrototypeOf(value) !== Object.prototype) {
-      return value;
-    }
-    const out: Record<string, unknown> = {};
-    for (const [key, item] of Object.entries(value)) {
-      out[key] = this.expandErrors(item, seen);
-    }
-    return out;
   }
 
   /**
@@ -66,7 +86,7 @@ export class JsonFormatterProvider extends LogFormatterProvider {
   public serializeData(data: unknown): unknown {
     return data instanceof Error
       ? this.formatJsonError(data)
-      : this.expandErrors(data, new WeakSet());
+      : this.expandErrors(data, new Set());
   }
 
   public formatJsonError(error: Error): object {

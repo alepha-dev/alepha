@@ -24,9 +24,9 @@ import { RateLimitWindows } from "../services/RateLimitWindows.ts";
  * Declare a transport-agnostic, fail-closed rate limiter.
  *
  * Counters are actor state (`alepha/actor`), so topology is the actor
- * provider's: Memory is one instance, `AlephaActorRedis` is several, and a
- * Durable Object on workerd. An app that runs several instances without Redis
- * counts per instance.
+ * provider's: Memory is one instance, Redis (once `REDIS_URL` is set) is
+ * several, and a Durable Object on workerd. An app that runs several instances
+ * without `REDIS_URL` counts per instance.
  *
  * `consume(input)` counts one hit in a fixed window anchored on its first hit.
  * A counted result carries a `ticket`; `refund(ticket)` gives that hit back,
@@ -145,7 +145,7 @@ export class RateLimitPrimitive<TInput = string> extends Primitive<
    *
    *   find = $action({
    *     use: [this.search.middleware()],
-   *     handler: async () => [],
+   *     handler: async () => "ok",
    *   });
    * }
    * ```
@@ -159,7 +159,8 @@ export class RateLimitPrimitive<TInput = string> extends Primitive<
       options: { name: this.options.name, ...options },
       handler: ({ alepha, next }) => {
         return async (...args: any[]) => {
-          const request = alepha.get("alepha.http.request") as
+          // Untracked (#E78): the limiter's key never reaches a page.
+          const request = alepha.store.getUntracked("alepha.http.request") as
             | ServerRequest
             | undefined;
           const key = options.key

@@ -1,15 +1,19 @@
 import { $module } from "alepha";
 
+import { personalRenderedAtom } from "./atoms/personalRenderedAtom.ts";
 import { queryCacheAtom } from "./atoms/queryCacheAtom.ts";
 import { QueryCache } from "./services/QueryCache.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+export * from "./atoms/personalRenderedAtom.ts";
 export * from "./atoms/queryCacheAtom.ts";
 export type * from "./components/ClientOnly.tsx";
 export { default as ClientOnly } from "./components/ClientOnly.tsx";
 export type * from "./components/ErrorBoundary.tsx";
 export { default as ErrorBoundary } from "./components/ErrorBoundary.tsx";
+export type * from "./components/Personal.tsx";
+export { default as Personal } from "./components/Personal.tsx";
 export * from "./contexts/AlephaContext.ts";
 export * from "./contexts/AlephaProvider.tsx";
 export * from "./hooks/useAction.ts";
@@ -107,6 +111,6 @@ export const AlephaReact = $module({
   // Registered up front rather than lazily on first write, so a page that
   // server-renders a query has the atom present when `exportAtoms` builds the
   // hydration payload.
-  atoms: [queryCacheAtom],
+  atoms: [personalRenderedAtom, queryCacheAtom],
   services: [QueryCache],
 });

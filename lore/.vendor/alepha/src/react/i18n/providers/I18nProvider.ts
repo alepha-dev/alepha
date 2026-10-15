@@ -18,6 +18,7 @@ import { RouterLocaleProvider } from "alepha/react/router";
 import { $cookie } from "alepha/server/cookies";
 
 import type { ServiceDictionary } from "../hooks/useI18n.ts";
+import { RequestLangResolver } from "../services/RequestLangResolver.ts";
 
 export class I18nProvider<
   S extends object,
@@ -214,6 +215,17 @@ export class I18nProvider<
     },
   });
 
+  /**
+   * A page that reads the language varies by it, and by nothing else (#E78):
+   * the page cache keys every entry by language anyway.
+   */
+  protected readonly langIsVariant = $hook({
+    on: "configure",
+    handler: () => {
+      this.alepha.store.markVariant("alepha.react.i18n.lang");
+    },
+  });
+
   protected readonly onRender = $hook({
     on: "server:onRequest",
     priority: "last",
@@ -253,42 +265,57 @@ export class I18nProvider<
   }
 
   /**
-   * Resolves the UI language for an incoming server request.
-   *
-   * Priority:
-   * 0. the URL locale prefix (`routing: "prefix"`) — the URL is the source of
-   *    truth and wins over everything, with no redirect;
-   * 1. the `lang` cookie — a language the user manually selected;
-   * 2. the `Accept-Language` header (when `autoDetect` is enabled) — but only
-   *    when the detected language is actually registered, so we never switch to
-   *    a locale we have no dictionary for. A region-qualified header (`en-US`)
-   *    matches an exact registration first, then its base language (`en`);
-   * 3. `fallbackLang`.
+   * Resolves the UI language for an incoming server request: the URL prefix,
+   * then the `lang` cookie, then `Accept-Language`, then `fallbackLang`. See
+   * {@link RequestLangResolver.resolve}, which the generated Cloudflare
+   * worker also runs before the app boots (#E78).
    */
   protected resolveRequestLang(
     cookieLang: string | undefined,
     headerLang: string | undefined,
     urlLocale?: string,
   ): string {
-    if (urlLocale) {
-      return urlLocale;
-    }
-
-    if (cookieLang) {
-      return cookieLang;
-    }
-
-    if (this.options.autoDetect && headerLang) {
-      const registered = this.languages;
-      for (const candidate of [headerLang, headerLang.split("-")[0]]) {
-        if (registered.includes(candidate)) {
-          return candidate;
-        }
-      }
-    }
-
-    return this.fallbackLang;
+    return RequestLangResolver.resolve({
+      urlLocale,
+      cookieLang,
+      headerLang,
+      languages: this.languages,
+      fallbackLang: this.fallbackLang,
+      autoDetect: this.options.autoDetect,
+    });
   }
+
+  /**
+   * What the generated Cloudflare worker needs to resolve a request's language
+   * before the app boots: the registered languages and the options. Answers
+   * `react:server:edge` at build time (#E78). Prefix routing with excluded
+   * paths is not reproduced there: the worker then skips its pre-boot lookup.
+   */
+  protected readonly onEdge = $hook({
+    on: "react:server:edge",
+    handler: (event) => {
+      const localeProvider = this.localeProvider;
+      event.functions = {
+        ...event.functions,
+        resolveLang: RequestLangResolver.resolve.toString(),
+        langFromHeader: RequestLangResolver.fromHeader.toString(),
+      };
+      event.lang = {
+        languages: this.languages,
+        fallbackLang: this.fallbackLang,
+        autoDetect: !!this.options.autoDetect,
+        cookie: "lang",
+        prefix: localeProvider?.enabled
+          ? (this.options.routingExclude?.length ?? 0) > 0
+            ? "unsupported"
+            : {
+                locales: localeProvider.prefixedLocales,
+                defaultLocale: localeProvider.defaultLocale,
+              }
+          : undefined,
+      };
+    },
+  });
 
   protected readonly onStart = $hook({
     on: "start",

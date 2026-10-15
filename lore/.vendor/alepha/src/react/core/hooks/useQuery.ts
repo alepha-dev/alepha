@@ -138,21 +138,37 @@ export function useQuery<Result>(
       // no run for K1, so the K2 request finishing afterwards wrote K2's data
       // under K1. Written here it lands under the key it was fetched for,
       // which is always right, whatever the component shows by then.
+      //
+      // The handler runs with the shared request's signal, not this run's:
+      // the request outlives this component when another one joined it, and
+      // is aborted only once every subscriber has gone (`QueryCache.dedupe`).
+      //
+      // A response whose key was invalidated while it was in flight predates
+      // the write, so it never reaches the cache: the run asks again, under
+      // the new generation. Before this, a first fetch in flight during an
+      // `invalidate()` stored its pre-mutation result.
       handler: options.key
         ? async (context) => {
             const key = optionsRef.current.key!;
-            const result = await cache!.dedupe(
-              key,
-              async () => optionsRef.current.handler(context),
-              // Without the signal, a run that superseded another was handed
-              // back the promise it had just aborted, and the query settled
-              // empty. See `QueryCache.dedupe`.
-              { signal: context?.signal },
-            );
-            if (!context?.signal?.aborted) {
-              cache!.set(key, result);
+            while (true) {
+              const generation = cache!.generation(key);
+              const result = await cache!.dedupe(
+                key,
+                async (signal) =>
+                  optionsRef.current.handler({ ...context, signal }),
+                // Without the signal, a run that superseded another was handed
+                // back the promise it had just aborted, and the query settled
+                // empty. See `QueryCache.dedupe`.
+                { signal: context?.signal },
+              );
+              if (context?.signal?.aborted) {
+                return result;
+              }
+              if (cache!.generation(key) === generation) {
+                cache!.set(key, result);
+                return result;
+              }
             }
-            return result;
           }
         : options.handler,
       runOnInit: shouldRun,

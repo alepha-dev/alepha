@@ -460,7 +460,7 @@ export interface OwnsOptions {
    * $ownsOrganization({
    *   repository: () => this.clubs,
    *   key: "organizationId",
-   *   resolve: () => this.clubs.findOneOrFail({}).then((club) => club.id),
+   *   resolve: () => this.clubs.getOne({}).then((club) => club.id),
    *   requires: "staff:planning:delete",
    * })
    * ```
