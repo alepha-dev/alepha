@@ -79,101 +79,101 @@ describe("CryptoProvider", () => {
     expect(text).toMatch(/^[A-Za-z0-9_-]+$/);
   });
 
-  it("should produce a deterministic sha256 hash", () => {
+  it("should produce a deterministic sha256 hash", async () => {
     const crypto = Alepha.create().inject(CryptoProvider);
 
-    const a = crypto.hash("hello");
-    const b = crypto.hash("hello");
+    const a = await crypto.hash("hello");
+    const b = await crypto.hash("hello");
     expect(a).toEqual(b);
     expect(a).toHaveLength(64); // 256 bits = 64 hex chars
   });
 
-  it("should produce different hashes for different inputs", () => {
+  it("should produce different hashes for different inputs", async () => {
     const crypto = Alepha.create().inject(CryptoProvider);
 
-    expect(crypto.hash("a")).not.toEqual(crypto.hash("b"));
+    expect(await crypto.hash("a")).not.toEqual(await crypto.hash("b"));
   });
 
-  it("should support alternative hash algorithms", () => {
+  it("should support alternative hash algorithms", async () => {
     const crypto = Alepha.create().inject(CryptoProvider);
 
-    const sha512 = crypto.hash("hello", "sha512");
+    const sha512 = await crypto.hash("hello", "sha512");
     expect(sha512).toHaveLength(128); // 512 bits = 128 hex chars
   });
 
-  it("should produce a deterministic hmac", () => {
+  it("should produce a deterministic hmac", async () => {
     const crypto = Alepha.create().inject(CryptoProvider);
 
-    const a = crypto.hmac("payload", "secret");
-    const b = crypto.hmac("payload", "secret");
+    const a = await crypto.hmac("payload", "secret");
+    const b = await crypto.hmac("payload", "secret");
     expect(a).toEqual(b);
     expect(a).toHaveLength(64);
   });
 
-  it("should produce different hmacs for different secrets", () => {
+  it("should produce different hmacs for different secrets", async () => {
     const crypto = Alepha.create().inject(CryptoProvider);
 
-    const a = crypto.hmac("payload", "key1");
-    const b = crypto.hmac("payload", "key2");
+    const a = await crypto.hmac("payload", "key1");
+    const b = await crypto.hmac("payload", "key2");
     expect(a).not.toEqual(b);
   });
 
-  it("should verify a valid hmac", () => {
+  it("should verify a valid hmac", async () => {
     const crypto = Alepha.create().inject(CryptoProvider);
 
-    const sig = crypto.hmac("data", "secret");
-    expect(crypto.verifyHmac("data", sig, "secret")).toBe(true);
+    const sig = await crypto.hmac("data", "secret");
+    expect(await crypto.verifyHmac("data", sig, "secret")).toBe(true);
   });
 
-  it("should reject an invalid hmac", () => {
+  it("should reject an invalid hmac", async () => {
     const crypto = Alepha.create().inject(CryptoProvider);
 
-    const sig = crypto.hmac("data", "secret");
-    expect(crypto.verifyHmac("tampered", sig, "secret")).toBe(false);
-    expect(crypto.verifyHmac("data", "badsig", "secret")).toBe(false);
-    expect(crypto.verifyHmac("data", sig, "wrongkey")).toBe(false);
+    const sig = await crypto.hmac("data", "secret");
+    expect(await crypto.verifyHmac("tampered", sig, "secret")).toBe(false);
+    expect(await crypto.verifyHmac("data", "badsig", "secret")).toBe(false);
+    expect(await crypto.verifyHmac("data", sig, "wrongkey")).toBe(false);
   });
 
-  it("should encrypt and decrypt a string", () => {
+  it("should encrypt and decrypt a string", async () => {
     const crypto = Alepha.create().inject(CryptoProvider);
 
-    const encrypted = crypto.encrypt("hello world", "mykey");
+    const encrypted = await crypto.encrypt("hello world", "mykey");
     expect(encrypted).toContain(":");
     expect(encrypted).not.toContain("hello");
 
-    const decrypted = crypto.decrypt(encrypted, "mykey");
+    const decrypted = await crypto.decrypt(encrypted, "mykey");
     expect(decrypted).toEqual("hello world");
   });
 
-  it("should produce different ciphertexts for same plaintext", () => {
+  it("should produce different ciphertexts for same plaintext", async () => {
     const crypto = Alepha.create().inject(CryptoProvider);
 
-    const a = crypto.encrypt("same", "key");
-    const b = crypto.encrypt("same", "key");
+    const a = await crypto.encrypt("same", "key");
+    const b = await crypto.encrypt("same", "key");
     expect(a).not.toEqual(b);
   });
 
-  it("should fail to decrypt with wrong key", () => {
+  it("should fail to decrypt with wrong key", async () => {
     const crypto = Alepha.create().inject(CryptoProvider);
 
-    const encrypted = crypto.encrypt("secret", "correct");
-    expect(() => crypto.decrypt(encrypted, "wrong")).toThrow();
+    const encrypted = await crypto.encrypt("secret", "correct");
+    await expect(crypto.decrypt(encrypted, "wrong")).rejects.toThrow();
   });
 
-  it("should fail to decrypt invalid ciphertext format", () => {
+  it("should fail to decrypt invalid ciphertext format", async () => {
     const crypto = Alepha.create().inject(CryptoProvider);
 
-    expect(() => crypto.decrypt("invalid", "key")).toThrow(
+    await expect(crypto.decrypt("invalid", "key")).rejects.toThrow(
       "Invalid ciphertext format",
     );
   });
 
-  it("should handle unicode in encrypt/decrypt", () => {
+  it("should handle unicode in encrypt/decrypt", async () => {
     const crypto = Alepha.create().inject(CryptoProvider);
 
     const plaintext = "Hello 世界 🌍";
-    const encrypted = crypto.encrypt(plaintext, "key");
-    expect(crypto.decrypt(encrypted, "key")).toEqual(plaintext);
+    const encrypted = await crypto.encrypt(plaintext, "key");
+    expect(await crypto.decrypt(encrypted, "key")).toEqual(plaintext);
   });
 
   it("should compare strings in constant time", () => {

@@ -80,7 +80,7 @@ export class NotificationEmailChannel extends NotificationChannel<
     // switched off. Undefined also when PUBLIC_URL is unset.
     const unsubscribeUrl = payload.critical
       ? undefined
-      : this.unsubscribeTokens.urlFor({
+      : await this.unsubscribeTokens.urlFor({
           contact: contact,
           channel: this.channel,
           category: payload.category,

@@ -164,7 +164,7 @@ export class OtaDeviceController {
         !bundle ||
         bundle.status !== "ready" ||
         !bundle.fileId ||
-        !this.links.verify(bundle, query.token)
+        !(await this.links.verify(bundle, query.token))
       ) {
         reply.status = 403;
         reply.setHeader("content-type", "application/json");

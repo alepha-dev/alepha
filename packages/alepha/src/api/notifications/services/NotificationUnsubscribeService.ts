@@ -44,17 +44,17 @@ export class NotificationUnsubscribeService {
    * some will treat the malformed header as a reason to distrust the whole
    * message.
    */
-  public urlFor(claims: UnsubscribeClaims): string | undefined {
+  public async urlFor(claims: UnsubscribeClaims): Promise<string | undefined> {
     const base = this.publicUrl;
     if (!base) {
       return undefined;
     }
-    return `${base}/notifications/unsubscribe/${this.mint(claims)}`;
+    return `${base}/notifications/unsubscribe/${await this.mint(claims)}`;
   }
 
-  public mint(claims: UnsubscribeClaims): string {
+  public async mint(claims: UnsubscribeClaims): Promise<string> {
     const payload = this.encode(JSON.stringify(claims));
-    return `${payload}.${this.sign(payload)}`;
+    return `${payload}.${await this.sign(payload)}`;
   }
 
   /**
@@ -63,7 +63,7 @@ export class NotificationUnsubscribeService {
    * Never throws: every caller is handling untrusted input from a URL, and a
    * bad token is a 400, not a crash.
    */
-  public verify(token: string): UnsubscribeClaims | undefined {
+  public async verify(token: string): Promise<UnsubscribeClaims | undefined> {
     const separator = token.lastIndexOf(".");
     if (separator <= 0) {
       return undefined;
@@ -71,7 +71,13 @@ export class NotificationUnsubscribeService {
 
     const payload = token.slice(0, separator);
     const signature = token.slice(separator + 1);
-    if (!this.crypto.verifyHmac(payload, signature, this.secrets.secretKey)) {
+    if (
+      !(await this.crypto.verifyHmac(
+        payload,
+        signature,
+        this.secrets.secretKey,
+      ))
+    ) {
       return undefined;
     }
 
@@ -85,7 +91,7 @@ export class NotificationUnsubscribeService {
     }
   }
 
-  protected sign(payload: string): string {
+  protected sign(payload: string): Promise<string> {
     return this.crypto.hmac(payload, this.secrets.secretKey);
   }
 

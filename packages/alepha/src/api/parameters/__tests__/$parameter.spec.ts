@@ -592,7 +592,7 @@ class ExternalWriteParameterProvider extends ParameterProvider {
     return this.repo.create({
       name,
       content,
-      schemaHash: this.schemaHashes.get(name) ?? "",
+      schemaHash: (await this.schemaHashes.get(name)) ?? "",
       version: (versions[0]?.version ?? 0) + 1,
       activationDate: this.dateTimeProvider.now().toISOString(),
     });
@@ -931,7 +931,7 @@ describe("Schema migration", () => {
 
     // Get the actual schema hash the provider calculated
     const providerAny = provider as any;
-    const schemaHash = providerAny.schemaHashes.get("migrate.hash.match");
+    const schemaHash = await providerAny.schemaHashes.get("migrate.hash.match");
 
     // Seed database with the SAME schema hash — no migration needed
     await provider.save(
@@ -2110,7 +2110,9 @@ describe("save validation", () => {
     await alepha.start();
 
     const provider = alepha.inject(ParameterProvider);
-    const schemaHash = (provider as any).schemaHashes.get("validate.reject");
+    const schemaHash = await (provider as any).schemaHashes.get(
+      "validate.reject",
+    );
 
     // Invalid: maxUploadSize should be number, not string
     await expect(
@@ -2137,7 +2139,9 @@ describe("save validation", () => {
     await alepha.start();
 
     const provider = alepha.inject(ParameterProvider);
-    const schemaHash = (provider as any).schemaHashes.get("validate.accept");
+    const schemaHash = await (provider as any).schemaHashes.get(
+      "validate.accept",
+    );
 
     const result = await provider.save(
       "validate.accept",

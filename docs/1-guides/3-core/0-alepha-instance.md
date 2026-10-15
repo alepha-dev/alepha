@@ -265,3 +265,23 @@ class Checkout {
 ```
 
 `$context()` only answers while the container is instantiating a class, synchronously, which is exactly when a property initializer runs. Called anywhere else (in a method, after an `await`, at module top level) it throws `MissingContextError`.
+
+## Portable crypto calls
+
+Inject `CryptoProvider` from `alepha/crypto` and await `hash`, `hmac`, `verifyHmac`, `encrypt` and `decrypt` on every runtime. The shared `CryptoProviderBase` contract uses `"sha256" | "sha384" | "sha512"`, defaulting to `"sha256"`; Node-only algorithms such as MD5 are refused. Random generation and `equals` stay synchronous. Password hashing remains server-only, and browser password calls reject asynchronously.
+
+```typescript
+import { $inject } from "alepha";
+import { CryptoProvider } from "alepha/crypto";
+
+class PayloadSigner {
+  protected readonly crypto = $inject(CryptoProvider);
+
+  public async inspect(payload: string, secret: string) {
+    const digest = await this.crypto.hash(payload, "sha256");
+    const signature = await this.crypto.hmac(payload, secret);
+    const valid = await this.crypto.verifyHmac(payload, signature, secret);
+    return { digest, signature, valid };
+  }
+}
+```

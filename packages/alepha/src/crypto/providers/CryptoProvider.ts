@@ -13,7 +13,12 @@ import {
 
 import { AlephaError } from "alepha";
 
-export class CryptoProvider {
+import {
+  type CryptoAlgorithm,
+  CryptoProviderBase,
+} from "./CryptoProviderBase.ts";
+
+export class CryptoProvider extends CryptoProviderBase {
   protected static readonly SCRYPT_OPTIONS: ScryptOptions = {
     N: 16384,
     r: 8,
@@ -86,25 +91,34 @@ export class CryptoProvider {
     }
   }
 
-  public hash(data: string, algorithm = "sha256"): string {
+  public async hash(
+    data: string,
+    algorithm: CryptoAlgorithm = "sha256",
+  ): Promise<string> {
+    this.assertAlgorithm(algorithm);
     return createHash(algorithm).update(data).digest("hex");
   }
 
-  public hmac(data: string, secret: string, algorithm = "sha256"): string {
+  public async hmac(
+    data: string,
+    secret: string,
+    algorithm: CryptoAlgorithm = "sha256",
+  ): Promise<string> {
+    this.assertAlgorithm(algorithm);
     return createHmac(algorithm, secret).update(data).digest("hex");
   }
 
-  public verifyHmac(
+  public async verifyHmac(
     data: string,
     signature: string,
     secret: string,
-    algorithm = "sha256",
-  ): boolean {
-    const expected = this.hmac(data, secret, algorithm);
+    algorithm: CryptoAlgorithm = "sha256",
+  ): Promise<boolean> {
+    const expected = await this.hmac(data, secret, algorithm);
     return this.equals(expected, signature);
   }
 
-  public encrypt(plaintext: string, key: string): string {
+  public async encrypt(plaintext: string, key: string): Promise<string> {
     const keyBuffer = this.deriveAesKey(key);
     const iv = randomBytes(CryptoProvider.AES_IV_LENGTH);
     const cipher = createCipheriv(CryptoProvider.AES_ALGORITHM, keyBuffer, iv, {
@@ -118,7 +132,7 @@ export class CryptoProvider {
     return `${iv.toString("hex")}:${tag.toString("hex")}:${encrypted.toString("hex")}`;
   }
 
-  public decrypt(ciphertext: string, key: string): string {
+  public async decrypt(ciphertext: string, key: string): Promise<string> {
     const parts = ciphertext.split(":");
     if (parts.length !== 3) {
       throw new AlephaError("Invalid ciphertext format");

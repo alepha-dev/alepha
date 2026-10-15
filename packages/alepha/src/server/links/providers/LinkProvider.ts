@@ -368,20 +368,9 @@ export class LinkProvider {
     return `${host}\u0000${await this.hash(material)}`;
   }
 
-  /**
-   * A hash, whichever crypto provider this runtime installed.
-   *
-   * ⚠️ The two disagree on their signature. `CryptoProvider.hash` returns a
-   * `string`; the `BrowserCryptoProvider` that replaces it in a browser build
-   * is `async` and returns a Promise. A bare call therefore yields
-   * `"[object Promise]"` in a browser, while a plain `await` is refused by
-   * `await-thenable`, which reads the Node signature the types come from.
-   * Normalising is the only form correct on both.
-   */
   protected hash(material: string): Promise<string> {
-    return Promise.resolve(this.crypto.hash(material));
+    return this.crypto.hash(material);
   }
-
   /**
    * The headers a scope contributes, credential included.
    *

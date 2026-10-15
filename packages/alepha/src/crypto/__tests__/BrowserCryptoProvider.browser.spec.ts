@@ -3,16 +3,18 @@ import { describe, expect, it } from "vitest";
 import { BrowserCryptoProvider } from "../providers/BrowserCryptoProvider.ts";
 
 describe("BrowserCryptoProvider", () => {
-  it("should throw on hashPassword", () => {
+  it("should reject hashPassword", async () => {
     const crypto = new BrowserCryptoProvider();
 
-    expect(() => crypto.hashPassword()).toThrow("not supported in the browser");
+    await expect(crypto.hashPassword("password")).rejects.toThrow(
+      "not supported in the browser",
+    );
   });
 
-  it("should throw on verifyPassword", () => {
+  it("should reject verifyPassword", async () => {
     const crypto = new BrowserCryptoProvider();
 
-    expect(() => crypto.verifyPassword()).toThrow(
+    await expect(crypto.verifyPassword("password", "stored")).rejects.toThrow(
       "not supported in the browser",
     );
   });

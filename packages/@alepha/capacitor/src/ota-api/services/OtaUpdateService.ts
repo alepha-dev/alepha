@@ -141,7 +141,7 @@ export class OtaUpdateService {
       if (target.version === device.version_name) {
         return this.none();
       }
-      const { url } = this.links.create(target, origin);
+      const { url } = await this.links.create(target, origin);
       await this.markLinked(target);
       return {
         status: 200,

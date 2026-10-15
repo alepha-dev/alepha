@@ -162,7 +162,7 @@ export class CartService {
     }
 
     const config = await this.lines.accept(product, lineConfig, quantity);
-    const lineKey = this.lineKey(config);
+    const lineKey = await this.lineKey(config);
 
     const line = await this.itemRepo.findOne({
       where: {
@@ -337,7 +337,9 @@ export class CartService {
    * sha-256 of its canonical JSON (keys sorted at every depth), so the same
    * choice written in a different key order is the same line.
    */
-  public lineKey(lineConfig: Record<string, any> | undefined): string {
+  public async lineKey(
+    lineConfig: Record<string, any> | undefined,
+  ): Promise<string> {
     if (lineConfig === undefined) {
       return "";
     }

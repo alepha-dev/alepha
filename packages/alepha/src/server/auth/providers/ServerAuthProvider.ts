@@ -406,7 +406,7 @@ export class ServerAuthProvider {
       response: tokenResponseSchema,
     },
     handler: async ({ body, cookies }) => {
-      const challenge = this.readChallenge(body.challenge);
+      const challenge = await this.readChallenge(body.challenge);
       if (!challenge) {
         // Same error an expired or forged challenge gets: a caller must not
         // be able to tell which of the two it hit.
@@ -472,7 +472,7 @@ export class ServerAuthProvider {
       response: mfaResendResponseSchema,
     },
     handler: async ({ body }) => {
-      const challenge = this.readChallenge(body.challenge);
+      const challenge = await this.readChallenge(body.challenge);
       if (!challenge) {
         throw new InvalidCredentialsError();
       }
@@ -530,7 +530,7 @@ export class ServerAuthProvider {
     );
 
     return new MfaRequiredError({
-      challenge: this.signChallenge({
+      challenge: await this.signChallenge({
         sub: options.user.id,
         user: options.user,
         provider: options.provider,
@@ -561,22 +561,24 @@ export class ServerAuthProvider {
    * use (a TOTP step is burned when accepted, a recovery code is consumed,
    * an emailed code is marked verified).
    */
-  protected signChallenge(payload: MfaChallengePayload): string {
+  protected async signChallenge(payload: MfaChallengePayload): Promise<string> {
     const encoded = Buffer.from(JSON.stringify(payload)).toString("base64url");
-    return `${encoded}.${this.cryptoProvider.hmac(encoded, this.securityProvider.secretKey)}`;
+    return `${encoded}.${await this.cryptoProvider.hmac(encoded, this.securityProvider.secretKey)}`;
   }
 
   /**
    * Verify and decode a challenge, or return undefined for anything that is
    * forged, malformed or expired.
    */
-  protected readChallenge(challenge: string): MfaChallengePayload | undefined {
+  protected async readChallenge(
+    challenge: string,
+  ): Promise<MfaChallengePayload | undefined> {
     const [encoded, signature] = challenge.split(".");
     if (!encoded || !signature) {
       return undefined;
     }
 
-    const expected = this.cryptoProvider.hmac(
+    const expected = await this.cryptoProvider.hmac(
       encoded,
       this.securityProvider.secretKey,
     );

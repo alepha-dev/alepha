@@ -78,8 +78,8 @@ describe("unsubscribe token", () => {
   it("round-trips the claims it was minted with", async ({ expect }) => {
     const { unsubscribe, alepha } = await boot();
 
-    const token = unsubscribe.mint(claims);
-    expect(unsubscribe.verify(token)).toMatchObject(claims);
+    const token = await unsubscribe.mint(claims);
+    expect(await unsubscribe.verify(token)).toMatchObject(claims);
 
     await alepha.stop();
   });
@@ -87,7 +87,7 @@ describe("unsubscribe token", () => {
   it("survives being put in a url", async ({ expect }) => {
     const { unsubscribe, alepha } = await boot();
 
-    const token = unsubscribe.mint(claims);
+    const token = await unsubscribe.mint(claims);
     expect(encodeURIComponent(token)).toBe(token);
 
     await alepha.stop();
@@ -96,14 +96,17 @@ describe("unsubscribe token", () => {
   it("refuses a token whose claims were edited", async ({ expect }) => {
     const { unsubscribe, alepha } = await boot();
 
-    const token = unsubscribe.mint(claims);
+    const token = await unsubscribe.mint(claims);
     const [payload, signature] = token.split(".");
-    const forged = unsubscribe.mint({ ...claims, contact: "b@example.com" });
+    const forged = await unsubscribe.mint({
+      ...claims,
+      contact: "b@example.com",
+    });
     const tampered = `${forged.split(".")[0]}.${signature}`;
 
-    expect(unsubscribe.verify(tampered)).toBeUndefined();
-    expect(unsubscribe.verify(`${payload}.deadbeef`)).toBeUndefined();
-    expect(unsubscribe.verify("nonsense")).toBeUndefined();
+    expect(await unsubscribe.verify(tampered)).toBeUndefined();
+    expect(await unsubscribe.verify(`${payload}.deadbeef`)).toBeUndefined();
+    expect(await unsubscribe.verify("nonsense")).toBeUndefined();
 
     await alepha.stop();
   });
@@ -114,7 +117,7 @@ describe("unsubscribe route", () => {
     expect,
   }) => {
     const { unsubscribe, suppressions, hostname, alepha } = await boot();
-    const token = unsubscribe.mint(claims);
+    const token = await unsubscribe.mint(claims);
 
     const res = await fetch(`${hostname}/notifications/unsubscribe/${token}`);
     const html = await res.text();
@@ -130,7 +133,7 @@ describe("unsubscribe route", () => {
     expect,
   }) => {
     const { unsubscribe, suppressions, hostname, alepha } = await boot();
-    const token = unsubscribe.mint(claims);
+    const token = await unsubscribe.mint(claims);
 
     const first = await fetch(
       `${hostname}/notifications/unsubscribe/${token}`,
@@ -157,7 +160,7 @@ describe("unsubscribe route", () => {
 
   it("accepts the RFC 8058 one-click form body", async ({ expect }) => {
     const { unsubscribe, suppressions, hostname, alepha } = await boot();
-    const token = unsubscribe.mint(claims);
+    const token = await unsubscribe.mint(claims);
 
     const res = await fetch(`${hostname}/notifications/unsubscribe/${token}`, {
       method: "POST",

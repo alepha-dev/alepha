@@ -2,6 +2,8 @@
 
 ### Breaking Changes
 
+- **crypto**: `hash`, `hmac`, `verifyHmac`, `encrypt` and `decrypt` return promises on every runtime. Await each call. Digest names are `sha256`, `sha384` or `sha512` (default `sha256`); browser callers replace uppercase names such as `SHA-256` with `sha256`. MD5 is refused. ETags change once to SHA-256 truncated to 32 hex characters. `ServerEtagProvider.generateETag`, notification `urlFor`/`mint`/`verify`, OTA link `create`/`verify`, and cart `lineKey` also become async. Browser password operations reject with the existing unsupported-operation error.
+
 - **cli**: `defineConfig` now validates configuration at import time and refuses unknown keys deeply. Retired paths name their replacements: `build.docker` to top-level `image`, `build.target` to `alepha build --runtime`, `image.image` to flat `image`, and `services` to `plugins`. A plain object default export is refused; export `defineConfig({ ... })` or an explicit custom function.
 
 - **cli**: `-t` means `--tag` only. Use long `compile --target` and `gen changelog --to`. Rename `compile --out` and `gen env/openapi --out` to `--output` (`-o` stays). Replace config `services` with `plugins`; `build.runtimes` is internal, use `build.runtime`. Camel-case flags also parse as kebab-case, which help displays. Image and pack read `build.output.dist`.

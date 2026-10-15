@@ -1,6 +1,11 @@
 import { AlephaError } from "alepha";
 
-export class BrowserCryptoProvider {
+import {
+  type CryptoAlgorithm,
+  CryptoProviderBase,
+} from "./CryptoProviderBase.ts";
+
+export class BrowserCryptoProvider extends CryptoProviderBase {
   protected static readonly AES_ALGORITHM = "AES-GCM";
   protected static readonly AES_IV_LENGTH = 12;
 
@@ -11,29 +16,38 @@ export class BrowserCryptoProvider {
   protected uuidV7InputMs = -1;
   protected uuidV7Counter = 0;
 
-  public hashPassword(): never {
+  public async hashPassword(_password: string): Promise<string> {
     throw new AlephaError("hashPassword is not supported in the browser");
   }
 
-  public verifyPassword(): never {
+  public async verifyPassword(
+    _password: string,
+    _stored: string,
+  ): Promise<boolean> {
     throw new AlephaError("verifyPassword is not supported in the browser");
   }
 
-  public async hash(data: string, algorithm = "SHA-256"): Promise<string> {
+  public async hash(
+    data: string,
+    algorithm: CryptoAlgorithm = "sha256",
+  ): Promise<string> {
     const encoded = new TextEncoder().encode(data);
-    const digest = await crypto.subtle.digest(algorithm, encoded);
+    const digest = await crypto.subtle.digest(
+      this.webAlgorithm(algorithm),
+      encoded,
+    );
     return this.toHex(digest);
   }
 
   public async hmac(
     data: string,
     secret: string,
-    algorithm = "SHA-256",
+    algorithm: CryptoAlgorithm = "sha256",
   ): Promise<string> {
     const key = await crypto.subtle.importKey(
       "raw",
       new TextEncoder().encode(secret),
-      { name: "HMAC", hash: algorithm },
+      { name: "HMAC", hash: this.webAlgorithm(algorithm) },
       false,
       ["sign"],
     );
@@ -49,7 +63,7 @@ export class BrowserCryptoProvider {
     data: string,
     signature: string,
     secret: string,
-    algorithm = "SHA-256",
+    algorithm: CryptoAlgorithm = "sha256",
   ): Promise<boolean> {
     const expected = await this.hmac(data, secret, algorithm);
     return this.equals(expected, signature);

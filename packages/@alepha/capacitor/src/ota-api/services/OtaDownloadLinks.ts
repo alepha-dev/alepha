@@ -42,10 +42,10 @@ export class OtaDownloadLinks {
   /**
    * A link for this bundle under `origin`, and when it expires.
    */
-  public create(
+  public async create(
     bundle: Pick<OtaBundleEntity, "id" | "appRef" | "ciphertextSha256">,
     origin: string,
-  ): { url: string; expiresAt: number } {
+  ): Promise<{ url: string; expiresAt: number }> {
     if (this.alepha.isProduction() && !origin.startsWith("https://")) {
       throw new AlephaError(
         `OTA download links must be HTTPS in production, and this server's public origin is ${origin}. Set PUBLIC_URL, or forward the protocol from the proxy.`,
@@ -53,7 +53,7 @@ export class OtaDownloadLinks {
     }
     const expiresAt =
       this.dateTime.nowMillis() + this.options.linkTtlSeconds * 1000;
-    const token = `${expiresAt}.${this.sign(bundle, expiresAt)}`;
+    const token = `${expiresAt}.${await this.sign(bundle, expiresAt)}`;
     return {
       url: `${origin.replace(/\/$/, "")}/ota/bundles/${bundle.id}/download?token=${token}`,
       expiresAt,
@@ -63,10 +63,10 @@ export class OtaDownloadLinks {
   /**
    * Whether `token` is a live link to this bundle.
    */
-  public verify(
+  public async verify(
     bundle: Pick<OtaBundleEntity, "id" | "appRef" | "ciphertextSha256">,
     token: string,
-  ): boolean {
+  ): Promise<boolean> {
     const dot = token.indexOf(".");
     if (dot < 1) {
       return false;
@@ -76,7 +76,7 @@ export class OtaDownloadLinks {
       return false;
     }
     const valid = this.crypto.equals(
-      this.sign(bundle, expiresAt),
+      await this.sign(bundle, expiresAt),
       token.slice(dot + 1),
     );
     return valid && expiresAt > this.dateTime.nowMillis();
@@ -85,7 +85,7 @@ export class OtaDownloadLinks {
   protected sign(
     bundle: Pick<OtaBundleEntity, "id" | "appRef" | "ciphertextSha256">,
     expiresAt: number,
-  ): string {
+  ): Promise<string> {
     return this.crypto.hmac(
       `${bundle.id}:${bundle.appRef}:${bundle.ciphertextSha256}:${expiresAt}`,
       this.secret(),

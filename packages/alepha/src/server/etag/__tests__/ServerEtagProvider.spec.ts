@@ -1,6 +1,6 @@
 import { Alepha } from "alepha";
 import { $action, ServerProvider } from "alepha/server";
-import { afterEach, beforeEach, describe, test } from "vitest";
+import { afterEach, beforeEach, describe, it, test } from "vitest";
 
 import { $etag, AlephaServerEtag, ServerEtagProvider } from "../index.ts";
 
@@ -335,6 +335,12 @@ describe("ServerEtagProvider", () => {
 
   afterEach(async () => {
     await alepha?.stop();
+  });
+
+  it("uses SHA-256 truncated to 32 hex characters", async ({ expect }) => {
+    expect(await etagProvider.generateETag("abc")).toBe(
+      '"ba7816bf8f01cfea414140de5dae2223"',
+    );
   });
 
   describe("ETag support", () => {
@@ -1295,7 +1301,7 @@ describe("ServerEtagProvider", () => {
       );
 
       // Generate ETag from string directly
-      const stringHash = etagProvider.generateETag(content);
+      const stringHash = await etagProvider.generateETag(content);
 
       // Both should produce the same ETag
       expect(streamHash).toBe(stringHash);
