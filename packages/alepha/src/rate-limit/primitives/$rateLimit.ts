@@ -2,6 +2,7 @@ import {
   $inject,
   AlephaError,
   createMiddleware,
+  MIDDLEWARE_RESPONSES,
   createPrimitive,
   type Middleware,
   Primitive,
@@ -157,6 +158,7 @@ export class RateLimitPrimitive<TInput = string> extends Primitive<
     return createMiddleware({
       name: "$rateLimit",
       options: { name: this.options.name, ...options },
+      meta: { [MIDDLEWARE_RESPONSES]: "429" },
       handler: ({ alepha, next }) => {
         return async (...args: any[]) => {
           // Untracked (#E78): the limiter's key never reaches a page.

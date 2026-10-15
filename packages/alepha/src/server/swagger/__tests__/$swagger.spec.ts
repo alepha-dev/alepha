@@ -1,4 +1,10 @@
-import { Alepha, type Middleware, z } from "alepha";
+import {
+  Alepha,
+  MIDDLEWARE_PROTECTED,
+  MIDDLEWARE_RESPONSES,
+  type Middleware,
+  z,
+} from "alepha";
 import { OPTIONS } from "alepha/internal";
 import { $action } from "alepha/server";
 import { describe, expect, it } from "vitest";
@@ -12,7 +18,11 @@ import type { SwaggerPrimitiveOptions } from "../primitives/$swagger.ts";
 
 const fakeSecure = (): Middleware => {
   const mw: Middleware = ((handler: any) => handler) as Middleware;
-  mw[OPTIONS] = { name: "$secure" };
+  // The capability flag is what the generator reads, never the name.
+  mw[OPTIONS] = {
+    name: "$secure",
+    meta: { [MIDDLEWARE_PROTECTED]: "true", [MIDDLEWARE_RESPONSES]: "401" },
+  };
   return mw;
 };
 

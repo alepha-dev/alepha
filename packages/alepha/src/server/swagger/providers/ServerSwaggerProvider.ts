@@ -10,6 +10,9 @@ import {
   type Infer,
   isTypeFile,
   isTypeStream,
+  MIDDLEWARE_PROTECTED,
+  MIDDLEWARE_RESPONSES,
+  type MiddlewareMetadata,
   type ZObject,
   type ZType,
   z,
@@ -18,10 +21,14 @@ import { $logger } from "alepha/logger";
 import {
   $action,
   type ActionPrimitive,
+  errorSchema,
+  type HttpErrorClass,
+  InternalServerError,
   isMultipart,
   type RequestConfigSchema,
   ServerProvider,
   ServerRouterProvider,
+  statusTextByStatus,
 } from "alepha/server";
 import { ServerStaticProvider } from "alepha/server/static";
 import { FileSystemProvider } from "alepha/system";
@@ -239,7 +246,11 @@ export class ServerSwaggerProvider {
         },
       };
 
-      const isSecured = route.middlewares.some((m) => m?.name === "$secure");
+      // The capability flag, not the middleware's name: anything that turns
+      // a visitor away for who they are is documented the same way.
+      const isSecured = route.middlewares.some(
+        (m) => m?.meta?.[MIDDLEWARE_PROTECTED] === "true",
+      );
 
       if (isSecured) {
         operation.security = [{ bearerAuth: [] }];
@@ -338,6 +349,10 @@ export class ServerSwaggerProvider {
         };
       }
 
+      if (route.errors !== undefined) {
+        this.documentErrors(operation, route, schema);
+      }
+
       const url = route.prefix + this.replacePathParams(route.path);
 
       openApi.paths[url] = {
@@ -361,6 +376,99 @@ export class ServerSwaggerProvider {
     if (openApi.components) openApi.components.schemas = schemas;
 
     return JSON.parse(JSON.stringify(openApi));
+  }
+
+  /**
+   * Document the responses of a strict action (one declaring `errors`):
+   * what its middlewares answer instead of running it (their
+   * `MIDDLEWARE_RESPONSES` meta), each declared error with its code and
+   * `data` schema, and the 500 an undeclared error becomes.
+   *
+   * Two declared errors sharing a status are a `oneOf` on that status.
+   * Actions without `errors` never reach this, so their output is unchanged.
+   */
+  protected documentErrors(
+    operation: OpenApiOperation,
+    route: ActionPrimitive<RequestConfigSchema>,
+    schema: (source: ZType) => any,
+  ): void {
+    for (const status of this.getMiddlewareResponses(route.middlewares)) {
+      operation.responses[String(status)] ??= {
+        description: this.getStatusDescription(status),
+      };
+    }
+
+    const byStatus = new Map<string, any[]>();
+    for (const cls of [...(route.errors ?? []), InternalServerError]) {
+      const { code, status } = this.getErrorIdentity(cls);
+      const key = status === undefined ? "default" : String(status);
+      const refs = byStatus.get(key) ?? [];
+      refs.push(schema(this.getErrorSchema(cls, code)));
+      byStatus.set(key, refs);
+    }
+
+    for (const [key, refs] of byStatus) {
+      const unique = [...new Map(refs.map((r) => [JSON.stringify(r), r]))];
+      const values = unique.map(([, r]) => r);
+      operation.responses[key] = {
+        description:
+          key === "default" ? "Error" : this.getStatusDescription(Number(key)),
+        content: {
+          "application/json": {
+            schema: values.length === 1 ? values[0] : { oneOf: values },
+          },
+        },
+      };
+    }
+  }
+
+  /**
+   * The statuses the middlewares declare in their `MIDDLEWARE_RESPONSES`
+   * meta, deduplicated and sorted.
+   */
+  protected getMiddlewareResponses(
+    middlewares: Array<MiddlewareMetadata | undefined>,
+  ): number[] {
+    const statuses = new Set<number>();
+    for (const middleware of middlewares) {
+      const value = middleware?.meta?.[MIDDLEWARE_RESPONSES];
+      for (const part of value?.split(",") ?? []) {
+        const status = Number(part.trim());
+        if (Number.isInteger(status)) statuses.add(status);
+      }
+    }
+    return [...statuses].sort((a, b) => a - b);
+  }
+
+  /**
+   * The wire code and status of a declared error class: its own static
+   * `code` (an `$error` constant, a registered built-in), else its class
+   * name, as `HttpError` writes it; its static `status` when it has one.
+   */
+  protected getErrorIdentity(cls: HttpErrorClass): {
+    code: string;
+    status?: number;
+  } {
+    const statics = cls as unknown as { code?: string; status?: number };
+    const code =
+      Object.hasOwn(cls, "code") && statics.code ? statics.code : cls.name;
+    return { code, status: statics.status };
+  }
+
+  /**
+   * The JSON body of one declared error: the generic error shape with
+   * `error` fixed to its code and `data` typed by its schema, titled by the
+   * code so it is hoisted into `components/schemas`.
+   */
+  protected getErrorSchema(cls: HttpErrorClass, code: string): ZType {
+    const data = (cls as unknown as { schema?: ZObject }).schema;
+    const base = data
+      ? errorSchema.extend({ data })
+      : errorSchema.omit({ data: true });
+    return base
+      .extend({ error: z.literal(code) })
+      .meta({ title: code })
+      .describe(`The ${code} error`);
   }
 
   public replacePathParams(url: string): string {
@@ -478,7 +586,7 @@ export class ServerSwaggerProvider {
       case 500:
         return "Internal Server Error";
       default:
-        return "";
+        return statusTextByStatus[status] ?? "";
     }
   }
 

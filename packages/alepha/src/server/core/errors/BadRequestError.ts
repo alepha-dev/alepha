@@ -2,6 +2,7 @@ import { HttpError } from "./HttpError.ts";
 
 export class BadRequestError extends HttpError {
   static readonly code = "BadRequestError";
+  static readonly status = 400;
 
   static {
     HttpError.register(this);

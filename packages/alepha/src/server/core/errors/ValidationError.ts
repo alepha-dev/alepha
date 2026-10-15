@@ -4,6 +4,7 @@ import { HttpError } from "./HttpError.ts";
 
 export class ValidationError extends HttpError {
   static readonly code = "ValidationError";
+  static readonly status = 400;
 
   static {
     HttpError.register(this);

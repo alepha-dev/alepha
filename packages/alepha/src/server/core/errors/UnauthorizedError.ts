@@ -2,6 +2,7 @@ import { HttpError } from "./HttpError.ts";
 
 export class UnauthorizedError extends HttpError {
   static readonly code = "UnauthorizedError";
+  static readonly status = 401;
 
   static {
     HttpError.register(this);

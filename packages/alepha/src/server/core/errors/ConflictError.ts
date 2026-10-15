@@ -2,6 +2,7 @@ import { HttpError } from "./HttpError.ts";
 
 export class ConflictError extends HttpError {
   static readonly code = "ConflictError";
+  static readonly status = 409;
 
   static {
     HttpError.register(this);

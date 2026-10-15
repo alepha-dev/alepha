@@ -11,6 +11,7 @@ import { HttpError } from "./HttpError.ts";
  */
 export class InternalServerError extends HttpError {
   static readonly code = "InternalServerError";
+  static readonly status = 500;
 
   static {
     HttpError.register(this);
