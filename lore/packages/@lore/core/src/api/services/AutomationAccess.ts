@@ -19,7 +19,15 @@ export class AutomationAccess {
     user: UserAccountToken,
     permission: "automation:read" | "automation:write" | "automation:manage",
   ): Promise<void> {
-    const { member } = await this.membership(projectId, user);
+    await this.authorize(projectId, user, permission);
+  }
+
+  public async authorize(
+    projectId: number,
+    user: UserAccountToken,
+    permission: "automation:read" | "automation:write" | "automation:manage",
+  ) {
+    const { project, member } = await this.membership(projectId, user);
     const allowed = await this.permissions.of(
       projectId,
       { ...user, ownership: true },
@@ -31,6 +39,12 @@ export class AutomationAccess {
       option: "automations",
       action: "use automations",
     });
+    return {
+      project,
+      member,
+      permissions: allowed.permissions,
+      capabilities: await this.security.capabilitiesOf(projectId),
+    };
   }
 
   public async assertOwner(

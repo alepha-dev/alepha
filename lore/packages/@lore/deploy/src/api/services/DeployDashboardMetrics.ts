@@ -19,6 +19,18 @@ export class DeployDashboardMetrics {
   constructor() {
     this.catalog.register({
       key: "openBlights",
+      automation: {
+        kind: "number",
+        requires: "blight:read",
+        slots: {
+          status: {
+            kind: "text",
+            required: false,
+            values: ["open", "all"],
+            default: "open",
+          },
+        },
+      },
       clause: (value) =>
         (value.value ?? 0) > 0
           ? {
@@ -59,6 +71,18 @@ export class DeployDashboardMetrics {
 
     this.catalog.register({
       key: "uniqueVisitors",
+      automation: {
+        kind: "number",
+        requires: "app:read",
+        slots: {
+          period: {
+            kind: "text",
+            required: false,
+            values: ["yesterday"],
+            default: "yesterday",
+          },
+        },
+      },
       order: 80,
       /**
        * On project boards too since #Q2650: a project that watches its apps

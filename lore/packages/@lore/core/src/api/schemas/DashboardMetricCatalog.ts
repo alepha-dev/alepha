@@ -1,5 +1,6 @@
 import { AlephaError, type ZType } from "alepha";
 
+import type { AutomationSlot } from "./automationSlotSchema.ts";
 import type { CapabilityKey } from "./capabilityKeySchema.ts";
 import type { DashboardCardValue } from "./dashboardCardValueSchema.ts";
 import type {
@@ -148,6 +149,18 @@ export interface DashboardMetricDescriptor {
   /**
    * Position in the catalogue, which is the Add-card panel's order.
    */
+  /**
+   * Explicit scalar automation opt-in. Presentation alone is not a value type.
+   */
+  automation?: {
+    kind: "number";
+    requires: string;
+    slots: Record<string, AutomationSlot>;
+    fields?: Record<string, "text" | "number">;
+    operators?: Array<
+      "eq" | "ne" | "lt" | "lte" | "gt" | "gte" | "delta" | "crossesAbove"
+    >;
+  };
   order: number;
   /**
    * Registry key, and the value stored in `dashboard_cards.metric`.
