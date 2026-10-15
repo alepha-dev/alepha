@@ -2,6 +2,8 @@
 
 `$cache` provides a caching system with two modes: automatic function result caching, and a key-value store that also works as a middleware. In-memory by default on Node and Bun, with Redis, database and Cloudflare backends.
 
+> Server-rendered pages need none of this: the [page cache](/docs/guides-frontend-page-cache) caches every page that reads nothing about its visitor, automatically, and refuses a `$cache` in a page's `use`. Use `$cache` for the data a personal page's loader reads, keyed by user.
+
 ```typescript check
 import { $cache } from "alepha/cache";
 ```

@@ -142,7 +142,7 @@ Set it on a **page**, never in the global `$head()`: there it names the same URL
 
 ### static
 
-Pre-render the page at build time (SSG). On the server, acts as a cached page.
+Pre-render the page at build time (SSG). On the server it goes through the automatic [page cache](/docs/guides-frontend-page-cache) like any other page, and is kept until the next deploy whether or not it has a loader.
 
 ```typescript
 // Simple static page
@@ -229,12 +229,20 @@ product = $page({
 
 Use it for the handful of routes that can legitimately not exist - a product, an article, a profile. Leave it alone everywhere else: buffering delays the first byte by the whole render.
 
-### use
+### cache
 
-Attach middlewares to the page - this is how you add server-side caching:
+The automatic [page cache](/docs/guides-frontend-page-cache), for this page. A page that reads nothing about its visitor is cached with no option (until the next deploy without a loader, 60 seconds with one); `cache: { ttl }` sets another lifetime, `cache: { invalidatedBy }` names the writes that purge it, and `cache: false` opts out.
 
 ```typescript
-use: [$cache({ ttl: [1, "hour"] })];
+cache: { ttl: [1, "hour"], invalidatedBy: [{ action: "productUpdate" }] }
+```
+
+### use
+
+Attach middlewares to the page, such as a guard. A `$cache` here is refused: the page cache is automatic, and caching the whole document would store the visitor's private state with it.
+
+```typescript
+use: [$secure()];
 ```
 
 > **Note.** **`$secure` on a page is a real guard.** An anonymous visitor is refused at the router: with a `login` route declared, the result is a redirect to `/login?redirect=<path>`, and the loader's data never reaches the HTML; with no login route, the server answers 401. The two `$secure` variants refuse differently under the hood (the browser returns, the server throws), and the router normalises both into the redirect - which also means a page's own `errorHandler` cannot catch the refusal, because on the server the middleware chain wraps the render.
@@ -251,8 +259,6 @@ use: [$cache({ ttl: [1, "hour"] })];
 > ```
 >
 > A prefix list rather than a resolver function, so the value is data: it validates, it serialises into the store, and it is set the same way on the server and in the browser. Unset - or set to a list nothing matches, or one naming a route that does not exist - the router resolves `login` exactly as it always did, so a single-realm application never touches this.
-
-When `static: true` is set, the framework automatically applies `$cache({ provider: "memory", ttl: [1, "week"] })` to the page.
 
 ### can
 

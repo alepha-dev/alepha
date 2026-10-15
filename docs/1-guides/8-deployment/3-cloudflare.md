@@ -248,6 +248,16 @@ WebSockets keeps `ALEPHA_WEBSOCKET` beside it.
 
 If your project has a React frontend, the built client assets are placed in `dist/public/` and served via Cloudflare's asset binding.
 
+## Page cache at the edge
+
+Server-rendered pages that read nothing about their visitor are cached automatically (see [Page cache](/docs/guides-frontend-page-cache)). On Workers the cache has three tiers:
+
+- **The isolate** keeps a bounded in-memory copy, as on Node.
+- **`caches.default`** keeps the page's shared part, so any isolate of the same data centre can answer from it. A signed-in visitor still boots the app, which skips the loaders and the render and appends the visitor's own hydration script.
+- **Before the app boots**, the generated worker answers a request with no cookie, no `Authorization` header and no query string from a whole stored response, the same for every such visitor. That is what saves the cold-start cost (700 ms to 1 s) on anonymous traffic. The key is the URL, the build and the language, resolved by the same function the app uses (`Accept-Language` against your dictionaries, or the URL prefix with `routing: "prefix"`; prefix routing with `routingExclude` turns this tier off).
+
+`caches.default` belongs to one Cloudflare data centre, and so does a delete. So every entry lives **60 seconds at most** on Workers, whatever the page's own lifetime, and an invalidation (`invalidatedBy`, `page.invalidate()`) takes effect at once in the data centre that ran the write and within 60 seconds everywhere else. A page cache hit leaves the visitor's D1 bookmark cookie as it was: it ran no query, so it has nothing to hand back.
+
 ## Queue
 
 `$job` dispatch can travel through [Cloudflare Queues](https://developers.cloudflare.com/queues/). The build automatically adds the `JOBS_QUEUE` binding, the `queue` consumer and a dead-letter queue to `wrangler.jsonc` when `AlephaApiJobsQueue` is registered.
