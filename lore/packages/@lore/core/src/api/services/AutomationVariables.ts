@@ -1,4 +1,5 @@
 import { $inject } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import type { UserAccountToken } from "alepha/security";
 import { BadRequestError, ConflictError, ForbiddenError } from "alepha/server";
 
@@ -7,6 +8,7 @@ import {
   automationVariables,
   type AutomationVariable,
 } from "../entities/automationVariables.ts";
+import { AutomationCron } from "../schemas/AutomationCron.ts";
 import type { AutomationRule } from "../schemas/automationRuleSchema.ts";
 import {
   automationVariableValueSchema,
@@ -24,6 +26,8 @@ import { AutomationRunEvidence } from "./AutomationRunEvidence.ts";
 export class AutomationVariables {
   protected readonly evidence = $inject(AutomationRunEvidence);
   protected readonly access = $inject(AutomationAccess);
+  protected readonly cron = $inject(AutomationCron);
+  protected readonly time = $inject(DateTimeProvider);
   protected readonly catalog = $inject(AutomationCatalog);
   protected readonly persistence = $inject(AutomationPersistence);
 
@@ -75,14 +79,17 @@ export class AutomationVariables {
     if (current) {
       // Validate all same-author consumers before any mutation. Foreign programs
       // are paused first, so a failure cannot leave a redirected live program.
+      const schedules = new Map<string, string | undefined>();
       for await (const rule of this.consumers(projectId, key)) {
-        if (rule.authorUserId === user.id)
-          await this.catalog.validate(
+        if (rule.authorUserId === user.id) {
+          const compiled = await this.catalog.compile(
             projectId,
             await this.access.author(rule),
             rule.rule,
             new Map([[key, candidate]]),
           );
+          schedules.set(rule.id, compiled.scheduleCron);
+        }
       }
       for await (const rule of this.consumers(projectId, key)) {
         const requiresApproval = rule.authorUserId !== user.id;
@@ -90,6 +97,17 @@ export class AutomationVariables {
           version: rule.version,
           revision: rule.revision + 1,
           baseline: null,
+          ...(!requiresApproval &&
+          schedules.get(rule.id) &&
+          schedules.get(rule.id) !== rule.scheduleCron
+            ? {
+                scheduleCron: schedules.get(rule.id),
+                nextRunAt: this.cron.next(
+                  schedules.get(rule.id)!,
+                  this.time.nowISOString(),
+                ),
+              }
+            : {}),
           ...(requiresApproval
             ? {
                 health: "paused",

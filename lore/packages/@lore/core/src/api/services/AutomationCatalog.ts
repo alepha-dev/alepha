@@ -4,6 +4,7 @@ import { BadRequestError } from "alepha/server";
 
 import type { AutomationVariable } from "../entities/automationVariables.ts";
 import { automationCatalogSchema } from "../schemas/automationCatalogSchema.ts";
+import { AutomationCron } from "../schemas/AutomationCron.ts";
 import type { AutomationDescriptor } from "../schemas/automationDescriptorSchema.ts";
 import {
   automationRuleSchema,
@@ -36,6 +37,7 @@ export class AutomationCatalog {
   protected readonly channels = $inject(AutomationChannels);
   protected readonly references = $inject(AutomationReferences);
   protected readonly coreReferences = $inject(CoreAutomationReferences);
+  protected readonly cron = $inject(AutomationCron);
   protected readonly bindings = $inject(AutomationTemplateBindings);
   protected readonly tokens = $inject(AutomationTemplateTokens);
 
@@ -110,11 +112,17 @@ export class AutomationCatalog {
   }
 
   public async validate(
+    ...args: Parameters<AutomationCatalog["compile"]>
+  ): Promise<AutomationRule> {
+    return (await this.compile(...args)).rule;
+  }
+  public async compile(
     projectId: number,
     user: UserAccountToken,
     input: AutomationRule,
     overrides: Map<string, AutomationVariable> = new Map(),
-  ): Promise<AutomationRule> {
+  ) {
+    let scheduleCron: string | undefined;
     const parsedRule = automationRuleSchema.safeParse(input);
     if (!parsedRule.success)
       throw new BadRequestError(`rule: ${parsedRule.error.message}`);
@@ -160,7 +168,7 @@ export class AutomationCatalog {
           : {};
       await this.slots(projectId, source, values, {}, variables, "trigger");
     } else {
-      await this.value(
+      const resolvedCron = await this.value(
         projectId,
         { kind: "text", required: true, max: 128 },
         rule.trigger.cron,
@@ -168,6 +176,15 @@ export class AutomationCatalog {
         variables,
         "trigger.cron",
       );
+      if (resolvedCron.complete) {
+        try {
+          scheduleCron = this.cron.validate(resolvedCron.value as string);
+        } catch (error) {
+          throw new BadRequestError(
+            error instanceof Error ? error.message : "Invalid UTC cron",
+          );
+        }
+      }
       source = this.require(context, rule.select!.key, undefined, "select.key");
       if (source.type !== "selection" && source.type !== "metric")
         throw new BadRequestError(
@@ -271,7 +288,7 @@ export class AutomationCatalog {
           );
       }
     }
-    return rule;
+    return { rule, scheduleCron };
   }
 
   public async sourceAvailability(

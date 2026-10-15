@@ -81,6 +81,10 @@ export const automationReceipts = $entity({
     },
   ],
   indexes: [
+    {
+      name: "automation_receipts_rule_state_idx",
+      columns: ["automationId", "kind", "status"],
+    },
     { columns: ["projectId", "identity"], unique: true },
     {
       name: "automation_receipts_running_rule",

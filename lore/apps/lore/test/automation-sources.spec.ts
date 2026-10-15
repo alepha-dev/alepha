@@ -24,6 +24,7 @@ import {
 } from "alepha/api/jobs";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, DatabaseProvider, type SQLLike, sql } from "alepha/orm";
+import { CronProvider } from "alepha/scheduler";
 import type { UserAccountToken } from "alepha/security";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
@@ -34,6 +35,7 @@ import {
   createTestQuest,
   createTestEpic,
 } from "./fixtures/entities.ts";
+import { ManualCronProvider } from "./fixtures/ManualCronProvider.ts";
 
 class SourceRows extends TestEntityRepositories {
   instances = $repository(appInstances);
@@ -145,6 +147,7 @@ describe("Automation domain source integration", () => {
     alepha.with({ provide: DatabaseProvider, use: AutomationSqliteProvider });
     alepha.with({ provide: AutomationDatabase, use: SourceDatabase });
     alepha.with({ provide: JobQueueProvider, use: RecordingDispatcher });
+    alepha.with({ provide: CronProvider, use: ManualCronProvider });
     bootLore(alepha);
     rows = alepha.inject(SourceRows);
     probe = alepha.inject(SourceProbe);

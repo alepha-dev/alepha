@@ -58,6 +58,8 @@ import { AutomationOrigin } from "./services/AutomationOrigin.ts";
 import { AutomationPersistence } from "./services/AutomationPersistence.ts";
 import { AutomationRoster } from "./services/AutomationRoster.ts";
 import { AutomationRunEvidence } from "./services/AutomationRunEvidence.ts";
+import { AutomationSchedules } from "./services/AutomationSchedules.ts";
+import { AutomationSelections } from "./services/AutomationSelections.ts";
 import { AutomationTemplateRenderer } from "./services/AutomationTemplateRenderer.ts";
 import { AutomationVariables } from "./services/AutomationVariables.ts";
 import { CoreAutomationReferences } from "./services/CoreAutomationReferences.ts";
@@ -173,6 +175,8 @@ export const LoreCoreApi = $module({
     AutomationRunEvidence,
     AutomationEvidenceJobs,
     AutomationDispatchJobs,
+    AutomationSchedules,
+    AutomationSelections,
     AutomationClaims,
     AutomationEvents,
     AutomationEventDispatch,
@@ -395,3 +399,11 @@ export { AutomationOrigin } from "./services/AutomationOrigin.ts";
 export { AutomationEventDispatch } from "./services/AutomationEventDispatch.ts";
 
 export { AutomationSqliteProvider } from "./providers/AutomationSqliteProvider.ts";
+
+export { AutomationSchedules } from "./services/AutomationSchedules.ts";
+export {
+  AutomationSelections,
+  type AutomationSelected,
+  type AutomationSelectionHandler,
+  type AutomationSelectionPage,
+} from "./services/AutomationSelections.ts";

@@ -2132,6 +2132,7 @@ __metadata:
     "@types/react": "npm:^19.3.0"
     "@types/react-dom": "npm:^19.3.0"
     alepha: "workspace:*"
+    cron-schedule: "npm:^6.0.0"
     lucide-react: "npm:^1.56.0"
     react: "npm:^19.3.0"
     react-dom: "npm:^19.3.0"

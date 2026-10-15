@@ -37,6 +37,24 @@ export class AutomationContextBuilder {
     return { descriptor, values };
   }
 
+  public async rows(
+    projectId: number,
+    key: string,
+    input: Record<string, unknown>[],
+  ): Promise<AutomationRenderContext[]> {
+    if (input.length > 50)
+      throw new BadRequestError("Selection exceeds 50 rows");
+    const descriptor = this.catalog
+      .entries()
+      .find((entry) => entry.key === key && entry.result === "rows");
+    if (!descriptor) throw new BadRequestError("Unknown row selector");
+    const project = await this.security.projects.getById(projectId);
+    return input.map((row) => ({
+      descriptor,
+      values: this.safe(descriptor.fields, { ...row, project: project.title }),
+    }));
+  }
+
   public async collection(
     projectId: number,
     key: string,

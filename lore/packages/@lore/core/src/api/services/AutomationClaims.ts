@@ -689,6 +689,7 @@ export class AutomationClaims {
     token: string,
     input: Omit<AutomationEffectInput, "mode"> & {
       statements: SQLLike[];
+      condition?: SQLLike;
       result: NonNullable<AutomationReceipt["result"]>;
       changedTables?: string[];
     },
@@ -709,7 +710,7 @@ export class AutomationClaims {
       try {
         await this.atomic.guarded(
           occurrence.projectId,
-          sql`${this.live(occurrence, token)} AND EXISTS (SELECT 1 FROM automation_receipts WHERE id = ${receipt.id} AND status = 'claimed' AND lease_token = ${token})`,
+          sql`${this.live(occurrence, token)} AND EXISTS (SELECT 1 FROM automation_receipts WHERE id = ${receipt.id} AND status = 'claimed' AND lease_token = ${token}) ${input.condition ? sql`AND (${typeof input.condition === "string" ? sql.raw(input.condition) : input.condition.getSQL()})` : sql``}`,
           [
             ...input.statements,
             sql`UPDATE automation_receipts SET status = 'committed', result = ${JSON.stringify(this.safeResult(input.result))}, version = version + 1, updated_at = ${this.database.timestamp(this.dateTime.nowISOString())} WHERE id = ${receipt.id}`,

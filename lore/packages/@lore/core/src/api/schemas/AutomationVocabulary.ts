@@ -116,7 +116,8 @@ export class AutomationVocabulary {
       fields: {
         ...questFields,
         assignee_id: "member",
-        reminder_interval: "number",
+        reminder_interval: "text",
+        reminder_interval_ms: "number",
         reminder_next_at: "text",
       },
       slots: {},

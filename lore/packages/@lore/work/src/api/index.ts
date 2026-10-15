@@ -61,6 +61,7 @@ import { WorkAssignedWork } from "./services/WorkAssignedWork.ts";
 import { WorkAttentionSources } from "./services/WorkAttentionSources.ts";
 import { WorkAutomationCollections } from "./services/WorkAutomationCollections.ts";
 import { WorkAutomationReferences } from "./services/WorkAutomationReferences.ts";
+import { WorkAutomationSelections } from "./services/WorkAutomationSelections.ts";
 import { WorkDashboard } from "./services/WorkDashboard.ts";
 import { WorkDashboardMetrics } from "./services/WorkDashboardMetrics.ts";
 import { WorkFileAccess } from "./services/WorkFileAccess.ts";
@@ -87,6 +88,7 @@ export const LoreWorkApi = $module({
   services: [
     WorkAutomationReferences,
     WorkAutomationCollections,
+    WorkAutomationSelections,
     // The dashboard metrics' declarative half, which the resolvers and the
     // scope proof read on the server (the browser gets it from
     // `LoreWorkWeb`).

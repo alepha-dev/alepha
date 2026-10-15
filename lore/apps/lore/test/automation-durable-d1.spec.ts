@@ -4,6 +4,7 @@ import { join } from "node:path";
 
 import {
   AutomationAtomic,
+  AutomationSchedules,
   AutomationClaims,
   AutomationD1Provider,
   AutomationEvents,
@@ -16,6 +17,7 @@ import { FeedbackController } from "@lore/work/api";
 import { Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { DatabaseProvider, sql, type D1Database } from "alepha/orm";
+import { CronProvider } from "alepha/scheduler";
 import { afterEach, beforeAll, describe, it } from "vitest";
 import { getPlatformProxy } from "wrangler";
 
@@ -24,6 +26,7 @@ import {
   TestEntityRepositories,
   createTestProject,
 } from "./fixtures/entities.ts";
+import { ManualCronProvider } from "./fixtures/ManualCronProvider.ts";
 
 class FixtureD1Provider extends AutomationD1Provider {
   public schemaStatements: string[] = [];
@@ -106,6 +109,7 @@ describe("Durable automation primitives on local D1", () => {
         },
       }).with({ provide: DatabaseProvider, use: FixtureD1Provider });
       alepha.set("cloudflare.env", proxy.env);
+      alepha.with({ provide: CronProvider, use: ManualCronProvider });
       bootLore(alepha, ["api"]);
       const provider = alepha.inject(DatabaseProvider) as FixtureD1Provider;
       provider.schemaStatements = schemaStatements;
@@ -281,6 +285,37 @@ describe("Durable automation primitives on local D1", () => {
       ).toEqual([{ hits: 1 }]);
       // Freezing targets is independent of transport execution. A later member
       // is excluded from the already-frozen recipient/channel cross product.
+      const schedule = await persistence.rules.create({
+        projectId: project.id,
+        authorUserId: project.createdBy,
+        title: "D1 schedule",
+        scheduleCron: "*/5 * * * *",
+        rule: {
+          ...rule,
+          trigger: { kind: "schedule", cron: "*/5 * * * *" },
+          select: { kind: "rows", key: "quests.open", filters: {} },
+        },
+      });
+      await persistence.rules.updateById(schedule.id, {
+        enabled: true,
+        nextRunAt: alepha
+          .inject(DateTimeProvider)
+          .now()
+          .subtract(1, "hour")
+          .toISOString(),
+      });
+      expect(await alepha.inject(AutomationSchedules).sweep()).toBe(1);
+      expect(await alepha.inject(AutomationSchedules).sweep()).toBe(0);
+      expect(
+        await persistence.receipts.getOne({
+          where: { automationId: schedule.id, kind: "occurrence" },
+        }),
+      ).toMatchObject({ status: "ready", ruleRevision: 0 });
+      expect(
+        new Date(
+          (await persistence.rules.getById(schedule.id)).nextRunAt!,
+        ).getTime(),
+      ).toBeGreaterThan(alepha.inject(DateTimeProvider).nowMillis());
       const member = await entities.users.create({ roles: ["user"] });
       await entities.organizationMembers.create({
         organizationId: project.organizationId!,

@@ -36,6 +36,7 @@ export const automations = $entity({
     version: db.version(),
     presetKey: z.string().max(128).optional(),
     nextRunAt: z.datetime().optional(),
+    scheduleCron: z.string().max(128).optional(),
     baseline: automationSafeFieldsSchema.optional(),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),

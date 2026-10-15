@@ -96,3 +96,5 @@ export {
   AutomationTemplateBindings,
   type AutomationTemplateVariable,
 } from "../api/schemas/AutomationTemplateBindings.ts";
+
+export { AutomationCron } from "../api/schemas/AutomationCron.ts";

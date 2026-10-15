@@ -419,6 +419,18 @@ export const quests = $entity({
   }),
   indexes: [
     {
+      name: "quests_automation_reminders_idx",
+      columns: ["projectId", "reminderNextAt", "shortId"],
+      where: {
+        deletedAt: { isNull: true },
+        completedAt: { isNull: true },
+        shelvedAt: { isNull: true },
+        acceptedAt: { isNotNull: true },
+        acceptedBy: { isNotNull: true },
+        reminderInterval: { isNotNull: true },
+      },
+    },
+    {
       columns: ["projectId", "deletedAt"],
     },
     {
