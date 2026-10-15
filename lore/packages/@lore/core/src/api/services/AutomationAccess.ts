@@ -1,18 +1,26 @@
 import { $inject } from "alepha";
+import { apiKeyEntity } from "alepha/api/keys";
+import { DateTimeProvider } from "alepha/datetime";
+import { $repository } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 import { ForbiddenError } from "alepha/server";
 
 import type { Automation } from "../entities/automations.ts";
-import { ProjectPermissions } from "../security/ProjectPermissions.ts";
-import { ProjectSecurityService } from "./ProjectSecurityService.ts";
+import { users } from "../entities/users.ts";
+import { AutomationProjectPermissions } from "../security/AutomationProjectPermissions.ts";
+import { AutomationProjectSecurity } from "./AutomationProjectSecurity.ts";
 
 /**
  * Shared normal-authoring gate. Execution additionally reconstructs the live
  * author's key ceiling before every effect; it never uses the job's token.
  */
 export class AutomationAccess {
-  protected readonly security = $inject(ProjectSecurityService);
-  protected readonly permissions = $inject(ProjectPermissions);
+  protected readonly security = $inject(AutomationProjectSecurity);
+  protected readonly permissions = $inject(AutomationProjectPermissions);
+
+  protected readonly users = $repository(users);
+  protected readonly keys = $repository(apiKeyEntity);
+  protected readonly dateTime = $inject(DateTimeProvider);
 
   public async assert(
     projectId: number,
@@ -72,6 +80,60 @@ export class AutomationAccess {
         "Only the immutable author can edit or enable this automation",
       );
     await this.assert(rule.projectId, user, "automation:manage");
+  }
+
+  /**
+   * Resolve only identifiers, roles and scope. Key hashes, prefixes, suffixes,
+   * contact details and secrets never enter the execution identity.
+   */
+  public async author(
+    rule: Pick<Automation, "authorUserId" | "authorKeyId">,
+  ): Promise<UserAccountToken> {
+    const account = await this.users.findById(rule.authorUserId);
+    if (!account?.enabled)
+      throw new ForbiddenError("Automation author account is unavailable");
+    let roles = account.roles;
+    let permissionScope: string[] | undefined;
+    if (rule.authorKeyId) {
+      const [key] = await this.keys.findMany({
+        where: { id: rule.authorKeyId, userId: account.id },
+        columns: ["id", "roles", "permissions", "revokedAt", "expiresAt"],
+        limit: 1,
+      });
+      if (!key) throw new ForbiddenError("Authoring API key no longer exists");
+      if (key.revokedAt)
+        throw new ForbiddenError("Authoring API key is revoked");
+      if (
+        key.expiresAt &&
+        new Date(key.expiresAt).getTime() <= this.dateTime.nowMillis()
+      )
+        throw new ForbiddenError("Authoring API key is expired");
+      roles = roles.filter((role) => key.roles.includes(role));
+      permissionScope = key.permissions.length ? key.permissions : undefined;
+    }
+    return {
+      id: account.id,
+      roles,
+      realm: account.realm,
+      ownership: true,
+      ...(permissionScope ? { permissionScope } : {}),
+      ...(rule.authorKeyId
+        ? { credential: { type: "api-key", id: rule.authorKeyId } as const }
+        : {}),
+    };
+  }
+
+  public async provenance(user: UserAccountToken): Promise<string | undefined> {
+    if (!user.credential) return undefined;
+    if (user.credential.type !== "api-key")
+      throw new ForbiddenError(
+        "Author automations from a signed-in session or an API key with a revocable identity",
+      );
+    await this.author({
+      authorUserId: user.id,
+      authorKeyId: user.credential.id,
+    });
+    return user.credential.id;
   }
 
   protected async membership(projectId: number, user: UserAccountToken) {

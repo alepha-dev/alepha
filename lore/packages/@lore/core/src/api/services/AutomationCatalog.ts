@@ -273,6 +273,53 @@ export class AutomationCatalog {
   }
 
   /**
+   * Resolved values are data, never template input. This gate validates actual
+   * destinations and domain IDs immediately before an adapter is invoked.
+   */
+  public async validateEffect(
+    rule: AutomationRule,
+    projectId: number,
+    user: UserAccountToken,
+    action: AutomationRule["actions"][number],
+  ) {
+    const context = await this.access.authorize(
+      projectId,
+      user,
+      "automation:write",
+    );
+    const source = this.require(
+      context,
+      rule.trigger.kind === "event" ? rule.trigger.event : rule.select!.key,
+      undefined,
+      "source",
+    );
+    const descriptor = this.require(
+      context,
+      action.kind,
+      "action",
+      "effect.kind",
+    );
+    const { kind, ...values } = action;
+    const resolved = await this.slots(
+      projectId,
+      descriptor,
+      values,
+      {},
+      new Map(),
+      "effect",
+      true,
+    );
+    if (kind === "notify") {
+      const reason = await this.coreReferences.recipientReason(
+        projectId,
+        resolved.values.recipient as string,
+        source,
+      );
+      if (reason) throw new BadRequestError(`effect.recipient: ${reason}`);
+    }
+  }
+
+  /**
    * Reuse the dashboard's resolver, scoped to exactly this project. Progress
    * objects and metrics without an explicit scalar opt-in never reach it.
    */
@@ -443,6 +490,7 @@ export class AutomationCatalog {
     fields: Record<string, AutomationSlotKind>,
     variables: AutomationVariableMap,
     path: string,
+    literal = false,
   ) {
     for (const key of Object.keys(values))
       if (!Object.hasOwn(entry.slots, key))
@@ -463,6 +511,7 @@ export class AutomationCatalog {
         fields,
         variables,
         `${path}.${key}`,
+        literal,
       );
       complete &&= value.complete;
       if (value.complete) resolved[key] = value.value;
@@ -477,6 +526,7 @@ export class AutomationCatalog {
     fields: Record<string, AutomationSlotKind>,
     variables: AutomationVariableMap,
     path: string,
+    literal = false,
   ): Promise<{ complete: boolean; value?: unknown }> {
     if (slot.kind === "textArray" && Array.isArray(input)) {
       if (input.length > 50)
@@ -490,6 +540,7 @@ export class AutomationCatalog {
             fields,
             variables,
             `${path}[${index}]`,
+            literal,
           ),
         ),
       );
@@ -498,7 +549,7 @@ export class AutomationCatalog {
         : { complete: false };
     }
     let value = input;
-    if (typeof input === "string") {
+    if (!literal && typeof input === "string") {
       const names = this.tokens.names(input);
       const whole = this.tokens.whole(input);
       if (names.length && slot.bindable === false)

@@ -77,7 +77,7 @@ export class AutomationVariables {
         if (rule.authorUserId === user.id)
           await this.catalog.validate(
             projectId,
-            user,
+            await this.access.author(rule),
             rule.rule,
             new Map([[key, candidate]]),
           );
@@ -172,12 +172,18 @@ export class AutomationVariables {
         error instanceof Error
           ? error.message
           : "Variable or rule validation failed";
-      await this.persistence.rules.updateById(rule.id, {
-        version: rule.version,
-        health: "paused",
-        requiresApproval: true,
-        reason: reason.slice(0, 1024),
-      });
+      const latest = await this.persistence.rules.findById(rule.id);
+      if (
+        latest &&
+        latest.revision === rule.revision &&
+        !latest.requiresApproval
+      )
+        await this.persistence.rules.updateById(rule.id, {
+          version: latest.version,
+          health: "paused",
+          requiresApproval: true,
+          reason: reason.slice(0, 1024),
+        });
       throw error;
     }
   }

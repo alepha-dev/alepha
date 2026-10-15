@@ -41,6 +41,7 @@ import { CoreDashboardMetrics } from "./schemas/CoreDashboardMetrics.ts";
 import { LorePermissions } from "./security/LorePermissions.ts";
 import { ProjectRankPresets } from "./security/ProjectRankPresets.ts";
 import { ActivityFeedMetric } from "./services/ActivityFeedMetric.ts";
+import { AutomationAuthority } from "./services/AutomationAuthority.ts";
 import { AutomationCatalog } from "./services/AutomationCatalog.ts";
 import { AutomationPersistence } from "./services/AutomationPersistence.ts";
 import { AutomationVariables } from "./services/AutomationVariables.ts";
@@ -152,6 +153,7 @@ export const LoreCoreApi = $module({
     CoreAutomationReferences,
     AutomationCatalog,
     AutomationVariables,
+    AutomationAuthority,
     AutomationDiagnosticController,
     InvitationNotifications,
     // The inbox half: two templates, and the one HTML escaper the four
@@ -315,3 +317,6 @@ export { AutomationCatalog } from "./services/AutomationCatalog.ts";
 export { AutomationPersistence } from "./services/AutomationPersistence.ts";
 
 export { AutomationVariables } from "./services/AutomationVariables.ts";
+
+export { AutomationAuthority } from "./services/AutomationAuthority.ts";
+export { AutomationAccess } from "./services/AutomationAccess.ts";

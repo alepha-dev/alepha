@@ -3,17 +3,17 @@ import { $repository } from "alepha/orm";
 
 import { users } from "../entities/users.ts";
 import type { AutomationDescriptor } from "../schemas/automationDescriptorSchema.ts";
-import { ProjectPermissions } from "../security/ProjectPermissions.ts";
+import { AutomationProjectPermissions } from "../security/AutomationProjectPermissions.ts";
 import { AutomationChannels } from "./AutomationChannels.ts";
+import { AutomationProjectSecurity } from "./AutomationProjectSecurity.ts";
 import { AutomationReferences } from "./AutomationReferences.ts";
-import { ProjectSecurityService } from "./ProjectSecurityService.ts";
 
 export class CoreAutomationReferences {
   protected readonly references = $inject(AutomationReferences);
-  protected readonly security = $inject(ProjectSecurityService);
+  protected readonly security = $inject(AutomationProjectSecurity);
   protected readonly channels = $inject(AutomationChannels);
   protected readonly users = $repository(users);
-  protected readonly permissions = $inject(ProjectPermissions);
+  protected readonly permissions = $inject(AutomationProjectPermissions);
   constructor() {
     this.references.register("member", async (projectId, value) => {
       if (typeof value !== "string") return "Member must be a stable user ID";
