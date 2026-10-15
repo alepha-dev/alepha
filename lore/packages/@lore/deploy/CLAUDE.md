@@ -234,3 +234,18 @@ What this package holds, with the notes that are not obvious from the code. Move
 **Services (10)** - `AppService` (the one write path for a deployed copy, and the only writer of `sigils.name`), `AppSecretService` (seals, masks, refuses the derived names - and Bay's own names on a copy that deploys to a Bay estate - and owns the ONLY method that decrypts - whose one caller is the deploy), `BlightRuleService`, `EstateCommandService`, `EstateCommandTransport` (the seam; `WebSocketEstateCommandTransport` is the real one, substituted in `apps/lore/src/main.server.ts`), `EstateService`, `EstateStatsService` (the gauge upsert on the row on every push, and the `estate_stats` `$analytics` series only while `collectSeries` is on; the series is read back as daily means through `series()`, which carries the `estimated` disclosure), `EstateTokenService`, `SigilIngestService`, `SigilTokenService`.
 
 **MCP tools (6)** - `AppInstanceTools` (`app_instance_list` / `_create` / `_update` / `_delete`; the list also answers the distinct app names, because no table holds them), `ArtifactTools` (`artifact_list` / `artifact_get`, read-only: pushing is CI's job and the credential for it lives in CI, so there is deliberately no `artifact_push`), `BlightTools`, `DeployTools` (`deploy_start` / `deploy_status` / `deploy_rollback`, over the instance an agent already names by `(app, env)`. ⚠️ **No estate argument on any of them** and no `estate_*` tool at all: an estate is user-owned and lent, `app_instance_list` already says which one a copy uses, and an agent that could name one could deploy into somebody else's cloud account. `deploy_start`'s description states that an omitted tag means `latest` and that `latest`'s bytes may be replaced), `InsightsTools`, `SigilTools`.
+
+## Numeric automation presets (#E43, #Q2042)
+
+`DeployAutomationNumericPresets` derives source fields, permissions and capability
+needs from the registered metric catalogue. Coverage regression uses line coverage
+at 00:10 UTC, an explicit nonnegative percentage-point threshold and a branch
+(default `main`). Its `delta` guard consumes exact D-1/D-2 samples from the shared
+quality resolver. Missing either day is `no_data`; equality never alerts.
+
+The blight preset samples aggregate open blights every five minutes through
+`OpenBlightsMetric`, with the ordinary tracking and source-read gates. Its first
+sample only persists a baseline; a count at or below the threshold rearms it.
+Native guard evidence survives restarts and retries. Predicate edits reset the
+baseline through the shared authoring service. Neither preset adds an ingest
+hook or a query language, and their messages retain the observed scalar values.

@@ -14,6 +14,14 @@ export default {
   "automation.preset.epic-completed.title": "Epic completed",
   "automation.preset.epic-completed.description":
     "Notify one member when an in-progress epic automatically completes.",
+  "automation.setup.threshold": "Threshold",
+  "automation.setup.branch": "Branch",
+  "automation.preset.coverage-regression.title": "Coverage regression",
+  "automation.preset.coverage-regression.description":
+    "Compare line coverage for the two fully closed UTC days at 00:10 UTC. Alert only when the drop exceeds the threshold in percentage points.",
+  "automation.preset.blight-crossing.title": "Open blights cross a threshold",
+  "automation.preset.blight-crossing.description":
+    "Sample aggregate open blights every five minutes. The first sample sets a baseline; falling to the threshold or below rearms the alert.",
   "automation.previous": "Previous",
   "automation.next": "Next",
 

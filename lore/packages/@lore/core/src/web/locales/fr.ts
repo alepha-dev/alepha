@@ -20,6 +20,15 @@ export default {
   "automation.preset.epic-completed.title": "Epic terminé",
   "automation.preset.epic-completed.description":
     "Notifier un membre lorsqu’un epic en cours se termine automatiquement.",
+  "automation.setup.threshold": "Seuil",
+  "automation.setup.branch": "Branche",
+  "automation.preset.coverage-regression.title": "Baisse de couverture",
+  "automation.preset.coverage-regression.description":
+    "Comparer la couverture des lignes des deux dernières journées UTC entièrement écoulées à 00:10 UTC. Alerter uniquement si la baisse dépasse le seuil en points de pourcentage.",
+  "automation.preset.blight-crossing.title":
+    "Dépassement du seuil des erreurs ouvertes",
+  "automation.preset.blight-crossing.description":
+    "Mesurer le nombre total d’erreurs ouvertes toutes les cinq minutes. Le premier relevé fixe une référence ; un retour au seuil ou en dessous réarme l’alerte.",
   "automation.previous": "Précédent",
   "automation.next": "Suivant",
 
