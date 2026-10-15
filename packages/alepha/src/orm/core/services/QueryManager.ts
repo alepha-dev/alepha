@@ -1,4 +1,11 @@
-import { $inject, Alepha, AlephaError, type ZObject, z } from "alepha";
+import {
+  $inject,
+  Alepha,
+  AlephaError,
+  type ZObject,
+  type ZType,
+  z,
+} from "alepha";
 import {
   and,
   arrayContained,
@@ -295,6 +302,38 @@ export class QueryManager {
   }
 
   /**
+   * Whether a `drizzle` codec is registered. None is, in the framework
+   * itself, so a where-clause value is compared as given, as it always was.
+   * Validating it against its column is a behaviour change left to the
+   * owner's decision (#Q2684).
+   */
+  protected hasDrizzleCodec(): boolean {
+    try {
+      this.alepha.codec.getCodec("drizzle");
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * The schema of one column, when the caller knows it.
+   */
+  protected fieldSchema(
+    columnSchema: ZObject | undefined,
+    columnName: string | undefined,
+  ): ZType | undefined {
+    if (!columnSchema || !columnName) {
+      return undefined;
+    }
+    try {
+      return z.schema.shape(columnSchema)[columnName];
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
    * Map a filter operator to a SQL query.
    */
   public mapOperatorToSql(
@@ -304,7 +343,12 @@ export class QueryManager {
     columnName?: string,
     dialect: "postgresql" | "sqlite" = "postgresql",
   ): SQL | undefined {
-    // Helper function to encode a value for the specific column
+    // Encode a VALUE for this column through the `drizzle` codec, when one
+    // is registered. No error is swallowed: this used to wrap the call in a
+    // catch-all, which hid that no `drizzle` codec exists in the framework,
+    // so every call threw "codec not found" and the raw value was sent. That
+    // is still what happens (see `hasDrizzleCodec`), now said out loud; a
+    // registered codec's validation error propagates unchanged.
     const encodeValue = (value: any): any => {
       if (value == null) {
         return value;
@@ -316,25 +360,20 @@ export class QueryManager {
         return value;
       }
 
-      // If we have schema information, encode the value properly
-      if (columnSchema && columnName) {
-        try {
-          const fieldSchema = z.schema.shape(columnSchema)[columnName];
-          if (fieldSchema) {
-            // Encode the value using the drizzle codec
-            // This converts application values (like Dayjs) to database values (like ISO strings)
-            return this.alepha.codec.encode(fieldSchema, value, {
-              encoder: "drizzle",
-            });
-          }
-        } catch (error) {
-          // If encoding fails, fall back to the original value
-          // This ensures backward compatibility
-        }
+      const fieldSchema = this.fieldSchema(columnSchema, columnName);
+      if (!fieldSchema || !this.hasDrizzleCodec()) {
+        return value;
       }
-
-      return value;
+      return this.alepha.codec.encode(fieldSchema, value, {
+        encoder: "drizzle",
+      });
     };
+
+    // A pattern (`like`, `ilike`, `contains`, `startsWith`, `endsWith`, and
+    // `eqInsensitive`, which compares lowered text) is text for SQL, not a
+    // column value: `%abc%` is no uuid, email or enum member, and validating
+    // it against the column would refuse every such search. Passed as is.
+    const patternValue = (value: any): any => value;
 
     // Helper function to encode array values
     const encodeArray = (values: any[]): any[] => {
@@ -436,11 +475,11 @@ export class QueryManager {
     }
 
     if (operator?.like != null) {
-      conditions.push(like(column, encodeValue(operator.like)));
+      conditions.push(like(column, patternValue(operator.like)));
     }
 
     if (operator?.notLike != null) {
-      conditions.push(notLike(column, encodeValue(operator.notLike)));
+      conditions.push(notLike(column, patternValue(operator.notLike)));
     }
 
     if (operator?.eqInsensitive != null) {
@@ -458,11 +497,11 @@ export class QueryManager {
         // deployment that is the whole table, on the login path, on every
         // sign-in.
         conditions.push(
-          sql`${column} = ${encodeValue(operator.eqInsensitive)} COLLATE NOCASE`,
+          sql`${column} = ${patternValue(operator.eqInsensitive)} COLLATE NOCASE`,
         );
       } else {
         conditions.push(
-          sql`LOWER(${column}) = LOWER(${encodeValue(operator.eqInsensitive)})`,
+          sql`LOWER(${column}) = LOWER(${patternValue(operator.eqInsensitive)})`,
         );
       }
     }
@@ -471,10 +510,10 @@ export class QueryManager {
       if (dialect === "sqlite") {
         // SQLite doesn't have ilike, use LOWER() for case-insensitive matching
         conditions.push(
-          sql`LOWER(${column}) LIKE LOWER(${encodeValue(operator.ilike)})`,
+          sql`LOWER(${column}) LIKE LOWER(${patternValue(operator.ilike)})`,
         );
       } else {
-        conditions.push(ilike(column, encodeValue(operator.ilike)));
+        conditions.push(ilike(column, patternValue(operator.ilike)));
       }
     }
 
@@ -482,10 +521,10 @@ export class QueryManager {
       if (dialect === "sqlite") {
         // SQLite doesn't have ilike, use LOWER() for case-insensitive matching
         conditions.push(
-          sql`LOWER(${column}) NOT LIKE LOWER(${encodeValue(operator.notIlike)})`,
+          sql`LOWER(${column}) NOT LIKE LOWER(${patternValue(operator.notIlike)})`,
         );
       } else {
-        conditions.push(notIlike(column, encodeValue(operator.notIlike)));
+        conditions.push(notIlike(column, patternValue(operator.notIlike)));
       }
     }
 
@@ -500,10 +539,10 @@ export class QueryManager {
         // SQLite doesn't have ilike, use LOWER() for case-insensitive matching
         // ESCAPE '\\' is required for SQLite to recognize backslash as escape character
         conditions.push(
-          sql`LOWER(${column}) LIKE LOWER(${encodeValue(`%${escapedValue}%`)}) ESCAPE '\\'`,
+          sql`LOWER(${column}) LIKE LOWER(${patternValue(`%${escapedValue}%`)}) ESCAPE '\\'`,
         );
       } else {
-        conditions.push(ilike(column, encodeValue(`%${escapedValue}%`)));
+        conditions.push(ilike(column, patternValue(`%${escapedValue}%`)));
       }
     }
 
@@ -517,10 +556,10 @@ export class QueryManager {
       if (dialect === "sqlite") {
         // SQLite doesn't have ilike, use LOWER() for case-insensitive matching
         conditions.push(
-          sql`LOWER(${column}) LIKE LOWER(${encodeValue(`${escapedValue}%`)}) ESCAPE '\\'`,
+          sql`LOWER(${column}) LIKE LOWER(${patternValue(`${escapedValue}%`)}) ESCAPE '\\'`,
         );
       } else {
-        conditions.push(ilike(column, encodeValue(`${escapedValue}%`)));
+        conditions.push(ilike(column, patternValue(`${escapedValue}%`)));
       }
     }
 
@@ -534,10 +573,10 @@ export class QueryManager {
       if (dialect === "sqlite") {
         // SQLite doesn't have ilike, use LOWER() for case-insensitive matching
         conditions.push(
-          sql`LOWER(${column}) LIKE LOWER(${encodeValue(`%${escapedValue}`)}) ESCAPE '\\'`,
+          sql`LOWER(${column}) LIKE LOWER(${patternValue(`%${escapedValue}`)}) ESCAPE '\\'`,
         );
       } else {
-        conditions.push(ilike(column, encodeValue(`%${escapedValue}`)));
+        conditions.push(ilike(column, patternValue(`%${escapedValue}`)));
       }
     }
 

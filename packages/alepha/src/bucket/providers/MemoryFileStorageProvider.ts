@@ -120,8 +120,8 @@ export class MemoryFileStorageProvider implements FileStorageProvider {
    * the cache it keeps no call log, and inventing one here would change what
    * `files` means for the specs already reading it.
    *
-   * Tenant-scoped like every other read, because `key()` prefixes the current
-   * tenant: a spec running under one tenant does not see another's uploads.
+   * Keyed on the bucket name and file id only (`key()`): there is no tenant
+   * prefix, so every upload in the container is visible here.
    */
   public wasUploaded(bucketName: string, fileId?: string): boolean {
     if (fileId !== undefined) {
