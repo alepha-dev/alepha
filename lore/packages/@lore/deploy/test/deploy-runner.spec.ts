@@ -114,6 +114,8 @@ describe("deploying an artifact from inside the Worker", () => {
     let uploaded: {
       scriptName?: string;
       bindings?: any[];
+      mainModule?: string;
+      modules?: Array<{ name: string; bytes: Uint8Array }>;
       assets?: {
         manifest: Record<string, unknown>;
         config?: Record<string, unknown>;
@@ -218,6 +220,45 @@ describe("deploying an artifact from inside the Worker", () => {
 
     const d1 = uploaded().bindings?.find((it: any) => it.type === "d1");
     expect(d1).toMatchObject({ id: "db-uuid" });
+  });
+
+  describe("the Worker entry", () => {
+    /**
+     * The entry the upload carries as its main module, as text.
+     */
+    const entryOf = (plan: {
+      mainModule?: string;
+      modules?: Array<{ name: string; bytes: Uint8Array }>;
+    }) => {
+      const main = plan.modules?.find((it) => it.name === plan.mainModule);
+      return main ? new TextDecoder().decode(main.bytes) : undefined;
+    };
+
+    it("keeps the artifact's own main.cloudflare.js", async ({ expect }) => {
+      // ⚠️ #Q2677. The build step regenerates the entry with LORE's vendored
+      // framework, while the bundle it imports was built with the APP's: an
+      // entry emitting a hook the app's framework had retired made every
+      // dynamic request of alepha.dev throw. The entry belongs to its bundle.
+      const own =
+        'import "./index.workerd.js"; export default { fetch: () => new Response("own") };';
+      const { runner, uploaded } = await withFakeCloudflare(
+        await packed({}, { "main.cloudflare.js": own }),
+      );
+
+      await runner.run(request() as never);
+
+      expect(uploaded().mainModule).toBe("main.cloudflare.js");
+      expect(entryOf(uploaded())).toBe(own);
+    });
+
+    it("generates one for an artifact that ships none", async ({ expect }) => {
+      const { runner, uploaded } = await withFakeCloudflare(await packed());
+
+      await runner.run(request() as never);
+
+      expect(uploaded().mainModule).toBe("main.cloudflare.js");
+      expect(entryOf(uploaded())).toContain("index.workerd.js");
+    });
   });
 
   it("provisions only what the manifest says the app binds", async ({
