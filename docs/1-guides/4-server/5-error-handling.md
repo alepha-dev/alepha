@@ -2,6 +2,8 @@
 
 Alepha maps errors to HTTP responses through the `HttpError` class. Unhandled errors become `500 Internal Server Error`.
 
+To make the errors an action may answer with part of its contract (typed `data`, OpenAPI, `instanceof` in the browser, and a `500` for anything else), declare them with `$error` and `errors`: see [Typed errors](/docs/guides-server-typed-errors).
+
 ## HttpError
 
 Throw an `HttpError` to return a specific HTTP status code and message:

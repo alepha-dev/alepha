@@ -2,12 +2,16 @@ import { randomUUID } from "node:crypto";
 
 import { Alepha } from "alepha";
 import { $issuer, AlephaSecurity, currentUserAtom } from "alepha/security";
-import { AlephaServer, ServerProvider } from "alepha/server";
+import { AlephaServer, HttpError, ServerProvider } from "alepha/server";
 import { $auth, type WithSecondFactorFn } from "alepha/server/auth";
 import { $client } from "alepha/server/links";
 import { describe, it } from "vitest";
 
-import { isMfaRequired, ReactAuth, type ReactAuthProvider } from "../index.ts";
+import {
+  MfaRequiredError,
+  ReactAuth,
+  type ReactAuthProvider,
+} from "../index.ts";
 
 const user = {
   id: randomUUID(),
@@ -69,7 +73,9 @@ describe("alepha/react/auth - second factor", () => {
       })
       .catch((it) => it);
 
-    expect(isMfaRequired(error)).toBe(true);
+    // Rebuilt by HttpClient from the response body: the class, not a
+    // plain HttpError carrying its name.
+    expect(error).toBeInstanceOf(MfaRequiredError);
     expect(error.data.methods).toEqual(["emailCode"]);
     expect(error.data.sentTo).toBe("a**@example.com");
     // Nothing may be signed in yet.
@@ -116,7 +122,9 @@ describe("alepha/react/auth - second factor", () => {
   it("should not treat an ordinary failure as a second-factor challenge", async ({
     expect,
   }) => {
-    expect(isMfaRequired(new Error("boom"))).toBe(false);
-    expect(isMfaRequired(undefined)).toBe(false);
+    expect(new Error("boom")).not.toBeInstanceOf(MfaRequiredError);
+    expect(
+      new HttpError({ status: 401, error: "MfaRequiredError" }),
+    ).not.toBeInstanceOf(MfaRequiredError);
   });
 });

@@ -52,6 +52,7 @@ Enforce it in your UI instead. `realmConfig.settings.mfa.totp === "required"` te
 {
   "error": "MfaRequiredError",
   "status": 401,
+  "message": "A second authentication factor is required",
   "data": {
     "challenge": "eyJzdWIiOi...",
     "methods": ["totp"],
@@ -69,21 +70,23 @@ The `challenge` is a signed, five-minute assertion that the password was verifie
 ### From React
 
 ```typescript
-import { isMfaRequired, useAuth } from "alepha/react/auth";
+import { MfaRequiredError, useAuth } from "alepha/react/auth";
 
 const { login, loginMfa } = useAuth();
 
 try {
   await login("credentials", { username, password });
 } catch (error) {
-  if (isMfaRequired(error)) {
-    // Show a code field, then:
+  if (error instanceof MfaRequiredError) {
+    // error.data is typed: { challenge, methods, sentTo? }. Show a code field, then:
     await loginMfa(error.data.challenge, code);
   } else {
     throw error;
   }
 }
 ```
+
+`MfaRequiredError` is an `$error` constant (see [Typed errors](/docs/guides-server-typed-errors)), so `HttpClient` rebuilds the class from the response body and `instanceof` holds in the browser. It replaces the `isMfaRequired()` helper, which is gone.
 
 `useAuth()` also returns `resendMfaCode(challenge)`, the client side of the resend route.
 

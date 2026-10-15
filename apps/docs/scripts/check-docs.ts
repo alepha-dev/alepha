@@ -423,10 +423,7 @@ export class CheckDocsCommand {
    * guides that already existed: the eight `$auth*` shorthands are one table
    * in the authentication guide.
    */
-  protected readonly primitivesWithoutGuide: string[] = [
-    // #Q2712 writes its guide; it leaves this list then.
-    "$error",
-  ];
+  protected readonly primitivesWithoutGuide: string[] = [];
 
   /**
    * Compares the primitives with no guide mention against the baseline above.

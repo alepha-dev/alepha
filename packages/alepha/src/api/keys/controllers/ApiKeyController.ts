@@ -1,6 +1,11 @@
 import { $inject } from "alepha";
 import { $secure } from "alepha/security";
-import { $action } from "alepha/server";
+import {
+  $action,
+  BadRequestError,
+  ForbiddenError,
+  NotFoundError,
+} from "alepha/server";
 
 import { apiKeyOptionsResponseSchema } from "../schemas/apiKeyOptionsResponseSchema.ts";
 import { createApiKeyBodySchema } from "../schemas/createApiKeyBodySchema.ts";
@@ -26,6 +31,7 @@ export class ApiKeyController {
    * The token is only returned once upon creation.
    */
   public readonly createApiKey = $action({
+    errors: [BadRequestError, ForbiddenError],
     method: "POST",
     path: this.url,
     group: this.group,
@@ -71,6 +77,7 @@ export class ApiKeyController {
    * a key's scope, which is its own ceiling, scope included.
    */
   public readonly getApiKeyOptions = $action({
+    errors: [],
     method: "GET",
     path: `${this.url}/options`,
     group: this.group,
@@ -90,6 +97,7 @@ export class ApiKeyController {
    * length of this list is not a count of keys that work.
    */
   public readonly listApiKeys = $action({
+    errors: [],
     method: "GET",
     path: this.url,
     group: this.group,
@@ -108,6 +116,7 @@ export class ApiKeyController {
    * Owner only, and only from a signed-in session: a key cannot rotate a key.
    */
   public readonly rotateMyApiKey = $action({
+    errors: [NotFoundError, ForbiddenError, BadRequestError],
     method: "POST",
     path: `${this.url}/:id/rotate`,
     group: this.group,
@@ -132,6 +141,7 @@ export class ApiKeyController {
    * Revoke an API key. Only the owner can revoke their own keys.
    */
   public readonly revokeMyApiKey = $action({
+    errors: [NotFoundError, ForbiddenError],
     method: "DELETE",
     path: `${this.url}/:id`,
     group: this.group,

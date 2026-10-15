@@ -4,7 +4,11 @@ void React;
 
 import { AlephaError, SchemaValidationError, z } from "alepha";
 import type { RealmConfig } from "alepha/api/users";
-import { isMfaRequired, type MfaChallenge, useAuth } from "alepha/react/auth";
+import {
+  type MfaChallenge,
+  MfaRequiredError,
+  useAuth,
+} from "alepha/react/auth";
 import { FormValidationError, useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
@@ -148,7 +152,7 @@ export const AuthLogin = (props: AuthLoginProps) => {
       } catch (err) {
         // The password was right and the realm wants a second factor. Not a
         // failure: swap the form for the code step and carry on.
-        if (isMfaRequired(err)) {
+        if (err instanceof MfaRequiredError) {
           setChallenge(err.data);
           return;
         }

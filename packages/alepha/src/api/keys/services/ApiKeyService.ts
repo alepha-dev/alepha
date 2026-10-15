@@ -7,6 +7,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import {
   $repository,
+  DbEntityNotFoundError,
   type Page,
   type PgQueryWhere,
   RepositoryProvider,
@@ -21,6 +22,7 @@ import {
 import {
   BadRequestError,
   ForbiddenError,
+  NotFoundError,
   type ServerRequest,
 } from "alepha/server";
 
@@ -700,10 +702,28 @@ export class ApiKeyService {
   }
 
   /**
+   * One key by id, or a `NotFoundError`.
+   *
+   * The repository answers a missing row with `DbEntityNotFoundError`, which
+   * carries a 404 but is not an `HttpError`: the controllers declare their
+   * `errors` (strict mode), so it would reach the caller as a 500.
+   */
+  protected async getKey(id: string): Promise<ApiKeyEntity> {
+    try {
+      return await this.repo.getById(id);
+    } catch (error) {
+      if (error instanceof DbEntityNotFoundError) {
+        throw new NotFoundError("API key was not found", error);
+      }
+      throw error;
+    }
+  }
+
+  /**
    * Get an API key by ID (admin only).
    */
   public async getById(id: string): Promise<AdminApiKeyResource> {
-    return this.toView(await this.repo.getById(id));
+    return this.toView(await this.getKey(id));
   }
 
   /**
@@ -712,7 +732,7 @@ export class ApiKeyService {
    * @param actorId - The admin revoking it, recorded on the audit row.
    */
   public async revokeByAdmin(id: string, actorId?: string): Promise<void> {
-    const apiKey = await this.repo.getById(id);
+    const apiKey = await this.getKey(id);
 
     if (apiKey.revokedAt) {
       return; // Already revoked
@@ -798,7 +818,7 @@ export class ApiKeyService {
    * Revoke an API key. Only the owner can revoke their own keys.
    */
   public async revoke(id: string, userId: string): Promise<void> {
-    const apiKey = await this.repo.getById(id);
+    const apiKey = await this.getKey(id);
 
     if (apiKey.userId !== userId) {
       throw new ForbiddenError("Not your API key");
@@ -855,7 +875,7 @@ export class ApiKeyService {
     userId: string,
     options: { expiresIn?: ApiKeyExpiresIn } = {},
   ): Promise<{ apiKey: ApiKeyEntity; token: string }> {
-    const apiKey = await this.repo.getById(id);
+    const apiKey = await this.getKey(id);
 
     if (apiKey.userId !== userId) {
       throw new ForbiddenError("Not your API key");
