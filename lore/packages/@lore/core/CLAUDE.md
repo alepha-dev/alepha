@@ -716,3 +716,17 @@ batch. The audit follows the existing finite project audit policy; executable
 bodies, variable values and credentials never enter its metadata. Detailed run
 payloads retain their separate 30-day policy. Soft deletion preserves that history
 while revision checks cancel queued and following effects.
+
+## Automation MCP authoring (#E43, #Q2035)
+
+`AutomationTools` resolves project titles, slugs and IDs through `ProjectTools`
+and calls the shared application services with the authenticated current caller.
+Strict input schemas reject author or credential injection. CRUD responses use
+the same complete, redacted public DTOs as HTTP. Configuration updates and explicit
+enable changes are separate revisioned calls; managers retain only foreign-rule
+stop and delete controls. Creation stays disabled unless explicitly enabled.
+
+Variable tools expose immutable IDs, versions, bounded pages and a dedicated
+`automation_variable_dependents` read. Set reports affected consumers; delete is
+unused-only. Catalogue discovery and zero-write preview are available to compose
+and inspect typed release append-and-notify rules before enabling them.

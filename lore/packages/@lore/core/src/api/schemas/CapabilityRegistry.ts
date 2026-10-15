@@ -239,6 +239,7 @@ export class CapabilityRegistry {
         "automation_delete",
         "automation_variable_set",
         "automation_variable_list",
+        "automation_variable_dependents",
         "automation_variable_delete",
         "automation_test",
         "automation_runs",
