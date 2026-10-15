@@ -41,12 +41,14 @@ export default { async fetch(request, env) {
   if (input.raw) {
    const identity = app.inject(ActorCodec).identity(env.APP_NAME, input.name ?? "counter", input.key);
    const stub = env.ALEPHA_ACTOR.get(env.ALEPHA_ACTOR.idFromName(input.target ?? identity));
-   return Response.json(await stub.executeActor(identity, { name: input.name ?? "counter", key: input.key, method: input.method, args: input.args ?? [] }));
+   const reply = JSON.parse(await stub.executeActor(identity, { name: input.name ?? "counter", key: input.key, method: input.method, args: input.args ?? [] }));
+   if (reply.error) throw new Error(reply.error.message);
+   return Response.json(reply.value);
   }
   if (input.start) { await app.start(); return Response.json(await app.inject(App).counter.get("startup").read()); }
   let actor = app.inject(App)[input.actor ?? "counter"]; if (input.key !== undefined) actor = actor.get(input.key);
   return Response.json(await (input.method ? actor[input.method](...(input.args ?? [])) : actor.read()));
- } catch (error) { return Response.json({ error: error.message }, { status: 400 }); }
+ } catch (error) { return Response.json({ error: error.message, name: error.name }, { status: 400 }); }
 } };
 `,
     );
@@ -61,7 +63,10 @@ export default { async fetch(request, env) {
           {
             config: {
               name: "actor-fixture",
-              compatibilityDate: "2026-10-01",
+              // The date `alepha build` writes. Under it, DO RPC rewrites a
+              // thrown error's message ("AlephaError: refused"); 2026-10-01
+              // does not, and hid the bug.
+              compatibilityDate: "2025-11-17",
               compatibilityFlags: ["nodejs_compat"],
               manifest: {
                 mainModule: "worker.js",
@@ -126,7 +131,11 @@ export default { async fetch(request, env) {
         values.map((value) => value.data).sort((a: any, b: any) => a - b),
       ).toEqual(Array.from({ length: 20 }, (_, i) => i + 1));
       expect((await call({ key: "default" })).data).toBe(0);
-      expect((await call({ method: "fail" })).status).toBe(400);
+      // The reducer's own message, not DO RPC's "AlephaError: refused".
+      expect(await call({ method: "fail" })).toEqual({
+        status: 400,
+        data: { error: "refused", name: "AlephaError" },
+      });
       expect((await call({ method: "invalid" })).status).toBe(400);
       expect((await call({ raw: true, method: "toString" })).status).toBe(400);
       expect((await call({ raw: true, name: "missing" })).status).toBe(400);
