@@ -1,0 +1,1 @@
+ALTER TABLE `automation_runs` ADD `version` integer DEFAULT 0 NOT NULL;

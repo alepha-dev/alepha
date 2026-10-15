@@ -272,6 +272,24 @@ export class AutomationCatalog {
     return rule;
   }
 
+  public async sourceAvailability(
+    projectId: number,
+    user: UserAccountToken,
+    rule: AutomationRule,
+  ): Promise<string | undefined> {
+    const context = await this.access.authorize(
+      projectId,
+      user,
+      "automation:read",
+    );
+    const key =
+      rule.trigger.kind === "event" ? rule.trigger.event : rule.select!.key;
+    const entry = this.entries().find((item) => item.key === key);
+    return entry
+      ? this.unavailable(context, entry)
+      : "Source vocabulary is unavailable";
+  }
+
   /**
    * Resolved values are data, never template input. This gate validates actual
    * destinations and domain IDs immediately before an adapter is invoked.

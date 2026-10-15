@@ -9,6 +9,7 @@ export const automationRuns = $entity({
   name: "automation_runs",
   schema: z.object({
     id: db.primaryKey(z.uuid()),
+    version: db.version(),
     projectId: db.ref(z.integer(), () => projects.cols.id, {
       onDelete: "cascade",
     }),

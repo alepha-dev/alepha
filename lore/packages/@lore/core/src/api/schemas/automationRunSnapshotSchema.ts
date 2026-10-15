@@ -10,7 +10,20 @@ import { automationVariableValueSchema } from "./automationVariableValueSchema.t
  */
 export const automationRunSnapshotSchema = z
   .object({
-    rule: automationRuleSchema,
+    rule: automationRuleSchema.nullable(),
+    ruleHash: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/)
+      .optional(),
+    omitted: z.string().max(255).optional(),
+    evaluatedAt: z.datetime().optional(),
+    health: z
+      .object({
+        from: z.enum(["active", "paused", "broken"]),
+        to: z.enum(["active", "paused", "broken"]),
+      })
+      .strict()
+      .optional(),
     inputs: automationSafeFieldsSchema,
     variables: z
       .array(
@@ -61,6 +74,10 @@ export const automationRunSnapshotSchema = z
       .max(250),
   })
   .strict()
+  .refine(
+    (value) => value.rule !== null || (!!value.ruleHash && !!value.omitted),
+    { message: "An omitted rule requires its hash and an explicit reason" },
+  )
   .refine(
     (value) =>
       new TextEncoder().encode(JSON.stringify(value)).byteLength <= 65_536,

@@ -1,0 +1,487 @@
+import { $inject } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
+import { DbVersionMismatchError } from "alepha/orm";
+import type { UserAccountToken } from "alepha/security";
+import { BadRequestError, ConflictError } from "alepha/server";
+
+import type { AutomationRun } from "../entities/automationRuns.ts";
+import type { Automation } from "../entities/automations.ts";
+import {
+  automationRunSnapshotSchema,
+  type AutomationRunSnapshot,
+} from "../schemas/automationRunSnapshotSchema.ts";
+import type { AutomationSlotKind } from "../schemas/automationSlotKindSchema.ts";
+import { AutomationAccess } from "./AutomationAccess.ts";
+import { AutomationCatalog } from "./AutomationCatalog.ts";
+import { AutomationPersistence } from "./AutomationPersistence.ts";
+
+/**
+ * Evidence is committed before any effect. A receipt/outbox ID records enqueue
+ * intent, not transport delivery. Durable occurrence/effect receipts live in a
+ * separate store and are never removed by the detail retention sweep.
+ */
+export class AutomationRunEvidence {
+  protected readonly persistence = $inject(AutomationPersistence);
+  protected readonly catalog = $inject(AutomationCatalog);
+  protected readonly access = $inject(AutomationAccess);
+  protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly terminal: AutomationRun["status"][] = [
+    "succeeded",
+    "skipped",
+    "refused",
+    "partial",
+    "failed",
+    "unknown",
+  ];
+  protected readonly resultFields: Record<string, string[]> = {
+    notify: [
+      "notification_id",
+      "outbox_id",
+      "enqueued",
+      "delivered",
+      "skipped",
+      "reason",
+    ],
+    appendFolio: ["folio_id", "revision", "changed"],
+    createQuest: ["quest_id", "shortId", "changed"],
+    assignRelease: ["quest_id", "release_id", "changed"],
+    addTag: ["quest_id", "tag", "changed"],
+  };
+
+  public async start(input: {
+    rule: Automation;
+    occurrenceId: string;
+    triggeredAt: string;
+    inputs?: Record<string, unknown>;
+    selected?: Record<string, unknown>[];
+    variables?: AutomationRunSnapshot["variables"];
+    matched?: number;
+    total?: number;
+    hasMore?: boolean;
+    planned?: Array<{ index: number; row?: number }>;
+    status?: AutomationRun["status"];
+    reason?: string;
+    health?: AutomationRunSnapshot["health"];
+  }): Promise<AutomationRun> {
+    const rule = input.rule;
+    const key =
+      rule.rule.trigger.kind === "event"
+        ? rule.rule.trigger.event
+        : rule.rule.select!.key;
+    const fields =
+      this.catalog.entries().find((item) => item.key === key)?.fields ?? {};
+    const rows = input.selected ?? [];
+    const selected = rows.slice(0, 50).map((row) => this.safe(row, fields));
+    const hasMore =
+      !!input.hasMore ||
+      rows.length > 50 ||
+      (input.total !== undefined && input.total > selected.length);
+    const total =
+      input.total ?? Math.max(rows.length, selected.length + (hasMore ? 1 : 0));
+    if (
+      !Number.isSafeInteger(total) ||
+      total < rows.length ||
+      (hasMore && total <= selected.length)
+    )
+      throw new BadRequestError(
+        "Selection totals contradict the observed lower bound",
+      );
+    const matched = input.matched ?? 0;
+    if (
+      !Number.isSafeInteger(matched) ||
+      matched < 0 ||
+      matched > selected.length
+    )
+      throw new BadRequestError(
+        "Matched count must be within the selected rows",
+      );
+    const planned = input.planned ?? [];
+    if (planned.length > 250)
+      throw new BadRequestError(
+        "At most 250 row/action positions may be planned",
+      );
+    const referenced = this.catalog.names(rule.rule);
+    const perRow = rule.rule.select?.kind === "rows";
+    if (
+      planned.some((action) =>
+        perRow ? action.row === undefined : action.row !== undefined,
+      ) ||
+      planned.length >
+        (perRow ? matched : matched ? 1 : 0) * rule.rule.actions.length ||
+      (perRow && new Set(planned.map((action) => action.row)).size > matched)
+    )
+      throw new BadRequestError(
+        "Planned effects do not match selection cardinality and matched count",
+      );
+    const identities = new Set(
+      planned.map((action) => `${action.row ?? -1}:${action.index}`),
+    );
+    if (
+      identities.size !== planned.length ||
+      planned.some(
+        (action) =>
+          !rule.rule.actions[action.index] ||
+          (action.row !== undefined && !selected[action.row]),
+      )
+    )
+      throw new BadRequestError(
+        "Planned actions must identify distinct selected row/action positions",
+      );
+    const snapshot: AutomationRunSnapshot = {
+      rule: rule.rule,
+      ruleHash: await this.hash(rule.rule),
+      evaluatedAt: this.dateTime.nowISOString(),
+      ...(input.health ? { health: input.health } : {}),
+      inputs: this.safe(input.inputs ?? {}, fields),
+      variables: (input.variables ?? []).filter((variable) =>
+        referenced.has(variable.key),
+      ),
+      selected,
+      counts: {
+        selected: selected.length,
+        matched,
+        executed: 0,
+        deliveries: 0,
+        skipped: selected.length - matched,
+        total,
+        totalIsExact: input.total !== undefined,
+        truncated: hasMore,
+        hasMore,
+      },
+      actions: planned.map((action) => ({
+        ...action,
+        status: "pending",
+        result: {},
+      })),
+    };
+    let status = input.status ?? "queued";
+    let reason = input.reason;
+    // Reserve the minimal status and receipt for every planned outcome before
+    // effects. Large optional result details may later be explicitly omitted.
+    if (
+      !automationRunSnapshotSchema.safeParse(this.reserved(snapshot)).success
+    ) {
+      status = "refused";
+      reason = "Run snapshot exceeds the 64 KiB evidence budget";
+      snapshot.rule = null;
+      snapshot.inputs = {};
+      snapshot.variables = [];
+      snapshot.selected = [];
+      snapshot.actions = [];
+      snapshot.omitted =
+        "Snapshot budget exceeded before effects; rule hash and revision retained";
+    }
+    return this.persistence.runs.create({
+      projectId: rule.projectId,
+      automationId: rule.id,
+      ruleRevision: rule.revision,
+      occurrenceId: input.occurrenceId,
+      triggeredAt: input.triggeredAt,
+      status,
+      ...(reason ? { reason: reason.slice(0, 1024) } : {}),
+      snapshot: automationRunSnapshotSchema.parse(snapshot),
+      ...(this.terminal.includes(status)
+        ? { finishedAt: this.dateTime.nowISOString() }
+        : {}),
+    });
+  }
+
+  public async assertDeliveryBudget(
+    id: string,
+    deliveries: number,
+  ): Promise<void> {
+    const run = await this.persistence.runs.getById(id);
+    if (this.terminal.includes(run.status))
+      throw new ConflictError("Run is terminal");
+    if (
+      !Number.isSafeInteger(deliveries) ||
+      deliveries < 0 ||
+      run.snapshot.counts.deliveries + deliveries > 100
+    )
+      throw new BadRequestError("Run delivery budget exceeds 100");
+  }
+
+  public async action(
+    id: string,
+    input: {
+      index: number;
+      row?: number;
+      status: AutomationRunSnapshot["actions"][number]["status"];
+      result?: Record<string, unknown>;
+      receiptId?: string;
+      deliveries?: number;
+    },
+  ): Promise<AutomationRun> {
+    const run = await this.persistence.runs.getById(id);
+    if (this.terminal.includes(run.status) || !run.snapshot.rule)
+      throw new ConflictError("A terminal run cannot execute another action");
+    const position = run.snapshot.actions.findIndex(
+      (action) => action.index === input.index && action.row === input.row,
+    );
+    const previous = run.snapshot.actions[position];
+    if (!previous)
+      throw new BadRequestError("Action was not planned before effects");
+    if (!["pending", "running"].includes(previous.status)) {
+      if (
+        previous.status === input.status &&
+        previous.receiptId === input.receiptId
+      )
+        return run;
+      throw new ConflictError("Action already has a terminal outcome");
+    }
+    if (previous.status === "running" && input.status === "pending")
+      throw new ConflictError("An action cannot return to pending");
+    const deliveries = input.deliveries ?? 0;
+    if (
+      !Number.isSafeInteger(deliveries) ||
+      deliveries < 0 ||
+      run.snapshot.counts.deliveries + deliveries > 100
+    )
+      throw new BadRequestError("Run delivery budget exceeds 100");
+    if (deliveries && !["queued", "succeeded"].includes(input.status))
+      throw new BadRequestError(
+        "Only committed/enqueued deliveries count as executed",
+      );
+    if (input.receiptId && input.receiptId.length > 64)
+      throw new BadRequestError(
+        "Receipt identifier exceeds the reserved evidence budget",
+      );
+    const kind = run.snapshot.rule.actions[input.index].kind;
+    const result = this.safeResult(kind, input.result ?? {});
+    if (kind === "notify" && input.status === "queued") {
+      result.enqueued = true;
+      result.delivered = false;
+    }
+    const snapshot = structuredClone(run.snapshot);
+    snapshot.actions[position] = {
+      index: input.index,
+      ...(input.row !== undefined ? { row: input.row } : {}),
+      status: input.status,
+      result,
+      ...(input.receiptId ? { receiptId: input.receiptId } : {}),
+    };
+    snapshot.counts.executed = snapshot.actions.filter((action) =>
+      ["queued", "succeeded"].includes(action.status),
+    ).length;
+    snapshot.counts.deliveries += deliveries;
+    if (!automationRunSnapshotSchema.safeParse(this.reserved(snapshot)).success)
+      snapshot.actions[position].result = { omitted: true };
+    return this.persistence.runs.updateById(id, {
+      version: run.version,
+      status: "running",
+      snapshot: automationRunSnapshotSchema.parse(snapshot),
+    });
+  }
+
+  public async finish(id: string, reason?: string): Promise<AutomationRun> {
+    const run = await this.persistence.runs.getById(id);
+    if (this.terminal.includes(run.status)) return run;
+    const statuses = run.snapshot.actions.map((action) => action.status);
+    const problem = statuses.includes("unknown")
+      ? "unknown"
+      : statuses.includes("failed")
+        ? "failed"
+        : statuses.includes("refused")
+          ? "refused"
+          : undefined;
+    if (
+      !problem &&
+      statuses.some((status) => status === "running" || status === "pending")
+    )
+      throw new ConflictError("Run still has unfinished actions");
+    if (problem) {
+      for (const action of run.snapshot.actions)
+        if (action.status === "pending") {
+          action.status = "skipped";
+          action.result = {
+            reason: "Stopped after an earlier unsuccessful action",
+          };
+        }
+    }
+    const status =
+      problem === "unknown"
+        ? "unknown"
+        : problem
+          ? run.snapshot.counts.executed
+            ? "partial"
+            : problem
+          : run.snapshot.counts.executed
+            ? "succeeded"
+            : "skipped";
+    const finished = await this.persistence.runs.updateById(id, {
+      version: run.version,
+      status,
+      snapshot: automationRunSnapshotSchema.parse(run.snapshot),
+      finishedAt: this.dateTime.nowISOString(),
+      ...(reason ? { reason: reason.slice(0, 1024) } : {}),
+    });
+    if (status === "unknown")
+      await this.transition(
+        run.automationId,
+        "paused",
+        "An action outcome is unknown; author review is required",
+        true,
+      );
+    return finished;
+  }
+
+  public async transition(
+    ruleId: string,
+    health: Automation["health"],
+    reason: string | undefined,
+    requiresApproval: boolean,
+  ): Promise<boolean> {
+    reason = reason?.slice(0, 1024);
+    const rule = await this.persistence.rules.getById(ruleId);
+    if (
+      rule.health === health &&
+      rule.reason === reason &&
+      rule.requiresApproval === requiresApproval
+    )
+      return false;
+    try {
+      await this.persistence.rules.updateById(rule.id, {
+        version: rule.version,
+        health,
+        reason: reason ?? null,
+        requiresApproval,
+      });
+    } catch (error) {
+      if (error instanceof DbVersionMismatchError) return false;
+      throw error;
+    }
+    await this.start({
+      rule,
+      occurrenceId: `health:${crypto.randomUUID()}`,
+      triggeredAt: this.dateTime.nowISOString(),
+      status: health === "active" ? "skipped" : "refused",
+      reason: reason ?? "Automation health restored",
+      health: { from: rule.health, to: health },
+    });
+    return true;
+  }
+
+  public async read(id: string, user: UserAccountToken) {
+    const run = await this.persistence.runs.getById(id);
+    await this.access.assert(run.projectId, user, "automation:read");
+    const rule =
+      run.snapshot.rule ??
+      (await this.persistence.rules.getById(run.automationId, { force: true }))
+        .rule;
+    let reason = await this.catalog.sourceAvailability(
+      run.projectId,
+      user,
+      rule,
+    );
+    if (!reason) {
+      for (const variable of run.snapshot.variables) {
+        const inspected = await this.catalog.inspectVariable(
+          run.projectId,
+          user,
+          { ...variable, projectId: run.projectId } as Parameters<
+            AutomationCatalog["inspectVariable"]
+          >[2],
+        );
+        if (!inspected.available) {
+          reason = "Variable source access is unavailable";
+          break;
+        }
+      }
+    }
+    return {
+      ...run,
+      snapshot: reason ? null : run.snapshot,
+      redacted: !!reason,
+      ...(reason
+        ? { redactionReason: "Current source access is unavailable" }
+        : {}),
+    };
+  }
+
+  public async prune(): Promise<number> {
+    const cutoff = this.dateTime.now().subtract(30, "days").toISOString();
+    const rows = await this.persistence.runs.findMany({
+      where: { status: { inArray: this.terminal }, finishedAt: { lt: cutoff } },
+      orderBy: [
+        { column: "finishedAt", direction: "asc" },
+        { column: "id", direction: "asc" },
+      ],
+      columns: ["id"],
+      limit: 100,
+    });
+    if (!rows.length) return 0;
+    return (
+      await this.persistence.runs.deleteMany({
+        id: { inArray: rows.map((row) => row.id) },
+        status: { inArray: this.terminal },
+        finishedAt: { lt: cutoff },
+      })
+    ).length;
+  }
+
+  protected reserved(snapshot: AutomationRunSnapshot): AutomationRunSnapshot {
+    return {
+      ...snapshot,
+      counts: { ...snapshot.counts, executed: 250, deliveries: 100 },
+      actions: snapshot.actions.map((action) =>
+        ["pending", "running"].includes(action.status)
+          ? {
+              ...action,
+              status: "succeeded",
+              receiptId: "x".repeat(64),
+              result: { omitted: true },
+            }
+          : action,
+      ),
+    };
+  }
+
+  protected safe(
+    input: Record<string, unknown>,
+    fields: Record<string, AutomationSlotKind>,
+  ): AutomationRunSnapshot["inputs"] {
+    const result: AutomationRunSnapshot["inputs"] = {};
+    for (const [key, value] of Object.entries(input)) {
+      if (!Object.hasOwn(fields, key)) continue;
+      const kind = fields[key];
+      if (
+        value === null ||
+        (typeof value === "string" &&
+          !["number", "boolean", "release", "textArray"].includes(kind)) ||
+        (typeof value === "number" &&
+          Number.isFinite(value) &&
+          ["number", "release"].includes(kind)) ||
+        (typeof value === "boolean" && kind === "boolean")
+      )
+        result[key] = value;
+    }
+    return result;
+  }
+
+  protected safeResult(
+    kind: string,
+    input: Record<string, unknown>,
+  ): AutomationRunSnapshot["inputs"] {
+    const result: AutomationRunSnapshot["inputs"] = {};
+    for (const key of this.resultFields[kind] ?? []) {
+      const value = input[key];
+      if (
+        (typeof value === "string" && value.length <= 255) ||
+        (typeof value === "number" && Number.isFinite(value)) ||
+        typeof value === "boolean"
+      )
+        result[key] = value;
+    }
+    return result;
+  }
+
+  protected async hash(value: unknown): Promise<string> {
+    const bytes = await crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode(JSON.stringify(value)),
+    );
+    return [...new Uint8Array(bytes)]
+      .map((byte) => byte.toString(16).padStart(2, "0"))
+      .join("");
+  }
+}

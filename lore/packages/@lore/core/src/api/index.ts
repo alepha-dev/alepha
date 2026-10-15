@@ -28,6 +28,7 @@ import { ResourceFilingController } from "./controllers/ResourceFilingController
 import { SearchController } from "./controllers/SearchController.ts";
 import { OrganizationHooks } from "./hooks/OrganizationHooks.ts";
 import { UserDeletionHook } from "./hooks/UserDeletionHook.ts";
+import { AutomationEvidenceJobs } from "./jobs/AutomationEvidenceJobs.ts";
 import { InvitationNotifications } from "./notifications/InvitationNotifications.ts";
 import { LoreInboxNotifications } from "./notifications/LoreInboxNotifications.ts";
 import { NotificationHtmlEscaper } from "./notifications/NotificationHtmlEscaper.ts";
@@ -44,6 +45,7 @@ import { ActivityFeedMetric } from "./services/ActivityFeedMetric.ts";
 import { AutomationAuthority } from "./services/AutomationAuthority.ts";
 import { AutomationCatalog } from "./services/AutomationCatalog.ts";
 import { AutomationPersistence } from "./services/AutomationPersistence.ts";
+import { AutomationRunEvidence } from "./services/AutomationRunEvidence.ts";
 import { AutomationVariables } from "./services/AutomationVariables.ts";
 import { CoreAutomationReferences } from "./services/CoreAutomationReferences.ts";
 import { CoreDashboard } from "./services/CoreDashboard.ts";
@@ -154,6 +156,8 @@ export const LoreCoreApi = $module({
     AutomationCatalog,
     AutomationVariables,
     AutomationAuthority,
+    AutomationRunEvidence,
+    AutomationEvidenceJobs,
     AutomationDiagnosticController,
     InvitationNotifications,
     // The inbox half: two templates, and the one HTML escaper the four
@@ -320,3 +324,5 @@ export { AutomationVariables } from "./services/AutomationVariables.ts";
 
 export { AutomationAuthority } from "./services/AutomationAuthority.ts";
 export { AutomationAccess } from "./services/AutomationAccess.ts";
+
+export { AutomationRunEvidence } from "./services/AutomationRunEvidence.ts";

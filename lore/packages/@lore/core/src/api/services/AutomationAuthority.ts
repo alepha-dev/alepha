@@ -5,6 +5,7 @@ import type { AutomationRule } from "../schemas/automationRuleSchema.ts";
 import { AutomationAccess } from "./AutomationAccess.ts";
 import { AutomationCatalog } from "./AutomationCatalog.ts";
 import { AutomationPersistence } from "./AutomationPersistence.ts";
+import { AutomationRunEvidence } from "./AutomationRunEvidence.ts";
 import { AutomationVariables } from "./AutomationVariables.ts";
 
 /**
@@ -12,6 +13,7 @@ import { AutomationVariables } from "./AutomationVariables.ts";
  * claimed. Its own identity is never accepted as execution authority.
  */
 export class AutomationAuthority {
+  protected readonly evidence = $inject(AutomationRunEvidence);
   protected readonly catalog = $inject(AutomationCatalog);
   protected readonly access = $inject(AutomationAccess);
   protected readonly persistence = $inject(AutomationPersistence);
@@ -92,12 +94,7 @@ export class AutomationAuthority {
         latest.revision === rule.revision &&
         !latest.requiresApproval
       )
-        await this.persistence.rules.updateById(latest.id, {
-          version: latest.version,
-          health: "paused",
-          requiresApproval: true,
-          reason,
-        });
+        await this.evidence.transition(rule.id, "paused", reason, true);
       throw error;
     }
   }

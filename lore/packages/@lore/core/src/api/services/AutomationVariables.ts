@@ -15,12 +15,14 @@ import {
 import { AutomationAccess } from "./AutomationAccess.ts";
 import { AutomationCatalog } from "./AutomationCatalog.ts";
 import { AutomationPersistence } from "./AutomationPersistence.ts";
+import { AutomationRunEvidence } from "./AutomationRunEvidence.ts";
 
 /**
  * Shared values are executable configuration. Consumers owned by another member
  * must approve a changed version before it can redirect their stored program.
  */
 export class AutomationVariables {
+  protected readonly evidence = $inject(AutomationRunEvidence);
   protected readonly access = $inject(AutomationAccess);
   protected readonly catalog = $inject(AutomationCatalog);
   protected readonly persistence = $inject(AutomationPersistence);
@@ -178,12 +180,12 @@ export class AutomationVariables {
         latest.revision === rule.revision &&
         !latest.requiresApproval
       )
-        await this.persistence.rules.updateById(rule.id, {
-          version: latest.version,
-          health: "paused",
-          requiresApproval: true,
-          reason: reason.slice(0, 1024),
-        });
+        await this.evidence.transition(
+          rule.id,
+          "paused",
+          reason.slice(0, 1024),
+          true,
+        );
       throw error;
     }
   }
