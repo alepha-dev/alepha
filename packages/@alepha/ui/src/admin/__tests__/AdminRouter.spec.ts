@@ -1,4 +1,5 @@
-import { $inject, Alepha, OPTIONS } from "alepha";
+import { $inject, Alepha } from "alepha";
+import { OPTIONS } from "alepha/internal";
 import { $dictionary, AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
 import {
   $page,
@@ -107,7 +108,7 @@ describe("AdminRouter", () => {
       [router.audits, ["admin:audit:read"]],
       [router.files, ["admin:file:read"]],
       [router.parameters, ["admin:parameter:read"]],
-      [router.payments, ["admin:payment:read", "payments:read"]],
+      [router.payments, ["admin:payment:read"]],
       [router.analytics, ["admin:analytics:read"]],
     ];
 

@@ -1,4 +1,5 @@
-import { $inject, createPrimitive, KIND, Primitive } from "alepha";
+import { $inject, createPrimitive, Primitive } from "alepha";
+import { KIND } from "alepha/internal";
 
 import type { Head } from "../interfaces/Head.ts";
 import { HeadProvider } from "../providers/HeadProvider.ts";

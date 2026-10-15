@@ -1,13 +1,13 @@
 import { $hook, Alepha, AlephaError } from "alepha";
 import { describe, expect, it } from "vitest";
 
-type HookEvent = "echo" | "configure" | "ready";
+type HookEvent = "test:echo" | "configure" | "ready";
 
 describe("Primitive.override", () => {
   it("should shallow-merge partial options", () => {
     class App {
       hook = $hook({
-        on: "echo" as HookEvent,
+        on: "test:echo" as HookEvent,
         handler: () => {},
       });
     }
@@ -24,7 +24,7 @@ describe("Primitive.override", () => {
   it("should be chainable and return this", () => {
     class App {
       hook = $hook({
-        on: "echo" as HookEvent,
+        on: "test:echo" as HookEvent,
         handler: () => {},
       });
     }
@@ -42,7 +42,7 @@ describe("Primitive.override", () => {
   it("should throw AlephaError after alepha has started", async () => {
     class App {
       hook = $hook({
-        on: "echo" as HookEvent,
+        on: "test:echo" as HookEvent,
         handler: () => {},
       });
     }
@@ -59,7 +59,7 @@ describe("Primitive.override", () => {
   it("should support subclass override via constructor", () => {
     class AppRouter {
       hook = $hook({
-        on: "echo" as HookEvent,
+        on: "test:echo" as HookEvent,
         handler: () => {},
       });
     }
@@ -76,3 +76,9 @@ describe("Primitive.override", () => {
     expect(app.hook.options.on).toBe("configure");
   });
 });
+
+declare module "alepha" {
+  interface Hooks {
+    "test:echo": unknown;
+  }
+}

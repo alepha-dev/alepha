@@ -47,8 +47,10 @@ import type { SecondFactorMethod } from "../schemas/secondFactorMethodSchema.ts"
 import { tokenResponseSchema } from "../schemas/tokenResponseSchema.ts";
 import { type Tokens, tokensSchema } from "../schemas/tokensSchema.ts";
 import { userinfoResponseSchema } from "../schemas/userinfoResponseSchema.ts";
+import { OAuthTokenNormalizer } from "../services/OAuthTokenNormalizer.ts";
 
 export class ServerAuthProvider {
+  protected readonly tokenNormalizer = $inject(OAuthTokenNormalizer);
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
   protected readonly serverCookiesProvider = $inject(ServerCookiesProvider);
@@ -899,7 +901,7 @@ export class ServerAuthProvider {
         issued_at: this.dateTimeProvider.now().unix(),
         provider: provider.name,
         realm: authorizationCode.realm,
-        ...tokens,
+        ...this.tokenNormalizer.normalize(tokens),
       }))
       .catch((e) => {
         // A replayed or stale callback is the usual cause, and it answers
@@ -1264,7 +1266,6 @@ export class ServerAuthProvider {
   protected tokenCookieTtl(tokens: Tokens): Duration | undefined {
     const exp =
       tokens.refresh_token_expires_in ||
-      tokens.refresh_expires_in ||
       (tokens.refresh_token ? undefined : tokens.expires_in);
 
     return exp ? this.dateTimeProvider.duration(exp, "seconds") : undefined;

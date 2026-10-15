@@ -3,12 +3,12 @@ import {
   type Async,
   createPrimitive,
   type Infer,
-  KIND,
   PipelinePrimitive,
   type PipelinePrimitiveOptions,
   type ZType,
 } from "alepha";
 import type { DateTime, DurationLike } from "alepha/datetime";
+import { KIND } from "alepha/internal";
 
 import {
   type CancelContext,

@@ -142,7 +142,7 @@ const baseUser = z.object({
 });
 
 const admin = baseUser.extend({
-  role: z.const("admin"),
+  role: z.literal("admin"),
   permissions: z.array(z.text()),
 });
 ```
@@ -268,7 +268,7 @@ z.enum(["ACTIVE", "INACTIVE", "BANNED"]);
 ## Other Types
 
 ```typescript
-z.const("value")    // literal value
+z.literal("value")    // literal value
 z.boolean()         // boolean
 z.null()            // null
 z.any()             // any (no validation)

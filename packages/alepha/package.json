@@ -241,6 +241,11 @@
       "import": "./src/inspector/index.ts",
       "default": "./src/inspector/index.ts"
     },
+    "./internal": {
+      "types": "./src/internal/index.ts",
+      "import": "./src/internal/index.ts",
+      "default": "./src/internal/index.ts"
+    },
     "./lock": {
       "types": "./src/lock/core/index.ts",
       "workerd": "./src/lock/core/index.workerd.ts",
@@ -695,6 +700,11 @@
         "browser": "./dist/inspector/index.browser.js",
         "import": "./dist/inspector/index.js",
         "default": "./dist/inspector/index.js"
+      },
+      "./internal": {
+        "types": "./dist/internal/index.d.ts",
+        "import": "./dist/internal/index.js",
+        "default": "./dist/internal/index.js"
       },
       "./lock": {
         "types": "./dist/lock/core/index.d.ts",

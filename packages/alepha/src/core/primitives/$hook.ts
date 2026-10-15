@@ -1,5 +1,6 @@
+import { KIND } from "alepha/internal";
+
 import type { Hooks } from "../Alepha.ts";
-import { KIND } from "../constants/KIND.ts";
 import { AlephaError } from "../errors/AlephaError.ts";
 import { createPrimitive, Primitive } from "../helpers/primitive.ts";
 import type { Async } from "../interfaces/Async.ts";

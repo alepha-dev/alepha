@@ -5,16 +5,16 @@ describe("$hook", () => {
   it("should track hook calls", async () => {
     class App {
       hook = $hook({
-        on: "echo",
+        on: "test:echo",
         handler: () => {},
       });
     }
     const alepha = Alepha.create().with(App);
     await alepha.start();
     expect(alepha.inject(App).hook.called).toBe(0);
-    await alepha.events.emit("echo", {});
+    await alepha.events.emit("test:echo", {});
     expect(alepha.inject(App).hook.called).toBe(1);
-    await alepha.events.emit("echo", {});
+    await alepha.events.emit("test:echo", {});
     expect(alepha.inject(App).hook.called).toBe(2);
   });
 
@@ -133,7 +133,7 @@ describe("$hook after start", () => {
   it("should refuse a $hook on a service instantiated after start", async () => {
     class ScopedWithHook {
       onEcho = $hook({
-        on: "echo",
+        on: "test:echo",
         handler: () => {},
       });
     }
@@ -151,3 +151,9 @@ describe("$hook after start", () => {
     await alepha.stop();
   });
 });
+
+declare module "alepha" {
+  interface Hooks {
+    "test:echo": unknown;
+  }
+}

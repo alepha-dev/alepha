@@ -151,7 +151,7 @@ Each service retains its own module context. `RandomService` belongs to `"core"`
 
 ## Auto-Discovery
 
-If a service has a `[MODULE]` association (set by `$module`), injecting that service anywhere will automatically load its parent module:
+If a service belongs to a module (set by `$module`), injecting that service anywhere will automatically load its parent module:
 
 ```typescript
 const billingModule = $module({

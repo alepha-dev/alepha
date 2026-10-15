@@ -1,5 +1,6 @@
-import { Alepha, OPTIONS, z } from "alepha";
+import { Alepha, z } from "alepha";
 import { $cache } from "alepha/cache";
+import { OPTIONS } from "alepha/internal";
 import type { FC } from "react";
 import { beforeEach, describe, test, vi } from "vitest";
 

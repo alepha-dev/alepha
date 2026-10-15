@@ -1,6 +1,7 @@
+import { KIND } from "alepha/internal";
+import { OPTIONS } from "alepha/internal";
+
 import type { Alepha } from "../Alepha.ts";
-import { KIND } from "../constants/KIND.ts";
-import { OPTIONS } from "../constants/OPTIONS.ts";
 import { createPrimitive, Primitive } from "../helpers/primitive.ts";
 import { $context } from "./$context.ts";
 

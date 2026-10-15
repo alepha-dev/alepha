@@ -46,7 +46,7 @@ describe("EventManager", () => {
       const eventManager = new EventManager();
       const callback = vi.fn();
 
-      const unsubscribe = eventManager.on("echo", callback);
+      const unsubscribe = eventManager.on("test:echo", callback);
 
       expect(typeof unsubscribe).toBe("function");
     });
@@ -55,7 +55,7 @@ describe("EventManager", () => {
       const eventManager = new EventManager();
       const callback = vi.fn();
 
-      const unsubscribe = eventManager.on("echo", {
+      const unsubscribe = eventManager.on("test:echo", {
         callback,
         caller: undefined,
       });
@@ -68,8 +68,8 @@ describe("EventManager", () => {
       const callback1 = vi.fn();
       const callback2 = vi.fn();
 
-      eventManager.on("echo", callback1);
-      eventManager.on("echo", callback2);
+      eventManager.on("test:echo", callback1);
+      eventManager.on("test:echo", callback2);
 
       // Both handlers should be registered (verified by emit test)
     });
@@ -79,7 +79,7 @@ describe("EventManager", () => {
       const callback1 = vi.fn();
       const callback2 = vi.fn();
 
-      eventManager.on("echo", callback1);
+      eventManager.on("test:echo", callback1);
       eventManager.on("configure", callback2);
 
       // Handlers should be registered separately (verified by emit test)
@@ -91,8 +91,8 @@ describe("EventManager", () => {
       const eventManager = new EventManager();
       const callback = vi.fn();
 
-      eventManager.on("echo", callback);
-      await eventManager.emit("echo", { test: "data" });
+      eventManager.on("test:echo", callback);
+      await eventManager.emit("test:echo", { test: "data" });
 
       expect(callback).toHaveBeenCalledTimes(1);
       expect(callback).toHaveBeenCalledWith({ test: "data" });
@@ -102,17 +102,17 @@ describe("EventManager", () => {
       const eventManager = new EventManager();
       const order: number[] = [];
 
-      eventManager.on("echo", async () => {
+      eventManager.on("test:echo", async () => {
         order.push(1);
       });
-      eventManager.on("echo", async () => {
+      eventManager.on("test:echo", async () => {
         order.push(2);
       });
-      eventManager.on("echo", async () => {
+      eventManager.on("test:echo", async () => {
         order.push(3);
       });
 
-      await eventManager.emit("echo", {});
+      await eventManager.emit("test:echo", {});
 
       expect(order).toEqual([1, 2, 3]);
     });
@@ -121,18 +121,18 @@ describe("EventManager", () => {
       const eventManager = new EventManager();
       const order: string[] = [];
 
-      eventManager.on("echo", async () => {
+      eventManager.on("test:echo", async () => {
         order.push("1-start");
         await new Promise((resolve) => setTimeout(resolve, 10));
         order.push("1-end");
       });
-      eventManager.on("echo", async () => {
+      eventManager.on("test:echo", async () => {
         order.push("2-start");
         await new Promise((resolve) => setTimeout(resolve, 5));
         order.push("2-end");
       });
 
-      await eventManager.emit("echo", {});
+      await eventManager.emit("test:echo", {});
 
       expect(order).toEqual(["1-start", "1-end", "2-start", "2-end"]);
     });
@@ -143,10 +143,10 @@ describe("EventManager", () => {
       const callback2 = vi.fn();
       const payload = { value: 42, name: "test" };
 
-      eventManager.on("echo", callback1);
-      eventManager.on("echo", callback2);
+      eventManager.on("test:echo", callback1);
+      eventManager.on("test:echo", callback2);
 
-      await eventManager.emit("echo", payload);
+      await eventManager.emit("test:echo", payload);
 
       expect(callback1).toHaveBeenCalledWith(payload);
       expect(callback2).toHaveBeenCalledWith(payload);
@@ -157,10 +157,10 @@ describe("EventManager", () => {
       const callback1 = vi.fn();
       const callback2 = vi.fn();
 
-      eventManager.on("echo", callback1);
+      eventManager.on("test:echo", callback1);
       eventManager.on("configure", callback2);
 
-      await eventManager.emit("echo", {});
+      await eventManager.emit("test:echo", {});
 
       expect(callback1).toHaveBeenCalledTimes(1);
       expect(callback2).not.toHaveBeenCalled();
@@ -170,7 +170,7 @@ describe("EventManager", () => {
       const eventManager = new EventManager();
 
       // Should not throw
-      await expect(eventManager.emit("echo", {})).resolves.toBeUndefined();
+      await expect(eventManager.emit("test:echo", {})).resolves.toBeUndefined();
     });
 
     it("should work with Alepha lifecycle events", async () => {
@@ -196,17 +196,17 @@ describe("EventManager", () => {
       const eventManager = new EventManager();
       const order: string[] = [];
 
-      eventManager.on("echo", async () => {
+      eventManager.on("test:echo", async () => {
         order.push("normal");
       });
-      eventManager.on("echo", {
+      eventManager.on("test:echo", {
         callback: async () => {
           order.push("first");
         },
         priority: "first",
       });
 
-      await eventManager.emit("echo", {});
+      await eventManager.emit("test:echo", {});
 
       expect(order).toEqual(["first", "normal"]);
     });
@@ -215,17 +215,17 @@ describe("EventManager", () => {
       const eventManager = new EventManager();
       const order: string[] = [];
 
-      eventManager.on("echo", async () => {
+      eventManager.on("test:echo", async () => {
         order.push("normal");
       });
-      eventManager.on("echo", {
+      eventManager.on("test:echo", {
         callback: async () => {
           order.push("last");
         },
         priority: "last",
       });
 
-      await eventManager.emit("echo", {});
+      await eventManager.emit("test:echo", {});
 
       expect(order).toEqual(["normal", "last"]);
     });
@@ -234,38 +234,38 @@ describe("EventManager", () => {
       const eventManager = new EventManager();
       const order: string[] = [];
 
-      eventManager.on("echo", async () => {
+      eventManager.on("test:echo", async () => {
         order.push("normal1");
       });
-      eventManager.on("echo", {
+      eventManager.on("test:echo", {
         callback: async () => {
           order.push("first1");
         },
         priority: "first",
       });
-      eventManager.on("echo", {
+      eventManager.on("test:echo", {
         callback: async () => {
           order.push("last1");
         },
         priority: "last",
       });
-      eventManager.on("echo", async () => {
+      eventManager.on("test:echo", async () => {
         order.push("normal2");
       });
-      eventManager.on("echo", {
+      eventManager.on("test:echo", {
         callback: async () => {
           order.push("first2");
         },
         priority: "first",
       });
-      eventManager.on("echo", {
+      eventManager.on("test:echo", {
         callback: async () => {
           order.push("last2");
         },
         priority: "last",
       });
 
-      await eventManager.emit("echo", {});
+      await eventManager.emit("test:echo", {});
 
       // First hooks preserve registration order, then normal, then last
       expect(order[0]).toBe("first1");
@@ -278,17 +278,17 @@ describe("EventManager", () => {
       const eventManager = new EventManager();
       const order: string[] = [];
 
-      eventManager.on("echo", {
+      eventManager.on("test:echo", {
         callback: async () => {
           order.push("last");
         },
         priority: "last",
       });
-      eventManager.on("echo", async () => {
+      eventManager.on("test:echo", async () => {
         order.push("normal");
       });
 
-      await eventManager.emit("echo", {});
+      await eventManager.emit("test:echo", {});
 
       expect(order).toEqual(["normal", "last"]);
     });
@@ -298,23 +298,25 @@ describe("EventManager", () => {
     it("should throw error when callback throws", async () => {
       const eventManager = new EventManager();
 
-      eventManager.on("echo", async () => {
+      eventManager.on("test:echo", async () => {
         throw new Error("Test error");
       });
 
-      await expect(eventManager.emit("echo", {})).rejects.toThrow("Test error");
+      await expect(eventManager.emit("test:echo", {})).rejects.toThrow(
+        "Test error",
+      );
     });
 
     it("should stop execution on first error", async () => {
       const eventManager = new EventManager();
       const callback2 = vi.fn();
 
-      eventManager.on("echo", async () => {
+      eventManager.on("test:echo", async () => {
         throw new Error("Test error");
       });
-      eventManager.on("echo", callback2);
+      eventManager.on("test:echo", callback2);
 
-      await expect(eventManager.emit("echo", {})).rejects.toThrow();
+      await expect(eventManager.emit("test:echo", {})).rejects.toThrow();
       expect(callback2).not.toHaveBeenCalled();
     });
 
@@ -322,13 +324,13 @@ describe("EventManager", () => {
       const eventManager = new EventManager();
       const callback2 = vi.fn();
 
-      eventManager.on("echo", async () => {
+      eventManager.on("test:echo", async () => {
         throw new Error("Test error");
       });
-      eventManager.on("echo", callback2);
+      eventManager.on("test:echo", callback2);
 
       await expect(
-        eventManager.emit("echo", {}, { catch: true }),
+        eventManager.emit("test:echo", {}, { catch: true }),
       ).resolves.toBeUndefined();
 
       // Second callback should still execute
@@ -339,22 +341,22 @@ describe("EventManager", () => {
       const eventManager = new EventManager();
       const order: number[] = [];
 
-      eventManager.on("echo", async () => {
+      eventManager.on("test:echo", async () => {
         order.push(1);
         throw new Error("Error in 1");
       });
-      eventManager.on("echo", async () => {
+      eventManager.on("test:echo", async () => {
         order.push(2);
       });
-      eventManager.on("echo", async () => {
+      eventManager.on("test:echo", async () => {
         order.push(3);
         throw new Error("Error in 3");
       });
-      eventManager.on("echo", async () => {
+      eventManager.on("test:echo", async () => {
         order.push(4);
       });
 
-      await eventManager.emit("echo", {}, { catch: true });
+      await eventManager.emit("test:echo", {}, { catch: true });
 
       expect(order).toEqual([1, 2, 3, 4]);
     });
@@ -373,7 +375,7 @@ describe("EventManager", () => {
 
       class TestService {}
 
-      eventManager.on("echo", {
+      eventManager.on("test:echo", {
         callback: async () => {
           throw new TestError("Test error");
         },
@@ -384,14 +386,14 @@ describe("EventManager", () => {
       // path only, so an `instanceof` check on a hook failure answered
       // differently depending on whether logging was on.
       const error = await eventManager
-        .emit("echo", {}, { log: true })
+        .emit("test:echo", {}, { log: true })
         .catch((e) => e);
       expect(error).toBeInstanceOf(TestError);
       expect(error.message).toBe("Test error");
 
       // The context the wrapper carried is still reported, as a log line.
       expect(mockLogger.error).toHaveBeenCalledWith(
-        "Failed during 'echo()' hook for service: TestService",
+        "Failed during 'test:echo()' hook for service: TestService",
         error,
       );
     });
@@ -401,7 +403,7 @@ describe("EventManager", () => {
 
       class TestService {}
 
-      eventManager.on("echo", {
+      eventManager.on("test:echo", {
         callback: async () => {
           throw new TestError("Test error");
         },
@@ -409,9 +411,9 @@ describe("EventManager", () => {
       });
 
       const logged = await eventManager
-        .emit("echo", {}, { log: true })
+        .emit("test:echo", {}, { log: true })
         .catch((e) => e);
-      const quiet = await eventManager.emit("echo", {}).catch((e) => e);
+      const quiet = await eventManager.emit("test:echo", {}).catch((e) => e);
 
       expect(logged).toBeInstanceOf(TestError);
       expect(quiet).toBeInstanceOf(TestError);
@@ -432,14 +434,14 @@ describe("EventManager", () => {
 
       class TestService {}
 
-      eventManager.on("echo", {
+      eventManager.on("test:echo", {
         callback: async () => {
           throw new Error("Test error");
         },
         caller: TestService,
       });
 
-      await eventManager.emit("echo", {}, { catch: true, log: true });
+      await eventManager.emit("test:echo", {}, { catch: true, log: true });
 
       expect(mockLogger.error).toHaveBeenCalled();
     });
@@ -458,11 +460,11 @@ describe("EventManager", () => {
       const eventManager = new EventManager();
       eventManager.logFn = () => mockLogger;
 
-      eventManager.on("echo", async () => {
+      eventManager.on("test:echo", async () => {
         // Simple callback
       });
 
-      await eventManager.emit("echo", {}, { log: true });
+      await eventManager.emit("test:echo", {}, { log: true });
 
       expect(mockLogger.trace).toHaveBeenCalled();
       expect(mockLogger.debug).toHaveBeenCalled();
@@ -482,14 +484,14 @@ describe("EventManager", () => {
 
       class TestService {}
 
-      eventManager.on("echo", {
+      eventManager.on("test:echo", {
         callback: async () => {
           await new Promise((resolve) => setTimeout(resolve, 10));
         },
         caller: TestService,
       });
 
-      await eventManager.emit("echo", {}, { log: true });
+      await eventManager.emit("test:echo", {}, { log: true });
 
       // Should log the hook execution with timing
       const debugCalls = (mockLogger.debug as any).mock.calls;
@@ -513,12 +515,12 @@ describe("EventManager", () => {
 
       class MyCustomService {}
 
-      eventManager.on("echo", {
+      eventManager.on("test:echo", {
         callback: async () => {},
         caller: MyCustomService,
       });
 
-      await eventManager.emit("echo", {}, { log: true });
+      await eventManager.emit("test:echo", {}, { log: true });
 
       const traceCalls = (mockLogger.trace as any).mock.calls;
       const hasServiceName = traceCalls.some((call: any[]) =>
@@ -539,9 +541,9 @@ describe("EventManager", () => {
       const eventManager = new EventManager();
       eventManager.logFn = () => mockLogger;
 
-      eventManager.on("echo", async () => {});
+      eventManager.on("test:echo", async () => {});
 
-      await eventManager.emit("echo", {}, { log: true });
+      await eventManager.emit("test:echo", {}, { log: true });
 
       const traceCalls = (mockLogger.trace as any).mock.calls;
       const hasUnknown = traceCalls.some((call: any[]) =>
@@ -562,9 +564,9 @@ describe("EventManager", () => {
       const eventManager = new EventManager();
       eventManager.logFn = () => mockLogger;
 
-      eventManager.on("echo", async () => {});
+      eventManager.on("test:echo", async () => {});
 
-      await eventManager.emit("echo", {});
+      await eventManager.emit("test:echo", {});
 
       expect(mockLogger.trace).not.toHaveBeenCalled();
       expect(mockLogger.debug).not.toHaveBeenCalled();
@@ -574,7 +576,7 @@ describe("EventManager", () => {
   describe("unsubscribe", () => {
     it("should return unsubscribe function from on()", () => {
       const eventManager = new EventManager();
-      const unsubscribe = eventManager.on("echo", async () => {});
+      const unsubscribe = eventManager.on("test:echo", async () => {});
 
       expect(typeof unsubscribe).toBe("function");
     });
@@ -583,10 +585,10 @@ describe("EventManager", () => {
       const eventManager = new EventManager();
       const callback = vi.fn();
 
-      const unsubscribe = eventManager.on("echo", callback);
+      const unsubscribe = eventManager.on("test:echo", callback);
       unsubscribe();
 
-      await eventManager.emit("echo", {});
+      await eventManager.emit("test:echo", {});
 
       expect(callback).not.toHaveBeenCalled();
     });
@@ -597,13 +599,13 @@ describe("EventManager", () => {
       const callback2 = vi.fn();
       const callback3 = vi.fn();
 
-      const unsubscribe1 = eventManager.on("echo", callback1);
-      eventManager.on("echo", callback2);
-      eventManager.on("echo", callback3);
+      const unsubscribe1 = eventManager.on("test:echo", callback1);
+      eventManager.on("test:echo", callback2);
+      eventManager.on("test:echo", callback3);
 
       unsubscribe1();
 
-      await eventManager.emit("echo", {});
+      await eventManager.emit("test:echo", {});
 
       expect(callback1).not.toHaveBeenCalled();
       expect(callback2).toHaveBeenCalledTimes(1);
@@ -614,12 +616,12 @@ describe("EventManager", () => {
       const eventManager = new EventManager();
       const callback = vi.fn();
 
-      const unsubscribe1 = eventManager.on("echo", callback);
-      eventManager.on("echo", callback);
+      const unsubscribe1 = eventManager.on("test:echo", callback);
+      eventManager.on("test:echo", callback);
 
       unsubscribe1();
 
-      await eventManager.emit("echo", {});
+      await eventManager.emit("test:echo", {});
 
       // The second registration must survive: unsubscribing is per
       // registration (hook identity), not per callback function.
@@ -630,11 +632,11 @@ describe("EventManager", () => {
       const eventManager = new EventManager();
       const callback = vi.fn();
 
-      const unsubscribe = eventManager.on("echo", callback);
+      const unsubscribe = eventManager.on("test:echo", callback);
       unsubscribe();
       unsubscribe(); // Should not throw
 
-      await eventManager.emit("echo", {});
+      await eventManager.emit("test:echo", {});
 
       expect(callback).not.toHaveBeenCalled();
     });
@@ -644,12 +646,12 @@ describe("EventManager", () => {
       const callback1 = vi.fn();
       const callback2 = vi.fn();
 
-      const unsubscribe1 = eventManager.on("echo", callback1);
+      const unsubscribe1 = eventManager.on("test:echo", callback1);
       eventManager.on("configure", callback2);
 
       unsubscribe1();
 
-      await eventManager.emit("echo", {});
+      await eventManager.emit("test:echo", {});
       await eventManager.emit("configure", {} as any);
 
       expect(callback1).not.toHaveBeenCalled();
@@ -689,8 +691,8 @@ describe("EventManager", () => {
       const alepha = Alepha.create();
       const callback = vi.fn();
 
-      alepha.events.on("echo", callback);
-      await alepha.events.emit("echo", { custom: "data" });
+      alepha.events.on("test:echo", callback);
+      await alepha.events.emit("test:echo", { custom: "data" });
 
       expect(callback).toHaveBeenCalledWith({ custom: "data" });
     });
@@ -700,8 +702,8 @@ describe("EventManager", () => {
       const callback = vi.fn();
 
       // Using the 'echo' hook which is defined in Hooks interface
-      alepha.events.on("echo", callback);
-      await alepha.events.emit("echo", { test: true });
+      alepha.events.on("test:echo", callback);
+      await alepha.events.emit("test:echo", { test: true });
 
       expect(callback).toHaveBeenCalledWith({ test: true });
     });
@@ -712,12 +714,12 @@ describe("EventManager", () => {
       const eventManager = new EventManager();
       let completed = false;
 
-      eventManager.on("echo", async () => {
+      eventManager.on("test:echo", async () => {
         await new Promise((resolve) => setTimeout(resolve, 50));
         completed = true;
       });
 
-      await eventManager.emit("echo", {});
+      await eventManager.emit("test:echo", {});
 
       expect(completed).toBe(true);
     });
@@ -726,16 +728,16 @@ describe("EventManager", () => {
       const eventManager = new EventManager();
       const order: string[] = [];
 
-      eventManager.on("echo", async () => {
+      eventManager.on("test:echo", async () => {
         await new Promise((resolve) => setTimeout(resolve, 30));
         order.push("first");
       });
-      eventManager.on("echo", async () => {
+      eventManager.on("test:echo", async () => {
         await new Promise((resolve) => setTimeout(resolve, 10));
         order.push("second");
       });
 
-      await eventManager.emit("echo", {});
+      await eventManager.emit("test:echo", {});
 
       // Second callback should wait for first to complete
       expect(order).toEqual(["first", "second"]);
@@ -744,11 +746,11 @@ describe("EventManager", () => {
     it("should handle Promise rejections as errors", async () => {
       const eventManager = new EventManager();
 
-      eventManager.on("echo", async () => {
+      eventManager.on("test:echo", async () => {
         return Promise.reject(new Error("Async error"));
       });
 
-      await expect(eventManager.emit("echo", {})).rejects.toThrow(
+      await expect(eventManager.emit("test:echo", {})).rejects.toThrow(
         "Async error",
       );
     });
@@ -762,13 +764,13 @@ describe("EventManager", () => {
       class ServiceA {}
       class ServiceB {}
 
-      eventManager.on("echo", {
+      eventManager.on("test:echo", {
         caller: ServiceA,
         callback: async () => {
           order.push("A");
         },
       });
-      eventManager.on("echo", {
+      eventManager.on("test:echo", {
         caller: ServiceB,
         after: [ServiceA],
         callback: async () => {
@@ -776,7 +778,7 @@ describe("EventManager", () => {
         },
       });
 
-      await eventManager.emit("echo", {});
+      await eventManager.emit("test:echo", {});
 
       expect(order).toEqual(["A", "B"]);
     });
@@ -789,21 +791,21 @@ describe("EventManager", () => {
       class ServiceB {}
 
       // Register B first, but it has after: [ServiceA]
-      eventManager.on("echo", {
+      eventManager.on("test:echo", {
         caller: ServiceB,
         after: [ServiceA],
         callback: async () => {
           order.push("B");
         },
       });
-      eventManager.on("echo", {
+      eventManager.on("test:echo", {
         caller: ServiceA,
         callback: async () => {
           order.push("A");
         },
       });
 
-      await eventManager.emit("echo", {});
+      await eventManager.emit("test:echo", {});
 
       expect(order).toEqual(["A", "B"]);
     });
@@ -816,13 +818,13 @@ describe("EventManager", () => {
       class ServiceB {}
 
       // Register B first, then A with before: [ServiceB]
-      eventManager.on("echo", {
+      eventManager.on("test:echo", {
         caller: ServiceB,
         callback: async () => {
           order.push("B");
         },
       });
-      eventManager.on("echo", {
+      eventManager.on("test:echo", {
         caller: ServiceA,
         before: [ServiceB],
         callback: async () => {
@@ -830,7 +832,7 @@ describe("EventManager", () => {
         },
       });
 
-      await eventManager.emit("echo", {});
+      await eventManager.emit("test:echo", {});
 
       expect(order).toEqual(["A", "B"]);
     });
@@ -843,20 +845,20 @@ describe("EventManager", () => {
       class ServiceB {}
       class ServiceC {}
 
-      eventManager.on("echo", {
+      eventManager.on("test:echo", {
         caller: ServiceC,
         callback: async () => {
           order.push("C");
         },
       });
-      eventManager.on("echo", {
+      eventManager.on("test:echo", {
         caller: ServiceA,
         callback: async () => {
           order.push("A");
         },
       });
       // B runs after A and before C
-      eventManager.on("echo", {
+      eventManager.on("test:echo", {
         caller: ServiceB,
         after: [ServiceA],
         before: [ServiceC],
@@ -865,7 +867,7 @@ describe("EventManager", () => {
         },
       });
 
-      await eventManager.emit("echo", {});
+      await eventManager.emit("test:echo", {});
 
       expect(order).toEqual(["A", "B", "C"]);
     });
@@ -876,18 +878,18 @@ describe("EventManager", () => {
       class ServiceA {}
       class ServiceB {}
 
-      eventManager.on("echo", {
+      eventManager.on("test:echo", {
         caller: ServiceA,
         after: [ServiceB],
         callback: async () => {},
       });
-      eventManager.on("echo", {
+      eventManager.on("test:echo", {
         caller: ServiceB,
         after: [ServiceA],
         callback: async () => {},
       });
 
-      await expect(eventManager.emit("echo", {})).rejects.toThrow(
+      await expect(eventManager.emit("test:echo", {})).rejects.toThrow(
         "Circular dependency detected in hook before/after constraints",
       );
     });
@@ -900,26 +902,26 @@ describe("EventManager", () => {
       class ServiceB {}
       class ServiceC {}
 
-      eventManager.on("echo", {
+      eventManager.on("test:echo", {
         caller: ServiceA,
         callback: async () => {
           order.push("A");
         },
       });
-      eventManager.on("echo", {
+      eventManager.on("test:echo", {
         caller: ServiceB,
         callback: async () => {
           order.push("B");
         },
       });
-      eventManager.on("echo", {
+      eventManager.on("test:echo", {
         caller: ServiceC,
         callback: async () => {
           order.push("C");
         },
       });
 
-      await eventManager.emit("echo", {});
+      await eventManager.emit("test:echo", {});
 
       expect(order).toEqual(["A", "B", "C"]);
     });
@@ -931,19 +933,19 @@ describe("EventManager", () => {
       class ServiceA {}
       class ServiceB {}
 
-      eventManager.on("echo", {
+      eventManager.on("test:echo", {
         caller: ServiceA,
         callback: async () => {
           order.push("A1");
         },
       });
-      eventManager.on("echo", {
+      eventManager.on("test:echo", {
         caller: ServiceA,
         callback: async () => {
           order.push("A2");
         },
       });
-      eventManager.on("echo", {
+      eventManager.on("test:echo", {
         caller: ServiceB,
         after: [ServiceA],
         callback: async () => {
@@ -951,7 +953,7 @@ describe("EventManager", () => {
         },
       });
 
-      await eventManager.emit("echo", {});
+      await eventManager.emit("test:echo", {});
 
       expect(order).toEqual(["A1", "A2", "B"]);
     });
@@ -963,14 +965,14 @@ describe("EventManager", () => {
       class ServiceA {}
       class ServiceB {}
 
-      eventManager.on("echo", {
+      eventManager.on("test:echo", {
         caller: ServiceB,
         priority: "first",
         callback: async () => {
           order.push("first-B");
         },
       });
-      eventManager.on("echo", {
+      eventManager.on("test:echo", {
         caller: ServiceA,
         priority: "first",
         before: [ServiceB],
@@ -978,14 +980,14 @@ describe("EventManager", () => {
           order.push("first-A");
         },
       });
-      eventManager.on("echo", {
+      eventManager.on("test:echo", {
         caller: ServiceA,
         callback: async () => {
           order.push("normal");
         },
       });
 
-      await eventManager.emit("echo", {});
+      await eventManager.emit("test:echo", {});
 
       expect(order).toEqual(["first-A", "first-B", "normal"]);
     });
@@ -999,13 +1001,13 @@ describe("EventManager", () => {
 
       // A is in normal tier, B is in last tier with after: [ServiceA]
       // The constraint targets a service not in the same tier, so it's ignored
-      eventManager.on("echo", {
+      eventManager.on("test:echo", {
         caller: ServiceA,
         callback: async () => {
           order.push("A");
         },
       });
-      eventManager.on("echo", {
+      eventManager.on("test:echo", {
         caller: ServiceB,
         priority: "last",
         after: [ServiceA],
@@ -1014,10 +1016,16 @@ describe("EventManager", () => {
         },
       });
 
-      await eventManager.emit("echo", {});
+      await eventManager.emit("test:echo", {});
 
       // A runs first (normal tier), B runs after (last tier)
       expect(order).toEqual(["A", "B"]);
     });
   });
 });
+
+declare module "alepha" {
+  interface Hooks {
+    "test:echo": unknown;
+  }
+}

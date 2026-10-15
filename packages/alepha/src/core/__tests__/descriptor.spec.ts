@@ -1,7 +1,7 @@
+import { KIND } from "alepha/internal";
 import { describe, expect, it } from "vitest";
 
 import { Alepha } from "../Alepha.ts";
-import { KIND } from "../constants/KIND.ts";
 import { createPrimitive, Primitive } from "../helpers/primitive.ts";
 
 describe("primitive", () => {

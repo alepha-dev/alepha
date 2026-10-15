@@ -4,13 +4,12 @@ import {
   type Async,
   createPrimitive,
   type Infer,
-  KIND,
   type Middleware,
-  OPTIONS,
   Primitive,
   type ZType,
 } from "alepha";
 import type { DurationLike } from "alepha/datetime";
+import { KIND, OPTIONS } from "alepha/internal";
 import type { Head } from "alepha/react/head";
 import type { ServerRequest } from "alepha/server";
 import type { FC, ReactNode } from "react";

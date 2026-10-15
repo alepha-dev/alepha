@@ -36,12 +36,12 @@ class ChatController {
       // Server → Client messages
       in: z.union([
         z.object({
-          type: z.const("append"),
+          type: z.literal("append"),
           content: z.text(),
           username: z.text(),
         }),
         z.object({
-          type: z.const("system"),
+          type: z.literal("system"),
           message: z.text(),
         }),
       ]),

@@ -1,4 +1,5 @@
-import { OPTIONS } from "../constants/OPTIONS.ts";
+import { OPTIONS } from "alepha/internal";
+
 import type { Infer } from "../providers/ZodProvider.ts";
 import { Atom, type TAtomObject } from "./$atom.ts";
 import type { Computed } from "./$computed.ts";

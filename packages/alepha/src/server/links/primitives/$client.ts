@@ -1,4 +1,5 @@
-import { $inject, KIND } from "alepha";
+import { $inject } from "alepha";
+import { KIND } from "alepha/internal";
 
 import {
   type ClientScope,

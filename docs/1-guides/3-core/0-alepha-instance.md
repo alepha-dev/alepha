@@ -291,3 +291,9 @@ Password hashes carry their scrypt parameters in a PHC string. After a successfu
 the built-in password login does this automatically. Existing `salt:hex` hashes
 remain readable. Encryption writes `v1:iv:tag:ct` and reads both that form and the
 legacy three-part form. Passphrase envelopes require `v: 1`.
+
+Custom primitives use `$context()` from `alepha`. The symbols and mutable cursor
+in `alepha/internal` are implementation details with no semver guarantee.
+Use `alepha.with(...)` to register a service and `z.literal(...)` for literal
+schemas. Schema walkers use `z.schema.enumOptions`, `requiredInputKeys` and
+`defaultValue`; required input fields differ from nullable database columns.

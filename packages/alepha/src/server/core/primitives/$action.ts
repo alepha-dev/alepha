@@ -7,7 +7,6 @@ import {
   createPrimitive,
   type Infer,
   isTypeFile,
-  KIND,
   type Middleware,
   type MiddlewareProvides,
   PipelinePrimitive,
@@ -15,6 +14,7 @@ import {
   type SchemaOutput,
   z,
 } from "alepha";
+import { KIND } from "alepha/internal";
 import { $logger } from "alepha/logger";
 
 import type { RouteMethod } from "../constants/routeMethods.ts";

@@ -2,7 +2,6 @@ import {
   $inject,
   type Async,
   createPrimitive,
-  KIND,
   type Middleware,
   type MiddlewareProvides,
   PipelineHandler,
@@ -12,6 +11,7 @@ import {
   type ZType,
   z,
 } from "alepha";
+import { KIND } from "alepha/internal";
 import { $logger } from "alepha/logger";
 
 import { McpToolOutputError } from "../errors/McpError.ts";

@@ -1,5 +1,6 @@
-import { $inject, createPrimitive, KIND, Primitive } from "alepha";
+import { $inject, createPrimitive, Primitive } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+import { KIND } from "alepha/internal";
 import { ReactPageProvider } from "alepha/react/router";
 import { type ServerRequest, ServerRouterProvider } from "alepha/server";
 

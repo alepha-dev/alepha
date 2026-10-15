@@ -994,7 +994,7 @@ export class CliProvider {
     // apply manually defaults for optional properties that have defaults
     for (const [key, value] of Object.entries(z.schema.shape(schema))) {
       if (!(key in parsed)) {
-        const def = z.schema.getDefault(value);
+        const def = z.schema.defaultValue(value);
         if (def !== undefined) {
           parsed[key] = def;
         }
@@ -1041,7 +1041,7 @@ export class CliProvider {
           throw error;
         }
       } else {
-        const def = z.schema.getDefault(propSchema);
+        const def = z.schema.defaultValue(propSchema);
         if (def !== undefined) {
           result[key] = def;
         } else if (z.schema.isOptional(propSchema)) {
@@ -1557,7 +1557,7 @@ export class CliProvider {
       if (this.isOptionalOrDefaulted(schema)) {
         // Handle optional args: z.text().optional(), z.number().default(1)
         if (argsOnly.length === 0) {
-          return z.schema.getDefault(schema);
+          return z.schema.defaultValue(schema);
         }
         return this.alepha.codec.decode(
           schema,
@@ -1572,7 +1572,7 @@ export class CliProvider {
           if (i < argsOnly.length) {
             result.push(this.parseArgumentValue(argsOnly[i], itemSchema));
           } else if (this.isOptionalOrDefaulted(itemSchema)) {
-            result.push(z.schema.getDefault(itemSchema));
+            result.push(z.schema.defaultValue(itemSchema));
           } else {
             throw new UsageError(
               `Missing required argument at position ${i + 1}`,
@@ -1604,7 +1604,7 @@ export class CliProvider {
    */
   protected isOptionalOrDefaulted(schema: ZType): boolean {
     return (
-      z.schema.isOptional(schema) || z.schema.getDefault(schema) !== undefined
+      z.schema.isOptional(schema) || z.schema.defaultValue(schema) !== undefined
     );
   }
 
@@ -2072,7 +2072,7 @@ export class CliProvider {
 
     // A zod enum (`z.enum`).
     if (z.schema.isEnum(base)) {
-      const values = z.schema.enumValues(base);
+      const values = z.schema.enumOptions(base);
       return values.length > 0 && values.every((v) => typeof v === "string")
         ? values
         : undefined;

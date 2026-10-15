@@ -218,8 +218,7 @@ something that worked before.
 1. **`GET /api/api-keys` returns expired and revoked keys**, each with its
    `status`. Code that read the length of the response as a count of usable
    keys now counts dead ones: filter on `status`. The admin listing keeps
-   hiding revoked keys unless asked (`status`, or the deprecated
-   `includeRevoked`).
+   hiding revoked keys unless an explicit `status` filter includes them.
 2. **`SecurityProvider` has a scope rule.** `permissionScope: undefined` is
    unrestricted, and every existing identity is on that branch. `[]` is a
    denial that reads like a no-op. A scope binds permission-checked routes

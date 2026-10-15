@@ -7,12 +7,12 @@ import {
   AlephaError,
   coerceObject,
   MIDDLEWARE_PROTECTED,
-  OPTIONS,
   PipelineHandler,
   type ZType,
   z,
 } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+import { OPTIONS } from "alepha/internal";
 import { $logger } from "alepha/logger";
 import { AlephaContext, ClientOnly } from "alepha/react";
 import type { Head } from "alepha/react/head";

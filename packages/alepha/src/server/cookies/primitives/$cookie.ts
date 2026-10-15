@@ -2,11 +2,11 @@ import {
   $inject,
   createPrimitive,
   type Infer,
-  KIND,
   Primitive,
   type ZType,
 } from "alepha";
 import type { DurationLike } from "alepha/datetime";
+import { KIND } from "alepha/internal";
 
 import { ServerCookiesProvider } from "../providers/ServerCookiesProvider.ts";
 

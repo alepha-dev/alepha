@@ -1,4 +1,5 @@
-import { type Infer, KIND, type ZObject, z } from "alepha";
+import { type Infer, type ZObject, z } from "alepha";
+import { KIND } from "alepha/internal";
 import type { SQL } from "drizzle-orm";
 
 import type { PgQueryWhere } from "../interfaces/PgQueryWhere.ts";

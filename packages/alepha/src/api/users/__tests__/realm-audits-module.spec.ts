@@ -58,19 +58,8 @@ describe("$realm jobs and audits are infrastructure", () => {
     expect(declaredPermissions(alepha)).toContain("admin:audit:read");
   });
 
-  it("ignores audits: false and jobs: false, which still typecheck", async () => {
-    // Kept on `RealmFeatures`, deprecated, so applications that set them
-    // upgrade by changing behaviour only.
-    const alepha = await boot({ audits: false, jobs: false });
-
-    expect(alepha.has(UserAudits)).toBe(true);
-    expect(alepha.has(SessionAudits)).toBe(true);
-    expect(alepha.has(UserJobs)).toBe(true);
-    expect(declaredPermissions(alepha)).toContain("admin:audit:read");
-  });
-
-  it("writes the user audit trail from the services with audits: false", async () => {
-    const alepha = await boot({ audits: false });
+  it("writes the user audit trail without optional features", async () => {
+    const alepha = await boot();
 
     const user = await alepha
       .inject(UserService)

@@ -279,7 +279,7 @@ describe("the admin API key listing", () => {
     expect(expiring.content[0].status).toBe("expiring");
   });
 
-  it("keeps hiding revoked keys by default, and honours includeRevoked without a status", async () => {
+  it("hides revoked keys by default and accepts every explicit status", async () => {
     const { alepha, userId, seed } = await setup();
     const ids = await seed();
     const admin = { id: randomUUID(), roles: ["admin"] };
@@ -294,13 +294,15 @@ describe("the admin API key listing", () => {
     );
 
     const everything = await controller.findApiKeys.run(
-      { query: { userId, includeRevoked: true } },
+      {
+        query: { userId, status: ["active", "expiring", "expired", "revoked"] },
+      },
       { user: admin },
     );
     expect(everything.content).toHaveLength(6);
   });
 
-  it("ignores includeRevoked once a status is given", async () => {
+  it("selects only explicitly requested statuses", async () => {
     const { alepha, userId, seed } = await setup();
     const ids = await seed();
     const admin = { id: randomUUID(), roles: ["admin"] };
@@ -308,7 +310,7 @@ describe("the admin API key listing", () => {
     const page = await alepha
       .inject(AdminApiKeyController)
       .findApiKeys.run(
-        { query: { userId, status: ["active"], includeRevoked: true } },
+        { query: { userId, status: ["active"] } },
         { user: admin },
       );
 

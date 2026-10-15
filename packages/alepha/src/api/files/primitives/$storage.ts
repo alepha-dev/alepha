@@ -2,12 +2,12 @@ import {
   $inject,
   createPrimitive,
   type FileLike,
-  KIND,
   Primitive,
   type Service,
 } from "alepha";
 import { FileStorageProvider, MemoryFileStorageProvider } from "alepha/bucket";
 import type { DateTime, DurationLike } from "alepha/datetime";
+import { KIND } from "alepha/internal";
 import type { Page } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 

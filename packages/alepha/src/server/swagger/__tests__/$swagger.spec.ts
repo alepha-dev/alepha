@@ -1,4 +1,5 @@
-import { Alepha, type Middleware, OPTIONS, z } from "alepha";
+import { Alepha, type Middleware, z } from "alepha";
+import { OPTIONS } from "alepha/internal";
 import { $action } from "alepha/server";
 import { describe, expect, it } from "vitest";
 

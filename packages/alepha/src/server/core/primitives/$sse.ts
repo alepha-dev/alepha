@@ -5,13 +5,13 @@ import {
   type Async,
   createPrimitive,
   type Infer,
-  KIND,
   PipelinePrimitive,
   type PipelinePrimitiveOptions,
   type ZObject,
   type ZType,
   z,
 } from "alepha";
+import { KIND } from "alepha/internal";
 import { $logger } from "alepha/logger";
 
 import type { RouteMethod } from "../constants/routeMethods.ts";

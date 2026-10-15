@@ -599,7 +599,8 @@ export class FormModel<T extends ZObject> {
             prop as keyof Infer<T> & string,
             options,
             schema,
-            z.schema.requiredKeys(schema).includes(prop as string) || false,
+            z.schema.requiredInputKeys(schema).includes(prop as string) ||
+              false,
             context,
           );
         }
@@ -648,7 +649,8 @@ export class FormModel<T extends ZObject> {
         : unwrapped
     ) as typeof rawField;
 
-    const isRequired = z.schema.requiredKeys(schema).includes(name) ?? false;
+    const isRequired =
+      z.schema.requiredInputKeys(schema).includes(name) ?? false;
     const key = parent ? `${parent}.${name}` : name;
     const path = `/${key.replaceAll(".", "/")}`;
 

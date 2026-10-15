@@ -1,5 +1,6 @@
-import { $inject, AlephaError, createPrimitive, KIND, Primitive } from "alepha";
+import { $inject, AlephaError, createPrimitive, Primitive } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+import { KIND } from "alepha/internal";
 
 import { AnalyticsBuckets } from "../planner/AnalyticsBuckets.ts";
 import { AnalyticsSlotMap } from "../planner/AnalyticsSlotMap.ts";

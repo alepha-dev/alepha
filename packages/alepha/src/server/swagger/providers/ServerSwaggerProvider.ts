@@ -283,7 +283,7 @@ export class ServerSwaggerProvider {
 
       if (z.schema.isObject(route.options.schema.query)) {
         operation.parameters ??= [];
-        const requiredKeys: string[] = z.schema.requiredKeys(
+        const requiredKeys: string[] = z.schema.requiredInputKeys(
           route.options.schema.query,
         );
         for (const [key, value] of Object.entries(
@@ -451,7 +451,7 @@ export class ServerSwaggerProvider {
     if (meta.example !== undefined) {
       return meta.example;
     }
-    const def = z.schema.getDefault(schema);
+    const def = z.schema.defaultValue(schema);
     if (def !== undefined) {
       return def;
     }

@@ -3,7 +3,6 @@ import {
   Alepha,
   AlephaError,
   createPrimitive,
-  KIND,
   Primitive,
 } from "alepha";
 import {
@@ -11,6 +10,7 @@ import {
   type Duration,
   type DurationLike,
 } from "alepha/datetime";
+import { KIND } from "alepha/internal";
 import { $logger } from "alepha/logger";
 import type { ServerRequest } from "alepha/server";
 import type { JSONWebKeySet, JWTPayload } from "jose";

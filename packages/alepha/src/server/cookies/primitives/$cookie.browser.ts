@@ -4,11 +4,11 @@ import {
   AlephaError,
   createPrimitive,
   type Infer,
-  KIND,
   Primitive,
   type ZType,
 } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+import { KIND } from "alepha/internal";
 
 import { CookieParser } from "../services/CookieParser.ts";
 import type {

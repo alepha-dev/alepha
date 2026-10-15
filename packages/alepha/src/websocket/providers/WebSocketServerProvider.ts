@@ -4,9 +4,9 @@ import {
   AlephaError,
   MIDDLEWARE_PROTECTED,
   type Middleware,
-  OPTIONS,
   PipelineHandler,
 } from "alepha";
+import { OPTIONS } from "alepha/internal";
 import { HttpError, RequestOriginPolicy } from "alepha/server";
 
 import type { RoomPrimitiveOptions } from "../interfaces/RoomInterfaces.ts";

@@ -9,23 +9,23 @@ import { z } from "../providers/ZodProvider.ts";
  * `alepha gen env` annotated defaulted variables "(required)" and forms marked
  * them with an asterisk and refused to submit them empty.
  */
-describe("z.schema.requiredKeys", () => {
+describe("z.schema.requiredInputKeys", () => {
   it("should require a bare field", () => {
     const schema = z.object({ name: z.string() });
 
-    expect(z.schema.requiredKeys(schema)).toEqual(["name"]);
+    expect(z.schema.requiredInputKeys(schema)).toEqual(["name"]);
   });
 
   it("should not require an optional field", () => {
     const schema = z.object({ name: z.string().optional() });
 
-    expect(z.schema.requiredKeys(schema)).toEqual([]);
+    expect(z.schema.requiredInputKeys(schema)).toEqual([]);
   });
 
   it("should not require a defaulted field", () => {
     const schema = z.object({ name: z.string().default("x") });
 
-    expect(z.schema.requiredKeys(schema)).toEqual([]);
+    expect(z.schema.requiredInputKeys(schema)).toEqual([]);
   });
 
   // `null` is a value, and the key still has to be there to carry it: parsing
@@ -33,7 +33,7 @@ describe("z.schema.requiredKeys", () => {
   it("should require a nullable field", () => {
     const schema = z.object({ name: z.string().nullable() });
 
-    expect(z.schema.requiredKeys(schema)).toEqual(["name"]);
+    expect(z.schema.requiredInputKeys(schema)).toEqual(["name"]);
     expect(() => schema.parse({})).toThrow();
     expect(schema.parse({ name: null })).toEqual({ name: null });
   });
@@ -46,7 +46,7 @@ describe("z.schema.requiredKeys", () => {
       d: z.string().nullable().default("x"),
     });
 
-    expect(z.schema.requiredKeys(schema)).toEqual([]);
+    expect(z.schema.requiredInputKeys(schema)).toEqual([]);
   });
 
   it("should agree with what the schema actually accepts", () => {
@@ -61,7 +61,7 @@ describe("z.schema.requiredKeys", () => {
     // Every key the helper leaves out can be omitted, and every key it keeps
     // cannot: that is the whole contract, so it is asserted rather than
     // described.
-    const required = z.schema.requiredKeys(schema);
+    const required = z.schema.requiredInputKeys(schema);
     for (const key of Object.keys(z.schema.shape(schema))) {
       const value = { bare: "a", nullable: null } as Record<string, unknown>;
       delete value[key];
@@ -71,7 +71,7 @@ describe("z.schema.requiredKeys", () => {
   });
 
   it("should return an empty array for a non-object", () => {
-    expect(z.schema.requiredKeys(z.string())).toEqual([]);
-    expect(z.schema.requiredKeys(undefined)).toEqual([]);
+    expect(z.schema.requiredInputKeys(z.string())).toEqual([]);
+    expect(z.schema.requiredInputKeys(undefined)).toEqual([]);
   });
 });

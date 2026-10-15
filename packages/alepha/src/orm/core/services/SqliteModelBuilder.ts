@@ -127,7 +127,7 @@ export class SqliteModelBuilder extends ModelBuilder {
     >((columns, [key, value]) => {
       let col = this.mapFieldToSqliteColumn(tableName, key, value, enums);
 
-      const defaultValue = z.schema.getDefault(value);
+      const defaultValue = z.schema.defaultValue(value);
       if (defaultValue != null) {
         col = col.default(defaultValue as any);
       }

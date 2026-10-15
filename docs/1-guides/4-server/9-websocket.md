@@ -118,11 +118,11 @@ class ChatChannels {
       // Server -> client messages
       in: z.union([
         z.object({
-          type: z.const("append"),
+          type: z.literal("append"),
           content: z.text(),
           username: z.text(),
         }),
-        z.object({ type: z.const("system"), message: z.text() }),
+        z.object({ type: z.literal("system"), message: z.text() }),
       ]),
       // Client -> server messages
       out: z.object({ content: z.text() }),

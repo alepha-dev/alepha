@@ -1,11 +1,4 @@
-import {
-  $hook,
-  $inject,
-  Alepha,
-  SchemaValidationError,
-  TypeProvider,
-  z,
-} from "alepha";
+import { $hook, $inject, Alepha, SchemaValidationError, z } from "alepha";
 import { type DateTime, DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 // One-directional dependency, `i18n → head`: the head module never looks at
@@ -371,7 +364,6 @@ export class I18nProvider<
     this.numberFormatRef = undefined;
     this.dateFormatRef = undefined;
     this.dateTimeProvider.setLocale(this.lang);
-    TypeProvider.setLocale(this.lang);
 
     // Re-apply the global head so `<html lang>` follows the switch. Nothing
     // else does: choosing a language in cookie mode does not navigate, and the
@@ -564,7 +556,7 @@ export class I18nProvider<
 
     // handle Zod errors
     if (value instanceof SchemaValidationError) {
-      return TypeProvider.translateError(value, this.lang);
+      return value.message;
     }
 
     // return string values as-is

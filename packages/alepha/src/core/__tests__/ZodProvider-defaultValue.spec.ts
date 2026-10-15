@@ -12,19 +12,19 @@ import { z } from "../providers/ZodProvider.ts";
  * `Object.hasOwn(s, "default")` test alone reports true for any schema
  * somebody chained `.default()` on elsewhere, and hands back the function.
  */
-describe("z.schema.getDefault", () => {
+describe("z.schema.defaultValue", () => {
   it("reports no default for a plain schema", () => {
-    expect(z.schema.getDefault(z.enum(["day", "week", "month"]))).toBe(
+    expect(z.schema.defaultValue(z.enum(["day", "week", "month"]))).toBe(
       undefined,
     );
   });
 
   it("reads a zod default", () => {
-    expect(z.schema.getDefault(z.text().default("hello"))).toBe("hello");
+    expect(z.schema.defaultValue(z.text().default("hello"))).toBe("hello");
   });
 
   it("peels optional and nullable to find a zod default", () => {
-    expect(z.schema.getDefault(z.text().default("hello").optional())).toBe(
+    expect(z.schema.defaultValue(z.text().default("hello").optional())).toBe(
       "hello",
     );
   });
@@ -33,7 +33,7 @@ describe("z.schema.getDefault", () => {
     const schema = z.text();
     Object.assign(schema, { default: "attached" });
 
-    expect(z.schema.getDefault(schema)).toBe("attached");
+    expect(z.schema.defaultValue(schema)).toBe("attached");
   });
 
   it("does not read zod's own .default method as a default value", () => {
@@ -44,6 +44,6 @@ describe("z.schema.getDefault", () => {
     void grain.default("month");
     expect(Object.hasOwn(grain, "default")).toBe(true);
 
-    expect(z.schema.getDefault(grain)).toBe(undefined);
+    expect(z.schema.defaultValue(grain)).toBe(undefined);
   });
 });

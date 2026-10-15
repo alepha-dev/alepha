@@ -5,14 +5,13 @@ import {
   AlephaError,
   createPrimitive,
   type Infer,
-  KIND,
   type MiddlewareMetadata,
-  OPTIONS,
   Primitive,
   type Service,
   z,
 } from "alepha";
 import { DateTimeProvider, type DurationLike } from "alepha/datetime";
+import { KIND, OPTIONS } from "alepha/internal";
 import { $logger } from "alepha/logger";
 
 import { CacheProvider } from "../providers/CacheProvider.ts";

@@ -131,8 +131,3 @@ export type Page<T> = {
 export type PageMetadata = Infer<typeof pageMetadataSchema>;
 
 // ---------------------------------------------------------------------------------------------------------------------
-
-// NOTE: this file used to augment `TypeProvider` with a `page()` method and
-// assign it on the prototype. `TypeProvider` is a static-only legacy config
-// holder — nothing ever constructs it — so the instance method was
-// unreachable. `z.page` (ZodProvider) is the live implementation.

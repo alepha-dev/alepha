@@ -1,4 +1,5 @@
-import { KIND } from "../constants/KIND.ts";
+import { KIND } from "alepha/internal";
+
 import { AlephaError } from "../errors/AlephaError.ts";
 import type { Atom, AtomStatic } from "./$atom.ts";
 

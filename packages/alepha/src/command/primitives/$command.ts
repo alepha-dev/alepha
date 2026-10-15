@@ -5,12 +5,12 @@ import {
   type Async,
   createPrimitive,
   type Infer,
-  KIND,
   Primitive,
   type ZObject,
   type ZType,
   z,
 } from "alepha";
+import { KIND } from "alepha/internal";
 
 import type { AskMethods } from "../helpers/Asker.ts";
 import type { RunnerMethod } from "../helpers/Runner.ts";

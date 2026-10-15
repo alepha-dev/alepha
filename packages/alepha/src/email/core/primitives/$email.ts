@@ -2,9 +2,9 @@ import {
   AlephaError,
   createPrimitive,
   type InstantiableClass,
-  KIND,
   Primitive,
 } from "alepha";
+import { KIND } from "alepha/internal";
 
 import type {
   EmailSendOptions,

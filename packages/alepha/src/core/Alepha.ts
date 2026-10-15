@@ -1,14 +1,15 @@
+import { KIND } from "alepha/internal";
+import { MODULE } from "alepha/internal";
+import { OPTIONS } from "alepha/internal";
+import { __alephaRef } from "alepha/internal";
+
 import { ALEPHA_META_FALLBACK } from "./constants/ALEPHA_META_FALLBACK.ts";
-import { KIND } from "./constants/KIND.ts";
-import { MODULE } from "./constants/MODULE.ts";
-import { OPTIONS } from "./constants/OPTIONS.ts";
 import { AlephaError } from "./errors/AlephaError.ts";
 import { CircularDependencyError } from "./errors/CircularDependencyError.ts";
 import { ContainerLockedError } from "./errors/ContainerLockedError.ts";
 import { TooLateSubstitutionError } from "./errors/TooLateSubstitutionError.ts";
 import { coerceObject } from "./helpers/coerceStrings.ts";
 import { Primitive } from "./helpers/primitive.ts";
-import { __alephaRef } from "./helpers/ref.ts";
 import type { AlephaMeta } from "./interfaces/AlephaMeta.ts";
 import type { Async } from "./interfaces/Async.ts";
 import type { LoggerInterface } from "./interfaces/LoggerInterface.ts";
@@ -1211,15 +1212,6 @@ export class Alepha {
   }
 
   /**
-   * @alias {@link Alepha#with}.
-   */
-  public register<T extends object>(
-    serviceEntry: ServiceEntry<T> | { default: ServiceEntry<T> },
-  ): this {
-    return this.with(serviceEntry);
-  }
-
-  /**
    * Get an instance of the specified service from the container.
    *
    * @see {@link InjectOptions} for the available options.
@@ -1594,16 +1586,16 @@ export class Alepha {
 
     const env: Record<string, AlephaDumpEnvVariable> = {};
     for (const [schema] of this.cacheEnv.entries()) {
-      // `required` field names come from `z.schema.requiredKeys` (zod has no
+      // `required` field names come from `z.schema.requiredInputKeys` (zod has no
       // `.required` array — that name is the `.required()` method). Metadata
       // (description/enum/default) lives on the unwrapped inner schema, under
       // `.meta()`.
       const shape = z.schema.shape(schema);
-      const required = new Set(z.schema.requiredKeys(schema));
+      const required = new Set(z.schema.requiredInputKeys(schema));
       for (const [key, value] of Object.entries(shape)) {
         const inner = z.schema.unwrap(value);
         const enumValues = z.schema.isEnum(inner)
-          ? z.schema.enumValues(inner)
+          ? z.schema.enumOptions(inner)
           : undefined;
         const aliases = this.declaredAliases(value);
         env[key] = {
@@ -1611,7 +1603,7 @@ export class Alepha {
           // schema it was called on, which for an optional field is the inner
           // one. Falling back to the wrapper catches the reverse order.
           description: inner?.description ?? value.description,
-          default: z.schema.getDefault(value) as string | undefined,
+          default: z.schema.defaultValue(value) as string | undefined,
           required: required.has(key) ? true : undefined,
           aliases: aliases.length ? aliases : undefined,
           enum: enumValues?.length
@@ -2029,11 +2021,6 @@ export interface State {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface Hooks {
-  /**
-   * Used for testing purposes.
-   */
-  echo: unknown;
-
   /**
    * Triggered during the configuration phase. Before the start phase.
    */

@@ -1,4 +1,5 @@
-import { Alepha, OPTIONS } from "alepha";
+import { Alepha } from "alepha";
+import { OPTIONS } from "alepha/internal";
 import {
   $page,
   AlephaReactRouter,

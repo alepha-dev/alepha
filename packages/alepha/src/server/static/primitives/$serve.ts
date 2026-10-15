@@ -1,5 +1,6 @@
-import { createPrimitive, KIND, Primitive } from "alepha";
+import { createPrimitive, Primitive } from "alepha";
 import type { DurationLike } from "alepha/datetime";
+import { KIND } from "alepha/internal";
 
 /**
  * Create a new static file handler.

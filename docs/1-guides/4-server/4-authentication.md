@@ -1131,3 +1131,7 @@ internal = $serviceAccount({
 // Usage: tokens are cached and auto-refreshed
 const token = await external.token();
 ```
+
+Stored tokens use `refresh_token_expires_in` for the refresh lifetime. Keycloak
+responses may use `refresh_expires_in`; Alepha normalizes that field at the
+provider boundary before storing the token cookie.

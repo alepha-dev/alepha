@@ -1,7 +1,6 @@
 import { join } from "node:path";
 
 import {
-  __alephaRef,
   $hook,
   $inject,
   $store,
@@ -10,6 +9,7 @@ import {
   type AlephaMeta,
 } from "alepha";
 import { EnvUtils } from "alepha/command";
+import { __alephaRef } from "alepha/internal";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
 import type { Plugin, ViteDevServer } from "vite";

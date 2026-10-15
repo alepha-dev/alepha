@@ -183,7 +183,7 @@ export class PostgresModelBuilder extends ModelBuilder {
     >((columns, [key, value]) => {
       let col = this.mapFieldToColumn(tableName, key, value, nsp, enums);
 
-      const defaultValue = z.schema.getDefault(value);
+      const defaultValue = z.schema.defaultValue(value);
       if (defaultValue != null) {
         col = col.default(defaultValue as any);
       }
@@ -374,7 +374,7 @@ export class PostgresModelBuilder extends ModelBuilder {
 
     // Enum handling
     if (z.schema.isEnum(value)) {
-      const enumVals = z.schema.enumValues(value);
+      const enumVals = z.schema.enumOptions(value);
       if (!enumVals.every((it) => typeof it === "string")) {
         throw new AlephaError(
           `Enum for ${fieldName} must be an array of strings, got ${JSON.stringify(

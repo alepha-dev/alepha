@@ -3,10 +3,10 @@ import {
   AlephaError,
   type Async,
   createPrimitive,
-  KIND,
   Primitive,
 } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+import { KIND } from "alepha/internal";
 import {
   type AccessTokenResponse,
   type IssuerPrimitive,
@@ -25,6 +25,7 @@ import {
 import type { OAuth2Profile } from "../providers/ServerAuthProvider.ts";
 import type { SecondFactorMethod } from "../schemas/secondFactorMethodSchema.ts";
 import type { Tokens } from "../schemas/tokensSchema.ts";
+import { OAuthTokenNormalizer } from "../services/OAuthTokenNormalizer.ts";
 
 /**
  * Creates an authentication provider primitive for handling user login flows.
@@ -269,6 +270,7 @@ export interface OAuth2Options {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class AuthPrimitive extends Primitive<AuthPrimitiveOptions> {
+  protected readonly tokenNormalizer = $inject(OAuthTokenNormalizer);
   protected readonly securityProvider = $inject(SecurityProvider);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
 
@@ -364,7 +366,9 @@ export class AuthPrimitive extends Primitive<AuthPrimitiveOptions> {
     if (oauth) {
       try {
         return {
-          ...(await refreshTokenGrant(oauth, refreshToken)),
+          ...this.tokenNormalizer.normalize(
+            await refreshTokenGrant(oauth, refreshToken),
+          ),
           issued_at: this.dateTimeProvider.now().unix(),
         };
       } catch (error) {

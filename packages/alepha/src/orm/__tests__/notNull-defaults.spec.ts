@@ -6,7 +6,7 @@ import { $entity, $repository, db } from "../core/index.ts";
 
 /**
  * A defaulted column is still `NOT NULL` - the default is exactly what fills
- * it. The model builders used to read `z.schema.requiredKeys`, which answers
+ * it. The model builders used to read `z.schema.requiredInputKeys`, which answers
  * the different question of whether a CALLER must supply the key; once that
  * helper stopped counting defaulted fields as required, reusing it here would
  * have quietly dropped `NOT NULL` from every defaulted column and rewritten

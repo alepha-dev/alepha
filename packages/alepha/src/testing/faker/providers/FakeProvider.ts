@@ -235,7 +235,7 @@ export class FakeProvider {
 
     // Handle enum
     if (this.guard.isEnum(schema)) {
-      const values = z.schema.enumValues(schema);
+      const values = z.schema.enumOptions(schema);
       return values[this.faker.number.int({ min: 0, max: values.length - 1 })];
     }
 

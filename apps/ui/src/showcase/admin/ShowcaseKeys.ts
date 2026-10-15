@@ -18,12 +18,11 @@ export class ShowcaseKeys {
     const number = Number(query.page ?? 0);
 
     let rows = this.rows();
-    // The server's rule: `status` wins, and without it `includeRevoked` is
-    // the only switch.
+    // Explicit statuses select the filter; otherwise revoked keys are hidden.
     if (query.status?.length) {
       const wanted = query.status;
       rows = rows.filter((r) => wanted.includes(r.status));
-    } else if (!query.includeRevoked) {
+    } else {
       rows = rows.filter((r) => !r.revokedAt);
     }
 
@@ -126,5 +125,4 @@ export interface ShowcaseKeyQuery {
   size?: number;
   sort?: string;
   status?: ApiKeyStatus[];
-  includeRevoked?: boolean;
 }

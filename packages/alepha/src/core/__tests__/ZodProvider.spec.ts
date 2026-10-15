@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import { Alepha } from "../Alepha.ts";
-import { z } from "../providers/TypeProvider.ts";
+import { z } from "../providers/ZodProvider.ts";
 
-describe("TypeProvider", () => {
+describe("ZodProvider", () => {
   describe("Primitive Types", () => {
     describe("string", () => {
       it("should decode valid strings", async () => {
@@ -905,8 +905,8 @@ describe("TypeProvider", () => {
         const alepha = Alepha.create();
         await alepha.start();
         const schema = z.union([
-          z.object({ type: z.const("A"), value: z.text() }),
-          z.object({ type: z.const("B"), count: z.integer() }),
+          z.object({ type: z.literal("A"), value: z.text() }),
+          z.object({ type: z.literal("B"), count: z.integer() }),
         ]);
 
         expect(
@@ -1273,7 +1273,7 @@ describe("TypeProvider", () => {
       it("should accept only the literal value", async () => {
         const alepha = Alepha.create();
         await alepha.start();
-        const schema = z.const("FIXED_VALUE");
+        const schema = z.literal("FIXED_VALUE");
 
         expect(alepha.codec.decode(schema, "FIXED_VALUE")).toBe("FIXED_VALUE");
       });
@@ -1281,7 +1281,7 @@ describe("TypeProvider", () => {
       it("should reject non-matching values", async () => {
         const alepha = Alepha.create();
         await alepha.start();
-        const schema = z.const("FIXED_VALUE");
+        const schema = z.literal("FIXED_VALUE");
 
         expect(() => alepha.codec.validate(schema, "OTHER_VALUE")).toThrow();
         expect(() => alepha.codec.validate(schema, "")).toThrow();
@@ -1290,7 +1290,7 @@ describe("TypeProvider", () => {
       it("should support number literals", async () => {
         const alepha = Alepha.create();
         await alepha.start();
-        const schema = z.const(42);
+        const schema = z.literal(42);
 
         expect(alepha.codec.decode(schema, 42)).toBe(42);
         expect(() => alepha.codec.decode(schema, 43)).toThrow();

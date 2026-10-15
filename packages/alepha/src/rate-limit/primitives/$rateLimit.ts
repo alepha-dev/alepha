@@ -3,12 +3,12 @@ import {
   AlephaError,
   createMiddleware,
   createPrimitive,
-  KIND,
   type Middleware,
   Primitive,
 } from "alepha";
 import { ActorContentionError } from "alepha/actor";
 import { DateTimeProvider } from "alepha/datetime";
+import { KIND } from "alepha/internal";
 import { $logger } from "alepha/logger";
 import { HttpError, type ServerRequest } from "alepha/server";
 

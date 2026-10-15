@@ -336,7 +336,7 @@ const buildFieldInput = (
 ): BaseInputField => ({
   schema: z.schema.shape(itemSchema)[fieldName],
   path: `${parent.path}/${index}/${fieldName}`,
-  required: z.schema.requiredKeys(itemSchema).includes(fieldName),
+  required: z.schema.requiredInputKeys(itemSchema).includes(fieldName),
   form: parent.form,
   initialValue: itemValue?.[fieldName],
   props: {
@@ -433,7 +433,7 @@ export const ControlArray = (props: ControlArrayProps) => {
     if (shape) {
       value = {};
       for (const [k, p] of Object.entries(z.schema.shape(shape))) {
-        const def = z.schema.getDefault(p);
+        const def = z.schema.defaultValue(p);
         if (def !== undefined) (value as Record<string, unknown>)[k] = def;
         // Stamp the discriminant so the new item resolves to its variant.
         const literal = literalValueOf(p);

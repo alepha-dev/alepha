@@ -146,7 +146,7 @@ describe("text primary key insert schema", () => {
     // The insert schema is what makes `id` optional at the call site, so
     // assert on it directly: a runtime NOT NULL violation is the symptom, but
     // the point of the framework is that this never compiles.
-    expect(z.schema.requiredKeys(slugged.insertSchema)).toContain("id");
+    expect(z.schema.requiredInputKeys(slugged.insertSchema)).toContain("id");
 
     await expect(
       app.repository.create({ label: "Hello" } as any),

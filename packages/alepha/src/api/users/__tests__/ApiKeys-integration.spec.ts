@@ -561,7 +561,7 @@ describe("alepha/api/users - API Keys Integration (Controllers)", () => {
 
     // List with revoked
     const withRevoked = await adminApiKeyController.findApiKeys.fetch(
-      { query: { includeRevoked: true } },
+      { query: { status: ["active", "expiring", "expired", "revoked"] } },
       { user: adminUser },
     );
     expect(withRevoked.data.content).toHaveLength(2);

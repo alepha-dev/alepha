@@ -313,7 +313,7 @@ describe("FakeProvider", () => {
 
   test("generates literal values", ({ expect }) => {
     const fake = new FakeProvider();
-    const schema = z.const("ACTIVE");
+    const schema = z.literal("ACTIVE");
     const result = fake.generate(schema);
 
     expect(result).toBe("ACTIVE");

@@ -1,10 +1,5 @@
-import {
-  $inject,
-  createPrimitive,
-  KIND,
-  type Middleware,
-  Primitive,
-} from "alepha";
+import { $inject, createPrimitive, type Middleware, Primitive } from "alepha";
+import { KIND } from "alepha/internal";
 
 import type { RouteMethod } from "../constants/routeMethods.ts";
 import { ServerRouterProvider } from "../providers/ServerRouterProvider.ts";

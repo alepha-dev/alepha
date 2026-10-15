@@ -188,10 +188,10 @@ export const DataTableFilterBar = (props: DataTableFilterBarProps) => {
   const enumValuesOf = (field: DataTableFilterBarField): string[] => {
     const schema = schemaOf(field);
     if (!schema) return [];
-    if (z.schema.isEnum(schema)) return z.schema.enumValues(schema);
+    if (z.schema.isEnum(schema)) return z.schema.enumOptions(schema);
     if (z.schema.isArray(schema)) {
       const element = z.schema.unwrap(z.schema.element(schema));
-      if (z.schema.isEnum(element)) return z.schema.enumValues(element);
+      if (z.schema.isEnum(element)) return z.schema.enumOptions(element);
     }
     return [];
   };

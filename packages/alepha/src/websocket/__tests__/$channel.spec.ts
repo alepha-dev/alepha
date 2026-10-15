@@ -13,7 +13,7 @@ describe("$channel", () => {
         description: "Chat channel",
         schema: {
           in: z.object({
-            type: z.const("message"),
+            type: z.literal("message"),
             content: z.text(),
           }),
           out: z.object({
