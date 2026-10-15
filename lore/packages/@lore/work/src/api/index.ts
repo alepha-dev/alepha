@@ -59,6 +59,7 @@ import { TagCompletionMetric } from "./services/TagCompletionMetric.ts";
 import { UntriagedFeedbackMetric } from "./services/UntriagedFeedbackMetric.ts";
 import { WorkAssignedWork } from "./services/WorkAssignedWork.ts";
 import { WorkAttentionSources } from "./services/WorkAttentionSources.ts";
+import { WorkAutomationCollections } from "./services/WorkAutomationCollections.ts";
 import { WorkAutomationReferences } from "./services/WorkAutomationReferences.ts";
 import { WorkDashboard } from "./services/WorkDashboard.ts";
 import { WorkDashboardMetrics } from "./services/WorkDashboardMetrics.ts";
@@ -85,6 +86,7 @@ export const LoreWorkApi = $module({
   imports: [LoreCoreApi],
   services: [
     WorkAutomationReferences,
+    WorkAutomationCollections,
     // The dashboard metrics' declarative half, which the resolvers and the
     // scope proof read on the server (the browser gets it from
     // `LoreWorkWeb`).

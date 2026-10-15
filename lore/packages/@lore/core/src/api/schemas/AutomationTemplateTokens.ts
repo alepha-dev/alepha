@@ -16,6 +16,12 @@ export class AutomationTemplateTokens {
       );
     return names;
   }
+  public replace(text: string, value: (name: string) => string): string {
+    this.names(text);
+    return text.replace(/{{\s*([A-Za-z0-9_]+)\s*}}/g, (_match, name: string) =>
+      value(name),
+    );
+  }
   public whole(text: string): string | undefined {
     return /^{{\s*([A-Za-z0-9_]+)\s*}}$/.exec(text)?.[1];
   }

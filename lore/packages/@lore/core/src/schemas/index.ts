@@ -90,3 +90,9 @@ export {
   type AutomationRule,
   automationRuleSchema,
 } from "../api/schemas/automationRuleSchema.ts";
+export { AutomationVocabulary } from "../api/schemas/AutomationVocabulary.ts";
+export { AutomationTemplateTokens } from "../api/schemas/AutomationTemplateTokens.ts";
+export {
+  AutomationTemplateBindings,
+  type AutomationTemplateVariable,
+} from "../api/schemas/AutomationTemplateBindings.ts";

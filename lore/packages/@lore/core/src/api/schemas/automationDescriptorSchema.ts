@@ -11,6 +11,9 @@ export const automationDescriptorSchema = z
     type: z.enum(["event", "selection", "metric", "action"]),
     result: z.enum(["event", "rows", "scalar", "collection", "effect"]),
     fields: z.record(z.string().max(64), automationSlotKindSchema),
+    itemFields: z
+      .record(z.string().max(64), automationSlotKindSchema)
+      .optional(),
     slots: z.record(z.string().max(64), automationSlotSchema),
     permissions: z.array(z.string().max(64)).max(8),
     needs: z.array(automationRequirementSchema).max(4),

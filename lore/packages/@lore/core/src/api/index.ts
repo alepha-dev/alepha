@@ -48,10 +48,12 @@ import { ActivityFeedMetric } from "./services/ActivityFeedMetric.ts";
 import { AutomationAuthority } from "./services/AutomationAuthority.ts";
 import { AutomationCatalog } from "./services/AutomationCatalog.ts";
 import { AutomationClaims } from "./services/AutomationClaims.ts";
+import { AutomationContextBuilder } from "./services/AutomationContextBuilder.ts";
 import { AutomationEvents } from "./services/AutomationEvents.ts";
 import { AutomationPersistence } from "./services/AutomationPersistence.ts";
 import { AutomationRoster } from "./services/AutomationRoster.ts";
 import { AutomationRunEvidence } from "./services/AutomationRunEvidence.ts";
+import { AutomationTemplateRenderer } from "./services/AutomationTemplateRenderer.ts";
 import { AutomationVariables } from "./services/AutomationVariables.ts";
 import { CoreAutomationReferences } from "./services/CoreAutomationReferences.ts";
 import { CoreDashboard } from "./services/CoreDashboard.ts";
@@ -168,6 +170,8 @@ export const LoreCoreApi = $module({
     AutomationClaims,
     AutomationEvents,
     AutomationRoster,
+    AutomationContextBuilder,
+    AutomationTemplateRenderer,
     AutomationDiagnosticController,
     InvitationNotifications,
     // The inbox half: two templates, and the one HTML escaper the four
@@ -351,3 +355,13 @@ export { AutomationEvents } from "./services/AutomationEvents.ts";
 export { AutomationRoster } from "./services/AutomationRoster.ts";
 export { AutomationAtomic } from "./services/AutomationAtomic.ts";
 export { AutomationDispatchRegistry } from "./services/AutomationDispatchRegistry.ts";
+
+export { AutomationContextBuilder } from "./services/AutomationContextBuilder.ts";
+export type { AutomationRenderContext } from "./services/AutomationContextBuilder.ts";
+export { AutomationTemplateRenderer } from "./services/AutomationTemplateRenderer.ts";
+export type {
+  AutomationRenderedAction,
+  AutomationRenderTarget,
+} from "./services/AutomationTemplateRenderer.ts";
+export { AutomationCollections } from "./services/AutomationCollections.ts";
+export type { AutomationCollectionFormatInput } from "./services/AutomationCollections.ts";

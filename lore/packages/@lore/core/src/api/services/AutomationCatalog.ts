@@ -1,4 +1,4 @@
-import { $inject, type ZObject, z } from "alepha";
+import { $inject, type ZObject } from "alepha";
 import type { UserAccountToken } from "alepha/security";
 import { BadRequestError } from "alepha/server";
 
@@ -11,6 +11,7 @@ import {
 } from "../schemas/automationRuleSchema.ts";
 import type { AutomationSlotKind } from "../schemas/automationSlotKindSchema.ts";
 import type { AutomationSlot } from "../schemas/automationSlotSchema.ts";
+import { AutomationTemplateBindings } from "../schemas/AutomationTemplateBindings.ts";
 import { AutomationTemplateTokens } from "../schemas/AutomationTemplateTokens.ts";
 import { AutomationVocabulary } from "../schemas/AutomationVocabulary.ts";
 import { DashboardMetricCatalog } from "../schemas/DashboardMetricCatalog.ts";
@@ -35,6 +36,7 @@ export class AutomationCatalog {
   protected readonly channels = $inject(AutomationChannels);
   protected readonly references = $inject(AutomationReferences);
   protected readonly coreReferences = $inject(CoreAutomationReferences);
+  protected readonly bindings = $inject(AutomationTemplateBindings);
   protected readonly tokens = $inject(AutomationTemplateTokens);
 
   public entries(): AutomationDescriptor[] {
@@ -546,101 +548,24 @@ export class AutomationCatalog {
     path: string,
     literal = false,
   ): Promise<{ complete: boolean; value?: unknown }> {
-    if (slot.kind === "textArray" && Array.isArray(input)) {
-      if (input.length > 50)
-        throw new BadRequestError(`${path}: at most 50 values`);
-      const items = await Promise.all(
-        input.map((item, index) =>
-          this.value(
-            projectId,
-            { ...slot, kind: "text", min: undefined, max: undefined },
-            item,
-            fields,
-            variables,
-            `${path}[${index}]`,
-            literal,
-          ),
-        ),
+    let bound: { complete: boolean; value?: unknown };
+    try {
+      bound = this.bindings.resolve({
+        slot,
+        value: input,
+        fields,
+        variables,
+        path,
+        literal,
+      });
+    } catch (error) {
+      throw new BadRequestError(
+        error instanceof Error ? error.message : "Invalid template binding",
       );
-      return items.every((item) => item.complete)
-        ? { complete: true, value: items.map((item) => item.value) }
-        : { complete: false };
     }
-    let value = input;
-    if (!literal && typeof input === "string") {
-      const names = this.tokens.names(input);
-      const whole = this.tokens.whole(input);
-      if (names.length && slot.bindable === false)
-        throw new BadRequestError(`${path}: use a literal choice`);
-      for (const name of names) {
-        const variable = variables.get(name);
-        if (!Object.hasOwn(fields, name) && !variable)
-          throw new BadRequestError(`${path}: unknown placeholder '${name}'`);
-        if (variable && !variable.available)
-          throw new BadRequestError(
-            `${path}: variable '${name}' is unavailable: ${variable.reason}`,
-          );
-      }
-      if (whole) {
-        const variable = variables.get(whole);
-        const contextKind = Object.hasOwn(fields, whole)
-          ? fields[whole]
-          : undefined;
-        const kind = contextKind ?? variable?.kind;
-        if (kind !== slot.kind && !(slot.kind === "text" && slot.template))
-          throw new BadRequestError(
-            `${path}: placeholder '${whole}' has type '${kind}', expected '${slot.kind}'`,
-          );
-        if (contextKind) return { complete: false };
-        value =
-          slot.kind === "text" && slot.template
-            ? String(variable!.value!.value)
-            : variable!.value!.value;
-      } else if (names.length) {
-        if (slot.kind !== "text")
-          throw new BadRequestError(
-            `${path}: mixed interpolation yields text, expected '${slot.kind}'`,
-          );
-        return { complete: false };
-      }
-    }
+    if (!bound.complete) return bound;
+    const value = bound.value;
     const kind = slot.kind;
-    const valid =
-      kind === "number"
-        ? typeof value === "number" && Number.isFinite(value)
-        : kind === "release"
-          ? typeof value === "number" &&
-            Number.isSafeInteger(value) &&
-            value > 0
-          : kind === "boolean"
-            ? typeof value === "boolean"
-            : kind === "textArray"
-              ? Array.isArray(value) &&
-                value.length <= 50 &&
-                value.every((item) => typeof item === "string")
-              : kind === "member" || kind === "folio"
-                ? z.uuid().safeParse(value).success
-                : typeof value === "string";
-    if (!valid) throw new BadRequestError(`${path}: expected '${kind}'`);
-    if (
-      slot.values &&
-      !(Array.isArray(value) ? value : [value]).every((item) =>
-        slot.values!.includes(item as never),
-      )
-    )
-      throw new BadRequestError(`${path}: unsupported value`);
-    const size =
-      typeof value === "string" || Array.isArray(value)
-        ? value.length
-        : typeof value === "number"
-          ? value
-          : undefined;
-    if (
-      size !== undefined &&
-      ((slot.min !== undefined && size < slot.min) ||
-        (slot.max !== undefined && size > slot.max))
-    )
-      throw new BadRequestError(`${path}: outside the allowed bounds`);
     const resource =
       slot.resource ??
       (["release", "folio", "member", "channel"].includes(kind)
