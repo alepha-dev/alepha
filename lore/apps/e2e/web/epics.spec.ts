@@ -1162,9 +1162,13 @@ test.describe("Epics — shelving a plan", () => {
       const confirm = page.getByRole("alertdialog");
       await expect(confirm).toContainText("brings back the 2 quests");
       await confirm.getByRole("button", { name: "Unshelve" }).click();
-      await expect(page.getByRole("button", { name: "Shelve" })).toBeVisible({
-        timeout: 15_000,
-      });
+      // ⚠️ `exact`: a role name is a case-insensitive substring match, so a
+      // bare "Shelve" is satisfied by the dialog's own Unshelve button, and
+      // the goto below would then abort the unshelve still in flight.
+      await expect(
+        page.getByRole("button", { name: "Shelve", exact: true }),
+      ).toBeVisible({ timeout: 15_000 });
+      await expect(confirm).toHaveCount(0);
 
       await page.goto(`/${slug}/epics`);
       await expect(row).toContainText("In progress", { timeout: 15_000 });
