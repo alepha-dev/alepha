@@ -9,6 +9,7 @@ import { DeployAnalytics } from "../entities/deployAnalytics.ts";
 import { monitorHeartbeats } from "../entities/monitorHeartbeats.ts";
 import { type Monitor, monitors } from "../entities/monitors.ts";
 import { UptimeBlightService } from "../services/UptimeBlightService.ts";
+import { UptimeNotificationService } from "../services/UptimeNotificationService.ts";
 import { UptimeProber } from "../services/UptimeProber.ts";
 import {
   UptimeStateService,
@@ -24,6 +25,7 @@ export class UptimeJobs {
   protected readonly beats = $repository(monitorHeartbeats);
   protected readonly capabilities = $repository(projectCapabilities);
   protected readonly analytics = $inject(DeployAnalytics);
+  protected readonly notifications = $inject(UptimeNotificationService);
   protected readonly blights = $inject(UptimeBlightService);
   protected readonly prober = $inject(UptimeProber);
   protected readonly state = $inject(UptimeStateService);
@@ -122,6 +124,14 @@ export class UptimeJobs {
     } catch (error) {
       this.log.error(
         `Uptime blight could not be written for incident ${transition.incident.id}`,
+        error,
+      );
+    }
+    try {
+      await this.notifications.handle(transition);
+    } catch (error) {
+      this.log.error(
+        `Uptime alert could not be queued for incident ${transition.incident.id}`,
         error,
       );
     }

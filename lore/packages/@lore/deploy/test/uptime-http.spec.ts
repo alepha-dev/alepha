@@ -37,6 +37,7 @@ const monitor = (target: string, expect = {}, timeoutSecs = 1) =>
     timeoutSecs,
     confirmations: 2,
     expect,
+    notifications: { email: true, recipients: [] },
     active: true,
     status: "pending",
     statusSince: "2026-10-15T00:00:00Z",

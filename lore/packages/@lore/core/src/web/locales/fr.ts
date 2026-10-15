@@ -1950,6 +1950,9 @@ export default {
   "account.notifications.category.tasks": "Rappels de quête",
   "account.notifications.category.tasks.description":
     "Rappels sur une quête que vous avez acceptée et pas terminée.",
+  "account.notifications.category.uptime": "Contrôles de santé",
+  "account.notifications.category.uptime.description":
+    "Incidents confirmés et rétablissements de vos moniteurs de disponibilité.",
   "account.notifications.category.estates": "Identifiants de déploiement",
   "account.notifications.category.estates.description":
     "Un identifiant de déploiement que vous possédez a cessé de fonctionner.",
@@ -2711,6 +2714,14 @@ export default {
   "uptime.ongoing": "En cours",
   "uptime.duration": "$1 secondes",
   "uptime.noIncidents": "Aucun incident enregistré.",
+  "uptime.emailAlerts": "Alertes par e-mail",
+  "uptime.emailAlertsDescription":
+    "Un e-mail au début d’un incident et un autre lors du rétablissement.",
+  "uptime.recipients": "Destinataires (facultatif)",
+  "uptime.recipientsDescription":
+    "Adresses e-mail séparées par des virgules, 20 au maximum. Laissez vide pour avertir le propriétaire actuel du projet.",
+  "uptime.invalidRecipients":
+    "Saisissez 20 adresses e-mail valides au maximum.",
   "uptime.title": "Disponibilité",
   "uptime.empty": "Aucun moniteur pour le moment.",
   "project.capability.apps.option.uptime.label": "Contrôles de santé",

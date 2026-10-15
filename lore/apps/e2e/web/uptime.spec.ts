@@ -67,6 +67,12 @@ test.describe("Uptime healthchecks", () => {
     await dialog
       .getByRole("textbox", { name: "Target", exact: true })
       .fill(`${baseURL}/health`);
+    await expect(
+      dialog.getByRole("switch", { name: "Email alerts", exact: true }),
+    ).toBeChecked();
+    await dialog
+      .getByRole("textbox", { name: "Recipients (optional)", exact: true })
+      .fill("health-team@example.com");
     await dialog
       .getByRole("button", { name: "Create monitor", exact: true })
       .click();
@@ -83,6 +89,15 @@ test.describe("Uptime healthchecks", () => {
     await expect(row).toBeVisible();
     await row.getByRole("button", { name: "Edit", exact: true }).click();
     dialog = page.getByRole("dialog");
+    await expect(
+      dialog.getByRole("textbox", {
+        name: "Recipients (optional)",
+        exact: true,
+      }),
+    ).toHaveValue("health-team@example.com");
+    await dialog
+      .getByRole("switch", { name: "Email alerts", exact: true })
+      .click();
     await dialog
       .getByRole("textbox", { name: "Name", exact: true })
       .fill("Renamed probe");

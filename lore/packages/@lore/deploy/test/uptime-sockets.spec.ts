@@ -56,6 +56,7 @@ const monitor = (target: string, kind: "tcp" | "cert" = "tcp") =>
     timeoutSecs: 1,
     confirmations: 2,
     expect: {},
+    notifications: { email: true, recipients: [] },
     active: true,
     status: "pending",
     statusSince: "2026-10-15T00:00:00Z",

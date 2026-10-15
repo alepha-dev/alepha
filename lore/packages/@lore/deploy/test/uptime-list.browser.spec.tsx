@@ -32,6 +32,7 @@ describe("Monitor list row", () => {
       timeoutSecs: 10,
       confirmations: 2,
       expect: {},
+      notifications: { email: true, recipients: [] },
       active: true,
       status: "up",
       statusSince: "2026-10-15T10:00:00Z",

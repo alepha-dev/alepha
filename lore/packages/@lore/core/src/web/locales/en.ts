@@ -1963,6 +1963,9 @@ export default {
   "account.notifications.category.tasks": "Quest reminders",
   "account.notifications.category.tasks.description":
     "Nudges about a quest you accepted and have not finished.",
+  "account.notifications.category.uptime": "Healthchecks",
+  "account.notifications.category.uptime.description":
+    "Confirmed outages and recoveries from your uptime monitors.",
   "account.notifications.category.estates": "Deploy credentials",
   "account.notifications.category.estates.description":
     "A deploy credential you own has stopped working.",
@@ -2720,6 +2723,13 @@ export default {
   "uptime.ongoing": "Ongoing",
   "uptime.duration": "$1 seconds",
   "uptime.noIncidents": "No incidents recorded.",
+  "uptime.emailAlerts": "Email alerts",
+  "uptime.emailAlertsDescription":
+    "One email when an incident opens and one when it recovers.",
+  "uptime.recipients": "Recipients (optional)",
+  "uptime.recipientsDescription":
+    "Comma-separated email addresses, up to 20. Leave blank to alert the current project owner.",
+  "uptime.invalidRecipients": "Enter up to 20 valid email addresses.",
   "uptime.title": "Uptime",
   "uptime.empty": "No monitors yet.",
   "project.capability.apps.option.uptime.label": "Healthchecks",

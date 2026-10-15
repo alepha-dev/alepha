@@ -3,6 +3,7 @@ import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
 import { monitorExpectSchema } from "../schemas/monitorExpectSchema.ts";
+import { monitorNotificationSettingsSchema } from "../schemas/monitorNotificationSettingsSchema.ts";
 import { probeResultSchema } from "../schemas/probeResultSchema.ts";
 
 /**
@@ -25,6 +26,10 @@ export const monitors = $entity({
     timeoutSecs: db.default(z.integer().min(1).max(30), 10),
     confirmations: db.default(z.integer().min(1).max(100), 2),
     expect: db.default(monitorExpectSchema, {}),
+    notifications: db.default(monitorNotificationSettingsSchema, {
+      email: true,
+      recipients: [],
+    }),
     active: db.default(z.boolean(), true),
     status: db.default(z.enum(["up", "down", "pending", "paused"]), "pending"),
     statusSince: z.string(),
