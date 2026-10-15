@@ -638,3 +638,20 @@ the controller. Earlier effects are retained when a later step refuses.
 allocating an identifier. Large folio bodies stay in domain storage and revision
 history, never in automation snapshots. Trusted downstream job markers retain
 run and operation identity as well as automation identity.
+
+## Automation enable intent and health (#E43, #Q2034)
+
+`AutomationHealth` keeps the enable switch separate from dependency health.
+Disabled rules display disabled. Capability, option, vocabulary and channel
+loss mark otherwise valid rules broken; restoration revalidates without
+changing enable intent. Author, permission, credential, shared-variable review
+and unknown-effect pauses retain their review flag until a valid explicit
+re-enable. `inspect` is read-only, including refusals.
+
+Capability changes immediately revalidate project rules in pages. The fixed
+five-minute dispatcher also reconciles at most 50 rules per tick, ordering by a durable
+last-checked value so process restarts cannot strand later rules. Runtime checks use
+fresh primary reads before every effect. Native transition batches bind the
+state change and its single run-evidence record under the rule version fence;
+unchanged states produce no record. Membership removal and foreign shared
+variable edits use this same transition path.

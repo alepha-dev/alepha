@@ -1,18 +1,22 @@
 import { $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { DbVersionMismatchError } from "alepha/orm";
+import { DbCacheProvider } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 import { BadRequestError, ConflictError } from "alepha/server";
 
 import type { AutomationRun } from "../entities/automationRuns.ts";
-import type { Automation } from "../entities/automations.ts";
+import { automationRuns } from "../entities/automationRuns.ts";
+import { automations, type Automation } from "../entities/automations.ts";
 import {
   automationRunSnapshotSchema,
   type AutomationRunSnapshot,
 } from "../schemas/automationRunSnapshotSchema.ts";
 import type { AutomationSlotKind } from "../schemas/automationSlotKindSchema.ts";
 import { AutomationAccess } from "./AutomationAccess.ts";
+import { AutomationAtomic } from "./AutomationAtomic.ts";
+import { AutomationBatchRepository } from "./AutomationBatchRepository.ts";
 import { AutomationCatalog } from "./AutomationCatalog.ts";
+import { AutomationDatabase } from "./AutomationDatabase.ts";
 import { AutomationPersistence } from "./AutomationPersistence.ts";
 
 /**
@@ -21,6 +25,15 @@ import { AutomationPersistence } from "./AutomationPersistence.ts";
  * separate store and are never removed by the detail retention sweep.
  */
 export class AutomationRunEvidence {
+  protected readonly database = $inject(AutomationDatabase);
+  protected readonly atomic = $inject(AutomationAtomic);
+  protected readonly cache = $inject(DbCacheProvider);
+  protected readonly ruleRows = $inject(
+    AutomationBatchRepository.of(automations),
+  );
+  protected readonly runRows = $inject(
+    AutomationBatchRepository.of(automationRuns),
+  );
   protected readonly persistence = $inject(AutomationPersistence);
   protected readonly catalog = $inject(AutomationCatalog);
   protected readonly access = $inject(AutomationAccess);
@@ -394,35 +407,82 @@ export class AutomationRunEvidence {
     health: Automation["health"],
     reason: string | undefined,
     requiresApproval: boolean,
+    options: {
+      expectedVersion?: number;
+      patch?: Partial<Pick<Automation, "enabled" | "revision">> & {
+        nextRunAt?: string | null;
+        scheduleCron?: string | null;
+      };
+    } = {},
   ): Promise<boolean> {
-    reason = reason?.slice(0, 1024);
-    const rule = await this.persistence.rules.getById(ruleId);
-    if (
-      rule.health === health &&
-      rule.reason === reason &&
-      rule.requiresApproval === requiresApproval
-    )
-      return false;
-    try {
-      await this.persistence.rules.updateById(rule.id, {
-        version: rule.version,
-        health,
-        reason: reason ?? null,
-        requiresApproval,
+    return this.database.primary(async () => {
+      reason = reason?.slice(0, 1024);
+      const rule = await this.persistence.rules.getById(ruleId);
+      if (
+        options.expectedVersion !== undefined &&
+        rule.version !== options.expectedVersion
+      )
+        return false;
+      const patch = options.patch ?? {};
+      if (
+        rule.health === health &&
+        rule.reason === reason &&
+        rule.requiresApproval === requiresApproval &&
+        Object.entries(patch).every(
+          ([key, value]) => rule[key as keyof Automation] === value,
+        )
+      )
+        return false;
+      const now = this.dateTime.nowISOString();
+      const prepared = await this.prepare({
+        rule,
+        occurrenceId: "health",
+        triggeredAt: now,
+        status: health === "active" ? "skipped" : "refused",
+        reason:
+          reason ??
+          (patch.enabled === false
+            ? "Automation disabled"
+            : "Automation health restored"),
+        health: { from: rule.health, to: health },
       });
-    } catch (error) {
-      if (error instanceof DbVersionMismatchError) return false;
-      throw error;
-    }
-    await this.start({
-      rule,
-      occurrenceId: `health:${crypto.randomUUID()}`,
-      triggeredAt: this.dateTime.nowISOString(),
-      status: health === "active" ? "skipped" : "refused",
-      reason: reason ?? "Automation health restored",
-      health: { from: rule.health, to: health },
+      try {
+        await this.atomic.guarded(
+          rule.projectId,
+          this.ruleRows.exists({ id: rule.id, version: rule.version }),
+          [
+            this.ruleRows.updateStatement(
+              { id: rule.id, version: rule.version },
+              {
+                ...patch,
+                health,
+                reason: reason ?? null,
+                requiresApproval,
+                updatedAt: now,
+              },
+            ),
+            this.runRows.insertStatement({
+              projectId: rule.projectId,
+              automationId: rule.id,
+              ruleRevision: patch.revision ?? rule.revision,
+              occurrenceId: `health:${crypto.randomUUID()}`,
+              triggeredAt: now,
+              finishedAt: now,
+              status: prepared.status,
+              reason: prepared.reason,
+              snapshot: prepared.snapshot,
+            }),
+          ],
+        );
+      } catch (error) {
+        const latest = await this.persistence.rules.findById(rule.id);
+        if (!latest || latest.version !== rule.version) return false;
+        throw error;
+      }
+      await this.cache.invalidateTable("automations");
+      await this.cache.invalidateTable("automation_runs");
+      return true;
     });
-    return true;
   }
 
   public async read(id: string, user: UserAccountToken) {

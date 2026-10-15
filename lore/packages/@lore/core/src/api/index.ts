@@ -53,9 +53,11 @@ import { AutomationAuthority } from "./services/AutomationAuthority.ts";
 import { AutomationCatalog } from "./services/AutomationCatalog.ts";
 import { AutomationClaims } from "./services/AutomationClaims.ts";
 import { AutomationContextBuilder } from "./services/AutomationContextBuilder.ts";
+import { AutomationDependencies } from "./services/AutomationDependencies.ts";
 import { AutomationDomainActions } from "./services/AutomationDomainActions.ts";
 import { AutomationEventDispatch } from "./services/AutomationEventDispatch.ts";
 import { AutomationEvents } from "./services/AutomationEvents.ts";
+import { AutomationHealth } from "./services/AutomationHealth.ts";
 import { AutomationJobService } from "./services/AutomationJobService.ts";
 import { AutomationMutationContext } from "./services/AutomationMutationContext.ts";
 import { AutomationNotificationSender } from "./services/AutomationNotificationSender.ts";
@@ -177,6 +179,8 @@ export const LoreCoreApi = $module({
     AutomationCatalog,
     AutomationVariables,
     AutomationAuthority,
+    AutomationDependencies,
+    AutomationHealth,
     AutomationMutationContext,
     AutomationDomainActions,
     AutomationRunEvidence,
@@ -447,3 +451,12 @@ export {
   type AutomationDomainHandler,
 } from "./services/AutomationDomainActions.ts";
 export { AutomationBatchRepository } from "./services/AutomationBatchRepository.ts";
+
+export {
+  AutomationHealth,
+  type AutomationHealthDecision,
+} from "./services/AutomationHealth.ts";
+export {
+  AutomationDependencies,
+  AutomationDependencyError,
+} from "./services/AutomationDependencies.ts";

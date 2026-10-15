@@ -5,6 +5,10 @@ import type { AutomationRule } from "../schemas/automationRuleSchema.ts";
 import { AutomationAccess } from "./AutomationAccess.ts";
 import { AutomationCatalog } from "./AutomationCatalog.ts";
 import { AutomationDatabase } from "./AutomationDatabase.ts";
+import {
+  AutomationDependencies,
+  AutomationDependencyError,
+} from "./AutomationDependencies.ts";
 import { AutomationPersistence } from "./AutomationPersistence.ts";
 import { AutomationRunEvidence } from "./AutomationRunEvidence.ts";
 import { AutomationVariables } from "./AutomationVariables.ts";
@@ -14,6 +18,7 @@ import { AutomationVariables } from "./AutomationVariables.ts";
  * claimed. Its own identity is never accepted as execution authority.
  */
 export class AutomationAuthority {
+  protected readonly dependencies = $inject(AutomationDependencies);
   protected readonly database = $inject(AutomationDatabase);
   protected readonly evidence = $inject(AutomationRunEvidence);
   protected readonly catalog = $inject(AutomationCatalog);
@@ -25,6 +30,7 @@ export class AutomationAuthority {
     automationId: string;
     revision: number;
     variables?: Array<{ key: string; version: number }>;
+    readOnly?: boolean;
     effect?: { index: number; action: AutomationRule["actions"][number] };
   }) {
     return this.database.primary(() => this.checkPrimary(input));
@@ -42,9 +48,12 @@ export class AutomationAuthority {
         rule.reason ?? "Automation requires author review",
       );
     try {
+      await this.dependencies.assert(rule);
       const user = await this.access.author(rule);
       await this.access.assert(rule.projectId, user, "automation:write");
-      const variables = await this.variables.snapshot(rule, user);
+      const variables = await this.variables.snapshot(rule, user, {
+        transition: false,
+      });
       if (
         input.variables &&
         (variables.length !== input.variables.length ||
@@ -97,12 +106,19 @@ export class AutomationAuthority {
       ).slice(0, 1024);
       const latest = await this.persistence.rules.findById(rule.id);
       if (
+        !input.readOnly &&
         latest &&
         latest.enabled &&
         latest.revision === rule.revision &&
         !latest.requiresApproval
       )
-        await this.evidence.transition(rule.id, "paused", reason, true);
+        await this.evidence.transition(
+          rule.id,
+          error instanceof AutomationDependencyError ? "broken" : "paused",
+          reason,
+          !(error instanceof AutomationDependencyError),
+          { expectedVersion: latest.version },
+        );
       throw error;
     }
   }

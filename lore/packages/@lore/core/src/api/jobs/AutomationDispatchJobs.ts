@@ -4,8 +4,10 @@ import { $job } from "alepha/api/jobs";
 import { AutomationClaims } from "../services/AutomationClaims.ts";
 import { AutomationDispatchRegistry } from "../services/AutomationDispatchRegistry.ts";
 import { AutomationEvents } from "../services/AutomationEvents.ts";
+import { AutomationHealth } from "../services/AutomationHealth.ts";
 
 export class AutomationDispatchJobs {
+  protected readonly health = $inject(AutomationHealth);
   protected readonly registry = $inject(AutomationDispatchRegistry);
   protected readonly events = $inject(AutomationEvents);
   protected readonly claims = $inject(AutomationClaims);
@@ -22,6 +24,7 @@ export class AutomationDispatchJobs {
     cron: "*/5 * * * *",
     timeout: [2, "minutes"],
     handler: async () => {
+      await this.health.sweep();
       await this.registry.tick();
     },
   });

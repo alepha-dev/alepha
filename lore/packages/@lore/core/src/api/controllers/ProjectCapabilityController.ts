@@ -6,6 +6,8 @@ import { CapabilityRegistry } from "../schemas/CapabilityRegistry.ts";
 import { projectResourceSchema } from "../schemas/projectResourceSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { ProjectPermissions } from "../security/ProjectPermissions.ts";
+import { AutomationHealth } from "../services/AutomationHealth.ts";
+import { BestEffort } from "../services/BestEffort.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
 import { ProjectResourceMapper } from "../services/ProjectResourceMapper.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
@@ -28,6 +30,8 @@ import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
  * an answer to it; Settings is not asking anything.
  */
 export class ProjectCapabilityController {
+  protected readonly automationHealth = $inject(AutomationHealth);
+  protected readonly bestEffort = $inject(BestEffort);
   protected readonly security = $inject(ProjectSecurityService);
   protected readonly registry = $inject(CapabilityRegistry);
   protected readonly projectMapper = $inject(ProjectResourceMapper);
@@ -146,6 +150,11 @@ export class ProjectCapabilityController {
           });
         }
       }
+
+      await this.bestEffort.run(
+        "Revalidate automations after capability change",
+        () => this.automationHealth.project(params.projectId),
+      );
 
       const row = await project.getOne({
         where: { id: { eq: params.projectId } },

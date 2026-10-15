@@ -16,6 +16,10 @@ import {
 } from "../schemas/automationVariableValueSchema.ts";
 import { AutomationAccess } from "./AutomationAccess.ts";
 import { AutomationCatalog } from "./AutomationCatalog.ts";
+import {
+  AutomationDependencies,
+  AutomationDependencyError,
+} from "./AutomationDependencies.ts";
 import { AutomationPersistence } from "./AutomationPersistence.ts";
 import { AutomationRunEvidence } from "./AutomationRunEvidence.ts";
 
@@ -24,6 +28,7 @@ import { AutomationRunEvidence } from "./AutomationRunEvidence.ts";
  * must approve a changed version before it can redirect their stored program.
  */
 export class AutomationVariables {
+  protected readonly dependencies = $inject(AutomationDependencies);
   protected readonly evidence = $inject(AutomationRunEvidence);
   protected readonly access = $inject(AutomationAccess);
   protected readonly cron = $inject(AutomationCron);
@@ -93,8 +98,20 @@ export class AutomationVariables {
       }
       for await (const rule of this.consumers(projectId, key)) {
         const requiresApproval = rule.authorUserId !== user.id;
+        if (requiresApproval)
+          await this.evidence.transition(
+            rule.id,
+            "paused",
+            `Shared variable '${key}' changed; author review is required`,
+            true,
+          );
+        const latest = await this.persistence.rules.getById(rule.id);
+        if (latest.revision !== rule.revision)
+          throw new ConflictError(
+            "Automation changed while validating shared variables",
+          );
         await this.persistence.rules.updateById(rule.id, {
-          version: rule.version,
+          version: latest.version,
           revision: rule.revision + 1,
           ...(this.predicateUses(rule.rule, key) ? { baseline: null } : {}),
           ...(!requiresApproval &&
@@ -106,13 +123,6 @@ export class AutomationVariables {
                   schedules.get(rule.id)!,
                   this.time.nowISOString(),
                 ),
-              }
-            : {}),
-          ...(requiresApproval
-            ? {
-                health: "paused",
-                requiresApproval: true,
-                reason: `Shared variable '${key}' changed; author review is required`,
               }
             : {}),
         });
@@ -169,10 +179,15 @@ export class AutomationVariables {
    * Read again for each run/effect. Resource status and source authority are
    * live inputs, even when the stored value and its version did not change.
    */
-  public async snapshot(rule: Automation, user: UserAccountToken) {
+  public async snapshot(
+    rule: Automation,
+    user: UserAccountToken,
+    options: { transition?: boolean } = {},
+  ) {
     if (user.id !== rule.authorUserId)
       throw new ForbiddenError("Validate a run as its immutable author");
     try {
+      await this.dependencies.assert(rule);
       const keys = [...this.references(rule.rule)];
       const rows = keys.length
         ? await this.persistence.variables.findMany({
@@ -194,15 +209,17 @@ export class AutomationVariables {
           : "Variable or rule validation failed";
       const latest = await this.persistence.rules.findById(rule.id);
       if (
+        options.transition !== false &&
         latest &&
         latest.revision === rule.revision &&
         !latest.requiresApproval
       )
         await this.evidence.transition(
           rule.id,
-          "paused",
+          error instanceof AutomationDependencyError ? "broken" : "paused",
           reason.slice(0, 1024),
-          true,
+          !(error instanceof AutomationDependencyError),
+          { expectedVersion: latest.version },
         );
       throw error;
     }

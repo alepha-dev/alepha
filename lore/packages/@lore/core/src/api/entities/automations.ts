@@ -28,6 +28,7 @@ export const automations = $entity({
       "active",
     ),
     reason: z.string().max(1024).optional(),
+    healthCheckedAt: db.default(z.integer().nonnegative(), 0),
     requiresApproval: db.default(z.boolean(), false),
     rule: automationRuleSchema,
     // Configuration revision is independent of scheduler/baseline writes.
@@ -45,6 +46,7 @@ export const automations = $entity({
   indexes: [
     { columns: ["enabled", "health", "nextRunAt", "id"] },
     { columns: ["projectId", "authorUserId"] },
+    { columns: ["healthCheckedAt", "id"] },
     { columns: ["authorUserId"] },
   ],
 });
