@@ -21,6 +21,7 @@ import { FolioNameService } from "./services/FolioNameService.ts";
  * @module
  */ import { FoliosByDirectoryMetric } from "./services/FoliosByDirectoryMetric.ts";
 import { FoliosThisMonthMetric } from "./services/FoliosThisMonthMetric.ts";
+import { KnowledgeAutomationActions } from "./services/KnowledgeAutomationActions.ts";
 import { KnowledgeAutomationReferences } from "./services/KnowledgeAutomationReferences.ts";
 import { KnowledgeDashboard } from "./services/KnowledgeDashboard.ts";
 import { KnowledgeDashboardMetrics } from "./services/KnowledgeDashboardMetrics.ts";
@@ -33,6 +34,7 @@ export const LoreKnowledgeApi = $module({
   // Core first: booting this module alone boots what it depends on.
   imports: [LoreCoreApi],
   services: [
+    KnowledgeAutomationActions,
     KnowledgeAutomationReferences,
     FolioNameService,
     FolioDirectoryService,

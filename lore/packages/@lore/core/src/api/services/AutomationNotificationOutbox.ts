@@ -33,6 +33,8 @@ export class AutomationNotificationOutbox {
   public prepare(input: {
     projectId: number;
     automationId: string;
+    runId?: string;
+    operationId?: string;
     payload: unknown;
     key: string;
   }) {
@@ -63,7 +65,7 @@ export class AutomationNotificationOutbox {
     return {
       id,
       statements: [
-        sql`INSERT INTO automation_receipts (id, version, project_id, automation_id, identity, kind, status, occurrence_id, rule_revision, occurred_at, replay_until, cursor, queue_attempts, roster_complete, created_at, updated_at) VALUES (${marker}, 0, ${input.projectId}, ${input.automationId}, ${marker}, 'job_origin', 'committed', ${id}, 0, ${this.database.timestamp(now)}, ${this.database.timestamp(this.time.now().add(90, "days").toISOString())}, 0, 0, FALSE, ${this.database.timestamp(now)}, ${this.database.timestamp(now)})`,
+        sql`INSERT INTO automation_receipts (id, version, project_id, automation_id, run_id, parent_id, identity, kind, status, occurrence_id, rule_revision, occurred_at, replay_until, cursor, queue_attempts, roster_complete, created_at, updated_at) VALUES (${marker}, 0, ${input.projectId}, ${input.automationId}, ${input.runId ?? null}, ${input.operationId ?? null}, ${marker}, 'job_origin', 'committed', ${id}, 0, ${this.database.timestamp(now)}, ${this.database.timestamp(this.time.now().add(90, "days").toISOString())}, 0, 0, FALSE, ${this.database.timestamp(now)}, ${this.database.timestamp(now)})`,
         this.executions.insertStatement({
           id,
           createdAt: now,

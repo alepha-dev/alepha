@@ -1,4 +1,9 @@
-import { ProjectLimits } from "@lore/core/api";
+import {
+  ProjectLimits,
+  AutomationBatchRepository,
+  AutomationMutationContext,
+  LoreAudits,
+} from "@lore/core/api";
 import { projects } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { $repository, $sequence } from "alepha/orm";
@@ -99,6 +104,12 @@ export interface CreateQuestInput {
  * those tables in the ORM/migration graph — same pattern as `SigilService`.
  */
 export class QuestService {
+  protected readonly automationMutations = $inject(AutomationMutationContext);
+  protected readonly automationRows = $inject(
+    AutomationBatchRepository.of(quests),
+  );
+  protected readonly audits = $inject(LoreAudits);
+
   protected readonly quests = $repository(quests);
   protected readonly projects = $repository(projects);
   protected readonly areaService = $inject(AreaService);
@@ -175,21 +186,29 @@ export class QuestService {
    * transaction: a create that fails after the sequence only leaves a gap
    * in the numbers.
    */
-  async createQuest(input: CreateQuestInput): Promise<Quest> {
-    // Before the sequence, so a refused create does not burn a shortId.
-    // Here rather than in the controllers because this is the single
-    // creation path - the quest form, the MCP tool, the CSV import and
-    // blight forwarding all land on it, and a cap enforced in only some
-    // of them is not a cap.
+  /**
+   * Read-only capacity preflight, also used by automation previews.
+   */
+  public async assertCapacity(projectId: number): Promise<number> {
     const maxQuestsPerProject = await this.limits.maxQuestsPerProject();
     const questCount = await this.quests.count({
-      projectId: { eq: input.projectId },
+      projectId: { eq: projectId },
     });
     if (questCount >= maxQuestsPerProject) {
       throw new ForbiddenError(
         `This project has reached the maximum number of quests allowed (${maxQuestsPerProject}).`,
       );
     }
+    return maxQuestsPerProject;
+  }
+
+  async createQuest(input: CreateQuestInput): Promise<Quest> {
+    // Before the sequence, so a refused create does not burn a shortId.
+    // Here rather than in the controllers because this is the single
+    // creation path - the quest form, the MCP tool, the CSV import and
+    // blight forwarding all land on it, and a cap enforced in only some
+    // of them is not a cap.
+    await this.assertCapacity(input.projectId);
 
     const shortId = await this.questShortId.next(String(input.projectId));
 
@@ -207,7 +226,7 @@ export class QuestService {
       input.area,
     );
 
-    return this.quests.create({
+    const data = {
       projectId: input.projectId,
       shortId,
       title: input.title,
@@ -231,6 +250,26 @@ export class QuestService {
       source: input.source,
       createdBy: input.createdBy,
       history: [],
-    });
+    };
+    return this.automationMutations.create(
+      {
+        repository: this.automationRows,
+        data,
+        identity: (row) => ({
+          projectId: Number(row.projectId),
+          shortId: Number(row.shortId),
+        }),
+        audit: {
+          type: "quest",
+          action: "create",
+          ...this.audits.resource(
+            "quest",
+            { projectId: input.projectId, shortId, title: input.title },
+            this.automationMutations.current?.user,
+          ),
+        },
+      },
+      () => this.quests.create(data),
+    );
   }
 }

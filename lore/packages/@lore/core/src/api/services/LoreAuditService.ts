@@ -4,6 +4,7 @@ import type { CreateAudit } from "alepha/api/audits";
 import { $logger } from "alepha/logger";
 
 import { ProjectAnalytics } from "../entities/projectAnalytics.ts";
+import { AutomationMutationContext } from "./AutomationMutationContext.ts";
 
 /**
  * The framework's audit log, plus the rate point that goes with it (#E65).
@@ -62,6 +63,15 @@ export class LoreAuditService extends AuditService {
     options: Omit<CreateAudit, "type" | "action"> = {},
   ): Promise<AuditEntity | undefined> {
     try {
+      const native = this.alepha.has(AutomationMutationContext)
+        ? this.alepha
+            .inject(AutomationMutationContext)
+            .consumeAudit(type, action, options)
+        : undefined;
+      if (native) {
+        if (native.activity) await this.recordActivity(native.activity);
+        return undefined;
+      }
       return await super.record(type, action, options);
     } catch (error) {
       this.logger.error(
@@ -107,7 +117,12 @@ export class LoreAuditService extends AuditService {
    * because the dataset's `project` dimension means a project id and a future
    * scope of another kind would otherwise be read as one.
    */
-  protected async recordActivity(entry: AuditEntity): Promise<void> {
+  protected async recordActivity(
+    entry: Pick<
+      AuditEntity,
+      "scopeType" | "scopeId" | "type" | "action" | "userId"
+    >,
+  ): Promise<void> {
     if (entry.scopeType !== "project" || !entry.scopeId) {
       return;
     }

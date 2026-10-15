@@ -4,6 +4,7 @@ import { join } from "node:path";
 
 import {
   AutomationAtomic,
+  AutomationDomainActions,
   AutomationNotifications,
   AutomationNotificationOutbox,
   AutomationContextBuilder,
@@ -17,6 +18,7 @@ import {
   AutomationRunEvidence,
 } from "@lore/core/api";
 import type { AutomationRule } from "@lore/core/schemas";
+import { FolioController } from "@lore/knowledge/api";
 import { FeedbackController } from "@lore/work/api";
 import { Alepha } from "alepha";
 import { JobProvider } from "alepha/api/jobs";
@@ -145,6 +147,7 @@ describe("Durable automation primitives on local D1", () => {
         capabilities: [
           { key: "work", options: { automations: true } },
           { key: "support" },
+          { key: "knowledge" },
         ],
       });
       await entities.users.updateById(project.createdBy, { roles: ["user"] });
@@ -452,6 +455,112 @@ describe("Durable automation primitives on local D1", () => {
       expect(
         await alepha.inject(AutomationNotificationOutbox).status(String(jobId)),
       ).toMatchObject({ status: "delivered" });
+
+      const domainAuthor = { id: project.createdBy, roles: ["user"] };
+      const domainFolio = await alepha.inject(FolioController).create(
+        {
+          body: {
+            projectId: project.id,
+            title: "D1 append log",
+            content: "D1 baseline",
+          },
+        },
+        { user: domainAuthor },
+      );
+      const domainAst: AutomationRule = {
+        version: 1,
+        trigger: { kind: "schedule", cron: "*/5 * * * *" },
+        select: { kind: "scalar", key: "activeQuests", filters: {} },
+        guard: null,
+        actions: [
+          { kind: "appendFolio", folio: domainFolio.id, text: "D1 append" },
+          {
+            kind: "createQuest",
+            title: "Native domain quest",
+            description: "Bounded",
+            area: "native-domain",
+          },
+        ],
+      };
+      const domainCreated = await persistence.rules.create({
+        projectId: project.id,
+        authorUserId: project.createdBy,
+        title: "D1 domain effects",
+        rule: domainAst,
+      });
+      const domainEnabled = await persistence.rules.updateById(
+        domainCreated.id,
+        { enabled: true },
+      );
+      const domainContext = await contexts.source(project.id, "activeQuests", {
+        value: 1,
+      });
+      const domainAt = alepha.inject(DateTimeProvider).nowISOString();
+      const domainEvidence = await evidence.prepare({
+        rule: domainEnabled,
+        occurrenceId: `schedule:${domainAt}`,
+        triggeredAt: domainAt,
+        inputs: domainContext.values,
+        selected: [domainContext.values],
+        matched: 1,
+        planned: [{ index: 0 }, { index: 1 }],
+      });
+      const domainClaim = await claims.claim({
+        automationId: domainEnabled.id,
+        revision: domainEnabled.revision,
+        source: { kind: "schedule", scheduledAt: domainAt },
+        prepared: domainEvidence,
+      });
+      expect(domainClaim.state).toBe("claimed");
+      const domainInput = {
+        occurrenceId: domainClaim.receipt!.id,
+        token: domainClaim.receipt!.leaseToken!,
+        context: domainContext,
+      };
+      const domainActions = alepha.inject(AutomationDomainActions);
+      const appended = await domainActions.execute({
+        ...domainInput,
+        index: 0,
+      });
+      expect(appended.result).toMatchObject({
+        folio_id: domainFolio.id,
+        revision: 1,
+        changed: true,
+        audit_recorded: true,
+      });
+      expect((await entities.folios.getById(domainFolio.id)).content).toBe(
+        "D1 baseline\n\nD1 append",
+      );
+      expect(
+        (await domainActions.execute({ ...domainInput, index: 0 })).id,
+      ).toBe(appended.id);
+      await claims.advance(domainInput.occurrenceId, domainInput.token, {
+        index: 0,
+        receiptId: appended.id,
+      });
+      const questCreated = await domainActions.execute({
+        ...domainInput,
+        index: 1,
+      });
+      expect(questCreated.result).toMatchObject({
+        changed: true,
+        audit_recorded: true,
+      });
+      const createdQuest = await entities.quests.getById(
+        Number(questCreated.result!.quest_id),
+      );
+      expect(createdQuest).toMatchObject({
+        title: "Native domain quest",
+        createdBy: project.createdBy,
+        area: "native-domain",
+      });
+      expect(
+        (await domainActions.execute({ ...domainInput, index: 1 })).id,
+      ).toBe(questCreated.id);
+      const [nativeAuditCount] = await provider.execute(
+        sql`SELECT COUNT(*) AS count FROM audits WHERE scope_type = 'project' AND scope_id = ${String(project.id)} AND json_extract(metadata, '$.automationId') = ${domainEnabled.id}`,
+      );
+      expect(Number(nativeAuditCount.count)).toBe(2);
 
       await entities.organizationMembers.deleteMany({
         organizationId: project.organizationId!,

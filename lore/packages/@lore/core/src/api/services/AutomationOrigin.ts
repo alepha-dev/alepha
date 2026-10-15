@@ -33,7 +33,12 @@ export class AutomationOrigin {
     const marker = await this.marker(executionId);
     return marker
       ? await this.run(
-          { projectId: marker.projectId, automationId: marker.automationId },
+          {
+            projectId: marker.projectId,
+            automationId: marker.automationId,
+            runId: marker.runId,
+            operationId: marker.parentId,
+          },
           handler,
         )
       : await handler();
@@ -90,6 +95,8 @@ export class AutomationOrigin {
           automationId: this.current.automationId,
           occurrenceId: executionId,
           ruleRevision: 0,
+          runId: this.current.runId,
+          parentId: this.current.operationId,
           occurredAt: now,
           replayUntil: this.time.now().add(90, "days").toISOString(),
         });
@@ -106,6 +113,8 @@ export class AutomationOrigin {
           ? {
               projectId: marker.projectId,
               automationId: marker.automationId,
+              runId: marker.runId,
+              operationId: marker.parentId,
             }
           : undefined,
       );
@@ -115,6 +124,8 @@ export class AutomationOrigin {
 export interface AutomationOriginIdentity {
   projectId: number;
   automationId?: string;
+  runId?: string;
+  operationId?: string;
 }
 declare module "alepha" {
   interface State {

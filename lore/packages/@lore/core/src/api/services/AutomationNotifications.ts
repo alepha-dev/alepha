@@ -199,13 +199,20 @@ export class AutomationNotifications {
         variables: occurrence.snapshot!.variables,
         effect: { index: input.index, action: resolved },
       });
+      const operationId = await this.claims.actionIdentity(occurrence, {
+        index: input.index,
+        row: input.row,
+        deliveryKey: input.delivery?.key,
+      });
       const outbox = prepared.skipped
         ? undefined
         : this.outbox.prepare({
             projectId: rule.projectId,
             automationId: rule.id,
+            runId: occurrence.runId ?? undefined,
+            operationId,
             payload: prepared.payload,
-            key: `automation:${await this.claims.actionIdentity(occurrence, { index: input.index, row: input.row, deliveryKey: input.delivery?.key })}`,
+            key: `automation:${operationId}`,
           });
       const receipt = await this.claims.atomicEffect(
         input.occurrenceId,

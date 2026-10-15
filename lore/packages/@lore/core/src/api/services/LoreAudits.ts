@@ -1,4 +1,4 @@
-import { $audit } from "alepha/api/audits";
+import { $audit, type CreateAudit } from "alepha/api/audits";
 import type { UserAccountToken } from "alepha/security";
 
 /**
@@ -332,6 +332,22 @@ export class LoreAudits {
    * deletion as a reference to nothing, which is why the email is copied onto
    * the row instead of joined at read time.
    */
+  resource(
+    kind: string,
+    value: { projectId: number; shortId: number; title: string },
+    user: UserAccountToken | undefined,
+    metadata?: Record<string, unknown>,
+  ): Omit<CreateAudit, "type" | "action"> {
+    return {
+      ...this.actor(user),
+      ...this.scope(value.projectId),
+      resourceType: kind,
+      resourceId: String(value.shortId),
+      description: value.title,
+      ...(metadata ? { metadata } : {}),
+    };
+  }
+
   actor(user: UserAccountToken | undefined): {
     userId?: string;
     userEmail?: string;

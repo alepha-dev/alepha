@@ -1,6 +1,8 @@
+import { AutomationBatchRepository, AutomationDatabase } from "@lore/core/api";
 import { $inject, Alepha, AlephaError } from "alepha";
+import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
-import { $repository } from "alepha/orm";
+import { $repository, sql } from "alepha/orm";
 
 import { folioHistoryAtom } from "../atoms/folioHistoryAtom.ts";
 import {
@@ -53,6 +55,11 @@ export interface RevisionPlan {
    * {@link FolioHistoryService.recordRevision} reads nothing (#Q2637).
    */
   first?: boolean;
+  deferred?: {
+    head?: FolioRevision;
+    live: Array<{ id: string }>;
+    previousContent: string | undefined;
+  };
 }
 
 interface RevisionInput {
@@ -78,6 +85,11 @@ interface RevisionInput {
  */
 export class FolioHistoryService {
   protected readonly revisions = $repository(folioRevisions);
+  protected readonly batch = $inject(
+    AutomationBatchRepository.of(folioRevisions),
+  );
+  protected readonly database = $inject(AutomationDatabase);
+  protected readonly crypto = $inject(CryptoProvider);
   protected readonly alepha = $inject(Alepha);
   protected readonly dateTime = $inject(DateTimeProvider);
 
@@ -117,24 +129,40 @@ export class FolioHistoryService {
    * it is pinned or a revert, or when it has aged out of the window — in
    * every one of those cases the caller must insert a new row.
    */
-  protected async findOpenRevision(
+  protected async latestRevision(
     folioId: string,
-    byUserId: string,
   ): Promise<FolioRevision | undefined> {
     const [head] = await this.revisions.findMany({
-      where: { folioId: { eq: folioId } },
+      where: { folioId },
       orderBy: [
         { column: "at", direction: "desc" },
         { column: "id", direction: "desc" },
       ],
       limit: 1,
     });
-    if (!head) return undefined;
-    if (head.byUserId !== byUserId) return undefined;
-    if (head.pinned) return undefined;
-    if (head.action === "revert") return undefined;
-    const age = this.dateTime.nowMillis() - Date.parse(head.at);
-    return age < this.COALESCE_WINDOW_MS ? head : undefined;
+    return head;
+  }
+  protected openRevision(
+    head: FolioRevision | undefined,
+    byUserId: string,
+  ): FolioRevision | undefined {
+    if (
+      !head ||
+      head.byUserId !== byUserId ||
+      head.pinned ||
+      head.action === "revert"
+    )
+      return undefined;
+    return this.dateTime.nowMillis() - Date.parse(head.at) <
+      this.COALESCE_WINDOW_MS
+      ? head
+      : undefined;
+  }
+  protected async findOpenRevision(
+    folioId: string,
+    byUserId: string,
+  ): Promise<FolioRevision | undefined> {
+    return this.openRevision(await this.latestRevision(folioId), byUserId);
   }
 
   /**
@@ -209,6 +237,7 @@ export class FolioHistoryService {
     byUserId: string,
     action: RevisionAction,
     previousContent: string | undefined,
+    defer = false,
   ): Promise<RevisionPlan> {
     // A revert always gets its own row, in BOTH directions. Blocking only
     // the "fold into a revert" side was a bug: the revert's own write would
@@ -217,6 +246,18 @@ export class FolioHistoryService {
     // happened at all.
     // The open revision and the live rows in one step (#Q2637): neither
     // read needs the other, only the fill below needs both.
+    if (defer) {
+      const [head, live] = await Promise.all([
+        this.latestRevision(folioId),
+        this.liveRevisionIds(folioId),
+      ]);
+      return {
+        action,
+        open:
+          action === "revert" ? undefined : this.openRevision(head, byUserId),
+        deferred: { head, live, previousContent },
+      };
+    }
     const [open, live] = await Promise.all([
       action === "revert"
         ? undefined
@@ -233,62 +274,99 @@ export class FolioHistoryService {
    * fold into the open revision or insert a new head, then enforce the
    * retention cap.
    */
+  protected revisionData(folio: Folio) {
+    return {
+      at: this.dateTime.nowISOString(),
+      contentSnapshot: "",
+      snapshotIsLive: true,
+      titleSnapshot: folio.title,
+      summarySnapshot: folio.summary,
+    };
+  }
   public async recordRevision(
     folio: Folio,
     byUserId: string,
     plan: RevisionPlan,
   ): Promise<AppendedRevision> {
-    const { action, open } = plan;
-    if (open) {
+    if (plan.open)
       return {
         created: false,
-        revision: await this.revisions.updateById(open.id, {
-          at: this.dateTime.now().toISOString(),
-          contentSnapshot: "",
-          snapshotIsLive: true,
-          titleSnapshot: folio.title,
-          summarySnapshot: folio.summary,
-        }),
+        revision: await this.revisions.updateById(
+          plan.open.id,
+          this.revisionData(folio),
+        ),
       };
-    }
-
-    const inserted = await this.revisions.create({
+    const revision = await this.revisions.create({
+      ...this.revisionData(folio),
       folioId: folio.id,
-      at: this.dateTime.now().toISOString(),
       byUserId,
-      action,
-      contentSnapshot: "",
-      snapshotIsLive: true,
-      titleSnapshot: folio.title,
-      summarySnapshot: folio.summary,
+      action: plan.action,
       pinned: false,
     });
-
-    // Retention sweep — keep at most `cap` non-pinned revisions per
-    // folio. Pinned revisions are exempt and don't count against the
-    // cap (a user can pin all 10, then every new revision is dropped on
-    // the next sweep — acceptable, the user chose to freeze the history
-    // by pinning).
-    //
-    // Ids only, and one delete for whatever is over (#Q2637): this used to
-    // read every snapshot body to count them, then delete one row per trip.
-    // Skipped for a folio's first revision, which cannot be over the cap.
-    if (plan.first) {
-      return { created: true, revision: inserted };
-    }
+    if (!plan.first) await this.trim(folio.id);
+    return { created: true, revision };
+  }
+  public async trim(folioId: string): Promise<void> {
     const cap = this.alepha.store.get(folioHistoryAtom).maxRevisions;
     const nonPinned = await this.revisions.findMany({
-      where: { folioId: { eq: folio.id }, pinned: { eq: false } },
+      where: { folioId, pinned: false },
       orderBy: [{ column: "at", direction: "desc" }],
       columns: ["id"],
     });
-    if (nonPinned.length > cap) {
+    if (nonPinned.length > cap)
       await this.revisions.deleteMany({
-        id: { inArray: nonPinned.slice(cap).map((rev) => rev.id) },
+        id: { inArray: nonPinned.slice(cap).map((revision) => revision.id) },
       });
-    }
-
-    return { created: true, revision: inserted };
+  }
+  /**
+   * The normal revision decision, committed with an automation's folio CAS.
+   * No pre-edit body is materialized until that guarded batch can commit.
+   */
+  public nativeRevision(folio: Folio, byUserId: string, plan: RevisionPlan) {
+    if (!plan.deferred)
+      throw new AlephaError("Native revision requires a deferred preparation");
+    const { head, live, previousContent } = plan.deferred;
+    const ids = live
+      .map((revision) => revision.id)
+      .filter((id) => id !== plan.open?.id);
+    if (ids.length && previousContent === undefined)
+      throw new AlephaError("A live revision requires its previous content");
+    const before = ids.length
+      ? [
+          this.batch.updateStatement(
+            { id: { inArray: ids } },
+            { contentSnapshot: previousContent!, snapshotIsLive: false },
+            false,
+          ),
+        ]
+      : [];
+    const id =
+      plan.open?.id ?? this.crypto.randomUUIDv7(this.dateTime.nowMillis());
+    const after = [
+      plan.open
+        ? this.batch.updateStatement(
+            { id, folioId: folio.id },
+            this.revisionData(folio),
+          )
+        : this.batch.insertStatement({
+            id,
+            ...this.revisionData(folio),
+            folioId: folio.id,
+            byUserId,
+            action: plan.action,
+            pinned: false,
+          }),
+    ];
+    const condition = head
+      ? sql`EXISTS (SELECT 1 FROM folio_revisions WHERE id = ${head.id} AND folio_id = ${folio.id} AND at = ${this.database.timestamp(head.at)} AND pinned = ${head.pinned ? sql`TRUE` : sql`FALSE`} AND snapshot_is_live = ${head.snapshotIsLive ? sql`TRUE` : sql`FALSE`}) AND NOT EXISTS (SELECT 1 FROM folio_revisions WHERE folio_id = ${folio.id} AND (at > ${this.database.timestamp(head.at)} OR (at = ${this.database.timestamp(head.at)} AND id > ${head.id})))`
+      : sql`NOT EXISTS (SELECT 1 FROM folio_revisions WHERE folio_id = ${folio.id})`;
+    return {
+      before,
+      after,
+      condition,
+      created: !plan.open,
+      changedTables: ["folio_revisions"],
+    };
   }
 
   /**

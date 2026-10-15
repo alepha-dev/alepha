@@ -1,6 +1,8 @@
 import {
   type ResourceRef,
   $ownsProject,
+  AutomationBatchRepository,
+  AutomationMutationContext,
   BestEffort,
   BoundParameters,
   LoreAudits,
@@ -16,6 +18,7 @@ import { OwnedResourceProvider, type UserAccountToken } from "alepha/security";
 import {
   $action,
   BadRequestError,
+  ConflictError,
   NotFoundError,
   okSchema,
 } from "alepha/server";
@@ -66,6 +69,11 @@ type DirectoryRow = {
 type DirectoryMapLoader = () => Promise<Map<string, DirectoryRow>>;
 
 export class FolioController {
+  protected readonly automationMutations = $inject(AutomationMutationContext);
+  protected readonly automationRows = $inject(
+    AutomationBatchRepository.of(folios),
+  );
+
   folios = $repository(folios);
   protected readonly directories = $repository(folioDirectories);
   /**
@@ -105,14 +113,10 @@ export class FolioController {
     user: UserAccountToken | undefined,
     metadata?: Record<string, unknown>,
   ): Promise<void> {
-    await this.audits.folio.logSuccess(action, {
-      ...this.audits.actor(user),
-      ...this.audits.scope(folio.projectId),
-      resourceType: "folio",
-      resourceId: String(folio.shortId),
-      description: folio.title,
-      ...(metadata ? { metadata } : {}),
-    });
+    await this.audits.folio.logSuccess(
+      action,
+      this.audits.resource("folio", folio, user, metadata),
+    );
   }
 
   /**
@@ -1019,6 +1023,7 @@ export class FolioController {
       body: z.object({
         title: z.string().min(1).max(200).optional(),
         content: z.string().optional(),
+        expectedVersion: z.integer().nonnegative().optional(),
         summary: z.string().max(500).optional(),
         /**
          * Move the folio to a different folio directory. `null` →
@@ -1046,6 +1051,13 @@ export class FolioController {
       // The row the protection-domain invariant is decided against, read by
       // the gate rather than a second time here.
       const existing = this.owned.get<Folio>();
+      if (
+        body.expectedVersion !== undefined &&
+        body.expectedVersion !== existing.version
+      )
+        throw new ConflictError(
+          "Folio version changed; re-read before writing",
+        );
 
       // A protected row's `content` is a passphrase-encrypted envelope the
       // server cannot interpret. A caller that writes new `content` against
@@ -1144,6 +1156,9 @@ export class FolioController {
 
       const purged = isProtected !== existing.protected;
       let plan: RevisionPlan | undefined;
+      let nativeRevision:
+        | ReturnType<FolioHistoryService["nativeRevision"]>
+        | undefined;
       let updated: Folio;
       try {
         // 2. Crossing the protection boundary invalidates every stored
@@ -1179,6 +1194,7 @@ export class FolioController {
               user.id,
               action,
               existing.content,
+              this.automationMutations.current?.action.kind === "appendFolio",
             )
           : undefined;
 
@@ -1199,7 +1215,24 @@ export class FolioController {
             ? ""
             : buildFolioSearchText({ title, summary, content }),
         };
-        await this.folios.save(updated);
+        nativeRevision = plan?.deferred
+          ? this.historyService.nativeRevision(updated, user.id, plan)
+          : undefined;
+        await this.automationMutations.save(
+          {
+            repository: this.automationRows,
+            entity: updated,
+            audit: {
+              type: "folio",
+              action: "update",
+              ...this.audits.resource("folio", updated, user, {
+                change: plan?.action,
+              }),
+            },
+            ...nativeRevision,
+          },
+          () => this.folios.save(updated),
+        );
       } catch (error) {
         if (renamed) {
           await this.bestEffort.run(
@@ -1240,11 +1273,15 @@ export class FolioController {
           : undefined,
         revisionPlan
           ? this.bestEffort.run("updateFolio: revision failed", () =>
-              this.historyService.recordRevision(
-                updated,
-                user.id,
-                revisionPlan,
-              ),
+              nativeRevision
+                ? this.historyService
+                    .trim(updated.id)
+                    .then(() => ({ created: nativeRevision!.created }))
+                : this.historyService.recordRevision(
+                    updated,
+                    user.id,
+                    revisionPlan,
+                  ),
             )
           : undefined,
         // See `folioSavedSchema` for why the purge is an equal partner here

@@ -616,3 +616,25 @@ A committed enqueue is `queued`, never proof of delivery. Email `sent` means
 transport acceptance; provider-confirmed `delivered`, skipped and failed remain
 distinct. An inbox row is delivery. Dry-run preparation writes no outbox row,
 receipt, baseline, notification, audit or health transition.
+
+## Automation domain effects (#E43, #Q2031)
+
+`AutomationDomainActions` registers exactly four feature-owned adapters. They invoke
+the normal server actions directly inside `AutomationMutationContext`, retaining
+normal validation, ownership checks, defaults and lifecycle hooks. The context
+reuses driver codecs and repository hooks at the root mutation seam. It commits
+that root, its native folio revision changes, its audit and its action receipt in
+one guarded batch. Resource versions, release state, revision head and current
+author authority are checked again at that boundary.
+
+Native automation audits are an explicit exception to the ordinary best-effort
+audit tail: every effective operation records one audit with author, automation,
+run and operation identity atomically. The normal controller tail recognizes it
+and only emits the best-effort activity point. A crash in a later lifecycle hook
+cannot erase a committed effect; retry reconciles its receipt without repeating
+the controller. Earlier effects are retained when a later step refuses.
+
+`preview` performs the same target validation without invoking a controller or
+allocating an identifier. Large folio bodies stay in domain storage and revision
+history, never in automation snapshots. Trusted downstream job markers retain
+run and operation identity as well as automation identity.

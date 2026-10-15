@@ -687,19 +687,31 @@ export class AutomationClaims {
   public async atomicEffect(
     id: string,
     token: string,
+    input: Parameters<AutomationClaims["atomicMutation"]>[2],
+  ): Promise<AutomationReceipt> {
+    return (await this.atomicMutation(id, token, input)).receipt;
+  }
+
+  public async atomicMutation(
+    id: string,
+    token: string,
     input: Omit<AutomationEffectInput, "mode"> & {
       statements: SQLLike[];
       condition?: SQLLike;
       result: NonNullable<AutomationReceipt["result"]>;
       changedTables?: string[];
+      resultExpressions?: Record<string, SQLLike>;
     },
-  ): Promise<AutomationReceipt> {
+  ): Promise<{
+    receipt: AutomationReceipt;
+    rows?: Record<string, unknown>[][];
+  }> {
     return this.database.primary(async () => {
       const receipt = await this.beginAction(id, token, {
         ...input,
         mode: "atomic",
       });
-      if (receipt.status !== "claimed") return receipt;
+      if (receipt.status !== "claimed") return { receipt };
       const occurrence = await this.lease(id, token);
       await this.authority.check({
         automationId: occurrence.automationId!,
@@ -707,18 +719,19 @@ export class AutomationClaims {
         variables: occurrence.snapshot?.variables,
         effect: { index: input.index, action: input.action },
       });
+      let rows: Record<string, unknown>[][];
       try {
-        await this.atomic.guarded(
+        rows = await this.atomic.guarded(
           occurrence.projectId,
           sql`${this.live(occurrence, token)} AND EXISTS (SELECT 1 FROM automation_receipts WHERE id = ${receipt.id} AND status = 'claimed' AND lease_token = ${token}) ${input.condition ? sql`AND (${typeof input.condition === "string" ? sql.raw(input.condition) : input.condition.getSQL()})` : sql``}`,
           [
             ...input.statements,
-            sql`UPDATE automation_receipts SET status = 'committed', result = ${JSON.stringify(this.safeResult(input.result))}, version = version + 1, updated_at = ${this.database.timestamp(this.dateTime.nowISOString())} WHERE id = ${receipt.id}`,
+            sql`UPDATE automation_receipts SET status = 'committed', result = ${this.database.resultFields(this.safeResult(input.result), input.resultExpressions ?? {})}, version = version + 1, updated_at = ${this.database.timestamp(this.dateTime.nowISOString())} WHERE id = ${receipt.id}`,
           ],
         );
       } catch (error) {
         const current = await this.persistence.receipts.getById(receipt.id);
-        if (current.status === "committed") return current;
+        if (current.status === "committed") return { receipt: current };
         throw error;
       }
       for (const table of new Set([
@@ -726,7 +739,10 @@ export class AutomationClaims {
         "automation_receipts",
       ]))
         await this.cache.invalidateTable(table);
-      return this.persistence.receipts.getById(receipt.id);
+      return {
+        receipt: await this.persistence.receipts.getById(receipt.id),
+        rows: rows.slice(1, 1 + input.statements.length),
+      };
     });
   }
 
@@ -1002,6 +1018,7 @@ export class AutomationClaims {
       "delivered",
       "count",
       "late_confirmation",
+      "audit_recorded",
       "reason",
     ];
     const result: NonNullable<AutomationReceipt["result"]> = {};

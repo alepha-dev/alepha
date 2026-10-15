@@ -1,5 +1,7 @@
 import {
   $ownsProject,
+  AutomationBatchRepository,
+  AutomationMutationContext,
   BestEffort,
   BoundParameters,
   LoreAudits,
@@ -60,6 +62,7 @@ import { EpicWorkflowService } from "../services/EpicWorkflowService.ts";
 import { MentionNotifier } from "../services/MentionNotifier.ts";
 import { OpenQuestScope } from "../services/OpenQuestScope.ts";
 import { QuestDeletionService } from "../services/QuestDeletionService.ts";
+import { QuestEditAccess } from "../services/QuestEditAccess.ts";
 import { QuestResourceMapper } from "../services/QuestResourceMapper.ts";
 import { QuestService } from "../services/QuestService.ts";
 import { QuestShelvingService } from "../services/QuestShelvingService.ts";
@@ -67,6 +70,12 @@ import { ReleaseAttachmentService } from "../services/ReleaseAttachmentService.t
 import { WorkAutomationSources } from "../services/WorkAutomationSources.ts";
 
 export class QuestController {
+  protected readonly automationMutations = $inject(AutomationMutationContext);
+  protected readonly automationRows = $inject(
+    AutomationBatchRepository.of(quests),
+  );
+  protected readonly editAccess = $inject(QuestEditAccess);
+
   protected readonly automationSources = $inject(WorkAutomationSources);
   /**
    * What `updateQuestById` still accepts once a quest is completed.
@@ -339,14 +348,10 @@ export class QuestController {
     user: UserAccountToken | undefined,
     metadata?: Record<string, unknown>,
   ): Promise<void> {
-    await this.audits.quest.logSuccess(action, {
-      ...this.audits.actor(user),
-      ...this.audits.scope(quest.projectId),
-      resourceType: "quest",
-      resourceId: String(quest.shortId),
-      description: quest.title,
-      ...(metadata ? { metadata } : {}),
-    });
+    await this.audits.quest.logSuccess(
+      action,
+      this.audits.resource("quest", quest, user, metadata),
+    );
   }
 
   /**
@@ -2800,6 +2805,7 @@ export class QuestController {
            * still allowed to omit this, and every existing client does.
            */
           expectedUpdatedAt: z.datetime().optional(),
+          expectedVersion: z.integer().nonnegative().optional(),
         }),
       response: questResourceSchema,
     },
@@ -2813,14 +2819,14 @@ export class QuestController {
       // Narrower than the gate, and an OR no `use:` entry can express: the
       // author may always rewrite their own quest, and anybody who may delete
       // quests here may rewrite somebody else's.
+      await this.editAccess.assert(quest, project, user);
       if (
-        quest.createdBy !== user.id &&
-        !(await this.ranks.can(project.organizationId!, "quest:delete", user))
-      ) {
-        throw new ForbiddenError(
-          "Only the quest creator, or somebody who may delete quests here, can edit this quest",
+        body.expectedVersion !== undefined &&
+        body.expectedVersion !== quest.version
+      )
+        throw new ConflictError(
+          "Quest version changed; re-read before writing",
         );
-      }
 
       // Checked before anything is validated or written. `history.at(-1)`
       // costs nothing (the row is already loaded) and turns "someone changed
@@ -2863,6 +2869,7 @@ export class QuestController {
             // completionMessage rewrite must not read as trying to change
             // the frozen body.
             key !== "expectedUpdatedAt" &&
+            key !== "expectedVersion" &&
             value !== undefined,
         );
         if (otherEdits.length > 0) {
@@ -2900,6 +2907,7 @@ export class QuestController {
       const patch: Record<string, unknown> = { ...body };
       // A precondition, not a column.
       delete patch.expectedUpdatedAt;
+      delete patch.expectedVersion;
       if (body.area !== undefined) {
         patch.area = ensuredArea?.name ?? body.area.trim();
       }
@@ -3032,7 +3040,20 @@ export class QuestController {
           (updated as Record<string, unknown>)[key] = value;
         }
       }
-      await this.quests.save(updated);
+      await this.automationMutations.save(
+        {
+          repository: this.automationRows,
+          entity: updated,
+          audit: {
+            type: "quest",
+            action: "update",
+            ...this.audits.resource("quest", updated, user, {
+              fields: changes.map((change) => change.field),
+            }),
+          },
+        },
+        () => this.quests.save(updated),
+      );
       // The tail, concurrently (#Q2637), both best effort: a failure of one
       // leaves the other written, and the quest saved either way. The link
       // sync runs only when the text it reads changed, and a failed one

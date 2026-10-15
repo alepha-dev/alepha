@@ -46,6 +46,36 @@ export class AutomationDatabase {
     return value;
   }
 
+  /**
+   * Internal domain IDs are read in the same batch as their generated row.
+   * Only scalar receipt result slots can be filled, never arbitrary JSON.
+   */
+  public resultFields(
+    result: object,
+    fields: Record<string, SQLLike>,
+  ): SQLLike {
+    if (Object.keys(fields).length > 8)
+      throw new AlephaError("Too many derived effect results");
+    let value = sql`${JSON.stringify(result)}`;
+    for (const [name, expression] of Object.entries(fields)) {
+      if (
+        !["quest_id", "shortId", "folio_id", "revision", "release_id"].includes(
+          name,
+        )
+      )
+        throw new AlephaError("Invalid derived effect result");
+      const query =
+        typeof expression === "string"
+          ? sql.raw(expression)
+          : expression.getSQL();
+      value =
+        this.database.dialect === "sqlite"
+          ? sql`json_set(${value}, ${`$.${name}`}, ${query})`
+          : sql`jsonb_set((${value})::jsonb, ${`{${name}}`}, COALESCE(to_jsonb(${query}), 'null'::jsonb))`;
+    }
+    return value;
+  }
+
   public async batch(
     statements: SQLLike[],
   ): Promise<Array<Record<string, unknown>[]>> {
