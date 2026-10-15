@@ -1,4 +1,5 @@
 import { $inject, Alepha, AlephaError } from "alepha";
+import { RequestOriginPolicy } from "alepha/server";
 
 import type { RoomPrimitiveOptions } from "../interfaces/RoomInterfaces.ts";
 import type {
@@ -19,6 +20,7 @@ import type { TWSObject } from "../primitives/$channel.ts";
  */
 export abstract class WebSocketServerProvider {
   protected readonly alepha = $inject(Alepha);
+  protected readonly originPolicy = $inject(RequestOriginPolicy);
 
   /**
    * Register a WebSocket endpoint with its channel configuration
@@ -140,7 +142,20 @@ export abstract class WebSocketServerProvider {
     // conversion from ServerAuthProvider's `server:onRequest` hook; an upgrade bypasses that
     // pipeline, so the equivalent conversion runs here before the resolver chain (whose
     // resolvers only read `authorization`).
-    if (!handshake.headers.authorization && handshake.headers.cookie) {
+    //
+    // Only for an upgrade from this host, or from an origin the CORS
+    // configuration lists explicitly: the browser attaches the cookie to a
+    // handshake from ANY page, so without this a page on another site opened
+    // a socket as the user (cross-site WebSocket hijacking). A refused
+    // conversion leaves the upgrade anonymous, and the endpoint's own
+    // `secure` or `authorize` decides. An upgrade carrying its own
+    // `Authorization` (a native or server client) has no ambient credential
+    // and is untouched.
+    if (
+      !handshake.headers.authorization &&
+      handshake.headers.cookie &&
+      this.isTrustedHandshakeOrigin(handshake)
+    ) {
       try {
         const auth = this.alepha.inject("ServerAuthProvider") as {
           accessTokenFromCookieHeader(
@@ -168,6 +183,29 @@ export abstract class WebSocketServerProvider {
     } as any);
 
     return user?.id;
+  }
+
+  /**
+   * Whether a handshake's `Origin` may carry the session cookie: this host,
+   * or an origin listed explicitly in CORS. A missing `Origin` is refused,
+   * since every browser sends one on a WebSocket handshake.
+   */
+  protected isTrustedHandshakeOrigin(handshake: {
+    url: string;
+    headers: Record<string, string | undefined>;
+  }): boolean {
+    let host = handshake.headers.host;
+    if (!host) {
+      try {
+        host = new URL(handshake.url).host;
+      } catch {
+        host = undefined;
+      }
+    }
+    return this.originPolicy.isTrustedOrigin(
+      handshake.headers.origin,
+      host ?? "",
+    );
   }
 
   /**

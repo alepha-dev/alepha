@@ -1103,6 +1103,103 @@ describe("OAuth consent cannot be skipped by the request", () => {
   });
 });
 
+/**
+ * The consent POST is a form post from this host's own consent page. PKCE
+ * does not protect a forged one: the forger posts a `code_challenge` it
+ * chose, so it holds the verifier. Only the origin check stands in the way.
+ */
+describe("OAuth consent decision checks where it came from", () => {
+  const boot = async () => {
+    class App {
+      issuer = $issuer({ name: "users", secret: "test-secret" });
+    }
+
+    const alepha = Alepha.create()
+      .with(AlephaServer)
+      .with(AlephaOrmPostgres)
+      .with(AlephaOAuth);
+    alepha.set(oauthOptions, {
+      realm: "users",
+      resource: "/mcp",
+      loginPath: "/login",
+    });
+
+    const app = alepha.inject(App);
+    await alepha.start();
+
+    const service = alepha.inject(OAuthClientService);
+    service.registerIssuer(
+      "users",
+      app.issuer,
+      async (id) => ({ id, roles: [] }) as UserAccount,
+    );
+
+    const { hostname } = alepha.inject(ServerProvider);
+    const redirectUri = "https://app.example.com/auth/callback";
+    const client = await service.register({
+      realm: "users",
+      clientName: "Some Client",
+      redirectUris: [redirectUri],
+      scopes: ["openid"],
+    });
+    const { access_token } = await app.issuer.createToken({
+      id: "user-1",
+      roles: [],
+    } as UserAccount);
+
+    const decide = (origin: string | null) => {
+      const headers: Record<string, string> = {
+        authorization: `Bearer ${access_token}`,
+        "content-type": "application/x-www-form-urlencoded",
+      };
+      if (origin) headers.origin = origin;
+      return fetch(`${hostname}/oauth/authorize`, {
+        method: "POST",
+        redirect: "manual",
+        headers,
+        body: new URLSearchParams({
+          decision: "allow",
+          response_type: "code",
+          client_id: client.clientId,
+          redirect_uri: redirectUri,
+          code_challenge: "attacker-chosen",
+          code_challenge_method: "S256",
+          scope: "openid",
+        }).toString(),
+      });
+    };
+
+    return { hostname, decide };
+  };
+
+  it("mints a code for a post from this host", async ({ expect }) => {
+    const { hostname, decide } = await boot();
+
+    const resp = await decide(new URL(hostname).origin);
+
+    expect(resp.status).toBe(302);
+    const location = new URL(resp.headers.get("location") ?? "");
+    expect(location.searchParams.get("code")).toBeTruthy();
+  });
+
+  it("refuses a post from another origin", async ({ expect }) => {
+    const { decide } = await boot();
+
+    const resp = await decide("https://sibling.example.com");
+
+    expect(resp.status).toBe(403);
+    expect(resp.headers.get("location")).toBeNull();
+  });
+
+  it("refuses a post that names no origin at all", async ({ expect }) => {
+    const { decide } = await boot();
+
+    const resp = await decide(null);
+
+    expect(resp.status).toBe(403);
+  });
+});
+
 describe("OAuth bearer tokens are access tokens only", () => {
   const boot = async () => {
     class App {

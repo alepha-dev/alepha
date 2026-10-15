@@ -242,15 +242,26 @@ describe("a machine credential is not a session", () => {
     });
 
     it("refuses POST /oauth/authorize to a key as unauthenticated", async () => {
-      const { apiKey, call } = await setup();
+      const { apiKey, hostname } = await setup();
 
-      const decision = await call("POST", "/oauth/authorize", apiKey, {
-        decision: "allow",
-        response_type: "code",
-        client_id: "c",
-        redirect_uri: "https://app.example.com/auth/callback",
-        code_challenge: "x",
-        code_challenge_method: "S256",
+      // From the consent page's own origin, so the origin check lets it
+      // through to the session check this test is about.
+      const decision = await fetch(`${hostname}/oauth/authorize`, {
+        method: "POST",
+        redirect: "manual",
+        headers: {
+          authorization: `Bearer ${apiKey}`,
+          "content-type": "application/json",
+          origin: new URL(hostname).origin,
+        },
+        body: JSON.stringify({
+          decision: "allow",
+          response_type: "code",
+          client_id: "c",
+          redirect_uri: "https://app.example.com/auth/callback",
+          code_challenge: "x",
+          code_challenge_method: "S256",
+        }),
       });
       expect(decision.status).toBe(401);
     });

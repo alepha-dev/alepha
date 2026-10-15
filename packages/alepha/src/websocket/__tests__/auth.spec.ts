@@ -90,6 +90,98 @@ describe("WebSocketServerProvider.resolveUserId", () => {
   });
 });
 
+/**
+ * The session cookie becomes a bearer token on an upgrade only from this
+ * host, or from an origin CORS lists explicitly: the browser attaches it to a
+ * handshake from any page (cross-site WebSocket hijacking).
+ *
+ * Stands in for `alepha/server/auth`, which `resolveUserId` reaches by string
+ * injection under this very name: every cookie is the session of `user-123`.
+ */
+describe("WebSocketServerProvider.resolveUserId with a session cookie", () => {
+  const boot = async (corsOrigin?: string) => {
+    const alepha = Alepha.create().with(AlephaSecurity).with(AlephaWebSocket);
+    const jwt = alepha.inject(JwtProvider);
+    let token = "";
+    class ServerAuthProvider {
+      async accessTokenFromCookieHeader(): Promise<string> {
+        return token;
+      }
+    }
+    alepha.inject(ServerAuthProvider);
+    if (corsOrigin) {
+      alepha.store.set("alepha.server.cors.options" as any, {
+        origin: corsOrigin,
+      });
+    }
+    const provider = alepha.inject(TestProvider);
+    await alepha.start();
+    token = await jwt.create({ sub: "user-123" }, undefined, {
+      header: { typ: jwt.accessTokenTyp },
+    });
+
+    const resolve = (headers: Record<string, string>) =>
+      provider.resolveUserId({
+        url: "http://app.example.com/ws",
+        headers: { host: "app.example.com", cookie: "tokens=x", ...headers },
+      });
+    return { resolve, token };
+  };
+
+  it("converts the cookie for an upgrade from this host", async ({
+    expect,
+  }) => {
+    const { resolve } = await boot();
+
+    expect(await resolve({ origin: "https://app.example.com" })).toBe(
+      "user-123",
+    );
+  });
+
+  it("leaves an upgrade from another site anonymous", async ({ expect }) => {
+    const { resolve } = await boot();
+
+    expect(await resolve({ origin: "https://evil.example" })).toBeUndefined();
+  });
+
+  it("leaves an upgrade naming no origin anonymous", async ({ expect }) => {
+    const { resolve } = await boot();
+
+    expect(await resolve({})).toBeUndefined();
+  });
+
+  it("does not trust a wildcard CORS configuration", async ({ expect }) => {
+    const { resolve } = await boot("*");
+
+    expect(await resolve({ origin: "https://evil.example" })).toBeUndefined();
+  });
+
+  it("converts the cookie for an origin CORS lists explicitly", async ({
+    expect,
+  }) => {
+    const { resolve } = await boot(
+      "https://admin.example.com, https://studio.example.com",
+    );
+
+    expect(await resolve({ origin: "https://studio.example.com" })).toBe(
+      "user-123",
+    );
+  });
+
+  it("leaves an explicit Authorization untouched, whatever the origin", async ({
+    expect,
+  }) => {
+    const { resolve, token } = await boot();
+
+    expect(
+      await resolve({
+        origin: "https://elsewhere.example",
+        authorization: `Bearer ${token}`,
+      }),
+    ).toBe("user-123");
+  });
+});
+
 // ---------------------------------------------------------------------------------------------------------------------
 // Node provider: handshake auth + multi-room dev warning
 // ---------------------------------------------------------------------------------------------------------------------

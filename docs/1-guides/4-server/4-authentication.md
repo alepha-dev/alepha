@@ -647,6 +647,20 @@ managersOnly = $action({
    keys, their expiry, rotation and scope have a guide of their own:
    [API keys](/docs/guides-server-api-keys).
 
+### The Session Cookie Needs a Same-Origin Request
+
+A browser session lives in the `tokens` cookie, and the server turns it into an `Authorization` header for each request. The browser attaches that cookie whatever page sent the request, and `SameSite=Lax` still lets a sibling subdomain through. So for a method that writes (anything but `GET`, `HEAD` and `OPTIONS`), the cookie stands for the user only when the request comes from the app's own origin:
+
+1. If `Sec-Fetch-Site` is present, it must be `same-origin` or `none`. `same-site` and `cross-site` pass only for an `Origin` listed explicitly in CORS.
+2. Otherwise, if `Origin` is present, it must be this host, or an origin listed explicitly in CORS.
+3. With neither header the request is not from a browser (every browser sends one of them on a cross-site write), and the cookie stands as before.
+
+A refused request stays anonymous, so `$secure` answers 401. An explicit `Authorization` header is never touched. "Listed explicitly" means the global CORS `origin` names it: the default `"*"` lists nothing.
+
+The same rule guards a WebSocket upgrade, which carries the cookie the same way: the cookie becomes a bearer token only for an `Origin` on this host or listed in CORS, and an upgrade naming no origin stays anonymous. The OAuth consent and device approval posts go further and accept only a post from this host. All three share `RequestOriginPolicy` from `alepha/server`.
+
+`GET` is never gated, because a cross-site link into the app is a `GET`. Keep writes off `GET`.
+
 ### Local Action Calls
 
 When calling an action locally via `.run()`, pass the user in options:
