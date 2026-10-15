@@ -14,11 +14,15 @@ export const monitorIncidents = $entity({
       onDelete: "cascade",
     }),
     startedAt: z.string(),
+    openKey: z.uuid().optional(),
     endedAt: z.string().optional(),
     cause: z.string().max(50),
     lastError: z.string().max(4096).optional(),
   }),
-  indexes: [{ columns: ["monitorId", "startedAt"] }],
+  indexes: [
+    { columns: ["monitorId", "startedAt"] },
+    { columns: ["openKey"], unique: true },
+  ],
 });
 
 export type MonitorIncident = Infer<typeof monitorIncidents.schema>;

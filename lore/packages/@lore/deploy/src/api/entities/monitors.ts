@@ -3,6 +3,7 @@ import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
 import { monitorExpectSchema } from "../schemas/monitorExpectSchema.ts";
+import { probeResultSchema } from "../schemas/probeResultSchema.ts";
 
 /**
  * Independent uptime targets. No app or sigil is required.
@@ -11,6 +12,7 @@ export const monitors = $entity({
   name: "monitors",
   schema: z.object({
     id: db.primaryKey(z.uuid()),
+    version: db.version(),
     projectId: db.ref(z.integer(), () => projects.cols.id, {
       onDelete: "cascade",
     }),
@@ -27,6 +29,8 @@ export const monitors = $entity({
     statusSince: z.string(),
     failures: db.default(z.integer().min(0), 0),
     lastCheckedAt: z.string().optional(),
+    lastPushedAt: z.string().optional(),
+    lastResult: probeResultSchema.shape.result.optional(),
     nextCheckAt: z.string(),
     lastLatencyMs: z.integer().min(0).optional(),
     lastError: z.string().max(4096).optional(),

@@ -46,6 +46,7 @@ class NearExpiryClock extends DateTimeProvider {
 const monitor = (target: string, kind: "tcp" | "cert" = "tcp") =>
   monitors.schema.parse({
     id: crypto.randomUUID(),
+    version: 0,
     projectId: 1,
     createdAt: new Date().toISOString(),
     name: "Socket",

@@ -27,6 +27,7 @@ class TrustedProber extends UptimeHttpProber {
 const monitor = (target: string, expect = {}, timeoutSecs = 1) =>
   monitors.schema.parse({
     id: crypto.randomUUID(),
+    version: 0,
     projectId: 1,
     createdAt: new Date().toISOString(),
     name: "Local",

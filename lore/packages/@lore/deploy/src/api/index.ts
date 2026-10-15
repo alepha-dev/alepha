@@ -25,6 +25,7 @@ import { EstateCommandJobs } from "./jobs/EstateCommandJobs.ts";
 import { EstateCredentialJobs } from "./jobs/EstateCredentialJobs.ts";
 import { QualityJobs } from "./jobs/QualityJobs.ts";
 import { SigilJobs } from "./jobs/SigilJobs.ts";
+import { UptimeJobs } from "./jobs/UptimeJobs.ts";
 import { UptimeRetentionJobs } from "./jobs/UptimeRetentionJobs.ts";
 import { EstateNotifications } from "./notifications/EstateNotifications.ts";
 import { AppHealthMetric } from "./services/AppHealthMetric.ts";
@@ -105,6 +106,7 @@ export const LoreDeployApi = $module({
     DeployProjectCounts,
     BlightJobs,
     UptimeRetentionJobs,
+    UptimeJobs,
     UptimeHttpProber,
     UptimeSocketProber,
     SigilJobs,
@@ -245,3 +247,7 @@ export { WebSocketEstateCommandTransport } from "./services/WebSocketEstateComma
 export { UptimeHttpProber } from "./services/UptimeHttpProber.ts";
 
 export { UptimeSocketProber } from "./services/UptimeSocketProber.ts";
+
+export { UptimeJobs } from "./jobs/UptimeJobs.ts";
+export { UptimeProber } from "./services/UptimeProber.ts";
+export { UptimeStateService } from "./services/UptimeStateService.ts";
