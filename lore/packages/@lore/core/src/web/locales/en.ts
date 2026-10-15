@@ -2709,4 +2709,9 @@ export default {
   "rank.preset.admin": "Admin",
   "rank.preset.contributor": "Contributor",
   "rank.preset.viewer": "Viewer",
+  "uptime.title": "Uptime",
+  "uptime.empty": "No monitors yet.",
+  "project.capability.apps.option.uptime.label": "Healthchecks",
+  "project.capability.apps.option.uptime.description":
+    "Check websites, ports, certificates and scheduled jobs without a sigil.",
 };

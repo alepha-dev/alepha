@@ -184,6 +184,7 @@ export const SECTION_HREF_ROUTES: Record<
 };
 
 export const SECTION_LABEL_KEYS: Record<string, string> = {
+  projectUptime: "uptime.title",
   // ⚠️ A leaf and the whole section, so it is deliberately absent from
   // `SECTION_HREF_ROUTES` above: an href there would link the page to itself.
   // Same reading as `projectActivity` and `projectInbox` below.

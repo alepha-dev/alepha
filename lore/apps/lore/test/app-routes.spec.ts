@@ -56,6 +56,7 @@ const NAV_ROUTE_NAMES = [
   // Apps section + the per-app tab bar — capabilityNav.ts, AppLayout.tsx,
   // AppSettings.tsx
   "projectApps",
+  "projectUptime",
   "app",
   "appAnalytics",
   "appAnalyticsDimension",

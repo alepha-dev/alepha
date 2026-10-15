@@ -367,6 +367,13 @@ export class CapabilityRegistry {
           // shipped, and the option's own doc promised its removal.
           preselected: false,
         },
+        {
+          key: "uptime",
+          labelKey: "project.capability.apps.option.uptime.label",
+          descriptionKey: "project.capability.apps.option.uptime.description",
+          wizard: true,
+          preselected: false,
+        },
       ],
       mcpTools: [
         "app_instance_list",

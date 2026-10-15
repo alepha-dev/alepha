@@ -12,7 +12,7 @@ import {
 } from "@lore/core/web";
 import { $inject } from "alepha";
 import { $client } from "alepha/server/links";
-import { AppWindow, Bug, Package } from "lucide-react";
+import { Activity, AppWindow, Bug, Package } from "lucide-react";
 
 import type { QualityController } from "../../../api/controllers/QualityController.ts";
 import { currentBlightCountAtom } from "../atoms/currentBlightCountAtom.ts";
@@ -41,6 +41,17 @@ export class DeployShell {
 
   constructor() {
     this.shell.registerNav("apps", [
+      {
+        route: "projectUptime",
+        permission: "app:read",
+        labelKey: "uptime.title",
+        icon: Activity,
+        group: "ops",
+        order: 30,
+        option: "uptime",
+        activeOn: (name) =>
+          name === "projectUptime" || name === "projectMonitor",
+      },
       {
         // ONE entry, pointing at the list. It was a disclosure group with one
         // child per enrolled app; once an instance is something you create

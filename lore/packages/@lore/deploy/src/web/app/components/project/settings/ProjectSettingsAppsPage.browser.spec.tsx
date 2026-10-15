@@ -117,7 +117,10 @@ describe("the Apps settings page", () => {
       expect(fake.calls).toEqual([
         {
           params: { projectId: 1, key: "apps" },
-          body: { enabled: true, options: { track: true, deploy: false } },
+          body: {
+            enabled: true,
+            options: { track: true, deploy: false, uptime: false },
+          },
         },
       ]),
     );

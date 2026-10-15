@@ -2700,4 +2700,9 @@ export default {
   "rank.preset.admin": "Administrateur",
   "rank.preset.contributor": "Contributeur",
   "rank.preset.viewer": "Lecteur",
+  "uptime.title": "Disponibilité",
+  "uptime.empty": "Aucun moniteur pour le moment.",
+  "project.capability.apps.option.uptime.label": "Contrôles de santé",
+  "project.capability.apps.option.uptime.description":
+    "Surveillez les sites, ports, certificats et tâches planifiées sans sigil.",
 };

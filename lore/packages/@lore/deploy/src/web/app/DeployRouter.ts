@@ -239,6 +239,20 @@ export class DeployRouter {
    * same reason: the capability is the whole gate, so reaching this by URL
    * without it is a 404 rather than a 403.
    */
+  projectUptime = $pageProject({
+    name: "projectUptime",
+    path: "/uptime",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Uptime`,
+    }),
+    lazy: () => import("./components/project/uptime/ProjectUptime.tsx"),
+    loader: async () => {
+      if (!hasCapability(this.alepha.store.get(currentProjectAtom), "apps")) {
+        throw new NotFoundError("Apps are not enabled for this project");
+      }
+    },
+  });
+
   projectApps = $pageProject({
     name: "projectApps",
     path: "/apps",
