@@ -22,13 +22,17 @@ const send = async <T>(
 ): Promise<T> =>
   (await page.evaluate(
     async ({ method, path, body }) => {
-      const r = await fetch(path, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        cache: "no-store",
-        body: body === undefined ? undefined : JSON.stringify(body),
-      });
+      const r = await fetch(
+        path,
+        method === "GET"
+          ? { credentials: "include", cache: "no-store" }
+          : {
+              method,
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify(body ?? {}),
+            },
+      );
       if (!r.ok)
         throw new Error(`${method} ${path} ${r.status} ${await r.text()}`);
       return r.json();
