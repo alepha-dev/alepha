@@ -19,7 +19,7 @@ import { KIND } from "alepha/internal";
 import { $logger } from "alepha/logger";
 
 import type { RouteMethod } from "../constants/routeMethods.ts";
-import type { HttpErrorClass } from "../errors/HttpError.ts";
+import type { HttpError, HttpErrorClass } from "../errors/HttpError.ts";
 import { InternalServerError } from "../errors/InternalServerError.ts";
 import { isMultipart } from "../helpers/isMultipart.ts";
 import { ServerReply } from "../helpers/ServerReply.ts";
@@ -712,6 +712,27 @@ export interface ClientRequestOptions extends FetchOptions {
 
 export type ClientRequestResponse<TConfig extends RequestConfigSchema> =
   SchemaOutput<TConfig["response"], any>;
+
+/**
+ * The errors a client of a strict action may receive, as a union of
+ * instances: its declared errors plus the `InternalServerError` anything
+ * else becomes. `HttpError` for an action that declares no `errors`.
+ *
+ * TypeScript has no place for a rejection type on a `Promise`, so this is
+ * read where it is needed rather than carried by the call:
+ *
+ * ```ts
+ * const handle = (error: ActionErrors<typeof api.createProject>) => {
+ *   if (error instanceof QuotaExceeded) return error.data.limit;
+ * };
+ * ```
+ */
+export type ActionErrors<A> =
+  A extends ActionPrimitive<any, infer E>
+    ? E extends readonly HttpErrorClass[]
+      ? InstanceType<E[number]> | InternalServerError
+      : HttpError
+    : never;
 
 /**
  * Specific handler for server actions.
