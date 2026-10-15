@@ -4,11 +4,7 @@ import {
   AlephaError,
   type Alepha as AlephaInstance,
 } from "alepha";
-import {
-  type BuildManifest,
-  buildManifestSchema,
-  type BuildTaskContext,
-} from "alepha/cli";
+import { type BuildTaskContext } from "alepha/cli";
 import { EnvUtils, Runner, type RunnerMethod } from "alepha/command";
 import { ShellProvider } from "alepha/system";
 import { S3mini } from "s3mini";
@@ -431,42 +427,7 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
     env: Record<string, string>,
   ): Promise<void> {
     const manifestPath = this.fs.join(root, "dist", "manifest.json");
-    let manifest: BuildManifest;
-    try {
-      // ⚠️ Through `this.fs`, never `node:fs/promises`. This is the FIRST
-      // thing a Lore deploy touches, and it unpacks the artifact into a
-      // `MemoryFileSystemProvider`: a direct read defeats that substitution
-      // and looks for a file on a disk the Worker does not have.
-      manifest = JSON.parse(await this.fs.readTextFile(manifestPath));
-    } catch (err) {
-      throw new AlephaError(
-        `Cannot read ${manifestPath}: ${(err as Error).message}. ` +
-          `Prebuilt deploys require dist/manifest.json (emitted by \`alepha build --runtime=workerd\`).`,
-      );
-    }
-
-    // Parsed rather than cast. Everything below builds a worker out of this
-    // object without a live Alepha to check it against, so a manifest that is
-    // truncated or from a different tool emits a worker with no bindings and
-    // still reports success. Refused by name here instead, where the fix is
-    // rebuilding the artifact.
-    //
-    // Refused, not fallen back on: unlike `infra.ts`'s `readManifest`, this
-    // path has no introspection to fall through to  -  prebuilt mode exists
-    // precisely because the app cannot be booted here.
-    const validated = buildManifestSchema.safeParse(manifest);
-    if (!validated.success) {
-      throw new AlephaError(
-        `${manifestPath} is not a valid build manifest: ` +
-          `${validated.error.issues
-            .map(
-              (issue) => `${issue.path.join(".") || "(root)"} ${issue.message}`,
-            )
-            .join("; ")}. ` +
-          `Rebuild the artifact with \`alepha build --runtime=workerd\`.`,
-      );
-    }
-    manifest = validated.data;
+    const manifest = await this.manifestReader.read(manifestPath);
 
     const ctx: BuildTaskContext = {
       // null at runtime  -  task takes the manifest path and never
@@ -615,10 +576,8 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
   protected async validateDeployArtifact(ctx: InfraContext): Promise<void> {
     try {
       const dist = this.fs.join(ctx.root, "dist");
-      const manifest = buildManifestSchema.parse(
-        JSON.parse(
-          await this.fs.readTextFile(this.fs.join(dist, "manifest.json")),
-        ),
+      const manifest = await this.manifestReader.read(
+        this.fs.join(dist, "manifest.json"),
       );
       const slice = manifest.runtimes.find(
         (entry) => entry.runtime === "workerd",

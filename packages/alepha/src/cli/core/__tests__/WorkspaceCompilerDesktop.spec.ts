@@ -126,7 +126,23 @@ const setup = async (options: { installed?: boolean } = {}) => {
   await fs.writeFile("/my project/dist/public/entry.js", "// client");
   await fs.writeFile(
     "/my project/dist/manifest.json",
-    JSON.stringify({ runtimes: [{ runtime: "bun" }, { runtime: "node" }] }),
+    JSON.stringify({
+      manifestVersion: 2,
+      project: "fixture",
+      resources: {
+        hasDatabase: false,
+        hasBucket: false,
+        hasAnalytics: false,
+        hasKV: false,
+        hasQueue: false,
+        hasCron: false,
+        hasWebSocket: false,
+      },
+      crons: [],
+      secrets: [],
+      variables: [],
+      runtimes: [{ runtime: "bun" }, { runtime: "node" }],
+    }),
   );
   const before = new Map(fs.files);
   const distUnchanged = () =>

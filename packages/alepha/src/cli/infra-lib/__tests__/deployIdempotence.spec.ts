@@ -74,6 +74,7 @@ describe("a Worker deploy, replayed against the account it deployed to", () => {
    */
   const artifact: Record<string, string> = {
     "manifest.json": JSON.stringify({
+      manifestVersion: 2,
       project: "notes",
       runtimes: [{ runtime: "workerd", entry: "index.workerd.js" }],
       crons: ["0 3 * * *"],

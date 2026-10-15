@@ -72,7 +72,25 @@ describe("WorkspacePacker", () => {
     // packs cleanly and fails at deploy time.
     await fs.writeFile(
       "/project/dist/manifest.json",
-      JSON.stringify({ version: 1, runtime: "node", project: "acme-app" }),
+      JSON.stringify({
+        manifestVersion: 2,
+        runtimes: [{ runtime: "bun", entry: "index.bun.js" }],
+        resources: {
+          hasDatabase: false,
+          hasBucket: false,
+          hasAnalytics: false,
+          hasKV: false,
+          hasQueue: false,
+          hasCron: false,
+          hasWebSocket: false,
+        },
+        crons: [],
+        secrets: [],
+        variables: [],
+        version: 1,
+        runtime: "node",
+        project: "acme-app",
+      }),
     );
   };
 

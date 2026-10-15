@@ -938,6 +938,18 @@ describe("BayAdapter  -  the secrets that ride the deploy", () => {
     await it.fs.writeFile(
       "/project/dist/manifest.json",
       JSON.stringify({
+        manifestVersion: 2,
+        runtimes: [{ runtime: "bun", entry: "index.bun.js" }],
+        resources: {
+          hasDatabase: false,
+          hasBucket: false,
+          hasAnalytics: false,
+          hasKV: false,
+          hasQueue: false,
+          hasCron: false,
+          hasWebSocket: false,
+        },
+        crons: [],
         project: "demo",
         secrets: envKeys.map((name) => ({ name })),
         variables: [],

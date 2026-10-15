@@ -2,12 +2,8 @@ import { randomBytes } from "node:crypto";
 import { join } from "node:path";
 
 import { $inject, $store, AlephaError } from "alepha";
-import {
-  buildOptions,
-  buildManifestSchema,
-  BuildSlices,
-  PackageManagerUtils,
-} from "alepha/cli";
+import { buildOptions, BuildSlices, PackageManagerUtils } from "alepha/cli";
+import { BuildManifestReader } from "alepha/cli";
 import { EnvUtils, type RunnerMethod } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
@@ -49,6 +45,7 @@ import {
  * which is why `provision` stays empty.
  */
 export class BayAdapter extends InfraAdapter<BayEnvironmentOptions> {
+  protected readonly manifestReader = $inject(BuildManifestReader);
   static readonly id = "bay";
   static readonly options = bayEnvironmentOptionsSchema;
 
@@ -583,10 +580,8 @@ export class BayAdapter extends InfraAdapter<BayEnvironmentOptions> {
   protected async validateDeployArtifact(ctx: InfraContext): Promise<void> {
     try {
       const dist = this.fs.join(ctx.root, "dist");
-      const manifest = buildManifestSchema.parse(
-        JSON.parse(
-          await this.fs.readTextFile(this.fs.join(dist, "manifest.json")),
-        ),
+      const manifest = await this.manifestReader.read(
+        this.fs.join(dist, "manifest.json"),
       );
       const slice = manifest.runtimes.find(
         (entry) => entry.runtime === "node" || entry.runtime === "static",

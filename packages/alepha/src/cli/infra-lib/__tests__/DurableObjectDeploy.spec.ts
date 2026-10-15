@@ -163,6 +163,7 @@ describe("Durable Object deployment", () => {
     ctx: InfraContext<any>,
     config?: Record<string, unknown>,
   ) => ({
+    manifestVersion: 2,
     project: ctx.project,
     runtimes: [{ runtime: "workerd", entry: "index.workerd.js" }],
     resources: ctx.resources,

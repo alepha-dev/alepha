@@ -66,7 +66,26 @@ describe("WorkspaceCompiler", () => {
     await fs.writeFile("/project/dist/public/entry.X1.js", "// client");
     await fs.writeFile("/project/dist/public/entry.X1.js.br", "br");
     await fs.writeFile("/project/dist/public/assets/logo.svg", "<svg/>");
-    await fs.writeFile("/project/dist/manifest.json", "{}");
+    await fs.writeFile(
+      "/project/dist/manifest.json",
+      JSON.stringify({
+        manifestVersion: 2,
+        project: "fixture",
+        runtimes: [{ runtime: "bun", entry: "index.bun.js" }],
+        resources: {
+          hasDatabase: false,
+          hasBucket: false,
+          hasAnalytics: false,
+          hasKV: false,
+          hasQueue: false,
+          hasCron: false,
+          hasWebSocket: false,
+        },
+        crons: [],
+        secrets: [],
+        variables: [],
+      }),
+    );
 
     return { fs, shell, task };
   };
@@ -240,6 +259,20 @@ describe("WorkspaceCompiler", () => {
     await fs.writeFile(
       "/project/dist/manifest.json",
       JSON.stringify({
+        manifestVersion: 2,
+        project: "fixture",
+        resources: {
+          hasDatabase: false,
+          hasBucket: false,
+          hasAnalytics: false,
+          hasKV: false,
+          hasQueue: false,
+          hasCron: false,
+          hasWebSocket: false,
+        },
+        crons: [],
+        secrets: [],
+        variables: [],
         runtime: "bun",
         runtimes: [
           { runtime: "bun", entry: "index.bun.js" },

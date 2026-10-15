@@ -3,6 +3,8 @@ import { createHash } from "node:crypto";
 import { $inject } from "alepha";
 import { FileSystemProvider } from "alepha/system";
 
+import { BuildManifestReader } from "./BuildManifestReader.ts";
+
 /**
  * Decide whether `dist/` still matches the sources it was built from.
  *
@@ -28,6 +30,7 @@ import { FileSystemProvider } from "alepha/system";
  * instead, which covers both halves.
  */
 export class BuildFreshness {
+  protected readonly manifestReader = $inject(BuildManifestReader);
   protected readonly fs = $inject(FileSystemProvider);
 
   /**
@@ -108,18 +111,11 @@ export class BuildFreshness {
     if (!(await this.fs.exists(artifact))) {
       return `${distDir}/manifest.json is missing`;
     }
+    const manifest = await this.manifestReader.read(artifact);
     const builtAt = (await this.fs.stat(artifact)).mtimeMs;
 
     if (optionsHash !== undefined) {
-      let recorded: unknown;
-      try {
-        recorded = (
-          await this.fs.readJsonFile<{ optionsHash?: unknown }>(artifact)
-        ).optionsHash;
-      } catch {
-        recorded = undefined;
-      }
-      if (recorded !== optionsHash) {
+      if (manifest.optionsHash !== optionsHash) {
         return "the build options changed since the last build (runtimes or inspect)";
       }
     }

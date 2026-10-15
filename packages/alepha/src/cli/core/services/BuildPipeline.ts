@@ -23,6 +23,7 @@ import { BuildServerTask } from "../tasks/BuildServerTask.ts";
 import { BuildStaticTask } from "../tasks/BuildStaticTask.ts";
 import type { BuildTask, BuildTaskContext } from "../tasks/BuildTask.ts";
 import { BuildFreshness } from "./BuildFreshness.ts";
+import { BuildManifestReader } from "./BuildManifestReader.ts";
 import { BuildSlices } from "./BuildSlices.ts";
 import { MetaResolver } from "./MetaResolver.ts";
 import { PackageManagerUtils } from "./PackageManagerUtils.ts";
@@ -54,6 +55,7 @@ import { ProjectScaffolder } from "./ProjectScaffolder.ts";
  * sidecars, no `_headers`, no `CNAME`, no `200.html` or `404.html`.
  */
 export class BuildPipeline {
+  protected readonly manifestReader = $inject(BuildManifestReader);
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
   protected readonly pm = $inject(PackageManagerUtils);
@@ -271,21 +273,10 @@ export class BuildPipeline {
 
   /**
    * Read `dist/manifest.json` produced by a previous `alepha build`.
-   * Returns null when absent or unparseable — caller falls back to the
-   * Vite-introspection path.
+   * Returns null when absent; incompatible existing artifacts are refused.
    */
   protected async loadManifest(root: string): Promise<BuildManifest | null> {
-    try {
-      const fs = await import("node:fs/promises");
-      const path = await import("node:path");
-      const raw = await fs.readFile(
-        path.join(root, "dist", "manifest.json"),
-        "utf-8",
-      );
-      return JSON.parse(raw) as BuildManifest;
-    } catch {
-      return null;
-    }
+    return this.manifestReader.readOptional(`${root}/dist/manifest.json`);
   }
 }
 

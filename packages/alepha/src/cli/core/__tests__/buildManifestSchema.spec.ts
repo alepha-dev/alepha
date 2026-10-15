@@ -25,6 +25,7 @@ describe("the build manifest schema", () => {
    * say what it is about by overriding one key.
    */
   const valid = (): Record<string, unknown> => ({
+    manifestVersion: 2,
     project: "my-app",
     runtimes: [{ runtime: "node", entry: "index.node.js" }],
     resources: {
@@ -386,27 +387,36 @@ describe("the build manifest schema", () => {
     };
     const command = () => alepha.inject(TestInfraCommand);
 
+    it("refuses an unknown major and names the supported version", async ({
+      expect,
+    }) => {
+      const root = await rootWith(
+        JSON.stringify({ ...valid(), manifestVersion: 3 }),
+      );
+      await expect(command().testReadManifest(root)).rejects.toThrow(
+        "manifestVersion 3 is unsupported; this reader supports manifestVersion 2",
+      );
+    });
+
     it("reads a valid manifest", async ({ expect }) => {
       const root = await rootWith(JSON.stringify(valid()));
       const manifest = await command().testReadManifest(root);
       expect(manifest?.resources.hasDatabase).toBe(true);
     });
 
-    /**
-     * ⚠️ Without the schema this returned `{}`  -  truthy  -  and `resources`
-     * flowed on as `undefined`. `null` is what the caller already knows how to
-     * handle: it falls through to introspecting the app for real.
-     */
-    it("answers null for the empty manifest, instead of an object with no resources", async ({
-      expect,
-    }) => {
+    // Existing incompatible artifacts fail instead of falling back silently.
+    it("refuses a manifest without its version", async ({ expect }) => {
       const root = await rootWith("{}");
-      expect(await command().testReadManifest(root)).toBeNull();
+      await expect(command().testReadManifest(root)).rejects.toThrow(
+        "manifestVersion missing",
+      );
     });
 
-    it("answers null for a truncated file", async ({ expect }) => {
+    it("refuses a truncated file", async ({ expect }) => {
       const root = await rootWith('{"version":1,"project":"my-a');
-      expect(await command().testReadManifest(root)).toBeNull();
+      await expect(command().testReadManifest(root)).rejects.toThrow(
+        "Cannot read",
+      );
     });
 
     it("answers null when there is no manifest at all", async ({ expect }) => {

@@ -14,7 +14,7 @@ import { $atom, type Infer, z } from "alepha";
  * ## ⚠️ `alepha image` needs the docker CLI
  *
  * It shells out to `docker build`, so it cannot run in an in-process build
- * path — notably the one Lore's Worker deploy uses, which has no shell at all.
+ * path , notably the one Lore's Worker deploy uses, which has no shell at all.
  * It is a local and CI command.
  */
 export const imageOptions = $atom({
@@ -45,7 +45,7 @@ export const imageOptions = $atom({
      * <pkg> …` line (local, not `--global`, so the app resolves them
      * like any dependency) inserted after `FROM` and before the
      * app `COPY`. Use it for CLI tools the running app shells out to
-     * — typical example is `wrangler` for a service that deploys to
+     * , typical example is `wrangler` for a service that deploys to
      * Cloudflare on someone else's behalf.
      *
      * Ignored in `compile` mode (the distroless base has no `npm`).
@@ -103,42 +103,39 @@ export const imageOptions = $atom({
     user: z.string().optional(),
 
     /**
-     * Docker build options (used when --image flag is passed).
+     * Default image tag (name without version).
+     *
+     * Used when --tag is provided without a full override:
+     * - `--tag` → `tag:latest`
+     * - `--tag=1.3.4` → `tag:1.3.4`
+     * - `--tag=other/img:v1` → `other/img:v1` (full override)
+     *
+     * @example "myproject/myapp"
+     * @example "ghcr.io/myorg/myapp"
      */
-    image: z
+    tag: z.string().optional(),
+
+    /**
+     * Additional arguments to pass to `docker build`.
+     *
+     * @example ["--platform", "linux/amd64", "--no-cache"]
+     */
+    args: z.array(z.string()).optional(),
+
+    /**
+     * Auto-add OCI standard labels (revision, created, version).
+     *
+     * Adds:
+     * - org.opencontainers.image.revision (git commit SHA)
+     * - org.opencontainers.image.created (build timestamp)
+     * - org.opencontainers.image.version (from image tag)
+     *
+     * The four fields below are added too, each only when set.
+     */
+    oci: z.boolean().optional(),
+
+    labels: z
       .object({
-        /**
-         * Default image tag (name without version).
-         *
-         * Used when --image is provided without a full override:
-         * - `--image` → `tag:latest`
-         * - `--image=1.3.4` → `tag:1.3.4`
-         * - `--image=other/img:v1` → `other/img:v1` (full override)
-         *
-         * @example "myproject/myapp"
-         * @example "ghcr.io/myorg/myapp"
-         */
-        tag: z.string(),
-
-        /**
-         * Additional arguments to pass to `docker build`.
-         *
-         * @example '--platform linux/amd64 --no-cache'
-         */
-        args: z.string().optional(),
-
-        /**
-         * Auto-add OCI standard labels (revision, created, version).
-         *
-         * Adds:
-         * - org.opencontainers.image.revision (git commit SHA)
-         * - org.opencontainers.image.created (build timestamp)
-         * - org.opencontainers.image.version (from image tag)
-         *
-         * The four fields below are added too, each only when set.
-         */
-        oci: z.boolean().optional(),
-
         /**
          * `org.opencontainers.image.source`: the URL of the repository
          * the image was built from.

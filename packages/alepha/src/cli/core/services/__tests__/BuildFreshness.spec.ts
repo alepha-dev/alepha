@@ -53,7 +53,26 @@ describe("BuildFreshness", () => {
     );
     await fs.writeFile("/repo/node_modules/lib/src/index.ts", "lib");
     await clock.travel(60_000);
-    await fs.writeFile("/repo/app/dist/manifest.json", "{}");
+    await fs.writeFile(
+      "/repo/app/dist/manifest.json",
+      JSON.stringify({
+        manifestVersion: 2,
+        project: "fixture",
+        runtimes: [{ runtime: "bun", entry: "index.bun.js" }],
+        resources: {
+          hasDatabase: false,
+          hasBucket: false,
+          hasAnalytics: false,
+          hasKV: false,
+          hasQueue: false,
+          hasCron: false,
+          hasWebSocket: false,
+        },
+        crons: [],
+        secrets: [],
+        variables: [],
+      }),
+    );
   };
 
   it("says a missing build is missing, rather than calling it fresh", async ({
@@ -115,7 +134,26 @@ describe("BuildFreshness", () => {
     expect,
   }) => {
     const { fs, freshness } = await setup();
-    await fs.writeFile("/repo/app/dist/manifest.json", "{}");
+    await fs.writeFile(
+      "/repo/app/dist/manifest.json",
+      JSON.stringify({
+        manifestVersion: 2,
+        project: "fixture",
+        runtimes: [{ runtime: "bun", entry: "index.bun.js" }],
+        resources: {
+          hasDatabase: false,
+          hasBucket: false,
+          hasAnalytics: false,
+          hasKV: false,
+          hasQueue: false,
+          hasCron: false,
+          hasWebSocket: false,
+        },
+        crons: [],
+        secrets: [],
+        variables: [],
+      }),
+    );
 
     expect(await freshness.staleReason("/repo/app", "dist")).toContain(
       "no readable sources",
@@ -164,7 +202,24 @@ describe("BuildFreshness", () => {
     const bun = freshness.optionsHash({ runtime: "bun", runtimes: ["bun"] });
     await fs.writeFile(
       "/repo/app/dist/manifest.json",
-      JSON.stringify({ optionsHash: node }),
+      JSON.stringify({
+        manifestVersion: 2,
+        project: "fixture",
+        runtimes: [{ runtime: "bun", entry: "index.bun.js" }],
+        resources: {
+          hasDatabase: false,
+          hasBucket: false,
+          hasAnalytics: false,
+          hasKV: false,
+          hasQueue: false,
+          hasCron: false,
+          hasWebSocket: false,
+        },
+        crons: [],
+        secrets: [],
+        variables: [],
+        optionsHash: node,
+      }),
     );
 
     expect(await freshness.staleReason("/repo/app", "dist", node)).toBeNull();

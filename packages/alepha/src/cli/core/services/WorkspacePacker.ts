@@ -4,6 +4,7 @@ import { $logger } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
 
 import { ArchiveCompressor } from "./ArchiveCompressor.ts";
+import { BuildManifestReader } from "./BuildManifestReader.ts";
 
 export interface WorkspacePackOptions {
   /**
@@ -127,6 +128,7 @@ export interface WorkspacePackResult {
  * that wants to pack can inject packing rather than the whole CLI.
  */
 export class WorkspacePacker {
+  protected readonly manifestReader = $inject(BuildManifestReader);
   protected readonly log = $logger();
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly shell = $inject(ShellProvider);
@@ -452,9 +454,7 @@ export class WorkspacePacker {
     // deployable workspace is `apps/<name>`, and a self-hosted runtime
     // resolves `migrations/<dialect>` relative to its own working directory  -
     // so only what `pack` includes ever exists.
-    const manifest = await this.fs.readJsonFile<{
-      resources?: { hasDatabase?: boolean };
-    }>(manifestPath);
+    const manifest = await this.manifestReader.read(manifestPath);
     if (manifest.resources?.hasDatabase && !includes.includes("migrations")) {
       throw new AlephaError(
         "This app declares a database but there is no `migrations/` next to " +

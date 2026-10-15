@@ -2,7 +2,8 @@ import { $inject, AlephaError, z } from "alepha";
 import { ActorHostCollection } from "alepha/cli";
 import { type AppEntry, AppEntryProvider } from "alepha/cli";
 import { ViteBuildProvider } from "alepha/cli";
-import { type BuildManifest, buildManifestSchema } from "alepha/cli";
+import { type BuildManifest } from "alepha/cli";
+import { BuildManifestReader } from "alepha/cli";
 import {
   BayAdapter,
   CloudflareAdapter,
@@ -22,6 +23,7 @@ import { FileSystemProvider } from "alepha/system";
 import { SecretsCommand } from "./SecretsCommand.ts";
 
 export class InfraCommand {
+  protected readonly manifestReader = $inject(BuildManifestReader);
   protected readonly hostCollection = $inject(ActorHostCollection);
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly orchestrator = $inject(InfraOrchestrator);
@@ -888,35 +890,12 @@ export class InfraCommand {
   }
 
   /**
-   * Read `dist/manifest.json` if present. Returns `null` when the file
-   * doesn't exist, isn't parseable, or doesn't satisfy `buildManifestSchema`  -
-   * caller falls back to the Vite-introspection path.
-   *
-   * ⚠️ The schema check is the point, and the `try/catch` never was. A
-   * truncated or pre-`resources` manifest parses as JSON perfectly well, so
-   * the old `JSON.parse` returned an object, `if (manifest)` passed, and
-   * `manifest.resources`  -  `undefined`  -  flowed downstream typed as
-   * `DetectedResources`. Every `resources.hasX` then read `undefined`, and a
-   * deploy provisioned no database, no bucket and no queue while reporting
-   * success. `safeParse` turns that into the same `null` an absent file
-   * produces, which the caller already knows how to handle by introspecting
-   * the app for real.
-   *
-   * `safeParse`, not `parse`: a manifest this deployer cannot read is a reason
-   * to fall back, never a reason to fail the deploy. The schema is `.loose()`,
-   * so a NEWER manifest carrying fields this build has never heard of is read,
-   * not refused.
+   * Probe for an artifact, refusing incompatible existing manifests.
    */
   protected async readManifest(root: string): Promise<BuildManifest | null> {
-    try {
-      const raw = await this.fs.readTextFile(
-        this.fs.join(root, "dist", "manifest.json"),
-      );
-      const parsed = buildManifestSchema.safeParse(JSON.parse(raw));
-      return parsed.success ? parsed.data : null;
-    } catch {
-      return null;
-    }
+    return this.manifestReader.readOptional(
+      this.fs.join(root, "dist", "manifest.json"),
+    );
   }
 
   protected detectResources(alepha: any): DetectedResources {

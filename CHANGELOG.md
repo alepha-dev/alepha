@@ -1,3 +1,9 @@
+## [Unreleased]
+
+### Breaking Changes
+
+- **cli**: artifacts require `manifestVersion: 2`. Every CLI reader refuses missing or unsupported majors; rebuild old artifacts. Lore and Bay must accept and require version 2. Additive fields keep the same major. Flatten `image.image` into `image`, move OCI fields into `image.labels`, and pass `image.args` as an array of separate arguments.
+
 ## [0.32.0] - 2026-10-14
 
 ### Breaking Changes

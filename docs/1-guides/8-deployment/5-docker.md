@@ -7,7 +7,9 @@ alepha build --runtime node
 alepha image --tag
 ```
 
-`alepha image` reads `dist/manifest.json` and packages the first declared runtime slice. Building needs an image name: `image.image.tag` in the config (see below), unless `--tag` is a complete `name:tag`. A workerd or static primary slice is refused because it cannot start a container process. The docker CLI is required; this command belongs to a local machine or CI runner.
+`manifest.json` requires `manifestVersion: 2`. Rebuild an older artifact before deploying it. Lore, Bay and other artifact consumers must accept this major; additive fields do not change it.
+
+`alepha image` reads `dist/manifest.json` and packages the first declared runtime slice. Building needs an image name: `image.tag` in the config (see below), unless `--tag` is a complete `name:tag`. A workerd or static primary slice is refused because it cannot start a container process. The docker CLI is required; this command belongs to a local machine or CI runner.
 
 ## Dockerfile ownership
 
@@ -36,27 +38,25 @@ export default defineConfig({
       DATABASE_URL: "sqlite:///data/app.db",
     },
     volumes: ["/data"],
-    image: {
-      tag: "ghcr.io/myorg/myapp",
-      oci: true,
-      source: "https://github.com/myorg/myapp",
-    },
+    tag: "ghcr.io/myorg/myapp",
+    oci: true,
+    labels: { source: "https://github.com/myorg/myapp" },
   },
 });
 ```
 
-| Setting              | Meaning                                                  |
-| -------------------- | -------------------------------------------------------- |
-| `image.from`         | Base image override                                      |
-| `image.command`      | Server command override                                  |
-| `image.install`      | Extra packages for the generated standard image          |
-| `image.env`          | Baked defaults, overridden by runtime environment values |
-| `image.volumes`      | Volume mount points                                      |
-| `image.user`         | Container user override (standard default: uid 1000)     |
-| `image.image.tag`    | Default image name                                       |
-| `image.image.args`   | Additional docker build arguments                        |
-| `image.image.oci`    | Revision, timestamp and version labels                   |
-| `image.image.source` | Repository URL label, set explicitly                     |
+| Setting               | Meaning                                                  |
+| --------------------- | -------------------------------------------------------- |
+| `image.from`          | Base image override                                      |
+| `image.command`       | Server command override                                  |
+| `image.install`       | Extra packages for the generated standard image          |
+| `image.env`           | Baked defaults, overridden by runtime environment values |
+| `image.volumes`       | Volume mount points                                      |
+| `image.user`          | Container user override (standard default: uid 1000)     |
+| `image.tag`           | Default image name                                       |
+| `image.args`          | Docker build arguments as a string array                 |
+| `image.oci`           | Revision, timestamp and version labels                   |
+| `image.labels.source` | Repository URL label, set explicitly                     |
 
 The generated standard image uses a Node or Bun base and installs runtime dependencies only when the artifact declares them. Each declared volume is prepared before its `VOLUME` line. Named volumes inherit those permissions; bind mounts retain the host directory's permissions. Baked values are public image defaults, so deliver secrets at runtime.
 

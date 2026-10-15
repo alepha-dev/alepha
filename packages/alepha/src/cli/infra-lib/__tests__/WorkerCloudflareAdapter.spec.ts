@@ -233,6 +233,7 @@ describe("the worker-side Cloudflare adapter", () => {
     await fs.writeFile(
       "/deploy/manifest.json",
       JSON.stringify({
+        manifestVersion: 2,
         project: "my-app",
         runtimes: [{ runtime: "workerd", entry: "index.workerd.js" }],
         crons: [],
@@ -761,6 +762,7 @@ describe("the worker-side Cloudflare adapter", () => {
       await fs.writeFile(
         "/deploy/manifest.json",
         JSON.stringify({
+          manifestVersion: 2,
           project: "my-app",
           runtimes: [{ runtime: "workerd", entry: "index.workerd.js" }],
           crons: [],

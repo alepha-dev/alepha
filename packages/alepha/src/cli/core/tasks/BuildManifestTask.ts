@@ -348,6 +348,7 @@ export class BuildManifestTask extends BuildTask {
         );
 
     const manifest: BuildManifest = {
+      manifestVersion: 2,
       project: name,
       runtimes,
       resources: {

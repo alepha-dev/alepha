@@ -90,6 +90,7 @@ export * from "./providers/AppEntryProvider.ts";
 export * from "./providers/ViteBuildProvider.ts";
 export * from "./providers/ViteDevServerProvider.ts";
 export * from "./schemas/buildManifest.ts";
+export * from "./services/BuildManifestReader.ts";
 export * from "./schemas/presetSchema.ts";
 export * from "./schemas/infraProviderSchema.ts";
 export * from "./services/AlephaCliUtils.ts";

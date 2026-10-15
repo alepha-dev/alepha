@@ -7,7 +7,7 @@ import { actorHostDeclarationSchema } from "./actorHostDeclarationSchema.ts";
  * Written to `dist/manifest.json`.
  *
  * This is the artifact contract between `alepha build` and every deploy
- * consumer: `alepha deploy --prebuilt`, Lore Deploy, and Alepha Bay.
+ * consumer: the prebuilt deployment CLI, Lore Deploy, and Alepha Bay.
  * It exists so the deploy side never has to boot the app, re-evaluate
  * `alepha.config.ts`, or run the workspace's `npm install`: everything a
  * deployer needs to know is captured here, at build time, from the primitives
@@ -41,14 +41,14 @@ import { actorHostDeclarationSchema } from "./actorHostDeclarationSchema.ts";
  * free to ignore it. `resources` has seven fields in TypeScript and four in Go
  * for exactly that reason, and that is by design rather than drift.
  *
- * ## No version field
+ * ## Versioned artifact contract
  *
- * There is no schema version (#Q2465). Compatibility is not kept across a
- * change of this contract: every producer and consumer moves in the same
- * commit, and an older artifact is rebuilt rather than read.
+ * `manifestVersion: 2` is required. Additive fields do not change the major.
+ * Readers refuse missing or unsupported majors; rebuild older artifacts.
  */
 export const buildManifestSchema = z
   .object({
+    manifestVersion: z.literal(2),
     /**
      * The workspace's package name, which a deployer names resources after.
      */
@@ -171,15 +171,6 @@ export const buildManifestSchema = z
         .loose(),
     ),
     /**
-     * What only a Worker deploy needs. Present when the build carries a
-     * `workerd` slice, absent otherwise.
-     *
-     * Lore Deploy regenerates `wrangler.jsonc` and the worker entry from the
-     * manifest alone (`InfraOrchestrator.up({ prebuilt: true })` inside its
-     * own Worker), with no app to introspect, so everything that regeneration
-     * cannot derive is captured here at build time.
-     */
-    /**
      * Whether the server slices carry `alepha/inspector` (`alepha build
      * --inspect`). Even then it stays off until `ALEPHA_INSPECT=1`. Absent
      * when they do not.
@@ -192,6 +183,10 @@ export const buildManifestSchema = z
      * never taken for a current one. Opaque: compare it, never parse it.
      */
     optionsHash: z.string().optional(),
+    /**
+     * Worker deploy metadata, present for a workerd slice. Captures config,
+     * channels and bindings so deployers do not need to boot the app.
+     */
     cloudflare: z
       .object({
         /**

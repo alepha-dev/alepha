@@ -29,7 +29,26 @@ describe("PackCommand", () => {
       JSON.stringify({ name: packageName }),
     );
     await fs.mkdir("/app/dist", { recursive: true });
-    await fs.writeFile("/app/dist/manifest.json", "{}");
+    await fs.writeFile(
+      "/app/dist/manifest.json",
+      JSON.stringify({
+        manifestVersion: 2,
+        project: "fixture",
+        runtimes: [{ runtime: "bun", entry: "index.bun.js" }],
+        resources: {
+          hasDatabase: false,
+          hasBucket: false,
+          hasAnalytics: false,
+          hasKV: false,
+          hasQueue: false,
+          hasCron: false,
+          hasWebSocket: false,
+        },
+        crons: [],
+        secrets: [],
+        variables: [],
+      }),
+    );
 
     return {
       cli: alepha.inject(CliProvider),

@@ -1111,6 +1111,7 @@ describe("BuildCloudflareTask", () => {
         root: "/root",
         options: {},
         manifest: {
+          manifestVersion: 2,
           project: "my-app",
           runtimes: [{ runtime: "workerd", entry: "index.workerd.js" }],
           resources: {
@@ -1402,6 +1403,7 @@ describe("BuildCloudflareTask", () => {
   describe("Cloudflare job budgets", () => {
     const manifest = (over: Partial<Record<string, unknown>> = {}) =>
       ({
+        manifestVersion: 2,
         project: "my-app",
         runtimes: [{ runtime: "workerd", entry: "index.workerd.js" }],
         resources: {

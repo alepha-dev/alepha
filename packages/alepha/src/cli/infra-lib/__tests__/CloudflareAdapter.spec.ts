@@ -923,6 +923,19 @@ describe("CloudflareAdapter", () => {
       await fs.writeFile(
         "/project/dist/manifest.json",
         JSON.stringify({
+          manifestVersion: 2,
+          project: "fixture",
+          runtimes: [{ runtime: "bun", entry: "index.bun.js" }],
+          resources: {
+            hasDatabase: false,
+            hasBucket: false,
+            hasAnalytics: false,
+            hasKV: false,
+            hasQueue: false,
+            hasCron: false,
+            hasWebSocket: false,
+          },
+          crons: [],
           secrets: [
             { name: "APP_SECRET" },
             { name: "GOOGLE_CLIENT_ID" },
@@ -972,7 +985,23 @@ describe("CloudflareAdapter", () => {
       // Manifest declares only APP_SECRET…
       await fs.writeFile(
         "/project/dist/manifest.json",
-        JSON.stringify({ secrets: [{ name: "APP_SECRET" }], variables: [] }),
+        JSON.stringify({
+          manifestVersion: 2,
+          project: "fixture",
+          runtimes: [{ runtime: "bun", entry: "index.bun.js" }],
+          resources: {
+            hasDatabase: false,
+            hasBucket: false,
+            hasAnalytics: false,
+            hasKV: false,
+            hasQueue: false,
+            hasCron: false,
+            hasWebSocket: false,
+          },
+          crons: [],
+          secrets: [{ name: "APP_SECRET" }],
+          variables: [],
+        }),
       );
       // …but an orchestrator (Rocket) injected CLUB_CONFIG_JSON into the
       // per-deploy override file. It must still be pushed.
@@ -1016,6 +1045,19 @@ describe("CloudflareAdapter", () => {
       await fs.writeFile(
         "/project/dist/manifest.json",
         JSON.stringify({
+          manifestVersion: 2,
+          project: "fixture",
+          runtimes: [{ runtime: "bun", entry: "index.bun.js" }],
+          resources: {
+            hasDatabase: false,
+            hasBucket: false,
+            hasAnalytics: false,
+            hasKV: false,
+            hasQueue: false,
+            hasCron: false,
+            hasWebSocket: false,
+          },
+          crons: [],
           secrets: [{ name: "APP_SECRET" }, { name: "GOOGLE_CLIENT_ID" }],
           variables: [],
         }),
@@ -1142,6 +1184,19 @@ describe("CloudflareAdapter", () => {
       await fs.writeFile(
         "/project/dist/manifest.json",
         JSON.stringify({
+          manifestVersion: 2,
+          project: "fixture",
+          runtimes: [{ runtime: "bun", entry: "index.bun.js" }],
+          resources: {
+            hasDatabase: false,
+            hasBucket: false,
+            hasAnalytics: false,
+            hasKV: false,
+            hasQueue: false,
+            hasCron: false,
+            hasWebSocket: false,
+          },
+          crons: [],
           secrets: [{ name: "APP_SECRET" }, { name: "SIGIL_KEY" }],
           variables: [{ name: "SIGIL_CONFIG" }],
         }),
@@ -1190,6 +1245,19 @@ describe("CloudflareAdapter", () => {
       await fs.writeFile(
         "/project/dist/manifest.json",
         JSON.stringify({
+          manifestVersion: 2,
+          project: "fixture",
+          runtimes: [{ runtime: "bun", entry: "index.bun.js" }],
+          resources: {
+            hasDatabase: false,
+            hasBucket: false,
+            hasAnalytics: false,
+            hasKV: false,
+            hasQueue: false,
+            hasCron: false,
+            hasWebSocket: false,
+          },
+          crons: [],
           secrets: [{ name: "APP_SECRET" }, { name: "SIGIL_CONFIG" }],
           variables: [],
         }),
@@ -1289,6 +1357,19 @@ describe("CloudflareAdapter", () => {
         await fs.writeFile(
           "/project/dist/manifest.json",
           JSON.stringify({
+            manifestVersion: 2,
+            project: "fixture",
+            runtimes: [{ runtime: "bun", entry: "index.bun.js" }],
+            resources: {
+              hasDatabase: false,
+              hasBucket: false,
+              hasAnalytics: false,
+              hasKV: false,
+              hasQueue: false,
+              hasCron: false,
+              hasWebSocket: false,
+            },
+            crons: [],
             secrets: [{ name: "APP_SECRET" }, { name: "SIGIL_CONFIG" }],
             variables: [],
           }),
@@ -1305,6 +1386,19 @@ describe("CloudflareAdapter", () => {
         await fs.writeFile(
           "/project/dist/manifest.json",
           JSON.stringify({
+            manifestVersion: 2,
+            project: "fixture",
+            runtimes: [{ runtime: "bun", entry: "index.bun.js" }],
+            resources: {
+              hasDatabase: false,
+              hasBucket: false,
+              hasAnalytics: false,
+              hasKV: false,
+              hasQueue: false,
+              hasCron: false,
+              hasWebSocket: false,
+            },
+            crons: [],
             secrets: [{ name: "APP_SECRET" }],
             variables: [{ name: "SIGIL_CONFIG" }],
           }),

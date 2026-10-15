@@ -19,6 +19,7 @@ class BayProbe extends BayAdapter {
 }
 
 const manifest = (runtime = "workerd") => ({
+  manifestVersion: 2,
   project: "demo",
   runtimes: [
     {

@@ -5,6 +5,7 @@ import { FileSystemProvider } from "alepha/system";
 import type { BuildRuntime } from "../atoms/buildOptions.ts";
 import { imageOptions } from "../atoms/imageOptions.ts";
 import type { BuildManifest } from "../schemas/buildManifest.ts";
+import { BuildManifestReader } from "../services/BuildManifestReader.ts";
 import { DockerImageBuilder } from "../services/DockerImageBuilder.ts";
 import { WorkspaceCompiler } from "../services/WorkspaceCompiler.ts";
 
@@ -43,6 +44,7 @@ import { WorkspaceCompiler } from "../services/WorkspaceCompiler.ts";
  * of its own.
  */
 export class ImageCommand {
+  protected readonly manifestReader = $inject(BuildManifestReader);
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly builder = $inject(DockerImageBuilder);
   protected readonly compiler = $inject(WorkspaceCompiler);
@@ -219,14 +221,9 @@ export class ImageCommand {
    * in `dist/` — this command never boots the app.
    */
   protected async readManifest(root: string): Promise<BuildManifest> {
-    const path = this.fs.join(root, "dist", "manifest.json");
-    try {
-      return await this.fs.readJsonFile<BuildManifest>(path);
-    } catch {
-      throw new AlephaError(
-        `Cannot read ${path}. \`alepha image\` reads ./dist — run \`alepha build\` first.`,
-      );
-    }
+    return this.manifestReader.read(
+      this.fs.join(root, "dist", "manifest.json"),
+    );
   }
 
   /**

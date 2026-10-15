@@ -357,6 +357,7 @@ for (const path of ["alepha/cli/platform", "alepha/cli/platform-lib"]) {
       const manifest = JSON.parse(
         await readFile(join(root, "dist/manifest.json"), "utf8"),
       );
+      expect(manifest.manifestVersion).toBe(2);
       expect(manifest.runtimes).toEqual([
         { runtime: "workerd", entry: "index.workerd.js" },
       ]);
@@ -541,6 +542,8 @@ export default defineConfig({ plugins: [infra({ default: "prod", environments: {
     await writeFile(
       join(root, "dist/manifest.json"),
       JSON.stringify({
+        manifestVersion: 2,
+        crons: [],
         project: "local-app",
         runtimes: [{ runtime: "node", entry: "index.node.js" }],
         resources: {

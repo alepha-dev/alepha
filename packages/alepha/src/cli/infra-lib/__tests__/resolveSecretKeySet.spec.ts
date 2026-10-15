@@ -27,6 +27,19 @@ describe("resolveSecretKeySet", () => {
   };
 
   const manifest = JSON.stringify({
+    manifestVersion: 2,
+    project: "fixture",
+    runtimes: [{ runtime: "node" }],
+    crons: [],
+    resources: {
+      hasDatabase: false,
+      hasBucket: false,
+      hasAnalytics: false,
+      hasKV: false,
+      hasQueue: false,
+      hasCron: false,
+      hasWebSocket: false,
+    },
     secrets: [{ name: "APP_SECRET" }, { name: "STRIPE_KEY" }],
     variables: [{ name: "PUBLIC_FLAG" }],
   });

@@ -359,7 +359,7 @@ describe("DockerImageBuilder", () => {
         createCtx(
           fs,
           shell,
-          { ...compileOptions, image: { tag: "ghcr.io/o/app" } },
+          { ...compileOptions, tag: "ghcr.io/o/app" },
           { build: true, compile: "app", runtime: "bun" },
         ),
       );
@@ -501,12 +501,10 @@ describe("DockerImageBuilder", () => {
     });
   });
 
-  describe("--image flag", () => {
-    // The flag documents itself as "-i=<version> for specific version", but a
-    // bare value was taken as the image NAME — `--image=1.3.4` produced an
-    // image called `1.3.4:latest`, silently misnamed.
+  describe("--tag flag", () => {
+    // A bare --tag value is the version of the configured image.
     const dockerOptions: ImageOptions = {
-      image: { tag: "registry.example.com/app" },
+      tag: "registry.example.com/app",
     } as ImageOptions;
 
     const buildWith = async (image: boolean | string) => {
@@ -541,6 +539,24 @@ describe("DockerImageBuilder", () => {
     });
   });
 
+  it("preserves spaces inside configured docker arguments", async ({
+    expect,
+  }) => {
+    const { fs, shell, task } = createTestEnv();
+    await fs.writeFile("/project/dist/index.node.js", "// bundle");
+    await task.run(
+      createCtx(
+        fs,
+        shell,
+        { tag: "my/app", args: ["--build-arg", "TITLE=My app"] },
+        { build: true },
+      ),
+    );
+    expect(
+      shell.calls.find((call) => call.argv?.[0] === "docker")?.argv,
+    ).toContain("TITLE=My app");
+  });
+
   describe("OCI labels", () => {
     const buildWithImage = async (image: ImageOptions) => {
       const { fs, shell, task } = createTestEnv();
@@ -557,7 +573,8 @@ describe("DockerImageBuilder", () => {
 
     it("passes the build-describing labels on the docker build", async () => {
       const { cmd } = await buildWithImage({
-        image: { tag: "ghcr.io/myorg/app", oci: true },
+        tag: "ghcr.io/myorg/app",
+        oci: true,
       });
 
       expect(cmd).toContain(
@@ -581,7 +598,7 @@ describe("DockerImageBuilder", () => {
         createCtx(
           fs,
           shell,
-          { image: { tag: "ghcr.io/myorg/app", oci: true } },
+          { tag: "ghcr.io/myorg/app", oci: true },
           {
             root: "/my project",
             distDir: "/my project/dist",
@@ -601,9 +618,9 @@ describe("DockerImageBuilder", () => {
 
     it("writes source, title, description and licenses into the Dockerfile", async () => {
       const { cmd, dockerfile } = await buildWithImage({
-        image: {
-          tag: "ghcr.io/myorg/app",
-          oci: true,
+        tag: "ghcr.io/myorg/app",
+        oci: true,
+        labels: {
           source: "https://github.com/myorg/app",
           title: "App",
           description: "Self-hosted app",
@@ -633,7 +650,9 @@ describe("DockerImageBuilder", () => {
 
     it("omits a label entirely rather than emitting an empty one", async () => {
       const { dockerfile } = await buildWithImage({
-        image: { tag: "ghcr.io/myorg/app", oci: true, title: "App" },
+        tag: "ghcr.io/myorg/app",
+        oci: true,
+        labels: { title: "App" },
       });
 
       expect(dockerfile).toContain(
@@ -646,11 +665,9 @@ describe("DockerImageBuilder", () => {
 
     it("escapes a label value carrying a quote", async () => {
       const { dockerfile } = await buildWithImage({
-        image: {
-          tag: "ghcr.io/myorg/app",
-          oci: true,
-          description: 'It\'s a "self-hosted" app',
-        },
+        tag: "ghcr.io/myorg/app",
+        oci: true,
+        labels: { description: 'It\'s a "self-hosted" app' },
       });
 
       expect(dockerfile).toContain(
@@ -660,10 +677,8 @@ describe("DockerImageBuilder", () => {
 
     it("emits no OCI labels at all when oci is off", async () => {
       const { cmd, dockerfile } = await buildWithImage({
-        image: {
-          tag: "ghcr.io/myorg/app",
-          source: "https://github.com/myorg/app",
-        },
+        tag: "ghcr.io/myorg/app",
+        labels: { source: "https://github.com/myorg/app" },
       });
 
       expect(cmd).not.toContain("--label");
@@ -681,11 +696,9 @@ describe("DockerImageBuilder", () => {
           fs,
           shell,
           {
-            image: {
-              tag: "ghcr.io/myorg/app",
-              oci: true,
-              source: "https://github.com/myorg/app",
-            },
+            tag: "ghcr.io/myorg/app",
+            oci: true,
+            labels: { source: "https://github.com/myorg/app" },
           },
           { compile: "app", runtime: "bun" },
         ),
@@ -765,7 +778,9 @@ describe("DockerImageBuilder", () => {
 
     it("sits beside the OCI labels rather than replacing them", async () => {
       const dockerfile = await writeDockerfileFor({
-        image: { tag: "ghcr.io/myorg/app", oci: true, title: "App" },
+        tag: "ghcr.io/myorg/app",
+        oci: true,
+        labels: { title: "App" },
       });
 
       expect(dockerfile).toContain('LABEL "dev.alepha.runtime"="node"');
