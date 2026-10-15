@@ -372,6 +372,41 @@ describe("Alepha CLI E2E", () => {
       expect(report.failed).toEqual([]);
     });
 
+    it("ships every file a dist module names with new URL(literal, import.meta.url)", async () => {
+      // The bundler never follows these: a file reached this way at runtime
+      // has to be copied next to its entry by the build. `jsdomProject` named
+      // a `setup.ts` absent from the 0.32.0 tarball, and the monorepo, which
+      // resolves `src/`, never noticed. Comment lines are skipped: a JSDoc
+      // describing the idiom is not a reference.
+      const dist = join(PROJECT_DIR, "node_modules/alepha/dist");
+      const pattern =
+        /new URL\(\s*["']([^"']+)["']\s*,\s*import\.meta\.url\s*\)/g;
+      const missing: string[] = [];
+      const walk = async (dir: string): Promise<void> => {
+        for (const entry of await readdir(dir, { withFileTypes: true })) {
+          const path = join(dir, entry.name);
+          if (entry.isDirectory()) {
+            await walk(path);
+            continue;
+          }
+          if (!entry.name.endsWith(".js")) continue;
+          for (const line of (await readFile(path, "utf-8")).split("\n")) {
+            const trimmed = line.trim();
+            if (trimmed.startsWith("*") || trimmed.startsWith("//")) continue;
+            for (const match of line.matchAll(pattern)) {
+              const target = resolve(dirname(path), match[1]);
+              if (!existsSync(target)) {
+                missing.push(`${path.slice(dist.length + 1)} -> ${match[1]}`);
+              }
+            }
+          }
+        }
+      };
+      await walk(dist);
+
+      expect(missing).toEqual([]);
+    });
+
     it("does not export the CLI entry point", async () => {
       // `alepha/bin` boots Alepha and runs a command as a side effect of being
       // loaded, so exporting it meant any tool walking the map launched the CLI.
