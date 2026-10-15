@@ -1,5 +1,4 @@
-import { $env, $hook, $inject, $pipeline, AlephaError } from "alepha";
-import { $lock } from "alepha/lock";
+import { $env, $hook, $inject, AlephaError } from "alepha";
 import {
   DatabaseProvider,
   DbMigrationError,
@@ -107,7 +106,7 @@ export abstract class PostgresProvider extends DatabaseProvider {
       // never migrate in serverless mode (vercel, netlify, ...)
       if (!this.alepha.isServerless()) {
         try {
-          await this.migrateLock.run();
+          await this.migrateUnderLock();
         } catch (error) {
           throw new DbMigrationError(error);
         }
@@ -123,12 +122,80 @@ export abstract class PostgresProvider extends DatabaseProvider {
     },
   });
 
-  protected migrateLock = $pipeline({
-    use: [$lock({ name: "postgres:migrate" })],
-    handler: async () => {
+  /**
+   * How long a booting instance waits, in milliseconds, for another one that
+   * is migrating the same schema. Past it the boot fails with a
+   * `DbMigrationError` naming the lock, rather than hanging on a stuck
+   * migration.
+   */
+  protected readonly migrationLockTimeout: number = 300_000;
+
+  /**
+   * The advisory lock key, per schema: two apps on one database but in two
+   * schemas (and every test container, each in its own schema) never wait
+   * for each other.
+   */
+  protected get migrationLockKey(): string {
+    return `alepha:migrate:${this.schema}`;
+  }
+
+  /**
+   * A session of its own for the migration lock, or `undefined` when the
+   * driver cannot pin one (the migration then runs unlocked, as on SQLite).
+   *
+   * A Postgres advisory lock belongs to the SESSION that took it, so taking
+   * and releasing it on a pool could land on two different connections.
+   */
+  protected async openLockSession(): Promise<PostgresLockSession | undefined> {
+    return undefined;
+  }
+
+  /**
+   * Migrate while holding `pg_advisory_lock` on a session of its own.
+   *
+   * A second instance booting while the first migrates WAITS for the lock,
+   * then finds the migrations applied. It used to take a `$lock` with
+   * `wait: false` and crash its boot on `LockAcquireError`; and that lock went
+   * through `LockProvider`, in memory unless Redis was configured, so two
+   * instances without Redis took two locks and migrated at once. The database
+   * is the one thing they share, so the lock lives there.
+   *
+   * The wait is bounded by `lock_timeout` ({@link migrationLockTimeout}),
+   * reset before migrating so the migration's own statements are not bound
+   * by it. The lock is released in `finally`, and closing the session
+   * releases it anyway.
+   */
+  protected async migrateUnderLock(): Promise<void> {
+    const session = await this.openLockSession();
+    if (!session) {
       await this.migrate();
-    },
-  });
+      return;
+    }
+
+    const key = this.migrationLockKey;
+    try {
+      await session.query(
+        `SET lock_timeout = ${Math.max(1, Math.round(this.migrationLockTimeout))}`,
+      );
+      try {
+        await session.query("SELECT pg_advisory_lock(hashtext($1))", [key]);
+      } catch (error) {
+        throw new AlephaError(
+          `Could not take the migration lock '${key}' within ${this.migrationLockTimeout} ms: another instance is still migrating this schema, or holds the lock`,
+          { cause: error },
+        );
+      }
+      await session.query("SET lock_timeout = 0");
+
+      try {
+        await this.migrate();
+      } finally {
+        await session.query("SELECT pg_advisory_unlock(hashtext($1))", [key]);
+      }
+    } finally {
+      await session.close();
+    }
+  }
 
   // -------------------------------------------------------------------------------------------------------------------
   // Create unique schema for tests and clean up after. Format: test_alepha_{epoch_seconds}_{random8}
@@ -262,4 +329,16 @@ export abstract class PostgresProvider extends DatabaseProvider {
 
     return now - epoch * 1000;
   }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * One pinned Postgres session, used to hold the migration advisory lock.
+ *
+ * @see PostgresProvider.migrateUnderLock
+ */
+export interface PostgresLockSession {
+  query(text: string, params?: unknown[]): Promise<unknown>;
+  close(): Promise<void>;
 }

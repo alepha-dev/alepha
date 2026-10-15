@@ -5,7 +5,10 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import postgres from "postgres";
 
-import { PostgresProvider } from "./PostgresProvider.ts";
+import {
+  type PostgresLockSession,
+  PostgresProvider,
+} from "./PostgresProvider.ts";
 
 export class NodePostgresProvider extends PostgresProvider {
   static readonly SSL_MODES = [
@@ -64,6 +67,22 @@ export class NodePostgresProvider extends PostgresProvider {
     } finally {
       await client.end();
     }
+  }
+
+  /**
+   * A single-connection client of its own, not a connection reserved from the
+   * app's pool: with `POOL_MAX=1` a reserved connection would leave the
+   * migration none to run on.
+   */
+  protected override async openLockSession(): Promise<PostgresLockSession> {
+    const client = postgres(this.migrationClientOptions());
+    return {
+      query: async (text, params) =>
+        await client.unsafe(text, (params ?? []) as any[]),
+      close: async () => {
+        await client.end();
+      },
+    };
   }
 
   /**

@@ -3,7 +3,10 @@ import { sql } from "drizzle-orm";
 import type { BunSQLDatabase } from "drizzle-orm/bun-sql/postgres";
 import type { PgAsyncDatabase } from "drizzle-orm/pg-core";
 
-import { PostgresProvider } from "./PostgresProvider.ts";
+import {
+  type PostgresLockSession,
+  PostgresProvider,
+} from "./PostgresProvider.ts";
 
 /**
  * Bun PostgreSQL provider using Drizzle ORM with Bun's native SQL client.
@@ -53,6 +56,27 @@ export class BunPostgresProvider extends PostgresProvider {
       migrationsTable: this.migrationsTable,
       ...options,
     });
+  }
+
+  /**
+   * A connection reserved from the pool for the migration lock. Bun's pool
+   * defaults to several connections, so the migration still has one to run
+   * on; with `POOL_MAX=1` it would not, and the boot would wait for the lock
+   * timeout.
+   */
+  protected override async openLockSession(): Promise<
+    PostgresLockSession | undefined
+  > {
+    if (!this.client) {
+      return undefined;
+    }
+    const reserved = await this.client.reserve();
+    return {
+      query: async (text, params) => await reserved.unsafe(text, params ?? []),
+      close: async () => {
+        reserved.release();
+      },
+    };
   }
 
   // -------------------------------------------------------------------------------------------------------------------
