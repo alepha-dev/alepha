@@ -282,10 +282,14 @@ export class CapabilityRegistry {
       // like their sidebar entries they hang off their Work options.
       searchKinds: ["quest", "epic", "release"],
       searchKindOptions: { epic: "epics", release: "releases" },
-      activityKinds: ["quest", "epic", "release"],
+      activityKinds: ["quest", "epic", "release", "automation"],
       // Epics and Releases are options of Work, and so are their sidebar
       // entries (`capabilityNav.ts`). Quests are Work's baseline.
-      activityKindOptions: { epic: "epics", release: "releases" },
+      activityKindOptions: {
+        epic: "epics",
+        release: "releases",
+        automation: "automations",
+      },
       dashboardCards: [
         "activeQuests",
         "heldQuests",

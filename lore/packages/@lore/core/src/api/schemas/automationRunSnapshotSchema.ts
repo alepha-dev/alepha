@@ -34,6 +34,7 @@ export const automationRunSnapshotSchema = z
       .array(
         z
           .object({
+            id: z.uuid().optional(),
             key: z.string().max(64),
             version: z.integer().nonnegative(),
             value: automationVariableValueSchema,

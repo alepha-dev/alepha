@@ -80,6 +80,7 @@ describe("Automation access", () => {
     const project = await createTestProject(alepha, {
       capabilities: [{ key: "work", options: { automations: true } }],
     });
+    await entities.users.updateById(project.createdBy, { roles: ["user"] });
     const ranks = alepha.inject(RankService);
     await ranks.save(
       project.organizationId!,
@@ -104,8 +105,9 @@ describe("Automation access", () => {
     const project = await createTestProject(alepha, {
       capabilities: [{ key: "work", options: { automations: true } }],
     });
+    await entities.users.updateById(project.createdBy, { roles: ["user"] });
     await createPresetRanks(alepha, project.id);
-    const viewer = await entities.users.create({});
+    const viewer = await entities.users.create({ roles: ["user"] });
     await createTestMember(alepha, project, viewer.id, { rank: "viewer" });
     await expect(
       access.assert(
@@ -140,8 +142,9 @@ describe("Automation access", () => {
     const project = await createTestProject(alepha, {
       capabilities: [{ key: "work", options: { automations: true } }],
     });
+    await entities.users.updateById(project.createdBy, { roles: ["user"] });
     await createPresetRanks(alepha, project.id);
-    const admin = await entities.users.create({});
+    const admin = await entities.users.create({ roles: ["user"] });
     await createTestMember(alepha, project, admin.id, { rank: "admin" });
     const rule = await persistence.rules.create({
       projectId: project.id,
@@ -163,7 +166,7 @@ describe("Automation access", () => {
       "immutable author",
     );
     const outsider = {
-      id: crypto.randomUUID(),
+      id: (await entities.users.create({ roles: ["admin"] })).id,
       ownership: false,
       roles: ["admin"],
     } as UserAccountToken;
@@ -176,6 +179,7 @@ describe("Automation access", () => {
     expect,
   }) => {
     const project = await createTestProject(alepha, { capabilities: [] });
+    await entities.users.updateById(project.createdBy, { roles: ["user"] });
     await persistence.rules.create({
       projectId: project.id,
       authorUserId: project.createdBy,
@@ -207,7 +211,7 @@ describe("Automation access", () => {
         { user },
       ),
     ).rejects.toThrow("automations");
-    const admin = await entities.users.create({});
+    const admin = await entities.users.create({ roles: ["user"] });
     await createTestMember(alepha, project, admin.id, { rank: "member" });
     await expect(
       controller.getAutomationDiagnostics.fetch(

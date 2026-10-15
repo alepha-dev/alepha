@@ -1,6 +1,6 @@
 import { $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { DbCacheProvider } from "alepha/orm";
+import { DbCacheProvider, sql, type SQLLike } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 import { BadRequestError, ConflictError } from "alepha/server";
 
@@ -13,9 +13,9 @@ import {
 } from "../schemas/automationRunSnapshotSchema.ts";
 import type { AutomationSlotKind } from "../schemas/automationSlotKindSchema.ts";
 import { AutomationAccess } from "./AutomationAccess.ts";
-import { AutomationAtomic } from "./AutomationAtomic.ts";
 import { AutomationBatchRepository } from "./AutomationBatchRepository.ts";
 import { AutomationCatalog } from "./AutomationCatalog.ts";
+import { AutomationConfigurationWrites } from "./AutomationConfigurationWrites.ts";
 import { AutomationDatabase } from "./AutomationDatabase.ts";
 import { AutomationPersistence } from "./AutomationPersistence.ts";
 
@@ -26,7 +26,7 @@ import { AutomationPersistence } from "./AutomationPersistence.ts";
  */
 export class AutomationRunEvidence {
   protected readonly database = $inject(AutomationDatabase);
-  protected readonly atomic = $inject(AutomationAtomic);
+  protected readonly writes = $inject(AutomationConfigurationWrites);
   protected readonly cache = $inject(DbCacheProvider);
   protected readonly ruleRows = $inject(
     AutomationBatchRepository.of(automations),
@@ -425,7 +425,21 @@ export class AutomationRunEvidence {
     requiresApproval: boolean,
     options: {
       expectedVersion?: number;
-      patch?: Partial<Pick<Automation, "enabled" | "revision">> & {
+      condition?: SQLLike;
+      statements?: SQLLike[];
+      changedTables?: string[];
+      patch?: Partial<
+        Pick<
+          Automation,
+          "enabled" | "revision" | "approvedVariables" | "title" | "rule"
+        >
+      > & {
+        authorKeyId?: string | null;
+        authorSessionId?: string | null;
+        authorScope?: string[] | null;
+        activatedAt?: string | null;
+        baseline?: Automation["baseline"] | null;
+      } & {
         nextRunAt?: string | null;
         scheduleCron?: string | null;
       };
@@ -463,9 +477,9 @@ export class AutomationRunEvidence {
         health: { from: rule.health, to: health },
       });
       try {
-        await this.atomic.guarded(
+        await this.writes.commit(
           rule.projectId,
-          this.ruleRows.exists({ id: rule.id, version: rule.version }),
+          sql`${this.ruleRows.exists({ id: rule.id, version: rule.version })} ${options.condition ? sql`AND (${typeof options.condition === "string" ? sql.raw(options.condition) : options.condition.getSQL()})` : sql``}`,
           [
             this.ruleRows.updateStatement(
               { id: rule.id, version: rule.version },
@@ -488,6 +502,7 @@ export class AutomationRunEvidence {
               reason: prepared.reason,
               snapshot: prepared.snapshot,
             }),
+            ...(options.statements ?? []),
           ],
         );
       } catch (error) {
@@ -497,6 +512,8 @@ export class AutomationRunEvidence {
       }
       await this.cache.invalidateTable("automations");
       await this.cache.invalidateTable("automation_runs");
+      for (const table of options.changedTables ?? [])
+        await this.cache.invalidateTable(table);
       return true;
     });
   }

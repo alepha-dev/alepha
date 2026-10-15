@@ -524,6 +524,7 @@ export class AutomationCatalog {
     if (!reason && ["release", "folio", "member", "channel"].includes(kind))
       reason = await this.references.reason(kind, context.project.id, value);
     return {
+      id: row.id,
       key: row.key,
       version: row.version,
       kind,

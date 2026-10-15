@@ -4,6 +4,8 @@ import { join } from "node:path";
 
 import {
   AutomationAtomic,
+  AutomationService,
+  AutomationVariableService,
   AutomationDomainActions,
   AutomationWorker,
   AutomationEvaluator,
@@ -621,6 +623,69 @@ describe("Durable automation primitives on local D1", () => {
           })
         ).snapshot.counts.executed,
       ).toBe(2);
+
+      const application = alepha.inject(AutomationService);
+      const variables = alepha.inject(AutomationVariableService);
+      const shared = await variables.set(
+        project.id,
+        domainAuthor,
+        "native_message",
+        {
+          value: { kind: "text", value: "Approved D1 value" },
+        },
+      );
+      const approved = await application.create(project.id, domainAuthor, {
+        title: "D1 native approval fence",
+        rule: {
+          ...workerAst,
+          actions: [
+            {
+              kind: "appendFolio",
+              folio: domainFolio.id,
+              text: "{{native_message}}",
+            },
+          ],
+        },
+      });
+      const activated = await application.setEnabled(
+        project.id,
+        approved.id,
+        domainAuthor,
+        true,
+        0,
+      );
+      expect(
+        (await persistence.rules.getById(approved.id)).approvedVariables,
+      ).toEqual([
+        { id: shared.variable.id, key: "native_message", version: 0 },
+      ]);
+      const approvedReady = await claims.reserve({
+        automationId: approved.id,
+        revision: activated.revision,
+        source: {
+          kind: "schedule",
+          scheduledAt: alepha.inject(DateTimeProvider).nowISOString(),
+        },
+      });
+      await alepha
+        .inject(AutomationWorker)
+        .step({ receiptId: approvedReady.id }, 3);
+      expect(
+        (await persistence.receipts.getById(approvedReady.id)).status,
+      ).toBe("committed");
+      expect((await entities.folios.getById(domainFolio.id)).content).toContain(
+        "Approved D1 value",
+      );
+      await variables.set(project.id, domainAuthor, "native_message", {
+        id: shared.variable.id,
+        version: 0,
+        value: { kind: "text", value: "New approved D1 value" },
+      });
+      expect(
+        (await persistence.rules.getById(approved.id)).approvedVariables,
+      ).toEqual([
+        { id: shared.variable.id, key: "native_message", version: 1 },
+      ]);
 
       await entities.organizationMembers.deleteMany({
         organizationId: project.organizationId!,

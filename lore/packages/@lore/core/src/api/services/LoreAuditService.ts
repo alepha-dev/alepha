@@ -98,6 +98,15 @@ export class LoreAuditService extends AuditService {
     return entry;
   }
 
+  public nativeActivity(
+    entry: Pick<
+      AuditEntity,
+      "scopeType" | "scopeId" | "type" | "action" | "userId"
+    >,
+  ): Promise<void> {
+    return this.recordActivity(entry);
+  }
+
   /**
    * One point per project-scoped audit event, best effort.
    *

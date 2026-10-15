@@ -2666,6 +2666,7 @@ export default {
   "activity.filter.allResources": "Toutes les ressources",
   "activity.filter.allActions": "Toutes les actions",
   "activity.filter.anyDate": "Toute date",
+  "activity.resource.automation": "Automatisation",
   "activity.resource.quest": "Quête",
   "activity.resource.epic": "Epic",
   "activity.resource.release": "Version",

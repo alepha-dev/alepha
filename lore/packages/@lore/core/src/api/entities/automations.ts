@@ -3,6 +3,7 @@ import { $entity, db } from "alepha/orm";
 
 import { automationRuleSchema } from "../schemas/automationRuleSchema.ts";
 import { automationSafeFieldsSchema } from "../schemas/automationSafeFieldsSchema.ts";
+import { automationVariableApprovalSchema } from "../schemas/automationVariableApprovalSchema.ts";
 import { projects } from "./projects.ts";
 import { users } from "./users.ts";
 
@@ -21,6 +22,13 @@ export const automations = $entity({
       onDelete: "restrict",
     }),
     authorKeyId: z.uuid().optional(),
+    authorSessionId: z.uuid().optional(),
+    authorScope: z.array(z.string().max(128)).max(512).optional(),
+    approvedVariables: db.default(
+      z.array(automationVariableApprovalSchema).max(64),
+      [],
+    ),
+    activatedAt: z.datetime().optional(),
     title: z.string().min(1).max(255),
     enabled: db.default(z.boolean(), false),
     health: db.default(

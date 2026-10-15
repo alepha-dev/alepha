@@ -2,13 +2,18 @@ import { $inject } from "alepha";
 import { apiKeyEntity } from "alepha/api/keys";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
-import type { UserAccountToken } from "alepha/security";
+import {
+  EffectivePermissionsProvider,
+  SecurityProvider,
+  type UserAccountToken,
+} from "alepha/security";
 import { ForbiddenError } from "alepha/server";
 
 import type { Automation } from "../entities/automations.ts";
 import { users } from "../entities/users.ts";
 import { AutomationProjectPermissions } from "../security/AutomationProjectPermissions.ts";
 import { AutomationDatabase } from "./AutomationDatabase.ts";
+import { AutomationOAuthAuthority } from "./AutomationOAuthAuthority.ts";
 import { AutomationProjectSecurity } from "./AutomationProjectSecurity.ts";
 
 /**
@@ -16,6 +21,9 @@ import { AutomationProjectSecurity } from "./AutomationProjectSecurity.ts";
  * author's key ceiling before every effect; it never uses the job's token.
  */
 export class AutomationAccess {
+  protected readonly effective = $inject(EffectivePermissionsProvider);
+  protected readonly applicationSecurity = $inject(SecurityProvider);
+  protected readonly oauth = $inject(AutomationOAuthAuthority);
   protected readonly database = $inject(AutomationDatabase);
   protected readonly security = $inject(AutomationProjectSecurity);
   protected readonly permissions = $inject(AutomationProjectPermissions);
@@ -47,10 +55,11 @@ export class AutomationAccess {
     user: UserAccountToken,
     permission: "automation:read" | "automation:write" | "automation:manage",
   ) {
-    const { project, member } = await this.membership(projectId, user);
+    const current = await this.currentUser(user);
+    const { project, member } = await this.membership(projectId, current);
     const allowed = await this.permissions.of(
       projectId,
-      { ...user, ownership: true },
+      { ...current, ownership: true },
       member,
     );
     if (!allowed.permissions.includes(permission))
@@ -71,7 +80,14 @@ export class AutomationAccess {
     projectId: number,
     user: UserAccountToken,
   ): Promise<void> {
-    const { member } = await this.membership(projectId, user);
+    const current = await this.currentUser(user);
+    const { member } = await this.membership(projectId, current);
+    if (
+      !(
+        await this.permissions.of(projectId, current, member)
+      ).permissions.includes("capability:manage")
+    )
+      throw new ForbiddenError("Owner diagnostics require capability:manage");
     if (member.rank !== "owner")
       throw new ForbiddenError(
         "Automation diagnostics require the project owner",
@@ -99,17 +115,29 @@ export class AutomationAccess {
    * contact details and secrets never enter the execution identity.
    */
   public async author(
-    rule: Pick<Automation, "authorUserId" | "authorKeyId">,
+    rule: Pick<Automation, "authorUserId" | "authorKeyId"> &
+      Partial<Pick<Automation, "authorSessionId" | "authorScope">>,
   ): Promise<UserAccountToken> {
     return this.database.primary(() => this.authorPrimary(rule));
   }
 
   protected async authorPrimary(
-    rule: Pick<Automation, "authorUserId" | "authorKeyId">,
+    rule: Pick<Automation, "authorUserId" | "authorKeyId"> &
+      Partial<Pick<Automation, "authorSessionId" | "authorScope">>,
   ): Promise<UserAccountToken> {
     const account = await this.users.findById(rule.authorUserId);
     if (!account?.enabled)
       throw new ForbiddenError("Automation author account is unavailable");
+    if (rule.authorKeyId && rule.authorSessionId)
+      throw new ForbiddenError("Ambiguous authoring credential");
+    if (rule.authorSessionId)
+      return this.oauth.resolve({
+        id: rule.authorSessionId,
+        userId: account.id,
+        roles: account.roles,
+        realm: account.realm,
+        originalScope: rule.authorScope,
+      });
     let roles = account.roles;
     let permissionScope: string[] | undefined;
     if (rule.authorKeyId) {
@@ -141,17 +169,80 @@ export class AutomationAccess {
     };
   }
 
-  public async provenance(user: UserAccountToken): Promise<string | undefined> {
+  public async provenance(
+    user: UserAccountToken,
+  ): Promise<
+    | Partial<
+        Pick<Automation, "authorKeyId" | "authorSessionId" | "authorScope">
+      >
+    | undefined
+  > {
     if (!user.credential) return undefined;
-    if (user.credential.type !== "api-key")
+    if (user.credential.type === "api-key") {
+      await this.author({
+        authorUserId: user.id,
+        authorKeyId: user.credential.id,
+      });
+      return { authorKeyId: user.credential.id };
+    }
+    if (!user.sessionId)
       throw new ForbiddenError(
-        "Author automations from a signed-in session or an API key with a revocable identity",
+        "OAuth authoring requires a revocable session identity",
       );
-    await this.author({
-      authorUserId: user.id,
-      authorKeyId: user.credential.id,
+    const grant = await this.oauth.resolve({
+      id: user.sessionId,
+      userId: user.id,
+      roles: user.roles ?? [],
+      realm: user.realm,
+      clientId: user.credential.clientId,
+      originalScope: user.permissionScope,
     });
-    return user.credential.id;
+    return {
+      authorSessionId: user.sessionId,
+      authorScope: grant.permissionScope,
+    };
+  }
+
+  protected async currentUser(
+    user: UserAccountToken,
+  ): Promise<UserAccountToken> {
+    const account = await this.users.findById(user.id);
+    if (!account?.enabled)
+      throw new ForbiddenError("Automation caller account is unavailable");
+    let current: UserAccountToken;
+    if (user.credential?.type === "api-key")
+      current = await this.author({
+        authorUserId: user.id,
+        authorKeyId: user.credential.id,
+      });
+    else if (user.credential?.type === "oauth") {
+      if (!user.sessionId)
+        throw new ForbiddenError(
+          "OAuth automation access requires a revocable session identity",
+        );
+      current = await this.oauth.resolve({
+        id: user.sessionId,
+        userId: account.id,
+        roles: account.roles,
+        realm: account.realm,
+        clientId: user.credential.clientId,
+        originalScope: user.permissionScope,
+      });
+    } else current = { ...user, roles: account.roles, ownership: true };
+    current.roles = current.roles?.filter((role) => user.roles?.includes(role));
+    return {
+      ...current,
+      permissionScope: this.effective.resolve({
+        user: current,
+        narrow: [
+          (permission) =>
+            this.applicationSecurity.isInPermissionScope(
+              permission,
+              user.permissionScope,
+            ),
+        ],
+      }),
+    };
   }
 
   protected async membership(projectId: number, user: UserAccountToken) {

@@ -688,3 +688,31 @@ preserving its global 50-claim budget across cold starts. Event filtering loads
 at most 50 shared app bindings in one page read; current-author validation and
 expensive target reads belong to the bounded worker. Compatibility roster and
 reminder continuation policies are integrated by their adoption quest.
+
+## Automation authoring boundary (#E43, #Q2527)
+
+`AutomationService` and `AutomationVariableService` own policy for the HTTP actions
+and MCP tools. Client writes carry an expected configuration revision; variable
+writes also carry the immutable variable UUID and version. Clients never supply
+an author or credential. New rules start disabled. A manager can stop or delete
+another author's rule, but cannot rewrite or enable it.
+
+Authoring and effects reconstruct current account, membership, rank and capability
+permissions. API keys retain their immutable key identity; OAuth rules retain the
+revocable signed session identity and original concrete scope ceiling. OAuth
+validation reads only public grant columns and current realm settings without
+seeding a parameter or reading refresh tokens. Cached request scopes never replace
+these live checks.
+
+A rule stores each approved shared variable UUID and version. Native conditional
+configuration batches fence approval, audit and revision changes against current
+rows. Variable edits additionally fence the complete consumer set and advance
+same-author approvals only after full validation. Other authors' consumers pause
+for explicit approval. The independent activation timestamp rejects delayed
+source events from before the latest enable or configuration change.
+
+Configuration mutations and their sanitized audit commit in the same native
+batch. The audit follows the existing finite project audit policy; executable
+bodies, variable values and credentials never enter its metadata. Detailed run
+payloads retain their separate 30-day policy. Soft deletion preserves that history
+while revision checks cancel queued and following effects.

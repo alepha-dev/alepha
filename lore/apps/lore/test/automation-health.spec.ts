@@ -3,6 +3,7 @@ import {
   AutomationCatalog,
   AutomationDatabase,
   AutomationHealth,
+  AutomationService,
   AutomationPersistence,
   AutomationRunEvidence,
   AutomationVariables,
@@ -60,6 +61,13 @@ describe("Automation enable intent and health", () => {
       },
     ],
   });
+  const enable = async (id: string, enabled: boolean, actor = user) => {
+    const rule = await persistence.rules.getById(id);
+    await alepha
+      .inject(AutomationService)
+      .setEnabled(rule.projectId, id, actor, enabled, rule.revision);
+    return persistence.rules.getById(id);
+  };
   const create = async (enabled = true) => {
     const row = await persistence.rules.create({
       projectId: project.id,
@@ -67,7 +75,7 @@ describe("Automation enable intent and health", () => {
       title: "Rule",
       rule: ast(),
     });
-    return enabled ? health.setEnabled(row.id, user, true) : row;
+    return enabled ? enable(row.id, true) : row;
   };
   const capability = (
     key: "support" | "work",
@@ -221,13 +229,16 @@ describe("Automation enable intent and health", () => {
     });
     await capability("support", false);
     await capability("support", true);
-    await expect(health.setEnabled(rule.id, user, true)).rejects.toThrow(
-      "revoked",
-    );
+    await expect(
+      enable(rule.id, true, {
+        ...user,
+        credential: { type: "api-key", id: key.id },
+      }),
+    ).rejects.toThrow("revoked");
     await keys.updateById(key.id, { revokedAt: null });
     await health.project(project.id);
     expect((await persistence.rules.getById(rule.id)).health).toBe("paused");
-    expect(await health.setEnabled(rule.id, user, true)).toMatchObject({
+    expect(await enable(rule.id, true)).toMatchObject({
       enabled: true,
       health: "active",
       requiresApproval: false,
@@ -262,7 +273,7 @@ describe("Automation enable intent and health", () => {
     await createTestMember(alepha, project, user.id, { rank: "owner" });
     await health.project(project.id);
     expect((await persistence.rules.getById(rule.id)).health).toBe("paused");
-    await health.setEnabled(rule.id, user, true);
+    await enable(rule.id, true);
     expect((await persistence.rules.getById(rule.id)).health).toBe("active");
   });
   it("records a foreign variable review once and never clears it during reconciliation", async ({
@@ -284,7 +295,7 @@ describe("Automation enable intent and health", () => {
       title: "Shared",
       rule: config,
     });
-    await health.setEnabled(rule.id, user, true);
+    await enable(rule.id, true);
     const manager = await entities.users.create({ roles: ["user"] });
     await createTestMember(alepha, project, manager.id, { rank: "admin" });
     await variables.set(
@@ -299,14 +310,14 @@ describe("Automation enable intent and health", () => {
     const count = await persistence.runs.count({ projectId: project.id });
     await health.project(project.id);
     expect(await persistence.runs.count({ projectId: project.id })).toBe(count);
-    await health.setEnabled(rule.id, user, true);
+    await enable(rule.id, true);
     expect((await persistence.rules.getById(rule.id)).health).toBe("active");
   });
   it("blocks following actions after disable, preserves review state and advances the revision", async ({
     expect,
   }) => {
     const rule = await create();
-    const disabled = await health.setEnabled(rule.id, user, false);
+    const disabled = await enable(rule.id, false);
     expect(disabled.revision).toBe(rule.revision + 1);
     expect(health.display(disabled)).toBe("disabled");
     await expect(
@@ -353,7 +364,7 @@ describe("Automation enable intent and health", () => {
     ).rejects.toThrow("Atomic automation batch failed");
     expect(await persistence.rules.getById(rule.id)).toEqual(rule);
     await database.batch([sql`DROP TRIGGER refuse_health`]);
-    await health.setEnabled(rule.id, user, false);
+    await enable(rule.id, false);
     await health.reconcile(rule);
     expect((await persistence.rules.getById(rule.id)).enabled).toBe(false);
   });

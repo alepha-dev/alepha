@@ -176,7 +176,7 @@ describe("Automation catalogue", () => {
       key: "target",
       value: { kind: "folio", value: folio.id },
     });
-    const reader = await entities.users.create({});
+    const reader = await entities.users.create({ roles: ["user"] });
     await alepha.inject(RankService).save(
       project.organizationId!,
       {
@@ -456,6 +456,7 @@ describe("Automation catalogue", () => {
         { key: "work", options: { automations: true, releases: false } },
       ],
     });
+    await entities.users.updateById(disabled.createdBy, { roles: ["user"] });
     const result = await catalog.describe(disabled.id, {
       id: disabled.createdBy,
       roles: ["user"],
@@ -478,7 +479,7 @@ describe("Automation catalogue", () => {
     expect,
   }) => {
     await createPresetRanks(alepha, project.id);
-    const reader = await entities.users.create({});
+    const reader = await entities.users.create({ roles: ["user"] });
     await createTestMember(alepha, project, reader.id, { rank: "viewer" });
     const result = await catalog.describe(project.id, {
       id: reader.id,

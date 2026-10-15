@@ -133,7 +133,7 @@ describe("Automation configured notifications and durable outbox", () => {
       title: "Notify",
       rule: ast,
     });
-    const rule = await persistence.rules.updateById(row.id, { enabled: true });
+    let rule = await persistence.rules.updateById(row.id, { enabled: true });
     const sourceKey =
       ast.trigger.kind === "event" ? ast.trigger.event : ast.select!.key;
     const context =
@@ -155,6 +155,14 @@ describe("Automation configured notifications and durable outbox", () => {
     const variables = await alepha
       .inject(AutomationVariables)
       .snapshot(rule, user);
+    if (variables.length)
+      rule = await persistence.rules.updateById(rule.id, {
+        approvedVariables: variables.map((value) => ({
+          id: value.id!,
+          key: value.key,
+          version: value.version,
+        })),
+      });
     const prepared = await alepha.inject(AutomationRunEvidence).prepare({
       rule,
       occurrenceId: `schedule:${at}`,

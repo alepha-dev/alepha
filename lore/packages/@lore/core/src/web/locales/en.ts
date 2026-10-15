@@ -2671,6 +2671,7 @@ export default {
   // One per `$audit` type declared in `LoreAudits`, and there are ten of
   // them. A kind with no key here still renders, capitalized, off the raw
   // type - see `resourceLabel`.
+  "activity.resource.automation": "Automation",
   "activity.resource.quest": "Quest",
   "activity.resource.epic": "Epic",
   "activity.resource.release": "Release",

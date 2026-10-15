@@ -31,6 +31,10 @@ export class AutomationEventDispatch {
         health: "active",
         requiresApproval: false,
         createdAt: { lte: event.occurredAt },
+        or: [
+          { activatedAt: { isNull: true } },
+          { activatedAt: { lte: event.occurredAt } },
+        ],
         ...(event.cursor ? { id: { gt: event.cursor } } : {}),
       },
       orderBy: [{ column: "id", direction: "asc" }],

@@ -115,3 +115,25 @@ export {
   automationEvaluationReportSchema,
   type AutomationEvaluationReport,
 } from "../api/schemas/automationEvaluationReportSchema.ts";
+
+export * from "../api/schemas/automationResourceSchema.ts";
+
+export * from "../api/schemas/automationRunResourceSchema.ts";
+
+export * from "../api/schemas/automationVariableResourceSchema.ts";
+
+export * from "../api/schemas/automationWriteBodySchema.ts";
+
+export * from "../api/schemas/automationVariableSetBodySchema.ts";
+
+export * from "../api/schemas/automationPageSchema.ts";
+
+export * from "../api/schemas/automationRunPageSchema.ts";
+
+export * from "../api/schemas/automationVariablePageSchema.ts";
+
+export * from "../api/schemas/automationVariableSetResponseSchema.ts";
+
+export * from "../api/schemas/automationListQuerySchema.ts";
+
+export * from "../api/schemas/automationPageQuerySchema.ts";

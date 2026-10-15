@@ -1,12 +1,8 @@
 import { $hook, $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import type { UserAccountToken } from "alepha/security";
-import { BadRequestError, ConflictError } from "alepha/server";
 
 import type { Automation } from "../entities/automations.ts";
-import { AutomationCron } from "../schemas/AutomationCron.ts";
 import { AutomationAccess } from "./AutomationAccess.ts";
-import { AutomationCatalog } from "./AutomationCatalog.ts";
 import { AutomationDatabase } from "./AutomationDatabase.ts";
 import {
   AutomationDependencies,
@@ -28,12 +24,10 @@ export class AutomationHealth {
   protected readonly dependencies = $inject(AutomationDependencies);
   protected readonly access = $inject(AutomationAccess);
   protected readonly variables = $inject(AutomationVariables);
-  protected readonly catalog = $inject(AutomationCatalog);
   protected readonly evidence = $inject(AutomationRunEvidence);
   protected readonly security = $inject(AutomationProjectSecurity);
   protected readonly bestEffort = $inject(BestEffort);
   protected readonly time = $inject(DateTimeProvider);
-  protected readonly cron = $inject(AutomationCron);
 
   public display(rule: Pick<Automation, "enabled" | "health">) {
     return rule.enabled ? rule.health : ("disabled" as const);
@@ -52,7 +46,10 @@ export class AutomationHealth {
       await this.dependencies.assert(rule);
       const user = await this.access.author(rule);
       await this.access.assert(rule.projectId, user, "automation:write");
-      await this.variables.snapshot(rule, user, { transition: false });
+      const values = await this.variables.snapshot(rule, user, {
+        transition: false,
+      });
+      if (!explicit) this.variables.assertApproved(rule, values);
       return { health: "active", requiresApproval: false };
     } catch (error) {
       return {
@@ -118,65 +115,6 @@ export class AutomationHealth {
           this.reconcile(rule),
         );
       return rows.length;
-    });
-  }
-  public async setEnabled(
-    id: string,
-    user: UserAccountToken,
-    enabled: boolean,
-  ) {
-    return this.database.primary(async () => {
-      const rule = await this.persistence.rules.getById(id);
-      await this.access.assertMutation(
-        rule,
-        user,
-        enabled ? "enable" : "disable",
-      );
-      const decision = enabled
-        ? await this.inspect(rule, true)
-        : {
-            health: rule.health,
-            requiresApproval: rule.requiresApproval,
-            reason: rule.reason,
-          };
-      if (enabled && decision.health !== "active")
-        throw new BadRequestError(
-          decision.reason ?? "Automation cannot be enabled",
-        );
-      let scheduleCron: string | undefined;
-      if (enabled)
-        scheduleCron = (
-          await this.catalog.compile(
-            rule.projectId,
-            await this.access.author(rule),
-            rule.rule,
-          )
-        ).scheduleCron;
-      const changed = await this.evidence.transition(
-        id,
-        decision.health,
-        decision.reason,
-        decision.requiresApproval,
-        {
-          expectedVersion: rule.version,
-          patch: {
-            enabled,
-            revision: rule.revision + 1,
-            scheduleCron: enabled
-              ? (scheduleCron ?? null)
-              : (rule.scheduleCron ?? null),
-            nextRunAt:
-              enabled && scheduleCron
-                ? this.cron.next(scheduleCron, this.time.nowISOString())
-                : null,
-          },
-        },
-      );
-      if (!changed)
-        throw new ConflictError(
-          "Automation changed; reload before changing its enable switch",
-        );
-      return this.persistence.rules.getById(id);
     });
   }
   protected readonly memberRemoved = $hook({

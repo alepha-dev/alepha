@@ -17,6 +17,7 @@ import { DatabaseProvider } from "alepha/orm";
 
 import { AdminMcpController } from "./controllers/AdminMcpController.ts";
 import { AdminProjectController } from "./controllers/AdminProjectController.ts";
+import { AutomationController } from "./controllers/AutomationController.ts";
 import { AutomationDiagnosticController } from "./controllers/AutomationDiagnosticController.ts";
 import { DashboardController } from "./controllers/DashboardController.ts";
 import { HomeController } from "./controllers/HomeController.ts";
@@ -50,6 +51,7 @@ import { CoreDashboardMetrics } from "./schemas/CoreDashboardMetrics.ts";
 import { LorePermissions } from "./security/LorePermissions.ts";
 import { ProjectRankPresets } from "./security/ProjectRankPresets.ts";
 import { ActivityFeedMetric } from "./services/ActivityFeedMetric.ts";
+import { AutomationApprovalFence } from "./services/AutomationApprovalFence.ts";
 import { AutomationAuthority } from "./services/AutomationAuthority.ts";
 import { AutomationCatalog } from "./services/AutomationCatalog.ts";
 import { AutomationClaims } from "./services/AutomationClaims.ts";
@@ -62,16 +64,20 @@ import { AutomationEvents } from "./services/AutomationEvents.ts";
 import { AutomationEventSubjects } from "./services/AutomationEventSubjects.ts";
 import { AutomationHealth } from "./services/AutomationHealth.ts";
 import { AutomationJobService } from "./services/AutomationJobService.ts";
+import { AutomationMutationAudit } from "./services/AutomationMutationAudit.ts";
 import { AutomationMutationContext } from "./services/AutomationMutationContext.ts";
 import { AutomationNotificationSender } from "./services/AutomationNotificationSender.ts";
+import { AutomationOAuthAuthority } from "./services/AutomationOAuthAuthority.ts";
 import { AutomationOrigin } from "./services/AutomationOrigin.ts";
 import { AutomationPersistence } from "./services/AutomationPersistence.ts";
 import { AutomationRoster } from "./services/AutomationRoster.ts";
 import { AutomationRunEvidence } from "./services/AutomationRunEvidence.ts";
 import { AutomationSchedules } from "./services/AutomationSchedules.ts";
 import { AutomationSelections } from "./services/AutomationSelections.ts";
+import { AutomationService } from "./services/AutomationService.ts";
 import { AutomationTemplateRenderer } from "./services/AutomationTemplateRenderer.ts";
 import { AutomationVariables } from "./services/AutomationVariables.ts";
+import { AutomationVariableService } from "./services/AutomationVariableService.ts";
 import { AutomationWorker } from "./services/AutomationWorker.ts";
 import { CoreAutomationReferences } from "./services/CoreAutomationReferences.ts";
 import { CoreDashboard } from "./services/CoreDashboard.ts";
@@ -183,6 +189,12 @@ export const LoreCoreApi = $module({
     AutomationCatalog,
     AutomationVariables,
     AutomationAuthority,
+    AutomationOAuthAuthority,
+    AutomationService,
+    AutomationController,
+    AutomationVariableService,
+    AutomationMutationAudit,
+    AutomationApprovalFence,
     AutomationDependencies,
     AutomationHealth,
     AutomationEventSubjects,
@@ -482,3 +494,12 @@ export {
 
 export { AutomationWorker } from "./services/AutomationWorker.ts";
 export { AutomationWorkerJobs } from "./jobs/AutomationWorkerJobs.ts";
+
+export { AutomationApprovalFence } from "./services/AutomationApprovalFence.ts";
+
+export { AutomationService } from "./services/AutomationService.ts";
+export { AutomationVariableService } from "./services/AutomationVariableService.ts";
+
+export { AutomationController } from "./controllers/AutomationController.ts";
+
+export { AutomationConfigurationWrites } from "./services/AutomationConfigurationWrites.ts";

@@ -29,7 +29,7 @@ export class AutomationAuthority {
   public async check(input: {
     automationId: string;
     revision: number;
-    variables?: Array<{ key: string; version: number }>;
+    variables?: Array<{ id?: string; key: string; version: number }>;
     readOnly?: boolean;
     effect?: { index: number; action: AutomationRule["actions"][number] };
   }) {
@@ -61,6 +61,7 @@ export class AutomationAuthority {
             (value) =>
               !input.variables!.some(
                 (captured) =>
+                  captured.id === value.id &&
                   captured.key === value.key &&
                   captured.version === value.version,
               ),
@@ -69,6 +70,7 @@ export class AutomationAuthority {
         throw new ForbiddenError(
           "Shared variable versions changed; author review is required",
         );
+      this.variables.assertApproved(rule, variables);
       if (input.effect) {
         if (
           rule.rule.actions[input.effect.index]?.kind !==

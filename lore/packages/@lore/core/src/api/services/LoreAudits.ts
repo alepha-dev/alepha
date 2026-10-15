@@ -59,6 +59,23 @@ import type { UserAccountToken } from "alepha/security";
  */
 export class LoreAudits {
   /**
+   * Executable configuration mutations follow the existing audit policy.
+   * Bodies, variable values, credentials and rendered text are excluded.
+   */
+  readonly automation = $audit({
+    type: "automation",
+    actions: [
+      "create",
+      "update",
+      "enable",
+      "disable",
+      "delete",
+      "variable_set",
+      "variable_delete",
+    ],
+  });
+
+  /**
    * Project lifecycle. `create` and `delete` are app-layer events: a project
    * being created belongs to the deployment, not to a project that does not
    * exist yet, and a deletion outlives the scope it would have been filed

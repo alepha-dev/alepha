@@ -6,6 +6,7 @@ import { BadRequestError, ConflictError } from "alepha/server";
 import type { AutomationReceipt } from "../entities/automationReceipts.ts";
 import type { AutomationRule } from "../schemas/automationRuleSchema.ts";
 import type { AutomationRunSnapshot } from "../schemas/automationRunSnapshotSchema.ts";
+import { AutomationApprovalFence } from "./AutomationApprovalFence.ts";
 import { AutomationAtomic } from "./AutomationAtomic.ts";
 import { AutomationAuthority } from "./AutomationAuthority.ts";
 import { AutomationDatabase } from "./AutomationDatabase.ts";
@@ -21,6 +22,7 @@ import {
  * unique index grants one live occurrence per rule across all isolates.
  */
 export class AutomationClaims {
+  protected readonly approvals = $inject(AutomationApprovalFence);
   protected readonly cache = $inject(DbCacheProvider);
   protected readonly persistence = $inject(AutomationPersistence);
   protected readonly database = $inject(AutomationDatabase);
@@ -167,7 +169,7 @@ export class AutomationClaims {
       try {
         await this.atomic.guarded(
           rule.projectId,
-          sql`NOT EXISTS (SELECT 1 FROM automation_receipts WHERE id = ${id}) AND EXISTS (SELECT 1 FROM automations WHERE id = ${rule.id} AND revision = ${input.revision} AND enabled = TRUE AND health = 'active' AND requires_approval = FALSE AND deleted_at IS NULL) ${input.condition ? sql`AND (${typeof input.condition === "string" ? sql.raw(input.condition) : input.condition.getSQL()})` : sql``}`,
+          sql`NOT EXISTS (SELECT 1 FROM automation_receipts WHERE id = ${id}) AND EXISTS (SELECT 1 FROM automations WHERE id = ${rule.id} AND revision = ${input.revision} AND enabled = TRUE AND health = 'active' AND requires_approval = FALSE AND deleted_at IS NULL AND (activated_at IS NULL OR activated_at <= ${this.database.timestamp(occurredAt)})) ${input.condition ? sql`AND (${typeof input.condition === "string" ? sql.raw(input.condition) : input.condition.getSQL()})` : sql``}`,
           [
             ...(input.mutation ? [input.mutation] : []),
             sql`INSERT INTO automation_receipts (id, version, project_id, automation_id, identity, kind, status, occurrence_id, rule_revision, occurred_at, replay_until, run_id, snapshot, reason, cursor, queue_attempts, roster_complete, created_at, updated_at)
@@ -350,6 +352,10 @@ export class AutomationClaims {
           replayUntil <= now
             ? "Occurrence is outside the 90-day replay horizon"
             : "Occurrence is not due";
+      }
+      if (rule.activatedAt && occurredAt < rule.activatedAt) {
+        status = "refused";
+        reason = "Occurrence predates the current configuration activation";
       }
       if (input.prepared.status === "refused" || !input.prepared.snapshot.rule)
         status = "refused";
@@ -608,7 +614,7 @@ export class AutomationClaims {
     const now = this.dateTime.nowISOString();
     return sql`EXISTS (SELECT 1 FROM automation_receipts WHERE id = ${receipt.id} AND kind = 'occurrence' AND status = 'claimed' AND lease_token = ${token} AND lease_until > ${this.database.timestamp(now)} AND replay_until > ${this.database.timestamp(now)})
       AND EXISTS (SELECT 1 FROM automations WHERE id = ${receipt.automationId} AND revision = ${receipt.ruleRevision} AND enabled = TRUE AND health = 'active' AND requires_approval = FALSE AND deleted_at IS NULL)
-      AND EXISTS (SELECT 1 FROM automations AS rule JOIN projects AS project ON project.id = rule.project_id JOIN organization_members AS member ON member.organization_id = project.organization_id AND member.user_id = rule.author_user_id JOIN users AS author ON author.id = rule.author_user_id AND author.enabled = TRUE WHERE rule.id = ${receipt.automationId} AND (rule.author_key_id IS NULL OR EXISTS (SELECT 1 FROM api_keys AS credential WHERE credential.id = rule.author_key_id AND credential.user_id = author.id AND credential.revoked_at IS NULL AND (credential.expires_at IS NULL OR credential.expires_at > ${this.database.timestamp(now)}))))`;
+      AND EXISTS (SELECT 1 FROM automations AS rule JOIN projects AS project ON project.id = rule.project_id JOIN organization_members AS member ON member.organization_id = project.organization_id AND member.user_id = rule.author_user_id JOIN users AS author ON author.id = rule.author_user_id AND author.enabled = TRUE WHERE rule.id = ${receipt.automationId} AND (rule.activated_at IS NULL OR rule.activated_at <= ${this.database.timestamp(receipt.occurredAt)}) AND ${this.approvals.stored()} AND (rule.author_session_id IS NULL OR EXISTS (SELECT 1 FROM sessions AS oauth_grant JOIN oauth_clients AS client ON client.client_id = oauth_grant.client_id WHERE oauth_grant.id = rule.author_session_id AND oauth_grant.user_id = author.id AND oauth_grant.expires_at > ${this.database.timestamp(now)} AND client.revoked_at IS NULL AND client.realm = author.realm)) AND (rule.author_key_id IS NULL OR EXISTS (SELECT 1 FROM api_keys AS credential WHERE credential.id = rule.author_key_id AND credential.user_id = author.id AND credential.revoked_at IS NULL AND (credential.expires_at IS NULL OR credential.expires_at > ${this.database.timestamp(now)}))))`;
   }
 
   public async actionIdentity(
