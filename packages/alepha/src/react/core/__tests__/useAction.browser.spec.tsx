@@ -644,4 +644,85 @@ describe("useAction", () => {
     // Should not have been called again after unmount
     expect(mockAction.mock.calls.length).toBe(callsBeforeUnmount);
   });
+
+  test("settles a pending debounced run when the component unmounts", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaDateTime);
+    await alepha.start();
+
+    const mockAction = vi.fn(async (value: string, ctx) => value);
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
+    );
+
+    const { result, unmount } = renderHook(
+      () => useAction({ handler: mockAction, debounce: 1000 }, []),
+      { wrapper },
+    );
+
+    const pending = result.current.run("test");
+    unmount();
+
+    // Used to hang forever: unmount cleared the timer without settling.
+    await expect(pending).resolves.toBe(undefined);
+    expect(mockAction).not.toHaveBeenCalled();
+  });
+
+  test("keeps a successful run successful when onSuccess or invalidates throws", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaDateTime);
+    await alepha.start();
+
+    const errors: Array<{ message: string; handled?: boolean }> = [];
+    alepha.events.on("react:action:error", ({ error, handled }) => {
+      errors.push({ message: error.message, handled });
+    });
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
+    );
+
+    const { result } = renderHook(
+      () => ({
+        onSuccess: useAction(
+          {
+            handler: async () => "saved",
+            onSuccess: () => {
+              throw new Error("navigation failed");
+            },
+          },
+          [],
+        ),
+        invalidates: useAction(
+          {
+            handler: async () => "saved",
+            invalidates: () => {
+              throw new Error("bad key");
+            },
+          },
+          [],
+        ),
+      }),
+      { wrapper },
+    );
+
+    let first: string | undefined;
+    let second: string | undefined;
+    await act(async () => {
+      first = await result.current.onSuccess.run();
+      second = await result.current.invalidates.run();
+    });
+
+    expect(first).toBe("saved");
+    expect(second).toBe("saved");
+    expect(result.current.onSuccess.error).toBe(undefined);
+    expect(result.current.invalidates.error).toBe(undefined);
+    expect(errors).toEqual([
+      { message: "navigation failed", handled: false },
+      { message: "bad key", handled: false },
+    ]);
+  });
 });

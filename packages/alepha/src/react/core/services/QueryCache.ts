@@ -59,13 +59,32 @@ export class QueryCache {
   public invalidate(key: unknown[]): void {
     const serialized = this.serialize(key);
     const prefix = serialized.slice(0, -1);
+    const matches = (candidate: string) =>
+      candidate === serialized || candidate.startsWith(`${prefix},`);
     const next: Record<string, QueryCacheEntry> = {};
 
     for (const [candidate, entry] of Object.entries(this.entries())) {
-      const matches =
-        candidate === serialized || candidate.startsWith(`${prefix},`);
-      if (!matches) {
+      if (!matches(candidate)) {
         next[candidate] = entry;
+      }
+    }
+
+    // A read still in flight was issued before the write that invalidates it.
+    // Its generation moves on, so its response never reaches the cache, and
+    // its entry leaves the in-flight map, so a reader mounting now starts a
+    // fresh request instead of joining the stale one. The stale request is
+    // not aborted: its callers still get their answer.
+    for (const candidate of this.generations.keys()) {
+      if (matches(candidate)) {
+        this.generations.set(
+          candidate,
+          (this.generations.get(candidate) ?? 0) + 1,
+        );
+      }
+    }
+    for (const candidate of this.inflight.keys()) {
+      if (matches(candidate)) {
+        this.inflight.delete(candidate);
       }
     }
 
@@ -75,6 +94,27 @@ export class QueryCache {
   public clear(): void {
     this.alepha.store.set(queryCacheAtom, {});
     this.inflight.clear();
+    for (const [candidate, generation] of this.generations) {
+      this.generations.set(candidate, generation + 1);
+    }
+  }
+
+  /**
+   * The invalidation generation of `key`, bumped by every `invalidate()` or
+   * `clear()` that covers it.
+   *
+   * A reader takes it before fetching and compares after: a different value
+   * means the response predates a write, so it is returned to its caller but
+   * never stored. See `useQuery`.
+   */
+  public generation(key: unknown[]): number {
+    const serialized = this.serialize(key);
+    const current = this.generations.get(serialized);
+    if (current === undefined) {
+      this.generations.set(serialized, 0);
+      return 0;
+    }
+    return current;
   }
 
   /**
@@ -86,47 +126,106 @@ export class QueryCache {
    * and fire duplicate requests. Deduplication has to happen on the promise,
    * not the cached value.
    *
-   * **Pass `signal` whenever the caller has one.** A run that SUPERSEDES
-   * another aborts it and then arrives here: without the signal this handed
-   * it back the very promise it had just cancelled, so a handler that honours
-   * cancellation rejected once for both runs and the query settled with no
-   * data at all. Joining is only right while the pending request can still
-   * deliver.
+   * **The shared request owns its own `AbortController`**, handed to `fn`.
+   * Each caller subscribes with its own `signal`, and the request is aborted
+   * only once every subscriber has aborted. It used to carry the FIRST
+   * caller's signal: when that component unmounted, a second one joined to
+   * the same promise received its `AbortError` and settled with no data.
+   *
+   * **Pass `signal` whenever the caller has one.** A caller that aborts gets
+   * its own `AbortError` at once, whatever the request does. A run that
+   * SUPERSEDES another aborts it and then arrives here: when it was the only
+   * subscriber, the request is aborted and this run starts a new one, rather
+   * than being handed the promise it had just cancelled. A caller without a
+   * signal can never unsubscribe, so it keeps the request alive.
    *
    * Not stored in the atom: promises are not serializable, and this state is
    * meaningless outside the current tick.
    */
   public async dedupe<T>(
     key: unknown[],
-    fn: () => Promise<T>,
+    fn: (signal: AbortSignal) => Promise<T>,
     options: { signal?: AbortSignal } = {},
   ): Promise<T> {
     const serialized = this.serialize(key);
     const pending = this.inflight.get(serialized);
 
-    if (pending && !pending.signal?.aborted) {
-      return pending.promise as Promise<T>;
+    if (pending && !pending.controller.signal.aborted) {
+      return this.subscribe(pending, options.signal) as Promise<T>;
     }
 
     const entry: InflightRequest = {
-      signal: options.signal,
+      controller: new AbortController(),
+      subscribers: 0,
       promise: undefined as never,
     };
 
     // Identity-checked, because this entry may already have been replaced by
-    // a superseding run: an unconditional delete would evict the newer
-    // request and let the run after that fire a duplicate.
-    entry.promise = fn().finally(() => {
+    // a superseding run or dropped by an invalidation: an unconditional
+    // delete would evict the newer request and let the run after that fire a
+    // duplicate.
+    entry.promise = fn(entry.controller.signal).finally(() => {
       if (this.inflight.get(serialized) === entry) {
         this.inflight.delete(serialized);
       }
     });
+    // Each subscriber observes the shared promise through its own wrapper;
+    // this one only keeps a rejection nobody waits for from going unhandled.
+    entry.promise.catch(() => {});
 
     this.inflight.set(serialized, entry);
-    return entry.promise as Promise<T>;
+    return this.subscribe(entry, options.signal) as Promise<T>;
   }
 
   protected readonly inflight = new Map<string, InflightRequest>();
+
+  protected readonly generations = new Map<string, number>();
+
+  /**
+   * Join `entry` as one more subscriber. The returned promise settles with
+   * the shared request, or rejects with an `AbortError` as soon as `signal`
+   * aborts; the last subscriber to abort aborts the request itself.
+   */
+  protected subscribe(
+    entry: InflightRequest,
+    signal: AbortSignal | undefined,
+  ): Promise<unknown> {
+    entry.subscribers += 1;
+    if (!signal) {
+      return entry.promise;
+    }
+
+    return new Promise((resolve, reject) => {
+      const onAbort = () => {
+        entry.subscribers -= 1;
+        if (entry.subscribers === 0) {
+          entry.controller.abort(signal.reason);
+        }
+        reject(
+          signal.reason instanceof Error && signal.reason.name === "AbortError"
+            ? signal.reason
+            : new DOMException("The operation was aborted.", "AbortError"),
+        );
+      };
+
+      if (signal.aborted) {
+        onAbort();
+        return;
+      }
+
+      signal.addEventListener("abort", onAbort, { once: true });
+      entry.promise.then(
+        (value) => {
+          signal.removeEventListener("abort", onAbort);
+          resolve(value);
+        },
+        (error) => {
+          signal.removeEventListener("abort", onAbort);
+          reject(error);
+        },
+      );
+    });
+  }
 
   protected entries(): Record<string, QueryCacheEntry> {
     return this.alepha.store.get(queryCacheAtom) ?? {};
@@ -148,11 +247,13 @@ export interface QueryCacheEntry {
 }
 
 /**
- * One in-flight request, with the signal of the run that owns it.
+ * One in-flight request: its own abort controller, and how many callers
+ * still wait on it.
  *
  * @see QueryCache.dedupe
  */
 interface InflightRequest {
   promise: Promise<unknown>;
-  signal?: AbortSignal;
+  controller: AbortController;
+  subscribers: number;
 }

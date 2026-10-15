@@ -1,4 +1,4 @@
-import type { Async } from "alepha";
+import { AlephaError, type Async } from "alepha";
 import {
   DateTimeProvider,
   type DurationLike,
@@ -151,7 +151,10 @@ export function useAction<Args extends any[], Result = void>(
     return () => {
       isMountedRef.current = false;
 
-      // clear debounce timer
+      // clear debounce timer, and settle the run waiting on it: clearing the
+      // timer alone left `await run()` hanging forever. `cancel()` does the
+      // same.
+      pendingDebounce.current?.();
       if (debounceTimerRef.current) {
         dateTimeProvider.clearTimeout(debounceTimerRef.current);
         debounceTimerRef.current = undefined;
@@ -256,20 +259,43 @@ export function useAction<Args extends any[], Result = void>(
         // unconditionally would make every `useAction` require the react
         // module to be loaded, breaking containers that use the hook
         // standalone. Only callers that opt into `invalidates` pay for it.
-        const invalidates = optionsRef.current.invalidates;
-        if (invalidates) {
-          const keys =
-            typeof invalidates === "function"
-              ? invalidates(result as Result)
-              : invalidates;
-          const queryCache = alepha.inject(QueryCache);
-          for (const key of keys) {
-            queryCache.invalidate(key);
+        //
+        // The handler has succeeded by now, and that stands: a throwing
+        // `invalidates` or `onSuccess` is a follow-up failure. It used to fall
+        // into the `catch` below and report the whole action as failed, so a
+        // saved form showed an error and offered to save again. It is logged
+        // and emitted unhandled instead, and `run()` still returns the result.
+        try {
+          const invalidates = optionsRef.current.invalidates;
+          if (invalidates) {
+            const keys =
+              typeof invalidates === "function"
+                ? invalidates(result as Result)
+                : invalidates;
+            const queryCache = alepha.inject(QueryCache);
+            for (const key of keys) {
+              queryCache.invalidate(key);
+            }
           }
-        }
 
-        if (optionsRef.current.onSuccess) {
-          await optionsRef.current.onSuccess(result);
+          if (optionsRef.current.onSuccess) {
+            await optionsRef.current.onSuccess(result);
+          }
+        } catch (followUp) {
+          const error =
+            followUp instanceof Error
+              ? followUp
+              : new AlephaError(String(followUp));
+          alepha.log?.error(
+            "An action succeeded, but its invalidates or onSuccess threw",
+            error,
+          );
+          await alepha.events.emit("react:action:error", {
+            type: "custom",
+            id: optionsRef.current.id,
+            error,
+            handled: false,
+          });
         }
 
         return result;

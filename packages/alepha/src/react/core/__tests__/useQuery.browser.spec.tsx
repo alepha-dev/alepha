@@ -527,4 +527,127 @@ describe("useQuery keyed cache", () => {
       expect(secondRan).toBe(true);
     });
   });
+
+  /**
+   * Two components on one key share one request. The request used to carry
+   * the FIRST component's signal, so unmounting it aborted the request the
+   * second one was waiting on, and the survivor settled with no data.
+   */
+  test("keeps a shared request alive when the first of two components unmounts", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaDateTime).with(AlephaReact);
+    await alepha.start();
+
+    let release: (value: string) => void = () => {};
+    let aborted = false;
+    const handler = vi.fn(
+      (context?: { signal?: AbortSignal }) =>
+        new Promise<string>((resolve, reject) => {
+          release = resolve;
+          context?.signal?.addEventListener("abort", () => {
+            aborted = true;
+            reject(Object.assign(new Error("aborted"), { name: "AbortError" }));
+          });
+        }),
+    );
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
+    );
+
+    const first = renderHook(
+      () => useQuery({ key: ["shared", 1], handler }, []),
+      { wrapper },
+    );
+    const second = renderHook(
+      () => useQuery({ key: ["shared", 1], handler }, []),
+      { wrapper },
+    );
+    await waitFor(() => expect(handler).toHaveBeenCalledTimes(1));
+
+    first.unmount();
+    await act(async () => release("Alpha"));
+
+    await waitFor(() => expect(second.result.current.data).toBe("Alpha"));
+    expect(aborted).toBe(false);
+    expect(second.result.current.error).toBe(undefined);
+    expect(handler).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * An invalidation that lands while the FIRST fetch of a key is in flight.
+   * There was no entry to remove, so nothing refetched, and the pre-mutation
+   * response was written into the cache afterwards.
+   */
+  test("does not cache a response that an invalidation overtook, and refetches", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaDateTime).with(AlephaReact);
+    await alepha.start();
+    const cache = alepha.inject(QueryCache);
+
+    const pending: Array<(value: string) => void> = [];
+    const handler = vi.fn(
+      () => new Promise<string>((resolve) => pending.push(resolve)),
+    );
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
+    );
+
+    const { result } = renderHook(
+      () => useQuery({ key: ["folio", 9], handler }, []),
+      { wrapper },
+    );
+    await waitFor(() => expect(pending).toHaveLength(1));
+
+    act(() => cache.invalidate(["folio"]));
+    await act(async () => pending[0]("before-write"));
+
+    // The stale response is never stored: the hook asked again.
+    expect(cache.get(["folio", 9])).toBe(undefined);
+    await waitFor(() => expect(pending).toHaveLength(2));
+    await act(async () => pending[1]("after-write"));
+
+    await waitFor(() => expect(result.current.data).toBe("after-write"));
+    expect(cache.get(["folio", 9])?.data).toBe("after-write");
+  });
+
+  test("does not let a component mounting after an invalidation join the stale request", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaDateTime).with(AlephaReact);
+    await alepha.start();
+    const cache = alepha.inject(QueryCache);
+
+    const pending: Array<(value: string) => void> = [];
+    const handler = vi.fn(
+      () => new Promise<string>((resolve) => pending.push(resolve)),
+    );
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
+    );
+
+    renderHook(() => useQuery({ key: ["folio", 10], handler }, []), {
+      wrapper,
+    });
+    await waitFor(() => expect(pending).toHaveLength(1));
+
+    act(() => cache.invalidate(["folio", 10]));
+
+    const late = renderHook(
+      () => useQuery({ key: ["folio", 10], handler }, []),
+      { wrapper },
+    );
+    // A request of its own, issued after the write.
+    await waitFor(() => expect(pending).toHaveLength(2));
+
+    await act(async () => {
+      pending[0]("before-write");
+      pending[1]("after-write");
+    });
+    await waitFor(() => expect(late.result.current.data).toBe("after-write"));
+  });
 });
