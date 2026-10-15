@@ -2,7 +2,10 @@ import { Alepha } from "alepha";
 import { $action, $route, AlephaServer, ServerProvider } from "alepha/server";
 import { describe, it } from "vitest";
 
-import { compressOptions } from "../providers/ServerCompressProvider.ts";
+import {
+  compressOptions,
+  ServerCompressProvider,
+} from "../providers/ServerCompressProvider.ts";
 
 class App {
   hello = $action({
@@ -131,5 +134,55 @@ describe("ServerCompressProvider", () => {
     expect(text).toContain("<p>Content</p>");
 
     await alepha.stop();
+  });
+});
+
+/**
+ * RFC 9110 section 12.5.3. It used to take the first of zstd, br, gzip whose
+ * name appeared anywhere in the header, weights ignored.
+ */
+describe("ServerCompressProvider Accept-Encoding", () => {
+  class TestCompressProvider extends ServerCompressProvider {
+    public testPick = (header: string) => this.pickEncoding(header);
+  }
+  const pick = (header: string) =>
+    Alepha.create().inject(TestCompressProvider).testPick(header);
+  const hasZstd = !!ServerCompressProvider.compressors.zstd;
+
+  it("refuses an encoding with q=0", ({ expect }) => {
+    expect(pick("br;q=0, gzip;q=1")).toBe("gzip");
+  });
+
+  it("lets the highest q win over the server order", ({ expect }) => {
+    expect(pick("br;q=0.5, gzip;q=0.9")).toBe("gzip");
+  });
+
+  it("breaks a tie with the server order", ({ expect }) => {
+    expect(pick("gzip, br")).toBe("br");
+  });
+
+  it("gives * to every encoding the header does not name", ({ expect }) => {
+    expect(pick("*")).toBe(hasZstd ? "zstd" : "br");
+    expect(pick("zstd;q=0, br;q=0, *")).toBe("gzip");
+  });
+
+  it("sends identity when *;q=0 refuses everything unnamed", ({ expect }) => {
+    expect(pick("*;q=0")).toBeUndefined();
+    expect(pick("gzip, *;q=0")).toBe("gzip");
+  });
+
+  it("sends identity, never a 406, when identity;q=0 leaves nothing acceptable", ({
+    expect,
+  }) => {
+    expect(pick("identity;q=0")).toBeUndefined();
+  });
+
+  it("treats a malformed q as unacceptable", ({ expect }) => {
+    expect(pick("br;q=abc, gzip")).toBe("gzip");
+    expect(pick("br;q=1.5, gzip;q=0.1")).toBe("gzip");
+  });
+
+  it("ignores case and whitespace", ({ expect }) => {
+    expect(pick("  GZip ; Q=0.8 ,  BR ; q = 0 ")).toBe("gzip");
   });
 });
