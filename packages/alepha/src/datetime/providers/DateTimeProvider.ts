@@ -339,9 +339,11 @@ export class DateTimeProvider {
    * Create a new UTC DateTime instance.
    */
   public utc(date: DateTimeInput | null | undefined): DateTime {
-    return DateTimeEngine.wrap(
-      DayjsApi.utc(DateTimeEngine.parse(date)).locale(this.locale),
-    );
+    // Hand dayjs the raw input: its UTC parser reads a plain date string
+    // ("2026-03-01") as UTC midnight. Going through `DateTimeEngine.parse`
+    // first parsed it in local time, shifting it by the machine's offset.
+    const input = date instanceof DateTime ? DateTimeEngine.date(date) : date;
+    return DateTimeEngine.wrap(DayjsApi.utc(input).locale(this.locale));
   }
 
   /**
