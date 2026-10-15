@@ -1,8 +1,8 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "id": "4c735ca1-715d-4006-808c-f6fd1f6857f3",
-  "prevIds": ["ab48ad76-543e-4f1e-908c-b795f33a81e3"],
+  "id": "3b7a2777-0c91-4b5a-9340-d8f4deb68ff4",
+  "prevIds": ["93b5c1f7-3950-464c-a88c-d84f7466e271"],
   "ddl": [
     {
       "name": "alepha_sequences",
@@ -6305,6 +6305,16 @@
       "default": null,
       "generated": null,
       "name": "shelved_by",
+      "entityType": "columns",
+      "table": "quests"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "shelved_with_epic",
       "entityType": "columns",
       "table": "quests"
     },
