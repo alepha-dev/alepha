@@ -19,6 +19,8 @@ import {
   epicListResultSchema,
   epicSetStatusParamsSchema,
   epicSetStatusResultSchema,
+  epicShelveParamsSchema,
+  epicShelveResultSchema,
   epicUpdateParamsSchema,
   epicUpdateResultSchema,
 } from "../schemas/epicSchemas.ts";
@@ -55,7 +57,7 @@ export class EpicTools {
    */
   epic_list = $tool({
     description:
-      "List all epics for a project: draft, ready, in progress and completed alike (unlike quest_list's default view, nothing is hidden here). An epic is a bounded initiative that spans several areas and owns quests and folios. Sorted by epic number ascending. Each entry includes id, number, title, description, status, questCount, and the completed/total progress rollup, counted over EVERY quest in the epic, including ones a draft epic keeps out of the human-facing backlog.",
+      "List all epics for a project: draft, ready, in progress, completed and shelved alike (unlike quest_list's default view, nothing is hidden here). An epic is a bounded initiative that spans several areas and owns quests and folios. Sorted by epic number ascending. Each entry includes id, number, title, description, status, questCount, and the completed/total progress rollup, counted over EVERY quest in the epic, including ones a draft epic keeps out of the human-facing backlog.",
     title: "List epics",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
@@ -171,7 +173,7 @@ export class EpicTools {
    */
   epic_create = $tool({
     description:
-      "Create a new epic in the project, in the 'draft' status. The status IS the permission. While 'draft' the epic is being specified: quests are filed into it (quest_create / quest_update's `epic_number`) and stay out of the human-facing backlog, kanban, reports and quest_list's default view (quest_list's `epic:` filter or `includeDrafts: true` reads them), and none of them can be accepted. epic_set_status 'ready' says the spec is done: the quests join the backlog and can be accepted, and the plan can still be edited. The first quest accepted or assigned moves the epic to 'in_progress' by itself and freezes its quest set; the last open quest completed or shelved moves it to 'completed', which is terminal. Anything discovered once it is in progress is an objective on a quest already in the epic, or a new epic with dependsOn_number pointing at this one. Any project member may create one.",
+      "Create a new epic in the project, in the 'draft' status. The status IS the permission. While 'draft' the epic is being specified: quests are filed into it (quest_create / quest_update's `epic_number`) and stay out of the human-facing backlog, kanban, reports and quest_list's default view (quest_list's `epic:` filter or `includeDrafts: true` reads them), and none of them can be accepted. epic_set_status 'ready' says the spec is done: the quests join the backlog and can be accepted, and the plan can still be edited. The first quest accepted or assigned moves the epic to 'in_progress' by itself and freezes its quest set; the last open quest completed or shelved moves it to 'completed', which is terminal. epic_shelve sets the whole plan aside as 'shelved' (not done) and epic_unshelve brings it back. Anything discovered once it is in progress is an objective on a quest already in the epic, or a new epic with dependsOn_number pointing at this one. Any project member may create one.",
     title: "Create epic",
     annotations: { readOnlyHint: false, destructiveHint: false },
     schema: {
@@ -255,7 +257,7 @@ export class EpicTools {
    */
   epic_set_status = $tool({
     description:
-      "Mark an epic 'ready' (its spec is done) or move it back to 'draft' (still being specified). These are the only two statuses set by hand, and only between each other. 'ready' puts the epic's quests into the human-facing backlog and quest_list's default view, where they can be accepted; 'draft' takes them out again. Neither changes anything about the quests themselves. The other two statuses happen on their own: the first quest accepted or assigned moves a ready epic to 'in_progress' and freezes its quest set, and the last open quest completed or shelved moves it to 'completed', which is terminal. An epic that has started cannot go back to 'ready' or 'draft'. Asking for the status the epic already has is a no-op. " +
+      "Mark an epic 'ready' (its spec is done) or move it back to 'draft' (still being specified). These are the only two statuses set by hand, and only between each other. 'ready' puts the epic's quests into the human-facing backlog and quest_list's default view, where they can be accepted; 'draft' takes them out again. Neither changes anything about the quests themselves. Two statuses happen on their own: the first quest accepted or assigned moves a ready epic to 'in_progress' and freezes its quest set, and the last open quest completed or shelved moves it to 'completed', which is terminal. An epic that has started cannot go back to 'ready' or 'draft'. The fifth, 'shelved', is set with epic_shelve and undone with epic_unshelve. Asking for the status the epic already has is a no-op. " +
       "Deciding that a spec is done is the owner's call. Do not mark an epic ready just to be allowed to work on it: if a quest refuses because its epic is a draft, say so and stop.",
     title: "Set epic status",
     annotations: { readOnlyHint: false, idempotentHint: true },
@@ -287,17 +289,87 @@ export class EpicTools {
   });
 
   /**
-   * Delete an epic, orphaning its quests and folios.
+   * Shelve an epic and its open quests (#E78, folio #1365).
+   */
+  epic_shelve = $tool({
+    description:
+      "Set a whole epic aside: the epic becomes 'shelved' and every open quest in it (to do, in progress, on hold) is unassigned, its hold lifted, and shelved. Completed quests stay completed, and quests already shelved stay as they are. Allowed from 'draft', 'ready' and 'in_progress'; a 'completed' epic is refused. A shelved epic is NOT done: epics that depend on it stay blocked, and nothing in it can be accepted, completed, moved or deleted until epic_unshelve. Use this for a plan that will not be worked now, instead of shelving its quests one by one, which would complete an in-progress epic. Calling it again on a shelved epic finishes a shelve that stopped halfway. Returns how many quests were shelved. " +
+      "Shelving a plan is the owner's call: do not shelve an epic to get past a refusal.",
+    title: "Shelve epic",
+    annotations: { readOnlyHint: false, idempotentHint: true },
+    schema: {
+      params: epicShelveParamsSchema,
+      result: epicShelveResultSchema,
+    },
+    handler: async ({ params }) => {
+      const projectId = await this.resolveProjectId(
+        params.project,
+        params.project_name,
+      );
+      const target = await this.epicController.getEpicByNumber({
+        params: { projectId, number: params.number },
+      });
+
+      const epic = await this.epicController.shelveEpic({
+        params: { id: target.id },
+      });
+      return {
+        id: epic.id,
+        number: epic.number,
+        title: epic.title,
+        status: epic.status,
+        movedQuests: epic.movedQuests,
+      };
+    },
+  });
+
+  /**
+   * Bring a shelved epic back with exactly the quests its shelve set aside.
+   */
+  epic_unshelve = $tool({
+    description:
+      "Bring a shelved epic back with ONLY the quests epic_shelve set aside, as to do and unassigned; a quest that was shelved on its own before stays shelved. The epic returns to 'in_progress' if work on it had started, else to 'ready' (a shelved draft comes back ready). Refused unless the epic is 'shelved'. Returns how many quests were brought back.",
+    title: "Unshelve epic",
+    annotations: { readOnlyHint: false },
+    schema: {
+      params: epicShelveParamsSchema,
+      result: epicShelveResultSchema,
+    },
+    handler: async ({ params }) => {
+      const projectId = await this.resolveProjectId(
+        params.project,
+        params.project_name,
+      );
+      const target = await this.epicController.getEpicByNumber({
+        params: { projectId, number: params.number },
+      });
+
+      const epic = await this.epicController.unshelveEpic({
+        params: { id: target.id },
+      });
+      return {
+        id: epic.id,
+        number: epic.number,
+        title: epic.title,
+        status: epic.status,
+        movedQuests: epic.movedQuests,
+      };
+    },
+  });
+
+  /**
+   * Delete an epic AND its quests, while it is `draft` or `ready` (#Q2666).
    *
-   * The description carries the child semantics in its first two sentences
-   * on purpose. An agent decides whether to call a tool from the tool list
-   * alone, and "delete the container" reads as "delete what is in it" unless
-   * something says otherwise. An epic_delete that stayed quiet about it
-   * would simply go unused, which is the same outcome as not having it.
+   * The description carries the child semantics in its first sentence on
+   * purpose, and it used to promise the opposite (quests DETACHED, never
+   * deleted), so a stale reading of it is the expensive mistake. An agent
+   * decides whether to call a tool from the tool list alone, and "delete the
+   * container" reads as "delete what is in it" unless something says
+   * otherwise.
    */
   epic_delete = $tool({
     description:
-      "Permanently delete an epic. Its quests and folios are DETACHED, never deleted: every one of them survives with its epic link cleared, keeping its own status, objectives and history. Use this to remove a mis-created epic or to restructure a plan. Only the epic itself is lost, and it cannot be recovered. Note that quests parked under a `draft` epic rejoin the human-facing backlog, kanban and reports once the epic is gone, because the gate that was hiding them no longer exists. To release them deliberately use epic_set_status 'ready'; to keep them out of the backlog use quest_shelve.",
+      "Permanently delete an epic AND every quest filed under it; irreversible. Allowed only while the epic is `draft` or `ready`: an `in_progress` or `completed` epic is refused, because it holds started or shipped work - use epic_shelve to set an in-progress plan aside instead. Its folios are unfiled and kept, never deleted. Use this to remove a mis-created or abandoned plan; to keep the quests, move them out first with quest_update `epic_number: 0`. Returns how many quests were deleted.",
     title: "Delete epic",
     annotations: {
       destructiveHint: true,
@@ -316,9 +388,10 @@ export class EpicTools {
         params: { projectId, number: params.number },
       });
 
-      return await this.epicController.deleteEpic({
+      const result = await this.epicController.deleteEpic({
         params: { id: target.id },
       });
+      return { ok: result.ok, deletedQuests: result.count ?? 0 };
     },
   });
 }

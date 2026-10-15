@@ -36,7 +36,10 @@ import type { QuestResource } from "../../../../../api/schemas/questResourceSche
 import { currentEpicsAtom } from "../../../atoms/currentEpicsAtom.ts";
 import { currentQuestAtom } from "../../../atoms/currentQuestAtom.ts";
 import { useQuestMutations } from "../../shared/useQuestMutations.ts";
-import { questAgentGate } from "../prompts/questAgentGate.ts";
+import {
+  QUEST_AGENT_GATE_LABEL_KEYS,
+  questAgentGate,
+} from "../prompts/questAgentGate.ts";
 import { useWorkPromptSubject } from "../prompts/useWorkPromptSubject.ts";
 import QuestAttachments from "./QuestAttachments.tsx";
 import { QUEST_STATUS_LABEL_KEYS, QUEST_STATUS_TONE } from "./questChips.ts";
@@ -147,12 +150,9 @@ const QuestView = (props: QuestViewProps) => {
   const withheldReason = questAgentGate(quest, epics);
   const acceptWithheld =
     withheldReason && questEpic
-      ? tr(
-          withheldReason === "epicDraft"
-            ? "quest.view.accept.epicDraft"
-            : "quest.view.accept.epicCompleted",
-          { args: [String(questEpic.number)] },
-        )
+      ? tr(QUEST_AGENT_GATE_LABEL_KEYS[withheldReason], {
+          args: [String(questEpic.number)],
+        })
       : undefined;
 
   const context: QuestViewContext = props.context ?? "page";

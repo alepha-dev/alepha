@@ -245,6 +245,8 @@ export class CapabilityRegistry {
         "epic_create",
         "epic_update",
         "epic_set_status",
+        "epic_shelve",
+        "epic_unshelve",
         "epic_delete",
         "release_list",
         "release_get",

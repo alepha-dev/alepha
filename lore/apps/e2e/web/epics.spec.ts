@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 
 import { expect, test } from "./_fixtures.ts";
 import {
+  apiPath,
   apiPost,
   createProjectViaWizard,
   newUserContext,
@@ -1027,6 +1028,146 @@ test.describe("Epics — the lifecycle from the list", () => {
 
       await page.reload();
       await expect(row).toContainText("Completed", { timeout: 15_000 });
+    });
+  });
+});
+
+/**
+ * Shelving a whole plan (#E78, #Q2672): the epic leaves the work without
+ * reading as done, its quests go with it, and Unshelve brings back exactly
+ * those. Shelved from the list's row menu and brought back from the epic
+ * page, so both surfaces are driven.
+ */
+test.describe("Epics — shelving a plan", () => {
+  test("shelves a started epic from the list and unshelves it from its page", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+
+    const t = Date.now();
+    await registerAndVerify(page, `epicshelve${t}@example.com`, "GoodPassw0rd");
+    const { id: projectId, slug } = await createProjectViaWizard(
+      page,
+      `Sh${t}`.slice(0, 20),
+    );
+    await setCapability(page, projectId, "work", {
+      options: { epics: true },
+    });
+
+    const title = `Parked${t}`;
+    const epic = await page.evaluate(
+      async ({ projectId, title }) => {
+        const r = await fetch(`/api/createEpic/${projectId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ title }),
+        });
+        if (!r.ok) throw new Error(`createEpic ${r.status} ${await r.text()}`);
+        return (await r.json()) as { id: number; number: number };
+      },
+      { projectId, title },
+    );
+    const quests: number[] = [];
+    for (const name of ["started", "waiting"]) {
+      const { id } = await apiPost<{ id: number }>(page, "createQuest", {
+        projectId,
+        title: `${name} ${t}`,
+        description: "A quest of the parked plan",
+        area: "orm",
+        priority: "medium",
+        objectives: [],
+        attachments: [],
+      });
+      quests.push(id);
+      await page.evaluate(
+        async ({ epicId, questId }) => {
+          const r = await fetch(`/api/attachQuest/${epicId}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ questId }),
+          });
+          if (!r.ok)
+            throw new Error(`attachQuest ${r.status} ${await r.text()}`);
+        },
+        { epicId: epic.id, questId: id },
+      );
+    }
+    // Ready, then one quest accepted: the epic is in progress.
+    await page.evaluate(
+      async ({ epicId, questId }) => {
+        const ready = await fetch(`/api/setEpicStatus/${epicId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ status: "ready" }),
+        });
+        if (!ready.ok) throw new Error(`ready ${ready.status}`);
+        const accept = await fetch(`/api/acceptQuest/${questId}`, {
+          credentials: "include",
+        });
+        if (!accept.ok) throw new Error(`accept ${accept.status}`);
+      },
+      { epicId: epic.id, questId: quests[0] },
+    );
+
+    await page.goto(`/${slug}/epics`);
+    const row = page.locator("tbody tr", { hasText: title });
+    await expect(row).toContainText("In progress", { timeout: 15_000 });
+
+    await test.step("Shelve names the open quests and parks the epic", async () => {
+      await row.getByRole("button").last().click();
+      await expect(page.getByRole("menuitem", { name: "Delete" })).toHaveCount(
+        0,
+      );
+      await page.getByRole("menuitem", { name: "Shelve" }).click();
+      const confirm = page.getByRole("alertdialog");
+      await expect(confirm).toContainText("sets aside its 2 open quests");
+      await confirm.getByRole("button", { name: "Shelve" }).click();
+      await expect(row).toContainText("Shelved", { timeout: 15_000 });
+    });
+
+    await test.step("the quests are shelved, and the started one unassigned", async () => {
+      const questPath = await apiPath(page, "getQuestById");
+      const rows = await page.evaluate(
+        async ({ questPath, ids }) => {
+          const out: Array<{ shelved: boolean; accepted: boolean }> = [];
+          for (const id of ids) {
+            const r = await fetch(questPath.replace(":id", String(id)), {
+              credentials: "include",
+            });
+            const quest = (await r.json()) as {
+              shelvedAt?: string;
+              acceptedAt?: string;
+            };
+            out.push({
+              shelved: Boolean(quest.shelvedAt),
+              accepted: Boolean(quest.acceptedAt),
+            });
+          }
+          return out;
+        },
+        { questPath, ids: quests },
+      );
+      expect(rows).toEqual([
+        { shelved: true, accepted: false },
+        { shelved: true, accepted: false },
+      ]);
+    });
+
+    await test.step("Unshelve on the epic page brings them back and resumes the epic", async () => {
+      await page.goto(`/${slug}/epics/${epic.number}`);
+      await page.getByRole("button", { name: "Unshelve" }).click();
+      const confirm = page.getByRole("alertdialog");
+      await expect(confirm).toContainText("brings back the 2 quests");
+      await confirm.getByRole("button", { name: "Unshelve" }).click();
+      await expect(page.getByRole("button", { name: "Shelve" })).toBeVisible({
+        timeout: 15_000,
+      });
+
+      await page.goto(`/${slug}/epics`);
+      await expect(row).toContainText("In progress", { timeout: 15_000 });
     });
   });
 });

@@ -2075,6 +2075,7 @@ export default {
   "epic.status.ready": "Prête",
   "epic.status.inProgress": "En cours",
   "epic.status.completed": "Terminée",
+  "epic.status.shelved": "Mise de côté",
   "epic.list.empty": "Aucune épopée pour le moment.",
   "epic.list.column.title": "Épopée",
   "epic.list.column.updated": "Mise à jour",
@@ -2146,12 +2147,14 @@ export default {
   "agentPrompts.copyError": "Impossible de copier l’invite.",
   "epic.delete.title": "Supprimer cette épopée ?",
   "epic.delete.confirm":
-    'Ses quêtes et folios sont conservés, détachés de "$1". Cette action est irréversible.',
+    'Supprimer "$1" supprime aussi ses $2 quêtes. Ses folios sont conservés, détachés. Cette action est irréversible.',
   "epic.toast.deleted": "Épopée supprimée.",
   "epic.bulk.delete.title": "Supprimer $1 épopées ?",
   "epic.bulk.delete.confirm": "Supprimer $1 épopées",
   "epic.bulk.delete.description":
-    "Leurs quêtes et folios sont conservés, détachés de celles-ci. Cette action est irréversible.",
+    "Leurs $1 quêtes sont supprimées avec elles. Leurs folios sont conservés, détachés. Cette action est irréversible.",
+  "epic.bulk.delete.skipped":
+    "Exclues, car le travail y a commencé ou est terminé : $1. Mettez-les plutôt de côté.",
   "epic.bulk.ready.title": "Marquer $1 épopées comme prêtes ?",
   "epic.bulk.ready.confirm": "Marquer $1 épopées comme prêtes",
   "epic.bulk.ready.description":
@@ -2179,6 +2182,14 @@ export default {
   "epic.start.blocked": "Bloquée par l'épopée $1",
   "epic.status.actions.markReady": "Marquer comme prête",
   "epic.status.actions.backToDraft": "Repasser en brouillon",
+  "epic.status.actions.shelve": "Mettre de côté",
+  "epic.status.actions.unshelve": "Reprendre",
+  "epic.shelve.title": "Mettre cette épopée de côté ?",
+  "epic.shelve.confirm":
+    "Mettre $1 de côté met aussi de côté ses $2 quêtes ouvertes : elles sont désassignées et mises de côté, et rien dans l'épopée ne peut avancer avant qu'elle soit reprise. Les quêtes terminées le restent, et les épopées qui en dépendent restent bloquées.",
+  "epic.unshelve.title": "Reprendre cette épopée ?",
+  "epic.unshelve.confirm":
+    "Reprendre $1 ramène les $2 quêtes mises de côté avec elle, à faire et sans assignation. Les quêtes mises de côté individuellement avant restent de côté.",
   "epic.aside.predecessor": "Dépend de",
   "epic.aside.predecessor.after": "Après l'épopée $1",
   "epic.aside.predecessor.blocked": "Bloquée par l'épopée $1",
@@ -2188,6 +2199,8 @@ export default {
     "L'épopée $1 n'est pas encore prête pour le développement.",
   "quest.view.accept.epicCompleted":
     "L'épopée $1 est terminée. Créez une nouvelle épopée pour cette quête.",
+  "quest.view.accept.epicShelved":
+    "L'épopée $1 est mise de côté. Reprenez d'abord l'épopée.",
   "epic.tab.overview": "Aperçu",
   "epic.tab.quests": "Quêtes",
   "epic.tab.flow": "Flux",
@@ -2515,6 +2528,7 @@ export default {
   "dashboard.footer.epic.specified": "$1 specifiees, aucune publiee",
   "dashboard.footer.epic.completed": "terminée le $1",
   "dashboard.footer.epic.completedUndated": "terminée",
+  "dashboard.footer.epic.shelved": "mise de côté, $1 terminées",
   "dashboard.footer.epic.nothing": "rien a compter pour l'instant",
   "dashboard.footer.epic.hidden": "les epics sont desactives ici",
   "dashboard.footer.release.done": "$1 sur $2 terminees, hors abandonnees",

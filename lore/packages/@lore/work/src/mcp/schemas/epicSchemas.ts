@@ -172,7 +172,7 @@ export const epicUpdateResultSchema = z.object({
 
 export const epicSetStatusParamsSchema = epicRefSchema.extend({
   status: epicManualStatusSchema.describe(
-    "`ready` (the spec is done: the quests join the backlog and can be accepted) or `draft` (back to specifying: the quests leave the backlog again). Only those two, and only between each other. `in_progress` and `completed` are never set by hand: the first quest accepted or assigned starts the epic, and the last open quest completed or shelved completes it. The same status again is a no-op.",
+    "`ready` (the spec is done: the quests join the backlog and can be accepted) or `draft` (back to specifying: the quests leave the backlog again). Only those two, and only between each other. `in_progress` and `completed` are never set by hand: the first quest accepted or assigned starts the epic, and the last open quest completed or shelved completes it. `shelved` has its own tools, epic_shelve and epic_unshelve. The same status again is a no-op.",
   ),
 });
 
@@ -184,20 +184,42 @@ export const epicSetStatusResultSchema = z.object({
 });
 
 // -----------------------------------------------------------------------------
+// epic_shelve / epic_unshelve
+// -----------------------------------------------------------------------------
+
+export const epicShelveParamsSchema = epicRefSchema;
+
+/**
+ * The epic's status after the move, and how many of its quests moved: the
+ * number an agent reports back (#E78).
+ */
+export const epicShelveResultSchema = z.object({
+  id: z.integer(),
+  number: z.integer(),
+  title: z.string(),
+  status: epicStatusSchema,
+  movedQuests: z
+    .integer()
+    .describe(
+      "How many quests this call shelved (epic_shelve) or brought back (epic_unshelve).",
+    ),
+});
+
+// -----------------------------------------------------------------------------
 // epic_delete
 // -----------------------------------------------------------------------------
 
 export const epicDeleteParamsSchema = epicRefSchema;
 
 /**
- * Bare acknowledgement, like `quest_delete`. Nothing about the epic is worth
- * echoing back once it is gone, and the counts that WOULD be interesting
- * (how many quests and folios were detached) are deliberately not returned:
- * `EpicController.deleteEpic` leaves the orphaning to the FK's
- * `ON DELETE SET NULL`, so no application code ever sees those rows and any
- * number here would have to be produced by a query written purely to
- * populate it.
+ * Acknowledgement, like `quest_delete`, plus the one number an agent needs
+ * to report what it just did: how many quests went with the epic (#Q2667).
+ * `EpicController.deleteEpic` answers it as `count`; its folios are unfiled,
+ * never deleted, so they are not counted.
  */
 export const epicDeleteResultSchema = z.object({
   ok: z.boolean(),
+  deletedQuests: z
+    .integer()
+    .describe("How many quests were deleted with the epic."),
 });

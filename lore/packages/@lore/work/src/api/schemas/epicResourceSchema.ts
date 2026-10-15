@@ -34,6 +34,14 @@ export const epicResourceSchema = epics.schema.extend({
      * is work declined.
      */
     shelved: z.integer(),
+    /**
+     * The part of `shelved` the epic's own shelve set aside
+     * (`quests.shelvedWithEpic`, #E78): what `unshelveEpic` would bring back,
+     * so the Unshelve confirm can name it (#Q2672). Optional because the
+     * other surfaces that build a progress object have no epic shelve to
+     * count.
+     */
+    shelvedWithEpic: z.integer().optional(),
     total: z.integer(),
   }),
   questCount: z.integer(),

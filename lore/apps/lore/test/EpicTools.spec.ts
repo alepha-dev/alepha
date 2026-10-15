@@ -449,14 +449,76 @@ describe("Lore MCP — epics", () => {
     });
   });
 
-  describe("epic_delete", () => {
-    it("detaches the epic's quests and folios instead of deleting them", async ({
+  describe("epic_shelve and epic_unshelve", () => {
+    it("shelves the open quests, reports the count, and brings them back", async ({
       expect,
     }) => {
-      // The FK's `ON DELETE SET NULL` is the whole contract of this tool, and
-      // the reason its description has to say so: an agent reading only the
-      // tool list must not have to guess whether it is about to erase the
-      // work filed under the epic.
+      const { alepha, repos, project, epicTools, call } = await setup();
+      const epic = await createTestEpic(alepha, project, { status: "ready" });
+      const quest = await createTestQuest(alepha, project, { epicId: epic.id });
+
+      const shelved = await call(epicTools.epic_shelve, {
+        project: project.id,
+        number: epic.number,
+      });
+      expect(shelved).toMatchObject({
+        number: epic.number,
+        status: "shelved",
+        movedQuests: 1,
+      });
+      expect((await repos.quests.getById(quest.id)).shelvedAt).toBeDefined();
+
+      const back = await call(epicTools.epic_unshelve, {
+        project: project.id,
+        number: epic.number,
+      });
+      expect(back).toMatchObject({ status: "ready", movedQuests: 1 });
+      expect((await repos.quests.getById(quest.id)).shelvedAt).toBeUndefined();
+    });
+
+    it("say what moves in their first sentence, and the status lists name shelved", async ({
+      expect,
+    }) => {
+      // Agents decide from the tool list alone (#Q2671).
+      const { epicTools } = await setup();
+      const first = (description: string) => description.split(". ")[0];
+      expect(first(epicTools.epic_shelve.description)).toMatch(
+        /every open quest in it/,
+      );
+      expect(first(epicTools.epic_unshelve.description)).toMatch(
+        /ONLY the quests epic_shelve set aside/,
+      );
+      expect(epicTools.epic_list.description).toMatch(/completed and shelved/);
+      expect(epicTools.epic_set_status.description).toMatch(/epic_shelve/);
+    });
+
+    it("refuses a completed epic with a message naming it", async ({
+      expect,
+    }) => {
+      const { alepha, project, epicTools, call } = await setup();
+      const epic = await createTestEpic(alepha, project, {
+        status: "completed",
+      });
+
+      await expect(
+        call(epicTools.epic_shelve, {
+          project: project.id,
+          number: epic.number,
+        }),
+      ).rejects.toThrow(
+        `Cannot shelve Epic #E${epic.number}: it is completed.`,
+      );
+    });
+  });
+
+  describe("epic_delete", () => {
+    it("deletes the epic's quests and keeps its folios, unfiled", async ({
+      expect,
+    }) => {
+      // Deleting an epic deletes its quests (#Q2666), and the tool's
+      // description has to say so: an agent reading only the tool list must
+      // not have to guess whether it is about to erase the work filed under
+      // the epic. Folios are knowledge and survive the plan.
       const { alepha, repos, project, epicTools, call } = await setup();
       const epic = await createTestEpic(alepha, project);
       const quest = await createTestQuest(alepha, project, { epicId: epic.id });
@@ -467,9 +529,42 @@ describe("Lore MCP — epics", () => {
         number: epic.number,
       });
 
-      expect(result.ok).toBe(true);
-      expect((await repos.quests.getById(quest.id)).epicId).toBeUndefined();
+      expect(result).toEqual({ ok: true, deletedQuests: 1 });
+      expect(
+        await repos.quests.findOne({ where: { id: { eq: quest.id } } }),
+      ).toBeUndefined();
+      expect(await repos.folios.getById(folio.id)).toBeDefined();
       expect(await filedEpicOf(alepha, folio.id)).toBeUndefined();
+    });
+
+    it("refuses an in-progress epic, names it, and points at epic_shelve", async ({
+      expect,
+    }) => {
+      const { alepha, repos, project, epicTools, call } = await setup();
+      const epic = await createTestEpic(alepha, project, {
+        status: "in_progress",
+      });
+      const quest = await createTestQuest(alepha, project, { epicId: epic.id });
+
+      await expect(
+        call(epicTools.epic_delete, {
+          project: project.id,
+          number: epic.number,
+        }),
+      ).rejects.toThrow(
+        `Cannot delete Epic #E${epic.number}: it is in progress, and deleting it would delete started work. Shelve the epic instead.`,
+      );
+      expect((await repos.quests.getById(quest.id)).epicId).toBe(epic.id);
+    });
+
+    it("says in its first sentence that the quests are deleted", async ({
+      expect,
+    }) => {
+      // Agents decide from the tool list alone, and this description used to
+      // promise the opposite.
+      const { epicTools } = await setup();
+      const firstSentence = epicTools.epic_delete.description.split(". ")[0];
+      expect(firstSentence).toMatch(/AND every quest filed under it/);
     });
 
     it("removes the epic from epic_list, epic_get and project_context", async ({

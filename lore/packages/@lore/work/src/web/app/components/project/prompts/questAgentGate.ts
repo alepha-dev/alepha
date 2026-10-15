@@ -8,14 +8,18 @@ import type { EpicRefResource } from "../../../../../api/schemas/epicRefResource
  * cannot make a localized string. `QuestView` maps the code to its key and
  * keeps its tooltip; the tables only test for `undefined`.
  */
-export type QuestAgentGateReason = "epicDraft" | "epicCompleted";
+export type QuestAgentGateReason =
+  | "epicDraft"
+  | "epicCompleted"
+  | "epicShelved";
 
 /**
  * Whether a quest's epic is in a status that would refuse the work.
  *
  * The prompt's second step is `quest_accept`, which a `draft` epic refuses
  * (it is not ready for development) and a `completed` one refuses with "File
- * this in a new epic". A `ready` epic accepts, and that accept is what starts
+ * this in a new epic", and a `shelved` one (#E78) refuses until the epic is
+ * unshelved. A `ready` epic accepts, and that accept is what starts
  * it (#Q2223). So the gate on offering the prompt is the gate on accepting
  * the quest, and this is the one place both express it.
  *
@@ -33,6 +37,22 @@ export type QuestAgentGateReason = "epicDraft" | "epicCompleted";
  *
  * A quest with no epic at all is never withheld.
  */
+/**
+ * The sentence each code reads as, for the one surface that prints it
+ * (`QuestView`'s withheld Accept). A record, so a new code cannot ship
+ * without its key.
+ */
+export const QUEST_AGENT_GATE_LABEL_KEYS: Record<
+  QuestAgentGateReason,
+  | "quest.view.accept.epicDraft"
+  | "quest.view.accept.epicCompleted"
+  | "quest.view.accept.epicShelved"
+> = {
+  epicDraft: "quest.view.accept.epicDraft",
+  epicCompleted: "quest.view.accept.epicCompleted",
+  epicShelved: "quest.view.accept.epicShelved",
+};
+
 export const questAgentGate = (
   quest: { epicId?: number | null },
   epics: EpicRefResource[] | undefined,
@@ -42,5 +62,6 @@ export const questAgentGate = (
   if (!epic) return undefined;
   if (epic.status === "draft") return "epicDraft";
   if (epic.status === "completed") return "epicCompleted";
+  if (epic.status === "shelved") return "epicShelved";
   return undefined;
 };

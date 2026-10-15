@@ -602,6 +602,105 @@ class StatusAudits {
   }
 }
 
+describe("EpicWorkflowService on a shelved epic (#E78)", () => {
+  it("refuses every verb that opens work, unshelve and unhold included", async ({
+    expect,
+  }) => {
+    const { alepha, app, project } = await setup();
+    const epic = await createTestEpic(alepha, project, { status: "shelved" });
+    const quest = await createTestQuest(alepha, project, { epicId: epic.id });
+
+    for (const verb of [
+      "accept",
+      "assign",
+      "complete",
+      "unshelve",
+      "unhold",
+    ] as const) {
+      await expect(
+        app.workflow.assertQuestWorkable(quest, verb),
+      ).rejects.toThrow(
+        `Cannot ${verb} quest #Q${quest.shortId}: Epic #E${epic.number} is shelved. Unshelve the epic first.`,
+      );
+    }
+  });
+
+  it("refuses every plan edit, so unshelve brings back exactly what was set aside", async ({
+    expect,
+  }) => {
+    const { alepha, app, project } = await setup();
+    const epic = await createTestEpic(alepha, project, { status: "shelved" });
+    const quest = { shortId: 7 };
+
+    expect(() =>
+      app.workflow.assertPlanEditable(epic, { kind: "add" }),
+    ).toThrow(
+      `Cannot add a quest: Epic #E${epic.number} is shelved. Unshelve the epic first.`,
+    );
+    expect(() =>
+      app.workflow.assertPlanEditable(epic, { kind: "remove", quest }),
+    ).toThrow(
+      `Cannot remove quest #Q7: Epic #E${epic.number} is shelved. Unshelve the epic first.`,
+    );
+    expect(() =>
+      app.workflow.assertPlanEditable(epic, { kind: "delete", quest }),
+    ).toThrow(
+      `Cannot delete quest #Q7: Epic #E${epic.number} is shelved. Unshelve the epic first.`,
+    );
+  });
+
+  it("refuses the manual edges and the epic delete, pointing at unshelve", async ({
+    expect,
+  }) => {
+    const { alepha, app, project } = await setup();
+    const epic = await createTestEpic(alepha, project, { status: "shelved" });
+
+    for (const to of ["draft", "ready"] as const) {
+      expect(() => app.workflow.assertManualEdge(epic, to)).toThrow(
+        `Cannot move Epic #E${epic.number} from shelved to ${to}. It is shelved. Unshelve it first.`,
+      );
+    }
+    expect(() => app.workflow.assertEpicDeletable(epic)).toThrow(
+      `Cannot delete Epic #E${epic.number}: it is shelved. Unshelve it first; only a draft or ready epic can be deleted.`,
+    );
+  });
+
+  it("keeps blocking the epics that depend on it: shelved is not completed", async ({
+    expect,
+  }) => {
+    const { alepha, app, project } = await setup();
+    const shelved = await createTestEpic(alepha, project, {
+      status: "shelved",
+    });
+    const next = await createTestEpic(alepha, project, {
+      status: "ready",
+      dependsOn: shelved.id,
+    });
+    const quest = await createTestQuest(alepha, project, { epicId: next.id });
+
+    await expect(
+      app.workflow.assertQuestWorkable(quest, "accept"),
+    ).rejects.toThrow(
+      `Epic #E${next.number} depends on Epic #E${shelved.number}, which is not completed.`,
+    );
+  });
+
+  it("is never completed by the request that resolves its last open quest", async ({
+    expect,
+  }) => {
+    const { alepha, app, project } = await setup();
+    const epic = await createTestEpic(alepha, project, { status: "shelved" });
+    const quest = await createTestQuest(alepha, project, {
+      epicId: epic.id,
+      shelvedAt: STAMP,
+    });
+
+    await app.workflow.completeIfResolved(quest, undefined);
+
+    expect((await app.repos.epics.getById(epic.id)).status).toBe("shelved");
+  });
+});
+
 describe("EpicWorkflowService without transactions", () => {
   const setupD1 = async () => {
     const alepha = Alepha.create({
