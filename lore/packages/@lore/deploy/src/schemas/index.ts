@@ -52,3 +52,8 @@ export { DeployDashboardMetrics } from "../api/services/DeployDashboardMetrics.t
 export { type Monitor, monitors } from "../api/entities/monitors.ts";
 export { monitorIncidents } from "../api/entities/monitorIncidents.ts";
 export { monitorHeartbeats } from "../api/entities/monitorHeartbeats.ts";
+
+export {
+  type ProbeResult,
+  probeResultSchema,
+} from "../api/schemas/probeResultSchema.ts";
