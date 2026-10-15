@@ -57,8 +57,10 @@ class HeadlessWindow extends WindowProvider {
 
     const counts = [];
     for (let i = 0; i < 2; i++) {
-      // `inc` takes no body, so its action is a GET.
+      // `inc` writes, so its action is a POST (the default without a
+      // `method`, body or not).
       const inc = await fetch(`${origin}/api/inc`, {
+        method: "POST",
         headers: { cookie, origin },
       });
       counts.push(inc.ok ? (await inc.json()).count : inc.status);
