@@ -241,7 +241,31 @@ await repos.teams.findMany({
 });
 ```
 
-It applies to the level that asked for it, so a forced parent does not quietly un-hide everything hanging off it.
+It applies to the level that asked for it, so a forced parent does not quietly un-hide everything hanging off it. For the root rows, `force` is a statement option, as on the plain repository:
+
+```typescript
+await repos.teams.findMany({ include: { players: true } }, { force: true });
+```
+
+## Statement options
+
+`findMany`, `findOne`, `getOne`, `findById`, `getById` and `paginate` take a last `options` argument with the plain repository's names: `tx` (an explicit transaction, or `null` for none), `force` and `now`. `count` takes `tx` and `force`.
+
+```typescript
+await repos.teams.transaction(async (tx) => {
+  const teams = await repos.teams.findMany(
+    { include: { players: true } },
+    { tx },
+  );
+});
+```
+
+Two plain options are not offered on a relational read:
+
+- **`for`** (row locks): Postgres refuses `FOR UPDATE` on the nullable side of an outer join, and `include` builds outer joins. Lock the root rows through `.base` instead.
+- **`cache`**: the cache is invalidated per table, so a write to an included table would leave a cached tree stale.
+
+`paginate` follows the plain repository's rules: the page comes from the `PageQuery` alone (`limit` and `offset` in the query are refused), `size` is held to `[1, 100]`, and `pagination.sort` wins over the query's `orderBy`, which is the default order.
 
 ## Writing
 
@@ -285,7 +309,7 @@ await repos.teams.count({ where: { name: { like: "R%" } } });
 await repos.teams.aggregate({ select: { id: { count: true } } });
 ```
 
-`findById(id, { include })`, `getById`, `getOne`, `updateById(id, data)`, `deleteById(id, { force })`, `save(entity)`, `query`, `transaction` and `paginate(page, query, { count })` keep their plain shapes. `.base` is the fully typed plain repository, for anything that takes statement options (`tx`, `for`, `cache`, ...).
+`findById(id, { include })`, `getById`, `getOne`, `updateById(id, data)`, `deleteById(id, { force })`, `save(entity)`, `query`, `transaction` and `paginate(page, query, { count })` keep their plain shapes. `.base` is the fully typed plain repository, for the statement options a relational read does not take (`for`, `cache`).
 
 ## What it costs
 

@@ -1,4 +1,5 @@
 import type { Infer } from "alepha";
+import type { DateTime } from "alepha/datetime";
 
 import type {
   AnyRelation,
@@ -8,6 +9,7 @@ import type {
   RowOf,
   SchemaOf,
 } from "../primitives/$relations.ts";
+import type { DbTransaction } from "./DbTransaction.ts";
 import type { OrderBy } from "./PgQuery.ts";
 import type { PgQueryWhere } from "./PgQueryWhere.ts";
 
@@ -183,17 +185,34 @@ export interface RelationalQueryArgs<
   orderBy?: OrderBy<Infer<SchemaOf<ZType, K>>>;
   limit?: number;
   offset?: number;
-  /**
-   * Read rows the repository would normally hide.
-   *
-   * Today that means soft-deleted ones: `deletedAt` is filtered out of every
-   * read, and some views want the history anyway — a blight inbox still shows
-   * crashes reported by a sigil that has since been revoked. It is the same
-   * flag the plain repository takes, and it applies to this level only, so a
-   * parent can ask for deleted rows without its relations doing the same.
-   */
-  force?: boolean;
 
   select?: ReadonlyArray<keyof RowOf<ZType, K>>;
   include?: IncludeArg<ZType, TMap, K>;
+}
+
+/**
+ * Statement options of a relational read: the `StatementOptions` that are
+ * safe on a join.
+ *
+ * `for` is not offered: Postgres refuses `FOR UPDATE` on the nullable side of
+ * an outer join, and `include` builds outer joins. Lock the root through the
+ * plain `Repository` instead. `cache` is not offered either: invalidation is
+ * per table, so a write to an included table would leave a cached graph
+ * stale.
+ */
+export interface RelationalReadOptions {
+  /**
+   * The transaction to read in: `undefined` for the ambient one, `null` for
+   * none.
+   */
+  tx?: DbTransaction | null;
+  /**
+   * Read rows the repository would normally hide (soft-deleted ones), at the
+   * root level. A relation takes its own `force` in its include arguments.
+   */
+  force?: boolean;
+  /**
+   * Force the current time.
+   */
+  now?: DateTime | string;
 }

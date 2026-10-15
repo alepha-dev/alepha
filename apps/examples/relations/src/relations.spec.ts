@@ -974,13 +974,13 @@ describe("force", () => {
     const { second } = await seed(app);
     await app.db.quests.deleteById(second.id);
 
-    const forced = await app.db.quests.findMany({ force: true });
+    const forced = await app.db.quests.findMany({}, { force: true });
     expect(forced).toHaveLength(2);
 
-    const campaigns = await app.db.campaigns.findMany({
-      force: true,
-      include: { quests: true },
-    });
+    const campaigns = await app.db.campaigns.findMany(
+      { include: { quests: true } },
+      { force: true },
+    );
     expect(campaigns.flatMap((c) => c.quests).map((q) => q.title)).toEqual([
       "Find the archive",
     ]);

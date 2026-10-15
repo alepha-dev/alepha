@@ -1637,11 +1637,11 @@ export const testPagination = async (alepha: Alepha) => {
 };
 
 // ============================================================================
-// testPaginationWithQueryLimit — `paginate` reads its page size from
-// `query.limit` as well as `pagination.size`. The `+1` sentinel row that
-// `createPagination` uses to detect a next page must survive either way;
-// spreading `query` over the computed `limit + 1` used to erase it, which made
-// `isLast` always true for callers passing `query.limit`.
+// testPaginationWithQueryLimit — the `+1` sentinel row that
+// `createPagination` uses to detect a next page must survive a page size the
+// caller sets; spreading `query` over the computed `limit + 1` used to erase
+// it, which made `isLast` always true. (`query.limit` itself is refused by
+// paginate since #Q2670: `size` is the one page size.)
 // ============================================================================
 
 export const testPaginationWithQueryLimit = async (alepha: Alepha) => {
@@ -1657,7 +1657,7 @@ export const testPaginationWithQueryLimit = async (alepha: Alepha) => {
   }
 
   // First page: 25 rows, 10 per page => there IS a next page.
-  const first = await app.users.paginate({ page: 0 }, { limit: 10 });
+  const first = await app.users.paginate({ page: 0, size: 10 });
 
   expect(first.content.length).toBe(10);
   expect(first.page.size).toBe(10);
@@ -1666,7 +1666,7 @@ export const testPaginationWithQueryLimit = async (alepha: Alepha) => {
   expect(first.page.isLast).toBe(false);
 
   // Middle page: still not the last one.
-  const middle = await app.users.paginate({ page: 1 }, { limit: 10 });
+  const middle = await app.users.paginate({ page: 1, size: 10 });
 
   expect(middle.content.length).toBe(10);
   expect(middle.page.offset).toBe(10);
@@ -1674,7 +1674,7 @@ export const testPaginationWithQueryLimit = async (alepha: Alepha) => {
   expect(middle.page.isLast).toBe(false);
 
   // Final page: 5 remaining rows, no sentinel => last.
-  const last = await app.users.paginate({ page: 2 }, { limit: 10 });
+  const last = await app.users.paginate({ page: 2, size: 10 });
 
   expect(last.content.length).toBe(5);
   expect(last.page.offset).toBe(20);

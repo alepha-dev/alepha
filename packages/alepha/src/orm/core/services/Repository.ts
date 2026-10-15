@@ -859,26 +859,28 @@ export abstract class Repository<T extends ZObject> {
    * Find entities with pagination.
    *
    * It uses the same parameters as `findMany()`, but adds pagination metadata to the response.
+   * Paging comes from `pagination` alone: `limit`/`offset` in the query are
+   * refused, `size` is held to `[1, 100]`, and `pagination.sort` wins over
+   * the query's `orderBy`, which is the default order.
    *
    * > Pagination CAN also do a count query to get the total number of elements.
    */
   public async paginate<R extends PgRelationMap<T>>(
     pagination: PageQuery = {},
-    query: Omit<PgQueryRelations<T, R>, "where"> & {
+    query: Omit<PgQueryRelations<T, R>, "where" | "limit" | "offset"> & {
       where?: PgQueryWhere<T, R>;
     } = {},
     opts: StatementOptions & { count?: boolean } = {},
   ): Promise<Page<PgStatic<T, R>>> {
-    // Overflow-safe: pageQuerySchema constrains size to [1, 100] and page to >= 0.
-    // With max size=100, page would need to exceed 2^45 to overflow Number.MAX_SAFE_INTEGER.
-    const limit = query.limit ?? pagination.size ?? 10;
-    const page = pagination.page ?? 0;
-    const offset = query.offset ?? page * limit;
-
-    let orderBy = query.orderBy;
-    if (!query.orderBy && pagination.sort) {
-      orderBy = this.queryManager.parsePaginationSort(pagination.sort) as any;
-    }
+    // Overflow-safe: size is held to [1, 100] and page to >= 0, so page
+    // would need to exceed 2^45 to overflow Number.MAX_SAFE_INTEGER.
+    const paging = this.queryManager.pageWindow(
+      pagination,
+      query,
+      this.tableName,
+    );
+    const { limit, offset } = paging;
+    const orderBy = paging.orderBy as typeof query.orderBy;
 
     const now = this.dateTimeProvider.nowMillis();
     const timers = {

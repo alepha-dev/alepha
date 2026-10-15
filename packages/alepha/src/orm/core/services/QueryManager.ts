@@ -2,6 +2,7 @@ import {
   $inject,
   Alepha,
   AlephaError,
+  type PageQuery,
   type ZObject,
   type ZType,
   z,
@@ -657,6 +658,50 @@ export class QueryManager {
     }
 
     return and(...conditions);
+  }
+
+  /**
+   * The rows one page reads, with the rules every `paginate` follows:
+   *
+   * - `size` is in `[1, 100]` (default 10) and `page` is `>= 0`, or it
+   *   throws. A direct call is held to the bounds `pageQuerySchema` puts on
+   *   a request: `size: 0` used to mean `limit 0`, which `findMany` read as
+   *   "no limit", and `totalPages` divided by zero.
+   * - `limit` and `offset` in the query are refused: paging is the
+   *   `PageQuery`'s job, and two sources for it disagreed silently.
+   * - `pagination.sort` wins over the query's `orderBy`, which is the
+   *   default order. Refusing both would turn every `?sort=` against a
+   *   repository with a default order into an error.
+   */
+  public pageWindow(
+    pagination: PageQuery,
+    query: { limit?: unknown; offset?: unknown; orderBy?: unknown },
+    tableName: string,
+  ): { limit: number; offset: number; orderBy: unknown } {
+    if (query.limit !== undefined || query.offset !== undefined) {
+      throw new AlephaError(
+        `paginate on '${tableName}' was given 'limit' or 'offset' in its query: page with the PageQuery's 'page' and 'size', or use findMany.`,
+      );
+    }
+    const size = pagination.size ?? 10;
+    const page = pagination.page ?? 0;
+    if (!Number.isInteger(size) || size < 1 || size > 100) {
+      throw new AlephaError(
+        `paginate on '${tableName}': size must be an integer in [1, 100], got ${size}. Use findMany for a bulk read.`,
+      );
+    }
+    if (!Number.isInteger(page) || page < 0) {
+      throw new AlephaError(
+        `paginate on '${tableName}': page must be an integer >= 0, got ${page}.`,
+      );
+    }
+    return {
+      limit: size,
+      offset: page * size,
+      orderBy: pagination.sort
+        ? this.parsePaginationSort(pagination.sort)
+        : query.orderBy,
+    };
   }
 
   /**

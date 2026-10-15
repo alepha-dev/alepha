@@ -151,7 +151,7 @@ describe("the api-key audit trail", () => {
     const repo = alepha.inject(TestKeys).keys;
 
     const purges = async () =>
-      (await audits.find({ type: "api-key", action: "purge", size: 1000 }))
+      (await audits.find({ type: "api-key", action: "purge", size: 100 }))
         .content;
 
     await service.purgeDeadKeys();
