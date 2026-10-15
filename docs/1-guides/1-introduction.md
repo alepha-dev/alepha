@@ -9,7 +9,7 @@ Alepha ships with all of it built-in.
 
 ## What is Alepha?
 
-Alepha is an integrated, opinionated, full-stack engine for **Node.js 22+**, **Bun**, and
+Alepha is an integrated, opinionated, full-stack engine for **Node.js 24+**, **Bun**, and
 **Cloudflare Workers**. It automatically selects the right providers (HTTP server, SQL, Redis) based on
 the runtime.
 

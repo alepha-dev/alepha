@@ -277,6 +277,66 @@ jobs:
         if: matrix.shard == 1
         run: yarn test:bun
 
+  # The unit suite again, on Node 24: the floor every public package declares
+  # in `engines.node` (#Q2687). Everything else runs on the current release
+  # only; this lane is what keeps `>=24.0.0` a tested claim rather than a
+  # hope. Its own job rather than a matrix axis on `test`, so the names of the
+  # existing checks do not change. No bun step: that suite does not depend on
+  # the Node version.
+  test-node24:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6]
+    services:
+      redis:
+        image: redis
+        ports:
+          - 16379:6379
+
+      postgres:
+        image: postgres
+        ports:
+          - 15432:5432
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+
+      s3:
+        image: versity/versitygw:v1.8.0
+        ports:
+          - 19090:7070
+        env:
+          VGW_BACKEND: posix
+          VGW_BACKEND_ARG: /data
+          VGW_REGION: eu-west-1
+          VGW_QUIET: "true"
+          ROOT_ACCESS_KEY: mock
+          ROOT_SECRET_KEY: mock
+        options: --tmpfs /data:size=4g
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup
+        uses: ./.github/actions/setup
+        with:
+          node-version: "24.x"
+
+      - name: Clean
+        run: yarn clean
+
+      # See `test`: the generators and oxfmt, not `yarn lint`.
+      - name: Prepare
+        run: yarn workspaces foreach -Apt --exclude alepha-monorepo run copy && yarn oxfmt
+
+      - name: Test Project
+        run: yarn alepha test --shard ${{ matrix.shard }}/6
+
   # ──────────────────────────────────────────────────────────────────────
   # Build + E2E, as two jobs. The long pole of the workflow, and the half
   # of `yarn v` the two jobs above skip.

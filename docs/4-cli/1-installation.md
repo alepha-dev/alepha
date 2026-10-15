@@ -56,7 +56,7 @@ npm run dev
 
 ## Requirements
 
-- **Node.js 22+**: Alepha uses modern JavaScript features
+- **Node.js 24+**: Alepha uses modern JavaScript features
 - or **Bun 1.3+**, if Bun is your runtime
 
 Check your version:

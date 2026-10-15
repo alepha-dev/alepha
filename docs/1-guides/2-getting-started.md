@@ -14,7 +14,7 @@ Initialization installs dependencies and writes configuration without cloud cred
 
 You need one of the following:
 
-- [Node.js 22+](https://nodejs.org/) (recommended for beginners)
+- [Node.js 24+](https://nodejs.org/) (recommended for beginners)
 - [Bun 1.3+](https://bun.sh/)
 
 ## Create a Project

@@ -167,7 +167,7 @@
     }
   },
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=24.0.0"
   },
   "llms": "https://alepha.dev/llms.txt"
 }
