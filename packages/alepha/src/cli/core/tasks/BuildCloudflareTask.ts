@@ -998,9 +998,21 @@ const readOnPrimary = () => {
 // Bind the per-invocation Worker \`env\`: keep the full binding (D1, R2, KV, …)
 // in the store for providers, and lift its string values (secrets/vars like
 // PUBLIC_URL) into \`alepha.env\` so \`$env\` resolves them at runtime.
+//
+// \`REDIS_URL\` selects Redis on Node and Bun only: no Redis client runs in a
+// Worker, and the env reaches \`alepha.env\` here, after every module chose
+// its providers. Setting it on a Worker is a configuration mistake, so it is
+// named once per isolate, never refused.
+let redisUrlWarned = false;
 const bindEnv = (env) => {
   __alepha.set("cloudflare.env", env);
   __alepha.loadEnv(env);
+  if (!redisUrlWarned && typeof env?.REDIS_URL === "string" && env.REDIS_URL !== "") {
+    redisUrlWarned = true;
+    __alepha.log.warn(
+      "REDIS_URL is set on a Cloudflare Worker, where it selects nothing: cache, queue, topic, lock and actors use the Cloudflare providers.",
+    );
+  }
 };
 
 // --- Edge cache -------------------------------------------------------------

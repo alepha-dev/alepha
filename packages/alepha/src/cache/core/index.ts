@@ -1,8 +1,10 @@
 import { $module } from "alepha";
+import { RedisActivation } from "alepha/redis";
 
 import { $cache } from "./primitives/$cache.ts";
 import { CacheProvider } from "./providers/CacheProvider.ts";
 import { MemoryCacheProvider } from "./providers/MemoryCacheProvider.ts";
+import { RedisCacheProvider } from "./providers/RedisCacheProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -11,6 +13,7 @@ export * from "./providers/CacheProvider.ts";
 export * from "./providers/CloudflareCacheProvider.ts";
 export * from "./providers/CloudflareKVProvider.ts";
 export * from "./providers/MemoryCacheProvider.ts";
+export * from "./providers/RedisCacheProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -67,7 +70,12 @@ declare module "alepha" {
  * - Configurable TTL
  * - Cache invalidation
  * - Automatic cache population
- * - Providers: Memory (default on Node), Cloudflare KV (default on workerd), Redis, Database
+ * - Providers: Redis when `REDIS_URL` is set, Memory otherwise (Node, Bun),
+ *   Cloudflare (workerd), Database (per `$cache`)
+ *
+ * Set `REDIS_URL` and every instance shares one cache; leave it unset and the
+ * cache is this process's memory. An app's own `CacheProvider` substitution
+ * wins over both.
  *
  * @module alepha.cache
  */
@@ -75,11 +83,13 @@ export const AlephaCache = $module({
   name: "alepha.cache",
   primitives: [$cache],
   services: [CacheProvider],
-  variants: [MemoryCacheProvider],
+  variants: [MemoryCacheProvider, RedisCacheProvider],
   register: (alepha) =>
     alepha.with({
       optional: true,
       provide: CacheProvider,
-      use: MemoryCacheProvider,
+      use: alepha.inject(RedisActivation).isActive()
+        ? RedisCacheProvider
+        : MemoryCacheProvider,
     }),
 });

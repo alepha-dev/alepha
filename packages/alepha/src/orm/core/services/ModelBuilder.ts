@@ -1,8 +1,9 @@
-import { AlephaError, z } from "alepha";
-import { type SQL, sql } from "drizzle-orm";
+import { $inject, AlephaError, z } from "alepha";
+import { isSQLWrapper, type SQL, sql } from "drizzle-orm";
 
 import type { EntityPrimitive } from "../primitives/$entity.ts";
 import type { SequencePrimitive } from "../primitives/$sequence.ts";
+import { QueryManager } from "./QueryManager.ts";
 
 /**
  * Database-specific table configuration functions
@@ -67,6 +68,8 @@ export abstract class ModelBuilder {
    */
   protected abstract readonly dialect: "postgresql" | "sqlite";
 
+  protected readonly queryManager = $inject(QueryManager);
+
   /**
    * Build a table from an entity primitive.
    */
@@ -129,6 +132,94 @@ export abstract class ModelBuilder {
    * paths where the types are bypassed (`as any`, dynamically built entities,
    * JavaScript consumers).
    */
+  /**
+   * A partial index's condition as SQL.
+   *
+   * A raw `SQL` is taken as written. A where-object is compiled against the
+   * table's own columns, so it follows a column rename, with its values
+   * INLINED: an index predicate cannot carry bound parameters. Only column
+   * operators and `and` / `or` / `not` are allowed, and no soft-delete filter
+   * is added: the predicate is exactly what the entity declares.
+   */
+  protected indexWhere(
+    self: any,
+    entity: EntityPrimitive,
+    indexName: string,
+    where: unknown,
+  ): SQL | undefined {
+    if (isSQLWrapper(where)) {
+      return where as SQL;
+    }
+
+    this.assertIndexWhere(entity, indexName, where);
+    const compiled = this.queryManager.toSQL(where as any, {
+      schema: entity.schema,
+      col: (key) => this.resolveConfigColumn(self, entity, key, "index"),
+      dialect: this.dialect,
+    });
+    return compiled?.inlineParams();
+  }
+
+  /**
+   * Refuse what a where-object can say in a query but not in an index
+   * predicate, naming the index: a subquery (`exists`, `notExists`, an
+   * `inArray` subquery), a join, or a raw fragment nested in the object.
+   */
+  protected assertIndexWhere(
+    entity: EntityPrimitive,
+    indexName: string,
+    where: unknown,
+  ): void {
+    const refuse = (what: string): never => {
+      throw new AlephaError(
+        `Partial index '${indexName}' on '${entity.name}': ${what} cannot appear in an index condition. ` +
+          "Use column operators with and / or / not, or pass a raw sql`...` as the whole where.",
+      );
+    };
+    const shape = z.schema.shape(entity.schema);
+
+    const visit = (node: unknown): void => {
+      if (node == null || typeof node !== "object" || Array.isArray(node)) {
+        refuse("a value that is not a condition object");
+      }
+      if (isSQLWrapper(node)) {
+        refuse("a raw SQL fragment nested in the where-object");
+      }
+      for (const [key, value] of Object.entries(node as object)) {
+        if (key === "exists" || key === "notExists") {
+          refuse(`'${key}'`);
+        }
+        if (key === "and" || key === "or") {
+          if (!Array.isArray(value)) refuse(`'${key}' without a list`);
+          for (const item of value as unknown[]) visit(item);
+          continue;
+        }
+        if (key === "not") {
+          visit(value);
+          continue;
+        }
+        if (!(key in shape)) {
+          refuse(`'${key}', which is not a column (a join?)`);
+        }
+        if (value != null && typeof value === "object") {
+          if (isSQLWrapper(value)) {
+            refuse(`a raw SQL fragment as the value of '${key}'`);
+          }
+          for (const operand of Object.values(value)) {
+            if (operand != null && typeof operand === "object") {
+              const items = Array.isArray(operand) ? operand : [operand];
+              if (items.some((item) => isSQLWrapper(item))) {
+                refuse(`a column or SQL fragment as an operand of '${key}'`);
+              }
+            }
+          }
+        }
+      }
+    };
+
+    visit(where);
+  }
+
   protected resolveConfigColumn(
     self: any,
     entity: EntityPrimitive,
@@ -261,7 +352,9 @@ export abstract class ModelBuilder {
                 ? builders.uniqueIndex(indexName).on(column)
                 : builders.index(indexName).on(column);
               if ("where" in indexDef && indexDef.where) {
-                idx = (idx as any).where(indexDef.where);
+                idx = (idx as any).where(
+                  this.indexWhere(self, entity, indexName, indexDef.where),
+                );
               }
               configs.push(idx);
             } else if ("expressions" in indexDef) {
@@ -274,7 +367,14 @@ export abstract class ModelBuilder {
                   ? builders.uniqueIndex(indexDef.name).on(...parts)
                   : builders.index(indexDef.name).on(...parts);
                 if ("where" in indexDef && indexDef.where) {
-                  idx = (idx as any).where(indexDef.where);
+                  idx = (idx as any).where(
+                    this.indexWhere(
+                      self,
+                      entity,
+                      indexDef.name,
+                      indexDef.where,
+                    ),
+                  );
                 }
                 configs.push(idx);
               }
@@ -294,7 +394,9 @@ export abstract class ModelBuilder {
                 ? builders.uniqueIndex(indexName).on(...cols)
                 : builders.index(indexName).on(...cols);
               if ("where" in indexDef && indexDef.where) {
-                idx = (idx as any).where(indexDef.where);
+                idx = (idx as any).where(
+                  this.indexWhere(self, entity, indexName, indexDef.where),
+                );
               }
               configs.push(idx);
             }

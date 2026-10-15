@@ -152,14 +152,15 @@ example when a failed attempt's ticket has `count === limit`.
 The limiter has no store of its own: it counts through `$actor`, so the actor
 provider decides who shares a counter.
 
-- **Memory** (the default on Node and Bun) counts per process. It is right for one
-  instance.
-- **Redis** (`alepha.with(AlephaActorRedis)` from `alepha/actor/redis`) shares
-  counters across instances. `REDIS_URL` alone does not select it: an app that runs
-  several instances with only a Redis cache still counts per instance.
+- **Memory** (Node and Bun without `REDIS_URL`) counts per process. It is right
+  for one instance.
+- **Redis** (Node and Bun with `REDIS_URL` set) shares counters across
+  instances, with nothing to register.
 - **Durable Objects** on workerd, one per counter key, through the `ALEPHA_ACTOR`
   binding the build generates.
 
-No Redis means one instance. Nothing falls back to SQL for counters: an app that
-scales out without `AlephaActorRedis` lets each instance count on its own, so a
-limit of five becomes five per instance. See [the topology rule](/docs/guides-persistence-actors).
+No `REDIS_URL` means one instance. Nothing falls back to SQL for counters: an app
+that scales out without it lets each instance count on its own, so a limit of five
+becomes five per instance. An evicted counter resets its limit, so run that Redis
+with `noeviction` ([one Redis for every role](/docs/guides-deployment-bare#one-redis-for-every-role)).
+See [the topology rule](/docs/guides-persistence-actors).

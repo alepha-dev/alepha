@@ -109,7 +109,7 @@ export abstract class RedisProvider {
    * unique themselves.
    *
    * @param key The sorted-set key.
-   * @param score The score to sort by. `alepha/queue/redis` uses a due-time
+   * @param score The score to sort by. `RedisQueueProvider` uses a due-time
    * in epoch milliseconds.
    * @param member The member to add.
    */
@@ -145,7 +145,7 @@ export abstract class RedisProvider {
   public abstract zrem(key: string, member: string): Promise<number>;
 
   // ---------------------------------------------------------
-  // Pub/Sub operations (for alepha/topic-redis)
+  // Pub/Sub operations (for RedisTopicProvider)
   // ---------------------------------------------------------
 
   /**

@@ -3,7 +3,7 @@
 ## Import
 
 ```typescript
-import { RedisCacheProvider } from "alepha/cache/redis";
+import { RedisCacheProvider } from "alepha/cache";
 ```
 
 ## Overview

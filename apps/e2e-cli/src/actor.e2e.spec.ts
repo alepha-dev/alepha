@@ -409,7 +409,8 @@ run(app);
       ),
     );
     expect(installed.exports["./actor"].default).toContain("dist/");
-    expect(installed.exports["./actor/redis"].default).toContain("dist/");
+    expect(installed.exports["./actor"].bun).toContain("dist/");
+    expect(installed.exports["./actor/redis"]).toBeUndefined();
     for (const [name, [actor, socket, room]] of Object.entries(VARIANTS)) {
       const dist = join(CONSUMER, name, "dist");
       const manifest = JSON.parse(

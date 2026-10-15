@@ -47,7 +47,7 @@ indexes: [
   { column: "email", unique: true },         // unique index on one column
   { columns: ["tenantId", "name"], unique: true }, // composite unique index
   { column: "status", name: "idx_status" },  // index with custom name
-  { column: "email", unique: true, where: sql`deleted_at IS NULL` }, // partial index
+  { column: "email", unique: true, where: { deletedAt: { isNull: true } } }, // partial index
   {
     // expression index; `name` is required here
     expressions: (self, ctx) => [self.realm, ctx.caseInsensitive(self.username)],
@@ -57,7 +57,11 @@ indexes: [
 ],
 ```
 
-`where` (a `sql` fragment) makes any form a partial index. `expressions` receives the table's columns and a context: prefer `ctx.caseInsensitive(col)` over a hand-written `LOWER()`, since it emits `LOWER(col)` on PostgreSQL and `col COLLATE NOCASE` on SQLite, the only form drizzle-kit can introspect there in a multi-column unique index.
+`where` makes any form a partial index. Write it as a where-object: it is compiled against the entity's own columns, so a renamed column cannot leave the predicate stale, and its values are inlined (`{ status: { eq: "draft" } }` lands as `'draft'`), since an index predicate binds no parameters. Column operators and `and` / `or` / `not` are allowed; a subquery (`exists`, an `inArray` subquery), a join or a raw fragment inside the object is refused with the index named. No soft-delete filter is added: the predicate is exactly what you write. A raw `sql` fragment is still accepted as the whole `where`.
+
+Moving an existing hand-typed predicate (`` sql`deleted_at IS NULL` ``) to the object changes its stored text, so the next generated migration recreates that index once.
+
+`expressions` receives the table's columns and a context: prefer `ctx.caseInsensitive(col)` over a hand-written `LOWER()`, since it emits `LOWER(col)` on PostgreSQL and `col COLLATE NOCASE` on SQLite, the only form drizzle-kit can introspect there in a multi-column unique index.
 
 ### Constraints
 
@@ -257,6 +261,38 @@ Four things to know about that form:
 - A bucket that matches nothing is `0` for `count` / `sum` / `avg`, and `null`
   for `min` / `max` - the same empty-set answers as an unconditioned aggregate.
 
+**Computed values.** A select key may carry `{ expr }`, an SQL expression to
+group and order by, and an operation may aggregate an expression with `{ expr }`
+in place of `column`. With [`SqlExpressionProvider`](/docs/guides-persistence-portable-sql)
+that covers date buckets and durations on every dialect:
+
+```typescript
+const t = this.quests.table;
+const cycle = this.sqlx.dateDiff(t.completedAt, t.acceptedAt, "hours");
+
+await this.quests.aggregate({
+  select: {
+    day: { expr: this.sqlx.dateDay(t.createdAt) },
+    id: { count: true },
+    cycle: { avg: { expr: cycle }, max: { expr: cycle } },
+  },
+  where: {
+    createdAt: { gte: this.dateTime.now().subtract(7, "day").toISOString() },
+  },
+  groupBy: ["day"],
+  orderBy: "day",
+});
+// -> [{ day: "2026-03-09", id: { count: 2 }, cycle: { avg: 4, max: 6 } }]
+```
+
+- An `expr` key is an alias: it may not be spelled like a column, and `groupBy`
+  / `orderBy` render it as that alias, never as the expression a second time.
+- `expr` and `column` are exclusive within one operation; `where` wraps an
+  `expr` in the same `CASE`, and `having` compares the same expression.
+- The result type comes from the expression's `SQL<T>` (`dateDay` is
+  `SQL<string>`, `dateDiff` `SQL<number>`, `` sql<number>`...` `` your own);
+  an untyped `SQL` is `unknown`. `count` / `sum` / `avg` stay `number`.
+
 ## Create Methods
 
 ### create
@@ -318,8 +354,28 @@ If the entity has an `updatedAt` column, it is automatically set on conflict.
 
 Batch upsert. Same options as `upsert`, with two batch-only rules: every row must
 resolve to the same conflict target, and a counter-style `set` must read from
-`excluded` (the incoming row) rather than the table, or every row after the first
-sees stale values.
+`excluded` (the incoming row) rather than add a constant, or the batch adds one
+per row whatever each row carried.
+
+`repository.excluded(key)` names the incoming value of a column. It resolves the
+physical column name from the entity, so a renamed column cannot leave a
+hand-typed `excluded.<name>` stale:
+
+```typescript
+const t = this.pageViews.table;
+await this.pageViews.upsertMany(
+  [
+    { path: "/", hour, count: 4 },
+    { path: "/about", hour, count: 1 },
+  ],
+  {
+    target: ["path", "hour"],
+    set: { count: sql`${t.count} + ${this.pageViews.excluded("count")}` },
+  },
+);
+```
+
+`excluded()` only means something inside an `upsert` or `upsertMany` `set`.
 
 It sends one statement when the rows fit, and otherwise splits them the way
 `createMany` does, so no statement binds more values than the driver accepts
@@ -357,6 +413,20 @@ const ids = await this.repo.updateMany(
   { status: "published" },
 );
 ```
+
+### Leaving `updatedAt` alone
+
+Every update method stamps the `db.updatedAt()` column. A write that is bookkeeping rather than an edit can opt out with `touch: false`, so a reader of `updatedAt` (an activity feed, a "recently changed" list) does not see it as a change:
+
+```typescript
+await this.releases.updateMany(
+  { projectId: { eq: projectId }, defaultSince: { isNotNull: true } },
+  { defaultSince: null },
+  { touch: false },
+);
+```
+
+`touch` is accepted by `updateOne`, `updateMany`, `updateById` and `save`, and skips the stamp only: a `db.version()` column is still bumped, events still fire and the query cache is still invalidated. An `updatedAt` written in the patch itself is stored as given. Reads and upserts do not take it; an upsert's conflict branch always stamps `updatedAt`.
 
 ### save
 
@@ -467,12 +537,23 @@ if (status) where.status = status;
 | `lt`     | Less than             |
 | `lte`    | Less than or equal    |
 
+The value may also be another column or an SQL fragment, compared as it is:
+
+```typescript
+// Quests created after the quest they depend on.
+await this.quests.findMany({
+  where: { id: { gt: this.quests.table.dependsOn } },
+});
+```
+
 ### Array Operators
 
 | Operator     | Description       |
 | ------------ | ----------------- |
 | `inArray`    | Value in list     |
 | `notInArray` | Value not in list |
+
+Both also take a subquery (see [Subqueries](#subqueries)); the "at least one value" check applies to a literal array only.
 
 ### Null Operators
 
@@ -527,7 +608,34 @@ Combine conditions with `and`, `or`, or negate with `not`:
 }
 ```
 
-Where clauses also support `exists` / `notExists` subquery conditions at the top level, and you can pass a raw Drizzle `SQLWrapper` as the where clause for full SQL control.
+You can also pass a raw Drizzle `SQLWrapper` as the where clause for full SQL control.
+
+### Subqueries
+
+`repository.subquery(where, column?, opts?)` compiles a where-object against that repository's table into a subquery, soft-delete filter included unless `opts.force`. Without `column` it is `SELECT 1 ...`, for `exists` / `notExists`; with a column it selects that column, for `inArray` / `notInArray`. A column of the outer query used as a comparison value correlates it:
+
+```typescript
+// Epics with no open quest left.
+const finished = await this.epics.findMany({
+  where: {
+    notExists: this.quests.subquery({
+      epicId: { eq: this.epics.table.id },
+      completedAt: { isNull: true },
+    }),
+  },
+});
+
+// Quests outside draft epics.
+const visible = await this.quests.findMany({
+  where: {
+    epicId: {
+      notInArray: this.epics.subquery({ status: { eq: "draft" } }, "id"),
+    },
+  },
+});
+```
+
+The subquery's table is always aliased `<table>_sq`, so a subquery over the outer query's own table reads the outer row correctly (`exists: this.quests.subquery({ id: { eq: this.quests.table.dependsOn } })`). Nesting a subquery of a table inside another subquery of the same table throws, since the aliases would collide.
 
 ## Transactions
 

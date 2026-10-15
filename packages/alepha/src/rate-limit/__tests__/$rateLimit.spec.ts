@@ -4,10 +4,10 @@ import { Alepha, AlephaError } from "alepha";
 import {
   ActorContentionError,
   ActorProvider,
+  ActorRedisConnection,
   type ActorRequest,
   MemoryActorProvider,
 } from "alepha/actor";
-import { ActorRedisConnection, AlephaActorRedis } from "alepha/actor/redis";
 import { $rateLimit, AlephaRateLimit } from "alepha/rate-limit";
 import { describe, it } from "vitest";
 
@@ -195,7 +195,6 @@ describe("$rateLimit on Redis", () => {
                 REDIS_URL: process.env.REDIS_URL ?? "redis://localhost:16379",
               },
             })
-              .with(AlephaActorRedis)
               .with(AlephaRateLimit)
               .with(Limits);
             await alepha.start();

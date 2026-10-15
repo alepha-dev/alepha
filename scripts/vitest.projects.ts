@@ -154,7 +154,6 @@ const sharedTestOptions = () => ({
     S3_SECRET_ACCESS_KEY: "mock",
     // The bucket the S3 specs create on the `s3` service before they run.
     S3_BUCKET_NAME: "alepha-test",
-    REDIS_URL: "redis://localhost:16379",
   },
 });
 

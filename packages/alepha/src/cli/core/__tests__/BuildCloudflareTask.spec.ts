@@ -837,6 +837,52 @@ describe("BuildCloudflareTask", () => {
       });
     });
 
+    describe("bindEnv", () => {
+      /**
+       * Lifts the generated \`bindEnv\` (and the flag it closes over) out of
+       * the emitted worker and runs it against a stand-in container.
+       */
+      const loadBindEnv = async () => {
+        const { task, fs } = createTaskWithFs();
+        await task.testWriteWorkerEntryPoint("/root", "dist");
+        const source = await fs.readTextFile(ENTRY);
+        const start = source.indexOf("let redisUrlWarned");
+        const end = source.indexOf("};", source.indexOf("const bindEnv")) + 2;
+        const warnings: string[] = [];
+        const loaded: unknown[] = [];
+        // oxlint-disable-next-line typescript/no-implied-eval
+        const bindEnv = new Function(
+          "__alepha",
+          `${source.slice(start, end)}\nreturn bindEnv;`,
+        )({
+          set: () => {},
+          loadEnv: (env: unknown) => loaded.push(env),
+          log: { warn: (message: string) => warnings.push(message) },
+        }) as (env: Record<string, unknown>) => void;
+        return { bindEnv, warnings, loaded };
+      };
+
+      it("warns once per isolate when REDIS_URL is set on a Worker", async () => {
+        const { bindEnv, warnings, loaded } = await loadBindEnv();
+
+        bindEnv({ REDIS_URL: "redis://cache:6379" });
+        bindEnv({ REDIS_URL: "redis://cache:6379" });
+
+        expect(warnings).toHaveLength(1);
+        expect(warnings[0]).toContain("REDIS_URL");
+        expect(loaded).toHaveLength(2);
+      });
+
+      it("stays quiet without REDIS_URL, or with an empty one", async () => {
+        const { bindEnv, warnings } = await loadBindEnv();
+
+        bindEnv({ PUBLIC_URL: "https://example.com" });
+        bindEnv({ REDIS_URL: "" });
+
+        expect(warnings).toEqual([]);
+      });
+    });
+
     describe("queue handler", () => {
       interface FakeMessage {
         body: string;

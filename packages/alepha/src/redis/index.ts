@@ -15,6 +15,7 @@ export * from "./providers/NodeRedisProvider.ts";
 export * from "./providers/NodeRedisSubscriberProvider.ts";
 export * from "./providers/RedisProvider.ts";
 export * from "./providers/RedisSubscriberProvider.ts";
+export * from "./services/RedisActivation.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 

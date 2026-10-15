@@ -3,7 +3,7 @@
 ## Import
 
 ```typescript
-import { RedisTopicProvider } from "alepha/topic/redis";
+import { RedisTopicProvider } from "alepha/topic";
 ```
 
 ## Overview

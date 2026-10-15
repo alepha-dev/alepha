@@ -236,32 +236,29 @@ Compression adds CPU overhead but reduces storage by 60-80% for typical JSON dat
 
 ## Redis Backend
 
-By default, caching uses in-memory storage (`MemoryCacheProvider`). For distributed caching across multiple instances, switch to Redis.
+By default, caching uses in-memory storage (`MemoryCacheProvider`). Set `REDIS_URL` and every instance shares one cache (`RedisCacheProvider`): there is no module to register. The same variable shares queue jobs, topics, locks and actors, so run that Redis with `noeviction`: see [one Redis for every role](/docs/guides-deployment-bare#one-redis-for-every-role).
 
 Memory and Redis are not the only backends:
 
 - `DatabaseCacheProvider` (`alepha/cache/database`, module `AlephaCacheDatabase`) stores entries in a `cache_entries` table of the app's own database, with an atomic `incr`. Registering the module does not change the default: pass `provider: DatabaseCacheProvider` to a `$cache`, or substitute it for `CacheProvider`.
 - On Cloudflare Workers the default is `CloudflareCacheProvider`, which resolves at start to the database cache when the app has a database, and to `CloudflareKVProvider` (Workers KV) only when it does not. KV is eventually consistent, has a 60 second TTL floor, and its `incr` can lose an update under concurrency.
 
-### Module Registration
+### Selection
 
-```typescript
-import { AlephaCacheRedis } from "alepha/cache/redis";
-
-const alepha = Alepha.create().with(AlephaCacheRedis);
+```bash
+REDIS_URL=redis://localhost:6379
 ```
 
-`AlephaCacheRedis` automatically registers `RedisCacheProvider` as the `CacheProvider` implementation and includes the base `AlephaCache` module.
-
-### Direct Provider Override
+`REDIS_URL` is read when `alepha/cache` registers: set and non-empty, the cache is `RedisCacheProvider`; absent, `MemoryCacheProvider`. An explicit substitution wins over both, so an app that sets `REDIS_URL` for its queue can keep this cache per instance:
 
 ```typescript
-import { AlephaCache, CacheProvider } from "alepha/cache";
-import { RedisCacheProvider } from "alepha/cache/redis";
+import { Alepha } from "alepha";
+import { CacheProvider, MemoryCacheProvider } from "alepha/cache";
 
-const alepha = Alepha.create()
-  .with(AlephaCache)
-  .with({ provide: CacheProvider, use: RedisCacheProvider });
+const alepha = Alepha.create().with({
+  provide: CacheProvider,
+  use: MemoryCacheProvider,
+});
 ```
 
 ### Key Namespace

@@ -127,19 +127,72 @@ Works on:
 - Any container runtime
 - systemd, PM2, or any process manager
 
-## Multi-replica `$job` cron jobs
+## More than one instance: set `REDIS_URL`
 
-When you run more than one replica (e.g. 10 Docker instances behind a load balancer), `$job({ cron, ... })` acquires a per-job distributed lock by default so the handler runs **once per tick across the fleet**, not once per replica. The default `MemoryLockProvider` is per-process - to get cross-replica coordination, register a real lock provider:
+No `REDIS_URL` means one instance. Cache, queue jobs, topics, locks, actors and rate limits all live in the process, which is right for an app that runs once.
 
-```ts
-import { AlephaLockRedis } from "alepha/lock/redis";
+Set `REDIS_URL` and every instance shares them, with nothing to register:
 
-const app = Alepha.create()
-  .with(AlephaLockRedis) // Redis-backed lock store
-  .with(AlephaApiJobs);
+```bash
+REDIS_URL=redis://:password@redis.internal:6379 node dist/index.node.js
 ```
 
+| Module         | Without `REDIS_URL`   | With `REDIS_URL`                                                   |
+| -------------- | --------------------- | ------------------------------------------------------------------ |
+| `alepha/cache` | `MemoryCacheProvider` | `RedisCacheProvider`: one cache for every instance                 |
+| `alepha/queue` | `MemoryQueueProvider` | `RedisQueueProvider`: a job pushed by one instance runs on any     |
+| `alepha/topic` | `MemoryTopicProvider` | `RedisTopicProvider`: WebSocket broadcasts reach every instance    |
+| `alepha/lock`  | `MemoryLockProvider`  | `RedisLockProvider`: each `$job` cron tick runs on one instance    |
+| `alepha/actor` | `MemoryActorProvider` | `RedisActorProvider`: one count for every `$rateLimit` and lockout |
+
+The choice is made once, when each module registers, from the environment at boot (`process.env`, a `.env` file, or `Alepha.create({ env })`). Every key lives under `<APP_NAME>:<module>:`, so two apps, or two environments of one app, can share a Redis as long as their `APP_NAME`s differ.
+
+- **Redis down is an error, not a fallback.** With `REDIS_URL` set and Redis unreachable the app fails as any Redis client does; it never falls back to memory, which would split your instances without telling anyone.
+- **One module stays local if you say so.** An explicit substitution wins over `REDIS_URL`, which keeps one module in memory (or on another provider) while the others share Redis:
+
+```ts
+import { Alepha } from "alepha";
+import { CacheProvider, MemoryCacheProvider } from "alepha/cache";
+
+const app = Alepha.create().with({
+  provide: CacheProvider,
+  use: MemoryCacheProvider, // this cache stays per instance
+});
+```
+
+- **Without `REDIS_URL`, the Redis client is never loaded.** `@redis/client` sits in a chunk of its own in `dist/` and is imported only on connect.
+
+### Multi-replica `$job` cron jobs
+
+When you run more than one replica (e.g. 10 Docker instances behind a load balancer), `$job({ cron, ... })` acquires a per-job lock by default so the handler runs **once per tick across the fleet**, not once per replica. That lock is fleet-wide once `REDIS_URL` is set; without it each replica holds its own lock and every replica runs the tick.
+
 Set `lock: false` on a `$job` if you genuinely want every replica to fire the handler.
+
+### One Redis for every role
+
+One `REDIS_URL` puts data Redis may drop beside data it must keep:
+
+| Data                | Expiry               | If Redis evicts it                                                     |
+| ------------------- | -------------------- | ---------------------------------------------------------------------- |
+| Cache entries       | their TTL            | a cache miss, recomputed: harmless                                     |
+| Queue jobs          | none                 | the job is lost and never runs                                         |
+| Locks               | the lock's duration  | a second holder takes the lock early: a cron tick or a migration twice |
+| Actor state         | none, or `expiresAt` | the state resets to its default                                        |
+| Rate-limit counters | the window           | the limit resets, and a locked-out attacker gets a fresh five tries    |
+
+Run that Redis with `maxmemory-policy noeviction`, and size its memory for the cache plus everything else:
+
+```
+maxmemory 1gb
+maxmemory-policy noeviction
+```
+
+With `noeviction` a full Redis refuses writes instead of dropping keys, so you see the error. Every other policy fails silently:
+
+- `allkeys-lru`, `allkeys-lfu`, `allkeys-random` may evict anything: queue jobs and actor state included.
+- `volatile-lru`, `volatile-lfu`, `volatile-random`, `volatile-ttl` evict only keys with an expiry, which still includes locks, expiring actors and rate-limit counters.
+
+Alepha does not check the policy at startup: managed Redis services often refuse `CONFIG GET`. If you want the cache evictable, give it a Redis of its own and keep `noeviction` on the one holding queue, locks and actors.
 
 ## Retry granularity
 

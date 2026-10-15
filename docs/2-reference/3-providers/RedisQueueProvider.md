@@ -3,7 +3,7 @@
 ## Import
 
 ```typescript
-import { RedisQueueProvider } from "alepha/queue/redis";
+import { RedisQueueProvider } from "alepha/queue";
 ```
 
 ## Overview

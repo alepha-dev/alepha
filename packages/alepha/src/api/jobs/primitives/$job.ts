@@ -204,9 +204,9 @@ export interface JobPrimitiveOptions<
    * the outbox `claim()` UPDATE-guard to serialize work instead, which is
    * always on.
    *
-   * To get cross-instance coordination on Docker / Node deployments,
-   * register a real `LockProvider` (e.g. `alepha/lock/redis`). The default
-   * `MemoryLockProvider` is per-process only.
+   * The lock is cross-instance once `REDIS_URL` is set (`RedisLockProvider`).
+   * Without it the default `MemoryLockProvider` is per-process only, and
+   * every replica runs the tick.
    *
    * @default true
    */

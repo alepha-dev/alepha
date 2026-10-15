@@ -1,9 +1,11 @@
 import { $module } from "alepha";
-import { MemoryTopicProvider } from "alepha/topic";
+import { RedisActivation } from "alepha/redis";
+import { MemoryTopicProvider, RedisTopicProvider } from "alepha/topic";
 
 import { LockProvider } from "./providers/LockProvider.ts";
 import { LockTopicProvider } from "./providers/LockTopicProvider.ts";
 import { MemoryLockProvider } from "./providers/MemoryLockProvider.ts";
+import { RedisLockProvider } from "./providers/RedisLockProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -12,6 +14,7 @@ export * from "./primitives/$lock.ts";
 export * from "./providers/LockProvider.ts";
 export * from "./providers/LockTopicProvider.ts";
 export * from "./providers/MemoryLockProvider.ts";
+export * from "./providers/RedisLockProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -54,24 +57,31 @@ declare module "alepha" {
  * - Time-based lock expiration
  * - Automatic release on scope exit
  * - Distributed coordination via Redis
- * - Providers: Memory (dev), Redis (production)
+ * - Providers: Redis when `REDIS_URL` is set, Memory otherwise
+ *
+ * Set `REDIS_URL` and a lock held on one instance is held for all of them:
+ * each `$job` cron tick runs on one instance. Leave it unset and locks only
+ * exclude callers inside this process. An app's own `LockProvider` or
+ * `LockTopicProvider` substitution wins over both.
  *
  * @module alepha.lock
  */
 export const AlephaLock = $module({
   name: "alepha.lock",
   services: [LockProvider, LockTopicProvider],
-  variants: [MemoryLockProvider],
-  register: (alepha) =>
+  variants: [MemoryLockProvider, RedisLockProvider],
+  register: (alepha) => {
+    const redis = alepha.inject(RedisActivation).isActive();
     alepha
       .with({
         optional: true,
         provide: LockTopicProvider,
-        use: MemoryTopicProvider,
+        use: redis ? RedisTopicProvider : MemoryTopicProvider,
       })
       .with({
         optional: true,
         provide: LockProvider,
-        use: MemoryLockProvider,
-      }),
+        use: redis ? RedisLockProvider : MemoryLockProvider,
+      });
+  },
 });

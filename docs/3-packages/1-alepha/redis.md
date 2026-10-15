@@ -33,6 +33,6 @@ Redis client wrapper.
 
 Environment variables used to configure this module. These can be set in your `.env` file or through your deployment configuration.
 
-| Variable    | Type | Default                | Description          |
-| ----------- | ---- | ---------------------- | -------------------- |
-| `REDIS_URL` | text | redis://localhost:6379 | Redis connection URL |
+| Variable    | Type | Default      | Description                                                                               |
+| ----------- | ---- | ------------ | ----------------------------------------------------------------------------------------- |
+| `REDIS_URL` | text | **Required** | Redis connection URL. Setting it turns Redis on for cache, queue, topic, lock and actors. |

@@ -1,8 +1,10 @@
 import { $module, type Alepha } from "alepha";
+import { RedisActivation } from "alepha/redis";
 
 import { MemoryQueueProvider } from "./providers/MemoryQueueProvider.ts";
 import { QueueCodec } from "./providers/QueueCodec.ts";
 import { QueueProvider } from "./providers/QueueProvider.ts";
+import { RedisQueueProvider } from "./providers/RedisQueueProvider.ts";
 import { WorkerProvider } from "./providers/WorkerProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -11,6 +13,7 @@ export * from "./providers/CloudflareQueueProvider.ts";
 export * from "./providers/MemoryQueueProvider.ts";
 export * from "./providers/QueueCodec.ts";
 export * from "./providers/QueueProvider.ts";
+export * from "./providers/RedisQueueProvider.ts";
 export * from "./providers/WorkerProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -74,20 +77,27 @@ declare module "alepha" {
  * - Consumers registered imperatively via `WorkerProvider.register`
  * - Polling worker loop with configurable concurrency and backoff
  * - Batch send where the backend supports it (`QueueProvider.pushMany`)
- * - Providers: Memory (dev), Redis (production), Cloudflare Queues
+ * - Providers: Redis when `REDIS_URL` is set, Memory otherwise (Node, Bun),
+ *   Cloudflare Queues (workerd)
+ *
+ * Set `REDIS_URL` and a job pushed by one instance is popped by any of them;
+ * leave it unset and the queue lives in this process. An app's own
+ * `QueueProvider` substitution wins over both.
  *
  * @module alepha.queue
  */
 export const AlephaQueue = $module({
   name: "alepha.queue",
   services: [QueueProvider, WorkerProvider, QueueCodec],
-  variants: [MemoryQueueProvider],
+  variants: [MemoryQueueProvider, RedisQueueProvider],
   register: (alepha: Alepha) =>
     alepha
       .with({
         optional: true,
         provide: QueueProvider,
-        use: MemoryQueueProvider,
+        use: alepha.inject(RedisActivation).isActive()
+          ? RedisQueueProvider
+          : MemoryQueueProvider,
       })
       .with(WorkerProvider),
 });
