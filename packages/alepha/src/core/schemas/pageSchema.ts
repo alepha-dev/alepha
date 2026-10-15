@@ -69,8 +69,10 @@ export const pageMetadataSchema = z.object({
  *
  * @example In an API endpoint
  * ```ts
- * $action({
- *   output: pageSchema(UserSchema),
+ * listUsers = $action({
+ *   method: "GET",
+ *   path: "/users",
+ *   schema: { response: pageSchema(UserSchema) },
  *   handler: async () => {
  *     return await userRepo.paginate();
  *   }

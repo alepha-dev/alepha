@@ -70,6 +70,8 @@ export class Api {
   views = $repository(viewEntity);
 
   inc = $action({
+    method: "POST",
+    path: "/inc",
     schema: {
       // ← validates + generates OpenAPI
       response: z.object({

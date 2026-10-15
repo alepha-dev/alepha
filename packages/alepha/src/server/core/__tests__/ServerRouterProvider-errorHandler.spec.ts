@@ -5,6 +5,7 @@ import { $action, HttpError, ServerProvider } from "../index.ts";
 
 class TestApp {
   internalError = $action({
+    path: "/internalError",
     method: "GET",
     handler: () => {
       throw new Error("SELECT * FROM secret_table WHERE password = 'leaked'");
@@ -16,6 +17,7 @@ class TestApp {
    * sanitization entirely, shipping `cause` (name + message) to the client.
    */
   wrappedInternalError = $action({
+    path: "/wrappedInternalError",
     method: "GET",
     handler: () => {
       throw new HttpError(
@@ -33,6 +35,7 @@ class TestApp {
    * must survive sanitization.
    */
   badRequest = $action({
+    path: "/badRequest",
     method: "GET",
     handler: () => {
       throw new HttpError(

@@ -32,6 +32,8 @@ class App {
   projects = $repository(projects);
 
   rename = $action({
+    method: "POST",
+    path: "/rename",
     use: [
       $transactional(),
       $owns({
@@ -54,6 +56,7 @@ class App {
   // An action with no body of its own, called from inside one that has one.
   // Its guard must not borrow the enclosing action's body.
   bodiless = $action({
+    path: "/bodiless",
     method: "GET",
     use: [
       $transactional(),
@@ -69,6 +72,8 @@ class App {
   });
 
   outer = $action({
+    method: "POST",
+    path: "/outer",
     schema: {
       body: z.object({ projectId: z.integer() }),
       response: z.text(),

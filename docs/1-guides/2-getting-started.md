@@ -147,6 +147,7 @@ class App {
   dateTimeProvider = $inject(DateTimeProvider);
 
   hello = $action({
+    method: "GET",
     path: "/hello",
     schema: {
       response: z.object({
@@ -171,7 +172,7 @@ Key differences from `$route`:
 
 - All `$action` paths are automatically prefixed with `/api`. This endpoint serves at `GET /api/hello`.
 - The `schema.response` validates the return value and generates OpenAPI documentation.
-- If a `schema.body` is provided, the method defaults to `POST`.
+- `method` and `path` are required: a read says `GET`, and the URL never depends on the property name.
 - The response is type-checked at compile time.
 
 Save the file. HMR reloads the server. Visit [http://localhost:5173/api/hello](http://localhost:5173/api/hello).

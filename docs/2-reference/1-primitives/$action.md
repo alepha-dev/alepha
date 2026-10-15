@@ -17,7 +17,7 @@ HTTP endpoints with full type safety, automatic validation, and OpenAPI document
 
 - Full TypeScript inference for request/response types
 - Automatic schema validation using Zod
-- Convention-based URL generation with customizable paths
+- An explicit method and path on every action, no convention to remember
 - Direct invocation (`run()`) or HTTP requests (`fetch()`)
 - Built-in authentication and authorization support
 - Automatic content-type handling (JSON, form-data, plain text)
@@ -29,12 +29,13 @@ HTTP endpoints with full type safety, automatic validation, and OpenAPI document
 ```ts
 $action({ method: "GET", path: "/users" }); // → GET /api/users
 $action({ method: "GET", path: "/users/:id" }); // → GET /api/users/:id
-$action({ path: "/hello" }); // → POST /api/hello
+$action({ method: "POST", path: "/hello" }); // → POST /api/hello
 ```
 
 This prefix is configurable via the `serverApiOptions` atom
 (`alepha.store.mut(serverApiOptions, (o) => ({ ...o, prefix: "/v1" }))`).
-HTTP method defaults to POST, body or not: a read declares `method: "GET"`.
+`method` and `path` are both required: a read declares `method: "GET"`, and
+renaming the property never moves the URL.
 
 **Common Use Cases**
 
@@ -48,8 +49,8 @@ HTTP method defaults to POST, body or not: a read declares `method: "GET"`.
 | ------------- | ------------------------------------------ | -------- | --------------------------------------------------------------------------------------------------------- |
 | `name`        | `string`                                   | No       | Name of the action                                                                                        |
 | `group`       | `string`                                   | No       | Group actions together                                                                                    |
-| `path`        | `string`                                   | No       | Pathname of the route                                                                                     |
-| `method`      | `RouteMethod`                              | No       | The route method                                                                                          |
+| `path`        | `string`                                   | Yes      | Pathname of the route, below the API prefix (`/api` by default)                                           |
+| `method`      | `RouteMethod`                              | Yes      | The route method                                                                                          |
 | `schema`      | `TConfig`                                  | No       | The config schema of the route                                                                            |
 | `description` | `string`                                   | No       | A short description of the action                                                                         |
 | `disabled`    | `boolean`                                  | No       | Disable the route                                                                                         |
@@ -62,6 +63,7 @@ HTTP method defaults to POST, body or not: a read declares `method: "GET"`.
 ```ts
 class UserController {
   getUsers = $action({
+    method: "GET",
     path: "/users",
     schema: {
       query: z.object({

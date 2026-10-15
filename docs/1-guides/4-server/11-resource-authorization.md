@@ -15,6 +15,7 @@ Without a resource gate, ownership checks live inside handlers:
 ```typescript
 // Works, but nothing enforces it.
 read = $action({
+  method: "GET",
   path: "/campaigns/:id",
   use: [$secure({ permissions: ["campaign:read"] })],
   handler: async ({ params, user }) => {
@@ -41,6 +42,7 @@ class CampaignController {
   protected readonly owned = $inject(OwnedResourceProvider);
 
   read = $action({
+    method: "GET",
     path: "/campaigns/:id",
     use: [
       $secure({ permissions: ["campaign:read"] }),

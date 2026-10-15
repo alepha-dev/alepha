@@ -6,6 +6,7 @@ import { $action, HttpClient, HttpError, ServerProvider } from "../index.ts";
 class TestApp {
   // HttpError with custom message
   httpError = $action({
+    path: "/httpError",
     method: "GET",
     handler: () => {
       throw new HttpError({ status: 400 }, { message: "Custom error message" });
@@ -14,6 +15,7 @@ class TestApp {
 
   // Generic Error without status (500)
   genericError = $action({
+    path: "/genericError",
     method: "GET",
     handler: () => {
       throw new Error("Something went wrong");

@@ -21,6 +21,7 @@ class App {
   log = $logger();
 
   bare = $action({
+    path: "/bare",
     method: "GET",
     handler: () => {
       throw new Error("Current password is incorrect");
@@ -28,6 +29,7 @@ class App {
   });
 
   typed = $action({
+    path: "/typed",
     method: "GET",
     handler: () => {
       throw new BadRequestError("Current password is incorrect");

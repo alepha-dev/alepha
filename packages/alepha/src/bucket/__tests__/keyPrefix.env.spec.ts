@@ -118,6 +118,7 @@ describe("blob key prefix", () => {
         schema: z.object({ value: z.text() }),
       });
       set = $action({
+        path: "/set",
         method: "GET",
         handler: () => {
           this.tokens.set({ value: "from-app" });

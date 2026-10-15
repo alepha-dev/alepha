@@ -9,35 +9,41 @@ class TestApp {
   protected resetCounter = 0;
 
   cachedAction = $action({
+    path: "/cachedAction",
     method: "GET",
     use: [$etag(true)],
     handler: () => `cached-${this.counter++}`,
   });
 
   uncachedAction = $action({
+    path: "/uncachedAction",
     method: "GET",
     handler: () => `uncached-${this.counter++}`,
   });
 
   cachedWithCustomTtl = $action({
+    path: "/cachedWithCustomTtl",
     method: "GET",
     use: [$etag({ store: { ttl: 1000 } })],
     handler: () => `ttl-cached-${this.counter++}`,
   });
 
   cachedWithShortTtl = $action({
+    path: "/cachedWithShortTtl",
     method: "GET",
     use: [$etag({ store: { ttl: [100, "milliseconds"] } })],
     handler: () => `short-ttl-${this.counter++}`,
   });
 
   cachedWithShortDurationStore = $action({
+    path: "/cachedWithShortDurationStore",
     method: "GET",
     use: [$etag({ store: [100, "milliseconds"] })],
     handler: () => `short-store-${this.counter++}`,
   });
 
   asyncCachedAction = $action({
+    path: "/asyncCachedAction",
     method: "GET",
     use: [$etag(true)],
     handler: async () => {
@@ -47,36 +53,42 @@ class TestApp {
   });
 
   etagOnlyAction = $action({
+    path: "/etagOnlyAction",
     method: "GET",
     use: [$etag()],
     handler: () => `etag-only-${this.counter++}`,
   });
 
   etagAndCacheAction = $action({
+    path: "/etagAndCacheAction",
     method: "GET",
     use: [$etag(true)],
     handler: () => `etag-and-cache-${this.counter++}`,
   });
 
   dynamicContentAction = $action({
+    path: "/dynamicContentAction",
     method: "GET",
     use: [$etag()],
     handler: () => `dynamic-${Date.now()}`,
   });
 
   cacheWithControlTrue = $action({
+    path: "/cacheWithControlTrue",
     method: "GET",
     use: [$etag({ store: true, control: true })],
     handler: () => `control-true-${this.counter++}`,
   });
 
   cacheWithControlString = $action({
+    path: "/cacheWithControlString",
     method: "GET",
     use: [$etag({ store: true, control: "public, max-age=600, immutable" })],
     handler: () => `control-string-${this.counter++}`,
   });
 
   cacheWithControlObject = $action({
+    path: "/cacheWithControlObject",
     method: "GET",
     use: [
       $etag({
@@ -92,6 +104,7 @@ class TestApp {
   });
 
   cacheWithComplexControl = $action({
+    path: "/cacheWithComplexControl",
     method: "GET",
     use: [
       $etag({
@@ -110,6 +123,7 @@ class TestApp {
   });
 
   cacheWithDurationMaxAge = $action({
+    path: "/cacheWithDurationMaxAge",
     method: "GET",
     use: [
       $etag({
@@ -125,6 +139,7 @@ class TestApp {
   });
 
   cacheWith30Seconds = $action({
+    path: "/cacheWith30Seconds",
     method: "GET",
     use: [
       $etag({
@@ -139,6 +154,7 @@ class TestApp {
   });
 
   cacheWith10Minutes = $action({
+    path: "/cacheWith10Minutes",
     method: "GET",
     use: [
       $etag({
@@ -153,6 +169,7 @@ class TestApp {
   });
 
   cacheWith2Hours = $action({
+    path: "/cacheWith2Hours",
     method: "GET",
     use: [
       $etag({
@@ -167,6 +184,7 @@ class TestApp {
   });
 
   cacheWith1Day = $action({
+    path: "/cacheWith1Day",
     method: "GET",
     use: [
       $etag({
@@ -181,6 +199,7 @@ class TestApp {
   });
 
   cacheWithMixedMaxAge = $action({
+    path: "/cacheWithMixedMaxAge",
     method: "GET",
     use: [
       $etag({
@@ -196,6 +215,7 @@ class TestApp {
   });
 
   cacheWithStaleWhileRevalidate = $action({
+    path: "/cacheWithStaleWhileRevalidate",
     method: "GET",
     use: [
       $etag({
@@ -211,6 +231,7 @@ class TestApp {
   });
 
   cacheWithStaleWhileRevalidateDuration = $action({
+    path: "/cacheWithStaleWhileRevalidateDuration",
     method: "GET",
     use: [
       $etag({
@@ -226,6 +247,7 @@ class TestApp {
   });
 
   errorAction = $action({
+    path: "/errorAction",
     method: "GET",
     use: [$etag(true)],
     handler: ({ reply }) => {
@@ -235,6 +257,7 @@ class TestApp {
   });
 
   notFoundAction = $action({
+    path: "/notFoundAction",
     method: "GET",
     use: [$etag(true)],
     handler: ({ reply }) => {
@@ -249,6 +272,7 @@ class TestApp {
    * on a failure.
    */
   immutableFileAction = $action({
+    path: "/immutableFileAction",
     method: "GET",
     use: [
       $etag({
@@ -259,6 +283,7 @@ class TestApp {
   });
 
   immutableMissingFileAction = $action({
+    path: "/immutableMissingFileAction",
     method: "GET",
     use: [
       $etag({
@@ -272,6 +297,7 @@ class TestApp {
   });
 
   conditionalErrorAction = $action({
+    path: "/conditionalErrorAction",
     method: "GET",
     use: [$etag(true)],
     handler: ({ reply }) => {
@@ -912,6 +938,7 @@ describe("ServerEtagProvider", () => {
       const privateAction = alepha.inject(
         class TestPrivateCache {
           action = $action({
+            path: "/action",
             method: "GET",
             use: [
               $etag({
@@ -943,6 +970,7 @@ describe("ServerEtagProvider", () => {
       const noCacheAction = alepha.inject(
         class TestNoCache {
           action = $action({
+            path: "/action",
             method: "GET",
             use: [
               $etag({
@@ -971,6 +999,7 @@ describe("ServerEtagProvider", () => {
       const proxyAction = alepha.inject(
         class TestProxyRevalidate {
           action = $action({
+            path: "/action",
             method: "GET",
             use: [
               $etag({
@@ -1003,6 +1032,7 @@ describe("ServerEtagProvider", () => {
       const sharedCacheAction = alepha.inject(
         class TestSharedCache {
           action = $action({
+            path: "/action",
             method: "GET",
             use: [
               $etag({
@@ -1375,6 +1405,7 @@ describe("ServerEtagProvider", () => {
       const badRequestAction = alepha.inject(
         class TestBadRequest {
           action = $action({
+            path: "/action",
             method: "GET",
             use: [$etag(true)],
             handler: ({ reply }) => {

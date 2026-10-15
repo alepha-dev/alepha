@@ -29,12 +29,14 @@ import {
  */
 class Observatory {
   weather = $action({
+    path: "/weather",
     method: "GET",
     schema: { response: z.text() },
     handler: () => "clear",
   });
 
   logbook = $action({
+    path: "/logbook",
     method: "GET",
     use: [$secure()],
     schema: { response: z.text() },
@@ -51,6 +53,7 @@ class Observatory {
 
 class Harbour {
   tides = $action({
+    path: "/tides",
     method: "GET",
     schema: { response: z.text() },
     handler: () => "rising",

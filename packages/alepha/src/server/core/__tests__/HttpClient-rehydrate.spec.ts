@@ -20,6 +20,8 @@ const QuotaExceeded = HttpError.extend({
 
 class Api {
   createProject = $action({
+    method: "POST",
+    path: "/createProject",
     errors: [QuotaExceeded, NotFoundError],
     handler: () => {
       throw new QuotaExceeded({ limit: 5, used: 6 }, { message: "Over quota" });
@@ -27,15 +29,15 @@ class Api {
   });
 
   findProject = $action({
+    method: "POST",
+    path: "/findProject",
     errors: [QuotaExceeded, NotFoundError],
     handler: () => {
       throw new NotFoundError("No such project");
     },
   });
 
-  loose = $action({
-    handler: () => "ok",
-  });
+  loose = $action({ method: "POST", path: "/loose", handler: () => "ok" });
 
   teapot = $route({
     path: "/teapot",

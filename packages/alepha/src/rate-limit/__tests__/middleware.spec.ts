@@ -90,6 +90,7 @@ class Service {
     handler: async () => "open",
   });
   action = $action({
+    path: "/action",
     method: "GET",
     use: [this.two.middleware()],
     handler: () => "done",

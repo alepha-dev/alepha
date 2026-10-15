@@ -16,12 +16,14 @@ import {
 
 class Vault {
   open = $action({
+    path: "/open",
     method: "GET",
     schema: { response: z.text() },
     handler: () => "open",
   });
 
   sealed = $action({
+    path: "/sealed",
     method: "GET",
     use: [$secure()],
     schema: { response: z.text() },

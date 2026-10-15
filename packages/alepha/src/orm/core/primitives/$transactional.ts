@@ -40,6 +40,8 @@ export interface TransactionalOptions {
  * ```typescript
  * class OrderService {
  *   createOrder = $action({
+ *     method: "POST",
+ *     path: "/createOrder",
  *     use: [$transactional()],
  *     handler: async ({ body }) => {
  *       await this.orders.create(body);      // auto-uses tx

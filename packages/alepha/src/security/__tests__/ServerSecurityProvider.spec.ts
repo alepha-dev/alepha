@@ -17,6 +17,7 @@ describe("$secure middleware", () => {
   it("should protect action from unauthorized users", async () => {
     class TestApp {
       ok = $action({
+        path: "/ok",
         method: "GET",
         use: [$secure()],
         handler: () => "OK",
@@ -66,11 +67,13 @@ describe("$secure middleware", () => {
   it("should guard by explicit permission", async () => {
     class TestApp {
       admin = $action({
+        path: "/admin",
         method: "GET",
         use: [$secure({ permissions: ["admin:manage"] })],
         handler: () => "ADMIN",
       });
       user = $action({
+        path: "/user",
         method: "GET",
         use: [$secure({ permissions: ["read:data"] })],
         handler: () => "USER",
@@ -129,6 +132,7 @@ describe("$secure middleware", () => {
   it("should allow auth-only $secure() for any authenticated user", async () => {
     class TestApp {
       action = $action({
+        path: "/action",
         method: "GET",
         use: [$secure()],
         handler: () => "OK",
@@ -156,6 +160,7 @@ describe("$secure middleware", () => {
   it("should allow public actions by default (no $secure middleware)", async () => {
     class TestApp {
       public = $action({
+        path: "/public",
         method: "GET",
         handler: () => "PUBLIC",
       });
@@ -186,6 +191,7 @@ describe("$secure middleware", () => {
   it("should require auth when $secure() middleware is present", async () => {
     class TestApp {
       secured = $action({
+        path: "/secured",
         method: "GET",
         use: [$secure()],
         handler: () => "PROTECTED",
@@ -211,6 +217,7 @@ describe("$secure middleware", () => {
   it("should enforce explicit permissions", async () => {
     class TestApp {
       action = $action({
+        path: "/action",
         method: "GET",
         use: [$secure({ permissions: ["orders:delete"] })],
         handler: () => "DELETED",

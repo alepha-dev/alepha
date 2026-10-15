@@ -67,6 +67,7 @@ Use `$ownsOrganization` when a route is directly scoped to an organization:
 
 ```typescript
 read = $action({
+  method: "GET",
   path: "/organizations/:organizationId/report",
   use: [
     $ownsOrganization({

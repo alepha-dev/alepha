@@ -120,6 +120,7 @@ class UserController {
   userRepo = $repository(userEntity);
 
   getUser = $action({
+    method: "GET",
     path: "/users/:id", // -> GET /api/users/:id
     schema: {
       params: z.object({ id: z.uuid() }),
@@ -130,6 +131,7 @@ class UserController {
 
   createUser = $action({
     method: "POST",
+    path: "/users",
     schema: {
       body: z.object({
         email: z.email(),
@@ -140,6 +142,7 @@ class UserController {
   });
 
   listUsers = $action({
+    method: "GET",
     path: "/users", // -> GET /api/users
     schema: {
       response: z.array(userEntity.schema),
@@ -240,7 +243,7 @@ describe("UserService", () => {
 ## Conventions
 
 - `$action` paths auto-prefix with `/api`
-- Method: GET default, POST if body schema exists
+- `$action` requires `method` and `path`: a read says `GET`, the URL never derives from the property name
 - Response schema strips undeclared fields (security)
 - `z.` = Zod schemas via `import { z } from "alepha"`
 - Primitives are class properties, not standalone (except `$atom`, `$entity`)

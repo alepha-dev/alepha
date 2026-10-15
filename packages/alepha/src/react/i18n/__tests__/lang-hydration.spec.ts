@@ -70,6 +70,7 @@ describe("i18n language hydration", () => {
       en = $dictionary({ lazy: async () => ({ default: {} }) });
 
       probe = $action({
+        path: "/probe",
         method: "GET",
         schema: { response: z.text() },
         handler: () => this.i18n.lang,

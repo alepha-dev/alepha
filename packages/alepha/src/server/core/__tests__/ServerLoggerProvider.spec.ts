@@ -17,6 +17,7 @@ import {
 class App {
   log = $logger();
   ping = $action({
+    path: "/ping",
     method: "GET",
     handler: () => {
       this.log.info("!!");
@@ -24,6 +25,7 @@ class App {
     },
   });
   silent = $action({
+    path: "/silent",
     method: "GET",
     silent: true,
     handler: () => {
@@ -32,24 +34,28 @@ class App {
     },
   });
   error = $action({
+    path: "/error",
     method: "GET",
     handler: () => {
       throw new HttpError({ status: 400 }, { message: "Sorry" });
     },
   });
   forbidden = $action({
+    path: "/forbidden",
     method: "GET",
     handler: () => {
       throw new ForbiddenError("Not a member of this project");
     },
   });
   boom = $action({
+    path: "/boom",
     method: "GET",
     handler: () => {
       throw new Error("kaboom");
     },
   });
   callback = $action({
+    path: "/callback",
     method: "GET",
     schema: {
       query: z.object({

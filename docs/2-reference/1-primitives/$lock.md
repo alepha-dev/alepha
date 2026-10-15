@@ -16,6 +16,8 @@ it polls first, but still throws when the wait times out.
 
 ```ts
 processOrder = $action({
+  method: "POST",
+  path: "/processOrder",
   use: [$lock({ name: "process-order" })],
   handler: async ({ body }) => { ... },
 });

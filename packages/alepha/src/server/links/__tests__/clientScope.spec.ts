@@ -14,6 +14,7 @@ import {
 
 class App {
   echo = $action({
+    path: "/echo",
     method: "GET",
     schema: { response: z.text() },
     handler: ({ headers }) => headers["x-scope"] ?? "missing",

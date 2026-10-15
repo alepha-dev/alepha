@@ -79,6 +79,8 @@ class ProjectController {
   projects = $inject(ProjectService);
 
   createProject = $action({
+    method: "POST",
+    path: "/createProject",
     errors: [ProjectQuotaExceeded, NotFoundError],
     schema: {
       body: z.object({ name: z.text() }),

@@ -268,6 +268,7 @@ describe("$page html errors", () => {
     class App {
       home = $page({ path: "/", component: () => "home" });
       broken = $action({
+        path: "/broken",
         method: "GET",
         handler: () => {
           throw new AlephaError("api boom");

@@ -8,7 +8,7 @@ import {
 } from "../providers/ServerHelmetProvider.ts";
 
 class TestApp {
-  ping = $action({ method: "GET", handler: () => "pong" });
+  ping = $action({ path: "/ping", method: "GET", handler: () => "pong" });
 }
 
 describe("alepha.server.ServerHelmetProvider", () => {

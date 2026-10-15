@@ -18,6 +18,7 @@ class CampaignController {
   protected readonly owned = $inject(OwnedResourceProvider);
 
   read = $action({
+    method: "GET",
     path: "/campaigns/:id",
     use: [
       $secure(),

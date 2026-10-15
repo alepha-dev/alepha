@@ -173,16 +173,22 @@ export interface SecureGuardContext {
  * ```typescript
  * class OrderController {
  *   getOrders = $action({
+ *     method: "GET",
+ *     path: "/getOrders",
  *     use: [$secure()],
  *     handler: async ({ query }) => { ... },
  *   });
  *
  *   deleteOrder = $action({
+ *     method: "POST",
+ *     path: "/deleteOrder",
  *     use: [$secure({ permissions: ["orders:delete"] })],
  *     handler: async ({ params }) => { ... },
  *   });
  *
  *   adminManage = $action({
+ *     method: "POST",
+ *     path: "/adminManage",
  *     use: [$secure({
  *       issuers: ["main"],
  *       roles: ["admin"],

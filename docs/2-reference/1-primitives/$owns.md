@@ -45,6 +45,7 @@ not narrowed to rows they own. Note this is deliberately strict - an
 ```typescript
 class CampaignController {
   read = $action({
+    method: "GET",
     path: "/campaigns/:id",
     use: [
       $secure(),

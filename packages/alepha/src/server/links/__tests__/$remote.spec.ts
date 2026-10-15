@@ -16,6 +16,7 @@ describe("$remote", () => {
   }) => {
     class App {
       ping = $action({
+        path: "/ping",
         method: "GET",
         schema: {
           response: z.object({
@@ -61,6 +62,7 @@ describe("$remote", () => {
 
     class ServiceC {
       print = $action({
+        path: "/print",
         method: "GET",
         handler: () => "TADA!",
       });
@@ -70,6 +72,7 @@ describe("$remote", () => {
 
     class ServiceB {
       compute = $action({
+        path: "/compute",
         method: "GET",
         handler: () => {
           return "42";
@@ -93,6 +96,7 @@ describe("$remote", () => {
       sc = $client<ServiceC>();
 
       getReport = $action({
+        path: "/getReport",
         method: "GET",
         handler: async () => {
           const b = await this.sb.compute();
@@ -111,6 +115,7 @@ describe("$remote", () => {
       });
 
       ping = $action({
+        path: "/ping",
         method: "GET",
         handler: async () => {
           return "pong";

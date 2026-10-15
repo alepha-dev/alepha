@@ -30,10 +30,7 @@ class CountingServerLinksProvider extends ServerLinksProvider {
 }
 
 class App {
-  hello = $action({
-    method: "GET",
-    handler: () => "hello",
-  });
+  hello = $action({ path: "/hello", method: "GET", handler: () => "hello" });
 }
 
 const start = async () => {

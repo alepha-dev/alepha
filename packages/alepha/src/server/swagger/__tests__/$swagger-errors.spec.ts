@@ -22,6 +22,7 @@ class Api {
   limiter = $rateLimit({ name: "swagger:limit", limit: 10, window: 60_000 });
 
   strict = $action({
+    path: "/strict",
     method: "POST",
     use: [$secure({ roles: ["admin"] }), this.limiter.middleware()],
     errors: [QuotaExceeded, NotFoundError],
@@ -33,6 +34,7 @@ class Api {
   });
 
   sharedStatus = $action({
+    path: "/sharedStatus",
     method: "GET",
     errors: [QuotaExceeded, ConflictError],
     schema: { response: z.text() },
@@ -40,6 +42,7 @@ class Api {
   });
 
   nothingExpected = $action({
+    path: "/nothingExpected",
     method: "GET",
     use: [$secure()],
     errors: [],
@@ -48,6 +51,7 @@ class Api {
   });
 
   loose = $action({
+    path: "/loose",
     method: "POST",
     use: [$secure({ roles: ["admin"] }), this.limiter.middleware()],
     schema: {

@@ -11,14 +11,8 @@ import {
 
 // A simple test action to hit
 class TestApp {
-  hello = $action({
-    method: "POST",
-    handler: () => "world",
-  });
-  ping = $action({
-    method: "GET",
-    handler: () => "pong",
-  });
+  hello = $action({ path: "/hello", method: "POST", handler: () => "world" });
+  ping = $action({ path: "/ping", method: "GET", handler: () => "pong" });
 
   /**
    * A route whose own `$cors` allow-list is NARROWER than the global one.

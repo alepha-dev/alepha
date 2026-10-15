@@ -32,6 +32,8 @@ class Api {
   limiter = $rateLimit({ name: "strict:limit", limit: 1, window: 60_000 });
 
   declared = $action({
+    method: "POST",
+    path: "/declared",
     errors: [QuotaExceeded],
     handler: () => {
       throw new QuotaExceeded({ limit: 5 });
@@ -39,6 +41,8 @@ class Api {
   });
 
   builtin = $action({
+    method: "POST",
+    path: "/builtin",
     errors: [NotFoundError],
     handler: () => {
       throw new NotFoundError("No such project");
@@ -46,6 +50,8 @@ class Api {
   });
 
   undeclared = $action({
+    method: "POST",
+    path: "/undeclared",
     errors: [QuotaExceeded],
     handler: () => {
       throw new NotFoundError("No such project");
@@ -53,6 +59,8 @@ class Api {
   });
 
   nothingExpected = $action({
+    method: "POST",
+    path: "/nothingExpected",
     errors: [],
     handler: () => {
       throw new QuotaExceeded({ limit: 5 });
@@ -60,6 +68,8 @@ class Api {
   });
 
   strictCrash = $action({
+    method: "POST",
+    path: "/strictCrash",
     errors: [],
     handler: () => {
       throw new Error("SELECT * FROM secret_table");
@@ -67,24 +77,32 @@ class Api {
   });
 
   looseCrash = $action({
+    method: "POST",
+    path: "/looseCrash",
     handler: () => {
       throw new Error("SELECT * FROM secret_table");
     },
   });
 
   loose = $action({
+    method: "POST",
+    path: "/loose",
     handler: () => {
       throw new NotFoundError("No such project");
     },
   });
 
   validated = $action({
+    method: "POST",
+    path: "/validated",
     errors: [],
     schema: { body: z.object({ n: z.number() }), response: z.text() },
     handler: () => "ok",
   });
 
   secured = $action({
+    method: "POST",
+    path: "/secured",
     errors: [],
     use: [$secure()],
     schema: { response: z.text() },
@@ -92,6 +110,8 @@ class Api {
   });
 
   adminOnly = $action({
+    method: "POST",
+    path: "/adminOnly",
     errors: [],
     use: [$secure({ roles: ["admin"] })],
     schema: { response: z.text() },
@@ -99,6 +119,8 @@ class Api {
   });
 
   limited = $action({
+    method: "POST",
+    path: "/limited",
     errors: [],
     use: [this.limiter.middleware()],
     schema: { response: z.text() },
@@ -106,6 +128,8 @@ class Api {
   });
 
   timeout = $action({
+    method: "POST",
+    path: "/timeout",
     errors: [],
     handler: () => {
       // drizzle demotes the driver's error to `cause`

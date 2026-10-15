@@ -50,6 +50,7 @@ describe("the link registry resolves permissions in the caller's realm", () => {
     });
 
     handle = $action({
+      path: "/handle",
       method: "GET",
       use: [$secure({ permissions: ["staff:handle"] })],
       schema: { response: z.text() },
@@ -57,6 +58,7 @@ describe("the link registry resolves permissions in the caller's realm", () => {
     });
 
     apply = $action({
+      path: "/apply",
       method: "GET",
       use: [$secure({ permissions: ["citizen:apply"] })],
       schema: { response: z.text() },

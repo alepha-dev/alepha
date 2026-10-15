@@ -225,16 +225,26 @@ const createApp = (options: AppOptions = {}) => {
       });
     }
 
-    readProject = this.read(this.gate());
-    createQuest = this.read(this.gate("quest:create"));
-    updateProject = this.read(this.gate("project:update"));
-    ownerCreateQuest = this.read(this.ownerGate("quest:create"));
-    ownerRead = this.read(this.ownerGate());
-    readOrganizationContainer = this.read(this.organizationGate());
+    readProject = this.read("/readProject/:id", this.gate());
+    createQuest = this.read("/createQuest/:id", this.gate("quest:create"));
+    updateProject = this.read(
+      "/updateProject/:id",
+      this.gate("project:update"),
+    );
+    ownerCreateQuest = this.read(
+      "/ownerCreateQuest/:id",
+      this.ownerGate("quest:create"),
+    );
+    ownerRead = this.read("/ownerRead/:id", this.ownerGate());
+    readOrganizationContainer = this.read(
+      "/readOrganizationContainer/:id",
+      this.organizationGate(),
+    );
 
-    protected read(gate: ReturnType<typeof $owns>) {
+    protected read(path: string, gate: ReturnType<typeof $owns>) {
       return $action({
         method: "GET",
+        path,
         schema: {
           params: z.object({ id: z.text() }),
           response: z.text(),
