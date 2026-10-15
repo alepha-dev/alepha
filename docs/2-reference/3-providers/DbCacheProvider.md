@@ -11,6 +11,9 @@ import { DbCacheProvider } from "alepha/orm";
 Database query cache using a simple in-memory Map.
 
 Uses `{tableName}:{cacheKey}` as the storage key.
+Per process: a write on another instance invalidates nothing here.
+`get` and `set` copy the value (`structuredClone`), so a cached result is
+never shared by reference.
 Provides per-table invalidation for write-through cache busting.
 
 This is intentionally self-contained (no external cache dependencies)

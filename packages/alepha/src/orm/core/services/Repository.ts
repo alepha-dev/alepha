@@ -619,10 +619,11 @@ export abstract class Repository<T extends ZObject> {
     query: PgQueryRelations<T, R> = {},
     opts: StatementOptions = {},
   ): Promise<PgStatic<T, R>[]> {
-    // Check cache
-    if (opts.cache) {
-      const cacheKey =
-        opts.cache.key ?? this.buildCacheKey("findMany", query, opts);
+    // Check cache. Never inside a transaction: a read there can see rows the
+    // transaction wrote and may still roll back, and a hit would hide them.
+    const cache = this.inTransaction(opts) ? undefined : opts.cache;
+    if (cache) {
+      const cacheKey = cache.key ?? this.buildCacheKey("findMany", query, opts);
       const cached = await this.dbCache.get<PgStatic<T, R>[]>(
         this.tableName,
         cacheKey,
@@ -758,15 +759,10 @@ export abstract class Repository<T extends ZObject> {
       const result = rows as PgStatic<T, R>[];
 
       // Store in cache
-      if (opts.cache) {
+      if (cache) {
         const cacheKey =
-          opts.cache.key ?? this.buildCacheKey("findMany", query, opts);
-        await this.dbCache.set(
-          this.tableName,
-          cacheKey,
-          result,
-          opts.cache.ttl,
-        );
+          cache.key ?? this.buildCacheKey("findMany", query, opts);
+        await this.dbCache.set(this.tableName, cacheKey, result, cache.ttl);
       }
 
       return result;
@@ -1036,9 +1032,7 @@ export abstract class Repository<T extends ZObject> {
             .returning(this.table)
             .then(([it]) => this.clean(it, this.entity.schema));
 
-      this.dbCache
-        .invalidateTable(this.tableName)
-        .catch((err) => this.log.warn("Cache invalidation failed", err));
+      await this.invalidateCache(opts);
 
       await this.alepha.events.emit("repository:create:after", {
         tableName: this.tableName,
@@ -1103,9 +1097,7 @@ export abstract class Repository<T extends ZObject> {
         allEntities.push(...entities);
       }
 
-      this.dbCache
-        .invalidateTable(this.tableName)
-        .catch((err) => this.log.warn("Cache invalidation failed", err));
+      await this.invalidateCache(opts);
 
       await this.alepha.events.emit("repository:create:after", {
         tableName: this.tableName,
@@ -1325,9 +1317,7 @@ export abstract class Repository<T extends ZObject> {
           return this.clean(it, this.entity.schema);
         });
 
-      this.dbCache
-        .invalidateTable(this.tableName)
-        .catch((err) => this.log.warn("Cache invalidation failed", err));
+      await this.invalidateCache(opts);
 
       await this.alepha.events.emit("repository:create:after", {
         tableName: this.tableName,
@@ -1489,9 +1479,7 @@ export abstract class Repository<T extends ZObject> {
         this.clean(row, this.entity.schema),
       );
 
-      this.dbCache
-        .invalidateTable(this.tableName)
-        .catch((err) => this.log.warn("Cache invalidation failed", err));
+      await this.invalidateCache(opts);
 
       await this.alepha.events.emit("repository:create:after", {
         tableName: this.tableName,
@@ -1562,9 +1550,7 @@ export abstract class Repository<T extends ZObject> {
     try {
       const entity = this.clean(response[0], this.entity.schema);
 
-      this.dbCache
-        .invalidateTable(this.tableName)
-        .catch((err) => this.log.warn("Cache invalidation failed", err));
+      await this.invalidateCache(opts);
 
       await this.alepha.events.emit("repository:update:after", {
         tableName: this.tableName,
@@ -1734,9 +1720,7 @@ export abstract class Repository<T extends ZObject> {
         .where(this.toSQL(where))
         .returning();
 
-      this.dbCache
-        .invalidateTable(this.tableName)
-        .catch((err) => this.log.warn("Cache invalidation failed", err));
+      await this.invalidateCache(opts);
 
       await this.alepha.events.emit("repository:update:after", {
         tableName: this.tableName,
@@ -1781,9 +1765,7 @@ export abstract class Repository<T extends ZObject> {
         .returning({ id: (this.table as any)[this.id.key] });
       const ids = result.map((row) => row.id);
 
-      this.dbCache
-        .invalidateTable(this.tableName)
-        .catch((err) => this.log.warn("Cache invalidation failed", err));
+      await this.invalidateCache(opts);
 
       await this.alepha.events.emit("repository:delete:after", {
         tableName: this.tableName,
@@ -2726,6 +2708,42 @@ export abstract class Repository<T extends ZObject> {
   }
 
   /**
+   * Whether a statement with these options runs inside a transaction: an
+   * explicit `opts.tx`, or the ambient one `transactional()` set. `tx: null`
+   * opts out of the ambient one.
+   */
+  protected inTransaction(opts: StatementOptions): boolean {
+    if (opts.tx === null) {
+      return false;
+    }
+    return (
+      opts.tx !== undefined || this.alepha.get("alepha.orm.tx") !== undefined
+    );
+  }
+
+  /**
+   * Drop this table's cached queries after a write.
+   *
+   * Inside an ambient transaction the drop waits for the COMMIT
+   * (`DatabaseProvider.afterCommit`), and is discarded with a rollback.
+   * Dropped at write time, a concurrent reader outside the transaction could
+   * re-cache the pre-commit rows in between, and they would then outlive the
+   * commit. Outside a transaction it is awaited, so the write returns with the
+   * cache already clean.
+   *
+   * An explicit `opts.tx` with no ambient transaction has no commit to hook
+   * into: the drop happens now, as it always did.
+   */
+  protected async invalidateCache(opts: StatementOptions): Promise<void> {
+    const invalidate = () => this.dbCache.invalidateTable(this.tableName);
+    if (opts.tx === null) {
+      await invalidate();
+      return;
+    }
+    await this.provider.afterCommit(invalidate);
+  }
+
+  /**
    * Build a cache key from the method name, the caller's query, AND the
    * predicate this repository adds on top of it.
    *
@@ -2867,7 +2885,14 @@ export interface StatementOptions {
    * Cache configuration for query results.
    *
    * When set, results are stored in an in-memory cache keyed by query parameters.
-   * Any write to this table automatically invalidates all cached queries.
+   * A write to this table through this repository invalidates all its cached
+   * queries: after the COMMIT inside a transaction, at once outside one. A
+   * read inside a transaction never uses the cache.
+   *
+   * ⚠️ The cache is per process. A write on another instance invalidates
+   * nothing here, so `ttl` is what bounds the staleness when several
+   * instances run, unless `DbCacheProvider` is substituted with a shared
+   * implementation. A hit is a copy: mutating it does not touch the cache.
    *
    * @example
    * ```ts
