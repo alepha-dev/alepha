@@ -380,12 +380,22 @@ class AlephaPackageBuilderCli {
       // the entry that names them. `jsdomProject` points Vitest at
       // `setup.ts`, which Vitest transforms itself: the source file ships as
       // is, so the URL stays identical in `src` and `dist`.
-      await run("runtime files", async () => {
-        await this.fs.cp(
-          this.fs.join(root, this.src, "testing/vitest/setup.ts"),
-          this.fs.join(root, this.dist, "testing/vitest/setup.ts"),
-        );
-      });
+      //
+      // Only where the file exists: this script builds every package of the
+      // workspace, and only `alepha` has a `testing/vitest`.
+      const vitestSetup = this.fs.join(
+        root,
+        this.src,
+        "testing/vitest/setup.ts",
+      );
+      if (await this.fs.exists(vitestSetup)) {
+        await run("runtime files", async () => {
+          await this.fs.cp(
+            vitestSetup,
+            this.fs.join(root, this.dist, "testing/vitest/setup.ts"),
+          );
+        });
+      }
     },
   });
 }
