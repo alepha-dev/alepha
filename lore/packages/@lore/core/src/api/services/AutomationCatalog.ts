@@ -19,6 +19,7 @@ import { DashboardMetricCatalog } from "../schemas/DashboardMetricCatalog.ts";
 import { AutomationAccess } from "./AutomationAccess.ts";
 import { AutomationChannels } from "./AutomationChannels.ts";
 import { AutomationPersistence } from "./AutomationPersistence.ts";
+import { AutomationPresetRegistry } from "./AutomationPresetRegistry.ts";
 import { AutomationReferences } from "./AutomationReferences.ts";
 import { CoreAutomationReferences } from "./CoreAutomationReferences.ts";
 import { DashboardMetricRegistry } from "./DashboardMetricRegistry.ts";
@@ -29,6 +30,7 @@ import { DashboardMetricRegistry } from "./DashboardMetricRegistry.ts";
  * treating a resource description or an unfiltered ID lookup as authorization.
  */
 export class AutomationCatalog {
+  protected readonly presets = $inject(AutomationPresetRegistry);
   protected readonly access = $inject(AutomationAccess);
   protected readonly vocabulary = $inject(AutomationVocabulary);
   protected readonly metrics = $inject(DashboardMetricCatalog);
@@ -95,6 +97,15 @@ export class AutomationCatalog {
       entries: this.entries().map((entry) => {
         const reason = this.unavailable(context, entry);
         return { ...entry, available: !reason, ...(reason ? { reason } : {}) };
+      }),
+      presets: this.presets.all().map((preset) => {
+        const reason = this.unavailable(context, {
+          ...preset,
+          type: "selection",
+          result: "scalar",
+          operators: [],
+        });
+        return { ...preset, available: !reason, ...(reason ? { reason } : {}) };
       }),
       variables,
       variablesHasMore: rows.length > 100,

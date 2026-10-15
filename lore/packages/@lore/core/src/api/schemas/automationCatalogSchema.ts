@@ -2,9 +2,11 @@ import { z } from "alepha";
 
 import { automationCatalogChannelSchema } from "./automationCatalogChannelSchema.ts";
 import { automationCatalogEntrySchema } from "./automationCatalogEntrySchema.ts";
+import { automationCatalogPresetSchema } from "./automationCatalogPresetSchema.ts";
 import { automationCatalogVariableSchema } from "./automationCatalogVariableSchema.ts";
 
 export const automationCatalogSchema = z.object({
+  presets: z.array(automationCatalogPresetSchema).max(32),
   entries: z.array(automationCatalogEntrySchema),
   variables: z.array(automationCatalogVariableSchema).max(100),
   variablesHasMore: z.boolean(),

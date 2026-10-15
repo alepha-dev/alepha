@@ -137,3 +137,15 @@ export * from "../api/schemas/automationVariableSetResponseSchema.ts";
 export * from "../api/schemas/automationListQuerySchema.ts";
 
 export * from "../api/schemas/automationPageQuerySchema.ts";
+
+export {
+  automationPresetDescriptorSchema,
+  type AutomationPresetDescriptor,
+} from "../api/schemas/automationPresetDescriptorSchema.ts";
+export {
+  automationPresetCreateSchema,
+  type AutomationPresetCreate,
+} from "../api/schemas/automationPresetCreateSchema.ts";
+export { automationCatalogPresetSchema } from "../api/schemas/automationCatalogPresetSchema.ts";
+
+export { AutomationPresetForms } from "../api/schemas/AutomationPresetForms.ts";

@@ -320,6 +320,10 @@ export class AutomationEvaluator {
         base.guards = [];
         base.matched = 0;
         base.total = 0;
+        base.totalIsExact = true;
+        base.hasMore = false;
+        base.truncated = false;
+        base.next = undefined;
         base.prepared = await this.prepare(base);
       }
       return base;

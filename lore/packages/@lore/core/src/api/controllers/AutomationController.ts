@@ -9,6 +9,7 @@ import { automationListQuerySchema } from "../schemas/automationListQuerySchema.
 import { automationPageQuerySchema } from "../schemas/automationPageQuerySchema.ts";
 import { automationPageSchema } from "../schemas/automationPageSchema.ts";
 import { automationParamsSchema } from "../schemas/automationParamsSchema.ts";
+import { automationPresetCreateSchema } from "../schemas/automationPresetCreateSchema.ts";
 import { automationProjectParamsSchema } from "../schemas/automationProjectParamsSchema.ts";
 import { automationResourceSchema } from "../schemas/automationResourceSchema.ts";
 import { automationRevisionBodySchema } from "../schemas/automationRevisionBodySchema.ts";
@@ -23,6 +24,7 @@ import { automationVariableSetBodySchema } from "../schemas/automationVariableSe
 import { automationVariableSetResponseSchema } from "../schemas/automationVariableSetResponseSchema.ts";
 import { automationWriteBodySchema } from "../schemas/automationWriteBodySchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
+import { AutomationPresetService } from "../services/AutomationPresetService.ts";
 import { AutomationService } from "../services/AutomationService.ts";
 import { AutomationVariableService } from "../services/AutomationVariableService.ts";
 
@@ -31,6 +33,7 @@ import { AutomationVariableService } from "../services/AutomationVariableService
  * remains in the same services called by MCP and trusted preset creation.
  */
 export class AutomationController {
+  protected readonly presets = $inject(AutomationPresetService);
   protected readonly service = $inject(AutomationService);
   protected readonly variables = $inject(AutomationVariableService);
   protected readonly mutationGate = $ownsProject({
@@ -78,6 +81,18 @@ export class AutomationController {
     },
     handler: ({ params, body, user }) =>
       this.service.create(params.projectId, user, body),
+  });
+  createAutomationFromPreset = $action({
+    use: [this.gate("automation:write")],
+    method: "POST",
+    path: "/projects/:projectId/automation-presets",
+    schema: {
+      params: automationProjectParamsSchema,
+      body: automationPresetCreateSchema,
+      response: automationResourceSchema,
+    },
+    handler: ({ params, body, user }) =>
+      this.presets.create(params.projectId, user, body),
   });
   updateAutomation = $action({
     use: [this.gate("automation:write")],

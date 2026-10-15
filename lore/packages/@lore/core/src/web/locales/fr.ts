@@ -4,6 +4,22 @@ import { uiFr } from "@alepha/ui/i18n/fr";
  * Lore's French, over `@alepha/ui`'s: a key both declare reads Lore's.
  */
 export default {
+  "automation.setup.recipient": "Destinataire",
+  "automation.setup.channel": "Canal",
+  "automation.setup.tag": "Étiquette",
+  "automation.channel.inbox": "Boîte de réception",
+  "automation.channel.email": "E-mail",
+  "automation.preset.createDisabled": "Créer une automatisation désactivée",
+  "automation.preset.feedback-created.title": "Nouveau retour",
+  "automation.preset.feedback-created.description":
+    "Notifier un membre lors de la création d’un retour, sans divulguer les coordonnées de son auteur.",
+  "automation.preset.tagged-quest-digest.title":
+    "Récapitulatif nocturne des quêtes",
+  "automation.preset.tagged-quest-digest.description":
+    "Envoyer à 00:00 UTC un récapitulatif des quêtes ouvertes portant une étiquette choisie. Aucun message si la liste est vide.",
+  "automation.preset.epic-completed.title": "Epic terminé",
+  "automation.preset.epic-completed.description":
+    "Notifier un membre lorsqu’un epic en cours se termine automatiquement.",
   "automation.previous": "Précédent",
   "automation.next": "Suivant",
 

@@ -1,4 +1,19 @@
 export default {
+  "automation.setup.recipient": "Recipient",
+  "automation.setup.channel": "Channel",
+  "automation.setup.tag": "Tag",
+  "automation.channel.inbox": "Inbox",
+  "automation.channel.email": "Email",
+  "automation.preset.createDisabled": "Create disabled automation",
+  "automation.preset.feedback-created.title": "New feedback",
+  "automation.preset.feedback-created.description":
+    "Notify one member when feedback is created. Reporter contact details are excluded.",
+  "automation.preset.tagged-quest-digest.title": "Nightly tagged quests",
+  "automation.preset.tagged-quest-digest.description":
+    "Send one digest of open quests with a chosen tag at 00:00 UTC. Empty digests are skipped.",
+  "automation.preset.epic-completed.title": "Epic completed",
+  "automation.preset.epic-completed.description":
+    "Notify one member when an in-progress epic automatically completes.",
   "automation.previous": "Previous",
   "automation.next": "Next",
 

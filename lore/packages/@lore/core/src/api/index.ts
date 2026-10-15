@@ -503,3 +503,9 @@ export { AutomationVariableService } from "./services/AutomationVariableService.
 export { AutomationController } from "./controllers/AutomationController.ts";
 
 export { AutomationConfigurationWrites } from "./services/AutomationConfigurationWrites.ts";
+
+export {
+  AutomationPresetRegistry,
+  type AutomationPresetValues,
+} from "./services/AutomationPresetRegistry.ts";
+export { AutomationPresetService } from "./services/AutomationPresetService.ts";

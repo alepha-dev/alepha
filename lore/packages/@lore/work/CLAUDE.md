@@ -319,3 +319,20 @@ What this package holds, with the notes that are not obvious from the code. Move
 **Services (6)** - `FeedbackRateLimiter`, `QuestCsvFormatter`, `QuestDeletionService` (the one quest delete, shared by `deleteQuest` and `deleteEpic`), `QuestResourceMapper`, `QuestService`, `QuestShelvingService` (the quest shelve and unshelve writes, shared with the epic shelve).
 
 **MCP tools (4)** - `EpicTools`, `FeedbackTools` (`feedback_comment_add`, plus the thread inlined on `feedback_get`), `ReleaseTools` (`release_list` / `_get` / `_create` / `_update` / `_publish` / `_reopen` / `_attach` / `_detach` / `_changelog` / `_delete`, every one naming the release by its TAG), `QuestTools` (`quest_comment_add`, `quest_objective_set`, `quest_unassign`, `quest_attachment_get` / `_add`, `quest_commit_add`, and the discussion inlined on `quest_get`).
+
+## Stock automation presets (#E43, #Q2041)
+
+`WorkAutomationPresets` registers feedback alerts, midnight tagged-quest digests
+and actual epic-completion alerts through core's `AutomationPresetRegistry`.
+Registrations expose typed setup slots, source context fields, defaults and
+current permission/capability requirements in the shared catalogue. Setup uses
+literal recipient UUIDs and does not create shared variables. Inbox is the
+default; email must be selected explicitly.
+
+Preset creation builds the normal versioned AST and delegates to
+`AutomationService`, including disabled creation, immutable author, current
+references and approval fences. The shared metadata-generated form uses the same
+slots. Runtime continues through the existing source, selector, evaluator and
+notification paths. The digest executes once for its retained collection, sends
+nothing when empty and preserves the selector's 50-row lower-bound/truncation
+metadata. It remains separate from compatibility reminders.

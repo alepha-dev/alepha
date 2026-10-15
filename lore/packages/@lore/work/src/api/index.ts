@@ -63,6 +63,7 @@ import { WorkAttentionSources } from "./services/WorkAttentionSources.ts";
 import { WorkAutomationActions } from "./services/WorkAutomationActions.ts";
 import { WorkAutomationCollections } from "./services/WorkAutomationCollections.ts";
 import { WorkAutomationEventSubjects } from "./services/WorkAutomationEventSubjects.ts";
+import { WorkAutomationPresets } from "./services/WorkAutomationPresets.ts";
 import { WorkAutomationReferences } from "./services/WorkAutomationReferences.ts";
 import { WorkAutomationSelections } from "./services/WorkAutomationSelections.ts";
 import { WorkDashboard } from "./services/WorkDashboard.ts";
@@ -89,6 +90,7 @@ export const LoreWorkApi = $module({
   // Core first: booting this module alone boots what it depends on.
   imports: [LoreCoreApi],
   services: [
+    WorkAutomationPresets,
     WorkAutomationEventSubjects,
     WorkAutomationActions,
     QuestEditAccess,
