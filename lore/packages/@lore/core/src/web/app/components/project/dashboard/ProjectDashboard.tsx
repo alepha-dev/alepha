@@ -486,8 +486,6 @@ const ProjectDashboard = () => {
       ) : (
         <>
           <ProjectDashboardHeader
-            cardCount={shown.length}
-            refreshedAt={board.refreshedAt}
             canEdit={canEdit}
             computed={computed}
             editing={editMode && !computed}

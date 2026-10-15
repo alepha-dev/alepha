@@ -2282,10 +2282,6 @@ export default {
   "project.dashboard.empty.body.noMetrics":
     "This project does not do anything a card can count yet. Turn on a capability in Settings and the board has something to show.",
   "project.dashboard.empty.docs": "How project dashboards work",
-  "project.dashboard.standfirst.computed":
-    "The default board, computed from what this project does and holds.",
-  "project.dashboard.standfirst": "$1 cards on this project's board.",
-  "project.dashboard.standfirst.one": "1 card on this project's board.",
   "project.dashboard.card.delete.shared":
     "The board belongs to the project, so this removes the card for everyone in it.",
   "dashboard.card.seeAll": "See all",
@@ -2448,7 +2444,6 @@ export default {
     "It has no board any more. What it kept is still here to read.",
   "dashboard.archived.folios": "Open its folios",
   "dashboard.archived.quests": "Open its quests",
-  "dashboard.refreshed": "Refreshed $1.",
   "dashboard.addCard": "Add card",
 
   "dashboard.card.options": "Card options",
