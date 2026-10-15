@@ -62,21 +62,25 @@ function setup() {
     // ---------------------------------------------------------------------------------------------------------------
 
     authOnly = $action({
+      method: "GET",
       use: [$secure()],
       handler: () => "auth-only",
     });
 
     requireViewer = $action({
+      method: "GET",
       use: [$secure({ roles: ["viewer"] })],
       handler: () => "viewer",
     });
 
     requireRead = $action({
+      method: "GET",
       use: [$secure({ permissions: ["posts:read"] })],
       handler: () => "read",
     });
 
     requireMainIssuer = $action({
+      method: "GET",
       use: [$secure({ issuers: ["main"] })],
       handler: () => "main-issuer",
     });
@@ -86,16 +90,19 @@ function setup() {
     // ---------------------------------------------------------------------------------------------------------------
 
     issuerAndRole = $action({
+      method: "GET",
       use: [$secure({ issuers: ["main"], roles: ["editor"] })],
       handler: () => "issuer+role",
     });
 
     issuerAndPermission = $action({
+      method: "GET",
       use: [$secure({ issuers: ["main"], permissions: ["posts:create"] })],
       handler: () => "issuer+permission",
     });
 
     issuerAndGuard = $action({
+      method: "GET",
       use: [
         $secure({
           issuers: ["main"],
@@ -106,11 +113,13 @@ function setup() {
     });
 
     roleAndPermission = $action({
+      method: "GET",
       use: [$secure({ roles: ["editor"], permissions: ["posts:create"] })],
       handler: () => "role+permission",
     });
 
     roleAndGuard = $action({
+      method: "GET",
       use: [
         $secure({
           roles: ["editor"],
@@ -121,6 +130,7 @@ function setup() {
     });
 
     permissionAndGuard = $action({
+      method: "GET",
       use: [
         $secure({
           permissions: ["posts:read"],
@@ -135,6 +145,7 @@ function setup() {
     // ---------------------------------------------------------------------------------------------------------------
 
     issuerRolePermission = $action({
+      method: "GET",
       use: [
         $secure({
           issuers: ["main"],
@@ -146,6 +157,7 @@ function setup() {
     });
 
     issuerRoleGuard = $action({
+      method: "GET",
       use: [
         $secure({
           issuers: ["main"],
@@ -157,6 +169,7 @@ function setup() {
     });
 
     issuerPermissionGuard = $action({
+      method: "GET",
       use: [
         $secure({
           issuers: ["main"],
@@ -168,6 +181,7 @@ function setup() {
     });
 
     rolePermissionGuard = $action({
+      method: "GET",
       use: [
         $secure({
           roles: ["editor"],
@@ -183,6 +197,7 @@ function setup() {
     // ---------------------------------------------------------------------------------------------------------------
 
     allOptions = $action({
+      method: "GET",
       use: [
         $secure({
           issuers: ["main"],
@@ -199,6 +214,7 @@ function setup() {
     // ---------------------------------------------------------------------------------------------------------------
 
     multiplePermissions = $action({
+      method: "GET",
       use: [$secure({ permissions: ["posts:read", "posts:delete"] })],
       handler: () => "multi-perm",
     });
@@ -208,6 +224,7 @@ function setup() {
     // ---------------------------------------------------------------------------------------------------------------
 
     multipleIssuers = $action({
+      method: "GET",
       use: [$secure({ issuers: ["main", "external"] })],
       handler: () => "multi-issuer",
     });
@@ -217,6 +234,7 @@ function setup() {
     // ---------------------------------------------------------------------------------------------------------------
 
     multipleRoles = $action({
+      method: "GET",
       use: [$secure({ roles: ["editor", "moderator"] })],
       handler: () => "multi-role",
     });

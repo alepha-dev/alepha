@@ -67,8 +67,8 @@ class ProductController {
 `$action` sits above `$route`: same pipeline, but all paths are prefixed with `/api` by default.
 
 ```typescript
-$action({ path: "/users" }); // GET /api/users
-$action({ path: "/users/:id" }); // GET /api/users/:id
+$action({ method: "GET", path: "/users" }); // GET /api/users
+$action({ method: "GET", path: "/users/:id" }); // GET /api/users/:id
 ```
 
 The prefix is configurable via the `serverApiOptions` atom:
@@ -84,7 +84,7 @@ If `path` is omitted, the property key is used:
 
 ```typescript
 class App {
-  listUsers = $action({ handler: () => [] });
+  listUsers = $action({ method: "GET", handler: () => [] });
   // GET /api/listUsers
 }
 ```
@@ -94,6 +94,7 @@ When a `params` schema is provided and no `path` is set, path parameters are app
 ```typescript
 class App {
   getUser = $action({
+    method: "GET",
     schema: { params: z.object({ id: z.uuid() }) },
     handler: async ({ params }) => {
       /* ... */
@@ -105,7 +106,7 @@ class App {
 
 ## HTTP Method
 
-The method defaults to `GET`. If a `body` schema is provided, it defaults to `POST`. You can set it explicitly:
+The method defaults to `POST`, with or without a body. A read declares `method: "GET"`: it is a claim that the call changes nothing, which is what the HTTP client's ETag cache and request deduplication rely on, and what keeps a state-changing endpoint out of reach of a cross-site link (browsers send the `SameSite=Lax` session cookie on a top-level GET). Any other method is set the same way:
 
 ```typescript
 update = $action({

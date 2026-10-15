@@ -10,6 +10,7 @@ describe("POST /api/_batch", () => {
   }) => {
     class App {
       ping = $action({
+        method: "GET",
         schema: { response: z.text() },
         handler: () => "pong",
       });
@@ -57,6 +58,7 @@ describe("POST /api/_batch", () => {
   }) => {
     class App {
       ping = $action({
+        method: "GET",
         schema: { response: z.text() },
         handler: () => "pong",
       });
@@ -92,6 +94,7 @@ describe("POST /api/_batch", () => {
   }) => {
     class App {
       slow = $action({
+        method: "GET",
         schema: { response: z.text() },
         handler: async () => {
           await new Promise((resolve) => setTimeout(resolve, 50));
@@ -99,6 +102,7 @@ describe("POST /api/_batch", () => {
         },
       });
       fast = $action({
+        method: "GET",
         schema: { response: z.text() },
         handler: () => "fast",
       });
@@ -134,6 +138,7 @@ describe("POST /api/_batch", () => {
   it("should reject batches exceeding max size", async ({ expect }) => {
     class App {
       ping = $action({
+        method: "GET",
         handler: () => "pong",
       });
     }
@@ -158,6 +163,7 @@ describe("POST /api/_batch", () => {
   it("should not leak a 5xx message in production", async ({ expect }) => {
     class App {
       boom = $action({
+        method: "GET",
         schema: { response: z.text() },
         handler: () => {
           throw new AlephaError(
@@ -202,6 +208,7 @@ describe("POST /api/_batch", () => {
   }) => {
     class App {
       nope = $action({
+        method: "GET",
         schema: { response: z.text() },
         handler: () => {
           throw new BadRequestError("age must be a positive integer");
@@ -240,6 +247,7 @@ describe("POST /api/_batch", () => {
   it("should handle actions with params", async ({ expect }) => {
     class App {
       getUser = $action({
+        method: "GET",
         path: "/users/:id",
         schema: {
           params: z.object({ id: z.text() }),
@@ -295,6 +303,7 @@ describe("POST /api/_batch", () => {
     // outage in which every analytics read was 500ing.
     class App {
       boom = $action({
+        method: "GET",
         schema: { response: z.text() },
         handler: () => {
           throw new AlephaError("boom");

@@ -88,17 +88,52 @@ export type Middleware = (<T extends (...args: any[]) => any>(
   [OPTIONS]?: MiddlewareMetadata;
 };
 
+/**
+ * A middleware that guarantees something to the handler it wraps.
+ *
+ * `$secure` is a `ProvidingMiddleware<{ user: UserAccountToken }>`: a handler
+ * behind it always has a user, so a `$action` whose `use` lists it receives a
+ * non-optional `user`. The brand is a type only; nothing reads it at runtime.
+ */
+export type ProvidingMiddleware<TProvides extends object> = Middleware & {
+  readonly "~provides": TProvides;
+};
+
+/**
+ * What the middlewares of a `use` tuple guarantee together, as one object
+ * type. `unknown` (no constraint) when none of them provides anything.
+ */
+export type MiddlewareProvides<TUse extends readonly unknown[]> =
+  MiddlewareProvidesUnion<TUse> extends never
+    ? unknown
+    : (
+          MiddlewareProvidesUnion<TUse> extends unknown
+            ? (value: MiddlewareProvidesUnion<TUse>) => void
+            : never
+        ) extends (value: infer I) => void
+      ? I
+      : never;
+
+/**
+ * The union of what each middleware of a `use` tuple provides.
+ */
+type MiddlewareProvidesUnion<TUse extends readonly unknown[]> = {
+  [K in keyof TUse]: TUse[K] extends { readonly "~provides": infer P }
+    ? P
+    : never;
+}[number];
+
 export interface PipelinePrimitiveOptions<
   THandler extends (...args: any[]) => any = (...args: any[]) => any,
 > {
-  use?: Middleware[];
+  use?: readonly Middleware[];
   handler: THandler;
 }
 
 export interface PipelineOptions<
   T extends (...args: any[]) => any = (...args: any[]) => any,
 > {
-  use: Middleware[];
+  use: readonly Middleware[];
   handler: T;
 }
 
@@ -125,9 +160,13 @@ export class PipelineHandler {
   protected fn: (...args: any[]) => any;
   protected middlewares: Middleware[];
 
-  constructor(fn: (...args: any[]) => any, middlewares?: Middleware[]) {
+  constructor(
+    fn: (...args: any[]) => any,
+    middlewares?: readonly Middleware[],
+  ) {
     this.fn = fn;
-    this.middlewares = middlewares ?? [];
+    // A copy: `use()` prepends, and must not reach into the caller's array.
+    this.middlewares = [...(middlewares ?? [])];
   }
 
   protected wrapped?: (...args: any[]) => any;

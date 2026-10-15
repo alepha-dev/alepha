@@ -9,11 +9,13 @@ describe("Basic Authentication", () => {
 
   class TestApp {
     protectedAction = $action({
+      method: "GET",
       use: [$basicAuth({ username: "admin", password: "secret123" })],
       handler: () => "protected success",
     });
 
     publicAction = $action({
+      method: "GET",
       handler: () => "public success",
     });
   }
@@ -140,6 +142,7 @@ describe("Basic Authentication", () => {
     it("should handle credentials with colon in password", async () => {
       class EdgeCaseApp {
         colonPasswordAction = $action({
+          method: "GET",
           use: [$basicAuth({ username: "user", password: "pass:word:123" })],
           handler: () => "success",
         });
@@ -176,6 +179,7 @@ describe("Basic Authentication", () => {
       const env: { SECRET?: string } = {};
       class UnsetSecretApp {
         protectedAction = $action({
+          method: "GET",
           use: [$basicAuth({ username: "user", password: env.SECRET ?? "" })],
           handler: () => "success",
         });
@@ -193,6 +197,7 @@ describe("Basic Authentication", () => {
     it("should handle special characters in credentials", async () => {
       class SpecialCharsApp {
         specialCharsAction = $action({
+          method: "GET",
           use: [
             $basicAuth({
               username: "user@domain.com",
@@ -225,6 +230,7 @@ describe("Basic Authentication", () => {
     it("should handle unicode characters (UTF-8) in credentials - valid", async () => {
       class UnicodeApp {
         unicodeAction = $action({
+          method: "GET",
           use: [$basicAuth({ username: "用户名", password: "密码🔐émoji" })],
           handler: () => "success",
         });
@@ -252,6 +258,7 @@ describe("Basic Authentication", () => {
     it("should handle unicode characters (UTF-8) in credentials - invalid", async () => {
       class UnicodeApp {
         unicodeAction = $action({
+          method: "GET",
           use: [$basicAuth({ username: "用户名", password: "密码🔐émoji" })],
           handler: () => "success",
         });
@@ -283,6 +290,7 @@ describe("Basic Authentication", () => {
 
       class LongCredsApp {
         longCredsAction = $action({
+          method: "GET",
           use: [
             $basicAuth({
               username: longUsername,
@@ -315,6 +323,7 @@ describe("Basic Authentication", () => {
     it("should handle empty username", async () => {
       class EmptyUsernameApp {
         emptyUsernameAction = $action({
+          method: "GET",
           use: [$basicAuth({ username: "", password: "somepassword" })],
           handler: () => "success",
         });
@@ -391,6 +400,7 @@ describe("Basic Authentication", () => {
     it("should handle whitespace in credentials - valid", async () => {
       class WhitespaceApp {
         whitespaceAction = $action({
+          method: "GET",
           use: [$basicAuth({ username: " user ", password: " pass " })],
           handler: () => "success",
         });
@@ -418,6 +428,7 @@ describe("Basic Authentication", () => {
     it("should handle whitespace in credentials - invalid", async () => {
       class WhitespaceApp {
         whitespaceAction = $action({
+          method: "GET",
           use: [$basicAuth({ username: " user ", password: " pass " })],
           handler: () => "success",
         });

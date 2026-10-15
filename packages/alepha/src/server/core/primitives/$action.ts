@@ -8,6 +8,8 @@ import {
   type Infer,
   isTypeFile,
   KIND,
+  type Middleware,
+  type MiddlewareProvides,
   PipelinePrimitive,
   type PipelinePrimitiveOptions,
   type SchemaOutput,
@@ -51,14 +53,14 @@ import {
  * **Important:** All `$action` paths are automatically prefixed with `/api`.
  *
  * ```ts
- * $action({ path: "/users" })     // → GET /api/users
- * $action({ path: "/users/:id" }) // → GET /api/users/:id
- * $action({ path: "/hello" })     // → GET /api/hello
+ * $action({ method: "GET", path: "/users" })     // → GET /api/users
+ * $action({ method: "GET", path: "/users/:id" }) // → GET /api/users/:id
+ * $action({ path: "/hello" })                    // → POST /api/hello
  * ```
  *
  * This prefix is configurable via the `serverApiOptions` atom
  * (`alepha.store.mut(serverApiOptions, (o) => ({ ...o, prefix: "/v1" }))`).
- * HTTP method defaults to GET, or POST if body schema is provided.
+ * HTTP method defaults to POST, body or not: a read declares `method: "GET"`.
  *
  * **Common Use Cases**
  * - CRUD operations with type safety
@@ -107,10 +109,16 @@ import {
  * }
  * ```
  */
-export const $action = <TConfig extends RequestConfigSchema>(
-  options: ActionPrimitiveOptions<TConfig>,
+export const $action = <
+  TConfig extends RequestConfigSchema,
+  const TUse extends readonly Middleware[] = [],
+>(
+  options: ActionPrimitiveOptions<TConfig, TUse>,
 ): ActionPrimitiveFn<TConfig> => {
-  const instance = createPrimitive(ActionPrimitive<TConfig>, options);
+  const instance = createPrimitive(
+    ActionPrimitive<TConfig>,
+    options as unknown as ActionPrimitiveOptions<TConfig>,
+  );
   const fn = (
     config?: ClientRequestEntry<TConfig>,
     options?: ClientRequestOptions,
@@ -127,7 +135,10 @@ export const $action = <TConfig extends RequestConfigSchema>(
 
 // ----------------------------------------------------------------------------------------------------------
 
-export interface ActionPrimitiveOptions<TConfig extends RequestConfigSchema>
+export interface ActionPrimitiveOptions<
+  TConfig extends RequestConfigSchema,
+  TUse extends readonly Middleware[] = readonly Middleware[],
+>
   extends
     Omit<ServerRoute, "handler" | "path" | "schema" | "mapParams">,
     PipelinePrimitiveOptions {
@@ -169,10 +180,10 @@ export interface ActionPrimitiveOptions<TConfig extends RequestConfigSchema>
   path?: string;
 
   /**
-   * The route method.
+   * The route method. `"POST"` when omitted, with or without a body.
    *
-   * - If not provided, it will be set to "GET" by default.
-   * - If not provider and a body is provided, it will be set to "POST".
+   * Declare `"GET"` for a read: it is the method the HTTP client caches
+   * (ETag) and deduplicates, and a claim that the call changes nothing.
    *
    * Wildcard methods are not supported for now. (e.g. "ALL", "ANY", etc.)
    */
@@ -199,9 +210,16 @@ export interface ActionPrimitiveOptions<TConfig extends RequestConfigSchema>
   disabled?: boolean;
 
   /**
+   * Middlewares wrapping the handler, outermost first. A middleware that
+   * guarantees something (`$secure` guarantees a `user`) narrows the
+   * handler's request type.
+   */
+  use?: TUse;
+
+  /**
    * Main route handler. This is where the route logic is implemented.
    */
-  handler: ServerActionHandler<TConfig>;
+  handler: ServerActionHandler<TConfig, TUse>;
 }
 
 // ----------------------------------------------------------------------------------------------------------
@@ -279,10 +297,14 @@ export class ActionPrimitive<
   }
 
   /**
-   * Returns the HTTP method of the action.
+   * Returns the HTTP method of the action: `options.method`, else POST.
+   *
+   * POST even without a body. A GET is a claim that the call changes nothing,
+   * since browsers, proxies and the `tokens` cookie treat it that way, so an
+   * action makes it explicitly with `method: "GET"`.
    */
   public get method(): RouteMethod {
-    return this.options.method || (this.options.schema?.body ? "POST" : "GET");
+    return this.options.method ?? "POST";
   }
 
   /**
@@ -554,8 +576,9 @@ export type ClientRequestResponse<TConfig extends RequestConfigSchema> =
  */
 export type ServerActionHandler<
   TConfig extends RequestConfigSchema = RequestConfigSchema,
+  TUse extends readonly Middleware[] = readonly Middleware[],
 > = (
-  request: ServerActionRequest<TConfig>,
+  request: ServerActionRequest<TConfig> & MiddlewareProvides<TUse>,
 ) => Async<ServerResponseBody<TConfig>>;
 
 /**

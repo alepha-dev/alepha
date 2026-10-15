@@ -25,6 +25,7 @@ const doc = (app: Alepha, options: SwaggerPrimitiveOptions = {}) => {
 
 class App {
   internal = $action({
+    method: "GET",
     hide: true,
     schema: {
       response: z.object({
@@ -39,6 +40,7 @@ class App {
   });
 
   api = $action({
+    method: "GET",
     hide: true,
     schema: {
       response: z.object({
@@ -53,6 +55,7 @@ class App {
   });
 
   text = $action({
+    method: "GET",
     schema: {
       response: z.text(),
     },
@@ -225,6 +228,7 @@ describe("security", () => {
   it("should add bearerAuth and 401 for secured actions", () => {
     class SecuredApp {
       secured = $action({
+        method: "GET",
         use: [fakeSecure()],
         schema: {
           response: z.object({ ok: z.boolean() }),
@@ -253,6 +257,7 @@ describe("security", () => {
   it("should not add security for unsecured actions", () => {
     class UnsecuredApp {
       open = $action({
+        method: "GET",
         schema: {
           response: z.object({ ok: z.boolean() }),
         },
@@ -272,10 +277,12 @@ describe("security", () => {
   it("should add securitySchemes when at least one action is secured", () => {
     class MixedApp {
       open = $action({
+        method: "GET",
         schema: { response: z.text() },
         handler: async () => "ok",
       });
       secured = $action({
+        method: "GET",
         use: [fakeSecure()],
         schema: { response: z.text() },
         handler: async () => "ok",
@@ -301,6 +308,7 @@ describe("query parameters", () => {
   it("should mark required query params as required", () => {
     class QueryApp {
       search = $action({
+        method: "GET",
         schema: {
           query: z.object({
             q: z.text(),
@@ -326,6 +334,7 @@ describe("query parameters", () => {
   it("should mark all query params as required when none are optional", () => {
     class StrictQueryApp {
       fetch = $action({
+        method: "GET",
         name: "fetchItems",
         schema: {
           query: z.object({
@@ -374,6 +383,7 @@ describe("error responses", () => {
   it("should add 400 for actions with query params", () => {
     class QueryApp {
       search = $action({
+        method: "GET",
         schema: {
           query: z.object({ q: z.text() }),
           response: z.text(),
@@ -392,6 +402,7 @@ describe("error responses", () => {
   it("should add 400 for actions with path params", () => {
     class ParamsApp {
       getById = $action({
+        method: "GET",
         path: "/items/:id",
         schema: {
           params: z.object({ id: z.text() }),
@@ -411,6 +422,7 @@ describe("error responses", () => {
   it("should not add 400 for actions without validation", () => {
     class NoValidationApp {
       ping = $action({
+        method: "GET",
         schema: {
           response: z.text(),
         },
@@ -454,6 +466,7 @@ describe("response types", () => {
   it("should handle object response as application/json", () => {
     class ObjApp {
       get = $action({
+        method: "GET",
         name: "getObj",
         schema: { response: z.object({ a: z.text() }) },
         handler: async () => ({ a: "b" }),
@@ -470,6 +483,7 @@ describe("response types", () => {
   it("should handle array response as application/json", () => {
     class ArrayApp {
       list = $action({
+        method: "GET",
         schema: { response: z.array(z.text()) },
         handler: async () => ["a"],
       });
@@ -485,6 +499,7 @@ describe("response types", () => {
   it("should handle string response as text/plain", () => {
     class StrApp {
       getText = $action({
+        method: "GET",
         schema: { response: z.text() },
         handler: async () => "ok",
       });
@@ -500,6 +515,7 @@ describe("response types", () => {
   it("should handle number response as text/plain", () => {
     class NumApp {
       count = $action({
+        method: "GET",
         schema: { response: z.number() as any },
         handler: async () => 42 as any,
       });
@@ -516,6 +532,7 @@ describe("response types", () => {
   it("should handle integer response as text/plain", () => {
     class IntApp {
       countInt = $action({
+        method: "GET",
         schema: { response: z.integer() as any },
         handler: async () => 42 as any,
       });
@@ -532,6 +549,7 @@ describe("response types", () => {
   it("should handle boolean response as text/plain", () => {
     class BoolApp {
       check = $action({
+        method: "GET",
         schema: { response: z.boolean() as any },
         handler: async () => true as any,
       });
@@ -548,6 +566,7 @@ describe("response types", () => {
   it("should handle file response as application/octet-stream", () => {
     class FileApp {
       download = $action({
+        method: "GET",
         schema: { response: z.file() as any },
         handler: async () => new Blob([]) as any,
       });
@@ -563,6 +582,7 @@ describe("response types", () => {
   it("should return 204 for actions without response schema", () => {
     class NoResponseApp {
       fire = $action({
+        method: "GET",
         schema: {},
         handler: async () => {},
       });
@@ -585,10 +605,12 @@ describe("hide and excludeTags", () => {
   it("should exclude actions with hide: true", () => {
     class HideApp {
       visible = $action({
+        method: "GET",
         schema: { response: z.text() },
         handler: async () => "ok",
       });
       hidden = $action({
+        method: "GET",
         hide: true,
         schema: { response: z.text() },
         handler: async () => "ok",
@@ -605,11 +627,13 @@ describe("hide and excludeTags", () => {
   it("should exclude actions matching excludeTags", () => {
     class TagApp {
       pub = $action({
+        method: "GET",
         group: "public",
         schema: { response: z.text() },
         handler: async () => "ok",
       });
       internal = $action({
+        method: "GET",
         group: "internal",
         schema: { response: z.text() },
         handler: async () => "ok",
@@ -632,6 +656,7 @@ describe("rewrite", () => {
   it("should allow rewriting the OpenAPI document", () => {
     class RewriteApp {
       hello = $action({
+        method: "GET",
         schema: { response: z.text() },
         handler: async () => "ok",
       });
@@ -730,6 +755,7 @@ describe("$ref schemas", () => {
   it("should extract titled schemas into components/schemas", () => {
     class RefApp {
       getItem = $action({
+        method: "GET",
         schema: {
           response: z.object({ id: z.text() }).meta({ title: "ItemResponse" }),
         },
@@ -752,6 +778,7 @@ describe("$ref schemas", () => {
   it("should inline untitled schemas", () => {
     class InlineApp {
       getInline = $action({
+        method: "GET",
         schema: {
           response: z.object({ id: z.text() }),
         },
@@ -788,6 +815,7 @@ describe("path params", () => {
   it("should extract param description from schema", () => {
     class ParamDescApp {
       getItem = $action({
+        method: "GET",
         path: "/items/:id",
         schema: {
           params: z.object({
@@ -955,6 +983,7 @@ describe("disabled", () => {
   it("should not generate spec when disabled", () => {
     class DisabledApp {
       hello = $action({
+        method: "GET",
         schema: { response: z.text() },
         handler: async () => "ok",
       });
@@ -976,6 +1005,7 @@ describe("default info", () => {
   it("should use default info when not provided", () => {
     class DefaultApp {
       hello = $action({
+        method: "GET",
         schema: { response: z.text() },
         handler: async () => "ok",
       });
@@ -999,6 +1029,7 @@ describe("tags", () => {
   it("should format colon-separated groups as slash-separated tags", () => {
     class TagApp {
       hello = $action({
+        method: "GET",
         group: "admin:users",
         schema: { response: z.text() },
         handler: async () => "ok",
@@ -1021,6 +1052,7 @@ describe("summary and description", () => {
   it("should include summary and description in operation", () => {
     class SummaryApp {
       hello = $action({
+        method: "GET",
         summary: "Say hello",
         description: "Returns a greeting",
         schema: { response: z.text() },
@@ -1045,6 +1077,7 @@ describe("actions without schema", () => {
   it("should skip actions without schema", () => {
     class NoSchemaApp {
       hello = $action({
+        method: "GET",
         handler: async () => "ok",
       });
     }
@@ -1064,6 +1097,7 @@ describe("deprecated", () => {
   it("should mark action as deprecated when flag is set", () => {
     class DeprecatedApp {
       old = $action({
+        method: "GET",
         deprecated: true,
         schema: { response: z.text() },
         handler: async () => "ok",
@@ -1080,6 +1114,7 @@ describe("deprecated", () => {
   it("should not include deprecated field when not set", () => {
     class NormalApp {
       current = $action({
+        method: "GET",
         schema: { response: z.text() },
         handler: async () => "ok",
       });
@@ -1095,6 +1130,7 @@ describe("deprecated", () => {
   it("should not include deprecated field when explicitly false", () => {
     class NotDeprecatedApp {
       active = $action({
+        method: "GET",
         deprecated: false,
         schema: { response: z.text() },
         handler: async () => "ok",
@@ -1117,6 +1153,7 @@ describe("servers", () => {
   it("should auto-populate servers from hostname", () => {
     class ServerApp {
       hello = $action({
+        method: "GET",
         schema: { response: z.text() },
         handler: async () => "ok",
       });
@@ -1133,6 +1170,7 @@ describe("servers", () => {
   it("should use custom servers when provided", () => {
     class CustomServerApp {
       hello = $action({
+        method: "GET",
         schema: { response: z.text() },
         handler: async () => "ok",
       });
@@ -1161,6 +1199,7 @@ describe("response descriptions", () => {
   it("should use 'OK' for 200 responses", () => {
     class OkApp {
       hello = $action({
+        method: "GET",
         schema: { response: z.text() },
         handler: async () => "ok",
       });
@@ -1177,6 +1216,7 @@ describe("response descriptions", () => {
   it("should use 'No Content' for 204 responses", () => {
     class NoContentApp {
       fire = $action({
+        method: "GET",
         schema: {},
         handler: async () => {},
       });
@@ -1218,6 +1258,7 @@ describe("security scheme description", () => {
   it("should include description about JWT and API key in bearerAuth", () => {
     class AuthApp {
       secured = $action({
+        method: "GET",
         use: [fakeSecure()],
         schema: { response: z.text() },
         handler: async () => "ok",
@@ -1241,6 +1282,7 @@ describe("examples", () => {
   it("should extract examples from query param schema", () => {
     class ExampleQueryApp {
       search = $action({
+        method: "GET",
         schema: {
           query: z.object({
             q: z.text({ examples: ["hello world"] }),
@@ -1261,6 +1303,7 @@ describe("examples", () => {
   it("should extract default as example from query param schema", () => {
     class DefaultQueryApp {
       search = $action({
+        method: "GET",
         schema: {
           query: z.object({
             page: z.number().default(1),
@@ -1281,6 +1324,7 @@ describe("examples", () => {
   it("should extract examples from path param schema", () => {
     class ExampleParamApp {
       getUser = $action({
+        method: "GET",
         path: "/users/:id",
         schema: {
           params: z.object({
@@ -1302,6 +1346,7 @@ describe("examples", () => {
   it("should not add example when none exists", () => {
     class NoExampleApp {
       search = $action({
+        method: "GET",
         schema: {
           query: z.object({
             q: z.text(),

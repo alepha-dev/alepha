@@ -192,6 +192,7 @@ export class UserController {
    * Check if an email is verified.
    */
   public checkEmailVerification = $action({
+    method: "GET",
     path: "/users/email-verification/check",
     group: this.group,
     use: [$secure()],

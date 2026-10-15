@@ -234,6 +234,7 @@ const createApp = (options: AppOptions = {}) => {
 
     protected read(gate: ReturnType<typeof $owns>) {
       return $action({
+        method: "GET",
         schema: {
           params: z.object({ id: z.text() }),
           response: z.text(),

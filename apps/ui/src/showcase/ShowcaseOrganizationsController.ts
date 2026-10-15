@@ -23,6 +23,7 @@ export class ShowcaseOrganizationsController {
   protected readonly organizations = $inject(ShowcaseOrganizations);
 
   public readonly getMyOrganizations = $action({
+    method: "GET",
     path: "/showcase/organizations",
     schema: { response: z.array(organizationSummaryResourceSchema) },
     handler: () => this.organizations.organizations(),
@@ -36,6 +37,7 @@ export class ShowcaseOrganizationsController {
   });
 
   public readonly getOrganizationMembers = $action({
+    method: "GET",
     path: "/showcase/organizations/:organizationId/members",
     schema: {
       params: z.object({ organizationId: z.uuid() }),
@@ -90,6 +92,7 @@ export class ShowcaseOrganizationsController {
   });
 
   public readonly getOrganizationInvitations = $action({
+    method: "GET",
     path: "/showcase/organizations/:organizationId/invitations",
     schema: {
       params: z.object({ organizationId: z.uuid() }),
@@ -133,6 +136,7 @@ export class ShowcaseOrganizationsController {
   });
 
   public readonly getMyOrganizationInvitations = $action({
+    method: "GET",
     path: "/showcase/organizations/invitations/me",
     schema: {
       response: z.array(
@@ -167,6 +171,7 @@ export class ShowcaseOrganizationsController {
   });
 
   public readonly getOrganizationRankCatalogue = $action({
+    method: "GET",
     path: "/showcase/organizations/:organizationId/ranks/catalogue",
     schema: {
       params: z.object({ organizationId: z.uuid() }),
@@ -176,6 +181,7 @@ export class ShowcaseOrganizationsController {
   });
 
   public readonly getOrganizationRanks = $action({
+    method: "GET",
     path: "/showcase/organizations/:organizationId/ranks",
     schema: {
       params: z.object({ organizationId: z.uuid() }),

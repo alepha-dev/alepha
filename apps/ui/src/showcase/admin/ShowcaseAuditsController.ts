@@ -30,6 +30,7 @@ export class ShowcaseAuditsController {
   protected readonly audits = $inject(ShowcaseAudits);
 
   public readonly findAudits = $action({
+    method: "GET",
     path: "/admin/audits",
     schema: {
       query: auditQuerySchema,
@@ -45,6 +46,7 @@ export class ShowcaseAuditsController {
    * an empty filter dropdown and no error anywhere.
    */
   public readonly getAuditActions = $action({
+    method: "GET",
     path: "/admin/audits/actions",
     schema: {
       response: z.array(auditActionPairSchema),

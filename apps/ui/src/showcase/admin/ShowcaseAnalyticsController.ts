@@ -22,6 +22,7 @@ export class ShowcaseAnalyticsController {
   protected readonly analytics = $inject(ShowcaseAnalytics);
 
   public readonly listDatasets = $action({
+    method: "GET",
     path: "/admin/analytics/datasets",
     schema: {
       response: z.array(adminDatasetSchema),

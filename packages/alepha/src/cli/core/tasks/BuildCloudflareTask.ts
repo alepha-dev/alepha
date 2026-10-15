@@ -911,7 +911,8 @@ const pageEdgeFresh = async (cache, key, at) => {
         // One decision for both engines, see WebSocketServerProvider.admit:
         // the endpoint's own \`authorize\` hook when it has one (a machine
         // credential, which names its room and never touches the security
-        // realm), the session resolver plus \`secure\` otherwise. A hook that
+        // realm), the endpoint's \`use\` middlewares, or the session resolver
+        // plus \`secure\` (a \`$room\`) otherwise. A hook that
         // throws is an outage, not a revocation, so it answers 503 rather
         // than the 401 a machine client reads as "stop retrying".
         let admission;
@@ -928,7 +929,9 @@ const pageEdgeFresh = async (cache, key, at) => {
           return new Response("Service Unavailable", { status: 503 });
         }
         if (!admission.accepted) {
-          return new Response("Unauthorized", { status: 401 });
+          return admission.status === 403
+            ? new Response("Forbidden", { status: 403 })
+            : new Response("Unauthorized", { status: 401 });
         }
         const userId = admission.userId || "";
 

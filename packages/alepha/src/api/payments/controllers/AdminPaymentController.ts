@@ -27,6 +27,7 @@ export class AdminPaymentController {
    * List payment intents with pagination and filtering.
    */
   public readonly listIntents = $action({
+    method: "GET",
     path: `${this.url}/intents`,
     group: this.group,
     use: [$secure({ permissions: ["admin:payment:read", "payments:read"] })],
@@ -42,6 +43,7 @@ export class AdminPaymentController {
    * Get a payment intent by ID.
    */
   public readonly getIntent = $action({
+    method: "GET",
     path: `${this.url}/intents/:id`,
     group: this.group,
     use: [$secure({ permissions: ["admin:payment:read", "payments:read"] })],

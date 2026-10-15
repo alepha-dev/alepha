@@ -1,5 +1,5 @@
 import { Alepha, z } from "alepha";
-import { AlephaSecurity, JwtProvider } from "alepha/security";
+import { $secure, AlephaSecurity, JwtProvider } from "alepha/security";
 import { NodeHttpServerProvider } from "alepha/server";
 import { describe, it } from "vitest";
 import WebSocket from "ws";
@@ -312,7 +312,7 @@ describe("NodeWebSocketServerProvider auth + rooms", () => {
       ws = $websocket({
         channel: this.ch,
         handler: async () => {},
-        secure: true,
+        use: [$secure()],
       });
     }
 
@@ -346,7 +346,7 @@ describe("NodeWebSocketServerProvider auth + rooms", () => {
       ws = $websocket({
         channel: this.ch,
         handler: async () => {},
-        secure: true,
+        use: [$secure()],
         onConnect: ({ userId }) => {
           resolvedUserId = userId;
         },
@@ -372,6 +372,44 @@ describe("NodeWebSocketServerProvider auth + rooms", () => {
     expect(resolvedUserId).toBe("user-789");
 
     ws.close();
+    await alepha.stop();
+  });
+
+  it("refuses with 403 a user without the role $secure asks for", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaSecurity).with(AlephaWebSocket);
+    const jwt = alepha.inject(JwtProvider);
+
+    class Controller {
+      ch = $channel({
+        path: "/ws/secure-role",
+        schema: { in: chatInSchema, out: chatOutSchema },
+      });
+
+      ws = $websocket({
+        channel: this.ch,
+        handler: async () => {},
+        use: [$secure({ roles: ["admin"] })],
+      });
+    }
+
+    alepha.inject(Controller);
+    await alepha.start();
+
+    const token = await jwt.create({ sub: "user-no-role" }, undefined, {
+      header: { typ: jwt.accessTokenTyp },
+    });
+    const hostname = alepha
+      .inject(NodeHttpServerProvider)
+      .hostname.replace("http://", "ws://");
+    const ws = new WebSocket(`${hostname}/ws/secure-role`, {
+      headers: { authorization: `Bearer ${token}` },
+    } as any);
+
+    const statusCode = await waitForUnexpectedResponse(ws);
+    expect(statusCode).toBe(403);
+
     await alepha.stop();
   });
 
@@ -421,7 +459,7 @@ describe("NodeWebSocketServerProvider auth + rooms", () => {
       ws = $websocket({
         channel: this.ch,
         handler: async () => {},
-        secure: true,
+        use: [$secure()],
         maxConnectionsPerUser: 1,
       });
     }

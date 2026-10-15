@@ -20,6 +20,7 @@ class TestApp {
   realm = $realm({ features: { apiKeys: true, oauth: true } });
 
   readDocs = $action({
+    method: "GET",
     path: "/docs-scope/read",
     use: [$secure({ permissions: ["docs:read"] })],
     schema: { response: z.text() },

@@ -14,6 +14,7 @@ describe("ServerLinksProvider", () => {
     }) => {
       class App {
         publicAction = $action({
+          method: "GET",
           handler: () => "PUBLIC",
         });
       }
@@ -33,6 +34,7 @@ describe("ServerLinksProvider", () => {
     }) => {
       class App {
         securedAction = $action({
+          method: "GET",
           use: [$secure()],
           handler: () => "SECURED",
         });
@@ -53,6 +55,7 @@ describe("ServerLinksProvider", () => {
     }) => {
       class App {
         realmAction = $action({
+          method: "GET",
           use: [$secure({ issuers: ["admin"] })],
           handler: () => "REALM",
         });
@@ -75,6 +78,7 @@ describe("ServerLinksProvider", () => {
     }) => {
       class App {
         publicAction = $action({
+          method: "GET",
           schema: { response: z.text() },
           handler: () => "PUBLIC",
         });
@@ -104,6 +108,7 @@ describe("ServerLinksProvider", () => {
     }) => {
       class App {
         securedAction = $action({
+          method: "GET",
           use: [$secure()],
           schema: { response: z.text() },
           handler: () => "SECURED",
@@ -133,6 +138,7 @@ describe("ServerLinksProvider", () => {
     }) => {
       class App {
         securedAction = $action({
+          method: "GET",
           use: [$secure()],
           schema: { response: z.text() },
           handler: () => "SECURED",
@@ -165,10 +171,12 @@ describe("ServerLinksProvider", () => {
     }) => {
       class App {
         publicAction = $action({
+          method: "GET",
           schema: { response: z.text() },
           handler: () => "PUBLIC",
         });
         securedAction = $action({
+          method: "GET",
           use: [$secure()],
           schema: { response: z.text() },
           handler: () => "SECURED",
@@ -199,11 +207,13 @@ describe("ServerLinksProvider", () => {
     }) => {
       class App {
         adminOnly = $action({
+          method: "GET",
           use: [$secure({ permissions: ["admin:manage"] })],
           schema: { response: z.text() },
           handler: () => "ADMIN",
         });
         userAction = $action({
+          method: "GET",
           use: [$secure({ permissions: ["user:read"] })],
           schema: { response: z.text() },
           handler: () => "USER",
@@ -247,6 +257,7 @@ describe("ServerLinksProvider", () => {
     }) => {
       class App {
         authOnly = $action({
+          method: "GET",
           use: [$secure()],
           schema: { response: z.text() },
           handler: () => "AUTH_ONLY",
@@ -280,6 +291,7 @@ describe("ServerLinksProvider", () => {
     }) => {
       class App {
         getUsers = $action({
+          method: "GET",
           path: "/users",
           schema: { response: z.array(z.text()) },
           handler: () => ["user1", "user2"],
@@ -329,6 +341,7 @@ describe("ServerLinksProvider", () => {
     }) => {
       class App {
         getUsers = $action({
+          method: "GET",
           path: "/users",
           schema: { response: z.array(z.text()) },
           handler: () => [],
@@ -404,6 +417,7 @@ describe("ServerLinksProvider", () => {
     it("should return empty for unknown actions", async ({ expect }) => {
       class App {
         ping = $action({
+          method: "GET",
           schema: { response: z.text() },
           handler: () => "pong",
         });
@@ -478,6 +492,7 @@ describe("ServerLinksProvider", () => {
     it("should return ETag header on first request", async ({ expect }) => {
       class App {
         ping = $action({
+          method: "GET",
           handler: () => "pong",
         });
       }
@@ -499,6 +514,7 @@ describe("ServerLinksProvider", () => {
     }) => {
       class App {
         ping = $action({
+          method: "GET",
           handler: () => "pong",
         });
       }
@@ -525,6 +541,7 @@ describe("ServerLinksProvider", () => {
     it("should return same ETag for same roles", async ({ expect }) => {
       class App {
         ping = $action({
+          method: "GET",
           handler: () => "pong",
         });
       }
@@ -545,6 +562,7 @@ describe("ServerLinksProvider", () => {
     }) => {
       class App {
         authOnly = $action({
+          method: "GET",
           use: [$secure()],
           schema: { response: z.text() },
           handler: () => "AUTH_ONLY",
@@ -585,6 +603,7 @@ describe("ServerLinksProvider", () => {
     it("should serve cached response on second request", async ({ expect }) => {
       class App {
         ping = $action({
+          method: "GET",
           schema: { response: z.text() },
           handler: () => "pong",
         });

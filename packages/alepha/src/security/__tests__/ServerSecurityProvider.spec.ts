@@ -17,6 +17,7 @@ describe("$secure middleware", () => {
   it("should protect action from unauthorized users", async () => {
     class TestApp {
       ok = $action({
+        method: "GET",
         use: [$secure()],
         handler: () => "OK",
       });
@@ -66,10 +67,12 @@ describe("$secure middleware", () => {
   it("should guard by explicit permission", async () => {
     class TestApp {
       admin = $action({
+        method: "GET",
         use: [$secure({ permissions: ["admin:manage"] })],
         handler: () => "ADMIN",
       });
       user = $action({
+        method: "GET",
         use: [$secure({ permissions: ["read:data"] })],
         handler: () => "USER",
       });
@@ -127,6 +130,7 @@ describe("$secure middleware", () => {
   it("should allow auth-only $secure() for any authenticated user", async () => {
     class TestApp {
       action = $action({
+        method: "GET",
         use: [$secure()],
         handler: () => "OK",
       });
@@ -153,6 +157,7 @@ describe("$secure middleware", () => {
   it("should allow public actions by default (no $secure middleware)", async () => {
     class TestApp {
       public = $action({
+        method: "GET",
         handler: () => "PUBLIC",
       });
       issuer = $issuer({
@@ -182,6 +187,7 @@ describe("$secure middleware", () => {
   it("should require auth when $secure() middleware is present", async () => {
     class TestApp {
       secured = $action({
+        method: "GET",
         use: [$secure()],
         handler: () => "PROTECTED",
       });
@@ -206,6 +212,7 @@ describe("$secure middleware", () => {
   it("should enforce explicit permissions", async () => {
     class TestApp {
       action = $action({
+        method: "GET",
         use: [$secure({ permissions: ["orders:delete"] })],
         handler: () => "DELETED",
       });

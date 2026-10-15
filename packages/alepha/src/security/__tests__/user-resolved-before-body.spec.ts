@@ -27,6 +27,7 @@ class CookieSecurityProvider extends SecurityProvider {
 
 class Api {
   whoami = $action({
+    method: "GET",
     path: "/whoami",
     schema: { response: z.text() },
     handler: async ({ user }) => user?.id ?? "anonymous",

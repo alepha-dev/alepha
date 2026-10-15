@@ -17,12 +17,14 @@ import {
 class App {
   log = $logger();
   ping = $action({
+    method: "GET",
     handler: () => {
       this.log.info("!!");
       return "pong";
     },
   });
   silent = $action({
+    method: "GET",
     silent: true,
     handler: () => {
       this.log.info("this message should be logged");
@@ -30,6 +32,7 @@ class App {
     },
   });
   error = $action({
+    method: "GET",
     handler: () => {
       throw new HttpError({
         message: "Sorry",
@@ -38,16 +41,19 @@ class App {
     },
   });
   forbidden = $action({
+    method: "GET",
     handler: () => {
       throw new ForbiddenError("Not a member of this project");
     },
   });
   boom = $action({
+    method: "GET",
     handler: () => {
       throw new Error("kaboom");
     },
   });
   callback = $action({
+    method: "GET",
     schema: {
       query: z.object({
         code: z.text().optional(),

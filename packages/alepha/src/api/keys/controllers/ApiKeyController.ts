@@ -71,6 +71,7 @@ export class ApiKeyController {
    * a key's scope, which is its own ceiling, scope included.
    */
   public readonly getApiKeyOptions = $action({
+    method: "GET",
     path: `${this.url}/options`,
     group: this.group,
     description: "Expiry policy and grantable permissions for a new API key",
@@ -89,6 +90,7 @@ export class ApiKeyController {
    * length of this list is not a count of keys that work.
    */
   public readonly listApiKeys = $action({
+    method: "GET",
     path: this.url,
     group: this.group,
     description: "List your API keys",

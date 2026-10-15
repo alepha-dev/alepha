@@ -77,6 +77,10 @@ issuer = $issuer({
 });
 ```
 
+`POST /_auth/refresh` answers `401` when the refresh token is expired, revoked or unknown, which tells the client to sign in again. Any other failure (the database, an OAuth provider that is down) is not wrapped: it answers with its own status, `500` for an outage, so a client never discards a good session because a dependency hiccuped.
+
+The security errors carry their own status the same way: an `InvalidTokenError` is an `UnauthorizedError` (401), an `InvalidPermissionError` a `ForbiddenError` (403), and a `RealmNotFoundError` an `AlephaError` (500), since it always means the app's configuration names a realm it does not declare.
+
 ## User Management with $realm
 
 `$realm` is a higher-level primitive that wraps `$issuer` with built-in user management: registration, login, sessions, password handling, and identity providers.
@@ -611,7 +615,7 @@ protectedEndpoint = $action({
 });
 ```
 
-The authenticated user is available on the request object:
+The authenticated user is on the request object. `user` is optional on a request; an action whose `use` lists `$secure`, `$owns` or `$ownsOrganization` receives it non-optional, since those refuse an anonymous call. Elsewhere it is `UserAccountToken | undefined`:
 
 ```typescript
 profile = $action({
@@ -641,7 +645,7 @@ managersOnly = $action({
 
 `$secure()` resolves the authenticated user using atom-first resolution, which works across all transports:
 
-1. **`currentUserAtom`**: checked first. Set by `$action.run()` fork, MCP transports, pipelines, and jobs.
+1. **`currentUserAtom`**: checked first. Set by the global `server:onRequest` hook, an `$action.run()` fork, pipelines, and jobs.
 2. **`request.user`**: HTTP request user set by previous middleware.
 3. **HTTP headers**: JWT or API key resolved from `Authorization` header. API
    keys, their expiry, rotation and scope have a guide of their own:

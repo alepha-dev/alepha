@@ -17,6 +17,7 @@ class App {
   });
 
   hello = $action({
+    method: "GET",
     schema: {
       response: z.object({
         message: z.text(),

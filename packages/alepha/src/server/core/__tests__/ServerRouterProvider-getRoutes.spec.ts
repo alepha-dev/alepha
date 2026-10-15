@@ -11,12 +11,14 @@ describe("ServerRouterProvider - getRoutes", () => {
 
     class TestApp {
       action1 = $action({
+        method: "GET",
         path: "/users",
         schema: { response: z.object({ id: z.integer() }) },
         handler: () => ({ id: 1 }),
       });
 
       action2 = $action({
+        method: "GET",
         path: "/posts",
         schema: { response: z.object({ id: z.integer() }) },
         handler: () => ({ id: 1 }),
@@ -41,18 +43,21 @@ describe("ServerRouterProvider - getRoutes", () => {
 
     class TestApp {
       users = $action({
+        method: "GET",
         path: "/users",
         schema: { response: z.object({ id: z.integer() }) },
         handler: () => ({ id: 1 }),
       });
 
       userDetail = $action({
+        method: "GET",
         path: "/users/:id",
         schema: { response: z.object({ id: z.integer() }) },
         handler: () => ({ id: 1 }),
       });
 
       posts = $action({
+        method: "GET",
         path: "/posts",
         schema: { response: z.object({ id: z.integer() }) },
         handler: () => ({ id: 1 }),
@@ -85,12 +90,14 @@ describe("ServerRouterProvider - getRoutes", () => {
 
     class TestApp {
       users = $action({
+        method: "GET",
         path: "/users",
         schema: { response: z.object({ id: z.integer() }) },
         handler: () => ({ id: 1 }),
       });
 
       posts = $action({
+        method: "GET",
         path: "/posts",
         schema: { response: z.object({ id: z.integer() }) },
         handler: () => ({ id: 1 }),
@@ -112,6 +119,7 @@ describe("ServerRouterProvider - getRoutes", () => {
 
     class TestApp {
       users = $action({
+        method: "GET",
         path: "/users",
         schema: { response: z.object({ id: z.integer() }) },
         handler: () => ({ id: 1 }),
@@ -133,12 +141,14 @@ describe("ServerRouterProvider - getRoutes", () => {
 
     class TestApp {
       apiInfo = $action({
+        method: "GET",
         path: "/api-info",
         schema: { response: z.object({ id: z.integer() }) },
         handler: () => ({ id: 1 }),
       });
 
       apiUsers = $action({
+        method: "GET",
         path: "/api-users",
         schema: { response: z.object({ id: z.integer() }) },
         handler: () => ({ id: 1 }),
@@ -166,24 +176,28 @@ describe("ServerRouterProvider - getRoutes", () => {
 
     class TestApp {
       level1 = $action({
+        method: "GET",
         path: "/v1/users",
         schema: { response: z.object({ id: z.integer() }) },
         handler: () => ({ id: 1 }),
       });
 
       level2 = $action({
+        method: "GET",
         path: "/v1/users/:id/posts",
         schema: { response: z.object({ id: z.integer() }) },
         handler: () => ({ id: 1 }),
       });
 
       level3 = $action({
+        method: "GET",
         path: "/v1/users/:id/posts/:postId/comments",
         schema: { response: z.object({ id: z.integer() }) },
         handler: () => ({ id: 1 }),
       });
 
       v2 = $action({
+        method: "GET",
         path: "/v2/users",
         schema: { response: z.object({ id: z.integer() }) },
         handler: () => ({ id: 1 }),
@@ -221,6 +235,7 @@ describe("ServerRouterProvider - getRoutes", () => {
       });
 
       users = $action({
+        method: "GET",
         path: "/users",
         schema: { response: z.object({ id: z.integer() }) },
         handler: () => ({ id: 1 }),
@@ -240,12 +255,14 @@ describe("ServerRouterProvider - getRoutes", () => {
 
     class TestApp {
       publicApi = $action({
+        method: "GET",
         path: "/public/info",
         schema: { response: z.object({ id: z.integer() }) },
         handler: () => ({ id: 1 }),
       });
 
       adminApi = $action({
+        method: "GET",
         path: "/admin/users",
         schema: { response: z.object({ id: z.integer() }) },
         handler: () => ({ id: 1 }),
@@ -312,12 +329,14 @@ describe("ServerRouterProvider - getRoutes", () => {
 
     class TestApp {
       users = $action({
+        method: "GET",
         path: "/users",
         schema: { response: z.object({ id: z.integer() }) },
         handler: () => ({ id: 1 }),
       });
 
       users2 = $action({
+        method: "GET",
         path: "/Users",
         schema: { response: z.object({ id: z.integer() }) },
         handler: () => ({ id: 1 }),

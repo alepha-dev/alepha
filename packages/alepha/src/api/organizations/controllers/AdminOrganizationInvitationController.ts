@@ -9,6 +9,7 @@ export class AdminOrganizationInvitationController {
   protected readonly invitations = $inject(InvitationService);
 
   public readonly getAdminOrganizationInvitations = $action({
+    method: "GET",
     path: "/admin/organization-invitations",
     use: [$secure({ permissions: ["admin:invitation:read"] })],
     schema: { response: z.array(organizationInvitations.schema) },
@@ -16,6 +17,7 @@ export class AdminOrganizationInvitationController {
   });
 
   public readonly getAdminOrganizationInvitation = $action({
+    method: "GET",
     path: "/admin/organization-invitations/:invitationId",
     use: [$secure({ permissions: ["admin:invitation:read"] })],
     schema: {

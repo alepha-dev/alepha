@@ -8,7 +8,7 @@ import {
 } from "../providers/ServerHelmetProvider.ts";
 
 class TestApp {
-  ping = $action({ handler: () => "pong" });
+  ping = $action({ method: "GET", handler: () => "pong" });
 }
 
 describe("ServerHelmetProvider", () => {

@@ -129,6 +129,7 @@ const createApp = (cache?: { ttl: number }) => {
 
     protected read() {
       return $action({
+        method: "GET",
         schema: {
           params: z.object({ id: z.text() }),
           response: z.text(),

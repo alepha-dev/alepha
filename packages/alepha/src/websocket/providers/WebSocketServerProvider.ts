@@ -1,5 +1,13 @@
-import { $inject, Alepha, AlephaError } from "alepha";
-import { RequestOriginPolicy } from "alepha/server";
+import {
+  $inject,
+  Alepha,
+  AlephaError,
+  MIDDLEWARE_PROTECTED,
+  type Middleware,
+  OPTIONS,
+  PipelineHandler,
+} from "alepha";
+import { HttpError, RequestOriginPolicy } from "alepha/server";
 
 import type { RoomPrimitiveOptions } from "../interfaces/RoomInterfaces.ts";
 import type {
@@ -137,6 +145,28 @@ export abstract class WebSocketServerProvider {
       return undefined;
     }
 
+    await this.convertSessionCookie(handshake);
+
+    if (!security) {
+      return undefined;
+    }
+
+    const user = await security.resolveUserFromServerRequest({
+      url: handshake.url,
+      headers: handshake.headers,
+    } as any);
+
+    return user?.id;
+  }
+
+  /**
+   * Turn the session cookie of a trusted handshake into an `Authorization`
+   * header, which is the only credential the security resolvers read.
+   */
+  protected async convertSessionCookie(handshake: {
+    url: string;
+    headers: Record<string, string | undefined>;
+  }): Promise<void> {
     // Browser WebSocket handshakes cannot carry an `Authorization` header — the encrypted
     // session cookie is their only credential. HTTP requests get the cookie→authorization
     // conversion from ServerAuthProvider's `server:onRequest` hook; an upgrade bypasses that
@@ -172,17 +202,6 @@ export abstract class WebSocketServerProvider {
         // No auth module registered — bearer-only apps keep working unchanged.
       }
     }
-
-    if (!security) {
-      return undefined;
-    }
-
-    const user = await security.resolveUserFromServerRequest({
-      url: handshake.url,
-      headers: handshake.headers,
-    } as any);
-
-    return user?.id;
   }
 
   /**
@@ -248,6 +267,10 @@ export abstract class WebSocketServerProvider {
       };
     }
 
+    if (endpoint?.use?.length) {
+      return await this.admitThrough(endpoint.use, handshake);
+    }
+
     let userId: string | undefined;
     try {
       userId = await this.resolveUserId(handshake);
@@ -258,6 +281,42 @@ export abstract class WebSocketServerProvider {
       return { accepted: false };
     }
     return { accepted: true, userId };
+  }
+
+  /**
+   * Run an endpoint's `use` middlewares on the upgrade request.
+   *
+   * The handshake stands in for the HTTP request (`alepha.http.request`),
+   * which is where `$secure` looks for a credential and where it leaves the
+   * user it resolved. A 401 or 403 from a middleware refuses the upgrade with
+   * that status; anything else propagates, and the caller answers 503.
+   */
+  protected async admitThrough(
+    use: readonly Middleware[],
+    handshake: WebSocketHandshake,
+  ): Promise<WebSocketAdmissionResult> {
+    await this.convertSessionCookie(handshake);
+    const request: { url: string; headers: Record<string, any>; user?: any } = {
+      url: handshake.url,
+      headers: handshake.headers,
+    };
+    try {
+      await this.alepha.context.run(() => {
+        this.alepha.store.set("alepha.http.request", request as any, {
+          skipEvents: true,
+        });
+        return new PipelineHandler(async () => true, use).run();
+      });
+    } catch (error) {
+      if (
+        error instanceof HttpError &&
+        (error.status === 401 || error.status === 403)
+      ) {
+        return { accepted: false, status: error.status };
+      }
+      throw error;
+    }
+    return { accepted: true, userId: request.user?.id };
   }
 
   /**
@@ -272,11 +331,14 @@ export abstract class WebSocketServerProvider {
     options: WebSocketAdmissionOptions,
     path: string,
   ): void {
-    if (options.authorize && options.secure) {
+    const guarded = options.use?.some(
+      (it: Middleware) => it[OPTIONS]?.meta?.[MIDDLEWARE_PROTECTED] === "true",
+    );
+    if (options.authorize && (options.secure || guarded)) {
       throw new AlephaError(
-        `WebSocket endpoint ${path} declares both authorize and secure. ` +
+        `WebSocket endpoint ${path} declares both authorize and $secure. ` +
           "An endpoint has one way in: authorize decides the handshake itself, " +
-          "secure asks alepha/security. Keep one.",
+          "$secure asks alepha/security. Keep one.",
       );
     }
   }

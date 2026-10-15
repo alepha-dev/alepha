@@ -19,6 +19,7 @@ class TestApp {
   });
 
   whoami = $action({
+    method: "GET",
     use: [$secure()],
     schema: { response: z.object({ ip: z.string().optional() }) },
     handler: (request) => ({ ip: request.ip }),

@@ -5,6 +5,7 @@ import { $action, HttpError, ServerProvider } from "../index.ts";
 
 class TestApp {
   internalError = $action({
+    method: "GET",
     handler: () => {
       throw new Error("SELECT * FROM secret_table WHERE password = 'leaked'");
     },
@@ -15,6 +16,7 @@ class TestApp {
    * sanitization entirely, shipping `cause` (name + message) to the client.
    */
   wrappedInternalError = $action({
+    method: "GET",
     handler: () => {
       throw new HttpError(
         { status: 502, message: "Upstream failed" },
@@ -28,6 +30,7 @@ class TestApp {
    * must survive sanitization.
    */
   badRequest = $action({
+    method: "GET",
     handler: () => {
       throw new HttpError(
         { status: 400, message: "Invalid payload" },

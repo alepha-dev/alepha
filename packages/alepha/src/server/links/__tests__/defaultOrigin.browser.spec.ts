@@ -11,6 +11,7 @@ import {
 
 class Api {
   ping = $action({
+    method: "GET",
     schema: { response: z.text() },
     handler: () => "pong",
   });

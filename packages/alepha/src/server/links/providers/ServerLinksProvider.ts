@@ -1,8 +1,20 @@
 import { createHash } from "node:crypto";
 
-import { $hook, $inject, $store, Alepha, z } from "alepha";
+import {
+  $hook,
+  $inject,
+  $store,
+  Alepha,
+  MIDDLEWARE_PROTECTED,
+  type MiddlewareMetadata,
+  z,
+} from "alepha";
 import { $logger } from "alepha/logger";
-import type { SecurityProvider, UserAccountToken } from "alepha/security";
+import type {
+  SecureOptions,
+  SecurityProvider,
+  UserAccountToken,
+} from "alepha/security";
 import {
   $action,
   $route,
@@ -68,10 +80,7 @@ export class ServerLinksProvider {
             bodyContentType && bodyContentType !== "application/json"
               ? bodyContentType
               : undefined,
-          secured: action.middlewares.some((m) => m?.name === "$secure")
-            ? (action.middlewares.find((m) => m?.name === "$secure")?.options ??
-              true)
-            : undefined,
+          secured: this.securedOptions(action.middlewares),
           method: action.method === "GET" ? undefined : action.method,
           prefix: action.prefix,
           path: action.path,
@@ -599,6 +608,33 @@ export class ServerLinksProvider {
     }
 
     return true;
+  }
+
+  /**
+   * What a link publishes about the guard of its action: `true`, or the
+   * `$secure` options when it has some, for an action behind a middleware
+   * that declares {@link MIDDLEWARE_PROTECTED}. Read from the flag, the same
+   * way the router does, rather than from a middleware's name.
+   *
+   * Only the fields `$secure` defines are copied: the registry is public to
+   * any caller who may see the action, and another middleware declaring the
+   * flag must not publish whatever else its options hold.
+   */
+  protected securedOptions(
+    middlewares: MiddlewareMetadata[],
+  ): boolean | SecureOptions | undefined {
+    const guard = middlewares.find(
+      (it) => it?.meta?.[MIDDLEWARE_PROTECTED] === "true",
+    );
+    if (!guard) {
+      return undefined;
+    }
+    const options = guard.options as SecureOptions | undefined;
+    if (!options) {
+      return true;
+    }
+    const { issuers, roles, permissions, sessionOnly } = options;
+    return { issuers, roles, permissions, sessionOnly };
   }
 }
 

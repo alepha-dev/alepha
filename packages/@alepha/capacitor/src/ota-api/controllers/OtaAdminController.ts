@@ -43,6 +43,7 @@ export class OtaAdminController {
   // ---------------------------------------------------------------------------
 
   public readonly otaListApps = $action({
+    method: "GET",
     path: `${this.url}/apps`,
     group: this.group,
     description: "List live update apps",
@@ -53,6 +54,7 @@ export class OtaAdminController {
   });
 
   public readonly otaGetApp = $action({
+    method: "GET",
     path: `${this.url}/apps/:id`,
     group: this.group,
     description: "Get a live update app",
@@ -107,6 +109,7 @@ export class OtaAdminController {
   // ---------------------------------------------------------------------------
 
   public readonly otaListChannels = $action({
+    method: "GET",
     path: `${this.url}/apps/:id/channels`,
     group: this.group,
     description: "List an app's channels and what each serves",
@@ -255,6 +258,7 @@ export class OtaAdminController {
   // ---------------------------------------------------------------------------
 
   public readonly otaListBundles = $action({
+    method: "GET",
     path: `${this.url}/apps/:id/bundles`,
     group: this.group,
     description: "List an app's bundles",
@@ -321,6 +325,7 @@ export class OtaAdminController {
   // ---------------------------------------------------------------------------
 
   public readonly otaListDevices = $action({
+    method: "GET",
     path: `${this.url}/apps/:id/devices`,
     group: this.group,
     description: "Devices seen in the last seven days (telemetry)",
@@ -334,6 +339,7 @@ export class OtaAdminController {
   });
 
   public readonly otaListOverrides = $action({
+    method: "GET",
     path: `${this.url}/apps/:id/overrides`,
     group: this.group,
     description: "List device overrides",

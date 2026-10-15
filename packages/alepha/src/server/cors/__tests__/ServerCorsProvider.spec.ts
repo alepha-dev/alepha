@@ -16,6 +16,7 @@ class TestApp {
     handler: () => "world",
   });
   ping = $action({
+    method: "GET",
     handler: () => "pong",
   });
 

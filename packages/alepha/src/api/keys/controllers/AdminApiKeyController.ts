@@ -19,6 +19,7 @@ export class AdminApiKeyController {
    * Find all API keys with optional filtering.
    */
   public readonly findApiKeys = $action({
+    method: "GET",
     path: this.url,
     group: this.group,
     use: [$secure({ permissions: ["admin:api-key:read"] })],
@@ -42,6 +43,7 @@ export class AdminApiKeyController {
    * Get an API key by ID.
    */
   public readonly getApiKey = $action({
+    method: "GET",
     path: `${this.url}/:id`,
     group: this.group,
     use: [$secure({ permissions: ["admin:api-key:read"] })],

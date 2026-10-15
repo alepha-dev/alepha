@@ -17,6 +17,7 @@ export class ShowcaseSessionsController {
   protected readonly sessions = $inject(ShowcaseSessions);
 
   public readonly findSessions = $action({
+    method: "GET",
     path: "/admin/sessions",
     schema: {
       query: sessionQuerySchema.extend({
@@ -33,6 +34,7 @@ export class ShowcaseSessionsController {
    * up as an empty dropdown rather than an error.
    */
   public readonly getSessionCountries = $action({
+    method: "GET",
     path: "/admin/sessions/countries",
     schema: {
       query: z.object({ userRealmName: z.string().optional() }),

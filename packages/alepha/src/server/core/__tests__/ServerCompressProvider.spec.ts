@@ -9,6 +9,7 @@ import {
 
 class App {
   hello = $action({
+    method: "GET",
     handler: () => "Hello, world!",
   });
 }

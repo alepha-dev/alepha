@@ -26,6 +26,7 @@ class TestApp {
   });
 
   whoami = $action({
+    method: "GET",
     path: "/whoami-credential",
     use: [$secure()],
     schema: {

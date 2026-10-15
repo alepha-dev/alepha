@@ -89,6 +89,7 @@ class Service {
     handler: async () => "open",
   });
   action = $action({
+    method: "GET",
     use: [this.two.middleware()],
     handler: () => "done",
   });

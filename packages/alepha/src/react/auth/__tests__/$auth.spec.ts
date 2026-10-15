@@ -205,8 +205,10 @@ describe("$auth", () => {
 
     await alepha.inject(DateTimeProvider).travel(40, "days");
 
-    await expect(refresh(alepha, tokens)).rejects.toThrow(
-      "Failed to refresh access token using the refresh token (issuer)",
-    );
+    // A dead refresh token is a 401, which tells the client to sign in
+    // again (#Q2658); it used to be wrapped into a 403 SecurityError.
+    await expect(refresh(alepha, tokens)).rejects.toMatchObject({
+      status: 401,
+    });
   });
 });

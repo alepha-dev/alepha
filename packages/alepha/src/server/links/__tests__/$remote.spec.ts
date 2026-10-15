@@ -16,6 +16,7 @@ describe("$remote", () => {
   }) => {
     class App {
       ping = $action({
+        method: "GET",
         schema: {
           response: z.object({
             pong: z.boolean(),
@@ -60,6 +61,7 @@ describe("$remote", () => {
 
     class ServiceC {
       print = $action({
+        method: "GET",
         handler: () => "TADA!",
       });
     }
@@ -68,6 +70,7 @@ describe("$remote", () => {
 
     class ServiceB {
       compute = $action({
+        method: "GET",
         handler: () => {
           return "42";
         },
@@ -90,6 +93,7 @@ describe("$remote", () => {
       sc = $client<ServiceC>();
 
       getReport = $action({
+        method: "GET",
         handler: async () => {
           const b = await this.sb.compute();
           const c = await this.sc.print();
@@ -107,6 +111,7 @@ describe("$remote", () => {
       });
 
       ping = $action({
+        method: "GET",
         handler: async () => {
           return "pong";
         },

@@ -27,14 +27,14 @@ HTTP endpoints with full type safety, automatic validation, and OpenAPI document
 **Important:** All `$action` paths are automatically prefixed with `/api`.
 
 ```ts
-$action({ path: "/users" }); // → GET /api/users
-$action({ path: "/users/:id" }); // → GET /api/users/:id
-$action({ path: "/hello" }); // → GET /api/hello
+$action({ method: "GET", path: "/users" }); // → GET /api/users
+$action({ method: "GET", path: "/users/:id" }); // → GET /api/users/:id
+$action({ path: "/hello" }); // → POST /api/hello
 ```
 
 This prefix is configurable via the `serverApiOptions` atom
 (`alepha.store.mut(serverApiOptions, (o) => ({ ...o, prefix: "/v1" }))`).
-HTTP method defaults to GET, or POST if body schema is provided.
+HTTP method defaults to POST, body or not: a read declares `method: "GET"`.
 
 **Common Use Cases**
 
@@ -44,16 +44,17 @@ HTTP method defaults to GET, or POST if body schema is provided.
 
 ## Options
 
-| Option        | Type                                 | Required | Description                       |
-| ------------- | ------------------------------------ | -------- | --------------------------------- |
-| `name`        | `string`                             | No       | Name of the action                |
-| `group`       | `string`                             | No       | Group actions together            |
-| `path`        | `string`                             | No       | Pathname of the route             |
-| `method`      | `RouteMethod`                        | No       | The route method                  |
-| `schema`      | `TConfig`                            | No       | The config schema of the route    |
-| `description` | `string`                             | No       | A short description of the action |
-| `disabled`    | `boolean`                            | No       | Disable the route                 |
-| `handler`     | `ServerActionHandler&lt;TConfig&gt;` | Yes      | Main route handler                |
+| Option        | Type                                       | Required | Description                                       |
+| ------------- | ------------------------------------------ | -------- | ------------------------------------------------- |
+| `name`        | `string`                                   | No       | Name of the action                                |
+| `group`       | `string`                                   | No       | Group actions together                            |
+| `path`        | `string`                                   | No       | Pathname of the route                             |
+| `method`      | `RouteMethod`                              | No       | The route method                                  |
+| `schema`      | `TConfig`                                  | No       | The config schema of the route                    |
+| `description` | `string`                                   | No       | A short description of the action                 |
+| `disabled`    | `boolean`                                  | No       | Disable the route                                 |
+| `use`         | `TUse`                                     | No       | Middlewares wrapping the handler, outermost first |
+| `handler`     | `ServerActionHandler&lt;TConfig, TUse&gt;` | Yes      | Main route handler                                |
 
 ## Examples
 

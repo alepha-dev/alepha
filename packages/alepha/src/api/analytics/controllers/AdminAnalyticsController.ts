@@ -19,6 +19,7 @@ export class AdminAnalyticsController {
   protected readonly service = $inject(AdminAnalyticsService);
 
   public readonly listDatasets = $action({
+    method: "GET",
     path: `${this.url}/datasets`,
     group: this.group,
     use: [$secure({ permissions: ["admin:analytics:read"] })],

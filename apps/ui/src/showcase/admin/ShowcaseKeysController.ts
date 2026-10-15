@@ -31,6 +31,7 @@ export class ShowcaseKeysController {
   protected readonly keys = $inject(ShowcaseKeys);
 
   public readonly findApiKeys = $action({
+    method: "GET",
     path: "/admin/api-keys",
     schema: {
       query: adminApiKeyQuerySchema,
@@ -64,6 +65,7 @@ export class ShowcaseKeysController {
    * The account panel's list: the showcase's own fixture rows.
    */
   public readonly listApiKeys = $action({
+    method: "GET",
     path: "/api-keys",
     schema: { response: listApiKeyResponseSchema },
     handler: () => SHOWCASE_KEYS,
@@ -74,6 +76,7 @@ export class ShowcaseKeysController {
    * small catalogue so the permission matrix has groups to draw.
    */
   public readonly getApiKeyOptions = $action({
+    method: "GET",
     path: "/api-keys/options",
     schema: { response: apiKeyOptionsResponseSchema },
     handler: () =>

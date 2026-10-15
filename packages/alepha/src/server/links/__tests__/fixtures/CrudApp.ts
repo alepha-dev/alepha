@@ -18,6 +18,7 @@ export class CrudApp {
   }
 
   findById = $action({
+    method: "GET",
     path: "/users/:id",
     schema: {
       headers: z.object({
@@ -41,6 +42,7 @@ export class CrudApp {
   });
 
   findAll = $action({
+    method: "GET",
     path: "/users",
     schema: {
       query: z.object({
@@ -112,6 +114,7 @@ export class CrudApp {
   });
 
   internalError = $action({
+    method: "GET",
     schema: {
       response: z.void(),
     },

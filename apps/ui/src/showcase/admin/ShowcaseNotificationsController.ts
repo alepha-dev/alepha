@@ -30,6 +30,7 @@ export class ShowcaseNotificationsController {
   protected readonly notifications = $inject(ShowcaseNotifications);
 
   public readonly findNotifications = $action({
+    method: "GET",
     path: "/admin/notifications",
     schema: {
       query: notificationQuerySchema,
@@ -39,6 +40,7 @@ export class ShowcaseNotificationsController {
   });
 
   public readonly listNotificationTemplates = $action({
+    method: "GET",
     path: "/admin/notifications/templates",
     schema: {
       response: z.array(notificationTemplateResourceSchema),
@@ -47,6 +49,7 @@ export class ShowcaseNotificationsController {
   });
 
   public readonly getNotification = $action({
+    method: "GET",
     path: "/admin/notifications/:id",
     schema: {
       params: z.object({ id: z.text() }),
@@ -75,6 +78,7 @@ export class ShowcaseNotificationsController {
   });
 
   public readonly previewNotification = $action({
+    method: "GET",
     path: "/admin/notifications/:id/preview",
     schema: {
       params: z.object({ id: z.text() }),

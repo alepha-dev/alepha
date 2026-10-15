@@ -31,6 +31,7 @@ class CountingServerLinksProvider extends ServerLinksProvider {
 
 class App {
   hello = $action({
+    method: "GET",
     handler: () => "hello",
   });
 }

@@ -19,6 +19,7 @@ export class ShowcasePaymentsController {
   protected readonly payments = $inject(ShowcasePayments);
 
   public readonly listIntents = $action({
+    method: "GET",
     path: "/admin/payments/intents",
     schema: {
       query: intentQuerySchema,

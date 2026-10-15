@@ -23,6 +23,7 @@ class OrganizationGateApp {
   public readonly containers = $repository(organizationContainers);
 
   public readonly readOrganization = $action({
+    method: "GET",
     use: [$ownsOrganization({ param: "organizationId" })],
     schema: {
       params: z.object({ organizationId: z.uuid() }),
@@ -32,6 +33,7 @@ class OrganizationGateApp {
   });
 
   public readonly readOrganizationContainer = $action({
+    method: "GET",
     use: [
       $ownsOrganization({
         repository: () => this.containers,

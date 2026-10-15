@@ -65,6 +65,7 @@ class App {
    * that carry it there are invisible from any one of them.
    */
   createQuest = $action({
+    method: "GET",
     schema: {
       params: z.object({ id: z.text() }),
       response: z.text(),
@@ -86,6 +87,7 @@ class App {
 
   /** The classic spelling, for comparison. */
   updateProject = $action({
+    method: "GET",
     schema: { response: z.text() },
     use: [$secure({ permissions: ["project:update"] })],
     handler: () => "ok",
@@ -93,6 +95,7 @@ class App {
 
   /** No permission at all: nothing for a scope to narrow. */
   ping = $action({
+    method: "GET",
     schema: { response: z.text() },
     handler: () => "pong",
   });

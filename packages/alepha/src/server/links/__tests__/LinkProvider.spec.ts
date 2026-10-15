@@ -6,6 +6,7 @@ import { LinkProvider, ServerLinksProvider } from "../index.ts";
 
 class App {
   ping = $action({
+    method: "GET",
     schema: {
       response: z.object({
         pong: z.boolean(),
@@ -70,6 +71,7 @@ describe("LinkProvider", () => {
   it("should omit method for GET actions", async ({ expect }) => {
     class GetApp {
       getUsers = $action({
+        method: "GET",
         path: "/users",
         schema: { response: z.array(z.text()) },
         handler: () => ["user1"],
@@ -116,6 +118,7 @@ describe("LinkProvider", () => {
   }) => {
     class SchemaApp {
       getUser = $action({
+        method: "GET",
         path: "/users/:id",
         schema: { response: z.object({ id: z.integer(), name: z.text() }) },
         handler: () => ({ id: 1, name: "John" }),
@@ -167,9 +170,11 @@ describe("LinkProvider", () => {
   it("should throw on duplicate local action names", async ({ expect }) => {
     class DuplicateApp {
       ping = $action({
+        method: "GET",
         handler: () => "first",
       });
       ping2 = $action({
+        method: "GET",
         name: "ping",
         handler: () => "second",
       });

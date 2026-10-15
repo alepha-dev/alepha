@@ -21,6 +21,7 @@ import { $action } from "alepha/server";
  */
 export class ShowcaseMfaController {
   public readonly getMyMfa = $action({
+    method: "GET",
     path: "/users/me/mfa",
     schema: { response: myMfaStatusSchema },
     handler: () => ({

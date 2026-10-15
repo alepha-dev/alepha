@@ -35,6 +35,7 @@ export class ShowcaseController {
   protected readonly members = $inject(ShowcaseMembers);
 
   public readonly findShowcaseMembers = $action({
+    method: "GET",
     path: "/showcase/members",
     description: "Paged, filtered and sorted showcase members",
     schema: {
@@ -50,6 +51,7 @@ export class ShowcaseController {
    * are accepted and ignored.
    */
   public readonly findShowcaseMemberStats = $action({
+    method: "GET",
     path: "/showcase/members/stats",
     description: "Aggregate counts over the showcase members a query matches",
     schema: {

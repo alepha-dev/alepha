@@ -177,13 +177,13 @@ class ChatController {
 
 The handler context:
 
-| Field            | Description                                                                                           |
-| ---------------- | ----------------------------------------------------------------------------------------------------- |
-| `connectionId`   | Unique ID for this connection.                                                                        |
-| `userId`         | Authenticated user ID, if `secure: true` and a user resolved (see [Authentication](#authentication)). |
-| `roomId`         | Room the incoming message was sent from.                                                              |
-| `message`        | The parsed, schema-validated client message.                                                          |
-| `reply(options)` | Send a message back to the room, scoped to this connection's context.                                 |
+| Field            | Description                                                                                            |
+| ---------------- | ------------------------------------------------------------------------------------------------------ |
+| `connectionId`   | Unique ID for this connection.                                                                         |
+| `userId`         | Authenticated user ID, when a `$secure` in `use` resolved one (see [Authentication](#authentication)). |
+| `roomId`         | Room the incoming message was sent from.                                                               |
+| `message`        | The parsed, schema-validated client message.                                                           |
+| `reply(options)` | Send a message back to the room, scoped to this connection's context.                                  |
 
 `reply()` options:
 
@@ -271,7 +271,7 @@ The connection URL is auto-detected from `window.location` by default. Override 
 
 ## Authentication
 
-Set `secure: true` on `$websocket` to require authentication, and `maxConnectionsPerUser` to cap how many concurrent connections a user may hold:
+Put `$secure()` in the endpoint's `use` to require authentication, exactly as on an action, and `maxConnectionsPerUser` to cap how many concurrent connections a user may hold:
 
 ```typescript
 chat = $websocket({
@@ -279,7 +279,7 @@ chat = $websocket({
   handler: async ({ userId, message, reply }) => {
     /* ... */
   },
-  secure: true,
+  use: [$secure()],
   maxConnectionsPerUser: 3,
 });
 ```
@@ -289,13 +289,13 @@ Identity is resolved from the WebSocket handshake through `alepha/security`'s us
 - A session **cookie** is sent automatically by the browser and works out of the box.
 - An API key (with the realm's `apiKeys` feature on) can travel as the `?api_key=` query parameter, since it can't go in an `Authorization` header. There is no query parameter for a JWT: a non-browser client that can set headers sends `Authorization: Bearer ...` on the handshake instead.
 
-An unauthenticated connection to a `secure: true` endpoint is rejected before the upgrade completes. This works identically on both the Node and Cloudflare providers.
+The middlewares run on the upgrade request, before the socket exists. An unauthenticated handshake is refused with `401`, and a user without a role or permission `$secure` asks for (`use: [$secure({ roles: ["moderator"] })]`) with `403`. This works identically on both the Node and Cloudflare providers.
 
 **What `maxConnectionsPerUser` counts differs by engine.** On Node the server holds every connection, so the cap is per endpoint: three connections total, whichever rooms they joined. On Cloudflare a Durable Object IS one room and only knows its own sockets, so the cap is per room: the same user may hold three in each room they join. Counting across rooms would put a second coordinator object on the path of every upgrade, which is a real cost for a limit that exists to stop one user opening tabs without end. Both engines refuse the same way, closing the socket with code `1008` and the reason `Max connections per user exceeded`, so a client cannot tell them apart. An unauthenticated connection is never capped on either, since there is no identity to count against.
 
 ### Authorizing a machine, not a user
 
-`secure` answers "is a person signed in". Some endpoints are opened by a machine holding a secret rather than by a person with a session: a build agent, a fleet of servers reporting in. Give those an `authorize` hook instead:
+`$secure` answers "is a person signed in". Some endpoints are opened by a machine holding a secret rather than by a person with a session: a build agent, a fleet of servers reporting in. Give those an `authorize` hook instead:
 
 ```typescript
 estates = $websocket({
@@ -316,7 +316,7 @@ Three things follow from returning `{ roomId }` rather than a user:
 - **The room it names replaces the one the URL asked for.** A client's `?roomId=` is ignored on an endpoint with `authorize`, so a caller cannot enter a room its credential does not own, and a room-targeted `emit()` reaches only the sockets the credential put there.
 - The connection has **no `userId`** unless the hook returns one. It never resolves through `alepha/security`, so the secret is not a session and grants nothing on any HTTP endpoint. `emit({ userId })` cannot reach it; `emit({ roomId })` can.
 
-`$room` takes the same hook, and the room it returns is the one the socket joins. Declaring `authorize` together with `secure` on one endpoint is refused at registration: an endpoint has one way in.
+`$room` takes the same hook, and the room it returns is the one the socket joins. Declaring `authorize` together with `$secure` (or a `$room`'s `secure`) on one endpoint is refused at registration: an endpoint has one way in.
 
 ## Node / VPS
 

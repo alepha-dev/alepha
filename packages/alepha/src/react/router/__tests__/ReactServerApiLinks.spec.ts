@@ -28,6 +28,7 @@ describe("ReactServerProvider api links", () => {
   }) => {
     class App {
       hello = $action({
+        method: "GET",
         handler: () => "hello",
       });
 

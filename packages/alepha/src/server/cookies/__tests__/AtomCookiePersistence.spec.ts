@@ -21,6 +21,7 @@ class CookieAtomApp {
   settings = $store(settingsAtom);
 
   read = $action({
+    method: "GET",
     schema: {
       response: z.object({ theme: z.string() }),
     },
@@ -106,6 +107,7 @@ describe("registration order: atoms declared on a $module, before the adapter ex
     protected readonly alepha = $inject(Alepha);
 
     read = $action({
+      method: "GET",
       schema: {
         response: z.object({ theme: z.string() }),
       },
@@ -198,6 +200,7 @@ describe("cookie-name symmetry with APP_NAME set", () => {
     settings = $store(appNameSettingsAtom);
 
     read = $action({
+      method: "GET",
       schema: {
         response: z.object({ theme: z.string() }),
       },

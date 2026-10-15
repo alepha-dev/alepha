@@ -20,6 +20,7 @@ export class AdminFileStatsController {
    * and breakdowns by bucket and MIME type.
    */
   public readonly getFileStats = $action({
+    method: "GET",
     path: this.url,
     group: this.group,
     use: [$secure({ permissions: ["admin:file:read"] })],

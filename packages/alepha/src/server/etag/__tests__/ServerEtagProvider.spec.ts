@@ -9,30 +9,36 @@ class TestApp {
   protected resetCounter = 0;
 
   cachedAction = $action({
+    method: "GET",
     use: [$etag(true)],
     handler: () => `cached-${this.counter++}`,
   });
 
   uncachedAction = $action({
+    method: "GET",
     handler: () => `uncached-${this.counter++}`,
   });
 
   cachedWithCustomTtl = $action({
+    method: "GET",
     use: [$etag({ store: { ttl: 1000 } })],
     handler: () => `ttl-cached-${this.counter++}`,
   });
 
   cachedWithShortTtl = $action({
+    method: "GET",
     use: [$etag({ store: { ttl: [100, "milliseconds"] } })],
     handler: () => `short-ttl-${this.counter++}`,
   });
 
   cachedWithShortDurationStore = $action({
+    method: "GET",
     use: [$etag({ store: [100, "milliseconds"] })],
     handler: () => `short-store-${this.counter++}`,
   });
 
   asyncCachedAction = $action({
+    method: "GET",
     use: [$etag(true)],
     handler: async () => {
       await new Promise((resolve) => setTimeout(resolve, 10));
@@ -41,31 +47,37 @@ class TestApp {
   });
 
   etagOnlyAction = $action({
+    method: "GET",
     use: [$etag()],
     handler: () => `etag-only-${this.counter++}`,
   });
 
   etagAndCacheAction = $action({
+    method: "GET",
     use: [$etag(true)],
     handler: () => `etag-and-cache-${this.counter++}`,
   });
 
   dynamicContentAction = $action({
+    method: "GET",
     use: [$etag()],
     handler: () => `dynamic-${Date.now()}`,
   });
 
   cacheWithControlTrue = $action({
+    method: "GET",
     use: [$etag({ store: true, control: true })],
     handler: () => `control-true-${this.counter++}`,
   });
 
   cacheWithControlString = $action({
+    method: "GET",
     use: [$etag({ store: true, control: "public, max-age=600, immutable" })],
     handler: () => `control-string-${this.counter++}`,
   });
 
   cacheWithControlObject = $action({
+    method: "GET",
     use: [
       $etag({
         store: true,
@@ -80,6 +92,7 @@ class TestApp {
   });
 
   cacheWithComplexControl = $action({
+    method: "GET",
     use: [
       $etag({
         store: {
@@ -97,6 +110,7 @@ class TestApp {
   });
 
   cacheWithDurationMaxAge = $action({
+    method: "GET",
     use: [
       $etag({
         store: true,
@@ -111,6 +125,7 @@ class TestApp {
   });
 
   cacheWith30Seconds = $action({
+    method: "GET",
     use: [
       $etag({
         store: true,
@@ -124,6 +139,7 @@ class TestApp {
   });
 
   cacheWith10Minutes = $action({
+    method: "GET",
     use: [
       $etag({
         store: true,
@@ -137,6 +153,7 @@ class TestApp {
   });
 
   cacheWith2Hours = $action({
+    method: "GET",
     use: [
       $etag({
         store: true,
@@ -150,6 +167,7 @@ class TestApp {
   });
 
   cacheWith1Day = $action({
+    method: "GET",
     use: [
       $etag({
         store: true,
@@ -163,6 +181,7 @@ class TestApp {
   });
 
   cacheWithMixedMaxAge = $action({
+    method: "GET",
     use: [
       $etag({
         store: true,
@@ -177,6 +196,7 @@ class TestApp {
   });
 
   cacheWithStaleWhileRevalidate = $action({
+    method: "GET",
     use: [
       $etag({
         store: true,
@@ -191,6 +211,7 @@ class TestApp {
   });
 
   cacheWithStaleWhileRevalidateDuration = $action({
+    method: "GET",
     use: [
       $etag({
         store: true,
@@ -205,6 +226,7 @@ class TestApp {
   });
 
   errorAction = $action({
+    method: "GET",
     use: [$etag(true)],
     handler: ({ reply }) => {
       reply.status = 500;
@@ -213,6 +235,7 @@ class TestApp {
   });
 
   notFoundAction = $action({
+    method: "GET",
     use: [$etag(true)],
     handler: ({ reply }) => {
       reply.status = 404;
@@ -226,6 +249,7 @@ class TestApp {
    * on a failure.
    */
   immutableFileAction = $action({
+    method: "GET",
     use: [
       $etag({
         control: { public: true, maxAge: [1, "year"], immutable: true },
@@ -235,6 +259,7 @@ class TestApp {
   });
 
   immutableMissingFileAction = $action({
+    method: "GET",
     use: [
       $etag({
         control: { public: true, maxAge: [1, "year"], immutable: true },
@@ -247,6 +272,7 @@ class TestApp {
   });
 
   conditionalErrorAction = $action({
+    method: "GET",
     use: [$etag(true)],
     handler: ({ reply }) => {
       if (this.counter === 0) {
@@ -267,18 +293,21 @@ class TestApp {
   nestedCounterB = 0;
 
   nestedInnerA = $action({
+    method: "GET",
     path: "/nested-inner-a",
     use: [$etag({ store: true, control: { public: true, maxAge: 600 } })],
     handler: () => `A-${this.nestedCounterA++}`,
   });
 
   nestedInnerB = $action({
+    method: "GET",
     path: "/nested-inner-b",
     use: [$etag(true)],
     handler: () => `B-${this.nestedCounterB++}`,
   });
 
   nestedOuter = $action({
+    method: "GET",
     path: "/nested-outer",
     handler: async () => {
       const a = await this.nestedInnerA.run();
@@ -877,6 +906,7 @@ describe("ServerEtagProvider", () => {
       const privateAction = alepha.inject(
         class TestPrivateCache {
           action = $action({
+            method: "GET",
             use: [
               $etag({
                 store: true,
@@ -907,6 +937,7 @@ describe("ServerEtagProvider", () => {
       const noCacheAction = alepha.inject(
         class TestNoCache {
           action = $action({
+            method: "GET",
             use: [
               $etag({
                 store: true,
@@ -934,6 +965,7 @@ describe("ServerEtagProvider", () => {
       const proxyAction = alepha.inject(
         class TestProxyRevalidate {
           action = $action({
+            method: "GET",
             use: [
               $etag({
                 store: true,
@@ -965,6 +997,7 @@ describe("ServerEtagProvider", () => {
       const sharedCacheAction = alepha.inject(
         class TestSharedCache {
           action = $action({
+            method: "GET",
             use: [
               $etag({
                 store: true,
@@ -1336,6 +1369,7 @@ describe("ServerEtagProvider", () => {
       const badRequestAction = alepha.inject(
         class TestBadRequest {
           action = $action({
+            method: "GET",
             use: [$etag(true)],
             handler: ({ reply }) => {
               reply.status = 400;

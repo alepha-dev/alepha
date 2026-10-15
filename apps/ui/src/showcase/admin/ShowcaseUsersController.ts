@@ -20,6 +20,7 @@ export class ShowcaseUsersController {
   protected readonly users = $inject(ShowcaseUsers);
 
   public readonly findUsers = $action({
+    method: "GET",
     path: "/admin/users",
     schema: {
       query: userQuerySchema.extend({
@@ -35,6 +36,7 @@ export class ShowcaseUsersController {
    * that page renders a permanent skeleton, and the row click looks broken.
    */
   public readonly getUser = $action({
+    method: "GET",
     path: "/admin/users/:id",
     schema: {
       params: z.object({ id: z.text() }),
@@ -47,6 +49,7 @@ export class ShowcaseUsersController {
   });
 
   public readonly findRoles = $action({
+    method: "GET",
     path: "/admin/users/metadata/roles",
     schema: {
       query: z.object({ userRealmName: z.string().optional() }),

@@ -31,6 +31,7 @@ describe("$client against a remote app, on Bun", () => {
   it("resolves a remote registry and calls through it", async () => {
     class Tide {
       height = $action({
+        method: "GET",
         schema: { response: z.text() },
         handler: () => "high",
       });
@@ -57,6 +58,7 @@ describe("$client against a remote app, on Bun", () => {
   it("names the host when the registry cannot be fetched", async () => {
     class Tide {
       height = $action({
+        method: "GET",
         schema: { response: z.text() },
         handler: () => "high",
       });

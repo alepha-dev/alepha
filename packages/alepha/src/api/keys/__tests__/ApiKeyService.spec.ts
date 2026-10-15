@@ -216,6 +216,7 @@ describe("ApiKeyService", () => {
 
       // Action that can be accessed with API key
       protected = $action({
+        method: "GET",
         use: [$secure()],
         schema: {
           response: z.object({ userId: z.string() }),
@@ -723,6 +724,7 @@ describe("ApiKeyService", () => {
       });
 
       whoami = $action({
+        method: "GET",
         use: [$secure()],
         schema: {
           response: z.object({ ip: z.string().optional() }),
@@ -733,6 +735,7 @@ describe("ApiKeyService", () => {
       // Not `api_key`, so the resolver leaves it alone and only the handler
       // validates it.
       validateInHandler = $action({
+        method: "GET",
         schema: {
           query: z.object({ token: z.string() }),
           response: z.object({ ip: z.string().optional() }),

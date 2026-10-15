@@ -37,6 +37,7 @@ class CookieBoundApp {
   });
 
   read = $action({
+    method: "GET",
     schema: {
       response: z.object({ theme: z.string() }),
     },

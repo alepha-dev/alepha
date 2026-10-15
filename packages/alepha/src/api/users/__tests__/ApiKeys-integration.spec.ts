@@ -42,6 +42,7 @@ const setup = async () => {
 
     // A protected action to test API key authentication (any authenticated user)
     getProfile = $action({
+      method: "GET",
       path: "/profile",
       group: "profile",
       use: [$secure()],

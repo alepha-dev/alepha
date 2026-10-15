@@ -25,6 +25,7 @@ export class ShowcaseJobsController {
   protected readonly jobs = $inject(ShowcaseJobs);
 
   public readonly listJobs = $action({
+    method: "GET",
     path: "/admin/jobs",
     schema: {
       response: z.array(jobRegistrationSchema),
@@ -33,6 +34,7 @@ export class ShowcaseJobsController {
   });
 
   public readonly listExecutions = $action({
+    method: "GET",
     path: "/admin/jobs/:name/executions",
     schema: {
       params: z.object({ name: z.text() }),
@@ -43,6 +45,7 @@ export class ShowcaseJobsController {
   });
 
   public readonly getExecution = $action({
+    method: "GET",
     path: "/admin/jobs/executions/:id",
     schema: {
       params: z.object({ id: z.text() }),

@@ -14,6 +14,7 @@ import {
   SecurityProvider,
   type UserAccount,
 } from "alepha/security";
+import { UnauthorizedError } from "alepha/server";
 import {
   allowInsecureRequests,
   Configuration,
@@ -341,23 +342,22 @@ export class AuthPrimitive extends Primitive<AuthPrimitiveOptions> {
   /**
    * Refreshes the access token using the refresh token.
    * Can be used on oauth2, oidc or credentials auth providers.
+   *
+   * A refresh token that is expired, revoked or unknown is an
+   * `UnauthorizedError` (401): the client signs in again. Every other
+   * failure (the database, the upstream provider) propagates as it is, so an
+   * outage is not mistaken for a dead session.
    */
   public async refresh(
     refreshToken: string,
     accessToken?: string,
   ): Promise<AccessTokenResponse> {
     if ("issuer" in this.options) {
-      return this.options.issuer
-        .refreshToken(refreshToken, accessToken)
-        .then((it) => it.tokens)
-        .catch((error) => {
-          throw new SecurityError(
-            "Failed to refresh access token using the refresh token (issuer)",
-            {
-              cause: error,
-            },
-          );
-        });
+      const result = await this.options.issuer.refreshToken(
+        refreshToken,
+        accessToken,
+      );
+      return result.tokens;
     }
 
     const oauth = await this.getOAuth();
@@ -368,12 +368,15 @@ export class AuthPrimitive extends Primitive<AuthPrimitiveOptions> {
           issued_at: this.dateTimeProvider.now().unix(),
         };
       } catch (error) {
-        throw new SecurityError(
-          "Failed to refresh access token using the refresh token (oauth2)",
-          {
-            cause: error,
-          },
-        );
+        // RFC 6749 §5.2: `invalid_grant` is the provider's answer for a
+        // refresh token that is expired, revoked or was never issued.
+        if ((error as { error?: unknown })?.error === "invalid_grant") {
+          throw new UnauthorizedError(
+            "The refresh token is expired or revoked",
+            error,
+          );
+        }
+        throw error;
       }
     }
 

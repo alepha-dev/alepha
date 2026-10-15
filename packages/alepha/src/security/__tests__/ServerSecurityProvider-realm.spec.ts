@@ -37,6 +37,7 @@ describe("$secure issuer protection", () => {
 
       // Action that requires realmA
       actionA = $action({
+        method: "GET",
         use: [$secure({ issuers: ["realmA"] })],
         handler: () => "REALM_A",
       });
@@ -114,6 +115,7 @@ describe("$secure issuer protection", () => {
 
       // Action that requires realmA
       actionA = $action({
+        method: "GET",
         use: [$secure({ issuers: ["realmA"] })],
         handler: () => "REALM_A",
       });
@@ -190,6 +192,7 @@ describe("$secure issuer protection", () => {
       });
 
       actionA = $action({
+        method: "GET",
         use: [$secure({ issuers: ["realmA"] })],
         handler: () => "REALM_A",
       });
@@ -242,12 +245,14 @@ describe("$secure issuer protection", () => {
 
       // Requires both realmA and admin:manage permission
       adminAction = $action({
+        method: "GET",
         use: [$secure({ issuers: ["realmA"], permissions: ["admin:manage"] })],
         handler: () => "ADMIN",
       });
 
       // Requires both realmA and read:data permission
       readAction = $action({
+        method: "GET",
         use: [$secure({ issuers: ["realmA"], permissions: ["read:data"] })],
         handler: () => "READ",
       });
@@ -346,6 +351,7 @@ describe("$secure issuer protection", () => {
       });
 
       actionA = $action({
+        method: "GET",
         use: [$secure({ issuers: ["realmA"] })],
         handler: () => "SUCCESS",
       });

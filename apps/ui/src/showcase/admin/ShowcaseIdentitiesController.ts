@@ -26,6 +26,7 @@ export class ShowcaseIdentitiesController {
   protected readonly users = $inject(ShowcaseUsers);
 
   public readonly findIdentities = $action({
+    method: "GET",
     path: "/admin/identities",
     schema: {
       query: identityQuerySchema.extend({
@@ -90,6 +91,7 @@ export class ShowcaseIdentitiesController {
    * site cannot disagree about what this realm allows.
    */
   public readonly getRealmConfig = $action({
+    method: "GET",
     path: "/realms/config",
     schema: {
       query: z.object({ userRealmName: z.string().optional() }),

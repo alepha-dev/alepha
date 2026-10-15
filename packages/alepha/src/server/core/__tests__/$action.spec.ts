@@ -5,9 +5,27 @@ import { describe, test } from "vitest";
 import { $action } from "../index.ts";
 
 describe("$action", () => {
+  test("is POST without a method, with or without a body", ({ expect }) => {
+    class App {
+      bare = $action({ handler: () => "ok" });
+      withBody = $action({
+        schema: { body: z.object({ name: z.text() }) },
+        handler: () => "ok",
+      });
+      read = $action({ method: "GET", handler: () => "ok" });
+    }
+
+    const app = Alepha.create().inject(App);
+
+    expect(app.bare.method).toBe("POST");
+    expect(app.withBody.method).toBe("POST");
+    expect(app.read.method).toBe("GET");
+  });
+
   test("should expose api", async ({ expect }) => {
     class Api {
       hello = $action({
+        method: "GET",
         schema: {
           params: z.object({
             name: z.text(),
@@ -70,9 +88,11 @@ describe("$action", () => {
     const alepha = Alepha.create();
     class TestApp {
       a1 = $action({
+        method: "GET",
         handler: () => "ok:a1",
       });
       a2 = $action({
+        method: "GET",
         handler: () => "ok:a2",
         disabled: true,
       });
@@ -90,6 +110,7 @@ describe("$action", () => {
     const alepha = Alepha.create();
     class TestApp {
       test = $action({
+        method: "GET",
         schema: {
           response: z.void(), // force no response
         },
@@ -112,6 +133,7 @@ describe("$action", () => {
     const alepha = Alepha.create();
     class TestApp {
       test = $action({
+        method: "GET",
         schema: {
           response: z.json(),
         },
@@ -135,6 +157,7 @@ describe("$action", () => {
     const fileSystem = alepha.inject(FileSystemProvider);
     class TestApp {
       test = $action({
+        method: "GET",
         schema: {
           response: z.file(), // expect a file response
         },

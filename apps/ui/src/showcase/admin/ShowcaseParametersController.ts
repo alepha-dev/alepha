@@ -26,6 +26,7 @@ export class ShowcaseParametersController {
   protected readonly parameters = $inject(ShowcaseParameters);
 
   public readonly getParameterTree = $action({
+    method: "GET",
     path: "/admin/parameters/tree",
     schema: {
       response: z.array(parameterTreeNodeSchema),
@@ -34,6 +35,7 @@ export class ShowcaseParametersController {
   });
 
   public readonly getCurrent = $action({
+    method: "GET",
     path: "/admin/parameters/:name",
     schema: {
       params: parameterNameParamSchema,
@@ -43,6 +45,7 @@ export class ShowcaseParametersController {
   });
 
   public readonly getHistory = $action({
+    method: "GET",
     path: "/admin/parameters/:name/history",
     schema: {
       params: parameterNameParamSchema,

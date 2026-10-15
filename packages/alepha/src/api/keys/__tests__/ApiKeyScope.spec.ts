@@ -37,6 +37,7 @@ class TestApp {
   });
 
   readReports = $action({
+    method: "GET",
     path: "/scope/reports",
     use: [$secure({ permissions: ["reports:read"] })],
     schema: { response: z.text() },

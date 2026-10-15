@@ -22,11 +22,13 @@ import { LinkProvider, ServerLinksProvider } from "../index.ts";
 describe("restricted actions", () => {
   class App {
     openAction = $action({
+      method: "GET",
       use: [$secure()],
       handler: () => "OPEN",
     });
 
     adminAction = $action({
+      method: "GET",
       use: [$secure({ roles: ["admin"] })],
       handler: () => "ADMIN",
     });

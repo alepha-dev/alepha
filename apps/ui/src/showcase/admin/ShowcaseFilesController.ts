@@ -23,6 +23,7 @@ export class ShowcaseFilesController {
   protected readonly files = $inject(ShowcaseFiles);
 
   public readonly findFiles = $action({
+    method: "GET",
     path: "/admin/files",
     schema: {
       query: fileQuerySchema,
@@ -37,6 +38,7 @@ export class ShowcaseFilesController {
    * no error anywhere.
    */
   public readonly getFileStats = $action({
+    method: "GET",
     path: "/admin/files/stats",
     schema: {
       response: storageStatsSchema,

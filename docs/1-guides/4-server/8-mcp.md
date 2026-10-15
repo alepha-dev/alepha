@@ -421,39 +421,37 @@ task_list = $tool({
 });
 ```
 
-## Context
+## Authentication
 
-Every handler receives an optional `context` with HTTP headers and custom data. Use it for authentication or request-scoped metadata:
-
-```typescript
-task_list = $tool({
-  description: "List user tasks.",
-  handler: async ({ params, context }) => {
-    const auth = context?.headers?.authorization;
-    if (!auth?.toString().startsWith("Bearer ")) {
-      throw new McpUnauthorizedError("Missing authentication");
-    }
-    // ...
-  },
-});
-```
-
-`context.data` carries whatever the transport put there. By default that is the
-authenticated user (`request.user`), so a tool can read the caller without
-resolving it again:
+A tool requires a user, a role or a permission the way an action does, with
+`use: [$secure(...)]`. Its handler then receives a non-optional `user`:
 
 ```typescript
+import { $secure } from "alepha/security";
+
 task_list = $tool({
   description: "List the caller's tasks.",
-  handler: async ({ context }) => {
-    const user = context?.data as UserAccountToken | undefined;
-    if (!user) {
-      throw new McpUnauthorizedError("Authentication required.");
-    }
+  use: [$secure({ permissions: ["tasks:read"] })],
+  handler: async ({ user }) => {
     return this.tasks.findMany({ where: { ownerId: user.id } });
   },
 });
 ```
+
+An anonymous call fails with a 401, a caller without the role or permission
+with a 403, and the AI client reads either as a tool error.
+
+The transport's `requireAuth` (see [Streamable HTTP](#streamable-http)) is a
+different thing: the gate on the whole endpoint, in front of every tool. It
+answers `401` with the `WWW-Authenticate` challenge an MCP client's OAuth
+discovery needs, before any tool is resolved. Turn it on for an endpoint that
+serves only signed-in callers, and put the per-tool rules in `$secure`.
+
+## Context
+
+Every handler also receives an optional `context` with the HTTP headers and
+custom data. `context.data` carries whatever the transport put there; by
+default that is the authenticated user (`request.user`).
 
 To carry anything else, such as a project scope or request id, override
 `buildContext` on the transport and register the subclass:
@@ -486,12 +484,9 @@ not remembered by this stateless server.
 Throw errors in handlers and they are returned as tool results the AI can read:
 
 ```typescript
-import { McpUnauthorizedError, McpForbiddenError } from "alepha/mcp";
+import { NotFoundError } from "alepha/server";
 
-handler: async ({ params, context }) => {
-  if (!context?.headers?.authorization) {
-    throw new McpUnauthorizedError("Missing token");
-  }
+handler: async ({ params }) => {
   const project = await this.projects.findById(params.id);
   if (!project) {
     throw new NotFoundError(`Project ${params.id} not found`);

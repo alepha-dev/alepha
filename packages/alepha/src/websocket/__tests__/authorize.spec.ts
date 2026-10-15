@@ -1,4 +1,5 @@
 import { Alepha, AlephaError, z } from "alepha";
+import { $secure } from "alepha/security";
 import { NodeHttpServerProvider } from "alepha/server";
 import { describe, it } from "vitest";
 import WebSocket from "ws";
@@ -170,7 +171,7 @@ describe("$websocket authorize", () => {
       ws = $websocket({
         channel: this.ch,
         handler: async () => {},
-        secure: true,
+        use: [$secure()],
         authorize: async () => ({ roomId: "x" }),
       });
     }

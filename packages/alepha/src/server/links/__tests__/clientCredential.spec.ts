@@ -16,11 +16,13 @@ import {
 
 class Vault {
   open = $action({
+    method: "GET",
     schema: { response: z.text() },
     handler: () => "open",
   });
 
   sealed = $action({
+    method: "GET",
     use: [$secure()],
     schema: { response: z.text() },
     handler: ({ headers }) => headers.authorization ?? "no credential",

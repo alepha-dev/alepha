@@ -31,7 +31,7 @@ class OrderService {
 
 ## Options
 
-| Option    | Type           | Required | Description |
-| --------- | -------------- | -------- | ----------- |
-| `use`     | `Middleware[]` | Yes      |             |
-| `handler` | `T`            | Yes      |             |
+| Option    | Type                    | Required | Description |
+| --------- | ----------------------- | -------- | ----------- |
+| `use`     | `readonly Middleware[]` | Yes      |             |
+| `handler` | `T`                     | Yes      |             |
