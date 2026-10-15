@@ -87,6 +87,25 @@ export class AppRouter {
       description:
         "Six pièces d'orfèvrerie faites à la main rue des Orfèvres. Or 18 carats et argent 925.",
     },
+    /*
+     * The catalogue: cached for everyone for 60 s (it has a loader), purged as
+     * soon as the back office adds, edits, publishes, withdraws, restocks or
+     * deletes a piece, since each of those changes what this list shows; and
+     * when an order reserves stock, which can make a piece unavailable. A
+     * reservation that expires is released by a job, with no write to hook:
+     * the 60 s lifetime covers it.
+     */
+    cache: {
+      invalidatedBy: [
+        { action: "commerceCheckoutPay" },
+        { action: "commerceAdminProductCreate" },
+        { action: "commerceAdminProductUpdate" },
+        { action: "commerceAdminProductPublish" },
+        { action: "commerceAdminProductRestock" },
+        { action: "commerceAdminProductAdjustStock" },
+        { action: "commerceAdminProductDelete" },
+      ],
+    },
     loader: async () => {
       const page = await this.produits.commerceProductList({
         query: { size: 24 },
@@ -139,6 +158,8 @@ export class AppRouter {
      */
     cache: {
       invalidatedBy: [
+        // An order reserves stock, which the page quotes.
+        { action: "commerceCheckoutPay" },
         { action: "commerceAdminProductUpdate" },
         { action: "commerceAdminProductPublish" },
         { action: "commerceAdminProductRestock" },
@@ -216,6 +237,12 @@ export class AppRouter {
     path: "/commande/:sessionId",
     head: { title: "Merci · Atelier Aurore" },
     schema: { params: z.object({ sessionId: z.uuid() }) },
+    /*
+     * Never cached. The page follows a payment while it is in flight (it polls
+     * the order), so a cached copy would show "waiting" again on a reload; and
+     * the URL is one buyer's capability, so sharing it buys nothing.
+     */
+    cache: false,
     /*
      * `sessionId` rides along because the page polls itself with it while the
      * payment or the invoice is still in flight, and nothing on the order row

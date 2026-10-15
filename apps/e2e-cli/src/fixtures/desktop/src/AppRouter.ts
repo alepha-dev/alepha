@@ -11,6 +11,9 @@ export class AppRouter {
     head: {
       title: "Desktop fixture",
     },
+    // The loader counts every view: a page that writes is not content the
+    // page cache may serve again (#E78).
+    cache: false,
     schema: {
       query: z.object({
         name: z.text({ default: "Alepha" }),
