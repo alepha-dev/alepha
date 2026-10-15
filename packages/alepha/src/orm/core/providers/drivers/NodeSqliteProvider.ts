@@ -95,6 +95,9 @@ declare module "alepha" {
  */
 export class NodeSqliteProvider extends DatabaseProvider {
   protected readonly env = $env(envSchema);
+  /**
+   * @internal Driver plumbing, outside semver.
+   */
   protected readonly builder = $inject(SqliteModelBuilder);
   protected readonly options = $store(nodeSqliteOptions);
 
@@ -159,6 +162,9 @@ export class NodeSqliteProvider extends DatabaseProvider {
     return "node_modules/.alepha/sqlite.db";
   }
 
+  /**
+   * @internal Driver plumbing, outside semver.
+   */
   public override get db(): PgAsyncDatabase<any> {
     return this.drizzleDb as unknown as PgAsyncDatabase<any>;
   }

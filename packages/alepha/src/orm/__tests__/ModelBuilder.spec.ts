@@ -9,7 +9,6 @@ import { AlephaOrmPostgres } from "../postgres/index.ts";
 import { PostgresModelBuilder } from "../postgres/services/PostgresModelBuilder.ts";
 import {
   testComplexRelationships,
-  testCustomConfig,
   testExpressionIndex,
   testModelBuilderFeatures,
 } from "./ModelBuilder-tests.ts";
@@ -249,27 +248,6 @@ describe("ModelBuilder", () => {
       expect(table).toBeDefined();
     });
 
-    it("should build table with custom config function", () => {
-      const customConfig = () => [];
-
-      const entity = $entity({
-        name: "users",
-        schema: z.object({
-          id: db.primaryKey(z.integer()),
-          name: z.text(),
-        }),
-        config: customConfig,
-      });
-
-      builder.buildTable(entity, options);
-
-      expect(options.tables.has("users")).toBe(true);
-      // Config is passed to the table but may not be called immediately
-      // The important thing is that the table is created with the config
-      const table = options.tables.get("users");
-      expect(table).toBeDefined();
-    });
-
     it("should build table with all options combined", () => {
       // Create referenced table first
       const rolesEntity = $entity({
@@ -321,7 +299,6 @@ describe("ModelBuilder", () => {
             name: "unique_email_username",
           },
         ],
-        config: (self) => [],
       });
 
       builder.buildTable(entity, options);
@@ -676,7 +653,6 @@ describe("ModelBuilder", () => {
             name: "valid_status",
           },
         ],
-        config: (self) => [],
       });
 
       builder.buildTable(entity, options);
@@ -894,16 +870,6 @@ describe("ModelBuilder", () => {
 
     it("should handle all entity options correctly (postgres)", async () => {
       await testModelBuilderFeatures(Alepha.create().with(AlephaOrmPostgres));
-    });
-
-    it("should handle custom config (sqlite)", async () => {
-      await testCustomConfig(
-        Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }),
-      );
-    });
-
-    it("should handle custom config (postgres)", async () => {
-      await testCustomConfig(Alepha.create().with(AlephaOrmPostgres));
     });
 
     it("should handle complex nested relationships (sqlite)", async () => {

@@ -5,14 +5,14 @@
  * Nothing here runs. `tsc` passing or failing *is* the result — the values are
  * all `{} as T`, because only the types are under test.
  *
- * The premise: `Repository.table` is already declared as
+ * The premise: `Drizzle.table(repo)` (`alepha/orm/drizzle`) is declared as
  * `PgTableWithColumns<SchemaToTableConfig<T>>`, so a statically-typed Drizzle
  * table per entity is derivable from the entity alone, even though the actual
  * table object is built at runtime. If that type is good enough for
  * `defineRelations`, the bridge is typed; if it is not, `$relations` would sit
  * on an untyped engine and lose the only thing it is for.
  */
-import type { SchemaToTableConfig } from "alepha/orm";
+import type { SchemaToTableConfig } from "alepha/orm/drizzle";
 import { defineRelations } from "drizzle-orm";
 import type { PgTableWithColumns } from "drizzle-orm/pg-core";
 import type { SQLiteAsyncDatabase } from "drizzle-orm/sqlite-core/async/db";

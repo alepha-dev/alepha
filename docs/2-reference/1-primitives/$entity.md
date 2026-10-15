@@ -19,7 +19,6 @@ Creates a database entity primitive that defines table structure using Zod schem
 | `indexes`     | `Object`     | No       | Database indexes to create for query optimization.           |
 | `foreignKeys` | `Array&lt;{` | No       | Foreign key constraints to maintain referential integrity.   |
 | `constraints` | `Array&lt;{` | No       | Additional table constraints for data validation             |
-| `config`      | `Object`     | No       | Advanced Drizzle ORM configuration for complex table setups. |
 
 ## Examples
 

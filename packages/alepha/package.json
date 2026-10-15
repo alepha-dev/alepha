@@ -265,6 +265,11 @@
       "import": "./src/orm/core/index.ts",
       "default": "./src/orm/core/index.ts"
     },
+    "./orm/drizzle": {
+      "types": "./src/orm/drizzle/index.ts",
+      "import": "./src/orm/drizzle/index.ts",
+      "default": "./src/orm/drizzle/index.ts"
+    },
     "./orm/postgres": {
       "types": "./src/orm/postgres/index.ts",
       "bun": "./src/orm/postgres/index.bun.ts",
@@ -714,6 +719,11 @@
         "bun": "./dist/orm/core/index.bun.js",
         "import": "./dist/orm/core/index.js",
         "default": "./dist/orm/core/index.js"
+      },
+      "./orm/drizzle": {
+        "types": "./dist/orm/drizzle/index.d.ts",
+        "import": "./dist/orm/drizzle/index.js",
+        "default": "./dist/orm/drizzle/index.js"
       },
       "./orm/postgres": {
         "types": "./dist/orm/postgres/index.d.ts",

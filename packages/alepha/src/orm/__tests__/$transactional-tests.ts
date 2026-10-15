@@ -114,8 +114,7 @@ export const testRawQueryRollsBack = async (alepha: Alepha) => {
       use: [$transactional()],
       handler: async (id: number) => {
         await this.repo.query(
-          (t) =>
-            sql`UPDATE ${t} SET ${sql.identifier(t.name.name)} = ${"raw"} WHERE ${t.id} = ${id}`,
+          sql`UPDATE ${this.repo.table} SET ${sql.identifier(this.repo.table.name.name)} = ${"raw"} WHERE ${this.repo.table.id} = ${id}`,
         );
         throw new Error("boom");
       },

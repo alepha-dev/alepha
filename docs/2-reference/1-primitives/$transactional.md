@@ -37,6 +37,7 @@ class OrderService {
 
 ## Options
 
-| Option   | Type                  | Required | Description                                                                |
-| -------- | --------------------- | -------- | -------------------------------------------------------------------------- |
-| `config` | `PgTransactionConfig` | No       | PostgreSQL transaction configuration (isolation level, access mode, etc.). |
+| Option      | Type                              | Required | Description                                                    |
+| ----------- | --------------------------------- | -------- | -------------------------------------------------------------- |
+| `isolation` | `TransactionOptions["isolation"]` | No       | The SQL isolation level of the transaction                     |
+| `access`    | `TransactionOptions["access"]`    | No       | Whether the transaction may write (`read write` when omitted). |

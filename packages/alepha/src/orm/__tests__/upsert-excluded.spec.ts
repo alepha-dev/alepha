@@ -2,6 +2,7 @@ import { Alepha, z } from "alepha";
 import { describe, expect, it } from "vitest";
 
 import { $entity, $repository, db, sql } from "../core/index.ts";
+import { Drizzle } from "../drizzle/index.ts";
 import { AlephaOrmPostgres } from "../postgres/index.ts";
 
 /**
@@ -79,10 +80,9 @@ const testSetToIncomingValue = async (alepha: Alepha) => {
   const [row] = await app.uniques.findMany({ where: { visitor: { eq: "a" } } });
   expect([row.day, row.hitCount]).toEqual(["2026-10-02", 7]);
 
-  const rendered = alepha
-    .inject(App)
-    .uniques.provider.db.select({ v: app.uniques.excluded("hitCount") })
-    .from(app.uniques.table)
+  const rendered = Drizzle.db(app.uniques)
+    .select({ v: app.uniques.excluded("hitCount") })
+    .from(Drizzle.table(app.uniques))
     .toSQL().sql;
   expect(rendered).toContain(`excluded."hit_count"`);
 };

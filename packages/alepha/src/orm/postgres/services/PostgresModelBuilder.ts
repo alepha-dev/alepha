@@ -3,7 +3,6 @@ import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import {
   type EntityPrimitive,
-  type FromSchema,
   ModelBuilder,
   PG_CREATED_AT,
   PG_GENERATED,
@@ -15,7 +14,6 @@ import {
   type PgIdentityOptions,
   type PgRefOptions,
   type SequencePrimitive,
-  schema,
 } from "alepha/orm";
 import type { BuildExtraConfigColumns } from "drizzle-orm";
 import * as pg from "drizzle-orm/pg-core";
@@ -36,6 +34,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 import { byte } from "../types/byte.ts";
+import { schema } from "../types/jsonb.ts";
 
 export class PostgresModelBuilder extends ModelBuilder {
   protected readonly dialect = "postgresql" as const;
@@ -109,7 +108,7 @@ export class PostgresModelBuilder extends ModelBuilder {
       options.tables,
     );
 
-    // Build the config function that includes indexes, foreign keys, constraints, and custom config
+    // Build the config function that includes indexes, foreign keys and constraints
     const configFn = this.getTableConfig(entity, options.tables);
 
     const table = nsp.table(tableName, columns, configFn);
@@ -176,9 +175,9 @@ export class PostgresModelBuilder extends ModelBuilder {
     nsp: PgSchema,
     enums: Map<string, unknown>,
     tables: Map<string, unknown>,
-  ): FromSchema<T> => {
+  ): Record<keyof T["shape"], pg.PgColumnBuilder> => {
     return Object.entries(z.schema.shape(schema)).reduce<
-      Partial<FromSchema<T>>
+      Partial<Record<keyof T["shape"], pg.PgColumnBuilder>>
     >((columns, [key, value]) => {
       let col = this.mapFieldToColumn(tableName, key, value, nsp, enums);
 
@@ -229,7 +228,7 @@ export class PostgresModelBuilder extends ModelBuilder {
 
       (columns as Record<string, unknown>)[key] = col;
       return columns;
-    }, {}) as FromSchema<T>;
+    }, {}) as Record<keyof T["shape"], pg.PgColumnBuilder>;
   };
 
   mapFieldToColumn = (

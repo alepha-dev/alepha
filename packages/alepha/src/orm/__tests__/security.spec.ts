@@ -405,7 +405,7 @@ describe("SQL Injection Security Tests", () => {
         for (const payload of sqlInjectionPayloads) {
           // Using parameterized queries should be safe
           const result = await app.users.query(
-            (t) => sql`SELECT * FROM ${t} WHERE ${t.username} = ${payload}`,
+            sql`SELECT * FROM ${app.users.table} WHERE ${app.users.table.username} = ${payload}`,
             users.schema.pick({ username: true }),
           );
 
@@ -433,8 +433,7 @@ describe("SQL Injection Security Tests", () => {
 
         for (const payload of sqlInjectionPayloads) {
           const result = await app.users.query(
-            (t) =>
-              sql`SELECT * FROM ${t} WHERE ${t.username} LIKE ${`%${payload}%`}`,
+            sql`SELECT * FROM ${app.users.table} WHERE ${app.users.table.username} LIKE ${`%${payload}%`}`,
             users.schema.pick({ username: true }),
           );
 
@@ -581,7 +580,7 @@ describe("SQL Injection Security Tests", () => {
 
         for (const payload of sqlInjectionPayloads) {
           const result = await app.users.query(
-            (t) => sql`SELECT * FROM ${t} WHERE ${t.username} = ${payload}`,
+            sql`SELECT * FROM ${app.users.table} WHERE ${app.users.table.username} = ${payload}`,
             users.schema.pick({ username: true }),
           );
 

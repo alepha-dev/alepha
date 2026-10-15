@@ -206,27 +206,27 @@ export class MemberService {
     keptRank: string,
   ): Promise<number> {
     const rows = await this.members.query(
-      (t) => sql`
-        UPDATE ${t}
-        SET ${sql.identifier(t.rank.name)} = CASE
-          WHEN ${t.userId} = ${toUserId} THEN ${MemberService.OWNER}
+      sql`
+        UPDATE ${this.members.table}
+        SET ${sql.identifier(this.members.table.rank.name)} = CASE
+          WHEN ${this.members.table.userId} = ${toUserId} THEN ${MemberService.OWNER}
           ELSE ${keptRank}
         END
-        WHERE ${t.organizationId} = ${organizationId}
+        WHERE ${this.members.table.organizationId} = ${organizationId}
           AND (
-            (${t.userId} = ${fromUserId} AND ${t.rank} = ${MemberService.OWNER})
-            OR ${t.userId} = ${toUserId}
+            (${this.members.table.userId} = ${fromUserId} AND ${this.members.table.rank} = ${MemberService.OWNER})
+            OR ${this.members.table.userId} = ${toUserId}
           )
           AND (
-            SELECT count(*) FROM ${t} AS qualifying
-            WHERE qualifying.${sql.identifier(t.organizationId.name)} = ${organizationId}
+            SELECT count(*) FROM ${this.members.table} AS qualifying
+            WHERE qualifying.${sql.identifier(this.members.table.organizationId.name)} = ${organizationId}
               AND (
-                (qualifying.${sql.identifier(t.userId.name)} = ${fromUserId}
-                  AND qualifying.${sql.identifier(t.rank.name)} = ${MemberService.OWNER})
-                OR qualifying.${sql.identifier(t.userId.name)} = ${toUserId}
+                (qualifying.${sql.identifier(this.members.table.userId.name)} = ${fromUserId}
+                  AND qualifying.${sql.identifier(this.members.table.rank.name)} = ${MemberService.OWNER})
+                OR qualifying.${sql.identifier(this.members.table.userId.name)} = ${toUserId}
               )
           ) = 2
-        RETURNING ${t.userId}
+        RETURNING ${this.members.table.userId}
       `,
       z.object({ userId: z.uuid() }),
     );

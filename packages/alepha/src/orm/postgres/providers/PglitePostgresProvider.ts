@@ -30,9 +30,15 @@ export class PglitePostgresProvider extends DatabaseProvider {
 
   protected readonly env = $env(databaseEnvSchema);
   protected readonly pgEnv = $env(postgresEnvSchema);
+  /**
+   * @internal Driver plumbing, outside semver.
+   */
   protected readonly builder = $inject(PostgresModelBuilder);
 
   protected client?: PGlite;
+  /**
+   * @internal Driver plumbing, outside semver.
+   */
   protected pglite?: PgliteDatabase;
 
   public get name() {
@@ -70,6 +76,9 @@ export class PglitePostgresProvider extends DatabaseProvider {
     return path;
   }
 
+  /**
+   * @internal Driver plumbing, outside semver.
+   */
   public override get db(): PgliteDatabase {
     if (!this.pglite) {
       throw new AlephaError("Database not initialized");

@@ -187,15 +187,18 @@ const total = await this.repo.count({ status: { eq: "active" } });
 
 ### query
 
-Execute raw SQL using Drizzle's `sql` tagged template. Returns decoded entities.
+Execute raw SQL using the `sql` tagged template. Returns decoded entities.
 
 ```typescript
 import { sql } from "alepha/orm";
 
+const t = this.repo.table;
 const results = await this.repo.query(
-  (table) => sql`SELECT * FROM ${table} WHERE ${table.price} > ${100}`,
+  sql`SELECT * FROM ${t} WHERE ${t.price} > ${100}`,
 );
 ```
+
+`repo.table` is a reference for raw SQL: interpolated, it renders the table name, and each property renders one of its columns. The same column references work as where-filter operands (`{ epicId: { eq: this.epics.table.id } }`) and in a write (``{ count: sql`${t.count} + 1` }``).
 
 A raw statement skips everything the other methods do for a write: it does not stamp `updatedAt`, bump a `db.version()` column, invalidate the query cache or emit repository events. For dialect-neutral date expressions, see [Portable SQL](/docs/guides-persistence-portable-sql).
 
@@ -648,7 +651,9 @@ await this.repo.transaction(async (tx) => {
 });
 ```
 
-All repository methods accept `{ tx }` in their options parameter to participate in the transaction (`tx: null` forces a statement outside the ambient `$transactional` one). Beyond `tx`, that options parameter also takes `force` (include soft-deleted rows), `for` (row locks, e.g. `{ for: "update" }`), `now` (override the timestamp used for `updatedAt`), and `cache` (see [Query cache](#query-cache)).
+All repository methods accept `{ tx }` in their options parameter to participate in the transaction (`tx: null` forces a statement outside the ambient `$transactional` one). Beyond `tx`, that options parameter also takes `force` (include soft-deleted rows), `for` (row locks: `{ for: "update" }`, or `{ for: { mode: "update", onLocked: "skip" } }` for `SKIP LOCKED`), `now` (override the timestamp used for `updatedAt`), and `cache` (see [Query cache](#query-cache)).
+
+`transaction()` and `$transactional()` take the transaction's options: `{ isolation: "serializable" }` (or `"read committed"`, `"repeatable read"`) and `{ access: "read only" }`.
 
 On drivers without interactive transaction support - Cloudflare D1 - `transaction()` throws and tells you to use `$transactional()` instead.
 
@@ -791,3 +796,21 @@ Repository operations emit lifecycle events:
 | `DbColumnNotFoundError`    | 500  | Referenced column does not exist                                               |
 | `DbConnectionError`        | 503  | The database cannot be reached                                                 |
 | `DbMigrationError`         | -    | A migration fails to apply at startup                                          |
+
+## Drizzle
+
+Alepha ORM is built on Drizzle, but `alepha/orm` exports none of it except the `sql` tag and its `SQL` type. Everything else is reached through `alepha/orm/drizzle`, which re-exports `drizzle-orm` and `drizzle-orm/pg-core` and gives the drizzle objects behind a repository:
+
+```typescript
+import { Drizzle, eq } from "alepha/orm/drizzle";
+
+const users = Drizzle.table(this.users);
+const rows = await Drizzle.db(this.users)
+  .select({ id: users.id })
+  .from(users)
+  .where(eq(users.email, email));
+```
+
+`Drizzle.tx(tx)` turns the `DbTransaction` a `transaction()` callback receives into drizzle's transaction.
+
+⚠️ `alepha/orm/drizzle` is outside semver. The drizzle version is pinned, and an Alepha minor release may move to a new drizzle with its own breaking changes.

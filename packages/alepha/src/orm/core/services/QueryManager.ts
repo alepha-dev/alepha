@@ -64,10 +64,11 @@ export class QueryManager {
     if (isSQLWrapper(query)) {
       conditions.push(query as SQL);
     } else {
-      const keys = Object.keys(query) as Array<keyof PgQueryWhere<ZObject>>;
+      const where = query as Record<string, any>;
+      const keys = Object.keys(where) as Array<keyof PgQueryWhere<ZObject>>;
 
       for (const key of keys) {
-        const operator = query[key] as SQL;
+        const operator = where[key] as SQL;
 
         // Drizzle silently drops `undefined` from WHERE, so a broken filter
         // becomes an unfiltered query. Fail loudly instead; callers that want
@@ -94,9 +95,9 @@ export class QueryManager {
 
         // Handle joins - check if this key matches a join at the current level
         if (
-          typeof query[key] === "object" &&
-          query[key] != null &&
-          !Array.isArray(query[key]) &&
+          typeof where[key] === "object" &&
+          where[key] != null &&
+          !Array.isArray(where[key]) &&
           joins?.length
         ) {
           // Find the join that matches this key (at the current level, without parent filtering)
@@ -130,7 +131,7 @@ export class QueryManager {
               };
             });
 
-            const sql = this.toSQL(query[key], {
+            const sql = this.toSQL(where[key], {
               schema: join.schema,
               col: join.col,
               joins: recursiveJoins.length > 0 ? recursiveJoins : undefined,

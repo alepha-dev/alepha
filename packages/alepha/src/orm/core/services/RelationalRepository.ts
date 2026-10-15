@@ -54,7 +54,13 @@ export class RelationalRepository<
   TKey extends keyof ZType & string,
 > {
   protected readonly repositories = $inject(RepositoryProvider);
+  /**
+   * @internal Driver plumbing, outside semver.
+   */
   protected readonly rqb = $inject(RqbExecutor);
+  /**
+   * @internal Driver plumbing, outside semver.
+   */
   protected readonly queryManager = $inject(QueryManager);
 
   public readonly relations: RelationsPrimitive<ZType, TMap>;
@@ -357,7 +363,7 @@ export class RelationalRepository<
   // --- escape hatches -------------------------------------------------------
 
   /**
-   * The drizzle table, for raw SQL.
+   * The table, as a reference for raw SQL (see `Repository.table`).
    */
   public get table() {
     return this.base.table;

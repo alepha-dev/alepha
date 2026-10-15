@@ -1,5 +1,5 @@
 import type { Infer, ZObject } from "alepha";
-import type { SQLWrapper } from "drizzle-orm";
+import type { SQL } from "drizzle-orm";
 
 import type { FilterOperators } from "./FilterOperators.ts";
 import type { PgRelationMap } from "./PgQuery.ts";
@@ -16,7 +16,7 @@ export type PgQueryWhere<
 export type PgQueryWhereOrSQL<
   T extends ZObject,
   Relations extends PgRelationMap<ZObject> | undefined = undefined,
-> = SQLWrapper | PgQueryWhere<T, Relations>;
+> = SQL | PgQueryWhere<T, Relations>;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -97,7 +97,7 @@ type PgQueryWhereConditions<
    *
    * @see notExists for the inverse of this test
    */
-  exists?: SQLWrapper;
+  exists?: SQL;
 
   /**
    * Test whether a subquery evaluates to have no rows.
@@ -118,7 +118,7 @@ type PgQueryWhereConditions<
    *
    * @see exists for the inverse of this test
    */
-  notExists?: SQLWrapper;
+  notExists?: SQL;
 };
 
 type PgQueryWhereRelations<

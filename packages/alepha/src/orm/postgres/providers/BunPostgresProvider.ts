@@ -28,10 +28,15 @@ import {
  */
 export class BunPostgresProvider extends PostgresProvider {
   protected client?: Bun.SQL;
+  /**
+   * @internal Driver plumbing, outside semver.
+   */
   protected bunDb?: BunSQLDatabase;
 
   /**
    * Get the Drizzle Postgres database instance.
+   *
+   * @internal Driver plumbing, outside semver.
    */
   public override get db(): PgAsyncDatabase<any> {
     if (!this.bunDb) {

@@ -233,8 +233,7 @@ describe("Database Error Tests", () => {
         // Use raw SQL to bypass ORM validation and trigger actual NOT NULL constraint
         try {
           await app.required.query(
-            (t) =>
-              sql`INSERT INTO ${t} (required_name) VALUES (${sql.raw("NULL")})`,
+            sql`INSERT INTO ${app.required.table} (required_name) VALUES (${sql.raw("NULL")})`,
           );
           expect.fail("Should have thrown DbNotNullError");
         } catch (error) {
@@ -254,9 +253,7 @@ describe("Database Error Tests", () => {
         await alepha.start();
 
         try {
-          await app.parents.query(
-            () => sql`SELECT * FROM non_existent_table_xyz`,
-          );
+          await app.parents.query(sql`SELECT * FROM non_existent_table_xyz`);
           expect.fail("Should have thrown DbTableNotFoundError");
         } catch (error) {
           expect(error).toBeInstanceOf(DbTableNotFoundError);
@@ -292,10 +289,10 @@ describe("Database Error Tests", () => {
         // The statement has to fail at the DRIVER, so the table goes out from
         // under the repository. Children first: it holds the foreign key.
         await app.parents.query(
-          () => sql`DROP TABLE ${sql.raw("error_test_children")}`,
+          sql`DROP TABLE ${sql.raw("error_test_children")}`,
         );
         await app.parents.query(
-          () => sql`DROP TABLE ${sql.raw("error_test_parents")}`,
+          sql`DROP TABLE ${sql.raw("error_test_parents")}`,
         );
         return app;
       };
@@ -343,7 +340,7 @@ describe("Database Error Tests", () => {
 
         try {
           await app.parents.query(
-            (t) => sql`SELECT ${sql.raw("non_existent_column_xyz")} FROM ${t}`,
+            sql`SELECT ${sql.raw("non_existent_column_xyz")} FROM ${app.parents.table}`,
           );
           expect.fail("Should have thrown DbColumnNotFoundError");
         } catch (error) {
@@ -367,8 +364,7 @@ describe("Database Error Tests", () => {
           // TABLE. The one message that names the column was the one that
           // hid it.
           await app.parents.query(
-            (t) =>
-              sql`INSERT INTO ${t} (${sql.raw("non_existent_column_xyz")}) VALUES ('x')`,
+            sql`INSERT INTO ${app.parents.table} (${sql.raw("non_existent_column_xyz")}) VALUES ('x')`,
           );
           expect.fail("Should have thrown DbColumnNotFoundError");
         } catch (error) {
@@ -523,8 +519,7 @@ describe("Database Error Tests", () => {
         // Use raw SQL to bypass ORM validation and trigger actual NOT NULL constraint
         try {
           await app.required.query(
-            (t) =>
-              sql`INSERT INTO ${t} (required_name) VALUES (${sql.raw("NULL")})`,
+            sql`INSERT INTO ${app.required.table} (required_name) VALUES (${sql.raw("NULL")})`,
           );
           expect.fail("Should have thrown DbNotNullError");
         } catch (error) {
@@ -553,9 +548,7 @@ describe("Database Error Tests", () => {
         await alepha.start();
 
         try {
-          await app.parents.query(
-            () => sql`SELECT * FROM non_existent_table_xyz`,
-          );
+          await app.parents.query(sql`SELECT * FROM non_existent_table_xyz`);
           expect.fail("Should have thrown DbTableNotFoundError");
         } catch (error) {
           expect(error).toBeInstanceOf(DbTableNotFoundError);
@@ -583,7 +576,7 @@ describe("Database Error Tests", () => {
 
         try {
           await app.parents.query(
-            (t) => sql`SELECT ${sql.raw("non_existent_column_xyz")} FROM ${t}`,
+            sql`SELECT ${sql.raw("non_existent_column_xyz")} FROM ${app.parents.table}`,
           );
           expect.fail("Should have thrown DbColumnNotFoundError");
         } catch (error) {

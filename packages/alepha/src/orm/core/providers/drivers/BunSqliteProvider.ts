@@ -77,10 +77,16 @@ declare module "alepha" {
  */
 export class BunSqliteProvider extends DatabaseProvider {
   protected readonly env = $env(envSchema);
+  /**
+   * @internal Driver plumbing, outside semver.
+   */
   protected readonly builder = $inject(SqliteModelBuilder);
   protected readonly options = $store(bunSqliteOptions);
 
   protected sqlite?: Database;
+  /**
+   * @internal Driver plumbing, outside semver.
+   */
   protected bunDb?: SQLiteBunDatabase;
 
   public get name() {
@@ -107,6 +113,9 @@ export class BunSqliteProvider extends DatabaseProvider {
     }
   }
 
+  /**
+   * @internal Driver plumbing, outside semver.
+   */
   public override get db(): PgAsyncDatabase<any> {
     if (!this.bunDb) {
       throw new AlephaError("Database not initialized");

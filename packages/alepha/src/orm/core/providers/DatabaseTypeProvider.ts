@@ -11,7 +11,6 @@ import {
   type ZType,
   z,
 } from "alepha";
-import type { UpdateDeleteAction } from "drizzle-orm/pg-core/foreign-keys";
 
 import {
   PG_CREATED_AT,
@@ -29,6 +28,7 @@ import {
 } from "../constants/PG_SYMBOLS.ts";
 import type { PgAttr } from "../helpers/pgAttr.ts";
 import { pgAttr } from "../helpers/pgAttr.ts";
+import type { ForeignKeyAction } from "../interfaces/ForeignKeyAction.ts";
 
 export class DatabaseTypeProvider {
   public readonly attr = pgAttr;
@@ -202,8 +202,8 @@ export class DatabaseTypeProvider {
     type: T,
     ref: () => any,
     actions?: {
-      onUpdate?: UpdateDeleteAction;
-      onDelete?: UpdateDeleteAction;
+      onUpdate?: ForeignKeyAction;
+      onDelete?: ForeignKeyAction;
     },
   ): PgAttr<T, PgRef> => {
     // If actions are not provided, set default onDelete based on type

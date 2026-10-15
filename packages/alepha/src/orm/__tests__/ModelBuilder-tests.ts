@@ -304,38 +304,6 @@ export const testModelBuilderFeatures = async (alepha: Alepha) => {
 };
 
 // ---------------------------------------------------------------------------
-// testCustomConfig
-// ---------------------------------------------------------------------------
-
-export const testCustomConfig = async (alepha: Alepha) => {
-  const customEntity = $entity({
-    name: "custom_table",
-    schema: z.object({
-      id: db.primaryKey(z.integer()),
-      data: z.string(),
-    }),
-    config: (self) => {
-      return [];
-    },
-  });
-
-  class CustomApp {
-    custom = $repository(customEntity);
-  }
-
-  const app = alepha.inject(CustomApp);
-  await alepha.start();
-
-  const record = await app.custom.create({
-    data: "test data",
-  });
-  expect(record.id).toBeDefined();
-  expect(record.data).toBe("test data");
-
-  await app.custom.clear({ force: true });
-};
-
-// ---------------------------------------------------------------------------
 // testComplexRelationships
 // ---------------------------------------------------------------------------
 

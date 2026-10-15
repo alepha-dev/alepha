@@ -1,13 +1,22 @@
 import { createMiddleware, type Middleware } from "alepha";
-import type { PgTransactionConfig } from "drizzle-orm/pg-core/session";
 
+import type { TransactionOptions } from "../interfaces/TransactionOptions.ts";
 import { DatabaseProvider } from "../providers/drivers/DatabaseProvider.ts";
 
+/**
+ * Options of `$transactional()`: how the transaction runs.
+ */
 export interface TransactionalOptions {
   /**
-   * PostgreSQL transaction configuration (isolation level, access mode, etc.).
+   * The SQL isolation level of the transaction. The database's default
+   * (`read committed` on Postgres) when omitted; SQLite ignores it.
    */
-  config?: PgTransactionConfig;
+  isolation?: TransactionOptions["isolation"];
+
+  /**
+   * Whether the transaction may write (`read write` when omitted).
+   */
+  access?: TransactionOptions["access"];
 }
 
 // TODO: support savepoints for nested transactions.
@@ -59,11 +68,7 @@ export const $transactional = (options?: TransactionalOptions): Middleware => {
       // has no transactions, so the no-op on D1 is never silent.
       const owner = {};
       return async (...args: any[]) => {
-        return provider.transactional(
-          () => next(...args),
-          options?.config,
-          owner,
-        );
+        return provider.transactional(() => next(...args), options, owner);
       };
     },
   });

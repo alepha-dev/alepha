@@ -110,11 +110,6 @@ export class SqliteModelBuilder extends ModelBuilder {
       // empty array (see its `foreignKeys` loop), so this narrows safely.
       sqliteBuilders as TableConfigBuilders<any>,
       tableResolver,
-      (config, self) => {
-        // SQLite custom config handler
-        const customConfigs = (config as any)(self);
-        return Array.isArray(customConfigs) ? customConfigs : [];
-      },
     );
   }
 

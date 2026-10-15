@@ -16,8 +16,6 @@ export * from "./providers/NodePostgresProvider.ts";
 export * from "./providers/PglitePostgresProvider.ts";
 export * from "./providers/PostgresProvider.ts";
 export * from "./schemas/postgresEnvSchema.ts";
-export * from "./services/PostgresModelBuilder.ts";
-export * from "./types/byte.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 

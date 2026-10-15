@@ -1,8 +1,8 @@
 import { type Alepha, SchemaValidationError, z } from "alepha";
-import { eq } from "drizzle-orm";
 import { expect } from "vitest";
 
 import { $entity, $repository, db, sql } from "../core/index.ts";
+import { Drizzle, eq } from "../drizzle/index.ts";
 
 const userEntity = $entity({
   name: "users",
@@ -29,7 +29,7 @@ export const testExecuteBasicSqlQueries = async (alepha: Alepha) => {
 
   expect(
     await app.users.query(
-      (t) => sql`SELECT * FROM ${t} WHERE ${t.name} = ${name}`,
+      sql`SELECT * FROM ${app.users.table} WHERE ${app.users.table.name} = ${name}`,
       userEntity.schema.pick({ name: true }),
     ),
   ).toEqual([
@@ -40,7 +40,11 @@ export const testExecuteBasicSqlQueries = async (alepha: Alepha) => {
 
   expect(
     await app.users.query(
-      (t, db) => db.select({ name: t.name }).from(t).where(eq(t.name, name)),
+      Drizzle.db(app.users)
+        .select({ name: Drizzle.table(app.users).name })
+        .from(Drizzle.table(app.users))
+        .where(eq(Drizzle.table(app.users).name, name))
+        .getSQL(),
       userEntity.schema.pick({ name: true }),
     ),
   ).toEqual([
@@ -51,7 +55,7 @@ export const testExecuteBasicSqlQueries = async (alepha: Alepha) => {
 
   expect(
     await app.users.query(
-      (t) => sql`SELECT ${t.name} FROM ${t} WHERE ${t.name} = ${name}`,
+      sql`SELECT ${app.users.table.name} FROM ${app.users.table} WHERE ${app.users.table.name} = ${name}`,
       userEntity.schema.pick({ name: true }),
     ),
   ).toEqual([
@@ -63,7 +67,7 @@ export const testExecuteBasicSqlQueries = async (alepha: Alepha) => {
   // by default execute expects a full schema, so this should throw
   await expect(() =>
     app.users.query(
-      (t) => sql`SELECT ${t.name} FROM ${t} WHERE ${t.name} = ${name}`,
+      sql`SELECT ${app.users.table.name} FROM ${app.users.table} WHERE ${app.users.table.name} = ${name}`,
     ),
   ).rejects.toThrow(SchemaValidationError);
 };

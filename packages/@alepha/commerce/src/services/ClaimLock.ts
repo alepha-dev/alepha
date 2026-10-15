@@ -101,7 +101,8 @@ export class ClaimLock {
     }
 
     for (const key of this.sorted(keys)) {
-      const [row] = await tx.execute(sql`
+      // `execute` runs on the ambient transaction checked above.
+      const [row] = await this.db.execute(sql`
         SELECT
           pg_advisory_xact_lock(
             hashtext(${key.namespace}),

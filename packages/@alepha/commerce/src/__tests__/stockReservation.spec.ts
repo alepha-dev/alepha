@@ -536,7 +536,7 @@ describe("stock reservation", () => {
       await expect(
         ctx.db.transactional(
           () => ctx.stock.reserve(ring.id, 1, { orderId: randomUUID() }),
-          { isolationLevel: "repeatable read" },
+          { isolation: "repeatable read" },
         ),
       ).rejects.toThrow(/REPEATABLE READ/);
       expect(await ctx.stock.reserved(ring.id)).toBe(0);
