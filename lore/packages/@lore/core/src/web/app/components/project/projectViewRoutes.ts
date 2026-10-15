@@ -77,6 +77,7 @@ const ROUTES_SETTINGS = [
 ];
 
 export const ROUTES_FULL_WIDTH = new Set([
+  "projectUptime",
   // The project's landing page since #Q2104. Full width because it is a grid
   // that lays its own columns out from the space it is given (`auto-fill` over
   // a container query), and a centred 1024px column would both cap the tiles

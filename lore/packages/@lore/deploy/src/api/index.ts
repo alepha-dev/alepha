@@ -14,6 +14,7 @@ import { EstateController } from "./controllers/EstateController.ts";
 import { EstatePullController } from "./controllers/EstatePullController.ts";
 import { EstateSocketController } from "./controllers/EstateSocketController.ts";
 import { InsightsController } from "./controllers/InsightsController.ts";
+import { MonitorController } from "./controllers/MonitorController.ts";
 import { ProjectEstateController } from "./controllers/ProjectEstateController.ts";
 import { QualityController } from "./controllers/QualityController.ts";
 import { SigilAnalyticsController } from "./controllers/SigilAnalyticsController.ts";
@@ -190,6 +191,7 @@ export const LoreDeployApi = $module({
     AdminEstateController,
     SigilAnalyticsController,
     InsightsController,
+    MonitorController,
     BlightController,
   ],
 });
@@ -256,3 +258,5 @@ export { UptimeStateService } from "./services/UptimeStateService.ts";
 
 export { UptimePushController } from "./controllers/UptimePushController.ts";
 export { UptimePushService } from "./services/UptimePushService.ts";
+
+export { MonitorController } from "./controllers/MonitorController.ts";

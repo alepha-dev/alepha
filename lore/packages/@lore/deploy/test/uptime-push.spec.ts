@@ -125,4 +125,24 @@ describe("Push monitor receipts", () => {
     expect(incidents).toHaveLength(1);
     expect(incidents[0]?.endedAt).toBeUndefined();
   });
+  it("checks a long push silence window every minute rather than waiting another whole window", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    const id = ctx.created.monitor.id;
+    await ctx.repos.monitors.updateById(id, { intervalSecs: 3600 });
+    expect((await ctx.push(ctx.created.token)).status).toBe(204);
+    await ctx.clock.travel(60, "minutes");
+    await expect
+      .poll(async () => (await ctx.repos.monitors.getById(id)).lastCheckedAt)
+      .toBeDefined();
+    for (let index = 0; index < 2; index++) {
+      const previous = (await ctx.repos.monitors.getById(id)).lastCheckedAt;
+      await ctx.clock.travel(1, "minute");
+      await expect
+        .poll(async () => (await ctx.repos.monitors.getById(id)).lastCheckedAt)
+        .not.toBe(previous);
+    }
+    expect((await ctx.repos.monitors.getById(id)).status).toBe("down");
+  });
 });

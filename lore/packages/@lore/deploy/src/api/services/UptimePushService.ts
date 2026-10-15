@@ -7,10 +7,10 @@ import { BadRequestError, ConflictError, NotFoundError } from "alepha/server";
 
 import { type Monitor, monitors } from "../entities/monitors.ts";
 
-export type PushMonitorConfig = Pick<
-  Monitor,
-  "name" | "intervalSecs" | "timeoutSecs" | "confirmations" | "expect"
->;
+export type PushMonitorConfig = Pick<Monitor, "name"> &
+  Partial<
+    Pick<Monitor, "intervalSecs" | "timeoutSecs" | "confirmations" | "expect">
+  >;
 
 /**
  * Receipt credentials grant one write to one monitor, never project access.

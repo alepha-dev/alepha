@@ -44,7 +44,9 @@ export class UptimeStateService {
       : failures >= monitor.confirmations
         ? "down"
         : monitor.status;
-    const interval = monitor.intervalSecs * 1000;
+    // Push intervals measure allowed silence, not how often silence is checked.
+    const interval =
+      (monitor.kind === "push" ? 60 : monitor.intervalSecs) * 1000;
     const scheduled = Date.parse(monitor.nextCheckAt);
     const nextCheckAt = new Date(
       scheduled +

@@ -229,6 +229,9 @@ export default defineConfig({
         "../../.vendor/@alepha/ui/src",
       ],
       dynamicPrefixes: [
+        "uptime.kind.",
+        "uptime.status.",
+        "uptime.window.",
         // The dashboard tiles of #E77: tr(`dashboard.empty.${reason}`) over
         // the closed `dashboardEmptyReasonSchema` set, tr(`dashboard.badge.${code}`)
         // and tr(`dashboard.marker.${kind}`) over codes a resolver puts on a

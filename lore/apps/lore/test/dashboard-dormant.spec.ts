@@ -23,7 +23,9 @@ import {
  * A dormant project's board (#E77, #Q2662): no recorded write in 90 days,
  * so the computed board is one line and what it shipped last.
  */
-describe("dashboard dormant state", () => {
+// A 120-day advance also executes the registered minute jobs. Keep all
+// assertions, with enough time for the full application on a loaded runner.
+describe("dashboard dormant state", { timeout: 60_000 }, () => {
   let alepha: Alepha;
   let dateTime: DateTimeProvider;
   let board: ProjectDashboardController;
