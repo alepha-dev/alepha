@@ -509,8 +509,8 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
       reply.status = status;
       reply.headers["content-type"] = "application/json";
       reply.body = JSON.stringify({
-        status,
         error: errorNameByStatus[status],
+        status,
         // 4xx messages are intentional and client-facing; 5xx messages can
         // leak internals (DB errors, stack-y hints) — sanitize them in
         // production, exactly like the unknown-error fallback below.
@@ -544,9 +544,11 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 
     reply.status = 500;
     reply.headers["content-type"] = "application/json";
+    // Same key order as `HttpError.toJSON`: a strict `$action`'s 500
+    // (an `InternalServerError`) must answer byte for byte like this one.
     reply.body = JSON.stringify({
-      status: 500,
       error: "InternalServerError",
+      status: 500,
       message: this.alepha.isProduction()
         ? "Internal Server Error"
         : error.message,

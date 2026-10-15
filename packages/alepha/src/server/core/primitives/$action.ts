@@ -9,6 +9,7 @@ import {
   isTypeFile,
   type Middleware,
   type MiddlewareProvides,
+  PipelineHandler,
   PipelinePrimitive,
   type PipelinePrimitiveOptions,
   type SchemaOutput,
@@ -18,6 +19,8 @@ import { KIND } from "alepha/internal";
 import { $logger } from "alepha/logger";
 
 import type { RouteMethod } from "../constants/routeMethods.ts";
+import type { HttpErrorClass } from "../errors/HttpError.ts";
+import { InternalServerError } from "../errors/InternalServerError.ts";
 import { isMultipart } from "../helpers/isMultipart.ts";
 import { ServerReply } from "../helpers/ServerReply.ts";
 import type {
@@ -112,12 +115,17 @@ import {
 export const $action = <
   TConfig extends RequestConfigSchema,
   const TUse extends readonly Middleware[] = [],
+  const TErrors extends readonly HttpErrorClass[] | undefined = undefined,
 >(
-  options: ActionPrimitiveOptions<TConfig, TUse>,
-): ActionPrimitiveFn<TConfig> => {
+  options: ActionPrimitiveOptions<TConfig, TUse, TErrors>,
+): ActionPrimitiveFn<TConfig, TErrors> => {
   const instance = createPrimitive(
-    ActionPrimitive<TConfig>,
-    options as unknown as ActionPrimitiveOptions<TConfig>,
+    ActionPrimitive<TConfig, TErrors>,
+    options as unknown as ActionPrimitiveOptions<
+      TConfig,
+      readonly Middleware[],
+      TErrors
+    >,
   );
   const fn = (
     config?: ClientRequestEntry<TConfig>,
@@ -130,7 +138,10 @@ export const $action = <
       return instance.options.name || instance.config.propertyKey;
     },
   });
-  return Object.setPrototypeOf(fn, instance) as ActionPrimitiveFn<TConfig>;
+  return Object.setPrototypeOf(fn, instance) as ActionPrimitiveFn<
+    TConfig,
+    TErrors
+  >;
 };
 
 // ----------------------------------------------------------------------------------------------------------
@@ -138,6 +149,9 @@ export const $action = <
 export interface ActionPrimitiveOptions<
   TConfig extends RequestConfigSchema,
   TUse extends readonly Middleware[] = readonly Middleware[],
+  TErrors extends readonly HttpErrorClass[] | undefined =
+    | readonly HttpErrorClass[]
+    | undefined,
 >
   extends
     Omit<ServerRoute, "handler" | "path" | "schema" | "mapParams">,
@@ -217,6 +231,33 @@ export interface ActionPrimitiveOptions<
   use?: TUse;
 
   /**
+   * The errors this action answers with: `$error` constants or built-in
+   * `HttpError` classes (`NotFoundError`). Setting it turns on strict mode.
+   *
+   * - Omitted: any `HttpError` the handler throws reaches the client with its
+   *   status, as it always has.
+   * - Set: an error matching a declared class by `instanceof` reaches the
+   *   client with its status and `data`. Anything else the handler (or a
+   *   service it calls) throws becomes a 500 `InternalServerError`, answered
+   *   like any other crash, and a warning names the action and the
+   *   undeclared class.
+   * - `errors: []` is strict with nothing expected.
+   *
+   * Only what the handler throws is filtered. Request validation (400),
+   * `$secure` (401/403), `$rateLimit` (429) and every other `use`
+   * middleware sit outside the filter and always pass, and so does a 503 (a
+   * timeout such as `DbTimeoutError`), which tells the caller to retry.
+   *
+   * ```ts
+   * createProject = $action({
+   *   errors: [QuotaExceeded, NotFoundError],
+   *   handler: async ({ body }) => this.projects.create(body),
+   * });
+   * ```
+   */
+  errors?: TErrors;
+
+  /**
    * Main route handler. This is where the route logic is implemented.
    */
   handler: ServerActionHandler<TConfig, TUse>;
@@ -252,8 +293,25 @@ declare module "alepha" {
 
 export class ActionPrimitive<
   TConfig extends RequestConfigSchema,
-> extends PipelinePrimitive<ActionPrimitiveOptions<TConfig>> {
+  TErrors extends readonly HttpErrorClass[] | undefined =
+    | readonly HttpErrorClass[]
+    | undefined,
+> extends PipelinePrimitive<
+  ActionPrimitiveOptions<TConfig, readonly Middleware[], TErrors>
+> {
   protected readonly log = $logger();
+
+  /**
+   * The handler composed with its `use` middlewares, the strict-mode filter
+   * innermost: it wraps `options.handler` alone, so every middleware (and the
+   * request validation that runs before the pipeline) stays outside it. One
+   * wrapper serves the HTTP call and the local `run()` call alike.
+   */
+  public readonly handler = new PipelineHandler(
+    this.filterDeclaredErrors(this.options.handler),
+    this.options.use,
+  );
+
   protected readonly settings = $store(serverApiOptions);
   protected readonly httpClient = $inject(HttpClient);
   protected readonly serverProvider = $inject(ServerProvider);
@@ -334,6 +392,87 @@ export class ActionPrimitive<
     return this.options.schema;
   }
 
+  /**
+   * The declared errors, or `undefined` when the action is not strict.
+   */
+  public get errors(): TErrors | undefined {
+    return this.options.errors;
+  }
+
+  /**
+   * Wrap the handler so that, in strict mode, only the declared errors
+   * escape it unchanged. `errors !== undefined`, never its length:
+   * `errors: []` is strict too.
+   */
+  protected filterDeclaredErrors(
+    handler: (...args: any[]) => any,
+  ): (...args: any[]) => any {
+    const errors = this.options.errors;
+    if (errors === undefined) {
+      return handler;
+    }
+
+    return async (...args: any[]) => {
+      try {
+        return await handler(...args);
+      } catch (error) {
+        throw this.toDeclaredError(error, errors);
+      }
+    };
+  }
+
+  /**
+   * What a strict action lets through for an error its handler threw: the
+   * error itself when it is declared or a 503, else an `InternalServerError`
+   * carrying it as `cause`.
+   */
+  protected toDeclaredError(
+    error: unknown,
+    errors: readonly HttpErrorClass[],
+  ): unknown {
+    if (errors.some((cls) => error instanceof cls)) {
+      return error;
+    }
+
+    const unavailable = this.findUnavailable(error);
+    if (unavailable) {
+      return unavailable;
+    }
+
+    const name = error instanceof Error ? error.name : typeof error;
+    const message = error instanceof Error ? error.message : String(error);
+
+    this.log.warn(
+      `'${this.name}' threw ${name}, which it does not declare: it answers ` +
+        `a 500. Add ${name} to its errors, or stop throwing it.`,
+      { action: this.name, error: name, message },
+    );
+
+    return new InternalServerError(`${name}: ${message}`, error);
+  }
+
+  /**
+   * A 503 in the error or its cause chain: a timeout (`DbTimeoutError`,
+   * which drizzle may wrap) or anything else telling the caller to retry.
+   * It is never a contract violation, so strict mode passes it through.
+   */
+  protected findUnavailable(error: unknown): Error | undefined {
+    let current: unknown = error;
+
+    // Bounded: a cause chain looping on itself must not hang the error path.
+    for (let depth = 0; depth < 10; depth++) {
+      if (!(current instanceof Error)) {
+        return undefined;
+      }
+      if ((current as { status?: unknown }).status === 503) {
+        return current;
+      }
+      current = current.cause;
+    }
+
+    return undefined;
+  }
+
   public getBodyContentType(): string | undefined {
     if (this.options.schema?.body) {
       // TODO: move to `alepha.server.multipart` module ?
@@ -409,7 +548,7 @@ export class ActionPrimitive<
     };
 
     const eventData: {
-      action: ActionPrimitive<TConfig>;
+      action: ActionPrimitive<TConfig, TErrors>;
       request: ServerRequest;
       options: ClientRequestOptions;
       context?: Record<string, any>;
@@ -518,7 +657,7 @@ export class ActionPrimitive<
   ): Promise<FetchResponse<ClientRequestResponse<TConfig>>> {
     return this.httpClient.fetchAction({
       host: this.serverProvider.hostname, // that's the trick, we just use the server hostname
-      action: this,
+      action: this as ActionPrimitive<TConfig>,
       config,
       options,
     });
@@ -527,7 +666,10 @@ export class ActionPrimitive<
 
 export interface ActionPrimitiveFn<
   TConfig extends RequestConfigSchema,
-> extends ActionPrimitive<TConfig> {
+  TErrors extends readonly HttpErrorClass[] | undefined =
+    | readonly HttpErrorClass[]
+    | undefined,
+> extends ActionPrimitive<TConfig, TErrors> {
   (
     config?: ClientRequestEntry<TConfig>,
     options?: ClientRequestOptions,

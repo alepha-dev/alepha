@@ -3,6 +3,7 @@ export * from "./errors/BadRequestError.ts";
 export * from "./errors/ConflictError.ts";
 export * from "./errors/ForbiddenError.ts";
 export * from "./errors/HttpError.ts";
+export * from "./errors/InternalServerError.ts";
 export * from "./errors/NotFoundError.ts";
 export * from "./errors/UnauthorizedError.ts";
 export * from "./errors/ValidationError.ts";
