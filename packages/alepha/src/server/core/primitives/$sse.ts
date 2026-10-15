@@ -9,7 +9,6 @@ import {
   type PipelinePrimitiveOptions,
   type ZObject,
   type ZType,
-  z,
 } from "alepha";
 import { KIND } from "alepha/internal";
 import { $logger } from "alepha/logger";
@@ -154,9 +153,13 @@ export interface SsePrimitiveOptions<
   group?: string;
 
   /**
-   * Pathname of the route. If not provided, property key is used.
+   * Pathname of the route, below the API prefix (`/api` by default). Path
+   * variables are written `:name` and declared in `schema.params`.
+   *
+   * Required: the URL is part of the public contract, so it never derives
+   * from the property name, which a rename would change silently.
    */
-  path?: string;
+  path: string;
 
   /**
    * The config schema for the SSE endpoint.
@@ -353,7 +356,7 @@ export class SseFetchResponse<T> implements AsyncIterable<T> {
  * **Key Features**
  * - Full TypeScript inference for event data types
  * - Automatic schema validation using Zod
- * - Convention-based URL generation with customizable paths
+ * - An explicit path on every endpoint, no convention to remember
  * - Direct invocation (`run()`) returns an `SseStream` async iterable
  * - HTTP requests (`fetch()`) returns an `SseFetchResponse` async iterable
  * - Built-in `text/event-stream` content-type handling
@@ -367,12 +370,14 @@ export class SseFetchResponse<T> implements AsyncIterable<T> {
  * $sse({ path: "/feed/:id" })   // POST /api/feed/:id
  * ```
  *
- * The HTTP method is always POST.
+ * The HTTP method is always POST. `path` is required, so renaming the
+ * property never moves the URL.
  *
  * @example
  * ```ts
  * class NotificationController {
  *   events = $sse({
+ *     path: "/notifications/events",
  *     schema: {
  *       data: z.object({
  *         type: z.text(),
@@ -422,6 +427,13 @@ export class SsePrimitive<
   protected readonly serverRouterProvider = $inject(ServerRouterProvider);
 
   protected onInit() {
+    // Typed as required; this guards an untyped caller, whose endpoint would
+    // otherwise register at `/api/undefined`.
+    if (!this.options.path) {
+      throw new AlephaError(
+        `SSE endpoint '${this.name}' must declare a 'path'.`,
+      );
+    }
     if (this.options.disabled) {
       this.log.debug(
         `SSE endpoint '${this.name}' is disabled. It won't be available in the API.`,
@@ -465,24 +477,10 @@ export class SsePrimitive<
   }
 
   /**
-   * Returns the path of the SSE endpoint.
+   * Returns the path of the SSE endpoint, without the API prefix.
    */
   public get path(): string {
-    if (this.options.path) {
-      return this.options.path;
-    }
-
-    let path = `/${this.name}`;
-
-    if (this.options.schema?.params) {
-      for (const [key] of Object.entries(
-        z.schema.shape(this.options.schema.params),
-      )) {
-        path += `/:${key}`;
-      }
-    }
-
-    return path;
+    return this.options.path;
   }
 
   /**
@@ -524,7 +522,7 @@ export class SsePrimitive<
       headers = {},
     } = (config ?? {}) as SseRequestEntryContainer<SseConfigSchema>;
 
-    const url = new URL(`http://localhost${this.path ?? ""}`);
+    const url = new URL(`http://localhost${this.path}`);
     const reply = new ServerReply();
 
     const serverRequest: Partial<ServerRequest> = {

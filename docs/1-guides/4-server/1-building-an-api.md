@@ -221,6 +221,7 @@ import { $sse } from "alepha/server";
 
 class AiController {
   chat = $sse({
+    path: "/chat",
     schema: {
       body: z.object({ prompt: z.text() }),
       data: z.object({ token: z.text() }),

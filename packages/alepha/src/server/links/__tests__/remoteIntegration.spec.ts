@@ -44,6 +44,7 @@ class Observatory {
   });
 
   ticks = $sse({
+    path: "/ticks",
     schema: { data: z.object({ tick: z.integer() }) },
     handler: ({ emit }) => {
       emit({ tick: 1 });
