@@ -2299,8 +2299,6 @@ export default {
   "dashboard.segment.shelved": "shelved",
   "dashboard.segment.held": "on hold",
   "dashboard.marker.deploy": "Deployed",
-  "dashboard.edit": "Edit board",
-  "dashboard.edit.done": "Done",
   "dashboard.footer.release.ready": "all $1 done, ready to publish",
   "dashboard.card.size": "Size",
   "dashboard.card.size.option": "$1 wide, $2 tall",
@@ -2409,6 +2407,8 @@ export default {
   "dashboard.filterField.markdown": "Note",
   "dashboard.filter.markdownPlaceholder":
     "Write in markdown. Everyone who reads the board sees it.",
+  "dashboard.edit": "Edit",
+  "dashboard.save": "Save",
   "dashboard.customize": "Customize",
   "dashboard.menu": "Board options",
   "dashboard.reset": "Reset to default",

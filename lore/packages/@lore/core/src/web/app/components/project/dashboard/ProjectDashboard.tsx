@@ -80,11 +80,9 @@ const ProjectDashboard = () => {
   const [catalogueOpen, setCatalogueOpen] = useState(false);
   const [editing, setEditing] = useState<DashboardCardResource | undefined>();
   /**
-   * Edit mode: Add, the card menus and drag, and the tiles that have nothing
-   * to show (#Q2649). Out of it the board is a reading surface for everyone,
-   * curators included.
+   * Edit mode as the reader set it. See `editMode` below for what it gates.
    */
-  const [editMode, setEditMode] = useState(false);
+  const [editOn, setEditOn] = useState(false);
 
   const projectId = project?.id;
   /**
@@ -127,10 +125,18 @@ const ProjectDashboard = () => {
    */
   const computed = board.projectId === projectId && !!board.computed;
   const values = board.projectId === projectId ? board.values : undefined;
+  /**
+   * Whether the board is being curated: the card menus (on hover, the way
+   * Cloudflare's dashboards show them) and drag, and the tiles that have
+   * nothing to show (#Q2649). Turned on by Edit, Customize or adding a card,
+   * off by Save. The computed board is never in it: it is read-only until
+   * Customize copies it (#Q2660).
+   */
+  const editMode = editOn && canEdit && !computed;
 
   /**
    * The cards a reader sees: every card but the ones whose metric answered
-   * `empty` (#Q2649), which only edit mode shows, collapsed, with the
+   * `empty` (#Q2649), which only a curator sees, collapsed, with the
    * reason. A reader never sees a permanent zero. Before the first resolve
    * every card shows, as a skeleton.
    */
@@ -326,6 +332,9 @@ const ProjectDashboard = () => {
         });
         setCatalogueOpen(false);
         apply([...currentCards(), made]);
+        // Add card is offered outside edit mode too, and a card just added is
+        // one the reader will want to place: edit mode turns on.
+        setEditOn(true);
       },
     },
     [alepha, boardApi, projectId],
@@ -389,7 +398,7 @@ const ProjectDashboard = () => {
           computed: false,
           cards: made.cards,
         });
-        setEditMode(true);
+        setEditOn(true);
         void loadAction.refetch();
       },
     },
@@ -411,7 +420,7 @@ const ProjectDashboard = () => {
         });
         if (!confirmed) return;
         await boardApi.resetProjectDashboard({ params: { projectId } });
-        setEditMode(false);
+        setEditOn(false);
         await loadAction.refetch();
       },
     },
@@ -466,55 +475,61 @@ const ProjectDashboard = () => {
     );
   }
 
+  const boardReady = !loading && !empty;
+
   // ⚠️ The page scrolls itself: a full-width route sits in an
   // `overflow-hidden` wrapper (`ROUTES_FULL_WIDTH` in `ProjectView`), so
-  // without `flex-1 overflow-y-auto` here a board taller than the window is
-  // clipped with no scrollbar.
+  // without `flex-1 overflow-y-auto` on the inner box a board taller than the
+  // window is clipped with no scrollbar. The header bar sits above that box,
+  // edge to edge and outside the content padding, so it stays put while the
+  // tiles scroll under it.
   return (
-    <div
-      data-testid="dashboard-page"
-      className="@container flex min-h-0 w-full flex-1 flex-col overflow-y-auto px-8 pt-6 pb-10"
-    >
-      {loading ? (
-        <ProjectDashboardLoading />
-      ) : empty ? (
-        <ProjectDashboardEmpty
+    <div className="flex min-h-0 w-full flex-1 flex-col">
+      {boardReady && (
+        <ProjectDashboardHeader
           canEdit={canEdit}
-          hasOfferableMetric={hasOfferableMetric}
+          computed={computed}
+          editing={editMode}
+          onToggleEditing={() => setEditOn((on) => !on)}
           onAdd={openCatalogue}
+          onCustomize={() => void customizeAction.run()}
+          onWindowChange={(days) => {
+            // One resolve per change, never an interval (folio #1057).
+            alepha.store.set(dashboardWindowAtom, { days });
+            void loadAction.refetch();
+          }}
+          onReset={() => void resetAction.run()}
+          busy={busy}
+          lead={
+            computed &&
+            (board.dormantSince ? (
+              <ProjectDashboardDormant since={board.dormantSince} />
+            ) : (
+              <ProjectDashboardHeadline cards={shown} values={values} />
+            ))
+          }
         />
-      ) : (
-        <>
-          <ProjectDashboardHeader
+      )}
+      <div
+        data-testid="dashboard-page"
+        // `lore-dashboard-grid` (main.css): a plain sheet for the board's rules.
+        className="lore-dashboard-grid @container flex min-h-0 w-full flex-1 flex-col overflow-y-auto p-3"
+      >
+        {loading ? (
+          <ProjectDashboardLoading />
+        ) : empty ? (
+          <ProjectDashboardEmpty
             canEdit={canEdit}
-            computed={computed}
-            editing={editMode && !computed}
-            onToggleEditing={() => setEditMode((on) => !on)}
+            hasOfferableMetric={hasOfferableMetric}
             onAdd={openCatalogue}
-            onCustomize={() => void customizeAction.run()}
-            onWindowChange={(days) => {
-              // One resolve per change, never an interval (folio #1057).
-              alepha.store.set(dashboardWindowAtom, { days });
-              void loadAction.refetch();
-            }}
-            onReset={() => void resetAction.run()}
-            busy={busy}
-            lead={
-              computed &&
-              (board.dormantSince ? (
-                <ProjectDashboardDormant since={board.dormantSince} />
-              ) : (
-                <ProjectDashboardHeadline cards={shown} values={values} />
-              ))
-            }
           />
-
+        ) : (
           <DashboardGrid
             cards={shown}
             values={values}
             metrics={metrics}
             boardProjectId={projectId}
-            canEdit={canEdit && editMode && !computed}
+            canEdit={editMode}
             onReorder={(ids) => void reorderAction.run(ids)}
             onAdd={openCatalogue}
             onChangeScope={(card) => {
@@ -526,8 +541,8 @@ const ProjectDashboard = () => {
             onRemove={(card) => void removeAction.run(card)}
             busy={busy}
           />
-        </>
-      )}
+        )}
+      </div>
 
       {/*
        * Kept mounted and re-keyed rather than mounted by a condition: the

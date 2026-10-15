@@ -2286,8 +2286,6 @@ export default {
   "dashboard.segment.shelved": "écartées",
   "dashboard.segment.held": "en pause",
   "dashboard.marker.deploy": "Déployé",
-  "dashboard.edit": "Modifier le tableau",
-  "dashboard.edit.done": "Terminé",
   "dashboard.footer.release.ready": "les $1 terminées, prête à publier",
   "dashboard.card.size": "Taille",
   "dashboard.card.size.option": "$1 de large, $2 de haut",
@@ -2402,6 +2400,8 @@ export default {
   "dashboard.filterField.markdown": "Note",
   "dashboard.filter.markdownPlaceholder":
     "Écrivez en markdown. Tous ceux qui lisent le tableau le verront.",
+  "dashboard.edit": "Modifier",
+  "dashboard.save": "Enregistrer",
   "dashboard.customize": "Personnaliser",
   "dashboard.menu": "Options du tableau",
   "dashboard.reset": "Revenir au tableau par défaut",

@@ -190,7 +190,7 @@ describe("ProjectDashboard", () => {
     const tile = await screen.findByTestId("dashboard-card");
     expect(tile.dataset.slot).toBe("flow");
     expect(screen.queryByLabelText("Card options")).toBeNull();
-    expect(screen.queryByTestId("dashboard-edit")).toBeNull();
+    expect(screen.queryByTestId("dashboard-add")).toBeNull();
   });
   it("renders an archived project's notice and loads no board", async () => {
     alepha = Alepha.create()

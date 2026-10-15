@@ -40,7 +40,7 @@ const ProjectDashboardWindow = (props: ProjectDashboardWindowProps) => {
         "data-testid": "dashboard-window",
         "aria-label": tr("dashboard.window"),
       }}
-      triggerClassName="h-8 text-[12.5px]"
+      triggerClassName="h-9"
       items={(["7", "14", "30"] as const).map((days) => ({
         value: days,
         label: tr("dashboard.window.days", { args: [days] }),

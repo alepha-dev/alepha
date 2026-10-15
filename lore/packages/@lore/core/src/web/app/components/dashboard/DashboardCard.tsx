@@ -1,7 +1,6 @@
 import { cn } from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { GripVertical } from "lucide-react";
 import type { CSSProperties, DragEvent } from "react";
 
 import type { DashboardCardResource } from "../../../../api/schemas/dashboardCardResourceSchema.ts";
@@ -137,6 +136,11 @@ const DashboardCard = (props: DashboardCardProps) => {
     );
   })();
 
+  const filterChipLabels = dashboardFilterChipLabels(props.card);
+  const filterChipKeys = dashboardFilterChipKeys(props.card);
+  const hasChips =
+    !!scopeChip || filterChipLabels.length > 0 || filterChipKeys.length > 0;
+
   /**
    * A tile whose rows are links cannot also be one: a button cannot hold a
    * button. Its own drill-through moves to a "See all" under the rows.
@@ -193,7 +197,7 @@ const DashboardCard = (props: DashboardCardProps) => {
       // drag-over swaps it for the 2px primary ring - which is why hover is
       // off while `over`, so the ring always wins.
       className={cn(
-        "bg-card relative flex h-full flex-col gap-2.5 rounded-xl p-3.5 shadow-[inset_0_0_0_1px_var(--border)] transition-shadow sm:[grid-column:span_var(--tile-cols)] sm:[grid-row:span_var(--tile-rows)]",
+        "group/tile bg-card relative flex h-full flex-col gap-2.5 rounded-xl p-3.5 shadow-[inset_0_0_0_1px_var(--border)] transition-shadow sm:[grid-column:span_var(--tile-cols)] sm:[grid-row:span_var(--tile-rows)]",
         !props.over && "hover:shadow-[inset_0_0_0_1px_var(--border-hover)]",
         props.dragging && "opacity-45",
         props.over && "shadow-[inset_0_0_0_2px_var(--primary)]",
@@ -220,12 +224,18 @@ const DashboardCard = (props: DashboardCardProps) => {
           {tr(props.labelKey as never)}
         </span>
         <span className="flex-1" />
-        {/* ⚠️ ABSENT without the permission, never disabled. A greyed handle
-            and a greyed kebab advertise a board this reader cannot curate;
-            the empty state says who can, once, instead. */}
+        {/* ⚠️ ABSENT without the permission, never disabled. A greyed kebab
+            advertises a board this reader cannot curate; the empty state says
+            who can, once, instead.
+
+            Shown on hover, the way Cloudflare's dashboard tiles do it: the
+            header is always there, title on the left, and the actions fade in
+            over the tile the pointer is on. Also on keyboard focus, and kept
+            while its own menu is open, since the pointer leaves the tile to
+            reach the menu. The whole header is the drag handle, so no grip
+            icon is drawn. */}
         {canEdit && (
-          <>
-            <GripVertical className="text-muted-foreground/45 size-[13px] shrink-0" />
+          <div className="flex shrink-0 items-center opacity-0 transition-opacity group-focus-within/tile:opacity-100 group-hover/tile:opacity-100 has-[[data-popup-open]]:opacity-100">
             <DashboardCardMenu
               onChangeScope={props.onChangeScope}
               size={props.card.size}
@@ -235,32 +245,36 @@ const DashboardCard = (props: DashboardCardProps) => {
               onRemove={props.onRemove}
               busy={props.busy}
             />
-          </>
+          </div>
         )}
       </div>
-      <div className="flex flex-wrap gap-[5px]">
-        {scopeChip && (
-          <span className="bg-muted inline-flex h-[19px] items-center rounded-full px-[7px] text-[11px]">
-            {scopeChip}
-          </span>
-        )}
-        {dashboardFilterChipLabels(props.card).map((label) => (
-          <span
-            key={label}
-            className="bg-muted inline-flex h-[19px] items-center rounded-full px-[7px] text-[11px]"
-          >
-            {label}
-          </span>
-        ))}
-        {dashboardFilterChipKeys(props.card).map((key) => (
-          <span
-            key={key}
-            className="bg-muted inline-flex h-[19px] items-center rounded-full px-[7px] text-[11px]"
-          >
-            {tr(key as never)}
-          </span>
-        ))}
-      </div>
+      {/* Only when there is a chip: an empty row still costs the card's gap,
+          which a chart tile needs for its footer. */}
+      {hasChips && (
+        <div className="flex flex-wrap gap-[5px]">
+          {scopeChip && (
+            <span className="bg-muted inline-flex h-[19px] items-center rounded-full px-[7px] text-[11px]">
+              {scopeChip}
+            </span>
+          )}
+          {filterChipLabels.map((label) => (
+            <span
+              key={label}
+              className="bg-muted inline-flex h-[19px] items-center rounded-full px-[7px] text-[11px]"
+            >
+              {label}
+            </span>
+          ))}
+          {filterChipKeys.map((key) => (
+            <span
+              key={key}
+              className="bg-muted inline-flex h-[19px] items-center rounded-full px-[7px] text-[11px]"
+            >
+              {tr(key as never)}
+            </span>
+          ))}
+        </div>
+      )}
       {link && !rowsLink ? (
         <button
           type="button"

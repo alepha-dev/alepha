@@ -32,10 +32,7 @@ const ProjectDashboardHeadline = (props: ProjectDashboardHeadlineProps) => {
 
   if (!sentence) return null;
   return (
-    <p
-      data-testid="dashboard-headline"
-      className="max-w-3xl text-[15px] leading-relaxed"
-    >
+    <p data-testid="dashboard-headline" className="text-sm leading-snug">
       {sentence}
     </p>
   );
