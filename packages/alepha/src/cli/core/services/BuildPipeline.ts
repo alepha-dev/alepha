@@ -183,7 +183,7 @@ export class BuildPipeline {
 
     // Prebuilt mode: skip clean + Vite builds + asset compression; only
     // regenerate target-specific deploy config (e.g. wrangler.jsonc).
-    // Used by external orchestrators (Rocket) that ship a pre-built
+    // Used by external orchestrators (Lore Deploy) that ship a pre-built
     // dist/ and just need the config refreshed for per-deploy overrides.
     if (!request.prebuilt) {
       await run.rm(distDir, { alias: "clean dist" });

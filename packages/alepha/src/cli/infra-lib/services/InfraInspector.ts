@@ -43,7 +43,7 @@ export class InfraInspector {
    *   1. `infraOptions` atom (set by `alepha.config.ts` during the
    *      configure hook)  -  local dev / from-source deploys.
    *   2. `dist/manifest.json` (written by `alepha build`)  -  pre-built
-   *      deploys via Alepha Rocket or any `--prebuilt` consumer that
+   *      deploys via Lore Deploy or any `--prebuilt` consumer that
    *      ships only the build artifact without `alepha.config.ts`.
    */
   public async resolveConfig(root: string): Promise<ResolvedInfraConfig> {

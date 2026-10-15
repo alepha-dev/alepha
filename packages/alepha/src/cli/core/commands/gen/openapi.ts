@@ -14,7 +14,7 @@ export class OpenApiCommand {
     name: "openapi",
     description: "Generate OpenAPI specification from actions",
     flags: z.object({
-      out: z
+      output: z
         .text({
           aliases: ["o"],
           description: "Output file path",
@@ -65,11 +65,14 @@ export class OpenApiCommand {
 
         const document = JSON.stringify(json, null, 2);
 
-        if (flags.out) {
-          // `resolve`, not `join`: an absolute `--out` used to be reparented
+        if (flags.output) {
+          // `resolve`, not `join`: an absolute `--output` used to be reparented
           // under the project root, so `-o /tmp/api.json` failed on
           // `<root>/tmp/api.json`.
-          await this.fs.writeFile(this.fs.resolve(root, flags.out), document);
+          await this.fs.writeFile(
+            this.fs.resolve(root, flags.output),
+            document,
+          );
         } else {
           // The document is what this command *produces*, so it goes through
           // the output provider — never the logger, which prefixes a timestamp

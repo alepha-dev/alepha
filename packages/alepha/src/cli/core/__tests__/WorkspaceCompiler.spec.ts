@@ -91,7 +91,7 @@ describe("WorkspaceCompiler", () => {
   };
 
   /**
-   * The options `alepha compile --out loom` resolves to. `builtAt` is pinned
+   * The options `alepha compile --output loom` resolves to. `builtAt` is pinned
    * so the embedded map's timestamp is assertable: 2026-01-02T03:04:05Z is
    * 1767323045000 ms.
    */

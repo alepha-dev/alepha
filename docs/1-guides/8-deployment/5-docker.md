@@ -9,7 +9,7 @@ alepha image --tag
 
 `manifest.json` requires `manifestVersion: 2`. Rebuild an older artifact before deploying it. Lore, Bay and other artifact consumers must accept this major; additive fields do not change it.
 
-`alepha image` reads `dist/manifest.json` and packages the first declared runtime slice. Building needs an image name: `image.tag` in the config (see below), unless `--tag` is a complete `name:tag`. A workerd or static primary slice is refused because it cannot start a container process. The docker CLI is required; this command belongs to a local machine or CI runner.
+`alepha image` reads `manifest.json` from `build.output.dist` (default `dist/`) and packages the first declared runtime slice. Building needs an image name: `image.tag` in the config (see below), unless `--tag` is a complete `name:tag`. A workerd or static primary slice is refused because it cannot start a container process. The docker CLI is required; this command belongs to a local machine or CI runner.
 
 ## Dockerfile ownership
 

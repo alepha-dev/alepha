@@ -8,12 +8,12 @@ Generate an OpenAPI specification from your `$action` primitives.
 
 ```bash
 alepha gen openapi                  # print to stdout
-alepha gen openapi --out api.json   # write to a file
+alepha gen openapi --output api.json   # write to a file
 ```
 
-| Flag          | Description      |
-| ------------- | ---------------- |
-| `--out`, `-o` | Output file path |
+| Flag             | Description      |
+| ---------------- | ---------------- |
+| `--output`, `-o` | Output file path |
 
 The `$swagger()` primitive is not required. The document is derived from your `$action` definitions, so `gen openapi` works on any app - it registers the swagger module for the duration of the command if you don't mount one. When `$swagger()` _is_ present, its configuration (title, version, `excludeTags`, `rewrite`, …) is what gets emitted.
 
@@ -23,7 +23,7 @@ Extract every environment variable your app declares via `$env` and emit a docum
 
 ```bash
 alepha gen env                  # print to stdout
-alepha gen env --out .env.example
+alepha gen env --output .env.example
 ```
 
 Each variable comes with its description, its default value, whether it's required, and its allowed values:
@@ -37,9 +37,9 @@ Each variable comes with its description, its default value, whether it's requir
 #APP_SECRET=
 ```
 
-| Flag          | Description                            |
-| ------------- | -------------------------------------- |
-| `--out`, `-o` | Output file path (e.g. `.env.example`) |
+| Flag             | Description                            |
+| ---------------- | -------------------------------------- |
+| `--output`, `-o` | Output file path (e.g. `.env.example`) |
 
 This is the same `$env` metadata the [infra plugin](/docs/cli-plugins-infra) uses as its secret allowlist - declare variables with `$env` and every tool in the chain knows about them.
 
@@ -93,3 +93,5 @@ Scopes match on the segment before the first `/`, so `api` covers `api/users`. A
 | `types`  | `["feat", "fix"]`    | Types to publish, in section order                      |
 | `scopes` | _unset_              | Scopes to publish; unset means all                      |
 | `ignore` | see `DEFAULT_IGNORE` | Scopes to exclude - applied only when `scopes` is unset |
+
+Camel-case flags also accept their kebab-case spelling, for example `--dryRun` and `--dry-run`. Help displays kebab-case. `-t` is reserved for `--tag`; use `--to` for a changelog end ref.

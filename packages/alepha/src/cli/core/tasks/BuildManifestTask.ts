@@ -19,7 +19,7 @@ import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
  * Runs for **every** target, not just Cloudflare. The manifest describes the
  * app, not the destination: which resources it declares, which crons it
  * registers, which runtime it was built for. Every deploy consumer needs the
- * same answers  -  `alepha deploy --prebuilt`, Alepha Rocket and Alepha Bay
+ * same answers  -  `alepha deploy --prebuilt`, Lore Deploy and Alepha Bay
  * alike  -  and a self-hosted deployer has no `package.json` in the artifact to
  * fall back on.
  *

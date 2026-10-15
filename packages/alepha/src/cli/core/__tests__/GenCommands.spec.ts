@@ -107,7 +107,7 @@ describe("gen commands", () => {
     };
 
     await cli.run(openapi.command, {
-      argv: "--out openapi.json",
+      argv: "--output openapi.json",
       root: "/app",
     });
 
@@ -163,7 +163,7 @@ describe("gen commands", () => {
 
     utils.userAlepha!.with($module({ name: "payments", services: [Payments] }));
 
-    await cli.run(env.command, { argv: "--out .env.example", root: "/app" });
+    await cli.run(env.command, { argv: "--output .env.example", root: "/app" });
 
     const written = await fs.readTextFile("/app/.env.example");
 
@@ -174,19 +174,19 @@ describe("gen commands", () => {
   });
 
   /**
-   * `--out` is anchored to the project root so a relative path means what the
+   * `--output` is anchored to the project root so a relative path means what the
    * caller expects. `join` did that by concatenation, which reparents an
    * absolute path: `-o /tmp/api.json` wrote to `<root>/tmp/api.json` and, since
    * no such directory exists, failed with ENOENT. `resolve` lets the later
    * absolute segment win.
    */
-  describe("--out", () => {
+  describe("--output", () => {
     it("should honour an absolute path (openapi)", async () => {
       const { cli, openapi, utils, fs } = create();
       stubSwagger(utils);
 
       await cli.run(openapi.command, {
-        argv: "--out /tmp/api.json",
+        argv: "--output /tmp/api.json",
         root: "/app",
       });
 
@@ -199,7 +199,7 @@ describe("gen commands", () => {
       stubSwagger(utils);
 
       await cli.run(openapi.command, {
-        argv: "--out docs/api.json",
+        argv: "--output docs/api.json",
         root: "/app",
       });
 
@@ -209,7 +209,7 @@ describe("gen commands", () => {
     it("should honour an absolute path (env)", async () => {
       const { cli, env, fs } = create();
 
-      await cli.run(env.command, { argv: "--out /tmp/.env", root: "/app" });
+      await cli.run(env.command, { argv: "--output /tmp/.env", root: "/app" });
 
       expect(fs.wasWritten("/tmp/.env")).toBe(true);
       expect(fs.wasWritten("/app/tmp/.env")).toBe(false);
@@ -224,7 +224,7 @@ describe("gen commands", () => {
    * agree with it.
    */
   describe("stdout", () => {
-    it("should print the raw document when no --out is given", async () => {
+    it("should print the raw document when no --output is given", async () => {
       const { cli, openapi, utils, output } = create();
       stubSwagger(utils);
 
@@ -234,7 +234,7 @@ describe("gen commands", () => {
       expect(JSON.parse(output.text).paths).toHaveProperty("/api/hello");
     });
 
-    it("should print the raw template when no --out is given", async () => {
+    it("should print the raw template when no --output is given", async () => {
       const { cli, env, utils, output } = create();
 
       class Payments {

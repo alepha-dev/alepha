@@ -178,7 +178,7 @@ export class InfraOrchestrator {
      * but the `build` step shells out to `alepha build --prebuilt` which
      * only regenerates the target-specific deploy config (e.g.
      * `wrangler.jsonc`) and skips the Vite client + server builds.
-     * Used by external orchestrators (Rocket) that ship a pre-built
+     * Used by external orchestrators (Lore Deploy) that ship a pre-built
      * `dist/` and just need the wrangler config refreshed for
      * per-deploy overrides on every deploy.
      */

@@ -86,9 +86,7 @@ export default defineConfig({
         "platform",
       ],
     }),
+    // Register repository commands after the built-ins.
+    AlephaCommands,
   ],
-  // The repository's own commands: `clean` and `verify` / `v`. Each takes the
-  // slot of the CLI built-in with the same name, since the CLI keeps the last
-  // registration and these register after the core.
-  services: [AlephaCommands],
 });

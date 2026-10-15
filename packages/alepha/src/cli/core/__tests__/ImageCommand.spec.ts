@@ -1,6 +1,14 @@
 import { Alepha } from "alepha";
+import { CliProvider } from "alepha/command";
+import {
+  FileSystemProvider,
+  MemoryFileSystemProvider,
+  MemoryShellProvider,
+  ShellProvider,
+} from "alepha/system";
 import { describe, it } from "vitest";
 
+import { buildOptions } from "../atoms/buildOptions.ts";
 import { ImageCommand } from "../commands/image.ts";
 import { DockerImageBuilder } from "../services/DockerImageBuilder.ts";
 
@@ -25,6 +33,45 @@ describe("alepha image, choosing a Bun triple for a base", () => {
     public testAssertBase = (base: string) =>
       this.assertBaseCanRunABinary(base);
   }
+
+  it("reads and packages build.output.dist", async ({ expect }) => {
+    const alepha = Alepha.create()
+      .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
+      .with({ provide: ShellProvider, use: MemoryShellProvider });
+    alepha.set(buildOptions, { output: { dist: "release" } });
+    const fs = alepha.inject(MemoryFileSystemProvider);
+    await fs.writeFile(
+      "/app/release/manifest.json",
+      JSON.stringify({
+        manifestVersion: 2,
+        project: "fixture",
+        runtimes: [{ runtime: "node", entry: "index.node.js" }],
+        resources: {
+          hasDatabase: false,
+          hasBucket: false,
+          hasAnalytics: false,
+          hasKV: false,
+          hasQueue: false,
+          hasCron: false,
+          hasWebSocket: false,
+        },
+        crons: [],
+        secrets: [],
+        variables: [],
+      }),
+    );
+    await fs.writeFile("/app/release/index.node.js", "// app");
+    await alepha.inject(CliProvider).run(alepha.inject(ImageCommand).image, {
+      root: "/app",
+      argv: "--tag=my/app:v1",
+    });
+    expect(fs.wasWritten("/app/Dockerfile")).toBe(true);
+    const docker = alepha
+      .inject(MemoryShellProvider)
+      .calls.find((call) => call.argv?.[0] === "docker");
+    expect(docker?.argv?.at(-1)).toBe("release");
+    expect(docker?.options.root).toBe("/app");
+  });
 
   const command = () => Alepha.create().inject(TestImageCommand);
 

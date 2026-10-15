@@ -923,7 +923,7 @@ export class CliProvider {
       const extra: string[] = meta.aliases ?? (meta.alias ? [meta.alias] : []);
       return {
         key,
-        aliases: [key, ...extra],
+        aliases: [...new Set([key, this.kebabFlag(key), ...extra])],
         description: meta.description,
         schema: value as ZType,
       };
@@ -1785,7 +1785,8 @@ export class CliProvider {
 
       const maxFlagLength = this.getMaxFlagLength(flags);
       for (const flag of flags) {
-        const { aliases, description } = flag;
+        const { description } = flag;
+        const aliases = this.displayFlagAliases(flag.aliases);
         const schema = "schema" in flag ? (flag.schema as ZType) : undefined;
         // Sort aliases by length (shorter first: -t before --target)
         const sortedAliases = (Array.isArray(aliases) ? aliases : [aliases])
@@ -1868,7 +1869,7 @@ export class CliProvider {
       ];
       const maxFlagLength = this.getMaxFlagLength(globalFlags);
       for (const { aliases, description, schema } of globalFlags) {
-        const flagStr = aliases
+        const flagStr = this.displayFlagAliases(aliases)
           .map((a) => (a.length === 1 ? `-${a}` : `--${a}`))
           .join(", ");
         const coloredFlag = c.set("GREY_LIGHT", flagStr);
@@ -2026,12 +2027,33 @@ export class CliProvider {
   }
 
   /**
-   * Calculate max display length for flags (for help alignment)
+   * Canonical help spelling for a flag key.
+   */
+  protected kebabFlag(key: string): string {
+    return key
+      .replace(/([A-Z])([A-Z][a-z])/g, "$1-$2")
+      .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
+      .toLowerCase();
+  }
+
+  /**
+   * Keep accepted camel-case spellings out of help when kebab-case is available.
+   */
+  protected displayFlagAliases(aliases: string[]): string[] {
+    return aliases.filter(
+      (alias) =>
+        alias === this.kebabFlag(alias) ||
+        !aliases.includes(this.kebabFlag(alias)),
+    );
+  }
+
+  /**
+   * Calculate the maximum displayed flag length for help alignment.
    */
   protected getMaxFlagLength(flags: { aliases: string[] }[]): number {
     return Math.max(
       ...flags.map((f) => {
-        const aliases = Array.isArray(f.aliases) ? f.aliases : [f.aliases];
+        const aliases = this.displayFlagAliases(f.aliases);
         return aliases
           .map((a) => (a.length === 1 ? `-${a}` : `--${a}`))
           .join(", ").length;

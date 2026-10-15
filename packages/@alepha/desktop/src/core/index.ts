@@ -3,7 +3,7 @@
  *
  * ```sh
  * alepha build --runtime bun
- * alepha compile --desktop --out myapp
+ * alepha compile --desktop --output myapp
  * ```
  *
  * The result is `dist/<Name>.app`: one executable whose main thread owns a

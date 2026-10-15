@@ -2,6 +2,8 @@
 
 ### Breaking Changes
 
+- **cli**: `-t` means `--tag` only. Use long `compile --target` and `gen changelog --to`. Rename `compile --out` and `gen env/openapi --out` to `--output` (`-o` stays). Replace config `services` with `plugins`; `build.runtimes` is internal, use `build.runtime`. Camel-case flags also parse as kebab-case, which help displays. Image and pack read `build.output.dist`.
+
 - **cli**: artifacts require `manifestVersion: 2`. Every CLI reader refuses missing or unsupported majors; rebuild old artifacts. Lore and Bay must accept and require version 2. Additive fields keep the same major. Flatten `image.image` into `image`, move OCI fields into `image.labels`, and pass `image.args` as an array of separate arguments.
 
 ## [0.32.0] - 2026-10-14

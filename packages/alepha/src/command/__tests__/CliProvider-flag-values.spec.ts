@@ -15,6 +15,7 @@ class NoteCommands {
   note = $command({
     name: "note",
     flags: z.object({
+      dryRun: z.boolean().optional(),
       title: z.text().optional(),
       body: z
         .text({ size: "rich", atFile: true, description: "The body" })
@@ -56,6 +57,22 @@ const setup = () => {
 };
 
 describe("CliProvider flag values", () => {
+  it("parses camelCase and kebab-case flag names, including negation", async ({
+    expect,
+  }) => {
+    const { run } = setup();
+    expect((await run(["--dryRun"])).dryRun).toBe(true);
+    expect((await run(["--dry-run"])).dryRun).toBe(true);
+    expect((await run(["--no-dry-run"])).dryRun).toBe(false);
+  });
+
+  it("shows the kebab spelling in command and root help", ({ expect }) => {
+    const { cli, commands, output } = setup();
+    cli.printHelp(commands.note);
+    expect(output.lines.join("\n")).toContain("--dry-run");
+    expect(output.lines.join("\n")).not.toContain("--dryRun");
+  });
+
   describe("@file on a flag declaring atFile", () => {
     it("reads @path against the command's root", async ({ expect }) => {
       const { fs, run } = setup();

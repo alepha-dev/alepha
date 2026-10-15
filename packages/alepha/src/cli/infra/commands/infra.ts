@@ -215,7 +215,7 @@ export class InfraCommand {
       prebuilt: z
         .boolean()
         .describe(
-          "Pre-built mode. Skips the Vite bundle steps; only regenerates the target deploy config (wrangler.jsonc) so it reflects current bindings and per-deploy overrides. Use when `dist/` is already produced upstream (e.g. inside Alepha Rocket).",
+          "Pre-built mode. Skips the Vite bundle steps; only regenerates the target deploy config (wrangler.jsonc) so it reflects current bindings and per-deploy overrides. Use when `dist/` is already produced upstream (e.g. inside Lore Deploy).",
         )
         .optional(),
     }),
@@ -271,7 +271,7 @@ export class InfraCommand {
         .boolean()
         .meta({ aliases: ["y"] })
         .describe(
-          "Skip the interactive confirmation. Required for non-interactive callers (CI, Alepha Rocket). The caller is responsible for not invoking this accidentally  -  there's no second chance.",
+          "Skip the interactive confirmation. Required for non-interactive callers (CI, Lore Deploy). The caller is responsible for not invoking this accidentally  -  there's no second chance.",
         )
         .optional(),
     }),
@@ -862,7 +862,7 @@ export class InfraCommand {
   ): Promise<{ entry: AppEntry; resources: DetectedResources }> {
     // Prebuilt + manifest fast-path: read `dist/manifest.json` produced
     // by the original `alepha build` instead of re-booting the workspace
-    // via Vite. Lets external orchestrators (Alepha Rocket) avoid the
+    // via Vite. Lets external orchestrators (Lore Deploy) avoid the
     // workspace's runtime `npm install`  -  the app source is never
     // imported here, so missing deps (react-dom, etc.) don't matter.
     if (options.prebuilt) {

@@ -184,7 +184,7 @@ describe("DesktopBundleBuilder", () => {
     ).rejects.toThrow("Invalid Iconset");
   });
 
-  it("refuses an --out naming a bundle", async ({ expect }) => {
+  it("refuses an --output naming a bundle", async ({ expect }) => {
     const { builder } = await setup();
     await expect(
       builder.build({ ...input, executable: "loom.app" }),

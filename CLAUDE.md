@@ -40,7 +40,7 @@ A small edit goes straight to `main`: no worktree, no quest, no `#Q<n>`. Small m
 
 ### One artifact, N runtimes
 
-- Four commands: `alepha build --runtime node,workerd` (one `dist/`, two slices), `alepha compile --out my-app` (a binary, from the bun slice), `alepha pack` (`<project>-<tag>.tar.zst`), `alepha image --tag` (a container image).
+- Four commands: `alepha build --runtime node,workerd` (one `dist/`, two slices), `alepha compile --output my-app` (a binary, from the bun slice), `alepha pack` (`<project>-<tag>.tar.zst`), `alepha image --tag` (a container image).
 - `dist/` holds `index.<runtime>.js` per slice over `server/<runtime>/`, plus `public/` and `manifest.json`. There is no `index.js`: the manifest is the discovery mechanism.
 - ⚠️ **Declared order is the decision.** The first runtime is the primary: `manifest.runtimes[0].runtime`, `dist/package.json`'s `main`, and what a deployer spawns.
 - ⚠️ **`--target` is gone.** A `workerd` slice writes the Cloudflare config, `runtime: ["static"]` makes a static site, Docker is `alepha image`.

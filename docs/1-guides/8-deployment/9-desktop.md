@@ -8,7 +8,7 @@ the web.
 
 ```bash
 alepha build --runtime bun
-alepha compile --desktop --out myapp   # dist/<Name>.app
+alepha compile --desktop --output myapp   # dist/<Name>.app
 ```
 
 It is the [single binary](/docs/guides-deployment-bare#single-binary) of `alepha compile`, wrapped in a window and
@@ -52,7 +52,7 @@ export default defineConfig({
 | `window`     | `title` (default `name`), `width` (1200), `height` (800), `resizable` (true)                             |
 
 `desktop` is read by `compile --desktop` and nothing else: declaring it changes neither `build`,
-nor an ordinary `compile`, nor `image`. `--out` names the executable inside the bundle, not the
+nor an ordinary `compile`, nor `image`. `--output` names the executable inside the bundle, not the
 bundle.
 
 ## What compiling does

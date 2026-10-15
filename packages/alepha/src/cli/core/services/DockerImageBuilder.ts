@@ -665,7 +665,7 @@ ${userLine}CMD ["${command}", "${entry}"]
     await ctx.run({
       name: `docker build ${imageTag}`,
       handler: async () => {
-        await this.shell.run(argv);
+        await this.shell.run(argv, { root: ctx.root });
       },
     });
   }

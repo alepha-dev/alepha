@@ -6,7 +6,7 @@ Compile a built `dist/` into one executable, with the client's `public/` files i
 
 ```bash
 alepha build --runtime bun
-alepha compile --out my-app
+alepha compile --output my-app
 # → dist/my-app
 ```
 
@@ -46,8 +46,8 @@ It never unpacks an archive. If you have one, unpack it first.
 
 | Flag             | Description                                                                                                                                                                                            |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `--out`, `-o`    | File name of the binary inside `dist/` (default: `app`)                                                                                                                                                |
-| `--target`, `-t` | Bun target triple, e.g. `bun-linux-arm64-musl` (default: this machine)                                                                                                                                 |
+| `--output`, `-o` | File name of the binary inside `dist/` (default: `app`)                                                                                                                                                |
+| `--target`       | Bun target triple, e.g. `bun-linux-arm64-musl` (default: this machine)                                                                                                                                 |
 | `--minify`       | Minify the compiled output (default: on)                                                                                                                                                               |
 | `--desktop`      | Build a native macOS app, `dist/<name>.app`, from the top-level `desktop` config. Needs `@alepha/desktop`; macOS only, for this Mac's architecture. See [Desktop App](/docs/guides-deployment-desktop) |
 

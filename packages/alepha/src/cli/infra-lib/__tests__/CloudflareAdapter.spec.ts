@@ -1003,7 +1003,7 @@ describe("CloudflareAdapter", () => {
           variables: [],
         }),
       );
-      // …but an orchestrator (Rocket) injected CLUB_CONFIG_JSON into the
+      // …but an orchestrator (Lore Deploy) injected CLUB_CONFIG_JSON into the
       // per-deploy override file. It must still be pushed.
       await fs.writeFile(
         "/project/.env.production.local",

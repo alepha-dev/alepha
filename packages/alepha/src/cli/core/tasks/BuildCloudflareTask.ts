@@ -78,7 +78,7 @@ export class BuildCloudflareTask extends BuildTask {
    * `generateCloudflare` alongside `hasWebSocket`. From a live `ctx.alepha`
    * probe, or from `ctx.manifest.websocketPaths` in prebuilt/manifest mode
    * (see `BuildManifestTask`, which captures the same paths at artifact-build
-   * time so the manifest-only deploy path  -  Alepha Rocket `--prebuilt`  -
+   * time so the manifest-only deploy path  -  Lore Deploy `--prebuilt`  -
    * doesn't need a live Alepha to introspect). Baked into the worker entry
    * point's upgrade-routing guard so only requests to a known channel path
    * are forwarded to the room Durable Object.

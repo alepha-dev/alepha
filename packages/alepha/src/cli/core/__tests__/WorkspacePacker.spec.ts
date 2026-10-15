@@ -7,6 +7,7 @@ import {
 } from "alepha/system";
 import { describe, it } from "vitest";
 
+import { buildOptions } from "../atoms/buildOptions.ts";
 import {
   ArchiveCompressor,
   MemoryArchiveCompressor,
@@ -93,6 +94,29 @@ describe("WorkspacePacker", () => {
       }),
     );
   };
+
+  it("packs the configured build directory and finds its source maps", async ({
+    expect,
+  }) => {
+    const { alepha, fs, commands, shell, packer } = create({
+      maps: ["server/app.js.map"],
+    });
+    await aWorkspace(fs);
+    await fs.writeFile(
+      "/project/release/manifest.json",
+      await fs.readTextFile("/project/dist/manifest.json"),
+    );
+    await fs.rm("/project/dist", { recursive: true });
+    alepha.set(buildOptions, { output: { dist: "release" } });
+    await packer.pack({ root: "/project", output: "/out" });
+    expect(commands().find((cmd) => cmd.includes("tar -cf"))).toContain(
+      "-C '/project/release' .",
+    );
+    expect(
+      shell.calls.find((call) => call.command.includes("find ."))?.options
+        ?.root,
+    ).toBe("/project/release");
+  });
 
   it("excludes *.map from the artifact", async ({ expect }) => {
     const { fs, commands, packer } = create();

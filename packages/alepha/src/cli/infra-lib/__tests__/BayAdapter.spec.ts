@@ -1240,7 +1240,7 @@ describe("BayAdapter  -  the secrets that ride the deploy", () => {
       Written double-quoted with a `\n` escape, because that is the only shape
       that actually produces one: `EnvUtils.parseEnv` splits the file on
       newlines first, then JSON-decodes a double-quoted value  -  which is how
-      Rocket's injected `.env.<env>.local` overrides carry JSON blobs.
+      Lore Deploy's injected `.env.<env>.local` overrides carry JSON blobs.
     */
     const { adapter, shell, fs } = await setup();
     await fs.writeFile(

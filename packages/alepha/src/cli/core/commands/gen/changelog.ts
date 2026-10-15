@@ -310,11 +310,7 @@ export class ChangelogCommand {
        * Defaults to HEAD.
        * Example: --to=main
        */
-      to: z
-        .string()
-        .meta({ aliases: ["t"] })
-        .describe("Ending ref (default: HEAD)")
-        .optional(),
+      to: z.string().describe("Ending ref (default: HEAD)").optional(),
     }),
     handler: async ({ flags, root }) => {
       const git = (args: string[]) => this.git.exec(args, root);

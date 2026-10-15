@@ -13,7 +13,6 @@ export default defineConfig({
   // and a running `yarn dev` was then adopted by the e2e suite. Every app
   // without a `dev.port` binds 5173.
   dev: { port: 3302 },
-  services: [DocsCommand, TreeCommand, LlmsCommand, CheckDocsCommand],
   // The build resolves commit and build date itself, and serves the lot on
   // `GET /version`. `version` is declared from `packages/alepha` rather than
   // read from git: the site deploys from `release.yml` only (#Q2480), where it
@@ -77,6 +76,10 @@ export default defineConfig({
     },
   },
   plugins: [
+    DocsCommand,
+    TreeCommand,
+    LlmsCommand,
+    CheckDocsCommand,
     infra({
       // Worker `alepha-docs-production`: the name Lore Deploy gave it, so
       // `platform up` took the Worker and the apex domain over (#Q2576).

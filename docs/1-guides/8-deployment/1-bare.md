@@ -67,7 +67,7 @@ The `--runtime=bun` flag uses Bun-specific export conditions during bundling.
 ```bash
 alepha build --runtime=bun
 alepha compile              # dist/app
-alepha compile --out myapp  # dist/myapp
+alepha compile --output myapp  # dist/myapp
 ```
 
 The compiler is `bun build --compile`, so the build needs a **bun slice** (`--runtime=bun`, or `bun` in `build.runtime`) and Bun on the build machine. A `dist/` with no `index.bun.js` is refused by name rather than compiled from whichever slice is there: the node slice runs under Bun, so that fallback would produce a working binary built from the generic bundle, with every Bun-native API and every dependency the bun conditions exist to drop still inside it.

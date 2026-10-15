@@ -61,7 +61,7 @@ export class DesktopBundleBuilder {
     const { config, executable } = input;
     if (executable.toLowerCase().endsWith(".app") || executable.includes("/")) {
       throw new AlephaError(
-        `--out '${executable}' names the executable inside the bundle, not the bundle: drop the '.app'.`,
+        `--output '${executable}' names the executable inside the bundle, not the bundle: drop the '.app'.`,
       );
     }
 

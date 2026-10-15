@@ -385,7 +385,7 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
     //    per-deploy values from process.env (set below), and writes a
     //    fresh `dist/wrangler.jsonc` + `dist/main.cloudflare.js`. No
     //    Vite, no spawn, no `alepha` binary needed at the workspace
-    //    cwd  -  required for Rocket, which deploys a bare prebuilt
+    //    cwd  -  required for Lore Deploy, which deploys a bare prebuilt
     //    tarball with no `node_modules`.
     //  - non-prebuilt: spawn the full `alepha build` for the CLI flow,
     //    which still needs Vite analyze + bundle.
@@ -994,7 +994,7 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
           : `d1://${dbName}`;
         const env = { DATABASE_URL: dbUrl };
 
-        // In prebuilt mode (Rocket) the tarball ships `migrations/`
+        // In prebuilt mode (Lore Deploy) the tarball ships `migrations/`
         // straight from the build artifact  -  already checked + frozen
         // at pack time. Skip the live check/create cycle, which would
         // need to boot the user's app to introspect schema definitions
@@ -1041,7 +1041,7 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
       // Postgres + Hyperdrive prebuilt deploys need a separate
       // migration story (an alepha-CLI-free `apply` against the
       // packed `migrations/postgres/` dir)  -  not implemented yet.
-      // Rocket's v1 path is D1, which migrates over the D1 API
+      // Lore Deploy's v1 path is D1, which migrates over the D1 API
       // (`D1MigrationsService`) and works fine in prebuilt mode.
       throw new AlephaError(
         "Postgres migrations are not yet supported in prebuilt mode. Use the `alepha deploy` CLI for now.",

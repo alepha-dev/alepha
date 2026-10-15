@@ -983,7 +983,7 @@ describe("Alepha CLI E2E", () => {
       }
       expect(built.exitCode).toBe(0);
 
-      const result = await run(`"${CLI}" compile --out e2e`, PROJECT_DIR);
+      const result = await run(`"${CLI}" compile --output e2e`, PROJECT_DIR);
 
       if (result.exitCode !== 0) {
         console.log("COMPILE OUTPUT:", result.stdout.slice(-2000));

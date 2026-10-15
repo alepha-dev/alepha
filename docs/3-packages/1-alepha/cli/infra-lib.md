@@ -18,7 +18,7 @@ programmatically. **No `$command` instances** and **no
 `AppEntryProvider` / `ViteBuildProvider` dependency**, so consumers
 importing this subpath don't pull in the CLI argv-parser or Vite.
 
-Used by Alepha Rocket (and other non-CLI deploy orchestrators) to
+Used by Lore Deploy (and other non-CLI deploy orchestrators) to
 call `orchestrator.up({ ... })` directly. For CLI usage
 (`alepha deploy`), import `AlephaCliInfraPlugin` from
 `alepha/cli/infra`, which adds the command layer on top.
