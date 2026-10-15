@@ -346,14 +346,25 @@ jobs:
       # Last, after every push and the publish: a red deploy then tears
       # nothing, and re-running the job redeploys the same build.
       # ──────────────────────────────────────────────────────────────
-      # `alepha-docs-production` (`infra({ project: "alepha" })`), the
-      # Worker Lore Deploy created for alepha.dev, taken over with its Custom
-      # Domain (#Q2576). `--prebuilt`: the workerd build above carries the
-      # llms.txt files `gen:llms` wrote after it, and a fresh build would drop
-      # them.
+      # Through Lore Deploy (#Q2701): `lore()` pushes `dist/` as `latest` to
+      # the `docs/production` copy of project `alepha` and Lore deploys it
+      # onto `alepha-docs-production`, minting the sigil and sealing the
+      # secrets itself. `--prebuilt`: the workerd build above carries the
+      # llms.txt files `gen:llms` wrote after it, and a fresh build would
+      # drop them. Only `LORE_API_KEY`: the Cloudflare credential is the
+      # estate's, held by Lore.
       - name: Deploy docs
         working-directory: apps/docs
         run: yarn alepha deploy --env production --prebuilt
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
+
+      # The same build under the release's own tag, so every version of
+      # alepha.dev stays in Lore as an artifact to roll back to; `latest` is
+      # the one tag the deploy above replaces.
+      - name: Archive docs as a versioned artifact
+        working-directory: apps/docs
+        run: yarn run -T lore artifacts push --app docs --tag "$VERSION"
+        env:
+          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
+          VERSION: ${{ steps.version.outputs.version }}

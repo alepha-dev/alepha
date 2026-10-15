@@ -25,3 +25,27 @@ diff --git a/dist/sigil/index.js b/dist/sigil/index.js
 @@ -3124 +3124 @@
 -		on: "log",
 +		on: "log:entry",
+diff --git a/dist/cli/index.d.ts b/dist/cli/index.d.ts
+index 7e167fde92cf05691de3b61892df90b776e669c7..b6e5163a45b00c965231c0e990992883ec17af56 100644
+--- a/dist/cli/index.d.ts
++++ b/dist/cli/index.d.ts
+@@ -1,6 +1,6 @@
+ import { Infer } from "alepha";
+ import { ClientScope } from "alepha/server/links";
+-import { EnvironmentDescriptor } from "alepha/cli/platform-lib";
++import { EnvironmentDescriptor } from "alepha/cli/infra-lib";
+ import { FileSystemProvider, ShellProvider } from "alepha/system";
+ import { HttpClient } from "alepha/server";
+ import { DateTimeProvider } from "alepha/datetime";
+diff --git a/dist/cli/index.js b/dist/cli/index.js
+index 139d045c6353352b4f1941bc23ff60fe1dc8082d..da6f49efc88e382730c10b7b392c00593ff75178 100644
+--- a/dist/cli/index.js
++++ b/dist/cli/index.js
+@@ -1,6 +1,6 @@
+ import { $env, $inject, $module, $store, AlephaError, z } from "alepha";
+ import { $client, AlephaServerLinksClient } from "alepha/server/links";
+-import { EXCLUDED_SECRET_KEYS, PlatformAdapter, platformOptions, resolveSecretKeySet, selectSecrets } from "alepha/cli/platform-lib";
++import { EXCLUDED_SECRET_KEYS, InfraAdapter as PlatformAdapter, infraOptions as platformOptions, resolveSecretKeySet, selectSecrets } from "alepha/cli/infra-lib";
+ import { $command, CommandError, EnvUtils, UsageError } from "alepha/command";
+ import { $logger, ConsoleColorProvider } from "alepha/logger";
+ import { FileDetector, FileSystemProvider, ShellProvider } from "alepha/system";
