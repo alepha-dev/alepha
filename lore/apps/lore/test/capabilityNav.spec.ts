@@ -2,6 +2,7 @@ import { CAPABILITY_KEYS, type CapabilityKey } from "@lore/core/schemas";
 import { projectFixture } from "@lore/core/testing";
 import {
   ProjectShellRegistry,
+  currentProjectAtom,
   CORE_NAV,
   type ProjectShellContext,
 } from "@lore/core/web";
@@ -62,7 +63,13 @@ const offered = (
   context: ProjectShellContext = contextWith(),
 ): string[] =>
   shell
-    .offeredNav({ ...project, permissions: PERMISSIONS } as never, context)
+    .offeredNav({ ...project, permissions: PERMISSIONS } as never, {
+      ...context,
+      get: (atom) =>
+        atom.key === currentProjectAtom.key
+          ? (project as never)
+          : context.get(atom),
+    })
     .map((entry) => entry.route);
 
 describe("the sidebar, derived from capabilities", () => {

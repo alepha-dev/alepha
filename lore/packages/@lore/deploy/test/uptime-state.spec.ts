@@ -4,17 +4,20 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 import { afterEach, describe, it } from "vitest";
 
+import { blights } from "../src/api/entities/blights.ts";
 import { DeployAnalytics } from "../src/api/entities/deployAnalytics.ts";
 import { monitorHeartbeats } from "../src/api/entities/monitorHeartbeats.ts";
 import { monitorIncidents } from "../src/api/entities/monitorIncidents.ts";
 import { type Monitor, monitors } from "../src/api/entities/monitors.ts";
 import { LoreDeployApi } from "../src/api/index.ts";
 import type { ProbeResult } from "../src/api/schemas/probeResultSchema.ts";
+import { UptimeBlightService } from "../src/api/services/UptimeBlightService.ts";
 import { UptimeProber } from "../src/api/services/UptimeProber.ts";
 import { UptimeStateService } from "../src/api/services/UptimeStateService.ts";
 import { DeployTestEntities } from "../src/testing/entities.ts";
 
 class Repositories extends DeployTestEntities {
+  blights = $repository(blights);
   monitors = $repository(monitors);
   incidents = $repository(monitorIncidents);
   beats = $repository(monitorHeartbeats);
@@ -107,6 +110,77 @@ describe("The uptime tick and state machine", () => {
     latencyMs: 10,
     error: "Connection refused",
   };
+
+  it("deduplicates flapping outages, resolves recovery and tolerates a purged blight", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    const monitor = await ctx.seed("Website", 1);
+    const advance = async () => {
+      const before = (await ctx.repos.monitors.getById(monitor.id))
+        .lastCheckedAt;
+      await ctx.clock.travel(1, "minute");
+      await expect
+        .poll(
+          async () =>
+            (await ctx.repos.monitors.getById(monitor.id)).lastCheckedAt,
+        )
+        .not.toBe(before);
+    };
+    ctx.prober.plans.set(monitor.id, [
+      {
+        ok: false,
+        result: "timeout",
+        latencyMs: 1000,
+        error: "Probe deadline",
+      },
+      { ok: false, result: "timeout", latencyMs: 1000 },
+      { ok: true, result: "up", latencyMs: 20 },
+      { ok: false, result: "connection", latencyMs: 0, error: "Refused" },
+      { ok: true, result: "up", latencyMs: 20 },
+    ]);
+    await advance();
+    await expect.poll(() => ctx.repos.blights.count()).toBe(1);
+    const first = await ctx.repos.blights.getOne({
+      where: { projectId: ctx.project.id },
+    });
+    expect(first.status).toBe("open");
+    expect(first.count).toBe(1);
+    expect(first.stack).toContain(monitor.target);
+    expect(first.stack).toContain("Failure: timeout");
+    expect(first.stack).toContain("Probe deadline");
+    const incident = await ctx.repos.incidents.getOne({
+      where: { monitorId: monitor.id },
+    });
+    expect(first.stack).toContain(incident.startedAt);
+    const effect = ctx.alepha.inject(UptimeBlightService);
+    await effect.handle({ kind: "opened", monitor, incident });
+    expect((await ctx.repos.blights.getById(first.id)).count).toBe(1);
+    await advance();
+    expect(await ctx.repos.blights.count()).toBe(1);
+    expect((await ctx.repos.blights.getById(first.id)).count).toBe(1);
+    await advance();
+    await expect
+      .poll(async () => (await ctx.repos.blights.getById(first.id)).status)
+      .toBe("resolved");
+    await advance();
+    expect(await ctx.repos.blights.count()).toBe(1);
+    await expect
+      .poll(async () => (await ctx.repos.blights.getById(first.id)).count)
+      .toBe(2);
+    const reopened = await ctx.repos.blights.getById(first.id);
+    expect(reopened.status).toBe("open");
+    expect(reopened.count).toBe(2);
+    expect(reopened.firstSeenAt).toBe(first.firstSeenAt);
+    await ctx.repos.blights.deleteById(first.id);
+    await advance();
+    expect(await ctx.repos.blights.count()).toBe(0);
+    const incidents = await ctx.repos.incidents.findMany({
+      where: { monitorId: monitor.id },
+    });
+    expect(incidents).toHaveLength(2);
+    expect(incidents.every((row) => row.endedAt)).toBe(true);
+  });
 
   it("absorbs a blip, confirms an outage once, closes on recovery and writes every result", async ({
     expect,
