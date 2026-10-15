@@ -1961,6 +1961,9 @@ export default {
   "account.notifications.categories": "Types de message",
   "account.notifications.categories.description":
     "Ces réglages valent pour les deux canaux.",
+  "account.notifications.category.automations": "Automatisations",
+  "account.notifications.category.automations.description":
+    "Messages des règles automatiques des projets.",
   "account.notifications.category.feedback": "Vos demandes",
   "account.notifications.category.feedback.description":
     "Quand un projet accepte, refuse ou répond à une demande que vous avez envoyée.",

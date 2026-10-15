@@ -26,7 +26,14 @@ export class AutomationTemplateRenderer {
     context: AutomationRenderContext,
     variables: AutomationRunSnapshot["variables"],
     target: AutomationRenderTarget = "text",
+    maximumBytes = 16_384,
   ): AutomationRenderedAction {
+    if (
+      !Number.isSafeInteger(maximumBytes) ||
+      maximumBytes < 1 ||
+      maximumBytes > 16_384
+    )
+      throw new BadRequestError("Invalid render byte budget");
     const descriptor = this.catalog
       .entries()
       .find((entry) => entry.type === "action" && entry.key === action.kind);
@@ -96,7 +103,7 @@ export class AutomationTemplateRenderer {
           );
       }
       bytes = new TextEncoder().encode(JSON.stringify(delivery)).byteLength;
-      if (bytes <= 16_384 && !outsideBounds) {
+      if (bytes <= maximumBytes && !outsideBounds) {
         const parsedRaw = automationActionSchema.safeParse(raw);
         const parsedDelivery = automationActionSchema.safeParse(delivery);
         if (!parsedRaw.success || !parsedDelivery.success)
@@ -106,6 +113,8 @@ export class AutomationTemplateRenderer {
         if (context.collection && context.collection.items.length === 0)
           return {
             suppressed: true,
+            action: parsedDelivery.data,
+            raw: parsedRaw.data,
             reason: "empty_collection",
             lang: this.lang,
             bytes: 0,
@@ -155,6 +164,8 @@ export type AutomationRenderTarget = "text" | "html" | "markdown" | "discord";
 export type AutomationRenderedAction =
   | {
       suppressed: true;
+      action: AutomationRule["actions"][number];
+      raw: AutomationRule["actions"][number];
       reason: "empty_collection";
       lang: "en";
       bytes: number;

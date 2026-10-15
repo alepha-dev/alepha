@@ -4,6 +4,10 @@ import { join } from "node:path";
 
 import {
   AutomationAtomic,
+  AutomationNotifications,
+  AutomationNotificationOutbox,
+  AutomationContextBuilder,
+  LoreInboxRecipientProvider,
   AutomationSchedules,
   AutomationClaims,
   AutomationD1Provider,
@@ -15,6 +19,8 @@ import {
 import type { AutomationRule } from "@lore/core/schemas";
 import { FeedbackController } from "@lore/work/api";
 import { Alepha } from "alepha";
+import { JobProvider } from "alepha/api/jobs";
+import { NotificationInboxRecipientProvider } from "alepha/api/notifications";
 import { DateTimeProvider } from "alepha/datetime";
 import { DatabaseProvider, sql, type D1Database } from "alepha/orm";
 import { CronProvider } from "alepha/scheduler";
@@ -34,6 +40,10 @@ class FixtureD1Provider extends AutomationD1Provider {
     for (let index = 0; index < this.schemaStatements.length; index += 50)
       await this.atomicBatch(this.schemaStatements.slice(index, index + 50));
   }
+}
+
+class UndispatchedNotificationOutbox extends AutomationNotificationOutbox {
+  public override async dispatch(_id: string): Promise<void> {}
 }
 
 describe("Durable automation primitives on local D1", () => {
@@ -110,6 +120,14 @@ describe("Durable automation primitives on local D1", () => {
       }).with({ provide: DatabaseProvider, use: FixtureD1Provider });
       alepha.set("cloudflare.env", proxy.env);
       alepha.with({ provide: CronProvider, use: ManualCronProvider });
+      alepha.with({
+        provide: NotificationInboxRecipientProvider,
+        use: LoreInboxRecipientProvider,
+      });
+      alepha.with({
+        provide: AutomationNotificationOutbox,
+        use: UndispatchedNotificationOutbox,
+      });
       bootLore(alepha, ["api"]);
       const provider = alepha.inject(DatabaseProvider) as FixtureD1Provider;
       provider.schemaStatements = schemaStatements;
@@ -120,6 +138,8 @@ describe("Durable automation primitives on local D1", () => {
       const evidence = alepha.inject(AutomationRunEvidence);
       const atomic = alepha.inject(AutomationAtomic);
       const rosterService = alepha.inject(AutomationRoster);
+      const notifications = alepha.inject(AutomationNotifications);
+      const contexts = alepha.inject(AutomationContextBuilder);
       await alepha.start();
       const project = await createTestProject(alepha, {
         capabilities: [
@@ -345,6 +365,94 @@ describe("Durable automation primitives on local D1", () => {
       expect(
         new Set(page.recipients.map((recipient) => recipient.recipientChannel)),
       ).toEqual(new Set(["email", "inbox"]));
+      // An outbox enqueue uses the same native D1 batch as its automation
+      // receipt and trusted origin. Losing dispatch after commit leaves a
+      // normal pending notification job, not another automation send.
+      const notificationRule = await persistence.rules.create({
+        projectId: project.id,
+        authorUserId: project.createdBy,
+        title: "D1 notify",
+        rule,
+      });
+      const notifyEnabled = await persistence.rules.updateById(
+        notificationRule.id,
+        { enabled: true },
+      );
+      const notificationContext = await contexts.source(
+        project.id,
+        "feedback.created",
+        captured.payload.fields,
+      );
+      const notificationEvidence = await evidence.prepare({
+        rule: notifyEnabled,
+        occurrenceId: `event:${captured.id}`,
+        triggeredAt: captured.occurredAt,
+        inputs: notificationContext.values,
+        selected: [notificationContext.values],
+        matched: 1,
+        planned: [{ index: 0 }],
+      });
+      const notificationClaim = await claims.claim({
+        automationId: notifyEnabled.id,
+        revision: notifyEnabled.revision,
+        source: { kind: "event", eventId: captured.id },
+        prepared: notificationEvidence,
+      });
+      expect(notificationClaim.state).toBe("claimed");
+      const notifyInput = {
+        occurrenceId: notificationClaim.receipt!.id,
+        token: notificationClaim.receipt!.leaseToken!,
+        index: 0,
+        context: notificationContext,
+      };
+      await expect(
+        notifications.enqueue({
+          ...notifyInput,
+          settlement: {
+            condition: sql`FALSE`,
+            statements: [],
+            changedTables: [],
+          },
+        }),
+      ).rejects.toThrow("Atomic automation batch failed");
+      expect(
+        await persistence.receipts.count({
+          automationId: notificationRule.id,
+          kind: "job_origin",
+        }),
+      ).toBe(0);
+      const enqueued = await notifications.enqueue(notifyInput);
+      expect(enqueued.status).toBe("queued");
+      const jobId = enqueued.receipt.result!.outbox_id;
+      const [pendingJob] = await provider.execute(
+        sql`SELECT status, max_attempts, payload FROM job_executions WHERE id = ${jobId}`,
+      );
+      expect(pendingJob).toMatchObject({ status: "pending", max_attempts: 4 });
+      const payload =
+        typeof pendingJob.payload === "string"
+          ? JSON.parse(pendingJob.payload)
+          : pendingJob.payload;
+      expect(payload).toMatchObject({
+        type: "inbox",
+        lang: "en",
+        variables: { automationId: notificationRule.id },
+      });
+      expect((await notifications.enqueue(notifyInput)).receipt.id).toBe(
+        enqueued.receipt.id,
+      );
+      expect(
+        await persistence.receipts.count({
+          automationId: notificationRule.id,
+          kind: "job_origin",
+        }),
+      ).toBe(1);
+      await alepha
+        .inject(JobProvider)
+        .processExecution("system.notifications.send", String(jobId));
+      expect(
+        await alepha.inject(AutomationNotificationOutbox).status(String(jobId)),
+      ).toMatchObject({ status: "delivered" });
+
       await entities.organizationMembers.deleteMany({
         organizationId: project.organizationId!,
         userId: project.createdBy,

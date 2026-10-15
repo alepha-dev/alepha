@@ -1972,6 +1972,9 @@ export default {
     "These apply to both channels.",
   // ⚠️ Read by `categoryLabel`, which derives the key from the category a
   // template registers. A category with no key here renders as its raw name.
+  "account.notifications.category.automations": "Automations",
+  "account.notifications.category.automations.description":
+    "Messages from project automation rules.",
   "account.notifications.category.feedback": "Your reports",
   "account.notifications.category.feedback.description":
     "When a project accepts, rejects or answers a report you submitted.",

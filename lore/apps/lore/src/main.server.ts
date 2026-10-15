@@ -2,6 +2,7 @@ import { AlephaSigil, SigilSinkProvider } from "@alepha/lore/sigil";
 import { adminRouterOptionsAtom } from "@alepha/ui/admin";
 import { LoreCoreApi } from "@lore/core/api";
 import {
+  AutomationNotificationSender,
   LoreFileAccessProvider,
   LoreInboxRecipientProvider,
   LoreNotificationPreferences,
@@ -30,6 +31,7 @@ import { jobConfig } from "alepha/api/jobs";
 import {
   NotificationInboxRecipientProvider,
   NotificationPreferenceProvider,
+  NotificationSenderService,
 } from "alepha/api/notifications";
 import { oauthOptions } from "alepha/api/oauth";
 import { CaptchaProvider, TurnstileCaptchaProvider } from "alepha/captcha";
@@ -174,6 +176,12 @@ alepha.with({
 alepha.with({
   provide: NotificationPreferenceProvider,
   use: LoreNotificationPreferences,
+});
+
+// Deferred automation notifications retain current-author and recipient gates.
+alepha.with({
+  provide: NotificationSenderService,
+  use: AutomationNotificationSender,
 });
 
 // The `@lore/*` modules, core first. Every entry-level substitution above

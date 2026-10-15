@@ -1,3 +1,4 @@
+import { z } from "alepha";
 import {
   type NotificationPreferenceOptions,
   NotificationPreferenceProvider,
@@ -79,6 +80,12 @@ export class LoreNotificationPreferences extends NotificationPreferenceProvider 
   protected async rowFor(contact: string) {
     const email = contact.trim().toLowerCase();
     if (!email) return undefined;
+    if (email.startsWith("lore-user:")) {
+      const id = email.slice("lore-user:".length);
+      return z.uuid().safeParse(id).success
+        ? this.prefs.findOne({ where: { userId: id } })
+        : undefined;
+    }
 
     const user = await this.users.findOne({
       where: { email: { eqInsensitive: email } },

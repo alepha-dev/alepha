@@ -1,3 +1,4 @@
+import { z } from "alepha";
 import { NotificationInboxRecipientProvider } from "alepha/api/notifications";
 import { $repository } from "alepha/orm";
 
@@ -36,6 +37,12 @@ export class LoreInboxRecipientProvider extends NotificationInboxRecipientProvid
   ): Promise<{ userId: string } | null> {
     const email = contact.trim().toLowerCase();
     if (!email) return null;
+    if (email.startsWith("lore-user:")) {
+      const id = email.slice("lore-user:".length);
+      if (!z.uuid().safeParse(id).success) return null;
+      const account = await this.users.findById(id);
+      return account?.enabled ? { userId: account.id } : null;
+    }
 
     const user = await this.users.findOne({
       where: { email: { eqInsensitive: email } },

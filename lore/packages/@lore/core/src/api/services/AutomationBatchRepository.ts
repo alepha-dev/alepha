@@ -27,6 +27,13 @@ export class AutomationBatchRepository<
     this.batchRepositories.set(entity, BatchRepository);
     return BatchRepository;
   }
+  /**
+   * Prepare the normal driver's insert codecs without writing before the
+   * caller's native receipt batch. This seam deliberately dispatches no job.
+   */
+  public insertStatement(data: Parameters<Repository<T>["create"]>[0]) {
+    return this.rawInsert().values(this.cast(data, true));
+  }
   public decodeRaw(row: Record<string, unknown>): Infer<T> {
     const mapped: Record<string, unknown> = {};
     for (const [key, column] of Object.entries(this.table)) {

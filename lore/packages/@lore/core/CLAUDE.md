@@ -578,3 +578,41 @@ What this package holds, with the notes that are not obvious from the code. Move
 **MCP tools (1)** - `ProjectTools` (including `project_activity`, the one call for everything that moved since a timestamp).
 
 Organization membership, rank definitions, and invitations are owned by `alepha/api/organizations`; Lore's own `members`, `rank_definitions` and `invitations` tables were dropped with #E74.
+
+## Automation notification delivery (#E43, #Q2030)
+
+`AutomationNotifications` renders through the shared typed renderer and enqueues
+one `system.notifications.send` outbox execution per recipient and channel.
+The execution, trusted job-origin marker and automation effect receipt commit
+in one native batch. `AutomationBatchRepository.insertStatement` reuses the
+normal job entity codecs and the registered job supplies schema and retry
+policy. Dispatch happens after commit; a lost acknowledgement leaves a pending
+row for the normal job sweep. Never send directly from an automation adapter.
+
+Inbox and email use separate, explicitly named templates for each category.
+Only transports with a registered automation adapter, compatible templates and
+an affirmative configuration check are offered. Optional sink templates keep
+their destination in trusted server configuration, never in rule prose or an
+outbox payload. Addressable channels resolve a current project member ID to a
+current contact. Inbox-only accounts without email use `lore-user:<uuid>`,
+resolved by `LoreInboxRecipientProvider` and the normal preference provider.
+
+Every enqueue carries `LoreInboxNotifications.lang` explicitly (`en`). Accounts
+have no recipient language field. Custom subject and plain-text prose remain
+verbatim. HTML is escaped once by `AutomationTemplateRenderer`; the email
+template adds only a fixed whitespace-preserving wrapper, whose bytes are
+reserved in the renderer's 16 KiB budget. The `automations` preference category
+is offered by the real template registry and account settings. Release output
+retains `releases`; the compatibility wire category `reminders` maps to the
+existing `tasks` preference category. Compatibility rosters exclude publishers;
+the adapter also accepts an explicit publisher exclusion for a single delivery.
+
+The normal sender applies current suppression and preference gates at send time.
+`AutomationNotificationSender` additionally rechecks the author, rule revision,
+source permission, member and contact before deferred disclosure. A recipient
+who is no longer eligible is skipped without pausing unrelated roster delivery.
+Transport retries and delivery receipts remain the framework's responsibility.
+A committed enqueue is `queued`, never proof of delivery. Email `sent` means
+transport acceptance; provider-confirmed `delivered`, skipped and failed remain
+distinct. An inbox row is delivery. Dry-run preparation writes no outbox row,
+receipt, baseline, notification, audit or health transition.

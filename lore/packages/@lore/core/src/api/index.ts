@@ -7,6 +7,7 @@ import { AuditService } from "alepha/api/audits";
 import { filesOptions } from "alepha/api/files";
 import { AlephaApiJobsQueue } from "alepha/api/jobs";
 import { JobService } from "alepha/api/jobs";
+import { NotificationSenderService } from "alepha/api/notifications";
 import {
   AlephaApiOrganizations,
   organizationConfigAtom,
@@ -32,6 +33,7 @@ import { OrganizationHooks } from "./hooks/OrganizationHooks.ts";
 import { UserDeletionHook } from "./hooks/UserDeletionHook.ts";
 import { AutomationDispatchJobs } from "./jobs/AutomationDispatchJobs.ts";
 import { AutomationEvidenceJobs } from "./jobs/AutomationEvidenceJobs.ts";
+import { AutomationNotificationTemplates } from "./notifications/AutomationNotificationTemplates.ts";
 import { InvitationNotifications } from "./notifications/InvitationNotifications.ts";
 import { LoreInboxNotifications } from "./notifications/LoreInboxNotifications.ts";
 import { NotificationHtmlEscaper } from "./notifications/NotificationHtmlEscaper.ts";
@@ -54,6 +56,7 @@ import { AutomationContextBuilder } from "./services/AutomationContextBuilder.ts
 import { AutomationEventDispatch } from "./services/AutomationEventDispatch.ts";
 import { AutomationEvents } from "./services/AutomationEvents.ts";
 import { AutomationJobService } from "./services/AutomationJobService.ts";
+import { AutomationNotificationSender } from "./services/AutomationNotificationSender.ts";
 import { AutomationOrigin } from "./services/AutomationOrigin.ts";
 import { AutomationPersistence } from "./services/AutomationPersistence.ts";
 import { AutomationRoster } from "./services/AutomationRoster.ts";
@@ -188,6 +191,7 @@ export const LoreCoreApi = $module({
     // The inbox half: two templates, and the one HTML escaper the four
     // notification classes share.
     LoreInboxNotifications,
+    AutomationNotificationTemplates,
     NotificationHtmlEscaper,
     // Who is in a project, as one read, for everything that writes to
     // people. One question, not two.
@@ -245,6 +249,11 @@ export const LoreCoreApi = $module({
     ProjectDashboardController,
   ],
   register: (alepha) => {
+    alepha.with({
+      optional: true,
+      provide: NotificationSenderService,
+      use: AutomationNotificationSender,
+    });
     alepha.with({
       optional: true,
       provide: JobService,
@@ -413,3 +422,13 @@ export {
   type AutomationGuardInput,
   type AutomationGuardResult,
 } from "./services/AutomationGuards.ts";
+
+export { AutomationNotifications } from "./services/AutomationNotifications.ts";
+export { AutomationNotificationOutbox } from "./services/AutomationNotificationOutbox.ts";
+export { AutomationNotificationTemplates } from "./notifications/AutomationNotificationTemplates.ts";
+export { AutomationNotificationSender } from "./services/AutomationNotificationSender.ts";
+
+export {
+  AutomationChannels,
+  type AutomationChannelAdapter,
+} from "./services/AutomationChannels.ts";

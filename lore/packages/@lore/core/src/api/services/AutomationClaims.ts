@@ -1002,10 +1002,20 @@ export class AutomationClaims {
       "delivered",
       "count",
       "late_confirmation",
+      "reason",
     ];
     const result: NonNullable<AutomationReceipt["result"]> = {};
     for (const key of fields) {
       const value = input[key];
+      if (
+        key === "reason" &&
+        ![
+          "empty_collection",
+          "excluded_publisher",
+          "recipient_has_no_email",
+        ].includes(String(value))
+      )
+        continue;
       if (
         (typeof value === "string" && value.length <= 255) ||
         (typeof value === "number" && Number.isFinite(value)) ||
