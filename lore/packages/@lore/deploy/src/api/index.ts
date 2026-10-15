@@ -63,6 +63,7 @@ import { SigilIngestService } from "./services/SigilIngestService.ts";
 import { SigilTokenService } from "./services/SigilTokenService.ts";
 import { UniqueVisitorsMetric } from "./services/UniqueVisitorsMetric.ts";
 import { UptimeHttpProber } from "./services/UptimeHttpProber.ts";
+import { UptimeSocketProber } from "./services/UptimeSocketProber.ts";
 import { WebSocketEstateCommandTransport } from "./services/WebSocketEstateCommandTransport.ts";
 
 /**
@@ -105,6 +106,7 @@ export const LoreDeployApi = $module({
     BlightJobs,
     UptimeRetentionJobs,
     UptimeHttpProber,
+    UptimeSocketProber,
     SigilJobs,
     QualityJobs,
     EstateCommandJobs,
@@ -241,3 +243,5 @@ export { TeardownService } from "./services/TeardownService.ts";
 export { WebSocketEstateCommandTransport } from "./services/WebSocketEstateCommandTransport.ts";
 
 export { UptimeHttpProber } from "./services/UptimeHttpProber.ts";
+
+export { UptimeSocketProber } from "./services/UptimeSocketProber.ts";

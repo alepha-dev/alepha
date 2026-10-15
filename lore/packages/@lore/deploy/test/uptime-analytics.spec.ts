@@ -1,4 +1,3 @@
-import { LoreDeployApi } from "../src/api/index.ts";
 import { projects } from "@lore/core/schemas";
 import { Alepha } from "alepha";
 import { AnalyticsProvider, OrmAnalyticsProvider } from "alepha/api/analytics";
@@ -8,6 +7,7 @@ import { describe, it } from "vitest";
 
 import { DeployAnalytics } from "../src/api/entities/deployAnalytics.ts";
 import { monitors } from "../src/api/entities/monitors.ts";
+import { LoreDeployApi } from "../src/api/index.ts";
 
 class Repositories {
   projects = $repository(projects);

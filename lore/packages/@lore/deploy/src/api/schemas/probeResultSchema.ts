@@ -14,6 +14,7 @@ export const probeResultSchema = z.object({
   latencyMs: z.integer().min(0),
   error: z.string().max(4096).optional(),
   certExpiresAt: z.string().optional(),
+  certDaysRemaining: z.number().optional(),
 });
 
 export type ProbeResult = Infer<typeof probeResultSchema>;
