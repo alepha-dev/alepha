@@ -25,6 +25,7 @@ import { useRank } from "../../shared/useRank.ts";
 import ProjectDashboardDormant from "./ProjectDashboardDormant.tsx";
 import ProjectDashboardEmpty from "./ProjectDashboardEmpty.tsx";
 import ProjectDashboardHeader from "./ProjectDashboardHeader.tsx";
+import ProjectDashboardHeadline from "./ProjectDashboardHeadline.tsx";
 
 /**
  * A project's board: where you land when you open the project.
@@ -466,6 +467,10 @@ const ProjectDashboard = () => {
             onReset={() => void resetAction.run()}
             busy={busy}
           />
+
+          {computed && !board.dormantSince && (
+            <ProjectDashboardHeadline cards={shown} values={values} />
+          )}
 
           {computed && board.dormantSince && (
             <ProjectDashboardDormant since={board.dormantSince} />

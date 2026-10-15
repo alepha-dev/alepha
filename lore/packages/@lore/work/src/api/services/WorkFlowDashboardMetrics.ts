@@ -68,6 +68,16 @@ export class WorkFlowDashboardMetrics {
     this.catalog.register({
       ...common,
       key: "completedThisWeek",
+      clause: (value) =>
+        (value.value ?? 0) > 0
+          ? {
+              key:
+                value.value === 1
+                  ? "dashboard.clause.completedThisWeek.one"
+                  : "dashboard.clause.completedThisWeek",
+              args: [String(value.value)],
+            }
+          : undefined,
       order: 130,
       labelKey: "dashboard.metric.completedThisWeek",
       hintKey: "dashboard.metric.completedThisWeek.hint",

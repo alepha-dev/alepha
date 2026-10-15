@@ -13,6 +13,7 @@ export { CapabilityRegistry } from "../api/schemas/CapabilityRegistry.ts";
 export {
   type DashboardCardLink,
   type DashboardCardTarget,
+  type DashboardHeadlineClause,
   DashboardMetricCatalog,
   type DashboardMetricDescriptor,
 } from "../api/schemas/DashboardMetricCatalog.ts";

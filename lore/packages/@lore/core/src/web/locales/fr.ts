@@ -2405,6 +2405,29 @@ export default {
   "dashboard.dormant": "Calme depuis $1.",
   "dashboard.footer.recentlyShipped": "$1 quêtes livrées",
   "dashboard.footer.recentlyShipped.one": "1 quête livrée",
+  "dashboard.headline": "$1.",
+  "dashboard.clause.releaseShips":
+    "la version $1 sort dans $2 jours, avancée à $3 %",
+  "dashboard.clause.release": "la version $1 est avancée à $2 %",
+  "dashboard.clause.releaseReady": "la version $1 attend d'être publiée",
+  "dashboard.clause.releasesToPublish": "$1 versions attendent d'être publiées",
+  "dashboard.clause.releasesToPublish.one": "une version attend d'être publiée",
+  "dashboard.clause.epicsInFlight": "$1 épopées sont en cours",
+  "dashboard.clause.epicsInFlight.one": "une épopée est en cours",
+  "dashboard.clause.completedThisWeek":
+    "$1 quêtes ont été terminées cette semaine",
+  "dashboard.clause.completedThisWeek.one":
+    "une quête a été terminée cette semaine",
+  "dashboard.clause.needsYou": "$1 points vous attendent",
+  "dashboard.clause.needsYou.one": "un point vous attend",
+  "dashboard.clause.openBlights": "$1 plantages restent ouverts",
+  "dashboard.clause.openBlights.one": "un plantage reste ouvert",
+  "dashboard.clause.appHealth":
+    "$1 copies d'application demandent un coup d'œil",
+  "dashboard.clause.appHealth.one":
+    "une copie d'application demande un coup d'œil",
+  "dashboard.clause.recentFolios": "$1 folios ont été modifiés récemment",
+  "dashboard.clause.recentFolios.one": "un folio a été modifié récemment",
   "dashboard.refreshed": "Actualise $1.",
   "dashboard.addCard": "Ajouter une carte",
 

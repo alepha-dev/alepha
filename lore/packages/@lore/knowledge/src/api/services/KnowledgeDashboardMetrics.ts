@@ -44,6 +44,16 @@ export class KnowledgeDashboardMetrics {
     this.catalog.register({
       ...common,
       key: "recentFolios",
+      clause: (value) =>
+        (value.value ?? 0) > 0
+          ? {
+              key:
+                value.value === 1
+                  ? "dashboard.clause.recentFolios.one"
+                  : "dashboard.clause.recentFolios",
+              args: [String(value.value)],
+            }
+          : undefined,
       order: 92,
       labelKey: "dashboard.metric.recentFolios",
       hintKey: "dashboard.metric.recentFolios.hint",

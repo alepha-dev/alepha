@@ -1,6 +1,7 @@
 import { AlephaError, type ZType } from "alepha";
 
 import type { CapabilityKey } from "./capabilityKeySchema.ts";
+import type { DashboardCardValue } from "./dashboardCardValueSchema.ts";
 import type {
   DashboardScope,
   DashboardScopeKind,
@@ -127,6 +128,16 @@ export interface DashboardMetricRequirement {
 }
 
 /**
+ * One clause of the computed board's headline sentence (#Q2663): an i18n key
+ * and its arguments, from a resolved value only. A template, never prose a
+ * model wrote.
+ */
+export interface DashboardHeadlineClause {
+  key: string;
+  args: string[];
+}
+
+/**
  * One entry in the metric registry.
  *
  * Declares everything the rest of the system needs to know about a metric
@@ -229,6 +240,13 @@ export interface DashboardMetricDescriptor {
    * shows in edit mode only.
    */
   requires?: string;
+  /**
+   * The clause this metric adds to the computed board's headline sentence
+   * when its tile rendered (#Q2663), or `undefined` for nothing worth
+   * saying. Pure, from the resolved value: a slot that collapsed never
+   * reaches it, so it never produces a sentence about nothing.
+   */
+  clause?: (value: DashboardCardValue) => DashboardHeadlineClause | undefined;
   /**
    * Where clicking goes.
    *

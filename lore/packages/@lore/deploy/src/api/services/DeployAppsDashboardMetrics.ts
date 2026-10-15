@@ -23,6 +23,20 @@ export class DeployAppsDashboardMetrics {
     this.catalog.register({
       ...common,
       key: "appHealth",
+      clause: (value) => {
+        const off = (value.rows ?? []).filter(
+          (row) => row.state === "bad" || row.state === "warn",
+        ).length;
+        return off > 0
+          ? {
+              key:
+                off === 1
+                  ? "dashboard.clause.appHealth.one"
+                  : "dashboard.clause.appHealth",
+              args: [String(off)],
+            }
+          : undefined;
+      },
       order: 81,
       labelKey: "dashboard.metric.appHealth",
       hintKey: "dashboard.metric.appHealth.hint",

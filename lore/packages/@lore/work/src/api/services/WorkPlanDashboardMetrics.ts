@@ -27,6 +27,23 @@ export class WorkPlanDashboardMetrics {
     this.catalog.register({
       ...common,
       key: "releaseOutlook",
+      clause: (value) => {
+        const tag = String(value.detail.tag ?? "");
+        if (value.detail.readyToPublish) {
+          return { key: "dashboard.clause.releaseReady", args: [tag] };
+        }
+        if (value.value === undefined) return undefined;
+        const days = value.detail.daysLeft;
+        return typeof days === "number"
+          ? {
+              key: "dashboard.clause.releaseShips",
+              args: [tag, String(days), String(value.value)],
+            }
+          : {
+              key: "dashboard.clause.release",
+              args: [tag, String(value.value)],
+            };
+      },
       order: 41,
       labelKey: "dashboard.metric.releaseOutlook",
       hintKey: "dashboard.metric.releaseOutlook.hint",
@@ -48,6 +65,16 @@ export class WorkPlanDashboardMetrics {
     this.catalog.register({
       ...common,
       key: "releasesToPublish",
+      clause: (value) =>
+        (value.value ?? 0) > 0
+          ? {
+              key:
+                value.value === 1
+                  ? "dashboard.clause.releasesToPublish.one"
+                  : "dashboard.clause.releasesToPublish",
+              args: [String(value.value)],
+            }
+          : undefined,
       order: 42,
       labelKey: "dashboard.metric.releasesToPublish",
       hintKey: "dashboard.metric.releasesToPublish.hint",
@@ -66,6 +93,16 @@ export class WorkPlanDashboardMetrics {
     this.catalog.register({
       ...common,
       key: "epicsInFlight",
+      clause: (value) =>
+        (value.value ?? 0) > 0
+          ? {
+              key:
+                value.value === 1
+                  ? "dashboard.clause.epicsInFlight.one"
+                  : "dashboard.clause.epicsInFlight",
+              args: [String(value.value)],
+            }
+          : undefined,
       order: 31,
       labelKey: "dashboard.metric.epicsInFlight",
       hintKey: "dashboard.metric.epicsInFlight.hint",

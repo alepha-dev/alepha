@@ -240,6 +240,8 @@ export default defineConfig({
         "dashboard.segment.",
         // tr(`dashboard.source.${key}`): a "needs you" source's "N more".
         "dashboard.source.",
+        // A metric's headline clause (#Q2663), named by its descriptor.
+        "dashboard.clause.",
         // tr(`account.notifications.category.${category}`) and its
         // `.description`. A category is a string a `$notification` template
         // registers, so the set is the DECLARATIONS: a plugin can add one

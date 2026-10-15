@@ -18,6 +18,16 @@ export class CoreDashboardMetrics {
   constructor() {
     this.catalog.register({
       key: "needsYou",
+      clause: (value) =>
+        (value.value ?? 0) > 0
+          ? {
+              key:
+                value.value === 1
+                  ? "dashboard.clause.needsYou.one"
+                  : "dashboard.clause.needsYou",
+              args: [String(value.value)],
+            }
+          : undefined,
       order: 5,
       boards: ["project"],
       group: "core",
