@@ -2396,22 +2396,38 @@ export class JobProvider {
    * sharing a database, or a script that started a container with only some
    * of the application's modules. Give each its own database, or its own
    * schema.
+   *
+   * **The names present are read first, from an index.** The purge used to
+   * ask for `id where jobName NOT IN (<registered>)` straight away: a `NOT IN`
+   * cannot seek and `id` is in no index, so in the usual case, nothing to
+   * purge, the database walked every row, `logs` included, to prove it. On D1
+   * that timed out every tick once the table grew. A `GROUP BY jobName` is
+   * answered from the `(jobName, …)` indexes alone, and the delete then seeks
+   * on the few unknown names.
    */
   protected async purgeUnregistered(): Promise<void> {
-    const names = [...this.jobs.keys()];
-    if (names.length === 0) return;
+    if (this.jobs.size === 0) return;
 
     let deleted = 0;
     try {
+      const present = (await this.executions.aggregate({
+        select: { jobName: true },
+        groupBy: ["jobName"],
+      })) as Array<{ jobName: string }>;
+      const unknown = present
+        .map((row) => row.jobName)
+        .filter((name) => !this.jobs.has(name));
+      if (unknown.length === 0) return;
+
       while (deleted < this.trimMaxPerTick) {
         const chunk = Math.min(
           this.trimChunkSize,
           this.trimMaxPerTick - deleted,
         );
-        // The registered names are a few dozen bound parameters on top of a
+        // The unknown names are a handful of bound parameters on top of a
         // chunk of ids, which keeps the delete under D1's 999.
         const rows = await this.executions.findMany({
-          where: { jobName: { notInArray: names } },
+          where: { jobName: { inArray: unknown } },
           columns: ["id"],
           limit: chunk,
         });
