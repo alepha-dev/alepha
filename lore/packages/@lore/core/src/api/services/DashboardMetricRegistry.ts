@@ -139,6 +139,7 @@ export class DashboardMetricRegistry {
     project: Project,
     capabilities?: Map<number, ProjectCapability[]>,
     windowDays: number = DashboardMetricRegistry.DEFAULT_WINDOW_DAYS,
+    evaluatedAt?: string,
   ): Promise<DashboardCardValue[]> {
     return this.resolveOn(
       cards,
@@ -147,6 +148,7 @@ export class DashboardMetricRegistry {
       "project",
       capabilities,
       windowDays,
+      evaluatedAt,
     );
   }
 
@@ -194,6 +196,7 @@ export class DashboardMetricRegistry {
     board: DashboardBoard,
     preloaded?: Map<number, ProjectCapability[]>,
     windowDays: number = DashboardMetricRegistry.DEFAULT_WINDOW_DAYS,
+    evaluatedAt?: string,
   ): Promise<DashboardCardValue[]> {
     const resolvers = this.resolvers();
     const values = new Map<number, DashboardCardValue>();
@@ -257,7 +260,13 @@ export class DashboardMetricRegistry {
         const proven = await this.scopes.resolve(card.scope, user, visible);
         const scope = this.narrow(descriptor, proven, capabilities);
         const group = byMetric.get(card.metric) ?? [];
-        group.push({ card, scope, filters: card.filters, windowDays });
+        group.push({
+          card,
+          scope,
+          filters: card.filters,
+          windowDays,
+          evaluatedAt,
+        });
         byMetric.set(card.metric, group);
       } catch (error) {
         // A project or app the caller has since lost, or one that was

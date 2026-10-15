@@ -683,8 +683,12 @@ export class DeployRouter {
     path: "/quality",
     lazy: () =>
       import("./components/project/reports/ReportsQuality.client.tsx"),
-    loader: async () => ({
+    schema: {
+      query: z.object({ branch: z.string().min(1).max(200).optional() }),
+    },
+    loader: async ({ query }) => ({
       quality: await this.qualityApi.getQualityRuns({
+        query,
         params: {
           projectId: this.alepha.store.get(currentProjectAtom)?.id ?? -1,
         },

@@ -96,7 +96,7 @@ export class AutomationVariables {
         await this.persistence.rules.updateById(rule.id, {
           version: rule.version,
           revision: rule.revision + 1,
-          baseline: null,
+          ...(this.predicateUses(rule.rule, key) ? { baseline: null } : {}),
           ...(!requiresApproval &&
           schedules.get(rule.id) &&
           schedules.get(rule.id) !== rule.scheduleCron
@@ -247,5 +247,15 @@ export class AutomationVariables {
       if (page.length < 100) return;
       cursor = page[page.length - 1].id;
     }
+  }
+  protected predicateUses(rule: AutomationRule, key: string): boolean {
+    if (!rule.guard) return false;
+    return this.catalog
+      .names({
+        ...rule,
+        trigger: { kind: "schedule", cron: "*/5 * * * *" },
+        actions: [],
+      })
+      .has(key);
   }
 }

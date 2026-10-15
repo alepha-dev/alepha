@@ -31,9 +31,13 @@ const DashboardFilterText = (props: DashboardFilterTextProps) => {
     <Control
       input={form.input.value}
       label=""
-      area
-      rows={6}
-      placeholder={tr("dashboard.filter.markdownPlaceholder")}
+      area={props.name === "markdown"}
+      rows={props.name === "markdown" ? 6 : undefined}
+      placeholder={tr(
+        props.name === "branch"
+          ? "dashboard.filter.branchPlaceholder"
+          : "dashboard.filter.markdownPlaceholder",
+      )}
       inputProps={{
         "data-testid": `dashboard-filter-text-${props.name}`,
         "aria-label": tr(`dashboard.filterField.${props.name}` as never),

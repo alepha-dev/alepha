@@ -65,7 +65,8 @@ const DashboardCardValue = (props: DashboardCardValueProps) => {
     <div className="mt-0.5 flex items-baseline gap-2">
       <span className="text-[32px] leading-none font-semibold tracking-[-0.025em] tabular-nums">
         {l(props.value.value)}
-        {props.presentation === "progress" && (
+        {(props.presentation === "progress" ||
+          props.value.unit === "percent") && (
           <span className="text-muted-foreground text-[20px]">%</span>
         )}
       </span>

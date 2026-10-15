@@ -206,6 +206,11 @@ const DashboardCardFooter = (props: DashboardCardFooterProps) => {
         ],
       });
     }
+    if (props.metric.startsWith("quality.")) {
+      return tr("dashboard.footer.qualityDay", {
+        args: [String(detail.branch ?? "main"), String(detail.day ?? "")],
+      });
+    }
     if (props.metric === "qualityTrend") {
       return tr("dashboard.footer.qualityTrend", {
         args: [String(detail.testsPassed ?? 0), String(detail.testsTotal ?? 0)],

@@ -2409,6 +2409,33 @@ export default {
   "dashboard.metric.errorTrend": "Errors",
   "dashboard.metric.errorTrend.hint":
     "occurrences per day, deployments as rules",
+  "dashboard.metric.quality.coverage.lines": "Line coverage",
+  "dashboard.metric.quality.coverage.lines.hint":
+    "Yesterday on the selected branch (closed UTC day).",
+  "dashboard.metric.quality.coverage.statements": "Statement coverage",
+  "dashboard.metric.quality.coverage.statements.hint":
+    "Yesterday on the selected branch (closed UTC day).",
+  "dashboard.metric.quality.coverage.functions": "Function coverage",
+  "dashboard.metric.quality.coverage.functions.hint":
+    "Yesterday on the selected branch (closed UTC day).",
+  "dashboard.metric.quality.coverage.branches": "Branch coverage",
+  "dashboard.metric.quality.coverage.branches.hint":
+    "Yesterday on the selected branch (closed UTC day).",
+  "dashboard.metric.quality.tests.total": "Total tests",
+  "dashboard.metric.quality.tests.total.hint":
+    "Yesterday on the selected branch (closed UTC day).",
+  "dashboard.metric.quality.tests.passed": "Passed tests",
+  "dashboard.metric.quality.tests.passed.hint":
+    "Yesterday on the selected branch (closed UTC day).",
+  "dashboard.metric.quality.tests.failed": "Failed tests",
+  "dashboard.metric.quality.tests.failed.hint":
+    "Yesterday on the selected branch (closed UTC day).",
+  "dashboard.metric.quality.tests.skipped": "Skipped tests",
+  "dashboard.metric.quality.tests.skipped.hint":
+    "Yesterday on the selected branch (closed UTC day).",
+  "dashboard.footer.qualityDay": "$1 - $2 UTC",
+  "dashboard.filterField.branch": "Branch",
+  "dashboard.filter.branchPlaceholder": "main",
   "dashboard.metric.qualityTrend": "Coverage",
   "dashboard.metric.qualityTrend.hint": "line coverage over the recorded runs",
   "dashboard.footer.appHealth": "$1 of $2 copies healthy",

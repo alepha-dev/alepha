@@ -56,6 +56,8 @@ import { EstateStatsService } from "./services/EstateStatsService.ts";
 import { EstateTokenService } from "./services/EstateTokenService.ts";
 import { OpenBlightCounter } from "./services/OpenBlightCounter.ts";
 import { OpenBlightsMetric } from "./services/OpenBlightsMetric.ts";
+import { QualityNumericCatalog } from "./services/QualityNumericCatalog.ts";
+import { QualityNumericMetrics } from "./services/QualityNumericMetrics.ts";
 import { QualityService } from "./services/QualityService.ts";
 import { QualityTrendMetric } from "./services/QualityTrendMetric.ts";
 import { RollbackService } from "./services/RollbackService.ts";
@@ -101,6 +103,8 @@ export const LoreDeployApi = $module({
     AppHealthMetric,
     ErrorTrendMetric,
     QualityTrendMetric,
+    QualityNumericCatalog,
+    QualityNumericMetrics,
     DeployProjectCounts,
     BlightJobs,
     SigilJobs,

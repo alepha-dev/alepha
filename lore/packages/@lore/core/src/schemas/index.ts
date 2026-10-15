@@ -33,7 +33,10 @@ export {
   CAPABILITY_KEYS,
   type CapabilityKey,
 } from "../api/schemas/capabilityKeySchema.ts";
-export { type DashboardCardValue } from "../api/schemas/dashboardCardValueSchema.ts";
+export {
+  dashboardCardValueSchema,
+  type DashboardCardValue,
+} from "../api/schemas/dashboardCardValueSchema.ts";
 export {
   type DashboardEmptyReason,
   dashboardEmptyReasonSchema,

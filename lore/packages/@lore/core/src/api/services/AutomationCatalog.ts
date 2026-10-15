@@ -236,9 +236,17 @@ export class AutomationCatalog {
         throw new BadRequestError(
           `guard.operator '${rule.guard.operator}' is not supported by this scalar selection`,
         );
+      if (rule.guard.operator === "delta" && rule.guard.field !== "value")
+        throw new BadRequestError(
+          "Delta compares the scalar value with its previous closed day",
+        );
       await this.value(
         projectId,
-        { kind, required: true },
+        {
+          kind,
+          required: true,
+          ...(rule.guard.operator === "delta" ? { min: 0 } : {}),
+        },
         rule.guard.value,
         source.fields,
         variables,
@@ -365,6 +373,7 @@ export class AutomationCatalog {
     user: UserAccountToken,
     key: string,
     filters: Record<string, unknown>,
+    evaluatedAt?: string,
   ) {
     const context = await this.access.authorize(
       projectId,
@@ -389,12 +398,28 @@ export class AutomationCatalog {
       ],
       { ...user, ownership: true },
       context.project,
+      undefined,
+      undefined,
+      evaluatedAt,
     );
+    const fields: Record<string, string | number> = {};
+    for (const [name, kind] of Object.entries(
+      this.metrics.get(key).automation?.fields ?? {},
+    )) {
+      const field = value?.detail[name];
+      if (
+        (kind === "number" &&
+          typeof field === "number" &&
+          Number.isFinite(field)) ||
+        (kind === "text" && typeof field === "string")
+      )
+        fields[name] = field;
+    }
     return value?.ok &&
       typeof value.value === "number" &&
       Number.isFinite(value.value)
-      ? { status: "value" as const, value: value.value }
-      : { status: "no_data" as const };
+      ? { status: "value" as const, value: value.value, fields }
+      : { status: "no_data" as const, fields };
   }
 
   protected parseFilters(

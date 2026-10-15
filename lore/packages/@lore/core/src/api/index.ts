@@ -407,3 +407,9 @@ export {
   type AutomationSelectionHandler,
   type AutomationSelectionPage,
 } from "./services/AutomationSelections.ts";
+
+export {
+  AutomationGuards,
+  type AutomationGuardInput,
+  type AutomationGuardResult,
+} from "./services/AutomationGuards.ts";

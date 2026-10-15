@@ -78,12 +78,45 @@ export class QualityService {
   public async findSeries(
     projectId: number,
     limit: number,
+    branch?: string,
   ): Promise<QualityRun[]> {
     return this.runs.findMany({
-      where: { projectId: { eq: projectId } },
+      where: {
+        projectId: { eq: projectId },
+        ...(branch === undefined ? {} : { branch }),
+      },
       orderBy: [{ column: "day", direction: "desc" }],
       limit,
     });
+  }
+
+  /**
+   * Two fully closed UTC days, never the nearest available samples. The caller
+   * can freeze evaluation time so a resumed run keeps the same date window.
+   */
+  public async closedDays(
+    projectId: number,
+    branch: string,
+    evaluatedAt = this.dateTime.nowISOString(),
+  ) {
+    const day = new Date(new Date(evaluatedAt).getTime() - 86_400_000)
+      .toISOString()
+      .slice(0, 10);
+    const previousDay = new Date(
+      new Date(evaluatedAt).getTime() - 2 * 86_400_000,
+    )
+      .toISOString()
+      .slice(0, 10);
+    const rows = await this.runs.findMany({
+      where: { projectId, branch, day: { inArray: [day, previousDay] } },
+      limit: 2,
+    });
+    return {
+      day,
+      previousDay,
+      current: rows.find((row) => row.day === day),
+      previous: rows.find((row) => row.day === previousDay),
+    };
   }
 
   /**

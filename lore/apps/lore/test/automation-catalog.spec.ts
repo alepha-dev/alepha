@@ -133,6 +133,14 @@ describe("Automation catalogue", () => {
       "activeQuests",
       "heldQuests",
       "openBlights",
+      "quality.coverage.branches",
+      "quality.coverage.functions",
+      "quality.coverage.lines",
+      "quality.coverage.statements",
+      "quality.tests.failed",
+      "quality.tests.passed",
+      "quality.tests.skipped",
+      "quality.tests.total",
       "uniqueVisitors",
       "untriagedFeedback",
     ]);
@@ -189,6 +197,12 @@ describe("Automation catalogue", () => {
     expect(
       result.entries.find((entry) => entry.key === "feedback.created"),
     ).toMatchObject({ available: false, reason: "Missing feedback:read" });
+    expect(
+      result.entries.find((entry) => entry.key === "quality.coverage.lines"),
+    ).toMatchObject({ available: false, reason: "Missing quality:read" });
+    await expect(
+      catalog.resolveMetric(project.id, limited, "quality.coverage.lines", {}),
+    ).rejects.toThrow("Missing quality:read");
     expect(result.variables[0]).toMatchObject({
       key: "target",
       available: false,
@@ -346,7 +360,11 @@ describe("Automation catalogue", () => {
         user,
         project,
       );
-    expect(resolved).toEqual({ status: "value", value: dashboard.value });
+    expect(resolved).toEqual({
+      status: "value",
+      value: dashboard.value,
+      fields: {},
+    });
     expect(resolved).toMatchObject({ value: 2 });
     await expect(
       catalog.resolveMetric(project.id, user, "epicProgress", {}),

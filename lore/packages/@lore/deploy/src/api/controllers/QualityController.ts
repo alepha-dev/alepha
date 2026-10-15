@@ -106,7 +106,7 @@ export class QualityController {
          * Which branch the headline figures come from. `main` unless asked,
          * so a topic branch's push never displaces it on the tab.
          */
-        branch: z.string().max(200).optional(),
+        branch: z.string().min(1).max(200).optional(),
       }),
       response: qualityOverviewSchema,
     },
@@ -116,6 +116,7 @@ export class QualityController {
         this.quality.findSeries(
           params.projectId,
           QualityController.SERIES_LIMIT,
+          query.branch,
         ),
       ]);
 
@@ -123,7 +124,8 @@ export class QualityController {
       // branch-scoped `latest` is empty while the series is not. Falling back
       // to the newest row overall is better than a tab that renders a graph
       // above four blank figures.
-      const headline = latest ?? runs[0];
+      const headline =
+        latest ?? (query.branch === undefined ? runs[0] : undefined);
 
       return {
         latest: headline ? this.resource(headline) : undefined,

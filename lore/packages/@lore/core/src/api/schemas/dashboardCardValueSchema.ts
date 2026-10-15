@@ -43,7 +43,8 @@ export const dashboardCardValueSchema = z.object({
   /**
    * The headline figure. Absent when `ok` is false.
    */
-  value: z.integer().optional(),
+  value: z.number().finite().optional(),
+  unit: z.enum(["percent"]).optional(),
   /**
    * Percent change against the metric's own comparison window, when it has
    * one. Absent means there is nothing honest to say — no comparison, or a

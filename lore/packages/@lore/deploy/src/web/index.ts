@@ -3,6 +3,7 @@ import { $module } from "alepha";
 
 import { DeployAppsDashboardMetrics } from "../api/services/DeployAppsDashboardMetrics.ts";
 import { DeployDashboardMetrics } from "../api/services/DeployDashboardMetrics.ts";
+import { QualityNumericCatalog } from "../api/services/QualityNumericCatalog.ts";
 import { DeployAccountRouter } from "./app/components/account/DeployAccountRouter.ts";
 import { DeployRouter } from "./app/DeployRouter.ts";
 import { DeployProjectLoader } from "./app/loaders/DeployProjectLoader.ts";
@@ -39,6 +40,7 @@ export const LoreDeployWeb = $module({
     alepha.inject(DeployShell);
     alepha.inject(DeployDashboardMetrics);
     alepha.inject(DeployAppsDashboardMetrics);
+    alepha.inject(QualityNumericCatalog);
   },
 });
 

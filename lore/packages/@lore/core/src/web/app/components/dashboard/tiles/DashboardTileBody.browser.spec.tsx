@@ -49,6 +49,7 @@ describe("DashboardTileBody", () => {
     options: {
       filters?: Record<string, unknown>;
       chartStyle?: "area" | "bars";
+      metric?: string;
     } = {},
   ) => {
     alepha = Alepha.create().with(AlephaReactRouter).with(AlephaReactI18n);
@@ -59,7 +60,10 @@ describe("DashboardTileBody", () => {
     return render(
       <AlephaContext.Provider value={alepha}>
         <DashboardTileBody
-          card={card(options.filters)}
+          card={{
+            ...card(options.filters),
+            ...(options.metric ? { metric: options.metric } : {}),
+          }}
           value={resolved}
           presentation={presentation}
           chartStyle={options.chartStyle}
@@ -92,6 +96,25 @@ describe("DashboardTileBody", () => {
   });
 
   describe("scalar", () => {
+    it("renders decimal coverage as a percent with its actual branch and closed UTC date", async ({
+      expect,
+    }) => {
+      const rendered = await mount(
+        "scalar",
+        value({
+          value: 84.5,
+          unit: "percent",
+          detail: { branch: "topic", day: "2026-10-14" },
+        }),
+        { metric: "quality.coverage.lines" },
+      );
+      expect(rendered.container.textContent).toContain("84.5%");
+      expect(rendered.container.textContent).toContain(
+        "topic - 2026-10-14 UTC",
+      );
+      expect(screen.queryByTestId("tile-delta")).toBeNull();
+    });
+
     it("draws the delta as a direction and a sign", async ({ expect }) => {
       await mount("scalar", value({ value: 12, delta: -8 }));
       expect(screen.getByTestId("tile-delta").textContent).toBe("-8%");

@@ -2401,6 +2401,33 @@ export default {
   "dashboard.metric.errorTrend": "Erreurs",
   "dashboard.metric.errorTrend.hint":
     "occurrences par jour, déploiements en repères",
+  "dashboard.metric.quality.coverage.lines": "Couverture des lignes",
+  "dashboard.metric.quality.coverage.lines.hint":
+    "Hier sur la branche choisie (jour UTC terminé).",
+  "dashboard.metric.quality.coverage.statements": "Couverture des instructions",
+  "dashboard.metric.quality.coverage.statements.hint":
+    "Hier sur la branche choisie (jour UTC terminé).",
+  "dashboard.metric.quality.coverage.functions": "Couverture des fonctions",
+  "dashboard.metric.quality.coverage.functions.hint":
+    "Hier sur la branche choisie (jour UTC terminé).",
+  "dashboard.metric.quality.coverage.branches": "Couverture des branches",
+  "dashboard.metric.quality.coverage.branches.hint":
+    "Hier sur la branche choisie (jour UTC terminé).",
+  "dashboard.metric.quality.tests.total": "Tests au total",
+  "dashboard.metric.quality.tests.total.hint":
+    "Hier sur la branche choisie (jour UTC terminé).",
+  "dashboard.metric.quality.tests.passed": "Tests réussis",
+  "dashboard.metric.quality.tests.passed.hint":
+    "Hier sur la branche choisie (jour UTC terminé).",
+  "dashboard.metric.quality.tests.failed": "Tests échoués",
+  "dashboard.metric.quality.tests.failed.hint":
+    "Hier sur la branche choisie (jour UTC terminé).",
+  "dashboard.metric.quality.tests.skipped": "Tests ignorés",
+  "dashboard.metric.quality.tests.skipped.hint":
+    "Hier sur la branche choisie (jour UTC terminé).",
+  "dashboard.footer.qualityDay": "$1 - $2 UTC",
+  "dashboard.filterField.branch": "Branche",
+  "dashboard.filter.branchPlaceholder": "main",
   "dashboard.metric.qualityTrend": "Couverture",
   "dashboard.metric.qualityTrend.hint":
     "couverture des lignes sur les exécutions enregistrées",

@@ -22,6 +22,7 @@ export interface DashboardResolvable {
    * every tile's deltas and sparklines agree.
    */
   windowDays: number;
+  evaluatedAt?: string;
 }
 
 /**

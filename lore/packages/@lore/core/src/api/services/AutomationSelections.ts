@@ -94,11 +94,15 @@ export class AutomationSelections {
           input.user,
           selection.key,
           filters,
+          evaluatedAt,
         );
         const context = await this.builder.source(
           input.rule.projectId,
           selection.key,
-          { value: value.status === "value" ? value.value : null },
+          {
+            ...value.fields,
+            value: value.status === "value" ? value.value : null,
+          },
         );
         return {
           kind: "scalar",
