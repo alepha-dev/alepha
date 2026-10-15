@@ -5,6 +5,7 @@ import { BadRequestError, ConflictError } from "alepha/server";
 
 import type { AutomationReceipt } from "../entities/automationReceipts.ts";
 import type { AutomationRule } from "../schemas/automationRuleSchema.ts";
+import type { AutomationRunSnapshot } from "../schemas/automationRunSnapshotSchema.ts";
 import { AutomationAtomic } from "./AutomationAtomic.ts";
 import { AutomationAuthority } from "./AutomationAuthority.ts";
 import { AutomationDatabase } from "./AutomationDatabase.ts";
@@ -98,6 +99,7 @@ export class AutomationClaims {
       let occurredAt: string;
       let occurrenceId: string;
       let fields: Record<string, unknown> = {};
+      let source: AutomationRunSnapshot["source"];
       if (input.source.kind === "event") {
         const event = await this.persistence.events.getById(
           input.source.eventId,
@@ -113,6 +115,13 @@ export class AutomationClaims {
         occurredAt = event.occurredAt;
         occurrenceId = `event:${event.id}`;
         fields = event.payload.fields;
+        source = {
+          mode: "live",
+          key: event.name,
+          id: event.id,
+          occurredAt: event.occurredAt,
+          omitted: event.payload.omitted,
+        };
       } else {
         if (rule.rule.trigger.kind !== "schedule")
           throw new BadRequestError(
@@ -136,6 +145,7 @@ export class AutomationClaims {
         occurrenceId,
         triggeredAt: occurredAt,
         inputs: fields,
+        source,
       });
       delete frame.snapshot.evaluatedAt;
       const now = this.dateTime.nowISOString();
@@ -186,6 +196,24 @@ export class AutomationClaims {
         return this.persistence.receipts.updateById(id, { snapshot: null });
       }
       return receipt;
+    });
+  }
+
+  public async refuseReady(id: string, reason: string): Promise<void> {
+    return this.database.primary(async () => {
+      const updated = await this.persistence.receipts.updateMany(
+        { id, kind: "occurrence", status: "ready" },
+        {
+          status: "refused",
+          reason: reason.slice(0, 1024),
+          leaseToken: null,
+          leaseUntil: null,
+        },
+      );
+      if (!updated.length) return;
+      const receipt = await this.persistence.receipts.getById(id);
+      await this.ensureRun(receipt);
+      await this.persistence.receipts.updateById(id, { snapshot: null });
     });
   }
 
@@ -548,8 +576,9 @@ export class AutomationClaims {
     const occurrence = await this.lease(id, token);
     await this.atomic.guarded(
       occurrence.projectId,
-      sql`${this.live(occurrence, token)} AND EXISTS (SELECT 1 FROM automation_receipts WHERE id = ${id} AND cursor >= ${occurrence.snapshot?.actions.length ?? 0}) AND NOT EXISTS (SELECT 1 FROM automation_receipts WHERE parent_id = ${id} AND kind IN ('action', 'recipient', 'roster', 'chunk') AND status = 'claimed')`,
+      sql`${this.live(occurrence, token)} AND EXISTS (SELECT 1 FROM automation_receipts WHERE id = ${id} AND cursor >= ${occurrence.snapshot?.actions.length ?? 0}) AND NOT EXISTS (SELECT 1 FROM automation_receipts WHERE parent_id = ${id} AND kind IN ('action', 'recipient', 'roster') AND status = 'claimed')`,
       [
+        sql`UPDATE automation_receipts SET status = 'committed', snapshot = NULL, version = version + 1 WHERE parent_id = ${id} AND kind = 'chunk' AND status = 'claimed'`,
         sql`UPDATE automation_receipts SET status = 'committed', snapshot = NULL, result = ${JSON.stringify(this.safeResult(result ?? {}))}, lease_token = NULL, lease_until = NULL, version = version + 1, updated_at = ${this.database.timestamp(this.dateTime.nowISOString())} WHERE id = ${id}`,
       ],
     );
@@ -808,6 +837,91 @@ export class AutomationClaims {
     });
   }
 
+  /**
+   * Stop evidence does not require the rule to remain enabled. A disable may
+   * land after a committed effect, which still has to be reported truthfully.
+   */
+  public async stop(
+    id: string,
+    token: string,
+    outcome: "failed" | "refused" | "unknown",
+    reason: string,
+  ): Promise<void> {
+    return this.database.primary(async () => {
+      const changed = await this.persistence.receipts.updateMany(
+        { id, kind: "occurrence", status: "claimed", leaseToken: token },
+        {
+          status: outcome,
+          reason: reason.slice(0, 1024),
+          leaseToken: null,
+          leaseUntil: null,
+        },
+      );
+      if (!changed.length) return;
+      const occurrence = await this.persistence.receipts.getById(id);
+      await this.reconcileRun(occurrence, outcome);
+      await this.closePending(occurrence);
+      if (outcome === "unknown")
+        await this.evidence.transition(
+          occurrence.automationId!,
+          "paused",
+          "An action outcome is unknown; author review is required",
+          true,
+        );
+    });
+  }
+
+  /**
+   * Continue the same frozen selection without fetching any additional rows.
+   * The durable chunk identity repairs a crash between switching and evidence.
+   */
+  public async continueRun(
+    id: string,
+    token: string,
+  ): Promise<AutomationReceipt> {
+    return this.database.primary(async () => {
+      const occurrence = await this.lease(id, token);
+      const chunkId = await this.identity.hash([
+        "run-chunk",
+        id,
+        occurrence.cursor,
+      ]);
+      let chunk = await this.persistence.receipts.findById(chunkId);
+      if (!chunk) {
+        const snapshot = structuredClone(occurrence.snapshot!);
+        snapshot.actions = snapshot.actions
+          .slice(occurrence.cursor)
+          .map(({ index, row }) => ({
+            index,
+            ...(row !== undefined ? { row } : {}),
+            status: "pending",
+            result: {},
+          }));
+        snapshot.counts.executed = 0;
+        snapshot.counts.deliveries = 0;
+        const now = this.dateTime.nowISOString();
+        const runId = crypto.randomUUID();
+        await this.atomic.guarded(
+          occurrence.projectId,
+          sql`${this.live(occurrence, token)} AND EXISTS (SELECT 1 FROM automation_receipts WHERE id = ${id} AND cursor = ${occurrence.cursor})`,
+          [
+            sql`INSERT INTO automation_receipts (id, version, project_id, automation_id, identity, kind, status, occurrence_id, rule_revision, occurred_at, replay_until, parent_id, run_id, snapshot, position, cursor, roster_complete, created_at, updated_at) VALUES (${chunkId}, 0, ${occurrence.projectId}, ${occurrence.automationId}, ${chunkId}, 'chunk', 'claimed', ${occurrence.occurrenceId}, ${occurrence.ruleRevision}, ${this.database.timestamp(occurrence.occurredAt)}, ${this.database.timestamp(occurrence.replayUntil)}, ${id}, ${runId}, ${JSON.stringify(snapshot)}, ${occurrence.cursor}, 0, FALSE, ${this.database.timestamp(now)}, ${this.database.timestamp(now)}) ON CONFLICT DO NOTHING`,
+          ],
+        );
+        chunk = await this.persistence.receipts.getById(chunkId);
+      }
+      if (occurrence.runId && occurrence.runId !== chunk.runId)
+        await this.evidence.continueInAnotherRun(occurrence.runId);
+      await this.persistence.receipts.updateMany(
+        { id, leaseToken: token },
+        { runId: chunk.runId },
+      );
+      const current = await this.persistence.receipts.getById(id);
+      await this.ensureRun(current);
+      return current;
+    });
+  }
+
   public async ensureRun(receipt: AutomationReceipt) {
     if (!receipt.snapshot || !receipt.runId || !receipt.automationId)
       throw new AlephaError("Occurrence has no frozen run evidence");
@@ -837,7 +951,7 @@ export class AutomationClaims {
 
   protected async reconcileRun(
     occurrence: AutomationReceipt,
-    outcome: "unknown" | "refused",
+    outcome: "unknown" | "refused" | "failed",
   ) {
     if (!occurrence.runId || !occurrence.snapshot) return;
     let run = await this.ensureRun(occurrence);
@@ -863,9 +977,15 @@ export class AutomationClaims {
         ...(planned.row !== undefined ? { row: planned.row } : {}),
         status: unknown
           ? "unknown"
-          : committed.some((action) => action.result?.enqueued === true)
-            ? "queued"
-            : "succeeded",
+          : committed.every(
+                (action) =>
+                  action.result?.skipped === true ||
+                  action.result?.changed === false,
+              )
+            ? "skipped"
+            : committed.some((action) => action.result?.enqueued === true)
+              ? "queued"
+              : "succeeded",
         receiptId: (unknown ?? committed[0]).id,
         deliveries: committed.reduce(
           (count, action) => count + (action.result?.enqueued === true ? 1 : 0),
@@ -890,7 +1010,7 @@ export class AutomationClaims {
           ? "unknown"
           : run.snapshot.counts.executed || run.snapshot.counts.deliveries
             ? "partial"
-            : "refused",
+            : outcome,
       reason: occurrence.reason ?? "Occurrence could not resume",
       finishedAt: this.dateTime.nowISOString(),
     });

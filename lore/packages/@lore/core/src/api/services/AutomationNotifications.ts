@@ -70,7 +70,9 @@ export class AutomationNotifications {
     );
     const overhead =
       adapter.target === "html"
-        ? new TextEncoder().encode(this.htmlPrefix + this.htmlSuffix).byteLength
+        ? new TextEncoder().encode(
+            JSON.stringify(this.htmlPrefix + this.htmlSuffix),
+          ).byteLength - 2
         : 0;
     const rendered = this.renderer.render(
       input.action,

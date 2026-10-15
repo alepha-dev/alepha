@@ -38,6 +38,7 @@ import { CredentialSealService } from "./services/CredentialSealService.ts";
 import { DailyVisitorsService } from "./services/DailyVisitorsService.ts";
 import { DeployAppsDashboardMetrics } from "./services/DeployAppsDashboardMetrics.ts";
 import { DeployAttentionSources } from "./services/DeployAttentionSources.ts";
+import { DeployAutomationEventSubjects } from "./services/DeployAutomationEventSubjects.ts";
 import { DeployAutomationReferences } from "./services/DeployAutomationReferences.ts";
 import { DeployDashboard } from "./services/DeployDashboard.ts";
 import { DeployDashboardMetrics } from "./services/DeployDashboardMetrics.ts";
@@ -92,6 +93,7 @@ export const LoreDeployApi = $module({
     AlephaRateLimit,
   ],
   services: [
+    DeployAutomationEventSubjects,
     DeployAutomationReferences,
     DeployDashboardMetrics,
     BlightQuestHandBack,

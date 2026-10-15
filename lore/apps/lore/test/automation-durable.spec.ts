@@ -8,6 +8,7 @@ import {
   AutomationPersistence,
   AutomationRoster,
   AutomationRunEvidence,
+  AutomationWorkerJobs,
 } from "@lore/core/api";
 import type { AutomationRule } from "@lore/core/schemas";
 import { Alepha, AlephaError } from "alepha";
@@ -23,6 +24,7 @@ import {
 } from "./fixtures/entities.ts";
 
 class DeferredEventDispatch {}
+class DeferredWorkerJobs {}
 
 describe("Durable automation dispatch", () => {
   let alepha: Alepha;
@@ -129,6 +131,7 @@ describe("Durable automation dispatch", () => {
       provide: AutomationEventDispatch,
       use: DeferredEventDispatch,
     });
+    alepha.with({ provide: AutomationWorkerJobs, use: DeferredWorkerJobs });
     bootLore(alepha, ["api"]);
     entities = alepha.inject(TestEntityRepositories);
     persistence = alepha.inject(AutomationPersistence);

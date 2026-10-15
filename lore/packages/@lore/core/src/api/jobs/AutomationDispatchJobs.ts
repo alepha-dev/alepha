@@ -1,5 +1,6 @@
 import { $inject } from "alepha";
 import { $job } from "alepha/api/jobs";
+import { DateTimeProvider } from "alepha/datetime";
 
 import { AutomationClaims } from "../services/AutomationClaims.ts";
 import { AutomationDispatchRegistry } from "../services/AutomationDispatchRegistry.ts";
@@ -7,6 +8,7 @@ import { AutomationEvents } from "../services/AutomationEvents.ts";
 import { AutomationHealth } from "../services/AutomationHealth.ts";
 
 export class AutomationDispatchJobs {
+  protected readonly time = $inject(DateTimeProvider);
   protected readonly health = $inject(AutomationHealth);
   protected readonly registry = $inject(AutomationDispatchRegistry);
   protected readonly events = $inject(AutomationEvents);
@@ -25,7 +27,7 @@ export class AutomationDispatchJobs {
     timeout: [2, "minutes"],
     handler: async () => {
       await this.health.sweep();
-      await this.registry.tick();
+      await this.registry.tick(Math.floor(this.time.nowMillis() / 300_000));
     },
   });
 }

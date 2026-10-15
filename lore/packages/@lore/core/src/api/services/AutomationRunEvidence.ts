@@ -127,10 +127,12 @@ export class AutomationRunEvidence {
       rule.rule.trigger.kind === "event"
         ? rule.rule.trigger.event
         : rule.rule.select!.key;
-    const fields =
-      this.catalog.entries().find((item) => item.key === key)?.fields ?? {};
+    const descriptor = this.catalog.entries().find((item) => item.key === key);
+    const fields = descriptor?.fields ?? {};
     const rows = input.selected ?? [];
-    const selected = rows.slice(0, 50).map((row) => this.safe(row, fields));
+    const selected = rows
+      .slice(0, 50)
+      .map((row) => this.safe(row, descriptor?.itemFields ?? fields));
     const hasMore =
       !!input.hasMore ||
       rows.length > 50 ||
@@ -189,8 +191,11 @@ export class AutomationRunEvidence {
     const snapshot: AutomationRunSnapshot = {
       rule: rule.rule,
       ruleHash: await this.hash(rule.rule),
-      evaluatedAt: this.dateTime.nowISOString(),
+      evaluatedAt: input.evaluatedAt ?? this.dateTime.nowISOString(),
       ...(input.health ? { health: input.health } : {}),
+      ...(input.source ? { source: input.source } : {}),
+      ...(input.selectionNext ? { selectionNext: input.selectionNext } : {}),
+      ...(input.noData !== undefined ? { noData: input.noData } : {}),
       inputs: this.safe(input.inputs ?? {}, fields),
       variables: (input.variables ?? []).filter((variable) =>
         referenced.has(variable.key),
@@ -203,7 +208,7 @@ export class AutomationRunEvidence {
         deliveries: 0,
         skipped: selected.length - matched,
         total,
-        totalIsExact: input.total !== undefined,
+        totalIsExact: input.total !== undefined && input.totalIsExact !== false,
         truncated: hasMore,
         hasMore,
       },
@@ -276,6 +281,17 @@ export class AutomationRunEvidence {
       run.snapshot.counts.deliveries + deliveries > 100
     )
       throw new BadRequestError("Run delivery budget exceeds 100");
+  }
+
+  public async truncated(id: string): Promise<void> {
+    const run = await this.persistence.runs.getById(id);
+    if (run.snapshot.counts.truncated) return;
+    const snapshot = structuredClone(run.snapshot);
+    snapshot.counts.truncated = true;
+    await this.persistence.runs.updateById(id, {
+      version: run.version,
+      snapshot,
+    });
   }
 
   public async action(
@@ -615,11 +631,16 @@ export interface AutomationEvidenceInput {
   rule: Automation;
   occurrenceId: string;
   triggeredAt: string;
+  evaluatedAt?: string;
+  source?: AutomationRunSnapshot["source"];
+  selectionNext?: AutomationRunSnapshot["selectionNext"];
+  noData?: boolean;
   inputs?: Record<string, unknown>;
   selected?: Record<string, unknown>[];
   variables?: AutomationRunSnapshot["variables"];
   matched?: number;
   total?: number;
+  totalIsExact?: boolean;
   hasMore?: boolean;
   planned?: Array<{ index: number; row?: number }>;
   status?: AutomationRun["status"];

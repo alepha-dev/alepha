@@ -33,6 +33,7 @@ import { OrganizationHooks } from "./hooks/OrganizationHooks.ts";
 import { UserDeletionHook } from "./hooks/UserDeletionHook.ts";
 import { AutomationDispatchJobs } from "./jobs/AutomationDispatchJobs.ts";
 import { AutomationEvidenceJobs } from "./jobs/AutomationEvidenceJobs.ts";
+import { AutomationWorkerJobs } from "./jobs/AutomationWorkerJobs.ts";
 import { AutomationNotificationTemplates } from "./notifications/AutomationNotificationTemplates.ts";
 import { InvitationNotifications } from "./notifications/InvitationNotifications.ts";
 import { LoreInboxNotifications } from "./notifications/LoreInboxNotifications.ts";
@@ -55,8 +56,10 @@ import { AutomationClaims } from "./services/AutomationClaims.ts";
 import { AutomationContextBuilder } from "./services/AutomationContextBuilder.ts";
 import { AutomationDependencies } from "./services/AutomationDependencies.ts";
 import { AutomationDomainActions } from "./services/AutomationDomainActions.ts";
+import { AutomationEvaluator } from "./services/AutomationEvaluator.ts";
 import { AutomationEventDispatch } from "./services/AutomationEventDispatch.ts";
 import { AutomationEvents } from "./services/AutomationEvents.ts";
+import { AutomationEventSubjects } from "./services/AutomationEventSubjects.ts";
 import { AutomationHealth } from "./services/AutomationHealth.ts";
 import { AutomationJobService } from "./services/AutomationJobService.ts";
 import { AutomationMutationContext } from "./services/AutomationMutationContext.ts";
@@ -69,6 +72,7 @@ import { AutomationSchedules } from "./services/AutomationSchedules.ts";
 import { AutomationSelections } from "./services/AutomationSelections.ts";
 import { AutomationTemplateRenderer } from "./services/AutomationTemplateRenderer.ts";
 import { AutomationVariables } from "./services/AutomationVariables.ts";
+import { AutomationWorker } from "./services/AutomationWorker.ts";
 import { CoreAutomationReferences } from "./services/CoreAutomationReferences.ts";
 import { CoreDashboard } from "./services/CoreDashboard.ts";
 import { DashboardAttentionRegistry } from "./services/DashboardAttentionRegistry.ts";
@@ -181,6 +185,10 @@ export const LoreCoreApi = $module({
     AutomationAuthority,
     AutomationDependencies,
     AutomationHealth,
+    AutomationEventSubjects,
+    AutomationEvaluator,
+    AutomationWorker,
+    AutomationWorkerJobs,
     AutomationMutationContext,
     AutomationDomainActions,
     AutomationRunEvidence,
@@ -460,3 +468,17 @@ export {
   AutomationDependencies,
   AutomationDependencyError,
 } from "./services/AutomationDependencies.ts";
+
+export {
+  AutomationEventSubjects,
+  type AutomationEventSubjectHandler,
+} from "./services/AutomationEventSubjects.ts";
+
+export {
+  AutomationEvaluator,
+  type AutomationEvaluation,
+  type AutomationPlannedOperation,
+} from "./services/AutomationEvaluator.ts";
+
+export { AutomationWorker } from "./services/AutomationWorker.ts";
+export { AutomationWorkerJobs } from "./jobs/AutomationWorkerJobs.ts";

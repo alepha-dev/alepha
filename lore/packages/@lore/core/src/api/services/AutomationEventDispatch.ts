@@ -3,7 +3,7 @@ import { ConflictError, ForbiddenError } from "alepha/server";
 
 import type { AutomationEvent } from "../entities/automationEvents.ts";
 import { AutomationTemplateBindings } from "../schemas/AutomationTemplateBindings.ts";
-import { AutomationAuthority } from "./AutomationAuthority.ts";
+import { AutomationTemplateTokens } from "../schemas/AutomationTemplateTokens.ts";
 import { AutomationClaims } from "./AutomationClaims.ts";
 import { AutomationEvents } from "./AutomationEvents.ts";
 import { AutomationPersistence } from "./AutomationPersistence.ts";
@@ -13,11 +13,11 @@ import { AutomationPersistence } from "./AutomationPersistence.ts";
  * frames; the evaluator worker owns selectors and ordered effects.
  */
 export class AutomationEventDispatch {
+  protected readonly tokens = $inject(AutomationTemplateTokens);
+  protected readonly bindings = $inject(AutomationTemplateBindings);
   protected readonly events = $inject(AutomationEvents);
   protected readonly claims = $inject(AutomationClaims);
   protected readonly persistence = $inject(AutomationPersistence);
-  protected readonly authority = $inject(AutomationAuthority);
-  protected readonly bindings = $inject(AutomationTemplateBindings);
   constructor() {
     this.events.register((event, limit) => this.consume(event, limit));
   }
@@ -36,6 +36,29 @@ export class AutomationEventDispatch {
       orderBy: [{ column: "id", direction: "asc" }],
       limit: size,
     });
+    const filterKeys = [
+      ...new Set(
+        rules.flatMap((rule) => {
+          const key =
+            rule.rule.trigger.kind === "event" && rule.rule.trigger.app
+              ? this.tokens.whole(rule.rule.trigger.app)
+              : undefined;
+          return key ? [key] : [];
+        }),
+      ),
+    ];
+    const values = filterKeys.length
+      ? await this.persistence.variables.findMany({
+          where: { projectId: event.projectId, key: { inArray: filterKeys } },
+          limit: 50,
+        })
+      : [];
+    const variables = new Map(
+      values.map((row) => [
+        row.key,
+        { kind: row.value.kind, available: true, value: row.value },
+      ]),
+    );
     let claimed = 0;
     for (const rule of rules) {
       if (
@@ -44,29 +67,22 @@ export class AutomationEventDispatch {
       )
         continue;
       try {
-        const current = await this.authority.check({
-          automationId: rule.id,
-          revision: rule.revision,
-        });
         const filter = rule.rule.trigger.app;
         if (filter !== undefined) {
-          const bound = this.bindings.resolve({
-            slot: { kind: "text", required: true },
-            value: filter,
-            fields: {},
-            variables: new Map(
-              current.variables.map((variable) => [
-                variable.key,
-                {
-                  kind: variable.value.kind,
-                  available: true,
-                  value: variable.value,
-                },
-              ]),
-            ),
-            path: "trigger.app",
-          });
-          if (bound.value !== event.payload.fields.app) continue;
+          let resolved: unknown;
+          try {
+            resolved = this.bindings.resolve({
+              slot: { kind: "text", required: true },
+              value: filter,
+              fields: {},
+              variables,
+              path: "trigger.app",
+            }).value;
+          } catch {
+            // The worker records an invalid binding under current authority.
+          }
+          if (resolved !== undefined && resolved !== event.payload.fields.app)
+            continue;
         }
         await this.claims.reserve({
           automationId: rule.id,

@@ -1,8 +1,8 @@
 import { AlephaError } from "alepha";
 
 /**
- * One fixed cron, one shared claim budget. Recoveries run before new events
- * and schedules so a crash cannot strand a lease or starve its continuation.
+ * One fixed cron and one shared claim budget. UTC ticks rotate category
+ * priority, preserving fairness across cold starts and sustained backlogs.
  */
 export class AutomationDispatchRegistry {
   protected readonly handlers = new Map<
@@ -17,9 +17,14 @@ export class AutomationDispatchRegistry {
       throw new AlephaError(`Duplicate automation dispatcher '${key}'`);
     this.handlers.set(key, handler);
   }
-  public async tick(): Promise<number> {
+  public async tick(rotation = 0): Promise<number> {
     let claimed = 0;
-    for (const handler of this.handlers.values()) {
+    const handlers = [...this.handlers.values()];
+    const offset = handlers.length ? rotation % handlers.length : 0;
+    for (const handler of [
+      ...handlers.slice(offset),
+      ...handlers.slice(0, offset),
+    ]) {
       if (claimed >= 50) break;
       const count = await handler(50 - claimed);
       if (!Number.isSafeInteger(count) || count < 0 || count > 50 - claimed)

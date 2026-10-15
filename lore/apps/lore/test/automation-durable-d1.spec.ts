@@ -5,6 +5,8 @@ import { join } from "node:path";
 import {
   AutomationAtomic,
   AutomationDomainActions,
+  AutomationWorker,
+  AutomationEvaluator,
   AutomationNotifications,
   AutomationNotificationOutbox,
   AutomationContextBuilder,
@@ -561,6 +563,64 @@ describe("Durable automation primitives on local D1", () => {
         sql`SELECT COUNT(*) AS count FROM audits WHERE scope_type = 'project' AND scope_id = ${String(project.id)} AND json_extract(metadata, '$.automationId') = ${domainEnabled.id}`,
       );
       expect(Number(nativeAuditCount.count)).toBe(2);
+
+      const workerAst: AutomationRule = {
+        ...domainAst,
+        actions: [
+          {
+            kind: "appendFolio",
+            folio: domainFolio.id,
+            text: "D1 worker append",
+          },
+          {
+            kind: "createQuest",
+            title: "D1 worker quest",
+            description: "Bounded",
+            area: "native-domain",
+          },
+        ],
+      };
+      const workerRule = await persistence.rules.create({
+        projectId: project.id,
+        authorUserId: project.createdBy,
+        title: "D1 shared evaluator worker",
+        rule: workerAst,
+      });
+      const countBeforePreview = await persistence.runs.count({
+        projectId: project.id,
+      });
+      expect(
+        (
+          await alepha
+            .inject(AutomationEvaluator)
+            .test(workerRule.id, domainAuthor)
+        ).status,
+      ).toBe("preview");
+      expect(await persistence.runs.count({ projectId: project.id })).toBe(
+        countBeforePreview,
+      );
+      await persistence.rules.updateById(workerRule.id, { enabled: true });
+      const workerReady = await claims.reserve({
+        automationId: workerRule.id,
+        revision: 0,
+        source: { kind: "schedule", scheduledAt: domainAt },
+      });
+      await alepha
+        .inject(AutomationWorker)
+        .step({ receiptId: workerReady.id }, 3);
+      expect((await persistence.receipts.getById(workerReady.id)).status).toBe(
+        "committed",
+      );
+      expect((await entities.folios.getById(domainFolio.id)).content).toBe(
+        "D1 baseline\n\nD1 append\n\nD1 worker append",
+      );
+      expect(
+        (
+          await persistence.runs.getOne({
+            where: { automationId: workerRule.id },
+          })
+        ).snapshot.counts.executed,
+      ).toBe(2);
 
       await entities.organizationMembers.deleteMany({
         organizationId: project.organizationId!,

@@ -2,6 +2,8 @@ import { type Infer, z } from "alepha";
 
 import { automationRuleSchema } from "./automationRuleSchema.ts";
 import { automationSafeFieldsSchema } from "./automationSafeFieldsSchema.ts";
+import { automationSelectionCursorSchema } from "./automationSelectionCursorSchema.ts";
+import { automationSourceProvenanceSchema } from "./automationSourceProvenanceSchema.ts";
 import { automationVariableValueSchema } from "./automationVariableValueSchema.ts";
 
 /**
@@ -24,6 +26,9 @@ export const automationRunSnapshotSchema = z
       })
       .strict()
       .optional(),
+    source: automationSourceProvenanceSchema.optional(),
+    selectionNext: automationSelectionCursorSchema.optional(),
+    noData: z.boolean().optional(),
     inputs: automationSafeFieldsSchema,
     variables: z
       .array(

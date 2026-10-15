@@ -101,3 +101,17 @@ export {
 } from "../api/schemas/AutomationTemplateBindings.ts";
 
 export { AutomationCron } from "../api/schemas/AutomationCron.ts";
+
+export {
+  automationTestSourceSchema,
+  type AutomationTestSource,
+} from "../api/schemas/automationTestSourceSchema.ts";
+export {
+  automationSourceProvenanceSchema,
+  type AutomationSourceProvenance,
+} from "../api/schemas/automationSourceProvenanceSchema.ts";
+
+export {
+  automationEvaluationReportSchema,
+  type AutomationEvaluationReport,
+} from "../api/schemas/automationEvaluationReportSchema.ts";

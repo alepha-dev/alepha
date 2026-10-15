@@ -655,3 +655,36 @@ fresh primary reads before every effect. Native transition batches bind the
 state change and its single run-evidence record under the rule version fence;
 unchanged states produce no record. Membership removal and foreign shared
 variable edits use this same transition path.
+
+## Shared automation evaluation (#E43, #Q2033)
+
+`AutomationEvaluator` owns read-only source selection, typed binding, guards,
+rendering and target preflight for both test reports and live activation. It
+reconstructs the immutable author's current authority. A preview caller must
+also hold current source-read access; shared resource values are redacted when
+that caller cannot inspect them. Refusals never call health reconciliation.
+Prospective event subjects are stable same-project IDs projected by their owning
+feature. Historical tests use retained event/run snapshots and refuse retired
+payloads. They never substitute current data for an unavailable historical input.
+
+The typed report names its evaluation time, source provenance, counts, no_data,
+resolved native values and exact bounded operations. Notification operations
+include the actual rendered body and remain planned enqueues, not delivery
+confirmations. Report-size omissions are explicit. The 64 KiB snapshot gate
+applies before any live effect. Collections retain their item fields separately
+from collection summary fields, with truthful exact or lower-bound totals.
+
+`AutomationWorkerJobs` resumes a durable occurrence through the normal queue
+and reschedules after at most five ordered steps. `AutomationWorker` freezes
+plans before effects, observes crossings once, reconciles committed receipts
+before retry and stops later steps after failure or authority loss. Runs split
+at 100 recipient-channel attempts while retaining the same selected contexts,
+configuration revision and operation identities. Ordinary selectors never fetch
+a hidden fifty-first row. Queued edits, disables and soft deletions refuse the
+old occurrence. Native chunks repair interrupted run switches.
+
+The fixed dispatcher rotates recovery/event/schedule priority by UTC tick,
+preserving its global 50-claim budget across cold starts. Event filtering loads
+at most 50 shared app bindings in one page read; current-author validation and
+expensive target reads belong to the bounded worker. Compatibility roster and
+reminder continuation policies are integrated by their adoption quest.
