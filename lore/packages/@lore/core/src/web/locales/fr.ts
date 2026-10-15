@@ -29,6 +29,15 @@ export default {
     "Dépassement du seuil des erreurs ouvertes",
   "automation.preset.blight-crossing.description":
     "Mesurer le nombre total d’erreurs ouvertes toutes les cinq minutes. Le premier relevé fixe une référence ; un retour au seuil ou en dessous réarme l’alerte.",
+  "automation.setup.folio": "Folio",
+  "automation.setup.app": "Application",
+  "automation.preset.release-to-folio.title":
+    "Publier les notes de version dans un folio",
+  "automation.preset.release-to-folio.description":
+    "Ajouter le changelog publié à un folio choisi, puis notifier un membre. Chaque publication est ajoutée une seule fois.",
+  "automation.preset.deploy-failed.title": "Échec du déploiement",
+  "automation.preset.deploy-failed.description":
+    "Notifier un membre lorsqu’un déploiement de l’application choisie échoue, quel que soit l’environnement. Les journaux bruts sont exclus.",
   "automation.previous": "Précédent",
   "automation.next": "Suivant",
 

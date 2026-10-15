@@ -40,6 +40,16 @@ export class WorkAutomationPresets {
       "epic.completed",
       (values) => this.epic(values),
     );
+    this.register(
+      "release-to-folio",
+      "Publish release notes to a folio",
+      "Append the frozen published changelog to a chosen folio, then notify one member. Each publication appends once.",
+      "release.published",
+      (values) => this.release(values),
+      undefined,
+      { folio: { kind: "folio", required: true } },
+      ["appendFolio", "notify"],
+    );
   }
   protected register(
     key: string,
@@ -49,8 +59,10 @@ export class WorkAutomationPresets {
     build: (values: AutomationPresetValues) => AutomationRule,
     schedule?: string,
     extra: AutomationPresetDescriptor["slots"] = {},
+    actions: string[] = ["notify"],
   ) {
     const entry = this.vocabulary.find(source)!;
+    const effects = actions.map((action) => this.vocabulary.find(action)!);
     this.presets.register(
       {
         key,
@@ -59,8 +71,18 @@ export class WorkAutomationPresets {
         source,
         ...(schedule ? { schedule } : {}),
         fields: entry.fields,
-        needs: [{ capability: "work", option: "automations" }, ...entry.needs],
-        permissions: ["automation:write", "member:read", ...entry.permissions],
+        needs: [
+          { capability: "work", option: "automations" },
+          ...entry.needs,
+          ...effects.flatMap((effect) => effect.needs),
+        ],
+        permissions: [
+          ...new Set([
+            "automation:write",
+            ...entry.permissions,
+            ...effects.flatMap((effect) => effect.permissions),
+          ]),
+        ],
         slots: {
           recipient: { kind: "member", required: true },
           channel: {
@@ -79,7 +101,7 @@ export class WorkAutomationPresets {
     values: AutomationPresetValues,
     title: string,
     text: string,
-  ): AutomationRule["actions"][number] {
+  ): Extract<AutomationRule["actions"][number], { kind: "notify" }> {
     return {
       kind: "notify",
       recipient: String(values.recipient),
@@ -116,6 +138,29 @@ export class WorkAutomationPresets {
       guard: null,
       actions: [
         this.notify(values, "Tagged quest digest: {{tag}}", "{{summary}}"),
+      ],
+    };
+  }
+  protected release(values: AutomationPresetValues): AutomationRule {
+    return {
+      version: 1,
+      trigger: { kind: "event", event: "release.published" },
+      select: null,
+      guard: null,
+      actions: [
+        {
+          kind: "appendFolio",
+          folio: String(values.folio),
+          text: "## {{release_tag}}: {{title}}\n\n{{changelog}}\n\nQuests: {{quest_count}}.\n{{url}}",
+        },
+        {
+          ...this.notify(
+            values,
+            "Release published: {{release_tag}}",
+            "{{title}}\nQuests: {{quest_count}}.\n{{url}}",
+          ),
+          category: "releases",
+        },
       ],
     };
   }

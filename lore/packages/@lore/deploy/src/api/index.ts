@@ -40,6 +40,7 @@ import { DeployAppsDashboardMetrics } from "./services/DeployAppsDashboardMetric
 import { DeployAttentionSources } from "./services/DeployAttentionSources.ts";
 import { DeployAutomationEventSubjects } from "./services/DeployAutomationEventSubjects.ts";
 import { DeployAutomationNumericPresets } from "./services/DeployAutomationNumericPresets.ts";
+import { DeployAutomationPresets } from "./services/DeployAutomationPresets.ts";
 import { DeployAutomationReferences } from "./services/DeployAutomationReferences.ts";
 import { DeployDashboard } from "./services/DeployDashboard.ts";
 import { DeployDashboardMetrics } from "./services/DeployDashboardMetrics.ts";
@@ -109,6 +110,7 @@ export const LoreDeployApi = $module({
     QualityNumericCatalog,
     QualityNumericMetrics,
     DeployAutomationNumericPresets,
+    DeployAutomationPresets,
     DeployProjectCounts,
     BlightJobs,
     SigilJobs,

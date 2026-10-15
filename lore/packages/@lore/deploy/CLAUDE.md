@@ -249,3 +249,10 @@ sample only persists a baseline; a count at or below the threshold rearms it.
 Native guard evidence survives restarts and retries. Predicate edits reset the
 baseline through the shared authoring service. Neither preset adds an ingest
 hook or a query language, and their messages retain the observed scalar values.
+
+`DeployAutomationPresets` adds the recorded `deploy.failed` program (#Q2043).
+Its required app choice is validated in the project and spans every environment.
+Only failed terminal events trigger it, including the ordinary timeout path;
+cancellation and repeated terminal writes do not. The message uses the frozen
+app/environment/tag/digest/deployment link and a fixed sanitized failure reason.
+Artifact replacement or deletion does not rewrite that retained event payload.

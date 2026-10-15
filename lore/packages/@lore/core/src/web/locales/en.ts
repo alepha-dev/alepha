@@ -22,6 +22,15 @@ export default {
   "automation.preset.blight-crossing.title": "Open blights cross a threshold",
   "automation.preset.blight-crossing.description":
     "Sample aggregate open blights every five minutes. The first sample sets a baseline; falling to the threshold or below rearms the alert.",
+  "automation.setup.folio": "Folio",
+  "automation.setup.app": "App",
+  "automation.preset.release-to-folio.title":
+    "Publish release notes to a folio",
+  "automation.preset.release-to-folio.description":
+    "Append the frozen published changelog to a chosen folio, then notify one member. Each publication appends once.",
+  "automation.preset.deploy-failed.title": "Deployment failed",
+  "automation.preset.deploy-failed.description":
+    "Notify one member when a deployment of the chosen app records a failure, in any environment. Raw logs are excluded.",
   "automation.previous": "Previous",
   "automation.next": "Next",
 
