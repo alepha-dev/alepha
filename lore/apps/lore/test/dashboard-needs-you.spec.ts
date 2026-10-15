@@ -15,6 +15,7 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { bootLore } from "./fixtures/bootLore.ts";
 import {
+  createTestEpic,
   createTestMember,
   createTestProject,
   createTestQuest,
@@ -136,6 +137,23 @@ describe("dashboard needs you", () => {
       ["Login is slow", "untriaged"],
     ]);
     expect(value.value).toBe(4);
+  });
+
+  it("never flags a plain open quest, even beside a draft epic", async ({
+    expect,
+  }) => {
+    const { project, user } = await projectOf();
+    // A draft epic makes the backlog gate write its own `or`.
+    await createTestEpic(alepha, project, { status: "draft" });
+    await createTestQuest(alepha, project, { title: "plain" });
+    await createTestQuest(alepha, project, {
+      title: "parked",
+      heldAt: dateTime.nowISOString(),
+    });
+
+    const value = await resolve(project, user);
+
+    expect(value.rows?.map((row) => row.title)).toEqual(["parked"]);
   });
 
   it("asks no source whose capability the project lacks", async ({

@@ -48,15 +48,22 @@ export class WorkAttentionSources {
   protected async questsOf(project: Project): Promise<DashboardAttentionItems> {
     const slug = project.slug ?? "";
     const now = this.dateTime.nowISOString();
-    const where = this.quests.createQueryWhere();
-    where.projectId = { eq: project.id };
-    where.shelvedAt = { isNull: true };
-    where.completedAt = { isNull: true };
-    where.or = [{ heldAt: { isNotNull: true } }, { dueAt: { lt: now } }];
-    await this.epicVisibility.applyBacklogGate(where, project.id);
+    // Two reads, held and overdue, rather than one `or`: the backlog gate
+    // writes its own `or` (a project with a draft epic), and sharing the key
+    // would silently drop this filter and flag every open quest.
+    const open = async (extra: Record<string, unknown>) => {
+      const where = this.quests.createQueryWhere();
+      where.projectId = { eq: project.id };
+      where.shelvedAt = { isNull: true };
+      where.completedAt = { isNull: true };
+      Object.assign(where, extra);
+      await this.epicVisibility.applyBacklogGate(where, project.id);
+      return this.quests.findMany({ where, limit: 20 });
+    };
 
-    const [flagged, overview, report] = await Promise.all([
-      this.quests.findMany({ where, limit: 20 }),
+    const [held, overdueRows, overview, report] = await Promise.all([
+      open({ heldAt: { isNotNull: true } }),
+      open({ dueAt: { lt: now } }),
       this.reports.overview(project.id),
       this.reports.questsReport(project.id),
     ]);
@@ -71,6 +78,11 @@ export class WorkAttentionSources {
       limit: 3,
     });
 
+    const flagged = [
+      ...new Map(
+        [...held, ...overdueRows].map((quest) => [quest.id, quest]),
+      ).values(),
+    ];
     const items: DashboardAttentionItem[] = [];
     for (const quest of flagged) {
       const overdue = !!quest.dueAt && quest.dueAt < now;

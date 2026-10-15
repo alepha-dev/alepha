@@ -101,7 +101,7 @@ const ProjectDashboardHeader = (props: ProjectDashboardHeaderProps) => {
       </div>
       {/* Inert in the stacked direction, so it is not drawn there. */}
       <span className="hidden flex-1 sm:block" />
-      <div className="w-32 shrink-0">
+      <div className="w-40 shrink-0">
         <ProjectDashboardWindow onChange={props.onWindowChange} />
       </div>
       {props.canEdit && !props.computed && (
