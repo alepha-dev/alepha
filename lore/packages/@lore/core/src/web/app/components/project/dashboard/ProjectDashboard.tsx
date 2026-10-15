@@ -1,4 +1,4 @@
-import { useDialog, cn } from "@alepha/ui";
+import { useDialog } from "@alepha/ui";
 import {
   useAction,
   useAlepha,
@@ -27,6 +27,7 @@ import ProjectDashboardDormant from "./ProjectDashboardDormant.tsx";
 import ProjectDashboardEmpty from "./ProjectDashboardEmpty.tsx";
 import ProjectDashboardHeader from "./ProjectDashboardHeader.tsx";
 import ProjectDashboardHeadline from "./ProjectDashboardHeadline.tsx";
+import ProjectDashboardLoading from "./ProjectDashboardLoading.tsx";
 
 /**
  * A project's board: where you land when you open the project.
@@ -437,7 +438,12 @@ const ProjectDashboard = () => {
   // ⚠️ At zero cards the empty state is the whole page (feedback #P2180): no
   // header, no heading, no Add button up top. It carries Add card itself, and
   // the page stretches so it can centre on both axes of the content area.
-  const empty = cards.length === 0;
+  //
+  // ⚠️ Only once the atom holds THIS project's board: before the first read
+  // lands `cards` is `[]` too, and treating that as empty flashed the
+  // centred Add card on every open. That state is `loading`.
+  const loading = board.projectId !== projectId;
+  const empty = !loading && cards.length === 0;
 
   // An archived project has no board (#Q2662): a notice and a link to what
   // it kept, rendered here, never a redirect.
@@ -445,7 +451,7 @@ const ProjectDashboard = () => {
     const has = (key: string) =>
       project.capabilities.some((capability) => capability.key === key);
     return (
-      <div className="@container flex min-h-0 w-full flex-1 flex-col px-8 pt-6 pb-10">
+      <div className="@container flex min-h-0 w-full flex-1 flex-col overflow-y-auto px-8 pt-6 pb-10">
         <ProjectDashboardArchived
           projectSlug={project.slug ?? ""}
           destination={
@@ -460,14 +466,18 @@ const ProjectDashboard = () => {
     );
   }
 
+  // ⚠️ The page scrolls itself: a full-width route sits in an
+  // `overflow-hidden` wrapper (`ROUTES_FULL_WIDTH` in `ProjectView`), so
+  // without `flex-1 overflow-y-auto` here a board taller than the window is
+  // clipped with no scrollbar.
   return (
     <div
-      className={cn(
-        "@container flex min-h-0 w-full flex-col px-8 pt-6 pb-10",
-        empty && "flex-1",
-      )}
+      data-testid="dashboard-page"
+      className="@container flex min-h-0 w-full flex-1 flex-col overflow-y-auto px-8 pt-6 pb-10"
     >
-      {empty ? (
+      {loading ? (
+        <ProjectDashboardLoading />
+      ) : empty ? (
         <ProjectDashboardEmpty
           canEdit={canEdit}
           hasOfferableMetric={hasOfferableMetric}

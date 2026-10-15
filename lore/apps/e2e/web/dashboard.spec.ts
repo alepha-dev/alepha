@@ -165,6 +165,21 @@ test.describe("Project dashboard", () => {
       await expect(page.getByTestId("dashboard-customize")).toHaveCount(0);
     });
 
+    await test.step("a board taller than the window scrolls under the wheel", async () => {
+      // ⚠️ A full-width route sits in an `overflow-hidden` wrapper, so the
+      // board must scroll itself; without it the lower tiles were clipped
+      // with no scrollbar. The wheel, not `scrollIntoView`: a script can
+      // scroll an `overflow-hidden` box, a reader cannot.
+      await page.setViewportSize({ width: 1280, height: 360 });
+      const board = page.getByTestId("dashboard-page");
+      await board.hover();
+      await page.mouse.wheel(0, 600);
+      await expect
+        .poll(() => board.evaluate((node) => node.scrollTop))
+        .toBeGreaterThan(0);
+      await page.setViewportSize({ width: 1280, height: 720 });
+    });
+
     await test.step("Reset to default brings the computed board back", async () => {
       await page.getByTestId("dashboard-menu").click();
       await page.getByTestId("dashboard-reset").click();

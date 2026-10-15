@@ -36,6 +36,9 @@ class FakeLinkProvider extends LinkProvider {
             if (name === "reorderProjectDashboardCards") {
               throw new Error("The board order could not be saved (spec)");
             }
+            if (name === "getProjectDashboard") {
+              return { computed: false, cards: [], values: [] };
+            }
             if (name === "resolveProjectDashboardCards") {
               return { values: [], refreshedAt: "2026-09-14T10:00:00.000Z" };
             }
@@ -122,6 +125,37 @@ describe("ProjectDashboard", () => {
     expect(
       screen.queryByText("The board order could not be saved (spec)"),
     ).toBeNull();
+  });
+  it("shows a skeleton, not the empty state, until the board is read", async () => {
+    alepha = Alepha.create()
+      .with(AlephaLogger)
+      .with(AlephaDateTime)
+      .with({ provide: LinkProvider, use: FakeLinkProvider })
+      .with(AlephaReact)
+      .with(AlephaReactRouter)
+      .with(AlephaReactI18n);
+    alepha.inject(I18n);
+    alepha.inject(DashboardMetricCatalog);
+    alepha.inject(DashboardPickerRegistry);
+    await alepha.start();
+    await alepha.inject(I18nProvider).setLang("en");
+    // The atom holds no board for this project yet: the read is in flight.
+    alepha.store.set(currentProjectAtom, projectFixture() as never);
+
+    render(
+      <AlephaContext.Provider value={alepha}>
+        <DialogProvider>
+          <ProjectDashboard />
+        </DialogProvider>
+      </AlephaContext.Provider>,
+    );
+
+    // ⚠️ Every open used to flash the centred Add card here.
+    expect(screen.getByTestId("dashboard-loading")).toBeTruthy();
+    expect(screen.queryByTestId("dashboard-empty")).toBeNull();
+    // The read answers no cards: now, and only now, the empty state.
+    expect(await screen.findByTestId("dashboard-empty")).toBeTruthy();
+    expect(screen.queryByTestId("dashboard-loading")).toBeNull();
   });
   it("renders a computed board read-only, with no card menu or edit mode", async () => {
     alepha = Alepha.create()
