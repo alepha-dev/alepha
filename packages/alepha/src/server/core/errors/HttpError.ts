@@ -14,7 +14,7 @@ import { httpErrorDataSchema } from "../schemas/httpErrorDataSchema.ts";
  * Throw it directly for a one-off status, or derive a named error from it:
  *
  * ```ts
- * throw new HttpError({ status: 502 }, {  });
+ * throw new HttpError({ status: 502 }, { message: "Upstream failed", cause });
  *
  * export const QuotaExceeded = HttpError.extend({
  *   name: "QUOTA_EXCEEDED",
