@@ -44,6 +44,7 @@ describe("Lore admin analytics surface", () => {
       "sigil_errors",
       "sigil_views",
       "sigil_vitals",
+      "uptime_probes",
     ]);
 
     const views = service.listDatasets().find((d) => d.name === "sigil_views");
