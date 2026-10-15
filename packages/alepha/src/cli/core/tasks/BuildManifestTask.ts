@@ -7,6 +7,7 @@ import {
   buildManifestSchema,
 } from "../schemas/buildManifest.ts";
 import { ActorHostCollection } from "../services/ActorHostCollection.ts";
+import { BuildFreshness } from "../services/BuildFreshness.ts";
 import { BuildSlices } from "../services/BuildSlices.ts";
 import { MetaResolver } from "../services/MetaResolver.ts";
 import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
@@ -39,6 +40,7 @@ export class BuildManifestTask extends BuildTask {
 
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly meta = $inject(MetaResolver);
+  protected readonly freshness = $inject(BuildFreshness);
   protected readonly slices = $inject(BuildSlices);
 
   async run(ctx: BuildTaskContext): Promise<void> {
@@ -362,6 +364,7 @@ export class BuildManifestTask extends BuildTask {
       secrets: envOf(true),
       variables: envOf(false),
       inspect: ctx.options.inspect ? true : undefined,
+      optionsHash: this.freshness.optionsHash(ctx.options),
       // Only what a Worker deploy reads, and only when there is a Worker slice
       // to deploy: a node-only artifact carries no Cloudflare noise.
       cloudflare: runtimes.some((slice) => slice.runtime === "workerd")

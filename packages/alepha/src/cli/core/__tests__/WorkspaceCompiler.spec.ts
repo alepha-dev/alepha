@@ -1,4 +1,4 @@
-import { Alepha } from "alepha";
+import { $inject, Alepha } from "alepha";
 import {
   FileSystemProvider,
   MemoryFileSystemProvider,
@@ -13,6 +13,27 @@ import {
 } from "../services/WorkspaceCompiler.ts";
 
 /**
+ * `bun build --compile`, as far as the file system can tell: it writes the
+ * `--outfile` into the directory it runs in.
+ */
+class CompilingShell extends MemoryShellProvider {
+  protected readonly memory = $inject(MemoryFileSystemProvider);
+
+  public override async run(
+    command: string | string[],
+    options: Parameters<MemoryShellProvider["run"]>[1] = {},
+  ): Promise<string> {
+    const out = await super.run(command, options);
+    const line = Array.isArray(command) ? command.join(" ") : command;
+    const outfile = /^bun build .*--outfile=(\S+)/.exec(line)?.[1];
+    if (outfile && options.root) {
+      await this.memory.writeFile(`${options.root}/${outfile}`, "binary");
+    }
+    return out;
+  }
+}
+
+/**
  * `alepha compile`, as a service (epic #E63).
  *
  * It used to be `alepha build --compile`, a build option that reached back to
@@ -24,10 +45,10 @@ describe("WorkspaceCompiler", () => {
   const createTestEnv = async () => {
     const alepha = Alepha.create()
       .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
-      .with({ provide: ShellProvider, use: MemoryShellProvider });
+      .with({ provide: ShellProvider, use: CompilingShell });
 
     const fs = alepha.inject(MemoryFileSystemProvider);
-    const shell = alepha.inject(MemoryShellProvider);
+    const shell = alepha.inject(ShellProvider) as CompilingShell;
     const task = alepha.inject(WorkspaceCompiler);
 
     // A built app: the bun slice's entry wrapper, one server chunk in that
@@ -67,8 +88,13 @@ describe("WorkspaceCompiler", () => {
 
     await task.compile(bare);
 
+    // Into the STAGED copy: `dist/` itself is never edited (see the retry
+    // case below).
     const written = (pattern: RegExp) =>
-      fs.wasWrittenMatching("/project/dist/index.bun.js", pattern);
+      fs.wasWrittenMatching(
+        "/project/node_modules/.alepha/compile-stage/dist/index.bun.js",
+        pattern,
+      );
     expect(
       written(
         /import a0 from "\.\/public\/assets\/logo\.svg" with \{ type: "file" \};/,
@@ -142,7 +168,9 @@ describe("WorkspaceCompiler", () => {
       /^bun build --compile --target=bun-(darwin|linux|windows)-(x64|arm64) --minify --outfile=loom index\.bun\.js$/,
     );
     expect(calls[0].command).not.toContain("musl");
-    expect(calls[0].options.root).toBe("/project/dist");
+    expect(calls[0].options.root).toBe(
+      "/project/node_modules/.alepha/compile-stage/dist",
+    );
   });
 
   /**
@@ -235,6 +263,39 @@ describe("WorkspaceCompiler", () => {
     await task.compile(bare);
 
     expect(await fs.exists("/project/dist/migrations/001.sql")).toBe(true);
+  });
+
+  /**
+   * The embed used to append to `dist/index.bun.js` in place before
+   * `bun build`. A failed compile left the imports there, and the retry
+   * appended `import a0` a second time: a SyntaxError only a rebuild cured.
+   */
+  it("leaves dist untouched when the compile fails, so a retry succeeds", async () => {
+    const { fs, shell, task } = await createTestEnv();
+    const entry = "/project/dist/index.bun.js";
+    const before = fs.files.get(entry)?.toString();
+    const command = [...shell.calls];
+    shell.errors.set(
+      `bun build --compile --target=${task.defaultBunTarget()} --minify --outfile=loom index.bun.js`,
+      "bun build failed",
+    );
+
+    await expect(task.compile(bare)).rejects.toThrow(/bun build failed/);
+
+    expect(command).toEqual([]);
+    expect(fs.files.get(entry)?.toString()).toBe(before);
+    expect(await fs.exists("/project/node_modules/.alepha/compile-stage")).toBe(
+      false,
+    );
+
+    shell.errors.clear();
+    await task.compile(bare);
+
+    const staged = fs.writeFileCalls.findLast((it) =>
+      it.path.endsWith("compile-stage/dist/index.bun.js"),
+    );
+    expect(staged?.data.match(/^import a0 /gm)).toHaveLength(1);
+    expect(await fs.exists("/project/dist/loom")).toBe(true);
   });
 
   it("refuses dependencies Vite left external", async () => {

@@ -1,4 +1,4 @@
-import { Alepha, AlephaError } from "alepha";
+import { $inject, Alepha, AlephaError } from "alepha";
 import {
   FileSystemProvider,
   MemoryFileSystemProvider,
@@ -12,6 +12,27 @@ import {
   DesktopAdapterResolver,
 } from "../services/DesktopAdapterResolver.ts";
 import { WorkspaceCompiler } from "../services/WorkspaceCompiler.ts";
+
+/**
+ * `bun build --compile`, as far as the file system can tell: it writes the
+ * `--outfile` into the directory it runs in.
+ */
+class CompilingShell extends MemoryShellProvider {
+  protected readonly memory = $inject(MemoryFileSystemProvider);
+
+  public override async run(
+    command: string | string[],
+    options: Parameters<MemoryShellProvider["run"]>[1] = {},
+  ): Promise<string> {
+    const out = await super.run(command, options);
+    const line = Array.isArray(command) ? command.join(" ") : command;
+    const outfile = /^bun build .*--outfile=(\S+)/.exec(line)?.[1];
+    if (outfile && options.root) {
+      await this.memory.writeFile(`${options.root}/${outfile}`, "binary");
+    }
+    return out;
+  }
+}
 
 /**
  * An adapter that records what it was asked, and fails where told to.
@@ -72,10 +93,10 @@ const stage = "/my project/node_modules/.alepha/desktop-stage";
 const setup = async (options: { installed?: boolean } = {}) => {
   const alepha = Alepha.create()
     .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
-    .with({ provide: ShellProvider, use: MemoryShellProvider })
+    .with({ provide: ShellProvider, use: CompilingShell })
     .with({ provide: WorkspaceCompiler, use: TestWorkspaceCompiler });
   const fs = alepha.inject(MemoryFileSystemProvider);
-  const shell = alepha.inject(MemoryShellProvider);
+  const shell = alepha.inject(ShellProvider) as CompilingShell;
   const adapter = new RecordingAdapter(fs);
   const resolver = alepha.inject(DesktopAdapterResolver);
   resolver.resolve = async () => {

@@ -121,4 +121,92 @@ describe("BuildFreshness", () => {
       "no readable sources",
     );
   });
+
+  /**
+   * A build's inputs are not only its sources: the config decides what is
+   * built from them. Editing `alepha.config.ts` used to answer "up to date".
+   */
+  for (const file of [
+    "alepha.config.ts",
+    "tsconfig.json",
+    "tsconfig.build.json",
+    ".env",
+    ".env.production",
+    "vite.config.ts",
+    "index.html",
+  ]) {
+    it(`is stale when ${file} moves`, async ({ expect }) => {
+      const { fs, clock, freshness } = await setup();
+      await fs.writeFile(`/repo/app/${file}`, "before");
+      await scaffold(fs, clock);
+      expect(await freshness.staleReason("/repo/app", "dist")).toBeNull();
+
+      await clock.travel(60_000);
+      await fs.writeFile(`/repo/app/${file}`, "edited");
+
+      expect(await freshness.staleReason("/repo/app", "dist")).toContain(
+        `${file} changed`,
+      );
+    });
+  }
+
+  /**
+   * `build --runtime bun --if-stale` after a node build answered "up to
+   * date": the runtimes live in no file. The manifest now records a hash of
+   * the resolved options, and a different one is stale.
+   */
+  it("compares the hash of the resolved build options in the manifest", async ({
+    expect,
+  }) => {
+    const { fs, clock, freshness } = await setup();
+    await scaffold(fs, clock);
+    const node = freshness.optionsHash({ runtime: "node", runtimes: ["node"] });
+    const bun = freshness.optionsHash({ runtime: "bun", runtimes: ["bun"] });
+    await fs.writeFile(
+      "/repo/app/dist/manifest.json",
+      JSON.stringify({ optionsHash: node }),
+    );
+
+    expect(await freshness.staleReason("/repo/app", "dist", node)).toBeNull();
+    expect(await freshness.staleReason("/repo/app", "dist", bun)).toContain(
+      "build options changed",
+    );
+  });
+
+  it("keeps the declared order of the runtimes in the hash, and inspect", async ({
+    expect,
+  }) => {
+    const { freshness } = await setup();
+    const nodeFirst = freshness.optionsHash({
+      runtime: "node",
+      runtimes: ["node", "workerd"],
+    });
+    const workerdFirst = freshness.optionsHash({
+      runtime: "workerd",
+      runtimes: ["workerd", "node"],
+    });
+    const inspected = freshness.optionsHash({
+      runtime: "node",
+      runtimes: ["node", "workerd"],
+      inspect: true,
+    });
+
+    expect(nodeFirst).not.toBe(workerdFirst);
+    expect(nodeFirst).not.toBe(inspected);
+  });
+
+  it("calls a manifest from before the hash existed stale", async ({
+    expect,
+  }) => {
+    const { fs, clock, freshness } = await setup();
+    await scaffold(fs, clock);
+
+    expect(
+      await freshness.staleReason(
+        "/repo/app",
+        "dist",
+        freshness.optionsHash({ runtime: "node", runtimes: ["node"] }),
+      ),
+    ).toContain("build options changed");
+  });
 });

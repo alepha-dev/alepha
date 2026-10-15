@@ -1,4 +1,4 @@
-import { Alepha, AlephaError } from "alepha";
+import { $inject, Alepha, AlephaError } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import {
   FileSystemProvider,
@@ -224,13 +224,15 @@ class AdapterProbe extends ArtifactReadyCloudflareAdapter {
 }
 
 describe("CloudflareAdapter", () => {
-  const createTestEnv = () => {
+  const createTestEnv = (
+    shellClass: typeof MemoryShellProvider = MemoryShellProvider,
+  ) => {
     // Ensure D1 path (not Hyperdrive)  -  isPostgres() checks process.env.DATABASE_URL
     delete process.env.DATABASE_URL;
 
     const alepha = Alepha.create()
       .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
-      .with({ provide: ShellProvider, use: MemoryShellProvider })
+      .with({ provide: ShellProvider, use: shellClass })
       .with({
         provide: CloudflareCredentialSource,
         use: SettledCredentialSource,
@@ -241,7 +243,7 @@ describe("CloudflareAdapter", () => {
       });
 
     const fs = alepha.inject(MemoryFileSystemProvider);
-    const shell = alepha.inject(MemoryShellProvider);
+    const shell = alepha.inject(ShellProvider) as MemoryShellProvider;
     const dateTime = alepha.inject(DateTimeProvider);
     const adapter = alepha.inject(CloudflareAdapter);
     // The adapter is its own upload since #Q2614: the recorder is on it.
@@ -1544,60 +1546,86 @@ describe("CloudflareAdapter", () => {
       });
 
     /**
-     * A `run()` that plays the two shell steps for real enough to test the
-     * code between them: `wrangler d1 export` writes `dump` to the `--output`
-     * path, and `sqlite3 '<db>' < '<sql>'` copies whatever is in the dump at
-     * that moment into the target file. `failImport` makes the import throw
-     * AFTER writing a partial file, which is exactly what sqlite3 does: it
-     * commits every statement it parsed before the error.
+     * A shell that plays the two steps for real enough to test the code
+     * between them: `wrangler d1 export` writes `dump` to the `--output`
+     * path, and `sqlite3 <db>` writes whatever it reads on stdin into the
+     * target file. `failImport` makes the import throw AFTER writing a
+     * partial file, which is exactly what sqlite3 does: it commits every
+     * statement it parsed before the error. Both arrive as an argv.
      */
+    const dumping = {
+      dump: "-- empty\n" as Buffer | string,
+      failImport: false,
+    };
+    class DumpingShell extends MemoryShellProvider {
+      protected readonly memory = $inject(MemoryFileSystemProvider);
+
+      public override async run(
+        command: string | string[],
+        options: Parameters<MemoryShellProvider["run"]>[1] = {},
+      ): Promise<string> {
+        const out = await super.run(command, options);
+        if (!Array.isArray(command)) return out;
+        if (command[0] === "wrangler") {
+          const output = command.find((it) => it.startsWith("--output="));
+          await this.memory.writeFile(
+            output!.slice("--output=".length),
+            dumping.dump,
+          );
+        }
+        if (command[0] === "sqlite3") {
+          if (dumping.failImport) {
+            await this.memory.writeFile(command[1], "PARTIAL");
+            throw new AlephaError("Parse error near line 2134");
+          }
+          await this.memory.writeFile(
+            command[1],
+            Buffer.from(options.stdin ?? ""),
+          );
+        }
+        return out;
+      }
+    }
+
     const shellRun = (
-      fs: MemoryFileSystemProvider,
       opts: { dump: Buffer | string; failImport?: boolean } = {
         dump: "-- empty\n",
       },
     ) => {
-      const commands: string[] = [];
-      const run: any = async (cmd: any) => {
-        if (typeof cmd !== "string") return;
-        commands.push(cmd);
-        const exported = /--output="([^"]+)"/.exec(cmd);
-        if (exported) {
-          await fs.writeFile(exported[1], opts.dump);
-          return;
-        }
-        const imported = /sqlite3 '([^']+)' < '([^']+)'/.exec(cmd);
-        if (imported) {
-          const sql = await fs.readFile(imported[2]);
-          if (opts.failImport) {
-            await fs.writeFile(imported[1], "PARTIAL");
-            throw new AlephaError("Parse error near line 2134");
-          }
-          await fs.writeFile(imported[1], sql);
-        }
-      };
-      run.end = () => {};
-      return { run, commands };
+      dumping.dump = opts.dump;
+      dumping.failImport = opts.failImport ?? false;
+      const env = createTestEnv(DumpingShell);
+      const commands = () => env.shell.calls.map((it) => it.command);
+      return { ...env, run: createMockRun(), commands };
     };
 
     test("dumps remote D1 and imports it into a local SQLite snapshot", async ({
       expect,
     }) => {
-      const { adapter, naming, fs } = createTestEnv();
+      const { adapter, naming, fs, run, shell } = shellRun({
+        dump: "-- rows\n",
+      });
       const ctx = withDatabase(naming);
-      const { run, commands } = shellRun(fs, { dump: "-- rows\n" });
 
       await adapter.exportDb(ctx, run, {
         output: "/tmp/snap.db",
         keepSql: true,
       });
 
+      const argvs = shell.calls.map((it) => it.argv ?? []);
       expect(
-        commands.some((c) => /^wrangler d1 export .+ --remote /.test(c)),
+        argvs.some(
+          (it) =>
+            it.slice(0, 3).join(" ") === "wrangler d1 export" &&
+            it.includes("--remote"),
+        ),
       ).toBe(true);
-      // Staged, not written straight into the snapshot  -  see below.
+      // Staged, not written straight into the snapshot  -  see below. The
+      // dump goes in on stdin, as an argv: no `sh -c` quoting to break.
       expect(
-        commands.some((c) => /sqlite3 '\/tmp\/snap\.db\.import' < /.test(c)),
+        argvs.some(
+          (it) => it[0] === "sqlite3" && it[1] === "/tmp/snap.db.import",
+        ),
       ).toBe(true);
       expect(fs.files.get("/tmp/snap.db")?.toString()).toBe("-- rows\n");
       // The scratch file never survives a run.
@@ -1607,8 +1635,6 @@ describe("CloudflareAdapter", () => {
     test("escapes a raw NUL byte in the dump before the import", async ({
       expect,
     }) => {
-      const { adapter, naming, fs } = createTestEnv();
-      const ctx = withDatabase(naming);
       // The shape that broke the lore export: a raw 0x00 inside a text
       // literal, with a following row for the parser to misblame.
       const dump = Buffer.concat([
@@ -1616,7 +1642,8 @@ describe("CloudflareAdapter", () => {
         Buffer.from([0x00]),
         Buffer.from("b');\nINSERT INTO t VALUES('next');\n"),
       ]);
-      const { run } = shellRun(fs, { dump });
+      const { adapter, naming, fs, run } = shellRun({ dump });
+      const ctx = withDatabase(naming);
 
       await adapter.exportDb(ctx, run, {
         output: "/tmp/snap.db",
@@ -1634,9 +1661,10 @@ describe("CloudflareAdapter", () => {
     });
 
     test("leaves a clean dump alone", async ({ expect }) => {
-      const { adapter, naming, fs } = createTestEnv();
+      const { adapter, naming, fs, run } = shellRun({
+        dump: "INSERT INTO t VALUES('ok');\n",
+      });
       const ctx = withDatabase(naming);
-      const { run } = shellRun(fs, { dump: "INSERT INTO t VALUES('ok');\n" });
 
       await adapter.exportDb(ctx, run, {
         output: "/tmp/snap.db",
@@ -1653,10 +1681,12 @@ describe("CloudflareAdapter", () => {
     test("keeps the existing snapshot when the import fails", async ({
       expect,
     }) => {
-      const { adapter, naming, fs } = createTestEnv();
+      const { adapter, naming, fs, run } = shellRun({
+        dump: "-- rows\n",
+        failImport: true,
+      });
       const ctx = withDatabase(naming);
       await fs.writeFile("/tmp/snap.db", "WORKING DEV DB");
-      const { run } = shellRun(fs, { dump: "-- rows\n", failImport: true });
 
       await expect(
         adapter.exportDb(ctx, run, { output: "/tmp/snap.db", keepSql: true }),

@@ -148,7 +148,7 @@ export class StoragePlaceholderService {
    * is empty exactly when someone passes --verbose to diagnose a problem.
    */
   protected async query(dbPath: string, sql: string): Promise<any[]> {
-    const out = await this.shell.run(`sqlite3 -json '${dbPath}' "${sql}"`, {
+    const out = await this.shell.run(["sqlite3", "-json", dbPath, sql], {
       capture: true,
     });
 

@@ -185,6 +185,13 @@ export const buildManifestSchema = z
      * when they do not.
      */
     inspect: z.boolean().optional(),
+    /**
+     * A hash of the resolved build options this artifact was built with: the
+     * runtime declaration, its slices in declared order, and `inspect`.
+     * `alepha build --if-stale` compares it, so a build for other runtimes is
+     * never taken for a current one. Opaque: compare it, never parse it.
+     */
+    optionsHash: z.string().optional(),
     cloudflare: z
       .object({
         /**

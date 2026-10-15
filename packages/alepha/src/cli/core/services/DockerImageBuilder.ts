@@ -3,7 +3,7 @@ import type { AlephaMeta } from "alepha";
 import type { RunnerMethod } from "alepha/command";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { FileSystemProvider } from "alepha/system";
+import { FileSystemProvider, ShellProvider } from "alepha/system";
 
 import type { BuildRuntime } from "../atoms/buildOptions.ts";
 import type { ImageOptions } from "../atoms/imageOptions.ts";
@@ -83,6 +83,7 @@ export class DockerImageBuilder {
   protected readonly slices = $inject(BuildSlices);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly fs = $inject(FileSystemProvider);
+  protected readonly shell = $inject(ShellProvider);
   protected readonly utils = $inject(AlephaCliUtils);
   protected readonly log = $logger();
 
@@ -557,10 +558,10 @@ ${userLine}CMD ["${command}", "${entry}"]
 
     return Object.entries(labels)
       .filter(([, value]) => value !== undefined && value !== "")
-      .map(
-        ([name, value]) =>
-          `--label ${this.escapeShellArg(`org.opencontainers.image.${name}=${value}`)}`,
-      );
+      .flatMap(([name, value]) => [
+        "--label",
+        `org.opencontainers.image.${name}=${value}`,
+      ]);
   }
 
   /**
@@ -579,15 +580,6 @@ ${userLine}CMD ["${command}", "${entry}"]
           `LABEL ${JSON.stringify(name)}=${JSON.stringify(value)}\n`,
       )
       .join("");
-  }
-
-  /**
-   * Single-quote a value for the shell, which is what makes a `description`
-   * carrying a quote or a space produce the label it says rather than a
-   * broken `docker build` invocation.
-   */
-  protected escapeShellArg(value: string): string {
-    return `'${value.replaceAll("'", `'\\''`)}'`;
   }
 
   /**
@@ -640,15 +632,16 @@ ${userLine}CMD ["${command}", "${entry}"]
 
     const args: string[] = [];
 
+    // The configured extra arguments are one string, split on whitespace:
+    // flags such as `--platform linux/amd64 --no-cache`, never quoted values.
     if (imageConfig?.args) {
-      args.push(imageConfig.args);
+      args.push(...imageConfig.args.trim().split(/\s+/).filter(Boolean));
     }
 
     if (imageConfig?.oci) {
       args.push(...(await this.buildOciLabelArgs(version)));
     }
 
-    const argsStr = args.length > 0 ? `${args.join(" ")} ` : "";
     /*
       ⚠️ **The Dockerfile is in the app directory, the CONTEXT is `dist/`.**
       Both halves matter. The file has to live where it can be committed and
@@ -657,10 +650,26 @@ ${userLine}CMD ["${command}", "${entry}"]
       drag `src/` and `node_modules/` into every build.
     */
     const dockerfile = this.fs.join(ctx.root, "Dockerfile");
-    const dockerCmd = `docker build ${argsStr}-f ${dockerfile} -t ${imageTag} ${distDir}`;
+    const argv = [
+      "docker",
+      "build",
+      ...args,
+      "-f",
+      dockerfile,
+      "-t",
+      imageTag,
+      distDir,
+    ];
 
-    await ctx.run(dockerCmd, {
-      alias: `docker build ${imageTag}`,
+    // An argv, through a function task: the runner reads an array as a list
+    // of COMMANDS, and a string is split on spaces by the shell provider, so
+    // a project path with a space, or a label with an apostrophe, broke the
+    // command line.
+    await ctx.run({
+      name: `docker build ${imageTag}`,
+      handler: async () => {
+        await this.shell.run(argv);
+      },
     });
   }
 }

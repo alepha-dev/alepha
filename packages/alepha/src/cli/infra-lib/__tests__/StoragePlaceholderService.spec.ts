@@ -29,8 +29,19 @@ const createContext = (outputs: Record<string, string>) => {
   return { alepha, shell, fs, service };
 };
 
-const tableQuery = `sqlite3 -json '${DB}' "SELECT name FROM sqlite_master WHERE type='table' AND name='files'"`;
-const rowsQuery = `sqlite3 -json '${DB}' "SELECT bucket, blob_id FROM files"`;
+// The keys MemoryShellProvider records for an argv: its words, joined.
+const tableQuery = [
+  "sqlite3",
+  "-json",
+  DB,
+  "SELECT name FROM sqlite_master WHERE type='table' AND name='files'",
+].join(" ");
+const rowsQuery = [
+  "sqlite3",
+  "-json",
+  DB,
+  "SELECT bucket, blob_id FROM files",
+].join(" ");
 
 describe("StoragePlaceholderService", () => {
   it("writes one placeholder per file row, under its bucket", async () => {

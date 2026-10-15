@@ -561,10 +561,42 @@ describe("DockerImageBuilder", () => {
       });
 
       expect(cmd).toContain(
-        "--label 'org.opencontainers.image.revision=abc1234'",
+        "--label org.opencontainers.image.revision=abc1234",
       );
-      expect(cmd).toContain("--label 'org.opencontainers.image.created=");
-      expect(cmd).toContain("--label 'org.opencontainers.image.version=1.2.3'");
+      expect(cmd).toContain("--label org.opencontainers.image.created=");
+      expect(cmd).toContain("--label org.opencontainers.image.version=1.2.3");
+    });
+
+    /**
+     * The command used to be one string, split on spaces by the shell
+     * provider, with labels quoted in a POSIX idiom that parser does not
+     * understand. As an argv, each value is one argument whatever it holds.
+     */
+    it("hands docker a project path with a space and a label with an apostrophe intact", async () => {
+      const { fs, shell, task } = createTestEnv();
+      await fs.writeFile("/my project/dist/index.node.js", "// bundle");
+      shell.outputs.set("git rev-parse --short HEAD", "abc1234\n");
+
+      await task.run(
+        createCtx(
+          fs,
+          shell,
+          { image: { tag: "ghcr.io/myorg/app", oci: true } },
+          {
+            root: "/my project",
+            distDir: "/my project/dist",
+            build: "1.2.3-o'k",
+          },
+        ),
+      );
+
+      const docker = shell.calls.find((it) => it.argv?.[0] === "docker");
+      expect(docker?.argv).toContain("/my project/Dockerfile");
+      expect(docker?.argv).toContain("/my project/dist");
+      expect(docker?.argv).toContain(
+        "org.opencontainers.image.version=1.2.3-o'k",
+      );
+      expect(docker?.argv?.at(-1)).toBe("/my project/dist");
     });
 
     it("writes source, title, description and licenses into the Dockerfile", async () => {

@@ -167,7 +167,11 @@ export class BuildPipeline {
     // task at all", and before `clean dist` because that step is what would
     // destroy the artifact being judged.
     if (request.ifStale) {
-      const reason = await this.freshness.staleReason(root, distDir);
+      const reason = await this.freshness.staleReason(
+        root,
+        distDir,
+        this.freshness.optionsHash(options),
+      );
       if (!reason) {
         this.log.info(`${distDir} is up to date, skipping build`);
         return { skipped: true, options };
