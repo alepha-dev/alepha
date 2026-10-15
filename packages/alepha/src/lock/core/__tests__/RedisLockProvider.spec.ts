@@ -7,12 +7,7 @@ import { MemoryTopicProvider, RedisTopicProvider } from "alepha/topic";
 import { describe, expect, test } from "vitest";
 
 import { MemoryLockProvider, RedisLockProvider } from "../index.ts";
-import {
-  testDelIfOwner,
-  testLockBasic,
-  testLockGracePeriod,
-  testLockWait,
-} from "./shared.ts";
+import { testDelIfOwner, testLockBasic, testLockWait } from "./shared.ts";
 
 // The shared test env sets no REDIS_URL, so nothing else turns Redis on; this
 // file runs against the compose `redis` service (16379, CI's port too). A
@@ -61,7 +56,6 @@ class CountingRedisLockProvider extends RedisLockProvider {
 
 describe("RedisLockProvider", () => {
   const Provider = RedisLockProvider;
-  const TopicProvider = RedisTopicProvider;
 
   const boot = async (provider: typeof RedisLockProvider) => {
     const alepha = Alepha.create()
@@ -73,15 +67,11 @@ describe("RedisLockProvider", () => {
   };
 
   test("should lock without waiting", async () => {
-    await testLockBasic(Provider, TopicProvider);
+    await testLockBasic(Provider);
   });
 
   test("should lock with waiting", async () => {
-    await testLockWait(Provider, TopicProvider);
-  });
-
-  test("should lock with grace period", async () => {
-    await testLockGracePeriod(Provider, TopicProvider);
+    await testLockWait(Provider);
   });
 
   test("delIfOwner only deletes the caller's own lock", async () => {

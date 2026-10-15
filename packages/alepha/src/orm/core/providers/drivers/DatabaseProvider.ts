@@ -13,6 +13,7 @@ import {
 import type { PgTransactionConfig } from "drizzle-orm/pg-core/session";
 
 import { DbError } from "../../errors/DbError.ts";
+import { assertAttrsReachable } from "../../helpers/pgAttr.ts";
 import type { DbTransaction } from "../../interfaces/DbTransaction.ts";
 import type { TransactionOptions } from "../../interfaces/TransactionOptions.ts";
 import type { EntityPrimitive } from "../../primitives/$entity.ts";
@@ -213,6 +214,7 @@ export abstract class DatabaseProvider {
   }
 
   public registerEntity(entity: EntityPrimitive) {
+    assertAttrsReachable(entity.name, entity.schema);
     this.entityPrimitives.push(entity);
     this.builder.buildTable(entity, this);
   }
@@ -259,8 +261,12 @@ export abstract class DatabaseProvider {
    * operations within `fn` automatically participate in the transaction without
    * explicit `{ tx }` drilling.
    *
-   * Nesting is safe  -  if already inside a `transactional()` block, the inner
-   * call reuses the outer transaction (no nested PG transactions / savepoints).
+   * Nesting joins: inside a `transactional()` block, the inner call runs on
+   * the outer transaction (no nested transaction, no savepoint), so a throw
+   * in it rolls back the whole block. An inner call whose `options` the
+   * outer transaction cannot honour throws instead of joining silently: a
+   * different `isolation`, or `access: "read write"` inside a read-only
+   * transaction. No options, or the same ones, join.
    *
    * The marker lives in a nested context, never the caller's. Two concurrent
    * calls both pass the check below  -  it reads the marker synchronously, and
@@ -278,6 +284,7 @@ export abstract class DatabaseProvider {
   ): Promise<R> {
     const existing = this.alepha.get("alepha.orm.tx");
     if (existing) {
+      this.assertJoinable(options);
       return fn();
     }
 
@@ -292,6 +299,9 @@ export abstract class DatabaseProvider {
         this.alepha.store.set("alepha.orm.tx", tx as unknown as DbTransaction, {
           skipEvents: true,
         });
+        this.alepha.store.set("alepha.orm.txOptions", options, {
+          skipEvents: true,
+        });
         this.alepha.store.set("alepha.orm.afterCommit", afterCommit, {
           skipEvents: true,
         });
@@ -299,6 +309,9 @@ export abstract class DatabaseProvider {
           return await fn();
         } finally {
           this.alepha.store.set("alepha.orm.tx", undefined, {
+            skipEvents: true,
+          });
+          this.alepha.store.set("alepha.orm.txOptions", undefined, {
             skipEvents: true,
           });
           this.alepha.store.set("alepha.orm.afterCommit", undefined, {
@@ -310,6 +323,27 @@ export abstract class DatabaseProvider {
       await this.drainAfterCommit(afterCommit);
       return result;
     });
+  }
+
+  /**
+   * Refuse to join the open transaction when it cannot give a nested call
+   * what that call asked for.
+   */
+  protected assertJoinable(options?: TransactionOptions): void {
+    if (!options) {
+      return;
+    }
+    const outer = this.alepha.get("alepha.orm.txOptions") ?? {};
+    if (options.isolation && options.isolation !== outer.isolation) {
+      throw new AlephaError(
+        `A nested transaction asked for isolation '${options.isolation}', but it joins the open transaction, which runs at '${outer.isolation ?? "the database default"}'. Set the isolation on the outermost $transactional.`,
+      );
+    }
+    if (options.access === "read write" && outer.access === "read only") {
+      throw new AlephaError(
+        "A nested transaction asked for 'read write', but it joins the open transaction, which is 'read only'.",
+      );
+    }
   }
 
   /**
@@ -485,6 +519,7 @@ export abstract class DatabaseProvider {
   protected runExclusiveNativeTransaction<R>(
     exec: (sql: string) => void,
     fn: () => Promise<R>,
+    options?: TransactionOptions,
   ): Promise<R> {
     const afterCommit: Array<() => void | Promise<void>> = [];
     // Always a layer of its own, like the async `transactional()`: the
@@ -500,6 +535,9 @@ export abstract class DatabaseProvider {
       this.alepha.store.set("alepha.orm.tx", this.db as any, {
         skipEvents: true,
       });
+      this.alepha.store.set("alepha.orm.txOptions", options, {
+        skipEvents: true,
+      });
       this.alepha.store.set("alepha.orm.afterCommit", afterCommit, {
         skipEvents: true,
       });
@@ -513,6 +551,9 @@ export abstract class DatabaseProvider {
         throw error;
       } finally {
         this.alepha.store.set("alepha.orm.tx", undefined, {
+          skipEvents: true,
+        });
+        this.alepha.store.set("alepha.orm.txOptions", undefined, {
           skipEvents: true,
         });
         this.alepha.store.set("alepha.orm.afterCommit", undefined, {

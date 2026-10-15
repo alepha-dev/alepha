@@ -3,6 +3,8 @@ import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import {
   type EntityPrimitive,
+  getAttr,
+  hasAttr,
   ModelBuilder,
   PG_CREATED_AT,
   PG_GENERATED,
@@ -186,35 +188,40 @@ export class PostgresModelBuilder extends ModelBuilder {
         col = col.default(defaultValue as any);
       }
 
-      if (PG_PRIMARY_KEY in value) {
+      if (hasAttr(value, PG_PRIMARY_KEY)) {
         col = col.primaryKey();
       }
 
-      if (PG_REF in value) {
-        const config = value[PG_REF] as PgRefOptions;
-        col = col.references(() => {
-          const ref = config.ref();
-          const table = tables.get(ref.entity.name) as PgTableWithColumns<any>;
+      if (hasAttr(value, PG_REF)) {
+        const config = getAttr(value, PG_REF) as PgRefOptions;
+        col = col.references(
+          () => {
+            const ref = config.ref();
+            const table = tables.get(
+              ref.entity.name,
+            ) as PgTableWithColumns<any>;
 
-          if (!table) {
-            throw new AlephaError(
-              `Referenced table ${ref.entity.name} not found for ${tableName}.${key}`,
-            );
-          }
+            if (!table) {
+              throw new AlephaError(
+                `Referenced table ${ref.entity.name} not found for ${tableName}.${key}`,
+              );
+            }
 
-          const target = table[ref.name];
-          if (!target) {
-            throw new AlephaError(
-              `Referenced column ${ref.name} not found in table ${ref.entity.name} for ${tableName}.${key}`,
-            );
-          }
+            const target = table[ref.name];
+            if (!target) {
+              throw new AlephaError(
+                `Referenced column ${ref.name} not found in table ${ref.entity.name} for ${tableName}.${key}`,
+              );
+            }
 
-          return target;
-        }, config.actions);
+            return target;
+          },
+          this.refActions(value, config),
+        );
       }
 
-      if (PG_GENERATED in value) {
-        const gen = value[PG_GENERATED] as PgGeneratedOptions;
+      if (hasAttr(value, PG_GENERATED)) {
+        const gen = getAttr(value, PG_GENERATED) as PgGeneratedOptions;
         col = col.generatedAlwaysAs(gen.expression);
       }
 
@@ -247,8 +254,8 @@ export class PostgresModelBuilder extends ModelBuilder {
     // (stored as a JS number). Must be checked before the plain-integer branch
     // below, otherwise it maps to int4 and overflows past 2_147_483_647.
     if (z.schema.isInteger(value) && z.schema.format(value) === "int64") {
-      if (PG_IDENTITY in value) {
-        const options = value[PG_IDENTITY] as PgIdentityOptions;
+      if (hasAttr(value, PG_IDENTITY)) {
+        const options = getAttr(value, PG_IDENTITY) as PgIdentityOptions;
         if (options.mode === "byDefault") {
           return pg
             .bigint(key, { mode: "number" })
@@ -262,8 +269,8 @@ export class PostgresModelBuilder extends ModelBuilder {
     }
 
     if (z.schema.isInteger(value)) {
-      if (PG_IDENTITY in value) {
-        const options = value[PG_IDENTITY] as PgIdentityOptions;
+      if (hasAttr(value, PG_IDENTITY)) {
+        const options = getAttr(value, PG_IDENTITY) as PgIdentityOptions;
         if (options.mode === "byDefault") {
           return pg.integer(key).generatedByDefaultAsIdentity(options);
         }
@@ -274,8 +281,8 @@ export class PostgresModelBuilder extends ModelBuilder {
     }
 
     if (z.schema.isBigInt(value)) {
-      if (PG_IDENTITY in value) {
-        const options = value[PG_IDENTITY] as PgIdentityOptions;
+      if (hasAttr(value, PG_IDENTITY)) {
+        const options = getAttr(value, PG_IDENTITY) as PgIdentityOptions;
         if (options.mode === "byDefault") {
           return pg
             .bigint(key, { mode: "bigint" })
@@ -290,8 +297,8 @@ export class PostgresModelBuilder extends ModelBuilder {
     }
 
     if (z.schema.isNumber(value)) {
-      if (PG_IDENTITY in value) {
-        const options = value[PG_IDENTITY] as PgIdentityOptions;
+      if (hasAttr(value, PG_IDENTITY)) {
+        const options = getAttr(value, PG_IDENTITY) as PgIdentityOptions;
         if (options.mode === "byDefault") {
           return pg
             .bigint(key, { mode: "number" })
@@ -424,7 +431,7 @@ export class PostgresModelBuilder extends ModelBuilder {
     const format = z.schema.format(value);
 
     if (format === "uuid") {
-      if (PG_PRIMARY_KEY in value) {
+      if (hasAttr(value, PG_PRIMARY_KEY)) {
         return this.getPrimaryKeyUUID(key);
       }
 
@@ -436,12 +443,12 @@ export class PostgresModelBuilder extends ModelBuilder {
     }
 
     if (format === "date-time") {
-      if (PG_CREATED_AT in value) {
+      if (hasAttr(value, PG_CREATED_AT)) {
         return pg
           .timestamp(key, { mode: "string", withTimezone: true })
           .defaultNow();
       }
-      if (PG_UPDATED_AT in value) {
+      if (hasAttr(value, PG_UPDATED_AT)) {
         return pg
           .timestamp(key, { mode: "string", withTimezone: true })
           .defaultNow();

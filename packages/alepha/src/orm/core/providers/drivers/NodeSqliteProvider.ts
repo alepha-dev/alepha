@@ -22,6 +22,7 @@ import { SQLiteAsyncDatabase } from "drizzle-orm/sqlite-core/async/db";
 import { SQLiteDialect } from "drizzle-orm/sqlite-core/dialect";
 
 import { DbError } from "../../errors/DbError.ts";
+import type { TransactionOptions } from "../../interfaces/TransactionOptions.ts";
 import { databaseEnvSchema } from "../../schemas/databaseEnvSchema.ts";
 import { SqliteModelBuilder } from "../../services/SqliteModelBuilder.ts";
 import { DatabaseProvider, type SQLLike } from "./DatabaseProvider.ts";
@@ -203,9 +204,13 @@ export class NodeSqliteProvider extends DatabaseProvider {
    * are serialized because the single shared connection can only hold one
    * transaction at a time.
    */
-  public override async transactional<R>(fn: () => Promise<R>): Promise<R> {
+  public override async transactional<R>(
+    fn: () => Promise<R>,
+    options?: TransactionOptions,
+  ): Promise<R> {
     const existing = this.alepha.get("alepha.orm.tx");
     if (existing) {
+      this.assertJoinable(options);
       return fn();
     }
 
@@ -216,7 +221,11 @@ export class NodeSqliteProvider extends DatabaseProvider {
     }
 
     const sqlite = this.requireSqlite();
-    return this.runExclusiveNativeTransaction((sql) => sqlite.exec(sql), fn);
+    return this.runExclusiveNativeTransaction(
+      (sql) => sqlite.exec(sql),
+      fn,
+      options,
+    );
   }
 
   public override async execute(

@@ -13,8 +13,11 @@ Middleware that wraps handler execution in a database transaction.
 All Repository operations inside the handler automatically participate in
 the transaction - no explicit `{ tx }` drilling required.
 
-Nesting is safe: if the handler is already inside a `transactional()` block,
-the outer transaction is reused.
+Nesting joins: inside another `$transactional` block, the handler runs on
+the outer transaction, and a throw rolls the whole of it back. Options the
+outer transaction cannot honour throw instead of being ignored: a different
+`isolation`, or `access: "read write"` inside a `read only` transaction.
+Set them on the outermost block.
 
 ⚠️ **A no-op on a driver without transactions** (Cloudflare D1, PGlite):
 the handler runs in place, and a throw rolls nothing back. Each primitive

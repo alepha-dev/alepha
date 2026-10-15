@@ -168,7 +168,7 @@ The second argument is a lazy function returning the target entity column. This 
 
 By default, `db.ref()` infers the `onDelete` action from the column type:
 
-- If the column is optional (`.optional()`), the default is `"set null"`.
+- If the column is optional (`.optional()`, inside or outside `db.ref()`), the default is `"set null"`.
 - If the column is required, the default is `"cascade"`.
 
 Passing an actions object replaces that inference entirely: `{ onUpdate: "cascade" }` alone leaves `onDelete` unset. You can override this behavior with explicit actions:
@@ -182,7 +182,9 @@ teamId: db.ref(z.uuid().optional(), () => team.cols.id, {
 
 Available actions: `"cascade"`, `"restrict"`, `"no action"`, `"set null"`, `"set default"`.
 
-⚠️ `.optional()` goes **inside** `db.ref(...)`, on the type argument. Written outside (`db.ref(z.uuid(), ...).optional()`), the column is still nullable but no foreign key is generated, silently, and the migration check cannot catch it.
+`db.ref(z.uuid().optional(), ...)` and `db.ref(z.uuid(), ...).optional()` are the same column: the `db.*` helpers are read through `.optional()`, `.nullable()`, `.default()` and `.readonly()`. A helper under any other wrapper (`.transform()`, a pipe) would be lost, so the entity is refused at registration with an error naming the column.
+
+The helpers return a copy: `db.ref(userIdSchema, ...)` leaves `userIdSchema` a plain uuid everywhere else it is used.
 
 ## Full Example
 

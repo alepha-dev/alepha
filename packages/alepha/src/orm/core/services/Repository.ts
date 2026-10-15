@@ -666,6 +666,13 @@ export abstract class Repository<T extends ZObject> {
   ): Promise<PgStatic<T, R>[]> {
     // Check cache. Never inside a transaction: a read there can see rows the
     // transaction wrote and may still roll back, and a hit would hide them.
+    if (opts.for && opts.cache) {
+      // A cache hit takes no row lock: the caller would believe it holds a
+      // lock it never took.
+      throw new AlephaError(
+        `findMany on '${this.tableName}' was given both 'for' and 'cache': a cached result takes no row lock. Drop one of them.`,
+      );
+    }
     const cache = this.inTransaction(opts) ? undefined : opts.cache;
     if (cache) {
       const cacheKey = cache.key ?? this.buildCacheKey("findMany", query, opts);
@@ -2925,7 +2932,8 @@ export interface StatementOptions {
   tx?: DbTransaction | null;
 
   /**
-   * Row lock taken by the SELECT (`FOR UPDATE` and its siblings).
+   * Row lock taken by the SELECT (`FOR UPDATE` and its siblings). Refused
+   * together with `cache`, since a cache hit takes no lock.
    */
   for?: RowLock;
 

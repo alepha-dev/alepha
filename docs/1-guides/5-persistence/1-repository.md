@@ -675,7 +675,9 @@ class OrderService {
 }
 ```
 
-Every repository operation inside the handler automatically participates in the transaction. Nesting is safe - a nested `$transactional` reuses the outer transaction.
+Every repository operation inside the handler automatically participates in the transaction. A nested `$transactional` joins the outer transaction: there is no savepoint, and a throw anywhere rolls the whole of it back. Options the outer transaction cannot honour throw instead of being ignored: a different `isolation`, or `access: "read write"` inside a `read only` transaction. Set them on the outermost block.
+
+A query given both `for` (a row lock) and `cache` throws: a cached result takes no lock.
 
 ### No transactions on D1
 

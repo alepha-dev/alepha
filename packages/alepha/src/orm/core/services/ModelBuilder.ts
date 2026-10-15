@@ -1,6 +1,7 @@
-import { $inject, AlephaError, z } from "alepha";
+import { $inject, AlephaError, type ZType, z } from "alepha";
 import { isSQLWrapper, type SQL, sql } from "drizzle-orm";
 
+import type { PgRefOptions } from "../constants/PG_SYMBOLS.ts";
 import type { EntityPrimitive } from "../primitives/$entity.ts";
 import type { SequencePrimitive } from "../primitives/$sequence.ts";
 import { QueryManager } from "./QueryManager.ts";
@@ -109,6 +110,22 @@ export abstract class ModelBuilder {
           ? sql`${column} COLLATE NOCASE`
           : sql`LOWER(${column})`,
     };
+  }
+
+  /**
+   * The foreign key actions of a `db.ref()` column: the declared ones, or
+   * `onDelete: "set null"` for an optional column and `"cascade"` for a
+   * required one.
+   */
+  protected refActions(
+    column: unknown,
+    config: PgRefOptions,
+  ): NonNullable<PgRefOptions["actions"]> {
+    return (
+      config.actions ?? {
+        onDelete: z.schema.isOptional(column as ZType) ? "set null" : "cascade",
+      }
+    );
   }
 
   /**

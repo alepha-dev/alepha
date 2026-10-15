@@ -1,19 +1,14 @@
 import { randomUUID } from "node:crypto";
 
-import { $inject, Alepha, createPrimitive, type Service } from "alepha";
-import { DateTimeProvider, type DurationLike } from "alepha/datetime";
+import { $inject, $pipeline, Alepha, type Service } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import {
+  $lock,
   AlephaLock,
-  LockPrimitive,
+  LockAcquireError,
   LockProvider,
-  LockTopicProvider,
   MemoryLockProvider,
 } from "alepha/lock";
-import {
-  MemoryTopicProvider,
-  type SubscribeCallback,
-  type TopicProvider,
-} from "alepha/topic";
 import { expect } from "vitest";
 
 export const store: Record<string, string> = {};
@@ -21,21 +16,17 @@ export class SharedLockProvider extends MemoryLockProvider {
   store: Record<string, string> = store;
 }
 
-export const subscriptions: Record<string, SubscribeCallback[]> = {};
-export class SharedTopicProvider extends MemoryTopicProvider {
-  subscriptions: Record<string, SubscribeCallback[]> = subscriptions;
-}
-
 export const testLockBasic = async (
   provider: Service<LockProvider>,
-  topicProvider: Service<TopicProvider>,
 ): Promise<void> => {
   const state: Record<string, string> = {};
+  const lockName = `test-lock-basic-${randomUUID()}`;
   class TestLock {
     lock = $inject(LockProvider);
     dt = $inject(DateTimeProvider);
     stack = () => state.stack;
-    migrate = createPrimitive(LockPrimitive, {
+    migrate = $pipeline({
+      use: [$lock({ name: lockName })],
       handler: async () => {
         await this.dt.wait([50, "milliseconds"]);
         state.stack = state.stack ? `${state.stack}A` : "A";
@@ -48,10 +39,6 @@ export const testLockBasic = async (
   const createApp = async () => {
     // One namespace per run: on Redis the provider keys every lock with it.
     return Alepha.create({ env: { APP_NAME: prefix } })
-      .with({
-        provide: LockTopicProvider,
-        use: topicProvider,
-      })
       .with({
         provide: LockProvider,
         use: provider,
@@ -66,17 +53,20 @@ export const testLockBasic = async (
   const app2 = await createApp();
   const app3 = await createApp();
 
-  await app1.lock.set("stack", "");
-
-  await Promise.all([
-    app1.migrate.run(),
-    app2.migrate.run(),
-    app3.migrate.run(),
+  const results = await Promise.allSettled([
+    app1.migrate(),
+    app2.migrate(),
+    app3.migrate(),
   ]);
 
+  // One caller enters, the two others are refused rather than queued.
+  expect(results.filter((it) => it.status === "fulfilled")).toHaveLength(1);
+  for (const result of results.filter((it) => it.status === "rejected")) {
+    expect((result as PromiseRejectedResult).reason).toBeInstanceOf(
+      LockAcquireError,
+    );
+  }
   expect(app1.stack()).toBe("A");
-  expect(app2.stack()).toBe("A");
-  expect(app3.stack()).toBe("A");
 };
 
 export const testDelIfOwner = async (
@@ -103,23 +93,18 @@ export const testDelIfOwner = async (
 
 export const testLockWait = async (
   provider: Service<LockProvider>,
-  topicProvider: Service<TopicProvider>,
 ): Promise<void> => {
   let count = 0;
 
-  // One key per invocation, shared by the three apps below. Without it the
-  // primitive falls back to `TestLockWait:migrateLock`, a fixed key that
-  // outlives the process: a run killed mid-handler leaves it in the shared
-  // redis container for the rest of its maxDuration (5 minutes by default),
-  // and every later run of this test then waits on a lock nobody holds.
+  // One key per invocation, shared by the three apps below, so a run killed
+  // mid-handler cannot leave a lock behind in the shared redis container.
   const lockName = `test-lock-wait-${randomUUID()}`;
 
   class TestLockWait {
     dt = $inject(DateTimeProvider);
 
-    migrateLock = createPrimitive(LockPrimitive, {
-      name: lockName,
-      wait: true,
+    migrateLock = $pipeline({
+      use: [$lock({ name: lockName, wait: true })],
       handler: async () => {
         count++;
         await this.dt.wait([500, "milliseconds"]);
@@ -128,21 +113,16 @@ export const testLockWait = async (
 
     async migrate() {
       const now = Date.now();
-      await this.migrateLock.run();
+      await this.migrateLock();
       return Date.now() - now;
     }
   }
 
   const createApp = async () => {
-    const app = Alepha.create()
-      .with({
-        provide: LockTopicProvider,
-        use: topicProvider,
-      })
-      .with({
-        provide: LockProvider,
-        use: provider,
-      });
+    const app = Alepha.create().with({
+      provide: LockProvider,
+      use: provider,
+    });
     app.with(TestLockWait);
     return app.start().then(() => app.inject(TestLockWait));
   };
@@ -163,62 +143,4 @@ export const testLockWait = async (
 
   // All 3 apps should eventually execute (wait: true means queue, not skip)
   expect(count).toBe(3);
-};
-
-export const testLockGracePeriod = async (
-  provider: Service<LockProvider>,
-  topicProvider: Service<TopicProvider>,
-): Promise<void> => {
-  const config: {
-    gracePeriod?: DurationLike;
-  } = {};
-  let count = 0;
-
-  // Same reason as testLockWait: the default key would be the fixed
-  // `TestApp:fn`, which survives an interrupted run inside redis.
-  const lockName = `test-lock-grace-period-${randomUUID()}`;
-
-  const createApp = () => {
-    const alepha = Alepha.create()
-      .with({
-        provide: LockTopicProvider,
-        use: topicProvider,
-      })
-      .with({
-        provide: LockProvider,
-        use: provider,
-      });
-
-    class TestApp {
-      fn = createPrimitive(LockPrimitive, {
-        name: lockName,
-        gracePeriod: config.gracePeriod,
-        handler: async () => {
-          count += 1;
-        },
-      });
-    }
-    const fn = alepha.inject(TestApp).fn;
-    alepha.events.on("ready", () => fn.run());
-    return alepha;
-  };
-
-  // no grace period
-  // as you run apps one by one, lock is released after each start!
-  count = 0;
-  expect(count).toBe(0);
-  for (const app of [createApp(), createApp(), createApp()]) {
-    await app.start();
-  }
-  expect(count).toBe(3);
-
-  // but with grace period
-  // as we wait 1 second before releasing lock, all started apps will see the lock!
-  count = 0;
-  expect(count).toBe(0);
-  config.gracePeriod = [1, "seconds"];
-  for (const app of [createApp(), createApp(), createApp()]) {
-    await app.start();
-  }
-  expect(count).toBe(1);
 };

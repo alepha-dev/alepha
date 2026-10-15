@@ -199,7 +199,6 @@ Not obvious from the code, so read them before writing any.
 - **`{ inArray: [...] }` for SQL `IN`**, not `{ in: [...] }` (`FilterOperators.ts`).
 - **`findMany()` accepts** `{ where, limit, offset, orderBy, groupBy, columns, distinct }`: no `sort`, no `size`. **Pagination is `paginate(query, { where }, { count: true })`**, whose query object does take `sort` / `size`.
 - **Never pass `undefined` into a where-filter**: `where: { col: undefined }` throws `AlephaError`. Omit the key for an optional filter.
-- **`.optional()` goes INSIDE `db.ref(...)`**: outside it no foreign key is generated, silently, and the migration check cannot catch it.
 
 ### CLI internals (`packages/alepha/src/cli`)
 

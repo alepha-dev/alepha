@@ -16,6 +16,7 @@ import type { SQLiteBunDatabase } from "drizzle-orm/bun-sqlite";
 import type { PgAsyncDatabase } from "drizzle-orm/pg-core";
 
 import { DbError } from "../../errors/DbError.ts";
+import type { TransactionOptions } from "../../interfaces/TransactionOptions.ts";
 import { databaseEnvSchema } from "../../schemas/databaseEnvSchema.ts";
 import { SqliteModelBuilder } from "../../services/SqliteModelBuilder.ts";
 import { DatabaseProvider, type SQLLike } from "./DatabaseProvider.ts";
@@ -139,9 +140,13 @@ export class BunSqliteProvider extends DatabaseProvider {
    * could never happen. Use awaited BEGIN/COMMIT/ROLLBACK on the native
    * connection, serialized on the single shared connection.
    */
-  public override async transactional<R>(fn: () => Promise<R>): Promise<R> {
+  public override async transactional<R>(
+    fn: () => Promise<R>,
+    options?: TransactionOptions,
+  ): Promise<R> {
     const existing = this.alepha.get("alepha.orm.tx");
     if (existing) {
+      this.assertJoinable(options);
       return fn();
     }
 
@@ -156,7 +161,11 @@ export class BunSqliteProvider extends DatabaseProvider {
       throw new AlephaError("Database not initialized");
     }
 
-    return this.runExclusiveNativeTransaction((sql) => sqlite.run(sql), fn);
+    return this.runExclusiveNativeTransaction(
+      (sql) => sqlite.run(sql),
+      fn,
+      options,
+    );
   }
 
   public override async execute(

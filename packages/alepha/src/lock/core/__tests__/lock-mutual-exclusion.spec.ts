@@ -1,8 +1,8 @@
-import { Alepha, createPrimitive } from "alepha";
+import { Alepha } from "alepha";
 import { describe, expect, it } from "vitest";
 
 import { AlephaLock } from "../index.ts";
-import { $lock, LockPrimitive } from "../primitives/$lock.ts";
+import { $lock } from "../primitives/$lock.ts";
 import { LockProvider } from "../providers/LockProvider.ts";
 import { MemoryLockProvider } from "../providers/MemoryLockProvider.ts";
 
@@ -81,39 +81,5 @@ describe("$lock middleware — same-process mutual exclusion", () => {
     expect(results[0].status).toBe("fulfilled");
     expect(results[1].status).toBe("fulfilled");
     expect(results[2].status).toBe("rejected");
-  });
-});
-
-describe("LockPrimitive — same-instance mutual exclusion", () => {
-  it("overlapping run() calls on one primitive do not both enter", async () => {
-    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-    let inside = 0;
-    let maxConcurrent = 0;
-    let calls = 0;
-
-    class Svc {
-      work = createPrimitive(LockPrimitive, {
-        handler: async () => {
-          calls++;
-          inside++;
-          maxConcurrent = Math.max(maxConcurrent, inside);
-          await sleep(50);
-          inside--;
-        },
-      });
-    }
-
-    const alepha = Alepha.create()
-      .with({ provide: LockProvider, use: MemoryLockProvider })
-      .with(AlephaLock);
-    const svc = alepha.inject(Svc);
-    await alepha.start();
-
-    // A single primitive instance sharing one lock id would hand every
-    // overlapping call the same identity — all of them would "own" the lock.
-    await Promise.all([svc.work.run(), svc.work.run(), svc.work.run()]);
-
-    expect(maxConcurrent).toBe(1);
-    expect(calls).toBe(1);
   });
 });

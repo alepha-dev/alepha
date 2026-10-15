@@ -155,11 +155,11 @@ export class DatabaseTypeProvider {
     type: T,
     value?: Infer<T>,
   ): PgAttr<T, PgDefault> => {
+    const tagged = this.attr(type, PG_DEFAULT);
     if (value != null) {
-      Object.assign(type, { default: value });
+      Object.assign(tagged, { default: value });
     }
-
-    return this.attr(type, PG_DEFAULT);
+    return tagged;
   };
 
   /**
@@ -197,6 +197,11 @@ export class DatabaseTypeProvider {
 
   /**
    * Creates a reference to another table or schema. Basically a foreign key.
+   *
+   * Without `actions`, `onDelete` is `"set null"` when the column is
+   * optional and `"cascade"` otherwise. It is decided from the column as the
+   * entity declares it, so `db.ref(x).optional()` and `db.ref(x.optional())`
+   * are the same column.
    */
   public readonly ref = <T extends ZType>(
     type: T,
@@ -206,15 +211,7 @@ export class DatabaseTypeProvider {
       onDelete?: ForeignKeyAction;
     },
   ): PgAttr<T, PgRef> => {
-    // If actions are not provided, set default onDelete based on type
-    const finalActions = actions ?? {
-      onDelete: z.schema.isOptional(type) ? "set null" : "cascade",
-    };
-
-    return this.attr(type, PG_REF, {
-      ref,
-      actions: finalActions,
-    });
+    return this.attr(type, PG_REF, { ref, actions });
   };
 
   // -------------------------------------------------------------------------------------------------------------------
