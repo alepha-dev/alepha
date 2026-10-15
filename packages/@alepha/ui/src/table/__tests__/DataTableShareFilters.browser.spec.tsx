@@ -79,7 +79,7 @@ describe("DataTable (share filters)", () => {
     window.history.replaceState({}, "", "/");
   });
 
-  const mount = async (url: string, ui: React.ReactNode) => {
+  const mount = async (url: `/${string}`, ui: React.ReactNode) => {
     alepha = Alepha.create().with(AlephaReact).with(AlephaReactI18n).with(App);
     await alepha.start();
     const router = alepha.inject(ReactRouter);

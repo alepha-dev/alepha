@@ -547,21 +547,30 @@ const Nav = () => {
 
 **Key methods and properties:**
 
-| Method/Property                     | Description                                                                                                                                         |
-| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `push(path, opts)`                  | Navigate to a path or page name. Options: `replace`, `params`, `query`, `force`.                                                                    |
-| `back()`                            | Go back in history.                                                                                                                                 |
-| `forward()`                         | Go forward in history.                                                                                                                              |
-| `reload()`                          | Reload the current page.                                                                                                                            |
-| `isActive(href, { startWith? })`    | Check if the given path is the current route (`startWith` matches on a segment boundary).                                                           |
-| `pathname`                          | Current pathname string.                                                                                                                            |
-| `query`                             | Current query parameters as `Record<string, string>`.                                                                                               |
-| `path(name, cfg)`                   | Resolve a page name to its URL path.                                                                                                                |
-| `anchor(path)`                      | Returns `{ href, onClick }` props for anchor elements.                                                                                              |
-| `setQueryParams(record, { push? })` | Update URL query parameters without navigation. Accepts a record or an updater `(current) => next`; replaces the history entry unless `push: true`. |
-| `invalidate(props?)`                | Re-run the current route's loaders without navigating (after a mutation the loader computes).                                                       |
-| `canGoBack`                         | Whether there is an in-app history entry to go back to.                                                                                             |
-| `state`                             | The current `ReactRouterState` (`url`, `params`, `query`, `layers`, ...).                                                                           |
+| Method/Property                         | Description                                                                                                                                         |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `push(name, opts)` / `push(path, opts)` | Navigate to a page name (options: `params`, `query`, `replace`, `force`) or to a path starting with `/` (no `params`).                              |
+| `back()`                                | Go back in history.                                                                                                                                 |
+| `forward()`                             | Go forward in history.                                                                                                                              |
+| `reload()`                              | Reload the current page.                                                                                                                            |
+| `isActive(href, { startWith? })`        | Check if the given path is the current route (`startWith` matches on a segment boundary).                                                           |
+| `pathname`                              | Current pathname string.                                                                                                                            |
+| `query`                                 | Current query parameters as `Record<string, string>`.                                                                                               |
+| `path(name, cfg)`                       | Resolve a page name to its URL path.                                                                                                                |
+| `anchor(name, opts)` / `anchor(path)`   | Returns `{ href, onClick }` props for anchor elements, under the same two forms as `push`.                                                          |
+| `setQueryParams(record, { push? })`     | Update URL query parameters without navigation. Accepts a record or an updater `(current) => next`; replaces the history entry unless `push: true`. |
+| `invalidate(props?)`                    | Re-run the current route's loaders without navigating (after a mutation the loader computes).                                                       |
+| `canGoBack`                             | Whether there is an in-app history entry to go back to.                                                                                             |
+| `state`                                 | The current `ReactRouterState` (`url`, `params`, `query`, `layers`, ...).                                                                           |
+
+`push` and `anchor` take one of two forms, told apart by type:
+
+- **A page name**, with that page's params: `router.push("userProfile", { params: { id } })`. On a typed router (`useRouter<AppRouter>()`) a misspelled name is a compile error, and `params` is typed from the page's `schema.params` and required when it has a required key. A page that declares `schema.params` gets exactly the params given; one that does not still inherits the current route's.
+- **A path starting with `/`**: `router.push("/settings", { query: { tab: "security" } })`. It honours `query` and `replace`; `params` belongs to a page name and is a type error here.
+
+Nothing else is router navigation. A relative path, a bare `?query` and an absolute `https://` URL are refused: changing only the query is `setQueryParams`, and leaving the app is an `<a href>` or `window.location.assign`. A dynamic path is typed `` `/${string}` `` where it is produced (the router exports it as `RouterPath`), not cast at the call.
+
+A name no page has throws an `AlephaError` naming the closest ones, typed router or not. It used to navigate to the relative URL instead.
 
 `useRouter()` does not re-render on navigation by itself. A component that renders from the current location reads it with `useRouterState()`, which subscribes to the router state and returns the `ReactRouterState`.
 
@@ -677,8 +686,15 @@ router via `onClick` directly:
 ```typescript check
 import { Link } from "alepha/react/router";
 
-<Link href="/about">About</Link>
+<>
+  <Link href="/about">About</Link>
+  <Link href="userProfile" params={{ id: "42" }}>
+    Profile
+  </Link>
+</>;
 ```
+
+`href` is a path or a page name, with `params` for a page name and `query` for either, as `router.anchor` takes them.
 
 With the global interceptor enabled, `<Link>` is mostly a stylistic
 preference. Reach for it when you want explicit per-link control or

@@ -91,7 +91,7 @@ describe("DataTable (a date range on the filter bar)", () => {
   });
 
   const mount = async (
-    url = "/list",
+    url: `/${string}` = "/list",
     options: { seedValues?: { createdAt?: string[] } } = {},
   ) => {
     alepha = Alepha.create().with(AlephaReact).with(AlephaReactI18n).with(App);

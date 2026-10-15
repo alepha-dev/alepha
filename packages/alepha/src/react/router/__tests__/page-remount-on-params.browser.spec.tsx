@@ -100,7 +100,7 @@ describe("a $page and its params", () => {
       await alepha.start();
     });
     const router = alepha.inject(ReactRouter);
-    const go = async (url: string) => {
+    const go = async (url: `/${string}`) => {
       await act(async () => {
         await router.push(url);
       });

@@ -1,4 +1,5 @@
 import { Toaster, TooltipProvider, DialogProvider } from "@alepha/ui";
+import type { AuthRouter } from "@alepha/ui/auth";
 import {
   ActionErrorToaster,
   ButtonLanguage,
@@ -24,7 +25,8 @@ import { usePanier } from "./hooks/usePanier.ts";
 export const Layout = () => {
   const { compte } = usePanier();
   const { tr } = useI18n();
-  const router = useRouter<AppRouter>();
+  // The sign-in pages are `AuthRouter`'s, mounted beside the app's own.
+  const router = useRouter<AppRouter & AuthRouter>();
 
   useChargementPanier();
 

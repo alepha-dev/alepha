@@ -188,7 +188,7 @@ export const BANNED_DOC_SYMBOLS: Array<{
   {
     pattern: "router\\.navigate",
     reason:
-      "`router.navigate` does not exist - use `router.push(name, { params })`",
+      '`router.navigate` does not exist - use `router.push(name, { params })` or `router.push("/path", { query })`',
   },
   {
     pattern: "cloudflare-d1:",

@@ -1,5 +1,7 @@
 import { $inject, Alepha } from "alepha";
 
+import type { RouterPath } from "../services/ReactRouter.ts";
+
 /**
  * Generic locale path-prefix mechanism for the router.
  *
@@ -119,9 +121,13 @@ export class RouterLocaleProvider {
 
   /**
    * Prepends the locale prefix to a pathname when needed. The default locale
-   * (and any unknown/disabled case) returns the pathname unchanged.
+   * (and any unknown/disabled case) returns the pathname unchanged. Always a
+   * path from the root, which is what router navigation takes.
    */
-  public withPrefix(pathname: string, locale: string = this.current): string {
+  public withPrefix(
+    pathname: string,
+    locale: string = this.current,
+  ): RouterPath {
     if (
       !this.enabled ||
       !locale ||
@@ -129,7 +135,9 @@ export class RouterLocaleProvider {
       !this.prefixedLocales.includes(locale) ||
       this.isExcluded(pathname)
     ) {
-      return pathname;
+      return pathname.startsWith("/")
+        ? (pathname as RouterPath)
+        : `/${pathname}`;
     }
     return `/${locale}${pathname === "/" ? "" : pathname}`;
   }
