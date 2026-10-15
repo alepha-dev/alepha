@@ -9,6 +9,7 @@ describe("$sse", () => {
   test("should stream events via run()", async ({ expect }) => {
     class Api {
       events = $sse({
+        path: "/events",
         schema: {
           data: z.object({
             type: z.text(),
@@ -38,9 +39,12 @@ describe("$sse", () => {
     ]);
   });
 
-  test("should have correct name and path", async ({ expect }) => {
+  test("should expose name, declared path, method and prefix", async ({
+    expect,
+  }) => {
     class Api {
       notifications = $sse({
+        path: "/notifications",
         schema: {
           data: z.object({
             id: z.number(),
@@ -84,9 +88,10 @@ describe("$sse", () => {
     expect(app.feed.path).toBe("/custom/feed");
   });
 
-  test("should append params to path", async ({ expect }) => {
+  test("should fill path params declared in the path", async ({ expect }) => {
     class Api {
       stream = $sse({
+        path: "/stream/:id",
         schema: {
           params: z.object({
             id: z.text(),
@@ -116,9 +121,21 @@ describe("$sse", () => {
     expect(events).toStrictEqual([{ value: "item-42" }]);
   });
 
+  test("should refuse an endpoint without a path at init", ({ expect }) => {
+    class Api {
+      // An untyped caller: the options type requires `path`.
+      events = $sse({ handler: () => {} } as any);
+    }
+
+    expect(() => Alepha.create().inject(Api)).toThrow(
+      "SSE endpoint 'events' must declare a 'path'.",
+    );
+  });
+
   test("should stream via fetch() (HTTP)", async ({ expect }) => {
     class Api {
       events = $sse({
+        path: "/events",
         schema: {
           data: z.object({
             seq: z.number(),
@@ -154,6 +171,7 @@ describe("$sse", () => {
   }) => {
     class Api {
       failing = $sse({
+        path: "/failing",
         schema: {
           data: z.object({
             value: z.text(),
@@ -183,6 +201,7 @@ describe("$sse", () => {
   test("should auto-close stream when handler finishes", async ({ expect }) => {
     class Api {
       autoClose = $sse({
+        path: "/autoClose",
         schema: {
           data: z.object({
             n: z.number(),
@@ -211,6 +230,7 @@ describe("$sse", () => {
   test("should be callable as a function", async ({ expect }) => {
     class Api {
       ticker = $sse({
+        path: "/ticker",
         schema: {
           data: z.object({
             tick: z.number(),
@@ -238,6 +258,7 @@ describe("$sse", () => {
   test("should not be exposed when disabled", async ({ expect }) => {
     class Api {
       disabled = $sse({
+        path: "/disabled",
         disabled: true,
         schema: {
           data: z.object({
@@ -262,6 +283,7 @@ describe("$sse", () => {
   test("should work via $client proxy", async ({ expect }) => {
     class Api {
       chat = $sse({
+        path: "/chat",
         schema: {
           body: z.object({ prompt: z.text() }),
           data: z.object({ token: z.text() }),
@@ -299,6 +321,7 @@ describe("$sse", () => {
 
     class Api {
       ticks = $sse({
+        path: "/ticks",
         schema: {
           data: z.object({ n: z.number() }),
         },
@@ -346,6 +369,7 @@ describe("$sse", () => {
   test("should register as a link", async ({ expect }) => {
     class Api {
       chat = $sse({
+        path: "/chat",
         schema: {
           body: z.object({ prompt: z.text() }),
           data: z.object({ token: z.text() }),

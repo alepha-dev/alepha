@@ -18,7 +18,7 @@ functions to control the stream.
 
 - Full TypeScript inference for event data types
 - Automatic schema validation using Zod
-- Convention-based URL generation with customizable paths
+- An explicit path on every endpoint, no convention to remember
 - Direct invocation (`run()`) returns an `SseStream` async iterable
 - HTTP requests (`fetch()`) returns an `SseFetchResponse` async iterable
 - Built-in `text/event-stream` content-type handling
@@ -32,25 +32,27 @@ $sse({ path: "/events" }); // POST /api/events
 $sse({ path: "/feed/:id" }); // POST /api/feed/:id
 ```
 
-The HTTP method is always POST.
+The HTTP method is always POST. `path` is required, so renaming the
+property never moves the URL.
 
 ## Options
 
-| Option        | Type                        | Required | Description                             |
-| ------------- | --------------------------- | -------- | --------------------------------------- |
-| `name`        | `string`                    | No       | Name of the SSE endpoint.               |
-| `group`       | `string`                    | No       | Group SSE endpoints together.           |
-| `path`        | `string`                    | No       | Pathname of the route                   |
-| `schema`      | `TConfig`                   | No       | The config schema for the SSE endpoint. |
-| `description` | `string`                    | No       | A short description of the endpoint     |
-| `disabled`    | `boolean`                   | No       | Disable the SSE endpoint.               |
-| `handler`     | `SseHandler&lt;TConfig&gt;` | Yes      | Main SSE handler                        |
+| Option        | Type                        | Required | Description                                                     |
+| ------------- | --------------------------- | -------- | --------------------------------------------------------------- |
+| `name`        | `string`                    | No       | Name of the SSE endpoint.                                       |
+| `group`       | `string`                    | No       | Group SSE endpoints together.                                   |
+| `path`        | `string`                    | Yes      | Pathname of the route, below the API prefix (`/api` by default) |
+| `schema`      | `TConfig`                   | No       | The config schema for the SSE endpoint.                         |
+| `description` | `string`                    | No       | A short description of the endpoint                             |
+| `disabled`    | `boolean`                   | No       | Disable the SSE endpoint.                                       |
+| `handler`     | `SseHandler&lt;TConfig&gt;` | Yes      | Main SSE handler                                                |
 
 ## Examples
 
 ```ts
 class NotificationController {
   events = $sse({
+    path: "/notifications/events",
     schema: {
       data: z.object({
         type: z.text(),
