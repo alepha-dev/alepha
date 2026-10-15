@@ -893,3 +893,34 @@
   ) {
   border-color: var(--border-hover);
 }
+
+/*
+ * A collapsed sidebar before hydration (#E78).
+ *
+ * The server renders the shell expanded for every visitor, so the page cache
+ * can share it; the visitor's preference reaches React only on the first
+ * commit after hydration. The boot script has already set
+ * `data-sidebar="collapsed"` on `<html>` from the `alepha-ui` cookie, so an
+ * EXPANDED sidebar under that attribute is the pre-hydration frame: it is held
+ * at the icon width, labels clipped, until React renders it collapsed. A
+ * sidebar the visitor expands again updates the attribute with it, so the rule
+ * never fights React after hydration.
+ */
+html[data-sidebar="collapsed"]
+  [data-slot="sidebar"][data-state="expanded"]
+  [data-slot="sidebar-gap"],
+html[data-sidebar="collapsed"]
+  [data-slot="sidebar"][data-state="expanded"]
+  [data-slot="sidebar-container"] {
+  width: var(--sidebar-width-icon);
+  overflow: hidden;
+}
+
+html[data-sidebar="collapsed"]
+  [data-slot="sidebar"][data-state="expanded"]:is(
+    [data-variant="floating"],
+    [data-variant="inset"]
+  )
+  :is([data-slot="sidebar-gap"], [data-slot="sidebar-container"]) {
+  width: calc(var(--sidebar-width-icon) + 1rem + 2px);
+}

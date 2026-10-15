@@ -9,29 +9,22 @@ import { useSidebarState } from "alepha/react/ui";
 ## Overview
 
 Read and update the sidebar collapsed state. The value is persisted via the
-`alepha-ui` cookie so it survives reloads and is available during SSR - no
-flash of expanded-then-collapsed when the user prefers a collapsed shell.
+`alepha-ui` cookie so it survives reloads.
 
-## ⚠️ During hydration it answers what the server rendered
+## The server never reads it
 
-The browser seeds `uiAtom` from the cookie at boot, and the SSR payload
-overrides it only when the payload carries the atom. A page rendered for the
-request carries it, read from the same cookie, so the two agree. A
-PRERENDERED page was built with no cookie: its HTML holds the expanded
-shell, its payload holds no ui state, and the store holds the visitor's
-collapsed preference. Rendering the store value in the hydration pass drew
-the other trigger icon over the HTML's and threw React #418 on every load
-(#Q2347).
+The server render and the hydration pass both see the default (expanded),
+whatever the visitor's cookie says (see `useUiState`). The shell's markup
+is therefore the same for every visitor, which keeps its pages shareable
+by the page cache (#E78) and keeps prerendered pages free of hydration
+mismatches (#Q2347). The preference arrives on the first commit after
+hydration.
 
-So for the hydration pass this returns the value the page was rendered
-with: the payload's, or the atom's default when the payload carries none.
-From the next render on it returns the stored preference. On a page
-rendered for the request nothing moves; on a prerendered page a collapsed
-visitor sees the expanded shell for one frame, then theirs.
-
-⚠️ Read here, not through an injected service: an app may render the shell
-without registering `alepha.react.ui`, and a service injected after start
-is refused.
+Until then, the boot script `UiPersistence` injects has already put
+`data-sidebar="collapsed"` on `<html>` from the cookie, and `@alepha/ui`'s
+stylesheet holds an expanded sidebar at its collapsed width under that
+attribute: no flash of the wide sidebar. Updating the preference keeps the
+attribute in step.
 
 ## Examples
 

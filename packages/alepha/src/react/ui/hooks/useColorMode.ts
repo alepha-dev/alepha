@@ -1,7 +1,6 @@
-import { useStore } from "alepha/react";
 import { useSyncExternalStore } from "react";
 
-import { uiAtom } from "../atoms/uiAtom.ts";
+import { useUiState } from "./useUiState.ts";
 
 export type ColorMode = "light" | "dark" | "system";
 export type ResolvedColorMode = "light" | "dark";
@@ -16,17 +15,21 @@ const DARK_QUERY = "(prefers-color-scheme: dark)";
  * const { mode, setMode, resolved } = useColorMode();
  * setMode("dark");
  * document.documentElement.classList.toggle("dark", resolved === "dark");
+ *
+ * The server and the hydration pass see the default (`"system"`), never the
+ * visitor's cookie, so a page using this stays shareable (see `useUiState`).
+ * The real mode is painted before that by the boot script.
  */
 export const useColorMode = () => {
-  const [state, set] = useStore(uiAtom);
-  const mode = (state?.mode ?? "system") as ColorMode;
+  const [state, set] = useUiState();
+  const mode = state.mode as ColorMode;
   const resolved = useResolvedColorMode(mode);
 
   return {
     mode,
     resolved,
     setMode: (next: ColorMode) => {
-      set({ ...(state ?? uiAtom.options.default!), mode: next });
+      set({ ...state, mode: next });
     },
   };
 };

@@ -16,3 +16,7 @@ the OS preference and updates live as the OS toggles between light/dark.
 const { mode, setMode, resolved } = useColorMode();
 setMode("dark");
 document.documentElement.classList.toggle("dark", resolved === "dark");
+
+The server and the hydration pass see the default (`"system"`), never the
+visitor's cookie, so a page using this stays shareable (see `useUiState`).
+The real mode is painted before that by the boot script.
