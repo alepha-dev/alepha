@@ -587,7 +587,7 @@ describe("a deployed copy's environment", () => {
     });
   });
 
-  describe("the name a first deploy gives a copy", () => {
+  describe("the name a deploy gives a copy that has none", () => {
     /**
      * Points the copy at a Cloudflare estate and pushes a build whose bytes
      * are gone, so a run opens the secret set and then fails at the fetch:
@@ -635,7 +635,7 @@ describe("a deployed copy's environment", () => {
     const opened = async (w: Awaited<ReturnType<typeof world>>) =>
       await alepha.inject(AppSecretService).open(w.instance.id);
 
-    it("names it after its Worker, on its first deploy", async ({ expect }) => {
+    it("names it after its Worker", async ({ expect }) => {
       const w = await world();
       await deployable(w);
 
@@ -672,13 +672,11 @@ describe("a deployed copy's environment", () => {
     });
 
     /**
-     * ⚠️ The guard the whole default turns on. `APP_NAME` is the fallback key
-     * prefix of the copy's bucket, so naming a copy that already stored files
-     * at the root would make every one of them 404, and nothing would say so.
-     * `APP_SECRET` is asserted beside it to prove the step ran: without it,
-     * a run refused before the secret set was opened would pass this too.
+     * #Q2644: since Alepha 0.32.0 an unnamed copy is prefixed anyway, with its
+     * build name, so a copy deployed before is named too. `APP_SECRET` is
+     * asserted beside it to prove the step ran.
      */
-    it("gives none to a copy that was deployed before", async ({ expect }) => {
+    it("names a copy that was deployed before", async ({ expect }) => {
       const w = await world();
       await deployable(w);
       await alepha.inject(TestRows).deployments.create({
@@ -689,17 +687,6 @@ describe("a deployed copy's environment", () => {
         sha256: "b".repeat(64),
         status: "succeeded",
       } as never);
-
-      await deploy(w);
-
-      const set = await opened(w);
-      expect(set.APP_SECRET).toBeDefined();
-      expect(set.APP_NAME).toBeUndefined();
-    });
-
-    it("gives none to a copy whose Worker is on record", async ({ expect }) => {
-      const w = await world();
-      await deployable(w);
       await alepha.inject(TestRows).instances.updateById(w.instance.id, {
         resources: JSON.stringify({
           worker: `${w.project.slug}-my-app-b14-preview`,
@@ -710,7 +697,7 @@ describe("a deployed copy's environment", () => {
 
       const set = await opened(w);
       expect(set.APP_SECRET).toBeDefined();
-      expect(set.APP_NAME).toBeUndefined();
+      expect(set.APP_NAME).toBe(`${w.project.slug}-my-app-b14-preview`);
     });
   });
 

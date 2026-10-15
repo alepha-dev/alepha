@@ -196,7 +196,7 @@ const movedToBay = async (
     env: "production",
   } as never);
   const secrets = ctx.alepha.inject(AppSecretService);
-  // What `DeployService.openSecrets` leaves behind on a first deploy.
+  // What `DeployService.openSecrets` leaves behind on a deploy.
   await secrets.ensureGenerated(instance.id);
   await secrets.ensureDefault(
     instance.id,

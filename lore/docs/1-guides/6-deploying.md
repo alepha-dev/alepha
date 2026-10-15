@@ -128,7 +128,7 @@ Three families of name are refused, and the refusal says so:
   names. A value stored under one would never reach the app.
 
 A copy moved onto a Bay estate keeps the variables it already had, including
-the `APP_SECRET` and `APP_NAME` a first Cloudflare deploy gave it. Bay's names
+the `APP_SECRET` and `APP_NAME` a Cloudflare deploy gave it. Bay's names
 among them stay listed here and are simply not sent to the machine, so moving
 the copy back finds them where they were.
 
@@ -149,14 +149,14 @@ value always wins:
   emails, OAuth callbacks and the sitemap resolve. Set it yourself for a copy
   answering on some other host, such as one behind a proxy.
 - **`APP_NAME`** is set to the copy's Worker name, `<project>-<app>-<env>`, on
-  its **first** deploy, and stored like `APP_SECRET`. It names the copy in its
-  own logs, and the framework also uses it to prefix the session cookie and,
-  when `S3_KEY_PREFIX` is unset, the keys of the copy's bucket. A name the app
-  declares in code wins too. ⚠️ A copy that was already deployed is never given
-  one, because a prefix appearing under its bucket would hide every file
-  already in it. Setting it by hand on such a copy moves where the app looks for
-  its files and signs every user out once. Deleting it is how a copy opts out:
-  it is not given back.
+  any deploy that finds none, and stored like `APP_SECRET`. It names the copy
+  in its own logs, and the framework also uses it to prefix the session cookie,
+  the cache keys and, when `S3_KEY_PREFIX` is unset, the keys of the copy's
+  bucket. A name the app declares in code wins too. ⚠️ A copy deployed before
+  this default existed gets it on its next deploy: its users are signed out
+  once, and files it stored under its build-name prefix are not moved. Set
+  `APP_NAME` (or `S3_KEY_PREFIX`) yourself before that deploy to keep the old
+  namespace.
 
 ## 5. Push a build
 
