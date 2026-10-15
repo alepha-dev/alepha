@@ -34,7 +34,7 @@ const ProjectDashboardHeadline = (props: ProjectDashboardHeadlineProps) => {
   return (
     <p
       data-testid="dashboard-headline"
-      className="mb-5 max-w-3xl text-[15px] leading-relaxed"
+      className="max-w-3xl text-[15px] leading-relaxed"
     >
       {sentence}
     </p>

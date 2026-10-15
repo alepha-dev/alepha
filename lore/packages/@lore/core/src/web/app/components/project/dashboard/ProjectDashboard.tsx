@@ -499,15 +499,15 @@ const ProjectDashboard = () => {
             }}
             onReset={() => void resetAction.run()}
             busy={busy}
+            lead={
+              computed &&
+              (board.dormantSince ? (
+                <ProjectDashboardDormant since={board.dormantSince} />
+              ) : (
+                <ProjectDashboardHeadline cards={shown} values={values} />
+              ))
+            }
           />
-
-          {computed && !board.dormantSince && (
-            <ProjectDashboardHeadline cards={shown} values={values} />
-          )}
-
-          {computed && board.dormantSince && (
-            <ProjectDashboardDormant since={board.dormantSince} />
-          )}
 
           <DashboardGrid
             cards={shown}

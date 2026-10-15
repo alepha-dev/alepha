@@ -2273,7 +2273,6 @@ export default {
   "epic.quests.column.updated": "Updated",
 
   // -- Dashboard (the signed-in landing page) -------------------------------
-  "project.dashboard.title": "Dashboard",
   "project.dashboard.empty.title": "Nothing on this board yet",
   "project.dashboard.empty.body":
     "A board is a few numbers worth checking without opening anything. Add the first card.",

@@ -1,12 +1,19 @@
 import { Button } from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
 import { Check, LayoutGrid, Pencil, Plus } from "lucide-react";
+import type { ReactNode } from "react";
 
 import type { I18n } from "../../../services/I18n.ts";
 import ProjectDashboardMenu from "./ProjectDashboardMenu.tsx";
 import ProjectDashboardWindow from "./ProjectDashboardWindow.tsx";
 
 export interface ProjectDashboardHeaderProps {
+  /**
+   * What opens the row, left of the controls: the computed board's headline
+   * or the dormant line. The page title is not repeated here, since the
+   * breadcrumb already names the page.
+   */
+  lead?: ReactNode;
   /**
    * Whether the viewer may curate the board. Absent means the Add button is
    * not rendered at all, rather than rendered disabled.
@@ -43,7 +50,7 @@ export interface ProjectDashboardHeaderProps {
 }
 
 /**
- * The project board's own header: a title and Add.
+ * The project board's own header: its opening line, the window and Add.
  *
  * ⚠️ **Not `DashboardHeader`.** That one greets the account by name, which is
  * exactly wrong on a board that belongs to the project and is read by
@@ -55,12 +62,8 @@ const ProjectDashboardHeader = (props: ProjectDashboardHeaderProps) => {
   const { tr } = useI18n<I18n, "en">();
 
   return (
-    <div className="mb-5 flex flex-col items-start gap-4 sm:flex-row sm:items-end">
-      <div className="min-w-0">
-        <h1 className="truncate text-2xl font-semibold tracking-[-0.02em]">
-          {tr("project.dashboard.title")}
-        </h1>
-      </div>
+    <div className="mb-5 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+      <div className="min-w-0">{props.lead}</div>
       {/* Inert in the stacked direction, so it is not drawn there. */}
       <span className="hidden flex-1 sm:block" />
       <div className="w-40 shrink-0">

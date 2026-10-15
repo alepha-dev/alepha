@@ -2258,7 +2258,6 @@ export default {
   "epic.quests.column.updated": "Mise à jour",
 
   // -- Tableau de bord (page d'accueil connectee) ---------------------------
-  "project.dashboard.title": "Tableau de bord",
   "project.dashboard.empty.title": "Rien sur ce tableau pour l'instant",
   "project.dashboard.empty.body":
     "Un tableau, c'est quelques chiffres a verifier sans rien ouvrir. Ajoutez la premiere carte.",
