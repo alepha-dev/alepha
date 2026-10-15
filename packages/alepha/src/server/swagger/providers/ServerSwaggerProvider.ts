@@ -441,32 +441,29 @@ export class ServerSwaggerProvider {
   }
 
   /**
-   * The wire code and status of a declared error class: its own static
-   * `code` (an `$error` constant, a registered built-in), else its class
-   * name, as `HttpError` writes it; its static `status` when it has one.
+   * The name and status of a declared error class: its `name`, and the
+   * `status` its defaults give (none for an error that takes it at runtime).
    */
   protected getErrorIdentity(cls: HttpErrorClass): {
     code: string;
     status?: number;
   } {
-    const statics = cls as unknown as { code?: string; status?: number };
-    const code =
-      Object.hasOwn(cls, "code") && statics.code ? statics.code : cls.name;
-    return { code, status: statics.status };
+    const statics = cls as unknown as { defaults?: { status?: number } };
+    return { code: cls.name, status: statics.defaults?.status };
   }
 
   /**
-   * The JSON body of one declared error: the generic error shape with
-   * `error` fixed to its code and `data` typed by its schema, titled by the
-   * code so it is hoisted into `components/schemas`.
+   * The JSON body of one declared error, `{ name, message, data, cause? }`:
+   * `name` fixed, `data` typed by the class's merged schema, titled by the
+   * name so it is hoisted into `components/schemas`.
    */
   protected getErrorSchema(cls: HttpErrorClass, code: string): ZType {
     const data = (cls as unknown as { schema?: ZObject }).schema;
-    const base = data
-      ? errorSchema.extend({ data })
-      : errorSchema.omit({ data: true });
-    return base
-      .extend({ error: z.literal(code) })
+    return errorSchema
+      .extend({
+        name: z.literal(code),
+        ...(data ? { data } : {}),
+      })
       .meta({ title: code })
       .describe(`The ${code} error`);
   }

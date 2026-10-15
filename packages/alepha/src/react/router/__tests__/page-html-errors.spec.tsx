@@ -5,7 +5,7 @@ import {
   createMiddleware,
   type Middleware,
 } from "alepha";
-import { $action, HttpError, ServerProvider } from "alepha/server";
+import { $action, HttpError, isHttpError, ServerProvider } from "alepha/server";
 import { describe, it } from "vitest";
 
 import { Redirection } from "../errors/Redirection.ts";
@@ -57,7 +57,9 @@ describe("$page html errors", () => {
       home = $page({ path: "/", component: () => "home" });
       boom = $page({
         path: "/boom",
-        use: [$throwing(new HttpError({ status: 503, message: "booting" }))],
+        use: [
+          $throwing(new HttpError({ status: 503 }, { message: "booting" })),
+        ],
         component: () => "never",
       });
     }
@@ -79,7 +81,9 @@ describe("$page html errors", () => {
       home = $page({ path: "/", component: () => "home" });
       boom = $page({
         path: "/boom",
-        use: [$throwing(new HttpError({ status: 429, message: "slow down" }))],
+        use: [
+          $throwing(new HttpError({ status: 429 }, { message: "slow down" })),
+        ],
         component: () => "never",
       });
     }
@@ -101,11 +105,11 @@ describe("$page html errors", () => {
       home = $page({ path: "/", component: () => "home" });
       boom = $page({
         path: "/boom",
-        use: [$throwing(new HttpError({ status: 429, message: "slow down" }))],
+        use: [
+          $throwing(new HttpError({ status: 429 }, { message: "slow down" })),
+        ],
         errorHandler: (error) =>
-          HttpError.is(error, 429) ? (
-            <div>Please wait a moment</div>
-          ) : undefined,
+          isHttpError(error, 429) ? <div>Please wait a moment</div> : undefined,
         component: () => "never",
       });
     }
@@ -146,8 +150,8 @@ describe("$page html errors", () => {
       home = $page({ path: "/", component: () => "home" });
       boom = $page({
         path: "/boom",
-        use: [$throwing(new HttpError({ status: 402, message: "pay up" }))],
-        errorHandler: () => new Redirection("/pricing"),
+        use: [$throwing(new HttpError({ status: 402 }, { message: "pay up" }))],
+        errorHandler: () => new Redirection({ redirect: "/pricing" }),
         component: () => "never",
       });
     }
@@ -242,10 +246,10 @@ describe("$page html errors", () => {
         on: "server:request:before",
         priority: "first",
         handler: () => {
-          throw new HttpError({
-            status: 503,
-            message: "Server is not ready yet.",
-          });
+          throw new HttpError(
+            { status: 503 },
+            { message: "Server is not ready yet." },
+          );
         },
       });
     }

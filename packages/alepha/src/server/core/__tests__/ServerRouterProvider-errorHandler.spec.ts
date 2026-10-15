@@ -19,8 +19,11 @@ class TestApp {
     method: "GET",
     handler: () => {
       throw new HttpError(
-        { status: 502, message: "Upstream failed" },
-        new Error("postgres://user:hunter2@db.internal:5432 refused"),
+        { status: 502 },
+        {
+          message: "Upstream failed",
+          cause: new Error("postgres://user:hunter2@db.internal:5432 refused"),
+        },
       );
     },
   });
@@ -33,8 +36,11 @@ class TestApp {
     method: "GET",
     handler: () => {
       throw new HttpError(
-        { status: 400, message: "Invalid payload" },
-        new Error("field 'age' must be a number"),
+        { status: 400 },
+        {
+          message: "Invalid payload",
+          cause: new Error("field 'age' must be a number"),
+        },
       );
     },
   });
@@ -107,7 +113,7 @@ describe("ServerRouterProvider - errorHandler", () => {
       expect(response.status).toBe(500);
       expect(json.message).toBe("Internal Server Error");
       expect(json.message).not.toContain("secret_table");
-      expect(json.error).toBe("InternalServerError");
+      expect(json.name).toBe("INTERNAL_SERVER_ERROR");
 
       await alepha.stop();
     });
@@ -125,7 +131,7 @@ describe("ServerRouterProvider - errorHandler", () => {
 
       expect(response.status).toBe(500);
       expect(json.message).toContain("secret_table");
-      expect(json.error).toBe("InternalServerError");
+      expect(json.name).toBe("INTERNAL_SERVER_ERROR");
 
       await alepha.stop();
     });

@@ -315,7 +315,7 @@ describe("OAuthClientService redirect_uri validation", () => {
       expect(refusal, `must refuse ${uri}`).toBeInstanceOf(
         OAuthClientMetadataError,
       );
-      expect((refusal as OAuthClientMetadataError).code).toBe(
+      expect((refusal as OAuthClientMetadataError).data.reason).toBe(
         "invalid_redirect_uri",
       );
     }
@@ -350,7 +350,7 @@ describe("OAuthClientService redirect_uri validation", () => {
       .catch((error: unknown) => error);
 
     expect(refusal).toBeInstanceOf(OAuthClientMetadataError);
-    expect((refusal as OAuthClientMetadataError).code).toBe(
+    expect((refusal as OAuthClientMetadataError).data.reason).toBe(
       "invalid_client_metadata",
     );
   });

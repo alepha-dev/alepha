@@ -271,7 +271,7 @@ describe("boot health", () => {
         home = $page({
           path: "/",
           loader: async () => {
-            throw new HttpError({ status: 500, message: "boom" });
+            throw new HttpError({ status: 500 }, { message: "boom" });
           },
           component: () => <p>never</p>,
         });

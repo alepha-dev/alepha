@@ -55,7 +55,7 @@ describe("EU address validation", () => {
       addresses.validate({ ...base, postalCode: "ABCDE" });
       expect.unreachable("should have thrown");
     } catch (error: any) {
-      expect(error.field).toBe("postalCode");
+      expect(error.data.field).toBe("postalCode");
     }
   });
 

@@ -172,10 +172,9 @@ describe("$secure issuer protection", () => {
     expect(responseB.status).toBe(403);
     const errorData = await responseB.json();
     expect(errorData).toEqual({
-      error: "ForbiddenError",
+      name: "FORBIDDEN",
       message: "User must belong to issuer 'realmB' to access this route",
-      status: 403,
-      requestId: expect.any(String),
+      data: { status: 403, requestId: expect.any(String) },
     });
   });
 

@@ -4,17 +4,17 @@ import type { AddressInfo } from "node:net";
 import { renderHook } from "@testing-library/react";
 import { Alepha, z } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
-import { $error, AlephaHttpClient, HttpClient, HttpError } from "alepha/server";
+import { AlephaHttpClient, HttpClient, HttpError } from "alepha/server";
 import { act, type ReactNode } from "react";
 import { afterEach, describe, expectTypeOf, it } from "vitest";
 
 import { AlephaContext } from "../contexts/AlephaContext.ts";
 import { type RunResult, useAction } from "../hooks/useAction.ts";
 
-const QuotaExceeded = $error({
-  code: "QuotaExceeded",
-  status: 409,
-  data: z.object({ limit: z.number(), used: z.number() }),
+const QuotaExceeded = HttpError.extend({
+  name: "QUOTA_EXCEEDED",
+  default: { status: 409 },
+  schema: z.object({ limit: z.number(), used: z.number() }),
 });
 
 /**
@@ -93,10 +93,8 @@ describe("useAction declared errors", () => {
     let limit: number | undefined;
     if (run && !run.ok && run.reason === "error") {
       if (run.error instanceof QuotaExceeded) {
-        expectTypeOf(run.error.data).toEqualTypeOf<{
-          limit: number;
-          used: number;
-        }>();
+        expectTypeOf(run.error.data.limit).toEqualTypeOf<number>();
+        expectTypeOf(run.error.data.used).toEqualTypeOf<number>();
         limit = run.error.data.limit;
       }
     }

@@ -8,10 +8,7 @@ class TestApp {
   httpError = $action({
     method: "GET",
     handler: () => {
-      throw new HttpError({
-        message: "Custom error message",
-        status: 400,
-      });
+      throw new HttpError({ status: 400 }, { message: "Custom error message" });
     },
   });
 
@@ -53,10 +50,9 @@ describe("ServerRouterProvider - requestId", () => {
 
     // Check that the raw HTTP response includes requestId
     expect(responseJson).toMatchObject({
+      name: "BAD_REQUEST",
       message: "Custom error message",
-      status: 400,
-      error: "BadRequestError",
-      requestId: "test-request-123",
+      data: { status: 400, requestId: "test-request-123" },
     });
   });
 
@@ -77,10 +73,9 @@ describe("ServerRouterProvider - requestId", () => {
 
     // Check that the raw HTTP response includes requestId
     expect(responseJson).toMatchObject({
-      status: 500,
-      error: "InternalServerError",
+      name: "INTERNAL_SERVER_ERROR",
       message: "Something went wrong",
-      requestId: "test-request-789",
+      data: { status: 500, requestId: "test-request-789" },
     });
   });
 
@@ -97,15 +92,15 @@ describe("ServerRouterProvider - requestId", () => {
 
     // Check that the raw HTTP response includes an auto-generated requestId
     expect(responseJson).toMatchObject({
-      status: 500,
-      error: "InternalServerError",
+      name: "INTERNAL_SERVER_ERROR",
       message: "Something went wrong",
+      data: { status: 500 },
     });
 
     // Should have a requestId even when not provided in headers
-    expect(responseJson.requestId).toBeDefined();
-    expect(typeof responseJson.requestId).toBe("string");
-    expect(responseJson.requestId.length).toBeGreaterThan(0);
+    expect(responseJson.data.requestId).toBeDefined();
+    expect(typeof responseJson.data.requestId).toBe("string");
+    expect(responseJson.data.requestId.length).toBeGreaterThan(0);
   });
 
   it("should properly handle error with requestId through HttpClient", async ({
@@ -122,7 +117,7 @@ describe("ServerRouterProvider - requestId", () => {
     } catch (error) {
       if (error instanceof HttpError) {
         const errorJson = HttpError.toJSON(error);
-        expect(errorJson.requestId).toBe("test-request-client");
+        expect(errorJson.data?.requestId).toBe("test-request-client");
       } else {
         // For now, let's see what we actually get
         expect(error).toBeInstanceOf(Error);

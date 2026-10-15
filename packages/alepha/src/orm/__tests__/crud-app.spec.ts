@@ -56,10 +56,10 @@ class UserCrudApp {
       });
 
       if (existing.length > 0) {
-        throw new HttpError({
-          status: 409,
-          message: `User with email ${body.email} already exists`,
-        });
+        throw new HttpError(
+          { status: 409 },
+          { message: `User with email ${body.email} already exists` },
+        );
       }
 
       // Don't generate UUID - db.primaryKey(z.integer()) handles it automatically
@@ -174,10 +174,10 @@ class UserCrudApp {
         });
 
         if (duplicate.length > 0) {
-          throw new HttpError({
-            status: 409,
-            message: `User with email ${body.email} already exists`,
-          });
+          throw new HttpError(
+            { status: 409 },
+            { message: `User with email ${body.email} already exists` },
+          );
         }
       }
 

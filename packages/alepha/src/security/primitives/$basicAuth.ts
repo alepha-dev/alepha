@@ -49,20 +49,20 @@ export function $basicAuth(options: BasicAuthOptions): Middleware {
         const request = alepha.store.get("alepha.http.request");
 
         if (!request?.headers) {
-          throw new HttpError({
-            status: 401,
-            message: "Authentication required",
-          });
+          throw new HttpError(
+            { status: 401 },
+            { message: "Authentication required" },
+          );
         }
 
         const authHeader = request.headers.authorization;
 
         if (!authHeader?.startsWith("Basic ")) {
           sendAuthRequired(request);
-          throw new HttpError({
-            status: 401,
-            message: "Authentication required",
-          });
+          throw new HttpError(
+            { status: 401 },
+            { message: "Authentication required" },
+          );
         }
 
         // Decode base64 credentials
@@ -88,10 +88,10 @@ export function $basicAuth(options: BasicAuthOptions): Middleware {
 
         if (!isValid) {
           sendAuthRequired(request);
-          throw new HttpError({
-            status: 401,
-            message: "Invalid credentials",
-          });
+          throw new HttpError(
+            { status: 401 },
+            { message: "Invalid credentials" },
+          );
         }
 
         return next(...args);

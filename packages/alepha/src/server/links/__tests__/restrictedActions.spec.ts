@@ -1,6 +1,6 @@
 import { Alepha } from "alepha";
 import { $secure, AlephaSecurity } from "alepha/security";
-import { $action, HttpError } from "alepha/server";
+import { $action, isHttpError } from "alepha/server";
 import { describe, it } from "vitest";
 
 import { LinkProvider, ServerLinksProvider } from "../index.ts";
@@ -115,7 +115,7 @@ describe("restricted actions", () => {
       (e: unknown) => e,
     );
 
-    expect(HttpError.is(error, 403)).toBe(true);
+    expect(isHttpError(error, 403)).toBe(true);
 
     await alepha.stop();
   });
@@ -136,7 +136,7 @@ describe("restricted actions", () => {
       (e: unknown) => e,
     );
 
-    expect(HttpError.is(error, 401)).toBe(true);
+    expect(isHttpError(error, 401)).toBe(true);
 
     await alepha.stop();
   });

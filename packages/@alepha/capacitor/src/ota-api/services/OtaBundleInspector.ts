@@ -1,4 +1,4 @@
-import { AlephaError } from "alepha";
+import { OtaBundleError } from "../errors/OtaBundleError.ts";
 
 /**
  * Opens and inspects an uploaded bundle with the app's public key, on the
@@ -475,12 +475,4 @@ export class OtaBundleInspector {
   protected buffer(bytes: Uint8Array): ArrayBuffer {
     return bytes.slice().buffer as ArrayBuffer;
   }
-}
-
-/**
- * A bundle refused by {@link OtaBundleInspector}: the message says what was
- * wrong with it, and never echoes a key.
- */
-export class OtaBundleError extends AlephaError {
-  public override readonly name = "OtaBundleError";
 }

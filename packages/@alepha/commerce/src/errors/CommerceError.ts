@@ -1,176 +1,151 @@
-import { AlephaError } from "alepha";
+import { z } from "alepha";
+import { HttpError } from "alepha/server";
 
 /**
- * Base error for the commerce domain.
+ * Base error for the commerce domain: an HTTP error answering 500 unless a
+ * descendant says otherwise.
  *
- * ### Why subclasses carry a numeric `status`
- *
- * `ServerRouterProvider` maps any thrown error that has a numeric `status` onto
- * that HTTP status — it duck-types rather than requiring `HttpError`. That is the
- * seam this domain uses: an invalid postcode answers 400 without a single import
- * from `alepha/server`, so the services stay usable from a CLI, a job or a test
- * with no HTTP anywhere.
- *
- * Without it, every one of these surfaced as a 500 — which is what the first
- * end-to-end run of the address form actually did.
+ * Every refusal the caller can act on (an invalid postcode, a product out of
+ * stock) declares its own 4xx status, so the router answers it accurately and
+ * a strict `$action` can declare it. Throwing one needs no HTTP anywhere: the
+ * services stay usable from a CLI, a job or a test.
  */
-export class CommerceError extends AlephaError {
-  override name = "CommerceError";
-}
+export const CommerceError = HttpError.extend({
+  name: "COMMERCE",
+  default: { status: 500 },
+  message: "Commerce error",
+});
+
+export type CommerceError = InstanceType<typeof CommerceError>;
 
 /**
- * A product declares a `kind` that no module has registered.
+ * A product declares a `kind` that no module has registered. A payload
+ * naming a kind nobody owns is a bad request, not a server fault.
  */
-export class UnknownProductKindError extends CommerceError {
-  override name = "UnknownProductKindError";
-  /**
-   * A payload naming a kind nobody owns is a bad request, not a server fault.
-   */
-  public readonly status = 400;
+export const UnknownProductKindError = CommerceError.extend({
+  name: "UNKNOWN_PRODUCT_KIND",
+  default: { status: 400 },
+  schema: z.object({ kind: z.text(), known: z.array(z.text()) }),
+  message: (data) =>
+    `Unknown product kind '${data.kind}'. Registered kinds: ${
+      data.known.length > 0 ? data.known.join(", ") : "(none)"
+    }. A module must register a ProductKindHandler for it.`,
+});
 
-  constructor(kind: string, known: string[]) {
-    super(
-      `Unknown product kind '${kind}'. Registered kinds: ${
-        known.length > 0 ? known.join(", ") : "(none)"
-      }. A module must register a ProductKindHandler for it.`,
-    );
-  }
-}
+export type UnknownProductKindError = InstanceType<
+  typeof UnknownProductKindError
+>;
 
 /**
- * Two modules claim the same `kind`.
+ * Two modules registered a handler for the same product kind: a boot-time
+ * programming error, so it stays a 500.
  */
-export class DuplicateProductKindError extends CommerceError {
-  override name = "DuplicateProductKindError";
+export const DuplicateProductKindError = CommerceError.extend({
+  name: "DUPLICATE_PRODUCT_KIND",
+  schema: z.object({ kind: z.text() }),
+  message: (data) =>
+    `Product kind '${data.kind}' is already registered. Two modules cannot own the same kind.`,
+});
 
-  constructor(kind: string) {
-    super(
-      `Product kind '${kind}' is already registered. Two modules cannot own the same kind.`,
-    );
-  }
-}
+export type DuplicateProductKindError = InstanceType<
+  typeof DuplicateProductKindError
+>;
 
 /**
- * An address failed its country's rules.
- *
- * Carries the offending field so a form can highlight it instead of showing a
- * generic banner.
+ * A shipping address the shop cannot deliver to as written. `field` names
+ * the input to highlight.
  */
-export class InvalidAddressError extends CommerceError {
-  override name = "InvalidAddressError";
-  public readonly status = 400;
+export const InvalidAddressError = CommerceError.extend({
+  name: "INVALID_ADDRESS",
+  default: { status: 400 },
+  schema: z.object({ field: z.text() }),
+  message: "Invalid address",
+});
 
-  public readonly field: string;
-
-  constructor(field: string, message: string) {
-    super(message);
-    this.field = field;
-  }
-}
+export type InvalidAddressError = InstanceType<typeof InvalidAddressError>;
 
 /**
- * No shipping rate covers the destination.
+ * No shipping rate covers the destination country.
  */
-export class NoShippingRateError extends CommerceError {
-  override name = "NoShippingRateError";
-  public readonly status = 400;
+export const NoShippingRateError = CommerceError.extend({
+  name: "NO_SHIPPING_RATE",
+  default: { status: 400 },
+  schema: z.object({ country: z.text() }),
+  message: (data) => `No shipping rate is configured for '${data.country}'.`,
+});
 
-  constructor(country: string) {
-    super(`No shipping rate is configured for '${country}'.`);
-  }
-}
+export type NoShippingRateError = InstanceType<typeof NoShippingRateError>;
 
 /**
- * A product cannot be deleted because it has been sold.
- *
- * Order lines snapshot everything they need, so nothing would *break* — but the
- * catalogue row is what answers "what was this line?" when someone reads an old
- * invoice, and deleting is not undoable. Unpublishing achieves what the
- * operator wanted without destroying that.
+ * A product that still appears on order lines cannot be deleted.
  */
-export class ProductHasOrdersError extends CommerceError {
-  override name = "ProductHasOrdersError";
-  /**
-   * 409 for the same reason as {@link InsufficientStockError}: the request is
-   * well-formed and the id is real. What refuses it is the state of the world.
-   */
-  public readonly status = 409;
+export const ProductHasOrdersError = CommerceError.extend({
+  name: "PRODUCT_HAS_ORDERS",
+  default: { status: 409 },
+  schema: z.object({ productId: z.text(), orderLines: z.number() }),
+  message: (data) =>
+    `Product ${data.productId} appears on ${data.orderLines} order line(s) and cannot be deleted. Unpublish it instead to remove it from the shop while keeping order history readable.`,
+});
 
-  public readonly orderLines: number;
-
-  constructor(productId: string, orderLines: number) {
-    super(
-      `Product ${productId} appears on ${orderLines} order line(s) and cannot be deleted. Unpublish it instead to remove it from the shop while keeping order history readable.`,
-    );
-    this.orderLines = orderLines;
-  }
-}
+export type ProductHasOrdersError = InstanceType<typeof ProductHasOrdersError>;
 
 /**
- * Not enough on-hand stock to satisfy a sale.
+ * Not enough stock on hand for the requested quantity.
  */
-export class InsufficientStockError extends CommerceError {
-  override name = "InsufficientStockError";
-  /**
-   * 409, not 400: the request was well-formed and was valid a moment ago. What
-   * changed is the state of the world, and that distinction is what tells a
-   * client to re-read availability rather than to fix its payload.
-   */
-  public readonly status = 409;
+export const InsufficientStockError = CommerceError.extend({
+  name: "INSUFFICIENT_STOCK",
+  default: { status: 409 },
+  schema: z.object({
+    productId: z.text(),
+    requested: z.number(),
+    onHand: z.number(),
+  }),
+  message: (data) =>
+    `Insufficient stock for product ${data.productId}: requested ${data.requested}, on hand ${data.onHand}.`,
+});
 
-  constructor(productId: string, requested: number, onHand: number) {
-    super(
-      `Insufficient stock for product ${productId}: requested ${requested}, on hand ${onHand}.`,
-    );
-  }
-}
+export type InsufficientStockError = InstanceType<
+  typeof InsufficientStockError
+>;
 
 /**
- * A resource has no room left over the interval asked for: the court is
- * booked, the course session is full, the seat is taken on one of the legs.
- *
- * The interval twin of {@link InsufficientStockError}.
+ * A bookable resource has no room for the requested interval.
  */
-export class ResourceUnavailableError extends CommerceError {
-  override name = "ResourceUnavailableError";
-  /**
-   * 409 for the same reason as {@link InsufficientStockError}: the request was
-   * valid a moment ago, and what refuses it is the state of the world. A
-   * storefront re-reads availability rather than fixing its payload.
-   */
-  public readonly status = 409;
+export const ResourceUnavailableError = CommerceError.extend({
+  name: "RESOURCE_UNAVAILABLE",
+  default: { status: 409 },
+  schema: z.object({
+    resourceId: z.text(),
+    interval: z.object({ startsAt: z.text(), endsAt: z.text() }),
+    requested: z.number(),
+    capacity: z.number(),
+  }),
+  message: (data) =>
+    `Resource ${data.resourceId} has no room for ${data.requested} over [${data.interval.startsAt}, ${data.interval.endsAt}) at capacity ${data.capacity}.`,
+});
 
-  public readonly resourceId: string;
-
-  constructor(
-    resourceId: string,
-    interval: { startsAt: string; endsAt: string },
-    requested: number,
-    capacity: number,
-  ) {
-    super(
-      `Resource ${resourceId} has no room for ${requested} over [${interval.startsAt}, ${interval.endsAt}) at capacity ${capacity}.`,
-    );
-    this.resourceId = resourceId;
-  }
-}
+export type ResourceUnavailableError = InstanceType<
+  typeof ResourceUnavailableError
+>;
 
 /**
- * An interval that cannot be claimed as given: an instant that does not parse
- * or carries no offset, an end that is not after its start, a capacity or
- * quantity below one.
+ * A booking interval that is empty, reversed or misaligned.
  */
-export class InvalidIntervalError extends CommerceError {
-  override name = "InvalidIntervalError";
-  public readonly status = 400;
-}
+export const InvalidIntervalError = CommerceError.extend({
+  name: "INVALID_INTERVAL",
+  default: { status: 400 },
+  message: "Invalid interval",
+});
+
+export type InvalidIntervalError = InstanceType<typeof InvalidIntervalError>;
 
 /**
- * A cart or order line whose line config this product cannot sell: malformed,
- * sent for a kind that takes none, missing where one is required, or refused
- * by the kind's own `validateLine`.
+ * An order line whose configuration the product kind refuses.
  */
-export class InvalidLineError extends CommerceError {
-  override name = "InvalidLineError";
-  public readonly status = 400;
-}
+export const InvalidLineError = CommerceError.extend({
+  name: "INVALID_LINE",
+  default: { status: 400 },
+  message: "Invalid line",
+});
+
+export type InvalidLineError = InstanceType<typeof InvalidLineError>;

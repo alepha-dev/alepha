@@ -122,7 +122,7 @@ describe("useForm handled errors", () => {
           fail={() => {
             throw new SchemaValidationError({
               message: "'id' is required",
-              instancePath: "/id",
+              path: "/id",
             });
           }}
         />

@@ -221,12 +221,12 @@ export class ResourceService {
   ): Promise<ResourceReservationEntity> {
     const live = await this.live([resourceId], window);
     if (!this.fits(live, window, quantity, capacity)) {
-      throw new ResourceUnavailableError(
+      throw new ResourceUnavailableError({
         resourceId,
-        window,
-        quantity,
+        interval: window,
+        requested: quantity,
         capacity,
-      );
+      });
     }
 
     const claim = await this.claims.create({
@@ -239,12 +239,12 @@ export class ResourceService {
 
     if (!locked && !(await this.replayFits(claim, capacity))) {
       await this.claims.updateById(claim.id, { status: "released" });
-      throw new ResourceUnavailableError(
+      throw new ResourceUnavailableError({
         resourceId,
-        window,
-        quantity,
+        interval: window,
+        requested: quantity,
         capacity,
-      );
+      });
     }
 
     return claim;

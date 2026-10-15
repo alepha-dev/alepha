@@ -106,7 +106,7 @@ describe("alepha/server/auth - second factor gate", () => {
 
     const error: any = await ctx.login().catch((it) => it);
 
-    expect(error.error).toBe("MfaRequiredError");
+    expect(error.name).toBe("MFA_REQUIRED");
     expect(error.status).toBe(401);
     expect(error.data.methods).toEqual(["totp"]);
     expect(typeof error.data.challenge).toBe("string");

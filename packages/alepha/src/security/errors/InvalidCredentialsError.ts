@@ -3,12 +3,14 @@ import { UnauthorizedError } from "alepha/server";
 /**
  * Error thrown when the provided credentials are invalid.
  *
- * Message can not be changed to avoid leaking information.
- * Cause is omitted for the same reason.
+ * Its message is fixed, and it carries no cause, so a refusal never says
+ * which half of the credential was wrong.
  */
-export class InvalidCredentialsError extends UnauthorizedError {
-  readonly name = "UnauthorizedError";
-  constructor() {
-    super("Invalid credentials");
-  }
-}
+export const InvalidCredentialsError = UnauthorizedError.extend({
+  name: "INVALID_CREDENTIALS",
+  message: "Invalid credentials",
+});
+
+export type InvalidCredentialsError = InstanceType<
+  typeof InvalidCredentialsError
+>;

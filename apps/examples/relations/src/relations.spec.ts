@@ -840,7 +840,7 @@ describe("relations", () => {
         .catch((error) => error.constructor.name);
 
       expect(relational).toBe(plain);
-      expect(relational).toBe("DbTableNotFoundError");
+      expect(relational).toBe("DB_TABLE_NOT_FOUND");
     });
   });
 

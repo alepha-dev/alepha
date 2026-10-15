@@ -261,7 +261,7 @@ export class CloudflareD1Provider extends DatabaseProvider {
       // Raw `execute` bypasses `Repository.handleError`, so it has to do its
       // own unwrapping: drizzle demotes the driver error to `cause` and
       // throws its own `Failed query: ...` on top.
-      throw DbTimeoutError.from(error) ?? error;
+      throw DbTimeoutError.find(error) ?? error;
     }
   }
 

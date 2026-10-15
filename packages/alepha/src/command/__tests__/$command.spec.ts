@@ -762,9 +762,10 @@ describe("$command", () => {
         refused = $command({
           name: "refused",
           handler: () => {
-            throw new CommandError("Not authenticated to lore.example.com.", {
-              exitCode: 3,
-            });
+            throw new CommandError(
+              { exitCode: 3 },
+              { message: "Not authenticated to lore.example.com." },
+            );
           },
         });
       }
@@ -791,12 +792,13 @@ describe("$command", () => {
               name: "broken",
               handler: () => {
                 throw new CommandError(
-                  "Project alepha: Your rank does not grant quest:create.",
+                  { exitCode: 4 },
                   {
+                    message:
+                      "Project alepha: Your rank does not grant quest:create.",
                     cause: new AlephaError(
                       "Your rank does not grant quest:create.",
                     ),
-                    exitCode: 4,
                   },
                 );
               },

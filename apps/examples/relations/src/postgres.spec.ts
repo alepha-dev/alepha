@@ -651,7 +651,7 @@ describe("relations on postgres", () => {
         .catch((error) => error.constructor.name);
 
       expect(relational).toBe(plain);
-      expect(relational).toBe("DbTableNotFoundError");
+      expect(relational).toBe("DB_TABLE_NOT_FOUND");
     });
 
     it("names an undeclared relation rather than failing at the driver", async () => {

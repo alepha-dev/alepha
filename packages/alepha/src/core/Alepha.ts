@@ -1200,7 +1200,10 @@ export class Alepha {
           use: entry.use,
         });
       } else if (!entry.optional) {
-        throw new TooLateSubstitutionError(entry.provide.name, entry.use.name);
+        throw new TooLateSubstitutionError({
+          original: entry.provide.name,
+          substitution: entry.use.name,
+        });
       }
 
       return this;
@@ -1292,10 +1295,10 @@ export class Alepha {
       // repeated service onward. The old slice reported the callers above the
       // cycle and dropped the cycle itself (empty when the cycle starts the
       // stack).
-      throw new CircularDependencyError(
-        service.name,
-        this.pendingInstantiations.slice(index).map((it) => it.name),
-      );
+      throw new CircularDependencyError({
+        provider: service.name,
+        parents: this.pendingInstantiations.slice(index).map((it) => it.name),
+      });
     }
 
     if (!transient) {

@@ -1,25 +1,12 @@
 import { HttpError } from "./HttpError.ts";
 
-export class UnauthorizedError extends HttpError {
-  static readonly code = "UnauthorizedError";
-  static readonly status = 401;
+/**
+ * The caller is not authenticated, or its credential is refused.
+ */
+export const UnauthorizedError = HttpError.extend({
+  name: "UNAUTHORIZED",
+  default: { status: 401 },
+  message: "Not allowed to access this resource",
+});
 
-  static {
-    HttpError.register(this);
-  }
-
-  readonly name = "UnauthorizedError";
-
-  constructor(
-    message = "Not allowed to access this resource",
-    cause?: unknown,
-  ) {
-    super(
-      {
-        message,
-        status: 401,
-      },
-      cause,
-    );
-  }
-}
+export type UnauthorizedError = InstanceType<typeof UnauthorizedError>;

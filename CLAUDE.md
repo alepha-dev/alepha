@@ -155,7 +155,7 @@ Not obvious from the code, so read them before writing any.
 ### Core rules
 
 - **Never `Date.now()`**: inject `DateTimeProvider` and call `this.dateTime.nowMillis()`, which makes time testable via `travel()` / `pause()`. Not available inside `alepha/core` or `alepha/datetime`. `travel()` also fires every `$job` cron in the container: assert end state, not call counts.
-- **Never throw `Error`**: always `AlephaError` (from `"alepha"`).
+- **Never throw `Error`**: `AlephaError` (from `"alepha"`) for a plain failure, an `$error` constant for one a caller can act on. **Never write an error class**: declare it with `$error({ name, schema })` or `Parent.extend({ name })` (`check:conventions`).
 - **No code outside classes**: no standalone functions or constants in service files, so everything stays substitutable.
 - **Never `private`**, always `protected`. No `_` prefix on class members.
 - **Never a single-line JSDoc** (`/** text */`): always the multi-line form.

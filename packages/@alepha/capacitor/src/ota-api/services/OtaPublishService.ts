@@ -18,7 +18,8 @@ import { otaApiOptions } from "../atoms/otaApiOptions.ts";
 import { type OtaAppEntity, otaApps } from "../entities/otaApps.ts";
 import { type OtaBundleEntity, otaBundles } from "../entities/otaBundles.ts";
 import { type OtaChannelEntity, otaChannels } from "../entities/otaChannels.ts";
-import { OtaBundleError, OtaBundleInspector } from "./OtaBundleInspector.ts";
+import { OtaBundleError } from "../errors/OtaBundleError.ts";
+import { OtaBundleInspector } from "./OtaBundleInspector.ts";
 import { OtaUpdateService } from "./OtaUpdateService.ts";
 
 /**
@@ -99,16 +100,20 @@ export class OtaPublishService {
     const app = await this.appOf(manifest);
 
     if (manifest.keyId !== app.keyId) {
-      throw new HttpError({
-        status: 422,
-        message: `The bundle was sealed for key ${manifest.keyId}, and ${app.appId} trusts ${app.keyId}`,
-      });
+      throw new HttpError(
+        { status: 422 },
+        {
+          message: `The bundle was sealed for key ${manifest.keyId}, and ${app.appId} trusts ${app.keyId}`,
+        },
+      );
     }
     if (ciphertext.length > this.options.maxBundleBytes) {
-      throw new HttpError({
-        status: 413,
-        message: `The bundle is ${ciphertext.length} bytes, over the ${this.options.maxBundleBytes} allowed`,
-      });
+      throw new HttpError(
+        { status: 413 },
+        {
+          message: `The bundle is ${ciphertext.length} bytes, over the ${this.options.maxBundleBytes} allowed`,
+        },
+      );
     }
     if (
       ciphertext.length !== manifest.ciphertext.size ||
@@ -301,7 +306,7 @@ export class OtaPublishService {
       }
     } catch (error) {
       if (error instanceof OtaBundleError) {
-        throw new HttpError({ status: 422, message: error.message });
+        throw new HttpError({ status: 422 }, { message: error.message });
       }
       throw error;
     }

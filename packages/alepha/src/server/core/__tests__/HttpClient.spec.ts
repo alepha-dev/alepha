@@ -49,10 +49,9 @@ describe("HttpClient", () => {
 
     expect(resp).toBeInstanceOf(HttpError);
     expect(HttpError.toJSON(resp)).toEqual({
-      error: "BadRequestError",
+      name: "BAD_REQUEST",
       message: "Invalid request body",
-      status: 400,
-      requestId: expect.any(String),
+      data: { status: 400, requestId: expect.any(String) },
     });
   });
 

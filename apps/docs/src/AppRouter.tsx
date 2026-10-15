@@ -2,7 +2,7 @@ import { $env, z } from "alepha";
 import { $head, type Head, type HeadLink } from "alepha/react/head";
 import { $page, NotFound } from "alepha/react/router";
 import { $sitemap } from "alepha/react/sitemap";
-import { HttpError, NotFoundError } from "alepha/server";
+import { isHttpError, NotFoundError } from "alepha/server";
 
 import Changelog from "./components/Changelog.tsx";
 import Docs from "./components/Docs.tsx";
@@ -172,7 +172,7 @@ export class AppRouter {
     loader: async ({ params }) => this.loadDoc("", params.slug),
     head: (args) => this.docHead(args),
     errorHandler: (error) => {
-      if (HttpError.is(error, 404)) {
+      if (isHttpError(error, 404)) {
         return <NotFound />;
       }
     },

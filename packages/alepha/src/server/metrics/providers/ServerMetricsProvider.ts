@@ -32,7 +32,7 @@ export class ServerMetricsProvider {
     handler: ({ headers }) => {
       const token = this.env.METRICS_TOKEN;
       if (token && headers.authorization !== `Bearer ${token}`) {
-        throw new HttpError({ status: 401, message: "Unauthorized" });
+        throw new HttpError({ status: 401 }, { message: "Unauthorized" });
       }
       return this.register.metrics();
     },

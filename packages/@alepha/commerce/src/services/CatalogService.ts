@@ -208,7 +208,7 @@ export class CatalogService {
   public async delete(id: string): Promise<void> {
     const sold = await this.orderItemRepo.count({ productId: { eq: id } });
     if (sold > 0) {
-      throw new ProductHasOrdersError(id, sold);
+      throw new ProductHasOrdersError({ productId: id, orderLines: sold });
     }
     await this.repo.deleteById(id);
   }

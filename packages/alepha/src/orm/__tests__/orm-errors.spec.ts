@@ -9,6 +9,7 @@ import {
   DbConflictError,
   DbConnectionError,
   DbDeadlockError,
+  DbErrorParser,
   DbError,
   DbForeignKeyError,
   DbNotNullError,
@@ -100,7 +101,7 @@ describe("Database Error Tests", () => {
         } catch (error) {
           expect(error).toBeInstanceOf(DbConflictError);
           expect((error as DbConflictError).status).toBe(409);
-          expect((error as DbConflictError).name).toBe("DbConflictError");
+          expect((error as DbConflictError).name).toBe("DB_CONFLICT");
         }
       });
 
@@ -158,7 +159,7 @@ describe("Database Error Tests", () => {
         } catch (error) {
           expect(error).toBeInstanceOf(DbForeignKeyError);
           expect((error as DbForeignKeyError).status).toBe(409);
-          expect((error as DbForeignKeyError).name).toBe("DbForeignKeyError");
+          expect((error as DbForeignKeyError).name).toBe("DB_FOREIGN_KEY");
           expect((error as DbForeignKeyError).message).toContain(
             "Cannot delete",
           );
@@ -166,7 +167,7 @@ describe("Database Error Tests", () => {
             "error_test_parents",
           );
           // PostgreSQL provides the referencing table name
-          expect((error as DbForeignKeyError).referencingTable).toBe(
+          expect((error as DbForeignKeyError).data.referencingTable).toBe(
             "error_test_children",
           );
         }
@@ -193,8 +194,10 @@ describe("Database Error Tests", () => {
         } catch (error) {
           expect(error).toBeInstanceOf(DbForeignKeyError);
           // PostgreSQL provides the constraint name
-          expect((error as DbForeignKeyError).constraintName).toBeDefined();
-          expect((error as DbForeignKeyError).constraintName).toContain(
+          expect(
+            (error as DbForeignKeyError).data.constraintName,
+          ).toBeDefined();
+          expect((error as DbForeignKeyError).data.constraintName).toContain(
             "parent_id",
           );
         }
@@ -239,8 +242,8 @@ describe("Database Error Tests", () => {
         } catch (error) {
           expect(error).toBeInstanceOf(DbNotNullError);
           expect((error as DbNotNullError).status).toBe(400);
-          expect((error as DbNotNullError).name).toBe("DbNotNullError");
-          expect((error as DbNotNullError).column).toBe("required_name");
+          expect((error as DbNotNullError).name).toBe("DB_NOT_NULL");
+          expect((error as DbNotNullError).data.column).toBe("required_name");
           expect((error as DbNotNullError).message).toContain("cannot be null");
         }
       });
@@ -258,7 +261,7 @@ describe("Database Error Tests", () => {
         } catch (error) {
           expect(error).toBeInstanceOf(DbTableNotFoundError);
           expect((error as DbTableNotFoundError).status).toBe(500);
-          expect((error as DbTableNotFoundError).table).toBe(
+          expect((error as DbTableNotFoundError).data.table).toBe(
             "non_existent_table_xyz",
           );
           expect((error as DbTableNotFoundError).message).toContain(
@@ -346,7 +349,7 @@ describe("Database Error Tests", () => {
         } catch (error) {
           expect(error).toBeInstanceOf(DbColumnNotFoundError);
           expect((error as DbColumnNotFoundError).status).toBe(500);
-          expect((error as DbColumnNotFoundError).column).toBe(
+          expect((error as DbColumnNotFoundError).data.column).toBe(
             "non_existent_column_xyz",
           );
         }
@@ -369,7 +372,7 @@ describe("Database Error Tests", () => {
           expect.fail("Should have thrown DbColumnNotFoundError");
         } catch (error) {
           expect(error).toBeInstanceOf(DbColumnNotFoundError);
-          expect((error as DbColumnNotFoundError).column).toBe(
+          expect((error as DbColumnNotFoundError).data.column).toBe(
             "non_existent_column_xyz",
           );
         }
@@ -447,7 +450,7 @@ describe("Database Error Tests", () => {
         } catch (error) {
           expect(error).toBeInstanceOf(DbForeignKeyError);
           expect((error as DbForeignKeyError).status).toBe(409);
-          expect((error as DbForeignKeyError).name).toBe("DbForeignKeyError");
+          expect((error as DbForeignKeyError).name).toBe("DB_FOREIGN_KEY");
           // SQLite reports a bare "FOREIGN KEY constraint failed" with no
           // direction, so the message names both possibilities rather than
           // asserting a DELETE that may not have happened.
@@ -491,8 +494,12 @@ describe("Database Error Tests", () => {
         } catch (error) {
           expect(error).toBeInstanceOf(DbForeignKeyError);
           // SQLite doesn't provide constraint name or referencing table
-          expect((error as DbForeignKeyError).referencingTable).toBeUndefined();
-          expect((error as DbForeignKeyError).constraintName).toBeUndefined();
+          expect(
+            (error as DbForeignKeyError).data.referencingTable,
+          ).toBeUndefined();
+          expect(
+            (error as DbForeignKeyError).data.constraintName,
+          ).toBeUndefined();
           // Message should mention "another entity" since table name is unknown
           expect((error as DbForeignKeyError).message).toContain(
             "another entity",
@@ -526,7 +533,7 @@ describe("Database Error Tests", () => {
           expect(error).toBeInstanceOf(DbNotNullError);
           expect((error as DbNotNullError).status).toBe(400);
           // SQLite includes table.column format
-          expect((error as DbNotNullError).column).toBe("required_name");
+          expect((error as DbNotNullError).data.column).toBe("required_name");
           expect((error as DbNotNullError).message).toContain("cannot be null");
         }
       });
@@ -552,7 +559,7 @@ describe("Database Error Tests", () => {
           expect.fail("Should have thrown DbTableNotFoundError");
         } catch (error) {
           expect(error).toBeInstanceOf(DbTableNotFoundError);
-          expect((error as DbTableNotFoundError).table).toBe(
+          expect((error as DbTableNotFoundError).data.table).toBe(
             "non_existent_table_xyz",
           );
         }
@@ -581,7 +588,7 @@ describe("Database Error Tests", () => {
           expect.fail("Should have thrown DbColumnNotFoundError");
         } catch (error) {
           expect(error).toBeInstanceOf(DbColumnNotFoundError);
-          expect((error as DbColumnNotFoundError).column).toBe(
+          expect((error as DbColumnNotFoundError).data.column).toBe(
             "non_existent_column_xyz",
           );
         }
@@ -592,7 +599,7 @@ describe("Database Error Tests", () => {
   describe("Error Properties", () => {
     it("DbConflictError should have correct properties", async () => {
       const error = new DbConflictError("Test conflict");
-      expect(error.name).toBe("DbConflictError");
+      expect(error.name).toBe("DB_CONFLICT");
       expect(error.status).toBe(409);
       expect(error.message).toBe("Test conflict");
     });
@@ -600,15 +607,18 @@ describe("Database Error Tests", () => {
     it("DbForeignKeyError should have correct properties", async ({
       expect,
     }) => {
-      const error = new DbForeignKeyError("Test FK error", undefined, {
-        referencingTable: "child_table",
-        constraintName: "child_parent_id_fk",
-      });
-      expect(error.name).toBe("DbForeignKeyError");
+      const error = new DbForeignKeyError(
+        {
+          referencingTable: "child_table",
+          constraintName: "child_parent_id_fk",
+        },
+        { message: "Test FK error" },
+      );
+      expect(error.name).toBe("DB_FOREIGN_KEY");
       expect(error.status).toBe(409);
       expect(error.message).toBe("Test FK error");
-      expect(error.referencingTable).toBe("child_table");
-      expect(error.constraintName).toBe("child_parent_id_fk");
+      expect(error.data.referencingTable).toBe("child_table");
+      expect(error.data.constraintName).toBe("child_parent_id_fk");
     });
 
     it("DbForeignKeyError.fromDatabaseError should parse PostgreSQL error", async ({
@@ -618,13 +628,13 @@ describe("Database Error Tests", () => {
         'update or delete on table "query_item" violates foreign key constraint "reporting_alert_query_id_fk" on table "reporting_alert"',
       );
 
-      const error = DbForeignKeyError.fromDatabaseError(dbError, "query_item");
+      const error = new DbErrorParser().foreignKey(dbError, "query_item");
 
       expect(error.message).toBe(
         "Cannot delete query_item: it is referenced by reporting_alert",
       );
-      expect(error.referencingTable).toBe("reporting_alert");
-      expect(error.constraintName).toBe("reporting_alert_query_id_fk");
+      expect(error.data.referencingTable).toBe("reporting_alert");
+      expect(error.data.constraintName).toBe("reporting_alert_query_id_fk");
     });
 
     it("DbForeignKeyError.fromDatabaseError reports a dangling reference as a write, not a delete", async ({
@@ -638,10 +648,7 @@ describe("Database Error Tests", () => {
           ' — Key (query_id)=(42) is not present in table "query_item".',
       );
 
-      const error = DbForeignKeyError.fromDatabaseError(
-        dbError,
-        "reporting_alert",
-      );
+      const error = new DbErrorParser().foreignKey(dbError, "reporting_alert");
 
       expect(error.message).toBe(
         "Cannot write reporting_alert: it references a row that does not exist in query_item",
@@ -653,28 +660,28 @@ describe("Database Error Tests", () => {
     }) => {
       const sqliteError = new Error("FOREIGN KEY constraint failed");
 
-      const error = DbForeignKeyError.fromDatabaseError(
-        sqliteError,
-        "parent_table",
-      );
+      const error = new DbErrorParser().foreignKey(sqliteError, "parent_table");
 
       expect(error.message).toBe(
         "Foreign key constraint failed on parent_table: it either references a missing row, or is still referenced by another entity",
       );
-      expect(error.referencingTable).toBeUndefined();
-      expect(error.constraintName).toBeUndefined();
+      expect(error.data.referencingTable).toBeUndefined();
+      expect(error.data.constraintName).toBeUndefined();
     });
 
     // DbNotNullError tests
     it("DbNotNullError should have correct properties", async () => {
-      const error = new DbNotNullError("Test not null", undefined, {
-        column: "email",
-        table: "users",
-      });
-      expect(error.name).toBe("DbNotNullError");
+      const error = new DbNotNullError(
+        {
+          column: "email",
+          table: "users",
+        },
+        { message: "Test not null" },
+      );
+      expect(error.name).toBe("DB_NOT_NULL");
       expect(error.status).toBe(400);
-      expect(error.column).toBe("email");
-      expect(error.table).toBe("users");
+      expect(error.data.column).toBe("email");
+      expect(error.data.table).toBe("users");
     });
 
     it("DbNotNullError.fromDatabaseError should parse PostgreSQL error", async ({
@@ -684,11 +691,11 @@ describe("Database Error Tests", () => {
         'null value in column "email" of relation "users" violates not-null constraint',
       );
 
-      const error = DbNotNullError.fromDatabaseError(dbError, "users");
+      const error = new DbErrorParser().notNull(dbError, "users");
 
       expect(error.message).toBe("Column 'email' in 'users' cannot be null");
-      expect(error.column).toBe("email");
-      expect(error.table).toBe("users");
+      expect(error.data.column).toBe("email");
+      expect(error.data.table).toBe("users");
     });
 
     it("DbNotNullError.fromDatabaseError should parse SQLite error", async ({
@@ -696,19 +703,19 @@ describe("Database Error Tests", () => {
     }) => {
       const sqliteError = new Error("NOT NULL constraint failed: users.email");
 
-      const error = DbNotNullError.fromDatabaseError(sqliteError, "users");
+      const error = new DbErrorParser().notNull(sqliteError, "users");
 
       expect(error.message).toBe("Column 'email' in 'users' cannot be null");
-      expect(error.column).toBe("email");
-      expect(error.table).toBe("users");
+      expect(error.data.column).toBe("email");
+      expect(error.data.table).toBe("users");
     });
 
     // DbDeadlockError tests
     it("DbDeadlockError should have correct properties", async () => {
       const error = new DbDeadlockError("Deadlock detected");
-      expect(error.name).toBe("DbDeadlockError");
+      expect(error.name).toBe("DB_DEADLOCK");
       expect(error.status).toBe(409);
-      expect(error.retryable).toBe(true);
+      expect(error.data.retryable).toBe(true);
     });
 
     it("DbDeadlockError.fromDatabaseError should create error", async ({
@@ -716,76 +723,82 @@ describe("Database Error Tests", () => {
     }) => {
       const dbError = new Error("deadlock detected");
 
-      const error = DbDeadlockError.fromDatabaseError(dbError);
+      const error = new DbErrorParser().deadlock(dbError);
 
       expect(error.message).toContain("deadlock");
-      expect(error.retryable).toBe(true);
+      expect(error.data.retryable).toBe(true);
     });
 
     // DbConnectionError tests
     it("DbConnectionError should have correct properties", async ({
       expect,
     }) => {
-      const error = new DbConnectionError("Connection failed", undefined, {
-        errorType: "refused",
-        retryable: true,
-      });
-      expect(error.name).toBe("DbConnectionError");
+      const error = new DbConnectionError(
+        {
+          errorType: "refused",
+          retryable: true,
+        },
+        { message: "Connection failed" },
+      );
+      expect(error.name).toBe("DB_CONNECTION");
       expect(error.status).toBe(503);
-      expect(error.errorType).toBe("refused");
-      expect(error.retryable).toBe(true);
+      expect(error.data.errorType).toBe("refused");
+      expect(error.data.retryable).toBe(true);
     });
 
     it("DbConnectionError.fromDatabaseError should detect connection refused", async ({
       expect,
     }) => {
-      const error = DbConnectionError.fromDatabaseError(
+      const error = new DbErrorParser().connection(
         new Error("connection refused"),
       );
-      expect(error.errorType).toBe("refused");
-      expect(error.retryable).toBe(true);
+      expect(error.data.errorType).toBe("refused");
+      expect(error.data.retryable).toBe(true);
     });
 
     it("DbConnectionError.fromDatabaseError should detect timeout", async ({
       expect,
     }) => {
-      const error = DbConnectionError.fromDatabaseError(
+      const error = new DbErrorParser().connection(
         new Error("connection timed out"),
       );
-      expect(error.errorType).toBe("timeout");
-      expect(error.retryable).toBe(true);
+      expect(error.data.errorType).toBe("timeout");
+      expect(error.data.retryable).toBe(true);
     });
 
     it("DbConnectionError.fromDatabaseError should detect auth failure", async ({
       expect,
     }) => {
-      const error = DbConnectionError.fromDatabaseError(
+      const error = new DbErrorParser().connection(
         new Error("password authentication failed for user"),
       );
-      expect(error.errorType).toBe("auth");
-      expect(error.retryable).toBe(false);
+      expect(error.data.errorType).toBe("auth");
+      expect(error.data.retryable).toBe(false);
     });
 
     it("DbConnectionError.fromDatabaseError should detect SQLite locked", async ({
       expect,
     }) => {
-      const error = DbConnectionError.fromDatabaseError(
+      const error = new DbErrorParser().connection(
         new Error("database is locked"),
       );
-      expect(error.errorType).toBe("locked");
-      expect(error.retryable).toBe(true);
+      expect(error.data.errorType).toBe("locked");
+      expect(error.data.retryable).toBe(true);
     });
 
     // DbTableNotFoundError tests
     it("DbTableNotFoundError should have correct properties", async ({
       expect,
     }) => {
-      const error = new DbTableNotFoundError("Table not found", undefined, {
-        table: "users",
-      });
-      expect(error.name).toBe("DbTableNotFoundError");
+      const error = new DbTableNotFoundError(
+        {
+          table: "users",
+        },
+        { message: "Table not found" },
+      );
+      expect(error.name).toBe("DB_TABLE_NOT_FOUND");
       expect(error.status).toBe(500);
-      expect(error.table).toBe("users");
+      expect(error.data.table).toBe("users");
     });
 
     it("DbTableNotFoundError.fromDatabaseError should parse PostgreSQL error", async ({
@@ -793,9 +806,9 @@ describe("Database Error Tests", () => {
     }) => {
       const dbError = new Error('relation "users" does not exist');
 
-      const error = DbTableNotFoundError.fromDatabaseError(dbError);
+      const error = new DbErrorParser().tableNotFound(dbError);
 
-      expect(error.table).toBe("users");
+      expect(error.data.table).toBe("users");
       expect(error.message).toContain("does not exist");
     });
 
@@ -804,9 +817,9 @@ describe("Database Error Tests", () => {
     }) => {
       const sqliteError = new Error("no such table: users");
 
-      const error = DbTableNotFoundError.fromDatabaseError(sqliteError);
+      const error = new DbErrorParser().tableNotFound(sqliteError);
 
-      expect(error.table).toBe("users");
+      expect(error.data.table).toBe("users");
       expect(error.message).toContain("does not exist");
     });
 
@@ -814,14 +827,17 @@ describe("Database Error Tests", () => {
     it("DbColumnNotFoundError should have correct properties", async ({
       expect,
     }) => {
-      const error = new DbColumnNotFoundError("Column not found", undefined, {
-        column: "email",
-        table: "users",
-      });
-      expect(error.name).toBe("DbColumnNotFoundError");
+      const error = new DbColumnNotFoundError(
+        {
+          column: "email",
+          table: "users",
+        },
+        { message: "Column not found" },
+      );
+      expect(error.name).toBe("DB_COLUMN_NOT_FOUND");
       expect(error.status).toBe(500);
-      expect(error.column).toBe("email");
-      expect(error.table).toBe("users");
+      expect(error.data.column).toBe("email");
+      expect(error.data.table).toBe("users");
     });
 
     it("DbColumnNotFoundError.fromDatabaseError should parse PostgreSQL error", async ({
@@ -829,9 +845,9 @@ describe("Database Error Tests", () => {
     }) => {
       const dbError = new Error('column "email" does not exist');
 
-      const error = DbColumnNotFoundError.fromDatabaseError(dbError);
+      const error = new DbErrorParser().columnNotFound(dbError);
 
-      expect(error.column).toBe("email");
+      expect(error.data.column).toBe("email");
     });
 
     it("DbColumnNotFoundError.fromDatabaseError should parse PostgreSQL error with table", async ({
@@ -841,10 +857,10 @@ describe("Database Error Tests", () => {
         'column "email" of relation "users" does not exist',
       );
 
-      const error = DbColumnNotFoundError.fromDatabaseError(dbError);
+      const error = new DbErrorParser().columnNotFound(dbError);
 
-      expect(error.column).toBe("email");
-      expect(error.table).toBe("users");
+      expect(error.data.column).toBe("email");
+      expect(error.data.table).toBe("users");
     });
 
     it("DbColumnNotFoundError.fromDatabaseError should parse SQLite error", async ({
@@ -852,9 +868,9 @@ describe("Database Error Tests", () => {
     }) => {
       const sqliteError = new Error("no such column: email");
 
-      const error = DbColumnNotFoundError.fromDatabaseError(sqliteError);
+      const error = new DbErrorParser().columnNotFound(sqliteError);
 
-      expect(error.column).toBe("email");
+      expect(error.data.column).toBe("email");
     });
 
     it("DbColumnNotFoundError.fromDatabaseError should parse SQLite error with table", async ({
@@ -862,10 +878,10 @@ describe("Database Error Tests", () => {
     }) => {
       const sqliteError = new Error("no such column: users.email");
 
-      const error = DbColumnNotFoundError.fromDatabaseError(sqliteError);
+      const error = new DbErrorParser().columnNotFound(sqliteError);
 
-      expect(error.column).toBe("email");
-      expect(error.table).toBe("users");
+      expect(error.data.column).toBe("email");
+      expect(error.data.table).toBe("users");
     });
   });
 
@@ -915,7 +931,7 @@ describe("Database Error Tests", () => {
       expect,
     }) => {
       const error = await wrap("too many SQL variables");
-      expect((error as DbTooManyParametersError).retryable).toBe(false);
+      expect((error as DbTooManyParametersError).data.retryable).toBe(false);
     });
 
     it("leaves a plain column error alone", async ({ expect }) => {

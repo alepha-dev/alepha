@@ -112,7 +112,7 @@ describe("$inject - circular dependencies", () => {
     // The reported chain is the cycle itself (from the repeated service
     // onward), not the callers above it: Module re-enters Module.
     expect(() => Alepha.create().inject(Test)).toThrow(
-      new CircularDependencyError("Module", ["Module"]),
+      new CircularDependencyError({ provider: "Module", parents: ["Module"] }),
     );
   });
 

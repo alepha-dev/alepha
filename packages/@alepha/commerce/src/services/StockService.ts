@@ -175,7 +175,11 @@ export class StockService {
       // racers can both pass it, and the replay below decides.
       const available = await this.available(productId);
       if (available < quantity) {
-        throw new InsufficientStockError(productId, quantity, available);
+        throw new InsufficientStockError({
+          productId,
+          requested: quantity,
+          onHand: available,
+        });
       }
 
       const ttl = options.ttlMinutes ?? StockService.RESERVATION_TTL_MINUTES;
@@ -191,11 +195,11 @@ export class StockService {
 
       if (!locked && !(await this.holdFits(productId, hold.id))) {
         await this.reservations.updateById(hold.id, { status: "released" });
-        throw new InsufficientStockError(
+        throw new InsufficientStockError({
           productId,
-          quantity,
-          Math.max(0, await this.available(productId)),
-        );
+          requested: quantity,
+          onHand: Math.max(0, await this.available(productId)),
+        });
       }
 
       return hold;
@@ -318,7 +322,11 @@ export class StockService {
       // `reserve`.
       const onHand = await this.onHand(productId);
       if (onHand < quantity) {
-        throw new InsufficientStockError(productId, quantity, onHand);
+        throw new InsufficientStockError({
+          productId,
+          requested: quantity,
+          onHand,
+        });
       }
 
       const movement = await this.movements.create({
@@ -330,11 +338,11 @@ export class StockService {
 
       if (!locked && !(await this.movementFits(productId, movement.id))) {
         await this.movements.deleteById(movement.id);
-        throw new InsufficientStockError(
+        throw new InsufficientStockError({
           productId,
-          quantity,
-          Math.max(0, await this.onHand(productId)),
-        );
+          requested: quantity,
+          onHand: Math.max(0, await this.onHand(productId)),
+        });
       }
 
       // Inside the claim, so on Postgres the sale and the hold it uses up

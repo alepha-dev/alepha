@@ -114,7 +114,7 @@ export abstract class PostgresProvider extends DatabaseProvider {
         try {
           await this.migrateUnderLock();
         } catch (error) {
-          throw new DbMigrationError(error);
+          throw new DbMigrationError(undefined, { cause: error });
         }
       }
     },

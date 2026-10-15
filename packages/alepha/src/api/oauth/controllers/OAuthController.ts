@@ -370,10 +370,10 @@ export class OAuthController {
       // An outage is not a limit the client exceeded: retrying in a few
       // seconds is the right move, and a 503 says nothing about the address.
       if (attempt.reason === "store" && !attempt.allowed)
-        throw new HttpError({
-          message: "Client registration is temporarily unavailable",
-          status: 503,
-        });
+        throw new HttpError(
+          { status: 503 },
+          { message: "Client registration is temporarily unavailable" },
+        );
       if (!attempt.allowed) {
         this.log.warn("Dynamic client registration rate limit exceeded", {
           ip: bucket,
@@ -381,10 +381,10 @@ export class OAuthController {
         // 429, not the 400 the registration limiter answers: a caller that
         // waits and retries is doing the right thing, and only this status
         // says so.
-        throw new HttpError({
-          message: "Too many client registrations, please try again later",
-          status: 429,
-        });
+        throw new HttpError(
+          { status: 429 },
+          { message: "Too many client registrations, please try again later" },
+        );
       }
 
       const requestedScopes = body.scope
@@ -423,7 +423,7 @@ export class OAuthController {
         reply.status = 400;
         reply.headers["content-type"] = "application/json";
         reply.body = JSON.stringify({
-          error: error.code,
+          error: error.data.reason,
           error_description: error.message,
         });
         return;

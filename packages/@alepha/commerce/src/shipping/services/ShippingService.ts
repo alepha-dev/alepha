@@ -82,7 +82,7 @@ export class ShippingService {
     const quotes = await this.quote(country, subtotal);
     const match = quotes.find((q) => q.code === code);
     if (!match) {
-      throw new NoShippingRateError(country);
+      throw new NoShippingRateError({ country });
     }
     return match;
   }

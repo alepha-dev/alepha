@@ -73,7 +73,8 @@ class Service {
   login = $pipeline({
     use: [this.failures.middleware({ skipSuccessfulRequests: true })],
     handler: async (ok: boolean) => {
-      if (!ok) throw new HttpError({ status: 401, message: "Unauthorized" });
+      if (!ok)
+        throw new HttpError({ status: 401 }, { message: "Unauthorized" });
       return "ok";
     },
   });

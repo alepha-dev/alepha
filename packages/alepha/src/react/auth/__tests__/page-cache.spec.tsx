@@ -140,7 +140,7 @@ describe("automatic page cache", () => {
         path: "/moved",
         loader: () => {
           count("moved");
-          throw new Redirection("/");
+          throw new Redirection({ redirect: "/" });
         },
         component: () => "never",
       });

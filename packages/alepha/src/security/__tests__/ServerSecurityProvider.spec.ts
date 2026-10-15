@@ -57,10 +57,9 @@ describe("$secure middleware", () => {
         `${alepha.inject(ServerProvider).hostname}${app.ok.route.path}`,
       ).then((it) => it.json()),
     ).toEqual({
-      error: "UnauthorizedError",
+      name: "UNAUTHORIZED",
       message: "Authentication required",
-      status: 401,
-      requestId: expect.any(String),
+      data: { status: 401, requestId: expect.any(String) },
     });
   });
 

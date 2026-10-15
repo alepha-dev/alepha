@@ -22,10 +22,10 @@ export class ServerNotReadyProvider {
 
       reply.headers["Retry-After"] = "5"; // Retry after 5 seconds
 
-      throw new HttpError({
-        status: 503,
-        message: "Server is not ready yet. Please try again later.",
-      });
+      throw new HttpError(
+        { status: 503 },
+        { message: "Server is not ready yet. Please try again later." },
+      );
     },
   });
 }

@@ -32,25 +32,29 @@ export class AddressService {
 
     if (!rule) {
       throw new InvalidAddressError(
-        "country",
-        `'${country}' is not a country this shop delivers to. Supported: ${this.rules
-          .countries()
-          .join(", ")}.`,
+        { field: "country" },
+        {
+          message: `'${country}' is not a country this shop delivers to. Supported: ${this.rules
+            .countries()
+            .join(", ")}.`,
+        },
       );
     }
 
     const postalCode = this.rules.normalisePostalCode(input.postalCode);
     if (!rule.postalCode.test(postalCode)) {
       throw new InvalidAddressError(
-        "postalCode",
-        `'${input.postalCode}' is not a valid postal code for ${rule.name}. Expected something like '${rule.example}'.`,
+        { field: "postalCode" },
+        {
+          message: `'${input.postalCode}' is not a valid postal code for ${rule.name}. Expected something like '${rule.example}'.`,
+        },
       );
     }
 
     if (rule.requiresRegion && !input.region?.trim()) {
       throw new InvalidAddressError(
-        "region",
-        `${rule.name} requires a region.`,
+        { field: "region" },
+        { message: `${rule.name} requires a region.` },
       );
     }
 

@@ -377,7 +377,7 @@ export class AuthPrimitive extends Primitive<AuthPrimitiveOptions> {
         if ((error as { error?: unknown })?.error === "invalid_grant") {
           throw new UnauthorizedError(
             "The refresh token is expired or revoked",
-            error,
+            { cause: error },
           );
         }
         throw error;

@@ -100,7 +100,7 @@ export const parseField = (
 
   const error =
     options.error instanceof SchemaValidationError
-      ? (options.error as SchemaValidationError).value?.message
+      ? options.error.data.message
       : undefined;
 
   // Structural classification via zod guards (the schema is a real zod schema,

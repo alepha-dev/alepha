@@ -109,10 +109,23 @@ describe("useAction RunResult", () => {
   it("derives handled one way", ({ expect }) => {
     expect(ActionErrorPolicy.isHandled(new Error("x"))).toBe(false);
     expect(ActionErrorPolicy.isHandled(new Error("x"), () => {})).toBe(true);
+    // A form refusal naming a field is shown under it; one for the whole
+    // form is not.
     expect(
       ActionErrorPolicy.isHandled(
-        Object.assign(new Error("x"), { shownInPlace: true }),
+        Object.assign(new Error("x"), {
+          name: "FORM_VALIDATION",
+          data: { path: "/email" },
+        }),
       ),
     ).toBe(true);
+    expect(
+      ActionErrorPolicy.isHandled(
+        Object.assign(new Error("x"), {
+          name: "FORM_VALIDATION",
+          data: { path: "" },
+        }),
+      ),
+    ).toBe(false);
   });
 });

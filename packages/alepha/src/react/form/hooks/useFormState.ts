@@ -137,7 +137,7 @@ export const useFormState = <
             if (
               !path ||
               (event.error instanceof SchemaValidationError &&
-                event.error.value.path === path)
+                event.error.data.path === path)
             ) {
               setError(event.error);
             }

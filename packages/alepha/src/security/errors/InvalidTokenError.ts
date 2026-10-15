@@ -9,8 +9,9 @@ import { UnauthorizedError } from "alepha/server";
  * means "authenticated, but not allowed" and belongs to authorization
  * denials; answering it for an expired token stops a refresh flow dead.
  */
-export class InvalidTokenError extends UnauthorizedError {
-  constructor(message = "Invalid token", options?: { cause?: unknown }) {
-    super(message, options?.cause);
-  }
-}
+export const InvalidTokenError = UnauthorizedError.extend({
+  name: "INVALID_TOKEN",
+  message: "Invalid token",
+});
+
+export type InvalidTokenError = InstanceType<typeof InvalidTokenError>;

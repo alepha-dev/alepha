@@ -1,9 +1,12 @@
-import { AlephaError } from "alepha";
+import { HttpError } from "alepha/server";
 
-export class InvalidFileError extends AlephaError {
-  /**
-   * Typed `number`, not the literal `400`, so a subclass can answer something
-   * else — {@link FileTooLargeError} answers `413`.
-   */
-  public readonly status: number = 400;
-}
+/**
+ * An upload the bucket refuses: a type it does not accept, an empty file.
+ */
+export const InvalidFileError = HttpError.extend({
+  name: "INVALID_FILE",
+  default: { status: 400 },
+  message: "Invalid file",
+});
+
+export type InvalidFileError = InstanceType<typeof InvalidFileError>;

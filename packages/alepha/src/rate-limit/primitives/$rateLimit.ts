@@ -172,10 +172,10 @@ export class RateLimitPrimitive<TInput = string> extends Primitive<
               : "ip:global";
           const result = await this.consume(key);
           if (!result.allowed && result.reason === "store")
-            throw new HttpError({
-              status: 503,
-              message: "Rate limiter unavailable",
-            });
+            throw new HttpError(
+              { status: 503 },
+              { message: "Rate limiter unavailable" },
+            );
           if (request && result.resetAt !== undefined) {
             request.reply.setHeader("X-RateLimit-Limit", String(result.limit));
             request.reply.setHeader(
@@ -192,10 +192,10 @@ export class RateLimitPrimitive<TInput = string> extends Primitive<
               "Retry-After",
               String(Math.max(1, Math.ceil((result.retryAfterMs ?? 0) / 1000))),
             );
-            throw new HttpError({
-              status: 429,
-              message: "Too Many Requests",
-            });
+            throw new HttpError(
+              { status: 429 },
+              { message: "Too Many Requests" },
+            );
           }
           const ticket = result.ticket;
           if (

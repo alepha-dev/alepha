@@ -729,7 +729,7 @@ export abstract class DatabaseProvider {
       } catch (error) {
         throw new DbError(
           `Failed to synchronize ${this.dialect} database schema`,
-          error as Error,
+          { cause: error },
         );
       }
 

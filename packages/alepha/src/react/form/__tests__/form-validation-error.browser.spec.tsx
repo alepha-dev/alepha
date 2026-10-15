@@ -115,8 +115,8 @@ describe("FormValidationError", () => {
     expect(seen).toHaveLength(1);
     expect(seen[0].type).toBe("form");
     expect(seen[0].error).toBeInstanceOf(FormValidationError);
-    expect(seen[0].error.name).toBe("ValidationError");
-    expect((seen[0].error as FormValidationError).value.path).toBe("/email");
+    expect(seen[0].error.name).toBe("FORM_VALIDATION");
+    expect((seen[0].error as FormValidationError).data.path).toBe("/email");
 
     await alepha.stop();
   });
@@ -135,7 +135,7 @@ describe("FormValidationError", () => {
           // What a response that broke its own schema looks like from here.
           throw new SchemaValidationError({
             message: "'id' is required",
-            instancePath: "/id",
+            path: "/id",
           });
         },
       });
@@ -154,7 +154,7 @@ describe("FormValidationError", () => {
 
     await waitFor(() => expect(seen).toHaveLength(1));
     expect(seen[0]).not.toBeInstanceOf(FormValidationError);
-    expect(seen[0].name).toBe("SchemaValidationError");
+    expect(seen[0].name).toBe("SCHEMA_VALIDATION");
 
     await alepha.stop();
   });
@@ -165,8 +165,8 @@ describe("FormValidationError", () => {
       path: "/email",
     });
 
-    expect(error.value.path).toBe("/email");
-    expect(error.value.message).toBe("Email already in use");
+    expect(error.data.path).toBe("/email");
+    expect(error.data.message).toBe("Email already in use");
   });
 
   it("supports nested pointers", () => {
@@ -175,6 +175,6 @@ describe("FormValidationError", () => {
       path: "/address/city",
     });
 
-    expect(error.value.path).toBe("/address/city");
+    expect(error.data.path).toBe("/address/city");
   });
 });

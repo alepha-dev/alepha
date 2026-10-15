@@ -448,7 +448,7 @@ export class ActionPrimitive<
       { action: this.name, error: name, message },
     );
 
-    return new InternalServerError(`${name}: ${message}`, error);
+    return new InternalServerError(`${name}: ${message}`, { cause: error });
   }
 
   /**

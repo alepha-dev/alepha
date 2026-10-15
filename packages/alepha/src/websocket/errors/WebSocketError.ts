@@ -1,34 +1,36 @@
-import { AlephaError } from "alepha";
+import { $error, z } from "alepha";
 
 /**
- * Base WebSocket error class
+ * A WebSocket failure, with the close `code` when there is one.
  */
-export class WebSocketError extends AlephaError {
-  public readonly code?: number;
+export const WebSocketError = $error({
+  name: "WEBSOCKET",
+  schema: z.object({ code: z.integer().optional() }),
+  message: "WebSocket error",
+});
 
-  constructor(message: string, code?: number) {
-    super(message);
-    this.code = code;
-    this.name = "WebSocketError";
-  }
-}
+export type WebSocketError = InstanceType<typeof WebSocketError>;
 
 /**
- * Error thrown when WebSocket connection fails
+ * A WebSocket that could not connect, or lost its connection.
  */
-export class WebSocketConnectionError extends WebSocketError {
-  constructor(message: string, code?: number) {
-    super(message, code);
-    this.name = "WebSocketConnectionError";
-  }
-}
+export const WebSocketConnectionError = WebSocketError.extend({
+  name: "WEBSOCKET_CONNECTION",
+  message: "WebSocket connection failed",
+});
+
+export type WebSocketConnectionError = InstanceType<
+  typeof WebSocketConnectionError
+>;
 
 /**
- * Error thrown when WebSocket message validation fails
+ * A WebSocket message that does not match its schema.
  */
-export class WebSocketValidationError extends WebSocketError {
-  constructor(message: string) {
-    super(message);
-    this.name = "WebSocketValidationError";
-  }
-}
+export const WebSocketValidationError = WebSocketError.extend({
+  name: "WEBSOCKET_VALIDATION",
+  message: "Invalid WebSocket message",
+});
+
+export type WebSocketValidationError = InstanceType<
+  typeof WebSocketValidationError
+>;

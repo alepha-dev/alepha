@@ -50,16 +50,10 @@ import {
   PG_UPDATED_AT,
   PG_VERSION,
 } from "../constants/PG_SYMBOLS.ts";
-import { DbColumnNotFoundError } from "../errors/DbColumnNotFoundError.ts";
 import { DbConflictError } from "../errors/DbConflictError.ts";
-import { DbDeadlockError } from "../errors/DbDeadlockError.ts";
 import { DbEntityNotFoundError } from "../errors/DbEntityNotFoundError.ts";
 import { DbError } from "../errors/DbError.ts";
-import { DbForeignKeyError } from "../errors/DbForeignKeyError.ts";
-import { DbNotNullError } from "../errors/DbNotNullError.ts";
-import { DbTableNotFoundError } from "../errors/DbTableNotFoundError.ts";
 import { DbTimeoutError } from "../errors/DbTimeoutError.ts";
-import { DbTooManyParametersError } from "../errors/DbTooManyParametersError.ts";
 import { DbVersionMismatchError } from "../errors/DbVersionMismatchError.ts";
 import { getAttrFields, type PgAttrField } from "../helpers/pgAttr.ts";
 import type {
@@ -89,6 +83,7 @@ import {
 } from "../providers/drivers/DatabaseProvider.ts";
 import type { TObjectInsert } from "../schemas/insertSchema.ts";
 import type { TObjectUpdate } from "../schemas/updateSchema.ts";
+import { DbErrorParser } from "./DbErrorParser.ts";
 import { PgRelationManager } from "./PgRelationManager.ts";
 import { type PgJoin, QueryManager } from "./QueryManager.ts";
 
@@ -109,6 +104,7 @@ export abstract class Repository<T extends ZObject> {
   // Injected, not `new`'d: bypassing DI made it impossible to substitute in
   // tests and gave every repository its own unbounded Map.
   protected readonly dbCache = $inject(DbCacheProvider);
+  protected readonly errorParser = $inject(DbErrorParser);
   protected readonly alepha = $inject(Alepha);
 
   static of<T extends ZObject>(
@@ -849,7 +845,7 @@ export abstract class Repository<T extends ZObject> {
     const entity = await this.findOne(query, opts);
 
     if (!entity) {
-      throw new DbEntityNotFoundError(this.tableName);
+      throw new DbEntityNotFoundError({ entity: this.tableName });
     }
 
     return entity;
@@ -1052,7 +1048,7 @@ export abstract class Repository<T extends ZObject> {
     const entity = await this.findById<R>(id, opts);
 
     if (!entity) {
-      throw new DbEntityNotFoundError(this.tableName);
+      throw new DbEntityNotFoundError({ entity: this.tableName });
     }
 
     return entity;
@@ -1605,7 +1601,7 @@ export abstract class Repository<T extends ZObject> {
       });
 
     if (!response[0]) {
-      throw new DbEntityNotFoundError(this.tableName);
+      throw new DbEntityNotFoundError({ entity: this.tableName });
     }
 
     try {
@@ -1700,7 +1696,7 @@ export abstract class Repository<T extends ZObject> {
         try {
           // If getById succeeds, entity exists and this was a version mismatch
           await this.getById(id);
-          throw new DbVersionMismatchError(this.tableName, id);
+          throw new DbVersionMismatchError({ table: this.tableName, id });
         } catch (lookupError) {
           // If it's still not found, propagate the original not found error
           if (lookupError instanceof DbEntityNotFoundError) {
@@ -1910,7 +1906,8 @@ export abstract class Repository<T extends ZObject> {
     const result = await this.deleteMany(this.getWhereId(id), opts);
     if (result.length === 0) {
       throw new DbEntityNotFoundError(
-        `Entity with ID ${id} not found in ${this.tableName}`,
+        { entity: this.tableName },
+        { message: `Entity with ID ${id} not found in ${this.tableName}` },
       );
     }
     return result;
@@ -2422,13 +2419,13 @@ export abstract class Repository<T extends ZObject> {
     // generic `Failed query: ...`. Classifying it by message would be
     // hopeless, and reporting it as a 500 would hide the one thing the
     // caller can act on, which is to retry later.
-    const timeout = DbTimeoutError.from(error);
+    const timeout = DbTimeoutError.find(error);
     if (timeout) {
       return timeout;
     }
 
     if (!(error instanceof Error)) {
-      return new DbError(message);
+      return new DbError(message, { cause: error });
     }
 
     const fullMessage =
@@ -2442,25 +2439,22 @@ export abstract class Repository<T extends ZObject> {
 
     // Check for unique constraint violation (conflict)
     if (hasPattern(this.errorPatterns.conflict)) {
-      return new DbConflictError(message, error);
+      return new DbConflictError(message, { cause: error });
     }
 
     // Check for foreign key violation
     if (hasPattern(this.errorPatterns.foreignKey)) {
-      return DbForeignKeyError.fromDatabaseError(
-        getSourceError(),
-        this.tableName,
-      );
+      return this.errorParser.foreignKey(getSourceError(), this.tableName);
     }
 
     // Check for NOT NULL violation
     if (hasPattern(this.errorPatterns.notNull)) {
-      return DbNotNullError.fromDatabaseError(getSourceError(), this.tableName);
+      return this.errorParser.notNull(getSourceError(), this.tableName);
     }
 
     // Check for deadlock
     if (hasPattern(this.errorPatterns.deadlock)) {
-      return DbDeadlockError.fromDatabaseError(getSourceError());
+      return this.errorParser.deadlock(getSourceError());
     }
 
     // Before the column branch: D1 reports the ceiling as `too many SQL
@@ -2468,7 +2462,7 @@ export abstract class Repository<T extends ZObject> {
     // branch below matches a bare `column "` anywhere in the message and a
     // driver is free to quote the offending statement.
     if (hasPattern(this.errorPatterns.tooManyParameters)) {
-      return DbTooManyParametersError.fromDatabaseError(getSourceError());
+      return this.errorParser.tooManyParameters(getSourceError());
     }
 
     // Column before table: on a write, postgres reports a missing column as
@@ -2477,7 +2471,7 @@ export abstract class Repository<T extends ZObject> {
     // message that names the column was reported as a missing table. No
     // table-not-found message mentions a column, so this order is safe.
     if (hasPattern(this.errorPatterns.columnNotFound)) {
-      return DbColumnNotFoundError.fromDatabaseError(getSourceError());
+      return this.errorParser.columnNotFound(getSourceError());
     }
 
     // Check for table not found
@@ -2485,10 +2479,10 @@ export abstract class Repository<T extends ZObject> {
       hasPattern(this.errorPatterns.tableNotFound) &&
       (fullMessage.includes("relation") || fullMessage.includes("table"))
     ) {
-      return DbTableNotFoundError.fromDatabaseError(getSourceError());
+      return this.errorParser.tableNotFound(getSourceError());
     }
 
-    return new DbError(message, error);
+    return new DbError(message, { cause: error });
   }
 
   /**

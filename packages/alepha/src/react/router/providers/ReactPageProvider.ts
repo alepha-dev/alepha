@@ -459,7 +459,7 @@ export class ReactPageProvider {
         // check if we need to redirect
         if (e instanceof Redirection) {
           return {
-            redirect: e.redirect,
+            redirect: e.data.redirect,
           };
         }
 
@@ -572,7 +572,7 @@ export class ReactPageProvider {
 
           if (element instanceof Redirection) {
             return {
-              redirect: element.redirect,
+              redirect: element.data.redirect,
             };
           }
 
@@ -597,7 +597,7 @@ export class ReactPageProvider {
         } catch (e) {
           if (e instanceof Redirection) {
             return {
-              redirect: e.redirect,
+              redirect: e.data.redirect,
             };
           }
           throw e;

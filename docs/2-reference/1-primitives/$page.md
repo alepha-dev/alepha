@@ -106,7 +106,7 @@ const projectSection = $page({
     return { project };
   },
   errorHandler: (error) => {
-    if (HttpError.is(error, 404)) {
+    if (isHttpError(error, 404)) {
       return <ProjectNotFound />;
     }
   }

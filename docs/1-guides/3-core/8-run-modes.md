@@ -245,9 +245,10 @@ class SyncCommands {
     env: z.object({ SYNC_TOKEN: z.text().optional() }),
     handler: async ({ env }) => {
       if (!env.SYNC_TOKEN) {
-        throw new CommandError("Not authenticated. Set SYNC_TOKEN.", {
-          exitCode: 3,
-        });
+        throw new CommandError(
+          { exitCode: 3 },
+          { message: "Not authenticated. Set SYNC_TOKEN." },
+        );
       }
     },
   });

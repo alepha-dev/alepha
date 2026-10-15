@@ -69,6 +69,6 @@ describe("ServerRouterProvider - log buffer", () => {
       reporter.breadcrumbs?.map((entry) => entry.context),
     );
 
-    expect(contexts).toEqual(new Set([body.requestId]));
+    expect(contexts).toEqual(new Set([body.data.requestId]));
   });
 });

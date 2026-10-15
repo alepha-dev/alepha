@@ -431,9 +431,10 @@ export class HttpClient {
   /**
    * Build the error for a 4xx/5xx response and emit `client:request:error`.
    *
-   * A JSON body in the framework's own error shape is decoded as such, into
-   * the class registered under its `error` code when there is one
-   * (`HttpError.fromJSON`); any
+   * A JSON body in the framework's own error shape (`{ name, message, data }`)
+   * is decoded as such, into the class registered under its `name` when there
+   * is one (`HttpError.fromJSON`), the response status filling `data.status`
+   * when the body omits it; any
    * other JSON (`{ "error": "invalid_grant" }` from a third party) keeps the
    * HTTP status and its best message instead of failing schema validation,
    * and a text body becomes the message, truncated.
@@ -446,25 +447,32 @@ export class HttpClient {
     if (contentType.startsWith("application/json")) {
       const json = await response.json().catch(() => undefined);
       const parsed = errorSchema.safeParse(json);
-      // A registered code (an `$error` constant, a built-in) rebuilds its
+      // A registered name (an `$error` constant, a built-in) rebuilds its
       // class, so `instanceof QuotaExceeded` holds here as on the server.
       error = parsed.success
-        ? HttpError.fromJSON(parsed.data)
-        : new HttpError({
-            status: response.status,
-            message: String(
-              json?.message ?? json?.error ?? response.statusText,
-            ),
-          });
+        ? HttpError.fromJSON({
+            ...parsed.data,
+            data: { status: response.status, ...parsed.data.data },
+          })
+        : new HttpError(
+            { status: response.status },
+            {
+              message: String(
+                json?.message ?? json?.error ?? response.statusText,
+              ),
+            },
+          );
     } else {
       const text = await response.text().catch(() => "");
       const snippet = text.replace(/\s+/g, " ").trim().slice(0, 200);
-      error = new HttpError({
-        status: response.status,
-        message:
-          snippet ||
-          `An error occurred while fetching the resource. (${response.statusText})`,
-      });
+      error = new HttpError(
+        { status: response.status },
+        {
+          message:
+            snippet ||
+            `An error occurred while fetching the resource. (${response.statusText})`,
+        },
+      );
     }
 
     await this.alepha.events.emit("client:request:error", { error });

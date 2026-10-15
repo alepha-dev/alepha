@@ -58,7 +58,7 @@ describe("ActionErrorToaster", () => {
       {
         type: "custom",
         id: "action",
-        error: new HttpError({ status, message }),
+        error: new HttpError({ status }, { message }),
       },
       { catch: true },
     );

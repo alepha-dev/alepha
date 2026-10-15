@@ -192,7 +192,9 @@ describe("$job — lease heartbeat", () => {
     // The row being gone or no longer `running` is the one case where there
     // is genuinely nothing left to renew.
     expect(
-      jobs.testShouldStopHeartbeat(new DbEntityNotFoundError("job_executions")),
+      jobs.testShouldStopHeartbeat(
+        new DbEntityNotFoundError({ entity: "job_executions" }),
+      ),
     ).toBe(true);
   });
 });

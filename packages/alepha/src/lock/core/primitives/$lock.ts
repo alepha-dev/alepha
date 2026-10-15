@@ -92,10 +92,10 @@ export const $lock = (options: LockMiddlewareOptions): Middleware => {
             );
             const [finalId] = final.split(",");
             if (finalId !== id) {
-              throw new LockAcquireError(name);
+              throw new LockAcquireError({ lock: name });
             }
           } else {
-            throw new LockAcquireError(name);
+            throw new LockAcquireError({ lock: name });
           }
         }
 

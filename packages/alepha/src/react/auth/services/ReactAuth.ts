@@ -133,16 +133,16 @@ export class ReactAuth {
       const href = `${window.location.origin}${alephaServerAuthRoutes.login}?provider=${provider}${realmParam}&redirect_uri=${encodeURIComponent(redirect)}`;
 
       if (browser.transitioning) {
-        throw new Redirection(href);
+        throw new Redirection({ redirect: href });
       } else {
         window.location.href = href;
         return {} as Tokens;
       }
     }
 
-    throw new Redirection(
-      `${alephaServerAuthRoutes.login}?provider=${provider}${realmParam}&redirect_uri=${options.redirect || "/"}`,
-    );
+    throw new Redirection({
+      redirect: `${alephaServerAuthRoutes.login}?provider=${provider}${realmParam}&redirect_uri=${options.redirect || "/"}`,
+    });
   }
 
   /**

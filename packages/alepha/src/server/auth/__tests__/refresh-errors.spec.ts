@@ -31,7 +31,7 @@ describe("security error statuses", () => {
   });
 
   it("InvalidPermissionError is a 403", () => {
-    const error = new InvalidPermissionError("bad name");
+    const error = new InvalidPermissionError({ permission: "bad name" });
     expect(error).toBeInstanceOf(ForbiddenError);
     expect(error.status).toBe(403);
   });

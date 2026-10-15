@@ -15,7 +15,6 @@ import { describe, expectTypeOf, it } from "vitest";
 
 import {
   $action,
-  $error,
   HttpError,
   type HttpErrorClass,
   InternalServerError,
@@ -23,10 +22,10 @@ import {
   ServerProvider,
 } from "../index.ts";
 
-const QuotaExceeded = $error({
-  code: "QuotaExceeded",
-  status: 409,
-  data: z.object({ limit: z.number() }),
+const QuotaExceeded = HttpError.extend({
+  name: "QUOTA_EXCEEDED",
+  default: { status: 409 },
+  schema: z.object({ limit: z.number() }),
 });
 
 class Api {
@@ -164,9 +163,8 @@ describe("$action errors", () => {
       const http = await call("declared");
       expect(http.status).toBe(409);
       expect(JSON.parse(http.body)).toMatchObject({
-        error: "QuotaExceeded",
-        status: 409,
-        data: { limit: 5 },
+        name: "QUOTA_EXCEEDED",
+        data: { status: 409, limit: 5 },
       });
     });
 
@@ -177,7 +175,7 @@ describe("$action errors", () => {
       const http = await call("builtin");
       expect(http.status).toBe(404);
       expect(JSON.parse(http.body)).toMatchObject({
-        error: "NotFoundError",
+        name: "NOT_FOUND",
         message: "No such project",
       });
       expect(warnings()).toEqual([]);
@@ -194,14 +192,14 @@ describe("$action errors", () => {
       expect(local).toBeInstanceOf(InternalServerError);
       expect((local as HttpError).status).toBe(500);
       expect((local as Error).cause).toBeInstanceOf(NotFoundError);
-      expect((local as Error).message).toBe("NotFoundError: No such project");
+      expect((local as Error).message).toBe("NOT_FOUND: No such project");
 
       const http = await call("undeclared");
       expect(http.status).toBe(500);
       expect(JSON.parse(http.body)).toMatchObject({
-        error: "InternalServerError",
-        status: 500,
-        message: "NotFoundError: No such project",
+        name: "INTERNAL_SERVER_ERROR",
+        message: "NOT_FOUND: No such project",
+        data: { status: 500 },
       });
     });
 
@@ -211,7 +209,7 @@ describe("$action errors", () => {
       const { api, warnings } = await start();
       await caught(() => api.undeclared());
       expect(warnings()).toEqual([
-        expect.stringContaining("'undeclared' threw NotFoundError"),
+        expect.stringContaining("'undeclared' threw NOT_FOUND"),
       ]);
     });
 

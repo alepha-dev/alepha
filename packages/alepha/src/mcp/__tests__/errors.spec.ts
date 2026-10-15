@@ -20,7 +20,7 @@ describe("McpError", () => {
 
   test("should have correct name", () => {
     const error = new McpError("Test error");
-    expect(error.name).toBe("McpError");
+    expect(error.name).toBe("MCP");
   });
 
   test("should have correct message", () => {
@@ -30,12 +30,12 @@ describe("McpError", () => {
 
   test("should default to INTERNAL_ERROR code", () => {
     const error = new McpError("Test error");
-    expect(error.code).toBe(JsonRpcErrorCodes.INTERNAL_ERROR);
+    expect(error.data.code).toBe(JsonRpcErrorCodes.INTERNAL_ERROR);
   });
 
   test("should accept custom error code", () => {
-    const error = new McpError("Test error", -32000);
-    expect(error.code).toBe(-32000);
+    const error = new McpError({ code: -32000 }, { message: "Test error" });
+    expect(error.data.code).toBe(-32000);
   });
 });
 
@@ -43,24 +43,24 @@ describe("McpError", () => {
 
 describe("McpMethodNotFoundError", () => {
   test("should be an instance of McpError", () => {
-    const error = new McpMethodNotFoundError("unknown/method");
+    const error = new McpMethodNotFoundError({ method: "unknown/method" });
     expect(error).toBeInstanceOf(McpError);
     expect(error).toBeInstanceOf(Error);
   });
 
   test("should have correct name", () => {
-    const error = new McpMethodNotFoundError("unknown/method");
-    expect(error.name).toBe("McpMethodNotFoundError");
+    const error = new McpMethodNotFoundError({ method: "unknown/method" });
+    expect(error.name).toBe("MCP_METHOD_NOT_FOUND");
   });
 
   test("should include method name in message", () => {
-    const error = new McpMethodNotFoundError("custom/method");
+    const error = new McpMethodNotFoundError({ method: "custom/method" });
     expect(error.message).toBe("Method not found: custom/method");
   });
 
   test("should have METHOD_NOT_FOUND code", () => {
-    const error = new McpMethodNotFoundError("test");
-    expect(error.code).toBe(JsonRpcErrorCodes.METHOD_NOT_FOUND);
+    const error = new McpMethodNotFoundError({ method: "test" });
+    expect(error.data.code).toBe(JsonRpcErrorCodes.METHOD_NOT_FOUND);
   });
 });
 
@@ -68,28 +68,28 @@ describe("McpMethodNotFoundError", () => {
 
 describe("McpToolNotFoundError", () => {
   test("should be an instance of McpError", () => {
-    const error = new McpToolNotFoundError("unknown-tool");
+    const error = new McpToolNotFoundError({ tool: "unknown-tool" });
     expect(error).toBeInstanceOf(McpError);
   });
 
   test("should have correct name", () => {
-    const error = new McpToolNotFoundError("test-tool");
-    expect(error.name).toBe("McpToolNotFoundError");
+    const error = new McpToolNotFoundError({ tool: "test-tool" });
+    expect(error.name).toBe("MCP_TOOL_NOT_FOUND");
   });
 
   test("should include tool name in message", () => {
-    const error = new McpToolNotFoundError("my-tool");
+    const error = new McpToolNotFoundError({ tool: "my-tool" });
     expect(error.message).toBe("Unknown tool: my-tool");
   });
 
   test("should store tool name as property", () => {
-    const error = new McpToolNotFoundError("calculator");
-    expect(error.tool).toBe("calculator");
+    const error = new McpToolNotFoundError({ tool: "calculator" });
+    expect(error.data.tool).toBe("calculator");
   });
 
   test("should have INVALID_PARAMS code", () => {
-    const error = new McpToolNotFoundError("test");
-    expect(error.code).toBe(JsonRpcErrorCodes.INVALID_PARAMS);
+    const error = new McpToolNotFoundError({ tool: "test" });
+    expect(error.data.code).toBe(JsonRpcErrorCodes.INVALID_PARAMS);
   });
 });
 
@@ -97,28 +97,28 @@ describe("McpToolNotFoundError", () => {
 
 describe("McpResourceNotFoundError", () => {
   test("should be an instance of McpError", () => {
-    const error = new McpResourceNotFoundError("file:///test");
+    const error = new McpResourceNotFoundError({ uri: "file:///test" });
     expect(error).toBeInstanceOf(McpError);
   });
 
   test("should have correct name", () => {
-    const error = new McpResourceNotFoundError("file:///test");
-    expect(error.name).toBe("McpResourceNotFoundError");
+    const error = new McpResourceNotFoundError({ uri: "file:///test" });
+    expect(error.name).toBe("MCP_RESOURCE_NOT_FOUND");
   });
 
   test("should include URI in message", () => {
-    const error = new McpResourceNotFoundError("config://app");
+    const error = new McpResourceNotFoundError({ uri: "config://app" });
     expect(error.message).toBe("Unknown resource: config://app");
   });
 
   test("should store URI as property", () => {
-    const error = new McpResourceNotFoundError("db://users/123");
-    expect(error.uri).toBe("db://users/123");
+    const error = new McpResourceNotFoundError({ uri: "db://users/123" });
+    expect(error.data.uri).toBe("db://users/123");
   });
 
   test("should have INVALID_PARAMS code", () => {
-    const error = new McpResourceNotFoundError("test://");
-    expect(error.code).toBe(JsonRpcErrorCodes.INVALID_PARAMS);
+    const error = new McpResourceNotFoundError({ uri: "test://" });
+    expect(error.data.code).toBe(JsonRpcErrorCodes.INVALID_PARAMS);
   });
 });
 
@@ -126,28 +126,28 @@ describe("McpResourceNotFoundError", () => {
 
 describe("McpPromptNotFoundError", () => {
   test("should be an instance of McpError", () => {
-    const error = new McpPromptNotFoundError("unknown-prompt");
+    const error = new McpPromptNotFoundError({ prompt: "unknown-prompt" });
     expect(error).toBeInstanceOf(McpError);
   });
 
   test("should have correct name", () => {
-    const error = new McpPromptNotFoundError("test-prompt");
-    expect(error.name).toBe("McpPromptNotFoundError");
+    const error = new McpPromptNotFoundError({ prompt: "test-prompt" });
+    expect(error.name).toBe("MCP_PROMPT_NOT_FOUND");
   });
 
   test("should include prompt name in message", () => {
-    const error = new McpPromptNotFoundError("greeting");
+    const error = new McpPromptNotFoundError({ prompt: "greeting" });
     expect(error.message).toBe("Unknown prompt: greeting");
   });
 
   test("should store prompt name as property", () => {
-    const error = new McpPromptNotFoundError("code-review");
-    expect(error.prompt).toBe("code-review");
+    const error = new McpPromptNotFoundError({ prompt: "code-review" });
+    expect(error.data.prompt).toBe("code-review");
   });
 
   test("should have INVALID_PARAMS code", () => {
-    const error = new McpPromptNotFoundError("test");
-    expect(error.code).toBe(JsonRpcErrorCodes.INVALID_PARAMS);
+    const error = new McpPromptNotFoundError({ prompt: "test" });
+    expect(error.data.code).toBe(JsonRpcErrorCodes.INVALID_PARAMS);
   });
 });
 
@@ -161,7 +161,7 @@ describe("McpInvalidParamsError", () => {
 
   test("should have correct name", () => {
     const error = new McpInvalidParamsError("test");
-    expect(error.name).toBe("McpInvalidParamsError");
+    expect(error.name).toBe("MCP_INVALID_PARAMS");
   });
 
   test("should have provided message", () => {
@@ -171,6 +171,6 @@ describe("McpInvalidParamsError", () => {
 
   test("should have INVALID_PARAMS code", () => {
     const error = new McpInvalidParamsError("test");
-    expect(error.code).toBe(JsonRpcErrorCodes.INVALID_PARAMS);
+    expect(error.data.code).toBe(JsonRpcErrorCodes.INVALID_PARAMS);
   });
 });

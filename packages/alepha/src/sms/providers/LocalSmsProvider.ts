@@ -76,7 +76,9 @@ export class LocalSmsProvider implements SmsProvider {
     } catch (error) {
       const message = `Failed to save SMS to local file: ${error instanceof Error ? error.message : String(error)}`;
       this.log.error(message, { to, directory: this.directory });
-      throw new SmsError(message, error instanceof Error ? error : undefined);
+      throw new SmsError(message, {
+        cause: error instanceof Error ? error : undefined,
+      });
     }
   }
 

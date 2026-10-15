@@ -138,7 +138,7 @@ export class RelationalRepository<
   ): Promise<Resolve<ZType, TMap, TKey, TArgs>> {
     const row = await this.findOne(query, options);
     if (!row) {
-      throw new DbEntityNotFoundError(this.base.tableName);
+      throw new DbEntityNotFoundError({ entity: this.base.tableName });
     }
     return row;
   }
@@ -175,7 +175,7 @@ export class RelationalRepository<
   ): Promise<Resolve<ZType, TMap, TKey, TArgs>> {
     const row = await this.findById(id, query, options);
     if (!row) {
-      throw new DbEntityNotFoundError(this.base.tableName);
+      throw new DbEntityNotFoundError({ entity: this.base.tableName });
     }
     return row;
   }

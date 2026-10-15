@@ -412,7 +412,7 @@ export class CliProvider {
     this.log.debug("Task failure detail", error);
 
     if (typeof process === "object") {
-      process.exitCode = error.exitCode ?? 1;
+      process.exitCode = error.data.exitCode ?? 1;
     }
   }
 
@@ -1006,7 +1006,7 @@ export class CliProvider {
     } catch (error) {
       if (error instanceof SchemaValidationError) {
         throw new UsageError(
-          `Invalid flag: ${error.cause.instancePath || "command"} ${error.cause.message}`,
+          `Invalid flag: ${error.data.path || "command"} ${error.data.message}`,
         );
       }
       throw error;
@@ -1064,7 +1064,7 @@ export class CliProvider {
     } catch (error) {
       if (error instanceof SchemaValidationError) {
         throw new UsageError(
-          `Invalid environment variable: ${error.cause.instancePath || "env"} ${error.cause.message}`,
+          `Invalid environment variable: ${error.data.path || "env"} ${error.data.message}`,
         );
       }
       throw error;
@@ -1592,7 +1592,7 @@ export class CliProvider {
       }
     } catch (error) {
       if (error instanceof SchemaValidationError) {
-        throw new UsageError(`Invalid argument: ${error.value.message}`);
+        throw new UsageError(`Invalid argument: ${error.data.message}`);
       }
       throw error;
     }

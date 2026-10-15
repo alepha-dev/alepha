@@ -228,8 +228,7 @@ describe("ActionErrorToaster and handled errors", () => {
 
     // The toast would read the error's own message, which is also what the
     // field renders here: so one element with that text means no toast.
-    const message =
-      "Invalid input: Invalid identifier or password, here at /password";
+    const message = "Invalid identifier or password, here";
     await waitFor(() =>
       expect(screen.getByTestId("password-error").textContent).toBe(message),
     );

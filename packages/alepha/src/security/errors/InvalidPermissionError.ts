@@ -1,3 +1,4 @@
+import { z } from "alepha";
 import { ForbiddenError } from "alepha/server";
 
 /**
@@ -7,8 +8,12 @@ import { ForbiddenError } from "alepha/server";
  * one ever reaches a response. In practice it is thrown while permissions and
  * roles are declared, so it fails the boot.
  */
-export class InvalidPermissionError extends ForbiddenError {
-  constructor(name: string) {
-    super(`Permission '${name}' is invalid`);
-  }
-}
+export const InvalidPermissionError = ForbiddenError.extend({
+  name: "INVALID_PERMISSION",
+  schema: z.object({ permission: z.text({ size: "long" }) }),
+  message: (data) => `Permission '${data.permission}' is invalid`,
+});
+
+export type InvalidPermissionError = InstanceType<
+  typeof InvalidPermissionError
+>;

@@ -373,7 +373,7 @@ describe("JsonRpcParseError", () => {
 
   test("should have correct name", () => {
     const error = new JsonRpcParseError("test");
-    expect(error.name).toBe("JsonRpcParseError");
+    expect(error.name).toBe("JSON_RPC_PARSE");
   });
 
   test("should have correct message", () => {

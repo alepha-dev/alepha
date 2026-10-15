@@ -49,6 +49,7 @@ export * from "./schemas/otaRollbackSchema.ts";
 export * from "./schemas/otaRolloutSchema.ts";
 export * from "./security/OtaPermissions.ts";
 export * from "./services/OtaAdminService.ts";
+export * from "./errors/OtaBundleError.ts";
 export * from "./services/OtaBundleInspector.ts";
 export * from "./services/OtaDownloadLinks.ts";
 export * from "./services/OtaPublishService.ts";

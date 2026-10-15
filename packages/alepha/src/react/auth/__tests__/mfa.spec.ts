@@ -124,7 +124,11 @@ describe("alepha/react/auth - second factor", () => {
   }) => {
     expect(new Error("boom")).not.toBeInstanceOf(MfaRequiredError);
     expect(
-      new HttpError({ status: 401, error: "MfaRequiredError" }),
+      HttpError.fromJSON({
+        name: "MFA_REQUIRED",
+        message: "no challenge data",
+        data: { status: 401 },
+      }),
     ).not.toBeInstanceOf(MfaRequiredError);
   });
 });

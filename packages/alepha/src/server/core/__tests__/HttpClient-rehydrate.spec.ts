@@ -3,20 +3,19 @@ import { describe, expectTypeOf, it } from "vitest";
 
 import {
   $action,
-  $error,
-  $route,
   type ActionErrors,
   HttpClient,
   HttpError,
   InternalServerError,
   NotFoundError,
+  $route,
   ServerProvider,
 } from "../index.ts";
 
-const QuotaExceeded = $error({
-  code: "QuotaExceeded",
-  status: 409,
-  data: z.object({ limit: z.number(), used: z.number() }),
+const QuotaExceeded = HttpError.extend({
+  name: "QUOTA_EXCEEDED",
+  default: { status: 409 },
+  schema: z.object({ limit: z.number(), used: z.number() }),
 });
 
 class Api {
@@ -41,7 +40,7 @@ class Api {
   teapot = $route({
     path: "/teapot",
     handler: () => {
-      throw new HttpError({ status: 418, message: "I am a teapot" });
+      throw new HttpError({ status: 418 }, { message: "I am a teapot" });
     },
   });
 
@@ -51,7 +50,7 @@ class Api {
       reply.setStatus(409);
       reply.setHeader("content-type", "application/json");
       return JSON.stringify({
-        error: "QuotaExceeded",
+        name: "QUOTA_EXCEEDED",
         status: 409,
         message: "Conflict",
         data: { limit: "five" },
@@ -91,7 +90,7 @@ describe("HttpClient error rehydration", () => {
     if (!(error instanceof QuotaExceeded)) return;
     expect(error.status).toBe(409);
     expect(error.message).toBe("Over quota");
-    expect(error.data).toEqual({ limit: 5, used: 6 });
+    expect(error.data).toMatchObject({ status: 409, limit: 5, used: 6 });
   });
 
   it("rebuilds a built-in class", async ({ expect }) => {
@@ -121,14 +120,19 @@ describe("HttpClient error rehydration", () => {
     expect(error).not.toBeInstanceOf(QuotaExceeded);
     expect((error as Error).constructor).toBe(HttpError);
     expect((error as HttpError).status).toBe(409);
-    expect((error as HttpError).data).toEqual({ limit: "five" });
+    expect((error as HttpError).data).toEqual({ status: 409, limit: "five" });
   });
 
   it("types ActionErrors as the declared union plus InternalServerError", () => {
     const api = Alepha.create().with(Api).inject(Api);
 
     expectTypeOf<ActionErrors<typeof api.createProject>>().toEqualTypeOf<
-      InstanceType<typeof QuotaExceeded> | NotFoundError | InternalServerError
+      InstanceType<typeof QuotaExceeded> | NotFoundError
+    >();
+    // Its own member, though it collapses into NotFoundError above: two
+    // HTTP errors with the same data have the same instance type.
+    expectTypeOf<InternalServerError>().toExtend<
+      ActionErrors<typeof api.createProject>
     >();
     expectTypeOf<ActionErrors<typeof api.loose>>().toEqualTypeOf<HttpError>();
   });

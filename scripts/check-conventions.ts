@@ -1650,4 +1650,55 @@ if (hookViolations.length) {
   process.exit(1);
 }
 
+/**
+ * Errors are declared with `$error`, never written as classes.
+ *
+ * `$error({ name, schema })` and `.extend({ ... })` build the classes, so a
+ * declared error is a constant the registry knows by name: the browser
+ * rebuilds it from a response body, and `instanceof` holds on both sides. A
+ * hand-written `class X extends HttpError` is invisible to that registry and
+ * comes back as a plain error. The two bases themselves (`AlephaError`, the
+ * generic error, and `DeclaredError`, the root `$error` extends) are the only
+ * classes allowed. Specs may still throw a local `class Rollback extends
+ * Error` as control flow.
+ */
+const ERROR_CLASS_ALLOWED = new Set([
+  "packages/alepha/src/core/errors/AlephaError.ts",
+  "packages/alepha/src/core/errors/DeclaredError.ts",
+]);
+const errorClassViolations = execFileSync(
+  "git",
+  [
+    "ls-files",
+    "packages/**/*.ts",
+    "packages/**/*.tsx",
+    "apps/**/*.ts",
+    "apps/**/*.tsx",
+  ],
+  { encoding: "utf8" },
+)
+  .split("\n")
+  .filter(Boolean)
+  .filter((file) => !ERROR_CLASS_ALLOWED.has(file))
+  .filter((file) => !/__tests__|\.spec\.|\/e2e\//.test(file))
+  .flatMap((file) => {
+    const lines = stripLiterals(readFileSync(file, "utf8")).split("\n");
+    return lines.flatMap((line, index) =>
+      /\bclass\s+\w+\s+extends\s+[\w.]*Error\b/.test(line)
+        ? [`  ${file}:${index + 1}\n    → ${line.trim().slice(0, 72)}`]
+        : [],
+    );
+  });
+
+if (errorClassViolations.length > 0) {
+  console.error(
+    `\n${errorClassViolations.length} error class violation(s):\n\n` +
+      `${errorClassViolations.join("\n")}\n\n` +
+      "Declare an error with $error({ name, schema }), or derive one with\n" +
+      "Parent.extend({ name, ... }). An error class is invisible to the\n" +
+      "registry the browser rebuilds errors from.\n",
+  );
+  process.exit(1);
+}
+
 console.log("conventions OK");

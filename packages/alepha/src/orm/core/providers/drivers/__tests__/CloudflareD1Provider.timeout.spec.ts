@@ -132,7 +132,7 @@ describe("CloudflareD1Provider timeout", () => {
         throw new AlephaError("expected the query to be abandoned");
       },
       (error: unknown) => {
-        expect(DbTimeoutError.from(error)).toBeInstanceOf(DbTimeoutError);
+        expect(DbTimeoutError.find(error)).toBeInstanceOf(DbTimeoutError);
         expect((error as DbTimeoutError).status).toBe(503);
       },
     );

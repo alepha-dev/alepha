@@ -498,13 +498,15 @@ export class FormModel<T extends ZObject> {
         coerceObject(schema, values),
       ) as Record<string, any>;
     } catch (error) {
-      if (
-        error instanceof SchemaValidationError &&
-        !(error instanceof FormValidationError)
-      ) {
+      // Already a form refusal: let it through as is. Checked first, since a
+      // FormValidationError is a SchemaValidationError too.
+      if (error instanceof FormValidationError) {
+        throw error;
+      }
+      if (error instanceof SchemaValidationError) {
         throw new FormValidationError({
-          message: error.value.message,
-          path: error.value.path,
+          message: error.data.message,
+          path: error.data.path,
         });
       }
       throw error;

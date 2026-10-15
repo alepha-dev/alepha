@@ -124,7 +124,7 @@ export class ReactServerErrorProvider {
     // A page's `errorHandler` may answer a failure with a redirect rather than
     // a render. Legal here, unlike mid-stream: nothing has been flushed.
     if (element instanceof Redirection) {
-      reply.redirect(element.redirect);
+      reply.redirect(element.data.redirect);
       return;
     }
 

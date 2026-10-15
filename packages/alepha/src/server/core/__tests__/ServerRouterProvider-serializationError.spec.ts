@@ -41,7 +41,7 @@ describe("ServerRouterProvider - response serialization error", () => {
       const json = await response.json();
 
       expect(response.status).toBe(500);
-      expect(json.error).toBe("InternalServerError");
+      expect(json.name).toBe("INTERNAL_SERVER_ERROR");
       expect(json.message).toBe("Internal Server Error");
 
       // payload from the handler must not leak through the error
@@ -66,7 +66,7 @@ describe("ServerRouterProvider - response serialization error", () => {
       const json = await response.json();
 
       expect(response.status).toBe(500);
-      expect(json.error).toBe("InternalServerError");
+      expect(json.name).toBe("INTERNAL_SERVER_ERROR");
 
       // dev mode must surface enough context to debug the schema mismatch
       expect(json.message).not.toBe("Internal Server Error");

@@ -86,11 +86,11 @@ describe("ServerRouterProvider - request validation error", () => {
       }));
 
       expect(response.status).toBe(400);
-      expect(json.error).toBe("ValidationError");
+      expect(json.name).toBe("VALIDATION_FAILED");
       expect(json.message).toMatch(/^Invalid request body:/);
       expect(json.message.toLowerCase()).toMatch(/integer|expected/);
       // path locates the offending field
-      expect(json.details).toBe("/age");
+      expect(json.data.details).toBe("/age");
     });
 
     it("should expose a missing-field rejection (required property `age`)", async ({
@@ -114,7 +114,7 @@ describe("ServerRouterProvider - request validation error", () => {
       }));
 
       expect(response.status).toBe(400);
-      expect(json.error).toBe("ValidationError");
+      expect(json.name).toBe("VALIDATION_FAILED");
       expect(json.message).toMatch(/^Invalid request body:/);
       // message must name the missing field
       expect(json.message).toContain("age");
@@ -134,7 +134,7 @@ describe("ServerRouterProvider - request validation error", () => {
       }));
 
       expect(response.status).toBe(400);
-      expect(json.error).toBe("ValidationError");
+      expect(json.name).toBe("VALIDATION_FAILED");
       expect(json.message).toMatch(/^Invalid request body:/);
       expect(json.message.toLowerCase()).toMatch(/age|required/);
     });
@@ -157,7 +157,7 @@ describe("ServerRouterProvider - request validation error", () => {
       }));
 
       expect(response.status).toBe(400);
-      expect(json.error).toBe("ValidationError");
+      expect(json.name).toBe("VALIDATION_FAILED");
       expect(json.message).toMatch(/^Invalid request params:/);
       expect(json.message.toLowerCase()).toMatch(/integer|number|expected/);
     });
@@ -180,7 +180,7 @@ describe("ServerRouterProvider - request validation error", () => {
       }));
 
       expect(response.status).toBe(400);
-      expect(json.error).toBe("ValidationError");
+      expect(json.name).toBe("VALIDATION_FAILED");
       expect(json.message).toMatch(/^Invalid request query:/);
       expect(json.message.toLowerCase()).toMatch(/maximum|less|<=|100/);
     });
@@ -203,7 +203,7 @@ describe("ServerRouterProvider - request validation error", () => {
       }));
 
       expect(response.status).toBe(400);
-      expect(json.error).toBe("ValidationError");
+      expect(json.name).toBe("VALIDATION_FAILED");
       expect(json.message).toMatch(/^Invalid request query:/);
       expect(json.message).toContain("limit");
     });
@@ -227,7 +227,7 @@ describe("ServerRouterProvider - request validation error", () => {
       }));
 
       expect(response.status).toBe(400);
-      expect(json.error).toBe("ValidationError");
+      expect(json.name).toBe("VALIDATION_FAILED");
       expect(json.message).toMatch(/^Invalid request header:/);
       expect(json.message.toLowerCase()).toMatch(/x-api-version|required/);
     });

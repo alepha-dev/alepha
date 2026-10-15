@@ -438,13 +438,14 @@ Use `errorHandler` to catch loader or rendering errors. Return a ReactNode for a
 
 ```typescript
 import { Redirection } from "alepha/react/router";
+import { isHttpError } from "alepha/server";
 
 errorHandler: (error) => {
-  if (HttpError.is(error, 404)) {
+  if (isHttpError(error, 404)) {
     return <NotFound />;
   }
-  if (HttpError.is(error, 401)) {
-    return new Redirection("/login");
+  if (isHttpError(error, 401)) {
+    return new Redirection({ redirect: "/login" });
   }
 }
 ```

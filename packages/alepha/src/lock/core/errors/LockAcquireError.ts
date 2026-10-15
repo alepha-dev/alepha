@@ -1,7 +1,12 @@
-import { AlephaError } from "alepha";
+import { $error, z } from "alepha";
 
-export class LockAcquireError extends AlephaError {
-  constructor(name: string) {
-    super(`$lock: could not acquire lock '${name}'`);
-  }
-}
+/**
+ * A `$lock` that could not be acquired in time.
+ */
+export const LockAcquireError = $error({
+  name: "LOCK_ACQUIRE",
+  schema: z.object({ lock: z.text() }),
+  message: (data) => `$lock: could not acquire lock '${data.lock}'`,
+});
+
+export type LockAcquireError = InstanceType<typeof LockAcquireError>;

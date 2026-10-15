@@ -16,7 +16,7 @@ class App {
   secret = $page({
     path: "/secret",
     loader: () => {
-      throw new Redirection("/login");
+      throw new Redirection({ redirect: "/login" });
     },
     component: () => <p>secret</p>,
   });

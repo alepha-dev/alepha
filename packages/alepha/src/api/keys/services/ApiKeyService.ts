@@ -713,7 +713,7 @@ export class ApiKeyService {
       return await this.repo.getById(id);
     } catch (error) {
       if (error instanceof DbEntityNotFoundError) {
-        throw new NotFoundError("API key was not found", error);
+        throw new NotFoundError("API key was not found", { cause: error });
       }
       throw error;
     }

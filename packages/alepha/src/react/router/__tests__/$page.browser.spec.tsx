@@ -223,7 +223,7 @@ describe("$page browser tests", () => {
           },
           errorHandler: (error) => {
             if (error.message === "Unauthorized") {
-              return new Redirection("/login");
+              return new Redirection({ redirect: "/login" });
             }
             return undefined;
           },

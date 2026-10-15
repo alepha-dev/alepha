@@ -279,10 +279,10 @@ export class ToolPrimitive<T extends ToolPrimitiveSchema> extends Primitive<
         ) as ToolHandlerResult<T>;
       } catch (error) {
         if (error instanceof SchemaValidationError) {
-          throw new McpToolOutputError(
-            this.name,
-            `at ${error.value?.path || "/"}: ${error.value?.message || error.message}`,
-          );
+          throw new McpToolOutputError({
+            tool: this.name,
+            detail: `at ${error.data.path || "/"}: ${error.data.message || error.message}`,
+          });
         }
         throw error;
       }

@@ -1,79 +1,72 @@
 # Typed errors
 
-A `$action` can declare the errors it answers with. Declared errors are part of its contract: they reach the client with their status and a typed `data` payload, they appear in the OpenAPI document, and the browser rebuilds them so `instanceof` works there too. Anything else the handler throws is a bug, and answers a `500` like any other crash.
+Every error in Alepha is declared with `$error`: a name, and a schema for the data it carries. A `$action` can declare the errors it answers with. Declared errors are part of its contract: they reach the client with their status and typed `data`, they appear in the OpenAPI document, and the browser rebuilds them so `instanceof` works there too. Anything else the handler throws is a bug, and answers a `500` like any other crash.
 
 This is opt-in, per action. An action without `errors` behaves as described in [Error Handling](/docs/guides-server-error-handling).
 
 ## Declaring an error
 
-`$error` returns an `HttpError` subclass. Declare it once, at module level, in a file the browser can load (it imports nothing server-only):
+`$error` returns a class, declared once at module level like `$atom`. It is not tied to HTTP: the CLI, the ORM and the job runner declare theirs the same way.
 
 ```typescript check
-// src/errors/QuotaExceeded.ts
-import { z } from "alepha";
-import { $error } from "alepha/server";
+import { $error, z } from "alepha";
 
 export const QuotaExceeded = $error({
-  code: "QuotaExceeded",
-  status: 409,
-  data: z.object({ limit: z.number(), used: z.number() }),
+  name: "QUOTA_EXCEEDED",
+  schema: z.object({ limit: z.number(), used: z.number() }),
+  default: { limit: 5 },
+  message: (data) => `Quota of ${data.limit} exceeded`,
 });
 
 // Optional: a name for function signatures.
 export type QuotaExceeded = InstanceType<typeof QuotaExceeded>;
 
-export const ProjectArchived = $error({
-  code: "ProjectArchived",
-  status: 409,
-  message: "This project is archived",
-});
+throw new QuotaExceeded({ used: 6 }); // `limit` has a default
 ```
 
-- `code` is required. It is what the `error` field of the JSON body carries, so write it in PascalCase and make it equal to the constant's name, the same vocabulary as the built-in `"NotFoundError"`. The factory cannot see the constant's name, so it has to be spelled out.
-- `status` is the HTTP status it answers with.
-- `data` is an optional `z.object` schema. With one, the constructor takes the payload first and it is type-checked; without one, every argument is optional.
-- `message` is the default message. Without it, the status text (`"Conflict"`).
+- `name` is required, SCREAMING_SNAKE, and unique. It is the error's `Error.name` and its identity on the wire.
+- `schema` types `data`. `default` makes the keys it covers optional when constructing.
+- `message` is the default message: a string, or a function of the data. Without one, the parent's, else the name.
+- The constructor is `(data, { message?, cause? })`. When every data key is optional, `new X("message", { cause })` works as it does for `Error`.
 
-## Throwing it
+## Deriving errors
 
-Any layer can throw it. A service needs no reference to the action that will answer:
+`.extend` derives a real subclass: `instanceof` the parent holds, its schema is merged into the parent's and its defaults over the parent's. An HTTP error is an error derived from `HttpError`, whose schema carries the `status`:
 
 ```typescript check
 import { z } from "alepha";
-import { $error } from "alepha/server";
+import { HttpError, NotFoundError } from "alepha/server";
 
-const QuotaExceeded = $error({
-  code: "QuotaExceeded",
-  status: 409,
-  data: z.object({ limit: z.number(), used: z.number() }),
+export const ProjectQuotaExceeded = HttpError.extend({
+  name: "PROJECT_QUOTA_EXCEEDED",
+  default: { status: 409 },
+  schema: z.object({ limit: z.number(), used: z.number() }),
 });
 
-class ProjectService {
-  async create(used: number) {
-    if (used >= 5) {
-      throw new QuotaExceeded({ limit: 5, used });
-    }
-    // A message or a cause of your own goes last.
-    throw new QuotaExceeded(
-      { limit: 5, used },
-      { message: "Upgrade to create more projects" },
-    );
-  }
-}
+export const ProjectNotFound = NotFoundError.extend({
+  name: "PROJECT_NOT_FOUND",
+  message: "No such project",
+});
+
+const error = new ProjectQuotaExceeded({ limit: 5, used: 6 });
+error.status; // 409, a shortcut for error.data.status
+error instanceof HttpError; // true
 ```
 
-## Declaring it on an action
+Any layer can throw them; a service needs no reference to the action that will answer.
 
-`errors` lists what the handler may throw: `$error` constants and built-in classes (`NotFoundError`, `ForbiddenError`, ...) alike.
+## Declaring them on an action
+
+`errors` lists what the handler may throw: errors derived from `HttpError`, the built-in ones included.
 
 ```typescript check
 import { $inject, z } from "alepha";
-import { $action, $error, NotFoundError } from "alepha/server";
+import { $action, HttpError, NotFoundError } from "alepha/server";
 
-const QuotaExceeded = $error({
-  code: "QuotaExceeded",
-  status: 409,
-  data: z.object({ limit: z.number(), used: z.number() }),
+const ProjectQuotaExceeded = HttpError.extend({
+  name: "PROJECT_QUOTA_EXCEEDED",
+  default: { status: 409 },
+  schema: z.object({ limit: z.number(), used: z.number() }),
 });
 
 class ProjectService {
@@ -86,7 +79,7 @@ class ProjectController {
   projects = $inject(ProjectService);
 
   createProject = $action({
-    errors: [QuotaExceeded, NotFoundError],
+    errors: [ProjectQuotaExceeded, NotFoundError],
     schema: {
       body: z.object({ name: z.text() }),
       response: z.object({ id: z.text() }),
@@ -98,8 +91,8 @@ class ProjectController {
 
 Setting `errors` turns on strict mode for that action:
 
-- An error matching a declared class (`instanceof`) reaches the client with its status and `data`.
-- **Anything else becomes a `500 InternalServerError`**, including an undeclared `HttpError` such as a `NotFoundError` the list forgot. In production the body is byte for byte the one any other crash answers: no message, no cause. Outside production the message passes through, prefixed with the class name. Either way a warning names the action and the class: `'createProject' threw NotFoundError, which it does not declare`.
+- An error matching a declared class (`instanceof`, so a declared parent admits its children) reaches the client with its status and `data`.
+- **Anything else becomes a `500 InternalServerError`**, including an undeclared `HttpError` such as a `NotFoundError` the list forgot. In production the body is byte for byte the one any other crash answers: no message, no cause. Outside production the message passes through, prefixed with the error's name. Either way a warning names the action and the error: `'createProject' threw NOT_FOUND, which it does not declare`.
 - `errors: []` is strict too: nothing is expected.
 - Omitting `errors` changes nothing: any `HttpError` passes with its status, as before.
 
@@ -116,28 +109,17 @@ Only what the handler, and the services it calls, throw is filtered. The framewo
 
 Any `use` middleware is outside the filter, and so is any error carrying a `503` (in itself or in its cause chain): a timeout tells the caller to retry, it is never a contract violation.
 
-⚠️ A repository lookup that misses throws `DbEntityNotFoundError`, which carries a 404 but is not an `HttpError`, so strict mode turns it into a 500. Translate it where you look the row up:
-
-```typescript
-try {
-  return await this.repo.getById(id);
-} catch (error) {
-  if (error instanceof DbEntityNotFoundError) {
-    throw new NotFoundError("Project not found", error);
-  }
-  throw error;
-}
-```
+The ORM's errors are HTTP errors too, so a strict action declares them like any other: `DbEntityNotFoundError` (404) for a lookup by id that missed, `DbConflictError` (409) for a unique constraint.
 
 ## OpenAPI
 
-A strict action's operation documents every declared error under its status, with `error` fixed to its code and `data` typed by its schema (two errors on one status become a `oneOf`), the responses its middlewares declare (`401`, `403`, `429`), `400` when it validates input, and the `500`. Actions without `errors` are documented as before. See [OpenAPI](/docs/guides-server-openapi).
+A strict action's operation documents every declared error under its default status, with `name` fixed and `data` typed by its schema (two errors on one status become a `oneOf`), the responses its middlewares declare (`401`, `403`, `429`), `400` when it validates input, and the `500`. Actions without `errors` are documented as before. See [OpenAPI](/docs/guides-server-openapi).
 
 A middleware of your own documents its responses by setting the `MIDDLEWARE_RESPONSES` meta key to a comma-separated list of statuses.
 
 ## Branching in React
 
-`HttpClient` rebuilds any error whose code is registered, and an `$error` constant registers itself when its module is imported. A page that writes `instanceof QuotaExceeded` has imported it, so the check holds in the browser:
+Every declared error registers under its name when its module is imported, and `HttpClient` rebuilds the registered class from the response body (`{ name, message, data }`). A page that writes `instanceof ProjectQuotaExceeded` has imported it, so the check holds in the browser:
 
 ```tsx
 import { useAction } from "alepha/react";
@@ -145,8 +127,8 @@ import { useAction } from "alepha/react";
 const create = useAction({
   handler: (_ctx, name: string) => api.createProject({ body: { name } }),
   onError: (error) => {
-    if (error instanceof QuotaExceeded) {
-      // error.data is { limit: number; used: number }
+    if (error instanceof ProjectQuotaExceeded) {
+      // error.data is { status: number; limit: number; used: number; ... }
       openUpgradeDialog(error.data.limit);
     }
   },
@@ -155,9 +137,17 @@ const create = useAction({
 
 `RunResult`'s error stays `Error`; `instanceof` is what narrows it, on `result.error` as in `onError`. An `onError` marks the failure handled, so the app's `ActionErrorToaster` stays quiet.
 
-Built-in classes rebuild too: a `404` from the framework is a `NotFoundError` in the browser. A code nothing registered, or `data` failing its schema, stays a plain `HttpError`.
+Built-in errors rebuild too: a `404` from the framework is a `NotFoundError` in the browser. A name nothing registered, or `data` failing its schema, stays a plain `HttpError`.
 
-Where a function needs the whole union an action may reject with, `ActionErrors<typeof action>` names it: the declared classes plus `InternalServerError`.
+Where a function needs the whole union an action may reject with, `ActionErrors<typeof action>` names it: the declared errors plus `InternalServerError`.
+
+## Finding an error under another
+
+A library may wrap an error: drizzle demotes the driver's error to `cause` and throws its own. `X.find(error)` returns the `X` in an error or its cause chain:
+
+```typescript
+const timeout = DbTimeoutError.find(error);
+```
 
 ## The one limit
 

@@ -21,6 +21,7 @@ export * from "./providers/SqlExpressionProvider.ts";
 export * from "./schemas/databaseEnvSchema.ts";
 export * from "./schemas/insertSchema.ts";
 export * from "./schemas/updateSchema.ts";
+export * from "./services/DbErrorParser.ts";
 export * from "./services/ModelBuilder.ts";
 export * from "./services/RelationalRepository.ts";
 export * from "./services/Repository.ts";

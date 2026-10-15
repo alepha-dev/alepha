@@ -200,10 +200,10 @@ export class CredentialService {
       // An outage answers 503: a silent "success" would lie to a real user,
       // and a 503 says nothing about the address.
       if (attempt.reason === "store" && !attempt.allowed)
-        throw new HttpError({
-          status: 503,
-          message: "Password reset is temporarily unavailable",
-        });
+        throw new HttpError(
+          { status: 503 },
+          { message: "Password reset is temporarily unavailable" },
+        );
       if (!attempt.allowed) {
         this.log.warn("Password reset rate limit exceeded", { ip: request.ip });
         // Same shape as the success path: never reveal whether the address
@@ -349,18 +349,20 @@ export class CredentialService {
     if (request?.ip) {
       const attempt = await this.completeIp.consume(request.ip);
       if (attempt.reason === "store" && !attempt.allowed)
-        throw new HttpError({
-          status: 503,
-          message: "Password reset is temporarily unavailable",
-        });
+        throw new HttpError(
+          { status: 503 },
+          { message: "Password reset is temporarily unavailable" },
+        );
       if (!attempt.allowed) {
         this.log.warn("Password reset completion rate limit exceeded", {
           ip: request.ip,
         });
-        throw new HttpError({
-          status: 429,
-          message: "Too many password reset attempts, please try again later",
-        });
+        throw new HttpError(
+          { status: 429 },
+          {
+            message: "Too many password reset attempts, please try again later",
+          },
+        );
       }
     }
 
@@ -370,10 +372,10 @@ export class CredentialService {
       this.log.warn("Invalid or expired password reset intent", {
         intentId: body.intentId,
       });
-      throw new HttpError({
-        status: 410,
-        message: "Invalid or expired password reset intent",
-      });
+      throw new HttpError(
+        { status: 410 },
+        { message: "Invalid or expired password reset intent" },
+      );
     }
 
     // Validate password against realm policy before consuming the verification code

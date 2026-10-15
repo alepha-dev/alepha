@@ -216,7 +216,7 @@ export class AppRouter {
     schema: { params: z.object({ slug: z.text({ minLength: 1 }) }) },
     stream: false,
     loader: async ({ params }) => {
-      throw new Redirection(`/produit/${params.slug}`);
+      throw new Redirection({ redirect: `/produit/${params.slug}` });
     },
     lazy: () => import("./pages/Produit.tsx"),
   });

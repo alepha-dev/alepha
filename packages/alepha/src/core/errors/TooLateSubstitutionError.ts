@@ -1,11 +1,16 @@
-import { AlephaError } from "./AlephaError.ts";
+import { $error } from "../primitives/$error.ts";
+import { z } from "../providers/ZodProvider.ts";
 
-export class TooLateSubstitutionError extends AlephaError {
-  readonly name = "TooLateSubstitutionError";
+/**
+ * A substitution for a service that has already been built.
+ */
+export const TooLateSubstitutionError = $error({
+  name: "TOO_LATE_SUBSTITUTION",
+  schema: z.object({ original: z.text(), substitution: z.text() }),
+  message: (data) =>
+    `Service already substituted. Please, substitute Service '${data.original}' with Service '${data.substitution}' before using it.`,
+});
 
-  constructor(original: string, substitution: string) {
-    super(
-      `Service already substituted. Please, substitute Service '${original}' with Service '${substitution}' before using it.`,
-    );
-  }
-}
+export type TooLateSubstitutionError = InstanceType<
+  typeof TooLateSubstitutionError
+>;

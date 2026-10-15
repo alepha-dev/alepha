@@ -25,6 +25,7 @@ and providing a unified interface for the application.
 - [`$atom`](/docs/reference-primitives-$atom) - Define an atom for state management.
 - [`$computed`](/docs/reference-primitives-$computed) - Define a derived, read-only value computed from one or more atoms
 - [`$env`](/docs/reference-primitives-$env) - Get typed values from environment variables.
+- [`$error`](/docs/reference-primitives-$error) - Declares an error: a name, and a schema for the data it carries.
 - [`$hook`](/docs/reference-primitives-$hook) - Registers a new hook.
 - [`$inject`](/docs/reference-primitives-$inject) - Get the instance of the specified type from the context.
 - [`$mode`](/docs/reference-primitives-$mode) - Activate a selective bootstrap mode.

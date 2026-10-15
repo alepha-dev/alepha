@@ -2,15 +2,20 @@ import { Alepha, type Middleware, z } from "alepha";
 import { OPTIONS } from "alepha/internal";
 import { $rateLimit } from "alepha/rate-limit";
 import { $secure, AlephaSecurity } from "alepha/security";
-import { $action, $error, ConflictError, NotFoundError } from "alepha/server";
+import {
+  $action,
+  ConflictError,
+  HttpError,
+  NotFoundError,
+} from "alepha/server";
 import { describe, it } from "vitest";
 
 import { ServerSwaggerProvider } from "../index.ts";
 
-const QuotaExceeded = $error({
-  code: "QuotaExceeded",
-  status: 409,
-  data: z.object({ limit: z.number(), used: z.number() }),
+const QuotaExceeded = HttpError.extend({
+  name: "QUOTA_EXCEEDED",
+  default: { status: 409 },
+  schema: z.object({ limit: z.number(), used: z.number() }),
 });
 
 class Api {
@@ -93,42 +98,44 @@ describe("ServerSwaggerProvider - declared errors", () => {
       description: "Conflict",
       content: {
         "application/json": {
-          schema: { $ref: "#/components/schemas/QuotaExceeded" },
+          schema: { $ref: "#/components/schemas/QUOTA_EXCEEDED" },
         },
       },
     });
     expect(op.responses["404"].content["application/json"].schema).toEqual({
-      $ref: "#/components/schemas/NotFoundError",
+      $ref: "#/components/schemas/NOT_FOUND",
     });
     expect(op.responses["500"]).toEqual({
       description: "Internal Server Error",
       content: {
         "application/json": {
-          schema: { $ref: "#/components/schemas/InternalServerError" },
+          schema: { $ref: "#/components/schemas/INTERNAL_SERVER_ERROR" },
         },
       },
     });
 
-    const quota = json.components!.schemas!.QuotaExceeded as any;
-    expect(quota.properties.error).toMatchObject({ const: "QuotaExceeded" });
+    const quota = json.components!.schemas!.QUOTA_EXCEEDED as any;
+    expect(quota.properties.name).toMatchObject({ const: "QUOTA_EXCEEDED" });
     expect(quota.properties.data).toMatchObject({
       type: "object",
       properties: { limit: { type: "number" }, used: { type: "number" } },
     });
     expect(quota.required).toEqual(
-      expect.arrayContaining(["error", "status", "message", "data"]),
+      expect.arrayContaining(["name", "message", "data"]),
     );
-    const notFound = json.components!.schemas!.NotFoundError as any;
-    expect(notFound.properties.error).toMatchObject({ const: "NotFoundError" });
-    expect(notFound.properties.data).toBeUndefined();
+    const notFound = json.components!.schemas!.NOT_FOUND as any;
+    expect(notFound.properties.name).toMatchObject({ const: "NOT_FOUND" });
+    expect(notFound.properties.data).toMatchObject({
+      properties: { status: { type: "integer" } },
+    });
   });
 
   it("renders two errors on one status as oneOf", ({ expect }) => {
     const op = generate().paths["/api/sharedStatus"].get;
     expect(op.responses["409"].content["application/json"].schema).toEqual({
       oneOf: [
-        { $ref: "#/components/schemas/QuotaExceeded" },
-        { $ref: "#/components/schemas/ConflictError" },
+        { $ref: "#/components/schemas/QUOTA_EXCEEDED" },
+        { $ref: "#/components/schemas/CONFLICT" },
       ],
     });
   });

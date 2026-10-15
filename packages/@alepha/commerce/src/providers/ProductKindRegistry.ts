@@ -35,7 +35,7 @@ export class ProductKindRegistry {
    */
   public add(handler: ProductKindHandler): void {
     if (this.handlers.has(handler.kind)) {
-      throw new DuplicateProductKindError(handler.kind);
+      throw new DuplicateProductKindError({ kind: handler.kind });
     }
     this.handlers.set(handler.kind, handler);
   }
@@ -47,7 +47,7 @@ export class ProductKindRegistry {
   public get(kind: string): ProductKindHandler {
     const handler = this.handlers.get(kind);
     if (!handler) {
-      throw new UnknownProductKindError(kind, this.kinds());
+      throw new UnknownProductKindError({ kind, known: this.kinds() });
     }
     return handler;
   }

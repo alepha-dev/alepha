@@ -1,22 +1,12 @@
 import { HttpError } from "./HttpError.ts";
 
-export class NotFoundError extends HttpError {
-  static readonly code = "NotFoundError";
-  static readonly status = 404;
+/**
+ * The resource does not exist.
+ */
+export const NotFoundError = HttpError.extend({
+  name: "NOT_FOUND",
+  default: { status: 404 },
+  message: "Resource not found",
+});
 
-  static {
-    HttpError.register(this);
-  }
-
-  readonly name = "NotFoundError";
-
-  constructor(message = "Resource not found", cause?: unknown) {
-    super(
-      {
-        message,
-        status: 404,
-      },
-      cause,
-    );
-  }
-}
+export type NotFoundError = InstanceType<typeof NotFoundError>;

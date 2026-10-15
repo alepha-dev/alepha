@@ -101,10 +101,9 @@ describe("ServerBodyParserProvider", () => {
         })
         .catch((e) => HttpError.toJSON(e)),
     ).toEqual({
-      error: "PayloadTooLargeError",
-      status: 413,
+      name: "PAYLOAD_TOO_LARGE",
       message: "Request body size limit exceeded",
-      requestId: expect.any(String),
+      data: { status: 413, requestId: expect.any(String) },
     });
   });
 

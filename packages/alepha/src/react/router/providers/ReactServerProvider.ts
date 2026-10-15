@@ -616,7 +616,7 @@ export class ReactServerProvider {
    * user is already past login, so a bounce there is a loop — but neither is
    * letting the error escape: this is a page route, and a page route's caller
    * is a browser doing a hard navigation. It has asked for HTML, and what it
-   * got was `{"error":"ForbiddenError",…}` painted as text on a white
+   * got was `{"name":"FORBIDDEN",…}` painted as text on a white
    * background, with no styles, no favicon and no way back. Rendering the
    * app's own `/*` page instead costs nothing, uses whatever design the
    * project already gave it, and tells a user who cannot enter the one true
@@ -883,7 +883,7 @@ export class ReactServerProvider {
           onError: (error) => {
             if (error instanceof Redirection) {
               this.log.debug("Streaming resulted in redirection", {
-                redirect: error.redirect,
+                redirect: error.data.redirect,
               });
               // Can't do redirect after streaming started - already handled above
             } else {
@@ -1252,7 +1252,7 @@ export class ReactServerProvider {
       onError: (error: unknown) => {
         if (error instanceof Redirection) {
           this.log.warn("Redirect during streaming ignored", {
-            redirect: error.redirect,
+            redirect: error.data.redirect,
           });
         } else {
           // disable logging here, it's noisy and duplicate

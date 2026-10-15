@@ -34,10 +34,7 @@ class App {
   error = $action({
     method: "GET",
     handler: () => {
-      throw new HttpError({
-        message: "Sorry",
-        status: 400,
-      });
+      throw new HttpError({ status: 400 }, { message: "Sorry" });
     },
   });
   forbidden = $action({
@@ -109,10 +106,9 @@ describe("ServerLoggerProvider", () => {
       .catch((e) => HttpError.toJSON(e));
 
     expect(response).toEqual({
+      name: "BAD_REQUEST",
       message: "Sorry",
-      status: 400,
-      error: "BadRequestError",
-      requestId: expect.any(String),
+      data: { status: 400, requestId: expect.any(String) },
     });
     expect(log.logs[0].message).toBe("Incoming request");
     expect(log.logs[1].message).toBe("Request completed");
@@ -145,7 +141,7 @@ describe("ServerLoggerProvider", () => {
     expect(rejected!.level).toBe("WARN");
     expect(rejected!.data).toMatchObject({
       status: 403,
-      error: "ForbiddenError",
+      error: "FORBIDDEN",
       message: "Not a member of this project",
     });
   });

@@ -304,19 +304,19 @@ export class StreamableHttpMcpTransport {
             this.mcpServer.checkModernRequest(modern) ??
             (this.mcpServer.handlesMethod(rpcRequest.method, true)
               ? undefined
-              : new McpMethodNotFoundError(rpcRequest.method));
+              : new McpMethodNotFoundError({ method: rpcRequest.method }));
           if (rejection) {
             this.log.info("MCP modern request rejected", {
-              code: rejection.code,
+              code: rejection.data.code,
               message: rejection.message,
               ...this.describeRequestShape(rpcRequest, headers),
             });
             return this.replyJson(
               request,
               createErrorResponse(rpcRequest.id, {
-                code: rejection.code,
+                code: rejection.data.code,
                 message: rejection.message,
-                data: rejection.data,
+                data: rejection.data.rpcData,
               }),
               true,
             );
@@ -446,28 +446,30 @@ export class StreamableHttpMcpTransport {
   ): McpHeaderMismatchError | undefined {
     const version = this.firstHeader(headers, "mcp-protocol-version");
     if (version === undefined) {
-      return new McpHeaderMismatchError(
-        "missing required MCP-Protocol-Version header",
-      );
+      return new McpHeaderMismatchError({
+        detail: "missing required MCP-Protocol-Version header",
+      });
     }
     const meta = rpcRequest.params?._meta as
       | Record<string, unknown>
       | undefined;
     const bodyVersion = meta?.["io.modelcontextprotocol/protocolVersion"];
     if (version !== bodyVersion) {
-      return new McpHeaderMismatchError(
-        `MCP-Protocol-Version header value '${version}' does not match body value '${String(bodyVersion)}'`,
-      );
+      return new McpHeaderMismatchError({
+        detail: `MCP-Protocol-Version header value '${version}' does not match body value '${String(bodyVersion)}'`,
+      });
     }
 
     const method = this.firstHeader(headers, "mcp-method");
     if (method === undefined) {
-      return new McpHeaderMismatchError("missing required Mcp-Method header");
+      return new McpHeaderMismatchError({
+        detail: "missing required Mcp-Method header",
+      });
     }
     if (method !== rpcRequest.method) {
-      return new McpHeaderMismatchError(
-        `Mcp-Method header value '${method}' does not match body value '${rpcRequest.method}'`,
-      );
+      return new McpHeaderMismatchError({
+        detail: `Mcp-Method header value '${method}' does not match body value '${rpcRequest.method}'`,
+      });
     }
 
     const nameField = this.mcpNameField(rpcRequest.method);
@@ -476,19 +478,21 @@ export class StreamableHttpMcpTransport {
     }
     const raw = this.firstHeader(headers, "mcp-name");
     if (raw === undefined) {
-      return new McpHeaderMismatchError(
-        `missing required Mcp-Name header for ${rpcRequest.method}`,
-      );
+      return new McpHeaderMismatchError({
+        detail: `missing required Mcp-Name header for ${rpcRequest.method}`,
+      });
     }
     const name = this.decodeHeaderValue(raw);
     if (name === undefined) {
-      return new McpHeaderMismatchError("malformed Mcp-Name header value");
+      return new McpHeaderMismatchError({
+        detail: "malformed Mcp-Name header value",
+      });
     }
     const bodyName = rpcRequest.params?.[nameField];
     if (name !== bodyName) {
-      return new McpHeaderMismatchError(
-        `Mcp-Name header value '${name}' does not match body value '${String(bodyName)}'`,
-      );
+      return new McpHeaderMismatchError({
+        detail: `Mcp-Name header value '${name}' does not match body value '${String(bodyName)}'`,
+      });
     }
     return undefined;
   }

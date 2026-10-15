@@ -305,7 +305,7 @@ describe("$page primitive tests", () => {
         },
         errorHandler: (error) => {
           if (error.message === "unauthorized") {
-            return new Redirection("/login");
+            return new Redirection({ redirect: "/login" });
           }
           return undefined;
         },
@@ -323,7 +323,7 @@ describe("$page primitive tests", () => {
       mockState,
     );
     expect(redirect).toBeInstanceOf(Redirection);
-    expect((redirect as Redirection).redirect).toBe("/login");
+    expect((redirect as Redirection).data.redirect).toBe("/login");
 
     const noRedirect = app.errorPage.options.errorHandler?.(
       new Error("other"),

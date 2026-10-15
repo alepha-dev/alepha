@@ -46,14 +46,14 @@ Enforce it in your UI instead. `realmConfig.settings.mfa.totp === "required"` te
 
 ## The sign-in flow
 
-`POST /_auth/token` behaves exactly as before for a realm with no second factor. When one is owed, it answers `401` with `error: "MfaRequiredError"` and a structured payload instead of tokens:
+`POST /_auth/token` behaves exactly as before for a realm with no second factor. When one is owed, it answers `401` with `name: "MFA_REQUIRED"` and the challenge in `data` instead of tokens:
 
 ```json
 {
-  "error": "MfaRequiredError",
-  "status": 401,
+  "name": "MFA_REQUIRED",
   "message": "A second authentication factor is required",
   "data": {
+    "status": 401,
     "challenge": "eyJzdWIiOi...",
     "methods": ["totp"],
     "sentTo": "a**@example.com"
@@ -86,7 +86,7 @@ try {
 }
 ```
 
-`MfaRequiredError` is an `$error` constant (see [Typed errors](/docs/guides-server-typed-errors)), so `HttpClient` rebuilds the class from the response body and `instanceof` holds in the browser. It replaces the `isMfaRequired()` helper, which is gone.
+`MfaRequiredError` is an `UnauthorizedError.extend(...)` (see [Typed errors](/docs/guides-server-typed-errors)), so `HttpClient` rebuilds the class from the response body and `instanceof` holds in the browser. It replaces the `isMfaRequired()` helper, which is gone.
 
 `useAuth()` also returns `resendMfaCode(challenge)`, the client side of the resend route.
 
