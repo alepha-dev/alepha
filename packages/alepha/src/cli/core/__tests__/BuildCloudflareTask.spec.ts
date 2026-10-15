@@ -1,4 +1,6 @@
 import { Alepha, AlephaError } from "alepha";
+import { RequestLangResolver } from "alepha/react/i18n";
+import { ReactPageCacheProvider } from "alepha/react/router";
 import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
 import { WebSocketHost } from "alepha/websocket";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -22,6 +24,9 @@ class TestBuildCloudflareTask extends BuildCloudflareTask {
   public testEnhanceDomain = this.enhanceDomain.bind(this);
   public testEnhanceEmail = this.enhanceEmail.bind(this);
   public testWarnUnreachableTimeouts = this.warnUnreachableTimeouts.bind(this);
+  public setPageEdge(value: Record<string, any> | undefined) {
+    this.pageEdge = value;
+  }
 
   /**
    * Collected instead of logged, so a warning can be asserted on rather
@@ -573,6 +578,116 @@ describe("BuildCloudflareTask", () => {
         // the user out.
         expect(
           fs.wasWrittenMatching(ENTRY, /headers\.append\(\s*"set-cookie"/),
+        ).toBe(true);
+      });
+    });
+
+    describe("page cache edge tier (#E78)", () => {
+      const pageEdge = () => ({
+        enabled: true,
+        lang: {
+          languages: ["fr", "en"],
+          fallbackLang: "fr",
+          autoDetect: true,
+          cookie: "lang",
+        },
+        functions: {
+          builtId: ReactPageCacheProvider.builtId.toString(),
+          markerUrlOf: ReactPageCacheProvider.markerUrlOf.toString(),
+          prefixesOf: ReactPageCacheProvider.prefixesOf.toString(),
+          anonymousUrlOf: ReactPageCacheProvider.anonymousUrlOf.toString(),
+          resolveLang: RequestLangResolver.resolve.toString(),
+          langFromHeader: RequestLangResolver.fromHeader.toString(),
+        },
+      });
+
+      /**
+       * Lifts the generated `pageEdgeUrl` out of the emitted worker, with the
+       * app functions embedded above it, run against a fake `__alepha` meta.
+       */
+      const loadPageEdgeUrl = async (meta: object) => {
+        const { task, fs } = createTaskWithFs();
+        task.setPageEdge(pageEdge());
+        await task.testWriteWorkerEntryPoint("/root", "dist");
+        const source = await fs.readTextFile(ENTRY);
+        const start = source.indexOf("const PAGE_EDGE_LANG");
+        const end = source.indexOf("// Whether no invalidation");
+        // oxlint-disable-next-line typescript/no-implied-eval
+        return new Function(
+          "__alepha",
+          `${source.slice(start, end)}; return pageEdgeUrl;`,
+        )({ meta }) as (request: Request) => string | undefined;
+      };
+
+      const BUILT = { commit: "abc1234", build: { date: "2026-10-15" } };
+
+      it("keys a shared page by URL, build and language, resolved by the app's own function", async () => {
+        const pageEdgeUrl = await loadPageEdgeUrl(BUILT);
+
+        expect(
+          pageEdgeUrl(
+            new Request("https://shop.test/atelier", {
+              headers: { "accept-language": "en-US,en;q=0.9" },
+            }),
+          ),
+        ).toBe(
+          "https://shop.test/atelier?__alepha_page=2026-10-15-abc1234&lang=en",
+        );
+        // An unregistered language falls back, as the app does.
+        expect(
+          pageEdgeUrl(
+            new Request("https://shop.test/atelier", {
+              headers: { "accept-language": "de" },
+            }),
+          ),
+        ).toContain("&lang=fr");
+      });
+
+      it("never shares a response for a cookie, a credential, a query, a write, or an unbuilt app", async () => {
+        const pageEdgeUrl = await loadPageEdgeUrl(BUILT);
+
+        for (const request of [
+          new Request("https://shop.test/", { headers: { cookie: "a=1" } }),
+          new Request("https://shop.test/", {
+            headers: { authorization: "Bearer x" },
+          }),
+          new Request("https://shop.test/?utm_source=x"),
+          new Request("https://shop.test/", { method: "POST" }),
+        ]) {
+          expect(pageEdgeUrl(request)).toBeUndefined();
+        }
+
+        const unbuilt = await loadPageEdgeUrl({ build: { dev: true } });
+        expect(unbuilt(new Request("https://shop.test/"))).toBeUndefined();
+      });
+
+      it("leaves the visitor's D1 bookmark alone on a page cache hit", async () => {
+        const { task, fs } = createTaskWithFs();
+        task.setPageEdge(pageEdge());
+
+        await task.testWriteWorkerEntryPoint("/root", "dist");
+
+        // A hit runs no loader, so the bookmark it would hand back says
+        // nothing about this visitor's reads.
+        expect(
+          fs.wasWrittenMatching(
+            ENTRY,
+            /if \(!cacheable && !pageHit && outgoingBookmark && ctx\.res\)/,
+          ),
+        ).toBe(true);
+      });
+
+      it("has no pre-boot page lookup for an app without the page cache", async () => {
+        const { task, fs } = createTaskWithFs();
+        task.setPageEdge(undefined);
+
+        await task.testWriteWorkerEntryPoint("/root", "dist");
+
+        expect(
+          fs.wasWrittenMatching(
+            ENTRY,
+            /const pageEdgeUrl = \(\) => undefined;/,
+          ),
         ).toBe(true);
       });
     });

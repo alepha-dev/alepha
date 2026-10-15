@@ -1,4 +1,5 @@
 import { $module } from "alepha";
+import { AlephaBackground } from "alepha/background";
 import { AlephaCache } from "alepha/cache";
 import { AlephaDateTime } from "alepha/datetime";
 import { AlephaReact } from "alepha/react";
@@ -11,7 +12,10 @@ import type { ReactNode } from "react";
 import { $page, type PageAnimation } from "./primitives/$page.ts";
 import type { ReactHydrationState } from "./providers/ReactBrowserProvider.ts";
 import { ReactDomServerProvider } from "./providers/ReactDomServerProvider.ts";
-import { ReactPageCacheProvider } from "./providers/ReactPageCacheProvider.ts";
+import {
+  type PageEdgeConfig,
+  ReactPageCacheProvider,
+} from "./providers/ReactPageCacheProvider.ts";
 import {
   ReactPageProvider,
   type ReactRouterState,
@@ -61,6 +65,12 @@ declare module "alepha" {
       request?: ServerRequest;
       state: ReactRouterState;
     };
+    /**
+     * Asked by `alepha build` when it writes the Cloudflare worker: what the
+     * worker needs to find a cached page before the app boots (#E78). The page
+     * cache fills `enabled`, `alepha/react/i18n` fills `lang`.
+     */
+    "react:server:edge": PageEdgeConfig;
     /**
      * Asks the server renderer for the application's document with an empty
      * root, rendered without any page (no loader runs). The handler fills
@@ -204,6 +214,7 @@ export const AlephaReactRouter = $module({
         use: ReactPageServerService,
       })
       .with(SSRManifestProvider)
+      .with(AlephaBackground)
       .with(AlephaCache)
       .with(ReactPageCacheProvider)
       .with(ReactServerTemplateProvider)

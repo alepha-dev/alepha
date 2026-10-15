@@ -98,6 +98,23 @@ export class BuildManifestTask extends BuildTask {
     return (process.versions as Record<string, string>).bun?.split(".")[0];
   }
 
+  /**
+   * The page cache's pre-boot lookup config, asked of the app through
+   * `react:server:edge` (#E78), so a prebuilt deploy writes the same worker
+   * as a build. Nothing for an app with no pages or the cache off.
+   */
+  protected async pageEdgeOf(
+    ctx: BuildTaskContext,
+  ): Promise<Record<string, unknown> | undefined> {
+    const pageEdge: Record<string, unknown> = {};
+    try {
+      await ctx.alepha.events.emit("react:server:edge" as any, pageEdge);
+    } catch {
+      return undefined;
+    }
+    return pageEdge.enabled ? pageEdge : undefined;
+  }
+
   protected async writeManifest(
     ctx: BuildTaskContext,
     distDir: string,
@@ -355,6 +372,7 @@ export class BuildManifestTask extends BuildTask {
             websocketPaths,
             durableObjects,
             email,
+            pageEdge: await this.pageEdgeOf(ctx),
           }
         : undefined,
     };

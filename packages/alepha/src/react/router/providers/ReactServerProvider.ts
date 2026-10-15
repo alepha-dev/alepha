@@ -13,6 +13,8 @@ import {
   ReadRecorder,
   z,
 } from "alepha";
+import { BackgroundTaskProvider } from "alepha/background";
+import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { ServerHeadProvider, type SimpleHead } from "alepha/react/head";
 import {
@@ -88,6 +90,8 @@ export class ReactServerProvider {
   protected readonly localeProvider = $inject(RouterLocaleProvider);
   protected readonly reactDomServer = $inject(ReactDomServerProvider);
   protected readonly pageCache = $inject(ReactPageCacheProvider);
+  protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly background = $inject(BackgroundTaskProvider);
 
   /**
    * Cached check for ServerLinksProvider - avoids has() lookup per request.
@@ -777,7 +781,7 @@ export class ReactServerProvider {
       if (cached) {
         const entry = await this.pageCache.read(cached.key);
         if (entry) {
-          this.serveCachedPage(serverRequest, entry);
+          this.serveCachedPage(serverRequest, entry, cached);
           return;
         }
       }
@@ -896,20 +900,23 @@ export class ReactServerProvider {
       if (recorder && dev) {
         reply.headers["x-alepha-cache"] = outcome;
       }
+      // The write waits for the template to finish (`sink.finished`), so it
+      // is registered as background work now, while the request's context is
+      // at hand: on workerd that is `waitUntil`, without which the isolate is
+      // frozen mid-write once the response ends. The visitor never waits.
+      if (sink && cached && recorder) {
+        this.background.defer(() =>
+          this.storePage(route, serverRequest, state, recorder, sink, {
+            ...cached,
+            lang,
+          }),
+        );
+      }
       reply.body = htmlStream.pipeThrough(
         new TransformStream({
           flush: () => {
             this.log.info("Page streaming completed", { name: route.name });
             this.logVerdict(route, recorder);
-            if (sink && cached && recorder) {
-              // Written after the last byte left: the visitor never waits.
-              this.storePage(route, serverRequest, state, recorder, sink, {
-                ...cached,
-                lang,
-              }).catch((error) =>
-                this.log.warn("Page cache write failed", error),
-              );
-            }
           },
         }),
       );
@@ -923,16 +930,54 @@ export class ReactServerProvider {
   protected serveCachedPage(
     serverRequest: ServerRequest,
     entry: PageCacheEntry,
+    plan: { key: string; ttlMs: number },
   ): void {
     const { reply } = serverRequest;
     reply.status = entry.status;
-    Object.assign(reply.headers, entry.headers, this.SSR_HEADERS);
+    const { at, ...stored } = entry;
+    Object.assign(reply.headers, stored.headers, this.SSR_HEADERS);
     if (!this.alepha.isProduction()) {
       reply.headers["x-alepha-cache"] = `hit; verdict=${entry.verdict}`;
     }
     reply.body =
       entry.head + this.templateProvider.renderPrivateScript() + entry.tail;
+
+    // workerd: tell the generated worker what it may do with this response
+    // (#E78). It strips these headers before the response leaves.
+    if (this.pageCache.edge()) {
+      // A hit reads no D1 bookmark and must not rewrite the visitor's.
+      reply.headers[ReactServerProvider.EDGE_HIT_HEADER] = "1";
+      // A visitor with no cookie, no credential and no query gets the same
+      // private script as every other such visitor: the worker may keep the
+      // whole response, and serve it before the app boots.
+      const headers = serverRequest.headers;
+      if (
+        !headers.cookie &&
+        !headers.authorization &&
+        !serverRequest.url.search &&
+        at !== undefined
+      ) {
+        const remaining =
+          at + this.pageCache.edgeTtlMs(plan.ttlMs) - this.dateTime.nowMillis();
+        if (remaining > 1000) {
+          reply.headers[ReactServerProvider.EDGE_STORE_HEADER] =
+            `${Math.floor(remaining / 1000)};${at};${encodeURIComponent(plan.key)}`;
+        }
+      }
+    }
   }
+
+  /**
+   * Internal header: this response is a page cache hit. Read and removed by
+   * the generated Cloudflare worker, which then leaves the D1 bookmark alone.
+   */
+  public static readonly EDGE_HIT_HEADER = "x-alepha-page-hit";
+
+  /**
+   * Internal header: `<seconds>;<written at>;<key>`, the edge may store this
+   * whole response for that long. Read and removed by the generated worker.
+   */
+  public static readonly EDGE_STORE_HEADER = "x-alepha-page-edge";
 
   /**
    * Write a finished render to the page cache, if it may be shared: a clean

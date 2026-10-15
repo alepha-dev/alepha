@@ -105,13 +105,29 @@ export class ReactPageCacheProvider {
    * code rendered, with no purge.
    */
   public buildId(): string {
-    const meta = this.alepha.meta;
+    const built = ReactPageCacheProvider.builtId(this.alepha.meta);
+    if (built) {
+      return built;
+    }
+    this.devBuildId ??= `dev-${crypto.randomUUID()}`;
+    return this.devBuildId;
+  }
+
+  /**
+   * The build segment of a built artifact: its build date, with its commit
+   * when known; nothing when nothing built this code. Self-contained: the
+   * generated Cloudflare worker embeds its source to compute the same segment
+   * before the app boots.
+   */
+  public static readonly builtId = (meta: {
+    commit?: string;
+    build: { dev?: boolean; date?: string };
+  }): string | undefined => {
     if (meta.build.dev || !meta.build.date) {
-      this.devBuildId ??= `dev-${crypto.randomUUID()}`;
-      return this.devBuildId;
+      return undefined;
     }
     return meta.commit ? `${meta.build.date}-${meta.commit}` : meta.build.date;
-  }
+  };
 
   /**
    * The key prefix of one page, or of one page's params: what an invalidation
@@ -184,17 +200,19 @@ export class ReactPageCacheProvider {
     const provider = this.remote();
     if (!provider) {
       const hit = this.local.get(key);
-      if (!hit) {
-        return undefined;
-      }
-      if (hit.expiresAt && hit.expiresAt <= this.dateTime.nowMillis()) {
+      if (hit && hit.expiresAt && hit.expiresAt <= this.dateTime.nowMillis()) {
         this.local.delete(key);
-        return undefined;
+      } else if (hit) {
+        if (await this.edgeInvalidatedSince(key, hit.at)) {
+          this.local.delete(key);
+          return undefined;
+        }
+        // Least recently used goes first: a read moves the entry to the end.
+        this.local.delete(key);
+        this.local.set(key, hit);
+        return { ...hit.entry, at: hit.at };
       }
-      // Least recently used goes first: a read moves the entry to the end.
-      this.local.delete(key);
-      this.local.set(key, hit);
-      return hit.entry;
+      return this.edgeRead(key);
     }
 
     try {
@@ -215,10 +233,13 @@ export class ReactPageCacheProvider {
   ): Promise<void> {
     const provider = this.remote();
     if (!provider) {
+      const lifetime = this.edge() ? this.edgeTtlMs(ttlMs) : ttlMs;
+      const at = this.dateTime.nowMillis();
       this.local.delete(key);
       this.local.set(key, {
         entry,
-        expiresAt: ttlMs > 0 ? this.dateTime.nowMillis() + ttlMs : 0,
+        at,
+        expiresAt: lifetime > 0 ? at + lifetime : 0,
       });
       while (this.local.size > this.options.max) {
         const oldest = this.local.keys().next().value;
@@ -227,6 +248,7 @@ export class ReactPageCacheProvider {
         }
         this.local.delete(oldest);
       }
+      await this.edgeWrite(key, entry, at, lifetime);
       return;
     }
 
@@ -252,11 +274,203 @@ export class ReactPageCacheProvider {
           this.local.delete(key);
         }
       }
+      await this.edgeInvalidate(prefix);
       return;
     }
     await provider.invalidateKeys(ReactPageCacheProvider.CONTAINER, [
       `${prefix}*`,
     ]);
+  }
+
+  // ---------------------------------------------------------------------------
+  // workerd: `caches.default`
+  // ---------------------------------------------------------------------------
+
+  /**
+   * The origin of every synthetic URL the page cache keeps in
+   * `caches.default`. Never a real host: an entry is keyed by the page, not
+   * by any visitor's request.
+   */
+  public static readonly EDGE_ORIGIN = "https://alepha-page.internal";
+
+  /**
+   * The longest an entry lives on workerd, in the isolate and at the edge.
+   * `caches.default` is per data centre, and so are its deletes: a write
+   * purges its own colo, and every other one serves the old page for at most
+   * this long.
+   */
+  public static readonly EDGE_TTL: DurationLike = [60, "seconds"];
+
+  /**
+   * The `caches.default` of a Cloudflare Worker, or nothing elsewhere.
+   */
+  public edge(): Cache | undefined {
+    const global = globalThis as {
+      Cloudflare?: unknown;
+      caches?: { default?: Cache };
+    };
+    return typeof global.Cloudflare === "object"
+      ? global.caches?.default
+      : undefined;
+  }
+
+  /**
+   * A lifetime capped by {@link EDGE_TTL}: "until the next deploy" becomes
+   * the cap too.
+   */
+  public edgeTtlMs(ttlMs: number): number {
+    const cap = this.dateTime
+      .duration(ReactPageCacheProvider.EDGE_TTL)
+      .as("milliseconds");
+    return ttlMs > 0 ? Math.min(ttlMs, cap) : cap;
+  }
+
+  /**
+   * The synthetic URL of an invalidation marker for a key prefix.
+   */
+  public edgeMarkerUrl(prefix: string): string {
+    return ReactPageCacheProvider.markerUrlOf(prefix);
+  }
+
+  /**
+   * The two prefixes an invalidation can target for a key: the page, and the
+   * page with its params (see {@link prefix}).
+   */
+  public edgePrefixesOf(key: string): string[] {
+    return ReactPageCacheProvider.prefixesOf(key);
+  }
+
+  // Self-contained (no `this`, no import, literals inline): the generated
+  // Cloudflare worker embeds their source, and must compute exactly what the
+  // app computes. See `react:server:edge`.
+
+  /**
+   * The synthetic URL of an invalidation marker for a key prefix.
+   */
+  public static readonly markerUrlOf = (prefix: string): string =>
+    `https://alepha-page.internal/invalidated/${encodeURIComponent(prefix)}`;
+
+  /**
+   * A key's page prefix and page-with-params prefix.
+   */
+  public static readonly prefixesOf = (key: string): string[] => {
+    const segments = key.split(":");
+    return [
+      `${segments.slice(0, 3).join(":")}:`,
+      `${segments.slice(0, 4).join(":")}:`,
+    ];
+  };
+
+  /**
+   * The URL the worker keeps a whole anonymous page response under: the
+   * request's origin and path (never its query: a request with one is not
+   * stored), the build and the language.
+   */
+  public static readonly anonymousUrlOf = (
+    originAndPath: string,
+    build: string,
+    lang: string,
+  ): string =>
+    `${originAndPath}?__alepha_page=${encodeURIComponent(build)}&lang=${encodeURIComponent(lang)}`;
+
+  /**
+   * Whether an invalidation reached this colo after `at`, for the page or
+   * its params.
+   */
+  public async edgeInvalidatedSince(key: string, at: number): Promise<boolean> {
+    const edge = this.edge();
+    if (!edge) {
+      return false;
+    }
+    for (const prefix of this.edgePrefixesOf(key)) {
+      const marker = await edge.match(this.edgeMarkerUrl(prefix));
+      if (marker && Number(await marker.text()) >= at) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  protected edgeEntryUrl(key: string): string {
+    return `${ReactPageCacheProvider.EDGE_ORIGIN}/entry/${encodeURIComponent(key)}`;
+  }
+
+  protected async edgeRead(key: string): Promise<PageCacheEntry | undefined> {
+    const edge = this.edge();
+    if (!edge) {
+      return undefined;
+    }
+    try {
+      const res = await edge.match(this.edgeEntryUrl(key));
+      if (!res) {
+        return undefined;
+      }
+      const stored = (await res.json()) as PageCacheEntry & { at: number };
+      if (await this.edgeInvalidatedSince(key, stored.at)) {
+        await edge.delete(this.edgeEntryUrl(key));
+        return undefined;
+      }
+      const { at, ...entry } = stored;
+      this.local.set(key, {
+        entry,
+        at,
+        expiresAt: at + this.edgeTtlMs(0),
+      });
+      return { ...entry, at };
+    } catch (error) {
+      this.log.warn("Edge page cache read failed, rendering", { key, error });
+      return undefined;
+    }
+  }
+
+  protected async edgeWrite(
+    key: string,
+    entry: PageCacheEntry,
+    at: number,
+    lifetimeMs: number,
+  ): Promise<void> {
+    const edge = this.edge();
+    if (!edge) {
+      return;
+    }
+    try {
+      await edge.put(
+        this.edgeEntryUrl(key),
+        new Response(JSON.stringify({ ...entry, at }), {
+          headers: {
+            "content-type": "application/json",
+            "cache-control": `public, max-age=${Math.ceil(lifetimeMs / 1000)}`,
+          },
+        }),
+      );
+    } catch (error) {
+      this.log.warn("Edge page cache write failed", { key, error });
+    }
+  }
+
+  /**
+   * `caches.default` cannot delete by prefix: an invalidation writes a
+   * marker with its time instead, and a read checks the markers of its page
+   * and params. The marker lives as long as an entry can, so it outlives
+   * everything it makes stale.
+   */
+  protected async edgeInvalidate(prefix: string): Promise<void> {
+    const edge = this.edge();
+    if (!edge) {
+      return;
+    }
+    try {
+      await edge.put(
+        this.edgeMarkerUrl(prefix),
+        new Response(String(this.dateTime.nowMillis()), {
+          headers: {
+            "cache-control": `public, max-age=${Math.ceil(this.edgeTtlMs(0) / 1000)}`,
+          },
+        }),
+      );
+    } catch (error) {
+      this.log.warn("Edge page cache invalidation failed", { prefix, error });
+    }
   }
 
   /**
@@ -358,6 +572,25 @@ export class ReactPageCacheProvider {
         query: request.query ?? {},
         body: request.body,
       });
+    },
+  });
+
+  /**
+   * What the generated Cloudflare worker needs before the app boots: whether
+   * the cache is on. Asked once, by `alepha build`; the build segment comes
+   * from the worker's own baked meta (see {@link builtId}).
+   */
+  protected readonly onEdge = $hook({
+    on: "react:server:edge",
+    handler: (event) => {
+      event.enabled = this.enabled;
+      event.functions = {
+        ...event.functions,
+        builtId: ReactPageCacheProvider.builtId.toString(),
+        markerUrlOf: ReactPageCacheProvider.markerUrlOf.toString(),
+        prefixesOf: ReactPageCacheProvider.prefixesOf.toString(),
+        anonymousUrlOf: ReactPageCacheProvider.anonymousUrlOf.toString(),
+      };
     },
   });
 
@@ -621,12 +854,53 @@ export interface PageCacheEntry {
    * per-response ones.
    */
   headers: Record<string, string | string[]>;
+
+  /**
+   * When the in-process tier wrote it, on a read from that tier.
+   */
+  at?: number;
 }
 
 export type PageCachePlan = { key: string; ttlMs: number } | { bypass: string };
 
+/**
+ * What the generated Cloudflare worker needs to find a cached page before the
+ * app boots. Filled at build time through `react:server:edge`.
+ */
+export interface PageEdgeConfig {
+  /**
+   * Whether the page cache is on (it can be turned off in config).
+   */
+  enabled?: boolean;
+
+  /**
+   * The source of the self-contained functions the worker embeds, by name:
+   * `builtId`, `markerUrlOf`, `prefixesOf`, `anonymousUrlOf` from the page
+   * cache, `resolveLang` and `langFromHeader` from `alepha/react/i18n`. The
+   * same code the app runs, so the two cannot drift.
+   */
+  functions?: Record<string, string>;
+
+  /**
+   * How a request's language is resolved, when `alepha/react/i18n` is
+   * installed: see `RequestLangResolver`. `prefix: "unsupported"` (prefix
+   * routing with excluded paths) turns the pre-boot lookup off.
+   */
+  lang?: {
+    languages: string[];
+    fallbackLang: string;
+    autoDetect: boolean;
+    cookie: string;
+    prefix?: "unsupported" | { locales: string[]; defaultLocale: string };
+  };
+}
+
 interface LocalEntry {
   entry: PageCacheEntry;
+  /**
+   * When it was written, for the edge invalidation markers.
+   */
+  at: number;
   expiresAt: number;
 }
 
