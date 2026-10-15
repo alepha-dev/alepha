@@ -248,7 +248,7 @@ export default { async fetch(request, env, context) {
       key,
     );
     const stub = namespace.get(namespace.idFromName(identity)) as any;
-    return JSON.parse(
+    const reply = JSON.parse(
       await stub.executeActor(identity, {
         name,
         method,
@@ -256,6 +256,10 @@ export default { async fetch(request, env, context) {
         ...(key === undefined ? {} : { key }),
       }),
     );
+    // The host answers its refusals as data, the way CloudflareActorProvider
+    // reads them.
+    if (reply.error) throw new AlephaError(reply.error.message);
+    return reply.value;
   }
   public async inspect(action: string, value?: unknown): Promise<any> {
     const namespace = await this.runtime!.getDurableObjectNamespace(
