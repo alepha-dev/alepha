@@ -195,7 +195,10 @@ export function useQuery<Result>(
     serializedKey ? [...deps, serializedKey] : deps,
   );
 
-  const refetch = useCallback(() => action.refetch(), [action.refetch]);
+  const refetch = useCallback(async () => {
+    const run = await action.refetch();
+    return run.ok ? run.value : undefined;
+  }, [action.refetch]);
 
   // Refetch when the entry we were rendering is invalidated out from under us.
   // Gated on a defined → undefined transition so the initial mount (which has

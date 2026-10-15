@@ -3,10 +3,10 @@ import * as React from "react";
 void React;
 
 import type { AdminAvatarController, UserResource } from "alepha/api/users";
-import { useClient } from "alepha/react";
+import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { ImageUp, Trash2 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useRef } from "react";
 
 import { Button } from "../core/Button.tsx";
 import { useToast } from "../core/useToast.tsx";
@@ -37,28 +37,23 @@ export const AdminUserAvatarControl = (props: AdminUserAvatarControlProps) => {
   const toaster = useToast();
   const { tr } = useI18n();
   const input = useRef<HTMLInputElement>(null);
-  const [busy, setBusy] = useState(false);
+
+  // A failure is toasted by the app's ActionErrorToaster, with the server's
+  // message (an image too large, a type refused).
+  const change = useAction<[task: () => Promise<UserResource>, done: string]>(
+    {
+      handler: async (_ctx, task, done) => {
+        props.onChanged(await task());
+        toaster.success(done);
+      },
+    },
+    [props.onChanged, toaster],
+  );
+  const busy = change.loading;
 
   if (!client.updateUserAvatar.can()) {
     return null;
   }
-
-  const run = async (task: () => Promise<UserResource>, done: string) => {
-    setBusy(true);
-    try {
-      props.onChanged(await task());
-      toaster.success(done);
-    } catch (error: any) {
-      toaster.error(
-        error?.message ??
-          tr("admin.userDetail.avatar.failed", {
-            default: "Could not change the avatar.",
-          }),
-      );
-    } finally {
-      setBusy(false);
-    }
-  };
 
   return (
     <div className="flex flex-wrap gap-2">
@@ -74,7 +69,7 @@ export const AdminUserAvatarControl = (props: AdminUserAvatarControlProps) => {
           // in a row fires no `change` while the value is still set.
           event.target.value = "";
           if (!file) return;
-          void run(
+          void change.run(
             async () =>
               (await client.updateUserAvatar({
                 params: { id: props.user.id },
@@ -105,7 +100,7 @@ export const AdminUserAvatarControl = (props: AdminUserAvatarControlProps) => {
           loading={busy}
           data-testid="admin-avatar-remove"
           onClick={() =>
-            void run(
+            void change.run(
               async () =>
                 (await client.deleteUserAvatar({
                   params: { id: props.user.id },

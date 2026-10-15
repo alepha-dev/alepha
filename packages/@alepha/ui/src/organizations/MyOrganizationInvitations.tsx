@@ -78,7 +78,7 @@ export const MyOrganizationInvitations = (
   );
   const accept = useAction<[invitationId: string], void>(
     {
-      handler: async (invitationId) => {
+      handler: async (_ctx, invitationId) => {
         const organizationId = props.accept
           ? await props.accept(invitationId)
           : (
@@ -99,7 +99,7 @@ export const MyOrganizationInvitations = (
   );
   const decline = useAction<[invitationId: string], void>(
     {
-      handler: async (invitationId) => {
+      handler: async (_ctx, invitationId) => {
         if (props.decline) {
           await props.decline(invitationId);
         } else {

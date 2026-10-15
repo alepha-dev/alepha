@@ -370,7 +370,7 @@ export const ControlSelect = (props: ControlSelectProps) => {
         value={value}
         onChange={(v) => setValue(v)}
         coerce={coerce}
-        onSearch={mode === "long" ? search.run : undefined}
+        onSearch={mode === "long" ? (text) => search.run(text) : undefined}
         createNewEntry={props.createNewEntry}
         icon={props.icon}
         // Used to be dropped on this path, so a filter chip sized `w-40` lost
@@ -548,7 +548,7 @@ const useAsyncLoader = (
   const search = useAction<[string]>(
     {
       debounce: debounceMs,
-      handler: async (text) => {
+      handler: async (_ctx, text) => {
         if (!loader || mode !== "long") return;
         if (cache.current.has(text)) {
           setData(cache.current.get(text)!);

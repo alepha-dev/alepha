@@ -13,6 +13,7 @@ import {
   useState,
 } from "react";
 
+import { ActionErrorPolicy } from "../services/ActionErrorPolicy.ts";
 import { QueryCache } from "../services/QueryCache.ts";
 import { useAlepha } from "./useAlepha.ts";
 import { useInject } from "./useInject.ts";
@@ -20,8 +21,22 @@ import { useInject } from "./useInject.ts";
 /**
  * Hook for handling async actions with automatic error handling and event emission.
  *
+ * The handler takes an {@link ActionContext} FIRST, then the arguments `run()`
+ * was given: `handler: async ({ signal }, id: string) => ...`.
+ *
+ * `run()` never rejects. It resolves one {@link RunResult}:
+ * - `{ ok: true, value }`: the handler returned `value`.
+ * - `{ ok: false, reason: "error", error }`: the handler threw `error` (also
+ *   in `error` state and emitted as `react:action:error`).
+ * - `{ ok: false, reason: "dropped" }`: refused because a run was already in
+ *   flight, or a debounced call replaced by a newer one.
+ * - `{ ok: false, reason: "aborted" }`: cancelled by `cancel()`, an unmount
+ *   or a newer run.
+ *
+ * So a follow-up branches on the result: `if ((await save.run()).ok) close()`.
+ *
  * By default, prevents concurrent executions - if an action is running and you call it again,
- * the second call will be ignored. Use `debounce` option to delay execution instead.
+ * the second call is dropped. Use `debounce` option to delay execution instead.
  *
  * Emits lifecycle events:
  * - `react:action:begin` - When action starts
@@ -32,7 +47,7 @@ import { useInject } from "./useInject.ts";
  * @example Basic usage
  * ```tsx
  * const action = useAction({
- *   handler: async (data) => {
+ *   handler: async (_ctx, data: Data) => {
  *     await api.save(data);
  *   }
  * }, []);
@@ -45,7 +60,7 @@ import { useInject } from "./useInject.ts";
  * @example With debounce (search input)
  * ```tsx
  * const search = useAction({
- *   handler: async (query: string) => {
+ *   handler: async (_ctx, query: string) => {
  *     await api.search(query);
  *   },
  *   debounce: 300 // Wait 300ms after last call
@@ -88,7 +103,7 @@ import { useInject } from "./useInject.ts";
  * @example With AbortController
  * ```tsx
  * const fetch = useAction({
- *   handler: async (url, { signal }) => {
+ *   handler: async ({ signal }, url: string) => {
  *     const response = await fetch(url, { signal });
  *     return response.json();
  *   }
@@ -99,7 +114,7 @@ import { useInject } from "./useInject.ts";
  * @example With error handling
  * ```tsx
  * const deleteAction = useAction({
- *   handler: async (id: string) => {
+ *   handler: async (_ctx, id: string) => {
  *     await api.delete(id);
  *   },
  *   onError: (error) => {
@@ -135,7 +150,9 @@ export function useAction<Args extends any[], Result = void>(
   /**
    * Resolves the promise handed to a debounced caller that got superseded.
    */
-  const pendingDebounce = useRef<(() => void) | undefined>(undefined);
+  const pendingDebounce = useRef<
+    ((reason: "dropped" | "aborted") => void) | undefined
+  >(undefined);
   const abortControllerRef = useRef<AbortController | undefined>(undefined);
   const isMountedRef = useRef(true);
   const intervalRef = useRef<Interval | undefined>(undefined);
@@ -154,7 +171,7 @@ export function useAction<Args extends any[], Result = void>(
       // clear debounce timer, and settle the run waiting on it: clearing the
       // timer alone left `await run()` hanging forever. `cancel()` does the
       // same.
-      pendingDebounce.current?.();
+      pendingDebounce.current?.("aborted");
       if (debounceTimerRef.current) {
         dateTimeProvider.clearTimeout(debounceTimerRef.current);
         debounceTimerRef.current = undefined;
@@ -200,11 +217,11 @@ export function useAction<Args extends any[], Result = void>(
     async (
       args: Args,
       { supersede = false }: { supersede?: boolean } = {},
-    ): Promise<Result | undefined> => {
+    ): Promise<RunResult<Result>> => {
       if (isExecutingRef.current && !supersede) {
         // A manual `run()` must not fire twice — this is what stops a
         // double-clicked mutation from being submitted twice.
-        return;
+        return { ok: false, reason: "dropped" };
       }
 
       // A dep-change or interval run supersedes: the in-flight request was
@@ -233,9 +250,10 @@ export function useAction<Args extends any[], Result = void>(
           id: optionsRef.current.id,
         });
         // Pass abort signal as last argument to handler
-        const result = await optionsRef.current.handler(...args, {
-          signal: abortController.signal,
-        } as any);
+        const result = await optionsRef.current.handler(
+          { signal: abortController.signal },
+          ...args,
+        );
 
         // Only update state if still mounted, not aborted, and not superseded
         if (
@@ -243,7 +261,7 @@ export function useAction<Args extends any[], Result = void>(
           abortController.signal.aborted ||
           !isLatestRun()
         ) {
-          return;
+          return { ok: false, reason: "aborted" };
         }
 
         setResult(result as Result);
@@ -298,19 +316,19 @@ export function useAction<Args extends any[], Result = void>(
           });
         }
 
-        return result;
+        return { ok: true, value: result as Result };
       } catch (err) {
-        // Ignore abort errors
+        // An abort is the caller's own doing (cancel, unmount, a newer run).
         if (err instanceof Error && err.name === "AbortError") {
-          return;
+          return { ok: false, reason: "aborted" };
         }
 
-        // Only update state if still mounted and not superseded
+        // Superseded or unmounted: nobody is waiting for this failure.
         if (!isMountedRef.current || !isLatestRun()) {
-          return;
+          return { ok: false, reason: "aborted" };
         }
 
-        const error = err as Error;
+        const error = err instanceof Error ? err : new AlephaError(String(err));
         setError(error);
 
         // A caller that passed `onError` has handled the failure: the event
@@ -322,14 +340,19 @@ export function useAction<Args extends any[], Result = void>(
           type: "custom",
           id: optionsRef.current.id,
           error,
-          handled: optionsRef.current.onError !== undefined,
+          handled: ActionErrorPolicy.isHandled(
+            error,
+            optionsRef.current.onError,
+          ),
         });
 
         if (optionsRef.current.onError) {
           await optionsRef.current.onError(error);
         }
-        // With or without `onError`, the error is NOT re-thrown: it is captured
-        // in `error` state and emitted as `react:action:error` (a mounted
+        return { ok: false, reason: "error", error };
+        // With or without `onError`, the error is NOT re-thrown: `run()`
+        // resolves `{ ok: false, reason: "error", error }`, the error is in
+        // `error` state and emitted as `react:action:error` (a mounted
         // <ActionErrorToaster /> surfaces an unhandled one as a toast). This
         // keeps fire-and-forget `action.run()` calls from producing unhandled
         // promise rejections.
@@ -364,22 +387,22 @@ export function useAction<Args extends any[], Result = void>(
     async (
       args: Args,
       options_: { supersede?: boolean } = {},
-    ): Promise<Result | undefined> => {
+    ): Promise<RunResult<Result>> => {
       if (options.debounce) {
         // Settle the superseded call. `cancel()`, unmount, and a newer call
         // all clear the timer — and the promise returned to THAT caller was
         // only ever resolved inside the timeout, so `await action.run(...)`
-        // hung forever. Resolving `undefined` matches the declared
-        // `Promise<Result | undefined>`.
-        pendingDebounce.current?.();
+        // hung forever. A newer call settles it as `dropped`; `cancel()` and
+        // unmount as `aborted`.
+        pendingDebounce.current?.("dropped");
         if (debounceTimerRef.current) {
           dateTimeProvider.clearTimeout(debounceTimerRef.current);
         }
 
-        return new Promise<Result | undefined>((resolve) => {
-          pendingDebounce.current = () => {
+        return new Promise<RunResult<Result>>((resolve) => {
+          pendingDebounce.current = (reason) => {
             pendingDebounce.current = undefined;
-            resolve(undefined);
+            resolve({ ok: false, reason });
           };
           debounceTimerRef.current = dateTimeProvider.createTimeout(
             async () => {
@@ -409,7 +432,7 @@ export function useAction<Args extends any[], Result = void>(
    * double-clicked mutation submits once.
    */
   const handler = useCallback(
-    (...args: Args): Promise<Result | undefined> => runAction(args),
+    (...args: Args): Promise<RunResult<Result>> => runAction(args),
     [runAction],
   );
 
@@ -420,14 +443,14 @@ export function useAction<Args extends any[], Result = void>(
    * silently drop a refetch issued during a slow fetch or an active poll.
    */
   const refetch = useCallback(
-    (...args: Args): Promise<Result | undefined> =>
+    (...args: Args): Promise<RunResult<Result>> =>
       runAction(args, { supersede: true }),
     [runAction],
   );
 
   const cancel = useCallback(() => {
     // clear debounce timer
-    pendingDebounce.current?.();
+    pendingDebounce.current?.("aborted");
     if (debounceTimerRef.current) {
       dateTimeProvider.clearTimeout(debounceTimerRef.current);
       debounceTimerRef.current = undefined;
@@ -508,8 +531,9 @@ export function useAction<Args extends any[], Result = void>(
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Context object passed as the last argument to action handlers.
- * Contains an AbortSignal that can be used to cancel the request.
+ * Context object passed as the FIRST argument to action handlers, before the
+ * arguments of `run()`. Contains an AbortSignal that can be used to cancel the
+ * request.
  */
 export interface ActionContext {
   /**
@@ -522,7 +546,7 @@ export interface ActionContext {
    * @example
    * ```tsx
    * const action = useAction({
-   *   handler: async (url, { signal }) => {
+   *   handler: async ({ signal }, url: string) => {
    *     const response = await fetch(url, { signal });
    *     return response.json();
    *   }
@@ -535,9 +559,9 @@ export interface ActionContext {
 export interface UseActionOptions<Args extends any[] = any[], Result = any> {
   /**
    * The async action handler function.
-   * Receives the action arguments plus an ActionContext as the last parameter.
+   * Receives an {@link ActionContext} first, then the arguments of `run()`.
    */
-  handler: (...args: [...Args, ActionContext]) => Async<Result>;
+  handler: (context: ActionContext, ...args: Args) => Async<Result>;
 
   /**
    * Custom error handler. Passing one says the failure is handled here: the
@@ -546,9 +570,10 @@ export interface UseActionOptions<Args extends any[] = any[], Result = any> {
    * the toast as well shows it itself; an empty one keeps the failure quiet
    * on purpose. Error reporting still sees it either way.
    *
-   * With or without one, errors are never re-thrown by `run`: they are
-   * captured in `error` state and emitted as `react:action:error`, so
-   * fire-and-forget calls can't produce unhandled promise rejections.
+   * With or without one, errors are never re-thrown by `run`: it resolves
+   * `{ ok: false, reason: "error", error }`, the error is captured in `error`
+   * state and emitted as `react:action:error`, so fire-and-forget calls can't
+   * produce unhandled promise rejections.
    */
   onError?: (error: Error) => void | Promise<void>;
 
@@ -646,14 +671,14 @@ export interface UseActionReturn<Args extends any[], Result> {
    * action.run(data);
    * ```
    */
-  run: (...args: Args) => Promise<Result | undefined>;
+  run: (...args: Args) => Promise<RunResult<Result>>;
 
   /**
    * Re-execute the action, aborting the in-flight request if any (same
    * supersede semantics as a dependency change). Unlike `run()`, this is
    * never dropped by the double-click dedup guard.
    */
-  refetch: (...args: Args) => Promise<Result | undefined>;
+  refetch: (...args: Args) => Promise<RunResult<Result>>;
 
   /**
    * Loading state - true when action is executing.
@@ -684,3 +709,19 @@ export interface UseActionReturn<Args extends any[], Result> {
    */
   result?: Result;
 }
+
+/**
+ * What `useAction`'s `run()` resolves: it never rejects.
+ *
+ * - `ok: true`: the handler returned `value`.
+ * - `reason: "error"`: the handler threw `error`.
+ * - `reason: "dropped"`: refused while another run was in flight, or a
+ *   debounced call replaced by a newer one.
+ * - `reason: "aborted"`: cancelled by `cancel()`, an unmount or a newer run.
+ * - `reason: "cancelled"`: the user backed out of a wrapper hook (a declined
+ *   confirm in `useConfirmedAction`); `useAction` itself never produces it.
+ */
+export type RunResult<R> =
+  | { ok: true; value: R }
+  | { ok: false; reason: "error"; error: Error }
+  | { ok: false; reason: "dropped" | "aborted" | "cancelled" };

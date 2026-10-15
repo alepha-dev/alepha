@@ -103,7 +103,7 @@ export interface RowActionContext {
 export interface RowAction<T> {
   label: string;
   icon?: IconType;
-  onClick: (item: T, ctx: RowActionContext) => void | Promise<void>;
+  onClick: (item: T, ctx: RowActionContext) => unknown;
   destructive?: boolean;
   disabled?: (item: T) => boolean;
   /**
@@ -159,7 +159,7 @@ export interface BulkActionContext {
 export interface BulkAction<T> {
   label: string;
   icon?: IconType;
-  onClick: (selected: T[], ctx: BulkActionContext) => void | Promise<void>;
+  onClick: (selected: T[], ctx: BulkActionContext) => unknown;
   destructive?: boolean;
   /**
    * Whether the action is offered for this selection. Absent means always.

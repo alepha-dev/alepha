@@ -36,7 +36,7 @@ export const OtaBundlesTab = (props: OtaBundlesTabProps) => {
 
   const kill = useAction<[bundle: OtaBundleResource], boolean>(
     {
-      handler: async (bundle) => {
+      handler: async (_ctx, bundle) => {
         const confirmed = await dialog.confirm({
           title: tr("ota.admin.bundles.killTitle", {
             default: "Kill this bundle?",

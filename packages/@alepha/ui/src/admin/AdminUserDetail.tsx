@@ -406,7 +406,7 @@ export const AdminUserDetail = (props: AdminUserDetailProps) => {
 
   const removeIdentity = useAction<[IdentityResource]>(
     {
-      handler: async (identity) => {
+      handler: async (_ctx, identity) => {
         const provider =
           PROVIDER_LABELS[identity.provider] ?? identity.provider;
         const ok = await dialog.confirm({
@@ -449,7 +449,7 @@ export const AdminUserDetail = (props: AdminUserDetailProps) => {
    */
   const clearTotp = useAction<[IdentityResource]>(
     {
-      handler: async (identity) => {
+      handler: async (_ctx, identity) => {
         // Named, the same way `toggleEnabled` and `remove` name theirs. An
         // admin can have several user pages open, and this is the one action
         // whose confirmation must leave no doubt about whose account it is.
@@ -501,7 +501,7 @@ export const AdminUserDetail = (props: AdminUserDetailProps) => {
 
   const revokeSession = useAction<[SessionResource, () => void]>(
     {
-      handler: async (s, refresh) => {
+      handler: async (_ctx, s, refresh) => {
         const ok = await dialog.confirm({
           title: tr("admin.userDetail.revokeTitle", {
             default: "Revoke session",
@@ -527,7 +527,7 @@ export const AdminUserDetail = (props: AdminUserDetailProps) => {
     [SessionResource[], { refresh: () => void; clearSelection: () => void }]
   >(
     {
-      handler: async (items, ctx) => {
+      handler: async (_ctx, items, ctx) => {
         const ok = await dialog.confirm({
           title: tr("admin.userDetail.bulkRevokeTitle", {
             default: "Revoke sessions",

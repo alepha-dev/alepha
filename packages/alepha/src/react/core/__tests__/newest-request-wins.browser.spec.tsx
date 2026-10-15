@@ -47,7 +47,7 @@ describe("the newest request wins", () => {
         useAction<[string], string>(
           {
             debounce: 10,
-            handler: (query) => {
+            handler: (_ctx, query) => {
               pending[query] = deferred<string>();
               return pending[query].promise;
             },

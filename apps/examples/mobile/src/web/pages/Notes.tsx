@@ -34,7 +34,7 @@ const Notes = (props: NotesProps) => {
 
   const remove = useAction<[id: string], void>(
     {
-      handler: async (id) => {
+      handler: async (_ctx, id) => {
         const confirmed = await dialog.confirm({
           title: "Delete this note?",
           description: "It cannot be restored.",

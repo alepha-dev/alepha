@@ -108,7 +108,7 @@ const Home = (props: HomeProps) => {
     [count],
   );
 
-  return <button onClick={inc.run}>Click {count}</button>;
+  return <button onClick={() => inc.run()}>Click {count}</button>;
 };
 ```
 
@@ -124,38 +124,48 @@ import { useAction } from "alepha/react";
 
 **Returns:** `{ run, refetch, loading, error, cancel, result }`
 
-| Property  | Type                   | Description                                                                                           |
-| --------- | ---------------------- | ----------------------------------------------------------------------------------------------------- |
-| `run`     | `(...args) => Promise` | Execute the action                                                                                    |
-| `refetch` | `() => Promise`        | Re-execute the action, aborting any in-flight request (never dropped by the double-click dedup guard) |
-| `loading` | `boolean`              | True while executing                                                                                  |
-| `error`   | `Error \| undefined`   | Error from last failed execution                                                                      |
-| `cancel`  | `() => void`           | Cancel debounce timer or abort in-flight                                                              |
-| `result`  | `T \| undefined`       | Result from last successful execution                                                                 |
+| Property  | Type                              | Description                                                                                           |
+| --------- | --------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `run`     | `(...args) => Promise<RunResult>` | Execute the action. Never rejects (see below)                                                         |
+| `refetch` | `(...args) => Promise<RunResult>` | Re-execute the action, aborting any in-flight request (never dropped by the double-click dedup guard) |
+| `loading` | `boolean`                         | True while executing                                                                                  |
+| `error`   | `Error \| undefined`              | Error from last failed execution                                                                      |
+| `cancel`  | `() => void`                      | Cancel debounce timer or abort in-flight                                                              |
+| `result`  | `T \| undefined`                  | Result from last successful execution                                                                 |
 
 **Options:**
 
-| Option        | Type                                     | Description                                                                                                                                                                                                                                                                                                               |
-| ------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `handler`     | `(...args, ctx) => Promise`              | The async function to execute. Receives an `ActionContext` with an `AbortSignal` as the last argument.                                                                                                                                                                                                                    |
-| `onError`     | `(error) => void`                        | Custom error handler. Passing one marks the failure handled: `react:action:error` still fires, with `handled: true`, and `ActionErrorToaster` does not toast it (see below). Errors are never re-thrown by `run` - they land in `error` state and the event, so fire-and-forget calls can't produce unhandled rejections. |
-| `onSuccess`   | `(result) => void`                       | Called after successful execution.                                                                                                                                                                                                                                                                                        |
-| `id`          | `string`                                 | Identifier for debugging and analytics.                                                                                                                                                                                                                                                                                   |
-| `debounce`    | `number`                                 | Delay in milliseconds before executing.                                                                                                                                                                                                                                                                                   |
-| `runOnInit`   | `boolean`                                | Run once when the component mounts.                                                                                                                                                                                                                                                                                       |
-| `runEvery`    | `DurationLike`                           | Run periodically at the given interval.                                                                                                                                                                                                                                                                                   |
-| `invalidates` | `unknown[][] \| (result) => unknown[][]` | Query-cache keys to invalidate after success - see [Invalidating after a write](#invalidating-after-a-write).                                                                                                                                                                                                             |
+| Option        | Type                                     | Description                                                                                                                                                                                                                                                                                                                                |
+| ------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `handler`     | `(ctx, ...args) => Promise`              | The async function to execute. Receives an `ActionContext` (`{ signal }`) FIRST, then the arguments given to `run`.                                                                                                                                                                                                                        |
+| `onError`     | `(error) => void`                        | Custom error handler. Passing one marks the failure handled: `react:action:error` still fires, with `handled: true`, and `ActionErrorToaster` does not toast it (see below). Errors are never re-thrown by `run`: they land in its result, in `error` state and in the event, so fire-and-forget calls can't produce unhandled rejections. |
+| `onSuccess`   | `(result) => void`                       | Called after successful execution.                                                                                                                                                                                                                                                                                                         |
+| `id`          | `string`                                 | Identifier for debugging and analytics.                                                                                                                                                                                                                                                                                                    |
+| `debounce`    | `number`                                 | Delay in milliseconds before executing.                                                                                                                                                                                                                                                                                                    |
+| `runOnInit`   | `boolean`                                | Run once when the component mounts.                                                                                                                                                                                                                                                                                                        |
+| `runEvery`    | `DurationLike`                           | Run periodically at the given interval.                                                                                                                                                                                                                                                                                                    |
+| `invalidates` | `unknown[][] \| (result) => unknown[][]` | Query-cache keys to invalidate after success - see [Invalidating after a write](#invalidating-after-a-write).                                                                                                                                                                                                                              |
 
-By default, concurrent executions are prevented - calling `run` while already executing is a no-op, and that dropped call resolves `undefined` (as does a failed one). Disable the controls that trigger the action on `loading`, and put follow-ups inside the handler rather than after `await action.run()`. `refetch` and a `debounce`d call are the exceptions: they abort the in-flight run and replace it.
+**`run` resolves a `RunResult` and never rejects:**
 
-⚠️ The handler receives `{ signal }` as its **last** argument. Never give it an optional or defaulted trailing parameter: that parameter would receive the `{ signal }` object, and TypeScript does not catch it. Make every parameter required, or take one object, and type the hook explicitly when needed (`useAction<[id: string], boolean>`).
+| Result                                  | When                                                                                         |
+| --------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `{ ok: true, value }`                   | The handler returned `value`.                                                                |
+| `{ ok: false, reason: "error", error }` | The handler threw `error`.                                                                   |
+| `{ ok: false, reason: "dropped" }`      | Refused because a run was already in flight, or a `debounce`d call replaced by a newer one.  |
+| `{ ok: false, reason: "aborted" }`      | Cancelled by `cancel()`, an unmount or a newer run.                                          |
+| `{ ok: false, reason: "cancelled" }`    | A wrapper hook's user backed out (a declined confirm); `useAction` itself never produces it. |
+
+So a follow-up branches on it: `if ((await save.run()).ok) close();`. By default, concurrent executions are prevented, which is the `dropped` case: disable the controls that trigger the action on `loading`. `refetch` and a `debounce`d call abort the in-flight run and replace it instead.
+
+`run` is not an event handler: write `onClick={() => save.run()}`, never `onClick={save.run}`, which would pass the click event as the first argument.
 
 **Debounce example (search input):**
 
 ```tsx
 const search = useAction(
   {
-    handler: async (query: string) => {
+    handler: async (_ctx, query: string) => {
       return await api.search(query);
     },
     debounce: 300,
@@ -188,7 +198,7 @@ const pollStatus = useAction(
 ```typescript
 const fetchData = useAction(
   {
-    handler: async (url: string, { signal }: { signal: AbortSignal }) => {
+    handler: async ({ signal }, url: string) => {
       const response = await fetch(url, { signal });
       return response.json();
     },
@@ -216,7 +226,7 @@ alepha.events.on("react:action:error", ({ error, handled }) => {
 });
 ```
 
-**A handled error stays quiet.** The error event carries `handled: true` when the caller already dealt with the failure: the `useAction`, `useQuery` or `useForm` was given an `onError`, or a form's `FormValidationError` named a field and is shown under it. `@alepha/ui`'s `ActionErrorToaster` skips a handled error, so `onError: () => {}` is how a read that can do without its data stays quiet, and an `onError` that toasts its own message does not get a second toast beside it. The event still fires either way: error reporting, such as the `@alepha/lore` browser sigil, reads a quiet failure too.
+**A handled error stays quiet.** The error event carries `handled: true` when the caller already dealt with the failure: the `useAction`, `useQuery` or `useForm` was given an `onError`, or the error says it is shown in place (`shownInPlace`), as a form's `FormValidationError` naming a field does. Every emitter (`useAction`, `useQuery`, `FormModel`, the DataTable) derives it the same way, through `ActionErrorPolicy`. `@alepha/ui`'s `ActionErrorToaster` skips a handled error, so `onError: () => {}` is how a read that can do without its data stays quiet, and an `onError` that toasts its own message does not get a second toast beside it. The event still fires either way: error reporting, such as the `@alepha/lore` browser sigil, reads a quiet failure too.
 
 ### useEvents
 
@@ -339,7 +349,7 @@ This is the part that replaces hand-patching state after a mutation. Declare wha
 ```tsx
 const remove = useAction(
   {
-    handler: async (id: string) => folioApi.delete({ params: { id } }),
+    handler: async (_ctx, id: string) => folioApi.delete({ params: { id } }),
     invalidates: [
       ["folios", campaignId],
       ["folioTags", campaignId],

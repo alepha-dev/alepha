@@ -25,7 +25,7 @@ const Home = (props: HomeProps) => {
     <fieldset>
       <legend>{props.greeting}</legend>
       <p>
-        <button onClick={inc.run}>Click {count}</button>
+        <button onClick={() => inc.run()}>Click {count}</button>
       </p>
       <p>
         <small>Add ?name=your-name to URL</small>

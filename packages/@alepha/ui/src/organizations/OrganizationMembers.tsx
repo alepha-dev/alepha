@@ -90,7 +90,7 @@ export const OrganizationMembers = (props: OrganizationMembersProps) => {
 
   const remove = useAction<[OrganizationMemberResource], void>(
     {
-      handler: async (member) => {
+      handler: async (_ctx, member) => {
         const name =
           member.user.username ||
           member.user.email ||

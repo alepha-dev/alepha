@@ -25,8 +25,12 @@ export interface AdminUsersRolesPickerProps {
    * Persist the row's full role list. The picker computes it: it is the only
    * place that knows the roles already toggled on this row, since the table
    * does not reload the row after a toggle.
+   *
+   * Resolves whether the change was saved: the picker shows it only then, so
+   * a failed save, or a toggle dropped while another was in flight, leaves
+   * the row as it was.
    */
-  onToggle: (roles: string[]) => Promise<void>;
+  onToggle: (roles: string[]) => Promise<boolean>;
   rolesLabel: string;
   noRolesLabel: string;
 }
@@ -36,6 +40,8 @@ export interface AdminUsersRolesPickerProps {
  */
 export const AdminUsersRolesPicker = (props: AdminUsersRolesPickerProps) => {
   const [open, setOpen] = useState(false);
+  // The role being saved. While one is, every checkbox is disabled: a second
+  // toggle would be dropped by the action anyway.
   const [pending, setPending] = useState<string | null>(null);
   // The users table no longer hard-reloads after a role toggle, so the row's
   // `user.roles` would stay stale. Track an optimistic override locally so the
@@ -84,7 +90,7 @@ export const AdminUsersRolesPicker = (props: AdminUsersRolesPickerProps) => {
         <div className="flex flex-col">
           {rows.map((role) => {
             const checked = userRoles.includes(role.name);
-            const disabled = role.default === true || pending === role.name;
+            const disabled = role.default === true || pending !== null;
             return (
               // `cursor-pointer` stays: the global rule in
               // `@alepha/ui/src/styles.css` covers controls and menu items,
@@ -111,8 +117,9 @@ export const AdminUsersRolesPicker = (props: AdminUsersRolesPickerProps) => {
                       ? Array.from(new Set([...userRoles, role.name]))
                       : userRoles.filter((r) => r !== role.name);
                     try {
-                      await props.onToggle(roles);
-                      setOptimisticRoles(roles);
+                      if (await props.onToggle(roles)) {
+                        setOptimisticRoles(roles);
+                      }
                     } finally {
                       setPending(null);
                     }

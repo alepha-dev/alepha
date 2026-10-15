@@ -115,7 +115,7 @@ const AccountKeys = (props: AccountKeysProps) => {
 
   const rotate = useAction<[key: ListApiKeyItem], boolean>(
     {
-      handler: async (key) => {
+      handler: async (_ctx, key) => {
         const ok = await dialog.confirm({
           title: tr("account.keys.rotateTitle", {
             default: "Rotate $1?",
@@ -144,7 +144,7 @@ const AccountKeys = (props: AccountKeysProps) => {
 
   const revoke = useAction<[key: ListApiKeyItem], boolean>(
     {
-      handler: async (key) => {
+      handler: async (_ctx, key) => {
         const ok = await dialog.confirm({
           title: tr("account.keys.revokeTitle", {
             default: "Revoke $1?",

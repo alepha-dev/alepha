@@ -10,6 +10,7 @@ import {
   z,
 } from "alepha";
 import { $logger } from "alepha/logger";
+import { ActionErrorPolicy } from "alepha/react";
 import type { ChangeEvent, InputHTMLAttributes } from "react";
 
 import { FormValidationError } from "../errors/FormValidationError.ts";
@@ -437,7 +438,7 @@ export class FormModel<T extends ZObject> {
           type: "form",
           id: this.id,
           error: error as Error,
-          handled: this.isHandledError(error),
+          handled: ActionErrorPolicy.isHandled(error, this.options.onError),
         },
         { catch: true },
       );
@@ -464,31 +465,6 @@ export class FormModel<T extends ZObject> {
       );
     }
   };
-
-  /**
-   * Whether a failed submit has already been shown, so `react:action:error`
-   * carries `handled: true` and `ActionErrorToaster` leaves it alone.
-   *
-   * Two cases, the same rule `useAction` follows plus the form's own:
-   *
-   * - **The form was given an `onError`.** The caller dealt with it, whether
-   *   by a toast of its own or by staying quiet on purpose.
-   * - **A `FormValidationError` names a field.** `useFormState` pins it under
-   *   the field whose path matches, which is the whole reason a handler
-   *   throws one: a wrong password was shown under the field and toasted.
-   *
-   * ⚠️ `FormValidationError`, not any `SchemaValidationError`. A
-   * `SchemaValidationError` raised inside the handler is a response that broke
-   * its own schema: a fault, with a path into the response rather than into
-   * this form, so nothing renders it and it must still toast. And a refusal
-   * with no path has nowhere to render either.
-   */
-  protected isHandledError(error: unknown): boolean {
-    if (this.options.onError) {
-      return true;
-    }
-    return error instanceof FormValidationError && error.value.path !== "";
-  }
 
   /**
    * The submitted values, decoded against the form's own schema.

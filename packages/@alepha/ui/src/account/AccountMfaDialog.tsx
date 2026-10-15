@@ -1,5 +1,5 @@
 import type { MyMfaController } from "alepha/api/users";
-import { useClient, useQuery } from "alepha/react";
+import { useAction, useClient, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { AlertTriangle } from "lucide-react";
 import { useState } from "react";
@@ -12,7 +12,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../core/Dialog.tsx";
-import { useToast } from "../core/useToast.tsx";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "../otp/InputOTP.tsx";
 import { AccountRecoveryCodes } from "./AccountRecoveryCodes.tsx";
 
@@ -47,19 +46,23 @@ export interface AccountMfaDialogProps {
  */
 export const AccountMfaDialog = (props: AccountMfaDialogProps) => {
   const api = useClient<MyMfaController>();
-  const toaster = useToast();
   const { tr } = useI18n();
 
   const [code, setCode] = useState("");
   const [recoveryCodes, setRecoveryCodes] = useState<string[]>();
-  const [submitting, setSubmitting] = useState(false);
 
   /**
    * A fresh enrollment is started each time the dialog opens, and the
    * previous pending one is replaced server-side. `enabled` keys it to
-   * `props.open` so nothing is issued for a dialog nobody asked for.
+   * `props.open` so nothing is issued for a dialog nobody asked for. The
+   * previous opening's QR is not shown while the new one loads: it names a
+   * secret the server has replaced.
    */
-  const { data: enrollment, error } = useQuery<TotpEnrollment>(
+  const {
+    data: enrollment,
+    error,
+    loading: enrolling,
+  } = useQuery<TotpEnrollment>(
     {
       enabled: props.open,
       handler: () => api.enrollTotp() as Promise<TotpEnrollment>,
@@ -79,21 +82,22 @@ export const AccountMfaDialog = (props: AccountMfaDialogProps) => {
     props.onOpenChange(open);
   };
 
-  const activate = async (value: string) => {
-    setSubmitting(true);
-    try {
-      const result = await api.activateTotp({ body: { code: value } });
-      setRecoveryCodes(result.recoveryCodes);
-      await props.onDone?.();
-    } catch (error: any) {
+  // A refused code is toasted by the app's ActionErrorToaster, like any
+  // other failed action; the field is cleared for the next attempt.
+  const activate = useAction<[code: string]>(
+    {
+      handler: async (_ctx, value) => {
+        const result = await api.activateTotp({ body: { code: value } });
+        setRecoveryCodes(result.recoveryCodes);
+        await props.onDone?.();
+      },
+    },
+    [api, props.onDone],
+  );
+
+  const submit = async (value: string) => {
+    if (!(await activate.run(value)).ok) {
       setCode("");
-      toaster.show(
-        error?.message ??
-          tr("account.mfa.invalidCode", { default: "That code is not valid" }),
-        "danger",
-      );
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -105,13 +109,15 @@ export const AccountMfaDialog = (props: AccountMfaDialogProps) => {
     <Dialog
       open={props.open}
       onOpenChange={(open) => {
-        if (!open && recoveryCodes) {
+        // Not while activating either: the codes it is about to return
+        // could never be shown again.
+        if (!open && (recoveryCodes || activate.loading)) {
           return;
         }
         setOpen(open);
       }}
     >
-      <DialogContent showCloseButton={!recoveryCodes}>
+      <DialogContent showCloseButton={!recoveryCodes && !activate.loading}>
         <DialogHeader>
           <DialogTitle>
             {recoveryCodes
@@ -150,7 +156,7 @@ export const AccountMfaDialog = (props: AccountMfaDialogProps) => {
               </Alert>
             )}
 
-            {enrollment ? (
+            {enrollment && !enrolling ? (
               <>
                 <div
                   className="mx-auto w-48 rounded-lg bg-white p-3 [&>svg]:w-full"
@@ -174,11 +180,11 @@ export const AccountMfaDialog = (props: AccountMfaDialogProps) => {
                   <InputOTP
                     maxLength={6}
                     value={code}
-                    disabled={submitting}
+                    disabled={activate.loading}
                     onChange={(value: string) => {
                       setCode(value);
                       if (value.length === 6) {
-                        void activate(value);
+                        void submit(value);
                       }
                     }}
                   >
@@ -191,9 +197,9 @@ export const AccountMfaDialog = (props: AccountMfaDialogProps) => {
                 </div>
 
                 <Button
-                  loading={submitting}
+                  loading={activate.loading}
                   disabled={code.length !== 6}
-                  onClick={() => activate(code)}
+                  onClick={() => submit(code)}
                 >
                   {tr("account.mfa.turnOn", { default: "Turn on" })}
                 </Button>

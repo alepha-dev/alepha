@@ -9,8 +9,8 @@ import { useRef } from "react";
 import { Button } from "../core/Button.tsx";
 
 export interface AdminParametersTreeFooterActionsProps {
-  onExportAll: () => void | Promise<void>;
-  onImport: (file: File) => void | Promise<void>;
+  onExportAll: () => unknown;
+  onImport: (file: File) => unknown;
   disabled?: boolean;
   exporting?: boolean;
   importing?: boolean;

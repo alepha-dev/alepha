@@ -34,7 +34,7 @@ export const OtaOverridesTab = (props: OtaOverridesTabProps) => {
 
   const remove = useAction<[override: OtaOverrideResource], boolean>(
     {
-      handler: async (override) => {
+      handler: async (_ctx, override) => {
         const confirmed = await dialog.confirm({
           title: tr("ota.admin.overrides.removeTitle", {
             default: "Remove this override?",

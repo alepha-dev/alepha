@@ -40,7 +40,7 @@ const Produit = (props: ProduitProps) => {
   // and `ajouter` resolves `undefined` for it, so the success toast is not
   // shown.
   const onAjouter = async () => {
-    if (await ajouter(produit.id, 1)) {
+    if ((await ajouter(produit.id, 1)).ok) {
       toast.success(tr("produit.added", { args: [produit.name] }));
     }
   };

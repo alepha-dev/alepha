@@ -210,7 +210,7 @@ const Commande = () => {
 
   const livraison = useAction<[code: string], void>(
     {
-      handler: async (code: string) => {
+      handler: async (_ctx, code: string) => {
         if (!sessionId) return;
         // The radio moves at once, and moves back if the server refuses: the
         // totals beside it are still the previous method's.

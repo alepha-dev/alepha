@@ -2,7 +2,7 @@ import type {
   MyIdentityController,
   MyPasswordController,
 } from "alepha/api/users";
-import { useClient } from "alepha/react";
+import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { type FormEvent, useState } from "react";
 
@@ -59,7 +59,6 @@ export const AccountPasswordDialog = (props: AccountPasswordDialogProps) => {
   const [currentPassword, setCurrentPassword] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [submitting, setSubmitting] = useState(false);
 
   const close = () => {
     setCurrentPassword("");
@@ -67,6 +66,40 @@ export const AccountPasswordDialog = (props: AccountPasswordDialogProps) => {
     setConfirmPassword("");
     props.onOpenChange(false);
   };
+
+  // The realm's password policy and the wrong-current-password refusal both
+  // arrive as errors whose message is worth showing verbatim: the app's
+  // ActionErrorToaster shows it.
+  const save = useAction<[]>(
+    {
+      handler: async () => {
+        if (props.hasPassword) {
+          const { otherSessionsRevoked } = await passwordApi.changeMyPassword({
+            body: { currentPassword, newPassword: password },
+          });
+          toaster.show(
+            otherSessionsRevoked > 0
+              ? tr("account.password.changedWithSessions", {
+                  default: "Password changed - $1 other session(s) signed out",
+                  args: [String(otherSessionsRevoked)],
+                })
+              : tr("account.password.changed", { default: "Password changed" }),
+            "success",
+          );
+        } else {
+          await identityApi.setMyFirstPassword({ body: { password } });
+          toaster.show(
+            tr("account.password.set", { default: "Password set" }),
+            "success",
+          );
+        }
+        await props.onDone?.();
+        close();
+      },
+    },
+    [currentPassword, password, props.hasPassword, props.onDone],
+  );
+  const submitting = save.loading;
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -79,43 +112,7 @@ export const AccountPasswordDialog = (props: AccountPasswordDialogProps) => {
       );
       return;
     }
-    setSubmitting(true);
-    try {
-      if (props.hasPassword) {
-        const { otherSessionsRevoked } = await passwordApi.changeMyPassword({
-          body: { currentPassword, newPassword: password },
-        });
-        toaster.show(
-          otherSessionsRevoked > 0
-            ? tr("account.password.changedWithSessions", {
-                default: "Password changed - $1 other session(s) signed out",
-                args: [String(otherSessionsRevoked)],
-              })
-            : tr("account.password.changed", { default: "Password changed" }),
-          "success",
-        );
-      } else {
-        await identityApi.setMyFirstPassword({ body: { password } });
-        toaster.show(
-          tr("account.password.set", { default: "Password set" }),
-          "success",
-        );
-      }
-      await props.onDone?.();
-      close();
-    } catch (error: any) {
-      // The realm's password policy and the wrong-current-password refusal
-      // both arrive here with messages worth showing verbatim.
-      toaster.show(
-        error?.message ??
-          tr("account.password.error", {
-            default: "Could not save that password",
-          }),
-        "danger",
-      );
-    } finally {
-      setSubmitting(false);
-    }
+    void save.run();
   };
 
   const title = props.hasPassword

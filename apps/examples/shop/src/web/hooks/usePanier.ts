@@ -11,25 +11,22 @@ import { panierAtom } from "../panierAtom.ts";
  * from the server's. That is the same rule the domain follows — one place
  * computes a total — applied to the front end.
  *
- * Each verb is a `useAction`: it resolves `true` once the cart is written, and
- * `undefined` when the request failed, which the page's `ActionErrorToaster`
- * has already said. So a caller writes `if (await ajouter(id, 1))` and never
- * catches. Reading the cart is `useChargementPanier`'s job, not this hook's.
+ * Each verb is a `useAction` `run`: it resolves a `RunResult`, `ok` once the
+ * cart is written, and an error the page's `ActionErrorToaster` has already
+ * said otherwise. So a caller writes `if ((await ajouter(id, 1)).ok)` and
+ * never catches. Reading the cart is `useChargementPanier`'s job, not this
+ * hook's.
  */
 export const usePanier = () => {
   const client = useClient<CartController>();
   const [panier, setPanier] = useStore(panierAtom);
 
-  const ajout = useAction<[productId: string, quantity: number], boolean>(
+  const ajout = useAction<[productId: string, quantity: number]>(
     {
-      // `quantity` is required, never defaulted: `useAction` appends
-      // `{ signal }` as the last argument, which a `quantity = 1` left out by
-      // the caller would receive and send as the quantity.
-      handler: async (productId: string, quantity: number) => {
+      handler: async (_ctx, productId: string, quantity: number) => {
         setPanier(
           await client.commerceCartAdd({ body: { productId, quantity } }),
         );
-        return true;
       },
     },
     [client, setPanier],
@@ -37,26 +34,24 @@ export const usePanier = () => {
 
   // By line id, not product id: two lines of one product (two slots of a
   // court booking) are told apart only by the line.
-  const miseAJour = useAction<[lineId: string, quantity: number], boolean>(
+  const miseAJour = useAction<[lineId: string, quantity: number]>(
     {
-      handler: async (lineId: string, quantity: number) => {
+      handler: async (_ctx, lineId: string, quantity: number) => {
         setPanier(
           await client.commerceCartSetQuantity({
             params: { lineId },
             body: { quantity },
           }),
         );
-        return true;
       },
     },
     [client, setPanier],
   );
 
-  const retrait = useAction<[lineId: string], boolean>(
+  const retrait = useAction<[lineId: string]>(
     {
-      handler: async (lineId: string) => {
+      handler: async (_ctx, lineId: string) => {
         setPanier(await client.commerceCartRemove({ params: { lineId } }));
-        return true;
       },
     },
     [client, setPanier],

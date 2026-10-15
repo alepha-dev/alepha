@@ -132,7 +132,7 @@ export const AdminKeys = () => {
     [AdminApiKeyResource[], { clearSelection: () => void; refresh: () => void }]
   >(
     {
-      handler: async (items, ctx) => {
+      handler: async (_ctx, items, ctx) => {
         const targets = items.filter((k) => !k.revokedAt);
         if (targets.length === 0) {
           toast.error(

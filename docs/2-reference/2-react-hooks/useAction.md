@@ -10,8 +10,23 @@ import { useAction } from "alepha/react";
 
 Hook for handling async actions with automatic error handling and event emission.
 
+The handler takes an `ActionContext` FIRST, then the arguments `run()`
+was given: `handler: async ({ signal }, id: string) => ...`.
+
+`run()` never rejects. It resolves one `RunResult`:
+
+- `{ ok: true, value }`: the handler returned `value`.
+- `{ ok: false, reason: "error", error }`: the handler threw `error` (also
+  in `error` state and emitted as `react:action:error`).
+- `{ ok: false, reason: "dropped" }`: refused because a run was already in
+  flight, or a debounced call replaced by a newer one.
+- `{ ok: false, reason: "aborted" }`: cancelled by `cancel()`, an unmount
+  or a newer run.
+
+So a follow-up branches on the result: `if ((await save.run()).ok) close()`.
+
 By default, prevents concurrent executions - if an action is running and you call it again,
-the second call will be ignored. Use `debounce` option to delay execution instead.
+the second call is dropped. Use `debounce` option to delay execution instead.
 
 Emits lifecycle events:
 
@@ -27,7 +42,7 @@ Basic usage
 ```tsx
 const action = useAction(
   {
-    handler: async (data) => {
+    handler: async (_ctx, data: Data) => {
       await api.save(data);
     },
   },
@@ -44,7 +59,7 @@ With debounce (search input)
 ```tsx
 const search = useAction(
   {
-    handler: async (query: string) => {
+    handler: async (_ctx, query: string) => {
       await api.search(query);
     },
     debounce: 300, // Wait 300ms after last call
@@ -102,7 +117,7 @@ With AbortController
 ```tsx
 const fetch = useAction(
   {
-    handler: async (url, { signal }) => {
+    handler: async ({ signal }, url: string) => {
       const response = await fetch(url, { signal });
       return response.json();
     },
@@ -117,7 +132,7 @@ With error handling
 ```tsx
 const deleteAction = useAction(
   {
-    handler: async (id: string) => {
+    handler: async (_ctx, id: string) => {
       await api.delete(id);
     },
     onError: (error) => {

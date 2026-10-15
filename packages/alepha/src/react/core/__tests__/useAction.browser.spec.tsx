@@ -5,14 +5,14 @@ import { act, type ReactNode } from "react";
 import { describe, test, vi } from "vitest";
 
 import { AlephaContext } from "../contexts/AlephaContext.ts";
-import { useAction } from "../hooks/useAction.ts";
+import { type RunResult, useAction } from "../hooks/useAction.ts";
 
 describe("useAction", () => {
   test("should handle successful action", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();
 
-    const mockAction = vi.fn(async (value: string, ctx) => {
+    const mockAction = vi.fn(async (ctx, value: string) => {
       return `result: ${value}`;
     });
 
@@ -36,12 +36,12 @@ describe("useAction", () => {
 
     const actionResult = await action.run("test");
 
-    expect(actionResult).toBe("result: test");
+    expect(actionResult).toEqual({ ok: true, value: "result: test" });
     expect(mockAction).toHaveBeenCalledWith(
-      "test",
       expect.objectContaining({
         signal: expect.any(AbortSignal),
       }),
+      "test",
     );
 
     expect(result.current.loading).toBe(false);
@@ -266,7 +266,7 @@ describe("useAction", () => {
     const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();
 
-    const mockAction = vi.fn(async (value: string, ctx) => value);
+    const mockAction = vi.fn(async (ctx, value: string) => value);
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
@@ -291,14 +291,14 @@ describe("useAction", () => {
 
     // Should have only executed once with the last value
     expect(mockAction).toHaveBeenCalledTimes(1);
-    expect(mockAction).toHaveBeenCalledWith("value-99", expect.any(Object));
+    expect(mockAction).toHaveBeenCalledWith(expect.any(Object), "value-99");
   });
 
   test("should reset debounce timer on each call", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();
 
-    const mockAction = vi.fn(async (value: string, ctx) => value);
+    const mockAction = vi.fn(async (ctx, value: string) => value);
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
@@ -324,7 +324,7 @@ describe("useAction", () => {
 
     // Should have only executed once with the last value
     expect(mockAction).toHaveBeenCalledTimes(1);
-    expect(mockAction).toHaveBeenCalledWith("third", expect.any(Object));
+    expect(mockAction).toHaveBeenCalledWith(expect.any(Object), "third");
   });
 
   test("should pass AbortSignal to handler", async ({ expect }) => {
@@ -333,7 +333,7 @@ describe("useAction", () => {
 
     let receivedSignal: AbortSignal | undefined;
 
-    const mockAction = vi.fn(async (value: string, { signal }) => {
+    const mockAction = vi.fn(async ({ signal }, value: string) => {
       receivedSignal = signal as AbortSignal;
       return value;
     });
@@ -392,7 +392,7 @@ describe("useAction", () => {
     const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();
 
-    const mockAction = vi.fn(async (value: string, ctx) => value);
+    const mockAction = vi.fn(async (ctx, value: string) => value);
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
@@ -651,7 +651,7 @@ describe("useAction", () => {
     const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();
 
-    const mockAction = vi.fn(async (value: string, ctx) => value);
+    const mockAction = vi.fn(async (ctx, value: string) => value);
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <AlephaContext.Provider value={alepha}>{children}</AlephaContext.Provider>
@@ -666,7 +666,7 @@ describe("useAction", () => {
     unmount();
 
     // Used to hang forever: unmount cleared the timer without settling.
-    await expect(pending).resolves.toBe(undefined);
+    await expect(pending).resolves.toEqual({ ok: false, reason: "aborted" });
     expect(mockAction).not.toHaveBeenCalled();
   });
 
@@ -709,15 +709,15 @@ describe("useAction", () => {
       { wrapper },
     );
 
-    let first: string | undefined;
-    let second: string | undefined;
+    let first: RunResult<string> | undefined;
+    let second: RunResult<string> | undefined;
     await act(async () => {
       first = await result.current.onSuccess.run();
       second = await result.current.invalidates.run();
     });
 
-    expect(first).toBe("saved");
-    expect(second).toBe("saved");
+    expect(first).toEqual({ ok: true, value: "saved" });
+    expect(second).toEqual({ ok: true, value: "saved" });
     expect(result.current.onSuccess.error).toBe(undefined);
     expect(result.current.invalidates.error).toBe(undefined);
     expect(errors).toEqual([

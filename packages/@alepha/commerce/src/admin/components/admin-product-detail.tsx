@@ -299,7 +299,7 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
 
   const saveAttributes = useAction<[Record<string, string>]>(
     {
-      handler: async (attributes) => {
+      handler: async (_ctx, attributes) => {
         await client.commerceAdminProductUpdate({
           params: { id: productId },
           body: { attributes },
