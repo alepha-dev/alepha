@@ -735,7 +735,7 @@ describe.each(["sqlite", "postgres"] as const)("ota-api on %s", (dialect) => {
       // end state, not what this run counted.
       await ctx.dateTime.travel(11, "minutes");
       await ctx.retention.run();
-      expect((await ctx.publisher["bundles"].findById(old.id)).status).toBe(
+      expect((await ctx.publisher["bundles"].findById(old.id))?.status).toBe(
         "deleted",
       );
     });
