@@ -1,6 +1,8 @@
 import { $hook, $inject, AlephaError } from "alepha";
 import { $repository } from "alepha/orm";
 
+import { automationEvents } from "../entities/automationEvents.ts";
+import { automationReceipts } from "../entities/automationReceipts.ts";
 import { automationRuns } from "../entities/automationRuns.ts";
 import { automations } from "../entities/automations.ts";
 import { automationVariables } from "../entities/automationVariables.ts";
@@ -12,6 +14,8 @@ import { BestEffort } from "./BestEffort.ts";
  * Domain adapters and the execution service use these same repositories.
  */
 export class AutomationPersistence {
+  public readonly events = $repository(automationEvents);
+  public readonly receipts = $repository(automationReceipts);
   public readonly rules = $repository(automations);
   public readonly variables = $repository(automationVariables);
   public readonly runs = $repository(automationRuns);

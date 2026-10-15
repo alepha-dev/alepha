@@ -8,6 +8,7 @@ import { ForbiddenError } from "alepha/server";
 import type { Automation } from "../entities/automations.ts";
 import { users } from "../entities/users.ts";
 import { AutomationProjectPermissions } from "../security/AutomationProjectPermissions.ts";
+import { AutomationDatabase } from "./AutomationDatabase.ts";
 import { AutomationProjectSecurity } from "./AutomationProjectSecurity.ts";
 
 /**
@@ -15,6 +16,7 @@ import { AutomationProjectSecurity } from "./AutomationProjectSecurity.ts";
  * author's key ceiling before every effect; it never uses the job's token.
  */
 export class AutomationAccess {
+  protected readonly database = $inject(AutomationDatabase);
   protected readonly security = $inject(AutomationProjectSecurity);
   protected readonly permissions = $inject(AutomationProjectPermissions);
 
@@ -31,6 +33,16 @@ export class AutomationAccess {
   }
 
   public async authorize(
+    projectId: number,
+    user: UserAccountToken,
+    permission: "automation:read" | "automation:write" | "automation:manage",
+  ) {
+    return this.database.primary(() =>
+      this.authorizePrimary(projectId, user, permission),
+    );
+  }
+
+  protected async authorizePrimary(
     projectId: number,
     user: UserAccountToken,
     permission: "automation:read" | "automation:write" | "automation:manage",
@@ -87,6 +99,12 @@ export class AutomationAccess {
    * contact details and secrets never enter the execution identity.
    */
   public async author(
+    rule: Pick<Automation, "authorUserId" | "authorKeyId">,
+  ): Promise<UserAccountToken> {
+    return this.database.primary(() => this.authorPrimary(rule));
+  }
+
+  protected async authorPrimary(
     rule: Pick<Automation, "authorUserId" | "authorKeyId">,
   ): Promise<UserAccountToken> {
     const account = await this.users.findById(rule.authorUserId);

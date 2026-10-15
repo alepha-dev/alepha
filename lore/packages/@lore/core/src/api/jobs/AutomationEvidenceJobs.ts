@@ -1,9 +1,13 @@
 import { $inject } from "alepha";
 import { $job } from "alepha/api/jobs";
 
+import { AutomationClaims } from "../services/AutomationClaims.ts";
+import { AutomationEvents } from "../services/AutomationEvents.ts";
 import { AutomationRunEvidence } from "../services/AutomationRunEvidence.ts";
 
 export class AutomationEvidenceJobs {
+  protected readonly claims = $inject(AutomationClaims);
+  protected readonly events = $inject(AutomationEvents);
   protected readonly evidence = $inject(AutomationRunEvidence);
   public readonly prune = $job({
     name: "automations.prune-run-detail",
@@ -12,6 +16,11 @@ export class AutomationEvidenceJobs {
     cron: "0 0 * * *",
     handler: async () => {
       await this.evidence.prune();
+      await this.claims.expireReady();
+      await this.claims.repairTerminals();
+      await this.claims.pruneSnapshots();
+      await this.claims.prune();
+      await this.events.prune();
     },
   });
 }

@@ -4,6 +4,7 @@ import { ConflictError, ForbiddenError } from "alepha/server";
 import type { AutomationRule } from "../schemas/automationRuleSchema.ts";
 import { AutomationAccess } from "./AutomationAccess.ts";
 import { AutomationCatalog } from "./AutomationCatalog.ts";
+import { AutomationDatabase } from "./AutomationDatabase.ts";
 import { AutomationPersistence } from "./AutomationPersistence.ts";
 import { AutomationRunEvidence } from "./AutomationRunEvidence.ts";
 import { AutomationVariables } from "./AutomationVariables.ts";
@@ -13,6 +14,7 @@ import { AutomationVariables } from "./AutomationVariables.ts";
  * claimed. Its own identity is never accepted as execution authority.
  */
 export class AutomationAuthority {
+  protected readonly database = $inject(AutomationDatabase);
   protected readonly evidence = $inject(AutomationRunEvidence);
   protected readonly catalog = $inject(AutomationCatalog);
   protected readonly access = $inject(AutomationAccess);
@@ -25,6 +27,12 @@ export class AutomationAuthority {
     variables?: Array<{ key: string; version: number }>;
     effect?: { index: number; action: AutomationRule["actions"][number] };
   }) {
+    return this.database.primary(() => this.checkPrimary(input));
+  }
+
+  protected async checkPrimary(
+    input: Parameters<AutomationAuthority["check"]>[0],
+  ) {
     const rule = await this.persistence.rules.getById(input.automationId);
     if (!rule.enabled) throw new ConflictError("Automation is disabled");
     if (rule.revision !== input.revision)

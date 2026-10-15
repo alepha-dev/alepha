@@ -11,6 +11,7 @@ import {
   organizationConfigAtom,
   OrganizationPolicyProvider,
 } from "alepha/api/organizations";
+import { DatabaseProvider } from "alepha/orm";
 
 import { AdminMcpController } from "./controllers/AdminMcpController.ts";
 import { AdminProjectController } from "./controllers/AdminProjectController.ts";
@@ -28,11 +29,13 @@ import { ResourceFilingController } from "./controllers/ResourceFilingController
 import { SearchController } from "./controllers/SearchController.ts";
 import { OrganizationHooks } from "./hooks/OrganizationHooks.ts";
 import { UserDeletionHook } from "./hooks/UserDeletionHook.ts";
+import { AutomationDispatchJobs } from "./jobs/AutomationDispatchJobs.ts";
 import { AutomationEvidenceJobs } from "./jobs/AutomationEvidenceJobs.ts";
 import { InvitationNotifications } from "./notifications/InvitationNotifications.ts";
 import { LoreInboxNotifications } from "./notifications/LoreInboxNotifications.ts";
 import { NotificationHtmlEscaper } from "./notifications/NotificationHtmlEscaper.ts";
 import { AppSecurityProvider } from "./providers/AppSecurityProvider.ts";
+import { AutomationD1Provider } from "./providers/AutomationD1Provider.ts";
 import { LoreFileAccessProvider } from "./providers/LoreFileAccessProvider.ts";
 import { LoreInboxRecipientProvider } from "./providers/LoreInboxRecipientProvider.ts";
 import { LoreNotificationPreferences } from "./providers/LoreNotificationPreferences.ts";
@@ -44,7 +47,10 @@ import { ProjectRankPresets } from "./security/ProjectRankPresets.ts";
 import { ActivityFeedMetric } from "./services/ActivityFeedMetric.ts";
 import { AutomationAuthority } from "./services/AutomationAuthority.ts";
 import { AutomationCatalog } from "./services/AutomationCatalog.ts";
+import { AutomationClaims } from "./services/AutomationClaims.ts";
+import { AutomationEvents } from "./services/AutomationEvents.ts";
 import { AutomationPersistence } from "./services/AutomationPersistence.ts";
+import { AutomationRoster } from "./services/AutomationRoster.ts";
 import { AutomationRunEvidence } from "./services/AutomationRunEvidence.ts";
 import { AutomationVariables } from "./services/AutomationVariables.ts";
 import { CoreAutomationReferences } from "./services/CoreAutomationReferences.ts";
@@ -158,6 +164,10 @@ export const LoreCoreApi = $module({
     AutomationAuthority,
     AutomationRunEvidence,
     AutomationEvidenceJobs,
+    AutomationDispatchJobs,
+    AutomationClaims,
+    AutomationEvents,
+    AutomationRoster,
     AutomationDiagnosticController,
     InvitationNotifications,
     // The inbox half: two templates, and the one HTML escaper the four
@@ -220,6 +230,12 @@ export const LoreCoreApi = $module({
     ProjectDashboardController,
   ],
   register: (alepha) => {
+    if (String(alepha.env.DATABASE_URL ?? "").startsWith("d1:"))
+      alepha.with({
+        optional: true,
+        provide: DatabaseProvider,
+        use: AutomationD1Provider,
+      });
     // Registered before any module, so these substitutions land before the
     // first `$audit` user or organization policy reader is constructed.
     alepha.with({
@@ -326,3 +342,12 @@ export { AutomationAuthority } from "./services/AutomationAuthority.ts";
 export { AutomationAccess } from "./services/AutomationAccess.ts";
 
 export { AutomationRunEvidence } from "./services/AutomationRunEvidence.ts";
+
+export { AutomationDatabase } from "./services/AutomationDatabase.ts";
+export { AutomationD1Provider } from "./providers/AutomationD1Provider.ts";
+
+export { AutomationClaims } from "./services/AutomationClaims.ts";
+export { AutomationEvents } from "./services/AutomationEvents.ts";
+export { AutomationRoster } from "./services/AutomationRoster.ts";
+export { AutomationAtomic } from "./services/AutomationAtomic.ts";
+export { AutomationDispatchRegistry } from "./services/AutomationDispatchRegistry.ts";

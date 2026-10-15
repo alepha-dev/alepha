@@ -48,21 +48,67 @@ export class AutomationRunEvidence {
     addTag: ["quest_id", "tag", "changed"],
   };
 
-  public async start(input: {
+  public async start(input: AutomationEvidenceInput): Promise<AutomationRun> {
+    const prepared = await this.prepare(input);
+    return this.persist({ ...input, prepared });
+  }
+
+  public async persist(input: {
+    id?: string;
     rule: Automation;
     occurrenceId: string;
     triggeredAt: string;
-    inputs?: Record<string, unknown>;
-    selected?: Record<string, unknown>[];
-    variables?: AutomationRunSnapshot["variables"];
-    matched?: number;
-    total?: number;
-    hasMore?: boolean;
-    planned?: Array<{ index: number; row?: number }>;
-    status?: AutomationRun["status"];
-    reason?: string;
-    health?: AutomationRunSnapshot["health"];
+    prepared: AutomationPreparedEvidence;
   }): Promise<AutomationRun> {
+    if (input.id) {
+      const existing = await this.persistence.runs.findById(input.id);
+      if (existing) {
+        if (
+          existing.automationId !== input.rule.id ||
+          existing.projectId !== input.rule.projectId ||
+          existing.occurrenceId !== input.occurrenceId ||
+          existing.ruleRevision !== input.rule.revision
+        )
+          throw new ConflictError(
+            "Run identity does not match the durable claim",
+          );
+        return existing;
+      }
+    }
+    const { snapshot, status, reason } = input.prepared;
+    try {
+      return await this.persistence.runs.create({
+        ...(input.id ? { id: input.id } : {}),
+        projectId: input.rule.projectId,
+        automationId: input.rule.id,
+        ruleRevision: input.rule.revision,
+        occurrenceId: input.occurrenceId,
+        triggeredAt: input.triggeredAt,
+        status,
+        ...(reason ? { reason: reason.slice(0, 1024) } : {}),
+        snapshot: automationRunSnapshotSchema.parse(snapshot),
+        ...(this.terminal.includes(status)
+          ? { finishedAt: this.dateTime.nowISOString() }
+          : {}),
+      });
+    } catch (error) {
+      if (input.id) {
+        const existing = await this.persistence.runs.findById(input.id);
+        if (
+          existing &&
+          existing.automationId === input.rule.id &&
+          existing.occurrenceId === input.occurrenceId &&
+          existing.ruleRevision === input.rule.revision
+        )
+          return existing;
+      }
+      throw error;
+    }
+  }
+
+  public async prepare(
+    input: AutomationEvidenceInput,
+  ): Promise<AutomationPreparedEvidence> {
     const rule = input.rule;
     const key =
       rule.rule.trigger.kind === "event"
@@ -171,18 +217,36 @@ export class AutomationRunEvidence {
       snapshot.omitted =
         "Snapshot budget exceeded before effects; rule hash and revision retained";
     }
-    return this.persistence.runs.create({
-      projectId: rule.projectId,
-      automationId: rule.id,
-      ruleRevision: rule.revision,
-      occurrenceId: input.occurrenceId,
-      triggeredAt: input.triggeredAt,
-      status,
-      ...(reason ? { reason: reason.slice(0, 1024) } : {}),
+    return {
       snapshot: automationRunSnapshotSchema.parse(snapshot),
-      ...(this.terminal.includes(status)
-        ? { finishedAt: this.dateTime.nowISOString() }
-        : {}),
+      status,
+      ...(reason ? { reason } : {}),
+    };
+  }
+
+  public async continueInAnotherRun(id: string): Promise<void> {
+    const run = await this.persistence.runs.getById(id);
+    if (this.terminal.includes(run.status)) return;
+    if (run.snapshot.actions.some((action) => action.status === "running"))
+      throw new ConflictError(
+        "An in-flight action must be reconciled before continuation",
+      );
+    const snapshot = structuredClone(run.snapshot);
+    for (const action of snapshot.actions)
+      if (action.status === "pending") {
+        action.status = "skipped";
+        action.result = { reason: "Continued in another run" };
+      }
+    snapshot.counts.hasMore = true;
+    await this.persistence.runs.updateById(id, {
+      version: run.version,
+      snapshot,
+      status:
+        snapshot.counts.executed || snapshot.counts.deliveries
+          ? "succeeded"
+          : "skipped",
+      reason: "Continued in another run",
+      finishedAt: this.dateTime.nowISOString(),
     });
   }
 
@@ -238,9 +302,9 @@ export class AutomationRunEvidence {
       run.snapshot.counts.deliveries + deliveries > 100
     )
       throw new BadRequestError("Run delivery budget exceeds 100");
-    if (deliveries && !["queued", "succeeded"].includes(input.status))
+    if (deliveries && ["pending", "running", "skipped"].includes(input.status))
       throw new BadRequestError(
-        "Only committed/enqueued deliveries count as executed",
+        "Only terminal outcomes may include committed/enqueued delivery counts",
       );
     if (input.receiptId && input.receiptId.length > 64)
       throw new BadRequestError(
@@ -302,7 +366,7 @@ export class AutomationRunEvidence {
       problem === "unknown"
         ? "unknown"
         : problem
-          ? run.snapshot.counts.executed
+          ? run.snapshot.counts.executed || run.snapshot.counts.deliveries
             ? "partial"
             : problem
           : run.snapshot.counts.executed
@@ -484,4 +548,27 @@ export class AutomationRunEvidence {
       .map((byte) => byte.toString(16).padStart(2, "0"))
       .join("");
   }
+}
+
+export interface AutomationEvidenceInput {
+  id?: string;
+  rule: Automation;
+  occurrenceId: string;
+  triggeredAt: string;
+  inputs?: Record<string, unknown>;
+  selected?: Record<string, unknown>[];
+  variables?: AutomationRunSnapshot["variables"];
+  matched?: number;
+  total?: number;
+  hasMore?: boolean;
+  planned?: Array<{ index: number; row?: number }>;
+  status?: AutomationRun["status"];
+  reason?: string;
+  health?: AutomationRunSnapshot["health"];
+}
+
+export interface AutomationPreparedEvidence {
+  snapshot: AutomationRunSnapshot;
+  status: AutomationRun["status"];
+  reason?: string;
 }
