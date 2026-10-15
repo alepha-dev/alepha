@@ -287,7 +287,7 @@ export const DataTable = <
    * Filter VALUES are deliberately not reset here: `useForm` captures its
    * `initialValues` once, so resetting them is form surgery rather than a
    * state assignment. They are also not clobbered - the filter-persist effect
-   * writes only on `form:change` / `form:submit:success`, never on mount - so
+   * writes only on `form:changed` / `form:submit:success`, never on mount - so
    * the stored filters of the project you left stay its own.
    */
   const scopeRef = useRef(props.persistenceKey);

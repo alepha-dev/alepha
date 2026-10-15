@@ -318,7 +318,7 @@ describe('a static build, declared as runtime: ["static"]', () => {
               event: { html?: string; viewport?: string },
             ) => {
               emitted.push(name);
-              if (name === "react:server:shell") {
+              if (name === "react:shell:render:before") {
                 event.html = html;
                 viewports.push(event.viewport);
               }
@@ -347,7 +347,7 @@ describe('a static build, declared as runtime: ["static"]', () => {
         '<html><body><div id="root"></div></body></html>',
       );
 
-      expect(emitted).toEqual(["react:server:shell"]);
+      expect(emitted).toEqual(["react:shell:render:before"]);
       expect(fs.getFileContent("/root/my-app/dist/public/index.html")).toBe(
         '<html><body><div id="root"></div></body></html>',
       );

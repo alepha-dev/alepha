@@ -91,18 +91,17 @@ interface Hooks {
   start: Alepha; // start phase
   ready: Alepha; // ready phase
   stop: Alepha; // shutdown phase
-  "state:mutate": {
+  "state:mutated": {
     // state change notification
     key: keyof State;
     value: any;
     prevValue: any;
   };
-  "state:register": { atom: Atom }; // an atom was registered
-  echo: unknown; // free-form event for testing/debugging
+  "state:registered": { atom: Atom }; // an atom was registered
 }
 ```
 
-Other modules extend this interface. For example, `alepha/logger` adds `log`, `alepha/server` adds server-related hooks, and so on.
+Other modules extend this interface. For example, `alepha/logger` adds `log:entry`, `alepha/server` adds server-related hooks, and so on.
 
 ## Custom Hooks
 
@@ -175,9 +174,29 @@ to avoid in normal code. `compile()` exists to hoist that one cache lookup out o
 
 ```typescript
 // After all hooks are registered (e.g. after start)
-const onRequest = alepha.events.compile("server:onRequest", { catch: true });
+const onRequest = alepha.events.compile("server:request:before", {
+  catch: true,
+});
 
 // In the request handler - returns void if sync, Promise if async
 const result = onRequest({ request, route });
 if (result) await result;
 ```
+
+## Naming hooks
+
+Hook names follow `namespace[:subject]:verb[:phase]`, with lower camel case
+inside each segment. Interceptable operations end in `before` and their later
+observers in `after`. Observed operations use `begin`, `success`, `error` and
+`end`. Facts use a past participle without a phase, for example
+`payments:captured` or `cache:hit`. No `onX` or `beforeX` segment is allowed.
+The only bare names are `configure`, `start`, `ready` and `stop`; log entries use
+`log:entry`. The explicitly preserved job lifecycle/control family remains
+`job:begin`, `job:success`, `job:error`, `job:end` and `job:cancel`.
+`check:conventions` checks every `Hooks` declaration, tests and apps included.
+Retired framework names fail immediately and name their replacement.
+
+The complete migration table is in the changelog. New application facts can be
+named `myApp:task:completed`; an interceptable operation can use
+`myApp:task:run:before`. Register listeners before startup. A retired name is an
+error even when TypeScript has been bypassed, so stale listeners fail at boot.

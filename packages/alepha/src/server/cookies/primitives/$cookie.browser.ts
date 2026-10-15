@@ -73,7 +73,7 @@ export class BrowserCookiePrimitive<T extends ZType>
 
   protected onInit() {
     if (this.options.key) {
-      this.alepha.events.on("state:mutate", ({ key, value }) => {
+      this.alepha.events.on("state:mutated", ({ key, value }) => {
         if (key === this.options.key) {
           this.set(value);
         }

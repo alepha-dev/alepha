@@ -20,7 +20,7 @@ export * from "./providers/SmsProvider.ts";
 
 declare module "alepha" {
   interface Hooks {
-    "sms:sending": {
+    "sms:send:before": {
       to: string | string[];
       /**
        * The channel name (the `$sms` primitive's name), not a template id.

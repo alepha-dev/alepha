@@ -11,7 +11,7 @@ import { useForm, useFormState, useFormValues } from "../index.ts";
  * `useForm`'s `deps` parameter (see `useForm.ts`) lets a caller mint a
  * brand new `FormModel` — new `id`, fresh values store — whenever a
  * dependency changes. `useFormValues` and `useFormState` used to subscribe
- * to `alepha.events.on("form:change", ...)` inside a `useEffect(() => {},
+ * to `alepha.events.on("form:changed", ...)` inside a `useEffect(() => {},
  * [])` with an EMPTY dependency array, closing over whichever `form` was
  * passed on the render where that effect first ran. A caller that swapped
  * forms via `deps` left both hooks listening for the OLD form's `id`

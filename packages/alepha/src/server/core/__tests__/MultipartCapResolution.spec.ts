@@ -251,7 +251,7 @@ describe("hook ordering constraints", () => {
 
     class EarlyProbe {
       public readonly onRequest = $hook({
-        on: "server:onRequest",
+        on: "server:request:before",
         before: [ServerMultipartProvider],
         handler: ({ request }) => {
           (request as { marker?: unknown }).marker = "ran-first";

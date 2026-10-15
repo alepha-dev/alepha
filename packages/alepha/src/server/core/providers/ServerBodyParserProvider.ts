@@ -48,7 +48,7 @@ export class ServerBodyParserProvider {
   protected readonly options = $store(bodyParserOptions);
 
   public readonly onRequest = $hook({
-    on: "server:onRequest",
+    on: "server:request:before",
     handler: ({ route, request }) => {
       if (request.body) {
         return; // already parsed

@@ -119,7 +119,7 @@ export class CheckoutService {
   ): Promise<void> {
     await this.db.afterCommit(() =>
       this.alepha.events.emit(
-        "commerce:checkout:email",
+        "commerce:checkout:emailCaptured",
         { sessionId, cartId, email },
         { catch: true },
       ),
@@ -322,7 +322,7 @@ export class CheckoutService {
     } catch (error) {
       // A PSP that refuses the handoff must not strand the session in
       // `paying` with a pending order: nothing reconciles that state (the
-      // `commerce:checkout:paying` event is only emitted after the handoff)
+      // `commerce:checkout:paymentStarted` event is only emitted after the handoff)
       // and the buyer's retry was refused as "not open".
       await this.orders.cancel(order.id);
       await this.repo.updateById(sessionId, { status: "open" });
@@ -337,7 +337,7 @@ export class CheckoutService {
     // it so the settlement module can schedule a reconciliation.
     await this.db.afterCommit(() =>
       this.alepha.events.emit(
-        "commerce:checkout:paying",
+        "commerce:checkout:paymentStarted",
         {
           sessionId,
           cartId: session.cartId,
@@ -468,7 +468,7 @@ export class CheckoutService {
 
     await this.db.afterCommit(() =>
       this.alepha.events.emit(
-        "commerce:capture:stray",
+        "commerce:capture:strayDetected",
         {
           orderId: order.id,
           orderStatus: order.status,

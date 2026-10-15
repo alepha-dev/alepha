@@ -30,7 +30,7 @@ class TestWorkerProvider extends WorkerProvider {
  */
 const captureLogs = (app: Alepha) => {
   const entries: LogEntry[] = [];
-  app.events.on("log", (event) => {
+  app.events.on("log:entry", (event) => {
     entries.push(event.entry);
   });
   return entries;

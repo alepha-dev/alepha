@@ -8,16 +8,16 @@ import { ServerCookiesProvider } from "./ServerCookiesProvider.ts";
 /**
  * Binds every atom declared with `persist: "cookie"` to an HTTP cookie.
  *
- * - `server:onRequest`: seeds the request-scoped state from the cookie, so
+ * - `server:request:before`: seeds the request-scoped state from the cookie, so
  *   SSR renders with the persisted value.
- * - `state:mutate`: writes the new value back as a Set-Cookie header.
- * - `state:register`: an atom registering lazily *during* a request (first
- *   touched by an SSR render, after `server:onRequest` already ran) reads
+ * - `state:mutated`: writes the new value back as a Set-Cookie header.
+ * - `state:registered`: an atom registering lazily *during* a request (first
+ *   touched by an SSR render, after `server:request:before` already ran) reads
  *   its cookie right away, so that render still sees the persisted value.
  *
  * Atoms are resolved from the `StateManager` registry
  * (`alepha.store.listAtoms()`) on every request and every mutation, never
- * from a map built up from `state:register` events. That event fires exactly
+ * from a map built up from `state:registered` events. That event fires exactly
  * once per atom and is never replayed, while `$module.register()` registers
  * `atoms[]` BEFORE it wires `imports[]` and injects `services[]` - so the
  * documented `$module({ atoms, imports: [AlephaServerCookies], services })`
@@ -36,7 +36,7 @@ export class AtomCookiePersistence {
   protected readonly serverCookies = $inject(ServerCookiesProvider);
 
   protected readonly onRequest = $hook({
-    on: "server:onRequest",
+    on: "server:request:before",
     // Explicit dependency instead of relying on `services` array order in
     // `AlephaServerCookies`: this hook needs `request.cookies`, which is
     // only populated by `ServerCookiesProvider.onRequest`. If that ever ran
@@ -46,7 +46,7 @@ export class AtomCookiePersistence {
     handler: ({ request }) => {
       // `alepha.http.request` is not set in the store yet at this point in
       // the request lifecycle (`ServerRouterProvider` sets it only after
-      // `server:onRequest` resolves), so the request-scoped cookie jar must
+      // `server:request:before` resolves), so the request-scoped cookie jar must
       // be passed explicitly rather than resolved from context.
       for (const atom of this.cookieAtoms()) {
         this.read(atom, request.cookies);
@@ -55,7 +55,7 @@ export class AtomCookiePersistence {
   });
 
   protected readonly onRegister = $hook({
-    on: "state:register",
+    on: "state:registered",
     handler: ({ atom }) => {
       if (atom.options.persist !== "cookie") {
         return;
@@ -71,7 +71,7 @@ export class AtomCookiePersistence {
   });
 
   protected readonly onMutate = $hook({
-    on: "state:mutate",
+    on: "state:mutated",
     handler: ({ key, value }) => {
       const atom = this.alepha.store.getAtom(String(key));
       if (!atom || atom.options.persist !== "cookie") {

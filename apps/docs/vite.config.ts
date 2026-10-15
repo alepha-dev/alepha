@@ -10,6 +10,9 @@ export default defineConfig({
     // the app runs on. Inlined, Vite resolves it against the same workspace
     // `alepha` as the app (#Q2688). An app outside this repository resolves
     // `alepha` to its built `dist` and needs none of this.
+    // The pinned Yarn patch migrates the published 0.32.0 sigil hooks to the
+    // V1 names used by this workspace. Remove it when a compatible Lore
+    // package is released; the framework must keep rejecting retired hooks.
     noExternal: ["@alepha/lore"],
   },
 });

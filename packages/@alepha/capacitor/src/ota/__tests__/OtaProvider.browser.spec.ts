@@ -75,7 +75,7 @@ const boot = async (
     await ota.idle();
   };
   const resume = async () => {
-    await alepha.events.emit("capacitor:app:state", { active: true });
+    await alepha.events.emit("capacitor:app:stateChanged", { active: true });
     await ota.idle();
   };
   return { alepha, updater, ota, settle, resume };
@@ -267,7 +267,7 @@ describe("OtaProvider", () => {
       const { alepha, updater, ota, settle } = await boot();
       await settle();
       const checks = updater.checks;
-      await alepha.events.emit("capacitor:app:state", { active: false });
+      await alepha.events.emit("capacitor:app:stateChanged", { active: false });
       await alepha.inject(DateTimeProvider).travel([30, "minutes"]);
       await ota.idle();
       expect(updater.checks).toBe(checks);

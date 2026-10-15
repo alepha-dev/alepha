@@ -102,7 +102,7 @@ export class BuildManifestTask extends BuildTask {
 
   /**
    * The page cache's pre-boot lookup config, asked of the app through
-   * `react:server:edge` (#E78), so a prebuilt deploy writes the same worker
+   * `react:edge:configure:before` (#E78), so a prebuilt deploy writes the same worker
    * as a build. Nothing for an app with no pages or the cache off.
    */
   protected async pageEdgeOf(
@@ -110,7 +110,10 @@ export class BuildManifestTask extends BuildTask {
   ): Promise<Record<string, unknown> | undefined> {
     const pageEdge: Record<string, unknown> = {};
     try {
-      await ctx.alepha.events.emit("react:server:edge" as any, pageEdge);
+      await ctx.alepha.events.emit(
+        "react:edge:configure:before" as any,
+        pageEdge,
+      );
     } catch {
       return undefined;
     }

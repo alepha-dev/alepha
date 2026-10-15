@@ -923,7 +923,7 @@ export class ApiKeyService {
    * refuses the key (owner disabled or deleted).
    * @param ip - The client address of the request being authenticated,
    * checked against the key's `ipAllowlist` and recorded as its `lastUsedIp`. Pass it whenever the request is at
-   * hand: the issuer resolver runs in `server:onRequest`, before the router
+   * hand: the issuer resolver runs in `server:request:before`, before the router
    * stores the request, so the fallback (the stored request's IP) only
    * reaches a caller inside a route handler.
    */
@@ -979,7 +979,7 @@ export class ApiKeyService {
     }
 
     // The caller's `ip` comes first: the resolver calls this from
-    // `server:onRequest`, before the router stores the request.
+    // `server:request:before`, before the router stores the request.
     const clientIp = ip ?? this.alepha.store.get("alepha.http.request")?.ip;
 
     // Before the owner lookup and before any usage is recorded: a request

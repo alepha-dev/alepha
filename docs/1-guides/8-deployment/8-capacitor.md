@@ -225,7 +225,7 @@ export class OverlayBackHandler {
 ```
 
 **Haptics, device, app state.** `HapticsProvider` (`impact`, `notification`, `selection`),
-`DeviceProvider` (`info`), `AppStateProvider` (the `capacitor:app:state` event) and
+`DeviceProvider` (`info`), `AppStateProvider` (the `capacitor:app:stateChanged` event) and
 `StatusBarProvider` are injectable anywhere; each is a no-op or a web fallback in a browser.
 
 ## Deep links

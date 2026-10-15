@@ -90,7 +90,7 @@ describe("StateManager", () => {
       const typedManager = alepha.inject(StateManager<TestState>);
       const listener = vi.fn();
 
-      alepha.events.on("state:mutate", listener);
+      alepha.events.on("state:mutated", listener);
       typedManager.set("name", "John");
 
       expect(listener).toHaveBeenCalledWith({
@@ -107,7 +107,7 @@ describe("StateManager", () => {
       typedManager.set("name", "initial");
 
       const listener = vi.fn();
-      alepha.events.on("state:mutate", listener);
+      alepha.events.on("state:mutated", listener);
 
       typedManager.set("name", "updated");
 
@@ -123,7 +123,7 @@ describe("StateManager", () => {
       const typedManager = alepha.inject(StateManager<TestState>);
       const listener = vi.fn();
 
-      const unsubscribe = alepha.events.on("state:mutate", listener);
+      const unsubscribe = alepha.events.on("state:mutated", listener);
 
       typedManager.set("name", "value1");
       expect(listener).toHaveBeenCalledTimes(1);
@@ -140,8 +140,8 @@ describe("StateManager", () => {
       const listener1 = vi.fn();
       const listener2 = vi.fn();
 
-      alepha.events.on("state:mutate", listener1);
-      alepha.events.on("state:mutate", listener2);
+      alepha.events.on("state:mutated", listener1);
+      alepha.events.on("state:mutated", listener2);
 
       typedManager.set("name", "value");
 
@@ -224,7 +224,7 @@ describe("StateManager", () => {
 
     it("should emit events when setting values through ALS", async () => {
       const listener = vi.fn();
-      alepha.events.on("state:mutate", listener);
+      alepha.events.on("state:mutated", listener);
 
       const store = { context: "test-context" };
       alepha.context.run(() => {
@@ -240,7 +240,7 @@ describe("StateManager", () => {
 
     it("should emit events with previous ALS values", async () => {
       const listener = vi.fn();
-      alepha.events.on("state:mutate", listener);
+      alepha.events.on("state:mutated", listener);
 
       const store = { name: "Initial ALS", context: "test-context" };
       alepha.context.run(() => {
@@ -280,7 +280,7 @@ describe("StateManager", () => {
 
     it("should not skip event emission when values are the same", async () => {
       const listener = vi.fn();
-      alepha.events.on("state:mutate", listener);
+      alepha.events.on("state:mutated", listener);
 
       const store = { name: "Same Value", context: "test-context" };
       alepha.context.run(() => {
@@ -397,7 +397,7 @@ describe("StateManager", () => {
         () => {
           // Simulate a fork-scoped write landing ahead of the atom's first
           // access (e.g. $cookie mirroring a cookie value into the store
-          // during server:onRequest, before anything reads the atom).
+          // during server:request:before, before anything reads the atom).
           alepha.store.set(
             settings.key as any,
             {

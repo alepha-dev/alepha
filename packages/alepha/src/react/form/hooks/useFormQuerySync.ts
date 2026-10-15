@@ -24,7 +24,7 @@ export interface UseFormQuerySyncOptions<TKey extends string> {
  *   empty params clear the field (set to `undefined`).
  *
  * Direction 2 - form → URL:
- * - Subscribe to the form's `form:change` event for the listed keys.
+ * - Subscribe to the form's `form:changed` event for the listed keys.
  *   Each emission writes the current values for all listed keys to the
  *   URL via `router.setQueryParams` (replace-state, no history spam).
  *   Empty values (`undefined` / `""`) are stripped from the URL so the
@@ -88,7 +88,7 @@ export const useFormQuerySync = <T extends ZObject, TKey extends string>(
         missingInitials[key] = String(current);
         continue;
       }
-      // Skip when already in sync — avoids bouncing form:change ↔
+      // Skip when already in sync , avoids bouncing form:changed ↔
       // setQueryParams and re-triggering subscribers.
       if ((current ?? undefined) !== next) {
         const input = (form.input as Record<string, any>)[key];
@@ -112,7 +112,7 @@ export const useFormQuerySync = <T extends ZObject, TKey extends string>(
   // form → URL. Listen for changes on the watched keys only.
   useEffect(() => {
     if (!alepha.isBrowser()) return;
-    const off = alepha.events.on("form:change", (e: any) => {
+    const off = alepha.events.on("form:changed", (e: any) => {
       if (e.id !== form.id) return;
       // `FormModel` always slash-prefixes the path (`/status`), while `keys`
       // holds bare field names.

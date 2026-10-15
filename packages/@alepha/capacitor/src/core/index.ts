@@ -72,7 +72,7 @@ declare module "alepha" {
     /**
      * The app moved to the foreground (`active: true`) or the background.
      */
-    "capacitor:app:state": {
+    "capacitor:app:stateChanged": {
       active: boolean;
     };
     /**
@@ -80,7 +80,7 @@ declare module "alepha" {
      * not confirm the session was revoked; the device is signed out either
      * way.
      */
-    "capacitor:auth:signout": {
+    "capacitor:auth:signedOut": {
       revoked: boolean;
     };
   }

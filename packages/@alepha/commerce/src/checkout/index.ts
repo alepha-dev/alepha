@@ -44,7 +44,7 @@ declare module "alepha" {
      * after the write commits; the cart-recovery module keys its
      * follow-up sequence off this.
      */
-    "commerce:checkout:email": {
+    "commerce:checkout:emailCaptured": {
       sessionId: string;
       cartId: string;
       email: string;
@@ -55,7 +55,7 @@ declare module "alepha" {
      * pending, intent created. The settlement module keys its
      * reconciliation job off this: the buyer may never come back.
      */
-    "commerce:checkout:paying": {
+    "commerce:checkout:paymentStarted": {
       sessionId: string;
       cartId: string;
       orderId: string;

@@ -38,7 +38,7 @@ export class DevtoolsGuardProvider {
   }
 
   protected readonly onRequest = $hook({
-    on: "server:onRequest",
+    on: "server:request:before",
     priority: "first",
     handler: ({ request }) => {
       const hosts = this.allowedHosts();

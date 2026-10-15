@@ -938,7 +938,7 @@ export class LinkProvider {
         ? new ForbiddenError(`Action ${name} is not allowed for this user.`)
         : new UnauthorizedError(`Action ${name} not found.`);
       // mimic http error handling
-      await this.alepha.events.emit("client:onError", {
+      await this.alepha.events.emit("client:request:error", {
         route: link,
         error,
       });
@@ -981,7 +981,7 @@ export class LinkProvider {
       const error = registry.restricted.has(name)
         ? new ForbiddenError(`Action ${name} is not allowed for this user.`)
         : new UnauthorizedError(`Action ${name} not found.`);
-      await this.alepha.events.emit("client:onError", {
+      await this.alepha.events.emit("client:request:error", {
         route: link,
         error,
       });

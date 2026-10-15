@@ -17,7 +17,7 @@ recipient might later want to stop receiving, or that you will one day be
 asked "did it arrive?" about.
 
 > Notification mail does **not** pass through `$email`. The sender calls the
-> provider directly, so the `email:sending` / `email:sent` hooks only ever see
+> provider directly, so the `email:send:before` / `email:sent` hooks only ever see
 > `$email` callers. Delivery information for notifications comes from the
 > receipt instead, not from a hook.
 
@@ -300,7 +300,7 @@ To ingest bounces and complaints:
   address and are out of scope.
 
 A custom transport feeds the same pipeline by emitting the
-`notification:delivery` hook with `{ provider, messageId, contact, channel,
+`notification:delivery:reported` hook with `{ provider, messageId, contact, channel,
 status, bounce?, raw, occurredAt }`; the built-in webhooks do exactly that.
 
 Only a **hard** bounce suppresses. Cloudflare marks every `message.bounced`
@@ -400,7 +400,7 @@ class Verification {
 rendering and no subject: build the string yourself.
 
 Declare a channel per purpose rather than one per app. The name is what appears
-in the `sms:sending` and `sms:sent` hooks and in the devtools outbox, so
+in the `sms:send:before` and `sms:sent` hooks and in the devtools outbox, so
 `verification-code` and `delivery-update` stay distinguishable where a single
 `sms` channel would not.
 
@@ -410,11 +410,11 @@ in the `sms:sending` and `sms:sent` hooks and in the devtools outbox, so
 | Memory   | `$sms({ provider: "memory" })`, tests | Keeps records in `records` / `last`               |
 | Your own | `provider: MyGatewayProvider`         | Extend `SmsProvider` and implement `send()`       |
 
-Both hooks fire around every send. `sms:sending` carries an `abort()` that
+Both hooks fire around every send. `sms:send:before` carries an `abort()` that
 throws, which is where a global opt-out or a test-environment guard belongs:
 
 ```typescript
-alepha.events.on("sms:sending", ({ to, abort }) => {
+alepha.events.on("sms:send:before", ({ to, abort }) => {
   if (!isOptedIn(to)) {
     abort();
   }

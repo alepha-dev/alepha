@@ -116,7 +116,7 @@ export class ServerEtagProvider {
    * After an action response, store it in cache if store is enabled.
    */
   protected readonly onActionResponse = $hook({
-    on: "action:onResponse",
+    on: "action:response:after",
     handler: async ({ action, request, response }) => {
       const options = request.metadata
         ?.etagOptions as EtagMiddlewareOptionsResolved;
@@ -177,7 +177,7 @@ export class ServerEtagProvider {
    * This handles the case where etag is enabled but store is not.
    */
   protected readonly onSend = $hook({
-    on: "server:onSend",
+    on: "server:response:before",
     handler: async ({ request }) => {
       const options = request.metadata
         ?.etagOptions as EtagMiddlewareOptionsResolved;
@@ -220,7 +220,7 @@ export class ServerEtagProvider {
    * After the response is generated, store it and set ETag headers.
    */
   protected readonly onResponse = $hook({
-    on: "server:onResponse",
+    on: "server:response:after",
     priority: "first",
     handler: async ({ route, request, response }) => {
       const options = request.metadata

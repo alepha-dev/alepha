@@ -196,7 +196,7 @@ describe("ReactBrowserProvider", () => {
       alepha.store.get(testAtom); // pre-register, as a real app would
 
       const onLog = vi.fn();
-      alepha.events.on("log", onLog);
+      alepha.events.on("log:entry", onLog);
 
       provider.testApplyHydration({
         [testAtom.key]: { theme: 42 },
@@ -243,7 +243,7 @@ describe("ReactBrowserProvider", () => {
    * change. i18n is the case that exposed it: `I18nProvider` preloads the
    * dictionaries for the active language on `start`, so with the payload
    * unapplied it preloaded the fallback language's dictionary instead. The real
-   * language landed in `ready`, but `StateManager.set` emits `state:mutate`
+   * language landed in `ready`, but `StateManager.set` emits `state:mutated`
    * fire-and-forget, so that dictionary's loader was still in flight when
    * `render()` hydrated React one line later — and `translate()` falls through
    * to the fallback dictionary when the active one has no entry for a key.

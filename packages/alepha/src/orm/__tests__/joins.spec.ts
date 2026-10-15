@@ -1,5 +1,5 @@
-import { Alepha } from "alepha";
-import { describe, it } from "vitest";
+import { Alepha, AlephaError } from "alepha";
+import { describe, expect, it } from "vitest";
 
 import { AlephaOrmPostgres } from "../postgres/index.ts";
 import {
@@ -58,11 +58,18 @@ describe("joins", () => {
     // SQLite: entity column refs (users.cols.id) passed to drizzle's sql`` tag become
     // bind parameters. node:sqlite interprets objects with a `name` property as named
     // parameter dictionaries, causing "Unknown named parameter" errors. Use tuple syntax instead.
-    // oxlint-disable-next-line vitest/no-disabled-tests
-    it.skip("should do left join with sql wrapper (sqlite)", async () => {
-      await testLeftJoinSqlWrapper(
+    it("refuses schema objects as raw SQL bindings on SQLite", async () => {
+      const failure: unknown = await testLeftJoinSqlWrapper(
         Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }),
-      );
+      ).catch((error: unknown) => error);
+      expect(failure).toBeInstanceOf(AlephaError);
+      const messages: string[] = [];
+      let current: unknown = failure;
+      while (current instanceof Error) {
+        messages.push(current.message);
+        current = current.cause;
+      }
+      expect(messages.join("\n")).toMatch(/Unknown named parameter/);
     });
     it("should do left join with sql wrapper (postgres)", async () => {
       await testLeftJoinSqlWrapper(Alepha.create().with(AlephaOrmPostgres));

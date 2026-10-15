@@ -86,7 +86,7 @@ export class BuildCloudflareTask extends BuildTask {
   protected websocketPaths: string[] = [];
 
   /**
-   * The page cache's pre-boot lookup config (`react:server:edge`), when the
+   * The page cache's pre-boot lookup config (`react:edge:configure:before`), when the
    * app has pages and the cache is on. See `pageEdgeCode`.
    */
   protected pageEdge?: Record<string, any>;
@@ -233,7 +233,10 @@ export class BuildCloudflareTask extends BuildTask {
       // options and the source of the functions the worker embeds (#E78).
       const pageEdge: Record<string, unknown> = {};
       try {
-        await ctx.alepha.events.emit("react:server:edge" as any, pageEdge);
+        await ctx.alepha.events.emit(
+          "react:edge:configure:before" as any,
+          pageEdge,
+        );
         this.pageEdge = pageEdge.enabled ? pageEdge : undefined;
       } catch {
         this.pageEdge = undefined;
@@ -881,7 +884,7 @@ const pageEdgeFresh = async (cache, key, at) => {
 
     // WebSocket upgrade -> route to the room Durable Object. Runs at the very
     // top of `fetch`, before `bindEnv`/the normal request pipeline: a
-    // hibernating WS upgrade has no HTTP response for `web:request` to
+    // hibernating WS upgrade has no HTTP response for `web:request:before` to
     // produce, so it must never reach that dispatcher.
     const upgradeBranch = this.hasWebSocket
       ? `
@@ -1200,7 +1203,7 @@ export default {
         });
       }
 
-      await __alepha.events.emit("web:request", ctx);
+      await __alepha.events.emit("web:request:before", ctx);
     });
 
     const outgoingBookmark =
@@ -1311,7 +1314,7 @@ export default {
       return Promise.all(
         batch.messages.map(async (msg) => {
           try {
-            await __alepha.events.emit("cloudflare:queue", msg.body);
+            await __alepha.events.emit("cloudflare:queue:received", msg.body);
             msg.ack();
           } catch (e) {
             msg.retry();

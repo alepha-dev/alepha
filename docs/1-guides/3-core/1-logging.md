@@ -175,10 +175,10 @@ interface LogEntry {
 
 ## Log Events
 
-Every log call emits a `"log"` event on the Alepha event system, regardless of whether the message was above the configured threshold. This allows external listeners to capture all log activity:
+Every log call emits a `"log:entry"` event on the Alepha event system, regardless of whether the message was above the configured threshold. This allows external listeners to capture all log activity:
 
 ```typescript
-alepha.events.on("log", (event) => {
+alepha.events.on("log:entry", (event) => {
   // event.message  - formatted string (or undefined if below threshold)
   // event.entry    - the raw LogEntry
 });
@@ -196,7 +196,7 @@ class ErrorReporter {
   logBuffer = $inject(LogBufferProvider);
 
   onError = $hook({
-    on: "server:onError",
+    on: "server:request:error",
     handler: ({ request, error }) => {
       sendToYourTool(error, {
         requestId: request.requestId,

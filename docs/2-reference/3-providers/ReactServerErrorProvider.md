@@ -18,14 +18,14 @@ favicon and no way back.
 The router already renders a real error page for anything a _loader_ or a
 _component_ throws - that path runs inside `createLayers`, which owns
 `errorHandler`. What never reached it is everything thrown _around_ the
-render: `use:` middleware, and every `server:onRequest` hook. Those are not
+render: `use:` middleware, and every `server:request:before` hook. Those are not
 exotic. `ServerNotReadyProvider` throws 503 while the app is still booting,
 a `$rateLimit` middleware throws 429, `ServerAuthProvider` throws 401 on a
 stale token. All three land on a first-time visitor, and all three used to
 answer with JSON.
 
 This provider closes that gap from the react side, on the hook the server
-already offers for it: `errorHandler` emits `server:onError` first and stops
+already offers for it: `errorHandler` emits `server:request:error` first and stops
 as soon as a listener has set a status. So `alepha/server` needs no change,
 and an app that does not load the react router keeps the JSON behaviour
 exactly as it is.

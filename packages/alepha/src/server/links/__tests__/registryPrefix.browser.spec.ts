@@ -13,14 +13,14 @@ class Api {
 }
 
 /**
- * `client:beforeFetch` carries the URL the client is about to request, which
+ * `client:fetch:before` carries the URL the client is about to request, which
  * is the only place the composed prefix is observable.
  */
 class FetchProbe {
   public readonly urls: string[] = [];
 
   protected readonly capture = $hook({
-    on: "client:beforeFetch",
+    on: "client:fetch:before",
     handler: ({ url }) => {
       this.urls.push(url);
     },

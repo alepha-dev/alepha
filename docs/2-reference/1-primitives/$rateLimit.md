@@ -26,7 +26,7 @@ and pass it in. A store error or `ActorContentionError` resolves a result
 with `reason: "store" | "contention"`, refused under `deny` (the default for
 both) or allowed uncounted under `allow`. `consume` never rejects for them.
 
-Every refusal emits `rate-limit:consume:denied`. Callers audit lockouts
+Every refusal emits `rateLimit:consume:denied`. Callers audit lockouts
 themselves from `count`: whether a hit "crossed" depends on whether they
 compare before or after counting.
 

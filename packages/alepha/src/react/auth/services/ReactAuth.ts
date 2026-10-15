@@ -37,7 +37,7 @@ export class ReactAuth {
   });
 
   protected readonly onFetchRequest = $hook({
-    on: "client:onRequest",
+    on: "client:request:before",
     handler: async ({ request }) => {
       if (this.alepha.isBrowser() && this.user && this.transport.cookies) {
         // ensure cookies are sent with requests and refresh-able. Never for a

@@ -169,7 +169,7 @@ const createApp = (options: AppOptions = {}) => {
     }
 
     protected readonly authenticate = $hook({
-      on: "server:onRequest",
+      on: "server:request:before",
       priority: "first",
       handler: ({ request }) => {
         request.user = this.token();

@@ -52,7 +52,7 @@ class App {
   members = $repository(members);
 
   protected readonly authenticate = $hook({
-    on: "server:onRequest",
+    on: "server:request:before",
     priority: "first",
     handler: ({ request }) => {
       request.user = { id: "u1", realm: "default", roles: ["member"] };

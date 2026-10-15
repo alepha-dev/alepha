@@ -146,7 +146,7 @@ export class ServerAuthProvider {
    * Fill request headers with access token from cookies or fallback to provider's fallback function.
    */
   protected readonly onRequest = $hook({
-    on: "server:onRequest",
+    on: "server:request:before",
     after: this.serverCookiesProvider,
     handler: async ({ request }) => {
       const cookies = request.cookies;
@@ -210,7 +210,7 @@ export class ServerAuthProvider {
     },
     handler: async ({ user, headers, cookies }) => {
       // Prefer the REQUEST's resolved user (the currentUserAtom): global
-      // `server:onRequest` hooks may have rewritten it — e.g. per-org role
+      // `server:request:before` hooks may have rewritten it , e.g. per-org role
       // resolution on a multi-tenant relying party. Re-deriving from the raw
       // tokens here would silently drop those roles, so the token path is
       // only a FALLBACK for sessions whose resolvers don't populate the atom
@@ -1179,7 +1179,7 @@ export class ServerAuthProvider {
    * Browsers cannot attach an `Authorization` header to a WebSocket handshake, so for a web
    * client the encrypted `tokens` cookie is the ONLY auth channel a socket upgrade carries.
    * Ordinary HTTP requests get the cookie→authorization conversion from this provider's
-   * `server:onRequest` hook, but an upgrade never runs the server pipeline, so
+   * `server:request:before` hook, but an upgrade never runs the server pipeline, so
    * `WebSocketServerProvider.resolveUserId` calls this directly. Refresh side effects (an
    * updated or deleted cookie) cannot reach the client here — there is no HTTP response to
    * carry a `Set-Cookie` — which is acceptable: the next ordinary HTTP request performs the

@@ -22,7 +22,7 @@ export * from "./services/EmailTextRenderer.ts";
 // Hook declarations
 declare module "alepha" {
   interface Hooks {
-    "email:sending": {
+    "email:send:before": {
       to: string | string[];
       /**
        * The channel name (the `$email` primitive's name), not a template id.
@@ -54,7 +54,7 @@ declare module "alepha" {
  *
  * **Features:**
  * - `$email` declares a named send channel; the name is surfaced to the
- *   `email:sending` / `email:sent` hooks (as their `template` field) for
+ *   `email:send:before` / `email:sent` hooks (as their `template` field) for
  *   auditing and interception
  * - Multiple recipients
  * - Local file provider for development

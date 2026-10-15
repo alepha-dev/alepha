@@ -20,7 +20,7 @@ Direction 1 - URL → form:
 
 Direction 2 - form → URL:
 
-- Subscribe to the form's `form:change` event for the listed keys.
+- Subscribe to the form's `form:changed` event for the listed keys.
   Each emission writes the current values for all listed keys to the
   URL via `router.setQueryParams` (replace-state, no history spam).
   Empty values (`undefined` / `""`) are stripped from the URL so the

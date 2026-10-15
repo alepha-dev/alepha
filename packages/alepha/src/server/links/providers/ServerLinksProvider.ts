@@ -293,7 +293,7 @@ export class ServerLinksProvider {
   });
 
   /**
-   * Announces a sub-request failure on `server:onError`, the way the
+   * Announces a sub-request failure on `server:request:error`, the way the
    * single-request path does from `ServerRouterProvider.errorHandler`.
    *
    * ⚠️ **Not optional bookkeeping.** This endpoint answers 200 with a
@@ -323,7 +323,7 @@ export class ServerLinksProvider {
     const reply = request.reply;
     const status = reply?.status;
     try {
-      await this.alepha.events.emit("server:onError", {
+      await this.alepha.events.emit("server:request:error", {
         request,
         route: { path: this.actionPath(action) } as any,
         error: error as Error,
@@ -331,7 +331,10 @@ export class ServerLinksProvider {
     } catch (hookError) {
       // A broken observer must never turn a reported failure into a second
       // one, nor take down the entries that succeeded.
-      this.log.warn("server:onError hook failed for a batch entry", hookError);
+      this.log.warn(
+        "server:request:error hook failed for a batch entry",
+        hookError,
+      );
     } finally {
       if (reply) reply.status = status;
     }

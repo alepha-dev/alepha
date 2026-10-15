@@ -9,7 +9,7 @@ import { $cookie, AlephaServerCookies } from "../index.ts";
  * `StateManager.register()`.
  *
  * `$cookie({ key: atom.key })` writes the raw cookie into the request's ALS
- * layer during `server:onRequest`, BEFORE anything ever reads the atom. So on
+ * layer during `server:request:before`, BEFORE anything ever reads the atom. So on
  * a request that carries the cookie, the atom's very first registration
  * happens inside a fork that already holds its key — and the app-level store
  * never received the declared default. Every later, cookie-LESS request then

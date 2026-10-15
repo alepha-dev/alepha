@@ -120,7 +120,7 @@ describe("a capture that lands after its hold expired", () => {
       const winner = await reachPayment(ctx, club);
 
       const strays: string[] = [];
-      ctx.alepha.events.on("commerce:capture:stray", (event) => {
+      ctx.alepha.events.on("commerce:capture:strayDetected", (event) => {
         strays.push(event.orderId);
       });
 

@@ -38,7 +38,7 @@ to its six siblings.
 
 That failure is the quiet kind: every gate still allows, every behavioural
 test still passes, and the batch still issues seven lookups. Seeding on
-`server:onRequest` puts the `Map` on the request layer, which reads fall
+`server:request:before` puts the `Map` on the request layer, which reads fall
 through to from every child fork, so each action finds the same object and
 mutates it by reference.
 

@@ -1,0 +1,27 @@
+diff --git a/dist/sigil/index.browser.js b/dist/sigil/index.browser.js
+--- a/dist/sigil/index.browser.js
++++ b/dist/sigil/index.browser.js
+@@ -1241 +1241 @@
+-			this.alepha.events.on("react:recoverable:error", (ev) => {
++			this.alepha.events.on("react:render:recovered", (ev) => {
+@@ -1277 +1277 @@
+-			this.alepha.events.on("react:browser:render", () => {
++			this.alepha.events.on("react:browser:render:before", () => {
+diff --git a/dist/sigil/index.js b/dist/sigil/index.js
+--- a/dist/sigil/index.js
++++ b/dist/sigil/index.js
+@@ -1245 +1245 @@
+-			this.alepha.events.on("react:recoverable:error", (ev) => {
++			this.alepha.events.on("react:render:recovered", (ev) => {
+@@ -1281 +1281 @@
+-			this.alepha.events.on("react:browser:render", () => {
++			this.alepha.events.on("react:browser:render:before", () => {
+@@ -2775 +2775 @@
+-		on: "server:onResponse",
++		on: "server:response:after",
+@@ -3108 +3108 @@
+-		on: "server:onError",
++		on: "server:request:error",
+@@ -3124 +3124 @@
+-		on: "log",
++		on: "log:entry",

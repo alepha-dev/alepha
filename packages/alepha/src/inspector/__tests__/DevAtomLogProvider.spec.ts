@@ -22,7 +22,7 @@ describe("DevAtomLogProvider", () => {
     await alepha.start();
 
     // `set()` also registers the atom on first use (firing its own
-    // registration `state:mutate`), so don't assert an exact count for the
+    // registration `state:mutated`), so don't assert an exact count for the
     // normal atom — just that the serverOnly atom logs nothing at all, and
     // the normal atom's newest entry reflects the explicit mutation.
     alepha.store.set(secretAtom, "leaked?");

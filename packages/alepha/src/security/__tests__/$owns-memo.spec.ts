@@ -91,7 +91,7 @@ const createApp = (cache?: { ttl: number }) => {
      * spec is about is the reads, not the credential channel.
      */
     protected readonly authenticate = $hook({
-      on: "server:onRequest",
+      on: "server:request:before",
       priority: "first",
       handler: ({ request }) => {
         request.user = { id: "u2", realm: "default", roles: [] };
@@ -278,7 +278,7 @@ describe("$owns request memo", () => {
     await seed(app);
     app.reset();
 
-    // A job, a CLI command, a direct call in a test: no `server:onRequest`
+    // A job, a CLI command, a direct call in a test: no `server:request:before`
     // ever fired, so there is no memo to find. Every read simply happens.
     await alepha.context.run(async () => {
       alepha.set("alepha.security.user", {

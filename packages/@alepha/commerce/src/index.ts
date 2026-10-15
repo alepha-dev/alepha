@@ -105,7 +105,7 @@ declare module "alepha" {
      * refunded, kept as credit or escalated is a business decision this
      * package cannot make, so it reports rather than acts.
      */
-    "commerce:capture:stray": {
+    "commerce:capture:strayDetected": {
       orderId: string;
       /**
        * The order's status at the moment the capture arrived.

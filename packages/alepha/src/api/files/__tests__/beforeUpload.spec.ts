@@ -6,7 +6,7 @@ import { describe, it } from "vitest";
 import { $storage, FileService } from "../index.ts";
 
 /**
- * `files:beforeUpload` has no in-framework subscriber — every transform it
+ * `files:upload:before` has no in-framework subscriber , every transform it
  * exists for (resize, re-encode, strip EXIF, scan) drags in a dependency core
  * deliberately does not carry. These stand in for one, so the contract the
  * hook promises is pinned rather than assumed.
@@ -15,7 +15,7 @@ class Rewriter {
   public seen: Array<{ bucket: string; size: number }> = [];
 
   protected readonly onBeforeUpload = $hook({
-    on: "files:beforeUpload",
+    on: "files:upload:before",
     handler: (ev) => {
       this.seen.push({ bucket: ev.storage.name, size: ev.file.size });
       if (ev.storage.name !== "thumbs") {
@@ -31,7 +31,7 @@ class Media {
   raw = $storage({ name: "raw", provider: "memory" });
 }
 
-describe("files:beforeUpload", () => {
+describe("files:upload:before", () => {
   const setup = async () => {
     const alepha = Alepha.create().with(AlephaOrmPostgres);
     const media = alepha.inject(Media);

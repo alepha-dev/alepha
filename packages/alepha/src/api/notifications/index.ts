@@ -125,7 +125,7 @@ declare module "alepha" {
      * writer. Nothing in the send path emits it: a send already knows its
      * own outcome and writes the receipt directly.
      */
-    "notification:delivery": NotificationDeliveryEvent;
+    "notification:delivery:reported": NotificationDeliveryEvent;
   }
 }
 

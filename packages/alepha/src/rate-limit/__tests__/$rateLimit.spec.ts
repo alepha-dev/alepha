@@ -70,7 +70,7 @@ describe("$rateLimit on Memory", () => {
     const modes = alepha.inject(Modes);
     const broken = alepha.inject(BrokenActorProvider);
     const denied: unknown[] = [];
-    alepha.events.on("rate-limit:consume:denied", (event) => {
+    alepha.events.on("rateLimit:consume:denied", (event) => {
       denied.push(event);
     });
     await alepha.start();

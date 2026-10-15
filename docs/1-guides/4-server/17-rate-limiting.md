@@ -142,7 +142,7 @@ device. An allowed result under `allow` has no ticket: nothing was counted.
 
 ## Events and audits
 
-Every refusal emits `rate-limit:consume:denied` with `{ name, key, reason }`. There
+Every refusal emits `rateLimit:consume:denied` with `{ name, key, reason }`. There
 is no "threshold crossed" event: whether a hit crossed depends on whether the caller
 compares before or after counting. Write lockout audits yourself from `count`, for
 example when a failed attempt's ticket has `count === limit`.

@@ -12,7 +12,7 @@ import { AutoForm } from "../AutoForm.tsx";
 /**
  * `ControlArray` builds an input of its own for each item and each item field,
  * with a path of its own (`.../1/name`), but wrote through `input.set()` -
- * which sets the ARRAY and makes `FormModel` emit `form:change` for the
+ * which sets the ARRAY and makes `FormModel` emit `form:changed` for the
  * array's path alone.
  *
  * So a child subscribed through `useFieldValue` never heard about its own

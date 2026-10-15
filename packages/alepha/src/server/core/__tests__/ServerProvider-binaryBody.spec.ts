@@ -91,7 +91,7 @@ class TestApp {
    * still broken.
    */
   onSend = $hook({
-    on: "server:onSend",
+    on: "server:response:before",
     handler: ({ request }) => {
       const path = request.url.pathname;
       if (path === "/hook-array-buffer") {

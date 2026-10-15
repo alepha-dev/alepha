@@ -20,7 +20,7 @@ export class CartRecoveryListener {
   protected readonly sessions = $repository(checkoutSessions);
 
   protected readonly onCheckoutEmail = $hook({
-    on: "commerce:checkout:email",
+    on: "commerce:checkout:emailCaptured",
     handler: async (event) => {
       const executionId = await this.jobs.cartRecovery.push(
         { cartId: event.cartId },

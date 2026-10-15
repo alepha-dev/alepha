@@ -89,7 +89,7 @@ describe("registration order: atoms declared on a $module, before the adapter ex
   // `imports[]`, then injects `services[]`. So by the time
   // `AtomCookiePersistence` is instantiated (via the `AlephaServerCookies`
   // import), the atom has already registered and its one-shot
-  // `state:register` event has already been emitted and dropped —
+  // `state:registered` event has already been emitted and dropped ,
   // `EventManager` has no replay buffer. An adapter that discovered atoms
   // from that event kept an empty map forever: no cookie read on request, no
   // Set-Cookie on mutation, no warning.

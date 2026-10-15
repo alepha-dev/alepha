@@ -56,7 +56,7 @@ describe("AtomCookiePersistence (browser)", () => {
   it("reads and writes an atom that registered BEFORE the adapter existed", async () => {
     // The `$module({ atoms, imports, services })` shape: `atoms[]` register
     // before `services[]` are injected, so the adapter never sees the
-    // atom's one-shot `state:register` event. Discovering atoms from the
+    // atom's one-shot `state:registered` event. Discovering atoms from the
     // state manager's registry (instead of from that event) is what makes
     // this work.
     document.cookie = `test.cookie.browser.module=${encodeURIComponent(

@@ -37,21 +37,21 @@ describe("websocket:* hooks", () => {
       });
 
       onConnect = $hook({
-        on: "websocket:connect",
+        on: "websocket:connected",
         handler: ({ path }) => {
           events.push(`connect:${path}`);
         },
       });
 
       onMessage = $hook({
-        on: "websocket:message",
+        on: "websocket:message:received",
         handler: ({ path }) => {
           events.push(`message:${path}`);
         },
       });
 
       onDisconnect = $hook({
-        on: "websocket:disconnect",
+        on: "websocket:disconnected",
         handler: ({ path }) => {
           events.push(`disconnect:${path}`);
         },

@@ -171,7 +171,7 @@ export abstract class WebSocketServerProvider {
   }): Promise<void> {
     // Browser WebSocket handshakes cannot carry an `Authorization` header — the encrypted
     // session cookie is their only credential. HTTP requests get the cookie→authorization
-    // conversion from ServerAuthProvider's `server:onRequest` hook; an upgrade bypasses that
+    // conversion from ServerAuthProvider's `server:request:before` hook; an upgrade bypasses that
     // pipeline, so the equivalent conversion runs here before the resolver chain (whose
     // resolvers only read `authorization`).
     //

@@ -129,7 +129,7 @@ export interface StoragePrimitiveOptions {
   /**
    * This interface is **open for augmentation**: a package that adds an
    * upload-time concern declares its own option here rather than getting a
-   * field reserved for it in core. Pair it with a `files:beforeUpload`
+   * field reserved for it in core. Pair it with a `files:upload:before`
    * subscriber that reads `storage.options` and acts on it, and core carries
    * neither the option nor the dependency behind it.
    *

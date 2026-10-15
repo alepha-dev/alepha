@@ -272,7 +272,7 @@ declare module "alepha" {
   }
 
   export interface Hooks {
-    log: {
+    "log:entry": {
       message?: string;
       entry: LogEntry;
     };

@@ -244,7 +244,7 @@ export class ServerCorsProvider {
   });
 
   protected readonly onRequest = $hook({
-    on: "server:onRequest",
+    on: "server:request:before",
     handler: ({ route, request }) => {
       // Resolved ONCE, before any header is written. This used to apply the
       // global options and leave the per-action `$cors` middleware to correct

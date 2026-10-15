@@ -35,7 +35,7 @@ describe("start() after a synchronous boot failure", () => {
       use: FlakyDatabase,
     });
     alepha.inject(App);
-    alepha.events.on("log", (event) => {
+    alepha.events.on("log:entry", (event) => {
       if (event.entry.level === "WARN") warnings.push(event.entry.message);
     });
 

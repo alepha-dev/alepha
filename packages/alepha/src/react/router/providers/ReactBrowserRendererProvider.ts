@@ -51,7 +51,7 @@ export class ReactBrowserRendererProvider {
   static readonly HYDRATED_ATTRIBUTE = "data-alepha-hydrated";
 
   protected readonly onBrowserRender = $hook({
-    on: "react:browser:render",
+    on: "react:browser:render:before",
     handler: async ({ hydration, root, element, state }) => {
       if (hydration?.["alepha.react.router.layers"]) {
         this.root = hydrateRoot(root, element, {
@@ -102,7 +102,7 @@ export class ReactBrowserRendererProvider {
    * stack, so one mismatch would open two rows, one of them the useless one.
    * The deliberate report is the report.
    *
-   * `react:recoverable:error` is what carries it. A crash reporter listens for
+   * `react:render:recovered` is what carries it. A crash reporter listens for
    * that event rather than for `window.onerror`, and gets the component stack
    * with it — see `@alepha/lore`'s `SigilBrowserProvider`.
    *
@@ -133,7 +133,7 @@ export class ReactBrowserRendererProvider {
     });
 
     this.alepha.events
-      .emit("react:recoverable:error", {
+      .emit("react:render:recovered", {
         error,
         componentStack,
         state,
@@ -141,7 +141,7 @@ export class ReactBrowserRendererProvider {
       .catch((err) => {
         // Never silently: a listener that throws would otherwise make the
         // report this handler exists to produce disappear.
-        this.log.error("Failed to emit react:recoverable:error", {
+        this.log.error("Failed to emit react:render:recovered", {
           error: err,
         });
       });

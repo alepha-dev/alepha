@@ -1222,7 +1222,7 @@ describe("BayAdapter  -  the secrets that ride the deploy", () => {
     // indistinguishable from a deploy that pushed everything.
     const { adapter, shell, alepha } = await withEnvFile("NODE_ENV=production");
     const said: string[] = [];
-    alepha.events.on("log", (e: { message?: string }) => {
+    alepha.events.on("log:entry", (e: { message?: string }) => {
       said.push(e.message ?? "");
     });
 
@@ -1294,7 +1294,7 @@ describe("BayAdapter  -  the secrets that ride the deploy", () => {
       "STRIPE_KEY=sk\nMAILER_DSN=smtp://x\n",
     );
     const said: string[] = [];
-    alepha.events.on("log", (e: { message?: string }) => {
+    alepha.events.on("log:entry", (e: { message?: string }) => {
       said.push(e.message ?? "");
     });
 
@@ -1405,7 +1405,7 @@ describe("BayAdapter  -  the secrets that ride the deploy", () => {
       "STRIPE_KEY",
     ]);
     const said: string[] = [];
-    alepha.events.on("log", (e: { message?: string }) => {
+    alepha.events.on("log:entry", (e: { message?: string }) => {
       said.push(e.message ?? "");
     });
 

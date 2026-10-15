@@ -34,7 +34,7 @@ class StateProbe {
   public events: boolean[] = [];
 
   protected readonly onState = $hook({
-    on: "capacitor:app:state",
+    on: "capacitor:app:stateChanged",
     handler: ({ active }) => {
       this.events.push(active);
     },

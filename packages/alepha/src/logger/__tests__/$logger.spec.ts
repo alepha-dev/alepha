@@ -91,7 +91,7 @@ describe("$logger", () => {
     const app = alepha.inject(App);
     const logEvents: any[] = [];
 
-    alepha.events.on("log", (event) => {
+    alepha.events.on("log:entry", (event) => {
       logEvents.push(event);
     });
 

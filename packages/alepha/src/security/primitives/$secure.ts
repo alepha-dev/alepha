@@ -137,7 +137,7 @@ export interface SecureGuardContext {
  * Stores the resolved user in `currentUserAtom` and `request.user` for downstream access.
  *
  * Works across all transports (atom-first resolution):
- * 1. `currentUserAtom`: set by the global `server:onRequest` hook
+ * 1. `currentUserAtom`: set by the global `server:request:before` hook
  *    (`ServerSecurityProvider`), an `action.run()` fork, pipelines and jobs
  * 2. `request.user`: set by previous middleware
  * 3. HTTP headers - JWT/API key resolution
@@ -216,7 +216,7 @@ export function $secure(options?: SecureOptions): SecureMiddleware {
       return async (...args: any[]) => {
         let user: UserAccountToken | undefined;
 
-        // 1. Atom-first (set by the server:onRequest hook, an action.run fork,
+        // 1. Atom-first (set by the server:request:before hook, an action.run fork,
         //    pipelines, jobs)
         user = alepha.store.get(currentUserAtom);
 

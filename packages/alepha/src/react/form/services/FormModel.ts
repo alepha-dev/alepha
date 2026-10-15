@@ -262,7 +262,7 @@ export class FormModel<T extends ZObject> {
 
     // Snapshot the OLD keys before we wipe — without this, fields that
     // had a value but are absent from the new initialValues never emit
-    // form:change and useFieldValue subscribers keep showing the stale
+    // form:changed and useFieldValue subscribers keep showing the stale
     // value. Mirrors the union-of-keys pattern in reset() below.
     const oldKeys = new Set(Object.keys(this.values));
 
@@ -296,7 +296,7 @@ export class FormModel<T extends ZObject> {
     }
 
     // Clean keys first, then the ones still differing from the new baseline.
-    // `form:change`'s `initial` flag is what tells a subscriber whether to
+    // `form:changed`'s `initial` flag is what tells a subscriber whether to
     // mark the form dirty, and that subscriber holds ONE boolean for the
     // whole form: emitting in this order means the last word belongs to a
     // dirty field whenever there is one. Without it, a kept edit could keep
@@ -309,7 +309,7 @@ export class FormModel<T extends ZObject> {
     for (const key of ordered) {
       const path = `/${key.replaceAll(".", "/")}`;
       void this.alepha.events.emit(
-        "form:change",
+        "form:changed",
         {
           id: this.id,
           path,
@@ -357,7 +357,7 @@ export class FormModel<T extends ZObject> {
     for (const key of keys) {
       const path = `/${key.replaceAll(".", "/")}`;
       void this.alepha.events.emit(
-        "form:change",
+        "form:changed",
         { id: this.id, path, value: this.values[key] },
         { catch: true },
       );
@@ -690,7 +690,7 @@ export class FormModel<T extends ZObject> {
         options.onChange(key, typedValue, context.store);
       }
       void this.alepha.events.emit(
-        "form:change",
+        "form:changed",
         { id: this.id, path: path, value: typedValue },
         { catch: true },
       );

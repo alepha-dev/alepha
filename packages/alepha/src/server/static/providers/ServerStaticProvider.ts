@@ -43,7 +43,7 @@ export class ServerStaticProvider {
   /**
    * The `_headers` rules of every route a static server created with
    * `headersFile`, keyed by the route object itself: it is the one thing
-   * `server:onResponse` hands back that says which server answered.
+   * `server:response:after` hands back that says which server answered.
    */
   protected readonly headerRoutes = new WeakMap<
     object,
@@ -56,7 +56,7 @@ export class ServerStaticProvider {
    * ## ⚠️ A hook, `last`, and never inside the file handler
    *
    * `ServerHelmetProvider` fills in its security headers from a
-   * `server:onResponse` hook with `priority: "first"`, for every route,
+   * `server:response:after` hook with `priority: "first"`, for every route,
    * static files included, and only where a header is absent. A rule's
    * `! X-Frame-Options` applied inside the handler would be put back by
    * helmet a moment later. Here the provider's own headers and helmet's are
@@ -66,7 +66,7 @@ export class ServerStaticProvider {
    * alias, the history fallback, a 304, a redirect.
    */
   protected readonly applyHeaders = $hook({
-    on: "server:onResponse",
+    on: "server:response:after",
     priority: "last",
     handler: ({ route, request, response }) => {
       const entry = this.headerRoutes.get(route);

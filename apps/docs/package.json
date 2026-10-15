@@ -17,7 +17,7 @@
     "typecheck": "alepha typecheck"
   },
   "dependencies": {
-    "@alepha/lore": "^0.32.0",
+    "@alepha/lore": "patch:@alepha/lore@npm%3A0.32.0#~/.yarn/patches/@alepha-lore-npm-0.32.0-f9959c2fc2.patch",
     "@fontsource/jetbrains-mono": "^5.3.0",
     "@tabler/icons-react": "^3.49.0",
     "alepha": "^0.32.0",

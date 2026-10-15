@@ -27,7 +27,7 @@ class Reporter {
   public breadcrumbs?: LogEntry[];
 
   public readonly onError = $hook({
-    on: "server:onError",
+    on: "server:request:error",
     handler: () => {
       this.breadcrumbs = this.logBuffer.snapshot();
     },

@@ -339,7 +339,7 @@ export class ReactServerProvider {
   }
 
   /**
-   * Answers `react:server:shell`, the way a build reaches {@link renderShell}.
+   * Answers `react:shell:render:before`, the way a build reaches {@link renderShell}.
    *
    * An event rather than a call because the build runs in the CLI's process,
    * which loads the application through Vite: the app's `ReactServerProvider`
@@ -348,7 +348,7 @@ export class ReactServerProvider {
    * unconfigured provider. An event name crosses that boundary.
    */
   protected readonly onShell = $hook({
-    on: "react:server:shell",
+    on: "react:shell:render:before",
     handler: (event) => {
       event.html = this.renderShell({ viewport: event.viewport });
     },
@@ -539,7 +539,7 @@ export class ReactServerProvider {
    * `react:server:render:begin` hooks, the loaders, the in-process actions
    * they call and the React render all report to it (#E78).
    *
-   * It starts here, after `server:onRequest`, because that event is where the
+   * It starts here, after `server:request:before`, because that event is where the
    * framework seeds the request: the session is decoded and the cookie-bound
    * atoms are written. Those writes are the same on a cache hit and are not
    * page reads.

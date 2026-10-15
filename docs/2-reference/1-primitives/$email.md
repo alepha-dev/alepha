@@ -10,7 +10,7 @@ import { $email } from "alepha/email";
 
 Declares an email channel for sending mail through the configured provider.
 
-The `name` identifies the channel in the `email:sending` / `email:sent`
+The `name` identifies the channel in the `email:send:before` / `email:sent`
 hooks. `send()` takes the full message (`to`, `subject`, `body`, …); which
 provider delivers it is a module decision (SMTP, Brevo, Cloudflare, or the
 in-memory provider under test).

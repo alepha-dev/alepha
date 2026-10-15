@@ -70,14 +70,14 @@ declare module "alepha" {
      * worker needs to find a cached page before the app boots (#E78). The page
      * cache fills `enabled`, `alepha/react/i18n` fills `lang`.
      */
-    "react:server:edge": PageEdgeConfig;
+    "react:edge:configure:before": PageEdgeConfig;
     /**
      * Asks the server renderer for the application's document with an empty
      * root, rendered without any page (no loader runs). The handler fills
      * `html`. Emitted by the static build of an app shell; `viewport`, when
      * set, replaces the app's own (a native shell's `viewport-fit=cover`).
      */
-    "react:server:shell": {
+    "react:shell:render:before": {
       html?: string;
       viewport?: string;
     };
@@ -106,7 +106,7 @@ declare module "alepha" {
      * Note: this one is not really necessary, it's a hack because we need to isolate renderer from server code in order
      * to avoid including react-dom/client in server bundles.
      */
-    "react:browser:render": {
+    "react:browser:render:before": {
       root: HTMLElement;
       element: ReactNode;
       state: ReactRouterState;
@@ -131,7 +131,7 @@ declare module "alepha" {
      * That is the point — one report with context beats two, one of them
      * useless — but a reporter has to subscribe here to keep hearing them.
      */
-    "react:recoverable:error": {
+    "react:render:recovered": {
       error: unknown;
       componentStack?: string;
       state: ReactRouterState;

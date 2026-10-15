@@ -23,7 +23,7 @@ export class SettlementListener {
   protected readonly sessions = $repository(checkoutSessions);
 
   protected readonly onCheckoutPaying = $hook({
-    on: "commerce:checkout:paying",
+    on: "commerce:checkout:paymentStarted",
     handler: async (event) => {
       const executionId = await this.jobs.checkoutReconciliation.push(
         { sessionId: event.sessionId, intentId: event.intentId },

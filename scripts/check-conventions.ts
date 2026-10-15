@@ -23,6 +23,8 @@ import { dirname, join } from "node:path";
 
 import { parseAst } from "rolldown/parseAst";
 
+import { HookNamePolicy } from "../packages/alepha/src/core/helpers/HookNamePolicy.ts";
+
 /**
  * One row of `yarn workspaces list --json`.
  */
@@ -1566,6 +1568,82 @@ if (reactViolations.length > 0) {
       "(compound primitives excepted, see UI_COMPOUND_FILES), and Context is\n" +
       "used only under a `Context exemption:` comment. See CLAUDE.md, React\n" +
       "components.\n",
+  );
+  process.exit(1);
+}
+
+/**
+ * Hook declarations share the runtime's migration vocabulary and naming rule.
+ * Parse TypeScript so payload fields, comments and examples are not hook keys.
+ */
+const hookViolations: string[] = [];
+const hookSourceFiles = [
+  ...new Set(
+    execFileSync(
+      "git",
+      ["ls-files", "-c", "-o", "--exclude-standard", "--", "packages", "apps"],
+      { encoding: "utf8" },
+    ).split("\n"),
+  ),
+].filter((file) => /\.tsx?$/.test(file) && existsSync(file));
+for (const file of hookSourceFiles) {
+  const source = readFileSync(file, "utf8");
+  if (!/\binterface\s+Hooks\b/.test(source)) continue;
+  const ast = parseAst(source, { lang: file.endsWith(".tsx") ? "tsx" : "ts" });
+  const visit = (node: unknown): void => {
+    if (!node || typeof node !== "object") return;
+    if (Array.isArray(node)) {
+      for (const child of node) visit(child);
+      return;
+    }
+    const declaration = node as {
+      type?: string;
+      id?: { name?: string };
+      body?: {
+        body?: Array<{
+          key?: { value?: unknown; name?: string; start?: number };
+        }>;
+      };
+    };
+    if (
+      declaration.type === "TSInterfaceDeclaration" &&
+      declaration.id?.name === "Hooks"
+    ) {
+      for (const member of declaration.body?.body ?? []) {
+        const key = member.key;
+        const name = typeof key?.value === "string" ? key.value : key?.name;
+        if (!name || !HookNamePolicy.isValid(name)) {
+          const line = source.slice(0, key?.start ?? 0).split("\n").length;
+          const replacement = name ? HookNamePolicy.retired[name] : undefined;
+          hookViolations.push(
+            `  ${file}:${line} - invalid Hooks key "${name ?? "computed"}"${replacement ? `; use "${replacement}"` : "; use namespace[:subject]:verb[:phase]"}`,
+          );
+        }
+      }
+    }
+    for (const value of Object.values(node))
+      if (value && typeof value === "object") visit(value);
+  };
+  visit(ast.body);
+}
+const hookMigrationRows = readFileSync("CHANGELOG.md", "utf8")
+  .split("\n")
+  .filter((line) => line.startsWith("|"))
+  .map((line) => line.split("|").map((cell) => cell.trim()));
+for (const [oldName, newName] of Object.entries(HookNamePolicy.retired)) {
+  if (
+    !hookMigrationRows.some(
+      (cells) => cells[1] === `\`${oldName}\`` && cells[2] === `\`${newName}\``,
+    )
+  ) {
+    hookViolations.push(
+      `  CHANGELOG.md - missing hook migration row: ${oldName} to ${newName}`,
+    );
+  }
+}
+if (hookViolations.length) {
+  console.error(
+    `\n${hookViolations.length} hook naming convention violation(s):\n${hookViolations.join("\n")}\nSee CLAUDE.md, Architecture.`,
   );
   process.exit(1);
 }

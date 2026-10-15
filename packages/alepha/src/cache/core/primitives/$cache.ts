@@ -595,7 +595,7 @@ export class CachePrimitive<
           negative: true,
         });
       }
-      await this.alepha.events.emit("cache:miss", {
+      await this.alepha.events.emit("cache:missed", {
         container: this.container,
         key,
       });
@@ -625,7 +625,7 @@ export class CachePrimitive<
       });
     }
 
-    await this.alepha.events.emit(stale ? "cache:stale" : "cache:hit", {
+    await this.alepha.events.emit(stale ? "cache:staleServed" : "cache:hit", {
       container: this.container,
       key,
     });
@@ -672,7 +672,7 @@ export class CachePrimitive<
       try {
         const result = await handler();
         await this.set(key, result);
-        await this.alepha.events.emit("cache:revalidate", {
+        await this.alepha.events.emit("cache:revalidated", {
           container: this.container,
           key,
         });

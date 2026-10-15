@@ -44,7 +44,7 @@ export class LogBuffer {
   /**
    * A new array each time, so a consumer holding a snapshot is unaffected by
    * entries arriving afterwards. The entries themselves are shared, not cloned
-   * — the same objects already reach every formatter, destination and `log`
+   * , the same objects already reach every formatter, destination and `log:entry`
    * event listener, and treating this one path as if it owned them would cost
    * a deep copy per error report while protecting nothing.
    *

@@ -122,7 +122,7 @@ export class ServerMultipartProvider {
   protected static readonly DEFAULT_MAX_HEADER_SIZE = 16 * 1024;
 
   public readonly onRequest = $hook({
-    on: "server:onRequest",
+    on: "server:request:before",
     handler: async ({ route, request }) => {
       if (request.body) {
         return;

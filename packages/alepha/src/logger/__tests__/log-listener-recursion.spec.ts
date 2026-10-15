@@ -12,8 +12,8 @@ class App {
 }
 
 /**
- * A listener that throws on `log` was reported through the logger, and the
- * logger's emit dispatches `log` again: the same listener threw again, and the
+ * A listener that throws on `log:entry` was reported through the logger, and the
+ * logger's emit dispatches `log:entry` again: the same listener threw again, and the
  * stack ran out on the first log line after it registered.
  */
 describe("a log listener that throws", () => {
@@ -33,7 +33,7 @@ describe("a log listener that throws", () => {
     const { alepha, app } = boot();
 
     let calls = 0;
-    alepha.events.on("log", () => {
+    alepha.events.on("log:entry", () => {
       calls += 1;
       throw new Error("subscriber is broken");
     });
@@ -55,13 +55,13 @@ describe("a log listener that throws", () => {
 
     expect(calls).toBe(2);
     expect(reports).toHaveLength(2);
-    expect(String(reports[0][0])).toContain("log(");
+    expect(String(reports[0][0])).toContain("log:entry(");
   });
 
   it("still writes the line it was listening to", async () => {
     const { alepha, app, output } = boot();
 
-    alepha.events.on("log", () => {
+    alepha.events.on("log:entry", () => {
       throw new Error("subscriber is broken");
     });
 

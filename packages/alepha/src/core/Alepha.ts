@@ -164,7 +164,7 @@ export interface EnvOwner {
  * class App {
  * 	 log = $logger();
  * 	 onCustomerHook = $hook({
- * 			on: "my:custom:hook",
+ * 			on: "my:task:completed",
  * 			handler: () => {
  * 		 	  this.log?.info("App is being configured");
  * 	 		},
@@ -174,7 +174,7 @@ export interface EnvOwner {
  * Alepha.create()
  * 	 .with(App)
  * 	 .start()
- * 	 .then(alepha => alepha.events.emit("my:custom:hook", { arg1: "hello" }));
+ * 	 .then(alepha => alepha.events.emit("my:task:completed", { arg1: "hello" }));
  * ```
  *
  * 	Hooks are fully typed. You can create your own hooks by using module augmentation:
@@ -182,7 +182,7 @@ export interface EnvOwner {
  * 	```ts
  * 	declare module "alepha" {
  * 		interface Hooks {
- * 		  "my:custom:hook": {
+ * 		  "my:task:completed": {
  * 				arg1: string;
  * 		  }
  * 		}
@@ -2050,7 +2050,7 @@ export interface Hooks {
   /**
    * Triggered when a state value is mutated.
    */
-  "state:mutate": {
+  "state:mutated": {
     /**
      * The key of the state that was mutated.
      */
@@ -2070,7 +2070,7 @@ export interface Hooks {
   /**
    * Triggered the first time an atom is registered in the state manager.
    */
-  "state:register": {
+  "state:registered": {
     /**
      * The atom that was registered.
      */

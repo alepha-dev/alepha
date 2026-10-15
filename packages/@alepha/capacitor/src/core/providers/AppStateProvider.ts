@@ -3,7 +3,7 @@ import { $hook, $inject, Alepha } from "alepha";
 /**
  * Whether the app is in the foreground, and the event when that changes.
  *
- * Emits `capacitor:app:state` with `{ active }` on every change. The web
+ * Emits `capacitor:app:stateChanged` with `{ active }` on every change. The web
  * implementation (this class) follows the document's visibility; the native
  * one follows `@capacitor/app`. Both start listening when the container
  * starts and stop when it stops.
@@ -54,6 +54,6 @@ export class AppStateProvider {
       return;
     }
     this.active = active;
-    await this.alepha.events.emit("capacitor:app:state", { active });
+    await this.alepha.events.emit("capacitor:app:stateChanged", { active });
   }
 }

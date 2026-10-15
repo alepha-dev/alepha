@@ -15,7 +15,7 @@ Email delivery over pluggable providers.
 **Features:**
 
 - `$email` declares a named send channel; the name is surfaced to the
-  `email:sending` / `email:sent` hooks (as their `template` field) for
+  `email:send:before` / `email:sent` hooks (as their `template` field) for
   auditing and interception
 - Multiple recipients
 - Local file provider for development

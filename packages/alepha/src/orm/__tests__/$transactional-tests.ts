@@ -186,7 +186,10 @@ export const testComposeWithMiddleware = async (alepha: Alepha) => {
   expect(items).toHaveLength(1);
 };
 
-export const testBypassImplicitTx = async (alepha: Alepha) => {
+export const testBypassImplicitTx = async (
+  alepha: Alepha,
+  outsideSurvives = true,
+) => {
   class App {
     repo = $repository(item);
 
@@ -205,10 +208,11 @@ export const testBypassImplicitTx = async (alepha: Alepha) => {
 
   await expect(() => app.createAndFail()).rejects.toThrow("rollback");
 
-  // "in-tx" should be rolled back, "outside-tx" should survive
+  // PostgreSQL can bypass the transaction; SQLite has one connection.
   const items = await app.repo.findMany();
-  expect(items).toHaveLength(1);
-  expect(items[0].name).toBe("outside-tx");
+  expect(items.map((item) => item.name)).toEqual(
+    outsideSurvives ? ["outside-tx"] : [],
+  );
 };
 
 export const testRepositoryTransactionAsyncRollback = async (

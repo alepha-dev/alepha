@@ -286,14 +286,14 @@ describe("POST /api/_batch", () => {
       data: { id: "2", name: "User 2" },
     });
   });
-  it("reports a failing sub-request through server:onError, like any other 5xx", async ({
+  it("reports a failing sub-request through server:request:error, like any other 5xx", async ({
     expect,
   }) => {
     // ⚠️ Regression guard for a production blind spot (2026-08-11). This
     // endpoint answers 200 with a per-entry error, which is right for the
     // HTTP contract and was silently wrong for observability: `allSettled`
     // caught every sub-request failure, so `ServerRouterProvider.errorHandler`
-    // — the only emitter of `server:onError` — never ran for it. Everything
+    // , the only emitter of `server:request:error` , never ran for it. Everything
     // downstream of that event (the error logger, the log buffer, crash
     // reporting) therefore saw nothing.
     //
@@ -313,7 +313,7 @@ describe("POST /api/_batch", () => {
 
     const alepha = Alepha.create().with(App).with(ServerLinksProvider);
     const seen: Array<{ path?: string; message: string }> = [];
-    alepha.events.on("server:onError", ({ route, error }) => {
+    alepha.events.on("server:request:error", ({ route, error }) => {
       seen.push({ path: route?.path, message: error.message });
     });
     await alepha.start();

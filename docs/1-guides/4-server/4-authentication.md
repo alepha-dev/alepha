@@ -645,7 +645,7 @@ managersOnly = $action({
 
 `$secure()` resolves the authenticated user using atom-first resolution, which works across all transports:
 
-1. **`currentUserAtom`**: checked first. Set by the global `server:onRequest` hook, an `$action.run()` fork, pipelines, and jobs.
+1. **`currentUserAtom`**: checked first. Set by the global `server:request:before` hook, an `$action.run()` fork, pipelines, and jobs.
 2. **`request.user`**: HTTP request user set by previous middleware.
 3. **HTTP headers**: JWT or API key resolved from `Authorization` header. API
    keys, their expiry, rotation and scope have a guide of their own:

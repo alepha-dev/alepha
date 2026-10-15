@@ -2,6 +2,7 @@ import { KIND } from "alepha/internal";
 
 import type { Hooks } from "../Alepha.ts";
 import { AlephaError } from "../errors/AlephaError.ts";
+import { HookNamePolicy } from "../helpers/HookNamePolicy.ts";
 import { createPrimitive, Primitive } from "../helpers/primitive.ts";
 import type { Async } from "../interfaces/Async.ts";
 import type { Service } from "../interfaces/Service.ts";
@@ -35,18 +36,20 @@ import type { Service } from "../interfaces/Service.ts";
  * declare module "alepha" {
  *
  *   interface Hooks {
- *     "my:custom:hook": {
+ *     "my:task:completed": {
  *       arg1: string;
  *     }
  *   }
  * }
  *
- * await alepha.events.emit("my:custom:hook", { arg1: "value" });
+ * await alepha.events.emit("my:task:completed", { arg1: "value" });
  * ```
  *
  */
-export const $hook = <T extends keyof Hooks>(options: HookOptions<T>) =>
-  createPrimitive(HookPrimitive<T>, options);
+export const $hook = <T extends keyof Hooks>(options: HookOptions<T>) => {
+  HookNamePolicy.assertCurrent(options.on);
+  return createPrimitive(HookPrimitive<T>, options);
+};
 
 // ---------------------------------------------------------------------------------------------------------------------
 

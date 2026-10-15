@@ -15,7 +15,7 @@ import {
 /**
  * The app's own static server applying `dist/public/_headers` (epic #E49),
  * through a real server and a real fetch, because the whole point is the
- * order it runs in against the other `server:onResponse` hooks.
+ * order it runs in against the other `server:response:after` hooks.
  */
 describe("$serve({ headersFile: true })", () => {
   let withHeaders = "";
@@ -131,7 +131,7 @@ describe("$serve({ headersFile: true })", () => {
 
   it("lets ! Name remove a header helmet added", async ({ expect }) => {
     // The trap this hook's priority exists for: removed inside the handler,
-    // helmet's `server:onResponse` would have put it back.
+    // helmet's `server:response:after` would have put it back.
     const host = await appServer();
 
     const embed = await fetch(`${host}/embed/widget.html`);

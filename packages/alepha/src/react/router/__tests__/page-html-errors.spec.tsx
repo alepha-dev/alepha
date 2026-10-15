@@ -14,7 +14,7 @@ import { $page } from "../primitives/$page.ts";
 
 /**
  * A failure thrown *around* the render — a `use:` middleware, or any
- * `server:onRequest` hook — never reaches `createLayers`, so it never reaches
+ * `server:request:before` hook , never reaches `createLayers`, so it never reaches
  * the page's `errorHandler` either. It used to fall through to
  * `ServerRouterProvider`, which answers JSON.
  *
@@ -227,7 +227,7 @@ describe("$page html errors", () => {
     expect(html).not.toContain('id="__ssr"');
   });
 
-  it("covers a server:onRequest hook, not just page middleware", async ({
+  it("covers a server:request:before hook, not just page middleware", async ({
     expect,
   }) => {
     class App {
@@ -239,7 +239,7 @@ describe("$page html errors", () => {
        * them — they were the JSON that reached a real first-time visitor.
        */
       notReady = $hook({
-        on: "server:onRequest",
+        on: "server:request:before",
         priority: "first",
         handler: () => {
           throw new HttpError({

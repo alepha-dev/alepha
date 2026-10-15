@@ -8,7 +8,7 @@ import { DevAtomLogProvider } from "alepha/inspector";
 
 ## Overview
 
-In-memory ring buffer of `state:mutate` events, powering the devtools
+In-memory ring buffer of `state:mutated` events, powering the devtools
 "Recent mutations" panel. Dev-only, capped at 200 entries.
 
 `serverOnly` atoms are never buffered: `serverOnly` is documented as a

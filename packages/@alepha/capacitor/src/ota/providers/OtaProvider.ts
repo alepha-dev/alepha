@@ -114,7 +114,7 @@ export class OtaProvider {
   });
 
   protected readonly onAppState = $hook({
-    on: "capacitor:app:state",
+    on: "capacitor:app:stateChanged",
     handler: ({ active }) => {
       this.foreground = active;
       if (this.enabled && active && this.acknowledged) {

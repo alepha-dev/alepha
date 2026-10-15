@@ -75,7 +75,7 @@ export interface ControlUploadProps {
    * image the decoder chokes on is uploaded as-is, and the storage's own
    * `maxSize` remains what actually bounds it. That trade is deliberate — a
    * server-side codec able to close the gap costs more bundle than the case is
-   * worth on an edge runtime, and encodes worse (see `files:beforeUpload` in
+   * worth on an edge runtime, and encodes worse (see `files:upload:before` in
    * `alepha/api/files` for where it would attach if you want it anyway).
    *
    * @example { maxWidth: 256 }

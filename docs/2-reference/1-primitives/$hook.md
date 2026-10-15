@@ -35,13 +35,13 @@ You can create your own hooks by using module augmentation:
 ```ts
 declare module "alepha" {
   interface Hooks {
-    "my:custom:hook": {
+    "my:task:completed": {
       arg1: string;
     };
   }
 }
 
-await alepha.events.emit("my:custom:hook", { arg1: "value" });
+await alepha.events.emit("my:task:completed", { arg1: "value" });
 ```
 
 ## Options

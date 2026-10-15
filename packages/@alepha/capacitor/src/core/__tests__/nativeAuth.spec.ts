@@ -33,7 +33,7 @@ class RefreshCounter {
   public count = 0;
 
   protected readonly onRequest = $hook({
-    on: "server:onRequest",
+    on: "server:request:before",
     handler: ({ request }) => {
       if (request.url.pathname === alephaServerAuthRoutes.refresh) {
         this.count++;
@@ -46,7 +46,7 @@ class SignOutProbe {
   public revoked: boolean[] = [];
 
   protected readonly onSignOut = $hook({
-    on: "capacitor:auth:signout",
+    on: "capacitor:auth:signedOut",
     handler: ({ revoked }) => {
       this.revoked.push(revoked);
     },

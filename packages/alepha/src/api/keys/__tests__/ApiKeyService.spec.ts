@@ -771,7 +771,7 @@ describe("ApiKeyService", () => {
     };
 
     it("should record the IP the request came from", async () => {
-      // The resolver runs in `server:onRequest`, before the router stores the
+      // The resolver runs in `server:request:before`, before the router stores the
       // request, so an IP read from the store is `undefined` on this path.
       const { app, service, background, apiKey, token } = await setup();
 

@@ -27,7 +27,7 @@ export const useFieldValue = (
       return;
     }
 
-    return alepha.events.on("form:change", (ev) => {
+    return alepha.events.on("form:changed", (ev) => {
       if (ev.id === formId && ev.path === path) {
         setValue(ev.value);
       }

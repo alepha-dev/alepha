@@ -53,7 +53,7 @@ describe("a recoverable render error on the browser", () => {
       componentStack?: string;
       state: ReactRouterState;
     }> = [];
-    alepha.events.on("react:recoverable:error", (ev) => {
+    alepha.events.on("react:render:recovered", (ev) => {
       events.push(ev as any);
     });
     await alepha.start();
@@ -71,7 +71,7 @@ describe("a recoverable render error on the browser", () => {
   it("reports the mismatch on the container event, with the route", async () => {
     const { alepha, events } = await setup();
 
-    await alepha.events.emit("react:browser:render", {
+    await alepha.events.emit("react:browser:render:before", {
       root: mismatchedRoot(),
       element: createElement("p", null, "rendered on the client"),
       state: stateFor("http://localhost/docs/reference-primitives-computed"),
@@ -96,7 +96,7 @@ describe("a recoverable render error on the browser", () => {
 
     const Offender = () => createElement("p", null, "rendered on the client");
 
-    await alepha.events.emit("react:browser:render", {
+    await alepha.events.emit("react:browser:render:before", {
       root: mismatchedRoot(),
       element: createElement(Offender),
       state: stateFor("http://localhost/"),
@@ -121,7 +121,7 @@ describe("a recoverable render error on the browser", () => {
     root.id = "root-csr";
     document.body.append(root);
 
-    await alepha.events.emit("react:browser:render", {
+    await alepha.events.emit("react:browser:render:before", {
       root,
       element: createElement("p", null, "client only"),
       state: stateFor("http://localhost/"),

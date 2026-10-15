@@ -25,7 +25,7 @@ describe("StateManager web storage persistence", () => {
 
     const alepha = Alepha.create();
     alepha.store.set(prefs, { theme: "dark" });
-    await new Promise((r) => setTimeout(r, 0)); // state:mutate is async
+    await new Promise((r) => setTimeout(r, 0)); // state:mutated is async
 
     expect(window.localStorage.getItem("test.persist.write")).toBe(
       JSON.stringify({ theme: "dark" }),

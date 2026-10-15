@@ -48,7 +48,7 @@ describe("useFormQuerySync", () => {
   });
 
   it("should write a form change to the URL", async ({ expect }) => {
-    // `form:change` carries a slash-prefixed path (`/status`) but the
+    // `form:changed` carries a slash-prefixed path (`/status`) but the
     // listener filtered on the bare key name, so this direction never fired.
     const { router, render } = await setup();
 

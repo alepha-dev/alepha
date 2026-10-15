@@ -227,7 +227,7 @@ export class ServerHelmetProvider {
   }
 
   protected readonly onResponse = $hook({
-    on: "server:onResponse",
+    on: "server:response:after",
     priority: "first",
     handler: ({ request, response }) => {
       if (this.options.disabled) {

@@ -294,7 +294,7 @@ describe("alepha.scheduler.CronProvider", () => {
     expect(okCalls).toBe(1);
   });
 
-  it("should run jobs via the serverless:cron hook by name", async ({
+  it("should run jobs via the serverless:cron:triggered hook by name", async ({
     expect,
   }) => {
     const alepha = Alepha.create({ env: { ALEPHA_SERVERLESS: "1" } });
@@ -312,11 +312,15 @@ describe("alepha.scheduler.CronProvider", () => {
       cron.getCronJobs().find((j) => j.name === "email-digest")?.running,
     ).toBeFalsy();
 
-    await alepha.events.emit("serverless:cron", { name: "email-digest" });
+    await alepha.events.emit("serverless:cron:triggered", {
+      name: "email-digest",
+    });
     expect(calls).toBe(1);
 
     // Unknown names only warn.
-    await alepha.events.emit("serverless:cron", { name: "does-not-exist" });
+    await alepha.events.emit("serverless:cron:triggered", {
+      name: "does-not-exist",
+    });
     expect(calls).toBe(1);
 
     await alepha.stop();

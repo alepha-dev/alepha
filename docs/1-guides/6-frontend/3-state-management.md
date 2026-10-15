@@ -134,7 +134,7 @@ const value = alepha.store.get(counter);
 alepha.store.set(counter, { count: 42 });
 ```
 
-Setting a value triggers the `state:mutate` event, which causes any `useStore` subscribers to re-render.
+Setting a value triggers the `state:mutated` event, which causes any `useStore` subscribers to re-render.
 
 ## Validation
 
@@ -244,10 +244,10 @@ Declare a `$computed` at module scope, next to the atoms it depends on, the same
 
 ## Event System
 
-State mutations emit a `state:mutate` event:
+State mutations emit a `state:mutated` event:
 
 ```typescript
-alepha.events.on("state:mutate", ({ key, value }) => {
+alepha.events.on("state:mutated", ({ key, value }) => {
   console.log(`State changed: ${key}`, value);
 });
 ```

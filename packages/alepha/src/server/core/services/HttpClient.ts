@@ -50,7 +50,7 @@ export class HttpClient {
     const headers: Record<string, string> = {};
     const url = this.url(host, route, config);
 
-    await this.alepha.events.emit("client:onRequest", {
+    await this.alepha.events.emit("client:request:before", {
       route,
       config,
       options,
@@ -132,7 +132,7 @@ export class HttpClient {
       }
     }
 
-    await this.alepha.events.emit("client:beforeFetch", {
+    await this.alepha.events.emit("client:fetch:before", {
       url,
       options,
       request,
@@ -429,7 +429,7 @@ export class HttpClient {
   }
 
   /**
-   * Build the error for a 4xx/5xx response and emit `client:onError`.
+   * Build the error for a 4xx/5xx response and emit `client:request:error`.
    *
    * A JSON body in the framework's own error shape is decoded as such; any
    * other JSON (`{ "error": "invalid_grant" }` from a third party) keeps the
@@ -463,7 +463,7 @@ export class HttpClient {
       });
     }
 
-    await this.alepha.events.emit("client:onError", { error });
+    await this.alepha.events.emit("client:request:error", { error });
 
     return error;
   }
@@ -613,7 +613,7 @@ export type RequestInitWithOptions<T extends ZType = ZType> = RequestInit &
 
 /**
  * Internal resolved fetch options — built in {@link HttpClient.fetch},
- * consumed by {@link HttpClient.responseData} and the `client:beforeFetch`
+ * consumed by {@link HttpClient.responseData} and the `client:fetch:before`
  * event. Distinct from the external {@link FetchOptions}: `schema` is the
  * already-unwrapped response schema and `cache` is the resolved cache directive.
  */

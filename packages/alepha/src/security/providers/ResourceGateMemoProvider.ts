@@ -31,7 +31,7 @@ import { $hook, $inject, Alepha } from "alepha";
  *
  * That failure is the quiet kind: every gate still allows, every behavioural
  * test still passes, and the batch still issues seven lookups. Seeding on
- * `server:onRequest` puts the `Map` on the request layer, which reads fall
+ * `server:request:before` puts the `Map` on the request layer, which reads fall
  * through to from every child fork, so each action finds the same object and
  * mutates it by reference.
  *
@@ -54,7 +54,7 @@ export class ResourceGateMemoProvider {
   static readonly KEY = "alepha.security.resourceGateMemo";
 
   protected readonly onServerRequest = $hook({
-    on: "server:onRequest",
+    on: "server:request:before",
     // Nothing consumes the memo during `onRequest`, so this is only about
     // being cheap and unconditional: a hook that failed earlier in the chain
     // must not be able to leave the memo unseeded for the handlers.

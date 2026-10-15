@@ -100,7 +100,7 @@ export class Computed<R = unknown, N extends string = string> {
 
   /**
    * Transitive atom keys this computed value depends on. Subscribers
-   * (useComputed, StateManager.watch) use this to know which `state:mutate`
+   * (useComputed, StateManager.watch) use this to know which `state:mutated`
    * events invalidate the value.
    */
   public keys(): string[] {

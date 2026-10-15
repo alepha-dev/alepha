@@ -244,7 +244,7 @@ class MediaService {
 
 ## Transforming uploads
 
-The `files:beforeUpload` hook fires once the storage's own MIME and size rules
+The `files:upload:before` hook fires once the storage's own MIME and size rules
 have passed and before anything is written. A subscriber may replace `ev.file`
 (resize, re-encode, strip metadata); `ev.storage` is the target `$storage`. It
 only fires for uploads small enough to be buffered (10 MB); larger ones stream

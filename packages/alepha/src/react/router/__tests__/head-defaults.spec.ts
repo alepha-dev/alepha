@@ -88,7 +88,7 @@ describe("App shell viewport", () => {
     const event: { html?: string; viewport?: string } = {
       viewport: "width=device-width, initial-scale=1, viewport-fit=cover",
     };
-    await alepha.events.emit("react:server:shell", event);
+    await alepha.events.emit("react:shell:render:before", event);
     const page = await app.home.render({ html: true, hydration: false });
 
     expect(event.html).toContain("viewport-fit=cover");

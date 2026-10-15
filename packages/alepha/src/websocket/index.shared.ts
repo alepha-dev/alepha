@@ -18,7 +18,7 @@ declare module "alepha" {
     /**
      * Fires when a WebSocket connection is established
      */
-    "websocket:connect": {
+    "websocket:connected": {
       connectionId: string;
       path: string;
     };
@@ -26,7 +26,7 @@ declare module "alepha" {
     /**
      * Fires when a WebSocket connection is closed
      */
-    "websocket:disconnect": {
+    "websocket:disconnected": {
       connectionId: string;
       path: string;
       code?: number;
@@ -36,7 +36,7 @@ declare module "alepha" {
     /**
      * Fires when a WebSocket message is received
      */
-    "websocket:message": {
+    "websocket:message:received": {
       connectionId: string;
       path: string;
       message: any;
@@ -45,7 +45,7 @@ declare module "alepha" {
     /**
      * Fires when a WebSocket error occurs
      */
-    "websocket:error": {
+    "websocket:error:reported": {
       connectionId: string;
       path: string;
       error: Error;

@@ -715,11 +715,11 @@ alepha.inject(McpServerProvider).pageSize = 25;
 
 ### Observing tool calls
 
-Every `tools/call` emits `mcp:tool:end` once, with `{ name, outcome, context }`. `outcome` is `"ok"`, `"refused"` (bad arguments, a missing row, a caller who may not: usually a misleading description or schema) or `"error"` (a fault). `name` is what the client asked for, registered or not. It is awaited inside the call, so a subscriber must be fast and must not throw.
+Every `tools/call` emits `mcp:tool:call:end` once, with `{ name, outcome, context }`. `outcome` is `"ok"`, `"refused"` (bad arguments, a missing row, a caller who may not: usually a misleading description or schema) or `"error"` (a fault). `name` is what the client asked for, registered or not. It is awaited inside the call, so a subscriber must be fast and must not throw.
 
 ```typescript
 toolUsage = $hook({
-  on: "mcp:tool:end",
+  on: "mcp:tool:call:end",
   handler: ({ name, outcome }) => this.metrics.count(name, outcome),
 });
 ```

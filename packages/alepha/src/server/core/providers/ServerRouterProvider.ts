@@ -193,7 +193,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
           () => this.processRequest(request, route, responseKind),
           {
             context: this.getContextId(rawRequest.headers),
-            // Retains this request's log entries so that a `server:onError`
+            // Retains this request's log entries so that a `server:request:error`
             // consumer can ship them as breadcrumbs. Contributes nothing to
             // the context when buffering is disabled.
             ...this.logBuffer.seed(),
@@ -236,7 +236,9 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     }
 
     const payload = { request, route, response: undefined as any };
-    await this.alepha.events.emit("server:onSend", payload, { catch: true });
+    await this.alepha.events.emit("server:response:before", payload, {
+      catch: true,
+    });
 
     const reply = request.reply;
     // Default status: 200 when there is a body, 204 otherwise. `!= null`, not
@@ -254,7 +256,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     };
 
     payload.response = response;
-    await this.alepha.events.emit("server:onResponse", payload, {
+    await this.alepha.events.emit("server:response:after", payload, {
       catch: true,
     });
 
@@ -270,7 +272,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     responseKind: ResponseKind,
   ) {
     // Built-in hooks: body parsing, security, logging
-    await this.alepha.events.emit("server:onRequest", { request, route });
+    await this.alepha.events.emit("server:request:before", { request, route });
 
     // A hook (e.g. CORS preflight) may have already written the response
     const reply = request.reply;
@@ -465,7 +467,11 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     reply.status = undefined;
 
     // Let error hooks handle it first (e.g. custom error pages, Sentry)
-    await this.alepha.events.emit("server:onError", { request, route, error });
+    await this.alepha.events.emit("server:request:error", {
+      request,
+      route,
+      error,
+    });
     // |
     // |
     // --> If a hook already set the response, we're done!

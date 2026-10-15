@@ -67,7 +67,7 @@ export class SmsPrimitive extends Primitive<SmsPrimitiveOptions> {
    * Send an SMS using the configured provider.
    */
   public async send(options: SmsSendOptions): Promise<void> {
-    await this.alepha.events.emit("sms:sending", {
+    await this.alepha.events.emit("sms:send:before", {
       to: options.to,
       template: this.name,
       provider: this.provider,

@@ -251,10 +251,10 @@ console.log(counter.count.value); // 42
 
 ### State mutation events
 
-Every `store.set()` call emits a `"state:mutate"` event:
+Every `store.set()` call emits a `"state:mutated"` event:
 
 ```typescript
-alepha.events.on("state:mutate", ({ key, value, prevValue }) => {
+alepha.events.on("state:mutated", ({ key, value, prevValue }) => {
   console.log(`State "${key}" changed from`, prevValue, "to", value);
 });
 ```

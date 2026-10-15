@@ -13,7 +13,7 @@ export class ServerNotReadyProvider {
   protected readonly alepha = $inject(Alepha);
 
   public readonly onRequest = $hook({
-    on: "server:onRequest",
+    on: "server:request:before",
     priority: "first",
     handler: ({ request: { reply } }) => {
       if (this.alepha.isReady()) {

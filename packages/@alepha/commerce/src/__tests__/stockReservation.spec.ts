@@ -602,7 +602,7 @@ describe("stock reservation", () => {
       await ctx.orders.cancel(session.orderId!);
 
       const strays: Array<{ orderId: string }> = [];
-      ctx.alepha.events.on("commerce:capture:stray", (event) => {
+      ctx.alepha.events.on("commerce:capture:strayDetected", (event) => {
         strays.push(event);
       });
 

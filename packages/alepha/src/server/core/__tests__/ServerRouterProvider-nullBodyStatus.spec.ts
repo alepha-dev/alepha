@@ -60,7 +60,7 @@ class TestApp {
   });
 
   onResponse = $hook({
-    on: "server:onResponse",
+    on: "server:response:after",
     handler: ({ request, response }) => {
       this.captured.push({
         path: new URL(request.url, "http://localhost").pathname,

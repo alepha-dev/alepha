@@ -29,7 +29,7 @@ export class ServerLoggerProvider {
   }
 
   public readonly onRequest = $hook({
-    on: "server:onRequest",
+    on: "server:request:before",
     priority: "first",
     handler: ({ route, request }) => {
       if (route.silent || request.metadata.vite) {
@@ -56,7 +56,7 @@ export class ServerLoggerProvider {
   });
 
   public readonly onError = $hook({
-    on: "server:onError",
+    on: "server:request:error",
     priority: "last",
     handler: ({ error }) => {
       // An expected 4xx is the server working correctly: a missing
@@ -101,7 +101,7 @@ export class ServerLoggerProvider {
   });
 
   public readonly onResponse = $hook({
-    on: "server:onResponse",
+    on: "server:response:after",
     priority: "last",
     handler: ({ route, request, response }) => {
       if (route.silent || request.metadata.vite) {

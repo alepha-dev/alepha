@@ -219,7 +219,7 @@ Forms emit events on the Alepha event system:
 
 | Event                 | Payload                         | Description                                                        |
 | --------------------- | ------------------------------- | ------------------------------------------------------------------ |
-| `form:change`         | `{ id, path, value, initial? }` | A field value changed (`initial: true` marks programmatic resets). |
+| `form:changed`        | `{ id, path, value, initial? }` | A field value changed (`initial: true` marks programmatic resets). |
 | `form:reset`          | `{ id }`                        | Form was reset.                                                    |
 | `form:submit:begin`   | `{ id }`                        | Submission started.                                                |
 | `form:submit:success` | `{ id, values }`                | Submission succeeded.                                              |

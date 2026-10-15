@@ -475,7 +475,10 @@ export class ViteDevServerProvider {
 
             // Emit to Alepha's request handler
             try {
-              await this.alepha?.events.emit("node:request", { req, res });
+              await this.alepha?.events.emit("node:request:before", {
+                req,
+                res,
+              });
             } catch (err) {
               this.log.error("Request handler error", err);
               if (!res.headersSent) {

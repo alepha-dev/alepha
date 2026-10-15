@@ -41,7 +41,7 @@ declare module "alepha" {
      * the backend and are never materialised, so there is nothing to hand a
      * subscriber.
      */
-    "files:beforeUpload": FileUploadEvent;
+    "files:upload:before": FileUploadEvent;
   }
 }
 

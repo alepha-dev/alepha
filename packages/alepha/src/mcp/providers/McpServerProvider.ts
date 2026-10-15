@@ -1110,7 +1110,11 @@ export class McpServerProvider {
     context?: McpContext,
   ): Promise<void> {
     try {
-      await this.alepha.events.emit("mcp:tool:end", { name, outcome, context });
+      await this.alepha.events.emit("mcp:tool:call:end", {
+        name,
+        outcome,
+        context,
+      });
     } catch (error) {
       this.log.warn(`MCP tool "${name}" end hook failed`, {
         error: error instanceof Error ? error.message : String(error),

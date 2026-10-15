@@ -351,7 +351,7 @@ describe("$cache stale-while-revalidate (SWR)", () => {
     expect(await app.fn("a")).toBe("v:a:2");
   });
 
-  it("emits cache:stale and cache:revalidate events", async () => {
+  it("emits cache:staleServed and cache:revalidated events", async () => {
     let calls = 0;
     class App {
       cache = $cache({
@@ -374,10 +374,10 @@ describe("$cache stale-while-revalidate (SWR)", () => {
 
     const staleEvents: string[] = [];
     const revalidateEvents: string[] = [];
-    alepha.events.on("cache:stale", (e) => {
+    alepha.events.on("cache:staleServed", (e) => {
       staleEvents.push(e.key);
     });
-    alepha.events.on("cache:revalidate", (e) => {
+    alepha.events.on("cache:revalidated", (e) => {
       revalidateEvents.push(e.key);
     });
 

@@ -154,7 +154,7 @@ export const Showcase = <T extends ZObject>(props: ShowcaseProps<T>) => {
   const alepha = useAlepha();
   useEffect(() => {
     if (bare || !props.schema) return;
-    const off = alepha.events.on("form:change", (ev: any) => {
+    const off = alepha.events.on("form:changed", (ev: any) => {
       if (ev.id !== form.id || ev.initial) return;
       setValues({ ...form.currentValues });
     });

@@ -16,7 +16,7 @@ describe("i18n async dictionary load", () => {
     // app code that writes the atom does) loads the missing dictionary
     // asynchronously and then re-notifies subscribers — but the re-notify
     // wrote the SAME lang value, and `StateManager.set` short-circuits on
-    // equality, so no `state:mutate` ever fired and consumers kept rendering
+    // equality, so no `state:mutated` ever fired and consumers kept rendering
     // the raw key.
     const Greeting = () => {
       const { tr } = useI18n();

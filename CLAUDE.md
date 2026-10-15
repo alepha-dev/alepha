@@ -50,7 +50,18 @@ A small edit goes straight to `main`: no worktree, no quest, no `#Q<n>`. Small m
 
 ## Architecture
 
-- Primitives carry a `$` prefix (`$action`, `$entity`, `$repository`), services are wired by the DI container (`$inject()`), event names follow `namespace:action:status`, React hooks are `use` + noun.
+Hook names follow `namespace[:subject]:verb[:phase]`, with lower camel case
+inside each segment. Interceptable operations end in `before` and their later
+observers in `after`. Observed operations use `begin`, `success`, `error` and
+`end`. Facts use a past participle without a phase, for example
+`payments:captured` or `cache:hit`. No `onX` or `beforeX` segment is allowed.
+The only bare names are `configure`, `start`, `ready` and `stop`; log entries use
+`log:entry`. The explicitly preserved job lifecycle/control family remains
+`job:begin`, `job:success`, `job:error`, `job:end` and `job:cancel`.
+`check:conventions` checks every `Hooks` declaration, tests and apps included.
+Retired framework names fail immediately and name their replacement.
+
+- Primitives carry a `$` prefix (`$action`, `$entity`, `$repository`), services are wired by the DI container (`$inject()`), React hooks are `use` + noun.
 - **`alepha`** (`packages/alepha/src/`) exports 50+ sub-modules, imported as `alepha/<module>` (`alepha/server`, `alepha/api/users`).
 - **`@alepha/ui`**: Base UI + Tailwind components in seventeen modules, `src/<module>/` with an `index.ts` barrel each. `@alepha/ui` itself is `src/core`; the subpaths are `form`, `settings`, `table`, `tree`, `markdown`, `shell`, `auth`, `account`, `admin`, `organizations`, the opt-in wrappers `chart`, `command`, `calendar`, `otp`, `resizable`, and `i18n/fr`. Edited in place, no registry. `check:conventions` guards the map: `core` imports no other module, `organizations` only `core`, `form`, `table`, `settings`, the wrappers and `i18n/fr` only `core`, and there is no cycle.
 - **`lore`**: the Lore CLI, from the npm package `@alepha/lore` (a root devDependency, so `yarn lore` resolves). CI uses it for `yarn lore releases publish` (`release.yml`) and `yarn lore quality push` (`nightly.yml`), both against project `alepha`. Its source lives in the Lore repository.

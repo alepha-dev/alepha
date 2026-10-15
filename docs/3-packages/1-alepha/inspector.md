@@ -38,7 +38,7 @@ which would register them whatever this guard decides.
 
 ### Providers
 
-- [`DevAtomLogProvider`](/docs/reference-providers-devatomlogprovider) - In-memory ring buffer of `state:mutate` events, powering the devtools
+- [`DevAtomLogProvider`](/docs/reference-providers-devatomlogprovider) - In-memory ring buffer of `state:mutated` events, powering the devtools
 - [`DevLogStoreProvider`](/docs/reference-providers-devlogstoreprovider) - The devtools log buffer, and the part of it that outlives the process.
 - [`InspectorRoutes`](/docs/reference-providers-inspectorroutes) - The inspector protocol: every endpoint a tool can call on a running app.
 - [`InspectorRunProvider`](/docs/reference-providers-inspectorrunprovider) - The run registry, write side: announces this process in

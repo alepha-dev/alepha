@@ -39,7 +39,7 @@ import { RateLimitWindows } from "../services/RateLimitWindows.ts";
  * with `reason: "store" | "contention"`, refused under `deny` (the default for
  * both) or allowed uncounted under `allow`. `consume` never rejects for them.
  *
- * Every refusal emits `rate-limit:consume:denied`. Callers audit lockouts
+ * Every refusal emits `rateLimit:consume:denied`. Callers audit lockouts
  * themselves from `count`: whether a hit "crossed" depends on whether they
  * compare before or after counting.
  *
@@ -309,7 +309,7 @@ export class RateLimitPrimitive<TInput = string> extends Primitive<
     key: string,
     reason: "limit" | "store" | "contention",
   ): Promise<void> {
-    await this.alepha.events.emit("rate-limit:consume:denied", {
+    await this.alepha.events.emit("rateLimit:consume:denied", {
       name: this.options.name,
       key,
       reason,

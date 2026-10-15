@@ -15,7 +15,7 @@ Tracks whichever `form` instance the caller currently passes in, not
 only the one it saw on the first render. `useForm`'s `deps` parameter
 (see `useForm.ts`) lets a caller mint a brand new `FormModel` - a new
 `id`, a fresh values store - on a dependency change; without re-tracking
-here, this hook would keep listening for `form:change` events carrying
+here, this hook would keep listening for `form:changed` events carrying
 the OLD model's `id` forever, so the values it returns would freeze at
 whatever the old form last held. The render-time re-seed below (rather
 than resetting inside the effect) avoids painting one frame of the

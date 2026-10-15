@@ -16,7 +16,7 @@ Stores the resolved user in `currentUserAtom` and `request.user` for downstream 
 
 Works across all transports (atom-first resolution):
 
-1. `currentUserAtom`: set by the global `server:onRequest` hook
+1. `currentUserAtom`: set by the global `server:request:before` hook
    (`ServerSecurityProvider`), an `action.run()` fork, pipelines and jobs
 2. `request.user`: set by previous middleware
 3. HTTP headers - JWT/API key resolution

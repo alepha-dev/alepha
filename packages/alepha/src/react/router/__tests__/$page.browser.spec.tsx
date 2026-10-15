@@ -133,9 +133,7 @@ describe("$page browser tests", () => {
       });
     });
 
-    // oxlint-disable-next-line vitest/no-disabled-tests
-    it.skip("should handle async resolve function", async () => {
-      // Skipped: Timing issues with multiple rapid navigations in jsdom
+    it("loads async page data", async () => {
       class App {
         async = $page({
           path: "/async",
@@ -150,7 +148,9 @@ describe("$page browser tests", () => {
       }
 
       alepha = Alepha.create().with(AlephaReact).with(App);
-      await alepha.start();
+      await act(async () => {
+        await alepha.start();
+      });
 
       const router = alepha.inject(ReactRouter);
 
@@ -727,9 +727,7 @@ describe("$page browser tests", () => {
       });
     });
 
-    // oxlint-disable-next-line vitest/no-disabled-tests
-    it.skip("should update when navigating with different query params", async () => {
-      // Skipped: Multiple rapid navigations to same page in jsdom have timing issues
+    it("updates when navigating with different query params", async () => {
       class App {
         search = $page({
           path: "/search",

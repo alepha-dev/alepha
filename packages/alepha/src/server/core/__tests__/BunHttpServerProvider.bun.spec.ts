@@ -197,7 +197,7 @@ describe("BunHttpServerProvider", () => {
        * provider as it is. See the Node spec for why the type changes too.
        */
       onSend = $hook({
-        on: "server:onSend",
+        on: "server:response:before",
         handler: ({ request }) => {
           if (request.url.pathname === "/hook-subarray") {
             request.reply.headers["content-type"] = "application/octet-stream";

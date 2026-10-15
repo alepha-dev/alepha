@@ -1434,7 +1434,10 @@ describe("$job — cron + retry (outbox path)", () => {
   it("a failing cron job with retry is rescheduled by the sweep, not next tick", async ({
     expect,
   }) => {
-    const alepha = makeAppDirect();
+    const alepha = Alepha.create()
+      .with({ provide: JobProvider, use: HalfJitterJobProvider })
+      .with(AlephaOrmPostgres)
+      .with(AlephaApiJobs);
     let attempts = 0;
     class App {
       executions = $repository(jobExecutionEntity);
@@ -1442,7 +1445,8 @@ describe("$job — cron + retry (outbox path)", () => {
         name: "app.tick",
         description: "A job under test.",
         cron: "0 0 * * *",
-        retry: { retries: 1 },
+        // Keep automatic delivery away until this test explicitly ages the row.
+        retry: { retries: 1, backoff: { initial: [1, "hour"] } },
         handler: async () => {
           attempts++;
           throw new Error("transient");

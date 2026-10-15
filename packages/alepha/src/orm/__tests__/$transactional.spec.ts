@@ -123,12 +123,11 @@ describe("$transactional", () => {
     await testComposeWithMiddleware(Alepha.create().with(AlephaOrmPostgres));
   });
 
-  // SQLite uses a single connection — writes inside a transaction always participate,
-  // so tx:null cannot bypass the active transaction like PostgreSQL can.
-  // oxlint-disable-next-line vitest/no-disabled-tests
-  it.skip("should bypass implicit tx with tx: null (sqlite)", async () => {
+  // A single SQLite connection keeps both writes inside the active transaction.
+  it("tx: null participates in the active SQLite transaction", async () => {
     await testBypassImplicitTx(
       Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }),
+      false,
     );
   });
   it("should bypass implicit tx with tx: null (postgres)", async () => {

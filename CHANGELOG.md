@@ -2,6 +2,50 @@
 
 ### Breaking Changes
 
+- **hook names**: all hooks follow the documented naming rule. Retired names throw `AlephaError` at `$hook` construction, `events.on` and `events.emit`, including casts and JavaScript callers. Migrate listeners and emitters together. Lore's sixteen `server:on*` listeners need the same migration in the Lore repository. The docs app pins a Yarn patch for the published Lore 0.32.0 sigil registrations until Lore releases the migration. The existing job lifecycle/control family is preserved explicitly. The complete retired-name table follows.
+
+| Old hook                    | Replacement                        |
+| --------------------------- | ---------------------------------- |
+| `server:onRequest`          | `server:request:before`            |
+| `server:onSend`             | `server:response:before`           |
+| `server:onResponse`         | `server:response:after`            |
+| `server:onError`            | `server:request:error`             |
+| `client:beforeFetch`        | `client:fetch:before`              |
+| `client:onRequest`          | `client:request:before`            |
+| `client:onError`            | `client:request:error`             |
+| `action:onRequest`          | `action:request:before`            |
+| `action:onResponse`         | `action:response:after`            |
+| `files:beforeUpload`        | `files:upload:before`              |
+| `email:sending`             | `email:send:before`                |
+| `sms:sending`               | `sms:send:before`                  |
+| `log`                       | `log:entry`                        |
+| `cache:miss`                | `cache:missed`                     |
+| `cache:revalidate`          | `cache:revalidated`                |
+| `cache:stale`               | `cache:staleServed`                |
+| `capacitor:app:state`       | `capacitor:app:stateChanged`       |
+| `capacitor:auth:signout`    | `capacitor:auth:signedOut`         |
+| `cloudflare:queue`          | `cloudflare:queue:received`        |
+| `commerce:capture:stray`    | `commerce:capture:strayDetected`   |
+| `commerce:checkout:email`   | `commerce:checkout:emailCaptured`  |
+| `commerce:checkout:paying`  | `commerce:checkout:paymentStarted` |
+| `form:change`               | `form:changed`                     |
+| `mcp:tool:end`              | `mcp:tool:call:end`                |
+| `node:request`              | `node:request:before`              |
+| `notification:delivery`     | `notification:delivery:reported`   |
+| `rate-limit:consume:denied` | `rateLimit:consume:denied`         |
+| `react:browser:render`      | `react:browser:render:before`      |
+| `react:recoverable:error`   | `react:render:recovered`           |
+| `react:server:edge`         | `react:edge:configure:before`      |
+| `react:server:shell`        | `react:shell:render:before`        |
+| `serverless:cron`           | `serverless:cron:triggered`        |
+| `state:mutate`              | `state:mutated`                    |
+| `state:register`            | `state:registered`                 |
+| `web:request`               | `web:request:before`               |
+| `websocket:connect`         | `websocket:connected`              |
+| `websocket:disconnect`      | `websocket:disconnected`           |
+| `websocket:error`           | `websocket:error:reported`         |
+| `websocket:message`         | `websocket:message:received`       |
+
 - **core contracts**: async-local data and `fork` input use `Record<string, unknown>`; test lifecycle state uses `(fn: () => unknown) => void`. Narrow values read from raw context data. `$pipeline` calls and `.run()` always return promises, including synchronous handlers and thrown errors. `HookPrimitive.called` is read-only. `ReactServerProvider.render()` remains a supported SSR test API through the production streaming path.
 
 - **service lookup**: `inject(string)` matches a stable static service `id`, never `class.name`. Use a class within one module graph, or a declared id such as `alepha.jobs.JobProvider` across separately bundled graphs. CLI introspection and generated Worker lookups use these ids. Workerd and native `run()` accept only `{ env }`; unsupported lifecycle options are now type errors, and explicit env overrides apply to existing containers too. The generated Worker's `globalThis.__alepha` handshake is internal.

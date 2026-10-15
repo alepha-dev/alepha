@@ -516,7 +516,7 @@ describe("I18nProvider", () => {
   describe("server-side language autodetect (Accept-Language)", () => {
     /**
      * Injects a real, dictionary-populated `I18nProvider` and exposes the
-     * protected resolution used by the `server:onRequest` hook, so the priority
+     * protected resolution used by the `server:request:before` hook, so the priority
      * (cookie → header → fallback) can be unit-tested against a true registry.
      */
     const setup = (AppClass: new () => unknown) => {

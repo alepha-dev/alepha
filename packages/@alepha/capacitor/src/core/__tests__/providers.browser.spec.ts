@@ -36,14 +36,14 @@ class Probe {
   public states: boolean[] = [];
 
   protected readonly onFetch = $hook({
-    on: "client:beforeFetch",
+    on: "client:fetch:before",
     handler: ({ url }) => {
       this.urls.push(url);
     },
   });
 
   protected readonly onState = $hook({
-    on: "capacitor:app:state",
+    on: "capacitor:app:stateChanged",
     handler: ({ active }) => {
       this.states.push(active);
     },

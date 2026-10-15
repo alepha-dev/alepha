@@ -8,7 +8,7 @@ import { useAlepha } from "./useAlepha.ts";
  *
  * `getSnapshot` always reads the dependency atoms **live** off the store —
  * never through a subscription-set dirty flag. A dirty flag is only ever
- * flipped by the `state:mutate` listener registered in `subscribe`, which
+ * flipped by the `state:mutated` listener registered in `subscribe`, which
  * React wires up in a passive effect (after commit); `EventManager.emit` is
  * async on top of that. A mutation dispatched between the initial render and
  * that effect committing would be invisible to the flag, so `getSnapshot`
@@ -57,7 +57,7 @@ function useComputed<R>(target: Computed<R>): R {
       }
 
       const keys = new Set(target.keys());
-      return alepha.events.on("state:mutate", (ev) => {
+      return alepha.events.on("state:mutated", (ev) => {
         if (keys.has(ev.key as string)) {
           onStoreChange();
         }

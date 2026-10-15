@@ -141,7 +141,7 @@ This rule applies to every path an error can take to a client, including batched
 ]
 ```
 
-Use the `server:onError` hook below to ship the unsanitized error to your logger or Sentry.
+Use the `server:request:error` hook below to ship the unsanitized error to your logger or Sentry.
 
 ## Status Code Mapping
 
@@ -168,7 +168,7 @@ An error that is not an `HttpError` but carries a numeric `status` from this tab
 
 ## Global Error Handling
 
-Use the `server:onError` hook to intercept errors across all routes:
+Use the `server:request:error` hook to intercept errors across all routes:
 
 ```typescript check
 import { $hook } from "alepha";
@@ -178,7 +178,7 @@ class ErrorHandler {
   log = $logger();
 
   onError = $hook({
-    on: "server:onError",
+    on: "server:request:error",
     handler: async ({ error, request }) => {
       this.log.error("Request failed", {
         error,
@@ -190,7 +190,7 @@ class ErrorHandler {
 }
 ```
 
-The `server:onError` hook receives `{ error, request, route }` and fires after the error is caught but before the response is sent. The reply's body and status are reset at this point. A hook that sets `request.reply.status` (a custom error page, for instance) owns the response, and the default JSON error is not written.
+The `server:request:error` hook receives `{ error, request, route }` and fires after the error is caught but before the response is sent. The reply's body and status are reset at this point. A hook that sets `request.reply.status` (a custom error page, for instance) owns the response, and the default JSON error is not written.
 
 ## Schema Validation Errors
 

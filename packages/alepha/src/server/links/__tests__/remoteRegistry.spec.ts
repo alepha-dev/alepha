@@ -28,7 +28,7 @@ class Almanac {
 /**
  * Counts the registry fetches this container actually put on the wire.
  *
- * `client:beforeFetch` fires after {@link HttpClient}'s own ETag cache has had
+ * `client:fetch:before` fires after {@link HttpClient}'s own ETag cache has had
  * its say, so this measures what the per-host cache did rather than what the
  * HTTP layer papered over.
  */
@@ -36,7 +36,7 @@ class RegistryProbe {
   public readonly fetched: string[] = [];
 
   protected readonly capture = $hook({
-    on: "client:beforeFetch",
+    on: "client:fetch:before",
     handler: ({ url }) => {
       if (url.endsWith(LinkProvider.path.apiLinks)) {
         this.fetched.push(url);

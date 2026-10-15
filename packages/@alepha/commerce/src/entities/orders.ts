@@ -111,7 +111,7 @@ export const orders = $entity({
      * gone, the holds are released, and quietly settling would sell something
      * that is not there. But the customer HAS been charged, so it cannot be
      * dropped either: it is recorded here and announced as
-     * `commerce:capture:stray` for a refund or a manual review.
+     * `commerce:capture:strayDetected` for a refund or a manual review.
      *
      * An array, because a retrying PSP can deliver more than one.
      */

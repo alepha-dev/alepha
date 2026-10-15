@@ -170,7 +170,7 @@ declare module "alepha" {
      * ⚠️ A subscriber must not throw and must not be slow. This is awaited
      * inside the call, so it is in front of the caller's answer.
      */
-    "mcp:tool:end": {
+    "mcp:tool:call:end": {
       name: string;
       outcome: "ok" | "refused" | "error";
       context?: McpContext;

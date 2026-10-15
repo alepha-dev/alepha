@@ -116,7 +116,7 @@ export class NativeAuthTransport extends ReactAuthTransport {
    * Revoke the session on the server, then forget it here.
    *
    * Local state is cleared even when the server cannot be reached, so the
-   * phone is signed out either way; `capacitor:auth:signout` says whether the
+   * phone is signed out either way; `capacitor:auth:signedOut` says whether the
    * server confirmed the revocation. An access token already issued stays
    * valid until it expires, as on the web: what revocation stops is the next
    * refresh.
@@ -132,7 +132,7 @@ export class NativeAuthTransport extends ReactAuthTransport {
       this.log.debug("Could not reload the anonymous action registry", error);
     }
 
-    await this.alepha.events.emit("capacitor:auth:signout", { revoked });
+    await this.alepha.events.emit("capacitor:auth:signedOut", { revoked });
     if (!revoked) {
       this.log.warn(
         "Signed out on this device; the server did not confirm the session was revoked",

@@ -226,7 +226,7 @@ export class Logger implements LoggerInterface {
       timestamp: this.dateTimeProvider.nowMillis(),
     };
 
-    // Captured before the level check, for the same reason the `log` event is
+    // Captured before the level check, for the same reason the `log:entry` event is
     // emitted below it: an entry too verbose to print is exactly the kind of
     // breadcrumb worth having attached to an error report.
     this.alepha.context.get<LogBuffer>(LogBuffer.key)?.push(logEntry);
@@ -234,7 +234,7 @@ export class Logger implements LoggerInterface {
     if (this.levels[level] > this.levels[this.level]) {
       // Suppressed for the console, but still EMITTED. Review #3 proposed
       // early-returning before building the entry; that would starve the
-      // `log` event, which is what feeds the devtools log viewer — a
+      // `log:entry` event, which is what feeds the devtools log viewer , a
       // `LOG_LEVEL=info` process would show no trace/debug there at all.
       // The expensive half (formatting) is already skipped.
       this.emit(logEntry);
@@ -328,7 +328,7 @@ export class Logger implements LoggerInterface {
   protected emit(entry: LogEntry, message?: string) {
     this.alepha.events
       .emit(
-        "log",
+        "log:entry",
         {
           message,
           entry,

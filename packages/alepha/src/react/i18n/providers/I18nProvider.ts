@@ -220,7 +220,7 @@ export class I18nProvider<
   });
 
   protected readonly onRender = $hook({
-    on: "server:onRequest",
+    on: "server:request:before",
     priority: "last",
     handler: async ({ request }) => {
       this.alepha.store.set(
@@ -281,11 +281,11 @@ export class I18nProvider<
   /**
    * What the generated Cloudflare worker needs to resolve a request's language
    * before the app boots: the registered languages and the options. Answers
-   * `react:server:edge` at build time (#E78). Prefix routing with excluded
+   * `react:edge:configure:before` at build time (#E78). Prefix routing with excluded
    * paths is not reproduced there: the worker then skips its pre-boot lookup.
    */
   protected readonly onEdge = $hook({
-    on: "react:server:edge",
+    on: "react:edge:configure:before",
     handler: (event) => {
       const localeProvider = this.localeProvider;
       event.functions = {
@@ -422,7 +422,7 @@ export class I18nProvider<
   };
 
   protected readonly mutate = $hook({
-    on: "state:mutate",
+    on: "state:mutated",
     handler: async ({ key, value }) => {
       // Prefix-mode navigation changed the active locale (set by the router) →
       // activate the matching language (loads dictionaries, refreshes

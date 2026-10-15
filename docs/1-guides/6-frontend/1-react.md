@@ -262,11 +262,11 @@ sees a correct page. Nothing throws and no error boundary fires. It is still a
 defect - the page paints twice, and whatever made the two renders differ is
 usually a browser-only read during render.
 
-Alepha reports it on `react:recoverable:error`:
+Alepha reports it on `react:render:recovered`:
 
 ```typescript
 alepha.events.on(
-  "react:recoverable:error",
+  "react:render:recovered",
   ({ error, componentStack, state }) => {
     console.error(
       `Hydration mismatch on ${state.url.pathname}`,

@@ -133,7 +133,7 @@ describe("useComputed", () => {
 
   // Fix 1 regression: a mutation that lands in the window between the
   // initial render and the passive effect that subscribes to
-  // `state:mutate` must still be reflected. A dirty-flag cache — set only
+  // `state:mutated` must still be reflected. A dirty-flag cache , set only
   // by that subscription's listener — can never learn about a mutation
   // that happened before the listener existed, so it would serve the
   // stale pre-mutation value forever (until some later, unrelated mutation

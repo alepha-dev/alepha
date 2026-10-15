@@ -24,7 +24,7 @@ class FetchProbe {
   public readonly requests: Array<{ url: string; authorization?: string }> = [];
 
   protected readonly capture = $hook({
-    on: "client:beforeFetch",
+    on: "client:fetch:before",
     handler: ({ url, request }) => {
       this.requests.push({
         url,

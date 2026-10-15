@@ -231,7 +231,7 @@ describe("delivery events", () => {
     await sender.send(payload("rcpt-reminder"), { executionId: "exec-8" });
     const messageId = mail.last!.messageId;
 
-    await alepha.events.emit("notification:delivery", {
+    await alepha.events.emit("notification:delivery:reported", {
       provider: "memory",
       messageId,
       contact: "a@example.com",
@@ -250,7 +250,7 @@ describe("delivery events", () => {
     const { alepha, sender, deliveries, mail } = await boot();
     await sender.send(payload("rcpt-reminder"), { executionId: "exec-9" });
 
-    await alepha.events.emit("notification:delivery", {
+    await alepha.events.emit("notification:delivery:reported", {
       provider: "memory",
       messageId: mail.last!.messageId,
       contact: "a@example.com",
@@ -293,7 +293,7 @@ describe("delivery events", () => {
     const [sent] = await deliveries.list({});
     expect(sent.messageId).toBe("cf-msg-42");
 
-    await alepha.events.emit("cloudflare:queue", {
+    await alepha.events.emit("cloudflare:queue:received", {
       type: "cf.email.sending.message.bounced",
       payload: {
         messageId: "cf-msg-42",
@@ -313,7 +313,7 @@ describe("delivery events", () => {
     const { alepha, sender, deliveries } = await boot();
     await sender.send(payload("rcpt-reminder"), { executionId: "exec-10" });
 
-    await alepha.events.emit("notification:delivery", {
+    await alepha.events.emit("notification:delivery:reported", {
       provider: "memory",
       messageId: "never-issued",
       contact: "someone@example.com",

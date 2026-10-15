@@ -288,7 +288,7 @@ alepha.store.mut(cacheOptions, (c) => ({ ...c, enabled: false }));
 
 ## Events
 
-Every cache emits `cache:hit`, `cache:miss` and `cache:set` (`{ container, key }`, plus `ttlMs` on `set`), and with `stale`, `cache:stale` when a stale value is served and `cache:revalidate` when its background refresh lands.
+Every cache emits `cache:hit`, `cache:missed` and `cache:set` (`{ container, key }`, plus `ttlMs` on `set`), and with `stale`, `cache:staleServed` when a stale value is served and `cache:revalidated` when its background refresh lands.
 
 ## Serialization
 

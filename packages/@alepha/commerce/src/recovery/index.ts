@@ -22,7 +22,7 @@ export * from "./services/CartRecoveryService.ts";
  * Abandoned-cart follow-up: two reminder emails and an abandoned mark, as
  * one durable job per cart.
  *
- * Starts when a checkout captures an email (`commerce:checkout:email`),
+ * Starts when a checkout captures an email (`commerce:checkout:emailCaptured`),
  * waits out its delays on the job's own execution row (restarts lose
  * nothing) and stands down the moment the checkout converts. Timings come
  * from `cartRecoveryConfig`; the wording from `CartRecoveryMailRenderer`,

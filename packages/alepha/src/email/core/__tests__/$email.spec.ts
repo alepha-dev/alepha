@@ -89,7 +89,7 @@ describe("$email", () => {
     expect(provider.records).toHaveLength(1);
   });
 
-  test("should emit email:sending and email:sent events", async ({
+  test("should emit email:send:before and email:sent events", async ({
     expect,
   }) => {
     class TestService {
@@ -102,7 +102,7 @@ describe("$email", () => {
     const sendingEvents: any[] = [];
     const sentEvents: any[] = [];
 
-    alepha.events.on("email:sending", (event) => {
+    alepha.events.on("email:send:before", (event) => {
       sendingEvents.push(event);
     });
 
@@ -135,7 +135,7 @@ describe("$email", () => {
     const alepha = Alepha.create();
     const service = alepha.inject(TestService);
 
-    alepha.events.on("email:sending", (event) => {
+    alepha.events.on("email:send:before", (event) => {
       event.abort();
     });
 
@@ -159,7 +159,7 @@ describe("$email", () => {
     const service = alepha.inject(TestService);
 
     let capturedTemplate = "";
-    alepha.events.on("email:sending", (event) => {
+    alepha.events.on("email:send:before", (event) => {
       capturedTemplate = event.template;
     });
 

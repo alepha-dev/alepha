@@ -23,7 +23,7 @@ export class ApiStallSwitch {
   );
 
   protected readonly onRequest = $hook({
-    on: "server:onRequest",
+    on: "server:request:before",
     priority: "first",
     handler: async ({ request }) => {
       if (!this.env.MOBILE_API_STALL) return;
