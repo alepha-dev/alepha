@@ -1,5 +1,6 @@
 import { type Infer, z } from "alepha";
 
+import { automationNotificationOutcomeSchema } from "./automationNotificationOutcomeSchema.ts";
 import { automationRunSnapshotSchema } from "./automationRunSnapshotSchema.ts";
 import { automationRunStatusSchema } from "./automationRunStatusSchema.ts";
 
@@ -14,6 +15,7 @@ export const automationRunResourceSchema = z
     status: automationRunStatusSchema,
     reason: z.string().max(1024).optional(),
     snapshot: automationRunSnapshotSchema.nullable(),
+    notifications: z.array(automationNotificationOutcomeSchema).max(100),
     redacted: z.boolean(),
     redactionReason: z.string().max(255).optional(),
     createdAt: z.datetime(),

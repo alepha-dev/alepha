@@ -2,6 +2,7 @@ import { $inject, Alepha, AlephaError } from "alepha";
 import { JobProvider, jobExecutionEntity } from "alepha/api/jobs";
 import {
   notificationDeliveryEntity,
+  type NotificationDeliveryEntity,
   NotificationJobs,
   NotificationSenderService,
 } from "alepha/api/notifications";
@@ -99,35 +100,70 @@ export class AutomationNotificationOutbox {
   }
 
   public async status(id: string) {
+    return (await this.statuses([id])).get(id)!;
+  }
+
+  public async statuses(ids: string[]) {
+    if (ids.length > 100)
+      throw new AlephaError(
+        "Notification outcome reads are limited to 100 executions",
+      );
     return this.database.primary(async () => {
-      const receipt = await this.deliveries.findOne({
-        where: { executionId: id },
-      });
-      const execution = await this.executions.findById(id);
-      if (
-        execution &&
-        ["pending", "running", "scheduled"].includes(execution.status)
-      )
-        return {
-          status: "queued" as const,
-          ...(receipt ? { lastAttempt: receipt.status } : {}),
-        };
-      if (receipt)
-        return {
-          status:
-            receipt.channel === "inbox" && receipt.status === "sent"
-              ? ("delivered" as const)
-              : receipt.status,
-          receiptId: receipt.id,
-          ...(receipt.messageId ? { messageId: receipt.messageId } : {}),
-          ...(receipt.skipReason ? { reason: receipt.skipReason } : {}),
-        };
+      const unique = [...new Set(ids)];
+      if (!unique.length)
+        return new Map<
+          string,
+          ReturnType<AutomationNotificationOutbox["outcome"]>
+        >();
+      const [receipts, executions] = await Promise.all([
+        this.deliveries.findMany({
+          where: { executionId: { inArray: unique } },
+        }),
+        this.executions.findMany({
+          where: { id: { inArray: unique } },
+          columns: ["id", "status"],
+        }),
+      ]);
+      const receiptById = new Map(
+        receipts.map((row) => [row.executionId, row]),
+      );
+      const executionById = new Map(executions.map((row) => [row.id, row]));
+      return new Map(
+        unique.map((id) => [
+          id,
+          this.outcome(executionById.get(id), receiptById.get(id)),
+        ]),
+      );
+    });
+  }
+
+  protected outcome(
+    execution: { status: string } | undefined,
+    receipt: NotificationDeliveryEntity | undefined,
+  ) {
+    if (
+      execution &&
+      ["pending", "running", "scheduled"].includes(execution.status)
+    )
+      return {
+        status: "queued" as const,
+        ...(receipt ? { lastAttempt: receipt.status } : {}),
+      };
+    if (receipt)
       return {
         status:
-          execution?.status === "error" || execution?.status === "cancelled"
-            ? ("failed" as const)
-            : ("unknown" as const),
+          receipt.channel === "inbox" && receipt.status === "sent"
+            ? ("delivered" as const)
+            : receipt.status,
+        receiptId: receipt.id,
+        ...(receipt.messageId ? { messageId: receipt.messageId } : {}),
+        ...(receipt.skipReason ? { reason: receipt.skipReason } : {}),
       };
-    });
+    return {
+      status:
+        execution?.status === "error" || execution?.status === "cancelled"
+          ? ("failed" as const)
+          : ("unknown" as const),
+    };
   }
 }

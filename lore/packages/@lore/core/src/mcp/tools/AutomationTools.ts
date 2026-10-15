@@ -8,6 +8,7 @@ import { automationDependentPageSchema } from "../../api/schemas/automationDepen
 import { automationEvaluationReportSchema } from "../../api/schemas/automationEvaluationReportSchema.ts";
 import { automationPageSchema } from "../../api/schemas/automationPageSchema.ts";
 import { automationResourceSchema } from "../../api/schemas/automationResourceSchema.ts";
+import { automationRunPageSchema } from "../../api/schemas/automationRunPageSchema.ts";
 import { automationVariablePageSchema } from "../../api/schemas/automationVariablePageSchema.ts";
 import { automationVariableSetResponseSchema } from "../../api/schemas/automationVariableSetResponseSchema.ts";
 import { AutomationService } from "../../api/services/AutomationService.ts";
@@ -16,6 +17,7 @@ import { automationCreateParamsSchema } from "../schemas/automationCreateParamsS
 import { automationDeleteParamsSchema } from "../schemas/automationDeleteParamsSchema.ts";
 import { automationGetParamsSchema } from "../schemas/automationGetParamsSchema.ts";
 import { automationListParamsSchema } from "../schemas/automationListParamsSchema.ts";
+import { automationRunsParamsSchema } from "../schemas/automationRunsParamsSchema.ts";
 import { automationTestParamsSchema } from "../schemas/automationTestParamsSchema.ts";
 import { automationUpdateParamsSchema } from "../schemas/automationUpdateParamsSchema.ts";
 import { automationVariableDeleteParamsSchema } from "../schemas/automationVariableDeleteParamsSchema.ts";
@@ -197,6 +199,20 @@ export class AutomationTools {
       );
       return { ok: true };
     },
+  });
+  automation_runs = $tool({
+    description:
+      "Read bounded retained run pages for an automation ID. Snapshots show exact or capped counts and per-action outcomes. notifications contains live receipt status separately from enqueue: queued is not delivery, email sent is transport acceptance, and inbox delivery is delivered. Payloads and receipt identities are redacted without current source-read access. Details retain 30 days; replay receipts retain 90 days.",
+    annotations: { readOnlyHint: true, idempotentHint: true },
+    schema: {
+      params: automationRunsParamsSchema,
+      result: automationRunPageSchema,
+    },
+    handler: async ({ params }) =>
+      this.service.runs(await this.project(params), params.id, this.user(), {
+        offset: params.offset,
+        limit: params.limit,
+      }),
   });
   automation_catalog = $tool({
     description:

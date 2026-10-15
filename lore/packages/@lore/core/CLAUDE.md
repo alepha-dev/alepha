@@ -730,3 +730,18 @@ Variable tools expose immutable IDs, versions, bounded pages and a dedicated
 `automation_variable_dependents` read. Set reports affected consumers; delete is
 unused-only. Catalogue discovery and zero-write preview are available to compose
 and inspect typed release append-and-notify rules before enabling them.
+
+## Automation run reads (#E43, #Q2036)
+
+`AutomationService.run` first authorizes the retained source and variable values.
+Only then does it join bounded live notification outcomes. The persisted action
+snapshot keeps its enqueue result; `notifications` on the public run DTO reports
+current queued, sent, delivered, skipped, failed or unknown transport evidence.
+Inbox `sent` becomes delivered; email `sent` remains transport acceptance.
+Redacted runs expose neither receipt identities nor delivery lookups.
+
+`AutomationNotificationOutbox.statuses` reads at most 100 executions and their
+receipts in two primary queries, preserving pending-retry state separately from
+the last attempt. `automation_runs` delegates to shared offset pagination,
+including retained history for soft-deleted rules. MCP catalogue and preview
+preserve the HTTP service's current permission gates and complete schemas.

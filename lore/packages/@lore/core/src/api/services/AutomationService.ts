@@ -33,6 +33,7 @@ import { AutomationEvaluator } from "./AutomationEvaluator.ts";
 import { AutomationGuards } from "./AutomationGuards.ts";
 import { AutomationHealth } from "./AutomationHealth.ts";
 import { AutomationMutationAudit } from "./AutomationMutationAudit.ts";
+import { AutomationNotificationOutbox } from "./AutomationNotificationOutbox.ts";
 import { AutomationPersistence } from "./AutomationPersistence.ts";
 import { AutomationRunEvidence } from "./AutomationRunEvidence.ts";
 import { AutomationVariables } from "./AutomationVariables.ts";
@@ -43,6 +44,7 @@ import { AutomationVariables } from "./AutomationVariables.ts";
  */
 export class AutomationService {
   protected readonly database = $inject(AutomationDatabase);
+  protected readonly outbox = $inject(AutomationNotificationOutbox);
   protected readonly persistence = $inject(AutomationPersistence);
   protected readonly access = $inject(AutomationAccess);
   protected readonly catalog = $inject(AutomationCatalog);
@@ -400,7 +402,25 @@ export class AutomationService {
     await this.access.assert(projectId, user, "automation:read");
     await this.persistence.runs.getOne({ where: { id, projectId } });
     const run = await this.evidence.read(id, user);
+    // Read delivery evidence only after current source and variable access
+    // has authorized the immutable run payload.
+    const enqueues = (run.snapshot?.actions ?? []).filter(
+      (action) =>
+        action.result.enqueued === true &&
+        typeof action.result.outbox_id === "string" &&
+        run.snapshot?.rule?.actions[action.index]?.kind === "notify",
+    );
+    const outcomes = await this.outbox.statuses(
+      enqueues.map((action) => String(action.result.outbox_id)),
+    );
+    const notifications = enqueues.map((action) => ({
+      index: action.index,
+      ...(action.row === undefined ? {} : { row: action.row }),
+      outboxId: action.result.outbox_id,
+      ...outcomes.get(String(action.result.outbox_id)),
+    }));
     return automationRunResourceSchema.parse({
+      notifications,
       id: run.id,
       projectId: run.projectId,
       automationId: run.automationId,

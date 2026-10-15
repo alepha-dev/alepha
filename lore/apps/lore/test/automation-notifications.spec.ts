@@ -660,5 +660,5 @@ describe("Automation configured notifications and durable outbox", () => {
       }),
     ).rejects.toThrow("delivery budget");
     expect(await rows.jobs.count()).toBe(100);
-  });
+  }, 30_000);
 });

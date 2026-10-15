@@ -1,10 +1,32 @@
-import { AutomationPersistence, AutomationService } from "@lore/core/api";
+import {
+  LoreInboxRecipientProvider,
+  LoreNotificationPreferences,
+  AutomationEvents,
+  AutomationWorker,
+  AutomationNotificationOutbox,
+  AutomationPersistence,
+  AutomationService,
+} from "@lore/core/api";
 import type { AutomationResource, AutomationRule } from "@lore/core/schemas";
 import { createPresetRanks } from "@lore/core/testing";
 import { ReleaseController } from "@lore/work/api";
 import { Alepha, AlephaError } from "alepha";
+import { audits } from "alepha/api/audits";
+import {
+  JobProvider,
+  JobQueueProvider,
+  jobExecutionEntity,
+} from "alepha/api/jobs";
 import { ApiKeyService } from "alepha/api/keys";
+import {
+  NotificationInboxRecipientProvider,
+  NotificationPreferenceProvider,
+  notificationDeliveryEntity,
+  notificationInboxEntity,
+} from "alepha/api/notifications";
 import { DateTimeProvider } from "alepha/datetime";
+import { EmailProvider, MemoryEmailProvider } from "alepha/email";
+import { $repository } from "alepha/orm";
 import { CronProvider } from "alepha/scheduler";
 import { NodeHttpServerProvider } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
@@ -14,9 +36,27 @@ import {
   createTestFolio,
   createTestMember,
   createTestProject,
+  createTestQuest,
   TestEntityRepositories,
 } from "./fixtures/entities.ts";
 import { ManualCronProvider } from "./fixtures/ManualCronProvider.ts";
+
+class McpPausedQueue extends JobQueueProvider {
+  public override async dispatch() {}
+}
+class McpOutcomeReader extends AutomationNotificationOutbox {
+  public reads: string[][] = [];
+  public override async statuses(ids: string[]) {
+    if (ids.length) this.reads.push(ids);
+    return super.statuses(ids);
+  }
+}
+class McpEvidenceRows {
+  public readonly jobs = $repository(jobExecutionEntity);
+  public readonly audits = $repository(audits);
+  public readonly deliveries = $repository(notificationDeliveryEntity);
+  public readonly inbox = $repository(notificationInboxEntity);
+}
 
 interface McpReply {
   result?: {
@@ -32,6 +72,7 @@ describe("Automation MCP transport uses shared application policy", () => {
   let alepha: Alepha;
   let entities: TestEntityRepositories;
   let persistence: AutomationPersistence;
+  let rows: McpEvidenceRows;
   let project: Awaited<ReturnType<typeof createTestProject>>;
   let user: { id: string; roles: string[] };
   let token: string;
@@ -110,9 +151,22 @@ describe("Automation MCP transport uses shared application policy", () => {
   beforeEach(async () => {
     alepha = Alepha.create({
       env: { DATABASE_URL: ":memory:", SERVER_PORT: 0, LOG_LEVEL: "silent" },
-    }).with({ provide: CronProvider, use: ManualCronProvider });
+    })
+      .with({ provide: CronProvider, use: ManualCronProvider })
+      .with({ provide: JobQueueProvider, use: McpPausedQueue })
+      .with({
+        provide: NotificationInboxRecipientProvider,
+        use: LoreInboxRecipientProvider,
+      })
+      .with({
+        provide: NotificationPreferenceProvider,
+        use: LoreNotificationPreferences,
+      })
+      .with({ provide: EmailProvider, use: MemoryEmailProvider })
+      .with({ provide: AutomationNotificationOutbox, use: McpOutcomeReader });
     bootLore(alepha, ["api", "mcp"]);
     entities = alepha.inject(TestEntityRepositories);
+    rows = alepha.inject(McpEvidenceRows);
     persistence = alepha.inject(AutomationPersistence);
     await alepha.start();
     alepha.inject(DateTimeProvider).pause();
@@ -124,7 +178,11 @@ describe("Automation MCP transport uses shared application policy", () => {
         { key: "knowledge" },
       ],
     });
-    await entities.users.updateById(project.createdBy, { roles: ["user"] });
+    await entities.users.updateById(project.createdBy, {
+      roles: ["user"],
+      email: "owner@example.test",
+      emailVerified: true,
+    });
     user = { id: project.createdBy, roles: ["user"] };
     await createPresetRanks(alepha, project.id);
     token = await key();
@@ -412,5 +470,245 @@ describe("Automation MCP transport uses shared application policy", () => {
     await alepha
       .inject(AutomationService)
       .setEnabled(project.id, made.id, user, false, made.revision);
+  });
+  for (const channel of ["inbox", "email"] as const)
+    it(`paginates immutable runs and joins live ${channel} receipts without changing the enqueue snapshot`, async ({
+      expect,
+    }) => {
+      const ast = rule();
+      if (ast.actions[0].kind === "notify") ast.actions[0].channel = channel;
+      ast.trigger = { kind: "event", event: "release.published" };
+      const made = await create(ast, { enabled: true });
+      for (const tag of ["2.0.0", "2.1.0"]) {
+        await alepha.inject(DateTimeProvider).travel([1, "second"]);
+        const release = (
+          await alepha.inject(ReleaseController).createRelease.fetch(
+            {
+              params: { projectId: project.id },
+              body: { tag, title: `Release ${tag}` },
+            },
+            { user },
+          )
+        ).data;
+        await alepha
+          .inject(ReleaseController)
+          .publishRelease.fetch(
+            { params: { id: release.id }, body: {} },
+            { user },
+          );
+        await alepha.inject(AutomationEvents).sweep(50);
+        const ready = await persistence.receipts.findMany({
+          where: { automationId: made.id, kind: "occurrence", status: "ready" },
+        });
+        for (const occurrence of ready) {
+          let next: { receiptId: string; token?: string } | undefined = {
+            receiptId: occurrence.id,
+          };
+          for (let step = 0; next && step < 20; step++)
+            next = await alepha.inject(AutomationWorker).step(next, 3);
+          expect(next).toBeUndefined();
+        }
+      }
+      const first = value(
+        await call("automation_runs", { id: made.id, limit: 1 }),
+      );
+      expect(first).toMatchObject({ hasMore: true, nextOffset: 1 });
+      expect(first.items[0].snapshot.actions[0]).toMatchObject({
+        status: "queued",
+        result: { enqueued: true, delivered: false },
+      });
+      expect(first.items[0].notifications[0]).toMatchObject({
+        index: 0,
+        status: "queued",
+      });
+      const second = value(
+        await call("automation_runs", {
+          id: made.id,
+          limit: 1,
+          offset: first.nextOffset,
+        }),
+      );
+      const total = (
+        await persistence.runs.findMany({ where: { automationId: made.id } })
+      ).length;
+      expect(second.hasMore).toBe(total > 2);
+      expect(
+        value(
+          await call("automation_runs", {
+            id: made.id,
+            limit: 1,
+            offset: total - 1,
+          }),
+        ).hasMore,
+      ).toBe(false);
+      expect(second.items[0].id).not.toBe(first.items[0].id);
+      const outboxId = first.items[0].notifications[0].outboxId;
+      const execution = await rows.jobs.getById(outboxId);
+      await alepha
+        .inject(JobProvider)
+        .processExecution(execution.jobName, outboxId);
+      const delivered = value(
+        await call("automation_runs", { id: made.id, limit: 1 }),
+      );
+      expect(delivered.items[0].notifications[0].reason).toBeUndefined();
+      expect(delivered.items[0].notifications[0]).toMatchObject({
+        outboxId,
+        status: channel === "inbox" ? "delivered" : "sent",
+        receiptId: expect.any(String),
+      });
+      expect(delivered.items[0].snapshot).toEqual(first.items[0].snapshot);
+      const reader = alepha.inject(McpOutcomeReader);
+      reader.reads = [];
+      const scoped = await key(user.id, ["project:read", "automation:read"]);
+      const redacted = value(
+        await call("automation_runs", { id: made.id }, scoped),
+      );
+      expect(redacted.items[0]).toMatchObject({
+        redacted: true,
+        snapshot: null,
+        notifications: [],
+      });
+      expect(reader.reads).toHaveLength(0);
+      const foreign = await createTestProject(alepha);
+      expect(
+        failed(
+          await call("automation_runs", { project: foreign.id, id: made.id }),
+        ),
+      ).toBeTruthy();
+    });
+
+  it("keeps successful and refused typed previews free of automation, domain, audit and notification writes", async ({
+    expect,
+  }) => {
+    const made = await create();
+    const quest = await createTestQuest(alepha, project, {
+      title: "Preview source",
+    });
+    const state = async () =>
+      JSON.stringify(
+        await Promise.all([
+          persistence.rules.findMany(),
+          persistence.variables.findMany(),
+          persistence.events.findMany(),
+          persistence.receipts.findMany(),
+          persistence.runs.findMany(),
+          rows.audits.findMany(),
+          rows.jobs.findMany(),
+          rows.deliveries.findMany(),
+          rows.inbox.findMany(),
+          entities.quests.findMany(),
+          entities.folios.findMany(),
+        ]),
+      );
+    const before = await state();
+    const preview = value(
+      await call("automation_test", {
+        id: made.id,
+        source: { kind: "subject", id: quest.id },
+      }),
+    );
+    expect(preview).toMatchObject({
+      preview: true,
+      status: "preview",
+      evaluatedAt: expect.any(String),
+      inputs: { title: "Preview source" },
+    });
+    expect(await state()).toBe(before);
+    const refused = value(
+      await call("automation_test", {
+        id: made.id,
+        source: { kind: "event", id: crypto.randomUUID() },
+      }),
+    );
+    expect(refused.status).toBe("refused");
+    expect(await state()).toBe(before);
+    const scoped = await key(user.id, ["project:read", "automation:read"]);
+    const deniedBefore = await state();
+    const denied = await call(
+      "automation_test",
+      { id: made.id, source: { kind: "subject", id: quest.id } },
+      scoped,
+    );
+    expect(failed(denied)).toMatch(/source access|quest:read/i);
+    expect(await state()).toBe(deniedBefore);
+    expect(
+      failed(
+        await call("automation_test", {
+          id: made.id,
+          source: {
+            kind: "subject",
+            id: quest.id,
+            fields: { title: "Injected" },
+          },
+        }),
+      ),
+    ).toBeTruthy();
+  });
+
+  it("describes authorized variables, cardinalities, operators and configured channels under the current key ceiling", async ({
+    expect,
+  }) => {
+    value(
+      await call("automation_variable_set", {
+        key: "recipient",
+        variable: { value: { kind: "member", value: user.id } },
+      }),
+    );
+    const catalogue = value(await call("automation_catalog"));
+    expect(catalogue.variables).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "recipient",
+          available: true,
+          value: { kind: "member", value: user.id },
+        }),
+      ]),
+    );
+    expect(catalogue.entries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "quests.tagged",
+          result: "collection",
+          itemFields: expect.any(Object),
+        }),
+        expect.objectContaining({
+          key: "activeQuests",
+          result: "scalar",
+          operators: expect.arrayContaining(["crossesAbove"]),
+        }),
+        expect.objectContaining({
+          key: "release.published",
+          fields: expect.objectContaining({ release_tag: "text" }),
+          permissions: expect.any(Array),
+        }),
+      ]),
+    );
+    expect(catalogue.channels).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: "inbox", available: true }),
+        expect.objectContaining({ key: "email", available: true }),
+      ]),
+    );
+    expect(catalogue.limits).toMatchObject({
+      selectedRows: 50,
+      deliveries: 100,
+      detailDays: 30,
+      receiptDays: 90,
+    });
+    const scoped = await key(user.id, ["project:read", "automation:read"]);
+    const limited = value(await call("automation_catalog", {}, scoped));
+    expect(
+      limited.entries.find(
+        (entry: { key: string }) => entry.key === "release.published",
+      ),
+    ).toMatchObject({
+      available: false,
+      reason: expect.stringMatching(/release:read|permission|grant/i),
+    });
+    expect(limited.variables[0]).toMatchObject({
+      key: "recipient",
+      available: false,
+    });
+    expect(limited.variables[0]).not.toHaveProperty("value");
   });
 });

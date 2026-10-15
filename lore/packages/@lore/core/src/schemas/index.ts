@@ -149,3 +149,5 @@ export {
 export { automationCatalogPresetSchema } from "../api/schemas/automationCatalogPresetSchema.ts";
 
 export { AutomationPresetForms } from "../api/schemas/AutomationPresetForms.ts";
+
+export { automationNotificationOutcomeSchema } from "../api/schemas/automationNotificationOutcomeSchema.ts";
