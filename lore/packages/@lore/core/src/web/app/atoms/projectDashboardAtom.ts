@@ -33,6 +33,10 @@ export const projectDashboardAtom = $atom({
      * project's stored cards. A computed board is read-only.
      */
     computed: z.boolean().optional(),
+    /**
+     * When a dormant project last moved (#Q2662), for the "quiet since" line.
+     */
+    dormantSince: z.string().optional(),
     cards: z.array(dashboardCardResourceSchema),
     values: z.array(dashboardCardValueSchema).optional(),
     refreshedAt: z.string().optional(),

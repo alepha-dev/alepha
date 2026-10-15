@@ -204,6 +204,15 @@ const DashboardCardFooter = (props: DashboardCardFooterProps) => {
         args: [String(detail.testsPassed ?? 0), String(detail.testsTotal ?? 0)],
       });
     }
+    if (props.metric === "recentlyShipped") {
+      const shipped = Number(props.value?.value ?? 0);
+      return tr(
+        shipped === 1
+          ? "dashboard.footer.recentlyShipped.one"
+          : "dashboard.footer.recentlyShipped",
+        { args: [String(shipped)] },
+      );
+    }
     if (props.metric === "burnup") {
       return tr("dashboard.footer.burnup", {
         args: [String(props.value?.value ?? 0), String(detail.created ?? 0)],

@@ -2409,6 +2409,9 @@ export default {
     "Every card on it is deleted, and every member sees the board computed from what this project does again.",
   "dashboard.window": "Time window",
   "dashboard.window.days": "Last $1 days",
+  "dashboard.dormant": "Quiet since $1.",
+  "dashboard.footer.recentlyShipped": "$1 quests shipped",
+  "dashboard.footer.recentlyShipped.one": "1 quest shipped",
   "dashboard.refreshed": "Refreshed $1.",
   "dashboard.addCard": "Add card",
 

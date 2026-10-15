@@ -19,7 +19,13 @@ export type DashboardSlot =
   | "plan"
   | "apps"
   | "knowledge"
-  | "feed";
+  | "feed"
+  /**
+   * The only slot of a DORMANT project's board (#Q2662): what it shipped
+   * last, under the "quiet since" line, instead of a page of slots that
+   * would all collapse.
+   */
+  | "dormant";
 
 /**
  * One tile a module offers to a slot of the computed board.
@@ -138,8 +144,10 @@ export class DashboardSlotRegistry {
     project: Project,
     user: UserAccountToken,
     windowDays: number = DashboardMetricRegistry.DEFAULT_WINDOW_DAYS,
+    options: { dormant?: boolean } = {},
   ): Promise<ComputedDashboard> {
     const capabilities = await this.metrics.capabilitiesOf([project.id]);
+    const slots: DashboardSlot[] = options.dormant ? ["dormant"] : this.slots;
 
     // The capability gate, per candidate. Synthetic ids are negative so they
     // can never be mistaken for a stored card's.
@@ -147,7 +155,7 @@ export class DashboardSlotRegistry {
       candidate: DashboardSlotCandidate;
       card: DashboardCardResource;
     }> = [];
-    for (const slot of this.slots) {
+    for (const slot of slots) {
       for (const candidate of this.of(slot)) {
         const descriptor = this.catalog.find(candidate.metric);
         if (!descriptor || !this.catalog.offers(candidate.metric, "project")) {
@@ -198,7 +206,7 @@ export class DashboardSlotRegistry {
     const cards: DashboardCardResource[] = [];
     const kept: DashboardCardValue[] = [];
     const shown = new Set<string>();
-    for (const slot of this.slots) {
+    for (const slot of slots) {
       const winner = offered.find(({ candidate, card }) => {
         if (candidate.slot !== slot || shown.has(candidate.metric)) {
           return false;

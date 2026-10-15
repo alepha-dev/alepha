@@ -22,6 +22,7 @@ import DashboardCatalogue from "../../dashboard/DashboardCatalogue.tsx";
 import { projectAnswers } from "../../dashboard/dashboardEligibility.ts";
 import DashboardGrid from "../../dashboard/DashboardGrid.tsx";
 import { useRank } from "../../shared/useRank.ts";
+import ProjectDashboardDormant from "./ProjectDashboardDormant.tsx";
 import ProjectDashboardEmpty from "./ProjectDashboardEmpty.tsx";
 import ProjectDashboardHeader from "./ProjectDashboardHeader.tsx";
 
@@ -162,6 +163,7 @@ const ProjectDashboard = () => {
         alepha.store.set(projectDashboardAtom, {
           projectId,
           computed: board.computed,
+          dormantSince: board.dormantSince,
           cards: board.cards,
           values: board.values,
           refreshedAt: board.refreshedAt,
@@ -464,6 +466,10 @@ const ProjectDashboard = () => {
             onReset={() => void resetAction.run()}
             busy={busy}
           />
+
+          {computed && board.dormantSince && (
+            <ProjectDashboardDormant since={board.dormantSince} />
+          )}
 
           <DashboardGrid
             cards={shown}

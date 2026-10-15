@@ -132,6 +132,14 @@ export class WorkDashboard {
       size: 2,
       height: 2,
     });
+    // Dormant (#Q2662): what the project shipped last, under the line.
+    this.slots.register({
+      slot: "dormant",
+      rank: 10,
+      metric: "recentlyShipped",
+      size: 2,
+      height: 2,
+    });
     // Plan: epics in flight, then draft epics, then releases to publish.
     this.slots.register({
       slot: "plan",

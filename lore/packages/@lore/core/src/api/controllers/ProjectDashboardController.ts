@@ -16,6 +16,7 @@ import { DashboardMetricRegistry } from "../services/DashboardMetricRegistry.ts"
 import { DashboardScopeService } from "../services/DashboardScopeService.ts";
 import { DashboardSlotRegistry } from "../services/DashboardSlotRegistry.ts";
 import { ProjectDashboardCardService } from "../services/ProjectDashboardCardService.ts";
+import { ProjectRecencyService } from "../services/ProjectRecencyService.ts";
 
 /**
  * One project's board: read it, and curate it.
@@ -68,6 +69,12 @@ export class ProjectDashboardController {
   protected readonly scopes = $inject(DashboardScopeService);
   protected readonly registry = $inject(DashboardMetricRegistry);
   protected readonly slots = $inject(DashboardSlotRegistry);
+  protected readonly recency = $inject(ProjectRecencyService);
+
+  /**
+   * How long without a recorded write before a project is dormant (#Q2662).
+   */
+  protected static readonly DORMANT_AFTER_DAYS = 90;
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly projects = $repository(projects);
 
@@ -314,6 +321,12 @@ export class ProjectDashboardController {
       }),
       response: z.object({
         computed: z.boolean(),
+        /**
+         * When a dormant project last moved (#Q2662): no recorded write in
+         * 90 days. Only on a computed board; a customized one is the
+         * owner's and is left alone.
+         */
+        dormantSince: z.string().optional(),
         cards: z.array(dashboardCardResourceSchema),
         values: z.array(dashboardCardValueSchema),
         refreshedAt: z.string(),
@@ -336,6 +349,27 @@ export class ProjectDashboardController {
             undefined,
             windowDays,
           ),
+          refreshedAt,
+        };
+      }
+
+      // Dormant (#Q2662): a page of slots that would all collapse becomes one
+      // line and what the project shipped last.
+      const [last] = await this.recency.lastActivity([
+        { id: project.id, updatedAt: project.updatedAt },
+      ]);
+      const quietFor = this.dateTime.nowMillis() - Date.parse(last!.at);
+      if (
+        quietFor >
+        ProjectDashboardController.DORMANT_AFTER_DAYS * 86_400_000
+      ) {
+        const board = await this.slots.compute(project, user, windowDays, {
+          dormant: true,
+        });
+        return {
+          computed: true,
+          dormantSince: last!.at,
+          ...board,
           refreshedAt,
         };
       }

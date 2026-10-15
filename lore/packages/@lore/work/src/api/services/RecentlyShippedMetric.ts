@@ -48,17 +48,22 @@ export class RecentlyShippedMetric implements DashboardMetricResolver {
         continue;
       }
       const slug = project.slug ?? "";
-      const shipped = await this.quests.findMany({
-        where: {
-          projectId: { eq: project.id },
-          completedAt: { isNotNull: true },
-        },
-        orderBy: [{ column: "completedAt", direction: "desc" }],
-        limit: 8,
-      });
+      const done = {
+        projectId: { eq: project.id },
+        completedAt: { isNotNull: true },
+      };
+      const [shipped, total] = await Promise.all([
+        this.quests.findMany({
+          where: done,
+          orderBy: [{ column: "completedAt", direction: "desc" }],
+          limit: 8,
+        }),
+        // Every completion, for "14 quests shipped" (#Q2662).
+        this.quests.count(done),
+      ]);
       out.set(entry.card.id, {
         ...(shipped.length === 0 ? { empty: "noActivity" as const } : {}),
-        value: shipped.length,
+        value: total,
         rows: shipped.map((quest) => ({
           ...this.row(quest, slug),
           meta: undefined,

@@ -2402,6 +2402,9 @@ export default {
     "Toutes ses cartes sont supprimées, et chaque membre retrouve le tableau calculé d'après ce que fait ce projet.",
   "dashboard.window": "Période",
   "dashboard.window.days": "$1 derniers jours",
+  "dashboard.dormant": "Calme depuis $1.",
+  "dashboard.footer.recentlyShipped": "$1 quêtes livrées",
+  "dashboard.footer.recentlyShipped.one": "1 quête livrée",
   "dashboard.refreshed": "Actualise $1.",
   "dashboard.addCard": "Ajouter une carte",
 

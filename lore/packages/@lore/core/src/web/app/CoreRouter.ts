@@ -375,6 +375,7 @@ export class CoreRouter {
       this.alepha.store.set(projectDashboardAtom, {
         projectId: project.id,
         computed: board?.computed,
+        dormantSince: board?.dormantSince,
         cards: board?.cards ?? [],
         values: board?.values,
         refreshedAt: board?.refreshedAt,
