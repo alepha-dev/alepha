@@ -3,6 +3,10 @@ import { projectCapabilities, projects } from "@lore/core/schemas";
 import { Alepha } from "alepha";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
+import {
+  LogDestinationProvider,
+  MemoryDestinationProvider,
+} from "alepha/logger";
 import { $repository, AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer, ServerProvider } from "alepha/server";
@@ -147,15 +151,17 @@ interface CapabilityFixture {
 const setup = async (
   over: { kinds?: string[]; capabilities?: CapabilityFixture[] } = {},
 ) => {
+  // `warn`, not `error`: what the sink says about a batch it refused is part
+  // of the contract (see `SigilIngestController.onRefused`).
   const alepha = Alepha.create({
     env: {
-      LOG_LEVEL: "error",
+      LOG_LEVEL: "warn",
       SERVER_PORT: 0,
       SERVER_HOST: "127.0.0.1",
       DATABASE_URL: ":memory:",
       PUBLIC_URL: "https://lore.test",
     },
-  });
+  }).with({ provide: LogDestinationProvider, use: MemoryDestinationProvider });
 
   alepha.with(AlephaOrm);
   alepha.with(AlephaServer);
@@ -229,6 +235,7 @@ const setup = async (
     service,
     token: minted.token,
     post,
+    logs: alepha.inject(MemoryDestinationProvider),
   };
 };
 
@@ -1097,6 +1104,50 @@ describe("sigil ingest", () => {
         errors: true,
         vitals: true,
       });
+    });
+
+    /**
+     * The shape `@alepha/lore` 0.32.0 forwarded once its host moved to a
+     * framework whose `crypto.hash` is async: the proxy did not await it, so
+     * `visitor` was a Promise and went on the wire as `{}` (#Q2683). The
+     * refusal is right; what was wrong is that nobody could see it, because a
+     * 4xx logs at debug and the sender's proxy is fail-open.
+     */
+    it("refuses an unawaited visitor hash and says why at warn", async () => {
+      const { probe, sigil, post, logs } = await setup();
+
+      const res = await post({
+        views: [{ path: "/docs" }],
+        country: "FR",
+        visitor: {},
+        device: "desktop",
+      });
+      expect(res.status).toBe(400);
+
+      const refused = logs.logs.filter(
+        (entry) =>
+          entry.level === "WARN" &&
+          String(entry.message).startsWith("Sigil batch refused"),
+      );
+      expect(refused).toHaveLength(1);
+      expect(String(refused[0]?.message)).toContain("/visitor");
+
+      const after = await probe.sigils.findOne({
+        where: { id: { eq: sigil.id } },
+      });
+      expect(after?.lastSeenAt).toBeUndefined();
+    });
+
+    it("does not warn about an unknown token", async () => {
+      const { post, logs } = await setup();
+
+      const res = await post({ views: [{ path: "/" }] }, "sgl_unknown");
+      expect(res.status).toBe(401);
+      expect(
+        logs.logs.some((entry) =>
+          String(entry.message).startsWith("Sigil batch refused"),
+        ),
+      ).toBe(false);
     });
 
     it("refuses an unshaped config at the door, like every other field", async () => {
