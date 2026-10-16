@@ -1,6 +1,6 @@
 import { $inject, z } from "alepha";
 import { $secure } from "alepha/security";
-import { $action, okSchema } from "alepha/server";
+import { $action, NotFoundError, okSchema } from "alepha/server";
 
 import { adminApiKeyQuerySchema } from "../schemas/adminApiKeyQuerySchema.ts";
 import { adminApiKeyResourceSchema } from "../schemas/adminApiKeyResourceSchema.ts";
@@ -19,6 +19,8 @@ export class AdminApiKeyController {
    * Find all API keys with optional filtering.
    */
   public readonly findApiKeys = $action({
+    errors: [],
+    method: "GET",
     path: this.url,
     group: this.group,
     use: [$secure({ permissions: ["admin:api-key:read"] })],
@@ -28,11 +30,10 @@ export class AdminApiKeyController {
       response: z.page(adminApiKeyResourceSchema),
     },
     handler: ({ query }) => {
-      const { userId, status, includeRevoked, ...pagination } = query;
+      const { userId, status, ...pagination } = query;
       return this.apiKeyService.findAll({
         userId,
         status,
-        includeRevoked,
         ...pagination,
       });
     },
@@ -42,6 +43,8 @@ export class AdminApiKeyController {
    * Get an API key by ID.
    */
   public readonly getApiKey = $action({
+    errors: [NotFoundError],
+    method: "GET",
     path: `${this.url}/:id`,
     group: this.group,
     use: [$secure({ permissions: ["admin:api-key:read"] })],
@@ -59,6 +62,7 @@ export class AdminApiKeyController {
    * Revoke any API key.
    */
   public readonly revokeApiKey = $action({
+    errors: [NotFoundError],
     method: "DELETE",
     path: `${this.url}/:id`,
     group: this.group,
@@ -80,6 +84,7 @@ export class AdminApiKeyController {
    * Revoke many API keys in one request.
    */
   public readonly revokeApiKeys = $action({
+    errors: [],
     method: "POST",
     path: `${this.url}/revoke`,
     group: this.group,

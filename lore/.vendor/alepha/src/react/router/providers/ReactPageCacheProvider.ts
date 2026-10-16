@@ -342,7 +342,7 @@ export class ReactPageCacheProvider {
 
   // Self-contained (no `this`, no import, literals inline): the generated
   // Cloudflare worker embeds their source, and must compute exactly what the
-  // app computes. See `react:server:edge`.
+  // app computes. See `react:edge:configure:before`.
 
   /**
    * The synthetic URL of an invalidation marker for a key prefix.
@@ -524,7 +524,7 @@ export class ReactPageCacheProvider {
    * An action run in process (`.run()`, a `$client` call on the server).
    */
   protected readonly onActionResponse = $hook({
-    on: "action:onResponse",
+    on: "action:response:after",
     handler: async ({ action, request, response }) => {
       await this.invalidateAfter(action.name, {
         result: response,
@@ -541,7 +541,7 @@ export class ReactPageCacheProvider {
    * before the response leaves, so the writer reads its own write.
    */
   protected readonly onHttpResponse = $hook({
-    on: "server:onResponse",
+    on: "server:response:after",
     // Before compression replaces the JSON body with a compressed stream.
     priority: "first",
     handler: async ({ request, response }) => {
@@ -581,7 +581,7 @@ export class ReactPageCacheProvider {
    * from the worker's own baked meta (see {@link builtId}).
    */
   protected readonly onEdge = $hook({
-    on: "react:server:edge",
+    on: "react:edge:configure:before",
     handler: (event) => {
       event.enabled = this.enabled;
       event.functions = {
@@ -865,7 +865,7 @@ export type PageCachePlan = { key: string; ttlMs: number } | { bypass: string };
 
 /**
  * What the generated Cloudflare worker needs to find a cached page before the
- * app boots. Filled at build time through `react:server:edge`.
+ * app boots. Filled at build time through `react:edge:configure:before`.
  */
 export interface PageEdgeConfig {
   /**

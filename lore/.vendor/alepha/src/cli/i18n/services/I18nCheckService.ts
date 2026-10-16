@@ -174,7 +174,7 @@ export class I18nCheckService {
 
     const fileContents = new Map<string, string>();
     for (const file of allFiles) {
-      fileContents.set(file, (await this.fs.readFile(file)).toString("utf8"));
+      fileContents.set(file, await this.fs.readTextFile(file));
     }
 
     // A file is a dictionary if it declares `$dictionary` OR it is the target

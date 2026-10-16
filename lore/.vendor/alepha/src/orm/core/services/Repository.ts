@@ -35,8 +35,6 @@ import {
 } from "drizzle-orm";
 import {
   alias,
-  type LockConfig,
-  type LockStrength,
   type PgAsyncDatabase,
   type PgAsyncTransaction,
   type PgColumn,
@@ -45,7 +43,6 @@ import {
   type PgTableWithColumns,
   type PgUpdateSetSource,
 } from "drizzle-orm/pg-core";
-import type { PgTransactionConfig } from "drizzle-orm/pg-core/session";
 
 import {
   PG_DELETED_AT,
@@ -53,16 +50,10 @@ import {
   PG_UPDATED_AT,
   PG_VERSION,
 } from "../constants/PG_SYMBOLS.ts";
-import { DbColumnNotFoundError } from "../errors/DbColumnNotFoundError.ts";
 import { DbConflictError } from "../errors/DbConflictError.ts";
-import { DbDeadlockError } from "../errors/DbDeadlockError.ts";
 import { DbEntityNotFoundError } from "../errors/DbEntityNotFoundError.ts";
 import { DbError } from "../errors/DbError.ts";
-import { DbForeignKeyError } from "../errors/DbForeignKeyError.ts";
-import { DbNotNullError } from "../errors/DbNotNullError.ts";
-import { DbTableNotFoundError } from "../errors/DbTableNotFoundError.ts";
 import { DbTimeoutError } from "../errors/DbTimeoutError.ts";
-import { DbTooManyParametersError } from "../errors/DbTooManyParametersError.ts";
 import { DbVersionMismatchError } from "../errors/DbVersionMismatchError.ts";
 import { getAttrFields, type PgAttrField } from "../helpers/pgAttr.ts";
 import type {
@@ -71,6 +62,8 @@ import type {
   AggregateResult,
   AggregateSelect,
 } from "../interfaces/AggregateQuery.ts";
+import type { DbColumn, DbTable } from "../interfaces/DbTable.ts";
+import type { DbTransaction } from "../interfaces/DbTransaction.ts";
 import type {
   PgQueryRelations,
   PgRelationMap,
@@ -80,10 +73,9 @@ import type {
   PgQueryWhere,
   PgQueryWhereOrSQL,
 } from "../interfaces/PgQueryWhere.ts";
-import type {
-  EntityPrimitive,
-  SchemaToTableConfig,
-} from "../primitives/$entity.ts";
+import type { RowLock } from "../interfaces/RowLock.ts";
+import type { TransactionOptions } from "../interfaces/TransactionOptions.ts";
+import type { EntityPrimitive } from "../primitives/$entity.ts";
 import { DbCacheProvider } from "../providers/DbCacheProvider.ts";
 import {
   DatabaseProvider,
@@ -91,6 +83,7 @@ import {
 } from "../providers/drivers/DatabaseProvider.ts";
 import type { TObjectInsert } from "../schemas/insertSchema.ts";
 import type { TObjectUpdate } from "../schemas/updateSchema.ts";
+import { DbErrorParser } from "./DbErrorParser.ts";
 import { PgRelationManager } from "./PgRelationManager.ts";
 import { type PgJoin, QueryManager } from "./QueryManager.ts";
 
@@ -99,12 +92,19 @@ export abstract class Repository<T extends ZObject> {
   public readonly provider: DatabaseProvider;
 
   protected readonly log = $logger();
+  /**
+   * @internal Driver plumbing, outside semver.
+   */
   protected readonly relationManager = $inject(PgRelationManager);
+  /**
+   * @internal Driver plumbing, outside semver.
+   */
   protected readonly queryManager = $inject(QueryManager);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   // Injected, not `new`'d: bypassing DI made it impossible to substitute in
   // tests and gave every repository its own unbounded Map.
   protected readonly dbCache = $inject(DbCacheProvider);
+  protected readonly errorParser = $inject(DbErrorParser);
   protected readonly alepha = $inject(Alepha);
 
   static of<T extends ZObject>(
@@ -134,15 +134,35 @@ export abstract class Repository<T extends ZObject> {
   public get id(): {
     type: ZType;
     key: keyof T["shape"];
-    col: PgColumn;
+    col: DbColumn;
   } {
-    return this.getPrimaryKey(this.entity.schema);
+    const pk = this.getPrimaryKey(this.entity.schema);
+    return { ...pk, col: pk.col as unknown as DbColumn };
   }
 
   /**
-   * Get Drizzle table object.
+   * The table, as a reference for raw SQL: interpolated in a `sql` template
+   * it renders the table name, and each property is one of its columns.
+   *
+   * @example
+   * ```ts
+   * await repo.updateById(id, { count: sql`${repo.table.count} + 1` });
+   * await repo.query(sql`SELECT * FROM ${repo.table} WHERE ${repo.table.age} > ${18}`);
+   * ```
+   *
+   * The drizzle table behind it is `Drizzle.table(repo)`, from
+   * `alepha/orm/drizzle`.
    */
-  public get table(): PgTableWithColumns<SchemaToTableConfig<T>> {
+  public get table(): DbTable<T> {
+    return this.pgTable as unknown as DbTable<T>;
+  }
+
+  /**
+   * The drizzle table of this repository.
+   *
+   * @internal Outside semver: `Drizzle.table(repo)` from `alepha/orm/drizzle`.
+   */
+  protected get pgTable(): PgTableWithColumns<any> {
     return this.provider.table(this.entity);
   }
 
@@ -159,10 +179,27 @@ export abstract class Repository<T extends ZObject> {
    * Automatically picks up a transaction from `alepha.store` if one was set
    * by `DatabaseProvider.transactional()`, so that all repository operations
    * inside a `transactional()` block participate in the same transaction.
+   *
+   * @internal Driver plumbing, outside semver.
    */
   protected get db(): PgAsyncDatabase<any> {
-    const tx = this.alepha.get("alepha.orm.tx");
+    const tx = this.alepha.get("alepha.orm.tx") as unknown as
+      | PgAsyncTransaction<any>
+      | undefined;
     return tx ?? this.provider.db;
+  }
+
+  /**
+   * The handle a statement runs on: the explicit `tx`, none when `tx` is
+   * `null`, the ambient transaction otherwise.
+   *
+   * @internal
+   */
+  protected connection(opts: StatementOptions = {}): PgAsyncDatabase<any> {
+    if (opts.tx === null) {
+      return this.provider.db;
+    }
+    return (opts.tx as unknown as PgAsyncDatabase<any> | undefined) ?? this.db;
   }
 
   /**
@@ -187,26 +224,16 @@ export abstract class Repository<T extends ZObject> {
    * class App {
    *   repository = $repository(userEntity);
    *   async getAdults() {
-   *     const users = repository.table; // Drizzle table object
+   *     const users = repository.table;
    *     await repository.query(sql`SELECT * FROM ${users} WHERE ${users.age} > ${18}`);
-   *     // or better
-   *     await repository.query((users) => sql`SELECT * FROM ${users} WHERE ${users.age} > ${18}`);
    *   }
    * }
    * ```
    */
   public async query<R extends ZObject = T>(
-    query:
-      | SQLLike
-      | ((
-          table: PgTableWithColumns<SchemaToTableConfig<T>>,
-          db: PgAsyncDatabase<any>,
-        ) => SQLLike),
+    raw: SQLLike,
     schema?: R,
   ): Promise<Infer<R>[]> {
-    const raw =
-      typeof query === "function" ? query(this.table, this.db) : query;
-
     if (typeof raw === "string" && raw.includes("[object Object]")) {
       throw new AlephaError(
         "Invalid SQL query. Did you forget to call the 'sql' function?",
@@ -248,8 +275,8 @@ export abstract class Repository<T extends ZObject> {
   protected mapRawFieldsToEntity(row: Record<string, unknown>) {
     if (!this.columnNameMap) {
       this.columnNameMap = new Map();
-      for (const colKey of Object.keys(this.table)) {
-        this.columnNameMap.set(this.table[colKey].name, colKey);
+      for (const colKey of Object.keys(this.pgTable)) {
+        this.columnNameMap.set(this.pgTable[colKey].name, colKey);
       }
     }
 
@@ -268,9 +295,11 @@ export abstract class Repository<T extends ZObject> {
 
   /**
    * Get a Drizzle column from the table by his name.
+   *
+   * @internal Driver plumbing, outside semver.
    */
   protected col(name: keyof Infer<T>): PgColumn {
-    const column = (this.table as any)[name];
+    const column = (this.pgTable as any)[name];
     if (!column) {
       throw new AlephaError(
         `Invalid access. Column '${String(name)}' not found in table '${this.tableName}'`,
@@ -352,7 +381,7 @@ export abstract class Repository<T extends ZObject> {
     const aliasName = `${this.tableName}_sq`;
     this.assertNoNestedSubquery(where, aliasName);
 
-    const inner = alias(this.table as PgTable, aliasName) as any;
+    const inner = alias(this.pgTable as PgTable, aliasName) as any;
     const col = (key: string): PgColumn => {
       const found = inner[key];
       if (!found) {
@@ -423,7 +452,7 @@ export abstract class Repository<T extends ZObject> {
   }
 
   /**
-   * True when every column of `this.table` is excluded from INSERT column
+   * True when every column of `this.pgTable` is excluded from INSERT column
    * lists — i.e. an identity ("always") or generated-always column, the
    * only shape drizzle-orm allows to make a column non-insertable.
    *
@@ -439,7 +468,7 @@ export abstract class Repository<T extends ZObject> {
    * something introduced by Repository's insert building.
    */
   protected hasNoInsertableColumns(): boolean {
-    const columns = Object.values(getTableColumns(this.table as PgTable));
+    const columns = Object.values(getTableColumns(this.pgTable as PgTable));
     return (
       columns.length > 0 &&
       columns.every(
@@ -479,7 +508,7 @@ export abstract class Repository<T extends ZObject> {
    * driver string, not the JS number the entity schema expects). Rather
    * than reimplement that decode pipeline, this re-reads the row through
    * `getById()` — the same structured, decode-aware path a normal insert's
-   * `.returning(this.table)` uses — keyed by the raw primary key value the
+   * `.returning(this.pgTable)` uses — keyed by the raw primary key value the
    * insert returned.
    */
   protected async insertDefaultValues(
@@ -491,10 +520,10 @@ export abstract class Repository<T extends ZObject> {
       );
     }
 
-    const db = opts.tx === null ? this.provider.db : (opts.tx ?? this.db);
-    const pkColumn = this.id.col;
+    const db = this.connection(opts);
+    const pkColumn = this.col(this.id.key);
     const [row] = await db.execute<Record<string, unknown>>(
-      sql`insert into ${this.table} default values returning ${pkColumn}`,
+      sql`insert into ${this.pgTable} default values returning ${pkColumn}`,
     );
     const pkValue = row[pkColumn.name] as string | number;
     return this.getById(pkValue, opts);
@@ -504,10 +533,8 @@ export abstract class Repository<T extends ZObject> {
    * Run a transaction.
    */
   public async transaction<T>(
-    transaction: (
-      tx: PgAsyncTransaction<any, Record<string, any>>,
-    ) => Promise<T>,
-    config?: PgTransactionConfig,
+    transaction: (tx: DbTransaction) => Promise<T>,
+    options?: TransactionOptions,
   ): Promise<T> {
     if (!this.provider.supportsTransactions) {
       throw new AlephaError(
@@ -524,23 +551,26 @@ export abstract class Repository<T extends ZObject> {
       // provider's awaited implementation instead; statements participate via
       // the shared connection, so the db itself acts as the tx handle.
       return this.provider.transactional(() =>
-        transaction(
-          this.db as unknown as PgAsyncTransaction<any, Record<string, any>>,
-        ),
+        transaction(this.db as unknown as DbTransaction),
       );
     }
 
-    return await this.db.transaction(transaction, config);
+    return await this.db.transaction(
+      (tx) => transaction(tx as unknown as DbTransaction),
+      this.provider.toDrizzleTransactionConfig(options),
+    );
   }
 
   // -------------------------------------------------------------------------------------------------------------------
 
   /**
    * Start a SELECT query on the table.
+   *
+   * @internal Driver plumbing, outside semver.
    */
   protected rawSelect(opts: StatementOptions = {}) {
-    const db = opts.tx === null ? this.provider.db : (opts.tx ?? this.db);
-    return db.select().from(this.table as PgTable);
+    const db = this.connection(opts);
+    return db.select().from(this.pgTable as PgTable);
   }
 
   /**
@@ -549,13 +579,15 @@ export abstract class Repository<T extends ZObject> {
   /**
    * SELECT of only the requested columns. The primary key is always included
    * so downstream mapping and caching keep working.
+   *
+   * @internal Driver plumbing, outside semver.
    */
   protected rawSelectColumns(
     opts: StatementOptions = {},
     columns: (keyof Infer<T>)[] = [],
   ) {
-    const db = opts.tx === null ? this.provider.db : (opts.tx ?? this.db);
-    const table = this.table as PgTable;
+    const db = this.connection(opts);
+    const table = this.pgTable as PgTable;
 
     const fields: Record<string, any> = {};
     for (const column of [this.id.key, ...columns]) {
@@ -567,12 +599,15 @@ export abstract class Repository<T extends ZObject> {
     return db.select(fields).from(table);
   }
 
+  /**
+   * @internal Driver plumbing, outside semver.
+   */
   protected rawSelectDistinct(
     opts: StatementOptions = {},
     columns: (keyof Infer<T>)[] = [],
   ) {
-    const db = opts.tx === null ? this.provider.db : (opts.tx ?? this.db);
-    const table = this.table as PgTable;
+    const db = this.connection(opts);
+    const table = this.pgTable as PgTable;
 
     const fields: Record<string, any> = {};
     for (const column of columns) {
@@ -586,26 +621,32 @@ export abstract class Repository<T extends ZObject> {
 
   /**
    * Start an INSERT query on the table.
+   *
+   * @internal Driver plumbing, outside semver.
    */
   protected rawInsert(opts: StatementOptions = {}) {
-    const db = opts.tx === null ? this.provider.db : (opts.tx ?? this.db);
-    return db.insert(this.table);
+    const db = this.connection(opts);
+    return db.insert(this.pgTable);
   }
 
   /**
    * Start an UPDATE query on the table.
+   *
+   * @internal Driver plumbing, outside semver.
    */
   protected rawUpdate(opts: StatementOptions = {}) {
-    const db = opts.tx === null ? this.provider.db : (opts.tx ?? this.db);
-    return db.update(this.table);
+    const db = this.connection(opts);
+    return db.update(this.pgTable);
   }
 
   /**
    * Start a DELETE query on the table.
+   *
+   * @internal Driver plumbing, outside semver.
    */
   protected rawDelete(opts: StatementOptions = {}) {
-    const db = opts.tx === null ? this.provider.db : (opts.tx ?? this.db);
-    return db.delete(this.table);
+    const db = this.connection(opts);
+    return db.delete(this.pgTable);
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -621,6 +662,13 @@ export abstract class Repository<T extends ZObject> {
   ): Promise<PgStatic<T, R>[]> {
     // Check cache. Never inside a transaction: a read there can see rows the
     // transaction wrote and may still roll back, and a hit would hide them.
+    if (opts.for && opts.cache) {
+      // A cache hit takes no row lock: the caller would believe it holds a
+      // lock it never took.
+      throw new AlephaError(
+        `findMany on '${this.tableName}' was given both 'for' and 'cache': a cached result takes no row lock. Drop one of them.`,
+      );
+    }
     const cache = this.inTransaction(opts) ? undefined : opts.cache;
     if (cache) {
       const cacheKey = cache.key ?? this.buildCacheKey("findMany", query, opts);
@@ -666,7 +714,7 @@ export abstract class Repository<T extends ZObject> {
         builder,
         joins,
         query.with,
-        this.table,
+        this.pgTable,
       );
     }
 
@@ -711,8 +759,13 @@ export abstract class Repository<T extends ZObject> {
     if (opts.for) {
       if (typeof opts.for === "string") {
         builder.for(opts.for);
-      } else if (opts.for) {
-        builder.for(opts.for.strength, opts.for.config);
+      } else {
+        builder.for(
+          opts.for.mode,
+          opts.for.onLocked === "skip"
+            ? { skipLocked: true }
+            : { noWait: true },
+        );
       }
     }
 
@@ -792,7 +845,7 @@ export abstract class Repository<T extends ZObject> {
     const entity = await this.findOne(query, opts);
 
     if (!entity) {
-      throw new DbEntityNotFoundError(this.tableName);
+      throw new DbEntityNotFoundError({ entity: this.tableName });
     }
 
     return entity;
@@ -802,26 +855,28 @@ export abstract class Repository<T extends ZObject> {
    * Find entities with pagination.
    *
    * It uses the same parameters as `findMany()`, but adds pagination metadata to the response.
+   * Paging comes from `pagination` alone: `limit`/`offset` in the query are
+   * refused, `size` is held to `[1, 100]`, and `pagination.sort` wins over
+   * the query's `orderBy`, which is the default order.
    *
    * > Pagination CAN also do a count query to get the total number of elements.
    */
   public async paginate<R extends PgRelationMap<T>>(
     pagination: PageQuery = {},
-    query: Omit<PgQueryRelations<T, R>, "where"> & {
+    query: Omit<PgQueryRelations<T, R>, "where" | "limit" | "offset"> & {
       where?: PgQueryWhere<T, R>;
     } = {},
     opts: StatementOptions & { count?: boolean } = {},
   ): Promise<Page<PgStatic<T, R>>> {
-    // Overflow-safe: pageQuerySchema constrains size to [1, 100] and page to >= 0.
-    // With max size=100, page would need to exceed 2^45 to overflow Number.MAX_SAFE_INTEGER.
-    const limit = query.limit ?? pagination.size ?? 10;
-    const page = pagination.page ?? 0;
-    const offset = query.offset ?? page * limit;
-
-    let orderBy = query.orderBy;
-    if (!query.orderBy && pagination.sort) {
-      orderBy = this.queryManager.parsePaginationSort(pagination.sort) as any;
-    }
+    // Overflow-safe: size is held to [1, 100] and page to >= 0, so page
+    // would need to exceed 2^45 to overflow Number.MAX_SAFE_INTEGER.
+    const paging = this.queryManager.pageWindow(
+      pagination,
+      query,
+      this.tableName,
+    );
+    const { limit, offset } = paging;
+    const orderBy = paging.orderBy as typeof query.orderBy;
 
     const now = this.dateTimeProvider.nowMillis();
     const timers = {
@@ -887,7 +942,7 @@ export abstract class Repository<T extends ZObject> {
   /**
    * The count half of {@link paginate}, over the SAME joins as the row half.
    *
-   * It used to be a bare `$count(this.table, where)`. A `where` on a relation
+   * It used to be a bare `$count(this.pgTable, where)`. A `where` on a relation
    * key then resolved against the base table, where a key like `city` happens
    * to exist as a column reference, so the comparison compiled and matched
    * nothing: the rows came back correct and the total came back 0. Silently.
@@ -905,7 +960,7 @@ export abstract class Repository<T extends ZObject> {
     // `opts.tx`, so `paginate(..., { count: true, tx })` ran its count
     // OUTSIDE the transaction — reading rows the transaction had not
     // committed, or missing rows it had written.
-    const db = opts.tx === null ? this.provider.db : (opts.tx ?? this.db);
+    const db = this.connection(opts);
 
     try {
       return await this.runCountForPage(db, where, withRelations);
@@ -921,6 +976,8 @@ export abstract class Repository<T extends ZObject> {
   /**
    * The statement itself, split out so the wrapper above stays one `try`
    * around every path rather than one per branch.
+   *
+   * @internal Driver plumbing, outside semver.
    */
   protected async runCountForPage(
     db: PgAsyncDatabase<any>,
@@ -928,12 +985,12 @@ export abstract class Repository<T extends ZObject> {
     withRelations: PgRelationMap<T> | undefined,
   ): Promise<number> {
     if (!withRelations) {
-      return await db.$count(this.table, this.toSQL(where));
+      return await db.$count(this.pgTable, this.toSQL(where));
     }
 
     const builder = db
       .select({ total: countDistinct(this.col(this.id.key)) })
-      .from(this.table as PgTable);
+      .from(this.pgTable as PgTable);
 
     const joins: Array<PgJoin> = [];
     this.relationManager.buildJoins(
@@ -941,7 +998,7 @@ export abstract class Repository<T extends ZObject> {
       builder as never,
       joins,
       withRelations as PgRelationMap<ZObject>,
-      this.table,
+      this.pgTable,
     );
 
     builder.where(this.toSQL(where, joins));
@@ -991,7 +1048,7 @@ export abstract class Repository<T extends ZObject> {
     const entity = await this.findById<R>(id, opts);
 
     if (!entity) {
-      throw new DbEntityNotFoundError(this.tableName);
+      throw new DbEntityNotFoundError({ entity: this.tableName });
     }
 
     return entity;
@@ -1029,7 +1086,7 @@ export abstract class Repository<T extends ZObject> {
         ? await this.insertDefaultValues(opts)
         : await this.rawInsert(opts)
             .values(this.cast(data ?? {}, true))
-            .returning(this.table)
+            .returning(this.pgTable)
             .then(([it]) => this.clean(it, this.entity.schema));
 
       await this.invalidateCache(opts);
@@ -1092,7 +1149,7 @@ export abstract class Repository<T extends ZObject> {
         const batch = rows.slice(i, i + batchSize);
         const entities = await this.rawInsert(opts)
           .values(batch)
-          .returning(this.table)
+          .returning(this.pgTable)
           .then((rows) => rows.map((it) => this.clean(it, this.entity.schema)));
         allEntities.push(...entities);
       }
@@ -1146,7 +1203,7 @@ export abstract class Repository<T extends ZObject> {
    * out: see the comment inside for which defaults do and which do not.
    */
   protected generatedColumns(): string[] {
-    const tableColumns = getTableColumns(this.table as PgTable);
+    const tableColumns = getTableColumns(this.pgTable as PgTable);
 
     // ⚠️ The caller's keys are NOT the whole statement. A column the caller
     // never names still binds a value on every row when its default is a
@@ -1304,7 +1361,7 @@ export abstract class Repository<T extends ZObject> {
           set: setData,
           ...(setWhere ? { setWhere } : {}),
         })
-        .returning(this.table)
+        .returning(this.pgTable)
         .then(([it]) => {
           if (!it) {
             // The conflicting row is already deleted, so the guarded UPDATE
@@ -1470,7 +1527,7 @@ export abstract class Repository<T extends ZObject> {
       for (let i = 0; i < casted.length; i += batchSize) {
         rows.push(
           ...(await statement(casted.slice(i, i + batchSize)).returning(
-            this.table,
+            this.pgTable,
           )),
         );
       }
@@ -1538,13 +1595,13 @@ export abstract class Repository<T extends ZObject> {
     const response = await this.rawUpdate(opts)
       .set(row)
       .where(this.toSQL(where))
-      .returning(this.table)
+      .returning(this.pgTable)
       .catch((error) => {
         throw this.handleError(error, "Update query has failed");
       });
 
     if (!response[0]) {
-      throw new DbEntityNotFoundError(this.tableName);
+      throw new DbEntityNotFoundError({ entity: this.tableName });
     }
 
     try {
@@ -1639,7 +1696,7 @@ export abstract class Repository<T extends ZObject> {
         try {
           // If getById succeeds, entity exists and this was a version mismatch
           await this.getById(id);
-          throw new DbVersionMismatchError(this.tableName, id);
+          throw new DbVersionMismatchError({ table: this.tableName, id });
         } catch (lookupError) {
           // If it's still not found, propagate the original not found error
           if (lookupError instanceof DbEntityNotFoundError) {
@@ -1714,9 +1771,7 @@ export abstract class Repository<T extends ZObject> {
     this.withVersionBump(data as Record<string, unknown>);
     try {
       const entities = await this.rawUpdate(opts)
-        .set(
-          data as PgUpdateSetSource<PgTableWithColumns<SchemaToTableConfig<T>>>,
-        )
+        .set(data as PgUpdateSetSource<PgTableWithColumns<any>>)
         .where(this.toSQL(where))
         .returning();
 
@@ -1762,7 +1817,7 @@ export abstract class Repository<T extends ZObject> {
     try {
       const result = await this.rawDelete(opts)
         .where(this.toSQL(where))
-        .returning({ id: (this.table as any)[this.id.key] });
+        .returning({ id: (this.pgTable as any)[this.id.key] });
       const ids = result.map((row) => row.id);
 
       await this.invalidateCache(opts);
@@ -1851,7 +1906,8 @@ export abstract class Repository<T extends ZObject> {
     const result = await this.deleteMany(this.getWhereId(id), opts);
     if (result.length === 0) {
       throw new DbEntityNotFoundError(
-        `Entity with ID ${id} not found in ${this.tableName}`,
+        { entity: this.tableName },
+        { message: `Entity with ID ${id} not found in ${this.tableName}` },
       );
     }
     return result;
@@ -1875,9 +1931,9 @@ export abstract class Repository<T extends ZObject> {
     });
 
     where = this.withDeletedAt(where, opts);
-    const db = opts.tx === null ? this.provider.db : (opts.tx ?? this.db);
+    const db = this.connection(opts);
     try {
-      return await db.$count(this.table, this.toSQL(where));
+      return await db.$count(this.pgTable, this.toSQL(where));
     } catch (error) {
       // Wrapped like every sibling statement, and this one was not. A raw
       // drizzle error carries the SQL and its BOUND VALUES in the message —
@@ -2075,8 +2131,8 @@ export abstract class Repository<T extends ZObject> {
       }
     }
 
-    const db = opts.tx === null ? this.provider.db : (opts.tx ?? this.db);
-    let builder = db.select(flatFields).from(this.table as PgTable);
+    const db = this.connection(opts);
+    let builder = db.select(flatFields).from(this.pgTable as PgTable);
 
     // The soft-delete filter applies even when the caller passes no `where`,
     // like every other read path.
@@ -2229,7 +2285,7 @@ export abstract class Repository<T extends ZObject> {
    * here, with the key named.
    */
   protected assertAggregateKey(key: string, select: object): void {
-    const isColumn = (this.table as any)[key] != null;
+    const isColumn = (this.pgTable as any)[key] != null;
     const withColumn: string[] = [];
     const withoutColumn: string[] = [];
 
@@ -2277,10 +2333,10 @@ export abstract class Repository<T extends ZObject> {
    * and Postgres would resolve `GROUP BY <name>` to the input column instead.
    */
   protected assertAggregateAlias(key: string): void {
-    const physical = Object.values(getTableColumns(this.table as PgTable)).some(
-      (column) => column.name === key,
-    );
-    if ((this.table as any)[key] != null || physical) {
+    const physical = Object.values(
+      getTableColumns(this.pgTable as PgTable),
+    ).some((column) => column.name === key);
+    if ((this.pgTable as any)[key] != null || physical) {
       throw new AlephaError(
         `Aggregate select key '${key}' carries 'expr', so it is an alias, and it is spelled like a column of ` +
           `'${this.tableName}'. Pick a name that is not a column.`,
@@ -2363,13 +2419,13 @@ export abstract class Repository<T extends ZObject> {
     // generic `Failed query: ...`. Classifying it by message would be
     // hopeless, and reporting it as a 500 would hide the one thing the
     // caller can act on, which is to retry later.
-    const timeout = DbTimeoutError.from(error);
+    const timeout = DbTimeoutError.find(error);
     if (timeout) {
       return timeout;
     }
 
     if (!(error instanceof Error)) {
-      return new DbError(message);
+      return new DbError(message, { cause: error });
     }
 
     const fullMessage =
@@ -2383,25 +2439,22 @@ export abstract class Repository<T extends ZObject> {
 
     // Check for unique constraint violation (conflict)
     if (hasPattern(this.errorPatterns.conflict)) {
-      return new DbConflictError(message, error);
+      return new DbConflictError(message, { cause: error });
     }
 
     // Check for foreign key violation
     if (hasPattern(this.errorPatterns.foreignKey)) {
-      return DbForeignKeyError.fromDatabaseError(
-        getSourceError(),
-        this.tableName,
-      );
+      return this.errorParser.foreignKey(getSourceError(), this.tableName);
     }
 
     // Check for NOT NULL violation
     if (hasPattern(this.errorPatterns.notNull)) {
-      return DbNotNullError.fromDatabaseError(getSourceError(), this.tableName);
+      return this.errorParser.notNull(getSourceError(), this.tableName);
     }
 
     // Check for deadlock
     if (hasPattern(this.errorPatterns.deadlock)) {
-      return DbDeadlockError.fromDatabaseError(getSourceError());
+      return this.errorParser.deadlock(getSourceError());
     }
 
     // Before the column branch: D1 reports the ceiling as `too many SQL
@@ -2409,7 +2462,7 @@ export abstract class Repository<T extends ZObject> {
     // branch below matches a bare `column "` anywhere in the message and a
     // driver is free to quote the offending statement.
     if (hasPattern(this.errorPatterns.tooManyParameters)) {
-      return DbTooManyParametersError.fromDatabaseError(getSourceError());
+      return this.errorParser.tooManyParameters(getSourceError());
     }
 
     // Column before table: on a write, postgres reports a missing column as
@@ -2418,7 +2471,7 @@ export abstract class Repository<T extends ZObject> {
     // message that names the column was reported as a missing table. No
     // table-not-found message mentions a column, so this order is safe.
     if (hasPattern(this.errorPatterns.columnNotFound)) {
-      return DbColumnNotFoundError.fromDatabaseError(getSourceError());
+      return this.errorParser.columnNotFound(getSourceError());
     }
 
     // Check for table not found
@@ -2426,10 +2479,10 @@ export abstract class Repository<T extends ZObject> {
       hasPattern(this.errorPatterns.tableNotFound) &&
       (fullMessage.includes("relation") || fullMessage.includes("table"))
     ) {
-      return DbTableNotFoundError.fromDatabaseError(getSourceError());
+      return this.errorParser.tableNotFound(getSourceError());
     }
 
-    return new DbError(message, error);
+    return new DbError(message, { cause: error });
   }
 
   /**
@@ -2547,11 +2600,13 @@ export abstract class Repository<T extends ZObject> {
 
   /**
    * Convert something to valid Pg Insert Value.
+   *
+   * @internal Driver plumbing, outside semver.
    */
   protected cast(
     data: any,
     insert: boolean,
-  ): PgInsertValue<PgTableWithColumns<SchemaToTableConfig<T>>> {
+  ): PgInsertValue<PgTableWithColumns<any>> {
     const schema = insert
       ? this.entity.insertSchema // insert
       : (this.entity.updateSchema.partial() as ZObject); // update
@@ -2595,7 +2650,7 @@ export abstract class Repository<T extends ZObject> {
         }, {});
 
     return { ...result, ...sqlValues } as PgInsertValue<
-      PgTableWithColumns<SchemaToTableConfig<T>>
+      PgTableWithColumns<any>
     >;
   }
 
@@ -2652,6 +2707,8 @@ export abstract class Repository<T extends ZObject> {
 
   /**
    * Clean a row with joins recursively
+   *
+   * @internal Driver plumbing, outside semver.
    */
   protected cleanWithJoins<T extends ZObject>(
     row: Record<string, unknown>,
@@ -2764,6 +2821,8 @@ export abstract class Repository<T extends ZObject> {
 
   /**
    * Convert a where clause to SQL.
+   *
+   * @internal Driver plumbing, outside semver.
    */
   protected toSQL(
     where: PgQueryWhereOrSQL<T>,
@@ -2795,6 +2854,8 @@ export abstract class Repository<T extends ZObject> {
 
   /**
    * Find a primary key in the schema.
+   *
+   * @internal Driver plumbing, outside semver.
    */
   protected getPrimaryKey(schema: ZObject) {
     const primaryKeys = getAttrFields(schema, PG_PRIMARY_KEY);
@@ -2804,7 +2865,7 @@ export abstract class Repository<T extends ZObject> {
       // "Delete query has failed" via handleError, because deleteMany
       // resolves the PK column id at runtime via `.returning({ id })`.
       // Caught us once on `archive_names`: insert path uses
-      // `.returning(this.table)` (no PK touched) so creates worked
+      // `.returning(this.pgTable)` (no PK touched) so creates worked
       // silently, then every delete blew up.
       throw new AlephaError(
         `Primary key not found on table '${this.tableName}' — mark a column with db.primaryKey(). Required for deleteMany / deleteById / save / getWhereId.`,
@@ -2861,15 +2922,16 @@ export interface StatementOptions {
    * Transaction to use.
    *
    * - `undefined` — auto-detect from `alepha.store` (implicit transactional context)
-   * - `PgAsyncTransaction` — use this specific transaction (explicit)
+   * - a `DbTransaction` — use this specific transaction (explicit)
    * - `null` — force no transaction, bypass implicit context
    */
-  tx?: PgAsyncTransaction<any, Record<string, any>> | null;
+  tx?: DbTransaction | null;
 
   /**
-   * Lock strength.
+   * Row lock taken by the SELECT (`FOR UPDATE` and its siblings). Refused
+   * together with `cache`, since a cache hit takes no lock.
    */
-  for?: LockStrength | { config: LockConfig; strength: LockStrength };
+  for?: RowLock;
 
   /**
    * If true, ignore soft delete.

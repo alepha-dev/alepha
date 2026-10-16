@@ -53,7 +53,7 @@ const withSink = (
 /**
  * Exposes the end-of-request decision.
  *
- * Calling the handler rather than emitting `server:onResponse`: the real event
+ * Calling the handler rather than emitting `server:response:after`: the real event
  * wakes every other subscriber — the logger and the helmet provider both read
  * a full request/response pair — and none of that is what this tests.
  */

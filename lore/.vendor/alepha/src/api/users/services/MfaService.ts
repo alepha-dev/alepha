@@ -260,7 +260,7 @@ export class MfaService {
 
     const secret = this.totp.generateSecret();
     const data: TotpIdentityData = {
-      secret: this.encryptSecret(secret),
+      secret: await this.encryptSecret(secret),
       status: "pending",
       recoveryCodes: [],
     };
@@ -318,7 +318,7 @@ export class MfaService {
       );
     }
 
-    const step = this.totp.verify(this.decryptSecret(data.secret), code);
+    const step = this.totp.verify(await this.decryptSecret(data.secret), code);
     if (step === undefined) {
       throw new BadRequestError("That code is not valid");
     }
@@ -332,7 +332,9 @@ export class MfaService {
         // The activation code is burned with the enrollment: without this the
         // very code just typed stays usable for its remaining window.
         lastUsedStep: step,
-        recoveryCodes: recoveryCodes.map((it) => this.crypto.hash(it)),
+        recoveryCodes: await Promise.all(
+          recoveryCodes.map((it) => this.crypto.hash(it)),
+        ),
         activatedAt: this.dateTime.now().toISOString(),
       } as never,
     });
@@ -372,7 +374,9 @@ export class MfaService {
     await this.identities(realm).updateById(identity.id, {
       providerData: {
         ...data,
-        recoveryCodes: recoveryCodes.map((it) => this.crypto.hash(it)),
+        recoveryCodes: await Promise.all(
+          recoveryCodes.map((it) => this.crypto.hash(it)),
+        ),
       } as never,
     });
 
@@ -557,7 +561,7 @@ export class MfaService {
       return false;
     }
 
-    const step = this.totp.verify(this.decryptSecret(data.secret), code);
+    const step = this.totp.verify(await this.decryptSecret(data.secret), code);
 
     if (step !== undefined) {
       // A step is single use. Without this, a code stays replayable for the
@@ -588,7 +592,7 @@ export class MfaService {
     realm?: string,
   ): Promise<boolean> {
     const normalized = code.trim().toLowerCase().replace(/\s/g, "");
-    const hashed = this.crypto.hash(normalized);
+    const hashed = await this.crypto.hash(normalized);
 
     const remaining = data.recoveryCodes.filter(
       (candidate) => !this.crypto.equals(candidate, hashed),
@@ -632,11 +636,11 @@ export class MfaService {
     return { ...data, recoveryCodes: data.recoveryCodes ?? [] };
   }
 
-  protected encryptSecret(secret: string): string {
+  protected encryptSecret(secret: string): Promise<string> {
     return this.crypto.encrypt(secret, this.security.secretKey);
   }
 
-  protected decryptSecret(secret: string): string {
+  protected decryptSecret(secret: string): Promise<string> {
     return this.crypto.decrypt(secret, this.security.secretKey);
   }
 }

@@ -109,7 +109,10 @@ const ProjectViewNavPublisher = (props: ProjectViewNavPublisherProps) => {
           params: {},
           get: (atom) => alepha.store.get(atom),
           projectSlug: project.slug,
-          path: (route, params) => router.path(route as never, { params }),
+          path: (route, params) =>
+            router.path(route as never, {
+              params: { projectSlug: project.slug, ...params },
+            }),
         }),
       )
     : [];

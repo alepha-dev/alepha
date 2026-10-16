@@ -4,6 +4,7 @@ import type { UserAccountToken } from "alepha/security";
 import { BadRequestError, ForbiddenError } from "alepha/server";
 
 import type { Automation } from "../entities/automations.ts";
+import type { AutomationAudiencePreview } from "../schemas/automationAudiencePreviewSchema.ts";
 import { automationEvaluationReportSchema } from "../schemas/automationEvaluationReportSchema.ts";
 import type { AutomationRule } from "../schemas/automationRuleSchema.ts";
 import type { AutomationRunSnapshot } from "../schemas/automationRunSnapshotSchema.ts";
@@ -14,6 +15,7 @@ import {
   type AutomationTestSource,
 } from "../schemas/automationTestSourceSchema.ts";
 import { AutomationAccess } from "./AutomationAccess.ts";
+import { AutomationAudience } from "./AutomationAudience.ts";
 import { AutomationCatalog } from "./AutomationCatalog.ts";
 import {
   AutomationContextBuilder,
@@ -45,6 +47,7 @@ import { AutomationVariables } from "./AutomationVariables.ts";
  * perform effects are deliberately absent from this service's execution path.
  */
 export class AutomationEvaluator {
+  protected readonly audience = $inject(AutomationAudience);
   protected readonly database = $inject(AutomationDatabase);
   protected readonly persistence = $inject(AutomationPersistence);
   protected readonly access = $inject(AutomationAccess);
@@ -257,7 +260,31 @@ export class AutomationEvaluator {
                 user,
                 rendered.raw,
               );
-              if (action.kind === "notify") {
+              if (action.kind === "notify" && action.audience) {
+                if (input.disclosureUser) {
+                  const reader = await this.access.authorize(
+                    input.rule.projectId,
+                    input.disclosureUser,
+                    "automation:read",
+                  );
+                  if (!reader.permissions.includes("member:read"))
+                    throw new ForbiddenError(
+                      "Audience preview requires member:read",
+                    );
+                }
+                const publisher =
+                  base.source?.actorUserId ?? context.values.publisher_id;
+                const audience = await this.audience.preview(
+                  input.rule.projectId,
+                  typeof publisher === "string" ? publisher : undefined,
+                );
+                operation = {
+                  ...operation,
+                  audience,
+                  skipped: audience.total === 0,
+                  changed: audience.total > 0,
+                };
+              } else if (action.kind === "notify") {
                 const prepared = await this.notifications.prepare({
                   rule: input.rule,
                   index,
@@ -399,6 +426,7 @@ export interface AutomationPlannedOperation {
   action: AutomationRule["actions"][number];
   rendered: AutomationRule["actions"][number];
   bytes: number;
+  audience?: AutomationAudiencePreview;
   delivery?: { title: string; text: string; html: string };
   lang: "en";
   skipped: boolean;

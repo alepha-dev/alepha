@@ -87,8 +87,8 @@ export class EnvUtils {
       for (const file of [it, `${it}.local`]) {
         const envPath = this.fs.join(root, file);
         try {
-          const buffer = await this.fs.readFile(envPath);
-          Object.assign(result, this.parseEnvContent(buffer.toString("utf8")));
+          const buffer = await this.fs.readTextFile(envPath);
+          Object.assign(result, this.parseEnvContent(buffer));
           this.log.debug(`Parsed environment variables from ${envPath}`);
         } catch (error) {
           // Only "not there" is routine. Swallowing everything hid a real

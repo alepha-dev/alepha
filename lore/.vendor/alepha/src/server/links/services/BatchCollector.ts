@@ -118,11 +118,13 @@ export class BatchCollector {
         const result = allResults[indexMap[i]];
         if (result.status >= 400) {
           batch[i].reject(
-            new HttpError({
-              message:
-                result.error ?? `${result.action} failed (${result.status})`,
-              status: result.status,
-            }),
+            new HttpError(
+              { status: result.status },
+              {
+                message:
+                  result.error ?? `${result.action} failed (${result.status})`,
+              },
+            ),
           );
         } else {
           batch[i].resolve(result.data);

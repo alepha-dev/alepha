@@ -165,9 +165,7 @@ export class DurableObjectConfig {
         "node_modules/wrangler/config-schema.json",
       );
       if (await this.fs.exists(path)) {
-        const schema = JSON.parse(
-          (await this.fs.readFile(path)).toString("utf8"),
-        );
+        const schema = JSON.parse(await this.fs.readTextFile(path));
         if (
           !(
             schema.properties?.exports ??

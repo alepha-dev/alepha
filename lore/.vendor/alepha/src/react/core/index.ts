@@ -26,6 +26,7 @@ export * from "./hooks/useQuery.ts";
 export * from "./hooks/useQueryClient.ts";
 export * from "./hooks/useSelector.ts";
 export * from "./hooks/useStore.ts";
+export * from "./services/ActionErrorPolicy.ts";
 export * from "./services/QueryCache.ts";
 export * from "./utils/shallowEqual.ts";
 

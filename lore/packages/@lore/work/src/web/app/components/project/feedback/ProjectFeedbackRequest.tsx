@@ -22,7 +22,7 @@ import { useAuth } from "alepha/react/auth";
 import { useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter, useRouterState } from "alepha/react/router";
-import { HttpError } from "alepha/server";
+import { isHttpError } from "alepha/server";
 import { Loader2, Paperclip, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
@@ -272,8 +272,8 @@ const ProjectFeedbackRequest = () => {
   const contextState: "loading" | "ready" | "closed" | "error" = project
     ? "ready"
     : contextQuery.error
-      ? HttpError.is(contextQuery.error, 403) ||
-        HttpError.is(contextQuery.error, 404)
+      ? isHttpError(contextQuery.error, 403) ||
+        isHttpError(contextQuery.error, 404)
         ? "closed"
         : "error"
       : "loading";
@@ -349,7 +349,7 @@ const ProjectFeedbackRequest = () => {
 
       // Land the reporter on their cross-project feedback list (the
       // dedicated status page was retired in favour of /me/feedback).
-      await meRouter.push("myFeedback");
+      await meRouter.push(meRouter.path("myFeedback") as `/${string}`);
     },
   });
   const { loading: submitting } = useFormState(form, ["loading"]);
@@ -364,7 +364,7 @@ const ProjectFeedbackRequest = () => {
    */
   const uploadAction = useAction<[files: File[]], void>(
     {
-      handler: async (files) => {
+      handler: async (_ctx, files) => {
         if (files.length === 0) return;
         // Attachments are addressed by the integer project id, which only
         // exists once `feedbackContext` has answered. The attach control is

@@ -434,7 +434,11 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
     }
     if (!admission.accepted) {
       this.log.warn(`Rejected unauthorized WebSocket upgrade: ${path}`);
-      socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
+      socket.write(
+        admission.status === 403
+          ? "HTTP/1.1 403 Forbidden\r\n\r\n"
+          : "HTTP/1.1 401 Unauthorized\r\n\r\n",
+      );
       socket.destroy();
       return false;
     }
@@ -721,7 +725,7 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
     });
 
     const path = endpoint.channel.options.path;
-    this.emitHook("websocket:connect", { connectionId, path });
+    this.emitHook("websocket:connected", { connectionId, path });
 
     // Call onConnect handler if provided
     if (endpoint.onConnect) {
@@ -733,7 +737,7 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
     }
 
     ws.on("message", (data) => {
-      this.emitHook("websocket:message", {
+      this.emitHook("websocket:message:received", {
         connectionId,
         path,
         message: this.decodeFrame(data),
@@ -766,7 +770,7 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
         }
       }
 
-      this.emitHook("websocket:disconnect", {
+      this.emitHook("websocket:disconnected", {
         connectionId,
         path,
         code,
@@ -785,7 +789,7 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
 
     ws.on("error", (error) => {
       this.log.error(`WebSocket error on ${connectionId}:`, error);
-      this.emitHook("websocket:error", { connectionId, path, error });
+      this.emitHook("websocket:error:reported", { connectionId, path, error });
     });
   }
 
@@ -814,10 +818,10 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
    */
   protected emitHook<
     K extends
-      | "websocket:connect"
-      | "websocket:disconnect"
-      | "websocket:message"
-      | "websocket:error",
+      | "websocket:connected"
+      | "websocket:disconnected"
+      | "websocket:message:received"
+      | "websocket:error:reported",
   >(name: K, payload: Parameters<typeof this.alepha.events.emit<K>>[1]): void {
     this.alepha.events.emit(name, payload, { catch: true }).catch((error) => {
       this.log.error(`Error emitting ${name}`, error);

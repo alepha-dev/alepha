@@ -109,7 +109,7 @@ const QuestAttachments = (props: QuestAttachmentsProps) => {
    */
   const uploadAction = useAction<[files: File[]], void>(
     {
-      handler: async (files) => {
+      handler: async (_ctx, files) => {
         if (files.length === 0) return;
         const uploaded = await Promise.all(
           files.map(async (file) => {

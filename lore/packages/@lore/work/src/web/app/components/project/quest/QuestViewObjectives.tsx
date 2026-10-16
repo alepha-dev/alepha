@@ -28,7 +28,7 @@ const QuestViewObjectives = (props: QuestViewObjectivesProps) => {
   // second tick is refused visibly rather than dropped by `run()`.
   const toggleAction = useAction<[objectiveId: number], void>(
     {
-      handler: async (objectiveId) => {
+      handler: async (_ctx, objectiveId) => {
         const updatedQuest = await questApi.completeObjective({
           params: { id: quest.id },
           body: { objectiveId },

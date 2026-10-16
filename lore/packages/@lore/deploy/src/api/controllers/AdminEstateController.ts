@@ -37,6 +37,7 @@ export class AdminEstateController {
   protected readonly audits = $inject(LoreAudits);
 
   public readonly findEstates = $action({
+    method: "GET",
     path: this.url,
     group: this.group,
     use: [$secure({ permissions: ["admin:estate:read"] })],

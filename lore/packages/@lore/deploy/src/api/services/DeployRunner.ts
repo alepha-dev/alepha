@@ -18,6 +18,7 @@ import type { Artifact } from "../entities/artifacts.ts";
 import { ArtifactService } from "./ArtifactService.ts";
 import { ArtifactTarReader } from "./ArtifactTarReader.ts";
 import { DeployAssetCache } from "./DeployAssetCache.ts";
+import { DeployFileSystemProvider } from "./DeployFileSystemProvider.ts";
 import { DeployRegistry } from "./DeployRegistry.ts";
 import { StoredNamingService } from "./StoredNamingService.ts";
 
@@ -152,6 +153,12 @@ export class DeployRunner {
   protected static readonly ASSETS = "/deploy/public/";
 
   /**
+   * The Worker entry `alepha build --runtime workerd` writes beside the slice,
+   * which `wrangler.jsonc`'s `main` names.
+   */
+  protected static readonly ENTRY = "main.cloudflare.js";
+
+  /**
    * How often the asset upload says where it has got to.
    *
    * The log is a row every project member can read and is capped, so this is
@@ -170,7 +177,7 @@ export class DeployRunner {
 
     try {
       const alepha = this.container();
-      const fs = alepha.inject(MemoryFileSystemProvider);
+      const fs = alepha.inject(DeployFileSystemProvider);
 
       await this.registry.line(
         deployment,
@@ -190,6 +197,11 @@ export class DeployRunner {
         deployment,
         `Unpacked ${unpacked.files} files (${Math.round(unpacked.bytes / 1024)} KB), ${unpacked.skipped} assets streamed`,
       );
+
+      // ⚠️ After the unpack, which writes it, and before `up()`, whose build
+      // step would replace it with an entry from Lore's own framework. See
+      // `DeployFileSystemProvider`.
+      await this.pinEntry(fs, deployment);
 
       // ⚠️ The stored name, handed to the naming the container substituted.
       // `infraOptions.name` is only a label past this point: nothing that
@@ -250,6 +262,27 @@ export class DeployRunner {
   }
 
   /**
+   * Keep the artifact's own Worker entry, when it ships one.
+   *
+   * An artifact with none (packed by hand, or by a build that predates the
+   * entry) still gets the generated one.
+   */
+  protected async pinEntry(
+    fs: DeployFileSystemProvider,
+    deployment: string | undefined,
+  ): Promise<void> {
+    const entry = `${DeployRunner.ROOT}/${DeployRunner.ENTRY}`;
+    if (!(await fs.exists(entry))) {
+      return;
+    }
+    fs.pin(entry);
+    await this.registry.line(
+      deployment,
+      `Keeping the artifact's own ${DeployRunner.ENTRY}`,
+    );
+  }
+
+  /**
    * The container's naming, which must be the stored one.
    *
    * ⚠️ Checked rather than cast. If the substitution in {@link container} ever
@@ -273,7 +306,7 @@ export class DeployRunner {
   protected container(): Alepha {
     return (
       Alepha.create({ env: { LOG_LEVEL: "error" } })
-        .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
+        .with({ provide: FileSystemProvider, use: DeployFileSystemProvider })
         // ⚠️ Before the plugin, which registers `NamingService` itself: a
         // substitution recorded after it would lose to the original.
         .with({ provide: NamingService, use: StoredNamingService })

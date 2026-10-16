@@ -20,13 +20,13 @@ export default defineConfig({
     // still moving between majors. Lore pins its own; the framework default
     // is left alone.
     from: "node:26-alpine",
-    image: {
-      tag: "ghcr.io/alepha-dev/lore",
-      oci: true,
-      // All four are config because none can be derived: `package.json` is
-      // `private: true` with no description and no license, and `source`
-      // must never come from the git remote (a fork would publish the
-      // wrong URL, permanently, on a public artifact).
+    tag: "ghcr.io/alepha-dev/lore",
+    oci: true,
+    // All four are config because none can be derived: `package.json` is
+    // `private: true` with no description and no license, and `source` must
+    // never come from the git remote (a fork would publish the wrong URL,
+    // permanently, on a public artifact).
+    labels: {
       source: "https://github.com/alepha-dev/lore",
       title: "Lore",
       description: "Project management and telemetry for Alepha applications.",
@@ -233,6 +233,9 @@ export default defineConfig({
         "automation.preset.",
         "automation.setup.",
         "automation.channel.",
+        "uptime.kind.",
+        "uptime.status.",
+        "uptime.window.",
         // The dashboard tiles of #E77: tr(`dashboard.empty.${reason}`) over
         // the closed `dashboardEmptyReasonSchema` set, tr(`dashboard.badge.${code}`)
         // and tr(`dashboard.marker.${kind}`) over codes a resolver puts on a

@@ -21,7 +21,7 @@ import { LoreCoreMcp } from "../src/mcp/index.ts";
  * its tool, outcome, wall time and how many statements it ran.
  *
  * Driven over real HTTP, never through `McpServerProvider.handleMessage`:
- * the tally is seeded by `server:onRequest`, so a call that skips the server
+ * the tally is seeded by `server:request:before`, so a call that skips the server
  * would log nothing, and the spec would prove the harness instead of the
  * line production writes.
  */

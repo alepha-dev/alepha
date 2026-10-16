@@ -5,14 +5,13 @@ import {
   AlephaError,
   createPrimitive,
   type Infer,
-  KIND,
   type MiddlewareMetadata,
-  OPTIONS,
   Primitive,
   type Service,
   z,
 } from "alepha";
 import { DateTimeProvider, type DurationLike } from "alepha/datetime";
+import { KIND, OPTIONS } from "alepha/internal";
 import { $logger } from "alepha/logger";
 
 import { CacheProvider } from "../providers/CacheProvider.ts";
@@ -596,7 +595,7 @@ export class CachePrimitive<
           negative: true,
         });
       }
-      await this.alepha.events.emit("cache:miss", {
+      await this.alepha.events.emit("cache:missed", {
         container: this.container,
         key,
       });
@@ -626,7 +625,7 @@ export class CachePrimitive<
       });
     }
 
-    await this.alepha.events.emit(stale ? "cache:stale" : "cache:hit", {
+    await this.alepha.events.emit(stale ? "cache:staleServed" : "cache:hit", {
       container: this.container,
       key,
     });
@@ -673,7 +672,7 @@ export class CachePrimitive<
       try {
         const result = await handler();
         await this.set(key, result);
-        await this.alepha.events.emit("cache:revalidate", {
+        await this.alepha.events.emit("cache:revalidated", {
           container: this.container,
           key,
         });

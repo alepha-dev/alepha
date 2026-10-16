@@ -719,7 +719,7 @@ export class ReactServerTemplateProvider {
         const result = routerState.onError(error, routerState);
         if (result instanceof Redirection) {
           this.log.warn("Error handler returned Redirection but headers sent", {
-            redirect: result.redirect,
+            redirect: result.data.redirect,
           });
         } else if (result != null) {
           errorElement = result;

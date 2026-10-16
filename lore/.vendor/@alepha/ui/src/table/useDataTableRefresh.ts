@@ -98,7 +98,7 @@ export const useDataTableRefresh = <T>(
   const resetFilters = useCallback(() => {
     if (!form || !props.filters) return;
     // Per-field `.set(undefined)` is necessary: `setInitialValues({})`
-    // doesn't emit `form:change` for deleted keys, so inputs stay
+    // doesn't emit `form:changed` for deleted keys, so inputs stay
     // visually populated and subscribers don't refetch. Explicit set
     // keeps everyone in sync.
     for (const key of filterKeys) {
@@ -162,7 +162,7 @@ export const useDataTableRefresh = <T>(
   useEffect(() => {
     if (!form || !autoApply) return;
     let timeout: ReturnType<typeof setTimeout> | undefined;
-    const unsub = alepha.events.on("form:change", (event) => {
+    const unsub = alepha.events.on("form:changed", (event) => {
       if (event.id !== form.id) return;
       if (timeout) clearTimeout(timeout);
       timeout = setTimeout(() => {
@@ -187,7 +187,7 @@ export const useDataTableRefresh = <T>(
       );
     };
     const unsubs = [
-      alepha.events.on("form:change", (event) => {
+      alepha.events.on("form:changed", (event) => {
         if (event.id !== form.id) return;
         writeFilters();
       }),

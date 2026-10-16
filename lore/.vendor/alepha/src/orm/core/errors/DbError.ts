@@ -1,9 +1,14 @@
-import { AlephaError } from "alepha";
+import { HttpError } from "alepha/server";
 
-export class DbError extends AlephaError {
-  name = "DbError";
+/**
+ * The base of every database error: an HTTP error answering 500 unless a
+ * descendant says otherwise, so a strict `$action` can declare the ones it
+ * expects (`DbEntityNotFoundError`, `DbConflictError`, ...).
+ */
+export const DbError = HttpError.extend({
+  name: "DB",
+  default: { status: 500 },
+  message: "Database error",
+});
 
-  constructor(message: string, cause?: unknown) {
-    super(message, { cause });
-  }
-}
+export type DbError = InstanceType<typeof DbError>;

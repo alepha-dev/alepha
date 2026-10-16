@@ -48,3 +48,12 @@ export type { QualityRunPush } from "../api/schemas/qualityRunPushSchema.ts";
 
 // The dashboard metrics' declarative half: both runtimes register it.
 export { DeployDashboardMetrics } from "../api/services/DeployDashboardMetrics.ts";
+
+export { type Monitor, monitors } from "../api/entities/monitors.ts";
+export { monitorIncidents } from "../api/entities/monitorIncidents.ts";
+export { monitorHeartbeats } from "../api/entities/monitorHeartbeats.ts";
+
+export {
+  type ProbeResult,
+  probeResultSchema,
+} from "../api/schemas/probeResultSchema.ts";

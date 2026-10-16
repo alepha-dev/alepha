@@ -1,4 +1,4 @@
-import type { BuildManifest } from "alepha/cli";
+import { BuildManifestReader, type BuildManifest } from "alepha/cli";
 import type { EnvUtils } from "alepha/command";
 import type { FileSystemProvider } from "alepha/system";
 
@@ -87,8 +87,8 @@ export const BAY_OWNED_SECRET_KEYS: ReadonlySet<string> = new Set([
  * `GITHUB_TOKEN` or `AWS_SECRET_ACCESS_KEY` still have no way in: they are not
  * on the list, so they are never looked up.
  *
- * Returns `undefined` when the manifest is absent or unreadable, so the caller
- * falls back to the `.env` file's own keys.
+ * Returns `undefined` when the manifest is absent. An existing incompatible
+ * artifact is refused before secrets are selected.
  */
 export async function readManifestEnvKeys(
   fs: FileSystemProvider,
@@ -123,27 +123,15 @@ export async function readManifestVariables(
 }
 
 /**
- * The manifest's two env lists, or `undefined` when it cannot be read or does
- * not carry them.
+ * The manifest's two env lists, or `undefined` when the file is absent.
  */
 async function readManifestEnv(
   fs: FileSystemProvider,
   root: string,
 ): Promise<Pick<BuildManifest, "secrets" | "variables"> | undefined> {
-  try {
-    const manifest = await fs.readJsonFile<Partial<BuildManifest>>(
-      fs.join(root, "dist", "manifest.json"),
-    );
-    if (
-      !Array.isArray(manifest.secrets) ||
-      !Array.isArray(manifest.variables)
-    ) {
-      return undefined;
-    }
-    return { secrets: manifest.secrets, variables: manifest.variables };
-  } catch {
-    return undefined;
-  }
+  const path = fs.join(root, "dist", "manifest.json");
+  if (!(await fs.exists(path))) return undefined;
+  return BuildManifestReader.read(fs, path);
 }
 
 /**

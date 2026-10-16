@@ -54,7 +54,7 @@ export const useSetDefaultRelease = (): SetDefaultRelease => {
   // which the root `ActionErrorToaster` has already shown.
   const setAction = useAction<[release: ReleaseResource], boolean>(
     {
-      handler: async (release) => {
+      handler: async (_ctx, release) => {
         const label = name(release);
         const ok = await dialog.confirm({
           title: tr("release.default.confirm.title", { args: [label] }),
@@ -74,7 +74,7 @@ export const useSetDefaultRelease = (): SetDefaultRelease => {
 
   const clearAction = useAction<[release: ReleaseResource], boolean>(
     {
-      handler: async (release) => {
+      handler: async (_ctx, release) => {
         await apply(release.projectId, null);
         toaster.success(
           tr("release.default.cleared", { args: [name(release)] }),
@@ -88,8 +88,14 @@ export const useSetDefaultRelease = (): SetDefaultRelease => {
   return {
     can: releaseApi.setDefaultRelease.can(),
     busy: setAction.loading || clearAction.loading,
-    set: setAction.run,
-    clear: clearAction.run,
+    set: async (...args: Parameters<typeof setAction.run>) => {
+      const result = await setAction.run(...args);
+      return result.ok ? result.value : undefined;
+    },
+    clear: async (...args: Parameters<typeof clearAction.run>) => {
+      const result = await clearAction.run(...args);
+      return result.ok ? result.value : undefined;
+    },
   };
 };
 

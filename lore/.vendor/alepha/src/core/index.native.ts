@@ -16,12 +16,22 @@ if (!Promise.withResolvers) {
   };
 }
 
+/**
+ * Register a native application with optional environment overrides.
+ * The native host owns startup. Only `env` is supported here.
+ */
 export const run = (
   entry: Alepha | Service | Array<Service>,
-  opts?: RunOptions,
+  opts?: Pick<RunOptions, "env">,
 ): Alepha => {
   const alepha =
     entry instanceof Alepha ? entry : Alepha.create({ env: { ...opts?.env } });
+
+  if (entry instanceof Alepha && opts?.env) {
+    alepha.store.set("env", { ...alepha.env, ...opts.env });
+    // Explicit run options take precedence; refresh previously parsed env schemas.
+    alepha.loadEnv({});
+  }
 
   if (!(entry instanceof Alepha)) {
     const entries = Array.isArray(entry) ? entry : [entry];

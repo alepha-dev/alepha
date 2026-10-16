@@ -11,7 +11,7 @@ export type FieldRequirement = "none" | "optional" | "required";
 
 const fieldRequirement = (description: string) =>
   z
-    .union([z.const("none"), z.const("optional"), z.const("required")])
+    .union([z.literal("none"), z.literal("optional"), z.literal("required")])
     .describe(description);
 
 /**
@@ -29,10 +29,10 @@ export type UsernameFieldRequirement = FieldRequirement | "email";
 const usernameFieldRequirement = (description: string) =>
   z
     .union([
-      z.const("none"),
-      z.const("optional"),
-      z.const("required"),
-      z.const("email"),
+      z.literal("none"),
+      z.literal("optional"),
+      z.literal("required"),
+      z.literal("email"),
     ])
     .describe(description);
 
@@ -48,7 +48,11 @@ export type SecondFactorRequirement = "disabled" | "optional" | "required";
 
 const secondFactorRequirement = (description: string) =>
   z
-    .union([z.const("disabled"), z.const("optional"), z.const("required")])
+    .union([
+      z.literal("disabled"),
+      z.literal("optional"),
+      z.literal("required"),
+    ])
     .describe(description);
 
 /**

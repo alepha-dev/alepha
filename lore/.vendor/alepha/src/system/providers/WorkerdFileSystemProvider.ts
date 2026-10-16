@@ -323,7 +323,7 @@ export class WorkerdFileSystemProvider implements FileSystemProvider {
     );
   }
 
-  public async readFile(_path: string): Promise<Buffer> {
+  public async readFile(_path: string): Promise<Uint8Array> {
     throw new AlephaError(
       "WorkerdFileSystemProvider: readFile() is not available in edge runtimes.",
     );
@@ -337,7 +337,7 @@ export class WorkerdFileSystemProvider implements FileSystemProvider {
 
   public async writeFile(
     _path: string,
-    _data: Uint8Array | Buffer | string | FileLike,
+    _data: Uint8Array | string | FileLike,
     _options?: WriteFileOptions,
   ): Promise<void> {
     throw new AlephaError(
@@ -347,7 +347,7 @@ export class WorkerdFileSystemProvider implements FileSystemProvider {
 
   public async appendFile(
     _path: string,
-    _data: Uint8Array | Buffer | string,
+    _data: Uint8Array | string,
   ): Promise<void> {
     throw new AlephaError(
       "WorkerdFileSystemProvider: appendFile() is not available in edge runtimes.",

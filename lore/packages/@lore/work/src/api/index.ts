@@ -61,6 +61,7 @@ import { UntriagedFeedbackMetric } from "./services/UntriagedFeedbackMetric.ts";
 import { WorkAssignedWork } from "./services/WorkAssignedWork.ts";
 import { WorkAttentionSources } from "./services/WorkAttentionSources.ts";
 import { WorkAutomationActions } from "./services/WorkAutomationActions.ts";
+import { WorkAutomationAdoptions } from "./services/WorkAutomationAdoptions.ts";
 import { WorkAutomationCollections } from "./services/WorkAutomationCollections.ts";
 import { WorkAutomationEventSubjects } from "./services/WorkAutomationEventSubjects.ts";
 import { WorkAutomationPresets } from "./services/WorkAutomationPresets.ts";
@@ -91,6 +92,7 @@ export const LoreWorkApi = $module({
   imports: [LoreCoreApi],
   services: [
     WorkAutomationPresets,
+    WorkAutomationAdoptions,
     WorkAutomationEventSubjects,
     WorkAutomationActions,
     QuestEditAccess,

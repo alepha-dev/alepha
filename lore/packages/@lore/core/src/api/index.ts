@@ -51,7 +51,10 @@ import { CoreDashboardMetrics } from "./schemas/CoreDashboardMetrics.ts";
 import { LorePermissions } from "./security/LorePermissions.ts";
 import { ProjectRankPresets } from "./security/ProjectRankPresets.ts";
 import { ActivityFeedMetric } from "./services/ActivityFeedMetric.ts";
+import { AutomationAdoptionRegistry } from "./services/AutomationAdoptionRegistry.ts";
+import { AutomationAdoptionService } from "./services/AutomationAdoptionService.ts";
 import { AutomationApprovalFence } from "./services/AutomationApprovalFence.ts";
+import { AutomationAudience } from "./services/AutomationAudience.ts";
 import { AutomationAuthority } from "./services/AutomationAuthority.ts";
 import { AutomationCatalog } from "./services/AutomationCatalog.ts";
 import { AutomationClaims } from "./services/AutomationClaims.ts";
@@ -64,6 +67,8 @@ import { AutomationEvents } from "./services/AutomationEvents.ts";
 import { AutomationEventSubjects } from "./services/AutomationEventSubjects.ts";
 import { AutomationHealth } from "./services/AutomationHealth.ts";
 import { AutomationJobService } from "./services/AutomationJobService.ts";
+import { AutomationLegacyDispatch } from "./services/AutomationLegacyDispatch.ts";
+import { AutomationLegacyQueue } from "./services/AutomationLegacyQueue.ts";
 import { AutomationMutationAudit } from "./services/AutomationMutationAudit.ts";
 import { AutomationMutationContext } from "./services/AutomationMutationContext.ts";
 import { AutomationNotificationSender } from "./services/AutomationNotificationSender.ts";
@@ -71,6 +76,7 @@ import { AutomationOAuthAuthority } from "./services/AutomationOAuthAuthority.ts
 import { AutomationOrigin } from "./services/AutomationOrigin.ts";
 import { AutomationPersistence } from "./services/AutomationPersistence.ts";
 import { AutomationRoster } from "./services/AutomationRoster.ts";
+import { AutomationRosterWorker } from "./services/AutomationRosterWorker.ts";
 import { AutomationRunEvidence } from "./services/AutomationRunEvidence.ts";
 import { AutomationSchedules } from "./services/AutomationSchedules.ts";
 import { AutomationSelections } from "./services/AutomationSelections.ts";
@@ -184,6 +190,14 @@ export const LoreCoreApi = $module({
     UserDeletionHook,
     OrganizationHooks,
     AutomationPersistence,
+    AutomationAdoptionService,
+    AutomationAudience,
+    AutomationRosterWorker,
+
+    AutomationAdoptionRegistry,
+    AutomationLegacyQueue,
+    AutomationLegacyDispatch,
+
     AutomationOrigin,
     CoreAutomationReferences,
     AutomationCatalog,
@@ -512,3 +526,13 @@ export {
 export { AutomationPresetService } from "./services/AutomationPresetService.ts";
 
 export { AutomationSetupOptions } from "./services/AutomationSetupOptions.ts";
+
+export { AutomationAdoptionRegistry } from "./services/AutomationAdoptionRegistry.ts";
+export { AutomationLegacyQueue } from "./services/AutomationLegacyQueue.ts";
+export { AutomationLegacyDispatch } from "./services/AutomationLegacyDispatch.ts";
+export { AutomationLegacyJobProvider } from "./services/AutomationLegacyJobProvider.ts";
+
+export { AutomationAudience } from "./services/AutomationAudience.ts";
+export { AutomationRosterWorker } from "./services/AutomationRosterWorker.ts";
+
+export { AutomationAdoptionService } from "./services/AutomationAdoptionService.ts";

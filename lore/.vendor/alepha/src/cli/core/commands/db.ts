@@ -64,8 +64,9 @@ export class DbCommand {
         this.log.info("No database configured; nothing to check.");
         return;
       }
-      const drizzleKitProvider =
-        alepha.inject<DrizzleKitProvider>("DrizzleKitProvider");
+      const drizzleKitProvider = alepha.inject<DrizzleKitProvider>(
+        "alepha.orm.DrizzleKitProvider",
+      );
       const accepted = new Set<string>([]);
       const drifted: Array<{
         provider: string;
@@ -371,7 +372,6 @@ export class DbCommand {
       dryRun: z
         .boolean()
         .describe("Preview SQL statements without executing them")
-        .meta({ aliases: ["dry-run"] })
         .optional(),
     }),
     handler: async ({ root, flags }) => {
@@ -383,8 +383,9 @@ export class DbCommand {
         });
 
         const repositoryProvider = this.requireDatabase(alepha, "push to");
-        const drizzleKitProvider =
-          alepha.inject<DrizzleKitProvider>("DrizzleKitProvider");
+        const drizzleKitProvider = alepha.inject<DrizzleKitProvider>(
+          "alepha.orm.DrizzleKitProvider",
+        );
         const accepted = new Set<string>([]);
 
         for (const primitive of repositoryProvider.getRepositories()) {
@@ -551,10 +552,10 @@ export class DbCommand {
         this.log.info("No database configured; nothing to audit.");
         return;
       }
-      // By name, like `DrizzleKitProvider` above: the user's container comes
+      // By stable id, like `DrizzleKitProvider` above: the user's container comes
       // from Vite's module graph, so its classes are not the CLI's objects.
       const audit = alepha.inject<SqliteTypeAuditService>(
-        "SqliteTypeAuditService",
+        "alepha.orm.SqliteTypeAuditService",
       );
 
       const seen = new Set<string>();
@@ -671,7 +672,7 @@ export class DbCommand {
     alepha: Alepha,
   ): RepositoryProvider | undefined {
     try {
-      return alepha.inject<RepositoryProvider>("RepositoryProvider");
+      return alepha.inject<RepositoryProvider>("alepha.orm.RepositoryProvider");
     } catch (error) {
       if (!/Service not found/i.test((error as Error)?.message ?? "")) {
         throw error;
@@ -743,8 +744,9 @@ export class DbCommand {
       // 'generate' has nothing to run against.
       this.drizzleActions[options.command] ?? "work with",
     );
-    const drizzleKitProvider =
-      alepha.inject<DrizzleKitProvider>("DrizzleKitProvider");
+    const drizzleKitProvider = alepha.inject<DrizzleKitProvider>(
+      "alepha.orm.DrizzleKitProvider",
+    );
     const accepted = new Set<string>([]);
 
     for (const primitive of repositoryProvider.getRepositories()) {
@@ -979,8 +981,8 @@ if (typeof registerHooks === "function") {
       const sqlPath = await this.resolveMigrationSqlPath(migrationsDir, entry);
       if (!sqlPath) continue;
 
-      const content = await this.fs.readFile(sqlPath);
-      const sql = content.toString("utf-8");
+      const content = await this.fs.readTextFile(sqlPath);
+      const sql = content;
       const cleaned = sql.replaceAll('"public".', "");
 
       if (cleaned !== sql) {
@@ -1171,8 +1173,8 @@ if (typeof registerHooks === "function") {
       const sqlPath = await this.resolveMigrationSqlPath(migrationsDir, entry);
       if (!sqlPath) continue;
 
-      const content = await this.fs.readFile(sqlPath);
-      const drops = this.findDropTableStatements(content.toString("utf-8"));
+      const content = await this.fs.readTextFile(sqlPath);
+      const drops = this.findDropTableStatements(content);
 
       for (const drop of drops) {
         offenders.push(`  ${entry}: ${drop}`);
@@ -1416,34 +1418,34 @@ if (typeof registerHooks === "function") {
     if (folders.length > 0) {
       folders.sort();
       const lastFolder = folders[folders.length - 1];
-      const snapshotBuffer = await this.fs.readFile(
+      const snapshotBuffer = await this.fs.readTextFile(
         this.fs.join(migrationDir, lastFolder, "snapshot.json"),
       );
-      return JSON.parse(snapshotBuffer.toString("utf-8"));
+      return JSON.parse(snapshotBuffer);
     }
 
     // Pre-v1 layout, and only reached when no v1 folder exists.
     const journalBuffer = await this.fs
-      .readFile(this.fs.join(migrationDir, "meta", "_journal.json"))
+      .readTextFile(this.fs.join(migrationDir, "meta", "_journal.json"))
       .catch(() => null);
 
     if (!journalBuffer) {
       return null;
     }
 
-    const journal = JSON.parse(journalBuffer.toString("utf-8"));
+    const journal = JSON.parse(journalBuffer);
     const lastMigration = journal.entries?.[journal.entries.length - 1];
     if (!lastMigration) {
       return null;
     }
-    const snapshotBuffer = await this.fs.readFile(
+    const snapshotBuffer = await this.fs.readTextFile(
       this.fs.join(
         migrationDir,
         "meta",
         `${String(lastMigration.idx).padStart(4, "0")}_snapshot.json`,
       ),
     );
-    return JSON.parse(snapshotBuffer.toString("utf-8"));
+    return JSON.parse(snapshotBuffer);
   }
 
   /**
@@ -1600,9 +1602,9 @@ const vite = Alepha.create().inject(ViteUtils);
 let models;
 try {
   const alepha = await vite.runAlepha({ entry: ${appEntry}, mode: "development" });
-  const kit = alepha.inject("DrizzleKitProvider");
+  const kit = alepha.inject("alepha.orm.DrizzleKitProvider");
   const provider = alepha
-    .inject("RepositoryProvider")
+    .inject("alepha.orm.RepositoryProvider")
     .getRepositories()
     .find((it) => it.provider.name === ${providerName}).provider;
   models = ${getModelsCall};

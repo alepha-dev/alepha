@@ -15,7 +15,7 @@ export interface UseFormStateReturn {
  * Tracks whichever `form` the caller currently passes in, not only the one
  * it saw on the first render - same rationale as `useFormValues`. Without
  * this, a caller that swaps forms (via `useForm`'s `deps` parameter minting
- * a fresh `FormModel`) would keep this hook's `form:change` /
+ * a fresh `FormModel`) would keep this hook's `form:changed` /
  * `form:submit:*` / `form:reset` listeners bound to the OLD form's `id`
  * forever: `loading` would never turn on again for the new form's
  * submissions, `dirty` would never move, and `values` would freeze on
@@ -65,7 +65,7 @@ export const useFormState = <
 
     if (hasErrors || hasValues || hasDirty) {
       listeners.push(
-        alepha.events.on("form:change", (event) => {
+        alepha.events.on("form:changed", (event) => {
           if (event.id === form.id) {
             if (!path || event.path === path) {
               // `initial: true` marks a programmatic reset (e.g. parent
@@ -137,7 +137,7 @@ export const useFormState = <
             if (
               !path ||
               (event.error instanceof SchemaValidationError &&
-                event.error.value.path === path)
+                event.error.data.path === path)
             ) {
               setError(event.error);
             }

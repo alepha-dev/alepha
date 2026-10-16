@@ -180,6 +180,7 @@ export class ReleaseController {
   protected releaseNumber = $sequence();
 
   getReleases = $action({
+    method: "GET",
     use: [
       this.ownsProject("release:read"),
       // `noCache` rather than a `maxAge` window: this list changes the
@@ -207,6 +208,7 @@ export class ReleaseController {
    * the list's three sequential ones (#Q2636).
    */
   getOpenReleaseProgress = $action({
+    method: "GET",
     use: [this.ownsProject("release:read")],
     schema: {
       params: z.object({
@@ -677,6 +679,7 @@ export class ReleaseController {
    * set of numbers.
    */
   getReleaseContents = $action({
+    method: "GET",
     use: [this.ownsRelease("release:read")],
     schema: {
       params: z.object({
@@ -767,6 +770,7 @@ export class ReleaseController {
   });
 
   getReleaseChangelog = $action({
+    method: "GET",
     use: [
       this.ownsRelease("release:read"),
       // Same reasoning as `getReleases`: an open release's changelog is

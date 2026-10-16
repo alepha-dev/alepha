@@ -42,6 +42,7 @@ export class AreaController {
   security = $inject(ProjectSecurityService);
 
   getAreas = $action({
+    method: "GET",
     use: [$ownsProject({ requires: "area:read", param: "projectId" })],
     schema: {
       params: z.object({ projectId: z.integer() }),
@@ -53,6 +54,7 @@ export class AreaController {
   });
 
   getArea = $action({
+    method: "GET",
     use: [this.ownsArea("area:read")],
     path: "/areas/:id",
     schema: {

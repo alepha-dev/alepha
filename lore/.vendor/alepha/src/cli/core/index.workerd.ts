@@ -26,6 +26,7 @@ import { BuildCloudflareTask } from "./tasks/BuildCloudflareTask.ts";
 
 export * from "./atoms/buildOptions.ts";
 export * from "./schemas/buildManifest.ts";
+export * from "./services/BuildManifestReader.ts";
 export * from "./schemas/presetSchema.ts";
 export * from "./tasks/BuildCloudflareTask.ts";
 export * from "./tasks/BuildTask.ts";

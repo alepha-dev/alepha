@@ -152,7 +152,7 @@ const setup = async (
   const sigil = await probe.sigils.create({
     projectId: project.id,
     name: "lore",
-    tokenHash: crypto.hash(KEY),
+    tokenHash: await crypto.hash(KEY),
     tokenPrefix: KEY.slice(0, 10),
     kinds: over.kinds ?? ["beacon", "vitals", "blights", "feedback"],
   });

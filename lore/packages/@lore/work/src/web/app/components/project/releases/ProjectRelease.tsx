@@ -245,7 +245,7 @@ const ProjectRelease = () => {
   // title is not lost: it closes inside the handler, on success only.
   const saveToFolioAction = useAction<[title: string], void>(
     {
-      handler: async (title) => {
+      handler: async (_ctx, title) => {
         if (!project || !changelog || !release) return;
         await documents.writable()?.save({
           projectId: project.id,

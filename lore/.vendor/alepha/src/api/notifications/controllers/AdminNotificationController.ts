@@ -40,6 +40,7 @@ export class AdminNotificationController {
   }
 
   public readonly findNotifications = $action({
+    method: "GET",
     path: this.url,
     group: this.group,
     use: [$secure({ permissions: ["admin:notification:read"] })],
@@ -121,6 +122,7 @@ export class AdminNotificationController {
    * and the first route registered for a path wins.
    */
   public readonly listNotificationTemplates = $action({
+    method: "GET",
     path: `${this.url}/templates`,
     group: this.group,
     use: [$secure({ permissions: ["admin:notification:read"] })],
@@ -160,6 +162,7 @@ export class AdminNotificationController {
    * segment unreachable behind the parameter.
    */
   public readonly listSuppressions = $action({
+    method: "GET",
     path: `${this.url}/suppressions`,
     group: this.group,
     use: [$secure({ permissions: ["admin:notification:write"] })],
@@ -206,6 +209,7 @@ export class AdminNotificationController {
   });
 
   public readonly getNotification = $action({
+    method: "GET",
     path: `${this.url}/:id`,
     group: this.group,
     use: [$secure({ permissions: ["admin:notification:read"] })],
@@ -254,6 +258,7 @@ export class AdminNotificationController {
    * a literal tail, so it cannot be shadowed by `/:id`.
    */
   public readonly previewNotification = $action({
+    method: "GET",
     path: `${this.url}/:id/preview`,
     group: this.group,
     use: [$secure({ permissions: ["admin:notification:read"] })],

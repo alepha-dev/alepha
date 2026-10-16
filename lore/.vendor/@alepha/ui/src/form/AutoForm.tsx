@@ -237,7 +237,7 @@ export const AutoForm = <T extends ZObject>(props: AutoFormProps<T>) => {
   useEffect(() => {
     if (!autoSaveEnabled) return;
     let handle: ReturnType<typeof setTimeout> | undefined;
-    const off = alepha.events.on("form:change", (ev) => {
+    const off = alepha.events.on("form:changed", (ev) => {
       if (ev.id !== props.form.id) return;
       if (ev.initial) return;
       // FormModel paths look like "/title" or "/contacts/0/email". The

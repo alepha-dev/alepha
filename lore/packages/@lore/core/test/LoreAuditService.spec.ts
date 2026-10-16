@@ -264,7 +264,7 @@ class ErrorLogProbe {
   public errors: LogEntry[] = [];
 
   onLog = $hook({
-    on: "log",
+    on: "log:entry",
     handler: ({ entry }) => {
       if (entry.level === "ERROR") this.errors.push(entry);
     },

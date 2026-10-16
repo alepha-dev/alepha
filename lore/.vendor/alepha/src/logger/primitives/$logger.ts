@@ -1,4 +1,5 @@
-import { $context, $inject, KIND } from "alepha";
+import { $context, $inject } from "alepha";
+import { KIND } from "alepha/internal";
 
 import { Logger } from "../services/Logger.ts";
 

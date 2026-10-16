@@ -1,0 +1,1 @@
+ALTER TABLE `monitors` ADD `notifications` text DEFAULT '{"email":true,"recipients":[]}' NOT NULL;

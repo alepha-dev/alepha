@@ -67,6 +67,7 @@ import { SSRManifestProvider } from "./SSRManifestProvider.ts";
  * Uses `react-dom/server` under the hood.
  */
 export class ReactServerProvider {
+  public static readonly id: string = "alepha.react.ReactServerProvider";
   /**
    * SSR response headers - pre-allocated to avoid object creation per request.
    */
@@ -338,7 +339,7 @@ export class ReactServerProvider {
   }
 
   /**
-   * Answers `react:server:shell`, the way a build reaches {@link renderShell}.
+   * Answers `react:shell:render:before`, the way a build reaches {@link renderShell}.
    *
    * An event rather than a call because the build runs in the CLI's process,
    * which loads the application through Vite: the app's `ReactServerProvider`
@@ -347,7 +348,7 @@ export class ReactServerProvider {
    * unconfigured provider. An event name crosses that boundary.
    */
   protected readonly onShell = $hook({
-    on: "react:server:shell",
+    on: "react:shell:render:before",
     handler: (event) => {
       event.html = this.renderShell({ viewport: event.viewport });
     },
@@ -538,7 +539,7 @@ export class ReactServerProvider {
    * `react:server:render:begin` hooks, the loaders, the in-process actions
    * they call and the React render all report to it (#E78).
    *
-   * It starts here, after `server:onRequest`, because that event is where the
+   * It starts here, after `server:request:before`, because that event is where the
    * framework seeds the request: the session is decoded and the cookie-bound
    * atoms are written. Those writes are the same on a cache hit and are not
    * page reads.
@@ -615,7 +616,7 @@ export class ReactServerProvider {
    * user is already past login, so a bounce there is a loop — but neither is
    * letting the error escape: this is a page route, and a page route's caller
    * is a browser doing a hard navigation. It has asked for HTML, and what it
-   * got was `{"error":"ForbiddenError",…}` painted as text on a white
+   * got was `{"name":"FORBIDDEN",…}` painted as text on a white
    * background, with no styles, no favicon and no way back. Rendering the
    * app's own `/*` page instead costs nothing, uses whatever design the
    * project already gave it, and tells a user who cannot enter the one true
@@ -882,7 +883,7 @@ export class ReactServerProvider {
           onError: (error) => {
             if (error instanceof Redirection) {
               this.log.debug("Streaming resulted in redirection", {
-                redirect: error.redirect,
+                redirect: error.data.redirect,
               });
               // Can't do redirect after streaming started - already handled above
             } else {
@@ -1251,7 +1252,7 @@ export class ReactServerProvider {
       onError: (error: unknown) => {
         if (error instanceof Redirection) {
           this.log.warn("Redirect during streaming ignored", {
-            redirect: error.redirect,
+            redirect: error.data.redirect,
           });
         } else {
           // disable logging here, it's noisy and duplicate
@@ -1264,11 +1265,11 @@ export class ReactServerProvider {
   }
 
   // ---------------------------------------------------------------------------
-  // Testing utilities - kept for backwards compatibility with tests
+  // Server-side rendering test API
   // ---------------------------------------------------------------------------
 
   /**
-   * For testing purposes, renders a page to HTML string.
+   * Test API: render a registered page to an HTML string.
    * Uses the same streaming code path as production, then collects to string.
    *
    * @param name - Page name to render

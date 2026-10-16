@@ -1,7 +1,7 @@
 import { $env, $inject, AlephaError, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { HttpClient, HttpError } from "alepha/server";
+import { HttpClient, isHttpError } from "alepha/server";
 
 import { LoreClientService } from "./LoreClientService.ts";
 import { type LoreToken, LoreTokenStore } from "./LoreTokenStore.ts";
@@ -215,7 +215,7 @@ export class LoreDeviceLogin {
       });
       return (res.data ?? {}) as T;
     } catch (error) {
-      if (!options.allowError || !HttpError.is(error)) {
+      if (!options.allowError || !isHttpError(error)) {
         throw error;
       }
       return { error: error.message } as T;

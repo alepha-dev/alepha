@@ -32,6 +32,7 @@ export const automationReceipts = $entity({
         "chunk",
         "guard",
         "job_origin",
+        "legacy",
       ])
       .meta({ mode: "text" }),
     status: z

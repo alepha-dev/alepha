@@ -24,6 +24,7 @@ export class MemberController {
   protected readonly ranks = $inject(RankService);
 
   public readonly getOrganizationMembers = $action({
+    method: "GET",
     path: "/organizations/:organizationId/members",
     use: [
       $ownsOrganization({ param: "organizationId", requires: "member:read" }),

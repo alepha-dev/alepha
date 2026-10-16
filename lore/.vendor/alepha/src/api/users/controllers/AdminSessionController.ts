@@ -17,6 +17,7 @@ export class AdminSessionController {
    * Find sessions with pagination and filtering.
    */
   public readonly findSessions = $action({
+    method: "GET",
     path: this.url,
     group: this.group,
     use: [$secure({ permissions: ["admin:session:read"] })],
@@ -41,6 +42,7 @@ export class AdminSessionController {
    * Distinct country codes present on sessions, feeding the admin filter.
    */
   public readonly getSessionCountries = $action({
+    method: "GET",
     path: `${this.url}/countries`,
     group: this.group,
     use: [$secure({ permissions: ["admin:session:read"] })],
@@ -62,6 +64,7 @@ export class AdminSessionController {
    * Get a session by ID.
    */
   public readonly getSession = $action({
+    method: "GET",
     path: `${this.url}/:id`,
     group: this.group,
     use: [$secure({ permissions: ["admin:session:read"] })],

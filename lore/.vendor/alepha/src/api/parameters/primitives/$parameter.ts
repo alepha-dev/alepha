@@ -2,10 +2,10 @@ import {
   $inject,
   createPrimitive,
   type Infer,
-  KIND,
   Primitive,
   type ZObject,
 } from "alepha";
+import { KIND } from "alepha/internal";
 import type { UserAccount } from "alepha/security";
 
 import { ParameterProvider } from "../services/ParameterProvider.ts";

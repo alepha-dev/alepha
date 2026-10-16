@@ -55,6 +55,7 @@ export class SearchController {
   protected readonly permissions = $inject(ProjectPermissions);
 
   search = $action({
+    method: "GET",
     use: [
       $ownsProject({
         requires: ["quest:read", "folio:read"],

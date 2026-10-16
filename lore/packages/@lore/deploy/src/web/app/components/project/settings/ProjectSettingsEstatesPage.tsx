@@ -76,7 +76,7 @@ const ProjectSettingsEstatesPage = () => {
 
   const detachAction = useAction<[estate: LentEstateResource], void>(
     {
-      handler: async (estate) => {
+      handler: async (_ctx, estate) => {
         if (!project) return;
         const ok = await dialog.confirm({
           title: tr("estates.detach.confirmTitle", { args: [estate.slug] }),

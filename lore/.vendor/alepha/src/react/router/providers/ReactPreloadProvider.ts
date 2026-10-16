@@ -61,7 +61,7 @@ export class ReactPreloadProvider {
    * Add Link header to HTML responses for asset preloading.
    */
   protected readonly onResponse = $hook({
-    on: "server:onResponse",
+    on: "server:response:after",
     priority: "first",
     handler: ({ response }) => {
       // Only add to HTML responses (SSR pages)

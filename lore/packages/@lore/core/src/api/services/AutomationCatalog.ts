@@ -281,6 +281,15 @@ export class AutomationCatalog {
         `actions[${index}]`,
       );
       if (kind === "notify") {
+        if (
+          action.audience &&
+          (rule.trigger.kind !== "event" ||
+            rule.trigger.event !== "release.published" ||
+            action.category !== "releases")
+        )
+          throw new BadRequestError(
+            "Project audience requires release.published and the releases category",
+          );
         if (typeof resolved.values.recipient === "string") {
           const reason = await this.coreReferences.recipientReason(
             projectId,
@@ -355,6 +364,16 @@ export class AutomationCatalog {
       "action",
       "effect.kind",
     );
+    if (
+      action.kind === "notify" &&
+      action.audience &&
+      (rule.trigger.kind !== "event" ||
+        rule.trigger.event !== "release.published" ||
+        action.category !== "releases")
+    )
+      throw new BadRequestError(
+        "Project audience requires release.published and the releases category",
+      );
     const { kind, ...values } = action;
     const resolved = await this.slots(
       projectId,
@@ -365,7 +384,7 @@ export class AutomationCatalog {
       "effect",
       true,
     );
-    if (kind === "notify") {
+    if (kind === "notify" && !(action.kind === "notify" && action.audience)) {
       const reason = await this.coreReferences.recipientReason(
         projectId,
         resolved.values.recipient as string,

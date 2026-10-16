@@ -4,11 +4,7 @@ import {
   AlephaError,
   type Alepha as AlephaInstance,
 } from "alepha";
-import {
-  type BuildManifest,
-  buildManifestSchema,
-  type BuildTaskContext,
-} from "alepha/cli";
+import { type BuildTaskContext } from "alepha/cli";
 import { EnvUtils, Runner, type RunnerMethod } from "alepha/command";
 import { ShellProvider } from "alepha/system";
 import { S3mini } from "s3mini";
@@ -389,7 +385,7 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
     //    per-deploy values from process.env (set below), and writes a
     //    fresh `dist/wrangler.jsonc` + `dist/main.cloudflare.js`. No
     //    Vite, no spawn, no `alepha` binary needed at the workspace
-    //    cwd  -  required for Rocket, which deploys a bare prebuilt
+    //    cwd  -  required for Lore Deploy, which deploys a bare prebuilt
     //    tarball with no `node_modules`.
     //  - non-prebuilt: spawn the full `alepha build` for the CLI flow,
     //    which still needs Vite analyze + bundle.
@@ -431,42 +427,7 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
     env: Record<string, string>,
   ): Promise<void> {
     const manifestPath = this.fs.join(root, "dist", "manifest.json");
-    let manifest: BuildManifest;
-    try {
-      // ⚠️ Through `this.fs`, never `node:fs/promises`. This is the FIRST
-      // thing a Lore deploy touches, and it unpacks the artifact into a
-      // `MemoryFileSystemProvider`: a direct read defeats that substitution
-      // and looks for a file on a disk the Worker does not have.
-      manifest = JSON.parse(await this.fs.readTextFile(manifestPath));
-    } catch (err) {
-      throw new AlephaError(
-        `Cannot read ${manifestPath}: ${(err as Error).message}. ` +
-          `Prebuilt deploys require dist/manifest.json (emitted by \`alepha build --runtime=workerd\`).`,
-      );
-    }
-
-    // Parsed rather than cast. Everything below builds a worker out of this
-    // object without a live Alepha to check it against, so a manifest that is
-    // truncated or from a different tool emits a worker with no bindings and
-    // still reports success. Refused by name here instead, where the fix is
-    // rebuilding the artifact.
-    //
-    // Refused, not fallen back on: unlike `infra.ts`'s `readManifest`, this
-    // path has no introspection to fall through to  -  prebuilt mode exists
-    // precisely because the app cannot be booted here.
-    const validated = buildManifestSchema.safeParse(manifest);
-    if (!validated.success) {
-      throw new AlephaError(
-        `${manifestPath} is not a valid build manifest: ` +
-          `${validated.error.issues
-            .map(
-              (issue) => `${issue.path.join(".") || "(root)"} ${issue.message}`,
-            )
-            .join("; ")}. ` +
-          `Rebuild the artifact with \`alepha build --runtime=workerd\`.`,
-      );
-    }
-    manifest = validated.data;
+    const manifest = await this.manifestReader.read(manifestPath);
 
     const ctx: BuildTaskContext = {
       // null at runtime  -  task takes the manifest path and never
@@ -615,10 +576,8 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
   protected async validateDeployArtifact(ctx: InfraContext): Promise<void> {
     try {
       const dist = this.fs.join(ctx.root, "dist");
-      const manifest = buildManifestSchema.parse(
-        JSON.parse(
-          await this.fs.readTextFile(this.fs.join(dist, "manifest.json")),
-        ),
+      const manifest = await this.manifestReader.read(
+        this.fs.join(dist, "manifest.json"),
       );
       const slice = manifest.runtimes.find(
         (entry) => entry.runtime === "workerd",
@@ -1035,7 +994,7 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
           : `d1://${dbName}`;
         const env = { DATABASE_URL: dbUrl };
 
-        // In prebuilt mode (Rocket) the tarball ships `migrations/`
+        // In prebuilt mode (Lore Deploy) the tarball ships `migrations/`
         // straight from the build artifact  -  already checked + frozen
         // at pack time. Skip the live check/create cycle, which would
         // need to boot the user's app to introspect schema definitions
@@ -1082,7 +1041,7 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
       // Postgres + Hyperdrive prebuilt deploys need a separate
       // migration story (an alepha-CLI-free `apply` against the
       // packed `migrations/postgres/` dir)  -  not implemented yet.
-      // Rocket's v1 path is D1, which migrates over the D1 API
+      // Lore Deploy's v1 path is D1, which migrates over the D1 API
       // (`D1MigrationsService`) and works fine in prebuilt mode.
       throw new AlephaError(
         "Postgres migrations are not yet supported in prebuilt mode. Use the `alepha deploy` CLI for now.",

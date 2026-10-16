@@ -256,7 +256,7 @@ describe("EstateCloudflareService, recheck and status", () => {
       type: "cloudflare",
       slug,
       accountId: ACCOUNT,
-      credential: ctx.seal.seal(
+      credential: await ctx.seal.seal(
         USER_TOKEN,
         CredentialSealService.ESTATE_PURPOSE,
       ),

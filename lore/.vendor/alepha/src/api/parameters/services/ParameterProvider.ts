@@ -164,7 +164,7 @@ export class ParameterProvider {
   /**
    * Computed schema hashes per parameter name.
    */
-  protected readonly schemaHashes = new Map<string, string>();
+  protected readonly schemaHashes = new Map<string, Promise<string>>();
 
   /**
    * Pre-load all registered parameters on ready outside serverless runtimes.
@@ -204,7 +204,8 @@ export class ParameterProvider {
 
   /**
    * Register a parameter primitive with the provider.
-   * Computes and stores the schema hash.
+   * Registration stays synchronous during primitive construction. Async
+   * consumers await the same stored hashing promise before using its value.
    */
   public register(param: ParameterPrimitive<any>): void {
     this.primitives.set(param.name, param);
@@ -251,7 +252,7 @@ export class ParameterProvider {
     value: unknown,
     options: SaveParameterOptions = {},
   ): Promise<void> {
-    const schemaHash = this.schemaHashes.get(name) ?? "";
+    const schemaHash = (await this.schemaHashes.get(name)) ?? "";
 
     await this.save(name, value as Record<string, unknown>, schemaHash, {
       activationDate: options.activationDate,
@@ -485,7 +486,7 @@ export class ParameterProvider {
   ): Promise<ParameterWithStatus> {
     // Resolve empty schema hash from registered primitive
     if (!schemaHash) {
-      schemaHash = this.schemaHashes.get(name) ?? "";
+      schemaHash = (await this.schemaHashes.get(name)) ?? "";
     }
 
     // Validate content against the registered schema when the schema hash
@@ -493,7 +494,7 @@ export class ParameterProvider {
     // schema version (e.g., migration seed) and should not be validated
     // against the current schema.
     const param = this.primitives.get(name);
-    if (param && schemaHash === this.schemaHashes.get(name)) {
+    if (param && schemaHash === (await this.schemaHashes.get(name))) {
       content = this.alepha.codec.validate(param.schema, content) as Infer<T>;
     }
 
@@ -800,7 +801,7 @@ export class ParameterProvider {
         current = await this.save(
           name,
           param.options.default as Infer<ZObject>,
-          this.schemaHashes.get(name) ?? "",
+          (await this.schemaHashes.get(name)) ?? "",
           { changeDescription: "Auto-seeded from compiled defaults" },
         );
       } catch (err) {
@@ -887,7 +888,7 @@ export class ParameterProvider {
     this.loadGeneration.set(ck, gen);
 
     const { current, next } = await this.loadCurrentAndNext(name);
-    const schemaHash = this.schemaHashes.get(name) ?? "";
+    const schemaHash = (await this.schemaHashes.get(name)) ?? "";
 
     // Superseded by a newer load — discard results
     if (this.loadGeneration.get(ck) !== gen) return;
@@ -895,7 +896,7 @@ export class ParameterProvider {
     // Check if migration is needed
     if (current && !this.migrationChecked.has(ck)) {
       this.migrationChecked.add(ck);
-      const migration = this.migrateValue(
+      const migration = await this.migrateValue(
         name,
         current.content,
         current.schemaHash,
@@ -1017,12 +1018,12 @@ export class ParameterProvider {
    * 4. Validate merged result
    * 5. If still invalid, use defaults
    */
-  protected migrateValue(
+  protected async migrateValue(
     name: string,
     dbValue: unknown,
     dbSchemaHash: string,
-  ): { value: unknown; description: string } | null {
-    const schemaHash = this.schemaHashes.get(name) ?? "";
+  ): Promise<{ value: unknown; description: string } | null> {
+    const schemaHash = (await this.schemaHashes.get(name)) ?? "";
     const param = this.primitives.get(name);
     if (!param) {
       return null;
@@ -1174,7 +1175,7 @@ export class ParameterProvider {
    * Calculate a hash of the schema for migration detection.
    * Uses CryptoProvider for proper SHA-256 hashing.
    */
-  protected calculateSchemaHash(schema: ZObject): string {
+  protected calculateSchemaHash(schema: ZObject): Promise<string> {
     return this.crypto.hash(JSON.stringify(schema));
   }
 

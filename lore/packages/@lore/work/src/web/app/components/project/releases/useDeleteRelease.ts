@@ -78,7 +78,7 @@ export const useDeleteRelease = (): DeleteRelease => {
    */
   const refetchAction = useAction<[projectId: number], void>(
     {
-      handler: async (projectId) => {
+      handler: async (_ctx, projectId) => {
         setReleases(await releaseApi.getReleases({ params: { projectId } }));
       },
     },
@@ -90,7 +90,7 @@ export const useDeleteRelease = (): DeleteRelease => {
   // `ActionErrorToaster` shows the server's message.
   const removeAction = useAction<[release: ReleaseResource], boolean>(
     {
-      handler: async (release) => {
+      handler: async (_ctx, release) => {
         const label = name(release);
         const ok = await dialog.confirm({
           title: tr("release.delete.title", { args: [label] }),
@@ -119,7 +119,7 @@ export const useDeleteRelease = (): DeleteRelease => {
 
   const removeManyAction = useAction<[selected: ReleaseResource[]], boolean>(
     {
-      handler: async (selected) => {
+      handler: async (_ctx, selected) => {
         if (selected.length === 0) return false;
         const n = String(selected.length);
         const ok = await dialog.confirm({
@@ -161,8 +161,14 @@ export const useDeleteRelease = (): DeleteRelease => {
     can: releaseApi.deleteRelease.can(),
     busy:
       removeAction.loading || removeManyAction.loading || refetchAction.loading,
-    remove: removeAction.run,
-    removeMany: removeManyAction.run,
+    remove: async (...args: Parameters<typeof removeAction.run>) => {
+      const result = await removeAction.run(...args);
+      return result.ok ? result.value : undefined;
+    },
+    removeMany: async (...args: Parameters<typeof removeManyAction.run>) => {
+      const result = await removeManyAction.run(...args);
+      return result.ok ? result.value : undefined;
+    },
   };
 };
 

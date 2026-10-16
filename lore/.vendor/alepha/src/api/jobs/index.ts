@@ -129,7 +129,7 @@ declare module "alepha" {
  *   `wrangler.jsonc`; Cloudflare invokes the worker on schedule and the
  *   `cloudflare:scheduled` hook routes the event to the matching jobs.
  * - **Generic serverless**: a platform entry point can POST
- *   `/_alepha/cron/:name`; the handler emits `serverless:cron` and
+ *   `/_alepha/cron/:name`; the handler emits `serverless:cron:triggered` and
  *   `CronProvider` runs the matching job. Set `CRON_SECRET` to require
  *   authenticated calls.
  *

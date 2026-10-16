@@ -25,7 +25,7 @@ import { AlephaCliInfraCommands } from "./commands.ts";
  * Wraps `AlephaInfraLibPlugin` (the framework-agnostic deploy
  * services) with `$command` instances so the orchestration is
  * reachable from `alepha infra …`. Non-CLI consumers (e.g. Alepha
- * Rocket) should depend on `alepha/cli/infra-lib` directly instead
+ * Lore Deploy) should depend on `alepha/cli/infra-lib` directly instead
  * of pulling in this command surface.
  *
  * Commands:

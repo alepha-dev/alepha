@@ -1,4 +1,4 @@
-import { $inject, Alepha, AlephaError } from "alepha";
+import { $inject, Alepha, AlephaError, type Infer, type ZType } from "alepha";
 
 import type { PagePrimitive } from "../primitives/$page.ts";
 import { ReactBrowserProvider } from "../providers/ReactBrowserProvider.ts";
@@ -8,9 +8,17 @@ import {
   type ReactRouterState,
 } from "../providers/ReactPageProvider.ts";
 
-export interface RouterPushOptions {
+/**
+ * What any navigation takes, to a page name or to a path.
+ */
+export interface RouterNavigateOptions {
+  /**
+   * Replace the current history entry instead of pushing a new one.
+   */
   replace?: boolean;
-  params?: Record<string, string>;
+  /**
+   * The query string, as a record.
+   */
   query?: Record<string, string>;
   meta?: Record<string, any>;
   /**
@@ -18,6 +26,59 @@ export interface RouterPushOptions {
    */
   force?: boolean;
 }
+
+/**
+ * The options of a navigation, as the browser provider receives them.
+ */
+export interface RouterPushOptions extends RouterNavigateOptions {
+  params?: Record<string, string>;
+}
+
+/**
+ * A path inside the app. Router navigation takes nothing else that is not a
+ * page name: a relative path, a bare `?query` and an absolute URL are refused.
+ * Changing only the query is `setQueryParams`; leaving the app is an
+ * `<a href>` or `window.location.assign`.
+ */
+export type RouterPath = `/${string}`;
+
+/**
+ * The page names of a router class. `string` for an untyped router
+ * (`useRouter()`), until the app registers its router.
+ */
+export type RouterPageName<T> = keyof VirtualRouter<T> & string;
+
+/**
+ * The params a page takes, read from its `schema.params`. A page that
+ * declares none takes a plain string record.
+ */
+export type RouterPageParams<TPage> =
+  TPage extends PagePrimitive<infer TConfig, any, any>
+    ? TConfig["params"] extends ZType
+      ? Infer<TConfig["params"]>
+      : Record<string, string>
+    : Record<string, string>;
+
+/**
+ * The options of a navigation to a page: `params` is required when the page's
+ * params schema has a required key.
+ */
+export type RouterPageOptions<
+  T,
+  K extends RouterPageName<T>,
+> = RouterNavigateOptions &
+  ({} extends RouterPageParams<VirtualRouter<T>[K]>
+    ? { params?: RouterPageParams<VirtualRouter<T>[K]> }
+    : { params: RouterPageParams<VirtualRouter<T>[K]> });
+
+/**
+ * The options argument of a page navigation, optional only when the page
+ * needs no params.
+ */
+export type RouterPageArgs<T, K extends RouterPageName<T>> =
+  {} extends RouterPageOptions<T, K>
+    ? [options?: RouterPageOptions<T, K>]
+    : [options: RouterPageOptions<T, K>];
 
 /**
  * Friendly browser router API.
@@ -108,6 +169,13 @@ export class ReactRouter<T extends object> {
       .join("/");
   }
 
+  /**
+   * The pathname of a page, by name.
+   *
+   * A page that declares `schema.params` gets exactly the `params` given. One
+   * that does not still inherits the current route's params it does not set,
+   * the shorthand a child page linking to a sibling relies on.
+   */
   public path(
     name: keyof VirtualRouter<T> | string,
     config: {
@@ -115,13 +183,88 @@ export class ReactRouter<T extends object> {
       query?: Record<string, any>;
     } = {},
   ): string {
+    const page = this.findPage(name as string);
+    const declaresParams = !!page?.schema?.params;
     return this.pageApi.pathname(name as string, {
-      params: {
-        ...this.state?.params,
-        ...config.params,
-      },
+      params: declaresParams
+        ? { ...config.params }
+        : {
+            ...this.state?.params,
+            ...config.params,
+          },
       query: config.query,
     });
+  }
+
+  /**
+   * The page with this name, if any.
+   */
+  protected findPage(name: string) {
+    return this.pages.find((page) => page.name === name);
+  }
+
+  /**
+   * Refuse a page name no page has, naming the closest ones. It used to fall
+   * through to a navigation to the relative URL `userProfle`.
+   */
+  protected unknownPage(name: string): AlephaError {
+    const names = this.pages
+      .map((page) => page.name)
+      .filter((it): it is string => typeof it === "string");
+    const closest = names
+      .map((it) => ({ it, distance: this.distance(name, it) }))
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, 3)
+      .map(({ it }) => `'${it}'`);
+    return new AlephaError(
+      `No page is named '${name}'. Navigate to a page name or to a path starting with "/".` +
+        (closest.length ? ` Closest: ${closest.join(", ")}.` : ""),
+    );
+  }
+
+  /**
+   * Edit distance between two names, for {@link unknownPage}'s suggestions.
+   */
+  protected distance(a: string, b: string): number {
+    const row = Array.from({ length: b.length + 1 }, (_, i) => i);
+    for (let i = 1; i <= a.length; i++) {
+      let previous = row[0];
+      row[0] = i;
+      for (let j = 1; j <= b.length; j++) {
+        const current = row[j];
+        row[j] = Math.min(
+          row[j] + 1,
+          row[j - 1] + 1,
+          previous + (a[i - 1] === b[j - 1] ? 0 : 1),
+        );
+        previous = current;
+      }
+    }
+    return row[b.length];
+  }
+
+  /**
+   * The URL a navigation goes to: a page name resolved with its params, or a
+   * path with the query appended.
+   */
+  protected resolveHref(
+    target: string,
+    options: RouterPushOptions = {},
+  ): string {
+    if (target.startsWith("/")) {
+      if (!options.query || Object.keys(options.query).length === 0) {
+        return target;
+      }
+      const url = new URL(target, "http://localhost");
+      for (const [key, value] of Object.entries(options.query)) {
+        url.searchParams.set(key, value);
+      }
+      return url.pathname + url.search + url.hash;
+    }
+    if (!this.findPage(target)) {
+      throw this.unknownPage(target);
+    }
+    return this.path(target as keyof VirtualRouter<T>, options);
   }
 
   /**
@@ -135,7 +278,7 @@ export class ReactRouter<T extends object> {
 
     // `browser.url` is already stripped of the base path; `location.pathname`
     // is not, and push() re-adds the base, so a non-root BASE_URL doubled it.
-    await this.push(this.browser.url, {
+    await this.browser.push(this.browser.url, {
       replace: true,
       force: true,
     });
@@ -161,8 +304,9 @@ export class ReactRouter<T extends object> {
     return this.state;
   }
 
-  public get pathname(): string {
-    return this.state.url.pathname;
+  public get pathname(): RouterPath {
+    // A URL's pathname always starts with "/".
+    return this.state.url.pathname as RouterPath;
   }
 
   public get query(): Record<string, string> {
@@ -218,45 +362,46 @@ export class ReactRouter<T extends object> {
     await this.browser?.invalidate(props);
   }
 
-  public async push(path: string, options?: RouterPushOptions): Promise<void>;
-  public async push(
-    path: keyof VirtualRouter<T>,
-    options?: RouterPushOptions,
+  /**
+   * Navigate to a page by name, with its params, or to a path starting with
+   * `/`.
+   *
+   * A name no page has throws an `AlephaError` naming the closest ones. A
+   * path honours `query` and `replace`; `params` belongs to a page name.
+   *
+   * @example
+   * ```ts
+   * router.push("userProfile", { params: { id } });
+   * router.push("/settings", { query: { tab: "security" } });
+   * ```
+   */
+  public async push<K extends RouterPageName<T>>(
+    name: K,
+    ...options: RouterPageArgs<T, K>
   ): Promise<void>;
   public async push(
-    path: string | keyof VirtualRouter<T>,
+    path: RouterPath,
+    options?: RouterNavigateOptions,
+  ): Promise<void>;
+  public async push(
+    target: string,
     options?: RouterPushOptions,
   ): Promise<void> {
-    for (const page of this.pages) {
-      if (page.name === path) {
-        await this.browser?.push(
-          this.path(path as keyof VirtualRouter<T>, options),
-          options,
-        );
-        return;
-      }
-    }
-
-    await this.browser?.push(path as string, options);
+    const href = this.resolveHref(target, options);
+    await this.browser?.push(href, options);
   }
 
-  public anchor(path: string, options?: RouterPushOptions): AnchorProps;
-  public anchor(
-    path: keyof VirtualRouter<T>,
-    options?: RouterPushOptions,
+  /**
+   * Anchor props (`href` and an SPA `onClick`) for a page name or a path,
+   * under the same two forms as {@link push}.
+   */
+  public anchor<K extends RouterPageName<T>>(
+    name: K,
+    ...options: RouterPageArgs<T, K>
   ): AnchorProps;
-  public anchor(
-    path: string | keyof VirtualRouter<T>,
-    options: RouterPushOptions = {},
-  ): AnchorProps {
-    let href = path as string;
-
-    for (const page of this.pages) {
-      if (page.name === path) {
-        href = this.path(path as keyof VirtualRouter<T>, options);
-        break;
-      }
-    }
+  public anchor(path: RouterPath, options?: RouterNavigateOptions): AnchorProps;
+  public anchor(target: string, options: RouterPushOptions = {}): AnchorProps {
+    const href = this.resolveHref(target, options);
 
     return {
       href: this.base(href),
@@ -270,7 +415,7 @@ export class ReactRouter<T extends object> {
         ev.stopPropagation();
         ev.preventDefault();
 
-        this.push(href, options).catch(console.error);
+        this.browser?.push(href, options).catch(console.error);
       },
     };
   }
@@ -365,6 +510,11 @@ export class ReactRouter<T extends object> {
   }
 }
 
+/**
+ * The pages of a router class, by property name. `PagePrimitive<any, any,
+ * any>`: a child page whose parent passes it props is not assignable to the
+ * defaulted `PagePrimitive`, and used to be left out.
+ */
 export type VirtualRouter<T> = {
-  [K in keyof T as T[K] extends PagePrimitive ? K : never]: T[K];
+  [K in keyof T as T[K] extends PagePrimitive<any, any, any> ? K : never]: T[K];
 };

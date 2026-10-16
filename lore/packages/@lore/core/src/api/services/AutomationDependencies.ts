@@ -67,6 +67,21 @@ export class AutomationDependencies {
           `Missing ${need.capability}.${need.option} option`,
         );
     }
+    if (
+      rule.enabled &&
+      rule.rule.compatibility &&
+      !(await this.persistence.adoptions.findOne({
+        where: {
+          projectId: rule.projectId,
+          policy: rule.rule.compatibility,
+          automationId: rule.id,
+          state: "adopted",
+        },
+      }))
+    )
+      throw new AutomationDependencyError(
+        "Compatibility policy has not been explicitly adopted",
+      );
     const channels = await this.channels.all(rule.projectId);
     for (const action of rule.rule.actions) {
       if (action.kind !== "notify") continue;

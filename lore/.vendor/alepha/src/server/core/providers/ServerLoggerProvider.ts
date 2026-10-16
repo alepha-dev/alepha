@@ -2,7 +2,7 @@ import { $hook, $inject, Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 
-import { HttpError } from "../errors/HttpError.ts";
+import { isHttpError } from "../errors/HttpError.ts";
 import { LogRedaction } from "../services/LogRedaction.ts";
 
 export class ServerLoggerProvider {
@@ -29,7 +29,7 @@ export class ServerLoggerProvider {
   }
 
   public readonly onRequest = $hook({
-    on: "server:onRequest",
+    on: "server:request:before",
     priority: "first",
     handler: ({ route, request }) => {
       if (route.silent || request.metadata.vite) {
@@ -56,7 +56,7 @@ export class ServerLoggerProvider {
   });
 
   public readonly onError = $hook({
-    on: "server:onError",
+    on: "server:request:error",
     priority: "last",
     handler: ({ error }) => {
       // An expected 4xx is the server working correctly: a missing
@@ -66,7 +66,7 @@ export class ServerLoggerProvider {
       // unauthenticated traffic, and any alerting on it is worthless.
       //
       // 5xx and anything without a status stay at `error`.
-      const status = HttpError.is(error) ? error.status : undefined;
+      const status = isHttpError(error) ? error.status : undefined;
       if (status && status >= 400 && status < 500) {
         // ⚠️ A 403 is the one refusal whose reason exists nowhere else.
         //
@@ -87,9 +87,9 @@ export class ServerLoggerProvider {
 
         this.log[level]("Request rejected", {
           status,
-          // The class name, not just the message: `ForbiddenError` and
-          // `SecurityError` are raised by different layers and read alike once
-          // flattened to a string.
+          // The error's name, not just the message: `FORBIDDEN` and `SECURITY`
+          // are raised by different layers and read alike once flattened to a
+          // string.
           error: error.name,
           message: error.message,
         });
@@ -101,7 +101,7 @@ export class ServerLoggerProvider {
   });
 
   public readonly onResponse = $hook({
-    on: "server:onResponse",
+    on: "server:response:after",
     priority: "last",
     handler: ({ route, request, response }) => {
       if (route.silent || request.metadata.vite) {

@@ -4,11 +4,15 @@ void React;
 
 import { AlephaError, SchemaValidationError, z } from "alepha";
 import type { RealmConfig } from "alepha/api/users";
-import { isMfaRequired, type MfaChallenge, useAuth } from "alepha/react/auth";
+import {
+  type MfaChallenge,
+  MfaRequiredError,
+  useAuth,
+} from "alepha/react/auth";
 import { FormValidationError, useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { HttpError } from "alepha/server";
+import { HttpError, isHttpError } from "alepha/server";
 import { AlertCircle, Mail, User } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 
@@ -148,17 +152,14 @@ export const AuthLogin = (props: AuthLoginProps) => {
       } catch (err) {
         // The password was right and the realm wants a second factor. Not a
         // failure: swap the form for the code step and carry on.
-        if (isMfaRequired(err)) {
+        if (err instanceof MfaRequiredError) {
           setChallenge(err.data);
           return;
         }
         // A 401 from the password grant is a refused password. Matched on the
-        // status, not on `err.error`: `InvalidCredentialsError` names itself
-        // `UnauthorizedError`, so the wire never carries its class name, and
-        // the name check this replaced never matched. A wrong password reached
-        // the alert as an untranslated "Invalid credentials" instead of the
-        // password field.
-        if (HttpError.is(err, 401)) {
+        // status rather than on `INVALID_CREDENTIALS`, so any refusal of the
+        // grant lands on the password field instead of the alert.
+        if (isHttpError(err, 401)) {
           throw new FormValidationError({
             message: tr("auth.login.invalid", {
               default: "Invalid identifier or password",

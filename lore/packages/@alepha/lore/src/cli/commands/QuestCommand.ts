@@ -378,8 +378,11 @@ export class QuestCommand {
             ...(flags.accept ? ["accept it"] : []),
           ];
           throw new CommandError(
-            `Created ${handle}, but did not ${missed.join(" or ")}: ${error instanceof Error ? error.message : String(error)}`,
-            { cause: error, exitCode: 1 },
+            { exitCode: 1 },
+            {
+              message: `Created ${handle}, but did not ${missed.join(" or ")}: ${error instanceof Error ? error.message : String(error)}`,
+              cause: error,
+            },
           );
         }
 
@@ -727,14 +730,18 @@ export class QuestCommand {
   ): void {
     if (epic.status !== "draft" && epic.status !== "ready") {
       throw new CommandError(
-        `Nothing written: E${epic.number} is ${epic.status}, and a quest is filed into an epic only while it is draft or ready. File it in another epic, or add an objective to a quest already in this one.`,
         { exitCode: 1 },
+        {
+          message: `Nothing written: E${epic.number} is ${epic.status}, and a quest is filed into an epic only while it is draft or ready. File it in another epic, or add an objective to a quest already in this one.`,
+        },
       );
     }
     if (accept && epic.status === "draft") {
       throw new CommandError(
-        `Nothing written: E${epic.number} is a draft, and a quest in a draft epic cannot be accepted. Leave out --accept; whether the epic is ready is its owner's call.`,
         { exitCode: 1 },
+        {
+          message: `Nothing written: E${epic.number} is a draft, and a quest in a draft epic cannot be accepted. Leave out --accept; whether the epic is ready is its owner's call.`,
+        },
       );
     }
   }

@@ -44,7 +44,10 @@ const RoadmapShippedRow = (props: RoadmapShippedRowProps) => {
       {props.member && release.tag ? (
         <Link
           href={router.path("projectRelease", {
-            params: { releaseTag: release.tag },
+            params: {
+              projectSlug: router.state.params.projectSlug,
+              releaseTag: release.tag,
+            },
           })}
           className="font-mono text-sm font-medium"
         >

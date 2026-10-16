@@ -159,10 +159,10 @@ export class RegistrationService {
       // An outage is not a limit this address hit: "too many attempts" would
       // lie, and a 503 says nothing about the address.
       if (attempt.reason === "store" && !attempt.allowed)
-        throw new HttpError({
-          status: 503,
-          message: "Registration is temporarily unavailable",
-        });
+        throw new HttpError(
+          { status: 503 },
+          { message: "Registration is temporarily unavailable" },
+        );
       if (!attempt.allowed) {
         this.log.warn("Registration rate limit exceeded", { ip: request.ip });
         throw new BadRequestError(
@@ -433,10 +433,10 @@ export class RegistrationService {
       this.log.warn("Invalid or expired registration intent", {
         intentId: body.intentId,
       });
-      throw new HttpError({
-        status: 410,
-        message: "Invalid or expired registration intent",
-      });
+      throw new HttpError(
+        { status: 410 },
+        { message: "Invalid or expired registration intent" },
+      );
     }
 
     const userRealmName = intent.realmName;

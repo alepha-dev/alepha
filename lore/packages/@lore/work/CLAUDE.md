@@ -352,3 +352,23 @@ Bindings remain tokens in the ordinary stored AST; literal setup stays isolated.
 Work registers bounded quest, release, epic and feedback picker pages through
 core's automation reference registry, each with its own source-read permission.
 These lists contain same-project IDs and labels and do not project event bodies.
+
+## Compatibility policy ownership (#E43, #Q2044)
+
+`WorkAutomationAdoptions` registers two explicit policies through core. Per-quest
+reminders retain hourly processing, reminderNextAt/reminderInterval, acceptedBy,
+reminder_sent history and the existing quest controls. The live option remains
+work.reminder; frozen projects.features.questReminder remains decodable. The
+legacy due query excludes adopted policies before its 50-row limit, then joins
+enqueue and reminder settlement through core's native job fence. The shared
+settlement predicate prevents a changed/completed quest from advancing twice.
+
+Release announcements retain the current roster except publisher, inbox/email,
+releases preferences and no folio prerequisite. The compatibility audience uses
+core's bounded durable roster continuation. `ReleaseNotifier` remains the fallback
+for unadopted policies, using publication identity in its native legacy receipt.
+Work also registers queued-template project resolvers: release scope identifies
+the project, new reminders carry projectId, and old reminders resolve questUrl's
+slug. Unknown queued provenance fails closed. Adoption changes neither ordinary
+mention/default/workflow code nor project grants, and opt-out never restores
+fallback. Global deletion of legacy code is a later explicit retirement decision.

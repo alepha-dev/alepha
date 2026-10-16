@@ -1,4 +1,5 @@
-import { createPrimitive, KIND, Primitive } from "alepha";
+import { createPrimitive, Primitive } from "alepha";
+import { KIND } from "alepha/internal";
 
 import type { SitemapPrimitiveOptions } from "./$sitemap.ts";
 

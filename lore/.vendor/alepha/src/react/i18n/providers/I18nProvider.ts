@@ -1,11 +1,4 @@
-import {
-  $hook,
-  $inject,
-  Alepha,
-  SchemaValidationError,
-  TypeProvider,
-  z,
-} from "alepha";
+import { $hook, $inject, Alepha, SchemaValidationError, z } from "alepha";
 import { type DateTime, DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 // One-directional dependency, `i18n → head`: the head module never looks at
@@ -227,7 +220,7 @@ export class I18nProvider<
   });
 
   protected readonly onRender = $hook({
-    on: "server:onRequest",
+    on: "server:request:before",
     priority: "last",
     handler: async ({ request }) => {
       this.alepha.store.set(
@@ -288,11 +281,11 @@ export class I18nProvider<
   /**
    * What the generated Cloudflare worker needs to resolve a request's language
    * before the app boots: the registered languages and the options. Answers
-   * `react:server:edge` at build time (#E78). Prefix routing with excluded
+   * `react:edge:configure:before` at build time (#E78). Prefix routing with excluded
    * paths is not reproduced there: the worker then skips its pre-boot lookup.
    */
   protected readonly onEdge = $hook({
-    on: "react:server:edge",
+    on: "react:edge:configure:before",
     handler: (event) => {
       const localeProvider = this.localeProvider;
       event.functions = {
@@ -371,7 +364,6 @@ export class I18nProvider<
     this.numberFormatRef = undefined;
     this.dateFormatRef = undefined;
     this.dateTimeProvider.setLocale(this.lang);
-    TypeProvider.setLocale(this.lang);
 
     // Re-apply the global head so `<html lang>` follows the switch. Nothing
     // else does: choosing a language in cookie mode does not navigate, and the
@@ -430,7 +422,7 @@ export class I18nProvider<
   };
 
   protected readonly mutate = $hook({
-    on: "state:mutate",
+    on: "state:mutated",
     handler: async ({ key, value }) => {
       // Prefix-mode navigation changed the active locale (set by the router) →
       // activate the matching language (loads dictionaries, refreshes
@@ -564,7 +556,7 @@ export class I18nProvider<
 
     // handle Zod errors
     if (value instanceof SchemaValidationError) {
-      return TypeProvider.translateError(value, this.lang);
+      return value.message;
     }
 
     // return string values as-is

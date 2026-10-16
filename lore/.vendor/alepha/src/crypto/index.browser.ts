@@ -1,5 +1,7 @@
 import { $module } from "alepha";
 
+export * from "./providers/CryptoProviderBase.ts";
+
 import { BrowserCryptoProvider } from "./providers/BrowserCryptoProvider.ts";
 
 export { BrowserCryptoProvider as CryptoProvider } from "./providers/BrowserCryptoProvider.ts";

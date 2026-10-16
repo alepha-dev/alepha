@@ -209,7 +209,7 @@ export class StateManager<State extends object = AlephaState> {
    * holds its value.
    *
    * This is the order-independent way to discover atoms. The
-   * `"state:register"` event fires exactly once per key and `EventManager`
+   * `"state:registered"` event fires exactly once per key and `EventManager`
    * has no replay buffer, so a service instantiated after an atom registered
    * never hears about it — a real hazard, since `$module.register()`
    * registers `atoms[]` BEFORE it wires `imports[]` and injects `services[]`.
@@ -241,7 +241,7 @@ export class StateManager<State extends object = AlephaState> {
     // A value can land under an atom's key before the atom registers — an
     // SSR hydration payload, an `Alepha.create(seed)` value, or a
     // fork-scoped write (e.g. `$cookie` mirrors its value into the store
-    // during `server:onRequest`, ahead of the atom's first access). `get()`
+    // during `server:request:before`, ahead of the atom's first access). `get()`
     // resolves ALS (request-scoped fork) layers before the app store, so
     // such a value must be decoded in the layer it physically lives in —
     // decoding only `this.store` would let a raw, unvalidated ALS value
@@ -269,7 +269,7 @@ export class StateManager<State extends object = AlephaState> {
     this.bindWebStorage(atom);
 
     // Fire-and-forget, but `emit`'s executor runs sync hooks synchronously
-    // before hitting its first `await` — so a sync "state:register" handler
+    // before hitting its first `await` , so a sync "state:registered" handler
     // (e.g. AtomCookiePersistence's lazy in-request cookie seed) completes
     // before this call returns. If a handler on this event is ever made
     // `async`, that guarantee silently breaks: `register()` returns before
@@ -283,7 +283,7 @@ export class StateManager<State extends object = AlephaState> {
     // then `services[]`). Consumers that need the full set of atoms must
     // read {@link listAtoms} instead.
     this.events
-      ?.emit("state:register", { atom }, { catch: true })
+      ?.emit("state:registered", { atom }, { catch: true })
       .catch(() => null);
 
     return this;
@@ -299,7 +299,7 @@ export class StateManager<State extends object = AlephaState> {
    *    fork that already holds the same primitive value, the app-store write
    *    would simply never happen.
    * 2. A registration seed is initialisation, NOT a mutation, so it must not
-   *    emit `state:mutate`. Persistence adapters listen on that event: an
+   *    emit `state:mutated`. Persistence adapters listen on that event: an
    *    atom registering lazily mid-request would otherwise emit a mutation
    *    carrying its *default*, and the cookie adapter would dutifully write
    *    it back as a `Set-Cookie` — overwriting the very cookie the request
@@ -419,7 +419,7 @@ export class StateManager<State extends object = AlephaState> {
       this.safeRemoveItem(storage, atom.key);
     }
 
-    this.events.on("state:mutate", ({ key: mutatedKey, value }) => {
+    this.events.on("state:mutated", ({ key: mutatedKey, value }) => {
       if (mutatedKey !== atom.key) {
         return;
       }
@@ -628,7 +628,7 @@ export class StateManager<State extends object = AlephaState> {
     if (options?.skipEvents !== true) {
       this.events
         ?.emit(
-          "state:mutate",
+          "state:mutated",
           { key: key as keyof AlephaState, value, prevValue },
           { catch: true },
         )
@@ -689,7 +689,7 @@ export class StateManager<State extends object = AlephaState> {
     if (target instanceof Computed) {
       const keys = new Set(target.keys());
       let prev = this.get(target);
-      return this.events.on("state:mutate", (ev) => {
+      return this.events.on("state:mutated", (ev) => {
         if (!keys.has(ev.key as string)) {
           return;
         }
@@ -704,7 +704,7 @@ export class StateManager<State extends object = AlephaState> {
       this.register(target);
     }
     const key = target instanceof Atom ? target.key : target;
-    return this.events.on("state:mutate", (ev) => {
+    return this.events.on("state:mutated", (ev) => {
       if (ev.key === key) {
         callback(ev.value, ev.prevValue);
       }

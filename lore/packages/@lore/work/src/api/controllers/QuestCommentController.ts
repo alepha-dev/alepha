@@ -137,6 +137,7 @@ export class QuestCommentController {
   }
 
   listQuestComments = $action({
+    method: "GET",
     use: [this.ownsQuest("quest:read")],
     schema: {
       params: z.object({ id: z.integer() }),

@@ -60,7 +60,7 @@ const AutomationOverviewPage = () => {
     boolean
   >(
     {
-      handler: async (row, enabled) => {
+      handler: async (_context, row, enabled) => {
         if (!project) return false;
         try {
           await api.setAutomationEnabled({
@@ -78,7 +78,7 @@ const AutomationOverviewPage = () => {
   );
   const remove = useAction<[row: AutomationResource], boolean>(
     {
-      handler: async (row) => {
+      handler: async (_context, row) => {
         if (!project) return false;
         if (
           !(await dialog.confirm({
@@ -176,6 +176,15 @@ const AutomationOverviewPage = () => {
           };
         }}
         actions={[
+          {
+            icon: Settings,
+            label: tr("automation.adoption.title"),
+            onClick: () =>
+              router.push("projectAutomationAdoption", {
+                params: { projectSlug: project.slug },
+              }),
+            disabled: busy,
+          },
           {
             icon: Braces,
             label: tr("automation.variables.title"),

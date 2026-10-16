@@ -50,7 +50,7 @@ export const useAgentPromptSubject = () => {
         router.path(
           item.route as never,
           {
-            params: item.params,
+            params: { projectSlug: project?.slug, ...item.params },
             query: item.query,
           } as never,
         ),
@@ -60,7 +60,14 @@ export const useAgentPromptSubject = () => {
     forPage: (route: string): AgentPromptProjectSubject => ({
       project: project?.title ?? "",
       slug: project?.slug ?? "",
-      url: absolute(router.path(route as never)),
+      url: absolute(
+        router.path(
+          route as never,
+          {
+            params: { projectSlug: project?.slug },
+          } as never,
+        ),
+      ),
     }),
   };
 };

@@ -1,18 +1,18 @@
+import { z } from "alepha";
+
 import { DbError } from "./DbError.ts";
 
 /**
- * Error thrown when there is a version mismatch.
- * It's thrown by {@link Repository#save} when the updated entity version does not match the one in the database.
- * This is used for optimistic concurrency control.
- *
- * Answers 409 Conflict over HTTP: the row changed underneath the request,
- * which is the caller's to resolve by reading it again, not a server fault.
+ * An optimistic-locking write whose version no longer matches the row.
  */
-export class DbVersionMismatchError extends DbError {
-  readonly name = "DbVersionMismatchError";
-  readonly status = 409;
+export const DbVersionMismatchError = DbError.extend({
+  name: "DB_VERSION_MISMATCH",
+  default: { status: 409 },
+  schema: z.object({ table: z.text(), id: z.any() }),
+  message: (data) =>
+    `Version mismatch for table '${data.table}' and id '${data.id}'`,
+});
 
-  constructor(table: string, id: any) {
-    super(`Version mismatch for table '${table}' and id '${id}'`);
-  }
-}
+export type DbVersionMismatchError = InstanceType<
+  typeof DbVersionMismatchError
+>;

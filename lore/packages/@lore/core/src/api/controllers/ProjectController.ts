@@ -427,6 +427,7 @@ export class ProjectController {
   });
 
   getMyProjects = $action({
+    method: "GET",
     use: [
       $secure({ permissions: ["project:read"] }),
       // `noCache`, not a freshness window: the viewer creates, renames and
@@ -484,6 +485,7 @@ export class ProjectController {
    * the quota state needed to gate the "Create project" CTA.
    */
   getHomeOverview = $action({
+    method: "GET",
     use: [$secure({ permissions: ["project:read"] })],
     schema: {
       response: z.object({
@@ -574,6 +576,7 @@ export class ProjectController {
   // -------------------------------------------------------------------------------------------------------------------
 
   getProjectUsers = $action({
+    method: "GET",
     use: [this.ownsProject("project:read")],
     schema: {
       params: z.object({
@@ -627,6 +630,7 @@ export class ProjectController {
    * the quest page.
    */
   getProjectActivity = $action({
+    method: "GET",
     use: [this.ownsProject("project:read")],
     path: "/projects/:id/activity",
     schema: {
@@ -754,6 +758,7 @@ export class ProjectController {
    * for the avatar column, so it is deliberately not repeated here.
    */
   getProjectActivityFilters = $action({
+    method: "GET",
     use: [this.ownsProject("project:read")],
     path: "/projects/:id/activity/filters",
     schema: {
@@ -1014,6 +1019,7 @@ export class ProjectController {
   }
 
   getProjectById = $action({
+    method: "GET",
     use: [this.ownsProject("project:read")],
     schema: {
       params: z.object({
@@ -1205,6 +1211,7 @@ export class ProjectController {
   });
 
   getProjectMembers = $action({
+    method: "GET",
     use: [
       // Same reasoning as `getMyProjects`: members are invited and removed
       // from the settings page that reads this list, so a freshness window

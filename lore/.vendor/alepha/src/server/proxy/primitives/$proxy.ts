@@ -1,4 +1,5 @@
-import { type Async, createPrimitive, KIND, Primitive } from "alepha";
+import { type Async, createPrimitive, Primitive } from "alepha";
+import { KIND } from "alepha/internal";
 import type { ServerRequest } from "alepha/server";
 
 /**

@@ -1,9 +1,9 @@
 import {
   createPrimitive,
-  KIND,
   PipelinePrimitive,
   type PipelinePrimitiveOptions,
 } from "alepha";
+import { KIND } from "alepha/internal";
 
 import type {
   TopicHandler,

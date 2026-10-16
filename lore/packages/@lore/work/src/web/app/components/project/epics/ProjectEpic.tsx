@@ -174,7 +174,7 @@ const ProjectEpic = (props: ProjectEpicProps) => {
   // handlers, so backing out sends nothing.
   const attachQuestAction = useAction<[questId: number], void>(
     {
-      handler: async (questId) => {
+      handler: async (_ctx, questId) => {
         setEpic(
           await epicApi.attachQuest({
             params: { id: epic.id },
@@ -197,7 +197,7 @@ const ProjectEpic = (props: ProjectEpicProps) => {
    */
   const createdQuestAction = useAction<[quest: QuestResource], void>(
     {
-      handler: async (quest) => {
+      handler: async (_ctx, quest) => {
         try {
           setEpic(
             await epicApi.attachQuest({
@@ -221,7 +221,7 @@ const ProjectEpic = (props: ProjectEpicProps) => {
 
   const detachQuestAction = useAction<[quest: QuestResource], void>(
     {
-      handler: async (quest) => {
+      handler: async (_ctx, quest) => {
         const ok = await dialog.confirm({
           title: tr("epic.quests.detach.title"),
           description: tr("epic.quests.detach.confirm", {
@@ -379,7 +379,9 @@ const ProjectEpic = (props: ProjectEpicProps) => {
           busy={busy}
           onAttach={(questId) => void attachQuestAction.run(questId)}
           onDetach={(quest) => void detachQuestAction.run(quest)}
-          onCreated={(quest) => createdQuestAction.run(quest)}
+          onCreated={async (quest) => {
+            await createdQuestAction.run(quest);
+          }}
         />
       )}
 

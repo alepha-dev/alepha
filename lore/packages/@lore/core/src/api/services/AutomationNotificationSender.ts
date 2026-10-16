@@ -17,6 +17,7 @@ import { AutomationAuthority } from "./AutomationAuthority.ts";
 import { AutomationCatalog } from "./AutomationCatalog.ts";
 import { AutomationChannels } from "./AutomationChannels.ts";
 import { AutomationDatabase } from "./AutomationDatabase.ts";
+import { AutomationLegacyDispatch } from "./AutomationLegacyDispatch.ts";
 import { AutomationPersistence } from "./AutomationPersistence.ts";
 import { CoreAutomationReferences } from "./CoreAutomationReferences.ts";
 
@@ -30,8 +31,25 @@ export class AutomationNotificationSender extends NotificationSenderService {
     payload: NotificationPayload,
     context: NotificationSendContext = {},
   ) {
-    if (payload.variables?.automationId === undefined)
-      return super.send(payload, context);
+    if (payload.variables?.automationId === undefined) {
+      return this.alepha.inject(AutomationDatabase).primary(async () => {
+        if (
+          !(await this.alepha.inject(AutomationLegacyDispatch).allowed(payload))
+        ) {
+          await this.writeReceipt(context, payload, {
+            status: "skipped",
+            skipReason: "unavailable",
+            recipient: payload.contact ?? `${payload.type}:configured`,
+          });
+          return {
+            type: payload.type,
+            to: payload.contact ?? `${payload.type}:configured`,
+            skipped: "unavailable" as const,
+          };
+        }
+        return super.send(payload, context);
+      });
+    }
     return this.alepha
       .inject(AutomationDatabase)
       .primary(() => this.sendAutomation(payload, context));

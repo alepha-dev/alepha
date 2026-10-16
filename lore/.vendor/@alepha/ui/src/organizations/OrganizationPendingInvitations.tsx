@@ -40,7 +40,7 @@ export const OrganizationPendingInvitations = (
         invitation.id,
         invitation.email,
       );
-      if (revoked) await props.onRevoked();
+      if (revoked.ok) await props.onRevoked();
     } finally {
       props.onBusyChange?.(false);
     }

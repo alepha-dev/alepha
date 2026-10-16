@@ -5,6 +5,7 @@ import {
   sql,
   type SQLLike,
 } from "alepha/orm";
+import { getTableColumns, type PgTable } from "alepha/orm/drizzle";
 
 /**
  * Decodes native batch RETURNING rows using the same driver columns and entity
@@ -37,7 +38,7 @@ export class AutomationBatchRepository<
    * caller's native receipt batch. This seam deliberately dispatches no job.
    */
   public insertStatement(data: Parameters<Repository<T>["create"]>[0]) {
-    return this.rawInsert().values(this.cast(data, true));
+    return this.rawInsert().values(this.cast(data, true)).getSQL();
   }
   public scalar(
     where: Parameters<Repository<T>["updateOne"]>[0],
@@ -74,7 +75,7 @@ export class AutomationBatchRepository<
     const query = this.rawUpdate()
       .set(values as any)
       .where(this.toSQL(this.withDeletedAt(where, {})));
-    return returning ? query.returning(this.table) : query;
+    return (returning ? query.returning(this.pgTable) : query).getSQL();
   }
   public async prepareEffectCreate(
     data: Parameters<Repository<T>["create"]>[0],
@@ -84,7 +85,10 @@ export class AutomationBatchRepository<
       data,
     });
     return {
-      statement: this.insertStatement(data).returning(this.table),
+      statement: this.rawInsert()
+        .values(this.cast(data, true))
+        .returning(this.pgTable)
+        .getSQL(),
       data,
     };
   }
@@ -143,7 +147,9 @@ export class AutomationBatchRepository<
   }
   public decodeRaw(row: Record<string, unknown>): Infer<T> {
     const mapped: Record<string, unknown> = {};
-    for (const [key, column] of Object.entries(this.table)) {
+    for (const [key, column] of Object.entries(
+      getTableColumns(this.pgTable as PgTable),
+    )) {
       const value = Object.hasOwn(row, column.name)
         ? row[column.name]
         : row[key];

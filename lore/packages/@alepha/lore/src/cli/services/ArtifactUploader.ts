@@ -1,7 +1,7 @@
 import { $inject, AlephaError, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { HttpClient, HttpError } from "alepha/server";
+import { HttpClient, isHttpError } from "alepha/server";
 import { FileSystemProvider } from "alepha/system";
 
 import { LoreClientService } from "./LoreClientService.ts";
@@ -112,7 +112,7 @@ export class ArtifactUploader {
         const delay = this.retryDelays[attempt];
         if (
           delay === undefined ||
-          !HttpError.is(error) ||
+          !isHttpError(error) ||
           !ArtifactUploader.TRANSIENT.includes(error.status)
         ) {
           throw error;

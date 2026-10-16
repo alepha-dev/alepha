@@ -1,7 +1,12 @@
-import { AlephaError } from "alepha";
+import { $error } from "alepha";
+
 /**
- * A transition exhausted its definite compare-and-set conflict attempts.
+ * An actor transition that kept losing the race for its state until its
+ * retries ran out.
  */
-export class ActorContentionError extends AlephaError {
-  override name = "ActorContentionError";
-}
+export const ActorContentionError = $error({
+  name: "ACTOR_CONTENTION",
+  message: "Actor transition contention exhausted",
+});
+
+export type ActorContentionError = InstanceType<typeof ActorContentionError>;

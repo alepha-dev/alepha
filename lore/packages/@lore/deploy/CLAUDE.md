@@ -263,3 +263,13 @@ retain the same token, so a later approved value cannot leave stale wording.
 Deploy registers bounded picker pages for distinct app names across environments
 and deployment snapshot labels, both under current `app:read`. No raw logs or
 cross-project instance data enter these options.
+
+## Uptime healthchecks (#E25)
+
+The Apps `uptime` option enables independent HTTP, TCP, certificate and push monitors, without a sigil. The board is `/:projectSlug/uptime` (`projectUptime`); detail is `/uptime/:monitorId` (`projectMonitor`). Read APIs remain member-gated when the option is off; mutations require `app:manage` and the option.
+
+`UptimeJobs` checks due monitors each minute with a lock and ten workers. Socket probes require a Node host. Push intervals are silence budgets, checked every minute. `UptimeStateService` saves versioned state and reconciles exact incident boundaries; analytics hold hourly probe totals and heartbeats retain the latest 100 samples. The list and detail show 50 beats. Detail reads uptime cards from hourly totals, latency from hourly or daily totals, and the latest 100 incidents with exact durations. Gaps in the chart mean no successful sample, never zero latency. Every read surfaces the analytics backend's `estimated` flag.
+
+Confirmed outages raise a `UptimeOutage` blight keyed by project and monitor. Its count comes from exact incident rows, so reapplying an open transition does not add an occurrence. Recovery resolves the blight; if retention already purged it, recovery leaves it absent. An open outage keeps the inbox reachable even when crash tracking is off and no sigil exists.
+
+Monitor email alerts default on, with an empty recipient list meaning the current organization owner, read from membership rather than `projects.createdBy`. A monitor can disable email or name up to 20 recipients. `UptimeNotificationService` queues one outage and one recovery template per incident through `$notification`, with a per-incident, transition and recipient deduplication key. Email uses the framework's delivery retries, suppression and notification preferences. Blight and email outputs catch their failures independently. Webhook channels and public status pages were deferred by the owner in #F1368.

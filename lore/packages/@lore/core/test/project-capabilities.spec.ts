@@ -297,7 +297,11 @@ describe("Project capabilities", () => {
       { user },
     );
     const apps = fetched.data.capabilities.find((it) => it.key === "apps");
-    expect(apps?.options).toStrictEqual({ track: true, deploy: false });
+    expect(apps?.options).toStrictEqual({
+      track: true,
+      deploy: false,
+      uptime: false,
+    });
   });
 
   it("refuses a capability write from someone who is not the owner", async ({

@@ -2120,6 +2120,9 @@ export default {
   "account.notifications.category.tasks": "Quest reminders",
   "account.notifications.category.tasks.description":
     "Nudges about a quest you accepted and have not finished.",
+  "account.notifications.category.uptime": "Healthchecks",
+  "account.notifications.category.uptime.description":
+    "Confirmed outages and recoveries from your uptime monitors.",
   "account.notifications.category.estates": "Deploy credentials",
   "account.notifications.category.estates.description":
     "A deploy credential you own has stopped working.",
@@ -2430,7 +2433,6 @@ export default {
   "epic.quests.column.updated": "Updated",
 
   // -- Dashboard (the signed-in landing page) -------------------------------
-  "project.dashboard.title": "Dashboard",
   "project.dashboard.empty.title": "Nothing on this board yet",
   "project.dashboard.empty.body":
     "A board is a few numbers worth checking without opening anything. Add the first card.",
@@ -2439,10 +2441,6 @@ export default {
   "project.dashboard.empty.body.noMetrics":
     "This project does not do anything a card can count yet. Turn on a capability in Settings and the board has something to show.",
   "project.dashboard.empty.docs": "How project dashboards work",
-  "project.dashboard.standfirst.computed":
-    "The default board, computed from what this project does and holds.",
-  "project.dashboard.standfirst": "$1 cards on this project's board.",
-  "project.dashboard.standfirst.one": "1 card on this project's board.",
   "project.dashboard.card.delete.shared":
     "The board belongs to the project, so this removes the card for everyone in it.",
   "dashboard.card.seeAll": "See all",
@@ -2461,8 +2459,6 @@ export default {
   "dashboard.segment.shelved": "shelved",
   "dashboard.segment.held": "on hold",
   "dashboard.marker.deploy": "Deployed",
-  "dashboard.edit": "Edit board",
-  "dashboard.edit.done": "Done",
   "dashboard.footer.release.ready": "all $1 done, ready to publish",
   "dashboard.card.size": "Size",
   "dashboard.card.size.option": "$1 wide, $2 tall",
@@ -2598,6 +2594,8 @@ export default {
   "dashboard.filterField.markdown": "Note",
   "dashboard.filter.markdownPlaceholder":
     "Write in markdown. Everyone who reads the board sees it.",
+  "dashboard.edit": "Edit",
+  "dashboard.save": "Save",
   "dashboard.customize": "Customize",
   "dashboard.menu": "Board options",
   "dashboard.reset": "Reset to default",
@@ -2632,7 +2630,6 @@ export default {
     "It has no board any more. What it kept is still here to read.",
   "dashboard.archived.folios": "Open its folios",
   "dashboard.archived.quests": "Open its quests",
-  "dashboard.refreshed": "Refreshed $1.",
   "dashboard.addCard": "Add card",
 
   "dashboard.card.options": "Card options",
@@ -2987,4 +2984,123 @@ export default {
   "automation.delivery.failed": "Failed",
   "automation.delivery.rejected": "Rejected",
   "automation.delivery.skipped": "Skipped",
+  "uptime.since": "Since $1",
+  "uptime.certExpiry": "Certificate expires $1",
+  "uptime.chartTitle": "Mean latency",
+  "uptime.chartNote":
+    "Successful checks only. Gaps mean no successful samples. The 24-hour view uses hours; longer views use calendar days.",
+  "uptime.incidents": "Incident history",
+  "uptime.incidentLimit":
+    "The latest 100 incidents. Pausing a monitor keeps an existing outage open.",
+  "uptime.ongoing": "Ongoing",
+  "uptime.duration": "$1 seconds",
+  "uptime.noIncidents": "No incidents recorded.",
+  "uptime.emailAlerts": "Email alerts",
+  "uptime.emailAlertsDescription":
+    "One email when an incident opens and one when it recovers.",
+  "uptime.recipients": "Recipients (optional)",
+  "uptime.recipientsDescription":
+    "Comma-separated email addresses, up to 20. Leave blank to alert the current project owner.",
+  "uptime.invalidRecipients": "Enter up to 20 valid email addresses.",
+  "uptime.title": "Uptime",
+  "uptime.empty": "No monitors yet.",
+  "project.capability.apps.option.uptime.label": "Healthchecks",
+  "project.capability.apps.option.uptime.description":
+    "Check websites, ports, certificates and scheduled jobs without a sigil.",
+  "uptime.description": "Website, port, certificate and scheduled job checks.",
+  "uptime.recentChecks": "Recent checks",
+  "uptime.notMeasured": "Not measured",
+  "uptime.beatTitle": "$1: $2 ms, $3",
+  "uptime.kind.http": "HTTP(S)",
+  "uptime.kind.tcp": "TCP port",
+  "uptime.kind.cert": "TLS certificate",
+  "uptime.kind.push": "Push receipt",
+  "uptime.status.up": "Up",
+  "uptime.status.down": "Down",
+  "uptime.status.pending": "Pending",
+  "uptime.status.paused": "Paused",
+  "uptime.status.latency": "Slow",
+  "uptime.uptime": "Uptime",
+  "uptime.lastLatency": "Last latency",
+  "uptime.latencyValue": "$1 ms",
+  "uptime.edit": "Edit",
+  "uptime.pause": "Pause",
+  "uptime.resume": "Resume",
+  "uptime.delete": "Delete",
+  "uptime.rotate": "Rotate push URL",
+  "uptime.editTitle": "Edit monitor",
+  "uptime.createTitle": "Add monitor",
+  "uptime.name": "Name",
+  "uptime.kindLabel": "Kind",
+  "uptime.kindImmutable": "Create a new monitor to change its kind.",
+  "uptime.invalidTarget": "Use a valid target for this monitor kind.",
+  "uptime.target": "Target",
+  "uptime.httpTarget": "An http or https URL.",
+  "uptime.socketTarget":
+    "A host and port, such as example.com:443. TCP and certificate checks require self-hosted Lore.",
+  "uptime.pushDescription":
+    "A private URL appears once after creation. Call it whenever the job finishes.",
+  "uptime.interval": "Interval (seconds)",
+  "uptime.timeout": "Timeout (seconds)",
+  "uptime.confirmations": "Failures before down",
+  "uptime.expectedStatus": "Expected status (optional)",
+  "uptime.keyword": "Body keyword (optional)",
+  "uptime.budget": "Latency budget in ms (optional)",
+  "uptime.certWarning": "Warn before expiry (days)",
+  "uptime.cancel": "Cancel",
+  "uptime.save": "Save changes",
+  "uptime.create": "Create monitor",
+  "uptime.tokenTitle": "Copy this private push URL now. It is shown only once.",
+  "uptime.copyUrl": "Copy push URL",
+  "uptime.copied": "Push URL copied",
+  "uptime.done": "Done",
+  "uptime.pushUrl": "Push URL",
+  "uptime.deleteTitle": "Delete monitor?",
+  "uptime.deleteDescription": "This deletes the monitor and its check history.",
+  "uptime.rotateDescription":
+    "The previous push URL will stop working. Copy the new URL and update the job that calls it.",
+  "uptime.windowLabel": "Window",
+  "uptime.window.24h": "24 hours",
+  "uptime.window.7d": "7 days",
+  "uptime.window.30d": "30 days",
+  "uptime.estimated": "Estimated from sampled history.",
+  "uptime.bucketNote":
+    "Uptime uses hourly buckets, including the current partial hour.",
+  "uptime.loading": "Loading monitors...",
+  "uptime.staleAfter": "Stale after (seconds)",
+  "automation.adoption.title": "Adopt existing policies",
+  "automation.adoption.description":
+    "Keep existing policies until a named member explicitly consents. Capabilities and grants stay under owner control.",
+  "automation.adoption.reminders": "Per-quest reminders",
+  "automation.adoption.releases": "Release announcements",
+  "automation.adoption.reminderDescription":
+    "Hourly processing preserves due dates, intervals, assignees, controls and history. Existing tasks notification preferences apply.",
+  "automation.adoption.releaseDescription":
+    "The current roster receives inbox and email announcements, except the publisher. Releases preferences apply. No folio is required. This preview assumes you publish.",
+  "automation.adoption.author": "Named author",
+  "automation.adoption.channels": "Required channels",
+  "automation.adoption.grants": "Required grants",
+  "automation.adoption.recipients": "Recipients",
+  "automation.adoption.noRecipients": "No recipients currently selected.",
+  "automation.adoption.moreRecipients":
+    "The preview shows up to 50 entries. Execution continues through the full authorized roster in bounded runs.",
+  "automation.adoption.reminderCount": "$1 configured quest reminders",
+  "automation.adoption.replacement": "Replacement rule",
+  "automation.adoption.create": "Create my compatibility rule",
+  "automation.adoption.adopt": "Consent and adopt",
+  "automation.adoption.resume": "Resume my adoption",
+  "automation.adoption.open": "Open replacement rule",
+  "automation.adoption.confirmTitle": "Adopt this policy?",
+  "automation.adoption.confirmDescription":
+    "$1 will author and enable the replacement. The legacy path stops permanently for this policy. Disable or delete the replacement to opt out; this never restores the legacy sender.",
+  "automation.adoption.optOutDescription":
+    "After adoption, disable or delete the replacement to stop this policy. Repeating adoption never reenables it. Only its original author can explicitly enable it again.",
+  "automation.adoption.legacy": "Existing policy is still active",
+  "automation.adoption.pending": "Prepared, awaiting cutover",
+  "automation.adoption.adopted": "Adopted",
+  "automation.adoption.optedOut": "Adopted, replacement disabled or deleted",
+  "automation.adoption.member": "One project member",
+  "automation.adoption.roster": "Current roster except publisher",
+  "automation.adoption.audiencePreview":
+    "$1 roster recipients (publisher excluded): ",
 };

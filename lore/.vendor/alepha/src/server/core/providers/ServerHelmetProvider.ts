@@ -103,6 +103,7 @@ export interface HstsOptions {
  * to every server response, without external dependencies.
  */
 export class ServerHelmetProvider {
+  public static readonly id: string = "alepha.server.ServerHelmetProvider";
   protected readonly alepha = $inject(Alepha);
 
   /**
@@ -226,7 +227,7 @@ export class ServerHelmetProvider {
   }
 
   protected readonly onResponse = $hook({
-    on: "server:onResponse",
+    on: "server:response:after",
     priority: "first",
     handler: ({ request, response }) => {
       if (this.options.disabled) {

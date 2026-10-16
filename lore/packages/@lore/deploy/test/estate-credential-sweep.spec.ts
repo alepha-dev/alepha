@@ -133,7 +133,10 @@ describe("The nightly cloudflare credential sweep", () => {
       type: "cloudflare",
       slug,
       accountId: ACCOUNT,
-      credential: ctx.seal.seal(TOKEN, CredentialSealService.ESTATE_PURPOSE),
+      credential: await ctx.seal.seal(
+        TOKEN,
+        CredentialSealService.ESTATE_PURPOSE,
+      ),
       credentialKeyVersion: CredentialSealService.KEY_VERSION,
       credentialCheckedAt: ctx.dateTime.now().toISOString(),
       deployAllowed: true,

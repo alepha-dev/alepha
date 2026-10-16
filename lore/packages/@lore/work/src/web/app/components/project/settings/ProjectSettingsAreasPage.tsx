@@ -19,7 +19,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { useAction, useClient, useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
-import { HttpError } from "alepha/server";
+import { isHttpError } from "alepha/server";
 import { MapPin } from "lucide-react";
 import { useState } from "react";
 
@@ -70,7 +70,7 @@ const ProjectSettingsAreasPage = (props: ProjectSettingsAreasPageProps) => {
 
   const removeAction = useAction<[area: AreaResource], void>(
     {
-      handler: async (area) => {
+      handler: async (_ctx, area) => {
         const ok = await dialog.confirm({
           title: tr("project.settings.areas.delete.confirm"),
           destructive: true,
@@ -87,7 +87,7 @@ const ProjectSettingsAreasPage = (props: ProjectSettingsAreasPageProps) => {
       // `onError` marks the failure handled and the root listener skips it.
       onError: (error) =>
         toaster.error(
-          HttpError.is(error, 400)
+          isHttpError(error, 400)
             ? tr("project.settings.areas.delete.blocked")
             : error.message,
         ),
@@ -183,7 +183,10 @@ const ProjectSettingsAreasPage = (props: ProjectSettingsAreasPageProps) => {
                     <TableCell className="font-medium">
                       <Link
                         href={router.path("projectSettingsArea", {
-                          params: { areaId: area.id },
+                          params: {
+                            projectSlug: router.state.params.projectSlug,
+                            areaId: area.id,
+                          },
                         })}
                         className="hover:underline"
                       >

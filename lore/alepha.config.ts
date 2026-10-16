@@ -14,8 +14,8 @@ export default defineConfig({
       packages: ["alepha", "@alepha/ui"],
       build: false,
     }),
+    // `clean` and `verify` / `v`, each taking the slot of the CLI built-in of
+    // the same name: the CLI keeps the last registration.
+    LoreCommands,
   ],
-  // `clean` and `verify` / `v`, each taking the slot of the CLI built-in of
-  // the same name: the CLI keeps the last registration.
-  services: [LoreCommands],
 });

@@ -14,6 +14,8 @@ import {
   metaOptions,
 } from "alepha/cli";
 
+import { CliConfigValidator } from "./CliConfigValidator.ts";
+
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface AlephaCliConfig {
@@ -25,17 +27,12 @@ export interface AlephaCliConfig {
   /**
    * Register more services to the Alepha CLI (enhancements, commands, etc.).
    */
-  services?: Array<Service>;
-
-  /**
-   * @alias services Register more services to the Alepha CLI (enhancements, commands, etc.).
-   */
   plugins?: Array<Service>;
 
   /**
    * Configure Alepha build command.
    */
-  build?: BuildOptions;
+  build?: Omit<BuildOptions, "runtimes">;
 
   /**
    * Configure Alepha dev command.
@@ -83,14 +80,9 @@ export interface AlephaCliConfig {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export const defineConfig = (config: AlephaCliConfig) => {
+export const defineConfig = (input: AlephaCliConfig) => {
+  const config = CliConfigValidator.parse(input);
   return (alepha: Alepha) => {
-    if (config.services) {
-      for (const it of config.services) {
-        alepha.with(it);
-      }
-    }
-
     if (config.plugins) {
       for (const it of config.plugins) {
         alepha.with(it);

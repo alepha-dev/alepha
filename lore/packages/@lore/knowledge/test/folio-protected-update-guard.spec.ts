@@ -159,7 +159,7 @@ describe("FolioController.update protected-content guard", () => {
     } catch (err) {
       expect(err).toBeInstanceOf(HttpError);
       expect((err as HttpError).status).toBe(400);
-      expect((err as HttpError).error).toBe("BadRequestError");
+      expect((err as HttpError).name).toBe("BAD_REQUEST");
     }
 
     // The row must be untouched — still protected, still holding the
@@ -356,7 +356,7 @@ describe("FolioController.update protected-content guard", () => {
     } catch (err) {
       expect(err).toBeInstanceOf(HttpError);
       expect((err as HttpError).status).toBe(400);
-      expect((err as HttpError).error).toBe("BadRequestError");
+      expect((err as HttpError).name).toBe("BAD_REQUEST");
     }
 
     const reread = await ctx.folioController.get.fetch(
@@ -397,7 +397,7 @@ describe("FolioController.update protected-content guard", () => {
     } catch (err) {
       expect(err).toBeInstanceOf(HttpError);
       expect((err as HttpError).status).toBe(400);
-      expect((err as HttpError).error).toBe("BadRequestError");
+      expect((err as HttpError).name).toBe("BAD_REQUEST");
     }
 
     const reread = await ctx.folioController.get.fetch(

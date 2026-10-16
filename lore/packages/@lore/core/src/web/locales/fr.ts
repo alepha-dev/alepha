@@ -2111,6 +2111,9 @@ export default {
   "account.notifications.category.tasks": "Rappels de quête",
   "account.notifications.category.tasks.description":
     "Rappels sur une quête que vous avez acceptée et pas terminée.",
+  "account.notifications.category.uptime": "Contrôles de santé",
+  "account.notifications.category.uptime.description":
+    "Incidents confirmés et rétablissements de vos moniteurs de disponibilité.",
   "account.notifications.category.estates": "Identifiants de déploiement",
   "account.notifications.category.estates.description":
     "Un identifiant de déploiement que vous possédez a cessé de fonctionner.",
@@ -2419,7 +2422,6 @@ export default {
   "epic.quests.column.updated": "Mise à jour",
 
   // -- Tableau de bord (page d'accueil connectee) ---------------------------
-  "project.dashboard.title": "Tableau de bord",
   "project.dashboard.empty.title": "Rien sur ce tableau pour l'instant",
   "project.dashboard.empty.body":
     "Un tableau, c'est quelques chiffres a verifier sans rien ouvrir. Ajoutez la premiere carte.",
@@ -2428,10 +2430,6 @@ export default {
   "project.dashboard.empty.body.noMetrics":
     "Ce projet ne fait encore rien qu'une carte puisse compter. Activez une capacite dans les parametres et le tableau aura de quoi afficher.",
   "project.dashboard.empty.docs": "Comment fonctionnent les tableaux de projet",
-  "project.dashboard.standfirst.computed":
-    "Le tableau par défaut, calculé d'après ce que ce projet fait et contient.",
-  "project.dashboard.standfirst": "$1 cartes sur le tableau du projet.",
-  "project.dashboard.standfirst.one": "1 carte sur le tableau du projet.",
   "project.dashboard.card.delete.shared":
     "Le tableau appartient au projet : la carte disparait pour tout le monde.",
   "dashboard.card.seeAll": "Tout voir",
@@ -2452,8 +2450,6 @@ export default {
   "dashboard.segment.shelved": "écartées",
   "dashboard.segment.held": "en pause",
   "dashboard.marker.deploy": "Déployé",
-  "dashboard.edit": "Modifier le tableau",
-  "dashboard.edit.done": "Terminé",
   "dashboard.footer.release.ready": "les $1 terminées, prête à publier",
   "dashboard.card.size": "Taille",
   "dashboard.card.size.option": "$1 de large, $2 de haut",
@@ -2595,6 +2591,8 @@ export default {
   "dashboard.filterField.markdown": "Note",
   "dashboard.filter.markdownPlaceholder":
     "Écrivez en markdown. Tous ceux qui lisent le tableau le verront.",
+  "dashboard.edit": "Modifier",
+  "dashboard.save": "Enregistrer",
   "dashboard.customize": "Personnaliser",
   "dashboard.menu": "Options du tableau",
   "dashboard.reset": "Revenir au tableau par défaut",
@@ -2634,7 +2632,6 @@ export default {
     "Il n'a plus de tableau. Ce qu'il a conservé reste consultable.",
   "dashboard.archived.folios": "Ouvrir ses folios",
   "dashboard.archived.quests": "Ouvrir ses quêtes",
-  "dashboard.refreshed": "Actualise $1.",
   "dashboard.addCard": "Ajouter une carte",
 
   "dashboard.card.options": "Options de la carte",
@@ -2982,4 +2979,129 @@ export default {
   "automation.delivery.failed": "Échouée",
   "automation.delivery.rejected": "Refusée",
   "automation.delivery.skipped": "Ignorée",
+  "uptime.since": "Depuis $1",
+  "uptime.certExpiry": "Le certificat expire le $1",
+  "uptime.chartTitle": "Latence moyenne",
+  "uptime.chartNote":
+    "Contrôles réussis uniquement. Les interruptions indiquent une absence de données réussies. La vue sur 24 heures utilise les heures ; les autres utilisent les jours calendaires.",
+  "uptime.incidents": "Historique des incidents",
+  "uptime.incidentLimit":
+    "Les 100 derniers incidents. La mise en pause conserve tout incident en cours.",
+  "uptime.ongoing": "En cours",
+  "uptime.duration": "$1 secondes",
+  "uptime.noIncidents": "Aucun incident enregistré.",
+  "uptime.emailAlerts": "Alertes par e-mail",
+  "uptime.emailAlertsDescription":
+    "Un e-mail au début d’un incident et un autre lors du rétablissement.",
+  "uptime.recipients": "Destinataires (facultatif)",
+  "uptime.recipientsDescription":
+    "Adresses e-mail séparées par des virgules, 20 au maximum. Laissez vide pour avertir le propriétaire actuel du projet.",
+  "uptime.invalidRecipients":
+    "Saisissez 20 adresses e-mail valides au maximum.",
+  "uptime.title": "Disponibilité",
+  "uptime.empty": "Aucun moniteur pour le moment.",
+  "project.capability.apps.option.uptime.label": "Contrôles de santé",
+  "project.capability.apps.option.uptime.description":
+    "Surveillez les sites, ports, certificats et tâches planifiées sans sigil.",
+  "uptime.description":
+    "Surveillance des sites, ports, certificats et tâches planifiées.",
+  "uptime.recentChecks": "Contrôles récents",
+  "uptime.notMeasured": "Non mesuré",
+  "uptime.beatTitle": "$1 : $2 ms, $3",
+  "uptime.kind.http": "HTTP(S)",
+  "uptime.kind.tcp": "Port TCP",
+  "uptime.kind.cert": "Certificat TLS",
+  "uptime.kind.push": "Signal reçu",
+  "uptime.status.up": "Disponible",
+  "uptime.status.down": "Indisponible",
+  "uptime.status.pending": "En attente",
+  "uptime.status.paused": "En pause",
+  "uptime.status.latency": "Lent",
+  "uptime.uptime": "Disponibilité",
+  "uptime.lastLatency": "Dernière latence",
+  "uptime.latencyValue": "$1 ms",
+  "uptime.edit": "Modifier",
+  "uptime.pause": "Suspendre",
+  "uptime.resume": "Reprendre",
+  "uptime.delete": "Supprimer",
+  "uptime.rotate": "Renouveler l’URL",
+  "uptime.editTitle": "Modifier le moniteur",
+  "uptime.createTitle": "Ajouter un moniteur",
+  "uptime.name": "Nom",
+  "uptime.kindLabel": "Type",
+  "uptime.kindImmutable": "Créez un nouveau moniteur pour changer de type.",
+  "uptime.invalidTarget": "Utilisez une cible valide pour ce type de moniteur.",
+  "uptime.target": "Cible",
+  "uptime.httpTarget": "Une URL http ou https.",
+  "uptime.socketTarget":
+    "Un hôte et un port, par exemple example.com:443. Ces contrôles nécessitent Lore auto-hébergé.",
+  "uptime.pushDescription":
+    "Une URL privée apparaît une seule fois après la création. Appelez-la lorsque la tâche se termine.",
+  "uptime.interval": "Intervalle (secondes)",
+  "uptime.timeout": "Délai (secondes)",
+  "uptime.confirmations": "Échecs avant alerte",
+  "uptime.expectedStatus": "Statut attendu (facultatif)",
+  "uptime.keyword": "Texte attendu (facultatif)",
+  "uptime.budget": "Budget de latence en ms (facultatif)",
+  "uptime.certWarning": "Alerte avant expiration (jours)",
+  "uptime.cancel": "Annuler",
+  "uptime.save": "Enregistrer",
+  "uptime.create": "Créer le moniteur",
+  "uptime.tokenTitle":
+    "Copiez cette URL privée maintenant. Elle ne sera affichée qu’une fois.",
+  "uptime.copyUrl": "Copier l’URL",
+  "uptime.copied": "URL copiée",
+  "uptime.done": "Terminé",
+  "uptime.pushUrl": "URL de réception",
+  "uptime.deleteTitle": "Supprimer le moniteur ?",
+  "uptime.deleteDescription":
+    "Cette action supprime le moniteur et son historique.",
+  "uptime.rotateDescription":
+    "L’ancienne URL cessera de fonctionner. Copiez la nouvelle et mettez à jour la tâche qui l’appelle.",
+  "uptime.windowLabel": "Période",
+  "uptime.window.24h": "24 heures",
+  "uptime.window.7d": "7 jours",
+  "uptime.window.30d": "30 jours",
+  "uptime.estimated": "Estimation issue de données échantillonnées.",
+  "uptime.bucketNote":
+    "La disponibilité utilise des tranches horaires, dont l’heure en cours.",
+  "uptime.loading": "Chargement des moniteurs...",
+  "uptime.staleAfter": "Silence maximal (secondes)",
+  "automation.adoption.title": "Adopter les politiques existantes",
+  "automation.adoption.description":
+    "Conservez les politiques existantes jusqu’au consentement explicite d’un membre nommé. Les capacités et droits restent sous le contrôle du propriétaire.",
+  "automation.adoption.reminders": "Rappels par quête",
+  "automation.adoption.releases": "Annonces de versions",
+  "automation.adoption.reminderDescription":
+    "Le traitement horaire conserve les échéances, fréquences, responsables, réglages et historiques. Les préférences de notification des tâches s’appliquent.",
+  "automation.adoption.releaseDescription":
+    "Les membres actuels reçoivent les annonces dans leur boîte et par courriel, sauf l’auteur de la publication. Les préférences de versions s’appliquent. Aucun folio requis. Cet aperçu suppose que vous publiez.",
+  "automation.adoption.author": "Auteur nommé",
+  "automation.adoption.channels": "Canaux requis",
+  "automation.adoption.grants": "Droits requis",
+  "automation.adoption.recipients": "Destinataires",
+  "automation.adoption.noRecipients":
+    "Aucun destinataire sélectionné actuellement.",
+  "automation.adoption.moreRecipients":
+    "L’aperçu affiche jusqu’à 50 entrées. L’exécution parcourt tous les membres autorisés par traitements limités.",
+  "automation.adoption.reminderCount": "$1 rappels de quête configurés",
+  "automation.adoption.replacement": "Règle de remplacement",
+  "automation.adoption.create": "Créer ma règle de compatibilité",
+  "automation.adoption.adopt": "Consentir et adopter",
+  "automation.adoption.resume": "Reprendre mon adoption",
+  "automation.adoption.open": "Ouvrir la règle de remplacement",
+  "automation.adoption.confirmTitle": "Adopter cette politique ?",
+  "automation.adoption.confirmDescription":
+    "$1 sera l’auteur de la règle de remplacement et l’activera. L’ancien traitement s’arrête définitivement pour cette politique. Désactivez ou supprimez la règle pour vous retirer ; cela ne rétablit jamais l’ancien envoi.",
+  "automation.adoption.optOutDescription":
+    "Après adoption, désactivez ou supprimez la règle pour arrêter cette politique. Répéter l’adoption ne la réactive jamais. Seul son auteur initial peut la réactiver explicitement.",
+  "automation.adoption.legacy": "La politique existante est toujours active",
+  "automation.adoption.pending": "Préparée, en attente de basculement",
+  "automation.adoption.adopted": "Adoptée",
+  "automation.adoption.optedOut": "Adoptée, règle désactivée ou supprimée",
+  "automation.adoption.member": "Un membre du projet",
+  "automation.adoption.roster":
+    "Membres actuels sauf l’auteur de la publication",
+  "automation.adoption.audiencePreview":
+    "$1 membres destinataires (auteur de la publication exclu) : ",
 };

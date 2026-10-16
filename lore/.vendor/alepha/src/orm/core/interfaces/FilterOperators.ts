@@ -1,4 +1,6 @@
-import type { SQLWrapper } from "drizzle-orm";
+import type { SQL } from "drizzle-orm";
+
+import type { DbColumn } from "./DbTable.ts";
 
 /**
  * What a comparison operator (`eq`, `ne`, `gt`, `gte`, `lt`, `lte`) compares
@@ -9,7 +11,7 @@ import type { SQLWrapper } from "drizzle-orm";
  * (`{ createdAt: { gte: this.sqlx.ago(7, "days") } }`) or a scalar subquery.
  * Neither is encoded: drizzle renders it as it is.
  */
-export type FilterValue<TValue> = TValue | SQLWrapper;
+export type FilterValue<TValue> = TValue | SQL | DbColumn;
 
 export interface FilterOperators<TValue> {
   /**
@@ -138,7 +140,7 @@ export interface FilterOperators<TValue> {
    *
    * @see notInArray for the inverse of this test
    */
-  inArray?: TValue[] | SQLWrapper;
+  inArray?: TValue[] | SQL;
 
   /**
    * Test whether the first parameter, a column or expression,
@@ -161,7 +163,7 @@ export interface FilterOperators<TValue> {
    *
    * @see inArray for the inverse of this test
    */
-  notInArray?: TValue[] | SQLWrapper;
+  notInArray?: TValue[] | SQL;
 
   /**
    * Test whether an expression is not NULL. By the SQL standard,

@@ -299,7 +299,7 @@ export class DeployService {
           // together.
           secrets: await this.openSecrets(instance, name),
           credential: {
-            apiToken: this.seal.open(
+            apiToken: await this.seal.open(
               estate.credential,
               CredentialSealService.ESTATE_PURPOSE,
             ),

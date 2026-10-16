@@ -21,7 +21,7 @@ class FakeSink extends SigilSinkProvider {
  * `params`, `query` and `headers` and carries no `user` - the option it does
  * take puts one in `currentUserAtom`, not on the request. Only a real HTTP
  * request has `request.user`, set by `ServerSecurityProvider`'s
- * `server:onRequest` hook, which runs at `priority: "last"` and resolves the
+ * `server:request:before` hook, which runs at `priority: "last"` and resolves the
  * user for EVERY route, secured or not. This endpoint is reached by an actual
  * `fetch` from the browser, so `request.user` is the right thing for it to
  * read; driving it through `run()` would test a path production never takes.

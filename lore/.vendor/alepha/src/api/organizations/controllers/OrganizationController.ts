@@ -13,6 +13,7 @@ export class OrganizationController {
   protected readonly organizations = $inject(OrganizationService);
 
   public readonly getMyOrganizations = $action({
+    method: "GET",
     path: "/organizations",
     use: [$secure()],
     schema: { response: z.array(organizationSummaryResourceSchema) },
@@ -28,6 +29,7 @@ export class OrganizationController {
   });
 
   public readonly getOrganization = $action({
+    method: "GET",
     path: "/organizations/:organizationId",
     use: [$ownsOrganization({ param: "organizationId" })],
     schema: {

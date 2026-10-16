@@ -8,6 +8,7 @@ export interface ActorNamespace<T = unknown> {
  * Actor dispatch resolves declarations without invoking full start hooks.
  */
 export class ActorHostRuntime {
+  public static readonly id: string = "alepha.actor.ActorHostRuntime";
   protected readonly alepha = $inject(Alepha);
   public static resolve(env: Record<string, unknown>): Alepha {
     const app = (globalThis as any).__alepha as Alepha | undefined;

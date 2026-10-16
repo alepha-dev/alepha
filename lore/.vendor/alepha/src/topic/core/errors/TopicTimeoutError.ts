@@ -1,12 +1,13 @@
-import { AlephaError } from "alepha";
+import { $error, z } from "alepha";
 
-export class TopicTimeoutError extends AlephaError {
-  public readonly topic: string;
-  public readonly timeout: number;
+/**
+ * A topic `wait` that saw no matching message before its timeout.
+ */
+export const TopicTimeoutError = $error({
+  name: "TOPIC_TIMEOUT",
+  schema: z.object({ topic: z.text(), timeout: z.number() }),
+  message: (data) =>
+    `Timeout of ${data.timeout}ms exceeded for topic ${data.topic}`,
+});
 
-  constructor(topic: string, timeout: number) {
-    super(`Timeout of ${timeout}ms exceeded for topic ${topic}`);
-    this.timeout = timeout;
-    this.topic = topic;
-  }
-}
+export type TopicTimeoutError = InstanceType<typeof TopicTimeoutError>;

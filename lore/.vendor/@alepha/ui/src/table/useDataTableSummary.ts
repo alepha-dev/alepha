@@ -1,4 +1,5 @@
 import type { Alepha, ZObject } from "alepha";
+import { ActionErrorPolicy } from "alepha/react";
 import type { FormModel } from "alepha/react/form";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -101,7 +102,7 @@ export const useDataTableSummary = (options: UseDataTableSummaryOptions) => {
           type: "custom",
           id: "data-table:summary",
           error: error as Error,
-          handled: onError !== undefined,
+          handled: ActionErrorPolicy.isHandled(error, onError),
         });
         onError?.(error as Error);
       })

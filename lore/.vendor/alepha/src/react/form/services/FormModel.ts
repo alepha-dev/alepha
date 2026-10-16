@@ -10,6 +10,7 @@ import {
   z,
 } from "alepha";
 import { $logger } from "alepha/logger";
+import { ActionErrorPolicy } from "alepha/react";
 import type { ChangeEvent, InputHTMLAttributes } from "react";
 
 import { FormValidationError } from "../errors/FormValidationError.ts";
@@ -261,7 +262,7 @@ export class FormModel<T extends ZObject> {
 
     // Snapshot the OLD keys before we wipe — without this, fields that
     // had a value but are absent from the new initialValues never emit
-    // form:change and useFieldValue subscribers keep showing the stale
+    // form:changed and useFieldValue subscribers keep showing the stale
     // value. Mirrors the union-of-keys pattern in reset() below.
     const oldKeys = new Set(Object.keys(this.values));
 
@@ -295,7 +296,7 @@ export class FormModel<T extends ZObject> {
     }
 
     // Clean keys first, then the ones still differing from the new baseline.
-    // `form:change`'s `initial` flag is what tells a subscriber whether to
+    // `form:changed`'s `initial` flag is what tells a subscriber whether to
     // mark the form dirty, and that subscriber holds ONE boolean for the
     // whole form: emitting in this order means the last word belongs to a
     // dirty field whenever there is one. Without it, a kept edit could keep
@@ -308,7 +309,7 @@ export class FormModel<T extends ZObject> {
     for (const key of ordered) {
       const path = `/${key.replaceAll(".", "/")}`;
       void this.alepha.events.emit(
-        "form:change",
+        "form:changed",
         {
           id: this.id,
           path,
@@ -356,7 +357,7 @@ export class FormModel<T extends ZObject> {
     for (const key of keys) {
       const path = `/${key.replaceAll(".", "/")}`;
       void this.alepha.events.emit(
-        "form:change",
+        "form:changed",
         { id: this.id, path, value: this.values[key] },
         { catch: true },
       );
@@ -437,7 +438,7 @@ export class FormModel<T extends ZObject> {
           type: "form",
           id: this.id,
           error: error as Error,
-          handled: this.isHandledError(error),
+          handled: ActionErrorPolicy.isHandled(error, this.options.onError),
         },
         { catch: true },
       );
@@ -464,31 +465,6 @@ export class FormModel<T extends ZObject> {
       );
     }
   };
-
-  /**
-   * Whether a failed submit has already been shown, so `react:action:error`
-   * carries `handled: true` and `ActionErrorToaster` leaves it alone.
-   *
-   * Two cases, the same rule `useAction` follows plus the form's own:
-   *
-   * - **The form was given an `onError`.** The caller dealt with it, whether
-   *   by a toast of its own or by staying quiet on purpose.
-   * - **A `FormValidationError` names a field.** `useFormState` pins it under
-   *   the field whose path matches, which is the whole reason a handler
-   *   throws one: a wrong password was shown under the field and toasted.
-   *
-   * ⚠️ `FormValidationError`, not any `SchemaValidationError`. A
-   * `SchemaValidationError` raised inside the handler is a response that broke
-   * its own schema: a fault, with a path into the response rather than into
-   * this form, so nothing renders it and it must still toast. And a refusal
-   * with no path has nowhere to render either.
-   */
-  protected isHandledError(error: unknown): boolean {
-    if (this.options.onError) {
-      return true;
-    }
-    return error instanceof FormValidationError && error.value.path !== "";
-  }
 
   /**
    * The submitted values, decoded against the form's own schema.
@@ -522,13 +498,15 @@ export class FormModel<T extends ZObject> {
         coerceObject(schema, values),
       ) as Record<string, any>;
     } catch (error) {
-      if (
-        error instanceof SchemaValidationError &&
-        !(error instanceof FormValidationError)
-      ) {
+      // Already a form refusal: let it through as is. Checked first, since a
+      // FormValidationError is a SchemaValidationError too.
+      if (error instanceof FormValidationError) {
+        throw error;
+      }
+      if (error instanceof SchemaValidationError) {
         throw new FormValidationError({
-          message: error.value.message,
-          path: error.value.path,
+          message: error.data.message,
+          path: error.data.path,
         });
       }
       throw error;
@@ -623,7 +601,8 @@ export class FormModel<T extends ZObject> {
             prop as keyof Infer<T> & string,
             options,
             schema,
-            z.schema.requiredKeys(schema).includes(prop as string) || false,
+            z.schema.requiredInputKeys(schema).includes(prop as string) ||
+              false,
             context,
           );
         }
@@ -672,7 +651,8 @@ export class FormModel<T extends ZObject> {
         : unwrapped
     ) as typeof rawField;
 
-    const isRequired = z.schema.requiredKeys(schema).includes(name) ?? false;
+    const isRequired =
+      z.schema.requiredInputKeys(schema).includes(name) ?? false;
     const key = parent ? `${parent}.${name}` : name;
     const path = `/${key.replaceAll(".", "/")}`;
 
@@ -712,7 +692,7 @@ export class FormModel<T extends ZObject> {
         options.onChange(key, typedValue, context.store);
       }
       void this.alepha.events.emit(
-        "form:change",
+        "form:changed",
         { id: this.id, path: path, value: typedValue },
         { catch: true },
       );

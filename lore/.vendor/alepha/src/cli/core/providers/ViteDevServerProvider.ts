@@ -1,7 +1,6 @@
 import { join } from "node:path";
 
 import {
-  __alephaRef,
   $hook,
   $inject,
   $store,
@@ -10,6 +9,7 @@ import {
   type AlephaMeta,
 } from "alepha";
 import { EnvUtils } from "alepha/command";
+import { __alephaRef } from "alepha/internal";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
 import type { Plugin, ViteDevServer } from "vite";
@@ -220,7 +220,7 @@ export class ViteDevServerProvider {
    */
   public hasReact(): boolean {
     try {
-      this.alepha?.inject("ReactServerProvider");
+      this.alepha?.inject("alepha.react.ReactServerProvider");
       return true;
     } catch {
       return false;
@@ -475,7 +475,10 @@ export class ViteDevServerProvider {
 
             // Emit to Alepha's request handler
             try {
-              await this.alepha?.events.emit("node:request", { req, res });
+              await this.alepha?.events.emit("node:request:before", {
+                req,
+                res,
+              });
             } catch (err) {
               this.log.error("Request handler error", err);
               if (!res.headersSent) {

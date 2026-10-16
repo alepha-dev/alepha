@@ -56,7 +56,9 @@ const ProjectSettingsAreaPage = (props: ProjectSettingsAreaPageProps) => {
         });
         if (!ok) return;
         await areaApi.deleteArea({ params: { id: props.area.id } });
-        await router.push("projectSettingsAreas");
+        await router.push("projectSettingsAreas", {
+          params: { projectSlug: router.state.params.projectSlug },
+        });
       },
     },
     [areaApi, dialog, router, props.area.id, tr],
@@ -80,7 +82,10 @@ const ProjectSettingsAreaPage = (props: ProjectSettingsAreaPageProps) => {
         onClose={() => setRenaming(false)}
         onRenamed={(areaId) =>
           void router.push("projectSettingsArea", {
-            params: { areaId: String(areaId) },
+            params: {
+              projectSlug: router.state.params.projectSlug,
+              areaId: String(areaId),
+            },
             // Forced unconditionally, not just on a merge: on a PLAIN
             // rename the surviving id equals the path id, so an unforced
             // push targets the URL already on screen and

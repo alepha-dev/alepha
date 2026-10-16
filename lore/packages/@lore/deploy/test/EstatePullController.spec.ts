@@ -219,9 +219,12 @@ const movedToBay = async (
  * refusals legitimately differ on.
  */
 const refusalOf = async (res: Response): Promise<unknown> => {
-  const { requestId, ...rest } = (await res.json()) as Record<string, unknown>;
+  const body = (await res.json()) as {
+    data?: Record<string, unknown>;
+  } & Record<string, unknown>;
+  const { requestId, ...data } = body.data ?? {};
   void requestId;
-  return rest;
+  return { ...body, data };
 };
 
 const pull = (

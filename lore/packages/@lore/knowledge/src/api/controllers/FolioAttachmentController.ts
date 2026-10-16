@@ -132,6 +132,7 @@ export class FolioAttachmentController {
    * `getAttachment` call.
    */
   getAttachmentByShortId = $action({
+    method: "GET",
     use: [this.ownsProject("folio:read")],
     path: "/projects/:projectId/folio/attachments/by-short-id/:shortId",
     description: "Look up a folio attachment by per-project shortId.",
@@ -155,6 +156,7 @@ export class FolioAttachmentController {
   });
 
   listAttachments = $action({
+    method: "GET",
     use: [this.ownsFolio("folio:read")],
     path: "/folios/:folioId/attachments",
     description: "List the attachments of one folio.",
@@ -168,6 +170,7 @@ export class FolioAttachmentController {
   });
 
   getAttachment = $action({
+    method: "GET",
     use: [this.ownsBlob("folio:read")],
     path: "/folio/attachments/:id",
     description:

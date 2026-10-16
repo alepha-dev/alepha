@@ -806,3 +806,43 @@ values. Native server fencing remains authoritative during concurrent changes.
 Run pages separate frozen per-action enqueue intent from live transport receipts,
 link to each authorized delivery outcome and explain 30-day detail retention and
 the 90-day no-replay horizon. No receipt identity is offered as a setup input.
+
+## Explicit policy adoption (#E43, #Q2044)
+
+`automation_adoptions` is an independent project/policy marker. Named callers
+preview and explicitly adopt through `AutomationAdoptionService`, the HTTP
+adoption actions or MCP `automation_adoption_preview` / `automation_adopt`.
+Work registers the compatibility definitions and state previews. Nothing creates
+a system author, changes a rank or enables a project capability. Preparing a
+disabled replacement and its pending marker is atomic; enable, configuration
+audit and permanent cutover share another native guarded batch. Retrying pending
+adoption reuses the same rule. An existing compatible rule requires its author's
+consent and expected revision. A committed marker survives rule disable/delete;
+repeating adoption never reenables an opted-out rule.
+
+The application substitutes `AutomationLegacyJobProvider` before module boot.
+Its repository joins legacy notification enqueue, 90-day deduplication receipt
+and reminder bookkeeping under NOT-adopted predicates. Fan-out retries continue
+past already handled contacts. `AutomationLegacyDispatch` resolves the policy's
+project from trusted legacy template fields and rechecks its marker at send time,
+including messages queued before cutover. Unadopted policies keep fallback code.
+An unsupported runtime refuses adoption rather than claiming atomic cutover.
+
+The explicit release audience freezes the current roster except the publisher.
+It is legal only for release.published and the releases category, requires member
+read access and resolves each actual recipient under current source authority.
+`AutomationRosterWorker` attempts at most five recipients per step; immutable
+roster/chunk receipts resume the full roster in runs of at most 100 deliveries.
+Run evidence aggregates native outbox IDs, while public outcome reads remain
+bounded and distinguish enqueue from live delivery. Ordinary row selection still
+stops at 50. Only quest-reminders compatibility follows due-selector cursors,
+with the original evaluation time and a durable page witness; each due-state
+identity couples one email enqueue to one interval/history update.
+
+The adoption UI previews author, grants, channels, recipients and configured
+reminder state before its consent dialog. Existing-rule choices are bounded.
+The advanced editor exposes one-member versus release-roster addressing, and
+Test remains read-only. The additive adoption migration creates one table and
+indexes only. Integration tests cover interruption/resume, existing rules,
+disable/delete, queued legacy work, cutover races, 51 reminders, 101 recipients
+with both channels/preferences, MCP and native D1 primary/session modes.

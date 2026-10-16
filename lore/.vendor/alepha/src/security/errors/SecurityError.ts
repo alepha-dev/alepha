@@ -1,6 +1,11 @@
-import { AlephaError } from "alepha";
+import { ForbiddenError } from "alepha/server";
 
-export class SecurityError extends AlephaError {
-  public override readonly name: string = "SecurityError";
-  public readonly status = 403;
-}
+/**
+ * A security rule refused the operation: a missing role or permission, a
+ * provider or realm that refuses the request.
+ */
+export const SecurityError = ForbiddenError.extend({
+  name: "SECURITY",
+});
+
+export type SecurityError = InstanceType<typeof SecurityError>;

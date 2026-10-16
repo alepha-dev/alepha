@@ -20,6 +20,7 @@ export class AdminUserController {
    * role picker and grey out defaults (which cannot be removed).
    */
   public readonly findRoles = $action({
+    method: "GET",
     path: "/metadata/roles",
     group: this.group,
     use: [$secure({ permissions: ["admin:user:read"] })],
@@ -53,6 +54,7 @@ export class AdminUserController {
    * Find users with pagination and filtering.
    */
   public readonly findUsers = $action({
+    method: "GET",
     path: this.url,
     group: this.group,
     use: [$secure({ permissions: ["admin:user:read"] })],
@@ -77,6 +79,7 @@ export class AdminUserController {
    * Get a user by ID.
    */
   public readonly getUser = $action({
+    method: "GET",
     path: `${this.url}/:id`,
     group: this.group,
     use: [$secure({ permissions: ["admin:user:read"] })],

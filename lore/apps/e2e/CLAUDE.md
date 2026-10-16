@@ -135,3 +135,10 @@ copying their implementations into browser assertions:
 The full `yarn v` runs this matrix, built browser journeys and CLI/Bay suites.
 Branch Verify additionally includes the Docker image. Neither a skipped check nor
 an optimistic browser state counts as acceptance evidence.
+
+The E43 adoption journey previews the named author, channels and grants through
+the built application, awaits the actual consent mutation, opens the replacement
+and verifies disabled opt-out after reload. `automation-adoption.spec.ts` joins
+legacy parity, native cutover races, queued messages, 51 reminders and a 101-member
+two-channel roster with preferences. The real D1 primary/session scenario also
+adopts, disables, deletes and retries the independent persistent policy marker.

@@ -465,3 +465,14 @@ Clears all projects, members, sessions, etc. Migrations auto-apply on boot. Opti
 - The session cookie persists across reloads; if you need a clean slate, clear cookies via `context.clearCookies()` rather than relaunching the browser.
 - Pages load lazily — wait for the visible text of a known route element (e.g. "Projects") before asserting.
 - `claude-in-chrome` MCP works fine; the deferred `playwright` MCP is what most of the existing e2e specs target.
+
+## Automation compatibility runtime (#E43, #Q2044)
+
+`main.server.ts` substitutes `AutomationLegacyJobProvider` before registering the
+modules, for both Node and Worker runtime paths. Normal job validation, retry,
+queue dispatch, notification preferences and receipts remain framework-owned.
+The application repository seam adds the native legacy enqueue/adoption fence;
+`.vendor/` is unchanged. Tests that explicitly adopt policies install that same
+substitution. A container without it refuses adoption and retains legacy behavior.
+The new migration only creates automation_adoptions and its indexes; it never
+rebuilds or drops a parent table.

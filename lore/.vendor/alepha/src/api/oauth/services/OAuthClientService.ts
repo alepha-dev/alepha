@@ -287,8 +287,8 @@ export class OAuthClientService {
   ): Promise<OAuthClientEntity> {
     if (options.redirectUris.length === 0) {
       throw new OAuthClientMetadataError(
-        "invalid_redirect_uri",
-        "At least one redirect_uri is required",
+        { reason: "invalid_redirect_uri" },
+        { message: "At least one redirect_uri is required" },
       );
     }
     for (const uri of options.redirectUris) {
@@ -298,8 +298,8 @@ export class OAuthClientService {
     const type = options.type ?? "public";
     if (type === "confidential" && !options.secret) {
       throw new OAuthClientMetadataError(
-        "invalid_client_metadata",
-        "A confidential client requires a secret",
+        { reason: "invalid_client_metadata" },
+        { message: "A confidential client requires a secret" },
       );
     }
 
@@ -471,8 +471,8 @@ export class OAuthClientService {
   ): Promise<void> {
     if (redirectUris.length === 0) {
       throw new OAuthClientMetadataError(
-        "invalid_redirect_uri",
-        "At least one redirect_uri is required",
+        { reason: "invalid_redirect_uri" },
+        { message: "At least one redirect_uri is required" },
       );
     }
     for (const uri of redirectUris) {
@@ -534,7 +534,10 @@ export class OAuthClientService {
    */
   protected assertValidRedirectUri(uri: string): void {
     const refuse = (reason: string) =>
-      new OAuthClientMetadataError("invalid_redirect_uri", `${reason}: ${uri}`);
+      new OAuthClientMetadataError(
+        { reason: "invalid_redirect_uri" },
+        { message: `${reason}: ${uri}` },
+      );
 
     const stars = (uri.match(/\*/g) ?? []).length;
     if (stars > 1) {

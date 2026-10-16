@@ -115,7 +115,7 @@ const ReleaseContents = (props: ReleaseContentsProps) => {
   // run inside the handler, so neither follows a failure.
   const detachAction = useAction<[epicId: number], void>(
     {
-      handler: async (epicId) => {
+      handler: async (_ctx, epicId) => {
         const updated = await epicApi.updateEpic({
           params: { id: epicId },
           body: { releaseId: null },
@@ -217,7 +217,10 @@ const ReleaseContents = (props: ReleaseContentsProps) => {
               </Badge>
               <Link
                 href={router.path("projectEpic", {
-                  params: { epicNumber: String(epic.number) },
+                  params: {
+                    projectSlug: router.state.params.projectSlug,
+                    epicNumber: String(epic.number),
+                  },
                 })}
                 className="min-w-0 flex-1 truncate text-sm font-medium"
               >

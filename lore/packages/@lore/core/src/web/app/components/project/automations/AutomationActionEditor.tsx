@@ -4,6 +4,7 @@ import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 
 import { automationActionKindFormSchema } from "../../../../../api/schemas/automationActionKindFormSchema.ts";
+import { automationAudienceFormSchema } from "../../../../../api/schemas/automationAudienceFormSchema.ts";
 import type { AutomationDescriptor } from "../../../../../api/schemas/automationDescriptorSchema.ts";
 import type { AutomationRule } from "../../../../../api/schemas/automationRuleSchema.ts";
 import type { AutomationSlotKind } from "../../../../../api/schemas/automationSlotKindSchema.ts";
@@ -18,6 +19,7 @@ export interface AutomationActionEditorProps {
   channels: string[];
   disabled: boolean;
   removable: boolean;
+  allowAudience: boolean;
   onKind: (kind: string) => void;
   onChange: (key: string, value: unknown) => void;
   onRemove: () => void;
@@ -29,6 +31,21 @@ const AutomationActionEditor = (props: AutomationActionEditorProps) => {
     handler: () => undefined,
     initialValues: { kind: props.action.kind },
     onChange: (_name, value) => props.onKind(String(value)),
+  });
+  const audienceForm = useForm({
+    schema: automationAudienceFormSchema,
+    initialValues: {
+      audience:
+        props.action.kind === "notify" && props.action.audience
+          ? "roster"
+          : "member",
+    },
+    handler: () => undefined,
+    onChange: (_key, value) =>
+      props.onChange(
+        "audience",
+        value === "roster" ? "projectMembersExceptPublisher" : undefined,
+      ),
   });
   const entry = props.entries.find((item) => item.key === props.action.kind);
   return (
@@ -45,18 +62,40 @@ const AutomationActionEditor = (props: AutomationActionEditorProps) => {
         }))}
         disabled={props.disabled}
       />
-      {Object.entries(entry?.slots ?? {}).map(([key, slot]) => (
-        <AutomationValueControl
-          key={`${entry?.key}:${key}`}
-          label={key}
-          slot={slot}
-          value={(props.action as unknown as Record<string, unknown>)[key]}
-          bindings={props.bindings}
-          channels={props.channels}
+      {props.action.kind === "notify" && props.allowAudience && (
+        <Control
+          input={audienceForm.input.audience}
+          label={tr("automation.adoption.recipients")}
+          select
+          items={[
+            { value: "member", label: tr("automation.adoption.member") },
+            { value: "roster", label: tr("automation.adoption.roster") },
+          ]}
           disabled={props.disabled}
-          onChange={(value) => props.onChange(key, value)}
         />
-      ))}
+      )}
+      {Object.entries(entry?.slots ?? {})
+        .filter(
+          ([key]) =>
+            key !== "audience" &&
+            !(
+              key === "recipient" &&
+              props.action.kind === "notify" &&
+              props.action.audience
+            ),
+        )
+        .map(([key, slot]) => (
+          <AutomationValueControl
+            key={`${entry?.key}:${key}`}
+            label={key}
+            slot={slot}
+            value={(props.action as unknown as Record<string, unknown>)[key]}
+            bindings={props.bindings}
+            channels={props.channels}
+            disabled={props.disabled}
+            onChange={(value) => props.onChange(key, value)}
+          />
+        ))}
       {props.removable && (
         <Button
           variant="minimal"

@@ -81,7 +81,7 @@ export const AdminFiles = () => {
 
   const upload = useAction<[ChangeEvent<HTMLInputElement>], void>(
     {
-      handler: async (e) => {
+      handler: async (_ctx, e) => {
         const file = e.target.files?.[0];
         // Reset so the same file can be re-selected on a subsequent click,
         // regardless of whether the upload succeeds.

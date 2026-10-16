@@ -61,6 +61,7 @@ export class DirectoryController {
    * list a folio's attachments, ask `FolioAttachmentController`.
    */
   listContents = $action({
+    method: "GET",
     use: [this.ownsProject("folio:read")],
     path: "/projects/:projectId/folio/contents",
     description: "List directories + folios in a directory (or root).",
@@ -170,6 +171,7 @@ export class DirectoryController {
    * what a search is for.
    */
   searchFolio = $action({
+    method: "GET",
     use: [this.ownsProject("folio:read")],
     path: "/projects/:projectId/folio/search",
     description:
@@ -261,6 +263,7 @@ export class DirectoryController {
    * project (no UI scrolls a flat list past that).
    */
   listAllDirectories = $action({
+    method: "GET",
     use: [this.ownsProject("folio:read")],
     path: "/projects/:projectId/folio/directories",
     description: "Flat list of every folio directory in the project.",
@@ -297,6 +300,7 @@ export class DirectoryController {
    * UUID.
    */
   getDirectoryByShortId = $action({
+    method: "GET",
     use: [this.ownsProject("folio:read")],
     path: "/projects/:projectId/folio/directories/:shortId",
     description: "Look up a folio directory by per-project shortId.",

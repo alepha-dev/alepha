@@ -154,7 +154,7 @@ export const AdminUsers = (props: AdminUsersProps) => {
 
   const setRoles = useAction<[UserEntity, string[]]>(
     {
-      handler: async (user, roles) => {
+      handler: async (_ctx, user, roles) => {
         await client.updateUser({
           params: { id: user.id },
           query: { userRealmName: props.userRealmName },
@@ -172,7 +172,7 @@ export const AdminUsers = (props: AdminUsersProps) => {
 
   const toggleEnabled = useAction<[UserEntity]>(
     {
-      handler: async (user) => {
+      handler: async (_ctx, user) => {
         if (isSelf(user)) {
           toast.error(
             tr("admin.users.cantDisableSelf", {
@@ -216,7 +216,7 @@ export const AdminUsers = (props: AdminUsersProps) => {
 
   const deleteUser = useAction<[UserEntity]>(
     {
-      handler: async (user) => {
+      handler: async (_ctx, user) => {
         const label = userLabel(user);
         const ok = await dialog.confirm({
           title: tr("admin.users.deleteTitle", { default: "Delete user" }),
@@ -239,7 +239,7 @@ export const AdminUsers = (props: AdminUsersProps) => {
 
   const bulkDelete = useAction<[UserEntity[]]>(
     {
-      handler: async (items) => {
+      handler: async (_ctx, items) => {
         const targets = items.filter((u) => !isSelf(u));
         if (targets.length === 0) {
           toast.error(
@@ -275,7 +275,7 @@ export const AdminUsers = (props: AdminUsersProps) => {
 
   const bulkDisable = useAction<[UserEntity[]]>(
     {
-      handler: async (items) => {
+      handler: async (_ctx, items) => {
         const enabled = items.filter((u) => u.enabled && !isSelf(u));
         if (enabled.length === 0) {
           toast.error(
@@ -329,7 +329,7 @@ export const AdminUsers = (props: AdminUsersProps) => {
             icon: UserX,
             destructive: true,
             onClick: async (items, ctx) => {
-              await bulkDisable.run(items);
+              if (!(await bulkDisable.run(items)).ok) return;
               ctx.clearSelection();
               ctx.refresh();
             },
@@ -341,7 +341,7 @@ export const AdminUsers = (props: AdminUsersProps) => {
             icon: Trash2,
             destructive: true,
             onClick: async (items, ctx) => {
-              await bulkDelete.run(items);
+              if (!(await bulkDelete.run(items)).ok) return;
               ctx.clearSelection();
               ctx.refresh();
             },
@@ -422,7 +422,7 @@ export const AdminUsers = (props: AdminUsersProps) => {
               <AdminUsersRolesPicker
                 user={u}
                 availableRoles={availableRoles}
-                onToggle={(roles) => setRoles.run(u, roles)}
+                onToggle={async (roles) => (await setRoles.run(u, roles)).ok}
                 rolesLabel={tr("admin.users.rolesLabel", { default: "Roles" })}
                 noRolesLabel={tr("admin.users.noRoles", {
                   default: "No roles",
@@ -477,8 +477,7 @@ export const AdminUsers = (props: AdminUsersProps) => {
                     _u: UserEntity,
                     { refresh }: { refresh: () => void },
                   ) => {
-                    await toggleEnabled.run(u);
-                    refresh();
+                    if ((await toggleEnabled.run(u)).ok) refresh();
                   },
                 },
                 {
@@ -491,8 +490,7 @@ export const AdminUsers = (props: AdminUsersProps) => {
                     _u: UserEntity,
                     { refresh }: { refresh: () => void },
                   ) => {
-                    await deleteUser.run(u);
-                    refresh();
+                    if ((await deleteUser.run(u)).ok) refresh();
                   },
                 },
               ]

@@ -197,7 +197,7 @@ export class DockerImageBuilder {
   ): Promise<void> {
     let body: string;
     try {
-      body = (await this.fs.readFile(dockerfile)).toString();
+      body = await this.fs.readTextFile(dockerfile);
     } catch {
       return;
     }
@@ -524,16 +524,16 @@ ${userLine}CMD ["${command}", "${entry}"]
    * A field left unset emits no label, never an empty one.
    */
   protected staticOciLabels(ctx: ImageContext): Record<string, string> {
-    const imageConfig = ctx.image.image;
+    const imageConfig = ctx.image;
     if (!imageConfig?.oci) {
       return {};
     }
 
     const labels: Record<string, string | undefined> = {
-      "org.opencontainers.image.source": imageConfig.source,
-      "org.opencontainers.image.title": imageConfig.title,
-      "org.opencontainers.image.description": imageConfig.description,
-      "org.opencontainers.image.licenses": imageConfig.licenses,
+      "org.opencontainers.image.source": imageConfig.labels?.source,
+      "org.opencontainers.image.title": imageConfig.labels?.title,
+      "org.opencontainers.image.description": imageConfig.labels?.description,
+      "org.opencontainers.image.licenses": imageConfig.labels?.licenses,
     };
 
     return Object.fromEntries(
@@ -590,7 +590,7 @@ ${userLine}CMD ["${command}", "${entry}"]
     ctx: ImageContext,
     distDir: string,
   ): Promise<void> {
-    const imageConfig = ctx.image.image;
+    const imageConfig = ctx.image;
     const flagValue = typeof ctx.build === "string" ? ctx.build : null;
 
     let imageTag: string;
@@ -598,16 +598,14 @@ ${userLine}CMD ["${command}", "${entry}"]
 
     if (!flagValue) {
       if (!imageConfig?.tag) {
-        throw new AlephaError(
-          "Flag '--tag' requires 'image.image.tag' in config",
-        );
+        throw new AlephaError("Flag '--tag' requires 'image.tag' in config");
       }
       version = "latest";
       imageTag = `${imageConfig.tag}:${version}`;
     } else if (flagValue.startsWith(":")) {
       if (!imageConfig?.tag) {
         throw new AlephaError(
-          "Flag '--tag=:version' requires 'image.image.tag' in config",
+          "Flag '--tag=:version' requires 'image.tag' in config",
         );
       }
       version = flagValue.slice(1);
@@ -623,7 +621,7 @@ ${userLine}CMD ["${command}", "${entry}"]
       // `--tag=1.3.4` silently built `1.3.4:latest`.
       if (!imageConfig?.tag) {
         throw new AlephaError(
-          "Flag '--tag=<version>' requires 'image.image.tag' in config. Pass a full 'name:tag' to name the image explicitly.",
+          "Flag '--tag=<version>' requires 'image.tag' in config. Pass a full 'name:tag' to name the image explicitly.",
         );
       }
       version = flagValue;
@@ -632,10 +630,9 @@ ${userLine}CMD ["${command}", "${entry}"]
 
     const args: string[] = [];
 
-    // The configured extra arguments are one string, split on whitespace:
-    // flags such as `--platform linux/amd64 --no-cache`, never quoted values.
+    // Each configured argument is kept as one argv entry, including spaces.
     if (imageConfig?.args) {
-      args.push(...imageConfig.args.trim().split(/\s+/).filter(Boolean));
+      args.push(...imageConfig.args);
     }
 
     if (imageConfig?.oci) {
@@ -668,7 +665,7 @@ ${userLine}CMD ["${command}", "${entry}"]
     await ctx.run({
       name: `docker build ${imageTag}`,
       handler: async () => {
-        await this.shell.run(argv);
+        await this.shell.run(argv, { root: ctx.root });
       },
     });
   }

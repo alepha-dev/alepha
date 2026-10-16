@@ -63,7 +63,10 @@ const RoadmapReleaseCard = (props: RoadmapReleaseCardProps) => {
             {props.member && release.tag ? (
               <Link
                 href={router.path("projectRelease", {
-                  params: { releaseTag: release.tag },
+                  params: {
+                    projectSlug: router.state.params.projectSlug,
+                    releaseTag: release.tag,
+                  },
                 })}
               >
                 {release.tag}

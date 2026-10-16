@@ -22,6 +22,9 @@ const HYPERDRIVE_DB_ALS_KEY = "alepha.orm.hyperdrive.db";
  * URL format: hyperdrive://BINDING_NAME
  */
 export class CloudflareHyperdriveProvider extends DatabaseProvider {
+  /**
+   * @internal Driver plumbing, outside semver.
+   */
   protected readonly builder = $inject(PostgresModelBuilder);
   protected readonly als = $inject(AlsProvider);
   protected readonly env = $env(
@@ -59,6 +62,8 @@ export class CloudflareHyperdriveProvider extends DatabaseProvider {
    * Reads the current Hyperdrive binding from `cloudflare.env`
    * and creates a new postgres client each time, avoiding the
    * "Cannot perform I/O on behalf of a different request" error.
+   *
+   * @internal Driver plumbing, outside semver.
    */
   public override get db(): PgAsyncDatabase<any> {
     if (!this.postgresFn || !this.drizzleFn || !this.bindingName) {

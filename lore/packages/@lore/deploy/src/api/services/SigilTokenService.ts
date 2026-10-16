@@ -60,7 +60,7 @@ export class SigilTokenService {
     const token = sigilKeyBuild(project.slug, secret);
     return {
       token,
-      hash: this.crypto.hash(token),
+      hash: await this.crypto.hash(token),
       prefix: sigilKeyPrefix(token),
     };
   }
@@ -81,7 +81,7 @@ export class SigilTokenService {
       return undefined;
     }
     return await this.sigils.findOne({
-      where: { tokenHash: { eq: this.crypto.hash(token) } },
+      where: { tokenHash: { eq: await this.crypto.hash(token) } },
     });
   }
 

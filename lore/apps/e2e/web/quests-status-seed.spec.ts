@@ -65,6 +65,7 @@ test.describe("Quests — the URL seeds the filters", () => {
         // route, and `acceptQuest` has none.
         await page.evaluate(async (id) => {
           const r = await fetch(`/api/acceptQuest/${id}`, {
+            method: "POST",
             credentials: "include",
           });
           if (!r.ok) throw new Error(`accept ${r.status}`);
@@ -130,7 +131,7 @@ test.describe("Quests — the URL seeds the filters", () => {
       // Two things at once. The param must not reappear in the address bar
       // (the #156 write-back), and the seed must not have been persisted as
       // though the reader had chosen it: DataTable writes filters from
-      // `form:change` / `form:submit:success`, never on mount, so arriving
+      // `form:changed` / `form:submit:success`, never on mount, so arriving
       // through a link leaves the stored preference alone.
       expect(new URL(page.url()).search).toBe("");
       await expect(table.getByText(acceptedTitle)).toHaveCount(1, {

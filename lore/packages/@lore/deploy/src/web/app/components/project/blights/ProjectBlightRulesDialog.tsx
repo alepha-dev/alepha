@@ -86,7 +86,7 @@ const ProjectBlightRulesDialog = (props: ProjectBlightRulesDialogProps) => {
 
   const removeAction = useAction<[rule: BlightRuleResource], void>(
     {
-      handler: async (rule) => {
+      handler: async (_ctx, rule) => {
         await blightApi.deleteBlightRule({
           params: { projectId: props.projectId, ruleId: rule.id },
         });

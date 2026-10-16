@@ -1,4 +1,8 @@
-import { LoreInboxNotifications, ProjectRoster } from "@lore/core/api";
+import {
+  AutomationLegacyQueue,
+  LoreInboxNotifications,
+  ProjectRoster,
+} from "@lore/core/api";
 import { type Project } from "@lore/core/schemas";
 import { $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
@@ -30,6 +34,7 @@ import type { Release } from "../entities/releases.ts";
 export class ReleaseNotifier {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
+  protected readonly legacy = $inject(AutomationLegacyQueue);
   protected readonly roster = $inject(ProjectRoster);
   protected readonly templates = $inject(LoreInboxNotifications);
 
@@ -52,6 +57,10 @@ export class ReleaseNotifier {
     questCount: number;
   }): Promise<void> {
     try {
+      if (
+        await this.legacy.adopted(options.project.id, "release-notifications")
+      )
+        return;
       const recipients = await this.roster.others(
         options.project.id,
         options.publisherId,
@@ -77,24 +86,34 @@ export class ReleaseNotifier {
         scope: `project:${options.project.id}`,
       };
 
-      await this.templates.inboxReleasePublished.pushMany({
-        contacts: recipients.map((recipient) => ({
-          contact: recipient.email,
-          variables,
-          // ⚠️ `pushMany` has NO language fallback at all - its own docs say
-          // the field is explicit only, because a fan-out is usually a cron
-          // with no request to read one from. There is no per-user language
-          // to read either, so everybody gets the app default and that is a
-          // known limitation rather than an oversight. One constant, in
-          // `LoreInboxNotifications.lang`.
-          lang: this.templates.lang,
-        })),
-        // ⚠️ The release id is in the key, not just the contact. A key is
-        // concurrency dedup and not idempotence over time - the job layer
-        // clears it on both terminal states - so a bare contact key would
-        // collide across two releases published in the same window.
-        key: (contact) => `release-${options.release.id}-${contact}`,
-      });
+      await this.legacy.run(
+        {
+          projectId: options.project.id,
+          policy: "release-notifications",
+          identity: `release:${options.release.id}:${options.release.releasedAt ?? options.release.updatedAt}`,
+          template: this.templates.inboxReleasePublished.name,
+        },
+        () =>
+          this.templates.inboxReleasePublished.pushMany({
+            contacts: recipients.map((recipient) => ({
+              contact: recipient.email,
+              variables,
+              // ⚠️ `pushMany` has NO language fallback at all - its own docs say
+              // the field is explicit only, because a fan-out is usually a cron
+              // with no request to read one from. There is no per-user language
+              // to read either, so everybody gets the app default and that is a
+              // known limitation rather than an oversight. One constant, in
+              // `LoreInboxNotifications.lang`.
+              lang: this.templates.lang,
+            })),
+            // ⚠️ The release id is in the key, not just the contact. A key is
+            // concurrency dedup and not idempotence over time - the job layer
+            // clears it on both terminal states - so a bare contact key would
+            // collide across two releases published in the same window.
+            key: (contact) =>
+              `release-${options.release.id}-${options.release.releasedAt ?? options.release.updatedAt}-${contact}`,
+          }),
+      );
     } catch (error) {
       this.log.error("Failed to announce a published release", {
         releaseId: options.release.id,

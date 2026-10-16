@@ -23,7 +23,7 @@ export class QuestNotifications {
         const questTitle = this.html.escape(it.questTitle);
         const questUrl = encodeURI(it.questUrl);
         return `
-        <h1>${projectTitle} — Quest reminder</h1>
+        <h1>${projectTitle} - Quest reminder</h1>
         <p>Hi ${recipientName},</p>
         <p>You accepted the quest <strong>${questTitle}</strong> (${formatReference("quest", it.shortId)}) and haven't completed it yet. Just a nudge while it's still open.</p>
         <p>
@@ -36,6 +36,7 @@ export class QuestNotifications {
       },
     },
     schema: z.object({
+      projectId: z.integer().optional(),
       recipientName: z.string(),
       projectTitle: z.string(),
       questTitle: z.string(),

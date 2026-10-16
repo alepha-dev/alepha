@@ -4,11 +4,11 @@ import {
   AlephaError,
   createPrimitive,
   type Infer,
-  KIND,
   Primitive,
   type ZType,
 } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+import { KIND } from "alepha/internal";
 
 import { CookieParser } from "../services/CookieParser.ts";
 import type {
@@ -73,7 +73,7 @@ export class BrowserCookiePrimitive<T extends ZType>
 
   protected onInit() {
     if (this.options.key) {
-      this.alepha.events.on("state:mutate", ({ key, value }) => {
+      this.alepha.events.on("state:mutated", ({ key, value }) => {
         if (key === this.options.key) {
           this.set(value);
         }

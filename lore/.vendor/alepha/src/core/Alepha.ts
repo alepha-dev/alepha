@@ -1,14 +1,15 @@
+import { KIND } from "alepha/internal";
+import { MODULE } from "alepha/internal";
+import { OPTIONS } from "alepha/internal";
+import { __alephaRef } from "alepha/internal";
+
 import { ALEPHA_META_FALLBACK } from "./constants/ALEPHA_META_FALLBACK.ts";
-import { KIND } from "./constants/KIND.ts";
-import { MODULE } from "./constants/MODULE.ts";
-import { OPTIONS } from "./constants/OPTIONS.ts";
 import { AlephaError } from "./errors/AlephaError.ts";
 import { CircularDependencyError } from "./errors/CircularDependencyError.ts";
 import { ContainerLockedError } from "./errors/ContainerLockedError.ts";
 import { TooLateSubstitutionError } from "./errors/TooLateSubstitutionError.ts";
 import { coerceObject } from "./helpers/coerceStrings.ts";
 import { Primitive } from "./helpers/primitive.ts";
-import { __alephaRef } from "./helpers/ref.ts";
 import type { AlephaMeta } from "./interfaces/AlephaMeta.ts";
 import type { Async } from "./interfaces/Async.ts";
 import type { LoggerInterface } from "./interfaces/LoggerInterface.ts";
@@ -163,7 +164,7 @@ export interface EnvOwner {
  * class App {
  * 	 log = $logger();
  * 	 onCustomerHook = $hook({
- * 			on: "my:custom:hook",
+ * 			on: "my:task:completed",
  * 			handler: () => {
  * 		 	  this.log?.info("App is being configured");
  * 	 		},
@@ -173,7 +174,7 @@ export interface EnvOwner {
  * Alepha.create()
  * 	 .with(App)
  * 	 .start()
- * 	 .then(alepha => alepha.events.emit("my:custom:hook", { arg1: "hello" }));
+ * 	 .then(alepha => alepha.events.emit("my:task:completed", { arg1: "hello" }));
  * ```
  *
  * 	Hooks are fully typed. You can create your own hooks by using module augmentation:
@@ -181,7 +182,7 @@ export interface EnvOwner {
  * 	```ts
  * 	declare module "alepha" {
  * 		interface Hooks {
- * 		  "my:custom:hook": {
+ * 		  "my:task:completed": {
  * 				arg1: string;
  * 		  }
  * 		}
@@ -508,7 +509,7 @@ export class Alepha {
     this.codec = this.inject(CodecManager);
   }
 
-  public fork<R>(callback: () => R, data: Record<string, any> = {}): R {
+  public fork<R>(callback: () => R, data: Record<string, unknown> = {}): R {
     return this.context.run(callback, data);
   }
 
@@ -1199,7 +1200,10 @@ export class Alepha {
           use: entry.use,
         });
       } else if (!entry.optional) {
-        throw new TooLateSubstitutionError(entry.provide.name, entry.use.name);
+        throw new TooLateSubstitutionError({
+          original: entry.provide.name,
+          substitution: entry.use.name,
+        });
       }
 
       return this;
@@ -1211,16 +1215,10 @@ export class Alepha {
   }
 
   /**
-   * @alias {@link Alepha#with}.
-   */
-  public register<T extends object>(
-    serviceEntry: ServiceEntry<T> | { default: ServiceEntry<T> },
-  ): this {
-    return this.with(serviceEntry);
-  }
-
-  /**
    * Get an instance of the specified service from the container.
+   * A string matches the service's stable static `id`, never its class name.
+   * Use strings only across separate module graphs; ordinary code passes a class.
+   * Unknown ids throw an AlephaError naming the requested id.
    *
    * @see {@link InjectOptions} for the available options.
    */
@@ -1265,18 +1263,18 @@ export class Alepha {
 
     if (typeof service === "string") {
       for (const [key, value] of registry.entries()) {
-        if (key.name === service) {
+        if (key.id === service) {
           return value.instance as T;
         }
       }
       // A `provide`/`use` substitution keys the registry by the SUBSTITUTE
-      // class, so a by-name lookup for the substituted base class finds no
+      // class, so a by-id lookup for the substituted base class finds no
       // registry entry — follow the substitution through the class-keyed
       // path exactly as `inject(BaseClass)` would (e.g. the generated
-      // Cloudflare worker entry injecting "WebSocketServerProvider" by name
+      // Cloudflare worker entry injecting "alepha.websocket.WebSocketServerProvider" by id
       // while the websocket module provides it via a substitution).
       for (const key of this.substitutions.keys()) {
-        if (key.name === service) {
+        if (key.id === service) {
           return this.inject(key as Service<T>, { parent, lifetime });
         }
       }
@@ -1297,10 +1295,10 @@ export class Alepha {
       // repeated service onward. The old slice reported the callers above the
       // cycle and dropped the cycle itself (empty when the cycle starts the
       // stack).
-      throw new CircularDependencyError(
-        service.name,
-        this.pendingInstantiations.slice(index).map((it) => it.name),
-      );
+      throw new CircularDependencyError({
+        provider: service.name,
+        parents: this.pendingInstantiations.slice(index).map((it) => it.name),
+      });
     }
 
     if (!transient) {
@@ -1594,16 +1592,16 @@ export class Alepha {
 
     const env: Record<string, AlephaDumpEnvVariable> = {};
     for (const [schema] of this.cacheEnv.entries()) {
-      // `required` field names come from `z.schema.requiredKeys` (zod has no
+      // `required` field names come from `z.schema.requiredInputKeys` (zod has no
       // `.required` array — that name is the `.required()` method). Metadata
       // (description/enum/default) lives on the unwrapped inner schema, under
       // `.meta()`.
       const shape = z.schema.shape(schema);
-      const required = new Set(z.schema.requiredKeys(schema));
+      const required = new Set(z.schema.requiredInputKeys(schema));
       for (const [key, value] of Object.entries(shape)) {
         const inner = z.schema.unwrap(value);
         const enumValues = z.schema.isEnum(inner)
-          ? z.schema.enumValues(inner)
+          ? z.schema.enumOptions(inner)
           : undefined;
         const aliases = this.declaredAliases(value);
         env[key] = {
@@ -1611,7 +1609,7 @@ export class Alepha {
           // schema it was called on, which for an optional field is the inner
           // one. Falling back to the wrapper catches the reverse order.
           description: inner?.description ?? value.description,
-          default: z.schema.getDefault(value) as string | undefined,
+          default: z.schema.defaultValue(value) as string | undefined,
           required: required.has(key) ? true : undefined,
           aliases: aliases.length ? aliases : undefined,
           enum: enumValues?.length
@@ -1993,28 +1991,28 @@ export interface State {
    * Used for testing purposes.
    * This is automatically attached if Alepha#create() detects a test environment and global 'beforeAll' is available.
    */
-  "alepha.test.beforeAll"?: (run: any) => any;
+  "alepha.test.beforeAll"?: (fn: () => unknown) => void;
 
   /**
    * Bind to Vitest 'afterAll' hook.
    * Used for testing purposes.
    * This is automatically attached if Alepha#create() detects a test environment and global 'afterAll' is available.
    */
-  "alepha.test.afterAll"?: (run: any) => any;
+  "alepha.test.afterAll"?: (fn: () => unknown) => void;
 
   /**
    * Bind to Vitest 'afterEach' hook.
    * Used for testing purposes.
    * This is automatically attached if Alepha#create() detects a test environment and global 'afterEach' is available.
    */
-  "alepha.test.afterEach"?: (run: any) => any;
+  "alepha.test.afterEach"?: (fn: () => unknown) => void;
 
   /**
    * Bind to Vitest 'onTestFinished' hook.
    * Used for testing purposes.
    * This is automatically attached if Alepha#create() detects a test environment and global 'onTestFinished' is available.
    */
-  "alepha.test.onTestFinished"?: (run: any) => any;
+  "alepha.test.onTestFinished"?: (fn: () => unknown) => void;
 
   /**
    * List of static assets to be copied to the output directory during the build process.
@@ -2029,11 +2027,6 @@ export interface State {
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface Hooks {
-  /**
-   * Used for testing purposes.
-   */
-  echo: unknown;
-
   /**
    * Triggered during the configuration phase. Before the start phase.
    */
@@ -2060,7 +2053,7 @@ export interface Hooks {
   /**
    * Triggered when a state value is mutated.
    */
-  "state:mutate": {
+  "state:mutated": {
     /**
      * The key of the state that was mutated.
      */
@@ -2080,7 +2073,7 @@ export interface Hooks {
   /**
    * Triggered the first time an atom is registered in the state manager.
    */
-  "state:register": {
+  "state:registered": {
     /**
      * The atom that was registered.
      */

@@ -1,5 +1,6 @@
-import { $inject, createPrimitive, KIND, Primitive } from "alepha";
+import { $inject, createPrimitive, Primitive } from "alepha";
 import { ActorHostRegistry } from "alepha/actor";
+import { KIND } from "alepha/internal";
 
 import type {
   EmitOptions,

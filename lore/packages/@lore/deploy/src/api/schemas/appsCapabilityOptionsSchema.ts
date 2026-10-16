@@ -41,6 +41,7 @@ import { type Infer, z } from "alepha";
 export const appsCapabilityOptionsSchema = z.object({
   track: z.boolean().default(false),
   deploy: z.boolean().default(false),
+  uptime: z.boolean().default(false),
 });
 
 export type AppsCapabilityOptions = Infer<typeof appsCapabilityOptionsSchema>;

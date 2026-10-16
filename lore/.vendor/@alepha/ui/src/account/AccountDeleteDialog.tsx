@@ -2,7 +2,7 @@ import type {
   MyAccountController,
   MyProfileController,
 } from "alepha/api/users";
-import { useClient } from "alepha/react";
+import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { type FormEvent, type ReactNode, useEffect, useState } from "react";
 
@@ -16,7 +16,6 @@ import {
 } from "../core/Dialog.tsx";
 import { Input } from "../core/Input.tsx";
 import { Label } from "../core/Label.tsx";
-import { useToast } from "../core/useToast.tsx";
 import { ControlPassword } from "../form/ControlPassword.tsx";
 
 export interface AccountDeleteDialogProps {
@@ -68,13 +67,11 @@ export interface AccountDeleteDialogProps {
 export const AccountDeleteDialog = (props: AccountDeleteDialogProps) => {
   const accountApi = useClient<MyAccountController>();
   const profileApi = useClient<MyProfileController>();
-  const toaster = useToast();
   const { tr } = useI18n();
 
   const [expected, setExpected] = useState<string | undefined>();
   const [confirm, setConfirm] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
-  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!props.open) {
@@ -104,34 +101,31 @@ export const AccountDeleteDialog = (props: AccountDeleteDialogProps) => {
     props.onOpenChange(false);
   };
 
-  const submit = async (event: FormEvent) => {
+  /*
+    An application's `user:delete:before` hook refuses here ("You still own 3
+    projects") and the framework's fast-path emit delivers that message
+    unwrapped. The app's ActionErrorToaster shows it verbatim, which is the
+    entire reason the emit avoids `{ log: true }`.
+  */
+  const remove = useAction<[]>(
+    {
+      handler: async () => {
+        await accountApi.deleteMyAccount({
+          body: {
+            confirm,
+            currentPassword: props.hasPassword ? currentPassword : undefined,
+          },
+        });
+        await props.onDeleted();
+      },
+    },
+    [accountApi, confirm, currentPassword, props.hasPassword, props.onDeleted],
+  );
+  const submitting = remove.loading;
+
+  const submit = (event: FormEvent) => {
     event.preventDefault();
-    setSubmitting(true);
-    try {
-      await accountApi.deleteMyAccount({
-        body: {
-          confirm,
-          currentPassword: props.hasPassword ? currentPassword : undefined,
-        },
-      });
-      await props.onDeleted();
-    } catch (error: any) {
-      /*
-        An application's `user:delete:before` hook refuses here — "You still
-        own 3 projects" — and the framework's fast-path emit delivers that
-        message unwrapped. Showing it verbatim is the entire reason the emit
-        avoids `{ log: true }`; a generic "could not delete" would waste it.
-      */
-      toaster.show(
-        error?.message ??
-          tr("account.delete.error", {
-            default: "Could not delete your account",
-          }),
-        "danger",
-      );
-    } finally {
-      setSubmitting(false);
-    }
+    void remove.run();
   };
 
   const ready = expected !== undefined && confirm === expected;

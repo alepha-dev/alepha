@@ -61,7 +61,7 @@ export const useKanbanMove = (input: KanbanMoveInput) => {
 
   return useAction<[event: DragEndEvent], void>(
     {
-      handler: async (event) => {
+      handler: async (_ctx, event) => {
         const { quests, setQuests, grouped, columns, acceptLandsIn, reload } =
           input;
 

@@ -103,7 +103,7 @@ describe("LoreClientService", () => {
 
       await expect(
         (scope.authorization as () => Promise<string>)(),
-      ).rejects.toMatchObject({ name: "CommandError", exitCode: 3 });
+      ).rejects.toMatchObject({ name: "COMMAND", data: { exitCode: 3 } });
     });
 
     /**

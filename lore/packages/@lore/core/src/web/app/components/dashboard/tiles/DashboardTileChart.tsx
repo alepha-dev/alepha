@@ -43,11 +43,14 @@ const DashboardTileChart = (props: DashboardTileChartProps) => {
     .filter((marker) => marker.left !== undefined);
 
   return (
-    <div className="flex w-full flex-1 flex-col gap-1" data-testid="tile-chart">
+    <div
+      className="flex min-h-0 w-full flex-1 flex-col gap-1"
+      data-testid="tile-chart"
+    >
       <div className="text-muted-foreground flex justify-between text-[10.5px] tabular-nums">
         <span>{l(max)}</span>
       </div>
-      <div className="relative min-h-12 flex-1">
+      <div className="relative min-h-0 flex-1">
         {props.chartStyle === "bars" ? (
           <div className="text-primary absolute inset-0 flex items-end gap-px">
             {points.map((point, index) => (

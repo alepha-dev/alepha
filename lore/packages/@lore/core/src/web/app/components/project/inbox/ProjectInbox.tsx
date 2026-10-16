@@ -146,7 +146,7 @@ const ProjectInbox = () => {
 
   const loadMoreAction = useAction<[after: string], void>(
     {
-      handler: async (after) => {
+      handler: async (_ctx, after) => {
         const page = await api.listInbox({
           query: {
             limit: PAGE_SIZE,
@@ -178,7 +178,7 @@ const ProjectInbox = () => {
    */
   const markReadAction = useAction<[row: InboxRow], void>(
     {
-      handler: async (row) => {
+      handler: async (_ctx, row) => {
         setReadMarks((current) => ({
           ...current,
           ids: { ...current.ids, [row.id]: dateTime.nowISOString() },

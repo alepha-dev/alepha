@@ -22,7 +22,7 @@ const ProjectDashboardDormant = (props: ProjectDashboardDormantProps) => {
   return (
     <p
       data-testid="dashboard-dormant"
-      className="text-muted-foreground mb-4 flex items-center gap-2 text-[13.5px]"
+      className="text-muted-foreground flex items-center gap-2 text-sm"
     >
       <Moon className="size-4 shrink-0" />
       {tr("dashboard.dormant", {

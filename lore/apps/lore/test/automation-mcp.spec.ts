@@ -1,4 +1,5 @@
 import {
+  AutomationLegacyJobProvider,
   LoreInboxRecipientProvider,
   LoreNotificationPreferences,
   AutomationEvents,
@@ -167,6 +168,7 @@ describe("Automation MCP transport uses shared application policy", () => {
     alepha = Alepha.create({
       env: { DATABASE_URL: ":memory:", SERVER_PORT: 0, LOG_LEVEL: "silent" },
     })
+      .with({ provide: JobProvider, use: AutomationLegacyJobProvider })
       .with({ provide: AutomationClaims, use: McpCrashAfterAdvance })
       .with({ provide: CronProvider, use: ManualCronProvider })
       .with({ provide: JobQueueProvider, use: McpPausedQueue })
@@ -905,5 +907,52 @@ describe("Automation MCP transport uses shared application policy", () => {
       available: false,
     });
     expect(limited.variables[0]).not.toHaveProperty("value");
+  });
+  it("previews and explicitly adopts a policy through MCP without restoring an opted-out replacement", async ({
+    expect,
+  }) => {
+    const preview = value(
+      await call("automation_adoption_preview", {
+        policy: "release-notifications",
+      }),
+    );
+    expect(preview).toMatchObject({
+      state: "legacy",
+      ready: true,
+      author: { id: user.id },
+    });
+    expect(await persistence.adoptions.count({})).toBe(0);
+    expect(
+      failed(
+        await call("automation_adopt", {
+          policy: "release-notifications",
+          confirm: false,
+        }),
+      ),
+    ).toBeTruthy();
+    const adopted = value(
+      await call("automation_adopt", {
+        policy: "release-notifications",
+        confirm: true,
+      }),
+    );
+    expect(adopted).toMatchObject({
+      state: "adopted",
+      candidate: { enabled: true, authorUserId: user.id },
+    });
+    await call("automation_update", {
+      id: adopted.replacementId,
+      expectedRevision: adopted.candidate.revision,
+      enabled: false,
+    });
+    const repeated = value(
+      await call("automation_adopt", {
+        policy: "release-notifications",
+        confirm: true,
+      }),
+    );
+    expect(repeated.state).toBe("opted_out");
+    expect(repeated.candidate.enabled).toBe(false);
+    expect(await persistence.rules.count({})).toBe(1);
   });
 });

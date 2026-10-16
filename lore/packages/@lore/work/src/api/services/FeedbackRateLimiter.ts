@@ -48,10 +48,12 @@ export class FeedbackRateLimiter {
       // 429 (not a bare AlephaError → 500): a 4xx keeps its message through to
       // the client, so the user sees the real reason instead of the generic
       // "Internal Server Error" that production substitutes for any 5xx.
-      throw new HttpError({
-        status: 429,
-        message: `Feedback rate limit reached (${limit} per 24h). Try again later.`,
-      });
+      throw new HttpError(
+        { status: 429 },
+        {
+          message: `Feedback rate limit reached (${limit} per 24h). Try again later.`,
+        },
+      );
     }
   }
 
@@ -68,10 +70,12 @@ export class FeedbackRateLimiter {
       createdAt: { gte: cutoff },
     });
     if (count >= limit) {
-      throw new HttpError({
-        status: 429,
-        message: `Attachment upload rate limit reached (${limit} per 24h). Try again later.`,
-      });
+      throw new HttpError(
+        { status: 429 },
+        {
+          message: `Attachment upload rate limit reached (${limit} per 24h). Try again later.`,
+        },
+      );
     }
   }
 

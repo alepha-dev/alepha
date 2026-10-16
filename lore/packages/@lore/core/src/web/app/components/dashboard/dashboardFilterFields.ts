@@ -64,7 +64,7 @@ export const dashboardFilterFields = (
     if (z.schema.isEnum(field)) {
       fields.push({
         name,
-        options: z.schema.enumValues(field),
+        options: z.schema.enumOptions(field),
         multiple: false,
       });
       continue;
@@ -80,7 +80,7 @@ export const dashboardFilterFields = (
       if (element && z.schema.isEnum(element)) {
         fields.push({
           name,
-          options: z.schema.enumValues(element),
+          options: z.schema.enumOptions(element),
           multiple: true,
         });
       }

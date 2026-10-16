@@ -56,6 +56,8 @@ const NAV_ROUTE_NAMES = [
   // Apps section + the per-app tab bar — capabilityNav.ts, AppLayout.tsx,
   // AppSettings.tsx
   "projectApps",
+  "projectUptime",
+  "projectMonitor",
   "app",
   "appAnalytics",
   "appAnalyticsDimension",
@@ -277,6 +279,7 @@ describe("the route table", () => {
       releaseTag: "0.28.0",
       areaId: 1,
       analyticsDimension: "path",
+      monitorId: "b0a1c2d3-4e5f-4a6b-8c9d-0e1f2a3b4c5d",
       estateId: "b0a1c2d3-4e5f-4a6b-8c9d-0e1f2a3b4c5d",
     };
 

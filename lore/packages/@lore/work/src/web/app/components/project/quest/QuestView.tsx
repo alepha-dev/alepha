@@ -407,7 +407,7 @@ const QuestView = (props: QuestViewProps) => {
     void
   >(
     {
-      handler: async (message, waive) => {
+      handler: async (_ctx, message, waive) => {
         applyLifecycle(
           await questMutations.complete(quest.id, { message, waive }),
         );
@@ -430,7 +430,7 @@ const QuestView = (props: QuestViewProps) => {
    */
   const attachmentsAction = useAction<[attachments: string[]], void>(
     {
-      handler: async (attachments) => {
+      handler: async (_ctx, attachments) => {
         applyLifecycle(
           await questApi.updateQuestById({
             params: { id: quest.id },
@@ -626,7 +626,10 @@ const QuestView = (props: QuestViewProps) => {
               {context === "dialog" ? (
                 <Link
                   href={router.path("projectQuest", {
-                    params: { shortId: String(quest.shortId) },
+                    params: {
+                      projectSlug: router.state.params.projectSlug,
+                      shortId: String(quest.shortId),
+                    },
                   })}
                   className="truncate text-lg leading-tight font-bold"
                   title={titleText}

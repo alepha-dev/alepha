@@ -54,13 +54,13 @@ declare module "alepha" {
   interface Hooks {
     // -----------------------------------------------------------------------------------------------------------------
     // Local Actions hooks
-    "action:onRequest": {
+    "action:request:before": {
       action: ActionPrimitive<RequestConfigSchema>;
       request: ServerRequest;
       options: ClientRequestOptions;
       context?: Record<string, any>;
     };
-    "action:onResponse": {
+    "action:response:after": {
       action: ActionPrimitive<RequestConfigSchema>;
       request: ServerRequest;
       options: ClientRequestOptions;
@@ -68,48 +68,48 @@ declare module "alepha" {
     };
     // -----------------------------------------------------------------------------------------------------------------
     // Server hooks
-    "server:onRequest": {
+    "server:request:before": {
       route: ServerRoute;
       request: ServerRequest;
     };
-    "server:onError": {
+    "server:request:error": {
       route: ServerRoute;
       request: ServerRequest;
       error: Error;
     };
     // last chance to modify the response
-    "server:onSend": {
+    "server:response:before": {
       route: ServerRoute;
       request: ServerRequest;
     };
     // response is ready
-    "server:onResponse": {
+    "server:response:after": {
       route: ServerRoute;
       request: ServerRequest;
       response: ServerResponse;
     };
     // -----------------------------------------------------------------------------------------------------------------
     // Http client hooks
-    "client:onRequest": {
+    "client:request:before": {
       route: HttpAction;
       config: ServerRequestConfigEntry;
       options: ClientRequestOptions;
       headers: Record<string, string>;
       request: RequestInit;
     };
-    "client:beforeFetch": {
+    "client:fetch:before": {
       url: string;
       options: ResolvedFetchOptions;
       request: RequestInit;
     };
-    "client:onError": {
+    "client:request:error": {
       route?: HttpAction;
       error: HttpError;
     };
     // -----------------------------------------------------------------------------------------------------------------
     // Internal hooks
-    "node:request": NodeRequestEvent;
-    "web:request": WebRequestEvent;
+    "node:request:before": NodeRequestEvent;
+    "web:request:before": WebRequestEvent;
   }
 }
 

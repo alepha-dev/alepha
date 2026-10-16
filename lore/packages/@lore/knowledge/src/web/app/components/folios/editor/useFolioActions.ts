@@ -921,7 +921,7 @@ export const useFolioActions = (
   // over a failed encrypt.
   const confirmEncryptAction = useAction<[string], string | null>(
     {
-      handler: async (passphrase) => {
+      handler: async (_ctx, passphrase) => {
         const folio = input.folio;
         if (!folio) return null;
         try {
@@ -977,7 +977,9 @@ export const useFolioActions = (
   );
 
   const confirmEncrypt = (passphrase: string): Promise<string | null> =>
-    confirmEncryptAction.run(passphrase).then((result) => result ?? null);
+    confirmEncryptAction
+      .run(passphrase)
+      .then((result) => (result.ok ? result.value : null));
 
   // Also `useAction`-wrapped — `FolioMoveDialog.handleConfirm` previously
   // `await`ed a plain async function with no try/catch of its own, so a
@@ -989,7 +991,7 @@ export const useFolioActions = (
   // `setMoveDialogOpen(false)`) instead of being left in an ambiguous state.
   const confirmMoveAction = useAction<[string | null], void>(
     {
-      handler: async (directoryId) => {
+      handler: async (_ctx, directoryId) => {
         const folio = input.folio;
         if (!folio) return;
         const updated = await folioApi.update({

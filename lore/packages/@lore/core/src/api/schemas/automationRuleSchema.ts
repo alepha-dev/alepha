@@ -1,6 +1,7 @@
 import { type Infer, z } from "alepha";
 
 import { automationActionSchema } from "./automationActionSchema.ts";
+import { automationAdoptionPolicySchema } from "./automationAdoptionPolicySchema.ts";
 import { automationGuardSchema } from "./automationGuardSchema.ts";
 import { automationSelectionSchema } from "./automationSelectionSchema.ts";
 import { automationTriggerSchema } from "./automationTriggerSchema.ts";
@@ -8,6 +9,7 @@ import { automationTriggerSchema } from "./automationTriggerSchema.ts";
 export const automationRuleSchema = z
   .object({
     version: z.literal(1),
+    compatibility: automationAdoptionPolicySchema.optional(),
     trigger: automationTriggerSchema,
     select: automationSelectionSchema.nullable(),
     guard: automationGuardSchema.nullable(),

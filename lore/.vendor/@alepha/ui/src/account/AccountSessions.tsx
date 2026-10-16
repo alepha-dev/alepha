@@ -87,7 +87,7 @@ const AccountSessions = (props: AccountSessionsProps) => {
 
   const revoke = useAction<[session: MySession], boolean>(
     {
-      handler: async (session) => {
+      handler: async (_ctx, session) => {
         const ok = await dialog.confirm({
           title: tr("account.sessions.revokeTitle", {
             default: "Revoke this session?",

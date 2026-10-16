@@ -2,13 +2,16 @@ import {
   $inject,
   type Async,
   createPrimitive,
-  KIND,
+  type Middleware,
+  type MiddlewareProvides,
+  PipelineHandler,
   Primitive,
   SchemaValidationError,
   type ZObject,
   type ZType,
   z,
 } from "alepha";
+import { KIND } from "alepha/internal";
 import { $logger } from "alepha/logger";
 
 import { McpToolOutputError } from "../errors/McpError.ts";
@@ -70,15 +73,24 @@ import { McpServerProvider } from "../providers/McpServerProvider.ts";
  * }
  * ```
  */
-export const $tool = <T extends ToolPrimitiveSchema>(
-  options: ToolPrimitiveOptions<T>,
+export const $tool = <
+  T extends ToolPrimitiveSchema,
+  const TUse extends readonly Middleware[] = [],
+>(
+  options: ToolPrimitiveOptions<T, TUse>,
 ): ToolPrimitive<T> => {
-  return createPrimitive(ToolPrimitive<T>, options);
+  return createPrimitive(
+    ToolPrimitive<T>,
+    options as unknown as ToolPrimitiveOptions<T>,
+  );
 };
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export interface ToolPrimitiveOptions<T extends ToolPrimitiveSchema> {
+export interface ToolPrimitiveOptions<
+  T extends ToolPrimitiveSchema,
+  TUse extends readonly Middleware[] = readonly Middleware[],
+> {
   /**
    * The name of the tool.
    *
@@ -142,6 +154,16 @@ export interface ToolPrimitiveOptions<T extends ToolPrimitiveSchema> {
   schema?: T;
 
   /**
+   * Middlewares run on every call, outermost first, before the handler.
+   *
+   * `use: [$secure({ roles })]` is how a tool requires a user, a role or a
+   * permission; the handler then receives a non-optional `user`. The MCP
+   * transport's `requireAuth` is the endpoint gate in front of every tool,
+   * which an MCP client's OAuth discovery needs; per-tool rules are this.
+   */
+  use?: TUse;
+
+  /**
    * The handler function that executes when the tool is called.
    *
    * Receives validated parameters and returns the result.
@@ -150,7 +172,9 @@ export interface ToolPrimitiveOptions<T extends ToolPrimitiveSchema> {
    * @param args - Object containing validated params
    * @returns The tool result (can be async)
    */
-  handler: (args: ToolHandlerArgs<T>) => Async<ToolHandlerResult<T>>;
+  handler: (
+    args: ToolHandlerArgs<T> & MiddlewareProvides<TUse>,
+  ) => Async<ToolHandlerResult<T>>;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -193,6 +217,30 @@ export class ToolPrimitive<T extends ToolPrimitiveSchema> extends Primitive<
   }
 
   /**
+   * The handler behind the tool's `use` middlewares.
+   */
+  protected readonly pipeline = new PipelineHandler(
+    (params: unknown, context?: McpContext) =>
+      this.options.handler({
+        params,
+        context,
+        user: this.currentUser(),
+      } as never),
+    this.options.use,
+  );
+
+  /**
+   * The user a `$secure` in `use` resolved: it publishes it in the
+   * `alepha.security.user` slot, and on the HTTP request it ran against.
+   */
+  protected currentUser(): unknown {
+    return (
+      this.alepha.store.get("alepha.http.request")?.user ??
+      this.alepha.store.get("alepha.security.user" as never)
+    );
+  }
+
+  /**
    * Execute the tool with the given parameters.
    *
    * @param params - Raw parameters to validate and pass to the handler
@@ -215,10 +263,10 @@ export class ToolPrimitive<T extends ToolPrimitiveSchema> extends Primitive<
       );
     }
 
-    const result = await this.options.handler({
-      params: validatedParams,
+    const result = (await this.pipeline.run(
+      validatedParams,
       context,
-    });
+    )) as ToolHandlerResult<T>;
 
     // Output validation. A failure here is a bug in THIS tool, and must not
     // reach the caller wearing the same error type as an input failure — see
@@ -231,10 +279,10 @@ export class ToolPrimitive<T extends ToolPrimitiveSchema> extends Primitive<
         ) as ToolHandlerResult<T>;
       } catch (error) {
         if (error instanceof SchemaValidationError) {
-          throw new McpToolOutputError(
-            this.name,
-            `at ${error.value?.path || "/"}: ${error.value?.message || error.message}`,
-          );
+          throw new McpToolOutputError({
+            tool: this.name,
+            detail: `at ${error.data.path || "/"}: ${error.data.message || error.message}`,
+          });
         }
         throw error;
       }

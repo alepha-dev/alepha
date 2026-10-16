@@ -292,7 +292,7 @@ export class EstateCloudflareService {
       };
     }
 
-    const token = this.seal.open(
+    const token = await this.seal.open(
       estate.credential,
       CredentialSealService.ESTATE_PURPOSE,
     );

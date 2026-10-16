@@ -726,6 +726,15 @@ body::before {
   background-image: radial-gradient(oklch(0.985 0 0 / 5%) 1px, transparent 1px);
 }
 
+/*
+ * The project dashboard's content area: the page's own background, so the
+ * dots of `.lore-page-dots` do not show through between the rules the board
+ * draws for its tiles (`DashboardGridBackdropCell`).
+ */
+.lore-dashboard-grid {
+  background-color: var(--background);
+}
+
 /* ────────────────────────────────────────────────────────────────────────
  * EXPERIMENT (#quest-log-facets): an argyle diamond lattice on the quest
  * log pane. Kept behind its own class so removing it is deleting this block

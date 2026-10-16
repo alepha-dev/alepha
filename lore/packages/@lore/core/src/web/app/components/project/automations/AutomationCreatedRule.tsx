@@ -209,6 +209,16 @@ const AutomationCreatedRule = (props: AutomationCreatedRuleProps) => {
           {report.counts.truncated && <p>{tr("automation.run.capped")}</p>}
           {report.operations.map((operation, index) => (
             <div key={index} className="border-border border-t pt-3 text-sm">
+              {operation.audience && (
+                <p>
+                  {tr("automation.adoption.audiencePreview", {
+                    args: [String(operation.audience.total)],
+                  })}
+                  {operation.audience.recipients
+                    .map((item) => item.label)
+                    .join(", ")}
+                </p>
+              )}
               {operation.delivery ? (
                 <>
                   <p className="font-medium break-words">
@@ -222,7 +232,9 @@ const AutomationCreatedRule = (props: AutomationCreatedRuleProps) => {
                 <p className="break-words whitespace-pre-wrap">
                   {operation.rendered.kind === "appendFolio"
                     ? operation.rendered.text
-                    : operation.rendered.kind}
+                    : operation.rendered.kind === "notify"
+                      ? `${operation.rendered.title}\n${operation.rendered.text}`
+                      : operation.rendered.kind}
                 </p>
               )}
               {operation.truncated && (

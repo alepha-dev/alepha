@@ -14,6 +14,7 @@ import { AutomationEvaluator } from "./AutomationEvaluator.ts";
 import { AutomationGuards } from "./AutomationGuards.ts";
 import { AutomationNotifications } from "./AutomationNotifications.ts";
 import { AutomationPersistence } from "./AutomationPersistence.ts";
+import { AutomationRosterWorker } from "./AutomationRosterWorker.ts";
 import { AutomationRunEvidence } from "./AutomationRunEvidence.ts";
 import { AutomationSelections } from "./AutomationSelections.ts";
 import { AutomationTemplateRenderer } from "./AutomationTemplateRenderer.ts";
@@ -23,6 +24,7 @@ import { AutomationTemplateRenderer } from "./AutomationTemplateRenderer.ts";
  * cursor and operation receipts, rather than a job acknowledgement, own progress.
  */
 export class AutomationWorker {
+  protected readonly rosterWorker = $inject(AutomationRosterWorker);
   protected readonly database = $inject(AutomationDatabase);
   protected readonly persistence = $inject(AutomationPersistence);
   protected readonly evaluator = $inject(AutomationEvaluator);
@@ -122,10 +124,47 @@ export class AutomationWorker {
           const planned = occurrence.snapshot!.actions[occurrence.cursor];
           if (!planned) {
             await this.evidence.finish(occurrence.runId!);
+            if (
+              occurrence.snapshot!.rule!.compatibility === "quest-reminders" &&
+              occurrence.snapshot!.selectionNext
+            ) {
+              const rule = await this.persistence.rules.getById(
+                occurrence.automationId!,
+              );
+              const evaluation = await this.evaluator.evaluate({
+                rule: { ...rule, rule: occurrence.snapshot!.rule! },
+                evaluatedAt: occurrence.snapshot!.evaluatedAt,
+                cursor: occurrence.snapshot!.selectionNext,
+              });
+              if (evaluation.refusal)
+                throw new BadRequestError(evaluation.refusal);
+              await this.claims.continueReminderSelection(
+                occurrence.id,
+                token,
+                evaluation.prepared!.snapshot,
+              );
+              return { receiptId: occurrence.id, token };
+            }
             await this.claims.complete(occurrence.id, token);
             return;
           }
           const ast = occurrence.snapshot!.rule!.actions[planned.index];
+          if (ast.kind === "notify" && ast.audience) {
+            const progress = await this.rosterWorker.step(
+              occurrence,
+              token,
+              planned.index,
+              this.context(occurrence.snapshot!, planned.row),
+            );
+            if (!progress.done) return { receiptId: occurrence.id, token };
+            await this.claims.advance(occurrence.id, token, {
+              index: planned.index,
+              row: planned.row,
+              receiptId: progress.receiptId!,
+            });
+            continue;
+          }
+
           if (
             ast.kind === "notify" &&
             (await this.persistence.receipts.count({
@@ -142,10 +181,17 @@ export class AutomationWorker {
             context,
             occurrence.snapshot!.variables,
           );
-          const identity = await this.claims.actionIdentity(
-            occurrence,
-            planned,
-          );
+          const reminderDeliveryKey =
+            ast.kind === "notify" &&
+            occurrence.snapshot!.rule!.compatibility === "quest-reminders"
+              ? `reminder:${context.values.quest_id}:${context.values.reminder_next_at}`
+              : undefined;
+          const identity = await this.claims.actionIdentity(occurrence, {
+            ...planned,
+            ...(reminderDeliveryKey
+              ? { deliveryKey: reminderDeliveryKey }
+              : {}),
+          });
           let receipt: AutomationReceipt | undefined =
             await this.persistence.receipts.findById(identity);
           if (receipt?.status !== "committed") {
@@ -161,6 +207,7 @@ export class AutomationWorker {
                     parentId: occurrence.id,
                     kind: "action",
                     status: "committed",
+                    runId: occurrence.runId!,
                     ...(planned.row !== undefined
                       ? { rowIndex: planned.row }
                       : { rowIndex: { isNull: true } }),
@@ -185,6 +232,17 @@ export class AutomationWorker {
                     index: planned.index,
                     row: planned.row,
                     context,
+                    ...(reminderDeliveryKey &&
+                    rendered.raw.kind === "notify" &&
+                    rendered.raw.recipient
+                      ? {
+                          delivery: {
+                            recipient: rendered.raw.recipient,
+                            channel: rendered.raw.channel,
+                            key: reminderDeliveryKey,
+                          },
+                        }
+                      : {}),
                     ...(settle ? { settlement: settle } : {}),
                   })
                 ).receipt;
@@ -274,7 +332,14 @@ export class AutomationWorker {
           );
           if (current && ["pending", "running"].includes(current.status)) {
             const committed = await this.persistence.receipts.findById(
-              await this.claims.actionIdentity(latest, planned),
+              await this.claims.actionIdentity(latest, {
+                ...planned,
+                ...(latest.snapshot?.rule?.compatibility === "quest-reminders"
+                  ? {
+                      deliveryKey: `reminder:${this.context(latest.snapshot!, planned.row).values.quest_id}:${this.context(latest.snapshot!, planned.row).values.reminder_next_at}`,
+                    }
+                  : {}),
+              }),
             );
             await this.evidence.action(run.id, {
               index: planned.index,

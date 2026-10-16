@@ -104,7 +104,7 @@ export const QueryPanel = (props: QueryPanelProps) => {
       </div>
       <RunFooter
         running={query.running}
-        onRun={query.run}
+        onRun={() => query.run()}
         onRequest={props.onRequest}
         onReset={query.reset}
       />

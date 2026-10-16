@@ -49,6 +49,7 @@ export interface SqliteTypeAuditStatement {
  * never had this hole, so {@link audit} answers nothing for it.
  */
 export class SqliteTypeAuditService {
+  public static readonly id: string = "alepha.orm.SqliteTypeAuditService";
   /**
    * The storage classes a declared type may hold. `null` is always allowed:
    * nullability is the schema's business, not this check's. A REAL column

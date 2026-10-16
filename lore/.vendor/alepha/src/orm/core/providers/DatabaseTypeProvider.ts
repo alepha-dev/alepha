@@ -11,7 +11,6 @@ import {
   type ZType,
   z,
 } from "alepha";
-import type { UpdateDeleteAction } from "drizzle-orm/pg-core/foreign-keys";
 
 import {
   PG_CREATED_AT,
@@ -29,6 +28,7 @@ import {
 } from "../constants/PG_SYMBOLS.ts";
 import type { PgAttr } from "../helpers/pgAttr.ts";
 import { pgAttr } from "../helpers/pgAttr.ts";
+import type { ForeignKeyAction } from "../interfaces/ForeignKeyAction.ts";
 
 export class DatabaseTypeProvider {
   public readonly attr = pgAttr;
@@ -155,11 +155,11 @@ export class DatabaseTypeProvider {
     type: T,
     value?: Infer<T>,
   ): PgAttr<T, PgDefault> => {
+    const tagged = this.attr(type, PG_DEFAULT);
     if (value != null) {
-      Object.assign(type, { default: value });
+      Object.assign(tagged, { default: value });
     }
-
-    return this.attr(type, PG_DEFAULT);
+    return tagged;
   };
 
   /**
@@ -197,24 +197,21 @@ export class DatabaseTypeProvider {
 
   /**
    * Creates a reference to another table or schema. Basically a foreign key.
+   *
+   * Without `actions`, `onDelete` is `"set null"` when the column is
+   * optional and `"cascade"` otherwise. It is decided from the column as the
+   * entity declares it, so `db.ref(x).optional()` and `db.ref(x.optional())`
+   * are the same column.
    */
   public readonly ref = <T extends ZType>(
     type: T,
     ref: () => any,
     actions?: {
-      onUpdate?: UpdateDeleteAction;
-      onDelete?: UpdateDeleteAction;
+      onUpdate?: ForeignKeyAction;
+      onDelete?: ForeignKeyAction;
     },
   ): PgAttr<T, PgRef> => {
-    // If actions are not provided, set default onDelete based on type
-    const finalActions = actions ?? {
-      onDelete: z.schema.isOptional(type) ? "set null" : "cascade",
-    };
-
-    return this.attr(type, PG_REF, {
-      ref,
-      actions: finalActions,
-    });
+    return this.attr(type, PG_REF, { ref, actions });
   };
 
   // -------------------------------------------------------------------------------------------------------------------

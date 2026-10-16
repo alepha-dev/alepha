@@ -214,10 +214,9 @@ export class NodemailerEmailProvider implements EmailProvider {
       const message = `Failed to send email via Nodemailer: ${error instanceof Error ? error.message : String(error)}`;
       // The Error that is thrown, so this log and the failure it causes
       // are reported once.
-      const emailError = new EmailError(
-        message,
-        error instanceof Error ? error : undefined,
-      );
+      const emailError = new EmailError(message, {
+        cause: error instanceof Error ? error : undefined,
+      });
       this.log.error(message, { to, subject, error: emailError });
       throw emailError;
     }

@@ -27,6 +27,9 @@ import { PostgresModelBuilder } from "../services/PostgresModelBuilder.ts";
 export abstract class PostgresProvider extends DatabaseProvider {
   protected readonly env = $env(databaseEnvSchema);
   protected readonly pgEnv = $env(postgresEnvSchema);
+  /**
+   * @internal Driver plumbing, outside semver.
+   */
   protected readonly builder = $inject(PostgresModelBuilder);
 
   public override readonly dialect = "postgresql";
@@ -83,6 +86,9 @@ export abstract class PostgresProvider extends DatabaseProvider {
     return "public";
   }
 
+  /**
+   * @internal Driver plumbing, outside semver.
+   */
   public abstract override get db(): PgAsyncDatabase<any>;
 
   /**
@@ -108,7 +114,7 @@ export abstract class PostgresProvider extends DatabaseProvider {
         try {
           await this.migrateUnderLock();
         } catch (error) {
-          throw new DbMigrationError(error);
+          throw new DbMigrationError(undefined, { cause: error });
         }
       }
     },

@@ -14,6 +14,7 @@ import {
 import { appInstances } from "../entities/appInstances.ts";
 import { estateProjects } from "../entities/estateProjects.ts";
 import { type Estate, type EstateType, estates } from "../entities/estates.ts";
+import { EstateCredentialRefused } from "../errors/EstateCredentialRefused.ts";
 import { acceptedRuntimes } from "../schemas/acceptedRuntimes.ts";
 import {
   type EstateResource,
@@ -151,7 +152,7 @@ export class EstateService {
     input: { slug: string; label?: string },
   ): Promise<{ estate: Estate; secret: string }> {
     const slug = await this.claimSlug(user.id, input.slug);
-    const minted = this.tokens.mint();
+    const minted = await this.tokens.mint();
     try {
       const estate = await this.estates.create({
         ownerUserId: user.id,
@@ -216,7 +217,7 @@ export class EstateService {
         label: input.label?.trim() || undefined,
         accountId: input.accountId,
         secretPrefix: this.cloudflare.mask(input.token),
-        credential: this.seal.seal(
+        credential: await this.seal.seal(
           input.token,
           CredentialSealService.ESTATE_PURPOSE,
         ),
@@ -279,7 +280,10 @@ export class EstateService {
 
     await this.estates.updateById(estate.id, {
       secretPrefix: this.cloudflare.mask(token),
-      credential: this.seal.seal(token, CredentialSealService.ESTATE_PURPOSE),
+      credential: await this.seal.seal(
+        token,
+        CredentialSealService.ESTATE_PURPOSE,
+      ),
       credentialKeyVersion: CredentialSealService.KEY_VERSION,
       credentialCheckedAt: this.dateTime.now().toISOString(),
       credentialError: null,
@@ -320,18 +324,15 @@ export class EstateService {
   }): Promise<{ expiresAt?: string }> {
     const check = await this.cloudflare.check(input);
     if (check.outcome === "failed") {
-      // `data` survives the round trip (`HttpError.toJSON`, read back by
-      // `HttpClient` through `errorSchema`), which is what lets the dialog
-      // put the message beside the field it concerns rather than in a toast
-      // that is gone before it has been read (#1865).
-      throw new HttpError({
-        status: 400,
-        message: check.message,
-        data: { field: check.field },
-      });
+      // `data.field` survives the round trip, which is what lets the dialog
+      // put the message beside the field it concerns (#1865).
+      throw new EstateCredentialRefused(
+        { field: check.field },
+        { message: check.message },
+      );
     }
     if (check.outcome === "inconclusive") {
-      throw new HttpError({ status: 400, message: check.message });
+      throw new HttpError({ status: 400 }, { message: check.message });
     }
     return { expiresAt: check.expiresAt };
   }

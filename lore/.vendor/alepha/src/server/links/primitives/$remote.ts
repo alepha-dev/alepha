@@ -1,4 +1,5 @@
-import { createPrimitive, KIND, Primitive } from "alepha";
+import { createPrimitive, Primitive } from "alepha";
+import { KIND } from "alepha/internal";
 import type { ServiceAccountPrimitive } from "alepha/security";
 import type { ProxyPrimitiveOptions } from "alepha/server/proxy";
 

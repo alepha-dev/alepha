@@ -507,16 +507,14 @@ export class AdminRouter {
   });
 
   /**
-   * Both permissions are required, matching `AdminPaymentController`, which
-   * gates every read with `["admin:payment:read", "payments:read"]` — and
-   * `$pageNav` treats an array as AND, the same way `$secure` does.
+   * Uses the same read permission as `AdminPaymentController`.
    */
   payments = $pageNav({
     parent: this.layout,
     path: "/payments",
     name: "payments",
     head: this.adminHead("Payments", "admin.nav.payments"),
-    permission: ["admin:payment:read", "payments:read"],
+    permission: ["admin:payment:read"],
     can: () => this.paymentApi.listIntents.can(),
     nav: {
       label: "Payments",

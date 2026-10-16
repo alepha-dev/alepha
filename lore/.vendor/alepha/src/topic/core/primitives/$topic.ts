@@ -1,12 +1,12 @@
 import {
   createPrimitive,
   type Infer,
-  KIND,
   Primitive,
   type Service,
   type ZType,
 } from "alepha";
 import type { DurationLike } from "alepha/datetime";
+import { KIND } from "alepha/internal";
 
 import { MemoryTopicProvider } from "../providers/MemoryTopicProvider.ts";
 import {

@@ -29,6 +29,7 @@ export class AdminAuditController {
    * Find audit entries with filtering and pagination.
    */
   public readonly findAudits = $action({
+    method: "GET",
     path: this.url,
     group: this.group,
     use: [$secure({ permissions: ["admin:audit:read"] })],
@@ -44,6 +45,7 @@ export class AdminAuditController {
    * Get a single audit entry by ID.
    */
   public readonly getAudit = $action({
+    method: "GET",
     path: `${this.url}/:id`,
     group: this.group,
     use: [$secure({ permissions: ["admin:audit:read"] })],
@@ -104,6 +106,7 @@ export class AdminAuditController {
    * Get audit entries for a specific user.
    */
   public readonly findByUser = $action({
+    method: "GET",
     path: `${this.url}/user/:userId`,
     group: this.group,
     use: [$secure({ permissions: ["admin:audit:read"] })],
@@ -123,6 +126,7 @@ export class AdminAuditController {
    * Get audit entries for a specific resource.
    */
   public readonly findByResource = $action({
+    method: "GET",
     path: `${this.url}/resource/:resourceType/:resourceId`,
     group: this.group,
     use: [$secure({ permissions: ["admin:audit:read"] })],
@@ -147,6 +151,7 @@ export class AdminAuditController {
    * Get audit statistics.
    */
   public readonly getAuditStats = $action({
+    method: "GET",
     path: `${this.url}/stats`,
     group: this.group,
     use: [$secure({ permissions: ["admin:audit:read"] })],
@@ -181,6 +186,7 @@ export class AdminAuditController {
    * List distinct action names present in the audit log (for filters).
    */
   public readonly getAuditActions = $action({
+    method: "GET",
     path: `${this.url}/actions`,
     group: this.group,
     use: [$secure({ permissions: ["admin:audit:read"] })],
@@ -196,6 +202,7 @@ export class AdminAuditController {
    * Get registered audit types.
    */
   public readonly getTypes = $action({
+    method: "GET",
     path: `${this.url}/types`,
     group: this.group,
     use: [$secure({ permissions: ["admin:audit:read"] })],
@@ -216,6 +223,7 @@ export class AdminAuditController {
    * Get distinct values for filters.
    */
   public readonly getFilterOptions = $action({
+    method: "GET",
     path: `${this.url}/filters`,
     group: this.group,
     use: [$secure({ permissions: ["admin:audit:read"] })],

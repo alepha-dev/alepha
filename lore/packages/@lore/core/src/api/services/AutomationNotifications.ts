@@ -88,6 +88,10 @@ export class AutomationNotifications {
     )
       throw new BadRequestError("Invalid rendered notification");
     const action = rendered.raw;
+    if (action.kind !== "notify" || !action.recipient || action.audience)
+      throw new BadRequestError(
+        "A concrete notification requires one member recipient",
+      );
     const sourceKey =
       input.rule.rule.trigger.kind === "event"
         ? input.rule.rule.trigger.event
@@ -181,9 +185,12 @@ export class AutomationNotifications {
         throw new BadRequestError("Claimed step is not NOTIFY");
       const action = input.delivery
         ? {
-            ...stored,
+            kind: "notify" as const,
             recipient: input.delivery.recipient,
             channel: input.delivery.channel,
+            title: stored.title,
+            text: stored.text,
+            category: stored.category,
           }
         : stored;
       const prepared = await this.prepare({

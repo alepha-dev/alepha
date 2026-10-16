@@ -73,7 +73,7 @@ export class EmailHeaderPolicy {
    * send a message that is not the one that was asked for.
    *
    * Call it before anything observable happens: a refused send must not have
-   * fired the `email:sending` hook or reached the provider.
+   * fired the `email:send:before` hook or reached the provider.
    */
   public assertSafe(headers?: Record<string, string>): void {
     if (!headers) {

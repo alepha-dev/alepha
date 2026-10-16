@@ -83,10 +83,10 @@ describe("useProjectUsers", () => {
     const failing = await mount(
       () => useProjectUsers(),
       (fake) => {
-        fake.usersError = new HttpError({
-          status: 500,
-          message: "Users store unavailable (spec)",
-        });
+        fake.usersError = new HttpError(
+          { status: 500 },
+          { message: "Users store unavailable (spec)" },
+        );
       },
     );
     await settle();

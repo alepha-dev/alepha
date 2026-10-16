@@ -300,7 +300,7 @@ test.describe("Epics — the backlog gate", () => {
       // /api/shelveQuest/:id.
       await page.evaluate(async (questId) => {
         const r = await fetch(`/api/shelveQuest/${questId}`, {
-          method: "GET",
+          method: "POST",
           credentials: "include",
         });
         if (!r.ok) throw new Error(`shelveQuest ${r.status} ${await r.text()}`);
@@ -1000,6 +1000,7 @@ test.describe("Epics — the lifecycle from the list", () => {
       // GET, not POST: an `$action` with no `body` schema derives a GET.
       await page.evaluate(async (id) => {
         const r = await fetch(`/api/acceptQuest/${id}`, {
+          method: "POST",
           credentials: "include",
         });
         if (!r.ok) throw new Error(`accept ${r.status} ${await r.text()}`);
@@ -1105,6 +1106,7 @@ test.describe("Epics — shelving a plan", () => {
         });
         if (!ready.ok) throw new Error(`ready ${ready.status}`);
         const accept = await fetch(`/api/acceptQuest/${questId}`, {
+          method: "POST",
           credentials: "include",
         });
         if (!accept.ok) throw new Error(`accept ${accept.status}`);
@@ -1536,6 +1538,7 @@ test.describe("Epics — the lifecycle on the epic page", () => {
     const accept = (questId: number) =>
       page.evaluate(async (questId) => {
         const r = await fetch(`/api/acceptQuest/${questId}`, {
+          method: "POST",
           credentials: "include",
         });
         return { status: r.status, body: await r.text() };

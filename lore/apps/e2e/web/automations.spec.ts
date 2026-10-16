@@ -1224,4 +1224,96 @@ test.describe("Automations", () => {
       await member.ctx.close();
     }
   });
+  test("previews existing policies, adopts with named consent and keeps opt-out after reload", async ({
+    page,
+  }, testInfo) => {
+    await registerAndVerify(
+      page,
+      `adoption-${crypto.randomUUID()}@example.com`,
+      "GoodPassw0rd",
+    );
+    const project = await createProjectViaWizard(page, "Policy adoption");
+    await setCapability(page, project.id, "work", {
+      options: { automations: true, reminder: true, releases: true },
+    });
+    await page.goto(`/${project.slug}/automations`);
+    await page
+      .getByRole("button", { name: "Adopt existing policies", exact: true })
+      .click();
+    await expect(
+      page.getByRole("heading", { name: "Adopt existing policies" }),
+    ).toBeVisible();
+    const card = page.locator("section").filter({
+      has: page.getByRole("heading", {
+        name: "Release announcements",
+        exact: true,
+      }),
+    });
+    await expect(
+      card.getByText("Existing policy is still active", { exact: true }),
+    ).toBeVisible();
+    await expect(card.getByText("inbox, email", { exact: true })).toBeVisible();
+    await expect(
+      card.getByText("automation:write, release:read, member:read", {
+        exact: true,
+      }),
+    ).toBeVisible();
+    const path = (await apiPath(page, "previewAutomationAdoption"))
+      .replace(":projectId", String(project.id))
+      .replace(":policy", "release-notifications");
+    const before = await (await page.request.get(path)).json();
+    expect(before.state).toBe("legacy");
+    expect(before.replacementId).toBeUndefined();
+    await card
+      .getByRole("button", { name: "Consent and adopt", exact: true })
+      .click();
+    const dialog = page.getByRole("alertdialog");
+    await expect(
+      dialog.getByText(/legacy path stops permanently/),
+    ).toBeVisible();
+    const pending = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        (new URL(response.url()).pathname.includes("/automation-adoptions/") ||
+          response
+            .request()
+            .postData()
+            ?.includes('"action":"adoptAutomationPolicy"') === true),
+    );
+    await dialog
+      .getByRole("button", { name: "Consent and adopt", exact: true })
+      .click();
+    const response = await pending;
+    expect(response.ok()).toBe(true);
+    expect(JSON.stringify(await response.json())).not.toContain('"error":');
+    await expect(card.getByText("Adopted", { exact: true })).toBeVisible();
+    const adopted = await (await page.request.get(path)).json();
+    expect(adopted.candidate.enabled).toBe(true);
+    expect(adopted.author.id).toBe(adopted.candidate.authorUserId);
+    await card.getByRole("button", { name: "Open replacement rule" }).click();
+    await expect(
+      page.getByText("Current roster except publisher", { exact: true }),
+    ).toHaveCount(2);
+    const disabled = page.waitForResponse((response) =>
+      mutation(response.request()),
+    );
+    await page.getByRole("button", { name: "Disable", exact: true }).click();
+    expect((await disabled).ok()).toBe(true);
+    await page.goto(`/${project.slug}/automations/adoption`);
+    await expect(
+      card.getByText("Adopted, replacement disabled or deleted", {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(
+      card.getByRole("button", { name: "Consent and adopt", exact: true }),
+    ).toHaveCount(0);
+    const after = await (await page.request.get(path)).json();
+    expect(after.replacementId).toBe(adopted.replacementId);
+    expect(after.candidate.enabled).toBe(false);
+    await page.screenshot({
+      path: testInfo.outputPath("automation-adoption.png"),
+      fullPage: true,
+    });
+  });
 });

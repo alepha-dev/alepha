@@ -73,7 +73,7 @@ const BaySettings = () => {
     void
   >(
     {
-      handler: async (body) => {
+      handler: async (_ctx, body) => {
         if (!estate) return;
         // The row is re-read from the server's answer rather than assumed, so
         // a switch that was refused does not stay flipped on screen.
@@ -138,7 +138,7 @@ const BaySettings = () => {
 
   const detachAction = useAction<[loan: { id: number; title: string }], void>(
     {
-      handler: async (loan) => {
+      handler: async (_ctx, loan) => {
         if (!estate) return;
         const ok = await dialog.confirm({
           title: tr("account.estates.detach.confirmTitle", {

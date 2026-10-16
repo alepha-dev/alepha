@@ -118,14 +118,14 @@ export class SigilProxyController {
         .slice(0, 10);
       const host = request.headers.host ?? "";
       const secret = this.env.SIGIL_SALT || this.secrets.secretKey;
-      const dailySalt = this.crypto.hash(
+      const dailySalt = await this.crypto.hash(
         `alepha-sigil-visitor:${secret}:${utcDate}`,
       );
       // ⚠️ The SUBJECT of the hash, and the only thing this change swaps.
       //
       // The session is already on this request and costs nothing to read:
       // `alepha/server/auth` promotes the session cookie into an
-      // `Authorization` header on `server:onRequest`, and
+      // `Authorization` header on `server:request:before`, and
       // `ServerSecurityProvider` runs at `priority: "last"` and resolves
       // `request.user` for EVERY route, secured or not. This endpoint is not
       // secured and gets the user anyway.
@@ -161,7 +161,7 @@ export class SigilProxyController {
       const subject = request.user?.id
         ? `u:${request.user.id}`
         : `ip:${ip}:${ua}`;
-      const visitor = this.crypto.hash(`${host}:${subject}:${dailySalt}`);
+      const visitor = await this.crypto.hash(`${host}:${subject}:${dailySalt}`);
 
       // Classified here rather than in the browser for the same reason
       // `country` is: the header is already in hand server-side, so spending

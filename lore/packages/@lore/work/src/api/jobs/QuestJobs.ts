@@ -1,14 +1,15 @@
+import { AutomationLegacyQueue } from "@lore/core/api";
 import { projects } from "@lore/core/schemas";
 import { $inject, Alepha } from "alepha";
 import { $job } from "alepha/api/jobs";
 import { users } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { $repository } from "alepha/orm";
+import { $repository, sql } from "alepha/orm";
 
 import { quests, REMINDER_INTERVAL_MS } from "../entities/quests.ts";
 import { QuestNotifications } from "../notifications/QuestNotifications.ts";
-import { workRelations } from "../relations/workRelations.ts";
+import { WorkAutomationSelections } from "../services/WorkAutomationSelections.ts";
 
 export class QuestJobs {
   protected readonly REMINDER_BATCH = 50;
@@ -16,13 +17,11 @@ export class QuestJobs {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
   protected readonly quests = $repository(quests);
-  /**
-   * ...with the assignee and project a reminder email needs.
-   */
-  protected readonly questsWith = $repository(workRelations, "quests");
   protected readonly projects = $repository(projects);
   protected readonly users = $repository(users);
   protected readonly questNotifications = $inject(QuestNotifications);
+  protected readonly legacy = $inject(AutomationLegacyQueue);
+  protected readonly compatibility = $inject(WorkAutomationSelections);
   protected readonly dt = $inject(DateTimeProvider);
 
   /**
@@ -70,10 +69,12 @@ export class QuestJobs {
     timeout: [2, "minutes"],
     handler: async () => {
       const now = this.dt.nowISOString();
-      // The assignee and the project come back with the quest, so the batch
-      // is one statement rather than three.
-      const due = await this.questsWith.findMany({
+      // Filter adopted policies before LIMIT, so their due rows cannot starve fallback projects.
+      const due = await this.quests.findMany({
         where: {
+          and: [
+            sql`NOT EXISTS (SELECT 1 FROM automation_adoptions WHERE project_id = ${this.quests.table.projectId} AND policy = 'quest-reminders' AND state = 'adopted')`,
+          ],
           reminderNextAt: { lte: now, isNotNull: true },
           reminderInterval: { isNotNull: true },
           acceptedBy: { isNotNull: true },
@@ -82,7 +83,6 @@ export class QuestJobs {
         },
         orderBy: [{ column: "reminderNextAt", direction: "asc" }],
         limit: this.REMINDER_BATCH,
-        include: { acceptedByUser: true, project: true },
       });
       if (due.length === 0) return;
 
@@ -94,8 +94,10 @@ export class QuestJobs {
       for (const quest of due) {
         try {
           if (!quest.acceptedBy || !quest.reminderInterval) continue;
-          const recipient = quest.acceptedByUser;
-          const project = quest.project;
+          if (await this.legacy.adopted(quest.projectId, "quest-reminders"))
+            continue;
+          const recipient = await this.users.findById(quest.acceptedBy);
+          const project = await this.projects.findById(quest.projectId);
           if (!recipient?.email || !project) {
             // Assignee deleted or no email — clear the reminder so we
             // don't keep retrying a doomed send forever.
@@ -112,20 +114,42 @@ export class QuestJobs {
           // framework's outbox + retry pipeline (3 retries, an audit trail
           // kept for `retentionDays`). Calling `NotificationSenderService.send`
           // directly here would bypass all of that.
-          await this.questNotifications.questReminder.push({
-            contact: recipient.email,
-            variables: {
-              recipientName: recipient.username ?? recipient.email,
-              projectTitle: project.title,
-              questTitle: quest.title,
-              shortId: quest.shortId,
-              // Slug, not id — `/p/…` no longer resolves. A reminder email
-              // outlives the send by however long it sits in an inbox, so a
-              // rename can still break this link; that is the same accepted
-              // trade-off the rename dialog warns the owner about.
-              questUrl: `${baseUrl}/${project.slug}/quests/${quest.shortId}`,
+          const settlement = this.compatibility.reminder(
+            {
+              quest_id: quest.id,
+              assignee_id: quest.acceptedBy,
+              reminder_interval: quest.reminderInterval,
+              reminder_next_at: quest.reminderNextAt!,
             },
-          });
+            now,
+            quest.projectId,
+          );
+          await this.legacy.run(
+            {
+              projectId: quest.projectId,
+              policy: "quest-reminders",
+              identity: `reminder:${quest.id}:${quest.reminderNextAt}`,
+              template: this.questNotifications.questReminder.name,
+              ...settlement,
+            },
+            () =>
+              this.questNotifications.questReminder.push({
+                contact: recipient.email!,
+                variables: {
+                  projectId: project.id,
+                  recipientName: recipient.username ?? recipient.email!,
+                  projectTitle: project.title,
+                  questTitle: quest.title,
+                  shortId: quest.shortId,
+                  // Slug, not id — `/p/…` no longer resolves. A reminder email
+                  // outlives the send by however long it sits in an inbox, so a
+                  // rename can still break this link; that is the same accepted
+                  // trade-off the rename dialog warns the owner about.
+                  questUrl: `${baseUrl}/${project.slug}/quests/${quest.shortId}`,
+                },
+              }),
+          );
+          if (this.legacy.available()) continue;
 
           const nextAt = new Date(
             this.dt.nowMillis() + REMINDER_INTERVAL_MS[quest.reminderInterval],

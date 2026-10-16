@@ -1,4 +1,5 @@
 import { type Alepha, type Page, type ZObject, z } from "alepha";
+import { ActionErrorPolicy } from "alepha/react";
 import { type FormModel, useForm } from "alepha/react/form";
 import {
   type Dispatch,
@@ -166,6 +167,7 @@ export const useDataTableData = <T>(options: UseDataTableDataOptions<T>) => {
         type: "custom",
         id: "data-table:load",
         error: error as Error,
+        handled: ActionErrorPolicy.isHandled(error),
       });
     } finally {
       // Only the newest request clears `loading`: an older one finishing

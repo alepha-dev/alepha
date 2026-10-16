@@ -13,7 +13,7 @@ export class ServerNotReadyProvider {
   protected readonly alepha = $inject(Alepha);
 
   public readonly onRequest = $hook({
-    on: "server:onRequest",
+    on: "server:request:before",
     priority: "first",
     handler: ({ request: { reply } }) => {
       if (this.alepha.isReady()) {
@@ -22,10 +22,10 @@ export class ServerNotReadyProvider {
 
       reply.headers["Retry-After"] = "5"; // Retry after 5 seconds
 
-      throw new HttpError({
-        status: 503,
-        message: "Server is not ready yet. Please try again later.",
-      });
+      throw new HttpError(
+        { status: 503 },
+        { message: "Server is not ready yet. Please try again later." },
+      );
     },
   });
 }

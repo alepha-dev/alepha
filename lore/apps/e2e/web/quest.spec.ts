@@ -322,7 +322,7 @@ test.describe("Quest", () => {
 
       await page.evaluate(async (id) => {
         const r = await fetch(`/api/acceptQuest/${id}`, {
-          method: "GET",
+          method: "POST",
           credentials: "include",
         });
         if (!r.ok) throw new Error(`accept: ${r.status} ${await r.text()}`);
@@ -522,7 +522,7 @@ test.describe("Quest", () => {
       // canonical /api/acceptQuest/:id.
       const result = (await page.evaluate(async (id) => {
         const r = await fetch(`/api/acceptQuest/${id}`, {
-          method: "GET",
+          method: "POST",
           credentials: "include",
         });
         return { status: r.status, body: await r.text() };
@@ -535,7 +535,7 @@ test.describe("Quest", () => {
     await test.step("complete the predecessor, then accept the follower", async () => {
       await page.evaluate(async (id) => {
         const accept = await fetch(`/api/acceptQuest/${id}`, {
-          method: "GET",
+          method: "POST",
           credentials: "include",
         });
         if (!accept.ok) {
@@ -556,7 +556,7 @@ test.describe("Quest", () => {
 
       const acceptFollower = (await page.evaluate(async (id) => {
         const r = await fetch(`/api/acceptQuest/${id}`, {
-          method: "GET",
+          method: "POST",
           credentials: "include",
         });
         return { status: r.status, body: await r.text() };

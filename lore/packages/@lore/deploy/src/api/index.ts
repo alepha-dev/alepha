@@ -14,17 +14,21 @@ import { EstateController } from "./controllers/EstateController.ts";
 import { EstatePullController } from "./controllers/EstatePullController.ts";
 import { EstateSocketController } from "./controllers/EstateSocketController.ts";
 import { InsightsController } from "./controllers/InsightsController.ts";
+import { MonitorController } from "./controllers/MonitorController.ts";
 import { ProjectEstateController } from "./controllers/ProjectEstateController.ts";
 import { QualityController } from "./controllers/QualityController.ts";
 import { SigilAnalyticsController } from "./controllers/SigilAnalyticsController.ts";
 import { SigilController } from "./controllers/SigilController.ts";
 import { SigilIngestController } from "./controllers/SigilIngestController.ts";
+import { UptimePushController } from "./controllers/UptimePushController.ts";
 import { BlightJobs } from "./jobs/BlightJobs.ts";
 import { DeployJobs } from "./jobs/DeployJobs.ts";
 import { EstateCommandJobs } from "./jobs/EstateCommandJobs.ts";
 import { EstateCredentialJobs } from "./jobs/EstateCredentialJobs.ts";
 import { QualityJobs } from "./jobs/QualityJobs.ts";
 import { SigilJobs } from "./jobs/SigilJobs.ts";
+import { UptimeJobs } from "./jobs/UptimeJobs.ts";
+import { UptimeRetentionJobs } from "./jobs/UptimeRetentionJobs.ts";
 import { EstateNotifications } from "./notifications/EstateNotifications.ts";
 import { AppHealthMetric } from "./services/AppHealthMetric.ts";
 import { AppSecretService } from "./services/AppSecretService.ts";
@@ -67,6 +71,8 @@ import { RollbackService } from "./services/RollbackService.ts";
 import { SigilIngestService } from "./services/SigilIngestService.ts";
 import { SigilTokenService } from "./services/SigilTokenService.ts";
 import { UniqueVisitorsMetric } from "./services/UniqueVisitorsMetric.ts";
+import { UptimeHttpProber } from "./services/UptimeHttpProber.ts";
+import { UptimeSocketProber } from "./services/UptimeSocketProber.ts";
 import { WebSocketEstateCommandTransport } from "./services/WebSocketEstateCommandTransport.ts";
 
 /**
@@ -113,6 +119,10 @@ export const LoreDeployApi = $module({
     DeployAutomationPresets,
     DeployProjectCounts,
     BlightJobs,
+    UptimeRetentionJobs,
+    UptimeJobs,
+    UptimeHttpProber,
+    UptimeSocketProber,
     SigilJobs,
     QualityJobs,
     EstateCommandJobs,
@@ -184,6 +194,7 @@ export const LoreDeployApi = $module({
     AppSecretController,
     SigilController,
     SigilIngestController,
+    UptimePushController,
     EstateController,
     ProjectEstateController,
     EstateCommandController,
@@ -192,6 +203,7 @@ export const LoreDeployApi = $module({
     AdminEstateController,
     SigilAnalyticsController,
     InsightsController,
+    MonitorController,
     BlightController,
   ],
 });
@@ -247,3 +259,16 @@ export { SigilIngestService } from "./services/SigilIngestService.ts";
 export { SigilTokenService } from "./services/SigilTokenService.ts";
 export { TeardownService } from "./services/TeardownService.ts";
 export { WebSocketEstateCommandTransport } from "./services/WebSocketEstateCommandTransport.ts";
+
+export { UptimeHttpProber } from "./services/UptimeHttpProber.ts";
+
+export { UptimeSocketProber } from "./services/UptimeSocketProber.ts";
+
+export { UptimeJobs } from "./jobs/UptimeJobs.ts";
+export { UptimeProber } from "./services/UptimeProber.ts";
+export { UptimeStateService } from "./services/UptimeStateService.ts";
+
+export { UptimePushController } from "./controllers/UptimePushController.ts";
+export { UptimePushService } from "./services/UptimePushService.ts";
+
+export { MonitorController } from "./controllers/MonitorController.ts";

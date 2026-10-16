@@ -449,7 +449,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
     boolean
   >(
     {
-      handler: async (descriptor, title, position) => {
+      handler: async (_ctx, descriptor, title, position) => {
         const area = areaFilter[0] ?? currentAreas?.[0]?.name;
         if (!area) {
           toaster.show(tr("kanban.composer.needsArea"), "warning");
@@ -858,8 +858,14 @@ const KanbanBoard = (props: KanbanBoardProps) => {
                           onCompose={
                             descriptor.kind === "completed"
                               ? undefined
-                              : (title, position) =>
-                                  composeAction.run(descriptor, title, position)
+                              : async (title, position) => {
+                                  const result = await composeAction.run(
+                                    descriptor,
+                                    title,
+                                    position,
+                                  );
+                                  return result.ok ? result.value : undefined;
+                                }
                           }
                           composing={composeAction.loading}
                           assigneeOf={(q) =>

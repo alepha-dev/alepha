@@ -1,6 +1,7 @@
 import { type Infer, z } from "alepha";
 
 import { automationActionSchema } from "./automationActionSchema.ts";
+import { automationAudiencePreviewSchema } from "./automationAudiencePreviewSchema.ts";
 import { automationRunSnapshotSchema } from "./automationRunSnapshotSchema.ts";
 import { automationSafeFieldsSchema } from "./automationSafeFieldsSchema.ts";
 import { automationSourceProvenanceSchema } from "./automationSourceProvenanceSchema.ts";
@@ -38,6 +39,7 @@ export const automationEvaluationReportSchema = z
             row: z.integer().min(0).max(49).optional(),
             action: automationActionSchema,
             rendered: automationActionSchema,
+            audience: automationAudiencePreviewSchema.optional(),
             delivery: z
               .object({
                 title: z.string().max(16_384),

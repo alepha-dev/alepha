@@ -26,6 +26,7 @@ export class FileController {
    * Supports filtering by bucket and tags.
    */
   public readonly findFiles = $action({
+    method: "GET",
     path: this.url,
     group: `admin:${this.group}`,
     use: [$secure({ permissions: ["admin:file:read"] })],
@@ -218,6 +219,7 @@ export class FileController {
    * cannot be cached by shared proxies/CDNs. Client-side ETag still works.
    */
   public readonly streamFile = $action({
+    method: "GET",
     path: `${this.url}/:id`,
     group: this.group,
     description: "Download a file",
@@ -279,6 +281,7 @@ export class FileController {
    * WITHIN the freshness window, it does not extend it.
    */
   public readonly streamPublicFile = $action({
+    method: "GET",
     path: "/public/files/:id",
     group: this.group,
     description: "Download a public file (anonymous, edge-cacheable)",

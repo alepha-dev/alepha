@@ -72,6 +72,7 @@ export class InvitationController {
    * owns. Used by the settings page to render pending rows.
    */
   public readonly listProjectInvitations = $action({
+    method: "GET",
     path: `${this.url}/project/:projectId`,
     group: this.group,
     use: [
@@ -220,6 +221,7 @@ export class InvitationController {
    * Rendered at /account/invitations.
    */
   public readonly listMyInvitations = $action({
+    method: "GET",
     path: `${this.url}/me`,
     group: this.group,
     use: [$secure()],

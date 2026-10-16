@@ -66,7 +66,10 @@ describe("lore secrets", () => {
             body: { key: string; value: string };
           }) => {
             if (refused[body.key]) {
-              throw new HttpError({ status: 400, message: refused[body.key] });
+              throw new HttpError(
+                { status: 400 },
+                { message: refused[body.key] },
+              );
             }
             sent.push({ instanceId: params.instanceId, ...body });
             return { id: "s", key: body.key };
@@ -80,7 +83,7 @@ describe("lore secrets", () => {
       apps: {
         getApp: async ({ params }: { params: { env: string } }) => {
           if (!instances.includes(params.env)) {
-            throw new HttpError({ status: 404, message: "App not found" });
+            throw new HttpError({ status: 404 }, { message: "App not found" });
           }
           return { id: `inst-${params.env}` };
         },

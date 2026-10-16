@@ -924,7 +924,7 @@ export const useDynamicControlRefresh = (input: BaseInputField | undefined) => {
   useEffect(() => {
     if (!isDynamic || !input?.form) return;
     const formId = input.form.id;
-    return alepha.events.on("form:change", (e) => {
+    return alepha.events.on("form:changed", (e) => {
       if (e.id === formId && e.path !== input.path) bump((n) => n + 1);
     });
   }, [alepha, input?.form, input?.path, isDynamic]);

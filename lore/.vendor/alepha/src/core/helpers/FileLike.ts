@@ -1,6 +1,3 @@
-import type { Readable } from "node:stream";
-import type { ReadableStream as WebReadableStream } from "node:stream/web";
-
 import type { ZType } from "../providers/ZodProvider.ts";
 import { z } from "../providers/ZodProvider.ts";
 
@@ -123,12 +120,7 @@ export const isFileLike = (value: any): value is FileLike => {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-// TODO: remove it, replace with WebStream
-export type StreamLike =
-  | ReadableStream
-  | WebReadableStream
-  | Readable
-  | NodeJS.ReadableStream;
+export type StreamLike = ReadableStream<Uint8Array>;
 
 /**
  * A schema describing a streamed body. Same caveat as {@link FileSchema}: it

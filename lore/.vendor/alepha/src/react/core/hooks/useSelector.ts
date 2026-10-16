@@ -42,7 +42,7 @@ function useSelector<T extends TAtomObject, R>(
         return () => {};
       }
 
-      return alepha.events.on("state:mutate", (ev) => {
+      return alepha.events.on("state:mutated", (ev) => {
         if (ev.key === key) {
           onStoreChange();
         }

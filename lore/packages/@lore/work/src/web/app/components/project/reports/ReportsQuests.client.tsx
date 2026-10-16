@@ -261,7 +261,10 @@ const ReportsQuests = (props: ReportsQuestsProps) => {
               <Link
                 key={quest.shortId}
                 href={router.path("projectQuest", {
-                  params: { shortId: quest.shortId },
+                  params: {
+                    projectSlug: router.state.params.projectSlug,
+                    shortId: quest.shortId,
+                  },
                 })}
                 className="hover:bg-hover flex items-center gap-3 py-2 text-sm"
               >

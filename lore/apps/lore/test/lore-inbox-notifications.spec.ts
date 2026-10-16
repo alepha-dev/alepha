@@ -3,7 +3,7 @@ import {
   NotificationHtmlEscaper,
   LoreInboxRecipientProvider,
 } from "@lore/core/api";
-import { users } from "@lore/core/schemas";
+import { projects, users } from "@lore/core/schemas";
 import { EstateNotifications } from "@lore/deploy/api";
 import { QuestNotifications } from "@lore/work/api";
 import { Alepha } from "alepha";
@@ -23,6 +23,7 @@ import { bootLore } from "./fixtures/bootLore.ts";
 class Rows {
   readonly inbox = $repository(notificationInboxEntity);
   readonly users = $repository(users);
+  readonly projects = $repository(projects);
 }
 
 const setup = async () => {
@@ -151,10 +152,12 @@ describe("Lore's inbox notifications", () => {
   it("files a published release the same way", async ({ expect }) => {
     const { alepha, mail, rows, templates } = await setup();
 
-    await rows.users.create({
+    const user = await rows.users.create({
       username: "nfo",
       email: "Member@Example.com",
     } as never);
+
+    await rows.projects.create({ id: 1, title: "Alepha", createdBy: user.id });
 
     await templates.inboxReleasePublished.push({
       contact: "member@example.com",

@@ -6,6 +6,7 @@ import type { ActorDeclaration } from "../interfaces/ActorInterfaces.ts";
  * Per-container declaration allowlist, independent of the local atom store.
  */
 export class ActorRegistry {
+  public static readonly id: string = "alepha.actor.ActorRegistry";
   protected readonly declarations = new Map<string, ActorDeclaration>();
 
   public register(declaration: ActorDeclaration): void {

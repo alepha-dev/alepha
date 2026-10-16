@@ -456,6 +456,10 @@ const AutomationRuleEditor = (props: AutomationRuleEditorProps) => {
           <AutomationActionEditor
             key={index}
             index={index}
+            allowAudience={
+              draft.trigger.kind === "event" &&
+              draft.trigger.event === "release.published"
+            }
             action={action}
             entries={actionKinds}
             bindings={bindings}
@@ -468,7 +472,17 @@ const AutomationRuleEditor = (props: AutomationRuleEditorProps) => {
               setDraft((rule) => ({
                 ...rule,
                 actions: rule.actions.map((item, position) =>
-                  position === index ? { ...item, [key]: value } : item,
+                  position === index
+                    ? (Object.fromEntries(
+                        Object.entries({
+                          ...item,
+                          [key]: value,
+                          ...(key === "audience" && value
+                            ? { recipient: undefined, category: "releases" }
+                            : {}),
+                        }).filter(([, field]) => field !== undefined),
+                      ) as AutomationRule["actions"][number])
+                    : item,
                 ),
               }))
             }

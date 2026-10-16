@@ -121,7 +121,7 @@ export const OrganizationRanks = (props: OrganizationRanksProps) => {
   );
   const create = useAction<[OrganizationRankPreset | undefined], void>(
     {
-      handler: async (preset) => {
+      handler: async (_ctx, preset) => {
         const name = await dialog.prompt({
           title: tr("organizations.ranks.createTitle", {
             default: "Create a rank",
@@ -152,7 +152,7 @@ export const OrganizationRanks = (props: OrganizationRanksProps) => {
   );
   const rename = useAction<[OrganizationRankResource], void>(
     {
-      handler: async (rank) => {
+      handler: async (_ctx, rank) => {
         const name = await dialog.prompt({
           title: tr("organizations.ranks.renameTitle", {
             default: "Rename $1",
@@ -178,7 +178,7 @@ export const OrganizationRanks = (props: OrganizationRanksProps) => {
   );
   const remove = useAction<[OrganizationRankResource], void>(
     {
-      handler: async (rank) => {
+      handler: async (_ctx, rank) => {
         const confirmed = await dialog.confirm({
           title: tr("organizations.ranks.deleteTitle", {
             default: "Delete $1?",

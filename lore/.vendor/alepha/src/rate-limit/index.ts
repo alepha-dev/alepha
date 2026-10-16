@@ -19,7 +19,7 @@ declare module "alepha" {
      * A `$rateLimit` refused a consume: by its limit, or by a store error or
      * contention under `deny`. Never emitted for a counted hit.
      */
-    "rate-limit:consume:denied": {
+    "rateLimit:consume:denied": {
       name: string;
       key: string;
       reason: "limit" | "store" | "contention";

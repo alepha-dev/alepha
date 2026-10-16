@@ -1,7 +1,8 @@
+import { MODULE } from "alepha/internal";
+import { __alephaRef } from "alepha/internal";
+
 import type { Alepha } from "../Alepha.ts";
-import { MODULE } from "../constants/MODULE.ts";
 import { MissingContextError } from "../errors/MissingContextError.ts";
-import { __alephaRef } from "../helpers/ref.ts";
 import type { Service } from "../interfaces/Service.ts";
 
 /**

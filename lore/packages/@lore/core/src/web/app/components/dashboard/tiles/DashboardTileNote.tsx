@@ -9,11 +9,12 @@ export interface DashboardTileNoteProps {
 
 /**
  * A `note` tile: markdown the owner wrote, through the shared `MarkdownView`
- * so it reads like every other piece of markdown in the app.
+ * so it reads like every other piece of markdown in the app. A note longer
+ * than its tile fades out at the bottom rather than stopping mid-line.
  */
 const DashboardTileNote = (props: DashboardTileNoteProps) => (
   <div
-    className="min-h-0 w-full flex-1 overflow-hidden text-[13px]"
+    className="min-h-0 w-full flex-1 overflow-hidden [mask-image:linear-gradient(to_bottom,black_75%,transparent)] text-[13px]"
     data-testid="tile-note"
   >
     <MarkdownView content={props.markdown} />

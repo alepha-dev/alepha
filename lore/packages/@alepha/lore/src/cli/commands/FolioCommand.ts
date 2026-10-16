@@ -274,8 +274,11 @@ export class FolioCommand {
           } catch (error) {
             this.printWrite(print, flags.output, created, line);
             throw new CommandError(
-              `Created F${created.shortId}, but did not file it under E${epic.number}: ${error instanceof Error ? error.message : String(error)}`,
-              { cause: error, exitCode: 1 },
+              { exitCode: 1 },
+              {
+                message: `Created F${created.shortId}, but did not file it under E${epic.number}: ${error instanceof Error ? error.message : String(error)}`,
+                cause: error,
+              },
             );
           }
         }

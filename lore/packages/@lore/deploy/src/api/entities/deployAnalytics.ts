@@ -3,6 +3,7 @@ import { $analytics } from "alepha/api/analytics";
 import { db } from "alepha/orm";
 
 import { estates } from "./estates.ts";
+import { monitors } from "./monitors.ts";
 import { sigils } from "./sigils.ts";
 
 /**
@@ -37,6 +38,34 @@ import { sigils } from "./sigils.ts";
  * tables that once mirrored them were dropped (#E74).
  */
 export class DeployAnalytics {
+  /**
+   * Probe history. Current state and exact boundaries stay on ordinary rows.
+   * Slots are the wire contract and can only be extended at the end.
+   */
+  public readonly probes = $analytics({
+    name: "uptime_probes",
+    index: "monitorId",
+    dimensions: z.object({
+      monitorId: db.ref(
+        z.uuid().default("00000000-0000-4000-8000-000000000000"),
+        () => monitors.cols.id,
+        { onDelete: "cascade" },
+      ),
+      result: z.string().default("up"),
+      prober: z.string().default("local"),
+    }),
+    measures: z.object({
+      count: z.number(),
+      up: z.number(),
+      latencyMs: z.number(),
+    }),
+    slots: {
+      dimensions: ["monitorId", "prober", "result"],
+      measures: ["count", "latencyMs", "up"],
+    },
+    retention: { hot: "30d", rollup: "day", cold: "400d" },
+  });
+
   public readonly views = $analytics({
     name: "sigil_views",
     index: "sigilId",

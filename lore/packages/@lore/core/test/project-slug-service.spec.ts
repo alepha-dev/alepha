@@ -98,4 +98,7 @@ describe("projectTitleSchema", () => {
   it("rejects a title longer than 24 characters", ({ expect }) => {
     expect(() => projectTitleSchema.parse("a".repeat(25))).toThrow();
   });
+  it("reserves the uptime receipt namespace", ({ expect }) => {
+    expect(new ProjectSlugService().isReserved("uptime")).toBe(true);
+  });
 });

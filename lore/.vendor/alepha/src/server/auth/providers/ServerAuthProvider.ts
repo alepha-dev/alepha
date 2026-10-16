@@ -47,8 +47,11 @@ import type { SecondFactorMethod } from "../schemas/secondFactorMethodSchema.ts"
 import { tokenResponseSchema } from "../schemas/tokenResponseSchema.ts";
 import { type Tokens, tokensSchema } from "../schemas/tokensSchema.ts";
 import { userinfoResponseSchema } from "../schemas/userinfoResponseSchema.ts";
+import { OAuthTokenNormalizer } from "../services/OAuthTokenNormalizer.ts";
 
 export class ServerAuthProvider {
+  public static readonly id: string = "alepha.server.ServerAuthProvider";
+  protected readonly tokenNormalizer = $inject(OAuthTokenNormalizer);
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
   protected readonly serverCookiesProvider = $inject(ServerCookiesProvider);
@@ -143,7 +146,7 @@ export class ServerAuthProvider {
    * Fill request headers with access token from cookies or fallback to provider's fallback function.
    */
   protected readonly onRequest = $hook({
-    on: "server:onRequest",
+    on: "server:request:before",
     after: this.serverCookiesProvider,
     handler: async ({ request }) => {
       const cookies = request.cookies;
@@ -207,7 +210,7 @@ export class ServerAuthProvider {
     },
     handler: async ({ user, headers, cookies }) => {
       // Prefer the REQUEST's resolved user (the currentUserAtom): global
-      // `server:onRequest` hooks may have rewritten it — e.g. per-org role
+      // `server:request:before` hooks may have rewritten it , e.g. per-org role
       // resolution on a multi-tenant relying party. Re-deriving from the raw
       // tokens here would silently drop those roles, so the token path is
       // only a FALLBACK for sessions whose resolvers don't populate the atom
@@ -406,7 +409,7 @@ export class ServerAuthProvider {
       response: tokenResponseSchema,
     },
     handler: async ({ body, cookies }) => {
-      const challenge = this.readChallenge(body.challenge);
+      const challenge = await this.readChallenge(body.challenge);
       if (!challenge) {
         // Same error an expired or forged challenge gets: a caller must not
         // be able to tell which of the two it hit.
@@ -472,7 +475,7 @@ export class ServerAuthProvider {
       response: mfaResendResponseSchema,
     },
     handler: async ({ body }) => {
-      const challenge = this.readChallenge(body.challenge);
+      const challenge = await this.readChallenge(body.challenge);
       if (!challenge) {
         throw new InvalidCredentialsError();
       }
@@ -530,7 +533,7 @@ export class ServerAuthProvider {
     );
 
     return new MfaRequiredError({
-      challenge: this.signChallenge({
+      challenge: await this.signChallenge({
         sub: options.user.id,
         user: options.user,
         provider: options.provider,
@@ -561,22 +564,24 @@ export class ServerAuthProvider {
    * use (a TOTP step is burned when accepted, a recovery code is consumed,
    * an emailed code is marked verified).
    */
-  protected signChallenge(payload: MfaChallengePayload): string {
+  protected async signChallenge(payload: MfaChallengePayload): Promise<string> {
     const encoded = Buffer.from(JSON.stringify(payload)).toString("base64url");
-    return `${encoded}.${this.cryptoProvider.hmac(encoded, this.securityProvider.secretKey)}`;
+    return `${encoded}.${await this.cryptoProvider.hmac(encoded, this.securityProvider.secretKey)}`;
   }
 
   /**
    * Verify and decode a challenge, or return undefined for anything that is
    * forged, malformed or expired.
    */
-  protected readChallenge(challenge: string): MfaChallengePayload | undefined {
+  protected async readChallenge(
+    challenge: string,
+  ): Promise<MfaChallengePayload | undefined> {
     const [encoded, signature] = challenge.split(".");
     if (!encoded || !signature) {
       return undefined;
     }
 
-    const expected = this.cryptoProvider.hmac(
+    const expected = await this.cryptoProvider.hmac(
       encoded,
       this.securityProvider.secretKey,
     );
@@ -897,7 +902,7 @@ export class ServerAuthProvider {
         issued_at: this.dateTimeProvider.now().unix(),
         provider: provider.name,
         realm: authorizationCode.realm,
-        ...tokens,
+        ...this.tokenNormalizer.normalize(tokens),
       }))
       .catch((e) => {
         // A replayed or stale callback is the usual cause, and it answers
@@ -1174,7 +1179,7 @@ export class ServerAuthProvider {
    * Browsers cannot attach an `Authorization` header to a WebSocket handshake, so for a web
    * client the encrypted `tokens` cookie is the ONLY auth channel a socket upgrade carries.
    * Ordinary HTTP requests get the cookie→authorization conversion from this provider's
-   * `server:onRequest` hook, but an upgrade never runs the server pipeline, so
+   * `server:request:before` hook, but an upgrade never runs the server pipeline, so
    * `WebSocketServerProvider.resolveUserId` calls this directly. Refresh side effects (an
    * updated or deleted cookie) cannot reach the client here — there is no HTTP response to
    * carry a `Set-Cookie` — which is acceptable: the next ordinary HTTP request performs the
@@ -1262,7 +1267,6 @@ export class ServerAuthProvider {
   protected tokenCookieTtl(tokens: Tokens): Duration | undefined {
     const exp =
       tokens.refresh_token_expires_in ||
-      tokens.refresh_expires_in ||
       (tokens.refresh_token ? undefined : tokens.expires_in);
 
     return exp ? this.dateTimeProvider.duration(exp, "seconds") : undefined;

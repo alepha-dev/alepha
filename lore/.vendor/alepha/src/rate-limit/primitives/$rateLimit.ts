@@ -2,13 +2,14 @@ import {
   $inject,
   AlephaError,
   createMiddleware,
+  MIDDLEWARE_RESPONSES,
   createPrimitive,
-  KIND,
   type Middleware,
   Primitive,
 } from "alepha";
 import { ActorContentionError } from "alepha/actor";
 import { DateTimeProvider } from "alepha/datetime";
+import { KIND } from "alepha/internal";
 import { $logger } from "alepha/logger";
 import { HttpError, type ServerRequest } from "alepha/server";
 
@@ -39,7 +40,7 @@ import { RateLimitWindows } from "../services/RateLimitWindows.ts";
  * with `reason: "store" | "contention"`, refused under `deny` (the default for
  * both) or allowed uncounted under `allow`. `consume` never rejects for them.
  *
- * Every refusal emits `rate-limit:consume:denied`. Callers audit lockouts
+ * Every refusal emits `rateLimit:consume:denied`. Callers audit lockouts
  * themselves from `count`: whether a hit "crossed" depends on whether they
  * compare before or after counting.
  *
@@ -157,6 +158,7 @@ export class RateLimitPrimitive<TInput = string> extends Primitive<
     return createMiddleware({
       name: "$rateLimit",
       options: { name: this.options.name, ...options },
+      meta: { [MIDDLEWARE_RESPONSES]: "429" },
       handler: ({ alepha, next }) => {
         return async (...args: any[]) => {
           // Untracked (#E78): the limiter's key never reaches a page.
@@ -170,10 +172,10 @@ export class RateLimitPrimitive<TInput = string> extends Primitive<
               : "ip:global";
           const result = await this.consume(key);
           if (!result.allowed && result.reason === "store")
-            throw new HttpError({
-              status: 503,
-              message: "Rate limiter unavailable",
-            });
+            throw new HttpError(
+              { status: 503 },
+              { message: "Rate limiter unavailable" },
+            );
           if (request && result.resetAt !== undefined) {
             request.reply.setHeader("X-RateLimit-Limit", String(result.limit));
             request.reply.setHeader(
@@ -190,10 +192,10 @@ export class RateLimitPrimitive<TInput = string> extends Primitive<
               "Retry-After",
               String(Math.max(1, Math.ceil((result.retryAfterMs ?? 0) / 1000))),
             );
-            throw new HttpError({
-              status: 429,
-              message: "Too Many Requests",
-            });
+            throw new HttpError(
+              { status: 429 },
+              { message: "Too Many Requests" },
+            );
           }
           const ticket = result.ticket;
           if (
@@ -309,7 +311,7 @@ export class RateLimitPrimitive<TInput = string> extends Primitive<
     key: string,
     reason: "limit" | "store" | "contention",
   ): Promise<void> {
-    await this.alepha.events.emit("rate-limit:consume:denied", {
+    await this.alepha.events.emit("rateLimit:consume:denied", {
       name: this.options.name,
       key,
       reason,

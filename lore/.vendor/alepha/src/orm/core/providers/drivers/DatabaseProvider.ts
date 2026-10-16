@@ -3,7 +3,7 @@ import { stat } from "node:fs/promises";
 import { $inject, Alepha, AlephaError, type Infer, type ZObject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { type SQLWrapper, sql } from "drizzle-orm";
+import { type SQL, sql } from "drizzle-orm";
 import {
   alias,
   type PgAsyncDatabase,
@@ -13,23 +13,39 @@ import {
 import type { PgTransactionConfig } from "drizzle-orm/pg-core/session";
 
 import { DbError } from "../../errors/DbError.ts";
-import type {
-  EntityPrimitive,
-  SchemaToTableConfig,
-} from "../../primitives/$entity.ts";
+import { assertAttrsReachable } from "../../helpers/pgAttr.ts";
+import type { DbTransaction } from "../../interfaces/DbTransaction.ts";
+import type { TransactionOptions } from "../../interfaces/TransactionOptions.ts";
+import type { EntityPrimitive } from "../../primitives/$entity.ts";
 import type { SequencePrimitive } from "../../primitives/$sequence.ts";
 import { databaseEnvSchema } from "../../schemas/databaseEnvSchema.ts";
 import type { ModelBuilder } from "../../services/ModelBuilder.ts";
 import { DrizzleKitProvider } from "../DrizzleKitProvider.ts";
 
-export type SQLLike = SQLWrapper | string;
+/**
+ * A raw statement: a `sql` template, or a plain string run as it is.
+ */
+export type SQLLike = SQL | string;
 
 export abstract class DatabaseProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly log = $logger();
+  /**
+   * @internal Driver plumbing, outside semver.
+   */
   protected abstract readonly builder: ModelBuilder;
+  /**
+   * @internal Driver plumbing, outside semver.
+   */
   protected readonly kit = $inject(DrizzleKitProvider);
+
+  /**
+   * The drizzle database this provider drives.
+   *
+   * @internal Outside semver: reach it through `Drizzle.db()` from
+   * `alepha/orm/drizzle`.
+   */
   public abstract readonly db: PgAsyncDatabase<any>;
 
   /**
@@ -169,9 +185,15 @@ export abstract class DatabaseProvider {
     return "OTHER";
   }
 
+  /**
+   * The drizzle table built for an entity.
+   *
+   * @internal Outside semver: reach it through `Drizzle.table()` from
+   * `alepha/orm/drizzle`.
+   */
   public table<T extends ZObject>(
     entity: EntityPrimitive<T>,
-  ): PgTableWithColumns<SchemaToTableConfig<T>> {
+  ): PgTableWithColumns<any> {
     const table = this.tables.get(entity.name);
     if (!table) {
       throw new AlephaError(`Table '${entity.name}' is not registered`);
@@ -185,16 +207,14 @@ export abstract class DatabaseProvider {
       // carry their value types this no longer overlaps structurally, and the
       // cast has to go through `unknown`. Callers still see the un-aliased
       // type, which is what they query against.
-      return alias(
-        table as PgTableWithColumns<SchemaToTableConfig<T>>,
-        hasAlias,
-      ) as unknown as PgTableWithColumns<SchemaToTableConfig<T>>;
+      return alias(table as PgTableWithColumns<any>, hasAlias);
     }
 
-    return table as PgTableWithColumns<SchemaToTableConfig<T>>;
+    return table as PgTableWithColumns<any>;
   }
 
   public registerEntity(entity: EntityPrimitive) {
+    assertAttrsReachable(entity.name, entity.schema);
     this.entityPrimitives.push(entity);
     this.builder.buildTable(entity, this);
   }
@@ -241,8 +261,12 @@ export abstract class DatabaseProvider {
    * operations within `fn` automatically participate in the transaction without
    * explicit `{ tx }` drilling.
    *
-   * Nesting is safe  -  if already inside a `transactional()` block, the inner
-   * call reuses the outer transaction (no nested PG transactions / savepoints).
+   * Nesting joins: inside a `transactional()` block, the inner call runs on
+   * the outer transaction (no nested transaction, no savepoint), so a throw
+   * in it rolls back the whole block. An inner call whose `options` the
+   * outer transaction cannot honour throws instead of joining silently: a
+   * different `isolation`, or `access: "read write"` inside a read-only
+   * transaction. No options, or the same ones, join.
    *
    * The marker lives in a nested context, never the caller's. Two concurrent
    * calls both pass the check below  -  it reads the marker synchronously, and
@@ -255,11 +279,12 @@ export abstract class DatabaseProvider {
    */
   public async transactional<R>(
     fn: () => Promise<R>,
-    config?: PgTransactionConfig,
+    options?: TransactionOptions,
     owner?: object,
   ): Promise<R> {
     const existing = this.alepha.get("alepha.orm.tx");
     if (existing) {
+      this.assertJoinable(options);
       return fn();
     }
 
@@ -271,7 +296,10 @@ export abstract class DatabaseProvider {
     return this.alepha.context.nest(async () => {
       const afterCommit: Array<() => void | Promise<void>> = [];
       const result = await this.db.transaction(async (tx) => {
-        this.alepha.store.set("alepha.orm.tx", tx as PgAsyncTransaction<any>, {
+        this.alepha.store.set("alepha.orm.tx", tx as unknown as DbTransaction, {
+          skipEvents: true,
+        });
+        this.alepha.store.set("alepha.orm.txOptions", options, {
           skipEvents: true,
         });
         this.alepha.store.set("alepha.orm.afterCommit", afterCommit, {
@@ -283,15 +311,56 @@ export abstract class DatabaseProvider {
           this.alepha.store.set("alepha.orm.tx", undefined, {
             skipEvents: true,
           });
+          this.alepha.store.set("alepha.orm.txOptions", undefined, {
+            skipEvents: true,
+          });
           this.alepha.store.set("alepha.orm.afterCommit", undefined, {
             skipEvents: true,
           });
         }
-      }, config);
+      }, this.toDrizzleTransactionConfig(options));
 
       await this.drainAfterCommit(afterCommit);
       return result;
     });
+  }
+
+  /**
+   * Refuse to join the open transaction when it cannot give a nested call
+   * what that call asked for.
+   */
+  protected assertJoinable(options?: TransactionOptions): void {
+    if (!options) {
+      return;
+    }
+    const outer = this.alepha.get("alepha.orm.txOptions") ?? {};
+    if (options.isolation && options.isolation !== outer.isolation) {
+      throw new AlephaError(
+        `A nested transaction asked for isolation '${options.isolation}', but it joins the open transaction, which runs at '${outer.isolation ?? "the database default"}'. Set the isolation on the outermost $transactional.`,
+      );
+    }
+    if (options.access === "read write" && outer.access === "read only") {
+      throw new AlephaError(
+        "A nested transaction asked for 'read write', but it joins the open transaction, which is 'read only'.",
+      );
+    }
+  }
+
+  /**
+   * Translate Alepha's transaction options into drizzle's config.
+   *
+   * @internal
+   */
+  public toDrizzleTransactionConfig(
+    options?: TransactionOptions,
+  ): PgTransactionConfig | undefined {
+    if (!options?.isolation && !options?.access) {
+      return undefined;
+    }
+    return {
+      isolationLevel: options.isolation,
+      accessMode: options.access,
+    };
   }
 
   /**
@@ -450,6 +519,7 @@ export abstract class DatabaseProvider {
   protected runExclusiveNativeTransaction<R>(
     exec: (sql: string) => void,
     fn: () => Promise<R>,
+    options?: TransactionOptions,
   ): Promise<R> {
     const afterCommit: Array<() => void | Promise<void>> = [];
     // Always a layer of its own, like the async `transactional()`: the
@@ -465,6 +535,9 @@ export abstract class DatabaseProvider {
       this.alepha.store.set("alepha.orm.tx", this.db as any, {
         skipEvents: true,
       });
+      this.alepha.store.set("alepha.orm.txOptions", options, {
+        skipEvents: true,
+      });
       this.alepha.store.set("alepha.orm.afterCommit", afterCommit, {
         skipEvents: true,
       });
@@ -478,6 +551,9 @@ export abstract class DatabaseProvider {
         throw error;
       } finally {
         this.alepha.store.set("alepha.orm.tx", undefined, {
+          skipEvents: true,
+        });
+        this.alepha.store.set("alepha.orm.txOptions", undefined, {
           skipEvents: true,
         });
         this.alepha.store.set("alepha.orm.afterCommit", undefined, {
@@ -510,9 +586,14 @@ export abstract class DatabaseProvider {
    * one, the connection (or pool) otherwise. The same choice the Repository
    * makes for its own methods, so {@link execute} and {@link run} take part in
    * a `transactional()` block.
+   *
+   * @internal Driver plumbing, outside semver.
    */
   protected get executor(): PgAsyncDatabase<any> {
-    return this.alepha.get("alepha.orm.tx") ?? this.db;
+    const tx = this.alepha.get("alepha.orm.tx") as unknown as
+      | PgAsyncTransaction<any>
+      | undefined;
+    return tx ?? this.db;
   }
 
   /**
@@ -648,7 +729,7 @@ export abstract class DatabaseProvider {
       } catch (error) {
         throw new DbError(
           `Failed to synchronize ${this.dialect} database schema`,
-          error as Error,
+          { cause: error },
         );
       }
 

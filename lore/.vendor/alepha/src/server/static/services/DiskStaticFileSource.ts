@@ -1,7 +1,7 @@
 import { createReadStream } from "node:fs";
 import { access, readdir, stat } from "node:fs/promises";
 import { join, sep } from "node:path";
-import type { Readable as NodeStream } from "node:stream";
+import { Readable } from "node:stream";
 
 import type {
   StaticFileSource,
@@ -45,11 +45,15 @@ export class DiskStaticFileSource implements StaticFileSource {
       .catch(() => false);
   }
 
-  public async open(path: string): Promise<NodeStream | undefined> {
+  public async open(
+    path: string,
+  ): Promise<ReadableStream<Uint8Array> | undefined> {
     return new Promise((resolve, reject) => {
       const stream = createReadStream(this.toFilePath(path));
       stream.on("open", () => {
-        resolve(stream);
+        resolve(
+          Readable.toWeb(stream) as unknown as ReadableStream<Uint8Array>,
+        );
       });
       stream.on("error", (err: NodeJS.ErrnoException) => {
         // Metadata is captured once at boot, so a file deleted afterwards

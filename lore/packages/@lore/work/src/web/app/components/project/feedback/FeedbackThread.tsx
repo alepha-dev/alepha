@@ -109,7 +109,7 @@ const FeedbackThread = (props: FeedbackThreadProps) => {
 
   const removeAction = useAction<[comment: FeedbackCommentResource], void>(
     {
-      handler: async (comment) => {
+      handler: async (_ctx, comment) => {
         const confirmed = await dialog.confirm({
           title: tr("feedback.thread.deleteTitle"),
           confirmLabel: tr("feedback.thread.delete"),

@@ -128,7 +128,7 @@ export class WorkAutomationSelections {
         : {}),
     };
   }
-  protected reminder(
+  public reminder(
     values: Record<string, string | number | boolean | null>,
     at: string,
     projectId: number,

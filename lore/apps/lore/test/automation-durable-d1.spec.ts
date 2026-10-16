@@ -3,6 +3,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import {
+  AutomationAdoptionService,
+  AutomationLegacyJobProvider,
+  AutomationLegacyQueue,
   AutomationAtomic,
   AutomationService,
   AutomationVariableService,
@@ -126,6 +129,7 @@ describe("Durable automation primitives on local D1", () => {
       }).with({ provide: DatabaseProvider, use: FixtureD1Provider });
       alepha.set("cloudflare.env", proxy.env);
       alepha.with({ provide: CronProvider, use: ManualCronProvider });
+      alepha.with({ provide: JobProvider, use: AutomationLegacyJobProvider });
       alepha.with({
         provide: NotificationInboxRecipientProvider,
         use: LoreInboxRecipientProvider,
@@ -686,6 +690,68 @@ describe("Durable automation primitives on local D1", () => {
       ).toEqual([
         { id: shared.variable.id, key: "native_message", version: 1 },
       ]);
+
+      const adoptionProject = await createTestProject(alepha, {
+        capabilities: [
+          {
+            key: "work",
+            options: { automations: true, reminder: true, releases: true },
+          },
+        ],
+      });
+      await entities.users.updateById(adoptionProject.createdBy, {
+        roles: ["user"],
+      });
+      const adoptionAuthor = { id: adoptionProject.createdBy, roles: ["user"] };
+      const adoption = alepha.inject(AutomationAdoptionService);
+      const adopted = await adoption.adopt(
+        adoptionProject.id,
+        "quest-reminders",
+        adoptionAuthor,
+        { confirm: true },
+      );
+      expect(adopted.state).toBe("adopted");
+      expect(adopted.candidate?.enabled).toBe(true);
+      expect(
+        await alepha
+          .inject(AutomationLegacyQueue)
+          .adopted(adoptionProject.id, "quest-reminders"),
+      ).toBe(true);
+      const disabled = await application.setEnabled(
+        adoptionProject.id,
+        adopted.replacementId!,
+        adoptionAuthor,
+        false,
+        adopted.candidate!.revision,
+      );
+      expect(
+        (
+          await adoption.adopt(
+            adoptionProject.id,
+            "quest-reminders",
+            adoptionAuthor,
+            { confirm: true },
+          )
+        ).state,
+      ).toBe("opted_out");
+      await application.remove(
+        adoptionProject.id,
+        disabled.id,
+        adoptionAuthor,
+        disabled.revision,
+      );
+      expect(
+        (
+          await adoption.preview(
+            adoptionProject.id,
+            "quest-reminders",
+            adoptionAuthor,
+          )
+        ).state,
+      ).toBe("opted_out");
+      expect(
+        await persistence.adoptions.count({ projectId: adoptionProject.id }),
+      ).toBe(1);
 
       await entities.organizationMembers.deleteMany({
         organizationId: project.organizationId!,

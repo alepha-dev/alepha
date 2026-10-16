@@ -1,10 +1,10 @@
 import {
   $inject,
   createPrimitive,
-  KIND,
   PipelinePrimitive,
   type PipelinePrimitiveOptions,
 } from "alepha";
+import { KIND } from "alepha/internal";
 
 import { ServerReply } from "../helpers/ServerReply.ts";
 import type {

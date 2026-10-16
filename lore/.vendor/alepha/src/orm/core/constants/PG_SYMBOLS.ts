@@ -1,9 +1,6 @@
 import type { SQL } from "drizzle-orm";
-import type {
-  PgSequenceOptions,
-  UpdateDeleteAction,
-} from "drizzle-orm/pg-core";
 
+import type { ForeignKeyAction } from "../interfaces/ForeignKeyAction.ts";
 import type { EntityPrimitive } from "../primitives/$entity.ts";
 
 export const PG_DEFAULT = Symbol.for("Alepha.Postgres.Default");
@@ -38,9 +35,20 @@ export type PgSymbolKeys = keyof PgSymbols;
 
 export type PgIdentityOptions = {
   mode: "always" | "byDefault";
-} & PgSequenceOptions & {
-    name?: string;
-  };
+  name?: string;
+} & PgSequenceOptions;
+
+/**
+ * The sequence behind an identity column or a `$sequence`.
+ */
+export interface PgSequenceOptions {
+  increment?: number | string;
+  minValue?: number | string;
+  maxValue?: number | string;
+  startWith?: number | string;
+  cache?: number | string;
+  cycle?: boolean;
+}
 
 export interface PgEnumOptions {
   name?: string;
@@ -67,7 +75,7 @@ export interface PgRefOptions {
     entity: EntityPrimitive;
   };
   actions?: {
-    onUpdate?: UpdateDeleteAction;
-    onDelete?: UpdateDeleteAction;
+    onUpdate?: ForeignKeyAction;
+    onDelete?: ForeignKeyAction;
   };
 }

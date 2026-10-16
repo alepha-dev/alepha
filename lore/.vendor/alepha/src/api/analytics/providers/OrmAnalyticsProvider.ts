@@ -10,7 +10,7 @@ import {
   DatabaseProvider,
   type EntityPrimitive,
   PG_REF,
-  type PgRefOptions,
+  getAttr,
   Repository,
   sql,
 } from "alepha/orm";
@@ -445,7 +445,7 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
     let kept = rows;
 
     for (const [name, schema] of Object.entries(dataset.dimensions.shape)) {
-      const ref = (schema as { [PG_REF]?: PgRefOptions })[PG_REF];
+      const ref = getAttr(schema, PG_REF);
       if (!ref || kept.length === 0) continue;
 
       const target = ref.ref();

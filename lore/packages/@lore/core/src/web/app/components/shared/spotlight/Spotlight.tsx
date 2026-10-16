@@ -98,7 +98,7 @@ const Spotlight = (): ReactElement => {
 
   const search = useAction<[string], void>(
     {
-      handler: async (q) => {
+      handler: async (_ctx, q) => {
         if (projectId === undefined) return;
         const result = await searchApi.search({
           params: { projectId },

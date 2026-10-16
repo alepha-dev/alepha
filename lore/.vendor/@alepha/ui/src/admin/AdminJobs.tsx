@@ -56,7 +56,7 @@ export const AdminJobs = () => {
 
   const trigger = useAction<[JobRegistration], void>(
     {
-      handler: async (job) => {
+      handler: async (_ctx, job) => {
         await client.triggerJob({ params: { name: job.name }, body: {} });
         toast.success(
           tr("admin.jobs.triggered", {

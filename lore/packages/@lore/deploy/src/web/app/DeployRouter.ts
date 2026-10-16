@@ -10,7 +10,7 @@ import {
 import { $inject, Alepha, z } from "alepha";
 import { $page, NotFound, ReactRouter, Redirection } from "alepha/react/router";
 import { $secure } from "alepha/security";
-import { HttpError, NotFoundError } from "alepha/server";
+import { isHttpError, NotFoundError } from "alepha/server";
 import { $client } from "alepha/server/links";
 import { createElement } from "react";
 
@@ -111,7 +111,7 @@ export class DeployRouter {
       this.alepha.store.set(currentEstateAtom, undefined);
     },
     errorHandler: (error) => {
-      if (HttpError.is(error, 404)) {
+      if (isHttpError(error, 404)) {
         return createElement(NotFound, { style: { height: "100%" } });
       }
     },
@@ -239,6 +239,32 @@ export class DeployRouter {
    * same reason: the capability is the whole gate, so reaching this by URL
    * without it is a 404 rather than a 403.
    */
+  projectUptime = $pageProject({
+    name: "projectUptime",
+    path: "/uptime",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Uptime`,
+    }),
+    lazy: () => import("./components/project/uptime/ProjectUptime.tsx"),
+    loader: async () => {
+      if (!hasCapability(this.alepha.store.get(currentProjectAtom), "apps")) {
+        throw new NotFoundError("Apps are not enabled for this project");
+      }
+    },
+  });
+
+  projectMonitor = $pageProject({
+    name: "projectMonitor",
+    path: "/uptime/:monitorId",
+    schema: { params: z.object({ monitorId: z.uuid() }) },
+    lazy: () => import("./components/project/uptime/ProjectMonitor.tsx"),
+    loader: async ({ params }) => {
+      if (!hasCapability(this.alepha.store.get(currentProjectAtom), "apps"))
+        throw new NotFoundError("Apps are not enabled for this project");
+      return { monitorId: params.monitorId };
+    },
+  });
+
   projectApps = $pageProject({
     name: "projectApps",
     path: "/apps",
@@ -253,7 +279,7 @@ export class DeployRouter {
       }
     },
     errorHandler: (error) => {
-      if (HttpError.is(error, 404)) {
+      if (isHttpError(error, 404)) {
         return createElement(NotFound, { style: { height: "100%" } });
       }
     },
@@ -350,7 +376,7 @@ export class DeployRouter {
       this.alepha.store.set(currentInstanceAtom, undefined);
     },
     errorHandler: (error) => {
-      if (HttpError.is(error, 404)) {
+      if (isHttpError(error, 404)) {
         return createElement(NotFound, { style: { height: "100%" } });
       }
     },
@@ -403,18 +429,18 @@ export class DeployRouter {
         throw new NotFoundError("App not found");
       }
 
-      throw new Redirection(
-        this.router.path("app", {
+      throw new Redirection({
+        redirect: this.router.path("app", {
           params: {
             projectSlug: project.slug,
             app: target.app,
             env: target.env,
           },
         }),
-      );
+      });
     },
     errorHandler: (error) => {
-      if (HttpError.is(error, 404)) {
+      if (isHttpError(error, 404)) {
         return createElement(NotFound, { style: { height: "100%" } });
       }
     },
@@ -505,7 +531,7 @@ export class DeployRouter {
       return { dimension: params.analyticsDimension };
     },
     errorHandler: (error) => {
-      if (HttpError.is(error, 404)) {
+      if (isHttpError(error, 404)) {
         return createElement(NotFound, { style: { height: "100%" } });
       }
     },

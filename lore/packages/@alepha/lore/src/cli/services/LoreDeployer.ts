@@ -5,7 +5,7 @@ import { $inject, AlephaError } from "alepha";
 import type { RunnerMethod } from "alepha/command";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { HttpError } from "alepha/server";
+import { isHttpError } from "alepha/server";
 import { $client } from "alepha/server/links";
 import { ShellProvider } from "alepha/system";
 
@@ -179,7 +179,7 @@ export class LoreDeployer {
       const instance = await this.readInstance(projectId, app, env);
       return instance?.id ? instance : undefined;
     } catch (error) {
-      if (HttpError.is(error, 404)) {
+      if (isHttpError(error, 404)) {
         return undefined;
       }
       throw error;
@@ -411,7 +411,7 @@ export class LoreDeployer {
       // ⚠️ The reason in words, not a status code. Every refusal on this path
       // is written to be read by somebody who often cannot fix it themselves,
       // so the message is the deliverable.
-      if (HttpError.is(error)) {
+      if (isHttpError(error)) {
         throw new AlephaError(error.message);
       }
       throw error;

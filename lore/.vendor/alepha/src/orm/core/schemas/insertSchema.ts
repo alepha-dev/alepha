@@ -2,6 +2,7 @@ import type { ZObject, ZodOptional, ZType } from "alepha";
 import { z } from "alepha";
 
 import { PG_DEFAULT, PG_GENERATED } from "../constants/PG_SYMBOLS.ts";
+import { hasAttr } from "../helpers/pgAttr.ts";
 
 /**
  * Transforms a ZObject schema for insert operations.
@@ -29,11 +30,11 @@ export const insertSchema = <T extends ZObject>(obj: T): TObjectInsert<T> => {
     const prop = obj.shape[key];
 
     // Skip generated columns — they are computed by the database
-    if (PG_GENERATED in prop) {
+    if (hasAttr(prop, PG_GENERATED)) {
       continue;
     }
 
-    if (PG_DEFAULT in prop) {
+    if (hasAttr(prop, PG_DEFAULT)) {
       // PG_DEFAULT fields have a server-side default, so they are optional at
       // the TypeScript call-site even when the database column is NOT NULL.
       newProperties[key] = prop.optional();

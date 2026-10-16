@@ -59,7 +59,8 @@ export class AutomationSourceRepository<
       const predicate = this.toSQL(this.withDeletedAt(where, {}));
       const mutation = this.rawInsert()
         .values(this.cast(data, true))
-        .returning(this.table);
+        .returning(this.pgTable)
+        .getSQL();
       const rows = await this.commit(
         event,
         sql`NOT EXISTS (SELECT 1 FROM ${this.table} WHERE ${predicate})`,
@@ -103,7 +104,8 @@ export class AutomationSourceRepository<
       const mutation = this.rawUpdate()
         .set(values as never)
         .where(predicate)
-        .returning(this.table);
+        .returning(this.pgTable)
+        .getSQL();
       const rows = await this.commit(
         event,
         sql`EXISTS (SELECT 1 FROM ${this.table} WHERE ${predicate})`,

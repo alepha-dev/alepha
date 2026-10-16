@@ -34,7 +34,7 @@ import { SigilVitals } from "./SigilVitals.ts";
  *
  * A page served from a file or a cache carries a config older than the visit.
  * `configAt` on the atom is what says so, and the first ingest call brings back
- * the current one — see the `react:browser:render` handler.
+ * the current one — see the `react:browser:render:before` handler.
  */
 export class SigilBrowserProvider {
   protected readonly alepha = $inject(Alepha);
@@ -44,7 +44,7 @@ export class SigilBrowserProvider {
   /**
    * Whether the hydration render has already been counted as a pageview.
    *
-   * Both `react:transition:end` and `react:browser:render` fire for the initial
+   * Both `react:transition:end` and `react:browser:render:before` fire for the initial
    * render — `ReactBrowserProvider`'s `ready` hook awaits `render()`, which
    * emits the transition, and then emits the browser render itself, about two
    * milliseconds later. Listening to both counted every visit's landing page
@@ -178,7 +178,7 @@ export class SigilBrowserProvider {
       this.queue = new SigilQueue(send);
 
       this.alepha.events.on("react:transition:end", (ev) => {
-        // The first one is the hydration render, and `react:browser:render`
+        // The first one is the hydration render, and `react:browser:render:before`
         // below already counts that. See {@link initialRenderCounted}.
         if (!this.initialRenderCounted) return;
         if (!this.wants("views")) return;
@@ -217,7 +217,7 @@ export class SigilBrowserProvider {
        * stack - so the subtree that mismatched is what separates one of these
        * from another, which is exactly what a fingerprint should key on.
        */
-      this.alepha.events.on("react:recoverable:error", (ev) => {
+      this.alepha.events.on("react:render:recovered", (ev) => {
         if (!this.wants("errors")) return;
         if (!this.isCrash(ev.error)) return;
         const error = this.toError(ev.error, location.href);
@@ -275,10 +275,10 @@ export class SigilBrowserProvider {
         }
       });
 
-      // The initial pageview is deferred to `react:browser:render` (fires once,
+      // The initial pageview is deferred to `react:browser:render:before` (fires once,
       // after atom hydration) so it respects the hydrated feature flags instead
       // of the pre-hydration default.
-      this.alepha.events.on("react:browser:render", () => {
+      this.alepha.events.on("react:browser:render:before", () => {
         this.initialRenderCounted = true;
 
         // Nothing leaves until this load's envelope is complete - see
@@ -479,7 +479,7 @@ export class SigilBrowserProvider {
   /**
    * Returns the referrer attached to each pending view, positionally aligned
    * with {@link debugPendingViews}. Only a page load's own view ever carries
-   * one — see the `react:browser:render` handler.
+   * one — see the `react:browser:render:before` handler.
    */
   public debugPendingViewReferrers(): Array<string | undefined> {
     return this.queue?.pendingViewReferrers() ?? [];
@@ -586,12 +586,12 @@ export class SigilBrowserProvider {
    * at runtime from `alepha/react` (the imports above are type-only), and
    * pulling the form module in to answer one comparison would put it in
    * every enrolled app's bundle. `FormValidationError.name` is
-   * `"ValidationError"`.
+   * `"FORM_VALIDATION"`.
    */
   protected isInputRefusal(ev: { type?: string; error?: unknown }): boolean {
     return (
       ev.type === "form" &&
-      (ev.error as { name?: string } | undefined)?.name === "ValidationError"
+      (ev.error as { name?: string } | undefined)?.name === "FORM_VALIDATION"
     );
   }
 

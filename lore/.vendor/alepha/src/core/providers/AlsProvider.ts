@@ -1,6 +1,18 @@
-import type { AsyncLocalStorage } from "node:async_hooks";
+export type AsyncLocalStorageData = Record<string, unknown>;
 
-export type AsyncLocalStorageData = any;
+type ContextLayer = AsyncLocalStorageData & {
+  [ALS_PARENT]?: ContextLayer;
+  [ALS_NESTED]?: boolean;
+};
+
+/**
+ * The runtime adapter needed by the container, independent of Node types.
+ */
+interface ContextStorage {
+  getStore(): ContextLayer | undefined;
+  run<R>(store: ContextLayer, callback: () => R): R;
+}
+
 /**
  * Which layers a read resolves through.
  *
@@ -24,11 +36,11 @@ export const ALS_PARENT = Symbol("als.parent");
 export const ALS_NESTED = Symbol("als.nested");
 
 export class AlsProvider {
-  static create = (): AsyncLocalStorage<AsyncLocalStorageData> | undefined => {
+  static create = (): ContextStorage | undefined => {
     return undefined;
   };
 
-  public als?: AsyncLocalStorage<AsyncLocalStorageData>;
+  public als?: ContextStorage;
 
   constructor() {
     this.als = AlsProvider.create();
@@ -38,7 +50,7 @@ export class AlsProvider {
     return crypto.randomUUID();
   }
 
-  public run<R>(callback: () => R, data: Record<string, any> = {}): R {
+  public run<R>(callback: () => R, data: Record<string, unknown> = {}): R {
     if (!this.als) {
       return callback();
     }
@@ -61,7 +73,10 @@ export class AlsProvider {
    * page cache's anonymous re-render of a page (#E78): reading through to the
    * caller would hand it the visitor's user and cookies.
    */
-  public runIsolated<R>(callback: () => R, data: Record<string, any> = {}): R {
+  public runIsolated<R>(
+    callback: () => R,
+    data: Record<string, unknown> = {},
+  ): R {
     if (!this.als) {
       return callback();
     }
@@ -100,7 +115,7 @@ export class AlsProvider {
     }
 
     const parent = this.als.getStore() ?? undefined;
-    const layer: AsyncLocalStorageData = {
+    const layer: ContextLayer = {
       [ALS_PARENT]: parent,
       [ALS_NESTED]: true,
     };
@@ -165,10 +180,10 @@ export class AlsProvider {
    * published (an enclosing action's request) is never answered for this one.
    */
   protected forkLayerOf(
-    store: AsyncLocalStorageData,
+    store: ContextLayer,
     key: string,
-  ): AsyncLocalStorageData {
-    let layer = store;
+  ): AsyncLocalStorageData | undefined {
+    let layer: ContextLayer | undefined = store;
     while (layer) {
       if (key in layer) {
         return layer;
@@ -191,7 +206,7 @@ export class AlsProvider {
    * whichever fork layer it physically lives, instead of flattening
    * fork-scoped state into the app-level store.
    */
-  public getLayer(key: string): AsyncLocalStorageData {
+  public getLayer(key: string): AsyncLocalStorageData | undefined {
     if (!this.als) {
       return undefined;
     }

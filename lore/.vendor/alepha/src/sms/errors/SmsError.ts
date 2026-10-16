@@ -1,9 +1,11 @@
-import { AlephaError } from "alepha";
+import { $error } from "alepha";
 
-export class SmsError extends AlephaError {
-  constructor(message: string, cause?: Error) {
-    super(message);
-    this.name = "SmsError";
-    this.cause = cause;
-  }
-}
+/**
+ * An SMS a provider could not send.
+ */
+export const SmsError = $error({
+  name: "SMS",
+  message: "Failed to send SMS",
+});
+
+export type SmsError = InstanceType<typeof SmsError>;

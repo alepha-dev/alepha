@@ -174,6 +174,7 @@ export class EpicController {
   protected epicNumber = $sequence();
 
   getEpics = $action({
+    method: "GET",
     use: [this.ownsProject("epic:read")],
     schema: {
       params: z.object({
@@ -240,6 +241,7 @@ export class EpicController {
    * list, the same way `ProjectEpics` already derives it.
    */
   getEpicRefs = $action({
+    method: "GET",
     use: [this.ownsProject("epic:read")],
     schema: {
       params: z.object({
@@ -259,6 +261,7 @@ export class EpicController {
   });
 
   getEpicByNumber = $action({
+    method: "GET",
     // Gated on the PARAM, not on the epic it finds: a foreign project is
     // refused before the epics table is touched, and there is nothing to hop
     // from anyway since the lookup is by (project, number) rather than by id.
@@ -293,6 +296,7 @@ export class EpicController {
    * detail page lists them.
    */
   getEpicDetailByNumber = $action({
+    method: "GET",
     use: [this.ownsProject("epic:read")],
     schema: {
       params: z.object({

@@ -60,7 +60,9 @@ const AutomationRuleSummary = (props: AutomationRuleSummaryProps) => {
               <>
                 <dt>{tr("automation.setup.recipient")}</dt>
                 <dd className="break-all">
-                  {props.labels?.recipient || action.recipient}
+                  {action.audience
+                    ? tr("automation.adoption.roster")
+                    : props.labels?.recipient || action.recipient}
                 </dd>
                 <dt>{tr("automation.setup.channel")}</dt>
                 <dd>

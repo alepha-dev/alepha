@@ -39,7 +39,7 @@ declare module "alepha" {
      * anything else. A listener that warns about bodies meant for another
      * one is how a log budget disappears.
      */
-    "cloudflare:queue": {
+    "cloudflare:queue:received": {
       /**
        * Present on alepha's own envelope, absent on a provider event.
        */

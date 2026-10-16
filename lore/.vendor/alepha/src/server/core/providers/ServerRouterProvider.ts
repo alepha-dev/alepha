@@ -10,6 +10,7 @@ import {
   isTypeFile,
   type Middleware,
   PipelineHandler,
+  SchemaValidationError,
   type ZObject,
   z,
 } from "alepha";
@@ -193,7 +194,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
           () => this.processRequest(request, route, responseKind),
           {
             context: this.getContextId(rawRequest.headers),
-            // Retains this request's log entries so that a `server:onError`
+            // Retains this request's log entries so that a `server:request:error`
             // consumer can ship them as breadcrumbs. Contributes nothing to
             // the context when buffering is disabled.
             ...this.logBuffer.seed(),
@@ -236,7 +237,9 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     }
 
     const payload = { request, route, response: undefined as any };
-    await this.alepha.events.emit("server:onSend", payload, { catch: true });
+    await this.alepha.events.emit("server:response:before", payload, {
+      catch: true,
+    });
 
     const reply = request.reply;
     // Default status: 200 when there is a body, 204 otherwise. `!= null`, not
@@ -254,7 +257,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     };
 
     payload.response = response;
-    await this.alepha.events.emit("server:onResponse", payload, {
+    await this.alepha.events.emit("server:response:after", payload, {
       catch: true,
     });
 
@@ -270,7 +273,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     responseKind: ResponseKind,
   ) {
     // Built-in hooks: body parsing, security, logging
-    await this.alepha.events.emit("server:onRequest", { request, route });
+    await this.alepha.events.emit("server:request:before", { request, route });
 
     // A hook (e.g. CORS preflight) may have already written the response
     const reply = request.reply;
@@ -332,10 +335,10 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 
     if (responseKind === "file") {
       if (!isFileLike(reply.body)) {
-        throw new HttpError({
-          status: 500,
-          message: "Invalid response body - not a file",
-        });
+        throw new HttpError(
+          { status: 500 },
+          { message: "Invalid response body - not a file" },
+        );
       }
       headers["content-type"] = reply.body.type;
       const sanitizedName = reply.body.name
@@ -465,7 +468,11 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     reply.status = undefined;
 
     // Let error hooks handle it first (e.g. custom error pages, Sentry)
-    await this.alepha.events.emit("server:onError", { request, route, error });
+    await this.alepha.events.emit("server:request:error", {
+      request,
+      route,
+      error,
+    });
     // |
     // |
     // --> If a hook already set the response, we're done!
@@ -477,7 +484,15 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
       reply.status = error.status;
       reply.headers["content-type"] = "application/json";
       const errorJson = HttpError.toJSON(error);
-      errorJson.requestId = requestId;
+      // A one-off `new HttpError({ status })` is named by its status on the
+      // wire (`PAYLOAD_TOO_LARGE`), which tells a client more than the root's
+      // own name does.
+      if (errorJson.name === HttpError.name) {
+        errorJson.name = errorNameByStatus[error.status] ?? errorJson.name;
+      }
+      const data: Record<string, unknown> = { ...errorJson.data };
+      if (requestId) data.requestId = requestId;
+      errorJson.data = data;
 
       // A 5xx cause is internal (DB URLs, upstream errors, stack-y hints) and
       // must not reach the client in production — the same rule the
@@ -485,7 +500,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
       // are deliberate, client-facing context and are kept.
       if (error.status >= 500 && this.alepha.isProduction()) {
         errorJson.cause = undefined;
-        errorJson.details = undefined;
+        data.details = undefined;
         errorJson.message = "Internal Server Error";
       }
 
@@ -503,8 +518,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
       reply.status = status;
       reply.headers["content-type"] = "application/json";
       reply.body = JSON.stringify({
-        status,
-        error: errorNameByStatus[status],
+        name: errorNameByStatus[status],
         // 4xx messages are intentional and client-facing; 5xx messages can
         // leak internals (DB errors, stack-y hints) — sanitize them in
         // production, exactly like the unknown-error fallback below.
@@ -512,7 +526,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
           status >= 500 && this.alepha.isProduction()
             ? "Internal Server Error"
             : error.message,
-        requestId,
+        data: { status, requestId },
       });
       return;
     }
@@ -538,14 +552,30 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 
     reply.status = 500;
     reply.headers["content-type"] = "application/json";
+    // Same shape and key order as `HttpError.toJSON`: a strict `$action`'s
+    // 500 (an `InternalServerError`) must answer byte for byte like this one.
     reply.body = JSON.stringify({
-      status: 500,
-      error: "InternalServerError",
+      name: "INTERNAL_SERVER_ERROR",
       message: this.alepha.isProduction()
         ? "Internal Server Error"
         : error.message,
-      requestId,
+      data: { status: 500, requestId },
     });
+  }
+
+  /**
+   * A `ValidationError` naming what failed: the schema's message and path
+   * when the cause is a schema failure (the path also goes to `details`).
+   */
+  protected validationError(message: string, cause?: unknown): ValidationError {
+    if (cause instanceof SchemaValidationError) {
+      const path = cause.data.path;
+      return new ValidationError(path ? { details: path } : {}, {
+        message: `${message}: ${cause.data.message}${path ? ` (${path})` : ""}`,
+        cause,
+      });
+    }
+    return new ValidationError(message, { cause });
   }
 
   /**
@@ -577,7 +607,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
           coerced,
         ) as any;
       } catch (error) {
-        throw new ValidationError("Invalid request params", error);
+        throw this.validationError("Invalid request params", error);
       }
     }
 
@@ -601,7 +631,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
         // present keys would silently accept a missing required parameter.
         request.query = this.alepha.codec.validate(schemaQuery, query) as any;
       } catch (error) {
-        throw new ValidationError("Invalid request query", error);
+        throw this.validationError("Invalid request query", error);
       }
     }
 
@@ -640,14 +670,14 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
             value;
         }
       } catch (error) {
-        throw new ValidationError("Invalid request header", error);
+        throw this.validationError("Invalid request header", error);
       }
     }
 
     if (route.schema?.body) {
       if (z.schema.isString(route.schema.body)) {
         if (typeof request.body !== "string") {
-          throw new ValidationError("Request body is not a string");
+          throw this.validationError("Request body is not a string");
         }
       } else {
         try {
@@ -656,7 +686,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
             request.body,
           );
         } catch (error) {
-          throw new ValidationError("Invalid request body", error);
+          throw this.validationError("Invalid request body", error);
         }
       }
     }

@@ -1,9 +1,11 @@
 import { DbError } from "./DbError.ts";
 
-export class DbMigrationError extends DbError {
-  readonly name = "DbMigrationError";
+/**
+ * Migrations failed to apply at boot.
+ */
+export const DbMigrationError = DbError.extend({
+  name: "DB_MIGRATION",
+  message: "Failed to migrate database",
+});
 
-  constructor(cause?: unknown) {
-    super("Failed to migrate database", cause);
-  }
-}
+export type DbMigrationError = InstanceType<typeof DbMigrationError>;

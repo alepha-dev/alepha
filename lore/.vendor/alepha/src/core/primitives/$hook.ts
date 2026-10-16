@@ -1,6 +1,8 @@
+import { KIND } from "alepha/internal";
+
 import type { Hooks } from "../Alepha.ts";
-import { KIND } from "../constants/KIND.ts";
 import { AlephaError } from "../errors/AlephaError.ts";
+import { HookNamePolicy } from "../helpers/HookNamePolicy.ts";
 import { createPrimitive, Primitive } from "../helpers/primitive.ts";
 import type { Async } from "../interfaces/Async.ts";
 import type { Service } from "../interfaces/Service.ts";
@@ -34,18 +36,20 @@ import type { Service } from "../interfaces/Service.ts";
  * declare module "alepha" {
  *
  *   interface Hooks {
- *     "my:custom:hook": {
+ *     "my:task:completed": {
  *       arg1: string;
  *     }
  *   }
  * }
  *
- * await alepha.events.emit("my:custom:hook", { arg1: "value" });
+ * await alepha.events.emit("my:task:completed", { arg1: "value" });
  * ```
  *
  */
-export const $hook = <T extends keyof Hooks>(options: HookOptions<T>) =>
-  createPrimitive(HookPrimitive<T>, options);
+export const $hook = <T extends keyof Hooks>(options: HookOptions<T>) => {
+  HookNamePolicy.assertCurrent(options.on);
+  return createPrimitive(HookPrimitive<T>, options);
+};
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -81,7 +85,11 @@ export interface HookOptions<T extends keyof Hooks> {
 export class HookPrimitive<T extends keyof Hooks> extends Primitive<
   HookOptions<T>
 > {
-  public called = 0;
+  protected callCount = 0;
+
+  public get called(): number {
+    return this.callCount;
+  }
 
   protected onInit() {
     // Enforce the documented contract ("you can't register a hook after the
@@ -125,7 +133,7 @@ export class HookPrimitive<T extends keyof Hooks> extends Primitive<
       before: resolveDeps(this.options.before),
       after: resolveDeps(this.options.after),
       callback: (args: any) => {
-        this.called += 1;
+        this.callCount += 1;
         return handler(args);
       },
     });

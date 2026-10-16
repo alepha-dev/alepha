@@ -48,6 +48,7 @@ export class AutomationRunEvidence {
   ];
   protected readonly resultFields: Record<string, string[]> = {
     notify: [
+      "outbox_ids",
       "notification_id",
       "outbox_id",
       "enqueued",
@@ -303,6 +304,7 @@ export class AutomationRunEvidence {
       result?: Record<string, unknown>;
       receiptId?: string;
       deliveries?: number;
+      aggregate?: boolean;
     },
   ): Promise<AutomationRun> {
     const run = await this.persistence.runs.getById(id);
@@ -316,11 +318,21 @@ export class AutomationRunEvidence {
       throw new BadRequestError("Action was not planned before effects");
     if (!["pending", "running"].includes(previous.status)) {
       if (
+        input.aggregate &&
+        previous.status === "queued" &&
+        previous.receiptId === input.receiptId
+      ) {
+        if (
+          !input.deliveries &&
+          JSON.stringify(previous.result) === JSON.stringify(input.result ?? {})
+        )
+          return run;
+      } else if (
         previous.status === input.status &&
         previous.receiptId === input.receiptId
       )
         return run;
-      throw new ConflictError("Action already has a terminal outcome");
+      else throw new ConflictError("Action already has a terminal outcome");
     }
     if (previous.status === "running" && input.status === "pending")
       throw new ConflictError("An action cannot return to pending");
@@ -623,7 +635,8 @@ export class AutomationRunEvidence {
     for (const key of this.resultFields[kind] ?? []) {
       const value = input[key];
       if (
-        (typeof value === "string" && value.length <= 255) ||
+        (typeof value === "string" &&
+          value.length <= (key === "outbox_ids" ? 8_000 : 255)) ||
         (typeof value === "number" && Number.isFinite(value)) ||
         typeof value === "boolean"
       )

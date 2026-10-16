@@ -32,7 +32,10 @@ const ProjectSettingsAreaQuests = (props: ProjectSettingsAreaQuestsProps) => {
           <Link
             key={quest.shortId}
             href={router.path("projectQuest", {
-              params: { shortId: quest.shortId },
+              params: {
+                projectSlug: router.state.params.projectSlug,
+                shortId: quest.shortId,
+              },
             })}
             className="flex items-center gap-2 text-sm"
           >

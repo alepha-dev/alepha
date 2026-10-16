@@ -19,10 +19,15 @@ export class NodePostgresProvider extends PostgresProvider {
   ] as const;
 
   protected client?: postgres.Sql;
+  /**
+   * @internal Driver plumbing, outside semver.
+   */
   protected pg?: PostgresJsDatabase;
 
   /**
    * Get the Drizzle Postgres database instance.
+   *
+   * @internal Driver plumbing, outside semver.
    */
   public override get db(): PostgresJsDatabase {
     if (!this.pg) {

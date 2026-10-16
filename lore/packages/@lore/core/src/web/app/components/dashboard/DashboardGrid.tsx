@@ -1,9 +1,11 @@
+import { cn } from "@alepha/ui";
 import { useState } from "react";
 
 import type { DashboardCardResource } from "../../../../api/schemas/dashboardCardResourceSchema.ts";
 import type { DashboardCardValue } from "../../../../api/schemas/dashboardCardValueSchema.ts";
 import type { DashboardMetricDescriptor } from "../../../../api/schemas/DashboardMetricCatalog.ts";
 import DashboardCard from "./DashboardCard.tsx";
+import DashboardGridBackdropCell from "./DashboardGridBackdropCell.tsx";
 
 export interface DashboardGridProps {
   cards: DashboardCardResource[];
@@ -68,6 +70,18 @@ export interface DashboardGridProps {
  * own grid. At phone width the grid is one column and every tile one row:
  * the spans are applied from `sm` up only (see `DashboardCard`).
  *
+ * ## The backdrop
+ *
+ * Behind each run of tiles sits a layer of slots laid out on the very same
+ * template (columns, row height, gap), each ruled through its gutters and
+ * crop-marked at its corners (`DashboardGridBackdropCell`), so the board
+ * reads as a sheet ruled for its tiles at every width. The layer is
+ * absolutely positioned, so it takes no track of its own, and the last run's
+ * grid grows to the bottom of the page so the rules carry on below the last
+ * tile. It clips with a 6px margin, half the gap, so the rules of the first
+ * row and column survive; its cell count only has to outnumber what the box
+ * can show.
+ *
  * ## Drag
  *
  * Native HTML5 drag: the list is flat, `@dnd-kit/sortable` is not a
@@ -116,11 +130,14 @@ const DashboardGrid = (props: DashboardGridProps) => {
   });
 
   return (
-    <div className="flex flex-col gap-5">
-      {runs.map((run) => (
+    <div className="flex flex-1 flex-col gap-5">
+      {runs.map((run, runIndex) => (
         <section
           key={`${run.start}-${run.section ?? ""}`}
-          className="flex flex-col gap-2.5"
+          className={cn(
+            "flex flex-col gap-2.5",
+            runIndex === runs.length - 1 && "flex-1",
+          )}
           data-testid="dashboard-section"
         >
           {run.section && (
@@ -128,7 +145,28 @@ const DashboardGrid = (props: DashboardGridProps) => {
               {run.section}
             </h2>
           )}
-          <div className="grid auto-rows-[168px] grid-cols-1 items-stretch gap-3 sm:grid-cols-[repeat(auto-fill,minmax(clamp(216px,15cqw,300px),1fr))]">
+          <div
+            className={cn(
+              GRID_TEMPLATE,
+              "relative items-stretch",
+              runIndex === runs.length - 1 && "flex-1",
+            )}
+          >
+            <div
+              aria-hidden
+              data-testid="dashboard-backdrop"
+              className={cn(
+                GRID_TEMPLATE,
+                // The slots rule their own top and left only; the
+                // `after:` rule closes the sheet on the right, down the
+                // gutter line past the last column.
+                "after:border-border/25 pointer-events-none absolute inset-0 overflow-clip [overflow-clip-margin:6px] after:absolute after:-top-1.5 after:-right-1.5 after:bottom-0 after:border-r",
+              )}
+            >
+              {Array.from({ length: BACKDROP_CELLS }, (_, cell) => (
+                <DashboardGridBackdropCell key={cell} />
+              ))}
+            </div>
             {run.cards.map((card, offset) => {
               const index = run.start + offset;
               const descriptor = props.metrics.get(card.metric);
@@ -188,5 +226,18 @@ const DashboardGrid = (props: DashboardGridProps) => {
     </div>
   );
 };
+
+/**
+ * The tiles' track sizes, shared by the grid and its backdrop so the two can
+ * never disagree. See "Columns" above.
+ */
+const GRID_TEMPLATE =
+  "grid auto-rows-[168px] grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(clamp(216px,15cqw,300px),1fr))]";
+
+/**
+ * Enough slots to cover a 2560px-wide, 1440px-tall board: eleven columns at
+ * the 216px floor by nine rows, with room to spare.
+ */
+const BACKDROP_CELLS = 120;
 
 export default DashboardGrid;

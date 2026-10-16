@@ -147,11 +147,11 @@ export const AuthRegister = (props: AuthRegisterProps) => {
   const schema = useMemo(() => {
     // Optionality is decided as each field is built, because that is the only
     // thing the form reads: `FormModel` derives both the required marker and
-    // the pre-submit check from `z.schema.requiredKeys(schema)`, which asks
+    // the pre-submit check from `z.schema.requiredInputKeys(schema)`, which asks
     // whether the field is optional or defaulted.
     //
     // This used to declare every field optional and then push the configured
-    // names onto the array returned by `z.schema.requiredKeys(s)` — a TypeBox
+    // names onto the array returned by `z.schema.requiredInputKeys(s)` , a TypeBox
     // habit, where a JSON Schema's `required` was a live array hanging off the
     // schema. The zod implementation computes a fresh array from the shape, so
     // the pushes mutated a detached value and vanished: a realm with

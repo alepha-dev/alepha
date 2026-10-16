@@ -179,7 +179,7 @@ export const AdminSessions = () => {
     [SessionResource[], { clearSelection: () => void; refresh: () => void }]
   >(
     {
-      handler: async (items, ctx) => {
+      handler: async (_ctx, items, ctx) => {
         if (items.length === 0) return;
         const ok = await dialog.confirm({
           title: tr("admin.sessions.bulkRevokeTitle", {

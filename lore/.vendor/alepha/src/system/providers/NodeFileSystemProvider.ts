@@ -97,7 +97,7 @@ export class NodeFileSystemProvider implements FileSystemProvider {
    * const file3 = fs.createFile({ text: "Hello!", name: "greeting.txt" });
    *
    * // From stream with detection
-   * const stream = createReadStream("/path/to/file.png");
+   * const stream = Readable.toWeb(createReadStream("/path/to/file.png"));
    * const file4 = fs.createFile({ stream, name: "image.png" });
    * ```
    */
@@ -137,7 +137,7 @@ export class NodeFileSystemProvider implements FileSystemProvider {
 
     // Handle Buffer
     if ("buffer" in options) {
-      return this.createFileFromBuffer(options.buffer, {
+      return this.createFileFromBuffer(Buffer.from(options.buffer), {
         type: options.type,
         name: options.name,
       });
@@ -392,17 +392,17 @@ export class NodeFileSystemProvider implements FileSystemProvider {
    * Reads the content of a file.
    *
    * @param path - The file path to read
-   * @returns The file content as a Buffer
+   * @returns The file content as bytes
    *
    * @example
    * ```typescript
    * const fs = alepha.inject(NodeFileSystemProvider);
    *
-   * const buffer = await fs.readFile("/tmp/file.txt");
-   * console.log(buffer.toString("utf-8"));
+   * const text = await fs.readTextFile("/tmp/file.txt");
+   * console.log(text);
    * ```
    */
-  async readFile(path: string): Promise<Buffer> {
+  async readFile(path: string): Promise<Uint8Array> {
     return await fsReadFile(path);
   }
 
@@ -427,7 +427,7 @@ export class NodeFileSystemProvider implements FileSystemProvider {
         `EISDIR: illegal operation on a directory, read '${path}'`,
       );
     }
-    return createReadStream(path);
+    return Readable.toWeb(createReadStream(path)) as unknown as StreamLike;
   }
 
   /**
@@ -449,7 +449,7 @@ export class NodeFileSystemProvider implements FileSystemProvider {
    */
   async writeFile(
     path: string,
-    data: Uint8Array | Buffer | string | FileLike,
+    data: Uint8Array | string | FileLike,
     options?: WriteFileOptions,
   ): Promise<void> {
     // `mode` applies at creation only, which is Node's own behaviour: an
@@ -474,10 +474,7 @@ export class NodeFileSystemProvider implements FileSystemProvider {
    * await fs.appendFile("/tmp/app.log", "one more line\n");
    * ```
    */
-  async appendFile(
-    path: string,
-    data: Uint8Array | Buffer | string,
-  ): Promise<void> {
+  async appendFile(path: string, data: Uint8Array | string): Promise<void> {
     await fsAppendFile(path, data);
   }
 
@@ -495,7 +492,7 @@ export class NodeFileSystemProvider implements FileSystemProvider {
    */
   async readTextFile(path: string): Promise<string> {
     const buffer = await this.readFile(path);
-    return buffer.toString("utf-8");
+    return new TextDecoder().decode(buffer);
   }
 
   /**
@@ -560,7 +557,8 @@ export class NodeFileSystemProvider implements FileSystemProvider {
       type: options.type ?? this.detector.getContentType(name),
       size: 0, // Unknown size until loaded
       lastModified: this.mtimeOf(filepath),
-      stream: () => createReadStream(filepath),
+      stream: () =>
+        Readable.toWeb(createReadStream(filepath)) as unknown as StreamLike,
       arrayBuffer: async () => this.bufferToArrayBuffer(await load()),
       text: async () => (await load()).toString("utf-8"),
       filepath,
@@ -606,7 +604,8 @@ export class NodeFileSystemProvider implements FileSystemProvider {
       type: options.type ?? this.detector.getContentType(options.name ?? name),
       size: source.byteLength,
       lastModified: this.dateTime.nowMillis(),
-      stream: (): Readable => Readable.from(source),
+      stream: () =>
+        Readable.toWeb(Readable.from(source)) as unknown as StreamLike,
       arrayBuffer: async (): Promise<ArrayBuffer> => {
         return this.bufferToArrayBuffer(source);
       },
@@ -641,14 +640,17 @@ export class NodeFileSystemProvider implements FileSystemProvider {
       // arrayBuffer() has buffered it, stream() can serve fresh streams
       // forever — returning the drained source instead was a silent
       // empty-payload bug.
-      stream: () => (buffer ? Readable.from(buffer) : source),
+      stream: () =>
+        buffer
+          ? (Readable.toWeb(Readable.from(buffer)) as unknown as StreamLike)
+          : source,
       arrayBuffer: async () => {
         buffer ??= await this.streamToBuffer(source);
         return this.bufferToArrayBuffer(buffer);
       },
       text: async () => {
         buffer ??= await this.streamToBuffer(source);
-        return buffer.toString("utf-8");
+        return new TextDecoder().decode(buffer);
       },
     };
   }
@@ -659,10 +661,7 @@ export class NodeFileSystemProvider implements FileSystemProvider {
    * @protected
    */
   protected async streamToBuffer(streamLike: StreamLike): Promise<Buffer> {
-    const stream =
-      streamLike instanceof Readable
-        ? streamLike
-        : Readable.fromWeb(streamLike as NodeWebStream);
+    const stream = Readable.fromWeb(streamLike as unknown as NodeWebStream);
 
     return new Promise<Buffer>((resolve, reject) => {
       const buffer: any[] = [];

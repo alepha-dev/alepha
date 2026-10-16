@@ -1,4 +1,4 @@
-import type { Infer } from "alepha";
+import type { Infer, Middleware } from "alepha";
 
 import type { ChannelPrimitive, TWSObject } from "../primitives/$channel.ts";
 
@@ -99,12 +99,14 @@ export type WebSocketAuthorize = (
 ) => Promise<WebSocketAdmission | undefined> | WebSocketAdmission | undefined;
 
 /**
- * The two admission options an endpoint may declare, one of which must be
- * absent: `authorize` decides on its own, `secure` asks the realm.
+ * The admission options an endpoint may declare. `authorize` decides on its
+ * own; `use` (a `$websocket`) or `secure` (a `$room`) asks the realm, and
+ * declaring one of those together with `authorize` is refused.
  */
 export interface WebSocketAdmissionOptions {
   authorize?: WebSocketAuthorize;
   secure?: boolean;
+  use?: readonly Middleware[];
 }
 
 /**
@@ -113,7 +115,14 @@ export interface WebSocketAdmissionOptions {
  * otherwise.
  */
 export type WebSocketAdmissionResult =
-  | { accepted: false }
+  | {
+      accepted: false;
+      /**
+       * 403 when a middleware refused an authenticated caller (a missing
+       * role or permission), 401 otherwise.
+       */
+      status?: 401 | 403;
+    }
   | { accepted: true; userId?: string; roomId?: string };
 
 /**
@@ -174,17 +183,23 @@ export interface WebSocketPrimitiveOptions<
   }) => Promise<void> | void;
 
   /**
-   * Whether to enforce security (authentication, authorization) on this WebSocket endpoint
-   * Requires alepha/security integration
+   * Middlewares run on the upgrade request, before any socket exists.
+   *
+   * `use: [$secure()]` requires a signed-in user, and `$secure`'s roles and
+   * permissions apply to a socket as they do to an action. A refusal
+   * answers the handshake 401 (no user) or 403 (a user without the right),
+   * and the connection's `userId` is the user the middleware resolved.
+   * Exclusive with `authorize`, when one of the middlewares is `$secure`.
    */
-  secure?: boolean;
+  use?: readonly Middleware[];
 
   /**
    * Decide the handshake yourself, and name the room it lands in.
    *
    * For a credential that names a machine rather than a person. See
    * {@link WebSocketAuthorize} for the contract; declaring it together with
-   * `secure` is refused at registration, since an endpoint has one way in.
+   * `use: [$secure()]` is refused at registration, since an endpoint has one
+   * way in.
    */
   authorize?: WebSocketAuthorize;
 

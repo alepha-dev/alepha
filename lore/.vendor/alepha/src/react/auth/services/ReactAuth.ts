@@ -37,7 +37,7 @@ export class ReactAuth {
   });
 
   protected readonly onFetchRequest = $hook({
-    on: "client:onRequest",
+    on: "client:request:before",
     handler: async ({ request }) => {
       if (this.alepha.isBrowser() && this.user && this.transport.cookies) {
         // ensure cookies are sent with requests and refresh-able. Never for a
@@ -133,16 +133,16 @@ export class ReactAuth {
       const href = `${window.location.origin}${alephaServerAuthRoutes.login}?provider=${provider}${realmParam}&redirect_uri=${encodeURIComponent(redirect)}`;
 
       if (browser.transitioning) {
-        throw new Redirection(href);
+        throw new Redirection({ redirect: href });
       } else {
         window.location.href = href;
         return {} as Tokens;
       }
     }
 
-    throw new Redirection(
-      `${alephaServerAuthRoutes.login}?provider=${provider}${realmParam}&redirect_uri=${options.redirect || "/"}`,
-    );
+    throw new Redirection({
+      redirect: `${alephaServerAuthRoutes.login}?provider=${provider}${realmParam}&redirect_uri=${options.redirect || "/"}`,
+    });
   }
 
   /**

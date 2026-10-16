@@ -30,7 +30,7 @@ export class NotificationUnsubscribeController {
       params: z.object({ token: z.text() }),
     },
     handler: async ({ params, reply }) => {
-      const claims = this.tokens.verify(params.token);
+      const claims = await this.tokens.verify(params.token);
       reply.headers["content-type"] = "text/html; charset=utf-8";
       if (!claims) {
         reply.status = 400;
@@ -64,7 +64,7 @@ export class NotificationUnsubscribeController {
       // would break the page's own button.
     },
     handler: async ({ params, reply }) => {
-      const claims = this.tokens.verify(params.token);
+      const claims = await this.tokens.verify(params.token);
       reply.headers["content-type"] = "text/html; charset=utf-8";
 
       if (!claims) {

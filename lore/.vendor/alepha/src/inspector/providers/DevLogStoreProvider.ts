@@ -131,7 +131,7 @@ export class DevLogStoreProvider {
    * writing again would deliver every entry twice.
    */
   protected readonly onLog = $hook({
-    on: "log",
+    on: "log:entry",
     handler: ({ entry }) => {
       if (this.destination !== this.memory) {
         this.memory.write("", entry);

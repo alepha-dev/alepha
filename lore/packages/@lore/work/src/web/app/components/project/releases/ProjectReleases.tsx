@@ -365,7 +365,10 @@ const ProjectReleases = () => {
         onRowClick={(release) =>
           release.tag &&
           router.push("projectRelease", {
-            params: { releaseTag: release.tag },
+            params: {
+              projectSlug: router.state.params.projectSlug,
+              releaseTag: release.tag,
+            },
           })
         }
         actions={
@@ -498,7 +501,10 @@ const ProjectReleases = () => {
                       // twice, once through each.
                       <Link
                         href={router.path("projectRelease", {
-                          params: { releaseTag: tag },
+                          params: {
+                            projectSlug: router.state.params.projectSlug,
+                            releaseTag: tag,
+                          },
                         })}
                         onClick={(e) => e.stopPropagation()}
                         className="truncate font-mono text-sm font-medium"

@@ -378,7 +378,7 @@ export class EstateController {
         );
       }
 
-      const minted = this.tokens.mint();
+      const minted = await this.tokens.mint();
       await this.estates.updateById(estate.id, {
         secretHash: minted.hash,
         secretPrefix: minted.prefix,

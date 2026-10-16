@@ -60,7 +60,7 @@ export class NotificationWebhookController {
         return { ok: true };
       }
 
-      await this.alepha.events.emit("notification:delivery", event);
+      await this.alepha.events.emit("notification:delivery:reported", event);
       return { ok: true };
     },
   });

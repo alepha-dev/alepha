@@ -43,11 +43,11 @@ export class EstateTokenService {
    * not be a fleet that leaks. The prefix is kept so the UI can name a
    * secret without being able to rebuild it.
    */
-  mint(): { secret: string; hash: string; prefix: string } {
+  async mint(): Promise<{ secret: string; hash: string; prefix: string }> {
     const secret = `${EstateTokenService.PREFIX}${this.crypto.randomText(32)}`;
     return {
       secret,
-      hash: this.crypto.hash(secret),
+      hash: await this.crypto.hash(secret),
       prefix: secret.slice(0, EstateTokenService.PREFIX_LENGTH),
     };
   }
@@ -67,7 +67,7 @@ export class EstateTokenService {
       return undefined;
     }
     return await this.estates.findOne({
-      where: { secretHash: { eq: this.crypto.hash(secret) } },
+      where: { secretHash: { eq: await this.crypto.hash(secret) } },
     });
   }
 

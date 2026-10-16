@@ -31,7 +31,7 @@ import { createTestProject, CoreTestEntities } from "../src/testing/index.ts";
  *
  * The probe route below is the harness, not the subject: it exists so seven
  * concurrent gates happen inside one real HTTP request, with the real
- * `server:onRequest` hook seeding the real memo. Reaching the same shape by
+ * `server:request:before` hook seeding the real memo. Reaching the same shape by
  * seeding a `Map` by hand would prove the `Map` and not the wiring — and the
  * wiring is exactly where this fails, since a memo created lazily inside a
  * gate lands in that action's own ALS fork and is invisible to its siblings.
@@ -131,6 +131,7 @@ describe("CapabilityRegistry", () => {
     expect(ctx.registry.optionsOf("apps", { track: true })).toEqual({
       track: true,
       deploy: false,
+      uptime: false,
     });
     expect(ctx.registry.optionsOf("support", {})).toEqual({});
   });
@@ -142,7 +143,7 @@ describe("CapabilityRegistry", () => {
     // has to load. Throwing here is the 2026-08-05 failure mode.
     expect(
       ctx.registry.optionsOf("apps", { track: true, futureThing: true }),
-    ).toEqual({ track: true, deploy: false });
+    ).toEqual({ track: true, deploy: false, uptime: false });
 
     // In: `createProject`'s body is `.partial()`, so a mistyped feature key
     // has been accepted silently for as long as the bag has existed. This is
@@ -170,6 +171,7 @@ describe("CapabilityRegistry", () => {
     expect(ctx.registry.preselectedOptionsOf("apps")).toEqual({
       track: true,
       deploy: false,
+      uptime: false,
     });
   });
 

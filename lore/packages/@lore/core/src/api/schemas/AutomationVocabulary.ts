@@ -128,7 +128,13 @@ export class AutomationVocabulary {
     this.action(
       "notify",
       {
-        recipient: { kind: "member", required: true },
+        recipient: { kind: "member", required: false },
+        audience: {
+          kind: "text",
+          required: false,
+          bindable: false,
+          values: ["projectMembersExceptPublisher"],
+        },
         channel: { kind: "channel", required: true },
         title: { kind: "text", required: true, template: true, max: 16_384 },
         text: { kind: "text", required: true, template: true, max: 16_384 },

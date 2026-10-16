@@ -244,6 +244,8 @@ export class CapabilityRegistry {
         "automation_test",
         "automation_runs",
         "automation_catalog",
+        "automation_adoption_preview",
+        "automation_adopt",
         "quest_list",
         "quest_get",
         "quest_create",
@@ -389,6 +391,13 @@ export class CapabilityRegistry {
           // account; that is a thing to opt into on purpose, not a default a
           // wizard ticks on the way past. `soon: true` was here until epic #1
           // shipped, and the option's own doc promised its removal.
+          preselected: false,
+        },
+        {
+          key: "uptime",
+          labelKey: "project.capability.apps.option.uptime.label",
+          descriptionKey: "project.capability.apps.option.uptime.description",
+          wizard: true,
           preselected: false,
         },
       ],

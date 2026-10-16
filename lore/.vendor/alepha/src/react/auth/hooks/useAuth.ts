@@ -47,7 +47,7 @@ export const useAuth = <T extends object = any>() => {
      * try {
      *   await login("credentials", { username, password });
      * } catch (error) {
-     *   if (isMfaRequired(error)) {
+     *   if (error instanceof MfaRequiredError) {
      *     await loginMfa(error.data.challenge, code);
      *   }
      * }

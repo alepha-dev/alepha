@@ -39,7 +39,7 @@ const AccountConnections = (props: AccountConnectionsProps) => {
 
   const revoke = useAction<[connection: MyConnection], boolean>(
     {
-      handler: async (connection) => {
+      handler: async (_ctx, connection) => {
         const ok = await dialog.confirm({
           title: tr("account.connections.revokeTitle", {
             default: "Disconnect $1?",

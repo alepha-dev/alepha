@@ -17,7 +17,7 @@ import { SigilSinkProvider } from "./SigilSinkProvider.ts";
  * identical errors a minute.
  *
  * Three sources, all Alepha's own events rather than a process-level trap:
- * `server:onError` for requests, `job:error` for background work, and `log`
+ * `server:request:error` for requests, `job:error` for background work, and `log:entry`
  * for every entry logged at error level, so a failure the code caught, logged
  * and carried on from still reaches Lore. Staying inside the framework's
  * events is what keeps this reportable — an `uncaughtException` handler would
@@ -25,7 +25,7 @@ import { SigilSinkProvider } from "./SigilSinkProvider.ts";
  * on.
  *
  * One failure is one report, whichever hooks see it: every `Error` ingested
- * is remembered, so the 5xx that `server:onError` reports and the "Request
+ * is remembered, so the 5xx that `server:request:error` reports and the "Request
  * has failed" line the server logs for it arrive once.
  */
 export class SigilServerErrors {
@@ -45,7 +45,7 @@ export class SigilServerErrors {
   protected readonly reported = new WeakSet<object>();
 
   protected readonly onError = $hook({
-    on: "server:onError",
+    on: "server:request:error",
     handler: async ({ route, error }) => {
       if (!this.isCrash(error)) return;
       if (!this.claim(error)) return;
@@ -63,7 +63,7 @@ export class SigilServerErrors {
    * condition logs at `warn`.
    */
   protected readonly onLog = $hook({
-    on: "log",
+    on: "log:entry",
     handler: async ({ entry }) => {
       if (entry.level !== "ERROR") return;
       if (this.alepha.context.get(SigilServerErrors.INGESTING)) return;

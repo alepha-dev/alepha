@@ -878,9 +878,47 @@ export class AutomationClaims {
   }
 
   /**
-   * Continue the same frozen selection without fetching any additional rows.
-   * The durable chunk identity repairs a crash between switching and evidence.
+   * Compatibility reminders alone advance to another bounded due page.
+   * The original evaluation time and native page witness survive interruption.
    */
+  public async continueReminderSelection(
+    id: string,
+    token: string,
+    snapshot: AutomationRunSnapshot,
+  ): Promise<AutomationReceipt> {
+    const occurrence = await this.lease(id, token);
+    if (
+      occurrence.snapshot?.rule?.compatibility !== "quest-reminders" ||
+      !occurrence.snapshot.selectionNext ||
+      occurrence.cursor < occurrence.snapshot.actions.length
+    )
+      throw new ConflictError(
+        "Reminder continuation requires a finished compatibility page",
+      );
+    const chunkId = await this.identity.hash([
+      "reminder-selection",
+      id,
+      occurrence.snapshot.selectionNext,
+    ]);
+    const runId = crypto.randomUUID();
+    const now = this.dateTime.nowISOString();
+    try {
+      await this.atomic.guarded(
+        occurrence.projectId,
+        sql`${this.live(occurrence, token)} AND EXISTS (SELECT 1 FROM automation_receipts WHERE id = ${id} AND cursor = ${occurrence.cursor})`,
+        [
+          sql`INSERT INTO automation_receipts (id, version, project_id, automation_id, identity, kind, status, occurrence_id, rule_revision, occurred_at, replay_until, parent_id, run_id, snapshot, position, cursor, queue_attempts, roster_complete, created_at, updated_at) VALUES (${chunkId}, 0, ${occurrence.projectId}, ${occurrence.automationId}, ${chunkId}, 'chunk', 'committed', ${occurrence.occurrenceId}, ${occurrence.ruleRevision}, ${this.database.timestamp(occurrence.occurredAt)}, ${this.database.timestamp(occurrence.replayUntil)}, ${id}, ${runId}, ${JSON.stringify(snapshot)}, ${occurrence.cursor}, 0, 0, FALSE, ${this.database.timestamp(now)}, ${this.database.timestamp(now)}) ON CONFLICT DO NOTHING`,
+          sql`UPDATE automation_receipts SET snapshot = (SELECT snapshot FROM automation_receipts WHERE id = ${chunkId}), run_id = (SELECT run_id FROM automation_receipts WHERE id = ${chunkId}), cursor = 0, version = version + 1, updated_at = ${this.database.timestamp(now)} WHERE id = ${id}`,
+        ],
+      );
+    } catch (error) {
+      const witness = await this.persistence.receipts.findById(chunkId);
+      const latest = await this.persistence.receipts.getById(id);
+      if (!witness || latest.runId !== witness.runId) throw error;
+    }
+    return this.persistence.receipts.getById(id);
+  }
+
   public async continueRun(
     id: string,
     token: string,

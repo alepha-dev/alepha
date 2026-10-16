@@ -58,7 +58,7 @@ const QuestViewSettings = (props: QuestViewSettingsProps) => {
   // unhandled rejection, and the control waits while it runs.
   const reminderAction = useAction<[key: string], void>(
     {
-      handler: async (key) => {
+      handler: async (_ctx, key) => {
         const preset = REMINDER_PRESETS.find((p) => p.key === key);
         if (!preset) return;
         const updated = await client.setQuestReminder({

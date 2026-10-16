@@ -1,15 +1,12 @@
 import { HttpError } from "./HttpError.ts";
 
-export class ConflictError extends HttpError {
-  readonly name = "ConflictError";
+/**
+ * The request conflicts with the current state.
+ */
+export const ConflictError = HttpError.extend({
+  name: "CONFLICT",
+  default: { status: 409 },
+  message: "Entity already exists",
+});
 
-  constructor(message = "Entity already exists", cause?: unknown) {
-    super(
-      {
-        message,
-        status: 409,
-      },
-      cause,
-    );
-  }
-}
+export type ConflictError = InstanceType<typeof ConflictError>;

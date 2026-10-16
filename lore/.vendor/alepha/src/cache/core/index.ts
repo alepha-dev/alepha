@@ -29,7 +29,7 @@ declare module "alepha" {
     /**
      * Fires when a cache lookup does not find a value.
      */
-    "cache:miss": {
+    "cache:missed": {
       container: string;
       key: string;
     };
@@ -45,7 +45,7 @@ declare module "alepha" {
      * Fires when a stale value (SWR grace window) is served and a
      * background refresh is scheduled.
      */
-    "cache:stale": {
+    "cache:staleServed": {
       container: string;
       key: string;
     };
@@ -53,7 +53,7 @@ declare module "alepha" {
      * Fires when a background SWR refresh completes successfully and
      * the value has been written back to the cache.
      */
-    "cache:revalidate": {
+    "cache:revalidated": {
       container: string;
       key: string;
     };

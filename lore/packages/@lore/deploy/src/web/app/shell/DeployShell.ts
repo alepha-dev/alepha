@@ -9,10 +9,12 @@ import {
   ResourceTabRegistry,
   hasCapability,
   canInProject,
+  capabilityOption,
+  currentProjectAtom,
 } from "@lore/core/web";
 import { $inject } from "alepha";
 import { $client } from "alepha/server/links";
-import { AppWindow, Bug, Package } from "lucide-react";
+import { Activity, AppWindow, Bug, Package } from "lucide-react";
 
 import type { QualityController } from "../../../api/controllers/QualityController.ts";
 import { currentBlightCountAtom } from "../atoms/currentBlightCountAtom.ts";
@@ -41,6 +43,17 @@ export class DeployShell {
 
   constructor() {
     this.shell.registerNav("apps", [
+      {
+        route: "projectUptime",
+        permission: "app:read",
+        labelKey: "uptime.title",
+        icon: Activity,
+        group: "ops",
+        order: 30,
+        option: "uptime",
+        activeOn: (name) =>
+          name === "projectUptime" || name === "projectMonitor",
+      },
       {
         // ONE entry, pointing at the list. It was a disclosure group with one
         // child per enrolled app; once an instance is something you create
@@ -71,28 +84,28 @@ export class DeployShell {
         order: 20,
       },
       {
-        // Blights are reported by apps, so the entry appears once some
-        // enrolled app carries the capability, and goes when the last one
-        // drops it.
-        //
-        // ...unless blights are already filed. They outlive the app that
-        // reported them (`blights.sigilId` is `ON DELETE SET NULL`) and stay
-        // for the retention window, so an owner who deletes their only app
-        // would otherwise lose the only way into an inbox that still holds
-        // open crashes. A project that never collected one still shows no
-        // entry, which is the property this predicate exists for.
+        // Offer an inbox for an app collecting crashes, or for retained
+        // open blights. Uptime outages have no sigil, and removing an app
+        // must not hide the inbox while its failures still need triage.
         route: "projectBlights",
         permission: "blight:read",
         labelKey: "project.menu.blights",
         icon: Bug,
         group: "work",
         order: 50,
-        option: "track",
-        reads: [currentInstancesAtom, currentBlightCountAtom],
+        // Existing inbox items stay reachable with tracking off, including
+        // outages from monitors that never had a sigil.
+        reads: [
+          currentProjectAtom,
+          currentInstancesAtom,
+          currentBlightCountAtom,
+        ],
         available: (ctx) =>
-          (ctx.get(currentInstancesAtom) ?? []).some((it) =>
-            it.sigil?.kinds.includes("blights"),
-          ) || (ctx.get(currentBlightCountAtom)?.count ?? 0) > 0,
+          (ctx.get(currentBlightCountAtom)?.count ?? 0) > 0 ||
+          (capabilityOption(ctx.get(currentProjectAtom), "apps", "track") &&
+            (ctx.get(currentInstancesAtom) ?? []).some((it) =>
+              it.sigil?.kinds.includes("blights"),
+            )),
         badge: (ctx) => ctx.get(currentBlightCountAtom)?.count || undefined,
       },
     ]);

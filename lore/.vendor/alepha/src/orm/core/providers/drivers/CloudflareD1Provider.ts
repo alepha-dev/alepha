@@ -35,6 +35,9 @@ export type {
  * Cloudflare D1 SQLite provider using Drizzle ORM.
  */
 export class CloudflareD1Provider extends DatabaseProvider {
+  /**
+   * @internal Driver plumbing, outside semver.
+   */
   protected readonly builder = $inject(SqliteModelBuilder);
   protected readonly timeouts = $inject(D1TimeoutProvider);
 
@@ -70,11 +73,16 @@ export class CloudflareD1Provider extends DatabaseProvider {
   );
 
   protected d1?: D1Database;
+  /**
+   * @internal Driver plumbing, outside semver.
+   */
   protected drizzleDb?: DrizzleD1Database;
 
   /**
    * Kept from `onStart` so a session can be wrapped in drizzle without
    * re-running the dynamic import on every request.
+   *
+   * @internal Driver plumbing, outside semver.
    */
   protected drizzleFactory?: (client: any) => DrizzleD1Database;
 
@@ -197,6 +205,9 @@ export class CloudflareD1Provider extends DatabaseProvider {
     );
   }
 
+  /**
+   * @internal Driver plumbing, outside semver.
+   */
   public override get db(): PgAsyncDatabase<any> {
     if (!this.drizzleDb) {
       throw new AlephaError("D1 database not initialized");
@@ -222,6 +233,9 @@ export class CloudflareD1Provider extends DatabaseProvider {
     return this.drizzleDb as unknown as PgAsyncDatabase<any>;
   }
 
+  /**
+   * @internal Driver plumbing, outside semver.
+   */
   protected factory(): (client: any) => DrizzleD1Database {
     if (!this.drizzleFactory) {
       throw new AlephaError("D1 database not initialized");
@@ -247,7 +261,7 @@ export class CloudflareD1Provider extends DatabaseProvider {
       // Raw `execute` bypasses `Repository.handleError`, so it has to do its
       // own unwrapping: drizzle demotes the driver error to `cause` and
       // throws its own `Failed query: ...` on top.
-      throw DbTimeoutError.from(error) ?? error;
+      throw DbTimeoutError.find(error) ?? error;
     }
   }
 

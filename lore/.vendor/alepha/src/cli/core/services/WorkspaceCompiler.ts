@@ -4,6 +4,7 @@ import { $logger } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
 
 import type { BuildRuntime } from "../atoms/buildOptions.ts";
+import { BuildManifestReader } from "./BuildManifestReader.ts";
 import { BuildSlices } from "./BuildSlices.ts";
 import { DesktopAdapterResolver } from "./DesktopAdapterResolver.ts";
 
@@ -87,6 +88,7 @@ export interface WorkspaceCompileOptions {
  * `verify` it never asked for.
  */
 export class WorkspaceCompiler {
+  protected readonly manifestReader = $inject(BuildManifestReader);
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly shell = $inject(ShellProvider);
   protected readonly dateTime = $inject(DateTimeProvider);
@@ -406,20 +408,15 @@ export class WorkspaceCompiler {
    * than anything naming the compile that removed its chunks.
    *
    * The manifest is the discovery mechanism for slices, so it is what is read.
-   * An artifact without one falls back to the bun slice alone, which is the
-   * only slice this command is certain exists.
+   * Missing or incompatible manifests are refused before compilation.
    */
   protected async declaredRuntimes(dist: string): Promise<BuildRuntime[]> {
-    try {
-      const manifest = await this.fs.readJsonFile<{
-        runtimes?: Array<{ runtime: BuildRuntime }>;
-      }>(this.fs.join(dist, "manifest.json"));
-      const declared = manifest.runtimes?.map((slice) => slice.runtime);
-      if (declared?.length) {
-        return declared;
-      }
-    } catch {}
-    return ["bun"];
+    const manifest = await this.manifestReader.read(
+      this.fs.join(dist, "manifest.json"),
+    );
+    return manifest.runtimes
+      .map((slice) => slice.runtime)
+      .filter((runtime): runtime is BuildRuntime => runtime !== "static");
   }
 
   /**
@@ -454,7 +451,7 @@ export class WorkspaceCompiler {
     }
     let pkg: { dependencies?: Record<string, string> };
     try {
-      pkg = JSON.parse((await this.fs.readFile(pkgPath)).toString());
+      pkg = JSON.parse(await this.fs.readTextFile(pkgPath));
     } catch {
       return;
     }
@@ -507,7 +504,7 @@ export class WorkspaceCompiler {
       .join(", ");
 
     const indexPath = this.fs.join(dist, entry);
-    const index = (await this.fs.readFile(indexPath)).toString();
+    const index = await this.fs.readTextFile(indexPath);
     await this.fs.writeFile(
       indexPath,
       `${index.trimEnd()}\n\n` +

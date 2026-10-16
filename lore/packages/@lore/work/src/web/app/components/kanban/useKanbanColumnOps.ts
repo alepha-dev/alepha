@@ -96,7 +96,7 @@ export const useKanbanColumnOps = (
 
   const add = useAction<[name: string], boolean>(
     {
-      handler: async (name) =>
+      handler: async (_ctx, name) =>
         apply(
           withColumns(
             await kanbanApi.addKanbanColumn({
@@ -111,7 +111,7 @@ export const useKanbanColumnOps = (
 
   const rename = useAction<[oldName: string, newName: string], boolean>(
     {
-      handler: async (oldName, newName) => {
+      handler: async (_ctx, oldName, newName) => {
         const trimmed = newName.trim();
         if (!trimmed || trimmed === oldName) return false;
         return apply(
@@ -129,7 +129,7 @@ export const useKanbanColumnOps = (
 
   const remove = useAction<[name: string], boolean>(
     {
-      handler: async (name) => {
+      handler: async (_ctx, name) => {
         // Confirmed here rather than at the call site because the confirmation
         // is part of the action.
         //
@@ -166,7 +166,7 @@ export const useKanbanColumnOps = (
     boolean
   >(
     {
-      handler: async (name, color) => {
+      handler: async (_ctx, name, color) => {
         const project = alepha.store.get(currentProjectAtom);
         const current = (project as any)?.kanbanColumnConfig ?? {};
         const merged = { ...current[name] };
@@ -206,10 +206,23 @@ export const useKanbanColumnOps = (
     // board and Settings from asking two different questions.
     can: kanbanApi.addKanbanColumn.can(),
 
-    add: add.run,
-    rename: rename.run,
-    remove: remove.run,
-    setColor: setColor.run,
+    add: async (...args: Parameters<typeof add.run>) => {
+      const result = await add.run(...args);
+
+      return result.ok ? result.value : undefined;
+    },
+    rename: async (...args: Parameters<typeof rename.run>) => {
+      const result = await rename.run(...args);
+      return result.ok ? result.value : undefined;
+    },
+    remove: async (...args: Parameters<typeof remove.run>) => {
+      const result = await remove.run(...args);
+      return result.ok ? result.value : undefined;
+    },
+    setColor: async (...args: Parameters<typeof setColor.run>) => {
+      const result = await setColor.run(...args);
+      return result.ok ? result.value : undefined;
+    },
   };
 };
 

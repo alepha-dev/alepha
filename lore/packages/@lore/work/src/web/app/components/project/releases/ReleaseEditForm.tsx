@@ -110,7 +110,10 @@ const ReleaseEditForm = (props: ReleaseEditFormProps) => {
         // resolved.
         if (updated.tag && updated.tag !== savedTag) {
           await router.push("projectRelease", {
-            params: { releaseTag: updated.tag },
+            params: {
+              projectSlug: router.state.params.projectSlug,
+              releaseTag: updated.tag,
+            },
           });
         }
       } catch {

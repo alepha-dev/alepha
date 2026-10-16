@@ -12,6 +12,7 @@ import {
   automationListQuerySchema,
   type AutomationListQuery,
 } from "../schemas/automationListQuerySchema.ts";
+import { automationOutboxIdsSchema } from "../schemas/automationOutboxIdsSchema.ts";
 import {
   automationPageQuerySchema,
   type AutomationPageQuery,
@@ -69,6 +70,7 @@ export class AutomationService {
     input: AutomationWriteBody,
     presetKey?: string,
     expectedVariables: readonly AutomationVariableApproval[] = [],
+    nativeEffects?: (rule: Automation) => AutomationConfigurationExtension,
   ) {
     return this.database.primary(async () => {
       await this.access.assert(projectId, user, "automation:write");
@@ -115,17 +117,24 @@ export class AutomationService {
         approvedVariables: prepared.approved,
         scheduleCron: prepared.scheduleCron,
       };
+      const extension = nativeEffects?.(data);
       await this.writes.commit(
         projectId,
-        this.approvals.current(projectId, prepared.approved),
+        this.rows.andConditions([
+          this.approvals.current(projectId, prepared.approved),
+          ...(extension?.condition ? [extension.condition] : []),
+        ]),
         [
           this.rows.insertStatement(data),
           this.audit.statement(projectId, user, "create", id, {
             revision: 0,
             authorUserId: user.id,
           }),
+          ...(extension?.statements ?? []),
         ],
       );
+      for (const table of extension?.changedTables ?? [])
+        await this.cache.invalidateTable(table);
       await this.cache.invalidateTable("automations");
       await this.cache.invalidateTable("audits");
       await this.audit.activity(projectId, user, "create");
@@ -226,9 +235,26 @@ export class AutomationService {
     user: UserAccountToken,
     enabled: boolean,
     expectedRevision: number,
+    extension?: AutomationConfigurationExtension,
   ) {
     return this.database.primary(async () => {
       const rule = await this.stored(projectId, id);
+      if (
+        enabled &&
+        rule.rule.compatibility &&
+        extension?.adopting !== rule.rule.compatibility &&
+        !(await this.persistence.adoptions.findOne({
+          where: {
+            projectId,
+            policy: rule.rule.compatibility,
+            automationId: id,
+            state: "adopted",
+          },
+        }))
+      )
+        throw new ForbiddenError(
+          "Use explicit policy adoption before enabling this compatibility rule",
+        );
       await this.access.assertMutation(
         rule,
         user,
@@ -257,14 +283,13 @@ export class AutomationService {
         enabled ? false : rule.requiresApproval,
         {
           expectedVersion: rule.version,
-          ...(prepared
-            ? {
-                condition: this.approvals.current(
-                  rule.projectId,
-                  prepared.approved,
-                ),
-              }
-            : {}),
+          condition: this.rows.andConditions([
+            sql`TRUE`,
+            ...(prepared
+              ? [this.approvals.current(rule.projectId, prepared.approved)]
+              : []),
+            ...(extension?.condition ? [extension.condition] : []),
+          ]),
           patch: {
             enabled,
             revision: rule.revision + 1,
@@ -292,8 +317,9 @@ export class AutomationService {
               id,
               { revision: rule.revision + 1, authorUserId: rule.authorUserId },
             ),
+            ...(extension?.statements ?? []),
           ],
-          changedTables: ["audits"],
+          changedTables: ["audits", ...(extension?.changedTables ?? [])],
         },
       );
       if (!changed)
@@ -420,20 +446,36 @@ export class AutomationService {
     const run = await this.evidence.read(id, user);
     // Read delivery evidence only after current source and variable access
     // has authorized the immutable run payload.
-    const enqueues = (run.snapshot?.actions ?? []).filter(
-      (action) =>
-        action.result.enqueued === true &&
-        typeof action.result.outbox_id === "string" &&
-        run.snapshot?.rule?.actions[action.index]?.kind === "notify",
-    );
+    const enqueues = (run.snapshot?.actions ?? [])
+      .flatMap((action) => {
+        if (run.snapshot?.rule?.actions[action.index]?.kind !== "notify")
+          return [];
+        let ids =
+          typeof action.result.outbox_id === "string"
+            ? [action.result.outbox_id]
+            : [];
+        if (typeof action.result.outbox_ids === "string") {
+          try {
+            ids = automationOutboxIdsSchema.parse(
+              JSON.parse(action.result.outbox_ids),
+            );
+          } catch {
+            ids = [];
+          }
+        }
+        return ids.map((outboxId) => ({
+          index: action.index,
+          ...(action.row === undefined ? {} : { row: action.row }),
+          outboxId,
+        }));
+      })
+      .slice(0, 100);
     const outcomes = await this.outbox.statuses(
-      enqueues.map((action) => String(action.result.outbox_id)),
+      enqueues.map((action) => action.outboxId),
     );
     const notifications = enqueues.map((action) => ({
-      index: action.index,
-      ...(action.row === undefined ? {} : { row: action.row }),
-      outboxId: action.result.outbox_id,
-      ...outcomes.get(String(action.result.outbox_id)),
+      ...action,
+      ...outcomes.get(action.outboxId),
     }));
     return automationRunResourceSchema.parse({
       notifications,
@@ -658,9 +700,27 @@ export class AutomationService {
           }
         : {}),
       canEdit: own && write,
-      canEnable: own && write,
+      canEnable:
+        own &&
+        write &&
+        (!rule.rule.compatibility ||
+          !!(await this.persistence.adoptions.findOne({
+            where: {
+              projectId: rule.projectId,
+              policy: rule.rule.compatibility,
+              automationId: rule.id,
+              state: "adopted",
+            },
+          }))),
       canDisable: (own && write) || manage,
       canDelete: (own && write) || manage,
     });
   }
+}
+
+export interface AutomationConfigurationExtension {
+  condition?: SQLLike;
+  statements: SQLLike[];
+  changedTables: string[];
+  adopting?: "quest-reminders" | "release-notifications";
 }

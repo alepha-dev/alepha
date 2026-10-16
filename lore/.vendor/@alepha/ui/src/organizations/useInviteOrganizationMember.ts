@@ -1,6 +1,7 @@
 import type { OrganizationInvitationController } from "alepha/api/organizations";
-import { useAction, useClient } from "alepha/react";
+import { type RunResult, useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
+import { useCallback } from "react";
 
 import { useToast } from "../core/useToast.tsx";
 
@@ -15,13 +16,17 @@ export interface InviteOrganizationMember {
    * because a rank says what you may do as staff and a role says whether you
    * are a coach, and the framework has no business knowing that club has
    * coaches.
+   *
+   * Resolves `{ ok: true }` once sent, `{ ok: false, reason: "cancelled" }`
+   * when a local check refused it (an empty address, toasted here), and
+   * `useAction`'s other results otherwise.
    */
   invite: (
     organizationId: string,
     email: string,
     rank: string | undefined,
     metadata?: Record<string, unknown>,
-  ) => Promise<boolean | undefined>;
+  ) => Promise<RunResult<void>>;
   loading: boolean;
   can: boolean;
 }
@@ -40,18 +45,7 @@ export const useInviteOrganizationMember = (): InviteOrganizationMember => {
     boolean
   >(
     {
-      handler: async (organizationId, email, rank, passed) => {
-        /**
-         * ⚠️ `useAction` appends `{ signal }` as the LAST argument to the
-         * handler, so a caller passing three arguments lands its abort signal
-         * in this fourth parameter. Reading it as metadata put an
-         * `AbortSignal` on the invitation row.
-         *
-         * Hence the shape check rather than a plain `?? undefined`: an
-         * application's metadata is its own object, and the framework's is the
-         * one carrying `signal`.
-         */
-        const metadata = passed && !("signal" in passed) ? passed : undefined;
+      handler: async (_ctx, organizationId, email, rank, metadata) => {
         const trimmed = email.trim();
         if (!trimmed) {
           toaster.error(
@@ -81,8 +75,21 @@ export const useInviteOrganizationMember = (): InviteOrganizationMember => {
     [api, toaster, tr],
   );
 
+  const invite = useCallback(
+    async (
+      ...args: Parameters<typeof action.run>
+    ): Promise<RunResult<void>> => {
+      const result = await action.run(...args);
+      if (!result.ok) return result;
+      return result.value
+        ? { ok: true, value: undefined }
+        : { ok: false, reason: "cancelled" };
+    },
+    [action.run],
+  );
+
   return {
-    invite: action.run,
+    invite,
     loading: action.loading,
     can: api.createOrganizationInvitation.can(),
   };

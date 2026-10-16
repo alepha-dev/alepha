@@ -149,7 +149,7 @@ const useArrayItems = (input: BaseInputField | undefined) => {
   /**
    * Tell the CHILD paths what changed.
    *
-   * `input.set()` writes the whole array and `FormModel` emits `form:change`
+   * `input.set()` writes the whole array and `FormModel` emits `form:changed`
    * for the array's own path only. The per-item and per-field inputs this
    * component builds carry paths of their own (`.../2/name`), so a child
    * subscribed through `useFieldValue` never heard about its own edit and
@@ -166,7 +166,7 @@ const useArrayItems = (input: BaseInputField | undefined) => {
 
       const emit = (path: string, value: unknown) =>
         void alepha.events.emit(
-          "form:change",
+          "form:changed",
           { id: form.id, path, value },
           { catch: true },
         );
@@ -220,7 +220,7 @@ const useArrayItems = (input: BaseInputField | undefined) => {
     if (!input?.form) return;
     const formId = input.form.id;
     const path = input.path;
-    return alepha.events.on("form:change", (e) => {
+    return alepha.events.on("form:changed", (e) => {
       if (e.id === formId && e.path === path) sync(e.value as unknown[]);
     });
   }, [alepha, input, sync]);
@@ -336,7 +336,7 @@ const buildFieldInput = (
 ): BaseInputField => ({
   schema: z.schema.shape(itemSchema)[fieldName],
   path: `${parent.path}/${index}/${fieldName}`,
-  required: z.schema.requiredKeys(itemSchema).includes(fieldName),
+  required: z.schema.requiredInputKeys(itemSchema).includes(fieldName),
   form: parent.form,
   initialValue: itemValue?.[fieldName],
   props: {
@@ -433,7 +433,7 @@ export const ControlArray = (props: ControlArrayProps) => {
     if (shape) {
       value = {};
       for (const [k, p] of Object.entries(z.schema.shape(shape))) {
-        const def = z.schema.getDefault(p);
+        const def = z.schema.defaultValue(p);
         if (def !== undefined) (value as Record<string, unknown>)[k] = def;
         // Stamp the discriminant so the new item resolves to its variant.
         const literal = literalValueOf(p);

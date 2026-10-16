@@ -1,4 +1,4 @@
-import { BadRequestError, HttpError } from "alepha/server";
+import { BadRequestError, isHttpError } from "alepha/server";
 import { Decompress as ZstdDecompress } from "fzstd";
 
 import {
@@ -509,7 +509,7 @@ export class ArtifactTarReader {
       }
     } catch (error) {
       // The budget refusal is already the right answer, with the right status.
-      if (HttpError.is(error)) {
+      if (isHttpError(error)) {
         throw error;
       }
       // Everything else here is the decode failing, which means the upload is

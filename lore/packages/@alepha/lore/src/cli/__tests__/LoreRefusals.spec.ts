@@ -120,7 +120,7 @@ describe("LoreRefusals", () => {
 
     const error = await refusal(commands, () => commands.api.listCards());
 
-    expect(error.exitCode).toBe(3);
+    expect(error.data.exitCode).toBe(3);
     expect(error.message).toContain(`Not authenticated to ${hostname}`);
     expect(error.message).toContain("lore login");
     expect(error.message).toContain("LORE_API_KEY");
@@ -142,7 +142,7 @@ describe("LoreRefusals", () => {
 
     const error = await refusal(commands, () => commands.api.listCards());
 
-    expect(error.exitCode).toBe(3);
+    expect(error.data.exitCode).toBe(3);
     expect(error.message).toContain("Action listCards not found.");
     expect(error.message).toContain(
       `the credential for ${hostname} was not accepted`,
@@ -160,7 +160,7 @@ describe("LoreRefusals", () => {
 
     const error = await refusal(commands, () => commands.api.archiveBoard());
 
-    expect(error.exitCode).toBe(4);
+    expect(error.data.exitCode).toBe(4);
     expect(error.message).toContain(
       "Action archiveBoard is not allowed for this user.",
     );
@@ -175,7 +175,7 @@ describe("LoreRefusals", () => {
 
     const error = await refusal(commands, () => commands.api.createCard());
 
-    expect(error.exitCode).toBe(4);
+    expect(error.data.exitCode).toBe(4);
     expect(error.message).toBe(
       "Project alepha: Your rank (Contributor) does not grant quest:create. Ask somebody who holds rank:manage.",
     );
@@ -191,7 +191,7 @@ describe("LoreRefusals", () => {
 
     const error = await refusal(commands, () => commands.api.listCards());
 
-    expect(error.exitCode).toBe(1);
+    expect(error.data.exitCode).toBe(1);
     expect(error.message).toContain(
       "Could not reach Lore at http://127.0.0.1:1",
     );
