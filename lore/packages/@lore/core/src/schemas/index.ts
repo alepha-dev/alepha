@@ -151,3 +151,11 @@ export { automationCatalogPresetSchema } from "../api/schemas/automationCatalogP
 export { AutomationPresetForms } from "../api/schemas/AutomationPresetForms.ts";
 
 export { automationNotificationOutcomeSchema } from "../api/schemas/automationNotificationOutcomeSchema.ts";
+
+export { automationSetupQuerySchema } from "../api/schemas/automationSetupQuerySchema.ts";
+export { automationSetupOptionPageSchema } from "../api/schemas/automationSetupOptionPageSchema.ts";
+
+export {
+  automationVariableApprovalSchema,
+  type AutomationVariableApproval,
+} from "../api/schemas/automationVariableApprovalSchema.ts";

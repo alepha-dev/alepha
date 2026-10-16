@@ -4,6 +4,61 @@ import { uiFr } from "@alepha/ui/i18n/fr";
  * Lore's French, over `@alepha/ui`'s: a key both declare reads Lore's.
  */
 export default {
+  "automation.test.counts": "Sélectionnés : $1. Correspondances : $2.",
+  "automation.test.total": "Éléments possibles : $1.",
+  "automation.test.lowerBound": "Au moins $1 éléments possibles.",
+  "automation.test.guardMatched": "Condition remplie.",
+  "automation.test.guardNotMatched": "Condition non remplie.",
+  "automation.test.value": "Valeur actuelle : $1.",
+  "automation.test.previous": "Valeur précédente : $1.",
+  "automation.test.omitted":
+    "Cette prévisualisation omet $1 actions en raison de sa limite de taille.",
+  "automation.test.actionCapped": "Le texte de cette action a été limité.",
+
+  "automation.sharing.boundSummary": "Variable partagée : $1",
+  "automation.setup.invalidValue": "Saisissez une valeur valide.",
+  "automation.setup.cancel": "Annuler",
+  "automation.setup.choose": "Configurer",
+  "automation.setup.origin": "Origine : $1. Cette règle est indépendante.",
+  "automation.setup.appendFolio": "Ajouter au folio",
+  "automation.setup.created":
+    "Automatisation enregistrée. Vérifiez ses paramètres et prévisualisez les actions avant de l’activer.",
+  "automation.setup.enableDescription":
+    "Activez-la lorsque vous êtes prêt. Lore vérifiera à nouveau vos autorisations et les valeurs actuelles.",
+  "automation.gallery.none":
+    "Aucun modèle n’est disponible avec les fonctionnalités, autorisations et canaux configurés de ce projet.",
+  "automation.sharing.source": "Source de la valeur de $1",
+  "automation.sharing.literal": "Utiliser uniquement ici",
+  "automation.sharing.existing": "Lier une variable partagée",
+  "automation.sharing.create": "Créer une variable partagée",
+  "automation.sharing.variable": "Variable partagée pour $1",
+  "automation.sharing.key": "Clé de la nouvelle variable",
+  "automation.sharing.createDescription":
+    "Crée une nouvelle variable lors de l’enregistrement. Les clés existantes ne sont jamais remplacées.",
+  "automation.sharing.chooseVariable":
+    "Choisissez une variable disponible du type attendu.",
+  "automation.sharing.validKey":
+    "Commencez par une lettre, puis utilisez des lettres, chiffres ou tirets bas, avec 64 caractères maximum.",
+  "automation.sharing.manageRequired":
+    "La création de variables partagées nécessite l’autorisation de gérer les automatisations.",
+  "automation.sharing.approvedVersion": "Utilisation de $1, version $2.",
+  "automation.sharing.useCurrent": "Utiliser la version actuelle",
+  "automation.sharing.pages": "Rechercher une autre variable partagée",
+  "automation.test.title": "Prévisualiser les actions prévues",
+  "automation.test.description":
+    "Consultez les valeurs actuelles et les actions prévues. Une prévisualisation n’exécute aucune action.",
+  "automation.test.subject": "Élément source",
+  "automation.test.subjectDescription":
+    "Choisissez un élément de ce projet pour prévisualiser l’événement. Cet élément ne sera pas modifié.",
+  "automation.test.subjectRequired":
+    "Choisissez un élément source de ce projet.",
+  "automation.test.run": "Tester",
+  "automation.test.result": "Résultat de la prévisualisation",
+  "automation.test.at": "Prévisualisation évaluée le $1.",
+  "automation.test.planned": "Actions prévues : $1.",
+  "automation.test.disclaimer":
+    "Prévisualisation uniquement. Aucune action, aucun message et aucun changement de référence n’ont été enregistrés.",
+
   "automation.run.queued": "En attente",
   "automation.column.name": "Nom",
   "automation.column.author": "Auteur",

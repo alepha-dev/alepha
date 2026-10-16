@@ -11,6 +11,27 @@ export class KnowledgeAutomationReferences {
   protected readonly references = $inject(AutomationReferences);
   protected readonly folios = $repository(folios);
   constructor() {
+    this.references.registerOptions("folio", {
+      permission: "folio:read",
+      read: async ({ projectId, offset, limit }) => {
+        const rows = await this.folios.findMany({
+          where: { projectId },
+          columns: ["id", "title"],
+          orderBy: [
+            { column: "title", direction: "asc" },
+            { column: "id", direction: "asc" },
+          ],
+          offset,
+          limit: limit + 1,
+        });
+        return {
+          items: rows
+            .slice(0, limit)
+            .map((row) => ({ value: row.id, label: row.title.slice(0, 255) })),
+          hasMore: rows.length > limit,
+        };
+      },
+    });
     this.references.register("folio", async (projectId, value) =>
       typeof value === "string" &&
       (

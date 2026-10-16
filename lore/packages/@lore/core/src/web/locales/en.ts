@@ -1,4 +1,59 @@
 export default {
+  "automation.test.counts": "Selected: $1. Matched: $2.",
+  "automation.test.total": "Candidates: $1.",
+  "automation.test.lowerBound": "At least $1 candidates.",
+  "automation.test.guardMatched": "Condition matched.",
+  "automation.test.guardNotMatched": "Condition did not match.",
+  "automation.test.value": "Current value: $1.",
+  "automation.test.previous": "Previous value: $1.",
+  "automation.test.omitted":
+    "This preview omits $1 actions because of its size limit.",
+  "automation.test.actionCapped": "This action’s text was capped.",
+
+  "automation.sharing.boundSummary": "Shared variable: $1",
+  "automation.setup.invalidValue": "Enter a valid value.",
+  "automation.setup.cancel": "Cancel",
+  "automation.setup.choose": "Set up",
+  "automation.setup.origin": "Origin: $1. This is an independent rule.",
+  "automation.setup.appendFolio": "Append to folio",
+  "automation.setup.created":
+    "Automation saved. Review its settings and preview the work before enabling.",
+  "automation.setup.enableDescription":
+    "Enable when you are ready. Lore checks your permissions and current inputs again.",
+  "automation.gallery.none":
+    "No presets are available with this project’s capabilities, permissions and configured channels.",
+  "automation.sharing.source": "$1 value source",
+  "automation.sharing.literal": "Use only here",
+  "automation.sharing.existing": "Bind a shared variable",
+  "automation.sharing.create": "Create a shared variable",
+  "automation.sharing.variable": "$1 shared variable",
+  "automation.sharing.key": "New variable key",
+  "automation.sharing.createDescription":
+    "Creates a new variable when you save. Existing keys are never replaced.",
+  "automation.sharing.chooseVariable":
+    "Choose an available variable of the matching type.",
+  "automation.sharing.validKey":
+    "Use a letter first, then letters, numbers or underscores, up to 64 characters.",
+  "automation.sharing.manageRequired":
+    "Creating shared variables requires automation management permission.",
+  "automation.sharing.approvedVersion": "Using $1, version $2.",
+  "automation.sharing.useCurrent": "Use current version",
+  "automation.sharing.pages": "Find another shared variable",
+  "automation.test.title": "Preview planned actions",
+  "automation.test.description":
+    "Inspect the current inputs and planned actions. A preview performs no work.",
+  "automation.test.subject": "Source record",
+  "automation.test.subjectDescription":
+    "Choose a record from this project to preview the event. The record will not change.",
+  "automation.test.subjectRequired":
+    "Choose a source record from this project.",
+  "automation.test.run": "Test",
+  "automation.test.result": "Preview result",
+  "automation.test.at": "Preview evaluated at $1.",
+  "automation.test.planned": "Planned actions: $1.",
+  "automation.test.disclaimer":
+    "Preview only. No actions, messages or baseline changes were saved.",
+
   "automation.run.queued": "Queued",
   "automation.column.name": "Name",
   "automation.column.author": "Author",

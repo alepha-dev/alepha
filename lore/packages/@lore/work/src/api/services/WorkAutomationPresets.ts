@@ -11,7 +11,7 @@ import { $inject } from "alepha";
 
 /**
  * Stock Work programs retain the ordinary event/selector/notification paths.
- * Recipients are individual setup literals, never project-wide shared values.
+ * Recipients start as setup literals. Shared values require explicit typed binding.
  */
 export class WorkAutomationPresets {
   protected readonly presets = $inject(AutomationPresetRegistry);
@@ -84,17 +84,23 @@ export class WorkAutomationPresets {
           ]),
         ],
         slots: {
-          recipient: { kind: "member", required: true },
+          recipient: { kind: "member", required: true, bindable: true },
           channel: {
             kind: "channel",
+            bindable: true,
             required: true,
             default: "inbox",
             values: ["inbox", "email"],
           },
-          ...extra,
+          ...Object.fromEntries(
+            Object.entries(extra).map(([name, slot]) => [
+              name,
+              { ...slot, bindable: true },
+            ]),
+          ),
         },
       },
-      build,
+      (values, bindings) => build({ ...values, ...bindings }),
     );
   }
   protected notify(

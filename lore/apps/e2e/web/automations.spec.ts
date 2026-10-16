@@ -172,4 +172,329 @@ test.describe("Automations", () => {
       }),
     ).toBeVisible();
   });
+  test("creates an isolated preset, previews without writes and enables only after an explicit action", async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
+    await registerAndVerify(
+      page,
+      `automation-setup-${crypto.randomUUID()}@example.com`,
+      "GoodPassw0rd",
+    );
+    const project = await createProjectViaWizard(page, "Preset setup");
+    await setCapability(page, project.id, "work", {
+      options: { automations: true },
+    });
+    const me = await (await page.request.get("/api/users/me")).json();
+    const variablePath = (await apiPath(page, "setAutomationVariable"))
+      .replace(":projectId", String(project.id))
+      .replace(":key", "recipient");
+    const seeded = await page.request.put(variablePath, {
+      data: { value: { kind: "member", value: me.id } },
+    });
+    expect(seeded.ok()).toBe(true);
+    const originalVariable = (await seeded.json()).variable;
+    const memberPath = (
+      await apiPath(page, "getAutomationSetupOptions")
+    ).replace(":projectId", String(project.id));
+    const members = await (
+      await page.request.get(`${memberPath}?kind=member&offset=0&limit=50`)
+    ).json();
+    const owner = members.items.find(
+      (item: { value: string }) => item.value === me.id,
+    );
+    expect(owner).toBeTruthy();
+    await page.goto(`/${project.slug}/automations/presets`);
+    const preset = page.locator("div.border-b").filter({
+      has: page.getByRole("heading", {
+        name: "Nightly tagged quests",
+        exact: true,
+      }),
+    });
+    await preset.getByRole("button", { name: "Set up", exact: true }).click();
+    await expect(
+      page.getByRole("combobox", {
+        name: "Recipient value source",
+        exact: true,
+      }),
+    ).toContainText("Use only here");
+    await page
+      .getByRole("combobox", { name: "Recipient", exact: true })
+      .click();
+    await page.getByRole("option", { name: owner.label, exact: true }).click();
+    await page.getByRole("textbox", { name: "Tag", exact: true }).fill("daily");
+    const saved = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        (new URL(response.url()).pathname.endsWith("/automation-presets") ||
+          (response.url().includes("/api/_batch") &&
+            response
+              .request()
+              .postData()
+              ?.includes('"action":"createAutomationFromPreset"') === true)),
+    );
+    await page
+      .getByRole("button", { name: "Create disabled automation", exact: true })
+      .click();
+    const response = await saved;
+    expect(response.ok()).toBe(true);
+    const body = await response.json();
+    const created = Array.isArray(body)
+      ? body.find((item) => item.action === "createAutomationFromPreset").data
+      : body;
+    expect(created).toMatchObject({
+      enabled: false,
+      revision: 0,
+      presetKey: "tagged-quest-digest",
+      rule: {
+        select: { filters: { tag: "daily" } },
+        actions: [
+          expect.objectContaining({ recipient: me.id, channel: "inbox" }),
+        ],
+      },
+    });
+    await expect(
+      page.getByText("Automation saved.", { exact: false }),
+    ).toBeVisible();
+    const getPath = (await apiPath(page, "getAutomation"))
+      .replace(":projectId", String(project.id))
+      .replace(":id", created.id);
+    const before = await (await page.request.get(getPath)).json();
+    const tested = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        (new URL(response.url()).pathname.endsWith("/test") ||
+          (response.url().includes("/api/_batch") &&
+            response
+              .request()
+              .postData()
+              ?.includes('"action":"testAutomation"') === true)),
+    );
+    await page.getByRole("button", { name: "Test", exact: true }).click();
+    expect((await tested).ok()).toBe(true);
+    await expect(
+      page.getByRole("region", { name: "Preview result" }),
+    ).toContainText("Planned actions: 0.");
+    expect(await (await page.request.get(getPath)).json()).toEqual(before);
+    const enabled = page.waitForResponse((response) =>
+      mutation(response.request()),
+    );
+    await page.getByRole("button", { name: "Enable", exact: true }).click();
+    expect((await enabled).ok()).toBe(true);
+    await expect(page.getByText("Active", { exact: true })).toBeVisible();
+    expect((await (await page.request.get(getPath)).json()).enabled).toBe(true);
+    const variablesPath = (
+      await apiPath(page, "listAutomationVariables")
+    ).replace(":projectId", String(project.id));
+    const variables = await (await page.request.get(variablesPath)).json();
+    expect(variables.items).toEqual([originalVariable]);
+  });
+
+  test("binds an existing recipient and explicitly creates a tag variable without replacing a shared key", async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
+    await registerAndVerify(
+      page,
+      `automation-share-${crypto.randomUUID()}@example.com`,
+      "GoodPassw0rd",
+    );
+    const project = await createProjectViaWizard(page, "Shared preset");
+    await setCapability(page, project.id, "work", {
+      options: { automations: true },
+    });
+    const me = await (await page.request.get("/api/users/me")).json();
+    const variablePath = (await apiPath(page, "setAutomationVariable"))
+      .replace(":projectId", String(project.id))
+      .replace(":key", "recipient");
+    const seeded = await page.request.put(variablePath, {
+      data: { value: { kind: "member", value: me.id } },
+    });
+    expect(seeded.ok()).toBe(true);
+    const original = (await seeded.json()).variable;
+    await page.goto(`/${project.slug}/automations/presets`);
+    await page
+      .locator("div.border-b")
+      .filter({
+        has: page.getByRole("heading", {
+          name: "Nightly tagged quests",
+          exact: true,
+        }),
+      })
+      .getByRole("button", { name: "Set up", exact: true })
+      .click();
+    await page
+      .getByRole("combobox", { name: "Recipient value source", exact: true })
+      .click();
+    await page
+      .getByRole("option", { name: "Bind a shared variable", exact: true })
+      .click();
+    await page
+      .getByRole("combobox", { name: "Recipient shared variable", exact: true })
+      .click();
+    await page
+      .getByRole("option", { name: "recipient (v0)", exact: true })
+      .click();
+    await page
+      .getByRole("combobox", { name: "Tag value source", exact: true })
+      .click();
+    await page
+      .getByRole("option", { name: "Create a shared variable", exact: true })
+      .click();
+    await page.getByRole("textbox", { name: "Tag", exact: true }).fill("daily");
+    await page
+      .getByRole("textbox", { name: "New variable key", exact: true })
+      .fill("dailyTag");
+    const saved = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        (new URL(response.url()).pathname.endsWith("/automation-presets") ||
+          (response.url().includes("/api/_batch") &&
+            response
+              .request()
+              .postData()
+              ?.includes('"action":"createAutomationFromPreset"') === true)),
+    );
+    await page
+      .getByRole("button", { name: "Create disabled automation", exact: true })
+      .click();
+    const response = await saved;
+    expect(response.ok()).toBe(true);
+    const body = await response.json();
+    const created = Array.isArray(body)
+      ? body.find((item) => item.action === "createAutomationFromPreset").data
+      : body;
+    expect(created).toMatchObject({
+      enabled: false,
+      rule: {
+        select: { filters: { tag: "{{dailyTag}}" } },
+        actions: [expect.objectContaining({ recipient: "{{recipient}}" })],
+      },
+    });
+    const variablesPath = (
+      await apiPath(page, "listAutomationVariables")
+    ).replace(":projectId", String(project.id));
+    const variables = await (await page.request.get(variablesPath)).json();
+    expect(variables.items).toHaveLength(2);
+    expect(
+      variables.items.find((item: { key: string }) => item.key === "recipient"),
+    ).toEqual(original);
+    expect(
+      variables.items.find((item: { key: string }) => item.key === "dailyTag"),
+    ).toMatchObject({
+      version: 0,
+      kind: "text",
+      value: { kind: "text", value: "daily" },
+    });
+    await expect(
+      page.getByText("Shared variable: recipient", { exact: true }),
+    ).toBeVisible();
+  });
+
+  test("previews release publication through same-project folio and source pickers without appending", async ({
+    page,
+  }, testInfo) => {
+    test.setTimeout(90_000);
+    await registerAndVerify(
+      page,
+      `automation-release-${crypto.randomUUID()}@example.com`,
+      "GoodPassw0rd",
+    );
+    const project = await createProjectViaWizard(page, "Release preset");
+    await setCapability(page, project.id, "work", {
+      options: { automations: true, releases: true },
+    });
+    const folioResponse = await page.request.post(
+      await apiPath(page, "create"),
+      {
+        data: {
+          projectId: project.id,
+          title: "Release journal",
+          content: "Human introduction",
+        },
+      },
+    );
+    expect(folioResponse.ok()).toBe(true);
+    const folio = await folioResponse.json();
+    const readFolio = (await apiPath(page, "get")).replace(":id", folio.id);
+    const releasePath = (await apiPath(page, "createRelease")).replace(
+      ":projectId",
+      String(project.id),
+    );
+    const releaseResponse = await page.request.post(releasePath, {
+      data: { tag: "3.2.1", title: "Planned release" },
+    });
+    expect(releaseResponse.ok()).toBe(true);
+    const optionsPath = (
+      await apiPath(page, "getAutomationSetupOptions")
+    ).replace(":projectId", String(project.id));
+    const members = await (
+      await page.request.get(`${optionsPath}?kind=member&offset=0&limit=50`)
+    ).json();
+    await page.goto(`/${project.slug}/automations/presets`);
+    await page
+      .locator("div.border-b")
+      .filter({
+        has: page.getByRole("heading", {
+          name: "Publish release notes to a folio",
+          exact: true,
+        }),
+      })
+      .getByRole("button", { name: "Set up", exact: true })
+      .click();
+    await page
+      .getByRole("combobox", { name: "Recipient", exact: true })
+      .click();
+    await page
+      .getByRole("option", { name: members.items[0].label, exact: true })
+      .click();
+    await page.getByRole("combobox", { name: "Folio", exact: true }).click();
+    await page
+      .getByRole("option", { name: "Release journal", exact: true })
+      .click();
+    await expect(
+      page.getByRole("option", { name: "Release journal", exact: true }),
+    ).toBeHidden();
+    await page.screenshot({
+      path: testInfo.outputPath("release-preset-setup.png"),
+      fullPage: true,
+    });
+    await page
+      .getByRole("button", { name: "Create disabled automation", exact: true })
+      .click();
+    await expect(
+      page.getByText("Automation saved.", { exact: false }),
+    ).toBeVisible();
+    await page
+      .getByRole("combobox", { name: "Source record", exact: true })
+      .click();
+    await page
+      .getByRole("option", { name: "3.2.1: Planned release", exact: true })
+      .click();
+    const tested = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        (new URL(response.url()).pathname.endsWith("/test") ||
+          (response.url().includes("/api/_batch") &&
+            response
+              .request()
+              .postData()
+              ?.includes('"action":"testAutomation"') === true)),
+    );
+    await page.getByRole("button", { name: "Test", exact: true }).click();
+    expect((await tested).ok()).toBe(true);
+    const preview = page.getByRole("region", { name: "Preview result" });
+    await expect(preview).toContainText("Planned actions: 2.");
+    await expect(preview).toContainText("3.2.1");
+    expect((await (await page.request.get(readFolio)).json()).content).toBe(
+      "Human introduction",
+    );
+    await page
+      .getByRole("button", { name: "Enable", exact: true })
+      .scrollIntoViewIfNeeded();
+    await page.screenshot({
+      path: testInfo.outputPath("release-preset-preview.png"),
+      fullPage: true,
+    });
+  });
 });

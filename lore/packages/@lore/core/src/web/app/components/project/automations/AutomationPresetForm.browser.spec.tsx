@@ -5,7 +5,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import { Alepha } from "alepha";
+import { Alepha, AlephaError } from "alepha";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaContext } from "alepha/react";
 import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
@@ -86,5 +86,179 @@ describe("Automation preset setup form", () => {
         { recipient: memberId, channel: "inbox", tag: "daily" },
       ]),
     );
+  });
+  it("submits an explicitly selected shared identity and version without creating a variable", async ({
+    expect,
+  }) => {
+    const memberId = crypto.randomUUID();
+    const variableId = crypto.randomUUID();
+    const saved: unknown[] = [];
+    const preset: AutomationPresetDescriptor = {
+      key: "epic-completed",
+      title: "Epic completed",
+      description: "Event",
+      source: "epic.completed",
+      fields: {},
+      needs: [],
+      permissions: [],
+      slots: {
+        recipient: { kind: "member", required: true, bindable: true },
+        channel: {
+          kind: "channel",
+          required: true,
+          default: "inbox",
+          values: ["inbox", "email"],
+        },
+      },
+    };
+    alepha = Alepha.create()
+      .with(AlephaLogger)
+      .with(AlephaReactI18n)
+      .with(AlephaReactUi);
+    alepha.inject(I18n);
+    await alepha.start();
+    await alepha.inject(I18nProvider).setLang("en");
+    render(
+      <AlephaContext.Provider value={alepha}>
+        <AutomationPresetForm
+          preset={preset}
+          choices={{ recipient: [{ value: memberId, label: "Myself" }] }}
+          variables={[
+            {
+              id: variableId,
+              key: "teamRecipient",
+              kind: "member",
+              version: 3,
+              available: true,
+              value: { kind: "member", value: memberId },
+            },
+          ]}
+          onSubmit={async (values, bindings) => {
+            saved.push({ values, bindings });
+          }}
+        />
+      </AlephaContext.Provider>,
+    );
+    fireEvent.click(
+      screen.getByRole("combobox", { name: "Recipient value source" }),
+    );
+    fireEvent.click(
+      await screen.findByRole("option", { name: "Bind a shared variable" }),
+    );
+    fireEvent.click(
+      screen.getByRole("combobox", { name: "Recipient shared variable" }),
+    );
+    fireEvent.click(
+      await screen.findByRole("option", { name: "teamRecipient (v3)" }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Create disabled automation" }),
+    );
+    await waitFor(() =>
+      expect(saved).toEqual([
+        {
+          values: { recipient: memberId, channel: "inbox" },
+          bindings: {
+            recipient: { id: variableId, key: "teamRecipient", version: 3 },
+          },
+        },
+      ]),
+    );
+  });
+
+  it("retains an explicitly created variable when rule creation fails so retry cannot replace its key", async ({
+    expect,
+  }) => {
+    const memberId = crypto.randomUUID();
+    const variableId = crypto.randomUUID();
+    let created = 0;
+    let attempts = 0;
+    const saved: unknown[] = [];
+    const preset: AutomationPresetDescriptor = {
+      key: "epic-completed",
+      title: "Epic completed",
+      description: "Event",
+      source: "epic.completed",
+      fields: {},
+      needs: [],
+      permissions: [],
+      slots: {
+        recipient: { kind: "member", required: true, bindable: true },
+        channel: {
+          kind: "channel",
+          required: true,
+          default: "inbox",
+          values: ["inbox", "email"],
+        },
+      },
+    };
+    alepha = Alepha.create()
+      .with(AlephaLogger)
+      .with(AlephaReactI18n)
+      .with(AlephaReactUi);
+    alepha.inject(I18n);
+    await alepha.start();
+    await alepha.inject(I18nProvider).setLang("en");
+    render(
+      <AlephaContext.Provider value={alepha}>
+        <AutomationPresetForm
+          preset={preset}
+          choices={{ recipient: [{ value: memberId, label: "Myself" }] }}
+          canManageVariables
+          onCreateShared={async (key, value) => {
+            created++;
+            return {
+              id: variableId,
+              key,
+              kind: "member",
+              version: 0,
+              available: true,
+              value,
+            };
+          }}
+          onSubmit={async (values, bindings) => {
+            attempts++;
+            if (attempts === 1) throw new AlephaError("Rule creation refused");
+            saved.push({ values, bindings });
+          }}
+        />
+      </AlephaContext.Provider>,
+    );
+    fireEvent.click(
+      screen.getByRole("combobox", { name: "Recipient value source" }),
+    );
+    fireEvent.click(
+      await screen.findByRole("option", { name: "Create a shared variable" }),
+    );
+    fireEvent.click(screen.getByRole("combobox", { name: "Recipient" }));
+    fireEvent.click(await screen.findByRole("option", { name: "Myself" }));
+    fireEvent.change(
+      screen.getByRole("textbox", { name: "New variable key" }),
+      { target: { value: "teamRecipient" } },
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Create disabled automation" }),
+    );
+    await waitFor(() => expect(attempts).toBe(1));
+    await waitFor(() =>
+      expect(
+        screen.getByRole("combobox", { name: "Recipient value source" })
+          .textContent,
+      ).toContain("Bind a shared variable"),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Create disabled automation" }),
+    );
+    await waitFor(() =>
+      expect(saved).toEqual([
+        {
+          values: { recipient: memberId, channel: "inbox" },
+          bindings: {
+            recipient: { id: variableId, key: "teamRecipient", version: 0 },
+          },
+        },
+      ]),
+    );
+    expect(created).toBe(1);
   });
 });

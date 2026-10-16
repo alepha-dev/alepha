@@ -15,6 +15,47 @@ export class CoreAutomationReferences {
   protected readonly users = $repository(users);
   protected readonly permissions = $inject(AutomationProjectPermissions);
   constructor() {
+    this.references.registerOptions("member", {
+      permission: "member:read",
+      read: async ({ projectId, offset, limit }) => {
+        const project = await this.security.projects.getById(projectId);
+        const members = await this.security.members.findMany({
+          where: { organizationId: project.organizationId! },
+          orderBy: "id",
+          offset,
+          limit: limit + 1,
+        });
+        const ids = members.slice(0, limit).map((member) => member.userId);
+        const users = ids.length
+          ? await this.users.findMany({
+              where: { id: { inArray: ids }, enabled: true },
+              columns: ["id", "username", "firstName", "lastName", "email"],
+            })
+          : [];
+        const byId = new Map(users.map((user) => [user.id, user]));
+        return {
+          items: ids.flatMap((id) => {
+            const user = byId.get(id);
+            return user
+              ? [
+                  {
+                    value: id,
+                    label: (
+                      user.username ||
+                      [user.firstName, user.lastName]
+                        .filter(Boolean)
+                        .join(" ") ||
+                      user.email ||
+                      id
+                    ).slice(0, 255),
+                  },
+                ]
+              : [];
+          }),
+          hasMore: members.length > limit,
+        };
+      },
+    });
     this.references.register("member", async (projectId, value) => {
       if (typeof value !== "string") return "Member must be a stable user ID";
       return (await this.security.isMemberById(projectId, value))

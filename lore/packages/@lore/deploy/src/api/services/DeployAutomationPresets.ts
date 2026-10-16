@@ -27,21 +27,23 @@ export class DeployAutomationPresets {
         slots: {
           app: {
             kind: "text",
+            bindable: true,
             resource: "app",
             required: true,
             min: 1,
             max: 255,
           },
-          recipient: { kind: "member", required: true },
+          recipient: { kind: "member", required: true, bindable: true },
           channel: {
             kind: "channel",
+            bindable: true,
             required: true,
             default: "inbox",
             values: ["inbox", "email"],
           },
         },
       },
-      (values) => this.failure(values),
+      (values, bindings) => this.failure({ ...values, ...bindings }),
     );
   }
   protected failure(values: AutomationPresetValues): AutomationRule {

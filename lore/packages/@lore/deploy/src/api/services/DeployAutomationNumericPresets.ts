@@ -74,17 +74,23 @@ export class DeployAutomationNumericPresets {
         needs: [{ capability: "work", option: "automations" }, ...entry.needs],
         permissions: ["automation:write", "member:read", ...entry.permissions],
         slots: {
-          recipient: { kind: "member", required: true },
+          recipient: { kind: "member", required: true, bindable: true },
           channel: {
             kind: "channel",
+            bindable: true,
             required: true,
             default: "inbox",
             values: ["inbox", "email"],
           },
-          ...slots,
+          ...Object.fromEntries(
+            Object.entries(slots).map(([name, slot]) => [
+              name,
+              { ...slot, bindable: true },
+            ]),
+          ),
         },
       },
-      build,
+      (values, bindings) => build({ ...values, ...bindings }),
     );
   }
   protected notify(
@@ -113,13 +119,16 @@ export class DeployAutomationNumericPresets {
       guard: {
         field: "value",
         operator: "delta",
-        value: Number(values.threshold),
+        value:
+          typeof values.threshold === "number"
+            ? values.threshold
+            : String(values.threshold),
       },
       actions: [
         this.notify(
           values,
           "Coverage regression: {{branch}}",
-          `Line coverage regressed on {{branch}}.\n{{previous_day}}: {{previous}}%\n{{day}}: {{value}}%\nAlert threshold: ${Number(values.threshold)} percentage points.\n{{project}}`,
+          `Line coverage regressed on {{branch}}.\n{{previous_day}}: {{previous}}%\n{{day}}: {{value}}%\nAlert threshold: ${typeof values.threshold === "number" ? values.threshold : String(values.threshold)} percentage points.\n{{project}}`,
         ),
       ],
     };
@@ -136,13 +145,16 @@ export class DeployAutomationNumericPresets {
       guard: {
         field: "value",
         operator: "crossesAbove",
-        value: Number(values.threshold),
+        value:
+          typeof values.threshold === "number"
+            ? values.threshold
+            : String(values.threshold),
       },
       actions: [
         this.notify(
           values,
           "Open blights crossed a threshold",
-          `Open blights: {{value}}.\nCrossed above ${Number(values.threshold)}.\n{{project}}`,
+          `Open blights: {{value}}.\nCrossed above ${typeof values.threshold === "number" ? values.threshold : String(values.threshold)}.\n{{project}}`,
         ),
       ],
     };

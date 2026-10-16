@@ -19,6 +19,7 @@ import {
 import { automationResourceSchema } from "../schemas/automationResourceSchema.ts";
 import { automationRunResourceSchema } from "../schemas/automationRunResourceSchema.ts";
 import type { AutomationTestSource } from "../schemas/automationTestSourceSchema.ts";
+import type { AutomationVariableApproval } from "../schemas/automationVariableApprovalSchema.ts";
 import {
   automationWriteBodySchema,
   type AutomationWriteBody,
@@ -67,6 +68,7 @@ export class AutomationService {
     user: UserAccountToken,
     input: AutomationWriteBody,
     presetKey?: string,
+    expectedVariables: readonly AutomationVariableApproval[] = [],
   ) {
     return this.database.primary(async () => {
       await this.access.assert(projectId, user, "automation:write");
@@ -94,6 +96,20 @@ export class AutomationService {
         ...(presetKey ? { presetKey } : {}),
       } satisfies Automation;
       const prepared = await this.prepare(candidate);
+      if (
+        expectedVariables.some(
+          (expected) =>
+            !prepared.approved.some(
+              (actual) =>
+                actual.id === expected.id &&
+                actual.key === expected.key &&
+                actual.version === expected.version,
+            ),
+        )
+      )
+        throw new ConflictError(
+          "Shared variable changed; reload the preset setup before creating",
+        );
       const data = {
         ...candidate,
         approvedVariables: prepared.approved,
@@ -573,7 +589,7 @@ export class AutomationService {
     const author = (
       await this.userRows.findMany({
         where: { id: rule.authorUserId },
-        columns: ["id", "firstName", "lastName"],
+        columns: ["id", "firstName", "lastName", "username"],
         limit: 1,
       })
     )[0];
@@ -602,6 +618,7 @@ export class AutomationService {
       authorUserId: rule.authorUserId,
       authorName: author
         ? [author.firstName, author.lastName].filter(Boolean).join(" ") ||
+          author.username ||
           undefined
         : undefined,
       title: rule.title,

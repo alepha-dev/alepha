@@ -15,6 +15,8 @@ import { automationResourceSchema } from "../schemas/automationResourceSchema.ts
 import { automationRevisionBodySchema } from "../schemas/automationRevisionBodySchema.ts";
 import { automationRunPageSchema } from "../schemas/automationRunPageSchema.ts";
 import { automationRunResourceSchema } from "../schemas/automationRunResourceSchema.ts";
+import { automationSetupOptionPageSchema } from "../schemas/automationSetupOptionPageSchema.ts";
+import { automationSetupQuerySchema } from "../schemas/automationSetupQuerySchema.ts";
 import { automationTestBodySchema } from "../schemas/automationTestBodySchema.ts";
 import { automationUpdateBodySchema } from "../schemas/automationUpdateBodySchema.ts";
 import { automationVariableDeleteBodySchema } from "../schemas/automationVariableDeleteBodySchema.ts";
@@ -26,6 +28,7 @@ import { automationWriteBodySchema } from "../schemas/automationWriteBodySchema.
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { AutomationPresetService } from "../services/AutomationPresetService.ts";
 import { AutomationService } from "../services/AutomationService.ts";
+import { AutomationSetupOptions } from "../services/AutomationSetupOptions.ts";
 import { AutomationVariableService } from "../services/AutomationVariableService.ts";
 
 /**
@@ -33,6 +36,7 @@ import { AutomationVariableService } from "../services/AutomationVariableService
  * remains in the same services called by MCP and trusted preset creation.
  */
 export class AutomationController {
+  protected readonly setupOptions = $inject(AutomationSetupOptions);
   protected readonly presets = $inject(AutomationPresetService);
   protected readonly service = $inject(AutomationService);
   protected readonly variables = $inject(AutomationVariableService);
@@ -47,6 +51,18 @@ export class AutomationController {
       capability: { key: "work", option: "automations" },
     });
 
+  getAutomationSetupOptions = $action({
+    use: [this.gate("automation:read")],
+    method: "GET",
+    path: "/projects/:projectId/automation-setup-options",
+    schema: {
+      params: automationProjectParamsSchema,
+      query: automationSetupQuerySchema,
+      response: automationSetupOptionPageSchema,
+    },
+    handler: ({ params, query, user }) =>
+      this.setupOptions.list(params.projectId, user, query),
+  });
   listAutomations = $action({
     use: [this.gate("automation:read")],
     method: "GET",

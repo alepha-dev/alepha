@@ -507,5 +507,8 @@ export { AutomationConfigurationWrites } from "./services/AutomationConfiguratio
 export {
   AutomationPresetRegistry,
   type AutomationPresetValues,
+  type AutomationPresetBindings,
 } from "./services/AutomationPresetRegistry.ts";
 export { AutomationPresetService } from "./services/AutomationPresetService.ts";
+
+export { AutomationSetupOptions } from "./services/AutomationSetupOptions.ts";

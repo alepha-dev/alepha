@@ -108,3 +108,8 @@ What this package holds, with the notes that are not obvious from the code. Move
 **Services (5)** - `FolioAttachmentService`, `FolioDirectoryService`, `FolioHistoryService`, `FolioNameService`, `PinnedFolioFolder`.
 
 **MCP tools (1)** - `FolioTools` (absorbed the old `ArchiveTools`: `directory_*` / `folio_attachment_*` live here now).
+
+Automation setup registers a bounded same-project folio picker through core's
+reference registry. It requires current `folio:read` and selects only IDs and
+titles. The ordinary append adapter still validates protection, write access and
+version at preview and effect time; listing a title never authorizes an append.

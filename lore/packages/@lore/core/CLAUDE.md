@@ -761,3 +761,31 @@ flags. Gallery navigation requires both automation read and write; its initial
 catalogue destination is extended by the typed setup quest. Browser coverage
 waits for the actual direct or batched mutation and verifies a real revision
 conflict against a separate server write, plus empty/search/gallery behavior.
+
+## Typed preset setup (#E43, #Q2038)
+
+The gallery offers presets available under current capabilities, permissions and
+configured supported channels. Each native input defaults to use only here.
+Explicit binding carries a variable UUID, key and version; creation compares
+those stamps with its freshly prepared approvals before the existing native
+configuration fence commits. A recreated key or concurrent edit refuses creation.
+No preset path silently overwrites a shared key.
+
+Feature builders receive explicit binding tokens separately from validated native
+values. Numeric programs use the same token in their guard and threshold text.
+Code presets remain constructors of ordinary disabled rows with preset origin;
+editing the code never rewrites existing configuration.
+
+`AutomationReferences.registerOptions` lets each feature own bounded project
+picker pages and their read permission. `AutomationSetupOptions` reconstructs the
+current caller ceiling before invoking them. Members, folios, distinct app names
+and prospective event records expose labels and IDs, never document bodies or
+raw deployment logs. Preview selectors are read surfaces and need no write grant.
+
+The generated form keeps conditional validation in its managed handler because
+this vendored FormModel initializes through Zod `partial()`, which rejects object
+refinements. No framework change is needed. Explicitly created variables remain
+selected by identity if later rule creation fails, so retry cannot replace a key.
+A selected preset and variable version remain stable across catalogue refreshes.
+The saved summary uses selected display labels, offers zero-write Test with typed
+project-record choices and timestamped capped evidence, then explicit enable.

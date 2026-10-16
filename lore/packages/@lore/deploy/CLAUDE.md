@@ -256,3 +256,10 @@ Only failed terminal events trigger it, including the ordinary timeout path;
 cancellation and repeated terminal writes do not. The message uses the frozen
 app/environment/tag/digest/deployment link and a fixed sanitized failure reason.
 Artifact replacement or deletion does not rewrite that retained event payload.
+
+Preset setup binds threshold, branch, app, recipient and channel only when the
+caller explicitly selects a shared variable. Numeric threshold text and guards
+retain the same token, so a later approved value cannot leave stale wording.
+Deploy registers bounded picker pages for distinct app names across environments
+and deployment snapshot labels, both under current `app:read`. No raw logs or
+cross-project instance data enter these options.

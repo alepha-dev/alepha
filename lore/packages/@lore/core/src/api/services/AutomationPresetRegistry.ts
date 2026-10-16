@@ -21,14 +21,20 @@ export class AutomationPresetRegistry {
     string,
     {
       descriptor: AutomationPresetDescriptor;
-      build: (values: AutomationPresetValues) => AutomationRule;
+      build: (
+        values: AutomationPresetValues,
+        bindings: AutomationPresetBindings,
+      ) => AutomationRule;
     }
   >();
   protected readonly bindings = $inject(AutomationTemplateBindings);
   protected readonly tokens = $inject(AutomationTemplateTokens);
   public register(
     descriptor: AutomationPresetDescriptor,
-    build: (values: AutomationPresetValues) => AutomationRule,
+    build: (
+      values: AutomationPresetValues,
+      bindings: AutomationPresetBindings,
+    ) => AutomationRule,
   ): void {
     if (this.entries.has(descriptor.key))
       throw new AlephaError(`Preset '${descriptor.key}' is already registered`);
@@ -42,26 +48,44 @@ export class AutomationPresetRegistry {
       [...this.entries.values()].map((entry) => entry.descriptor),
     );
   }
-  public build(key: string, input: AutomationPresetValues) {
+  public build(
+    key: string,
+    input: AutomationPresetValues,
+    shared: Record<string, string> = {},
+  ) {
     const entry = this.entries.get(key);
     if (!entry) throw new AlephaError(`Unknown automation preset '${key}'`);
     for (const name of Object.keys(input))
       if (!Object.hasOwn(entry.descriptor.slots, name))
         throw new AlephaError(`setup.${name}: unknown slot`);
+    const sharedTokens: Record<string, string> = {};
+    for (const [name, variable] of Object.entries(shared)) {
+      if (entry.descriptor.slots[name]?.bindable !== true)
+        throw new AlephaError(
+          `setup.${name}: this slot does not support shared binding`,
+        );
+      if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(variable))
+        throw new AlephaError(`setup.${name}: invalid shared variable key`);
+      sharedTokens[name] = `{{${variable}}}`;
+    }
     const values: AutomationPresetValues = {};
     for (const [name, slot] of Object.entries(entry.descriptor.slots)) {
       const value = Object.hasOwn(input, name) ? input[name] : slot.default;
       if (value === undefined && !slot.required) continue;
-      if (typeof value === "string" && this.tokens.names(value).length)
+      if (
+        !Object.hasOwn(shared, name) &&
+        typeof value === "string" &&
+        this.tokens.names(value).length
+      )
         throw new AlephaError(
-          `setup.${name}: choose a literal value; use the editor for shared bindings`,
+          `setup.${name}: choose a literal value or an explicit shared binding`,
         );
       this.bindings.assert(slot, value, `setup.${name}`);
       values[name] = value!;
     }
     return {
       descriptor: structuredClone(entry.descriptor),
-      rule: automationRuleSchema.parse(entry.build(values)),
+      rule: automationRuleSchema.parse(entry.build(values, sharedTokens)),
     };
   }
 }
@@ -69,3 +93,5 @@ export type AutomationPresetValues = Record<
   string,
   Infer<typeof automationFilterValueSchema>
 >;
+
+export type AutomationPresetBindings = Readonly<Record<string, string>>;

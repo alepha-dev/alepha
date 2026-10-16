@@ -346,3 +346,9 @@ and native effect receipts make retry append once; reopening and republishing is
 a new publication. Human edits remain protected by the normal folio CAS and
 revision history. A notification failure retains the append and a partial run.
 Discord provisioning and a mandatory Discord variant remain deferred.
+
+Preset setup can explicitly bind native recipient, channel, tag and folio slots.
+Bindings remain tokens in the ordinary stored AST; literal setup stays isolated.
+Work registers bounded quest, release, epic and feedback picker pages through
+core's automation reference registry, each with its own source-read permission.
+These lists contain same-project IDs and labels and do not project event bodies.
