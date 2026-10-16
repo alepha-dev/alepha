@@ -776,18 +776,20 @@ export class JobProvider {
         });
 
         try {
-          await opts.handler({
-            payload: ctx.payload,
-            attempt: ctx.attempt,
-            now: startedAt,
-            signal: abortController.signal,
-            executionId,
-            reschedule: () => {
-              throw new AlephaError(
-                `Job '${name}' called reschedule() from a cron tick. A tick has no execution row to park; push a queue-mode job for work that waits.`,
-              );
-            },
-          });
+          await this.underRunSignal(abortController.signal, () =>
+            opts.handler({
+              payload: ctx.payload,
+              attempt: ctx.attempt,
+              now: startedAt,
+              signal: abortController.signal,
+              executionId,
+              reschedule: () => {
+                throw new AlephaError(
+                  `Job '${name}' called reschedule() from a cron tick. A tick has no execution row to park; push a queue-mode job for work that waits.`,
+                );
+              },
+            }),
+          );
 
           if (this.retention.records(registration.retention, "ok")) {
             await this.writeTerminalRow(executionId, name, "ok", {
@@ -1653,25 +1655,27 @@ export class JobProvider {
           // throw discards it, which is what makes "throw wins" true.
           let parkAgain: RescheduleIntent | undefined;
           try {
-            await opts.handler({
-              payload: execution.payload,
-              attempt: execution.attempt,
-              now,
-              signal: abortController.signal,
-              executionId,
-              reschedule: (options) => {
-                if (inline) {
-                  throw new AlephaError(
-                    `Job '${jobName}' called reschedule() during an inline push. The caller is waiting for an outcome, and a parked row has none to give it. Push without 'inline' for work that waits.`,
+            await this.underRunSignal(abortController.signal, () =>
+              opts.handler({
+                payload: execution.payload,
+                attempt: execution.attempt,
+                now,
+                signal: abortController.signal,
+                executionId,
+                reschedule: (options) => {
+                  if (inline) {
+                    throw new AlephaError(
+                      `Job '${jobName}' called reschedule() during an inline push. The caller is waiting for an outcome, and a parked row has none to give it. Push without 'inline' for work that waits.`,
+                    );
+                  }
+                  parkAgain = this.rescheduleIntent(
+                    registration,
+                    execution.payload,
+                    options,
                   );
-                }
-                parkAgain = this.rescheduleIntent(
-                  registration,
-                  execution.payload,
-                  options,
-                );
-              },
-            });
+                },
+              }),
+            );
 
             if (parkAgain) {
               await this.park(jobName, executionId, parkAgain, fence);
@@ -2792,6 +2796,23 @@ export class JobProvider {
   protected readonly abortGraceMs = 1_000;
 
   // --- Helpers -------------------------------------------------------------------------------------------------
+
+  /**
+   * Run a handler with its run's signal as the ambient one (#E85), so
+   * everything it calls (`fetch`, a read, a child process) inherits it.
+   * It is the same object as the handler's `signal` argument.
+   *
+   * The signal is held by a layer around the handler only, nested in the
+   * execution's context: the bookkeeping around the handler (the terminal
+   * row, the `cancelled` check after an abort, the hooks) runs outside it,
+   * so an aborted run can still record what happened to it.
+   */
+  protected underRunSignal<R>(signal: AbortSignal, fn: () => R): R {
+    return this.alepha.context.nest(() => {
+      this.alepha.context.set("signal", signal);
+      return fn();
+    });
+  }
 
   /**
    * Whether a run that threw `error` was cancelled rather than failed: its
