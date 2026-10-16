@@ -74,6 +74,7 @@ export class ServerRequestParser {
       method: rawRequest.method,
       url: rawRequest.url,
       raw: rawRequest.raw,
+      signal: rawRequest.signal ?? this.alepha.context.signal,
       headers: rawRequest.headers,
       query: rawRequest.query,
       params: rawRequest.params,

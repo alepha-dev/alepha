@@ -1244,6 +1244,39 @@ describe("BuildCloudflareTask", () => {
       ]);
     });
 
+    /**
+     * `request.signal` aborts on a client disconnect only under this flag,
+     * and every request's ambient cancellation reads it (#E85).
+     */
+    it("writes enable_request_signal beside nodejs_compat", async () => {
+      const { task, fs } = createTaskWithFs();
+      await task.testGenerateCloudflare(contextFor({}), "dist");
+
+      const wrangler = JSON.parse(fs.getFileContent(WRANGLER) ?? "{}");
+      expect(wrangler.compatibility_flags).toEqual([
+        "nodejs_compat",
+        "enable_request_signal",
+      ]);
+    });
+
+    it("keeps enable_request_signal in a flag list the app supplied", async () => {
+      const { task, fs } = createTaskWithFs();
+      const ctx = contextFor({});
+      ctx.options = {
+        cloudflare: {
+          config: { compatibility_flags: ["nodejs_compat", "streams_enable"] },
+        },
+      };
+      await task.testGenerateCloudflare(ctx, "dist");
+
+      const wrangler = JSON.parse(fs.getFileContent(WRANGLER) ?? "{}");
+      expect(wrangler.compatibility_flags).toEqual([
+        "nodejs_compat",
+        "streams_enable",
+        "enable_request_signal",
+      ]);
+    });
+
     // The same check from the other side: no glob may match a sibling slice's
     // entry wrapper or its chunk directory.
     it("uploads no node slice from a multi-slice build", async () => {

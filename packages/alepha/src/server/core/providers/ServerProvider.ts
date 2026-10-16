@@ -1,6 +1,6 @@
 import { pipeline, Readable } from "node:stream";
 
-import { $hook, $inject, Alepha } from "alepha";
+import { $hook, $inject, AbortedError, Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import type { Route } from "alepha/router";
@@ -283,6 +283,7 @@ export class ServerProvider {
       headers,
       params: params ?? {},
       query,
+      signal: this.createNodeRequestSignal(res),
       raw: { node: nodeRequestEvent },
     };
 
@@ -419,6 +420,24 @@ export class ServerProvider {
   }
 
   /**
+   * The signal of a Node.js request: aborted when the response's socket
+   * closes before the response finished, which is a client disconnect.
+   *
+   * `res`, not `req`: since Node 16 `req` emits `close` as soon as its body
+   * has been consumed, whether or not the client is still there. A response
+   * that completed closes with `writableFinished` set, and aborts nothing.
+   */
+  protected createNodeRequestSignal(res: NodeRequestEvent["res"]): AbortSignal {
+    const controller = new AbortController();
+    res.once("close", () => {
+      if (!res.writableFinished) {
+        controller.abort(new AbortedError("Client disconnected"));
+      }
+    });
+    return controller.signal;
+  }
+
+  /**
    * Handle Web (Fetch API) request event.
    */
   public async handleWebRequest(ev: WebRequestEvent): Promise<void> {
@@ -463,6 +482,9 @@ export class ServerProvider {
       headers,
       params: params || {},
       query,
+      // bun aborts it on disconnect; workerd with `enable_request_signal`,
+      // which the Cloudflare build writes (#E85).
+      signal: req.signal,
       raw: { web: ev },
     };
 

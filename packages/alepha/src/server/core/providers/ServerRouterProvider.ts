@@ -194,6 +194,9 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
           () => this.processRequest(request, route, responseKind),
           {
             context: this.getContextId(rawRequest.headers),
+            // The request's own signal, aborted on client disconnect, so
+            // everything the handler calls inherits it (#E85).
+            signal: request.signal,
             // Retains this request's log entries so that a `server:request:error`
             // consumer can ship them as breadcrumbs. Contributes nothing to
             // the context when buffering is disabled.

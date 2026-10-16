@@ -204,6 +204,17 @@ export class BuildCloudflareTask extends BuildTask {
       ...appConfig,
     };
 
+    // `request.signal` aborts on client disconnect only with this flag, and
+    // the ambient cancellation of every request reads it (#E85). Added to a
+    // flag list the app supplied too, since replacing the defaults is the
+    // usual reason to supply one.
+    wrangler.compatibility_flags = [
+      ...new Set([
+        ...(wrangler.compatibility_flags ?? []),
+        "enable_request_signal",
+      ]),
+    ];
+
     if (hasAssets) {
       // Merged, not `??=`. The app only ever wants to add a key  -
       // `not_found_handling`, `run_worker_first`  -  and an all-or-nothing

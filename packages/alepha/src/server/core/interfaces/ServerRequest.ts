@@ -166,6 +166,14 @@ export interface ServerRequest<
   reply: ServerReply;
 
   /**
+   * Aborted when the client disconnects before the response is complete.
+   *
+   * The same object as `alepha.context.signal` inside the request's context,
+   * so code the handler calls inherits it without being handed it.
+   */
+  signal: AbortSignal;
+
+  /**
    * The raw underlying request object (Web Request).
    */
   raw: ServerRawRequest;
@@ -269,6 +277,12 @@ export interface ServerRequestData {
   readonly headers: Record<string, string>;
   readonly query: Record<string, string>;
   readonly params: Record<string, string>;
+  /**
+   * Aborted on client disconnect. Absent for a request built outside a
+   * server (a direct `$action` call, a test): it then takes the caller's
+   * ambient signal.
+   */
+  readonly signal?: AbortSignal;
   raw: ServerRawRequest;
 }
 
