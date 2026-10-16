@@ -236,6 +236,9 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     try {
       await this.runRouteHandler(route, request, responseKind);
     } catch (error) {
+      if (this.isRequestAborted(request, error)) {
+        return this.abortedResponse(route, request);
+      }
       await this.errorHandler(route, request, error as Error);
     }
 
@@ -452,6 +455,41 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     }
 
     return "any";
+  }
+
+  /**
+   * Whether `error` is this request's own abort: its signal fired (the
+   * client disconnected) and the error is that abort, not a failure that
+   * happened to follow it.
+   *
+   * An abort elsewhere (a fetch with its own signal, another request) is
+   * not this request's, and reports like any other error.
+   */
+  protected isRequestAborted(request: ServerRequest, error: unknown): boolean {
+    return (
+      request.signal.aborted &&
+      this.alepha.context.isAbortError(error, request.signal)
+    );
+  }
+
+  /**
+   * The outcome of a request cut short by its client: one debug line, with
+   * 499 as the status it would have had. Never `server:request:error`, never
+   * the response hooks, nothing logged as an error: nobody is listening, and
+   * a disconnect is not a failure to report (#E85).
+   */
+  protected abortedResponse(route: ServerRoute, request: ServerRequest) {
+    const reason = request.signal.reason;
+    this.log.debug(
+      `${request.method} ${request.url.pathname} 499 (aborted: ${
+        reason instanceof Error ? reason.message : String(reason)
+      })`,
+      { route: route.path },
+    );
+    const reply = request.reply;
+    reply.body = null;
+    reply.status = 499;
+    return { status: 499, headers: reply.headers, body: undefined };
   }
 
   /**

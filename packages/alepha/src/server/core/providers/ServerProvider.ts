@@ -296,6 +296,12 @@ export class ServerProvider {
       return;
     }
 
+    // The client is gone (an aborted request answers 499): nothing to write
+    // and nobody to write it to.
+    if (res.destroyed) {
+      return;
+    }
+
     if (headFallback) {
       const { status, headers } = await this.stripBody(response);
       res.writeHead(status, headers);

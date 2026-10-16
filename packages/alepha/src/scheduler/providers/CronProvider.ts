@@ -1,4 +1,4 @@
-import { $hook, $inject, Alepha, AlephaError } from "alepha";
+import { $hook, $inject, AbortedError, Alepha, AlephaError } from "alepha";
 import { type DateTime, DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { type Cron, parseCronExpression } from "cron-schedule";
@@ -105,7 +105,7 @@ export class CronProvider {
     }
 
     cron.running = false;
-    cron.abort?.abort();
+    cron.abort?.abort(new AbortedError(`Cron task '${cron.name}' stopped`));
     this.log.debug(`Cron task '${cron.name}' stopped`);
   }
 

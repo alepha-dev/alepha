@@ -5,7 +5,7 @@ import "dayjs/plugin/timezone.js";
 import "dayjs/plugin/localizedFormat.js";
 import "dayjs/locale/ar.js";
 import "dayjs/locale/fr.js";
-import { $hook, $inject, Alepha } from "alepha";
+import { $hook, $inject, Alepha, AlephaError } from "alepha";
 import DayjsApi, { type Dayjs } from "dayjs";
 import dayjsDuration from "dayjs/plugin/duration.js";
 import dayjsLocalizedFormat from "dayjs/plugin/localizedFormat.js";
@@ -693,7 +693,10 @@ export class DateTimeProvider {
     duration: DurationLike,
   ): Promise<T> {
     const abort = new AbortController();
-    const timeout = this.createTimeout(() => abort.abort(), duration);
+    const timeout = this.createTimeout(
+      () => abort.abort(new AlephaError("Deadline exceeded")),
+      duration,
+    );
     try {
       return await fn(abort.signal);
     } finally {

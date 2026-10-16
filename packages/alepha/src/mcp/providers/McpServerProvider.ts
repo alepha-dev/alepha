@@ -1,4 +1,10 @@
-import { $inject, Alepha, AlephaError, SchemaValidationError } from "alepha";
+import {
+  $inject,
+  AbortedError,
+  Alepha,
+  AlephaError,
+  SchemaValidationError,
+} from "alepha";
 import { $logger } from "alepha/logger";
 
 import {
@@ -690,7 +696,7 @@ export class McpServerProvider {
   public cancelRequest(id: string | number, clientKey?: string): boolean {
     const key = this.inFlightKey(clientKey, id);
     const controller = key === undefined ? undefined : this.inFlight.get(key);
-    controller?.abort();
+    controller?.abort(new AbortedError(`MCP request ${id} cancelled`));
     return !!controller;
   }
 

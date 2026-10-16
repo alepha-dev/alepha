@@ -3,6 +3,7 @@ import {
   $hook,
   $inject,
   $store,
+  AbortedError,
   Alepha,
   type Infer,
   type ZType,
@@ -263,7 +264,7 @@ export class WorkerProvider {
     this.workersRunning = 0;
 
     this.log.trace("Stopping workers...");
-    this.abortController?.abort();
+    this.abortController?.abort(new AbortedError("Queue workers stopping"));
 
     this.log.trace("Waiting for workers to finish...");
     await Promise.all(this.workerPromises);
@@ -282,7 +283,8 @@ export class WorkerProvider {
    */
   public wakeUp(): void {
     this.log.debug("Waking up workers...");
-    this.abortController?.abort();
+    // Cuts a poll wait short; never a handler's signal.
+    this.abortController?.abort(new AbortedError("Queue workers woken up"));
     this.abortController = new AbortController();
 
     // if no workers are running, start them, (should not happen, but just in case)
