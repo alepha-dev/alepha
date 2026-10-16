@@ -38,6 +38,35 @@ export const databaseEnvSchema = z.object({
    * transactions off in production.
    */
   DATABASE_TRANSACTIONS: z.boolean().meta({ secret: false }).optional(),
+
+  /**
+   * Milliseconds a query may take before it fails with `DbTimeoutError`
+   * (503), on every driver. `0` disables it. Defaults to 5000 on serverless,
+   * off elsewhere. A statement's own `timeout` wins.
+   *
+   * What a timeout stops depends on the driver: postgres cancels the running
+   * statement, D1 abandons it (it cannot abort), and SQLite, which runs a
+   * statement synchronously, only refuses one not yet sent.
+   */
+  DATABASE_TIMEOUT: z
+    .number()
+    .meta({ secret: false })
+    .optional()
+    .describe(
+      "Milliseconds a query may take before it fails with DbTimeoutError. 0 disables. Defaults to 5000 on serverless, off elsewhere.",
+    ),
+
+  /**
+   * Whether `DATABASE_TIMEOUT` governs every statement (`all`, the default)
+   * or reads only (`reads`). A statement's own `timeout` applies either way.
+   */
+  DATABASE_TIMEOUT_SCOPE: z
+    .enum(["all", "reads"])
+    .meta({ secret: false })
+    .optional()
+    .describe(
+      "Whether DATABASE_TIMEOUT governs every statement ('all', default) or only reads ('reads').",
+    ),
 });
 
 declare module "alepha" {

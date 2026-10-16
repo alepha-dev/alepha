@@ -105,8 +105,10 @@ Worker until the platform kills the whole invocation. Two variables bound it:
 | `DATABASE_TIMEOUT`       | milliseconds, `0` disables | `5000` on serverless, off elsewhere |
 | `DATABASE_TIMEOUT_SCOPE` | `all`, `reads`             | `all`                               |
 
-The budget is on by default on serverless because that is where an unbounded
-query costs an invocation rather than a connection. `reads` narrows it to
+Every driver reads them, not only D1, and a statement's own `timeout` option
+wins over them. The budget is on by default on serverless because that is where
+an unbounded query costs an invocation rather than a connection. D1 cannot
+abort a statement: a timed-out one is abandoned and finishes on its own. `reads` narrows it to
 statements that only read, for an app that would rather a long write finish
 than be abandoned halfway.
 

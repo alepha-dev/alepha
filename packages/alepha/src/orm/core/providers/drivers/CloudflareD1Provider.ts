@@ -51,18 +51,6 @@ export class CloudflareD1Provider extends DatabaseProvider {
   protected readonly env = $env(
     z.object({
       DATABASE_URL: z.string().describe("Expect to be 'd1://binding'"),
-      DATABASE_TIMEOUT: z
-        .number()
-        .optional()
-        .describe(
-          "Milliseconds a D1 query may take before it is abandoned. 0 disables. Defaults to 5000 on serverless, off elsewhere.",
-        ),
-      DATABASE_TIMEOUT_SCOPE: z
-        .enum(["all", "reads"])
-        .optional()
-        .describe(
-          "Whether the budget governs every statement ('all', default) or only reads ('reads').",
-        ),
       DATABASE_D1_MODE: z
         .enum(["primary", "sessions"])
         .optional()
@@ -101,7 +89,8 @@ export class CloudflareD1Provider extends DatabaseProvider {
   }
 
   /**
-   * How long a query may take before it is abandoned, in milliseconds.
+   * How long a query may take before it is abandoned, in milliseconds:
+   * `DATABASE_TIMEOUT`, read by every driver (#E87).
    *
    * Defaults to 5 seconds on serverless and to off everywhere else. The split
    * is deliberate: the hazard this guards against is a stalled D1 primary,
@@ -111,13 +100,27 @@ export class CloudflareD1Provider extends DatabaseProvider {
    * 0 disables it.
    */
   protected timeoutBudget(): number {
-    const configured = this.env.DATABASE_TIMEOUT;
-    if (configured !== undefined) {
-      return Number(configured);
-    }
-
-    return this.alepha.isServerless() ? 5_000 : 0;
+    return super.defaultStatementTimeout().ms;
   }
+
+  /**
+   * None at the statement level: the binding wrapper enforces
+   * `DATABASE_TIMEOUT` on D1 (it also covers raw `execute()`), so applying
+   * it twice would only race two timers. A statement's own `timeout` still
+   * applies.
+   */
+  protected override defaultStatementTimeout(): {
+    ms: number;
+    scope: "all" | "reads";
+  } {
+    return { ms: 0, scope: "all" };
+  }
+
+  /**
+   * D1 cannot abort a statement, so one in flight is raced against its
+   * signal: the caller is released at once, the statement finishes alone.
+   */
+  protected override readonly racesStatementSignal: boolean = true;
 
   /**
    * Whether queries go through the Sessions API.
@@ -308,7 +311,7 @@ export class CloudflareD1Provider extends DatabaseProvider {
         this.d1 =
           budget > 0
             ? this.timeouts.wrap(binding, budget, {
-                applyTo: this.env.DATABASE_TIMEOUT_SCOPE ?? "all",
+                applyTo: super.defaultStatementTimeout().scope,
               })
             : binding;
 

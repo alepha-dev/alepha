@@ -707,6 +707,11 @@ export class DateTimeProvider {
    * dies with it, and so does the narrowed signal: work `fn` is still doing
    * after the expiry keeps seeing the aborted signal and is refused.
    *
+   * `options.ambient: false` leaves the context alone: `fn` gets the
+   * deadline's own signal as its argument, inheriting nothing, for a caller
+   * that decides itself what else may cut the work short (the ORM, whose
+   * writes never inherit the unit's signal).
+   *
    * ```ts
    * const quote = await dateTime.deadline(
    *   () => http.fetch("https://quotes.example.com/latest"),
@@ -717,6 +722,7 @@ export class DateTimeProvider {
   public async deadline<T>(
     fn: (signal: AbortSignal) => Promise<T> | T,
     duration: DurationLike | false | undefined,
+    options: DeadlineOptions = {},
   ): Promise<T> {
     const ms = duration ? this.duration(duration).asMilliseconds() : 0;
     if (!(ms > 0)) {
@@ -735,6 +741,12 @@ export class DateTimeProvider {
         onTimeout = () => reject(controller.signal.reason);
         controller.signal.addEventListener("abort", onTimeout, { once: true });
         const context = this.alepha.context;
+        if (options.ambient === false) {
+          Promise.resolve()
+            .then(() => fn(controller.signal))
+            .then(resolve, reject);
+          return;
+        }
         // No ALS (a browser build): `withSignal` only calls its function, so
         // the deadline reaches `fn` through its argument alone.
         const signal = AbortSignal.any([context.signal, controller.signal]);
@@ -905,4 +917,16 @@ export interface TimeoutOptions {
    * whose work must happen before the process may exit.
    */
   unref?: boolean;
+}
+
+/**
+ * Options for {@link DateTimeProvider.deadline}.
+ */
+export interface DeadlineOptions {
+  /**
+   * `false`: run `fn` under the deadline's own signal alone, passed as its
+   * argument, without composing it with the ambient signal or touching the
+   * context. Defaults to `true`.
+   */
+  ambient?: boolean;
 }

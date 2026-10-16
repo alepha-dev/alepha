@@ -10,7 +10,11 @@ import {
   type ZType,
   z,
 } from "alepha";
-import { type DateTime, DateTimeProvider } from "alepha/datetime";
+import {
+  type DateTime,
+  DateTimeProvider,
+  type DurationLike,
+} from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import {
   asc,
@@ -2814,7 +2818,11 @@ export abstract class Repository<T extends ZObject> {
   ): Promise<R> {
     return this.provider.statement(
       kind,
-      { signal: opts.signal, inTransaction: this.inTransaction(opts) },
+      {
+        signal: opts.signal,
+        inTransaction: this.inTransaction(opts),
+        timeout: opts.timeout,
+      },
       fn,
     );
   }
@@ -2988,6 +2996,19 @@ export interface StatementOptions {
    * transaction, nothing is cancelled in flight.
    */
   signal?: AbortSignal;
+
+  /**
+   * How long the statement may take before it fails with `DbTimeoutError`
+   * (503, the `TimeoutError` as its cause). Wins over `DATABASE_TIMEOUT`, the
+   * default (5 s on serverless, off elsewhere); `false` or `0`: none.
+   *
+   * Postgres cancels the running statement. Cloudflare D1 cannot abort, so
+   * the call rejects and the statement finishes on its own. SQLite runs a
+   * statement synchronously: the timeout only refuses one not yet sent.
+   * Inside a transaction no timeout applies: a transaction is never cut
+   * short.
+   */
+  timeout?: DurationLike | false;
 
   /**
    * Row lock taken by the SELECT (`FOR UPDATE` and its siblings). Refused
