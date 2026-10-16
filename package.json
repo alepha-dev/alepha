@@ -30,7 +30,7 @@
     "e2e-cli": "yarn w e2e-cli test"
   },
   "devDependencies": {
-    "@alepha/lore": "patch:@alepha/lore@npm%3A0.32.0#~/.yarn/patches/@alepha-lore-npm-0.32.0-f9959c2fc2.patch",
+    "@alepha/lore": "0.33.0",
     "@playwright/test": "^1.63.0",
     "@types/bun": "^1.4.2",
     "@types/node": "^26.6.4",

@@ -152,18 +152,27 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@alepha/lore@npm:0.32.0":
-  version: 0.32.0
-  resolution: "@alepha/lore@npm:0.32.0"
+"@alepha/lore@npm:0.33.0":
+  version: 0.33.0
+  resolution: "@alepha/lore@npm:0.33.0"
   peerDependencies:
-    alepha: ^0.30.0
-    lore: "*"
+    "@lore/core": "*"
+    "@lore/deploy": "*"
+    "@lore/knowledge": "*"
+    "@lore/work": "*"
+    alepha: ">=0.32.0"
     react: "*"
     react-dom: "*"
   peerDependenciesMeta:
-    alepha:
+    "@lore/core":
       optional: true
-    lore:
+    "@lore/deploy":
+      optional: true
+    "@lore/knowledge":
+      optional: true
+    "@lore/work":
+      optional: true
+    alepha:
       optional: true
     react:
       optional: true
@@ -171,30 +180,7 @@ __metadata:
       optional: true
   bin:
     lore: ./dist/bin/index.js
-  checksum: 10c0/659a3b500515e60c35d655b4382e54f4641a245bc103f1bed4f3d1ba364f2528e1d088d0d7e0cc1114fd6912736c01cbb904e6906e5edf6deab46d84647bdfeb
-  languageName: node
-  linkType: hard
-
-"@alepha/lore@patch:@alepha/lore@npm%3A0.32.0#~/.yarn/patches/@alepha-lore-npm-0.32.0-f9959c2fc2.patch":
-  version: 0.32.0
-  resolution: "@alepha/lore@patch:@alepha/lore@npm%3A0.32.0#~/.yarn/patches/@alepha-lore-npm-0.32.0-f9959c2fc2.patch::version=0.32.0&hash=147092"
-  peerDependencies:
-    alepha: ^0.30.0
-    lore: "*"
-    react: "*"
-    react-dom: "*"
-  peerDependenciesMeta:
-    alepha:
-      optional: true
-    lore:
-      optional: true
-    react:
-      optional: true
-    react-dom:
-      optional: true
-  bin:
-    lore: ./dist/bin/index.js
-  checksum: 10c0/ed6e47a123d1837fdc0614338f73ab1d66e3d5ea409676188ab50460308fae9fc4dd63cd8780877ce694125d3b8fe52436fa4dd03fba11999b2d1d4e6acc5f71
+  checksum: 10c0/2c5b22add116a6c3a7c6ac8c215dbe7f1115c456fd0083c261ec7959e52645eba21400777287ddb92e59f89033911fdb321340a3cb92686e9073d83230e5b984
   languageName: node
   linkType: hard
 
@@ -3671,7 +3657,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "alepha-monorepo@workspace:."
   dependencies:
-    "@alepha/lore": "patch:@alepha/lore@npm%3A0.32.0#~/.yarn/patches/@alepha-lore-npm-0.32.0-f9959c2fc2.patch"
+    "@alepha/lore": "npm:0.33.0"
     "@playwright/test": "npm:^1.63.0"
     "@types/bun": "npm:^1.4.2"
     "@types/node": "npm:^26.6.4"
@@ -4704,7 +4690,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "docs@workspace:apps/docs"
   dependencies:
-    "@alepha/lore": "patch:@alepha/lore@npm%3A0.32.0#~/.yarn/patches/@alepha-lore-npm-0.32.0-f9959c2fc2.patch"
+    "@alepha/lore": "npm:0.33.0"
     "@fontsource/jetbrains-mono": "npm:^5.3.0"
     "@playwright/test": "npm:^1.63.0"
     "@tabler/icons-react": "npm:^3.49.0"
