@@ -1,4 +1,5 @@
 import { AbortedError } from "../errors/AbortedError.ts";
+import { TimeoutError } from "../errors/TimeoutError.ts";
 
 export type AsyncLocalStorageData = Record<string, unknown>;
 
@@ -233,11 +234,17 @@ export class AlsProvider {
    *
    * Every consumer classifies an abort through this, so a disconnect is
    * never reported as an error anywhere.
+   *
+   * A {@link TimeoutError} is never an abort, even as the signal's reason: a
+   * deadline that fired is a failure to report (#E87).
    */
   public isAbortError(error: unknown, signal?: AbortSignal): boolean {
     const target = signal ?? this.signal;
     let current: unknown = error;
     for (let depth = 0; depth < 3 && current != null; depth++) {
+      if (current instanceof TimeoutError) {
+        return false;
+      }
       if (target.aborted && current === target.reason) {
         return true;
       }
