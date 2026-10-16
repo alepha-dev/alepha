@@ -18,7 +18,7 @@ import { describe, it } from "vitest";
  * the edge's disconnect reaches every consumer without another hop.
  */
 describe("ServerProvider request signal (workerd)", () => {
-  it("hands the handler the Request's own signal, as the context's signal", async ({
+  it("hands the handler the Request's own signal, as the context's signal, and composes $sse's", async ({
     expect,
   }) => {
     const dir = await mkdtemp(join(tmpdir(), "alepha-request-signal-"));
@@ -32,8 +32,9 @@ describe("ServerProvider request signal (workerd)", () => {
     await writeFile(
       entry,
       `
-import { $inject, Alepha, run } from "alepha";
-import { $route } from "alepha/server";
+import { $inject, Alepha, run, z } from "alepha";
+import { $route, $sse } from "alepha/server";
+const sseSeen = {};
 class App {
  alepha = $inject(Alepha);
  probe = $route({
@@ -44,6 +45,17 @@ class App {
    aborted: signal.aborted,
   }),
  });
+ ticks = $sse({
+  path: "/ticks",
+  schema: { data: z.object({ n: z.integer() }) },
+  handler: async ({ signal, request, emit, close }) => {
+   sseSeen.ambient = signal === this.alepha.context.signal;
+   sseSeen.composed = signal !== request.raw.web?.req.signal;
+   emit({ n: 1 });
+   close();
+  },
+ });
+ sseState = $route({ path: "/sse-state", handler: () => JSON.stringify(sseSeen) });
 }
 const app = run(Alepha.create().with(App));
 export default { async fetch(request) {
@@ -106,6 +118,16 @@ export default { async fetch(request) {
         context: true,
         aborted: false,
       });
+
+      // $sse: the handler's signal composes the stream's with the request's,
+      // and is the ambient one.
+      const sse = await runtime.dispatchFetch("http://signal.test/api/ticks", {
+        method: "POST",
+        headers: { accept: "text/event-stream" },
+      });
+      expect(await sse.text()).toContain('"n":1');
+      const seen = await runtime.dispatchFetch("http://signal.test/sse-state");
+      expect(await seen.json()).toEqual({ ambient: true, composed: true });
     } finally {
       await runtime?.dispose();
       await rm(dir, { recursive: true, force: true });

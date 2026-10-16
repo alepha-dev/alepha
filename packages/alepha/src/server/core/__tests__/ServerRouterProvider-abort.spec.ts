@@ -85,8 +85,15 @@ describe("ServerRouterProvider aborted requests", () => {
     client.abort();
     await response.catch(() => undefined);
     await settled.promise;
-    // Let processRequest finish after the handler settled.
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    // processRequest finishes after the handler settled: wait for its line
+    // rather than a fixed delay, which races a loaded machine.
+    const deadline = Date.now() + 2000;
+    while (
+      Date.now() < deadline &&
+      !entries.some((it) => it.message.includes("499"))
+    ) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
 
     expect(errors).toEqual([]);
     expect(responses).toEqual([]);

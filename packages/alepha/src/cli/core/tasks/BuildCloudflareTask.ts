@@ -939,6 +939,7 @@ const pageEdgeFresh = async (cache, key, at) => {
               authorization: request.headers.get("authorization") || undefined,
               cookie: request.headers.get("cookie") || undefined,
             },
+            signal: request.signal,
           });
         } catch (err) {
           __alepha.log.error("WebSocket admission failed", err);

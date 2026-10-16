@@ -541,42 +541,57 @@ export class SsePrimitive<
 
     const abortController = new AbortController();
 
-    const context: SseHandlerContext<TConfig> = {
-      body: body as any,
-      params: params as any,
-      query: query as any,
-      headers: headers as any,
-      request: serverRequest as ServerRequest,
-      signal: abortController.signal,
-      emit: (data: SseEventData<TConfig>) => {
-        if (abortController.signal.aborted) {
-          return false;
-        }
-        stream.push(data);
-        return true;
-      },
-      close: () => {
-        abortController.abort(new AlephaError("SSE stream closed"));
-        stream.end();
-      },
-    };
+    // The handler runs under its stream's signal composed with the caller's
+    // (#E85); `context.signal` is that same object.
+    this.alepha.context.withSignal(abortController.signal, () => {
+      const signal = this.handlerSignal(abortController);
 
-    const handlerFn = this.handler.run.bind(this.handler);
+      const context: SseHandlerContext<TConfig> = {
+        body: body as any,
+        params: params as any,
+        query: query as any,
+        headers: headers as any,
+        request: serverRequest as ServerRequest,
+        signal,
+        emit: (data: SseEventData<TConfig>) => {
+          if (signal.aborted) {
+            return false;
+          }
+          stream.push(data);
+          return true;
+        },
+        close: () => {
+          abortController.abort(new AlephaError("SSE stream closed"));
+          stream.end();
+        },
+      };
 
-    // run handler async, errors propagate to stream
-    Promise.resolve()
-      .then(() => handlerFn(context))
-      .then(() => {
-        abortController.abort(new AlephaError("SSE handler finished"));
-        // auto-close stream when handler finishes without calling close()
-        stream.end();
-      })
-      .catch((error: Error) => {
-        abortController.abort(error);
-        stream.fail(error);
-      });
+      const handlerFn = this.handler.run.bind(this.handler);
+
+      // run handler async, errors propagate to stream
+      Promise.resolve()
+        .then(() => handlerFn(context))
+        .then(() => {
+          abortController.abort(new AlephaError("SSE handler finished"));
+          // auto-close stream when handler finishes without calling close()
+          stream.end();
+        })
+        .catch((error: Error) => {
+          abortController.abort(error);
+          stream.fail(error);
+        });
+    });
 
     return stream;
+  }
+
+  /**
+   * The handler's signal, read inside `withSignal`: the stream's own
+   * composed with the ambient one. Without ALS (browser builds) there is no
+   * ambient layer, and the stream's own is the whole of it.
+   */
+  protected handlerSignal(own: AbortController): AbortSignal {
+    return this.alepha.context.als ? this.alepha.context.signal : own.signal;
   }
 
   /**
@@ -623,58 +638,63 @@ export class SsePrimitive<
     const abortController = new AbortController();
 
     return new ReadableStream({
-      start: (controller) => {
-        const encoder = new TextEncoder();
-        const context: SseHandlerContext<TConfig> = {
-          body: request.body as any,
-          params: request.params as any,
-          query: request.query as any,
-          headers: request.headers as any,
-          request,
-          signal: abortController.signal,
-          emit: (data: SseEventData<TConfig>) => {
-            if (abortController.signal.aborted) {
-              return false;
-            }
-            try {
-              controller.enqueue(
-                encoder.encode(`data: ${JSON.stringify(data)}\n\n`),
-              );
-              return true;
-            } catch {
-              // stream may already be closed
-              return false;
-            }
-          },
-          close: () => {
-            abortController.abort(new AlephaError("SSE stream closed"));
-            try {
-              controller.close();
-            } catch {
-              // stream may already be closed
-            }
-          },
-        };
+      // The handler runs under the stream's signal composed with the
+      // request's (#E85): a disconnect reaches it through either the stream's
+      // `cancel` or the request's own signal, and what it calls inherits it.
+      start: (controller) =>
+        this.alepha.context.withSignal(abortController.signal, () => {
+          const signal = this.handlerSignal(abortController);
+          const encoder = new TextEncoder();
+          const context: SseHandlerContext<TConfig> = {
+            body: request.body as any,
+            params: request.params as any,
+            query: request.query as any,
+            headers: request.headers as any,
+            request,
+            signal,
+            emit: (data: SseEventData<TConfig>) => {
+              if (signal.aborted) {
+                return false;
+              }
+              try {
+                controller.enqueue(
+                  encoder.encode(`data: ${JSON.stringify(data)}\n\n`),
+                );
+                return true;
+              } catch {
+                // stream may already be closed
+                return false;
+              }
+            },
+            close: () => {
+              abortController.abort(new AlephaError("SSE stream closed"));
+              try {
+                controller.close();
+              } catch {
+                // stream may already be closed
+              }
+            },
+          };
 
-        Promise.resolve()
-          .then(() => handlerFn(context))
-          .then(() => {
-            abortController.abort(new AlephaError("SSE handler finished"));
-            try {
-              controller.close();
-            } catch {
-              // already closed
-            }
-          })
-          .catch((error: Error) => {
-            abortController.abort(error);
-            try {
-              controller.error(error);
-            } catch {
-              // already closed
-            }
-          });
-      },
+          Promise.resolve()
+            .then(() => handlerFn(context))
+            .then(() => {
+              abortController.abort(new AlephaError("SSE handler finished"));
+              try {
+                controller.close();
+              } catch {
+                // already closed
+              }
+            })
+            .catch((error: Error) => {
+              abortController.abort(error);
+              try {
+                controller.error(error);
+              } catch {
+                // already closed
+              }
+            });
+        }),
       // The runtime cancels the stream when the client goes away. Aborting
       // here is the only signal a looping handler ever gets.
       cancel: (reason) => {

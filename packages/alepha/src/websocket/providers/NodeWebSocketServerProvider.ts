@@ -5,6 +5,7 @@ import {
   $hook,
   $inject,
   $store,
+  AbortedError,
   AlephaError,
   SchemaValidator,
   type ZodString,
@@ -420,13 +421,39 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
     // plus `secure` otherwise. A hook that throws is an outage, not a
     // revocation, so it answers 503 rather than the 401 a machine client
     // reads as "stop retrying".
-    const admission = await this.admit(
-      endpoint ?? roomEndpoint,
-      this.handshakeOf(request),
-    ).catch((error: unknown) => {
-      this.log.error(`WebSocket admission failed on ${path}:`, error);
-      return undefined;
-    });
+    // Aborted when the socket closes before admission decided (#E85).
+    const closed = new AbortController();
+    const onClose = () =>
+      closed.abort(new AbortedError("WebSocket closed during admission"));
+    // `end` as well as `close`: an HTTP server socket is half-open, and once
+    // upgraded nothing destroys it when the client's FIN arrives.
+    socket.once("close", onClose);
+    socket.once("end", onClose);
+    // An upgrade socket is not flowing, and a socket that does not read
+    // never sees the client's EOF, so a close would go unseen. Flowing while
+    // admission runs loses nothing: a client sends no frame before the 101.
+    // Paused again below, and resumed once `ws` holds the socket.
+    socket.resume?.();
+    const admission = await this.admit(endpoint ?? roomEndpoint, {
+      ...this.handshakeOf(request),
+      signal: closed.signal,
+    })
+      .catch((error: unknown) => {
+        if (this.alepha.context.isAbortError(error, closed.signal)) {
+          this.log.debug(`WebSocket closed during admission on ${path}`);
+        } else {
+          this.log.error(`WebSocket admission failed on ${path}:`, error);
+        }
+        return undefined;
+      })
+      .finally(() => {
+        socket.off("close", onClose);
+        socket.off("end", onClose);
+        socket.pause?.();
+      });
+    if (closed.signal.aborted) {
+      return false;
+    }
     if (!admission) {
       socket.write("HTTP/1.1 503 Service Unavailable\r\n\r\n");
       socket.destroy();
@@ -445,6 +472,10 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
     const { userId, roomId } = admission;
 
     this.wss?.handleUpgrade(request, socket, head, (ws) => {
+      // Paused after admission, so nothing was read past ws; its listeners
+      // are attached now. An explicit pause is not lifted by a new `data`
+      // listener, so it is lifted here.
+      socket.resume?.();
       if (roomEndpoint) {
         this.trackSocket(ws);
         this.handleRoomConnection(ws, roomEndpoint, request, userId, roomId);

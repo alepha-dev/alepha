@@ -62,6 +62,11 @@ export enum WebSocketState {
 export interface WebSocketHandshake {
   url: string;
   headers: Record<string, string | undefined>;
+  /**
+   * Aborted when the socket closes while it is being admitted. The admission
+   * middlewares run under it, so what they call stops with it (#E85).
+   */
+  signal?: AbortSignal;
 }
 
 /**

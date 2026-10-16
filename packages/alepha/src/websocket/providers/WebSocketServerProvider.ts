@@ -303,12 +303,15 @@ export abstract class WebSocketServerProvider {
       headers: handshake.headers,
     };
     try {
-      await this.alepha.context.run(() => {
-        this.alepha.store.set("alepha.http.request", request as any, {
-          skipEvents: true,
-        });
-        return new PipelineHandler(async () => true, use).run();
-      });
+      await this.alepha.context.run(
+        () => {
+          this.alepha.store.set("alepha.http.request", request as any, {
+            skipEvents: true,
+          });
+          return new PipelineHandler(async () => true, use).run();
+        },
+        handshake.signal ? { signal: handshake.signal } : {},
+      );
     } catch (error) {
       if (
         error instanceof HttpError &&

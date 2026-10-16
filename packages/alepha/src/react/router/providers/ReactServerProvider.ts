@@ -1249,6 +1249,10 @@ export class ReactServerProvider {
     const { renderToReadableStream } = await this.reactDomServer.load();
 
     const reactStream = await renderToReadableStream(element, {
+      // The ambient signal: the visitor's request, so a visitor who leaves
+      // stops the render (#E85). The page cache's anonymous re-render runs in
+      // an isolated context, where this is the app signal instead.
+      signal: this.alepha.context.signal,
       onError: (error: unknown) => {
         if (error instanceof Redirection) {
           this.log.warn("Redirect during streaming ignored", {
