@@ -112,6 +112,10 @@ export interface SseHandlerContext<TConfig extends SseConfigSchema> {
    * Aborts when the stream is over, most importantly when the client
    * disconnects.
    *
+   * Composed with the ambient signal (the request's, for an HTTP stream),
+   * and the same object as `alepha.context.signal` inside the handler, so a
+   * `fetch` or a read the handler makes stops with the stream.
+   *
    * An SSE handler typically loops for as long as the client is listening;
    * without this it has no way to learn that nobody is, and keeps running
    * (and holding its resources) forever.

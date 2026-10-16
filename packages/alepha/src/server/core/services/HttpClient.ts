@@ -75,6 +75,16 @@ export class HttpClient {
     });
   }
 
+  /**
+   * Fetch `url`, decoding the response with `request.schema` when given.
+   *
+   * On the server the call runs under the ambient signal
+   * (`alepha.context.signal`), composed with `request.signal` when one is
+   * passed, so a request whose client left stops the calls it made. An
+   * aborted call rejects with the signal's reason. A deduplicated GET is
+   * shared between its callers and aborted only when the last one left.
+   * In the browser only an explicit `signal` applies.
+   */
   public async fetch<T extends ZType>(
     url: string,
     request: RequestInitWithOptions<T> = {}, // standard options

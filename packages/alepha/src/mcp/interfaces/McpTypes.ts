@@ -508,12 +508,14 @@ export interface McpContext<T = unknown> {
 
   /**
    * Aborted when the client gives up on this request
-   * (`notifications/cancelled`).
+   * (`notifications/cancelled`, or the SSE stream closing under 2026-07-28),
+   * and when the HTTP request it arrived on is disconnected.
    *
-   * Pass it to `fetch`, DB queries and anything else that accepts one: without
-   * it, a tool the client has abandoned runs to completion anyway — still
-   * holding a connection, still burning CPU, still writing whatever it was
-   * going to write. Absent when the transport does not support cancellation.
+   * The same object as `alepha.context.signal` while the tool runs, so
+   * `HttpClient` calls, ORM reads and child processes inherit it without
+   * being handed it; pass it explicitly only to an API that takes one and
+   * does not read the context. Absent when the transport does not support
+   * cancellation.
    */
   signal?: AbortSignal;
 

@@ -35,6 +35,11 @@ export interface ShellRunOptions {
   /**
    * Abort the command from the outside. When the signal fires, the child is
    * killed and the call rejects.
+   *
+   * The ambient signal (`alepha.context.signal`: a request's, a job run's, a
+   * CLI command's) kills the child too, composed with this one. Only this
+   * one makes the child lead a process group, so an interactive command
+   * started without it keeps reading the terminal.
    */
   signal?: AbortSignal;
 

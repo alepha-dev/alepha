@@ -38,6 +38,16 @@ export interface JobHandlerArgs<T extends ZType = ZType> {
   payload: Infer<T>;
   attempt: number;
   now: DateTime;
+  /**
+   * Aborted when this execution is cancelled (`cancel()`, the admin view) or
+   * outlives the drain at app stop; also on `timeout`.
+   *
+   * The same object as `alepha.context.signal` inside the handler, so what
+   * the handler calls inherits it without being handed it: an `HttpClient`
+   * call, an ORM read, a child process. An execution aborted by a cancel or
+   * the drain is recorded `cancelled`, never `error`, and is not retried.
+   * See the cancellation guide.
+   */
   signal: AbortSignal;
   executionId: string;
   /**
