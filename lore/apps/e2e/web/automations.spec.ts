@@ -1,4 +1,4 @@
-import type { Request, Response } from "@playwright/test";
+import type { Locator, Page, Request, Response } from "@playwright/test";
 
 import { expect, test } from "./_fixtures.ts";
 import {
@@ -36,6 +36,26 @@ test.describe("Automations", () => {
     }
     return body;
   };
+  /**
+   * Opens one row's menu, where Enable, Disable and Delete live.
+   */
+  const openRowMenu = async (row: Locator) => {
+    const menu = row.page().getByRole("menu");
+    // A menu still animating closed from the last pick swallows the click.
+    await expect(menu).toHaveCount(0);
+    await row.getByRole("button", { name: "Open row actions" }).click();
+    return menu;
+  };
+  /**
+   * One field of the preset form: its control, the Share link and, once
+   * sharing is on, the segmented choice of where the value comes from.
+   */
+  const presetSlot = (page: Page, label: string) =>
+    page
+      .locator("form > div > div")
+      .filter({ hasText: new RegExp(`^${label}`) });
+  const previewResult = (page: Page) =>
+    page.locator('[aria-label="Preview result"]');
 
   test("shows confirmed state, waits for writes and reconciles a revision conflict", async ({
     page,
@@ -90,12 +110,15 @@ test.describe("Automations", () => {
       .filter({ hasText: "Confirm quest completion" });
     await expect(row.getByText("Disabled", { exact: true })).toBeVisible();
     await expect(
-      page.getByPlaceholder("Search automations by name"),
+      page.getByPlaceholder("Search", { exact: true }),
     ).toBeVisible();
     const armed = page.waitForResponse((response) =>
       mutation(response.request()),
     );
-    await row.getByRole("button", { name: "Enable", exact: true }).click();
+    const enableMenu = await openRowMenu(row);
+    await enableMenu
+      .getByRole("menuitem", { name: "Enable", exact: true })
+      .click();
     const armResponse = await armed;
     expect(armResponse.ok()).toBe(true);
     const armResult = await result(armResponse);
@@ -110,7 +133,10 @@ test.describe("Automations", () => {
     const refused = page.waitForResponse((response) =>
       mutation(response.request()),
     );
-    await row.getByRole("button", { name: "Disable", exact: true }).click();
+    const disableMenu = await openRowMenu(row);
+    await disableMenu
+      .getByRole("menuitem", { name: "Disable", exact: true })
+      .click();
     const refusal = await refused;
     const conflict = await result(refusal);
     expect(JSON.stringify(conflict)).toMatch(/revision|changed/i);
@@ -120,9 +146,12 @@ test.describe("Automations", () => {
         .filter({ hasText: /revision|changed/i }),
     ).toBeVisible();
     await expect(row.getByText("Disabled", { exact: true })).toBeVisible();
+    const menu = await openRowMenu(row);
     await expect(
-      row.getByRole("button", { name: "Enable", exact: true }),
+      menu.getByRole("menuitem", { name: "Enable", exact: true }),
     ).toBeEnabled();
+    await page.keyboard.press("Escape");
+    await expect(menu).toBeHidden();
     expect((await (await page.request.get(getPath)).json()).enabled).toBe(
       false,
     );
@@ -135,7 +164,7 @@ test.describe("Automations", () => {
     });
     await page.setViewportSize({ width: 1280, height: 720 });
     await page
-      .getByPlaceholder("Search automations by name")
+      .getByPlaceholder("Search", { exact: true })
       .fill("No matching rule");
     await expect(
       page.getByText("No matching automations", { exact: true }),
@@ -156,7 +185,7 @@ test.describe("Automations", () => {
     });
     await page.goto(`/${project.slug}/automations`);
     await expect(
-      page.getByRole("link", { name: "Automation guide" }),
+      page.getByRole("link", { name: "How automations work" }),
     ).toHaveAttribute(
       "href",
       "https://github.com/alepha-dev/lore/blob/main/docs/1-guides/9-automations.md",
@@ -165,21 +194,18 @@ test.describe("Automations", () => {
       page.getByText("No automations yet", { exact: true }),
     ).toBeVisible();
     await page
-      .getByRole("button", { name: "Browse presets", exact: true })
+      .getByRole("button", { name: "New automation", exact: true })
       .first()
       .click();
     await expect(page).toHaveURL(
       new RegExp(`/${project.slug}/automations/presets$`),
     );
     await expect(
-      page.getByRole("heading", { name: "Automation presets", exact: true }),
+      page.getByRole("heading", { name: "New automation", exact: true }),
     ).toBeVisible();
     await expect(
-      page.getByRole("heading", {
-        name: "Nightly tagged quests",
-        exact: true,
-      }),
-    ).toBeVisible();
+      page.getByTestId("automation-preset-tagged-quest-digest"),
+    ).toContainText("Nightly tagged quests");
   });
   test("creates an isolated preset, previews without writes and enables only after an explicit action", async ({
     page,
@@ -214,19 +240,21 @@ test.describe("Automations", () => {
     );
     expect(owner).toBeTruthy();
     await page.goto(`/${project.slug}/automations/presets`);
-    const preset = page.locator("div.border-b").filter({
-      has: page.getByRole("heading", {
-        name: "Nightly tagged quests",
-        exact: true,
-      }),
-    });
-    await preset.getByRole("button", { name: "Set up", exact: true }).click();
+    await page.getByTestId("automation-preset-tagged-quest-digest").click();
     await expect(
-      page.getByRole("combobox", {
-        name: "Recipient value source",
+      page.getByRole("heading", { name: "Nightly tagged quests", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "All presets", exact: true }),
+    ).toBeVisible();
+    // Every value is this rule's own until sharing is asked for explicitly.
+    await expect(
+      presetSlot(page, "Recipient").getByRole("button", {
+        name: "Share with other automations",
         exact: true,
       }),
-    ).toContainText("Use only here");
+    ).toBeVisible();
+    await expect(page.getByRole("radiogroup")).toHaveCount(0);
     await page
       .getByRole("combobox", { name: "Recipient", exact: true })
       .click();
@@ -243,7 +271,7 @@ test.describe("Automations", () => {
               ?.includes('"action":"createAutomationFromPreset"') === true)),
     );
     await page
-      .getByRole("button", { name: "Create disabled automation", exact: true })
+      .getByRole("button", { name: "Create automation", exact: true })
       .click();
     const response = await saved;
     expect(response.ok()).toBe(true);
@@ -262,9 +290,10 @@ test.describe("Automations", () => {
         ],
       },
     });
-    await expect(
-      page.getByText("Automation saved.", { exact: false }),
-    ).toBeVisible();
+    await expect(page).toHaveURL(
+      new RegExp(`/${project.slug}/automations/${created.id}$`),
+    );
+    await expect(page.getByText("Disabled", { exact: true })).toBeVisible();
     const getPath = (await apiPath(page, "getAutomation"))
       .replace(":projectId", String(project.id))
       .replace(":id", created.id);
@@ -279,11 +308,9 @@ test.describe("Automations", () => {
               .postData()
               ?.includes('"action":"testAutomation"') === true)),
     );
-    await page.getByRole("button", { name: "Test", exact: true }).click();
+    await page.getByRole("button", { name: "Run test", exact: true }).click();
     expect((await tested).ok()).toBe(true);
-    await expect(
-      page.getByRole("region", { name: "Preview result" }),
-    ).toContainText("Planned actions: 0.");
+    await expect(previewResult(page)).toContainText("Planned actions: 0.");
     expect(await (await page.request.get(getPath)).json()).toEqual(before);
     const enabled = page.waitForResponse((response) =>
       mutation(response.request()),
@@ -322,34 +349,32 @@ test.describe("Automations", () => {
     expect(seeded.ok()).toBe(true);
     const original = (await seeded.json()).variable;
     await page.goto(`/${project.slug}/automations/presets`);
-    await page
-      .locator("div.border-b")
-      .filter({
-        has: page.getByRole("heading", {
-          name: "Nightly tagged quests",
-          exact: true,
-        }),
-      })
-      .getByRole("button", { name: "Set up", exact: true })
+    await page.getByTestId("automation-preset-tagged-quest-digest").click();
+    const recipient = presetSlot(page, "Recipient");
+    await recipient
+      .getByRole("button", { name: "Share with other automations" })
       .click();
-    await page
-      .getByRole("combobox", { name: "Recipient value source", exact: true })
-      .click();
-    await page
-      .getByRole("option", { name: "Bind a shared variable", exact: true })
-      .click();
+    // A compatible variable exists, so sharing starts on binding it.
+    await expect(
+      recipient.getByRole("radio", { name: "Shared variable", exact: true }),
+    ).toHaveAttribute("aria-checked", "true");
     await page
       .getByRole("combobox", { name: "Recipient shared variable", exact: true })
       .click();
     await page
       .getByRole("option", { name: "recipient (v0)", exact: true })
       .click();
-    await page
-      .getByRole("combobox", { name: "Tag value source", exact: true })
+    const tag = presetSlot(page, "Tag");
+    await tag
+      .getByRole("button", { name: "Share with other automations" })
       .click();
-    await page
-      .getByRole("option", { name: "Create a shared variable", exact: true })
-      .click();
+    // No text variable exists, so the only way to share is a new one.
+    await expect(
+      tag.getByRole("radio", { name: "New shared variable", exact: true }),
+    ).toHaveAttribute("aria-checked", "true");
+    await expect(
+      tag.getByRole("radio", { name: "Shared variable", exact: true }),
+    ).toHaveCount(0);
     await page.getByRole("textbox", { name: "Tag", exact: true }).fill("daily");
     await page
       .getByRole("textbox", { name: "New variable key", exact: true })
@@ -365,7 +390,7 @@ test.describe("Automations", () => {
               ?.includes('"action":"createAutomationFromPreset"') === true)),
     );
     await page
-      .getByRole("button", { name: "Create disabled automation", exact: true })
+      .getByRole("button", { name: "Create automation", exact: true })
       .click();
     const response = await saved;
     expect(response.ok()).toBe(true);
@@ -395,8 +420,11 @@ test.describe("Automations", () => {
       kind: "text",
       value: { kind: "text", value: "daily" },
     });
+    await expect(page).toHaveURL(
+      new RegExp(`/${project.slug}/automations/${created.id}$`),
+    );
     await expect(
-      page.getByText("Shared variable: recipient", { exact: true }),
+      page.getByText(/^Notify shared variable recipient via /),
     ).toBeVisible();
   });
 
@@ -441,16 +469,13 @@ test.describe("Automations", () => {
       await page.request.get(`${optionsPath}?kind=member&offset=0&limit=50`)
     ).json();
     await page.goto(`/${project.slug}/automations/presets`);
-    await page
-      .locator("div.border-b")
-      .filter({
-        has: page.getByRole("heading", {
-          name: "Publish release notes to a folio",
-          exact: true,
-        }),
-      })
-      .getByRole("button", { name: "Set up", exact: true })
-      .click();
+    await page.getByTestId("automation-preset-release-to-folio").click();
+    await expect(
+      page.getByRole("heading", {
+        name: "Publish release notes to a folio",
+        exact: true,
+      }),
+    ).toBeVisible();
     await page
       .getByRole("combobox", { name: "Recipient", exact: true })
       .click();
@@ -469,11 +494,11 @@ test.describe("Automations", () => {
       fullPage: true,
     });
     await page
-      .getByRole("button", { name: "Create disabled automation", exact: true })
+      .getByRole("button", { name: "Create automation", exact: true })
       .click();
-    await expect(
-      page.getByText("Automation saved.", { exact: false }),
-    ).toBeVisible();
+    await expect(page).toHaveURL(
+      new RegExp(`/${project.slug}/automations/[^/]+$`),
+    );
     await page
       .getByRole("combobox", { name: "Source record", exact: true })
       .click();
@@ -490,9 +515,9 @@ test.describe("Automations", () => {
               .postData()
               ?.includes('"action":"testAutomation"') === true)),
     );
-    await page.getByRole("button", { name: "Test", exact: true }).click();
+    await page.getByRole("button", { name: "Run test", exact: true }).click();
     expect((await tested).ok()).toBe(true);
-    const preview = page.getByRole("region", { name: "Preview result" });
+    const preview = previewResult(page);
     await expect(preview).toContainText("Planned actions: 2.");
     await expect(preview).toContainText("3.2.1");
     expect((await (await page.request.get(readFolio)).json()).content).toBe(
@@ -549,7 +574,7 @@ test.describe("Automations", () => {
     expect(created.ok(), await created.text()).toBe(true);
     const original = await created.json();
     await page.goto(`/${project.slug}/automations/${original.id}`);
-    await page.getByRole("button", { name: "Edit rule", exact: true }).click();
+    await page.getByRole("button", { name: "Edit", exact: true }).click();
     const editor = page.getByRole("region", { name: "Edit rule", exact: true });
     await editor
       .getByRole("textbox", { name: "Name", exact: true })
@@ -558,34 +583,35 @@ test.describe("Automations", () => {
       .getByRole("combobox", { name: "Trigger", exact: true })
       .click();
     await page
-      .getByRole("option", { name: "UTC schedule", exact: true })
+      .getByRole("option", { name: "On a schedule (UTC)", exact: true })
       .click();
-    await editor
-      .getByRole("combobox", { name: "Registered source", exact: true })
-      .click();
+    await editor.getByRole("combobox", { name: "Source", exact: true }).click();
     await page
-      .getByRole("option", { name: "quests.tagged (collection)", exact: true })
+      .getByRole("option", {
+        name: "Open quests with a tag, as one digest",
+        exact: true,
+      })
       .click();
     await editor
-      .getByRole("textbox", { name: "tag", exact: true })
+      .getByRole("textbox", { name: "Tag", exact: true })
       .fill("editor-tag");
     await editor.getByRole("combobox", { name: "Field", exact: true }).click();
     await page.getByRole("option", { name: "total", exact: true }).click();
     await editor
       .getByRole("combobox", { name: "Operator", exact: true })
       .click();
-    await page.getByRole("option", { name: "gt", exact: true }).click();
+    await page.getByRole("option", { name: "is above", exact: true }).click();
     await editor
       .getByRole("spinbutton", { name: "Value", exact: true })
       .fill("2");
     await editor
-      .getByRole("textbox", { name: "title", exact: true })
+      .getByRole("textbox", { name: "Title", exact: true })
       .fill("Edited {{title}}");
     await editor
-      .getByRole("textbox", { name: "text", exact: true })
+      .getByRole("textbox", { name: "Message", exact: true })
       .fill("Edited {{summary}}");
     await editor
-      .getByRole("heading", { name: "Edit rule", exact: true })
+      .getByRole("textbox", { name: "Name", exact: true })
       .scrollIntoViewIfNeeded();
     await page.screenshot({
       path: testInfo.outputPath("automation-editor-top.png"),
@@ -634,7 +660,7 @@ test.describe("Automations", () => {
     });
     expect(saved.rule.actions[0].text).toBe("Edited {{summary}}");
     expect(saved.authorUserId).toBe(original.authorUserId);
-    await page.getByRole("button", { name: "Edit rule", exact: true }).click();
+    await page.getByRole("button", { name: "Edit", exact: true }).click();
     await editor
       .getByRole("textbox", { name: "Name", exact: true })
       .fill("Preserved draft");
@@ -706,6 +732,12 @@ test.describe("Automations", () => {
       options: { automations: true },
     });
     await page.goto(`/${project.slug}/automations/variables`);
+    await expect(
+      page.getByRole("heading", { name: "Shared variables", exact: true }),
+    ).toBeVisible();
+    // A list row is named by its key, then its type and version.
+    const variableRow = () =>
+      page.getByRole("button", { name: /^editor_label\b.*v\d+$/ });
     await page
       .getByRole("button", { name: "Create shared variable", exact: true })
       .click();
@@ -731,9 +763,7 @@ test.describe("Automations", () => {
       .getByRole("button", { name: "Save changes", exact: true })
       .click();
     expect((await create).ok()).toBe(true);
-    await page
-      .getByRole("button", { name: "editor_label", exact: true })
-      .click();
+    await variableRow().click();
     await expect(page.getByText("Version 0", { exact: true })).toBeVisible();
     await page
       .getByRole("textbox", { name: "Value", exact: true })
@@ -786,9 +816,7 @@ test.describe("Automations", () => {
     expect(consumerResponse.ok(), await consumerResponse.text()).toBe(true);
     const consumer = await consumerResponse.json();
     await page.reload();
-    await page
-      .getByRole("button", { name: "editor_label", exact: true })
-      .click();
+    await variableRow().click();
     await expect(
       page.getByRole("button", { name: "Shared label consumer", exact: true }),
     ).toBeVisible();
@@ -818,9 +846,7 @@ test.describe("Automations", () => {
     });
     expect(removedConsumer.ok()).toBe(true);
     await page.reload();
-    await page
-      .getByRole("button", { name: "editor_label", exact: true })
-      .click();
+    await variableRow().click();
     await expect(
       page.getByRole("button", { name: "Delete", exact: true }),
     ).toBeEnabled();
@@ -840,9 +866,7 @@ test.describe("Automations", () => {
       .getByRole("button", { name: "Delete", exact: true })
       .click();
     expect((await deleted).ok()).toBe(true);
-    await expect(
-      page.getByRole("button", { name: "editor_label", exact: true }),
-    ).toHaveCount(0);
+    await expect(variableRow()).toHaveCount(0);
   });
 
   test("joins preset authoring, a real source, durable execution, delivery and capability health", async ({
@@ -880,10 +904,7 @@ test.describe("Automations", () => {
     });
     expect(prospective.ok()).toBe(true);
     await page.goto(`/${project.slug}/automations/presets`);
-    const preset = page.locator("div.border-b").filter({
-      has: page.getByRole("heading", { name: "New feedback", exact: true }),
-    });
-    await preset.getByRole("button", { name: "Set up", exact: true }).click();
+    await page.getByTestId("automation-preset-feedback-created").click();
     await page
       .getByRole("combobox", { name: "Recipient", exact: true })
       .click();
@@ -899,9 +920,12 @@ test.describe("Automations", () => {
               ?.includes('"action":"createAutomationFromPreset"') === true)),
     );
     await page
-      .getByRole("button", { name: "Create disabled automation", exact: true })
+      .getByRole("button", { name: "Create automation", exact: true })
       .click();
     expect((await written).ok()).toBe(true);
+    await expect(page).toHaveURL(
+      new RegExp(`/${project.slug}/automations/[^/]+$`),
+    );
     const listPath = (await apiPath(page, "listAutomations")).replace(
       ":projectId",
       String(project.id),
@@ -935,11 +959,9 @@ test.describe("Automations", () => {
               .postData()
               ?.includes('"action":"testAutomation"') === true)),
     );
-    await page.getByRole("button", { name: "Test", exact: true }).click();
+    await page.getByRole("button", { name: "Run test", exact: true }).click();
     expect((await preview).ok()).toBe(true);
-    await expect(
-      page.getByRole("region", { name: "Preview result", exact: true }),
-    ).toBeVisible();
+    await expect(previewResult(page)).toBeVisible();
     expect(await (await page.request.get(runsPath)).json()).toEqual(beforeRuns);
     const armed = page.waitForResponse((response) =>
       mutation(response.request()),
@@ -1126,7 +1148,7 @@ test.describe("Automations", () => {
         }),
       ).toBeVisible();
       await expect(
-        member.page.getByRole("button", { name: "Edit rule", exact: true }),
+        member.page.getByRole("button", { name: "Edit", exact: true }),
       ).toHaveCount(0);
       await expect(
         member.page.getByRole("button", { name: "Enable", exact: true }),
@@ -1181,20 +1203,20 @@ test.describe("Automations", () => {
       });
       expect(assigned.ok(), await assigned.text()).toBe(true);
       await member.page.goto(`/${project.slug}/automations`);
+      const ownerRow = member.page
+        .getByRole("row")
+        .filter({ hasText: "Owner authored rule" });
+      await expect(ownerRow).toBeVisible();
       await expect(
         member.page.getByRole("button", {
-          name: "Owner authored rule",
-          exact: true,
-        }),
-      ).toBeVisible();
-      await expect(
-        member.page.getByRole("button", {
-          name: "Browse presets",
+          name: "New automation",
           exact: true,
         }),
       ).toHaveCount(0);
+      // Enable, Disable and Delete live in the row menu, which a Viewer
+      // is not offered at all.
       await expect(
-        member.page.getByRole("button", { name: "Enable", exact: true }),
+        ownerRow.getByRole("button", { name: "Open row actions" }),
       ).toHaveCount(0);
       const refused = await member.page.request.post(createPath, {
         data: { title: "Viewer write", rule: rule.rule },
@@ -1244,21 +1266,25 @@ test.describe("Automations", () => {
     });
     await page.goto(`/${project.slug}/automations`);
     await page
-      .getByRole("button", { name: "Adopt existing policies", exact: true })
+      .getByRole("button", { name: "Built-in notifications", exact: true })
       .click();
     await expect(
-      page.getByRole("heading", { name: "Adopt existing policies" }),
+      page.getByRole("heading", { name: "Built-in notifications" }),
     ).toBeVisible();
-    const card = page.locator("section").filter({
-      has: page.getByRole("heading", {
-        name: "Release announcements",
-        exact: true,
-      }),
-    });
+    // The page frame is a section too: the card is the innermost match.
+    const card = page
+      .locator("section")
+      .filter({
+        has: page.getByRole("heading", {
+          name: "Release announcements",
+          exact: true,
+        }),
+      })
+      .last();
     await expect(
       card.getByText("Existing policy is still active", { exact: true }),
     ).toBeVisible();
-    await expect(card.getByText("inbox, email", { exact: true })).toBeVisible();
+    await expect(card.getByText("Inbox, Email", { exact: true })).toBeVisible();
     await expect(
       card.getByText("automation:write, release:read, member:read", {
         exact: true,
@@ -1297,8 +1323,9 @@ test.describe("Automations", () => {
     expect(adopted.candidate.enabled).toBe(true);
     expect(adopted.author.id).toBe(adopted.candidate.authorUserId);
     await card.getByRole("button", { name: "Open replacement rule" }).click();
+    // The summary names the roster once per action: inbox and email.
     await expect(
-      page.getByText("Current roster except publisher", { exact: true }),
+      page.getByText(/^Notify Current roster except publisher via /),
     ).toHaveCount(2);
     const disabled = page.waitForResponse((response) =>
       mutation(response.request()),

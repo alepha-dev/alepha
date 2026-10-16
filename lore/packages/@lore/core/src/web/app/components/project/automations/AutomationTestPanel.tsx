@@ -110,7 +110,7 @@ const AutomationTestPanel = (props: AutomationTestPanelProps) => {
           {tr("automation.test.run")}
         </Button>
         {report && (
-          <div
+          <section
             className="flex flex-col gap-3 border-t pt-3"
             aria-label={tr("automation.test.result")}
           >
@@ -209,7 +209,7 @@ const AutomationTestPanel = (props: AutomationTestPanelProps) => {
             <p className="text-muted-foreground text-xs">
               {tr("automation.test.disclaimer")}
             </p>
-          </div>
+          </section>
         )}
       </form>
     </section>

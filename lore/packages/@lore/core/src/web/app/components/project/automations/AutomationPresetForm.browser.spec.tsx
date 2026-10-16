@@ -74,9 +74,8 @@ describe("Automation preset setup form", () => {
         />
       </AlephaContext.Provider>,
     );
-    expect(
-      screen.queryByRole("radiogroup", { name: "Recipient comes from" }),
-    ).toBeNull();
+    // Every field belongs to this rule until sharing is asked for.
+    expect(screen.queryByRole("radio")).toBeNull();
     expect(
       screen.getByRole("combobox", { name: "Channel" }).textContent,
     ).toContain("Inbox");
