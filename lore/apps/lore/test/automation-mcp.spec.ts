@@ -2,6 +2,8 @@ import {
   LoreInboxRecipientProvider,
   LoreNotificationPreferences,
   AutomationEvents,
+  AutomationClaims,
+  AutomationRunEvidence,
   AutomationWorker,
   AutomationNotificationOutbox,
   AutomationPersistence,
@@ -49,6 +51,19 @@ class McpOutcomeReader extends AutomationNotificationOutbox {
   public override async statuses(ids: string[]) {
     if (ids.length) this.reads.push(ids);
     return super.statuses(ids);
+  }
+}
+class McpCrashAfterAdvance extends AutomationClaims {
+  public crash = false;
+  public override async advance(
+    ...args: Parameters<AutomationClaims["advance"]>
+  ) {
+    const next = await super.advance(...args);
+    if (this.crash && args[2].index === 0) {
+      this.crash = false;
+      throw new AlephaError("Exit after committed append cursor");
+    }
+    return next;
   }
 }
 class McpEvidenceRows {
@@ -152,6 +167,7 @@ describe("Automation MCP transport uses shared application policy", () => {
     alepha = Alepha.create({
       env: { DATABASE_URL: ":memory:", SERVER_PORT: 0, LOG_LEVEL: "silent" },
     })
+      .with({ provide: AutomationClaims, use: McpCrashAfterAdvance })
       .with({ provide: CronProvider, use: ManualCronProvider })
       .with({ provide: JobQueueProvider, use: McpPausedQueue })
       .with({
@@ -471,6 +487,185 @@ describe("Automation MCP transport uses shared application policy", () => {
       .inject(AutomationService)
       .setEnabled(project.id, made.id, user, false, made.revision);
   });
+  it("joins MCP authority, competing workers, a committed-cursor crash, receipt delivery and detail pruning", async ({
+    expect,
+  }) => {
+    const folio = await createTestFolio(alepha, project);
+    const ast: AutomationRule = {
+      version: 1,
+      trigger: { kind: "event", event: "release.published" },
+      select: null,
+      guard: null,
+      actions: [
+        {
+          kind: "appendFolio",
+          folio: folio.id,
+          text: "Final join {{release_tag}}",
+        },
+        {
+          kind: "notify",
+          recipient: user.id,
+          channel: "inbox",
+          title: "Final publication",
+          text: "{{release_tag}}",
+          category: "releases",
+        },
+      ],
+    };
+    const made = await create(ast, { enabled: true });
+    const release = (
+      await alepha.inject(ReleaseController).createRelease.fetch(
+        {
+          params: { projectId: project.id },
+          body: { tag: "9.4.5", title: "Final integration" },
+        },
+        { user },
+      )
+    ).data;
+    const before = JSON.stringify(
+      await Promise.all([
+        persistence.rules.findMany(),
+        persistence.runs.findMany(),
+        persistence.receipts.findMany(),
+        entities.folios.findMany(),
+        rows.audits.findMany(),
+        rows.jobs.findMany(),
+        rows.inbox.findMany(),
+        rows.deliveries.findMany(),
+      ]),
+    );
+    const preview = value(
+      await call("automation_test", {
+        id: made.id,
+        source: { kind: "subject", id: release.id },
+      }),
+    );
+    expect(preview.operations).toHaveLength(2);
+    expect(
+      JSON.stringify(
+        await Promise.all([
+          persistence.rules.findMany(),
+          persistence.runs.findMany(),
+          persistence.receipts.findMany(),
+          entities.folios.findMany(),
+          rows.audits.findMany(),
+          rows.jobs.findMany(),
+          rows.inbox.findMany(),
+          rows.deliveries.findMany(),
+        ]),
+      ),
+    ).toBe(before);
+    await alepha.inject(DateTimeProvider).travel([1, "second"]);
+    await alepha
+      .inject(ReleaseController)
+      .publishRelease.fetch({ params: { id: release.id }, body: {} }, { user });
+    await Promise.all([
+      alepha.inject(AutomationEvents).sweep(50),
+      alepha.inject(AutomationEvents).sweep(50),
+    ]);
+    const occurrence = await persistence.receipts.getOne({
+      where: { automationId: made.id, kind: "occurrence" },
+    });
+    expect(
+      await persistence.receipts.count({
+        automationId: made.id,
+        kind: "occurrence",
+      }),
+    ).toBe(1);
+    alepha.inject(McpCrashAfterAdvance).crash = true;
+    const competing = await Promise.allSettled([
+      alepha.inject(AutomationWorker).step({ receiptId: occurrence.id }),
+      alepha.inject(AutomationWorker).step({ receiptId: occurrence.id }),
+    ]);
+    expect(
+      competing.filter((outcome) => outcome.status === "rejected"),
+    ).toHaveLength(1);
+    const interrupted = await persistence.receipts.getById(occurrence.id);
+    expect(interrupted.cursor).toBe(1);
+    expect(
+      (await entities.folios.getById(folio.id)).content?.split(
+        "Final join 9.4.5",
+      ),
+    ).toHaveLength(2);
+    let next: { receiptId: string; token?: string } | undefined = {
+      receiptId: occurrence.id,
+      token: interrupted.leaseToken!,
+    };
+    for (let step = 0; next && step < 20; step++)
+      next = await alepha.inject(AutomationWorker).step(next, 3);
+    expect(next).toBeUndefined();
+    expect(
+      (await entities.folios.getById(folio.id)).content?.split(
+        "Final join 9.4.5",
+      ),
+    ).toHaveLength(2);
+    expect(
+      await persistence.receipts.count({
+        automationId: made.id,
+        kind: "action",
+        status: "committed",
+      }),
+    ).toBe(2);
+    const evidence = value(
+      await call("automation_runs", { id: made.id, limit: 50 }),
+    ).items.find(
+      (run: { occurrenceId: string }) =>
+        run.occurrenceId === occurrence.occurrenceId,
+    );
+    expect(
+      evidence.snapshot.actions.map(
+        (action: { status: string }) => action.status,
+      ),
+    ).toEqual(["succeeded", "queued"]);
+    const outbox = evidence.notifications[0].outboxId;
+    const job = await rows.jobs.getById(outbox);
+    await alepha.inject(JobProvider).processExecution(job.jobName, outbox);
+    expect(
+      value(await call("automation_runs", { id: made.id })).items.find(
+        (run: { id: string }) => run.id === evidence.id,
+      ).notifications[0].status,
+    ).toBe("delivered");
+    const old = alepha
+      .inject(DateTimeProvider)
+      .now()
+      .subtract(31, "days")
+      .toISOString();
+    await persistence.runs.updateById(evidence.id, { finishedAt: old });
+    expect(await alepha.inject(AutomationRunEvidence).prune()).toBe(1);
+    const jobsBefore = await rows.jobs.count({
+      jobName: "system.notifications.send",
+    });
+    await alepha.inject(AutomationEvents).sweep(50);
+    await alepha
+      .inject(AutomationWorker)
+      .step({ receiptId: occurrence.id, token: interrupted.leaseToken! });
+    expect(
+      await rows.jobs.count({ jobName: "system.notifications.send" }),
+    ).toBe(jobsBefore);
+    expect(
+      await persistence.receipts.count({
+        automationId: made.id,
+        kind: "action",
+        status: "committed",
+      }),
+    ).toBe(2);
+    expect(
+      (await entities.folios.getById(folio.id)).content?.split(
+        "Final join 9.4.5",
+      ),
+    ).toHaveLength(2);
+    const expiredPreview = value(
+      await call("automation_test", {
+        id: made.id,
+        source: { kind: "run", id: evidence.id },
+      }),
+    );
+    expect(expiredPreview.status).toBe("refused");
+    expect(expiredPreview.reason).toMatch(
+      /retained|expired|not found|unavailable/i,
+    );
+  });
+
   for (const channel of ["inbox", "email"] as const)
     it(`paginates immutable runs and joins live ${channel} receipts without changing the enqueue snapshot`, async ({
       expect,

@@ -3,7 +3,10 @@ import type { Request, Response } from "@playwright/test";
 import { expect, test } from "./_fixtures.ts";
 import {
   apiPath,
+  newUserContext,
+  signInAsAdmin,
   createProjectViaWizard,
+  createRankFromPreset,
   registerAndVerify,
   setCapability,
 } from "./_helpers.ts";
@@ -834,5 +837,391 @@ test.describe("Automations", () => {
     await expect(
       page.getByRole("button", { name: "editor_label", exact: true }),
     ).toHaveCount(0);
+  });
+
+  test("joins preset authoring, a real source, durable execution, delivery and capability health", async ({
+    page,
+    browser,
+    baseURL,
+  }, testInfo) => {
+    test.setTimeout(120_000);
+    await registerAndVerify(
+      page,
+      `automation-journey-${crypto.randomUUID()}@example.com`,
+      "GoodPassw0rd",
+    );
+    const project = await createProjectViaWizard(page, "Automation journey");
+    await setCapability(page, project.id, "work", {
+      options: { automations: true },
+    });
+    await setCapability(page, project.id, "support");
+    const me = await (await page.request.get("/api/users/me")).json();
+    const optionsPath = (
+      await apiPath(page, "getAutomationSetupOptions")
+    ).replace(":projectId", String(project.id));
+    const members = await (
+      await page.request.get(`${optionsPath}?kind=member`)
+    ).json();
+    const owner = members.items.find(
+      (item: { value: string }) => item.value === me.id,
+    );
+    const submitPath = (await apiPath(page, "submitFeedback")).replace(
+      ":projectId",
+      String(project.id),
+    );
+    const prospective = await page.request.post(submitPath, {
+      data: { title: "Preview feedback", description: "A prospective record" },
+    });
+    expect(prospective.ok()).toBe(true);
+    await page.goto(`/${project.slug}/automations/presets`);
+    const preset = page.locator("div.border-b").filter({
+      has: page.getByRole("heading", { name: "New feedback", exact: true }),
+    });
+    await preset.getByRole("button", { name: "Set up", exact: true }).click();
+    await page
+      .getByRole("combobox", { name: "Recipient", exact: true })
+      .click();
+    await page.getByRole("option", { name: owner.label, exact: true }).click();
+    const written = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        (new URL(response.url()).pathname.endsWith("/automation-presets") ||
+          (response.url().includes("/api/_batch") &&
+            response
+              .request()
+              .postData()
+              ?.includes('"action":"createAutomationFromPreset"') === true)),
+    );
+    await page
+      .getByRole("button", { name: "Create disabled automation", exact: true })
+      .click();
+    expect((await written).ok()).toBe(true);
+    const listPath = (await apiPath(page, "listAutomations")).replace(
+      ":projectId",
+      String(project.id),
+    );
+    const rules = await (await page.request.get(listPath)).json();
+    const rule = rules.items[0];
+    expect(rule.enabled).toBe(false);
+    expect(rule.rule.actions[0].recipient).toBe(me.id);
+    expect(JSON.stringify(rule.rule)).not.toContain(`{{${me.id}}}`);
+    const variablesPath = (
+      await apiPath(page, "listAutomationVariables")
+    ).replace(":projectId", String(project.id));
+    expect(
+      (await (await page.request.get(variablesPath)).json()).items,
+    ).toEqual([]);
+    const runsPath = (await apiPath(page, "listAutomationRuns"))
+      .replace(":projectId", String(project.id))
+      .replace(":id", rule.id);
+    const beforeRuns = await (await page.request.get(runsPath)).json();
+    await page
+      .getByRole("combobox", { name: "Source record", exact: true })
+      .click();
+    await page.getByRole("option", { name: /Preview feedback/ }).click();
+    const preview = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        (response.url().includes(`/automations/${rule.id}/test`) ||
+          (response.url().includes("/api/_batch") &&
+            response
+              .request()
+              .postData()
+              ?.includes('"action":"testAutomation"') === true)),
+    );
+    await page.getByRole("button", { name: "Test", exact: true }).click();
+    expect((await preview).ok()).toBe(true);
+    await expect(
+      page.getByRole("region", { name: "Preview result", exact: true }),
+    ).toBeVisible();
+    expect(await (await page.request.get(runsPath)).json()).toEqual(beforeRuns);
+    const armed = page.waitForResponse((response) =>
+      mutation(response.request()),
+    );
+    await page.getByRole("button", { name: "Enable", exact: true }).click();
+    const armResult = await result(await armed);
+    expect(armResult.error).toBeUndefined();
+    const getPath = (await apiPath(page, "getAutomation"))
+      .replace(":projectId", String(project.id))
+      .replace(":id", rule.id);
+    expect((await (await page.request.get(getPath)).json()).enabled).toBe(true);
+    const source = await page.request.post(submitPath, {
+      data: {
+        title: "Live automation feedback",
+        description: "Must produce exactly one occurrence",
+      },
+    });
+    expect(source.ok(), await source.text()).toBe(true);
+    const admin = await browser.newContext({ baseURL });
+    try {
+      const adminPage = await admin.newPage();
+      await signInAsAdmin(adminPage);
+      await adminPage.goto("/admin/jobs/automations.dispatch");
+      const trigger = (await apiPath(adminPage, "triggerJob")).replace(
+        ":name",
+        "automations.dispatch",
+      );
+      // These are the existing synchronous cron invocations, not a test-only endpoint.
+      // One pass reserves events and the next queues ready workers regardless of tick priority.
+      for (let index = 0; index < 2; index++) {
+        const tick = await adminPage.request.post(trigger, { data: {} });
+        expect(tick.ok(), await tick.text()).toBe(true);
+      }
+      let occurrences: { id: string; status: string }[] = [];
+      await expect
+        .poll(
+          async () => {
+            const rows = await (await page.request.get(runsPath)).json();
+            occurrences = rows.items.filter((item: { occurrenceId: string }) =>
+              item.occurrenceId.startsWith("event:"),
+            );
+            return (
+              occurrences.length === 1 && occurrences[0].status === "succeeded"
+            );
+          },
+          { timeout: 20_000 },
+        )
+        .toBe(true);
+      const runId = occurrences[0].id;
+      const runPath = (await apiPath(page, "getAutomationRun"))
+        .replace(":projectId", String(project.id))
+        .replace(":id", runId);
+      await expect
+        .poll(
+          async () =>
+            (await (await page.request.get(runPath)).json()).notifications[0]
+              ?.status,
+          { timeout: 20_000 },
+        )
+        .toBe("delivered");
+      const evidence = await (await page.request.get(runPath)).json();
+      expect(evidence.snapshot.actions[0].status).toBe("queued");
+      expect(evidence.snapshot.actions[0].result.enqueued).toBe(true);
+      expect(evidence.notifications).toHaveLength(1);
+      expect(evidence.notifications[0].receiptId).toBeTruthy();
+      expect(evidence.snapshot.inputs.title).toBe("Live automation feedback");
+      const replay = await adminPage.request.post(trigger, { data: {} });
+      expect(replay.ok()).toBe(true);
+      expect(
+        (await (await page.request.get(runsPath)).json()).items.filter(
+          (item: { occurrenceId: string }) =>
+            item.occurrenceId.startsWith("event:"),
+        ),
+      ).toHaveLength(1);
+      await page.goto(`/${project.slug}/automations/runs/${runId}`);
+      await expect(
+        page.getByRole("link", {
+          name: "Delivery receipt: Delivered",
+          exact: true,
+        }),
+      ).toBeVisible();
+      await page
+        .getByRole("link", { name: "Delivery receipt: Delivered", exact: true })
+        .click();
+      await expect(
+        page.locator(`#delivery-${evidence.notifications[0].outboxId}`),
+      ).toContainText(evidence.notifications[0].receiptId);
+      await page.screenshot({
+        path: testInfo.outputPath("automation-live-receipt.png"),
+      });
+      await setCapability(page, project.id, "support", { enabled: false });
+      await page.goto(`/${project.slug}/automations`);
+      const row = page.getByRole("row").filter({ hasText: rule.title });
+      await expect(row.getByText("Broken", { exact: true })).toBeVisible();
+      await expect(row).toContainText("Current source access is unavailable");
+      const broken = await (await page.request.get(getPath)).json();
+      expect(broken.enabled).toBe(true);
+      expect(broken.health).toBe("broken");
+      const redacted = await (await page.request.get(runPath)).json();
+      expect(redacted.redacted).toBe(true);
+      expect(redacted.snapshot).toBeNull();
+      expect(redacted.notifications).toEqual([]);
+    } finally {
+      await admin.close();
+    }
+  });
+
+  test("refuses foreign-author edits and removes write controls after an owner assigns Viewer", async ({
+    page,
+    browser,
+    baseURL,
+  }) => {
+    test.setTimeout(120_000);
+    await registerAndVerify(
+      page,
+      `automation-owner-${crypto.randomUUID()}@example.com`,
+      "GoodPassw0rd",
+    );
+    const project = await createProjectViaWizard(page, "Automation access");
+    await setCapability(page, project.id, "work", {
+      options: { automations: true },
+    });
+    await createRankFromPreset(page, project.slug, "Contributor");
+    await createRankFromPreset(page, project.slug, "Viewer");
+    const member = await newUserContext(browser, baseURL!, "automation-writer");
+    try {
+      await page.goto(`/${project.slug}/settings/members`);
+      await page.getByRole("button", { name: /^invite$/i }).click();
+      await page.getByPlaceholder("user@example.com").fill(member.email);
+      await page.getByTestId("invite-rank").click();
+      await page.getByRole("option", { name: /^contributor$/i }).click();
+      await expect(
+        page.getByRole("option", { name: /^contributor$/i }),
+      ).toBeHidden();
+      const invite = page.waitForResponse(
+        (response) =>
+          response.request().method() === "POST" &&
+          response.url().endsWith("/invitations"),
+      );
+      await page.getByRole("button", { name: /send invitation/i }).click();
+      expect((await invite).ok()).toBe(true);
+      await member.page.goto("/account/invitations");
+      const accepted = member.page.waitForResponse(
+        (response) =>
+          response.request().method() === "POST" &&
+          /\/invitations\/[^/]+\/accept$/.test(response.url()),
+      );
+      await member.page.getByRole("button", { name: /^accept$/i }).click();
+      expect((await accepted).ok()).toBe(true);
+      const me = await (await page.request.get("/api/users/me")).json();
+      const createPath = (await apiPath(page, "createAutomation")).replace(
+        ":projectId",
+        String(project.id),
+      );
+      const create = await page.request.post(createPath, {
+        data: {
+          title: "Owner authored rule",
+          rule: {
+            version: 1,
+            trigger: { kind: "event", event: "quest.completed" },
+            select: null,
+            guard: null,
+            actions: [
+              {
+                kind: "notify",
+                recipient: me.id,
+                channel: "inbox",
+                title: "Done",
+                text: "{{title}}",
+                category: "automations",
+              },
+            ],
+          },
+        },
+      });
+      expect(create.ok()).toBe(true);
+      const rule = await create.json();
+      await member.page.goto(`/${project.slug}/automations/${rule.id}`);
+      await expect(
+        member.page.getByRole("heading", {
+          name: "Owner authored rule",
+          exact: true,
+          level: 1,
+        }),
+      ).toBeVisible();
+      await expect(
+        member.page.getByRole("button", { name: "Edit rule", exact: true }),
+      ).toHaveCount(0);
+      await expect(
+        member.page.getByRole("button", { name: "Enable", exact: true }),
+      ).toHaveCount(0);
+      const updatePath = (await apiPath(page, "updateAutomation"))
+        .replace(":projectId", String(project.id))
+        .replace(":id", rule.id);
+      const foreign = await member.page.request.put(updatePath, {
+        data: {
+          title: "Forbidden rewrite",
+          rule: rule.rule,
+          expectedRevision: rule.revision,
+        },
+      });
+      expect(foreign.status()).toBe(403);
+      const ranksPath = (await apiPath(page, "getOrganizationRanks")).replace(
+        ":organizationId",
+        project.organizationId,
+      );
+      const ranks = await (await page.request.get(ranksPath)).json();
+      const viewer = ranks.items.find(
+        (rank: { name: string }) => rank.name === "Viewer",
+      );
+      const memberUser = await (
+        await member.page.request.get("/api/users/me")
+      ).json();
+      const memberRuleResponse = await member.page.request.post(createPath, {
+        data: {
+          title: "Member authored rule",
+          rule: {
+            ...rule.rule,
+            actions: [{ ...rule.rule.actions[0], recipient: memberUser.id }],
+          },
+        },
+      });
+      expect(memberRuleResponse.ok(), await memberRuleResponse.text()).toBe(
+        true,
+      );
+      const memberRule = await memberRuleResponse.json();
+      const memberEnablePath = (await apiPath(page, "setAutomationEnabled"))
+        .replace(":projectId", String(project.id))
+        .replace(":id", memberRule.id);
+      const memberEnabled = await member.page.request.patch(memberEnablePath, {
+        data: { expectedRevision: memberRule.revision, enabled: true },
+      });
+      expect(memberEnabled.ok(), await memberEnabled.text()).toBe(true);
+      const assignPath = (await apiPath(page, "assignOrganizationRank"))
+        .replace(":organizationId", project.organizationId)
+        .replace(":userId", memberUser.id);
+      const assigned = await page.request.put(assignPath, {
+        data: { key: viewer.key },
+      });
+      expect(assigned.ok(), await assigned.text()).toBe(true);
+      await member.page.goto(`/${project.slug}/automations`);
+      await expect(
+        member.page.getByRole("button", {
+          name: "Owner authored rule",
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(
+        member.page.getByRole("button", {
+          name: "Browse presets",
+          exact: true,
+        }),
+      ).toHaveCount(0);
+      await expect(
+        member.page.getByRole("button", { name: "Enable", exact: true }),
+      ).toHaveCount(0);
+      const refused = await member.page.request.post(createPath, {
+        data: { title: "Viewer write", rule: rule.rule },
+      });
+      expect(refused.status()).toBe(403);
+      const getPath = (await apiPath(page, "getAutomation"))
+        .replace(":projectId", String(project.id))
+        .replace(":id", rule.id);
+      expect((await (await page.request.get(getPath)).json()).title).toBe(
+        "Owner authored rule",
+      );
+      const removePath = (await apiPath(page, "removeOrganizationMember"))
+        .replace(":organizationId", project.organizationId)
+        .replace(":userId", memberUser.id);
+      const removed = await page.request.delete(removePath);
+      expect(removed.ok(), await removed.text()).toBe(true);
+      await page.goto(`/${project.slug}/automations`);
+      const paused = page
+        .getByRole("row")
+        .filter({ hasText: "Member authored rule" });
+      await expect(paused.getByText("Paused", { exact: true })).toBeVisible();
+      await expect(paused).toContainText(
+        "Author is no longer a project member",
+      );
+      const memberGetPath = getPath.replace(rule.id, memberRule.id);
+      const stopped = await (await page.request.get(memberGetPath)).json();
+      expect(stopped).toMatchObject({
+        enabled: true,
+        health: "paused",
+        requiresApproval: true,
+      });
+    } finally {
+      await member.ctx.close();
+    }
   });
 });

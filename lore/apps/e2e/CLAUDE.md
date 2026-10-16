@@ -106,3 +106,32 @@ Shared setup (register/verify, project-create wizard, API helpers) lives in `app
 `setProjectFeature(page, projectId, key, value?)` flips a project feature toggle from inside a flow — use it when a spec needs an off-by-default module (e.g. `questReminder`). It replaced the old `unlockShopFeature`, which farmed gold from a throwaway quest to fund a Shop purchase; the Shop no longer exists.
 
 **When adding or modifying a feature, the matching `<feature>.spec.ts` must move with it.** No feature ships without its e2e moving in lockstep. If no spec exists yet for the feature, create one — start by composing `registerAndVerify` + `createProjectViaWizard` from `_helpers.ts`, then drive the feature-specific UI.
+
+## Automation acceptance join (#E43, #Q2045)
+
+`web/automations.spec.ts` observes direct or batched mutation completion for
+preset creation, Test, explicit enable, rule edits, variable changes and conflicts.
+Its live feedback journey uses the existing admin job page's registered dispatcher
+operation to advance the fixed cron synchronously, then waits for durable run and
+inbox receipt evidence. It does not add a test-only clock or execution endpoint.
+The owner explicitly creates Contributor/Viewer rank presets before invitation;
+a new project can carry only the framework's Member rank until configured.
+Foreign author edits and Viewer writes are refused by HTTP and hidden in the UI.
+Removing the source capability keeps enable intent and displays broken health;
+retained run payload and delivery receipts become redacted under current access.
+
+The final native integration matrix stays with its owning scenarios rather than
+copying their implementations into browser assertions:
+
+| Boundary                                                                                                                                | Scenario suite in `apps/lore/test`                                            |
+| --------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Duplicate/two-worker claims, native rollback, lease recovery, external unknown, 210-delivery interrupted roster, detail/dedup retention | `automation-durable.spec.ts`, `automation-durable-d1.spec.ts`                 |
+| Pure previews, 51-row collection limits, permission loss between effects, queued disable/edit, bounded 150-delivery work                | `automation-evaluator.spec.ts`                                                |
+| Exact missing quality days, strict thresholds and restart/reset/rearm                                                                   | `automation-numeric.spec.ts`, `automation-numeric-presets.spec.ts`            |
+| Concurrent folio edits, append recovery and truthful partial append/notify failure                                                      | `automation-publication-presets.spec.ts`, `automation-domain-actions.spec.ts` |
+| Actual scoped-key/OAuth revocation, approval races and sanitized atomic configuration audits                                            | `automation-api.spec.ts`                                                      |
+| MCP authoring joined to two workers, a committed-cursor interruption, real inbox receipt and pruned-detail replay refusal               | `automation-mcp.spec.ts`                                                      |
+
+The full `yarn v` runs this matrix, built browser journeys and CLI/Bay suites.
+Branch Verify additionally includes the Docker image. Neither a skipped check nor
+an optimistic browser state counts as acceptance evidence.
