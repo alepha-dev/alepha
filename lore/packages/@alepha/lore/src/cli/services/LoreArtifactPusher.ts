@@ -64,6 +64,28 @@ export class LoreArtifactPusher {
   public static readonly WORK_DIR = "node_modules/.alepha";
 
   /**
+   * The build's `manifest.json`, sent beside the archive so Lore need not
+   * inflate it to find one (#Q2681).
+   *
+   * ⚠️ The very file `alepha pack` put at the archive root, read from `dist/`
+   * right after the pack. Lore re-checks it against the archive's own copy at
+   * deploy, so a mismatch is refused rather than trusted. Re-serialised so it
+   * travels as one line in its form field. `undefined` when the build has
+   * none, and Lore then reads the archive, as it always did.
+   */
+  protected async manifestOf(root: string): Promise<string | undefined> {
+    const path = this.fs.join(root, "dist", "manifest.json");
+    if (!(await this.fs.exists(path))) {
+      return undefined;
+    }
+    try {
+      return JSON.stringify(JSON.parse(await this.fs.readTextFile(path)));
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
    * Pack `dist/` under `root` and push it as `app@tag`.
    *
    * Fails loudly: a push that cannot happen throws, and the caller exits
@@ -110,6 +132,7 @@ export class LoreArtifactPusher {
         force: input.force,
         archivePath,
         filename,
+        manifest: await this.manifestOf(root),
         // The sibling source-map archive, when the build produced one
         // (#1515). Absent is normal, not an error: the maps are excluded
         // from the artifact and stored beside it, so nothing is discarded.

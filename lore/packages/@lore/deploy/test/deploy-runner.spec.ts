@@ -6,7 +6,7 @@ import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { LoreDeployApi } from "../src/api/index.ts";
-import { DeployRunner } from "../src/api/index.ts";
+import { ArtifactTarReader, DeployRunner } from "../src/api/index.ts";
 import { gzip, type TarEntry, tar } from "../src/testing/index.ts";
 
 /**
@@ -373,6 +373,65 @@ describe("deploying an artifact from inside the Worker", () => {
     expect(assets.config).toMatchObject({
       _headers: headers,
       _redirects: redirects,
+    });
+  });
+
+  describe("the manifest recorded at push (#Q2681)", () => {
+    // A push may send `manifest.json` beside the bytes, and the row then
+    // records what was sent. The deploy holds it to the archive's own copy.
+    const archived = async (bytes: Uint8Array) =>
+      (await new ArtifactTarReader().readManifest(bytes)) as Record<
+        string,
+        unknown
+      >;
+
+    it("deploys when it is the archive's own, whatever its key order", async ({
+      expect,
+    }) => {
+      const bytes = await packed();
+      const own = await archived(bytes);
+      const reordered = Object.fromEntries(Object.entries(own).toReversed());
+      const { runner, calls } = await withFakeCloudflare(bytes);
+
+      await runner.run(
+        request({
+          artifact: {
+            app: "my-app",
+            tag: "1.2.3",
+            sha256: "a".repeat(64),
+            fileId: "file-1",
+            manifest: JSON.stringify(reordered),
+          },
+        }) as never,
+      );
+
+      expect(calls).toContain("deploy:acme-my-app-b14-preview");
+    });
+
+    it("refuses before provisioning anything when it differs", async ({
+      expect,
+    }) => {
+      const bytes = await packed();
+      const own = await archived(bytes);
+      const { runner, calls } = await withFakeCloudflare(bytes);
+
+      await expect(
+        runner.run(
+          request({
+            artifact: {
+              app: "my-app",
+              tag: "1.2.3",
+              sha256: "a".repeat(64),
+              fileId: "file-1",
+              manifest: JSON.stringify({
+                ...own,
+                runtimes: [{ runtime: "node", entry: "index.node.js" }],
+              }),
+            },
+          }) as never,
+        ),
+      ).rejects.toThrow(/does not match the manifest.json inside the archive/);
+      expect(calls).toEqual([]);
     });
   });
 

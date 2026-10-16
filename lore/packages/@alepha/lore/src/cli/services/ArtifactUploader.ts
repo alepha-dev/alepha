@@ -104,6 +104,12 @@ export class ArtifactUploader {
     if (input.force) {
       fields.force = "true";
     }
+    // Not through `field()`: a JSON document carries quotes by nature. It is
+    // one line (the pusher re-serialises it), and a part body ends only at the
+    // boundary, so a quote cannot break the message.
+    if (input.manifest) {
+      fields.manifest = input.manifest;
+    }
 
     for (let attempt = 0; ; attempt++) {
       try {
@@ -296,6 +302,11 @@ export interface ArtifactUploadInput {
   tag: string;
   commitSha?: string;
   force?: boolean;
+  /**
+   * The build's `manifest.json`, one line, sent ahead of the archive so Lore
+   * reads it instead of inflating the archive (#Q2681).
+   */
+  manifest?: string;
   /**
    * Absolute path to the archive produced by `alepha pack`.
    */

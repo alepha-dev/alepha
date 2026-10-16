@@ -37,6 +37,7 @@ class Sink {
     tag: string;
     commitSha?: string;
     force?: boolean;
+    manifest?: unknown;
     filename: string;
     bytes: string;
   };
@@ -51,6 +52,7 @@ class Sink {
         tag: z.string(),
         commitSha: z.string().optional(),
         force: z.boolean().optional(),
+        manifest: z.record(z.text(), z.any()).optional(),
         file: z.file(),
       }),
       response: z.object({
@@ -76,6 +78,7 @@ class Sink {
         tag: body.tag,
         commitSha: body.commitSha,
         force: body.force,
+        manifest: body.manifest,
         filename: body.file.name,
         bytes: await body.file.text(),
       };
@@ -214,6 +217,25 @@ describe("ArtifactUploader", () => {
 
     expect(ctx.sink.received?.force).toBeUndefined();
     expect(ctx.sink.received?.commitSha).toBeUndefined();
+  });
+
+  it("sends the build's manifest as a field Lore decodes as the same document", async () => {
+    // #Q2681: Lore reads this instead of inflating the archive to find it.
+    const manifest = {
+      manifestVersion: 2,
+      runtimes: [{ runtime: "node", entry: "index.node.js" }],
+      secrets: [{ name: "SIGIL_KEY" }],
+    };
+    const ctx = await upload({ manifest: JSON.stringify(manifest) });
+
+    expect(ctx.sink.received?.manifest).toEqual(manifest);
+    expect(ctx.sink.received?.bytes).toBe("a packed artifact");
+  });
+
+  it("sends no manifest field when the build has none", async () => {
+    const ctx = await upload();
+
+    expect(ctx.sink.received?.manifest).toBeUndefined();
   });
 
   it("returns what the registry answered", async () => {

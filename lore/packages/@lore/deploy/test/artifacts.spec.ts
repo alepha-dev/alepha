@@ -139,6 +139,7 @@ describe("artifacts", () => {
       tag?: string;
       commitSha?: string;
       force?: boolean;
+      manifest?: unknown;
       file: File;
       maps?: File;
     },
@@ -151,6 +152,7 @@ describe("artifacts", () => {
           tag: body.tag ?? "1.2.3",
           commitSha: body.commitSha,
           force: body.force,
+          manifest: body.manifest as never,
           file: body.file,
           maps: body.maps,
         },
@@ -551,6 +553,54 @@ describe("artifacts", () => {
       expect(await ctx.rows.artifacts.findMany({})).toHaveLength(0);
       const held = await ctx.artifactController.artifactBucket.list({});
       expect(held.content).toHaveLength(0);
+    });
+  });
+
+  describe("a manifest sent beside the bytes (#Q2681)", () => {
+    it("is recorded instead of the archive's, so the push need not inflate it", async ({
+      expect,
+    }) => {
+      // The archive says node; the sent manifest says workerd. The row
+      // follows what was sent, which proves the archive was not read. The
+      // deploy is where the two are compared (DeployRunner).
+      const { owner, projectId } = await aProject();
+      const sent = {
+        runtimes: [{ runtime: "workerd", entry: "index.workerd.js" }],
+      };
+
+      const res = await push(projectId, owner, {
+        file: await packedArtifact(),
+        manifest: JSON.stringify(sent),
+      });
+
+      expect(res.data.artifact.runtime).toBe("workerd");
+      const [row] = await ctx.rows.artifacts.findMany({
+        where: { projectId: { eq: projectId } },
+      });
+      expect(JSON.parse(row!.manifest!)).toEqual(sent);
+    });
+
+    it("is refused when it is not JSON or declares no runtime", async ({
+      expect,
+    }) => {
+      const { owner, projectId } = await aProject();
+
+      expect(
+        await statusOf(
+          push(projectId, owner, {
+            file: await packedArtifact(),
+            manifest: "{not json",
+          }),
+        ),
+      ).toBe(400);
+      expect(
+        await statusOf(
+          push(projectId, owner, {
+            file: await packedArtifact(),
+            manifest: JSON.stringify({ runtimes: [] }),
+          }),
+        ),
+      ).toBe(400);
     });
   });
 

@@ -8,6 +8,7 @@ import { $action, NotFoundError, okSchema } from "alepha/server";
 
 import type { Artifact } from "../entities/artifacts.ts";
 import { artifactListSchema } from "../schemas/artifactListSchema.ts";
+import { artifactManifestSchema } from "../schemas/artifactManifestSchema.ts";
 import { artifactPushResultSchema } from "../schemas/artifactPushResultSchema.ts";
 import { ArtifactService } from "../services/ArtifactService.ts";
 
@@ -138,6 +139,18 @@ export class ArtifactController {
          * twice, which is what `latest` is for.
          */
         force: z.boolean().optional(),
+        /**
+         * The build's `manifest.json`, so the push need not inflate the
+         * archive to find it (#Q2681). Optional both ways: an older CLI sends
+         * none and the archive is read, as before. A deploy re-checks it
+         * against the archive's own copy.
+         *
+         * ⚠️ Declared with the manifest's own schema, not `z.string()`: the
+         * multipart decode parses any part that opens with `{`, whatever the
+         * field's schema, so a string field would receive an object. Sent as
+         * JSON text before `file` on the wire.
+         */
+        manifest: artifactManifestSchema.optional(),
         file: z.file({ maxBytes: 20 * 1024 * 1024 }),
         /**
          * This build's source maps, as a sibling archive (#1515).
@@ -159,6 +172,7 @@ export class ArtifactController {
         tag: body.tag,
         commitSha: body.commitSha,
         force: body.force,
+        manifest: body.manifest,
         file: body.file,
         maps: body.maps,
       });

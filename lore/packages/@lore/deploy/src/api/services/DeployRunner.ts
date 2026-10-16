@@ -198,6 +198,10 @@ export class DeployRunner {
         `Unpacked ${unpacked.files} files (${Math.round(unpacked.bytes / 1024)} KB), ${unpacked.skipped} assets streamed`,
       );
 
+      // Before anything is provisioned: the row's manifest may be the one
+      // the pusher sent rather than one read from these bytes (#Q2681).
+      await this.assertManifestMatches(fs, request.artifact);
+
       // ⚠️ After the unpack, which writes it, and before `up()`, whose build
       // step would replace it with an entry from Lore's own framework. See
       // `DeployFileSystemProvider`.
@@ -335,6 +339,61 @@ export class DeployRunner {
       bucket: ArtifactService.BUCKET,
     });
     return new Uint8Array(await file.arrayBuffer());
+  }
+
+  /**
+   * Refuses a deploy whose recorded manifest is not the archive's own.
+   *
+   * ⚠️ Since #Q2681 a push may send `manifest.json` beside the bytes, so the
+   * push never inflates the archive, and the row records what was sent. The
+   * archive stays the authority, and this is where it is held to: the
+   * runtimes a deploy was matched on, the resources `provision` creates and
+   * the secrets it mints all come from the row, so a row that disagrees with
+   * the bytes would deploy something other than what it says.
+   *
+   * Compared after a canonical sort of the keys, so a pusher that serialised
+   * the same document in another key order is not refused. A row with no
+   * manifest (one too large for the column) has nothing to disagree with.
+   */
+  protected async assertManifestMatches(
+    fs: MemoryFileSystemProvider,
+    artifact: Artifact,
+  ): Promise<void> {
+    if (!artifact.manifest) {
+      return;
+    }
+    const path = `${DeployRunner.ROOT}/${ArtifactTarReader.MANIFEST_PATH}`;
+    let archived: unknown;
+    let recorded: unknown;
+    try {
+      archived = JSON.parse(await fs.readTextFile(path));
+      recorded = JSON.parse(artifact.manifest);
+    } catch {
+      throw new BadRequestError(
+        `This artifact carries no readable ${ArtifactTarReader.MANIFEST_PATH}, so there is nothing to say what it binds.`,
+      );
+    }
+    if (this.canonical(archived) !== this.canonical(recorded)) {
+      throw new BadRequestError(
+        `${artifact.app} ${artifact.tag}: the manifest recorded at push does not match the ${ArtifactTarReader.MANIFEST_PATH} inside the archive. Push the build again.`,
+      );
+    }
+  }
+
+  /**
+   * JSON with every object's keys sorted, so two serialisations of one
+   * document compare equal.
+   */
+  protected canonical(value: unknown): string {
+    return JSON.stringify(value, (_key, entry: unknown) =>
+      entry && typeof entry === "object" && !Array.isArray(entry)
+        ? Object.fromEntries(
+            Object.entries(entry as Record<string, unknown>).sort(([a], [b]) =>
+              a < b ? -1 : a > b ? 1 : 0,
+            ),
+          )
+        : entry,
+    );
   }
 
   /**

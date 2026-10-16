@@ -67,13 +67,20 @@ export class ArtifactService {
     const app = this.normalizeApp(input.app);
     const tag = this.normalizeTag(input.tag);
 
-    const bytes = new Uint8Array(await input.file.arrayBuffer());
+    const bytes = await this.bytesOf(input.file);
     if (bytes.length === 0) {
       throw new BadRequestError("The artifact is empty.");
     }
 
     const sha256 = await this.digest(bytes);
-    const manifest = await this.reader.readManifest(bytes);
+    // ⚠️ A manifest sent beside the bytes is taken instead of inflating the
+    // archive to find one (#Q2681). Inflating costs a 32 MiB zstd window on
+    // top of the body's own copies, inside a 128 MB isolate, and Lore's own
+    // two-runtime push was billed 4 to 11 s of CPU for it. The archive's copy
+    // is still the authority: `DeployRunner` compares the two after the
+    // unpack and refuses a deploy where they differ. A client that sends no
+    // manifest (older CLIs) gets the scan, as before.
+    const manifest = input.manifest ?? (await this.reader.readManifest(bytes));
 
     const runtimes: string[] = manifest.runtimes.map((slice) => slice.runtime);
     const primary = runtimes[0];
@@ -463,6 +470,38 @@ export class ArtifactService {
   }
 
   /**
+   * The upload's bytes, read through its stream rather than `arrayBuffer()`.
+   *
+   * ⚠️ A multipart file part already holds its bytes, and `arrayBuffer()`
+   * hands back a COPY of them, while its stream enqueues the very buffer it
+   * holds. On Lore's own push that copy was another 6 MB in an isolate already
+   * near its ceiling (#Q2681). A stream that arrives in pieces is joined once.
+   */
+  protected async bytesOf(file: FileLike): Promise<Uint8Array> {
+    const reader = (
+      file.stream() as unknown as ReadableStream<Uint8Array>
+    ).getReader();
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+    while (true) {
+      const next = await reader.read();
+      if (next.done) break;
+      chunks.push(next.value);
+      size += next.value.length;
+    }
+    if (chunks.length === 1) {
+      return chunks[0]!;
+    }
+    const bytes = new Uint8Array(size);
+    let at = 0;
+    for (const chunk of chunks) {
+      bytes.set(chunk, at);
+      at += chunk.length;
+    }
+    return bytes;
+  }
+
+  /**
    * The manifest as the column holds it, or nothing when it will not fit.
    *
    * ⚠️ A manifest past the column's ceiling is dropped rather than truncated
@@ -776,6 +815,12 @@ export interface ArtifactPushInput {
    */
   force?: boolean;
   file: FileLike;
+  /**
+   * The build's `manifest.json`, when the pusher sent it (#Q2681). Absent, it
+   * is read out of the archive. Present, it is trusted for the row and
+   * re-checked against the archive at deploy.
+   */
+  manifest?: ArtifactManifest;
   /**
    * This build's source maps, as a sibling archive.
    *
