@@ -3,6 +3,7 @@ import { AlephaError } from "alepha";
 
 import type {
   CloudflareD1,
+  CloudflareD1Export,
   CloudflareD1Import,
   CloudflareD1QueryResult,
   CloudflareHyperdrive,
@@ -215,6 +216,55 @@ export class CloudflareProvisionClient {
 
     throw new AlephaError(
       "D1 was still applying the migration after 120 polls. It rolls back on failure, so this is safe to retry.",
+    );
+  }
+
+  /**
+   * `wrangler d1 export --remote`: the whole database as a SQL dump.
+   *
+   * D1 builds the dump server side and answers `active` with a bookmark until
+   * it is done; each poll sends the last bookmark back and is held open by
+   * D1, so no delay is needed between them (wrangler waits for none either).
+   * `complete` carries a signed URL, valid for an hour, that the dump is
+   * downloaded from without the API token.
+   */
+  public async d1Export(databaseId: string): Promise<Uint8Array> {
+    const path = `/accounts/${this.accountId}/d1/database/${databaseId}/export`;
+
+    let bookmark: string | undefined;
+    for (let attempt = 0; attempt < 300; attempt++) {
+      const answer = await this.fetch<CloudflareD1Export>(path, {
+        method: "POST",
+        body: { output_format: "polling", current_bookmark: bookmark },
+      });
+
+      if (answer.status === "error") {
+        throw new AlephaError(
+          `D1 could not export the database: ${answer.error || (answer.messages ?? []).join("; ") || "no reason given"}.`,
+        );
+      }
+
+      if (answer.status === "complete") {
+        const url = answer.result?.signed_url;
+        if (!url) {
+          throw new AlephaError(
+            "D1 finished the export but answered no download URL.",
+          );
+        }
+        const download = await globalThis.fetch(url);
+        if (!download.ok) {
+          throw new AlephaError(
+            `The D1 export did not download (HTTP ${download.status}).`,
+          );
+        }
+        return new Uint8Array(await download.arrayBuffer());
+      }
+
+      bookmark = answer.at_bookmark;
+    }
+
+    throw new AlephaError(
+      "D1 was still building the export after 300 polls. Nothing was changed; retry it.",
     );
   }
 

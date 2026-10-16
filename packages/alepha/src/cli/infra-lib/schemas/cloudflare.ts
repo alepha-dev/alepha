@@ -66,6 +66,20 @@ export interface CloudflareD1Import {
   errors?: string[];
 }
 
+/**
+ * One step of D1's export flow (`output_format: "polling"`).
+ *
+ * Loose for the same reason as {@link CloudflareD1Import}: `active` answers a
+ * bookmark, `complete` a signed URL, `error` a reason.
+ */
+export interface CloudflareD1Export {
+  status?: string;
+  at_bookmark?: string;
+  error?: string;
+  messages?: string[];
+  result?: { filename?: string; signed_url?: string };
+}
+
 // ---------------------------------------------------------------------------
 // KV
 // ---------------------------------------------------------------------------
