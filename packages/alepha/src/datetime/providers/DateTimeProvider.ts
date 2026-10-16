@@ -703,6 +703,10 @@ export class DateTimeProvider {
    * `fn` runs under the current signal unchanged, so a call site passes its
    * `timeout` option straight through.
    *
+   * `fn` runs in a nested context layer, so what it writes into the context
+   * dies with it, and so does the narrowed signal: work `fn` is still doing
+   * after the expiry keeps seeing the aborted signal and is refused.
+   *
    * ```ts
    * const quote = await dateTime.deadline(
    *   () => http.fetch("https://quotes.example.com/latest"),

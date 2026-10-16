@@ -1,4 +1,4 @@
-import { $error } from "../primitives/$error.ts";
+import { $error, type ErrorClass } from "../primitives/$error.ts";
 import { z } from "../providers/ZodProvider.ts";
 
 /**
@@ -35,7 +35,11 @@ export const TimeoutError = $error({
       : data.timeout % 1000 === 0
         ? `Timed out after ${data.timeout / 1000} s`
         : `Timed out after ${data.timeout} ms`,
-});
+}) as unknown as ErrorClass<
+  { status: number; timeout: number },
+  "status" | "timeout",
+  "status"
+>;
 
 export type TimeoutError = InstanceType<typeof TimeoutError>;
 

@@ -11,6 +11,7 @@ import {
   type Middleware,
   PipelineHandler,
   SchemaValidationError,
+  TimeoutError,
   type ZObject,
   z,
 } from "alepha";
@@ -521,7 +522,10 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
 
     const requestId = request.requestId;
 
-    if (error instanceof HttpError) {
+    // A `TimeoutError` (an action's deadline, an outbound call's) answers
+    // like an HTTP error under its own name, `TIMEOUT`, rather than as an
+    // anonymous 503: it lives in `alepha`, which cannot extend `HttpError`.
+    if (error instanceof HttpError || error instanceof TimeoutError) {
       reply.status = error.status;
       reply.headers["content-type"] = "application/json";
       const errorJson = HttpError.toJSON(error);
