@@ -54,7 +54,13 @@ export class AutomationEvents {
     changedTables: string[];
     numbers?: Record<string, SQLLike>;
   }): Promise<{
-    event: AutomationEvent;
+    /**
+     * Absent when the project has the Work `automations` option off: the
+     * domain write commits alone and no event row is kept for rules that
+     * cannot exist there. The option is read inside the same native batch,
+     * so a project switching it on is never seen through a stale cache.
+     */
+    event?: AutomationEvent;
     committed: boolean;
     rows?: Record<string, unknown>[];
   }> {
@@ -91,7 +97,7 @@ export class AutomationEvents {
           )
         : JSON.stringify(payload);
       let rows: Record<string, unknown>[] | undefined;
-      let event: AutomationEvent;
+      let event: AutomationEvent | undefined;
       try {
         const batch = await this.atomic.guarded(
           input.projectId,
@@ -99,11 +105,12 @@ export class AutomationEvents {
           [
             input.mutation,
             sql`INSERT INTO automation_events (id, version, project_id, identity, name, occurred_at, replay_until, payload, created_at, updated_at)
-              VALUES (${id}, 0, ${input.projectId}, ${input.identity}, ${input.name}, ${this.database.timestamp(now)}, ${this.database.timestamp(replayUntil)}, ${encoded}, ${this.database.timestamp(now)}, ${this.database.timestamp(now)}) RETURNING *`,
+              SELECT ${id}, 0, ${input.projectId}, ${input.identity}, ${input.name}, ${this.database.timestamp(now)}, ${this.database.timestamp(replayUntil)}, ${encoded}, ${this.database.timestamp(now)}, ${this.database.timestamp(now)}
+              WHERE ${this.database.automationsOn(input.projectId)} RETURNING *`,
           ],
         );
         rows = batch[1];
-        event = this.eventRows.decodeRaw(batch[2][0]);
+        event = batch[2][0] ? this.eventRows.decodeRaw(batch[2][0]) : undefined;
       } catch {
         const recorded = await this.persistence.events.findOne({
           where: { projectId: input.projectId, identity: input.identity },
@@ -120,7 +127,7 @@ export class AutomationEvents {
       ]))
         await this.cache.invalidateTable(table);
       return {
-        event,
+        ...(event ? { event } : {}),
         committed: true,
         rows,
       };
@@ -237,23 +244,32 @@ export class AutomationEvents {
     });
   }
 
-  public async prune(): Promise<number> {
+  /**
+   * Deletes events past their 90-day replay horizon, page by page until a
+   * page comes back short, at most `pages` pages per call.
+   */
+  public async prune(pages = 20): Promise<number> {
     const now = this.dateTime.nowISOString();
-    const rows = await this.persistence.events.findMany({
-      where: {
-        replayUntil: { lt: now },
-        or: [{ leaseUntil: { isNull: true } }, { leaseUntil: { lt: now } }],
-      },
-      orderBy: "replayUntil",
-      columns: ["id"],
-      limit: 50,
-    });
-    if (!rows.length) return 0;
-    return (
-      await this.persistence.events.deleteMany({
-        id: { inArray: rows.map((row) => row.id) },
-        replayUntil: { lt: now },
-      })
-    ).length;
+    let pruned = 0;
+    for (let page = 0; page < pages; page++) {
+      const rows = await this.persistence.events.findMany({
+        where: {
+          replayUntil: { lt: now },
+          or: [{ leaseUntil: { isNull: true } }, { leaseUntil: { lt: now } }],
+        },
+        orderBy: "replayUntil",
+        columns: ["id"],
+        limit: 50,
+      });
+      if (!rows.length) break;
+      pruned += (
+        await this.persistence.events.deleteMany({
+          id: { inArray: rows.map((row) => row.id) },
+          replayUntil: { lt: now },
+        })
+      ).length;
+      if (rows.length < 50) break;
+    }
+    return pruned;
   }
 }

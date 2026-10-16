@@ -186,6 +186,28 @@ describe("Automation domain source integration", () => {
     expect(event.payload.fields).not.toHaveProperty("reporterUserId");
     expect(probe.writes).toBe(1);
   });
+  it("commits the domain write without an event row while the automations option is off", async ({
+    expect,
+  }) => {
+    const quiet = await createTestProject(alepha, {
+      capabilities: [
+        { key: "support" },
+        { key: "work", options: { epics: true, releases: true } },
+      ],
+    });
+    await rows.users.updateById(quiet.createdBy, { roles: ["user"] });
+    await alepha.inject(FeedbackController).submitFeedback.fetch(
+      {
+        params: { projectId: quiet.id },
+        body: { title: "Quiet", description: "Safe description" },
+      },
+      { user: { id: quiet.createdBy, roles: ["user"] } as UserAccountToken },
+    );
+    expect(await rows.feedback.count({ projectId: quiet.id })).toBe(1);
+    expect(await persistence.events.count({ projectId: quiet.id })).toBe(0);
+    await submit();
+    expect(await persistence.events.count({ projectId: project.id })).toBe(1);
+  });
   it("rolls back the source and intent together when the native batch fails", async ({
     expect,
   }) => {

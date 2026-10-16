@@ -29,4 +29,18 @@ export class AutomationAtomic {
       sql`DELETE FROM automation_receipts WHERE id = ${id}`,
     ]);
   }
+
+  /**
+   * Whether a guard holds right now. A failed `guarded` batch cannot say
+   * whether its guard was false or the driver failed, and only the first is
+   * a refusal a caller may skip; this asks the database the same question.
+   */
+  public async holds(condition: SQLLike): Promise<boolean> {
+    const predicate =
+      typeof condition === "string" ? sql.raw(condition) : condition.getSQL();
+    const [rows] = await this.database.batch([
+      sql`SELECT CASE WHEN (${predicate}) THEN 1 ELSE 0 END AS held`,
+    ]);
+    return Number(rows[0]?.held) === 1;
+  }
 }

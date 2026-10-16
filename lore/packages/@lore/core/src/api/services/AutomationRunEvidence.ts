@@ -1,6 +1,11 @@
 import { $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { DbCacheProvider, sql, type SQLLike } from "alepha/orm";
+import {
+  DbCacheProvider,
+  DbEntityNotFoundError,
+  sql,
+  type SQLLike,
+} from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 import { BadRequestError, ConflictError } from "alepha/server";
 
@@ -14,7 +19,10 @@ import {
 import type { AutomationSlotKind } from "../schemas/automationSlotKindSchema.ts";
 import { AutomationAccess } from "./AutomationAccess.ts";
 import { AutomationBatchRepository } from "./AutomationBatchRepository.ts";
-import { AutomationCatalog } from "./AutomationCatalog.ts";
+import {
+  AutomationCatalog,
+  type AutomationCatalogContext,
+} from "./AutomationCatalog.ts";
 import { AutomationConfigurationWrites } from "./AutomationConfigurationWrites.ts";
 import { AutomationDatabase } from "./AutomationDatabase.ts";
 import { AutomationPersistence } from "./AutomationPersistence.ts";
@@ -46,6 +54,10 @@ export class AutomationRunEvidence {
     "failed",
     "unknown",
   ];
+  /**
+   * Rows per retention page, kept under D1's 100 bound values per statement.
+   */
+  protected readonly prunePage = 50;
   protected readonly resultFields: Record<string, string[]> = {
     notify: [
       "outbox_ids",
@@ -244,28 +256,29 @@ export class AutomationRunEvidence {
   }
 
   public async continueInAnotherRun(id: string): Promise<void> {
-    const run = await this.persistence.runs.getById(id);
-    if (this.terminal.includes(run.status)) return;
-    if (run.snapshot.actions.some((action) => action.status === "running"))
-      throw new ConflictError(
-        "An in-flight action must be reconciled before continuation",
-      );
-    const snapshot = structuredClone(run.snapshot);
-    for (const action of snapshot.actions)
-      if (action.status === "pending") {
-        action.status = "skipped";
-        action.result = { reason: "Continued in another run" };
-      }
-    snapshot.counts.hasMore = true;
-    await this.persistence.runs.updateById(id, {
-      version: run.version,
-      snapshot,
-      status:
-        snapshot.counts.executed || snapshot.counts.deliveries
-          ? "succeeded"
-          : "skipped",
-      reason: "Continued in another run",
-      finishedAt: this.dateTime.nowISOString(),
+    await this.retrying(async () => {
+      const run = await this.persistence.runs.getById(id);
+      if (this.terminal.includes(run.status)) return run;
+      if (run.snapshot.actions.some((action) => action.status === "running"))
+        throw new ConflictError(
+          "An in-flight action must be reconciled before continuation",
+        );
+      const snapshot = structuredClone(run.snapshot);
+      for (const action of snapshot.actions)
+        if (action.status === "pending") {
+          action.status = "skipped";
+          action.result = { reason: "Continued in another run" };
+        }
+      snapshot.counts.hasMore = true;
+      return this.swap(run, {
+        snapshot,
+        status:
+          snapshot.counts.executed || snapshot.counts.deliveries
+            ? "succeeded"
+            : "skipped",
+        reason: "Continued in another run",
+        finishedAt: this.dateTime.nowISOString(),
+      });
     });
   }
 
@@ -285,13 +298,12 @@ export class AutomationRunEvidence {
   }
 
   public async truncated(id: string): Promise<void> {
-    const run = await this.persistence.runs.getById(id);
-    if (run.snapshot.counts.truncated) return;
-    const snapshot = structuredClone(run.snapshot);
-    snapshot.counts.truncated = true;
-    await this.persistence.runs.updateById(id, {
-      version: run.version,
-      snapshot,
+    await this.retrying(async () => {
+      const run = await this.persistence.runs.getById(id);
+      if (run.snapshot.counts.truncated) return run;
+      const snapshot = structuredClone(run.snapshot);
+      snapshot.counts.truncated = true;
+      return this.swap(run, { snapshot });
     });
   }
 
@@ -307,6 +319,13 @@ export class AutomationRunEvidence {
       aggregate?: boolean;
     },
   ): Promise<AutomationRun> {
+    return this.retrying(() => this.actionOnce(id, input));
+  }
+
+  protected async actionOnce(
+    id: string,
+    input: Parameters<AutomationRunEvidence["action"]>[1],
+  ): Promise<AutomationRun | undefined> {
     const run = await this.persistence.runs.getById(id);
     if (this.terminal.includes(run.status) || !run.snapshot.rule)
       throw new ConflictError("A terminal run cannot execute another action");
@@ -371,16 +390,37 @@ export class AutomationRunEvidence {
     snapshot.counts.deliveries += deliveries;
     if (!automationRunSnapshotSchema.safeParse(this.reserved(snapshot)).success)
       snapshot.actions[position].result = { omitted: true };
-    return this.persistence.runs.updateById(id, {
-      version: run.version,
+    return this.swap(run, {
       status: "running",
       snapshot: automationRunSnapshotSchema.parse(snapshot),
     });
   }
 
   public async finish(id: string, reason?: string): Promise<AutomationRun> {
-    const run = await this.persistence.runs.getById(id);
-    if (this.terminal.includes(run.status)) return run;
+    // Only the write that concluded the run pauses its rule; a run another
+    // writer already finished is returned as it is, as before.
+    const outcome = { wrote: false };
+    const finished = await this.retrying(async () => {
+      const run = await this.persistence.runs.getById(id);
+      if (this.terminal.includes(run.status)) return run;
+      const written = await this.finishOnce(run, reason);
+      outcome.wrote = !!written;
+      return written;
+    });
+    if (outcome.wrote && finished.status === "unknown")
+      await this.transition(
+        finished.automationId,
+        "paused",
+        "An action outcome is unknown; author review is required",
+        true,
+      );
+    return finished;
+  }
+
+  protected async finishOnce(
+    run: AutomationRun,
+    reason?: string,
+  ): Promise<AutomationRun | undefined> {
     const statuses = run.snapshot.actions.map((action) => action.status);
     const problem = statuses.includes("unknown")
       ? "unknown"
@@ -413,21 +453,49 @@ export class AutomationRunEvidence {
           : run.snapshot.counts.executed
             ? "succeeded"
             : "skipped";
-    const finished = await this.persistence.runs.updateById(id, {
-      version: run.version,
+    return this.swap(run, {
       status,
       snapshot: automationRunSnapshotSchema.parse(run.snapshot),
       finishedAt: this.dateTime.nowISOString(),
       ...(reason ? { reason: reason.slice(0, 1024) } : {}),
     });
-    if (status === "unknown")
-      await this.transition(
-        run.automationId,
-        "paused",
-        "An action outcome is unknown; author review is required",
-        true,
+  }
+
+  /**
+   * A compare-and-set write of a run. `updateById` keeps only the id in its
+   * WHERE and bumps `version` itself, so a `version` in its patch is
+   * overwritten rather than compared, and a concurrent writer's change was
+   * silently lost. Here the version the caller read goes in the WHERE, and a
+   * miss answers `undefined`.
+   */
+  public async swap(
+    run: Pick<AutomationRun, "id" | "version">,
+    patch: Parameters<AutomationPersistence["runs"]["updateOne"]>[1],
+  ): Promise<AutomationRun | undefined> {
+    try {
+      return await this.persistence.runs.updateOne(
+        { id: run.id, version: run.version },
+        patch,
       );
-    return finished;
+    } catch (error) {
+      if (error instanceof DbEntityNotFoundError) return undefined;
+      throw error;
+    }
+  }
+
+  /**
+   * Read, decide and write again when another writer moved the run in
+   * between, a bounded number of times. Each attempt rereads the run, so its
+   * own idempotency checks see what the other writer did.
+   */
+  protected async retrying(
+    attempt: () => Promise<AutomationRun | undefined>,
+  ): Promise<AutomationRun> {
+    for (let tries = 0; tries < 3; tries++) {
+      const run = await attempt();
+      if (run) return run;
+    }
+    throw new ConflictError("Run evidence changed concurrently; retry");
   }
 
   public async transition(
@@ -532,25 +600,40 @@ export class AutomationRunEvidence {
 
   public async read(id: string, user: UserAccountToken) {
     const run = await this.persistence.runs.getById(id);
-    await this.access.assert(run.projectId, user, "automation:read");
-    const rule =
-      run.snapshot.rule ??
-      (await this.persistence.rules.getById(run.automationId, { force: true }))
-        .rule;
-    let reason = await this.catalog.sourceAvailability(
+    const context = await this.access.authorize(
       run.projectId,
       user,
-      rule,
+      "automation:read",
     );
+    return this.readIn(run, context);
+  }
+
+  /**
+   * {@link AutomationRunEvidence.read} of a run already loaded, under a
+   * context the caller authorized for `automation:read` in the run's
+   * project. `rule` is the run's rule when the caller holds it already, read
+   * only when the snapshot has none.
+   */
+  public async readIn(
+    run: AutomationRun,
+    context: AutomationCatalogContext,
+    rule?: Automation,
+  ) {
+    const definition =
+      run.snapshot.rule ??
+      (rule?.id === run.automationId
+        ? rule
+        : await this.persistence.rules.getById(run.automationId, {
+            force: true,
+          })
+      ).rule;
+    let reason = this.catalog.sourceAvailabilityIn(context, definition);
     if (!reason) {
       for (const variable of run.snapshot.variables) {
-        const inspected = await this.catalog.inspectVariable(
-          run.projectId,
-          user,
-          { ...variable, projectId: run.projectId } as Parameters<
-            AutomationCatalog["inspectVariable"]
-          >[2],
-        );
+        const inspected = await this.catalog.inspectVariableIn(context, {
+          ...variable,
+          projectId: run.projectId,
+        } as Parameters<AutomationCatalog["inspectVariableIn"]>[1]);
         if (!inspected.available) {
           reason = "Variable source access is unavailable";
           break;
@@ -567,25 +650,42 @@ export class AutomationRunEvidence {
     };
   }
 
-  public async prune(): Promise<number> {
+  /**
+   * Deletes terminal runs older than 30 days, page by page until a page comes
+   * back short, and at most `pages` pages per call so a daily run cannot
+   * outgrow its Worker invocation.
+   *
+   * A page is 50 rows, not 100: its DELETE binds every id plus the six
+   * terminal statuses and the cutoff, and D1 refuses a statement binding
+   * more than 100 values (see `BoundParameters`).
+   */
+  public async prune(pages = 20): Promise<number> {
     const cutoff = this.dateTime.now().subtract(30, "days").toISOString();
-    const rows = await this.persistence.runs.findMany({
-      where: { status: { inArray: this.terminal }, finishedAt: { lt: cutoff } },
-      orderBy: [
-        { column: "finishedAt", direction: "asc" },
-        { column: "id", direction: "asc" },
-      ],
-      columns: ["id"],
-      limit: 100,
-    });
-    if (!rows.length) return 0;
-    return (
-      await this.persistence.runs.deleteMany({
-        id: { inArray: rows.map((row) => row.id) },
-        status: { inArray: this.terminal },
-        finishedAt: { lt: cutoff },
-      })
-    ).length;
+    let pruned = 0;
+    for (let page = 0; page < pages; page++) {
+      const rows = await this.persistence.runs.findMany({
+        where: {
+          status: { inArray: this.terminal },
+          finishedAt: { lt: cutoff },
+        },
+        orderBy: [
+          { column: "finishedAt", direction: "asc" },
+          { column: "id", direction: "asc" },
+        ],
+        columns: ["id"],
+        limit: this.prunePage,
+      });
+      if (!rows.length) break;
+      pruned += (
+        await this.persistence.runs.deleteMany({
+          id: { inArray: rows.map((row) => row.id) },
+          status: { inArray: this.terminal },
+          finishedAt: { lt: cutoff },
+        })
+      ).length;
+      if (rows.length < this.prunePage) break;
+    }
+    return pruned;
   }
 
   protected reserved(snapshot: AutomationRunSnapshot): AutomationRunSnapshot {

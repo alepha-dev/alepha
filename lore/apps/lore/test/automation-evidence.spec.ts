@@ -1,6 +1,6 @@
 import { AutomationPersistence, AutomationRunEvidence } from "@lore/core/api";
 import type { AutomationRule } from "@lore/core/schemas";
-import { Alepha } from "alepha";
+import { $hook, Alepha } from "alepha";
 import { RankService } from "alepha/api/organizations";
 import { DateTimeProvider } from "alepha/datetime";
 import type { UserAccountToken } from "alepha/security";
@@ -12,6 +12,22 @@ import {
   createTestProject,
   createTestMember,
 } from "./fixtures/entities.ts";
+
+/**
+ * Lands a second writer between a run read and its write, once.
+ */
+class RunRace {
+  public next?: () => Promise<unknown>;
+  protected readonly onRead = $hook({
+    on: "repository:read:after",
+    handler: async ({ tableName }) => {
+      if (tableName !== "automation_runs" || !this.next) return;
+      const run = this.next;
+      this.next = undefined;
+      await run();
+    },
+  });
+}
 
 describe("Bounded automation run evidence", () => {
   let alepha: Alepha;
@@ -61,6 +77,7 @@ describe("Bounded automation run evidence", () => {
     });
     bootLore(alepha, ["api"]);
     entities = alepha.inject(TestEntityRepositories);
+    alepha.inject(RunRace);
     evidence = alepha.inject(AutomationRunEvidence);
     persistence = alepha.inject(AutomationPersistence);
     await alepha.start();
@@ -348,7 +365,35 @@ describe("Bounded automation run evidence", () => {
     });
   });
 
-  it("prunes at most 100 old terminal details while preserving live work and configuration", async ({
+  it("writes run evidence by compare-and-set and never over a concurrent write", async ({
+    expect,
+  }) => {
+    const rule = await create();
+    const run = await start(rule, [{ index: 0 }]);
+    const stale = await persistence.runs.getById(run.id);
+    await persistence.runs.updateById(run.id, { reason: "Moved" });
+    expect(await evidence.swap(stale, { reason: "Stale" })).toBeUndefined();
+    expect((await persistence.runs.getById(run.id)).reason).toBe("Moved");
+    // A writer landing between the action's read and its write: the retry
+    // rereads the run, so the concurrent flag survives the action's write.
+    alepha.inject(RunRace).next = async () => {
+      const fresh = await persistence.runs.getById(run.id);
+      await persistence.runs.updateById(run.id, {
+        snapshot: {
+          ...fresh.snapshot,
+          counts: { ...fresh.snapshot.counts, truncated: true },
+        },
+      });
+    };
+    const written = await evidence.action(run.id, {
+      index: 0,
+      status: "running",
+    });
+    expect(written.snapshot.counts.truncated).toBe(true);
+    expect(written.snapshot.actions[0].status).toBe("running");
+    expect(alepha.inject(RunRace).next).toBeUndefined();
+  });
+  it("prunes old terminal details in bounded pages while preserving live work and configuration", async ({
     expect,
   }) => {
     const rule = await create();
@@ -382,12 +427,40 @@ describe("Bounded automation run evidence", () => {
       createdAt: old,
       finishedAt: old,
     });
-    expect(await evidence.prune()).toBe(100);
+    // Two pages of 50: the page cap bounds one call, the next call resumes.
+    expect(await evidence.prune(2)).toBe(100);
     expect(await persistence.runs.count()).toBe(7);
     expect(await persistence.runs.getById(live.id)).toMatchObject({
       status: "running",
     });
     expect(await persistence.rules.getById(rule.id)).toBeDefined();
     expect(await evidence.prune()).toBe(5);
+    expect(await evidence.prune()).toBe(0);
+  });
+  it("keeps paging in one daily call until a page comes back short", async ({
+    expect,
+  }) => {
+    const rule = await create();
+    const template = await start(rule);
+    const old = alepha
+      .inject(DateTimeProvider)
+      .now()
+      .subtract(31, "days")
+      .toISOString();
+    await persistence.runs.createMany(
+      Array.from({ length: 230 }, () => ({
+        projectId: project.id,
+        automationId: rule.id,
+        ruleRevision: 0,
+        occurrenceId: crypto.randomUUID(),
+        triggeredAt: old,
+        status: "succeeded" as const,
+        snapshot: template.snapshot,
+        createdAt: old,
+        finishedAt: old,
+      })),
+    );
+    expect(await evidence.prune()).toBe(230);
+    expect(await persistence.runs.count()).toBe(1);
   });
 });

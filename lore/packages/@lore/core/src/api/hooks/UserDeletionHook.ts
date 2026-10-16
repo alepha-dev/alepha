@@ -1,9 +1,10 @@
 import { $hook, $inject } from "alepha";
 import { NotificationInboxService } from "alepha/api/notifications";
-import { $repository } from "alepha/orm";
+import { $repository, DbCacheProvider, sql } from "alepha/orm";
 import { ConflictError } from "alepha/server";
 
 import { automations } from "../entities/automations.ts";
+import { AutomationDatabase } from "../services/AutomationDatabase.ts";
 
 /**
  * Refuses to delete an account that still owns projects.
@@ -48,6 +49,8 @@ import { automations } from "../entities/automations.ts";
  */
 export class UserDeletionHook {
   protected readonly automations = $repository(automations);
+  protected readonly database = $inject(AutomationDatabase);
+  protected readonly cache = $inject(DbCacheProvider);
   protected readonly inbox = $inject(NotificationInboxService);
 
   /**
@@ -74,19 +77,52 @@ export class UserDeletionHook {
       // The organizations module registered its ownership refusal before
       // this application hook, so reaching this handler means deletion will
       // proceed and inbox cleanup cannot run for a refused account.
-      // Include soft-deleted rules: the restrictive FK still preserves their
-      // evidence. Refuse before inbox cleanup, so a refused deletion is inert.
-      if (
-        await this.automations.findOne(
-          { where: { authorUserId: userId } },
-          { force: true },
-        )
-      ) {
+      // Live rules refuse: each one still runs as this author, and deleting
+      // it is a decision for its project, made on its Automations page.
+      // Refuse before any purge or inbox cleanup, so a refused deletion is
+      // inert.
+      const live = await this.automations.count({ authorUserId: userId });
+      if (live > 0) {
         throw new ConflictError(
-          "Delete your authored automations and their retained evidence before deleting your account",
+          `Delete your ${live} authored automation(s) from each project's Automations page, then delete your account`,
         );
       }
+      await this.purgeDeletedAutomations(userId);
       await this.inbox.deleteForUser(userId);
     },
   });
+
+  /**
+   * Hard-deletes the author's soft-deleted rules, which nothing else ever
+   * removes, so their restrictive author foreign key stops blocking the
+   * account. Their runs, receipts and adoption markers reference the rules
+   * with `ON DELETE RESTRICT` too, so the children go first, in one native
+   * batch: either the whole history goes or none of it does.
+   *
+   * A project whose compatibility policy this author adopted and then
+   * opted out of (the rule deleted, the marker kept) loses its marker here,
+   * and so returns to the legacy fallback. The marker cannot outlive the
+   * rule and the author it references without a schema change.
+   */
+  protected async purgeDeletedAutomations(userId: string): Promise<void> {
+    const deleted = await this.automations.findOne(
+      { where: { authorUserId: userId, deletedAt: { isNotNull: true } } },
+      { force: true },
+    );
+    if (!deleted) return;
+    const rules = sql`SELECT id FROM automations WHERE author_user_id = ${userId} AND deleted_at IS NOT NULL`;
+    await this.database.batch([
+      sql`DELETE FROM automation_receipts WHERE automation_id IN (${rules})`,
+      sql`DELETE FROM automation_runs WHERE automation_id IN (${rules})`,
+      sql`DELETE FROM automation_adoptions WHERE automation_id IN (${rules}) OR author_user_id = ${userId}`,
+      sql`DELETE FROM automations WHERE author_user_id = ${userId} AND deleted_at IS NOT NULL`,
+    ]);
+    for (const table of [
+      "automation_receipts",
+      "automation_runs",
+      "automation_adoptions",
+      "automations",
+    ])
+      await this.cache.invalidateTable(table);
+  }
 }

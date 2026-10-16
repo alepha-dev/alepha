@@ -1,11 +1,12 @@
 import {
   AutomationAccess,
   AutomationAuthority,
+  AutomationDependencies,
   AutomationPersistence,
 } from "@lore/core/api";
 import type { AutomationRule } from "@lore/core/schemas";
 import { createPresetRanks } from "@lore/core/testing";
-import { Alepha } from "alepha";
+import { Alepha, AlephaError } from "alepha";
 import { apiKeyEntity } from "alepha/api/keys";
 import { RankService } from "alepha/api/organizations";
 import { DateTimeProvider } from "alepha/datetime";
@@ -25,6 +26,15 @@ import {
 
 class AuthorityRepositories {
   public readonly keys = $repository(apiKeyEntity);
+}
+class FlakyDependencies extends AutomationDependencies {
+  public failure?: Error;
+  public override async assert(
+    rule: Parameters<AutomationDependencies["assert"]>[0],
+  ): Promise<void> {
+    if (this.failure) throw this.failure;
+    return super.assert(rule);
+  }
 }
 
 describe("Current automation authority", () => {
@@ -77,6 +87,7 @@ describe("Current automation authority", () => {
     alepha = Alepha.create({
       env: { DATABASE_URL: ":memory:", SERVER_PORT: 0, LOG_LEVEL: "error" },
     });
+    alepha.with({ provide: AutomationDependencies, use: FlakyDependencies });
     bootLore(alepha, ["api"]);
     entities = alepha.inject(TestEntityRepositories);
     repositories = alepha.inject(AuthorityRepositories);
@@ -117,6 +128,38 @@ describe("Current automation authority", () => {
       health: "paused",
       requiresApproval: true,
       authorUserId: user.id,
+    });
+  });
+
+  it("propagates a transient failure without pausing the rule, and still pauses a refusal", async ({
+    expect,
+  }) => {
+    const row = await create();
+    const dependencies = alepha.inject(FlakyDependencies);
+    dependencies.failure = new AlephaError("D1 connection reset");
+    await expect(
+      authority.check({ automationId: row.id, revision: 0 }),
+    ).rejects.toThrow("D1 connection reset");
+    expect(await persistence.rules.getById(row.id)).toMatchObject({
+      enabled: true,
+      health: "active",
+      requiresApproval: false,
+      version: row.version,
+    });
+    dependencies.failure = undefined;
+    expect(
+      (await authority.check({ automationId: row.id, revision: 0 })).rule.id,
+    ).toBe(row.id);
+    await entities.organizationMembers.deleteMany({
+      organizationId: project.organizationId!,
+      userId: user.id,
+    });
+    await expect(
+      authority.check({ automationId: row.id, revision: 0 }),
+    ).rejects.toThrow("current member");
+    expect(await persistence.rules.getById(row.id)).toMatchObject({
+      health: "paused",
+      requiresApproval: true,
     });
   });
 

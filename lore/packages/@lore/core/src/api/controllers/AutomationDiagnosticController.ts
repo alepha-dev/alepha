@@ -7,30 +7,15 @@ import { $ownsProject } from "../security/$ownsProject.ts";
 import { AutomationAccess } from "../services/AutomationAccess.ts";
 import { AutomationPersistence } from "../services/AutomationPersistence.ts";
 
+/**
+ * Owner-only rule metadata for the Settings diagnostic panel, readable while
+ * Work or its `automations` option is off. Metadata only, never a rule body;
+ * members read rules through `AutomationService`, which redacts by current
+ * source access.
+ */
 export class AutomationDiagnosticController {
   protected readonly access = $inject(AutomationAccess);
   protected readonly persistence = $inject(AutomationPersistence);
-
-  getAutomationSummaries = $action({
-    use: [
-      $ownsProject({
-        param: "projectId",
-        requires: "automation:read",
-        capability: { key: "work", option: "automations" },
-      }),
-    ],
-    method: "GET",
-    path: "/projects/:projectId/automation-summaries",
-    schema: {
-      params: z.object({ projectId: z.integer() }),
-      query: z.object({ offset: z.integer().nonnegative().default(0) }),
-      response: automationDiagnosticPageSchema,
-    },
-    handler: async ({ params, query, user }) => {
-      await this.access.assert(params.projectId, user, "automation:read");
-      return this.list(params.projectId, query.offset);
-    },
-  });
 
   protected async list(projectId: number, offset: number) {
     const rows = await this.persistence.rules.findMany({

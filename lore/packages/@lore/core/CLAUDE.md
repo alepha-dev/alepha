@@ -811,6 +811,37 @@ and their read permission; `AutomationSetupOptions` reconstructs the caller's
 current ceiling first. Members, folios, distinct app names and prospective event
 records expose labels and IDs, never document bodies or raw deployment logs.
 
+## Automation retention, faults and deletion (#Q2685)
+
+- **Events are kept only where rules can exist.** The `automation_events` insert
+  carries `WHERE` the project's Work `automations` option is on, read inside the
+  same native batch, so a project with the option off writes its domain row
+  alone and never pays for an event nobody can consume.
+- **Every prune loops** page by page until a short page, capped per run (20
+  pages; `expireReady` 2). A run page is 50 ids: D1 refuses more than 100 bound
+  values per statement, and the run prune binds a few beyond its ids.
+- **A version in an update patch is not a fence.** `Repository.updateOne`
+  keeps only `id` in the WHERE and bumps `version` itself, so lease and run
+  writes go through `swapReceipt` / `RunEvidence.swap` (`{ id, version }` in the
+  where, a miss is a conflict).
+- **Only a refusal pauses a rule.** `AutomationAuthority.checkPrimary` pauses on
+  `AutomationDependencyError`, a missing row or a non-database 4xx; a transient
+  driver fault is rethrown with no health transition.
+- **A failed reserve skips one rule.** `AutomationAtomic.holds` re-asks the
+  guard after a failed batch: a guard that no longer holds is a
+  `ConflictError`, which the schedule sweep and event dispatch skip per rule.
+- **A busy rule reschedules.** When another occurrence of the same rule is
+  claimed, the worker extends its own ready lease and the job comes back after
+  at most 30 seconds, instead of evaluating and waiting for lease expiry.
+- **Deleting an author** refuses only while they own live rules. Their
+  soft-deleted rules, with receipts, runs and adoption markers, are then
+  hard-deleted in one batch. ⚠️ An adoption marker referencing such a rule goes
+  with it, so a project that opted out through that rule returns to the legacy
+  fallback for that policy.
+- **Hard-deleting a project** runs `AutomationProjectDeletion` first: runs,
+  receipts and adoptions reference their rule with RESTRICT while the project
+  cascade reaches `automations` first, so the children are deleted before.
+
 ## Explicit policy adoption (#E43, #Q2044)
 
 `automation_adoptions` is an independent project/policy marker. Named callers

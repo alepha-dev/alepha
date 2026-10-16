@@ -1,8 +1,8 @@
-import { automationPageQuerySchema } from "../../api/schemas/automationPageQuerySchema.ts";
+import { automationVariableListQuerySchema } from "../../api/schemas/automationVariableListQuerySchema.ts";
 import { projectParamsSchema } from "./projectParamsSchema.ts";
 
 export const automationVariableListParamsSchema = projectParamsSchema
   .extend({
-    ...automationPageQuerySchema.shape,
+    ...automationVariableListQuerySchema.shape,
   })
   .strict();

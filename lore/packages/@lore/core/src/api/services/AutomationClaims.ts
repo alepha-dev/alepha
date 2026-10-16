@@ -1,6 +1,11 @@
 import { $inject, AlephaError } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { DbCacheProvider, sql, type SQLLike } from "alepha/orm";
+import {
+  DbCacheProvider,
+  DbEntityNotFoundError,
+  sql,
+  type SQLLike,
+} from "alepha/orm";
 import { BadRequestError, ConflictError } from "alepha/server";
 
 import type { AutomationReceipt } from "../entities/automationReceipts.ts";
@@ -166,19 +171,24 @@ export class AutomationClaims {
             ? "Occurrence is not due"
             : undefined);
       const runId = crypto.randomUUID();
+      const guard = sql`NOT EXISTS (SELECT 1 FROM automation_receipts WHERE id = ${id}) AND EXISTS (SELECT 1 FROM automations WHERE id = ${rule.id} AND revision = ${input.revision} AND enabled = TRUE AND health = 'active' AND requires_approval = FALSE AND deleted_at IS NULL AND (activated_at IS NULL OR activated_at <= ${this.database.timestamp(occurredAt)})) ${input.condition ? sql`AND (${typeof input.condition === "string" ? sql.raw(input.condition) : input.condition.getSQL()})` : sql``}`;
       try {
-        await this.atomic.guarded(
-          rule.projectId,
-          sql`NOT EXISTS (SELECT 1 FROM automation_receipts WHERE id = ${id}) AND EXISTS (SELECT 1 FROM automations WHERE id = ${rule.id} AND revision = ${input.revision} AND enabled = TRUE AND health = 'active' AND requires_approval = FALSE AND deleted_at IS NULL AND (activated_at IS NULL OR activated_at <= ${this.database.timestamp(occurredAt)})) ${input.condition ? sql`AND (${typeof input.condition === "string" ? sql.raw(input.condition) : input.condition.getSQL()})` : sql``}`,
-          [
-            ...(input.mutation ? [input.mutation] : []),
-            sql`INSERT INTO automation_receipts (id, version, project_id, automation_id, identity, kind, status, occurrence_id, rule_revision, occurred_at, replay_until, run_id, snapshot, reason, cursor, queue_attempts, roster_complete, created_at, updated_at)
+        await this.atomic.guarded(rule.projectId, guard, [
+          ...(input.mutation ? [input.mutation] : []),
+          sql`INSERT INTO automation_receipts (id, version, project_id, automation_id, identity, kind, status, occurrence_id, rule_revision, occurred_at, replay_until, run_id, snapshot, reason, cursor, queue_attempts, roster_complete, created_at, updated_at)
               VALUES (${id}, 0, ${rule.projectId}, ${rule.id}, ${id}, 'occurrence', ${status}, ${occurrenceId}, ${input.revision}, ${this.database.timestamp(occurredAt)}, ${this.database.timestamp(replayUntil)}, ${runId}, ${JSON.stringify(frame.snapshot)}, ${reason ?? null}, 0, 0, FALSE, ${this.database.timestamp(now)}, ${this.database.timestamp(now)})`,
-          ],
-        );
+        ]);
       } catch (error) {
         const raced = await this.persistence.receipts.findById(id);
         if (raced) return raced;
+        // The batch only says it failed. A guard that no longer holds is this
+        // one rule moving on (disabled, edited, its schedule advanced, another
+        // occurrence in flight): a conflict the dispatcher skips. Anything
+        // else is a real failure and keeps its own error.
+        if (!(await this.atomic.holds(guard)))
+          throw new ConflictError(
+            "Automation changed before its occurrence was reserved",
+          );
         throw error;
       }
       for (const table of new Set([
@@ -463,13 +473,14 @@ export class AutomationClaims {
           reason: "External outcome was not confirmed before lease recovery",
         },
       );
-      const updated = await this.persistence.receipts.updateById(receipt.id, {
-        version: receipt.version,
+      const updated = await this.swapReceipt(receipt, {
         status: "unknown",
         reason: "External action outcome is unknown",
         leaseToken: null,
         leaseUntil: null,
       });
+      // Another holder moved the occurrence since this lease was taken.
+      if (!updated) return { state: "busy" };
       await this.reconcileRun(updated, "unknown");
       await this.closePending(updated);
       await this.evidence.transition(
@@ -491,8 +502,7 @@ export class AutomationClaims {
         variables: receipt.snapshot?.variables,
       });
     } catch (error) {
-      const updated = await this.persistence.receipts.updateById(receipt.id, {
-        version: receipt.version,
+      const updated = await this.swapReceipt(receipt, {
         status: "refused",
         reason: (error instanceof Error
           ? error.message
@@ -501,6 +511,7 @@ export class AutomationClaims {
         leaseToken: null,
         leaseUntil: null,
       });
+      if (!updated) return { state: "busy" };
       await this.reconcileRun(updated, "refused");
       await this.closePending(updated);
       return { state: "terminal", receipt: updated };
@@ -533,10 +544,12 @@ export class AutomationClaims {
 
   public async renew(id: string, token: string): Promise<AutomationReceipt> {
     const receipt = await this.lease(id, token);
-    return this.persistence.receipts.updateById(id, {
-      version: receipt.version,
+    const renewed = await this.swapReceipt(receipt, {
       leaseUntil: this.dateTime.now().add(2, "minutes").toISOString(),
     });
+    if (!renewed)
+      throw new ConflictError("Occurrence lease is no longer current");
+    return renewed;
   }
 
   public async yield(id: string, token: string): Promise<void> {
@@ -673,12 +686,17 @@ export class AutomationClaims {
           throw new ConflictError(
             "An external effect cannot be blindly retried",
           );
-        if (existing.leaseToken !== token)
-          return this.persistence.receipts.updateById(existing.id, {
-            version: existing.version,
+        if (existing.leaseToken !== token) {
+          const adopted = await this.swapReceipt(existing, {
             leaseToken: token,
             leaseUntil: occurrence.leaseUntil,
           });
+          if (!adopted)
+            throw new ConflictError(
+              "Effect receipt changed concurrently; retry the step",
+            );
+          return adopted;
+        }
         return existing;
       }
       if (input.runId && input.runId !== occurrence.runId)
@@ -996,7 +1014,8 @@ export class AutomationClaims {
   protected async reconcileRun(
     occurrence: AutomationReceipt,
     outcome: "unknown" | "refused" | "failed",
-  ) {
+    attempt = 1,
+  ): Promise<void> {
     if (!occurrence.runId || !occurrence.snapshot) return;
     let run = await this.ensureRun(occurrence);
     if (!["queued", "running"].includes(run.status)) return;
@@ -1046,8 +1065,7 @@ export class AutomationClaims {
         action.status = "skipped";
         action.result = { reason: "Occurrence could not resume" };
       }
-    await this.persistence.runs.updateById(run.id, {
-      version: run.version,
+    const finished = await this.evidence.swap(run, {
       snapshot,
       status:
         outcome === "unknown"
@@ -1058,6 +1076,33 @@ export class AutomationClaims {
       reason: occurrence.reason ?? "Occurrence could not resume",
       finishedAt: this.dateTime.nowISOString(),
     });
+    if (finished) return;
+    // Another writer moved the run between the read and this write. Read it
+    // again: a run it finished returns early above, one it advanced is redone.
+    if (attempt >= 3)
+      throw new ConflictError("Run evidence changed concurrently");
+    return this.reconcileRun(occurrence, outcome, attempt + 1);
+  }
+
+  /**
+   * A compare-and-set write. `updateById` keeps only the id in its WHERE and
+   * bumps `version` itself, so a `version` in its patch is overwritten rather
+   * than compared. Here the version the caller read goes in the WHERE, and a
+   * miss answers `undefined` instead of overwriting a concurrent write.
+   */
+  protected async swapReceipt(
+    receipt: Pick<AutomationReceipt, "id" | "version">,
+    patch: Parameters<AutomationPersistence["receipts"]["updateOne"]>[1],
+  ): Promise<AutomationReceipt | undefined> {
+    try {
+      return await this.persistence.receipts.updateOne(
+        { id: receipt.id, version: receipt.version },
+        patch,
+      );
+    } catch (error) {
+      if (error instanceof DbEntityNotFoundError) return undefined;
+      throw error;
+    }
   }
 
   protected async closePending(occurrence: AutomationReceipt): Promise<void> {
@@ -1094,7 +1139,25 @@ export class AutomationClaims {
     ]);
   }
 
-  public async expireReady(): Promise<number> {
+  /**
+   * Refuses ready occurrences past their replay horizon, page by page until a
+   * page comes back short, at most `pages` pages per call. Each row costs a
+   * handful of statements, hence the smaller default than the deletes.
+   */
+  public async expireReady(pages = 2): Promise<number> {
+    let expired = 0;
+    for (let page = 0; page < pages; page++) {
+      const { selected, changed } = await this.expireReadyPage();
+      expired += changed;
+      if (selected < 50) break;
+    }
+    return expired;
+  }
+
+  protected async expireReadyPage(): Promise<{
+    selected: number;
+    changed: number;
+  }> {
     const now = this.dateTime.nowISOString();
     const rows = await this.persistence.receipts.findMany({
       where: { kind: "occurrence", status: "ready", replayUntil: { lte: now } },
@@ -1118,7 +1181,7 @@ export class AutomationClaims {
       await this.closePending(receipt);
       expired += 1;
     }
-    return expired;
+    return { selected: rows.length, changed: expired };
   }
 
   public async repairTerminals(): Promise<number> {
@@ -1138,31 +1201,40 @@ export class AutomationClaims {
     return rows.length;
   }
 
-  public async pruneSnapshots(): Promise<number> {
+  /**
+   * Clears frozen snapshots of terminal receipts older than 30 days, page by
+   * page until a page comes back short, at most `pages` pages per call.
+   */
+  public async pruneSnapshots(pages = 20): Promise<number> {
     const cutoff = this.dateTime.now().subtract(30, "days").toISOString();
-    const rows = await this.persistence.receipts.findMany({
-      where: {
-        status: {
-          inArray: ["committed", "skipped", "refused", "failed", "unknown"],
-        },
-        snapshot: { isNotNull: true },
-        updatedAt: { lt: cutoff },
-      },
-      columns: ["id"],
-      limit: 50,
-    });
-    if (!rows.length) return 0;
-    return (
-      await this.persistence.receipts.updateMany(
-        {
-          id: { inArray: rows.map((row) => row.id) },
+    let pruned = 0;
+    for (let page = 0; page < pages; page++) {
+      const rows = await this.persistence.receipts.findMany({
+        where: {
           status: {
             inArray: ["committed", "skipped", "refused", "failed", "unknown"],
           },
+          snapshot: { isNotNull: true },
+          updatedAt: { lt: cutoff },
         },
-        { snapshot: null },
-      )
-    ).length;
+        columns: ["id"],
+        limit: 50,
+      });
+      if (!rows.length) break;
+      pruned += (
+        await this.persistence.receipts.updateMany(
+          {
+            id: { inArray: rows.map((row) => row.id) },
+            status: {
+              inArray: ["committed", "skipped", "refused", "failed", "unknown"],
+            },
+          },
+          { snapshot: null },
+        )
+      ).length;
+      if (rows.length < 50) break;
+    }
+    return pruned;
   }
 
   protected safeResult(
@@ -1207,31 +1279,40 @@ export class AutomationClaims {
     return result;
   }
 
-  public async prune(): Promise<number> {
+  /**
+   * Deletes terminal receipts past their 90-day replay horizon, page by page
+   * until a page comes back short, at most `pages` pages per call.
+   */
+  public async prune(pages = 20): Promise<number> {
     const now = this.dateTime.nowISOString();
-    const rows = await this.persistence.receipts.findMany({
-      where: {
-        kind: { ne: "job_origin" },
-        status: {
-          inArray: ["committed", "skipped", "refused", "failed", "unknown"],
+    let pruned = 0;
+    for (let page = 0; page < pages; page++) {
+      const rows = await this.persistence.receipts.findMany({
+        where: {
+          kind: { ne: "job_origin" },
+          status: {
+            inArray: ["committed", "skipped", "refused", "failed", "unknown"],
+          },
+          replayUntil: { lt: now },
         },
-        replayUntil: { lt: now },
-      },
-      orderBy: "replayUntil",
-      columns: ["id"],
-      limit: 50,
-    });
-    if (!rows.length) return 0;
-    return (
-      await this.persistence.receipts.deleteMany({
-        kind: { ne: "job_origin" },
-        id: { inArray: rows.map((row) => row.id) },
-        status: {
-          inArray: ["committed", "skipped", "refused", "failed", "unknown"],
-        },
-        replayUntil: { lt: now },
-      })
-    ).length;
+        orderBy: "replayUntil",
+        columns: ["id"],
+        limit: 50,
+      });
+      if (!rows.length) break;
+      pruned += (
+        await this.persistence.receipts.deleteMany({
+          kind: { ne: "job_origin" },
+          id: { inArray: rows.map((row) => row.id) },
+          status: {
+            inArray: ["committed", "skipped", "refused", "failed", "unknown"],
+          },
+          replayUntil: { lt: now },
+        })
+      ).length;
+      if (rows.length < 50) break;
+    }
+    return pruned;
   }
 }
 

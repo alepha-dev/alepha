@@ -19,6 +19,17 @@ export class AutomationDatabase {
     });
   }
 
+  /**
+   * Whether a project has the Work `automations` option on, as a predicate a
+   * native batch can carry. `options` is JSON text on SQLite and D1, jsonb on
+   * Postgres; a project without the Work row has no option at all.
+   */
+  public automationsOn(projectId: number): SQLLike {
+    return this.database.dialect === "sqlite"
+      ? sql`EXISTS (SELECT 1 FROM project_capabilities WHERE project_id = ${projectId} AND key = 'work' AND json_extract(options, '$.automations') = 1)`
+      : sql`EXISTS (SELECT 1 FROM project_capabilities WHERE project_id = ${projectId} AND key = 'work' AND (options ->> 'automations') = 'true')`;
+  }
+
   public timestamp(value: string): string | number {
     const millis = new Date(value).getTime();
     if (!Number.isFinite(millis))

@@ -39,6 +39,7 @@ import { EmailProvider, MemoryEmailProvider } from "alepha/email";
 import { $repository } from "alepha/orm";
 import { CronProvider } from "alepha/scheduler";
 import type { UserAccountToken } from "alepha/security";
+import { ForbiddenError } from "alepha/server";
 import { beforeEach, afterEach, describe, it } from "vitest";
 
 import { bootLore } from "./fixtures/bootLore.ts";
@@ -63,6 +64,13 @@ class AdoptionRows {
 class InterruptedAdoption extends AutomationAdoptionService {
   public interrupt = false;
   public afterCutover = false;
+  public validationFault?: Error;
+  protected override async validate(
+    ...args: Parameters<AutomationAdoptionService["validate"]>
+  ) {
+    if (this.validationFault) throw this.validationFault;
+    return super.validate(...args);
+  }
   protected override async cutover(
     ...args: Parameters<AutomationAdoptionService["cutover"]>
   ) {
@@ -204,6 +212,26 @@ describe("Explicit policy adoption and legacy parity", () => {
     await alepha.stop();
   });
 
+  it("names a refusal in the preview but never an internal error's message", async ({
+    expect,
+  }) => {
+    adoption.validationFault = new AlephaError(
+      "SQLITE_ERROR near automation_secret_column",
+    );
+    const internal = await adoption.preview(
+      project.id,
+      "quest-reminders",
+      user,
+    );
+    expect(internal.ready).toBe(false);
+    expect(internal.reason).toBe(
+      "Policy adoption is unavailable right now; try again later",
+    );
+    adoption.validationFault = new ForbiddenError("Missing quest:read");
+    const refused = await adoption.preview(project.id, "quest-reminders", user);
+    expect(refused.reason).toBe("Missing quest:read");
+    adoption.validationFault = undefined;
+  });
   it("previews without writes and resumes a named pending adoption without a duplicate rule", async ({
     expect,
   }) => {

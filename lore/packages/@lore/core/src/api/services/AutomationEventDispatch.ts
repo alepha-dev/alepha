@@ -1,5 +1,5 @@
 import { $inject } from "alepha";
-import { ConflictError, ForbiddenError } from "alepha/server";
+import { BadRequestError, ConflictError, ForbiddenError } from "alepha/server";
 
 import type { AutomationEvent } from "../entities/automationEvents.ts";
 import { AutomationTemplateBindings } from "../schemas/AutomationTemplateBindings.ts";
@@ -95,9 +95,14 @@ export class AutomationEventDispatch {
         });
         claimed += 1;
       } catch (error) {
+        // A refusal for this one rule (it changed, lost its grant or its
+        // guard, or no longer listens to this event) skips it. Anything else
+        // leaves the event undispatched for the next tick; reserving is
+        // idempotent, so rules already reserved are not reserved twice.
         if (
           !(error instanceof ForbiddenError) &&
-          !(error instanceof ConflictError)
+          !(error instanceof ConflictError) &&
+          !(error instanceof BadRequestError)
         )
           throw error;
       }

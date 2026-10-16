@@ -31,7 +31,14 @@ export class AutomationWorkerJobs {
     retry: { retries: 2 },
     handler: async ({ payload, attempt, reschedule }) => {
       const next = await this.worker.step(payload, attempt);
-      if (next) reschedule({ delay: [1, "second"], payload: next });
+      if (next)
+        reschedule({
+          delay: [next.delaySeconds ?? 1, "seconds"],
+          payload: {
+            receiptId: next.receiptId,
+            ...(next.token ? { token: next.token } : {}),
+          },
+        });
     },
   });
 }

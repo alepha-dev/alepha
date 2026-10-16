@@ -1,7 +1,7 @@
 import { $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { sql } from "alepha/orm";
-import { ConflictError } from "alepha/server";
+import { BadRequestError, ConflictError } from "alepha/server";
 
 import { AutomationCron } from "../schemas/AutomationCron.ts";
 import { AutomationClaims } from "./AutomationClaims.ts";
@@ -100,7 +100,13 @@ export class AutomationSchedules {
           });
           claimed += 1;
         } catch (error) {
-          if (!(error instanceof ConflictError)) throw error;
+          // A guard that no longer holds (the rule changed, its cursor moved,
+          // another occurrence is in flight) skips this rule, not the sweep.
+          if (
+            !(error instanceof ConflictError) &&
+            !(error instanceof BadRequestError)
+          )
+            throw error;
         }
       }
       return { claimed, scanned: rules.length, hasMore: page.length > size };

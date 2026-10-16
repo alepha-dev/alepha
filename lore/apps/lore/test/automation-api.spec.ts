@@ -1,4 +1,5 @@
 import {
+  AutomationAccess,
   AutomationAuthority,
   AutomationRunEvidence,
   AppSecurityProvider,
@@ -49,6 +50,15 @@ class ApiConfigurationRace extends AutomationConfigurationWrites {
       await task();
     }
     return super.commit(...args);
+  }
+}
+class CountingAccess extends AutomationAccess {
+  public authorizations = 0;
+  public override async authorize(
+    ...args: Parameters<AutomationAccess["authorize"]>
+  ) {
+    this.authorizations += 1;
+    return super.authorize(...args);
   }
 }
 class ApiRows {
@@ -136,7 +146,8 @@ describe("Shared automation application service and HTTP actions", () => {
       .with({
         provide: AutomationConfigurationWrites,
         use: ApiConfigurationRace,
-      });
+      })
+      .with({ provide: AutomationAccess, use: CountingAccess });
     bootLore(alepha);
     alepha.store.set(oauthOptions, {
       ...alepha.store.get(oauthOptions),
@@ -570,6 +581,45 @@ describe("Shared automation application service and HTTP actions", () => {
       folio.id,
     );
     expect(JSON.stringify(historical)).not.toContain("Private historic title");
+  });
+  it("authorizes a page of rules or runs once and answers what per-row reads answered", async ({
+    expect,
+  }) => {
+    const folio = await createTestFolio(alepha, project);
+    await variables.set(project.id, user, "target", {
+      value: { kind: "folio", value: folio.id },
+    });
+    const shared = ast();
+    shared.actions = [
+      { kind: "appendFolio", folio: "{{target}}", text: "{{title}}" },
+    ];
+    const made = [await create(shared), await create(shared), await create()];
+    const evidence = alepha.inject(AutomationRunEvidence);
+    for (let index = 0; index < 3; index++)
+      await evidence.start({
+        rule: await persistence.rules.getById(made[0].id),
+        occurrenceId: crypto.randomUUID(),
+        triggeredAt: time.nowISOString(),
+        inputs: { title: `Run ${index}` },
+        selected: [],
+        matched: 0,
+        planned: [],
+      });
+    const counter = alepha.inject(CountingAccess);
+    counter.authorizations = 0;
+    const page = await service.list(project.id, user, { limit: 10 });
+    expect(counter.authorizations).toBe(1);
+    expect(page.items).toHaveLength(3);
+    counter.authorizations = 0;
+    const runs = await service.runs(project.id, made[0].id, user, {
+      limit: 10,
+    });
+    expect(counter.authorizations).toBe(1);
+    expect(runs.items).toHaveLength(3);
+    for (const item of page.items)
+      expect(item).toEqual(await service.get(project.id, item.id, user));
+    for (const item of runs.items)
+      expect(item).toEqual(await service.run(project.id, item.id, user));
   });
   it("preserves scalar baselines for prose/cadence edits and resets changed predicates", async ({
     expect,

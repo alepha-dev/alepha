@@ -41,7 +41,7 @@ export class AutomationWorker {
   public async step(
     input: { receiptId: string; token?: string },
     attempt = 1,
-  ): Promise<{ receiptId: string; token: string } | undefined> {
+  ): Promise<AutomationWorkerNext | undefined> {
     return this.database.primary(async () => {
       let occurrence: AutomationReceipt =
         await this.persistence.receipts.getById(input.receiptId);
@@ -69,6 +69,17 @@ export class AutomationWorker {
           }
           const frozen = occurrence.snapshot?.rule;
           if (!frozen) return;
+          // One live occurrence per rule: while another is claimed, this one
+          // could only lose the claim after paying for its evaluation.
+          const holder = await this.persistence.receipts.findOne({
+            where: {
+              automationId: rule.id,
+              kind: "occurrence",
+              status: "claimed",
+              id: { ne: occurrence.id },
+            },
+          });
+          if (holder) return this.waitFor(occurrence, holder);
           const evaluation = await this.evaluator.evaluate({
             rule: { ...rule, rule: frozen, revision: occurrence.ruleRevision },
             ...(frozen.trigger.kind === "event"
@@ -374,6 +385,39 @@ export class AutomationWorker {
       }
     });
   }
+  /**
+   * A ready occurrence whose rule is busy with another one waits for it in
+   * short delays instead of until its own queue lease lapses and the next
+   * dispatch tick requeues it. Its lease is extended over the wait so that
+   * recovery does not queue it a second time meanwhile.
+   *
+   * Bounded by the holder: once the holder's lease has lapsed (it crashed or
+   * stalled), this answers nothing and recovery takes both over as before.
+   */
+  protected async waitFor(
+    occurrence: AutomationReceipt,
+    holder: AutomationReceipt,
+  ): Promise<AutomationWorkerNext | undefined> {
+    const now = this.time.nowMillis();
+    const until = holder.leaseUntil ? new Date(holder.leaseUntil).getTime() : 0;
+    if (until <= now) return;
+    const delaySeconds = Math.min(
+      30,
+      Math.max(1, Math.ceil((until - now) / 1000)),
+    );
+    const held = await this.persistence.receipts.updateMany(
+      { id: occurrence.id, version: occurrence.version, status: "ready" },
+      {
+        leaseUntil: this.time
+          .now()
+          .add(delaySeconds + 120, "seconds")
+          .toISOString(),
+      },
+    );
+    if (!held.length) return;
+    return { receiptId: occurrence.id, delaySeconds };
+  }
+
   public context(
     snapshot: AutomationRunSnapshot,
     row?: number,
@@ -405,4 +449,14 @@ export class AutomationWorker {
         : {}),
     };
   }
+}
+
+/**
+ * What the worker job runs next. `delaySeconds` is a wait for another
+ * occurrence of the same rule; otherwise the next step follows at once.
+ */
+export interface AutomationWorkerNext {
+  receiptId: string;
+  token?: string;
+  delaySeconds?: number;
 }

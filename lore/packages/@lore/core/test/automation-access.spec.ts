@@ -205,12 +205,6 @@ describe("Automation access", () => {
     });
     expect(JSON.stringify(result.data)).not.toContain("DO_NOT_DISCLOSE");
     expect(result.data.items[0]).not.toHaveProperty("rule");
-    await expect(
-      controller.getAutomationSummaries.fetch(
-        { params: { projectId: project.id }, query: { offset: 0 } },
-        { user },
-      ),
-    ).rejects.toThrow("automations");
     const admin = await entities.users.create({ roles: ["user"] });
     await createTestMember(alepha, project, admin.id, { rank: "member" });
     await expect(

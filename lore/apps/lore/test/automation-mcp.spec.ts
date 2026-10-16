@@ -433,6 +433,17 @@ describe("Automation MCP transport uses shared application policy", () => {
       value(await call("automation_variable_list", { limit: 1 })).items[0],
     ).toMatchObject(variable);
     value(
+      await call("automation_variable_set", {
+        key: "other",
+        variable: { value: { kind: "member", value: user.id } },
+      }),
+    );
+    const exact = value(
+      await call("automation_variable_list", { key: "recipient" }),
+    );
+    expect(exact.items).toHaveLength(1);
+    expect(exact.items[0]).toMatchObject({ key: "recipient" });
+    value(
       await call("automation_delete", { id: made.id, expectedRevision: 0 }),
     );
     expect(
@@ -446,6 +457,27 @@ describe("Automation MCP transport uses shared application policy", () => {
     ).toEqual({ ok: true });
   });
 
+  it("returns the created rule with the refusal when enabling it on create is refused", async ({
+    expect,
+  }) => {
+    const compatibility = { ...rule(), compatibility: "release-notifications" };
+    const made = value(
+      await call("automation_create", {
+        title: "Needs adoption",
+        rule: compatibility,
+        enabled: true,
+      }),
+    );
+    expect(made.id).toBeDefined();
+    expect(made.enabled).toBe(false);
+    expect(made.enableRefusal).toMatch(/adoption/i);
+    expect(await persistence.rules.getById(made.id)).toMatchObject({
+      enabled: false,
+    });
+    expect(
+      value(await call("automation_create", { title: "Plain", rule: rule() })),
+    ).not.toHaveProperty("enableRefusal");
+  });
   it("rejects invalid slots, foreign targets and scoped keys without the source grant", async ({
     expect,
   }) => {

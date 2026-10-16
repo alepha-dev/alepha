@@ -75,6 +75,7 @@ import { AutomationNotificationSender } from "./services/AutomationNotificationS
 import { AutomationOAuthAuthority } from "./services/AutomationOAuthAuthority.ts";
 import { AutomationOrigin } from "./services/AutomationOrigin.ts";
 import { AutomationPersistence } from "./services/AutomationPersistence.ts";
+import { AutomationProjectDeletion } from "./services/AutomationProjectDeletion.ts";
 import { AutomationRoster } from "./services/AutomationRoster.ts";
 import { AutomationRosterWorker } from "./services/AutomationRosterWorker.ts";
 import { AutomationRunEvidence } from "./services/AutomationRunEvidence.ts";
@@ -190,6 +191,8 @@ export const LoreCoreApi = $module({
     UserDeletionHook,
     OrganizationHooks,
     AutomationPersistence,
+    // Registers its project deletion step; nothing injects it.
+    AutomationProjectDeletion,
     AutomationAdoptionService,
     AutomationAudience,
     AutomationRosterWorker,

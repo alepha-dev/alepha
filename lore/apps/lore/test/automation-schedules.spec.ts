@@ -9,11 +9,12 @@ import {
   AutomationVariables,
 } from "@lore/core/api";
 import { AutomationCron, type AutomationRule } from "@lore/core/schemas";
-import { Alepha } from "alepha";
+import { $hook, $inject, Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { DatabaseProvider, sql } from "alepha/orm";
 import { CronProvider } from "alepha/scheduler";
 import type { UserAccountToken } from "alepha/security";
+import { ConflictError } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { bootLore } from "./fixtures/bootLore.ts";
@@ -24,6 +25,29 @@ import {
   createTestEpic,
 } from "./fixtures/entities.ts";
 import { ManualCronProvider } from "./fixtures/ManualCronProvider.ts";
+
+/**
+ * Moves a rule's schedule cursor between the sweep's page read and its
+ * reservation: the guard of that one reservation no longer holds.
+ */
+class CursorRace {
+  protected readonly persistence = $inject(AutomationPersistence);
+  protected readonly time = $inject(DateTimeProvider);
+  public armed = false;
+  public moved?: string;
+  protected readonly onRead = $hook({
+    on: "repository:read:after",
+    handler: async ({ tableName, entities }) => {
+      if (!this.armed || tableName !== "automations" || entities.length !== 1)
+        return;
+      this.armed = false;
+      this.moved = entities[0].id;
+      await this.persistence.rules.updateById(entities[0].id, {
+        nextRunAt: this.time.now().subtract(1, "days").toISOString(),
+      });
+    },
+  });
+}
 
 describe("Automation schedules and named selections", () => {
   let alepha: Alepha;
@@ -97,6 +121,7 @@ describe("Automation schedules and named selections", () => {
     bootLore(alepha);
     entities = alepha.inject(TestEntityRepositories);
     persistence = alepha.inject(AutomationPersistence);
+    alepha.inject(CursorRace);
     time = alepha.inject(DateTimeProvider);
     cron = alepha.inject(AutomationCron);
     await alepha.start();
@@ -146,6 +171,67 @@ describe("Automation schedules and named selections", () => {
       cron.next("*/5 * * * *", time.nowISOString()),
     );
     expect(await persistence.runs.count({ automationId: row.id })).toBe(0);
+  });
+  it("skips the one rule whose reservation guard stopped holding and claims the rest", async ({
+    expect,
+  }) => {
+    const first = await rule(config(), true);
+    const second = await rule(config(), true);
+    const race = alepha.inject(CursorRace);
+    race.armed = true;
+    const schedules = alepha.inject(AutomationSchedules);
+    expect(await schedules.sweepDetailed()).toMatchObject({
+      claimed: 1,
+      scanned: 2,
+    });
+    expect(race.moved).toBeDefined();
+    const other = race.moved === first.id ? second.id : first.id;
+    expect(
+      await persistence.receipts.count({
+        automationId: race.moved!,
+        kind: "occurrence",
+      }),
+    ).toBe(0);
+    expect(
+      await persistence.receipts.count({
+        automationId: other,
+        kind: "occurrence",
+      }),
+    ).toBe(1);
+    // The skipped rule is still due, and the next tick reserves it.
+    expect(await schedules.sweep()).toBe(1);
+  });
+  it("keeps a transient reservation failure distinct from a guard that no longer holds", async ({
+    expect,
+  }) => {
+    const row = await rule(config(), true);
+    const claims = alepha.inject(AutomationClaims);
+    const refused = await claims
+      .reserve({
+        automationId: row.id,
+        revision: row.revision,
+        source: { kind: "schedule", scheduledAt: time.nowISOString() },
+        condition: sql`1 = 0`,
+      })
+      .then(
+        () => undefined,
+        (error: unknown) => error,
+      );
+    expect(refused).toBeInstanceOf(ConflictError);
+    const failed = await claims
+      .reserve({
+        automationId: row.id,
+        revision: row.revision,
+        source: { kind: "schedule", scheduledAt: time.nowISOString() },
+        mutation: sql`INSERT INTO automation_missing_table (id) VALUES (1)`,
+      })
+      .then(
+        () => undefined,
+        (error: unknown) => error,
+      );
+    expect(failed).toBeInstanceOf(Error);
+    expect(failed).not.toBeInstanceOf(ConflictError);
+    expect(await persistence.receipts.count({ automationId: row.id })).toBe(0);
   });
   it("uses fair indexed 50-rule pages across simultaneous sweeps and prevents overlap", async ({
     expect,

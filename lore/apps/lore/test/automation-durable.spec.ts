@@ -8,10 +8,11 @@ import {
   AutomationPersistence,
   AutomationRoster,
   AutomationRunEvidence,
+  AutomationWorker,
   AutomationWorkerJobs,
 } from "@lore/core/api";
 import type { AutomationRule } from "@lore/core/schemas";
-import { Alepha, AlephaError } from "alepha";
+import { $hook, Alepha, AlephaError } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { DatabaseProvider, sql } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
@@ -23,6 +24,21 @@ import {
   createTestProject,
 } from "./fixtures/entities.ts";
 
+/**
+ * Lands a second writer on a receipt between a lease read and its write, once.
+ */
+class ReceiptRace {
+  public next?: () => Promise<unknown>;
+  protected readonly onRead = $hook({
+    on: "repository:read:after",
+    handler: async ({ tableName }) => {
+      if (tableName !== "automation_receipts" || !this.next) return;
+      const run = this.next;
+      this.next = undefined;
+      await run();
+    },
+  });
+}
 class DeferredEventDispatch {}
 class DeferredWorkerJobs {}
 
@@ -61,8 +77,8 @@ describe("Durable automation dispatch", () => {
     });
     return persistence.rules.updateById(row.id, { enabled: true });
   };
-  const createEvent = async (identity: string = crypto.randomUUID()) =>
-    events.transition({
+  const createEvent = async (identity: string = crypto.randomUUID()) => {
+    const source = await events.transition({
       projectId: project.id,
       name: "feedback.created",
       identity,
@@ -71,6 +87,9 @@ describe("Durable automation dispatch", () => {
       mutation: sql`INSERT INTO automation_test_source (id, value) VALUES (${identity}, 1) RETURNING id`,
       changedTables: ["automation_test_source"],
     });
+    if (!source.event) throw new AlephaError("Expected a recorded event");
+    return { ...source, event: source.event };
+  };
   const prepare = async (
     rule: Awaited<ReturnType<typeof createRule>>,
     event: Awaited<ReturnType<typeof createEvent>>["event"],
@@ -134,6 +153,7 @@ describe("Durable automation dispatch", () => {
     alepha.with({ provide: AutomationWorkerJobs, use: DeferredWorkerJobs });
     bootLore(alepha, ["api"]);
     entities = alepha.inject(TestEntityRepositories);
+    alepha.inject(ReceiptRace);
     persistence = alepha.inject(AutomationPersistence);
     events = alepha.inject(AutomationEvents);
     claims = alepha.inject(AutomationClaims);
@@ -226,6 +246,33 @@ describe("Durable automation dispatch", () => {
     expect(
       (await persistence.events.getById(source.event.id)).payload.fields,
     ).toEqual({});
+  });
+
+  it("waits a ready occurrence out in short delays while its rule is busy, without evaluating it", async ({
+    expect,
+  }) => {
+    const rule = await createRule();
+    const busy = await claim(rule, (await createEvent()).event);
+    const second = await createEvent();
+    const ready = await claims.reserve({
+      automationId: rule.id,
+      revision: 0,
+      source: { kind: "event", eventId: second.event.id },
+    });
+    const worker = alepha.inject(AutomationWorker);
+    const waiting = await worker.step({ receiptId: ready.id });
+    expect(waiting).toMatchObject({ receiptId: ready.id });
+    expect(waiting?.token).toBeUndefined();
+    expect(waiting?.delaySeconds).toBeGreaterThan(0);
+    expect(waiting?.delaySeconds).toBeLessThanOrEqual(30);
+    const held = await persistence.receipts.getById(ready.id);
+    expect(held.status).toBe("ready");
+    expect(held.leaseUntil! > busy.leaseUntil!).toBe(true);
+    // Only the busy occurrence has a run: the waiting one was not evaluated.
+    expect(await persistence.runs.count()).toBe(1);
+    // A holder whose lease lapsed is recovery's to resolve, not a wait.
+    await expire(busy.id);
+    expect(await worker.step({ receiptId: ready.id })).toBeUndefined();
   });
 
   it("reserves durable source intent before evaluation and recovers it after dispatcher exit", async ({
@@ -702,6 +749,25 @@ describe("Durable automation dispatch", () => {
       (await persistence.receipts.getById(occurrence.id)).snapshot,
     ).toBeUndefined();
   }, 120_000);
+
+  it("renews a lease by compare-and-set and refuses one a concurrent write moved", async ({
+    expect,
+  }) => {
+    const rule = await createRule();
+    const source = await createEvent();
+    const occurrence = await claim(rule, source.event);
+    const renewed = await claims.renew(occurrence.id, occurrence.leaseToken!);
+    expect(renewed.version).toBe(occurrence.version + 1);
+    alepha.inject(ReceiptRace).next = () =>
+      persistence.receipts.updateById(occurrence.id, { queueAttempts: 7 });
+    await expect(
+      claims.renew(occurrence.id, occurrence.leaseToken!),
+    ).rejects.toThrow("no longer current");
+    expect(await persistence.receipts.getById(occurrence.id)).toMatchObject({
+      queueAttempts: 7,
+      version: renewed.version + 1,
+    });
+  });
 
   it("retains receipts after detail pruning and refuses expired replay after receipt pruning", async ({
     expect,

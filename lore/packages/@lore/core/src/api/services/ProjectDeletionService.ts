@@ -53,7 +53,14 @@ export class ProjectDeletionService {
     options: { force?: boolean } = {},
   ): Promise<{ id: number; title: string } | undefined> {
     const project = await this.projects.findById(projectId);
+    const steps = [...this.steps].sort((a, b) => a.order - b.order);
+    const context = { force: options.force === true };
     await this.freeSlug(projectId);
+    // Children the cascade cannot remove on its own: a restrictive foreign
+    // key between two of the project's own tables refuses the row delete.
+    for (const step of steps.filter((step) => step.before)) {
+      await step.run(projectId, context);
+    }
     await this.projects.deleteById(projectId, { force: options.force });
     if (project?.organizationId) {
       await this.organizationMembers.deleteMany({
@@ -62,8 +69,8 @@ export class ProjectDeletionService {
     }
     // What each module deletes explicitly rather than leaving to a database
     // cascade (#E75, #Q2623): Work's quests.
-    for (const step of [...this.steps].sort((a, b) => a.order - b.order)) {
-      await step.run(projectId);
+    for (const step of steps.filter((step) => !step.before)) {
+      await step.run(projectId, context);
     }
     return project ? { id: project.id, title: project.title } : undefined;
   }
@@ -102,5 +109,15 @@ export class ProjectDeletionService {
  */
 export interface ProjectDeletionStep {
   order: number;
-  run: (projectId: number) => Promise<void>;
+  /**
+   * Runs before the project row is removed instead of after it, for rows a
+   * database cascade would refuse to remove (a restrictive foreign key
+   * between two tables the project cascades into).
+   */
+  before?: boolean;
+  /**
+   * `force` is the row delete's own: true removes the project row, false
+   * only soft-deletes it, and nothing cascades.
+   */
+  run: (projectId: number, options: { force: boolean }) => Promise<void>;
 }

@@ -1,8 +1,14 @@
 import { $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { $repository, DbCacheProvider, sql } from "alepha/orm";
+import { $logger } from "alepha/logger";
+import { $repository, DbCacheProvider, DbError, sql } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
-import { BadRequestError, ConflictError, ForbiddenError } from "alepha/server";
+import {
+  BadRequestError,
+  ConflictError,
+  ForbiddenError,
+  isHttpError,
+} from "alepha/server";
 
 import {
   automationAdoptions,
@@ -28,6 +34,7 @@ import { AutomationService } from "./AutomationService.ts";
  * A named caller consents. Disabled preparation is resumable; enable and cutover share one native batch.
  */
 export class AutomationAdoptionService {
+  protected readonly log = $logger();
   protected readonly audit = $inject(AutomationMutationAudit);
   protected readonly users = $repository(users);
   protected readonly access = $inject(AutomationAccess);
@@ -79,10 +86,17 @@ export class AutomationAdoptionService {
         await this.validate(projectId, policy, user);
         details = await definition.preview(projectId, user.id);
       } catch (error) {
-        reason =
-          error instanceof Error
-            ? error.message
-            : "Policy adoption is unavailable";
+        reason = this.refusal(error);
+        if (!reason) {
+          // Not a refusal written for the caller: a driver or programming
+          // error whose message is not theirs to read. Logged, not shown.
+          this.log.warn("Automation adoption preview failed", {
+            projectId,
+            policy,
+            error,
+          });
+          reason = "Policy adoption is unavailable right now; try again later";
+        }
       }
       return automationAdoptionPreviewSchema.parse({
         policy,
@@ -125,6 +139,17 @@ export class AutomationAdoptionService {
         ...details,
       });
     });
+  }
+  /**
+   * The message of a refusal written for the caller (a 4xx HTTP error that
+   * is not a database error), or undefined for anything else.
+   */
+  protected refusal(error: unknown): string | undefined {
+    return isHttpError(error) &&
+      error.status < 500 &&
+      !(error instanceof DbError)
+      ? error.message
+      : undefined;
   }
   protected async validate(
     projectId: number,

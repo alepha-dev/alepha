@@ -4,9 +4,10 @@ import { DbCacheProvider, sql, type SQLLike } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 import { ConflictError, NotFoundError, ForbiddenError } from "alepha/server";
 
+import type { AutomationRun } from "../entities/automationRuns.ts";
 import { automations, type Automation } from "../entities/automations.ts";
 import type { AutomationVariable } from "../entities/automationVariables.ts";
-import { users } from "../entities/users.ts";
+import { users, type User } from "../entities/users.ts";
 import { AutomationCron } from "../schemas/AutomationCron.ts";
 import {
   automationListQuerySchema,
@@ -28,7 +29,10 @@ import {
 import { AutomationAccess } from "./AutomationAccess.ts";
 import { AutomationApprovalFence } from "./AutomationApprovalFence.ts";
 import { AutomationBatchRepository } from "./AutomationBatchRepository.ts";
-import { AutomationCatalog } from "./AutomationCatalog.ts";
+import {
+  AutomationCatalog,
+  type AutomationCatalogContext,
+} from "./AutomationCatalog.ts";
 import { AutomationConfigurationWrites } from "./AutomationConfigurationWrites.ts";
 import { AutomationDatabase } from "./AutomationDatabase.ts";
 import { AutomationEvaluator } from "./AutomationEvaluator.ts";
@@ -39,6 +43,7 @@ import { AutomationNotificationOutbox } from "./AutomationNotificationOutbox.ts"
 import { AutomationPersistence } from "./AutomationPersistence.ts";
 import { AutomationRunEvidence } from "./AutomationRunEvidence.ts";
 import { AutomationVariables } from "./AutomationVariables.ts";
+import { BoundParameters } from "./BoundParameters.ts";
 
 /**
  * The single application boundary for HTTP, MCP and trusted preset creation.
@@ -62,6 +67,7 @@ export class AutomationService {
   protected readonly audit = $inject(AutomationMutationAudit);
   protected readonly guards = $inject(AutomationGuards);
   protected readonly cron = $inject(AutomationCron);
+  protected readonly bounds = $inject(BoundParameters);
   protected readonly time = $inject(DateTimeProvider);
 
   public async create(
@@ -331,10 +337,12 @@ export class AutomationService {
         user,
         enabled ? "enable" : "disable",
       );
+      const updated = await this.persistence.rules.getById(id);
       return this.resource(
-        await this.persistence.rules.getById(id),
+        updated,
         user,
-        context.permissions,
+        context,
+        await this.lookups(projectId, [updated]),
       );
     });
   }
@@ -364,7 +372,12 @@ export class AutomationService {
         user,
         "automation:read",
       );
-      return this.resource(rule, user, context.permissions);
+      return this.resource(
+        rule,
+        user,
+        context,
+        await this.lookups(rule.projectId, [rule]),
+      );
     });
   }
   public async list(
@@ -382,7 +395,7 @@ export class AutomationService {
       const rows = await this.persistence.rules.findMany({
         where: {
           projectId,
-          ...(query.search ? { title: { ilike: `%${query.search}%` } } : {}),
+          ...(query.search ? { title: { contains: query.search } } : {}),
           ...(query.authorUserId ? { authorUserId: query.authorUserId } : {}),
           ...(query.state === "disabled"
             ? { enabled: false }
@@ -397,9 +410,13 @@ export class AutomationService {
         offset: query.offset,
         limit: query.limit + 1,
       });
+      // Authorized once above; the per-row reads (authors, shared values,
+      // adoption markers) are batched for the whole page.
+      const page = rows.slice(0, query.limit);
+      const lookups = await this.lookups(projectId, page);
       const items = [];
-      for (const rule of rows.slice(0, query.limit))
-        items.push(await this.resource(rule, user, context.permissions));
+      for (const rule of page)
+        items.push(await this.resource(rule, user, context, lookups));
       return {
         items,
         hasMore: rows.length > query.limit,
@@ -417,7 +434,11 @@ export class AutomationService {
   ) {
     return this.database.primary(async () => {
       const rule = await this.stored(projectId, id, true);
-      await this.access.assert(rule.projectId, user, "automation:read");
+      const context = await this.access.authorize(
+        rule.projectId,
+        user,
+        "automation:read",
+      );
       const query = automationPageQuerySchema.parse(input);
       const rows = await this.persistence.runs.findMany({
         where: { automationId: id },
@@ -428,9 +449,11 @@ export class AutomationService {
         offset: query.offset,
         limit: query.limit + 1,
       });
+      // Authorized once for the page, with the rule already in hand: each
+      // row is redacted against that one context instead of re-authorizing.
       const items = [];
       for (const run of rows.slice(0, query.limit))
-        items.push(await this.run(projectId, run.id, user));
+        items.push(await this.runResource(run, context, rule));
       return {
         items,
         hasMore: rows.length > query.limit,
@@ -441,9 +464,22 @@ export class AutomationService {
     });
   }
   public async run(projectId: number, id: string, user: UserAccountToken) {
-    await this.access.assert(projectId, user, "automation:read");
-    await this.persistence.runs.getOne({ where: { id, projectId } });
-    const run = await this.evidence.read(id, user);
+    const context = await this.access.authorize(
+      projectId,
+      user,
+      "automation:read",
+    );
+    return this.runResource(
+      await this.persistence.runs.getOne({ where: { id, projectId } }),
+      context,
+    );
+  }
+  protected async runResource(
+    stored: AutomationRun,
+    context: AutomationCatalogContext,
+    rule?: Automation,
+  ) {
+    const run = await this.evidence.readIn(stored, context, rule);
     // Read delivery evidence only after current source and variable access
     // has authorized the immutable run payload.
     const enqueues = (run.snapshot?.actions ?? [])
@@ -595,46 +631,82 @@ export class AutomationService {
     await this.cache.invalidateTable("audits");
     await this.audit.activity(rule.projectId, user, action);
   }
+  /**
+   * What {@link AutomationService.resource} reads beyond the rule, fetched
+   * once for a page of rules of one project: their authors, the shared
+   * values they reference, and which compatibility rules are adopted.
+   */
+  protected async lookups(
+    projectId: number,
+    rules: Automation[],
+  ): Promise<AutomationResourceLookups> {
+    const authorIds = [...new Set(rules.map((rule) => rule.authorUserId))];
+    const keys = [
+      ...new Set(
+        rules.flatMap((rule) => [...this.variables.references(rule.rule)]),
+      ),
+    ];
+    const compatible = rules
+      .filter((rule) => rule.rule.compatibility)
+      .map((rule) => rule.id);
+    const authors = await this.bounds.collect(authorIds, (ids) =>
+      this.userRows.findMany({
+        where: { id: { inArray: ids } },
+        columns: ["id", "firstName", "lastName", "username"],
+        limit: ids.length,
+      }),
+    );
+    const values = await this.bounds.collect(keys, (batch) =>
+      this.persistence.variables.findMany({
+        where: { projectId, key: { inArray: batch } },
+        limit: batch.length,
+      }),
+    );
+    const adopted = await this.bounds.collect(compatible, (ids) =>
+      this.persistence.adoptions.findMany({
+        where: { projectId, automationId: { inArray: ids }, state: "adopted" },
+        columns: ["automationId", "policy"],
+        limit: ids.length * 2,
+      }),
+    );
+    return {
+      authors: new Map(authors.map((author) => [author.id, author])),
+      variables: new Map(values.map((value) => [value.key, value])),
+      adopted: new Set(
+        adopted.map((row) => `${row.automationId}:${row.policy}`),
+      ),
+      inspected: new Map(),
+    };
+  }
   protected async resource(
     rule: Automation,
     user: UserAccountToken,
-    permissions: string[],
+    context: AutomationCatalogContext,
+    lookups: AutomationResourceLookups,
   ) {
-    let reason: string | undefined;
-    try {
-      reason = await this.catalog.sourceAvailability(
-        rule.projectId,
-        user,
-        rule.rule,
-      );
-    } catch (error) {
-      if (!(error instanceof ForbiddenError)) throw error;
-      reason = "Current source access is unavailable";
-    }
+    const permissions = context.permissions;
+    // A context authorized for write or manage (an enable switch) may lack
+    // read, which is what the source checks below are relative to.
+    let reason = permissions.includes("automation:read")
+      ? this.catalog.sourceAvailabilityIn(context, rule.rule)
+      : "Current source access is unavailable";
     if (!reason) {
-      const keys = [...this.variables.references(rule.rule)];
-      const values = keys.length
-        ? await this.persistence.variables.findMany({
-            where: { projectId: rule.projectId, key: { inArray: keys } },
-            limit: 64,
-          })
-        : [];
-      for (const value of values)
-        if (
-          !(await this.catalog.inspectVariable(rule.projectId, user, value))
-            .available
-        ) {
+      for (const key of this.variables.references(rule.rule)) {
+        const value = lookups.variables.get(key);
+        if (!value) continue;
+        let available = lookups.inspected.get(value.id);
+        if (available === undefined) {
+          available = (await this.catalog.inspectVariableIn(context, value))
+            .available;
+          lookups.inspected.set(value.id, available);
+        }
+        if (!available) {
           reason = "Variable source access is unavailable";
           break;
         }
+      }
     }
-    const author = (
-      await this.userRows.findMany({
-        where: { id: rule.authorUserId },
-        columns: ["id", "firstName", "lastName", "username"],
-        limit: 1,
-      })
-    )[0];
+    const author = lookups.authors.get(rule.authorUserId);
     const last = (
       await this.persistence.runs.findMany({
         where: { automationId: rule.id, occurrenceId: { notLike: "health:%" } },
@@ -704,18 +776,28 @@ export class AutomationService {
         own &&
         write &&
         (!rule.rule.compatibility ||
-          !!(await this.persistence.adoptions.findOne({
-            where: {
-              projectId: rule.projectId,
-              policy: rule.rule.compatibility,
-              automationId: rule.id,
-              state: "adopted",
-            },
-          }))),
+          lookups.adopted.has(`${rule.id}:${rule.rule.compatibility}`)),
       canDisable: (own && write) || manage,
       canDelete: (own && write) || manage,
     });
   }
+}
+
+export interface AutomationResourceLookups {
+  authors: Map<
+    string,
+    Pick<User, "id" | "firstName" | "lastName" | "username">
+  >;
+  variables: Map<string, AutomationVariable>;
+  /**
+   * `automationId:policy` of each adopted compatibility rule on the page.
+   */
+  adopted: Set<string>;
+  /**
+   * Whether each shared value is available to the caller, by variable id,
+   * memoised across the rows of one page.
+   */
+  inspected: Map<string, boolean>;
 }
 
 export interface AutomationConfigurationExtension {

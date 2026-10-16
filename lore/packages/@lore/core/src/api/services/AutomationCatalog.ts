@@ -329,6 +329,18 @@ export class AutomationCatalog {
       user,
       "automation:read",
     );
+    return this.sourceAvailabilityIn(context, rule);
+  }
+
+  /**
+   * {@link AutomationCatalog.sourceAvailability} under a context the caller
+   * already authorized for `automation:read` in the rule's project, so a
+   * page of rules or runs authorizes once rather than once per row.
+   */
+  public sourceAvailabilityIn(
+    context: AutomationCatalogContext,
+    rule: AutomationRule,
+  ): string | undefined {
     const key =
       rule.trigger.kind === "event" ? rule.trigger.event : rule.select!.key;
     const entry = this.entries().find((item) => item.key === key);
@@ -520,6 +532,17 @@ export class AutomationCatalog {
     return this.variable(context, row);
   }
 
+  /**
+   * {@link AutomationCatalog.inspectVariable} under a context the caller
+   * already authorized for `automation:read` in the variable's project.
+   */
+  public inspectVariableIn(
+    context: AutomationCatalogContext,
+    row: AutomationVariable,
+  ) {
+    return this.variable(context, row);
+  }
+
   protected async variable(
     context: AutomationCatalogContext,
     row: AutomationVariable,
@@ -656,7 +679,7 @@ export class AutomationCatalog {
   }
 }
 
-type AutomationCatalogContext = Awaited<
+export type AutomationCatalogContext = Awaited<
   ReturnType<AutomationAccess["authorize"]>
 >;
 type AutomationVariableMap = Map<

@@ -43,7 +43,11 @@ export class AutomationOrigin {
         )
       : await handler();
   }
-  public async prune(): Promise<number> {
+  /**
+   * Deletes expired origin markers whose job execution is gone, page by page
+   * until a page comes back short, at most `pages` pages per call.
+   */
+  public async prune(pages = 20): Promise<number> {
     return this.database.primary(async () => {
       const now = this.time.nowISOString();
       const orphaned = this.jobs.subquery({
@@ -54,19 +58,24 @@ export class AutomationOrigin {
         replayUntil: { lt: now },
         notExists: orphaned,
       };
-      const rows = await this.persistence.receipts.findMany({
-        where,
-        columns: ["id"],
-        orderBy: "replayUntil",
-        limit: 50,
-      });
-      if (!rows.length) return 0;
-      return (
-        await this.persistence.receipts.deleteMany({
-          ...where,
-          id: { inArray: rows.map((row) => row.id) },
-        })
-      ).length;
+      let pruned = 0;
+      for (let page = 0; page < pages; page++) {
+        const rows = await this.persistence.receipts.findMany({
+          where,
+          columns: ["id"],
+          orderBy: "replayUntil",
+          limit: 50,
+        });
+        if (!rows.length) break;
+        pruned += (
+          await this.persistence.receipts.deleteMany({
+            ...where,
+            id: { inArray: rows.map((row) => row.id) },
+          })
+        ).length;
+        if (rows.length < 50) break;
+      }
+      return pruned;
     });
   }
   protected marker(executionId: string) {

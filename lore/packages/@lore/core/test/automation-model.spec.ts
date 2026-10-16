@@ -14,6 +14,7 @@ import {
   type AutomationRunSnapshot,
 } from "../src/api/schemas/automationRunSnapshotSchema.ts";
 import { AutomationPersistence } from "../src/api/services/AutomationPersistence.ts";
+import { ProjectDeletionService } from "../src/api/services/ProjectDeletionService.ts";
 import {
   CoreTestEntities,
   createTestMember,
@@ -170,7 +171,7 @@ describe("Automation persistence", () => {
     ).rejects.toThrow();
     await expect(
       alepha.events.emit("user:delete:before", { userId: member.userId }),
-    ).rejects.toThrow("authored automations");
+    ).rejects.toThrow("authored automation(s)");
     await persistence.rules.deleteById(rule.id);
     expect(await persistence.rules.findById(rule.id)).toBeUndefined();
     expect((await persistence.runs.getById(run.id)).snapshot).toEqual(
@@ -180,11 +181,162 @@ describe("Automation persistence", () => {
       entities.users.deleteById(member.userId, { force: true }),
     ).rejects.toThrow();
     expect(await entities.users.findById(member.userId)).toBeDefined();
-    await expect(
-      alepha.events.emit("user:delete:before", { userId: member.userId }),
-    ).rejects.toThrow("authored automations");
-    await entities.projects.deleteById(project.id, { force: true });
+    // Only a live rule refuses the account. A soft-deleted one, which
+    // nothing else ever removes, goes with its history at account deletion.
+    await alepha.events.emit("user:delete:before", { userId: member.userId });
     expect(await persistence.runs.findById(run.id)).toBeUndefined();
+    expect(
+      await persistence.rules.findById(rule.id, { force: true }),
+    ).toBeUndefined();
+    await entities.users.deleteById(member.userId, { force: true });
+    expect(await entities.users.findById(member.userId)).toBeUndefined();
+  });
+
+  it("purges a departing author's deleted rules with their runs, receipts and markers, and only theirs", async ({
+    expect,
+  }) => {
+    const project = await createTestProject(alepha);
+    const author = await entities.users.create({});
+    const now = alepha.inject(DateTimeProvider).now().toISOString();
+    const later = alepha
+      .inject(DateTimeProvider)
+      .now()
+      .add(90, "days")
+      .toISOString();
+    const seed = async (authorUserId: string, title: string) => {
+      const rule = await persistence.rules.create({
+        projectId: project.id,
+        authorUserId,
+        title,
+        rule: eventRule(),
+      });
+      const run = await persistence.runs.create({
+        projectId: project.id,
+        automationId: rule.id,
+        ruleRevision: 0,
+        occurrenceId: `occurrence:${title}`,
+        triggeredAt: now,
+        status: "succeeded",
+        snapshot: snapshot(eventRule()),
+        finishedAt: now,
+      });
+      const receipt = await persistence.receipts.create({
+        id: `receipt:${title}`,
+        identity: `receipt:${title}`,
+        projectId: project.id,
+        automationId: rule.id,
+        kind: "occurrence",
+        status: "committed",
+        occurrenceId: `occurrence:${title}`,
+        ruleRevision: 0,
+        occurredAt: now,
+        replayUntil: later,
+      });
+      return { rule, run, receipt };
+    };
+    const departing = await seed(author.id, "departing");
+    const kept = await seed(project.createdBy, "kept");
+    await persistence.adoptions.create({
+      id: crypto.randomUUID(),
+      projectId: project.id,
+      policy: "quest-reminders",
+      automationId: departing.rule.id,
+      authorUserId: author.id,
+      state: "adopted",
+      adoptedAt: now,
+    });
+    await expect(
+      alepha.events.emit("user:delete:before", { userId: author.id }),
+    ).rejects.toThrow("Delete your 1 authored automation(s)");
+    expect(await persistence.runs.findById(departing.run.id)).toBeDefined();
+    await persistence.rules.deleteById(departing.rule.id);
+    await persistence.rules.deleteById(kept.rule.id);
+    await alepha.events.emit("user:delete:before", { userId: author.id });
+    expect(
+      await persistence.rules.findById(departing.rule.id, { force: true }),
+    ).toBeUndefined();
+    expect(await persistence.runs.findById(departing.run.id)).toBeUndefined();
+    expect(
+      await persistence.receipts.findById(departing.receipt.id),
+    ).toBeUndefined();
+    expect(await persistence.adoptions.count({ projectId: project.id })).toBe(
+      0,
+    );
+    await entities.users.deleteById(author.id, { force: true });
+    // Another author's deleted rule keeps its retained history.
+    expect(
+      await persistence.rules.findById(kept.rule.id, { force: true }),
+    ).toBeDefined();
+    expect(await persistence.runs.findById(kept.run.id)).toBeDefined();
+    expect(await persistence.receipts.findById(kept.receipt.id)).toBeDefined();
+  });
+
+  it("hard-deletes a project whose automations carry runs, receipts and adoption markers", async ({
+    expect,
+  }) => {
+    const project = await createTestProject(alepha);
+    const now = alepha.inject(DateTimeProvider).now().toISOString();
+    const rule = await persistence.rules.create({
+      projectId: project.id,
+      authorUserId: project.createdBy,
+      title: "Project rule",
+      rule: eventRule(),
+    });
+    const run = await persistence.runs.create({
+      projectId: project.id,
+      automationId: rule.id,
+      ruleRevision: 0,
+      occurrenceId: "occurrence:project",
+      triggeredAt: now,
+      status: "succeeded",
+      snapshot: snapshot(eventRule()),
+      finishedAt: now,
+    });
+    await persistence.receipts.create({
+      id: "receipt:project",
+      identity: "receipt:project",
+      projectId: project.id,
+      automationId: rule.id,
+      kind: "occurrence",
+      status: "committed",
+      occurrenceId: "occurrence:project",
+      ruleRevision: 0,
+      occurredAt: now,
+      replayUntil: now,
+    });
+    await persistence.adoptions.create({
+      id: crypto.randomUUID(),
+      projectId: project.id,
+      policy: "release-notifications",
+      automationId: rule.id,
+      authorUserId: project.createdBy,
+      state: "adopted",
+      adoptedAt: now,
+    });
+    const other = await createTestProject(alepha);
+    const kept = await persistence.rules.create({
+      projectId: other.id,
+      authorUserId: other.createdBy,
+      title: "Other rule",
+      rule: eventRule(),
+    });
+    await alepha
+      .inject(ProjectDeletionService)
+      .deleteProject(project.id, { force: true });
+    expect(
+      await entities.projects.findById(project.id, { force: true }),
+    ).toBeUndefined();
+    expect(
+      await persistence.rules.findById(rule.id, { force: true }),
+    ).toBeUndefined();
+    expect(await persistence.runs.findById(run.id)).toBeUndefined();
+    expect(
+      await persistence.receipts.findById("receipt:project"),
+    ).toBeUndefined();
+    expect(await persistence.adoptions.count({ projectId: project.id })).toBe(
+      0,
+    );
+    expect(await persistence.rules.findById(kept.id)).toBeDefined();
   });
 
   it.for(["rows", "scalar", "collection"] as const)(

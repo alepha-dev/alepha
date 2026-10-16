@@ -1,7 +1,13 @@
 import { $inject, Alepha } from "alepha";
+import { $logger } from "alepha/logger";
 import { $tool } from "alepha/mcp";
 import { currentUserAtom } from "alepha/security";
-import { BadRequestError, UnauthorizedError, okSchema } from "alepha/server";
+import {
+  BadRequestError,
+  UnauthorizedError,
+  isHttpError,
+  okSchema,
+} from "alepha/server";
 
 import { automationAdoptionPreviewSchema } from "../../api/schemas/automationAdoptionPreviewSchema.ts";
 import { automationCatalogSchema } from "../../api/schemas/automationCatalogSchema.ts";
@@ -18,6 +24,7 @@ import { AutomationVariableService } from "../../api/services/AutomationVariable
 import { automationAdoptionPreviewParamsSchema } from "../schemas/automationAdoptionPreviewParamsSchema.ts";
 import { automationAdoptParamsSchema } from "../schemas/automationAdoptParamsSchema.ts";
 import { automationCreateParamsSchema } from "../schemas/automationCreateParamsSchema.ts";
+import { automationCreateResultSchema } from "../schemas/automationCreateResultSchema.ts";
 import { automationDeleteParamsSchema } from "../schemas/automationDeleteParamsSchema.ts";
 import { automationGetParamsSchema } from "../schemas/automationGetParamsSchema.ts";
 import { automationListParamsSchema } from "../schemas/automationListParamsSchema.ts";
@@ -37,6 +44,7 @@ import { ProjectTools } from "./ProjectTools.ts";
  */
 export class AutomationTools {
   protected readonly alepha = $inject(Alepha);
+  protected readonly log = $logger();
   protected readonly projects = $inject(ProjectTools);
   protected readonly service = $inject(AutomationService);
   protected readonly adoption = $inject(AutomationAdoptionService);
@@ -88,10 +96,10 @@ export class AutomationTools {
   });
   automation_create = $tool({
     description:
-      "Create a typed automation as yourself. Discover slots with automation_catalog. New rules are disabled unless enabled=true is explicitly requested and validated. The author and credential are immutable. No AI executes inside a rule.",
+      "Create a typed automation as yourself. Discover slots with automation_catalog. The rule is always created disabled; with enabled=true the tool then enables it in a second, validated step. If that step is refused, the created rule is still returned, disabled, with enableRefusal saying why: fix the cause, then enable it with automation_update (enabled=true, expectedRevision). The author and credential are immutable. No AI executes inside a rule.",
     schema: {
       params: automationCreateParamsSchema,
-      result: automationResourceSchema,
+      result: automationCreateResultSchema,
     },
     handler: async ({ params }) => {
       const projectId = await this.project(params);
@@ -100,9 +108,30 @@ export class AutomationTools {
         title: params.title,
         rule: params.rule,
       });
-      return params.enabled
-        ? this.service.setEnabled(projectId, rule.id, user, true, rule.revision)
-        : rule;
+      if (!params.enabled) return rule;
+      try {
+        return await this.service.setEnabled(
+          projectId,
+          rule.id,
+          user,
+          true,
+          rule.revision,
+        );
+      } catch (error) {
+        // The rule exists: answering only the error would lose its id, and a
+        // retry of the create would make a second one.
+        if (isHttpError(error) && error.status < 500)
+          return { ...rule, enableRefusal: error.message.slice(0, 1024) };
+        this.log.warn("automation_create: enable failed after create", {
+          automationId: rule.id,
+          error,
+        });
+        return {
+          ...rule,
+          enableRefusal:
+            "Enabling failed; the rule was created disabled. Retry with automation_update.",
+        };
+      }
     },
   });
   automation_list = $tool({
@@ -166,7 +195,7 @@ export class AutomationTools {
   });
   automation_delete = $tool({
     description:
-      "Soft-delete your automation, or stop another author's rule with automation:manage, using expectedRevision. Retained run history survives; queued effects stop.",
+      "Soft-delete an automation using expectedRevision: your own with automation:write, or another author's with automation:manage. This deletes the rule, it does not pause it: to stop a rule and keep it, call automation_update with enabled=false. Retained run history survives; queued effects stop.",
     annotations: { destructiveHint: true },
     schema: { params: automationDeleteParamsSchema, result: okSchema },
     handler: async ({ params }) => {
@@ -196,7 +225,7 @@ export class AutomationTools {
   });
   automation_variable_list = $tool({
     description:
-      "List project variables with typed values, immutable identities and versions. Values requiring unavailable source access are redacted. Use automation_variable_dependents to inspect usage before editing or deleting.",
+      "List project variables with typed values, immutable identities and versions, optionally narrowed to one exact key. Values requiring unavailable source access are redacted. Use automation_variable_dependents to inspect usage before editing or deleting.",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
       params: automationVariableListParamsSchema,
@@ -206,6 +235,7 @@ export class AutomationTools {
       this.variables.list(await this.project(params), this.user(), {
         offset: params.offset,
         limit: params.limit,
+        ...(params.key === undefined ? {} : { key: params.key }),
       }),
   });
   automation_variable_dependents = $tool({
@@ -256,7 +286,7 @@ export class AutomationTools {
   });
   automation_catalog = $tool({
     description:
-      "Discover the current authorized automation vocabulary: typed event, selection, metric and action slots; fields, cardinalities, operators, required capabilities and permissions; configured channels, shared variables, seven preset setups and execution limits. Unavailable entries explain why.",
+      "Discover the current authorized automation vocabulary: typed event, selection, metric and action slots; fields, cardinalities, operators, required capabilities and permissions; configured channels, shared variables, the preset setups offered in this project and execution limits. Unavailable entries explain why. Presets are listed for reference: they are applied from the web gallery, while MCP composes the equivalent four-slot rule with automation_create.",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
       params: projectParamsSchema.strict(),

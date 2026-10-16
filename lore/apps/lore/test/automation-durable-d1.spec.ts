@@ -27,7 +27,7 @@ import {
 import type { AutomationRule } from "@lore/core/schemas";
 import { FolioController } from "@lore/knowledge/api";
 import { FeedbackController } from "@lore/work/api";
-import { Alepha } from "alepha";
+import { Alepha, AlephaError } from "alepha";
 import { JobProvider } from "alepha/api/jobs";
 import { NotificationInboxRecipientProvider } from "alepha/api/notifications";
 import { DateTimeProvider } from "alepha/datetime";
@@ -220,6 +220,7 @@ describe("Durable automation primitives on local D1", () => {
         mutation: sql`INSERT INTO automation_d1_effects VALUES ('source', 1) RETURNING id`,
         changedTables: ["automation_d1_effects"],
       });
+      if (!source.event) throw new AlephaError("Expected a recorded event");
       expect(source.event.payload.fields).toEqual({ title: "Safe" });
       const prepared = await evidence.prepare({
         rule: enabled,
