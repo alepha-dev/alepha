@@ -141,7 +141,12 @@ export class DeployRegistry {
       return;
     }
     try {
-      const row = await this.rows.findById(deploymentId);
+      // Only what the append needs, by primary key (#Q2682).
+      const [row] = await this.rows.findMany({
+        columns: ["log", "startedAt"],
+        where: { id: { eq: deploymentId } },
+        limit: 1,
+      });
       if (!row) {
         return;
       }

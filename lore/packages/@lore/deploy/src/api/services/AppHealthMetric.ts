@@ -73,7 +73,9 @@ export class AppHealthMetric implements DashboardMetricResolver {
       }
       const [apps, recent] = await Promise.all([
         this.sigils.findMany({ where: { projectId: { eq: project.id } } }),
+        // Never `log`, which holds a whole deploy log per row (#Q2682).
         this.deployments.findMany({
+          columns: ["instanceId", "status", "tag"],
           where: { projectId: { eq: project.id } },
           orderBy: [{ column: "createdAt", direction: "desc" }],
           limit: 100,

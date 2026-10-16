@@ -75,7 +75,9 @@ export class ErrorTrendMetric implements DashboardMetricResolver {
           groupBy: ["day"],
           select: { count: "sum" },
         }),
+        // Never `log`, which holds a whole deploy log per row (#Q2682).
         this.deployments.findMany({
+          columns: ["createdAt", "finishedAt"],
           where: {
             projectId: { eq: project.id },
             status: { eq: "succeeded" },

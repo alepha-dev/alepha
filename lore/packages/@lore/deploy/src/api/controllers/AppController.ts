@@ -541,45 +541,78 @@ export class AppController {
       ...new Set(rows.flatMap((row) => (row.estateId ? [row.estateId] : []))),
     ];
 
-    const [sigilRows, estateRows, deployedRows] = await Promise.all([
+    const [sigilRows, estateRows, deployedTags] = await Promise.all([
       sigilIds.length
         ? this.sigils.findMany({ where: { id: { inArray: sigilIds } } })
         : Promise.resolve([]),
       estateIds.length
         ? this.estates.findMany({ where: { id: { inArray: estateIds } } })
         : Promise.resolve([]),
-      // ⚠️ Batched like the other two, not one query per row. The Apps list
-      // renders every copy in the project from `currentInstancesAtom`, so a
-      // per-row read here is a query per row of that table.
-      this.deployments.findMany({
-        where: {
-          instanceId: { inArray: rows.map((row) => row.id) },
-          status: { eq: "succeeded" },
-        },
-        orderBy: [{ column: "createdAt", direction: "desc" }],
-      }),
+      this.deployedTags(rows.map((row) => row.id)),
     ]);
 
     const bySigil = new Map(sigilRows.map((row) => [row.id, row]));
     const byEstate = new Map(estateRows.map((row) => [row.id, row]));
-    // Newest first, so the first entry per instance wins and later ones are
-    // dropped. `set` would keep the OLDEST run, which is the whole answer
-    // backwards.
-    const byInstance = new Map<string, string>();
-    for (const row of deployedRows) {
-      if (!byInstance.has(row.instanceId)) {
-        byInstance.set(row.instanceId, row.tag);
-      }
-    }
 
     return rows.map((row) =>
       this.project(
         row,
         row.sigilId ? bySigil.get(row.sigilId) : undefined,
         row.estateId ? byEstate.get(row.estateId) : undefined,
-        byInstance.get(row.id),
+        deployedTags.get(row.id),
       ),
     );
+  }
+
+  /**
+   * The tag each instance last deployed successfully, keyed by instance id.
+   *
+   * ⚠️ Batched, not one query per row: the Apps list renders every copy in the
+   * project from `currentInstancesAtom`, so a per-row read here is a query per
+   * row of that table.
+   *
+   * ⚠️ **Two narrow reads, never the whole history** (#Q2682). The first finds
+   * each instance's newest succeeded run, the second reads only `instanceId`,
+   * `tag` and `createdAt` of those runs. A plain `findMany` here loaded every
+   * succeeded deployment of every listed instance, `log` included, on each
+   * Apps list render, and timed out on D1 once those logs grew.
+   */
+  protected async deployedTags(
+    instanceIds: string[],
+  ): Promise<Map<string, string>> {
+    const newest = await this.deployments.aggregate({
+      select: { instanceId: true, createdAt: { max: true } },
+      where: {
+        instanceId: { inArray: instanceIds },
+        status: { eq: "succeeded" },
+      },
+      groupBy: ["instanceId"],
+    });
+    const latest = new Map<string, string>();
+    for (const row of newest) {
+      if (row.createdAt.max) {
+        latest.set(row.instanceId, row.createdAt.max);
+      }
+    }
+    if (latest.size === 0) {
+      return new Map();
+    }
+
+    const runs = await this.deployments.findMany({
+      columns: ["instanceId", "tag", "createdAt"],
+      where: {
+        instanceId: { inArray: [...latest.keys()] },
+        status: { eq: "succeeded" },
+        createdAt: { inArray: [...new Set(latest.values())] },
+      },
+    });
+    const tags = new Map<string, string>();
+    for (const run of runs) {
+      if (latest.get(run.instanceId) === run.createdAt) {
+        tags.set(run.instanceId, run.tag);
+      }
+    }
+    return tags;
   }
 
   protected async toResource(

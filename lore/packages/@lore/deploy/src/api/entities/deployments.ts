@@ -112,6 +112,11 @@ export const deployments = $entity({
     { columns: ["instanceId"] },
     // The project-wide view, and the rollback lookup.
     { columns: ["projectId"] },
+    // The Apps list's deployed tag: each instance's newest succeeded run
+    // (#Q2682).
+    { columns: ["instanceId", "status", "createdAt"] },
+    // The dashboard cards: a project's runs by date (#Q2682).
+    { columns: ["projectId", "createdAt"] },
   ],
 });
 

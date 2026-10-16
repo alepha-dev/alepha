@@ -2111,6 +2111,33 @@ describe("what a deployed copy reports as its version", () => {
     expect((await listed(project, user, instance))?.version).toBe("0.28.0");
   });
 
+  it("is the NEWEST of several succeeded runs", async ({ expect }) => {
+    // The lookup reads each copy's newest succeeded row only (#Q2682), so
+    // an older success must never win over a later one.
+    const { user, project, instance } = await aCopy();
+    const rows = alepha.inject(TestRows);
+
+    await rows.deployments.create({
+      projectId: project.id,
+      instanceId: instance.id,
+      app: instance.app,
+      tag: "0.28.0",
+      sha256: "a".repeat(64),
+      status: "succeeded",
+    } as never);
+    await alepha.inject(DateTimeProvider).travel(60_000, "ms");
+    await rows.deployments.create({
+      projectId: project.id,
+      instanceId: instance.id,
+      app: instance.app,
+      tag: "0.29.0",
+      sha256: "b".repeat(64),
+      status: "succeeded",
+    } as never);
+
+    expect((await listed(project, user, instance))?.version).toBe("0.29.0");
+  });
+
   it("is per copy, so a sibling on another tag reads its own", async ({
     expect,
   }) => {
