@@ -200,6 +200,74 @@ describe("changelog", () => {
       ]);
     });
 
+    test("should keep every line of a wrapped prose footer", () => {
+      // The footer of a500bd0d, verbatim: four lines at column zero, the
+      // migration recipe on the last three. Only the first line used to
+      // survive, so 0.33.0's notes would have cut the $sse note mid-sentence.
+      const parser = getParser();
+      const result = parser.parseCommit(
+        [
+          "a500bd0d feat(server)!: $sse requires path #Q2734",
+          "A paragraph about the change.",
+          "",
+          "BREAKING CHANGE: `$sse` requires `path`. An endpoint without one served",
+          "at `/<propertyKey>` (or `/<name>`), followed by `/:<key>` for each",
+          "`schema.params` key: write that path out to keep the URL, e.g. `stream`",
+          'with params `{ id }` becomes `path: "/stream/:id"`.',
+        ].join("\n"),
+        defaultConfig,
+      );
+
+      expect(result?.breakingNotes).toEqual([
+        '`$sse` requires `path`. An endpoint without one served at `/<propertyKey>` (or `/<name>`), followed by `/:<key>` for each `schema.params` key: write that path out to keep the URL, e.g. `stream` with params `{ id }` becomes `path: "/stream/:id"`.',
+      ]);
+    });
+
+    test("should keep a wrapped prose footer followed by wrapped bullets", () => {
+      const parser = getParser();
+      const result = parser.parseCommit(
+        [
+          "eee33333 feat(server)!: $action requires method and path",
+          "",
+          "BREAKING CHANGE: `$action` requires `method` and `path`, and the",
+          "defaults that filled them in are gone:",
+          '- An action without `method` was POST: add `method: "POST"`, or',
+          '  `method: "GET"` for a read.',
+          "- An action without `path` served at `/<propertyKey>`.",
+          "",
+          "Refs: a paragraph after the footer.",
+        ].join("\n"),
+        defaultConfig,
+      );
+
+      expect(result?.breakingNotes).toEqual([
+        "`$action` requires `method` and `path`, and the defaults that filled them in are gone:",
+        'An action without `method` was POST: add `method: "POST"`, or `method: "GET"` for a read.',
+        "An action without `path` served at `/<propertyKey>`.",
+      ]);
+    });
+
+    test("should stop a prose footer at the next trailer", () => {
+      // Conventional commits allows several footers in one block: the
+      // line after the break is another trailer, not more of the note.
+      const parser = getParser();
+      const result = parser.parseCommit(
+        [
+          "eee44444 feat(api)!: rework the token format",
+          "",
+          "BREAKING CHANGE: tokens minted before this no longer",
+          "verify",
+          "Reviewed-by: someone",
+          "Refs: #123",
+        ].join("\n"),
+        defaultConfig,
+      );
+
+      expect(result?.breakingNotes).toEqual([
+        "tokens minted before this no longer verify",
+      ]);
+    });
+
     test("should leave an ordinary body alone", () => {
       const parser = getParser();
       const result = parser.parseCommit(

@@ -117,9 +117,14 @@ export class GitMessageParser {
    *
    * Reading stops at the first blank line after the list, so the paragraph
    * a commit adds afterwards ("Also fixes …") does not become a breaking
-   * note. Indented lines continue the note above them, because these bodies
-   * are hard-wrapped at ~76 columns and a wrapped bullet is one item, not
-   * two.
+   * note. These bodies are hard-wrapped at ~76 columns, so a wrapped note
+   * is one note, not several. Indented lines continue the bullet above
+   * them. Lines at column zero continue a prose note (the footer's own
+   * text, or a paragraph under the heading) until a blank line, a bullet,
+   * or the next trailer (`Refs: #12`, `Reviewed-by: …`), since a
+   * conventional-commits footer block may hold several. Joining only under
+   * a bullet cut a500bd0d's four-line footer to its first line, migration
+   * recipe and all (#Q2743).
    */
   protected breakingNotes(body: string): string[] {
     if (!body.trim()) return [];
@@ -133,30 +138,39 @@ export class GitMessageParser {
     if (start === -1) return [];
 
     const notes: string[] = [];
+    // Whether the last note is prose, which column-zero lines may continue.
+    let prose = false;
 
     // The footer form carries its text on the marker line itself.
     const inline = lines[start].match(/^BREAKING[ -]CHANGE:\s*(.+)$/);
-    if (inline) notes.push(inline[1].trim());
+    if (inline) {
+      notes.push(inline[1].trim());
+      prose = true;
+    }
 
     for (const line of lines.slice(start + 1)) {
       const item = line.match(/^\s*[-*]\s+(.+)$/);
       if (item) {
         notes.push(item[1].trim());
+        prose = false;
         continue;
       }
       if (!line.trim()) {
         if (notes.length > 0) break;
         continue;
       }
-      if (/^\s+\S/.test(line) && notes.length > 0) {
+      if (/^[A-Z][\w-]*(: | #)\S/.test(line)) break;
+      if ((prose || /^\s+\S/.test(line)) && notes.length > 0) {
         notes[notes.length - 1] += ` ${line.trim()}`;
         continue;
       }
-      // A new paragraph at column zero: the section is over, unless nothing
-      // has been collected yet — then it IS the note (the footer's
-      // free-prose form, wrapped onto the next line).
+      // A new paragraph at column zero after a list: the section is over,
+      // unless nothing has been collected yet. Then it IS the note (the
+      // heading form's free prose, or a footer whose text starts on the
+      // next line).
       if (notes.length > 0) break;
       notes.push(line.trim());
+      prose = true;
     }
 
     return notes;
