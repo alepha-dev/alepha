@@ -1,6 +1,6 @@
 {
   "name": "@alepha/devtools",
-  "version": "0.32.0",
+  "version": "0.33.0",
   "description": "Alepha DevTools: every app running on this machine, inspected from one place. Run it with npx @alepha/devtools.",
   "keywords": [
     "alepha",
@@ -39,7 +39,7 @@
     "build:ui": "alepha build --runtime static && rm -rf assets/ui && mkdir -p assets && cp -r dist/public assets/ui && rm -rf dist"
   },
   "dependencies": {
-    "alepha": "0.32.0"
+    "alepha": "0.33.0"
   },
   "devDependencies": {
     "@alepha/ui": "workspace:^",
