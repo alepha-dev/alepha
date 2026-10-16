@@ -2,11 +2,13 @@ import { Button } from "@alepha/ui";
 import { useClient, useQuery, useQueryClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
+import { RefreshCw } from "lucide-react";
 
 import type { AutomationController } from "../../../../../api/controllers/AutomationController.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { AutomationRouter } from "../../../AutomationRouter.ts";
 import type { I18n } from "../../../services/I18n.ts";
+import AutomationPage from "./AutomationPage.tsx";
 import AutomationRunEvidence from "./AutomationRunEvidence.tsx";
 
 export interface AutomationRunPageProps {
@@ -33,62 +35,60 @@ const AutomationRunPage = (props: AutomationRunPageProps) => {
   const run = read.data;
   const snapshot = run?.snapshot;
   return (
-    <div className="flex max-w-3xl flex-col gap-5 py-5">
-      <h1 className="text-xl font-semibold">
-        {tr("automation.history.detail")}
-      </h1>
-      <p className="text-muted-foreground text-sm">
-        {tr("automation.history.retention")}
-      </p>
-      <p className="text-muted-foreground text-sm">
-        {tr("automation.history.replay")}
-      </p>
-      <Button
-        variant="outlined"
-        disabled={read.loading}
-        onClick={() =>
-          queries.invalidate(["automation-run", project?.id, props.runId])
-        }
-      >
-        {tr("automation.history.refresh")}
-      </Button>
-      {read.error && (
-        <p role="alert">
-          {read.error instanceof Error
-            ? read.error.message
-            : tr("automation.redacted")}
-        </p>
-      )}
-      {run && (
+    <AutomationPage
+      title={
+        run
+          ? tr(`automation.run.${run.status}`)
+          : tr("automation.history.detail")
+      }
+      description={
+        run
+          ? tr("automation.history.triggered", {
+              args: [l(run.triggeredAt, { date: "lll" })],
+            })
+          : undefined
+      }
+      actions={
         <>
+          {run && (
+            <Button
+              variant="outlined"
+              onClick={() =>
+                router.push("projectAutomationDetail", {
+                  params: {
+                    projectSlug: project!.slug,
+                    automationId: run.automationId,
+                  },
+                })
+              }
+            >
+              {tr("automation.history.rule")}
+            </Button>
+          )}
           <Button
-            variant="link"
+            variant="outlined"
+            disabled={read.loading}
             onClick={() =>
-              router.push("projectAutomationDetail", {
-                params: {
-                  projectSlug: project!.slug,
-                  automationId: run.automationId,
-                },
-              })
+              queries.invalidate(["automation-run", project?.id, props.runId])
             }
           >
-            {tr("automation.history.rule")}
+            <RefreshCw className="size-4" />
+            {tr("automation.history.refresh")}
           </Button>
-          <p>
-            {tr(`automation.run.${run.status}`)}:{" "}
-            {l(run.triggeredAt, { date: "lll" })}
-          </p>
-          <p>{run.reason || run.redactionReason}</p>
-          <p className="text-muted-foreground text-sm">
-            {tr("automation.editor.revision", {
-              args: [String(run.ruleRevision)],
-            })}
-          </p>
         </>
+      }
+    >
+      {read.error && (
+        <p role="alert" className="text-danger-text">
+          {read.error.message}
+        </p>
+      )}
+      {run && (run.reason || run.redactionReason) && (
+        <p className="text-sm">{run.reason || run.redactionReason}</p>
       )}
       {snapshot && (
         <>
-          <p>
+          <p className="text-muted-foreground text-xs">
             {tr("automation.test.at", {
               args: [
                 l(snapshot.evaluatedAt || run!.triggeredAt, { date: "lll" }),
@@ -98,7 +98,10 @@ const AutomationRunPage = (props: AutomationRunPageProps) => {
           <AutomationRunEvidence run={run!} />
         </>
       )}
-    </div>
+      <p className="text-muted-foreground text-xs">
+        {tr("automation.history.retention")} {tr("automation.history.replay")}
+      </p>
+    </AutomationPage>
   );
 };
 export default AutomationRunPage;

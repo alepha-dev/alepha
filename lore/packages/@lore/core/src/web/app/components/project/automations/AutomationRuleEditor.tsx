@@ -1,8 +1,9 @@
 import { Button } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
-import { useAction, useClient, useQuery, useQueryClient } from "alepha/react";
+import { useAction, useClient, useQuery } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
+import { isHttpError } from "alepha/server";
 import { useEffect, useState } from "react";
 
 import type { AutomationController } from "../../../../../api/controllers/AutomationController.ts";
@@ -21,6 +22,7 @@ export interface AutomationRuleEditorProps {
   resource: AutomationResource;
   catalogue: ReturnType<typeof automationCatalogSchema.parse>;
   onSaved: (rule: AutomationResource) => void;
+  onCancel: () => void;
   onConflict: () => void;
   onBusyChange: (busy: boolean) => void;
 }
@@ -28,24 +30,22 @@ export interface AutomationRuleEditorProps {
 const AutomationRuleEditor = (props: AutomationRuleEditorProps) => {
   const { tr } = useI18n<I18n, "en">();
   const api = useClient<AutomationController>();
-  const queries = useQueryClient();
   const [draft, setDraft] = useState<AutomationRule>(() =>
     structuredClone(props.resource.rule!),
   );
-  const [variableOffset, setVariableOffset] = useState(0);
   const variablePage = useQuery(
     {
-      key: ["automation-variables", props.resource.projectId, variableOffset],
+      key: ["automation-variables", props.resource.projectId, 0],
       handler: ({ signal }) =>
         api.listAutomationVariables(
           {
             params: { projectId: props.resource.projectId },
-            query: { offset: variableOffset, limit: 50 },
+            query: { offset: 0, limit: 50 },
           },
           { request: { signal } },
         ),
     },
-    [props.resource.projectId, variableOffset],
+    [props.resource.projectId],
   );
   const variables =
     variablePage.data?.items ?? props.catalogue.variables.slice(0, 50);
@@ -84,28 +84,14 @@ const AutomationRuleEditor = (props: AutomationRuleEditorProps) => {
           props.onSaved(saved);
           return true;
         } catch (error) {
-          // Reload the server revision after conflicts while preserving this draft.
-          props.onConflict();
+          // Only a revision conflict offers the reload; any other refusal is
+          // the toaster's, and the draft stays as typed either way.
+          if (isHttpError(error, 409)) props.onConflict();
           throw error;
-        } finally {
-          queries.invalidate(["automations", props.resource.projectId]);
-          queries.invalidate([
-            "automation",
-            props.resource.projectId,
-            props.resource.id,
-          ]);
         }
       },
     },
-    [
-      api,
-      props.resource,
-      draft,
-      title,
-      props.onSaved,
-      props.onConflict,
-      queries,
-    ],
+    [api, props.resource, draft, title, props.onSaved, props.onConflict],
   );
   useEffect(() => {
     props.onBusyChange(save.loading);
@@ -118,7 +104,7 @@ const AutomationRuleEditor = (props: AutomationRuleEditorProps) => {
       title: props.resource.title,
       trigger: draft.trigger.kind,
       source: source?.key ?? "",
-      guard: draft.guard?.field ?? "",
+      ...(draft.guard ? { guard: draft.guard.field } : {}),
       operator: draft.guard?.operator ?? "eq",
     },
     onChange: (name, value) => {
@@ -158,7 +144,7 @@ const AutomationRuleEditor = (props: AutomationRuleEditorProps) => {
         }
       }
       if (name === "source") {
-        header.input.guard.set("");
+        header.input.guard.set(undefined);
         header.input.operator.set("eq");
         const next = props.catalogue.entries.find(
           (entry) => entry.key === value,
@@ -244,38 +230,11 @@ const AutomationRuleEditor = (props: AutomationRuleEditorProps) => {
       className="flex flex-col gap-5"
       aria-label={tr("automation.editor.title")}
     >
-      <h2 className="font-medium">{tr("automation.editor.title")}</h2>
       <p className="text-muted-foreground text-sm">
         {tr("automation.editor.author", {
-          args: [
-            props.resource.authorName || props.resource.authorUserId,
-            String(props.resource.revision),
-          ],
+          args: [props.resource.authorName || props.resource.authorUserId],
         })}
       </p>
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-muted-foreground text-sm">
-          {tr("automation.variables.title")}
-        </span>
-        <Button
-          variant="minimal"
-          disabled={save.loading || variablePage.loading || !variableOffset}
-          onClick={() =>
-            setVariableOffset((offset) => Math.max(0, offset - 50))
-          }
-        >
-          {tr("automation.previous")}
-        </Button>
-        <Button
-          variant="minimal"
-          disabled={
-            save.loading || variablePage.loading || !variablePage.data?.hasMore
-          }
-          onClick={() => setVariableOffset((offset) => offset + 50)}
-        >
-          {tr("automation.next")}
-        </Button>
-      </div>
       <Control
         input={header.input.title}
         label={tr("automation.column.name")}
@@ -309,7 +268,9 @@ const AutomationRuleEditor = (props: AutomationRuleEditorProps) => {
             )
             .map((entry) => ({
               value: entry.key,
-              label: `${entry.key} (${entry.result})`,
+              label: tr(`automation.source.${entry.key}` as never, {
+                default: entry.key,
+              }),
             }))}
           disabled={save.loading}
         />
@@ -335,7 +296,7 @@ const AutomationRuleEditor = (props: AutomationRuleEditorProps) => {
           Object.entries(source?.slots ?? {}).map(([key, slot]) => (
             <AutomationValueControl
               key={`${source?.key}:${key}`}
-              label={key}
+              label={tr(`automation.setup.${key}` as never, { default: key })}
               slot={slot}
               value={"app" in draft.trigger ? draft.trigger.app : undefined}
               bindings={variables.filter((item) => item.available)}
@@ -373,7 +334,7 @@ const AutomationRuleEditor = (props: AutomationRuleEditorProps) => {
           Object.entries(source?.slots ?? {}).map(([key, slot]) => (
             <AutomationValueControl
               key={`${source?.key}:${key}`}
-              label={key}
+              label={tr(`automation.setup.${key}` as never, { default: key })}
               slot={slot}
               value={draft.select?.filters[key]}
               bindings={variables.filter((item) => item.available)}
@@ -397,13 +358,12 @@ const AutomationRuleEditor = (props: AutomationRuleEditorProps) => {
           input={header.input.guard}
           label={tr("automation.editor.field")}
           select
-          items={[
-            { value: "", label: tr("automation.editor.always") },
-            ...Object.keys(source?.fields ?? {}).map((value) => ({
-              value,
-              label: value,
-            })),
-          ]}
+          clearable
+          clearLabel={tr("automation.editor.always")}
+          items={Object.keys(source?.fields ?? {}).map((value) => ({
+            value,
+            label: value,
+          }))}
           disabled={save.loading}
         />
         {draft.guard && (
@@ -425,7 +385,12 @@ const AutomationRuleEditor = (props: AutomationRuleEditorProps) => {
                 : ["eq", "ne"]
               )
                 .filter((value, index, all) => all.indexOf(value) === index)
-                .map((value) => ({ value, label: value }))}
+                .map((value) => ({
+                  value,
+                  label: tr(`automation.operator.${value}` as never, {
+                    default: value,
+                  }),
+                }))}
               disabled={save.loading}
             />
             <AutomationValueControl
@@ -520,15 +485,23 @@ const AutomationRuleEditor = (props: AutomationRuleEditorProps) => {
           {tr("automation.editor.addAction")}
         </Button>
       </fieldset>
-      <Button
-        intent="primary"
-        loading={save.loading}
-        disabled={save.loading || !title.trim()}
-        className="self-start"
-        onClick={() => void save.run()}
-      >
-        {tr("automation.editor.save")}
-      </Button>
+      <div className="flex gap-2">
+        <Button
+          intent="primary"
+          loading={save.loading}
+          disabled={save.loading || !title.trim()}
+          onClick={() => void save.run()}
+        >
+          {tr("automation.editor.save")}
+        </Button>
+        <Button
+          variant="minimal"
+          disabled={save.loading}
+          onClick={props.onCancel}
+        >
+          {tr("automation.setup.cancel")}
+        </Button>
+      </div>
     </section>
   );
 };

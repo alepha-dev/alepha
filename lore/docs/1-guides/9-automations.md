@@ -12,21 +12,26 @@ or enables capabilities for you.
 
 ## Start in the application
 
-Open **Automations > Browse presets**. The seven stock programs cover new
+Open **Automations > New automation**. The seven stock presets cover new
 feedback, a nightly tagged-quest digest, epic completion, coverage regression,
 open-blight crossings, release publication to a folio, and failed deployments.
-The catalogue explains unavailable presets and their missing dependencies.
+Only the presets this project's capabilities, your permissions and the configured
+channels allow are offered.
 
-Choose project records through the typed pickers. Inputs default to **Use only
-here**. Creating the rule leaves it disabled. Run **Test**, inspect its timestamp,
-source, counts and rendered actions, then explicitly **Enable** it. An event Test
-needs a same-project record chosen in the subject picker. A schedule Test reads
-its current selection.
+Pick a preset, then fill its few inputs. Members, folios and apps are chosen
+through pickers that search the project. Every input belongs to this rule alone
+unless you choose **Share with other automations**, which binds or creates a
+shared variable. **Create automation** saves the rule disabled and opens its
+page. There, **Run test** shows its timestamp, source, counts and rendered
+actions without writing anything; then **Enable** it from the page header. An
+event test needs a same-project record chosen in the subject picker. A schedule
+test reads its current selection.
 
-Click a rule's title to edit its four slots or read its history. Saving uses the
-revision you opened: a conflicting save keeps your draft, so you can compare it
-with the current rule before choosing **Discard / reload**. Disable or delete
-stops queued and following effects; effects that already committed remain.
+Click a rule's row to open it. **Edit** changes its four slots; its run history
+is listed below. Saving uses the revision you opened: a conflicting save keeps
+your draft, so you can compare it with the current rule before choosing
+**Discard draft and reload**. Disable or delete stops queued and following effects;
+effects that already committed remain.
 
 ## The four slots
 
@@ -225,7 +230,7 @@ through inbox and email, under the releases category and existing preferences.
 It requires no folio. Both channels are required. Its explicit roster audience
 is distinct from the single-member release-to-folio preset above.
 
-Open **Automations > Adopt existing policies**:
+Open **Automations > Built-in notifications**:
 
 1. The owner configures capabilities and rank grants separately.
 2. The consenting named member previews author, grants, channels, recipients and

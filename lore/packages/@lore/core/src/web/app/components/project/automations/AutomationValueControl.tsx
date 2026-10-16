@@ -1,5 +1,4 @@
-import { Button } from "@alepha/ui";
-import { Control } from "@alepha/ui/form";
+import { Control, ControlSelect } from "@alepha/ui/form";
 import { useForm, useFormValues } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 
@@ -8,7 +7,11 @@ import type { AutomationSlotKind } from "../../../../../api/schemas/automationSl
 import type { AutomationSlot } from "../../../../../api/schemas/automationSlotSchema.ts";
 import { AutomationTemplateTokens } from "../../../../../api/schemas/AutomationTemplateTokens.ts";
 import type { I18n } from "../../../services/I18n.ts";
-import { useAutomationSetupChoices } from "./useAutomationSetupChoices.ts";
+import {
+  AUTOMATION_OPTION_THRESHOLD,
+  type AutomationOptionKind,
+  useAutomationOptions,
+} from "./useAutomationOptions.ts";
 
 export interface AutomationValueControlProps {
   label: string;
@@ -23,11 +26,11 @@ export interface AutomationValueControlProps {
 const AutomationValueControl = (props: AutomationValueControlProps) => {
   const { tr } = useI18n<I18n, "en">();
   const resource = props.slot.resource ?? props.slot.kind;
-  const choices = useAutomationSetupChoices(
-    (["member", "folio", "release", "quest", "app"].includes(resource)
-      ? resource
-      : "quest") as "member" | "folio" | "release" | "quest" | "app",
-    ["member", "folio", "release", "quest", "app"].includes(resource),
+  const remote = ["member", "folio", "release", "quest", "app"].includes(
+    resource,
+  );
+  const loader = useAutomationOptions(
+    (remote ? resource : "quest") as AutomationOptionKind,
   );
   const bindingKey =
     typeof props.value === "string"
@@ -86,27 +89,26 @@ const AutomationValueControl = (props: AutomationValueControlProps) => {
   const options =
     props.slot.values?.map((value) => ({
       value: String(value),
-      label: String(value),
+      label: tr(`automation.channel.${String(value)}` as never, {
+        default: String(value),
+      }),
     })) ??
     (resource === "channel"
-      ? props.channels?.map((value) => ({ value, label: value }))
-      : ["member", "folio", "release", "quest", "app"].includes(resource)
-        ? choices.items
-        : []);
-  const isPicker =
-    !!options?.length ||
-    ["member", "folio", "release", "quest", "app", "channel"].includes(
-      resource,
-    );
+      ? props.channels?.map((value) => ({
+          value,
+          label: tr(`automation.channel.${value}` as never, { default: value }),
+        }))
+      : undefined);
+  const isPicker = !!options?.length || remote || resource === "channel";
   return (
     <div className="flex flex-col gap-2">
       {props.slot.bindable !== false && availableBindings.length > 0 && (
         <Control
           input={form.input.mode}
-          label={`${props.label}: ${tr("automation.editor.valueSource")}`}
-          select
+          label={tr("automation.sharing.source", { args: [props.label] })}
+          segmented
           items={[
-            { value: "literal", label: tr("automation.sharing.literal") },
+            { value: "literal", label: tr("automation.editor.fixed") },
             { value: "binding", label: tr("automation.editor.binding") },
           ]}
           disabled={props.disabled}
@@ -123,6 +125,14 @@ const AutomationValueControl = (props: AutomationValueControlProps) => {
           }))}
           disabled={props.disabled}
         />
+      ) : isPicker ? (
+        <ControlSelect
+          input={numeric ? form.input.number : form.input.text}
+          label={props.label}
+          items={remote && !options?.length ? loader : (options ?? [])}
+          loaderThreshold={AUTOMATION_OPTION_THRESHOLD}
+          disabled={props.disabled}
+        />
       ) : (
         <Control
           input={
@@ -134,32 +144,10 @@ const AutomationValueControl = (props: AutomationValueControlProps) => {
           }
           label={props.label}
           disabled={props.disabled}
-          {...(isPicker
-            ? { select: true, items: options ?? [] }
-            : props.slot.template || props.slot.kind === "textArray"
-              ? { area: true }
-              : {})}
+          {...(props.slot.template || props.slot.kind === "textArray"
+            ? { area: true }
+            : {})}
         />
-      )}
-      {values.mode !== "binding" && choices.navigation.hasMore && (
-        <Button
-          variant="minimal"
-          size="sm"
-          disabled={props.disabled || choices.navigation.loading}
-          onClick={choices.navigation.next}
-        >
-          {tr("automation.next")}
-        </Button>
-      )}
-      {values.mode !== "binding" && choices.navigation.offset > 0 && (
-        <Button
-          variant="minimal"
-          size="sm"
-          disabled={props.disabled || choices.navigation.loading}
-          onClick={choices.navigation.previous}
-        >
-          {tr("automation.previous")}
-        </Button>
       )}
       {props.slot.template && (
         <p className="text-muted-foreground text-xs break-words">

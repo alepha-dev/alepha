@@ -746,66 +746,70 @@ the last attempt. `automation_runs` delegates to shared offset pagination,
 including retained history for soft-deleted rules. MCP catalogue and preview
 preserve the HTTP service's current permission gates and complete schemas.
 
-## Automation list (#E43, #Q2037)
+## Automations UI (#E43, reworked by #Q2684)
 
-The Automations page uses `DataTable` with bounded server pagination and a
-project-keyed `QueryCache.dedupe` read inside its fetch handler. Unknown totals
-stay unknown. Revisioned enable and delete actions use `useAction`, disable all
-related controls while pending, and invalidate then refresh on both success and
-failure. They never display an unconfirmed enable state. The root toaster reports
-failures, and the refreshed server response owns health and available controls.
+Every page under `/automations` but the list renders through `AutomationPage`
+(a bordered header with title, badge and actions, then a scrolling body), is in
+`ROUTES_FULL_WIDTH`, and its crumb reads "Automations" linking back to the list
+(`SECTION_HREF_ROUTES`). The words for triggers, schedules and states come from
+`useAutomationLabels`, so the list, the gallery and the detail page agree.
 
-The list shows immutable author, trigger, effective state and reason, last run,
-no-data and capped indicators. Source-restricted rows omit the last-run payload
-flags. Gallery navigation requires both automation read and write; its initial
-catalogue destination is extended by the typed setup quest. Browser coverage
-waits for the actual direct or batched mutation and verifies a real revision
-conflict against a separate server write, plus empty/search/gallery behavior.
+- **List** (`AutomationOverviewPage`): the house `DataTable` (Releases, Apps).
+  Primary **New automation**, icon actions for Shared variables and Built-in
+  notifications, row click opens the rule, Enable / Disable / Delete in the row
+  menu. Bounded server pages through a project-keyed `QueryCache.dedupe`; the
+  total stays unknown. Both writes refresh on success AND failure, so the row
+  never shows an unconfirmed state (a revision conflict included).
+- **New automation** (`AutomationGalleryPage`): the presets this project, rank
+  and configured channels allow, as cards. A card opens its inputs in place;
+  **Create automation** saves the rule disabled and navigates to its page, the
+  one place a rule is tested and enabled.
+- **Preset inputs** (`AutomationPresetForm`): a field belongs to the rule unless
+  **Share with other automations** is chosen, which reveals the
+  only-this-rule / shared / new-shared choice. Explicit binding carries the
+  variable UUID, key and version; a created variable stays selected by identity
+  if rule creation then fails, so a retry cannot replace its key. Conditional
+  validation lives in the managed handler (the vendored `FormModel` builds on
+  Zod `partial()`, which rejects object refinements).
+- ⚠️ **A `FormValidationError` path starts with a slash** (`"/recipient"`).
+  Without it the error reaches no field and the form fails silently, which is
+  how every setup refusal shipped with #E43.
+- **Pickers** (`useAutomationOptions`): `ControlSelect` loaders over
+  `getAutomationSetupOptions`, which takes `search` (label contains, wildcards
+  escaped by the ORM's `contains`) and `ids` (comma-separated, resolved to
+  labels). `loaderThreshold` is 49 against the endpoint's 50 cap, so a full page
+  switches the picker to server search. `useAutomationOptionLabels` names saved
+  members and folios in read-only summaries. Never page a picker with
+  Previous / Next buttons.
+- **Rule page** (`AutomationDetailPage`): header Edit / Delete / Enable or
+  Disable; `AutomationRuleSummary` reads the rule as When / Only if / Then;
+  `AutomationTestPanel` is the zero-write dry run with timestamped, capped
+  evidence; `AutomationRunList` below. The editor keeps a revisioned draft of
+  the four slots; only a 409 offers the discard-and-reload panel, any other
+  refusal is the toaster's and keeps the draft. The guard field is a
+  `clearable` select whose clear label is "Always": an empty-string option
+  cannot be picked in Base UI.
+- **Variables and runs**: shared variables keep UUID/version stamps after a
+  write, list their users and delete only when unused; exact-key links filter
+  the list. Run pages separate frozen per-action enqueue intent from live
+  transport receipts and explain the 30-day detail and 90-day replay windows.
 
-## Typed preset setup (#E43, #Q2038)
+Catalogue sources, action kinds and guard operators are named through
+`automation.source.*`, `automation.action.*` and `automation.operator.*`, all
+in `alepha.config.ts`'s `dynamicPrefixes`; an unknown key falls back to itself.
 
-The gallery offers presets available under current capabilities, permissions and
-configured supported channels. Each native input defaults to use only here.
-Explicit binding carries a variable UUID, key and version; creation compares
-those stamps with its freshly prepared approvals before the existing native
-configuration fence commits. A recreated key or concurrent edit refuses creation.
-No preset path silently overwrites a shared key.
+Preset creation compares the submitted variable stamps with its freshly prepared
+approvals before the native configuration fence commits, so a recreated key or a
+concurrent edit refuses creation, and no preset path silently overwrites a
+shared key. Feature builders receive explicit binding tokens separately from
+validated native values; numeric programs use the same token in their guard and
+threshold text. Code presets construct ordinary disabled rows with a preset
+origin; editing the code never rewrites existing configuration.
 
-Feature builders receive explicit binding tokens separately from validated native
-values. Numeric programs use the same token in their guard and threshold text.
-Code presets remain constructors of ordinary disabled rows with preset origin;
-editing the code never rewrites existing configuration.
-
-`AutomationReferences.registerOptions` lets each feature own bounded project
-picker pages and their read permission. `AutomationSetupOptions` reconstructs the
-current caller ceiling before invoking them. Members, folios, distinct app names
-and prospective event records expose labels and IDs, never document bodies or
-raw deployment logs. Preview selectors are read surfaces and need no write grant.
-
-The generated form keeps conditional validation in its managed handler because
-this vendored FormModel initializes through Zod `partial()`, which rejects object
-refinements. No framework change is needed. Explicitly created variables remain
-selected by identity if later rule creation fails, so retry cannot replace a key.
-A selected preset and variable version remain stable across catalogue refreshes.
-The saved summary uses selected display labels, offers zero-write Test with typed
-project-record choices and timestamped capped evidence, then explicit enable.
-
-## Rule, variable and evidence pages (#E43, #Q2039)
-
-Automation detail owns a revisioned draft of the four typed slots. Vocabulary
-controls select registered sources, cardinality, guard fields/operators and up to
-five ordered actions. Source changes clear incompatible guards. Resource values
-use bounded project pickers; bindings explicitly choose a shared key or declared
-source field. Shared-variable pages are bounded, and direct key links add an
-exact-key filter at the same source-authorized list boundary. A refused save
-preserves the draft and offers an explicit discard/reload of the server revision.
-
-Variable management keeps UUID/version stamps after successful writes, shows
-used-by links and foreign-consumer review warnings, and deletes only unused
-values. Native server fencing remains authoritative during concurrent changes.
-Run pages separate frozen per-action enqueue intent from live transport receipts,
-link to each authorized delivery outcome and explain 30-day detail retention and
-the 90-day no-replay horizon. No receipt identity is offered as a setup input.
+`AutomationReferences.registerOptions` lets each feature own its picker pages
+and their read permission; `AutomationSetupOptions` reconstructs the caller's
+current ceiling first. Members, folios, distinct app names and prospective event
+records expose labels and IDs, never document bodies or raw deployment logs.
 
 ## Explicit policy adoption (#E43, #Q2044)
 

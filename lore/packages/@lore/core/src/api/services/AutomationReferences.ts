@@ -57,6 +57,14 @@ export interface AutomationReferenceOptionProvider {
     projectId: number;
     offset: number;
     limit: number;
+    /**
+     * Case-insensitive text the label must contain, as typed.
+     */
+    search?: string;
+    /**
+     * Exact values to resolve; when present the page holds only these.
+     */
+    ids?: string[];
   }) => Promise<{
     items: Array<{ value: string; label: string }>;
     hasMore: boolean;

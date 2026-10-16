@@ -1,15 +1,15 @@
 import { Button } from "@alepha/ui";
 import { useClient, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { useRouter } from "alepha/react/router";
+import { Plus } from "lucide-react";
 import { useState } from "react";
 
 import type { AutomationController } from "../../../../../api/controllers/AutomationController.ts";
 import type { AutomationVariableResource } from "../../../../../api/schemas/automationVariableResourceSchema.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import type { AutomationRouter } from "../../../AutomationRouter.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import { canInProject } from "../../../services/projectRank.ts";
+import AutomationPage from "./AutomationPage.tsx";
 import AutomationVariableEditor from "./AutomationVariableEditor.tsx";
 
 export interface AutomationVariablesPageProps {
@@ -18,7 +18,6 @@ export interface AutomationVariablesPageProps {
 const AutomationVariablesPage = (props: AutomationVariablesPageProps) => {
   const [project] = useStore(currentProjectAtom);
   const api = useClient<AutomationController>();
-  const router = useRouter<AutomationRouter>();
   const { tr } = useI18n<I18n, "en">();
   const kindLabels = {
     text: tr("automation.variables.kind.text"),
@@ -70,75 +69,26 @@ const AutomationVariablesPage = (props: AutomationVariablesPageProps) => {
       ? read.data?.items.find((item) => item.key === props.variableKey)
       : undefined);
   const manage = !!project && canInProject(project, "automation:manage");
+  const items = read.data?.items ?? [];
   return (
-    <div className="flex max-w-3xl flex-col gap-5 py-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold">
-          {tr("automation.variables.title")}
-        </h1>
-        <Button
-          variant="minimal"
-          onClick={() =>
-            router.push("projectAutomations", {
-              params: { projectSlug: project!.slug },
-            })
-          }
-        >
-          {tr("automation.gallery.back")}
-        </Button>
-      </div>
-      <p className="text-muted-foreground text-sm">
-        {tr("automation.variables.description")}
-      </p>
-      {manage && (
-        <Button
-          variant="outlined"
-          className="self-start"
-          disabled={busy}
-          onClick={() => {
-            setCreating(true);
-            setSelected(undefined);
-          }}
-        >
-          {tr("automation.variables.create")}
-        </Button>
-      )}
-      {read.data?.items.map((variable) => (
-        <div
-          key={variable.id}
-          className="border-border flex items-center justify-between border-b py-2"
-        >
+    <AutomationPage
+      title={tr("automation.variables.title")}
+      description={tr("automation.variables.description")}
+      actions={
+        manage && (
           <Button
-            variant="link"
             disabled={busy}
             onClick={() => {
-              setSelected(variable);
-              setCreating(false);
+              setCreating(true);
+              setSelected(undefined);
             }}
           >
-            {variable.key}
+            <Plus className="size-4" />
+            {tr("automation.variables.create")}
           </Button>
-          <span className="text-muted-foreground text-sm">
-            {kindLabels[variable.kind]} / v{variable.version}
-          </span>
-        </div>
-      ))}
-      <div className="flex gap-2">
-        <Button
-          variant="minimal"
-          disabled={busy || read.loading || !offset}
-          onClick={() => setOffset((value) => Math.max(0, value - 50))}
-        >
-          {tr("automation.previous")}
-        </Button>
-        <Button
-          variant="minimal"
-          disabled={busy || read.loading || !read.data?.hasMore}
-          onClick={() => setOffset((value) => value + 50)}
-        >
-          {tr("automation.next")}
-        </Button>
-      </div>
+        )
+      }
+    >
       {(creating || selected) && (
         <AutomationVariableEditor
           key={selected ? `${selected.id}:${selected.version}` : "new"}
@@ -156,7 +106,54 @@ const AutomationVariablesPage = (props: AutomationVariablesPageProps) => {
           }}
         />
       )}
-    </div>
+      {read.data && !items.length && !offset ? (
+        <div className="text-muted-foreground rounded-lg border border-dashed p-10 text-center text-sm">
+          {tr("automation.variables.empty")}
+        </div>
+      ) : (
+        <ul className="bg-card divide-y overflow-hidden rounded-lg border">
+          {items.map((variable) => (
+            <li key={variable.id}>
+              <button
+                type="button"
+                disabled={busy}
+                aria-current={selected?.id === variable.id || undefined}
+                className="hover:bg-hover aria-[current]:bg-muted flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left text-sm"
+                onClick={() => {
+                  setSelected(variable);
+                  setCreating(false);
+                }}
+              >
+                <span className="font-mono">{variable.key}</span>
+                <span className="text-muted-foreground text-xs">
+                  {kindLabels[variable.kind]} · v{variable.version}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {(offset > 0 || read.data?.hasMore) && (
+        <div className="flex gap-2">
+          <Button
+            variant="minimal"
+            size="sm"
+            disabled={busy || read.loading || !offset}
+            onClick={() => setOffset((value) => Math.max(0, value - 50))}
+          >
+            {tr("automation.previous")}
+          </Button>
+          <Button
+            variant="minimal"
+            size="sm"
+            disabled={busy || read.loading || !read.data?.hasMore}
+            onClick={() => setOffset((value) => value + 50)}
+          >
+            {tr("automation.next")}
+          </Button>
+        </div>
+      )}
+    </AutomationPage>
   );
 };
 export default AutomationVariablesPage;

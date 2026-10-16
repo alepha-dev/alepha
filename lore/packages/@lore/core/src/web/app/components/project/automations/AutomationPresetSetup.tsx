@@ -1,16 +1,16 @@
+import type { SelectOption } from "@alepha/ui/form";
 import { useClient, useQuery, useQueryClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { useState } from "react";
+import { useRouter } from "alepha/react/router";
 
 import type { AutomationController } from "../../../../../api/controllers/AutomationController.ts";
 import type { AutomationPresetDescriptor } from "../../../../../api/schemas/automationPresetDescriptorSchema.ts";
-import type { AutomationResource } from "../../../../../api/schemas/automationResourceSchema.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
+import type { AutomationRouter } from "../../../AutomationRouter.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import { canInProject } from "../../../services/projectRank.ts";
-import AutomationCreatedRule from "./AutomationCreatedRule.tsx";
 import AutomationPresetForm from "./AutomationPresetForm.tsx";
-import { useAutomationSetupChoices } from "./useAutomationSetupChoices.ts";
+import { useAutomationOptions } from "./useAutomationOptions.ts";
 
 export interface AutomationPresetSetupProps {
   preset: AutomationPresetDescriptor;
@@ -18,71 +18,45 @@ export interface AutomationPresetSetupProps {
   onCancel: () => void;
 }
 
+/**
+ * One preset's inputs. A created rule opens on its own page, which owns
+ * Test and Enable, so there is one place a rule is reviewed rather than two.
+ */
 const AutomationPresetSetup = (props: AutomationPresetSetupProps) => {
   const { tr } = useI18n<I18n, "en">();
   const [project] = useStore(currentProjectAtom);
   const api = useClient<AutomationController>();
   const queries = useQueryClient();
-  const [created, setCreated] = useState<{
-    rule: AutomationResource;
-    labels: Record<string, string>;
-  }>();
-  const [variableOffset, setVariableOffset] = useState(0);
+  const router = useRouter<AutomationRouter>();
   const slots = Object.values(props.preset.slots);
-  const members = useAutomationSetupChoices(
-    "member",
-    slots.some((slot) => slot.kind === "member"),
-  );
-  const folios = useAutomationSetupChoices(
-    "folio",
-    slots.some((slot) => slot.kind === "folio"),
-  );
-  const apps = useAutomationSetupChoices(
-    "app",
-    slots.some((slot) => slot.resource === "app"),
-  );
+  const members = useAutomationOptions("member");
+  const folios = useAutomationOptions("folio");
+  const apps = useAutomationOptions("app");
   const variables = useQuery(
     {
-      key: ["automation-variables", project?.id, variableOffset],
+      key: ["automation-variables", project?.id, 0],
       enabled: !!project && slots.some((slot) => slot.bindable),
       handler: ({ signal }) =>
         api.listAutomationVariables(
           {
             params: { projectId: project!.id },
-            query: { offset: variableOffset, limit: 50 },
+            query: { offset: 0, limit: 50 },
           },
           { request: { signal } },
         ),
     },
-    [project?.id, variableOffset],
+    [project?.id],
   );
   if (!project) return null;
-  if (created)
-    return (
-      <AutomationCreatedRule
-        rule={created.rule}
-        labels={created.labels}
-        onChange={(rule) => setCreated({ ...created, rule })}
-      />
-    );
-  const choices: Record<string, Array<{ value: string; label: string }>> = {};
-  const navigation: NonNullable<
-    Parameters<typeof AutomationPresetForm>[0]["choiceNavigation"]
+  const choices: Record<
+    string,
+    SelectOption[] | ((search: string) => Promise<SelectOption[]>)
   > = {};
   for (const [name, slot] of Object.entries(props.preset.slots)) {
-    const source =
-      slot.kind === "member"
-        ? members
-        : slot.kind === "folio"
-          ? folios
-          : slot.resource === "app"
-            ? apps
-            : undefined;
-    if (source) {
-      choices[name] = source.items;
-      navigation[name] = source.navigation;
-    }
-    if (slot.kind === "channel")
+    if (slot.kind === "member") choices[name] = members;
+    else if (slot.kind === "folio") choices[name] = folios;
+    else if (slot.resource === "app") choices[name] = apps;
+    else if (slot.kind === "channel")
       choices[name] = props.channels
         .filter(
           (channel) =>
@@ -102,15 +76,7 @@ const AutomationPresetSetup = (props: AutomationPresetSetupProps) => {
     <AutomationPresetForm
       preset={props.preset}
       choices={choices}
-      choiceNavigation={navigation}
       variables={variables.data?.items ?? []}
-      variableNavigation={{
-        offset: variableOffset,
-        hasMore: variables.data?.hasMore ?? false,
-        loading: variables.loading,
-        previous: () => setVariableOffset((value) => Math.max(0, value - 50)),
-        next: () => setVariableOffset((value) => value + 50),
-      }}
       canManageVariables={canInProject(project, "automation:manage")}
       onCreateShared={async (key, value) => {
         const result = await api.setAutomationVariable({
@@ -121,13 +87,15 @@ const AutomationPresetSetup = (props: AutomationPresetSetupProps) => {
         queries.invalidate(["automation-catalog", project.id]);
         return result.variable;
       }}
-      onSubmit={async (values, bindings, labels) => {
+      onSubmit={async (values, bindings) => {
         const result = await api.createAutomationFromPreset({
           params: { projectId: project.id },
           body: { key: props.preset.key, values, bindings },
         });
         queries.invalidate(["automations", project.id]);
-        setCreated({ rule: result, labels });
+        await router.push("projectAutomationDetail", {
+          params: { projectSlug: project.slug, automationId: result.id },
+        });
       }}
       onCancel={props.onCancel}
     />

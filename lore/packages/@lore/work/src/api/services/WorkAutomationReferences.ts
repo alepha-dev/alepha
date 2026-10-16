@@ -19,9 +19,17 @@ export class WorkAutomationReferences {
   constructor() {
     this.references.registerOptions("quest", {
       permission: "quest:read",
-      read: async ({ projectId, offset, limit }) => {
+      read: async ({ projectId, offset, limit, search, ids }) => {
         const rows = await this.quests.findMany({
-          where: { projectId },
+          where: {
+            projectId,
+            ...(ids
+              ? {
+                  id: { inArray: ids.map(Number).filter(Number.isSafeInteger) },
+                }
+              : {}),
+            ...(search ? { title: { contains: search } } : {}),
+          },
           columns: ["id", "shortId", "title"],
           orderBy: { column: "id", direction: "desc" },
           offset,
@@ -39,9 +47,24 @@ export class WorkAutomationReferences {
 
     this.references.registerOptions("release", {
       permission: "release:read",
-      read: async ({ projectId, offset, limit }) => {
+      read: async ({ projectId, offset, limit, search, ids }) => {
         const rows = await this.releases.findMany({
-          where: { projectId },
+          where: {
+            projectId,
+            ...(ids
+              ? {
+                  id: { inArray: ids.map(Number).filter(Number.isSafeInteger) },
+                }
+              : {}),
+            ...(search
+              ? {
+                  or: [
+                    { tag: { contains: search } },
+                    { title: { contains: search } },
+                  ],
+                }
+              : {}),
+          },
           columns: ["id", "tag", "title"],
           orderBy: { column: "id", direction: "desc" },
           offset,
@@ -59,9 +82,17 @@ export class WorkAutomationReferences {
 
     this.references.registerOptions("epic", {
       permission: "epic:read",
-      read: async ({ projectId, offset, limit }) => {
+      read: async ({ projectId, offset, limit, search, ids }) => {
         const rows = await this.epics.findMany({
-          where: { projectId },
+          where: {
+            projectId,
+            ...(ids
+              ? {
+                  id: { inArray: ids.map(Number).filter(Number.isSafeInteger) },
+                }
+              : {}),
+            ...(search ? { title: { contains: search } } : {}),
+          },
           columns: ["id", "number", "title"],
           orderBy: { column: "id", direction: "desc" },
           offset,
@@ -79,9 +110,17 @@ export class WorkAutomationReferences {
 
     this.references.registerOptions("feedback", {
       permission: "feedback:read",
-      read: async ({ projectId, offset, limit }) => {
+      read: async ({ projectId, offset, limit, search, ids }) => {
         const rows = await this.feedback.findMany({
-          where: { projectId },
+          where: {
+            projectId,
+            ...(ids
+              ? {
+                  id: { inArray: ids.map(Number).filter(Number.isSafeInteger) },
+                }
+              : {}),
+            ...(search ? { title: { contains: search } } : {}),
+          },
           columns: ["id", "shortId", "title"],
           orderBy: { column: "id", direction: "desc" },
           offset,

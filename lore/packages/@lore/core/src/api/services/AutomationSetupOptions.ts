@@ -34,10 +34,17 @@ export class AutomationSetupOptions {
         );
       if (!context.permissions.includes(provider.permission))
         throw new ForbiddenError(`Missing ${provider.permission}`);
+      const ids = query.ids
+        ?.split(",")
+        .map((id) => id.trim())
+        .filter(Boolean)
+        .slice(0, query.limit);
       const result = await provider.read({
         projectId,
         offset: query.offset,
         limit: query.limit,
+        ...(query.search ? { search: query.search } : {}),
+        ...(ids?.length ? { ids } : {}),
       });
       return {
         ...result,

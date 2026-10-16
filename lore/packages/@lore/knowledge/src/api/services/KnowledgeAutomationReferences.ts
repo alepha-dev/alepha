@@ -13,9 +13,13 @@ export class KnowledgeAutomationReferences {
   constructor() {
     this.references.registerOptions("folio", {
       permission: "folio:read",
-      read: async ({ projectId, offset, limit }) => {
+      read: async ({ projectId, offset, limit, search, ids }) => {
         const rows = await this.folios.findMany({
-          where: { projectId },
+          where: {
+            projectId,
+            ...(ids ? { id: { inArray: ids } } : {}),
+            ...(search ? { title: { contains: search } } : {}),
+          },
           columns: ["id", "title"],
           orderBy: [
             { column: "title", direction: "asc" },

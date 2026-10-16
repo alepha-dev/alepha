@@ -1,4 +1,4 @@
-import { Button } from "@alepha/ui";
+import { Badge, Button, useDialog } from "@alepha/ui";
 import {
   useAction,
   useClient,
@@ -8,6 +8,7 @@ import {
 } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
+import { Braces, Pause, Pencil, Play, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import type { AutomationController } from "../../../../../api/controllers/AutomationController.ts";
@@ -16,19 +17,29 @@ import { AutomationTemplateTokens } from "../../../../../api/schemas/AutomationT
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { AutomationRouter } from "../../../AutomationRouter.ts";
 import type { I18n } from "../../../services/I18n.ts";
-import AutomationCreatedRule from "./AutomationCreatedRule.tsx";
+import AutomationPage from "./AutomationPage.tsx";
 import AutomationRuleEditor from "./AutomationRuleEditor.tsx";
+import AutomationRuleSummary from "./AutomationRuleSummary.tsx";
 import AutomationRunList from "./AutomationRunList.tsx";
+import AutomationTestPanel from "./AutomationTestPanel.tsx";
+import { useAutomationLabels } from "./useAutomationLabels.ts";
 
 export interface AutomationDetailPageProps {
   automationId: string;
 }
+
+/**
+ * One rule: what it does, a dry run against current data, its history, and
+ * the header actions that change it. A preset lands here once created.
+ */
 const AutomationDetailPage = (props: AutomationDetailPageProps) => {
   const [project] = useStore(currentProjectAtom);
   const api = useClient<AutomationController>();
   const queries = useQueryClient();
+  const dialog = useDialog();
   const router = useRouter<AutomationRouter>();
   const { tr } = useI18n<I18n, "en">();
+  const labels = useAutomationLabels();
   const [saved, setSaved] = useState<AutomationResource>();
   const [childBusy, setChildBusy] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -58,8 +69,72 @@ const AutomationDetailPage = (props: AutomationDetailPageProps) => {
     [project?.id],
   );
   const rule = saved ?? read.data;
+  const toggle = useAction<[enabled: boolean], boolean>(
+    {
+      handler: async (_context, enabled) => {
+        if (!rule) return false;
+        try {
+          setSaved(
+            await api.setAutomationEnabled({
+              params: { projectId: rule.projectId, id: rule.id },
+              body: { expectedRevision: rule.revision, enabled },
+            }),
+          );
+        } catch (error) {
+          // A refused enable can still have moved health or revision.
+          setSaved(undefined);
+          queries.invalidate(["automation", rule.projectId, rule.id]);
+          throw error;
+        } finally {
+          queries.invalidate(["automations", rule.projectId]);
+        }
+        return true;
+      },
+    },
+    [api, rule, queries],
+  );
+  const remove = useAction<[], boolean>(
+    {
+      handler: async () => {
+        if (!rule || !project) return false;
+        if (
+          !(await dialog.confirm({
+            title: tr("automation.delete.title"),
+            description: tr("automation.delete.description", {
+              args: [rule.title],
+            }),
+            confirmLabel: tr("automation.delete"),
+            destructive: true,
+          }))
+        )
+          return false;
+        await api.deleteAutomation({
+          params: { projectId: rule.projectId, id: rule.id },
+          body: { expectedRevision: rule.revision },
+        });
+        queries.invalidate(["automations", rule.projectId]);
+        await router.push("projectAutomations", {
+          params: { projectSlug: project.slug },
+        });
+        return true;
+      },
+    },
+    [api, rule, project?.slug, queries, dialog, tr],
+  );
+  if (!project) return null;
+  if (!rule)
+    return (
+      <AutomationPage title={tr("automation.editor.loading")}>
+        {read.error && (
+          <p role="alert" className="text-danger-text">
+            {read.error.message}
+          </p>
+        )}
+      </AutomationPage>
+    );
+  const busy = toggle.loading || remove.loading || childBusy;
   const referencedKeys =
-    rule?.rule && catalog.data
+    rule.rule && catalog.data
       ? [...new Set(new AutomationTemplateTokens().inValue(rule.rule))].filter(
           (key) =>
             !catalog.data!.entries.some((entry) =>
@@ -67,129 +142,143 @@ const AutomationDetailPage = (props: AutomationDetailPageProps) => {
             ),
         )
       : [];
-  const disable = useAction<[], boolean>(
-    {
-      handler: async () => {
-        if (!rule) return false;
-        setSaved(
-          await api.setAutomationEnabled({
-            params: { projectId: rule.projectId, id: rule.id },
-            body: { expectedRevision: rule.revision, enabled: false },
-          }),
-        );
-        queries.invalidate(["automations", rule.projectId]);
-        return true;
-      },
-    },
-    [api, rule, queries],
-  );
-  if (!rule || !project)
-    return (
-      <p className="text-muted-foreground p-5">
-        {tr("automation.editor.loading")}
-      </p>
-    );
   return (
-    <div className="flex max-w-3xl flex-col gap-6 py-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold break-words">{rule.title}</h1>
-        <Button
-          variant="outlined"
-          disabled={disable.loading || childBusy}
-          onClick={() =>
-            router.push("projectAutomationVariables", {
-              params: { projectSlug: project.slug },
-            })
-          }
-        >
-          {tr("automation.variables.title")}
-        </Button>
-      </div>
-      <p className="text-muted-foreground text-sm">
-        {tr("automation.editor.revision", { args: [String(rule.revision)] })}
-      </p>
-      {rule.redacted ? (
-        <p>{rule.redactionReason || tr("automation.redacted")}</p>
-      ) : (
-        <>
-          {!editing && (
-            <AutomationCreatedRule
-              key={`${rule.id}:${rule.revision}`}
-              rule={rule}
-              onChange={setSaved}
-              onBusyChange={setChildBusy}
-              disabled={disable.loading}
-              detail
-            />
-          )}
-          <div className="flex flex-wrap gap-3">
-            {rule.canEdit && (
+    <AutomationPage
+      title={rule.title}
+      badge={
+        <Badge variant="tint" tone={labels.tones[rule.displayState]}>
+          {labels.states[rule.displayState]}
+        </Badge>
+      }
+      description={labels.trigger(rule.rule)}
+      actions={
+        !editing && (
+          <>
+            {rule.canEdit && !rule.redacted && (
               <Button
                 variant="outlined"
-                disabled={disable.loading || childBusy}
+                disabled={busy}
                 onClick={() => {
-                  if (!editing) setSaved(rule);
-                  setEditing((value) => !value);
+                  setSaved(rule);
+                  setEditing(true);
                 }}
               >
-                {tr("automation.editor.title")}
+                <Pencil className="size-4" />
+                {tr("automation.edit")}
               </Button>
             )}
-            {!editing && rule.enabled && rule.canDisable && (
+            {rule.canDelete && (
               <Button
                 variant="outlined"
-                loading={disable.loading}
-                disabled={disable.loading || childBusy}
-                onClick={() => void disable.run()}
+                disabled={busy}
+                onClick={() => void remove.run()}
               >
+                <Trash2 className="size-4" />
+                {tr("automation.delete")}
+              </Button>
+            )}
+            {rule.enabled && rule.canDisable && (
+              <Button
+                variant="outlined"
+                loading={toggle.loading}
+                disabled={busy}
+                onClick={() => void toggle.run(false)}
+              >
+                <Pause className="size-4" />
                 {tr("automation.disable")}
               </Button>
             )}
-          </div>
-          {conflict && (
-            <div role="status" className="border-border rounded-md border p-4">
-              <p>{tr("automation.editor.conflict")}</p>
+            {!rule.enabled && rule.canEnable && (
               <Button
-                variant="outlined"
-                onClick={() => {
-                  setSaved(undefined);
-                  setEditing(false);
-                  setConflict(false);
-                  queries.invalidate([
-                    "automation",
-                    project.id,
-                    props.automationId,
-                  ]);
-                }}
+                loading={toggle.loading}
+                disabled={busy}
+                onClick={() => void toggle.run(true)}
               >
-                {tr("automation.editor.reload")}
+                <Play className="size-4" />
+                {tr("automation.enable")}
               </Button>
-            </div>
+            )}
+          </>
+        )
+      }
+    >
+      {(rule.reason || rule.requiresApproval) && (
+        <div
+          role="status"
+          className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm"
+        >
+          {rule.reason && <p>{rule.reason}</p>}
+          {rule.requiresApproval && (
+            <p className="text-muted-foreground">
+              {tr("automation.reviewRequired")}
+            </p>
           )}
-          {editing && catalog.data && (
-            <AutomationRuleEditor
-              key={`${rule.id}:${rule.revision}`}
-              resource={rule}
-              catalogue={catalog.data}
-              onSaved={(value) => {
-                setSaved(value);
-                setEditing(false);
-                setConflict(false);
-              }}
-              onConflict={() => setConflict(true)}
-              onBusyChange={setChildBusy}
-            />
-          )}
+        </div>
+      )}
+      {!rule.enabled && rule.canEnable && !editing && (
+        <p className="text-muted-foreground text-sm">
+          {tr("automation.setup.enableDescription")}
+        </p>
+      )}
+      {conflict && (
+        <div
+          role="status"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4 text-sm"
+        >
+          <p>{tr("automation.editor.conflict")}</p>
+          <Button
+            variant="outlined"
+            onClick={() => {
+              setSaved(undefined);
+              setEditing(false);
+              setConflict(false);
+              queries.invalidate([
+                "automation",
+                project.id,
+                props.automationId,
+              ]);
+            }}
+          >
+            {tr("automation.editor.reload")}
+          </Button>
+        </div>
+      )}
+      {rule.redacted ? (
+        <p className="text-muted-foreground text-sm">
+          {rule.redactionReason || tr("automation.redacted")}
+        </p>
+      ) : editing && catalog.data ? (
+        <AutomationRuleEditor
+          key={`${rule.id}:${rule.revision}`}
+          resource={rule}
+          catalogue={catalog.data}
+          onSaved={(value) => {
+            setSaved(value);
+            setEditing(false);
+            setConflict(false);
+            queries.invalidate(["automations", value.projectId]);
+          }}
+          onCancel={() => {
+            setEditing(false);
+            setConflict(false);
+          }}
+          onConflict={() => setConflict(true)}
+          onBusyChange={setChildBusy}
+        />
+      ) : (
+        <>
+          <AutomationRuleSummary rule={rule} />
           {referencedKeys.length > 0 && (
-            <section>
-              <h2 className="font-medium">
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <span className="text-muted-foreground">
                 {tr("automation.variables.referenced")}
-              </h2>
+              </span>
               {referencedKeys.map((key) => (
                 <Button
                   key={key}
-                  variant="link"
-                  disabled={childBusy || disable.loading}
+                  variant="outlined"
+                  size="sm"
+                  disabled={busy}
                   onClick={() =>
                     router.push("projectAutomationVariables", {
                       params: { projectSlug: project.slug },
@@ -197,15 +286,23 @@ const AutomationDetailPage = (props: AutomationDetailPageProps) => {
                     })
                   }
                 >
+                  <Braces className="size-3" />
                   {key}
                 </Button>
               ))}
-            </section>
+            </div>
           )}
+          <AutomationTestPanel
+            key={`${rule.id}:${rule.revision}`}
+            rule={rule}
+            disabled={toggle.loading || remove.loading}
+            onBusyChange={setChildBusy}
+          />
         </>
       )}
-      <AutomationRunList automationId={rule.id} />
-    </div>
+      {!editing && <AutomationRunList automationId={rule.id} />}
+    </AutomationPage>
   );
 };
+
 export default AutomationDetailPage;

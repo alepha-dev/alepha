@@ -10,7 +10,8 @@ import { AlephaLogger } from "alepha/logger";
 import { AlephaContext } from "alepha/react";
 import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
 import { AlephaReactUi } from "alepha/react/ui";
-import { afterEach, describe, it } from "vitest";
+import { setupJsdomMocks } from "alepha/testing/react";
+import { afterEach, beforeAll, describe, it } from "vitest";
 
 import type { AutomationPresetDescriptor } from "../../../../../api/schemas/automationPresetDescriptorSchema.ts";
 import { I18n } from "../../../services/I18n.ts";
@@ -21,6 +22,10 @@ import AutomationPresetForm from "./AutomationPresetForm.tsx";
  * a recipient yields a local UUID and never creates a shared-variable binding.
  */
 describe("Automation preset setup form", () => {
+  beforeAll(() => {
+    // The sharing choice is a `Segmented`, which measures its own thumb.
+    setupJsdomMocks();
+  });
   let alepha: Alepha | undefined;
   afterEach(async () => {
     cleanup();
@@ -69,7 +74,9 @@ describe("Automation preset setup form", () => {
         />
       </AlephaContext.Provider>,
     );
-    expect(screen.getByText(/00:00 UTC/)).toBeTruthy();
+    expect(
+      screen.queryByRole("radiogroup", { name: "Recipient comes from" }),
+    ).toBeNull();
     expect(
       screen.getByRole("combobox", { name: "Channel" }).textContent,
     ).toContain("Inbox");
@@ -78,9 +85,7 @@ describe("Automation preset setup form", () => {
     fireEvent.change(screen.getByRole("textbox", { name: "Tag" }), {
       target: { value: "daily" },
     });
-    fireEvent.click(
-      screen.getByRole("button", { name: "Create disabled automation" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Create automation" }));
     await waitFor(() =>
       expect(saved).toEqual([
         { recipient: memberId, channel: "inbox", tag: "daily" },
@@ -140,20 +145,20 @@ describe("Automation preset setup form", () => {
       </AlephaContext.Provider>,
     );
     fireEvent.click(
-      screen.getByRole("combobox", { name: "Recipient value source" }),
+      screen.getByRole("button", { name: "Share with other automations" }),
     );
-    fireEvent.click(
-      await screen.findByRole("option", { name: "Bind a shared variable" }),
-    );
+    expect(
+      screen
+        .getByRole("radio", { name: "Shared variable" })
+        .getAttribute("aria-checked"),
+    ).toBe("true");
     fireEvent.click(
       screen.getByRole("combobox", { name: "Recipient shared variable" }),
     );
     fireEvent.click(
       await screen.findByRole("option", { name: "teamRecipient (v3)" }),
     );
-    fireEvent.click(
-      screen.getByRole("button", { name: "Create disabled automation" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Create automation" }));
     await waitFor(() =>
       expect(saved).toEqual([
         {
@@ -225,30 +230,29 @@ describe("Automation preset setup form", () => {
       </AlephaContext.Provider>,
     );
     fireEvent.click(
-      screen.getByRole("combobox", { name: "Recipient value source" }),
+      screen.getByRole("button", { name: "Share with other automations" }),
     );
-    fireEvent.click(
-      await screen.findByRole("option", { name: "Create a shared variable" }),
-    );
+    expect(
+      screen
+        .getByRole("radio", { name: "New shared variable" })
+        .getAttribute("aria-checked"),
+    ).toBe("true");
     fireEvent.click(screen.getByRole("combobox", { name: "Recipient" }));
     fireEvent.click(await screen.findByRole("option", { name: "Myself" }));
     fireEvent.change(
       screen.getByRole("textbox", { name: "New variable key" }),
       { target: { value: "teamRecipient" } },
     );
-    fireEvent.click(
-      screen.getByRole("button", { name: "Create disabled automation" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Create automation" }));
     await waitFor(() => expect(attempts).toBe(1));
     await waitFor(() =>
       expect(
-        screen.getByRole("combobox", { name: "Recipient value source" })
-          .textContent,
-      ).toContain("Bind a shared variable"),
+        screen
+          .getByRole("radio", { name: "Shared variable" })
+          .getAttribute("aria-checked"),
+      ).toBe("true"),
     );
-    fireEvent.click(
-      screen.getByRole("button", { name: "Create disabled automation" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Create automation" }));
     await waitFor(() =>
       expect(saved).toEqual([
         {

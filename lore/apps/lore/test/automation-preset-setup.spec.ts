@@ -331,4 +331,55 @@ describe("Preset setup, explicit bindings and project pickers", () => {
       ),
     ).rejects.toThrow("folio:read");
   });
+
+  it("searches each picker by label and resolves saved ids to labels, within the project", async ({
+    expect,
+  }) => {
+    const foreign = await createTestProject(alepha);
+    const roadmap = await createTestFolio(alepha, project, {
+      title: "Roadmap 100% done",
+    });
+    await createTestFolio(alepha, project, { title: "Release notes" });
+    const foreignFolio = await createTestFolio(alepha, foreign, {
+      title: "Roadmap elsewhere",
+    });
+    const ada = await entities.users.create({
+      roles: ["user"],
+      username: "ada",
+      firstName: "Ada",
+      lastName: "Lovelace",
+    });
+    await createTestMember(alepha, project, ada.id, { rank: "contributor" });
+    const query = (
+      kind: "member" | "folio",
+      extra: { search?: string; ids?: string },
+    ) =>
+      api.getAutomationSetupOptions.fetch(
+        {
+          params: { projectId: project.id },
+          query: { kind, offset: 0, limit: 50, ...extra },
+        },
+        { user },
+      );
+    expect((await query("folio", { search: "roadmap" })).data.items).toEqual([
+      { value: roadmap.id, label: "Roadmap 100% done" },
+    ]);
+    // A typed wildcard matches itself, not every row.
+    expect(
+      (await query("folio", { search: "100%" })).data.items.map(
+        (row) => row.value,
+      ),
+    ).toEqual([roadmap.id]);
+    expect((await query("folio", { search: "_" })).data.items).toEqual([]);
+    expect(
+      (await query("folio", { ids: `${roadmap.id},${foreignFolio.id}` })).data
+        .items,
+    ).toEqual([{ value: roadmap.id, label: "Roadmap 100% done" }]);
+    expect((await query("member", { search: "love" })).data.items).toEqual([
+      { value: ada.id, label: "Ada Lovelace" },
+    ]);
+    expect((await query("member", { ids: ada.id })).data.items).toEqual([
+      { value: ada.id, label: "Ada Lovelace" },
+    ]);
+  });
 });

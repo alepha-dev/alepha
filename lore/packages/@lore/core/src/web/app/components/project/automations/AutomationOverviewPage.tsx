@@ -1,4 +1,4 @@
-import { Button, Badge, TimeAgo, useDialog } from "@alepha/ui";
+import { Badge, Button, TimeAgo, useDialog } from "@alepha/ui";
 import { DataTable, type DataTableFilterFields } from "@alepha/ui/table";
 import { z } from "alepha";
 import {
@@ -11,7 +11,16 @@ import {
 } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { Library, Settings, Braces } from "lucide-react";
+import {
+  Braces,
+  CircleDot,
+  Pause,
+  Play,
+  Plus,
+  Replace,
+  Trash2,
+  Workflow,
+} from "lucide-react";
 import { useState } from "react";
 
 import type { AutomationController } from "../../../../../api/controllers/AutomationController.ts";
@@ -23,7 +32,13 @@ import { loreDocsUrl } from "../../../services/docsUrl.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import { canInProject } from "../../../services/projectRank.ts";
 import { OutboundLink } from "../../shared/OutboundLink.tsx";
+import { useAutomationLabels } from "./useAutomationLabels.ts";
 
+/**
+ * The project's automations, on the same table as Releases and Apps: a
+ * primary New automation, a row that opens the rule, and the row menu for
+ * enabling, disabling and deleting.
+ */
 const AutomationOverviewPage = () => {
   const [project] = useStore(currentProjectAtom);
   const { tr } = useI18n<I18n, "en">();
@@ -32,13 +47,8 @@ const AutomationOverviewPage = () => {
   const cache = useInject(QueryCache);
   const queries = useQueryClient();
   const dialog = useDialog();
+  const labels = useAutomationLabels();
   const [refresh, setRefresh] = useState(0);
-  const stateLabels = {
-    disabled: tr("automation.state.disabled"),
-    active: tr("automation.state.active"),
-    paused: tr("automation.state.paused"),
-    broken: tr("automation.state.broken"),
-  };
   const outcomeLabels = {
     queued: tr("automation.run.queued"),
     running: tr("automation.run.running"),
@@ -49,14 +59,8 @@ const AutomationOverviewPage = () => {
     failed: tr("automation.run.failed"),
     unknown: tr("automation.run.unknown"),
   };
-  const events = {
-    "feedback.created": tr("automation.event.feedbackCreated"),
-    "release.published": tr("automation.event.releasePublished"),
-    "epic.completed": tr("automation.event.epicCompleted"),
-    "deploy.failed": tr("automation.event.deployFailed"),
-    "deploy.succeeded": tr("automation.event.deploySucceeded"),
-    "quest.completed": tr("automation.event.questCompleted"),
-  };
+  // The refreshed server row owns the state shown, so both actions refresh
+  // whether the write landed or was refused (a revision conflict included).
   const toggle = useAction<
     [row: AutomationResource, enabled: boolean],
     boolean
@@ -109,19 +113,16 @@ const AutomationOverviewPage = () => {
   );
   const busy = toggle.loading || remove.loading;
   const fields = {
-    search: {
-      schema: z.string(),
-      label: tr("automation.search.label"),
-      placeholder: tr("automation.search.placeholder"),
-      mode: "locked",
-    },
+    search: { preset: "search" },
     state: {
       schema: z.enum(["disabled", "active", "paused", "broken"]),
       label: tr("automation.column.state"),
-      items: Object.entries(stateLabels).map(([value, label]) => ({
+      icon: CircleDot,
+      items: Object.entries(labels.states).map(([value, label]) => ({
         value,
         label,
       })),
+      control: { clearLabel: tr("automation.filter.allStates") },
     },
   } satisfies DataTableFilterFields;
   if (!project) return null;
@@ -130,23 +131,15 @@ const AutomationOverviewPage = () => {
     router.push("projectAutomationGallery", {
       params: { projectSlug: project.slug },
     });
-  const settings = () =>
-    router.push("projectSettingsCapabilities", {
-      params: { projectSlug: project.slug },
+  const open = (row: AutomationResource) =>
+    router.push("projectAutomationDetail", {
+      params: { projectSlug: project.slug, automationId: row.id },
     });
   return (
     <div
       className="flex min-h-0 flex-1 flex-col p-2"
       data-testid="automation-list"
     >
-      <div className="flex justify-end px-3 pb-2">
-        <OutboundLink
-          href={loreDocsUrl("guides-automations")}
-          className="text-primary text-xs hover:underline"
-        >
-          {tr("automation.guide")}
-        </OutboundLink>
-      </div>
       <DataTable<AutomationResource, typeof fields>
         key={project.id}
         className="min-h-0 flex-1"
@@ -156,6 +149,7 @@ const AutomationOverviewPage = () => {
         pageSizes={[10, 20, 50]}
         rowKey={(row) => row.id}
         filters={{ fields }}
+        onRowClick={(row) => void open(row)}
         fetch={async ({ page, size, filters, signal }) => {
           const query = {
             offset: page * size,
@@ -187,15 +181,6 @@ const AutomationOverviewPage = () => {
         }}
         actions={[
           {
-            icon: Settings,
-            label: tr("automation.adoption.title"),
-            onClick: () =>
-              router.push("projectAutomationAdoption", {
-                params: { projectSlug: project.slug },
-              }),
-            disabled: busy,
-          },
-          {
             icon: Braces,
             label: tr("automation.variables.title"),
             onClick: () =>
@@ -204,40 +189,82 @@ const AutomationOverviewPage = () => {
               }),
             disabled: busy,
           },
+          {
+            icon: Replace,
+            label: tr("automation.adoption.title"),
+            onClick: () =>
+              router.push("projectAutomationAdoption", {
+                params: { projectSlug: project.slug },
+              }),
+            disabled: busy,
+          },
           ...(canCreate
             ? [
                 {
-                  icon: Library,
-                  label: tr("automation.gallery.browse"),
+                  icon: Plus,
+                  label: tr("automation.new"),
                   primary: true,
                   onClick: gallery,
                   disabled: busy,
                 },
               ]
             : []),
-          ...(canInProject(project, "capability:manage")
+        ]}
+        rowActions={(row) => [
+          ...(row.enabled && row.canDisable
             ? [
                 {
-                  icon: Settings,
-                  label: tr("automation.settings"),
-                  onClick: settings,
-                  disabled: busy,
+                  icon: Pause,
+                  label: tr("automation.disable"),
+                  disabled: () => busy,
+                  onClick: (item: AutomationResource) =>
+                    void toggle.run(item, false),
+                },
+              ]
+            : []),
+          ...(!row.enabled && row.canEnable
+            ? [
+                {
+                  icon: Play,
+                  label: tr("automation.enable"),
+                  disabled: () => busy,
+                  onClick: (item: AutomationResource) =>
+                    void toggle.run(item, true),
+                },
+              ]
+            : []),
+          ...(row.canDelete
+            ? [
+                {
+                  icon: Trash2,
+                  label: tr("automation.delete"),
+                  destructive: true,
+                  disabled: () => busy,
+                  onClick: (item: AutomationResource) => void remove.run(item),
                 },
               ]
             : []),
         ]}
         emptyState={{
+          icon: Workflow,
           title: tr("automation.list.empty"),
           description: tr("automation.list.emptyDescription"),
-          ...(canCreate
-            ? {
-                action: (
-                  <Button disabled={busy} onClick={gallery}>
-                    {tr("automation.gallery.browse")}
-                  </Button>
-                ),
-              }
-            : {}),
+          action: (
+            <div className="flex flex-col items-center gap-3">
+              {canCreate && (
+                <Button disabled={busy} onClick={gallery}>
+                  <Plus className="size-4" />
+                  {tr("automation.new")}
+                </Button>
+              )}
+              <OutboundLink
+                href={loreDocsUrl("guides-automations")}
+                className="text-muted-foreground text-sm underline underline-offset-4"
+              >
+                {tr("automation.guide")}
+              </OutboundLink>
+            </div>
+          ),
         }}
         noMatchState={{
           title: tr("automation.list.noMatch"),
@@ -248,77 +275,47 @@ const AutomationOverviewPage = () => {
             label: tr("automation.column.name"),
             className: "w-full min-w-48",
             cell: (row) => (
-              <Button
-                variant="link"
-                disabled={busy}
-                onClick={() =>
-                  router.push("projectAutomationDetail", {
-                    params: { projectSlug: project.slug, automationId: row.id },
-                  })
-                }
-              >
-                {row.title}
-              </Button>
-            ),
-          },
-          author: {
-            label: tr("automation.column.author"),
-            cell: (row) => (
-              <span title={row.authorUserId}>
-                {row.authorName || row.authorUserId.slice(0, 8)}
-              </span>
+              <div className="flex flex-col gap-0.5">
+                <span className="font-medium">{row.title}</span>
+                {(row.reason || row.redactionReason) && (
+                  <span className="text-muted-foreground text-xs">
+                    {row.reason || row.redactionReason}
+                  </span>
+                )}
+              </div>
             ),
           },
           trigger: {
             label: tr("automation.column.trigger"),
-            cell: (row) =>
-              row.rule
-                ? row.rule.trigger.kind === "event"
-                  ? events[row.rule.trigger.event]
-                  : `${row.rule.trigger.cron} UTC`
-                : tr("automation.redacted"),
+            className: "whitespace-nowrap",
+            cell: (row) => labels.trigger(row.rule),
           },
           state: {
             label: tr("automation.column.state"),
             cell: (row) => (
-              <div className="flex max-w-sm flex-col gap-1">
-                <Badge variant="outline">{stateLabels[row.displayState]}</Badge>
-                {row.displayState === "disabled" && row.health !== "active" && (
-                  <span className="text-muted-foreground text-xs">
-                    {stateLabels[row.health]}
-                  </span>
-                )}
-                {(row.reason || row.redactionReason) && (
-                  <p className="text-muted-foreground text-xs">
-                    {row.reason || row.redactionReason}
-                  </p>
-                )}
+              <div className="flex flex-col items-start gap-1">
+                <Badge variant="tint" tone={labels.tones[row.displayState]}>
+                  {labels.states[row.displayState]}
+                </Badge>
                 {row.requiresApproval && (
-                  <span className="text-muted-foreground text-xs">
+                  <span className="text-muted-foreground text-xs whitespace-nowrap">
                     {tr("automation.reviewRequired")}
                   </span>
                 )}
-                {row.health === "broken" &&
-                  canInProject(project, "capability:manage") && (
-                    <Button
-                      variant="link"
-                      size="sm"
-                      disabled={busy}
-                      onClick={settings}
-                    >
-                      {tr("automation.settings")}
-                    </Button>
-                  )}
               </div>
             ),
           },
           lastRun: {
             label: tr("automation.column.lastRun"),
+            className: "whitespace-nowrap",
             cell: (row) =>
               row.lastRun ? (
-                <div className="flex flex-col gap-1 text-xs">
+                <div className="flex flex-col text-xs">
                   <span>{outcomeLabels[row.lastRun.status]}</span>
-                  <TimeAgo value={row.lastRun.at} />
+                  <TimeAgo
+                    value={row.lastRun.at}
+                    className="text-muted-foreground"
+                  />
                   {row.lastRun.capped && (
                     <span>{tr("automation.run.capped")}</span>
                   )}
@@ -327,36 +324,18 @@ const AutomationOverviewPage = () => {
                   )}
                 </div>
               ) : (
-                tr("automation.run.none")
+                <span className="text-muted-foreground text-xs">
+                  {tr("automation.run.none")}
+                </span>
               ),
           },
-          controls: {
-            label: tr("automation.column.controls"),
+          author: {
+            label: tr("automation.column.author"),
+            className: "whitespace-nowrap",
             cell: (row) => (
-              <div className="flex gap-2">
-                {(row.enabled ? row.canDisable : row.canEnable) && (
-                  <Button
-                    variant="outlined"
-                    size="sm"
-                    disabled={busy}
-                    onClick={() => void toggle.run(row, !row.enabled)}
-                  >
-                    {row.enabled
-                      ? tr("automation.disable")
-                      : tr("automation.enable")}
-                  </Button>
-                )}
-                {row.canDelete && (
-                  <Button
-                    variant="minimal"
-                    size="sm"
-                    disabled={busy}
-                    onClick={() => void remove.run(row)}
-                  >
-                    {tr("automation.delete")}
-                  </Button>
-                )}
-              </div>
+              <span title={row.authorUserId}>
+                {row.authorName || row.authorUserId.slice(0, 8)}
+              </span>
             ),
           },
         }}

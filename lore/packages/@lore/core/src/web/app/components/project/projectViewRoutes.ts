@@ -92,6 +92,13 @@ export const ROUTES_FULL_WIDTH = new Set([
   "projectQuest",
   "projectKanban",
   "projectAutomations",
+  // Every page under Automations draws its own bordered header and scrolling
+  // body (`AutomationPage`), as Uptime's monitor page does.
+  "projectAutomationGallery",
+  "projectAutomationDetail",
+  "projectAutomationVariables",
+  "projectAutomationRun",
+  "projectAutomationAdoption",
   "projectEpics",
   "projectEpic",
   "projectReleases",
@@ -165,6 +172,7 @@ export const SECTION_HREF_ROUTES: Record<
   | "projectApps"
   | "projectUptime"
   | "projectReleases"
+  | "projectAutomations"
 > = {
   projectFolios: "projectFolios",
   projectFoliosNew: "projectFolios",
@@ -173,6 +181,11 @@ export const SECTION_HREF_ROUTES: Record<
   projectQuest: "projectQuests",
   projectQuestGraph: "projectQuests",
   projectRelease: "projectReleases",
+  projectAutomationAdoption: "projectAutomations",
+  projectAutomationGallery: "projectAutomations",
+  projectAutomationDetail: "projectAutomations",
+  projectAutomationVariables: "projectAutomations",
+  projectAutomationRun: "projectAutomations",
   projectMonitor: "projectUptime",
   projectApp: "projectApps",
   projectAppRedirect: "projectApps",
@@ -207,11 +220,14 @@ export const SECTION_LABEL_KEYS: Record<string, string> = {
   // reader is. The key is `capabilityNav`'s own, so the two cannot drift.
   projectInbox: "project.menu.inbox",
   projectAutomations: "project.capability.work.option.automations.label",
-  projectAutomationAdoption: "automation.adoption.title",
-  projectAutomationGallery: "automation.gallery.title",
-  projectAutomationDetail: "automation.editor.title",
-  projectAutomationVariables: "automation.variables.title",
-  projectAutomationRun: "automation.history.detail",
+  // Every page under Automations reads "Automations" and links back to the
+  // list, as an app's tabs do with Apps: the page names itself in its header.
+  projectAutomationAdoption: "project.capability.work.option.automations.label",
+  projectAutomationGallery: "project.capability.work.option.automations.label",
+  projectAutomationDetail: "project.capability.work.option.automations.label",
+  projectAutomationVariables:
+    "project.capability.work.option.automations.label",
+  projectAutomationRun: "project.capability.work.option.automations.label",
   projectQuests: "project.menu.quests",
   projectQuest: "project.menu.quests",
   // ⚠️ It had NO entry until #Q2104, so the questline page's crumb read

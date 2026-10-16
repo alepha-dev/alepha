@@ -1,4 +1,4 @@
-import { Button, useDialog } from "@alepha/ui";
+import { Badge, Button, useDialog } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
 import { useAction, useClient, useQuery, useQueryClient } from "alepha/react";
 import { useForm, useFormValues } from "alepha/react/form";
@@ -24,7 +24,7 @@ const AutomationAdoptionCard = (props: AutomationAdoptionCardProps) => {
   const queries = useQueryClient();
   const dialog = useDialog();
   const router = useRouter<AutomationRouter>();
-  const { tr } = useI18n<I18n, "en">();
+  const { tr, l } = useI18n<I18n, "en">();
   const [offset, setOffset] = useState(0);
   const preview = useQuery(
     {
@@ -113,44 +113,78 @@ const AutomationAdoptionCard = (props: AutomationAdoptionCardProps) => {
     adopted: tr("automation.adoption.adopted"),
     opted_out: tr("automation.adoption.optedOut"),
   };
-  if (!data) return <p>{preview.error?.message ?? tr("automation.loading")}</p>;
+  if (!data)
+    return (
+      <p className="text-muted-foreground text-sm">
+        {preview.error?.message ?? tr("automation.editor.loading")}
+      </p>
+    );
   const available =
     choices.data?.items.filter(
       (item) => item.canEdit && item.rule?.compatibility === props.policy,
     ) ?? [];
   return (
-    <section className="border-border flex flex-col gap-4 rounded-lg border p-5">
-      <div>
-        <h2 className="font-semibold">
+    <section className="bg-card flex flex-col gap-4 rounded-lg border p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-medium">
           {props.policy === "quest-reminders"
             ? tr("automation.adoption.reminders")
             : tr("automation.adoption.releases")}
         </h2>
-        <p className="text-muted-foreground text-sm">{states[data.state]}</p>
+        <Badge
+          variant="tint"
+          tone={
+            data.state === "adopted"
+              ? "success"
+              : data.state === "pending"
+                ? "warning"
+                : "neutral"
+          }
+        >
+          {states[data.state]}
+        </Badge>
       </div>
       <p className="text-sm">
         {props.policy === "quest-reminders"
           ? tr("automation.adoption.reminderDescription")
           : tr("automation.adoption.releaseDescription")}
       </p>
-      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
-        <dt>{tr("automation.adoption.author")}</dt>
+      <dl className="grid grid-cols-[minmax(6rem,auto)_1fr] gap-x-6 gap-y-2 text-sm">
+        <dt className="text-muted-foreground">
+          {tr("automation.adoption.author")}
+        </dt>
         <dd>{data.author.name}</dd>
-        <dt>{tr("automation.adoption.channels")}</dt>
-        <dd>{data.channels.join(", ")}</dd>
-        <dt>{tr("automation.adoption.grants")}</dt>
-        <dd className="break-words">{data.permissions.join(", ")}</dd>
-      </dl>
-      <div className="text-sm">
-        <h3 className="font-medium">{tr("automation.adoption.recipients")}</h3>
-        <p className="break-words">
+        <dt className="text-muted-foreground">
+          {tr("automation.adoption.channels")}
+        </dt>
+        <dd>
+          {data.channels
+            .map((channel) =>
+              tr(`automation.channel.${channel}` as never, {
+                default: channel,
+              }),
+            )
+            .join(", ")}
+        </dd>
+        <dt className="text-muted-foreground">
+          {tr("automation.adoption.grants")}
+        </dt>
+        <dd className="font-mono text-xs leading-5 break-words">
+          {data.permissions.join(", ")}
+        </dd>
+        <dt className="text-muted-foreground">
+          {tr("automation.adoption.recipients")}
+        </dt>
+        <dd className="break-words">
           {data.recipients.map((item) => item.label).join(", ") ||
             tr("automation.adoption.noRecipients")}
-        </p>
-        {data.recipientsHasMore && (
-          <p>{tr("automation.adoption.moreRecipients")}</p>
-        )}
-      </div>
+          {data.recipientsHasMore && (
+            <span className="text-muted-foreground block text-xs">
+              {tr("automation.adoption.moreRecipients")}
+            </span>
+          )}
+        </dd>
+      </dl>
       {data.reminderCount !== undefined && (
         <div className="text-sm">
           <p>
@@ -161,14 +195,21 @@ const AutomationAdoptionCard = (props: AutomationAdoptionCardProps) => {
           <ul className="mt-2 space-y-1">
             {data.reminders?.map((item) => (
               <li key={item.id}>
-                #Q{item.shortId}: {item.assigneeId}, {item.interval},{" "}
-                {item.nextAt}
+                #Q{item.shortId} · {item.interval} ·{" "}
+                {l(item.nextAt, { date: "lll" })}
               </li>
             ))}
           </ul>
         </div>
       )}
-      {data.reason && <p className="text-warning text-sm">{data.reason}</p>}
+      {data.reason && (
+        <p
+          role="status"
+          className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm"
+        >
+          {data.reason}
+        </p>
+      )}
       {data.state === "legacy" && (
         <>
           <Control
@@ -184,27 +225,30 @@ const AutomationAdoptionCard = (props: AutomationAdoptionCardProps) => {
             ]}
             disabled={busy || choices.loading}
           />
-          <div className="flex gap-2">
-            <Button
-              variant="minimal"
-              disabled={busy || !offset || choices.loading}
-              onClick={() => setOffset((at) => Math.max(0, at - 50))}
-            >
-              {tr("automation.previous")}
-            </Button>
-            <Button
-              variant="minimal"
-              disabled={busy || !choices.data?.hasMore || choices.loading}
-              onClick={() => setOffset((at) => at + 50)}
-            >
-              {tr("automation.next")}
-            </Button>
-          </div>
+          {(offset > 0 || choices.data?.hasMore) && (
+            <div className="flex gap-2">
+              <Button
+                variant="minimal"
+                disabled={busy || !offset || choices.loading}
+                onClick={() => setOffset((at) => Math.max(0, at - 50))}
+              >
+                {tr("automation.previous")}
+              </Button>
+              <Button
+                variant="minimal"
+                disabled={busy || !choices.data?.hasMore || choices.loading}
+                onClick={() => setOffset((at) => at + 50)}
+              >
+                {tr("automation.next")}
+              </Button>
+            </div>
+          )}
         </>
       )}
       {["legacy", "pending"].includes(data.state) && (
         <Button
           intent="primary"
+          className="self-start"
           loading={adopt.loading}
           disabled={
             busy ||
@@ -222,6 +266,7 @@ const AutomationAdoptionCard = (props: AutomationAdoptionCardProps) => {
       {data.replacementId && data.candidate && (
         <Button
           variant="outlined"
+          className="self-start"
           disabled={busy}
           onClick={() =>
             router.push("projectAutomationDetail", {

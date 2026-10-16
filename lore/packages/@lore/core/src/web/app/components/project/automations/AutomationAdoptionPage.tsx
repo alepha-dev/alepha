@@ -5,6 +5,7 @@ import { useState } from "react";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import AutomationAdoptionCard from "./AutomationAdoptionCard.tsx";
+import AutomationPage from "./AutomationPage.tsx";
 
 const AutomationAdoptionPage = () => {
   const [project] = useStore(currentProjectAtom);
@@ -12,15 +13,10 @@ const AutomationAdoptionPage = () => {
   const [busy, setBusy] = useState(false);
   if (!project) return null;
   return (
-    <div className="flex max-w-4xl flex-col gap-6 p-6">
-      <div>
-        <h1 className="text-xl font-semibold">
-          {tr("automation.adoption.title")}
-        </h1>
-        <p className="text-muted-foreground mt-2 text-sm">
-          {tr("automation.adoption.description")}
-        </p>
-      </div>
+    <AutomationPage
+      title={tr("automation.adoption.title")}
+      description={tr("automation.adoption.description")}
+    >
       <AutomationAdoptionCard
         project={project}
         policy="quest-reminders"
@@ -33,7 +29,7 @@ const AutomationAdoptionPage = () => {
         disabled={busy}
         onBusyChange={setBusy}
       />
-    </div>
+    </AutomationPage>
   );
 };
 export default AutomationAdoptionPage;

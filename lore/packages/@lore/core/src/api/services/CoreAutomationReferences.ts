@@ -17,34 +17,59 @@ export class CoreAutomationReferences {
   constructor() {
     this.references.registerOptions("member", {
       permission: "member:read",
-      read: async ({ projectId, offset, limit }) => {
+      read: async ({ projectId, offset, limit, search, ids }) => {
         const project = await this.security.projects.getById(projectId);
+        const narrowed = !!search || !!ids;
+        // A search reads the whole roster's ids, bounded, and filters on the
+        // user rows; a plain page pages the roster itself.
         const members = await this.security.members.findMany({
-          where: { organizationId: project.organizationId! },
+          where: {
+            organizationId: project.organizationId!,
+            ...(ids ? { userId: { inArray: ids } } : {}),
+          },
+          columns: ["userId"],
           orderBy: "id",
-          offset,
-          limit: limit + 1,
+          ...(narrowed ? { limit: 1_000 } : { offset, limit: limit + 1 }),
         });
-        const ids = members.slice(0, limit).map((member) => member.userId);
-        const users = ids.length
+        const candidates = members
+          .slice(0, narrowed ? members.length : limit)
+          .map((member) => member.userId);
+        const users = candidates.length
           ? await this.users.findMany({
-              where: { id: { inArray: ids }, enabled: true },
+              where: {
+                id: { inArray: candidates },
+                enabled: true,
+                ...(search
+                  ? {
+                      or: [
+                        { username: { contains: search } },
+                        { firstName: { contains: search } },
+                        { lastName: { contains: search } },
+                        { email: { contains: search } },
+                      ],
+                    }
+                  : {}),
+              },
               columns: ["id", "username", "firstName", "lastName", "email"],
+              ...(narrowed
+                ? { orderBy: "username", offset, limit: limit + 1 }
+                : {}),
             })
           : [];
         const byId = new Map(users.map((user) => [user.id, user]));
+        const order = narrowed ? users.map((user) => user.id) : candidates;
         return {
-          items: ids.flatMap((id) => {
+          items: order.slice(0, limit).flatMap((id) => {
             const user = byId.get(id);
             return user
               ? [
                   {
                     value: id,
                     label: (
-                      user.username ||
                       [user.firstName, user.lastName]
                         .filter(Boolean)
                         .join(" ") ||
+                      user.username ||
                       user.email ||
                       id
                     ).slice(0, 255),
@@ -52,7 +77,7 @@ export class CoreAutomationReferences {
                 ]
               : [];
           }),
-          hasMore: members.length > limit,
+          hasMore: narrowed ? users.length > limit : members.length > limit,
         };
       },
     });

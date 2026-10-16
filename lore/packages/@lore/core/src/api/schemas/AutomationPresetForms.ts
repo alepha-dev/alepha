@@ -80,16 +80,16 @@ export class AutomationPresetForms {
           binding.data.kind !== slot.kind ||
           !native.shape[name].safeParse(binding.data.value.value).success
         )
-          return { path: `shared_${name}`, message: messages.sharedRequired };
+          return { path: `/shared_${name}`, message: messages.sharedRequired };
       } else {
         if (!native.shape[name].safeParse(values[name]).success)
-          return { path: name, message: messages.invalidValue };
+          return { path: `/${name}`, message: messages.invalidValue };
         const key = values[`key_${name}`];
         if (
           mode === "create" &&
           (typeof key !== "string" || !/^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(key))
         )
-          return { path: `key_${name}`, message: messages.keyRequired };
+          return { path: `/key_${name}`, message: messages.keyRequired };
       }
     }
     return undefined;

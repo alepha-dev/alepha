@@ -33,52 +33,67 @@ const AutomationRunList = (props: AutomationRunListProps) => {
     },
     [project?.id, props.automationId, offset],
   );
+  const items = read.data?.items ?? [];
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="font-medium">{tr("automation.history.title")}</h2>
-      <p className="text-muted-foreground text-sm">
-        {tr("automation.history.retention")}
-      </p>
-      {read.data?.items.map((run) => (
-        <div
-          key={run.id}
-          className="border-border flex flex-wrap items-center justify-between gap-2 border-b py-2"
-        >
-          <Button
-            variant="link"
-            onClick={() =>
-              router.push("projectAutomationRun", {
-                params: { projectSlug: project!.slug, runId: run.id },
-              })
-            }
-          >
-            {tr(`automation.run.${run.status}`)}:{" "}
-            <TimeAgo value={run.triggeredAt} />
-          </Button>
-          <span className="text-muted-foreground text-xs">
-            {run.reason || run.redactionReason}
-          </span>
-        </div>
-      ))}
-      {read.data && !read.data.items.length && (
-        <p className="text-muted-foreground">{tr("automation.run.none")}</p>
-      )}
-      <div className="flex gap-2">
-        <Button
-          variant="minimal"
-          disabled={read.loading || !offset}
-          onClick={() => setOffset((value) => Math.max(0, value - 20))}
-        >
-          {tr("automation.previous")}
-        </Button>
-        <Button
-          variant="minimal"
-          disabled={read.loading || !read.data?.hasMore}
-          onClick={() => setOffset((value) => value + 20)}
-        >
-          {tr("automation.next")}
-        </Button>
+      <div>
+        <h2 className="font-medium">{tr("automation.history.title")}</h2>
+        <p className="text-muted-foreground text-sm">
+          {tr("automation.history.retention")}
+        </p>
       </div>
+      {read.data && !items.length && !offset ? (
+        <div className="text-muted-foreground rounded-lg border border-dashed p-6 text-center text-sm">
+          {tr("automation.run.none")}
+        </div>
+      ) : (
+        <ul className="bg-card divide-y overflow-hidden rounded-lg border">
+          {items.map((run) => (
+            <li key={run.id}>
+              <button
+                type="button"
+                className="hover:bg-hover flex w-full flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-left text-sm"
+                onClick={() =>
+                  router.push("projectAutomationRun", {
+                    params: { projectSlug: project!.slug, runId: run.id },
+                  })
+                }
+              >
+                <span className="font-medium">
+                  {tr(`automation.run.${run.status}`)}
+                </span>
+                <span className="text-muted-foreground min-w-0 flex-1 truncate text-xs">
+                  {run.reason || run.redactionReason}
+                </span>
+                <TimeAgo
+                  value={run.triggeredAt}
+                  className="text-muted-foreground text-xs"
+                />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {(offset > 0 || read.data?.hasMore) && (
+        <div className="flex gap-2">
+          <Button
+            variant="minimal"
+            size="sm"
+            disabled={read.loading || !offset}
+            onClick={() => setOffset((value) => Math.max(0, value - 20))}
+          >
+            {tr("automation.previous")}
+          </Button>
+          <Button
+            variant="minimal"
+            size="sm"
+            disabled={read.loading || !read.data?.hasMore}
+            onClick={() => setOffset((value) => value + 20)}
+          >
+            {tr("automation.next")}
+          </Button>
+        </div>
+      )}
     </section>
   );
 };

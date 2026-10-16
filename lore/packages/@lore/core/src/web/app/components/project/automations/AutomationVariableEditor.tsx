@@ -168,7 +168,7 @@ const AutomationVariableEditor = (props: AutomationVariableEditorProps) => {
     return () => props.onBusyChange(false);
   }, [busy, props.onBusyChange]);
   return (
-    <section className="border-border flex flex-col gap-4 rounded-md border p-4">
+    <section className="bg-card flex flex-col gap-4 rounded-lg border p-4">
       <h2 className="font-medium">
         {variable ? variable.key : tr("automation.variables.create")}
       </h2>
@@ -245,10 +245,16 @@ const AutomationVariableEditor = (props: AutomationVariableEditorProps) => {
       {variable && props.canManage && (
         <>
           <h3 className="font-medium">{tr("automation.variables.usedBy")}</h3>
+          {dependents.data && !dependents.data.items.length && !offset && (
+            <p className="text-muted-foreground text-sm">
+              {tr("automation.variables.unused")}
+            </p>
+          )}
           {dependents.data?.items.map((rule) => (
             <Button
               key={rule.id}
               variant="link"
+              className="self-start"
               onClick={() =>
                 router.push("projectAutomationDetail", {
                   params: { projectSlug: project!.slug, automationId: rule.id },
@@ -258,24 +264,28 @@ const AutomationVariableEditor = (props: AutomationVariableEditorProps) => {
               {rule.title}
             </Button>
           ))}
-          <div className="flex gap-2">
-            <Button
-              variant="minimal"
-              disabled={busy || dependents.loading || !offset}
-              onClick={() =>
-                setOffset((position) => Math.max(0, position - 50))
-              }
-            >
-              {tr("automation.previous")}
-            </Button>
-            <Button
-              variant="minimal"
-              disabled={busy || dependents.loading || !dependents.data?.hasMore}
-              onClick={() => setOffset((position) => position + 50)}
-            >
-              {tr("automation.next")}
-            </Button>
-          </div>
+          {(offset > 0 || dependents.data?.hasMore) && (
+            <div className="flex gap-2">
+              <Button
+                variant="minimal"
+                disabled={busy || dependents.loading || !offset}
+                onClick={() =>
+                  setOffset((position) => Math.max(0, position - 50))
+                }
+              >
+                {tr("automation.previous")}
+              </Button>
+              <Button
+                variant="minimal"
+                disabled={
+                  busy || dependents.loading || !dependents.data?.hasMore
+                }
+                onClick={() => setOffset((position) => position + 50)}
+              >
+                {tr("automation.next")}
+              </Button>
+            </div>
+          )}
         </>
       )}
       {affected.map((rule) => (

@@ -15,9 +15,20 @@ export class DeployAutomationReferences {
   constructor() {
     this.references.registerOptions("deployment", {
       permission: "app:read",
-      read: async ({ projectId, offset, limit }) => {
+      read: async ({ projectId, offset, limit, search, ids }) => {
         const rows = await this.deployments.findMany({
-          where: { projectId },
+          where: {
+            projectId,
+            ...(ids ? { id: { inArray: ids } } : {}),
+            ...(search
+              ? {
+                  or: [
+                    { app: { contains: search } },
+                    { tag: { contains: search } },
+                  ],
+                }
+              : {}),
+          },
           columns: ["id", "app", "tag", "status"],
           orderBy: [
             { column: "createdAt", direction: "desc" },
@@ -37,9 +48,13 @@ export class DeployAutomationReferences {
     });
     this.references.registerOptions("app", {
       permission: "app:read",
-      read: async ({ projectId, offset, limit }) => {
+      read: async ({ projectId, offset, limit, search, ids }) => {
         const rows = await this.instances.findMany({
-          where: { projectId },
+          where: {
+            projectId,
+            ...(ids ? { app: { inArray: ids } } : {}),
+            ...(search ? { app: { contains: search } } : {}),
+          },
           columns: ["app"],
           distinct: ["app"],
           orderBy: "app",

@@ -49,7 +49,7 @@ const AutomationActionEditor = (props: AutomationActionEditorProps) => {
   });
   const entry = props.entries.find((item) => item.key === props.action.kind);
   return (
-    <div className="border-border flex flex-col gap-3 rounded-md border p-4">
+    <div className="bg-card flex flex-col gap-3 rounded-lg border p-4">
       <Control
         input={form.input.kind}
         label={tr("automation.editor.action", {
@@ -58,7 +58,9 @@ const AutomationActionEditor = (props: AutomationActionEditorProps) => {
         select
         items={props.entries.map((item) => ({
           value: item.key,
-          label: item.key,
+          label: tr(`automation.action.${item.key}` as never, {
+            default: item.key,
+          }),
         }))}
         disabled={props.disabled}
       />
@@ -87,7 +89,7 @@ const AutomationActionEditor = (props: AutomationActionEditorProps) => {
         .map(([key, slot]) => (
           <AutomationValueControl
             key={`${entry?.key}:${key}`}
-            label={key}
+            label={tr(`automation.setup.${key}` as never, { default: key })}
             slot={slot}
             value={(props.action as unknown as Record<string, unknown>)[key]}
             bindings={props.bindings}
@@ -100,6 +102,7 @@ const AutomationActionEditor = (props: AutomationActionEditorProps) => {
         <Button
           variant="minimal"
           intent="danger"
+          className="self-start"
           disabled={props.disabled}
           onClick={props.onRemove}
         >
