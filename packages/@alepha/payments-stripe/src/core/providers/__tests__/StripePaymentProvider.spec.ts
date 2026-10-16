@@ -1,4 +1,5 @@
 import { Alepha, AlephaError } from "alepha";
+import type { PaymentIntentEntity } from "alepha/api/payments";
 import Stripe from "stripe";
 import { describe, expect, it } from "vitest";
 
@@ -328,6 +329,45 @@ describe("StripePaymentProvider", () => {
           cancelUrl: "https://app.test/ko",
         }),
       ).rejects.toThrow(AlephaError);
+    });
+  });
+
+  describe("payment checkout line", () => {
+    const intent: PaymentIntentEntity = {
+      id: "00000000-0000-0000-0000-000000000001",
+      version: 1,
+      createdAt: "2026-10-16T00:00:00.000Z",
+      updatedAt: "2026-10-16T00:00:00.000Z",
+      amount: 5000,
+      currency: "eur",
+      status: "created",
+    };
+    const lineName = (params: unknown) =>
+      (
+        params as {
+          line_items: Array<{ price_data: { product_data: { name: string } } }>;
+        }
+      ).line_items[0]?.price_data.product_data.name;
+
+    it("names the line item with the caller's label", async () => {
+      const provider = make();
+      const calls = provider.recordBilling();
+      await provider.createSession(intent, {
+        returnUrl: "https://app.test/back",
+        stripeAccount: "acct_1",
+        label: "Pack Platinium",
+      });
+      expect(lineName(calls[0]?.params)).toBe("Pack Platinium");
+    });
+
+    it("falls back on « Payment » without a label", async () => {
+      const provider = make();
+      const calls = provider.recordBilling();
+      await provider.createSession(intent, {
+        returnUrl: "https://app.test/back",
+        stripeAccount: "acct_1",
+      });
+      expect(lineName(calls[0]?.params)).toBe("Payment");
     });
   });
 

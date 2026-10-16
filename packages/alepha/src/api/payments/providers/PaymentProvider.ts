@@ -132,6 +132,11 @@ export abstract class PaymentProvider {
        * Pre-fill the payer's email on the hosted checkout page.
        */
       customerEmail?: string;
+      /**
+       * What the payer sees they are paying for on the hosted checkout page
+       * (the line item's name). A provider without one ignores it.
+       */
+      label?: string;
     },
   ): Promise<CreateSessionResult>;
 

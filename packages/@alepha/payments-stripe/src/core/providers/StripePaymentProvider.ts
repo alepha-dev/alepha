@@ -125,6 +125,7 @@ export class StripePaymentProvider implements PaymentProvider {
       applicationFeeAmount?: number;
       idempotencyKey?: string;
       customerEmail?: string;
+      label?: string;
     },
   ): Promise<CreateSessionResult> {
     if (options.saveCard && !intent.userId)
@@ -171,7 +172,7 @@ export class StripePaymentProvider implements PaymentProvider {
             price_data: {
               currency: intent.currency,
               unit_amount: intent.amount,
-              product_data: { name: "Payment" },
+              product_data: { name: options.label || "Payment" },
             },
             quantity: 1,
           },
