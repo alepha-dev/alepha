@@ -24,16 +24,26 @@ import type { UptimePushController } from "../../../../../api/controllers/Uptime
 import type { MonitorListItem } from "../../../../../api/schemas/monitorListItemSchema.ts";
 import { monitorListQuerySchema } from "../../../../../api/schemas/monitorListQuerySchema.ts";
 import type { MonitorWindow } from "../../../../../api/schemas/monitorWindowSchema.ts";
+import { currentInstancesAtom } from "../../../atoms/currentInstancesAtom.ts";
+import {
+  type MonitorPrefill,
+  monitorPrefill,
+  unmonitoredInstances,
+} from "./instanceMonitors.ts";
 import MonitorFormDialog from "./MonitorFormDialog.tsx";
 import MonitorListRow from "./MonitorListRow.tsx";
+import MonitorSuggestions from "./MonitorSuggestions.tsx";
 
 const ProjectUptime = () => {
   const { tr } = useI18n<I18n, "en">();
   const [project] = useStore(currentProjectAtom);
+  const [instances] = useStore(currentInstancesAtom);
   const api = useClient<MonitorController>();
   const pushApi = useClient<UptimePushController>();
   const dialog = useDialog();
-  const [editing, setEditing] = useState<MonitorListItem | "new">();
+  const [editing, setEditing] = useState<
+    MonitorListItem | "new" | { key: string; prefill: MonitorPrefill }
+  >();
   const [token, setToken] = useState<string>();
   const filters = useForm({
     schema: monitorListQuerySchema,
@@ -115,6 +125,12 @@ const ProjectUptime = () => {
     canInProject(project, "app:manage") &&
     capabilityOption(project, "apps", "uptime");
   const busy = mutation.loading;
+  // Only once the monitors have loaded: offering every app as unmonitored
+  // while the list is still on its way would be a flash of wrong advice.
+  const suggestions =
+    canManage && query.data
+      ? unmonitoredInstances(instances ?? [], query.data.items)
+      : [];
   return (
     <section className="flex h-full min-h-0 flex-col" aria-busy={query.loading}>
       <header className="flex flex-wrap items-center justify-between gap-4 border-b p-5">
@@ -153,6 +169,14 @@ const ProjectUptime = () => {
             {tr("uptime.estimated")}
           </p>
         )}
+        <MonitorSuggestions
+          instances={suggestions}
+          busy={busy}
+          onAdd={(instance) => {
+            const prefill = monitorPrefill(instance);
+            if (prefill) setEditing({ key: instance.id, prefill });
+          }}
+        />
         <p className="text-muted-foreground mb-3 text-xs">
           {tr("uptime.bucketNote")}
         </p>
@@ -188,9 +212,22 @@ const ProjectUptime = () => {
       </div>
       {editing && (
         <MonitorFormDialog
-          key={editing === "new" ? "new" : editing.id}
+          key={
+            editing === "new"
+              ? "new"
+              : "prefill" in editing
+                ? `prefill-${editing.key}`
+                : editing.id
+          }
           projectId={project.id}
-          monitor={editing === "new" ? undefined : editing}
+          monitor={
+            editing === "new" || "prefill" in editing ? undefined : editing
+          }
+          prefill={
+            editing !== "new" && "prefill" in editing
+              ? editing.prefill
+              : undefined
+          }
           onClose={() => setEditing(undefined)}
         />
       )}

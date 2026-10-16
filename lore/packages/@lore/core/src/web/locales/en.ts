@@ -3002,6 +3002,12 @@ export default {
   "uptime.recipientsDescription":
     "Comma-separated email addresses, up to 20. Leave blank to alert the current project owner.",
   "uptime.invalidRecipients": "Enter up to 20 valid email addresses.",
+  "uptime.suggestions.title": "Apps without a monitor",
+  "uptime.suggestions.description":
+    "These copies have an address and nothing checking it. Add one with its name and URL filled in.",
+  "uptime.suggestions.add": "Add monitor",
+  "uptime.suggestions.addFor": "Add a monitor for $1",
+  "uptime.app.none": "No monitor checks this address yet.",
   "uptime.title": "Uptime",
   "uptime.empty": "No monitors yet.",
   "project.capability.apps.option.uptime.label": "Healthchecks",

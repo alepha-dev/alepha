@@ -22,11 +22,17 @@ import type { MonitorController } from "../../../../../api/controllers/MonitorCo
 import { monitorNotificationSettingsSchema } from "../../../../../api/schemas/monitorNotificationSettingsSchema.ts";
 import type { MonitorResource } from "../../../../../api/schemas/monitorResourceSchema.ts";
 import { MonitorTarget } from "../../../../../api/schemas/MonitorTarget.ts";
+import type { MonitorPrefill } from "./instanceMonitors.ts";
 import { monitorFormSchema } from "./monitorFormSchema.ts";
 
 export interface MonitorFormDialogProps {
   projectId: number;
   monitor?: MonitorResource;
+  /**
+   * Starting values for a NEW monitor, from an app instance the project
+   * already knows (#Q2680). Ignored when `monitor` is given.
+   */
+  prefill?: MonitorPrefill;
   onClose: () => void;
 }
 const MonitorFormDialog = (props: MonitorFormDialogProps) => {
@@ -35,13 +41,15 @@ const MonitorFormDialog = (props: MonitorFormDialogProps) => {
   const queries = useQueryClient();
   const [token, setToken] = useState<string>();
   const monitor = props.monitor;
+  const prefill = monitor ? undefined : props.prefill;
   const form = useForm({
-    id: `monitor-${monitor?.id ?? "new"}`,
+    // A prefilled dialog is its own form, so two apps never share a draft.
+    id: `monitor-${monitor?.id ?? (prefill ? `new-${prefill.target}` : "new")}`,
     schema: monitorFormSchema,
     initialValues: {
-      name: monitor?.name ?? "",
+      name: monitor?.name ?? prefill?.name ?? "",
       kind: monitor?.kind ?? "http",
-      target: monitor?.target ?? "",
+      target: monitor?.target ?? prefill?.target ?? "",
       intervalSecs: monitor?.intervalSecs ?? 60,
       timeoutSecs: monitor?.timeoutSecs ?? 10,
       confirmations: monitor?.confirmations ?? 2,

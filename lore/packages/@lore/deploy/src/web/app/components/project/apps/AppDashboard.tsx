@@ -4,6 +4,7 @@ import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
 import AppDashboardCapabilities from "./AppDashboardCapabilities.tsx";
 import AppDashboardIdentity from "./AppDashboardIdentity.tsx";
 import AppDashboardNextSteps from "./AppDashboardNextSteps.tsx";
+import AppDashboardUptime from "./AppDashboardUptime.tsx";
 
 /**
  * The app's front page: what this thing is, and what it is doing.
@@ -57,6 +58,9 @@ const AppDashboard = () => {
             )}
           </>
         )}
+        {/* Renders nothing unless the Apps uptime option is on and this copy
+            has an address or a monitor (#Q2680). */}
+        <AppDashboardUptime instance={instance} />
       </div>
     </div>
   );

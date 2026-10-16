@@ -2998,6 +2998,12 @@ export default {
     "Adresses e-mail séparées par des virgules, 20 au maximum. Laissez vide pour avertir le propriétaire actuel du projet.",
   "uptime.invalidRecipients":
     "Saisissez 20 adresses e-mail valides au maximum.",
+  "uptime.suggestions.title": "Apps sans moniteur",
+  "uptime.suggestions.description":
+    "Ces copies ont une adresse que rien ne surveille. Ajoutez un moniteur avec son nom et son URL déjà remplis.",
+  "uptime.suggestions.add": "Ajouter un moniteur",
+  "uptime.suggestions.addFor": "Ajouter un moniteur pour $1",
+  "uptime.app.none": "Aucun moniteur ne surveille encore cette adresse.",
   "uptime.title": "Disponibilité",
   "uptime.empty": "Aucun moniteur pour le moment.",
   "project.capability.apps.option.uptime.label": "Contrôles de santé",
