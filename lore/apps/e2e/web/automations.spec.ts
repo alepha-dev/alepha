@@ -497,4 +497,342 @@ test.describe("Automations", () => {
       fullPage: true,
     });
   });
+
+  test("edits four typed slots and preserves a refused revision draft", async ({
+    page,
+  }, testInfo) => {
+    test.setTimeout(90_000);
+    await registerAndVerify(
+      page,
+      `automation-editor-${crypto.randomUUID()}@example.com`,
+      "GoodPassw0rd",
+    );
+    const project = await createProjectViaWizard(page, "Rule editor");
+    await setCapability(page, project.id, "work", {
+      options: { automations: true },
+    });
+    const me = await (await page.request.get("/api/users/me")).json();
+    const createPath = (await apiPath(page, "createAutomation")).replace(
+      ":projectId",
+      String(project.id),
+    );
+    const created = await page.request.post(createPath, {
+      data: {
+        title: "Editable rule",
+        rule: {
+          version: 1,
+          trigger: { kind: "event", event: "quest.completed" },
+          select: null,
+          guard: null,
+          actions: [
+            {
+              kind: "notify",
+              recipient: me.id,
+              channel: "inbox",
+              title: "Original title",
+              text: "Original body",
+              category: "automations",
+            },
+          ],
+        },
+      },
+    });
+    expect(created.ok(), await created.text()).toBe(true);
+    const original = await created.json();
+    await page.goto(`/${project.slug}/automations/${original.id}`);
+    await page.getByRole("button", { name: "Edit rule", exact: true }).click();
+    const editor = page.getByRole("region", { name: "Edit rule", exact: true });
+    await editor
+      .getByRole("textbox", { name: "Name", exact: true })
+      .fill("Edited nightly rule");
+    await editor
+      .getByRole("combobox", { name: "Trigger", exact: true })
+      .click();
+    await page
+      .getByRole("option", { name: "UTC schedule", exact: true })
+      .click();
+    await editor
+      .getByRole("combobox", { name: "Registered source", exact: true })
+      .click();
+    await page
+      .getByRole("option", { name: "quests.tagged (collection)", exact: true })
+      .click();
+    await editor
+      .getByRole("textbox", { name: "tag", exact: true })
+      .fill("editor-tag");
+    await editor.getByRole("combobox", { name: "Field", exact: true }).click();
+    await page.getByRole("option", { name: "total", exact: true }).click();
+    await editor
+      .getByRole("combobox", { name: "Operator", exact: true })
+      .click();
+    await page.getByRole("option", { name: "gt", exact: true }).click();
+    await editor
+      .getByRole("spinbutton", { name: "Value", exact: true })
+      .fill("2");
+    await editor
+      .getByRole("textbox", { name: "title", exact: true })
+      .fill("Edited {{title}}");
+    await editor
+      .getByRole("textbox", { name: "text", exact: true })
+      .fill("Edited {{summary}}");
+    await editor
+      .getByRole("heading", { name: "Edit rule", exact: true })
+      .scrollIntoViewIfNeeded();
+    await page.screenshot({
+      path: testInfo.outputPath("automation-editor-top.png"),
+    });
+    await editor
+      .getByRole("button", { name: "Save changes", exact: true })
+      .scrollIntoViewIfNeeded();
+    await page.screenshot({
+      path: testInfo.outputPath("automation-editor-actions.png"),
+    });
+    const save = page.waitForResponse(
+      (response) =>
+        (response.request().method() === "PUT" &&
+          response.url().includes("/automations/")) ||
+        (response.url().includes("/api/_batch") &&
+          response
+            .request()
+            .postData()
+            ?.includes('"action":"updateAutomation"') === true),
+    );
+    await editor
+      .getByRole("button", { name: "Save changes", exact: true })
+      .click();
+    expect((await save).ok()).toBe(true);
+    await expect(
+      page.getByRole("heading", {
+        name: "Edited nightly rule",
+        exact: true,
+        level: 1,
+      }),
+    ).toBeVisible();
+    const getPath = (await apiPath(page, "getAutomation"))
+      .replace(":projectId", String(project.id))
+      .replace(":id", original.id);
+    const saved = await (await page.request.get(getPath)).json();
+    expect(saved.rule.trigger).toEqual({ kind: "schedule", cron: "0 0 * * *" });
+    expect(saved.rule.select).toEqual({
+      key: "quests.tagged",
+      kind: "collection",
+      filters: { tag: "editor-tag" },
+    });
+    expect(saved.rule.guard).toEqual({
+      field: "total",
+      operator: "gt",
+      value: 2,
+    });
+    expect(saved.rule.actions[0].text).toBe("Edited {{summary}}");
+    expect(saved.authorUserId).toBe(original.authorUserId);
+    await page.getByRole("button", { name: "Edit rule", exact: true }).click();
+    await editor
+      .getByRole("textbox", { name: "Name", exact: true })
+      .fill("Preserved draft");
+    const updatePath = (await apiPath(page, "updateAutomation"))
+      .replace(":projectId", String(project.id))
+      .replace(":id", original.id);
+    const concurrent = await page.request.put(updatePath, {
+      data: {
+        title: "Other saved edit",
+        rule: saved.rule,
+        expectedRevision: saved.revision,
+      },
+    });
+    expect(concurrent.ok()).toBe(true);
+    const conflict = page.waitForResponse(
+      (response) =>
+        (response.request().method() === "PUT" &&
+          response.url().includes("/automations/")) ||
+        (response.url().includes("/api/_batch") &&
+          response
+            .request()
+            .postData()
+            ?.includes('"action":"updateAutomation"') === true),
+    );
+    await editor
+      .getByRole("button", { name: "Save changes", exact: true })
+      .click();
+    await conflict;
+    await expect(
+      page.getByRole("status").filter({ hasText: "Your draft is preserved" }),
+    ).toBeVisible();
+    await expect(
+      editor.getByRole("textbox", { name: "Name", exact: true }),
+    ).toHaveValue("Preserved draft");
+    expect((await (await page.request.get(getPath)).json()).title).toBe(
+      "Other saved edit",
+    );
+    await page
+      .getByRole("button", { name: "Discard draft and reload", exact: true })
+      .click();
+    await expect(
+      page.getByRole("heading", {
+        name: "Other saved edit",
+        exact: true,
+        level: 1,
+      }),
+    ).toBeVisible();
+    await expect(
+      page.getByText(
+        "Detailed snapshots are retained for 30 days. Deduplication identities remain for 90 days.",
+      ),
+    ).toBeVisible();
+  });
+
+  test("manages typed shared values with version fencing and unused-only deletion", async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
+    await registerAndVerify(
+      page,
+      `automation-vars-${crypto.randomUUID()}@example.com`,
+      "GoodPassw0rd",
+    );
+    const project = await createProjectViaWizard(
+      page,
+      "Shared variable management",
+    );
+    await setCapability(page, project.id, "work", {
+      options: { automations: true },
+    });
+    await page.goto(`/${project.slug}/automations/variables`);
+    await page
+      .getByRole("button", { name: "Create shared variable", exact: true })
+      .click();
+    await page
+      .getByRole("textbox", { name: "Variable key", exact: true })
+      .fill("editor_label");
+    await page
+      .getByRole("textbox", { name: "Value", exact: true })
+      .fill("First value");
+    const changed = () =>
+      page.waitForResponse(
+        (response) =>
+          (response.request().method() === "PUT" &&
+            response.url().includes("/automation-variables/")) ||
+          (response.url().includes("/api/_batch") &&
+            response
+              .request()
+              .postData()
+              ?.includes('"action":"setAutomationVariable"') === true),
+      );
+    const create = changed();
+    await page
+      .getByRole("button", { name: "Save changes", exact: true })
+      .click();
+    expect((await create).ok()).toBe(true);
+    await page
+      .getByRole("button", { name: "editor_label", exact: true })
+      .click();
+    await expect(page.getByText("Version 0", { exact: true })).toBeVisible();
+    await page
+      .getByRole("textbox", { name: "Value", exact: true })
+      .fill("Second value");
+    await page
+      .getByRole("button", { name: "Save changes", exact: true })
+      .click();
+    const edited = changed();
+    await page
+      .getByRole("alertdialog")
+      .getByRole("button", { name: "Save changes", exact: true })
+      .click();
+    expect((await edited).ok()).toBe(true);
+    await expect(page.getByText("Version 1", { exact: true })).toBeVisible();
+    const listPath = (await apiPath(page, "listAutomationVariables")).replace(
+      ":projectId",
+      String(project.id),
+    );
+    const variables = await (await page.request.get(listPath)).json();
+    expect(variables.items[0].value).toEqual({
+      kind: "text",
+      value: "Second value",
+    });
+    const me = await (await page.request.get("/api/users/me")).json();
+    const createRulePath = (await apiPath(page, "createAutomation")).replace(
+      ":projectId",
+      String(project.id),
+    );
+    const consumerResponse = await page.request.post(createRulePath, {
+      data: {
+        title: "Shared label consumer",
+        rule: {
+          version: 1,
+          trigger: { kind: "event", event: "quest.completed" },
+          select: null,
+          guard: null,
+          actions: [
+            {
+              kind: "notify",
+              recipient: me.id,
+              channel: "inbox",
+              title: "{{editor_label}}",
+              text: "Done",
+              category: "automations",
+            },
+          ],
+        },
+      },
+    });
+    expect(consumerResponse.ok(), await consumerResponse.text()).toBe(true);
+    const consumer = await consumerResponse.json();
+    await page.reload();
+    await page
+      .getByRole("button", { name: "editor_label", exact: true })
+      .click();
+    await expect(
+      page.getByRole("button", { name: "Shared label consumer", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Delete", exact: true }),
+    ).toBeDisabled();
+    await page
+      .getByRole("button", { name: "Shared label consumer", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "editor_label", exact: true })
+      .click();
+    await expect(page).toHaveURL(
+      new RegExp(`/automations/variables\\?key=editor_label$`),
+    );
+    await expect(
+      page.getByRole("textbox", { name: "Value", exact: true }),
+    ).toHaveValue("Second value");
+    await expect(
+      page.getByRole("button", { name: "Delete", exact: true }),
+    ).toBeDisabled();
+    const deleteRulePath = (await apiPath(page, "deleteAutomation"))
+      .replace(":projectId", String(project.id))
+      .replace(":id", consumer.id);
+    const removedConsumer = await page.request.delete(deleteRulePath, {
+      data: { expectedRevision: consumer.revision },
+    });
+    expect(removedConsumer.ok()).toBe(true);
+    await page.reload();
+    await page
+      .getByRole("button", { name: "editor_label", exact: true })
+      .click();
+    await expect(
+      page.getByRole("button", { name: "Delete", exact: true }),
+    ).toBeEnabled();
+    await page.getByRole("button", { name: "Delete", exact: true }).click();
+    const deleted = page.waitForResponse(
+      (response) =>
+        (response.request().method() === "DELETE" &&
+          response.url().includes("/automation-variables/")) ||
+        (response.url().includes("/api/_batch") &&
+          response
+            .request()
+            .postData()
+            ?.includes('"action":"deleteAutomationVariable"') === true),
+    );
+    await page
+      .getByRole("alertdialog")
+      .getByRole("button", { name: "Delete", exact: true })
+      .click();
+    expect((await deleted).ok()).toBe(true);
+    await expect(
+      page.getByRole("button", { name: "editor_label", exact: true }),
+    ).toHaveCount(0);
+  });
 });

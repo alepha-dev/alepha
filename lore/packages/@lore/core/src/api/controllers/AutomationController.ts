@@ -20,6 +20,7 @@ import { automationSetupQuerySchema } from "../schemas/automationSetupQuerySchem
 import { automationTestBodySchema } from "../schemas/automationTestBodySchema.ts";
 import { automationUpdateBodySchema } from "../schemas/automationUpdateBodySchema.ts";
 import { automationVariableDeleteBodySchema } from "../schemas/automationVariableDeleteBodySchema.ts";
+import { automationVariableListQuerySchema } from "../schemas/automationVariableListQuerySchema.ts";
 import { automationVariablePageSchema } from "../schemas/automationVariablePageSchema.ts";
 import { automationVariableParamsSchema } from "../schemas/automationVariableParamsSchema.ts";
 import { automationVariableSetBodySchema } from "../schemas/automationVariableSetBodySchema.ts";
@@ -217,7 +218,7 @@ export class AutomationController {
     path: "/projects/:projectId/automation-variables",
     schema: {
       params: automationProjectParamsSchema,
-      query: automationPageQuerySchema,
+      query: automationVariableListQuerySchema,
       response: automationVariablePageSchema,
     },
     handler: ({ params, query, user }) =>

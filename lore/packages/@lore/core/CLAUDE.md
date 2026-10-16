@@ -789,3 +789,20 @@ selected by identity if later rule creation fails, so retry cannot replace a key
 A selected preset and variable version remain stable across catalogue refreshes.
 The saved summary uses selected display labels, offers zero-write Test with typed
 project-record choices and timestamped capped evidence, then explicit enable.
+
+## Rule, variable and evidence pages (#E43, #Q2039)
+
+Automation detail owns a revisioned draft of the four typed slots. Vocabulary
+controls select registered sources, cardinality, guard fields/operators and up to
+five ordered actions. Source changes clear incompatible guards. Resource values
+use bounded project pickers; bindings explicitly choose a shared key or declared
+source field. Shared-variable pages are bounded, and direct key links add an
+exact-key filter at the same source-authorized list boundary. A refused save
+preserves the draft and offers an explicit discard/reload of the server revision.
+
+Variable management keeps UUID/version stamps after successful writes, shows
+used-by links and foreign-consumer review warnings, and deletes only unused
+values. Native server fencing remains authoritative during concurrent changes.
+Run pages separate frozen per-action enqueue intent from live transport receipts,
+link to each authorized delivery outcome and explain 30-day detail retention and
+the 90-day no-replay horizon. No receipt identity is offered as a setup input.

@@ -1,4 +1,4 @@
-import { $inject, Alepha } from "alepha";
+import { $inject, Alepha, z } from "alepha";
 import { NotFoundError } from "alepha/server";
 
 import { $pageProject } from "./$pageProject.ts";
@@ -41,4 +41,47 @@ export class AutomationRouter {
         );
     },
   });
+  projectAutomationVariables = $pageProject({
+    name: "projectAutomationVariables",
+    path: "/automations/variables",
+    schema: { query: z.object({ key: z.string().max(64).optional() }) },
+    lazy: () =>
+      import("./components/project/automations/AutomationVariablesPage.tsx"),
+    loader: ({ query }) => {
+      this.checkRead();
+      return { variableKey: query.key };
+    },
+  });
+  projectAutomationRun = $pageProject({
+    name: "projectAutomationRun",
+    path: "/automations/runs/:runId",
+    schema: { params: z.object({ runId: z.uuid() }) },
+    lazy: () =>
+      import("./components/project/automations/AutomationRunPage.tsx"),
+    loader: ({ params }) => {
+      this.checkRead();
+      return { runId: params.runId };
+    },
+  });
+  projectAutomationDetail = $pageProject({
+    name: "projectAutomationDetail",
+    path: "/automations/:automationId",
+    schema: { params: z.object({ automationId: z.uuid() }) },
+    lazy: () =>
+      import("./components/project/automations/AutomationDetailPage.tsx"),
+    loader: ({ params }) => {
+      this.checkRead();
+      return { automationId: params.automationId };
+    },
+  });
+  protected checkRead(): void {
+    const project = this.alepha.store.get(currentProjectAtom);
+    if (
+      !capabilityOption(project, "work", "automations") ||
+      !canInProject(project, "automation:read")
+    )
+      throw new NotFoundError(
+        "Automations are not available for this project and rank",
+      );
+  }
 }

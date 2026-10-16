@@ -11,7 +11,7 @@ import {
 } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { Library, Settings } from "lucide-react";
+import { Library, Settings, Braces } from "lucide-react";
 import { useState } from "react";
 
 import type { AutomationController } from "../../../../../api/controllers/AutomationController.ts";
@@ -176,6 +176,15 @@ const AutomationOverviewPage = () => {
           };
         }}
         actions={[
+          {
+            icon: Braces,
+            label: tr("automation.variables.title"),
+            onClick: () =>
+              router.push("projectAutomationVariables", {
+                params: { projectSlug: project.slug },
+              }),
+            disabled: busy,
+          },
           ...(canCreate
             ? [
                 {
@@ -219,7 +228,19 @@ const AutomationOverviewPage = () => {
           title: {
             label: tr("automation.column.name"),
             className: "w-full min-w-48",
-            cell: (row) => <span className="font-medium">{row.title}</span>,
+            cell: (row) => (
+              <Button
+                variant="link"
+                disabled={busy}
+                onClick={() =>
+                  router.push("projectAutomationDetail", {
+                    params: { projectSlug: project.slug, automationId: row.id },
+                  })
+                }
+              >
+                {row.title}
+              </Button>
+            ),
           },
           author: {
             label: tr("automation.column.author"),

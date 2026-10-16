@@ -16,6 +16,14 @@ export class AutomationTemplateTokens {
       );
     return names;
   }
+  public inValue(value: unknown): string[] {
+    if (typeof value === "string") return this.names(value);
+    if (Array.isArray(value))
+      return value.flatMap((item) => this.inValue(item));
+    if (value && typeof value === "object")
+      return Object.values(value).flatMap((item) => this.inValue(item));
+    return [];
+  }
   public replace(text: string, value: (name: string) => string): string {
     this.names(text);
     return text.replace(/{{\s*([A-Za-z0-9_]+)\s*}}/g, (_match, name: string) =>

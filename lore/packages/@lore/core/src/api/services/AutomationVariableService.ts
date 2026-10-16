@@ -6,6 +6,10 @@ import {
   automationPageQuerySchema,
   type AutomationPageQuery,
 } from "../schemas/automationPageQuerySchema.ts";
+import {
+  automationVariableListQuerySchema,
+  type AutomationVariableListQuery,
+} from "../schemas/automationVariableListQuerySchema.ts";
 import { automationVariableResourceSchema } from "../schemas/automationVariableResourceSchema.ts";
 import {
   automationVariableSetBodySchema,
@@ -26,13 +30,13 @@ export class AutomationVariableService {
   public async list(
     projectId: number,
     user: UserAccountToken,
-    input: Partial<AutomationPageQuery> = {},
+    input: Partial<AutomationVariableListQuery> = {},
   ) {
     return this.database.primary(async () => {
       await this.access.assert(projectId, user, "automation:read");
-      const query = automationPageQuerySchema.parse(input);
+      const query = automationVariableListQuerySchema.parse(input);
       const rows = await this.persistence.variables.findMany({
-        where: { projectId },
+        where: { projectId, ...(query.key ? { key: query.key } : {}) },
         orderBy: "key",
         offset: query.offset,
         limit: query.limit + 1,

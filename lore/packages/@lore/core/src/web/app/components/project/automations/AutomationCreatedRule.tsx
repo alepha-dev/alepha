@@ -4,7 +4,7 @@ import { useAction, useClient, useQueryClient, useStore } from "alepha/react";
 import { FormValidationError, useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import type { AutomationController } from "../../../../../api/controllers/AutomationController.ts";
 import type { AutomationEvaluationReport } from "../../../../../api/schemas/automationEvaluationReportSchema.ts";
@@ -18,6 +18,9 @@ import { useAutomationSetupChoices } from "./useAutomationSetupChoices.ts";
 
 export interface AutomationCreatedRuleProps {
   rule: AutomationResource;
+  detail?: boolean;
+  disabled?: boolean;
+  onBusyChange?: (busy: boolean) => void;
   labels?: Record<string, string>;
   onChange: (rule: AutomationResource) => void;
 }
@@ -86,12 +89,19 @@ const AutomationCreatedRule = (props: AutomationCreatedRuleProps) => {
     },
     [api, props.rule, props.onChange, queries],
   );
-  const busy = testState.loading || enable.loading;
+  const localBusy = testState.loading || enable.loading;
+  useEffect(() => {
+    props.onBusyChange?.(localBusy);
+    return () => props.onBusyChange?.(false);
+  }, [localBusy, props.onBusyChange]);
+  const busy = localBusy || props.disabled;
   return (
     <div className="flex max-w-3xl flex-col gap-5">
-      <p className="text-muted-foreground text-sm">
-        {tr("automation.setup.created")}
-      </p>
+      {!props.detail && (
+        <p className="text-muted-foreground text-sm">
+          {tr("automation.setup.created")}
+        </p>
+      )}
       <AutomationRuleSummary rule={props.rule} labels={props.labels} />
       <form {...form.props} className="flex flex-col gap-3">
         <h3 className="font-medium">{tr("automation.test.title")}</h3>

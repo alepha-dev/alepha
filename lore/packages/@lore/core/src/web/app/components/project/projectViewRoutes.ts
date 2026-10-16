@@ -202,6 +202,9 @@ export const SECTION_LABEL_KEYS: Record<string, string> = {
   projectInbox: "project.menu.inbox",
   projectAutomations: "project.capability.work.option.automations.label",
   projectAutomationGallery: "automation.gallery.title",
+  projectAutomationDetail: "automation.editor.title",
+  projectAutomationVariables: "automation.variables.title",
+  projectAutomationRun: "automation.history.detail",
   projectQuests: "project.menu.quests",
   projectQuest: "project.menu.quests",
   // ⚠️ It had NO entry until #Q2104, so the questline page's crumb read
