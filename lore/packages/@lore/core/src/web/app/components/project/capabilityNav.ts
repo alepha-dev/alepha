@@ -33,7 +33,7 @@ export interface CapabilityNavEntry {
   /**
    * Which of the sidebar's bands this sits in.
    */
-  group: "activity" | "work" | "record" | "ops";
+  group: "activity" | "work" | "record" | "ops" | "config";
   /**
    * Position within the band, ascending.
    *
@@ -79,6 +79,21 @@ export interface CapabilityNavEntry {
    */
   permission?: string;
 }
+
+/**
+ * The sidebar's bands, top to bottom. Settings follows the last one.
+ *
+ * Exported so the order is a fact a spec can read rather than an array
+ * literal inside `ProjectView`: `config` is last because what configures a
+ * project sits directly above Settings (#Q2678).
+ */
+export const NAV_BANDS: CapabilityNavEntry["group"][] = [
+  "activity",
+  "work",
+  "record",
+  "ops",
+  "config",
+];
 
 /**
  * The entries no capability owns.

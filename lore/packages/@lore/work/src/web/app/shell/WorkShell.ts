@@ -130,12 +130,14 @@ export class WorkShell {
           name === "projectReleases" || name === "projectRelease",
       },
       {
+        // Project configuration rather than a daily work surface, so it sits
+        // in the Config band, last before Settings (#Q2678).
         route: "projectAutomations",
         permission: "automation:read",
         labelKey: "project.capability.work.option.automations.label",
         icon: Workflow,
-        group: "work",
-        order: 35,
+        group: "config",
+        order: 10,
         option: "automations",
       },
     ]);

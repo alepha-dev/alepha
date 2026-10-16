@@ -11,9 +11,10 @@ import HeaderActions from "../shared/header/HeaderActions.tsx";
 import HeaderRepositoryButton from "../shared/header/HeaderRepositoryButton.tsx";
 import HeaderSearchButton from "../shared/header/HeaderSearchButton.tsx";
 import { useAtomsVersion } from "../shared/useAtomsVersion.ts";
-import type {
-  CapabilityNavEntry,
-  ProjectShellContext,
+import {
+  type CapabilityNavEntry,
+  NAV_BANDS,
+  type ProjectShellContext,
 } from "./capabilityNav.ts";
 import ProjectActionsCreateButton from "./ProjectActionsCreateButton.tsx";
 import ProjectInboxButton from "./ProjectInboxButton.tsx";
@@ -61,14 +62,19 @@ const ProjectView = () => {
   // is what stops the palette disagreeing with the sidebar about what pages
   // exist.
   //
-  // Four bands, unlabelled (`NavGroup.label` omitted on purpose, the great
+  // Five bands, unlabelled (`NavGroup.label` omitted on purpose, the great
   // rename Task 9):
   //
   //   Activity  Activity
   //   Work      Quests, Kanban, Epics, Feedback, Blights
   //   Record    Folios, Releases, Reports
-  //   Ops       Apps, Artifacts
+  //   Ops       Apps, Artifacts, Uptime
+  //   Config    Automations
   //   Settings
+  //
+  // Config is what configures the project without being Settings: an
+  // automation is set up once and runs on its own, so it sits last, directly
+  // above Settings, rather than among the daily work surfaces (#Q2678).
   //
   // Work is ordered chosen-then-arrived: Quests and Epics are what you put in,
   // Feedback and Blights turn up on their own and need a verdict. They share
@@ -113,11 +119,6 @@ const ProjectView = () => {
       .sort((a, b) => a.order - b.order)
       .map(toItem);
 
-  const activityItems = itemsOf("activity");
-  const workItems = itemsOf("work");
-  const recordItems = itemsOf("record");
-  const opsItems = itemsOf("ops");
-
   const nav: NavGroup[] = [
     // Activity is a group of one, above Work, so the separator the groups
     // already draw falls between it and Quests. A hand-placed divider would
@@ -125,10 +126,7 @@ const ProjectView = () => {
     //
     // It is alone rather than at the top of Work because it is not work: it
     // is the view over every other group, and the project's landing page.
-    { items: activityItems },
-    { items: workItems },
-    { items: recordItems },
-    { items: opsItems },
+    ...NAV_BANDS.map((band) => ({ items: itemsOf(band) })),
     {
       items: [
         {

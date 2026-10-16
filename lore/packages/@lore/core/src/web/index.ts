@@ -114,6 +114,7 @@ export { dashboardFilterFields } from "./app/components/dashboard/dashboardFilte
 export { default as ProjectViewNavPublisher } from "./app/components/project/ProjectViewNavPublisher.tsx";
 export {
   CORE_NAV,
+  NAV_BANDS,
   type ProjectShellContext,
 } from "./app/components/project/capabilityNav.ts";
 export {
