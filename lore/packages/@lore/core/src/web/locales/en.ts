@@ -2998,7 +2998,7 @@ export default {
   "uptime.emailAlerts": "Email alerts",
   "uptime.emailAlertsDescription":
     "One email when an incident opens and one when it recovers.",
-  "uptime.recipients": "Recipients (optional)",
+  "uptime.recipients": "Recipients",
   "uptime.recipientsDescription":
     "Comma-separated email addresses, up to 20. Leave blank to alert the current project owner.",
   "uptime.invalidRecipients": "Enter up to 20 valid email addresses.",
@@ -3043,9 +3043,9 @@ export default {
   "uptime.interval": "Interval (seconds)",
   "uptime.timeout": "Timeout (seconds)",
   "uptime.confirmations": "Failures before down",
-  "uptime.expectedStatus": "Expected status (optional)",
-  "uptime.keyword": "Body keyword (optional)",
-  "uptime.budget": "Latency budget in ms (optional)",
+  "uptime.expectedStatus": "Expected status",
+  "uptime.keyword": "Body keyword",
+  "uptime.budget": "Latency budget in ms",
   "uptime.certWarning": "Warn before expiry (days)",
   "uptime.cancel": "Cancel",
   "uptime.save": "Save changes",

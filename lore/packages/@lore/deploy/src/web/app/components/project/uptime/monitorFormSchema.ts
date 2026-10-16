@@ -7,7 +7,8 @@ export const monitorFormSchema = monitorSettingsSchema
   .omit({ expect: true, notifications: true })
   .extend({
     emailAlerts: monitorNotificationSettingsSchema.shape.email,
-    recipients: z.string().max(4000),
+    // Optional, so the form draws no required marker on it (#Q2679).
+    recipients: z.string().max(4000).optional(),
     expectedStatus: monitorExpectSchema.shape.status,
     keyword: monitorExpectSchema.shape.keyword,
     latencyBudgetMs: monitorExpectSchema.shape.latencyBudgetMs,

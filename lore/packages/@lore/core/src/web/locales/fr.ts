@@ -2993,7 +2993,7 @@ export default {
   "uptime.emailAlerts": "Alertes par e-mail",
   "uptime.emailAlertsDescription":
     "Un e-mail au début d’un incident et un autre lors du rétablissement.",
-  "uptime.recipients": "Destinataires (facultatif)",
+  "uptime.recipients": "Destinataires",
   "uptime.recipientsDescription":
     "Adresses e-mail séparées par des virgules, 20 au maximum. Laissez vide pour avertir le propriétaire actuel du projet.",
   "uptime.invalidRecipients":
@@ -3040,9 +3040,9 @@ export default {
   "uptime.interval": "Intervalle (secondes)",
   "uptime.timeout": "Délai (secondes)",
   "uptime.confirmations": "Échecs avant alerte",
-  "uptime.expectedStatus": "Statut attendu (facultatif)",
-  "uptime.keyword": "Texte attendu (facultatif)",
-  "uptime.budget": "Budget de latence en ms (facultatif)",
+  "uptime.expectedStatus": "Statut attendu",
+  "uptime.keyword": "Texte attendu",
+  "uptime.budget": "Budget de latence en ms",
   "uptime.certWarning": "Alerte avant expiration (jours)",
   "uptime.cancel": "Annuler",
   "uptime.save": "Enregistrer",

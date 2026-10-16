@@ -71,7 +71,7 @@ test.describe("Uptime healthchecks", () => {
       dialog.getByRole("switch", { name: "Email alerts", exact: true }),
     ).toBeChecked();
     await dialog
-      .getByRole("textbox", { name: "Recipients (optional)", exact: true })
+      .getByRole("textbox", { name: "Recipients", exact: true })
       .fill("health-team@example.com");
     await dialog
       .getByRole("button", { name: "Create monitor", exact: true })
@@ -91,7 +91,7 @@ test.describe("Uptime healthchecks", () => {
     dialog = page.getByRole("dialog");
     await expect(
       dialog.getByRole("textbox", {
-        name: "Recipients (optional)",
+        name: "Recipients",
         exact: true,
       }),
     ).toHaveValue("health-team@example.com");

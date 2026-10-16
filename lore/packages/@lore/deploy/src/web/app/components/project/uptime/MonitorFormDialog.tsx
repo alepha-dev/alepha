@@ -63,7 +63,7 @@ const MonitorFormDialog = (props: MonitorFormDialogProps) => {
       }
       const notifications = monitorNotificationSettingsSchema.safeParse({
         email: values.emailAlerts,
-        recipients: values.recipients
+        recipients: (values.recipients ?? "")
           .split(/[,;\n]/)
           .map((value) => value.trim())
           .filter(Boolean),
