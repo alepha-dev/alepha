@@ -19,6 +19,7 @@ const DOCS_ROOT = "https://github.com/alepha-dev/lore/blob/main/docs/1-guides";
  * with its leading digits and dashes eaten, under `guides-`), to its file.
  */
 const GUIDES = {
+  "guides-automations": "9-automations.md",
   "guides-artifacts": "7-artifacts.md",
   "guides-cloudflare-token": "5-cloudflare-token.md",
   "guides-project-dashboard": "8-project-dashboard.md",

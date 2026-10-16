@@ -8,6 +8,7 @@ import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { AlephaMcp } from "alepha/mcp";
 import { AlephaOrm } from "alepha/orm";
+import { CronProvider } from "alepha/scheduler";
 import {
   AlephaSecurity,
   ResourceGateMemoProvider,
@@ -18,6 +19,7 @@ import { AlephaFake } from "alepha/testing/faker";
 import { describe, it } from "vitest";
 
 import { bootLore } from "./fixtures/bootLore.ts";
+import { ManualCronProvider } from "./fixtures/ManualCronProvider.ts";
 
 /**
  * How many SEQUENTIAL database round trips each MCP read tool makes (#E76,
@@ -37,6 +39,7 @@ const setup = async () => {
   const alepha = Alepha.create({
     env: { LOG_LEVEL: "error", SERVER_PORT: 0, DATABASE_URL: ":memory:" },
   });
+  alepha.with({ provide: CronProvider, use: ManualCronProvider });
   alepha.with(AlephaOrm);
   alepha.with(AlephaServer);
   alepha.with(AlephaSecurity);

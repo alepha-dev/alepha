@@ -19,8 +19,10 @@ import type { AutomationResource } from "../../../../../api/schemas/automationRe
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { AutomationRouter } from "../../../AutomationRouter.ts";
 import type { CoreRouter } from "../../../CoreRouter.ts";
+import { loreDocsUrl } from "../../../services/docsUrl.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import { canInProject } from "../../../services/projectRank.ts";
+import { OutboundLink } from "../../shared/OutboundLink.tsx";
 
 const AutomationOverviewPage = () => {
   const [project] = useStore(currentProjectAtom);
@@ -137,6 +139,14 @@ const AutomationOverviewPage = () => {
       className="flex min-h-0 flex-1 flex-col p-2"
       data-testid="automation-list"
     >
+      <div className="flex justify-end px-3 pb-2">
+        <OutboundLink
+          href={loreDocsUrl("guides-automations")}
+          className="text-primary text-xs hover:underline"
+        >
+          {tr("automation.guide")}
+        </OutboundLink>
+      </div>
       <DataTable<AutomationResource, typeof fields>
         key={project.id}
         className="min-h-0 flex-1"

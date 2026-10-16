@@ -3067,6 +3067,7 @@ export default {
     "La disponibilité utilise des tranches horaires, dont l’heure en cours.",
   "uptime.loading": "Chargement des moniteurs...",
   "uptime.staleAfter": "Silence maximal (secondes)",
+  "automation.guide": "Guide des automatisations",
   "automation.adoption.title": "Adopter les politiques existantes",
   "automation.adoption.description":
     "Conservez les politiques existantes jusqu’au consentement explicite d’un membre nommé. Les capacités et droits restent sous le contrôle du propriétaire.",

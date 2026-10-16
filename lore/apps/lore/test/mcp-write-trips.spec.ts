@@ -8,6 +8,7 @@ import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { AlephaMcp } from "alepha/mcp";
 import { AlephaOrm } from "alepha/orm";
+import { CronProvider } from "alepha/scheduler";
 import {
   AlephaSecurity,
   ResourceGateMemoProvider,
@@ -18,6 +19,7 @@ import { AlephaFake } from "alepha/testing/faker";
 import { describe, it } from "vitest";
 
 import { bootLore } from "./fixtures/bootLore.ts";
+import { ManualCronProvider } from "./fixtures/ManualCronProvider.ts";
 
 /**
  * How many SEQUENTIAL database round trips each MCP write tool makes (#E76,
@@ -34,6 +36,7 @@ const setup = async () => {
   const alepha = Alepha.create({
     env: { LOG_LEVEL: "error", SERVER_PORT: 0, DATABASE_URL: ":memory:" },
   });
+  alepha.with({ provide: CronProvider, use: ManualCronProvider });
   alepha.with(AlephaOrm);
   alepha.with(AlephaServer);
   alepha.with(AlephaSecurity);
@@ -126,8 +129,9 @@ const setup = async () => {
     pinned: true,
   });
 
-  // Every statement now costs a trip.
-  trips.delayMs = 30;
+  // Keep the synthetic D1 wait above CPU scheduling noise from concurrent suites.
+  // Exact trip-count assertions remain unchanged.
+  trips.delayMs = 90;
 
   const measure = async (name: string, params: Record<string, unknown>) => {
     trips.reset();
@@ -165,7 +169,7 @@ describe("MCP write tools: sequential D1 trips", () => {
       description: "now [[#Q1]] and [[#F1]]",
     });
     // It was ten.
-    expect(edited.trips).toBe(6);
+    expect(edited.trips, JSON.stringify(edited.chain)).toBe(6);
 
     await ctx.alepha.stop();
   }, 60_000);

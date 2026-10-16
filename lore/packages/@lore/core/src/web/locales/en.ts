@@ -3068,6 +3068,7 @@ export default {
     "Uptime uses hourly buckets, including the current partial hour.",
   "uptime.loading": "Loading monitors...",
   "uptime.staleAfter": "Stale after (seconds)",
+  "automation.guide": "Automation guide",
   "automation.adoption.title": "Adopt existing policies",
   "automation.adoption.description":
     "Keep existing policies until a named member explicitly consents. Capabilities and grants stay under owner control.",
