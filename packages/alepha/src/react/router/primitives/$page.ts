@@ -144,12 +144,13 @@ export interface PagePrimitiveOptions<
 
   /**
    * Middleware to apply to the loader function.
-   * Works the same as `use` on `$action` and `$job`.
+   * Works the same as `use` on `$action` and `$job`. A `$cache` here is
+   * refused: the page cache is automatic (see `cache`).
    *
    * @example
    * ```ts
    * dashboard = $page({
-   *   use: [$cache({ ttl: [5, "minutes"] })],
+   *   use: [$secure()],
    *   loader: async ({ params }) => this.dashboardService.getData(),
    *   lazy: () => import("./Dashboard.tsx"),
    * });
