@@ -753,17 +753,6 @@ export class JobProvider {
 
     const abortController = new AbortController();
     this.abortControllers.set(executionId, abortController);
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
-    if (opts.timeout) {
-      const ms = this.dt.duration(opts.timeout).as("milliseconds");
-      timeoutId = setTimeout(
-        () =>
-          abortController.abort(
-            new AlephaError(`Job '${name}' timed out after ${ms}ms`),
-          ),
-        ms,
-      );
-    }
 
     const startedAt = this.dt.now();
 
@@ -777,18 +766,20 @@ export class JobProvider {
 
         try {
           await this.underRunSignal(abortController.signal, () =>
-            opts.handler({
-              payload: ctx.payload,
-              attempt: ctx.attempt,
-              now: startedAt,
-              signal: abortController.signal,
-              executionId,
-              reschedule: () => {
-                throw new AlephaError(
-                  `Job '${name}' called reschedule() from a cron tick. A tick has no execution row to park; push a queue-mode job for work that waits.`,
-                );
-              },
-            }),
+            this.withTimeout(opts.timeout, (signal) =>
+              opts.handler({
+                payload: ctx.payload,
+                attempt: ctx.attempt,
+                now: startedAt,
+                signal,
+                executionId,
+                reschedule: () => {
+                  throw new AlephaError(
+                    `Job '${name}' called reschedule() from a cron tick. A tick has no execution row to park; push a queue-mode job for work that waits.`,
+                  );
+                },
+              }),
+            ),
           );
 
           if (this.retention.records(registration.retention, "ok")) {
@@ -844,7 +835,6 @@ export class JobProvider {
             { catch: true },
           );
         } finally {
-          if (timeoutId) clearTimeout(timeoutId);
           this.abortControllers.delete(executionId);
           await this.alepha.events.emit(
             "job:end",
@@ -1617,17 +1607,6 @@ export class JobProvider {
 
     const abortController = new AbortController();
     this.abortControllers.set(executionId, abortController);
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
-    if (opts.timeout) {
-      const ms = this.dt.duration(opts.timeout).as("milliseconds");
-      timeoutId = setTimeout(
-        () =>
-          abortController.abort(
-            new AlephaError(`Job '${jobName}' timed out after ${ms}ms`),
-          ),
-        ms,
-      );
-    }
     // The claim this run holds. Every write it makes after this point is
     // fenced on it (see `fenceWhere`).
     const fence: JobClaimFence = {
@@ -1656,25 +1635,27 @@ export class JobProvider {
           let parkAgain: RescheduleIntent | undefined;
           try {
             await this.underRunSignal(abortController.signal, () =>
-              opts.handler({
-                payload: execution.payload,
-                attempt: execution.attempt,
-                now,
-                signal: abortController.signal,
-                executionId,
-                reschedule: (options) => {
-                  if (inline) {
-                    throw new AlephaError(
-                      `Job '${jobName}' called reschedule() during an inline push. The caller is waiting for an outcome, and a parked row has none to give it. Push without 'inline' for work that waits.`,
+              this.withTimeout(opts.timeout, (signal) =>
+                opts.handler({
+                  payload: execution.payload,
+                  attempt: execution.attempt,
+                  now,
+                  signal,
+                  executionId,
+                  reschedule: (options) => {
+                    if (inline) {
+                      throw new AlephaError(
+                        `Job '${jobName}' called reschedule() during an inline push. The caller is waiting for an outcome, and a parked row has none to give it. Push without 'inline' for work that waits.`,
+                      );
+                    }
+                    parkAgain = this.rescheduleIntent(
+                      registration,
+                      execution.payload,
+                      options,
                     );
-                  }
-                  parkAgain = this.rescheduleIntent(
-                    registration,
-                    execution.payload,
-                    options,
-                  );
-                },
-              }),
+                  },
+                }),
+              ),
             );
 
             if (parkAgain) {
@@ -1813,7 +1794,6 @@ export class JobProvider {
               fence,
             );
           } finally {
-            if (timeoutId) clearTimeout(timeoutId);
             this.abortControllers.delete(executionId);
             await this.alepha.events.emit(
               "job:end",
@@ -2815,10 +2795,27 @@ export class JobProvider {
   }
 
   /**
+   * Run a handler under the job's `timeout` (#E87), through
+   * `DateTimeProvider.deadline`: past it, the run's signal aborts with a
+   * `TimeoutError`, so the handler's outbound calls and queries stop, and the
+   * run fails with that `TimeoutError` at once, even if the handler ignores
+   * its signal. The timer is the provider's, so `travel()` fires it.
+   *
+   * `signal` is the one the handler receives, the same object as
+   * `alepha.context.signal` inside it.
+   */
+  protected withTimeout<R>(
+    timeout: DurationLike | undefined,
+    run: (signal: AbortSignal) => Promise<R> | R,
+  ): Promise<R> {
+    return this.dt.deadline(run, timeout);
+  }
+
+  /**
    * Whether a run that threw `error` was cancelled rather than failed: its
    * signal was aborted by the framework (an {@link AbortedError}: `cancel()`,
    * the drain deadline at stop) and the error is that abort. A timeout
-   * aborts with a plain error and stays a failure (#E87).
+   * aborts with a `TimeoutError` and stays a failure (#E87).
    */
   protected isCancelled(signal: AbortSignal, error: unknown): boolean {
     return (

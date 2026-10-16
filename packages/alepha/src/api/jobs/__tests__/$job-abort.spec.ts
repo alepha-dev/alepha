@@ -1,4 +1,5 @@
-import { $hook, Alepha, z } from "alepha";
+import { $hook, Alepha, TimeoutError, z } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, it } from "vitest";
@@ -14,7 +15,8 @@ import {
 /**
  * An aborted run is an outcome, not a failure (#E85): a run the framework
  * aborts (the drain deadline at stop, `cancel()`) is recorded `cancelled`,
- * never `error`, and never retried. A timeout stays a failure until #E87.
+ * never `error`, and never retried. A timeout stays a failure, recorded
+ * with its `TimeoutError` (#E87).
  */
 describe("$job aborted runs", () => {
   const makeApp = () => {
@@ -205,6 +207,60 @@ describe("$job aborted runs", () => {
       where: { jobName: { eq: "abort.timeout" } },
     });
     expect(rows[0]?.status).toBe("error");
-    expect(rows[0]?.error).toContain("timed out");
+    expect(rows[0]?.error).toBe("Timed out after 20 ms");
+  });
+
+  it("fires the timeout under travel(), and records the TimeoutError even when the handler ignores its signal", async ({
+    expect,
+  }) => {
+    const alepha = makeApp();
+    let started: () => void = () => {};
+    const running = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    let reason: unknown;
+    let failure: unknown;
+
+    class App {
+      dt = alepha.inject(DateTimeProvider);
+      executions = $repository(jobExecutionEntity);
+      slow = $job({
+        name: "abort.travel",
+        description: "A job under test.",
+        cron: "0 0 * * *",
+        timeout: [1, "minutes"],
+        handler: async ({ signal }) => {
+          signal.addEventListener("abort", () => {
+            reason = signal.reason;
+          });
+          started();
+          // Ignores its signal: the run still ends at the deadline.
+          await this.dt.wait([1, "hours"]);
+        },
+      });
+      onError = $hook({
+        on: "job:error",
+        handler: ({ error }) => {
+          failure = error;
+        },
+      });
+    }
+    const app = alepha.inject(App);
+    await alepha.start();
+    const time = alepha.inject(DateTimeProvider);
+    time.pause();
+
+    const run = app.slow.trigger();
+    await running;
+    await time.travel([1, "minutes"]);
+    await run;
+
+    expect(reason).toBeInstanceOf(TimeoutError);
+    expect(failure).toBeInstanceOf(TimeoutError);
+    const rows = await app.executions.findMany({
+      where: { jobName: { eq: "abort.travel" } },
+    });
+    expect(rows[0]?.status).toBe("error");
+    expect(rows[0]?.error).toBe("Timed out after 60 s");
   });
 });

@@ -223,7 +223,14 @@ export interface JobPrimitiveOptions<
   lock?: boolean;
 
   /**
-   * Max execution time per attempt. Handler receives an `AbortSignal`.
+   * Max execution time per attempt.
+   *
+   * Past it, the run's signal (the handler's `signal`, and
+   * `alepha.context.signal` inside it) aborts with a `TimeoutError`, so the
+   * handler's outbound calls and queries stop, and the attempt fails with
+   * that `TimeoutError` at once, even if the handler ignores its signal. A
+   * timed-out attempt is a failure, retried like any other, never recorded
+   * `cancelled`. The run's lock lives twice as long.
    */
   timeout?: DurationLike;
 
