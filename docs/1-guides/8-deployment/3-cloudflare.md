@@ -29,7 +29,7 @@ alepha infra login --env production
 alepha infra login --env production --device
 ```
 
-`--device` prints a code to enter on another machine (`wrangler login --device`, Wrangler 4.119.0 or later). `alepha infra logout --env production` discards the stored login. With `CLOUDFLARE_API_TOKEN` set, none of this is needed. The one command that still runs Wrangler with a token set is `alepha infra db export` (`wrangler d1 export`).
+`--device` prints a code to enter on another machine (`wrangler login --device`, Wrangler 4.119.0 or later). `alepha infra logout --env production` discards the stored login. With `CLOUDFLARE_API_TOKEN` set, none of this is needed, and no command runs Wrangler.
 
 `CLOUDFLARE_ANALYTICS_TOKEN` is **not** a deploy credential - it is the optional, app-runtime Analytics Engine read token (scope: Account Analytics · Read). It is deliberately named differently from `CLOUDFLARE_API_TOKEN`: that name is the deploy credential, so putting a read-only token there makes every provisioning call fail with an authentication error.
 

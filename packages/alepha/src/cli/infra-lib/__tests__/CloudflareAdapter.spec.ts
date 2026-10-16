@@ -205,6 +205,18 @@ class MemoryProvisionClient extends CloudflareProvisionClient {
   public override async deleteWorker(name: string) {
     this.deletedWorkers.push(name);
   }
+
+  /**
+   * What each database exports, by uuid: the dump, or the failure D1 answers.
+   */
+  public d1Dumps: Record<string, Uint8Array | Error> = {};
+
+  public override async d1Export(databaseId: string) {
+    const dump = this.d1Dumps[databaseId];
+    if (dump instanceof Error) throw dump;
+    if (!dump) throw new AlephaError(`No dump for D1 '${databaseId}'.`);
+    return dump;
+  }
 }
 
 /**
@@ -1640,17 +1652,13 @@ describe("CloudflareAdapter", () => {
       });
 
     /**
-     * A shell that plays the two steps for real enough to test the code
-     * between them: `wrangler d1 export` writes `dump` to the `--output`
-     * path, and `sqlite3 <db>` writes whatever it reads on stdin into the
+     * The dump comes from the memory account's `d1Export` (#Q2616); the shell
+     * plays `sqlite3 <db>`, writing whatever it reads on stdin into the
      * target file. `failImport` makes the import throw AFTER writing a
      * partial file, which is exactly what sqlite3 does: it commits every
-     * statement it parsed before the error. Both arrive as an argv.
+     * statement it parsed before the error. It arrives as an argv.
      */
-    const dumping = {
-      dump: "-- empty\n" as Buffer | string,
-      failImport: false,
-    };
+    const dumping = { failImport: false };
     class DumpingShell extends MemoryShellProvider {
       protected readonly memory = $inject(MemoryFileSystemProvider);
 
@@ -1660,13 +1668,6 @@ describe("CloudflareAdapter", () => {
       ): Promise<string> {
         const out = await super.run(command, options);
         if (!Array.isArray(command)) return out;
-        if (command[0] === "wrangler") {
-          const output = command.find((it) => it.startsWith("--output="));
-          await this.memory.writeFile(
-            output!.slice("--output=".length),
-            dumping.dump,
-          );
-        }
         if (command[0] === "sqlite3") {
           if (dumping.failImport) {
             await this.memory.writeFile(command[1], "PARTIAL");
@@ -1681,25 +1682,30 @@ describe("CloudflareAdapter", () => {
       }
     }
 
+    /**
+     * An account holding the app's database, whose export answers `dump`
+     * (or fails with it), and the context naming that database.
+     */
     const shellRun = (
-      opts: { dump: Buffer | string; failImport?: boolean } = {
+      opts: { dump: Buffer | string | Error; failImport?: boolean } = {
         dump: "-- empty\n",
       },
     ) => {
-      dumping.dump = opts.dump;
       dumping.failImport = opts.failImport ?? false;
       const env = createTestEnv(DumpingShell);
-      const commands = () => env.shell.calls.map((it) => it.command);
-      return { ...env, run: createMockRun(), commands };
+      const ctx = withDatabase(env.naming);
+      env.api.d1Databases.push({ uuid: "d1-app-uuid", name: ctx.naming.d1() });
+      env.api.d1Dumps["d1-app-uuid"] =
+        opts.dump instanceof Error ? opts.dump : Buffer.from(opts.dump);
+      return { ...env, ctx, run: createMockRun() };
     };
 
     test("dumps remote D1 and imports it into a local SQLite snapshot", async ({
       expect,
     }) => {
-      const { adapter, naming, fs, run, shell } = shellRun({
+      const { adapter, ctx, fs, run, shell } = shellRun({
         dump: "-- rows\n",
       });
-      const ctx = withDatabase(naming);
 
       await adapter.exportDb(ctx, run, {
         output: "/tmp/snap.db",
@@ -1707,13 +1713,15 @@ describe("CloudflareAdapter", () => {
       });
 
       const argvs = shell.calls.map((it) => it.argv ?? []);
+      // Over the export API (#Q2616): wrangler is neither installed nor run.
+      expect(shell.calls.some((it) => it.command.includes("wrangler"))).toBe(
+        false,
+      );
       expect(
-        argvs.some(
-          (it) =>
-            it.slice(0, 3).join(" ") === "wrangler d1 export" &&
-            it.includes("--remote"),
+        fs.getFileContent(
+          `/project/node_modules/.alepha/${ctx.naming.d1()}.sql`,
         ),
-      ).toBe(true);
+      ).toBe("-- rows\n");
       // Staged, not written straight into the snapshot  -  see below. The
       // dump goes in on stdin, as an argv: no `sh -c` quoting to break.
       expect(
@@ -1736,8 +1744,7 @@ describe("CloudflareAdapter", () => {
         Buffer.from([0x00]),
         Buffer.from("b');\nINSERT INTO t VALUES('next');\n"),
       ]);
-      const { adapter, naming, fs, run } = shellRun({ dump });
-      const ctx = withDatabase(naming);
+      const { adapter, ctx, fs, run } = shellRun({ dump });
 
       await adapter.exportDb(ctx, run, {
         output: "/tmp/snap.db",
@@ -1755,10 +1762,9 @@ describe("CloudflareAdapter", () => {
     });
 
     test("leaves a clean dump alone", async ({ expect }) => {
-      const { adapter, naming, fs, run } = shellRun({
+      const { adapter, ctx, fs, run } = shellRun({
         dump: "INSERT INTO t VALUES('ok');\n",
       });
-      const ctx = withDatabase(naming);
 
       await adapter.exportDb(ctx, run, {
         output: "/tmp/snap.db",
@@ -1766,7 +1772,7 @@ describe("CloudflareAdapter", () => {
       });
 
       // These dumps run to tens of megabytes, so a clean one must not be
-      // read back out and rewritten. `wrangler d1 export` wrote it once.
+      // read back out and rewritten. The download wrote it once.
       expect(
         fs.writeFileCalls.filter((c) => c.path.endsWith(".sql")),
       ).toHaveLength(1);
@@ -1775,11 +1781,10 @@ describe("CloudflareAdapter", () => {
     test("keeps the existing snapshot when the import fails", async ({
       expect,
     }) => {
-      const { adapter, naming, fs, run } = shellRun({
+      const { adapter, ctx, fs, run } = shellRun({
         dump: "-- rows\n",
         failImport: true,
       });
-      const ctx = withDatabase(naming);
       await fs.writeFile("/tmp/snap.db", "WORKING DEV DB");
 
       await expect(
@@ -1791,6 +1796,24 @@ describe("CloudflareAdapter", () => {
       // up front and sqlite3 commits what it parsed before the error.
       expect(fs.getFileContent("/tmp/snap.db")).toBe("WORKING DEV DB");
       expect(fs.files.has("/tmp/snap.db.import")).toBe(false);
+    });
+
+    test("a failed export imports nothing and keeps the snapshot", async ({
+      expect,
+    }) => {
+      const { adapter, ctx, fs, run, shell } = shellRun({
+        dump: new AlephaError("D1 could not export the database: busy."),
+      });
+      await fs.writeFile("/tmp/snap.db", "WORKING DEV DB");
+
+      await expect(
+        adapter.exportDb(ctx, run, { output: "/tmp/snap.db" }),
+      ).rejects.toThrow(/could not export/);
+
+      expect(shell.calls.some((it) => it.command.includes("sqlite3"))).toBe(
+        false,
+      );
+      expect(fs.getFileContent("/tmp/snap.db")).toBe("WORKING DEV DB");
     });
 
     test("refuses when no database is detected", async ({ expect }) => {

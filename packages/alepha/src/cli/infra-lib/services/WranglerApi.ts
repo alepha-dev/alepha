@@ -11,8 +11,8 @@ import { ShellProvider } from "alepha/system";
  * grant to first-party clients only, and wrangler already stores, refreshes
  * and scopes the OAuth token. Deploying, provisioning and migrating go over
  * the API (#E75), and with `CLOUDFLARE_API_TOKEN` set nothing here runs at
- * all: see `CloudflareCredentialSource`. The one other shell-out left is
- * `alepha infra db export`'s `wrangler d1 export` (#Q2616).
+ * all: see `CloudflareCredentialSource`. `alepha infra db export` left too,
+ * for D1's export API (#Q2616).
  *
  * ⚠️ **Every method here spawns a process**, so nothing on this class can run
  * inside a Worker. That is why D1 migrations left (#1514) and why the

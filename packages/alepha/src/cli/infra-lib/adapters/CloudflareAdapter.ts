@@ -882,17 +882,14 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
 
     await this.fs.mkdir(tmpDir, { recursive: true });
 
+    // Over D1's export API, like every other D1 call here (#Q2616): with
+    // CLOUDFLARE_API_TOKEN set, wrangler is neither installed nor run.
     await run({
       name: `export D1 ${dbName} → ${sqlPath}`,
       handler: async () => {
-        await this.shell.run([
-          "wrangler",
-          "d1",
-          "export",
-          dbName,
-          "--remote",
-          `--output=${sqlPath}`,
-        ]);
+        const api = await this.provisionerFor(ctx);
+        const dump = await api.d1Export(await api.resolveD1Id(dbName));
+        await this.fs.writeFile(sqlPath, dump);
       },
     });
 
