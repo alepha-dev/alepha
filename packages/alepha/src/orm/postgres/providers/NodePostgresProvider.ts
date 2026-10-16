@@ -123,7 +123,8 @@ export class NodePostgresProvider extends PostgresProvider {
 
     this.client = client;
     this.pg = drizzle({
-      client,
+      // A read cancels in flight when its signal aborts (#E85).
+      client: this.cancellable(client),
       logger: {
         // forward logs
         logQuery: (query: string, params: unknown[]) => {

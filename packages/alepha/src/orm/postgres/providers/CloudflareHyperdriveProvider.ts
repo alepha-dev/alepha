@@ -127,7 +127,9 @@ export class CloudflareHyperdriveProvider extends DatabaseProvider {
     // silently open a *new*, unconfigured connection instead of reusing
     // this one.
     const db = this.drizzleFn({
-      client,
+      // postgres.js, as on Node: a read cancels in flight when its signal
+      // aborts (#E85), as far as Hyperdrive's pooler forwards the cancel.
+      client: this.cancellable(client),
     }) as unknown as PgAsyncDatabase<any>;
 
     if (this.als.exists()) {

@@ -254,6 +254,165 @@ export abstract class DatabaseProvider {
     return result;
   }
 
+  // -------------------------------------------------------------------------------------------------------------------
+  // Cancellation (#E85)
+  // -------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * The context key holding the signal a statement runs under. A driver that
+   * can cancel a running statement reads it when it sends one (see
+   * {@link cancellable}).
+   */
+  public static readonly STATEMENT_SIGNAL = "alepha.orm.signal";
+
+  /**
+   * The signal of the current unit of work, or `undefined` outside one.
+   *
+   * The app signal is not one: an owner drains its units on stop, and the
+   * reads and writes it does to record their outcome (a job's terminal row)
+   * must not be refused because stop began. So is `detachSignal`'s.
+   */
+  protected unitSignal(): AbortSignal | undefined {
+    const ambient = this.alepha.context.signal;
+    return ambient === this.alepha.context.appSignal ? undefined : ambient;
+  }
+
+  /**
+   * Run one repository statement under its signal (owner decision, #E85):
+   *
+   * - a **read** outside a transaction inherits the unit's signal, composed
+   *   with an explicit one;
+   * - a **write** outside a transaction honors an explicit signal only:
+   *   cutting a write sequence short leaves half-done work nothing undoes;
+   * - **inside a transaction** nothing is cut short; an explicit signal that
+   *   already fired still refuses the statement.
+   *
+   * A statement whose signal already fired is refused before it is sent,
+   * with the signal's reason. In flight, a driver that can cancel a running
+   * statement does (postgres.js; `Bun.sql` only while the query is still
+   * queued); the others let it finish.
+   */
+  public async statement<R>(
+    kind: "read" | "write",
+    options: { signal?: AbortSignal; inTransaction: boolean },
+    fn: () => Promise<R>,
+  ): Promise<R> {
+    const explicit = options.signal;
+    if (options.inTransaction) {
+      explicit?.throwIfAborted();
+      return fn();
+    }
+
+    const unit = kind === "read" ? this.unitSignal() : undefined;
+    const signal =
+      explicit && unit && explicit !== unit
+        ? AbortSignal.any([explicit, unit])
+        : (explicit ?? unit);
+    if (!signal) {
+      return fn();
+    }
+
+    signal.throwIfAborted();
+    try {
+      return await this.alepha.context.nest(() => {
+        this.alepha.context.set(DatabaseProvider.STATEMENT_SIGNAL, signal);
+        return fn();
+      });
+    } catch (error) {
+      // A cancelled statement fails with the driver's own error (Postgres
+      // 57014); the caller is told why it stopped instead.
+      if (signal.aborted) {
+        throw signal.reason;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Wrap a postgres.js or `Bun.sql` client so that a statement sent under a
+   * statement signal (see {@link statement}) is cancelled when it aborts.
+   *
+   * The query objects both drivers return run lazily, on their first
+   * `then`, and drizzle chains `.values()` on them before awaiting. So the
+   * listener is attached without calling `then`, and removed by the first
+   * `then` call, which is when the query actually runs and settles.
+   *
+   * A transaction's statements go through the client `begin()` hands its
+   * callback, which is not wrapped: a transaction is never cut short.
+   */
+  protected cancellable<T extends object>(client: T): T {
+    const watch = (query: unknown): unknown => {
+      const signal = this.alepha.context.get<AbortSignal>(
+        DatabaseProvider.STATEMENT_SIGNAL,
+      );
+      const pending = query as {
+        cancel?: () => unknown;
+        then?: (...args: any[]) => unknown;
+      } | null;
+      if (
+        !signal ||
+        !pending ||
+        typeof pending.cancel !== "function" ||
+        typeof pending.then !== "function"
+      ) {
+        return query;
+      }
+
+      const cancel = () => {
+        try {
+          pending.cancel?.();
+        } catch {
+          // Already settled.
+        }
+      };
+      if (signal.aborted) {
+        cancel();
+        return query;
+      }
+
+      signal.addEventListener("abort", cancel, { once: true });
+      const cleanup = () => signal.removeEventListener("abort", cancel);
+      const then = pending.then;
+      // oxlint-disable-next-line unicorn/no-thenable -- wraps the driver's own `then` on an object that already is a thenable, to learn when the query ran without running it early
+      pending.then = function (
+        this: unknown,
+        onFulfilled?: (value: unknown) => unknown,
+        onRejected?: (reason: unknown) => unknown,
+      ) {
+        return then.call(
+          this,
+          (value: unknown) => {
+            cleanup();
+            return onFulfilled ? onFulfilled(value) : value;
+          },
+          (reason: unknown) => {
+            cleanup();
+            if (onRejected) return onRejected(reason);
+            throw reason;
+          },
+        );
+      };
+      return query;
+    };
+
+    return new Proxy(client, {
+      apply: (target, thisArg, args) =>
+        watch(
+          Reflect.apply(target as (...a: unknown[]) => unknown, thisArg, args),
+        ),
+      get: (target, prop) => {
+        const value = Reflect.get(target, prop, target);
+        if (typeof value !== "function") {
+          return value;
+        }
+        if (prop === "unsafe") {
+          return (...args: unknown[]) => watch(value.apply(target, args));
+        }
+        return value.bind(target);
+      },
+    });
+  }
+
   /**
    * Run a function inside a database transaction with implicit tx propagation.
    *
@@ -287,6 +446,10 @@ export abstract class DatabaseProvider {
       this.assertJoinable(options);
       return fn();
     }
+
+    // Checked before BEGIN only: once begun, a transaction runs to commit or
+    // rolls back on its own error, whatever happens to its caller (#E85).
+    this.unitSignal()?.throwIfAborted();
 
     if (!this.supportsTransactions) {
       this.warnWithoutTransactions(owner);

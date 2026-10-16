@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "bun:test";
 
-import { Alepha, z } from "alepha";
-import { $entity, $repository, DatabaseProvider, db } from "alepha/orm";
+import { AbortedError, Alepha, z } from "alepha";
+import { $entity, $repository, DatabaseProvider, db, sql } from "alepha/orm";
 
 import { BunPostgresProvider } from "../providers/BunPostgresProvider.ts";
 
@@ -114,5 +114,29 @@ describe("BunPostgresProvider", () => {
 
     const db = alepha.inject(DatabaseProvider);
     expect(db.dialect).toBe("postgresql");
+  });
+
+  /**
+   * A read inherits the unit's signal (#E85). `Bun.sql` (Bun 1.4) cancels a
+   * query only before it is sent, never one already executing, so on Bun a
+   * read is refused, not cut short in flight.
+   */
+  it("refuses a read when the ambient signal already fired", async () => {
+    const app = setup();
+    await alepha.start();
+
+    const unit = new AbortController();
+    const reason = new AbortedError("client gone");
+    unit.abort(reason);
+
+    const error = await alepha.context
+      .run(() => app.userRepo.count(sql`pg_sleep(3) is not null`), {
+        signal: unit.signal,
+      })
+      .then(
+        () => undefined,
+        (e: unknown) => e,
+      );
+    expect(error).toBe(reason);
   });
 });
