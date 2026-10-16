@@ -116,7 +116,7 @@ import { AlephaOrmPostgres } from "alepha/orm/postgres";
 const alepha = Alepha.create().with(AlephaOrmPostgres);
 ```
 
-PostgreSQL also reads `POSTGRES_SCHEMA` (default `public`), `POOL_MAX`, and `POOL_IDLE_TIMEOUT` / `POOL_CONNECT_TIMEOUT` in seconds. The D1 settings (`DATABASE_TIMEOUT`, `DATABASE_D1_MODE`) are covered in the [Cloudflare guide](/docs/guides-deployment-cloudflare).
+PostgreSQL also reads `POSTGRES_SCHEMA` (default `public`), `POOL_MAX`, and `POOL_IDLE_TIMEOUT` / `POOL_CONNECT_TIMEOUT` in seconds. Every driver reads `DATABASE_TIMEOUT` (milliseconds a query may take, `0` disables, `5000` on serverless and off elsewhere by default; see [Timeouts](/docs/guides-core-cancellation#timeouts)). The other D1 settings (`DATABASE_D1_MODE`) are covered in the [Cloudflare guide](/docs/guides-deployment-cloudflare).
 
 Unset, SQLite uses an in-memory database under test and on serverless, and otherwise writes to `node_modules/.alepha/sqlite.db` - a development scratch
 file that needs no configuration and is removed along with the rest of

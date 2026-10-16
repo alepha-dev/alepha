@@ -118,8 +118,11 @@ export {
   $resourceTemplate,
   ResourceTemplatePrimitive,
 } from "./primitives/$resourceTemplate.ts";
-export type { ToolPrimitiveOptions } from "./primitives/$tool.ts";
-export { $tool, ToolPrimitive } from "./primitives/$tool.ts";
+export type {
+  McpToolOptions,
+  ToolPrimitiveOptions,
+} from "./primitives/$tool.ts";
+export { $tool, mcpToolOptions, ToolPrimitive } from "./primitives/$tool.ts";
 export { McpServerProvider } from "./providers/McpServerProvider.ts";
 export { StdioMcpTransport } from "./transports/StdioMcpTransport.ts";
 export {

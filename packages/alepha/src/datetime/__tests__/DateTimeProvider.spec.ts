@@ -116,42 +116,6 @@ describe("DateTimeProvider.nowMillis", () => {
   });
 });
 
-describe("DateTimeProvider.deadline", () => {
-  it("should return result when handler completes in time", async () => {
-    const app = Alepha.create();
-    const dt = app.inject(DateTimeProvider);
-
-    const result = await dt.deadline(async () => "done", [1, "seconds"]);
-
-    expect(result).toBe("done");
-  });
-
-  it("should abort signal when handler exceeds deadline", async () => {
-    const app = Alepha.create();
-    const dt = app.inject(DateTimeProvider);
-    let aborted = false;
-
-    const promise = dt.deadline(
-      async (signal) => {
-        signal.addEventListener("abort", () => {
-          aborted = true;
-        });
-        await dt.wait([10, "minutes"]);
-        return "done";
-      },
-      [5, "minutes"],
-    );
-
-    // Travel past deadline (5min) but handler is still waiting (10min)
-    await dt.travel([5, "minutes"]);
-    expect(aborted).toBe(true);
-
-    // Travel remaining time so handler resolves
-    await dt.travel([5, "minutes"]);
-    await expect(promise).resolves.toBe("done");
-  });
-});
-
 describe("DateTimeProvider.isDurationLike", () => {
   it("should return true for valid durations", () => {
     const app = Alepha.create();

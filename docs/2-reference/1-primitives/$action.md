@@ -56,6 +56,7 @@ renaming the property never moves the URL.
 | `disabled`    | `boolean`                                  | No       | Disable the route                                                                                         |
 | `use`         | `TUse`                                     | No       | Middlewares wrapping the handler, outermost first                                                         |
 | `errors`      | `TErrors`                                  | No       | The errors this action answers with: `$error` constants or built-in `HttpError` classes (`NotFoundError`) |
+| `timeout`     | `DurationLike \| false`                    | No       | How long the action may run before it answers 503 with a `TimeoutError`                                   |
 | `handler`     | `ServerActionHandler&lt;TConfig, TUse&gt;` | Yes      | Main route handler                                                                                        |
 
 ## Examples

@@ -1,5 +1,7 @@
 import {
+  $atom,
   $inject,
+  $store,
   Alepha,
   AlephaError,
   type FileLike,
@@ -10,7 +12,7 @@ import {
   z,
 } from "alepha";
 import { $cache } from "alepha/cache";
-import type { DurationLike } from "alepha/datetime";
+import { DateTimeProvider, type DurationLike } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 
 import { HttpError } from "../errors/HttpError.ts";
@@ -24,10 +26,38 @@ import type { ClientRequestOptions } from "../primitives/$action.ts";
 import { errorSchema } from "../schemas/errorSchema.ts";
 import { LogRedaction } from "./LogRedaction.ts";
 
+/**
+ * Options of every `HttpClient`.
+ */
+export const httpClientOptions = $atom({
+  name: "alepha.server.http.client.options",
+  schema: z.object({
+    timeout: z
+      .union([z.integer(), z.literal(false)])
+      .describe(
+        "Milliseconds a server-side `fetch` may take, headers and body, before it rejects with a TimeoutError. `false` or 0 disables it. A call's own `timeout` wins. Never applies to `fetchAction` nor in the browser.",
+      )
+      .optional(),
+  }),
+  default: {
+    timeout: 30_000,
+  },
+});
+
+export type HttpClientOptions = Infer<typeof httpClientOptions.schema>;
+
+declare module "alepha" {
+  interface State {
+    [httpClientOptions.key]: HttpClientOptions;
+  }
+}
+
 export class HttpClient {
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
+  protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly redaction = $inject(LogRedaction);
+  protected readonly settings = $store(httpClientOptions);
 
   public readonly cache = $cache<HttpClientCache>({
     provider: "memory",
@@ -72,6 +102,10 @@ export class HttpClient {
       ...request,
       schema: route.schema,
       ...options,
+      // The default outbound timeout is for third parties. An action of the
+      // app is bounded server-side by its own deadline, and a client-side cut
+      // would abandon a long action the server is still running.
+      timeout: options.timeout ?? false,
     });
   }
 
@@ -84,10 +118,57 @@ export class HttpClient {
    * aborted call rejects with the signal's reason. A deduplicated GET is
    * shared between its callers and aborted only when the last one left.
    * In the browser only an explicit `signal` applies.
+   *
+   * `request.timeout` bounds the call, headers and body: past it, the call
+   * rejects with a `TimeoutError` and the fetch is aborted. On the server it
+   * defaults to the `httpClientOptions` atom's 30 seconds; `false` or `0`
+   * disables it. In the browser there is no default.
    */
   public async fetch<T extends ZType>(
     url: string,
     request: RequestInitWithOptions<T> = {}, // standard options
+  ): Promise<FetchResponse<Infer<T>>> {
+    const timeout = this.timeoutOf(request.timeout);
+    if (timeout === undefined) {
+      return this.fetchUnbounded(url, request);
+    }
+
+    // The deadline's signal, passed explicitly: in the browser there is no
+    // ambient signal to carry it.
+    return this.dateTime.deadline(
+      (signal) =>
+        this.fetchUnbounded(url, {
+          ...request,
+          signal: request.signal
+            ? AbortSignal.any([request.signal, signal])
+            : signal,
+        }),
+      timeout,
+    );
+  }
+
+  /**
+   * The timeout a call runs under: its own, else the server-side default.
+   * `undefined` for none.
+   */
+  protected timeoutOf(
+    own: DurationLike | false | undefined,
+  ): DurationLike | undefined {
+    if (own !== undefined) {
+      return own === false || own === 0 ? undefined : own;
+    }
+    if (this.alepha.isBrowser()) {
+      return undefined;
+    }
+    return this.settings.timeout || undefined;
+  }
+
+  /**
+   * {@link fetch} without its timeout.
+   */
+  protected async fetchUnbounded<T extends ZType>(
+    url: string,
+    request: RequestInitWithOptions<T>,
   ): Promise<FetchResponse<Infer<T>>> {
     const options = {
       cache: request.localCache,
@@ -734,6 +815,16 @@ export interface FetchOptions<T extends ZType = ZType> {
    * Built-in cache options.
    */
   localCache?: boolean | number | DurationLike;
+
+  /**
+   * How long the call may take, headers and body, before it rejects with a
+   * `TimeoutError`. `false` or `0`: no timeout.
+   *
+   * On the server, `fetch` defaults to the `httpClientOptions` atom (30
+   * seconds); `fetchAction` (a call to the app's own action) and the browser
+   * have no default.
+   */
+  timeout?: DurationLike | false;
 }
 
 export type RequestInitWithOptions<T extends ZType = ZType> = RequestInit &

@@ -795,7 +795,7 @@ Repository operations emit lifecycle events:
 | `DbNotNullError`           | 400  | NOT NULL constraint violation                                                  |
 | `DbDeadlockError`          | 409  | Database deadlock detected                                                     |
 | `DbTooManyParametersError` | 400  | A statement binds more values than the driver accepts (split a long `inArray`) |
-| `DbTimeoutError`           | 503  | A query outlived its budget (`DATABASE_TIMEOUT` on D1)                         |
+| `DbTimeoutError`           | 503  | A query outlived its `timeout`, or `DATABASE_TIMEOUT`                          |
 | `DbTableNotFoundError`     | 500  | Referenced table does not exist                                                |
 | `DbColumnNotFoundError`    | 500  | Referenced column does not exist                                               |
 | `DbConnectionError`        | 503  | The database cannot be reached                                                 |

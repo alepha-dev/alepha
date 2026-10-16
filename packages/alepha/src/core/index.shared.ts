@@ -12,6 +12,7 @@ export * from "./errors/DeclaredError.ts";
 export * from "./errors/ContainerLockedError.ts";
 export * from "./errors/MissingContextError.ts";
 export * from "./errors/SchemaValidationError.ts";
+export * from "./errors/TimeoutError.ts";
 export * from "./errors/TooLateSubstitutionError.ts";
 export * from "./helpers/coerceStrings.ts";
 export * from "./helpers/createPagination.ts";

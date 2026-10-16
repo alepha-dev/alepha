@@ -167,13 +167,22 @@ export class PipelineHandler {
   protected fn: (...args: any[]) => any;
   protected middlewares: Middleware[];
 
+  /**
+   * Wraps the whole composed pipeline on every run, outside every
+   * middleware, including those `use()` adds later (a router's global
+   * middleware). `$action` arms its `timeout` deadline here.
+   */
+  protected around?: (run: () => any) => any;
+
   constructor(
     fn: (...args: any[]) => any,
     middlewares?: readonly Middleware[],
+    around?: (run: () => any) => any,
   ) {
     this.fn = fn;
     // A copy: `use()` prepends, and must not reach into the caller's array.
     this.middlewares = [...(middlewares ?? [])];
+    this.around = around;
   }
 
   protected wrapped?: (...args: any[]) => any;
@@ -206,7 +215,8 @@ export class PipelineHandler {
       }
     }
 
-    return this.wrapped(...args);
+    const wrapped = this.wrapped;
+    return this.around ? this.around(() => wrapped(...args)) : wrapped(...args);
   }
 }
 

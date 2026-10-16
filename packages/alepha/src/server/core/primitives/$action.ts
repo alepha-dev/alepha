@@ -15,6 +15,7 @@ import {
   type SchemaOutput,
   z,
 } from "alepha";
+import { DateTimeProvider, type DurationLike } from "alepha/datetime";
 import { KIND } from "alepha/internal";
 import { $logger } from "alepha/logger";
 
@@ -274,6 +275,30 @@ export interface ActionPrimitiveOptions<
   errors?: TErrors;
 
   /**
+   * How long the action may run before it answers 503 with a `TimeoutError`.
+   *
+   * The deadline covers the `use` middlewares and the handler (a `$lock`
+   * wait or a `$secure` key fetch counts), not the request body's upload nor
+   * a streamed response body. When it passes, the action's signal aborts
+   * with the `TimeoutError`, so the handler's outbound calls and queries stop
+   * too, and the caller is answered at once.
+   *
+   * None by default: the `serverApiOptions` atom's `timeout` sets one for
+   * every action, and `false` opts this one out of it. A timeout passes
+   * strict mode (`errors`) as the 503 it is.
+   *
+   * ```ts
+   * report = $action({
+   *   method: "POST",
+   *   path: "/reports",
+   *   timeout: [10, "seconds"],
+   *   handler: async () => this.reports.build(),
+   * });
+   * ```
+   */
+  timeout?: DurationLike | false;
+
+  /**
    * Main route handler. This is where the route logic is implemented.
    */
   handler: ServerActionHandler<TConfig, TUse>;
@@ -291,6 +316,12 @@ export const serverApiOptions = $atom({
       default: "/api",
       description: "Prefix for all API routes (e.g. $action).",
     }),
+    timeout: z
+      .integer()
+      .describe(
+        "Milliseconds every $action may run before it answers 503 (TimeoutError). Unset or 0: no timeout. An action's own `timeout` wins.",
+      )
+      .optional(),
   }),
   default: {
     prefix: "/api",
@@ -326,9 +357,11 @@ export class ActionPrimitive<
   public readonly handler = new PipelineHandler(
     this.filterDeclaredErrors(this.options.handler),
     this.options.use,
+    (run) => this.withDeadline(run),
   );
 
   protected readonly settings = $store(serverApiOptions);
+  protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly httpClient = $inject(HttpClient);
   protected readonly serverProvider = $inject(ServerProvider);
   protected readonly serverRouterProvider = $inject(ServerRouterProvider);
@@ -400,6 +433,30 @@ export class ActionPrimitive<
    */
   public get errors(): TErrors | undefined {
     return this.options.errors;
+  }
+
+  /**
+   * The timeout this action runs under: its own, else the `serverApiOptions`
+   * default. `undefined` when there is none (`false` on the action, or no
+   * default).
+   */
+  public get timeout(): DurationLike | undefined {
+    const own = this.options.timeout;
+    if (own === false) {
+      return undefined;
+    }
+    return own ?? (this.settings.timeout || undefined);
+  }
+
+  /**
+   * Run the composed pipeline under the action's deadline, when it has one.
+   */
+  protected withDeadline(run: () => any): any {
+    const timeout = this.timeout;
+    if (timeout === undefined) {
+      return run();
+    }
+    return this.dateTime.deadline(run, timeout);
   }
 
   /**
