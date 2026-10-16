@@ -151,19 +151,126 @@ export class HttpClient {
         ? JSON.stringify({ url, method: request.method, scope: identityScope })
         : undefined);
 
-    if (key) {
-      const existing = this.pendingRequests[key];
-      if (existing) {
-        // Log the URL, not the raw key (which carries the identity hash).
-        this.log.info("Request already pending", {
-          url,
-          method: request.method,
-        });
-        return existing;
-      }
+    // The caller's signal: its explicit one composed with the ambient one
+    // (#E85), so a request whose client left stops its outbound calls. The
+    // browser keeps its explicit cancellation only (`useAction`, `useQuery`).
+    const signal = this.callerSignal(request.signal ?? undefined);
+
+    if (!key) {
+      return this.send(url, { ...request, signal }, options, cacheKey);
     }
 
-    const promise = fetch(url, request)
+    // Deduplicated: the fetch is shared by every caller that joins it, so it
+    // never takes one caller's signal. It runs detached, each caller races
+    // its own signal, and the fetch is aborted once its last caller left.
+    let pending = this.pendingRequests[key];
+    if (pending) {
+      // Log the URL, not the raw key (which carries the identity hash).
+      this.log.info("Request already pending", {
+        url,
+        method: request.method,
+      });
+    } else {
+      const controller = new AbortController();
+      const entry: HttpClientPendingRequest = {
+        controller,
+        waiters: 0,
+        promise: this.alepha.context
+          .detachSignal(() =>
+            this.send(
+              url,
+              { ...request, signal: controller.signal },
+              options,
+              cacheKey,
+            ),
+          )
+          .finally(() => {
+            if (this.pendingRequests[key] === entry) {
+              delete this.pendingRequests[key];
+            }
+          }),
+      };
+      // The shared promise is observed through `join`; this keeps a fetch
+      // whose callers all left from rejecting unhandled.
+      entry.promise.catch(() => undefined);
+      this.pendingRequests[key] = entry;
+      pending = entry;
+    }
+
+    return this.join(pending, signal);
+  }
+
+  /**
+   * The signal a call runs under: its explicit `signal` composed with the
+   * ambient one, or either alone. Explicit only in the browser.
+   */
+  protected callerSignal(explicit?: AbortSignal): AbortSignal | undefined {
+    if (this.alepha.isBrowser()) {
+      return explicit;
+    }
+    const ambient = this.alepha.context.signal;
+    if (!explicit || explicit === ambient) {
+      return ambient;
+    }
+    return AbortSignal.any([explicit, ambient]);
+  }
+
+  /**
+   * Wait for a shared fetch as one of its callers: settle with it, or reject
+   * with `signal`'s reason as soon as that caller's signal aborts. The
+   * shared fetch is aborted when the last caller has gone.
+   */
+  protected join<T>(
+    pending: HttpClientPendingRequest,
+    signal: AbortSignal | undefined,
+  ): Promise<T> {
+    pending.waiters++;
+    const leave = (reason?: unknown) => {
+      pending.waiters--;
+      if (reason !== undefined && pending.waiters === 0) {
+        pending.controller.abort(reason);
+      }
+    };
+
+    if (!signal) {
+      return pending.promise.finally(() => leave()) as Promise<T>;
+    }
+
+    return new Promise<T>((resolve, reject) => {
+      const onAbort = () => {
+        leave(signal.reason);
+        reject(signal.reason);
+      };
+      if (signal.aborted) {
+        onAbort();
+        return;
+      }
+      signal.addEventListener("abort", onAbort, { once: true });
+      pending.promise.then(
+        (value) => {
+          signal.removeEventListener("abort", onAbort);
+          leave();
+          resolve(value as T);
+        },
+        (error) => {
+          signal.removeEventListener("abort", onAbort);
+          leave();
+          reject(error);
+        },
+      );
+    });
+  }
+
+  /**
+   * Send the request and decode its response, caching it when asked.
+   */
+  protected send(
+    url: string,
+    request: RequestInit,
+    options: ResolvedFetchOptions,
+    cacheKey: string,
+  ): Promise<FetchResponse> {
+    return fetch(url, request)
       .then(async (response) => {
         this.log.debug("Response", {
           url,
@@ -199,17 +306,16 @@ export class HttpClient {
 
         return fetchResponse;
       })
-      .finally(() => {
-        if (key) {
-          delete this.pendingRequests[key];
+      .catch((error: unknown) => {
+        // An abort is an outcome, not a failure (#E85): debug, and the
+        // signal's reason propagates as is.
+        if (
+          this.alepha.context.isAbortError(error, request.signal ?? undefined)
+        ) {
+          this.log.debug("Request aborted", { url });
         }
+        throw error;
       });
-
-    if (key) {
-      this.pendingRequests[key] = promise;
-    }
-
-    return promise;
   }
 
   /**
@@ -645,8 +751,20 @@ export interface FetchResponse<T = any> {
 
 export type HttpClientPendingRequests = Record<
   string,
-  Promise<any> | undefined
+  HttpClientPendingRequest | undefined
 >;
+
+/**
+ * A deduplicated in-flight request, shared by every caller that joined it.
+ */
+export interface HttpClientPendingRequest {
+  promise: Promise<any>;
+  /**
+   * Aborts the shared fetch; only once its last caller has gone.
+   */
+  controller: AbortController;
+  waiters: number;
+}
 
 interface HttpClientCache {
   data: any;
