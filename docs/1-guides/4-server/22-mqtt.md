@@ -212,6 +212,83 @@ again, shared group or not. **Handlers on device topics must be idempotent**:
 key a write on the device and a sequence number or timestamp the device
 sends, not on the arrival.
 
+## Commands: request and response
+
+A command to a device needs an answer: did the reboot happen, was the
+configuration applied. Give the topic a `response` schema and call
+`request()`:
+
+```typescript check
+import { MqttTopicProvider } from "@alepha/mqtt/topic";
+import { z } from "alepha";
+import { $topic } from "alepha/topic";
+
+class DeviceCommands {
+  command = $topic({
+    name: "mcs/v1/{site}/{device}/cmd",
+    provider: MqttTopicProvider,
+    schema: {
+      params: z.object({ site: z.text(), device: z.text() }),
+      payload: z.object({ action: z.enum(["reboot", "out-of-service"]) }),
+      response: z.object({
+        accepted: z.boolean(),
+        reason: z.text().optional(),
+      }),
+    },
+  });
+
+  async reboot(site: string, device: string) {
+    const result = await this.command.request(
+      { params: { site, device }, payload: { action: "reboot" } },
+      { timeout: [10, "seconds"] },
+    );
+    return result.accepted;
+  }
+}
+```
+
+`request()` takes what `publish()` takes, and resolves with the typed reply.
+On a topic without `response` it does not compile.
+
+**On MQTT it is plain MQTT 5.** The request carries a Response Topic and
+Correlation Data; the device publishes its answer, bare JSON like every
+message, to that Response Topic with the same Correlation Data. Any MQTT 5
+device can answer without knowing Alepha is on the other end. The reply
+topic is one per instance, `<app name>/reply/<instance id>`, subscribed on
+the first request. It is never prefixed, since it is an address on the
+wire: set `replyTopic` in the `mqttTopicOptions` atom to a topic your broker
+ACL lets devices publish to. Requests need MQTT 5, and are refused under
+`protocolVersion: 4`.
+
+**The responder is any handler of the topic.** On a topic with a `response`
+schema, what the `handler` or a `$subscriber` returns is the reply:
+
+```typescript
+command = $topic({
+  name: "mcs/v1/{site}/{device}/cmd",
+  provider: MqttTopicProvider,
+  schema: { params, payload, response },
+  handler: async ({ params, payload }) => {
+    await this.device.apply(params.device, payload.action);
+    return { accepted: true };
+  },
+});
+```
+
+A message that came from a plain `publish()` has no reply address and gets
+no answer. A handler that throws, or returns what the response schema
+refuses, sends nothing: the requester times out. With several responders,
+the first reply settles the request and the others are dropped.
+
+**Timeouts and cancellation.** Past its `timeout` (10 seconds by default) a
+request rejects with the 503 `TimeoutError` every Alepha timeout throws,
+and `travel()` fires it in tests. Inside a request handler, a client that
+disconnects aborts the pending request too. Either way nothing is left
+waiting.
+
+The same contract works on the memory and Redis topic providers, emulated in
+their envelope, so a command topic's business logic tests without a broker.
+
 ## Testing on the memory broker
 
 Without `MQTT_URL`, tests run on `MemoryMqttClientProvider`: no broker, no

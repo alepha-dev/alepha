@@ -145,8 +145,16 @@ export class MemoryMqttBroker {
   public async publish(
     topic: string,
     payload: Uint8Array,
-    options: { qos: MqttQoS; retain: boolean },
+    options: MemoryMqttPublishOptions,
   ): Promise<void> {
+    const properties = {
+      responseTopic: options.responseTopic,
+      correlationData:
+        options.correlationData === undefined
+          ? undefined
+          : this.bytes(options.correlationData),
+    };
+
     if (options.retain) {
       if (payload.length === 0) {
         this.retained.delete(topic);
@@ -200,6 +208,7 @@ export class MemoryMqttBroker {
             payload: new Uint8Array(payload),
             qos: this.minQos(options.qos, qos),
             retain: false,
+            ...properties,
           },
           ids.length ? ids : undefined,
         );
@@ -216,6 +225,7 @@ export class MemoryMqttBroker {
           payload: new Uint8Array(payload),
           qos: this.minQos(options.qos, subscription.qos),
           retain: false,
+          ...properties,
         },
         subscription.id === undefined ? undefined : [subscription.id],
       );
@@ -263,6 +273,13 @@ export interface MemoryMqttSession {
    * The will its next connection carries.
    */
   will(): MqttWill | undefined;
+}
+
+export interface MemoryMqttPublishOptions {
+  qos: MqttQoS;
+  retain: boolean;
+  responseTopic?: string;
+  correlationData?: string | Uint8Array;
 }
 
 export interface MemoryMqttBrokerSubscription {

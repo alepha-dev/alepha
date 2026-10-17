@@ -72,7 +72,7 @@ export abstract class MqttClientProvider {
   protected abstract sendPublish(
     topic: string,
     payload: string | Uint8Array,
-    options: Required<MqttPublishOptions>,
+    options: MqttSendOptions,
   ): Promise<void>;
 
   /**
@@ -123,6 +123,8 @@ export abstract class MqttClientProvider {
     await this.sendPublish(topic, payload, {
       qos: options.qos ?? 0,
       retain: options.retain ?? false,
+      responseTopic: options.responseTopic,
+      correlationData: options.correlationData,
     });
   }
 
@@ -360,6 +362,27 @@ export interface MqttSubscription {
 export interface MqttPublishOptions {
   qos?: MqttQoS;
   retain?: boolean;
+
+  /**
+   * MQTT 5 Response Topic: where the receiver should publish its answer.
+   */
+  responseTopic?: string;
+
+  /**
+   * MQTT 5 Correlation Data: echoed back with the answer, so the requester
+   * can tell which request it answers.
+   */
+  correlationData?: string | Uint8Array;
+}
+
+/**
+ * `MqttPublishOptions` with the defaults applied, as the wire sees them.
+ */
+export interface MqttSendOptions {
+  qos: MqttQoS;
+  retain: boolean;
+  responseTopic?: string;
+  correlationData?: string | Uint8Array;
 }
 
 export interface MqttSubscribeOptions {
@@ -395,6 +418,16 @@ export interface MqttMessage {
    * True for a retained message delivered on subscribe.
    */
   retain: boolean;
+
+  /**
+   * MQTT 5 Response Topic, when the publisher asked for an answer.
+   */
+  responseTopic?: string;
+
+  /**
+   * MQTT 5 Correlation Data, to send back with the answer, as received.
+   */
+  correlationData?: Uint8Array;
 }
 
 /**

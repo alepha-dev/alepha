@@ -7,8 +7,8 @@ import {
 import {
   MqttClientProvider,
   type MqttMessage,
-  type MqttPublishOptions,
   type MqttQoS,
+  type MqttSendOptions,
   type MqttWill,
 } from "./MqttClientProvider.ts";
 
@@ -137,7 +137,7 @@ export class MemoryMqttClientProvider
   protected override async sendPublish(
     topic: string,
     payload: string | Uint8Array,
-    options: Required<MqttPublishOptions>,
+    options: MqttSendOptions,
   ): Promise<void> {
     await this.broker.publish(
       topic,

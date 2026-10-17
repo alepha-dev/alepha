@@ -234,6 +234,36 @@ export class MqttClientContract {
       expect([...received.payload]).toEqual([...bytes]);
     });
 
+    it("carries Response Topic and Correlation Data to the responder and back", async () => {
+      const root = prefix();
+      const { client: requester } = await fixture.create();
+      const { client: responder } = await fixture.create();
+      const requests = new MqttInbox();
+      const replies = new MqttInbox();
+      await responder.subscribe(`${root}/cmd`, requests.callback, { qos: 1 });
+      await requester.subscribe(`${root}/reply`, replies.callback, { qos: 1 });
+
+      const correlation = new Uint8Array([7, 0, 255, 42]);
+      await requester.publish(`${root}/cmd`, "reboot", {
+        qos: 1,
+        responseTopic: `${root}/reply`,
+        correlationData: correlation,
+      });
+
+      const request = await requests.untilText("reboot");
+      expect(request.responseTopic).toBe(`${root}/reply`);
+      expect([...(request.correlationData ?? [])]).toEqual([...correlation]);
+
+      await responder.publish(request.responseTopic ?? "", "done", {
+        qos: 1,
+        correlationData: request.correlationData,
+      });
+
+      const reply = await replies.untilText("done");
+      expect([...(reply.correlationData ?? [])]).toEqual([...correlation]);
+      expect(reply.responseTopic).toBeUndefined();
+    });
+
     it("hands one message to a shared and a plain subscription of one client exactly once each", async () => {
       const root = prefix();
       const { client } = await fixture.create();

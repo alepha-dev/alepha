@@ -7,12 +7,17 @@ import {
   type Infer,
   z,
 } from "alepha";
-import type { IClientOptions, IPublishPacket, MqttClient } from "mqtt";
+import type {
+  IClientOptions,
+  IClientPublishOptions,
+  IPublishPacket,
+  MqttClient,
+} from "mqtt";
 
 import {
   MqttClientProvider,
-  type MqttPublishOptions,
   type MqttQoS,
+  type MqttSendOptions,
 } from "./MqttClientProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -188,13 +193,28 @@ export class MqttJsClientProvider extends MqttClientProvider {
   protected override async sendPublish(
     topic: string,
     payload: string | Uint8Array,
-    options: Required<MqttPublishOptions>,
+    options: MqttSendOptions,
   ): Promise<void> {
     const client = this.requireClient();
+    const properties: NonNullable<IClientPublishOptions["properties"]> = {};
+    if (options.responseTopic !== undefined) {
+      properties.responseTopic = options.responseTopic;
+    }
+    if (options.correlationData !== undefined) {
+      properties.correlationData =
+        typeof options.correlationData === "string"
+          ? Buffer.from(options.correlationData, "utf8")
+          : Buffer.from(options.correlationData);
+    }
+
     await client.publishAsync(
       topic,
       typeof payload === "string" ? payload : Buffer.from(payload),
-      { qos: options.qos, retain: options.retain },
+      {
+        qos: options.qos,
+        retain: options.retain,
+        ...(Object.keys(properties).length ? { properties } : {}),
+      },
     );
   }
 
@@ -344,6 +364,10 @@ export class MqttJsClientProvider extends MqttClientProvider {
           payload: new Uint8Array(payload),
           qos: packet.qos,
           retain: packet.retain,
+          responseTopic: packet.properties?.responseTopic,
+          correlationData: packet.properties?.correlationData
+            ? new Uint8Array(packet.properties.correlationData)
+            : undefined,
         },
         this.subscriptionIds(packet),
       );

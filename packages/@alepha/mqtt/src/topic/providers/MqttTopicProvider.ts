@@ -1,9 +1,22 @@
-import { MqttClientProvider, type MqttQoS } from "@alepha/mqtt";
-import { $atom, $hook, $inject, $store, type Infer, z } from "alepha";
+import {
+  MqttClientProvider,
+  type MqttMessage,
+  type MqttQoS,
+} from "@alepha/mqtt";
+import {
+  $atom,
+  $hook,
+  $inject,
+  $store,
+  AlephaError,
+  type Infer,
+  z,
+} from "alepha";
 import { $logger } from "alepha/logger";
 import {
   type SubscribeCallback,
   type TopicMessage,
+  type TopicMessageMeta,
   type TopicMessageSchema,
   TopicProvider,
   type TopicPublishOptions,
@@ -24,6 +37,12 @@ export const mqttTopicOptions = $atom({
       description:
         "Joined with `/` in front of every topic name. Empty by default: on MQTT the topic name is the contract with devices and other systems.",
     }),
+    replyTopic: z
+      .text({
+        description:
+          "This instance's reply topic for `request()`, used verbatim (never prefixed). Default: `<alepha.name>/reply/<instance id>`. The broker ACL must let responders publish there.",
+      })
+      .optional(),
   }),
   default: {
     prefix: "",
@@ -188,15 +207,81 @@ export class MqttTopicProvider extends TopicProvider {
     ) as TopicMessage<T>["payload"];
   }
 
+  /**
+   * Nothing to read in the payload: the reply address travels as MQTT 5
+   * properties, handed to the subscribe callback.
+   */
+  protected override decodeMeta(): TopicMessageMeta | undefined {
+    return undefined;
+  }
+
   public async publish(
     topic: string,
     message: string,
     options?: TopicPublishOptions,
   ): Promise<void> {
+    const reply = options?.reply;
+    if (reply?.replyTo !== undefined && this.mqttClient.protocolVersion !== 5) {
+      throw new AlephaError(
+        "request() over MQTT needs MQTT 5: the reply address travels as Response Topic and Correlation Data",
+      );
+    }
+
     await this.mqttClient.publish(this.prefix(topic), message, {
       qos: options?.mqtt?.qos ?? this.defaultQos,
       retain: options?.retain ?? false,
+      responseTopic: reply?.replyTo,
+      correlationData: reply?.correlationData,
     });
+  }
+
+  /**
+   * Send a reply to the request's Response Topic, verbatim (never
+   * prefixed: it is an address on the wire, not a topic name), with its
+   * Correlation Data as received.
+   */
+  protected override async reply(
+    meta: TopicMessageMeta,
+    encoded: string,
+  ): Promise<void> {
+    if (meta.replyTo === undefined) {
+      return;
+    }
+
+    await this.mqttClient.publish(meta.replyTo, encoded, {
+      qos: this.defaultQos,
+      correlationData: meta.correlationData,
+    });
+  }
+
+  /**
+   * `<alepha.name>/reply/<instance id>`, or the atom's `replyTopic`. Not
+   * prefixed.
+   */
+  protected override replyTopic(): string {
+    return (
+      this.options.replyTopic || `${this.alepha.name}/reply/${this.instanceId}`
+    );
+  }
+
+  /**
+   * The reply topic, subscribed verbatim: a plain subscription, never in a
+   * shared group.
+   */
+  protected override subscribeReplies(
+    callback: SubscribeCallback,
+  ): Promise<UnSubscribeFn> {
+    const decoder = new TextDecoder();
+    return this.mqttClient.subscribe(
+      this.replyTopic(),
+      (message) =>
+        callback(
+          decoder.decode(message.payload),
+          message.topic,
+          this.meta(message),
+        ),
+      { qos: this.defaultQos },
+    );
   }
 
   /**
@@ -218,9 +303,31 @@ export class MqttTopicProvider extends TopicProvider {
     return this.mqttClient.subscribe(
       share ? `$share/${share}/${filter}` : filter,
       (message) =>
-        callback(decoder.decode(message.payload), this.unprefix(message.topic)),
+        callback(
+          decoder.decode(message.payload),
+          this.unprefix(message.topic),
+          this.meta(message),
+        ),
       { qos: options?.mqtt?.qos ?? this.defaultQos },
     );
+  }
+
+  /**
+   * The request/response address of a received message, from its MQTT 5
+   * properties.
+   */
+  protected meta(message: MqttMessage): TopicMessageMeta | undefined {
+    if (
+      message.responseTopic === undefined &&
+      message.correlationData === undefined
+    ) {
+      return undefined;
+    }
+
+    return {
+      replyTo: message.responseTopic,
+      correlationData: message.correlationData,
+    };
   }
 
   /**
