@@ -139,7 +139,7 @@ export default {
     "Gérer les variables partagées et désactiver ou supprimer toute automatisation",
   "automation.diagnostics.title": "Diagnostic des automatisations",
   "automation.diagnostics.description":
-    "L’état des règles reste visible ici lorsque les automatisations sont désactivées. Cette vue ne permet ni de les exécuter ni de les modifier.",
+    "Chaque règle et son état, lisibles même lorsque les automatisations sont désactivées. Cette vue ne permet ni de les exécuter ni de les modifier.",
   "automation.diagnostics.empty": "Aucune automatisation dans ce projet.",
   "automation.diagnostics.more":
     "D’autres règles sont disponibles sur la page suivante.",
@@ -781,6 +781,7 @@ export default {
   "project.settings.tab.features": "Fonctionnalités",
   "project.settings.tab.board": "Tableau",
   "project.settings.tab.prompts": "Invites pour agents",
+  "project.settings.tab.automations": "Automatisations",
   "project.settings.section.general":
     "Le projet lui-même, et les parties de Lore qu'il utilise.",
   "project.settings.section.members":

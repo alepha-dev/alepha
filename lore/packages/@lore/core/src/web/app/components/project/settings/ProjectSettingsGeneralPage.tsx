@@ -29,8 +29,11 @@ const ProjectSettingsGeneralPage = () => {
         <panel.component key={panel.key} />
       ))}
 
+      {/* Quests > Automations is its home (#Q2686). Here only while Work is
+          off, which takes that section out of the sidebar, and only once a
+          rule exists. */}
       <Suspense fallback={null}>
-        <AutomationDiagnosticPanel />
+        <AutomationDiagnosticPanel fallback />
       </Suspense>
       <ProjectSettingsDangerZoneSection />
     </div>

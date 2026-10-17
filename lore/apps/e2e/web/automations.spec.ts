@@ -207,6 +207,39 @@ test.describe("Automations", () => {
       page.getByTestId("automation-preset-tagged-quest-digest"),
     ).toContainText("Nightly tagged quests");
   });
+  test("keeps rule diagnostics on their own Quests tab, readable with the option off, and off General", async ({
+    page,
+  }) => {
+    await registerAndVerify(
+      page,
+      `automation-diagnostics-${crypto.randomUUID()}@example.com`,
+      "GoodPassw0rd",
+    );
+    // The option is off by default: the case the diagnostics exist for.
+    const project = await createProjectViaWizard(page, "Automation diag");
+    const diagnostics = page.getByRole("heading", {
+      name: "Automation diagnostics",
+    });
+
+    await page.goto(`/${project.slug}/settings`);
+    await expect(page.getByText("Danger Zone", { exact: true })).toBeVisible();
+    await expect(diagnostics).toHaveCount(0);
+
+    const tab = page.locator(
+      `a[href="/${project.slug}/settings/work/automations"]`,
+    );
+    await page.goto(`/${project.slug}/settings/work`);
+    await tab.first().click();
+    await expect(page).toHaveURL(
+      new RegExp(`/${project.slug}/settings/work/automations$`),
+    );
+    await expect(diagnostics).toBeVisible();
+    await expect(
+      page.getByText("No automations in this project.", { exact: true }),
+    ).toBeVisible();
+    // One page of rules has no pager.
+    await expect(page.getByRole("button", { name: "Previous" })).toHaveCount(0);
+  });
   test("creates an isolated preset, previews without writes and enables only after an explicit action", async ({
     page,
   }) => {

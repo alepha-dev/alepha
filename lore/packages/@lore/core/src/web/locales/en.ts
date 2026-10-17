@@ -131,7 +131,7 @@ export default {
     "Manage shared variables and disable or delete any automation",
   "automation.diagnostics.title": "Automation diagnostics",
   "automation.diagnostics.description":
-    "Rule status stays visible here when Automations is off. This view cannot run or edit rules.",
+    "Every rule and its health, readable even while Automations is off. This view cannot run or edit rules.",
   "automation.diagnostics.empty": "No automations in this project.",
   "automation.diagnostics.more": "More rules are available on the next page.",
   "automation.state.disabled": "Disabled",
@@ -798,6 +798,7 @@ export default {
   "project.settings.tab.features": "Features",
   "project.settings.tab.board": "Board",
   "project.settings.tab.prompts": "Agent prompts",
+  "project.settings.tab.automations": "Automations",
   "project.settings.section.general":
     "The project itself, and which parts of Lore it uses.",
   "project.settings.section.members":

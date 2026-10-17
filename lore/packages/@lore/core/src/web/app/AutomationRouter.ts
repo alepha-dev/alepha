@@ -1,7 +1,7 @@
 import { $inject, Alepha, z } from "alepha";
 import { NotFoundError } from "alepha/server";
 
-import { $pageProject } from "./$pageProject.ts";
+import { $pageProject, $pageProjectSettings } from "./$pageProject.ts";
 import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
 import { capabilityOption } from "./services/projectCapabilities.ts";
 import { canInProject } from "./services/projectRank.ts";
@@ -85,6 +85,26 @@ export class AutomationRouter {
       this.checkRead();
       return { automationId: params.automationId };
     },
+  });
+  /**
+   * Quests > Automations: the owner's read-only rule diagnostics (#Q2686),
+   * which used to sit on General for every project.
+   *
+   * Core's route in Work's section, since the automations surface is core's
+   * and the option is Work's. Its tab hangs off no option, so it is listed
+   * with the option off, which is the case the panel exists for; with Work
+   * itself off the section leaves the sidebar and General shows the panel
+   * as a fallback. Unguarded like every settings route: the endpoint is
+   * owner-only.
+   */
+  projectSettingsAutomations = $pageProjectSettings({
+    name: "projectSettingsAutomations",
+    path: "/work/automations",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Automations`,
+    }),
+    lazy: () =>
+      import("./components/project/settings/AutomationDiagnosticPanel.tsx"),
   });
   protected checkRead(): void {
     const project = this.alepha.store.get(currentProjectAtom);

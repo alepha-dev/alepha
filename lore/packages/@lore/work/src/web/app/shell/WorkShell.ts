@@ -186,6 +186,13 @@ export class WorkShell {
           labelKey: "project.settings.tab.prompts",
           option: "agentPrompts",
         },
+        {
+          // Core's page (#Q2686). No `option`: the rule diagnostics matter
+          // most while `automations` is off.
+          route: "projectSettingsAutomations",
+          labelKey: "project.settings.tab.automations",
+          requires: "capability:manage",
+        },
       ],
     });
 
