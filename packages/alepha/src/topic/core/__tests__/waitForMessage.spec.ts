@@ -56,4 +56,48 @@ describe("TopicProvider.waitForMessage", () => {
     const message = await waiting;
     expect(message.payload).toEqual({ value: "hello" });
   });
+
+  it("should wait on a templated name and hand the params to filter and result", async () => {
+    // It subscribed to the literal `devices/{id}/status` string, so a
+    // message on `devices/d1/status` never reached it, on any provider.
+    const alepha = Alepha.create();
+    const topics = alepha.inject(MemoryTopicProvider);
+    await alepha.start();
+
+    const seen: string[] = [];
+    const params = z.object({ id: z.text() });
+    const waiting = topics.waitForMessage<{
+      payload: typeof payload;
+      params: typeof params;
+    }>("devices/{id}/status", payload, {
+      timeout: [2, "seconds"],
+      filter: (message) => {
+        seen.push(message.params.id);
+        return message.params.id === "d2";
+      },
+    });
+
+    await new Promise((r) => setTimeout(r, 0));
+    await topics.publishMessage(
+      "devices/{id}/status",
+      payload,
+      { value: "a" },
+      {
+        params: { id: "d1" },
+      },
+    );
+    await topics.publishMessage(
+      "devices/{id}/status",
+      payload,
+      { value: "b" },
+      {
+        params: { id: "d2" },
+      },
+    );
+
+    const message = await waiting;
+    expect(seen).toEqual(["d1", "d2"]);
+    expect(message.params).toEqual({ id: "d2" });
+    expect(message.payload).toEqual({ value: "b" });
+  });
 });

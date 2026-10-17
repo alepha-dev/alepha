@@ -26,6 +26,11 @@
       "types": "./src/core/index.ts",
       "import": "./src/core/index.ts",
       "default": "./src/core/index.ts"
+    },
+    "./topic": {
+      "types": "./src/topic/index.ts",
+      "import": "./src/topic/index.ts",
+      "default": "./src/topic/index.ts"
     }
   },
   "publishConfig": {
@@ -36,6 +41,11 @@
         "types": "./dist/core/index.d.ts",
         "import": "./dist/core/index.js",
         "default": "./dist/core/index.js"
+      },
+      "./topic": {
+        "types": "./dist/topic/index.d.ts",
+        "import": "./dist/topic/index.js",
+        "default": "./dist/topic/index.js"
       }
     }
   },

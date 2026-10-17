@@ -144,6 +144,74 @@ keeps the will it connected with: `setWill()` applies to the next connect or
 reconnect. Call it before `start` for the first connection. `setWill(undefined)`
 clears it. Once called, it wins over the atom.
 
+## Device topics
+
+Business code does not hold topic strings: it declares `$topic`s, and
+`@alepha/mqtt/topic` carries them over MQTT. A device topic names
+`MqttTopicProvider`:
+
+```typescript check
+import { AlephaTopicMqtt, MqttTopicProvider } from "@alepha/mqtt/topic";
+import { z } from "alepha";
+import { $subscriber, $topic } from "alepha/topic";
+
+class DeviceStatus {
+  status = $topic({
+    name: "mcs/v1/{site}/{device}/status",
+    provider: MqttTopicProvider,
+    schema: {
+      params: z.object({ site: z.text(), device: z.text() }),
+      payload: z.object({ state: z.enum(["ok", "degraded", "down"]) }),
+    },
+    mqtt: { qos: 1, share: "mcs" },
+  });
+
+  onStatus = $subscriber({
+    topic: this.status,
+    handler: async ({ params, payload }) => {
+      // params.site, params.device: from the topic the message arrived on.
+      console.log(params.device, payload.state);
+    },
+  });
+}
+```
+
+Register `AlephaTopicMqtt` (it brings `AlephaMqtt` and `alepha/topic`).
+
+- **Opt in per topic.** `MqttTopicProvider` is never the app's
+  `TopicProvider`: the framework's own topics (WebSocket broadcasts,
+  `parameter:sync`) stay on memory or Redis, off the device broker.
+- **Exact names.** The topic name is the contract with the devices, so
+  nothing is added to it. The `mqttTopicOptions` atom's `prefix` (empty by
+  default) is joined with `/` when an app does want one.
+- **Params are `+` wildcards.** A subscriber on
+  `mcs/v1/{site}/{device}/status` subscribes to `mcs/v1/+/+/status` and
+  receives the params of each message's topic. `publish({ params, payload })`
+  fills them in. `wait()` works on a templated name too, and its `filter`
+  sees the params.
+- **The wire format is the payload alone**, as UTF-8 JSON: `{"state":"ok"}`,
+  which is what a device publishes. Memory and Redis wrap it in
+  `{ "payload": ... }`; MQTT does not. A message that does not decode, or
+  does not match the schema, is logged and dropped.
+- **QoS 1 by default**, so an awaited `publish()` means the broker has the
+  message. `mqtt: { qos }` changes it for both publishing and subscribing.
+  `retain: true` on the `$topic` publishes retained.
+
+### Shared groups and idempotent handlers
+
+Without `share`, every instance of the app receives every device message,
+which is right for a notification fan-out and wrong for ingestion: three
+instances write each status three times. `mqtt: { share: "mcs" }` makes the
+instances one group, and the broker hands each message to one of them. On
+that instance, the topic's `handler` and every `$subscriber` run. `wait()`
+never joins the group, so a one-shot listener does not steal a message from
+the group's handlers.
+
+QoS 1 is _at least once_: after a reconnect, a broker may deliver a message
+again, shared group or not. **Handlers on device topics must be idempotent**:
+key a write on the device and a sequence number or timestamp the device
+sends, not on the arrival.
+
 ## Testing on the memory broker
 
 Without `MQTT_URL`, tests run on `MemoryMqttClientProvider`: no broker, no

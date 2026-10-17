@@ -67,13 +67,7 @@ export abstract class TopicProvider {
       topicName = parser.interpolate(options.params);
     }
 
-    await this.publish(
-      topicName,
-      JSON.stringify({
-        payload: this.alepha.codec.encode(schema, payload),
-      }),
-      options,
-    );
+    await this.publish(topicName, this.encodeMessage(schema, payload), options);
   }
 
   /**
@@ -83,13 +77,43 @@ export abstract class TopicProvider {
     schema: T["payload"],
     message: string,
   ): TopicMessage<T> {
-    const { payload } = JSON.parse(message);
     return {
-      payload: this.alepha.codec.decode(
-        schema,
-        payload,
-      ) as TopicMessage<T>["payload"],
+      payload: this.decodeMessage(schema, message),
     } as TopicMessage<T>;
+  }
+
+  /**
+   * The bytes a typed payload travels as: `{ "payload": ... }` in JSON by
+   * default, which is what the memory and Redis providers send.
+   *
+   * Override it, with `decodeMessage`, when the wire format is someone
+   * else's contract: `MqttTopicProvider` sends the payload alone, as the
+   * devices on the other end expect. `publishMessage`, `subscribeHandler`
+   * and `waitForMessage` all go through the pair, so a `wait()` cannot read
+   * a message differently from a `$subscriber`.
+   */
+  protected encodeMessage<T extends TopicMessageSchema>(
+    schema: T["payload"],
+    payload: TopicMessage<T>["payload"],
+  ): string {
+    return JSON.stringify({
+      payload: this.alepha.codec.encode(schema, payload),
+    });
+  }
+
+  /**
+   * The inverse of `encodeMessage`. A message it cannot decode throws, and
+   * is logged and dropped by the caller.
+   */
+  protected decodeMessage<T extends TopicMessageSchema>(
+    schema: T["payload"],
+    raw: string,
+  ): TopicMessage<T>["payload"] {
+    const { payload } = JSON.parse(raw);
+    return this.alepha.codec.decode(
+      schema,
+      payload,
+    ) as TopicMessage<T>["payload"];
   }
 
   /**
@@ -128,6 +152,12 @@ export abstract class TopicProvider {
 
   /**
    * Wait for a single message matching an optional filter, with timeout.
+   *
+   * A templated name (`devices/{id}/status`) subscribes to its wildcard
+   * form, like `subscribeHandler`, and the message handed to `filter` and
+   * resolved carries the params of the topic it arrived on. It never joins
+   * a shared group: a one-shot listener must not take messages from the
+   * group's handlers.
    */
   public async waitForMessage<T extends TopicMessageSchema>(
     name: string,
@@ -135,6 +165,10 @@ export abstract class TopicProvider {
     options: TopicWaitOptions<T> = {},
   ): Promise<TopicMessage<T>> {
     const filter = options.filter ?? (() => true);
+    const parser = new TemplatedPathParser(name);
+    const subscribeTopic = parser.hasParams
+      ? parser.wildcardize(this.wildcardChar())
+      : name;
 
     const timeoutDuration = options.timeout ?? [10, "seconds"];
 
@@ -181,13 +215,30 @@ export abstract class TopicProvider {
 
       void (async () => {
         try {
-          const clear = await this.subscribe(name, (raw) => {
-            const message = this.parseMessage<T>(schema, raw);
-            if (!filter(message)) {
-              return;
-            }
-            settle(() => resolve(message));
-          });
+          const clear = await this.subscribe(
+            subscribeTopic,
+            (raw, receivedTopic?: string) => {
+              let message: TopicMessage<T>;
+              try {
+                message = this.parseMessage<T>(schema, raw);
+              } catch (error) {
+                this.log.error("Message processing has failed", error);
+                return;
+              }
+
+              if (parser.hasParams && receivedTopic) {
+                message = {
+                  ...message,
+                  params: parser.extract(receivedTopic) ?? {},
+                } as TopicMessage<T>;
+              }
+
+              if (!filter(message)) {
+                return;
+              }
+              settle(() => resolve(message));
+            },
+          );
 
           ref.clear = clear;
 

@@ -12,6 +12,7 @@ import { MemoryTopicProvider } from "../providers/MemoryTopicProvider.ts";
 import {
   TopicProvider,
   type TopicPublishOptions,
+  type TopicSubscribeOptions,
   type UnSubscribeFn,
 } from "../providers/TopicProvider.ts";
 
@@ -247,7 +248,7 @@ export interface TopicPrimitiveOptions<T extends TopicMessageSchema> {
    * When enabled, the provider stores the last message for this topic.
    * New subscribers immediately receive the retained message upon subscribing.
    *
-   * Supported by the Memory and Redis providers.
+   * Supported by the Memory, Redis and MQTT providers.
    *
    * @default false
    */
@@ -281,6 +282,10 @@ export class TopicPrimitive<T extends TopicMessageSchema> extends Primitive<
       {
         retain: this.options.retain,
         params,
+        // Provider-specific options a module adds to this primitive by
+        // declaration merging (`@alepha/mqtt/topic`: QoS, shared group).
+        // Without it a per-topic QoS is silently ignored.
+        mqtt: (this.options as any).mqtt,
       } as TopicPublishOptions,
     );
   }
@@ -290,6 +295,8 @@ export class TopicPrimitive<T extends TopicMessageSchema> extends Primitive<
       this.name,
       this.options.schema.payload,
       handler,
+      // See `publish`: the same merged options, on the subscribe side.
+      { mqtt: (this.options as any).mqtt } as TopicSubscribeOptions,
     );
   }
 
@@ -327,7 +334,12 @@ export interface TopicMessage<T extends TopicMessageSchema> {
 
 export interface TopicWaitOptions<T extends TopicMessageSchema> {
   timeout?: DurationLike;
-  filter?: (message: { payload: Infer<T["payload"]> }) => boolean;
+
+  /**
+   * Accept or skip a message. It carries the params of the topic it arrived
+   * on, for a templated name.
+   */
+  filter?: (message: TopicMessage<T>) => boolean;
 }
 
 export interface TopicMessageSchema {
