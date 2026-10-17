@@ -1,30 +1,39 @@
 # Alepha @alepha/mqtt
 
-An MQTT 5 client for Alepha: byte payloads, a Last Will settable by code,
-reconnection, shared subscriptions dispatched by Subscription Identifier, and
-an in-process memory broker for tests.
+MQTT 5 client and topic provider for Alepha framework.
 
-> Hand-written rather than generated. `yarn copy` generates a README from the
-> module's `@module` block for **published** packages only, and this one is
-> still `private`. It becomes generated the day it is published.
+## Installation
 
-## Usage
+Part of the Alepha framework, published on its own:
 
-```typescript
-import { AlephaMqtt, MqttClientProvider } from "@alepha/mqtt";
-import { Alepha } from "alepha";
-
-const alepha = Alepha.create().with(AlephaMqtt);
-const mqtt = alepha.inject(MqttClientProvider);
-await alepha.start();
-
-await mqtt.subscribe("plant/+/temperature", (message) => {
-  console.log(message.topic, new TextDecoder().decode(message.payload));
-});
-await mqtt.publish("plant/line-1/temperature", "21.5", { qos: 1 });
+```bash
+npm install @alepha/mqtt
 ```
 
-`MQTT_URL` set (Node or Bun) selects mqtt.js; unset, the client runs on the
-in-process memory broker.
+## Module
 
-The guide: `docs/1-guides/4-server/22-mqtt.md`.
+MQTT 5 client for Alepha.
+
+A lifecycle-managed client with byte payloads, Last Will (settable by
+code), reconnection and dispatch by Subscription Identifier.
+
+- `MQTT_URL` set (Node or Bun): `MqttJsClientProvider`, on mqtt.js.
+- Otherwise: `MemoryMqttClientProvider`, on an in-process broker.
+
+An app's own `MqttClientProvider` substitution wins over both.
+
+## API Reference
+
+### Providers
+
+- [`MemoryMqttClientProvider`](https://alepha.dev/docs/reference-providers-memorymqttclientprovider) - MQTT client on an in-process broker: no socket, no timing.
+- [`MqttClientProvider`](https://alepha.dev/docs/reference-providers-mqttclientprovider) - MQTT 5 client provider.
+- [`MqttJsClientProvider`](https://alepha.dev/docs/reference-providers-mqttjsclientprovider) - MQTT client provider backed by the `mqtt` npm package (mqtt.js).
+
+### Environment Variables
+
+Environment variables used to configure this package.
+
+| Variable   | Type | Default | Description                                                                                                                          |
+| ---------- | ---- | ------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `MQTT_URL` | text | -       | MQTT broker URL (`mqtt://`, `mqtts://`, `ws://`, `wss://`). Set, it selects the mqtt.js client; unset, the in-process memory broker. |
