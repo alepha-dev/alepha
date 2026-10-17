@@ -168,3 +168,45 @@ describe("AlephaTopic: REDIS_URL picks the provider", () => {
     expect(app.inject(TopicProvider)).toBeInstanceOf(MemoryTopicProvider);
   });
 });
+
+describe("$topic - redis, request/response across instances", () => {
+  const topicName = `rpc-${randomUUID()}`;
+
+  class Rpc {
+    double = $topic({
+      name: topicName,
+      provider: RedisTopicProvider,
+      schema: {
+        payload: z.object({ value: z.number() }),
+        response: z.object({ doubled: z.number() }),
+      },
+    });
+  }
+
+  class Responder {
+    double = $topic({
+      name: topicName,
+      provider: RedisTopicProvider,
+      schema: {
+        payload: z.object({ value: z.number() }),
+        response: z.object({ doubled: z.number() }),
+      },
+      handler: async ({ payload }) => ({ doubled: payload.value * 2 }),
+    });
+  }
+
+  it("answers a request from another instance on its reply channel", async ({
+    expect,
+  }) => {
+    const responder = Alepha.create().with(AlephaTopic).with(Responder);
+    const requester = Alepha.create().with(AlephaTopic).with(Rpc);
+    await responder.start();
+    await requester.start();
+
+    const result = await requester
+      .inject(Rpc)
+      .double.request({ value: 21 }, { timeout: [5, "seconds"] });
+
+    expect(result).toEqual({ doubled: 42 });
+  });
+});

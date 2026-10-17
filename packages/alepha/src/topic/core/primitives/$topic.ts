@@ -1,4 +1,5 @@
 import {
+  AlephaError,
   createPrimitive,
   type Infer,
   Primitive,
@@ -10,8 +11,10 @@ import { KIND } from "alepha/internal";
 
 import { MemoryTopicProvider } from "../providers/MemoryTopicProvider.ts";
 import {
+  type TopicMessageMeta,
   TopicProvider,
   type TopicPublishOptions,
+  type TopicSubscribeOptions,
   type UnSubscribeFn,
 } from "../providers/TopicProvider.ts";
 
@@ -247,7 +250,7 @@ export interface TopicPrimitiveOptions<T extends TopicMessageSchema> {
    * When enabled, the provider stores the last message for this topic.
    * New subscribers immediately receive the retained message upon subscribing.
    *
-   * Supported by the Memory and Redis providers.
+   * Supported by the Memory, Redis and MQTT providers.
    *
    * @default false
    */
@@ -265,31 +268,82 @@ export class TopicPrimitive<T extends TopicMessageSchema> extends Primitive<
     return this.options.name || this.config.propertyKey;
   }
 
-  public async publish(
-    message: T extends { params: ZType }
-      ? { params: Infer<T["params"]>; payload: TopicMessage<T>["payload"] }
-      : TopicMessage<T>["payload"],
-  ): Promise<void> {
-    const hasParams = this.options.schema.params;
-    const payload = hasParams ? (message as any).payload : message;
-    const params = hasParams ? (message as any).params : undefined;
-
+  public async publish(message: TopicPublishMessage<T>): Promise<void> {
+    const { payload, options } = this.split(message);
     await this.provider.publishMessage<T>(
       this.name,
       this.options.schema.payload,
       payload,
-      {
-        retain: this.options.retain,
-        params,
-      } as TopicPublishOptions,
+      { ...options, retain: this.options.retain },
     );
   }
 
+  /**
+   * Publish a request and resolve with the typed reply, on a topic whose
+   * schema declares a `response`. The first argument is `publish()`'s.
+   *
+   * A responder is any `handler` or `$subscriber` of the topic: what it
+   * returns is the reply. Past `timeout` (default 10s) it rejects with the
+   * 503 `TimeoutError`, and a client disconnect (the ambient signal) aborts
+   * it.
+   *
+   * ```ts
+   * const result = await this.command.request(
+   *   { params: { site, device }, payload: { action: "reboot" } },
+   *   { timeout: [10, "seconds"] },
+   * );
+   * ```
+   */
+  public async request(
+    this: TopicPrimitive<T & { response: ZType }>,
+    message: TopicPublishMessage<T>,
+    options: TopicRequestOptions = {},
+  ): Promise<TopicResponse<T>> {
+    const response = this.options.schema.response;
+    if (!response) {
+      // The `this:` type already refuses it; this is for untyped callers.
+      throw new AlephaError(
+        `Topic '${this.name}' has no response schema: request() needs one`,
+      );
+    }
+
+    const { payload, options: publish } = this.split(message);
+    return (await this.provider.requestMessage<T>(
+      this.name,
+      this.options.schema.payload,
+      payload,
+      response,
+      { timeout: options.timeout, publish },
+    )) as TopicResponse<T>;
+  }
+
+  /**
+   * Subscribe a handler to the topic.
+   *
+   * On a topic with a `response` schema, the handler is also a responder:
+   * when a message carries a reply address (it came from `request()`), what
+   * the handler returns is encoded with the response schema and sent back.
+   * A handler that throws, or returns what the schema refuses, sends
+   * nothing.
+   */
   public async subscribe(handler: TopicHandler<T>): Promise<UnSubscribeFn> {
+    const response = this.options.schema.response;
+    const responder: TopicHandler<T> = response
+      ? async (message, meta) => {
+          const result = await handler(message, meta);
+          if (meta?.replyTo !== undefined) {
+            await this.provider.replyMessage(response, meta, result);
+          }
+          return result;
+        }
+      : handler;
+
     return this.provider.subscribeHandler<T>(
       this.name,
       this.options.schema.payload,
-      handler,
+      responder,
+      // See `split`: the same merged options, on the subscribe side.
+      { mqtt: (this.options as any).mqtt } as TopicSubscribeOptions,
     );
   }
 
@@ -301,6 +355,27 @@ export class TopicPrimitive<T extends TopicMessageSchema> extends Primitive<
       this.options.schema.payload,
       options,
     );
+  }
+
+  /**
+   * The payload and the publish options of a `publish()` or `request()`
+   * argument: params live inside the message when the schema declares them.
+   */
+  protected split(message: TopicPublishMessage<T>): {
+    payload: TopicMessage<T>["payload"];
+    options: TopicPublishOptions;
+  } {
+    const hasParams = this.options.schema.params;
+    return {
+      payload: hasParams ? (message as any).payload : message,
+      options: {
+        params: hasParams ? (message as any).params : undefined,
+        // Provider-specific options a module adds to this primitive by
+        // declaration merging (`@alepha/mqtt/topic`: QoS, shared group).
+        // Without it a per-topic QoS is silently ignored.
+        mqtt: (this.options as any).mqtt,
+      } as TopicPublishOptions,
+    };
   }
 
   protected $provider(): TopicProvider {
@@ -327,14 +402,58 @@ export interface TopicMessage<T extends TopicMessageSchema> {
 
 export interface TopicWaitOptions<T extends TopicMessageSchema> {
   timeout?: DurationLike;
-  filter?: (message: { payload: Infer<T["payload"]> }) => boolean;
+
+  /**
+   * Accept or skip a message. It carries the params of the topic it arrived
+   * on, for a templated name.
+   */
+  filter?: (message: TopicMessage<T>) => boolean;
 }
 
 export interface TopicMessageSchema {
   payload: ZType;
   params?: ZType;
+
+  /**
+   * The reply's schema, for a topic used with `request()`: a handler's
+   * return value is encoded with it and sent back to the requester.
+   */
+  response?: ZType;
 }
 
+/**
+ * What `publish()` and `request()` take: the payload, or `{ params,
+ * payload }` when the schema declares params.
+ */
+export type TopicPublishMessage<T extends TopicMessageSchema> = T extends {
+  params: ZType;
+}
+  ? { params: Infer<T["params"]>; payload: TopicMessage<T>["payload"] }
+  : TopicMessage<T>["payload"];
+
+/**
+ * What `request()` resolves: the topic's `response`.
+ */
+export type TopicResponse<T extends TopicMessageSchema> = T extends {
+  response: ZType;
+}
+  ? Infer<T["response"]>
+  : never;
+
+export interface TopicRequestOptions {
+  /**
+   * How long to wait for the reply.
+   *
+   * @default [10, "seconds"]
+   */
+  timeout?: DurationLike;
+}
+
+/**
+ * A topic handler. `meta` is the request/response address of a message that
+ * came from `request()`, opaque to the handler.
+ */
 export type TopicHandler<T extends TopicMessageSchema = TopicMessageSchema> = (
   message: TopicMessage<T>,
+  meta?: TopicMessageMeta,
 ) => unknown;

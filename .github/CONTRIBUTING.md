@@ -23,10 +23,10 @@ yarn v
 ```
 
 `yarn v` runs: install → lint → (typecheck, check:deps, check:conventions,
-check:docs, check:migrations) in parallel → test → test:bun. About
-three minutes, most of it the unit suite. It needs
-[Docker](https://www.docker.com/) running, for the Postgres, Redis and S3
-containers the integration tests use.
+check:docs, check:migrations) in parallel → test → test:bun → test:broker.
+About three minutes, most of it the unit suite. It needs
+[Docker](https://www.docker.com/) running, for the Postgres, Redis, S3 and
+Mosquitto containers the integration tests use.
 
 **It is the inner loop, not the gate.** It does not build, and it runs no e2e.
 What proves a change is **pushing the branch**: every branch triggers the full
