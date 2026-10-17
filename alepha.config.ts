@@ -75,6 +75,7 @@ export default defineConfig({
         "capacitor",
         "desktop",
         "devtools",
+        "mqtt",
         "payments-stripe",
         "protobuf",
         "sigil",
