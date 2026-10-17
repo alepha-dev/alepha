@@ -53,6 +53,9 @@ export const workspaceProjects = (
           ...sharedExclude,
           "**/*.browser.spec.{ts,tsx}",
           "**/*.bun.spec.{ts,tsx}",
+          // A real broker's half of a contract suite, run by its own config
+          // and root script (`yarn test:broker`), never by the shards.
+          "**/*.broker.spec.{ts,tsx}",
         ],
       },
     },

@@ -26,6 +26,7 @@
     "check:migrations": "yarn workspaces foreach -Apt run check:migrations",
     "build": "yarn workspaces foreach -Apt run build",
     "test:bun": "bun test ./packages/**/*.bun.spec.ts",
+    "test:broker": "yarn vitest run --config packages/@alepha/mqtt/vitest.broker.config.ts",
     "e2e": "yarn workspaces foreach -Apt run e2e",
     "e2e-cli": "yarn w e2e-cli test"
   },

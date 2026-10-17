@@ -338,6 +338,55 @@ jobs:
         run: yarn alepha test --shard ${{ matrix.shard }}/6
 
   # ──────────────────────────────────────────────────────────────────────
+  # The MQTT contract suite on a real broker (#E88): `yarn test:broker`, the
+  # same cases the shards run on `@alepha/mqtt`'s memory broker, here on
+  # Mosquitto, so the fake cannot drift from reality.
+  #
+  # Its own job, out of the six `test` shards, so a broker problem reads as
+  # "MQTT contract failed" and not as random red. The EMQX service this
+  # replaces failed about 20% of the time, for reasons this job is shaped
+  # against: it had no health check (steps started while the VM booted), its
+  # image was unpinned, and every spec was a timing test over a socket.
+  #
+  # Mosquitto is started by a step rather than declared under `services:`:
+  # a service container starts before the checkout, so it cannot mount
+  # `scripts/mosquitto.conf`, and Mosquitto 2 without a config listens on
+  # localhost inside its container only. The health check gates the suite
+  # all the same: nothing runs until the broker answers a publish.
+  # ──────────────────────────────────────────────────────────────────────
+  mqtt-broker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      # The image and config of the `mosquitto` service in compose.yml; keep
+      # the two in step.
+      - name: Start Mosquitto
+        run: |
+          docker run -d --name mosquitto -p 11883:1883 \
+            -v "$PWD/scripts/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro" \
+            --health-cmd "mosquitto_pub -h 127.0.0.1 -t health -m ok" \
+            --health-interval 1s --health-timeout 5s --health-retries 30 \
+            eclipse-mosquitto:2.0.22
+          for i in $(seq 1 60); do
+            if [ "$(docker inspect -f '{{.State.Health.Status}}' mosquitto)" = healthy ]; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs mosquitto
+          exit 1
+
+      - name: MQTT Contract (Mosquitto)
+        timeout-minutes: 5
+        run: yarn test:broker
+
+  # ──────────────────────────────────────────────────────────────────────
   # Build + E2E, as two jobs. The long pole of the workflow, and the half
   # of `yarn v` the two jobs above skip.
   #

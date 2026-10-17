@@ -63,6 +63,7 @@ export class AlephaCommands {
     { name: "postgres", port: 15432 },
     { name: "redis", port: 16379 },
     { name: "s3", port: 19090 },
+    { name: "mosquitto", port: 11883 },
   ];
 
   /**
@@ -190,6 +191,10 @@ export class AlephaCommands {
       // reproduces the same way twice.
       await run(`yarn test`);
       await run(`yarn test:bun`);
+      // The MQTT contract suite on Mosquitto (#E88). Last and on its own: it
+      // is the one step that needs the broker, and a red one here reads as
+      // "the MQTT contract failed", not as a random unit test.
+      await run(`yarn test:broker`);
     },
   });
 
@@ -229,7 +234,7 @@ export class AlephaCommands {
     const report = probed
       .map(
         (it) =>
-          `  ${it.name.padEnd(8)} 127.0.0.1:${it.port}  ${it.up ? "up" : "DOWN"}`,
+          `  ${it.name.padEnd(9)} 127.0.0.1:${it.port}  ${it.up ? "up" : "DOWN"}`,
       )
       .join("\n");
 
