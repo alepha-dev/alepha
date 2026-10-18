@@ -1,6 +1,6 @@
 {
   "name": "@alepha/mqtt",
-  "private": true,
+  "version": "0.33.0",
   "description": "MQTT 5 client and topic provider for Alepha framework.",
   "keywords": [
     "alepha",
