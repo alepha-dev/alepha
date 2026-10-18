@@ -49,6 +49,10 @@ export interface DataTableToolbarProps<T> {
    * differs from its declaration.
    */
   canResetFilters: boolean;
+  /**
+   * The table's `leading` slot, drawn first on the row.
+   */
+  leading?: ReactNode;
   toolbar?: ReactNode;
   actions?: TableAction[];
   /**
@@ -83,9 +87,9 @@ export interface DataTableToolbarProps<T> {
 }
 
 /**
- * The bar above the rows: the filter form (or its dialog on a phone), the
- * caller's `toolbar` slot and `actions`, then the column picker, the filter
- * menu, refresh and help.
+ * The bar above the rows: the caller's `leading` slot, the filter form (or its
+ * dialog on a phone), the caller's `toolbar` slot and `actions`, then the
+ * column picker, the filter menu, refresh and help.
  */
 export const DataTableToolbar = <T,>(props: DataTableToolbarProps<T>) => {
   const {
@@ -183,6 +187,17 @@ export const DataTableToolbar = <T,>(props: DataTableToolbarProps<T>) => {
         props.className,
       )}
     >
+      {/*
+        `leading` opens the row, before the search, and is centred like
+        `toolbar` for the same reason: it carries no label of its own. On a
+        phone it stays here too, so it still sits before the button that
+        opens the filter dialog.
+      */}
+      {props.leading && (
+        <div className="flex min-w-0 items-center gap-2 self-center">
+          {props.leading}
+        </div>
+      )}
       {props.filters && form && !isMobile ? (
         // `self-stretch`: the form spans the bar's full row, so the "+" (whose
         // own `self-center` targets this form) sits on the row's midline. It

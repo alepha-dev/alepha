@@ -375,8 +375,25 @@ export interface DataTableBaseProps<
   empty?: ReactNode;
   /**
    * Free-form content rendered above the toolbar (e.g. a page title).
+   *
+   * `header` is for a page title above the table; `leading` is for a section
+   * title on the toolbar's own row.
    */
   header?: ReactNode;
+  /**
+   * Free-form content drawn at the start of the toolbar's row, before the
+   * search, and vertically centred like `toolbar`: a section's title, say
+   * its icon, name and count, when one page holds several tables and each
+   * should read as one line of title and controls.
+   *
+   * On a phone, where the filters collapse into a dialog, it stays on the
+   * row, before the button that opens that dialog. The table draws nothing
+   * of its own here: what goes in is the caller's.
+   *
+   * Use `header` for a page title above the toolbar, `leading` for a section
+   * title on it.
+   */
+  leading?: ReactNode;
   /**
    * Initial sort state. When `persistenceKey` is set, a persisted sort
    * takes precedence over this.

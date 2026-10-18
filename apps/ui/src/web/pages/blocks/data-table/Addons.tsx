@@ -1,3 +1,4 @@
+import { useToast } from "@alepha/ui";
 import {
   DataTable,
   type DataTableFilterFields,
@@ -8,7 +9,7 @@ import { z } from "alepha";
 import type { Page } from "alepha";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { MailPlus, UserCheck, Users, UsersRound } from "lucide-react";
+import { MailPlus, UserCheck, UserPlus, Users, UsersRound } from "lucide-react";
 import { useCallback } from "react";
 
 import type {
@@ -31,11 +32,17 @@ import { memberColumns } from "@/web/pages/blocks/data-table/memberColumns.tsx";
  * so the choice meaning "no filter" has to be one of them. The fetcher turns
  * it back into an absent key.
  *
+ * The toolbar's row opens on `leading`: a section title (icon and name) drawn
+ * before the search, on the same line as the filters and the `primary`
+ * action, which is how a page holding several tables titles each one without
+ * a header above its bar.
+ *
  * Above the filter bar, the summary panel: four figures fetched with the same
  * filter, so picking "Invited" recounts every invited member rather than the
  * page on screen. And behind the `?` at the end of the icons, the page's help.
  */
 const FILTER_FIELDS = {
+  search: { preset: "search" },
   status: {
     schema: z.enum(["all", "active", "invited", "disabled"]),
     label: "Status",
@@ -48,6 +55,7 @@ const FILTER_FIELDS = {
 
 const Addons = () => {
   const { l } = useI18n();
+  const toast = useToast();
   const client = useClient() as unknown as {
     findShowcaseMembers: (a: {
       query: Record<string, unknown>;
@@ -70,6 +78,7 @@ const Addons = () => {
           page: params.page,
           size: params.size,
           sort: params.sort,
+          search: params.filters?.search || undefined,
           status:
             params.filters?.status && params.filters.status !== "all"
               ? params.filters.status
@@ -86,6 +95,7 @@ const Addons = () => {
       const stats = await client.findShowcaseMemberStats(
         {
           query: {
+            search: filters?.search || undefined,
             status:
               filters?.status && filters.status !== "all"
                 ? filters.status
@@ -116,7 +126,7 @@ const Addons = () => {
     <Showcase
       id="blocks/data-table/Addons"
       title="DataTable: addons"
-      description="The same members, with the table's add-ons: a locked filter, a summary counted over the filtered set, and a help card."
+      description="The same members, with the table's add-ons: a section title before the search, a locked filter, a summary counted over the filtered set, and a help card."
       fill
     >
       {() => (
@@ -129,6 +139,20 @@ const Addons = () => {
             initialValues: { status: "all" },
           }}
           summary={{ fetch: fetchSummary }}
+          leading={
+            <>
+              <Users className="text-muted-foreground size-4" />
+              <span className="font-medium">Members</span>
+            </>
+          }
+          actions={[
+            {
+              icon: UserPlus,
+              label: "Invite member",
+              primary: true,
+              onClick: () => toast.success("Invitation sent"),
+            },
+          ]}
           help={
             <div className="flex flex-col gap-1.5">
               <p className="font-medium">How this list is counted</p>
