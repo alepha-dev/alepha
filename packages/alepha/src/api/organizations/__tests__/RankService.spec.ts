@@ -200,6 +200,45 @@ describe("alepha/api/organizations - RankService", () => {
     ).rejects.toThrow("Ownership is transferred, not assigned");
   });
 
+  it("puts a member back on the default rank, and never demotes the owner", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    await ctx.ranks.save(
+      ctx.organization.id,
+      {
+        key: "writer",
+        name: "Writer",
+        permissions: ["organization:read", "quest:write"],
+      },
+      ctx.owner,
+    );
+    const rankOf = async (userId: string) =>
+      (await ctx.members.list(ctx.organization.id)).find(
+        (row) => row.userId === userId,
+      )?.rank;
+
+    await ctx.ranks.assign(
+      ctx.organization.id,
+      ctx.member.id,
+      "writer",
+      ctx.owner,
+    );
+    expect(await rankOf(ctx.member.id)).toBe("writer");
+    await ctx.ranks.assign(
+      ctx.organization.id,
+      ctx.member.id,
+      "member",
+      ctx.owner,
+    );
+    expect(await rankOf(ctx.member.id)).toBeUndefined();
+
+    await expect(
+      ctx.ranks.assign(ctx.organization.id, ctx.owner.id, "member", ctx.member),
+    ).rejects.toThrow("Ownership is transferred, not assigned");
+    expect(await rankOf(ctx.owner.id)).toBe("owner");
+  });
+
   it("names each member's rank on the roster, a minted key included", async ({
     expect,
   }) => {

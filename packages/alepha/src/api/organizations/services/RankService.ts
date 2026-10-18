@@ -252,12 +252,18 @@ export class RankService {
     if (userId === writer.id) {
       throw new BadRequestError("You cannot change your own rank");
     }
-    await this.assertAssignable(organizationId, key, writer);
     const member = await this.members.getOne({
       where: { organizationId: { eq: organizationId }, userId: { eq: userId } },
     });
+    if (member.rank === "owner") {
+      throw new BadRequestError("Ownership is transferred, not assigned");
+    }
+    await this.assertAssignable(organizationId, key, writer);
+    // `null`, not `undefined`: an update skips an undefined field, so the
+    // member would silently keep their old rank instead of going back to
+    // the default one.
     await this.members.updateById(member.id, {
-      rank: key === "member" ? undefined : key,
+      rank: key === "member" ? null : key,
     });
   }
 
