@@ -50,6 +50,7 @@ describe("R2 resource detection", () => {
           name === "$storage"
             ? Array.from({ length: opts.storagePrimitives }, () => ({}))
             : [],
+        graph: () => ({}),
         inject: (name: string) => {
           throw new AlephaError(`Service not found: ${name}`);
         },

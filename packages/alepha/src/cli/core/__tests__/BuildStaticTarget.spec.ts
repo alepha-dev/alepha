@@ -22,6 +22,7 @@ class TestBuildManifestTask extends BuildManifestTask {
  */
 const fakeAlepha = {
   primitives: () => [],
+  graph: () => ({}),
   inject: (name: string) => {
     throw new AlephaError(`Service not found: ${name}`);
   },

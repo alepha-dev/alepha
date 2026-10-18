@@ -46,6 +46,7 @@ describe("analytics resource detection", () => {
           name === "$analytics"
             ? Array.from({ length: opts.analyticsPrimitives }, () => ({}))
             : [],
+        graph: () => ({}),
         inject: (name: string) => {
           throw new AlephaError(`Service not found: ${name}`);
         },

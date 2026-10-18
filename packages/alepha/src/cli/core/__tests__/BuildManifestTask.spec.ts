@@ -25,6 +25,7 @@ const fakeAlepha = {
     name === "$websocket"
       ? [{ options: { channel: { options: { path: "/ws/chat" } } } }]
       : [],
+  graph: () => ({}),
   inject: (name: string) => {
     if (name === "alepha.actor.ActorHostRegistry")
       return { list: () => [WebSocketHost.declaration] };
@@ -45,6 +46,7 @@ const fakeAlephaWithPrimitives = (byName: Record<string, string[]>) =>
       (byName[name] ?? []).map((path) => ({
         options: { channel: { options: { path } } },
       })),
+    graph: () => ({}),
     inject: (name: string) => {
       if (name === "alepha.actor.ActorHostRegistry")
         return {
@@ -67,6 +69,7 @@ const fakeAlephaWithPrimitives = (byName: Record<string, string[]>) =>
 const fakeAlephaWithEnv = (env: Record<string, { secret?: boolean }>) =>
   ({
     primitives: () => [],
+    graph: () => ({}),
     inject: (name: string) => {
       if (name === "alepha.actor.ActorHostRegistry") return { list: () => [] };
       throw new AlephaError(`Service not found: ${name}`);

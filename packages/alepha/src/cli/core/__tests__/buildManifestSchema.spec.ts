@@ -232,6 +232,7 @@ describe("the build manifest schema", () => {
 
     const fakeAlepha = {
       primitives: () => [],
+      graph: () => ({}),
       inject: (name: string) => {
         throw new AlephaError(`Service not found: ${name}`);
       },

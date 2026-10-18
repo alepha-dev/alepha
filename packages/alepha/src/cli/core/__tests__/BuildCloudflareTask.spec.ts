@@ -1198,6 +1198,7 @@ describe("BuildCloudflareTask", () => {
           (byName[name] ?? []).map((path) => ({
             options: { channel: { options: { path } } },
           })),
+        graph: () => ({}),
         inject: (name: string) => {
           if (name === "alepha.actor.ActorHostRegistry")
             return {
@@ -1464,6 +1465,7 @@ describe("BuildCloudflareTask", () => {
       ({
         manifest: null,
         alepha: {
+          graph: () => ({}),
           inject: (name: string) => {
             if (name === "alepha.jobs.JobProvider") {
               return {

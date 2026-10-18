@@ -9,6 +9,7 @@ import { FileSystemProvider } from "alepha/system";
 
 import { ActorHostCollection } from "../services/ActorHostCollection.ts";
 import { BuildSlices } from "../services/BuildSlices.ts";
+import { CloudflareEmailDetector } from "../services/CloudflareEmailDetector.ts";
 import { DurableObjectConfig } from "../services/DurableObjectConfig.ts";
 import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
 
@@ -26,12 +27,7 @@ interface WranglerConfig {
 export class BuildCloudflareTask extends BuildTask {
   protected readonly slices = $inject(BuildSlices);
 
-  // Looked up by stable service id (not by class identity) because
-  // BuildCloudflareTask runs in the CLI's Alepha context while ctx.alepha
-  // is the workspace's separate context. Two module graphs = two distinct
-  // `CloudflareEmailProvider` class objects, so the imported reference
-  // here wouldn't match the one the workspace registered.
-  protected readonly cloudflareEmailProviderName = "CloudflareEmailProvider";
+  protected readonly cloudflareEmail = $inject(CloudflareEmailDetector);
 
   // Must match WEBSOCKET_DEFAULT_BINDING in alepha/websocket (kept as a literal
   // here because the CF provider isn't on the node barrel).
@@ -761,13 +757,8 @@ export class BuildCloudflareTask extends BuildTask {
     let binding: string | undefined;
     if (ctx.manifest) {
       binding = ctx.manifest.cloudflare?.email?.binding;
-    } else if (ctx.alepha) {
-      try {
-        ctx.alepha.inject(this.cloudflareEmailProviderName);
-        binding = SEND_EMAIL_DEFAULT_BINDING;
-      } catch {
-        // app doesn't use CloudflareEmailProvider  -  nothing to emit
-      }
+    } else if (ctx.alepha && this.cloudflareEmail.detect(ctx.alepha)) {
+      binding = SEND_EMAIL_DEFAULT_BINDING;
     }
     if (!binding) {
       return;
