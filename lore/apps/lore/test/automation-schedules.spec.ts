@@ -564,7 +564,11 @@ describe("Automation schedules and named selections", () => {
       });
     expect(receipt.status).toBe("committed");
     const after = await entities.quests.getById(before.id);
-    expect(after.reminderNextAt).toBe(time.now().add(7, "days").toISOString());
+    // Hours, not days: the interval is an exact 7 * DAY_MS, and a local
+    // "7 days" gains or loses an hour across a DST change.
+    expect(after.reminderNextAt).toBe(
+      time.now().add(7 * 24, "hours").toISOString(),
+    );
     expect(after.history.at(-1)).toMatchObject({
       action: "reminder_sent",
       by: user.id,
