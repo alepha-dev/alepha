@@ -20,6 +20,7 @@ import type {
   AnalyticsQuery,
   AnalyticsResult,
 } from "../schemas/analyticsQuerySchema.ts";
+import { AnalyticsBuffer } from "../services/AnalyticsBuffer.ts";
 import { AnalyticsEntityFactory } from "../services/AnalyticsEntityFactory.ts";
 
 /**
@@ -122,6 +123,7 @@ export class AnalyticsPrimitive extends Primitive<AnalyticsPrimitiveOptions> {
 
   protected readonly log = $logger();
   protected readonly provider = $inject(AnalyticsProvider);
+  protected readonly buffer = $inject(AnalyticsBuffer);
   protected readonly dateTime = $inject(DateTimeProvider);
 
   public get dataset(): AnalyticsDataset {
@@ -169,6 +171,7 @@ export class AnalyticsPrimitive extends Primitive<AnalyticsPrimitiveOptions> {
     this.assertExactBackend();
     AnalyticsBuckets.minutesOf(AnalyticsBuckets.resolutionOf(this.dataset));
     AnalyticsTiers.assertValid(this.dataset);
+    this.assertValidBuffer();
     AnalyticsSlotMap.forDataset(this.dataset);
     this.provider.register(this.dataset);
   }
@@ -284,10 +287,12 @@ export class AnalyticsPrimitive extends Primitive<AnalyticsPrimitiveOptions> {
 
     // Folded here rather than in a provider, so every provider receives
     // distinct keys: see `AnalyticsRowFolder`.
-    await this.provider.record(
-      dataset,
-      AnalyticsRowFolder.fold(dataset, readings),
-    );
+    const folded = AnalyticsRowFolder.fold(dataset, readings);
+    if (this.isBuffered()) {
+      this.buffer.add(dataset, folded);
+      return;
+    }
+    await this.provider.record(dataset, folded);
   }
 
   /**
@@ -305,6 +310,52 @@ export class AnalyticsPrimitive extends Primitive<AnalyticsPrimitiveOptions> {
     if (!AnalyticsBuckets.isBucket(key, resolution)) {
       throw new AlephaError(
         `Dataset '${this.dataset.name}' received the bucket '${key}', which is not an hour key ('YYYY-MM-DDTHH').`,
+      );
+    }
+  }
+
+  /**
+   * How many distinct keys wait in this dataset's buffer; `0` when it is not
+   * buffered. Meant for a gauge in the app's own metrics.
+   */
+  public bufferDepth(): number {
+    return this.buffer.depth(this.dataset.name);
+  }
+
+  /**
+   * Writes everything buffered for this dataset now, and waits for it.
+   */
+  public flush(): Promise<void> {
+    return this.buffer.flush(this.dataset.name);
+  }
+
+  /**
+   * Whether writes go through the buffer: declared, and not on a backend
+   * whose writes are already fire-and-forget batches.
+   */
+  protected isBuffered(): boolean {
+    return !!this.dataset.buffer && !this.provider.fireAndForget;
+  }
+
+  /**
+   * Refuses a `buffer` that could never flush on size or time, and notes at
+   * boot when the bound backend makes it moot.
+   */
+  protected assertValidBuffer(): void {
+    const buffer = this.dataset.buffer;
+    if (!buffer) return;
+    if (
+      !Number.isInteger(buffer.maxRows) ||
+      buffer.maxRows < 1 ||
+      !(buffer.flushMs > 0)
+    ) {
+      throw new AlephaError(
+        `Dataset '${this.dataset.name}' declares an invalid buffer: maxRows must be a positive integer and flushMs a positive number of milliseconds.`,
+      );
+    }
+    if (this.provider.fireAndForget) {
+      this.log.info(
+        `Dataset '${this.dataset.name}' declares a buffer, ignored: the bound analytics backend already batches its writes.`,
       );
     }
   }

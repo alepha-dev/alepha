@@ -122,6 +122,39 @@ logged at `debug` with the dataset name and the offset:
 
 Only `at` is clamped. An explicit `hour` is your own decision and is stored as given.
 
+### Buffered recording
+
+At high ingest rates (10k devices reporting every ten seconds is about a thousand readings a
+second), one `record()` per reading is one upsert statement each. A dataset can buffer its writes
+instead:
+
+```typescript
+readings = $analytics({
+  // ...
+  buffer: { maxRows: 1000, flushMs: 1000 },
+});
+```
+
+Readings are folded in memory as they arrive, by bucket and dimensions and with every fold, so a
+flush writes one row per key however many readings it absorbed. A buffer flushes when it holds
+`maxRows` distinct keys, `flushMs` after its first row, and on shutdown (the `stop` hook awaits
+the last flush, before the database closes). Two flushes of one dataset never overlap.
+
+- **`record()` resolves once the reading is buffered, not stored.** A crash loses at most one
+  buffer per process. Leave `buffer` off where a caller needs the write to have landed when its
+  `await` returns.
+- **A failed flush is retried** (three attempts, with backoff), then its rows are dropped and
+  logged at `error` with their count. They are never merged back into the live buffer, which
+  would grow without bound during an outage.
+- **Several instances** each keep their own buffer; the upsert merges their flushes.
+- **Analytics Engine ignores `buffer`**, with an info log at boot: its writes are already
+  fire-and-forget batches.
+
+The buffer reports through hooks rather than a metrics dependency, so an app wires them into its
+own metrics: `analytics:flush:success` and `analytics:flush:error` carry `{ dataset, rows,
+durationMs }` (plus `error`), and `primitive.bufferDepth()` returns the keys waiting.
+`primitive.flush()` writes the buffer now and waits for it.
+
 ## Querying
 
 ```typescript

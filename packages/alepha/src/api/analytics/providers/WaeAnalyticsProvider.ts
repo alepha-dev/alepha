@@ -243,6 +243,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
   protected static readonly EPOCH_DAY = "1970-01-01";
 
   public readonly exact: boolean = false;
+  public override readonly fireAndForget: boolean = true;
 
   protected readonly alepha = $inject(Alepha);
   protected readonly env = $env(envSchema);

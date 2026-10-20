@@ -31,6 +31,7 @@ export * from "./schemas/analyticsDatasetSchema.ts";
 export * from "./schemas/analyticsFoldSchema.ts";
 export * from "./schemas/analyticsQuerySchema.ts";
 export * from "./services/AdminAnalyticsService.ts";
+export * from "./services/AnalyticsBuffer.ts";
 export * from "./services/AnalyticsEngineSql.ts";
 export * from "./services/AnalyticsRetentionGuard.ts";
 

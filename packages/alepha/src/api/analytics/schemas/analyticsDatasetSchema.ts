@@ -105,6 +105,18 @@ export interface AnalyticsDataset {
    * `keep` into the next tier, and deletes the last tier's past its `keep`.
    */
   retention?: AnalyticsRetention | AnalyticsTierSpec[];
+
+  /**
+   * Buffers writes in memory, pre-folded, and flushes them as one write of
+   * distinct keys: on `maxRows` distinct keys, `flushMs` after the first
+   * buffered row, and on shutdown. Off by default.
+   *
+   * A buffered `record()` resolves once the row is **buffered**, not stored:
+   * a crash loses at most one buffer per process. Leave it off where a
+   * caller needs durability. Ignored on Analytics Engine, whose writes are
+   * already fire-and-forget batches. See `AnalyticsBuffer`.
+   */
+  buffer?: { maxRows: number; flushMs: number };
 }
 
 /**

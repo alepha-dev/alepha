@@ -46,6 +46,14 @@ export abstract class AnalyticsProvider {
   abstract readonly exact: boolean;
 
   /**
+   * Whether `record()` already returns before the write lands, as a batch
+   * the platform flushes (Analytics Engine). A dataset's `buffer` is
+   * ignored there, with an info log at boot: it would add a second buffer
+   * in front of the first.
+   */
+  public readonly fireAndForget: boolean = false;
+
+  /**
    * Declares a dataset before the container starts.
    *
    * Synchronous and eager by requirement, not by preference: a relational
