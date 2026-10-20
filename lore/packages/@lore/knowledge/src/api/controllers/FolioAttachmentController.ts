@@ -204,6 +204,7 @@ export class FolioAttachmentController {
    * duplicate is a boot failure, not a shadowed route.
    */
   uploadFolioAttachment = $action({
+    method: "POST",
     use: [$secure({ permissions: ["folio:write"] })],
     path: "/folio/attachments/upload",
     description: "Upload the bytes of a folio attachment.",
@@ -218,6 +219,7 @@ export class FolioAttachmentController {
   });
 
   registerAttachment = $action({
+    method: "POST",
     use: [this.ownsProjectForKnowledge("folio:write")],
     path: "/projects/:projectId/folio/attachments",
     description:
@@ -242,6 +244,7 @@ export class FolioAttachmentController {
   });
 
   renameAttachment = $action({
+    method: "POST",
     use: [this.ownsBlobForKnowledge("folio:write")],
     path: "/folio/attachments/:id/rename",
     description: "Rename a folio attachment.",
@@ -256,6 +259,7 @@ export class FolioAttachmentController {
   });
 
   deleteAttachment = $action({
+    method: "POST",
     // No transaction, and none wanted: on Postgres a rollback here would
     // restore rows pointing at bytes already deleted from storage.
     use: [this.ownsBlobForKnowledge("folio:write")],

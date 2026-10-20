@@ -322,6 +322,7 @@ export class DirectoryController {
   });
 
   createDirectory = $action({
+    method: "POST",
     // No transaction (D1 has none): the service claims the name before the
     // row is written (#Q2548).
     use: [this.ownsProjectForKnowledge("folio:write")],
@@ -345,6 +346,7 @@ export class DirectoryController {
   });
 
   renameDirectory = $action({
+    method: "POST",
     use: [this.ownsDirectoryForKnowledge("folio:write")],
     path: "/folio/directories/:id/rename",
     description: "Rename a folio directory.",
@@ -359,6 +361,7 @@ export class DirectoryController {
   });
 
   moveDirectory = $action({
+    method: "POST",
     use: [this.ownsDirectoryForKnowledge("folio:write")],
     path: "/folio/directories/:id/move",
     description: "Move a folio directory under a new parent (or to root).",
@@ -381,6 +384,7 @@ export class DirectoryController {
   });
 
   deleteDirectory = $action({
+    method: "POST",
     use: [this.ownsDirectoryForKnowledge("folio:write")],
     path: "/folio/directories/:id",
     description: "Delete a folio directory. Pass cascade=true for non-empty.",

@@ -174,6 +174,7 @@ export class EpicController {
   protected epicNumber = $sequence();
 
   getEpics = $action({
+    path: "/getEpics/:projectId",
     method: "GET",
     use: [this.ownsProject("epic:read")],
     schema: {
@@ -241,6 +242,7 @@ export class EpicController {
    * list, the same way `ProjectEpics` already derives it.
    */
   getEpicRefs = $action({
+    path: "/getEpicRefs/:projectId",
     method: "GET",
     use: [this.ownsProject("epic:read")],
     schema: {
@@ -296,6 +298,7 @@ export class EpicController {
    * detail page lists them.
    */
   getEpicDetailByNumber = $action({
+    path: "/getEpicDetailByNumber/:projectId/:number",
     method: "GET",
     use: [this.ownsProject("epic:read")],
     schema: {
@@ -343,6 +346,8 @@ export class EpicController {
   });
 
   createEpic = $action({
+    method: "POST",
+    path: "/createEpic/:projectId",
     use: [this.ownsProjectForWork("epic:write")],
     schema: {
       params: z.object({ projectId: z.integer() }),
@@ -389,6 +394,8 @@ export class EpicController {
   });
 
   updateEpic = $action({
+    method: "POST",
+    path: "/updateEpic/:id",
     use: [this.ownsEpicForWork("epic:write")],
     schema: {
       params: z.object({ id: z.integer() }),
@@ -518,6 +525,8 @@ export class EpicController {
    * quest, on either edge.
    */
   setEpicStatus = $action({
+    method: "POST",
+    path: "/setEpicStatus/:id",
     use: [this.ownsEpicForWork("epic:write")],
     schema: {
       params: z.object({ id: z.integer() }),
@@ -564,6 +573,8 @@ export class EpicController {
    * Answers the number of quests shelved, as `movedQuests`.
    */
   shelveEpic = $action({
+    method: "POST",
+    path: "/shelveEpic/:id",
     use: [this.ownsEpicForWork("epic:write")],
     schema: {
       params: z.object({ id: z.integer() }),
@@ -609,6 +620,8 @@ export class EpicController {
    * Answers the number of quests unshelved, as `movedQuests`.
    */
   unshelveEpic = $action({
+    method: "POST",
+    path: "/unshelveEpic/:id",
     use: [this.ownsEpicForWork("epic:write")],
     schema: {
       params: z.object({ id: z.integer() }),
@@ -687,6 +700,8 @@ export class EpicController {
    * Answers the number of quests deleted, as `count`.
    */
   deleteEpic = $action({
+    method: "POST",
+    path: "/deleteEpic/:id",
     use: [this.ownsEpicForWork("epic:write")],
     schema: {
       params: z.object({ id: z.integer() }),
@@ -738,6 +753,8 @@ export class EpicController {
    * `epicId` field on either of its write paths.
    */
   attachQuest = $action({
+    method: "POST",
+    path: "/attachQuest/:id",
     use: [this.ownsEpicForWork("epic:write")],
     schema: {
       params: z.object({ id: z.integer() }),
@@ -804,6 +821,8 @@ export class EpicController {
   });
 
   detachQuest = $action({
+    method: "POST",
+    path: "/detachQuest/:id/:questId",
     use: [this.ownsEpicForWork("epic:write")],
     schema: {
       params: z.object({ id: z.integer(), questId: z.integer() }),
@@ -828,6 +847,8 @@ export class EpicController {
   });
 
   attachFolio = $action({
+    method: "POST",
+    path: "/attachFolio/:id",
     use: [this.ownsEpicForWork("epic:write")],
     schema: {
       params: z.object({ id: z.integer() }),
@@ -865,6 +886,8 @@ export class EpicController {
   });
 
   detachFolio = $action({
+    method: "POST",
+    path: "/detachFolio/:id/:folioId",
     use: [this.ownsEpicForWork("epic:write")],
     schema: {
       params: z.object({ id: z.integer(), folioId: z.uuid() }),

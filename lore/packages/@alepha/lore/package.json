@@ -81,7 +81,7 @@
     "@types/node": "^26.6.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "alepha": "0.32.0",
+    "alepha": "0.33.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "rolldown": "~1.2.13",
@@ -93,7 +93,7 @@
     "@lore/deploy": "*",
     "@lore/knowledge": "*",
     "@lore/work": "*",
-    "alepha": ">=0.32.0",
+    "alepha": ">=0.33.0",
     "react": "*",
     "react-dom": "*"
   },

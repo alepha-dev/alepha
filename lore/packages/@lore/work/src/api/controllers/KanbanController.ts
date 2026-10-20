@@ -99,6 +99,8 @@ export class KanbanController {
    * Omit `beforeQuestId` to drop at the head, `afterQuestId` for the tail.
    */
   moveQuestOnBoard = $action({
+    method: "POST",
+    path: "/moveQuestOnBoard/:id",
     use: [
       $ownsProject({
         requires: "quest:update",
@@ -249,6 +251,8 @@ export class KanbanController {
     $ownsProject({ requires, param: "id" });
 
   addKanbanColumn = $action({
+    method: "POST",
+    path: "/addKanbanColumn/:id",
     use: [this.ownsProject("project:update")],
     schema: {
       params: z.object({ id: z.integer() }),
@@ -279,6 +283,8 @@ export class KanbanController {
   });
 
   renameKanbanColumn = $action({
+    method: "POST",
+    path: "/renameKanbanColumn/:id",
     use: [this.ownsProject("project:update")],
     schema: {
       params: z.object({ id: z.integer() }),
@@ -335,6 +341,8 @@ export class KanbanController {
   });
 
   deleteKanbanColumn = $action({
+    method: "POST",
+    path: "/deleteKanbanColumn/:id",
     use: [this.ownsProject("project:update")],
     schema: {
       params: z.object({ id: z.integer() }),
@@ -387,6 +395,8 @@ export class KanbanController {
   });
 
   reorderKanbanColumns = $action({
+    method: "POST",
+    path: "/reorderKanbanColumns/:id",
     use: [this.ownsProject("project:update")],
     schema: {
       params: z.object({ id: z.integer() }),

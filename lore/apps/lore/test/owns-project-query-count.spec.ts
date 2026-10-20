@@ -163,8 +163,10 @@ class InHandlerGateControl {
   protected readonly projects = $repository(projects);
   protected readonly members = $repository(members);
 
-  protected gated() {
+  protected gated(name: string) {
     return $action({
+      method: "POST",
+      path: `/${name}/:projectId`,
       use: [$secure({ permissions: ["project:read"] })],
       schema: {
         params: z.object({ projectId: z.integer() }),
@@ -194,13 +196,13 @@ class InHandlerGateControl {
     });
   }
 
-  controlOne = this.gated();
-  controlTwo = this.gated();
-  controlThree = this.gated();
-  controlFour = this.gated();
-  controlFive = this.gated();
-  controlSix = this.gated();
-  controlSeven = this.gated();
+  controlOne = this.gated("controlOne");
+  controlTwo = this.gated("controlTwo");
+  controlThree = this.gated("controlThree");
+  controlFour = this.gated("controlFour");
+  controlFive = this.gated("controlFive");
+  controlSix = this.gated("controlSix");
+  controlSeven = this.gated("controlSeven");
 }
 
 const UNPORTED = [

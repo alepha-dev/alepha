@@ -197,6 +197,7 @@ export class FolioController {
    * folio). Optional `q` runs `LIKE %q%` over `searchText`.
    */
   list = $action({
+    path: "/list",
     method: "GET",
     use: [this.ownsProjectFromQuery("folio:read")],
     description: "List the project's folios (newest first).",
@@ -330,6 +331,7 @@ export class FolioController {
    * unprotected folio's, which `project_context` inlines.
    */
   index = $action({
+    path: "/index/:projectId",
     method: "GET",
     use: [this.ownsProject("folio:read")],
     description: "The newest folios of the project, without bodies.",
@@ -451,6 +453,7 @@ export class FolioController {
    * per action it used to call.
    */
   getDetail = $action({
+    path: "/getDetail/:id",
     method: "GET",
     use: [this.ownsFolio("folio:read")],
     description: "Get a single folio by id, with the extras asked for.",
@@ -614,6 +617,7 @@ export class FolioController {
   }
 
   get = $action({
+    path: "/get/:id",
     method: "GET",
     use: [this.ownsFolio("folio:read")],
     description: "Get a single folio by id.",
@@ -631,6 +635,7 @@ export class FolioController {
    * MCP `folio_get` calls both and merges.
    */
   getLinks = $action({
+    path: "/getLinks/:id",
     method: "GET",
     use: [this.ownsFolio("folio:read")],
     description: "Get wiki-link outbound + inbound refs for a folio.",
@@ -890,6 +895,8 @@ export class FolioController {
   }
 
   create = $action({
+    method: "POST",
+    path: "/create",
     use: [this.ownsProjectFromBodyForKnowledge("folio:write")],
     description: "Create a new folio.",
     schema: {
@@ -1020,6 +1027,8 @@ export class FolioController {
   });
 
   update = $action({
+    method: "POST",
+    path: "/update/:id",
     // The gate is the read half of the protection-domain check below, and
     // the version the write is guarded by. No transaction (D1 has none).
     use: [this.ownsFolioForKnowledge("folio:write")],
@@ -1313,6 +1322,8 @@ export class FolioController {
   });
 
   delete = $action({
+    method: "POST",
+    path: "/delete/:id",
     use: [this.ownsFolioForKnowledge("folio:write")],
     description: "Delete a folio.",
     schema: {
@@ -1595,6 +1606,7 @@ export class FolioController {
    * can undo the revert if they did it in error.
    */
   revertHistory = $action({
+    method: "POST",
     use: [this.ownsFolioForKnowledge("folio:write")],
     path: "/folios/:id/history/:revisionId/revert",
     description: "Revert a folio to a prior revision (creates a new revision).",
@@ -1696,6 +1708,7 @@ export class FolioController {
    * older non-pinned revisions get dropped.
    */
   pinHistory = $action({
+    method: "POST",
     use: [this.ownsFolioForKnowledge("folio:write")],
     path: "/folios/:id/history/:revisionId/pin",
     description: "Toggle pin on a folio revision.",

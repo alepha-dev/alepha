@@ -180,6 +180,7 @@ export class ReleaseController {
   protected releaseNumber = $sequence();
 
   getReleases = $action({
+    path: "/getReleases/:projectId",
     method: "GET",
     use: [
       this.ownsProject("release:read"),
@@ -208,6 +209,7 @@ export class ReleaseController {
    * the list's three sequential ones (#Q2636).
    */
   getOpenReleaseProgress = $action({
+    path: "/getOpenReleaseProgress/:projectId",
     method: "GET",
     use: [this.ownsProject("release:read")],
     schema: {
@@ -295,6 +297,8 @@ export class ReleaseController {
   }
 
   createRelease = $action({
+    method: "POST",
+    path: "/createRelease/:projectId",
     use: [this.ownsProjectForWork("release:manage")],
     schema: {
       params: z.object({
@@ -372,6 +376,8 @@ export class ReleaseController {
    * prevent.
    */
   publishRelease = $action({
+    method: "POST",
+    path: "/publishRelease/:id",
     use: [this.ownsReleaseForWork("release:manage")],
     schema: {
       params: z.object({
@@ -458,6 +464,8 @@ export class ReleaseController {
    * computed live rather than keeping a snapshot nothing agrees with.
    */
   reopenRelease = $action({
+    method: "POST",
+    path: "/reopenRelease/:id",
     use: [this.ownsReleaseForWork("release:manage")],
     schema: {
       params: z.object({
@@ -603,6 +611,8 @@ export class ReleaseController {
   });
 
   updateRelease = $action({
+    method: "POST",
+    path: "/updateRelease/:id",
     use: [this.ownsReleaseForWork("release:manage")],
     schema: {
       params: z.object({
@@ -638,6 +648,8 @@ export class ReleaseController {
   });
 
   deleteRelease = $action({
+    method: "POST",
+    path: "/deleteRelease/:id",
     use: [this.ownsReleaseForWork("release:manage")],
     schema: {
       params: z.object({
@@ -679,6 +691,7 @@ export class ReleaseController {
    * set of numbers.
    */
   getReleaseContents = $action({
+    path: "/getReleaseContents/:id",
     method: "GET",
     use: [this.ownsRelease("release:read")],
     schema: {
@@ -770,6 +783,7 @@ export class ReleaseController {
   });
 
   getReleaseChangelog = $action({
+    path: "/getReleaseChangelog/:id",
     method: "GET",
     use: [
       this.ownsRelease("release:read"),

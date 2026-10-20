@@ -249,6 +249,8 @@ export class ProjectController {
    * rethrows. Only an infrastructure failure reaches a compensation now.
    */
   createProject = $action({
+    method: "POST",
+    path: "/createProject",
     use: [$secure({ permissions: ["project:create"] })],
     schema: {
       body: projects.insertSchema.pick({ title: true, icon: true }).extend({
@@ -427,6 +429,7 @@ export class ProjectController {
   });
 
   getMyProjects = $action({
+    path: "/getMyProjects",
     method: "GET",
     use: [
       $secure({ permissions: ["project:read"] }),
@@ -485,6 +488,7 @@ export class ProjectController {
    * the quota state needed to gate the "Create project" CTA.
    */
   getHomeOverview = $action({
+    path: "/getHomeOverview",
     method: "GET",
     use: [$secure({ permissions: ["project:read"] })],
     schema: {
@@ -576,6 +580,7 @@ export class ProjectController {
   // -------------------------------------------------------------------------------------------------------------------
 
   getProjectUsers = $action({
+    path: "/getProjectUsers/:id",
     method: "GET",
     use: [this.ownsProject("project:read")],
     schema: {
@@ -882,6 +887,8 @@ export class ProjectController {
   }
 
   updateProjectById = $action({
+    method: "POST",
+    path: "/updateProjectById/:id",
     use: [this.ownsProject("project:update")],
     schema: {
       params: z.object({
@@ -1019,6 +1026,7 @@ export class ProjectController {
   }
 
   getProjectById = $action({
+    path: "/getProjectById/:id",
     method: "GET",
     use: [this.ownsProject("project:read")],
     schema: {
@@ -1211,6 +1219,7 @@ export class ProjectController {
   });
 
   getProjectMembers = $action({
+    path: "/getProjectMembers/:id",
     method: "GET",
     use: [
       // Same reasoning as `getMyProjects`: members are invited and removed
@@ -1277,6 +1286,8 @@ export class ProjectController {
   });
 
   deleteProjectById = $action({
+    method: "POST",
+    path: "/deleteProjectById/:id",
     use: [this.ownsAsOwner("project:delete")],
     schema: {
       params: z.object({
@@ -1367,6 +1378,8 @@ export class ProjectController {
   }
 
   leaveProject = $action({
+    method: "POST",
+    path: "/leaveProject/:id",
     use: [$secure({ permissions: ["project:read"] })],
     schema: {
       params: z.object({
@@ -1463,6 +1476,8 @@ export class ProjectController {
    * story for it.
    */
   removeMember = $action({
+    method: "POST",
+    path: "/removeMember/:id/:userId",
     use: [this.ownsProject("member:manage")],
     schema: {
       params: z.object({

@@ -67,6 +67,7 @@ export class HomeController {
    * worth looking at and both are answered from the same membership read.
    */
   getHomeBoard = $action({
+    path: "/getHomeBoard",
     method: "GET",
     use: [
       /*

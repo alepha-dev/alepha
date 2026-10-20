@@ -30,6 +30,7 @@ export class ProjectReportsController {
    * in tests).
    */
   getReportsOverview = $action({
+    path: "/getReportsOverview/:id",
     method: "GET",
     use: [
       $etag({
@@ -56,6 +57,7 @@ export class ProjectReportsController {
    * timestamps on node).
    */
   getReportsQuests = $action({
+    path: "/getReportsQuests/:id",
     method: "GET",
     use: [
       $etag({
@@ -83,6 +85,7 @@ export class ProjectReportsController {
    * timestamps on node).
    */
   getReportsMembers = $action({
+    path: "/getReportsMembers/:id",
     method: "GET",
     use: [
       $etag({

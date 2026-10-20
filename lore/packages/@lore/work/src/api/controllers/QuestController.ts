@@ -725,6 +725,8 @@ export class QuestController {
    * project memory, and the sha is usually known only after the merge.
    */
   addQuestCommit = $action({
+    method: "POST",
+    path: "/addQuestCommit/:id",
     use: [this.ownsQuestForWork("quest:update")],
     schema: {
       params: z.object({
@@ -751,6 +753,8 @@ export class QuestController {
   });
 
   createQuest = $action({
+    method: "POST",
+    path: "/createQuest",
     use: [this.ownsProjectFromBodyForWork("quest:create")],
     schema: {
       body: questCreateSchema,
@@ -896,6 +900,7 @@ export class QuestController {
   }
 
   uploadAttachment = $action({
+    method: "POST",
     use: [$secure({ permissions: ["quest:create"] })],
     path: "/quests/attachments",
     schema: {
@@ -917,6 +922,8 @@ export class QuestController {
   });
 
   addAttachment = $action({
+    method: "POST",
+    path: "/addAttachment/:id",
     use: [this.ownsQuestForWork("quest:update")],
     schema: {
       params: z.object({
@@ -978,6 +985,7 @@ export class QuestController {
    * arbitrary files by id.
    */
   listQuestAttachments = $action({
+    path: "/listQuestAttachments/:id",
     method: "GET",
     use: [this.ownsQuest("quest:read")],
     schema: {
@@ -1080,6 +1088,7 @@ export class QuestController {
    * can see. The 10 MB storage cap bounds the base64 payload (~13.4 MB).
    */
   getQuestAttachment = $action({
+    path: "/getQuestAttachment/:id/:fileId",
     method: "GET",
     use: [this.ownsQuest("quest:read")],
     schema: {
@@ -1169,6 +1178,8 @@ export class QuestController {
   }
 
   removeAttachment = $action({
+    method: "POST",
+    path: "/removeAttachment/:id/:fileId",
     use: [this.ownsQuestForWork("quest:update")],
     schema: {
       params: z.object({
@@ -1224,6 +1235,7 @@ export class QuestController {
   });
 
   getQuests = $action({
+    path: "/getQuests/:projectId",
     method: "GET",
     use: [this.ownsProject("quest:read")],
     schema: {
@@ -1737,6 +1749,7 @@ export class QuestController {
   }
 
   getQuestLine = $action({
+    path: "/getQuestLine/:id",
     method: "GET",
     use: [this.ownsQuest("quest:read")],
     schema: {
@@ -1804,6 +1817,7 @@ export class QuestController {
    * are a property of the project's quest taxonomy, not the user's).
    */
   listQuestTags = $action({
+    path: "/listQuestTags",
     method: "GET",
     use: [this.ownsProjectFromQuery("quest:read")],
     description: "Return the distinct set of tags used in a project.",
@@ -1832,6 +1846,8 @@ export class QuestController {
    * move a quest toward resolution rather than opening work.
    */
   unassignQuest = $action({
+    method: "POST",
+    path: "/unassignQuest/:id",
     use: [this.ownsQuestForWork("quest:update")],
     schema: {
       params: z.object({
@@ -1900,6 +1916,8 @@ export class QuestController {
    * (#Q2223): shelving is the epic-level equivalent of waiving an objective.
    */
   shelveQuest = $action({
+    method: "POST",
+    path: "/shelveQuest/:id",
     use: [this.ownsQuestForWork("quest:update")],
     schema: {
       params: z.object({
@@ -1934,6 +1952,8 @@ export class QuestController {
    * Bring a shelved quest back into the backlog as "todo".
    */
   unshelveQuest = $action({
+    method: "POST",
+    path: "/unshelveQuest/:id",
     use: [this.ownsQuestForWork("quest:update")],
     schema: {
       params: z.object({
@@ -1984,6 +2004,8 @@ export class QuestController {
    * work. `unholdQuest` IS gated, because it moves one back toward it.
    */
   holdQuest = $action({
+    method: "POST",
+    path: "/holdQuest/:id",
     use: [this.ownsQuestForWork("quest:update")],
     schema: {
       params: z.object({
@@ -2088,6 +2110,8 @@ export class QuestController {
    * reason: this returns a quest to workable.
    */
   unholdQuest = $action({
+    method: "POST",
+    path: "/unholdQuest/:id",
     use: [this.ownsQuestForWork("quest:update")],
     schema: {
       params: z.object({
@@ -2138,6 +2162,8 @@ export class QuestController {
   }
 
   acceptQuest = $action({
+    method: "POST",
+    path: "/acceptQuest/:id",
     use: [this.ownsQuestForWork("quest:update")],
     schema: {
       params: z.object({
@@ -2256,6 +2282,8 @@ export class QuestController {
    * accepted quest is the whole point.
    */
   assignQuest = $action({
+    method: "POST",
+    path: "/assignQuest/:id",
     use: [this.ownsQuestForWork("quest:update")],
     schema: {
       params: z.object({
@@ -2339,6 +2367,8 @@ export class QuestController {
   });
 
   setQuestKanbanColumn = $action({
+    method: "POST",
+    path: "/setQuestKanbanColumn/:id",
     use: [this.ownsQuestForWork("quest:update")],
     schema: {
       params: z.object({
@@ -2384,6 +2414,8 @@ export class QuestController {
    * nightly sweep advances from there.
    */
   setQuestReminder = $action({
+    method: "POST",
+    path: "/setQuestReminder/:id",
     use: [this.ownsQuestForWork("quest:update")],
     schema: {
       params: z.object({
@@ -2526,6 +2558,8 @@ export class QuestController {
   }
 
   completeQuest = $action({
+    method: "POST",
+    path: "/completeQuest/:id",
     // No transaction (D1 has none): two concurrent completions both pass the
     // `completedAt IS NULL` read, and the second `save()` answers 409 on the
     // version the first one bumped.
@@ -2736,6 +2770,7 @@ export class QuestController {
   });
 
   getQuestById = $action({
+    path: "/getQuestById/:id",
     method: "GET",
     use: [this.ownsQuest("quest:read")],
     schema: {
@@ -2771,6 +2806,8 @@ export class QuestController {
   });
 
   updateQuestById = $action({
+    method: "POST",
+    path: "/updateQuestById/:id",
     // The `expectedUpdatedAt` check is a read followed by a write. What
     // closes the window between them is the write, not a transaction (D1
     // has none): it goes through `save()` on the row the gate read, so a
@@ -3122,6 +3159,8 @@ export class QuestController {
   });
 
   completeObjective = $action({
+    method: "POST",
+    path: "/completeObjective/:id",
     use: [this.ownsQuestForWork("quest:update")],
     schema: {
       params: z.object({
@@ -3189,6 +3228,8 @@ export class QuestController {
   });
 
   updateQuestObjectives = $action({
+    method: "POST",
+    path: "/updateQuestObjectives/:id",
     use: [this.ownsQuestForWork("quest:update")],
     schema: {
       params: z.object({
@@ -3260,6 +3301,8 @@ export class QuestController {
   });
 
   deleteQuest = $action({
+    method: "POST",
+    path: "/deleteQuest/:id",
     // What a delete does is `QuestDeletionService`, shared with
     // `EpicController.deleteEpic` (#Q2666); this handler is who may, and
     // whether the epic allows it.
@@ -3301,6 +3344,8 @@ export class QuestController {
   });
 
   startTimer = $action({
+    method: "POST",
+    path: "/startTimer/:id",
     use: [this.ownsQuestForWork("quest:update")],
     schema: {
       params: z.object({
@@ -3334,6 +3379,8 @@ export class QuestController {
   });
 
   stopTimer = $action({
+    method: "POST",
+    path: "/stopTimer/:id",
     use: [this.ownsQuestForWork("quest:update")],
     schema: {
       params: z.object({

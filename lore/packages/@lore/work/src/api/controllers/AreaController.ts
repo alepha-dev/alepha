@@ -42,6 +42,7 @@ export class AreaController {
   security = $inject(ProjectSecurityService);
 
   getAreas = $action({
+    path: "/getAreas/:projectId",
     method: "GET",
     use: [$ownsProject({ requires: "area:read", param: "projectId" })],
     schema: {
@@ -87,6 +88,8 @@ export class AreaController {
   });
 
   updateArea = $action({
+    method: "POST",
+    path: "/updateArea/:id",
     use: [this.ownsArea("area:manage")],
     schema: {
       params: z.object({ id: z.integer() }),
@@ -140,6 +143,8 @@ export class AreaController {
    * navigates to it.
    */
   renameArea = $action({
+    method: "POST",
+    path: "/renameArea/:id",
     use: [this.ownsArea("area:manage")],
     schema: {
       params: z.object({ id: z.integer() }),
@@ -170,6 +175,8 @@ export class AreaController {
   });
 
   mergeAreas = $action({
+    method: "POST",
+    path: "/mergeAreas/:projectId",
     use: [
       $ownsProject({
         requires: "area:manage",
@@ -207,6 +214,8 @@ export class AreaController {
    * (its component delete forces a reassignment).
    */
   deleteArea = $action({
+    method: "POST",
+    path: "/deleteArea/:id",
     use: [this.ownsArea("area:manage")],
     schema: {
       params: z.object({ id: z.integer() }),

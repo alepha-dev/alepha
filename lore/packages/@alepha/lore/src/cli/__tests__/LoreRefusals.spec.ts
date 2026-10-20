@@ -26,18 +26,24 @@ import {
  */
 class Board {
   listCards = $action({
+    method: "POST",
+    path: "/listCards",
     use: [$secure()],
     schema: { response: z.text() },
     handler: () => "cards",
   });
 
   archiveBoard = $action({
+    method: "POST",
+    path: "/archiveBoard",
     use: [$secure({ roles: ["admin"] })],
     schema: { response: z.text() },
     handler: () => "archived",
   });
 
   createCard = $action({
+    method: "POST",
+    path: "/createCard",
     use: [$secure()],
     schema: { response: z.text() },
     handler: (): string => {

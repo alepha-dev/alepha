@@ -176,6 +176,8 @@ describe("SigilServerErrors — batched actions", () => {
     */
     class App {
       boom = $action({
+        method: "POST",
+        path: "/boom",
         schema: { response: z.text() },
         handler: () => {
           throw new AlephaError("db down");

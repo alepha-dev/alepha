@@ -137,6 +137,7 @@ export class QuestCommentController {
   }
 
   listQuestComments = $action({
+    path: "/listQuestComments/:id",
     method: "GET",
     use: [this.ownsQuest("quest:read")],
     schema: {
@@ -181,6 +182,8 @@ export class QuestCommentController {
   }
 
   createQuestComment = $action({
+    method: "POST",
+    path: "/createQuestComment/:id",
     use: [this.ownsQuestForWork("quest:update")],
     schema: {
       params: z.object({ id: z.integer() }),
@@ -267,6 +270,8 @@ export class QuestCommentController {
   }
 
   updateQuestComment = $action({
+    method: "POST",
+    path: "/updateQuestComment/:id",
     use: [this.ownsCommentForWork("quest:update")],
     schema: {
       params: z.object({ id: z.integer() }),
@@ -317,6 +322,8 @@ export class QuestCommentController {
   });
 
   deleteQuestComment = $action({
+    method: "POST",
+    path: "/deleteQuestComment/:id",
     use: [this.ownsCommentForWork("quest:update")],
     schema: {
       params: z.object({ id: z.integer() }),
