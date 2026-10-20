@@ -193,21 +193,6 @@ export default defineConfig({
          * binding whatever the manifest says, and it is not a secret.
          */
         vars: { DATABASE_D1_MODE: "sessions" },
-        /**
-         * ⚠️ Declared by hand while the vendored framework cannot detect it.
-         * Since `inject(string)` matches a static `id` instead of a class
-         * name (framework #Q2669), the build's `inject("CloudflareEmailProvider")`
-         * never resolves, so every build dropped this binding and production
-         * mail went inert behind a green deploy (2026-10-15 to 2026-10-19:
-         * `binding 'SEND_EMAIL' not found`). Fixed upstream in
-         * alepha-dev/alepha d5e2bfbbe; once a vendor sync carries it, the
-         * build emits the same binding on its own and this entry is a
-         * harmless duplicate (`enhanceEmail` skips an existing name).
-         *
-         * No `destination_address`: on this binding it is a recipient
-         * allow-list, not the sender (see `BuildCloudflareTask.enhanceEmail`).
-         */
-        send_email: [{ name: "SEND_EMAIL" }],
       },
     },
   },
