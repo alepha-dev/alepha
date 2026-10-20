@@ -1197,37 +1197,22 @@ describe("WaeAnalyticsProvider selection", () => {
   });
 });
 
-analyticsConformance("wae", async () => {
-  const alepha = Alepha.create({
-    env: {
-      CLOUDFLARE_ANALYTICS_DATASET: DATASET_NAME,
-      CLOUDFLARE_ACCOUNT_ID: ACCOUNT_ID,
-      CLOUDFLARE_ANALYTICS_TOKEN: API_TOKEN,
-    },
-  }).with(AlephaOrmPostgres);
+analyticsConformance(
+  "wae",
+  async (datasets) => {
+    const alepha = Alepha.create({
+      env: {
+        CLOUDFLARE_ANALYTICS_DATASET: DATASET_NAME,
+        CLOUDFLARE_ACCOUNT_ID: ACCOUNT_ID,
+        CLOUDFLARE_ANALYTICS_TOKEN: API_TOKEN,
+      },
+    }).with(AlephaOrmPostgres);
 
-  const provider = alepha.inject(TestWaeAnalyticsProvider);
-  alepha.set("cloudflare.env", { [BINDING_NAME]: provider.fakeEngine });
-  // Must mirror `analyticsConformance.ts`'s own internal `dataset` fixture
-  // exactly (name, dimensions, measures) — the suite has no way to hand
-  // this factory the dataset object it will call `record()`/`query()`
-  // with, and registration has to happen before `alepha.start()`. This is
-  // the exact same mirrored declaration `OrmAnalyticsProvider.spec.ts` uses
-  // for its own conformance wiring.
-  provider.register({
-    name: "conformance_views",
-    index: "appId",
-    dimensions: z.object({
-      appId: z.string(),
-      path: z.string(),
-      bucket: z.number(),
-    }),
-    measures: z.object({ samples: z.number() }),
-    slots: {
-      dimensions: ["appId", "path", "bucket"],
-      measures: ["samples"],
-    },
-  });
-  await alepha.start();
-  return provider;
-});
+    const provider = alepha.inject(TestWaeAnalyticsProvider);
+    alepha.set("cloudflare.env", { [BINDING_NAME]: provider.fakeEngine });
+    for (const dataset of datasets) provider.register(dataset);
+    await alepha.start();
+    return provider;
+  },
+  { legacyOnly: true },
+);

@@ -11,7 +11,11 @@ import type {
   AnalyticsResult,
 } from "../schemas/analyticsQuerySchema.ts";
 import { AnalyticsEngineSql } from "../services/AnalyticsEngineSql.ts";
-import { AnalyticsProvider, type AnalyticsRow } from "./AnalyticsProvider.ts";
+import {
+  AnalyticsProvider,
+  type AnalyticsRow,
+  type AnalyticsTier,
+} from "./AnalyticsProvider.ts";
 import { OrmAnalyticsProvider } from "./OrmAnalyticsProvider.ts";
 
 /**
@@ -684,6 +688,44 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
   public async prune(dataset: AnalyticsDataset, before: string): Promise<void> {
     await this.cold.recordPruneFloor(dataset, before);
     await this.cold.prune(dataset, before);
+  }
+
+  /**
+   * The oldest bucket of a tier, across both systems.
+   *
+   * `rolled` lives in `cold` alone. `raw` is the older of `cold`'s raw tier
+   * and the oldest hour Analytics Engine holds that has not been forwarded
+   * yet (after the watermark) and is not below the prune floor: those are
+   * the hours the next sweep still has to fold, wherever they sit.
+   */
+  public async oldestBucket(
+    dataset: AnalyticsDataset,
+    tier: AnalyticsTier,
+  ): Promise<string | undefined> {
+    const coldOldest = await this.cold.oldestBucket(dataset, tier);
+    if (tier === "rolled") return coldOldest;
+
+    const measure = Object.keys(dataset.measures.shape)[0];
+    if (!measure) return coldOldest;
+
+    const [watermark, floor] = await Promise.all([
+      this.coldWatermark(dataset),
+      this.cold.pruneFloor(dataset),
+    ]);
+    let since = floor ?? WaeAnalyticsProvider.EPOCH_DAY;
+    if (watermark) since = this.laterBound(since, this.nextBucket(watermark));
+
+    const hot = await this.queryHot(dataset, {
+      since,
+      groupBy: ["hour"],
+      select: { [measure]: "sum" },
+      orderBy: { key: "hour", direction: "asc" },
+      limit: 1,
+    });
+    const hotOldest = hot.rows[0]?.hour;
+    if (hotOldest === undefined) return coldOldest;
+    if (coldOldest === undefined) return String(hotOldest);
+    return String(hotOldest) < coldOldest ? String(hotOldest) : coldOldest;
   }
 
   /**

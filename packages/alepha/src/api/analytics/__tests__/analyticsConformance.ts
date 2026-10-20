@@ -2,6 +2,16 @@ import { z } from "alepha";
 import { describe, expect, it } from "vitest";
 
 import type { AnalyticsProvider } from "../providers/AnalyticsProvider.ts";
+import type { AnalyticsDataset } from "../schemas/analyticsDatasetSchema.ts";
+
+export interface AnalyticsConformanceOptions {
+  /**
+   * The provider only supports the original feature set (hour buckets, sum,
+   * two tiers): Analytics Engine. The suite then registers and exercises only
+   * the datasets that set allows.
+   */
+  legacyOnly?: boolean;
+}
 
 /**
  * Behaviour every {@link AnalyticsProvider} must exhibit.
@@ -22,9 +32,10 @@ import type { AnalyticsProvider } from "../providers/AnalyticsProvider.ts";
  */
 export const analyticsConformance = (
   name: string,
-  factory: () => Promise<AnalyticsProvider>,
+  factory: (datasets: AnalyticsDataset[]) => Promise<AnalyticsProvider>,
+  options: AnalyticsConformanceOptions = {},
 ) => {
-  const dataset = {
+  const dataset: AnalyticsDataset = {
     name: "conformance_views",
     index: "appId",
     dimensions: z.object({
@@ -34,14 +45,17 @@ export const analyticsConformance = (
     }),
     measures: z.object({ samples: z.number() }),
     slots: {
-      dimensions: ["appId", "path", "country", "bucket"],
+      dimensions: ["appId", "path", "bucket"],
       measures: ["samples"],
     },
   };
 
+  const datasets = options.legacyOnly ? [dataset] : [dataset];
+  const boot = () => factory(datasets);
+
   describe(`AnalyticsProvider conformance: ${name}`, () => {
     it("returns no rows for an empty inArray rather than every row", async () => {
-      const provider = await factory();
+      const provider = await boot();
       await provider.record(dataset, [
         {
           hour: "2026-08-09T10",
@@ -62,7 +76,7 @@ export const analyticsConformance = (
     });
 
     it("filters to the named index values", async () => {
-      const provider = await factory();
+      const provider = await boot();
       await provider.record(dataset, [
         {
           hour: "2026-08-09T10",
@@ -91,7 +105,7 @@ export const analyticsConformance = (
     });
 
     it("orders a leaderboard descending and honours the limit", async () => {
-      const provider = await factory();
+      const provider = await boot();
       await provider.record(dataset, [
         {
           hour: "2026-08-09T10",
@@ -128,7 +142,7 @@ export const analyticsConformance = (
     });
 
     it("groups by day", async () => {
-      const provider = await factory();
+      const provider = await boot();
       await provider.record(dataset, [
         {
           hour: "2026-08-09T10",
@@ -160,7 +174,7 @@ export const analyticsConformance = (
     });
 
     it("bounds the window at `until`, inclusive of every hour of that day", async () => {
-      const provider = await factory();
+      const provider = await boot();
       await provider.record(dataset, [
         {
           hour: "2026-08-09T10",
@@ -203,7 +217,7 @@ export const analyticsConformance = (
     });
 
     it("returns nothing when `until` precedes `since`", async () => {
-      const provider = await factory();
+      const provider = await boot();
       await provider.record(dataset, [
         {
           hour: "2026-08-09T10",
@@ -224,7 +238,7 @@ export const analyticsConformance = (
     });
 
     it("keeps a histogram queryable after a rollup, since percentiles need it", async () => {
-      const provider = await factory();
+      const provider = await boot();
       await provider.record(dataset, [
         {
           hour: "2026-08-01T10",
@@ -255,7 +269,7 @@ export const analyticsConformance = (
     });
 
     it("is idempotent across repeated rollups", async () => {
-      const provider = await factory();
+      const provider = await boot();
       await provider.record(dataset, [
         {
           hour: "2026-08-01T10",
@@ -282,7 +296,7 @@ export const analyticsConformance = (
     });
 
     it("sums across the rollup boundary", async () => {
-      const provider = await factory();
+      const provider = await boot();
       await provider.record(dataset, [
         {
           hour: "2026-08-01T10",
@@ -322,7 +336,7 @@ export const analyticsConformance = (
       // mergeable across a rollup boundary and sample-correctable, so a
       // count modelled this way is exactly the same number before and after
       // folding, on every backend.
-      const provider = await factory();
+      const provider = await boot();
       await provider.record(dataset, [
         {
           hour: "2026-08-01T10",
@@ -353,7 +367,7 @@ export const analyticsConformance = (
     });
 
     it("prunes rolled rows older than the cold boundary", async () => {
-      const provider = await factory();
+      const provider = await boot();
       await provider.record(dataset, [
         {
           hour: "2026-08-01T10",
@@ -387,8 +401,85 @@ export const analyticsConformance = (
       expect(result.rows.map((row) => row.day)).toEqual(["2026-08-09"]);
     });
 
+    it("reports the oldest bucket of each tier, and nothing for an empty one", async () => {
+      const provider = await boot();
+      expect(await provider.oldestBucket(dataset, "raw")).toBeUndefined();
+      expect(await provider.oldestBucket(dataset, "rolled")).toBeUndefined();
+
+      await provider.record(dataset, [
+        {
+          hour: "2026-08-01T10",
+          appId: "a",
+          path: "/x",
+          bucket: 0,
+          samples: 1,
+        },
+        {
+          hour: "2026-08-03T05",
+          appId: "a",
+          path: "/x",
+          bucket: 0,
+          samples: 1,
+        },
+        {
+          hour: "2026-08-09T23",
+          appId: "a",
+          path: "/x",
+          bucket: 0,
+          samples: 1,
+        },
+      ]);
+      expect(await provider.oldestBucket(dataset, "raw")).toBe("2026-08-01T10");
+
+      await provider.rollup(dataset, "2026-08-05");
+      expect(await provider.oldestBucket(dataset, "raw")).toBe("2026-08-09T23");
+      expect(await provider.oldestBucket(dataset, "rolled")).toBe("2026-08-01");
+    });
+
+    it("bounds the window on day edges without dropping the first or last hour", async () => {
+      const provider = await boot();
+      await provider.record(dataset, [
+        {
+          hour: "2026-08-08T23",
+          appId: "a",
+          path: "/x",
+          bucket: 0,
+          samples: 1,
+        },
+        {
+          hour: "2026-08-09T00",
+          appId: "a",
+          path: "/x",
+          bucket: 0,
+          samples: 2,
+        },
+        {
+          hour: "2026-08-09T23",
+          appId: "a",
+          path: "/x",
+          bucket: 0,
+          samples: 4,
+        },
+        {
+          hour: "2026-08-10T00",
+          appId: "a",
+          path: "/x",
+          bucket: 0,
+          samples: 8,
+        },
+      ]);
+
+      const result = await provider.query(dataset, {
+        since: "2026-08-09",
+        until: "2026-08-09",
+        select: { samples: "sum" },
+      });
+
+      expect(Number(result.rows[0]?.samples)).toBe(6);
+    });
+
     it("keeps estimated and sampleInterval consistent with each other", async () => {
-      const provider = await factory();
+      const provider = await boot();
       await provider.record(dataset, [
         {
           hour: "2026-08-09T10",

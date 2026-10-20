@@ -10,6 +10,12 @@ import type {
 export type AnalyticsRow = Record<string, string | number> & { hour: string };
 
 /**
+ * Which storage tier of a dataset a question is about: `raw` holds the finest
+ * buckets as recorded, `rolled` the day buckets they fold into.
+ */
+export type AnalyticsTier = "raw" | "rolled";
+
+/**
  * Where a dataset's rows live.
  *
  * **Each provider owns its own tiering.** Nothing above this seam knows that
@@ -61,4 +67,18 @@ export abstract class AnalyticsProvider {
    * differ.
    */
   abstract prune(dataset: AnalyticsDataset, before: string): Promise<void>;
+
+  /**
+   * The oldest bucket key `tier` still holds for `dataset`, or `undefined`
+   * when the tier is empty.
+   *
+   * The rollup sweep's resume point. It used to be derived from a full
+   * `query()` grouped by hour, which made the database aggregate every row of
+   * both tiers just to find one key; relationally this is an indexed
+   * `MIN(time_bucket)`, since the unique index leads with the bucket.
+   */
+  abstract oldestBucket(
+    dataset: AnalyticsDataset,
+    tier: AnalyticsTier,
+  ): Promise<string | undefined>;
 }

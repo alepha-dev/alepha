@@ -7,7 +7,11 @@ import type {
   AnalyticsQuery,
   AnalyticsResult,
 } from "../schemas/analyticsQuerySchema.ts";
-import { AnalyticsProvider, type AnalyticsRow } from "./AnalyticsProvider.ts";
+import {
+  AnalyticsProvider,
+  type AnalyticsRow,
+  type AnalyticsTier,
+} from "./AnalyticsProvider.ts";
 
 /**
  * An in-memory dataset, and the reference implementation of the seam.
@@ -160,6 +164,23 @@ export class MemoryAnalyticsProvider extends AnalyticsProvider {
         (row) => AnalyticsBuckets.day(row.hour) >= AnalyticsBuckets.day(before),
       ),
     );
+  }
+
+  /**
+   * A scan: one array holds both tiers, told apart by key length (a rolled
+   * row's bucket is a bare `YYYY-MM-DD`).
+   */
+  public async oldestBucket(
+    dataset: AnalyticsDataset,
+    tier: AnalyticsTier,
+  ): Promise<string | undefined> {
+    let oldest: string | undefined;
+    for (const row of this.stored.get(dataset.name) ?? []) {
+      const rolled = row.hour.length === 10;
+      if (rolled !== (tier === "rolled")) continue;
+      if (oldest === undefined || row.hour < oldest) oldest = row.hour;
+    }
+    return oldest;
   }
 
   protected dimensionsOf(

@@ -27,7 +27,11 @@ import type {
   AnalyticsResult,
 } from "../schemas/analyticsQuerySchema.ts";
 import { AnalyticsEntityFactory } from "../services/AnalyticsEntityFactory.ts";
-import { AnalyticsProvider, type AnalyticsRow } from "./AnalyticsProvider.ts";
+import {
+  AnalyticsProvider,
+  type AnalyticsRow,
+  type AnalyticsTier,
+} from "./AnalyticsProvider.ts";
 
 /**
  * A drizzle table object, narrowed to the one thing this provider ever needs
@@ -258,6 +262,9 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
     const timeColumn = AnalyticsEntityFactory.TIME_COLUMN;
 
     const dayExpression = `substr(${timeColumn}, 1, 10)`;
+    // A plain range on the bucket, never `substr(...)`, so the unique index
+    // (which leads with the bucket) serves it: `'2026-08-01T23' < '2026-08-02'`
+    // because a key sorts after every prefix of itself and before the next day.
     // Resolved through `columnName`, same as `readOne` — see its class doc.
     // Both tables are built from the one column map, so a name resolves the
     // same on either side; `rolled` is asked for the target's own columns
@@ -289,7 +296,7 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
         )})
         SELECT ${sql.raw(selectList)}
         FROM ${raw.table}
-        WHERE ${sql.raw(dayExpression)} < ${boundary}
+        WHERE ${sql.raw(timeColumn)} < ${boundary}
         GROUP BY ${sql.raw(groupList)}
         ON CONFLICT (${sql.raw(targetColumns.join(", "))})
         DO ${sql.raw(measureColumns.length > 0 ? `UPDATE SET ${accumulate}` : "NOTHING")}
@@ -303,7 +310,7 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
     // them twice on the next sweep, since the fold adds rather than replaces;
     // D1 has no transaction to close that window.
     await this.database.run(
-      sql`DELETE FROM ${raw.table} WHERE ${sql.raw(dayExpression)} < ${boundary}`,
+      sql`DELETE FROM ${raw.table} WHERE ${sql.raw(timeColumn)} < ${boundary}`,
       z.object({}),
     );
   }
@@ -311,14 +318,30 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
   public async prune(dataset: AnalyticsDataset, before: string): Promise<void> {
     const { raw, rolled } = this.entities(dataset);
     const boundary = AnalyticsBuckets.day(before);
-    const dayExpression = `substr(${AnalyticsEntityFactory.TIME_COLUMN}, 1, 10)`;
+    const timeColumn = AnalyticsEntityFactory.TIME_COLUMN;
 
     for (const repository of [raw, rolled]) {
       await this.database.run(
-        sql`DELETE FROM ${repository.table} WHERE ${sql.raw(dayExpression)} < ${boundary}`,
+        sql`DELETE FROM ${repository.table} WHERE ${sql.raw(timeColumn)} < ${boundary}`,
         z.object({}),
       );
     }
+  }
+
+  /**
+   * `MIN(time_bucket)` of one tier: an index lookup, since the unique index
+   * leads with the bucket.
+   */
+  public async oldestBucket(
+    dataset: AnalyticsDataset,
+    tier: AnalyticsTier,
+  ): Promise<string | undefined> {
+    const repository = this.entities(dataset)[tier];
+    const rows = await this.database.run(
+      sql`SELECT MIN(${sql.raw(AnalyticsEntityFactory.TIME_COLUMN)}) AS oldest FROM ${repository.table}`,
+      z.object({ oldest: z.string().nullable() }),
+    );
+    return rows[0]?.oldest ?? undefined;
   }
 
   /**
@@ -572,17 +595,16 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
   ): Promise<Array<Record<string, string | number>>> {
     const timeColumn = AnalyticsEntityFactory.TIME_COLUMN;
 
-    const conditions = [
-      sql`substr(${sql.raw(timeColumn)}, 1, 10) >= ${query.since}`,
-    ];
-
-    // Inclusive, and compared on the same day prefix as `since` so the two
-    // bounds are symmetric. `substr` rather than a range on the raw bucket:
-    // the bucket carries an hour, so `<= '2026-08-20'` would exclude every
-    // hour of the day it names.
+    // Plain ranges on the bucket, never a function of it, so the unique
+    // index (which leads with the bucket) can serve them. Bucket keys sort
+    // lexicographically and a day is a prefix of each of its hours, so
+    // `>= since` keeps every hour of `since` (`'2026-08-01' <= '2026-08-01T00'`)
+    // and the inclusive `until` becomes "before the next day": `<= until`
+    // would drop every hour of the day it names.
+    const conditions = [sql`${sql.raw(timeColumn)} >= ${query.since}`];
     if (query.until) {
       conditions.push(
-        sql`substr(${sql.raw(timeColumn)}, 1, 10) <= ${query.until}`,
+        sql`${sql.raw(timeColumn)} < ${AnalyticsBuckets.shiftDays(query.until, 1)}`,
       );
     }
 

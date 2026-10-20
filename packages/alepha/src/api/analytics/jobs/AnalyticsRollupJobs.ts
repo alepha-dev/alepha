@@ -23,12 +23,10 @@ import type { AnalyticsDataset } from "../schemas/analyticsDatasetSchema.ts";
  * `$repository` handles onto two known tables and scans them with SQL this
  * job has no equivalent for — datasets here are declared at arbitrary call
  * sites, and the only surface this job is allowed to use is the abstract
- * {@link AnalyticsProvider} seam (`register`/`record`/`query`/`rollup`/`prune`),
- * which deliberately hides which tier a row lives in (see that class's own
- * doc). {@link rollupBoundary} works around that: a bucket's own string
- * *length* — `"YYYY-MM-DD"` (10 chars, already rolled) vs.
- * `"YYYY-MM-DDTHH"` (13 chars, still raw) — is the one signal `query()`
- * exposes without either provider having to break its tiering abstraction.
+ * {@link AnalyticsProvider} seam, which deliberately hides where a row
+ * lives (see that class's own doc). Its resume point comes from
+ * `oldestBucket(dataset, "raw")`, which every provider answers cheaply
+ * (relationally, an indexed `MIN`).
  *
  * The per-sweep cap ({@link MAX_DAYS_PER_SWEEP}) is not tuning. Neither
  * shipped provider's `rollup()` self-limits by how far back `before` reaches
@@ -49,35 +47,6 @@ export class AnalyticsRollupJobs {
    * performance knob.
    */
   public static readonly MAX_DAYS_PER_SWEEP = 14;
-
-  /**
-   * A `since` boundary older than any real bucket, for the resume-point
-   * lookup in {@link rollupBoundary} — the same sentinel
-   * `WaeAnalyticsProvider.EPOCH_DAY` uses for its own "from the beginning"
-   * query, redeclared here because each class treats it as a private
-   * implementation detail rather than a shared export.
-   */
-  protected static readonly EPOCH_DAY = "1970-01-01";
-
-  /**
-   * Widest number of distinct buckets {@link rollupBoundary} scans
-   * client-side to find the oldest one still at hour precision.
-   *
-   * Unlike {@link MAX_DAYS_PER_SWEEP}, this is not a fold-work bound: each
-   * row here is one `(bucket, count)` pair out of a `GROUP BY`, a few dozen
-   * bytes, never a raw event row, so scanning a thousand of them is a
-   * rounding error in memory terms. It exists for a narrower reason — a
-   * dataset that declares `retention.hot` with **no** `retention.cold` rolls
-   * forever, and nothing ever deletes the already-rolled prefix that piles up
-   * ahead of the still-raw tail, so without a cap this scan would walk
-   * further back through that prefix on every single sweep, for the rest of
-   * that dataset's life. A dataset that keeps rolled data for 1,000+ days
-   * before ever pruning it (or never prunes at all) is already well past
-   * what this bounded lookup can resolve — a sweep that cannot find its
-   * resume point within the cap folds nothing and tries again next hour,
-   * same as if there were genuinely nothing left to fold.
-   */
-  protected static readonly MAX_BUCKET_SCAN = 1000;
 
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
@@ -168,51 +137,20 @@ export class AnalyticsRollupJobs {
    * Where this sweep should ask `rollup()` to fold up to, or `undefined` if
    * there is nothing to fold.
    *
-   * Finding "the oldest day" is not enough on its own — a day that is
-   * already rolled never goes away just because it was folded (nothing
-   * deletes it short of {@link sweepDataset}'s own prune pass, which is
-   * independently optional), so if this simply resumed from the oldest
-   * *existing* day, a dataset with `hot` but no `cold` would compute the
-   * exact same capped boundary on every sweep forever, after its first
-   * {@link MAX_DAYS_PER_SWEEP} days were folded — real data would sit
-   * unrolled indefinitely despite every sweep reporting success. This method
-   * instead resumes from the oldest bucket still at **hour** precision.
-   *
-   * `query()` grouped by `"hour"`, ascending, bounded to
-   * {@link MAX_BUCKET_SCAN} rows, returns each dataset's true bucket values —
-   * `"YYYY-MM-DD"` for an already-rolled day, `"YYYY-MM-DDTHH"` for a still-raw
-   * hour. Day buckets always sort before any hour bucket of the same or a
-   * later date (a 10-character prefix sorts before any 13-character string
-   * that extends it), so a run of already-rolled days at the front can never
-   * hide a still-raw bucket behind it in this ordering — the first
-   * 13-character value found (`length > 10`) is genuinely the oldest one
-   * left to fold. If every scanned bucket is already 10 characters, either
-   * the dataset is fully caught up or the still-raw backlog starts beyond
-   * the scan cap; either way there is nothing this sweep can safely act on.
+   * Resumes from the oldest bucket still in the raw tier, never from the
+   * oldest bucket overall: an already-rolled day never goes away short of the
+   * prune pass, which is optional, so resuming from it would compute the same
+   * capped boundary on every sweep once the first {@link MAX_DAYS_PER_SWEEP}
+   * days were folded, and real data would sit unrolled forever.
    */
   protected async rollupBoundary(
     dataset: AnalyticsDataset,
     hotCutoff: string,
   ): Promise<string | undefined> {
-    // Any declared measure works — `select` cannot be empty, and only each
-    // row's `hour` is read, the same trick `coldWatermark` uses. A dataset
-    // declaring no measures at all (legal, if unusual) has nothing to
-    // aggregate, so it also has nothing to roll.
-    const measure = Object.keys(dataset.measures.shape)[0];
-    if (!measure) return undefined;
-
-    const scanned = await this.provider.query(dataset, {
-      since: AnalyticsRollupJobs.EPOCH_DAY,
-      groupBy: ["hour"],
-      select: { [measure]: "sum" },
-      orderBy: { key: "hour", direction: "asc" },
-      limit: AnalyticsRollupJobs.MAX_BUCKET_SCAN,
-    });
-
-    const oldestRaw = scanned.rows.find((row) => String(row.hour).length > 10);
+    const oldestRaw = await this.provider.oldestBucket(dataset, "raw");
     if (!oldestRaw) return undefined;
 
-    const oldestDay = AnalyticsBuckets.day(String(oldestRaw.hour));
+    const oldestDay = AnalyticsBuckets.day(oldestRaw);
     if (oldestDay >= hotCutoff) return undefined;
 
     const capped = AnalyticsBuckets.shiftDays(
