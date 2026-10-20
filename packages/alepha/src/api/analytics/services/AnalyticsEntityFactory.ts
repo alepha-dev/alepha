@@ -40,7 +40,7 @@ export class AnalyticsEntityFactory {
    * Names a dataset may not give a dimension, because `groupBy` treats them as
    * time pseudo-dimensions and would shadow the real column forever.
    */
-  public static readonly RESERVED_DIMENSIONS = ["day", "hour"];
+  public static readonly RESERVED_DIMENSIONS = ["day", "hour", "minute"];
 
   public static build(dataset: AnalyticsDataset): {
     raw: EntityPrimitive;

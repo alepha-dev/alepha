@@ -264,6 +264,17 @@ describe("WaeAnalyticsProvider", () => {
     }
   });
 
+  it("refuses a sub-hour resolution at registration", async () => {
+    const { alepha, provider } = await build();
+    try {
+      expect(() =>
+        provider.register({ ...dataset, name: "wae_ticks", resolution: "5m" }),
+      ).toThrow(/supports '1h' only/);
+    } finally {
+      await alepha.stop();
+    }
+  });
+
   it("refuses a hot window longer than Analytics Engine keeps data", async () => {
     const { alepha, provider } = await build();
     try {

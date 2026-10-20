@@ -78,7 +78,7 @@ export class MemoryAnalyticsProvider extends AnalyticsProvider {
       this.assertKnownDimension(dataset, name);
     }
     for (const name of query.groupBy ?? []) {
-      if (name !== "day" && name !== "hour") {
+      if (name !== "day" && name !== "hour" && name !== "minute") {
         this.assertKnownDimension(dataset, name);
       }
     }
@@ -224,7 +224,9 @@ export class MemoryAnalyticsProvider extends AnalyticsProvider {
 
   protected dimensionOf(row: AnalyticsRow, name: string): string | number {
     if (name === "day") return AnalyticsBuckets.day(row.hour);
-    if (name === "hour") return row.hour;
+    // The stored key itself; a rolled row answers with its day key.
+    if (name === "minute") return row.hour;
+    if (name === "hour") return row.hour.slice(0, 13);
     return row[name] as string | number;
   }
 

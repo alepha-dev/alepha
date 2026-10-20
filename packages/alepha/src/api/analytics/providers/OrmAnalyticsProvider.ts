@@ -838,7 +838,10 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
 
     const projections = groupBy.map((name) => {
       if (name === "day") return `substr(${timeColumn}, 1, 10) AS day`;
-      if (name === "hour") return `${timeColumn} AS hour`;
+      // A prefix, not the stored key: a sub-hour dataset stores minute keys,
+      // which must not come back under `hour`.
+      if (name === "hour") return `substr(${timeColumn}, 1, 13) AS hour`;
+      if (name === "minute") return `${timeColumn} AS minute`;
       this.assertKnownDimension(dataset, name);
       const column = this.columnName(repository, name);
       // The decoded row is looked up by the JS field name everywhere
@@ -859,7 +862,7 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
     const shape: Record<string, ZType> = {};
     for (const name of groupBy) {
       shape[name] =
-        name === "day" || name === "hour"
+        name === "day" || name === "hour" || name === "minute"
           ? z.string()
           : dataset.dimensions.shape[name];
     }
@@ -901,8 +904,10 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
       name === "day"
         ? `substr(${timeColumn}, 1, 10)`
         : name === "hour"
-          ? timeColumn
-          : this.columnName(repository, name),
+          ? `substr(${timeColumn}, 1, 13)`
+          : name === "minute"
+            ? timeColumn
+            : this.columnName(repository, name),
     );
     const grouping = groupExpressions.join(", ");
 

@@ -66,7 +66,19 @@ export const analyticsConformance = (
     slots: { dimensions: ["deviceId"], measures: ["cashLevel", "validations"] },
   };
 
-  const datasets = options.legacyOnly ? [dataset] : [dataset, gauges];
+  // A five-minute dataset, with a gauge so the fold into days is checked for
+  // more than a sum.
+  const minutes: AnalyticsDataset = {
+    name: "conformance_minutes",
+    index: "deviceId",
+    resolution: "5m",
+    dimensions: z.object({ deviceId: z.string() }),
+    measures: z.object({ validations: z.number(), level: z.number() }),
+    folds: { level: ["max"] },
+    slots: { dimensions: ["deviceId"], measures: ["validations", "level"] },
+  };
+
+  const datasets = options.legacyOnly ? [dataset] : [dataset, gauges, minutes];
   const boot = () => factory(datasets);
 
   describe(`AnalyticsProvider conformance: ${name}`, () => {
@@ -726,6 +738,94 @@ export const analyticsConformance = (
             select: { validations: "max" },
           }),
         ).rejects.toThrow("declares 'sum' only");
+      });
+    });
+
+    describe.skipIf(options.legacyOnly)("sub-hour resolution", () => {
+      const seed = (provider: AnalyticsProvider) =>
+        provider.record(
+          minutes,
+          AnalyticsRowFolder.fold(
+            minutes,
+            [
+              ["2026-08-01T10:00", 1, 4],
+              ["2026-08-01T10:05", 2, 9],
+              ["2026-08-01T10:55", 4, 1],
+              ["2026-08-01T11:00", 8, 2],
+              ["2026-08-02T00:15", 16, 3],
+            ].map(([hour, validations, level]) => ({
+              hour: hour as string,
+              deviceId: "d1",
+              validations,
+              level,
+            })),
+          ),
+        );
+      const read = (provider: AnalyticsProvider, by: string) =>
+        provider.query(minutes, {
+          since: "2026-08-01",
+          groupBy: [by],
+          select: { validations: "sum", level: "max" },
+          orderBy: { key: by, direction: "asc" },
+        });
+
+      it("reads a sub-hour dataset by minute, hour and day", async () => {
+        const provider = await boot();
+        await seed(provider);
+
+        expect((await read(provider, "minute")).rows).toEqual([
+          { minute: "2026-08-01T10:00", validations: 1, level: 4 },
+          { minute: "2026-08-01T10:05", validations: 2, level: 9 },
+          { minute: "2026-08-01T10:55", validations: 4, level: 1 },
+          { minute: "2026-08-01T11:00", validations: 8, level: 2 },
+          { minute: "2026-08-02T00:15", validations: 16, level: 3 },
+        ]);
+        expect((await read(provider, "hour")).rows).toEqual([
+          { hour: "2026-08-01T10", validations: 7, level: 9 },
+          { hour: "2026-08-01T11", validations: 8, level: 2 },
+          { hour: "2026-08-02T00", validations: 16, level: 3 },
+        ]);
+        expect((await read(provider, "day")).rows).toEqual([
+          { day: "2026-08-01", validations: 15, level: 9 },
+          { day: "2026-08-02", validations: 16, level: 3 },
+        ]);
+      });
+
+      it("bounds a sub-hour dataset on whole days", async () => {
+        const provider = await boot();
+        await seed(provider);
+
+        const first = await provider.query(minutes, {
+          since: "2026-08-01",
+          until: "2026-08-01",
+          select: { validations: "sum" },
+        });
+        const second = await provider.query(minutes, {
+          since: "2026-08-02",
+          select: { validations: "sum" },
+        });
+
+        expect(first.rows).toEqual([{ validations: 15 }]);
+        expect(second.rows).toEqual([{ validations: 16 }]);
+      });
+
+      it("folds sub-hour buckets straight into days, totals unchanged", async () => {
+        const provider = await boot();
+        await seed(provider);
+        await provider.rollup(minutes, "2026-08-02");
+
+        expect(await provider.oldestBucket(minutes, "raw")).toBe(
+          "2026-08-02T00:15",
+        );
+        // A rolled row keeps its coarser key under `minute`.
+        expect((await read(provider, "minute")).rows).toEqual([
+          { minute: "2026-08-01", validations: 15, level: 9 },
+          { minute: "2026-08-02T00:15", validations: 16, level: 3 },
+        ]);
+        expect((await read(provider, "day")).rows).toEqual([
+          { day: "2026-08-01", validations: 15, level: 9 },
+          { day: "2026-08-02", validations: 16, level: 3 },
+        ]);
       });
     });
   });

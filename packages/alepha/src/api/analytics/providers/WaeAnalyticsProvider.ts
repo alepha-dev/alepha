@@ -339,6 +339,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
    */
   public register(dataset: AnalyticsDataset): void {
     this.assertExactFoldsRefused(dataset);
+    this.assertHourResolution(dataset);
     this.assertRetention(dataset);
     this.cold.register(dataset);
   }
@@ -354,6 +355,20 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
     if (!AnalyticsFolds.needsExact(dataset)) return;
     throw new AlephaError(
       `Dataset '${dataset.name}' declares a min, max or last fold, which Analytics Engine cannot serve: it samples, and a sampled extreme or last value cannot be reconstructed. Declare only "sum" folds, or bind an exact provider (OrmAnalyticsProvider).`,
+    );
+  }
+
+  /**
+   * Refuses a sub-hour `resolution`. Storage is not the obstacle (a minute
+   * key fits the bucket blob); the forward to `cold` groups by hour and its
+   * watermark arithmetic is hour-based, so a minute bucket would be
+   * forwarded and fenced wrongly. Lifting this is separate work.
+   */
+  public assertHourResolution(dataset: AnalyticsDataset): void {
+    const resolution = AnalyticsBuckets.resolutionOf(dataset);
+    if (resolution === "1h") return;
+    throw new AlephaError(
+      `Dataset '${dataset.name}' declares resolution '${resolution}', but Analytics Engine supports '1h' only: its forward to the relational tier and its watermark are hour-based. Use an exact backend (OrmAnalyticsProvider) for sub-hour buckets.`,
     );
   }
 
@@ -561,7 +576,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
       const expression =
         name === "day"
           ? `substring(blob${AnalyticsSlotMap.HOUR_SLOT}, 1, 10)`
-          : name === "hour"
+          : name === "hour" || name === "minute"
             ? `blob${AnalyticsSlotMap.HOUR_SLOT}`
             : `blob${map.blobSlot(name)}`;
       projections.push(`${expression} AS ${name}`);
@@ -632,7 +647,8 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
         // `JSON.stringify`-keyed merge with `cold` — `cold` decodes the
         // identical dimension through its own typed column and
         // never stringifies it.
-        const isDayOrHour = name === "day" || name === "hour";
+        const isDayOrHour =
+          name === "day" || name === "hour" || name === "minute";
         const isNumeric =
           !isDayOrHour && z.schema.isNumber(dataset.dimensions.shape[name]);
         record[name] = isNumeric

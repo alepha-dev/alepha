@@ -11,7 +11,10 @@ import {
 } from "../planner/AnalyticsRowFolder.ts";
 import { AnalyticsSlotMap } from "../planner/AnalyticsSlotMap.ts";
 import { AnalyticsProvider } from "../providers/AnalyticsProvider.ts";
-import type { AnalyticsDataset } from "../schemas/analyticsDatasetSchema.ts";
+import type {
+  AnalyticsDataset,
+  AnalyticsResolution,
+} from "../schemas/analyticsDatasetSchema.ts";
 import type {
   AnalyticsQuery,
   AnalyticsResult,
@@ -163,6 +166,7 @@ export class AnalyticsPrimitive extends Primitive<AnalyticsPrimitiveOptions> {
     this.assertLegalName();
     AnalyticsEntityFactory.assertNoCollisions(this.dataset);
     this.assertExactBackend();
+    AnalyticsBuckets.minutesOf(AnalyticsBuckets.resolutionOf(this.dataset));
     this.assertValidRetention();
     AnalyticsSlotMap.forDataset(this.dataset);
     this.provider.register(this.dataset);
@@ -287,12 +291,14 @@ export class AnalyticsPrimitive extends Primitive<AnalyticsPrimitiveOptions> {
   public async recordMany(rows: AnalyticsRecordRow[]): Promise<void> {
     const now = this.dateTime.nowMillis();
     const dataset = this.dataset;
+    const resolution = AnalyticsBuckets.resolutionOf(dataset);
     const keep = dataset.retention?.hot
       ? AnalyticsBuckets.parseWindow(dataset.retention.hot)
       : undefined;
 
     const readings: AnalyticsReading[] = [];
     for (const row of rows) {
+      if (row.hour !== undefined) this.assertBucket(row.hour, resolution);
       let at = row.at ?? now;
       if (at > now + AnalyticsPrimitive.MAX_CLOCK_SKEW) {
         this.log.debug(
@@ -308,7 +314,7 @@ export class AnalyticsPrimitive extends Primitive<AnalyticsPrimitiveOptions> {
       readings.push({
         ...row,
         at,
-        hour: row.hour ?? AnalyticsBuckets.hour(at),
+        hour: row.hour ?? AnalyticsBuckets.bucket(at, resolution),
       });
     }
     if (readings.length === 0) return;
@@ -319,6 +325,25 @@ export class AnalyticsPrimitive extends Primitive<AnalyticsPrimitiveOptions> {
       dataset,
       AnalyticsRowFolder.fold(dataset, readings),
     );
+  }
+
+  /**
+   * Refuses an explicit bucket that is not a well-formed key at the
+   * dataset's resolution. The explicit override is `hour` and exists on
+   * `"1h"` datasets only, where batching through Analytics Engine needs it;
+   * a sub-hour dataset places a reading by `at`.
+   */
+  protected assertBucket(key: string, resolution: AnalyticsResolution): void {
+    if (resolution !== "1h") {
+      throw new AlephaError(
+        `Dataset '${this.dataset.name}' records at '${resolution}' resolution; place a reading with 'at' rather than an explicit 'hour'.`,
+      );
+    }
+    if (!AnalyticsBuckets.isBucket(key, resolution)) {
+      throw new AlephaError(
+        `Dataset '${this.dataset.name}' received the bucket '${key}', which is not an hour key ('YYYY-MM-DDTHH').`,
+      );
+    }
   }
 
   public query(query: AnalyticsQuery): Promise<AnalyticsResult> {

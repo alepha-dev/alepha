@@ -33,4 +33,29 @@ describe("AnalyticsBuckets", () => {
   it("shifts a day bucket backwards across a month boundary", () => {
     expect(AnalyticsBuckets.shiftDays("2026-08-02", -3)).toBe("2026-07-30");
   });
+
+  it("floors a sub-hour bucket to its resolution", ({ expect }) => {
+    const at = Date.parse("2026-10-18T08:47:59.999Z");
+    expect(AnalyticsBuckets.bucket(at, "1m")).toBe("2026-10-18T08:47");
+    expect(AnalyticsBuckets.bucket(at, "5m")).toBe("2026-10-18T08:45");
+    expect(AnalyticsBuckets.bucket(at, "15m")).toBe("2026-10-18T08:45");
+    expect(AnalyticsBuckets.bucket(at, "1h")).toBe("2026-10-18T08");
+  });
+
+  it("keeps every coarser key a prefix of the finer one", ({ expect }) => {
+    const key = AnalyticsBuckets.bucket(Date.parse("2026-10-18T08:05Z"), "5m");
+    expect(
+      key.startsWith(AnalyticsBuckets.hour(Date.parse("2026-10-18T08:05Z"))),
+    ).toBe(true);
+    expect(AnalyticsBuckets.day(key)).toBe("2026-10-18");
+  });
+
+  it("validates a bucket key against a resolution", ({ expect }) => {
+    expect(AnalyticsBuckets.isBucket("2026-10-18T08", "1h")).toBe(true);
+    expect(AnalyticsBuckets.isBucket("2026-10-18T08:05", "1h")).toBe(false);
+    expect(AnalyticsBuckets.isBucket("2026-10-18T08:05", "5m")).toBe(true);
+    expect(AnalyticsBuckets.isBucket("2026-10-18T08:07", "5m")).toBe(false);
+    expect(AnalyticsBuckets.isBucket("2026-10-18T08:30", "15m")).toBe(true);
+    expect(AnalyticsBuckets.isBucket("2026-10-18", "1m")).toBe(false);
+  });
 });

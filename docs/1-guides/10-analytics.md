@@ -80,10 +80,10 @@ pageViews = $analytics({
 ### Reserved names
 
 `time_bucket` is the reserved column name the relational backend uses to store the bucket
-itself, so it cannot be declared as a dimension or a measure. `day` and `hour` are reserved as
-_dimension_ names for the same reason - they are the pseudo-dimensions `query()` exposes for
-grouping by time (see [Querying](#querying) below), and a real dimension with either name would
-be permanently shadowed by them.
+itself, so it cannot be declared as a dimension or a measure. `day`, `hour` and `minute` are
+reserved as _dimension_ names for the same reason - they are the pseudo-dimensions `query()` exposes for
+grouping by time (see [Querying](#querying) below), and a real dimension with any of those names
+would be permanently shadowed by them.
 
 ## Recording
 
@@ -141,9 +141,35 @@ rather than a window that ends mid-day.
 
 `where` supports equality and `{ inArray: [...] }` - the same operator name the ORM's
 [repository filters](/docs/guides-persistence-repository) use, no ranges. `groupBy` takes any
-declared dimension, plus the pseudo-dimensions `"hour"` and `"day"` - grouping by `"day"` folds
-hour buckets into a daily timeline with no date arithmetic on the caller's side, whichever
-backend answers the query.
+declared dimension, plus the pseudo-dimensions `"minute"`, `"hour"` and `"day"` - grouping by
+`"day"` folds hour buckets into a daily timeline with no date arithmetic on the caller's side,
+whichever backend answers the query.
+
+### Sub-hour resolution
+
+A monitoring view asks for "the last 15 minutes" or "the last 6 hours by 5 minutes", which an
+hour bucket cannot answer. A dataset declares its finest bucket with `resolution`: `"1m"`, `"5m"`,
+`"15m"` or `"1h"` (the default, so existing datasets keep their keys).
+
+```typescript
+ticks = $analytics({
+  index: "deviceId",
+  resolution: "5m",
+  dimensions: z.object({ deviceId: z.text() }),
+  measures: z.object({ validations: z.integer() }),
+  slots: { dimensions: ["deviceId"], measures: ["validations"] },
+});
+```
+
+Sub-hour keys are `YYYY-MM-DDTHH:MM`, the minute floored to the resolution, so a coarser key is
+still a prefix of a finer one. `groupBy: ["minute"]` returns the stored key, `"hour"` its first 13
+characters and `"day"` its first 10, whatever the resolution. A row that has already folded into
+the day tier keeps its day key under `minute` and `hour`: the resolution of old data is coarser,
+the totals are not. Sub-hour buckets fold straight into days.
+
+A sub-hour dataset places each reading with `at`; the explicit `hour` override exists on `"1h"`
+datasets only, and is validated there. Analytics Engine refuses any `resolution` other than
+`"1h"` at boot: its forward to the relational tier and its watermark are hour-based.
 
 ## Folds: sum, min, max and last
 

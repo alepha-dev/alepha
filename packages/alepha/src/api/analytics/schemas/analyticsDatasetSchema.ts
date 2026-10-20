@@ -60,6 +60,16 @@ export interface AnalyticsDataset {
   slots: AnalyticsSlotPins;
 
   /**
+   * The finest bucket: `"1m"`, `"5m"`, `"15m"` or `"1h"` (the default).
+   *
+   * Sub-hour buckets are keyed `YYYY-MM-DDTHH:MM`, the minute floored to the
+   * resolution, and grouped with the `minute` pseudo-dimension. They fold
+   * into day buckets like hour buckets do. Analytics Engine refuses anything
+   * but `"1h"` at boot.
+   */
+  resolution?: AnalyticsResolution;
+
+  /**
    * How each measure folds, e.g.
    * `{ temperature: ["min", "max", "last"], validations: ["sum"] }`.
    *
@@ -76,6 +86,11 @@ export interface AnalyticsDataset {
 
   retention?: AnalyticsRetention;
 }
+
+/**
+ * The finest bucket a dataset records into.
+ */
+export type AnalyticsResolution = "1m" | "5m" | "15m" | "1h";
 
 /**
  * The pinned order of a dataset's names, one list per slot space.

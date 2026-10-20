@@ -448,3 +448,74 @@ describe("$analytics gauge readings", () => {
     expect(() => alepha.inject(Devices)).toThrow("samples");
   });
 });
+
+describe("$analytics sub-hour resolution", () => {
+  class Monitoring {
+    public readonly ticks = $analytics({
+      index: "deviceId",
+      resolution: "5m",
+      dimensions: z.object({ deviceId: z.string() }),
+      measures: z.object({ validations: z.number() }),
+      slots: { dimensions: ["deviceId"], measures: ["validations"] },
+    });
+  }
+
+  it("stamps a reading with the five-minute bucket of its `at`", async () => {
+    const alepha = Alepha.create();
+    const app = alepha.inject(Monitoring);
+    const dateTime = alepha.inject(DateTimeProvider);
+    await alepha.start();
+    dateTime.pause();
+    const at = dateTime.nowMillis() - 60 * 60 * 1000;
+
+    await app.ticks.record({ deviceId: "d1", validations: 1, at });
+
+    const result = await app.ticks.query({
+      since: "2000-01-01",
+      groupBy: ["minute"],
+      select: { validations: "sum" },
+    });
+    expect(result.rows).toEqual([
+      { minute: AnalyticsBuckets.bucket(at, "5m"), validations: 1 },
+    ]);
+  });
+
+  it("refuses an explicit hour on a sub-hour dataset", async () => {
+    const alepha = Alepha.create();
+    const app = alepha.inject(Monitoring);
+    await alepha.start();
+
+    await expect(
+      app.ticks.record({
+        deviceId: "d1",
+        validations: 1,
+        hour: "2026-08-09T05",
+      }),
+    ).rejects.toThrow("place a reading with 'at'");
+  });
+
+  it("refuses a malformed hour on an hour dataset", async () => {
+    const alepha = Alepha.create();
+    const app = alepha.inject(PageViews);
+    await alepha.start();
+
+    await expect(
+      app.views.record({ app: "a", path: "/x", count: 1, hour: "2026-08-09" }),
+    ).rejects.toThrow("not an hour key");
+  });
+
+  it("reserves `minute` as a time pseudo-dimension", () => {
+    class Shadowed {
+      public readonly views = $analytics({
+        index: "minute",
+        dimensions: z.object({ minute: z.string() }),
+        measures: z.object({ count: z.number() }),
+        slots: { dimensions: ["minute"], measures: ["count"] },
+      });
+    }
+
+    expect(() => Alepha.create().inject(Shadowed)).toThrow(
+      "reserved as a time pseudo-dimension",
+    );
+  });
+});

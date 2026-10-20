@@ -176,7 +176,12 @@ export class AdminAnalyticsService {
       }
     }
     for (const key of query.groupBy ?? []) {
-      if (!dimensions.has(key) && key !== "hour" && key !== "day") {
+      if (
+        !dimensions.has(key) &&
+        key !== "minute" &&
+        key !== "hour" &&
+        key !== "day"
+      ) {
         throw new BadRequestError(
           pinned.includes(key)
             ? reason(key)
