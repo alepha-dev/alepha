@@ -27,7 +27,11 @@ import {
   type AnalyticsSelection,
 } from "../planner/AnalyticsFolds.ts";
 import { AnalyticsOrdering } from "../planner/AnalyticsOrdering.ts";
-import type { AnalyticsDataset } from "../schemas/analyticsDatasetSchema.ts";
+import { AnalyticsTiers } from "../planner/AnalyticsTiers.ts";
+import type {
+  AnalyticsDataset,
+  AnalyticsTierResolution,
+} from "../schemas/analyticsDatasetSchema.ts";
 import type {
   AnalyticsQuery,
   AnalyticsResult,
@@ -57,7 +61,9 @@ interface StoredColumn extends AnalyticsColumn {
 }
 
 /**
- * Two relational tables per dataset: raw hour buckets and rolled day buckets.
+ * One relational table per retention tier of a dataset: the finest buckets as
+ * recorded (`_raw`), any intermediate tier (`_<resolution>`), and the
+ * coarsest (`_rolled`). See `AnalyticsTiers`.
  *
  * The default on every Node and Postgres deployment, and the cold tier of the
  * Analytics Engine provider. Numbers here are **exact** - nothing samples, so
@@ -101,12 +107,9 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
   protected readonly database = $inject(DatabaseProvider);
 
   /**
-   * One `{ raw, rolled }` repository pair per registered dataset name.
+   * One repository per tier, finest first, per registered dataset name.
    */
-  protected readonly registered = new Map<
-    string,
-    { raw: Repository<ZObject>; rolled: Repository<ZObject> }
-  >();
+  protected readonly registered = new Map<string, Repository<ZObject>[]>();
 
   /**
    * The shared, package-owned prune-floor table (see
@@ -120,7 +123,7 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
   protected floors?: Repository<ZObject>;
 
   /**
-   * Derives `dataset`'s raw and rolled tables and registers both with
+   * Derives `dataset`'s tier tables and registers every one with
    * `DatabaseProvider`, so `migrate()` (run from the database provider's own
    * `start` hook) picks them up. **Must be called before `alepha.start()`.**
    *
@@ -134,15 +137,15 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
   public register(dataset: AnalyticsDataset): void {
     if (this.registered.has(dataset.name)) return;
 
-    // Before the raw/rolled pair rather than after, so a dataset is never
+    // Before the tier tables rather than after, so a dataset is never
     // half-declared if a later step throws.
     this.registerPruneFloors();
 
     const built = AnalyticsEntityFactory.build(dataset);
-    const raw = this.buildRepository(built.raw);
-    const rolled = this.buildRepository(built.rolled);
-
-    this.registered.set(dataset.name, { raw, rolled });
+    this.registered.set(
+      dataset.name,
+      built.tables.map((table) => this.buildRepository(table)),
+    );
   }
 
   /**
@@ -185,7 +188,7 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
   ): Promise<void> {
     if (rows.length === 0) return;
 
-    const { raw } = this.entities(dataset);
+    const [raw] = this.entities(dataset);
     const dimensions = Object.keys(dataset.dimensions.shape).sort();
     const columns = AnalyticsFolds.columns(dataset);
 
@@ -217,12 +220,12 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
     dataset: AnalyticsDataset,
     query: AnalyticsQuery,
   ): Promise<AnalyticsResult> {
-    const { raw, rolled } = this.entities(dataset);
+    const tiers = this.entities(dataset);
     const groupBy = query.groupBy ?? [];
     const selections = AnalyticsFolds.selections(dataset, query.select);
     const merged = new Map<string, Record<string, string | number | null>>();
 
-    for (const repository of [raw, rolled]) {
+    for (const repository of tiers) {
       for (const row of await this.readOne(
         dataset,
         repository,
@@ -251,53 +254,58 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
   }
 
   /**
-   * Folds every raw hour row before `before` into the rolled table, then
-   * deletes them.
+   * Folds every row of tier `fromTier` before `before` into the next tier,
+   * keyed at that tier's resolution, then deletes them.
    *
    * **One `INSERT … SELECT … ON CONFLICT` statement, whatever the backlog.**
    * The fold used to read every folded row back into JavaScript and write it
-   * again through `rolled.upsertMany`: a round trip per row out and in, and on
-   * D1 one statement per seven rows of a ten-dimension dataset once
+   * again through `upsertMany`: a round trip per row out and in, and on D1
+   * one statement per seven rows of a ten-dimension dataset once
    * `upsertMany` learnt to respect the 100-parameter ceiling. D1 also caps
    * the statements a Worker invocation may run, and Lore's hourly sweep folds
    * four datasets in one (#Q2404). Folding in the database binds one
    * parameter, the boundary, and moves no row over the wire.
    *
    * `AS target` names the existing row for the SET clause, the one spelling
-   * SQLite, D1 and Postgres all accept. The SELECT carries a WHERE, which is
-   * what SQLite needs to read `ON CONFLICT` as the upsert rather than as a
-   * join constraint. `GROUP BY` covers the whole conflict target, so no row
-   * of the SELECT conflicts with another, which Postgres would refuse.
+   * SQLite, D1 and Postgres all accept. The outer SELECT carries a WHERE,
+   * which is what SQLite needs to read `ON CONFLICT` as the upsert rather
+   * than as a join constraint. `GROUP BY` covers the whole conflict target,
+   * so no row of the SELECT conflicts with another, which Postgres would
+   * refuse.
    */
   public async rollup(
     dataset: AnalyticsDataset,
+    fromTier: AnalyticsTier,
     before: string,
   ): Promise<void> {
-    const { raw, rolled } = this.entities(dataset);
+    const tiers = this.entities(dataset);
+    const source = tiers[fromTier];
+    const target = tiers[fromTier + 1];
+    if (!source || !target) return;
+
+    const resolution = AnalyticsTiers.of(dataset)[fromTier + 1].resolution;
     const dimensions = Object.keys(dataset.dimensions.shape).sort();
-    const boundary = AnalyticsBuckets.day(before);
+    const boundary = AnalyticsBuckets.truncate(before, resolution);
     const timeColumn = AnalyticsEntityFactory.TIME_COLUMN;
 
-    // A plain range on the bucket, never `substr(...)`, so the unique index
-    // (which leads with the bucket) serves it: `'2026-08-01T23' < '2026-08-02'`
-    // because a key sorts after every prefix of itself and before the next day.
-    const dayExpression = `substr(${timeColumn}, 1, 10)`;
+    // The target key, computed from the source key; see `bucketExpression`.
+    const bucketExpression = this.bucketExpression(timeColumn, resolution);
     const dimensionColumns = dimensions.map((name) =>
-      this.columnName(raw, name),
+      this.columnName(source, name),
     );
     // Resolved through `columnName`, same as `readOne` — see its class doc.
-    // Both tables are built from the one column map, so a name resolves the
+    // Every tier is built from the one column map, so a name resolves the
     // same on either side.
     const targetColumns = [timeColumn, ...dimensionColumns];
-    const valueColumns = this.storedColumns(dataset, raw);
-    const grouping = ["__day", ...dimensionColumns];
+    const valueColumns = this.storedColumns(dataset, source);
+    const grouping = ["__bucket", ...dimensionColumns];
     const selectList = [
-      "__day",
+      "__bucket",
       ...dimensionColumns,
       ...valueColumns.map((column) => this.foldAggregate(column)),
     ].join(", ");
     const windows = this.lastWindows(valueColumns, [
-      dayExpression,
+      bucketExpression,
       ...dimensionColumns,
     ]);
     const merge = this.mergeAssignments(valueColumns);
@@ -307,13 +315,16 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
       if (column.lastAt) insertColumns.push(column.lastAt.sql);
     }
 
+    // A plain range on the bucket, never `substr(...)`, so the unique index
+    // (which leads with the bucket) serves it: `'2026-08-01T23' < '2026-08-02'`
+    // because a key sorts after every prefix of itself and before the next day.
     await this.database.run(
       sql`
-        INSERT INTO ${rolled.table} AS target (${sql.raw(insertColumns.join(", "))})
+        INSERT INTO ${target.table} AS target (${sql.raw(insertColumns.join(", "))})
         SELECT ${sql.raw(selectList)}
         FROM (
-          SELECT *, ${sql.raw([`${dayExpression} AS __day`, ...windows].join(", "))}
-          FROM ${raw.table}
+          SELECT *, ${sql.raw([`${bucketExpression} AS __bucket`, ...windows].join(", "))}
+          FROM ${source.table}
           WHERE ${sql.raw(timeColumn)} < ${boundary}
         ) AS src
         WHERE true
@@ -324,25 +335,48 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
       z.object({}),
     );
 
-    // Deleting the raw rows AFTER the rolled rows land is what makes a crashed
-    // sweep recoverable: the raw rows are still there to fold. Deleting first
-    // would lose them outright. A crash between the two statements does fold
-    // them twice on the next sweep, since the fold adds rather than replaces;
-    // D1 has no transaction to close that window.
+    // Deleting the source rows AFTER the target rows land is what makes a
+    // crashed sweep recoverable: the source rows are still there to fold.
+    // Deleting first would lose them outright. A crash between the two
+    // statements does fold them twice on the next sweep, since the fold adds
+    // rather than replaces; D1 has no transaction to close that window.
     await this.database.run(
-      sql`DELETE FROM ${raw.table} WHERE ${sql.raw(timeColumn)} < ${boundary}`,
+      sql`DELETE FROM ${source.table} WHERE ${sql.raw(timeColumn)} < ${boundary}`,
       z.object({}),
     );
   }
 
-  public async prune(dataset: AnalyticsDataset, before: string): Promise<void> {
-    const { raw, rolled } = this.entities(dataset);
-    const boundary = AnalyticsBuckets.day(before);
-    const timeColumn = AnalyticsEntityFactory.TIME_COLUMN;
+  /**
+   * SQL computing the `resolution` key of a stored key: a prefix for a day
+   * or an hour, the minute prefix for one minute, and for a 5 or 15 minute
+   * step the hour prefix plus the floored minute, picked by string
+   * comparison (`'07' < '10'`) so one spelling works on every dialect, with
+   * no `LPAD` (absent from SQLite) or `printf` (absent from Postgres).
+   */
+  protected bucketExpression(
+    column: string,
+    resolution: AnalyticsTierResolution,
+  ): string {
+    if (resolution === "1d") return `substr(${column}, 1, 10)`;
+    const step = AnalyticsBuckets.minutesOf(resolution);
+    if (step === 60) return `substr(${column}, 1, 13)`;
+    if (step === 1) return `substr(${column}, 1, 16)`;
+    const cases: string[] = [];
+    for (let minute = step; minute < 60; minute += step) {
+      const floor = String(minute - step).padStart(2, "0");
+      cases.push(
+        `WHEN substr(${column}, 15, 2) < '${String(minute).padStart(2, "0")}' THEN '${floor}'`,
+      );
+    }
+    const last = String(60 - step).padStart(2, "0");
+    return `substr(${column}, 1, 14) || CASE ${cases.join(" ")} ELSE '${last}' END`;
+  }
 
-    for (const repository of [raw, rolled]) {
+  public async prune(dataset: AnalyticsDataset, before: string): Promise<void> {
+    const timeColumn = AnalyticsEntityFactory.TIME_COLUMN;
+    for (const repository of this.entities(dataset)) {
       await this.database.run(
-        sql`DELETE FROM ${repository.table} WHERE ${sql.raw(timeColumn)} < ${boundary}`,
+        sql`DELETE FROM ${repository.table} WHERE ${sql.raw(timeColumn)} < ${before}`,
         z.object({}),
       );
     }
@@ -357,6 +391,7 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
     tier: AnalyticsTier,
   ): Promise<string | undefined> {
     const repository = this.entities(dataset)[tier];
+    if (!repository) return undefined;
     const rows = await this.database.run(
       sql`SELECT MIN(${sql.raw(AnalyticsEntityFactory.TIME_COLUMN)}) AS oldest FROM ${repository.table}`,
       z.object({ oldest: z.string().nullable() }),
@@ -530,7 +565,7 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
   }
 
   /**
-   * Looks up the raw and rolled repositories for `dataset`.
+   * Looks up `dataset`'s tier repositories, finest first.
    *
    * Throws if `dataset` was never passed to {@link register}. This provider
    * never registers a table on the caller's behalf — see the class doc — so
@@ -538,10 +573,7 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
    * declared, which is a bug worth failing loudly on rather than attempting
    * runtime DDL.
    */
-  protected entities(dataset: AnalyticsDataset): {
-    raw: Repository<ZObject>;
-    rolled: Repository<ZObject>;
-  } {
+  protected entities(dataset: AnalyticsDataset): Repository<ZObject>[] {
     const existing = this.registered.get(dataset.name);
     if (existing) return existing;
 

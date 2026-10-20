@@ -20,6 +20,7 @@ import {
   AnalyticsBuckets,
   type AnalyticsDataset,
   AnalyticsPrimitive,
+  AnalyticsTiers,
   AnalyticsProvider,
   MemoryAnalyticsProvider,
   OrmAnalyticsProvider,
@@ -100,7 +101,7 @@ describe("$analytics", () => {
     await alepha.start();
 
     // The relational provider has no ceiling, so this must be accepted here.
-    expect(app.views.dataset.retention?.hot).toBe("120d");
+    expect(AnalyticsTiers.finestKeep(app.views.dataset)).toBe("120d");
   });
 
   it("rejects a cold window shorter than the hot window", () => {
@@ -127,7 +128,7 @@ describe("$analytics", () => {
       error = caught as Error;
     }
 
-    expect(error?.message).toContain("retention.cold");
+    expect(error?.message).toContain("shorter than the previous tier");
     expect(error?.message).toContain("60d");
     expect(error?.message).toContain("5d");
   });
@@ -149,7 +150,7 @@ describe("$analytics", () => {
     const app = alepha.inject(EqualWindows);
     await alepha.start();
 
-    expect(app.views.dataset.retention?.cold).toBe("60d");
+    expect(AnalyticsTiers.of(app.views.dataset)[1].keep).toBe("60d");
   });
 
   it("rejects a camelCase property key, since it becomes a table name", () => {

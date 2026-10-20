@@ -25,9 +25,26 @@ describe("AnalyticsBuckets", () => {
     expect(() => AnalyticsBuckets.parseWindow("60")).toThrow(
       /malformed retention window/,
     );
-    expect(() => AnalyticsBuckets.parseWindow("60h")).toThrow(
+    expect(() => AnalyticsBuckets.parseWindow("60w")).toThrow(
       /malformed retention window/,
     );
+  });
+
+  it("parses minute, hour and day windows", () => {
+    expect(AnalyticsBuckets.parseWindow("90m")).toBe(90 * 60_000);
+    expect(AnalyticsBuckets.parseWindow("48h")).toBe(48 * 3_600_000);
+    expect(AnalyticsBuckets.parseWindow("2d")).toBe(2 * 86_400_000);
+  });
+
+  it("truncates a key to a coarser resolution and leaves a coarser key alone", () => {
+    expect(AnalyticsBuckets.truncate("2026-10-18T08:47", "15m")).toBe(
+      "2026-10-18T08:45",
+    );
+    expect(AnalyticsBuckets.truncate("2026-10-18T08:47", "1h")).toBe(
+      "2026-10-18T08",
+    );
+    expect(AnalyticsBuckets.truncate("2026-10-18T08", "1d")).toBe("2026-10-18");
+    expect(AnalyticsBuckets.truncate("2026-10-18", "1h")).toBe("2026-10-18");
   });
 
   it("shifts a day bucket backwards across a month boundary", () => {

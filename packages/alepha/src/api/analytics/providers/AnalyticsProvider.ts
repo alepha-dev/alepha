@@ -19,10 +19,11 @@ export type AnalyticsRow = Record<string, string | number | null> & {
 };
 
 /**
- * Which storage tier of a dataset a question is about: `raw` holds the finest
- * buckets as recorded, `rolled` the day buckets they fold into.
+ * A storage tier of a dataset, by its index in the retention chain
+ * (`AnalyticsTiers.of`): `0` holds the finest buckets as recorded, the last
+ * the coarsest they fold into.
  */
-export type AnalyticsTier = "raw" | "rolled";
+export type AnalyticsTier = number;
 
 /**
  * Where a dataset's rows live.
@@ -65,22 +66,29 @@ export abstract class AnalyticsProvider {
   ): Promise<AnalyticsResult>;
 
   /**
-   * Folds hour buckets into day buckets for everything older than `before`.
+   * Folds every row of tier `fromTier` whose bucket is before `before` into
+   * tier `fromTier + 1`, its key truncated to that tier's resolution, then
+   * deletes the folded rows. `before` is read at the target tier's
+   * resolution, so only whole target buckets fold.
    *
    * Must be idempotent: the job that drives it is capped per sweep and resumes
    * where it stopped, so re-running over an already-folded window has to be a
    * no-op rather than a double-count.
    */
-  abstract rollup(dataset: AnalyticsDataset, before: string): Promise<void>;
+  abstract rollup(
+    dataset: AnalyticsDataset,
+    fromTier: AnalyticsTier,
+    before: string,
+  ): Promise<void>;
 
   /**
    * Deletes every row older than `before`, on whichever tier it lives.
    *
-   * Deliberately not scoped to the rolled tier. Pruning only ever runs past
-   * the cold boundary, which is always older than the hot one, so in
-   * practice every row it removes has already been folded — but a provider
-   * that reaches both tiers cannot strand an orphan if a rollup was ever
-   * missed, and no caller can construct a case where the two scopings
+   * Deliberately not scoped to the last tier. Pruning only ever runs past the
+   * last tier's window, which is the longest of the chain, so in practice
+   * every row it removes has already been folded into the last tier — but a
+   * provider that reaches every tier cannot strand an orphan if a rollup was
+   * ever missed, and no caller can construct a case where the two scopings
    * differ.
    */
   abstract prune(dataset: AnalyticsDataset, before: string): Promise<void>;

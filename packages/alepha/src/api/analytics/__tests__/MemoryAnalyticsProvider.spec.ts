@@ -127,7 +127,7 @@ describe("MemoryAnalyticsProvider", () => {
       { hour: "2026-08-01T11", app: "a", path: "/x", country: "FR", count: 3 },
     ]);
 
-    await provider.rollup(dataset, "2026-08-02");
+    await provider.rollup(dataset, 0, "2026-08-02");
 
     const total = await provider.query(dataset, {
       since: "2026-08-01",

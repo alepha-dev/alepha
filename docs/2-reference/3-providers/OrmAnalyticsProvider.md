@@ -8,7 +8,9 @@ import { OrmAnalyticsProvider } from "alepha/api/analytics";
 
 ## Overview
 
-Two relational tables per dataset: raw hour buckets and rolled day buckets.
+One relational table per retention tier of a dataset: the finest buckets as
+recorded (`_raw`), any intermediate tier (`_<resolution>`), and the
+coarsest (`_rolled`). See `AnalyticsTiers`.
 
 The default on every Node and Postgres deployment, and the cold tier of the
 Analytics Engine provider. Numbers here are **exact** - nothing samples, so

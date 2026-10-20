@@ -2,6 +2,7 @@ import { $hook, $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
 
 import { AnalyticsRollupJobs } from "../jobs/AnalyticsRollupJobs.ts";
+import { AnalyticsTiers } from "../planner/AnalyticsTiers.ts";
 import { $analytics } from "../primitives/$analytics.ts";
 
 /**
@@ -50,7 +51,7 @@ export class AnalyticsRetentionGuard {
   protected check(): void {
     const withHot = this.alepha
       .primitives($analytics)
-      .filter((primitive) => primitive.dataset.retention?.hot);
+      .filter((primitive) => AnalyticsTiers.finestKeep(primitive.dataset));
     if (withHot.length === 0) {
       return;
     }

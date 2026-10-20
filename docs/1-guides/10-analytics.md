@@ -117,7 +117,7 @@ logged at `debug` with the dataset name and the offset:
 - An `at` more than `AnalyticsPrimitive.MAX_CLOCK_SKEW` (5 minutes) ahead of the server clock is
   clamped to now. A clock running a day ahead would otherwise write into a bucket that does not
   exist yet, and pin `last` for every bucket it later folds into.
-- An `at` older than the finest tier's retention (`retention.hot`) is dropped: the next sweep
+- An `at` older than the finest tier's `keep` (`retention.hot`) is dropped: the next sweep
   would delete it anyway. With no retention declared, it is kept.
 
 Only `at` is clamped. An explicit `hour` is your own decision and is stored as given.
@@ -327,31 +327,69 @@ returns counts per bucket.
 
 ## Retention and rollup
 
+`retention` is an ordered chain of tiers, finest first. Each tier keeps its buckets for `keep`,
+then the hourly sweep folds them into the next, coarser tier:
+
 ```typescript
-retention: { hot: "60d", rollup: "day", cold: "400d" }
+retention: [
+  { resolution: "1m", keep: "48h" },
+  { resolution: "1h", keep: "30d" },
+  { resolution: "1d", keep: "400d" },
+],
 ```
 
-- `hot`: how long raw, hour-bucketed rows are kept, as a day count (`"60d"`).
-- `rollup`: the granularity past the hot window. Only `"day"` exists today.
-- `cold`: how long rolled (day-bucketed) rows are kept before deletion, also a day count. Must
-  be at least as long as `hot` when both are set - `$analytics()` rejects a shorter `cold` at
-  declaration time, because the sweep only ever folds up to the hot cutoff, and a `cold`
-  boundary more recent than that would prune hour-precision rows the hot window still promises,
-  before they are ever rolled up.
+A 1-minute dataset at 10k devices cannot keep minutes for 60 days; with this chain it keeps
+minutes for two days, hours for a month and days for a year. Windows are written `<n>m`, `<n>h`
+or `<n>d`. The chain is checked at boot:
 
-Both passes **collapse rather than delete**: folding hour buckets into a day bucket groups by
-every declared dimension exactly as before and sums the measures within each group - no
-dimension is dropped or merged away, and no total your UI shows ever changes. Only the
-resolution of the time axis does, from hourly to daily. Deletion only ever happens past `cold`,
-and only to already-rolled rows.
+- the first tier's resolution is the dataset's `resolution`;
+- each next resolution is strictly coarser than the previous one and a multiple of it
+  (`1m`, `5m`, `15m`, `1h`, `1d`);
+- each `keep` is a whole number of its tier's buckets, at least one bucket of the next tier
+  (the sweep folds whole buckets only), and at least as long as the previous tier's `keep`, since
+  a shorter one later in the chain would delete readings before they are ever folded;
+- only the last tier may omit `keep`, and is then kept forever.
 
-### `retention.hot` cannot exceed roughly 90 days on Analytics Engine
+The original shape is still accepted and is the two-tier chain it always described:
 
-Cloudflare's own Analytics Engine keeps data for approximately 90 days regardless of what you
-declare. A dataset declaring a longer `hot` window is **rejected at registration** on that
-backend - the provider throws an `AlephaError` at boot rather than letting a report quietly
-come up short months later. The relational and memory backends honour the longer window, so
-the same declaration is only portable when `retention.hot` stays at 90 days or under.
+```typescript
+retention: { hot: "60d", rollup: "day", cold: "400d" }
+// is
+retention: [
+  { resolution: "1h", keep: "60d" }, // the dataset's resolution
+  { resolution: "1d", keep: "400d" },
+]
+```
+
+Without `hot`, the dataset never folds and never prunes. `cold` must be at least as long as
+`hot`, by the same rule as any other `keep`.
+
+Every fold **collapses rather than deletes**: folding a tier into the next groups by every
+declared dimension exactly as before and folds each measure by its own folds (see
+[Folds](#folds-sum-min-max-and-last)) - no dimension is dropped or merged away, and no total,
+extreme or last value your UI shows ever changes. Only the resolution of the time axis does.
+Deletion only ever happens past the last tier's `keep`, to rows already folded into it. A query
+reads every tier and merges them, so a window spanning tiers comes back whole.
+
+**Storage.** Each tier is a table with the same columns and unique index. The finest keeps
+`analytics_<name>_raw` and the coarsest `analytics_<name>_rolled`, the names every dataset
+already had; each tier in between is `analytics_<name>_<resolution>`
+(`analytics_device_metrics_1h`). Adding a tier to the middle of a chain adds a table, and renames
+none, so an existing dataset's data stays where it is. Its migration is an ordinary
+`alepha db migrations create`.
+
+**The sweep stays hourly**, whatever the finest resolution: a minute tier can only fold whole
+hours into an hour tier, so a faster sweep would fold nothing more. Each sweep folds at most
+`AnalyticsRollupJobs.MAX_BUCKETS_PER_SWEEP` source buckets per tier (336: fourteen days of
+hours), and catches up over later sweeps.
+
+### Analytics Engine keeps two tiers, and roughly 90 days of hours
+
+Analytics Engine serves the original two-tier chain only: hours, then days. A longer chain is
+**rejected at registration** on that backend. Cloudflare also keeps Analytics Engine data for
+approximately 90 days regardless of what you declare, so a finest tier keeping longer
+(`retention.hot` over `"90d"`) is rejected there too, at boot, rather than letting a report
+quietly come up short months later. The relational and memory backends honour any valid chain.
 
 ### Declaring `retention` does nothing on its own
 
@@ -376,7 +414,7 @@ const alepha = Alepha.create()
 Forgetting `AlephaApiAnalyticsRollup` is silent in the sense that nothing throws: `record()` and
 `query()` keep working normally, and the raw table simply grows forever. It is not _completely_
 silent, though - a boot-time `log.warn` from the retention guard names every dataset that
-declares `retention.hot` while no rollup job was ever constructed, specifically so this mistake
+declares a window on its finest tier (`retention.hot`) while no rollup job was ever constructed, specifically so this mistake
 does not stay invisible once the app is actually running.
 
 The split exists because `AnalyticsRollupJobs` is built on `$job`, and `$job` always needs a

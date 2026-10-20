@@ -70,7 +70,11 @@ export class AdminAnalyticsService {
             pinned,
           ),
           measures: z.toJSONSchema(dataset.measures) as Record<string, any>,
-          retention: dataset.retention,
+          // The original shape only, until the descriptor carries the tier
+          // list (#Q2752); a chain is published as no retention meanwhile.
+          retention: Array.isArray(dataset.retention)
+            ? undefined
+            : dataset.retention,
         };
       });
   }

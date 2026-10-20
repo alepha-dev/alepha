@@ -56,7 +56,7 @@ describe("OrmAnalyticsProvider", () => {
         { hour: "2026-08-01T10", app: "a", path: "/x", count: 4 },
         { hour: "2026-08-09T10", app: "a", path: "/x", count: 6 },
       ]);
-      await provider.rollup(dataset, "2026-08-05");
+      await provider.rollup(dataset, 0, "2026-08-05");
 
       const result = await provider.query(dataset, {
         since: "2026-08-01",

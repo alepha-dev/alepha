@@ -3,6 +3,7 @@ import { AlephaError } from "alepha";
 import type {
   AnalyticsDataset,
   AnalyticsResolution,
+  AnalyticsTierResolution,
 } from "../schemas/analyticsDatasetSchema.ts";
 
 /**
@@ -21,14 +22,17 @@ import type {
  */
 export class AnalyticsBuckets {
   /**
-   * Bucket resolutions a dataset may declare, in minutes.
+   * Bucket resolutions, in minutes. A dataset records at one of the first
+   * four; a retention tier may also be a day.
    */
-  public static readonly RESOLUTIONS: Record<AnalyticsResolution, number> = {
-    "1m": 1,
-    "5m": 5,
-    "15m": 15,
-    "1h": 60,
-  };
+  public static readonly RESOLUTIONS: Record<AnalyticsTierResolution, number> =
+    {
+      "1m": 1,
+      "5m": 5,
+      "15m": 15,
+      "1h": 60,
+      "1d": 24 * 60,
+    };
 
   public static hour(millis: number): string {
     return new Date(millis).toISOString().slice(0, 13);
@@ -39,13 +43,38 @@ export class AnalyticsBuckets {
    */
   public static bucket(
     millis: number,
-    resolution: AnalyticsResolution,
+    resolution: AnalyticsTierResolution,
   ): string {
     const step = AnalyticsBuckets.minutesOf(resolution);
-    if (step === 60) return AnalyticsBuckets.hour(millis);
     const iso = new Date(millis).toISOString();
+    if (resolution === "1d") return iso.slice(0, 10);
+    if (step === 60) return iso.slice(0, 13);
     const minute = Math.floor(Number(iso.slice(14, 16)) / step) * step;
     return `${iso.slice(0, 13)}:${String(minute).padStart(2, "0")}`;
+  }
+
+  /**
+   * The instant a bucket key starts at, whatever its precision.
+   */
+  public static startOf(key: string): number {
+    if (key.length === 10) return Date.parse(`${key}T00:00:00.000Z`);
+    if (key.length === 13) return Date.parse(`${key}:00:00.000Z`);
+    return Date.parse(`${key}:00.000Z`);
+  }
+
+  /**
+   * The key of the `resolution` bucket `key` falls in. A key already coarser
+   * than `resolution` (a day key asked for its hour) comes back unchanged.
+   */
+  public static truncate(
+    key: string,
+    resolution: AnalyticsTierResolution,
+  ): string {
+    const truncated = AnalyticsBuckets.bucket(
+      AnalyticsBuckets.startOf(key),
+      resolution,
+    );
+    return truncated.length <= key.length ? truncated : key;
   }
 
   /**
@@ -55,7 +84,7 @@ export class AnalyticsBuckets {
     return dataset.resolution ?? "1h";
   }
 
-  public static minutesOf(resolution: AnalyticsResolution): number {
+  public static minutesOf(resolution: AnalyticsTierResolution): number {
     const minutes = AnalyticsBuckets.RESOLUTIONS[resolution];
     if (!minutes) {
       throw new AlephaError(
@@ -84,19 +113,21 @@ export class AnalyticsBuckets {
   }
 
   /**
-   * Parses a `<n>d` retention spec into milliseconds.
-   *
-   * Days only, deliberately: the rollup granularity is a day, so an hour-level
-   * retention window would express a boundary the storage cannot honour.
+   * Parses a retention window, `<n>m`, `<n>h` or `<n>d`, into milliseconds.
+   * Whether a window is a whole number of its tier's buckets is checked by
+   * `AnalyticsTiers.assertValid`.
    */
   public static parseWindow(spec: string): number {
-    const match = /^(\d+)d$/.exec(spec);
+    const match = /^(\d+)([mhd])$/.exec(spec);
     if (!match) {
       throw new AlephaError(
-        `Received a malformed retention window '${spec}'; expected a day count such as '60d'.`,
+        `Received a malformed retention window '${spec}'; expected a count of minutes, hours or days such as '90m', '48h' or '60d'.`,
       );
     }
-    return Number(match[1]) * 24 * 60 * 60 * 1000;
+    const unit = { m: 60_000, h: 3_600_000, d: 86_400_000 }[
+      match[2] as "m" | "h" | "d"
+    ];
+    return Number(match[1]) * unit;
   }
 
   public static shiftDays(bucket: string, days: number): string {

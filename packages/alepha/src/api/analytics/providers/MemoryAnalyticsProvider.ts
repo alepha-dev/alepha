@@ -4,6 +4,7 @@ import { AnalyticsBuckets } from "../planner/AnalyticsBuckets.ts";
 import { AnalyticsFolds } from "../planner/AnalyticsFolds.ts";
 import { AnalyticsOrdering } from "../planner/AnalyticsOrdering.ts";
 import { AnalyticsRowFolder } from "../planner/AnalyticsRowFolder.ts";
+import { AnalyticsTiers } from "../planner/AnalyticsTiers.ts";
 import type { AnalyticsDataset } from "../schemas/analyticsDatasetSchema.ts";
 import type {
   AnalyticsQuery,
@@ -23,14 +24,16 @@ import {
  * in-process implementation there is no way to exercise the query semantics at
  * all. Every behaviour the conformance suite pins is defined here first.
  *
- * Tiering is simulated by rewriting a row's bucket in place, which is exactly
- * what the relational provider does with two tables - so a boundary-spanning
- * query can be tested with no database.
+ * One array per retention tier, as the relational provider has one table per
+ * tier, so a boundary-spanning query can be tested with no database.
  */
 export class MemoryAnalyticsProvider extends AnalyticsProvider {
   public readonly exact: boolean = true;
 
-  protected readonly stored = new Map<string, AnalyticsRow[]>();
+  /**
+   * Each dataset's rows, one array per tier of its chain.
+   */
+  protected readonly stored = new Map<string, AnalyticsRow[][]>();
 
   /**
    * No-op: memory storage is a plain `Map` keyed by dataset name at first
@@ -49,12 +52,22 @@ export class MemoryAnalyticsProvider extends AnalyticsProvider {
     dataset: AnalyticsDataset,
     rows: AnalyticsRow[],
   ): Promise<void> {
-    // Merged into the row holding the same key, as a relational upsert does,
-    // so a gauge's extremes and last value fold on write here too.
-    const existing = this.stored.get(dataset.name) ?? [];
+    this.mergeInto(dataset, this.tiers(dataset)[0], rows);
+  }
+
+  /**
+   * Merges `rows` into `tier`, each into the row holding the same key, as a
+   * relational upsert does, so a gauge's extremes and last value fold on
+   * write here too.
+   */
+  protected mergeInto(
+    dataset: AnalyticsDataset,
+    tier: AnalyticsRow[],
+    rows: AnalyticsRow[],
+  ): void {
     const dimensions = Object.keys(dataset.dimensions.shape).sort();
     const index = new Map(
-      existing.map((row) => [AnalyticsRowFolder.key(dimensions, row), row]),
+      tier.map((row) => [AnalyticsRowFolder.key(dimensions, row), row]),
     );
     for (const row of rows) {
       const key = AnalyticsRowFolder.key(dimensions, row);
@@ -63,11 +76,22 @@ export class MemoryAnalyticsProvider extends AnalyticsProvider {
         AnalyticsFolds.merge(dataset, target, row);
       } else {
         const copy = { ...row };
-        existing.push(copy);
+        tier.push(copy);
         index.set(key, copy);
       }
     }
-    this.stored.set(dataset.name, existing);
+  }
+
+  /**
+   * The dataset's tier arrays, created on first use.
+   */
+  protected tiers(dataset: AnalyticsDataset): AnalyticsRow[][] {
+    let tiers = this.stored.get(dataset.name);
+    if (!tiers) {
+      tiers = AnalyticsTiers.of(dataset).map(() => []);
+      this.stored.set(dataset.name, tiers);
+    }
+    return tiers;
   }
 
   public async query(
@@ -84,9 +108,9 @@ export class MemoryAnalyticsProvider extends AnalyticsProvider {
     }
     const selections = AnalyticsFolds.selections(dataset, query.select);
 
-    const rows = (this.stored.get(dataset.name) ?? []).filter((row) =>
-      this.matches(row, query),
-    );
+    const rows = this.tiers(dataset)
+      .flat()
+      .filter((row) => this.matches(row, query));
 
     const groupBy = query.groupBy ?? [];
     const groups = new Map<string, Record<string, string | number | null>>();
@@ -156,70 +180,49 @@ export class MemoryAnalyticsProvider extends AnalyticsProvider {
 
   public async rollup(
     dataset: AnalyticsDataset,
+    fromTier: AnalyticsTier,
     before: string,
   ): Promise<void> {
-    const rows = this.stored.get(dataset.name) ?? [];
-    const folded = new Map<string, AnalyticsRow>();
-    const kept: AnalyticsRow[] = [];
+    const tiers = this.tiers(dataset);
+    const source = tiers[fromTier];
+    const target = tiers[fromTier + 1];
+    if (!source || !target) return;
 
-    for (const row of rows) {
-      if (AnalyticsBuckets.day(row.hour) >= AnalyticsBuckets.day(before)) {
-        kept.push(row);
-        continue;
-      }
-      // Folding to the day bucket is what makes this idempotent: a row already
-      // folded has hour === day, so re-running maps it onto itself.
-      const day = AnalyticsBuckets.day(row.hour);
-      // JSON.stringify avoids the collision a delimiter-joined string would
-      // risk here — and unlike in query(), a collision in rollup is
-      // irreversible: the colliding groups get summed and the pre-fold rows
-      // are gone.
-      const key = JSON.stringify([day, ...this.dimensionsOf(dataset, row)]);
-      const existing = folded.get(key);
-      if (existing) {
-        AnalyticsFolds.merge(dataset, existing, row);
+    const resolution = AnalyticsTiers.of(dataset)[fromTier + 1].resolution;
+    const boundary = AnalyticsBuckets.truncate(before, resolution);
+    const folded: AnalyticsRow[] = [];
+    const kept: AnalyticsRow[] = [];
+    for (const row of source) {
+      if (row.hour < boundary) {
+        folded.push({
+          ...row,
+          hour: AnalyticsBuckets.truncate(row.hour, resolution),
+        });
       } else {
-        folded.set(key, { ...row, hour: day });
+        kept.push(row);
       }
     }
 
-    this.stored.set(dataset.name, [...folded.values(), ...kept]);
+    tiers[fromTier] = kept;
+    this.mergeInto(dataset, target, folded);
   }
 
   public async prune(dataset: AnalyticsDataset, before: string): Promise<void> {
-    const rows = this.stored.get(dataset.name) ?? [];
-    this.stored.set(
-      dataset.name,
-      rows.filter(
-        (row) => AnalyticsBuckets.day(row.hour) >= AnalyticsBuckets.day(before),
-      ),
-    );
+    const tiers = this.tiers(dataset);
+    for (let index = 0; index < tiers.length; index++) {
+      tiers[index] = tiers[index].filter((row) => row.hour >= before);
+    }
   }
 
-  /**
-   * A scan: one array holds both tiers, told apart by key length (a rolled
-   * row's bucket is a bare `YYYY-MM-DD`).
-   */
   public async oldestBucket(
     dataset: AnalyticsDataset,
     tier: AnalyticsTier,
   ): Promise<string | undefined> {
     let oldest: string | undefined;
-    for (const row of this.stored.get(dataset.name) ?? []) {
-      const rolled = row.hour.length === 10;
-      if (rolled !== (tier === "rolled")) continue;
+    for (const row of this.tiers(dataset)[tier] ?? []) {
       if (oldest === undefined || row.hour < oldest) oldest = row.hour;
     }
     return oldest;
-  }
-
-  protected dimensionsOf(
-    dataset: AnalyticsDataset,
-    row: AnalyticsRow,
-  ): string[] {
-    return Object.keys(dataset.dimensions.shape)
-      .sort()
-      .map((name) => String(row[name]));
   }
 
   protected dimensionOf(row: AnalyticsRow, name: string): string | number {

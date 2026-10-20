@@ -6,6 +6,7 @@ import { AnalyticsBuckets } from "../planner/AnalyticsBuckets.ts";
 import { AnalyticsFolds } from "../planner/AnalyticsFolds.ts";
 import { AnalyticsOrdering } from "../planner/AnalyticsOrdering.ts";
 import { AnalyticsSlotMap } from "../planner/AnalyticsSlotMap.ts";
+import { AnalyticsTiers } from "../planner/AnalyticsTiers.ts";
 import type { AnalyticsDataset } from "../schemas/analyticsDatasetSchema.ts";
 import type {
   AnalyticsFold,
@@ -340,6 +341,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
   public register(dataset: AnalyticsDataset): void {
     this.assertExactFoldsRefused(dataset);
     this.assertHourResolution(dataset);
+    this.assertTwoTiers(dataset);
     this.assertRetention(dataset);
     this.cold.register(dataset);
   }
@@ -373,6 +375,18 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
   }
 
   /**
+   * Refuses a retention chain longer than the two tiers this provider has:
+   * Analytics Engine's hours, then `cold`'s days. A chain with an
+   * intermediate tier would need the forward to know about it.
+   */
+  public assertTwoTiers(dataset: AnalyticsDataset): void {
+    if (AnalyticsTiers.isTwoTier(dataset)) return;
+    throw new AlephaError(
+      `Dataset '${dataset.name}' declares a retention chain Analytics Engine cannot serve: it supports two tiers only, hours then days ([{ resolution: "1h", keep }, { resolution: "1d", keep? }]). Use an exact backend (OrmAnalyticsProvider) for a longer chain.`,
+    );
+  }
+
+  /**
    * Refuses a dataset whose declared hot window outlives what Analytics
    * Engine actually keeps.
    *
@@ -380,12 +394,12 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
    * dataset descriptor by hand can validate it before wiring anything up.
    */
   public assertRetention(dataset: AnalyticsDataset): void {
-    const hot = dataset.retention?.hot;
+    const hot = AnalyticsTiers.finestKeep(dataset);
     if (!hot) return;
     const days = AnalyticsBuckets.parseWindow(hot) / (24 * 60 * 60 * 1000);
     if (days > WaeAnalyticsProvider.MAX_HOT_DAYS) {
       throw new AlephaError(
-        `Dataset '${dataset.name}' asks for a ${days}-day hot window, but Analytics Engine keeps roughly 90 days. Shorten 'retention.hot' or the window will silently be shorter than declared.`,
+        `Dataset '${dataset.name}' asks for a ${days}-day hot window, but Analytics Engine keeps roughly 90 days. Shorten its finest tier's 'keep' ('retention.hot') or the window will silently be shorter than declared.`,
       );
     }
   }
@@ -493,7 +507,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
    * returns `true` (always check) rather than guess.
    */
   protected mightNeedCold(dataset: AnalyticsDataset, since: string): boolean {
-    const hot = dataset.retention?.hot;
+    const hot = AnalyticsTiers.finestKeep(dataset);
     if (!hot) return true;
     const days = AnalyticsBuckets.parseWindow(hot) / (24 * 60 * 60 * 1000);
     const today = AnalyticsBuckets.day(
@@ -680,12 +694,15 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
    */
   public async rollup(
     dataset: AnalyticsDataset,
+    fromTier: AnalyticsTier,
     before: string,
   ): Promise<void> {
+    // Two tiers only (see `assertTwoTiers`): nothing folds out of the last.
+    if (fromTier !== 0) return;
     // Folds only as far as the forward reached: a day left for the next sweep
     // must not be folded in part (see `maxForwardRows`).
     const forwarded = await this.forwardToCold(dataset, before);
-    await this.cold.rollup(dataset, forwarded);
+    await this.cold.rollup(dataset, 0, forwarded);
   }
 
   /**
@@ -726,7 +743,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
     tier: AnalyticsTier,
   ): Promise<string | undefined> {
     const coldOldest = await this.cold.oldestBucket(dataset, tier);
-    if (tier === "rolled") return coldOldest;
+    if (tier !== 0) return coldOldest;
 
     const measure = Object.keys(dataset.measures.shape)[0];
     if (!measure) return coldOldest;

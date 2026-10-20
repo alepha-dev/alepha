@@ -15,13 +15,17 @@ const dataset = {
 
 describe("AnalyticsEntityFactory", () => {
   it("derives a raw and a rolled table from the dataset name", () => {
-    const { raw, rolled } = AnalyticsEntityFactory.build(dataset);
+    const {
+      tables: [raw, rolled],
+    } = AnalyticsEntityFactory.build(dataset);
     expect(raw.name).toBe("analytics_page_views_raw");
     expect(rolled.name).toBe("analytics_page_views_rolled");
   });
 
   it("gives both tables the same dimension and measure columns", () => {
-    const { raw, rolled } = AnalyticsEntityFactory.build(dataset);
+    const {
+      tables: [raw, rolled],
+    } = AnalyticsEntityFactory.build(dataset);
     for (const entity of [raw, rolled]) {
       expect(Object.keys(entity.options.schema.shape).sort()).toEqual(
         ["app", "time_bucket", "count", "path"].sort(),
@@ -30,7 +34,9 @@ describe("AnalyticsEntityFactory", () => {
   });
 
   it("gives a gauge measure one nullable column per fold and a last_at", () => {
-    const { raw } = AnalyticsEntityFactory.build({
+    const {
+      tables: [raw],
+    } = AnalyticsEntityFactory.build({
       ...dataset,
       measures: z.object({ count: z.number(), temperature: z.number() }),
       folds: { temperature: ["min", "max", "last"] },
@@ -141,7 +147,9 @@ describe("AnalyticsEntityFactory", () => {
       },
     };
 
-    const { raw, rolled } = AnalyticsEntityFactory.build(conformanceDataset);
+    const {
+      tables: [raw, rolled],
+    } = AnalyticsEntityFactory.build(conformanceDataset);
     for (const entity of [raw, rolled]) {
       expect(Object.keys(entity.options.schema.shape).sort()).toEqual(
         ["app", "bucket", "path", "samples", "time_bucket"].sort(),
@@ -162,7 +170,9 @@ describe("AnalyticsEntityFactory", () => {
     // see e.g. `packages/alepha/src/api/users/__tests__/RealmProvider.spec.ts`.
     const alepha = Alepha.create().with(AlephaOrmPostgres);
     const database = alepha.inject(DatabaseProvider);
-    const { raw, rolled } = AnalyticsEntityFactory.build(dataset);
+    const {
+      tables: [raw, rolled],
+    } = AnalyticsEntityFactory.build(dataset);
 
     database.registerEntity(raw as never);
     database.registerEntity(rolled as never);

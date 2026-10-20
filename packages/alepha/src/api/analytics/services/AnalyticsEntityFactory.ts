@@ -2,15 +2,17 @@ import { AlephaError, type ZType, z } from "alepha";
 import { $entity, type EntityPrimitive } from "alepha/orm";
 
 import { AnalyticsFolds } from "../planner/AnalyticsFolds.ts";
+import { AnalyticsTiers } from "../planner/AnalyticsTiers.ts";
 import type { AnalyticsDataset } from "../schemas/analyticsDatasetSchema.ts";
 
 /**
- * Turns a dataset descriptor into the two tables a relational backend needs.
+ * Turns a dataset descriptor into the tables a relational backend needs, one
+ * per retention tier (see `AnalyticsTiers`).
  *
- * **Two tables, not one.** The raw table holds hour buckets, the rolled table
- * holds day buckets, and keeping them apart is what makes the fold idempotent:
- * a row is either in one or the other, never half-folded, so a re-run over an
- * already-folded window inserts nothing new.
+ * **A table per tier, not one.** The raw table holds the finest buckets, the
+ * rolled table the coarsest, and keeping them apart is what makes the fold
+ * idempotent: a row is in exactly one tier, never half-folded, so a re-run
+ * over an already-folded window inserts nothing new.
  *
  * The tables are derived rather than declared because a dataset's columns come
  * from a runtime descriptor, and `$repository()` needs its entity at
@@ -42,9 +44,14 @@ export class AnalyticsEntityFactory {
    */
   public static readonly RESERVED_DIMENSIONS = ["day", "hour", "minute"];
 
+  /**
+   * One table per retention tier, finest first: `analytics_<name>_raw`, any
+   * intermediate `analytics_<name>_<resolution>`, then
+   * `analytics_<name>_rolled`. Every tier has the same columns and unique
+   * index; only the bucket keys it holds are coarser.
+   */
   public static build(dataset: AnalyticsDataset): {
-    raw: EntityPrimitive;
-    rolled: EntityPrimitive;
+    tables: EntityPrimitive[];
   } {
     AnalyticsEntityFactory.assertNoCollisions(dataset);
 
@@ -60,17 +67,19 @@ export class AnalyticsEntityFactory {
     ];
 
     return {
-      raw: $entity({
-        name: `analytics_${dataset.name}_raw`,
-        schema: z.object(columns),
-        indexes: [{ columns: keys, unique: true }],
-      }) as EntityPrimitive,
-      rolled: $entity({
-        name: `analytics_${dataset.name}_rolled`,
-        schema: z.object(columns),
-        indexes: [{ columns: keys, unique: true }],
-      }) as EntityPrimitive,
+      tables: AnalyticsTiers.of(dataset).map(
+        (_, index) =>
+          $entity({
+            name: AnalyticsEntityFactory.tableName(dataset, index),
+            schema: z.object(columns),
+            indexes: [{ columns: keys, unique: true }],
+          }) as EntityPrimitive,
+      ),
     };
+  }
+
+  public static tableName(dataset: AnalyticsDataset, tier: number): string {
+    return `analytics_${dataset.name}_${AnalyticsTiers.suffix(dataset, tier)}`;
   }
 
   /**
