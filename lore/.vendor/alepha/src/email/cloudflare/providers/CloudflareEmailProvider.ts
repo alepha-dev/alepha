@@ -139,6 +139,13 @@ export interface CloudflareEmailRestResult {
  * ```
  */
 export class CloudflareEmailProvider implements EmailProvider {
+  /**
+   * Stable id the CLI build tasks resolve this provider by, from a separate
+   * module graph, to emit the `send_email` binding (see
+   * `CloudflareEmailDetector`). Without it the build drops the binding.
+   */
+  public static readonly id: string = "alepha.email.CloudflareEmailProvider";
+
   protected readonly alepha = $inject(Alepha);
   protected readonly env = $env(envSchema);
   protected readonly log = $logger();

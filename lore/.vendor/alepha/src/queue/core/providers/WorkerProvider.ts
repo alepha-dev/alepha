@@ -3,6 +3,7 @@ import {
   $hook,
   $inject,
   $store,
+  AbortedError,
   Alepha,
   type Infer,
   type ZType,
@@ -40,11 +41,18 @@ export const queueWorkerOptions = $atom({
         "Number of workers to run concurrently. Useful only if you are doing a lot of I/O.",
       )
       .default(1),
+    drainTimeout: z
+      .integer()
+      .describe(
+        "Milliseconds stop waits for in-flight messages before aborting their signal. Default 30000.",
+      )
+      .optional(),
   }),
   default: {
     interval: 1000,
     maxInterval: 32000,
     concurrency: 1,
+    drainTimeout: 30_000,
   },
   serverOnly: true,
 });
@@ -69,7 +77,16 @@ export class WorkerProvider {
 
   protected workerPromises: Array<Promise<void>> = [];
   protected workersRunning = 0;
+  /**
+   * Cuts a poll wait short (`wakeUp()`, stop). Never a handler's signal:
+   * `wakeUp()` aborts it whenever a message arrives.
+   */
   protected abortController: AbortController | undefined;
+  /**
+   * One controller per message being processed, its handler's ambient
+   * signal (#E85). Aborted only when stop gives up waiting for it.
+   */
+  protected readonly messageControllers = new Set<AbortController>();
   protected workerIntervals: Record<number, number> = {};
   protected consumers: Array<QueueConsumer> = [];
   protected nextConsumerIndex = 0;
@@ -251,7 +268,15 @@ export class WorkerProvider {
     const { message, consumer } = response;
 
     const payload = this.codec.decode(consumer.schema, message);
-    await this.alepha.context.run(() => consumer.handler({ payload }));
+    const controller = new AbortController();
+    this.messageControllers.add(controller);
+    try {
+      await this.alepha.context.run(() => consumer.handler({ payload }), {
+        signal: controller.signal,
+      });
+    } finally {
+      this.messageControllers.delete(controller);
+    }
   }
 
   /**
@@ -263,9 +288,28 @@ export class WorkerProvider {
     this.workersRunning = 0;
 
     this.log.trace("Stopping workers...");
-    this.abortController?.abort();
+    this.abortController?.abort(new AbortedError("Queue workers stopping"));
 
     this.log.trace("Waiting for workers to finish...");
+    // Cancelled once the workers are done, so a quick stop leaves no timer.
+    const deadline = new AbortController();
+    const drained = await Promise.race([
+      Promise.all(this.workerPromises).then(() => true),
+      this.dateTimeProvider
+        .wait(this.options.drainTimeout ?? 30_000, { signal: deadline.signal })
+        .then(() => false),
+    ]);
+    deadline.abort(new AbortedError("Queue workers drained"));
+    if (!drained && this.messageControllers.size > 0) {
+      this.log.warn(
+        `Aborting ${this.messageControllers.size} in-flight message(s) after drain timeout`,
+      );
+      for (const controller of this.messageControllers) {
+        controller.abort(
+          new AbortedError("Queue workers stopping: drain timeout reached"),
+        );
+      }
+    }
     await Promise.all(this.workerPromises);
 
     // Leave nothing from this run behind: `startWorkers()` only creates a
@@ -282,7 +326,8 @@ export class WorkerProvider {
    */
   public wakeUp(): void {
     this.log.debug("Waking up workers...");
-    this.abortController?.abort();
+    // Cuts a poll wait short; never a handler's signal.
+    this.abortController?.abort(new AbortedError("Queue workers woken up"));
     this.abortController = new AbortController();
 
     // if no workers are running, start them, (should not happen, but just in case)

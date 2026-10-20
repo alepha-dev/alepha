@@ -10,7 +10,11 @@ import {
   type ZType,
   z,
 } from "alepha";
-import { type DateTime, DateTimeProvider } from "alepha/datetime";
+import {
+  type DateTime,
+  DateTimeProvider,
+  type DurationLike,
+} from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import {
   asc,
@@ -544,6 +548,11 @@ export abstract class Repository<T extends ZObject> {
 
     this.log.debug(`Starting transaction on table ${this.tableName}`);
 
+    // Checked before BEGIN only, like `DatabaseProvider.transactional` (#E85).
+    if (this.alepha.context.signal !== this.alepha.context.appSignal) {
+      this.alepha.context.signal.throwIfAborted();
+    }
+
     if (this.provider.usesSyncTransactions) {
       // Drizzle's sync SQLite session commits as soon as the callback
       // returns — an async callback would run its awaited statements OUTSIDE
@@ -660,168 +669,173 @@ export abstract class Repository<T extends ZObject> {
     query: PgQueryRelations<T, R> = {},
     opts: StatementOptions = {},
   ): Promise<PgStatic<T, R>[]> {
-    // Check cache. Never inside a transaction: a read there can see rows the
-    // transaction wrote and may still roll back, and a hit would hide them.
-    if (opts.for && opts.cache) {
-      // A cache hit takes no row lock: the caller would believe it holds a
-      // lock it never took.
-      throw new AlephaError(
-        `findMany on '${this.tableName}' was given both 'for' and 'cache': a cached result takes no row lock. Drop one of them.`,
-      );
-    }
-    const cache = this.inTransaction(opts) ? undefined : opts.cache;
-    if (cache) {
-      const cacheKey = cache.key ?? this.buildCacheKey("findMany", query, opts);
-      const cached = await this.dbCache.get<PgStatic<T, R>[]>(
-        this.tableName,
-        cacheKey,
-      );
-      if (cached) return cached;
-    }
-
-    await this.alepha.events.emit("repository:read:before", {
-      tableName: this.tableName,
-      query,
-    });
-
-    if (query.distinct && query.with) {
-      // `rawSelectDistinct` selects a FLAT field map, while the join
-      // post-processing below expects drizzle's nested per-table row shape —
-      // `row[this.tableName]` is undefined and the mapping quietly produces
-      // junk. Refuse rather than return garbage.
-      throw new AlephaError(
-        `Query on '${this.tableName}' combines 'distinct' with 'with' (joins), which is not supported: ` +
-          "SELECT DISTINCT returns a flat row that the join mapper cannot reassemble. " +
-          "Drop one of the two, or de-duplicate after the join.",
-      );
-    }
-
-    const columns = query.columns ?? query.distinct;
-    const builder = query.distinct
-      ? this.rawSelectDistinct(opts, query.distinct)
-      : // Narrow the SQL projection too, not just the schema `clean()` uses.
-        // `columns` only affected the returned shape, so a wide table still
-        // paid full row I/O for a two-column read. Joins keep SELECT * — the
-        // join mapper needs every table's columns to reassemble the row.
-        query.columns && !query.with
-        ? this.rawSelectColumns(opts, query.columns)
-        : this.rawSelect(opts);
-
-    const joins: Array<PgJoin> = [];
-    if (query.with) {
-      this.relationManager.buildJoins(
-        this.provider,
-        builder,
-        joins,
-        query.with,
-        this.pgTable,
-      );
-    }
-
-    const where = this.withDeletedAt(
-      (query.where ?? {}) as PgQueryWhere<T>,
-      opts,
-    );
-
-    builder.where(() => this.toSQL(where, joins));
-
-    let limit = query.limit;
-    if (query.offset) {
-      builder.offset(query.offset);
-
-      // SQLite requires LIMIT when OFFSET is used. Use an effectively
-      // unbounded limit so the dialects stay equivalent (a fixed cap would
-      // silently truncate), without mutating the caller's query object.
-      if (this.provider.dialect === "sqlite" && !limit) {
-        limit = Number.MAX_SAFE_INTEGER;
-      }
-    }
-
-    if (limit) {
-      builder.limit(limit);
-    }
-
-    if (query.orderBy) {
-      const orderByClauses = this.queryManager.normalizeOrderBy(query.orderBy);
-      builder.orderBy(
-        ...orderByClauses.map((clause) =>
-          clause.direction === "desc"
-            ? desc(this.col(clause.column as string))
-            : asc(this.col(clause.column as string)),
-        ),
-      );
-    }
-
-    if (query.groupBy) {
-      builder.groupBy(...query.groupBy.map((key) => this.col(key as string)));
-    }
-
-    if (opts.for) {
-      if (typeof opts.for === "string") {
-        builder.for(opts.for);
-      } else {
-        builder.for(
-          opts.for.mode,
-          opts.for.onLocked === "skip"
-            ? { skipLocked: true }
-            : { noWait: true },
+    return this.guard("read", opts, async () => {
+      // Check cache. Never inside a transaction: a read there can see rows the
+      // transaction wrote and may still roll back, and a hit would hide them.
+      if (opts.for && opts.cache) {
+        // A cache hit takes no row lock: the caller would believe it holds a
+        // lock it never took.
+        throw new AlephaError(
+          `findMany on '${this.tableName}' was given both 'for' and 'cache': a cached result takes no row lock. Drop one of them.`,
         );
       }
-    }
-
-    try {
-      let rows = await builder.execute();
-
-      let schema: ZObject = this.entity.schema;
-      if (columns) {
-        schema = schema.pick(
-          Object.fromEntries(columns.map((c) => [c, true])) as never,
-        ) as ZObject;
+      const cache = this.inTransaction(opts) ? undefined : opts.cache;
+      if (cache) {
+        const cacheKey =
+          cache.key ?? this.buildCacheKey("findMany", query, opts);
+        const cached = await this.dbCache.get<PgStatic<T, R>[]>(
+          this.tableName,
+          cacheKey,
+        );
+        if (cached) return cached;
       }
 
-      // Build joinedSchema once per query (not per row) to avoid SchemaValidator
-      // cache growth — each buildSchemaWithJoins() produces a fresh schema object.
-      const joinedSchema = joins.length
-        ? this.relationManager.buildSchemaWithJoins(schema, joins)
-        : null;
+      await this.alepha.events.emit("repository:read:before", {
+        tableName: this.tableName,
+        query,
+      });
 
-      if (joins.length) {
-        rows = rows.map((row: any) =>
-          this.relationManager.mapRowWithJoins(
-            row[this.tableName],
-            row,
-            schema,
-            joins,
+      if (query.distinct && query.with) {
+        // `rawSelectDistinct` selects a FLAT field map, while the join
+        // post-processing below expects drizzle's nested per-table row shape —
+        // `row[this.tableName]` is undefined and the mapping quietly produces
+        // junk. Refuse rather than return garbage.
+        throw new AlephaError(
+          `Query on '${this.tableName}' combines 'distinct' with 'with' (joins), which is not supported: ` +
+            "SELECT DISTINCT returns a flat row that the join mapper cannot reassemble. " +
+            "Drop one of the two, or de-duplicate after the join.",
+        );
+      }
+
+      const columns = query.columns ?? query.distinct;
+      const builder = query.distinct
+        ? this.rawSelectDistinct(opts, query.distinct)
+        : // Narrow the SQL projection too, not just the schema `clean()` uses.
+          // `columns` only affected the returned shape, so a wide table still
+          // paid full row I/O for a two-column read. Joins keep SELECT * — the
+          // join mapper needs every table's columns to reassemble the row.
+          query.columns && !query.with
+          ? this.rawSelectColumns(opts, query.columns)
+          : this.rawSelect(opts);
+
+      const joins: Array<PgJoin> = [];
+      if (query.with) {
+        this.relationManager.buildJoins(
+          this.provider,
+          builder,
+          joins,
+          query.with,
+          this.pgTable,
+        );
+      }
+
+      const where = this.withDeletedAt(
+        (query.where ?? {}) as PgQueryWhere<T>,
+        opts,
+      );
+
+      builder.where(() => this.toSQL(where, joins));
+
+      let limit = query.limit;
+      if (query.offset) {
+        builder.offset(query.offset);
+
+        // SQLite requires LIMIT when OFFSET is used. Use an effectively
+        // unbounded limit so the dialects stay equivalent (a fixed cap would
+        // silently truncate), without mutating the caller's query object.
+        if (this.provider.dialect === "sqlite" && !limit) {
+          limit = Number.MAX_SAFE_INTEGER;
+        }
+      }
+
+      if (limit) {
+        builder.limit(limit);
+      }
+
+      if (query.orderBy) {
+        const orderByClauses = this.queryManager.normalizeOrderBy(
+          query.orderBy,
+        );
+        builder.orderBy(
+          ...orderByClauses.map((clause) =>
+            clause.direction === "desc"
+              ? desc(this.col(clause.column as string))
+              : asc(this.col(clause.column as string)),
           ),
         );
       }
 
-      rows = rows.map((row) => {
-        if (joinedSchema) {
-          return this.cleanWithJoins(row, joinedSchema, joins);
-        }
-        return this.clean(row, schema);
-      });
-
-      await this.alepha.events.emit("repository:read:after", {
-        tableName: this.tableName,
-        query,
-        entities: rows,
-      });
-
-      const result = rows as PgStatic<T, R>[];
-
-      // Store in cache
-      if (cache) {
-        const cacheKey =
-          cache.key ?? this.buildCacheKey("findMany", query, opts);
-        await this.dbCache.set(this.tableName, cacheKey, result, cache.ttl);
+      if (query.groupBy) {
+        builder.groupBy(...query.groupBy.map((key) => this.col(key as string)));
       }
 
-      return result;
-    } catch (error) {
-      throw this.handleError(error, "Query select has failed");
-    }
+      if (opts.for) {
+        if (typeof opts.for === "string") {
+          builder.for(opts.for);
+        } else {
+          builder.for(
+            opts.for.mode,
+            opts.for.onLocked === "skip"
+              ? { skipLocked: true }
+              : { noWait: true },
+          );
+        }
+      }
+
+      try {
+        let rows = await builder.execute();
+
+        let schema: ZObject = this.entity.schema;
+        if (columns) {
+          schema = schema.pick(
+            Object.fromEntries(columns.map((c) => [c, true])) as never,
+          ) as ZObject;
+        }
+
+        // Build joinedSchema once per query (not per row) to avoid SchemaValidator
+        // cache growth — each buildSchemaWithJoins() produces a fresh schema object.
+        const joinedSchema = joins.length
+          ? this.relationManager.buildSchemaWithJoins(schema, joins)
+          : null;
+
+        if (joins.length) {
+          rows = rows.map((row: any) =>
+            this.relationManager.mapRowWithJoins(
+              row[this.tableName],
+              row,
+              schema,
+              joins,
+            ),
+          );
+        }
+
+        rows = rows.map((row) => {
+          if (joinedSchema) {
+            return this.cleanWithJoins(row, joinedSchema, joins);
+          }
+          return this.clean(row, schema);
+        });
+
+        await this.alepha.events.emit("repository:read:after", {
+          tableName: this.tableName,
+          query,
+          entities: rows,
+        });
+
+        const result = rows as PgStatic<T, R>[];
+
+        // Store in cache
+        if (cache) {
+          const cacheKey =
+            cache.key ?? this.buildCacheKey("findMany", query, opts);
+          await this.dbCache.set(this.tableName, cacheKey, result, cache.ttl);
+        }
+
+        return result;
+      } catch (error) {
+        throw this.handleError(error, "Query select has failed");
+      }
+    });
   }
 
   /**
@@ -956,21 +970,23 @@ export abstract class Repository<T extends ZObject> {
     withRelations: PgRelationMap<T> | undefined,
     opts: StatementOptions = {},
   ): Promise<number> {
-    // Same db resolution as `count()`: `this.db` ignored an explicit
-    // `opts.tx`, so `paginate(..., { count: true, tx })` ran its count
-    // OUTSIDE the transaction — reading rows the transaction had not
-    // committed, or missing rows it had written.
-    const db = this.connection(opts);
+    return this.guard("read", opts, async () => {
+      // Same db resolution as `count()`: `this.db` ignored an explicit
+      // `opts.tx`, so `paginate(..., { count: true, tx })` ran its count
+      // OUTSIDE the transaction — reading rows the transaction had not
+      // committed, or missing rows it had written.
+      const db = this.connection(opts);
 
-    try {
-      return await this.runCountForPage(db, where, withRelations);
-    } catch (error) {
-      // The `findMany` task beside this one in `paginate`'s `Promise.all` is
-      // wrapped; this one was not, so the two halves of the same call
-      // reported failures in different shapes. See `count()` for what a raw
-      // drizzle error puts in its message.
-      throw this.handleError(error, "Query count has failed");
-    }
+      try {
+        return await this.runCountForPage(db, where, withRelations);
+      } catch (error) {
+        // The `findMany` task beside this one in `paginate`'s `Promise.all` is
+        // wrapped; this one was not, so the two halves of the same call
+        // reported failures in different shapes. See `count()` for what a raw
+        // drizzle error puts in its message.
+        throw this.handleError(error, "Query count has failed");
+      }
+    });
   }
 
   /**
@@ -1074,33 +1090,35 @@ export abstract class Repository<T extends ZObject> {
     data: Infer<TObjectInsert<T>>,
     opts: StatementOptions = {},
   ): Promise<Infer<T>> {
-    await this.alepha.events.emit("repository:create:before", {
-      tableName: this.tableName,
-      data,
-    });
-
-    try {
-      // A table whose only column(s) are identity/generated-always has
-      // nothing for `.values()` to insert — see `hasNoInsertableColumns`.
-      const entity = this.hasNoInsertableColumns()
-        ? await this.insertDefaultValues(opts)
-        : await this.rawInsert(opts)
-            .values(this.cast(data ?? {}, true))
-            .returning(this.pgTable)
-            .then(([it]) => this.clean(it, this.entity.schema));
-
-      await this.invalidateCache(opts);
-
-      await this.alepha.events.emit("repository:create:after", {
+    return this.guard("write", opts, async () => {
+      await this.alepha.events.emit("repository:create:before", {
         tableName: this.tableName,
         data,
-        entity,
       });
 
-      return entity;
-    } catch (error) {
-      throw this.handleError(error, "Insert query has failed");
-    }
+      try {
+        // A table whose only column(s) are identity/generated-always has
+        // nothing for `.values()` to insert — see `hasNoInsertableColumns`.
+        const entity = this.hasNoInsertableColumns()
+          ? await this.insertDefaultValues(opts)
+          : await this.rawInsert(opts)
+              .values(this.cast(data ?? {}, true))
+              .returning(this.pgTable)
+              .then(([it]) => this.clean(it, this.entity.schema));
+
+        await this.invalidateCache(opts);
+
+        await this.alepha.events.emit("repository:create:after", {
+          tableName: this.tableName,
+          data,
+          entity,
+        });
+
+        return entity;
+      } catch (error) {
+        throw this.handleError(error, "Insert query has failed");
+      }
+    });
   }
 
   /**
@@ -1126,46 +1144,50 @@ export abstract class Repository<T extends ZObject> {
     values: Array<Infer<TObjectInsert<T>>>,
     opts: StatementOptions & { batchSize?: number } = {},
   ): Promise<Infer<T>[]> {
-    if (values.length === 0) {
-      return [];
-    }
-
-    await this.alepha.events.emit("repository:create:before", {
-      tableName: this.tableName,
-      data: values,
-    });
-
-    // Batches are NOT one atomic unit unless the caller wraps the call in
-    // `$transactional`: a failure in batch N leaves batches 1..N-1 committed.
-    // Documented rather than silently wrapped, because an implicit
-    // transaction around an arbitrarily large insert is its own hazard (lock
-    // duration, WAL growth) and the caller is better placed to decide.
-    const rows = values.map((data) => this.cast(data, true));
-    const batchSize = this.insertBatchSize(rows, opts.batchSize);
-    const allEntities: Infer<T>[] = [];
-
-    try {
-      for (let i = 0; i < rows.length; i += batchSize) {
-        const batch = rows.slice(i, i + batchSize);
-        const entities = await this.rawInsert(opts)
-          .values(batch)
-          .returning(this.pgTable)
-          .then((rows) => rows.map((it) => this.clean(it, this.entity.schema)));
-        allEntities.push(...entities);
+    return this.guard("write", opts, async () => {
+      if (values.length === 0) {
+        return [];
       }
 
-      await this.invalidateCache(opts);
-
-      await this.alepha.events.emit("repository:create:after", {
+      await this.alepha.events.emit("repository:create:before", {
         tableName: this.tableName,
         data: values,
-        entity: allEntities,
       });
 
-      return allEntities;
-    } catch (error) {
-      throw this.handleError(error, "Insert query has failed");
-    }
+      // Batches are NOT one atomic unit unless the caller wraps the call in
+      // `$transactional`: a failure in batch N leaves batches 1..N-1 committed.
+      // Documented rather than silently wrapped, because an implicit
+      // transaction around an arbitrarily large insert is its own hazard (lock
+      // duration, WAL growth) and the caller is better placed to decide.
+      const rows = values.map((data) => this.cast(data, true));
+      const batchSize = this.insertBatchSize(rows, opts.batchSize);
+      const allEntities: Infer<T>[] = [];
+
+      try {
+        for (let i = 0; i < rows.length; i += batchSize) {
+          const batch = rows.slice(i, i + batchSize);
+          const entities = await this.rawInsert(opts)
+            .values(batch)
+            .returning(this.pgTable)
+            .then((rows) =>
+              rows.map((it) => this.clean(it, this.entity.schema)),
+            );
+          allEntities.push(...entities);
+        }
+
+        await this.invalidateCache(opts);
+
+        await this.alepha.events.emit("repository:create:after", {
+          tableName: this.tableName,
+          data: values,
+          entity: allEntities,
+        });
+
+        return allEntities;
+      } catch (error) {
+        throw this.handleError(error, "Insert query has failed");
+      }
+    });
   }
 
   /**
@@ -1289,103 +1311,105 @@ export abstract class Repository<T extends ZObject> {
       set?: WithSQL<Infer<TObjectUpdate<T>>>;
     } = {},
   ): Promise<Infer<T>> {
-    await this.alepha.events.emit("repository:create:before", {
-      tableName: this.tableName,
-      data,
-    });
-
-    const targetKeys = opts.target ?? [this.id.key];
-    const targetColumns = targetKeys.map((key) => this.col(key as string));
-
-    let setData: any;
-    if (opts.set) {
-      // Copy, never stamp in place: `updatedAt` is injected below, and writing
-      // it into the caller's `set` object leaves them holding a clause that
-      // gained a column they never wrote. The `else` branch already copies.
-      setData = { ...(opts.set as Record<string, unknown>) };
-    } else {
-      // Default: update all fields from the insert data except the conflict target and primary key columns
-      setData = { ...data };
-      for (const key of targetKeys) {
-        delete setData[key];
-      }
-      delete setData[this.id.key];
-    }
-
-    // Always inject updatedAt into the conflict SET clause. This ensures that even
-    // with `set: {}`, the ON CONFLICT path touches the row — making it possible to
-    // distinguish inserts from no-ops by comparing createdAt vs updatedAt.
-    const updatedAtField = getAttrFields(
-      this.entity.schema,
-      PG_UPDATED_AT,
-    )?.[0];
-
-    if (updatedAtField) {
-      setData[updatedAtField.key] =
-        opts.now ?? this.dateTimeProvider.nowISOString();
-    }
-
-    // With no `updatedAt` column and nothing left after removing the conflict
-    // target and the PK, the SET clause is empty and drizzle rejects the
-    // statement ("No values to set"). Setting the target to itself is a no-op
-    // UPDATE that keeps ON CONFLICT DO UPDATE valid — and, unlike DO NOTHING,
-    // still RETURNs the conflicting row, which the caller expects.
-    if (Object.keys(setData).length === 0) {
-      const source = (data ?? {}) as Record<string, unknown>;
-      for (const key of targetKeys) {
-        setData[key as string] = source[key as string];
-      }
-    }
-
-    // The ON CONFLICT payload goes through the same validation and codec
-    // encoding as every other write path. Skipping it let a value of the wrong
-    // type reach the driver — and sqlite, being dynamically typed, stored it,
-    // so the row could only be read back as a validation error afterwards.
-    // `cast` lifts raw SQL expressions out before validating and re-attaches
-    // them, so `set: { hits: sql\`hits + 1\` }` still works.
-    setData = this.cast(setData, false) as any;
-    this.withVersionBump(setData);
-
-    // Scope the conflict update to non-deleted rows so an upsert cannot
-    // silently resurrect a soft-deleted row. Plain entities keep the original
-    // statement byte-for-byte.
-    const setWhere = this.deletedAt()
-      ? this.toSQL(this.withDeletedAt({} as PgQueryWhere<T>, opts))
-      : undefined;
-
-    try {
-      const entity = await this.rawInsert(opts)
-        .values(this.cast(data ?? {}, true))
-        .onConflictDoUpdate({
-          target: targetColumns,
-          set: setData,
-          ...(setWhere ? { setWhere } : {}),
-        })
-        .returning(this.pgTable)
-        .then(([it]) => {
-          if (!it) {
-            // The conflicting row is already deleted, so the guarded UPDATE
-            // matched nothing and no row was inserted. Fail loudly rather
-            // than cleaning `undefined`.
-            throw new AlephaError(
-              `Upsert on '${this.tableName}' conflicted with an already-deleted row; refusing to overwrite it.`,
-            );
-          }
-          return this.clean(it, this.entity.schema);
-        });
-
-      await this.invalidateCache(opts);
-
-      await this.alepha.events.emit("repository:create:after", {
+    return this.guard("write", opts, async () => {
+      await this.alepha.events.emit("repository:create:before", {
         tableName: this.tableName,
         data,
-        entity,
       });
 
-      return entity;
-    } catch (error) {
-      throw this.handleError(error, "Upsert query has failed");
-    }
+      const targetKeys = opts.target ?? [this.id.key];
+      const targetColumns = targetKeys.map((key) => this.col(key as string));
+
+      let setData: any;
+      if (opts.set) {
+        // Copy, never stamp in place: `updatedAt` is injected below, and writing
+        // it into the caller's `set` object leaves them holding a clause that
+        // gained a column they never wrote. The `else` branch already copies.
+        setData = { ...(opts.set as Record<string, unknown>) };
+      } else {
+        // Default: update all fields from the insert data except the conflict target and primary key columns
+        setData = { ...data };
+        for (const key of targetKeys) {
+          delete setData[key];
+        }
+        delete setData[this.id.key];
+      }
+
+      // Always inject updatedAt into the conflict SET clause. This ensures that even
+      // with `set: {}`, the ON CONFLICT path touches the row — making it possible to
+      // distinguish inserts from no-ops by comparing createdAt vs updatedAt.
+      const updatedAtField = getAttrFields(
+        this.entity.schema,
+        PG_UPDATED_AT,
+      )?.[0];
+
+      if (updatedAtField) {
+        setData[updatedAtField.key] =
+          opts.now ?? this.dateTimeProvider.nowISOString();
+      }
+
+      // With no `updatedAt` column and nothing left after removing the conflict
+      // target and the PK, the SET clause is empty and drizzle rejects the
+      // statement ("No values to set"). Setting the target to itself is a no-op
+      // UPDATE that keeps ON CONFLICT DO UPDATE valid — and, unlike DO NOTHING,
+      // still RETURNs the conflicting row, which the caller expects.
+      if (Object.keys(setData).length === 0) {
+        const source = (data ?? {}) as Record<string, unknown>;
+        for (const key of targetKeys) {
+          setData[key as string] = source[key as string];
+        }
+      }
+
+      // The ON CONFLICT payload goes through the same validation and codec
+      // encoding as every other write path. Skipping it let a value of the wrong
+      // type reach the driver — and sqlite, being dynamically typed, stored it,
+      // so the row could only be read back as a validation error afterwards.
+      // `cast` lifts raw SQL expressions out before validating and re-attaches
+      // them, so `set: { hits: sql\`hits + 1\` }` still works.
+      setData = this.cast(setData, false) as any;
+      this.withVersionBump(setData);
+
+      // Scope the conflict update to non-deleted rows so an upsert cannot
+      // silently resurrect a soft-deleted row. Plain entities keep the original
+      // statement byte-for-byte.
+      const setWhere = this.deletedAt()
+        ? this.toSQL(this.withDeletedAt({} as PgQueryWhere<T>, opts))
+        : undefined;
+
+      try {
+        const entity = await this.rawInsert(opts)
+          .values(this.cast(data ?? {}, true))
+          .onConflictDoUpdate({
+            target: targetColumns,
+            set: setData,
+            ...(setWhere ? { setWhere } : {}),
+          })
+          .returning(this.pgTable)
+          .then(([it]) => {
+            if (!it) {
+              // The conflicting row is already deleted, so the guarded UPDATE
+              // matched nothing and no row was inserted. Fail loudly rather
+              // than cleaning `undefined`.
+              throw new AlephaError(
+                `Upsert on '${this.tableName}' conflicted with an already-deleted row; refusing to overwrite it.`,
+              );
+            }
+            return this.clean(it, this.entity.schema);
+          });
+
+        await this.invalidateCache(opts);
+
+        await this.alepha.events.emit("repository:create:after", {
+          tableName: this.tableName,
+          data,
+          entity,
+        });
+
+        return entity;
+      } catch (error) {
+        throw this.handleError(error, "Upsert query has failed");
+      }
+    });
   }
 
   /**
@@ -1445,109 +1469,111 @@ export abstract class Repository<T extends ZObject> {
       set?: WithSQL<Infer<TObjectUpdate<T>>>;
     } = {},
   ): Promise<Infer<T>[]> {
-    if (values.length === 0) {
-      return [];
-    }
-
-    await this.alepha.events.emit("repository:create:before", {
-      tableName: this.tableName,
-      data: values,
-    });
-
-    const targetKeys = opts.target ?? [this.id.key];
-    const targetColumns = targetKeys.map((key) => this.col(key as string));
-
-    let setData: any;
-    if (opts.set) {
-      // Copy rather than stamp in place — same reasoning as `upsert`.
-      setData = { ...(opts.set as Record<string, unknown>) };
-    } else {
-      // Without an explicit clause there is no per-row `set` to build: one
-      // statement carries exactly one `DO UPDATE`. Fall back to `excluded`, so
-      // each conflicting row is updated from the values it arrived with rather
-      // than from whichever row of the batch happened to be first.
-      setData = {};
-      const sample = values[0] as Record<string, unknown>;
-      for (const key of Object.keys(sample)) {
-        if (targetKeys.includes(key as keyof Infer<T>)) continue;
-        if (key === this.id.key) continue;
-        setData[key] = this.excluded(key);
-      }
-    }
-
-    const updatedAtField = getAttrFields(
-      this.entity.schema,
-      PG_UPDATED_AT,
-    )?.[0];
-
-    if (updatedAtField) {
-      setData[updatedAtField.key] =
-        opts.now ?? this.dateTimeProvider.nowISOString();
-    }
-
-    // Same empty-SET guard as `upsert`: drizzle rejects a `DO UPDATE` with
-    // nothing to set, and `DO NOTHING` would not return the conflicting rows.
-    if (Object.keys(setData).length === 0) {
-      for (const key of targetKeys) {
-        setData[key as string] = this.excluded(key);
-      }
-    }
-
-    setData = this.cast(setData, false) as any;
-    this.withVersionBump(setData);
-
-    const setWhere = this.deletedAt()
-      ? this.toSQL(this.withDeletedAt({} as PgQueryWhere<T>, opts))
-      : undefined;
-
-    const statement = (batch: Array<Record<string, unknown>>) =>
-      this.rawInsert(opts)
-        .values(batch as never)
-        .onConflictDoUpdate({
-          target: targetColumns,
-          set: setData,
-          ...(setWhere ? { setWhere } : {}),
-        });
-
-    try {
-      const casted = values.map((value) => this.cast(value ?? {}, true));
-
-      // What the SET and WHERE clauses bind on their own, read off the real
-      // statement for one row rather than guessed: an `excluded.<col>`
-      // reference binds nothing, a plain value or the `updatedAt` stamp binds
-      // one, and only drizzle knows which is which once `cast` has run.
-      const oneRow = (statement([casted[0]]) as any).toSQL().params.length;
-      const reserved = Math.max(
-        0,
-        oneRow - this.boundPerRow([casted[0]], this.generatedColumns()),
-      );
-      const batchSize = this.insertBatchSize(casted, undefined, reserved);
-
-      const rows: any[] = [];
-      for (let i = 0; i < casted.length; i += batchSize) {
-        rows.push(
-          ...(await statement(casted.slice(i, i + batchSize)).returning(
-            this.pgTable,
-          )),
-        );
+    return this.guard("write", opts, async () => {
+      if (values.length === 0) {
+        return [];
       }
 
-      const entities = rows.map((row: any) =>
-        this.clean(row, this.entity.schema),
-      );
-
-      await this.invalidateCache(opts);
-
-      await this.alepha.events.emit("repository:create:after", {
+      await this.alepha.events.emit("repository:create:before", {
         tableName: this.tableName,
         data: values,
-        entity: entities,
       });
 
-      return entities;
-    } catch (error) {
-      throw this.handleError(error, "Upsert query has failed");
-    }
+      const targetKeys = opts.target ?? [this.id.key];
+      const targetColumns = targetKeys.map((key) => this.col(key as string));
+
+      let setData: any;
+      if (opts.set) {
+        // Copy rather than stamp in place — same reasoning as `upsert`.
+        setData = { ...(opts.set as Record<string, unknown>) };
+      } else {
+        // Without an explicit clause there is no per-row `set` to build: one
+        // statement carries exactly one `DO UPDATE`. Fall back to `excluded`, so
+        // each conflicting row is updated from the values it arrived with rather
+        // than from whichever row of the batch happened to be first.
+        setData = {};
+        const sample = values[0] as Record<string, unknown>;
+        for (const key of Object.keys(sample)) {
+          if (targetKeys.includes(key as keyof Infer<T>)) continue;
+          if (key === this.id.key) continue;
+          setData[key] = this.excluded(key);
+        }
+      }
+
+      const updatedAtField = getAttrFields(
+        this.entity.schema,
+        PG_UPDATED_AT,
+      )?.[0];
+
+      if (updatedAtField) {
+        setData[updatedAtField.key] =
+          opts.now ?? this.dateTimeProvider.nowISOString();
+      }
+
+      // Same empty-SET guard as `upsert`: drizzle rejects a `DO UPDATE` with
+      // nothing to set, and `DO NOTHING` would not return the conflicting rows.
+      if (Object.keys(setData).length === 0) {
+        for (const key of targetKeys) {
+          setData[key as string] = this.excluded(key);
+        }
+      }
+
+      setData = this.cast(setData, false) as any;
+      this.withVersionBump(setData);
+
+      const setWhere = this.deletedAt()
+        ? this.toSQL(this.withDeletedAt({} as PgQueryWhere<T>, opts))
+        : undefined;
+
+      const statement = (batch: Array<Record<string, unknown>>) =>
+        this.rawInsert(opts)
+          .values(batch as never)
+          .onConflictDoUpdate({
+            target: targetColumns,
+            set: setData,
+            ...(setWhere ? { setWhere } : {}),
+          });
+
+      try {
+        const casted = values.map((value) => this.cast(value ?? {}, true));
+
+        // What the SET and WHERE clauses bind on their own, read off the real
+        // statement for one row rather than guessed: an `excluded.<col>`
+        // reference binds nothing, a plain value or the `updatedAt` stamp binds
+        // one, and only drizzle knows which is which once `cast` has run.
+        const oneRow = (statement([casted[0]]) as any).toSQL().params.length;
+        const reserved = Math.max(
+          0,
+          oneRow - this.boundPerRow([casted[0]], this.generatedColumns()),
+        );
+        const batchSize = this.insertBatchSize(casted, undefined, reserved);
+
+        const rows: any[] = [];
+        for (let i = 0; i < casted.length; i += batchSize) {
+          rows.push(
+            ...(await statement(casted.slice(i, i + batchSize)).returning(
+              this.pgTable,
+            )),
+          );
+        }
+
+        const entities = rows.map((row: any) =>
+          this.clean(row, this.entity.schema),
+        );
+
+        await this.invalidateCache(opts);
+
+        await this.alepha.events.emit("repository:create:after", {
+          tableName: this.tableName,
+          data: values,
+          entity: entities,
+        });
+
+        return entities;
+      } catch (error) {
+        throw this.handleError(error, "Upsert query has failed");
+      }
+    });
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -1563,63 +1589,65 @@ export abstract class Repository<T extends ZObject> {
     data: WithSQL<Infer<TObjectUpdate<T>>>,
     opts: UpdateOptions = {},
   ): Promise<Infer<T>> {
-    await this.alepha.events.emit("repository:update:before", {
-      tableName: this.tableName,
-      where,
-      data,
-    });
-
-    const updatedAtField = getAttrFields(
-      this.entity.schema,
-      PG_UPDATED_AT,
-    )?.[0];
-
-    // Shallow-copy before stamping, same as `updateMany`: writing `updatedAt`
-    // into the caller's object hands back a patch carrying a column it never
-    // declared — which bites when the patch is a shared constant, is reused
-    // across calls, or is validated/audited by the caller afterwards.
-    let row: any = { ...(data as Record<string, unknown>) };
-
-    if (updatedAtField && opts.touch !== false) {
-      row[updatedAtField.key] =
-        opts.now ?? this.dateTimeProvider.nowISOString();
-    }
-
-    where = this.withDeletedAt(where, opts);
-    row = this.cast(row, false) as any;
-
-    // do not update the ID field
-    delete row[this.id.key];
-    this.withVersionBump(row);
-
-    const response = await this.rawUpdate(opts)
-      .set(row)
-      .where(this.toSQL(where))
-      .returning(this.pgTable)
-      .catch((error) => {
-        throw this.handleError(error, "Update query has failed");
-      });
-
-    if (!response[0]) {
-      throw new DbEntityNotFoundError({ entity: this.tableName });
-    }
-
-    try {
-      const entity = this.clean(response[0], this.entity.schema);
-
-      await this.invalidateCache(opts);
-
-      await this.alepha.events.emit("repository:update:after", {
+    return this.guard("write", opts, async () => {
+      await this.alepha.events.emit("repository:update:before", {
         tableName: this.tableName,
         where,
         data,
-        entities: [entity],
       });
 
-      return entity;
-    } catch (error) {
-      throw this.handleError(error, "Update query has failed");
-    }
+      const updatedAtField = getAttrFields(
+        this.entity.schema,
+        PG_UPDATED_AT,
+      )?.[0];
+
+      // Shallow-copy before stamping, same as `updateMany`: writing `updatedAt`
+      // into the caller's object hands back a patch carrying a column it never
+      // declared — which bites when the patch is a shared constant, is reused
+      // across calls, or is validated/audited by the caller afterwards.
+      let row: any = { ...(data as Record<string, unknown>) };
+
+      if (updatedAtField && opts.touch !== false) {
+        row[updatedAtField.key] =
+          opts.now ?? this.dateTimeProvider.nowISOString();
+      }
+
+      where = this.withDeletedAt(where, opts);
+      row = this.cast(row, false) as any;
+
+      // do not update the ID field
+      delete row[this.id.key];
+      this.withVersionBump(row);
+
+      const response = await this.rawUpdate(opts)
+        .set(row)
+        .where(this.toSQL(where))
+        .returning(this.pgTable)
+        .catch((error) => {
+          throw this.handleError(error, "Update query has failed");
+        });
+
+      if (!response[0]) {
+        throw new DbEntityNotFoundError({ entity: this.tableName });
+      }
+
+      try {
+        const entity = this.clean(response[0], this.entity.schema);
+
+        await this.invalidateCache(opts);
+
+        await this.alepha.events.emit("repository:update:after", {
+          tableName: this.tableName,
+          where,
+          data,
+          entities: [entity],
+        });
+
+        return entity;
+      } catch (error) {
+        throw this.handleError(error, "Update query has failed");
+      }
+    });
   }
 
   /**
@@ -1746,48 +1774,51 @@ export abstract class Repository<T extends ZObject> {
     data: WithSQL<Infer<TObjectUpdate<T>>>,
     opts: UpdateOptions = {},
   ): Promise<Array<number | string>> {
-    await this.alepha.events.emit("repository:update:before", {
-      tableName: this.tableName,
-      where,
-      data,
-    });
-
-    const updatedAtField = getAttrFields(
-      this.entity.schema,
-      PG_UPDATED_AT,
-    )?.[0];
-
-    if (updatedAtField && opts.touch !== false) {
-      // Shallow-copy before stamping: writing into the caller's object means a
-      // reused patch carries a stale `updatedAt` into the next call.
-      data = {
-        ...(data as Record<string, unknown>),
-        [updatedAtField.key]: opts.now ?? this.dateTimeProvider.nowISOString(),
-      } as typeof data;
-    }
-
-    where = this.withDeletedAt(where, opts);
-    data = this.cast(data, false) as any;
-    this.withVersionBump(data as Record<string, unknown>);
-    try {
-      const entities = await this.rawUpdate(opts)
-        .set(data as PgUpdateSetSource<PgTableWithColumns<any>>)
-        .where(this.toSQL(where))
-        .returning();
-
-      await this.invalidateCache(opts);
-
-      await this.alepha.events.emit("repository:update:after", {
+    return this.guard("write", opts, async () => {
+      await this.alepha.events.emit("repository:update:before", {
         tableName: this.tableName,
         where,
         data,
-        entities,
       });
 
-      return entities.map((it: any) => it[this.id.key]);
-    } catch (error) {
-      throw this.handleError(error, "Update query has failed");
-    }
+      const updatedAtField = getAttrFields(
+        this.entity.schema,
+        PG_UPDATED_AT,
+      )?.[0];
+
+      if (updatedAtField && opts.touch !== false) {
+        // Shallow-copy before stamping: writing into the caller's object means a
+        // reused patch carries a stale `updatedAt` into the next call.
+        data = {
+          ...(data as Record<string, unknown>),
+          [updatedAtField.key]:
+            opts.now ?? this.dateTimeProvider.nowISOString(),
+        } as typeof data;
+      }
+
+      where = this.withDeletedAt(where, opts);
+      data = this.cast(data, false) as any;
+      this.withVersionBump(data as Record<string, unknown>);
+      try {
+        const entities = await this.rawUpdate(opts)
+          .set(data as PgUpdateSetSource<PgTableWithColumns<any>>)
+          .where(this.toSQL(where))
+          .returning();
+
+        await this.invalidateCache(opts);
+
+        await this.alepha.events.emit("repository:update:after", {
+          tableName: this.tableName,
+          where,
+          data,
+          entities,
+        });
+
+        return entities.map((it: any) => it[this.id.key]);
+      } catch (error) {
+        throw this.handleError(error, "Update query has failed");
+      }
+    });
   }
 
   /**
@@ -1798,40 +1829,42 @@ export abstract class Repository<T extends ZObject> {
     where: PgQueryWhereOrSQL<T> = {},
     opts: StatementOptions = {},
   ): Promise<Array<number | string>> {
-    const deletedAt = this.deletedAt();
-    if (deletedAt && !opts.force) {
-      return await this.updateMany(
-        where,
-        {
-          [deletedAt.key]: opts.now ?? this.dateTimeProvider.nowISOString(),
-        } as any,
-        opts,
-      );
-    }
+    return this.guard("write", opts, async () => {
+      const deletedAt = this.deletedAt();
+      if (deletedAt && !opts.force) {
+        return await this.updateMany(
+          where,
+          {
+            [deletedAt.key]: opts.now ?? this.dateTimeProvider.nowISOString(),
+          } as any,
+          opts,
+        );
+      }
 
-    await this.alepha.events.emit("repository:delete:before", {
-      tableName: this.tableName,
-      where,
-    });
-
-    try {
-      const result = await this.rawDelete(opts)
-        .where(this.toSQL(where))
-        .returning({ id: (this.pgTable as any)[this.id.key] });
-      const ids = result.map((row) => row.id);
-
-      await this.invalidateCache(opts);
-
-      await this.alepha.events.emit("repository:delete:after", {
+      await this.alepha.events.emit("repository:delete:before", {
         tableName: this.tableName,
         where,
-        ids,
       });
 
-      return ids;
-    } catch (error) {
-      throw this.handleError(error, "Delete query has failed");
-    }
+      try {
+        const result = await this.rawDelete(opts)
+          .where(this.toSQL(where))
+          .returning({ id: (this.pgTable as any)[this.id.key] });
+        const ids = result.map((row) => row.id);
+
+        await this.invalidateCache(opts);
+
+        await this.alepha.events.emit("repository:delete:after", {
+          tableName: this.tableName,
+          where,
+          ids,
+        });
+
+        return ids;
+      } catch (error) {
+        throw this.handleError(error, "Delete query has failed");
+      }
+    });
   }
 
   /**
@@ -1920,36 +1953,38 @@ export abstract class Repository<T extends ZObject> {
     where: PgQueryWhereOrSQL<T> = {},
     opts: StatementOptions = {},
   ): Promise<number> {
-    // Announced like `findMany`, and for the reason that matters to a
-    // listener: a count is a full round trip to the database. A counter
-    // wired to this event was blind to every `count()` in the app, so the
-    // shape it exists to catch — one count per row of a page — read as zero
-    // reads.
-    await this.alepha.events.emit("repository:read:before", {
-      tableName: this.tableName,
-      query: { where },
-    });
+    return this.guard("read", opts, async () => {
+      // Announced like `findMany`, and for the reason that matters to a
+      // listener: a count is a full round trip to the database. A counter
+      // wired to this event was blind to every `count()` in the app, so the
+      // shape it exists to catch — one count per row of a page — read as zero
+      // reads.
+      await this.alepha.events.emit("repository:read:before", {
+        tableName: this.tableName,
+        query: { where },
+      });
 
-    where = this.withDeletedAt(where, opts);
-    const db = this.connection(opts);
-    try {
-      return await db.$count(this.pgTable, this.toSQL(where));
-    } catch (error) {
-      // Wrapped like every sibling statement, and this one was not. A raw
-      // drizzle error carries the SQL and its BOUND VALUES in the message —
-      // `Failed query: select count(*) from "quests" where ... params: 1,1` —
-      // so on a filtered query it publishes whatever the caller filtered on
-      // into error reporting. That text reached Lore's blight inbox
-      // (#326, beside #325 which is the same incident through `findMany`,
-      // classified and scrubbed).
-      //
-      // Classification matters as much as scrubbing: `handleError` runs
-      // `DbTimeoutError.from` first, because drizzle demotes the driver's
-      // error to `cause`. A count that timed out surfaced as an
-      // unclassified 500, so the caller was never told the one thing it
-      // could act on. And code catching `DbError` missed this path entirely.
-      throw this.handleError(error, "Query count has failed");
-    }
+      where = this.withDeletedAt(where, opts);
+      const db = this.connection(opts);
+      try {
+        return await db.$count(this.pgTable, this.toSQL(where));
+      } catch (error) {
+        // Wrapped like every sibling statement, and this one was not. A raw
+        // drizzle error carries the SQL and its BOUND VALUES in the message —
+        // `Failed query: select count(*) from "quests" where ... params: 1,1` —
+        // so on a filtered query it publishes whatever the caller filtered on
+        // into error reporting. That text reached Lore's blight inbox
+        // (#326, beside #325 which is the same incident through `findMany`,
+        // classified and scrubbed).
+        //
+        // Classification matters as much as scrubbing: `handleError` runs
+        // `DbTimeoutError.from` first, because drizzle demotes the driver's
+        // error to `cause`. A count that timed out surfaced as an
+        // unclassified 500, so the caller was never told the one thing it
+        // could act on. And code catching `DbError` missed this path entirely.
+        throw this.handleError(error, "Query count has failed");
+      }
+    });
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -2020,257 +2055,259 @@ export abstract class Repository<T extends ZObject> {
     query: AggregateQuery<T, S>,
     opts: StatementOptions = {},
   ): Promise<AggregateResult<T, S>[]> {
-    const AGG_SEPARATOR = "___";
+    return this.guard("read", opts, async () => {
+      const AGG_SEPARATOR = "___";
 
-    // Same reasoning as `count()`: one aggregate is one round trip, and a
-    // listener counting reads must see it.
-    await this.alepha.events.emit("repository:read:before", {
-      tableName: this.tableName,
-      query,
-    });
+      // Same reasoning as `count()`: one aggregate is one round trip, and a
+      // listener counting reads must see it.
+      await this.alepha.events.emit("repository:read:before", {
+        tableName: this.tableName,
+        query,
+      });
 
-    // Build flat select fields
-    const flatFields: Record<string, any> = {};
-    const aggFn = (op: AggregateOp, column: any) => {
-      switch (op) {
-        case "count":
-          return count(column);
-        case "sum":
-          return sum(column);
-        case "avg":
-          return avg(column);
-        case "min":
-          return min(column);
-        case "max":
-          return max(column);
+      // Build flat select fields
+      const flatFields: Record<string, any> = {};
+      const aggFn = (op: AggregateOp, column: any) => {
+        switch (op) {
+          case "count":
+            return count(column);
+          case "sum":
+            return sum(column);
+          case "avg":
+            return avg(column);
+          case "min":
+            return min(column);
+          case "max":
+            return max(column);
+        }
+      };
+
+      /**
+       * The expression one operation aggregates over.
+       *
+       * `column` re-points it; `where` wraps it in a CASE so only the matching
+       * rows contribute. ⚠️ The condition is ANDed INSIDE the CASE and never
+       * touches the statement's own WHERE, which is where `withDeletedAt` lives.
+       * A per-aggregate condition that replaced or short-circuited that clause
+       * would resurrect soft-deleted rows.
+       */
+      const aggExpr = (key: string, op: AggregateOp, spec: any) => {
+        const source =
+          spec && typeof spec === "object" && spec.expr ? spec.expr : undefined;
+        const columnName =
+          spec && typeof spec === "object" && spec.column ? spec.column : key;
+        const column = source ?? this.col(columnName);
+        const condition =
+          spec && typeof spec === "object" && spec.where
+            ? this.toSQL(spec.where)
+            : undefined;
+        const value = condition
+          ? sql`CASE WHEN ${condition} THEN ${column} END`
+          : column;
+
+        // An expression has no column to decode with, and drizzle's `min` /
+        // `max` fall back to `String` for anything that is not a column: a
+        // numeric min would come back as "3". Emitted bare, they decode as the
+        // driver returns them, which is what `SQL<T>` types them as.
+        if (source && (op === "min" || op === "max")) {
+          return op === "min" ? sql`min(${value})` : sql`max(${value})`;
+        }
+
+        // No condition means no CASE at all: `{ count: { column: "id" } }` is
+        // just a renamed plain aggregate.
+        if (!condition) {
+          return aggFn(op, column as any);
+        }
+
+        const expr = aggFn(op, value);
+
+        // ⚠️ Re-attach the column's decoder. drizzle's `min` / `max` map with
+        // the column only when the expression IS a column, and fall back to
+        // `String` otherwise — so wrapping in a CASE turned an integer max into
+        // "30" and a timestamp into whatever the driver printed. `count` /
+        // `sum` / `avg` are unaffected: they are coerced with Number() when the
+        // row is re-nested, the way they always were.
+        return op === "min" || op === "max"
+          ? (expr as SQL).mapWith(column as any)
+          : expr;
+      };
+
+      // Keys computed by `{ expr }`: grouped and ordered by their alias.
+      const exprKeys = new Set<string>();
+
+      for (const [key, select] of Object.entries(query.select)) {
+        if (select === true) {
+          flatFields[key] = this.col(key);
+          continue;
+        }
+        if (typeof select !== "object" || select === null) {
+          continue;
+        }
+        if ("expr" in select) {
+          this.assertAggregateAlias(key);
+          exprKeys.add(key);
+          flatFields[key] = sql`${(select as { expr: SQL }).expr}`.as(key);
+          continue;
+        }
+        this.assertAggregateKey(key, select);
+        for (const op of Object.keys(select) as AggregateOp[]) {
+          const spec = (select as Record<string, unknown>)[op];
+          if (!spec) continue;
+          const alias = `${key}${AGG_SEPARATOR}${op}`;
+          const expr = aggExpr(key, op, spec);
+          // ⚠️ ALIAS every aggregate. A raw SQL expression in a select list is
+          // emitted verbatim, so the driver names that result column after the
+          // expression TEXT — and two conditioned aggregates over the same
+          // column render to the very same text, their conditions differing
+          // only in a bound parameter. They then collapse into one field on the
+          // way back: two sums split by direction came back 0 and null instead
+          // of 700 and 0 (quest #Q344). A plain `sum(col)` never collided,
+          // because two of those differ in the column they name.
+          flatFields[alias] = expr instanceof SQL ? expr.as(alias) : expr;
+        }
       }
-    };
 
-    /**
-     * The expression one operation aggregates over.
-     *
-     * `column` re-points it; `where` wraps it in a CASE so only the matching
-     * rows contribute. ⚠️ The condition is ANDed INSIDE the CASE and never
-     * touches the statement's own WHERE, which is where `withDeletedAt` lives.
-     * A per-aggregate condition that replaced or short-circuited that clause
-     * would resurrect soft-deleted rows.
-     */
-    const aggExpr = (key: string, op: AggregateOp, spec: any) => {
-      const source =
-        spec && typeof spec === "object" && spec.expr ? spec.expr : undefined;
-      const columnName =
-        spec && typeof spec === "object" && spec.column ? spec.column : key;
-      const column = source ?? this.col(columnName);
-      const condition =
-        spec && typeof spec === "object" && spec.where
-          ? this.toSQL(spec.where)
-          : undefined;
-      const value = condition
-        ? sql`CASE WHEN ${condition} THEN ${column} END`
-        : column;
+      const db = this.connection(opts);
+      let builder = db.select(flatFields).from(this.pgTable as PgTable);
 
-      // An expression has no column to decode with, and drizzle's `min` /
-      // `max` fall back to `String` for anything that is not a column: a
-      // numeric min would come back as "3". Emitted bare, they decode as the
-      // driver returns them, which is what `SQL<T>` types them as.
-      if (source && (op === "min" || op === "max")) {
-        return op === "min" ? sql`min(${value})` : sql`max(${value})`;
+      // The soft-delete filter applies even when the caller passes no `where`,
+      // like every other read path.
+      const where = this.withDeletedAt((query.where ?? {}) as any, opts);
+      const whereSql = this.toSQL(where);
+      if (whereSql) {
+        builder = builder.where(whereSql) as any;
       }
 
-      // No condition means no CASE at all: `{ count: { column: "id" } }` is
-      // just a renamed plain aggregate.
-      if (!condition) {
-        return aggFn(op, column as any);
+      // GROUP BY
+      // An `expr` key groups by its select alias. Rendering the expression a
+      // second time would bind its parameters again ($1 in the SELECT, $2 in
+      // the GROUP BY), and Postgres refuses a SELECT expression that is not
+      // textually the grouped one.
+      if (query.groupBy) {
+        builder = builder.groupBy(
+          ...query.groupBy.map((key) =>
+            exprKeys.has(key as string)
+              ? sql`${sql.identifier(key as string)}`
+              : this.col(key as string),
+          ),
+        ) as any;
       }
 
-      const expr = aggFn(op, value);
-
-      // ⚠️ Re-attach the column's decoder. drizzle's `min` / `max` map with
-      // the column only when the expression IS a column, and fall back to
-      // `String` otherwise — so wrapping in a CASE turned an integer max into
-      // "30" and a timestamp into whatever the driver printed. `count` /
-      // `sum` / `avg` are unaffected: they are coerced with Number() when the
-      // row is re-nested, the way they always were.
-      return op === "min" || op === "max"
-        ? (expr as SQL).mapWith(column as any)
-        : expr;
-    };
-
-    // Keys computed by `{ expr }`: grouped and ordered by their alias.
-    const exprKeys = new Set<string>();
-
-    for (const [key, select] of Object.entries(query.select)) {
-      if (select === true) {
-        flatFields[key] = this.col(key);
-        continue;
-      }
-      if (typeof select !== "object" || select === null) {
-        continue;
-      }
-      if ("expr" in select) {
-        this.assertAggregateAlias(key);
-        exprKeys.add(key);
-        flatFields[key] = sql`${(select as { expr: SQL }).expr}`.as(key);
-        continue;
-      }
-      this.assertAggregateKey(key, select);
-      for (const op of Object.keys(select) as AggregateOp[]) {
-        const spec = (select as Record<string, unknown>)[op];
-        if (!spec) continue;
-        const alias = `${key}${AGG_SEPARATOR}${op}`;
-        const expr = aggExpr(key, op, spec);
-        // ⚠️ ALIAS every aggregate. A raw SQL expression in a select list is
-        // emitted verbatim, so the driver names that result column after the
-        // expression TEXT — and two conditioned aggregates over the same
-        // column render to the very same text, their conditions differing
-        // only in a bound parameter. They then collapse into one field on the
-        // way back: two sums split by direction came back 0 and null instead
-        // of 700 and 0 (quest #Q344). A plain `sum(col)` never collided,
-        // because two of those differ in the column they name.
-        flatFields[alias] = expr instanceof SQL ? expr.as(alias) : expr;
-      }
-    }
-
-    const db = this.connection(opts);
-    let builder = db.select(flatFields).from(this.pgTable as PgTable);
-
-    // The soft-delete filter applies even when the caller passes no `where`,
-    // like every other read path.
-    const where = this.withDeletedAt((query.where ?? {}) as any, opts);
-    const whereSql = this.toSQL(where);
-    if (whereSql) {
-      builder = builder.where(whereSql) as any;
-    }
-
-    // GROUP BY
-    // An `expr` key groups by its select alias. Rendering the expression a
-    // second time would bind its parameters again ($1 in the SELECT, $2 in
-    // the GROUP BY), and Postgres refuses a SELECT expression that is not
-    // textually the grouped one.
-    if (query.groupBy) {
-      builder = builder.groupBy(
-        ...query.groupBy.map((key) =>
-          exprKeys.has(key as string)
-            ? sql`${sql.identifier(key as string)}`
-            : this.col(key as string),
-        ),
-      ) as any;
-    }
-
-    // HAVING
-    if (query.having) {
-      const havingConditions: SQL[] = [];
-      for (const [key, ops] of Object.entries(query.having)) {
-        if (!ops || typeof ops !== "object") continue;
-        for (const [op, comparisons] of Object.entries(ops)) {
-          if (!comparisons || typeof comparisons !== "object") continue;
-          // Rebuilt from the SELECT's own spec, not from the key: a HAVING on
-          // a conditioned alias has to compare the same CASE expression the
-          // select computed, or it filters on a different number entirely.
-          const selected = (query.select as Record<string, any>)[key];
-          const spec =
-            selected && typeof selected === "object"
-              ? selected[op as AggregateOp]
-              : undefined;
-          const expr = aggExpr(key, op as AggregateOp, spec);
-          for (const [cmp, val] of Object.entries(
-            comparisons as Record<string, number>,
-          )) {
-            switch (cmp) {
-              case "gt":
-                havingConditions.push(gt(expr, val));
-                break;
-              case "gte":
-                havingConditions.push(gte(expr, val));
-                break;
-              case "lt":
-                havingConditions.push(lt(expr, val));
-                break;
-              case "lte":
-                havingConditions.push(lte(expr, val));
-                break;
-              case "eq":
-                havingConditions.push(drizzleEq(expr, val));
-                break;
-              case "ne":
-                havingConditions.push(ne(expr, val));
-                break;
+      // HAVING
+      if (query.having) {
+        const havingConditions: SQL[] = [];
+        for (const [key, ops] of Object.entries(query.having)) {
+          if (!ops || typeof ops !== "object") continue;
+          for (const [op, comparisons] of Object.entries(ops)) {
+            if (!comparisons || typeof comparisons !== "object") continue;
+            // Rebuilt from the SELECT's own spec, not from the key: a HAVING on
+            // a conditioned alias has to compare the same CASE expression the
+            // select computed, or it filters on a different number entirely.
+            const selected = (query.select as Record<string, any>)[key];
+            const spec =
+              selected && typeof selected === "object"
+                ? selected[op as AggregateOp]
+                : undefined;
+            const expr = aggExpr(key, op as AggregateOp, spec);
+            for (const [cmp, val] of Object.entries(
+              comparisons as Record<string, number>,
+            )) {
+              switch (cmp) {
+                case "gt":
+                  havingConditions.push(gt(expr, val));
+                  break;
+                case "gte":
+                  havingConditions.push(gte(expr, val));
+                  break;
+                case "lt":
+                  havingConditions.push(lt(expr, val));
+                  break;
+                case "lte":
+                  havingConditions.push(lte(expr, val));
+                  break;
+                case "eq":
+                  havingConditions.push(drizzleEq(expr, val));
+                  break;
+                case "ne":
+                  havingConditions.push(ne(expr, val));
+                  break;
+              }
             }
           }
         }
-      }
-      if (havingConditions.length > 0) {
-        builder = builder.having(drizzleAnd(...havingConditions)!) as any;
-      }
-    }
-
-    // ORDER BY
-    if (query.orderBy) {
-      const clauses = this.queryManager.normalizeOrderBy(query.orderBy);
-      builder = builder.orderBy(
-        ...clauses.map((clause) => {
-          // Support dot notation: "amount.sum" → "amount___sum"
-          const colName = clause.column.includes(".")
-            ? clause.column.replace(".", AGG_SEPARATOR)
-            : clause.column;
-          const col = exprKeys.has(colName)
-            ? sql`${sql.identifier(colName)}`
-            : flatFields[colName];
-          if (!col) {
-            throw new AlephaError(
-              `Invalid orderBy column '${clause.column}' in aggregate query`,
-            );
-          }
-          return clause.direction === "desc" ? desc(col) : asc(col);
-        }),
-      ) as any;
-    }
-
-    // LIMIT / OFFSET
-    let limit = query.limit;
-    if (query.offset) {
-      builder = builder.offset(query.offset) as any;
-
-      // Same guard as findMany: SQLite rejects OFFSET without LIMIT, so use
-      // an effectively unbounded limit rather than truncating or failing.
-      if (this.provider.dialect === "sqlite" && !limit) {
-        limit = Number.MAX_SAFE_INTEGER;
-      }
-    }
-    if (limit) {
-      builder = builder.limit(limit) as any;
-    }
-
-    try {
-      const rows = await builder.execute();
-
-      // Re-nest flat results: { amount___sum: 500 } → { amount: { sum: 500 } }
-      return rows.map((row: any) => {
-        const result: Record<string, any> = {};
-        for (const [flatKey, value] of Object.entries(row)) {
-          if (flatKey.includes(AGG_SEPARATOR)) {
-            const [col, op] = flatKey.split(AGG_SEPARATOR);
-            if (!result[col]) result[col] = {};
-            // Only the numeric aggregates are coerced. `min` / `max` return
-            // the column's own value - drizzle already decoded it with the
-            // column's mapper, so a timestamp arrives as a Date - and running
-            // that through Number() turned every non-numeric min/max into NaN.
-            // Their empty-set answer stays null, because SQL has none.
-            result[col][op] =
-              op === "count" || op === "sum" || op === "avg"
-                ? value != null
-                  ? Number(value)
-                  : 0
-                : (value ?? null);
-          } else {
-            result[flatKey] = value;
-          }
+        if (havingConditions.length > 0) {
+          builder = builder.having(drizzleAnd(...havingConditions)!) as any;
         }
-        return result as AggregateResult<T, S>;
-      });
-    } catch (error) {
-      throw this.handleError(error, "Aggregate query has failed");
-    }
+      }
+
+      // ORDER BY
+      if (query.orderBy) {
+        const clauses = this.queryManager.normalizeOrderBy(query.orderBy);
+        builder = builder.orderBy(
+          ...clauses.map((clause) => {
+            // Support dot notation: "amount.sum" → "amount___sum"
+            const colName = clause.column.includes(".")
+              ? clause.column.replace(".", AGG_SEPARATOR)
+              : clause.column;
+            const col = exprKeys.has(colName)
+              ? sql`${sql.identifier(colName)}`
+              : flatFields[colName];
+            if (!col) {
+              throw new AlephaError(
+                `Invalid orderBy column '${clause.column}' in aggregate query`,
+              );
+            }
+            return clause.direction === "desc" ? desc(col) : asc(col);
+          }),
+        ) as any;
+      }
+
+      // LIMIT / OFFSET
+      let limit = query.limit;
+      if (query.offset) {
+        builder = builder.offset(query.offset) as any;
+
+        // Same guard as findMany: SQLite rejects OFFSET without LIMIT, so use
+        // an effectively unbounded limit rather than truncating or failing.
+        if (this.provider.dialect === "sqlite" && !limit) {
+          limit = Number.MAX_SAFE_INTEGER;
+        }
+      }
+      if (limit) {
+        builder = builder.limit(limit) as any;
+      }
+
+      try {
+        const rows = await builder.execute();
+
+        // Re-nest flat results: { amount___sum: 500 } → { amount: { sum: 500 } }
+        return rows.map((row: any) => {
+          const result: Record<string, any> = {};
+          for (const [flatKey, value] of Object.entries(row)) {
+            if (flatKey.includes(AGG_SEPARATOR)) {
+              const [col, op] = flatKey.split(AGG_SEPARATOR);
+              if (!result[col]) result[col] = {};
+              // Only the numeric aggregates are coerced. `min` / `max` return
+              // the column's own value - drizzle already decoded it with the
+              // column's mapper, so a timestamp arrives as a Date - and running
+              // that through Number() turned every non-numeric min/max into NaN.
+              // Their empty-set answer stays null, because SQL has none.
+              result[col][op] =
+                op === "count" || op === "sum" || op === "avg"
+                  ? value != null
+                    ? Number(value)
+                    : 0
+                  : (value ?? null);
+            } else {
+              result[flatKey] = value;
+            }
+          }
+          return result as AggregateResult<T, S>;
+        });
+      } catch (error) {
+        throw this.handleError(error, "Aggregate query has failed");
+      }
+    });
   }
 
   /**
@@ -2769,6 +2806,27 @@ export abstract class Repository<T extends ZObject> {
    * explicit `opts.tx`, or the ambient one `transactional()` set. `tx: null`
    * opts out of the ambient one.
    */
+  /**
+   * Run one statement under its signal: a read inherits the unit's signal,
+   * a write only an explicit one, nothing inside a transaction is cut short
+   * (#E85). See `DatabaseProvider.statement`.
+   */
+  protected guard<R>(
+    kind: "read" | "write",
+    opts: StatementOptions,
+    fn: () => Promise<R>,
+  ): Promise<R> {
+    return this.provider.statement(
+      kind,
+      {
+        signal: opts.signal,
+        inTransaction: this.inTransaction(opts),
+        timeout: opts.timeout,
+      },
+      fn,
+    );
+  }
+
   protected inTransaction(opts: StatementOptions): boolean {
     if (opts.tx === null) {
       return false;
@@ -2926,6 +2984,31 @@ export interface StatementOptions {
    * - `null` — force no transaction, bypass implicit context
    */
   tx?: DbTransaction | null;
+
+  /**
+   * Abort this statement: refused before it is sent once the signal fired,
+   * cancelled in flight where the driver can (postgres.js).
+   *
+   * A read outside a transaction already inherits the ambient signal
+   * (`alepha.context.signal`, a request's or a job run's) and composes it
+   * with this one. A write takes this one only: it never inherits, so a
+   * client that left cannot cut a write sequence in half. Inside a
+   * transaction, nothing is cancelled in flight.
+   */
+  signal?: AbortSignal;
+
+  /**
+   * How long the statement may take before it fails with `DbTimeoutError`
+   * (503, the `TimeoutError` as its cause). Wins over `DATABASE_TIMEOUT`, the
+   * default (5 s on serverless, off elsewhere); `false` or `0`: none.
+   *
+   * Postgres cancels the running statement. Cloudflare D1 cannot abort, so
+   * the call rejects and the statement finishes on its own. SQLite runs a
+   * statement synchronously: the timeout only refuses one not yet sent.
+   * Inside a transaction no timeout applies: a transaction is never cut
+   * short.
+   */
+  timeout?: DurationLike | false;
 
   /**
    * Row lock taken by the SELECT (`FOR UPDATE` and its siblings). Refused

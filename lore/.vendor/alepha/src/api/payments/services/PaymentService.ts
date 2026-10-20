@@ -209,6 +209,11 @@ export class PaymentService {
        * the payer retype an address the platform already knows.
        */
       customerEmail?: string;
+      /**
+       * What the payer sees they are paying for on the PSP checkout page,
+       * e.g. a product's name. The provider's generic word when absent.
+       */
+      label?: string;
     },
   ): Promise<{ url: string; intentId: string }> {
     const intent = await this.getIntent(intentId);
@@ -252,6 +257,7 @@ export class PaymentService {
           idempotencyKey: options?.idempotencyKey,
           customerEmail: options?.customerEmail,
           saveCard: options?.saveCard,
+          label: options?.label,
         },
       );
 

@@ -1,4 +1,4 @@
-import { $hook, $inject, Alepha, AlephaError } from "alepha";
+import { $hook, $inject, AbortedError, Alepha, AlephaError } from "alepha";
 import { type DateTime, DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { type Cron, parseCronExpression } from "cron-schedule";
@@ -105,7 +105,9 @@ export class CronProvider {
     }
 
     cron.running = false;
-    cron.abort?.abort();
+    const reason = new AbortedError(`Cron task '${cron.name}' stopped`);
+    cron.abort?.abort(reason);
+    cron.tick?.abort(reason);
     this.log.debug(`Cron task '${cron.name}' stopped`);
   }
 
@@ -195,8 +197,14 @@ export class CronProvider {
         }
 
         task.executing = true;
-        task
-          .handler({ now: this.dt.of(nextRun) })
+        // The tick's own signal, aborted when the task stops (#E85), so
+        // what the handler calls stops with it.
+        const tick = new AbortController();
+        task.tick = tick;
+        this.alepha.context
+          .run(() => task.handler({ now: this.dt.of(nextRun) }), {
+            signal: tick.signal,
+          })
           .catch((err) => {
             if (task.onError) {
               task.onError(err);
@@ -206,6 +214,9 @@ export class CronProvider {
           })
           .finally(() => {
             task.executing = false;
+            if (task.tick === tick) {
+              task.tick = undefined;
+            }
           });
 
         if (task.loop) {
@@ -285,5 +296,12 @@ export interface CronJob {
   running?: boolean;
   executing?: boolean;
   onError?: (error: Error) => void;
+  /**
+   * Cancels the wait before the next tick.
+   */
   abort?: AbortController;
+  /**
+   * The running tick's signal, aborted when the task stops.
+   */
+  tick?: AbortController;
 }

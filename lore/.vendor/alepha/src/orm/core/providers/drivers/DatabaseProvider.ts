@@ -1,7 +1,14 @@
 import { stat } from "node:fs/promises";
 
-import { $inject, Alepha, AlephaError, type Infer, type ZObject } from "alepha";
-import { DateTimeProvider } from "alepha/datetime";
+import {
+  $inject,
+  Alepha,
+  AlephaError,
+  type Infer,
+  TimeoutError,
+  type ZObject,
+} from "alepha";
+import { DateTimeProvider, type DurationLike } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { type SQL, sql } from "drizzle-orm";
 import {
@@ -13,6 +20,7 @@ import {
 import type { PgTransactionConfig } from "drizzle-orm/pg-core/session";
 
 import { DbError } from "../../errors/DbError.ts";
+import { DbTimeoutError } from "../../errors/DbTimeoutError.ts";
 import { assertAttrsReachable } from "../../helpers/pgAttr.ts";
 import type { DbTransaction } from "../../interfaces/DbTransaction.ts";
 import type { TransactionOptions } from "../../interfaces/TransactionOptions.ts";
@@ -254,6 +262,292 @@ export abstract class DatabaseProvider {
     return result;
   }
 
+  // -------------------------------------------------------------------------------------------------------------------
+  // Cancellation (#E85)
+  // -------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * The context key holding the signal a statement runs under. A driver that
+   * can cancel a running statement reads it when it sends one (see
+   * {@link cancellable}).
+   */
+  public static readonly STATEMENT_SIGNAL = "alepha.orm.signal";
+
+  /**
+   * The signal of the current unit of work, or `undefined` outside one.
+   *
+   * The app signal is not one: an owner drains its units on stop, and the
+   * reads and writes it does to record their outcome (a job's terminal row)
+   * must not be refused because stop began. So is `detachSignal`'s.
+   */
+  protected unitSignal(): AbortSignal | undefined {
+    const ambient = this.alepha.context.signal;
+    return ambient === this.alepha.context.appSignal ? undefined : ambient;
+  }
+
+  /**
+   * Run one repository statement under its signal (owner decision, #E85):
+   *
+   * - a **read** outside a transaction inherits the unit's signal, composed
+   *   with an explicit one;
+   * - a **write** outside a transaction honors an explicit signal only:
+   *   cutting a write sequence short leaves half-done work nothing undoes;
+   * - **inside a transaction** nothing is cut short; an explicit signal that
+   *   already fired still refuses the statement.
+   *
+   * A statement whose signal already fired is refused before it is sent,
+   * with the signal's reason. In flight, a driver that can cancel a running
+   * statement does (postgres.js; `Bun.sql` only while the query is still
+   * queued); the others let it finish.
+   */
+  public async statement<R>(
+    kind: "read" | "write",
+    options: {
+      signal?: AbortSignal;
+      inTransaction: boolean;
+      timeout?: DurationLike | false;
+    },
+    fn: () => Promise<R>,
+  ): Promise<R> {
+    if (options.inTransaction) {
+      options.signal?.throwIfAborted();
+      return fn();
+    }
+
+    const timeout = this.statementTimeout(kind, options.timeout);
+    if (timeout === undefined) {
+      return this.signalled(kind, options.signal, fn);
+    }
+
+    // `ambient: false`: the deadline's own signal, composed below by the
+    // same rule as an explicit one. A write must not inherit the unit's
+    // signal through its timeout.
+    try {
+      return await this.dateTime.deadline(
+        (deadline) =>
+          this.signalled(
+            kind,
+            options.signal
+              ? AbortSignal.any([options.signal, deadline])
+              : deadline,
+            fn,
+          ),
+        timeout,
+        { ambient: false },
+      );
+    } catch (error) {
+      if (error instanceof TimeoutError) {
+        throw new DbTimeoutError(
+          `Query timed out after ${error.data.timeout} ms`,
+          { cause: error },
+        );
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * The timeout a statement outside a transaction runs under (#E87): its
+   * own, else `DATABASE_TIMEOUT` (5 s on serverless, off elsewhere) unless
+   * `DATABASE_TIMEOUT_SCOPE` is `reads` and this is a write. `undefined`
+   * for none.
+   *
+   * What it stops depends on the driver: postgres.js cancels the running
+   * statement; a driver that cannot cancel (SQLite, PGlite) refuses a
+   * statement whose deadline already passed and lets a started one finish.
+   */
+  protected statementTimeout(
+    kind: "read" | "write",
+    own: DurationLike | false | undefined,
+  ): DurationLike | undefined {
+    if (own !== undefined) {
+      return own === false || own === 0 ? undefined : own;
+    }
+    const { ms, scope } = this.defaultStatementTimeout();
+    if (ms <= 0 || (scope === "reads" && kind === "write")) {
+      return undefined;
+    }
+    return ms;
+  }
+
+  /**
+   * `DATABASE_TIMEOUT` and its scope, read once.
+   */
+  protected statementTimeoutDefault?: { ms: number; scope: "all" | "reads" };
+
+  /**
+   * The default statement timeout: `DATABASE_TIMEOUT`, else 5 s on
+   * serverless and off elsewhere. Cloudflare D1 answers 0 here: its own
+   * binding wrapper enforces the same default (`D1TimeoutProvider`).
+   */
+  protected defaultStatementTimeout(): { ms: number; scope: "all" | "reads" } {
+    if (!this.statementTimeoutDefault) {
+      const env = this.alepha.parseEnv(databaseEnvSchema);
+      const configured = env.DATABASE_TIMEOUT;
+      this.statementTimeoutDefault = {
+        ms:
+          configured !== undefined
+            ? Number(configured)
+            : this.alepha.isServerless()
+              ? 5_000
+              : 0,
+        scope: env.DATABASE_TIMEOUT_SCOPE ?? "all",
+      };
+    }
+    return this.statementTimeoutDefault;
+  }
+
+  /**
+   * Whether a statement in flight is raced against its signal: rejected with
+   * the signal's reason as soon as it aborts, the statement itself left to
+   * finish. For a driver that cannot cancel a running statement and must
+   * not hold its caller either (Cloudflare D1).
+   */
+  protected readonly racesStatementSignal: boolean = false;
+
+  /**
+   * {@link statement} once its timeout is settled: the statement under the
+   * explicit signal, composed with the unit's for a read.
+   */
+  protected async signalled<R>(
+    kind: "read" | "write",
+    explicit: AbortSignal | undefined,
+    fn: () => Promise<R>,
+  ): Promise<R> {
+    const unit = kind === "read" ? this.unitSignal() : undefined;
+    const signal =
+      explicit && unit && explicit !== unit
+        ? AbortSignal.any([explicit, unit])
+        : (explicit ?? unit);
+    if (!signal) {
+      return fn();
+    }
+
+    signal.throwIfAborted();
+    try {
+      const run = this.alepha.context.nest(() => {
+        this.alepha.context.set(DatabaseProvider.STATEMENT_SIGNAL, signal);
+        return fn();
+      });
+      return await (this.racesStatementSignal
+        ? this.raceSignal(run, signal)
+        : run);
+    } catch (error) {
+      // A cancelled statement fails with the driver's own error (Postgres
+      // 57014); the caller is told why it stopped instead.
+      if (signal.aborted) {
+        throw signal.reason;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Settle with `run`, or reject with `signal`'s reason as soon as it aborts.
+   * The statement keeps running; its later failure stays observed.
+   */
+  protected raceSignal<R>(run: Promise<R>, signal: AbortSignal): Promise<R> {
+    return new Promise<R>((resolve, reject) => {
+      const onAbort = () => reject(signal.reason);
+      signal.addEventListener("abort", onAbort, { once: true });
+      run.then(
+        (value) => {
+          signal.removeEventListener("abort", onAbort);
+          resolve(value);
+        },
+        (error: unknown) => {
+          signal.removeEventListener("abort", onAbort);
+          reject(error);
+        },
+      );
+    });
+  }
+
+  /**
+   * Wrap a postgres.js or `Bun.sql` client so that a statement sent under a
+   * statement signal (see {@link statement}) is cancelled when it aborts.
+   *
+   * The query objects both drivers return run lazily, on their first
+   * `then`, and drizzle chains `.values()` on them before awaiting. So the
+   * listener is attached without calling `then`, and removed by the first
+   * `then` call, which is when the query actually runs and settles.
+   *
+   * A transaction's statements go through the client `begin()` hands its
+   * callback, which is not wrapped: a transaction is never cut short.
+   */
+  protected cancellable<T extends object>(client: T): T {
+    const watch = (query: unknown): unknown => {
+      const signal = this.alepha.context.get<AbortSignal>(
+        DatabaseProvider.STATEMENT_SIGNAL,
+      );
+      const pending = query as {
+        cancel?: () => unknown;
+        then?: (...args: any[]) => unknown;
+      } | null;
+      if (
+        !signal ||
+        !pending ||
+        typeof pending.cancel !== "function" ||
+        typeof pending.then !== "function"
+      ) {
+        return query;
+      }
+
+      const cancel = () => {
+        try {
+          pending.cancel?.();
+        } catch {
+          // Already settled.
+        }
+      };
+      if (signal.aborted) {
+        cancel();
+        return query;
+      }
+
+      signal.addEventListener("abort", cancel, { once: true });
+      const cleanup = () => signal.removeEventListener("abort", cancel);
+      const then = pending.then;
+      // oxlint-disable-next-line unicorn/no-thenable -- wraps the driver's own `then` on an object that already is a thenable, to learn when the query ran without running it early
+      pending.then = function (
+        this: unknown,
+        onFulfilled?: (value: unknown) => unknown,
+        onRejected?: (reason: unknown) => unknown,
+      ) {
+        return then.call(
+          this,
+          (value: unknown) => {
+            cleanup();
+            return onFulfilled ? onFulfilled(value) : value;
+          },
+          (reason: unknown) => {
+            cleanup();
+            if (onRejected) return onRejected(reason);
+            throw reason;
+          },
+        );
+      };
+      return query;
+    };
+
+    return new Proxy(client, {
+      apply: (target, thisArg, args) =>
+        watch(
+          Reflect.apply(target as (...a: unknown[]) => unknown, thisArg, args),
+        ),
+      get: (target, prop) => {
+        const value = Reflect.get(target, prop, target);
+        if (typeof value !== "function") {
+          return value;
+        }
+        if (prop === "unsafe") {
+          return (...args: unknown[]) => watch(value.apply(target, args));
+        }
+        return value.bind(target);
+      },
+    });
+  }
+
   /**
    * Run a function inside a database transaction with implicit tx propagation.
    *
@@ -287,6 +581,10 @@ export abstract class DatabaseProvider {
       this.assertJoinable(options);
       return fn();
     }
+
+    // Checked before BEGIN only: once begun, a transaction runs to commit or
+    // rolls back on its own error, whatever happens to its caller (#E85).
+    this.unitSignal()?.throwIfAborted();
 
     if (!this.supportsTransactions) {
       this.warnWithoutTransactions(owner);

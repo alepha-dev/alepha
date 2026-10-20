@@ -9,48 +9,24 @@
 />
 Alepha
 </h1>
-<p>A full-stack TypeScript framework. One schema, everywhere.</p>
 <a href="https://www.npmjs.com/package/alepha"><img src="https://img.shields.io/npm/v/alepha.svg" alt="npm version"/></a>
 <a href="https://www.npmjs.com/package/alepha"><img src="https://img.shields.io/npm/l/alepha.svg" alt="license"/></a>
 <a href="https://www.npmjs.com/package/alepha"><img src="https://img.shields.io/npm/dt/alepha.svg" alt="downloads"/></a>
 </div>
 
-## What is Alepha?
+Alepha is a full-stack TypeScript framework: database, API, jobs and React with SSR. Your code never names its host, so the same build ships to Cloudflare Workers or to a container on any machine.
 
-Alepha is a full-stack TypeScript framework. Define a schema once and it is your database table, your API validation, your TypeScript types and your React form.
+## 1. Create a project
 
-Everything between your code and the runtime (HTTP server, routing, auth, queues, storage, jobs, SSR) is rewritten clean and integrated for Node, Bun, and Cloudflare Workers. Two load-bearing layers are deliberately _not_ reinvented: **React** for UI and **Drizzle** for SQL. Nothing to wire up, no config sprawl: one small, consistent surface of typed primitives.
+```bash
+npx alepha init my-app --infra cf
+cd my-app
+npx alepha dev
+```
 
-One small surface covers the server, the database, auth, background work and React, so a weekend project and a distributed system are the same code with different infrastructure underneath.
+## 2. Add some code
 
-- **One schema, everywhere**: database, API validation, TypeScript types and React forms, all from one definition
-- **One surface**: every feature is a typed `$primitive`. Nothing third-party to wire up or keep in sync
-- **Multi-runtime**: the same code runs on Node, Bun, and Cloudflare Workers
-- **Deploy anywhere**: Cloudflare, Vercel, Docker, bare metal
-
-## Architecture
-
-Each layer builds on the previous. Use only what you need: Foundation alone is enough for a CLI tool.
-
-| Layer          | Description                   | Primitives                                                    |
-| -------------- | ----------------------------- | ------------------------------------------------------------- |
-| **Foundation** | DI, lifecycle, config         | `$inject`, `$env`, `$module`, `$hook`, `$logger`              |
-| **Backend**    | Database, storage, API        | `$entity`, `$relations`, `$repository`, `$action`, `$storage` |
-| **Frontend**   | React with SSR, routing, i18n | `$page`, `$head`, `$atom`, `$dictionary`                      |
-| **Platform**   | Users, auth, jobs, audits     | `$realm`, `$job`, `$audit`, `$notification`                   |
-| **Admin**      | Admin panel and auth UI       | `$pageAdmin`, `$pageAccount`, `$pageNav`                      |
-
-## Why so small?
-
-Every feature is one typed `$primitive`: no decorators, no file-system magic, no runtime metadata. An agent reading the code sees exactly what it does, in one place.
-
-For UI, Alepha keeps **React** as the coding interface, so agents write standard React components, the most familiar surface in their training data, with no framework-specific dialect to get wrong. For SQL it builds on **Drizzle**, but wraps it completely: you write a typed `$entity`, declare how entities relate with `$relations`, and read them through a `$repository`, never Drizzle itself. Underneath, a relational read compiles to a single statement using whatever each dialect is best at: lateral joins on Postgres, correlated subqueries on SQLite and D1. One is a proven interface agents already know; the other is a proven engine they never have to think about.
-
-The smaller and more consistent the surface, the more reliably an agent generates correct code against it. Point your AI assistant at [`alepha.dev/llms.txt`](https://alepha.dev/llms.txt) for the full machine-readable API.
-
-## Example
-
-Define an API, call it from a React page. Typed end-to-end, no codegen, nothing to wire.
+A table, an API and a page. Typed end to end, no codegen.
 
 ```tsx
 // src/Api.ts
@@ -58,24 +34,18 @@ import { z } from "alepha";
 import { $entity, $repository, db } from "alepha/orm";
 import { $action } from "alepha/server";
 
-const viewEntity = $entity({
+const views = $entity({
   name: "views",
-  schema: z.object({
-    id: db.primaryKey(),
-    createdAt: db.createdAt(),
-  }),
+  schema: z.object({ id: db.primaryKey(), createdAt: db.createdAt() }),
 });
 
 export class Api {
-  views = $repository(viewEntity);
+  views = $repository(views);
 
   inc = $action({
-    schema: {
-      // ← validates + generates OpenAPI
-      response: z.object({
-        count: z.number(),
-      }),
-    },
+    method: "POST",
+    path: "/inc",
+    schema: { response: z.object({ count: z.number() }) },
     handler: async () => {
       await this.views.create({});
       return { count: await this.views.count() };
@@ -85,54 +55,25 @@ export class Api {
 ```
 
 ```tsx
-import { $page } from "alepha/react/router";
 // src/AppRouter.tsx
+import { $page } from "alepha/react/router";
 import { $client } from "alepha/server/links";
 
 import type { Api } from "./Api.ts";
 
 export class AppRouter {
-  api = $client<Api>(); // ← fully typed, zero codegen
+  api = $client<Api>();
 
   home = $page({
     loader: () => this.api.inc(),
-    component: (props) => <div>Counter: {props.count}</div>,
+    component: (props) => <div>Views: {props.count}</div>,
   });
 }
 ```
 
-The `Api` class is the only contract. `$client<Api>()` derives every call site from it. Change a handler's return type and the page stops compiling.
+## 3. Deploy anywhere
 
-## The admin panel you did not build
-
-Users, roles, sessions, API keys, connected apps, an audit trail, every `$job` with its schedule and its last run, and runtime configuration editable from the browser with history and a factory reset. Sign-in, registration and password reset are generated from the realm settings.
-
-It comes from declaring `$realm` and mounting the admin pages, in both light and dark. Screenshots on [alepha.dev](https://alepha.dev/#admin).
-
-## Swap anything, even time
-
-Nothing in the framework is sealed. Every provider is a class in the container, so a test replaces the one it does not want and leaves the rest running for real. There are 14 `Memory*Provider` classes for the I/O-bound ones, and the clock is one of them.
-
-```ts
-const alepha = Alepha.create().with({
-  provide: EmailProvider,
-  use: MemoryEmailProvider,
-});
-
-const email = alepha.inject(MemoryEmailProvider);
-const time = alepha.inject(DateTimeProvider);
-await alepha.start();
-
-await time.travel([1, "day"]);
-
-expect(email.records).toHaveLength(1);
-```
-
-Cron is anchored to the same clock, so the scheduled `$job` runs during the jump. The test does not wait, and the mail never left the process.
-
-## Deploy with one command
-
-Declare an environment, and `alepha deploy` authenticates, provisions what does not exist yet, builds, runs migrations, deploys and pushes secrets, in that order. The database, the bucket and the queue are not yours to create, and neither is the pipeline that would have created them.
+Declare where it runs:
 
 ```ts
 // alepha.config.ts
@@ -140,43 +81,56 @@ import { defineConfig } from "alepha/cli/config";
 import { cloudflare, infra } from "alepha/cli/infra";
 
 export default defineConfig({
+  build: { runtime: ["node", "workerd"] },
   plugins: [
     infra({
       environments: {
-        production: cloudflare({
-          domain: "example.com",
-        }),
-        staging: cloudflare({
-          domain: "staging.example.com",
-        }),
+        production: cloudflare(),
       },
     }),
   ],
 });
 ```
 
-```bash
-alepha deploy --env production
-```
-
-## Getting Started
-
-Requirements: [Node.js](https://nodejs.org/) 22+ or [Bun](https://bun.sh/) 1.3+
+**Cloudflare.** One command authenticates, provisions the database, bucket and queues, builds, runs migrations, deploys and pushes secrets.
 
 ```bash
-npx alepha init my-app --infra cf      # API + React (SSR) + Tailwind + Cloudflare
-# Add --preset saas for auth, account and admin
-cd my-app
-npx alepha deploy                     # full production lifecycle
-npx alepha dev                        # local development
+npx alepha deploy
 ```
 
-Every project gets the same structure. `--preset` only decides what is mounted on top of it,
-never where anything lives.
+**Docker.** The same build becomes a container image, for any host that runs one.
 
-## Learn More
+```bash
+npx alepha build
+npx alepha image
+```
+
+The code above did not change. What sits underneath it did:
+
+| Primitive     | On Cloudflare            | In Docker                                      |
+| ------------- | ------------------------ | ---------------------------------------------- |
+| `$repository` | D1                       | SQLite, or Postgres with `alepha/orm/postgres` |
+| `$storage`    | R2                       | S3 (`S3_ENDPOINT`) or the local disk           |
+| `$job`        | Queues and Cron Triggers | Redis (`REDIS_URL`) or in-process              |
+| `$cache`      | Cache API or KV          | Redis (`REDIS_URL`) or memory                  |
+
+Start on Cloudflare's free tier, move to your own server when the bill says so, or run both. Leaving is a flag, not a rewrite.
+
+## Start with your agent
+
+<details>
+<summary>A prompt for Claude Code, or any coding agent</summary>
+
+```text
+Read https://alepha.dev/llms.txt, then create an Alepha app in ./my-app with
+`npx alepha init my-app --infra cf`. Add a page that counts its views in the
+database, run it with `npx alepha dev`, and tell me how to deploy it.
+```
+
+</details>
+
+## Learn more
 
 - [Documentation](https://alepha.dev)
-- [llms.txt](https://alepha.dev/llms.txt) for AI assistants
+- [llms.txt](https://alepha.dev/llms.txt): the whole API, for your AI assistant
 - [Contributing](https://github.com/alepha-dev/alepha/blob/main/.github/CONTRIBUTING.md)
-- [GitHub](https://github.com/alepha-dev/alepha)

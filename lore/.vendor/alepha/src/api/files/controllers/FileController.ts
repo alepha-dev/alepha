@@ -104,6 +104,7 @@ export class FileController {
    * it is known before a single byte is read.
    */
   public readonly uploadFile = $action({
+    method: "POST",
     path: this.url,
     group: this.group,
     use: [$secure({ permissions: ["file:create"] })],

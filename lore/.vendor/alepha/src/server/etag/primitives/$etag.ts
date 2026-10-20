@@ -22,18 +22,24 @@ import { ServerEtagProvider } from "../providers/ServerEtagProvider.ts";
  * class UserController {
  *   // ETag only (no response caching)
  *   getUser = $action({
+ *     method: "GET",
+ *     path: "/getUser",
  *     use: [$etag()],
  *     handler: async ({ params }) => { ... },
  *   });
  *
  *   // ETag + response caching (store)
  *   getProfile = $action({
+ *     method: "GET",
+ *     path: "/getProfile",
  *     use: [$etag(true)],
  *     handler: async ({ params }) => { ... },
  *   });
  *
  *   // Fine-grained control
  *   getStats = $action({
+ *     method: "GET",
+ *     path: "/getStats",
  *     use: [$etag({ store: { ttl: [5, "minutes"] }, control: { public: true, maxAge: 300 } })],
  *     handler: async ({ params }) => { ... },
  *   });

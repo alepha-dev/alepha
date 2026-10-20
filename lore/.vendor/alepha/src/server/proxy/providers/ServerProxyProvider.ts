@@ -80,6 +80,8 @@ export class ServerProxyProvider {
           "accept-encoding": "identity", // ignore compression
         },
         body: this.getRawRequestBody(request),
+        // The upstream call stops when the client leaves (#E85).
+        signal: request.signal,
       };
 
       if (requestInit.body) {

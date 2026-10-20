@@ -38,6 +38,16 @@ export interface JobHandlerArgs<T extends ZType = ZType> {
   payload: Infer<T>;
   attempt: number;
   now: DateTime;
+  /**
+   * Aborted when this execution is cancelled (`cancel()`, the admin view) or
+   * outlives the drain at app stop; also on `timeout`.
+   *
+   * The same object as `alepha.context.signal` inside the handler, so what
+   * the handler calls inherits it without being handed it: an `HttpClient`
+   * call, an ORM read, a child process. An execution aborted by a cancel or
+   * the drain is recorded `cancelled`, never `error`, and is not retried.
+   * See the cancellation guide.
+   */
   signal: AbortSignal;
   executionId: string;
   /**
@@ -213,7 +223,14 @@ export interface JobPrimitiveOptions<
   lock?: boolean;
 
   /**
-   * Max execution time per attempt. Handler receives an `AbortSignal`.
+   * Max execution time per attempt.
+   *
+   * Past it, the run's signal (the handler's `signal`, and
+   * `alepha.context.signal` inside it) aborts with a `TimeoutError`, so the
+   * handler's outbound calls and queries stop, and the attempt fails with
+   * that `TimeoutError` at once, even if the handler ignores its signal. A
+   * timed-out attempt is a failure, retried like any other, never recorded
+   * `cancelled`. The run's lock lives twice as long.
    */
   timeout?: DurationLike;
 

@@ -7,6 +7,7 @@ import {
   $hook,
   $inject,
   $store,
+  AbortedError,
   Alepha,
   AlephaError,
   type Infer,
@@ -492,84 +493,129 @@ export class CliProvider {
     );
     const commandEnv = this.parseCommandEnv(command.env, command.name);
 
-    await this.alepha.context.run(async () => {
-      this.log.debug(`Executing command '${command.name}'...`, {
-        flags: commandFlags,
-        args: commandArgs,
-        mode: modeValue,
-      });
+    // The command's signal, aborted on SIGINT / SIGTERM, so the children it
+    // spawned and the calls it made stop with it (#E85).
+    const interrupt = this.interruptSignal();
 
-      const runner = this.runner;
+    try {
+      await this.alepha.context.run(
+        async () => {
+          this.log.debug(`Executing command '${command.name}'...`, {
+            flags: commandFlags,
+            args: commandArgs,
+            mode: modeValue,
+          });
 
-      // Start command session for pretty print
-      runner.startCommand(this.name, command.name);
+          const runner = this.runner;
 
-      const args = {
-        flags: commandFlags,
-        args: commandArgs,
-        env: commandEnv,
-        run: runner.run,
-        ask: this.asker.ask,
-        fs,
-        glob,
-        root,
-        help: () => this.printHelp(command),
-        print: (message?: string) => this.output.print(message),
-        mode: modeValue,
-      };
+          // Start command session for pretty print
+          runner.startCommand(this.name, command.name);
 
-      // One slot around all three: a pre-hook running outside it would do the
-      // expensive part of the work unserialised.
-      //
-      // A function-form `exclusive` is evaluated here rather than at
-      // declaration, which is the whole point of it: the flags are parsed by
-      // now, so one command can serialise its heavy lane and let its cheap one
-      // through. It sees the same parsed inputs the handler will.
-      const declared = command.options.exclusive;
-      const exclusiveKey = this.exclusive.resolveKey(
-        typeof declared === "function"
-          ? declared({
-              flags: commandFlags,
-              args: commandArgs,
-              env: commandEnv,
-              root,
-            })
-          : declared,
-        root,
-        command.name,
+          const args = {
+            flags: commandFlags,
+            args: commandArgs,
+            env: commandEnv,
+            run: runner.run,
+            ask: this.asker.ask,
+            fs,
+            glob,
+            root,
+            help: () => this.printHelp(command),
+            print: (message?: string) => this.output.print(message),
+            mode: modeValue,
+          };
+
+          // One slot around all three: a pre-hook running outside it would do the
+          // expensive part of the work unserialised.
+          //
+          // A function-form `exclusive` is evaluated here rather than at
+          // declaration, which is the whole point of it: the flags are parsed by
+          // now, so one command can serialise its heavy lane and let its cheap one
+          // through. It sees the same parsed inputs the handler will.
+          const declared = command.options.exclusive;
+          const exclusiveKey = this.exclusive.resolveKey(
+            typeof declared === "function"
+              ? declared({
+                  flags: commandFlags,
+                  args: commandArgs,
+                  env: commandEnv,
+                  root,
+                })
+              : declared,
+            root,
+            command.name,
+          );
+          const slot = exclusiveKey
+            ? await this.exclusive.acquire(exclusiveKey, {
+                command: command.name,
+                cwd: root,
+              })
+            : undefined;
+
+          try {
+            // Execute pre-hooks
+            const preHooks = this.findPreHooks(command.name);
+            for (const hook of preHooks) {
+              this.log.debug(`Executing pre-hook for '${command.name}'...`);
+              await hook.options.handler(args as CommandHandlerArgs<ZObject>);
+            }
+
+            // Execute main command
+            await command.options.handler(args as CommandHandlerArgs<ZObject>);
+
+            // Execute post-hooks
+            const postHooks = this.findPostHooks(command.name);
+            for (const hook of postHooks) {
+              this.log.debug(`Executing post-hook for '${command.name}'...`);
+              await hook.options.handler(args as CommandHandlerArgs<ZObject>);
+            }
+
+            runner.end();
+
+            this.log.debug(`Command '${command.name}' executed successfully.`);
+          } finally {
+            await slot?.release();
+          }
+        },
+        { signal: interrupt.signal },
       );
-      const slot = exclusiveKey
-        ? await this.exclusive.acquire(exclusiveKey, {
-            command: command.name,
-            cwd: root,
-          })
-        : undefined;
+    } finally {
+      interrupt.dispose();
+    }
+  }
 
-      try {
-        // Execute pre-hooks
-        const preHooks = this.findPreHooks(command.name);
-        for (const hook of preHooks) {
-          this.log.debug(`Executing pre-hook for '${command.name}'...`);
-          await hook.options.handler(args as CommandHandlerArgs<ZObject>);
-        }
-
-        // Execute main command
-        await command.options.handler(args as CommandHandlerArgs<ZObject>);
-
-        // Execute post-hooks
-        const postHooks = this.findPostHooks(command.name);
-        for (const hook of postHooks) {
-          this.log.debug(`Executing post-hook for '${command.name}'...`);
-          await hook.options.handler(args as CommandHandlerArgs<ZObject>);
-        }
-
-        runner.end();
-
-        this.log.debug(`Command '${command.name}' executed successfully.`);
-      } finally {
-        await slot?.release();
+  /**
+   * A signal aborted when the process receives SIGINT or SIGTERM while a
+   * command runs.
+   *
+   * The abort runs synchronously, so the command's children are killed
+   * before anything exits. Listening replaces Node's default exit on the
+   * signal, so when no other listener is left to handle it (the `run()`
+   * traps, an exclusive slot's), the signal is raised again with ours gone,
+   * and the default exit happens as it would have.
+   */
+  protected interruptSignal(): { signal: AbortSignal; dispose: () => void } {
+    const controller = new AbortController();
+    if (typeof process !== "object" || typeof process.once !== "function") {
+      return { signal: controller.signal, dispose: () => {} };
+    }
+    const signals = ["SIGINT", "SIGTERM"] as const;
+    const dispose = () => {
+      for (const name of signals) {
+        process.off(name, onSignal);
       }
-    });
+    };
+    const onSignal = (name: NodeJS.Signals) => {
+      dispose();
+      controller.abort(new AbortedError(`Command interrupted by ${name}`));
+      if (process.listenerCount(name) === 0) {
+        process.kill(process.pid, name);
+      }
+    };
+    for (const name of signals) {
+      process.once(name, onSignal);
+    }
+    return { signal: controller.signal, dispose };
   }
 
   /**

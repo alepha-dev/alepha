@@ -9,6 +9,7 @@ import {
 import { ActorHostCollection } from "../services/ActorHostCollection.ts";
 import { BuildFreshness } from "../services/BuildFreshness.ts";
 import { BuildSlices } from "../services/BuildSlices.ts";
+import { CloudflareEmailDetector } from "../services/CloudflareEmailDetector.ts";
 import { MetaResolver } from "../services/MetaResolver.ts";
 import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
 
@@ -31,12 +32,7 @@ import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
  */
 export class BuildManifestTask extends BuildTask {
   protected readonly hostCollection = $inject(ActorHostCollection);
-  // Looked up by stable service id (not by class identity) because build tasks
-  // run in the CLI's Alepha context while ctx.alepha is the workspace's separate
-  // context. Two module graphs = two distinct `CloudflareEmailProvider` class
-  // objects, so an imported reference here wouldn't match the one the workspace
-  // registered.
-  protected readonly cloudflareEmailProviderName = "CloudflareEmailProvider";
+  protected readonly cloudflareEmail = $inject(CloudflareEmailDetector);
 
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly meta = $inject(MetaResolver);
@@ -325,11 +321,11 @@ export class BuildManifestTask extends BuildTask {
 
     // Capture the CF email binding so a prebuilt deploy (Lore Deploy) can
     // re-emit `send_email`: `enhanceEmail` cannot introspect there.
-    let email: { binding: string } | undefined;
-    try {
-      ctx.alepha.inject(this.cloudflareEmailProviderName);
-      email = { binding: SEND_EMAIL_DEFAULT_BINDING };
-    } catch {}
+    const email: { binding: string } | undefined = this.cloudflareEmail.detect(
+      ctx.alepha,
+    )
+      ? { binding: SEND_EMAIL_DEFAULT_BINDING }
+      : undefined;
 
     /*
       `runtimes` is the only runtime declaration (#Q2460). Declared order, never

@@ -35,11 +35,15 @@ export type { SecureOptions };
  * ```typescript
  * class OrderController {
  *   getOrders = $action({
+ *     method: "GET",
+ *     path: "/getOrders",
  *     use: [$secure()],
  *     handler: async ({ query }) => { ... },
  *   });
  *
  *   deleteOrder = $action({
+ *     method: "POST",
+ *     path: "/deleteOrder",
  *     use: [$secure({ permissions: ["orders:delete"] })],
  *     handler: async ({ params }) => { ... },
  *   });

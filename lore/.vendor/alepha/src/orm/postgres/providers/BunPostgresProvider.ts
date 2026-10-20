@@ -130,7 +130,9 @@ export class BunPostgresProvider extends PostgresProvider {
     await this.client.unsafe("SELECT 1");
 
     this.bunDb = drizzle({
-      client: this.client,
+      // A read still queued is cancelled when its signal aborts (#E85);
+      // Bun.sql cannot cancel one already executing.
+      client: this.cancellable(this.client),
       logger: {
         logQuery: (query: string, params: unknown[]) => {
           this.log.trace(query, { params });

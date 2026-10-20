@@ -4,6 +4,7 @@ import { OPTIONS } from "alepha/internal";
 import { __alephaRef } from "alepha/internal";
 
 import { ALEPHA_META_FALLBACK } from "./constants/ALEPHA_META_FALLBACK.ts";
+import { AbortedError } from "./errors/AbortedError.ts";
 import { AlephaError } from "./errors/AlephaError.ts";
 import { CircularDependencyError } from "./errors/CircularDependencyError.ts";
 import { ContainerLockedError } from "./errors/ContainerLockedError.ts";
@@ -783,6 +784,8 @@ export class Alepha {
     const generation = this.bootGeneration;
     const superseded = () => generation !== this.bootGeneration;
 
+    this.context.renewApp();
+
     try {
       for (const [key] of this.substitutions.entries()) {
         this.inject(key);
@@ -941,6 +944,10 @@ export class Alepha {
     }
 
     this.log?.info("Stopping App...");
+
+    // The app signal aborts as stop begins (#E85). Units of work do not
+    // compose with it: their owners drain, then abort at their own deadline.
+    this.context.abortApp(new AbortedError("App stopping"));
 
     // Every stop hook runs, even after one throws: stopping at the first
     // failure left the other modules' connections open and `started` true,

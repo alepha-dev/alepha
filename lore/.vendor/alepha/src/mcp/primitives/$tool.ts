@@ -1,7 +1,10 @@
 import {
+  $atom,
   $inject,
+  $store,
   type Async,
   createPrimitive,
+  type Infer,
   type Middleware,
   type MiddlewareProvides,
   PipelineHandler,
@@ -11,6 +14,7 @@ import {
   type ZType,
   z,
 } from "alepha";
+import { DateTimeProvider, type DurationLike } from "alepha/datetime";
 import { KIND } from "alepha/internal";
 import { $logger } from "alepha/logger";
 
@@ -164,6 +168,19 @@ export interface ToolPrimitiveOptions<
   use?: TUse;
 
   /**
+   * How long a call may run, middlewares and handler, before it fails.
+   *
+   * A timed-out call returns a Tool Execution Error (`isError: true`, "Timed
+   * out after 30 s"), not a JSON-RPC error, so the model can retry or narrow
+   * its request. The call's signal aborts with a `TimeoutError`, so the
+   * handler's outbound calls and queries stop too.
+   *
+   * None by default: the `mcpToolOptions` atom's `timeout` sets one for
+   * every tool, and `false` opts this one out of it.
+   */
+  timeout?: DurationLike | false;
+
+  /**
    * The handler function that executes when the tool is called.
    *
    * Receives validated parameters and returns the result.
@@ -179,10 +196,38 @@ export interface ToolPrimitiveOptions<
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+/**
+ * Options shared by every `$tool`.
+ */
+export const mcpToolOptions = $atom({
+  name: "alepha.mcp.tool.options",
+  schema: z.object({
+    timeout: z
+      .integer()
+      .describe(
+        "Milliseconds every $tool call may run before it returns a timed-out Tool Execution Error. Unset or 0: no timeout. A tool's own `timeout` wins.",
+      )
+      .optional(),
+  }),
+  default: {},
+});
+
+export type McpToolOptions = Infer<typeof mcpToolOptions.schema>;
+
+declare module "alepha" {
+  interface State {
+    [mcpToolOptions.key]: McpToolOptions;
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
 export class ToolPrimitive<T extends ToolPrimitiveSchema> extends Primitive<
   ToolPrimitiveOptions<T>
 > {
   protected readonly mcpServer = $inject(McpServerProvider);
+  protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly settings = $store(mcpToolOptions);
   protected readonly log = $logger();
 
   /**
@@ -227,7 +272,20 @@ export class ToolPrimitive<T extends ToolPrimitiveSchema> extends Primitive<
         user: this.currentUser(),
       } as never),
     this.options.use,
+    (run) => this.dateTime.deadline(run, this.timeout),
   );
+
+  /**
+   * The timeout a call runs under: the tool's own, else the
+   * `mcpToolOptions` default. `undefined` when there is none.
+   */
+  public get timeout(): DurationLike | undefined {
+    const own = this.options.timeout;
+    if (own === false) {
+      return undefined;
+    }
+    return own ?? (this.settings.timeout || undefined);
+  }
 
   /**
    * The user a `$secure` in `use` resolved: it publishes it in the

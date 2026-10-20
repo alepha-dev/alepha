@@ -5,7 +5,7 @@ import "dayjs/plugin/timezone.js";
 import "dayjs/plugin/localizedFormat.js";
 import "dayjs/locale/ar.js";
 import "dayjs/locale/fr.js";
-import { $hook, $inject, Alepha } from "alepha";
+import { $hook, $inject, Alepha, TimeoutError } from "alepha";
 import DayjsApi, { type Dayjs } from "dayjs";
 import dayjsDuration from "dayjs/plugin/duration.js";
 import dayjsLocalizedFormat from "dayjs/plugin/localizedFormat.js";
@@ -339,9 +339,11 @@ export class DateTimeProvider {
    * Create a new UTC DateTime instance.
    */
   public utc(date: DateTimeInput | null | undefined): DateTime {
-    return DateTimeEngine.wrap(
-      DayjsApi.utc(DateTimeEngine.parse(date)).locale(this.locale),
-    );
+    // Hand dayjs the raw input: its UTC parser reads a plain date string
+    // ("2026-03-01") as UTC midnight. Going through `DateTimeEngine.parse`
+    // first parsed it in local time, shifting it by the machine's offset.
+    const input = date instanceof DateTime ? DateTimeEngine.date(date) : date;
+    return DateTimeEngine.wrap(DayjsApi.utc(input).locale(this.locale));
   }
 
   /**
@@ -684,17 +686,78 @@ export class DateTimeProvider {
   }
 
   /**
-   * Run a function with a deadline.
+   * Run `fn` with a deadline: the one helper behind every `timeout` option.
+   *
+   * `fn` runs under a child of the ambient signal (`alepha.context.signal`),
+   * so a disconnect still aborts it, and everything it calls (a fetch, a
+   * query, a child process) inherits the deadline without being handed a
+   * signal. The signal is also `fn`'s argument. Once `fn` settles, the parent
+   * signal is the ambient one again.
+   *
+   * When the deadline passes, the child aborts with a {@link TimeoutError}
+   * as its reason and the returned promise rejects with it at once, whether
+   * or not `fn` honours its signal: a caller is never held past the budget.
+   * The timer comes from {@link createTimeout}, so `travel()` fires it.
+   *
+   * `undefined`, `false`, `0` or a non-positive duration mean no deadline:
+   * `fn` runs under the current signal unchanged, so a call site passes its
+   * `timeout` option straight through.
+   *
+   * `fn` runs in a nested context layer, so what it writes into the context
+   * dies with it, and so does the narrowed signal: work `fn` is still doing
+   * after the expiry keeps seeing the aborted signal and is refused.
+   *
+   * `options.ambient: false` leaves the context alone: `fn` gets the
+   * deadline's own signal as its argument, inheriting nothing, for a caller
+   * that decides itself what else may cut the work short (the ORM, whose
+   * writes never inherit the unit's signal).
+   *
+   * ```ts
+   * const quote = await dateTime.deadline(
+   *   () => http.fetch("https://quotes.example.com/latest"),
+   *   [5, "seconds"],
+   * );
+   * ```
    */
   public async deadline<T>(
-    fn: (signal: AbortSignal) => Promise<T>,
-    duration: DurationLike,
+    fn: (signal: AbortSignal) => Promise<T> | T,
+    duration: DurationLike | false | undefined,
+    options: DeadlineOptions = {},
   ): Promise<T> {
-    const abort = new AbortController();
-    const timeout = this.createTimeout(() => abort.abort(), duration);
+    const ms = duration ? this.duration(duration).asMilliseconds() : 0;
+    if (!(ms > 0)) {
+      return await fn(this.alepha.context.signal);
+    }
+
+    const controller = new AbortController();
+    const timeout = this.createTimeout(
+      () => controller.abort(new TimeoutError({ timeout: ms })),
+      ms,
+    );
+
+    let onTimeout: (() => void) | undefined;
     try {
-      return await fn(abort.signal);
+      return await new Promise<T>((resolve, reject) => {
+        onTimeout = () => reject(controller.signal.reason);
+        controller.signal.addEventListener("abort", onTimeout, { once: true });
+        const context = this.alepha.context;
+        if (options.ambient === false) {
+          Promise.resolve()
+            .then(() => fn(controller.signal))
+            .then(resolve, reject);
+          return;
+        }
+        // No ALS (a browser build): `withSignal` only calls its function, so
+        // the deadline reaches `fn` through its argument alone.
+        const signal = AbortSignal.any([context.signal, controller.signal]);
+        Promise.resolve()
+          .then(() => context.withSignal(signal, () => fn(signal)))
+          .then(resolve, reject);
+      });
     } finally {
+      if (onTimeout) {
+        controller.signal.removeEventListener("abort", onTimeout);
+      }
       this.clearTimeout(timeout);
     }
   }
@@ -854,4 +917,16 @@ export interface TimeoutOptions {
    * whose work must happen before the process may exit.
    */
   unref?: boolean;
+}
+
+/**
+ * Options for {@link DateTimeProvider.deadline}.
+ */
+export interface DeadlineOptions {
+  /**
+   * `false`: run `fn` under the deadline's own signal alone, passed as its
+   * argument, without composing it with the ambient signal or touching the
+   * context. Defaults to `true`.
+   */
+  ambient?: boolean;
 }

@@ -1,3 +1,6 @@
+import { AbortedError } from "../errors/AbortedError.ts";
+import { TimeoutError } from "../errors/TimeoutError.ts";
+
 export type AsyncLocalStorageData = Record<string, unknown>;
 
 type ContextLayer = AsyncLocalStorageData & {
@@ -125,6 +128,150 @@ export class AlsProvider {
     }
 
     return this.als.run(layer, callback);
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------
+  // Ambient cancellation (#E85)
+  // -------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * The app's own controller, aborted when `alepha.stop()` begins.
+   *
+   * One per container. A unit of work (a request, a job run) never composes
+   * with it: its owner drains on stop and aborts its units at its own
+   * deadline, so composing it in would turn a graceful drain into a kill.
+   */
+  protected appController = new AbortController();
+
+  /**
+   * The app signal: aborted when `alepha.stop()` begins, never `undefined`.
+   *
+   * What {@link signal} answers outside any unit of work, in an isolated
+   * context, under {@link detachSignal}, and in browser builds.
+   */
+  public get appSignal(): AbortSignal {
+    return this.appController.signal;
+  }
+
+  /**
+   * Abort the app signal. Called by `alepha.stop()` as it begins.
+   */
+  public abortApp(reason?: unknown): void {
+    if (!this.appController.signal.aborted) {
+      this.appController.abort(reason);
+    }
+  }
+
+  /**
+   * Give the app a fresh signal when the previous one was aborted, so a
+   * container started again after a `stop()` does not begin life cancelled.
+   */
+  public renewApp(): void {
+    if (this.appController.signal.aborted) {
+      this.appController = new AbortController();
+    }
+  }
+
+  /**
+   * The ambient signal of the current unit of work: a request's (aborted on
+   * client disconnect), a job run's, an MCP tool call's.
+   *
+   * Reads the innermost layer holding a `signal`, walking up like every
+   * other key, and falls back to {@link appSignal}. Never `undefined`, so a
+   * consumer can always pass it on:
+   *
+   * ```ts
+   * for (const item of items) {
+   *   alepha.context.signal.throwIfAborted();
+   *   await process(item);
+   * }
+   * ```
+   */
+  public get signal(): AbortSignal {
+    return this.get<AbortSignal>("signal") ?? this.appSignal;
+  }
+
+  /**
+   * Run `callback` under a signal that aborts when either the current one or
+   * `signal` does. It can only narrow the ambient signal, never widen it.
+   *
+   * With no ALS (browser builds) this is `callback()`.
+   */
+  public withSignal<R>(signal: AbortSignal, callback: () => R): R {
+    if (!this.als) {
+      return callback();
+    }
+
+    const current = this.signal;
+    const combined =
+      current === signal ? signal : AbortSignal.any([current, signal]);
+    return this.nestWith({ signal: combined }, callback);
+  }
+
+  /**
+   * Run `callback` under the app signal instead of the current one: the
+   * opt-out for work that must finish after the client left, such as a
+   * fire-and-forget write.
+   *
+   * Detached work still dies at app stop. Work that must survive a shutdown
+   * belongs in a `$job`.
+   *
+   * With no ALS (browser builds) this is `callback()`.
+   */
+  public detachSignal<R>(callback: () => R): R {
+    if (!this.als) {
+      return callback();
+    }
+
+    return this.nestWith({ signal: this.appSignal }, callback);
+  }
+
+  /**
+   * Whether `error` is an abort rather than a failure: the error is the
+   * `reason` of `signal` (the ambient one when omitted) once it aborted, or
+   * an {@link AbortedError}, or a `DOMException` named `AbortError`. Checks
+   * the error's `cause` too, for a consumer that wrapped the abort.
+   *
+   * Every consumer classifies an abort through this, so a disconnect is
+   * never reported as an error anywhere.
+   *
+   * A {@link TimeoutError} is never an abort, even as the signal's reason: a
+   * deadline that fired is a failure to report (#E87).
+   */
+  public isAbortError(error: unknown, signal?: AbortSignal): boolean {
+    const target = signal ?? this.signal;
+    let current: unknown = error;
+    for (let depth = 0; depth < 3 && current != null; depth++) {
+      if (current instanceof TimeoutError) {
+        return false;
+      }
+      if (target.aborted && current === target.reason) {
+        return true;
+      }
+      if (current instanceof AbortedError) {
+        return true;
+      }
+      if (
+        typeof current === "object" &&
+        (current as { name?: unknown }).name === "AbortError"
+      ) {
+        return true;
+      }
+      current = (current as { cause?: unknown }).cause;
+    }
+    return false;
+  }
+
+  /**
+   * {@link nest}, with `data` written into the new layer.
+   */
+  protected nestWith<R>(data: AsyncLocalStorageData, callback: () => R): R {
+    return this.nest(() => {
+      for (const key of Object.keys(data)) {
+        this.set(key, data[key]);
+      }
+      return callback();
+    });
   }
 
   public exists(): boolean {

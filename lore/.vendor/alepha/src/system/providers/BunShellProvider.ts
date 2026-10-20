@@ -51,7 +51,7 @@ export class BunShellProvider extends NodeShellProvider {
       throw new AlephaError(`Command timed out after ${options.timeout}ms`);
     }
     if (aborted()) {
-      throw new AlephaError("Command aborted");
+      throw this.abortedError(this.killSignal(options));
     }
     if (code !== 0) {
       throw new AlephaError(`Command exited with code ${code}`);
@@ -115,7 +115,7 @@ export class BunShellProvider extends NodeShellProvider {
       throw new AlephaError(`Command timed out after ${options.timeout}ms`);
     }
     if (aborted()) {
-      throw new AlephaError("Command aborted");
+      throw this.abortedError(this.killSignal(options));
     }
 
     return { stdout, stderr, exitCode };
@@ -142,14 +142,15 @@ export class BunShellProvider extends NodeShellProvider {
         }, options.timeout)
       : undefined;
 
+    const abortSignal = this.killSignal(options);
     const onAbort = () => {
       aborted = true;
       proc.kill("SIGTERM");
     };
-    if (options.signal?.aborted) {
+    if (abortSignal?.aborted) {
       onAbort();
     } else {
-      options.signal?.addEventListener("abort", onAbort, { once: true });
+      abortSignal?.addEventListener("abort", onAbort, { once: true });
     }
 
     return {
@@ -157,7 +158,7 @@ export class BunShellProvider extends NodeShellProvider {
       aborted: () => aborted,
       cleanup: () => {
         if (timer) clearTimeout(timer);
-        options.signal?.removeEventListener("abort", onAbort);
+        abortSignal?.removeEventListener("abort", onAbort);
       },
     };
   }

@@ -15,6 +15,7 @@ import {
   type SchemaOutput,
   z,
 } from "alepha";
+import { DateTimeProvider, type DurationLike } from "alepha/datetime";
 import { KIND } from "alepha/internal";
 import { $logger } from "alepha/logger";
 
@@ -46,7 +47,7 @@ import {
  * **Key Features**
  * - Full TypeScript inference for request/response types
  * - Automatic schema validation using Zod
- * - Convention-based URL generation with customizable paths
+ * - An explicit method and path on every action, no convention to remember
  * - Direct invocation (`run()`) or HTTP requests (`fetch()`)
  * - Built-in authentication and authorization support
  * - Automatic content-type handling (JSON, form-data, plain text)
@@ -58,12 +59,13 @@ import {
  * ```ts
  * $action({ method: "GET", path: "/users" })     // → GET /api/users
  * $action({ method: "GET", path: "/users/:id" }) // → GET /api/users/:id
- * $action({ path: "/hello" })                    // → POST /api/hello
+ * $action({ method: "POST", path: "/hello" })    // → POST /api/hello
  * ```
  *
  * This prefix is configurable via the `serverApiOptions` atom
  * (`alepha.store.mut(serverApiOptions, (o) => ({ ...o, prefix: "/v1" }))`).
- * HTTP method defaults to POST, body or not: a read declares `method: "GET"`.
+ * `method` and `path` are both required: a read declares `method: "GET"`, and
+ * renaming the property never moves the URL.
  *
  * **Common Use Cases**
  * - CRUD operations with type safety
@@ -74,6 +76,7 @@ import {
  * ```ts
  * class UserController {
  *   getUsers = $action({
+ *     method: "GET",
  *     path: "/users",
  *     schema: {
  *       query: z.object({
@@ -159,7 +162,6 @@ export interface ActionPrimitiveOptions<
   /**
    * Name of the action.
    *
-   * - It will be used to generate the route path if `path` is not provided.
    * - It will be used to generate the permission name if `security` is enabled.
    */
   name?: string;
@@ -175,33 +177,46 @@ export interface ActionPrimitiveOptions<
    * ```ts
    * // group = "MyController"
    * class MyController {
-   * 	hello = $action({ handler: () => "Hello World" });
+   *   hello = $action({
+   *     method: "GET",
+   *     path: "/hello",
+   *     handler: () => "Hello World",
+   *   });
    * }
    *
    * // group = "users"
    * class MyOtherController {
    *   group = "users";
-   *   a1 = $action({ handler: () => "Action 1", group: this.group });
-   *   a2 = $action({ handler: () => "Action 2", group: this.group });
+   *   list = $action({
+   *     method: "GET",
+   *     path: "/users",
+   *     group: this.group,
+   *     handler: () => [],
+   *   });
    * }
    * ```
    */
   group?: string;
 
   /**
-   * Pathname of the route. If not provided, property key is used.
+   * Pathname of the route, below the API prefix (`/api` by default). Path
+   * variables are written `:name` and declared in `schema.params`.
+   *
+   * Required: the URL is part of the public contract, so it never derives
+   * from the property name, which a rename would change silently.
    */
-  path?: string;
+  path: string;
 
   /**
-   * The route method. `"POST"` when omitted, with or without a body.
+   * The route method. Required, with or without a body.
    *
-   * Declare `"GET"` for a read: it is the method the HTTP client caches
-   * (ETag) and deduplicates, and a claim that the call changes nothing.
+   * `"GET"` for a read: it is the method the HTTP client caches (ETag) and
+   * deduplicates, and a claim that the call changes nothing, since browsers,
+   * proxies and the `tokens` cookie treat it that way.
    *
    * Wildcard methods are not supported for now. (e.g. "ALL", "ANY", etc.)
    */
-  method?: RouteMethod;
+  method: RouteMethod;
 
   /**
    * The config schema of the route.
@@ -250,12 +265,38 @@ export interface ActionPrimitiveOptions<
    *
    * ```ts
    * createProject = $action({
+   *   method: "POST",
+   *   path: "/projects",
    *   errors: [QuotaExceeded, NotFoundError],
    *   handler: async ({ body }) => this.projects.create(body),
    * });
    * ```
    */
   errors?: TErrors;
+
+  /**
+   * How long the action may run before it answers 503 with a `TimeoutError`.
+   *
+   * The deadline covers the `use` middlewares and the handler (a `$lock`
+   * wait or a `$secure` key fetch counts), not the request body's upload nor
+   * a streamed response body. When it passes, the action's signal aborts
+   * with the `TimeoutError`, so the handler's outbound calls and queries stop
+   * too, and the caller is answered at once.
+   *
+   * None by default: the `serverApiOptions` atom's `timeout` sets one for
+   * every action, and `false` opts this one out of it. A timeout passes
+   * strict mode (`errors`) as the 503 it is.
+   *
+   * ```ts
+   * report = $action({
+   *   method: "POST",
+   *   path: "/reports",
+   *   timeout: [10, "seconds"],
+   *   handler: async () => this.reports.build(),
+   * });
+   * ```
+   */
+  timeout?: DurationLike | false;
 
   /**
    * Main route handler. This is where the route logic is implemented.
@@ -275,6 +316,12 @@ export const serverApiOptions = $atom({
       default: "/api",
       description: "Prefix for all API routes (e.g. $action).",
     }),
+    timeout: z
+      .integer()
+      .describe(
+        "Milliseconds every $action may run before it answers 503 (TimeoutError). Unset or 0: no timeout. An action's own `timeout` wins.",
+      )
+      .optional(),
   }),
   default: {
     prefix: "/api",
@@ -310,14 +357,23 @@ export class ActionPrimitive<
   public readonly handler = new PipelineHandler(
     this.filterDeclaredErrors(this.options.handler),
     this.options.use,
+    (run) => this.withDeadline(run),
   );
 
   protected readonly settings = $store(serverApiOptions);
+  protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly httpClient = $inject(HttpClient);
   protected readonly serverProvider = $inject(ServerProvider);
   protected readonly serverRouterProvider = $inject(ServerRouterProvider);
 
   protected onInit() {
+    // Typed as required; this guards an untyped caller, whose action would
+    // otherwise register at `/api/undefined`.
+    if (!this.options.method || !this.options.path) {
+      throw new AlephaError(
+        `Action '${this.name}' must declare both 'method' and 'path'.`,
+      );
+    }
     if (this.options.disabled) {
       this.log.debug(
         `Action '${this.name}' is disabled. It won't be available in the API.`,
@@ -355,37 +411,17 @@ export class ActionPrimitive<
   }
 
   /**
-   * Returns the HTTP method of the action: `options.method`, else POST.
-   *
-   * POST even without a body. A GET is a claim that the call changes nothing,
-   * since browsers, proxies and the `tokens` cookie treat it that way, so an
-   * action makes it explicitly with `method: "GET"`.
+   * Returns the HTTP method of the action.
    */
   public get method(): RouteMethod {
-    return this.options.method ?? "POST";
+    return this.options.method;
   }
 
   /**
-   * Returns the path of the action.
-   *
-   * Path is prefixed by `/api` by default.
+   * Returns the path of the action, without the API prefix.
    */
   public get path(): string {
-    if (this.options.path) {
-      return this.options.path;
-    }
-
-    let path = `/${this.name}`;
-
-    if (this.options.schema?.params) {
-      for (const [key] of Object.entries(
-        z.schema.shape(this.options.schema.params),
-      )) {
-        path += `/:${key}`;
-      }
-    }
-
-    return path;
+    return this.options.path;
   }
 
   public get schema(): TConfig | undefined {
@@ -397,6 +433,30 @@ export class ActionPrimitive<
    */
   public get errors(): TErrors | undefined {
     return this.options.errors;
+  }
+
+  /**
+   * The timeout this action runs under: its own, else the `serverApiOptions`
+   * default. `undefined` when there is none (`false` on the action, or no
+   * default).
+   */
+  public get timeout(): DurationLike | undefined {
+    const own = this.options.timeout;
+    if (own === false) {
+      return undefined;
+    }
+    return own ?? (this.settings.timeout || undefined);
+  }
+
+  /**
+   * Run the composed pipeline under the action's deadline, when it has one.
+   */
+  protected withDeadline(run: () => any): any {
+    const timeout = this.timeout;
+    if (timeout === undefined) {
+      return run();
+    }
+    return this.dateTime.deadline(run, timeout);
   }
 
   /**
@@ -517,7 +577,7 @@ export class ActionPrimitive<
     const method = this.method;
 
     // we use localhost as the base URL for the action
-    const url = new URL(`http://localhost${this.path ?? ""}`);
+    const url = new URL(`http://localhost${this.path}`);
 
     // The caller's address, when this call happens inside one.
     //

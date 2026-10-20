@@ -1,6 +1,7 @@
 import {
   $hook,
   $inject,
+  AbortedError,
   Alepha,
   AlephaError,
   type Infer,
@@ -354,7 +355,7 @@ export class ParameterProvider {
           .then(() => false),
       ]);
     } finally {
-      timer.abort();
+      timer.abort(new AbortedError("Wait settled"));
     }
   }
 

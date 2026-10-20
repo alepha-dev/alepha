@@ -1,7 +1,7 @@
 import { type ChildProcess, exec, spawn } from "node:child_process";
 import { join } from "node:path";
 
-import { $inject, AlephaError } from "alepha";
+import { $inject, Alepha, AlephaError } from "alepha";
 import { $logger } from "alepha/logger";
 
 import { FileSystemProvider } from "./FileSystemProvider.ts";
@@ -21,6 +21,7 @@ import type {
  */
 export class NodeShellProvider implements ShellProvider {
   protected readonly log = $logger();
+  protected readonly alepha = $inject(Alepha);
   protected readonly fs = $inject(FileSystemProvider);
 
   /**
@@ -211,19 +212,20 @@ export class NodeShellProvider implements ShellProvider {
           }, options.timeout)
         : undefined;
 
+      const abortSignal = this.killSignal(options);
       const onAbort = () => {
         aborted = true;
         this.killTree(proc);
       };
-      if (options.signal?.aborted) {
+      if (abortSignal?.aborted) {
         onAbort();
       } else {
-        options.signal?.addEventListener("abort", onAbort, { once: true });
+        abortSignal?.addEventListener("abort", onAbort, { once: true });
       }
 
       const cleanup = () => {
         if (timer) clearTimeout(timer);
-        options.signal?.removeEventListener("abort", onAbort);
+        abortSignal?.removeEventListener("abort", onAbort);
       };
 
       proc.on("exit", (code, signal) => {
@@ -233,7 +235,7 @@ export class NodeShellProvider implements ShellProvider {
             new AlephaError(`Command timed out after ${options.timeout}ms`),
           );
         } else if (aborted) {
-          reject(new AlephaError("Command aborted"));
+          reject(this.abortedError(abortSignal));
         } else if (signal != null) {
           // `code` is null when the child was killed by a signal — that is a
           // failure (SIGKILL, SIGSEGV, OOM), not a success.
@@ -331,6 +333,33 @@ export class NodeShellProvider implements ShellProvider {
   }
 
   /**
+   * The signal that kills the child: the explicit `signal` composed with the
+   * ambient one (#E85), so a command started for a request, a job or a CLI
+   * command stops with it.
+   *
+   * Only the explicit one decides the process group (see
+   * {@link needsProcessGroup}): the ambient signal is always there, and
+   * making every child a group leader would stop an interactive command
+   * (a `wrangler login`) on SIGTTIN. Without a group the kill reaches the
+   * child itself.
+   */
+  protected killSignal(options: ShellRunOptions): AbortSignal | undefined {
+    const ambient = this.alepha.context.signal;
+    if (!options.signal || options.signal === ambient) {
+      return ambient;
+    }
+    return AbortSignal.any([options.signal, ambient]);
+  }
+
+  /**
+   * The error an aborted command rejects with: it carries the signal's
+   * reason as its `cause`, so `alepha.context.isAbortError` sees an abort.
+   */
+  protected abortedError(signal: AbortSignal | undefined): AlephaError {
+    return new AlephaError("Command aborted", { cause: signal?.reason });
+  }
+
+  /**
    * Whether this child should lead its own process group.
    *
    * Only when we might have to kill it. A detached child is in a different
@@ -425,19 +454,20 @@ export class NodeShellProvider implements ShellProvider {
           }, options.timeout)
         : undefined;
 
+      const abortSignal = this.killSignal(options);
       const onAbort = () => {
         aborted = true;
         this.killTree(proc);
       };
-      if (options.signal?.aborted) {
+      if (abortSignal?.aborted) {
         onAbort();
       } else {
-        options.signal?.addEventListener("abort", onAbort, { once: true });
+        abortSignal?.addEventListener("abort", onAbort, { once: true });
       }
 
       const cleanup = () => {
         if (timer) clearTimeout(timer);
-        options.signal?.removeEventListener("abort", onAbort);
+        abortSignal?.removeEventListener("abort", onAbort);
       };
 
       const settle = (fn: () => void) => {
@@ -470,7 +500,7 @@ export class NodeShellProvider implements ShellProvider {
           const stderr = Buffer.concat(chunks.stderr).toString("utf-8");
 
           if (aborted) {
-            reject(new AlephaError("Command aborted"));
+            reject(this.abortedError(abortSignal));
             return;
           }
           if (timedOut) {

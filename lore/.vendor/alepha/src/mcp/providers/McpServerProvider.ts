@@ -1,4 +1,10 @@
-import { $inject, Alepha, AlephaError, SchemaValidationError } from "alepha";
+import {
+  $inject,
+  AbortedError,
+  Alepha,
+  AlephaError,
+  SchemaValidationError,
+} from "alepha";
 import { $logger } from "alepha/logger";
 
 import {
@@ -500,18 +506,31 @@ export class McpServerProvider {
       this.inFlight.set(key, controller);
     }
 
+    // The call runs under the protocol's cancellation composed with the
+    // ambient signal it already runs inside (the HTTP request's disconnect),
+    // so everything the tool calls inherits both (#E85). `McpContext.signal`
+    // is that same object.
+    let signal = controller.signal;
     try {
-      const result = await this.handleRequest(request, {
-        ...context,
-        signal: controller.signal,
-        protocolVersion: modern?.protocolVersion,
-        clientInfo: modern?.clientInfo,
-        clientCapabilities: modern?.clientCapabilities,
-      });
+      const result = await this.alepha.context.withSignal(
+        controller.signal,
+        () => {
+          if (this.alepha.context.als) {
+            signal = this.alepha.context.signal;
+          }
+          return this.handleRequest(request, {
+            ...context,
+            signal,
+            protocolVersion: modern?.protocolVersion,
+            clientInfo: modern?.clientInfo,
+            clientCapabilities: modern?.clientCapabilities,
+          });
+        },
+      );
       // The client has withdrawn the request. Answering it now would be a
       // response to a question nobody is listening for any more — and per
       // spec the cancelled request's response MUST NOT be sent.
-      if (controller.signal.aborted) {
+      if (signal.aborted) {
         return null;
       }
       return createResponse(
@@ -519,7 +538,7 @@ export class McpServerProvider {
         modern ? this.toModernResult(request, result) : result,
       );
     } catch (error) {
-      if (controller.signal.aborted) {
+      if (signal.aborted) {
         this.log.debug("MCP request aborted by client", { id });
         return null;
       }
@@ -690,7 +709,7 @@ export class McpServerProvider {
   public cancelRequest(id: string | number, clientKey?: string): boolean {
     const key = this.inFlightKey(clientKey, id);
     const controller = key === undefined ? undefined : this.inFlight.get(key);
-    controller?.abort();
+    controller?.abort(new AbortedError(`MCP request ${id} cancelled`));
     return !!controller;
   }
 

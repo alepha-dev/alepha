@@ -13,6 +13,7 @@ import {
   MIDDLEWARE_PROTECTED,
   MIDDLEWARE_RESPONSES,
   type MiddlewareMetadata,
+  TimeoutError,
   type ZObject,
   type ZType,
   z,
@@ -353,6 +354,10 @@ export class ServerSwaggerProvider {
         this.documentErrors(operation, route, schema);
       }
 
+      if (route.timeout !== undefined) {
+        this.documentTimeout(operation, schema);
+      }
+
       const url = route.prefix + this.replacePathParams(route.path);
 
       openApi.paths[url] = {
@@ -420,6 +425,33 @@ export class ServerSwaggerProvider {
         },
       };
     }
+  }
+
+  /**
+   * Document the 503 `TimeoutError` of an action with an effective timeout
+   * (its own, or the `serverApiOptions` default). Joins a 503 the action's
+   * declared errors already document as a `oneOf`.
+   */
+  protected documentTimeout(
+    operation: OpenApiOperation,
+    schema: (source: ZType) => any,
+  ): void {
+    const cls = TimeoutError as unknown as HttpErrorClass;
+    const ref = schema(this.getErrorSchema(cls, TimeoutError.name));
+    const existing =
+      operation.responses["503"]?.content?.["application/json"]?.schema;
+    const all = existing ? [...(existing.oneOf ?? [existing]), ref] : [ref];
+    const values = [
+      ...new Map(all.map((r: any) => [JSON.stringify(r), r])).values(),
+    ];
+    operation.responses["503"] = {
+      description: this.getStatusDescription(503),
+      content: {
+        "application/json": {
+          schema: values.length === 1 ? values[0] : { oneOf: values },
+        },
+      },
+    };
   }
 
   /**

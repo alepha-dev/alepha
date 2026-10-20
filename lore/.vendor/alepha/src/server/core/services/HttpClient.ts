@@ -1,5 +1,7 @@
 import {
+  $atom,
   $inject,
+  $store,
   Alepha,
   AlephaError,
   type FileLike,
@@ -10,7 +12,7 @@ import {
   z,
 } from "alepha";
 import { $cache } from "alepha/cache";
-import type { DurationLike } from "alepha/datetime";
+import { DateTimeProvider, type DurationLike } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 
 import { HttpError } from "../errors/HttpError.ts";
@@ -24,10 +26,38 @@ import type { ClientRequestOptions } from "../primitives/$action.ts";
 import { errorSchema } from "../schemas/errorSchema.ts";
 import { LogRedaction } from "./LogRedaction.ts";
 
+/**
+ * Options of every `HttpClient`.
+ */
+export const httpClientOptions = $atom({
+  name: "alepha.server.http.client.options",
+  schema: z.object({
+    timeout: z
+      .union([z.integer(), z.literal(false)])
+      .describe(
+        "Milliseconds a server-side `fetch` may take, headers and body, before it rejects with a TimeoutError. `false` or 0 disables it. A call's own `timeout` wins. Never applies to `fetchAction` nor in the browser.",
+      )
+      .optional(),
+  }),
+  default: {
+    timeout: 30_000,
+  },
+});
+
+export type HttpClientOptions = Infer<typeof httpClientOptions.schema>;
+
+declare module "alepha" {
+  interface State {
+    [httpClientOptions.key]: HttpClientOptions;
+  }
+}
+
 export class HttpClient {
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
+  protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly redaction = $inject(LogRedaction);
+  protected readonly settings = $store(httpClientOptions);
 
   public readonly cache = $cache<HttpClientCache>({
     provider: "memory",
@@ -72,12 +102,73 @@ export class HttpClient {
       ...request,
       schema: route.schema,
       ...options,
+      // The default outbound timeout is for third parties. An action of the
+      // app is bounded server-side by its own deadline, and a client-side cut
+      // would abandon a long action the server is still running.
+      timeout: options.timeout ?? false,
     });
   }
 
+  /**
+   * Fetch `url`, decoding the response with `request.schema` when given.
+   *
+   * On the server the call runs under the ambient signal
+   * (`alepha.context.signal`), composed with `request.signal` when one is
+   * passed, so a request whose client left stops the calls it made. An
+   * aborted call rejects with the signal's reason. A deduplicated GET is
+   * shared between its callers and aborted only when the last one left.
+   * In the browser only an explicit `signal` applies.
+   *
+   * `request.timeout` bounds the call, headers and body: past it, the call
+   * rejects with a `TimeoutError` and the fetch is aborted. On the server it
+   * defaults to the `httpClientOptions` atom's 30 seconds; `false` or `0`
+   * disables it. In the browser there is no default.
+   */
   public async fetch<T extends ZType>(
     url: string,
     request: RequestInitWithOptions<T> = {}, // standard options
+  ): Promise<FetchResponse<Infer<T>>> {
+    const timeout = this.timeoutOf(request.timeout);
+    if (timeout === undefined) {
+      return this.fetchUnbounded(url, request);
+    }
+
+    // The deadline's signal, passed explicitly: in the browser there is no
+    // ambient signal to carry it.
+    return this.dateTime.deadline(
+      (signal) =>
+        this.fetchUnbounded(url, {
+          ...request,
+          signal: request.signal
+            ? AbortSignal.any([request.signal, signal])
+            : signal,
+        }),
+      timeout,
+    );
+  }
+
+  /**
+   * The timeout a call runs under: its own, else the server-side default.
+   * `undefined` for none.
+   */
+  protected timeoutOf(
+    own: DurationLike | false | undefined,
+  ): DurationLike | undefined {
+    if (own !== undefined) {
+      return own === false || own === 0 ? undefined : own;
+    }
+    if (this.alepha.isBrowser()) {
+      return undefined;
+    }
+    return this.settings.timeout || undefined;
+  }
+
+  /**
+   * {@link fetch} without its timeout.
+   */
+  protected async fetchUnbounded<T extends ZType>(
+    url: string,
+    request: RequestInitWithOptions<T>,
   ): Promise<FetchResponse<Infer<T>>> {
     const options = {
       cache: request.localCache,
@@ -151,19 +242,126 @@ export class HttpClient {
         ? JSON.stringify({ url, method: request.method, scope: identityScope })
         : undefined);
 
-    if (key) {
-      const existing = this.pendingRequests[key];
-      if (existing) {
-        // Log the URL, not the raw key (which carries the identity hash).
-        this.log.info("Request already pending", {
-          url,
-          method: request.method,
-        });
-        return existing;
-      }
+    // The caller's signal: its explicit one composed with the ambient one
+    // (#E85), so a request whose client left stops its outbound calls. The
+    // browser keeps its explicit cancellation only (`useAction`, `useQuery`).
+    const signal = this.callerSignal(request.signal ?? undefined);
+
+    if (!key) {
+      return this.send(url, { ...request, signal }, options, cacheKey);
     }
 
-    const promise = fetch(url, request)
+    // Deduplicated: the fetch is shared by every caller that joins it, so it
+    // never takes one caller's signal. It runs detached, each caller races
+    // its own signal, and the fetch is aborted once its last caller left.
+    let pending = this.pendingRequests[key];
+    if (pending) {
+      // Log the URL, not the raw key (which carries the identity hash).
+      this.log.info("Request already pending", {
+        url,
+        method: request.method,
+      });
+    } else {
+      const controller = new AbortController();
+      const entry: HttpClientPendingRequest = {
+        controller,
+        waiters: 0,
+        promise: this.alepha.context
+          .detachSignal(() =>
+            this.send(
+              url,
+              { ...request, signal: controller.signal },
+              options,
+              cacheKey,
+            ),
+          )
+          .finally(() => {
+            if (this.pendingRequests[key] === entry) {
+              delete this.pendingRequests[key];
+            }
+          }),
+      };
+      // The shared promise is observed through `join`; this keeps a fetch
+      // whose callers all left from rejecting unhandled.
+      entry.promise.catch(() => undefined);
+      this.pendingRequests[key] = entry;
+      pending = entry;
+    }
+
+    return this.join(pending, signal);
+  }
+
+  /**
+   * The signal a call runs under: its explicit `signal` composed with the
+   * ambient one, or either alone. Explicit only in the browser.
+   */
+  protected callerSignal(explicit?: AbortSignal): AbortSignal | undefined {
+    if (this.alepha.isBrowser()) {
+      return explicit;
+    }
+    const ambient = this.alepha.context.signal;
+    if (!explicit || explicit === ambient) {
+      return ambient;
+    }
+    return AbortSignal.any([explicit, ambient]);
+  }
+
+  /**
+   * Wait for a shared fetch as one of its callers: settle with it, or reject
+   * with `signal`'s reason as soon as that caller's signal aborts. The
+   * shared fetch is aborted when the last caller has gone.
+   */
+  protected join<T>(
+    pending: HttpClientPendingRequest,
+    signal: AbortSignal | undefined,
+  ): Promise<T> {
+    pending.waiters++;
+    const leave = (reason?: unknown) => {
+      pending.waiters--;
+      if (reason !== undefined && pending.waiters === 0) {
+        pending.controller.abort(reason);
+      }
+    };
+
+    if (!signal) {
+      return pending.promise.finally(() => leave()) as Promise<T>;
+    }
+
+    return new Promise<T>((resolve, reject) => {
+      const onAbort = () => {
+        leave(signal.reason);
+        reject(signal.reason);
+      };
+      if (signal.aborted) {
+        onAbort();
+        return;
+      }
+      signal.addEventListener("abort", onAbort, { once: true });
+      pending.promise.then(
+        (value) => {
+          signal.removeEventListener("abort", onAbort);
+          leave();
+          resolve(value as T);
+        },
+        (error) => {
+          signal.removeEventListener("abort", onAbort);
+          leave();
+          reject(error);
+        },
+      );
+    });
+  }
+
+  /**
+   * Send the request and decode its response, caching it when asked.
+   */
+  protected send(
+    url: string,
+    request: RequestInit,
+    options: ResolvedFetchOptions,
+    cacheKey: string,
+  ): Promise<FetchResponse> {
+    return fetch(url, request)
       .then(async (response) => {
         this.log.debug("Response", {
           url,
@@ -199,17 +397,16 @@ export class HttpClient {
 
         return fetchResponse;
       })
-      .finally(() => {
-        if (key) {
-          delete this.pendingRequests[key];
+      .catch((error: unknown) => {
+        // An abort is an outcome, not a failure (#E85): debug, and the
+        // signal's reason propagates as is.
+        if (
+          this.alepha.context.isAbortError(error, request.signal ?? undefined)
+        ) {
+          this.log.debug("Request aborted", { url });
         }
+        throw error;
       });
-
-    if (key) {
-      this.pendingRequests[key] = promise;
-    }
-
-    return promise;
   }
 
   /**
@@ -618,6 +815,16 @@ export interface FetchOptions<T extends ZType = ZType> {
    * Built-in cache options.
    */
   localCache?: boolean | number | DurationLike;
+
+  /**
+   * How long the call may take, headers and body, before it rejects with a
+   * `TimeoutError`. `false` or `0`: no timeout.
+   *
+   * On the server, `fetch` defaults to the `httpClientOptions` atom (30
+   * seconds); `fetchAction` (a call to the app's own action) and the browser
+   * have no default.
+   */
+  timeout?: DurationLike | false;
 }
 
 export type RequestInitWithOptions<T extends ZType = ZType> = RequestInit &
@@ -645,8 +852,20 @@ export interface FetchResponse<T = any> {
 
 export type HttpClientPendingRequests = Record<
   string,
-  Promise<any> | undefined
+  HttpClientPendingRequest | undefined
 >;
+
+/**
+ * A deduplicated in-flight request, shared by every caller that joined it.
+ */
+export interface HttpClientPendingRequest {
+  promise: Promise<any>;
+  /**
+   * Aborts the shared fetch; only once its last caller has gone.
+   */
+  controller: AbortController;
+  waiters: number;
+}
 
 interface HttpClientCache {
   data: any;

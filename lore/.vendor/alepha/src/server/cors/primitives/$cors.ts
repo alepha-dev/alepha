@@ -20,6 +20,8 @@ import {
  * ```typescript
  * class ApiController {
  *   getOrders = $action({
+ *     method: "GET",
+ *     path: "/getOrders",
  *     use: [$cors({ origin: "https://app.example.com", credentials: true })],
  *     handler: async ({ query }) => { ... },
  *   });

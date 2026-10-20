@@ -113,6 +113,19 @@ export interface ErrorInstance<
  */
 export interface ErrorInstanceKinds<T extends ErrorData> {
   base: ErrorInstance<T>;
+  status: StatusErrorInstance<T>;
+}
+
+/**
+ * A declared error whose data carries an HTTP `status`, read through the
+ * `status` shortcut: `TimeoutError`, which lives in `alepha` and so cannot
+ * be an `HttpError`.
+ */
+export interface StatusErrorInstance<
+  T extends ErrorData = ErrorData,
+> extends DeclaredError {
+  readonly data: T;
+  readonly status: number;
 }
 
 export type ErrorKind = keyof ErrorInstanceKinds<ErrorData>;

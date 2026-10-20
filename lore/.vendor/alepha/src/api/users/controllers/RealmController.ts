@@ -58,6 +58,7 @@ export class RealmController {
   });
 
   public readonly checkUsernameAvailability = $action({
+    method: "POST",
     group: this.group,
     path: `${this.url}/check-username`,
     schema: {

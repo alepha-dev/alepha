@@ -374,6 +374,7 @@ export const DataTable = <
     props.help != null && props.help !== false && props.help !== "";
   const showToolbar =
     Boolean(props.filters) ||
+    Boolean(props.leading) ||
     Boolean(props.toolbar) ||
     Boolean(props.actions?.length) ||
     hasHelp ||
@@ -458,6 +459,7 @@ export const DataTable = <
             shownFilters={filterVisibility.shown}
             onShownFiltersChange={filterVisibility.setShown}
             canResetFilters={canResetFilters}
+            leading={props.leading}
             toolbar={props.toolbar}
             actions={props.actions}
             help={hasHelp ? props.help : undefined}

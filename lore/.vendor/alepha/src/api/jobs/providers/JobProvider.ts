@@ -2,6 +2,7 @@ import {
   $hook,
   $inject,
   $store,
+  AbortedError,
   Alepha,
   AlephaError,
   type Infer,
@@ -752,11 +753,6 @@ export class JobProvider {
 
     const abortController = new AbortController();
     this.abortControllers.set(executionId, abortController);
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
-    if (opts.timeout) {
-      const ms = this.dt.duration(opts.timeout).as("milliseconds");
-      timeoutId = setTimeout(() => abortController.abort(), ms);
-    }
 
     const startedAt = this.dt.now();
 
@@ -769,18 +765,22 @@ export class JobProvider {
         });
 
         try {
-          await opts.handler({
-            payload: ctx.payload,
-            attempt: ctx.attempt,
-            now: startedAt,
-            signal: abortController.signal,
-            executionId,
-            reschedule: () => {
-              throw new AlephaError(
-                `Job '${name}' called reschedule() from a cron tick. A tick has no execution row to park; push a queue-mode job for work that waits.`,
-              );
-            },
-          });
+          await this.underRunSignal(abortController.signal, () =>
+            this.withTimeout(opts.timeout, (signal) =>
+              opts.handler({
+                payload: ctx.payload,
+                attempt: ctx.attempt,
+                now: startedAt,
+                signal,
+                executionId,
+                reschedule: () => {
+                  throw new AlephaError(
+                    `Job '${name}' called reschedule() from a cron tick. A tick has no execution row to park; push a queue-mode job for work that waits.`,
+                  );
+                },
+              }),
+            ),
+          );
 
           if (this.retention.records(registration.retention, "ok")) {
             await this.writeTerminalRow(executionId, name, "ok", {
@@ -800,6 +800,25 @@ export class JobProvider {
           );
         } catch (error) {
           const err = error instanceof Error ? error : new Error(String(error));
+          if (this.isCancelled(abortController.signal, error)) {
+            // Cancelled follows the job's failure rule.
+            if (this.retention.records(registration.retention, "error")) {
+              await this.writeTerminalRow(executionId, name, "cancelled", {
+                payload: ctx.payload,
+                attempt: ctx.attempt,
+                startedAt,
+                error: err,
+                triggeredBy: ctx.triggeredBy,
+                triggeredByName: ctx.triggeredByName,
+              });
+            }
+            await this.alepha.events.emit(
+              "job:cancel",
+              { name, executionId },
+              { catch: true },
+            );
+            return;
+          }
           if (this.retention.records(registration.retention, "error")) {
             await this.writeTerminalRow(executionId, name, "error", {
               payload: ctx.payload,
@@ -816,7 +835,6 @@ export class JobProvider {
             { catch: true },
           );
         } finally {
-          if (timeoutId) clearTimeout(timeoutId);
           this.abortControllers.delete(executionId);
           await this.alepha.events.emit(
             "job:end",
@@ -832,7 +850,7 @@ export class JobProvider {
   protected async writeTerminalRow(
     executionId: string,
     jobName: string,
-    status: "ok" | "error",
+    status: "ok" | "error" | "cancelled",
     fields: {
       payload: unknown;
       attempt: number;
@@ -1489,7 +1507,15 @@ export class JobProvider {
     }
 
     const controller = this.abortControllers.get(executionId);
-    if (controller) controller.abort();
+    if (controller) {
+      controller.abort(
+        new AbortedError(
+          `Job execution ${executionId} cancelled${
+            context?.cancelledByName ? ` by ${context.cancelledByName}` : ""
+          }`,
+        ),
+      );
+    }
 
     this.log.info(`Cancelled execution ${executionId}`, {
       jobName: execution.jobName,
@@ -1581,11 +1607,6 @@ export class JobProvider {
 
     const abortController = new AbortController();
     this.abortControllers.set(executionId, abortController);
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
-    if (opts.timeout) {
-      const ms = this.dt.duration(opts.timeout).as("milliseconds");
-      timeoutId = setTimeout(() => abortController.abort(), ms);
-    }
     // The claim this run holds. Every write it makes after this point is
     // fenced on it (see `fenceWhere`).
     const fence: JobClaimFence = {
@@ -1613,25 +1634,29 @@ export class JobProvider {
           // throw discards it, which is what makes "throw wins" true.
           let parkAgain: RescheduleIntent | undefined;
           try {
-            await opts.handler({
-              payload: execution.payload,
-              attempt: execution.attempt,
-              now,
-              signal: abortController.signal,
-              executionId,
-              reschedule: (options) => {
-                if (inline) {
-                  throw new AlephaError(
-                    `Job '${jobName}' called reschedule() during an inline push. The caller is waiting for an outcome, and a parked row has none to give it. Push without 'inline' for work that waits.`,
-                  );
-                }
-                parkAgain = this.rescheduleIntent(
-                  registration,
-                  execution.payload,
-                  options,
-                );
-              },
-            });
+            await this.underRunSignal(abortController.signal, () =>
+              this.withTimeout(opts.timeout, (signal) =>
+                opts.handler({
+                  payload: execution.payload,
+                  attempt: execution.attempt,
+                  now,
+                  signal,
+                  executionId,
+                  reschedule: (options) => {
+                    if (inline) {
+                      throw new AlephaError(
+                        `Job '${jobName}' called reschedule() during an inline push. The caller is waiting for an outcome, and a parked row has none to give it. Push without 'inline' for work that waits.`,
+                      );
+                    }
+                    parkAgain = this.rescheduleIntent(
+                      registration,
+                      execution.payload,
+                      options,
+                    );
+                  },
+                }),
+              ),
+            );
 
             if (parkAgain) {
               await this.park(jobName, executionId, parkAgain, fence);
@@ -1673,7 +1698,29 @@ export class JobProvider {
               error instanceof Error ? error : new Error(String(error));
 
             if (abortController.signal.aborted) {
-              const current = await this.executions.findById(executionId);
+              let current = await this.executions.findById(executionId);
+              // Aborted by the framework without a cancel() (the drain
+              // deadline at stop): recorded cancelled, never retried as a
+              // failure. Fenced like every write of this claim.
+              if (
+                current?.status === "running" &&
+                this.isCancelled(abortController.signal, error)
+              ) {
+                await this.guardedUpdate(
+                  executionId,
+                  ["running"],
+                  {
+                    status: "cancelled",
+                    error: err.message,
+                    completedAt: this.dt.nowISOString(),
+                    key: null,
+                    logs: this.logBuffer.snapshot(),
+                  },
+                  "aborted",
+                  fence,
+                );
+                current = await this.executions.findById(executionId);
+              }
               if (current?.status === "cancelled") {
                 await this.alepha.events.emit(
                   "job:cancel",
@@ -1747,7 +1794,6 @@ export class JobProvider {
               fence,
             );
           } finally {
-            if (timeoutId) clearTimeout(timeoutId);
             this.abortControllers.delete(executionId);
             await this.alepha.events.emit(
               "job:end",
@@ -2688,6 +2734,10 @@ export class JobProvider {
 
   protected readonly onStop = $hook({
     on: "stop",
+    // Before the database closes: stop hooks run in registration order, and
+    // the ORM registers first, so a drained run (finished or aborted) had no
+    // connection left to record its outcome on.
+    priority: "first",
     handler: async () => {
       this.stopping = true;
       if (this.inFlight.size > 0) {
@@ -2702,13 +2752,78 @@ export class JobProvider {
           `Aborting ${this.abortControllers.size} remaining job(s) after drain timeout`,
         );
         for (const controller of this.abortControllers.values()) {
-          controller.abort();
+          controller.abort(
+            new AbortedError("App stopping: job drain timeout reached"),
+          );
+        }
+        // A short grace for the aborted runs to record themselves
+        // `cancelled` while the database is still open; past it, the sweep's
+        // lease recovery is the backstop.
+        if (this.inFlight.size > 0) {
+          await Promise.race([
+            Promise.allSettled(this.inFlight),
+            this.dt.wait([this.abortGraceMs, "millisecond"]),
+          ]);
         }
       }
     },
   });
 
+  /**
+   * How long stop waits, after aborting the runs the drain left, for them to
+   * record their outcome.
+   */
+  protected readonly abortGraceMs = 1_000;
+
   // --- Helpers -------------------------------------------------------------------------------------------------
+
+  /**
+   * Run a handler with its run's signal as the ambient one (#E85), so
+   * everything it calls (`fetch`, a read, a child process) inherits it.
+   * It is the same object as the handler's `signal` argument.
+   *
+   * The signal is held by a layer around the handler only, nested in the
+   * execution's context: the bookkeeping around the handler (the terminal
+   * row, the `cancelled` check after an abort, the hooks) runs outside it,
+   * so an aborted run can still record what happened to it.
+   */
+  protected underRunSignal<R>(signal: AbortSignal, fn: () => R): R {
+    return this.alepha.context.nest(() => {
+      this.alepha.context.set("signal", signal);
+      return fn();
+    });
+  }
+
+  /**
+   * Run a handler under the job's `timeout` (#E87), through
+   * `DateTimeProvider.deadline`: past it, the run's signal aborts with a
+   * `TimeoutError`, so the handler's outbound calls and queries stop, and the
+   * run fails with that `TimeoutError` at once, even if the handler ignores
+   * its signal. The timer is the provider's, so `travel()` fires it.
+   *
+   * `signal` is the one the handler receives, the same object as
+   * `alepha.context.signal` inside it.
+   */
+  protected withTimeout<R>(
+    timeout: DurationLike | undefined,
+    run: (signal: AbortSignal) => Promise<R> | R,
+  ): Promise<R> {
+    return this.dt.deadline(run, timeout);
+  }
+
+  /**
+   * Whether a run that threw `error` was cancelled rather than failed: its
+   * signal was aborted by the framework (an {@link AbortedError}: `cancel()`,
+   * the drain deadline at stop) and the error is that abort. A timeout
+   * aborts with a `TimeoutError` and stays a failure (#E87).
+   */
+  protected isCancelled(signal: AbortSignal, error: unknown): boolean {
+    return (
+      signal.aborted &&
+      signal.reason instanceof AbortedError &&
+      this.alepha.context.isAbortError(error, signal)
+    );
+  }
 
   protected getRegistration(name: string): JobRuntimeRegistration {
     const registration = this.jobs.get(name);
