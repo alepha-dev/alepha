@@ -97,8 +97,10 @@ await this.views.recordMany([
 ]);
 ```
 
-Every row is stamped with an hour bucket, taken from `DateTimeProvider` unless you supply one
-yourself (`{ ...row, hour: "2026-08-09T14" }`). Passing `hour` explicitly matters for anything
+Every row is placed by `at`, the instant it was taken in milliseconds, which defaults to
+`DateTimeProvider`'s now: it decides the row's hour bucket, and it is the timestamp a `last` fold
+compares (see [Folds](#folds-sum-min-max-and-last)). One timestamp, not two. You can also supply
+the bucket yourself (`{ ...row, hour: "2026-08-09T14" }`). Passing `hour` explicitly matters for anything
 batched or retried: Analytics Engine stamps its own write-time timestamp and cannot backdate a
 point, so a retried envelope has to carry the bucket it originally computed, or it lands in the
 wrong hour for reasons that have nothing to do with sampling.
@@ -106,6 +108,19 @@ wrong hour for reasons that have nothing to do with sampling.
 Rows of one batch that share a bucket and every dimension are merged before they reach the
 backend, so two readings of the same device in the same bucket are one stored row, on every
 backend.
+
+### Device clocks are clamped, not trusted
+
+`at` usually comes from a device, and device clocks drift. Two rules apply in `recordMany`, each
+logged at `debug` with the dataset name and the offset:
+
+- An `at` more than `AnalyticsPrimitive.MAX_CLOCK_SKEW` (5 minutes) ahead of the server clock is
+  clamped to now. A clock running a day ahead would otherwise write into a bucket that does not
+  exist yet, and pin `last` for every bucket it later folds into.
+- An `at` older than the finest tier's retention (`retention.hot`) is dropped: the next sweep
+  would delete it anyway. With no retention declared, it is kept.
+
+Only `at` is clamped. An explicit `hour` is your own decision and is stored as given.
 
 ## Querying
 
@@ -130,26 +145,71 @@ declared dimension, plus the pseudo-dimensions `"hour"` and `"day"` - grouping b
 hour buckets into a daily timeline with no date arithmetic on the caller's side, whichever
 backend answers the query.
 
-## The aggregate set is deliberately small
+## Folds: sum, min, max and last
 
-`select` only accepts `"sum"` as an aggregate. That is not a temporary gap - `sum` is the
-complete set of aggregates that are simultaneously:
+A measure declares how its values combine, in `folds`. An undeclared measure folds `["sum"]`,
+which is a counter: validations per hour, page views per path. A gauge (temperature, cash level,
+ticket stock, battery) is meaningless as a sum and declares `min`, `max` and `last` instead:
 
-- **Mergeable across a rollup boundary.** When the hourly rollup folds a day's worth of hour
-  buckets into one day bucket (see [Retention and rollup](#retention-and-rollup)), the fold
-  itself has to be an aggregate: summing eight `sum`s produces the correct day-level `sum`. There
-  is no equivalent fold for an average or a percentile - the mean of several means is wrong the
-  moment the buckets differ in size, and the p75 of several distributions is not the mean of
-  their p75s.
-- **Exactly correctable under sampling.** Analytics Engine samples, and every stored row carries
-  a `_sample_interval`. `sum(x * _sample_interval)` reconstructs the true total from a sampled
-  window, exactly. Nothing about `min` or `max` survives that reconstruction the same way: both
-  merge across buckets by construction (the max of several maxes is the true max), but neither is
-  sample-correctable - if the sampler happens to drop the one row holding the true extreme, no
-  `_sample_interval` weighting recovers it, and the query silently returns the extreme of
-  whatever survived. That is the same failure mode that keeps distinct-counts out of this seam
-  (see [What analytics cannot do](#what-analytics-cannot-do) below), and admitting `min`/`max` despite it
-  would be inconsistent with excluding those.
+```typescript
+readings = $analytics({
+  index: "deviceId",
+  dimensions: z.object({ deviceId: z.text() }),
+  measures: z.object({ temperature: z.number(), validations: z.integer() }),
+  folds: { temperature: ["min", "max", "last"] },
+  slots: { dimensions: ["deviceId"], measures: ["temperature", "validations"] },
+});
+
+await this.readings.record({
+  deviceId,
+  temperature: 21.5,
+  validations: 3,
+  at: sentAt,
+});
+```
+
+`select` takes one fold or several. One fold keeps the measure's own name as the key; an array
+returns `<measure>_<fold>` keys, which is what a band chart (min and max as the band, last as the
+line) needs in one round trip. A fold the measure does not declare is refused.
+
+```typescript
+await this.readings.query({
+  since: "2026-10-01",
+  groupBy: ["hour"],
+  select: { temperature: ["min", "max", "last"], validations: "sum" },
+});
+// [{ hour: "2026-10-01T08", temperature_min: 19, temperature_max: 23.5,
+//    temperature_last: 21.5, validations: 41 }, ...]
+```
+
+- **A missing reading is absent, never `0`.** A row may omit a gauge; nothing is stored for it,
+  and a fold over buckets that hold no reading comes back `null` (sorted last by `orderBy`, in
+  either direction). A sum-only measure keeps its old behaviour: omitted counts as `0`.
+- **`last` is the reading with the latest `at`.** Equal `at` keeps the larger value, on every
+  backend, so memory and SQL agree. Arrival order does not matter: a device catching up after an
+  outage lands in its old buckets and is folded by the next sweep like any other row.
+- **`sum` may sit beside gauge folds** (`["sum", "min", "max"]`): with a count-as-sum measure, it
+  gives a mean caller-side.
+
+**Storage.** A sum-only measure is one column named after itself, exactly as before folds
+existed, so declaring `folds` on another measure changes no existing column. A measure with any
+other fold gets one nullable column per fold, `<measure>_<fold>`, plus `<measure>_last_at` (a
+bigint of milliseconds) when it declares `last`. A declared name equal to a derived column (a
+measure called `temperature_min` beside a gauge `temperature`) is refused at boot.
+
+**Every fold survives a rollup.** When hour buckets fold into day buckets (see
+[Retention and rollup](#retention-and-rollup)), the total, the extremes and the last value of the
+day are computed from those of its hours alone, so no number the UI shows changes; only the time
+axis coarsens. That is the rule every fold has to pass, and the reason the set stops here:
+
+- **`avg` and percentiles are not folds.** The mean of several means is wrong the moment the
+  buckets differ in size, and the p75 of several distributions is not the mean of their p75s.
+- **`min`, `max` and `last` need an exact backend.** Analytics Engine samples, and every stored row
+  carries a `_sample_interval`: `sum(x * _sample_interval)` reconstructs a true total from a
+  sampled window, but if the sampler drops the row holding the true extreme or the last reading,
+  nothing recovers it. A dataset declaring any of them is **refused at boot** on Analytics Engine
+  (`AnalyticsProvider.exact` is `false` there) rather than served silently wrong. It runs on the
+  relational and in-memory backends.
 
 ### There is no `count` aggregate: declare a count measure and sum it
 
@@ -160,8 +220,8 @@ writes (a relational upsert accumulates repeated writes into one row; an in-memo
 a new one), and it does not survive a rollup on **either** backend, because folding rows into a
 day bucket collapses the very thing a row count was measuring. Summing eight `sum`s across a
 rollup boundary reproduces the pre-rollup total exactly; summing eight `count`s does not, because
-after the fold there are fewer, larger rows to count. `count` was removed rather than special-cased,
-for the same reason `min`/`max` were never admitted: an aggregate in this seam has to be correct
+after the fold there are fewer, larger rows to count. `count` was removed rather than special-cased:
+a fold in this seam has to be correct
 after a rollup and identical across every backend, not merely plausible on the one you tested
 against.
 
@@ -182,7 +242,7 @@ await this.views.record({ app, path, country, count: 1 });
 select: { count: "sum" },
 ```
 
-Two patterns cover what the other missing aggregates would have given you, and both stay
+Two patterns cover what the missing aggregates would have given you, and both stay
 caller-side and obvious rather than needing a merge-rule enforcement layer inside the package:
 
 - **A mean**: declare a `sum` measure and a count-as-sum measure (see above), and divide them

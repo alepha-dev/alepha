@@ -393,7 +393,7 @@ export const useAnalyticsQuery = (
  * the empty state above the cards is what carries the difference.
  */
 const sumRow = (
-  row: Record<string, string | number> | undefined,
+  row: Record<string, string | number | null> | undefined,
   measures: string[],
 ): Record<string, number> =>
   Object.fromEntries(

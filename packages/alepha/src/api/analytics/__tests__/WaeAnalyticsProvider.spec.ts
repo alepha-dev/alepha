@@ -248,6 +248,22 @@ describe("WaeAnalyticsProvider", () => {
     }
   });
 
+  it("refuses a min, max or last fold at registration, and reports itself inexact", async () => {
+    const { alepha, provider } = await build();
+    try {
+      expect(provider.exact).toBe(false);
+      expect(() =>
+        provider.register({
+          ...dataset,
+          name: "wae_gauges",
+          folds: { count: ["sum", "max"] },
+        }),
+      ).toThrow(/Analytics Engine cannot serve/);
+    } finally {
+      await alepha.stop();
+    }
+  });
+
   it("refuses a hot window longer than Analytics Engine keeps data", async () => {
     const { alepha, provider } = await build();
     try {

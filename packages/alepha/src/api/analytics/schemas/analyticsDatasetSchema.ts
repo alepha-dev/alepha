@@ -1,5 +1,7 @@
 import type { ZObject } from "alepha";
 
+import type { AnalyticsFold } from "./analyticsQuerySchema.ts";
+
 /**
  * The shape a dataset declares.
  *
@@ -56,6 +58,21 @@ export interface AnalyticsDataset {
    * runs on the runtime that deploys is a check that never runs in CI.
    */
   slots: AnalyticsSlotPins;
+
+  /**
+   * How each measure folds, e.g.
+   * `{ temperature: ["min", "max", "last"], validations: ["sum"] }`.
+   *
+   * An undeclared measure folds `["sum"]` and keeps one column named after
+   * itself. A measure with any other fold gets one column per fold,
+   * `<measure>_<fold>`, plus `<measure>_last_at` (millis) when it declares
+   * `last`; those columns are nullable, since a row may omit a gauge, and
+   * every fold treats a missing reading as absent rather than as `0`.
+   *
+   * Anything but `sum` needs an exact backend: Analytics Engine samples, so
+   * a dataset declaring `min`, `max` or `last` is refused at boot there.
+   */
+  folds?: Record<string, AnalyticsFold[]>;
 
   retention?: AnalyticsRetention;
 }

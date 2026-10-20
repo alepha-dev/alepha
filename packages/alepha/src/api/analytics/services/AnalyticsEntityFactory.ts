@@ -1,6 +1,7 @@
 import { AlephaError, type ZType, z } from "alepha";
 import { $entity, type EntityPrimitive } from "alepha/orm";
 
+import { AnalyticsFolds } from "../planner/AnalyticsFolds.ts";
 import type { AnalyticsDataset } from "../schemas/analyticsDatasetSchema.ts";
 
 /**
@@ -50,7 +51,7 @@ export class AnalyticsEntityFactory {
     const columns: Record<string, ZType> = {
       [AnalyticsEntityFactory.TIME_COLUMN]: z.string(),
       ...dataset.dimensions.shape,
-      ...dataset.measures.shape,
+      ...AnalyticsEntityFactory.measureColumns(dataset),
     };
 
     const keys = [
@@ -70,6 +71,38 @@ export class AnalyticsEntityFactory {
         indexes: [{ columns: keys, unique: true }],
       }) as EntityPrimitive,
     };
+  }
+
+  /**
+   * The value columns of a dataset.
+   *
+   * A sum-only measure is one column named after itself, with its declared
+   * type, exactly as before folds existed, so no existing table changes. A
+   * measure with any other fold is one nullable column per fold
+   * (`<measure>_<fold>`), plus a nullable `<measure>_last_at` bigint of
+   * millis when it declares `last`: a row may omit a gauge, and the absence
+   * is stored as NULL rather than as a `0` that would pin every `min`.
+   */
+  public static measureColumns(
+    dataset: AnalyticsDataset,
+  ): Record<string, ZType> {
+    const columns: Record<string, ZType> = {};
+    for (const [measure, schema] of Object.entries(dataset.measures.shape)) {
+      if (AnalyticsFolds.isSumOnly(dataset, measure)) {
+        columns[measure] = schema as ZType;
+        continue;
+      }
+      for (const fold of AnalyticsFolds.of(dataset, measure)) {
+        columns[`${measure}_${fold}`] = z.number().nullable().optional();
+      }
+      if (AnalyticsFolds.of(dataset, measure).includes("last")) {
+        columns[AnalyticsFolds.lastAt(measure)] = z
+          .int64()
+          .nullable()
+          .optional();
+      }
+    }
+    return columns;
   }
 
   /**
@@ -109,6 +142,29 @@ export class AnalyticsEntityFactory {
       if (AnalyticsEntityFactory.RESERVED_DIMENSIONS.includes(name)) {
         throw new AlephaError(
           `Dataset '${dataset.name}' declares '${name}' as a dimension, which is reserved as a time pseudo-dimension. A query's 'groupBy' always resolves '${name}' to the bucket boundary rather than this column, so it would be permanently unreachable. Rename it.`,
+        );
+      }
+    }
+
+    AnalyticsFolds.assertValid(dataset);
+    const declared = new Set([...dimensions, ...measures]);
+    // Every column a gauge measure derives, never a sum-only measure's own.
+    const derived = AnalyticsFolds.columns(dataset).flatMap((column) =>
+      column.name === column.measure
+        ? []
+        : column.fold === "last"
+          ? [column.name, AnalyticsFolds.lastAt(column.measure)]
+          : [column.name],
+    );
+    for (const name of derived) {
+      if (declared.has(name)) {
+        throw new AlephaError(
+          `Dataset '${dataset.name}' declares '${name}', which is also a column derived from a gauge measure's folds. Rename it.`,
+        );
+      }
+      if (name === AnalyticsEntityFactory.TIME_COLUMN) {
+        throw new AlephaError(
+          `Dataset '${dataset.name}' derives the column '${name}' from a gauge measure, which is reserved for the time bucket. Rename the measure.`,
         );
       }
     }

@@ -1,6 +1,8 @@
 import type { Infer } from "alepha";
 import { z } from "alepha";
 
+import { analyticsFoldSchema } from "./analyticsFoldSchema.ts";
+
 /**
  * The wire form of `AnalyticsQuery`. Key membership — which dimensions and
  * measures actually exist on the target dataset — is validated by
@@ -37,7 +39,10 @@ export const adminAnalyticsQuerySchema = z.object({
     )
     .optional(),
   groupBy: z.array(z.text()).optional(),
-  select: z.record(z.text(), z.literal("sum")),
+  select: z.record(
+    z.text(),
+    z.union([analyticsFoldSchema, z.array(analyticsFoldSchema).min(1)]),
+  ),
   orderBy: z
     .object({ key: z.text(), direction: z.enum(["asc", "desc"]) })
     .optional(),

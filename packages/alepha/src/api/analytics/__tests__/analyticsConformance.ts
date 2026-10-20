@@ -1,8 +1,13 @@
 import { z } from "alepha";
 import { describe, expect, it } from "vitest";
 
+import {
+  type AnalyticsReading,
+  AnalyticsRowFolder,
+} from "../planner/AnalyticsRowFolder.ts";
 import type { AnalyticsProvider } from "../providers/AnalyticsProvider.ts";
 import type { AnalyticsDataset } from "../schemas/analyticsDatasetSchema.ts";
+import type { AnalyticsQuery } from "../schemas/analyticsQuerySchema.ts";
 
 export interface AnalyticsConformanceOptions {
   /**
@@ -50,7 +55,18 @@ export const analyticsConformance = (
     },
   };
 
-  const datasets = options.legacyOnly ? [dataset] : [dataset];
+  // A gauge dataset. `cashLevel` is camelCase so its derived columns
+  // (`cash_level_min`, ...) exercise name resolution, as `appId` does above.
+  const gauges: AnalyticsDataset = {
+    name: "conformance_gauges",
+    index: "deviceId",
+    dimensions: z.object({ deviceId: z.string() }),
+    measures: z.object({ cashLevel: z.number(), validations: z.number() }),
+    folds: { cashLevel: ["sum", "min", "max", "last"] },
+    slots: { dimensions: ["deviceId"], measures: ["cashLevel", "validations"] },
+  };
+
+  const datasets = options.legacyOnly ? [dataset] : [dataset, gauges];
   const boot = () => factory(datasets);
 
   describe(`AnalyticsProvider conformance: ${name}`, () => {
@@ -503,6 +519,214 @@ export const analyticsConformance = (
       } else {
         expect(result.sampleInterval).toBeUndefined();
       }
+    });
+
+    describe.skipIf(options.legacyOnly)("gauge folds", () => {
+      const at = (iso: string) => Date.parse(`${iso}:00.000Z`);
+      const record = (provider: AnalyticsProvider, rows: AnalyticsReading[]) =>
+        provider.record(gauges, AnalyticsRowFolder.fold(gauges, rows));
+      const all: AnalyticsQuery["select"] = {
+        cashLevel: ["sum", "min", "max", "last"],
+        validations: "sum",
+      };
+
+      // Recorded out of order and over several calls, so the upsert merge
+      // and not only the pre-fold decides the result. The latest reading of
+      // the first day carries no cash level and must not become its `last`.
+      const seed = async (provider: AnalyticsProvider) => {
+        await record(provider, [
+          {
+            hour: "2026-08-01T11",
+            at: at("2026-08-01T11:10"),
+            deviceId: "d1",
+            cashLevel: 70,
+            validations: 1,
+          },
+        ]);
+        await record(provider, [
+          {
+            hour: "2026-08-01T11",
+            at: at("2026-08-01T11:40"),
+            deviceId: "d1",
+            validations: 1,
+          },
+        ]);
+        await record(provider, [
+          {
+            hour: "2026-08-01T10",
+            at: at("2026-08-01T10:50"),
+            deviceId: "d1",
+            cashLevel: 30,
+            validations: 1,
+          },
+        ]);
+        await record(provider, [
+          {
+            hour: "2026-08-01T10",
+            at: at("2026-08-01T10:05"),
+            deviceId: "d1",
+            cashLevel: 50,
+            validations: 1,
+          },
+          {
+            hour: "2026-08-09T10",
+            at: at("2026-08-09T10:00"),
+            deviceId: "d1",
+            cashLevel: 10,
+            validations: 1,
+          },
+        ]);
+      };
+
+      it("keeps totals, extremes and last unchanged across a rollup, with out-of-order and missing readings", async () => {
+        const provider = await boot();
+        await seed(provider);
+
+        const read = () =>
+          provider.query(gauges, {
+            since: "2026-08-01",
+            groupBy: ["day"],
+            select: all,
+            orderBy: { key: "day", direction: "asc" },
+          });
+        const total = () =>
+          provider.query(gauges, { since: "2026-08-01", select: all });
+
+        const expectedDays = [
+          {
+            day: "2026-08-01",
+            cashLevel_sum: 150,
+            cashLevel_min: 30,
+            cashLevel_max: 70,
+            cashLevel_last: 70,
+            validations: 4,
+          },
+          {
+            day: "2026-08-09",
+            cashLevel_sum: 10,
+            cashLevel_min: 10,
+            cashLevel_max: 10,
+            cashLevel_last: 10,
+            validations: 1,
+          },
+        ];
+        const expectedTotal = [
+          {
+            cashLevel_sum: 160,
+            cashLevel_min: 10,
+            cashLevel_max: 70,
+            cashLevel_last: 10,
+            validations: 5,
+          },
+        ];
+
+        expect((await read()).rows).toEqual(expectedDays);
+        expect((await total()).rows).toEqual(expectedTotal);
+
+        await provider.rollup(gauges, "2026-08-05");
+        expect(await provider.oldestBucket(gauges, "rolled")).toBe(
+          "2026-08-01",
+        );
+        expect((await read()).rows).toEqual(expectedDays);
+        expect((await total()).rows).toEqual(expectedTotal);
+
+        await provider.rollup(gauges, "2026-08-05");
+        expect((await total()).rows).toEqual(expectedTotal);
+      });
+
+      it("keeps the larger value when two readings share an instant, before and after a rollup", async () => {
+        const provider = await boot();
+        const instant = at("2026-08-01T10:30");
+        await record(provider, [
+          {
+            hour: "2026-08-01T10",
+            at: instant,
+            deviceId: "d1",
+            cashLevel: 9,
+            validations: 1,
+          },
+        ]);
+        await record(provider, [
+          {
+            hour: "2026-08-01T10",
+            at: instant,
+            deviceId: "d1",
+            cashLevel: 5,
+            validations: 1,
+          },
+          {
+            hour: "2026-08-01T11",
+            at: instant,
+            deviceId: "d1",
+            cashLevel: 7,
+            validations: 1,
+          },
+        ]);
+
+        const last = async () =>
+          (
+            await provider.query(gauges, {
+              since: "2026-08-01",
+              select: { cashLevel: "last" },
+            })
+          ).rows;
+
+        expect(await last()).toEqual([{ cashLevel: 9 }]);
+        await provider.rollup(gauges, "2026-08-02");
+        expect(await last()).toEqual([{ cashLevel: 9 }]);
+      });
+
+      it("returns null for a gauge over buckets that hold no reading, and sorts it last", async () => {
+        const provider = await boot();
+        await record(provider, [
+          {
+            hour: "2026-08-01T10",
+            at: at("2026-08-01T10:00"),
+            deviceId: "d1",
+            cashLevel: 3,
+            validations: 1,
+          },
+          {
+            hour: "2026-08-01T10",
+            at: at("2026-08-01T10:00"),
+            deviceId: "d2",
+            validations: 2,
+          },
+        ]);
+
+        for (const direction of ["asc", "desc"] as const) {
+          const result = await provider.query(gauges, {
+            since: "2026-08-01",
+            groupBy: ["deviceId"],
+            select: { cashLevel: ["min", "last"], validations: "sum" },
+            orderBy: { key: "cashLevel_min", direction },
+          });
+          expect(result.rows).toEqual([
+            {
+              deviceId: "d1",
+              cashLevel_min: 3,
+              cashLevel_last: 3,
+              validations: 1,
+            },
+            {
+              deviceId: "d2",
+              cashLevel_min: null,
+              cashLevel_last: null,
+              validations: 2,
+            },
+          ]);
+        }
+      });
+
+      it("refuses a fold the measure does not declare", async () => {
+        const provider = await boot();
+        await expect(
+          provider.query(gauges, {
+            since: "2026-08-01",
+            select: { validations: "max" },
+          }),
+        ).rejects.toThrow("declares 'sum' only");
+      });
     });
   });
 };

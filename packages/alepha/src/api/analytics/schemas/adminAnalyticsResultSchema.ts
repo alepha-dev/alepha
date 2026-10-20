@@ -8,7 +8,7 @@ import { z } from "alepha";
  * stays a visible choice.
  */
 export const adminAnalyticsResultSchema = z.object({
-  rows: z.array(z.record(z.text(), z.union([z.text(), z.number()]))),
+  rows: z.array(z.record(z.text(), z.union([z.text(), z.number(), z.null()]))),
   estimated: z.boolean(),
   sampleInterval: z.number().optional(),
 });

@@ -5,9 +5,18 @@ import type {
 } from "../schemas/analyticsQuerySchema.ts";
 
 /**
- * One recorded event: every dimension, every measure, and its hour bucket.
+ * One stored row: its bucket, every dimension, and every measure column.
+ *
+ * A sum-only measure is one column named after itself, so for a dataset
+ * without gauges this is simply the recorded event. A measure with other
+ * folds is one column per fold (`<measure>_<fold>`, plus
+ * `<measure>_last_at`), `null` where the bucket holds no reading; see
+ * `AnalyticsFolds`. `$analytics` hands a provider rows with distinct
+ * `(hour, ...dimensions)` keys, already folded.
  */
-export type AnalyticsRow = Record<string, string | number> & { hour: string };
+export type AnalyticsRow = Record<string, string | number | null> & {
+  hour: string;
+};
 
 /**
  * Which storage tier of a dataset a question is about: `raw` holds the finest
@@ -27,6 +36,14 @@ export type AnalyticsTier = "raw" | "rolled";
  * both layouts.
  */
 export abstract class AnalyticsProvider {
+  /**
+   * Whether the backend stores every value as written. `false` for a
+   * sampling backend (Analytics Engine), which can reconstruct a `sum` but
+   * not an extreme or a last value, so a dataset declaring `min`, `max` or
+   * `last` is refused at boot there.
+   */
+  abstract readonly exact: boolean;
+
   /**
    * Declares a dataset before the container starts.
    *

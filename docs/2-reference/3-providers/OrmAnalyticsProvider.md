@@ -41,6 +41,6 @@ provider inherits without extra checks. `AnalyticsQuery.where` / `groupBy`
 forward client-supplied keys into unmodified. Every name drawn from a query
 (rather than from the dataset descriptor itself) is checked against the
 dataset's declared dimensions/measures - via `assertKnownDimension`
-/ `assertKnownMeasure` - before it is ever spliced into SQL text with
+/ `AnalyticsFolds.selections` - before it is ever spliced into SQL text with
 `sql.raw`. An unknown name throws `AlephaError` instead of reaching the
 database as an attacker-chosen identifier.

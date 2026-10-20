@@ -3,10 +3,12 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 
 import { AnalyticsBuckets } from "../planner/AnalyticsBuckets.ts";
+import { AnalyticsFolds } from "../planner/AnalyticsFolds.ts";
+import { AnalyticsOrdering } from "../planner/AnalyticsOrdering.ts";
 import { AnalyticsSlotMap } from "../planner/AnalyticsSlotMap.ts";
 import type { AnalyticsDataset } from "../schemas/analyticsDatasetSchema.ts";
 import type {
-  AnalyticsAggregate,
+  AnalyticsFold,
   AnalyticsQuery,
   AnalyticsResult,
 } from "../schemas/analyticsQuerySchema.ts";
@@ -238,6 +240,8 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
    */
   protected static readonly EPOCH_DAY = "1970-01-01";
 
+  public readonly exact: boolean = false;
+
   protected readonly alepha = $inject(Alepha);
   protected readonly env = $env(envSchema);
   protected readonly log = $logger();
@@ -334,8 +338,23 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
    *   `OrmAnalyticsProvider.registerPruneFloors()`.
    */
   public register(dataset: AnalyticsDataset): void {
+    this.assertExactFoldsRefused(dataset);
     this.assertRetention(dataset);
     this.cold.register(dataset);
+  }
+
+  /**
+   * Refuses a dataset declaring `min`, `max` or `last`. Analytics Engine
+   * samples, and a sample can be corrected for a `sum` but not for an
+   * extreme or a last value: the row holding it may be the one dropped.
+   * `$analytics` checks this at `onInit` already, against `exact`; this is
+   * the same refusal for a dataset handed to the provider directly.
+   */
+  public assertExactFoldsRefused(dataset: AnalyticsDataset): void {
+    if (!AnalyticsFolds.needsExact(dataset)) return;
+    throw new AlephaError(
+      `Dataset '${dataset.name}' declares a min, max or last fold, which Analytics Engine cannot serve: it samples, and a sampled extreme or last value cannot be reconstructed. Declare only "sum" folds, or bind an exact provider (OrmAnalyticsProvider).`,
+    );
   }
 
   /**
@@ -435,7 +454,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
       this.cold.query(dataset, unordered),
     ]);
 
-    return this.mergeResults(query, hot, cold);
+    return this.mergeResults(dataset, query, hot, cold);
   }
 
   /**
@@ -561,12 +580,13 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
       grouping.push(name);
     }
 
-    for (const [measure, aggregate] of Object.entries(query.select)) {
-      // Same guard as above, against `query.select`'s keys — thrown by
-      // `map.doubleSlot` for a measure the dataset never declared.
-      const slot = `double${map.doubleSlot(measure)}`;
+    // Refuses an undeclared measure or fold before anything reaches SQL
+    // text; `map.doubleSlot` guards the measure name again.
+    const selections = AnalyticsFolds.selections(dataset, query.select);
+    for (const selection of selections) {
+      const slot = `double${map.doubleSlot(selection.measure)}`;
       projections.push(
-        `${this.aggregateExpression(aggregate, slot)} AS ${measure}`,
+        `${this.aggregateExpression(selection.fold, slot)} AS ${selection.key}`,
       );
     }
 
@@ -619,8 +639,8 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
           ? AnalyticsEngineSql.num(row, name)
           : AnalyticsEngineSql.str(row, name);
       }
-      for (const measure of Object.keys(query.select)) {
-        record[measure] = AnalyticsEngineSql.num(row, measure);
+      for (const selection of selections) {
+        record[selection.key] = AnalyticsEngineSql.num(row, selection.key);
       }
       return record;
     });
@@ -631,20 +651,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
     // expression rather than one of the columns this query actually
     // projected. Every sibling provider already sorts here, for the same
     // reason its own cross-tier merge has to happen in JS.
-    if (query.orderBy) {
-      const { key, direction } = query.orderBy;
-      out.sort((a, b) => {
-        const left = a[key];
-        const right = b[key];
-        const comparison =
-          typeof left === "number" && typeof right === "number"
-            ? left - right
-            : String(left).localeCompare(String(right));
-        return direction === "desc" ? -comparison : comparison;
-      });
-    }
-
-    const limited = query.limit !== undefined ? out.slice(0, query.limit) : out;
+    const limited = AnalyticsOrdering.apply(out, query);
 
     return { rows: limited, estimated: true, sampleInterval };
   }
@@ -814,7 +821,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
 
     const dimensions = Object.keys(dataset.dimensions.shape).sort();
     const measures = Object.keys(dataset.measures.shape);
-    const select: Record<string, AnalyticsAggregate> = {};
+    const select: Record<string, AnalyticsFold> = {};
     for (const measure of measures) select[measure] = "sum";
 
     // `queryHot`, not `query()`: the sample-interval correction
@@ -855,7 +862,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
         continue;
       }
 
-      const forwarded: Record<string, string | number> & { hour: string } = {
+      const forwarded: AnalyticsRow = {
         hour,
       };
       for (const name of dimensions) forwarded[name] = row[name];
@@ -1053,12 +1060,14 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
    * rather than the false confidence of an assumed `1`.
    */
   protected mergeResults(
+    dataset: AnalyticsDataset,
     query: AnalyticsQuery,
     hot: AnalyticsResult,
     cold: AnalyticsResult,
   ): AnalyticsResult {
     const groupBy = query.groupBy ?? [];
-    const merged = new Map<string, Record<string, string | number>>();
+    const selections = AnalyticsFolds.selections(dataset, query.select);
+    const merged = new Map<string, Record<string, string | number | null>>();
 
     for (const result of [hot, cold]) {
       for (const row of result.rows) {
@@ -1068,32 +1077,16 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
           merged.set(key, { ...row });
           continue;
         }
-        for (const [measure, aggregate] of Object.entries(query.select)) {
-          existing[measure] = this.mergeValue(
-            Number(existing[measure] ?? 0),
-            Number(row[measure] ?? 0),
-            aggregate,
-          );
+        // Every fold here is a `sum`: `register()` refuses anything else.
+        for (const selection of selections) {
+          existing[selection.key] =
+            Number(existing[selection.key] ?? 0) +
+            Number(row[selection.key] ?? 0);
         }
       }
     }
 
-    let rows = [...merged.values()];
-
-    if (query.orderBy) {
-      const { key, direction } = query.orderBy;
-      rows.sort((a, b) => {
-        const left = a[key];
-        const right = b[key];
-        const comparison =
-          typeof left === "number" && typeof right === "number"
-            ? left - right
-            : String(left).localeCompare(String(right));
-        return direction === "desc" ? -comparison : comparison;
-      });
-    }
-
-    if (query.limit !== undefined) rows = rows.slice(0, query.limit);
+    const rows = AnalyticsOrdering.apply([...merged.values()], query);
 
     return {
       rows,
@@ -1106,25 +1099,15 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
     };
   }
 
-  protected mergeValue(
-    left: number,
-    right: number,
-    aggregate: AnalyticsAggregate,
-  ): number {
-    if (aggregate === "sum") return left + right;
-    throw new AlephaError(`Received an unknown aggregate '${aggregate}'.`);
-  }
-
   /**
    * Never a bare `sum()`: the sample interval varies per row, so the
    * correction has to live inside the aggregate expression itself. The
-   * `AlephaError` branch is defence in depth — `AnalyticsQuery` types
-   * `select`'s values as {@link AnalyticsAggregate}, but a query built from
-   * unchecked request input (`select[key] = req.query.aggregate`) could
-   * still hand this a string the type system never sees.
+   * `AlephaError` branch is defence in depth: `register()` refuses any
+   * dataset declaring a fold other than `sum`, so nothing else should reach
+   * here.
    */
   protected aggregateExpression(
-    aggregate: AnalyticsAggregate,
+    aggregate: AnalyticsFold,
     slot: string,
   ): string {
     if (aggregate === "sum") return `sum(${slot} * _sample_interval)`;

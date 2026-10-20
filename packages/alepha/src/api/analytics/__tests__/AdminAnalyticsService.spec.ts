@@ -123,6 +123,16 @@ describe("AdminAnalyticsService", () => {
     ).rejects.toThrow(BadRequestError);
   });
 
+  it("refuses a fold the measure does not declare", async () => {
+    const { service } = await setup();
+    await expect(
+      service.queryDataset("page_views", {
+        since: "2026-01-01",
+        select: { count: ["sum", "max"] },
+      }),
+    ).rejects.toThrow(BadRequestError);
+  });
+
   it("runs a valid query through the bound provider", async () => {
     const { datasets, service } = await setup();
     await datasets.views.record({

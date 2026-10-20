@@ -12,6 +12,7 @@ import {
   PG_REF,
   getAttr,
   Repository,
+  type SQL,
   sql,
 } from "alepha/orm";
 
@@ -20,9 +21,14 @@ import {
   analyticsPruneFloorEntity,
 } from "../entities/analyticsPruneFloorEntity.ts";
 import { AnalyticsBuckets } from "../planner/AnalyticsBuckets.ts";
+import {
+  type AnalyticsColumn,
+  AnalyticsFolds,
+  type AnalyticsSelection,
+} from "../planner/AnalyticsFolds.ts";
+import { AnalyticsOrdering } from "../planner/AnalyticsOrdering.ts";
 import type { AnalyticsDataset } from "../schemas/analyticsDatasetSchema.ts";
 import type {
-  AnalyticsAggregate,
   AnalyticsQuery,
   AnalyticsResult,
 } from "../schemas/analyticsQuerySchema.ts";
@@ -39,6 +45,16 @@ import {
  * name, for the `excluded.<name>` half of an upsert's SET clause.
  */
 type NamedColumn = { name: string };
+
+/**
+ * A value column as {@link OrmAnalyticsProvider} writes SQL for it.
+ */
+interface StoredColumn extends AnalyticsColumn {
+  sumOnly: boolean;
+  field: string;
+  sql: string;
+  lastAt?: { field: string; sql: string };
+}
 
 /**
  * Two relational tables per dataset: raw hour buckets and rolled day buckets.
@@ -74,11 +90,13 @@ type NamedColumn = { name: string };
  * forward client-supplied keys into unmodified. Every name drawn from a query
  * (rather than from the dataset descriptor itself) is checked against the
  * dataset's declared dimensions/measures - via {@link assertKnownDimension}
- * / {@link assertKnownMeasure} - before it is ever spliced into SQL text with
+ * / `AnalyticsFolds.selections` - before it is ever spliced into SQL text with
  * `sql.raw`. An unknown name throws `AlephaError` instead of reaching the
  * database as an attacker-chosen identifier.
  */
 export class OrmAnalyticsProvider extends AnalyticsProvider {
+  public readonly exact: boolean = true;
+
   protected readonly alepha = $inject(Alepha);
   protected readonly database = $inject(DatabaseProvider);
 
@@ -169,20 +187,29 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
 
     const { raw } = this.entities(dataset);
     const dimensions = Object.keys(dataset.dimensions.shape).sort();
-    const measures = Object.keys(dataset.measures.shape);
+    const columns = AnalyticsFolds.columns(dataset);
 
     const values = rows.map((row) => {
-      const record: Record<string, string | number> = {
+      const record: Record<string, string | number | null> = {
         [AnalyticsEntityFactory.TIME_COLUMN]: row.hour,
       };
       for (const name of dimensions) record[name] = row[name];
-      for (const name of measures) record[name] = Number(row[name] ?? 0);
+      for (const column of columns) {
+        const sumOnly = AnalyticsFolds.isSumOnly(dataset, column.measure);
+        record[column.name] = sumOnly
+          ? Number(row[column.name] ?? 0)
+          : AnalyticsFolds.reading(row[column.name]);
+        if (column.fold === "last") {
+          const at = AnalyticsFolds.lastAt(column.measure);
+          record[at] = AnalyticsFolds.reading(row[at]);
+        }
+      }
       return record;
     });
 
     await raw.upsertMany(values as never, {
       target: [AnalyticsEntityFactory.TIME_COLUMN, ...dimensions] as never,
-      set: this.accumulateSet(raw, measures) as never,
+      set: this.upsertSet(dataset, raw) as never,
     });
   }
 
@@ -192,44 +219,35 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
   ): Promise<AnalyticsResult> {
     const { raw, rolled } = this.entities(dataset);
     const groupBy = query.groupBy ?? [];
-    const merged = new Map<string, Record<string, string | number>>();
+    const selections = AnalyticsFolds.selections(dataset, query.select);
+    const merged = new Map<string, Record<string, string | number | null>>();
 
     for (const repository of [raw, rolled]) {
-      for (const row of await this.readOne(dataset, repository, query)) {
+      for (const row of await this.readOne(
+        dataset,
+        repository,
+        query,
+        selections,
+      )) {
         const key = JSON.stringify(groupBy.map((name) => row[name]));
         const existing = merged.get(key);
         if (!existing) {
           merged.set(key, row);
           continue;
         }
-        for (const [measure, aggregate] of Object.entries(query.select)) {
-          existing[measure] = this.mergeValue(
-            Number(existing[measure] ?? 0),
-            Number(row[measure] ?? 0),
-            aggregate,
-          );
-        }
+        this.mergeSelections(dataset, selections, existing, row);
       }
     }
 
-    let rows = [...merged.values()];
-
-    if (query.orderBy) {
-      const { key, direction } = query.orderBy;
-      rows.sort((a, b) => {
-        const left = a[key];
-        const right = b[key];
-        const comparison =
-          typeof left === "number" && typeof right === "number"
-            ? left - right
-            : String(left).localeCompare(String(right));
-        return direction === "desc" ? -comparison : comparison;
-      });
+    // The `at` behind each `last` only served the merge above.
+    const rows = [...merged.values()];
+    for (const row of rows) {
+      for (const selection of selections) {
+        if (selection.fold === "last") delete row[this.atKey(selection)];
+      }
     }
 
-    if (query.limit !== undefined) rows = rows.slice(0, query.limit);
-
-    return { rows, estimated: false };
+    return { rows: AnalyticsOrdering.apply(rows, query), estimated: false };
   }
 
   /**
@@ -257,49 +275,51 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
   ): Promise<void> {
     const { raw, rolled } = this.entities(dataset);
     const dimensions = Object.keys(dataset.dimensions.shape).sort();
-    const measures = Object.keys(dataset.measures.shape);
     const boundary = AnalyticsBuckets.day(before);
     const timeColumn = AnalyticsEntityFactory.TIME_COLUMN;
 
-    const dayExpression = `substr(${timeColumn}, 1, 10)`;
     // A plain range on the bucket, never `substr(...)`, so the unique index
     // (which leads with the bucket) serves it: `'2026-08-01T23' < '2026-08-02'`
     // because a key sorts after every prefix of itself and before the next day.
+    const dayExpression = `substr(${timeColumn}, 1, 10)`;
+    const dimensionColumns = dimensions.map((name) =>
+      this.columnName(raw, name),
+    );
     // Resolved through `columnName`, same as `readOne` — see its class doc.
     // Both tables are built from the one column map, so a name resolves the
-    // same on either side; `rolled` is asked for the target's own columns
-    // anyway, so the statement reads as what it writes.
-    const targetColumns = [
-      timeColumn,
-      ...dimensions.map((name) => this.columnName(rolled, name)),
-    ];
-    const measureColumns = measures.map((name) =>
-      this.columnName(rolled, name),
-    );
+    // same on either side.
+    const targetColumns = [timeColumn, ...dimensionColumns];
+    const valueColumns = this.storedColumns(dataset, raw);
+    const grouping = ["__day", ...dimensionColumns];
     const selectList = [
-      dayExpression,
-      ...dimensions.map((name) => this.columnName(raw, name)),
-      ...measures.map((name) => `SUM(${this.columnName(raw, name)})`),
+      "__day",
+      ...dimensionColumns,
+      ...valueColumns.map((column) => this.foldAggregate(column)),
     ].join(", ");
-    const groupList = [
+    const windows = this.lastWindows(valueColumns, [
       dayExpression,
-      ...dimensions.map((name) => this.columnName(raw, name)),
-    ].join(", ");
-    const accumulate = measureColumns
-      .map((column) => `${column} = target.${column} + excluded.${column}`)
-      .join(", ");
+      ...dimensionColumns,
+    ]);
+    const merge = this.mergeAssignments(valueColumns);
+    const insertColumns = [...targetColumns];
+    for (const column of valueColumns) {
+      insertColumns.push(column.sql);
+      if (column.lastAt) insertColumns.push(column.lastAt.sql);
+    }
 
     await this.database.run(
       sql`
-        INSERT INTO ${rolled.table} AS target (${sql.raw(
-          [...targetColumns, ...measureColumns].join(", "),
-        )})
+        INSERT INTO ${rolled.table} AS target (${sql.raw(insertColumns.join(", "))})
         SELECT ${sql.raw(selectList)}
-        FROM ${raw.table}
-        WHERE ${sql.raw(timeColumn)} < ${boundary}
-        GROUP BY ${sql.raw(groupList)}
+        FROM (
+          SELECT *, ${sql.raw([`${dayExpression} AS __day`, ...windows].join(", "))}
+          FROM ${raw.table}
+          WHERE ${sql.raw(timeColumn)} < ${boundary}
+        ) AS src
+        WHERE true
+        GROUP BY ${sql.raw(grouping.join(", "))}
         ON CONFLICT (${sql.raw(targetColumns.join(", "))})
-        DO ${sql.raw(measureColumns.length > 0 ? `UPDATE SET ${accumulate}` : "NOTHING")}
+        DO ${merge.length > 0 ? sql`UPDATE SET ${sql.join(merge, sql`, `)}` : sql`NOTHING`}
       `,
       z.object({}),
     );
@@ -547,24 +567,205 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
   }
 
   /**
-   * `measure = measure + excluded.measure` for every measure, so a batch
-   * upsert adds what the batch actually carried rather than a fixed
-   * increment. `excluded.<name>` uses the column's real (Drizzle-resolved)
-   * name, not the JS field key, mirroring `createOrmAnalyticsStore`'s
-   * `bucketIncrements()`.
+   * The SET clause of the record upsert: every stored column merged with
+   * the incoming row by its fold (see {@link mergeExpression}). Keyed by JS
+   * field name, as `upsertMany` expects; `excluded.<name>` uses the column's
+   * real (Drizzle-resolved) name.
    */
-  protected accumulateSet(
+  protected upsertSet(
+    dataset: AnalyticsDataset,
     repository: Repository<ZObject>,
-    measures: string[],
   ): Record<string, unknown> {
-    const table = repository.table as never as Record<string, NamedColumn>;
+    const table = repository.table as never as Record<string, unknown>;
     const set: Record<string, unknown> = {};
-    for (const name of measures) {
-      const column = table[name];
-      set[name] =
-        sql`${(table as never as Record<string, unknown>)[name]} + excluded.${sql.raw(column.name)}`;
+    for (const column of this.storedColumns(dataset, repository)) {
+      const target = (name: string) =>
+        sql`${table[this.fieldOf(column, name)]}`;
+      const excluded = (name: string) => sql.raw(`excluded.${name}`);
+      set[column.field] = this.mergeExpression(column, target, excluded);
+      if (column.lastAt) {
+        set[column.lastAt.field] = this.mergeExpression(
+          column,
+          target,
+          excluded,
+          true,
+        );
+      }
     }
     return set;
+  }
+
+  /**
+   * One value column as stored: its fold, its JS field and SQL name, and for
+   * a `last` the companion `last_at` column.
+   */
+  protected storedColumns(
+    dataset: AnalyticsDataset,
+    repository: Repository<ZObject>,
+  ): StoredColumn[] {
+    return AnalyticsFolds.columns(dataset).map((column) => {
+      const at = AnalyticsFolds.lastAt(column.measure);
+      return {
+        ...column,
+        sumOnly: AnalyticsFolds.isSumOnly(dataset, column.measure),
+        field: column.name,
+        sql: this.columnName(repository, column.name),
+        lastAt:
+          column.fold === "last"
+            ? { field: at, sql: this.columnName(repository, at) }
+            : undefined,
+      };
+    });
+  }
+
+  /**
+   * `field` itself, or its `last_at` companion when `name` is that
+   * companion's SQL name.
+   */
+  protected fieldOf(column: StoredColumn, name: string): string {
+    return column.lastAt && name === column.lastAt.sql
+      ? column.lastAt.field
+      : column.field;
+  }
+
+  /**
+   * How a stored value merges with an incoming one, NULL meaning "no
+   * reading" on every dialect. `CASE` rather than `LEAST`/`GREATEST`
+   * (Postgres) or scalar `MIN(a, b)` (SQLite, which returns NULL when either
+   * side is NULL): one spelling, the same semantics everywhere.
+   *
+   * With `at`, the expression for a `last` column's `last_at` instead of
+   * its value. Both use the same condition, and every SET expression reads
+   * the row as it was before the update, so they move together.
+   */
+  protected mergeExpression(
+    column: StoredColumn,
+    target: (name: string) => SQL,
+    excluded: (name: string) => SQL,
+    at = false,
+  ): SQL {
+    const t = target(column.sql);
+    const e = excluded(column.sql);
+    if (column.sumOnly) return sql`${t} + ${e}`;
+    if (column.fold === "sum") return sql`COALESCE(${t} + ${e}, ${t}, ${e})`;
+    if (column.fold === "min" || column.fold === "max") {
+      const better = column.fold === "min" ? sql.raw("<") : sql.raw(">");
+      return sql`CASE WHEN ${e} IS NULL THEN ${t} WHEN ${t} IS NULL OR ${e} ${better} ${t} THEN ${e} ELSE ${t} END`;
+    }
+    const lastAt = column.lastAt as { sql: string };
+    const tAt = target(lastAt.sql);
+    const eAt = excluded(lastAt.sql);
+    const wins = sql`${e} IS NOT NULL AND ${eAt} IS NOT NULL AND (${t} IS NULL OR ${tAt} IS NULL OR ${eAt} > ${tAt} OR (${eAt} = ${tAt} AND ${e} > ${t}))`;
+    return at
+      ? sql`CASE WHEN ${wins} THEN ${eAt} ELSE ${tAt} END`
+      : sql`CASE WHEN ${wins} THEN ${e} ELSE ${t} END`;
+  }
+
+  /**
+   * {@link mergeExpression} as `column = expression` assignments, for the
+   * rollup's `ON CONFLICT`, where the target is the `target` alias.
+   */
+  protected mergeAssignments(columns: StoredColumn[]): SQL[] {
+    const t = (name: string) => sql.raw(`target.${name}`);
+    const e = (name: string) => sql.raw(`excluded.${name}`);
+    const out: SQL[] = [];
+    for (const column of columns) {
+      out.push(
+        sql`${sql.raw(column.sql)} = ${this.mergeExpression(column, t, e)}`,
+      );
+      if (column.lastAt) {
+        out.push(
+          sql`${sql.raw(column.lastAt.sql)} = ${this.mergeExpression(column, t, e, true)}`,
+        );
+      }
+    }
+    return out;
+  }
+
+  /**
+   * The aggregate folding one column over a group of rows (the rollup's
+   * `GROUP BY`), reading the windowed `last` value {@link lastWindows}
+   * computed. A `last` contributes two select items: its value and its
+   * `last_at`.
+   */
+  protected foldAggregate(column: StoredColumn): string {
+    if (column.fold === "last") {
+      const lastAt = column.lastAt as { sql: string };
+      return `MAX(${this.windowAlias(column)}), MAX(${lastAt.sql})`;
+    }
+    if (column.fold === "min") return `MIN(${column.sql})`;
+    if (column.fold === "max") return `MAX(${column.sql})`;
+    return `SUM(${column.sql})`;
+  }
+
+  /**
+   * For every `last` column, the value of the row with the greatest
+   * `last_at` within the partition, ties keeping the larger value. Computed
+   * in a subquery with a window function (Postgres, SQLite 3.30+ and D1 all
+   * have `FIRST_VALUE` and `NULLS LAST`), then taken with `MAX()` in the
+   * outer `GROUP BY`, where every row of the partition carries the same one.
+   */
+  protected lastWindows(
+    columns: StoredColumn[],
+    partition: string[],
+  ): string[] {
+    const over = partition.length
+      ? `PARTITION BY ${partition.join(", ")} `
+      : "";
+    return columns
+      .filter((column) => column.fold === "last")
+      .map((column) => {
+        const lastAt = column.lastAt as { sql: string };
+        return `FIRST_VALUE(${column.sql}) OVER (${over}ORDER BY ${lastAt.sql} DESC NULLS LAST, ${column.sql} DESC NULLS LAST) AS ${this.windowAlias(column)}`;
+      });
+  }
+
+  protected windowAlias(column: AnalyticsColumn & { sql: string }): string {
+    return `__last_${column.sql}`;
+  }
+
+  /**
+   * The hidden key carrying the `at` of a selected `last` through the
+   * cross-tier merge.
+   */
+  protected atKey(selection: AnalyticsSelection): string {
+    return `__at_${selection.key}`;
+  }
+
+  /**
+   * Folds a row from another tier into `target`, selection by selection.
+   */
+  protected mergeSelections(
+    dataset: AnalyticsDataset,
+    selections: AnalyticsSelection[],
+    target: Record<string, string | number | null>,
+    source: Record<string, string | number | null>,
+  ): void {
+    for (const selection of selections) {
+      const key = selection.key;
+      if (selection.fold === "last") {
+        const at = this.atKey(selection);
+        if (
+          AnalyticsFolds.laterWins(
+            target[key],
+            target[at],
+            source[key],
+            source[at],
+          )
+        ) {
+          target[key] = source[key];
+          target[at] = source[at];
+        }
+      } else if (AnalyticsFolds.isSumOnly(dataset, selection.measure)) {
+        target[key] = Number(target[key] ?? 0) + Number(source[key] ?? 0);
+      } else {
+        target[key] = AnalyticsFolds.combine(
+          selection.fold,
+          target[key],
+          source[key],
+        );
+      }
+    }
   }
 
   /**
@@ -592,7 +793,8 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
     dataset: AnalyticsDataset,
     repository: Repository<ZObject>,
     query: AnalyticsQuery,
-  ): Promise<Array<Record<string, string | number>>> {
+    selections: AnalyticsSelection[],
+  ): Promise<Array<Record<string, string | number | null>>> {
     const timeColumn = AnalyticsEntityFactory.TIME_COLUMN;
 
     // Plain ranges on the bucket, never a function of it, so the unique
@@ -662,26 +864,59 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
           : dataset.dimensions.shape[name];
     }
 
-    for (const [measure, aggregate] of Object.entries(query.select)) {
-      this.assertKnownMeasure(dataset, measure);
-      this.assertKnownAggregate(aggregate);
-      const column = this.columnName(repository, measure);
+    const columns = new Map(
+      this.storedColumns(dataset, repository).map((column) => [
+        `${column.measure}:${column.fold}`,
+        column,
+      ]),
+    );
+    // A missing reading comes back NULL and must stay `null`: a bare
+    // `z.coerce.number()` would turn it into `0`.
+    const value = z.union([z.null(), z.coerce.number()]);
+    const windowed: StoredColumn[] = [];
+    for (const selection of selections) {
+      const column = columns.get(
+        `${selection.measure}:${selection.fold}`,
+      ) as StoredColumn;
       // Quoted for the same reason the dimension alias above is: an
       // unquoted multi-word alias would fold to lowercase on Postgres and no
       // longer match `shape`'s exact-case key.
-      projections.push(`SUM(${column}) AS "${measure}"`);
-      shape[measure] = z.coerce.number();
+      if (column.fold === "last") {
+        const lastAt = column.lastAt as { sql: string };
+        windowed.push(column);
+        projections.push(
+          `MAX(${this.windowAlias(column)}) AS "${selection.key}"`,
+          `MAX(${lastAt.sql}) AS "${this.atKey(selection)}"`,
+        );
+        shape[this.atKey(selection)] = value;
+      } else {
+        const aggregate =
+          column.fold === "min" ? "MIN" : column.fold === "max" ? "MAX" : "SUM";
+        projections.push(`${aggregate}(${column.sql}) AS "${selection.key}"`);
+      }
+      shape[selection.key] = value;
     }
 
-    const grouping = groupBy
-      .map((name) =>
-        name === "day"
-          ? `substr(${timeColumn}, 1, 10)`
-          : name === "hour"
-            ? timeColumn
-            : this.columnName(repository, name),
-      )
-      .join(", ");
+    const groupExpressions = groupBy.map((name) =>
+      name === "day"
+        ? `substr(${timeColumn}, 1, 10)`
+        : name === "hour"
+          ? timeColumn
+          : this.columnName(repository, name),
+    );
+    const grouping = groupExpressions.join(", ");
+
+    // A `last` reads the windowed value of a subquery (see `lastWindows`),
+    // partitioned exactly as the outer query groups; anything else reads
+    // the table directly.
+    const windows = this.lastWindows(
+      [...new Map(windowed.map((column) => [column.sql, column])).values()],
+      groupExpressions,
+    );
+    const source =
+      windows.length > 0
+        ? sql`(SELECT *, ${sql.raw(windows.join(", "))} FROM ${repository.table} WHERE ${sql.join(conditions, sql` AND `)}) AS src`
+        : sql`${repository.table} WHERE ${sql.join(conditions, sql` AND `)}`;
 
     // With no `GROUP BY`, a bare `SUM(...)` over zero matching rows still
     // returns exactly one row with a NULL total in plain SQL. The interface
@@ -692,15 +927,14 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
     const rows = await this.database.run(
       sql`
         SELECT ${sql.raw(projections.join(", "))}
-        FROM ${repository.table}
-        WHERE ${sql.join(conditions, sql` AND `)}
+        FROM ${source}
         ${grouping ? sql.raw(`GROUP BY ${grouping}`) : sql.raw("")}
         HAVING COUNT(*) > 0
       `,
       z.object(shape),
     );
 
-    return rows as never as Array<Record<string, string | number>>;
+    return rows as never as Array<Record<string, string | number | null>>;
   }
 
   /**
@@ -718,42 +952,6 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
       throw new AlephaError(
         `Query on dataset '${dataset.name}' references '${name}', which is not a declared dimension. Declared dimensions: ${Object.keys(dataset.dimensions.shape).join(", ") || "(none)"}.`,
       );
-    }
-  }
-
-  /**
-   * Same guard as {@link assertKnownDimension}, for `select` keys against
-   * the dataset's declared measures.
-   */
-  protected assertKnownMeasure(dataset: AnalyticsDataset, name: string): void {
-    if (!Object.hasOwn(dataset.measures.shape, name)) {
-      throw new AlephaError(
-        `Query on dataset '${dataset.name}' references '${name}', which is not a declared measure. Declared measures: ${Object.keys(dataset.measures.shape).join(", ") || "(none)"}.`,
-      );
-    }
-  }
-
-  protected mergeValue(
-    left: number,
-    right: number,
-    aggregate: AnalyticsAggregate,
-  ): number {
-    this.assertKnownAggregate(aggregate);
-    return left + right;
-  }
-
-  /**
-   * Defence in depth against a query built from unchecked request input
-   * (`select[key] = req.query.aggregate`) — `AnalyticsQuery` types `select`'s
-   * values as {@link AnalyticsAggregate}, but the type system cannot see that
-   * far, and `"sum"` is the only value this provider knows how to fold or
-   * project.
-   */
-  protected assertKnownAggregate(
-    aggregate: AnalyticsAggregate,
-  ): asserts aggregate is "sum" {
-    if (aggregate !== "sum") {
-      throw new AlephaError(`Received an unknown aggregate '${aggregate}'.`);
     }
   }
 }

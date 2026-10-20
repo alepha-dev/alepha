@@ -1,9 +1,14 @@
 import { $inject, AlephaError, createPrimitive, Primitive } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { KIND } from "alepha/internal";
+import { $logger } from "alepha/logger";
 
 import { AnalyticsBuckets } from "../planner/AnalyticsBuckets.ts";
-import { AnalyticsRowFolder } from "../planner/AnalyticsRowFolder.ts";
+import { AnalyticsFolds } from "../planner/AnalyticsFolds.ts";
+import {
+  type AnalyticsReading,
+  AnalyticsRowFolder,
+} from "../planner/AnalyticsRowFolder.ts";
 import { AnalyticsSlotMap } from "../planner/AnalyticsSlotMap.ts";
 import { AnalyticsProvider } from "../providers/AnalyticsProvider.ts";
 import type { AnalyticsDataset } from "../schemas/analyticsDatasetSchema.ts";
@@ -16,9 +21,12 @@ import { AnalyticsEntityFactory } from "../services/AnalyticsEntityFactory.ts";
 /**
  * Declares an analytics dataset: what you record, and what you can ask.
  *
- * The same declaration runs on Workers Analytics Engine, on a relational
- * database and in memory. Which one is bound is a runtime decision made by the
- * module, so app code never names a backend.
+ * The same declaration runs on a relational database and in memory, and, as
+ * long as every measure folds `sum` only, on Workers Analytics Engine. Which
+ * one is bound is a runtime decision made by the module, so app code never
+ * names a backend. Gauges (`folds: { temperature: ["min", "max", "last"] }`)
+ * need an exact backend and are refused at boot on Analytics Engine, which
+ * samples.
  *
  * @example
  * ```ts
@@ -72,6 +80,16 @@ export interface AnalyticsPrimitiveOptions extends Omit<
   name?: string;
 }
 
+/**
+ * One reading as recorded: every dimension, a value per measure (a gauge
+ * may be omitted), and optionally `at` (millis, when it was taken) and an
+ * explicit `hour` bucket.
+ */
+export type AnalyticsRecordRow = Record<
+  string,
+  string | number | null | undefined
+> & { hour?: string; at?: number };
+
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class AnalyticsPrimitive extends Primitive<AnalyticsPrimitiveOptions> {
@@ -90,6 +108,15 @@ export class AnalyticsPrimitive extends Primitive<AnalyticsPrimitiveOptions> {
    */
   public static readonly NAME_PATTERN = /^[a-z][a-z0-9_]*$/;
 
+  /**
+   * How far ahead of the server clock a reading's `at` may be before it is
+   * clamped to now. A device clock running ahead would otherwise write into
+   * a bucket that does not exist yet and pin `last` for every bucket it
+   * later folds into.
+   */
+  public static readonly MAX_CLOCK_SKEW = 5 * 60 * 1000;
+
+  protected readonly log = $logger();
   protected readonly provider = $inject(AnalyticsProvider);
   protected readonly dateTime = $inject(DateTimeProvider);
 
@@ -135,6 +162,7 @@ export class AnalyticsPrimitive extends Primitive<AnalyticsPrimitiveOptions> {
   protected onInit(): void {
     this.assertLegalName();
     AnalyticsEntityFactory.assertNoCollisions(this.dataset);
+    this.assertExactBackend();
     this.assertValidRetention();
     AnalyticsSlotMap.forDataset(this.dataset);
     this.provider.register(this.dataset);
@@ -165,6 +193,21 @@ export class AnalyticsPrimitive extends Primitive<AnalyticsPrimitiveOptions> {
         "and the Analytics Engine dataset discriminator, so it cannot be " +
         `camelCase. Either rename the property to '${AnalyticsPrimitive.toSnakeCase(name)}', ` +
         'or pass an explicit { name: "..." }.',
+    );
+  }
+
+  /**
+   * Refuses a dataset declaring `min`, `max` or `last` on a backend that
+   * samples. Analytics Engine can correct a sampled `sum`, but the row
+   * holding an extreme or the last value may be the one it dropped, and
+   * nothing reconstructs it: serving it anyway would be silently wrong.
+   */
+  protected assertExactBackend(): void {
+    if (this.provider.exact || !AnalyticsFolds.needsExact(this.dataset)) {
+      return;
+    }
+    throw new AlephaError(
+      `Dataset '${this.dataset.name}' declares a min, max or last fold, but the bound analytics backend samples (Analytics Engine), so an extreme or a last value cannot be reconstructed. Declare only "sum" folds there, or bind an exact backend.`,
     );
   }
 
@@ -216,38 +259,65 @@ export class AnalyticsPrimitive extends Primitive<AnalyticsPrimitiveOptions> {
     return value.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase();
   }
 
-  public async record(
-    row: Record<string, string | number> & { hour?: string },
-  ): Promise<void> {
+  public async record(row: AnalyticsRecordRow): Promise<void> {
     await this.recordMany([row]);
   }
 
   /**
    * Records a batch.
    *
-   * `hour` is stamped from {@link DateTimeProvider} unless the caller supplies
-   * one. The override is load-bearing rather than a convenience: Analytics
+   * Each row is placed by `at`, the instant it was taken (millis, default
+   * {@link DateTimeProvider} now): it decides the row's hour bucket and is
+   * the timestamp `last` compares. An explicit `hour` overrides the bucket
+   * only. The override is load-bearing rather than a convenience: Analytics
    * Engine stamps its own `timestamp` at write time and cannot backdate a
    * point, so a batched or retried envelope has to carry the bucket it
    * computed or it lands in the wrong hour for reasons unrelated to sampling.
+   *
+   * A device clock is not trusted blindly. An `at` more than
+   * {@link MAX_CLOCK_SKEW} ahead is clamped to now; one older than the
+   * finest tier's retention is dropped, since the next sweep would delete
+   * it anyway. Both are debug-logged. An explicit bucket is the caller's own
+   * decision and is never clamped.
    *
    * Rows sharing a bucket and every dimension are merged before they reach
    * the provider, so a batch carrying two readings of one device in one
    * bucket is one row, on every backend.
    */
-  public async recordMany(
-    rows: Array<Record<string, string | number> & { hour?: string }>,
-  ): Promise<void> {
-    const fallback = AnalyticsBuckets.hour(this.dateTime.nowMillis());
+  public async recordMany(rows: AnalyticsRecordRow[]): Promise<void> {
+    const now = this.dateTime.nowMillis();
     const dataset = this.dataset;
+    const keep = dataset.retention?.hot
+      ? AnalyticsBuckets.parseWindow(dataset.retention.hot)
+      : undefined;
+
+    const readings: AnalyticsReading[] = [];
+    for (const row of rows) {
+      let at = row.at ?? now;
+      if (at > now + AnalyticsPrimitive.MAX_CLOCK_SKEW) {
+        this.log.debug(
+          `Clamped a reading of '${dataset.name}' taken ${at - now} ms in the future to now`,
+        );
+        at = now;
+      } else if (keep !== undefined && at < now - keep) {
+        this.log.debug(
+          `Dropped a reading of '${dataset.name}' taken ${now - at} ms ago, past its retention`,
+        );
+        continue;
+      }
+      readings.push({
+        ...row,
+        at,
+        hour: row.hour ?? AnalyticsBuckets.hour(at),
+      });
+    }
+    if (readings.length === 0) return;
+
     // Folded here rather than in a provider, so every provider receives
     // distinct keys: see `AnalyticsRowFolder`.
     await this.provider.record(
       dataset,
-      AnalyticsRowFolder.fold(
-        dataset,
-        rows.map((row) => ({ ...row, hour: row.hour ?? fallback })),
-      ),
+      AnalyticsRowFolder.fold(dataset, readings),
     );
   }
 

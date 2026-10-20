@@ -1,9 +1,11 @@
 import { AlephaError } from "alepha";
 
 import { AnalyticsBuckets } from "../planner/AnalyticsBuckets.ts";
+import { AnalyticsFolds } from "../planner/AnalyticsFolds.ts";
+import { AnalyticsOrdering } from "../planner/AnalyticsOrdering.ts";
+import { AnalyticsRowFolder } from "../planner/AnalyticsRowFolder.ts";
 import type { AnalyticsDataset } from "../schemas/analyticsDatasetSchema.ts";
 import type {
-  AnalyticsAggregate,
   AnalyticsQuery,
   AnalyticsResult,
 } from "../schemas/analyticsQuerySchema.ts";
@@ -26,6 +28,8 @@ import {
  * query can be tested with no database.
  */
 export class MemoryAnalyticsProvider extends AnalyticsProvider {
+  public readonly exact: boolean = true;
+
   protected readonly stored = new Map<string, AnalyticsRow[]>();
 
   /**
@@ -45,8 +49,24 @@ export class MemoryAnalyticsProvider extends AnalyticsProvider {
     dataset: AnalyticsDataset,
     rows: AnalyticsRow[],
   ): Promise<void> {
+    // Merged into the row holding the same key, as a relational upsert does,
+    // so a gauge's extremes and last value fold on write here too.
     const existing = this.stored.get(dataset.name) ?? [];
-    existing.push(...rows.map((row) => ({ ...row })));
+    const dimensions = Object.keys(dataset.dimensions.shape).sort();
+    const index = new Map(
+      existing.map((row) => [AnalyticsRowFolder.key(dimensions, row), row]),
+    );
+    for (const row of rows) {
+      const key = AnalyticsRowFolder.key(dimensions, row);
+      const target = index.get(key);
+      if (target) {
+        AnalyticsFolds.merge(dataset, target, row);
+      } else {
+        const copy = { ...row };
+        existing.push(copy);
+        index.set(key, copy);
+      }
+    }
     this.stored.set(dataset.name, existing);
   }
 
@@ -62,16 +82,16 @@ export class MemoryAnalyticsProvider extends AnalyticsProvider {
         this.assertKnownDimension(dataset, name);
       }
     }
-    for (const name of Object.keys(query.select)) {
-      this.assertKnownMeasure(dataset, name);
-    }
+    const selections = AnalyticsFolds.selections(dataset, query.select);
 
     const rows = (this.stored.get(dataset.name) ?? []).filter((row) =>
       this.matches(row, query),
     );
 
     const groupBy = query.groupBy ?? [];
-    const groups = new Map<string, Record<string, string | number>>();
+    const groups = new Map<string, Record<string, string | number | null>>();
+    // The `at` behind each group's `last` values, by selection key.
+    const lastAt = new Map<string, Record<string, number | null>>();
 
     for (const row of rows) {
       // JSON.stringify escapes properly and is unambiguous for any input,
@@ -82,17 +102,43 @@ export class MemoryAnalyticsProvider extends AnalyticsProvider {
         groupBy.map((name) => this.dimensionOf(row, name)),
       );
       let group = groups.get(key);
-      if (!group) {
+      let ats = lastAt.get(key);
+      if (!group || !ats) {
         group = {};
+        ats = {};
         for (const name of groupBy) group[name] = this.dimensionOf(row, name);
+        for (const selection of selections) {
+          group[selection.key] = null;
+          ats[selection.key] = null;
+        }
         groups.set(key, group);
+        lastAt.set(key, ats);
       }
-      for (const [measure, aggregate] of Object.entries(query.select)) {
-        group[measure] = this.fold(
-          group[measure],
-          Number(row[measure] ?? 0),
-          aggregate,
-        );
+      for (const selection of selections) {
+        const value = row[selection.name];
+        if (selection.fold === "last") {
+          const at = row[AnalyticsFolds.lastAt(selection.measure)];
+          if (
+            AnalyticsFolds.laterWins(
+              group[selection.key],
+              ats[selection.key],
+              value,
+              at,
+            )
+          ) {
+            group[selection.key] = AnalyticsFolds.reading(value);
+            ats[selection.key] = AnalyticsFolds.reading(at);
+          }
+        } else if (AnalyticsFolds.isSumOnly(dataset, selection.measure)) {
+          group[selection.key] =
+            Number(group[selection.key] ?? 0) + Number(value ?? 0);
+        } else {
+          group[selection.key] = AnalyticsFolds.combine(
+            selection.fold,
+            group[selection.key],
+            value,
+          );
+        }
       }
     }
 
@@ -103,20 +149,7 @@ export class MemoryAnalyticsProvider extends AnalyticsProvider {
     // created.
     let out = [...groups.values()];
 
-    if (query.orderBy) {
-      const { key, direction } = query.orderBy;
-      out.sort((a, b) => {
-        const left = a[key];
-        const right = b[key];
-        const comparison =
-          typeof left === "number" && typeof right === "number"
-            ? left - right
-            : String(left).localeCompare(String(right));
-        return direction === "desc" ? -comparison : comparison;
-      });
-    }
-
-    if (query.limit !== undefined) out = out.slice(0, query.limit);
+    out = AnalyticsOrdering.apply(out, query);
 
     return { rows: out, estimated: false };
   }
@@ -144,10 +177,7 @@ export class MemoryAnalyticsProvider extends AnalyticsProvider {
       const key = JSON.stringify([day, ...this.dimensionsOf(dataset, row)]);
       const existing = folded.get(key);
       if (existing) {
-        for (const measure of Object.keys(dataset.measures.shape)) {
-          existing[measure] =
-            Number(existing[measure] ?? 0) + Number(row[measure] ?? 0);
-        }
+        AnalyticsFolds.merge(dataset, existing, row);
       } else {
         folded.set(key, { ...row, hour: day });
       }
@@ -195,7 +225,7 @@ export class MemoryAnalyticsProvider extends AnalyticsProvider {
   protected dimensionOf(row: AnalyticsRow, name: string): string | number {
     if (name === "day") return AnalyticsBuckets.day(row.hour);
     if (name === "hour") return row.hour;
-    return row[name];
+    return row[name] as string | number;
   }
 
   protected matches(row: AnalyticsRow, query: AnalyticsQuery): boolean {
@@ -204,7 +234,7 @@ export class MemoryAnalyticsProvider extends AnalyticsProvider {
     // Inclusive: `until` names a day, and every hour of that day is in it.
     if (query.until && day > query.until) return false;
     for (const [name, filter] of Object.entries(query.where ?? {})) {
-      const value = row[name];
+      const value = row[name] as string | number;
       if (
         typeof filter === "object" &&
         filter !== null &&
@@ -216,15 +246,6 @@ export class MemoryAnalyticsProvider extends AnalyticsProvider {
       }
     }
     return true;
-  }
-
-  protected fold(
-    current: string | number | undefined,
-    value: number,
-    aggregate: AnalyticsAggregate,
-  ): number {
-    if (aggregate === "sum") return Number(current ?? 0) + value;
-    throw new AlephaError(`Received an unknown aggregate '${aggregate}'.`);
   }
 
   /**
@@ -248,18 +269,6 @@ export class MemoryAnalyticsProvider extends AnalyticsProvider {
     if (!Object.hasOwn(dataset.dimensions.shape, name)) {
       throw new AlephaError(
         `Query on dataset '${dataset.name}' references '${name}', which is not a declared dimension. Declared dimensions: ${Object.keys(dataset.dimensions.shape).join(", ") || "(none)"}.`,
-      );
-    }
-  }
-
-  /**
-   * Same guard as {@link assertKnownDimension}, for `select` keys against the
-   * dataset's declared measures.
-   */
-  protected assertKnownMeasure(dataset: AnalyticsDataset, name: string): void {
-    if (!Object.hasOwn(dataset.measures.shape, name)) {
-      throw new AlephaError(
-        `Query on dataset '${dataset.name}' references '${name}', which is not a declared measure. Declared measures: ${Object.keys(dataset.measures.shape).join(", ") || "(none)"}.`,
       );
     }
   }

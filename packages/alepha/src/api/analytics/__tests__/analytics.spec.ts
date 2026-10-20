@@ -1,5 +1,6 @@
 import { Alepha, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+import { MemoryDestinationProvider } from "alepha/logger";
 import {
   DatabaseProvider,
   NodeSqliteProvider,
@@ -16,7 +17,9 @@ import { describe, expect, it } from "vitest";
 // `$storage.spec.ts` imports `$storage`.
 import {
   $analytics,
+  AnalyticsBuckets,
   type AnalyticsDataset,
+  AnalyticsPrimitive,
   AnalyticsProvider,
   MemoryAnalyticsProvider,
   OrmAnalyticsProvider,
@@ -318,4 +321,130 @@ describe("$analytics.recordMany with rows sharing a bucket and dimensions", () =
       }
     });
   }
+});
+
+describe("$analytics gauge readings", () => {
+  class Devices {
+    public readonly gauges = $analytics({
+      index: "deviceId",
+      dimensions: z.object({ deviceId: z.string() }),
+      measures: z.object({ temperature: z.number() }),
+      folds: { temperature: ["min", "max", "last"] },
+      slots: { dimensions: ["deviceId"], measures: ["temperature"] },
+      retention: { hot: "2d" },
+    });
+  }
+
+  const boot = async () => {
+    const alepha = Alepha.create();
+    const app = alepha.inject(Devices);
+    const dateTime = alepha.inject(DateTimeProvider);
+    await alepha.start();
+    dateTime.pause();
+    return { app, dateTime, logs: alepha.inject(MemoryDestinationProvider) };
+  };
+
+  const readHours = (app: Devices) =>
+    app.gauges.query({
+      since: "2000-01-01",
+      groupBy: ["hour"],
+      select: { temperature: ["min", "max", "last"] },
+      orderBy: { key: "hour", direction: "asc" },
+    });
+
+  it("places a reading in the hour of its `at` and takes `last` from it", async () => {
+    const { app, dateTime } = await boot();
+    // Mid-hour, two hours back, so both readings share an hour whatever
+    // the wall clock says.
+    const hour = 60 * 60 * 1000;
+    const base =
+      Math.floor(dateTime.nowMillis() / hour) * hour - 2 * hour + hour / 2;
+    const earlier = base - 3 * hour;
+
+    await app.gauges.recordMany([
+      { deviceId: "d1", temperature: 21, at: base - 60_000 },
+      { deviceId: "d1", temperature: 19, at: base },
+      { deviceId: "d1", temperature: 30, at: earlier },
+    ]);
+
+    expect((await readHours(app)).rows).toEqual([
+      {
+        hour: AnalyticsBuckets.hour(earlier),
+        temperature_min: 30,
+        temperature_max: 30,
+        temperature_last: 30,
+      },
+      {
+        hour: AnalyticsBuckets.hour(base),
+        temperature_min: 19,
+        temperature_max: 21,
+        temperature_last: 19,
+      },
+    ]);
+  });
+
+  it("clamps a reading more than MAX_CLOCK_SKEW ahead to now", async () => {
+    const { app, dateTime, logs } = await boot();
+    const now = dateTime.nowMillis();
+
+    await app.gauges.recordMany([
+      { deviceId: "d1", temperature: 5, at: now },
+      { deviceId: "d1", temperature: 8, at: now + 24 * 60 * 60 * 1000 },
+    ]);
+
+    // Clamped to `now`, it lands in the current hour and ties with the
+    // reading taken at `now`; the larger value is the `last`.
+    expect((await readHours(app)).rows).toEqual([
+      {
+        hour: AnalyticsBuckets.hour(now),
+        temperature_min: 5,
+        temperature_max: 8,
+        temperature_last: 8,
+      },
+    ]);
+    expect(
+      logs.logs.some((entry) => entry.message.includes("in the future")),
+    ).toBe(true);
+  });
+
+  it("keeps a reading inside MAX_CLOCK_SKEW as it is", async () => {
+    const { app, dateTime } = await boot();
+    const now = dateTime.nowMillis();
+    const ahead = now + AnalyticsPrimitive.MAX_CLOCK_SKEW - 1000;
+
+    await app.gauges.recordMany([
+      { deviceId: "d1", temperature: 8, at: ahead },
+      { deviceId: "d1", temperature: 9, at: now },
+    ]);
+
+    const rows = (await readHours(app)).rows;
+    expect(rows.at(-1)?.temperature_last).toBe(8);
+  });
+
+  it("drops a reading older than the finest retention", async () => {
+    const { app, dateTime, logs } = await boot();
+    const now = dateTime.nowMillis();
+
+    await app.gauges.recordMany([
+      { deviceId: "d1", temperature: 1, at: now - 3 * 24 * 60 * 60 * 1000 },
+    ]);
+
+    expect((await readHours(app)).rows).toEqual([]);
+    expect(
+      logs.logs.some((entry) => entry.message.includes("past its retention")),
+    ).toBe(true);
+  });
+
+  it("refuses a gauge dataset on a backend that samples", () => {
+    class SampledAnalyticsProvider extends MemoryAnalyticsProvider {
+      public override readonly exact = false;
+    }
+
+    const alepha = Alepha.create().with({
+      provide: AnalyticsProvider,
+      use: SampledAnalyticsProvider,
+    });
+
+    expect(() => alepha.inject(Devices)).toThrow("samples");
+  });
 });

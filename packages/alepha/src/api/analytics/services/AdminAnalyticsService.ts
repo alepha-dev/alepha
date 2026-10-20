@@ -1,6 +1,7 @@
 import { $inject, Alepha, z } from "alepha";
 import { BadRequestError, NotFoundError } from "alepha/server";
 
+import { AnalyticsFolds } from "../planner/AnalyticsFolds.ts";
 import {
   $analytics,
   type AnalyticsPrimitive,
@@ -183,11 +184,19 @@ export class AdminAnalyticsService {
         );
       }
     }
-    for (const key of Object.keys(query.select)) {
+    for (const [key, value] of Object.entries(query.select)) {
       if (!measures.includes(key)) {
         throw new BadRequestError(
           `'${key}' is not a measure of '${primitive.dataset.name}'.`,
         );
+      }
+      const declared = AnalyticsFolds.of(primitive.dataset, key);
+      for (const fold of Array.isArray(value) ? value : [value]) {
+        if (!declared.includes(fold)) {
+          throw new BadRequestError(
+            `'${key}' of '${primitive.dataset.name}' does not fold '${fold}'.`,
+          );
+        }
       }
     }
   }

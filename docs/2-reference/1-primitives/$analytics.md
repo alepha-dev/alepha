@@ -10,9 +10,12 @@ import { $analytics } from "alepha/api/analytics";
 
 Declares an analytics dataset: what you record, and what you can ask.
 
-The same declaration runs on Workers Analytics Engine, on a relational
-database and in memory. Which one is bound is a runtime decision made by the
-module, so app code never names a backend.
+The same declaration runs on a relational database and in memory, and, as
+long as every measure folds `sum` only, on Workers Analytics Engine. Which
+one is bound is a runtime decision made by the module, so app code never
+names a backend. Gauges (`folds: { temperature: ["min", "max", "last"] }`)
+need an exact backend and are refused at boot on Analytics Engine, which
+samples.
 
 ## Options
 

@@ -1,5 +1,16 @@
 import type { AnalyticsRow } from "../providers/AnalyticsProvider.ts";
 import type { AnalyticsDataset } from "../schemas/analyticsDatasetSchema.ts";
+import { AnalyticsFolds } from "./AnalyticsFolds.ts";
+
+/**
+ * One reading as a caller records it: its bucket, the instant it was taken
+ * (millis, the `last` tie-break), every dimension, and a value per measure.
+ * A gauge may be omitted.
+ */
+export type AnalyticsReading = Record<
+  string,
+  string | number | null | undefined
+> & { hour: string; at?: number };
 
 /**
  * Merges rows that share a bucket and every dimension into one, before they
@@ -17,35 +28,40 @@ import type { AnalyticsDataset } from "../schemas/analyticsDatasetSchema.ts";
  */
 export class AnalyticsRowFolder {
   /**
-   * One row per `(bucket, ...dimensions)`, in first-seen order.
+   * One stored row per `(bucket, ...dimensions)`, in first-seen order. Every
+   * fold of every measure is merged by `AnalyticsFolds`; a reading without
+   * `at` counts as taken at `0`.
    */
   public static fold(
     dataset: AnalyticsDataset,
-    rows: AnalyticsRow[],
+    rows: AnalyticsReading[],
   ): AnalyticsRow[] {
-    if (rows.length < 2) return rows;
-
     const dimensions = Object.keys(dataset.dimensions.shape).sort();
-    const measures = Object.keys(dataset.measures.shape);
     const folded = new Map<string, AnalyticsRow>();
 
     for (const row of rows) {
+      const stored = AnalyticsFolds.toStored(dataset, row, row.at ?? 0);
       // JSON rather than a delimiter join: a dimension value can hold any
       // character, and a collision here would merge two distinct groups.
-      const key = JSON.stringify([
-        row.hour,
-        ...dimensions.map((name) => row[name]),
-      ]);
+      const key = AnalyticsRowFolder.key(dimensions, stored);
       const existing = folded.get(key);
-      if (!existing) {
-        folded.set(key, { ...row });
-        continue;
-      }
-      for (const name of measures) {
-        existing[name] = Number(existing[name] ?? 0) + Number(row[name] ?? 0);
+      if (existing) {
+        AnalyticsFolds.merge(dataset, existing, stored);
+      } else {
+        folded.set(key, stored);
       }
     }
 
     return [...folded.values()];
+  }
+
+  /**
+   * The grouping key of a row: its bucket and its sorted dimension values.
+   */
+  public static key(
+    dimensions: string[],
+    row: Record<string, unknown> & { hour: string },
+  ): string {
+    return JSON.stringify([row.hour, ...dimensions.map((name) => row[name])]);
   }
 }
