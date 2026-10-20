@@ -2,6 +2,7 @@ import { $inject, Alepha, z } from "alepha";
 import { BadRequestError, NotFoundError } from "alepha/server";
 
 import { AnalyticsFolds } from "../planner/AnalyticsFolds.ts";
+import { AnalyticsWindow } from "../planner/AnalyticsWindow.ts";
 import {
   $analytics,
   type AnalyticsPrimitive,
@@ -95,6 +96,13 @@ export class AdminAnalyticsService {
       throw new NotFoundError(`Unknown analytics dataset '${name}'.`);
     }
     this.assertKeysDeclared(primitive, query, pinned);
+    try {
+      AnalyticsWindow.assertValid(query);
+    } catch (error) {
+      throw new BadRequestError(
+        error instanceof Error ? error.message : String(error),
+      );
+    }
     if (pinned.length === 0) {
       return primitive.query(query);
     }

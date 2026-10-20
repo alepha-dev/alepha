@@ -5,6 +5,7 @@ import { AnalyticsFolds } from "../planner/AnalyticsFolds.ts";
 import { AnalyticsOrdering } from "../planner/AnalyticsOrdering.ts";
 import { AnalyticsRowFolder } from "../planner/AnalyticsRowFolder.ts";
 import { AnalyticsTiers } from "../planner/AnalyticsTiers.ts";
+import { AnalyticsWindow } from "../planner/AnalyticsWindow.ts";
 import type { AnalyticsDataset } from "../schemas/analyticsDatasetSchema.ts";
 import type {
   AnalyticsQuery,
@@ -108,9 +109,22 @@ export class MemoryAnalyticsProvider extends AnalyticsProvider {
     }
     const selections = AnalyticsFolds.selections(dataset, query.select);
 
-    const rows = this.tiers(dataset)
-      .flat()
-      .filter((row) => this.matches(row, query));
+    // Each tier reads its own key range (see `AnalyticsWindow`), and a
+    // matching row in a bucket that straddles a bound coarsens the result.
+    const specs = AnalyticsTiers.of(dataset);
+    let coarsened = false;
+    const rows = this.tiers(dataset).flatMap((tier, index) => {
+      const bounds = AnalyticsWindow.forTier(query, specs[index].resolution);
+      return tier.filter((row) => {
+        if (row.hour < bounds.lower) return false;
+        if (bounds.upper !== undefined && row.hour >= bounds.upper) {
+          return false;
+        }
+        if (!this.matches(row, query)) return false;
+        if (bounds.straddling.includes(row.hour)) coarsened = true;
+        return true;
+      });
+    });
 
     const groupBy = query.groupBy ?? [];
     const groups = new Map<string, Record<string, string | number | null>>();
@@ -175,7 +189,7 @@ export class MemoryAnalyticsProvider extends AnalyticsProvider {
 
     out = AnalyticsOrdering.apply(out, query);
 
-    return { rows: out, estimated: false };
+    return { rows: out, estimated: false, coarsened };
   }
 
   public async rollup(
@@ -233,11 +247,11 @@ export class MemoryAnalyticsProvider extends AnalyticsProvider {
     return row[name] as string | number;
   }
 
+  /**
+   * Whether `row` passes the query's dimension filters. The time window is
+   * applied per tier by the caller.
+   */
   protected matches(row: AnalyticsRow, query: AnalyticsQuery): boolean {
-    const day = AnalyticsBuckets.day(row.hour);
-    if (day < query.since) return false;
-    // Inclusive: `until` names a day, and every hour of that day is in it.
-    if (query.until && day > query.until) return false;
     for (const [name, filter] of Object.entries(query.where ?? {})) {
       const value = row[name] as string | number;
       if (

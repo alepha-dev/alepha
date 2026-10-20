@@ -36,9 +36,10 @@ export type AnalyticsFilter = Record<
 export interface AnalyticsQuery {
   where?: AnalyticsFilter;
   /**
-   * First UTC day included, `YYYY-MM-DD`.
+   * First UTC day included, `YYYY-MM-DD`. Exactly one of `since` and
+   * `from` is given.
    */
-  since: string;
+  since?: string;
   /**
    * Last UTC day included, `YYYY-MM-DD`. Omitted means "up to the newest
    * bucket there is", which is what every caller wanted before this existed.
@@ -55,6 +56,19 @@ export interface AnalyticsQuery {
    * "yesterday against the day before" a statement about traffic.
    */
   until?: string;
+  /**
+   * First instant included: ISO 8601 with an offset
+   * (`2026-10-18T08:00:00+04:00`), floored to each tier's resolution. An
+   * instant without an offset is refused. Exactly one of `since` and `from`
+   * is given; `from` pairs with `to`, never with `until`.
+   */
+  from?: string;
+  /**
+   * First instant excluded, same form as `from`. Omitted means "up to the
+   * newest bucket". Exclusive, so consecutive windows never count a bucket
+   * twice.
+   */
+  to?: string;
   /**
    * Declared dimension names, plus the pseudo-dimensions `hour` and `day`.
    */
@@ -89,6 +103,15 @@ export interface AnalyticsResult {
    * ignoring it is a visible choice rather than an accident.
    */
   estimated: boolean;
+
+  /**
+   * Whether a returned bucket extends outside `[from, to)`: a coarse tier
+   * (a day folded from hours, say) is read whole rather than dropped when it
+   * straddles a bound, so its readings outside the window are counted.
+   * Only a `from`/`to` query can be coarsened; `since`/`until` are whole
+   * days, which every tier holds exactly.
+   */
+  coarsened?: boolean;
 
   /**
    * The largest `_sample_interval` seen in the window, when the backend

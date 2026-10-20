@@ -28,6 +28,10 @@ import {
 } from "../planner/AnalyticsFolds.ts";
 import { AnalyticsOrdering } from "../planner/AnalyticsOrdering.ts";
 import { AnalyticsTiers } from "../planner/AnalyticsTiers.ts";
+import {
+  type AnalyticsTierBounds,
+  AnalyticsWindow,
+} from "../planner/AnalyticsWindow.ts";
 import type {
   AnalyticsDataset,
   AnalyticsTierResolution,
@@ -221,16 +225,27 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
     query: AnalyticsQuery,
   ): Promise<AnalyticsResult> {
     const tiers = this.entities(dataset);
+    const specs = AnalyticsTiers.of(dataset);
     const groupBy = query.groupBy ?? [];
     const selections = AnalyticsFolds.selections(dataset, query.select);
     const merged = new Map<string, Record<string, string | number | null>>();
+    let coarsened = false;
 
-    for (const repository of tiers) {
+    for (let index = 0; index < tiers.length; index++) {
+      const repository = tiers[index];
+      const bounds = AnalyticsWindow.forTier(query, specs[index].resolution);
+      if (
+        !coarsened &&
+        (await this.holdsAny(dataset, repository, query, bounds.straddling))
+      ) {
+        coarsened = true;
+      }
       for (const row of await this.readOne(
         dataset,
         repository,
         query,
         selections,
+        bounds,
       )) {
         const key = JSON.stringify(groupBy.map((name) => row[name]));
         const existing = merged.get(key);
@@ -250,7 +265,45 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
       }
     }
 
-    return { rows: AnalyticsOrdering.apply(rows, query), estimated: false };
+    return {
+      rows: AnalyticsOrdering.apply(rows, query),
+      estimated: false,
+      coarsened,
+    };
+  }
+
+  /**
+   * Whether `repository` holds a row in one of `buckets` that passes the
+   * query's dimension filters: an indexed lookup of the few buckets that
+   * straddle a `from`/`to` bound, which is what `coarsened` reports.
+   */
+  protected async holdsAny(
+    dataset: AnalyticsDataset,
+    repository: Repository<ZObject>,
+    query: AnalyticsQuery,
+    buckets: string[],
+  ): Promise<boolean> {
+    if (buckets.length === 0) return false;
+    const filters = this.filterConditions(dataset, repository, query);
+    if (!filters) return false;
+    const rows = await this.database.run(
+      sql`
+        SELECT 1 AS hit FROM ${repository.table}
+        WHERE ${sql.join(
+          [
+            sql`${sql.raw(AnalyticsEntityFactory.TIME_COLUMN)} IN (${sql.join(
+              buckets.map((bucket) => sql`${bucket}`),
+              sql`, `,
+            )})`,
+            ...filters,
+          ],
+          sql` AND `,
+        )}
+        LIMIT 1
+      `,
+      z.object({ hit: z.coerce.number() }),
+    );
+    return rows.length > 0;
   }
 
   /**
@@ -821,27 +874,16 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
     return table[name].name;
   }
 
-  protected async readOne(
+  /**
+   * The query's dimension filters as SQL, or `undefined` when they can match
+   * nothing (an empty `inArray`).
+   */
+  protected filterConditions(
     dataset: AnalyticsDataset,
     repository: Repository<ZObject>,
     query: AnalyticsQuery,
-    selections: AnalyticsSelection[],
-  ): Promise<Array<Record<string, string | number | null>>> {
-    const timeColumn = AnalyticsEntityFactory.TIME_COLUMN;
-
-    // Plain ranges on the bucket, never a function of it, so the unique
-    // index (which leads with the bucket) can serve them. Bucket keys sort
-    // lexicographically and a day is a prefix of each of its hours, so
-    // `>= since` keeps every hour of `since` (`'2026-08-01' <= '2026-08-01T00'`)
-    // and the inclusive `until` becomes "before the next day": `<= until`
-    // would drop every hour of the day it names.
-    const conditions = [sql`${sql.raw(timeColumn)} >= ${query.since}`];
-    if (query.until) {
-      conditions.push(
-        sql`${sql.raw(timeColumn)} < ${AnalyticsBuckets.shiftDays(query.until, 1)}`,
-      );
-    }
-
+  ): SQL[] | undefined {
+    const conditions: SQL[] = [];
     for (const [name, filter] of Object.entries(query.where ?? {})) {
       this.assertKnownDimension(dataset, name);
       const column = this.columnName(repository, name);
@@ -854,7 +896,7 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
         // Empty inArray means match nothing, never unfiltered — an `IN ()`
         // clause is invalid SQL, and even if it weren't, matching everything
         // is exactly the wrong behaviour here. Short-circuit instead.
-        if (filter.inArray.length === 0) return [];
+        if (filter.inArray.length === 0) return undefined;
         conditions.push(
           sql`${sql.raw(column)} IN (${sql.join(
             filter.inArray.map((value) => sql`${value}`),
@@ -864,6 +906,33 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
       } else {
         conditions.push(sql`${sql.raw(column)} = ${filter}`);
       }
+    }
+
+    return conditions;
+  }
+
+  protected async readOne(
+    dataset: AnalyticsDataset,
+    repository: Repository<ZObject>,
+    query: AnalyticsQuery,
+    selections: AnalyticsSelection[],
+    bounds: AnalyticsTierBounds,
+  ): Promise<Array<Record<string, string | number | null>>> {
+    const timeColumn = AnalyticsEntityFactory.TIME_COLUMN;
+
+    // Plain ranges on the bucket, never a function of it, so the unique
+    // index (which leads with the bucket) can serve them. Bucket keys sort
+    // lexicographically and a day is a prefix of each of its hours, so
+    // `>= since` keeps every hour of `since` (`'2026-08-01' <= '2026-08-01T00'`);
+    // see `AnalyticsWindow` for how each form becomes this tier's range.
+    const filters = this.filterConditions(dataset, repository, query);
+    if (!filters) return [];
+    const conditions = [
+      sql`${sql.raw(timeColumn)} >= ${bounds.lower}`,
+      ...filters,
+    ];
+    if (bounds.upper !== undefined) {
+      conditions.push(sql`${sql.raw(timeColumn)} < ${bounds.upper}`);
     }
 
     const groupBy = query.groupBy ?? [];

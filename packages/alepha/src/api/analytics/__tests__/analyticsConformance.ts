@@ -1004,5 +1004,137 @@ export const analyticsConformance = (
         expect(await byMinute(provider)).toEqual([["2026-08-03T10:01", 2]]);
       });
     });
+
+    describe.skipIf(options.legacyOnly)("instant windows", () => {
+      const seed = async (provider: AnalyticsProvider) =>
+        provider.record(
+          chain,
+          AnalyticsRowFolder.fold(
+            chain,
+            [
+              ["2026-08-01T07:30", 1],
+              ["2026-08-01T08:10", 2],
+              ["2026-08-01T08:50", 4],
+              ["2026-08-01T10:20", 8],
+              ["2026-08-01T21:00", 16],
+              ["2026-08-02T03:00", 32],
+            ].map(([minute, validations]) => ({
+              hour: minute as string,
+              at: Date.parse(`${minute}:00.000Z`),
+              deviceId: "d1",
+              validations,
+              cashLevel: 1,
+            })),
+          ),
+        );
+      const sum = async (
+        provider: AnalyticsProvider,
+        from: string,
+        to?: string,
+      ) => {
+        const result = await provider.query(chain, {
+          from,
+          to,
+          select: { validations: "sum" },
+        });
+        return {
+          validations: result.rows[0]?.validations ?? 0,
+          coarsened: result.coarsened,
+        };
+      };
+
+      it("reads a window spanning tiers, whole buckets flagged coarsened", async () => {
+        const provider = await boot();
+        await seed(provider);
+        // Hours before 10:00 now live in the hour tier.
+        await provider.rollup(chain, 0, "2026-08-01T10");
+
+        expect(
+          await sum(provider, "2026-08-01T08:00:00Z", "2026-08-01T10:30:00Z"),
+        ).toEqual({ validations: 14, coarsened: false });
+        // 08:30 falls inside the 08 hour bucket, which is read whole.
+        expect(
+          await sum(provider, "2026-08-01T08:30:00Z", "2026-08-01T10:30:00Z"),
+        ).toEqual({ validations: 14, coarsened: true });
+        // On the minute tier the same bound is exact.
+        expect(
+          await sum(provider, "2026-08-01T10:21:00Z", "2026-08-01T22:00:00Z"),
+        ).toEqual({ validations: 16, coarsened: false });
+      });
+
+      it("never counts a bucket twice across consecutive windows", async () => {
+        const provider = await boot();
+        await seed(provider);
+        await provider.rollup(chain, 0, "2026-08-01T10");
+
+        const first = await sum(
+          provider,
+          "2026-08-01T07:00:00Z",
+          "2026-08-01T09:00:00Z",
+        );
+        const second = await sum(
+          provider,
+          "2026-08-01T09:00:00Z",
+          "2026-08-01T22:00:00Z",
+        );
+        const whole = await sum(
+          provider,
+          "2026-08-01T07:00:00Z",
+          "2026-08-01T22:00:00Z",
+        );
+
+        expect(first.validations).toBe(7);
+        expect(second.validations).toBe(24);
+        expect(whole.validations).toBe(31);
+        // Open-ended: up to the newest bucket.
+        expect((await sum(provider, "2026-08-01T22:00:00Z")).validations).toBe(
+          32,
+        );
+      });
+
+      it("serves a local day exactly from hours, and whole UTC days once folded", async () => {
+        const provider = await boot();
+        await seed(provider);
+        const from = "2026-08-01T00:00:00+04:00";
+        const to = "2026-08-02T00:00:00+04:00";
+
+        await provider.rollup(chain, 0, "2026-08-03T00");
+        expect(await sum(provider, from, to)).toEqual({
+          validations: 15,
+          coarsened: false,
+        });
+
+        await provider.rollup(chain, 1, "2026-08-03");
+        expect(await sum(provider, from, to)).toEqual({
+          validations: 31,
+          coarsened: true,
+        });
+      });
+
+      it("refuses both forms, neither, a crossed pair, or an instant without an offset", async () => {
+        const provider = await boot();
+        const select = { validations: "sum" } as const;
+        await expect(
+          provider.query(chain, {
+            since: "2026-08-01",
+            from: "2026-08-01T00:00:00Z",
+            select,
+          }),
+        ).rejects.toThrow("exactly one of");
+        await expect(provider.query(chain, { select })).rejects.toThrow(
+          "exactly one of",
+        );
+        await expect(
+          provider.query(chain, {
+            from: "2026-08-01T00:00:00Z",
+            until: "2026-08-02",
+            select,
+          }),
+        ).rejects.toThrow("'until' pairs with 'since'");
+        await expect(
+          provider.query(chain, { from: "2026-08-01T00:00:00", select }),
+        ).rejects.toThrow("with an offset");
+      });
+    });
   });
 };

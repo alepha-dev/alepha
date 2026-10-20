@@ -19,6 +19,7 @@ export * from "./planner/AnalyticsOrdering.ts";
 export * from "./planner/AnalyticsRowFolder.ts";
 export * from "./planner/AnalyticsSlotMap.ts";
 export * from "./planner/AnalyticsTiers.ts";
+export * from "./planner/AnalyticsWindow.ts";
 export * from "./primitives/$analytics.ts";
 export * from "./providers/AnalyticsProvider.ts";
 export * from "./providers/MemoryAnalyticsProvider.ts";

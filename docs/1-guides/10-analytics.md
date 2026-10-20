@@ -135,9 +135,43 @@ const result = await this.views.query({
 });
 ```
 
-`since` (required) and `until` (optional) are inclusive UTC days, `YYYY-MM-DD`. Omitting `until`
-reads up to the newest bucket; set it to compare complete days (yesterday against the day before)
-rather than a window that ends mid-day.
+A query gives exactly one of two windows. `since` and `until` (optional) are inclusive UTC days,
+`YYYY-MM-DD`. Omitting `until` reads up to the newest bucket; set it to compare complete days
+(yesterday against the day before) rather than a window that ends mid-day.
+
+### Instant windows: `from` and `to`
+
+A monitoring chart asks for "the last 15 minutes" or "from 08:00 to 10:30" in the operator's
+timezone. `from` and `to` are ISO 8601 instants **with an offset**; an instant without one is
+refused, because the server never guesses a timezone:
+
+```typescript
+await this.ticks.query({
+  from: "2026-10-18T08:00:00+04:00", // Dubai
+  to: "2026-10-18T10:30:00+04:00",
+  groupBy: ["minute"],
+  select: { validations: "sum" },
+});
+```
+
+- `to` is optional (up to the newest bucket) and **exclusive**, so consecutive windows
+  (`[08:00, 09:00)`, `[09:00, 10:00)`) never count a bucket twice.
+- `from` pairs with `to` and `since` with `until`; a query naming both forms, neither, or a crossed
+  pair is refused.
+- Each tier floors `from` and ceils `to` to its own resolution. Where a tier is coarser than a
+  bound (the hour tier asked for 08:30), the bucket that straddles it is **read whole** rather than
+  dropped, since dropping it would silently lose readings the window asked for, and the result
+  carries `coarsened: true`: at least one returned bucket extends outside `[from, to)`. A
+  `since`/`until` query is never coarsened.
+
+**Days are UTC days.** The day tier is keyed on UTC midnight, with no per-dataset offset. Instants
+cover any sub-day window in any timezone, but a local-day total (Dubai midnight to midnight is
+20:00 to 20:00 UTC) is exact only while a tier finer than a day still holds the range. Once it has
+folded into days, the same `from`/`to` returns the whole UTC days it overlaps, flagged `coarsened`.
+An app that needs local-day totals over a long range keeps its hour tier that long (see
+[Retention and rollup](#retention-and-rollup)).
+
+Analytics Engine answers `since`/`until` only, and refuses `from`/`to` with an error.
 
 `where` supports equality and `{ inArray: [...] }` - the same operator name the ORM's
 [repository filters](/docs/guides-persistence-repository) use, no ranges. `groupBy` takes any

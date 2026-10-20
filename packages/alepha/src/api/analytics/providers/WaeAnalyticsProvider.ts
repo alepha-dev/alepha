@@ -7,6 +7,7 @@ import { AnalyticsFolds } from "../planner/AnalyticsFolds.ts";
 import { AnalyticsOrdering } from "../planner/AnalyticsOrdering.ts";
 import { AnalyticsSlotMap } from "../planner/AnalyticsSlotMap.ts";
 import { AnalyticsTiers } from "../planner/AnalyticsTiers.ts";
+import { AnalyticsWindow } from "../planner/AnalyticsWindow.ts";
 import type { AnalyticsDataset } from "../schemas/analyticsDatasetSchema.ts";
 import type {
   AnalyticsFold,
@@ -449,8 +450,10 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
     dataset: AnalyticsDataset,
     query: AnalyticsQuery,
   ): Promise<AnalyticsResult> {
+    this.assertDayWindow(query);
     const floor = await this.cold.pruneFloor(dataset);
-    const since = floor ? this.laterBound(query.since, floor) : query.since;
+    const asked = query.since as string;
+    const since = floor ? this.laterBound(asked, floor) : asked;
 
     if (!this.mightNeedCold(dataset, since)) {
       return this.queryHot(dataset, { ...query, since });
@@ -484,6 +487,19 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
     ]);
 
     return this.mergeResults(dataset, query, hot, cold);
+  }
+
+  /**
+   * Refuses a `from`/`to` query. Analytics Engine's hot tier has a
+   * `timestamp` and could honour instants, but the forward to `cold` and its
+   * watermark are hour- and day-based; nothing needs it on this backend yet.
+   */
+  protected assertDayWindow(query: AnalyticsQuery): void {
+    AnalyticsWindow.assertValid(query);
+    if (query.from === undefined) return;
+    throw new AlephaError(
+      "Analytics Engine answers whole-day windows only ('since'/'until'); 'from'/'to' instants need an exact backend (OrmAnalyticsProvider).",
+    );
   }
 
   /**
@@ -531,7 +547,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
     const map = AnalyticsSlotMap.forDataset(dataset);
     const conditions = [
       `blob${AnalyticsSlotMap.KIND_SLOT} = ${AnalyticsEngineSql.quote(dataset.name)}`,
-      `blob${AnalyticsSlotMap.HOUR_SLOT} >= ${AnalyticsEngineSql.quote(query.since)}`,
+      `blob${AnalyticsSlotMap.HOUR_SLOT} >= ${AnalyticsEngineSql.quote(query.since as string)}`,
     ];
 
     // The hour slot holds `YYYY-MM-DDTHH`, so an inclusive day bound has to be

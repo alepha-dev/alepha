@@ -243,7 +243,11 @@ export const useAnalyticsQuery = (
             : null,
           estimated: rowsResult.estimated,
           sampleInterval: rowsResult.sampleInterval,
-          window: { from: request.since, to: request.until ?? request.since },
+          // This explorer always sends day windows (`since`/`until`).
+          window: {
+            from: request.since as string,
+            to: (request.until ?? request.since) as string,
+          },
           baselineWindow: baseline,
           groupBy: request.groupBy ?? [],
           measures: Object.keys(request.select),

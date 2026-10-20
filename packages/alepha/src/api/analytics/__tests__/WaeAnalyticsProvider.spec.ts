@@ -304,6 +304,20 @@ describe("WaeAnalyticsProvider", () => {
     }
   });
 
+  it("refuses a from/to window with a clear error", async () => {
+    const { alepha, provider } = await build();
+    try {
+      await expect(
+        provider.query(dataset, {
+          from: "2026-08-01T08:00:00Z",
+          select: { count: "sum" },
+        }),
+      ).rejects.toThrow(/whole-day windows only/);
+    } finally {
+      await alepha.stop();
+    }
+  });
+
   it("refuses a hot window longer than Analytics Engine keeps data", async () => {
     const { alepha, provider } = await build();
     try {

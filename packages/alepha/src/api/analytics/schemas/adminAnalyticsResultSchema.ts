@@ -10,6 +10,7 @@ import { z } from "alepha";
 export const adminAnalyticsResultSchema = z.object({
   rows: z.array(z.record(z.text(), z.union([z.text(), z.number(), z.null()]))),
   estimated: z.boolean(),
+  coarsened: z.boolean().optional(),
   sampleInterval: z.number().optional(),
 });
 
