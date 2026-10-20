@@ -1,7 +1,9 @@
 import { $inject, Alepha, z } from "alepha";
 import { BadRequestError, NotFoundError } from "alepha/server";
 
+import { AnalyticsBuckets } from "../planner/AnalyticsBuckets.ts";
 import { AnalyticsFolds } from "../planner/AnalyticsFolds.ts";
+import { AnalyticsTiers } from "../planner/AnalyticsTiers.ts";
 import { AnalyticsWindow } from "../planner/AnalyticsWindow.ts";
 import {
   $analytics,
@@ -71,11 +73,14 @@ export class AdminAnalyticsService {
             pinned,
           ),
           measures: z.toJSONSchema(dataset.measures) as Record<string, any>,
-          // The original shape only, until the descriptor carries the tier
-          // list (#Q2752); a chain is published as no retention meanwhile.
-          retention: Array.isArray(dataset.retention)
-            ? undefined
-            : dataset.retention,
+          folds: Object.fromEntries(
+            Object.keys(dataset.measures.shape).map((measure) => [
+              measure,
+              AnalyticsFolds.of(dataset, measure),
+            ]),
+          ),
+          resolution: AnalyticsBuckets.resolutionOf(dataset),
+          retention: AnalyticsTiers.of(dataset),
         };
       });
   }

@@ -13,6 +13,7 @@ export interface AnalyticsChartProps {
   model: AnalyticsChartModel;
   groupBy: string[];
   measures: string[];
+  labels?: Record<string, string>;
   onShape: (shape: AnalyticsChartShape) => void;
   onAxis: (axis: string) => void;
   onMeasure: (measure: string) => void;
@@ -36,6 +37,7 @@ export const AnalyticsChart = (props: AnalyticsChartProps) => {
         model={model}
         groupBy={props.groupBy}
         measures={props.measures}
+        labels={props.labels}
         onShape={props.onShape}
         onAxis={props.onAxis}
         onMeasure={props.onMeasure}
@@ -49,7 +51,11 @@ export const AnalyticsChart = (props: AnalyticsChartProps) => {
         />
       )}
       {model.shape === "line" && (
-        <AnalyticsChartLine points={model.points} max={model.max} />
+        <AnalyticsChartLine
+          points={model.points}
+          max={model.max}
+          banded={model.banded}
+        />
       )}
       {(vertical || model.shape === "line") && (
         <AnalyticsChartTicks points={model.points} />

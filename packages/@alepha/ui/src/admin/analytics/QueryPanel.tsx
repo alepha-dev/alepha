@@ -3,6 +3,7 @@ import { useI18n } from "alepha/react/i18n";
 import type { PointerEvent } from "react";
 
 import { AdvancedSection } from "./AdvancedSection.tsx";
+import { analyticsKeyFold } from "./analyticsModel.ts";
 import type { AnalyticsTransport } from "./analyticsTypes.ts";
 import { DatasetSelect } from "./DatasetSelect.tsx";
 import { FilterEditor } from "./FilterEditor.tsx";
@@ -37,6 +38,8 @@ export interface QueryPanelProps {
 export const QueryPanel = (props: QueryPanelProps) => {
   const { tr } = useI18n();
   const query = props.query;
+  // The value probes order by the first selected value, read by its own fold.
+  const probe = analyticsKeyFold(props.dataset, query.activeMeasures[0] ?? "");
 
   return (
     <aside
@@ -63,22 +66,23 @@ export const QueryPanel = (props: QueryPanelProps) => {
           onSelect={query.selectDataset}
         />
         <MeasureChips
+          dataset={props.dataset}
           measures={query.measures}
           active={query.activeMeasures}
           onToggle={query.toggleMeasure}
         />
         <RangeControl
           days={query.state.days}
+          instant={query.state.instant}
           window={query.window}
-          onChange={query.setDays}
+          onDays={query.setDays}
+          onInstant={query.setInstant}
         />
         <GroupByChips
           dataset={props.dataset.name}
           dimensions={query.dimensions}
           groupBy={query.state.groupBy}
-          days={query.state.days}
-          hotDays={query.hotDays}
-          hourAllowed={query.hourAllowed}
+          grains={query.grains}
           onToggle={query.toggleGroupBy}
         />
         <FilterEditor
@@ -87,7 +91,8 @@ export const QueryPanel = (props: QueryPanelProps) => {
           dimensions={query.dimensions}
           filters={query.state.filters}
           window={query.window}
-          measure={query.activeMeasures[0] ?? ""}
+          measure={probe.measure}
+          fold={probe.fold as "sum" | "min" | "max" | "last"}
           onApply={query.applyFilter}
           onRemove={query.removeFilter}
         />

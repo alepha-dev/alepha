@@ -69,6 +69,12 @@ describe("AdminAnalyticsService", () => {
     expect(list[0].dimensions.properties).toHaveProperty("app");
     expect(list[0].dimensions.properties).toHaveProperty("path");
     expect(list[0].measures.properties).toHaveProperty("count");
+    expect(list[0].folds).toEqual({ count: ["sum"] });
+    expect(list[0].resolution).toBe("1h");
+    expect(list[0].retention).toEqual([
+      { resolution: "1h", keep: undefined },
+      { resolution: "1d", keep: undefined },
+    ]);
   });
 
   it("refuses a query on an unknown dataset", async () => {

@@ -1,7 +1,11 @@
 import { useI18n } from "alepha/react/i18n";
 
 import { Badge } from "../../core/Badge.tsx";
-import { analyticsCompact, analyticsNumber } from "./analyticsModel.ts";
+import {
+  analyticsCompact,
+  analyticsNumber,
+  analyticsSpanLabel,
+} from "./analyticsModel.ts";
 import type { AnalyticsRunResult } from "./analyticsTypes.ts";
 
 export interface TotalsCardsProps {
@@ -11,7 +15,8 @@ export interface TotalsCardsProps {
 }
 
 /**
- * One card per selected measure: the summed total over the whole window.
+ * One card per selected value: the total, extreme or last reading over the
+ * whole window, by the value's own fold.
  *
  * These come from their own ungrouped query, not from summing the rows below,
  * which is what lets the truncation banner promise that the cards still cover
@@ -28,6 +33,8 @@ export const TotalsCards = (props: TotalsCardsProps) => {
     <div className="flex flex-wrap gap-3 px-5 pt-[18px]">
       {props.result.measures.map((measure) => {
         const value = props.result.totals[measure] ?? 0;
+        const sum = (props.result.folds[measure] ?? "sum") === "sum";
+        const instant = !!props.result.window.instant;
         const before = props.result.baseline?.[measure];
         const percent =
           before === undefined || before === 0
@@ -42,7 +49,7 @@ export const TotalsCards = (props: TotalsCardsProps) => {
           >
             <div className="flex items-center gap-2">
               <code className="text-muted-foreground text-[11px] tracking-[0.04em] uppercase">
-                sum({measure})
+                {props.result.labels[measure] ?? measure}
               </code>
               <span className="flex-1" />
               <Badge
@@ -58,14 +65,20 @@ export const TotalsCards = (props: TotalsCardsProps) => {
             </div>
             <div className="text-muted-foreground text-[11.5px]">
               {[
-                tr("admin.analytics.cardDays", {
-                  default: "$1 days",
-                  args: [String(props.days)],
-                }),
-                tr("admin.analytics.cardPerDay", {
-                  default: "$1 / day",
-                  args: [analyticsCompact(Math.round(value / props.days))],
-                }),
+                instant
+                  ? analyticsSpanLabel(props.result.window)
+                  : tr("admin.analytics.cardDays", {
+                      default: "$1 days",
+                      args: [String(props.days)],
+                    }),
+                // A daily rate means something for a total only; the mean of
+                // a temperature per day is not its daily maximum.
+                sum &&
+                  !instant &&
+                  tr("admin.analytics.cardPerDay", {
+                    default: "$1 / day",
+                    args: [analyticsCompact(Math.round(value / props.days))],
+                  }),
                 props.compareLabel,
               ]
                 .filter(Boolean)
