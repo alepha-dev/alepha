@@ -51,6 +51,29 @@ export type AnalyticsCompareMode = "previous" | "lastYear" | "off";
 
 export type AnalyticsView = "overview" | "table";
 
+/**
+ * The time pseudo-dimensions. `minute` exists only on a dataset whose
+ * resolution is under an hour, and returns its stored bucket.
+ */
+export type AnalyticsTimeGrain = "minute" | "hour" | "day";
+
+/**
+ * A window measured in instants rather than whole UTC days: the last N
+ * minutes, or two moments picked in the browser's own timezone. Sent as
+ * `from`/`to` with the browser's offset, so the server never guesses one.
+ */
+export type AnalyticsInstantRange =
+  | { kind: "relative"; minutes: number }
+  | {
+      kind: "absolute";
+      /**
+       * ISO instants, as the date-time picker produces them; picked in the
+       * browser's zone and sent with its offset.
+       */
+      from: string;
+      to: string;
+    };
+
 export type AnalyticsChartShape =
   | "bars"
   | "line"
@@ -68,12 +91,17 @@ export interface AnalyticsFilterChip {
   values: string[];
 }
 
+/**
+ * Either two UTC days, inclusive (`instant` false), or two ISO instants with
+ * an offset, `to` exclusive (`instant` true).
+ */
 export interface AnalyticsWindow {
   from: string;
   to: string;
+  instant?: boolean;
 }
 
-export type AnalyticsRow = Record<string, string | number>;
+export type AnalyticsRow = Record<string, string | number | null>;
 
 export interface AnalyticsOrderBy {
   key: string;
@@ -88,15 +116,22 @@ export interface AnalyticsOrderBy {
 export interface AnalyticsQueryState {
   dataset: string;
   days: number;
+  /**
+   * When set, the window is these instants and `days` / `untilMode` are
+   * ignored.
+   */
+  instant: AnalyticsInstantRange | null;
   untilMode: AnalyticsUntilMode;
   compare: AnalyticsCompareMode;
   groupBy: string[];
   filters: AnalyticsFilterChip[];
   limit: number;
   /**
-   * `null` means "every measure the dataset declares". Kept as null rather
-   * than a copied list, so a dataset switch cannot leave a measure name
-   * behind that the new schema has never heard of.
+   * The selected values, by the key each comes back under: a sum-only
+   * measure's own name, or `<measure>_<fold>` for each fold of a gauge.
+   * `null` means "every value the dataset declares". Kept as null rather
+   * than a copied list, so a dataset switch cannot leave a key behind that
+   * the new schema has never heard of.
    */
   measures: string[] | null;
   orderBy: AnalyticsOrderBy | null;
@@ -125,10 +160,27 @@ export interface AnalyticsRunResult {
   baseline: Record<string, number> | null;
   estimated: boolean;
   sampleInterval?: number;
+  /**
+   * A bucket read whole although it extends outside the instants asked for.
+   */
+  coarsened: boolean;
   window: AnalyticsWindow;
   baselineWindow: AnalyticsWindow | null;
   groupBy: string[];
+  /**
+   * The value keys, in select order: a sum-only measure's name, or
+   * `<measure>_<fold>`.
+   */
   measures: string[];
+  /**
+   * How each value key is named on screen, `sum(views)` or `max(temperature)`.
+   */
+  labels: Record<string, string>;
+  /**
+   * The fold behind each value key, which is how the chart re-folds rows
+   * and which cards may show a per-day rate.
+   */
+  folds: Record<string, string>;
   orderBy: AnalyticsOrderBy;
   limit: number;
   /**

@@ -1,7 +1,11 @@
 import type { AdminAnalyticsQuery } from "alepha/api/analytics";
 import { useEffect, useState } from "react";
 
-import { ANALYTICS_MAX_LIMIT, analyticsWhere } from "./analyticsModel.ts";
+import {
+  ANALYTICS_MAX_LIMIT,
+  analyticsWhere,
+  analyticsWindowBody,
+} from "./analyticsModel.ts";
 import type {
   AnalyticsFilterChip,
   AnalyticsTransport,
@@ -29,6 +33,10 @@ export interface FilterValuesInput {
   window: AnalyticsWindow;
   filters: AnalyticsFilterChip[];
   measure: string;
+  /**
+   * The fold the probe reads `measure` by; `sum` unless it is a gauge.
+   */
+  fold?: "sum" | "min" | "max" | "last";
   open: boolean;
 }
 
@@ -61,26 +69,29 @@ export const useFilterValues = (input: FilterValuesInput): FilterValuesApi => {
     input.filters,
     input.measure,
     input.dimensions,
+    input.fold ?? "sum",
   ]);
 
   useEffect(() => {
     if (!input.open || !input.dataset || !input.measure) return;
-    const [dataset, window, filters, measure, dimensions] = JSON.parse(key) as [
+    const [dataset, window, filters, measure, dimensions, fold] = JSON.parse(
+      key,
+    ) as [
       string,
       AnalyticsWindow,
       AnalyticsFilterChip[],
       string,
       string[],
+      "sum" | "min" | "max" | "last",
     ];
     let cancelled = false;
 
     const read = async (dim: string): Promise<[string, FilterValue[]]> => {
       const body: AdminAnalyticsQuery = {
-        since: window.from,
-        until: window.to,
+        ...analyticsWindowBody(window),
         where: analyticsWhere(filters.filter((entry) => entry.dim !== dim)),
         groupBy: [dim],
-        select: { [measure]: "sum" },
+        select: { [measure]: fold },
         orderBy: { key: measure, direction: "desc" },
         limit: ANALYTICS_MAX_LIMIT,
       };

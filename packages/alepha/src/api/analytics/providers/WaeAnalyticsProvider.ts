@@ -3,15 +3,23 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 
 import { AnalyticsBuckets } from "../planner/AnalyticsBuckets.ts";
+import { AnalyticsFolds } from "../planner/AnalyticsFolds.ts";
+import { AnalyticsOrdering } from "../planner/AnalyticsOrdering.ts";
 import { AnalyticsSlotMap } from "../planner/AnalyticsSlotMap.ts";
+import { AnalyticsTiers } from "../planner/AnalyticsTiers.ts";
+import { AnalyticsWindow } from "../planner/AnalyticsWindow.ts";
 import type { AnalyticsDataset } from "../schemas/analyticsDatasetSchema.ts";
 import type {
-  AnalyticsAggregate,
+  AnalyticsFold,
   AnalyticsQuery,
   AnalyticsResult,
 } from "../schemas/analyticsQuerySchema.ts";
 import { AnalyticsEngineSql } from "../services/AnalyticsEngineSql.ts";
-import { AnalyticsProvider, type AnalyticsRow } from "./AnalyticsProvider.ts";
+import {
+  AnalyticsProvider,
+  type AnalyticsRow,
+  type AnalyticsTier,
+} from "./AnalyticsProvider.ts";
 import { OrmAnalyticsProvider } from "./OrmAnalyticsProvider.ts";
 
 /**
@@ -234,6 +242,9 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
    */
   protected static readonly EPOCH_DAY = "1970-01-01";
 
+  public readonly exact: boolean = false;
+  public override readonly fireAndForget: boolean = true;
+
   protected readonly alepha = $inject(Alepha);
   protected readonly env = $env(envSchema);
   protected readonly log = $logger();
@@ -330,8 +341,51 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
    *   `OrmAnalyticsProvider.registerPruneFloors()`.
    */
   public register(dataset: AnalyticsDataset): void {
+    this.assertExactFoldsRefused(dataset);
+    this.assertHourResolution(dataset);
+    this.assertTwoTiers(dataset);
     this.assertRetention(dataset);
     this.cold.register(dataset);
+  }
+
+  /**
+   * Refuses a dataset declaring `min`, `max` or `last`. Analytics Engine
+   * samples, and a sample can be corrected for a `sum` but not for an
+   * extreme or a last value: the row holding it may be the one dropped.
+   * `$analytics` checks this at `onInit` already, against `exact`; this is
+   * the same refusal for a dataset handed to the provider directly.
+   */
+  public assertExactFoldsRefused(dataset: AnalyticsDataset): void {
+    if (!AnalyticsFolds.needsExact(dataset)) return;
+    throw new AlephaError(
+      `Dataset '${dataset.name}' declares a min, max or last fold, which Analytics Engine cannot serve: it samples, and a sampled extreme or last value cannot be reconstructed. Declare only "sum" folds, or bind an exact provider (OrmAnalyticsProvider).`,
+    );
+  }
+
+  /**
+   * Refuses a sub-hour `resolution`. Storage is not the obstacle (a minute
+   * key fits the bucket blob); the forward to `cold` groups by hour and its
+   * watermark arithmetic is hour-based, so a minute bucket would be
+   * forwarded and fenced wrongly. Lifting this is separate work.
+   */
+  public assertHourResolution(dataset: AnalyticsDataset): void {
+    const resolution = AnalyticsBuckets.resolutionOf(dataset);
+    if (resolution === "1h") return;
+    throw new AlephaError(
+      `Dataset '${dataset.name}' declares resolution '${resolution}', but Analytics Engine supports '1h' only: its forward to the relational tier and its watermark are hour-based. Use an exact backend (OrmAnalyticsProvider) for sub-hour buckets.`,
+    );
+  }
+
+  /**
+   * Refuses a retention chain longer than the two tiers this provider has:
+   * Analytics Engine's hours, then `cold`'s days. A chain with an
+   * intermediate tier would need the forward to know about it.
+   */
+  public assertTwoTiers(dataset: AnalyticsDataset): void {
+    if (AnalyticsTiers.isTwoTier(dataset)) return;
+    throw new AlephaError(
+      `Dataset '${dataset.name}' declares a retention chain Analytics Engine cannot serve: it supports two tiers only, hours then days ([{ resolution: "1h", keep }, { resolution: "1d", keep? }]). Use an exact backend (OrmAnalyticsProvider) for a longer chain.`,
+    );
   }
 
   /**
@@ -342,12 +396,12 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
    * dataset descriptor by hand can validate it before wiring anything up.
    */
   public assertRetention(dataset: AnalyticsDataset): void {
-    const hot = dataset.retention?.hot;
+    const hot = AnalyticsTiers.finestKeep(dataset);
     if (!hot) return;
     const days = AnalyticsBuckets.parseWindow(hot) / (24 * 60 * 60 * 1000);
     if (days > WaeAnalyticsProvider.MAX_HOT_DAYS) {
       throw new AlephaError(
-        `Dataset '${dataset.name}' asks for a ${days}-day hot window, but Analytics Engine keeps roughly 90 days. Shorten 'retention.hot' or the window will silently be shorter than declared.`,
+        `Dataset '${dataset.name}' asks for a ${days}-day hot window, but Analytics Engine keeps roughly 90 days. Shorten its finest tier's 'keep' ('retention.hot') or the window will silently be shorter than declared.`,
       );
     }
   }
@@ -397,8 +451,10 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
     dataset: AnalyticsDataset,
     query: AnalyticsQuery,
   ): Promise<AnalyticsResult> {
+    this.assertDayWindow(query);
     const floor = await this.cold.pruneFloor(dataset);
-    const since = floor ? this.laterBound(query.since, floor) : query.since;
+    const asked = query.since as string;
+    const since = floor ? this.laterBound(asked, floor) : asked;
 
     if (!this.mightNeedCold(dataset, since)) {
       return this.queryHot(dataset, { ...query, since });
@@ -431,7 +487,20 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
       this.cold.query(dataset, unordered),
     ]);
 
-    return this.mergeResults(query, hot, cold);
+    return this.mergeResults(dataset, query, hot, cold);
+  }
+
+  /**
+   * Refuses a `from`/`to` query. Analytics Engine's hot tier has a
+   * `timestamp` and could honour instants, but the forward to `cold` and its
+   * watermark are hour- and day-based; nothing needs it on this backend yet.
+   */
+  protected assertDayWindow(query: AnalyticsQuery): void {
+    AnalyticsWindow.assertValid(query);
+    if (query.from === undefined) return;
+    throw new AlephaError(
+      "Analytics Engine answers whole-day windows only ('since'/'until'); 'from'/'to' instants need an exact backend (OrmAnalyticsProvider).",
+    );
   }
 
   /**
@@ -455,7 +524,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
    * returns `true` (always check) rather than guess.
    */
   protected mightNeedCold(dataset: AnalyticsDataset, since: string): boolean {
-    const hot = dataset.retention?.hot;
+    const hot = AnalyticsTiers.finestKeep(dataset);
     if (!hot) return true;
     const days = AnalyticsBuckets.parseWindow(hot) / (24 * 60 * 60 * 1000);
     const today = AnalyticsBuckets.day(
@@ -479,7 +548,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
     const map = AnalyticsSlotMap.forDataset(dataset);
     const conditions = [
       `blob${AnalyticsSlotMap.KIND_SLOT} = ${AnalyticsEngineSql.quote(dataset.name)}`,
-      `blob${AnalyticsSlotMap.HOUR_SLOT} >= ${AnalyticsEngineSql.quote(query.since)}`,
+      `blob${AnalyticsSlotMap.HOUR_SLOT} >= ${AnalyticsEngineSql.quote(query.since as string)}`,
     ];
 
     // The hour slot holds `YYYY-MM-DDTHH`, so an inclusive day bound has to be
@@ -538,7 +607,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
       const expression =
         name === "day"
           ? `substring(blob${AnalyticsSlotMap.HOUR_SLOT}, 1, 10)`
-          : name === "hour"
+          : name === "hour" || name === "minute"
             ? `blob${AnalyticsSlotMap.HOUR_SLOT}`
             : `blob${map.blobSlot(name)}`;
       projections.push(`${expression} AS ${name}`);
@@ -557,12 +626,13 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
       grouping.push(name);
     }
 
-    for (const [measure, aggregate] of Object.entries(query.select)) {
-      // Same guard as above, against `query.select`'s keys — thrown by
-      // `map.doubleSlot` for a measure the dataset never declared.
-      const slot = `double${map.doubleSlot(measure)}`;
+    // Refuses an undeclared measure or fold before anything reaches SQL
+    // text; `map.doubleSlot` guards the measure name again.
+    const selections = AnalyticsFolds.selections(dataset, query.select);
+    for (const selection of selections) {
+      const slot = `double${map.doubleSlot(selection.measure)}`;
       projections.push(
-        `${this.aggregateExpression(aggregate, slot)} AS ${measure}`,
+        `${this.aggregateExpression(selection.fold, slot)} AS ${selection.key}`,
       );
     }
 
@@ -608,15 +678,16 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
         // `JSON.stringify`-keyed merge with `cold` — `cold` decodes the
         // identical dimension through its own typed column and
         // never stringifies it.
-        const isDayOrHour = name === "day" || name === "hour";
+        const isDayOrHour =
+          name === "day" || name === "hour" || name === "minute";
         const isNumeric =
           !isDayOrHour && z.schema.isNumber(dataset.dimensions.shape[name]);
         record[name] = isNumeric
           ? AnalyticsEngineSql.num(row, name)
           : AnalyticsEngineSql.str(row, name);
       }
-      for (const measure of Object.keys(query.select)) {
-        record[measure] = AnalyticsEngineSql.num(row, measure);
+      for (const selection of selections) {
+        record[selection.key] = AnalyticsEngineSql.num(row, selection.key);
       }
       return record;
     });
@@ -627,20 +698,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
     // expression rather than one of the columns this query actually
     // projected. Every sibling provider already sorts here, for the same
     // reason its own cross-tier merge has to happen in JS.
-    if (query.orderBy) {
-      const { key, direction } = query.orderBy;
-      out.sort((a, b) => {
-        const left = a[key];
-        const right = b[key];
-        const comparison =
-          typeof left === "number" && typeof right === "number"
-            ? left - right
-            : String(left).localeCompare(String(right));
-        return direction === "desc" ? -comparison : comparison;
-      });
-    }
-
-    const limited = query.limit !== undefined ? out.slice(0, query.limit) : out;
+    const limited = AnalyticsOrdering.apply(out, query);
 
     return { rows: limited, estimated: true, sampleInterval };
   }
@@ -653,12 +711,15 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
    */
   public async rollup(
     dataset: AnalyticsDataset,
+    fromTier: AnalyticsTier,
     before: string,
   ): Promise<void> {
+    // Two tiers only (see `assertTwoTiers`): nothing folds out of the last.
+    if (fromTier !== 0) return;
     // Folds only as far as the forward reached: a day left for the next sweep
     // must not be folded in part (see `maxForwardRows`).
     const forwarded = await this.forwardToCold(dataset, before);
-    await this.cold.rollup(dataset, forwarded);
+    await this.cold.rollup(dataset, 0, forwarded);
   }
 
   /**
@@ -684,6 +745,44 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
   public async prune(dataset: AnalyticsDataset, before: string): Promise<void> {
     await this.cold.recordPruneFloor(dataset, before);
     await this.cold.prune(dataset, before);
+  }
+
+  /**
+   * The oldest bucket of a tier, across both systems.
+   *
+   * `rolled` lives in `cold` alone. `raw` is the older of `cold`'s raw tier
+   * and the oldest hour Analytics Engine holds that has not been forwarded
+   * yet (after the watermark) and is not below the prune floor: those are
+   * the hours the next sweep still has to fold, wherever they sit.
+   */
+  public async oldestBucket(
+    dataset: AnalyticsDataset,
+    tier: AnalyticsTier,
+  ): Promise<string | undefined> {
+    const coldOldest = await this.cold.oldestBucket(dataset, tier);
+    if (tier !== 0) return coldOldest;
+
+    const measure = Object.keys(dataset.measures.shape)[0];
+    if (!measure) return coldOldest;
+
+    const [watermark, floor] = await Promise.all([
+      this.coldWatermark(dataset),
+      this.cold.pruneFloor(dataset),
+    ]);
+    let since = floor ?? WaeAnalyticsProvider.EPOCH_DAY;
+    if (watermark) since = this.laterBound(since, this.nextBucket(watermark));
+
+    const hot = await this.queryHot(dataset, {
+      since,
+      groupBy: ["hour"],
+      select: { [measure]: "sum" },
+      orderBy: { key: "hour", direction: "asc" },
+      limit: 1,
+    });
+    const hotOldest = hot.rows[0]?.hour;
+    if (hotOldest === undefined) return coldOldest;
+    if (coldOldest === undefined) return String(hotOldest);
+    return String(hotOldest) < coldOldest ? String(hotOldest) : coldOldest;
   }
 
   /**
@@ -772,7 +871,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
 
     const dimensions = Object.keys(dataset.dimensions.shape).sort();
     const measures = Object.keys(dataset.measures.shape);
-    const select: Record<string, AnalyticsAggregate> = {};
+    const select: Record<string, AnalyticsFold> = {};
     for (const measure of measures) select[measure] = "sum";
 
     // `queryHot`, not `query()`: the sample-interval correction
@@ -813,7 +912,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
         continue;
       }
 
-      const forwarded: Record<string, string | number> & { hour: string } = {
+      const forwarded: AnalyticsRow = {
         hour,
       };
       for (const name of dimensions) forwarded[name] = row[name];
@@ -1011,12 +1110,14 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
    * rather than the false confidence of an assumed `1`.
    */
   protected mergeResults(
+    dataset: AnalyticsDataset,
     query: AnalyticsQuery,
     hot: AnalyticsResult,
     cold: AnalyticsResult,
   ): AnalyticsResult {
     const groupBy = query.groupBy ?? [];
-    const merged = new Map<string, Record<string, string | number>>();
+    const selections = AnalyticsFolds.selections(dataset, query.select);
+    const merged = new Map<string, Record<string, string | number | null>>();
 
     for (const result of [hot, cold]) {
       for (const row of result.rows) {
@@ -1026,32 +1127,16 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
           merged.set(key, { ...row });
           continue;
         }
-        for (const [measure, aggregate] of Object.entries(query.select)) {
-          existing[measure] = this.mergeValue(
-            Number(existing[measure] ?? 0),
-            Number(row[measure] ?? 0),
-            aggregate,
-          );
+        // Every fold here is a `sum`: `register()` refuses anything else.
+        for (const selection of selections) {
+          existing[selection.key] =
+            Number(existing[selection.key] ?? 0) +
+            Number(row[selection.key] ?? 0);
         }
       }
     }
 
-    let rows = [...merged.values()];
-
-    if (query.orderBy) {
-      const { key, direction } = query.orderBy;
-      rows.sort((a, b) => {
-        const left = a[key];
-        const right = b[key];
-        const comparison =
-          typeof left === "number" && typeof right === "number"
-            ? left - right
-            : String(left).localeCompare(String(right));
-        return direction === "desc" ? -comparison : comparison;
-      });
-    }
-
-    if (query.limit !== undefined) rows = rows.slice(0, query.limit);
+    const rows = AnalyticsOrdering.apply([...merged.values()], query);
 
     return {
       rows,
@@ -1064,25 +1149,15 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
     };
   }
 
-  protected mergeValue(
-    left: number,
-    right: number,
-    aggregate: AnalyticsAggregate,
-  ): number {
-    if (aggregate === "sum") return left + right;
-    throw new AlephaError(`Received an unknown aggregate '${aggregate}'.`);
-  }
-
   /**
    * Never a bare `sum()`: the sample interval varies per row, so the
    * correction has to live inside the aggregate expression itself. The
-   * `AlephaError` branch is defence in depth — `AnalyticsQuery` types
-   * `select`'s values as {@link AnalyticsAggregate}, but a query built from
-   * unchecked request input (`select[key] = req.query.aggregate`) could
-   * still hand this a string the type system never sees.
+   * `AlephaError` branch is defence in depth: `register()` refuses any
+   * dataset declaring a fold other than `sum`, so nothing else should reach
+   * here.
    */
   protected aggregateExpression(
-    aggregate: AnalyticsAggregate,
+    aggregate: AnalyticsFold,
     slot: string,
   ): string {
     if (aggregate === "sum") return `sum(${slot} * _sample_interval)`;

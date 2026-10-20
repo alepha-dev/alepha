@@ -30,6 +30,11 @@ export interface AnalyticsChartPoint {
   label: string;
   value: number;
   share: number;
+  /**
+   * The min-max band behind the line, when the chart draws a gauge whose
+   * `min` and `max` are both selected.
+   */
+  band?: { low: number; high: number };
   segments: AnalyticsChartSegment[];
   /**
    * The newest bucket when the window runs to today: still filling, so it is
@@ -53,6 +58,10 @@ export interface AnalyticsHeatRow {
 
 export interface AnalyticsChartModel {
   measure: string;
+  /**
+   * Whether the points carry a min-max band (see `AnalyticsChartPoint.band`).
+   */
+  banded: boolean;
   shape: AnalyticsChartShape;
   available: AnalyticsChartShape[];
   xKey: string;
@@ -77,6 +86,10 @@ export interface AnalyticsChartInput {
   rows: AnalyticsRow[];
   groupBy: string[];
   measures: string[];
+  /**
+   * The fold behind each value key; `sum` when absent.
+   */
+  folds?: Record<string, string>;
   measure: string | null;
   axis: string | null;
   shape: AnalyticsChartShape | null;
@@ -115,32 +128,57 @@ const groupId = (row: AnalyticsRow, keys: string[]): string =>
  * Re-fold the result rows onto a narrower set of keys.
  *
  * The backend already grouped by every key the query asked for; a chart only
- * ever draws one or two of them, so the rest are summed here rather than
- * re-queried.
+ * ever draws one or two of them, so the rest are folded here rather than
+ * re-queried, each value by its own fold: sums add, a `min` keeps the lowest
+ * and a `max` the highest, a missing reading (`null`) counting as absent. A
+ * `last` folded over several groups has no answer without the instant of
+ * each reading, which the result does not carry, so it becomes `null` rather
+ * than a guess.
  */
 export const analyticsAggregate = (
   rows: AnalyticsRow[],
   keys: string[],
   measures: string[],
+  folds: Record<string, string> = {},
 ): AnalyticsRow[] => {
-  const groups = new Map<string, AnalyticsRow>();
+  const groups = new Map<string, { row: AnalyticsRow; count: number }>();
   for (const row of rows) {
     const id = groupId(row, keys);
     let group = groups.get(id);
     if (!group) {
-      group = {};
-      for (const key of keys) group[key] = row[key];
-      for (const measure of measures) group[measure] = 0;
+      const created: AnalyticsRow = {};
+      for (const key of keys) created[key] = row[key];
+      for (const measure of measures) {
+        created[measure] = (folds[measure] ?? "sum") === "sum" ? 0 : null;
+      }
+      group = { row: created, count: 0 };
       groups.set(id, group);
     }
+    group.count++;
     for (const measure of measures) {
-      group[measure] = Number(group[measure]) + Number(row[measure] ?? 0);
+      const fold = folds[measure] ?? "sum";
+      const current = group.row[measure];
+      const value = row[measure];
+      if (fold === "sum") {
+        group.row[measure] = Number(current) + Number(value ?? 0);
+      } else if (fold === "last") {
+        group.row[measure] = group.count === 1 ? (value ?? null) : null;
+      } else if (value !== null && value !== undefined) {
+        const reading = Number(value);
+        group.row[measure] =
+          current === null || current === undefined
+            ? reading
+            : fold === "min"
+              ? Math.min(Number(current), reading)
+              : Math.max(Number(current), reading);
+      }
     }
   }
-  return [...groups.values()];
+  return [...groups.values()].map((group) => group.row);
 };
 
-const isTimeGrain = (key: string): boolean => key === "day" || key === "hour";
+const isTimeGrain = (key: string): boolean =>
+  key === "day" || key === "hour" || key === "minute";
 
 /**
  * `2026-08-21` becomes `08-21`, `2026-08-21T14` becomes `08-21 14h`. The year
@@ -150,6 +188,7 @@ const isTimeGrain = (key: string): boolean => key === "day" || key === "hour";
 const axisLabel = (key: string, value: string): string => {
   if (key === "day") return value.slice(5);
   if (key === "hour") return `${value.slice(5).replace("T", " ")}h`;
+  if (key === "minute") return value.slice(5).replace("T", " ");
   return value;
 };
 
@@ -255,10 +294,16 @@ export const analyticsHeatRows = (
 export const analyticsChartModel = (
   input: AnalyticsChartInput,
 ): AnalyticsChartModel => {
-  const measure =
+  const folds = input.folds ?? {};
+  const chosen =
     input.measure && input.measures.includes(input.measure)
       ? input.measure
       : (input.measures[0] ?? "");
+  // A gauge whose min and max are both selected draws as a band, with its
+  // last reading (when selected) as the line through it.
+  const gauge = analyticsGaugeKeys(chosen, input.measures, folds);
+  const measure = gauge?.last ?? chosen;
+  const gaugeFold = (folds[measure] ?? "sum") !== "sum";
 
   const timeKey = input.groupBy.find(isTimeGrain) ?? null;
   const xKey =
@@ -269,7 +314,12 @@ export const analyticsChartModel = (
   const breakdown =
     input.groupBy.find((key) => key !== xKey && !isTimeGrain(key)) ?? null;
 
-  const series = analyticsAggregate(input.rows, [xKey], [measure]);
+  const series = analyticsAggregate(
+    input.rows,
+    [xKey],
+    gauge ? [measure, gauge.min, gauge.max] : [measure],
+    folds,
+  );
   series.sort((left, right) =>
     chronological
       ? String(left[xKey]).localeCompare(String(right[xKey]))
@@ -277,12 +327,18 @@ export const analyticsChartModel = (
   );
   const shown = chronological ? series : series.slice(0, ANALYTICS_TOP_N);
 
-  const available = analyticsAvailableShapes({
-    groupBy: input.groupBy,
-    chronological,
-    breakdown,
-    seriesLength: series.length,
-  });
+  // A gauge has no share of a total and no stack: a line (or bars) over
+  // time, or a ranking.
+  const available: AnalyticsChartShape[] = gaugeFold
+    ? chronological
+      ? ["line", "bars"]
+      : ["rank"]
+    : analyticsAvailableShapes({
+        groupBy: input.groupBy,
+        chronological,
+        breakdown,
+        seriesLength: series.length,
+      });
   const shape =
     input.shape && available.includes(input.shape) ? input.shape : available[0];
 
@@ -313,16 +369,30 @@ export const analyticsChartModel = (
     }
   }
 
-  const total = series.reduce((sum, row) => sum + Number(row[measure]), 0);
-  const max = Math.max(1, ...shown.map((row) => Number(row[measure])));
+  const total = series.reduce((sum, row) => sum + Number(row[measure] ?? 0), 0);
+  const max = Math.max(
+    1,
+    ...shown.map((row) =>
+      Math.max(
+        Number(row[measure] ?? 0),
+        gauge ? Number(row[gauge.max] ?? 0) : 0,
+      ),
+    ),
+  );
 
   const points: AnalyticsChartPoint[] = shown.map((row, index) => {
     const key = String(row[xKey]);
-    const value = Number(row[measure]);
+    const value = Number(row[measure] ?? 0);
+    const low = gauge ? row[gauge.min] : null;
+    const high = gauge ? row[gauge.max] : null;
     return {
       key,
       label: axisLabel(xKey, key),
       value,
+      band:
+        low !== null && low !== undefined && high !== null && high !== undefined
+          ? { low: Number(low), high: Number(high) }
+          : undefined,
       share: total === 0 ? 0 : value / total,
       partial:
         index === shown.length - 1 &&
@@ -339,6 +409,7 @@ export const analyticsChartModel = (
 
   return {
     measure,
+    banded: !!gauge && shape === "line",
     shape,
     available,
     xKey,
@@ -353,6 +424,54 @@ export const analyticsChartModel = (
     seriesLength: series.length,
     heat: shape === "heat" ? analyticsHeatRows(input.rows, measure) : null,
   };
+};
+
+/**
+ * The min, max and last keys of the gauge `key` belongs to, when its min and
+ * max are both among `measures`; `last` only when it is selected too.
+ */
+export const analyticsGaugeKeys = (
+  key: string,
+  measures: string[],
+  folds: Record<string, string>,
+): { min: string; max: string; last?: string } | null => {
+  const fold = folds[key];
+  if (!fold || fold === "sum" || !key.endsWith(`_${fold}`)) return null;
+  const base = key.slice(0, -fold.length - 1);
+  const min = `${base}_min`;
+  const max = `${base}_max`;
+  const last = `${base}_last`;
+  if (!measures.includes(min) || !measures.includes(max)) return null;
+  return { min, max, last: measures.includes(last) ? last : undefined };
+};
+
+/**
+ * The band between each point's min and max, as one closed path in the same
+ * 0-100 viewBox as {@link analyticsLinePath}: along the highs, back along the
+ * lows. Points without a band are skipped.
+ */
+export const analyticsBandPath = (
+  points: AnalyticsChartPoint[],
+  max: number,
+): string => {
+  const x = (index: number) =>
+    points.length <= 1 ? 0 : (index / (points.length - 1)) * 100;
+  const y = (value: number) => 100 - (value / max) * 96;
+  const banded = points
+    .map((point, index) => ({ point, index }))
+    .filter((entry) => entry.point.band);
+  if (banded.length === 0) return "";
+  const top = banded.map(
+    ({ point, index }) =>
+      `${x(index).toFixed(2)},${y(point.band?.high ?? 0).toFixed(2)}`,
+  );
+  const bottom = banded
+    .toReversed()
+    .map(
+      ({ point, index }) =>
+        `${x(index).toFixed(2)},${y(point.band?.low ?? 0).toFixed(2)}`,
+    );
+  return `M ${[...top, ...bottom].join(" L ")} Z`;
 };
 
 /**

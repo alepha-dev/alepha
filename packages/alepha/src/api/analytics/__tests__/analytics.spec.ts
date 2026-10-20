@@ -1,5 +1,12 @@
 import { Alepha, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+import { MemoryDestinationProvider } from "alepha/logger";
+import {
+  DatabaseProvider,
+  NodeSqliteProvider,
+  nodeSqliteOptions,
+} from "alepha/orm";
+import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, expect, it } from "vitest";
 
 // Imported through the module entry, not the primitive file directly:
@@ -10,9 +17,13 @@ import { describe, expect, it } from "vitest";
 // `$storage.spec.ts` imports `$storage`.
 import {
   $analytics,
+  AnalyticsBuckets,
   type AnalyticsDataset,
+  AnalyticsPrimitive,
+  AnalyticsTiers,
   AnalyticsProvider,
   MemoryAnalyticsProvider,
+  OrmAnalyticsProvider,
 } from "../index.ts";
 
 class PageViews {
@@ -90,7 +101,7 @@ describe("$analytics", () => {
     await alepha.start();
 
     // The relational provider has no ceiling, so this must be accepted here.
-    expect(app.views.dataset.retention?.hot).toBe("120d");
+    expect(AnalyticsTiers.finestKeep(app.views.dataset)).toBe("120d");
   });
 
   it("rejects a cold window shorter than the hot window", () => {
@@ -117,7 +128,7 @@ describe("$analytics", () => {
       error = caught as Error;
     }
 
-    expect(error?.message).toContain("retention.cold");
+    expect(error?.message).toContain("shorter than the previous tier");
     expect(error?.message).toContain("60d");
     expect(error?.message).toContain("5d");
   });
@@ -139,7 +150,7 @@ describe("$analytics", () => {
     const app = alepha.inject(EqualWindows);
     await alepha.start();
 
-    expect(app.views.dataset.retention?.cold).toBe("60d");
+    expect(AnalyticsTiers.of(app.views.dataset)[1].keep).toBe("60d");
   });
 
   it("rejects a camelCase property key, since it becomes a table name", () => {
@@ -245,5 +256,267 @@ describe("$analytics", () => {
     // with the container still unstarted, which is what pins the ordering
     // rather than merely the fact that registration happens at some point.
     expect(provider.registered).toEqual(["views"]);
+  });
+});
+
+describe("$analytics.recordMany with rows sharing a bucket and dimensions", () => {
+  class Telemetry {
+    public readonly readings = $analytics({
+      index: "deviceId",
+      dimensions: z.object({ deviceId: z.string() }),
+      measures: z.object({ validations: z.number() }),
+      slots: { dimensions: ["deviceId"], measures: ["validations"] },
+    });
+  }
+
+  const backends: Array<[string, () => Alepha]> = [
+    ["memory", () => Alepha.create()],
+    [
+      "postgres",
+      () =>
+        Alepha.create()
+          .with(AlephaOrmPostgres)
+          .with({ provide: AnalyticsProvider, use: OrmAnalyticsProvider }),
+    ],
+    [
+      "sqlite",
+      () => {
+        const alepha = Alepha.create()
+          .with({ provide: DatabaseProvider, use: NodeSqliteProvider })
+          .with({ provide: AnalyticsProvider, use: OrmAnalyticsProvider });
+        alepha.store.mut(nodeSqliteOptions, (old) => ({
+          ...old,
+          path: "sqlite://:memory:",
+        }));
+        return alepha;
+      },
+    ],
+  ];
+
+  for (const [name, create] of backends) {
+    it(`sums them in one call on ${name}`, async () => {
+      const alepha = create();
+      const app = alepha.inject(Telemetry);
+      await alepha.start();
+
+      try {
+        await app.readings.recordMany([
+          { hour: "2026-08-09T10", deviceId: "d1", validations: 2 },
+          { hour: "2026-08-09T10", deviceId: "d1", validations: 3 },
+          { hour: "2026-08-09T10", deviceId: "d2", validations: 1 },
+        ]);
+
+        const result = await app.readings.query({
+          since: "2026-08-09",
+          groupBy: ["deviceId"],
+          select: { validations: "sum" },
+          orderBy: { key: "deviceId", direction: "asc" },
+        });
+
+        expect(result.rows).toEqual([
+          { deviceId: "d1", validations: 5 },
+          { deviceId: "d2", validations: 1 },
+        ]);
+      } finally {
+        await alepha.stop();
+      }
+    });
+  }
+});
+
+describe("$analytics gauge readings", () => {
+  class Devices {
+    public readonly gauges = $analytics({
+      index: "deviceId",
+      dimensions: z.object({ deviceId: z.string() }),
+      measures: z.object({ temperature: z.number() }),
+      folds: { temperature: ["min", "max", "last"] },
+      slots: { dimensions: ["deviceId"], measures: ["temperature"] },
+      retention: { hot: "2d" },
+    });
+  }
+
+  const boot = async () => {
+    const alepha = Alepha.create();
+    const app = alepha.inject(Devices);
+    const dateTime = alepha.inject(DateTimeProvider);
+    await alepha.start();
+    dateTime.pause();
+    return { app, dateTime, logs: alepha.inject(MemoryDestinationProvider) };
+  };
+
+  const readHours = (app: Devices) =>
+    app.gauges.query({
+      since: "2000-01-01",
+      groupBy: ["hour"],
+      select: { temperature: ["min", "max", "last"] },
+      orderBy: { key: "hour", direction: "asc" },
+    });
+
+  it("places a reading in the hour of its `at` and takes `last` from it", async () => {
+    const { app, dateTime } = await boot();
+    // Mid-hour, two hours back, so both readings share an hour whatever
+    // the wall clock says.
+    const hour = 60 * 60 * 1000;
+    const base =
+      Math.floor(dateTime.nowMillis() / hour) * hour - 2 * hour + hour / 2;
+    const earlier = base - 3 * hour;
+
+    await app.gauges.recordMany([
+      { deviceId: "d1", temperature: 21, at: base - 60_000 },
+      { deviceId: "d1", temperature: 19, at: base },
+      { deviceId: "d1", temperature: 30, at: earlier },
+    ]);
+
+    expect((await readHours(app)).rows).toEqual([
+      {
+        hour: AnalyticsBuckets.hour(earlier),
+        temperature_min: 30,
+        temperature_max: 30,
+        temperature_last: 30,
+      },
+      {
+        hour: AnalyticsBuckets.hour(base),
+        temperature_min: 19,
+        temperature_max: 21,
+        temperature_last: 19,
+      },
+    ]);
+  });
+
+  it("clamps a reading more than MAX_CLOCK_SKEW ahead to now", async () => {
+    const { app, dateTime, logs } = await boot();
+    const now = dateTime.nowMillis();
+
+    await app.gauges.recordMany([
+      { deviceId: "d1", temperature: 5, at: now },
+      { deviceId: "d1", temperature: 8, at: now + 24 * 60 * 60 * 1000 },
+    ]);
+
+    // Clamped to `now`, it lands in the current hour and ties with the
+    // reading taken at `now`; the larger value is the `last`.
+    expect((await readHours(app)).rows).toEqual([
+      {
+        hour: AnalyticsBuckets.hour(now),
+        temperature_min: 5,
+        temperature_max: 8,
+        temperature_last: 8,
+      },
+    ]);
+    expect(
+      logs.logs.some((entry) => entry.message.includes("in the future")),
+    ).toBe(true);
+  });
+
+  it("keeps a reading inside MAX_CLOCK_SKEW as it is", async () => {
+    const { app, dateTime } = await boot();
+    const now = dateTime.nowMillis();
+    const ahead = now + AnalyticsPrimitive.MAX_CLOCK_SKEW - 1000;
+
+    await app.gauges.recordMany([
+      { deviceId: "d1", temperature: 8, at: ahead },
+      { deviceId: "d1", temperature: 9, at: now },
+    ]);
+
+    const rows = (await readHours(app)).rows;
+    expect(rows.at(-1)?.temperature_last).toBe(8);
+  });
+
+  it("drops a reading older than the finest retention", async () => {
+    const { app, dateTime, logs } = await boot();
+    const now = dateTime.nowMillis();
+
+    await app.gauges.recordMany([
+      { deviceId: "d1", temperature: 1, at: now - 3 * 24 * 60 * 60 * 1000 },
+    ]);
+
+    expect((await readHours(app)).rows).toEqual([]);
+    expect(
+      logs.logs.some((entry) => entry.message.includes("past its retention")),
+    ).toBe(true);
+  });
+
+  it("refuses a gauge dataset on a backend that samples", () => {
+    class SampledAnalyticsProvider extends MemoryAnalyticsProvider {
+      public override readonly exact = false;
+    }
+
+    const alepha = Alepha.create().with({
+      provide: AnalyticsProvider,
+      use: SampledAnalyticsProvider,
+    });
+
+    expect(() => alepha.inject(Devices)).toThrow("samples");
+  });
+});
+
+describe("$analytics sub-hour resolution", () => {
+  class Monitoring {
+    public readonly ticks = $analytics({
+      index: "deviceId",
+      resolution: "5m",
+      dimensions: z.object({ deviceId: z.string() }),
+      measures: z.object({ validations: z.number() }),
+      slots: { dimensions: ["deviceId"], measures: ["validations"] },
+    });
+  }
+
+  it("stamps a reading with the five-minute bucket of its `at`", async () => {
+    const alepha = Alepha.create();
+    const app = alepha.inject(Monitoring);
+    const dateTime = alepha.inject(DateTimeProvider);
+    await alepha.start();
+    dateTime.pause();
+    const at = dateTime.nowMillis() - 60 * 60 * 1000;
+
+    await app.ticks.record({ deviceId: "d1", validations: 1, at });
+
+    const result = await app.ticks.query({
+      since: "2000-01-01",
+      groupBy: ["minute"],
+      select: { validations: "sum" },
+    });
+    expect(result.rows).toEqual([
+      { minute: AnalyticsBuckets.bucket(at, "5m"), validations: 1 },
+    ]);
+  });
+
+  it("refuses an explicit hour on a sub-hour dataset", async () => {
+    const alepha = Alepha.create();
+    const app = alepha.inject(Monitoring);
+    await alepha.start();
+
+    await expect(
+      app.ticks.record({
+        deviceId: "d1",
+        validations: 1,
+        hour: "2026-08-09T05",
+      }),
+    ).rejects.toThrow("place a reading with 'at'");
+  });
+
+  it("refuses a malformed hour on an hour dataset", async () => {
+    const alepha = Alepha.create();
+    const app = alepha.inject(PageViews);
+    await alepha.start();
+
+    await expect(
+      app.views.record({ app: "a", path: "/x", count: 1, hour: "2026-08-09" }),
+    ).rejects.toThrow("not an hour key");
+  });
+
+  it("reserves `minute` as a time pseudo-dimension", () => {
+    class Shadowed {
+      public readonly views = $analytics({
+        index: "minute",
+        dimensions: z.object({ minute: z.string() }),
+        measures: z.object({ count: z.number() }),
+        slots: { dimensions: ["minute"], measures: ["count"] },
+      });
+    }
+
+    expect(() => Alepha.create().inject(Shadowed)).toThrow(
+      "reserved as a time pseudo-dimension",
+    );
   });
 });

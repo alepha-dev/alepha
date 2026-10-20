@@ -1,4 +1,4 @@
-import { Alepha, z } from "alepha";
+import { Alepha, type ZType, z } from "alepha";
 import { DatabaseProvider } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, expect, it } from "vitest";
@@ -15,18 +15,73 @@ const dataset = {
 
 describe("AnalyticsEntityFactory", () => {
   it("derives a raw and a rolled table from the dataset name", () => {
-    const { raw, rolled } = AnalyticsEntityFactory.build(dataset);
+    const {
+      tables: [raw, rolled],
+    } = AnalyticsEntityFactory.build(dataset);
     expect(raw.name).toBe("analytics_page_views_raw");
     expect(rolled.name).toBe("analytics_page_views_rolled");
   });
 
   it("gives both tables the same dimension and measure columns", () => {
-    const { raw, rolled } = AnalyticsEntityFactory.build(dataset);
+    const {
+      tables: [raw, rolled],
+    } = AnalyticsEntityFactory.build(dataset);
     for (const entity of [raw, rolled]) {
       expect(Object.keys(entity.options.schema.shape).sort()).toEqual(
         ["app", "time_bucket", "count", "path"].sort(),
       );
     }
+  });
+
+  it("gives a gauge measure one nullable column per fold and a last_at", () => {
+    const {
+      tables: [raw],
+    } = AnalyticsEntityFactory.build({
+      ...dataset,
+      measures: z.object({ count: z.number(), temperature: z.number() }),
+      folds: { temperature: ["min", "max", "last"] },
+    });
+    const shape = raw.options.schema.shape as Record<string, ZType>;
+
+    expect(Object.keys(shape).sort()).toEqual(
+      [
+        "app",
+        "count",
+        "path",
+        "temperature_last",
+        "temperature_last_at",
+        "temperature_max",
+        "temperature_min",
+        "time_bucket",
+      ].sort(),
+    );
+    expect(shape.temperature_min.safeParse(null).success).toBe(true);
+    expect(shape.count.safeParse(null).success).toBe(false);
+  });
+
+  it("rejects a declared name equal to a column a gauge derives", () => {
+    expect(() =>
+      AnalyticsEntityFactory.build({
+        ...dataset,
+        measures: z.object({
+          temperature: z.number(),
+          temperature_min: z.number(),
+        }),
+        folds: { temperature: ["min"] },
+      }),
+    ).toThrow(/'temperature_min'.*derived from a gauge/);
+  });
+
+  it("rejects folds for an undeclared measure or an unknown fold", () => {
+    expect(() =>
+      AnalyticsEntityFactory.build({ ...dataset, folds: { other: ["min"] } }),
+    ).toThrow("not a declared measure");
+    expect(() =>
+      AnalyticsEntityFactory.build({
+        ...dataset,
+        folds: { count: ["avg" as never] },
+      }),
+    ).toThrow("unknown fold 'avg'");
   });
 
   it("rejects a dimension named after the reserved time column", () => {
@@ -92,7 +147,9 @@ describe("AnalyticsEntityFactory", () => {
       },
     };
 
-    const { raw, rolled } = AnalyticsEntityFactory.build(conformanceDataset);
+    const {
+      tables: [raw, rolled],
+    } = AnalyticsEntityFactory.build(conformanceDataset);
     for (const entity of [raw, rolled]) {
       expect(Object.keys(entity.options.schema.shape).sort()).toEqual(
         ["app", "bucket", "path", "samples", "time_bucket"].sort(),
@@ -113,7 +170,9 @@ describe("AnalyticsEntityFactory", () => {
     // see e.g. `packages/alepha/src/api/users/__tests__/RealmProvider.spec.ts`.
     const alepha = Alepha.create().with(AlephaOrmPostgres);
     const database = alepha.inject(DatabaseProvider);
-    const { raw, rolled } = AnalyticsEntityFactory.build(dataset);
+    const {
+      tables: [raw, rolled],
+    } = AnalyticsEntityFactory.build(dataset);
 
     database.registerEntity(raw as never);
     database.registerEntity(rolled as never);

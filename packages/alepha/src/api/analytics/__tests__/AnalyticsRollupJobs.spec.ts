@@ -115,13 +115,29 @@ class TwoDatasets {
 class FlakyAnalyticsProvider extends MemoryAnalyticsProvider {
   public override async rollup(
     dataset: AnalyticsDataset,
+    fromTier: number,
     before: string,
   ): Promise<void> {
     if (dataset.name === "broken") {
       throw new AlephaError("simulated rollup failure");
     }
-    return super.rollup(dataset, before);
+    return super.rollup(dataset, fromTier, before);
   }
+}
+
+class Telemetry {
+  public readonly telemetry = $analytics({
+    index: "deviceId",
+    resolution: "1m",
+    dimensions: z.object({ deviceId: z.string() }),
+    measures: z.object({ validations: z.number() }),
+    slots: { dimensions: ["deviceId"], measures: ["validations"] },
+    retention: [
+      { resolution: "1m", keep: "2h" },
+      { resolution: "1h", keep: "2d" },
+      { resolution: "1d", keep: "5d" },
+    ],
+  });
 }
 
 describe("AnalyticsRollupJobs", () => {
@@ -159,8 +175,48 @@ describe("AnalyticsRollupJobs", () => {
     expect(byBucket.rows).toEqual([{ hour: day, count: 5 }]);
   });
 
-  it("caps how many days one sweep folds", () => {
-    expect(AnalyticsRollupJobs.MAX_DAYS_PER_SWEEP).toBe(14);
+  it("walks a minute, hour, day chain finest first, then prunes the last tier", async () => {
+    const alepha = makeApp();
+    const app = alepha.inject(Telemetry);
+    const jobs = alepha.inject(AnalyticsRollupJobs);
+    const dateTime = alepha.inject(DateTimeProvider);
+    await alepha.start();
+    dateTime.pause();
+
+    const at = dateTime.nowMillis() - 30 * 60 * 1000;
+    await app.telemetry.recordMany([
+      { deviceId: "d1", validations: 2, at },
+      { deviceId: "d1", validations: 3, at },
+    ]);
+    const buckets = async () =>
+      (
+        await app.telemetry.query({
+          since: "2000-01-01",
+          groupBy: ["minute"],
+          select: { validations: "sum" },
+        })
+      ).rows;
+
+    // `travel()` also fires the sweep's cron; only the end state is asserted.
+    await dateTime.travel(3, "hours");
+    await jobs.sweepNow();
+    expect(await buckets()).toEqual([
+      { minute: new Date(at).toISOString().slice(0, 13), validations: 5 },
+    ]);
+
+    await dateTime.travel(3, "days");
+    await jobs.sweepNow();
+    expect(await buckets()).toEqual([
+      { minute: new Date(at).toISOString().slice(0, 10), validations: 5 },
+    ]);
+
+    await dateTime.travel(10, "days");
+    await jobs.sweepNow();
+    expect(await buckets()).toEqual([]);
+  });
+
+  it("caps how many source buckets one sweep folds: fourteen days of hours", () => {
+    expect(AnalyticsRollupJobs.MAX_BUCKETS_PER_SWEEP).toBe(14 * 24);
   });
 
   it("leaves a dataset with no retention entirely untouched", async () => {
@@ -212,7 +268,7 @@ describe("AnalyticsRollupJobs", () => {
     expect(byBucket.rows).toEqual([{ hour: "2020-01-01", count: 1 }]);
   });
 
-  it("caps a large backlog to MAX_DAYS_PER_SWEEP days, finishing over a later sweep", async () => {
+  it("caps a large backlog to fourteen days of an hour tier, finishing over a later sweep", async () => {
     const alepha = makeApp();
     const app = alepha.inject(Backlog);
     const jobs = alepha.inject(AnalyticsRollupJobs);
@@ -245,12 +301,11 @@ describe("AnalyticsRollupJobs", () => {
       (row) => String(row.hour).length === 13,
     );
 
-    // At most MAX_DAYS_PER_SWEEP days folded in a single sweep, even though
+    // At most fourteen days of hours folded in a single sweep, even though
     // every one of the 20 days is well past the 1-day hot window.
-    expect(rolledAfterOne.length).toBe(AnalyticsRollupJobs.MAX_DAYS_PER_SWEEP);
-    expect(hourlyAfterOne.length).toBe(
-      days - AnalyticsRollupJobs.MAX_DAYS_PER_SWEEP,
-    );
+    const capDays = AnalyticsRollupJobs.MAX_BUCKETS_PER_SWEEP / 24;
+    expect(rolledAfterOne.length).toBe(capDays);
+    expect(hourlyAfterOne.length).toBe(days - capDays);
 
     const totalAfterOne = await app.backlog.query({
       since: "2000-01-01",

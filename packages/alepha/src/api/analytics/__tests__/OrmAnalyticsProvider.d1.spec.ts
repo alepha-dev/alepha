@@ -127,7 +127,7 @@ describe("OrmAnalyticsProvider on D1", () => {
     try {
       await provider.record(vitals, backlog());
 
-      await provider.rollup(vitals, "2026-08-12");
+      await provider.rollup(vitals, 0, "2026-08-12");
 
       // Every hour folded into its day: 2 days x 5 paths x 7 buckets.
       const byDay = await provider.query(vitals, {
@@ -212,10 +212,10 @@ describe("OrmAnalyticsProvider on D1", () => {
     try {
       const rows = backlog().filter((row) => row.hour.startsWith("2026-08-10"));
       await provider.record(vitals, rows);
-      await provider.rollup(vitals, "2026-08-11");
+      await provider.rollup(vitals, 0, "2026-08-11");
       // A late row for a day already folded, the way a forward can land one.
       await provider.record(vitals, [{ ...rows[0], samples: 5 }]);
-      await provider.rollup(vitals, "2026-08-11");
+      await provider.rollup(vitals, 0, "2026-08-11");
 
       const result = await provider.query(vitals, {
         since: "2026-08-10",

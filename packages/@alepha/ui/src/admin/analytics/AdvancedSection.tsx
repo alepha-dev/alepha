@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { Segmented } from "../../core/Segmented.tsx";
 import { cn } from "../../core/utils.ts";
-import { ANALYTICS_LIMITS } from "./analyticsModel.ts";
+import { ANALYTICS_LIMITS, analyticsSpanLabel } from "./analyticsModel.ts";
 import type {
   AnalyticsCompareMode,
   AnalyticsQueryState,
@@ -63,10 +63,15 @@ export const AdvancedSection = (props: AdvancedSectionProps) => {
       ]
         .filter(Boolean)
         .join(" · ")
-    : tr("admin.analytics.summaryDefaults", {
-        default: "until yesterday · vs previous $1d · limit $2",
-        args: [String(props.state.days), String(props.state.limit)],
-      });
+    : props.window.instant
+      ? tr("admin.analytics.summaryInstant", {
+          default: "vs the previous $1 · limit $2",
+          args: [analyticsSpanLabel(props.window), String(props.state.limit)],
+        })
+      : tr("admin.analytics.summaryDefaults", {
+          default: "until yesterday · vs previous $1d · limit $2",
+          args: [String(props.state.days), String(props.state.limit)],
+        });
 
   return (
     <div className="flex flex-col gap-[9px]">
@@ -94,32 +99,35 @@ export const AdvancedSection = (props: AdvancedSectionProps) => {
       </button>
       {expanded && (
         <div className="border-border flex flex-col gap-3.5 border-l pl-[11px]">
-          <div className="flex flex-col gap-[7px]">
-            <ClauseLabel>until</ClauseLabel>
-            <Segmented
-              className="self-start"
-              size="sm"
-              value={props.state.untilMode}
-              onChange={(value) =>
-                props.onUntilMode(value as AnalyticsUntilMode)
-              }
-              options={[
-                { value: "yesterday", label: "yesterday" },
-                { value: "today", label: "today" },
-              ]}
-            />
-            <div className="text-muted-foreground text-[10.5px] leading-normal">
-              {props.state.untilMode === "yesterday"
-                ? tr("admin.analytics.untilYesterdayNote", {
-                    default: "Ends $1, the last complete UTC day.",
-                    args: [props.window.to],
-                  })
-                : tr("admin.analytics.untilTodayNote", {
-                    default:
-                      "Ends today: the newest bucket is partial, and is drawn ghosted.",
-                  })}
+          {/* `until` places a day window; an instant window has both ends. */}
+          {!props.window.instant && (
+            <div className="flex flex-col gap-[7px]">
+              <ClauseLabel>until</ClauseLabel>
+              <Segmented
+                className="self-start"
+                size="sm"
+                value={props.state.untilMode}
+                onChange={(value) =>
+                  props.onUntilMode(value as AnalyticsUntilMode)
+                }
+                options={[
+                  { value: "yesterday", label: "yesterday" },
+                  { value: "today", label: "today" },
+                ]}
+              />
+              <div className="text-muted-foreground text-[10.5px] leading-normal">
+                {props.state.untilMode === "yesterday"
+                  ? tr("admin.analytics.untilYesterdayNote", {
+                      default: "Ends $1, the last complete UTC day.",
+                      args: [props.window.to],
+                    })
+                  : tr("admin.analytics.untilTodayNote", {
+                      default:
+                        "Ends today: the newest bucket is partial, and is drawn ghosted.",
+                    })}
+              </div>
             </div>
-          </div>
+          )}
           <div className="flex flex-col gap-[7px]">
             <ClauseLabel>compare to</ClauseLabel>
             <Segmented
@@ -139,6 +147,7 @@ export const AdvancedSection = (props: AdvancedSectionProps) => {
               className="text-[10.5px] leading-normal"
               compare={props.state.compare}
               days={props.state.days}
+              window={props.window}
               baselineWindow={props.baselineWindow}
             />
           </div>

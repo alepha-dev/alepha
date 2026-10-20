@@ -69,6 +69,12 @@ describe("AdminAnalyticsService", () => {
     expect(list[0].dimensions.properties).toHaveProperty("app");
     expect(list[0].dimensions.properties).toHaveProperty("path");
     expect(list[0].measures.properties).toHaveProperty("count");
+    expect(list[0].folds).toEqual({ count: ["sum"] });
+    expect(list[0].resolution).toBe("1h");
+    expect(list[0].retention).toEqual([
+      { resolution: "1h", keep: undefined },
+      { resolution: "1d", keep: undefined },
+    ]);
   });
 
   it("refuses a query on an unknown dataset", async () => {
@@ -121,6 +127,40 @@ describe("AdminAnalyticsService", () => {
         select: { app: "sum" },
       }),
     ).rejects.toThrow(BadRequestError);
+  });
+
+  it("refuses a fold the measure does not declare", async () => {
+    const { service } = await setup();
+    await expect(
+      service.queryDataset("page_views", {
+        since: "2026-01-01",
+        select: { count: ["sum", "max"] },
+      }),
+    ).rejects.toThrow(BadRequestError);
+  });
+
+  it("refuses a query with both since and from, or an offset-less instant", async () => {
+    const { service } = await setup();
+    await expect(
+      service.queryDataset("page_views", {
+        since: "2026-01-01",
+        from: "2026-01-01T00:00:00Z",
+        select: { count: "sum" },
+      }),
+    ).rejects.toThrow(BadRequestError);
+    await expect(
+      service.queryDataset("page_views", { select: { count: "sum" } }),
+    ).rejects.toThrow(BadRequestError);
+  });
+
+  it("answers a from/to query and reports coarsened", async () => {
+    const { service } = await setup();
+    const result = await service.queryDataset("page_views", {
+      from: "2026-01-01T00:00:00+04:00",
+      to: "2026-01-02T00:00:00+04:00",
+      select: { count: "sum" },
+    });
+    expect(result.coarsened).toBe(false);
   });
 
   it("runs a valid query through the bound provider", async () => {

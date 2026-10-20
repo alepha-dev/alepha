@@ -1,43 +1,29 @@
 /**
- * The aggregates a dataset can be asked for.
+ * How a measure's values combine inside a bucket, and across buckets when a
+ * rollup or a cross-tier read merges them.
  *
- * `sum` alone. It is both mergeable across buckets (summing two `sum`s
- * produces the correct total for their union — the fold `rollup()` performs,
- * and the fold a hot/cold merge performs, are the same operation) and exactly
- * correctable under sampling: `sum(x * _sample_interval)` reconstructs the
- * true total from a sampled window. An app that wants a row count declares a
- * measure that is `1` per event and sums it — that is a `sum`, not a separate
- * aggregate, and it survives a rollup and a sampled backend for the same
- * reason any other `sum` does.
+ * Every fold here survives a rollup: the total, extreme or latest value of
+ * two buckets is computed from theirs alone, so a number the UI shows does
+ * not change when hours fold into days; only the time axis coarsens.
  *
- * `count` used to be a second aggregate here, implemented as the number of
- * *stored rows* — `COUNT(*)` relationally, `+1` per array entry in memory.
- * That is not the same number on every backend (a relational upsert
- * accumulates multiple writes into one row; an in-memory push does not), and
- * it does not survive `rollup()` on any backend: folding rows collapses the
- * very thing being counted, so a `count` taken before a rollup and the same
- * `count` taken after disagree. Both failures are the same category this
- * type excludes `min`/`max` for — an aggregate has to be correct after a
- * rollup and identical across backends, not just individually plausible on
- * one of them — so `count` was removed rather than fixed.
+ * - `sum`: counters (validations per hour). The only fold a sampled backend
+ *   can reconstruct: `sum(x * _sample_interval)` corrects a sampled window.
+ *   A row count is a measure that is `1` per event, summed. A mean is a sum
+ *   measure divided by a count-as-sum measure, caller-side.
+ * - `min`, `max`: gauges (temperature, cash level). Mergeable, but not
+ *   sample-correctable: if Analytics Engine drops the row holding the
+ *   extreme, nothing reconstructs it. A dataset declaring them is refused at
+ *   boot on a backend that samples (`AnalyticsProvider.exact`).
+ * - `last`: the reading with the latest `at` in the bucket; equal `at`
+ *   keeps the larger value, so every backend agrees. Refused on sampled
+ *   backends for the same reason as `min`/`max`.
  *
- * `avg` and percentiles are absent for a mergeability reason: the mean of two
- * means is wrong when the buckets differ in size, and the p75 of two
- * distributions is not the mean of their p75s. An app wanting a mean declares
- * a sum measure and a count-as-sum measure (see above) and divides; an app
- * wanting a percentile makes the histogram bucket a dimension and walks the
- * result. Both stay caller-side and obvious, and no merge-rule enforcement
- * layer has to exist.
- *
- * `min` and `max` are absent for a *different* reason: they merge across
- * buckets by construction, but they are not sample-correctable. If Analytics
- * Engine drops the row holding the true extreme, no `_sample_interval`
- * weighting reconstructs it — the query silently returns the extreme of
- * whatever survived. That is the same failure mode that excludes
- * distinct-counts from this seam; admitting min/max despite it would be
- * inconsistent.
+ * `count` (stored rows) was removed because it is not the same number on
+ * every backend and does not survive a rollup. `avg` and percentiles are
+ * absent because the mean of two means and the p75 of two p75s are wrong;
+ * a percentile is modelled with the histogram bucket as a dimension.
  */
-export type AnalyticsAggregate = "sum";
+export type AnalyticsFold = "sum" | "min" | "max" | "last";
 
 /**
  * Dimension filters. Only equality and set membership — no ranges.
@@ -50,9 +36,10 @@ export type AnalyticsFilter = Record<
 export interface AnalyticsQuery {
   where?: AnalyticsFilter;
   /**
-   * First UTC day included, `YYYY-MM-DD`.
+   * First UTC day included, `YYYY-MM-DD`. Exactly one of `since` and
+   * `from` is given.
    */
-  since: string;
+  since?: string;
   /**
    * Last UTC day included, `YYYY-MM-DD`. Omitted means "up to the newest
    * bucket there is", which is what every caller wanted before this existed.
@@ -70,16 +57,43 @@ export interface AnalyticsQuery {
    */
   until?: string;
   /**
+   * First instant included: ISO 8601 with an offset
+   * (`2026-10-18T08:00:00+04:00`), floored to each tier's resolution. An
+   * instant without an offset is refused. Exactly one of `since` and `from`
+   * is given; `from` pairs with `to`, never with `until`.
+   */
+  from?: string;
+  /**
+   * First instant excluded, same form as `from`. Omitted means "up to the
+   * newest bucket". Exclusive, so consecutive windows never count a bucket
+   * twice.
+   */
+  to?: string;
+  /**
    * Declared dimension names, plus the pseudo-dimensions `hour` and `day`.
    */
   groupBy?: string[];
-  select: Record<string, AnalyticsAggregate>;
+  /**
+   * The fold to read for each measure. A single fold returns the measure's
+   * own name as the key (`{ temperature: "max" }` returns `temperature`); an
+   * array returns one key per fold, `<measure>_<fold>`
+   * (`{ temperature: ["min", "max", "last"] }` returns `temperature_min`,
+   * `temperature_max`, `temperature_last`), which is what a band chart needs
+   * in one round trip. A fold the measure does not declare is refused.
+   */
+  select: Record<string, AnalyticsFold | AnalyticsFold[]>;
+  /**
+   * `key` is a grouped dimension or a returned measure key, in either form.
+   */
   orderBy?: { key: string; direction: "asc" | "desc" };
   limit?: number;
 }
 
 export interface AnalyticsResult {
-  rows: Array<Record<string, string | number>>;
+  /**
+   * A gauge fold over buckets that hold no reading comes back `null`.
+   */
+  rows: Array<Record<string, string | number | null>>;
 
   /**
    * Whether these numbers are reconstructed rather than measured.
@@ -89,6 +103,15 @@ export interface AnalyticsResult {
    * ignoring it is a visible choice rather than an accident.
    */
   estimated: boolean;
+
+  /**
+   * Whether a returned bucket extends outside `[from, to)`: a coarse tier
+   * (a day folded from hours, say) is read whole rather than dropped when it
+   * straddles a bound, so its readings outside the window are counted.
+   * Only a `from`/`to` query can be coarsened; `since`/`until` are whole
+   * days, which every tier holds exactly.
+   */
+  coarsened?: boolean;
 
   /**
    * The largest `_sample_interval` seen in the window, when the backend

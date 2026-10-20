@@ -8,7 +8,9 @@ import { OrmAnalyticsProvider } from "alepha/api/analytics";
 
 ## Overview
 
-Two relational tables per dataset: raw hour buckets and rolled day buckets.
+One relational table per retention tier of a dataset: the finest buckets as
+recorded (`_raw`), any intermediate tier (`_<resolution>`), and the
+coarsest (`_rolled`). See `AnalyticsTiers`.
 
 The default on every Node and Postgres deployment, and the cold tier of the
 Analytics Engine provider. Numbers here are **exact** - nothing samples, so
@@ -41,6 +43,6 @@ provider inherits without extra checks. `AnalyticsQuery.where` / `groupBy`
 forward client-supplied keys into unmodified. Every name drawn from a query
 (rather than from the dataset descriptor itself) is checked against the
 dataset's declared dimensions/measures - via `assertKnownDimension`
-/ `assertKnownMeasure` - before it is ever spliced into SQL text with
+/ `AnalyticsFolds.selections` - before it is ever spliced into SQL text with
 `sql.raw`. An unknown name throws `AlephaError` instead of reaching the
 database as an attacker-chosen identifier.

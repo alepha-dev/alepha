@@ -38,7 +38,40 @@ export class ShowcaseAnalytics {
             visitors: { type: "number", title: "Visitors" },
           },
         },
-        retention: { hot: "30d", rollup: "1y", cold: "5y" },
+        folds: { views: ["sum"], visitors: ["sum"] },
+        resolution: "1h",
+        retention: [
+          { resolution: "1h", keep: "30d" },
+          { resolution: "1d", keep: "1825d" },
+        ],
+      },
+      {
+        name: "device_metrics",
+        index: "deviceId",
+        dimensions: {
+          type: "object",
+          properties: {
+            deviceId: { type: "string", title: "Device" },
+            line: { type: "string", title: "Line" },
+          },
+        },
+        measures: {
+          type: "object",
+          properties: {
+            validations: { type: "number", title: "Validations" },
+            temperature: { type: "number", title: "Temperature" },
+          },
+        },
+        folds: {
+          validations: ["sum"],
+          temperature: ["min", "max", "last"],
+        },
+        resolution: "1m",
+        retention: [
+          { resolution: "1m", keep: "48h" },
+          { resolution: "1h", keep: "30d" },
+          { resolution: "1d", keep: "400d" },
+        ],
       },
     ];
   }
@@ -51,13 +84,31 @@ export class ShowcaseAnalytics {
    */
   public query(query: AdminAnalyticsQuery): AdminAnalyticsResult {
     const groupBy = query.groupBy ?? [];
-    const measures = Object.keys(query.select ?? {});
+    // One key per measure, or `<measure>_<fold>` per fold of an array select,
+    // as the real service answers.
+    const keys = Object.entries(query.select ?? {}).flatMap(
+      ([measure, folds]) =>
+        Array.isArray(folds)
+          ? folds.map((fold) => ({ key: `${measure}_${fold}`, fold }))
+          : [{ key: measure, fold: folds }],
+    );
     const limit = query.limit ?? 50;
 
     const values: Record<string, string[]> = {
       path: ["/", "/blocks/select", "/blocks/table", "/blocks/controls"],
       country: ["FR", "GB", "US", "NL"],
       device: ["desktop", "mobile", "tablet"],
+      deviceId: ["tvm-001", "tvm-002", "tvm-003", "tvm-004", "tvm-005"],
+      line: ["L1", "L2"],
+      day: ["2026-10-14", "2026-10-15", "2026-10-16", "2026-10-17"],
+      hour: Array.from(
+        { length: 12 },
+        (_, i) => `2026-10-17T${String(i + 8).padStart(2, "0")}`,
+      ),
+      minute: Array.from(
+        { length: 15 },
+        (_, i) => `2026-10-17T10:${String(i).padStart(2, "0")}`,
+      ),
     };
 
     let combos: Record<string, string>[] = [{}];
@@ -70,8 +121,17 @@ export class ShowcaseAnalytics {
 
     const rows = combos.slice(0, limit).map((combo, i) => {
       const row: Record<string, string | number> = { ...combo };
-      for (const [m, measure] of measures.entries()) {
-        row[measure] = this.pseudo(i, m);
+      for (const [m, { key, fold }] of keys.entries()) {
+        // A gauge reads as a temperature: min, then last, then max, apart.
+        const base = 18 + (this.pseudo(i, 0) % 8);
+        row[key] =
+          fold === "min"
+            ? base
+            : fold === "max"
+              ? base + 6
+              : fold === "last"
+                ? base + 3
+                : this.pseudo(i, m);
       }
       return row;
     });

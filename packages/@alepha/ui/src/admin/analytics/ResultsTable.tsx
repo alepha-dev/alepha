@@ -33,7 +33,7 @@ export const ResultsTable = (props: ResultsTableProps) => {
   );
 
   const downloadCsv = () => {
-    const escape = (value: string | number | undefined) => {
+    const escape = (value: string | number | null | undefined) => {
       const text = String(value ?? "");
       return /[",\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
     };
@@ -109,7 +109,7 @@ export const ResultsTable = (props: ResultsTableProps) => {
                 )}
               >
                 <code className="text-[11px] tracking-[0.04em] uppercase">
-                  {measure ? `sum(${column})` : column}
+                  {measure ? (result.labels[column] ?? column) : column}
                 </code>
                 {active && <Arrow className="size-[11px]" />}
               </button>
@@ -160,12 +160,16 @@ export const ResultsTable = (props: ResultsTableProps) => {
                           measure
                             ? "font-mono tabular-nums"
                             : "truncate whitespace-nowrap",
-                          (column === "day" || column === "hour") &&
+                          (column === "day" ||
+                            column === "hour" ||
+                            column === "minute") &&
                             "text-muted-foreground",
                         )}
                       >
-                        {measure
-                          ? analyticsNumber(Number(value ?? 0))
+                        {/* A gauge over buckets with no reading is null:
+                            shown as absent, never as a measured zero. */}
+                        {measure && value !== null && value !== undefined
+                          ? analyticsNumber(Number(value))
                           : String(value ?? "–")}
                       </span>
                     </div>

@@ -289,10 +289,14 @@ export const uiFr: Record<string, string> = {
   "admin.analytics.changeValues": "Modifier les valeurs",
   "admin.analytics.clear": "Effacer",
   "admin.analytics.close": "Fermer",
+  "admin.analytics.coarsened": "Bords élargis",
+  "admin.analytics.coarsenedHint":
+    "Un seau au bord de cette fenêtre la dépasse et a été lu en entier : des lectures juste hors de la fenêtre sont comptées. Les données plus anciennes sont dans des paliers plus grossiers.",
   "admin.analytics.compareLastYearNote": "vs même fenêtre l'an dernier ($1)",
   "admin.analytics.compareOffNote":
     "Aucune référence, les écarts sont masqués.",
   "admin.analytics.comparePreviousNote": "vs $1 j précédents ($2)",
+  "admin.analytics.comparePreviousSpanNote": "vs les $1 précédents ($2)",
   "admin.analytics.copied": "Copié",
   "admin.analytics.copy": "Copier",
   "admin.analytics.csv": "Télécharger le CSV",
@@ -301,12 +305,14 @@ export const uiFr: Record<string, string> = {
   "admin.analytics.emptyFiltered":
     "Assouplissez un filtre, ou élargissez la fenêtre.",
   "admin.analytics.emptyHint": "Élargissez la fenêtre.",
+  "admin.analytics.grainLockedPoints":
+    "$1 est verrouillé. Cette plage dessinerait plus de $2 seaux $1.",
+  "admin.analytics.grainLockedRetention":
+    "$1 est verrouillé. $2 conserve ses seaux $1 moins longtemps que cette plage, et les lectures plus anciennes sont dans des seaux plus grossiers, qui ne fusionneraient pas.",
   "admin.analytics.groupByKey": "grouper par $1",
   "admin.analytics.hintEquality": "1 valeur, envoyée en égalité",
   "admin.analytics.hintInArray": "$1 valeurs, envoyées en inArray",
   "admin.analytics.hintPick": "choisissez-en une ou plusieurs",
-  "admin.analytics.hourLocked":
-    "hour est verrouillé. $1 conserve les seaux horaires bruts pendant $2 jours, et une plage de $3 jours atteint le palier journalier agrégé. Ce sont des clés différentes, elles ne fusionneraient pas.",
   "admin.analytics.labelBars": "barres",
   "admin.analytics.labelDonut": "anneau",
   "admin.analytics.labelHeat": "carte de chaleur",
@@ -322,6 +328,7 @@ export const uiFr: Record<string, string> = {
     "Aucun jeu de données analytics n'est déclaré dans cette application.",
   "admin.analytics.noteDays": "$1 jours",
   "admin.analytics.noteHeat": "$1 jours × 24 heures",
+  "admin.analytics.noteBuckets": "$1 seaux",
   "admin.analytics.noteColumns": "$1 colonnes",
   "admin.analytics.noteColumns.one": "1 colonne",
   "admin.analytics.noteGroups": "$1 groupes",
@@ -336,6 +343,8 @@ export const uiFr: Record<string, string> = {
   "admin.analytics.pickDataset": "Choisir un jeu de données",
   "admin.analytics.pickDimension": "Filtrer sur une dimension",
   "admin.analytics.raiseLimit": "Monter à $1",
+  "admin.analytics.rangeFrom": "de",
+  "admin.analytics.rangeTo": "à",
   "admin.analytics.removeFilter": "Retirer",
   "admin.analytics.requestHonesty":
     "Chaque clé ici figure dans le schéma publié du jeu de données.",
@@ -358,6 +367,7 @@ export const uiFr: Record<string, string> = {
   "admin.analytics.shapeShare": "Part 100 %",
   "admin.analytics.summaryDefaults":
     "jusqu'à hier · vs $1 j précédents · limite $2",
+  "admin.analytics.summaryInstant": "vs les $1 précédents · limite $2",
   "admin.analytics.summaryLastYear": "vs l'an dernier",
   "admin.analytics.summaryLimit": "limite $1",
   "admin.analytics.summaryNoBaseline": "aucune référence",
@@ -373,6 +383,7 @@ export const uiFr: Record<string, string> = {
   "admin.analytics.valuesInWindow": "$1 dans la fenêtre",
   "admin.analytics.vsLastYear": "vs l'an dernier",
   "admin.analytics.vsPrevious": "vs $1 j précédents",
+  "admin.analytics.vsPreviousSpan": "vs les $1 précédents",
   "admin.audits.actionAll": "Toutes les actions",
   "admin.audits.bulkDelete": "Supprimer la sélection",
   "admin.audits.bulkDeleteConfirm":

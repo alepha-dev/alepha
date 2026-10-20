@@ -1,23 +1,29 @@
+import type { AdminDatasetDescriptor } from "alepha/api/analytics";
 import { useI18n } from "alepha/react/i18n";
 
+import { analyticsKeyLabel } from "./analyticsModel.ts";
 import { ClauseLabel } from "./ClauseLabel.tsx";
 import { ToggleChip } from "./ToggleChip.tsx";
 
 export interface MeasureChipsProps {
+  dataset: AdminDatasetDescriptor;
+  /**
+   * Every value key the dataset offers (see `analyticsMeasures`).
+   */
   measures: string[];
   active: string[];
   onToggle: (name: string) => void;
 }
 
 /**
- * The `select` clause: which measures are summed.
+ * The `select` clause: one chip per fold a measure declares.
  *
- * Sums only. That is the query language and not a simplification of it: `sum`
- * is the one aggregate that survives a rollup and stays exactly correctable
- * under a sampling backend, which is why there is no avg or percentile picker
- * to add here.
+ * A counter offers `sum(validations)` alone; a gauge offers each of its folds,
+ * `min(temperature)`, `max(temperature)`, `last(temperature)`, so a band chart
+ * is one query asking for all three. There is no avg or percentile chip to
+ * add: neither survives a rollup.
  *
- * At least one measure stays selected: clicking the last active chip is a
+ * At least one value stays selected: clicking the last active chip is a
  * no-op, since an empty `select` is a query the backend refuses.
  */
 export const MeasureChips = (props: MeasureChipsProps) => {
@@ -28,13 +34,13 @@ export const MeasureChips = (props: MeasureChipsProps) => {
     <div className="flex flex-col gap-[7px]">
       <ClauseLabel>select</ClauseLabel>
       <div className="flex flex-wrap gap-1.5">
-        {props.measures.map((measure) => {
-          const on = props.active.includes(measure);
+        {props.measures.map((key) => {
+          const on = props.active.includes(key);
           return (
             <ToggleChip
-              key={measure}
+              key={key}
               pressed={on}
-              onToggle={() => props.onToggle(measure)}
+              onToggle={() => props.onToggle(key)}
               title={
                 on && only
                   ? tr("admin.analytics.lastMeasure", {
@@ -43,7 +49,9 @@ export const MeasureChips = (props: MeasureChipsProps) => {
                   : undefined
               }
             >
-              <code className="text-[11.5px]">sum({measure})</code>
+              <code className="text-[11.5px]">
+                {analyticsKeyLabel(props.dataset, key)}
+              </code>
             </ToggleChip>
           );
         })}

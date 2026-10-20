@@ -1,13 +1,21 @@
 import { AlephaError } from "alepha";
 
 import { AnalyticsBuckets } from "../planner/AnalyticsBuckets.ts";
+import { AnalyticsFolds } from "../planner/AnalyticsFolds.ts";
+import { AnalyticsOrdering } from "../planner/AnalyticsOrdering.ts";
+import { AnalyticsRowFolder } from "../planner/AnalyticsRowFolder.ts";
+import { AnalyticsTiers } from "../planner/AnalyticsTiers.ts";
+import { AnalyticsWindow } from "../planner/AnalyticsWindow.ts";
 import type { AnalyticsDataset } from "../schemas/analyticsDatasetSchema.ts";
 import type {
-  AnalyticsAggregate,
   AnalyticsQuery,
   AnalyticsResult,
 } from "../schemas/analyticsQuerySchema.ts";
-import { AnalyticsProvider, type AnalyticsRow } from "./AnalyticsProvider.ts";
+import {
+  AnalyticsProvider,
+  type AnalyticsRow,
+  type AnalyticsTier,
+} from "./AnalyticsProvider.ts";
 
 /**
  * An in-memory dataset, and the reference implementation of the seam.
@@ -17,12 +25,16 @@ import { AnalyticsProvider, type AnalyticsRow } from "./AnalyticsProvider.ts";
  * in-process implementation there is no way to exercise the query semantics at
  * all. Every behaviour the conformance suite pins is defined here first.
  *
- * Tiering is simulated by rewriting a row's bucket in place, which is exactly
- * what the relational provider does with two tables - so a boundary-spanning
- * query can be tested with no database.
+ * One array per retention tier, as the relational provider has one table per
+ * tier, so a boundary-spanning query can be tested with no database.
  */
 export class MemoryAnalyticsProvider extends AnalyticsProvider {
-  protected readonly stored = new Map<string, AnalyticsRow[]>();
+  public readonly exact: boolean = true;
+
+  /**
+   * Each dataset's rows, one array per tier of its chain.
+   */
+  protected readonly stored = new Map<string, AnalyticsRow[][]>();
 
   /**
    * No-op: memory storage is a plain `Map` keyed by dataset name at first
@@ -41,9 +53,46 @@ export class MemoryAnalyticsProvider extends AnalyticsProvider {
     dataset: AnalyticsDataset,
     rows: AnalyticsRow[],
   ): Promise<void> {
-    const existing = this.stored.get(dataset.name) ?? [];
-    existing.push(...rows.map((row) => ({ ...row })));
-    this.stored.set(dataset.name, existing);
+    this.mergeInto(dataset, this.tiers(dataset)[0], rows);
+  }
+
+  /**
+   * Merges `rows` into `tier`, each into the row holding the same key, as a
+   * relational upsert does, so a gauge's extremes and last value fold on
+   * write here too.
+   */
+  protected mergeInto(
+    dataset: AnalyticsDataset,
+    tier: AnalyticsRow[],
+    rows: AnalyticsRow[],
+  ): void {
+    const dimensions = Object.keys(dataset.dimensions.shape).sort();
+    const index = new Map(
+      tier.map((row) => [AnalyticsRowFolder.key(dimensions, row), row]),
+    );
+    for (const row of rows) {
+      const key = AnalyticsRowFolder.key(dimensions, row);
+      const target = index.get(key);
+      if (target) {
+        AnalyticsFolds.merge(dataset, target, row);
+      } else {
+        const copy = { ...row };
+        tier.push(copy);
+        index.set(key, copy);
+      }
+    }
+  }
+
+  /**
+   * The dataset's tier arrays, created on first use.
+   */
+  protected tiers(dataset: AnalyticsDataset): AnalyticsRow[][] {
+    let tiers = this.stored.get(dataset.name);
+    if (!tiers) {
+      tiers = AnalyticsTiers.of(dataset).map(() => []);
+      this.stored.set(dataset.name, tiers);
+    }
+    return tiers;
   }
 
   public async query(
@@ -54,20 +103,33 @@ export class MemoryAnalyticsProvider extends AnalyticsProvider {
       this.assertKnownDimension(dataset, name);
     }
     for (const name of query.groupBy ?? []) {
-      if (name !== "day" && name !== "hour") {
+      if (name !== "day" && name !== "hour" && name !== "minute") {
         this.assertKnownDimension(dataset, name);
       }
     }
-    for (const name of Object.keys(query.select)) {
-      this.assertKnownMeasure(dataset, name);
-    }
+    const selections = AnalyticsFolds.selections(dataset, query.select);
 
-    const rows = (this.stored.get(dataset.name) ?? []).filter((row) =>
-      this.matches(row, query),
-    );
+    // Each tier reads its own key range (see `AnalyticsWindow`), and a
+    // matching row in a bucket that straddles a bound coarsens the result.
+    const specs = AnalyticsTiers.of(dataset);
+    let coarsened = false;
+    const rows = this.tiers(dataset).flatMap((tier, index) => {
+      const bounds = AnalyticsWindow.forTier(query, specs[index].resolution);
+      return tier.filter((row) => {
+        if (row.hour < bounds.lower) return false;
+        if (bounds.upper !== undefined && row.hour >= bounds.upper) {
+          return false;
+        }
+        if (!this.matches(row, query)) return false;
+        if (bounds.straddling.includes(row.hour)) coarsened = true;
+        return true;
+      });
+    });
 
     const groupBy = query.groupBy ?? [];
-    const groups = new Map<string, Record<string, string | number>>();
+    const groups = new Map<string, Record<string, string | number | null>>();
+    // The `at` behind each group's `last` values, by selection key.
+    const lastAt = new Map<string, Record<string, number | null>>();
 
     for (const row of rows) {
       // JSON.stringify escapes properly and is unambiguous for any input,
@@ -78,17 +140,43 @@ export class MemoryAnalyticsProvider extends AnalyticsProvider {
         groupBy.map((name) => this.dimensionOf(row, name)),
       );
       let group = groups.get(key);
-      if (!group) {
+      let ats = lastAt.get(key);
+      if (!group || !ats) {
         group = {};
+        ats = {};
         for (const name of groupBy) group[name] = this.dimensionOf(row, name);
+        for (const selection of selections) {
+          group[selection.key] = null;
+          ats[selection.key] = null;
+        }
         groups.set(key, group);
+        lastAt.set(key, ats);
       }
-      for (const [measure, aggregate] of Object.entries(query.select)) {
-        group[measure] = this.fold(
-          group[measure],
-          Number(row[measure] ?? 0),
-          aggregate,
-        );
+      for (const selection of selections) {
+        const value = row[selection.name];
+        if (selection.fold === "last") {
+          const at = row[AnalyticsFolds.lastAt(selection.measure)];
+          if (
+            AnalyticsFolds.laterWins(
+              group[selection.key],
+              ats[selection.key],
+              value,
+              at,
+            )
+          ) {
+            group[selection.key] = AnalyticsFolds.reading(value);
+            ats[selection.key] = AnalyticsFolds.reading(at);
+          }
+        } else if (AnalyticsFolds.isSumOnly(dataset, selection.measure)) {
+          group[selection.key] =
+            Number(group[selection.key] ?? 0) + Number(value ?? 0);
+        } else {
+          group[selection.key] = AnalyticsFolds.combine(
+            selection.fold,
+            group[selection.key],
+            value,
+          );
+        }
       }
     }
 
@@ -99,91 +187,73 @@ export class MemoryAnalyticsProvider extends AnalyticsProvider {
     // created.
     let out = [...groups.values()];
 
-    if (query.orderBy) {
-      const { key, direction } = query.orderBy;
-      out.sort((a, b) => {
-        const left = a[key];
-        const right = b[key];
-        const comparison =
-          typeof left === "number" && typeof right === "number"
-            ? left - right
-            : String(left).localeCompare(String(right));
-        return direction === "desc" ? -comparison : comparison;
-      });
-    }
+    out = AnalyticsOrdering.apply(out, query);
 
-    if (query.limit !== undefined) out = out.slice(0, query.limit);
-
-    return { rows: out, estimated: false };
+    return { rows: out, estimated: false, coarsened };
   }
 
   public async rollup(
     dataset: AnalyticsDataset,
+    fromTier: AnalyticsTier,
     before: string,
   ): Promise<void> {
-    const rows = this.stored.get(dataset.name) ?? [];
-    const folded = new Map<string, AnalyticsRow>();
-    const kept: AnalyticsRow[] = [];
+    const tiers = this.tiers(dataset);
+    const source = tiers[fromTier];
+    const target = tiers[fromTier + 1];
+    if (!source || !target) return;
 
-    for (const row of rows) {
-      if (AnalyticsBuckets.day(row.hour) >= AnalyticsBuckets.day(before)) {
-        kept.push(row);
-        continue;
-      }
-      // Folding to the day bucket is what makes this idempotent: a row already
-      // folded has hour === day, so re-running maps it onto itself.
-      const day = AnalyticsBuckets.day(row.hour);
-      // JSON.stringify avoids the collision a delimiter-joined string would
-      // risk here — and unlike in query(), a collision in rollup is
-      // irreversible: the colliding groups get summed and the pre-fold rows
-      // are gone.
-      const key = JSON.stringify([day, ...this.dimensionsOf(dataset, row)]);
-      const existing = folded.get(key);
-      if (existing) {
-        for (const measure of Object.keys(dataset.measures.shape)) {
-          existing[measure] =
-            Number(existing[measure] ?? 0) + Number(row[measure] ?? 0);
-        }
+    const resolution = AnalyticsTiers.of(dataset)[fromTier + 1].resolution;
+    const boundary = AnalyticsBuckets.truncate(before, resolution);
+    const folded: AnalyticsRow[] = [];
+    const kept: AnalyticsRow[] = [];
+    for (const row of source) {
+      if (row.hour < boundary) {
+        folded.push({
+          ...row,
+          hour: AnalyticsBuckets.truncate(row.hour, resolution),
+        });
       } else {
-        folded.set(key, { ...row, hour: day });
+        kept.push(row);
       }
     }
 
-    this.stored.set(dataset.name, [...folded.values(), ...kept]);
+    tiers[fromTier] = kept;
+    this.mergeInto(dataset, target, folded);
   }
 
   public async prune(dataset: AnalyticsDataset, before: string): Promise<void> {
-    const rows = this.stored.get(dataset.name) ?? [];
-    this.stored.set(
-      dataset.name,
-      rows.filter(
-        (row) => AnalyticsBuckets.day(row.hour) >= AnalyticsBuckets.day(before),
-      ),
-    );
+    const tiers = this.tiers(dataset);
+    for (let index = 0; index < tiers.length; index++) {
+      tiers[index] = tiers[index].filter((row) => row.hour >= before);
+    }
   }
 
-  protected dimensionsOf(
+  public async oldestBucket(
     dataset: AnalyticsDataset,
-    row: AnalyticsRow,
-  ): string[] {
-    return Object.keys(dataset.dimensions.shape)
-      .sort()
-      .map((name) => String(row[name]));
+    tier: AnalyticsTier,
+  ): Promise<string | undefined> {
+    let oldest: string | undefined;
+    for (const row of this.tiers(dataset)[tier] ?? []) {
+      if (oldest === undefined || row.hour < oldest) oldest = row.hour;
+    }
+    return oldest;
   }
 
   protected dimensionOf(row: AnalyticsRow, name: string): string | number {
     if (name === "day") return AnalyticsBuckets.day(row.hour);
-    if (name === "hour") return row.hour;
-    return row[name];
+    // The stored key itself; a rolled row answers with its day key.
+    if (name === "minute") return row.hour;
+    if (name === "hour") return row.hour.slice(0, 13);
+    return row[name] as string | number;
   }
 
+  /**
+   * Whether `row` passes the query's dimension filters. The time window is
+   * applied per tier by the caller.
+   */
   protected matches(row: AnalyticsRow, query: AnalyticsQuery): boolean {
-    const day = AnalyticsBuckets.day(row.hour);
-    if (day < query.since) return false;
-    // Inclusive: `until` names a day, and every hour of that day is in it.
-    if (query.until && day > query.until) return false;
     for (const [name, filter] of Object.entries(query.where ?? {})) {
-      const value = row[name];
+      const value = row[name] as string | number;
       if (
         typeof filter === "object" &&
         filter !== null &&
@@ -195,15 +265,6 @@ export class MemoryAnalyticsProvider extends AnalyticsProvider {
       }
     }
     return true;
-  }
-
-  protected fold(
-    current: string | number | undefined,
-    value: number,
-    aggregate: AnalyticsAggregate,
-  ): number {
-    if (aggregate === "sum") return Number(current ?? 0) + value;
-    throw new AlephaError(`Received an unknown aggregate '${aggregate}'.`);
   }
 
   /**
@@ -227,18 +288,6 @@ export class MemoryAnalyticsProvider extends AnalyticsProvider {
     if (!Object.hasOwn(dataset.dimensions.shape, name)) {
       throw new AlephaError(
         `Query on dataset '${dataset.name}' references '${name}', which is not a declared dimension. Declared dimensions: ${Object.keys(dataset.dimensions.shape).join(", ") || "(none)"}.`,
-      );
-    }
-  }
-
-  /**
-   * Same guard as {@link assertKnownDimension}, for `select` keys against the
-   * dataset's declared measures.
-   */
-  protected assertKnownMeasure(dataset: AnalyticsDataset, name: string): void {
-    if (!Object.hasOwn(dataset.measures.shape, name)) {
-      throw new AlephaError(
-        `Query on dataset '${dataset.name}' references '${name}', which is not a declared measure. Declared measures: ${Object.keys(dataset.measures.shape).join(", ") || "(none)"}.`,
       );
     }
   }

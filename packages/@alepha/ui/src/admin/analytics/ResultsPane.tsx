@@ -7,9 +7,14 @@ import { Spinner } from "../../core/Spinner.tsx";
 import { cn } from "../../core/utils.ts";
 import { AnalyticsChart } from "./AnalyticsChart.tsx";
 import { AnalyticsEmpty } from "./AnalyticsEmpty.tsx";
-import { analyticsNumber } from "./analyticsModel.ts";
+import {
+  analyticsNumber,
+  analyticsSpanLabel,
+  analyticsWindowLabel,
+} from "./analyticsModel.ts";
 import type { AnalyticsView } from "./analyticsTypes.ts";
 import { analyticsChartModel } from "./chartModel.ts";
+import { CoarsenedBadge } from "./CoarsenedBadge.tsx";
 import { CompareNote } from "./CompareNote.tsx";
 import { ResultsTable } from "./ResultsTable.tsx";
 import { SamplingBadge } from "./SamplingBadge.tsx";
@@ -45,6 +50,7 @@ export const ResultsPane = (props: ResultsPaneProps) => {
             rows: result.rows,
             groupBy: result.groupBy,
             measures: result.measures,
+            folds: result.folds,
             measure: query.viewState.chartMeasure,
             axis: query.viewState.axis,
             shape: query.viewState.shape,
@@ -108,10 +114,15 @@ export const ResultsPane = (props: ResultsPaneProps) => {
       ? null
       : query.state.compare === "lastYear"
         ? tr("admin.analytics.vsLastYear", { default: "vs last year" })
-        : tr("admin.analytics.vsPrevious", {
-            default: "vs previous $1d",
-            args: [String(query.state.days)],
-          });
+        : query.window.instant
+          ? tr("admin.analytics.vsPreviousSpan", {
+              default: "vs the previous $1",
+              args: [analyticsSpanLabel(query.window)],
+            })
+          : tr("admin.analytics.vsPrevious", {
+              default: "vs previous $1d",
+              args: [String(query.state.days)],
+            });
 
   return (
     <div
@@ -155,7 +166,7 @@ export const ResultsPane = (props: ResultsPaneProps) => {
 
       <div className="flex flex-none flex-wrap items-center gap-x-3 gap-y-2 px-5 pt-3">
         <code className="text-foreground text-[11.5px]">
-          {query.window.from} → {query.window.to}
+          {analyticsWindowLabel(query.window)}
         </code>
         {result && (
           <SamplingBadge
@@ -163,10 +174,12 @@ export const ResultsPane = (props: ResultsPaneProps) => {
             sampleInterval={result.sampleInterval}
           />
         )}
+        {result && <CoarsenedBadge coarsened={result.coarsened} />}
         <CompareNote
           className="text-[11.5px]"
           compare={query.state.compare}
           days={query.state.days}
+          window={query.window}
           baselineWindow={query.baselineWindow}
         />
       </div>
@@ -201,6 +214,7 @@ export const ResultsPane = (props: ResultsPaneProps) => {
                 model={model}
                 groupBy={result.groupBy}
                 measures={result.measures}
+                labels={result.labels}
                 onShape={query.setShape}
                 onAxis={query.setAxis}
                 onMeasure={query.setChartMeasure}

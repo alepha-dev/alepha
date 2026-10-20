@@ -1,9 +1,14 @@
-import { analyticsLinePath } from "./chartModel.ts";
+import { analyticsBandPath, analyticsLinePath } from "./chartModel.ts";
 import type { AnalyticsChartPoint } from "./chartModel.ts";
 
 export interface AnalyticsChartLineProps {
   points: AnalyticsChartPoint[];
   max: number;
+  /**
+   * Draw each point's min-max band, with the line as the last reading
+   * through it, rather than the area under the line.
+   */
+  banded?: boolean;
 }
 
 /**
@@ -22,7 +27,15 @@ export const AnalyticsChartLine = (props: AnalyticsChartLineProps) => {
         preserveAspectRatio="none"
         className="block h-full w-full"
       >
-        <path d={path.area} fill="var(--primary)" fillOpacity={0.18} />
+        {props.banded ? (
+          <path
+            d={analyticsBandPath(props.points, props.max)}
+            fill="var(--primary)"
+            fillOpacity={0.18}
+          />
+        ) : (
+          <path d={path.area} fill="var(--primary)" fillOpacity={0.18} />
+        )}
         <path
           d={path.line}
           fill="none"

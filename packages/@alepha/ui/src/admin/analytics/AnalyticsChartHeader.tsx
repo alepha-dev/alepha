@@ -9,6 +9,11 @@ export interface AnalyticsChartHeaderProps {
   model: AnalyticsChartModel;
   groupBy: string[];
   measures: string[];
+  /**
+   * How each value key is named (`max(temperature)`); `sum(<key>)` when
+   * absent.
+   */
+  labels?: Record<string, string>;
   onShape: (shape: AnalyticsChartShape) => void;
   onAxis: (axis: string) => void;
   onMeasure: (measure: string) => void;
@@ -29,10 +34,15 @@ export const AnalyticsChartHeader = (props: AnalyticsChartHeaderProps) => {
   const stacked =
     !!model.breakdown && (model.shape === "bars" || model.shape === "share");
 
+  const label = (key: string) => props.labels?.[key] ?? `sum(${key})`;
+  // A band names its measure once, with the three folds it draws.
+  const drawn = model.banded
+    ? `min/max/last(${model.measure.replace(/_(min|max|last)$/, "")})`
+    : label(model.measure);
   const title =
     model.shape === "heat"
-      ? `sum(${model.measure}) by day × hour`
-      : `sum(${model.measure}) by ${model.xKey}${stacked ? ` × ${model.breakdown}` : ""}`;
+      ? `${drawn} by day × hour`
+      : `${drawn} by ${model.xKey}${stacked ? ` × ${model.breakdown}` : ""}`;
 
   const count =
     model.shape === "heat"
@@ -46,10 +56,15 @@ export const AnalyticsChartHeader = (props: AnalyticsChartHeaderProps) => {
               default: "$1 days",
               args: [String(model.points.length)],
             })
-          : tr("admin.analytics.noteHours", {
-              default: "$1 hours",
-              args: [String(model.points.length)],
-            })
+          : model.xKey === "minute"
+            ? tr("admin.analytics.noteBuckets", {
+                default: "$1 buckets",
+                args: [String(model.points.length)],
+              })
+            : tr("admin.analytics.noteHours", {
+                default: "$1 hours",
+                args: [String(model.points.length)],
+              })
         : tr("admin.analytics.noteTopOf", {
             default: "top $1 of $2",
             args: [String(model.points.length), String(model.seriesLength)],
@@ -126,7 +141,7 @@ export const AnalyticsChartHeader = (props: AnalyticsChartHeaderProps) => {
           onChange={props.onMeasure}
           options={props.measures.map((measure) => ({
             value: measure,
-            label: <code className="text-[11px]">{measure}</code>,
+            label: <code className="text-[11px]">{label(measure)}</code>,
           }))}
         />
       )}

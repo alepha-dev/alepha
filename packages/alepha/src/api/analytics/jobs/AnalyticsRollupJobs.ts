@@ -4,6 +4,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 
 import { AnalyticsBuckets } from "../planner/AnalyticsBuckets.ts";
+import { AnalyticsTiers } from "../planner/AnalyticsTiers.ts";
 import { $analytics } from "../primitives/$analytics.ts";
 import { AnalyticsProvider } from "../providers/AnalyticsProvider.ts";
 import type { AnalyticsDataset } from "../schemas/analyticsDatasetSchema.ts";
@@ -11,10 +12,10 @@ import type { AnalyticsDataset } from "../schemas/analyticsDatasetSchema.ts";
 /**
  * Keeps every declared dataset inside its retention window.
  *
- * Folds hour buckets past `retention.hot` into day buckets, then deletes
- * rolled rows past `retention.cold`. Both passes **collapse rather than
- * delete** within the hot-to-rolled step, so no total the UI shows ever
- * changes — only the resolution of the time axis does.
+ * Folds each tier's buckets past its `keep` into the next tier of the
+ * retention chain, finest first, then deletes the last tier's rows past its
+ * own `keep`. Folding **collapses rather than deletes**, so no total the UI
+ * shows ever changes — only the resolution of the time axis does.
  *
  * Modelled on Lore's `SigilJobs` (github.com/alepha-dev/lore), the
  * Worker-tested prior art for this
@@ -23,14 +24,12 @@ import type { AnalyticsDataset } from "../schemas/analyticsDatasetSchema.ts";
  * `$repository` handles onto two known tables and scans them with SQL this
  * job has no equivalent for — datasets here are declared at arbitrary call
  * sites, and the only surface this job is allowed to use is the abstract
- * {@link AnalyticsProvider} seam (`register`/`record`/`query`/`rollup`/`prune`),
- * which deliberately hides which tier a row lives in (see that class's own
- * doc). {@link rollupBoundary} works around that: a bucket's own string
- * *length* — `"YYYY-MM-DD"` (10 chars, already rolled) vs.
- * `"YYYY-MM-DDTHH"` (13 chars, still raw) — is the one signal `query()`
- * exposes without either provider having to break its tiering abstraction.
+ * {@link AnalyticsProvider} seam, which deliberately hides where a row
+ * lives (see that class's own doc). Its resume point comes from
+ * `oldestBucket(dataset, tier)`, which every provider answers cheaply
+ * (relationally, an indexed `MIN`).
  *
- * The per-sweep cap ({@link MAX_DAYS_PER_SWEEP}) is not tuning. Neither
+ * The per-sweep cap ({@link MAX_BUCKETS_PER_SWEEP}) is not tuning. Neither
  * shipped provider's `rollup()` self-limits by how far back `before` reaches
  * — `OrmAnalyticsProvider.rollup()` is one `INSERT … SELECT … GROUP BY` over
  * every row older than the boundary it is given, and
@@ -44,40 +43,17 @@ import type { AnalyticsDataset } from "../schemas/analyticsDatasetSchema.ts";
  */
 export class AnalyticsRollupJobs {
   /**
-   * Most days one sweep will advance the rollup boundary by, for a single
-   * dataset. See the class doc for why this is a correctness bound, not a
-   * performance knob.
-   */
-  public static readonly MAX_DAYS_PER_SWEEP = 14;
-
-  /**
-   * A `since` boundary older than any real bucket, for the resume-point
-   * lookup in {@link rollupBoundary} — the same sentinel
-   * `WaeAnalyticsProvider.EPOCH_DAY` uses for its own "from the beginning"
-   * query, redeclared here because each class treats it as a private
-   * implementation detail rather than a shared export.
-   */
-  protected static readonly EPOCH_DAY = "1970-01-01";
-
-  /**
-   * Widest number of distinct buckets {@link rollupBoundary} scans
-   * client-side to find the oldest one still at hour precision.
+   * Most source-tier buckets one sweep folds, per tier of a dataset: 336 is
+   * fourteen days of hours, the cap the two-tier sweep always had. See the
+   * class doc for why this is a correctness bound, not a performance knob.
    *
-   * Unlike {@link MAX_DAYS_PER_SWEEP}, this is not a fold-work bound: each
-   * row here is one `(bucket, count)` pair out of a `GROUP BY`, a few dozen
-   * bytes, never a raw event row, so scanning a thousand of them is a
-   * rounding error in memory terms. It exists for a narrower reason — a
-   * dataset that declares `retention.hot` with **no** `retention.cold` rolls
-   * forever, and nothing ever deletes the already-rolled prefix that piles up
-   * ahead of the still-raw tail, so without a cap this scan would walk
-   * further back through that prefix on every single sweep, for the rest of
-   * that dataset's life. A dataset that keeps rolled data for 1,000+ days
-   * before ever pruning it (or never prunes at all) is already well past
-   * what this bounded lookup can resolve — a sweep that cannot find its
-   * resume point within the cap folds nothing and tries again next hour,
-   * same as if there were genuinely nothing left to fold.
+   * Counted in the source tier's buckets, so a minute tier advances 336
+   * minutes a sweep, not fourteen days of minutes (at 10k devices, ~200M
+   * rows, far past the job's 30 s timeout). It still outpaces real time
+   * (5.6 hours folded per hourly sweep). The value for a minute tier has
+   * not been measured against a production-sized table yet.
    */
-  protected static readonly MAX_BUCKET_SCAN = 1000;
+  public static readonly MAX_BUCKETS_PER_SWEEP = 336;
 
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
@@ -93,7 +69,7 @@ export class AnalyticsRollupJobs {
     name: "system.analytics.rollup",
     cron: "0 * * * *",
     description:
-      "Folds hourly analytics buckets past the hot window into daily ones, then deletes rolled rows past the cold window.",
+      "Folds each analytics tier's buckets past its window into the next tier, then deletes the last tier's rows past its window.",
     timeout: [30, "seconds"],
     handler: () => this.sweepNow(),
   });
@@ -135,99 +111,95 @@ export class AnalyticsRollupJobs {
   }
 
   /**
-   * Rolls up and prunes one dataset.
+   * Folds every tier past its window into the next, finest first, then
+   * prunes the last tier past its own.
    *
-   * A dataset with no `retention.hot` is skipped entirely — nothing to fold,
-   * and nothing to prune either (pruning past a cold window that outlives an
-   * unset hot window has no boundary to measure from). `retention.cold` is
-   * independently optional: a dataset can declare `hot` alone to keep
-   * folding hourly rows into days forever, with no deletion.
+   * A dataset whose finest tier has no window (no `retention`, or the
+   * original shape without `hot`) is skipped entirely: nothing to fold, and
+   * nothing to prune either. The last tier's window is independently
+   * optional: without one, folded rows are kept forever.
+   *
+   * The cron stays hourly whatever the finest resolution: a minute tier can
+   * only fold whole hours into an hour tier, so a faster sweep would fold
+   * nothing more.
    */
   protected async sweepDataset(
     dataset: AnalyticsDataset,
     now: number,
   ): Promise<void> {
-    const retention = dataset.retention;
-    if (!retention?.hot) return;
+    const tiers = AnalyticsTiers.of(dataset);
+    if (!tiers[0].keep) return;
 
-    const hotCutoff = this.dayCutoff(now, retention.hot);
-    const boundary = await this.rollupBoundary(dataset, hotCutoff);
-    if (boundary) {
-      await this.provider.rollup(dataset, boundary);
-      this.log.debug(`Rolled up '${dataset.name}' before ${boundary}`);
+    for (let index = 0; index < tiers.length - 1; index++) {
+      const keep = tiers[index].keep;
+      if (!keep) break;
+      const boundary = await this.rollupBoundary(
+        dataset,
+        index,
+        now - AnalyticsBuckets.parseWindow(keep),
+      );
+      if (boundary) {
+        await this.provider.rollup(dataset, index, boundary);
+        this.log.debug(
+          `Rolled up '${dataset.name}' tier ${index} before ${boundary}`,
+        );
+      }
     }
 
-    if (retention.cold) {
-      const coldCutoff = this.dayCutoff(now, retention.cold);
-      await this.provider.prune(dataset, coldCutoff);
-      this.log.debug(`Pruned '${dataset.name}' before ${coldCutoff}`);
+    const last = tiers[tiers.length - 1];
+    if (last.keep) {
+      const cutoff = AnalyticsBuckets.bucket(
+        now - AnalyticsBuckets.parseWindow(last.keep),
+        last.resolution,
+      );
+      await this.provider.prune(dataset, cutoff);
+      this.log.debug(`Pruned '${dataset.name}' before ${cutoff}`);
     }
   }
 
   /**
-   * Where this sweep should ask `rollup()` to fold up to, or `undefined` if
-   * there is nothing to fold.
+   * Where this sweep should fold tier `index` up to, as a key of the next
+   * tier, or `undefined` if there is nothing to fold.
    *
-   * Finding "the oldest day" is not enough on its own — a day that is
-   * already rolled never goes away just because it was folded (nothing
-   * deletes it short of {@link sweepDataset}'s own prune pass, which is
-   * independently optional), so if this simply resumed from the oldest
-   * *existing* day, a dataset with `hot` but no `cold` would compute the
-   * exact same capped boundary on every sweep forever, after its first
-   * {@link MAX_DAYS_PER_SWEEP} days were folded — real data would sit
-   * unrolled indefinitely despite every sweep reporting success. This method
-   * instead resumes from the oldest bucket still at **hour** precision.
-   *
-   * `query()` grouped by `"hour"`, ascending, bounded to
-   * {@link MAX_BUCKET_SCAN} rows, returns each dataset's true bucket values —
-   * `"YYYY-MM-DD"` for an already-rolled day, `"YYYY-MM-DDTHH"` for a still-raw
-   * hour. Day buckets always sort before any hour bucket of the same or a
-   * later date (a 10-character prefix sorts before any 13-character string
-   * that extends it), so a run of already-rolled days at the front can never
-   * hide a still-raw bucket behind it in this ordering — the first
-   * 13-character value found (`length > 10`) is genuinely the oldest one
-   * left to fold. If every scanned bucket is already 10 characters, either
-   * the dataset is fully caught up or the still-raw backlog starts beyond
-   * the scan cap; either way there is nothing this sweep can safely act on.
+   * Only whole buckets of the next tier fold, so the boundary is the next
+   * tier's bucket holding `cutoff`. It resumes from the oldest bucket still
+   * in the source tier, never from the oldest overall: an already-folded
+   * bucket never goes away short of the prune pass, which is optional, so
+   * resuming from it would compute the same capped boundary on every sweep
+   * once the first {@link MAX_BUCKETS_PER_SWEEP} were folded, and real data
+   * would sit unfolded forever. A capped boundary always moves at least one
+   * target bucket, or a cap shorter than one target bucket would never
+   * progress.
    */
   protected async rollupBoundary(
     dataset: AnalyticsDataset,
-    hotCutoff: string,
+    index: number,
+    cutoff: number,
   ): Promise<string | undefined> {
-    // Any declared measure works — `select` cannot be empty, and only each
-    // row's `hour` is read, the same trick `coldWatermark` uses. A dataset
-    // declaring no measures at all (legal, if unusual) has nothing to
-    // aggregate, so it also has nothing to roll.
-    const measure = Object.keys(dataset.measures.shape)[0];
-    if (!measure) return undefined;
+    const tiers = AnalyticsTiers.of(dataset);
+    const source = tiers[index].resolution;
+    const target = tiers[index + 1].resolution;
 
-    const scanned = await this.provider.query(dataset, {
-      since: AnalyticsRollupJobs.EPOCH_DAY,
-      groupBy: ["hour"],
-      select: { [measure]: "sum" },
-      orderBy: { key: "hour", direction: "asc" },
-      limit: AnalyticsRollupJobs.MAX_BUCKET_SCAN,
-    });
+    const oldest = await this.provider.oldestBucket(dataset, index);
+    if (!oldest) return undefined;
 
-    const oldestRaw = scanned.rows.find((row) => String(row.hour).length > 10);
-    if (!oldestRaw) return undefined;
+    const limit = AnalyticsBuckets.bucket(cutoff, target);
+    const oldestTarget = AnalyticsBuckets.truncate(oldest, target);
+    if (oldestTarget >= limit) return undefined;
 
-    const oldestDay = AnalyticsBuckets.day(String(oldestRaw.hour));
-    if (oldestDay >= hotCutoff) return undefined;
-
-    const capped = AnalyticsBuckets.shiftDays(
-      oldestDay,
-      AnalyticsRollupJobs.MAX_DAYS_PER_SWEEP,
+    const sourceStep = AnalyticsBuckets.minutesOf(source) * 60_000;
+    let capped = AnalyticsBuckets.bucket(
+      AnalyticsBuckets.startOf(oldest) +
+        AnalyticsRollupJobs.MAX_BUCKETS_PER_SWEEP * sourceStep,
+      target,
     );
-    return capped < hotCutoff ? capped : hotCutoff;
-  }
-
-  /**
-   * The day boundary `window` (e.g. `"60d"`) back from `now`.
-   */
-  protected dayCutoff(now: number, window: string): string {
-    return AnalyticsBuckets.day(
-      AnalyticsBuckets.hour(now - AnalyticsBuckets.parseWindow(window)),
-    );
+    if (capped <= oldestTarget) {
+      capped = AnalyticsBuckets.bucket(
+        AnalyticsBuckets.startOf(oldestTarget) +
+          AnalyticsBuckets.minutesOf(target) * 60_000,
+        target,
+      );
+    }
+    return capped < limit ? capped : limit;
   }
 }

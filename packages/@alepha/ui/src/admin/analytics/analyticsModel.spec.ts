@@ -8,9 +8,12 @@ import {
   analyticsDefaultOrderBy,
   analyticsEffectiveGroupBy,
   analyticsFilterLabel,
-  analyticsHotDays,
-  analyticsHourAllowed,
+  analyticsGrainLock,
+  analyticsInstantWindow,
+  analyticsKeyLabel,
+  analyticsMeasures,
   analyticsRequestBody,
+  analyticsSelect,
   analyticsToday,
   analyticsWhere,
   analyticsWindow,
@@ -24,7 +27,26 @@ const views: AdminDatasetDescriptor = {
     properties: { sigilId: {}, path: {}, country: {} },
   } as never,
   measures: { properties: { count: {}, engaged: {} } } as never,
-  retention: { hot: "30d", rollup: "day", cold: "400d" },
+  folds: { count: ["sum"], engaged: ["sum"] },
+  resolution: "1h",
+  retention: [
+    { resolution: "1h", keep: "30d" },
+    { resolution: "1d", keep: "400d" },
+  ],
+};
+
+const telemetry: AdminDatasetDescriptor = {
+  name: "device_metrics",
+  index: "deviceId",
+  dimensions: { properties: { deviceId: {} } } as never,
+  measures: { properties: { validations: {}, temperature: {} } } as never,
+  folds: { validations: ["sum"], temperature: ["min", "max", "last"] },
+  resolution: "1m",
+  retention: [
+    { resolution: "1m", keep: "48h" },
+    { resolution: "1h", keep: "30d" },
+    { resolution: "1d", keep: "400d" },
+  ],
 };
 
 const state = (
@@ -32,6 +54,7 @@ const state = (
 ): AnalyticsQueryState => ({
   dataset: "sigil_views",
   days: 30,
+  instant: null,
   untilMode: "yesterday",
   compare: "previous",
   groupBy: ["day"],
@@ -86,43 +109,142 @@ describe("analyticsWindow", () => {
   });
 });
 
-describe("the hour interlock", () => {
-  it("reads the hot window off the dataset's retention", () => {
-    expect(analyticsHotDays(views)).toBe(30);
+describe("the time-grain interlock", () => {
+  const days = (count: number) =>
+    analyticsWindow(analyticsToday(NOW), state({ days: count }));
+
+  it("allows hour while the hour tier still holds the whole range", () => {
+    expect(analyticsGrainLock(views, "hour", days(14), NOW)).toBeNull();
   });
 
-  it("allows hour inside the hot window", () => {
-    expect(analyticsHourAllowed(views, 30)).toBe(true);
+  it("locks hour over 30 days on points, though the hour tier still holds it", () => {
+    // 720 hours: past the 500 points a chart can show.
+    expect(analyticsGrainLock(views, "hour", days(30), NOW)).toBe("points");
   });
 
-  it("locks hour once the range reaches the rolled tier", () => {
-    expect(analyticsHourAllowed(views, 90)).toBe(false);
+  it("locks hour once the range reaches the day tier", () => {
+    expect(analyticsGrainLock(views, "hour", days(90), NOW)).toBe("retention");
   });
 
-  it("never locks a dataset that declares no hot window", () => {
-    // No retention means nothing is ever rolled up, so every day of it is
-    // still hour-precise. `null` is not zero.
-    const raw = { ...views, retention: undefined };
-    expect(analyticsHotDays(raw)).toBeNull();
-    expect(analyticsHourAllowed(raw, 90)).toBe(true);
+  it("never locks on retention a dataset that keeps its finest tier forever", () => {
+    // No window on the finest tier means nothing is ever folded, so every day
+    // of it is still hour-precise.
+    const raw = {
+      ...views,
+      retention: [{ resolution: "1h" }, { resolution: "1d" }],
+    };
+    expect(analyticsGrainLock(raw, "hour", days(14), NOW)).toBeNull();
   });
 
-  it("strips hour from the effective groupBy while it is locked", () => {
+  it("locks a grain that would draw more than the chart can show", () => {
+    // 90 days of hours is 2160 points.
+    const raw = {
+      ...views,
+      retention: [{ resolution: "1h" }, { resolution: "1d" }],
+    };
+    expect(analyticsGrainLock(raw, "hour", days(90), NOW)).toBe("points");
+  });
+
+  it("offers minute on a sub-hour dataset only while the minute tier holds the range", () => {
+    const last = (minutes: number) =>
+      analyticsInstantWindow(NOW, { kind: "relative", minutes }, "previous");
+    expect(analyticsGrainLock(telemetry, "minute", last(15), NOW)).toBeNull();
+    // 24h of minutes is 1440 points.
+    expect(analyticsGrainLock(telemetry, "minute", last(1440), NOW)).toBe(
+      "points",
+    );
+    expect(analyticsGrainLock(telemetry, "hour", last(1440), NOW)).toBeNull();
+  });
+
+  it("replaces a locked grain by the finest one the window allows", () => {
+    const window = analyticsInstantWindow(
+      NOW,
+      { kind: "relative", minutes: 360 },
+      "previous",
+    );
     expect(
-      analyticsEffectiveGroupBy(views, {
-        groupBy: ["day", "hour"],
-        days: 90,
-      }),
-    ).toEqual(["day"]);
+      analyticsEffectiveGroupBy(
+        telemetry,
+        { groupBy: ["day", "deviceId"] },
+        window,
+        NOW,
+      ),
+    ).toEqual(["day", "deviceId"]);
+    expect(
+      analyticsEffectiveGroupBy(
+        views,
+        { groupBy: ["hour", "path"] },
+        days(90),
+        NOW,
+      ),
+    ).toEqual(["day", "path"]);
+  });
+});
+
+describe("instant windows", () => {
+  it("sends a relative range as from/to instants with an offset", () => {
+    const window = analyticsInstantWindow(
+      NOW,
+      { kind: "relative", minutes: 15 },
+      "previous",
+    );
+    const body = analyticsRequestBody(
+      telemetry,
+      state({ instant: { kind: "relative", minutes: 15 } }),
+      window,
+      NOW,
+    );
+    expect(body.since).toBeUndefined();
+    expect(body.from).toMatch(/[+-]\d{2}:\d{2}$/);
+    expect(
+      Date.parse(body.to as string) - Date.parse(body.from as string),
+    ).toBe(15 * 60_000);
   });
 
-  it("keeps hour once the range fits again", () => {
+  it("steps the baseline back by the window's own length", () => {
+    const current = analyticsInstantWindow(
+      NOW,
+      { kind: "relative", minutes: 60 },
+      "previous",
+    );
+    const baseline = analyticsInstantWindow(
+      NOW,
+      { kind: "relative", minutes: 60 },
+      "previous",
+      1,
+    );
+    expect(baseline.to).toBe(current.from);
+  });
+});
+
+describe("fold-aware selection", () => {
+  it("offers each fold of a gauge as its own key", () => {
+    expect(analyticsMeasures(telemetry)).toEqual([
+      "validations",
+      "temperature_min",
+      "temperature_max",
+      "temperature_last",
+    ]);
+    expect(analyticsKeyLabel(telemetry, "temperature_max")).toBe(
+      "max(temperature)",
+    );
+    expect(analyticsKeyLabel(telemetry, "validations")).toBe(
+      "sum(validations)",
+    );
+  });
+
+  it("asks for a gauge's folds as one array, so a band is one query", () => {
     expect(
-      analyticsEffectiveGroupBy(views, {
-        groupBy: ["day", "hour"],
-        days: 14,
-      }),
-    ).toEqual(["day", "hour"]);
+      analyticsSelect(telemetry, [
+        "validations",
+        "temperature_min",
+        "temperature_max",
+        "temperature_last",
+      ]),
+    ).toEqual({
+      validations: "sum",
+      temperature: ["min", "max", "last"],
+    });
   });
 });
 
@@ -148,7 +270,7 @@ describe("analyticsWhere", () => {
 describe("analyticsRequestBody", () => {
   it("bounds both ends of the window", () => {
     const window = analyticsWindow(analyticsToday(NOW), state());
-    const body = analyticsRequestBody(views, state(), window);
+    const body = analyticsRequestBody(views, state(), window, NOW);
     expect(body.since).toBe(window.from);
     // `until` is the whole reason a bounded comparison is expressible.
     expect(body.until).toBe(window.to);
@@ -156,7 +278,7 @@ describe("analyticsRequestBody", () => {
 
   it("selects every declared measure as a sum by default", () => {
     const window = analyticsWindow(analyticsToday(NOW), state());
-    expect(analyticsRequestBody(views, state(), window).select).toEqual({
+    expect(analyticsRequestBody(views, state(), window, NOW).select).toEqual({
       count: "sum",
       engaged: "sum",
     });
@@ -165,7 +287,7 @@ describe("analyticsRequestBody", () => {
   it("never sends a group key the panel says is unavailable", () => {
     const patched = state({ days: 90, groupBy: ["day", "hour"] });
     const window = analyticsWindow(analyticsToday(NOW), patched);
-    expect(analyticsRequestBody(views, patched, window).groupBy).toEqual([
+    expect(analyticsRequestBody(views, patched, window, NOW).groupBy).toEqual([
       "day",
     ]);
   });
@@ -174,7 +296,7 @@ describe("analyticsRequestBody", () => {
     const patched = state({ groupBy: [] });
     const window = analyticsWindow(analyticsToday(NOW), patched);
     expect(
-      analyticsRequestBody(views, patched, window).groupBy,
+      analyticsRequestBody(views, patched, window, NOW).groupBy,
     ).toBeUndefined();
   });
 });
@@ -236,7 +358,7 @@ describe("analyticsAdvancedDirty", () => {
 describe("labels", () => {
   it("summarises the schema in one line", () => {
     expect(analyticsDatasetSummary(views)).toBe(
-      "sigilId · 3 dims · 2 measures · 30d hot · day · 400d",
+      "sigilId · 3 dims · 2 measures · 1h 30d · 1d 400d",
     );
   });
 
@@ -249,10 +371,19 @@ describe("labels", () => {
     expect(analyticsDatasetSummary(single)).toContain("1 dim · 1 measure ·");
   });
 
-  it("skips retention tiers the dataset left undeclared", () => {
+  it("marks a tier kept forever, and says nothing when no tier has a window", () => {
     expect(
-      analyticsDatasetSummary({ ...views, retention: { hot: "14d" } }),
-    ).toBe("sigilId · 3 dims · 2 measures · 14d hot");
+      analyticsDatasetSummary({
+        ...views,
+        retention: [{ resolution: "1h", keep: "14d" }, { resolution: "1d" }],
+      }),
+    ).toBe("sigilId · 3 dims · 2 measures · 1h 14d · 1d ∞");
+    expect(
+      analyticsDatasetSummary({
+        ...views,
+        retention: [{ resolution: "1h" }, { resolution: "1d" }],
+      }),
+    ).toBe("sigilId · 3 dims · 2 measures");
   });
 
   it("names a single-value filter but only counts a set", () => {

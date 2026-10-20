@@ -21,6 +21,7 @@ export interface FilterEditorProps {
   filters: AnalyticsFilterChip[];
   window: AnalyticsWindow;
   measure: string;
+  fold?: "sum" | "min" | "max" | "last";
   onApply: (dim: string, values: string[]) => void;
   onRemove: (dim: string) => void;
 }
@@ -54,6 +55,7 @@ export const FilterEditor = (props: FilterEditorProps) => {
     window: props.window,
     filters: props.filters,
     measure: props.measure,
+    fold: props.fold,
     open,
   });
 

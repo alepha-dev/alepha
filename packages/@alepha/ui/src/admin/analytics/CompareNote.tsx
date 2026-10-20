@@ -1,6 +1,7 @@
 import { useI18n } from "alepha/react/i18n";
 
 import { cn } from "../../core/utils.ts";
+import { analyticsSpanLabel, analyticsWindowLabel } from "./analyticsModel.ts";
 import type {
   AnalyticsCompareMode,
   AnalyticsWindow,
@@ -9,6 +10,11 @@ import type {
 export interface CompareNoteProps {
   compare: AnalyticsCompareMode;
   days: number;
+  /**
+   * The window under study. An instant window names its baseline by its own
+   * span (`6h`) rather than in days.
+   */
+  window?: AnalyticsWindow;
   baselineWindow: AnalyticsWindow | null;
   className?: string;
 }
@@ -33,7 +39,7 @@ export const CompareNote = (props: CompareNoteProps) => {
     );
   }
 
-  const range = `${props.baselineWindow.from} → ${props.baselineWindow.to}`;
+  const range = analyticsWindowLabel(props.baselineWindow);
   return (
     <span className={cn("text-muted-foreground", props.className)}>
       {props.compare === "lastYear"
@@ -41,10 +47,15 @@ export const CompareNote = (props: CompareNoteProps) => {
             default: "vs same window last year ($1)",
             args: [range],
           })
-        : tr("admin.analytics.comparePreviousNote", {
-            default: "vs previous $1d ($2)",
-            args: [String(props.days), range],
-          })}
+        : props.window?.instant
+          ? tr("admin.analytics.comparePreviousSpanNote", {
+              default: "vs the previous $1 ($2)",
+              args: [analyticsSpanLabel(props.window), range],
+            })
+          : tr("admin.analytics.comparePreviousNote", {
+              default: "vs previous $1d ($2)",
+              args: [String(props.days), range],
+            })}
     </span>
   );
 };

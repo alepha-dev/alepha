@@ -1,5 +1,7 @@
 import type { ZObject } from "alepha";
 
+import type { AnalyticsFold } from "./analyticsQuerySchema.ts";
+
 /**
  * The shape a dataset declares.
  *
@@ -57,8 +59,87 @@ export interface AnalyticsDataset {
    */
   slots: AnalyticsSlotPins;
 
-  retention?: AnalyticsRetention;
+  /**
+   * The finest bucket: `"1m"`, `"5m"`, `"15m"` or `"1h"` (the default).
+   *
+   * Sub-hour buckets are keyed `YYYY-MM-DDTHH:MM`, the minute floored to the
+   * resolution, and grouped with the `minute` pseudo-dimension. They fold
+   * into day buckets like hour buckets do. Analytics Engine refuses anything
+   * but `"1h"` at boot.
+   */
+  resolution?: AnalyticsResolution;
+
+  /**
+   * How each measure folds, e.g.
+   * `{ temperature: ["min", "max", "last"], validations: ["sum"] }`.
+   *
+   * An undeclared measure folds `["sum"]` and keeps one column named after
+   * itself. A measure with any other fold gets one column per fold,
+   * `<measure>_<fold>`, plus `<measure>_last_at` (millis) when it declares
+   * `last`; those columns are nullable, since a row may omit a gauge, and
+   * every fold treats a missing reading as absent rather than as `0`.
+   *
+   * Anything but `sum` needs an exact backend: Analytics Engine samples, so
+   * a dataset declaring `min`, `max` or `last` is refused at boot there.
+   */
+  folds?: Record<string, AnalyticsFold[]>;
+
+  /**
+   * How long each tier keeps its buckets: either an ordered list of tiers,
+   * finest first, or the original `{ hot, rollup, cold }` shape, which is the
+   * two-tier list `[{ resolution, keep: hot }, { resolution: "1d", keep: cold }]`.
+   *
+   * ```ts
+   * retention: [
+   *   { resolution: "1m", keep: "48h" },
+   *   { resolution: "1h", keep: "30d" },
+   *   { resolution: "1d", keep: "400d" },
+   * ]
+   * ```
+   *
+   * The first tier's resolution is the dataset's `resolution`; each next one
+   * is strictly coarser and a multiple of it; each `keep` is a whole number
+   * of its tier's buckets, at least one bucket of the next tier, and at least
+   * as long as the previous tier's. Only the last tier may omit `keep`
+   * (kept forever). The hourly sweep folds each tier's rows older than its
+   * `keep` into the next tier, and deletes the last tier's past its `keep`.
+   */
+  retention?: AnalyticsRetention | AnalyticsTierSpec[];
+
+  /**
+   * Buffers writes in memory, pre-folded, and flushes them as one write of
+   * distinct keys: on `maxRows` distinct keys, `flushMs` after the first
+   * buffered row, and on shutdown. Off by default.
+   *
+   * A buffered `record()` resolves once the row is **buffered**, not stored:
+   * a crash loses at most one buffer per process. Leave it off where a
+   * caller needs durability. Ignored on Analytics Engine, whose writes are
+   * already fire-and-forget batches. See `AnalyticsBuffer`.
+   */
+  buffer?: { maxRows: number; flushMs: number };
 }
+
+/**
+ * One tier of a dataset's retention chain.
+ */
+export interface AnalyticsTierSpec {
+  resolution: AnalyticsTierResolution;
+  /**
+   * A window such as `"48h"`, `"30d"` or `"90m"`. Omitted on the last tier
+   * only: kept forever.
+   */
+  keep?: string;
+}
+
+/**
+ * The resolution of a tier: a dataset resolution, or a day.
+ */
+export type AnalyticsTierResolution = AnalyticsResolution | "1d";
+
+/**
+ * The finest bucket a dataset records into.
+ */
+export type AnalyticsResolution = "1m" | "5m" | "15m" | "1h";
 
 /**
  * The pinned order of a dataset's names, one list per slot space.

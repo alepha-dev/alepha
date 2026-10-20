@@ -1,4 +1,9 @@
 import { Alepha, z } from "alepha";
+import {
+  DatabaseProvider,
+  NodeSqliteProvider,
+  nodeSqliteOptions,
+} from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, expect, it } from "vitest";
 
@@ -51,7 +56,7 @@ describe("OrmAnalyticsProvider", () => {
         { hour: "2026-08-01T10", app: "a", path: "/x", count: 4 },
         { hour: "2026-08-09T10", app: "a", path: "/x", count: 6 },
       ]);
-      await provider.rollup(dataset, "2026-08-05");
+      await provider.rollup(dataset, 0, "2026-08-05");
 
       const result = await provider.query(dataset, {
         since: "2026-08-01",
@@ -322,27 +327,25 @@ describe("OrmAnalyticsProvider", () => {
   });
 });
 
-analyticsConformance("orm", async () => {
+analyticsConformance("orm", async (datasets) => {
   const alepha = Alepha.create().with(AlephaOrmPostgres);
   const provider = alepha.inject(OrmAnalyticsProvider);
-  // Must mirror `analyticsConformance.ts`'s own internal `dataset` fixture
-  // exactly (name, dimensions, measures) — the suite has no way to hand this
-  // factory the dataset object it will call `record()`/`query()` with, and
-  // registration has to happen before `alepha.start()`.
-  provider.register({
-    name: "conformance_views",
-    index: "appId",
-    dimensions: z.object({
-      appId: z.string(),
-      path: z.string(),
-      bucket: z.number(),
-    }),
-    measures: z.object({ samples: z.number() }),
-    slots: {
-      dimensions: ["appId", "path", "bucket"],
-      measures: ["samples"],
-    },
+  for (const dataset of datasets) provider.register(dataset);
+  await alepha.start();
+  return provider;
+});
+
+analyticsConformance("orm (sqlite)", async (datasets) => {
+  const alepha = Alepha.create().with({
+    provide: DatabaseProvider,
+    use: NodeSqliteProvider,
   });
+  alepha.store.mut(nodeSqliteOptions, (old) => ({
+    ...old,
+    path: "sqlite://:memory:",
+  }));
+  const provider = alepha.inject(OrmAnalyticsProvider);
+  for (const dataset of datasets) provider.register(dataset);
   await alepha.start();
   return provider;
 });

@@ -5,7 +5,9 @@ import type {
 
 import type {
   AnalyticsFilterChip,
+  AnalyticsInstantRange,
   AnalyticsQueryState,
+  AnalyticsTimeGrain,
   AnalyticsWindow,
 } from "./analyticsTypes.ts";
 
@@ -14,6 +16,26 @@ import type {
  * decides where the window ends.
  */
 export const ANALYTICS_RANGES = [7, 14, 30, 90];
+
+/**
+ * The relative windows, in minutes, sent as `from`/`to` instants: what a
+ * monitoring view asks for.
+ */
+export const ANALYTICS_RELATIVE_RANGES = [
+  { minutes: 15, label: "15m" },
+  { minutes: 60, label: "1h" },
+  { minutes: 360, label: "6h" },
+  { minutes: 1440, label: "24h" },
+  { minutes: 10_080, label: "7d" },
+];
+
+/**
+ * The most buckets one chart draws. A time grain that would draw more over
+ * the window is not offered: a thousand bars are a texture, not a chart.
+ */
+export const ANALYTICS_MAX_POINTS = 500;
+
+const MINUTE_MS = 60_000;
 
 /**
  * The row caps the panel offers. The largest is also the API's own maximum
@@ -79,57 +101,321 @@ export const analyticsWindow = (
 };
 
 /**
- * How many days of raw hour-bucketed rows the dataset keeps, or `null` when
- * it declares no hot window at all.
- *
- * `null` is not "zero": a dataset with no retention policy is never rolled
- * up, so every day of it is still hour-precise and `hour` must stay
- * unlocked.
+ * Minutes per bucket of a resolution (`1m` … `1d`).
  */
-export const analyticsHotDays = (
-  dataset: AdminDatasetDescriptor,
-): number | null => {
-  const hot = dataset.retention?.hot;
-  if (!hot) return null;
-  const match = /^(\d+)\s*([dhw])$/.exec(hot.trim());
+export const analyticsResolutionMinutes = (resolution: string): number =>
+  ({ "1m": 1, "5m": 5, "15m": 15, "1h": 60, "1d": 1440 })[resolution] ?? 60;
+
+/**
+ * A retention window (`48h`, `30d`, `90m`) in milliseconds, or `null` when it
+ * does not parse.
+ */
+export const analyticsWindowMillis = (spec: string): number | null => {
+  const match = /^(\d+)([mhd])$/.exec(spec.trim());
   if (!match) return null;
-  const value = Number(match[1]);
-  if (match[2] === "h") return Math.max(1, Math.round(value / 24));
-  if (match[2] === "w") return value * 7;
-  return value;
+  const unit = { m: MINUTE_MS, h: 60 * MINUTE_MS, d: DAY_MS }[
+    match[2] as "m" | "h" | "d"
+  ];
+  return Number(match[1]) * unit;
 };
 
 /**
- * `hour` survives only inside the hot window. Past it the rolled tier answers
- * in days while the raw tier answers in hours, and those are different keys:
- * they would not merge, so the answer would be plausible and wrong.
+ * The time grains the dataset can group by: `minute` only below an hour.
  */
-export const analyticsHourAllowed = (
+export const analyticsTimeGrains = (
   dataset: AdminDatasetDescriptor,
-  days: number,
-): boolean => {
-  const hot = analyticsHotDays(dataset);
-  return hot === null || days <= hot;
+): AnalyticsTimeGrain[] =>
+  analyticsResolutionMinutes(dataset.resolution) < 60
+    ? ["minute", "hour", "day"]
+    : ["hour", "day"];
+
+export const analyticsIsTimeGrain = (key: string): key is AnalyticsTimeGrain =>
+  key === "minute" || key === "hour" || key === "day";
+
+export const analyticsGrainMillis = (
+  dataset: AdminDatasetDescriptor,
+  grain: AnalyticsTimeGrain,
+): number =>
+  grain === "day"
+    ? DAY_MS
+    : grain === "hour"
+      ? 60 * MINUTE_MS
+      : analyticsResolutionMinutes(dataset.resolution) * MINUTE_MS;
+
+/**
+ * The oldest instant at which `grain` is still exact, or `null` when it always
+ * is. A grain reads exact keys only from tiers no coarser than itself; older
+ * rows sit in coarser buckets, which come back under the same key with a
+ * coarser value and would not merge with the rest. The coarsest such tier
+ * keeps the longest, until the sweep folds it on a bucket of the next tier.
+ */
+export const analyticsGrainReach = (
+  dataset: AdminDatasetDescriptor,
+  grain: AnalyticsTimeGrain,
+  nowMillis: number,
+): number | null => {
+  const tiers = dataset.retention ?? [];
+  const limit = analyticsGrainMillis(dataset, grain) / MINUTE_MS;
+  let index = -1;
+  for (let i = 0; i < tiers.length; i++) {
+    if (analyticsResolutionMinutes(tiers[i].resolution) <= limit) index = i;
+  }
+  const tier = tiers[index];
+  if (!tier?.keep) return null;
+  const keep = analyticsWindowMillis(tier.keep);
+  if (keep === null) return null;
+  const next = tiers[index + 1];
+  const step = next
+    ? analyticsResolutionMinutes(next.resolution) * MINUTE_MS
+    : MINUTE_MS;
+  return Math.floor((nowMillis - keep) / step) * step;
 };
 
 /**
- * The groupBy actually sent. `hour` is stripped when locked: never send a key
- * you are telling the user is unavailable.
+ * The window as two instants, `end` exclusive.
+ */
+export const analyticsSpan = (
+  window: AnalyticsWindow,
+): { start: number; end: number } =>
+  window.instant
+    ? { start: Date.parse(window.from), end: Date.parse(window.to) }
+    : {
+        start: Date.parse(`${window.from}T00:00:00.000Z`),
+        end: Date.parse(`${window.to}T00:00:00.000Z`) + DAY_MS,
+      };
+
+/**
+ * Why `grain` cannot be grouped by over `window`, or `null` when it can:
+ * `retention` when the window starts before the grain is exact, `points`
+ * when it would draw more than {@link ANALYTICS_MAX_POINTS} buckets.
+ */
+export const analyticsGrainLock = (
+  dataset: AdminDatasetDescriptor,
+  grain: AnalyticsTimeGrain,
+  window: AnalyticsWindow,
+  nowMillis: number,
+): "retention" | "points" | null => {
+  const span = analyticsSpan(window);
+  const reach = analyticsGrainReach(dataset, grain, nowMillis);
+  if (reach !== null && span.start < reach) return "retention";
+  const points = Math.ceil(
+    (span.end - span.start) / analyticsGrainMillis(dataset, grain),
+  );
+  return points > ANALYTICS_MAX_POINTS ? "points" : null;
+};
+
+/**
+ * The finest grain the window allows: the chart's default x-axis.
+ */
+export const analyticsDefaultGrain = (
+  dataset: AdminDatasetDescriptor,
+  window: AnalyticsWindow,
+  nowMillis: number,
+): AnalyticsTimeGrain | null =>
+  analyticsTimeGrains(dataset).find(
+    (grain) => analyticsGrainLock(dataset, grain, window, nowMillis) === null,
+  ) ?? null;
+
+/**
+ * The groupBy actually sent. A locked grain is never sent: it is replaced by
+ * the finest grain the window allows, so a monitoring range keeps a time
+ * axis, or dropped when none is allowed or that one is already there.
  */
 export const analyticsEffectiveGroupBy = (
   dataset: AdminDatasetDescriptor,
-  state: Pick<AnalyticsQueryState, "groupBy" | "days">,
-): string[] =>
-  analyticsHourAllowed(dataset, state.days)
-    ? state.groupBy
-    : state.groupBy.filter((key) => key !== "hour");
+  state: Pick<AnalyticsQueryState, "groupBy">,
+  window: AnalyticsWindow,
+  nowMillis: number,
+): string[] => {
+  const out: string[] = [];
+  for (const key of state.groupBy) {
+    if (!analyticsIsTimeGrain(key)) {
+      out.push(key);
+      continue;
+    }
+    const usable =
+      analyticsGrainLock(dataset, key, window, nowMillis) === null
+        ? key
+        : analyticsDefaultGrain(dataset, window, nowMillis);
+    if (usable && !out.includes(usable)) out.push(usable);
+  }
+  return out;
+};
+
+/**
+ * An instant as ISO 8601 with the browser's own offset at that instant,
+ * `2026-10-18T08:00:00+04:00`: what `from`/`to` must carry.
+ */
+export const analyticsInstantIso = (millis: number): string => {
+  const offset = -new Date(millis).getTimezoneOffset();
+  const local = new Date(millis + offset * MINUTE_MS)
+    .toISOString()
+    .slice(0, 19);
+  const sign = offset < 0 ? "-" : "+";
+  const hours = String(Math.floor(Math.abs(offset) / 60)).padStart(2, "0");
+  const minutes = String(Math.abs(offset) % 60).padStart(2, "0");
+  return `${local}${sign}${hours}:${minutes}`;
+};
+
+/**
+ * An instant window, `offset` windows back: `previous` steps back by its own
+ * length, `lastYear` by 365 days. A relative range ends at the current
+ * minute; an absolute one is the two instants picked.
+ */
+export const analyticsInstantWindow = (
+  nowMillis: number,
+  instant: AnalyticsInstantRange,
+  compare: AnalyticsQueryState["compare"],
+  offset = 0,
+): AnalyticsWindow => {
+  let start: number;
+  let end: number;
+  if (instant.kind === "relative") {
+    end = Math.floor(nowMillis / MINUTE_MS) * MINUTE_MS;
+    start = end - instant.minutes * MINUTE_MS;
+  } else {
+    start = new Date(instant.from).getTime();
+    end = new Date(instant.to).getTime();
+  }
+  const shift = offset * (compare === "lastYear" ? 365 * DAY_MS : end - start);
+  return {
+    from: analyticsInstantIso(start - shift),
+    to: analyticsInstantIso(end - shift),
+    instant: true,
+  };
+};
+
+/**
+ * The window under study (`offset: 0`) or its baseline (`offset: 1`),
+ * whichever form the state holds.
+ */
+export const analyticsStateWindow = (
+  nowMillis: number,
+  state: Pick<
+    AnalyticsQueryState,
+    "days" | "untilMode" | "compare" | "instant"
+  >,
+  offset = 0,
+): AnalyticsWindow =>
+  state.instant
+    ? analyticsInstantWindow(nowMillis, state.instant, state.compare, offset)
+    : analyticsWindow(analyticsToday(nowMillis), state, offset);
+
+/**
+ * How a window reads in the explorer: days as they are, instants as local
+ * `YYYY-MM-DD HH:MM`.
+ */
+export const analyticsWindowLabel = (window: AnalyticsWindow): string => {
+  const ends = analyticsWindowEnds(window);
+  return `${ends.from} → ${ends.to}`;
+};
+
+/**
+ * Both ends of a window as {@link analyticsWindowLabel} prints them.
+ */
+export const analyticsWindowEnds = (
+  window: AnalyticsWindow,
+): { from: string; to: string } => {
+  if (!window.instant) return { from: window.from, to: window.to };
+  const local = (iso: string) => iso.slice(0, 16).replace("T", " ");
+  return { from: local(window.from), to: local(window.to) };
+};
+
+/**
+ * The length of a window, as the cards and notes name it: `30d`, `6h`,
+ * `15m`.
+ */
+export const analyticsSpanLabel = (window: AnalyticsWindow): string => {
+  const { start, end } = analyticsSpan(window);
+  const minutes = Math.round((end - start) / MINUTE_MS);
+  if (minutes % 1440 === 0) return `${minutes / 1440}d`;
+  if (minutes % 60 === 0) return `${minutes / 60}h`;
+  return `${minutes}m`;
+};
 
 export const analyticsDimensions = (
   dataset: AdminDatasetDescriptor,
 ): string[] => Object.keys(dataset.dimensions?.properties ?? {});
 
+/**
+ * The folds a measure declares; `["sum"]` when the descriptor says nothing.
+ */
+export const analyticsFolds = (
+  dataset: AdminDatasetDescriptor,
+  measure: string,
+): string[] => dataset.folds?.[measure] ?? ["sum"];
+
+export const analyticsSumOnly = (
+  dataset: AdminDatasetDescriptor,
+  measure: string,
+): boolean => {
+  const folds = analyticsFolds(dataset, measure);
+  return folds.length === 1 && folds[0] === "sum";
+};
+
+/**
+ * Every value the dataset can be asked for, by the key it comes back under:
+ * a sum-only measure's own name, or `<measure>_<fold>` per declared fold.
+ */
 export const analyticsMeasures = (dataset: AdminDatasetDescriptor): string[] =>
-  Object.keys(dataset.measures?.properties ?? {});
+  Object.keys(dataset.measures?.properties ?? {}).flatMap((measure) =>
+    analyticsSumOnly(dataset, measure)
+      ? [measure]
+      : analyticsFolds(dataset, measure).map((fold) => `${measure}_${fold}`),
+  );
+
+/**
+ * The measure and the fold behind a value key.
+ */
+export const analyticsKeyFold = (
+  dataset: AdminDatasetDescriptor | undefined,
+  key: string,
+): { measure: string; fold: string } => {
+  for (const measure of Object.keys(dataset?.measures?.properties ?? {})) {
+    if (key === measure) return { measure, fold: "sum" };
+    if (!dataset) break;
+    for (const fold of analyticsFolds(dataset, measure)) {
+      if (key === `${measure}_${fold}`) return { measure, fold };
+    }
+  }
+  return { measure: key, fold: "sum" };
+};
+
+/**
+ * `sum(views)`, `max(temperature)`: how a value is named everywhere it shows.
+ */
+export const analyticsKeyLabel = (
+  dataset: AdminDatasetDescriptor | undefined,
+  key: string,
+): string => {
+  const { measure, fold } = analyticsKeyFold(dataset, key);
+  return `${fold}(${measure})`;
+};
+
+/**
+ * `select` on the wire for the chosen keys: `"sum"` for a sum-only measure,
+ * the array of chosen folds for a gauge, so its keys come back as
+ * `<measure>_<fold>` and a band chart is one query.
+ */
+export const analyticsSelect = (
+  dataset: AdminDatasetDescriptor,
+  keys: string[],
+): AdminAnalyticsQuery["select"] => {
+  const select: Record<string, "sum" | Array<"sum" | "min" | "max" | "last">> =
+    {};
+  for (const key of keys) {
+    const { measure, fold } = analyticsKeyFold(dataset, key);
+    if (analyticsSumOnly(dataset, measure)) {
+      select[measure] = "sum";
+      continue;
+    }
+    const current = select[measure];
+    const folds = Array.isArray(current) ? current : [];
+    folds.push(fold as "sum" | "min" | "max" | "last");
+    select[measure] = folds;
+  }
+  return select;
+};
 
 export const analyticsActiveMeasures = (
   dataset: AdminDatasetDescriptor,
@@ -141,18 +427,17 @@ export const analyticsActiveMeasures = (
 };
 
 /**
- * `30d hot · day · 400d`, skipping whatever the dataset left undeclared.
+ * `1m 48h · 1h 30d · 1d 400d`: each tier's resolution and how long it keeps,
+ * `∞` where it keeps forever.
  */
 export const analyticsRetentionLabel = (
   dataset: AdminDatasetDescriptor,
 ): string => {
-  const retention = dataset.retention;
-  if (!retention) return "";
-  const parts: string[] = [];
-  if (retention.hot) parts.push(`${retention.hot} hot`);
-  if (retention.rollup) parts.push(retention.rollup);
-  if (retention.cold) parts.push(retention.cold);
-  return parts.join(" · ");
+  const tiers = dataset.retention ?? [];
+  if (!tiers.some((tier) => tier.keep)) return "";
+  return tiers
+    .map((tier) => `${tier.resolution} ${tier.keep ?? "∞"}`)
+    .join(" · ");
 };
 
 /**
@@ -210,12 +495,12 @@ export const analyticsWhere = (
 export const analyticsDefaultOrderBy = (
   groupBy: string[],
   primaryMeasure: string,
-): { key: string; direction: "asc" | "desc" } =>
-  groupBy.includes("day")
-    ? { key: "day", direction: "asc" }
-    : groupBy.includes("hour")
-      ? { key: "hour", direction: "asc" }
-      : { key: primaryMeasure, direction: "desc" };
+): { key: string; direction: "asc" | "desc" } => {
+  const grain = groupBy.find(analyticsIsTimeGrain);
+  return grain
+    ? { key: grain, direction: "asc" }
+    : { key: primaryMeasure, direction: "desc" };
+};
 
 /**
  * The body the panel would send. The request dialog renders this same object,
@@ -226,20 +511,44 @@ export const analyticsRequestBody = (
   dataset: AdminDatasetDescriptor,
   state: AnalyticsQueryState,
   window: AnalyticsWindow,
+  nowMillis: number,
 ): AdminAnalyticsQuery => {
   const measures = analyticsActiveMeasures(dataset, state);
-  const groupBy = analyticsEffectiveGroupBy(dataset, state);
+  const groupBy = analyticsEffectiveGroupBy(dataset, state, window, nowMillis);
   return {
-    since: window.from,
-    until: window.to,
+    ...analyticsWindowBody(window),
     where: analyticsWhere(state.filters),
     groupBy: groupBy.length > 0 ? groupBy : undefined,
-    select: Object.fromEntries(measures.map((name) => [name, "sum" as const])),
+    select: analyticsSelect(dataset, measures),
     orderBy:
       state.orderBy ?? analyticsDefaultOrderBy(groupBy, measures[0] ?? ""),
     limit: state.limit,
   };
 };
+
+/**
+ * The keys a `select` comes back under: the measure for one fold,
+ * `<measure>_<fold>` for each of an array.
+ */
+export const analyticsSelectKeys = (
+  select: AdminAnalyticsQuery["select"],
+): string[] =>
+  Object.entries(select).flatMap(([measure, folds]) =>
+    Array.isArray(folds)
+      ? folds.map((fold) => `${measure}_${fold}`)
+      : [measure],
+  );
+
+/**
+ * The window's half of a request body: `since`/`until` for days,
+ * `from`/`to` for instants.
+ */
+export const analyticsWindowBody = (
+  window: AnalyticsWindow,
+): Pick<AdminAnalyticsQuery, "since" | "until" | "from" | "to"> =>
+  window.instant
+    ? { from: window.from, to: window.to }
+    : { since: window.from, until: window.to };
 
 /**
  * Whether `advanced` holds anything that is not the default.

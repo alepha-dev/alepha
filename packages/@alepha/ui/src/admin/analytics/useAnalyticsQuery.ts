@@ -12,19 +12,26 @@ import {
   analyticsAdvancedDirty,
   analyticsDefaultOrderBy,
   analyticsDimensions,
-  analyticsHotDays,
-  analyticsHourAllowed,
+  analyticsDefaultGrain,
+  analyticsGrainLock,
+  analyticsIsTimeGrain,
+  analyticsKeyFold,
+  analyticsKeyLabel,
   analyticsMeasures,
   analyticsRequestBody,
-  analyticsToday,
-  analyticsWindow,
+  analyticsSelectKeys,
+  analyticsStateWindow,
+  analyticsTimeGrains,
+  analyticsWindowBody,
 } from "./analyticsModel.ts";
 import type {
   AnalyticsChartShape,
   AnalyticsCompareMode,
+  AnalyticsInstantRange,
   AnalyticsQueryState,
   AnalyticsRow,
   AnalyticsRunResult,
+  AnalyticsTimeGrain,
   AnalyticsTransport,
   AnalyticsUntilMode,
   AnalyticsView,
@@ -38,6 +45,7 @@ import type {
 const initialQueryState = (dataset: string): AnalyticsQueryState => ({
   dataset,
   days: 30,
+  instant: null,
   untilMode: "yesterday",
   compare: "previous",
   groupBy: ["day"],
@@ -66,10 +74,19 @@ export interface AnalyticsQueryApi {
   window: AnalyticsWindow;
   baselineWindow: AnalyticsWindow | null;
   dimensions: string[];
+  /**
+   * Every value key the dataset offers (see `analyticsMeasures`).
+   */
   measures: string[];
   activeMeasures: string[];
-  hotDays: number | null;
-  hourAllowed: boolean;
+  /**
+   * The time grains the dataset has, each with why it is locked over the
+   * current window, or `null` when it is usable.
+   */
+  grains: Array<{
+    grain: AnalyticsTimeGrain;
+    lock: "retention" | "points" | null;
+  }>;
   advancedDirty: boolean;
   /**
    * The body the next run will send, live as the panel is edited. The request
@@ -83,6 +100,7 @@ export interface AnalyticsQueryApi {
   selectDataset: (name: string) => void;
   toggleMeasure: (name: string) => void;
   setDays: (days: number) => void;
+  setInstant: (instant: AnalyticsInstantRange) => void;
   setUntilMode: (mode: AnalyticsUntilMode) => void;
   setCompare: (mode: AnalyticsCompareMode) => void;
   toggleGroupBy: (name: string) => void;
@@ -139,19 +157,18 @@ export const useAnalyticsQuery = (
 
   // `nonce` is a dependency although the callback never reads it: pressing Run
   // re-reads the clock, so a tab left open across midnight re-resolves
-  // "yesterday" instead of querying the previous day forever.
-  const today = useMemo(
-    () => analyticsToday(dateTime.nowMillis()),
-    [dateTime, nonce],
-  );
+  // "yesterday" instead of querying the previous day forever, and a relative
+  // range moves up to the current minute.
+  const now = useMemo(() => dateTime.nowMillis(), [dateTime, nonce]);
 
   const window = useMemo(
-    () => analyticsWindow(today, state, 0),
-    [today, state],
+    () => analyticsStateWindow(now, state, 0),
+    [now, state],
   );
   const baselineWindow = useMemo(
-    () => (state.compare === "off" ? null : analyticsWindow(today, state, 1)),
-    [today, state],
+    () =>
+      state.compare === "off" ? null : analyticsStateWindow(now, state, 1),
+    [now, state],
   );
 
   const dimensions = useMemo(
@@ -167,17 +184,26 @@ export const useAnalyticsQuery = (
     [dataset, state],
   );
 
-  const hotDays = dataset ? analyticsHotDays(dataset) : null;
-  const hourAllowed = dataset
-    ? analyticsHourAllowed(dataset, state.days)
-    : true;
+  const grains = useMemo(
+    () =>
+      dataset
+        ? analyticsTimeGrains(dataset).map((grain) => ({
+            grain,
+            lock: analyticsGrainLock(dataset, grain, window, now),
+          }))
+        : [],
+    [dataset, window, now],
+  );
 
   const body = useMemo(
     () =>
       dataset
-        ? analyticsRequestBody(dataset, state, window)
-        : ({ since: window.from, select: {} } as AdminAnalyticsQuery),
-    [dataset, state, window],
+        ? analyticsRequestBody(dataset, state, window, now)
+        : ({
+            ...analyticsWindowBody(window),
+            select: {},
+          } as AdminAnalyticsQuery),
+    [dataset, state, window, now],
   );
 
   const bodyKey = JSON.stringify(body);
@@ -211,9 +237,17 @@ export const useAnalyticsQuery = (
           query(request),
           query(ungrouped),
           baseline
-            ? query({ ...ungrouped, since: baseline.from, until: baseline.to })
+            ? query({
+                ...ungrouped,
+                since: undefined,
+                until: undefined,
+                from: undefined,
+                to: undefined,
+                ...analyticsWindowBody(baseline),
+              })
             : Promise.resolve(undefined),
         ]);
+        const keys = analyticsSelectKeys(request.select);
 
         // The group population is only worth asking for when the result
         // actually filled the limit: below it, nothing was cut and the count
@@ -237,22 +271,31 @@ export const useAnalyticsQuery = (
           rows: rowsResult.rows as AnalyticsRow[],
           groupCount,
           groupCountCapped: groupCount >= ANALYTICS_MAX_LIMIT,
-          totals: sumRow(totalsResult.rows[0], Object.keys(request.select)),
+          totals: sumRow(totalsResult.rows[0], keys),
           baseline: baselineResult
-            ? sumRow(baselineResult.rows[0], Object.keys(request.select))
+            ? sumRow(baselineResult.rows[0], keys)
             : null,
           estimated: rowsResult.estimated,
           sampleInterval: rowsResult.sampleInterval,
-          window: { from: request.since, to: request.until ?? request.since },
+          coarsened: !!rowsResult.coarsened || !!totalsResult.coarsened,
+          window: request.from
+            ? { from: request.from, to: request.to ?? "", instant: true }
+            : {
+                from: request.since ?? "",
+                to: request.until ?? request.since ?? "",
+              },
           baselineWindow: baseline,
           groupBy: request.groupBy ?? [],
-          measures: Object.keys(request.select),
+          measures: keys,
+          labels: Object.fromEntries(
+            keys.map((key) => [key, analyticsKeyLabel(dataset, key)]),
+          ),
+          folds: Object.fromEntries(
+            keys.map((key) => [key, analyticsKeyFold(dataset, key).fold]),
+          ),
           orderBy:
             request.orderBy ??
-            analyticsDefaultOrderBy(
-              request.groupBy ?? [],
-              Object.keys(request.select)[0] ?? "",
-            ),
+            analyticsDefaultOrderBy(request.groupBy ?? [], keys[0] ?? ""),
           limit,
           body: request,
         });
@@ -351,8 +394,7 @@ export const useAnalyticsQuery = (
     dimensions,
     measures,
     activeMeasures,
-    hotDays,
-    hourAllowed,
+    grains,
     advancedDirty: analyticsAdvancedDirty(state),
     body,
     result,
@@ -360,7 +402,28 @@ export const useAnalyticsQuery = (
     error,
     selectDataset,
     toggleMeasure,
-    setDays: (days) => patch({ days }),
+    setDays: (days) => patch({ days, instant: null }),
+    // A new instant range re-picks the time axis: the finest grain it
+    // allows, so "last 15 minutes" opens on minutes, not on one day bar.
+    setInstant: (instant) =>
+      setState((current) => {
+        if (!dataset) return { ...current, instant };
+        const next = { ...current, instant };
+        const grain = analyticsDefaultGrain(
+          dataset,
+          analyticsStateWindow(now, next, 0),
+          now,
+        );
+        const rest = current.groupBy.filter(
+          (key) => !analyticsIsTimeGrain(key),
+        );
+        const hadGrain = rest.length !== current.groupBy.length;
+        return {
+          ...next,
+          groupBy: hadGrain && grain ? [grain, ...rest] : current.groupBy,
+          orderBy: null,
+        };
+      }),
     setUntilMode: (untilMode) => patch({ untilMode }),
     setCompare: (compare) => patch({ compare }),
     toggleGroupBy,
@@ -393,7 +456,7 @@ export const useAnalyticsQuery = (
  * the empty state above the cards is what carries the difference.
  */
 const sumRow = (
-  row: Record<string, string | number> | undefined,
+  row: Record<string, string | number | null> | undefined,
   measures: string[],
 ): Record<string, number> =>
   Object.fromEntries(

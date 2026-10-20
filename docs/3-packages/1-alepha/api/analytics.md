@@ -38,7 +38,7 @@ constructed.
 
 - [`AnalyticsProvider`](/docs/reference-providers-analyticsprovider) - Where a dataset's rows live.
 - [`MemoryAnalyticsProvider`](/docs/reference-providers-memoryanalyticsprovider) - An in-memory dataset, and the reference implementation of the seam.
-- [`OrmAnalyticsProvider`](/docs/reference-providers-ormanalyticsprovider) - Two relational tables per dataset: raw hour buckets and rolled day buckets.
+- [`OrmAnalyticsProvider`](/docs/reference-providers-ormanalyticsprovider) - One relational table per retention tier of a dataset: the finest buckets as
 - [`WaeAnalyticsProvider`](/docs/reference-providers-waeanalyticsprovider) - Hot rows on Workers Analytics Engine, rolled rows in a durable store.
 
 ### Environment Variables

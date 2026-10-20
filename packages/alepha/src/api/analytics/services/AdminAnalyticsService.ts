@@ -1,6 +1,10 @@
 import { $inject, Alepha, z } from "alepha";
 import { BadRequestError, NotFoundError } from "alepha/server";
 
+import { AnalyticsBuckets } from "../planner/AnalyticsBuckets.ts";
+import { AnalyticsFolds } from "../planner/AnalyticsFolds.ts";
+import { AnalyticsTiers } from "../planner/AnalyticsTiers.ts";
+import { AnalyticsWindow } from "../planner/AnalyticsWindow.ts";
 import {
   $analytics,
   type AnalyticsPrimitive,
@@ -69,7 +73,14 @@ export class AdminAnalyticsService {
             pinned,
           ),
           measures: z.toJSONSchema(dataset.measures) as Record<string, any>,
-          retention: dataset.retention,
+          folds: Object.fromEntries(
+            Object.keys(dataset.measures.shape).map((measure) => [
+              measure,
+              AnalyticsFolds.of(dataset, measure),
+            ]),
+          ),
+          resolution: AnalyticsBuckets.resolutionOf(dataset),
+          retention: AnalyticsTiers.of(dataset),
         };
       });
   }
@@ -90,6 +101,13 @@ export class AdminAnalyticsService {
       throw new NotFoundError(`Unknown analytics dataset '${name}'.`);
     }
     this.assertKeysDeclared(primitive, query, pinned);
+    try {
+      AnalyticsWindow.assertValid(query);
+    } catch (error) {
+      throw new BadRequestError(
+        error instanceof Error ? error.message : String(error),
+      );
+    }
     if (pinned.length === 0) {
       return primitive.query(query);
     }
@@ -175,7 +193,12 @@ export class AdminAnalyticsService {
       }
     }
     for (const key of query.groupBy ?? []) {
-      if (!dimensions.has(key) && key !== "hour" && key !== "day") {
+      if (
+        !dimensions.has(key) &&
+        key !== "minute" &&
+        key !== "hour" &&
+        key !== "day"
+      ) {
         throw new BadRequestError(
           pinned.includes(key)
             ? reason(key)
@@ -183,11 +206,19 @@ export class AdminAnalyticsService {
         );
       }
     }
-    for (const key of Object.keys(query.select)) {
+    for (const [key, value] of Object.entries(query.select)) {
       if (!measures.includes(key)) {
         throw new BadRequestError(
           `'${key}' is not a measure of '${primitive.dataset.name}'.`,
         );
+      }
+      const declared = AnalyticsFolds.of(primitive.dataset, key);
+      for (const fold of Array.isArray(value) ? value : [value]) {
+        if (!declared.includes(fold)) {
+          throw new BadRequestError(
+            `'${key}' of '${primitive.dataset.name}' does not fold '${fold}'.`,
+          );
+        }
       }
     }
   }

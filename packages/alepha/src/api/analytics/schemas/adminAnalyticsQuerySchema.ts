@@ -1,6 +1,9 @@
 import type { Infer } from "alepha";
 import { z } from "alepha";
 
+import { AnalyticsWindow } from "../planner/AnalyticsWindow.ts";
+import { analyticsFoldSchema } from "./analyticsFoldSchema.ts";
+
 /**
  * The wire form of `AnalyticsQuery`. Key membership — which dimensions and
  * measures actually exist on the target dataset — is validated by
@@ -9,9 +12,13 @@ import { z } from "alepha";
  */
 export const adminAnalyticsQuerySchema = z.object({
   /**
-   * First UTC day included, `YYYY-MM-DD`.
+   * First UTC day included, `YYYY-MM-DD`. Exactly one of `since` and `from`
+   * is sent; `AdminAnalyticsService` refuses both or neither.
    */
-  since: z.text().regex(/^\d{4}-\d{2}-\d{2}$/),
+  since: z
+    .text()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
   /**
    * Last UTC day included, `YYYY-MM-DD`. Omitted means "up to the newest
    * bucket there is".
@@ -26,6 +33,16 @@ export const adminAnalyticsQuerySchema = z.object({
     .text()
     .regex(/^\d{4}-\d{2}-\d{2}$/)
     .optional(),
+  /**
+   * First instant included, ISO 8601 with an offset
+   * (`2026-10-18T08:00:00+04:00`). The explorer sends the browser's own
+   * offset; the server never guesses one.
+   */
+  from: z.text().regex(AnalyticsWindow.INSTANT).optional(),
+  /**
+   * First instant excluded, same form as `from`.
+   */
+  to: z.text().regex(AnalyticsWindow.INSTANT).optional(),
   where: z
     .record(
       z.text(),
@@ -37,7 +54,10 @@ export const adminAnalyticsQuerySchema = z.object({
     )
     .optional(),
   groupBy: z.array(z.text()).optional(),
-  select: z.record(z.text(), z.literal("sum")),
+  select: z.record(
+    z.text(),
+    z.union([analyticsFoldSchema, z.array(analyticsFoldSchema).min(1)]),
+  ),
   orderBy: z
     .object({ key: z.text(), direction: z.enum(["asc", "desc"]) })
     .optional(),

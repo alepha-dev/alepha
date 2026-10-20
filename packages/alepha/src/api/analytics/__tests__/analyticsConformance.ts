@@ -1,7 +1,22 @@
 import { z } from "alepha";
 import { describe, expect, it } from "vitest";
 
+import {
+  type AnalyticsReading,
+  AnalyticsRowFolder,
+} from "../planner/AnalyticsRowFolder.ts";
 import type { AnalyticsProvider } from "../providers/AnalyticsProvider.ts";
+import type { AnalyticsDataset } from "../schemas/analyticsDatasetSchema.ts";
+import type { AnalyticsQuery } from "../schemas/analyticsQuerySchema.ts";
+
+export interface AnalyticsConformanceOptions {
+  /**
+   * The provider only supports the original feature set (hour buckets, sum,
+   * two tiers): Analytics Engine. The suite then registers and exercises only
+   * the datasets that set allows.
+   */
+  legacyOnly?: boolean;
+}
 
 /**
  * Behaviour every {@link AnalyticsProvider} must exhibit.
@@ -22,9 +37,10 @@ import type { AnalyticsProvider } from "../providers/AnalyticsProvider.ts";
  */
 export const analyticsConformance = (
   name: string,
-  factory: () => Promise<AnalyticsProvider>,
+  factory: (datasets: AnalyticsDataset[]) => Promise<AnalyticsProvider>,
+  options: AnalyticsConformanceOptions = {},
 ) => {
-  const dataset = {
+  const dataset: AnalyticsDataset = {
     name: "conformance_views",
     index: "appId",
     dimensions: z.object({
@@ -34,14 +50,74 @@ export const analyticsConformance = (
     }),
     measures: z.object({ samples: z.number() }),
     slots: {
-      dimensions: ["appId", "path", "country", "bucket"],
+      dimensions: ["appId", "path", "bucket"],
       measures: ["samples"],
     },
   };
 
+  // A gauge dataset. `cashLevel` is camelCase so its derived columns
+  // (`cash_level_min`, ...) exercise name resolution, as `appId` does above.
+  const gauges: AnalyticsDataset = {
+    name: "conformance_gauges",
+    index: "deviceId",
+    dimensions: z.object({ deviceId: z.string() }),
+    measures: z.object({ cashLevel: z.number(), validations: z.number() }),
+    folds: { cashLevel: ["sum", "min", "max", "last"] },
+    slots: { dimensions: ["deviceId"], measures: ["cashLevel", "validations"] },
+  };
+
+  // A five-minute dataset, with a gauge so the fold into days is checked for
+  // more than a sum.
+  const minutes: AnalyticsDataset = {
+    name: "conformance_minutes",
+    index: "deviceId",
+    resolution: "5m",
+    dimensions: z.object({ deviceId: z.string() }),
+    measures: z.object({ validations: z.number(), level: z.number() }),
+    folds: { level: ["max"] },
+    slots: { dimensions: ["deviceId"], measures: ["validations", "level"] },
+  };
+
+  // A three-tier chain: minutes, then hours, then days.
+  const chain: AnalyticsDataset = {
+    name: "conformance_chain",
+    index: "deviceId",
+    resolution: "1m",
+    dimensions: z.object({ deviceId: z.string() }),
+    measures: z.object({ validations: z.number(), cashLevel: z.number() }),
+    folds: { cashLevel: ["min", "max", "last"] },
+    slots: { dimensions: ["deviceId"], measures: ["validations", "cashLevel"] },
+    retention: [
+      { resolution: "1m", keep: "2h" },
+      { resolution: "1h", keep: "2d" },
+      { resolution: "1d", keep: "400d" },
+    ],
+  };
+
+  // Minutes into quarter hours: the tier key is a floored minute, not a
+  // prefix.
+  const quarters: AnalyticsDataset = {
+    name: "conformance_quarters",
+    index: "deviceId",
+    resolution: "1m",
+    dimensions: z.object({ deviceId: z.string() }),
+    measures: z.object({ validations: z.number() }),
+    slots: { dimensions: ["deviceId"], measures: ["validations"] },
+    retention: [
+      { resolution: "1m", keep: "30m" },
+      { resolution: "15m", keep: "1d" },
+      { resolution: "1d" },
+    ],
+  };
+
+  const datasets = options.legacyOnly
+    ? [dataset]
+    : [dataset, gauges, minutes, chain, quarters];
+  const boot = () => factory(datasets);
+
   describe(`AnalyticsProvider conformance: ${name}`, () => {
     it("returns no rows for an empty inArray rather than every row", async () => {
-      const provider = await factory();
+      const provider = await boot();
       await provider.record(dataset, [
         {
           hour: "2026-08-09T10",
@@ -62,7 +138,7 @@ export const analyticsConformance = (
     });
 
     it("filters to the named index values", async () => {
-      const provider = await factory();
+      const provider = await boot();
       await provider.record(dataset, [
         {
           hour: "2026-08-09T10",
@@ -91,7 +167,7 @@ export const analyticsConformance = (
     });
 
     it("orders a leaderboard descending and honours the limit", async () => {
-      const provider = await factory();
+      const provider = await boot();
       await provider.record(dataset, [
         {
           hour: "2026-08-09T10",
@@ -128,7 +204,7 @@ export const analyticsConformance = (
     });
 
     it("groups by day", async () => {
-      const provider = await factory();
+      const provider = await boot();
       await provider.record(dataset, [
         {
           hour: "2026-08-09T10",
@@ -160,7 +236,7 @@ export const analyticsConformance = (
     });
 
     it("bounds the window at `until`, inclusive of every hour of that day", async () => {
-      const provider = await factory();
+      const provider = await boot();
       await provider.record(dataset, [
         {
           hour: "2026-08-09T10",
@@ -203,7 +279,7 @@ export const analyticsConformance = (
     });
 
     it("returns nothing when `until` precedes `since`", async () => {
-      const provider = await factory();
+      const provider = await boot();
       await provider.record(dataset, [
         {
           hour: "2026-08-09T10",
@@ -224,7 +300,7 @@ export const analyticsConformance = (
     });
 
     it("keeps a histogram queryable after a rollup, since percentiles need it", async () => {
-      const provider = await factory();
+      const provider = await boot();
       await provider.record(dataset, [
         {
           hour: "2026-08-01T10",
@@ -242,7 +318,7 @@ export const analyticsConformance = (
         },
       ]);
 
-      await provider.rollup(dataset, "2026-08-02");
+      await provider.rollup(dataset, 0, "2026-08-02");
 
       const result = await provider.query(dataset, {
         since: "2026-08-01",
@@ -255,7 +331,7 @@ export const analyticsConformance = (
     });
 
     it("is idempotent across repeated rollups", async () => {
-      const provider = await factory();
+      const provider = await boot();
       await provider.record(dataset, [
         {
           hour: "2026-08-01T10",
@@ -266,13 +342,13 @@ export const analyticsConformance = (
         },
       ]);
 
-      await provider.rollup(dataset, "2026-08-02");
+      await provider.rollup(dataset, 0, "2026-08-02");
       const once = await provider.query(dataset, {
         since: "2026-08-01",
         select: { samples: "sum" },
       });
 
-      await provider.rollup(dataset, "2026-08-02");
+      await provider.rollup(dataset, 0, "2026-08-02");
       const twice = await provider.query(dataset, {
         since: "2026-08-01",
         select: { samples: "sum" },
@@ -282,7 +358,7 @@ export const analyticsConformance = (
     });
 
     it("sums across the rollup boundary", async () => {
-      const provider = await factory();
+      const provider = await boot();
       await provider.record(dataset, [
         {
           hour: "2026-08-01T10",
@@ -300,7 +376,7 @@ export const analyticsConformance = (
         },
       ]);
 
-      await provider.rollup(dataset, "2026-08-02");
+      await provider.rollup(dataset, 0, "2026-08-02");
 
       const result = await provider.query(dataset, {
         since: "2026-08-01",
@@ -322,7 +398,7 @@ export const analyticsConformance = (
       // mergeable across a rollup boundary and sample-correctable, so a
       // count modelled this way is exactly the same number before and after
       // folding, on every backend.
-      const provider = await factory();
+      const provider = await boot();
       await provider.record(dataset, [
         {
           hour: "2026-08-01T10",
@@ -340,7 +416,7 @@ export const analyticsConformance = (
         },
       ]);
 
-      await provider.rollup(dataset, "2026-08-02");
+      await provider.rollup(dataset, 0, "2026-08-02");
 
       const result = await provider.query(dataset, {
         since: "2026-08-01",
@@ -353,7 +429,7 @@ export const analyticsConformance = (
     });
 
     it("prunes rolled rows older than the cold boundary", async () => {
-      const provider = await factory();
+      const provider = await boot();
       await provider.record(dataset, [
         {
           hour: "2026-08-01T10",
@@ -375,7 +451,7 @@ export const analyticsConformance = (
       // always older than the hot one, so in production every row it deletes
       // has already been folded. A prune test on un-rolled rows would pass
       // against an implementation that never looks at the rolled tier at all.
-      await provider.rollup(dataset, "2026-08-05");
+      await provider.rollup(dataset, 0, "2026-08-05");
       await provider.prune(dataset, "2026-08-05");
 
       const result = await provider.query(dataset, {
@@ -387,8 +463,85 @@ export const analyticsConformance = (
       expect(result.rows.map((row) => row.day)).toEqual(["2026-08-09"]);
     });
 
+    it("reports the oldest bucket of each tier, and nothing for an empty one", async () => {
+      const provider = await boot();
+      expect(await provider.oldestBucket(dataset, 0)).toBeUndefined();
+      expect(await provider.oldestBucket(dataset, 1)).toBeUndefined();
+
+      await provider.record(dataset, [
+        {
+          hour: "2026-08-01T10",
+          appId: "a",
+          path: "/x",
+          bucket: 0,
+          samples: 1,
+        },
+        {
+          hour: "2026-08-03T05",
+          appId: "a",
+          path: "/x",
+          bucket: 0,
+          samples: 1,
+        },
+        {
+          hour: "2026-08-09T23",
+          appId: "a",
+          path: "/x",
+          bucket: 0,
+          samples: 1,
+        },
+      ]);
+      expect(await provider.oldestBucket(dataset, 0)).toBe("2026-08-01T10");
+
+      await provider.rollup(dataset, 0, "2026-08-05");
+      expect(await provider.oldestBucket(dataset, 0)).toBe("2026-08-09T23");
+      expect(await provider.oldestBucket(dataset, 1)).toBe("2026-08-01");
+    });
+
+    it("bounds the window on day edges without dropping the first or last hour", async () => {
+      const provider = await boot();
+      await provider.record(dataset, [
+        {
+          hour: "2026-08-08T23",
+          appId: "a",
+          path: "/x",
+          bucket: 0,
+          samples: 1,
+        },
+        {
+          hour: "2026-08-09T00",
+          appId: "a",
+          path: "/x",
+          bucket: 0,
+          samples: 2,
+        },
+        {
+          hour: "2026-08-09T23",
+          appId: "a",
+          path: "/x",
+          bucket: 0,
+          samples: 4,
+        },
+        {
+          hour: "2026-08-10T00",
+          appId: "a",
+          path: "/x",
+          bucket: 0,
+          samples: 8,
+        },
+      ]);
+
+      const result = await provider.query(dataset, {
+        since: "2026-08-09",
+        until: "2026-08-09",
+        select: { samples: "sum" },
+      });
+
+      expect(Number(result.rows[0]?.samples)).toBe(6);
+    });
+
     it("keeps estimated and sampleInterval consistent with each other", async () => {
-      const provider = await factory();
+      const provider = await boot();
       await provider.record(dataset, [
         {
           hour: "2026-08-09T10",
@@ -412,6 +565,576 @@ export const analyticsConformance = (
       } else {
         expect(result.sampleInterval).toBeUndefined();
       }
+    });
+
+    describe.skipIf(options.legacyOnly)("gauge folds", () => {
+      const at = (iso: string) => Date.parse(`${iso}:00.000Z`);
+      const record = (provider: AnalyticsProvider, rows: AnalyticsReading[]) =>
+        provider.record(gauges, AnalyticsRowFolder.fold(gauges, rows));
+      const all: AnalyticsQuery["select"] = {
+        cashLevel: ["sum", "min", "max", "last"],
+        validations: "sum",
+      };
+
+      // Recorded out of order and over several calls, so the upsert merge
+      // and not only the pre-fold decides the result. The latest reading of
+      // the first day carries no cash level and must not become its `last`.
+      const seed = async (provider: AnalyticsProvider) => {
+        await record(provider, [
+          {
+            hour: "2026-08-01T11",
+            at: at("2026-08-01T11:10"),
+            deviceId: "d1",
+            cashLevel: 70,
+            validations: 1,
+          },
+        ]);
+        await record(provider, [
+          {
+            hour: "2026-08-01T11",
+            at: at("2026-08-01T11:40"),
+            deviceId: "d1",
+            validations: 1,
+          },
+        ]);
+        await record(provider, [
+          {
+            hour: "2026-08-01T10",
+            at: at("2026-08-01T10:50"),
+            deviceId: "d1",
+            cashLevel: 30,
+            validations: 1,
+          },
+        ]);
+        await record(provider, [
+          {
+            hour: "2026-08-01T10",
+            at: at("2026-08-01T10:05"),
+            deviceId: "d1",
+            cashLevel: 50,
+            validations: 1,
+          },
+          {
+            hour: "2026-08-09T10",
+            at: at("2026-08-09T10:00"),
+            deviceId: "d1",
+            cashLevel: 10,
+            validations: 1,
+          },
+        ]);
+      };
+
+      it("keeps totals, extremes and last unchanged across a rollup, with out-of-order and missing readings", async () => {
+        const provider = await boot();
+        await seed(provider);
+
+        const read = () =>
+          provider.query(gauges, {
+            since: "2026-08-01",
+            groupBy: ["day"],
+            select: all,
+            orderBy: { key: "day", direction: "asc" },
+          });
+        const total = () =>
+          provider.query(gauges, { since: "2026-08-01", select: all });
+
+        const expectedDays = [
+          {
+            day: "2026-08-01",
+            cashLevel_sum: 150,
+            cashLevel_min: 30,
+            cashLevel_max: 70,
+            cashLevel_last: 70,
+            validations: 4,
+          },
+          {
+            day: "2026-08-09",
+            cashLevel_sum: 10,
+            cashLevel_min: 10,
+            cashLevel_max: 10,
+            cashLevel_last: 10,
+            validations: 1,
+          },
+        ];
+        const expectedTotal = [
+          {
+            cashLevel_sum: 160,
+            cashLevel_min: 10,
+            cashLevel_max: 70,
+            cashLevel_last: 10,
+            validations: 5,
+          },
+        ];
+
+        expect((await read()).rows).toEqual(expectedDays);
+        expect((await total()).rows).toEqual(expectedTotal);
+
+        await provider.rollup(gauges, 0, "2026-08-05");
+        expect(await provider.oldestBucket(gauges, 1)).toBe("2026-08-01");
+        expect((await read()).rows).toEqual(expectedDays);
+        expect((await total()).rows).toEqual(expectedTotal);
+
+        await provider.rollup(gauges, 0, "2026-08-05");
+        expect((await total()).rows).toEqual(expectedTotal);
+      });
+
+      it("keeps the larger value when two readings share an instant, before and after a rollup", async () => {
+        const provider = await boot();
+        const instant = at("2026-08-01T10:30");
+        await record(provider, [
+          {
+            hour: "2026-08-01T10",
+            at: instant,
+            deviceId: "d1",
+            cashLevel: 9,
+            validations: 1,
+          },
+        ]);
+        await record(provider, [
+          {
+            hour: "2026-08-01T10",
+            at: instant,
+            deviceId: "d1",
+            cashLevel: 5,
+            validations: 1,
+          },
+          {
+            hour: "2026-08-01T11",
+            at: instant,
+            deviceId: "d1",
+            cashLevel: 7,
+            validations: 1,
+          },
+        ]);
+
+        const last = async () =>
+          (
+            await provider.query(gauges, {
+              since: "2026-08-01",
+              select: { cashLevel: "last" },
+            })
+          ).rows;
+
+        expect(await last()).toEqual([{ cashLevel: 9 }]);
+        await provider.rollup(gauges, 0, "2026-08-02");
+        expect(await last()).toEqual([{ cashLevel: 9 }]);
+      });
+
+      it("returns null for a gauge over buckets that hold no reading, and sorts it last", async () => {
+        const provider = await boot();
+        await record(provider, [
+          {
+            hour: "2026-08-01T10",
+            at: at("2026-08-01T10:00"),
+            deviceId: "d1",
+            cashLevel: 3,
+            validations: 1,
+          },
+          {
+            hour: "2026-08-01T10",
+            at: at("2026-08-01T10:00"),
+            deviceId: "d2",
+            validations: 2,
+          },
+        ]);
+
+        for (const direction of ["asc", "desc"] as const) {
+          const result = await provider.query(gauges, {
+            since: "2026-08-01",
+            groupBy: ["deviceId"],
+            select: { cashLevel: ["min", "last"], validations: "sum" },
+            orderBy: { key: "cashLevel_min", direction },
+          });
+          expect(result.rows).toEqual([
+            {
+              deviceId: "d1",
+              cashLevel_min: 3,
+              cashLevel_last: 3,
+              validations: 1,
+            },
+            {
+              deviceId: "d2",
+              cashLevel_min: null,
+              cashLevel_last: null,
+              validations: 2,
+            },
+          ]);
+        }
+      });
+
+      it("refuses a fold the measure does not declare", async () => {
+        const provider = await boot();
+        await expect(
+          provider.query(gauges, {
+            since: "2026-08-01",
+            select: { validations: "max" },
+          }),
+        ).rejects.toThrow("declares 'sum' only");
+      });
+    });
+
+    describe.skipIf(options.legacyOnly)("sub-hour resolution", () => {
+      const seed = (provider: AnalyticsProvider) =>
+        provider.record(
+          minutes,
+          AnalyticsRowFolder.fold(
+            minutes,
+            [
+              ["2026-08-01T10:00", 1, 4],
+              ["2026-08-01T10:05", 2, 9],
+              ["2026-08-01T10:55", 4, 1],
+              ["2026-08-01T11:00", 8, 2],
+              ["2026-08-02T00:15", 16, 3],
+            ].map(([hour, validations, level]) => ({
+              hour: hour as string,
+              deviceId: "d1",
+              validations,
+              level,
+            })),
+          ),
+        );
+      const read = (provider: AnalyticsProvider, by: string) =>
+        provider.query(minutes, {
+          since: "2026-08-01",
+          groupBy: [by],
+          select: { validations: "sum", level: "max" },
+          orderBy: { key: by, direction: "asc" },
+        });
+
+      it("reads a sub-hour dataset by minute, hour and day", async () => {
+        const provider = await boot();
+        await seed(provider);
+
+        expect((await read(provider, "minute")).rows).toEqual([
+          { minute: "2026-08-01T10:00", validations: 1, level: 4 },
+          { minute: "2026-08-01T10:05", validations: 2, level: 9 },
+          { minute: "2026-08-01T10:55", validations: 4, level: 1 },
+          { minute: "2026-08-01T11:00", validations: 8, level: 2 },
+          { minute: "2026-08-02T00:15", validations: 16, level: 3 },
+        ]);
+        expect((await read(provider, "hour")).rows).toEqual([
+          { hour: "2026-08-01T10", validations: 7, level: 9 },
+          { hour: "2026-08-01T11", validations: 8, level: 2 },
+          { hour: "2026-08-02T00", validations: 16, level: 3 },
+        ]);
+        expect((await read(provider, "day")).rows).toEqual([
+          { day: "2026-08-01", validations: 15, level: 9 },
+          { day: "2026-08-02", validations: 16, level: 3 },
+        ]);
+      });
+
+      it("bounds a sub-hour dataset on whole days", async () => {
+        const provider = await boot();
+        await seed(provider);
+
+        const first = await provider.query(minutes, {
+          since: "2026-08-01",
+          until: "2026-08-01",
+          select: { validations: "sum" },
+        });
+        const second = await provider.query(minutes, {
+          since: "2026-08-02",
+          select: { validations: "sum" },
+        });
+
+        expect(first.rows).toEqual([{ validations: 15 }]);
+        expect(second.rows).toEqual([{ validations: 16 }]);
+      });
+
+      it("folds sub-hour buckets straight into days, totals unchanged", async () => {
+        const provider = await boot();
+        await seed(provider);
+        await provider.rollup(minutes, 0, "2026-08-02");
+
+        expect(await provider.oldestBucket(minutes, 0)).toBe(
+          "2026-08-02T00:15",
+        );
+        // A rolled row keeps its coarser key under `minute`.
+        expect((await read(provider, "minute")).rows).toEqual([
+          { minute: "2026-08-01", validations: 15, level: 9 },
+          { minute: "2026-08-02T00:15", validations: 16, level: 3 },
+        ]);
+        expect((await read(provider, "day")).rows).toEqual([
+          { day: "2026-08-01", validations: 15, level: 9 },
+          { day: "2026-08-02", validations: 16, level: 3 },
+        ]);
+      });
+    });
+
+    describe.skipIf(options.legacyOnly)("tier chain", () => {
+      const at = (iso: string) => Date.parse(`${iso}:00.000Z`);
+      const reading = (minute: string, validations: number, cash: number) => ({
+        hour: minute,
+        at: at(minute),
+        deviceId: "d1",
+        validations,
+        cashLevel: cash,
+      });
+      const select: AnalyticsQuery["select"] = {
+        validations: "sum",
+        cashLevel: ["min", "max", "last"],
+      };
+      const total = async (provider: AnalyticsProvider) =>
+        (await provider.query(chain, { since: "2026-08-01", select })).rows;
+      const byMinute = async (provider: AnalyticsProvider) =>
+        (
+          await provider.query(chain, {
+            since: "2026-08-01",
+            groupBy: ["minute"],
+            select: { validations: "sum" },
+            orderBy: { key: "minute", direction: "asc" },
+          })
+        ).rows.map((row) => [row.minute, row.validations]);
+
+      it("folds every tier into the next, idempotently, with every fold unchanged", async () => {
+        const provider = await boot();
+        await provider.record(
+          chain,
+          AnalyticsRowFolder.fold(chain, [
+            reading("2026-08-01T10:01", 1, 40),
+            reading("2026-08-01T10:59", 2, 10),
+            reading("2026-08-01T23:30", 4, 70),
+            reading("2026-08-02T00:10", 8, 20),
+            reading("2026-08-02T05:05", 16, 30),
+          ]),
+        );
+        const expected = [
+          {
+            validations: 31,
+            cashLevel_min: 10,
+            cashLevel_max: 70,
+            cashLevel_last: 30,
+          },
+        ];
+        expect(await total(provider)).toEqual(expected);
+
+        // Minutes before 2026-08-02T05 fold into hours.
+        await provider.rollup(chain, 0, "2026-08-02T05");
+        await provider.rollup(chain, 0, "2026-08-02T05");
+        expect(await byMinute(provider)).toEqual([
+          ["2026-08-01T10", 3],
+          ["2026-08-01T23", 4],
+          ["2026-08-02T00", 8],
+          ["2026-08-02T05:05", 16],
+        ]);
+        expect(await total(provider)).toEqual(expected);
+        expect(await provider.oldestBucket(chain, 0)).toBe("2026-08-02T05:05");
+        expect(await provider.oldestBucket(chain, 1)).toBe("2026-08-01T10");
+
+        // Hours before 2026-08-02 fold into days.
+        await provider.rollup(chain, 1, "2026-08-02");
+        await provider.rollup(chain, 1, "2026-08-02");
+        expect(await byMinute(provider)).toEqual([
+          ["2026-08-01", 7],
+          ["2026-08-02T00", 8],
+          ["2026-08-02T05:05", 16],
+        ]);
+        expect(await total(provider)).toEqual(expected);
+        expect(await provider.oldestBucket(chain, 1)).toBe("2026-08-02T00");
+        expect(await provider.oldestBucket(chain, 2)).toBe("2026-08-01");
+
+        // A late reading of an already-folded hour lands in the minute tier
+        // and folds onto the hour row on the next pass.
+        await provider.record(
+          chain,
+          AnalyticsRowFolder.fold(chain, [reading("2026-08-02T00:40", 32, 5)]),
+        );
+        await provider.rollup(chain, 0, "2026-08-02T05");
+        expect(await byMinute(provider)).toEqual([
+          ["2026-08-01", 7],
+          ["2026-08-02T00", 40],
+          ["2026-08-02T05:05", 16],
+        ]);
+      });
+
+      it("folds minutes into quarter hours on the floored minute", async () => {
+        const provider = await boot();
+        const minutesOf = [
+          "08:00",
+          "08:14",
+          "08:15",
+          "08:29",
+          "08:30",
+          "08:44",
+          "08:45",
+          "08:59",
+          "09:07",
+        ];
+        await provider.record(
+          quarters,
+          AnalyticsRowFolder.fold(
+            quarters,
+            minutesOf.map((minute, index) => ({
+              hour: `2026-08-01T${minute}`,
+              deviceId: "d1",
+              validations: 2 ** index,
+            })),
+          ),
+        );
+        await provider.rollup(quarters, 0, "2026-08-01T09:00");
+
+        const rows = await provider.query(quarters, {
+          since: "2026-08-01",
+          groupBy: ["minute"],
+          select: { validations: "sum" },
+          orderBy: { key: "minute", direction: "asc" },
+        });
+        expect(rows.rows.map((row) => [row.minute, row.validations])).toEqual([
+          ["2026-08-01T08:00", 3],
+          ["2026-08-01T08:15", 12],
+          ["2026-08-01T08:30", 48],
+          ["2026-08-01T08:45", 192],
+          ["2026-08-01T09:07", 256],
+        ]);
+      });
+
+      it("prunes every tier below the boundary", async () => {
+        const provider = await boot();
+        await provider.record(
+          chain,
+          AnalyticsRowFolder.fold(chain, [
+            reading("2026-08-01T10:01", 1, 1),
+            reading("2026-08-03T10:01", 2, 1),
+          ]),
+        );
+        await provider.rollup(chain, 0, "2026-08-02T00");
+        await provider.rollup(chain, 1, "2026-08-02");
+        await provider.prune(chain, "2026-08-02");
+
+        expect(await byMinute(provider)).toEqual([["2026-08-03T10:01", 2]]);
+      });
+    });
+
+    describe.skipIf(options.legacyOnly)("instant windows", () => {
+      const seed = async (provider: AnalyticsProvider) =>
+        provider.record(
+          chain,
+          AnalyticsRowFolder.fold(
+            chain,
+            [
+              ["2026-08-01T07:30", 1],
+              ["2026-08-01T08:10", 2],
+              ["2026-08-01T08:50", 4],
+              ["2026-08-01T10:20", 8],
+              ["2026-08-01T21:00", 16],
+              ["2026-08-02T03:00", 32],
+            ].map(([minute, validations]) => ({
+              hour: minute as string,
+              at: Date.parse(`${minute}:00.000Z`),
+              deviceId: "d1",
+              validations,
+              cashLevel: 1,
+            })),
+          ),
+        );
+      const sum = async (
+        provider: AnalyticsProvider,
+        from: string,
+        to?: string,
+      ) => {
+        const result = await provider.query(chain, {
+          from,
+          to,
+          select: { validations: "sum" },
+        });
+        return {
+          validations: result.rows[0]?.validations ?? 0,
+          coarsened: result.coarsened,
+        };
+      };
+
+      it("reads a window spanning tiers, whole buckets flagged coarsened", async () => {
+        const provider = await boot();
+        await seed(provider);
+        // Hours before 10:00 now live in the hour tier.
+        await provider.rollup(chain, 0, "2026-08-01T10");
+
+        expect(
+          await sum(provider, "2026-08-01T08:00:00Z", "2026-08-01T10:30:00Z"),
+        ).toEqual({ validations: 14, coarsened: false });
+        // 08:30 falls inside the 08 hour bucket, which is read whole.
+        expect(
+          await sum(provider, "2026-08-01T08:30:00Z", "2026-08-01T10:30:00Z"),
+        ).toEqual({ validations: 14, coarsened: true });
+        // On the minute tier the same bound is exact.
+        expect(
+          await sum(provider, "2026-08-01T10:21:00Z", "2026-08-01T22:00:00Z"),
+        ).toEqual({ validations: 16, coarsened: false });
+      });
+
+      it("never counts a bucket twice across consecutive windows", async () => {
+        const provider = await boot();
+        await seed(provider);
+        await provider.rollup(chain, 0, "2026-08-01T10");
+
+        const first = await sum(
+          provider,
+          "2026-08-01T07:00:00Z",
+          "2026-08-01T09:00:00Z",
+        );
+        const second = await sum(
+          provider,
+          "2026-08-01T09:00:00Z",
+          "2026-08-01T22:00:00Z",
+        );
+        const whole = await sum(
+          provider,
+          "2026-08-01T07:00:00Z",
+          "2026-08-01T22:00:00Z",
+        );
+
+        expect(first.validations).toBe(7);
+        expect(second.validations).toBe(24);
+        expect(whole.validations).toBe(31);
+        // Open-ended: up to the newest bucket.
+        expect((await sum(provider, "2026-08-01T22:00:00Z")).validations).toBe(
+          32,
+        );
+      });
+
+      it("serves a local day exactly from hours, and whole UTC days once folded", async () => {
+        const provider = await boot();
+        await seed(provider);
+        const from = "2026-08-01T00:00:00+04:00";
+        const to = "2026-08-02T00:00:00+04:00";
+
+        await provider.rollup(chain, 0, "2026-08-03T00");
+        expect(await sum(provider, from, to)).toEqual({
+          validations: 15,
+          coarsened: false,
+        });
+
+        await provider.rollup(chain, 1, "2026-08-03");
+        expect(await sum(provider, from, to)).toEqual({
+          validations: 31,
+          coarsened: true,
+        });
+      });
+
+      it("refuses both forms, neither, a crossed pair, or an instant without an offset", async () => {
+        const provider = await boot();
+        const select = { validations: "sum" } as const;
+        await expect(
+          provider.query(chain, {
+            since: "2026-08-01",
+            from: "2026-08-01T00:00:00Z",
+            select,
+          }),
+        ).rejects.toThrow("exactly one of");
+        await expect(provider.query(chain, { select })).rejects.toThrow(
+          "exactly one of",
+        );
+        await expect(
+          provider.query(chain, {
+            from: "2026-08-01T00:00:00Z",
+            until: "2026-08-02",
+            select,
+          }),
+        ).rejects.toThrow("'until' pairs with 'since'");
+        await expect(
+          provider.query(chain, { from: "2026-08-01T00:00:00", select }),
+        ).rejects.toThrow("with an offset");
+      });
     });
   });
 };
