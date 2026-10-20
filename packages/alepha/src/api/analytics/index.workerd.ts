@@ -14,6 +14,7 @@ import { AnalyticsRetentionGuard } from "./services/AnalyticsRetentionGuard.ts";
 export * from "./controllers/AdminAnalyticsController.ts";
 export * from "./jobs/AnalyticsRollupJobs.ts";
 export * from "./planner/AnalyticsBuckets.ts";
+export * from "./planner/AnalyticsRowFolder.ts";
 export * from "./planner/AnalyticsSlotMap.ts";
 export * from "./primitives/$analytics.ts";
 export * from "./providers/AnalyticsProvider.ts";

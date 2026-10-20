@@ -3,6 +3,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { KIND } from "alepha/internal";
 
 import { AnalyticsBuckets } from "../planner/AnalyticsBuckets.ts";
+import { AnalyticsRowFolder } from "../planner/AnalyticsRowFolder.ts";
 import { AnalyticsSlotMap } from "../planner/AnalyticsSlotMap.ts";
 import { AnalyticsProvider } from "../providers/AnalyticsProvider.ts";
 import type { AnalyticsDataset } from "../schemas/analyticsDatasetSchema.ts";
@@ -229,14 +230,24 @@ export class AnalyticsPrimitive extends Primitive<AnalyticsPrimitiveOptions> {
    * Engine stamps its own `timestamp` at write time and cannot backdate a
    * point, so a batched or retried envelope has to carry the bucket it
    * computed or it lands in the wrong hour for reasons unrelated to sampling.
+   *
+   * Rows sharing a bucket and every dimension are merged before they reach
+   * the provider, so a batch carrying two readings of one device in one
+   * bucket is one row, on every backend.
    */
   public async recordMany(
     rows: Array<Record<string, string | number> & { hour?: string }>,
   ): Promise<void> {
     const fallback = AnalyticsBuckets.hour(this.dateTime.nowMillis());
+    const dataset = this.dataset;
+    // Folded here rather than in a provider, so every provider receives
+    // distinct keys: see `AnalyticsRowFolder`.
     await this.provider.record(
-      this.dataset,
-      rows.map((row) => ({ ...row, hour: row.hour ?? fallback })),
+      dataset,
+      AnalyticsRowFolder.fold(
+        dataset,
+        rows.map((row) => ({ ...row, hour: row.hour ?? fallback })),
+      ),
     );
   }
 

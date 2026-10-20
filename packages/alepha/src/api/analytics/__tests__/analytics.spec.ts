@@ -1,5 +1,11 @@
 import { Alepha, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+import {
+  DatabaseProvider,
+  NodeSqliteProvider,
+  nodeSqliteOptions,
+} from "alepha/orm";
+import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, expect, it } from "vitest";
 
 // Imported through the module entry, not the primitive file directly:
@@ -13,6 +19,7 @@ import {
   type AnalyticsDataset,
   AnalyticsProvider,
   MemoryAnalyticsProvider,
+  OrmAnalyticsProvider,
 } from "../index.ts";
 
 class PageViews {
@@ -246,4 +253,69 @@ describe("$analytics", () => {
     // rather than merely the fact that registration happens at some point.
     expect(provider.registered).toEqual(["views"]);
   });
+});
+
+describe("$analytics.recordMany with rows sharing a bucket and dimensions", () => {
+  class Telemetry {
+    public readonly readings = $analytics({
+      index: "deviceId",
+      dimensions: z.object({ deviceId: z.string() }),
+      measures: z.object({ validations: z.number() }),
+      slots: { dimensions: ["deviceId"], measures: ["validations"] },
+    });
+  }
+
+  const backends: Array<[string, () => Alepha]> = [
+    ["memory", () => Alepha.create()],
+    [
+      "postgres",
+      () =>
+        Alepha.create()
+          .with(AlephaOrmPostgres)
+          .with({ provide: AnalyticsProvider, use: OrmAnalyticsProvider }),
+    ],
+    [
+      "sqlite",
+      () => {
+        const alepha = Alepha.create()
+          .with({ provide: DatabaseProvider, use: NodeSqliteProvider })
+          .with({ provide: AnalyticsProvider, use: OrmAnalyticsProvider });
+        alepha.store.mut(nodeSqliteOptions, (old) => ({
+          ...old,
+          path: "sqlite://:memory:",
+        }));
+        return alepha;
+      },
+    ],
+  ];
+
+  for (const [name, create] of backends) {
+    it(`sums them in one call on ${name}`, async () => {
+      const alepha = create();
+      const app = alepha.inject(Telemetry);
+      await alepha.start();
+
+      try {
+        await app.readings.recordMany([
+          { hour: "2026-08-09T10", deviceId: "d1", validations: 2 },
+          { hour: "2026-08-09T10", deviceId: "d1", validations: 3 },
+          { hour: "2026-08-09T10", deviceId: "d2", validations: 1 },
+        ]);
+
+        const result = await app.readings.query({
+          since: "2026-08-09",
+          groupBy: ["deviceId"],
+          select: { validations: "sum" },
+          orderBy: { key: "deviceId", direction: "asc" },
+        });
+
+        expect(result.rows).toEqual([
+          { deviceId: "d1", validations: 5 },
+          { deviceId: "d2", validations: 1 },
+        ]);
+      } finally {
+        await alepha.stop();
+      }
+    });
+  }
 });

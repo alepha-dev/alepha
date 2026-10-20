@@ -103,6 +103,10 @@ batched or retried: Analytics Engine stamps its own write-time timestamp and can
 point, so a retried envelope has to carry the bucket it originally computed, or it lands in the
 wrong hour for reasons that have nothing to do with sampling.
 
+Rows of one batch that share a bucket and every dimension are merged before they reach the
+backend, so two readings of the same device in the same bucket are one stored row, on every
+backend.
+
 ## Querying
 
 ```typescript
