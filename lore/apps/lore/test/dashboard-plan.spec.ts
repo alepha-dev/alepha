@@ -132,7 +132,7 @@ describe("dashboard plan tiles", () => {
 
     it("prefers the default release, with its segments", async ({ expect }) => {
       const other = await release({
-        targetDate: dateTime.now().add(2, "day").toISOString(),
+        targetDate: dateTime.now().add(48, "hour").toISOString(),
       });
       await quests(other.id, 0, 2);
       const chosen = await release({ defaultSince: dateTime.nowISOString() });
@@ -150,11 +150,11 @@ describe("dashboard plan tiles", () => {
       expect,
     }) => {
       const later = await release({
-        targetDate: dateTime.now().add(30, "day").toISOString(),
+        targetDate: dateTime.now().add(720, "hour").toISOString(),
       });
       await quests(later.id, 0, 1);
       const sooner = await release({
-        targetDate: dateTime.now().add(4, "day").toISOString(),
+        targetDate: dateTime.now().add(96, "hour").toISOString(),
       });
       await quests(sooner.id, 7, 6);
 
