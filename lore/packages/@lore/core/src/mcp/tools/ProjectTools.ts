@@ -3,7 +3,12 @@ import { organizationMembers, RankService } from "alepha/api/organizations";
 import { $tool } from "alepha/mcp";
 import { $repository } from "alepha/orm";
 import { currentUserAtom } from "alepha/security";
-import { BadRequestError, ForbiddenError, NotFoundError } from "alepha/server";
+import {
+  BadRequestError,
+  ForbiddenError,
+  NotFoundError,
+  UnauthorizedError,
+} from "alepha/server";
 
 import { ProjectController } from "../../api/controllers/ProjectController.ts";
 import type { AssignedWorkItem } from "../../api/schemas/assignedWorkItemSchema.ts";
@@ -92,7 +97,7 @@ export class ProjectTools {
       // A name has to be compared against the titles, so this path still
       // reads the list. It is the rarer of the two: an agent that has called
       // any tool once is holding ids.
-      const projects = await this.projectController.getMyProjects();
+      const projects = await this.myProjects();
       const needle = projectName.toLowerCase();
       const found = projects.find((p) => p.title.toLowerCase() === needle);
       if (found) {
@@ -137,6 +142,22 @@ export class ProjectTools {
   }
 
   /**
+   * Every project the caller belongs to, unpaged.
+   *
+   * ⚠️ Never `projectController.getMyProjects()` here: called with no query
+   * it answers the first page of `pageQuerySchema`, ten projects, and every
+   * project past the tenth vanished from `project_list` and from
+   * `project_name` lookups (#Q2689).
+   */
+  public async myProjects() {
+    const me = this.alepha.store.get(currentUserAtom);
+    if (!me) {
+      throw new UnauthorizedError();
+    }
+    return this.projectController.listProjectsOf(me.id);
+  }
+
+  /**
    * List all projects the user has access to.
    */
   project_list = $tool({
@@ -152,7 +173,7 @@ export class ProjectTools {
       result: projectListResultSchema,
     },
     handler: async () => {
-      const projects = await this.projectController.getMyProjects();
+      const projects = await this.myProjects();
       const me = this.alepha.store.get(currentUserAtom);
 
       // ⚠️ `isOwner` is gone, and it was wrong twice over. It was derived

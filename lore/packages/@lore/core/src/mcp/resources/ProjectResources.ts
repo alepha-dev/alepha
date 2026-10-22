@@ -1,7 +1,7 @@
 import { $inject } from "alepha";
 import { $resource } from "alepha/mcp";
 
-import { ProjectController } from "../../api/controllers/ProjectController.ts";
+import { ProjectTools } from "../tools/ProjectTools.ts";
 
 /**
  * MCP resources for project data.
@@ -13,7 +13,7 @@ import { ProjectController } from "../../api/controllers/ProjectController.ts";
  * then use project_info and quest_list tools for project-specific data.
  */
 export class ProjectResources {
-  protected readonly projectController = $inject(ProjectController);
+  protected readonly projectTools = $inject(ProjectTools);
 
   /**
    * List of all projects the user has access to.
@@ -25,7 +25,7 @@ export class ProjectResources {
       "List of all projects the user has access to. Use project_list tool for more details, or use project ID/title in other tools.",
     mimeType: "application/json",
     handler: async () => {
-      const projects = await this.projectController.getMyProjects();
+      const projects = await this.projectTools.myProjects();
 
       const data = {
         projects: projects.map((p) => ({

@@ -450,37 +450,54 @@ export class ProjectController {
       response: z.array(projectResourceSchema),
     },
     handler: async ({ user, query }) => {
-      // Membership is a many-to-many through `members`, so the two-step
-      // fetch-ids-then-fetch-rows collapses into the relation itself.
-      const me = await this.usersWith.findById(user.id, {
-        include: {
-          projects: {
-            orderBy: { column: "updatedAt", direction: "desc" },
-          },
-        },
-      });
-
-      const all = me?.projects ?? [];
-      const size = query.size ?? all.length;
+      const size = query.size ?? 10;
       const page = query.page ?? 0;
 
       // Paging in memory is the honest translation here: the previous query
       // paged a filter whose id list had already been read in full, so the
       // work was never bounded by page size to begin with. The per-user
       // ownership limit keeps the list small.
-      const paged = all.slice(page * size, page * size + size);
-      // One query for the page, never one per row: `inArray` over the ids the
-      // list already holds, the same shape `countByProjectIds` uses on the
-      // Home overview below.
-      const byProject = await this.projectSecurity.capabilityRowsForProjects(
-        paged.map((it) => it.id),
-      );
-
-      return paged.map((it) =>
-        this.projectMapper.toResource(it, byProject.get(it.id) ?? []),
+      return this.listProjectsOf(user.id, (all) =>
+        all.slice(page * size, page * size + size),
       );
     },
   });
+
+  /**
+   * Every project the user is a member of, newest activity first, unpaged.
+   *
+   * ⚠️ What a server-side caller wanting the WHOLE list uses, never
+   * `getMyProjects()`: that action takes `pageQuerySchema`, whose `size`
+   * defaults to 10, so a call with no query silently answers the first page.
+   * MCP's `project_list` and `project_name` lookup did exactly that until
+   * #Q2689, and lost every project past the tenth.
+   */
+  public async listProjectsOf(
+    userId: string,
+    select: (all: Project[]) => Project[] = (all) => all,
+  ) {
+    // Membership is a many-to-many through `members`, so the two-step
+    // fetch-ids-then-fetch-rows collapses into the relation itself.
+    const me = await this.usersWith.findById(userId, {
+      include: {
+        projects: {
+          orderBy: { column: "updatedAt", direction: "desc" },
+        },
+      },
+    });
+
+    const rows = select(me?.projects ?? []);
+    // One query for the rows, never one per row: `inArray` over the ids the
+    // list already holds, the same shape `countByProjectIds` uses on the
+    // Home overview below.
+    const byProject = await this.projectSecurity.capabilityRowsForProjects(
+      rows.map((it) => it.id),
+    );
+
+    return rows.map((it) =>
+      this.projectMapper.toResource(it, byProject.get(it.id) ?? []),
+    );
+  }
 
   /**
    * One-shot Home page bootstrap: every project the user is a member of

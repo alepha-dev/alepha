@@ -167,6 +167,19 @@ describe("Lore MCP - projects", () => {
       // an agent still reaches it, and can tell.
       expect(row?.archivedAt).toEqual(expect.any(String));
     });
+
+    it("lists every project, past the ten of one page", async ({ expect }) => {
+      const { projectTools, call, createProject } = await setup();
+      for (let i = 1; i <= 11; i++) {
+        await createProject(`Paged ${i}`);
+      }
+
+      const result = await call(projectTools.project_list, {});
+
+      // `getMyProjects` takes `pageQuerySchema`, whose `size` defaults to 10:
+      // called with no query, it silently answered the first page (#Q2689).
+      expect(result.projects).toHaveLength(12);
+    });
   });
 
   /**
@@ -176,6 +189,25 @@ describe("Lore MCP - projects", () => {
    * found" - which reads as "you are not a member".
    */
   describe("project_name", () => {
+    it("resolves every project, past the ten of one page", async ({
+      expect,
+    }) => {
+      const { project, createProject, resolveName } = await setup();
+      const created: { id: number }[] = [project];
+      for (let i = 1; i <= 11; i++) {
+        created.push(await createProject(`Paged ${i}`));
+      }
+
+      // Whichever two fall off the first page by `updatedAt`, a page-capped
+      // list leaves them unresolvable (#Q2689).
+      const resolved = await Promise.all(
+        ["test", ...created.slice(1).map((_, i) => `paged-${i + 1}`)].map(
+          (name) => resolveName(name),
+        ),
+      );
+      expect(resolved).toEqual(created.map((it) => it.id));
+    });
+
     it("resolves a project from its slug and from its title", async ({
       expect,
     }) => {
