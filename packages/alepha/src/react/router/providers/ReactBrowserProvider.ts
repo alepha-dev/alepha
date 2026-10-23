@@ -13,7 +13,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { BrowserHeadProvider } from "alepha/react/head";
 import { LinkProvider } from "alepha/server/links";
-import { createElement, Fragment } from "react";
+import { createElement } from "react";
 
 import { reactBootOptions } from "../atoms/reactBootOptions.ts";
 import BootMarker from "../components/BootMarker.tsx";
@@ -940,9 +940,11 @@ export class ReactBrowserProvider {
   }
 
   /**
-   * Put the boot marker beside the deepest layer of the first screen. Its
+   * Wrap the deepest layer of the first screen in the boot marker. Its
    * effect reports `healthy` once that layer is on the screen, or `failed`
-   * when the screen is an error layer.
+   * when the screen is an error layer. Wrapped, not paired with a sibling:
+   * the layer must keep the tree position the server rendered it at, or
+   * every `useId` under it misses hydration (see `BootMarker`).
    */
   protected markBootScreen() {
     const layers = this.state?.layers ?? [];
@@ -954,10 +956,9 @@ export class ReactBrowserProvider {
       (layer) => layer.error || layer.name === "error",
     );
     leaf.element = createElement(
-      Fragment,
-      null,
+      BootMarker,
+      { outcome: failed ? "failed" : "healthy" },
       leaf.element,
-      createElement(BootMarker, { outcome: failed ? "failed" : "healthy" }),
     );
   }
 

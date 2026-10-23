@@ -7,7 +7,7 @@ import {
   Calendar as CalendarIcon,
   ChevronDown as ChevronDownIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { type HTMLAttributes, useState } from "react";
 import type { DayPickerProps } from "react-day-picker";
 
 import { LazyCalendar, preloadCalendar } from "../calendar/LazyCalendar.tsx";
@@ -31,6 +31,8 @@ export interface ControlDatePopoverProps {
   captionLayout?: DayPickerProps["captionLayout"];
   startMonth?: Date;
   endMonth?: Date;
+  /** Forwarded to the trigger: an `aria-label`, a `data-testid`. */
+  triggerProps?: HTMLAttributes<HTMLElement>;
   onChange: (value: string | undefined) => void;
 }
 
@@ -100,6 +102,7 @@ export const ControlDatePopover = (props: ControlDatePopoverProps) => {
           its click anyway. */}
       <div className={TRIGGER_WRAPPER_CLASSES}>
         <PopoverTrigger
+          {...props.triggerProps}
           id={props.id}
           // A FIELD trigger, not a button, and the distinction is load
           // bearing: `styles.css` gives the `--border-hover` border to a

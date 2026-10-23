@@ -7,6 +7,10 @@ import type { ReactNode } from "react";
 import { cn } from "../core/utils.ts";
 
 export interface AppShellNavCollapseProps {
+  /**
+   * The id the group's toggle names in `aria-controls`.
+   */
+  id?: string;
   open: boolean;
   animate: boolean;
   children: ReactNode;
@@ -36,6 +40,7 @@ export interface AppShellNavCollapseProps {
  */
 export const AppShellNavCollapse = (props: AppShellNavCollapseProps) => (
   <div
+    id={props.id}
     data-state={props.open ? "open" : "closed"}
     inert={!props.open}
     className={cn(

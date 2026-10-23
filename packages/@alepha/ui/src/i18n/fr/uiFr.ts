@@ -138,6 +138,9 @@ export const uiFr: Record<string, string> = {
 
   // Date and date range controls: the trigger while nothing is picked.
   "controlDate.placeholder": "Choisir une date",
+  "controlMonth.nextYear": "Année suivante",
+  "controlMonth.placeholder": "Choisir un mois",
+  "controlMonth.previousYear": "Année précédente",
   "controlDateRange.placeholder": "Choisir une période",
 
   // Object control: nested groups.
@@ -276,6 +279,11 @@ export const uiFr: Record<string, string> = {
   "nav.spotlight.empty": "Aucun résultat.",
   "nav.spotlight.search": "Rechercher…",
   "nav.spotlight.title": "Rechercher",
+  "nav.sidebar.collapse": "Replier la barre latérale",
+  "nav.sidebar.description": "Affiche la barre latérale mobile.",
+  "nav.sidebar.expand": "Déplier la barre latérale",
+  "nav.sidebar.title": "Barre latérale",
+  "nav.sidebar.toggle": "Afficher ou masquer la barre latérale",
 
   // The `@alepha/ui/admin` back office: users, sessions, API keys, files, jobs,
   // audits, notifications, payments and parameters.
