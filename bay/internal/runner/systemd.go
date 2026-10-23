@@ -322,14 +322,6 @@ func stopGraceOf(sandbox Sandbox) time.Duration {
 	return defaultStopGrace
 }
 
-// defaultStopGrace applies when a caller did not say. See stopGraceOf.
-const defaultStopGrace = 30 * time.Second
-
-// stopCallMargin is how much longer than the unit's own grace Bay waits for
-// `systemctl stop` to return. Enough for systemd to send SIGKILL and reap;
-// short enough that a broken systemd does not wedge a deploy.
-const stopCallMargin = 10 * time.Second
-
 /*
 Remove uninstalls the app: the unit is disabled, its file deleted, and systemd
 told to forget both.

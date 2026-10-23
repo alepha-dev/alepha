@@ -52,6 +52,11 @@ jobs:
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
       - name: Test
+        # The runner already has Docker. BAY_REQUIRE_DOCKER turns a missing
+        # daemon into a failure, so the Docker runner's tests can never report
+        # `ok` without having run.
+        env:
+          BAY_REQUIRE_DOCKER: "1"
         run: go test ./...
 
       - name: Cross-compile for the targets Bay actually runs on

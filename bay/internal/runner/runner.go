@@ -1,8 +1,9 @@
 // Package runner starts and stops app processes.
 //
-// Two implementations: systemd units on Linux (cgroups, MemoryMax, journald,
-// Restart=always come free) and plain child processes elsewhere, so `bay`
-// stays developable on macOS. The interface is what matters.
+// Three implementations: Docker containers (docker.go), which replace systemd
+// units as the supervisor (epic E73), systemd units on Linux until then, and
+// plain child processes, so `bay` stays developable without either. The
+// interface is what matters.
 package runner
 
 import (
@@ -81,6 +82,14 @@ type Runner interface {
 	// tell them apart.
 	Logs(key string, n int) ([]LogLine, bool, error)
 }
+
+// defaultStopGrace applies when a caller did not say. See stopGraceOf.
+const defaultStopGrace = 30 * time.Second
+
+// stopCallMargin is how much longer than the app's own grace Bay waits for the
+// supervisor's stop call to return. Enough for it to send SIGKILL and reap;
+// short enough that a broken supervisor does not wedge a deploy.
+const stopCallMargin = 10 * time.Second
 
 /*
 Remove has nothing to uninstall for a child process.
