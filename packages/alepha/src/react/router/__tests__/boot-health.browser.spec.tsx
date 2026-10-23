@@ -1,7 +1,8 @@
 import { $hook, $inject, Alepha, type Service } from "alepha";
-import { AlephaReact } from "alepha/react";
+import { AlephaContext, AlephaReact } from "alepha/react";
 import { HttpError } from "alepha/server";
-import { act, use } from "react";
+import { act, createElement, type ReactNode, use, useId } from "react";
+import { renderToString } from "react-dom/server";
 import { beforeEach, describe, it } from "vitest";
 
 import {
@@ -138,6 +139,33 @@ describe("boot health", () => {
 
     expect(text()).toBe("ready");
     expect(probe.outcomes).toEqual(["healthy"]);
+  });
+
+  it("leaves the page's useId where the server put it", async ({ expect }) => {
+    // The server renders the layer without the marker. Paired with it as a
+    // sibling, the layer became the first of two children in the browser
+    // only, and every `useId` under it missed hydration (Club #Q704).
+    const ids: string[] = [];
+    const Field = () => {
+      const id = useId();
+      ids.push(id);
+      return <label htmlFor={id}>name</label>;
+    };
+    class App {
+      home = $page({ path: "/", component: Field });
+    }
+
+    const { alepha } = await boot(App);
+    const leaf = alepha.inject(ReactBrowserProvider).state.layers.at(-1);
+    const render = (node: ReactNode) => {
+      ids.length = 0;
+      renderToString(
+        createElement(AlephaContext.Provider, { value: alepha }, node),
+      );
+      return ids[0];
+    };
+
+    expect(render(leaf?.element)).toBe(render(createElement(Field)));
   });
 
   describe("with the offline option", () => {
