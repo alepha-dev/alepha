@@ -190,6 +190,8 @@ func main() {
 		err = cmdRestore(os.Args[2:])
 	case "doctor":
 		err = cmdDoctor(os.Args[2:])
+	case "runtimes":
+		err = cmdRuntimes(os.Args[2:])
 	case "version", "--version", "-v":
 		fmt.Println(version)
 	default:
@@ -259,6 +261,14 @@ func usageText() string {
   bay doctor  [--root /opt/bay/data]
               # can this host run Bay: Docker, cgroup v2, compose, ports
               # 80/443, free disk. One line per check; exits 1 on a failure
+  bay runtimes                    # pinned runtime images, and what each app runs
+              # an app runs its archive in node:<major>-slim / oven/bun:<major>-slim,
+              # the major its manifest records; a major Bay lacks is refused
+  bay runtimes update             # pull newer digests of every pinned image,
+                                  # restart the apps whose image moved
+  bay runtimes set <name/env> <image>  # this app's own image, from its next start;
+                                  # runtimes update leaves it alone
+  bay runtimes clear <name/env>   # back to the image Bay picks
   bay config s3:backups --endpoint URL --bucket NAME [--keep N]
                 # where BACKUPS go. Credentials from BAY_S3_ACCESS_KEY /
                 # BAY_S3_SECRET_KEY. Never handed to an app.
@@ -959,6 +969,9 @@ func (s *server) controlMux() *http.ServeMux {
 		writeJSON(w, http.StatusOK, map[string]string{"started": key})
 	})
 	mux.HandleFunc("GET /apps/{name}/{env}/logs", s.handleLogs)
+	mux.HandleFunc("PUT /apps/{name}/{env}/runtime-image", s.handleRuntimeImage)
+	mux.HandleFunc("GET /runtimes", s.handleRuntimes)
+	mux.HandleFunc("POST /runtimes/update", s.handleRuntimesUpdate)
 	// What this server was started with, for the commands that have to judge
 	// against it. `bay status` used the compiled default, so a host backing up
 	// every 6 hours was called stale after 24, and one backing up weekly was
@@ -1788,6 +1801,9 @@ func cmdStatus(args []string) error {
 		fmt.Printf("%s/%s\n", a.Name, a.Env)
 		fmt.Printf("  domain   %s\n", strings.Join(a.Domains, ", "))
 		fmt.Printf("  release  %s\n", a.Release)
+		if a.RuntimeImage != "" {
+			fmt.Printf("  runtime  %s  (set by hand; bay runtimes update leaves it alone)\n", a.RuntimeImage)
+		}
 
 		// A registered app that is not running is the loudest thing this
 		// command can say, and it used to say nothing at all.

@@ -119,6 +119,15 @@ type App struct {
 	// that answers no requests at all can still be the one somebody reads every
 	// morning, and asking the app would call it idle.
 	LastRequestAt string `json:"lastRequestAt,omitempty"`
+
+	// RuntimeImage is the image this instance runs on instead of the one Bay
+	// would pick from its manifest (an Alpine variant, a custom base). Empty
+	// means Bay picks.
+	//
+	// Recorded on the instance and shown by `bay status`, because it is a
+	// choice somebody made and owns: a later reader must be able to see that
+	// this app does not follow `bay runtimes update`.
+	RuntimeImage string `json:"runtimeImage,omitempty"`
 }
 
 // Key is the stable identifier for an app instance.
@@ -192,6 +201,13 @@ type State struct {
 	// exist to prevent. Pointing both at the same bucket is fine and expected —
 	// the key layouts do not collide — but they must be different credentials.
 	Storage *S3Target `json:"storage,omitempty"`
+	// RuntimeLocks maps a runtime image tag ("node:26-slim") to the reference
+	// `bay runtimes update` last resolved it to ("node:26-slim@sha256:...").
+	//
+	// Newer than the digests compiled into this Bay release by construction,
+	// so it wins over them; a Bay upgrade that ships newer pins does not
+	// clear it, and the next update moves it forward again.
+	RuntimeLocks map[string]string `json:"runtimeLocks,omitempty"`
 }
 
 // S3Target addresses an S3-compatible bucket (R2, MinIO, AWS).
@@ -390,6 +406,37 @@ reported as a deliberate stop.
 */
 func (s *Store) SetStopped(key string, stopped bool) error {
 	return s.mutate(key, func(a *App) { a.Stopped = stopped })
+}
+
+// SetRuntimeImage records an instance's own runtime image, or clears it.
+func (s *Store) SetRuntimeImage(key, image string) error {
+	return s.mutate(key, func(a *App) { a.RuntimeImage = image })
+}
+
+// RuntimeLocks returns a copy of the resolved runtime image references.
+func (s *Store) RuntimeLocks() map[string]string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	out := make(map[string]string, len(s.state.RuntimeLocks))
+	for k, v := range s.state.RuntimeLocks {
+		out[k] = v
+	}
+	return out
+}
+
+// SetRuntimeLock records what a runtime image tag resolved to, persisting
+// only when it changed.
+func (s *Store) SetRuntimeLock(tag, ref string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.state.RuntimeLocks[tag] == ref {
+		return nil
+	}
+	if s.state.RuntimeLocks == nil {
+		s.state.RuntimeLocks = map[string]string{}
+	}
+	s.state.RuntimeLocks[tag] = ref
+	return s.flush()
 }
 
 // ClaimedBy reports which app already serves a domain, if any.

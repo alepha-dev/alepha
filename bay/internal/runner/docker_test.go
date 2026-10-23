@@ -148,7 +148,7 @@ func TestDocker(t *testing.T) {
 			}
 			return 200, "{\"status\":\"Pulling\"}\n{\"error\":\"no matching manifest for linux/arm64\"}\n"
 		})
-		err := d.ensureImage("node:26-slim")
+		err := d.EnsureImage("node:26-slim")
 		if err == nil || !strings.Contains(err.Error(), "no matching manifest") {
 			t.Fatalf("err = %v", err)
 		}
@@ -365,4 +365,34 @@ func TestParseDockerLogs(t *testing.T) {
 	if lines[1].Level != "error" || lines[1].Text != "boom" {
 		t.Fatalf("second = %+v", lines[1])
 	}
+}
+
+func TestResolveDigest(t *testing.T) {
+	t.Run("pulls the tag and answers it pinned to the registry digest", func(t *testing.T) {
+		d, engine := startFakeEngine(t, func(r fakeRequest) (int, string) {
+			if r.Method == "GET" {
+				return 200, `{"RepoDigests":["registry.example/other@sha256:no","docker.io/library/node@sha256:abc"]}`
+			}
+			return 200, `{"status":"Downloaded newer image"}`
+		})
+		ref, err := d.ResolveDigest("node:26-slim")
+		if err != nil || ref != "node:26-slim@sha256:abc" {
+			t.Fatalf("ref = %q, err = %v", ref, err)
+		}
+		if pull := engine.calls()[0]; pull.Path != "/images/create" || pull.Query["tag"] != "26-slim" {
+			t.Fatalf("pull = %+v", pull)
+		}
+	})
+
+	t.Run("an image with no registry digest is an error", func(t *testing.T) {
+		d, _ := startFakeEngine(t, func(r fakeRequest) (int, string) {
+			if r.Method == "GET" {
+				return 200, `{"RepoDigests":[]}`
+			}
+			return 200, ""
+		})
+		if _, err := d.ResolveDigest("node:26-slim"); err == nil {
+			t.Fatal("expected an error")
+		}
+	})
 }

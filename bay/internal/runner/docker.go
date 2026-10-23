@@ -129,7 +129,7 @@ func (d *Docker) Start(spec Spec) error {
 	if err := d.removeContainer(name); err != nil {
 		return err
 	}
-	if err := d.ensureImage(c.Image); err != nil {
+	if err := d.EnsureImage(c.Image); err != nil {
 		return err
 	}
 	body := createBody(spec, c)
@@ -221,13 +221,13 @@ func stopGraceOfContainer(c Container) time.Duration {
 }
 
 /*
-ensureImage pulls the image when the daemon does not have it.
+EnsureImage pulls the image when the daemon does not have it.
 
 An image already present is never pulled again: production references carry a
 digest, so the local copy is the right bytes by definition, and a pull on every
 start would make a restart depend on a registry being up.
 */
-func (d *Docker) ensureImage(image string) error {
+func (d *Docker) EnsureImage(image string) error {
 	err := d.api.do("GET", "/images/"+image+"/json", nil, nil, nil, dockerCallTimeout)
 	if err == nil {
 		return nil
@@ -247,6 +247,51 @@ func (d *Docker) ensureImage(image string) error {
 		return fmt.Errorf("pull %s: %s", image, msg)
 	}
 	return nil
+}
+
+/*
+ResolveDigest pulls a tag and answers the reference it now points to,
+`tag@sha256:...`.
+
+Always pulls, unlike EnsureImage: the question is what the tag means TODAY,
+which is how `bay runtimes update` picks up a patched base image. The answer
+is the digest the registry served, read back from the image's RepoDigests, so
+it is pullable by digest from then on.
+*/
+func (d *Docker) ResolveDigest(tag string) (string, error) {
+	from, version := splitImageRef(tag)
+	out, err := d.api.raw("POST", "/images/create", url.Values{"fromImage": {from}, "tag": {version}}, nil, dockerPullTimeout)
+	if err != nil {
+		return "", fmt.Errorf("pull %s: %w", tag, err)
+	}
+	if msg := pullError(out); msg != "" {
+		return "", fmt.Errorf("pull %s: %s", tag, msg)
+	}
+	var info struct {
+		RepoDigests []string `json:"RepoDigests"`
+	}
+	if err := d.api.do("GET", "/images/"+tag+"/json", nil, nil, &info, dockerCallTimeout); err != nil {
+		return "", fmt.Errorf("inspect %s: %w", tag, err)
+	}
+	for _, repoDigest := range info.RepoDigests {
+		repo, digest, ok := strings.Cut(repoDigest, "@")
+		if ok && sameRepo(repo, from) {
+			return tag + "@" + digest, nil
+		}
+	}
+	return "", fmt.Errorf("%s has no registry digest after a pull", tag)
+}
+
+/*
+sameRepo compares two repository names the way the daemon spells them: Docker
+Hub's official images may come back as `node` or `docker.io/library/node`.
+*/
+func sameRepo(a, b string) bool {
+	norm := func(r string) string {
+		r = strings.TrimPrefix(r, "docker.io/")
+		return strings.TrimPrefix(r, "library/")
+	}
+	return norm(a) == norm(b)
 }
 
 /*

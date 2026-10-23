@@ -86,6 +86,20 @@ func waitFor(t *testing.T, what string, ok func() bool) {
 func TestDockerDaemon(t *testing.T) {
 	d := requireDocker(t)
 
+	t.Run("a tag resolves to the registry digest it was pulled at", func(t *testing.T) {
+		ref, err := d.ResolveDigest(daemonTestImage)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.HasPrefix(ref, daemonTestImage+"@sha256:") {
+			t.Fatalf("ref = %q", ref)
+		}
+		// The answer must be pullable as-is: that is what a lock is for.
+		if err := d.EnsureImage(ref); err != nil {
+			t.Fatalf("pinned ref does not resolve: %v", err)
+		}
+	})
+
 	t.Run("start, serve on loopback, report, stop, park and remove", func(t *testing.T) {
 		key := "bay-runner-test/t" + strconv.FormatInt(time.Now().UnixNano(), 36)
 		t.Cleanup(func() { _ = d.Remove(key, true) })
