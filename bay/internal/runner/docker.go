@@ -527,5 +527,33 @@ func parseDockerLogs(stream []byte) []LogLine {
 	return out
 }
 
+// DaemonInfo is what `bay doctor` asks of the daemon.
+type DaemonInfo struct {
+	Version       string // the Engine's release, "29.7.2"
+	APIVersion    string // the newest Engine API it speaks, "1.52"
+	CgroupVersion string // "2" or "1"
+}
+
+// Info reads the daemon's version and cgroup version.
+func (d *Docker) Info() (DaemonInfo, error) {
+	var v struct {
+		Version    string `json:"Version"`
+		APIVersion string `json:"ApiVersion"`
+	}
+	if err := d.api.do("GET", "/version", nil, nil, &v, dockerCallTimeout); err != nil {
+		return DaemonInfo{}, err
+	}
+	var i struct {
+		CgroupVersion string `json:"CgroupVersion"`
+	}
+	if err := d.api.do("GET", "/info", nil, nil, &i, dockerCallTimeout); err != nil {
+		return DaemonInfo{}, err
+	}
+	return DaemonInfo{Version: v.Version, APIVersion: v.APIVersion, CgroupVersion: i.CgroupVersion}, nil
+}
+
+// MinDockerAPI is the oldest Engine API Bay works with, without its "v".
+const MinDockerAPI = "1.44"
+
 // StopAll is a no-op: containers outlive Bay on purpose, as units did.
 func (d *Docker) StopAll(time.Duration) {}

@@ -31,7 +31,7 @@ type dockerAPI struct {
 
 // dockerAPIVersion is the oldest Engine API this runner relies on. 1.44 is
 // Docker 25, and the oldest version Docker 29 still accepts.
-const dockerAPIVersion = "v1.44"
+const dockerAPIVersion = "v" + MinDockerAPI
 
 // DefaultDockerSocket is where the daemon listens on every supported host.
 const DefaultDockerSocket = "/var/run/docker.sock"

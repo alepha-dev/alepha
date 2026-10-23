@@ -4,8 +4,9 @@
 #
 #   curl -sSL https://raw.githubusercontent.com/alepha-dev/bay/main/install.sh | sh
 #
-# Installs the `bay` binary and creates the directory layout described in
-# INSTALL.md. It deliberately stops there: steps 3 to 5 of that guide
+# Installs Docker when it is missing (Bay runs every app in a container), then
+# the `bay` binary and the directory layout described in INSTALL.md. It
+# deliberately stops there: steps 3 to 5 of that guide
 # (the systemd unit, the base domain, the ACME email, the deploy group) need
 # decisions this script cannot make for you, and a `curl | sh` has no business
 # putting a public reverse proxy on :80 and :443 without being asked.
@@ -17,6 +18,8 @@
 #   BAY_VERSION   release tag to install, or "latest" (default)
 #   BAY_PREFIX    install root (default /opt/bay)
 #   BAY_BIN_LINK  symlink to put on PATH (default /usr/local/bin/bay)
+#   BAY_INSTALL_DOCKER  "no" to refuse installing Docker and stop instead
+#                       (default "yes")
 #
 set -eu
 
@@ -61,6 +64,47 @@ else
   die "no sha256sum or shasum available, refusing to install an unverified binary."
 fi
 
+TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT INT TERM
+
+# --- docker ----------------------------------------------------------------
+
+# Bay supervises every app as a container, so a host without Docker can run
+# nothing. Installed through Docker's own script (get.docker.com), which picks
+# the right repository for the distribution and installs the Engine with the
+# compose plugin, rather than a distribution package that is often years old.
+# BAY_INSTALL_DOCKER=no stops instead, for a host whose Docker is managed by
+# something else.
+MIN_DOCKER_API="1.44"
+
+if ! command -v docker >/dev/null 2>&1; then
+  [ "${BAY_INSTALL_DOCKER:-yes}" != "no" ] || die "Docker is not installed, and BAY_INSTALL_DOCKER=no.
+Install Docker Engine 25 or newer with the compose plugin, then re-run this installer:
+  https://docs.docker.com/engine/install/"
+  echo "==> Installing Docker Engine (get.docker.com)"
+  fetch "https://get.docker.com" "$TMP/get-docker.sh" || die "download failed: https://get.docker.com"
+  sh "$TMP/get-docker.sh" || die "the Docker installer failed; see its output above."
+fi
+
+if command -v systemctl >/dev/null 2>&1; then
+  systemctl enable --now docker >/dev/null 2>&1 || true
+fi
+
+DOCKER_API="$(docker version --format '{{.Server.APIVersion}}' 2>/dev/null || true)"
+[ -n "$DOCKER_API" ] || die "Docker is installed but its daemon does not answer.
+Start it with:  systemctl enable --now docker"
+
+# Major and minor compared as numbers: "1.9" is older than "1.44".
+if ! echo "$DOCKER_API $MIN_DOCKER_API" | awk '{ split($1, h, "."); split($2, w, "."); exit !(h[1] > w[1] || (h[1] == w[1] && h[2] >= w[2])) }'; then
+  die "Docker speaks Engine API $DOCKER_API; Bay needs $MIN_DOCKER_API or newer (Docker 25+).
+Upgrade it with your package manager, or with:  curl -fsSL https://get.docker.com | sh"
+fi
+
+docker compose version >/dev/null 2>&1 || die "the Docker compose plugin is missing.
+Install the docker-compose-plugin package, then re-run this installer."
+
+echo "==> Docker ready (Engine API $DOCKER_API)"
+
 # --- download --------------------------------------------------------------
 
 if [ "$BAY_VERSION" = "latest" ]; then
@@ -70,9 +114,6 @@ else
 fi
 
 ASSET="bay-linux-$ARCH"
-
-TMP="$(mktemp -d)"
-trap 'rm -rf "$TMP"' EXIT INT TERM
 
 echo "==> Downloading $ASSET ($BAY_VERSION)"
 fetch "$BASE/$ASSET" "$TMP/bay" || die "download failed: $BASE/$ASSET"
@@ -134,6 +175,7 @@ echo
 if [ "$RESTARTED" = "yes" ]; then
   echo "The bay service was restarted on the new binary. Nothing else to do."
 else
+  echo "Check the host with:  bay doctor"
   echo "Next: run it under systemd, then grant a user the right to deploy."
   echo "Both steps, with the unit file to copy:"
   echo "  https://github.com/$REPO/blob/main/INSTALL.md"

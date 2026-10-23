@@ -188,6 +188,8 @@ func main() {
 		err = cmdBackups(os.Args[2:])
 	case "restore":
 		err = cmdRestore(os.Args[2:])
+	case "doctor":
+		err = cmdDoctor(os.Args[2:])
 	case "version", "--version", "-v":
 		fmt.Println(version)
 	default:
@@ -254,6 +256,9 @@ func usageText() string {
   bay start   <name/env>          # back into service
   bay remove  <name/env> [--purge]  # unregister; data is KEPT unless --purge
   bay version
+  bay doctor  [--root /opt/bay/data]
+              # can this host run Bay: Docker, cgroup v2, compose, ports
+              # 80/443, free disk. One line per check; exits 1 on a failure
   bay config s3:backups --endpoint URL --bucket NAME [--keep N]
                 # where BACKUPS go. Credentials from BAY_S3_ACCESS_KEY /
                 # BAY_S3_SECRET_KEY. Never handed to an app.

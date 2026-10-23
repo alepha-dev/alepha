@@ -8,6 +8,24 @@ This guide describes a Linux host reached over SSH, which is the only remote sur
 `alepha platform` drives your own `ssh` binary and talks to Bay's control socket on the other side.
 There is no admin panel and no inbound control port.
 
+## 0. Docker
+
+Bay runs every app in a container, so the host needs **Docker Engine 25 or newer** (Engine API
+1.44) with the **compose plugin**, on **cgroup v2**. `install.sh` installs Docker through
+get.docker.com when it is missing (`BAY_INSTALL_DOCKER=no` makes it stop instead), and refuses an
+older one. Check a host at any time with:
+
+```bash
+bay doctor --root /opt/bay/data
+```
+
+One line per check (Docker reachable and recent, cgroup v2, compose, ports 80 and 443, free disk),
+exit status 1 when any fails.
+
+⚠️ **The Docker socket is root-equivalent**, like Bay's own control socket: whoever can talk to it
+can start a privileged container and own the host. Bay reaches it as root and never exposes it;
+add a human to the `docker` group only if you would give them root.
+
 ## 1. Build the binary
 
 Bay is `CGO_ENABLED=0`, so it cross-compiles to a static binary from any machine — including a Mac,

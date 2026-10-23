@@ -10,8 +10,11 @@ An artifact goes in over SSH, an HTTPS URL comes out.
 curl -sSL https://raw.githubusercontent.com/alepha-dev/bay/main/install.sh | sudo sh
 ```
 
-The installer fetches the newest [release](https://github.com/alepha-dev/bay/releases)
-for the host's architecture and verifies its checksum. Or build it yourself:
+The installer sets up Docker when it is missing (Bay runs every app in a
+container, epic E73 in the Lore project Bay), then fetches the newest
+[release](https://github.com/alepha-dev/bay/releases) for the host's
+architecture and verifies its checksum. `bay doctor` checks a host. Or build it
+yourself:
 
 ```bash
 GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o bay ./cmd/bay
@@ -50,6 +53,9 @@ root-equivalent. A loopback port with a shared secret is the wrong shape for
 that: any process on the host can reach the port, the secret ends up in a shell
 history, and a bind-address typo publishes it. The socket's authorization is
 the file mode, enforced by the kernel. Remote access is SSH and nothing else.
+The Docker socket Bay drives is root-equivalent for the same reason, and gets
+the same treatment: reached as root, over a unix socket only (a `tcp://`
+`DOCKER_HOST` is refused), never exposed.
 
 **Backups cover the database and nothing else**, and every backup response says
 so in words. `storage/` (uploads) and `.env` are never archived - uploads are
