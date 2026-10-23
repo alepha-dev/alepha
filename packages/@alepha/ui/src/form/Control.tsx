@@ -79,6 +79,11 @@ export interface ControlProps {
    */
   file?: boolean;
   /**
+   * The file picker's `accept` filter (`".csv,text/csv"`, `"image/*"`), for
+   * `file` and for `upload`; an `upload` object's own `accept` wins.
+   */
+  accept?: string;
+  /**
    * Force a date picker.
    */
   date?: boolean;
@@ -94,6 +99,10 @@ export interface ControlProps {
    * field whose schema is a plain pair of strings can still ask for it.
    */
   dateRange?: boolean;
+  /**
+   * Force a month picker: the value is `YYYY-MM`.
+   */
+  month?: boolean;
   /**
    * Force a time picker.
    */
@@ -129,6 +138,11 @@ export interface ControlProps {
    * Force a `<Segmented>` control (one option visible at a time).
    */
   segmented?: boolean;
+  /**
+   * Render a multi-choice field (an array of options) as a group of
+   * checkboxes, every option visible. See `ControlSelectProps.checkboxes`.
+   */
+  checkboxes?: boolean;
   /**
    * Force a slider (numeric only).
    */
@@ -446,6 +460,7 @@ export const Control = (props: ControlProps) => {
         label={merged.label ?? props.label}
         description={merged.description ?? props.description}
         disabled={merged.disabled}
+        accept={merged.accept}
         {...uploadOpts}
       />,
     );
@@ -521,6 +536,7 @@ export const Control = (props: ControlProps) => {
     merged.select ||
     merged.combobox ||
     merged.segmented ||
+    merged.checkboxes ||
     meta.isEnum ||
     (meta.isArray && !meta.isArrayOfObjects) ||
     items != null
@@ -532,6 +548,7 @@ export const Control = (props: ControlProps) => {
         label={merged.label ?? props.label}
         description={merged.description ?? props.description}
         segmented={merged.segmented}
+        checkboxes={merged.checkboxes}
         combobox={merged.combobox}
         searchable={merged.searchable}
         items={items as never}
@@ -581,10 +598,14 @@ export const Control = (props: ControlProps) => {
         label={merged.label ?? meta.label}
         description={merged.description ?? meta.description}
         error={meta.error}
-        required={meta.required}
+        // A switch always holds a value, on or off: a required marker on it
+        // asks for something the reader cannot fail to give. `aria-required`
+        // is left off for the same reason.
+        required={false}
       >
         <div className="flex h-9 items-center">
           <Switch
+            {...merged.inputProps}
             id={meta.id}
             // Same omission as the numeric control had: without a name the
             // toggle is invisible to `[name="…"]` lookups, including
@@ -604,6 +625,7 @@ export const Control = (props: ControlProps) => {
     merged.date ||
     merged.datetime ||
     merged.time ||
+    merged.month ||
     meta.format === "date" ||
     meta.format === "date-time" ||
     meta.format === "time"
@@ -617,6 +639,8 @@ export const Control = (props: ControlProps) => {
         date={merged.date}
         datetime={merged.datetime}
         time={merged.time}
+        month={merged.month}
+        inputProps={merged.inputProps}
         disabled={merged.disabled}
         clearable={merged.clearable}
         captionLayout={merged.captionLayout}
@@ -642,6 +666,7 @@ export const Control = (props: ControlProps) => {
           id={meta.id}
           name={props.input.props.name}
           type="file"
+          accept={merged.accept}
           disabled={merged.disabled}
           onChange={(e) => setValue(e.target.files?.[0])}
         />

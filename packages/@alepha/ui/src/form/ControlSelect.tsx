@@ -14,6 +14,7 @@ import { useI18n } from "alepha/react/i18n";
 import type { HTMLAttributes } from "react";
 import { type ReactNode, useMemo, useRef, useState } from "react";
 
+import { Checkbox } from "../core/Checkbox.tsx";
 import { Segmented } from "../core/Segmented.tsx";
 import { ControlSelectCombobox } from "./ControlSelectCombobox.tsx";
 import { optValue } from "./controlSelectOptions.ts";
@@ -38,6 +39,13 @@ export interface ControlSelectProps {
    * Render as a `<Segmented>` control (best for 2–4 options).
    */
   segmented?: boolean;
+  /**
+   * Render a multi-choice field (an array schema) as a group of checkboxes,
+   * every option visible: for a handful of fixed choices (days of the week,
+   * device types), where a select would hide what is ticked. Each checkbox
+   * is named by its option's label and carries `data-value`.
+   */
+  checkboxes?: boolean;
   /**
    * Force the search input on. Kept as the historical name for
    * `searchable: true` — every select is a combobox now, the flag only
@@ -325,6 +333,60 @@ export const ControlSelect = (props: ControlSelectProps) => {
           }))}
           fullWidth
         />
+      </FormField>
+    );
+  }
+
+  if (props.checkboxes && isArray) {
+    const ticked = Array.isArray(value) ? (value as unknown[]).map(String) : [];
+    return (
+      <FormField
+        id={meta.id}
+        label={meta.label}
+        description={meta.description}
+        error={meta.error}
+        required={meta.required}
+      >
+        <div
+          role="group"
+          aria-label={meta.label || undefined}
+          {...props.triggerProps}
+          id={meta.id}
+          className="flex flex-wrap gap-x-4 gap-y-2 py-1"
+        >
+          {data.map((o) => {
+            const optionValue = optValue(o);
+            const optionId = `${meta.id}-${optionValue}`;
+            return (
+              <label
+                key={optionValue}
+                htmlFor={optionId}
+                className="flex items-center gap-2 text-sm"
+              >
+                <Checkbox
+                  // An explicit id: Base UI would mint one with `useId`.
+                  id={optionId}
+                  data-value={optionValue}
+                  disabled={
+                    props.disabled || (typeof o !== "string" && o.disabled)
+                  }
+                  checked={ticked.includes(optionValue)}
+                  onCheckedChange={(checked) => {
+                    const next = checked
+                      ? [...ticked, optionValue]
+                      : ticked.filter((it) => it !== optionValue);
+                    // In the options' order, whatever order they were ticked.
+                    const ordered = data
+                      .map(optValue)
+                      .filter((it) => next.includes(it));
+                    setValue(ordered.map(coerce));
+                  }}
+                />
+                {segmentedLabel(o)}
+              </label>
+            );
+          })}
+        </div>
       </FormField>
     );
   }

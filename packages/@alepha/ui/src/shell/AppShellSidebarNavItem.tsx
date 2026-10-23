@@ -4,7 +4,7 @@ void React;
 
 import { Link } from "alepha/react/router";
 import { ChevronRight, Lock, Minus, Plus } from "lucide-react";
-import { useState } from "react";
+import { useId, useState } from "react";
 
 import {
   DropdownMenu,
@@ -64,6 +64,7 @@ export interface AppShellSidebarNavItemProps {
 export const AppShellSidebarNavItem = (props: AppShellSidebarNavItemProps) => {
   const { item, path, accordion, animate, toggleIcon } = props;
   const { state, isMobile } = useSidebar();
+  const collapseId = useId();
   const children = item.children;
   const isGroup = !!children && children.length > 0;
   const hasActive = isGroup && hasActiveDescendant(item);
@@ -115,7 +116,7 @@ export const AppShellSidebarNavItem = (props: AppShellSidebarNavItemProps) => {
           style={{ cursor: "not-allowed" }}
         >
           {renderNavIcon(item.icon, "size-4 shrink-0")}
-          <span className="flex-1 truncate text-left">{item.label}</span>
+          <span className="flex-1 truncate text-start">{item.label}</span>
           <Lock className="size-3.5 shrink-0 opacity-70" />
         </div>
       );
@@ -124,7 +125,11 @@ export const AppShellSidebarNavItem = (props: AppShellSidebarNavItemProps) => {
           {item.tooltip ? (
             <HoverCard>
               <HoverCardTrigger render={row} />
-              <HoverCardContent side="right" align="start" className="text-sm">
+              <HoverCardContent
+                side="inline-end"
+                align="start"
+                className="text-sm"
+              >
                 {item.tooltip}
               </HoverCardContent>
             </HoverCard>
@@ -159,7 +164,7 @@ export const AppShellSidebarNavItem = (props: AppShellSidebarNavItemProps) => {
     const row = item.tooltip ? (
       <Tooltip>
         <TooltipTrigger render={link} />
-        <TooltipContent side="right">{item.tooltip}</TooltipContent>
+        <TooltipContent side="inline-end">{item.tooltip}</TooltipContent>
       </Tooltip>
     ) : (
       link
@@ -202,10 +207,14 @@ export const AppShellSidebarNavItem = (props: AppShellSidebarNavItemProps) => {
             }
           >
             {renderNavIcon(item.icon, "size-4")}
-            <span className="flex-1 text-left">{item.label}</span>
-            <ChevronRight className="size-4" />
+            <span className="flex-1 text-start">{item.label}</span>
+            <ChevronRight className="size-4 rtl:-scale-x-100" />
           </DropdownMenuTrigger>
-          <DropdownMenuContent side="right" align="start" className="min-w-48">
+          <DropdownMenuContent
+            side="inline-end"
+            align="start"
+            className="min-w-48"
+          >
             {/*
               The group wrapper is required, not cosmetic: `DropdownMenuLabel`
               is Base UI's `Menu.GroupLabel`, which reads `MenuGroupContext` and
@@ -228,11 +237,15 @@ export const AppShellSidebarNavItem = (props: AppShellSidebarNavItemProps) => {
     <SidebarMenuItem>
       <SidebarMenuButton
         onClick={toggle}
+        // The group is a disclosure: its state and what it opens, for
+        // assistive technology (and a test finding the open group by role).
+        aria-expanded={open}
+        aria-controls={collapseId}
         isActive={item.active}
         tooltip={typeof item.label === "string" ? item.label : undefined}
       >
         {renderNavIcon(item.icon, "size-4")}
-        <span className="flex-1 text-left">{item.label}</span>
+        <span className="flex-1 text-start">{item.label}</span>
         {/*
           Plus and minus are SWAPPED, never rotated: a plus turned 45° is a
           close button, which is a different promise. The caret is the one
@@ -247,11 +260,11 @@ export const AppShellSidebarNavItem = (props: AppShellSidebarNavItemProps) => {
           )
         ) : (
           <ChevronRight
-            className={`size-4 transition-transform ${open ? "rotate-90" : ""}`}
+            className={`size-4 transition-transform rtl:-scale-x-100 ${open ? "rotate-90" : ""}`}
           />
         )}
       </SidebarMenuButton>
-      <AppShellNavCollapse open={open} animate={animate}>
+      <AppShellNavCollapse id={collapseId} open={open} animate={animate}>
         <SidebarMenuSub>
           {children.map((child, ci) => (
             <SidebarMenuSubItem key={child.href ?? ci}>

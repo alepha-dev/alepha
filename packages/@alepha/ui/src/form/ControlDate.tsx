@@ -11,10 +11,12 @@ import {
   useFormState,
 } from "alepha/react/form";
 import { Clock } from "lucide-react";
+import type { HTMLAttributes } from "react";
 import type { DayPickerProps } from "react-day-picker";
 
 import { Input } from "../core/Input.tsx";
 import { ControlDatePopover } from "./ControlDatePopover.tsx";
+import { ControlMonthPopover } from "./ControlMonthPopover.tsx";
 import { FormField } from "./FormField.tsx";
 
 export interface ControlDateProps {
@@ -81,6 +83,16 @@ export interface ControlDateProps {
    * those wins over what this sets.
    */
   birthdate?: boolean;
+  /**
+   * A month picker: the value is `YYYY-MM`. See `ControlMonthPopover`.
+   */
+  month?: boolean;
+  /**
+   * Forwarded to the focusable element (the time input, or the picker's
+   * trigger): an `aria-label` for a field drawn without a label, a
+   * `data-testid`.
+   */
+  inputProps?: HTMLAttributes<HTMLElement>;
 }
 
 export const ControlDate = (props: ControlDateProps) => {
@@ -109,17 +121,39 @@ export const ControlDate = (props: ControlDateProps) => {
         required={meta.required}
       >
         <div className="relative">
-          <Clock className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+          <Clock className="text-muted-foreground absolute start-3 top-1/2 size-4 -translate-y-1/2" />
           <Input
+            {...props.inputProps}
             id={meta.id}
             name={props.input.props.name}
             type="time"
-            className="pl-9"
+            className="ps-9"
             disabled={props.disabled}
             value={value ?? ""}
             onChange={(e) => setValue(e.target.value)}
           />
         </div>
+      </FormField>
+    );
+  }
+
+  if (props.month) {
+    return (
+      <FormField
+        id={meta.id}
+        label={meta.label}
+        description={meta.description}
+        error={meta.error}
+        required={meta.required}
+      >
+        <ControlMonthPopover
+          id={meta.id}
+          value={value}
+          disabled={props.disabled}
+          clearable={props.clearable}
+          triggerProps={props.inputProps}
+          onChange={(v) => setValue(v)}
+        />
       </FormField>
     );
   }
@@ -136,6 +170,7 @@ export const ControlDate = (props: ControlDateProps) => {
     >
       <ControlDatePopover
         id={meta.id}
+        triggerProps={props.inputProps}
         value={value}
         withTime={isDateTime}
         disabled={props.disabled}
