@@ -36,13 +36,16 @@ const api = async <T>(
 ): Promise<T> =>
   await page.evaluate(
     async ({ method, url, body }) => {
-      const res = await fetch(url, {
-        method,
-        credentials: "include",
-        headers:
-          body === undefined ? {} : { "content-type": "application/json" },
-        body: body === undefined ? undefined : JSON.stringify(body),
-      });
+      const init: RequestInit =
+        body === undefined
+          ? { method, credentials: "include" }
+          : {
+              method,
+              credentials: "include",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify(body),
+            };
+      const res = await fetch(url, init);
       if (!res.ok)
         throw new Error(`${method} ${url}: ${res.status} ${await res.text()}`);
       return (await res.json()) as T;
