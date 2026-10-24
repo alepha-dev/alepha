@@ -267,6 +267,9 @@ type State struct {
 	// runs (epic E74). Their members that run or are routed are Apps too, so
 	// the proxy, the runner and every report treat them as instances.
 	Stacks []Stack `json:"stacks,omitempty"`
+	// RegistryMirror is a pull-through mirror for Docker Hub images
+	// (`bay config registry-mirror`): rate limits, company policy.
+	RegistryMirror string `json:"registryMirror,omitempty"`
 }
 
 // S3Target addresses an S3-compatible bucket (R2, MinIO, AWS).
@@ -593,6 +596,21 @@ func (s *Store) Remove(key string) (App, bool, error) {
 		}
 	}
 	return App{}, false, nil
+}
+
+// RegistryMirror returns the Docker Hub mirror, if one is set.
+func (s *Store) RegistryMirror() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.state.RegistryMirror
+}
+
+// SetRegistryMirror records the Docker Hub mirror; empty clears it.
+func (s *Store) SetRegistryMirror(mirror string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.state.RegistryMirror = mirror
+	return s.flush()
 }
 
 // BaseDomain returns the configured base domain, if any.

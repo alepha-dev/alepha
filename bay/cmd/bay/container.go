@@ -121,11 +121,17 @@ func (s *server) prepareRuntime(app state.App) error {
 	if !ok || app.Static {
 		return nil
 	}
-	sel, err := s.runtimeSelection(app)
+	spec, _, err := s.specFor(app)
 	if err != nil {
 		return err
 	}
-	return cr.EnsureImage(sel.Ref)
+	c := spec.Sandbox.(runner.Container)
+	if authed, ok := s.runner.(interface {
+		EnsureImageAuth(image, auth string) error
+	}); ok {
+		return authed.EnsureImageAuth(c.Image, c.RegistryAuth)
+	}
+	return cr.EnsureImage(c.Image)
 }
 
 // taskRunner runs a command to completion in an image: the Docker runner.

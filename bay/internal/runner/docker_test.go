@@ -24,6 +24,7 @@ type fakeEngine struct {
 }
 
 type fakeRequest struct {
+	Header http.Header
 	Method string
 	Path   string // without the API version prefix
 	Query  map[string]string
@@ -34,6 +35,18 @@ func (f *fakeEngine) calls() []fakeRequest {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return append([]fakeRequest(nil), f.requests...)
+}
+
+// lastHeader is a header of the last pull the engine received.
+func (f *fakeEngine) lastHeader(name string) string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for i := len(f.requests) - 1; i >= 0; i-- {
+		if f.requests[i].Path == "/images/create" {
+			return f.requests[i].Header.Get(name)
+		}
+	}
+	return ""
 }
 
 func startFakeEngine(t *testing.T, respond func(r fakeRequest) (int, string)) (*Docker, *fakeEngine) {
@@ -53,6 +66,7 @@ func startFakeEngine(t *testing.T, respond func(r fakeRequest) (int, string)) (*
 	engine := &fakeEngine{respond: respond}
 	srv := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		req := fakeRequest{
+			Header: r.Header.Clone(),
 			Method: r.Method,
 			Path:   strings.TrimPrefix(r.URL.Path, "/"+dockerAPIVersion),
 			Query:  map[string]string{},
@@ -487,5 +501,22 @@ func TestCreateBodyOnANetwork(t *testing.T) {
 	endpoints := body["NetworkingConfig"].(map[string]any)["EndpointsConfig"].(map[string]any)
 	if aliases := endpoints["mcs-staging_default"].(map[string]any)["Aliases"].([]string); aliases[0] != "api" {
 		t.Fatalf("aliases = %v", aliases)
+	}
+}
+
+func TestPullsCarryRegistryAuth(t *testing.T) {
+	d, engine := startFakeEngine(t, func(r fakeRequest) (int, string) {
+		if r.Method == "GET" {
+			return 404, `{"message":"No such image"}`
+		}
+		return 200, ""
+	})
+	_ = d.EnsureImageAuth("registry.acme.io/api:1@sha256:x", "c2VjcmV0")
+	if got := engine.lastHeader("X-Registry-Auth"); got != "c2VjcmV0" {
+		t.Fatalf("X-Registry-Auth = %q", got)
+	}
+	_ = d.EnsureImage("postgres:17")
+	if got := engine.lastHeader("X-Registry-Auth"); got != "" {
+		t.Fatalf("a public pull carried auth: %q", got)
 	}
 }

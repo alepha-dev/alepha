@@ -107,6 +107,11 @@ func (d *dockerAPI) do(method, path string, query url.Values, body, out any, tim
 
 // raw is `do` without the decoding, for the endpoints that answer a stream.
 func (d *dockerAPI) raw(method, path string, query url.Values, body any, timeout time.Duration) ([]byte, error) {
+	return d.rawWith(method, path, query, body, nil, timeout)
+}
+
+// rawWith is raw with extra request headers: a pull's X-Registry-Auth.
+func (d *dockerAPI) rawWith(method, path string, query url.Values, body any, headers map[string]string, timeout time.Duration) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
@@ -128,6 +133,9 @@ func (d *dockerAPI) raw(method, path string, query url.Values, body any, timeout
 	}
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
+	}
+	for k, v := range headers {
+		req.Header.Set(k, v)
 	}
 	res, err := d.client.Do(req)
 	if err != nil {

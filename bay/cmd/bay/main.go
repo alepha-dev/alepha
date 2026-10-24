@@ -160,8 +160,10 @@ func main() {
 			err = cmdConfigStorage(os.Args[3:])
 		case len(os.Args) > 2 && os.Args[2] == "s3":
 			err = cmdConfigS3Both(os.Args[3:])
+		case len(os.Args) > 2 && os.Args[2] == "registry-mirror":
+			err = cmdConfigMirror(os.Args[3:])
 		default:
-			err = errors.New("usage: bay config (s3|s3:apps|s3:backups) --endpoint … --bucket …")
+			err = errors.New("usage: bay config (s3|s3:apps|s3:backups) --endpoint … --bucket … | bay config registry-mirror (HOST|--clear)")
 		}
 	case "storage":
 		if len(os.Args) > 2 && os.Args[2] == "migrate" {
@@ -298,6 +300,9 @@ func usageText() string {
                 # both of the above, from ONE credential. Convenient and less
                 # safe: an app given that key can delete every backup here.
                 # Warned about on use, and flagged by "bay status" while it lasts.
+  bay config registry-mirror (HOST|--clear)
+                # a pull-through mirror for Docker Hub images (rate limits,
+                # company policy): postgres:17 is pulled as HOST/library/postgres:17
   bay storage migrate <name/env>  # copy local uploads into the bucket, then
                 # repoint the app; local files are KEPT for you to delete
   bay env set <name/env> (-|FILE)  # merge KEY=VALUE lines into the app's .env

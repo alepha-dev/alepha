@@ -67,6 +67,9 @@ type Container struct {
 	// ReadOnlyRootfs mounts the image read-only, with a small tmpfs at /tmp:
 	// the app writes only to the paths it was given.
 	ReadOnlyRootfs bool
+	// RegistryAuth is the X-Registry-Auth value for pulling Image from a
+	// private registry; empty for a public one.
+	RegistryAuth string
 	// Network attaches the container to a user-defined network instead of
 	// the default bridge: a stack's network, so its services reach it by name.
 	Network string
@@ -170,7 +173,7 @@ func (d *Docker) create(name string, spec Spec, c Container) error {
 	if err := d.removeContainer(name); err != nil {
 		return err
 	}
-	if err := d.EnsureImage(c.Image); err != nil {
+	if err := d.EnsureImageAuth(c.Image, c.RegistryAuth); err != nil {
 		return err
 	}
 	body := createBody(spec, c)
@@ -358,6 +361,14 @@ digest, so the local copy is the right bytes by definition, and a pull on every
 start would make a restart depend on a registry being up.
 */
 func (d *Docker) EnsureImage(image string) error {
+	return d.EnsureImageAuth(image, "")
+}
+
+/*
+EnsureImageAuth is EnsureImage for a private registry: `auth` is the Engine
+API's X-Registry-Auth value, sent with the pull and nowhere else.
+*/
+func (d *Docker) EnsureImageAuth(image, auth string) error {
 	err := d.api.do("GET", "/images/"+image+"/json", nil, nil, nil, dockerCallTimeout)
 	if err == nil {
 		return nil
@@ -366,7 +377,7 @@ func (d *Docker) EnsureImage(image string) error {
 		return fmt.Errorf("inspect image %s: %w", image, err)
 	}
 	from, tag := splitImageRef(image)
-	out, err := d.api.raw("POST", "/images/create", url.Values{"fromImage": {from}, "tag": {tag}}, nil, dockerPullTimeout)
+	out, err := d.api.rawWith("POST", "/images/create", url.Values{"fromImage": {from}, "tag": {tag}}, nil, authHeader(auth), dockerPullTimeout)
 	if err != nil {
 		return fmt.Errorf("pull %s: %w", image, err)
 	}
@@ -389,8 +400,13 @@ is the digest the registry served, read back from the image's RepoDigests, so
 it is pullable by digest from then on.
 */
 func (d *Docker) ResolveDigest(tag string) (string, error) {
+	return d.ResolveDigestAuth(tag, "")
+}
+
+// ResolveDigestAuth is ResolveDigest for a private registry.
+func (d *Docker) ResolveDigestAuth(tag, auth string) (string, error) {
 	from, version := splitImageRef(tag)
-	out, err := d.api.raw("POST", "/images/create", url.Values{"fromImage": {from}, "tag": {version}}, nil, dockerPullTimeout)
+	out, err := d.api.rawWith("POST", "/images/create", url.Values{"fromImage": {from}, "tag": {version}}, nil, authHeader(auth), dockerPullTimeout)
 	if err != nil {
 		return "", fmt.Errorf("pull %s: %w", tag, err)
 	}
@@ -422,6 +438,13 @@ func sameRepo(a, b string) bool {
 		return strings.TrimPrefix(r, "library/")
 	}
 	return norm(a) == norm(b)
+}
+
+func authHeader(auth string) map[string]string {
+	if auth == "" {
+		return nil
+	}
+	return map[string]string{"X-Registry-Auth": auth}
 }
 
 /*

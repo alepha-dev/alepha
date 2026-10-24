@@ -109,9 +109,13 @@ func Up(l *Loaded, p Plan, timeout time.Duration) error {
 	if err := os.WriteFile(filepath.Join(l.Dir, overrideFile), p.Override(), 0o600); err != nil {
 		return err
 	}
+	// --pull never: Bay pulled every pinned image itself, with the stack's
+	// own credentials, before this; Compose needs none, and never fetches
+	// anything the plan did not pin.
 	return compose(l.Dir, l.Project, l.Vars, timeout+30*time.Second,
 		"--file", preparedFile, "--file", overrideFile,
-		"up", "--detach", "--remove-orphans", "--wait", "--wait-timeout", strconv.Itoa(int(timeout.Seconds())))
+		"up", "--detach", "--remove-orphans", "--pull", "never",
+		"--wait", "--wait-timeout", strconv.Itoa(int(timeout.Seconds())))
 }
 
 // Down removes a stack environment's Compose containers and network, and its
@@ -139,7 +143,7 @@ func compose(dir, project string, vars map[string]string, timeout time.Duration,
 	cmd.Stdout = &out
 	cmd.Stderr = &out
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("docker compose %s: %w\n%s", args[0], err, strings.TrimSpace(lastLines(out.String(), 20)))
+		return fmt.Errorf("docker compose %s: %w\n%s", strings.Join(args, " "), err, strings.TrimSpace(lastLines(out.String(), 20)))
 	}
 	return nil
 }

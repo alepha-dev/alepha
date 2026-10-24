@@ -69,7 +69,7 @@ type stackMember struct {
 
 // digestResolver is the runner's ability to pin a tag: the Docker runner.
 type digestResolver interface {
-	ResolveDigest(tag string) (string, error)
+	ResolveDigestAuth(tag, auth string) (string, error)
 }
 
 // networkCreator is the runner's ability to create a stack's network.
@@ -193,7 +193,15 @@ func (s *server) deployStack(ctx context.Context, opts stackDeployOptions) (*sta
 		if !ok {
 			return nil, fmt.Errorf("stacks need Bay's Docker runner")
 		}
-		pinned, err = loaded.PinImages(resolver.ResolveDigest)
+		mirror := s.store.RegistryMirror()
+		pinned, err = loaded.PinImages(func(image string) (string, error) {
+			ref := stack.Mirrored(image, mirror)
+			auth, err := stack.RegistryAuthFor(s.root, opts.Stack, opts.Env, ref)
+			if err != nil {
+				return "", err
+			}
+			return resolver.ResolveDigestAuth(ref, auth)
+		})
 		if err != nil {
 			return nil, err
 		}

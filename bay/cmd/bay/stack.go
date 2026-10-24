@@ -39,6 +39,86 @@ func (s *server) registerStackRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("PUT /stacks/{stack}/{env}/routes", s.handleStackRouteAdd)
 	mux.HandleFunc("DELETE /stacks/{stack}/{env}/routes", s.handleStackRouteRemove)
 	mux.HandleFunc("GET /stacks/{stack}/{env}/routes", s.handleStackRouteList)
+	mux.HandleFunc("PUT /stacks/{stack}/{env}/registries", s.handleRegistryAdd)
+	mux.HandleFunc("DELETE /stacks/{stack}/{env}/registries", s.handleRegistryRemove)
+	mux.HandleFunc("GET /stacks/{stack}/{env}/registries", s.handleRegistryList)
+	mux.HandleFunc("PUT /config/registry-mirror", s.handleRegistryMirror)
+}
+
+/*
+handleRegistryAdd stores a registry credential for one stack environment. It
+arrives with a deploy from Lore, or by hand over SSH, and is written to that
+environment's own Docker config and nowhere else.
+*/
+func (s *server) handleRegistryAdd(w http.ResponseWriter, r *http.Request) {
+	name, env, ok := s.stackPath(w, r)
+	if !ok {
+		return
+	}
+	var body struct {
+		Host     string `json:"host"`
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, `body must be {"host", "username", "password"}`)
+		return
+	}
+	if err := stack.SetCredential(s.root, name, env, body.Host, body.Username, body.Password); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"registry": strings.ToLower(body.Host)})
+}
+
+func (s *server) handleRegistryRemove(w http.ResponseWriter, r *http.Request) {
+	name, env, ok := s.stackPath(w, r)
+	if !ok {
+		return
+	}
+	removed, err := stack.RemoveCredential(s.root, name, env, r.URL.Query().Get("host"))
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if !removed {
+		writeError(w, http.StatusNotFound, "no credential for that registry")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"removed": r.URL.Query().Get("host")})
+}
+
+func (s *server) handleRegistryList(w http.ResponseWriter, r *http.Request) {
+	name, env, ok := s.stackPath(w, r)
+	if !ok {
+		return
+	}
+	hosts, err := stack.RegistryHosts(s.root, name, env)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"registries": hosts})
+}
+
+func (s *server) handleRegistryMirror(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Mirror string `json:"mirror"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, `body must be {"mirror": "host"}`)
+		return
+	}
+	mirror := strings.TrimSuffix(strings.TrimPrefix(strings.TrimPrefix(body.Mirror, "https://"), "http://"), "/")
+	if strings.ContainsAny(mirror, " /") && !strings.Contains(mirror, ".") {
+		writeError(w, http.StatusBadRequest, "a mirror is a registry host, e.g. mirror.acme.io")
+		return
+	}
+	if err := s.store.SetRegistryMirror(mirror); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"mirror": mirror})
 }
 
 var domainPattern = regexp.MustCompile(`^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$`)
@@ -272,7 +352,10 @@ const stackUsage = `usage: bay stack <command> <stack>/<env> ...
   env unset <stack>/<env> KEY...     remove variables
   route <stack>/<env> <service> <domain>   serve a full domain from a service
   route list <stack>/<env>           the environment's routes
-  route remove <stack>/<env> <domain>`
+  route remove <stack>/<env> <domain>
+  registry add <stack>/<env> HOST --username U   password read from stdin
+  registry list <stack>/<env>        hosts only
+  registry remove <stack>/<env> HOST`
 
 // cmdStack is `bay stack`.
 func cmdStack(args []string) error {
@@ -284,6 +367,8 @@ func cmdStack(args []string) error {
 		return cmdStackEnv(args[1:])
 	case "route":
 		return cmdStackRoute(args[1:])
+	case "registry":
+		return cmdStackRegistry(args[1:])
 	default:
 		return errors.New(stackUsage)
 	}
@@ -395,6 +480,71 @@ func cmdStackRoute(args []string) error {
 	}
 	body, _ := json.Marshal(map[string]string{"service": args[1], "domain": args[2]})
 	res, err := call(http.MethodPut, controlHost+"/stacks/"+name+"/"+env+"/routes", strings.NewReader(string(body)))
+	if err != nil {
+		return err
+	}
+	fmt.Println(res)
+	return nil
+}
+
+func cmdStackRegistry(args []string) error {
+	if len(args) < 2 {
+		return errors.New(stackUsage)
+	}
+	name, env, err := stackKeyOf(args[1])
+	if err != nil {
+		return err
+	}
+	base := controlHost + "/stacks/" + name + "/" + env + "/registries"
+	switch args[0] {
+	case "add":
+		if len(args) < 5 || args[3] != "--username" {
+			return errors.New(stackUsage)
+		}
+		// The password comes from stdin only: an argument is visible in ps.
+		raw, err := io.ReadAll(io.LimitReader(os.Stdin, 64<<10))
+		if err != nil {
+			return err
+		}
+		body, _ := json.Marshal(map[string]string{"host": args[2], "username": args[4],
+			"password": strings.TrimRight(string(raw), "\r\n")})
+		res, err := call(http.MethodPut, base, strings.NewReader(string(body)))
+		if err != nil {
+			return err
+		}
+		fmt.Println(res)
+	case "list":
+		res, err := call(http.MethodGet, base, nil)
+		if err != nil {
+			return err
+		}
+		fmt.Println(res)
+	case "remove":
+		if len(args) < 3 {
+			return errors.New(stackUsage)
+		}
+		res, err := call(http.MethodDelete, base+"?host="+args[2], nil)
+		if err != nil {
+			return err
+		}
+		fmt.Println(res)
+	default:
+		return errors.New(stackUsage)
+	}
+	return nil
+}
+
+// cmdConfigMirror is `bay config registry-mirror (HOST|--clear)`.
+func cmdConfigMirror(args []string) error {
+	if len(args) < 1 {
+		return errors.New("usage: bay config registry-mirror (HOST|--clear)")
+	}
+	mirror := args[0]
+	if mirror == "--clear" {
+		mirror = ""
+	}
+	body, _ := json.Marshal(map[string]string{"mirror": mirror})
+	res, err := call(http.MethodPut, controlHost+"/config/registry-mirror", strings.NewReader(string(body)))
 	if err != nil {
 		return err
 	}

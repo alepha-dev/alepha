@@ -55,14 +55,24 @@ func (s *server) specFor(app state.App) (runner.Spec, runtimeChoice, error) {
 			return runner.Spec{}, runtimeChoice{}, err
 		}
 	}
+	c := spec.Sandbox.(runner.Container)
+	// Docker Hub images (the runtime images among them) go through the mirror
+	// when one is set.
+	c.Image = stack.Mirrored(c.Image, s.store.RegistryMirror())
 	// An app service lives on its stack's network and answers to its service
-	// name there, as Compose's containers do.
+	// name there, as Compose's containers do, and pulls with its stack's
+	// registry credentials.
 	if app.Stack != "" {
-		c := spec.Sandbox.(runner.Container)
 		c.Network = naming.StackProject(app.Stack, app.Env) + "_default"
 		c.Aliases = []string{app.Service}
-		spec.Sandbox = c
+		auth, err := stack.RegistryAuthFor(s.root, app.Stack, app.Env, c.Image)
+		if err != nil {
+			return runner.Spec{}, runtimeChoice{}, err
+		}
+		c.RegistryAuth = auth
 	}
+	spec.Sandbox = c
+	choice.Ref = c.Image
 	return spec, choice, nil
 }
 
