@@ -31,6 +31,8 @@ export { stackEnvironmentRoutes } from "../api/entities/stackEnvironmentRoutes.t
 export { stackEnvironments } from "../api/entities/stackEnvironments.ts";
 export { stackRevisions } from "../api/entities/stackRevisions.ts";
 export { type Stack, stacks } from "../api/entities/stacks.ts";
+export { stackVariables } from "../api/entities/stackVariables.ts";
+export type { StackVariableResource } from "../api/schemas/stackVariableResourceSchema.ts";
 export type { StackEnvironmentResource } from "../api/schemas/stackEnvironmentResourceSchema.ts";
 export type { StackModel } from "../api/schemas/stackModelSchema.ts";
 export type { StackModelService } from "../api/schemas/stackModelServiceSchema.ts";
