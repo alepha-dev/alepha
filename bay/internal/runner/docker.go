@@ -264,12 +264,18 @@ func createBody(spec Spec, c Container) map[string]any {
 
 	body := map[string]any{
 		"Image":       c.Image,
-		"Cmd":         []string{spec.Runtime, spec.Entry},
-		"WorkingDir":  c.WorkDir,
 		"Env":         env,
 		"Labels":      map[string]string{dockerKeyLabel: spec.Key},
 		"StopTimeout": int(stopGraceOfContainer(c).Seconds()),
 		"HostConfig":  host,
+	}
+	// An image app runs its image's own command in its own working directory;
+	// an archive app names both, its runtime and entry inside the release.
+	if spec.Runtime != "" {
+		body["Cmd"] = []string{spec.Runtime, spec.Entry}
+	}
+	if c.WorkDir != "" {
+		body["WorkingDir"] = c.WorkDir
 	}
 	if c.Port > 0 {
 		port := strconv.Itoa(c.Port) + "/tcp"
@@ -710,6 +716,55 @@ func (d *Docker) RunOnce(image string, cmd []string, mounts []Mount, timeout tim
 		return stdout, fmt.Errorf("exit status %d: %s", waited.StatusCode, strings.TrimSpace(string(read("stderr"))))
 	}
 	return stdout, nil
+}
+
+/*
+WaitHealthy waits for an instance's container, or its blue/green candidate, to
+report healthy by its image's own HEALTHCHECK.
+
+`declared` is false, with no wait, when the image declares no healthcheck: the
+caller then decides readiness some other way. An unhealthy verdict or the
+timeout is an error carrying the last check's output.
+*/
+func (d *Docker) WaitHealthy(key string, candidate bool, timeout time.Duration) (declared bool, err error) {
+	name := unitName(key)
+	if candidate {
+		name = candidateName(key)
+	}
+	deadline := time.Now().Add(timeout)
+	for {
+		var info struct {
+			State struct {
+				Health *struct {
+					Status string `json:"Status"`
+					Log    []struct {
+						Output string `json:"Output"`
+					} `json:"Log"`
+				} `json:"Health"`
+			} `json:"State"`
+		}
+		if err := d.api.do("GET", "/containers/"+name+"/json", nil, nil, &info, dockerCallTimeout); err != nil {
+			return false, err
+		}
+		h := info.State.Health
+		if h == nil {
+			return false, nil
+		}
+		last := ""
+		if len(h.Log) > 0 {
+			last = strings.TrimSpace(h.Log[len(h.Log)-1].Output)
+		}
+		switch h.Status {
+		case "healthy":
+			return true, nil
+		case "unhealthy":
+			return true, fmt.Errorf("the image's healthcheck reports unhealthy: %s", last)
+		}
+		if time.Now().After(deadline) {
+			return true, fmt.Errorf("the image's healthcheck did not pass within %s: %s", timeout, last)
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
 }
 
 // DaemonInfo is what `bay doctor` asks of the daemon.

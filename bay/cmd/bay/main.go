@@ -249,6 +249,11 @@ func usageText() string {
               # apex + www are one site. The first is the canonical one.
               # -  reads the artifact from stdin, e.g.
               #    ssh HOST 'bay deploy - --name app' < app.tar.zst
+  bay deploy  --image REF@sha256:... --port N --name NAME [--health /path]
+              [--env ENV] [--domain HOST]... [--secrets-file PATH]
+              # an image app: run as its image defines it, by digest only.
+              # Ready when --health answers 2xx, else by the image's own
+              # HEALTHCHECK, else when the port accepts a connection
   bay list
   bay status  [--json]            # releases, traffic + backup freshness
   bay logs    <name/env> [-n 200] [--since 15m] [--grep RE] [--json]
@@ -882,6 +887,27 @@ func (s *server) start(app state.App) error {
 		return nil
 	}
 
+	// In containers, archive and image apps alike. The host-binary path below
+	// serves the child runner and the tests' fake until Bay quest 2597 deletes
+	// it with systemd.
+	if _, inContainers := s.runner.(containerRunner); inContainers {
+		spec, choice, err := s.specFor(app)
+		if err != nil {
+			return err
+		}
+		if choice.Warning != "" {
+			s.log.Warn("runtime image chosen for the app", "app", app.Key(), "image", choice.Ref, "warning", choice.Warning)
+		}
+		if err := s.runner.Start(spec); err != nil {
+			return err
+		}
+		if err := s.waitReady(app, app.UpstreamPort(), false, readyTimeout); err != nil {
+			return fmt.Errorf("%s never became ready: %w", app.Key(), err)
+		}
+		s.log.Info("app ready", "app", app.Key(), "port", app.UpstreamPort(), "domain", app.Domain())
+		return nil
+	}
+
 	instance := filepath.Join(s.root, "apps", naming.Instance(app.Name, app.Env))
 	env, err := runner.LoadEnvFile(filepath.Join(instance, ".env"))
 	if err != nil {
@@ -891,45 +917,29 @@ func (s *server) start(app state.App) error {
 	if err != nil {
 		return err
 	}
-
 	writable, err := s.writablePaths(app, m, instance)
 	if err != nil {
 		return err
 	}
-
-	var spec runner.Spec
-	if _, inContainers := s.runner.(containerRunner); inContainers {
-		var choice runtimeChoice
-		spec, choice, err = s.containerSpec(app, m, env, instance, writable)
-		if err != nil {
-			return err
-		}
-		if choice.Warning != "" {
-			s.log.Warn("runtime image chosen for the app", "app", app.Key(), "image", choice.Ref, "warning", choice.Warning)
-		}
-	} else {
-		// The host-binary path, for the child runner and the tests' fake, until
-		// Bay quest 2597 deletes it with systemd.
-		bin, err := runtimes.Resolve(s.runtimes, m.Runtime, m.RuntimeVersion)
-		if err != nil {
-			return err
-		}
-		spec = runner.Spec{
-			Key:     app.Key(),
-			Dir:     filepath.Join(instance, "current"),
-			Runtime: bin,
-			Entry:   m.Entry,
-			Env:     env,
-			LogFile: filepath.Join(instance, "logs", "app.log"),
-			Sandbox: runner.Sandbox{
-				Instance:      instance,
-				WritablePaths: writable,
-				MemoryMax:     "512M",
-				TasksMax:      256,
-				CPUQuota:      cpuQuotaFor(runtime.NumCPU()),
-				StopGrace:     stopGrace,
-			},
-		}
+	bin, err := runtimes.Resolve(s.runtimes, m.Runtime, m.RuntimeVersion)
+	if err != nil {
+		return err
+	}
+	spec := runner.Spec{
+		Key:     app.Key(),
+		Dir:     filepath.Join(instance, "current"),
+		Runtime: bin,
+		Entry:   m.Entry,
+		Env:     env,
+		LogFile: filepath.Join(instance, "logs", "app.log"),
+		Sandbox: runner.Sandbox{
+			Instance:      instance,
+			WritablePaths: writable,
+			MemoryMax:     "512M",
+			TasksMax:      256,
+			CPUQuota:      cpuQuotaFor(runtime.NumCPU()),
+			StopGrace:     stopGrace,
+		},
 	}
 	// No hold armed here. Whoever took the app down owns the window — arming it
 	// at this point would mean every request between the stop and this line
@@ -1139,6 +1149,26 @@ func (s *server) handleDeploy(w http.ResponseWriter, r *http.Request) {
 	// during provision — see `deploy.ConsumeSecretsFile`. Putting the secrets
 	// themselves in a query string would be the argv mistake with extra steps.
 	secretsFile := q.Get("secretsFile")
+
+	// An image app: no archive in the body, the image named by digest.
+	if image := q.Get("image"); image != "" {
+		port, _ := strconv.Atoi(q.Get("port"))
+		app, failure := s.deployImage(r.Context(), imageDeployOptions{
+			Name: name, Env: env, Domains: domains, Image: image,
+			ContainerPort: port, HealthPath: q.Get("health"), SecretsFile: secretsFile,
+		})
+		if failure != nil {
+			writeError(w, failure.Status, failure.Error(), failure.Detail)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"app":         app,
+			"release":     app.Release,
+			"url":         "https://" + app.Domain() + "/",
+			"healthCheck": app.HealthCheck,
+		})
+		return
+	}
 
 	tmp, err := os.CreateTemp("", "bay-upload-*.tar.zst")
 	if err != nil {
@@ -1582,6 +1612,11 @@ func (s *server) watchAndRollback(app state.App, previous string) {
 	if app.Static {
 		return
 	}
+	// An image app has no release directory to roll back to; its failed
+	// deploys never switch (blue/green), and the record is restored instead.
+	if app.Image != "" {
+		return
+	}
 
 	ctx := s.beginWatch(app.Key())
 	defer s.endWatch(app.Key())
@@ -1769,6 +1804,11 @@ func artifactBody(artifact string, stdin io.Reader) (io.Reader, func(), error) {
 }
 
 func cmdDeploy(args []string) error {
+	for _, arg := range args {
+		if arg == "--image" {
+			return cmdDeployImage(args)
+		}
+	}
 	if len(args) == 0 {
 		return errors.New("usage: bay deploy (<app.tar.zst>|-) --name NAME --domain HOST [--env ENV]\n" +
 			"  -  reads the artifact from stdin, e.g. ssh HOST 'bay deploy - --name app' < app.tar.zst")
@@ -1829,6 +1869,47 @@ func cmdDeploy(args []string) error {
 	}
 	url := controlHost + "/apps?" + query.Encode()
 	res, err := call(http.MethodPost, url, body)
+	if err != nil {
+		return err
+	}
+	fmt.Println(res)
+	return nil
+}
+
+/*
+cmdDeployImage deploys an image app:
+
+	bay deploy --image REF@sha256:... --port N [--health /path] --name NAME [--env ENV] [--domain HOST]... [--secrets-file PATH]
+*/
+func cmdDeployImage(args []string) error {
+	if err := checkFlags(args, map[string]bool{},
+		map[string]bool{"--image": true, "--port": true, "--health": true, "--name": true, "--env": true,
+			"--domain": true, "--secrets-file": true, "--control-socket": true}); err != nil {
+		return err
+	}
+	query := neturl.Values{"env": {"production"}}
+	for i := 0; i < len(args)-1; i++ {
+		switch args[i] {
+		case "--image", "--port", "--health", "--name", "--env":
+			query.Set(strings.TrimPrefix(args[i], "--"), args[i+1])
+		case "--secrets-file":
+			abs, err := filepath.Abs(args[i+1])
+			if err != nil {
+				return err
+			}
+			query.Set("secretsFile", abs)
+		case "--domain":
+			for _, host := range strings.Split(args[i+1], ",") {
+				if host = strings.TrimSpace(host); host != "" {
+					query.Add("domain", host)
+				}
+			}
+		}
+	}
+	if query.Get("name") == "" {
+		return errors.New("usage: bay deploy --image REF@sha256:... --port N --name NAME [--health /path] [--env ENV] [--domain HOST]")
+	}
+	res, err := call(http.MethodPost, controlHost+"/apps?"+query.Encode(), nil)
 	if err != nil {
 		return err
 	}
@@ -1910,6 +1991,13 @@ func cmdStatus(args []string) error {
 		fmt.Printf("%s/%s\n", a.Name, a.Env)
 		fmt.Printf("  domain   %s\n", strings.Join(a.Domains, ", "))
 		fmt.Printf("  release  %s\n", a.Release)
+		if a.Image != "" {
+			check := a.HealthCheck
+			if check == "" {
+				check = "not yet checked"
+			}
+			fmt.Printf("  image    %s  (ready by: %s)\n", a.Image, check)
+		}
 		if a.RuntimeImage != "" {
 			fmt.Printf("  runtime  %s  (set by hand; bay runtimes update leaves it alone)\n", a.RuntimeImage)
 		}

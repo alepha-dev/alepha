@@ -138,6 +138,20 @@ type App struct {
 	// listens on Port (its SERVER_PORT), so the app's .env never changes with
 	// a deploy.
 	HostPort int `json:"hostPort,omitempty"`
+
+	// Image is set for an image app: the container image it runs, by digest,
+	// instead of an archive in a runtime image. It has no release directory;
+	// Release names the digest.
+	Image string `json:"image,omitempty"`
+	// ContainerPort is the port an image app listens on inside its image. An
+	// archive app listens on Port, its SERVER_PORT.
+	ContainerPort int `json:"containerPort,omitempty"`
+	// HealthPath is the HTTP path that answers 2xx once an image app is ready.
+	HealthPath string `json:"healthPath,omitempty"`
+	// HealthCheck records which check last decided the instance was ready:
+	// "path /x", "image healthcheck" or "tcp", so `bay status` never claims
+	// more than was actually checked.
+	HealthCheck string `json:"healthCheck,omitempty"`
 }
 
 // UpstreamPort is the host port to send this instance's traffic to.
@@ -433,6 +447,11 @@ reported as a deliberate stop.
 */
 func (s *Store) SetStopped(key string, stopped bool) error {
 	return s.mutate(key, func(a *App) { a.Stopped = stopped })
+}
+
+// SetHealthCheck records which check last decided an instance was ready.
+func (s *Store) SetHealthCheck(key, check string) error {
+	return s.mutate(key, func(a *App) { a.HealthCheck = check })
 }
 
 // SetHostPort records the host port the live container is published on.

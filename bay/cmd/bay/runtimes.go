@@ -24,6 +24,11 @@ Read from the release being served, so it describes what a start would run
 now, not what the instance was first deployed with.
 */
 func (s *server) runtimeSelection(app state.App) (runtimes.Selection, error) {
+	// An image app names its image itself, and `bay runtimes update` never
+	// moves it: it is an override by construction.
+	if app.Image != "" {
+		return runtimes.Selection{Ref: app.Image, Override: true}, nil
+	}
 	instance := filepath.Join(s.root, "apps", naming.Instance(app.Name, app.Env))
 	m, err := manifest.LoadFromRelease(filepath.Join(instance, "current"))
 	if err != nil {

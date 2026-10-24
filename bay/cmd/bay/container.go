@@ -194,20 +194,7 @@ func (s *server) replace(app state.App) error {
 	if !ok {
 		return fmt.Errorf("%s: blue/green needs a container runner", app.Key())
 	}
-	instance := s.instanceDir(app)
-	env, err := runner.LoadEnvFile(filepath.Join(instance, ".env"))
-	if err != nil {
-		return err
-	}
-	m, err := manifest.LoadFromRelease(filepath.Join(instance, "current"))
-	if err != nil {
-		return err
-	}
-	writable, err := s.writablePaths(app, m, instance)
-	if err != nil {
-		return err
-	}
-	spec, choice, err := s.containerSpec(app, m, env, instance, writable)
+	spec, choice, err := s.specFor(app)
 	if err != nil {
 		return err
 	}
@@ -227,7 +214,7 @@ func (s *server) replace(app state.App) error {
 	if s.readyWait > 0 {
 		wait = s.readyWait
 	}
-	if err := s.probe.WaitReady(candidate, wait); err != nil {
+	if err := s.waitReady(app, candidate, true, wait); err != nil {
 		_ = cr.DiscardCandidate(app.Key())
 		return fmt.Errorf("%s never became ready (the previous container is still serving): %w", app.Key(), err)
 	}

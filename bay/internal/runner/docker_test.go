@@ -396,3 +396,52 @@ func TestResolveDigest(t *testing.T) {
 		}
 	})
 }
+
+func TestWaitHealthy(t *testing.T) {
+	t.Run("no healthcheck declared answers at once, not declared", func(t *testing.T) {
+		d, _ := startFakeEngine(t, func(fakeRequest) (int, string) { return 200, `{"State":{}}` })
+		declared, err := d.WaitHealthy("a/b", false, time.Second)
+		if declared || err != nil {
+			t.Fatalf("declared = %v, err = %v", declared, err)
+		}
+	})
+
+	t.Run("healthy passes, and the candidate is asked by its own name", func(t *testing.T) {
+		d, engine := startFakeEngine(t, func(fakeRequest) (int, string) {
+			return 200, `{"State":{"Health":{"Status":"healthy"}}}`
+		})
+		declared, err := d.WaitHealthy("a/b", true, time.Second)
+		if !declared || err != nil {
+			t.Fatalf("declared = %v, err = %v", declared, err)
+		}
+		if engine.calls()[0].Path != "/containers/bay-a-b-next/json" {
+			t.Fatalf("asked %s", engine.calls()[0].Path)
+		}
+	})
+
+	t.Run("unhealthy fails with the check's last output", func(t *testing.T) {
+		d, _ := startFakeEngine(t, func(fakeRequest) (int, string) {
+			return 200, `{"State":{"Health":{"Status":"unhealthy","Log":[{"Output":"curl: connection refused"}]}}}`
+		})
+		declared, err := d.WaitHealthy("a/b", false, time.Second)
+		if !declared || err == nil || !strings.Contains(err.Error(), "connection refused") {
+			t.Fatalf("declared = %v, err = %v", declared, err)
+		}
+	})
+}
+
+func TestCreateBodyForAnImageApp(t *testing.T) {
+	t.Run("an image app keeps its image's own command and working directory", func(t *testing.T) {
+		body := createBody(Spec{Key: "api/production"}, Container{Image: "x@sha256:1", Port: 3000, HostPort: 41000})
+		if _, set := body["Cmd"]; set {
+			t.Fatalf("cmd = %v", body["Cmd"])
+		}
+		if _, set := body["WorkingDir"]; set {
+			t.Fatalf("workdir = %v", body["WorkingDir"])
+		}
+		bindings := body["HostConfig"].(map[string]any)["PortBindings"].(map[string]any)["3000/tcp"].([]map[string]string)
+		if bindings[0]["HostPort"] != "41000" || bindings[0]["HostIp"] != "127.0.0.1" {
+			t.Fatalf("bindings = %v", bindings)
+		}
+	})
+}
