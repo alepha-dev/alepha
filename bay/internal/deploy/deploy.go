@@ -798,6 +798,11 @@ func allocatePort(used map[int]bool) (int, error) {
 	return 0, fmt.Errorf("no free port found")
 }
 
+// Untar extracts a compressed tar (gzip or zstd) into dest with the same
+// refusals as an artifact: no link, no path outside dest, no oversized entry.
+// Stack bundles go through it.
+func Untar(src, dest string) error { return untar(src, dest) }
+
 // maxEntrySize caps a single extracted file.
 //
 // Without a ceiling, a crafted archive of a few kilobytes can expand to fill

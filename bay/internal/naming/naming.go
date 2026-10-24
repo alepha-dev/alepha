@@ -32,3 +32,12 @@ import "strings"
 func Instance(name, env string) string {
 	return strings.Join([]string{name, env}, "-")
 }
+
+/*
+StackProject is the Compose project of a stack environment: "umami" in
+"staging" is "umami-staging". Its networks and volumes are named after it, so
+two environments of one stack never share either.
+*/
+func StackProject(stack, env string) string {
+	return Instance(stack, env)
+}

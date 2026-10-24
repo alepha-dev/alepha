@@ -165,6 +165,16 @@ type App struct {
 	// default (512 MiB): a JVM service, an app with a large cache. Zero means
 	// the default. Set by `bay harden --memory`.
 	MemoryBytes int64 `json:"memoryBytes,omitempty"`
+
+	// Stack and Service are set on a stack member: the instance is service
+	// Service of stack environment Stack/Env, named "<stack>.<service>".
+	// Empty on a standalone app.
+	Stack   string `json:"stack,omitempty"`
+	Service string `json:"service,omitempty"`
+	// ServiceKind is "app" for an `x-lore: { app }` service, which Bay runs
+	// itself (blue/green, hardening), or "service" for one compose runs from
+	// its image. Empty on a standalone app.
+	ServiceKind string `json:"serviceKind,omitempty"`
 }
 
 // UpstreamPort is the host port to send this instance's traffic to.
@@ -253,6 +263,10 @@ type State struct {
 	// so it wins over them; a Bay upgrade that ships newer pins does not
 	// clear it, and the next update moves it forward again.
 	RuntimeLocks map[string]string `json:"runtimeLocks,omitempty"`
+	// Stacks are the compose-described groups of apps and services this Bay
+	// runs (epic E74). Their members that run or are routed are Apps too, so
+	// the proxy, the runner and every report treat them as instances.
+	Stacks []Stack `json:"stacks,omitempty"`
 }
 
 // S3Target addresses an S3-compatible bucket (R2, MinIO, AWS).
@@ -368,6 +382,11 @@ func (s *Store) Upsert(app App) error {
 			app.UID = a.UID
 			app.Relaxed = a.Relaxed
 			app.MemoryBytes = a.MemoryBytes
+			// A member redeployed through the ordinary deploy path is still a
+			// member of its stack.
+			if app.Stack == "" {
+				app.Stack, app.Service, app.ServiceKind = a.Stack, a.Service, a.ServiceKind
+			}
 			// ⚠️ `Stopped` is deliberately NOT carried forward, unlike every
 			// other runtime-owned field above. A deploy is an instruction to
 			// run THIS release, and `deployArtifact` already calls `start`

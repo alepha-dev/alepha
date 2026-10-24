@@ -100,3 +100,56 @@ func TestEnsureUID(t *testing.T) {
 		}
 	})
 }
+
+func TestStacks(t *testing.T) {
+	t.Run("an environment is created on first mutation, persisted, and copied out", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "state.json")
+		s, _ := Open(path)
+		err := s.MutateStackEnv("umami", "production", func(e *StackEnv) error {
+			e.Revision = 1
+			e.Revisions = append(e.Revisions, StackRevision{Number: 1, Digests: map[string]string{"db": "postgres@sha256:a"}})
+			e.Routes = append(e.Routes, StackRoute{Service: "umami", Domain: "analytics.bob.dev"})
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		reopened, _ := Open(path)
+		env, ok := reopened.StackEnv("umami", "production")
+		if !ok || env.Revision != 1 || len(env.Routes) != 1 || env.Revisions[0].Digests["db"] == "" {
+			t.Fatalf("env = %+v", env)
+		}
+		env.Routes[0].Domain = "tampered"
+		again, _ := reopened.StackEnv("umami", "production")
+		if again.Routes[0].Domain != "analytics.bob.dev" {
+			t.Fatal("StackEnv returned shared state")
+		}
+	})
+
+	t.Run("removing an environment removes its members, and the stack when empty", func(t *testing.T) {
+		s, _ := Open(filepath.Join(t.TempDir(), "state.json"))
+		_ = s.MutateStackEnv("umami", "production", func(*StackEnv) error { return nil })
+		_ = s.MutateStackEnv("umami", "staging", func(*StackEnv) error { return nil })
+		_ = s.Upsert(App{Name: MemberName("umami", "umami"), Env: "production", Port: 4100, Stack: "umami", Service: "umami", ServiceKind: "service"})
+		_ = s.Upsert(App{Name: MemberName("umami", "umami"), Env: "staging", Port: 4101, Stack: "umami", Service: "umami", ServiceKind: "service"})
+		if err := s.RemoveStackEnv("umami", "production"); err != nil {
+			t.Fatal(err)
+		}
+		if len(s.StackMembers("umami", "production")) != 0 || len(s.StackMembers("umami", "staging")) != 1 {
+			t.Fatal("members not removed with their environment")
+		}
+		_ = s.RemoveStackEnv("umami", "staging")
+		if len(s.Stacks()) != 0 {
+			t.Fatalf("stacks = %+v", s.Stacks())
+		}
+	})
+
+	t.Run("a member redeployed through the ordinary path stays a member", func(t *testing.T) {
+		s, _ := Open(filepath.Join(t.TempDir(), "state.json"))
+		_ = s.Upsert(App{Name: "mcs.api", Env: "staging", Port: 4100, Stack: "mcs", Service: "api", ServiceKind: "app"})
+		_ = s.Upsert(App{Name: "mcs.api", Env: "staging", Port: 4100, Release: "r2"})
+		if app, _ := s.Get("mcs.api/staging"); app.Stack != "mcs" || app.Service != "api" || app.ServiceKind != "app" {
+			t.Fatalf("app = %+v", app)
+		}
+	})
+}
