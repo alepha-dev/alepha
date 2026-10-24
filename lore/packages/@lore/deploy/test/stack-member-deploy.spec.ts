@@ -85,28 +85,24 @@ describe("an app deploy inside a stack", () => {
       env: "staging",
     });
     const instance = await createInstance(alepha, w, "mcs-api", "staging");
-    await alepha
-      .inject(StackController)
-      .attachStackMember.fetch(
-        {
-          params: {
-            projectId: w.project.id,
-            stackId: stack.id,
-            environmentId: env.id,
-          },
-          body: { instanceId: instance.id },
+    await alepha.inject(StackController).attachStackMember.fetch(
+      {
+        params: {
+          projectId: w.project.id,
+          stackId: stack.id,
+          environmentId: env.id,
         },
-        { user: w.user },
-      );
-    await alepha
-      .inject(StackController)
-      .uploadStackRevision.fetch(
-        {
-          params: { projectId: w.project.id, stackId: stack.id },
-          body: { file: new File([compose], "compose.yml") },
-        },
-        { user: w.user },
-      );
+        body: { instanceId: instance.id },
+      },
+      { user: w.user },
+    );
+    await alepha.inject(StackController).uploadStackRevision.fetch(
+      {
+        params: { projectId: w.project.id, stackId: stack.id },
+        body: { file: new File([compose], "compose.yml") },
+      },
+      { user: w.user },
+    );
     if (options.applied ?? true) {
       // As if the stack had been deployed and Bay had acked it.
       await w.rows.environments.updateById(env.id, { revision: 1 });
@@ -114,24 +110,20 @@ describe("an app deploy inside a stack", () => {
     const file = await packedArtifact({
       manifest: { runtimes: [{ runtime: "node" }] },
     });
-    await alepha
-      .inject(ArtifactController)
-      .pushArtifact.fetch(
-        {
-          params: { projectId: w.project.id },
-          body: { app: "mcs-api", tag: "1.0.0", file },
-        } as never,
-        { user: w.user },
-      );
-    await alepha
-      .inject(AppSecretController)
-      .setAppSecret.fetch(
-        {
-          params: { projectId: w.project.id, instanceId: instance.id },
-          body: { key: "API_KEY", value: "member-api-key" },
-        },
-        { user: w.user },
-      );
+    await alepha.inject(ArtifactController).pushArtifact.fetch(
+      {
+        params: { projectId: w.project.id },
+        body: { app: "mcs-api", tag: "1.0.0", file },
+      } as never,
+      { user: w.user },
+    );
+    await alepha.inject(AppSecretController).setAppSecret.fetch(
+      {
+        params: { projectId: w.project.id, instanceId: instance.id },
+        body: { key: "API_KEY", value: "member-api-key" },
+      },
+      { user: w.user },
+    );
     return {
       w,
       estateId: minted.id,
@@ -143,13 +135,11 @@ describe("an app deploy inside a stack", () => {
   };
 
   const deploy = (a: Awaited<ReturnType<typeof arrange>>) =>
-    alepha
-      .inject(DeployService)
-      .queue({
-        projectId: a.w.project.id,
-        instanceId: a.instance.id,
-        tag: "1.0.0",
-      });
+    alepha.inject(DeployService).queue({
+      projectId: a.w.project.id,
+      instanceId: a.instance.id,
+      tag: "1.0.0",
+    });
 
   it("queues a Bay deploy naming the stack and the app service, with no estate on the copy", async ({
     expect,
@@ -237,18 +227,16 @@ describe("an app deploy inside a stack", () => {
   }) => {
     const a = await arrange();
     const resource = (
-      await alepha
-        .inject(AppController)
-        .getApp.fetch(
-          {
-            params: {
-              projectId: a.w.project.id,
-              app: "mcs-api",
-              env: "staging",
-            },
-          } as never,
-          { user: a.w.user },
-        )
+      await alepha.inject(AppController).getApp.fetch(
+        {
+          params: {
+            projectId: a.w.project.id,
+            app: "mcs-api",
+            env: "staging",
+          },
+        } as never,
+        { user: a.w.user },
+      )
     ).data as {
       stack?: { name: string; env: string };
       stackEnvironmentId?: string;
@@ -262,15 +250,13 @@ describe("an app deploy inside a stack", () => {
   }) => {
     const a = await arrange();
     const started = (
-      await alepha
-        .inject(DeployController)
-        .startDeploy.fetch(
-          {
-            params: { projectId: a.w.project.id, instanceId: a.instance.id },
-            body: { tag: "1.0.0" },
-          } as never,
-          { user: a.w.user },
-        )
+      await alepha.inject(DeployController).startDeploy.fetch(
+        {
+          params: { projectId: a.w.project.id, instanceId: a.instance.id },
+          body: { tag: "1.0.0" },
+        } as never,
+        { user: a.w.user },
+      )
     ).data;
     expect(started.status).toBe("queued");
     const commands = await a.w.rows.commands.findMany({});
