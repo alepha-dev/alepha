@@ -252,7 +252,7 @@ func usageText() string {
   bay list
   bay status  [--json]            # releases, traffic + backup freshness
   bay logs    <name/env> [-n 200] [--since 15m] [--grep RE] [--json]
-              # journald on a real host, logs/app.log under the child runner
+              # the app container's log
   bay stop    <name/env>          # out of service until "bay start" or a deploy;
                                   # survives a reboot and a bay upgrade
   bay start   <name/env>          # back into service
@@ -533,14 +533,16 @@ func cmdServe(args []string) error {
 			return err
 		}
 	}
-	sup, isolated := runner.Default("")
-	if !isolated {
-		// Saying this every boot on purpose. Without per-app users, one app's
-		// remote-code-execution bug reaches every other app's secrets, every
-		// database, the control token and the backup credentials.
-		log.Warn("apps run WITHOUT isolation (no systemd or not root): " +
-			"a compromise in one app reaches all the others")
+	// Every app runs in a container (epic E73). No Docker is a refusal to
+	// start, not a fallback: a Bay that ran apps as its own children would put
+	// every app's secrets and database within reach of every other app, and
+	// would do it quietly.
+	docker, err := runner.NewDocker("")
+	if err != nil {
+		return fmt.Errorf("Bay runs every app in Docker, and %w; run `bay doctor` for what to fix", err)
 	}
+	var sup runner.Runner = docker
+	isolated := true
 	srv := &server{root: root, runtimes: runtimesDir, store: store, runner: sup,
 		isolated: isolated, log: log, controlSocket: controlSocket,
 		keepReleases: keepReleases, backupInterval: backupInterval,
@@ -886,10 +888,6 @@ func (s *server) start(app state.App) error {
 	if err != nil {
 		return err
 	}
-	bin, err := runtimes.Resolve(s.runtimes, m.Runtime, m.RuntimeVersion)
-	if err != nil {
-		return err
-	}
 
 	// Every writable path below exists because the manifest declared the
 	// resource that needs it. Declaring `$storage` is what grants write access to
@@ -908,21 +906,47 @@ func (s *server) start(app state.App) error {
 		writable = append(writable, filepath.Join(instance, "storage"))
 	}
 
-	spec := runner.Spec{
-		Key:     app.Key(),
-		Dir:     filepath.Join(instance, "current"),
-		Runtime: bin,
-		Entry:   m.Entry,
-		Env:     env,
-		LogFile: filepath.Join(instance, "logs", "app.log"),
-		Sandbox: runner.Sandbox{
-			Instance:      instance,
-			WritablePaths: writable,
-			MemoryMax:     "512M",
-			TasksMax:      256,
-			CPUQuota:      cpuQuotaFor(runtime.NumCPU()),
-			StopGrace:     stopGrace,
-		},
+	// Created up front: a bind mount of a missing directory fails the container
+	// create with a message about the daemon, not about the app.
+	for _, p := range writable {
+		if err := os.MkdirAll(p, 0o755); err != nil {
+			return fmt.Errorf("create writable path %s: %w", p, err)
+		}
+	}
+
+	var spec runner.Spec
+	if _, inContainers := s.runner.(containerRunner); inContainers {
+		var choice runtimeChoice
+		spec, choice, err = s.containerSpec(app, m, env, instance, writable)
+		if err != nil {
+			return err
+		}
+		if choice.Warning != "" {
+			s.log.Warn("runtime image chosen for the app", "app", app.Key(), "image", choice.Ref, "warning", choice.Warning)
+		}
+	} else {
+		// The host-binary path, for the child runner and the tests' fake, until
+		// Bay quest 2597 deletes it with systemd.
+		bin, err := runtimes.Resolve(s.runtimes, m.Runtime, m.RuntimeVersion)
+		if err != nil {
+			return err
+		}
+		spec = runner.Spec{
+			Key:     app.Key(),
+			Dir:     filepath.Join(instance, "current"),
+			Runtime: bin,
+			Entry:   m.Entry,
+			Env:     env,
+			LogFile: filepath.Join(instance, "logs", "app.log"),
+			Sandbox: runner.Sandbox{
+				Instance:      instance,
+				WritablePaths: writable,
+				MemoryMax:     "512M",
+				TasksMax:      256,
+				CPUQuota:      cpuQuotaFor(runtime.NumCPU()),
+				StopGrace:     stopGrace,
+			},
+		}
 	}
 	// No hold armed here. Whoever took the app down owns the window — arming it
 	// at this point would mean every request between the stop and this line
@@ -1138,6 +1162,7 @@ func (s *server) handleDeploy(w http.ResponseWriter, r *http.Request) {
 		"url":     "https://" + out.Result.App.Domain() + "/",
 		"restore": out.Restore,
 		"pruned":  out.Pruned,
+		"runtime": out.Runtime,
 	})
 }
 
@@ -1166,6 +1191,16 @@ type deployOutcome struct {
 	Result  deploy.Result
 	Restore map[string]any
 	Pruned  []string
+	// Runtime is the image the app now runs on and, when Bay had to decide
+	// something the build did not say, why. Reported to whoever deployed,
+	// because "it runs on Node 26" is a fact they may not have chosen.
+	Runtime *deployRuntime `json:"runtime,omitempty"`
+}
+
+// deployRuntime is the runtime part of a deploy's answer.
+type deployRuntime struct {
+	Image   string `json:"image"`
+	Warning string `json:"warning,omitempty"`
 }
 
 // deployFailure carries how a deploy failed, not just that it did.
@@ -1283,7 +1318,13 @@ func (s *server) deployArtifact(ctx context.Context, opts deployArtifactOptions)
 	// repointed here and no longer protecting it.
 	pruned := s.pruneReleases(res.App, res.Previous)
 
-	return &deployOutcome{Result: *res, Restore: restore, Pruned: pruned}, nil
+	outcome := &deployOutcome{Result: *res, Restore: restore, Pruned: pruned}
+	if _, inContainers := s.runner.(containerRunner); inContainers && !res.App.Static {
+		if sel, err := s.runtimeSelection(res.App); err == nil {
+			outcome.Runtime = &deployRuntime{Image: sel.Ref, Warning: sel.Warning}
+		}
+	}
+	return outcome, nil
 }
 
 /*

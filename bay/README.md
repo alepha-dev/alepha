@@ -33,7 +33,7 @@ The design notes live in the Lore project **Bay** (`lore.alepha.dev/bay`), and i
 | ------------------ | ------------------------------------------------------------------------------------------------ |
 | **Artifact**       | the `tar.zst` `alepha pack` already produces - no Bay-specific format, no manifest to hand-write |
 | **Deployment**     | untar under guard, provision, atomic `current` switch, health-gated rollback watch               |
-| **Supervision**    | a systemd unit per instance, each running as its own unix user, in its own sandbox               |
+| **Supervision**    | a Docker container per instance: the archive runs in the runtime image its manifest names        |
 | **Reverse proxy**  | routing by `Host`, file-first then app, statics from every kept release with `.br`/`.gz`         |
 | **Static headers** | the release's `dist/public/_headers` applied to every file served from disk, Cloudflare's way    |
 | **TLS**            | CertMagic + ACME, exercisable end to end without a public domain or root (Pebble)                |

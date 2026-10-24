@@ -24,9 +24,20 @@ machine least able to afford it. It also keeps a zero or negative core count
 `CPUQuota=0%`, which grants no CPU at all and leaves an app that never boots.
 */
 func cpuQuotaFor(cores int) string {
+	return fmt.Sprintf("%d%%", cpuPercentFor(cores))
+}
+
+// nanoCPUsFor is the same ceiling in Docker's unit, billionths of a core: 100%
+// of one core is 1e9.
+func nanoCPUsFor(cores int) int64 {
+	return int64(cpuPercentFor(cores)) * 1e7
+}
+
+// cpuPercentFor is the policy itself, shared by both spellings.
+func cpuPercentFor(cores int) int {
 	percent := cores * 50
 	if percent < 100 {
 		percent = 100
 	}
-	return fmt.Sprintf("%d%%", percent)
+	return percent
 }

@@ -171,13 +171,13 @@ func TestSnapshotGuards(t *testing.T) {
 
 	// Neither guard may reach the runtime, so a runtime that does not exist
 	// proves the refusal happened first.
-	if _, err := Snapshot(context.Background(), "/nonexistent/runtime", db, db); err == nil ||
+	if _, err := Snapshot(context.Background(), HostRuntime("/nonexistent/runtime"), db, db); err == nil ||
 		!strings.Contains(err.Error(), "same file") {
 		t.Fatalf("VACUUM INTO the live database must be refused, got %v", err)
 	}
 	other := filepath.Join(dir, "exists.sqlite")
 	write(t, other, "y")
-	if _, err := Snapshot(context.Background(), "/nonexistent/runtime", db, other); err == nil ||
+	if _, err := Snapshot(context.Background(), HostRuntime("/nonexistent/runtime"), db, other); err == nil ||
 		!strings.Contains(err.Error(), "already exists") {
 		t.Fatalf("an existing destination must be refused, got %v", err)
 	}
@@ -185,7 +185,7 @@ func TestSnapshotGuards(t *testing.T) {
 
 func TestBackupRefusesAMissingDatabase(t *testing.T) {
 	srv := s3test.New(t)
-	_, err := New(srv.Client(t)).Backup(context.Background(), "lore", "production", "node",
+	_, err := New(srv.Client(t)).Backup(context.Background(), "lore", "production", HostRuntime("node"),
 		filepath.Join(t.TempDir(), "absent.sqlite"))
 	if err == nil {
 		t.Fatal("want an error for a database that is not there")
@@ -198,7 +198,7 @@ func TestBackupRefusesAMissingDatabase(t *testing.T) {
 func TestFetchRefusesWhatIsNotGzip(t *testing.T) {
 	srv := s3test.New(t)
 	srv.Seed(prefix+"20260801T000000Z.sqlite.gz", []byte("not gzip"))
-	_, _, err := New(srv.Client(t)).Fetch(context.Background(), prefix+"20260801T000000Z.sqlite.gz", "node")
+	_, _, err := New(srv.Client(t)).Fetch(context.Background(), prefix+"20260801T000000Z.sqlite.gz", HostRuntime("node"))
 	if err == nil || !strings.Contains(err.Error(), "decompress") {
 		t.Fatalf("want a decompress error, got %v", err)
 	}
@@ -251,7 +251,7 @@ db.prepare("INSERT INTO notes VALUES (?)").run("kept across the round trip");
 	m := New(srv.Client(t))
 	ctx := context.Background()
 
-	res, err := m.Backup(ctx, "lore", "production", node, live)
+	res, err := m.Backup(ctx, "lore", "production", HostRuntime(node), live)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -259,7 +259,7 @@ db.prepare("INSERT INTO notes VALUES (?)").run("kept across the round trip");
 		t.Fatalf("unexpected result %+v", res)
 	}
 
-	path, cleanup, err := m.Fetch(ctx, res.Key, node)
+	path, cleanup, err := m.Fetch(ctx, res.Key, HostRuntime(node))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -288,7 +288,7 @@ func TestFetchRefusesACorruptDatabase(t *testing.T) {
 	srv := s3test.New(t)
 	key := prefix + "20260801T000000Z.sqlite.gz"
 	srv.Seed(key, packed)
-	if _, _, err := New(srv.Client(t)).Fetch(context.Background(), key, node); err == nil {
+	if _, _, err := New(srv.Client(t)).Fetch(context.Background(), key, HostRuntime(node)); err == nil {
 		t.Fatal("a corrupt backup must never be handed to Install")
 	}
 }

@@ -60,31 +60,53 @@ type Inspection struct {
 // OK reports whether SQLite considers the file sound.
 func (i Inspection) OK() bool { return i.Integrity == "ok" }
 
-// sqlite runs the helper with the given arguments.
-func sqlite(ctx context.Context, runtime string, args ...string) (Inspection, error) {
-	var out Inspection
+/*
+Interpreter runs the helper script with the app's own runtime.
 
-	script, err := os.CreateTemp("", "bay-sqlite-*.js")
-	if err != nil {
-		return out, err
-	}
-	defer os.Remove(script.Name())
-	if _, err := script.WriteString(sqliteHelper); err != nil {
-		script.Close()
-		return out, err
-	}
-	if err := script.Close(); err != nil {
-		return out, err
-	}
+Two shapes: a runtime binary on this host (HostRuntime), and the app's runtime
+image, which is what Bay uses since apps run in containers (epic E73). Either
+way the runtime that reads the database is the one that wrote it.
+*/
+type Interpreter interface {
+	// Run executes `script` (JavaScript source) with `args` and answers its
+	// stdout. Every path in args is absolute.
+	Run(ctx context.Context, script string, args ...string) ([]byte, error)
+}
 
-	cmd := exec.CommandContext(ctx, runtime, append([]string{script.Name()}, args...)...)
-	raw, err := cmd.Output()
+// HostRuntime is a runtime binary on this host, e.g. a `node` with
+// node:sqlite.
+type HostRuntime string
+
+// Run writes the script to a temp file and runs it with the binary.
+func (h HostRuntime) Run(ctx context.Context, script string, args ...string) ([]byte, error) {
+	file, err := os.CreateTemp("", "bay-sqlite-*.js")
 	if err != nil {
-		detail := ""
+		return nil, err
+	}
+	defer os.Remove(file.Name())
+	if _, err := file.WriteString(script); err != nil {
+		file.Close()
+		return nil, err
+	}
+	if err := file.Close(); err != nil {
+		return nil, err
+	}
+	raw, err := exec.CommandContext(ctx, string(h), append([]string{file.Name()}, args...)...).Output()
+	if err != nil {
 		if ee, ok := err.(*exec.ExitError); ok {
-			detail = strings.TrimSpace(string(ee.Stderr))
+			return raw, fmt.Errorf("%w: %s", err, strings.TrimSpace(string(ee.Stderr)))
 		}
-		return out, fmt.Errorf("sqlite helper %v: %w: %s", args, err, detail)
+		return raw, err
+	}
+	return raw, nil
+}
+
+// sqlite runs the helper with the given arguments.
+func sqlite(ctx context.Context, in Interpreter, args ...string) (Inspection, error) {
+	var out Inspection
+	raw, err := in.Run(ctx, sqliteHelper, args...)
+	if err != nil {
+		return out, fmt.Errorf("sqlite helper %v: %w", args, err)
 	}
 	if err := json.Unmarshal([]byte(lastLine(raw)), &out); err != nil {
 		return out, fmt.Errorf("sqlite helper returned unparseable output %q: %w", raw, err)
@@ -97,7 +119,7 @@ func sqlite(ctx context.Context, runtime string, args ...string) (Inspection, er
 // Verification happens here rather than at restore time on purpose: a snapshot
 // that is already corrupt must never reach the bucket, because a bucket full of
 // unusable backups looks exactly like a bucket full of good ones.
-func Snapshot(ctx context.Context, runtime, src, dest string) (Inspection, error) {
+func Snapshot(ctx context.Context, runtime Interpreter, src, dest string) (Inspection, error) {
 	srcAbs, err := filepath.Abs(src)
 	if err != nil {
 		return Inspection{}, err
@@ -126,7 +148,7 @@ func Snapshot(ctx context.Context, runtime, src, dest string) (Inspection, error
 }
 
 // Verify checks an existing database file.
-func Verify(ctx context.Context, runtime, path string) (Inspection, error) {
+func Verify(ctx context.Context, runtime Interpreter, path string) (Inspection, error) {
 	return sqlite(ctx, runtime, "verify", path)
 }
 

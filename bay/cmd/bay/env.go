@@ -114,6 +114,13 @@ func (s *server) handleSetEnv(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// The image is pulled while the old process still serves, so the restart
+	// below never waits on a registry.
+	if err := s.prepareRuntime(app); err != nil {
+		writeError(w, http.StatusInternalServerError,
+			"the environment is written but the runtime image is unavailable, so the app keeps running the old one: "+err.Error())
+		return
+	}
 	// Requests wait rather than 502, the same way they do through a deploy.
 	defer s.holdDuring(key)()
 	if err := s.runner.Stop(key, stopGrace); err != nil {

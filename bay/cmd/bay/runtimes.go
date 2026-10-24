@@ -167,6 +167,9 @@ restartInstance stops and starts one instance with requests held, the same
 sequence the connector's restart verb runs.
 */
 func (s *server) restartInstance(app state.App) error {
+	if err := s.prepareRuntime(app); err != nil {
+		return err
+	}
 	release := s.holdDuring(app.Key())
 	defer release()
 	if err := s.runner.Stop(app.Key(), stopGrace); err != nil {

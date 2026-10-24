@@ -100,6 +100,22 @@ func TestDockerDaemon(t *testing.T) {
 		}
 	})
 
+	t.Run("a one-off task answers its stdout, and a failure carries its stderr", func(t *testing.T) {
+		dir := daemonTempDir(t)
+		if err := os.WriteFile(filepath.Join(dir, "in.txt"), []byte("from the host"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		mounts := []Mount{{Source: dir, Target: dir, ReadOnly: true}}
+		out, err := d.RunOnce(daemonTestImage, []string{"cat", filepath.Join(dir, "in.txt")}, mounts, time.Minute)
+		if err != nil || string(out) != "from the host" {
+			t.Fatalf("out = %q, err = %v", out, err)
+		}
+		_, err = d.RunOnce(daemonTestImage, []string{"sh", "-c", "echo broken >&2; exit 3"}, nil, time.Minute)
+		if err == nil || !strings.Contains(err.Error(), "exit status 3") || !strings.Contains(err.Error(), "broken") {
+			t.Fatalf("err = %v", err)
+		}
+	})
+
 	t.Run("start, serve on loopback, report, stop, park and remove", func(t *testing.T) {
 		key := "bay-runner-test/t" + strconv.FormatInt(time.Now().UnixNano(), 36)
 		t.Cleanup(func() { _ = d.Remove(key, true) })

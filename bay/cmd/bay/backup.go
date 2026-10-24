@@ -86,18 +86,34 @@ func notBackedUp(store *state.Store, app state.App) []string {
 			"run `bay config s3:apps` then `bay storage migrate` to put them in a bucket)")
 }
 
-// appPaths resolves the runtime binary and managed database path for an app.
-func (s *server) appPaths(app state.App) (runtime, dbPath string, err error) {
+/*
+appPaths resolves the runtime the backup helper runs with, and the managed
+database path, for an app.
+
+On a Bay running apps in containers the helper runs in the app's own runtime
+image, so the SQLite that reads the database is the one that wrote it; elsewhere
+(the child runner, the tests) it runs with the host runtime as before.
+*/
+func (s *server) appPaths(app state.App) (runtime backup.Interpreter, dbPath string, err error) {
 	instance := filepath.Join(s.root, "apps", naming.Instance(app.Name, app.Env))
 	m, err := manifest.LoadFromRelease(filepath.Join(instance, "current"))
 	if err != nil {
-		return "", "", err
+		return nil, "", err
 	}
-	runtime, err = runtimes.Resolve(s.runtimes, m.Runtime, m.RuntimeVersion)
+	dbPath = filepath.Join(instance, "data", "app.db")
+	if tasks, ok := s.runner.(taskRunner); ok {
+		sel, err := s.runtimeSelection(app)
+		if err != nil {
+			return nil, "", err
+		}
+		return &imageInterpreter{tasks: tasks, image: sel.Ref, command: m.Runtime,
+			scratch: filepath.Join(s.root, "tmp")}, dbPath, nil
+	}
+	bin, err := runtimes.Resolve(s.runtimes, m.Runtime, m.RuntimeVersion)
 	if err != nil {
-		return "", "", err
+		return nil, "", err
 	}
-	return runtime, filepath.Join(instance, "data", "app.db"), nil
+	return backup.HostRuntime(bin), dbPath, nil
 }
 
 // ---------------------------------------------------------------------------

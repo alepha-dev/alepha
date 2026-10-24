@@ -56,7 +56,7 @@ func dbPrefix(app, env string) string {
 }
 
 // Backup snapshots the live database, verifies it, compresses it and uploads it.
-func (m *Manager) Backup(ctx context.Context, app, env, runtime, livePath string) (*Result, error) {
+func (m *Manager) Backup(ctx context.Context, app, env string, runtime Interpreter, livePath string) (*Result, error) {
 	if _, err := os.Stat(livePath); err != nil {
 		return nil, fmt.Errorf("no database at %s: %w", livePath, err)
 	}
@@ -134,7 +134,7 @@ func (m *Manager) Latest(ctx context.Context, app, env string) (Entry, bool, err
 // Verification happens before the file is put anywhere near the app: restoring
 // a corrupt backup over a working database would turn a recoverable incident
 // into data loss.
-func (m *Manager) Fetch(ctx context.Context, key, runtime string) (path string, cleanup func(), err error) {
+func (m *Manager) Fetch(ctx context.Context, key string, runtime Interpreter) (path string, cleanup func(), err error) {
 	packed, err := m.store.Get(ctx, key)
 	if err != nil {
 		return "", nil, fmt.Errorf("download %s: %w", key, err)

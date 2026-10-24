@@ -253,6 +253,9 @@ func (a *actions) restart(cmd connector.Command) (status, step, reason string) {
 		return "failed", "", key + " is not running; it was stopped on this host, and a restart does not reverse that - start it instead"
 	}
 
+	if err := a.s.prepareRuntime(app); err != nil {
+		return "failed", "pull", "the runtime image is unavailable, so the app keeps running the old process: " + err.Error()
+	}
 	// Requests wait rather than 502, the same way they do through a deploy.
 	release := a.s.holdDuring(key)
 	defer release()

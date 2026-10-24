@@ -545,18 +545,8 @@ length) before each chunk. A chunk is not a line, so the chunks are joined and
 then split on newlines.
 */
 func parseDockerLogs(stream []byte) []LogLine {
-	var joined bytes.Buffer
-	for len(stream) >= 8 {
-		size := int(binary.BigEndian.Uint32(stream[4:8]))
-		stream = stream[8:]
-		if size > len(stream) {
-			size = len(stream)
-		}
-		joined.Write(stream[:size])
-		stream = stream[size:]
-	}
 	var out []LogLine
-	for _, line := range strings.Split(joined.String(), "\n") {
+	for _, line := range strings.Split(string(demux(stream)), "\n") {
 		if line == "" {
 			continue
 		}
@@ -570,6 +560,77 @@ func parseDockerLogs(stream []byte) []LogLine {
 		out = append(out, parsed)
 	}
 	return out
+}
+
+// demux joins the chunks of a multiplexed log stream, dropping the framing.
+func demux(stream []byte) []byte {
+	var joined bytes.Buffer
+	for len(stream) >= 8 {
+		size := int(binary.BigEndian.Uint32(stream[4:8]))
+		stream = stream[8:]
+		if size > len(stream) {
+			size = len(stream)
+		}
+		joined.Write(stream[:size])
+		stream = stream[size:]
+	}
+	return joined.Bytes()
+}
+
+/*
+RunOnce runs a command to completion in a throwaway container and answers its
+stdout; a non-zero exit is an error carrying its stderr.
+
+For the short tasks Bay runs with an app's runtime rather than its own, the
+SQLite backup helper first among them. The container has no network, sees only
+the given mounts, and is removed whatever happens.
+*/
+func (d *Docker) RunOnce(image string, cmd []string, mounts []Mount, timeout time.Duration) ([]byte, error) {
+	if err := d.EnsureImage(image); err != nil {
+		return nil, err
+	}
+	binds := make([]map[string]any, 0, len(mounts))
+	for _, m := range mounts {
+		binds = append(binds, map[string]any{"Type": "bind", "Source": m.Source, "Target": m.Target, "ReadOnly": m.ReadOnly})
+	}
+	body := map[string]any{
+		"Image":  image,
+		"Cmd":    cmd,
+		"Labels": map[string]string{dockerKeyLabel: "task"},
+		"HostConfig": map[string]any{
+			"Mounts":      binds,
+			"NetworkMode": "none",
+		},
+	}
+	var created struct {
+		ID string `json:"Id"`
+	}
+	if err := d.api.do("POST", "/containers/create", nil, body, &created, dockerCallTimeout); err != nil {
+		return nil, fmt.Errorf("create task container: %w", err)
+	}
+	defer d.api.do("DELETE", "/containers/"+created.ID, url.Values{"force": {"true"}}, nil, nil, dockerCallTimeout)
+
+	if err := d.api.do("POST", "/containers/"+created.ID+"/start", nil, nil, nil, dockerCallTimeout); err != nil {
+		return nil, fmt.Errorf("start task container: %w", err)
+	}
+	var waited struct {
+		StatusCode int `json:"StatusCode"`
+	}
+	if err := d.api.do("POST", "/containers/"+created.ID+"/wait", nil, nil, &waited, timeout); err != nil {
+		return nil, fmt.Errorf("wait for task container: %w", err)
+	}
+	read := func(stream string) []byte {
+		raw, err := d.api.raw("GET", "/containers/"+created.ID+"/logs", url.Values{stream: {"1"}}, nil, dockerCallTimeout)
+		if err != nil {
+			return nil
+		}
+		return demux(raw)
+	}
+	stdout := read("stdout")
+	if waited.StatusCode != 0 {
+		return stdout, fmt.Errorf("exit status %d: %s", waited.StatusCode, strings.TrimSpace(string(read("stderr"))))
+	}
+	return stdout, nil
 }
 
 // DaemonInfo is what `bay doctor` asks of the daemon.
