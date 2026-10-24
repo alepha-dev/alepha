@@ -18,7 +18,6 @@ import (
 	"github.com/alepha-dev/bay/internal/deploy"
 	"github.com/alepha-dev/bay/internal/manifest"
 	"github.com/alepha-dev/bay/internal/naming"
-	"github.com/alepha-dev/bay/internal/runtimes"
 	"github.com/alepha-dev/bay/internal/s3"
 	"github.com/alepha-dev/bay/internal/schedule"
 	"github.com/alepha-dev/bay/internal/state"
@@ -90,30 +89,28 @@ func notBackedUp(store *state.Store, app state.App) []string {
 appPaths resolves the runtime the backup helper runs with, and the managed
 database path, for an app.
 
-On a Bay running apps in containers the helper runs in the app's own runtime
-image, so the SQLite that reads the database is the one that wrote it; elsewhere
-(the child runner, the tests) it runs with the host runtime as before.
+The helper runs in the app's own runtime image, so the SQLite that reads the
+database is the one that wrote it.
 */
 func (s *server) appPaths(app state.App) (runtime backup.Interpreter, dbPath string, err error) {
+	if app.Image != "" {
+		return nil, "", fmt.Errorf("%s is an image app: Bay provisions no database for it, so there is nothing to back up", app.Key())
+	}
+	tasks, ok := s.runner.(taskRunner)
+	if !ok {
+		return nil, "", fmt.Errorf("%s: backups run in the app's runtime image, and this runner cannot run one", app.Key())
+	}
 	instance := filepath.Join(s.root, "apps", naming.Instance(app.Name, app.Env))
 	m, err := manifest.LoadFromRelease(filepath.Join(instance, "current"))
 	if err != nil {
 		return nil, "", err
 	}
-	dbPath = filepath.Join(instance, "data", "app.db")
-	if tasks, ok := s.runner.(taskRunner); ok {
-		sel, err := s.runtimeSelection(app)
-		if err != nil {
-			return nil, "", err
-		}
-		return &imageInterpreter{tasks: tasks, image: sel.Ref, command: m.Runtime,
-			scratch: filepath.Join(s.root, "tmp")}, dbPath, nil
-	}
-	bin, err := runtimes.Resolve(s.runtimes, m.Runtime, m.RuntimeVersion)
+	sel, err := s.runtimeSelection(app)
 	if err != nil {
 		return nil, "", err
 	}
-	return backup.HostRuntime(bin), dbPath, nil
+	return &imageInterpreter{tasks: tasks, image: sel.Ref, command: m.Runtime,
+		scratch: filepath.Join(s.root, "tmp")}, filepath.Join(instance, "data", "app.db"), nil
 }
 
 // ---------------------------------------------------------------------------

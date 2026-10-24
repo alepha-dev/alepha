@@ -62,7 +62,7 @@ func TestUsageTextMentionsEveryServeFlag(t *testing.T) {
 
 	serveFlags := []string{
 		"--tls",
-		"--root", "--runtimes", "--base-domain",
+		"--root", "--base-domain",
 		"--addr", "--tls-addr",
 		"--acme-ca", "--acme-email", "--acme-ca-root",
 		"--acme-http-port", "--acme-tls-port",

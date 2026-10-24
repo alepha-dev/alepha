@@ -1,9 +1,9 @@
 # Runs Bay's checks on Linux, from a macOS working tree.
 #
 # Not a build image — nothing here ships. Bay's release binary is cross-compiled
-# by the release workflow. This exists for one reason: `go test` on macOS is
-# green while skipping every test of `Systemd.render()`, because those files are
-# `//go:build linux` and the toolchain excludes them outright.
+# by the release workflow. This exists because part of the suite only runs on
+# Linux (the `//go:build linux` host gauge) and part only runs as root (each
+# app's files handed to its own uid), and macOS gives neither.
 #
 # The source is NOT copied in. It arrives as a read-only bind mount at run time,
 # so what gets tested is the working tree — uncommitted changes included, which

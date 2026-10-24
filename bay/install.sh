@@ -132,18 +132,12 @@ ACTUAL="$(checksum "$TMP/bay")"
 # --- install ---------------------------------------------------------------
 
 echo "==> Installing to $BAY_PREFIX"
-mkdir -p "$BAY_PREFIX/bin" "$BAY_PREFIX/data" "$BAY_PREFIX/runtimes"
-chmod 0755 "$BAY_PREFIX/bin" "$BAY_PREFIX/runtimes"
-# Holds every app's `.env` and SQLite file, so it is not world-readable.
-#
-# `0711`, not `0700`: Bay runs each app as its own user, whose WorkingDirectory
-# lives under this directory. `0700` blocks traversal as well as listing, so
-# every app died at CHDIR before executing a line, and Bay reported it upstream
-# as a readiness timeout. `rwx--x--x` keeps the stated intent (nobody but root
-# can list or enumerate this directory) while letting each app user pass
-# through to its own subtree. Confidentiality never rested on this mode anyway:
-# each app's `.env` is written `0600` owned by that app's user.
-chmod 0711 "$BAY_PREFIX/data"
+mkdir -p "$BAY_PREFIX/bin" "$BAY_PREFIX/data"
+chmod 0755 "$BAY_PREFIX/bin"
+# Holds every app's `.env` and SQLite file, so nobody but root may list it.
+# Apps reach their own files through bind mounts into their containers, so no
+# app user ever needs to traverse this directory on the host.
+chmod 0700 "$BAY_PREFIX/data"
 
 chmod 0755 "$TMP/bay"
 # `mv` over a running executable, never `cp` into it: replacing the inode by
@@ -169,14 +163,13 @@ echo
 echo "Installed: $("$BAY_PREFIX/bin/bay" version 2>/dev/null || echo "bay ($ARCH)")"
 echo "  binary   $BAY_PREFIX/bin/bay  (on PATH as $BAY_BIN_LINK)"
 echo "  data     $BAY_PREFIX/data"
-echo "  runtimes $BAY_PREFIX/runtimes"
 echo
 
 if [ "$RESTARTED" = "yes" ]; then
   echo "The bay service was restarted on the new binary. Nothing else to do."
 else
   echo "Check the host with:  bay doctor"
-  echo "Next: run it under systemd, then grant a user the right to deploy."
+  echo "Next: run bay serve under systemd, then grant a user the right to deploy."
   echo "Both steps, with the unit file to copy:"
   echo "  https://github.com/$REPO/blob/main/INSTALL.md"
 fi

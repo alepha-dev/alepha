@@ -2,13 +2,13 @@
 #
 # Runs Bay's checks on Linux, from a macOS checkout.
 #
-# Why this exists: `go test ./...` on macOS is GREEN while running a fraction of
-# the suite. `internal/runner/systemd_test.go` opens with `//go:build linux`, so
-# the Go toolchain excludes the file outright — the Linux-only tests in that
-# package do not exist natively, and nothing says so. `ok
-# internal/runner` is printed either way. Everything that unit tests
-# `Systemd.render()` — the sandbox directives, the memory and CPU ceilings, the
-# stop timeout — is in the half that stays silent.
+# Why this exists: Bay only runs on Linux, and part of the suite only exists
+# there. The host gauge in `internal/connector` is `//go:build linux`, so the
+# Go toolchain excludes it outright on macOS and nothing says so. And the tests
+# that drive the Docker daemon run here as root, which is the only way to
+# exercise what Bay does as root on a host: handing each app's files to its own
+# uid. The container talks to the host's daemon (compose.yml), with
+# BAY_REQUIRE_DOCKER=1 so a missing daemon fails rather than skips.
 #
 # Cross-compiling is not a substitute. `GOOS=linux go build` proves the code
 # COMPILES for Linux; it runs no assertion, and `go build` does not even look at

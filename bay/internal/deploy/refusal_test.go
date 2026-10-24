@@ -116,32 +116,26 @@ func TestStaticToProcessRedeployAllocatesAPort(t *testing.T) {
 	}
 }
 
-// Two instances that would share a unix user must not both be installed: the
-// user owns each app's `.env` and database, so a shared one hands each of
-// them the other's secrets.
+// Two instances that would share a container name must not both be
+// installed: each deploy would replace the other's container.
 //
-// The pair below needs no truncation and no hash collision to get there -
-// the "/" in a key becomes a "-", so `demo-staging/eu` and `demo/staging-eu`
-// are two instances with one unit name, both comfortably inside useradd's
-// limit. `runner.UserName` deliberately leaves short names alone (changing
-// them would orphan the files every existing instance already owns), so this
-// refusal is what closes the gap, and it is reachable in ordinary use rather
-// than only through a 32-bit collision.
-func TestDeployRefusesAUnixUserAnotherInstanceHolds(t *testing.T) {
+// The "/" in a key becomes a "-", so `demo-staging/eu` and `demo/staging-eu`
+// are two instances with one container name, reachable in ordinary use.
+func TestDeployRefusesAContainerNameAnotherInstanceHolds(t *testing.T) {
 	root := t.TempDir()
 	store, err := state.Open(filepath.Join(root, "state.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if runner.UserName("demo-staging/eu") != runner.UserName("demo/staging-eu") {
-		t.Fatal("fixture error: the two keys no longer share a unix user, so this test proves nothing")
+	if runner.ContainerName("demo-staging/eu") != runner.ContainerName("demo/staging-eu") {
+		t.Fatal("fixture error: the two keys no longer share a container name, so this test proves nothing")
 	}
 
 	// Explicit, distinct domains. The derived one is built from the same key
 	// with the same lossy "/" replacement, so leaving them to Bay makes the
 	// two instances collide on DOMAIN first and the domain claim refuses them
-	// before the user check is ever consulted - which is worth knowing (that
+	// before the container-name check is ever consulted - which is worth knowing (that
 	// guard catches the sub-case) and useless for reaching this one.
 	if _, err := Run(Options{
 		Root:       root,
@@ -163,11 +157,10 @@ func TestDeployRefusesAUnixUserAnotherInstanceHolds(t *testing.T) {
 		BaseDomain: "bay.test",
 	}, store)
 	if err == nil {
-		t.Fatal("the second instance was installed as the same unix user as the first")
+		t.Fatal("the second instance was installed under the same container name as the first")
 	}
-	// The message has to name both instances and the user: an operator who
-	// hits this needs to know which pair to rename, and "unix user" is not a
-	// phrase they will guess from a bare conflict.
+	// The message has to name both instances and the container: an operator
+	// who hits this needs to know which pair to rename.
 	for _, want := range []string{"demo/staging-eu", "demo-staging/eu", "bay-demo-staging-eu"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Fatalf("refusal does not mention %q: %v", want, err)
@@ -175,7 +168,7 @@ func TestDeployRefusesAUnixUserAnotherInstanceHolds(t *testing.T) {
 	}
 
 	// The refusal must not fire on a redeploy of the instance itself, which
-	// obviously holds its own user.
+	// obviously holds its own container name.
 	if _, err := Run(Options{
 		Root:       root,
 		Artifact:   artifact(t, "demo-staging"),

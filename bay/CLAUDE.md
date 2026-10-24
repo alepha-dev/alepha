@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 Bay is a self-hosted application server in Go: one static binary that does
-reverse proxy, deploys, systemd supervision, TLS and backups. Start with
+reverse proxy, deploys, Docker supervision, TLS and backups. Start with
 `README.md`; installation is `INSTALL.md`; the user guide is under `docs/`.
 
 It lived in the Alepha monorepo (`apps/bay`) until 2026-10-01 (epic #E72 of
@@ -9,9 +9,10 @@ the Alepha project), and its history came with it.
 
 ## Checks
 
-- `go test ./...` on a Mac is **not** the suite: every file under
-  `internal/runner` that renders or applies a systemd unit is
-  `//go:build linux`, so a native run skips them and reports success.
+- `go test ./...` on a Mac runs most of the suite, the tests against a real
+  Docker daemon included (they skip without one; `BAY_REQUIRE_DOCKER=1`, set
+  in CI and `compose.yml`, makes that a failure). The host gauge in
+  `internal/connector` is `//go:build linux` and only runs in the container.
 - `./test-linux.sh` runs gofmt, vet, build, the tests and the cross-compile in
   a Linux container (`compose.yml`, `Dockerfile`, `ci.sh`). Docker must be
   running.

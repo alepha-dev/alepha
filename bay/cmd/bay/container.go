@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/alepha-dev/bay/internal/deploy"
@@ -86,7 +88,7 @@ func (s *server) containerSpec(app state.App, m *manifest.Manifest, env map[stri
 			Mounts:      mounts,
 			Port:        app.Port,
 			HostPort:    app.UpstreamPort(),
-			MemoryBytes: 512 << 20,
+			MemoryBytes: memoryOf(app),
 			PidsLimit:   256,
 			NanoCPUs:    nanoCPUsFor(runtime.NumCPU()),
 			StopGrace:   stopGrace,
@@ -324,4 +326,45 @@ func chownTree(root string, uid int) error {
 		}
 		return os.Lchown(path, uid, uid)
 	})
+}
+
+// defaultMemory is every app's memory ceiling unless `bay harden --memory`
+// says otherwise: enough for an Alepha app, small enough that one leaking app
+// cannot take a small VPS down with it.
+const defaultMemory = 512 << 20
+
+func memoryOf(app state.App) int64 {
+	if app.MemoryBytes > 0 {
+		return app.MemoryBytes
+	}
+	return defaultMemory
+}
+
+/*
+parseMemory reads a size the way Docker's own flags do: a number with a k, m or
+g suffix (binary units), "default" for Bay's default.
+
+Bounded on purpose: under 64 MiB a Node process does not boot, and a typo in
+the other direction ("80g" for "8g") must not quietly lift the one protection
+a shared host has.
+*/
+func parseMemory(raw string) (int64, error) {
+	raw = strings.ToLower(strings.TrimSpace(raw))
+	if raw == "default" || raw == "" {
+		return 0, nil
+	}
+	units := map[byte]int64{'k': 1 << 10, 'm': 1 << 20, 'g': 1 << 30}
+	unit, ok := units[raw[len(raw)-1]]
+	if !ok {
+		return 0, fmt.Errorf("memory %q: give a size like 768m or 2g, or default", raw)
+	}
+	n, err := strconv.ParseFloat(raw[:len(raw)-1], 64)
+	if err != nil || n <= 0 {
+		return 0, fmt.Errorf("memory %q: give a size like 768m or 2g, or default", raw)
+	}
+	bytes := int64(n * float64(unit))
+	if bytes < 64<<20 || bytes > 64<<30 {
+		return 0, fmt.Errorf("memory %q is outside 64m..64g", raw)
+	}
+	return bytes, nil
 }

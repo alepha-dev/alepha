@@ -50,23 +50,16 @@ The layout the rest of this guide assumes:
 | ----------------------- | ----------------------------------------------------------- |
 | `/opt/bay/bin/bay`      | the binary                                                  |
 | `/opt/bay/data`         | `--root`: app releases, state, per-app `.env`, SQLite files |
-| `/opt/bay/runtimes`     | `--runtimes`: the Node runtimes apps are launched with      |
 | `/run/bay/control.sock` | the control socket, created at startup                      |
 
 `/opt/bay/data` is the only directory that must survive an upgrade. It holds every app's releases
 and durable state.
 
-Two constraints on where it goes, because each app runs as its own unix user and has to reach its
-own subtree:
-
-- **Every directory above it needs its execute bit.** `0700` on the data root blocks traversal, not
-  only listing, so each app dies at CHDIR before running a line. `0711` is the mode to want: nobody
-  but root can list the directory, and each app user can still pass through. The installer sets it.
-- **Keep it out of `/home`, `/root` and `/run/user`.** Generated units set `ProtectHome=yes`, which
-  replaces those trees with an empty one, so an app cannot see a data root inside them whatever the
-  permissions say. This is why the guide uses `/opt/bay/data` rather than the `./bay-data` default.
-
-Bay refuses to start an app it can see is unreachable, and names the directory in the way.
+Apps run in containers and see their own files through bind mounts, so the data root can be `0700`
+(the installer sets it): nothing but root ever lists or traverses it on the host. Each archive app
+runs as its own uid (20000 and up), and Bay hands that uid the app's writable directories. Keep the
+data root on a filesystem Docker can bind-mount; `/opt/bay/data` is the guide's choice over the
+`./bay-data` default.
 
 ## 3. Run it under systemd
 
@@ -88,7 +81,6 @@ RuntimeDirectory=bay
 RuntimeDirectoryMode=0755
 ExecStart=/opt/bay/bin/bay serve \
   --root /opt/bay/data \
-  --runtimes /opt/bay/runtimes \
   --base-domain bay.example.com \
   --addr :80 \
   --tls --tls-addr :443 \
@@ -352,11 +344,11 @@ bay start myapp/production    # back
 ```
 
 ⚠️ **`bay stop` is durable, and that is the whole point of it.** The intent is written to
-`state.json` AND the systemd unit is disabled (`systemctl disable --now`), so the app survives
-neither a host reboot nor a Bay upgrade in a running state. Either half alone is a bug that only
-appears hours later: the record without the disable lets systemd start the unit at the next boot
-from an `[Install]` symlink nobody removed, and the disable without the record lets Bay's own boot
-loop start it again on the next upgrade.
+`state.json` AND the container's restart policy is switched off, so the app survives neither a host
+reboot nor a Bay upgrade in a running state. Either half alone is a bug that only appears hours
+later: the record without the policy change lets Docker start the container again when the daemon
+restarts, and the policy change without the record lets Bay's own boot loop start it again on the
+next upgrade.
 
 The way back is `bay start`, or a deploy. A deploy is an instruction to run this release, so it
 clears the intent unconditionally: every other runtime-owned field is carried forward across a
@@ -364,8 +356,8 @@ deploy and this one is deliberately not.
 
 `restart` on a stopped app is **refused**, naming `start`. Whoever stopped it owns that decision,
 and a restart is not the command that reverses it. `start` on an app that is already running is a
-no-op success rather than a restart in disguise, because `Systemd.Start` runs `systemctl restart`
-and would bounce production for a click that asked for nothing.
+no-op success rather than a restart in disguise, because starting recreates the container and would
+bounce production for a click that asked for nothing.
 
 Both verbs are also in the connector's vocabulary (section 6b), so a stop asked for from Lore's
 console is the same stop, with the same durability.

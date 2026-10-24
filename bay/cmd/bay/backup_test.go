@@ -22,7 +22,7 @@ import (
 // this test does not need: what is under test is whether a SUCCESSFUL backup is
 // recorded, so the stand-in only has to succeed the way node does — copy the
 // file and print the inspection on the last line of stdout.
-func snapshotCapableNode(t *testing.T, path string) {
+func snapshotCapableNode(t *testing.T, path string) string {
 	t.Helper()
 	script := `#!/bin/sh
 # argv: <helper.js> <command> <src> <dest>
@@ -33,9 +33,13 @@ case "$2" in
 esac
 echo '{"integrity":"ok","tables":3}'
 `
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(path, []byte(script), 0o755); err != nil {
 		t.Fatal(err)
 	}
+	return path
 }
 
 // fakeS3 accepts an upload and reports an empty bucket.
@@ -67,7 +71,7 @@ func newBackupFixture(t *testing.T) *deployFixture {
 	if _, failure := f.deploy(deployableArtifact(t)); failure != nil {
 		t.Fatalf("the app has to be deployed before it can be backed up: %v", failure)
 	}
-	snapshotCapableNode(t, filepath.Join(f.root, "runtimes", "node-24", "bin", "node"))
+	f.runner.node = snapshotCapableNode(t, filepath.Join(f.root, "runtimes", "node-24", "bin", "node"))
 
 	// The app declares a database Bay provisioned, which is what makes it
 	// backup-able: `backupInstance` refuses an app on a BYO `DATABASE_URL`,

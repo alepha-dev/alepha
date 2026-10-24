@@ -74,10 +74,11 @@ the only place the whole suite compiles:
 ./test-linux.sh   # gofmt, vet, build, tests, cross-compile - reproduces the CI job
 ```
 
-`go test ./...` on a Mac is **not** a substitute. Every file under
-`internal/runner` that renders or applies a systemd unit is `//go:build linux`,
-so a native run skips them silently and reports success. Docker must be
-running.
+`go test ./...` on a Mac runs most of the suite, including the tests that
+drive a real Docker daemon (they skip without one, and fail instead under
+`BAY_REQUIRE_DOCKER=1`, as in CI and `test-linux.sh`). The host gauge in
+`internal/connector` is `//go:build linux`, so only the container covers it.
+Docker must be running.
 
 ### Testing ACME without a domain
 
@@ -119,8 +120,8 @@ internal/
   health/         "is this app serving?", which is not "is a port open?"
   manifest/       manifest.json reading and validation
   proxy/          host routing, statics, reverse proxy
-  runner/         instance lifecycle - systemd on Linux, child processes elsewhere
-  runtimes/       which interpreter runs an app - Bay ships them, never borrows PATH
+  runner/         instance lifecycle - Docker containers, blue/green candidates
+  runtimes/       which runtime image an archive runs in, pinned by digest
   s3/             the S3-compatible client backups and app storage share
   schedule/       when a backup is due, and when one is stale
   state/          one JSON document, atomic writes, kept at 0600
@@ -195,8 +196,8 @@ bay logs lore/production --since 15m --grep 'ECONN' --json
 ```
 
 `bay logs`' primary reader is an agent over SSH, not an eyeball, hence `--json`,
-`--since` and `--grep` (a regular expression). Entries come from journald on a
-real host, and from `logs/app.log` (rotated at 32 MiB) under the child runner.
+`--since` and `--grep` (a regular expression). Entries come from the app
+container's log, capped at three files of 10 MB.
 
 ⚠️ `--since` **keeps** lines with no timestamp and says so at the end of the
 output. An app writing plain text to stdout produces none, and hiding them

@@ -57,7 +57,7 @@ func imageSpec(app state.App, env map[string]string) runner.Spec {
 			Image:       app.Image,
 			Port:        app.ContainerPort,
 			HostPort:    app.UpstreamPort(),
-			MemoryBytes: 512 << 20,
+			MemoryBytes: memoryOf(app),
 			PidsLimit:   256,
 			NanoCPUs:    nanoCPUsFor(runtime.NumCPU()),
 			StopGrace:   stopGrace,
@@ -270,13 +270,25 @@ cmdHarden is `bay harden`:
 	bay harden <name/env> --clear                                  # back to every default
 */
 func cmdHarden(args []string) error {
-	usage := errors.New("usage: bay harden <name/env> (--relax writable-rootfs[,capabilities] | --clear)")
+	usage := errors.New("usage: bay harden <name/env> (--relax writable-rootfs[,capabilities] | --clear | --memory 1g|default)")
 	if len(args) < 2 {
 		return usage
 	}
 	key, err := instanceKey(args, "harden")
 	if err != nil {
 		return err
+	}
+	if args[1] == "--memory" {
+		if len(args) < 3 {
+			return usage
+		}
+		body, _ := json.Marshal(map[string]string{"memory": args[2]})
+		res, err := call(http.MethodPut, controlHost+"/apps/"+key+"/memory", strings.NewReader(string(body)))
+		if err != nil {
+			return err
+		}
+		fmt.Println(res)
+		return nil
 	}
 	relaxedList := []string{}
 	switch args[1] {
@@ -300,4 +312,44 @@ func cmdHarden(args []string) error {
 	}
 	fmt.Println(res)
 	return nil
+}
+
+/*
+handleMemory sets an instance's memory ceiling ("1g", "768m", "default"), and
+restarts it (blue/green) when it is up, so the ceiling the record names is the
+one in force.
+*/
+func (s *server) handleMemory(w http.ResponseWriter, r *http.Request) {
+	key := r.PathValue("name") + "/" + r.PathValue("env")
+	if _, ok := s.store.Get(key); !ok {
+		writeError(w, http.StatusNotFound, "unknown instance "+key)
+		return
+	}
+	var body struct {
+		Memory string `json:"memory"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, `body must be {"memory": "1g"}`)
+		return
+	}
+	bytes, err := parseMemory(body.Memory)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if err := s.store.SetMemory(key, bytes); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	restarted := false
+	if s.runner.Running(key) {
+		app, _ := s.store.Get(key)
+		if err := s.restart(app); err != nil {
+			writeError(w, http.StatusInternalServerError, "recorded, but the app did not come back up with it: "+err.Error())
+			return
+		}
+		restarted = true
+	}
+	app, _ := s.store.Get(key)
+	writeJSON(w, http.StatusOK, map[string]any{"instance": key, "memoryBytes": memoryOf(app), "restarted": restarted})
 }

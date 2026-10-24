@@ -239,17 +239,15 @@ func Run(opts Options, store *state.Store) (*Result, error) {
 				host, owner)
 		}
 	}
-	// Each instance runs as its own Unix user, and that user is what keeps one
-	// app out of another's `.env` and database. `runner.UserName` squeezes long
-	// keys through a hash to stay inside useradd's 32-character limit, so a
-	// collision is astronomically unlikely rather than impossible - and the
-	// failure it would produce is two apps sharing an identity, which is not a
-	// thing to leave to probability. State knows the mapping, so ask it.
-	if owner, taken := userNameOwner(store, key); taken {
+	// Each instance runs in a container named after its key, with "/" become
+	// "-", so `demo-staging/eu` and `demo/staging-eu` would share one name and
+	// replace each other's container on every deploy. State knows every key,
+	// so ask it.
+	if owner, taken := ContainerNameOwner(store, key); taken {
 		return nil, fmt.Errorf(
-			"%s would run as the same unix user (%s) as %s, which would give each access to the other's "+
-				"secrets and database; rename one of them",
-			key, runner.UserName(key), owner)
+			"%s would share its container name (%s) with %s, so each deploy would replace the other's "+
+				"container; rename one of them",
+			key, runner.ContainerName(key), owner)
 	}
 	// A list that repeats itself is a mistake worth naming rather than
 	// de-duplicating in silence: it usually means a shell expanded something
@@ -964,19 +962,19 @@ func writeEntry(tr *tar.Reader, target string, size int64) error {
 	return out.Close()
 }
 
-// userNameOwner reports the instance already running as the unix user `key`
-// would be given, if it is not `key` itself.
+// ContainerNameOwner reports the instance whose container name `key` would
+// share, if it is not `key` itself.
 //
 // Mirrors `state.Store.ClaimedBy` for domains: the same shape of question,
 // asked of the same store, and refused for the same reason - two apps that
 // cannot both have a thing must not both be given it silently.
-func userNameOwner(store *state.Store, key string) (string, bool) {
-	user := runner.UserName(key)
+func ContainerNameOwner(store *state.Store, key string) (string, bool) {
+	name := runner.ContainerName(key)
 	for _, app := range store.Apps() {
 		if app.Key() == key {
 			continue
 		}
-		if runner.UserName(app.Key()) == user {
+		if runner.ContainerName(app.Key()) == name {
 			return app.Key(), true
 		}
 	}

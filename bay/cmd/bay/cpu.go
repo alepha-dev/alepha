@@ -1,9 +1,14 @@
 package main
 
-import "fmt"
+// nanoCPUsFor is the ceiling in Docker's unit, billionths of a core: 100%
+// of one core is 1e9.
+func nanoCPUsFor(cores int) int64 {
+	return int64(cpuPercentFor(cores)) * 1e7
+}
 
 /*
-cpuQuotaFor returns the per-app CPU ceiling for a host with `cores` CPUs.
+cpuPercentFor returns the per-app CPU ceiling, in percent of one core, for a
+host with `cores` CPUs.
 
 The policy is one sentence: **no single app may take more than half the
 machine.** Whatever else is happening, the other apps and — the part that
@@ -21,19 +26,8 @@ possible ceiling is either the whole machine or a handicap, so there is no
 protection to buy; taking the handicap would double cold-start times on the
 machine least able to afford it. It also keeps a zero or negative core count
 — which `runtime.NumCPU` never returns, but a caller might — from rendering
-`CPUQuota=0%`, which grants no CPU at all and leaves an app that never boots.
+a zero ceiling, which grants no CPU at all and leaves an app that never boots.
 */
-func cpuQuotaFor(cores int) string {
-	return fmt.Sprintf("%d%%", cpuPercentFor(cores))
-}
-
-// nanoCPUsFor is the same ceiling in Docker's unit, billionths of a core: 100%
-// of one core is 1e9.
-func nanoCPUsFor(cores int) int64 {
-	return int64(cpuPercentFor(cores)) * 1e7
-}
-
-// cpuPercentFor is the policy itself, shared by both spellings.
 func cpuPercentFor(cores int) int {
 	percent := cores * 50
 	if percent < 100 {

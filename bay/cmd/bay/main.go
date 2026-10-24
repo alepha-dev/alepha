@@ -21,7 +21,6 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -36,7 +35,6 @@ import (
 	"github.com/alepha-dev/bay/internal/naming"
 	"github.com/alepha-dev/bay/internal/proxy"
 	"github.com/alepha-dev/bay/internal/runner"
-	"github.com/alepha-dev/bay/internal/runtimes"
 	"github.com/alepha-dev/bay/internal/schedule"
 	"github.com/alepha-dev/bay/internal/state"
 	"github.com/alepha-dev/bay/internal/tlsconf"
@@ -228,7 +226,7 @@ defaultBackupInterval the way a hand-written "24h" did.
 func usageText() string {
 	return fmt.Sprintf(`bay — Alepha application server
 
-  bay serve   [--root %s] [--runtimes DIR] [--addr %s]
+  bay serve   [--root %s] [--addr %s]
               [--base-domain bay.example.com]
               [--tls] [--tls-addr %s] [--acme-ca URL] [--acme-email MAIL]
               [--acme-ca-root FILE.pem]   # trust a private CA (Pebble, step-ca)
@@ -276,11 +274,12 @@ func usageText() string {
   bay runtimes set <name/env> <image>  # this app's own image, from its next start;
                                   # runtimes update leaves it alone
   bay runtimes clear <name/env>   # back to the image Bay picks
-  bay harden  <name/env> (--relax writable-rootfs[,capabilities] | --clear)
+  bay harden  <name/env> (--relax writable-rootfs[,capabilities] | --clear | --memory 1g|default)
               # an archive app runs as its own uid, with no capabilities, on a
               # read-only root filesystem (a 64 MB /tmp). --relax lifts one of
               # those for this app only, recorded and flagged by "bay status";
-              # the app restarts with it. Image apps keep their image's user
+              # the app restarts with it. Image apps keep their image's user.
+              # --memory lifts or lowers the 512m ceiling (64m..64g) for this app
   bay config s3:backups --endpoint URL --bucket NAME [--keep N]
                 # where BACKUPS go. Credentials from BAY_S3_ACCESS_KEY /
                 # BAY_S3_SECRET_KEY. Never handed to an app.
@@ -381,7 +380,6 @@ type server struct {
 	// given write access to exactly that directory and nothing more.
 	controlSocket string
 	root          string
-	runtimes      string
 	store         *state.Store
 	runner        runner.Runner
 	isolated      bool
@@ -435,7 +433,6 @@ func cmdServe(args []string) error {
 	root, addr := defaultRoot, defaultProxyAddr
 	tlsAddr, acmeCA, acmeEmail, acmeCARoot := defaultTLSAddr, "", "", ""
 	acmeHTTPPort, acmeTLSPort := 0, 0 // 0 = CertMagic defaults, i.e. 80 and 443
-	runtimesDir := ""
 	baseDomain := ""
 	useTLS := false
 	backupInterval := defaultBackupInterval
@@ -447,7 +444,7 @@ func cmdServe(args []string) error {
 	if err := checkFlags(args,
 		map[string]bool{"--tls": true},
 		map[string]bool{
-			"--root": true, "--runtimes": true, "--base-domain": true,
+			"--root": true, "--base-domain": true,
 			"--addr": true, "--tls-addr": true,
 			"--acme-ca": true, "--acme-email": true, "--acme-ca-root": true,
 			"--acme-http-port": true, "--acme-tls-port": true,
@@ -466,8 +463,6 @@ func cmdServe(args []string) error {
 		switch arg {
 		case "--root":
 			root = args[i+1]
-		case "--runtimes":
-			runtimesDir = args[i+1]
 		case "--base-domain":
 			baseDomain = args[i+1]
 		case "--addr":
@@ -526,13 +521,6 @@ func cmdServe(args []string) error {
 	if err != nil {
 		return err
 	}
-	if runtimesDir == "" {
-		runtimesDir = filepath.Join(filepath.Dir(root), "runtimes")
-	}
-	runtimesDir, err = filepath.Abs(runtimesDir)
-	if err != nil {
-		return err
-	}
 
 	if controlSocket == "" {
 		controlSocket = filepath.Join(root, "control.sock")
@@ -558,7 +546,7 @@ func cmdServe(args []string) error {
 	}
 	var sup runner.Runner = docker
 	isolated := true
-	srv := &server{root: root, runtimes: runtimesDir, store: store, runner: sup,
+	srv := &server{root: root, store: store, runner: sup,
 		isolated: isolated, log: log, controlSocket: controlSocket,
 		keepReleases: keepReleases, backupInterval: backupInterval,
 		probe:           &health.Probe{},
@@ -894,9 +882,7 @@ func (s *server) start(app state.App) error {
 		return nil
 	}
 
-	// In containers, archive and image apps alike. The host-binary path below
-	// serves the child runner and the tests' fake until Bay quest 2597 deletes
-	// it with systemd.
+	// In containers, archive and image apps alike.
 	if _, inContainers := s.runner.(containerRunner); inContainers {
 		spec, choice, err := s.specFor(app)
 		if err != nil {
@@ -915,52 +901,7 @@ func (s *server) start(app state.App) error {
 		return nil
 	}
 
-	instance := filepath.Join(s.root, "apps", naming.Instance(app.Name, app.Env))
-	env, err := runner.LoadEnvFile(filepath.Join(instance, ".env"))
-	if err != nil {
-		return err
-	}
-	m, err := manifest.LoadFromRelease(filepath.Join(instance, "current"))
-	if err != nil {
-		return err
-	}
-	writable, err := s.writablePaths(app, m, instance)
-	if err != nil {
-		return err
-	}
-	bin, err := runtimes.Resolve(s.runtimes, m.Runtime, m.RuntimeVersion)
-	if err != nil {
-		return err
-	}
-	spec := runner.Spec{
-		Key:     app.Key(),
-		Dir:     filepath.Join(instance, "current"),
-		Runtime: bin,
-		Entry:   m.Entry,
-		Env:     env,
-		LogFile: filepath.Join(instance, "logs", "app.log"),
-		Sandbox: runner.Sandbox{
-			Instance:      instance,
-			WritablePaths: writable,
-			MemoryMax:     "512M",
-			TasksMax:      256,
-			CPUQuota:      cpuQuotaFor(runtime.NumCPU()),
-			StopGrace:     stopGrace,
-		},
-	}
-	// No hold armed here. Whoever took the app down owns the window — arming it
-	// at this point would mean every request between the stop and this line
-	// still got a 502, which is exactly the bug this replaced. `start` is also
-	// called at boot, where there is nothing to hold for.
-
-	if err := s.runner.Start(spec); err != nil {
-		return err
-	}
-	if err := s.probe.WaitReady(app.UpstreamPort(), readyTimeout); err != nil {
-		return fmt.Errorf("%s never became ready: %w", app.Key(), err)
-	}
-	s.log.Info("app ready", "app", app.Key(), "port", app.UpstreamPort(), "domain", app.Domain())
-	return nil
+	return fmt.Errorf("%s: Bay runs apps only in containers, and this runner is not one", app.Key())
 }
 
 /*
@@ -1025,6 +966,7 @@ func (s *server) controlMux() *http.ServeMux {
 	mux.HandleFunc("GET /apps/{name}/{env}/logs", s.handleLogs)
 	mux.HandleFunc("PUT /apps/{name}/{env}/runtime-image", s.handleRuntimeImage)
 	mux.HandleFunc("PUT /apps/{name}/{env}/relax", s.handleRelax)
+	mux.HandleFunc("PUT /apps/{name}/{env}/memory", s.handleMemory)
 	mux.HandleFunc("GET /runtimes", s.handleRuntimes)
 	mux.HandleFunc("POST /runtimes/update", s.handleRuntimesUpdate)
 	// What this server was started with, for the commands that have to judge
@@ -1341,7 +1283,7 @@ func (s *server) deployArtifact(ctx context.Context, opts deployArtifactOptions)
 			return nil, &deployFailure{Status: http.StatusBadRequest, Err: err,
 				Detail: map[string]any{"running": true}}
 		}
-		return nil, s.restoreRefused(key, wasRunning, err)
+		return nil, s.restoreRefused(err)
 	}
 
 	// Restore BEFORE starting: the app must open the recovered database, not an
@@ -1397,61 +1339,19 @@ func (s *server) deployArtifact(ctx context.Context, opts deployArtifactOptions)
 }
 
 /*
-restoreRefused puts back the app that the stop before the unpack took down.
+restoreRefused answers a deploy whose artifact was refused, for an app that was
+not serving: nothing was stopped and nothing is put back.
 
-An artifact the unpacker refuses changes nothing in the instance directory — it
-is unpacked into a staging directory first, so the previous release is still
-there and `current` still points at it. Starting the app on its stored state is
-therefore the whole of the repair; there is nothing to swap back.
-
-Observed on ovh-bay: `example-api/production` was serving, a gzip that was not a
-tar was deployed, the release went `failed` with the correct message, and the app
-stayed stopped and 502 until a good artifact was pushed again. The report was
-accurate and reassuring — "the deploy failed" reads as "nothing changed" — which
-is what made it expensive. A CI pipeline deploying over SSH reads the same
-terse response and moves on; nobody is watching in real time there either.
-
-The failure stays a 400 when the restart works: the artifact is what was wrong,
-the host is where it was, and a 5xx would send someone to inspect a machine that
-is fine. It becomes a 502 naming both failures when the app could not be brought
-back, because "the deploy failed" and "the deploy failed AND the site is down"
-are different sentences, and only the second one should wake anybody up.
+A running app never reaches here: its deploy is blue/green, and a refused
+artifact leaves its container untouched (see deployArtifact). Starting this
+one would resurrect something somebody stopped on purpose, or, on a first
+deploy, start nothing at all.
 */
-func (s *server) restoreRefused(key string, wasRunning bool, cause error) *deployFailure {
-	app, registered := s.store.Get(key)
-
-	// Nothing to put back, for one of two reasons: the app was not serving —
-	// starting it here would resurrect something somebody deliberately stopped,
-	// on the strength of a deploy that failed — or this was a first deploy, and
-	// there is no earlier release to put back at all.
-	if !wasRunning || !registered {
-		return &deployFailure{
-			Status: http.StatusBadRequest,
-			Err:    cause,
-			Detail: map[string]any{"running": false},
-		}
-	}
-
-	if err := s.start(app); err != nil {
-		s.log.Error("REFUSED ARTIFACT LEFT THE APP DOWN", "app", key,
-			"release", app.Release, "artifact", cause, "restart", err)
-		return &deployFailure{
-			Status: http.StatusBadGateway,
-			Err: fmt.Errorf(
-				"the artifact was refused AND %s is DOWN — release %s could not be restarted: %w (restart: %w)",
-				key, app.Release, cause, err),
-			Detail: map[string]any{"release": app.Release, "running": false},
-		}
-	}
-	s.log.Warn("artifact refused, previous release restarted",
-		"app", key, "release", app.Release, "artifact", cause)
+func (s *server) restoreRefused(cause error) *deployFailure {
 	return &deployFailure{
 		Status: http.StatusBadRequest,
-		// The artifact's own error, unchanged: the build is what was wrong, and
-		// this is the sentence that says how. What the host is doing about it
-		// belongs in the detail, not appended to a compiler-style message.
 		Err:    cause,
-		Detail: map[string]any{"release": app.Release, "running": true},
+		Detail: map[string]any{"running": false},
 	}
 }
 
@@ -2008,6 +1908,9 @@ func cmdStatus(args []string) error {
 		}
 		if a.RuntimeImage != "" {
 			fmt.Printf("  runtime  %s  (set by hand; bay runtimes update leaves it alone)\n", a.RuntimeImage)
+		}
+		if a.MemoryBytes > 0 {
+			fmt.Printf("  memory   %d MiB  (set by bay harden --memory; the default is 512)\n", a.MemoryBytes>>20)
 		}
 		if len(a.Relaxed) > 0 {
 			problems++

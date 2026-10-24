@@ -69,6 +69,10 @@ func RunImage(opts ImageOptions, store *state.Store) (*ImageResult, error) {
 		return nil, fmt.Errorf("%s runs an archive; remove it before deploying an image under the same name", key)
 	}
 
+	if owner, taken := ContainerNameOwner(store, key); taken {
+		return nil, fmt.Errorf("%s would share its container name with %s, so each deploy would replace the other's container; rename one of them", key, owner)
+	}
+
 	domains := opts.Domains
 	if len(domains) == 0 && isRedeploy {
 		domains = existing.Domains

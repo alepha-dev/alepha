@@ -6,11 +6,13 @@ import (
 	"compress/gzip"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -42,6 +44,9 @@ type fakeRunner struct {
 	// decided here and nowhere else, so this is the only place a test can see
 	// which paths an app was actually granted.
 	lastSpec runner.Spec
+	// node is the host binary RunOnce runs a task with: the backup tests'
+	// snapshot-capable fake, standing in for the app's runtime image.
+	node string
 	// removes records every Remove call, so a test can assert that removing an
 	// app uninstalls it and whether the purge flag was carried through.
 	removes []removeCall
@@ -107,7 +112,46 @@ func (f *fakeRunner) State(key string) string {
 	return "inactive"
 }
 
-func (f *fakeRunner) StopAll(time.Duration)                            {}
+func (f *fakeRunner) StopAll(time.Duration) {}
+
+// The fake runs apps "in containers" like the real runner, so every test goes
+// through the one start path Bay has.
+func (f *fakeRunner) EnsureImage(string) error { return nil }
+
+func (f *fakeRunner) StartCandidate(spec runner.Spec) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.starts++
+	f.lastSpec = spec
+	if f.refuseStart != nil {
+		return f.refuseStart(f.starts)
+	}
+	return nil
+}
+
+func (f *fakeRunner) DiscardCandidate(string) error { return nil }
+
+// RunOnce runs a task's command with the fake's host binary in place of the
+// image's runtime: cmd is ["node", script, args...].
+func (f *fakeRunner) RunOnce(_ string, cmd []string, _ []runner.Mount, timeout time.Duration) ([]byte, error) {
+	if f.node == "" {
+		return nil, errors.New("the fake runner has no node to run a task with")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, f.node, cmd[1:]...).Output()
+	if ee, ok := err.(*exec.ExitError); ok {
+		return out, fmt.Errorf("%w: %s", err, strings.TrimSpace(string(ee.Stderr)))
+	}
+	return out, err
+}
+
+func (f *fakeRunner) Promote(key string, _ time.Duration) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.running[key] = true
+	return nil
+}
 func (f *fakeRunner) Usage(string) (runner.Usage, bool)                { return runner.Usage{}, false }
 func (f *fakeRunner) Logs(string, int) ([]runner.LogLine, bool, error) { return nil, false, nil }
 
@@ -146,27 +190,16 @@ func newDeployFixture(t *testing.T) *deployFixture {
 		t.Fatal(err)
 	}
 
-	// A runtime Bay owns, so `runtimes.Resolve` never falls through to whatever
-	// the machine running the tests happens to have on PATH.
-	bin := filepath.Join(root, "runtimes", "node-24", "bin")
-	if err := os.MkdirAll(bin, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(bin, "node"), []byte("#!/bin/sh\n"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-
 	r := newFakeRunner()
 	return &deployFixture{
 		root:   root,
 		runner: r,
 		server: &server{
-			root:     root,
-			runtimes: filepath.Join(root, "runtimes"),
-			store:    store,
-			runner:   r,
-			probe:    &health.Probe{Client: &http.Client{Transport: readyTransport{}}},
-			log:      slog.New(slog.NewTextHandler(io.Discard, nil)),
+			root:   root,
+			store:  store,
+			runner: r,
+			probe:  &health.Probe{Client: &http.Client{Transport: readyTransport{}}},
+			log:    slog.New(slog.NewTextHandler(io.Discard, nil)),
 			// Built the way `serve` builds it. Left at zero the fixture prunes
 			// nothing, so a test could not tell retention working from
 			// retention never running.
@@ -311,21 +344,18 @@ func TestARefusedArtifactLeavesTheAppRunning(t *testing.T) {
 	}
 }
 
-func TestARefusedArtifactSaysWhenTheAppCouldNotBeRestartedEither(t *testing.T) {
+func TestARefusedArtifactNeverStopsARunningApp(t *testing.T) {
 	/*
-		"The deploy failed" and "the deploy failed AND the site is down" are two
-		different sentences, and only the second one should wake somebody up.
-
-		An operator who reads the first about an app that is actually down learns
-		to distrust the report; one who reads it about an app that came back
-		correctly has nothing to do. So the escalation has to be in the error
-		itself — the status too, because a 400 tells CI "your build is bad" and
-		says nothing about the host.
+		Blue/green: a deploy of a running app stops nothing before its new
+		container is healthy, so a refused artifact cannot leave the app down,
+		and there is no restart to fail. The supervisor is set to refuse every
+		start, which would make any attempted restart visible.
 	*/
 	f := newDeployFixture(t)
 	if _, derr := f.deploy(deployableArtifact(t)); derr != nil {
 		t.Fatalf("the first deploy should succeed: %v", derr)
 	}
+	startsBefore := f.runner.starts
 	f.runner.refuseStart = func(int) error { return errAlwaysRefused }
 
 	_, derr := f.deploy(refusedArtifact(t))
@@ -333,23 +363,14 @@ func TestARefusedArtifactSaysWhenTheAppCouldNotBeRestartedEither(t *testing.T) {
 	if derr == nil {
 		t.Fatal("a gzip that is not a tar must be refused")
 	}
-	if derr.Status != http.StatusBadGateway {
-		t.Fatalf("an app left down is a host problem, want 502, got %d", derr.Status)
+	if derr.Status != http.StatusBadRequest || derr.Detail["running"] != true {
+		t.Fatalf("a refused artifact is the build's problem and the app is serving, got %d %v", derr.Status, derr.Detail)
 	}
-	msg := derr.Error()
-	if !strings.Contains(msg, "unpack") {
-		t.Fatalf("the artifact's own failure must survive, got %q", msg)
+	if f.runner.starts != startsBefore {
+		t.Fatalf("nothing should have been started, got %d starts", f.runner.starts-startsBefore)
 	}
-	if !strings.Contains(msg, "DOWN") {
-		t.Fatalf("the message must say the app is down, got %q", msg)
-	}
-	if !strings.Contains(msg, errAlwaysRefused.Error()) {
-		t.Fatalf("the restart's failure must be named too, got %q", msg)
-	}
-	// Both causes stay wrapped rather than flattened into a sentence, so a
-	// caller can still match on either one.
-	if !errors.Is(derr, errAlwaysRefused) {
-		t.Fatal("the restart failure must remain reachable with errors.Is")
+	if !f.runner.Running("demo/production") {
+		t.Fatal("the running app was stopped by a refused deploy")
 	}
 }
 
@@ -430,40 +451,33 @@ func TestAReleaseThatNeverBecomesReadyIsRolledBack(t *testing.T) {
 	}
 }
 
-func TestAReleaseThatNeverBecomesReadySaysWhenTheRollbackFailedToo(t *testing.T) {
-	// Both halves broken: the new release will not boot and neither will the old
-	// one. Nothing automatic is left, so the error has to be the one that gets
-	// somebody out of bed.
+func TestAReleaseThatNeverBecomesReadyNeverTookTheAppDown(t *testing.T) {
+	// Even when nothing else would start either, the release that was serving
+	// was never stopped: its replacement had to prove healthy first.
 	f := newDeployFixture(t)
 	if _, derr := f.deploy(deployableArtifact(t)); derr != nil {
 		t.Fatalf("the first deploy should succeed: %v", derr)
 	}
-	f.runner.refuseStart = func(n int) error {
-		if n >= 2 {
-			return errAlwaysRefused
-		}
-		return nil
-	}
+	f.runner.refuseStart = func(int) error { return errAlwaysRefused }
 
 	_, derr := f.deploy(deployableArtifact(t))
 
 	if derr == nil {
 		t.Fatal("a release that never becomes ready is a failed deploy")
 	}
-	if derr.Status != http.StatusBadGateway {
-		t.Fatalf("want 502, got %d", derr.Status)
+	if derr.Status != http.StatusBadGateway || derr.Detail["running"] != true {
+		t.Fatalf("want 502 with the app still serving, got %d %v", derr.Status, derr.Detail)
 	}
-	msg := derr.Error()
-	if !strings.Contains(msg, "DOWN") {
-		t.Fatalf("the message must say the app is down, got %q", msg)
+	if !strings.Contains(derr.Error(), "kept serving") {
+		t.Fatalf("the message must say the previous release kept serving, got %q", derr.Error())
 	}
-	if f.runner.Running("demo/production") {
-		t.Fatal("the fixture is wrong: nothing should be running here")
+	if !f.runner.Running("demo/production") {
+		t.Fatal("the release that was serving must still be serving")
 	}
 }
 
 // errAlwaysRefused stands in for whatever the supervisor says when it will not
-// start an app — a full disk, a systemd unit that will not load.
+// start an app: a full disk, an image that will not pull.
 var errAlwaysRefused = errors.New("supervisor refused to start the unit")
 
 // Bay keeps the release it serves and the one before it. Nothing else.

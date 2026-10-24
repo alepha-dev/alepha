@@ -161,6 +161,10 @@ type App struct {
 	// explicit `bay harden --relax`. Recorded so a later reader sees that this
 	// app runs with less isolation than the others, and why it is allowed to.
 	Relaxed []string `json:"relaxed,omitempty"`
+	// MemoryBytes is this instance's memory ceiling when it is not Bay's
+	// default (512 MiB): a JVM service, an app with a large cache. Zero means
+	// the default. Set by `bay harden --memory`.
+	MemoryBytes int64 `json:"memoryBytes,omitempty"`
 }
 
 // UpstreamPort is the host port to send this instance's traffic to.
@@ -363,6 +367,7 @@ func (s *Store) Upsert(app App) error {
 			// the instance, not about one release.
 			app.UID = a.UID
 			app.Relaxed = a.Relaxed
+			app.MemoryBytes = a.MemoryBytes
 			// ⚠️ `Stopped` is deliberately NOT carried forward, unlike every
 			// other runtime-owned field above. A deploy is an instruction to
 			// run THIS release, and `deployArtifact` already calls `start`
@@ -493,6 +498,11 @@ func (s *Store) EnsureUID(key string) (int, error) {
 	}
 	s.state.Apps[idx].UID = next
 	return next, s.flush()
+}
+
+// SetMemory records an instance's memory ceiling; zero restores the default.
+func (s *Store) SetMemory(key string, bytes int64) error {
+	return s.mutate(key, func(a *App) { a.MemoryBytes = bytes })
 }
 
 // SetRelaxed records which hardening defaults are lifted for an instance.

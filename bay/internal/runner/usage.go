@@ -1,10 +1,6 @@
 package runner
 
-import (
-	"strconv"
-	"strings"
-	"time"
-)
+import "time"
 
 /*
 Usage is what the supervisor knows about an app at this instant.
@@ -39,63 +35,4 @@ type Usage struct {
 	StartedAt time.Time `json:"startedAt,omitzero"`
 	// PID of the main process, for an operator who needs to go further.
 	PID int `json:"pid,omitempty"`
-}
-
-// usageProperties are asked for by name so the output stays small and its shape
-// stays fixed — `systemctl show` with no filter prints upwards of two hundred
-// lines whose contents drift between systemd versions.
-var usageProperties = []string{
-	"MemoryCurrent",
-	"CPUUsageNSec",
-	"TasksCurrent",
-	"NRestarts",
-	"ActiveEnterTimestamp",
-	"MainPID",
-}
-
-/*
-parseUsage reads `systemctl show` output into a Usage.
-
-systemd reports absent values as `[not set]`, `infinity`, or `0` depending on
-the property and the kernel's cgroup support, and it changes its mind between
-versions. Anything that does not parse as a number is left at its zero value
-and omitted from the response, which is the honest answer: Bay does not know.
-*/
-func parseUsage(out string) Usage {
-	var u Usage
-	for _, line := range strings.Split(out, "\n") {
-		key, value, ok := strings.Cut(strings.TrimSpace(line), "=")
-		if !ok {
-			continue
-		}
-		switch key {
-		case "MemoryCurrent":
-			if n, err := strconv.ParseInt(value, 10, 64); err == nil {
-				u.MemoryBytes = n
-			}
-		case "CPUUsageNSec":
-			if n, err := strconv.ParseInt(value, 10, 64); err == nil {
-				u.CPUSeconds = float64(n) / 1e9
-			}
-		case "TasksCurrent":
-			if n, err := strconv.Atoi(value); err == nil {
-				u.Tasks = n
-			}
-		case "NRestarts":
-			if n, err := strconv.Atoi(value); err == nil {
-				u.Restarts = n
-			}
-		case "MainPID":
-			if n, err := strconv.Atoi(value); err == nil && n > 0 {
-				u.PID = n
-			}
-		case "ActiveEnterTimestamp":
-			// systemd's own format, e.g. "Thu 2026-07-31 09:14:22 UTC". Empty
-			// for a unit that has never started.
-			if t, err := time.Parse("Mon 2006-01-02 15:04:05 MST", value); err == nil {
-				u.StartedAt = t
-			}
-		}
-	}
-	return u
 }

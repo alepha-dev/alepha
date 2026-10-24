@@ -169,16 +169,16 @@ func bucketDeployableArtifact(t *testing.T) string {
 	return path
 }
 
-// Spec.Sandbox is `any` so a backend can carry its own settings; the systemd
-// one is what decides writable paths.
+// Spec.Sandbox is `any` so a backend can carry its own settings; the
+// container's writable mounts are what decides writable paths.
 func grantsStorageDir(t *testing.T, spec runner.Spec) bool {
 	t.Helper()
-	sandbox, ok := spec.Sandbox.(runner.Sandbox)
+	c, ok := spec.Sandbox.(runner.Container)
 	if !ok {
-		t.Fatalf("expected a runner.Sandbox, got %T", spec.Sandbox)
+		t.Fatalf("expected a runner.Container, got %T", spec.Sandbox)
 	}
-	for _, p := range sandbox.WritablePaths {
-		if strings.HasSuffix(p, string(filepath.Separator)+"storage") {
+	for _, m := range c.Mounts {
+		if !m.ReadOnly && strings.HasSuffix(m.Source, string(filepath.Separator)+"storage") {
 			return true
 		}
 	}
@@ -186,8 +186,8 @@ func grantsStorageDir(t *testing.T, spec runner.Spec) bool {
 }
 
 // An app that writes its blobs to a bucket has no reason to hold a writable
-// directory. Under ProtectSystem=strict, not granting it is what makes that
-// real rather than a convention.
+// directory. On a read-only root filesystem, not mounting it is what makes
+// that real rather than a convention.
 func TestS3BackedAppIsNotGrantedALocalStorageDirectory(t *testing.T) {
 	f := newDeployFixture(t)
 	blobs := fakeS3(t)
@@ -239,7 +239,7 @@ func localBackedBackupFixture(t *testing.T, puts *[]string) *deployFixture {
 	}); failure != nil {
 		t.Fatalf("deploy failed: %v", failure)
 	}
-	snapshotCapableNode(t, filepath.Join(f.root, "runtimes", "node-24", "bin", "node"))
+	f.runner.node = snapshotCapableNode(t, filepath.Join(f.root, "runtimes", "node-24", "bin", "node"))
 
 	// Real uploads on disk, so "nothing was archived" cannot pass by accident.
 	uploads := filepath.Join(f.root, "apps", naming.Instance("demo", "production"), "storage", "avatars")
@@ -311,7 +311,7 @@ func s3BackedBackupFixture(t *testing.T, puts *[]string) *deployFixture {
 	}); failure != nil {
 		t.Fatalf("deploy failed: %v", failure)
 	}
-	snapshotCapableNode(t, filepath.Join(f.root, "runtimes", "node-24", "bin", "node"))
+	f.runner.node = snapshotCapableNode(t, filepath.Join(f.root, "runtimes", "node-24", "bin", "node"))
 
 	// Leftovers on disk, so the skip is genuinely exercised. Without them the
 	// tar finds nothing and "no storage key was uploaded" would pass whether or

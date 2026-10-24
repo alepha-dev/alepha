@@ -49,7 +49,7 @@ func TestFailedRestoreRestartsTheApp(t *testing.T) {
 	if _, derr := f.deploy(deployableArtifact(t)); derr != nil {
 		t.Fatal(derr)
 	}
-	snapshotCapableNode(t, filepath.Join(f.root, "runtimes", "node-24", "bin", "node"))
+	f.runner.node = snapshotCapableNode(t, filepath.Join(f.root, "runtimes", "node-24", "bin", "node"))
 	dataDir := filepath.Join(f.root, "apps", naming.Instance("demo", "production"), "data")
 	if err := os.WriteFile(filepath.Join(dataDir, "app.db"), []byte("SQLite format 3\x00"), 0o644); err != nil {
 		t.Fatal(err)

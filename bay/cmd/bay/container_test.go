@@ -159,3 +159,49 @@ func TestHarden(t *testing.T) {
 		}
 	})
 }
+
+func TestMemoryOverride(t *testing.T) {
+	t.Run("sizes parse like Docker's, bounded, with default", func(t *testing.T) {
+		cases := map[string]int64{"1g": 1 << 30, "768m": 768 << 20, "1.5g": 3 << 29, "default": 0, "": 0}
+		for raw, want := range cases {
+			if got, err := parseMemory(raw); err != nil || got != want {
+				t.Errorf("%q: %d, %v", raw, got, err)
+			}
+		}
+		for _, bad := range []string{"12", "1t", "32m", "80g", "-1g", "lots"} {
+			if _, err := parseMemory(bad); err == nil {
+				t.Errorf("%q accepted", bad)
+			}
+		}
+	})
+
+	t.Run("an override is recorded, applied to the container, and cleared", func(t *testing.T) {
+		s := runtimesFixture(t, `[{"runtime": "node", "entry": "index.node.js", "runtimeVersion": "26"}]`)
+		s.runner = &imageFakeRunner{fakeRunner: newFakeRunner()}
+		put := func(body string) int {
+			rec := httptest.NewRecorder()
+			s.controlMux().ServeHTTP(rec, httptest.NewRequest(http.MethodPut, "/apps/api/production/memory", strings.NewReader(body)))
+			return rec.Code
+		}
+		memory := func() int64 {
+			app, _ := s.store.Get("api/production")
+			spec, _, err := s.specFor(app)
+			if err != nil {
+				t.Fatal(err)
+			}
+			return spec.Sandbox.(runner.Container).MemoryBytes
+		}
+		if memory() != defaultMemory {
+			t.Fatalf("default = %d", memory())
+		}
+		if code := put(`{"memory": "1g"}`); code != 200 || memory() != 1<<30 {
+			t.Fatalf("set: %d, memory %d", code, memory())
+		}
+		if code := put(`{"memory": "80g"}`); code != 400 {
+			t.Fatalf("out-of-range accepted: %d", code)
+		}
+		if code := put(`{"memory": "default"}`); code != 200 || memory() != defaultMemory {
+			t.Fatalf("clear: %d, memory %d", code, memory())
+		}
+	})
+}
