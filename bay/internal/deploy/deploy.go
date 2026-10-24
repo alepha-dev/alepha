@@ -778,6 +778,12 @@ func randomHex(n int) (string, error) {
 	return hex.EncodeToString(buf), nil
 }
 
+// AllocatePort asks the kernel for a free loopback port, avoiding ones already
+// claimed: the next container of a blue/green switch is published on one.
+func AllocatePort(used map[int]bool) (int, error) {
+	return allocatePort(used)
+}
+
 // allocatePort asks the kernel for a free port, avoiding ones already claimed.
 func allocatePort(used map[int]bool) (int, error) {
 	for attempt := 0; attempt < 50; attempt++ {

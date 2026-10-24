@@ -48,3 +48,35 @@ func TestRuntimeImages(t *testing.T) {
 		}
 	})
 }
+
+func TestUpsertKeepsInstanceOwnedFields(t *testing.T) {
+	t.Run("a redeploy keeps the live host port and the chosen runtime image", func(t *testing.T) {
+		s, _ := Open(filepath.Join(t.TempDir(), "state.json"))
+		if err := s.Upsert(App{Name: "api", Env: "production", Port: 4100, Release: "r1"}); err != nil {
+			t.Fatal(err)
+		}
+		if err := s.SetHostPort("api/production", 4733); err != nil {
+			t.Fatal(err)
+		}
+		if err := s.SetRuntimeImage("api/production", "node:26-alpine"); err != nil {
+			t.Fatal(err)
+		}
+		if err := s.Upsert(App{Name: "api", Env: "production", Port: 4100, Release: "r2"}); err != nil {
+			t.Fatal(err)
+		}
+		app, _ := s.Get("api/production")
+		if app.Release != "r2" || app.UpstreamPort() != 4733 || app.RuntimeImage != "node:26-alpine" {
+			t.Fatalf("app = %+v", app)
+		}
+	})
+
+	t.Run("the live host port is claimed, so blue/green never hands it out twice", func(t *testing.T) {
+		s, _ := Open(filepath.Join(t.TempDir(), "state.json"))
+		_ = s.Upsert(App{Name: "api", Env: "production", Port: 4100})
+		_ = s.SetHostPort("api/production", 4733)
+		used := s.UsedPorts()
+		if !used[4100] || !used[4733] {
+			t.Fatalf("used = %v", used)
+		}
+	})
+}

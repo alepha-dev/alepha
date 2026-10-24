@@ -116,21 +116,11 @@ func (s *server) handleSetEnv(w http.ResponseWriter, r *http.Request) {
 
 	// The image is pulled while the old process still serves, so the restart
 	// below never waits on a registry.
-	if err := s.prepareRuntime(app); err != nil {
+	// Blue/green in a container (the old environment serves until the new one
+	// is ready), stop then start otherwise, with requests held either way.
+	if err := s.restart(app); err != nil {
 		writeError(w, http.StatusInternalServerError,
-			"the environment is written but the runtime image is unavailable, so the app keeps running the old one: "+err.Error())
-		return
-	}
-	// Requests wait rather than 502, the same way they do through a deploy.
-	defer s.holdDuring(key)()
-	if err := s.runner.Stop(key, stopGrace); err != nil {
-		writeError(w, http.StatusInternalServerError,
-			"the environment is written but the app would not stop, so it is still running the old one: "+err.Error())
-		return
-	}
-	if err := s.start(app); err != nil {
-		writeError(w, http.StatusInternalServerError,
-			"the environment is written but the app did not come back up: "+err.Error())
+			"the environment is written but the app did not come back up on it: "+err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, envResponse{Changed: changed, Restarted: true})

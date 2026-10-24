@@ -373,7 +373,10 @@ type server struct {
 	store         *state.Store
 	runner        runner.Runner
 	isolated      bool
-	tls           *tlsconf.Manager
+	// readyWait overrides readyTimeout for a blue/green candidate when set:
+	// tests waiting for a release that never comes up need not wait a minute.
+	readyWait time.Duration
+	tls       *tlsconf.Manager
 	// probe answers "is this app serving?", which is a different question from
 	// "is something listening?" — see internal/health.
 	probe *health.Probe
@@ -889,29 +892,9 @@ func (s *server) start(app state.App) error {
 		return err
 	}
 
-	// Every writable path below exists because the manifest declared the
-	// resource that needs it. Declaring `$storage` is what grants write access to
-	// storage/; not declaring it denies it. (The manifest key is still
-	// `hasBucket` — a wire-format name kept after the `$bucket` → `$storage`
-	// rename; there is no `$bucket` primitive anymore.)
-	writable := []string{filepath.Join(instance, "scratch")}
-	if m.Resources.Database {
-		writable = append(writable, filepath.Join(instance, "data"))
-	}
-	// An S3-backed app writes its blobs to the bucket, so the directory is dead
-	// weight — and a writable path granted "just in case" is one an exploit can
-	// use. The manifest says the app needs blob storage; the backend says where,
-	// and only one of the two answers needs a directory on this disk.
-	if m.Resources.Bucket && app.StorageBackend != deploy.BackendS3 {
-		writable = append(writable, filepath.Join(instance, "storage"))
-	}
-
-	// Created up front: a bind mount of a missing directory fails the container
-	// create with a message about the daemon, not about the app.
-	for _, p := range writable {
-		if err := os.MkdirAll(p, 0o755); err != nil {
-			return fmt.Errorf("create writable path %s: %w", p, err)
-		}
+	writable, err := s.writablePaths(app, m, instance)
+	if err != nil {
+		return err
 	}
 
 	var spec runner.Spec
@@ -956,11 +939,41 @@ func (s *server) start(app state.App) error {
 	if err := s.runner.Start(spec); err != nil {
 		return err
 	}
-	if err := s.probe.WaitReady(app.Port, readyTimeout); err != nil {
+	if err := s.probe.WaitReady(app.UpstreamPort(), readyTimeout); err != nil {
 		return fmt.Errorf("%s never became ready: %w", app.Key(), err)
 	}
-	s.log.Info("app ready", "app", app.Key(), "port", app.Port, "domain", app.Domain())
+	s.log.Info("app ready", "app", app.Key(), "port", app.UpstreamPort(), "domain", app.Domain())
 	return nil
+}
+
+/*
+writablePaths lists, and creates, the only host paths an app may write to.
+
+Every one exists because the manifest declared the resource that needs it.
+Declaring `$storage` is what grants write access to storage/; not declaring it
+denies it. (The manifest key is still `hasBucket` — a wire-format name kept
+after the `$bucket` → `$storage` rename; there is no `$bucket` primitive
+anymore.) Created up front: a bind mount of a missing directory fails the
+container create with a message about the daemon, not about the app.
+*/
+func (s *server) writablePaths(app state.App, m *manifest.Manifest, instance string) ([]string, error) {
+	writable := []string{filepath.Join(instance, "scratch")}
+	if m.Resources.Database {
+		writable = append(writable, filepath.Join(instance, "data"))
+	}
+	// An S3-backed app writes its blobs to the bucket, so the directory is dead
+	// weight — and a writable path granted "just in case" is one an exploit can
+	// use. The manifest says the app needs blob storage; the backend says where,
+	// and only one of the two answers needs a directory on this disk.
+	if m.Resources.Bucket && app.StorageBackend != deploy.BackendS3 {
+		writable = append(writable, filepath.Join(instance, "storage"))
+	}
+	for _, p := range writable {
+		if err := os.MkdirAll(p, 0o755); err != nil {
+			return nil, fmt.Errorf("create writable path %s: %w", p, err)
+		}
+	}
+	return writable, nil
 }
 
 // ---------------------------------------------------------------------------
@@ -1254,16 +1267,25 @@ func (s *server) deployArtifact(ctx context.Context, opts deployArtifactOptions)
 		secrets = parsed
 	}
 
-	// Requests wait from here rather than 502, and keep waiting through the
-	// unpack, the swap and the new process's boot.
-	defer s.holdDuring(key)()
-
-	// Stop the previous process before swapping `current` under it.
-	//
-	// Whether it was serving is read BEFORE the stop, because it decides what a
-	// failed deploy has to put back — and after the stop the answer is always no.
+	// Whether it was serving is read first, because it decides both how this
+	// deploy runs and what a failed one has to put back.
 	wasRunning := s.runner.Running(key)
-	_ = s.runner.Stop(key, stopGrace)
+
+	// Blue/green when the app is up in a container: the live container keeps
+	// serving through the unpack and the swap, because it runs from the release
+	// it was started on (mounted by its resolved path, not through `current`),
+	// and the new release is started beside it and switched to only once
+	// healthy. Nothing is stopped and nothing is held here; `replace` holds
+	// requests for the switch alone.
+	_, inContainers := s.runner.(containerRunner)
+	blueGreen := inContainers && wasRunning
+	if !blueGreen {
+		// Requests wait from here rather than 502, and keep waiting through the
+		// unpack, the swap and the new process's boot.
+		defer s.holdDuring(key)()
+		// Stop the previous process before swapping `current` under it.
+		_ = s.runner.Stop(key, stopGrace)
+	}
 
 	res, err := deploy.Run(deploy.Options{
 		Root: s.root, Artifact: opts.Artifact, Name: opts.Name, Env: opts.Env,
@@ -1276,6 +1298,11 @@ func (s *server) deployArtifact(ctx context.Context, opts deployArtifactOptions)
 		Secrets:         secrets,
 	}, s.store)
 	if err != nil {
+		if blueGreen {
+			// Refused before anything moved: the live container never stopped.
+			return nil, &deployFailure{Status: http.StatusBadRequest, Err: err,
+				Detail: map[string]any{"running": true}}
+		}
 		return nil, s.restoreRefused(key, wasRunning, err)
 	}
 
@@ -1287,7 +1314,11 @@ func (s *server) deployArtifact(ctx context.Context, opts deployArtifactOptions)
 		restore = s.maybeAutoRestore(ctx, res.App, res.DatabasePath)
 	}
 
-	if err := s.start(res.App); err != nil {
+	if blueGreen {
+		if err := s.replace(res.App); err != nil {
+			return nil, s.restoreCandidate(res, restore, err)
+		}
+	} else if err := s.start(res.App); err != nil {
 		return nil, s.restoreUnstartable(res, restore, err)
 	}
 	if s.tls != nil {
@@ -1448,6 +1479,35 @@ func (s *server) restoreUnstartable(
 }
 
 /*
+restoreCandidate answers a blue/green deploy whose new container never became
+ready.
+
+Nothing went down: the previous container was serving the whole time and still
+is. What has moved is `current` and the store, which the deploy pointed at the
+new release; both go back, so the next restart starts what is actually serving
+rather than the release that just failed.
+*/
+func (s *server) restoreCandidate(res *deploy.Result, restore map[string]any, cause error) *deployFailure {
+	detail := map[string]any{"release": res.Release, "restore": restore, "running": true}
+	if res.Previous != "" && res.Previous != res.Release {
+		if err := deploy.SwapRelease(s.instanceDir(res.App), res.Previous); err != nil {
+			s.log.Error("candidate failed and current could not be put back", "app", res.App.Key(), "err", err)
+		} else if err := s.store.SetRelease(res.App.Key(), res.Previous); err != nil {
+			s.log.Error("candidate failed, current put back on disk but not in state", "app", res.App.Key(), "err", err)
+		}
+		detail["rolledBackTo"] = res.Previous
+	}
+	s.log.Warn("release did not become ready; the previous container kept serving",
+		"app", res.App.Key(), "bad", res.Release, "err", cause)
+	return &deployFailure{
+		Status: http.StatusBadGateway,
+		Err: fmt.Errorf("release %s did not become ready and was never switched to; %s kept serving: %w",
+			res.Release, res.App.Key(), cause),
+		Detail: detail,
+	}
+}
+
+/*
 rollbackTo puts an app back on a release: on disk, in the store, and running.
 
 The order is load-bearing. `current` is what a start reads, so the swap comes
@@ -1471,6 +1531,14 @@ func (s *server) rollbackTo(app state.App, release string) error {
 		s.log.Error("rolled back on disk but not in state", "app", app.Key(), "err", err)
 	}
 	app.Release = release
+	// In containers the bad release is still serving, so the good one is
+	// started beside it and switched to: a rollback costs no request either.
+	if _, ok := s.runner.(containerRunner); ok && s.runner.Running(app.Key()) {
+		if err := s.replace(app); err != nil {
+			return fmt.Errorf("%s is current again but did not start: %w", release, err)
+		}
+		return nil
+	}
 	// The bad release's process may still be alive (ready never came, or the
 	// health window failed while it kept answering). The systemd runner's
 	// restart replaces it; the child runner refuses to start a running key,
@@ -1520,7 +1588,7 @@ func (s *server) watchAndRollback(app state.App, previous string) {
 
 	verdict := (&health.Watch{
 		Probe:     s.probe,
-		Port:      app.Port,
+		Port:      app.UpstreamPort(),
 		Window:    rollbackWindow,
 		Interval:  rollbackInterval,
 		Threshold: rollbackThreshold,

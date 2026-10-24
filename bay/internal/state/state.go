@@ -128,6 +128,24 @@ type App struct {
 	// choice somebody made and owns: a later reader must be able to see that
 	// this app does not follow `bay runtimes update`.
 	RuntimeImage string `json:"runtimeImage,omitempty"`
+
+	// HostPort is the host loopback port the live container is published on,
+	// when it is not Port. Zero means Port.
+	//
+	// Separate from Port because blue/green moves it: the next container is
+	// published on another host port, health-checked there, and traffic
+	// switches by changing this field. Inside the container the app always
+	// listens on Port (its SERVER_PORT), so the app's .env never changes with
+	// a deploy.
+	HostPort int `json:"hostPort,omitempty"`
+}
+
+// UpstreamPort is the host port to send this instance's traffic to.
+func (a App) UpstreamPort() int {
+	if a.HostPort != 0 {
+		return a.HostPort
+	}
+	return a.Port
 }
 
 // Key is the stable identifier for an app instance.
@@ -308,6 +326,15 @@ func (s *Store) Upsert(app App) error {
 			// deploy — so the staleness badge would be blank for exactly the apps
 			// someone is actively working on.
 			app.LastRequestAt = a.LastRequestAt
+			// The host port the live container is published on: a deploy
+			// upserts BEFORE its new container is up, and the proxy dials this
+			// field, so dropping it here would send every request of the
+			// deploy window to a port nothing listens on any more. A blue/green
+			// switch moves it with SetHostPort once the new one is ready.
+			app.HostPort = a.HostPort
+			// An image somebody chose for this instance outlives its releases,
+			// until `bay runtimes clear` says otherwise.
+			app.RuntimeImage = a.RuntimeImage
 			// ⚠️ `Stopped` is deliberately NOT carried forward, unlike every
 			// other runtime-owned field above. A deploy is an instruction to
 			// run THIS release, and `deployArtifact` already calls `start`
@@ -406,6 +433,11 @@ reported as a deliberate stop.
 */
 func (s *Store) SetStopped(key string, stopped bool) error {
 	return s.mutate(key, func(a *App) { a.Stopped = stopped })
+}
+
+// SetHostPort records the host port the live container is published on.
+func (s *Store) SetHostPort(key string, port int) error {
+	return s.mutate(key, func(a *App) { a.HostPort = port })
 }
 
 // SetRuntimeImage records an instance's own runtime image, or clears it.
@@ -570,6 +602,9 @@ func (s *Store) UsedPorts() map[int]bool {
 			continue
 		}
 		used[a.Port] = true
+		if a.HostPort != 0 {
+			used[a.HostPort] = true
+		}
 	}
 	return used
 }

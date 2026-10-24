@@ -46,9 +46,13 @@ type Container struct {
 	// Mounts are the only host paths the container sees.
 	Mounts []Mount
 	// Port is the app's port inside the container, published on the host's
-	// loopback only (127.0.0.1:Port), which is where the proxy and the health
-	// probe already look. Zero publishes nothing.
+	// loopback only, which is where the proxy and the health probe look. Zero
+	// publishes nothing.
 	Port int
+	// HostPort is the host loopback port Port is published on. Zero means the
+	// same number. Blue/green publishes the next container on another one, so
+	// both can run at once while the new one is health-checked.
+	HostPort int
 	// MemoryBytes is the hard memory ceiling. Zero means unlimited.
 	MemoryBytes int64
 	// PidsLimit caps processes and threads, systemd's TasksMax. Zero means the
@@ -114,18 +118,30 @@ removed, so a Start on a running app is a graceful restart, as `systemctl
 restart` was, never a kill.
 */
 func (d *Docker) Start(spec Spec) error {
-	c, ok := spec.Sandbox.(Container)
-	if !ok {
-		return fmt.Errorf("docker runner needs a Container for %s", spec.Key)
+	c, err := containerOf(spec)
+	if err != nil {
+		return err
 	}
-	if c.Image == "" {
-		return fmt.Errorf("docker runner needs an image for %s", spec.Key)
-	}
-	name := unitName(spec.Key)
-
 	if err := d.Stop(spec.Key, stopGraceOfContainer(c)); err != nil {
 		return err
 	}
+	return d.create(unitName(spec.Key), spec, c)
+}
+
+func containerOf(spec Spec) (Container, error) {
+	c, ok := spec.Sandbox.(Container)
+	if !ok {
+		return c, fmt.Errorf("docker runner needs a Container for %s", spec.Key)
+	}
+	if c.Image == "" {
+		return c, fmt.Errorf("docker runner needs an image for %s", spec.Key)
+	}
+	return c, nil
+}
+
+// create replaces whatever container holds `name` with a fresh one, and
+// starts it.
+func (d *Docker) create(name string, spec Spec, c Container) error {
 	if err := d.removeContainer(name); err != nil {
 		return err
 	}
@@ -138,6 +154,62 @@ func (d *Docker) Start(spec Spec) error {
 	}
 	if err := d.api.do("POST", "/containers/"+name+"/start", nil, nil, nil, dockerCallTimeout); err != nil {
 		return fmt.Errorf("start %s: %w", name, err)
+	}
+	return nil
+}
+
+/*
+candidateName is the second container of a blue/green switch: the next
+release, or the same release restarted, running beside the live one until it
+proves healthy.
+*/
+func candidateName(key string) string {
+	return unitName(key) + "-next"
+}
+
+/*
+StartCandidate starts the next container of an instance beside the live one,
+published on spec's HostPort, and returns once it is running.
+
+The live container is not touched: until Promote, it is still the one serving.
+A leftover candidate from an interrupted switch is replaced.
+*/
+func (d *Docker) StartCandidate(spec Spec) error {
+	c, err := containerOf(spec)
+	if err != nil {
+		return err
+	}
+	if c.HostPort == 0 || c.HostPort == c.Port {
+		return fmt.Errorf("a candidate for %s needs a host port of its own", spec.Key)
+	}
+	return d.create(candidateName(spec.Key), spec, c)
+}
+
+// DiscardCandidate removes a candidate that did not become healthy. The live
+// container keeps serving.
+func (d *Docker) DiscardCandidate(key string) error {
+	return d.removeContainer(candidateName(key))
+}
+
+/*
+Promote makes the candidate the instance's container: the live one is stopped
+with its grace and removed, and the candidate takes its name.
+
+The caller has already pointed traffic at the candidate's host port, so the
+stop only drains the old process. The rename is what keeps every other verb
+(logs, usage, restart) addressing one name per instance.
+*/
+func (d *Docker) Promote(key string, grace time.Duration) error {
+	if err := d.Stop(key, grace); err != nil {
+		return err
+	}
+	name := unitName(key)
+	if err := d.removeContainer(name); err != nil {
+		return err
+	}
+	err := d.api.do("POST", "/containers/"+candidateName(key)+"/rename", url.Values{"name": {name}}, nil, nil, dockerCallTimeout)
+	if err != nil {
+		return fmt.Errorf("promote %s: %w", key, err)
 	}
 	return nil
 }
@@ -207,10 +279,17 @@ func createBody(spec Spec, c Container) map[string]any {
 		// default binding would put the app on the internet past UFW, beside
 		// Bay's proxy rather than behind it.
 		host["PortBindings"] = map[string]any{
-			port: []map[string]string{{"HostIp": "127.0.0.1", "HostPort": strconv.Itoa(c.Port)}},
+			port: []map[string]string{{"HostIp": "127.0.0.1", "HostPort": strconv.Itoa(hostPortOf(c))}},
 		}
 	}
 	return body
+}
+
+func hostPortOf(c Container) int {
+	if c.HostPort != 0 {
+		return c.HostPort
+	}
+	return c.Port
 }
 
 func stopGraceOfContainer(c Container) time.Duration {

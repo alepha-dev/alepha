@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/alepha-dev/bay/internal/manifest"
 	"github.com/alepha-dev/bay/internal/runner"
@@ -20,6 +21,14 @@ func (f *imageFakeRunner) EnsureImage(ref string) error {
 	f.pulled = append(f.pulled, ref)
 	return nil
 }
+
+func (f *imageFakeRunner) StartCandidate(runner.Spec) error    { return nil }
+func (f *imageFakeRunner) DiscardCandidate(string) error       { return nil }
+func (f *imageFakeRunner) Promote(string, time.Duration) error { return nil }
+
+// imageFakeRunner must keep satisfying the interface `start` checks for, or
+// these tests would silently exercise the host-binary path instead.
+var _ containerRunner = (*imageFakeRunner)(nil)
 
 func TestContainerSpec(t *testing.T) {
 	s := runtimesFixture(t, `[{"runtime": "node", "entry": "index.node.js", "runtimeVersion": "26"}]`)
@@ -58,6 +67,21 @@ func TestContainerSpec(t *testing.T) {
 		}
 		if c.Mounts[1] != (runner.Mount{Source: data, Target: data}) {
 			t.Fatalf("data mount = %+v", c.Mounts[1])
+		}
+	})
+
+	t.Run("publishes on the live host port, which blue/green moves", func(t *testing.T) {
+		if c.HostPort != 4100 {
+			t.Fatalf("host port = %d", c.HostPort)
+		}
+		moved := app
+		moved.HostPort = 4733
+		spec, _, err := s.containerSpec(moved, m, map[string]string{}, instance, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := spec.Sandbox.(runner.Container); got.Port != 4100 || got.HostPort != 4733 {
+			t.Fatalf("port = %d, host port = %d", got.Port, got.HostPort)
 		}
 	})
 

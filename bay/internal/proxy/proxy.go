@@ -281,7 +281,7 @@ func (p *Proxy) serveStatic(w http.ResponseWriter, r *http.Request, app state.Ap
 }
 
 func (p *Proxy) forward(w http.ResponseWriter, r *http.Request, app state.App) {
-	target := &url.URL{Scheme: "http", Host: net.JoinHostPort("127.0.0.1", itoa(app.Port))}
+	target := &url.URL{Scheme: "http", Host: net.JoinHostPort("127.0.0.1", itoa(app.UpstreamPort()))}
 	rp := httputil.NewSingleHostReverseProxy(target)
 
 	// Tell the app what the CLIENT asked for, not what we are dialling.
@@ -359,7 +359,7 @@ func (p *Proxy) forward(w http.ResponseWriter, r *http.Request, app state.App) {
 	}
 
 	rp.ErrorHandler = func(w http.ResponseWriter, _ *http.Request, err error) {
-		p.log.Error("upstream unreachable", "app", app.Key(), "port", app.Port, "err", err)
+		p.log.Error("upstream unreachable", "app", app.Key(), "port", app.UpstreamPort(), "err", err)
 		http.Error(w, "app unavailable", http.StatusBadGateway)
 	}
 	rp.ServeHTTP(w, r)

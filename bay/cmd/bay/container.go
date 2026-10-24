@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/alepha-dev/bay/internal/deploy"
 	"github.com/alepha-dev/bay/internal/manifest"
 	"github.com/alepha-dev/bay/internal/runner"
 	"github.com/alepha-dev/bay/internal/state"
@@ -23,6 +24,9 @@ deleted (epic E73, Bay quest 2597).
 type containerRunner interface {
 	runner.Runner
 	EnsureImage(ref string) error
+	StartCandidate(spec runner.Spec) error
+	DiscardCandidate(key string) error
+	Promote(key string, grace time.Duration) error
 }
 
 // releaseMount is where an app's release appears inside its container, and
@@ -76,6 +80,7 @@ func (s *server) containerSpec(app state.App, m *manifest.Manifest, env map[stri
 			WorkDir:     releaseMount,
 			Mounts:      mounts,
 			Port:        app.Port,
+			HostPort:    app.UpstreamPort(),
 			MemoryBytes: 512 << 20,
 			PidsLimit:   256,
 			NanoCPUs:    nanoCPUsFor(runtime.NumCPU()),
@@ -168,4 +173,102 @@ func (i *imageInterpreter) Run(ctx context.Context, script string, args ...strin
 		timeout = time.Until(deadline)
 	}
 	return i.tasks.RunOnce(i.image, append([]string{i.command, path}, args...), mounts, timeout)
+}
+
+/*
+replace swaps an instance's running container for a fresh one without a gap:
+blue/green.
+
+The next container starts beside the live one on a free host port and is
+health-checked there while the live one keeps serving. Only once it is ready
+are requests held, the store pointed at the new port (which is what the proxy
+dials), and the old container drained and removed; the new one then takes the
+instance's name. A candidate that never becomes ready is discarded, and the
+live container never noticed.
+
+The app's own port does not change: inside every container it listens on its
+SERVER_PORT, and only the host-side publication moves.
+*/
+func (s *server) replace(app state.App) error {
+	cr, ok := s.runner.(containerRunner)
+	if !ok {
+		return fmt.Errorf("%s: blue/green needs a container runner", app.Key())
+	}
+	instance := s.instanceDir(app)
+	env, err := runner.LoadEnvFile(filepath.Join(instance, ".env"))
+	if err != nil {
+		return err
+	}
+	m, err := manifest.LoadFromRelease(filepath.Join(instance, "current"))
+	if err != nil {
+		return err
+	}
+	writable, err := s.writablePaths(app, m, instance)
+	if err != nil {
+		return err
+	}
+	spec, choice, err := s.containerSpec(app, m, env, instance, writable)
+	if err != nil {
+		return err
+	}
+	candidate, err := deploy.AllocatePort(s.store.UsedPorts())
+	if err != nil {
+		return err
+	}
+	c := spec.Sandbox.(runner.Container)
+	c.HostPort = candidate
+	spec.Sandbox = c
+
+	if err := cr.StartCandidate(spec); err != nil {
+		_ = cr.DiscardCandidate(app.Key())
+		return err
+	}
+	wait := readyTimeout
+	if s.readyWait > 0 {
+		wait = s.readyWait
+	}
+	if err := s.probe.WaitReady(candidate, wait); err != nil {
+		_ = cr.DiscardCandidate(app.Key())
+		return fmt.Errorf("%s never became ready (the previous container is still serving): %w", app.Key(), err)
+	}
+
+	// The switch itself. Held, so a request arriving between the port change
+	// and the old container's exit waits rather than meeting either a closed
+	// port or a draining process.
+	release := s.holdDuring(app.Key())
+	defer release()
+	if err := s.store.SetHostPort(app.Key(), candidate); err != nil {
+		_ = cr.DiscardCandidate(app.Key())
+		return err
+	}
+	if err := cr.Promote(app.Key(), stopGrace); err != nil {
+		return fmt.Errorf("%s: serving from the new container, but the old one did not go away cleanly: %w", app.Key(), err)
+	}
+	if choice.Warning != "" {
+		s.log.Warn("runtime image chosen for the app", "app", app.Key(), "image", choice.Ref, "warning", choice.Warning)
+	}
+	s.log.Info("app ready", "app", app.Key(), "port", candidate, "domain", app.Domain())
+	return nil
+}
+
+/*
+restart brings an instance back on its current release and environment.
+
+Blue/green when it runs in a container and is up, so a restart, an env change
+or a runtime update costs no request; stop then start otherwise (the app was
+down anyway, or the runner cannot run two copies).
+*/
+func (s *server) restart(app state.App) error {
+	if _, ok := s.runner.(containerRunner); ok && !app.Static && s.runner.Running(app.Key()) {
+		return s.replace(app)
+	}
+	if err := s.prepareRuntime(app); err != nil {
+		return err
+	}
+	release := s.holdDuring(app.Key())
+	defer release()
+	if err := s.runner.Stop(app.Key(), stopGrace); err != nil {
+		return err
+	}
+	return s.start(app)
 }
