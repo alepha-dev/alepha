@@ -32,6 +32,8 @@ export { stackEnvironments } from "../api/entities/stackEnvironments.ts";
 export { stackRevisions } from "../api/entities/stackRevisions.ts";
 export { type Stack, stacks } from "../api/entities/stacks.ts";
 export type { StackEnvironmentResource } from "../api/schemas/stackEnvironmentResourceSchema.ts";
+export type { StackModel } from "../api/schemas/stackModelSchema.ts";
+export type { StackModelService } from "../api/schemas/stackModelServiceSchema.ts";
 export type { StackResource } from "../api/schemas/stackResourceSchema.ts";
 export type { StackRevisionResource } from "../api/schemas/stackRevisionResourceSchema.ts";
 export type { AdminEstateResource } from "../api/schemas/adminEstateResourceSchema.ts";

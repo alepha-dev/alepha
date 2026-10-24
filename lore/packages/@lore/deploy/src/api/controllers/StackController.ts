@@ -6,6 +6,7 @@ import type { Stack } from "../entities/stacks.ts";
 import { stackEnvironmentResourceSchema } from "../schemas/stackEnvironmentResourceSchema.ts";
 import { stackResourceSchema } from "../schemas/stackResourceSchema.ts";
 import { stackRevisionResourceSchema } from "../schemas/stackRevisionResourceSchema.ts";
+import { StackBundleReader } from "../services/StackBundleReader.ts";
 import { StackService } from "../services/StackService.ts";
 
 /**
@@ -297,6 +298,30 @@ export class StackController {
       );
       await this.stacks.detachInstance(environment, params.instanceId);
       return await this.environmentResource(stack, environment.id);
+    },
+  });
+
+  uploadStackRevision = $action({
+    use: [this.writeGate()],
+    method: "POST",
+    path: "/projects/:projectId/stacks/:stackId/revisions",
+    description:
+      "Upload a revision: a compose file, or a gzip or zstd tar bundle holding one and the files it references. Parsed and checked against every target the stack deploys to before it is stored.",
+    schema: {
+      params: z.object({ projectId: z.integer(), stackId: z.uuid() }),
+      body: z.object({
+        file: z.file({ maxBytes: StackBundleReader.MAX_BYTES }),
+      }),
+      response: stackRevisionResourceSchema,
+    },
+    handler: async ({ params, body, user }) => {
+      const stack = await this.stacks.get(params.projectId, params.stackId);
+      const { fileId: _fileId, ...revision } = await this.stacks.uploadRevision(
+        stack,
+        body.file,
+        user?.id,
+      );
+      return revision;
     },
   });
 

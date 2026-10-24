@@ -6,6 +6,7 @@ import { BadRequestError, ConflictError, NotFoundError } from "alepha/server";
 
 import { type AppInstance, appInstances } from "../entities/appInstances.ts";
 import { estateProjects } from "../entities/estateProjects.ts";
+import { estates } from "../entities/estates.ts";
 import {
   type StackEnvironmentRoute,
   stackEnvironmentRoutes,
@@ -20,6 +21,9 @@ import {
 } from "../entities/stackRevisions.ts";
 import { type Stack, stacks } from "../entities/stacks.ts";
 import { ArtifactService } from "./ArtifactService.ts";
+import { StackBundleReader } from "./StackBundleReader.ts";
+import { StackComposeParser } from "./StackComposeParser.ts";
+import { StackTargets } from "./StackTargets.ts";
 
 /**
  * What a revision upload hands the service: the bundle as uploaded, its
@@ -53,7 +57,11 @@ export class StackService {
   protected readonly instances = $repository(appInstances);
   protected readonly grants = $repository(estateProjects);
   protected readonly projects = $repository(projects);
+  protected readonly estates = $repository(estates);
   protected readonly files = $inject(FileService);
+  protected readonly bundles = $inject(StackBundleReader);
+  protected readonly parser = $inject(StackComposeParser);
+  protected readonly targets = $inject(StackTargets);
 
   /**
    * Normalises a stack or environment name, the way `AppService.normalize`
@@ -314,6 +322,52 @@ export class StackService {
       throw new NotFoundError(`Stack ${stack.name} has no revision ${number}`);
     }
     return revision;
+  }
+
+  /**
+   * Reads, parses and checks an uploaded bundle, then stores it as the next
+   * revision. Refused, with every reason at once, when the file is unreadable
+   * or when a target the stack deploys to cannot run it.
+   */
+  async uploadRevision(
+    stack: Stack,
+    file: FileLike,
+    createdBy?: string,
+  ): Promise<StackRevision> {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const bundle = await this.bundles.read(bytes);
+    const model = this.parser.parse(bundle.compose, bundle.files);
+    this.targets.assert(model, await this.targetsOf(stack));
+    return await this.addRevision({
+      stack,
+      file: new File([bundle.bytes as BlobPart], "bundle.tar.gz", {
+        type: "application/gzip",
+      }),
+      sha256: bundle.sha256,
+      size: bundle.bytes.length,
+      model: JSON.stringify(model),
+      compose: bundle.compose,
+      createdBy,
+    });
+  }
+
+  /**
+   * The targets a stack's revisions must run on: the type of every estate it
+   * or one of its environments deploys to, and Bay when none is chosen yet,
+   * since Bay is the one target that runs stacks today.
+   */
+  async targetsOf(stack: Stack): Promise<string[]> {
+    const envs = await this.environmentsOf([stack.id]);
+    const ids = [stack.estateId, ...envs.map((e) => e.estateId)].filter(
+      (id): id is string => !!id,
+    );
+    if (ids.length === 0) {
+      return ["bay"];
+    }
+    const rows = await this.estates.findMany({
+      where: { id: { inArray: [...new Set(ids)] } },
+    });
+    return rows.length === 0 ? ["bay"] : [...new Set(rows.map((r) => r.type))];
   }
 
   /**

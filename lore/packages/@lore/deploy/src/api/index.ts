@@ -73,7 +73,10 @@ import { RegistryCredentialService } from "./services/RegistryCredentialService.
 import { RollbackService } from "./services/RollbackService.ts";
 import { SigilIngestService } from "./services/SigilIngestService.ts";
 import { SigilTokenService } from "./services/SigilTokenService.ts";
+import { StackBundleReader } from "./services/StackBundleReader.ts";
+import { StackComposeParser } from "./services/StackComposeParser.ts";
 import { StackService } from "./services/StackService.ts";
+import { StackTargets } from "./services/StackTargets.ts";
 import { UniqueVisitorsMetric } from "./services/UniqueVisitorsMetric.ts";
 import { UptimeHttpProber } from "./services/UptimeHttpProber.ts";
 import { UptimeSocketProber } from "./services/UptimeSocketProber.ts";
@@ -158,6 +161,9 @@ export const LoreDeployApi = $module({
     // A project's container registry credentials (#Q2693), sealed and opened
     // only to verify an image and inside a deploy of the same project.
     RegistryCredentialService,
+    StackComposeParser,
+    StackTargets,
+    StackBundleReader,
     StackService,
     BlightRuleService,
     OpenBlightCounter,
@@ -244,7 +250,10 @@ export { DeployJobs } from "./jobs/DeployJobs.ts";
 export { QualityJobs } from "./jobs/QualityJobs.ts";
 export { SigilJobs } from "./jobs/SigilJobs.ts";
 export { EstateNotifications } from "./notifications/EstateNotifications.ts";
+export { StackBundleReader } from "./services/StackBundleReader.ts";
+export { StackComposeParser } from "./services/StackComposeParser.ts";
 export { StackService } from "./services/StackService.ts";
+export { StackTargets } from "./services/StackTargets.ts";
 export { RegistryCredentialService } from "./services/RegistryCredentialService.ts";
 export { AppSecretService } from "./services/AppSecretService.ts";
 export { AppService } from "./services/AppService.ts";
