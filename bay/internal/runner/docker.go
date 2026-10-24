@@ -864,6 +864,46 @@ func (d *Docker) EnsureNetwork(name, project string) error {
 	return nil
 }
 
+// ProjectVolume is one named volume of a Compose project.
+type ProjectVolume struct {
+	Name string
+	// Volume is the name in the compose file ("pgdata").
+	Volume string
+}
+
+// ProjectVolumes lists the named volumes Compose created for a project.
+func (d *Docker) ProjectVolumes(project string) ([]ProjectVolume, error) {
+	filters, _ := json.Marshal(map[string][]string{"label": {"com.docker.compose.project=" + project}})
+	var out struct {
+		Volumes []struct {
+			Name   string            `json:"Name"`
+			Labels map[string]string `json:"Labels"`
+		} `json:"Volumes"`
+	}
+	if err := d.api.do("GET", "/volumes", url.Values{"filters": {string(filters)}}, nil, &out, dockerCallTimeout); err != nil {
+		return nil, err
+	}
+	vols := make([]ProjectVolume, 0, len(out.Volumes))
+	for _, v := range out.Volumes {
+		vols = append(vols, ProjectVolume{Name: v.Name, Volume: v.Labels["com.docker.compose.volume"]})
+	}
+	sort.Slice(vols, func(i, j int) bool { return vols[i].Name < vols[j].Name })
+	return vols, nil
+}
+
+/*
+RemoveImage deletes an image Bay pulled for a revision it no longer keeps.
+Never forced: an image a container still uses answers 409 and stays, which is
+the answer wanted.
+*/
+func (d *Docker) RemoveImage(ref string) error {
+	err := d.api.do("DELETE", "/images/"+ref, nil, nil, nil, dockerCallTimeout)
+	if err != nil && !isStatus(err, 404) && !isStatus(err, 409) {
+		return err
+	}
+	return nil
+}
+
 // DaemonInfo is what `bay doctor` asks of the daemon.
 type DaemonInfo struct {
 	Version       string // the Engine's release, "29.7.2"

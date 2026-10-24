@@ -51,6 +51,7 @@ func shopCompose(nginxTag string) string {
 	return `services:
   cache:
     image: redis:7-alpine
+    volumes: [cachedata:/data]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 1s
@@ -65,6 +66,8 @@ func shopCompose(nginxTag string) string {
     x-lore:
       app: api
       routes: ["api"]
+volumes:
+  cachedata:
 `
 }
 
@@ -241,6 +244,65 @@ func TestStackDeployDaemon(t *testing.T) {
 		}
 		if status, _ := get(base); status != 200 {
 			t.Fatalf("the label route stopped serving: %d", status)
+		}
+	})
+
+	t.Run("a third revision prunes the oldest and the image only it pinned", func(t *testing.T) {
+		before, _ := store.StackEnv("shop", env)
+		oldest := before.Revisions[0]
+		if _, err := s.deployStack(context.Background(), stackDeployOptions{Stack: "shop", Env: env,
+			Bundle: tarGz(t, bundles, "r3.tar.gz", map[string]string{"compose.yml": shopCompose("1.27-alpine")})}); err != nil {
+			t.Fatal(err)
+		}
+		after, _ := store.StackEnv("shop", env)
+		for _, r := range after.Revisions {
+			if r.Number == oldest.Number {
+				t.Fatalf("revision %d was kept: %+v", oldest.Number, after.Revisions)
+			}
+		}
+		if _, err := os.Stat(stack.RevisionDir(root, "shop", env, oldest.Number)); !os.IsNotExist(err) {
+			t.Fatal("the pruned revision's directory is still there")
+		}
+		if out, err := exec.Command("docker", "image", "inspect", oldest.Digests["web"]).CombinedOutput(); err == nil {
+			t.Fatalf("the image only revision %d pinned is still present: %s", oldest.Number, out)
+		}
+	})
+
+	t.Run("stop takes services and apps out, durably; start brings them back", func(t *testing.T) {
+		if err := s.stopStack("shop", env); err != nil {
+			t.Fatal(err)
+		}
+		if d.Running(memberKey("shop", env, "cache")) || d.Running(memberKey("shop", env, "api")) {
+			t.Fatal("a member is still running after stop")
+		}
+		if se, _ := store.StackEnv("shop", env); !se.Stopped {
+			t.Fatal("the stop intent was not recorded")
+		}
+		if err := s.startStack("shop", env); err != nil {
+			t.Fatal(err)
+		}
+		if status, body := get("api." + base); status != 200 || !strings.Contains(body, "PONG") {
+			t.Fatalf("api after start: %d %s", status, body)
+		}
+	})
+
+	t.Run("a purge needs confirming, then deletes the volumes and forgets the environment", func(t *testing.T) {
+		mux := s.controlMux()
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodDelete, "/stacks/shop/"+env+"?purge=1", nil))
+		if rec.Code != 409 || !strings.Contains(rec.Body.String(), "cachedata") {
+			t.Fatalf("unconfirmed purge: %d %s", rec.Code, rec.Body.String())
+		}
+		rec = httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodDelete, "/stacks/shop/"+env+"?purge=1&confirm=shop/"+env, nil))
+		if rec.Code != 200 || !strings.Contains(rec.Body.String(), "shop-"+env+"_cachedata") {
+			t.Fatalf("confirmed purge: %d %s", rec.Code, rec.Body.String())
+		}
+		if _, ok := store.StackEnv("shop", env); ok || len(store.StackMembers("shop", env)) != 0 {
+			t.Fatal("the environment or its members were kept")
+		}
+		if out, err := exec.Command("docker", "volume", "inspect", "shop-"+env+"_cachedata").CombinedOutput(); err == nil {
+			t.Fatalf("the volume survived the purge: %s", out)
 		}
 	})
 }

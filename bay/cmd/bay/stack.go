@@ -43,6 +43,9 @@ func (s *server) registerStackRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /stacks/{stack}/{env}/registries", s.handleRegistryRemove)
 	mux.HandleFunc("GET /stacks/{stack}/{env}/registries", s.handleRegistryList)
 	mux.HandleFunc("PUT /config/registry-mirror", s.handleRegistryMirror)
+	mux.HandleFunc("POST /stacks/{stack}/{env}/stop", s.handleStackStop)
+	mux.HandleFunc("POST /stacks/{stack}/{env}/start", s.handleStackStart)
+	mux.HandleFunc("DELETE /stacks/{stack}/{env}", s.handleStackDestroy)
 }
 
 /*
@@ -355,7 +358,10 @@ const stackUsage = `usage: bay stack <command> <stack>/<env> ...
   route remove <stack>/<env> <domain>
   registry add <stack>/<env> HOST --username U   password read from stdin
   registry list <stack>/<env>        hosts only
-  registry remove <stack>/<env> HOST`
+  registry remove <stack>/<env> HOST
+  stop <stack>/<env>                 out of service, durably: services and apps
+  start <stack>/<env>                back, from the current revision
+  destroy <stack>/<env> [--purge [--yes]]   remove containers; --purge deletes volumes`
 
 // cmdStack is `bay stack`.
 func cmdStack(args []string) error {
@@ -369,6 +375,8 @@ func cmdStack(args []string) error {
 		return cmdStackRoute(args[1:])
 	case "registry":
 		return cmdStackRegistry(args[1:])
+	case "stop", "start", "destroy":
+		return cmdStackLifecycle(args[0], args[1:])
 	default:
 		return errors.New(stackUsage)
 	}

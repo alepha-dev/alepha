@@ -289,6 +289,9 @@ func (s *server) deployStack(ctx context.Context, opts stackDeployOptions) (*sta
 	}
 	s.saveModel(dir, snapshot)
 	s.syncTCP()
+	if pruned := s.pruneStack(opts.Stack, opts.Env); len(pruned) > 0 {
+		s.log.Info("pruned stack revisions", "stack", opts.Stack+"/"+opts.Env, "removed", pruned)
+	}
 	if s.tls != nil {
 		var all []string
 		for _, d := range domains {
