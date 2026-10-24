@@ -13,9 +13,11 @@ import {
   estateCommands,
 } from "../entities/estateCommands.ts";
 import { estateCommandResultSchema } from "../schemas/estateCommandResultSchema.ts";
+import { stackDeployOutcomeSchema } from "../schemas/stackDeployOutcomeSchema.ts";
 import { AppSecretService } from "../services/AppSecretService.ts";
 import { ArtifactService } from "../services/ArtifactService.ts";
 import { EstateTokenService } from "../services/EstateTokenService.ts";
+import { StackDeployService } from "../services/StackDeployService.ts";
 
 /**
  * What a machine pulls while executing a `deploy`: the artifact bytes and
@@ -54,6 +56,13 @@ export class EstatePullController {
   public static readonly RESULT_PATH = "/estates/commands/:id/result";
 
   /**
+   * `GET`: a `stack-deploy`'s registry credentials, opened. `POST` on
+   * `OUTCOME_PATH`: what the machine did when it applied the revision.
+   */
+  public static readonly REGISTRIES_PATH = "/estates/commands/:id/registries";
+  public static readonly OUTCOME_PATH = "/estates/commands/:id/outcome";
+
+  /**
    * Where a command's answer is stored. Its own bucket, because what is in it
    * is a machine's journal: bounded, short-lived and read by one owner.
    */
@@ -81,6 +90,7 @@ export class EstatePullController {
   protected readonly instances = $repository(appInstances);
   protected readonly artifacts = $repository(artifacts);
   protected readonly secrets = $inject(AppSecretService);
+  protected readonly stackDeploys = $inject(StackDeployService);
 
   resultBucket = $storage({
     name: EstatePullController.RESULT_BUCKET,
@@ -111,6 +121,27 @@ export class EstatePullController {
     },
     handler: async ({ params, headers, reply }) => {
       const command = await this.resolve(params.id, headers.authorization);
+      if (command.kind === "stack-deploy") {
+        // A revision bundle, resolved through the deploy row the command
+        // belongs to, never through the artifacts table.
+        const bundle = await this.stackDeploys.bundleFor(command);
+        if (!bundle) {
+          this.log.warn(
+            "Bundle pull refused: the command names no revision of its deploy",
+            {
+              commandId: command.id,
+            },
+          );
+          throw this.refused();
+        }
+        const stream = await this.files.streamFile(bundle.fileId, {
+          bucket: StackDeployService.BUCKET,
+        });
+        reply.setHeader("content-length", String(bundle.size));
+        reply.setHeader("x-artifact-sha256", bundle.sha256);
+        reply.setHeader("cache-control", "no-store");
+        return stream;
+      }
       const named = command.payload.artifact;
       const artifact = named
         ? await this.artifacts.findOne({ where: { id: { eq: named.id } } })
@@ -191,6 +222,19 @@ export class EstatePullController {
       const command = await this.resolve(params.id, headers.authorization);
       reply.setHeader("cache-control", "no-store");
 
+      if (command.kind === "stack-deploy") {
+        // The stack environment's own variables, through its deploy row.
+        const set = await this.stackDeploys.variablesFor(command);
+        if (!set) {
+          throw this.refused();
+        }
+        this.log.debug("Stack variables pulled", {
+          commandId: command.id,
+          count: Object.keys(set).length,
+        });
+        return set;
+      }
+
       const matches = await this.instances.findMany({
         where: {
           estateId: { eq: command.estateId },
@@ -257,6 +301,64 @@ export class EstatePullController {
    * `FileJobs`, which is why `EstateCommandJobs` learns nothing here and an
    * estate deletion needs no blob hook.
    */
+  /**
+   * `GET /estates/commands/:id/registries`: the registry credentials of the
+   * project whose stack this command deploys, opened, so the machine pulls
+   * the stack's private images. Only for a `stack-deploy`, and only ever its
+   * own project's: every other command is refused like an unknown one.
+   */
+  pullRegistries = $route({
+    method: "GET",
+    path: EstatePullController.REGISTRIES_PATH,
+    schema: {
+      params: z.object({ id: z.string().min(1).max(64) }),
+      headers: z.object({ authorization: z.string().optional() }),
+      response: z.array(
+        z.object({
+          host: z.string(),
+          username: z.string(),
+          password: z.string(),
+        }),
+      ),
+    },
+    handler: async ({ params, headers, reply }) => {
+      const command = await this.resolve(params.id, headers.authorization);
+      reply.setHeader("cache-control", "no-store");
+      const credentials = await this.stackDeploys.registriesFor(command);
+      if (!credentials) {
+        throw this.refused();
+      }
+      this.log.debug("Registry credentials pulled", {
+        commandId: command.id,
+        count: credentials.length,
+      });
+      return credentials;
+    },
+  });
+
+  /**
+   * `POST /estates/commands/:id/outcome`: what a `stack-deploy` did (the
+   * revision applied, the plan, each service, the digests it pinned),
+   * uploaded before the terminal ack, the way a `logs` result is.
+   */
+  pushOutcome = $route({
+    method: "POST",
+    path: EstatePullController.OUTCOME_PATH,
+    schema: {
+      params: z.object({ id: z.string().min(1).max(64) }),
+      headers: z.object({ authorization: z.string().optional() }),
+      body: stackDeployOutcomeSchema,
+      response: z.object({ stored: z.boolean() }),
+    },
+    handler: async ({ params, headers, body }) => {
+      const command = await this.resolve(params.id, headers.authorization);
+      if (!(await this.stackDeploys.recordOutcome(command, body))) {
+        throw this.refused();
+      }
+      return { stored: true };
+    },
+  });
+
   pushResult = $route({
     method: "POST",
     path: EstatePullController.RESULT_PATH,

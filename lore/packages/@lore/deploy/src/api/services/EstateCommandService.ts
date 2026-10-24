@@ -70,6 +70,9 @@ export class EstateCommandService {
   > = {
     restart: 120,
     deploy: 900,
+    // Pulls every image of the stack before Compose applies it, so the
+    // longest of the deploys.
+    "stack-deploy": 1800,
     stop: 120,
     start: 180,
     // ⚠️ A placeholder until `time bay backup <largest app>/production` is run
@@ -110,7 +113,10 @@ export class EstateCommandService {
         `Estate "${estate.slug}" is a Cloudflare account, which is deployed to directly rather than through the command queue`,
       );
     }
-    if (kind === "deploy" && !estate.deployAllowed) {
+    if (
+      (kind === "deploy" || kind === "stack-deploy") &&
+      !estate.deployAllowed
+    ) {
       throw new ForbiddenError(
         `Estate "${estate.slug}" does not accept deploys; its owner has to allow them first`,
       );
@@ -313,6 +319,14 @@ export class EstateCommandService {
       environment: command.payload.environment,
       ...(command.payload.artifact
         ? { artifact: command.payload.artifact }
+        : {}),
+      ...(command.payload.stack ? { stack: command.payload.stack } : {}),
+      ...(command.payload.revision
+        ? { revision: command.payload.revision }
+        : {}),
+      ...(command.payload.routes ? { routes: command.payload.routes } : {}),
+      ...(command.payload.baseDomain
+        ? { baseDomain: command.payload.baseDomain }
         : {}),
     };
   }

@@ -29,6 +29,10 @@ export const ESTATE_COMMAND_KINDS = [
   "start",
   "backup",
   "logs",
+  // Apply a stack revision to a stack environment (#E79): the bundle by
+  // digest, the environment's routes and base domain. Held to the same
+  // deploy switch as `deploy`. Bay's `actionStackDeploy` is its other half.
+  "stack-deploy",
 ] as const;
 
 export type EstateCommandKind = (typeof ESTATE_COMMAND_KINDS)[number];

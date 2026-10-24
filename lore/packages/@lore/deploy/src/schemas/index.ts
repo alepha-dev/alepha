@@ -27,6 +27,9 @@ export {
   sigilUniquesDaily,
 } from "../api/entities/sigilUniquesDaily.ts";
 export { type Sigil, sigils } from "../api/entities/sigils.ts";
+export { stackDeployments } from "../api/entities/stackDeployments.ts";
+export type { StackDeploymentResource } from "../api/schemas/stackDeploymentResourceSchema.ts";
+export { stackDeployOutcomeSchema } from "../api/schemas/stackDeployOutcomeSchema.ts";
 export { stackEnvironmentRoutes } from "../api/entities/stackEnvironmentRoutes.ts";
 export { stackEnvironments } from "../api/entities/stackEnvironments.ts";
 export { stackRevisions } from "../api/entities/stackRevisions.ts";

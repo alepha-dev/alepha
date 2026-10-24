@@ -22,6 +22,7 @@ import { SigilAnalyticsController } from "./controllers/SigilAnalyticsController
 import { SigilController } from "./controllers/SigilController.ts";
 import { SigilIngestController } from "./controllers/SigilIngestController.ts";
 import { StackController } from "./controllers/StackController.ts";
+import { StackDeployController } from "./controllers/StackDeployController.ts";
 import { StackVariableController } from "./controllers/StackVariableController.ts";
 import { UptimePushController } from "./controllers/UptimePushController.ts";
 import { BlightJobs } from "./jobs/BlightJobs.ts";
@@ -76,6 +77,7 @@ import { SigilIngestService } from "./services/SigilIngestService.ts";
 import { SigilTokenService } from "./services/SigilTokenService.ts";
 import { StackBundleReader } from "./services/StackBundleReader.ts";
 import { StackComposeParser } from "./services/StackComposeParser.ts";
+import { StackDeployService } from "./services/StackDeployService.ts";
 import { StackService } from "./services/StackService.ts";
 import { StackTargets } from "./services/StackTargets.ts";
 import { StackVariableService } from "./services/StackVariableService.ts";
@@ -169,6 +171,8 @@ export const LoreDeployApi = $module({
     StackService,
     // A stack environment's variables (#Q2692), sealed like app variables.
     StackVariableService,
+    // Stack deploys over the estate connector (#Q2694).
+    StackDeployService,
     BlightRuleService,
     OpenBlightCounter,
     DailyVisitorsService,
@@ -215,6 +219,7 @@ export const LoreDeployApi = $module({
     AppSecretController,
     StackController,
     StackVariableController,
+    StackDeployController,
     RegistryCredentialController,
     SigilController,
     SigilIngestController,
@@ -250,6 +255,7 @@ export { SigilAnalyticsController } from "./controllers/SigilAnalyticsController
 export { SigilController } from "./controllers/SigilController.ts";
 export { StackController } from "./controllers/StackController.ts";
 export { StackVariableController } from "./controllers/StackVariableController.ts";
+export { StackDeployController } from "./controllers/StackDeployController.ts";
 export { RegistryCredentialController } from "./controllers/RegistryCredentialController.ts";
 export { DeployAnalytics } from "./entities/deployAnalytics.ts";
 export { DeployJobs } from "./jobs/DeployJobs.ts";
@@ -258,6 +264,7 @@ export { SigilJobs } from "./jobs/SigilJobs.ts";
 export { EstateNotifications } from "./notifications/EstateNotifications.ts";
 export { StackBundleReader } from "./services/StackBundleReader.ts";
 export { StackComposeParser } from "./services/StackComposeParser.ts";
+export { StackDeployService } from "./services/StackDeployService.ts";
 export { StackService } from "./services/StackService.ts";
 export { RegistryCredentialService } from "./services/RegistryCredentialService.ts";
 export { StackTargets } from "./services/StackTargets.ts";

@@ -896,6 +896,85 @@ describe("Bay connector against a real Lore", () => {
     ).toBe(true);
   });
 
+  it("deploys a stack to the real Bay: variables pulled, routes applied, outcome recorded", async () => {
+    // Runs after the deploy case above, which lent the estate to the project
+    // and allowed deploys on it.
+    const stack = await ok<{ id: string }>(
+      call(lore, owner, "createStack", {
+        params: { projectId },
+        body: { name: "e2estack", estateId: estate.id },
+      }),
+    );
+    const env = await ok<{ id: string }>(
+      call(lore, owner, "createStackEnvironment", {
+        params: { projectId, stackId: stack.id },
+        body: { env: "production" },
+      }),
+    );
+    const params = { projectId, stackId: stack.id, environmentId: env.id };
+    await ok(
+      call(lore, owner, "addStackRoute", {
+        params,
+        body: { service: "web", domain: "web-e2e.example.test" },
+      }),
+    );
+    await ok(
+      call(lore, owner, "setStackVariable", {
+        params,
+        body: { key: "GREETING", generate: 32 },
+      }),
+    );
+    const compose = [
+      "services:",
+      "  web:",
+      "    image: busybox:1.37",
+      '    command: ["httpd", "-f", "-p", "8080"]',
+      '    ports: ["8080"]',
+      "    environment:",
+      "      GREETING: ${GREETING}",
+      "",
+    ].join("\n");
+    const form = new FormData();
+    form.append("file", new Blob([compose]), "compose.yml");
+    await ok(
+      call(lore, owner, "uploadStackRevision", {
+        params: { projectId, stackId: stack.id },
+        form,
+      }),
+    );
+
+    try {
+      const deployed = await ok<{ commandId: string }>(
+        call(lore, owner, "deployStackEnvironment", { params, body: {} }),
+      );
+      const settled = await commandSettles(deployed.commandId);
+      expect(
+        settled.status,
+        `${settled.reason}\nbay log:\n${bay.log.slice(-2000)}`,
+      ).toBe("done");
+
+      const log = await ok<{
+        items: Array<{ status: string; services?: string }>;
+      }>(call(lore, owner, "listStackDeployments", { params }));
+      expect(log.items[0].status).toBe("succeeded");
+      const services = JSON.parse(log.items[0].services ?? "[]") as Array<{
+        service: string;
+        domains?: string[];
+      }>;
+      expect(services.find((s) => s.service === "web")?.domains).toContain(
+        "web-e2e.example.test",
+      );
+    } finally {
+      await bayCli(bay, [
+        "stack",
+        "destroy",
+        "e2estack/production",
+        "--purge",
+        "--yes",
+      ]).catch(() => undefined);
+    }
+  });
+
   it("fails a deploy whose digest no longer matches, with no partial state", async () => {
     // A tag Bay has never pulled: an artifact it already holds under its
     // digest would be deployed from the cache, which is the point of the

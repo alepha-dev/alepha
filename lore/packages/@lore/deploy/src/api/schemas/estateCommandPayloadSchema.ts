@@ -16,7 +16,10 @@ import { type Infer, z } from "alepha";
  * vocabulary is closed and enumerated, and this is its whole argument shape.
  */
 export const estateCommandPayloadSchema = z.object({
-  app: z.string().min(1).max(100),
+  /**
+   * Empty on a `stack-deploy`, which names a stack environment instead.
+   */
+  app: z.string().max(100),
   environment: z.string().min(1).max(100),
   /**
    * The project slug, sent on a `deploy` so the machine can tell two projects
@@ -60,6 +63,32 @@ export const estateCommandPayloadSchema = z.object({
       grep: z.string().max(200).optional(),
     })
     .optional(),
+  /**
+   * The stack of a `stack-deploy`, with {@link environment}: `umami` in
+   * `umami/production`. Its {@link artifact} is the revision bundle.
+   */
+  stack: z.string().min(1).max(100).optional(),
+  /**
+   * A revision of the stack ON THE MACHINE to roll back to, Bay's own
+   * number. Lore's rollback sends the earlier bundle instead, so this is
+   * set by nothing Lore queues today; it is part of the wire Bay accepts.
+   */
+  revision: z.integer().min(1).optional(),
+  /**
+   * The stack environment's full-domain routes, which replace the machine's.
+   * Not secret, so they ride in the frame; variables and registry
+   * credentials are pulled by command id instead.
+   */
+  routes: z
+    .array(
+      z.object({
+        service: z.string().min(1).max(100),
+        domain: z.string().min(1).max(253),
+      }),
+    )
+    .max(200)
+    .optional(),
+  baseDomain: z.string().max(253).optional(),
 });
 
 export type EstateCommandPayload = Infer<typeof estateCommandPayloadSchema>;
