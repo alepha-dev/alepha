@@ -160,3 +160,8 @@ func lastLines(s string, n int) string {
 func RestartService(dir, project, service string) error {
 	return compose(dir, project, nil, 5*time.Minute, "restart", service)
 }
+
+// StartService starts one stopped Compose service of a stack environment.
+func StartService(dir, project, service string) error {
+	return compose(dir, project, nil, 5*time.Minute, "start", service)
+}

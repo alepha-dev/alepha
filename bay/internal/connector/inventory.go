@@ -19,6 +19,21 @@ type Inventory struct {
 	At   string         `json:"at"`
 	Host Host           `json:"host"`
 	Apps []InventoryApp `json:"apps"`
+	// Stacks lists every stack environment; their members are rows of Apps
+	// carrying `stack` and `service`. Additive: a Lore that does not know
+	// stacks strips it.
+	Stacks []InventoryStack `json:"stacks,omitempty"`
+}
+
+// InventoryStack is one stack environment as the machine sees it.
+type InventoryStack struct {
+	Stack      string `json:"stack"`
+	Env        string `json:"env"`
+	Revision   int    `json:"revision"`
+	Stopped    bool   `json:"stopped,omitempty"`
+	BaseDomain string `json:"baseDomain,omitempty"`
+	// TCP lists the public TCP ports it opened (x-lore.tcp).
+	TCP []int `json:"tcp,omitempty"`
 }
 
 /*
@@ -71,4 +86,10 @@ type InventoryApp struct {
 	Crons         int    `json:"crons,omitempty"`
 
 	Problems []string `json:"problems"`
+
+	// Stack, Service and ServiceKind are set on a stack member: the row is
+	// service Service of Stack/Env, run by Bay ("app") or Compose ("service").
+	Stack       string `json:"stack,omitempty"`
+	Service     string `json:"service,omitempty"`
+	ServiceKind string `json:"serviceKind,omitempty"`
 }

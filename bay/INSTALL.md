@@ -227,8 +227,8 @@ dials nobody again.
 
 ### What the machine will do, and nothing else
 
-What Lore may make the machine do is a **closed vocabulary of six verbs**, each naming one instance
-this Bay already runs:
+What Lore may make the machine do is a **closed vocabulary of seven verbs**, each naming one instance
+or stack environment this Bay already runs:
 
 | verb      | what it does                                                                                        |
 | --------- | --------------------------------------------------------------------------------------------------- |
@@ -238,6 +238,7 @@ this Bay already runs:
 | `start`   | back into service, clearing that intent. A no-op on an app already running, never a restart         |
 | `backup`  | the same snapshot the schedule takes, now. Refused for an app with no database Bay owns             |
 | `logs`    | a tail, uploaded back to Lore. A READ, so it answers during a deploy rather than queueing behind it |
+| `stack-deploy` | a stack bundle named by DIGEST, pulled and verified like an artifact, then applied as a revision |
 
 Deploys stay refused until the estate's owner allows them on the estate, and the machine honours
 that switch on its own side too.
@@ -247,6 +248,15 @@ whoever holds it can ask for anything in this table and nothing outside it. Ever
 instance and takes no path, no shell command and no argument list; `logs` carries a line count, a
 window and a pattern, all bounded and validated. Adding a verb widens what a leaked secret is
 worth, so it is a decision about that, not a feature.
+
+`stack-deploy` is the one verb that runs a compose file, which is to say containers of the
+bundle's choosing: allowing deploys on an estate that runs stacks is trusting Lore with the
+images on it. It is held to the same switch as `deploy`, it takes a digest and a revision
+number and nothing else, and a bundle can still not mount a host path outside its own directory
+or publish a port Bay did not allocate. Stack members are addressed by the existing verbs, as the
+instance `<stack>.<service>`: `restart` and `start` on a Compose service go through Compose, and
+`deploy` on an app service is the ordinary artifact deploy. Exec into a container is not a verb
+and never will be; it takes SSH.
 
 ### After enrolment: the console
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"sort"
 	"time"
 
 	"github.com/alepha-dev/bay/internal/connector"
@@ -28,10 +29,23 @@ func (a *actions) Inventory(context.Context) (connector.Inventory, bool) {
 	for _, app := range apps {
 		rows = append(rows, inventoryRow(app, a.s.runner.State(app.Key()), now, interval))
 	}
+	var stacks []connector.InventoryStack
+	for _, st := range a.s.store.Stacks() {
+		for _, e := range st.Envs {
+			row := connector.InventoryStack{Stack: st.Name, Env: e.Env, Revision: e.Revision,
+				Stopped: e.Stopped, BaseDomain: e.BaseDomain}
+			for port := range e.TCP {
+				row.TCP = append(row.TCP, port)
+			}
+			sort.Ints(row.TCP)
+			stacks = append(stacks, row)
+		}
+	}
 	return connector.Inventory{
-		Type: "inventory",
-		At:   now.UTC().Format(time.RFC3339),
-		Apps: rows,
+		Type:   "inventory",
+		At:     now.UTC().Format(time.RFC3339),
+		Apps:   rows,
+		Stacks: stacks,
 	}, true
 }
 
@@ -72,6 +86,10 @@ func inventoryRow(a listedApp, state string, now time.Time, interval time.Durati
 		Crons:         a.Crons,
 
 		Problems: line.Problems,
+
+		Stack:       a.Stack,
+		Service:     a.Service,
+		ServiceKind: a.ServiceKind,
 	}
 	if u := a.Usage; u != nil {
 		restarts, memory, cpu, tasks := u.Restarts, u.MemoryBytes, u.CPUSeconds, u.Tasks

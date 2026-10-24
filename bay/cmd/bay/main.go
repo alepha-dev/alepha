@@ -36,6 +36,7 @@ import (
 	"github.com/alepha-dev/bay/internal/proxy"
 	"github.com/alepha-dev/bay/internal/runner"
 	"github.com/alepha-dev/bay/internal/schedule"
+	"github.com/alepha-dev/bay/internal/stack"
 	"github.com/alepha-dev/bay/internal/state"
 	"github.com/alepha-dev/bay/internal/tlsconf"
 )
@@ -905,7 +906,15 @@ func (s *server) start(app state.App) error {
 	// brings it back, and `docker compose up` recreates it. An app service
 	// with no artifact yet has nothing to start.
 	if app.ServiceKind == "service" {
-		return nil
+		if s.runner.Running(app.Key()) {
+			return nil
+		}
+		se, ok := s.store.StackEnv(app.Stack, app.Env)
+		if !ok || se.Revision == 0 || se.Stopped {
+			return nil
+		}
+		return stack.StartService(stack.RevisionDir(s.root, app.Stack, app.Env, se.Revision),
+			naming.StackProject(app.Stack, app.Env), app.Service)
 	}
 	if app.ServiceKind == "app" && app.Release == "" && app.Image == "" {
 		s.log.Info("app service waits for its first artifact", "app", app.Key())

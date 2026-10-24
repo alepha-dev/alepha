@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -14,6 +15,7 @@ import (
 	"testing"
 
 	"github.com/alepha-dev/bay/internal/connector"
+	"github.com/alepha-dev/bay/internal/stack"
 	"github.com/alepha-dev/bay/internal/state"
 )
 
@@ -422,4 +424,52 @@ func TestInstanceNameFoldsInTheProject(t *testing.T) {
 			t.Errorf("instanceName(%q, %q) = %q, want %q", c.project, c.app, got, c.want)
 		}
 	}
+}
+
+func TestStackDeployAction(t *testing.T) {
+	bundle := tarGz(t, t.TempDir(), "bundle.tar.gz", map[string]string{"compose.yml": "services:\n  web:\n    image: nginx\n    environment:\n      SECRET: ${SECRET}\n"})
+
+	t.Run("refused before any fetch while the estate does not accept deploys", func(t *testing.T) {
+		sink := newDeploySink(t, bundle)
+		_, acts := deployReady(t, sink, false)
+		rec := &ackRecorder{}
+		acts.Command(context.Background(), connector.Command{ID: "s1", Kind: "stack-deploy", Stack: "web", Environment: "production",
+			Artifact: &connector.Artifact{ID: "b", SHA256: sink.digest()}}, rec.send)
+		if last := rec.last(); last.Status != "failed" || !strings.Contains(last.Reason, "does not accept deploys") || sink.artifacts.Load() != 0 {
+			t.Fatalf("ack = %+v, fetched %d", last, sink.artifacts.Load())
+		}
+	})
+
+	t.Run("a malformed stack name or a missing bundle is refused", func(t *testing.T) {
+		sink := newDeploySink(t, bundle)
+		_, acts := deployReady(t, sink, true)
+		for i, cmd := range []connector.Command{
+			{Kind: "stack-deploy", Stack: "Web_1", Environment: "production", Artifact: &connector.Artifact{SHA256: sink.digest()}},
+			{Kind: "stack-deploy", Stack: "web", Environment: "production"},
+		} {
+			rec := &ackRecorder{}
+			cmd.ID = fmt.Sprintf("s2-%d", i)
+			acts.Command(context.Background(), cmd, rec.send)
+			if rec.last().Status != "failed" {
+				t.Fatalf("%+v accepted: %+v", cmd, rec.last())
+			}
+		}
+	})
+
+	t.Run("the bundle is pulled and verified, and the secret set becomes the stack's variables", func(t *testing.T) {
+		sink := newDeploySink(t, bundle)
+		sink.secrets = `{"SECRET":"from-lore"}`
+		f, acts := deployReady(t, sink, true)
+		rec := &ackRecorder{}
+		acts.Command(context.Background(), connector.Command{ID: "s3", Kind: "stack-deploy", Stack: "web", Environment: "production",
+			Artifact: &connector.Artifact{ID: "b", SHA256: sink.digest(), Size: int64(len(sink.bytes))}}, rec.send)
+		steps := strings.Join(rec.steps(), ",")
+		if !strings.Contains(steps, "running:downloading") || !strings.Contains(steps, "running:verifying") {
+			t.Fatalf("steps = %s", steps)
+		}
+		vars, _ := stack.LoadVars(f.root, "web", "production")
+		if vars["SECRET"] != "from-lore" {
+			t.Fatalf("vars = %v", vars)
+		}
+	})
 }

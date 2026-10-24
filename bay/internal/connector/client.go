@@ -56,6 +56,11 @@ type Command struct {
 	Project  string    `json:"project,omitempty"`
 	Artifact *Artifact `json:"artifact,omitempty"`
 	Logs     *LogsAsk  `json:"logs,omitempty"`
+	// Stack names the stack environment of a `stack-deploy`, with
+	// Environment. Its Artifact is the revision bundle, or Revision names an
+	// earlier revision to roll back to.
+	Stack    string `json:"stack,omitempty"`
+	Revision int    `json:"revision,omitempty"`
 }
 
 // LogsAsk is how much of a journal a `logs` command wants.
@@ -144,6 +149,8 @@ type serverFrame struct {
 	Project     string    `json:"project,omitempty"`
 	Artifact    *Artifact `json:"artifact,omitempty"`
 	Logs        *LogsAsk  `json:"logs,omitempty"`
+	Stack       string    `json:"stack,omitempty"`
+	Revision    int       `json:"revision,omitempty"`
 }
 
 // Handler receives what the connection delivers. The executor (#1621) is the
@@ -509,7 +516,8 @@ func (c *Client) dispatch(ctx context.Context, frame serverFrame) {
 	case "command":
 		cmd := Command{ID: frame.ID, Kind: frame.Kind, App: frame.App,
 			Project:     frame.Project,
-			Environment: frame.Environment, Artifact: frame.Artifact, Logs: frame.Logs}
+			Environment: frame.Environment, Artifact: frame.Artifact, Logs: frame.Logs,
+			Stack: frame.Stack, Revision: frame.Revision}
 		if c.Handler == nil {
 			// Refused with a reason rather than left to Lore's sweep: an
 			// unacknowledged command reads as a dead machine, and this one

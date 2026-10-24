@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/alepha-dev/bay/internal/connector"
+	"github.com/alepha-dev/bay/internal/stack"
 )
 
 /*
@@ -57,6 +58,11 @@ const (
 	// actionBackup takes the same snapshot `bay backup` takes: the database
 	// Bay provisioned, and nothing else.
 	actionBackup actionKind = "backup"
+	// actionStackDeploy applies a stack revision: a bundle fetched by digest
+	// like a deploy's artifact, or an earlier revision by number. It names a
+	// stack environment and takes no path, no file and no command; the bundle
+	// is validated as a `bay stack deploy` validates it.
+	actionStackDeploy actionKind = "stack-deploy"
 	// actionLogs answers a bounded tail of one instance's journal. The only
 	// verb whose result is a payload rather than an ack, uploaded over the
 	// pull seam.
@@ -130,12 +136,12 @@ func (a *actions) Command(ctx context.Context, cmd connector.Command, send func(
 	}
 
 	switch actionKind(cmd.Kind) {
-	case actionRestart, actionDeploy, actionStop, actionStart, actionBackup, actionLogs:
+	case actionRestart, actionDeploy, actionStop, actionStart, actionBackup, actionLogs, actionStackDeploy:
 	default:
 		// Refused and reported, never executed or passed through. The reason
 		// names the vocabulary so the other side learns what this Bay speaks.
-		reason := fmt.Sprintf("unknown action %q: this bay runs %s, %s, %s, %s, %s and %s, nothing else",
-			cmd.Kind, actionRestart, actionDeploy, actionStop, actionStart, actionBackup, actionLogs)
+		reason := fmt.Sprintf("unknown action %q: this bay runs %s, %s, %s, %s, %s, %s and %s, nothing else",
+			cmd.Kind, actionRestart, actionDeploy, actionStop, actionStart, actionBackup, actionLogs, actionStackDeploy)
 		log.Warn("lore command refused", "reason", reason)
 		a.finish(cmd.ID, "failed", "", reason, send)
 		return
@@ -198,6 +204,8 @@ func (a *actions) runExclusive(ctx context.Context, cmd connector.Command, send 
 		return a.stop(cmd)
 	case actionStart:
 		return a.start(cmd)
+	case actionStackDeploy:
+		return a.stackDeploy(ctx, cmd, send)
 	}
 	// Unreachable: Command refuses an unknown kind before it ever takes the
 	// lock. Said out loud rather than left as three empty strings, which would
@@ -526,4 +534,60 @@ func (a *actions) pruneArtifacts(dir string, keep int) {
 	for _, f := range files[min(keep, len(files)):] {
 		_ = os.Remove(filepath.Join(dir, f.name))
 	}
+}
+
+/*
+stackDeploy applies a stack revision for Lore: the bundle is pulled by digest
+through the same verified fetch as a deploy's artifact, the command's secret
+set becomes the environment's variables, and the stack deploy validates
+everything else. Refused, like a deploy, while the estate does not accept
+deploys.
+*/
+func (a *actions) stackDeploy(ctx context.Context, cmd connector.Command, send func(connector.Ack) error) (status, step, reason string) {
+	if !a.latestWelcome().DeployAllowed {
+		return "failed", "", "this estate does not accept deploys: its owner has not allowed them, and the welcome frame said so"
+	}
+	if _, _, err := stackKeyOf(cmd.Stack + "/" + cmd.Environment); err != nil {
+		return "failed", "", err.Error()
+	}
+	opts := stackDeployOptions{Stack: cmd.Stack, Env: cmd.Environment, Revision: cmd.Revision}
+	if cmd.Revision == 0 {
+		if cmd.Artifact == nil || len(cmd.Artifact.SHA256) != 64 {
+			return "failed", "", "a stack-deploy needs a bundle (by digest) or a revision to roll back to"
+		}
+		cfg, ok, err := connector.NewStore(a.s.root).Load()
+		if err != nil || !ok {
+			return "failed", "", "no connector is configured on this bay, so there is nothing to pull from"
+		}
+		client := &http.Client{Timeout: connector.FetchTimeout}
+		want := strings.ToLower(cmd.Artifact.SHA256)
+		dest := filepath.Join(a.s.root, "artifacts", want+".bundle")
+		if !connector.ArtifactCached(dest, want) {
+			step = "downloading"
+			_ = send(connector.NewAck(cmd.ID, "running", step, ""))
+			if err := connector.PullArtifact(ctx, client, cfg, cmd.ID, want, dest, func() {
+				step = "verifying"
+				_ = send(connector.NewAck(cmd.ID, "running", step, ""))
+			}); err != nil {
+				return "failed", step, err.Error()
+			}
+		}
+		secrets, err := connector.PullSecrets(ctx, client, cfg, cmd.ID)
+		if err != nil {
+			return "failed", "deploying", "could not pull the secret set: " + err.Error()
+		}
+		if len(secrets) > 0 {
+			if _, err := stack.SetVars(a.s.root, cmd.Stack, cmd.Environment, secrets); err != nil {
+				return "failed", "deploying", err.Error()
+			}
+		}
+		opts.Bundle = dest
+	}
+	_ = send(connector.NewAck(cmd.ID, "running", "deploying", ""))
+	out, err := a.s.deployStack(ctx, opts)
+	if err != nil {
+		return "failed", "deploying", err.Error()
+	}
+	a.s.log.Info("lore stack deploy served", "command", cmd.ID, "stack", cmd.Stack+"/"+cmd.Environment, "revision", out.Revision)
+	return "done", "", ""
 }

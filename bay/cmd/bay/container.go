@@ -12,7 +12,9 @@ import (
 
 	"github.com/alepha-dev/bay/internal/deploy"
 	"github.com/alepha-dev/bay/internal/manifest"
+	"github.com/alepha-dev/bay/internal/naming"
 	"github.com/alepha-dev/bay/internal/runner"
+	"github.com/alepha-dev/bay/internal/stack"
 	"github.com/alepha-dev/bay/internal/state"
 )
 
@@ -263,6 +265,13 @@ or a runtime update costs no request; stop then start otherwise (the app was
 down anyway, or the runner cannot run two copies).
 */
 func (s *server) restart(app state.App) error {
+	// A Compose service is restarted by Compose, in place: it has no
+	// artifact to start a second copy of.
+	if app.ServiceKind == "service" {
+		se, _ := s.store.StackEnv(app.Stack, app.Env)
+		return stack.RestartService(stack.RevisionDir(s.root, app.Stack, app.Env, se.Revision),
+			naming.StackProject(app.Stack, app.Env), app.Service)
+	}
 	if _, ok := s.runner.(containerRunner); ok && !app.Static && s.runner.Running(app.Key()) {
 		return s.replace(app)
 	}
