@@ -14,6 +14,7 @@ import type { ArtifactManifest } from "../schemas/artifactManifestSchema.ts";
 import { ArtifactTarReader } from "./ArtifactTarReader.ts";
 import { DeployAssetCache } from "./DeployAssetCache.ts";
 import { ImageRegistryClient } from "./ImageRegistryClient.ts";
+import { RegistryCredentialService } from "./RegistryCredentialService.ts";
 
 /**
  * Everything that writes, reads or reclaims an artifact.
@@ -40,6 +41,7 @@ export class ArtifactService {
   protected readonly reader = $inject(ArtifactTarReader);
   protected readonly registry = $inject(ImageRegistryClient);
   protected readonly files = $inject(FileService);
+  protected readonly registryCredentials = $inject(RegistryCredentialService);
   protected readonly assetCache = $inject(DeployAssetCache);
 
   /**
@@ -265,9 +267,20 @@ export class ArtifactService {
     const app = this.normalizeApp(input.app);
     const tag = this.normalizeTag(input.tag);
 
-    const image = await this.registry.read(input.reference, {
-      digest: input.digest,
-    });
+    // A private registry is read with the project's own credential for its
+    // host, when it holds one (#Q2693). The host is read from the reference
+    // the same way the client will parse it; an absent credential falls back
+    // to the anonymous allowlist.
+    const host = input.reference.trim().split("/")[0]?.toLowerCase() ?? "";
+    const credential = await this.registryCredentials.open(
+      input.projectId,
+      host,
+    );
+    const image = await this.registry.read(
+      input.reference,
+      { digest: input.digest },
+      { credential },
+    );
 
     // ⚠️ Refused by NAME rather than stored. A Worker does not run in a
     // container, so this row is impossible rather than merely unusual, and a

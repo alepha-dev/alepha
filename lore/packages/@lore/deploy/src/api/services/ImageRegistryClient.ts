@@ -5,6 +5,22 @@ import { isAllowedRegistryHost } from "../schemas/registryHosts.ts";
 import { RegistryTransport } from "./RegistryTransport.ts";
 
 /**
+ * A project's credential for one registry host, opened for one read.
+ */
+export interface RegistryCredential {
+  host: string;
+  username: string;
+  password: string;
+}
+
+/**
+ * How a read may reach a registry beyond the anonymous allowlist.
+ */
+export interface RegistryAccess {
+  credential?: RegistryCredential;
+}
+
+/**
  * Reads an image's own claims out of a registry, and refuses what it cannot.
  *
  * `ArtifactTarReader` is the shape this follows: the artifact's own document
@@ -123,10 +139,16 @@ export class ImageRegistryClient {
   public async read(
     reference: string,
     expected?: { digest?: string },
+    access: RegistryAccess = {},
   ): Promise<ImageDescriptor> {
-    const parsed = this.parse(reference);
+    const parsed = this.parse(
+      reference,
+      access.credential ? [access.credential.host] : [],
+    );
     const budget = { calls: 0 };
-    const token = await this.token(parsed, budget);
+    const token = access.credential
+      ? await this.challenge(parsed, access.credential, budget)
+      : `Bearer ${await this.token(parsed, budget)}`;
 
     const top = await this.document(
       `https://${parsed.host}/v2/${parsed.repository}/manifests/${encodeURIComponent(parsed.tag)}`,
@@ -171,7 +193,10 @@ export class ImageRegistryClient {
    * ⚠️ **Everything here happens before the first fetch.** This is the guard
    * on a caller-supplied destination, not a formatting convenience.
    */
-  public parse(reference: string): ParsedReference {
+  public parse(
+    reference: string,
+    credentialHosts: string[] = [],
+  ): ParsedReference {
     const raw = reference.trim();
     if (!raw) {
       throw new BadRequestError("An image reference is required.");
@@ -222,7 +247,8 @@ export class ImageRegistryClient {
         `Invalid image reference "${raw}": the registry must be named by hostname, never by IP address.`,
       );
     }
-    if (host.includes(":")) {
+    const credentialed = credentialHosts.includes(host);
+    if (host.includes(":") && !credentialed) {
       // Not merely unsupported: a port is how a reference reaches a service
       // that is not the registry it names, including one inside the network
       // the Worker runs in.
@@ -230,9 +256,9 @@ export class ImageRegistryClient {
         `Invalid image reference "${raw}": a port is not allowed in the registry host.`,
       );
     }
-    if (!isAllowedRegistryHost(host)) {
+    if (!isAllowedRegistryHost(host) && !credentialed) {
       throw new BadRequestError(
-        `Lore does not read images from "${host}". Only \`ghcr.io\` is supported today; a custom registry needs credential storage as well as an entry in the host list.`,
+        `Lore does not read images from "${host}". \`ghcr.io\` is read anonymously; any other registry needs the project's credential for it first (\`lore registry add ${host}\`).`,
       );
     }
     if (!ImageRegistryClient.REPOSITORY.test(repository)) {
@@ -303,6 +329,85 @@ export class ImageRegistryClient {
   }
 
   /**
+   * The authorization a private registry asks for, with the project's
+   * credential: the standard registry v2 challenge, so GitLab, Harbor, Nexus
+   * and a self-hosted `registry:2` all work the same way.
+   *
+   * `GET /v2/` answers 401 with a `WWW-Authenticate` header. `Bearer` names
+   * a token realm, asked with the credential as Basic auth; `Basic` means the
+   * credential IS the authorization. A registry that answers 200 needs none.
+   *
+   * ⚠️ The realm may be another host (GitLab's is `gitlab.com/jwt/auth` for
+   * `registry.gitlab.com`): it is the registry the owner named that points
+   * there, and only an https realm is followed.
+   */
+  protected async challenge(
+    parsed: ParsedReference,
+    credential: RegistryCredential,
+    budget: CallBudget,
+  ): Promise<string | undefined> {
+    const basic = `Basic ${btoa(`${credential.username}:${credential.password}`)}`;
+    const ping = await this.call(
+      `https://${parsed.host}/v2/`,
+      { accept: "application/json" },
+      budget,
+    );
+    if (ping.ok) {
+      return undefined;
+    }
+    const header = ping.headers.get("www-authenticate") ?? "";
+    if (ping.status !== 401 || !header) {
+      throw new BadRequestError(
+        `${parsed.host} answered HTTP ${ping.status} to the registry check, not a credential challenge.`,
+      );
+    }
+    if (/^basic\b/i.test(header)) {
+      return basic;
+    }
+    const params = Object.fromEntries(
+      [...header.matchAll(/(\w+)="([^"]*)"/g)].map((m) => [
+        m[1].toLowerCase(),
+        m[2],
+      ]),
+    );
+    if (!/^bearer\b/i.test(header) || !params.realm?.startsWith("https://")) {
+      throw new BadRequestError(
+        `${parsed.host} asked for a credential Lore cannot give (${header.split(" ")[0]}).`,
+      );
+    }
+    const url = new URL(params.realm);
+    if (params.service) {
+      url.searchParams.set("service", params.service);
+    }
+    url.searchParams.set("scope", `repository:${parsed.repository}:pull`);
+    const response = await this.call(
+      url.toString(),
+      { accept: "application/json", token: basic },
+      budget,
+    );
+    if (!response.ok) {
+      throw new BadRequestError(
+        `${parsed.host} refused the project's credential (HTTP ${response.status}): check its username and token.`,
+      );
+    }
+    let json: { token?: unknown; access_token?: unknown };
+    try {
+      json = JSON.parse(await this.text(response, `${parsed.host} token`));
+    } catch {
+      throw new BadRequestError(
+        `${parsed.host} answered the token exchange with something that is not JSON.`,
+      );
+    }
+    const token = json.token ?? json.access_token;
+    if (typeof token !== "string" || !token) {
+      throw new BadRequestError(
+        `${parsed.host} answered the token exchange with no token.`,
+      );
+    }
+    return `Bearer ${token}`;
+  }
+
+  /**
    * The child manifest to read the config from, and the platform it names.
    *
    * A single-arch tag answers a plain manifest and IS its own child, which is
@@ -313,7 +418,7 @@ export class ImageRegistryClient {
   protected async child(
     parsed: ParsedReference,
     top: RegistryDocument,
-    token: string,
+    token: string | undefined,
     budget: CallBudget,
   ): Promise<ChosenChild> {
     const document = this.parsed(top.text, parsed);
@@ -379,7 +484,7 @@ export class ImageRegistryClient {
   protected async config(
     parsed: ParsedReference,
     child: ChosenChild,
-    token: string,
+    token: string | undefined,
     budget: CallBudget,
   ): Promise<ImageConfig> {
     const digest = child.manifest.config?.digest;
@@ -405,7 +510,7 @@ export class ImageRegistryClient {
   protected async blob(
     parsed: ParsedReference,
     digest: string,
-    token: string,
+    token: string | undefined,
     budget: CallBudget,
     platform: string,
   ): Promise<string> {
@@ -589,7 +694,7 @@ export class ImageRegistryClient {
    */
   protected async document(
     url: string,
-    options: { accept: string; token: string; budget: CallBudget },
+    options: { accept: string; token: string | undefined; budget: CallBudget },
     subject: string,
   ): Promise<RegistryDocument> {
     const response = await this.call(
@@ -636,9 +741,9 @@ export class ImageRegistryClient {
         headers: {
           accept: headers.accept,
           "user-agent": ImageRegistryClient.USER_AGENT,
-          ...(headers.token
-            ? { authorization: `Bearer ${headers.token}` }
-            : {}),
+          // The whole header value: `Bearer` for a token exchange, `Basic`
+          // for a registry that answers a Basic challenge.
+          ...(headers.token ? { authorization: headers.token } : {}),
         },
       });
     } catch (error) {

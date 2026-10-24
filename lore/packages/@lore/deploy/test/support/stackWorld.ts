@@ -39,7 +39,9 @@ export class StackRows {
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };
 const userDataSchema = z.object({ username: z.string(), email: z.email() });
 
-export const bootStackSpec = async (): Promise<Alepha> => {
+export const bootStackSpec = async (
+  arrange: (alepha: Alepha) => void = () => undefined,
+): Promise<Alepha> => {
   const alepha = Alepha.create({
     env: {
       LOG_LEVEL: "error",
@@ -48,6 +50,7 @@ export const bootStackSpec = async (): Promise<Alepha> => {
       APP_SECRET: "a-strong-and-unique-app-secret-for-tests",
     },
   });
+  arrange(alepha);
   alepha.with(AlephaOrm);
   alepha.with(AlephaServer);
   alepha.with(AlephaSecurity);

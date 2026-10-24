@@ -68,6 +68,12 @@ export class CredentialSealService {
    * One scheme exists, so every row says `1`. It is stored anyway because a
    * column added after the rows exist cannot say anything true about them.
    */
+  /**
+   * A project's container registry credentials (#Q2693): opened to verify an
+   * image reference and inside a deploy of that project, never for a read.
+   */
+  public static readonly REGISTRY_PURPOSE = "lore:registry-credentials:v1";
+
   public static readonly KEY_VERSION = 1;
 
   protected readonly crypto = $inject(CryptoProvider);

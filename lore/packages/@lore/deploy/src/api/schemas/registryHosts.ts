@@ -10,14 +10,14 @@
  * a decision somebody reviewed, which is the same reason `acceptedRuntimes`
  * is a module of its own.
  *
- * ## ⚠️ Widening this alone will NOT reach an Azure Container Registry
+ * ## Every other registry goes through a credential, not this list
  *
- * An ACR is private, and Lore holds no registry credentials at all. Adding
- * `*.azurecr.io` here would produce a 401 on the token exchange and nothing
- * else. That later epic is **the host list AND credential storage, together**;
- * this file is half of it, and the other half is why the token exchange in
- * `ImageRegistryClient` sits behind a seam that could return an authenticated
- * token instead of an anonymous one.
+ * A private registry (GitLab, Harbor, Nexus, an Azure Container Registry, a
+ * self-hosted `registry:2`) is read once the project holds a credential for
+ * its host (`registry_credentials`, #Q2693): `ImageRegistryClient.parse`
+ * accepts exactly that host, port included, and the read answers the
+ * registry's own v2 challenge with it. This list stays the ANONYMOUS
+ * allowlist, which is why it does not grow with every company registry.
  *
  * ## What a host has to be
  *

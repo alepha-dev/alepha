@@ -19,6 +19,8 @@ export { estateInventories } from "../api/entities/estateInventories.ts";
 export { estateProjects } from "../api/entities/estateProjects.ts";
 export { type Estate, estates } from "../api/entities/estates.ts";
 export { qualityRuns } from "../api/entities/qualityRuns.ts";
+export { registryCredentials } from "../api/entities/registryCredentials.ts";
+export type { RegistryCredentialResource } from "../api/schemas/registryCredentialResourceSchema.ts";
 export { sigilErrorGroups } from "../api/entities/sigilErrorGroups.ts";
 export {
   UNIQUES_COLLAPSED_HASH,

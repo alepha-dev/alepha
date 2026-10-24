@@ -17,6 +17,7 @@ import { InsightsController } from "./controllers/InsightsController.ts";
 import { MonitorController } from "./controllers/MonitorController.ts";
 import { ProjectEstateController } from "./controllers/ProjectEstateController.ts";
 import { QualityController } from "./controllers/QualityController.ts";
+import { RegistryCredentialController } from "./controllers/RegistryCredentialController.ts";
 import { SigilAnalyticsController } from "./controllers/SigilAnalyticsController.ts";
 import { SigilController } from "./controllers/SigilController.ts";
 import { SigilIngestController } from "./controllers/SigilIngestController.ts";
@@ -68,6 +69,7 @@ import { QualityNumericCatalog } from "./services/QualityNumericCatalog.ts";
 import { QualityNumericMetrics } from "./services/QualityNumericMetrics.ts";
 import { QualityService } from "./services/QualityService.ts";
 import { QualityTrendMetric } from "./services/QualityTrendMetric.ts";
+import { RegistryCredentialService } from "./services/RegistryCredentialService.ts";
 import { RollbackService } from "./services/RollbackService.ts";
 import { SigilIngestService } from "./services/SigilIngestService.ts";
 import { SigilTokenService } from "./services/SigilTokenService.ts";
@@ -153,6 +155,9 @@ export const LoreDeployApi = $module({
     // Stacks: apps and services deployed together from one compose.yml
     // (#E79). The one write path for stacks, their environments, routes,
     // revisions and members.
+    // A project's container registry credentials (#Q2693), sealed and opened
+    // only to verify an image and inside a deploy of the same project.
+    RegistryCredentialService,
     StackService,
     BlightRuleService,
     OpenBlightCounter,
@@ -199,6 +204,7 @@ export const LoreDeployApi = $module({
     AppController,
     AppSecretController,
     StackController,
+    RegistryCredentialController,
     SigilController,
     SigilIngestController,
     UptimePushController,
@@ -232,12 +238,14 @@ export { QualityController } from "./controllers/QualityController.ts";
 export { SigilAnalyticsController } from "./controllers/SigilAnalyticsController.ts";
 export { SigilController } from "./controllers/SigilController.ts";
 export { StackController } from "./controllers/StackController.ts";
+export { RegistryCredentialController } from "./controllers/RegistryCredentialController.ts";
 export { DeployAnalytics } from "./entities/deployAnalytics.ts";
 export { DeployJobs } from "./jobs/DeployJobs.ts";
 export { QualityJobs } from "./jobs/QualityJobs.ts";
 export { SigilJobs } from "./jobs/SigilJobs.ts";
 export { EstateNotifications } from "./notifications/EstateNotifications.ts";
 export { StackService } from "./services/StackService.ts";
+export { RegistryCredentialService } from "./services/RegistryCredentialService.ts";
 export { AppSecretService } from "./services/AppSecretService.ts";
 export { AppService } from "./services/AppService.ts";
 export { ArtifactService } from "./services/ArtifactService.ts";
