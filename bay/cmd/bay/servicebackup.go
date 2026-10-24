@@ -45,3 +45,19 @@ database, never the files beside it in the service's volumes.
 func serviceNotBackedUp(app state.App) []string {
 	return []string{"files in the volumes of " + app.Service + " (the hook dumps its database, not its disk)"}
 }
+
+/*
+Restore replays a dump into the running service. The postgres form uses
+`pg_restore --clean --if-exists` in one transaction, so a dump that fails
+halfway leaves the database as it was; a command hook runs its declared
+`restore` with the dump on stdin.
+*/
+func (d serviceDumper) Restore(ctx context.Context, dump []byte) error {
+	if d.hook.PostgresDB != "" {
+		_, err := stack.Exec(ctx, d.container, bytes.NewReader(dump), "pg_restore", "--clean", "--if-exists",
+			"--no-owner", "--single-transaction", "-U", d.hook.PostgresUser, "-d", d.hook.PostgresDB)
+		return err
+	}
+	_, err := stack.Exec(ctx, d.container, bytes.NewReader(dump), "sh", "-c", d.hook.Restore)
+	return err
+}

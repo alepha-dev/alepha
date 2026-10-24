@@ -50,6 +50,8 @@ func (s *server) registerStackRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /stacks/{stack}/{env}", s.handleStackShow)
 	mux.HandleFunc("POST /stacks/{stack}/{env}/restart", s.handleStackRestart)
 	mux.HandleFunc("GET /stacks/{stack}/{env}/volumes", s.handleStackVolumes)
+	mux.HandleFunc("GET /stacks/{stack}/{env}/backups", s.handleStackBackups)
+	mux.HandleFunc("POST /stacks/{stack}/{env}/restore", s.handleStackRestore)
 }
 
 /*

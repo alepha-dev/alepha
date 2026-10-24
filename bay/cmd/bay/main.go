@@ -184,7 +184,11 @@ func main() {
 	case "connector":
 		err = cmdConnector(os.Args[2:])
 	case "backup":
-		err = cmdBackup(os.Args[2:])
+		if len(os.Args) > 2 && (os.Args[2] == "list" || os.Args[2] == "restore") {
+			err = cmdStackBackup(os.Args[2], os.Args[3:])
+		} else {
+			err = cmdBackup(os.Args[2:])
+		}
 	case "backups":
 		err = cmdBackups(os.Args[2:])
 	case "restore":
@@ -320,6 +324,8 @@ func usageText() string {
   bay backup  <name/env>          # snapshot + verify + upload
   bay backups <name/env>          # list what is stored
   bay restore <name/env> [--key K] # destructive; keeps the old db aside
+  bay backup list <stack>/<env> [service]   # a stack's service dumps
+  bay backup restore <stack>/<env> <service> <backup> [--from <stack>/<env>] [--yes]
   bay connector set <lore-url> <secret>
                 # enrol this machine as an ESTATE of a Lore instance: "bay
                 # serve" dials wss://<host>/ws/estates with the secret and holds

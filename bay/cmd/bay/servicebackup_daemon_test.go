@@ -7,11 +7,15 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	neturl "net/url"
+	"os/exec"
+	"path"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/alepha-dev/bay/internal/runner"
 	"github.com/alepha-dev/bay/internal/s3/s3test"
 	"github.com/alepha-dev/bay/internal/state"
 )
@@ -137,4 +141,143 @@ func TestServiceBackupDaemon(t *testing.T) {
 			t.Fatalf("err = %v, error = %q", err, member("files").LastBackupError)
 		}
 	})
+}
+
+func TestRestoreKey(t *testing.T) {
+	t.Run("a file name resolves under the service's own prefix", func(t *testing.T) {
+		key, err := restoreKey("shop", "staging", "db", "20261024T120000Z.dump.gz", "")
+		if err != nil || key != "apps/shop.db-staging/db/20261024T120000Z.dump.gz" {
+			t.Fatalf("%q %v", key, err)
+		}
+	})
+	t.Run("another environment's backup needs --from naming it", func(t *testing.T) {
+		prod := "apps/shop.db-production/db/20261024T120000Z.dump.gz"
+		if _, err := restoreKey("shop", "staging", "db", prod, ""); err == nil || !strings.Contains(err.Error(), "--from") {
+			t.Fatalf("err = %v", err)
+		}
+		if key, err := restoreKey("shop", "staging", "db", prod, "shop/production"); err != nil || key != prod {
+			t.Fatalf("%q %v", key, err)
+		}
+		if _, err := restoreKey("shop", "staging", "db", prod, "shop/qa"); err == nil {
+			t.Fatal("a --from naming a different environment was accepted")
+		}
+	})
+	t.Run("a SQLite snapshot or a path escape is refused", func(t *testing.T) {
+		for _, b := range []string{"20261024T120000Z.sqlite.gz", "apps/shop.db-staging/db/x/../y.dump.gz"} {
+			if _, err := restoreKey("shop", "staging", "db", b, ""); err == nil {
+				t.Fatalf("%s accepted", b)
+			}
+		}
+	})
+}
+
+func TestServiceRestoreDaemon(t *testing.T) {
+	d := daemonDocker(t)
+	requireComposeCLI(t)
+	a := newAcceptanceServer(t, d)
+	srv := s3test.New(t)
+	if err := a.store.SetS3(&state.S3Config{S3Target: state.S3Target{Endpoint: srv.URL, Bucket: srv.Bucket,
+		AccessKey: "AK", SecretKey: "SK", Region: "auto"}, Keep: 5}); err != nil {
+		t.Fatal(err)
+	}
+	suffix := strconv.FormatInt(time.Now().UnixNano()%1e9, 36)
+	prod, staging := "pr"+suffix, "sg"+suffix
+	for _, env := range []string{prod, staging} {
+		t.Cleanup(func() { a.purge("shop", env) })
+		if _, err := a.deployStack(context.Background(), stackDeployOptions{Stack: "shop", Env: env,
+			Bundle: tarGz(t, t.TempDir(), "r.tar.gz", map[string]string{"compose.yml": backedUpCompose("true")})}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	psql := func(env, sql string) string {
+		out, err := exec.Command("docker", "exec", runner.ContainerName(memberKey("shop", env, "db")),
+			"psql", "-U", "app", "-d", "app", "-tAc", sql).CombinedOutput()
+		if err != nil {
+			t.Fatalf("psql %s: %v %s", sql, err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	restore := func(env, service, backup, from, confirm string) *httptest.ResponseRecorder {
+		q := neturl.Values{"service": {service}, "backup": {backup}, "confirm": {confirm}}
+		if from != "" {
+			q.Set("from", from)
+		}
+		rec := httptest.NewRecorder()
+		a.controlMux().ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/stacks/shop/"+env+"/restore?"+q.Encode(), nil))
+		return rec
+	}
+	psql(prod, "create table kept (v text); insert into kept values ('before')")
+	out, err := a.backupInstance(context.Background(), storeGet(t, a.store, memberKey("shop", prod, "db")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	backup := path.Base(out.Result.Key)
+	psql(prod, "update kept set v = 'after'")
+
+	t.Run("bay backup list shows each service's dumps", func(t *testing.T) {
+		rec := httptest.NewRecorder()
+		a.controlMux().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/stacks/shop/"+prod+"/backups?service=db", nil))
+		if rec.Code != 200 || !strings.Contains(rec.Body.String(), backup) {
+			t.Fatalf("%d %s", rec.Code, rec.Body.String())
+		}
+	})
+
+	t.Run("a restore must name what it overwrites", func(t *testing.T) {
+		if rec := restore(prod, "db", backup, "", "shop/"+prod); rec.Code != http.StatusPreconditionRequired {
+			t.Fatalf("%d %s", rec.Code, rec.Body.String())
+		}
+	})
+
+	t.Run("a postgres dump replays into its service", func(t *testing.T) {
+		if rec := restore(prod, "db", backup, "", "shop/"+prod+"/db"); rec.Code != 200 {
+			t.Fatalf("%d %s", rec.Code, rec.Body.String())
+		}
+		if v := psql(prod, "select v from kept"); v != "before" {
+			t.Fatalf("kept = %q", v)
+		}
+	})
+
+	t.Run("production's dump goes into staging only with --from", func(t *testing.T) {
+		full := out.Result.Key
+		if rec := restore(staging, "db", full, "", "shop/"+staging+"/db"); rec.Code != 400 || !strings.Contains(rec.Body.String(), "--from") {
+			t.Fatalf("%d %s", rec.Code, rec.Body.String())
+		}
+		if rec := restore(staging, "db", full, "shop/"+prod, "shop/"+staging+"/db"); rec.Code != 200 {
+			t.Fatalf("%d %s", rec.Code, rec.Body.String())
+		}
+		if v := psql(staging, "select v from kept"); v != "before" {
+			t.Fatalf("staging kept = %q", v)
+		}
+	})
+
+	t.Run("a command hook replays through its restore command", func(t *testing.T) {
+		files := runner.ContainerName(memberKey("shop", prod, "files"))
+		dumped, err := a.backupInstance(context.Background(), storeGet(t, a.store, memberKey("shop", prod, "files")))
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = exec.Command("docker", "exec", files, "sh", "-c", "echo changed > /data/note").Run()
+		if rec := restore(prod, "files", path.Base(dumped.Result.Key), "", "shop/"+prod+"/files"); rec.Code != 200 {
+			t.Fatalf("%d %s", rec.Code, rec.Body.String())
+		}
+		got, _ := exec.Command("docker", "exec", files, "cat", "/data/note").Output()
+		if strings.TrimSpace(string(got)) != "kept" {
+			t.Fatalf("note = %q", got)
+		}
+	})
+
+	t.Run("a hook without a restore command is refused", func(t *testing.T) {
+		if rec := restore(prod, "broken", "x.dump.gz", "", "shop/"+prod+"/broken"); rec.Code != http.StatusPreconditionFailed {
+			t.Fatalf("%d %s", rec.Code, rec.Body.String())
+		}
+	})
+}
+
+func storeGet(t *testing.T, store *state.Store, key string) state.App {
+	t.Helper()
+	m, ok := store.Get(key)
+	if !ok {
+		t.Fatalf("no %s", key)
+	}
+	return m
 }
