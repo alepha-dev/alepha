@@ -258,6 +258,12 @@ instance `<stack>.<service>`: `restart` and `start` on a Compose service go thro
 `deploy` on an app service is the ordinary artifact deploy. Exec into a container is not a verb
 and never will be; it takes SSH.
 
+A Lore stack-deploy also carries the environment's routes and base domain, which replace the
+ones set with `bay stack route`, and pulls the project's registry credentials by command id
+(`/estates/commands/<id>/registries`), the way the secret set comes down: never in the frame
+Lore stores. A host Lore no longer names is forgotten. When the revision is applied, the machine
+uploads what it did (revision, plan, digests) to `/estates/commands/<id>/outcome` before acking.
+
 ### After enrolment: the console
 
 Once the machine has said hello, `/account/estates/<estate>` in Lore is what an operator reads: the host's

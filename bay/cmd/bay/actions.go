@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -581,12 +582,35 @@ func (a *actions) stackDeploy(ctx context.Context, cmd connector.Command, send f
 				return "failed", "deploying", err.Error()
 			}
 		}
+		registries, pulled, err := connector.PullRegistries(ctx, client, cfg, cmd.ID)
+		if err != nil {
+			return "failed", "deploying", "could not pull the registry credentials: " + err.Error()
+		}
+		if pulled {
+			if err := a.s.replaceStackRegistries(cmd.Stack, cmd.Environment, registries); err != nil {
+				return "failed", "deploying", err.Error()
+			}
+		}
 		opts.Bundle = dest
+	}
+	if err := a.s.applyStackSettings(cmd.Stack, cmd.Environment, cmd.BaseDomain, cmd.Routes); err != nil {
+		return "failed", "deploying", err.Error()
 	}
 	_ = send(connector.NewAck(cmd.ID, "running", "deploying", ""))
 	out, err := a.s.deployStack(ctx, opts)
 	if err != nil {
 		return "failed", "deploying", err.Error()
+	}
+	// What the deploy did, for Lore's deployment row: before the terminal ack,
+	// which closes the upload. A refusal (an older Lore) is logged, never a
+	// failed deploy: the stack is running.
+	if cfg, ok, _ := connector.NewStore(a.s.root).Load(); ok {
+		if body, err := json.Marshal(out); err == nil {
+			client := &http.Client{Timeout: connector.FetchTimeout}
+			if err := connector.PushOutcome(ctx, client, cfg, cmd.ID, body); err != nil {
+				a.s.log.Warn("the stack deploy's outcome did not reach lore", "command", cmd.ID, "err", err)
+			}
+		}
 	}
 	a.s.log.Info("lore stack deploy served", "command", cmd.ID, "stack", cmd.Stack+"/"+cmd.Environment, "revision", out.Revision)
 	return "done", "", ""

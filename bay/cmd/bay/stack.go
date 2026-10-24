@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/alepha-dev/bay/internal/connector"
 	"github.com/alepha-dev/bay/internal/deploy"
 	"github.com/alepha-dev/bay/internal/stack"
 	"github.com/alepha-dev/bay/internal/state"
@@ -580,5 +581,81 @@ func cmdConfigMirror(args []string) error {
 		return err
 	}
 	fmt.Println(res)
+	return nil
+}
+
+/*
+applyStackSettings records what a Lore stack-deploy says about the
+environment before it applies the revision: its base domain, and its routes,
+which REPLACE the environment's own when the command carries them (Lore holds
+the routes for an environment it deploys). Each route is refused on the terms
+`bay stack route` refuses it: not a domain, or already served by something
+else on this machine.
+*/
+func (s *server) applyStackSettings(name, env, baseDomain string, routes *[]connector.StackRoute) error {
+	if baseDomain == "" && routes == nil {
+		return nil
+	}
+	var next []state.StackRoute
+	if routes != nil {
+		seen := map[string]bool{}
+		for _, r := range *routes {
+			domain := strings.ToLower(strings.TrimSpace(r.Domain))
+			if r.Service == "" || !domainPattern.MatchString(domain) || seen[domain] {
+				return fmt.Errorf("route %q to %q is not a route this bay can serve", r.Domain, r.Service)
+			}
+			seen[domain] = true
+			if owner, claimed := s.store.ClaimedBy(domain); claimed && owner != memberKey(name, env, r.Service) {
+				return fmt.Errorf("domain %s is already served by %s", domain, owner)
+			}
+			for _, st := range s.store.Stacks() {
+				for _, e := range st.Envs {
+					if st.Name == name && e.Env == env {
+						continue
+					}
+					for _, route := range e.Routes {
+						if route.Domain == domain {
+							return fmt.Errorf("domain %s is already routed by %s/%s", domain, st.Name, e.Env)
+						}
+					}
+				}
+			}
+			next = append(next, state.StackRoute{Service: r.Service, Domain: domain})
+		}
+	}
+	return s.store.MutateStackEnv(name, env, func(e *state.StackEnv) error {
+		if baseDomain != "" {
+			e.BaseDomain = strings.ToLower(baseDomain)
+		}
+		if routes != nil {
+			e.Routes = next
+		}
+		return nil
+	})
+}
+
+/*
+replaceStackRegistries makes the environment's registry credentials exactly
+the ones Lore sent for the stack's project: each is stored, and a host Lore no
+longer names is forgotten, so revoking a credential in Lore revokes it here at
+the next deploy.
+*/
+func (s *server) replaceStackRegistries(name, env string, creds []connector.RegistryCredential) error {
+	keep := map[string]bool{}
+	for _, c := range creds {
+		host := strings.ToLower(c.Host)
+		keep[host] = true
+		if err := stack.SetCredential(s.root, name, env, host, c.Username, c.Password); err != nil {
+			return err
+		}
+	}
+	hosts, _ := stack.RegistryHosts(s.root, name, env)
+	for _, host := range hosts {
+		if !keep[host] {
+			if _, err := stack.RemoveCredential(s.root, name, env, host); err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }

@@ -204,11 +204,13 @@ func TestWelcomeIsKeptForTheActionsThatReadIt(t *testing.T) {
 // deploySink is the sink's side of a deploy: the two pull routes for any
 // command id, a digest header beside the bytes, a JSON secret set.
 type deploySink struct {
-	srv       *httptest.Server
-	bytes     []byte
-	header    string
-	secrets   string
-	artifacts atomic.Int32
+	srv     *httptest.Server
+	bytes   []byte
+	header  string
+	secrets string
+	// registries answers /registries when set; empty is an older Lore's 404.
+	registries string
+	artifacts  atomic.Int32
 }
 
 func newDeploySink(t *testing.T, artifactPath string) *deploySink {
@@ -231,6 +233,8 @@ func newDeploySink(t *testing.T, artifactPath string) *deploySink {
 			_, _ = w.Write(s.bytes)
 		case strings.HasSuffix(r.URL.Path, "/secrets"):
 			_, _ = w.Write([]byte(s.secrets))
+		case strings.HasSuffix(r.URL.Path, "/registries") && s.registries != "":
+			_, _ = w.Write([]byte(s.registries))
 		default:
 			http.NotFound(w, r)
 		}
@@ -453,6 +457,25 @@ func TestStackDeployAction(t *testing.T) {
 			if rec.last().Status != "failed" {
 				t.Fatalf("%+v accepted: %+v", cmd, rec.last())
 			}
+		}
+	})
+
+	t.Run("Lore's registry credentials replace the environment's, and its routes and base domain apply", func(t *testing.T) {
+		sink := newDeploySink(t, bundle)
+		sink.registries = `[{"host": "harbor.corp.test", "username": "ci", "password": "token"}]`
+		f, acts := deployReady(t, sink, true)
+		_ = stack.SetCredential(f.root, "web", "production", "stale.corp.test", "old", "old")
+		routes := []connector.StackRoute{{Service: "web", Domain: "WWW.Example.test"}}
+		rec := &ackRecorder{}
+		acts.Command(context.Background(), connector.Command{ID: "s4", Kind: "stack-deploy", Stack: "web", Environment: "production",
+			Artifact: &connector.Artifact{ID: "b", SHA256: sink.digest()}, Routes: &routes, BaseDomain: "web.example.test"}, rec.send)
+		hosts, _ := stack.RegistryHosts(f.root, "web", "production")
+		if strings.Join(hosts, ",") != "harbor.corp.test" {
+			t.Fatalf("hosts = %v", hosts)
+		}
+		se, _ := f.server.store.StackEnv("web", "production")
+		if se.BaseDomain != "web.example.test" || len(se.Routes) != 1 || se.Routes[0].Domain != "www.example.test" {
+			t.Fatalf("env = %+v", se)
 		}
 	})
 

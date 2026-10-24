@@ -75,3 +75,44 @@ func TestWireStackFrames(t *testing.T) {
 		}
 	})
 }
+
+func TestWireStackV2(t *testing.T) {
+	t.Run("a stack-deploy carries the environment's routes and base domain", func(t *testing.T) {
+		frame, err := decodeFrame(stackFixture(t, "command-stack-deploy.json"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if frame.Routes == nil || len(*frame.Routes) != 1 || (*frame.Routes)[0].Domain != "analytics.bob.dev" ||
+			frame.BaseDomain != "umami.bob.dev" {
+			t.Fatalf("decoded = %+v", frame)
+		}
+	})
+
+	t.Run("a rollback frame without routes leaves them alone", func(t *testing.T) {
+		frame, err := decodeFrame(stackFixture(t, "command-stack-rollback.json"))
+		if err != nil || frame.Routes != nil {
+			t.Fatalf("decoded = %+v, %v", frame, err)
+		}
+	})
+
+	t.Run("the registry pull is a list of host, username and password", func(t *testing.T) {
+		var creds []RegistryCredential
+		if err := json.Unmarshal(stackFixture(t, "registries.json"), &creds); err != nil || len(creds) != 1 || creds[0].Host != "harbor.corp.example" {
+			t.Fatalf("creds = %+v, %v", creds, err)
+		}
+	})
+
+	t.Run("the outcome names the revision, the plan, the members and the digests", func(t *testing.T) {
+		var out struct {
+			Revision int `json:"revision"`
+			Plan     struct {
+				Changed []string `json:"changed"`
+			} `json:"plan"`
+			Digests map[string]string `json:"digests"`
+		}
+		if err := json.Unmarshal(stackFixture(t, "outcome-stack-deploy.json"), &out); err != nil || out.Revision != 2 ||
+			len(out.Plan.Changed) != 1 || len(out.Digests) != 2 {
+			t.Fatalf("outcome = %+v, %v", out, err)
+		}
+	})
+}

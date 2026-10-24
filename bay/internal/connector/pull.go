@@ -157,6 +157,49 @@ func PullSecrets(ctx context.Context, client *http.Client, cfg Config, commandID
 	return set, nil
 }
 
+// RegistryCredential is one registry login a stack-deploy pulls, for the
+// stack's images.
+type RegistryCredential struct {
+	Host     string `json:"host"`
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+/*
+PullRegistries fetches the registry credentials of a stack-deploy's project,
+by command id, the way the secret set comes down: never in the command frame,
+which Lore stores.
+
+A 404 is an older Lore with no such route, and answers no credential rather
+than failing the deploy; the stack then pulls with whatever credentials the
+environment already holds.
+*/
+func PullRegistries(ctx context.Context, client *http.Client, cfg Config, commandID string) ([]RegistryCredential, bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, time.Minute)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, commandURL(cfg, commandID, "registries"), nil)
+	if err != nil {
+		return nil, false, err
+	}
+	req.Header.Set("Authorization", "Bearer "+cfg.Secret)
+	res, err := client.Do(req)
+	if err != nil {
+		return nil, false, fmt.Errorf("pull registries: %w", err)
+	}
+	defer res.Body.Close()
+	if res.StatusCode == http.StatusNotFound {
+		return nil, false, nil
+	}
+	if res.StatusCode != http.StatusOK {
+		return nil, false, fmt.Errorf("pull registries: the sink answered %d", res.StatusCode)
+	}
+	var out []RegistryCredential
+	if err := json.NewDecoder(io.LimitReader(res.Body, 1<<20)).Decode(&out); err != nil {
+		return nil, false, fmt.Errorf("the registry credentials are not a JSON list: %w", err)
+	}
+	return out, true, nil
+}
+
 func get(ctx context.Context, client *http.Client, cfg Config, url string) (*http.Response, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -215,6 +258,20 @@ while the command is `sent` or `running`, so acking `done` first turns the
 upload into a 404 and the owner sees a finished command with nothing to read.
 */
 func PushResult(ctx context.Context, client *http.Client, cfg Config, commandID string, body []byte) error {
+	return push(ctx, client, cfg, commandID, "result", body)
+}
+
+/*
+PushOutcome uploads what a stack-deploy did (its revision, plan, digests and
+members) so Lore's deployment row says it. Same seam and the same rule as
+PushResult: before the terminal ack, and a refusal is logged, never a failed
+deploy.
+*/
+func PushOutcome(ctx context.Context, client *http.Client, cfg Config, commandID string, body []byte) error {
+	return push(ctx, client, cfg, commandID, "outcome", body)
+}
+
+func push(ctx context.Context, client *http.Client, cfg Config, commandID, path string, body []byte) error {
 	if len(body) > MaxResultBytes {
 		return fmt.Errorf("the result is %d bytes, over the %d the sink accepts", len(body), MaxResultBytes)
 	}
@@ -222,7 +279,7 @@ func PushResult(ctx context.Context, client *http.Client, cfg Config, commandID 
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		commandURL(cfg, commandID, "result"), bytes.NewReader(body))
+		commandURL(cfg, commandID, path), bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
@@ -230,7 +287,7 @@ func PushResult(ctx context.Context, client *http.Client, cfg Config, commandID 
 	req.Header.Set("Content-Type", "application/json")
 	res, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("push result: %w", err)
+		return fmt.Errorf("push %s: %w", path, err)
 	}
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {

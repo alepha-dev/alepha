@@ -61,6 +61,19 @@ type Command struct {
 	// earlier revision to roll back to.
 	Stack    string `json:"stack,omitempty"`
 	Revision int    `json:"revision,omitempty"`
+	// Routes are the stack environment's full-domain routes as Lore holds
+	// them. Present (even empty) replaces the environment's routes; absent
+	// leaves them as they are, which is what an older Lore sends.
+	Routes *[]StackRoute `json:"routes,omitempty"`
+	// BaseDomain is what the compose file's route labels resolve against.
+	// Empty leaves the environment's own.
+	BaseDomain string `json:"baseDomain,omitempty"`
+}
+
+// StackRoute is one full domain one service of a stack environment answers on.
+type StackRoute struct {
+	Service string `json:"service"`
+	Domain  string `json:"domain"`
 }
 
 // LogsAsk is how much of a journal a `logs` command wants.
@@ -142,15 +155,17 @@ type serverFrame struct {
 	StatsIntervalSeconds int  `json:"statsIntervalSeconds,omitempty"`
 
 	// command
-	ID          string    `json:"id,omitempty"`
-	Kind        string    `json:"kind,omitempty"`
-	App         string    `json:"app,omitempty"`
-	Environment string    `json:"environment,omitempty"`
-	Project     string    `json:"project,omitempty"`
-	Artifact    *Artifact `json:"artifact,omitempty"`
-	Logs        *LogsAsk  `json:"logs,omitempty"`
-	Stack       string    `json:"stack,omitempty"`
-	Revision    int       `json:"revision,omitempty"`
+	ID          string        `json:"id,omitempty"`
+	Kind        string        `json:"kind,omitempty"`
+	App         string        `json:"app,omitempty"`
+	Environment string        `json:"environment,omitempty"`
+	Project     string        `json:"project,omitempty"`
+	Artifact    *Artifact     `json:"artifact,omitempty"`
+	Logs        *LogsAsk      `json:"logs,omitempty"`
+	Stack       string        `json:"stack,omitempty"`
+	Revision    int           `json:"revision,omitempty"`
+	Routes      *[]StackRoute `json:"routes,omitempty"`
+	BaseDomain  string        `json:"baseDomain,omitempty"`
 }
 
 // Handler receives what the connection delivers. The executor (#1621) is the
@@ -517,7 +532,7 @@ func (c *Client) dispatch(ctx context.Context, frame serverFrame) {
 		cmd := Command{ID: frame.ID, Kind: frame.Kind, App: frame.App,
 			Project:     frame.Project,
 			Environment: frame.Environment, Artifact: frame.Artifact, Logs: frame.Logs,
-			Stack: frame.Stack, Revision: frame.Revision}
+			Stack: frame.Stack, Revision: frame.Revision, Routes: frame.Routes, BaseDomain: frame.BaseDomain}
 		if c.Handler == nil {
 			// Refused with a reason rather than left to Lore's sweep: an
 			// unacknowledged command reads as a dead machine, and this one
