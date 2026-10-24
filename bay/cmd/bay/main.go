@@ -192,6 +192,8 @@ func main() {
 		err = cmdRuntimes(os.Args[2:])
 	case "harden":
 		err = cmdHarden(os.Args[2:])
+	case "stack":
+		err = cmdStack(os.Args[2:])
 	case "version", "--version", "-v":
 		fmt.Println(version)
 	default:
@@ -274,6 +276,11 @@ func usageText() string {
   bay runtimes set <name/env> <image>  # this app's own image, from its next start;
                                   # runtimes update leaves it alone
   bay runtimes clear <name/env>   # back to the image Bay picks
+  bay stack env set <stack>/<env> (-|FILE)   # a stack environment's variables,
+              # merged from KEY=VALUE lines on stdin; they fill ${VAR} in the
+              # compose file and reach app services, from the next stack deploy
+  bay stack env list <stack>/<env>   # names only
+  bay stack env unset <stack>/<env> KEY...
   bay harden  <name/env> (--relax writable-rootfs[,capabilities] | --clear | --memory 1g|default)
               # an archive app runs as its own uid, with no capabilities, on a
               # read-only root filesystem (a 64 MB /tmp). --relax lifts one of
@@ -967,6 +974,7 @@ func (s *server) controlMux() *http.ServeMux {
 	mux.HandleFunc("PUT /apps/{name}/{env}/runtime-image", s.handleRuntimeImage)
 	mux.HandleFunc("PUT /apps/{name}/{env}/relax", s.handleRelax)
 	mux.HandleFunc("PUT /apps/{name}/{env}/memory", s.handleMemory)
+	s.registerStackRoutes(mux)
 	mux.HandleFunc("GET /runtimes", s.handleRuntimes)
 	mux.HandleFunc("POST /runtimes/update", s.handleRuntimesUpdate)
 	// What this server was started with, for the commands that have to judge
