@@ -18,6 +18,7 @@ import (
 	"github.com/alepha-dev/bay/internal/deploy"
 	"github.com/alepha-dev/bay/internal/manifest"
 	"github.com/alepha-dev/bay/internal/naming"
+	"github.com/alepha-dev/bay/internal/runner"
 	"github.com/alepha-dev/bay/internal/s3"
 	"github.com/alepha-dev/bay/internal/schedule"
 	"github.com/alepha-dev/bay/internal/state"
@@ -233,15 +234,32 @@ func (s *server) backupInstance(ctx context.Context, app state.App) (backupOutco
 	// still called the backup stale seconds after one was taken. The command an
 	// operator runs deliberately before a risky change was exactly the one whose
 	// result `status` could not see.
-	runtime, dbPath, err := s.appPaths(app)
-	if err != nil {
-		s.recordBackupFailure(app.Key(), "resolve paths", err)
-		return backupOutcome{}, err
-	}
-	res, err := mgr.Backup(ctx, app.Name, app.Env, runtime, dbPath)
-	if err != nil {
-		s.recordBackupFailure(app.Key(), "backup", err)
-		return backupOutcome{}, err
+	var res *backup.Result
+	notCovered := notBackedUp(s.store, app)
+	if app.BackupHook != nil {
+		// A stack service: its own hook, in its own container. A stopped
+		// stack has no container to run it in, and that is a refusal: the
+		// operator stopped it, the backup did not fail.
+		if se, ok := s.store.StackEnv(app.Stack, app.Env); ok && se.Stopped {
+			return backupOutcome{}, backupRefused{app.Stack + "/" + app.Env + " is stopped: start it to back up " + app.Service}
+		}
+		res, err = mgr.BackupDump(ctx, app.Name, app.Env, serviceDumper{container: runner.ContainerName(app.Key()), hook: *app.BackupHook})
+		if err != nil {
+			s.recordBackupFailure(app.Key(), "backup", err)
+			return backupOutcome{}, err
+		}
+		notCovered = serviceNotBackedUp(app)
+	} else {
+		runtime, dbPath, err := s.appPaths(app)
+		if err != nil {
+			s.recordBackupFailure(app.Key(), "resolve paths", err)
+			return backupOutcome{}, err
+		}
+		res, err = mgr.Backup(ctx, app.Name, app.Env, runtime, dbPath)
+		if err != nil {
+			s.recordBackupFailure(app.Key(), "backup", err)
+			return backupOutcome{}, err
+		}
 	}
 	if err := s.store.RecordBackupSuccess(app.Key(), res.Key, time.Now()); err != nil {
 		// The bytes are in the bucket; only the bookkeeping failed. Reported as a
@@ -271,7 +289,7 @@ func (s *server) backupInstance(ctx context.Context, app state.App) (backupOutco
 		Pruned: pruned,
 		// What is NOT covered has to be stated, every time. The worst failure
 		// of a backup system is someone believing they are covered.
-		NotBackedUp: notBackedUp(s.store, app),
+		NotBackedUp: notCovered,
 	}, nil
 }
 

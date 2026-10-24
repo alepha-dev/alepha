@@ -245,7 +245,7 @@ func (m *Manager) Prune(ctx context.Context, app, env string, keep int) ([]Entry
 
 func parseKeyTime(key string) (time.Time, error) {
 	base := filepath.Base(key)
-	stamp := strings.TrimSuffix(base, ".sqlite.gz")
+	stamp := strings.TrimSuffix(strings.TrimSuffix(base, ".sqlite.gz"), dumpSuffix)
 	if stamp == base {
 		return time.Time{}, fmt.Errorf("not a backup key: %s", key)
 	}

@@ -35,7 +35,11 @@ type XLore struct {
 // Backup is `x-lore.backup`: one of its two forms.
 type Backup struct {
 	Postgres *PostgresBackup
-	Command  string
+	// Command runs in the service's container; its stdout is the dump.
+	Command string
+	// Restore runs in the service's container with the dump on stdin. Only
+	// with Command: the postgres form knows how to restore itself.
+	Restore string
 }
 
 // PostgresBackup dumps with pg_dump inside the service's container.
@@ -117,11 +121,15 @@ func parseXLore(service string, raw map[string]any) (XLore, error) {
 }
 
 func parseBackup(value any) (*Backup, error) {
+	const shape = `give {postgres: {user, db}} or {command: "...", restore: "..."}`
 	m, ok := value.(map[string]any)
-	if !ok || len(m) != 1 {
-		return nil, fmt.Errorf(`give exactly one of {postgres: {user, db}} or {command: "..."}`)
+	if !ok || len(m) == 0 {
+		return nil, fmt.Errorf(shape)
 	}
 	if pg, ok := m["postgres"].(map[string]any); ok {
+		if len(m) != 1 {
+			return nil, fmt.Errorf("postgres takes no other key: %s", shape)
+		}
 		user, _ := pg["user"].(string)
 		db, _ := pg["db"].(string)
 		if user == "" || db == "" {
@@ -129,10 +137,25 @@ func parseBackup(value any) (*Backup, error) {
 		}
 		return &Backup{Postgres: &PostgresBackup{User: user, DB: db}}, nil
 	}
-	if cmd, ok := m["command"].(string); ok && cmd != "" {
-		return &Backup{Command: cmd}, nil
+	cmd, _ := m["command"].(string)
+	if cmd == "" {
+		return nil, fmt.Errorf(shape)
 	}
-	return nil, fmt.Errorf(`give exactly one of {postgres: {user, db}} or {command: "..."}`)
+	b := &Backup{Command: cmd}
+	for k, v := range m {
+		switch k {
+		case "command":
+		case "restore":
+			r, _ := v.(string)
+			if r == "" {
+				return nil, fmt.Errorf("restore must be a command reading the dump on stdin")
+			}
+			b.Restore = r
+		default:
+			return nil, fmt.Errorf("%s is not a backup field (command, restore)", k)
+		}
+	}
+	return b, nil
 }
 
 /*

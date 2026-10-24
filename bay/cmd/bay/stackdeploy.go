@@ -87,6 +87,18 @@ func lockStack(name, env string) func() {
 	return mu.Unlock
 }
 
+// hookOf records an `x-lore.backup` declaration on the member.
+func hookOf(b *stack.Backup) *state.BackupHook {
+	switch {
+	case b == nil:
+		return nil
+	case b.Postgres != nil:
+		return &state.BackupHook{PostgresUser: b.Postgres.User, PostgresDB: b.Postgres.DB}
+	default:
+		return &state.BackupHook{Command: b.Command, Restore: b.Restore}
+	}
+}
+
 func memberKey(name, env, service string) string {
 	return state.MemberName(name, service) + "/" + env
 }
@@ -243,6 +255,7 @@ func (s *server) deployStack(ctx context.Context, opts stackDeployOptions) (*sta
 				Name: state.MemberName(opts.Stack, name), Env: opts.Env, Domains: domains[name],
 				Release: "revision " + strconv.Itoa(n), Port: port,
 				Stack: opts.Stack, Service: name, ServiceKind: "service",
+				Backups: x.Backup != nil, BackupHook: hookOf(x.Backup),
 			}); err != nil {
 				return nil, err
 			}

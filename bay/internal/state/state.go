@@ -175,6 +175,18 @@ type App struct {
 	// itself (blue/green, hardening), or "service" for one compose runs from
 	// its image. Empty on a standalone app.
 	ServiceKind string `json:"serviceKind,omitempty"`
+	// BackupHook is how a stack service is dumped (`x-lore.backup`), recorded
+	// from the revision at deploy time. A service member with a hook has
+	// Backups set, so the schedule takes it like any app database.
+	BackupHook *BackupHook `json:"backupHook,omitempty"`
+}
+
+// BackupHook is one service's dump declaration: postgres, or a command.
+type BackupHook struct {
+	PostgresUser string `json:"postgresUser,omitempty"`
+	PostgresDB   string `json:"postgresDb,omitempty"`
+	Command      string `json:"command,omitempty"`
+	Restore      string `json:"restore,omitempty"`
 }
 
 // UpstreamPort is the host port to send this instance's traffic to.

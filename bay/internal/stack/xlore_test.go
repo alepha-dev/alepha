@@ -35,7 +35,7 @@ func TestParseXLore(t *testing.T) {
 			"is not a label":         {"routes": []any{"Auth_1"}},
 			"must be a port number":  {"tcp": 70000},
 			"only applies to an app": {"runtime": "node:26-alpine"},
-			"exactly one of":         {"backup": map[string]any{"postgres": map[string]any{}, "command": "x"}},
+			"takes no other key":     {"backup": map[string]any{"postgres": map[string]any{}, "command": "x"}},
 			"name the app":           {"app": ""},
 		}
 		for want, raw := range cases {
@@ -70,4 +70,24 @@ func TestLoreRefusesAServiceDependingOnAnApp(t *testing.T) {
 	if _, err := l.Lore(); err == nil || !strings.Contains(err.Error(), "worker depends on api") {
 		t.Fatalf("err = %v", err)
 	}
+}
+
+func TestParseBackupRestore(t *testing.T) {
+	t.Run("a command hook may declare its restore", func(t *testing.T) {
+		b, err := parseBackup(map[string]any{"command": "mongodump --archive", "restore": "mongorestore --archive --drop"})
+		if err != nil || b.Restore != "mongorestore --archive --drop" {
+			t.Fatalf("%+v %v", b, err)
+		}
+	})
+	t.Run("postgres takes no other key, and unknown keys are refused", func(t *testing.T) {
+		for _, raw := range []map[string]any{
+			{"postgres": map[string]any{"user": "u", "db": "d"}, "restore": "x"},
+			{"command": "dump", "restor": "x"},
+			{"restore": "x"},
+		} {
+			if _, err := parseBackup(raw); err == nil {
+				t.Fatalf("%v accepted", raw)
+			}
+		}
+	})
 }

@@ -64,6 +64,13 @@ that is never the backup one) or they are not shared at all, and secrets come
 from the deploy. The worst failure of a backup system is somebody believing it
 covers more than it does.
 
+A stack service is data too, so it declares how to dump itself in
+`x-lore.backup`: `{postgres: {user, db}}` runs `pg_dump` in the service's
+container and verifies with `pg_restore --list`, and `{command, restore}` takes
+a command's stdout as the dump. Dumps ride the same schedule, upload and
+pruning as the SQLite snapshot; an empty or failing hook is a failed backup.
+The service's other files are not covered, and the response says so.
+
 ## Working on Bay
 
 CI's `check` job runs the whole suite on every push, so the push covers you.
