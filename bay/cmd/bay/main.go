@@ -192,6 +192,8 @@ func main() {
 		err = cmdDoctor(os.Args[2:])
 	case "runtimes":
 		err = cmdRuntimes(os.Args[2:])
+	case "harden":
+		err = cmdHarden(os.Args[2:])
 	case "version", "--version", "-v":
 		fmt.Println(version)
 	default:
@@ -274,6 +276,11 @@ func usageText() string {
   bay runtimes set <name/env> <image>  # this app's own image, from its next start;
                                   # runtimes update leaves it alone
   bay runtimes clear <name/env>   # back to the image Bay picks
+  bay harden  <name/env> (--relax writable-rootfs[,capabilities] | --clear)
+              # an archive app runs as its own uid, with no capabilities, on a
+              # read-only root filesystem (a 64 MB /tmp). --relax lifts one of
+              # those for this app only, recorded and flagged by "bay status";
+              # the app restarts with it. Image apps keep their image's user
   bay config s3:backups --endpoint URL --bucket NAME [--keep N]
                 # where BACKUPS go. Credentials from BAY_S3_ACCESS_KEY /
                 # BAY_S3_SECRET_KEY. Never handed to an app.
@@ -1017,6 +1024,7 @@ func (s *server) controlMux() *http.ServeMux {
 	})
 	mux.HandleFunc("GET /apps/{name}/{env}/logs", s.handleLogs)
 	mux.HandleFunc("PUT /apps/{name}/{env}/runtime-image", s.handleRuntimeImage)
+	mux.HandleFunc("PUT /apps/{name}/{env}/relax", s.handleRelax)
 	mux.HandleFunc("GET /runtimes", s.handleRuntimes)
 	mux.HandleFunc("POST /runtimes/update", s.handleRuntimesUpdate)
 	// What this server was started with, for the commands that have to judge
@@ -2000,6 +2008,10 @@ func cmdStatus(args []string) error {
 		}
 		if a.RuntimeImage != "" {
 			fmt.Printf("  runtime  %s  (set by hand; bay runtimes update leaves it alone)\n", a.RuntimeImage)
+		}
+		if len(a.Relaxed) > 0 {
+			problems++
+			fmt.Printf("  ⚠ isolation relaxed: %s (bay harden %s/%s --clear restores it)\n", strings.Join(a.Relaxed, ", "), a.Name, a.Env)
 		}
 
 		// A registered app that is not running is the loudest thing this

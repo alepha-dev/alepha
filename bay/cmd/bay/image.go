@@ -2,12 +2,15 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/alepha-dev/bay/internal/deploy"
@@ -212,4 +215,89 @@ func (s *server) deployImage(ctx context.Context, opts imageDeployOptions) (*sta
 	}
 	app, _ := s.store.Get(key)
 	return &app, nil
+}
+
+/*
+handleRelax records which hardening defaults an archive app runs without, and
+restarts it (blue/green) when it is up, so the posture the record names is the
+one running. Only names Bay knows are accepted: an unknown one would be
+recorded and change nothing, which is the worst kind of setting.
+*/
+func (s *server) handleRelax(w http.ResponseWriter, r *http.Request) {
+	key := r.PathValue("name") + "/" + r.PathValue("env")
+	app, ok := s.store.Get(key)
+	if !ok {
+		writeError(w, http.StatusNotFound, "unknown instance "+key)
+		return
+	}
+	if app.Image != "" {
+		writeError(w, http.StatusBadRequest, key+" is an image app: it runs with its image's own user and capabilities already")
+		return
+	}
+	var body struct {
+		Relaxed []string `json:"relaxed"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, `body must be {"relaxed": [...]}`)
+		return
+	}
+	for _, name := range body.Relaxed {
+		if name != relaxWritableRootfs && name != relaxCapabilities {
+			writeError(w, http.StatusBadRequest, fmt.Sprintf("%q is not a hardening default; known: %s, %s", name, relaxWritableRootfs, relaxCapabilities))
+			return
+		}
+	}
+	if err := s.store.SetRelaxed(key, body.Relaxed); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	restarted := false
+	if s.runner.Running(key) {
+		app, _ = s.store.Get(key)
+		if err := s.restart(app); err != nil {
+			writeError(w, http.StatusInternalServerError, "recorded, but the app did not come back up with it: "+err.Error())
+			return
+		}
+		restarted = true
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"instance": key, "relaxed": body.Relaxed, "restarted": restarted})
+}
+
+/*
+cmdHarden is `bay harden`:
+
+	bay harden <name/env> --relax writable-rootfs[,capabilities]   # lift defaults, explicitly
+	bay harden <name/env> --clear                                  # back to every default
+*/
+func cmdHarden(args []string) error {
+	usage := errors.New("usage: bay harden <name/env> (--relax writable-rootfs[,capabilities] | --clear)")
+	if len(args) < 2 {
+		return usage
+	}
+	key, err := instanceKey(args, "harden")
+	if err != nil {
+		return err
+	}
+	relaxedList := []string{}
+	switch args[1] {
+	case "--clear":
+	case "--relax":
+		if len(args) < 3 {
+			return usage
+		}
+		for _, name := range strings.Split(args[2], ",") {
+			if name = strings.TrimSpace(name); name != "" {
+				relaxedList = append(relaxedList, name)
+			}
+		}
+	default:
+		return usage
+	}
+	body, _ := json.Marshal(map[string]any{"relaxed": relaxedList})
+	res, err := call(http.MethodPut, controlHost+"/apps/"+key+"/relax", strings.NewReader(string(body)))
+	if err != nil {
+		return err
+	}
+	fmt.Println(res)
+	return nil
 }

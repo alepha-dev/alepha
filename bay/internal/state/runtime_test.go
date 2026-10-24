@@ -80,3 +80,23 @@ func TestUpsertKeepsInstanceOwnedFields(t *testing.T) {
 		}
 	})
 }
+
+func TestEnsureUID(t *testing.T) {
+	t.Run("each instance gets its own uid, kept across a redeploy", func(t *testing.T) {
+		s, _ := Open(filepath.Join(t.TempDir(), "state.json"))
+		_ = s.Upsert(App{Name: "a", Env: "production", Port: 4100})
+		_ = s.Upsert(App{Name: "b", Env: "production", Port: 4101})
+		ua, err := s.EnsureUID("a/production")
+		if err != nil {
+			t.Fatal(err)
+		}
+		ub, _ := s.EnsureUID("b/production")
+		if ua < 20000 || ub == ua {
+			t.Fatalf("uids = %d, %d", ua, ub)
+		}
+		_ = s.Upsert(App{Name: "a", Env: "production", Port: 4100, Release: "r2"})
+		if again, _ := s.EnsureUID("a/production"); again != ua {
+			t.Fatalf("uid changed across a redeploy: %d -> %d", ua, again)
+		}
+	})
+}

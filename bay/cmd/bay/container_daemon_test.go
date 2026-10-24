@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"encoding/json"
 	"io"
 	"log/slog"
 	"net/http"
@@ -88,9 +89,17 @@ const http = require("node:http");
 const db = new DatabaseSync(process.env.DATABASE_URL.replace("sqlite://", ""));
 db.exec("CREATE TABLE IF NOT EXISTS hits (n INTEGER)");
 db.exec("INSERT INTO hits VALUES (1)");
+const fs = require("node:fs");
+const denied = (path) => { try { fs.writeFileSync(path, "x"); return false; } catch { return true; } };
+const probe = {
+  uid: process.getuid(),
+  releaseWritable: !denied("/app/escape.txt"),
+  rootWritable: !denied("/etc/escape.txt"),
+  tmpWritable: !denied("/tmp/scratch.txt"),
+};
 http.createServer((req, res) => {
   res.writeHead(200, { "content-type": "application/json" });
-  res.end(JSON.stringify({ ready: true, host: process.env.SERVER_HOST }));
+  res.end(JSON.stringify({ ready: true, host: process.env.SERVER_HOST, ...probe }));
 }).listen(Number(process.env.SERVER_PORT), process.env.SERVER_HOST);
 `,
 	}
@@ -156,6 +165,32 @@ func TestContainerDeployDaemon(t *testing.T) {
 		body, _ := io.ReadAll(res.Body)
 		if !strings.Contains(string(body), `"host":"0.0.0.0"`) {
 			t.Fatalf("body = %s", body)
+		}
+	})
+
+	t.Run("the app runs hardened: not root, release and root filesystem read-only, /tmp writable", func(t *testing.T) {
+		res, err := http.Get("http://127.0.0.1:" + strconv.Itoa(out.Result.App.UpstreamPort()) + "/")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer res.Body.Close()
+		var probe struct {
+			UID             int  `json:"uid"`
+			ReleaseWritable bool `json:"releaseWritable"`
+			RootWritable    bool `json:"rootWritable"`
+			TmpWritable     bool `json:"tmpWritable"`
+		}
+		if err := json.NewDecoder(res.Body).Decode(&probe); err != nil {
+			t.Fatal(err)
+		}
+		if probe.UID == 0 || probe.ReleaseWritable || probe.RootWritable || !probe.TmpWritable {
+			t.Fatalf("probe = %+v", probe)
+		}
+		if os.Geteuid() == 0 {
+			app, _ := store.Get(key)
+			if app.UID < 20000 || probe.UID != app.UID {
+				t.Fatalf("uid = %d, recorded %d", probe.UID, app.UID)
+			}
 		}
 	})
 

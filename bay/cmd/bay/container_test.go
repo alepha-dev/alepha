@@ -1,6 +1,8 @@
 package main
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -114,4 +116,46 @@ func TestNanoCPUs(t *testing.T) {
 			t.Errorf("%d cores: %d, want %d", cores, got, want)
 		}
 	}
+}
+
+func TestHarden(t *testing.T) {
+	s := runtimesFixture(t, `[{"runtime": "node", "entry": "index.node.js", "runtimeVersion": "26"}]`)
+	s.runner = &imageFakeRunner{fakeRunner: newFakeRunner()}
+	put := func(body string) int {
+		rec := httptest.NewRecorder()
+		s.controlMux().ServeHTTP(rec, httptest.NewRequest(http.MethodPut, "/apps/api/production/relax", strings.NewReader(body)))
+		return rec.Code
+	}
+	specOf := func() runner.Container {
+		app, _ := s.store.Get("api/production")
+		spec, _, err := s.specFor(app)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return spec.Sandbox.(runner.Container)
+	}
+
+	t.Run("an archive app is hardened by default", func(t *testing.T) {
+		if c := specOf(); !c.ReadOnlyRootfs || !c.DropCapabilities || c.User == "" {
+			t.Fatalf("container = %+v", c)
+		}
+	})
+
+	t.Run("a relaxation is explicit, named, recorded, and cleared", func(t *testing.T) {
+		if code := put(`{"relaxed": ["writable-rootfs"]}`); code != 200 {
+			t.Fatalf("relax: %d", code)
+		}
+		if c := specOf(); c.ReadOnlyRootfs || !c.DropCapabilities {
+			t.Fatalf("container = %+v", c)
+		}
+		if code := put(`{"relaxed": ["root"]}`); code != 400 {
+			t.Fatalf("unknown relaxation accepted: %d", code)
+		}
+		if code := put(`{"relaxed": []}`); code != 200 {
+			t.Fatalf("clear: %d", code)
+		}
+		if c := specOf(); !c.ReadOnlyRootfs {
+			t.Fatalf("not restored: %+v", c)
+		}
+	})
 }

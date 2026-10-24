@@ -61,6 +61,15 @@ type Container struct {
 	// NanoCPUs is the CPU ceiling in billionths of a core, so 2e9 is two full
 	// cores: systemd's CPUQuota of "200%". Zero means unlimited.
 	NanoCPUs int64
+	// User is the uid:gid the process runs as. Empty keeps the image's own
+	// user, which for an image app is its author's choice.
+	User string
+	// ReadOnlyRootfs mounts the image read-only, with a small tmpfs at /tmp:
+	// the app writes only to the paths it was given.
+	ReadOnlyRootfs bool
+	// DropCapabilities removes every Linux capability. An archive app needs
+	// none; an image app may (nginx starts as root and drops itself).
+	DropCapabilities bool
 	// StopGrace is how long the app gets between SIGTERM and SIGKILL. Zero
 	// means defaultStopGrace, never Docker's own 10 seconds: an Alepha app
 	// waits up to 10 seconds for in-flight requests before its pools close and
@@ -73,6 +82,16 @@ type Mount struct {
 	Source   string
 	Target   string
 	ReadOnly bool
+}
+
+/*
+containerLogConfig caps what a container may keep of its own output: three
+files of 10 MB. Docker's default keeps everything, and a chatty app then fills
+the disk every other app on the host shares.
+*/
+var containerLogConfig = map[string]any{
+	"Type":   "json-file",
+	"Config": map[string]string{"max-size": "10m", "max-file": "3"},
 }
 
 // dockerKeyLabel names the Bay instance a container belongs to, so a container
@@ -251,6 +270,17 @@ func createBody(spec Spec, c Container) map[string]any {
 		"Mounts":        mounts,
 		"RestartPolicy": map[string]any{"Name": "always"},
 		"Init":          true,
+		// Always: a process that gains privileges through a setuid binary is
+		// how a compromised app escalates, and no app Bay runs needs it.
+		"SecurityOpt": []string{"no-new-privileges:true"},
+		"LogConfig":   containerLogConfig,
+	}
+	if c.DropCapabilities {
+		host["CapDrop"] = []string{"ALL"}
+	}
+	if c.ReadOnlyRootfs {
+		host["ReadonlyRootfs"] = true
+		host["Tmpfs"] = map[string]string{"/tmp": "rw,noexec,nosuid,size=64m"}
 	}
 	if c.MemoryBytes > 0 {
 		host["Memory"] = c.MemoryBytes
@@ -268,6 +298,9 @@ func createBody(spec Spec, c Container) map[string]any {
 		"Labels":      map[string]string{dockerKeyLabel: spec.Key},
 		"StopTimeout": int(stopGraceOfContainer(c).Seconds()),
 		"HostConfig":  host,
+	}
+	if c.User != "" {
+		body["User"] = c.User
 	}
 	// An image app runs its image's own command in its own working directory;
 	// an archive app names both, its runtime and entry inside the release.
@@ -685,6 +718,8 @@ func (d *Docker) RunOnce(image string, cmd []string, mounts []Mount, timeout tim
 		"HostConfig": map[string]any{
 			"Mounts":      binds,
 			"NetworkMode": "none",
+			"SecurityOpt": []string{"no-new-privileges:true"},
+			"LogConfig":   containerLogConfig,
 		},
 	}
 	var created struct {

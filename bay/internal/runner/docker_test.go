@@ -445,3 +445,35 @@ func TestCreateBodyForAnImageApp(t *testing.T) {
 		}
 	})
 }
+
+func TestCreateBodyHardening(t *testing.T) {
+	spec := Spec{Key: "api/production", Runtime: "node", Entry: "index.node.js"}
+
+	t.Run("every container gets no-new-privileges and capped logs", func(t *testing.T) {
+		host := createBody(spec, Container{Image: "x"})["HostConfig"].(map[string]any)
+		if opts := host["SecurityOpt"].([]string); len(opts) != 1 || opts[0] != "no-new-privileges:true" {
+			t.Fatalf("security opts = %v", host["SecurityOpt"])
+		}
+		logs := host["LogConfig"].(map[string]any)["Config"].(map[string]string)
+		if logs["max-size"] != "10m" || logs["max-file"] != "3" {
+			t.Fatalf("log config = %v", logs)
+		}
+		if _, set := host["CapDrop"]; set {
+			t.Fatal("capabilities dropped without being asked")
+		}
+	})
+
+	t.Run("a hardened container drops every capability, runs read-only with a /tmp, as its user", func(t *testing.T) {
+		body := createBody(spec, Container{Image: "x", User: "20001:20001", ReadOnlyRootfs: true, DropCapabilities: true})
+		host := body["HostConfig"].(map[string]any)
+		if body["User"] != "20001:20001" || host["ReadonlyRootfs"] != true {
+			t.Fatalf("user = %v, readonly = %v", body["User"], host["ReadonlyRootfs"])
+		}
+		if caps := host["CapDrop"].([]string); caps[0] != "ALL" {
+			t.Fatalf("cap drop = %v", caps)
+		}
+		if _, ok := host["Tmpfs"].(map[string]string)["/tmp"]; !ok {
+			t.Fatalf("tmpfs = %v", host["Tmpfs"])
+		}
+	})
+}

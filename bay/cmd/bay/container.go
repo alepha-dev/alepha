@@ -59,6 +59,11 @@ func (s *server) containerSpec(app state.App, m *manifest.Manifest, env map[stri
 		return runner.Spec{}, runtimeChoice{}, fmt.Errorf("resolve current release of %s: %w", app.Key(), err)
 	}
 
+	user, err := s.appUser(app, writable)
+	if err != nil {
+		return runner.Spec{}, runtimeChoice{}, err
+	}
+
 	mounts := []runner.Mount{{Source: release, Target: releaseMount, ReadOnly: true}}
 	for _, p := range writable {
 		mounts = append(mounts, runner.Mount{Source: p, Target: p})
@@ -85,6 +90,10 @@ func (s *server) containerSpec(app state.App, m *manifest.Manifest, env map[stri
 			PidsLimit:   256,
 			NanoCPUs:    nanoCPUsFor(runtime.NumCPU()),
 			StopGrace:   stopGrace,
+			// The defaults, each lifted only by `bay harden --relax`.
+			User:             user,
+			ReadOnlyRootfs:   !relaxed(app, relaxWritableRootfs),
+			DropCapabilities: !relaxed(app, relaxCapabilities),
 		},
 	}
 	return spec, runtimeChoice{Ref: sel.Ref, Warning: sel.Warning}, nil
@@ -258,4 +267,61 @@ func (s *server) restart(app state.App) error {
 		return err
 	}
 	return s.start(app)
+}
+
+// The hardening defaults an archive app may have lifted, by name.
+const (
+	relaxWritableRootfs = "writable-rootfs"
+	relaxCapabilities   = "capabilities"
+)
+
+func relaxed(app state.App, what string) bool {
+	for _, r := range app.Relaxed {
+		if r == what {
+			return true
+		}
+	}
+	return false
+}
+
+/*
+appUser is the uid:gid an archive app's container runs as.
+
+Its own uid, allocated once and kept (state.EnsureUID), and its writable paths
+handed to it, so the app can write its database and nothing it was not given.
+That is the isolation the per-app unix user gave under systemd: one app's
+compromise reaches that app's files, not the others'.
+
+When Bay itself is not root (development, the test suites), it cannot hand
+files to another uid, so the container runs as Bay's own user instead; that is
+said once in the log rather than failing.
+*/
+func (s *server) appUser(app state.App, writable []string) (string, error) {
+	if os.Geteuid() != 0 {
+		return fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid()), nil
+	}
+	uid, err := s.store.EnsureUID(app.Key())
+	if err != nil {
+		return "", err
+	}
+	for _, p := range writable {
+		if err := os.MkdirAll(p, 0o755); err != nil {
+			return "", err
+		}
+		if err := chownTree(p, uid); err != nil {
+			return "", fmt.Errorf("hand %s to the app's uid %d: %w", p, uid, err)
+		}
+	}
+	return fmt.Sprintf("%d:%d", uid, uid), nil
+}
+
+// chownTree gives a directory and everything under it to uid:uid, without
+// following symlinks.
+func chownTree(root string, uid int) error {
+	return filepath.Walk(root, func(path string, _ os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		return os.Lchown(path, uid, uid)
+	})
 }

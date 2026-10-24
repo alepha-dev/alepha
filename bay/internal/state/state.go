@@ -152,6 +152,15 @@ type App struct {
 	// "path /x", "image healthcheck" or "tcp", so `bay status` never claims
 	// more than was actually checked.
 	HealthCheck string `json:"healthCheck,omitempty"`
+
+	// UID is the unix user an archive app's container runs as, its own and
+	// stable across deploys, so its data stays its own on disk. Zero until
+	// first allocated.
+	UID int `json:"uid,omitempty"`
+	// Relaxed names the hardening defaults lifted for this instance, by an
+	// explicit `bay harden --relax`. Recorded so a later reader sees that this
+	// app runs with less isolation than the others, and why it is allowed to.
+	Relaxed []string `json:"relaxed,omitempty"`
 }
 
 // UpstreamPort is the host port to send this instance's traffic to.
@@ -349,6 +358,11 @@ func (s *Store) Upsert(app App) error {
 			// An image somebody chose for this instance outlives its releases,
 			// until `bay runtimes clear` says otherwise.
 			app.RuntimeImage = a.RuntimeImage
+			// Its own uid owns its files on disk; a new one would leave the app
+			// unable to write its own database. Relaxations are a decision about
+			// the instance, not about one release.
+			app.UID = a.UID
+			app.Relaxed = a.Relaxed
 			// ⚠️ `Stopped` is deliberately NOT carried forward, unlike every
 			// other runtime-owned field above. A deploy is an instruction to
 			// run THIS release, and `deployArtifact` already calls `start`
@@ -447,6 +461,43 @@ reported as a deliberate stop.
 */
 func (s *Store) SetStopped(key string, stopped bool) error {
 	return s.mutate(key, func(a *App) { a.Stopped = stopped })
+}
+
+// firstAppUID is where instance uids start: above every distribution's range
+// for human and system accounts, so an app never shares a uid with a login.
+const firstAppUID = 20000
+
+/*
+EnsureUID returns an instance's uid, allocating the next free one on first
+use. Allocated, never derived from the name, so two instances can never share
+one: a shared uid would let each read the other's database.
+*/
+func (s *Store) EnsureUID(key string) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	next := firstAppUID
+	idx := -1
+	for i, a := range s.state.Apps {
+		if a.UID >= next {
+			next = a.UID + 1
+		}
+		if a.Key() == key {
+			idx = i
+		}
+	}
+	if idx < 0 {
+		return 0, fmt.Errorf("unknown app %q", key)
+	}
+	if uid := s.state.Apps[idx].UID; uid != 0 {
+		return uid, nil
+	}
+	s.state.Apps[idx].UID = next
+	return next, s.flush()
+}
+
+// SetRelaxed records which hardening defaults are lifted for an instance.
+func (s *Store) SetRelaxed(key string, relaxed []string) error {
+	return s.mutate(key, func(a *App) { a.Relaxed = relaxed })
 }
 
 // SetHealthCheck records which check last decided an instance was ready.
