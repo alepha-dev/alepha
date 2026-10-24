@@ -161,6 +161,9 @@ func TestStackDeployDaemon(t *testing.T) {
 		if status != 200 || !strings.Contains(body, `"redis":"+PONG"`) {
 			t.Fatalf("api: %d %s", status, body)
 		}
+		if u, _ := d.Usage(memberKey("shop", env, "web")); !u.StartedAt.Equal(webStarted) {
+			t.Fatal("deploying the app service recreated another service")
+		}
 	})
 
 	t.Run("reapplying the revision changes nothing and recreates nothing", func(t *testing.T) {
@@ -185,8 +188,12 @@ func TestStackDeployDaemon(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if strings.Join(dry.Plan.Changed, ",") != "web" || len(dry.Plan.Created) != 0 {
+		if strings.Join(dry.Plan.Changed, ",") != "web" || len(dry.Plan.Created) != 0 ||
+			strings.Join(dry.Plan.Fields["web"], ",") != "image" {
 			t.Fatalf("dry plan = %+v", dry.Plan)
+		}
+		if len(dry.Warnings) != 1 || !strings.Contains(dry.Warnings[0], "service web has no healthcheck") {
+			t.Fatalf("warnings = %v", dry.Warnings)
 		}
 		if env, _ := store.StackEnv("shop", env); env.Revision != 1 {
 			t.Fatalf("a dry run moved the revision to %d", env.Revision)
@@ -218,6 +225,22 @@ func TestStackDeployDaemon(t *testing.T) {
 		}
 		if status, body := get("api." + base); status != 200 || !strings.Contains(body, "PONG") {
 			t.Fatalf("api after the rollback: %d %s", status, body)
+		}
+	})
+
+	t.Run("an environment route serves a full domain at once", func(t *testing.T) {
+		domain := "www-" + env + ".example.test"
+		rec := httptest.NewRecorder()
+		s.controlMux().ServeHTTP(rec, httptest.NewRequest(http.MethodPut, "/stacks/shop/"+env+"/routes",
+			strings.NewReader(`{"service": "web", "domain": "`+domain+`"}`)))
+		if rec.Code != 200 {
+			t.Fatalf("%d %s", rec.Code, rec.Body.String())
+		}
+		if status, body := get(domain); status != 200 || !strings.Contains(body, "nginx") {
+			t.Fatalf("%s: %d %.80s", domain, status, body)
+		}
+		if status, _ := get(base); status != 200 {
+			t.Fatalf("the label route stopped serving: %d", status)
 		}
 	})
 }

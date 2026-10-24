@@ -35,6 +35,9 @@ type StackEnv struct {
 	// given, keyed "service:port", so a redeploy keeps every route and every
 	// published address where it was.
 	HostPorts map[string]int `json:"hostPorts,omitempty"`
+	// TCP maps each public port opened for `x-lore.tcp` to the loopback port
+	// it forwards to.
+	TCP map[int]int `json:"tcp,omitempty"`
 	// Stopped is the intent `bay stack stop` records, like App.Stopped.
 	Stopped bool `json:"stopped,omitempty"`
 }
@@ -183,6 +186,10 @@ func copyStackEnv(e StackEnv) StackEnv {
 	c := e
 	c.Revisions = append([]StackRevision(nil), e.Revisions...)
 	c.Routes = append([]StackRoute(nil), e.Routes...)
+	c.TCP = make(map[int]int, len(e.TCP))
+	for k, v := range e.TCP {
+		c.TCP[k] = v
+	}
 	c.HostPorts = make(map[string]int, len(e.HostPorts))
 	for k, v := range e.HostPorts {
 		c.HostPorts[k] = v

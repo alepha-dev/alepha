@@ -13,6 +13,7 @@ import (
 
 	"github.com/alepha-dev/bay/internal/deploy"
 	"github.com/alepha-dev/bay/internal/stack"
+	"github.com/alepha-dev/bay/internal/state"
 )
 
 /*
@@ -35,6 +36,123 @@ func (s *server) registerStackRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /stacks/{stack}/{env}/vars", s.handleStackVarsUnset)
 	mux.HandleFunc("GET /stacks/{stack}/{env}/vars", s.handleStackVarsList)
 	mux.HandleFunc("POST /stacks/{stack}/{env}/deploy", s.handleStackDeploy)
+	mux.HandleFunc("PUT /stacks/{stack}/{env}/routes", s.handleStackRouteAdd)
+	mux.HandleFunc("DELETE /stacks/{stack}/{env}/routes", s.handleStackRouteRemove)
+	mux.HandleFunc("GET /stacks/{stack}/{env}/routes", s.handleStackRouteList)
+}
+
+var domainPattern = regexp.MustCompile(`^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$`)
+
+/*
+handleStackRouteAdd sends a full domain to a service of a stack environment,
+and reapplies the current revision so it serves at once. This is how an
+unmodified compose file is routed, and how staging and production get
+different domains.
+*/
+func (s *server) handleStackRouteAdd(w http.ResponseWriter, r *http.Request) {
+	name, env, ok := s.stackPath(w, r)
+	if !ok {
+		return
+	}
+	var body struct {
+		Service string `json:"service"`
+		Domain  string `json:"domain"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Service == "" {
+		writeError(w, http.StatusBadRequest, `body must be {"service": "...", "domain": "..."}`)
+		return
+	}
+	domain := strings.ToLower(strings.TrimSpace(body.Domain))
+	if !domainPattern.MatchString(domain) {
+		writeError(w, http.StatusBadRequest, fmt.Sprintf("%q is not a domain (a wildcard is refused: Bay cannot prove one over ACME)", body.Domain))
+		return
+	}
+	if owner, claimed := s.store.ClaimedBy(domain); claimed && owner != memberKey(name, env, body.Service) {
+		writeError(w, http.StatusConflict, "domain "+domain+" is already served by "+owner)
+		return
+	}
+	for _, st := range s.store.Stacks() {
+		for _, e := range st.Envs {
+			if st.Name == name && e.Env == env {
+				continue
+			}
+			for _, route := range e.Routes {
+				if route.Domain == domain {
+					writeError(w, http.StatusConflict, "domain "+domain+" is already routed by "+st.Name+"/"+e.Env)
+					return
+				}
+			}
+		}
+	}
+	err := s.store.MutateStackEnv(name, env, func(e *state.StackEnv) error {
+		for _, existing := range e.Routes {
+			if existing.Domain == domain {
+				return fmt.Errorf("%s already routes %s to %s", name+"/"+env, domain, existing.Service)
+			}
+		}
+		e.Routes = append(e.Routes, state.StackRoute{Service: body.Service, Domain: domain})
+		return nil
+	})
+	if err != nil {
+		writeError(w, http.StatusConflict, err.Error())
+		return
+	}
+	s.respondAfterRouteChange(w, r, name, env)
+}
+
+func (s *server) handleStackRouteRemove(w http.ResponseWriter, r *http.Request) {
+	name, env, ok := s.stackPath(w, r)
+	if !ok {
+		return
+	}
+	domain := strings.ToLower(r.URL.Query().Get("domain"))
+	found := false
+	err := s.store.MutateStackEnv(name, env, func(e *state.StackEnv) error {
+		kept := e.Routes[:0]
+		for _, route := range e.Routes {
+			if route.Domain == domain {
+				found = true
+				continue
+			}
+			kept = append(kept, route)
+		}
+		e.Routes = kept
+		return nil
+	})
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if !found {
+		writeError(w, http.StatusNotFound, name+"/"+env+" has no route for "+domain)
+		return
+	}
+	s.respondAfterRouteChange(w, r, name, env)
+}
+
+// respondAfterRouteChange reapplies the current revision when there is one,
+// so the routes the record names are the ones served.
+func (s *server) respondAfterRouteChange(w http.ResponseWriter, r *http.Request, name, env string) {
+	se, _ := s.store.StackEnv(name, env)
+	if se.Revision == 0 {
+		writeJSON(w, http.StatusOK, map[string]any{"routes": se.Routes, "note": "applied at the first `bay stack deploy`"})
+		return
+	}
+	if _, err := s.deployStack(r.Context(), stackDeployOptions{Stack: name, Env: env}); err != nil {
+		writeError(w, http.StatusBadRequest, "recorded, but reapplying the stack failed: "+err.Error())
+		return
+	}
+	se, _ = s.store.StackEnv(name, env)
+	writeJSON(w, http.StatusOK, map[string]any{"routes": se.Routes})
+}
+
+func (s *server) handleStackRouteList(w http.ResponseWriter, r *http.Request) {
+	name, env, ok := s.stackPath(w, r)
+	if !ok {
+		return
+	}
+	se, _ := s.store.StackEnv(name, env)
+	writeJSON(w, http.StatusOK, map[string]any{"baseDomain": se.BaseDomain, "routes": se.Routes})
 }
 
 /*
@@ -151,7 +269,10 @@ func (s *server) handleStackVarsList(w http.ResponseWriter, r *http.Request) {
 const stackUsage = `usage: bay stack <command> <stack>/<env> ...
   env set <stack>/<env> (-|FILE)     merge KEY=VALUE lines, read from stdin or a file
   env list <stack>/<env>             variable names, never values
-  env unset <stack>/<env> KEY...     remove variables`
+  env unset <stack>/<env> KEY...     remove variables
+  route <stack>/<env> <service> <domain>   serve a full domain from a service
+  route list <stack>/<env>           the environment's routes
+  route remove <stack>/<env> <domain>`
 
 // cmdStack is `bay stack`.
 func cmdStack(args []string) error {
@@ -161,6 +282,8 @@ func cmdStack(args []string) error {
 	switch args[0] {
 	case "env":
 		return cmdStackEnv(args[1:])
+	case "route":
+		return cmdStackRoute(args[1:])
 	default:
 		return errors.New(stackUsage)
 	}
@@ -229,5 +352,52 @@ func cmdStackEnv(args []string) error {
 	default:
 		return errors.New(stackUsage)
 	}
+	return nil
+}
+
+func cmdStackRoute(args []string) error {
+	if len(args) < 2 {
+		return errors.New(stackUsage)
+	}
+	switch args[0] {
+	case "list":
+		name, env, err := stackKeyOf(args[1])
+		if err != nil {
+			return err
+		}
+		res, err := call(http.MethodGet, controlHost+"/stacks/"+name+"/"+env+"/routes", nil)
+		if err != nil {
+			return err
+		}
+		fmt.Println(res)
+		return nil
+	case "remove":
+		if len(args) < 3 {
+			return errors.New(stackUsage)
+		}
+		name, env, err := stackKeyOf(args[1])
+		if err != nil {
+			return err
+		}
+		res, err := call(http.MethodDelete, controlHost+"/stacks/"+name+"/"+env+"/routes?domain="+args[2], nil)
+		if err != nil {
+			return err
+		}
+		fmt.Println(res)
+		return nil
+	}
+	if len(args) < 3 {
+		return errors.New(stackUsage)
+	}
+	name, env, err := stackKeyOf(args[0])
+	if err != nil {
+		return err
+	}
+	body, _ := json.Marshal(map[string]string{"service": args[1], "domain": args[2]})
+	res, err := call(http.MethodPut, controlHost+"/stacks/"+name+"/"+env+"/routes", strings.NewReader(string(body)))
+	if err != nil {
+		return err
+	}
+	fmt.Println(res)
 	return nil
 }

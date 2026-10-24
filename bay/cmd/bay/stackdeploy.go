@@ -14,6 +14,7 @@ import (
 
 	"github.com/alepha-dev/bay/internal/deploy"
 	"github.com/alepha-dev/bay/internal/naming"
+	"github.com/alepha-dev/bay/internal/proxy"
 	"github.com/alepha-dev/bay/internal/runner"
 	"github.com/alepha-dev/bay/internal/stack"
 	"github.com/alepha-dev/bay/internal/state"
@@ -45,6 +46,7 @@ type stackDeployOutcome struct {
 	Plan     stackPlan      `json:"plan"`
 	Members  []stackMember  `json:"members"`
 	Pending  []string       `json:"pending,omitempty"`
+	Warnings []string       `json:"warnings,omitempty"`
 	Digests  map[string]any `json:"digests,omitempty"`
 }
 
@@ -53,6 +55,8 @@ type stackPlan struct {
 	Created []string `json:"created"`
 	Changed []string `json:"changed"`
 	Removed []string `json:"removed"`
+	// Fields names, for each changed service, the keys that differ.
+	Fields map[string][]string `json:"fields,omitempty"`
 }
 
 // stackMember is one service as the deploy left it.
@@ -171,7 +175,12 @@ func (s *server) deployStack(ctx context.Context, opts stackDeployOptions) (*sta
 	// say, so an unchanged tag is unchanged even when it now resolves anew.
 	snapshot := comparableServices(loaded, lore)
 	plan := s.diffRevision(opts.Stack, env, snapshot)
-	outcome := &stackDeployOutcome{Stack: opts.Stack, Env: opts.Env, Revision: n, DryRun: opts.DryRun, Plan: plan}
+	tcp, err := s.stackTCP(opts.Stack, opts.Env, lore, hostPorts)
+	if err != nil {
+		return nil, err
+	}
+	outcome := &stackDeployOutcome{Stack: opts.Stack, Env: opts.Env, Revision: n, DryRun: opts.DryRun, Plan: plan,
+		Warnings: healthWarnings(loaded, lore)}
 	if opts.DryRun {
 		for _, name := range loaded.Services {
 			outcome.Members = append(outcome.Members, stackMember{Service: name, Kind: kindOf(lore[name]), Domains: domains[name]})
@@ -253,6 +262,7 @@ func (s *server) deployStack(ctx context.Context, opts stackDeployOptions) (*sta
 	err = s.store.MutateStackEnv(opts.Stack, opts.Env, func(e *state.StackEnv) error {
 		e.Revision = n
 		e.HostPorts = hostPorts
+		e.TCP = tcp
 		if e.BaseDomain == "" {
 			e.BaseDomain = base
 		}
@@ -270,6 +280,7 @@ func (s *server) deployStack(ctx context.Context, opts stackDeployOptions) (*sta
 		return nil, err
 	}
 	s.saveModel(dir, snapshot)
+	s.syncTCP()
 	if s.tls != nil {
 		var all []string
 		for _, d := range domains {
@@ -543,7 +554,7 @@ func comparableServices(l *stack.Loaded, lore map[string]stack.XLore) map[string
 
 // diffRevision compares the revision about to be applied with the one that is.
 func (s *server) diffRevision(name string, env state.StackEnv, snapshot map[string]any) stackPlan {
-	plan := stackPlan{Created: []string{}, Changed: []string{}, Removed: []string{}}
+	plan := stackPlan{Created: []string{}, Changed: []string{}, Removed: []string{}, Fields: map[string][]string{}}
 	var before map[string]any
 	if env.Revision > 0 {
 		raw, err := os.ReadFile(filepath.Join(stack.RevisionDir(s.root, name, env.Env, env.Revision), modelFile))
@@ -561,6 +572,7 @@ func (s *server) diffRevision(name string, env state.StackEnv, snapshot map[stri
 			plan.Created = append(plan.Created, name)
 		case !reflect.DeepEqual(old, def):
 			plan.Changed = append(plan.Changed, name)
+			plan.Fields[name] = changedFields(old, def)
 		}
 	}
 	for name := range before {
@@ -572,4 +584,100 @@ func (s *server) diffRevision(name string, env state.StackEnv, snapshot map[stri
 	sort.Strings(plan.Changed)
 	sort.Strings(plan.Removed)
 	return plan
+}
+
+/*
+stackTCP maps each `x-lore.tcp` port to the loopback port Compose published it
+on. A public port is one per host: another stack environment holding it, or
+another program, refuses the deploy before anything moves.
+*/
+func (s *server) stackTCP(name, env string, lore map[string]stack.XLore, hostPorts map[string]int) (map[int]int, error) {
+	out := map[int]int{}
+	for service, x := range lore {
+		if x.TCP == 0 {
+			continue
+		}
+		if x.App != "" {
+			return nil, fmt.Errorf("service %s: x-lore.tcp is for services Compose runs; an app service is reached over HTTP", service)
+		}
+		for _, st := range s.store.Stacks() {
+			for _, e := range st.Envs {
+				if st.Name == name && e.Env == env {
+					continue
+				}
+				if _, taken := e.TCP[x.TCP]; taken {
+					return nil, fmt.Errorf("service %s: TCP port %d is already opened for %s/%s", service, x.TCP, st.Name, e.Env)
+				}
+			}
+		}
+		if s.tcp == nil || !s.tcp.Owns(x.TCP) {
+			if err := proxy.PortFree(x.TCP); err != nil {
+				return nil, fmt.Errorf("service %s: %w", service, err)
+			}
+		}
+		out[x.TCP] = hostPorts[service+":"+strconv.Itoa(x.TCP)]
+	}
+	return out, nil
+}
+
+// syncTCP opens exactly the TCP ports every stack environment asks for.
+func (s *server) syncTCP() {
+	if s.tcp == nil {
+		return
+	}
+	forwards := map[int]int{}
+	for _, st := range s.store.Stacks() {
+		for _, e := range st.Envs {
+			if e.Stopped {
+				continue
+			}
+			for public, target := range e.TCP {
+				forwards[public] = target
+			}
+		}
+	}
+	for port, err := range s.tcp.Sync(forwards) {
+		s.log.Error("could not open a stack's TCP port", "port", port, "err", err)
+	}
+}
+
+// changedFields lists the top-level keys of a service definition that differ.
+func changedFields(before, after any) []string {
+	b, _ := before.(map[string]any)
+	a, _ := after.(map[string]any)
+	keys := map[string]bool{}
+	for k := range b {
+		keys[k] = true
+	}
+	for k := range a {
+		keys[k] = true
+	}
+	var out []string
+	for k := range keys {
+		if !reflect.DeepEqual(b[k], a[k]) {
+			out = append(out, k)
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+/*
+healthWarnings names the Compose services with no healthcheck: `--wait`
+counts them ready once running, so an app starting after them may still meet
+a database that is booting.
+*/
+func healthWarnings(l *stack.Loaded, lore map[string]stack.XLore) []string {
+	var out []string
+	services, _ := l.Model["services"].(map[string]any)
+	for _, name := range l.Services {
+		if lore[name].App != "" {
+			continue
+		}
+		svc, _ := services[name].(map[string]any)
+		if _, ok := svc["healthcheck"]; !ok {
+			out = append(out, "service "+name+" has no healthcheck: Bay counts it ready once it runs, which is not the same as serving")
+		}
+	}
+	return out
 }

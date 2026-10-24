@@ -394,6 +394,8 @@ type server struct {
 	// tests waiting for a release that never comes up need not wait a minute.
 	readyWait time.Duration
 	tls       *tlsconf.Manager
+	// tcp holds the raw TCP ports stack services opted into (x-lore.tcp).
+	tcp *proxy.TCP
 	// probe answers "is this app serving?", which is a different question from
 	// "is something listening?" — see internal/health.
 	probe *health.Probe
@@ -682,6 +684,8 @@ func cmdServe(args []string) error {
 	}
 
 	srv.restoreApps()
+	srv.tcp = proxy.NewTCP(log)
+	srv.syncTCP()
 
 	// Scheduled backups. Started after the apps are up so the first catch-up run
 	// snapshots databases that are being served, which is the state a restore has
