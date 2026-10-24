@@ -100,6 +100,29 @@ const AppSettingsEstate = () => {
     return null;
   }
 
+  // A member of a stack takes its estate from the stack environment, never
+  // from this row (#Q2695): saying so is the whole row, since a picker here
+  // would be a second place to choose it that nothing reads.
+  if (instance.stack) {
+    return (
+      <SettingsSection
+        title={tr("app.settings.estate.title")}
+        description={tr("app.settings.estate.description")}
+      >
+        <SettingsRow
+          label={tr("app.settings.estate.label")}
+          description={tr("app.settings.estate.member", {
+            args: [`${instance.stack.name}/${instance.stack.env}`],
+          })}
+        >
+          <span data-testid="app-settings-estate-member" className="text-sm">
+            {`${instance.stack.name}/${instance.stack.env}`}
+          </span>
+        </SettingsRow>
+      </SettingsSection>
+    );
+  }
+
   const isOwner = can("estate:lend");
   const estates = data?.items ?? [];
 

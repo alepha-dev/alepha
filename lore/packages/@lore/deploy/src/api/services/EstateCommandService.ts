@@ -1,4 +1,4 @@
-import { $inject } from "alepha";
+import { $inject, Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
@@ -13,6 +13,17 @@ import type { EstateCommandFrame } from "../schemas/estateCommandFrameSchema.ts"
 import type { EstateCommandPayload } from "../schemas/estateCommandPayloadSchema.ts";
 import type { EstateCommandKind } from "../schemas/estateCommandValues.ts";
 import { EstateCommandTransport } from "./EstateCommandTransport.ts";
+
+declare module "alepha" {
+  interface Hooks {
+    /**
+     * A command's status or step moved: an ack arrived, or the sweep failed
+     * it. What a deploy row riding on that command listens to, so its status
+     * follows the machine without anybody reading the page.
+     */
+    "estate:command:progressed": { command: EstateCommand };
+  }
+}
 
 /**
  * A terminal ack from the machine, or a progress one.
@@ -93,6 +104,7 @@ export class EstateCommandService {
   protected readonly commands = $repository(estateCommands);
   protected readonly transport = $inject(EstateCommandTransport);
   protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly alepha = $inject(Alepha);
 
   /**
    * Refuse a command this estate cannot take, before anything is written.
@@ -242,7 +254,13 @@ export class EstateCommandService {
         ...(ack.reason === undefined ? {} : { reason: ack.reason }),
       });
     }
-    return this.commands.getOne({ where: { id: { eq: command.id } } });
+    const updated = await this.commands.getOne({
+      where: { id: { eq: command.id } },
+    });
+    await this.alepha.events.emit("estate:command:progressed", {
+      command: updated,
+    });
+    return updated;
   }
 
   /**
@@ -277,6 +295,11 @@ export class EstateCommandService {
         status: "failed",
         finishedAt: new Date(now).toISOString(),
         reason,
+      });
+      await this.alepha.events.emit("estate:command:progressed", {
+        command: await this.commands.getOne({
+          where: { id: { eq: command.id } },
+        }),
       });
       failed += 1;
     }
@@ -328,6 +351,7 @@ export class EstateCommandService {
       ...(command.payload.baseDomain
         ? { baseDomain: command.payload.baseDomain }
         : {}),
+      ...(command.payload.service ? { service: command.payload.service } : {}),
     };
   }
 

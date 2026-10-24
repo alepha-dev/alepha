@@ -89,6 +89,18 @@ export const estateCommandPayloadSchema = z.object({
     .max(200)
     .optional(),
   baseDomain: z.string().max(253).optional(),
+  /**
+   * On a `deploy` into a stack member: the app service of {@link stack} the
+   * artifact goes into, alone and blue/green (#Q2695). Bay names the member
+   * `<stack>.<service>`.
+   */
+  service: z.string().min(1).max(100).optional(),
+  /**
+   * The app instance a member deploy is for. Lore's own, never sent to the
+   * machine: it is how the secret pull finds that copy's variables, since a
+   * stack member's estate comes from its stack environment, not its row.
+   */
+  instanceId: z.uuid().optional(),
 });
 
 export type EstateCommandPayload = Infer<typeof estateCommandPayloadSchema>;

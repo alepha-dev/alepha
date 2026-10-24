@@ -106,6 +106,12 @@ export const deployments = $entity({
      * rather than by a person.
      */
     createdBy: z.uuid().optional(),
+    /**
+     * The estate command a Bay deploy rode on, for a copy that is a member of
+     * a stack (#Q2695): its status follows that command instead of a run in
+     * this Worker. Soft, like `artifactId`: the command history is pruned.
+     */
+    commandId: z.uuid().optional(),
   }),
   indexes: [
     // The Deploy tab: this instance's runs, newest first.
@@ -117,6 +123,7 @@ export const deployments = $entity({
     { columns: ["instanceId", "status", "createdAt"] },
     // The dashboard cards: a project's runs by date (#Q2682).
     { columns: ["projectId", "createdAt"] },
+    { columns: ["commandId"] },
   ],
 });
 

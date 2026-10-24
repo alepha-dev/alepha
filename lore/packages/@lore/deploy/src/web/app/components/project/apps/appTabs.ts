@@ -144,14 +144,16 @@ export const APP_TABS: AppTab[] = [
   {
     route: "appDeploy",
     labelKey: "app.tab.deploy",
-    unlockedBy: (instance) => !!instance.estateId,
+    unlockedBy: (instance) =>
+      !!instance.estateId || !!instance.stackEnvironmentId,
     option: "deploy",
   },
   // Beside Deploy, and after it: this configures what a deploy ships.
   {
     route: "appEnvironment",
     labelKey: "app.tab.environment",
-    unlockedBy: (instance) => !!instance.estateId,
+    unlockedBy: (instance) =>
+      !!instance.estateId || !!instance.stackEnvironmentId,
     option: "deploy",
   },
   { route: "appSettings", labelKey: "app.tab.settings" },

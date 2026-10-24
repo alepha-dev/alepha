@@ -17,6 +17,7 @@ import { DeployRegistry } from "./DeployRegistry.ts";
 import { DeployRunner } from "./DeployRunner.ts";
 import { EstateService } from "./EstateService.ts";
 import { ResourceNameService } from "./ResourceNameService.ts";
+import { StackDeployService } from "./StackDeployService.ts";
 
 /**
  * Starting a deploy, and running one.
@@ -40,6 +41,7 @@ export class DeployService {
   protected readonly runner = $inject(DeployRunner);
   protected readonly registry = $inject(DeployRegistry);
   protected readonly names = $inject(ResourceNameService);
+  protected readonly stackDeploys = $inject(StackDeployService);
 
   /**
    * Write the row a deploy will be followed through.
@@ -71,6 +73,15 @@ export class DeployService {
     });
     if (!instance) {
       throw new NotFoundError("No such deployed copy in this project.");
+    }
+    // A member of a stack deploys through it: its estate is the stack
+    // environment's, and only its own service is redeployed (#Q2695).
+    if (instance.stackEnvironmentId) {
+      return await this.stackDeploys.deployMember({
+        instance,
+        tag: input.tag,
+        createdBy: input.createdBy,
+      });
     }
     // ⚠️ The same gate the run applies, here too. A queued row for a deploy
     // that can never run is a row somebody has to explain, and the caller is
@@ -198,6 +209,11 @@ export class DeployService {
    * terminal.
    */
   public async run(row: Deployment): Promise<"done" | "busy"> {
+    // A row riding on an estate command runs on the machine, and follows
+    // that command's acks; there is nothing for this Worker to do.
+    if (row.commandId) {
+      return "done";
+    }
     const cap = await this.limits.concurrency();
     if (this.running >= cap) {
       // ⚠️ Turned away, not silently interleaved. A deploy holds an unpacked

@@ -1,8 +1,13 @@
 import { projects } from "@lore/core/schemas";
-import { $inject } from "alepha";
+import { $hook, $inject } from "alepha";
+import { BAY_OWNED_SECRET_KEYS } from "alepha/cli/infra-lib";
+import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 import { BadRequestError, NotFoundError } from "alepha/server";
 
+import type { AppInstance } from "../entities/appInstances.ts";
+import { artifacts } from "../entities/artifacts.ts";
+import { type Deployment, deployments } from "../entities/deployments.ts";
 import type { EstateCommand } from "../entities/estateCommands.ts";
 import { estateCommands } from "../entities/estateCommands.ts";
 import { estateProjects } from "../entities/estateProjects.ts";
@@ -15,6 +20,7 @@ import { stackEnvironments } from "../entities/stackEnvironments.ts";
 import { stackRevisions } from "../entities/stackRevisions.ts";
 import type { StackDeployOutcome } from "../schemas/stackDeployOutcomeSchema.ts";
 import type { StackModel } from "../schemas/stackModelSchema.ts";
+import { AppSecretService } from "./AppSecretService.ts";
 import { ArtifactService } from "./ArtifactService.ts";
 import { EstateCommandService } from "./EstateCommandService.ts";
 import type { RegistryCredential } from "./ImageRegistryClient.ts";
@@ -45,6 +51,8 @@ import { StackVariableService } from "./StackVariableService.ts";
  */
 export class StackDeployService {
   protected readonly rows = $repository(stackDeployments);
+  protected readonly appDeployments = $repository(deployments);
+  protected readonly artifacts = $repository(artifacts);
   protected readonly commands = $repository(estateCommands);
   protected readonly environments = $repository(stackEnvironments);
   protected readonly revisions = $repository(stackRevisions);
@@ -53,9 +61,11 @@ export class StackDeployService {
   protected readonly projects = $repository(projects);
   protected readonly stacks = $inject(StackService);
   protected readonly variables = $inject(StackVariableService);
+  protected readonly appSecrets = $inject(AppSecretService);
   protected readonly registries = $inject(RegistryCredentialService);
   protected readonly targets = $inject(StackTargets);
   protected readonly queue = $inject(EstateCommandService);
+  protected readonly dateTime = $inject(DateTimeProvider);
 
   async deploy(input: {
     projectId: number;
@@ -71,36 +81,7 @@ export class StackDeployService {
     );
     const where = `${stack.name}/${environment.env}`;
 
-    const estateId = this.stacks.estateOf(stack, environment);
-    if (!estateId) {
-      throw new BadRequestError(
-        `${where} has no estate, so there is nowhere to deploy it. Choose one on the stack's Settings.`,
-      );
-    }
-    const estate = await this.estates.findById(estateId);
-    const grant = estate
-      ? await this.grants.findOne({
-          where: {
-            estateId: { eq: estate.id },
-            projectId: { eq: stack.projectId },
-          },
-        })
-      : undefined;
-    if (!estate || !grant) {
-      throw new NotFoundError(
-        `The estate ${where} deploys to is no longer lent to this project. Ask its owner to lend it again.`,
-      );
-    }
-    if (estate.type !== "bay") {
-      throw new BadRequestError(
-        `The estate '${estate.slug}' is a ${estate.type} estate, and only a Bay runs stacks today.`,
-      );
-    }
-    if (!estate.deployAllowed) {
-      throw new BadRequestError(
-        `The estate '${estate.slug}' does not accept deploys. Its owner can turn that on from their Estates page.`,
-      );
-    }
+    const estate = await this.estateFor(stack, environment, where);
 
     const revisions = await this.stacks.revisionsOf(stack);
     const revision =
@@ -152,6 +133,192 @@ export class StackDeployService {
       createdBy: input.createdBy,
     });
   }
+
+  /**
+   * The estate a stack environment deploys to, checked: lent to the project,
+   * a Bay, accepting deploys. The same messages as an app deploy.
+   */
+  protected async estateFor(
+    stack: { projectId: number; estateId?: string },
+    environment: { estateId?: string },
+    where: string,
+  ) {
+    const estateId = environment.estateId ?? stack.estateId;
+    if (!estateId) {
+      throw new BadRequestError(
+        `${where} has no estate, so there is nowhere to deploy it. Choose one on the stack's Settings.`,
+      );
+    }
+    const estate = await this.estates.findById(estateId);
+    const grant = estate
+      ? await this.grants.findOne({
+          where: {
+            estateId: { eq: estate.id },
+            projectId: { eq: stack.projectId },
+          },
+        })
+      : undefined;
+    if (!estate || !grant) {
+      throw new NotFoundError(
+        `The estate ${where} deploys to is no longer lent to this project. Ask its owner to lend it again.`,
+      );
+    }
+    if (estate.type !== "bay") {
+      throw new BadRequestError(
+        `The estate '${estate.slug}' is a ${estate.type} estate, and only a Bay runs stacks today.`,
+      );
+    }
+    if (!estate.deployAllowed) {
+      throw new BadRequestError(
+        `The estate '${estate.slug}' does not accept deploys. Its owner can turn that on from their Estates page.`,
+      );
+    }
+
+    return estate;
+  }
+
+  /**
+   * Deploys an app instance that is a member of a stack environment: its
+   * artifact goes into its own app service alone, blue/green on Bay, against
+   * the stack's CURRENT revision. Nothing of the compose file is applied, and
+   * no other service is touched (#Q2695).
+   *
+   * Recorded as an ordinary `deployments` row of the instance, whose status
+   * follows the estate command rather than a run in this Worker.
+   */
+  async deployMember(input: {
+    instance: AppInstance;
+    tag: string;
+    createdBy?: string;
+  }): Promise<Deployment> {
+    const { instance } = input;
+    const environment = instance.stackEnvironmentId
+      ? await this.environments.findById(instance.stackEnvironmentId)
+      : undefined;
+    if (!environment) {
+      throw new BadRequestError(
+        `${instance.app}/${instance.env} is not a member of a stack environment`,
+      );
+    }
+    const stack = await this.stacks.get(
+      instance.projectId,
+      environment.stackId,
+    );
+    const where = `${stack.name}/${environment.env}`;
+    const estate = await this.estateFor(stack, environment, where);
+    if (!environment.revision) {
+      throw new BadRequestError(
+        `${where} has never been deployed, so ${instance.app} has no service to go into yet: deploy the stack first`,
+      );
+    }
+    const revision = await this.stacks.getRevision(stack, environment.revision);
+    const model = JSON.parse(revision.model) as StackModel;
+    const service = model.services.find(
+      (s) => s.kind === "app" && s.app === instance.app,
+    );
+    if (!service) {
+      throw new BadRequestError(
+        `${where} revision ${revision.number} has no app service for ${instance.app} (x-lore.app: ${instance.app})`,
+      );
+    }
+    const artifact = await this.artifacts.findOne({
+      where: {
+        projectId: { eq: instance.projectId },
+        app: { eq: instance.app },
+        tag: { eq: input.tag },
+        format: { eq: ArtifactService.ARCHIVE },
+      },
+    });
+    if (!artifact) {
+      throw new NotFoundError(
+        `${instance.app} has no archive tagged '${input.tag}'. Push one with \`lore artifacts push\`, or deploy a tag that exists.`,
+      );
+    }
+    const command = await this.queue.enqueue(
+      estate,
+      {
+        kind: "deploy",
+        payload: {
+          app: instance.app,
+          environment: environment.env,
+          stack: stack.name,
+          service: service.name,
+          instanceId: instance.id,
+          artifact: {
+            id: artifact.id,
+            sha256: artifact.sha256,
+            size: artifact.size ?? 0,
+          },
+        },
+      },
+      input.createdBy,
+    );
+    return await this.appDeployments.create({
+      projectId: instance.projectId,
+      instanceId: instance.id,
+      artifactId: artifact.id,
+      app: artifact.app,
+      tag: artifact.tag,
+      sha256: artifact.sha256,
+      status: "queued",
+      commandId: command.id,
+      createdBy: input.createdBy,
+      log: [
+        {
+          at: new Date(this.dateTime.nowMillis()).toISOString(),
+          text: `Queued for ${service.name} in ${where} on ${estate.slug}`,
+        },
+      ],
+    });
+  }
+
+  /**
+   * Follows the machine: every ack (and every sweep) moves the deploy row
+   * riding on that command, a stack deploy or a member's app deploy.
+   */
+  protected readonly onCommandProgressed = $hook({
+    on: "estate:command:progressed",
+    handler: async ({ command }) => {
+      const stackRow = await this.rows.findOne({
+        where: { commandId: { eq: command.id } },
+      });
+      if (stackRow) {
+        await this.sync([stackRow]);
+        return;
+      }
+      const appRow = await this.appDeployments.findOne({
+        where: { commandId: { eq: command.id } },
+      });
+      if (
+        appRow &&
+        (appRow.status === "queued" || appRow.status === "running")
+      ) {
+        const status = this.statusOf(command);
+        const now = new Date(this.dateTime.nowMillis()).toISOString();
+        const terminal = status === "succeeded" || status === "failed";
+        await this.appDeployments.updateById(appRow.id, {
+          status,
+          ...(status !== "queued" && !appRow.startedAt
+            ? { startedAt: command.runningAt ?? now }
+            : {}),
+          ...(terminal ? { finishedAt: command.finishedAt ?? now } : {}),
+          ...(status === "failed"
+            ? { error: command.reason ?? "The machine reported a failure" }
+            : {}),
+          log: [
+            ...appRow.log,
+            {
+              at: now,
+              text:
+                command.step && !terminal
+                  ? `On the machine: ${command.step}`
+                  : `The machine reports ${command.status}`,
+            },
+          ].slice(-200),
+        });
+      }
+    },
+  });
 
   /**
    * An environment's deploys, newest first, each with its status brought up
@@ -280,6 +447,29 @@ export class StackDeployService {
     return deployment
       ? await this.variables.open(deployment.environmentId)
       : undefined;
+  }
+
+  /**
+   * A member deploy's app variables, opened, without Bay's own names, when
+   * the command really is that copy's deploy: the deploy row of that
+   * instance carries this command id.
+   */
+  async memberSecretsFor(
+    command: EstateCommand,
+  ): Promise<Record<string, string> | undefined> {
+    const instanceId = command.payload.instanceId;
+    if (command.kind !== "deploy" || !instanceId) {
+      return undefined;
+    }
+    const row = await this.appDeployments.findOne({
+      where: { commandId: { eq: command.id }, instanceId: { eq: instanceId } },
+    });
+    if (!row) {
+      return undefined;
+    }
+    return await this.appSecrets.open(instanceId, {
+      except: BAY_OWNED_SECRET_KEYS,
+    });
   }
 
   /**

@@ -235,6 +235,16 @@ export class EstatePullController {
         return set;
       }
 
+      if (command.kind === "deploy" && command.payload.instanceId) {
+        // A stack member's deploy names its copy: its estate is the stack
+        // environment's, so the estate-and-name lookup below cannot find it.
+        const set = await this.stackDeploys.memberSecretsFor(command);
+        if (!set) {
+          throw this.refused();
+        }
+        return set;
+      }
+
       const matches = await this.instances.findMany({
         where: {
           estateId: { eq: command.estateId },

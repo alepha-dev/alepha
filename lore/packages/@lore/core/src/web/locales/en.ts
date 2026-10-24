@@ -1590,6 +1590,8 @@ export default {
   "app.settings.estate.none": "No estate is lent to this project yet.",
   "app.settings.estate.manage": "Manage estates",
   "app.settings.estate.clear": "None",
+  "app.settings.estate.member":
+    "This copy is a member of the stack environment $1: it deploys there, to the estate that environment uses, and only its own service is redeployed. The estate is set on the stack's settings.",
   "app.settings.estate.saved": "Deploy target saved",
   "app.settings.danger": "Danger zone",
   "app.settings.delete.title": "Delete this app",

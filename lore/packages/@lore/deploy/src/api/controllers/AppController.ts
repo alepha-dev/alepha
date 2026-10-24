@@ -13,6 +13,8 @@ import { type AppInstance, appInstances } from "../entities/appInstances.ts";
 import { deployments } from "../entities/deployments.ts";
 import { type Estate, estates } from "../entities/estates.ts";
 import { type Sigil, sigils } from "../entities/sigils.ts";
+import { stackEnvironments } from "../entities/stackEnvironments.ts";
+import { stacks } from "../entities/stacks.ts";
 import {
   type AppInstanceResource,
   appInstanceResourceSchema,
@@ -47,6 +49,8 @@ export class AppController {
   protected instances = $repository(appInstances);
   protected sigils = $repository(sigils);
   protected estates = $repository(estates);
+  protected stackEnvironments = $repository(stackEnvironments);
+  protected stacks = $repository(stacks);
   protected deployments = $repository(deployments);
   protected security = $inject(ProjectSecurityService);
   protected service = $inject(AppService);
@@ -541,15 +545,25 @@ export class AppController {
       ...new Set(rows.flatMap((row) => (row.estateId ? [row.estateId] : []))),
     ];
 
-    const [sigilRows, estateRows, deployedTags] = await Promise.all([
-      sigilIds.length
-        ? this.sigils.findMany({ where: { id: { inArray: sigilIds } } })
-        : Promise.resolve([]),
-      estateIds.length
-        ? this.estates.findMany({ where: { id: { inArray: estateIds } } })
-        : Promise.resolve([]),
-      this.deployedTags(rows.map((row) => row.id)),
-    ]);
+    const environmentIds = [
+      ...new Set(
+        rows.flatMap((row) =>
+          row.stackEnvironmentId ? [row.stackEnvironmentId] : [],
+        ),
+      ),
+    ];
+
+    const [sigilRows, estateRows, deployedTags, stackSummaries] =
+      await Promise.all([
+        sigilIds.length
+          ? this.sigils.findMany({ where: { id: { inArray: sigilIds } } })
+          : Promise.resolve([]),
+        estateIds.length
+          ? this.estates.findMany({ where: { id: { inArray: estateIds } } })
+          : Promise.resolve([]),
+        this.deployedTags(rows.map((row) => row.id)),
+        this.stackSummaries(environmentIds),
+      ]);
 
     const bySigil = new Map(sigilRows.map((row) => [row.id, row]));
     const byEstate = new Map(estateRows.map((row) => [row.id, row]));
@@ -560,8 +574,55 @@ export class AppController {
         row.sigilId ? bySigil.get(row.sigilId) : undefined,
         row.estateId ? byEstate.get(row.estateId) : undefined,
         deployedTags.get(row.id),
+        row.stackEnvironmentId
+          ? stackSummaries.get(row.stackEnvironmentId)
+          : undefined,
       ),
     );
+  }
+
+  /**
+   * The stack and environment names of the members among these copies,
+   * keyed by environment id: two batched reads, never one per row.
+   */
+  protected async stackSummaries(
+    environmentIds: string[],
+  ): Promise<
+    Map<
+      string,
+      { id: string; name: string; environmentId: string; env: string }
+    >
+  > {
+    if (environmentIds.length === 0) {
+      return new Map();
+    }
+    const environments = await this.stackEnvironments.findMany({
+      where: { id: { inArray: environmentIds } },
+    });
+    const stackRows = environments.length
+      ? await this.stacks.findMany({
+          where: {
+            id: { inArray: [...new Set(environments.map((e) => e.stackId))] },
+          },
+        })
+      : [];
+    const byStack = new Map(stackRows.map((row) => [row.id, row]));
+    const out = new Map<
+      string,
+      { id: string; name: string; environmentId: string; env: string }
+    >();
+    for (const environment of environments) {
+      const stack = byStack.get(environment.stackId);
+      if (stack) {
+        out.set(environment.id, {
+          id: stack.id,
+          name: stack.name,
+          environmentId: environment.id,
+          env: environment.env,
+        });
+      }
+    }
+    return out;
   }
 
   /**
@@ -634,6 +695,7 @@ export class AppController {
     sigil?: Sigil,
     estate?: Estate,
     version?: string,
+    stack?: { id: string; name: string; environmentId: string; env: string },
   ): AppInstanceResource {
     return {
       id: instance.id,
@@ -645,6 +707,8 @@ export class AppController {
       url: instance.url,
       sigilId: instance.sigilId,
       estateId: instance.estateId,
+      stackEnvironmentId: instance.stackEnvironmentId,
+      ...(stack ? { stack } : {}),
       // Exposed on purpose: whether a destroy may take this copy's database is
       // a property somebody should be able to READ before asking for one.
       ephemeral: instance.ephemeral,

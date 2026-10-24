@@ -1570,6 +1570,8 @@ export default {
     "Aucun domaine n\u2019est prêté à ce projet pour l\u2019instant.",
   "app.settings.estate.manage": "Gérer les domaines",
   "app.settings.estate.clear": "Aucun",
+  "app.settings.estate.member":
+    "Cette copie fait partie de l'environnement de stack $1 : elle s'y déploie, sur le domaine qu'utilise cet environnement, et seul son propre service est redéployé. Le domaine se règle dans les paramètres de la stack.",
   "app.settings.estate.saved": "Cible de déploiement enregistrée",
   "app.settings.danger": "Zone dangereuse",
   "app.settings.delete.title": "Supprimer cette app",

@@ -1,4 +1,4 @@
-import type { Infer } from "alepha";
+import { type Infer, z } from "alepha";
 
 import { appInstances } from "../entities/appInstances.ts";
 import { deployments } from "../entities/deployments.ts";
@@ -74,6 +74,18 @@ export const appInstanceResourceSchema = appInstances.schema
      * that everything on `latest` is one build.
      */
     version: deployments.schema.shape.tag.optional(),
+    /**
+     * The stack environment this copy is a member of, named: a member deploys
+     * through it and takes its estate from it (#Q2695).
+     */
+    stack: z
+      .object({
+        id: z.uuid(),
+        name: z.string(),
+        environmentId: z.uuid(),
+        env: z.string(),
+      })
+      .optional(),
   });
 
 export type AppInstanceResource = Infer<typeof appInstanceResourceSchema>;

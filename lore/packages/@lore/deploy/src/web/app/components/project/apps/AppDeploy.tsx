@@ -83,7 +83,9 @@ const AppDeploy = () => {
     return null;
   }
 
-  if (!instance.estateId) {
+  // A stack member deploys through its stack environment, which holds the
+  // estate (#Q2695).
+  if (!instance.estateId && !instance.stackEnvironmentId) {
     return (
       <div className="flex flex-col gap-4 p-4">
         <Card data-testid="app-deploy-no-estate">
@@ -120,7 +122,9 @@ const AppDeploy = () => {
   const canDeploy = can("deploy:manage");
   // Derived from the estate's TYPE through the module the server reads too, so
   // the button and the gate cannot disagree about what this copy can run.
-  const runnable = acceptedRuntimes(instance.estate?.type ?? "cloudflare");
+  const runnable = acceptedRuntimes(
+    instance.estate?.type ?? (instance.stack ? "bay" : "cloudflare"),
+  );
 
   return (
     <div className="flex flex-col gap-4 p-4">
