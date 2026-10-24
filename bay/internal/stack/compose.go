@@ -69,12 +69,17 @@ func Load(dir, project string, vars map[string]string) (*Loaded, error) {
 	if err != nil {
 		return nil, err
 	}
+	prepared, err := withAppPlaceholders(raw, xlore)
+	if err != nil {
+		return nil, err
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, ComposeCommand, "compose",
-		"--project-name", project, "--project-directory", dir, "--file", file,
+		"--project-name", project, "--project-directory", dir, "--file", "-",
 		"config", "--format", "json")
+	cmd.Stdin = bytes.NewReader(prepared)
 	// The variables travel in the process environment, not an env file:
 	// Compose's env-file grammar cannot carry every value (a single quote
 	// inside a quoted one), and the environment takes precedence over a
@@ -182,6 +187,44 @@ func plural(n int, one, many string) string {
 	}
 	return many
 }
+
+/*
+withAppPlaceholders gives every app service with no image a placeholder one.
+
+An app service is `x-lore: { app: api }` and nothing more: Bay runs it from the
+artifact deployed under that name, so the file has no image to give, and
+Compose refuses a service with neither image nor build. The placeholder is
+never pulled; Bay takes app services out before Compose runs anything.
+*/
+func withAppPlaceholders(raw []byte, xlore map[string]map[string]any) ([]byte, error) {
+	var doc map[string]any
+	if err := yaml.Unmarshal(raw, &doc); err != nil {
+		return nil, fmt.Errorf("the compose file is not valid YAML: %w", err)
+	}
+	services, _ := doc["services"].(map[string]any)
+	changed := false
+	for name, x := range xlore {
+		if _, isApp := x["app"]; !isApp {
+			continue
+		}
+		svc, _ := services[name].(map[string]any)
+		if svc == nil {
+			continue
+		}
+		if _, ok := svc["image"]; !ok {
+			svc["image"] = appPlaceholderImage
+			changed = true
+		}
+	}
+	if !changed {
+		return raw, nil
+	}
+	return yaml.Marshal(doc)
+}
+
+// appPlaceholderImage stands in for an app service's image while Compose
+// reads the file.
+const appPlaceholderImage = "bay.invalid/app-service"
 
 // readXLore extracts each service's `x-lore` from the raw YAML.
 func readXLore(raw []byte) (map[string]map[string]any, error) {
@@ -331,6 +374,10 @@ func (l *Loaded) PinImages(resolve func(image string) (string, error)) (map[stri
 	pinned := map[string]string{}
 	services, _ := l.Model["services"].(map[string]any)
 	for _, name := range l.Services {
+		if _, isApp := l.XLore[name]["app"]; isApp {
+			// Bay runs it from its artifact; its image here is a placeholder.
+			continue
+		}
 		svc, _ := services[name].(map[string]any)
 		image, _ := svc["image"].(string)
 		if image == "" {
