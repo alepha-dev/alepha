@@ -1,11 +1,18 @@
 package main
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
+
+	"github.com/alepha-dev/bay/internal/state"
 )
 
 func TestStackVarsAPI(t *testing.T) {
@@ -88,6 +95,82 @@ func TestStackRoutesAPI(t *testing.T) {
 		}
 		if code, _ := do(http.MethodDelete, "/stacks/umami/production/routes?domain=analytics.bob.dev", ""); code != 200 {
 			t.Fatalf("code = %d", code)
+		}
+	})
+}
+
+func TestStackCLIHelpers(t *testing.T) {
+	t.Run("a member deploy becomes the member app's deploy", func(t *testing.T) {
+		args, ok := memberDeployArgs([]string{"mcs/staging/api", "-"})
+		if !ok || strings.Join(args, " ") != "- --name mcs.api --env staging" {
+			t.Fatalf("args = %v", args)
+		}
+		args, _ = memberDeployArgs([]string{"mcs/staging/api", "--image", "r@sha256:x", "--port", "3000"})
+		if strings.Join(args, " ") != "--image r@sha256:x --port 3000 --name mcs.api --env staging" {
+			t.Fatalf("args = %v", args)
+		}
+		if _, ok := memberDeployArgs([]string{"app.tar.zst", "--name", "x"}); ok {
+			t.Fatal("an ordinary deploy was taken for a member deploy")
+		}
+	})
+
+	t.Run("a bundle directory packs its files, without .git or node_modules", func(t *testing.T) {
+		dir := t.TempDir()
+		for path, body := range map[string]string{
+			"compose.yml": "services: {}\n", "conf/mosquitto.conf": "x", ".git/HEAD": "ref", "node_modules/a/i.js": "x",
+		} {
+			_ = os.MkdirAll(filepath.Dir(filepath.Join(dir, path)), 0o755)
+			_ = os.WriteFile(filepath.Join(dir, path), []byte(body), 0o644)
+		}
+		packed, err := packBundle(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.Remove(packed)
+		f, _ := os.Open(packed)
+		defer f.Close()
+		gz, _ := gzip.NewReader(f)
+		tr := tar.NewReader(gz)
+		var names []string
+		for {
+			h, err := tr.Next()
+			if err != nil {
+				break
+			}
+			names = append(names, h.Name)
+		}
+		sort.Strings(names)
+		if strings.Join(names, ",") != "compose.yml,conf/mosquitto.conf" {
+			t.Fatalf("packed = %v", names)
+		}
+		if _, err := packBundle(t.TempDir()); err == nil {
+			t.Fatal("a directory with no compose file was packed")
+		}
+	})
+
+	t.Run("list and show answer the recorded environments and members", func(t *testing.T) {
+		f := newDeployFixture(t)
+		_ = f.server.store.MutateStackEnv("umami", "production", func(e *state.StackEnv) error {
+			e.Revision = 1
+			e.Revisions = []state.StackRevision{{Number: 1}}
+			return nil
+		})
+		_ = f.server.store.Upsert(state.App{Name: "umami.db", Env: "production", Stack: "umami", Service: "db", ServiceKind: "service"})
+		mux := f.server.controlMux()
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/stacks", nil))
+		if rec.Code != 200 || !strings.Contains(rec.Body.String(), `"stack":"umami"`) {
+			t.Fatalf("%d %s", rec.Code, rec.Body.String())
+		}
+		rec = httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/stacks/umami/production", nil))
+		if rec.Code != 200 || !strings.Contains(rec.Body.String(), `"service":"db"`) {
+			t.Fatalf("%d %s", rec.Code, rec.Body.String())
+		}
+		rec = httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/stacks/nope/production", nil))
+		if rec.Code != 404 {
+			t.Fatalf("unknown: %d", rec.Code)
 		}
 	})
 }

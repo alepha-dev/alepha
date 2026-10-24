@@ -155,3 +155,8 @@ func lastLines(s string, n int) string {
 	}
 	return strings.Join(lines, "\n")
 }
+
+// RestartService restarts one Compose service of a stack environment in place.
+func RestartService(dir, project, service string) error {
+	return compose(dir, project, nil, 5*time.Minute, "restart", service)
+}

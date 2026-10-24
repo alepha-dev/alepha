@@ -46,6 +46,10 @@ func (s *server) registerStackRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /stacks/{stack}/{env}/stop", s.handleStackStop)
 	mux.HandleFunc("POST /stacks/{stack}/{env}/start", s.handleStackStart)
 	mux.HandleFunc("DELETE /stacks/{stack}/{env}", s.handleStackDestroy)
+	mux.HandleFunc("GET /stacks", s.handleStackList)
+	mux.HandleFunc("GET /stacks/{stack}/{env}", s.handleStackShow)
+	mux.HandleFunc("POST /stacks/{stack}/{env}/restart", s.handleStackRestart)
+	mux.HandleFunc("GET /stacks/{stack}/{env}/volumes", s.handleStackVolumes)
 }
 
 /*
@@ -350,6 +354,15 @@ func (s *server) handleStackVarsList(w http.ResponseWriter, r *http.Request) {
 }
 
 const stackUsage = `usage: bay stack <command> <stack>/<env> ...
+  deploy <stack>/<env> (DIR|compose.yml|ARCHIVE|-) [--dry-run]
+                                     apply a bundle as a new revision (no bundle: reapply)
+  rollback <stack>/<env> --to N      reapply revision N with the digests it pinned
+  list                               every stack environment
+  ps <stack>/<env>                   services, their kind, state and domains
+  logs <stack>/<env> <service> [-n 200]
+  restart <stack>/<env> <service>    an app service blue/green, a service in place
+  volumes <stack>/<env>              the environment's named volumes
+  exec <stack>/<env> <service> <cmd...>   over SSH only, never through Lore
   env set <stack>/<env> (-|FILE)     merge KEY=VALUE lines, read from stdin or a file
   env list <stack>/<env>             variable names, never values
   env unset <stack>/<env> KEY...     remove variables
@@ -377,6 +390,14 @@ func cmdStack(args []string) error {
 		return cmdStackRegistry(args[1:])
 	case "stop", "start", "destroy":
 		return cmdStackLifecycle(args[0], args[1:])
+	case "deploy":
+		return cmdStackDeploy(args[1:])
+	case "rollback":
+		return cmdStackRollback(args[1:])
+	case "list", "ps", "volumes", "logs", "restart":
+		return cmdStackShow(args[0], args[1:])
+	case "exec":
+		return cmdStackExec(args[1:])
 	default:
 		return errors.New(stackUsage)
 	}

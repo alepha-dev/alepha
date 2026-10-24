@@ -253,6 +253,9 @@ func usageText() string {
               # apex + www are one site. The first is the canonical one.
               # -  reads the artifact from stdin, e.g.
               #    ssh HOST 'bay deploy - --name app' < app.tar.zst
+  bay deploy  <stack>/<env>/<service> (<app.tar.zst>|-|--image REF ...)
+              # into a stack's app service: blue/green, only that service
+  bay stack ...                   # stacks: see "bay stack" for the commands
   bay deploy  --image REF@sha256:... --port N --name NAME [--health /path]
               [--env ENV] [--domain HOST]... [--secrets-file PATH]
               # an image app: run as its image defines it, by digest only.
@@ -1740,6 +1743,11 @@ func artifactBody(artifact string, stdin io.Reader) (io.Reader, func(), error) {
 }
 
 func cmdDeploy(args []string) error {
+	// `bay deploy <stack>/<env>/<service> ...` deploys into a stack's app
+	// service: the member app <stack>.<service> in <env>.
+	if rewritten, member := memberDeployArgs(args); member {
+		args = rewritten
+	}
 	for _, arg := range args {
 		if arg == "--image" {
 			return cmdDeployImage(args)
