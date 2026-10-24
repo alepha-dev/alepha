@@ -31,6 +31,10 @@ type StackEnv struct {
 	// compose file gets routed, and how staging and production get different
 	// domains.
 	Routes []StackRoute `json:"routes,omitempty"`
+	// HostPorts pins the loopback port each published container port was
+	// given, keyed "service:port", so a redeploy keeps every route and every
+	// published address where it was.
+	HostPorts map[string]int `json:"hostPorts,omitempty"`
 	// Stopped is the intent `bay stack stop` records, like App.Stopped.
 	Stopped bool `json:"stopped,omitempty"`
 }
@@ -179,5 +183,9 @@ func copyStackEnv(e StackEnv) StackEnv {
 	c := e
 	c.Revisions = append([]StackRevision(nil), e.Revisions...)
 	c.Routes = append([]StackRoute(nil), e.Routes...)
+	c.HostPorts = make(map[string]int, len(e.HostPorts))
+	for k, v := range e.HostPorts {
+		c.HostPorts[k] = v
+	}
 	return c
 }

@@ -6,6 +6,7 @@ require (
 	github.com/caddyserver/certmagic v0.25.6
 	github.com/gorilla/websocket v1.5.3
 	github.com/klauspost/compress v1.20.1
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (

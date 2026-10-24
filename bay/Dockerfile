@@ -46,6 +46,13 @@ RUN go mod download
 RUN go install github.com/letsencrypt/pebble/v2/cmd/pebble@v2.10.1 \
       github.com/letsencrypt/pebble/v2/cmd/pebble-challtestsrv@v2.10.1
 
+# The Docker CLI and its compose plugin, for the stack tests: Bay drives
+# `docker compose` for a stack's services, and the suite reaches the host's
+# daemon through the mounted socket (compose.yml). Copied from the official
+# image rather than installed: both are static Go binaries.
+COPY --from=docker:29-cli /usr/local/bin/docker /usr/local/bin/docker
+COPY --from=docker:29-cli /usr/local/libexec/docker/cli-plugins/docker-compose /usr/local/libexec/docker/cli-plugins/docker-compose
+
 # Modules are already present and the source is mounted read-only, so nothing
 # may reach out to the network or rewrite go.mod mid-run. A missing dependency
 # must fail here, loudly, rather than be fetched and silently recorded.
