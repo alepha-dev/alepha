@@ -467,7 +467,7 @@ describe("Explicit policy adoption and legacy parity", () => {
     expect(
       quests.every(
         (quest) =>
-          quest.reminderNextAt === time.now().add(1, "day").toISOString(),
+          quest.reminderNextAt === time.now().add(24, "hour").toISOString(),
       ),
     ).toBe(true);
     expect(
@@ -583,7 +583,7 @@ describe("Explicit policy adoption and legacy parity", () => {
     expect(
       sent.history.filter((entry) => entry.action === "reminder_sent"),
     ).toHaveLength(1);
-    expect(sent.reminderNextAt).toBe(time.now().add(1, "day").toISOString());
+    expect(sent.reminderNextAt).toBe(time.now().add(24, "hour").toISOString());
     await jobs.trigger("quests.send-due-reminders");
     expect(
       await rows.jobs.count({ jobName: "system.notifications.send" }),
