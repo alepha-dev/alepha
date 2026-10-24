@@ -889,6 +889,17 @@ func (s *server) start(app state.App) error {
 		return nil
 	}
 
+	// A stack service Compose runs is Compose's to start: its restart policy
+	// brings it back, and `docker compose up` recreates it. An app service
+	// with no artifact yet has nothing to start.
+	if app.ServiceKind == "service" {
+		return nil
+	}
+	if app.ServiceKind == "app" && app.Release == "" && app.Image == "" {
+		s.log.Info("app service waits for its first artifact", "app", app.Key())
+		return nil
+	}
+
 	// In containers, archive and image apps alike.
 	if _, inContainers := s.runner.(containerRunner); inContainers {
 		spec, choice, err := s.specFor(app)

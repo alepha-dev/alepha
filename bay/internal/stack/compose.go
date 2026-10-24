@@ -34,6 +34,11 @@ type Loaded struct {
 	// XLore holds each service's raw `x-lore` field, which Compose itself
 	// drops from its normalised output.
 	XLore map[string]map[string]any
+	// Prepared is the compose file as Compose reads it: the user's, with a
+	// placeholder image on app services that have none.
+	Prepared []byte
+	// Vars are the variables the file was interpolated with.
+	Vars map[string]string
 }
 
 // ComposeCommand is the `docker` binary Compose runs through; a variable so
@@ -104,7 +109,8 @@ func Load(dir, project string, vars map[string]string) (*Loaded, error) {
 		names = append(names, name)
 	}
 	sort.Strings(names)
-	return &Loaded{Project: project, Dir: dir, Model: model, Services: names, XLore: xlore}, nil
+	return &Loaded{Project: project, Dir: dir, Model: model, Services: names, XLore: xlore,
+		Prepared: prepared, Vars: vars}, nil
 }
 
 // minimalEnv is what Compose runs with: enough to find the daemon and its
@@ -394,4 +400,25 @@ func (l *Loaded) PinImages(resolve func(image string) (string, error)) (map[stri
 		pinned[name] = ref
 	}
 	return pinned, nil
+}
+
+/*
+SetImages applies the digests a revision recorded, for a rollback: exactly
+what ran, never what a tag means today. A Compose service the record does not
+name is refused rather than resolved afresh.
+*/
+func (l *Loaded) SetImages(pinned map[string]string) error {
+	services, _ := l.Model["services"].(map[string]any)
+	for _, name := range l.Services {
+		if _, isApp := l.XLore[name]["app"]; isApp {
+			continue
+		}
+		ref, ok := pinned[name]
+		if !ok {
+			return fmt.Errorf("no digest was recorded for service %s", name)
+		}
+		svc, _ := services[name].(map[string]any)
+		svc["image"] = ref
+	}
+	return nil
 }

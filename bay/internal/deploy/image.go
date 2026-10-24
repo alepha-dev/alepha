@@ -65,7 +65,9 @@ func RunImage(opts ImageOptions, store *state.Store) (*ImageResult, error) {
 
 	key := opts.Name + "/" + opts.Env
 	existing, isRedeploy := store.Get(key)
-	if isRedeploy && existing.Image == "" {
+	// An archive app's name is not taken over by an image. A stack's app
+	// service waiting for its first artifact has neither, and takes either.
+	if isRedeploy && existing.Image == "" && existing.Release != "" {
 		return nil, fmt.Errorf("%s runs an archive; remove it before deploying an image under the same name", key)
 	}
 

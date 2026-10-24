@@ -477,3 +477,15 @@ func TestCreateBodyHardening(t *testing.T) {
 		}
 	})
 }
+
+func TestCreateBodyOnANetwork(t *testing.T) {
+	body := createBody(Spec{Key: "mcs.api/staging", Runtime: "node", Entry: "index.node.js"},
+		Container{Image: "x", Network: "mcs-staging_default", Aliases: []string{"api"}})
+	if body["HostConfig"].(map[string]any)["NetworkMode"] != "mcs-staging_default" {
+		t.Fatalf("network mode = %v", body["HostConfig"])
+	}
+	endpoints := body["NetworkingConfig"].(map[string]any)["EndpointsConfig"].(map[string]any)
+	if aliases := endpoints["mcs-staging_default"].(map[string]any)["Aliases"].([]string); aliases[0] != "api" {
+		t.Fatalf("aliases = %v", aliases)
+	}
+}

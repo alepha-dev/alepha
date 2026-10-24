@@ -15,7 +15,9 @@ import (
 
 	"github.com/alepha-dev/bay/internal/deploy"
 	"github.com/alepha-dev/bay/internal/manifest"
+	"github.com/alepha-dev/bay/internal/naming"
 	"github.com/alepha-dev/bay/internal/runner"
+	"github.com/alepha-dev/bay/internal/stack"
 	"github.com/alepha-dev/bay/internal/state"
 )
 
@@ -29,18 +31,39 @@ func (s *server) specFor(app state.App) (runner.Spec, runtimeChoice, error) {
 	if err != nil {
 		return runner.Spec{}, runtimeChoice{}, err
 	}
+	if app.Stack != "" {
+		stackVars, err := stack.LoadVars(s.root, app.Stack, app.Env)
+		if err != nil {
+			return runner.Spec{}, runtimeChoice{}, err
+		}
+		env = stack.AppEnv(stackVars, env)
+	}
+	var spec runner.Spec
+	var choice runtimeChoice
 	if app.Image != "" {
-		return imageSpec(app, env), runtimeChoice{Ref: app.Image}, nil
+		spec, choice = imageSpec(app, env), runtimeChoice{Ref: app.Image}
+	} else {
+		m, err := manifest.LoadFromRelease(filepath.Join(instance, "current"))
+		if err != nil {
+			return runner.Spec{}, runtimeChoice{}, err
+		}
+		writable, err := s.writablePaths(app, m, instance)
+		if err != nil {
+			return runner.Spec{}, runtimeChoice{}, err
+		}
+		if spec, choice, err = s.containerSpec(app, m, env, instance, writable); err != nil {
+			return runner.Spec{}, runtimeChoice{}, err
+		}
 	}
-	m, err := manifest.LoadFromRelease(filepath.Join(instance, "current"))
-	if err != nil {
-		return runner.Spec{}, runtimeChoice{}, err
+	// An app service lives on its stack's network and answers to its service
+	// name there, as Compose's containers do.
+	if app.Stack != "" {
+		c := spec.Sandbox.(runner.Container)
+		c.Network = naming.StackProject(app.Stack, app.Env) + "_default"
+		c.Aliases = []string{app.Service}
+		spec.Sandbox = c
 	}
-	writable, err := s.writablePaths(app, m, instance)
-	if err != nil {
-		return runner.Spec{}, runtimeChoice{}, err
-	}
-	return s.containerSpec(app, m, env, instance, writable)
+	return spec, choice, nil
 }
 
 /*

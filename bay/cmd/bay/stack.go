@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/alepha-dev/bay/internal/deploy"
@@ -32,6 +34,58 @@ func (s *server) registerStackRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("PUT /stacks/{stack}/{env}/vars", s.handleStackVarsSet)
 	mux.HandleFunc("DELETE /stacks/{stack}/{env}/vars", s.handleStackVarsUnset)
 	mux.HandleFunc("GET /stacks/{stack}/{env}/vars", s.handleStackVarsList)
+	mux.HandleFunc("POST /stacks/{stack}/{env}/deploy", s.handleStackDeploy)
+}
+
+/*
+handleStackDeploy applies a revision: the request body is a bundle archive
+for a new revision, or empty to reapply the current one (`revision=N` rolls
+back to an earlier one). `dryRun=1` answers the plan and changes nothing.
+*/
+func (s *server) handleStackDeploy(w http.ResponseWriter, r *http.Request) {
+	name, env, ok := s.stackPath(w, r)
+	if !ok {
+		return
+	}
+	q := r.URL.Query()
+	opts := stackDeployOptions{Stack: name, Env: env, DryRun: q.Get("dryRun") == "1"}
+	if raw := q.Get("revision"); raw != "" {
+		n, err := strconv.Atoi(raw)
+		if err != nil || n < 1 {
+			writeError(w, http.StatusBadRequest, "revision must be a revision number")
+			return
+		}
+		opts.Revision = n
+	}
+	tmp, err := os.CreateTemp("", "bay-stack-*.tar")
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer os.Remove(tmp.Name())
+	size, err := io.Copy(tmp, io.LimitReader(r.Body, stack.MaxBundleBytes+1))
+	tmp.Close()
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "read bundle: "+err.Error())
+		return
+	}
+	if size > stack.MaxBundleBytes {
+		writeError(w, http.StatusRequestEntityTooLarge, "the bundle is over the bundle size limit")
+		return
+	}
+	if size > 0 {
+		if opts.Revision > 0 {
+			writeError(w, http.StatusBadRequest, "give a bundle or a revision to roll back to, not both")
+			return
+		}
+		opts.Bundle = tmp.Name()
+	}
+	out, err := s.deployStack(r.Context(), opts)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, out)
 }
 
 func (s *server) stackPath(w http.ResponseWriter, r *http.Request) (string, string, bool) {

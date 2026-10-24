@@ -87,6 +87,19 @@ func TestRunImage(t *testing.T) {
 		}
 	})
 
+	t.Run("a stack's app service waiting for its first artifact takes an image", func(t *testing.T) {
+		root, store := imageStore(t)
+		_ = store.Upsert(state.App{Name: "mcs.api", Env: "staging", Port: 4100, Domains: []string{"api.mcs-staging.bay.test"},
+			Stack: "mcs", Service: "api", ServiceKind: "app"})
+		res, err := RunImage(ImageOptions{Root: root, Name: "mcs.api", Env: "staging", Image: testImage, ContainerPort: 3000}, store)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if res.App.Stack != "mcs" || res.App.Port != 4100 || res.App.Domain() != "api.mcs-staging.bay.test" {
+			t.Fatalf("app = %+v", res.App)
+		}
+	})
+
 	t.Run("secrets are merged and Bay's keys refused", func(t *testing.T) {
 		root, store := imageStore(t)
 		if _, err := RunImage(ImageOptions{Root: root, Name: "api", Env: "production", BaseDomain: "bay.test",

@@ -67,6 +67,12 @@ type Container struct {
 	// ReadOnlyRootfs mounts the image read-only, with a small tmpfs at /tmp:
 	// the app writes only to the paths it was given.
 	ReadOnlyRootfs bool
+	// Network attaches the container to a user-defined network instead of
+	// the default bridge: a stack's network, so its services reach it by name.
+	Network string
+	// Aliases are the names the container answers to on Network: an app
+	// service answers to its service name, as Compose's containers do.
+	Aliases []string
 	// DropCapabilities removes every Linux capability. An archive app needs
 	// none; an image app may (nginx starts as root and drops itself).
 	DropCapabilities bool
@@ -301,6 +307,12 @@ func createBody(spec Spec, c Container) map[string]any {
 	}
 	if c.User != "" {
 		body["User"] = c.User
+	}
+	if c.Network != "" {
+		host["NetworkMode"] = c.Network
+		body["NetworkingConfig"] = map[string]any{
+			"EndpointsConfig": map[string]any{c.Network: map[string]any{"Aliases": c.Aliases}},
+		}
 	}
 	// An image app runs its image's own command in its own working directory;
 	// an archive app names both, its runtime and entry inside the release.
@@ -800,6 +812,33 @@ func (d *Docker) WaitHealthy(key string, candidate bool, timeout time.Duration) 
 		}
 		time.Sleep(500 * time.Millisecond)
 	}
+}
+
+/*
+EnsureNetwork creates a stack's network when it does not exist yet, labelled
+the way Compose labels the default network of `project`, so a later
+`docker compose up` of the same project adopts it instead of refusing a
+network it did not make.
+*/
+func (d *Docker) EnsureNetwork(name, project string) error {
+	err := d.api.do("GET", "/networks/"+name, nil, nil, nil, dockerCallTimeout)
+	if err == nil {
+		return nil
+	}
+	if !isStatus(err, 404) {
+		return fmt.Errorf("inspect network %s: %w", name, err)
+	}
+	body := map[string]any{
+		"Name": name,
+		"Labels": map[string]string{
+			"com.docker.compose.network": "default",
+			"com.docker.compose.project": project,
+		},
+	}
+	if err := d.api.do("POST", "/networks/create", nil, body, nil, dockerCallTimeout); err != nil && !isStatus(err, 409) {
+		return fmt.Errorf("create network %s: %w", name, err)
+	}
+	return nil
 }
 
 // DaemonInfo is what `bay doctor` asks of the daemon.
