@@ -25,6 +25,13 @@ export {
   sigilUniquesDaily,
 } from "../api/entities/sigilUniquesDaily.ts";
 export { type Sigil, sigils } from "../api/entities/sigils.ts";
+export { stackEnvironmentRoutes } from "../api/entities/stackEnvironmentRoutes.ts";
+export { stackEnvironments } from "../api/entities/stackEnvironments.ts";
+export { stackRevisions } from "../api/entities/stackRevisions.ts";
+export { type Stack, stacks } from "../api/entities/stacks.ts";
+export type { StackEnvironmentResource } from "../api/schemas/stackEnvironmentResourceSchema.ts";
+export type { StackResource } from "../api/schemas/stackResourceSchema.ts";
+export type { StackRevisionResource } from "../api/schemas/stackRevisionResourceSchema.ts";
 export type { AdminEstateResource } from "../api/schemas/adminEstateResourceSchema.ts";
 export type { AppInstanceResource } from "../api/schemas/appInstanceResourceSchema.ts";
 export { appsCapabilityOptionsSchema } from "../api/schemas/appsCapabilityOptionsSchema.ts";

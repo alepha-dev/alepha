@@ -4,6 +4,7 @@ import { $entity, db } from "alepha/orm";
 
 import { estates } from "./estates.ts";
 import { sigils } from "./sigils.ts";
+import { stackEnvironments } from "./stackEnvironments.ts";
 
 /**
  * One deployed copy of an app: `club` in `b14-production`, `lore` in
@@ -232,6 +233,23 @@ export const appInstances = $entity({
      */
     ephemeral: db.default(z.boolean(), false),
     createdBy: db.ref(z.uuid().optional(), () => users.cols.id),
+    /**
+     * The stack environment this copy is a member of, when it is one:
+     * `mcs-api/staging` in `mcs/staging`. A copy belongs to at most one, of
+     * its own project and its own env name (`StackService.attachInstance`).
+     *
+     * A member deploys through its stack: the estate comes from the stack
+     * environment, not from {@link estateId}.
+     *
+     * `set null`: deleting a stack environment leaves its apps as ordinary
+     * copies, with their deploys, sigils and analytics. Added as one nullable
+     * `ADD COLUMN`, never a rebuild of this cascade parent.
+     */
+    stackEnvironmentId: db.ref(
+      z.uuid().optional(),
+      () => stackEnvironments.cols.id,
+      { onDelete: "set null" },
+    ),
   }),
   indexes: [
     // The pair IS the row: one `production` copy of `club` per project.
@@ -242,6 +260,7 @@ export const appInstances = $entity({
     { columns: ["sigilId"] },
     // `EstateService.assertUnreferenced` counts through this one.
     { columns: ["estateId"] },
+    { columns: ["stackEnvironmentId"] },
   ],
 });
 

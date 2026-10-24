@@ -20,6 +20,7 @@ import { QualityController } from "./controllers/QualityController.ts";
 import { SigilAnalyticsController } from "./controllers/SigilAnalyticsController.ts";
 import { SigilController } from "./controllers/SigilController.ts";
 import { SigilIngestController } from "./controllers/SigilIngestController.ts";
+import { StackController } from "./controllers/StackController.ts";
 import { UptimePushController } from "./controllers/UptimePushController.ts";
 import { BlightJobs } from "./jobs/BlightJobs.ts";
 import { DeployJobs } from "./jobs/DeployJobs.ts";
@@ -70,6 +71,7 @@ import { QualityTrendMetric } from "./services/QualityTrendMetric.ts";
 import { RollbackService } from "./services/RollbackService.ts";
 import { SigilIngestService } from "./services/SigilIngestService.ts";
 import { SigilTokenService } from "./services/SigilTokenService.ts";
+import { StackService } from "./services/StackService.ts";
 import { UniqueVisitorsMetric } from "./services/UniqueVisitorsMetric.ts";
 import { UptimeHttpProber } from "./services/UptimeHttpProber.ts";
 import { UptimeSocketProber } from "./services/UptimeSocketProber.ts";
@@ -148,6 +150,10 @@ export const LoreDeployApi = $module({
     // One deployed copy's environment (#1813). Sealed at rest, opened only by
     // the deploy, and never read back by any endpoint.
     AppSecretService,
+    // Stacks: apps and services deployed together from one compose.yml
+    // (#E79). The one write path for stacks, their environments, routes,
+    // revisions and members.
+    StackService,
     BlightRuleService,
     OpenBlightCounter,
     DailyVisitorsService,
@@ -192,6 +198,7 @@ export const LoreDeployApi = $module({
     ArtifactController,
     AppController,
     AppSecretController,
+    StackController,
     SigilController,
     SigilIngestController,
     UptimePushController,
@@ -224,11 +231,13 @@ export { ProjectEstateController } from "./controllers/ProjectEstateController.t
 export { QualityController } from "./controllers/QualityController.ts";
 export { SigilAnalyticsController } from "./controllers/SigilAnalyticsController.ts";
 export { SigilController } from "./controllers/SigilController.ts";
+export { StackController } from "./controllers/StackController.ts";
 export { DeployAnalytics } from "./entities/deployAnalytics.ts";
 export { DeployJobs } from "./jobs/DeployJobs.ts";
 export { QualityJobs } from "./jobs/QualityJobs.ts";
 export { SigilJobs } from "./jobs/SigilJobs.ts";
 export { EstateNotifications } from "./notifications/EstateNotifications.ts";
+export { StackService } from "./services/StackService.ts";
 export { AppSecretService } from "./services/AppSecretService.ts";
 export { AppService } from "./services/AppService.ts";
 export { ArtifactService } from "./services/ArtifactService.ts";
