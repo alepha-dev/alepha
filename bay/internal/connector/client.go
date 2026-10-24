@@ -68,6 +68,10 @@ type Command struct {
 	// BaseDomain is what the compose file's route labels resolve against.
 	// Empty leaves the environment's own.
 	BaseDomain string `json:"baseDomain,omitempty"`
+	// Service names the app service of Stack a `deploy` is for: the artifact
+	// goes into that member alone, blue/green, and nothing else of the stack
+	// is touched.
+	Service string `json:"service,omitempty"`
 }
 
 // StackRoute is one full domain one service of a stack environment answers on.
@@ -166,6 +170,7 @@ type serverFrame struct {
 	Revision    int           `json:"revision,omitempty"`
 	Routes      *[]StackRoute `json:"routes,omitempty"`
 	BaseDomain  string        `json:"baseDomain,omitempty"`
+	Service     string        `json:"service,omitempty"`
 }
 
 // Handler receives what the connection delivers. The executor (#1621) is the
@@ -532,7 +537,7 @@ func (c *Client) dispatch(ctx context.Context, frame serverFrame) {
 		cmd := Command{ID: frame.ID, Kind: frame.Kind, App: frame.App,
 			Project:     frame.Project,
 			Environment: frame.Environment, Artifact: frame.Artifact, Logs: frame.Logs,
-			Stack: frame.Stack, Revision: frame.Revision, Routes: frame.Routes, BaseDomain: frame.BaseDomain}
+			Stack: frame.Stack, Revision: frame.Revision, Routes: frame.Routes, BaseDomain: frame.BaseDomain, Service: frame.Service}
 		if c.Handler == nil {
 			// Refused with a reason rather than left to Lore's sweep: an
 			// unacknowledged command reads as a dead machine, and this one

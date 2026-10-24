@@ -496,3 +496,14 @@ func TestStackDeployAction(t *testing.T) {
 		}
 	})
 }
+
+func TestInstanceNameOfAStackMember(t *testing.T) {
+	t.Run("a deploy naming a stack and a service lands on that member", func(t *testing.T) {
+		if got := instanceName(connector.Command{App: "mcs-api", Project: "mcs", Stack: "mcs", Service: "api"}); got != "mcs.api" {
+			t.Fatalf("got %q", got)
+		}
+		if got := instanceName(connector.Command{App: "api", Project: "mcs"}); got != "mcs-api" {
+			t.Fatalf("got %q", got)
+		}
+	})
+}

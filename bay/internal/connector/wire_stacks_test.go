@@ -116,3 +116,15 @@ func TestWireStackV2(t *testing.T) {
 		}
 	})
 }
+
+func TestWireMemberDeploy(t *testing.T) {
+	t.Run("an app deploy into a stack names the stack and the service", func(t *testing.T) {
+		frame, err := decodeFrame(stackFixture(t, "command-member-deploy.json"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if frame.Kind != "deploy" || frame.Stack != "mcs" || frame.Service != "api" || frame.App != "mcs-api" {
+			t.Fatalf("decoded = %+v", frame)
+		}
+	})
+}

@@ -14,6 +14,7 @@ import (
 
 	"github.com/alepha-dev/bay/internal/connector"
 	"github.com/alepha-dev/bay/internal/stack"
+	"github.com/alepha-dev/bay/internal/state"
 )
 
 /*
@@ -360,6 +361,11 @@ never an ack.
 //
 // `alepha platform` sends none, and keeps `<app>-<env>` exactly as before.
 func instanceName(cmd connector.Command) string {
+	// A member of a stack is named after its stack and service, so a Lore
+	// deploy of one app service lands on the member the stack recorded.
+	if cmd.Stack != "" && cmd.Service != "" {
+		return state.MemberName(cmd.Stack, cmd.Service)
+	}
 	if cmd.Project == "" {
 		return cmd.App
 	}
