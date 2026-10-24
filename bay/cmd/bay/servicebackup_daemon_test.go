@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -51,9 +52,14 @@ func backedUpCompose(failing string) string {
     x-lore:
       backup:
         command: "` + failing + `"
+  cache:
+    image: busybox:1.37
+    command: ["sleep", "3600"]
+    volumes: [cachedata:/data]
 volumes:
   pgdata:
   filedata:
+  cachedata:
 `
 }
 
@@ -123,6 +129,47 @@ func TestServiceBackupDaemon(t *testing.T) {
 		}
 		if m := member("broken"); m.LastBackupError == "" || m.LastBackupAt != "" {
 			t.Fatalf("not recorded as failed: %+v", m)
+		}
+	})
+
+	t.Run("a volume no hook covers is named in the backup response, status, volumes and inventory", func(t *testing.T) {
+		out, err := a.backupInstance(context.Background(), member("db"))
+		if err != nil || !strings.Contains(strings.Join(out.NotBackedUp, "|"), "not backed up: volume cachedata") ||
+			strings.Contains(strings.Join(out.NotBackedUp, "|"), "volume pgdata") {
+			t.Fatalf("notBackedUp = %v, %v", out.NotBackedUp, err)
+		}
+		for _, l := range a.listApps() {
+			want := l.Service == "cache"
+			if l.Stack == "shop" && l.Env == env && (len(l.NotBackedUp) == 1) != want {
+				t.Fatalf("%s notBackedUp = %v", l.Service, l.NotBackedUp)
+			}
+		}
+		rec := httptest.NewRecorder()
+		a.controlMux().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/stacks/shop/"+env+"/volumes", nil))
+		var body struct {
+			Volumes []struct {
+				Volume    string   `json:"volume"`
+				SizeBytes *int64   `json:"sizeBytes"`
+				CoveredBy []string `json:"coveredBy"`
+				BackedUp  bool     `json:"backedUp"`
+			} `json:"volumes"`
+		}
+		if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil || len(body.Volumes) != 3 {
+			t.Fatalf("%d %s", rec.Code, rec.Body.String())
+		}
+		for _, v := range body.Volumes {
+			if v.SizeBytes == nil || v.BackedUp != (v.Volume != "cachedata") {
+				t.Fatalf("volume %+v", v)
+			}
+			if v.Volume == "pgdata" && strings.Join(v.CoveredBy, ",") != "db" {
+				t.Fatalf("pgdata covered by %v", v.CoveredBy)
+			}
+		}
+		inv, _ := (&actions{s: a.server}).Inventory(context.Background())
+		for _, st := range inv.Stacks {
+			if st.Stack == "shop" && st.Env == env && strings.Join(st.NotBackedUp, ",") != "cachedata" {
+				t.Fatalf("inventory notBackedUp = %v", st.NotBackedUp)
+			}
 		}
 	})
 

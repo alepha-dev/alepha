@@ -19,6 +19,6 @@
     }
   ],
   "stacks": [
-    {"stack": "umami", "env": "production", "revision": 3, "baseDomain": "umami.bay.example.com", "tcp": [8883]}
+    {"stack": "umami", "env": "production", "revision": 3, "baseDomain": "umami.bay.example.com", "tcp": [8883], "notBackedUp": ["umami-db-data"]}
   ]
 }

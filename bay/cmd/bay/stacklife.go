@@ -307,3 +307,8 @@ func cmdStackLifecycle(verb string, args []string) error {
 	}
 	return nil
 }
+
+// volumeSizer is the runner's ability to say how much disk each volume uses.
+type volumeSizer interface {
+	VolumeSizes() (map[string]int64, error)
+}

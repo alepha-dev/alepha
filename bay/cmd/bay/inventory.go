@@ -33,7 +33,7 @@ func (a *actions) Inventory(context.Context) (connector.Inventory, bool) {
 	for _, st := range a.s.store.Stacks() {
 		for _, e := range st.Envs {
 			row := connector.InventoryStack{Stack: st.Name, Env: e.Env, Revision: e.Revision,
-				Stopped: e.Stopped, BaseDomain: e.BaseDomain}
+				Stopped: e.Stopped, BaseDomain: e.BaseDomain, NotBackedUp: a.s.uncoveredVolumes(st.Name, e.Env)}
 			for port := range e.TCP {
 				row.TCP = append(row.TCP, port)
 			}

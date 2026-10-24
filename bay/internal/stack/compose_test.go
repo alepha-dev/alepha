@@ -203,3 +203,25 @@ func TestLoad(t *testing.T) {
 		}
 	})
 }
+
+func TestVolumeMounts(t *testing.T) {
+	t.Run("named volumes map to the services mounting them; binds and anonymous volumes are left out", func(t *testing.T) {
+		l := &Loaded{Services: []string{"api", "db"}, Model: map[string]any{
+			"volumes": map[string]any{"pgdata": map[string]any{}, "unused": map[string]any{}},
+			"services": map[string]any{
+				"db": map[string]any{"volumes": []any{
+					map[string]any{"type": "volume", "source": "pgdata", "target": "/var/lib/postgresql/data"},
+					map[string]any{"type": "bind", "source": "./init.sql", "target": "/init.sql"},
+				}},
+				"api": map[string]any{"volumes": []any{
+					map[string]any{"type": "volume", "source": "pgdata", "target": "/ro"},
+					map[string]any{"type": "volume", "target": "/tmp/scratch"},
+				}},
+			},
+		}}
+		got := l.VolumeMounts()
+		if strings.Join(got["pgdata"], ",") != "api,db" || got["unused"] != nil || len(got) != 2 {
+			t.Fatalf("mounts = %v", got)
+		}
+	})
+}

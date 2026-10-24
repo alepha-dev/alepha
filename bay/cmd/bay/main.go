@@ -1113,6 +1113,9 @@ type listedApp struct {
 	// with no history: keeping a series in the orchestrator would mean losing
 	// it on every Bay upgrade, so that belongs upstack.
 	Usage *runner.Usage `json:"usage,omitempty"`
+	// NotBackedUp names the stack volumes this member mounts that no backup
+	// hook covers, so a green status line never reads as covering them.
+	NotBackedUp []string `json:"notBackedUp,omitempty"`
 }
 
 func (s *server) listApps() []listedApp {
@@ -1120,8 +1123,9 @@ func (s *server) listApps() []listedApp {
 	out := make([]listedApp, 0, len(apps))
 	for _, app := range apps {
 		entry := listedApp{
-			App:     app,
-			Running: s.runner.Running(app.Key()),
+			App:         app,
+			Running:     s.runner.Running(app.Key()),
+			NotBackedUp: s.uncoveredFor(app),
 		}
 		if usage, ok := s.runner.Usage(app.Key()); ok {
 			entry.Usage = &usage
@@ -2022,6 +2026,12 @@ func cmdStatus(args []string) error {
 		if a.LastBackupError != "" {
 			problems++
 			fmt.Printf("           ⚠ last attempt failed: %s\n", a.LastBackupError)
+		}
+		// Named, not counted as a problem: an unhooked volume is a choice the
+		// stack's author made, and a status that always fails is one nobody
+		// reads. It is still said on every run.
+		for _, v := range a.NotBackedUp {
+			fmt.Printf("           not backed up: volume %s (declare x-lore.backup to cover it)\n", v)
 		}
 		// What is NOT covered even on success, stated on every healthy line:
 		// someone reading a green status should know the shape of it before

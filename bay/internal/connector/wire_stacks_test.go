@@ -49,7 +49,8 @@ func TestWireStackFrames(t *testing.T) {
 		if err := json.Unmarshal(raw, &inv); err != nil {
 			t.Fatal(err)
 		}
-		if len(inv.Stacks) != 1 || inv.Stacks[0].TCP[0] != 8883 || inv.Apps[0].ServiceKind != "service" || inv.Apps[0].Stack != "umami" {
+		if len(inv.Stacks) != 1 || inv.Stacks[0].TCP[0] != 8883 || inv.Apps[0].ServiceKind != "service" || inv.Apps[0].Stack != "umami" ||
+			len(inv.Stacks[0].NotBackedUp) != 1 || inv.Stacks[0].NotBackedUp[0] != "umami-db-data" {
 			t.Fatalf("inventory = %+v", inv)
 		}
 		out, _ := json.Marshal(inv)

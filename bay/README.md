@@ -69,7 +69,10 @@ A stack service is data too, so it declares how to dump itself in
 container and verifies with `pg_restore --list`, and `{command, restore}` takes
 a command's stdout as the dump. Dumps ride the same schedule, upload and
 pruning as the SQLite snapshot; an empty or failing hook is a failed backup.
-The service's other files are not covered, and the response says so.
+The service's other files are not covered, and the response says so. A
+volume no hook covers is named, by name, in every backup response, in
+`bay status`, in `bay stack volumes` (with its size) and in the inventory
+Lore reads: "not backed up: volume keycloak-data".
 
 ## Working on Bay
 

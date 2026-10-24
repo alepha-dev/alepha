@@ -116,6 +116,11 @@ func (s *server) handleStackRestart(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"restarted": name + "/" + env + "/" + service})
 }
 
+/*
+handleStackVolumes lists each named volume with its size and the hooks that
+cover it. A volume no hook covers says so: that is the list somebody needs
+before they trust the backups.
+*/
 func (s *server) handleStackVolumes(w http.ResponseWriter, r *http.Request) {
 	name, env, ok := s.stackPath(w, r)
 	if !ok {
@@ -131,7 +136,23 @@ func (s *server) handleStackVolumes(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"volumes": vols})
+	var sizes map[string]int64
+	if sizer, ok := s.runner.(volumeSizer); ok {
+		sizes, _ = sizer.VolumeSizes()
+	}
+	coverage := s.volumeCoverage(name, env)
+	se, _ := s.store.StackEnv(name, env)
+	out := make([]map[string]any, 0, len(vols))
+	for _, v := range vols {
+		row := map[string]any{"name": v.Name, "volume": v.Volume, "mountedBy": se.Volumes[v.Volume],
+			"coveredBy": coverage[v.Volume], "backedUp": len(coverage[v.Volume]) > 0}
+		if size, known := sizes[v.Name]; known && size >= 0 {
+			row["sizeBytes"] = size
+		}
+		out = append(out, row)
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"volumes": out,
+		"notBackedUp": notBackedUpVolumes(s.uncoveredVolumes(name, env))})
 }
 
 /*
@@ -319,7 +340,28 @@ func cmdStackShow(verb string, args []string) error {
 		if err != nil {
 			return err
 		}
-		fmt.Println(res)
+		var v struct {
+			Volumes []struct {
+				Volume    string   `json:"volume"`
+				SizeBytes *int64   `json:"sizeBytes"`
+				CoveredBy []string `json:"coveredBy"`
+			} `json:"volumes"`
+		}
+		if json.Unmarshal([]byte(res), &v) != nil {
+			fmt.Println(res)
+			return nil
+		}
+		for _, vol := range v.Volumes {
+			size := "?"
+			if vol.SizeBytes != nil {
+				size = humanBytes(*vol.SizeBytes)
+			}
+			covered := "NOT BACKED UP"
+			if len(vol.CoveredBy) > 0 {
+				covered = "backed up by " + strings.Join(vol.CoveredBy, ", ")
+			}
+			fmt.Printf("  %-20s %10s  %s\n", vol.Volume, size, covered)
+		}
 	case "logs":
 		if len(args) < 2 {
 			return errors.New("usage: bay stack logs <stack>/<env> <service> [-n 200]")

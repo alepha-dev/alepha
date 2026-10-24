@@ -284,6 +284,7 @@ func (s *server) deployStack(ctx context.Context, opts stackDeployOptions) (*sta
 		e.Revision = n
 		e.HostPorts = hostPorts
 		e.TCP = tcp
+		e.Volumes = loaded.VolumeMounts()
 		if e.BaseDomain == "" {
 			e.BaseDomain = base
 		}

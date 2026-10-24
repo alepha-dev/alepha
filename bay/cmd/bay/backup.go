@@ -289,7 +289,7 @@ func (s *server) backupInstance(ctx context.Context, app state.App) (backupOutco
 		Pruned: pruned,
 		// What is NOT covered has to be stated, every time. The worst failure
 		// of a backup system is someone believing they are covered.
-		NotBackedUp: notCovered,
+		NotBackedUp: append(notCovered, notBackedUpVolumes(s.uncoveredVolumes(app.Stack, app.Env))...),
 	}, nil
 }
 

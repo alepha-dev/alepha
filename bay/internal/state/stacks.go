@@ -38,6 +38,9 @@ type StackEnv struct {
 	// TCP maps each public port opened for `x-lore.tcp` to the loopback port
 	// it forwards to.
 	TCP map[int]int `json:"tcp,omitempty"`
+	// Volumes maps each named volume to the services mounting it, from the
+	// applied revision: what backup coverage is computed from.
+	Volumes map[string][]string `json:"volumes,omitempty"`
 	// Stopped is the intent `bay stack stop` records, like App.Stopped.
 	Stopped bool `json:"stopped,omitempty"`
 }

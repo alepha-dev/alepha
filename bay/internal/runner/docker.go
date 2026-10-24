@@ -892,6 +892,30 @@ func (d *Docker) ProjectVolumes(project string) ([]ProjectVolume, error) {
 }
 
 /*
+VolumeSizes answers the disk each volume uses, by volume name, from
+`/system/df`. Docker walks every volume to answer, so this is for a command
+someone ran, never a heartbeat. A size Docker could not compute is -1.
+*/
+func (d *Docker) VolumeSizes() (map[string]int64, error) {
+	var out struct {
+		Volumes []struct {
+			Name      string `json:"Name"`
+			UsageData struct {
+				Size int64 `json:"Size"`
+			} `json:"UsageData"`
+		} `json:"Volumes"`
+	}
+	if err := d.api.do("GET", "/system/df", url.Values{"type": {"volume"}}, nil, &out, 2*time.Minute); err != nil {
+		return nil, err
+	}
+	sizes := make(map[string]int64, len(out.Volumes))
+	for _, v := range out.Volumes {
+		sizes[v.Name] = v.UsageData.Size
+	}
+	return sizes, nil
+}
+
+/*
 RemoveImage deletes an image Bay pulled for a revision it no longer keeps.
 Never forced: an image a container still uses answers 409 and stays, which is
 the answer wanted.

@@ -34,6 +34,9 @@ type InventoryStack struct {
 	BaseDomain string `json:"baseDomain,omitempty"`
 	// TCP lists the public TCP ports it opened (x-lore.tcp).
 	TCP []int `json:"tcp,omitempty"`
+	// NotBackedUp names the environment's volumes no x-lore.backup hook
+	// covers, so the console can say so as plainly as `bay status` does.
+	NotBackedUp []string `json:"notBackedUp,omitempty"`
 }
 
 /*

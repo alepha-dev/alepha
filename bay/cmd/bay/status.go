@@ -38,6 +38,9 @@ type statusLine struct {
 	BackupAge       string `json:"backupAge,omitempty"`
 	BackupStale     bool   `json:"backupStale"`
 	LastBackupError string `json:"lastBackupError,omitempty"`
+	// NotBackedUp names the stack volumes this member mounts that no hook
+	// covers. Not a problem, a fact said every time.
+	NotBackedUp []string `json:"notBackedUp,omitempty"`
 
 	// Problems is the same set the human view marks with a warning sign, in
 	// words. Present so a monitor never has to infer severity from the fields:
@@ -70,6 +73,7 @@ func computeStatus(a listedApp, now time.Time, interval time.Duration) statusLin
 		Crons:         a.Crons,
 		Backups:       a.Backups,
 		LastBackupAt:  a.LastBackupAt,
+		NotBackedUp:   a.NotBackedUp,
 		Problems:      []string{},
 	}
 	if u := a.Usage; u != nil {
