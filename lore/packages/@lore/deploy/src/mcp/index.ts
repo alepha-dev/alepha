@@ -7,6 +7,7 @@ import { BlightTools } from "./tools/BlightTools.ts";
 import { DeployTools } from "./tools/DeployTools.ts";
 import { InsightsTools } from "./tools/InsightsTools.ts";
 import { SigilTools } from "./tools/SigilTools.ts";
+import { StackTools } from "./tools/StackTools.ts";
 
 /**
  * The MCP tools and resources of `@lore/deploy`, Lore as Vercel: apps, telemetry (sigils, analytics, vitals, blights, quality), deployments and estates.
@@ -25,6 +26,8 @@ export const LoreDeployMcp = $module({
     DeployTools,
     SigilTools,
     InsightsTools,
+    // Stacks for agents (#Q2697).
+    StackTools,
   ],
 });
 
@@ -36,3 +39,4 @@ export { BlightTools } from "./tools/BlightTools.ts";
 export { DeployTools } from "./tools/DeployTools.ts";
 export { InsightsTools } from "./tools/InsightsTools.ts";
 export { SigilTools } from "./tools/SigilTools.ts";
+export { StackTools } from "./tools/StackTools.ts";

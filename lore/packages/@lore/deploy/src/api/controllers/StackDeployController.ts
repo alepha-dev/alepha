@@ -104,6 +104,63 @@ export class StackDeployController {
     },
   });
 
+  requestStackLogs = $action({
+    use: [this.writeGate()],
+    method: "POST",
+    path: "/projects/:projectId/stacks/:stackId/environments/:environmentId/logs",
+    description:
+      "Ask the estate for the tail of one service's logs. Answers a request id; read the lines with the GET of the same path once the machine has answered.",
+    schema: {
+      params: this.params,
+      body: z.object({
+        service: z.string().min(1).max(100),
+        lines: z.integer().min(1).max(2000).default(200),
+      }),
+      response: z.object({ request: z.uuid() }),
+    },
+    handler: async ({ params, body, user }) => {
+      const command = await this.deploys.requestLogs({
+        ...params,
+        service: body.service,
+        lines: body.lines,
+        createdBy: user?.id,
+      });
+      return { request: command.id };
+    },
+  });
+
+  readStackLogs = $action({
+    use: [this.writeGate()],
+    method: "GET",
+    path: "/projects/:projectId/stacks/:stackId/environments/:environmentId/logs/:request",
+    description:
+      "A logs request's status, and its lines once the machine has uploaded them.",
+    schema: {
+      params: this.params.extend({ request: z.uuid() }),
+      response: z.object({
+        status: z.string(),
+        reason: z.string().optional(),
+        lines: z
+          .array(
+            z.object({
+              at: z.string().optional(),
+              level: z.string().optional(),
+              text: z.string().optional(),
+              raw: z.string(),
+            }),
+          )
+          .optional(),
+      }),
+    },
+    handler: async ({ params }) =>
+      await this.deploys.readLogs({
+        projectId: params.projectId,
+        stackId: params.stackId,
+        environmentId: params.environmentId,
+        commandId: params.request,
+      }),
+  });
+
   protected resource(row: StackDeployment) {
     const { estateId: _estateId, ...rest } = row;
     return rest;

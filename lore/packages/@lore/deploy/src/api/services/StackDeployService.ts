@@ -1,5 +1,6 @@
 import { projects } from "@lore/core/schemas";
 import { $hook, $inject } from "alepha";
+import { FileService } from "alepha/api/files";
 import { BAY_OWNED_SECRET_KEYS } from "alepha/cli/infra-lib";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
@@ -18,6 +19,7 @@ import {
 } from "../entities/stackDeployments.ts";
 import { stackEnvironments } from "../entities/stackEnvironments.ts";
 import { stackRevisions } from "../entities/stackRevisions.ts";
+import { estateCommandResultSchema } from "../schemas/estateCommandResultSchema.ts";
 import type { StackDeployOutcome } from "../schemas/stackDeployOutcomeSchema.ts";
 import type { StackModel } from "../schemas/stackModelSchema.ts";
 import { AppSecretService } from "./AppSecretService.ts";
@@ -65,6 +67,7 @@ export class StackDeployService {
   protected readonly registries = $inject(RegistryCredentialService);
   protected readonly targets = $inject(StackTargets);
   protected readonly queue = $inject(EstateCommandService);
+  protected readonly files = $inject(FileService);
   protected readonly dateTime = $inject(DateTimeProvider);
 
   async deploy(input: {
@@ -270,6 +273,104 @@ export class StackDeployService {
         },
       ],
     });
+  }
+
+  /**
+   * Asks the estate for the tail of one service's logs: a `logs` command for
+   * the member `<stack>.<service>`, which is how Bay keys it. Answers the
+   * command id to read the answer with. A read, so it does not need the
+   * estate to accept deploys, only to be lent and connected-capable.
+   */
+  async requestLogs(input: {
+    projectId: number;
+    stackId: string;
+    environmentId: string;
+    service: string;
+    lines: number;
+    createdBy?: string;
+  }): Promise<EstateCommand> {
+    const stack = await this.stacks.get(input.projectId, input.stackId);
+    const environment = await this.stacks.getEnvironment(
+      stack,
+      input.environmentId,
+    );
+    const estateId = environment.estateId ?? stack.estateId;
+    const estate = estateId ? await this.estates.findById(estateId) : undefined;
+    const grant = estate
+      ? await this.grants.findOne({
+          where: {
+            estateId: { eq: estate.id },
+            projectId: { eq: stack.projectId },
+          },
+        })
+      : undefined;
+    if (!estate || !grant || estate.type !== "bay") {
+      throw new BadRequestError(
+        `${stack.name}/${environment.env} runs on no Bay this project can read logs from`,
+      );
+    }
+    if (!/^[a-z0-9]([a-z0-9_.-]{0,98}[a-z0-9])?$/.test(input.service)) {
+      throw new BadRequestError(`${input.service} is not a service name`);
+    }
+    return await this.queue.enqueue(
+      estate,
+      {
+        kind: "logs",
+        payload: {
+          app: `${stack.name}.${input.service}`,
+          environment: environment.env,
+          logs: { lines: Math.min(Math.max(input.lines, 1), 2000) },
+        },
+      },
+      input.createdBy,
+    );
+  }
+
+  /**
+   * A logs request's answer: its status, and the lines once the machine has
+   * uploaded them. Scoped to a command of one of this stack environment's
+   * services, so a command id from elsewhere reads as unknown.
+   */
+  async readLogs(input: {
+    projectId: number;
+    stackId: string;
+    environmentId: string;
+    commandId: string;
+  }): Promise<{
+    status: string;
+    reason?: string;
+    lines?: Array<{ at?: string; level?: string; text?: string; raw: string }>;
+  }> {
+    const stack = await this.stacks.get(input.projectId, input.stackId);
+    const environment = await this.stacks.getEnvironment(
+      stack,
+      input.environmentId,
+    );
+    const command = await this.commands.findOne({
+      where: { id: { eq: input.commandId } },
+    });
+    if (
+      !command ||
+      command.kind !== "logs" ||
+      command.payload.environment !== environment.env ||
+      !command.payload.app.startsWith(`${stack.name}.`)
+    ) {
+      throw new NotFoundError(
+        "No such logs request for this stack environment",
+      );
+    }
+    if (command.status !== "done" || !command.resultFileId) {
+      return { status: command.status, reason: command.reason };
+    }
+    try {
+      const file = await this.files.streamFile(command.resultFileId);
+      const result = estateCommandResultSchema.parse(
+        JSON.parse(await file.text()),
+      );
+      return { status: "done", lines: result.lines };
+    } catch {
+      return { status: "expired", reason: "Logs are kept for 24 hours" };
+    }
   }
 
   /**
