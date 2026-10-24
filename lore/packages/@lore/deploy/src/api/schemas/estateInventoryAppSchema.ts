@@ -66,6 +66,12 @@ export const estateInventoryAppSchema = z.object({
    * beside them instead.
    */
   problems: z.array(z.string().max(300)).max(10),
+
+  // A member of a stack (#E79): the stack, the compose service, and whether
+  // Bay runs it from an artifact (`app`) or Compose runs it (`service`).
+  stack: z.string().max(100).optional(),
+  service: z.string().max(100).optional(),
+  serviceKind: z.string().max(20).optional(),
 });
 
 export type EstateInventoryApp = Infer<typeof estateInventoryAppSchema>;

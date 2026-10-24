@@ -265,6 +265,45 @@ export class DeployRouter {
     },
   });
 
+  /**
+   * Stacks (#E79): apps and services deployed together from one compose.yml.
+   * Under the Apps capability; the pages read with `app:read` and every write
+   * is refused server-side without `deploy:manage` behind `apps.deploy`.
+   */
+  projectStacks = $pageProject({
+    name: "projectStacks",
+    path: "/stacks",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Stacks`,
+    }),
+    lazy: () => import("./components/project/stacks/ProjectStacks.tsx"),
+    loader: async () => {
+      if (!hasCapability(this.alepha.store.get(currentProjectAtom), "apps")) {
+        throw new NotFoundError("Apps are not enabled for this project");
+      }
+    },
+  });
+
+  /**
+   * One stack environment: its services, deploys, revisions, routes,
+   * variables, volumes and settings. Two segments, like an app instance.
+   */
+  projectStackEnvironment = $pageProject({
+    name: "projectStackEnvironment",
+    path: "/stacks/:stack/:env",
+    schema: { params: z.object({ stack: z.string(), env: z.string() }) },
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Stacks`,
+    }),
+    lazy: () => import("./components/project/stacks/StackEnvironmentPage.tsx"),
+    loader: async ({ params }) => {
+      if (!hasCapability(this.alepha.store.get(currentProjectAtom), "apps")) {
+        throw new NotFoundError("Apps are not enabled for this project");
+      }
+      return { stackName: params.stack, envName: params.env };
+    },
+  });
+
   projectApps = $pageProject({
     name: "projectApps",
     path: "/apps",

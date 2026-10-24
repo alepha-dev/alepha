@@ -57,6 +57,7 @@ export class EstateInventoryService {
       host: frame.host,
       apps: frame.apps,
       appCount: frame.apps.length,
+      stacks: frame.stacks ?? [],
       ...(frame.host.bayVersion === undefined
         ? {}
         : { bayVersion: frame.host.bayVersion }),
@@ -157,6 +158,7 @@ export class EstateInventoryService {
               : { bayVersion: stored.bayVersion }),
             host: stored.host,
             apps: reported,
+            ...(stored.stacks?.length ? { stacks: stored.stacks } : {}),
           }
         : null,
       expected,

@@ -2,6 +2,7 @@ import { type Infer, z } from "alepha";
 
 import { estateInventoryAppSchema } from "./estateInventoryAppSchema.ts";
 import { estateInventoryHostSchema } from "./estateInventoryHostSchema.ts";
+import { estateInventoryStackSchema } from "./estateInventoryStackSchema.ts";
 
 /**
  * Which of the three states an instance is in, once what the machine reports
@@ -98,6 +99,7 @@ export const estateInventoryResourceSchema = z.object({
       bayVersion: z.string().max(100).optional(),
       host: estateInventoryHostSchema,
       apps: z.array(estateInventoryReportedAppSchema),
+      stacks: z.array(estateInventoryStackSchema).optional(),
     })
     .nullable(),
   expected: z.array(estateInventoryExpectedAppSchema),

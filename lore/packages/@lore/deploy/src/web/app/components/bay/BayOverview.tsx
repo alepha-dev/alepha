@@ -5,6 +5,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 
+import BayStacks from "./BayStacks.tsx";
 import BayStatsChart from "./BayStatsChart.client.tsx";
 import BayUsageBar from "./BayUsageBar.tsx";
 import { useBayInventory } from "./useBayInventory.ts";
@@ -112,6 +113,10 @@ const BayOverview = () => {
           </dl>
         </CardContent>
       </Card>
+
+      {inventory?.stacks?.length ? (
+        <BayStacks stacks={inventory.stacks} />
+      ) : null}
 
       <Card>
         <CardContent className="flex flex-col gap-3">

@@ -2,6 +2,7 @@ import { type Infer, z } from "alepha";
 
 import { estateInventoryAppSchema } from "./estateInventoryAppSchema.ts";
 import { estateInventoryHostSchema } from "./estateInventoryHostSchema.ts";
+import { estateInventoryStackSchema } from "./estateInventoryStackSchema.ts";
 
 /**
  * Everything a machine can say about itself in one frame, wire format v1.
@@ -26,6 +27,7 @@ export const estateInventoryFrameSchema = z.object({
   at: z.string().max(40),
   host: estateInventoryHostSchema,
   apps: z.array(estateInventoryAppSchema).max(200),
+  stacks: z.array(estateInventoryStackSchema).max(100).optional(),
 });
 
 export type EstateInventoryFrame = Infer<typeof estateInventoryFrameSchema>;

@@ -14,7 +14,7 @@ import {
 } from "@lore/core/web";
 import { $inject } from "alepha";
 import { $client } from "alepha/server/links";
-import { Activity, AppWindow, Bug, Package } from "lucide-react";
+import { Activity, AppWindow, Bug, Layers, Package } from "lucide-react";
 
 import type { QualityController } from "../../../api/controllers/QualityController.ts";
 import { currentBlightCountAtom } from "../atoms/currentBlightCountAtom.ts";
@@ -69,6 +69,19 @@ export class DeployShell {
         // there whenever Apps is on; `track` adds telemetry to them. Gating
         // this entry on `track` would leave a project that deploys elsewhere
         // with no way to reach the copies it has recorded.
+      },
+      {
+        // Stacks (#E79). Under `deploy`: a stack exists to be deployed, and
+        // a project that only watches its apps has nothing to do here.
+        route: "projectStacks",
+        permission: "app:read",
+        labelKey: "stacks.title",
+        icon: Layers,
+        group: "ops",
+        order: 15,
+        option: "deploy",
+        activeOn: (name) =>
+          name === "projectStacks" || name === "projectStackEnvironment",
       },
       {
         // ⚠️ Baseline, with no option: artifacts arrive from CI through

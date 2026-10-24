@@ -77,6 +77,7 @@ import { SigilIngestService } from "./services/SigilIngestService.ts";
 import { SigilTokenService } from "./services/SigilTokenService.ts";
 import { StackBundleReader } from "./services/StackBundleReader.ts";
 import { StackComposeParser } from "./services/StackComposeParser.ts";
+import { StackConsoleService } from "./services/StackConsoleService.ts";
 import { StackDeployService } from "./services/StackDeployService.ts";
 import { StackService } from "./services/StackService.ts";
 import { StackTargets } from "./services/StackTargets.ts";
@@ -173,6 +174,7 @@ export const LoreDeployApi = $module({
     StackVariableService,
     // Stack deploys over the estate connector (#Q2694).
     StackDeployService,
+    StackConsoleService,
     BlightRuleService,
     OpenBlightCounter,
     DailyVisitorsService,
@@ -264,6 +266,7 @@ export { SigilJobs } from "./jobs/SigilJobs.ts";
 export { EstateNotifications } from "./notifications/EstateNotifications.ts";
 export { StackBundleReader } from "./services/StackBundleReader.ts";
 export { StackComposeParser } from "./services/StackComposeParser.ts";
+export { StackConsoleService } from "./services/StackConsoleService.ts";
 export { StackDeployService } from "./services/StackDeployService.ts";
 export { StackService } from "./services/StackService.ts";
 export { RegistryCredentialService } from "./services/RegistryCredentialService.ts";

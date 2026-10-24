@@ -3,6 +3,7 @@ import { $entity, db } from "alepha/orm";
 
 import { estateInventoryAppSchema } from "../schemas/estateInventoryAppSchema.ts";
 import { estateInventoryHostSchema } from "../schemas/estateInventoryHostSchema.ts";
+import { estateInventoryStackSchema } from "../schemas/estateInventoryStackSchema.ts";
 import { estates } from "./estates.ts";
 
 /**
@@ -70,6 +71,11 @@ export const estateInventories = $entity({
      * deserializing every host's app array.
      */
     appCount: z.integer().min(0),
+    /**
+     * The stack environments the machine runs (#E79). Absent on a row
+     * written before stacks, and from a Bay that reports none.
+     */
+    stacks: z.array(estateInventoryStackSchema).optional(),
   }),
   indexes: [{ columns: ["estateId"], unique: true }],
 });

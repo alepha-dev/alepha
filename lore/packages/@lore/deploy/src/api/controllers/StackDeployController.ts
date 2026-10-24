@@ -4,6 +4,8 @@ import { $action } from "alepha/server";
 
 import type { StackDeployment } from "../entities/stackDeployments.ts";
 import { stackDeploymentResourceSchema } from "../schemas/stackDeploymentResourceSchema.ts";
+import { stackServicesResourceSchema } from "../schemas/stackServicesResourceSchema.ts";
+import { StackConsoleService } from "../services/StackConsoleService.ts";
 import { StackDeployService } from "../services/StackDeployService.ts";
 import { StackService } from "../services/StackService.ts";
 
@@ -17,6 +19,7 @@ import { StackService } from "../services/StackService.ts";
 export class StackDeployController {
   protected readonly stacks = $inject(StackService);
   protected readonly deploys = $inject(StackDeployService);
+  protected readonly console = $inject(StackConsoleService);
 
   protected writeGate = () =>
     $ownsProject({
@@ -159,6 +162,47 @@ export class StackDeployController {
         environmentId: params.environmentId,
         commandId: params.request,
       }),
+  });
+
+  listStackServices = $action({
+    use: [this.readGate()],
+    method: "GET",
+    path: "/projects/:projectId/stacks/:stackId/environments/:environmentId/services",
+    description:
+      "A stack environment's services: what the applied revision declares, joined with what the machine last reported (state, memory, restarts), and its volumes with their backup coverage.",
+    schema: { params: this.params, response: stackServicesResourceSchema },
+    handler: async ({ params }) =>
+      await this.console.servicesOf(
+        params.projectId,
+        params.stackId,
+        params.environmentId,
+      ),
+  });
+
+  stackServiceAction = $action({
+    use: [this.writeGate()],
+    method: "POST",
+    path: "/projects/:projectId/stacks/:stackId/environments/:environmentId/services/:service/:verb",
+    description:
+      "Restart, stop or start one service of a stack environment. A stop is durable: the way back is start or a deploy.",
+    schema: {
+      params: this.params.extend({
+        service: z.string().min(1).max(100),
+        verb: z.enum(StackConsoleService.SERVICE_VERBS),
+      }),
+      response: z.object({ command: z.uuid() }),
+    },
+    handler: async ({ params, user }) => {
+      const command = await this.console.serviceAction({
+        projectId: params.projectId,
+        stackId: params.stackId,
+        environmentId: params.environmentId,
+        service: params.service,
+        verb: params.verb,
+        requestedBy: user?.id,
+      });
+      return { command: command.id };
+    },
   });
 
   protected resource(row: StackDeployment) {
