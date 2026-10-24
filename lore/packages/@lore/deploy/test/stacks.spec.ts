@@ -92,19 +92,17 @@ describe("stacks", () => {
         service.estateOf(row, await service.getEnvironment(row, staging.id)),
       ).toBe(cheap.id);
 
-      await alepha
-        .inject(StackController)
-        .updateStackEnvironment.fetch(
-          {
-            params: {
-              projectId: w.project.id,
-              stackId: stack.id,
-              environmentId: staging.id,
-            },
-            body: { estateId: null },
+      await alepha.inject(StackController).updateStackEnvironment.fetch(
+        {
+          params: {
+            projectId: w.project.id,
+            stackId: stack.id,
+            environmentId: staging.id,
           },
-          { user: w.user },
-        );
+          body: { estateId: null },
+        },
+        { user: w.user },
+      );
       expect(
         service.estateOf(row, await service.getEnvironment(row, staging.id)),
       ).toBe(main.id);
@@ -278,19 +276,17 @@ describe("stacks", () => {
         env: "production",
       });
       const api = await createInstance(alepha, w, "mcs-api", "production");
-      await alepha
-        .inject(StackController)
-        .attachStackMember.fetch(
-          {
-            params: {
-              projectId: w.project.id,
-              stackId: stack.id,
-              environmentId: production.id,
-            },
-            body: { instanceId: api.id },
+      await alepha.inject(StackController).attachStackMember.fetch(
+        {
+          params: {
+            projectId: w.project.id,
+            stackId: stack.id,
+            environmentId: production.id,
           },
-          { user: w.user },
-        );
+          body: { instanceId: api.id },
+        },
+        { user: w.user },
+      );
       await alepha
         .inject(StackController)
         .deleteStack.fetch(
