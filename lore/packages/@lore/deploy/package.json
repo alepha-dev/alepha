@@ -24,16 +24,17 @@
     "@lore/core": "workspace:*",
     "alepha": "workspace:*",
     "fzstd": "0.1.1",
+    "js-yaml": "4.1.0",
     "lucide-react": "^1.56.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "recharts": "^3.10.1",
-    "yaml": "^2.8.1"
+    "recharts": "^3.10.1"
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",
     "@types/bun": "^1.4.3",
+    "@types/js-yaml": "4.0.9",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@types/ws": "^8.18.2",

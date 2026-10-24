@@ -2,8 +2,8 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import type { Alepha } from "alepha";
+import { load as parseYaml } from "js-yaml";
 import { afterEach, beforeEach, describe, it } from "vitest";
-import { parse as parseYaml } from "yaml";
 
 import {
   StackComposeParser,

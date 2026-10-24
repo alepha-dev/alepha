@@ -1,5 +1,5 @@
 import { BadRequestError } from "alepha/server";
-import { parse as parseYaml } from "yaml";
+import { load as parseYaml } from "js-yaml";
 
 import type { StackModel } from "../schemas/stackModelSchema.ts";
 import type { StackModelService } from "../schemas/stackModelServiceSchema.ts";
@@ -50,7 +50,9 @@ export class StackComposeParser {
   public parse(text: string, files: string[]): StackModel {
     let raw: unknown;
     try {
-      raw = parseYaml(text, { merge: true, maxAliasCount: 100 });
+      // js-yaml rather than `yaml`: its Node build requires `process`, which a
+      // Worker bundle cannot load. Merge keys (`<<`) are in its default schema.
+      raw = parseYaml(text);
     } catch (error) {
       throw new BadRequestError(
         `The compose file is not valid YAML: ${error instanceof Error ? error.message : String(error)}`,
