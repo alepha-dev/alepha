@@ -24,9 +24,12 @@
  * with the API registry the SPA itself uses, so no path is guessed here and a
  * moved route fails as "no such action" rather than as a 404 to interpret.
  *
- * Apps are plain child processes off Linux, so `restart` is real on macOS
- * too. The host gauge reports nothing off Linux by design, so the gauge on
- * the estate row is asserted on Linux only; CI runs there.
+ * A Bay on Docker (Bay epic E73) runs the app in a container, which is why
+ * the demo app listens on `SERVER_HOST`: inside a container the address Bay
+ * gives it is `0.0.0.0`, and a hard-coded 127.0.0.1 would be the container's
+ * own loopback, unreachable through the published port. The host gauge
+ * reports nothing off Linux by design, so the gauge on the estate row is
+ * asserted on Linux only; CI runs there.
  */
 import { type ChildProcess, spawn } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -397,7 +400,7 @@ const marker = ${JSON.stringify(marker)};
 http.createServer((req, res) => {
   res.writeHead(200, { "content-type": "application/json" });
   res.end(JSON.stringify({ status: "ok", ready: true, marker }));
-}).listen(Number(process.env.SERVER_PORT || 0), "127.0.0.1");
+}).listen(Number(process.env.SERVER_PORT || 0), process.env.SERVER_HOST || "127.0.0.1");
 `,
   );
   const path = join(dir, `app-${marker}.tar.gz`);
