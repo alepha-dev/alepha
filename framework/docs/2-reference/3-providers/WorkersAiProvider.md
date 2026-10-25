@@ -18,10 +18,9 @@ HTTP, the model runs where the Worker runs.
   `AiToolsUnsupportedError`, so the app knows to pick another model or
   register `AlephaAiAnthropic` instead. The catalog is read once per model,
   through the binding's own `models()`.
-- The binding is checked at start on Workers: a missing one fails with a
-  named `AiConfigError`, as the R2 provider does. Off Workers this
-  provider is never the `AiProvider` (see `AlephaAiCloudflare`) and checks
-  nothing.
+- The binding is checked at start: a missing one fails with a named
+  `AiConfigError`, as the R2 provider does. This provider only exists on
+  Workers (see `AlephaAiCloudflare`).
 
 **Environment:** `AI_MODEL` (a Workers AI id such as
 `@cf/meta/llama-4-scout-17b-16e-instruct`), `AI_BINDING` (default `AI`),

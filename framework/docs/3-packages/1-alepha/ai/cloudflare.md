@@ -15,9 +15,14 @@ Plugin for Alepha AI that runs models on the Workers AI binding
 
 On Workers, registering it makes `WorkersAiProvider` the `AiProvider`, and
 the Cloudflare build declares the `ai` binding. Off Workers (`yarn dev` on
-Node, the specs) it substitutes nothing, so the app falls back to
-`AlephaAi`'s default, or to another vendor module registered beside it
-(`AlephaAiOpenai` on Workers AI's REST endpoint, for the same models).
+Node, the specs) it registers only the binding declaration, so the
+provider is whatever the next vendor module substitutes
+(`AlephaAiOpenai` on Workers AI's REST endpoint reaches the same models),
+or `MemoryAiProvider` without one.
+
+⚠️ Register it BEFORE another vendor module: the first substitution wins,
+which is what lets the binding answer on Workers and the other vendor
+everywhere else.
 
 ## API Reference
 

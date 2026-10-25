@@ -10,7 +10,7 @@ import {
 } from "../../core/index.ts";
 import {
   AlephaAiCloudflare,
-  type WorkersAiBinding,
+  type WorkersAiBindingApi,
   WorkersAiProvider,
 } from "../index.ts";
 
@@ -18,7 +18,7 @@ import {
  * A stand-in for `env.AI`, replaying streams recorded from the real binding's
  * REST twin (`/ai/run/<model>`, the same output), on 2026-10-26.
  */
-class RecordedBinding implements WorkersAiBinding {
+class RecordedBinding implements WorkersAiBindingApi {
   public runs: Array<{ model: string; inputs: any; options: any }> = [];
   public searches: string[] = [];
   public streams: string[] = [];
@@ -74,8 +74,11 @@ describe("WorkersAiProvider", () => {
     expect,
   }) => {
     const alepha = Alepha.create().with(AlephaAiCloudflare);
+    // Asked for before start, as a `$ai` field would: `alepha/ai` comes with
+    // it, and its default answers.
+    const ai = alepha.inject(AiProvider);
     await alepha.start();
-    expect(alepha.inject(AiProvider)).toBeInstanceOf(MemoryAiProvider);
+    expect(ai).toBeInstanceOf(MemoryAiProvider);
   });
 
   it("is the AiProvider on Workers, streaming text including a numeric token", async ({
@@ -281,5 +284,34 @@ describe("WorkersAiProvider", () => {
   }) => {
     await expect(setup(null)).rejects.toThrow(AiConfigError);
     await expect(setup(null)).rejects.toThrow("binding 'AI' not found");
+  });
+});
+
+describe("AlephaAiCloudflare beside AlephaAiOpenai", () => {
+  const build = async (serverless: boolean) => {
+    const { AlephaAiOpenai, OpenAiCompatibleAiProvider } =
+      await import("../../openai/index.ts");
+    const alepha = Alepha.create({
+      env: {
+        AI_MODEL: SCOUT,
+        ...(serverless ? { ALEPHA_SERVERLESS: "true" } : {}),
+      },
+    })
+      .with(AlephaAiCloudflare)
+      .with(AlephaAiOpenai);
+    if (serverless) {
+      alepha.set("cloudflare.env", { AI: new RecordedBinding() });
+    }
+    await alepha.start();
+    return { ai: alepha.inject(AiProvider), OpenAiCompatibleAiProvider };
+  };
+
+  it("answers with the binding on Workers and over REST elsewhere, registered in that order", async ({
+    expect,
+  }) => {
+    const workers = await build(true);
+    expect(workers.ai).toBeInstanceOf(WorkersAiProvider);
+    const node = await build(false);
+    expect(node.ai).toBeInstanceOf(node.OpenAiCompatibleAiProvider);
   });
 });

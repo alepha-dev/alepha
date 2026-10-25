@@ -14,6 +14,8 @@ AI models behind one provider contract, with no vendor SDK.
 
 **Features:**
 
+- `$ai`: an assistant whose tools are `$action`s, run as the signed-in
+  user, mutations confirmed, re-entrant across requests
 - `AiProvider`: one streamed `chat()` call, text deltas, tool calls and
   usage as typed events, and `complete()` to collect them
 - `MemoryAiProvider`: the default, scripted in specs, and an explicit
@@ -31,6 +33,10 @@ Everything runs on `fetch` and `ReadableStream`, so on Node, Bun and
 Workers alike.
 
 ## API Reference
+
+### Primitives
+
+- [`$ai`](/docs/reference-primitives-$ai) - Declares an assistant: a system prompt, the `$action`s it may call, and a
 
 ### Providers
 

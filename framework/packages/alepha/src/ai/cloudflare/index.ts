@@ -2,9 +2,11 @@ import { $module, type Alepha } from "alepha";
 import { AiProvider, AlephaAi } from "alepha/ai";
 
 import { WorkersAiProvider } from "./providers/WorkersAiProvider.ts";
+import { WorkersAiBinding } from "./services/WorkersAiBinding.ts";
 
 // Exports
 export * from "./providers/WorkersAiProvider.ts";
+export * from "./services/WorkersAiBinding.ts";
 
 /**
  * Plugin for Alepha AI that runs models on the Workers AI binding
@@ -12,19 +14,25 @@ export * from "./providers/WorkersAiProvider.ts";
  *
  * On Workers, registering it makes `WorkersAiProvider` the `AiProvider`, and
  * the Cloudflare build declares the `ai` binding. Off Workers (`yarn dev` on
- * Node, the specs) it substitutes nothing, so the app falls back to
- * `AlephaAi`'s default, or to another vendor module registered beside it
- * (`AlephaAiOpenai` on Workers AI's REST endpoint, for the same models).
+ * Node, the specs) it registers only the binding declaration, so the
+ * provider is whatever the next vendor module substitutes
+ * (`AlephaAiOpenai` on Workers AI's REST endpoint reaches the same models),
+ * or `MemoryAiProvider` without one.
+ *
+ * ⚠️ Register it BEFORE another vendor module: the first substitution wins,
+ * which is what lets the binding answer on Workers and the other vendor
+ * everywhere else.
  *
  * @see {@link WorkersAiProvider}
  * @module alepha.ai.cloudflare
  */
 export const AlephaAiCloudflare = $module({
   name: "alepha.ai.cloudflare",
-  services: [WorkersAiProvider],
-  // Gated on `isServerless()` like `AlephaEmailCloudflare`: the build must
-  // see the service to emit the binding, but the substitution may only
-  // happen where the binding exists.
+  services: [WorkersAiBinding],
+  variants: [WorkersAiProvider],
+  // Off Workers, NOT `alepha.with(AlephaAi)`: registering it there would fix
+  // `MemoryAiProvider` as the provider before a vendor module registered
+  // after this one could substitute its own.
   register: (alepha: Alepha) => {
     if (alepha.isServerless()) {
       alepha.with({
@@ -32,7 +40,8 @@ export const AlephaAiCloudflare = $module({
         provide: AiProvider,
         use: WorkersAiProvider,
       });
+      alepha.with(AlephaAi);
+      alepha.inject(WorkersAiProvider);
     }
-    return alepha.with(AlephaAi);
   },
 });

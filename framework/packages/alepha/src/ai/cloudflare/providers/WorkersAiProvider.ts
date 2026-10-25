@@ -1,4 +1,4 @@
-import { $env, $hook, $inject, z } from "alepha";
+import { $hook, $inject } from "alepha";
 import {
   type AiChatRequest,
   AiConfigError,
@@ -10,25 +10,7 @@ import {
 } from "alepha/ai";
 import { $logger } from "alepha/logger";
 
-// ---------------------------------------------------------------------------------------------------------------------
-
-const envSchema = z.object({
-  AI_BINDING: z.text({
-    default: "AI",
-    secret: false,
-    description:
-      "Name of the Workers AI binding (env.AI) the Workers AI provider calls. The Cloudflare build declares it under this name.",
-  }),
-  AI_GATEWAY_ID: z
-    .text({
-      secret: false,
-      description:
-        "Optional Cloudflare AI Gateway id the binding routes its calls through, for logs, caching and rate limits.",
-    })
-    .optional(),
-});
-
-// ---------------------------------------------------------------------------------------------------------------------
+import { WorkersAiBinding as WorkersAiBindingDeclaration } from "../services/WorkersAiBinding.ts";
 
 /**
  * AI provider on the Workers AI binding (`env.AI.run`): no API key, no
@@ -41,24 +23,21 @@ const envSchema = z.object({
  *   `AiToolsUnsupportedError`, so the app knows to pick another model or
  *   register `AlephaAiAnthropic` instead. The catalog is read once per model,
  *   through the binding's own `models()`.
- * - The binding is checked at start on Workers: a missing one fails with a
- *   named `AiConfigError`, as the R2 provider does. Off Workers this
- *   provider is never the `AiProvider` (see `AlephaAiCloudflare`) and checks
- *   nothing.
+ * - The binding is checked at start: a missing one fails with a named
+ *   `AiConfigError`, as the R2 provider does. This provider only exists on
+ *   Workers (see `AlephaAiCloudflare`).
  *
  * **Environment:** `AI_MODEL` (a Workers AI id such as
  * `@cf/meta/llama-4-scout-17b-16e-instruct`), `AI_BINDING` (default `AI`),
  * `AI_GATEWAY_ID` (optional).
  */
 export class WorkersAiProvider extends AiProvider {
-  public static readonly id: string = "alepha.ai.WorkersAiProvider";
-
   public readonly name = "workers-ai";
 
   protected readonly log = $logger();
   protected readonly format = $inject(ChatCompletionFormat);
   protected readonly errors = $inject(AiHttpErrors);
-  protected readonly cloudflare = $env(envSchema);
+  protected readonly declaration = $inject(WorkersAiBindingDeclaration);
 
   /**
    * Whether each model id can call tools, from the catalog, read once.
@@ -68,9 +47,6 @@ export class WorkersAiProvider extends AiProvider {
   protected readonly onStart = $hook({
     on: "start",
     handler: () => {
-      if (!this.alepha.isServerless()) {
-        return;
-      }
       this.binding();
       this.assertModelConfigured();
       this.log.info(
@@ -83,7 +59,7 @@ export class WorkersAiProvider extends AiProvider {
    * The binding name, `AI` unless `AI_BINDING` says otherwise.
    */
   public get bindingName(): string {
-    return this.cloudflare.AI_BINDING;
+    return this.declaration.bindingName;
   }
 
   /**
@@ -118,8 +94,8 @@ export class WorkersAiProvider extends AiProvider {
     }
 
     const options: Record<string, unknown> = { signal };
-    if (this.cloudflare.AI_GATEWAY_ID) {
-      options.gateway = { id: this.cloudflare.AI_GATEWAY_ID };
+    if (this.declaration.gatewayId) {
+      options.gateway = { id: this.declaration.gatewayId };
     }
 
     let stream: ReadableStream<Uint8Array>;
@@ -138,11 +114,11 @@ export class WorkersAiProvider extends AiProvider {
    *
    * @throws AiConfigError when it is missing.
    */
-  protected binding(): WorkersAiBinding {
+  protected binding(): WorkersAiBindingApi {
     const env = this.alepha.get("cloudflare.env") as
       | Record<string, unknown>
       | undefined;
-    const binding = env?.[this.bindingName] as WorkersAiBinding | undefined;
+    const binding = env?.[this.bindingName] as WorkersAiBindingApi | undefined;
     if (!binding || typeof binding.run !== "function") {
       throw new AiConfigError(
         { provider: this.name },
@@ -160,7 +136,7 @@ export class WorkersAiProvider extends AiProvider {
    * the doubt: the call then fails or succeeds on its own terms.
    */
   protected async canCallTools(
-    ai: WorkersAiBinding,
+    ai: WorkersAiBindingApi,
     model: string,
   ): Promise<boolean> {
     const known = this.functionCalling.get(model);
@@ -203,7 +179,7 @@ export class WorkersAiProvider extends AiProvider {
 /**
  * The slice of the Workers AI binding this provider calls.
  */
-export interface WorkersAiBinding {
+export interface WorkersAiBindingApi {
   run(
     model: string,
     inputs: Record<string, unknown>,

@@ -1,5 +1,5 @@
 import { type Alepha, AlephaError } from "alepha";
-import { WorkersAiProvider } from "alepha/ai/cloudflare";
+import { WorkersAiBinding } from "alepha/ai/cloudflare";
 
 /**
  * Which Workers AI binding the workspace app needs, when it registered
@@ -15,7 +15,7 @@ import { WorkersAiProvider } from "alepha/ai/cloudflare";
  * Workers would fail.
  */
 export class CloudflareAiDetector {
-  public readonly providerId: string = WorkersAiProvider.id;
+  public readonly providerId: string = WorkersAiBinding.id;
   public readonly moduleName = "alepha.ai.cloudflare";
 
   /**
@@ -23,10 +23,10 @@ export class CloudflareAiDetector {
    */
   public detect(alepha: Pick<Alepha, "inject" | "graph">): string | undefined {
     try {
-      const provider = alepha.inject(this.providerId) as {
+      const declaration = alepha.inject(this.providerId) as {
         bindingName?: string;
       };
-      return provider.bindingName || "AI";
+      return declaration.bindingName || "AI";
     } catch (error) {
       if (!this.isNotFound(error)) {
         throw error;
