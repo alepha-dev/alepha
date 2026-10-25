@@ -68,6 +68,13 @@
       "import": "./src/ai/openai/index.ts",
       "default": "./src/ai/openai/index.ts"
     },
+    "./api/ai": {
+      "types": "./src/api/ai/index.ts",
+      "react-native": "./src/api/ai/index.browser.ts",
+      "browser": "./src/api/ai/index.browser.ts",
+      "import": "./src/api/ai/index.ts",
+      "default": "./src/api/ai/index.ts"
+    },
     "./api/analytics": {
       "types": "./src/api/analytics/index.ts",
       "workerd": "./src/api/analytics/index.workerd.ts",
@@ -547,6 +554,13 @@
         "types": "./dist/ai/openai/index.d.ts",
         "import": "./dist/ai/openai/index.js",
         "default": "./dist/ai/openai/index.js"
+      },
+      "./api/ai": {
+        "types": "./dist/api/ai/index.d.ts",
+        "react-native": "./dist/api/ai/index.browser.js",
+        "browser": "./dist/api/ai/index.browser.js",
+        "import": "./dist/api/ai/index.js",
+        "default": "./dist/api/ai/index.js"
       },
       "./api/analytics": {
         "types": "./dist/api/analytics/index.d.ts",

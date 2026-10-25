@@ -24,8 +24,17 @@ export const withWorkerd = async <T>(
      * Extra worker config (bindings under `env`), merged into Miniflare's.
      */
     config?: Record<string, unknown>;
+    /**
+     * Runs once Miniflare is up, before `run`: seed a D1 database, say.
+     */
+    setup?: (runtime: Miniflare) => Promise<void>;
   },
-  run: (dispatch: (body: unknown) => Promise<Response>) => Promise<T>,
+  run: (
+    dispatch: (
+      body: unknown,
+      init?: RequestInit & { path?: string },
+    ) => Promise<Response>,
+  ) => Promise<T>,
 ): Promise<T> => {
   const dir = await mkdtemp(join(tmpdir(), `alepha-${options.name}-`));
   const entry = join(
@@ -40,6 +49,20 @@ export const withWorkerd = async <T>(
       configFile: false,
       publicDir: false,
       logLevel: "silent",
+      plugins: [
+        {
+          // The ORM's Bun driver imports `bun:sqlite` behind a runtime check;
+          // workerd refuses to load a module naming one it lacks, so the
+          // bundle gets an empty stand-in (never called on workerd).
+          name: "stub-bun-modules",
+          enforce: "pre",
+          resolveId: (id: string) => (id.startsWith("bun:") ? `\0${id}` : null),
+          load: (id: string) =>
+            id.startsWith("\0bun:")
+              ? "export const Database = undefined; export default {};"
+              : null,
+        },
+      ],
       ssr: {
         noExternal: true,
         resolve: { conditions: ["workerd", "module"] },
@@ -81,13 +104,15 @@ export const withWorkerd = async <T>(
       ] as any,
     });
     const mf = runtime;
-    return await run(
-      (body) =>
-        mf.dispatchFetch("http://ai.test/", {
-          method: "POST",
-          body: JSON.stringify(body),
-        }) as unknown as Promise<Response>,
-    );
+    await options.setup?.(mf);
+    return await run((body, init = {}) => {
+      const { path = "/", ...rest } = init;
+      return mf.dispatchFetch(`http://ai.test${path}`, {
+        method: "POST",
+        ...rest,
+        body: JSON.stringify(body),
+      } as any) as unknown as Promise<Response>;
+    });
   } finally {
     await runtime?.dispose();
     await rm(dir, { recursive: true, force: true });

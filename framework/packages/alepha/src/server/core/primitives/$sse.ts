@@ -5,6 +5,9 @@ import {
   type Async,
   createPrimitive,
   type Infer,
+  type Middleware,
+  type MiddlewareProvides,
+  PipelineHandler,
   PipelinePrimitive,
   type PipelinePrimitiveOptions,
   type ZObject,
@@ -134,8 +137,11 @@ export interface SseHandlerContext<TConfig extends SseConfigSchema> {
 /**
  * Handler function type for SSE endpoints.
  */
-export type SseHandler<TConfig extends SseConfigSchema = SseConfigSchema> = (
-  context: SseHandlerContext<TConfig>,
+export type SseHandler<
+  TConfig extends SseConfigSchema = SseConfigSchema,
+  TUse extends readonly Middleware[] = readonly Middleware[],
+> = (
+  context: SseHandlerContext<TConfig> & MiddlewareProvides<TUse>,
 ) => Async<void>;
 
 // ----------------------------------------------------------------------------------------------------------
@@ -145,6 +151,7 @@ export type SseHandler<TConfig extends SseConfigSchema = SseConfigSchema> = (
  */
 export interface SsePrimitiveOptions<
   TConfig extends SseConfigSchema,
+  TUse extends readonly Middleware[] = readonly Middleware[],
 > extends PipelinePrimitiveOptions {
   /**
    * Name of the SSE endpoint.
@@ -183,7 +190,14 @@ export interface SsePrimitiveOptions<
   /**
    * Main SSE handler. Receives context with emit/close functions.
    */
-  handler: SseHandler<TConfig>;
+  /**
+   * Middlewares wrapping the handler, as on `$action`: `use: [$secure()]`
+   * refuses an anonymous caller before the stream opens and hands the
+   * handler a non-optional `user`.
+   */
+  use?: TUse;
+
+  handler: SseHandler<TConfig, TUse>;
 }
 
 // ----------------------------------------------------------------------------------------------------------
@@ -397,10 +411,16 @@ export class SseFetchResponse<T> implements AsyncIterable<T> {
  * }
  * ```
  */
-export const $sse = <TConfig extends SseConfigSchema>(
-  options: SsePrimitiveOptions<TConfig>,
+export const $sse = <
+  TConfig extends SseConfigSchema,
+  const TUse extends readonly Middleware[] = [],
+>(
+  options: SsePrimitiveOptions<TConfig, TUse>,
 ): SsePrimitiveFn<TConfig> => {
-  const instance = createPrimitive(SsePrimitive<TConfig>, options);
+  const instance = createPrimitive(
+    SsePrimitive<TConfig>,
+    options as unknown as SsePrimitiveOptions<TConfig>,
+  );
   const fn = (
     config?: SseRequestEntry<TConfig>,
   ): SseStream<SseEventData<TConfig>> => {
@@ -425,6 +445,25 @@ export const $sse = <TConfig extends SseConfigSchema>(
 export class SsePrimitive<
   TConfig extends SseConfigSchema,
 > extends PipelinePrimitive<SsePrimitiveOptions<TConfig>> {
+  /**
+   * Marks the context of an HTTP call with the callback the innermost
+   * handler calls on entry: past every `use` middleware, so the response
+   * status is still free to be a 401 or a 403 until then.
+   */
+  public static readonly ENTERED = Symbol("sse.entered");
+
+  /**
+   * The handler composed with its `use` middlewares. The innermost layer
+   * reports its entry (see {@link ENTERED}) before running the user handler.
+   */
+  public override readonly handler = new PipelineHandler(
+    (context: Record<PropertyKey, any>) => {
+      context[SsePrimitive.ENTERED]?.();
+      return this.options.handler(context as any);
+    },
+    this.options.use,
+  );
+
   protected readonly log = $logger();
   protected readonly settings = $store(serverApiOptions);
   protected readonly serverProvider = $inject(ServerProvider);
@@ -550,12 +589,17 @@ export class SsePrimitive<
     this.alepha.context.withSignal(abortController.signal, () => {
       const signal = this.handlerSignal(abortController);
 
-      const context: SseHandlerContext<TConfig> = {
+      const context = {
         body: body as any,
         params: params as any,
         query: query as any,
         headers: headers as any,
         request: serverRequest as ServerRequest,
+        // What a `use` middleware resolved (`$secure` writes the request's
+        // `user`), read when the handler asks.
+        get user() {
+          return (serverRequest as { user?: unknown }).user;
+        },
         signal,
         emit: (data: SseEventData<TConfig>) => {
           if (signal.aborted) {
@@ -572,9 +616,15 @@ export class SsePrimitive<
 
       const handlerFn = this.handler.run.bind(this.handler);
 
-      // run handler async, errors propagate to stream
+      // run handler async, errors propagate to stream. In its own fork with
+      // the synthetic request as the action request, as `$action.run()`
+      // does, so a `use` middleware finds it (`$secure` sets its `user`).
       Promise.resolve()
-        .then(() => handlerFn(context))
+        .then(() =>
+          this.alepha.fork(() => handlerFn(context), {
+            "alepha.action.request": serverRequest,
+          }),
+        )
         .then(() => {
           abortController.abort(new AlephaError("SSE handler finished"));
           // auto-close stream when handler finishes without calling close()
@@ -629,9 +679,32 @@ export class SsePrimitive<
 
   /**
    * HTTP handler for the registered route.
-   * Returns a ReadableStream with SSE-formatted events.
+   * Returns a ReadableStream with SSE-formatted events, once every `use`
+   * middleware has let the request through: a `$secure` refusal is then the
+   * route's error (a 401 or a 403), not an error inside a 200 stream.
    */
-  protected httpHandler(request: ServerRequest): ReadableStream {
+  protected async httpHandler(request: ServerRequest): Promise<ReadableStream> {
+    let entered!: () => void;
+    let refused!: (error: unknown) => void;
+    const gate = new Promise<void>((resolve, reject) => {
+      entered = resolve;
+      refused = reject;
+    });
+    const stream = this.httpStream(request, entered, refused);
+    await gate;
+    return stream;
+  }
+
+  /**
+   * The event stream of one HTTP call. `entered` fires when the user handler
+   * starts, `refused` when the pipeline fails before it did.
+   */
+  protected httpStream(
+    request: ServerRequest,
+    entered: () => void,
+    refused: (error: unknown) => void,
+  ): ReadableStream {
+    let started = false;
     const reply = request.reply;
     reply.setHeader("content-type", "text/event-stream");
     reply.setHeader("cache-control", "no-cache");
@@ -649,12 +722,20 @@ export class SsePrimitive<
         this.alepha.context.withSignal(abortController.signal, () => {
           const signal = this.handlerSignal(abortController);
           const encoder = new TextEncoder();
-          const context: SseHandlerContext<TConfig> = {
+          const context = {
+            [SsePrimitive.ENTERED]: () => {
+              started = true;
+              entered();
+            },
             body: request.body as any,
             params: request.params as any,
             query: request.query as any,
             headers: request.headers as any,
             request,
+            // `$secure` writes the HTTP request's `user`.
+            get user() {
+              return (request as { user?: unknown }).user;
+            },
             signal,
             emit: (data: SseEventData<TConfig>) => {
               if (signal.aborted) {
@@ -683,6 +764,7 @@ export class SsePrimitive<
           Promise.resolve()
             .then(() => handlerFn(context))
             .then(() => {
+              entered();
               abortController.abort(new AlephaError("SSE handler finished"));
               try {
                 controller.close();
@@ -692,6 +774,9 @@ export class SsePrimitive<
             })
             .catch((error: Error) => {
               abortController.abort(error);
+              if (!started) {
+                refused(error);
+              }
               try {
                 controller.error(error);
               } catch {
