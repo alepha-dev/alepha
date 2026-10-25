@@ -16,7 +16,7 @@ the Alepha project), and its history came with it.
 - `./test-linux.sh` runs gofmt, vet, build, the tests and the cross-compile in
   a Linux container (`compose.yml`, `Dockerfile`, `ci.sh`). Docker must be
   running.
-- CI (`.github/workflows/ci.yml`, job `check`) runs the same on every push. It
+- CI (`.github/workflows/bay-ci.yml` at the repository root, job `check`) runs the same on every push touching `bay/`. It
   is the gate.
 - Two tests skip unless a tool is on PATH, and a skip prints `ok`: the ACME
   issuance test in `internal/tlsconf` needs `pebble` and `pebble-challtestsrv`

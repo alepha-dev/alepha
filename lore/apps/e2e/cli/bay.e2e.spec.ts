@@ -6,7 +6,7 @@
  * fake connector, and both can be green while the wire disagrees. This is the
  * one test where the Go binary talks to `/ws/estates` on a Lore booted from
  * `apps/lore/dist`, built from a checkout of `github.com/alepha-dev/bay`
- * (`BAY_DIR`, default `.bay`), and the wire-format fixtures both suites pin are what
+ * (`bay/` beside `lore/`, or `BAY_DIR`), and the wire-format fixtures both suites pin are what
  * keeps the two from drifting between runs of it.
  *
  * ⚠️ It builds `bay` natively with `go build` and FAILS when `go` is missing.
@@ -46,10 +46,10 @@ import { candidatePorts, e2ePort } from "../../../scripts/playwright.port.ts";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 /**
- * A checkout of github.com/alepha-dev/bay. CI clones it to `.bay`; locally,
- * point `BAY_DIR` at your own clone.
+ * The Bay source: `bay/` beside `lore/` in this repository, or `BAY_DIR`
+ * to build another checkout.
  */
-const BAY_DIR = process.env.BAY_DIR ?? join(ROOT, ".bay");
+const BAY_DIR = process.env.BAY_DIR ?? join(ROOT, "..", "bay");
 const LORE_DIR = join(ROOT, "apps", "lore");
 const PASSWORD = "GoodPassw0rd!";
 

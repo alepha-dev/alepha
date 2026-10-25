@@ -32,8 +32,12 @@ describe("vendored package tsconfig", () => {
   const packagesDir = fileURLToPath(
     new URL("../../../../../", import.meta.url),
   );
-  const repoRoot = join(packagesDir, "..");
   const require = createRequire(import.meta.url);
+  // Resolved, not assumed: the install's `node_modules` sits at the
+  // repository root, one level above `framework/` (#Q2765).
+  const typesDir = dirname(
+    dirname(require.resolve("@types/node/package.json")),
+  );
   const tscBin = join(
     dirname(require.resolve("typescript/package.json")),
     "bin/tsc",
@@ -120,7 +124,7 @@ describe("vendored package tsconfig", () => {
     mkdirSync(join(root, "node_modules"), { recursive: true });
     symlinkSync(alepha, join(root, "node_modules/alepha"), "dir");
     symlinkSync(
-      join(repoRoot, "node_modules/@types"),
+      typesDir,
       join(root, "node_modules/@types"),
       "dir",
     );

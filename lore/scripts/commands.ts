@@ -83,7 +83,6 @@ export class LoreCommands {
   protected bayDir(root: string): string {
     const candidates = [
       process.env.BAY_DIR,
-      join(root, ".bay"),
       join(root, "..", "bay"),
     ].filter((dir): dir is string => !!dir);
 
@@ -91,7 +90,7 @@ export class LoreCommands {
     if (!found) {
       throw new AlephaError(
         `No Bay checkout for e2e-cli (looked in ${candidates.join(", ")}). ` +
-          "Clone github.com/alepha-dev/bay to .bay, set BAY_DIR, or run yarn v --fast.",
+          "Set BAY_DIR, or run yarn v --fast.",
       );
     }
     return found;

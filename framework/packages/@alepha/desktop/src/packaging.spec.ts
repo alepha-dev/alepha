@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, sep } from "node:path";
 
 import { rolldown } from "rolldown";
 import { describe, it } from "vitest";
@@ -109,23 +109,17 @@ describe("@alepha/desktop packaging", () => {
   it("has the embedded library where the shell imports it from", ({
     expect,
   }) => {
-    const dylib = join(
-      root,
-      "node_modules",
-      "webview-bun",
-      "build",
-      "libwebview.dylib",
+    // Node's own lookup: `node_modules/webview-bun` in this package or any
+    // directory above it, wherever the install hoisted it (the repository
+    // root, since #Q2765 put the framework under `framework/`).
+    const ancestors = root.split(sep).map((_, i, parts) =>
+      parts.slice(0, parts.length - i).join(sep),
     );
-    const hoisted = join(
-      root,
-      "..",
-      "..",
-      "..",
-      "node_modules",
-      "webview-bun",
-      "build",
-      "libwebview.dylib",
+    const found = ancestors.some((dir) =>
+      existsSync(
+        join(dir, "node_modules", "webview-bun", "build", "libwebview.dylib"),
+      ),
     );
-    expect(existsSync(dylib) || existsSync(hoisted)).toBe(true);
+    expect(found).toBe(true);
   });
 });

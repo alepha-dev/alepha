@@ -559,7 +559,8 @@ const concurrencyViolations: string[] = [];
 // 2026-09-09, at which point the check did not report a violation - it
 // crashed on ENOENT, taking the whole `check:conventions` step with it. A
 // rule that names one file stops being a rule the moment the file is renamed.
-const workflowDir = ".github/workflows";
+// The workflows sit at the repository root, one level above this worktree.
+const workflowDir = "../.github/workflows";
 for (const file of readdirSync(workflowDir).sort()) {
   if (!file.endsWith(".yml") && !file.endsWith(".yaml")) continue;
   const path = `${workflowDir}/${file}`;
@@ -625,7 +626,7 @@ if (concurrencyViolations.length > 0) {
  * Checked here because it cannot be checked anywhere else: the failure needs a
  * runner image that has moved on, and by then it is every job at once.
  */
-const SETUP_ACTION = ".github/actions/setup/action.yml";
+const SETUP_ACTION = "../.github/actions/setup/action.yml";
 // Comment lines dropped first. The file explains this very rule in prose, so a
 // search over the raw text matches the explanation and reports the thing it is
 // describing as present - which is exactly what the first version of this

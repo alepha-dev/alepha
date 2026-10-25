@@ -2,7 +2,7 @@
 
 **Alepha Lore**: the planning memory, telemetry sink and deploy chain for Alepha applications, at `lore.alepha.dev`. This repository holds the app (`apps/lore`, read `apps/lore/CLAUDE.md` before working on it), its four private modules (`packages/@lore/*`, see the layout below), its CLI and client (`packages/@alepha/lore`, published to npm), and the end-to-end suites that drive built artefacts (`apps/e2e`).
 
-It left the Alepha monorepo on 2026-10-01 (epic #E72 of the Alepha project) with its history. The framework is developed in `github.com/alepha-dev/alepha`; Bay in `github.com/alepha-dev/bay`.
+It left the Alepha monorepo on 2026-10-01 (epic #E72 of the Alepha project) and came back on 2026-10-25 (#Q2765 there), as `lore/` beside `framework/` and `bay/`. Read the root `CLAUDE.md` first. Every path in this file is relative to `lore/`.
 
 ## Layout: packages are modules, apps are executables
 
@@ -29,13 +29,13 @@ core <- deploy
 - `./web` imports another package's `./api` or `./mcp` as `import type` only; runtime values come from `./schemas` or `./web`.
 - No deep import past `exports`, no import of `apps/*` (nor of `lore`), no `@/` inside a package.
 
-## The framework is vendored
+## The framework is `../framework`
 
-`.vendor/alepha` and `.vendor/@alepha/ui` are the framework's `main`, copied by `alepha vendor sync` and committed (`.vendor/vendor.json` records the commit). They are yarn workspaces, so `alepha` and `@alepha/ui` resolve to them, as source.
+`alepha` and `@alepha/ui` resolve to `../framework/packages/alepha` and `../framework/packages/@alepha/ui` by `workspace:*`, as source, through the one root install. There is no vendored copy and no sync.
 
-- **Never edit `.vendor/` here.** A framework change is made in `alepha-dev/alepha`, pushed to its `main`, then brought in with `yarn vendor:sync` (it refuses when `.vendor/` was edited locally). Alepha has near-zero training data: read `.vendor/alepha/src` as the authority on its API.
-- **After a sync, republish `@alepha/lore`** when the sigil or the client touched a framework API that moved: hosts run the sigil on their own `alepha`.
-- `vendor sync` clones from a git remote, so it only sees COMMITTED framework work.
+- A Lore change that needs a framework change makes both, in one commit, under one quest. Alepha has near-zero training data: read `../framework/packages/alepha/src` as the authority on its API.
+- `yarn v` here checks Lore only (`foreach -W`). A framework change is checked by `cd ../framework && yarn v` as well, and CI runs both.
+- **After a framework change the sigil or the client depends on, republish `@alepha/lore`**: hosts run the sigil on their own `alepha`.
 
 ## The workflow
 
@@ -43,23 +43,23 @@ core <- deploy
 
 1. **Work in a worktree** for anything beyond a small edit. One epic, one worktree, one branch.
 2. **Commit as you go, and name the quest.** Small commits, staged by explicit path (never `git add -A`), each naming its Lore quest as `#Q<n>`, the sha recorded with `quest_commit_add`.
-3. **Push the branch to verify.** Every branch runs `Verify` (`checks`, `test` x2, `e2e-lore` x6, `e2e-cli`, `docker`).
+3. **Push the branch to verify.** Every branch touching `lore/`, `framework/` or `bay/` runs `Lore Verify` (`.github/workflows/lore-verify.yml` at the root: `checks`, `test` x2, `e2e-lore` x6, `e2e-cli`, `docker`).
 4. **When it is green, finish the branch**: merge to main, push, delete it locally and on the remote, remove the worktree.
 
 A small edit (a few lines, no decision anyone would look for later) goes straight to `main` with no quest.
 
-⚠️ **`main` deploys to production with no human gate.** `Deploy` runs `alepha deploy` on `lore-production` once `Verify` succeeds on a push to `main`. Lore migrations target D1, which cascade-wipes children on `DROP TABLE`: read "Migration safety on D1" in `apps/lore/CLAUDE.md` before pushing one.
+⚠️ **`main` deploys to production with no human gate.** `Lore Deploy` runs `alepha deploy` on `lore-production` once `Lore Verify` succeeds on a push to `main`, as soon as the repository variable `LORE_DEPLOY` is `true`. Lore migrations target D1, which cascade-wipes children on `DROP TABLE`: read "Migration safety on D1" in `apps/lore/CLAUDE.md` before pushing one.
 
 ### Verifying
 
-- `yarn v` (`yarn alepha verify`) runs what CI runs, the Docker image aside: install, lint, then typecheck and the audits (`check:deps`, `check:conventions`, `check:i18n`, `check:migrations`), `yarn test`, `yarn build`, `yarn e2e` and `yarn e2e-cli`. `e2e-cli` needs a Bay checkout and Go: `BAY_DIR`, else `.bay`, else a sibling `../bay`; `yarn v` refuses up front when none exists. No service is needed: every spec runs on SQLite.
+- `yarn v` (`yarn alepha verify`) runs what CI runs, the Docker image aside: install, lint, then typecheck and the audits (`check:deps`, `check:conventions`, `check:i18n`, `check:migrations`), `yarn test`, `yarn build`, `yarn e2e` and `yarn e2e-cli`. `e2e-cli` needs Go and builds Bay from `../bay` (or `BAY_DIR`). No service is needed: every spec runs on SQLite.
 - `yarn v --fast` is the **inner loop**: it stops after `yarn test`, so it cannot catch a build failure, an SSR regression or anything an e2e covers.
 - `yarn w lore test` / `yarn w @alepha/lore test` for one workspace, `yarn w lore vitest run <pattern>` for one file.
-- The end-to-end suites live in `apps/e2e` (#Q2628, read `apps/e2e/CLAUDE.md`): `web/` is the Playwright suite (`yarn e2e`, or `yarn w e2e web <spec>` for one file) and `cli/` the CLI and Bay suite (`yarn e2e-cli`). Both drive built artefacts and import no `apps/lore/src`: `yarn e2e` needs `yarn w lore build` first (each worker starts `apps/lore/dist`), and `yarn e2e-cli` needs `yarn build` and the Bay checkout above.
+- The end-to-end suites live in `apps/e2e` (#Q2628, read `apps/e2e/CLAUDE.md`): `web/` is the Playwright suite (`yarn e2e`, or `yarn w e2e web <spec>` for one file) and `cli/` the CLI and Bay suite (`yarn e2e-cli`). Both drive built artefacts and import no `apps/lore/src`: `yarn e2e` needs `yarn w lore build` first (each worker starts `apps/lore/dist`), and `yarn e2e-cli` needs `yarn build` and Go.
 
 ### Releasing
 
-`Release` (`workflow_dispatch`) bumps `apps/lore` and `@alepha/lore` together, publishes the package to npm (trusted publishing), pushes `ghcr.io/alepha-dev/lore`, and publishes the Lore release of the same tag. The changelog is Lore's own release feature: the quests attached to the release in the Lore project.
+⚠️ Parked: `.github/workflows/release.yml` here is not yet wired into the root `.github/` (its tags would collide with the framework's), so GitHub does not run it. Until it is, release from alepha-dev/lore. Once wired, `Release` (`workflow_dispatch`) bumps `apps/lore` and `@alepha/lore` together, publishes the package to npm (trusted publishing), pushes `ghcr.io/alepha-dev/lore`, and publishes the Lore release of the same tag. The changelog is Lore's own release feature: the quests attached to the release in the Lore project.
 
 ## Lore MCP: the planning memory
 

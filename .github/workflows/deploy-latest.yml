@@ -88,6 +88,14 @@ concurrency:
 env:
   LORE_PROJECT: alepha
 
+# Every `run` step works inside `framework/`: the repository holds the
+# framework, Lore and Bay side by side (#Q2765), and this workflow is the
+# framework's. A step's own `working-directory` is relative to the repository
+# root, so it names `framework/` too.
+defaults:
+  run:
+    working-directory: framework
+
 jobs:
   # ---------------------------------------------------------------------------
   # The component showcase at `ui.alepha.dev`, and the shop demo at
@@ -128,7 +136,7 @@ jobs:
       # `alepha-ui-production` (`infra({ project: "alepha" })`), the Worker
       # Lore Deploy created, taken over with its Custom Domain (#Q2576).
       - name: Deploy
-        working-directory: apps/ui
+        working-directory: framework/apps/ui
         run: yarn alepha deploy --env production
 
   deploy-shop-production:
@@ -159,7 +167,7 @@ jobs:
       # A demo: its data is disposable. Secrets come from the `shop-production`
       # environment and are resolved from the job env by `deploy`.
       - name: Deploy
-        working-directory: apps/examples/shop
+        working-directory: framework/apps/examples/shop
         run: yarn alepha deploy --env production
         env:
           APP_SECRET: ${{ secrets.APP_SECRET }}

@@ -54,6 +54,14 @@ on:
         type: string
         default: ""
 
+# Every `run` step works inside `framework/`: the repository holds the
+# framework, Lore and Bay side by side (#Q2765), and this workflow is the
+# framework's. A step's own `working-directory` is relative to the repository
+# root, so it names `framework/` too.
+defaults:
+  run:
+    working-directory: framework
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -112,7 +120,7 @@ jobs:
         env:
           VERSION_BUMP: ${{ inputs.version_bump }}
         run: |
-          yarn workspaces foreach --no-private --all version "${VERSION_BUMP}"
+          yarn workspaces foreach --no-private --worktree version "${VERSION_BUMP}"
 
       - name: Get New Version
         id: version
@@ -325,7 +333,7 @@ jobs:
       # exits 0 with a log line.
       # ──────────────────────────────────────────────────────────────
       - name: Rebuild docs for workerd
-        working-directory: apps/docs
+        working-directory: framework/apps/docs
         run: yarn alepha build --runtime=workerd && yarn alepha gen:llms
 
       - name: Publish the Lore release
@@ -354,7 +362,7 @@ jobs:
       # drop them. Only `LORE_API_KEY`: the Cloudflare credential is the
       # estate's, held by Lore.
       - name: Deploy docs
-        working-directory: apps/docs
+        working-directory: framework/apps/docs
         run: yarn alepha deploy --env production --prebuilt
         env:
           LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
@@ -363,7 +371,7 @@ jobs:
       # alepha.dev stays in Lore as an artifact to roll back to; `latest` is
       # the one tag the deploy above replaces.
       - name: Archive docs as a versioned artifact
-        working-directory: apps/docs
+        working-directory: framework/apps/docs
         run: yarn run -T lore artifacts push --app docs --tag "$VERSION"
         env:
           LORE_API_KEY: ${{ secrets.LORE_API_KEY }}

@@ -64,12 +64,12 @@ Retired framework names fail immediately and name their replacement.
 - Primitives carry a `$` prefix (`$action`, `$entity`, `$repository`), services are wired by the DI container (`$inject()`), React hooks are `use` + noun.
 - **`alepha`** (`packages/alepha/src/`) exports 50+ sub-modules, imported as `alepha/<module>` (`alepha/server`, `alepha/api/users`).
 - **`@alepha/ui`**: Base UI + Tailwind components in seventeen modules, `src/<module>/` with an `index.ts` barrel each. `@alepha/ui` itself is `src/core`; the subpaths are `form`, `settings`, `table`, `tree`, `markdown`, `shell`, `auth`, `account`, `admin`, `organizations`, the opt-in wrappers `chart`, `command`, `calendar`, `otp`, `resizable`, and `i18n/fr`. Edited in place, no registry. `check:conventions` guards the map: `core` imports no other module, `organizations` only `core`, `form`, `table`, `settings`, the wrappers and `i18n/fr` only `core`, and there is no cycle.
-- **`lore`**: the Lore CLI, from the npm package `@alepha/lore` (a root devDependency, so `yarn lore` resolves). CI uses it for `yarn lore releases publish` (`release.yml`) and `yarn lore quality push` (`nightly.yml`), both against project `alepha`. Its source lives in the Lore repository.
+- **`lore`**: the Lore CLI, from the npm package `@alepha/lore` (a root devDependency, so `yarn lore` resolves). CI uses it for `yarn lore releases publish` (`release.yml`) and `yarn lore quality push` (`nightly.yml`), both against project `alepha`. Its source is `../lore/packages/@alepha/lore`, but the framework pins the npm release (`npm:` in `package.json`), so CI never runs an unbuilt CLI.
 - Others: `@alepha/devtools`, `@alepha/commerce`, `@alepha/payments-stripe`, `@alepha/discord`, `@alepha/protobuf`, `@alepha/mqtt` (MQTT 5 client and `$topic` provider), `create-alepha`.
 
 ### Deploys
 
-This repository is the framework only. Lore (https://github.com/alepha-dev/lore) and Bay (https://github.com/alepha-dev/bay) live in repositories of their own and build, deploy and release from there.
+This folder is the framework. Lore (`../lore`) and Bay (`../bay`) sit beside it in the same repository since 2026-10-25 (#Q2765, see the root `CLAUDE.md`), with workflows of their own. Every path in this file is relative to `framework/`.
 
 `main` auto-deploys the showcase (`apps/ui`) and the shop example to Cloudflare with no human gate: **Deploy latest** (`deploy-latest.yml`) fires once **Verify** (`verify.yml`) succeeds on a push to `main`. The docs at `alepha.dev` are the exception: they document the published framework, so only **Release** (`release.yml`) deploys them. A Verify cancelled by a newer push leaves that commit undeployed until the next green push.
 

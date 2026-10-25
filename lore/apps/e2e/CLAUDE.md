@@ -5,7 +5,7 @@ The end-to-end suites (#Q2628). They drive built artefacts and import no `apps/l
 | folder | suite                                                                  | run                                                                                                           |
 | ------ | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
 | `web/` | Playwright, against `apps/lore/dist` started once per worker           | `yarn e2e` from the root (CI: `e2e-lore`, 6 shards, `yarn w e2e web --shard=n/6`), after `yarn w lore build`  |
-| `cli/` | Vitest: the packed `lore` binary, and the real Bay against a real Lore | `yarn e2e-cli` from the root, after `yarn build`, with a Bay checkout (`BAY_DIR`, else `.bay`, else `../bay`) |
+| `cli/` | Vitest: the packed `lore` binary, and the real Bay against a real Lore | `yarn e2e-cli` from the root, after `yarn build`, with Go and the Bay source (`../bay`, or `BAY_DIR`) |
 
 `yarn w e2e web <spec>` runs one Playwright file, `yarn w e2e web:ui` the UI mode. The suites are out of the root `yarn test` on purpose (`check:conventions` exempts this workspace), and `apps/e2e` is exempt from the `describe` + `it` rule because Playwright has no `it`.
 
