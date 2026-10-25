@@ -100,6 +100,37 @@ export class LoreStackService {
   }
 
   /**
+   * Waits for a logs request's answer: the machine uploads it within seconds
+   * when it is connected. Gives up after two minutes with what it knows.
+   */
+  public async awaitLogs(
+    target: { projectId: number; stackId: string; environmentId: string },
+    request: string,
+  ) {
+    const startedAt = this.dateTime.nowMillis();
+    for (;;) {
+      const answer = await this.deploys.readStackLogs({
+        params: { ...target, request },
+      });
+      if (
+        answer.status === "done" ||
+        answer.status === "failed" ||
+        answer.status === "expired"
+      ) {
+        return answer;
+      }
+      if (this.dateTime.nowMillis() - startedAt > 120_000) {
+        return {
+          ...answer,
+          reason:
+            "the machine did not answer within two minutes; is it connected?",
+        };
+      }
+      await this.dateTime.wait(LoreStackService.POLL_INTERVAL_MS);
+    }
+  }
+
+  /**
    * Follows one stack deploy to its end, reporting each new step, and answers
    * the final row.
    */

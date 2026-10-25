@@ -1,7 +1,12 @@
-import type { StackController, StackDeployController } from "@lore/deploy/api";
+import type {
+  StackController,
+  StackDeployController,
+  StackVariableController,
+} from "@lore/deploy/api";
 import { $inject, AlephaError, z } from "alepha";
-import { $command, CommandError } from "alepha/command";
+import { $command, CommandError, EnvUtils } from "alepha/command";
 import { $client } from "alepha/server/links";
+import { FileSystemProvider } from "alepha/system";
 
 import { LoreClientService } from "../services/LoreClientService.ts";
 import { LoreOutput } from "../services/LoreOutput.ts";
@@ -34,6 +39,27 @@ export class StackCommand {
   protected readonly deployApi = $client<StackDeployController>(
     this.client.scope(),
   );
+  protected readonly variableApi = $client<StackVariableController>(
+    this.client.scope(),
+  );
+  protected readonly fs = $inject(FileSystemProvider);
+  protected readonly envUtils = $inject(EnvUtils);
+
+  /**
+   * `--env` for the commands that write: required, never guessed, the rule
+   * `lore secrets` follows. A variable set on the wrong environment is a
+   * production secret in staging, or the reverse.
+   */
+  protected readonly requiredEnv = z.text({
+    aliases: ["e"],
+    description: "The environment. Required: it is never guessed.",
+  });
+  protected readonly optionalEnv = z
+    .text({
+      aliases: ["e"],
+      description: "The environment. Defaults to production.",
+    })
+    .optional();
 
   protected readonly projectFlag = z
     .text({
@@ -395,6 +421,329 @@ export class StackCommand {
     },
   });
 
+  // -------------------------------------------------------------------------
+  // secrets, routes, services (#Q2701)
+  // -------------------------------------------------------------------------
+
+  public readonly secretsSet = $command({
+    name: "set",
+    description:
+      "Set stack variables: KEY=VALUE, KEY to read $KEY, --file a dotenv file, or --generate random values",
+    args: z
+      .text({
+        title: "KEY=VALUE",
+        description:
+          "KEY=VALUE, KEY alone (reads $KEY), or with --generate the key to generate. One per call; --file sets many.",
+      })
+      .optional(),
+    flags: z.object({
+      project: this.projectFlag,
+      name: this.nameFlag,
+      env: this.requiredEnv,
+      file: z
+        .text({
+          aliases: ["f"],
+          description: "A dotenv file whose every key is set",
+        })
+        .optional(),
+      generate: z
+        .boolean()
+        .describe("Generate a random value for each named key, on the server")
+        .optional(),
+      length: z
+        .integer()
+        .describe("With --generate: hex characters, 16 to 256 (default 64)")
+        .optional(),
+    }),
+    handler: async ({ args, flags, print, root }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const words = args ? [args] : [];
+        if (!words.length === !flags.file) {
+          throw new AlephaError(
+            "Pass KEY=VALUE (or KEY, or keys with --generate), or --file with a dotenv file. Not both, and not neither.",
+          );
+        }
+        const target = await this.environmentTarget(flags);
+        const sets: Array<{ key: string; value?: string; generate?: number }> =
+          flags.file
+            ? await this.readDotenv(root, flags.file)
+            : words.map((word) =>
+                flags.generate
+                  ? { key: word, generate: flags.length ?? 64 }
+                  : this.readPair(word),
+              );
+        for (const set of sets) {
+          await this.variableApi.setStackVariable({
+            params: target.params,
+            body: set,
+          });
+          print(
+            `Set ${set.key} on ${target.where}${set.generate ? " (generated)" : ""}.`,
+          );
+        }
+        print("They apply on the environment's next deploy.");
+      });
+    },
+  });
+
+  public readonly secretsList = $command({
+    name: "list",
+    description:
+      "A stack environment's variables: names and masks, never a value",
+    flags: z.object({
+      project: this.projectFlag,
+      name: this.nameFlag,
+      env: this.requiredEnv,
+    }),
+    handler: async ({ flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const target = await this.environmentTarget(flags);
+        const { items } = await this.variableApi.listStackVariables({
+          params: target.params,
+        });
+        if (items.length === 0) {
+          print(`${target.where} has no variable.`);
+          return;
+        }
+        for (const item of items) {
+          print(
+            `${item.key}  ${item.generated ? "(generated)" : item.valuePrefix ? `${item.valuePrefix}…` : "…"}`,
+          );
+        }
+      });
+    },
+  });
+
+  public readonly secretsUnset = $command({
+    name: "unset",
+    description: "Remove one variable from a stack environment",
+    args: z.text({ title: "KEY", description: "The variable to remove" }),
+    flags: z.object({
+      project: this.projectFlag,
+      name: this.nameFlag,
+      env: this.requiredEnv,
+    }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const target = await this.environmentTarget(flags);
+        await this.variableApi.removeStackVariable({
+          params: target.params,
+          query: { key: args },
+        });
+        print(`Removed ${args} from ${target.where}.`);
+      });
+    },
+  });
+
+  public readonly secrets = $command({
+    name: "secrets",
+    description: "A stack environment's variables: set, list, unset",
+    children: [this.secretsSet, this.secretsList, this.secretsUnset],
+    handler: async ({ help }) => {
+      help();
+    },
+  });
+
+  public readonly routeAdd = $command({
+    name: "add",
+    description: "Serve a full domain from one service of a stack environment",
+    args: z.text({ title: "service", description: "The service that answers" }),
+    flags: z.object({
+      project: this.projectFlag,
+      name: this.nameFlag,
+      env: this.requiredEnv,
+      domain: z.text({
+        aliases: ["d"],
+        description: "The full domain, e.g. analytics.bob.dev",
+      }),
+    }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const service = args;
+        const domain = flags.domain;
+        const target = await this.environmentTarget(flags);
+        await this.stackApi.addStackRoute({
+          params: target.params,
+          body: { service, domain },
+        });
+        print(
+          `${target.where} serves ${domain} from ${service}. It applies on the next deploy.`,
+        );
+      });
+    },
+  });
+
+  public readonly routeList = $command({
+    name: "list",
+    description: "A stack environment's full-domain routes",
+    flags: z.object({
+      project: this.projectFlag,
+      name: this.nameFlag,
+      env: this.optionalEnv,
+    }),
+    handler: async ({ flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const target = await this.environmentTarget({
+          ...flags,
+          env: flags.env ?? "production",
+        });
+        const environment = target.environment;
+        if (environment.routes.length === 0) {
+          print(`${target.where} has no route.`);
+          return;
+        }
+        for (const route of environment.routes) {
+          print(`${route.domain}  ${route.service}`);
+        }
+      });
+    },
+  });
+
+  public readonly routeRemove = $command({
+    name: "remove",
+    description: "Stop serving a full domain from a stack environment",
+    args: z.text({
+      title: "DOMAIN",
+      description: "The domain to stop serving",
+    }),
+    flags: z.object({
+      project: this.projectFlag,
+      name: this.nameFlag,
+      env: this.requiredEnv,
+    }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const target = await this.environmentTarget(flags);
+        await this.stackApi.removeStackRoute({
+          params: target.params,
+          query: { domain: args },
+        });
+        print(
+          `${target.where} no longer serves ${args}. It applies on the next deploy.`,
+        );
+      });
+    },
+  });
+
+  public readonly route = $command({
+    name: "route",
+    description: "A stack environment's full-domain routes: add, list, remove",
+    children: [this.routeAdd, this.routeList, this.routeRemove],
+    handler: async ({ help }) => {
+      help();
+    },
+  });
+
+  public readonly ps = $command({
+    name: "ps",
+    description:
+      "A stack environment's services: state, memory, restarts and the image digest it runs",
+    flags: z.object({
+      project: this.projectFlag,
+      name: this.nameFlag,
+      env: this.optionalEnv,
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const target = await this.environmentTarget({
+          ...flags,
+          env: flags.env ?? "production",
+        });
+        const view = await this.deployApi.listStackServices({
+          params: target.params,
+        });
+        if (flags.output === "json") {
+          this.render.json(print, view);
+          return;
+        }
+        print(
+          `${target.where}  ${view.revision ? `revision ${view.revision}` : "never deployed"}${view.stopped ? "  (stopped)" : ""}`,
+        );
+        for (const service of view.services) {
+          const memory =
+            service.memoryBytes === undefined
+              ? ""
+              : `${Math.round(service.memoryBytes / 1048576)} MiB`;
+          print(
+            `  ${service.name.padEnd(16)} ${service.kind.padEnd(8)} ${(service.state ?? "unreported").padEnd(12)} ${memory.padEnd(9)} ${service.restarts ?? ""}  ${service.digest ?? service.image ?? ""}`,
+          );
+        }
+        for (const volume of view.volumes.filter((v) => v.backedUp === false)) {
+          print(`  not backed up: volume ${volume.name}`);
+        }
+      });
+    },
+  });
+
+  public readonly logs = $command({
+    name: "logs",
+    description: "The tail of one service's logs, asked of the machine",
+    args: z.text({ title: "SERVICE", description: "The service" }),
+    flags: z.object({
+      project: this.projectFlag,
+      name: this.nameFlag,
+      env: this.optionalEnv,
+      lines: z
+        .integer()
+        .describe("How many lines, up to 2000 (default 200)")
+        .optional(),
+    }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const target = await this.environmentTarget({
+          ...flags,
+          env: flags.env ?? "production",
+        });
+        const { request } = await this.deployApi.requestStackLogs({
+          params: target.params,
+          body: { service: args, lines: flags.lines ?? 200 },
+        });
+        const answer = await this.stacks.awaitLogs(target.params, request);
+        if (answer.status !== "done") {
+          throw new CommandError(
+            `The machine could not answer: ${answer.reason ?? answer.status}`,
+          );
+        }
+        for (const line of answer.lines ?? []) {
+          print(line.raw);
+        }
+      });
+    },
+  });
+
+  public readonly restart = $command({
+    name: "restart",
+    description: "Restart one service of a stack environment",
+    args: z.text({ title: "SERVICE", description: "The service" }),
+    flags: z.object({
+      project: this.projectFlag,
+      name: this.nameFlag,
+      env: this.optionalEnv,
+    }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const target = await this.environmentTarget({
+          ...flags,
+          env: flags.env ?? "production",
+        });
+        await this.deployApi.stackServiceAction({
+          params: { ...target.params, service: args, verb: "restart" },
+        });
+        print(`Asked ${target.where} to restart ${args}.`);
+      });
+    },
+  });
+
   public readonly stack = $command({
     name: "stack",
     description:
@@ -406,11 +755,85 @@ export class StackCommand {
       this.destroy,
       this.list,
       this.revisions,
+      this.secrets,
+      this.route,
+      this.ps,
+      this.logs,
+      this.restart,
     ],
     handler: async ({ help }) => {
       help();
     },
   });
+
+  /**
+   * The project, stack and environment a command names, resolved, with the
+   * three ids the environment endpoints take and its name for messages.
+   */
+  protected async environmentTarget(flags: {
+    project?: string;
+    name?: string;
+    env: string;
+  }) {
+    const context: LoreRefusalContext = {};
+    const { project, projectId } = await this.projects.named(
+      flags.project,
+      context,
+    );
+    const stack = await this.stacks.getStack(
+      projectId,
+      await this.stacks.stackName(project, projectId, flags.name),
+    );
+    const environment = this.stacks.environmentOf(
+      stack,
+      flags.env.trim().toLowerCase(),
+    );
+    return {
+      params: { projectId, stackId: stack.id, environmentId: environment.id },
+      environment,
+      where: `${stack.name}/${environment.env}`,
+    };
+  }
+
+  /**
+   * One KEY=VALUE, or KEY read from this process's environment. A value is
+   * never printed, not even in the refusal.
+   */
+  protected readPair(word: string): { key: string; value: string } {
+    const equals = word.indexOf("=");
+    const key = (equals === -1 ? word : word.slice(0, equals)).trim();
+    const value = equals === -1 ? process.env[key] : word.slice(equals + 1);
+    if (!key) {
+      throw new AlephaError(
+        `"${word.slice(0, equals === -1 ? undefined : equals)}" names no key. Pass KEY=VALUE.`,
+      );
+    }
+    if (!value) {
+      throw new AlephaError(
+        equals === -1
+          ? `${key} is not set in this environment, so there is no value to send. Pass ${key}=VALUE, or export it first.`
+          : `${key} has no value. Remove it with \`lore stack secrets unset ${key}\` instead.`,
+      );
+    }
+    return { key, value };
+  }
+
+  protected async readDotenv(
+    root: string,
+    file: string,
+  ): Promise<Array<{ key: string; value: string }>> {
+    if (!(await this.fs.exists(this.fs.join(root, file)))) {
+      throw new AlephaError(`${file} does not exist.`);
+    }
+    const vars = await this.envUtils.parseEnv(root, [file]);
+    const pairs = Object.entries(vars).filter(
+      ([, value]) => typeof value === "string" && value !== "",
+    );
+    if (pairs.length === 0) {
+      throw new AlephaError(`${file} has no variable to set.`);
+    }
+    return pairs.map(([key, value]) => ({ key, value: String(value) }));
+  }
 
   /**
    * Follows a queued deploy, prints what the machine reported, and fails the
