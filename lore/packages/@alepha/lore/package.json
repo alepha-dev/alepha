@@ -86,7 +86,7 @@
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "rolldown": "~1.2.13",
-    "tsdown": "^0.23.1",
+    "tsdown": "^0.23.0",
     "vitest": "^5.0.4"
   },
   "peerDependencies": {

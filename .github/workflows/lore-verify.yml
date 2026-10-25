@@ -118,6 +118,8 @@ jobs:
 
       - name: Setup Playwright
         uses: ./.github/actions/playwright
+        with:
+          working-directory: lore
 
       - name: Run E2E Tests
         timeout-minutes: 20
