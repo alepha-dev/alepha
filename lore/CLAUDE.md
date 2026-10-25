@@ -59,7 +59,7 @@ A small edit (a few lines, no decision anyone would look for later) goes straigh
 
 ### Releasing
 
-`Lore Release` (`.github/workflows/lore-release.yml` at the repository root, `workflow_dispatch` with a dry-run switch) bumps `apps/lore` and `@alepha/lore` together, publishes the package to npm (trusted publishing), pushes `ghcr.io/alepha-dev/lore`, and publishes the Lore release of the same version. ⚠️ The git tag is **`lore-<version>`** (#Q2767): the framework tags bare versions in the same repository and reads the newest bare tag as its changelog base. The npm trusted publisher names the workflow file, so `lore-release.yml` is not renamed. The changelog is Lore's own release feature: the quests attached to the release in the Lore project.
+Lore ships in the repository's one release (#Q2776): `release.yml` at the root sets `apps/lore` and `@alepha/lore` to the framework's version, publishes the package to npm (trusted publishing, which names `release.yml`), pushes `ghcr.io/alepha-dev/lore`, records the artifact and image in project `lore`, and publishes the Lore release of that version there, all under one bare `x.y.z` tag. The changelog is Lore's own release feature: the quests attached to the release in the Lore project.
 
 ## Lore MCP: the planning memory
 

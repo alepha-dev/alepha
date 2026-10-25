@@ -12,7 +12,7 @@ curl -sSL https://alepha.dev/bay/install.sh | sudo sh
 
 The installer sets up Docker when it is missing (Bay runs every app in a
 container, epic E73 in the Lore project Bay), then fetches the newest
-[release](https://github.com/alepha-dev/alepha/releases?q=bay-) for the host's
+[release](https://github.com/alepha-dev/alepha/releases) for the host's
 architecture and verifies its checksum. `bay doctor` checks a host. Or build it
 yourself:
 

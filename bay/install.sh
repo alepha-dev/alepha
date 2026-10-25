@@ -15,7 +15,7 @@
 # `bay` service is already running, restarted.
 #
 # Environment:
-#   BAY_VERSION   version to install (0.32.0 or bay-0.32.0), or "latest" (default)
+#   BAY_VERSION   version to install (e.g. 0.34.0), or "latest" (default)
 #   BAY_PREFIX    install root (default /opt/bay)
 #   BAY_BIN_LINK  symlink to put on PATH (default /usr/local/bin/bay)
 #   BAY_INSTALL_DOCKER  "no" to refuse installing Docker and stop instead
@@ -23,9 +23,10 @@
 #
 set -eu
 
-# Bay is released from the Alepha repository, beside the framework and Lore,
-# under `bay-<version>` tags (#Q2767). Until the first of those exists, the
-# last releases of the old alepha-dev/bay repository still serve "latest".
+# Bay is released from the Alepha repository with the framework and Lore, one
+# version and one GitHub release for all three (#Q2776): the release carries
+# `bay-linux-amd64`, `bay-linux-arm64` and `SHA256SUMS`. Releases from before
+# that (0.31.0 and older) live in the archived alepha-dev/bay repository.
 REPO="alepha-dev/alepha"
 LEGACY_REPO="alepha-dev/bay"
 BAY_VERSION="${BAY_VERSION:-latest}"
@@ -111,25 +112,40 @@ echo "==> Docker ready (Engine API $DOCKER_API)"
 
 # --- download --------------------------------------------------------------
 
-# The repository's own "latest" release is the framework's, so Bay's newest
-# is the first `bay-*` tag the API lists (releases come newest first).
+ASSET="bay-linux-$ARCH"
+
+# "latest" is the newest release that carries a Bay binary: the releases come
+# newest first, and one cut while Bay released on its own has none. The
+# archived repository's latest (0.31.0) is newer than the last shared release
+# before the split (0.30.0), so the two are compared and the higher one wins.
 if [ "$BAY_VERSION" = "latest" ]; then
   fetch "https://api.github.com/repos/$REPO/releases?per_page=100" "$TMP/releases.json" \
     || die "could not list releases: https://github.com/$REPO/releases"
-  TAG="$(grep -o '"tag_name": *"bay-[0-9][0-9.]*"' "$TMP/releases.json" | head -1 | sed 's/.*"\(bay-[0-9.]*\)"/\1/')"
-  if [ -n "$TAG" ]; then
-    BASE="https://github.com/$REPO/releases/download/$TAG"
-  else
-    BASE="https://github.com/$LEGACY_REPO/releases/latest/download"
+  URL="$(grep -o "\"browser_download_url\": *\"[^\"]*/$ASSET\"" "$TMP/releases.json" | head -1 | sed 's/.*": *"\(.*\)"/\1/')"
+  SHARED="$(printf '%s' "$URL" | sed -n 's#.*/releases/download/\([0-9][0-9.]*\)/.*#\1#p')"
+  LEGACY=""
+  if fetch "https://api.github.com/repos/$LEGACY_REPO/releases/latest" "$TMP/legacy.json"; then
+    LEGACY="$(grep -o '"tag_name": *"[0-9][0-9.]*"' "$TMP/legacy.json" | head -1 | sed 's/.*"\([0-9.]*\)"/\1/')"
   fi
+  NEWEST="$(printf '%s\n%s\n' "$SHARED" "$LEGACY" | grep . | sort -t. -k1,1n -k2,2n -k3,3n | tail -1)"
+  [ -n "$NEWEST" ] || die "no Bay release found in $REPO or $LEGACY_REPO"
+  if [ "$NEWEST" = "$SHARED" ]; then
+    BASE="https://github.com/$REPO/releases/download/$SHARED"
+  else
+    BASE="https://github.com/$LEGACY_REPO/releases/download/$LEGACY"
+  fi
+  BAY_VERSION="$NEWEST"
 else
-  BASE="https://github.com/$REPO/releases/download/bay-${BAY_VERSION#bay-}"
+  BASE="https://github.com/$REPO/releases/download/${BAY_VERSION#v}"
 fi
 
-ASSET="bay-linux-$ARCH"
-
 echo "==> Downloading $ASSET ($BAY_VERSION)"
-fetch "$BASE/$ASSET" "$TMP/bay" || die "download failed: $BASE/$ASSET"
+# A version from before the shared release lives in the archived repository.
+if ! fetch "$BASE/$ASSET" "$TMP/bay" && ! printf '%s' "$BASE" | grep -q "$LEGACY_REPO"; then
+  BASE="https://github.com/$LEGACY_REPO/releases/download/${BAY_VERSION#v}"
+  fetch "$BASE/$ASSET" "$TMP/bay" || die "download failed: $BASE/$ASSET"
+fi
+[ -s "$TMP/bay" ] || die "download failed: $BASE/$ASSET"
 fetch "$BASE/SHA256SUMS" "$TMP/SHA256SUMS" || die "download failed: $BASE/SHA256SUMS"
 
 # The binary is about to run as root, so a truncated download and a tampered
