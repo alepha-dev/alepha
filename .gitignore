@@ -1,0 +1,11 @@
+# Each product ignores its own files (framework/.gitignore, lore/.gitignore,
+# bay/.gitignore). This file covers what the single install leaves at the root.
+.DS_Store
+node_modules
+.yarn/*
+!.yarn/patches/
+/.claude/
+.idea
+.fleet
+.codex
+.superpowers

@@ -6,8 +6,6 @@
     "packages": [
       "apps/*",
       "packages/**/*",
-      ".vendor/alepha",
-      ".vendor/@alepha/*",
       "!apps/*/dist"
     ]
   },
@@ -17,16 +15,15 @@
     "a": "yarn alepha",
     "v": "yarn alepha verify",
     "verify": "yarn alepha verify",
-    "vendor:sync": "yarn alepha vendor sync",
     "clean": "yarn alepha clean",
     "lint": "yarn alepha lint",
-    "typecheck": "tsc --noEmit && yarn workspaces foreach -Apt --exclude lore-monorepo --exclude alepha --exclude @alepha/ui -j 4 run typecheck",
+    "typecheck": "tsc --noEmit && yarn workspaces foreach -Wpt --exclude lore-monorepo -j 4 run typecheck",
     "test": "yarn vitest run",
-    "check:deps": "yarn workspaces foreach -Apt --exclude alepha --exclude @alepha/ui exec depcheck .",
+    "check:deps": "yarn workspaces foreach -Wpt exec depcheck .",
     "check:conventions": "node scripts/check-conventions.ts",
-    "check:i18n": "yarn workspaces foreach -Apt --exclude alepha --exclude @alepha/ui run check:i18n",
-    "check:migrations": "yarn workspaces foreach -Apt --exclude alepha --exclude @alepha/ui run check:migrations",
-    "build": "yarn workspaces foreach -Apt --exclude alepha --exclude @alepha/ui run build",
+    "check:i18n": "yarn workspaces foreach -Wpt run check:i18n",
+    "check:migrations": "yarn workspaces foreach -Wpt run check:migrations",
+    "build": "yarn workspaces foreach -Wpt run build",
     "e2e": "yarn w e2e web",
     "e2e-cli": "yarn w e2e cli"
   },
@@ -49,6 +46,5 @@
     "workerd": {
       "built": true
     }
-  },
-  "packageManager": "yarn@4.18.0"
+  }
 }

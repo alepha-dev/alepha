@@ -42,18 +42,45 @@ interface Manifest {
 type ExportsEntry = string | { types?: string; import?: string };
 
 /**
+ * `yarn workspaces list` answers for the whole project: framework, lore and
+ * docs share one install, and every location is relative to the repository
+ * root. This file checks its own worktree only. The row named like the
+ * `package.json` beside it gives the worktree's location, and every location
+ * kept is made relative to it, as the rules below expect.
+ */
+const ownWorktree = (all: Workspace[]): Workspace[] => {
+  const name = JSON.parse(readFileSync("package.json", "utf8")).name;
+  const prefix = all.find((workspace) => workspace.name === name)?.location;
+  if (prefix === undefined) {
+    console.error(`check-conventions: no workspace named ${name}`);
+    process.exit(1);
+  }
+  if (prefix === ".") return all;
+  return all
+    .filter(
+      (workspace) =>
+        workspace.location === prefix ||
+        workspace.location.startsWith(`${prefix}/`),
+    )
+    .map((workspace) => ({
+      ...workspace,
+      location:
+        workspace.location === prefix
+          ? "."
+          : workspace.location.slice(prefix.length + 1),
+    }));
+};
+
+/**
  * Every workspace of this repository, the vendored framework excluded: it is
  * checked where it is developed.
  */
-const workspaces: Workspace[] = execFileSync(
-  "yarn",
-  ["workspaces", "list", "--json"],
-  { encoding: "utf8" },
-)
-  .trim()
-  .split("\n")
-  .map((line): Workspace => JSON.parse(line))
-  .filter((workspace) => !workspace.location.startsWith(".vendor"));
+const workspaces: Workspace[] = ownWorktree(
+  execFileSync("yarn", ["workspaces", "list", "--json"], { encoding: "utf8" })
+    .trim()
+    .split("\n")
+    .map((line): Workspace => JSON.parse(line)),
+);
 
 /**
  * A subpath is a module.

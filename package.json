@@ -1,0 +1,16 @@
+{
+  "name": "alepha-root",
+  "private": true,
+  "description": "Alepha: the framework, Lore and Bay in one repository",
+  "type": "module",
+  "packageManager": "yarn@4.18.0",
+  "workspaces": [
+    "framework",
+    "lore"
+  ],
+  "scripts": {
+    "v:framework": "yarn workspace alepha-monorepo v",
+    "v:lore": "yarn workspace lore-monorepo v",
+    "v:bay": "cd bay && go vet ./... && go test ./..."
+  }
+}

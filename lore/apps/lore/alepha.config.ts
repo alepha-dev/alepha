@@ -212,7 +212,7 @@ export default defineConfig({
       },
     }),
     i18n({
-      // `@alepha/ui` is vendored at ../../.vendor/@alepha/ui. The i18n
+      // `@alepha/ui` lives at ../../../framework/packages/@alepha/ui. The i18n
       // scanner needs to see both app source and the shared UI block strings
       // to extract a complete catalog.
       //
@@ -226,7 +226,7 @@ export default defineConfig({
         "../../packages/@lore/work/src",
         "../../packages/@lore/knowledge/src",
         "../../packages/@lore/deploy/src",
-        "../../.vendor/@alepha/ui/src",
+        "../../../framework/packages/@alepha/ui/src",
       ],
       dynamicPrefixes: [
         // Catalogue-defined preset keys, slot names and channel choices (#E43).

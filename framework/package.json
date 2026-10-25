@@ -16,22 +16,22 @@
     "v": "yarn alepha verify",
     "verify": "yarn alepha verify",
     "clean": "yarn alepha clean",
-    "copy": "yarn workspaces foreach -Apt run copy && yarn lint",
+    "copy": "yarn workspaces foreach -Wpt run copy && yarn lint",
     "lint": "yarn alepha lint",
-    "typecheck": "tsc --noEmit && yarn workspaces foreach -Apt --exclude alepha-monorepo -j 4 run typecheck",
+    "typecheck": "tsc --noEmit && yarn workspaces foreach -Wpt --exclude alepha-monorepo -j 4 run typecheck",
     "test": "yarn vitest run",
-    "check:deps": "yarn workspaces foreach -Apt exec depcheck .",
+    "check:deps": "yarn workspaces foreach -Wpt exec depcheck .",
     "check:conventions": "node scripts/check-conventions.ts",
-    "check:docs": "yarn workspaces foreach -Apt run check:docs",
-    "check:migrations": "yarn workspaces foreach -Apt run check:migrations",
-    "build": "yarn workspaces foreach -Apt run build",
+    "check:docs": "yarn workspaces foreach -Wpt run check:docs",
+    "check:migrations": "yarn workspaces foreach -Wpt run check:migrations",
+    "build": "yarn workspaces foreach -Wpt run build",
     "test:bun": "bun test ./packages/**/*.bun.spec.ts",
     "test:broker": "yarn vitest run --config packages/@alepha/mqtt/vitest.broker.config.ts",
-    "e2e": "yarn workspaces foreach -Apt run e2e",
+    "e2e": "yarn workspaces foreach -Wpt run e2e",
     "e2e-cli": "yarn w e2e-cli test"
   },
   "devDependencies": {
-    "@alepha/lore": "0.33.0",
+    "@alepha/lore": "npm:0.33.0",
     "@playwright/test": "^1.63.0",
     "@types/bun": "^1.4.2",
     "@types/node": "^26.6.4",
@@ -54,6 +54,5 @@
     "workerd": {
       "built": true
     }
-  },
-  "packageManager": "yarn@4.18.0"
+  }
 }
