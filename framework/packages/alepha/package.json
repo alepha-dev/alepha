@@ -53,6 +53,11 @@
       "import": "./src/ai/anthropic/index.ts",
       "default": "./src/ai/anthropic/index.ts"
     },
+    "./ai/cloudflare": {
+      "types": "./src/ai/cloudflare/index.ts",
+      "import": "./src/ai/cloudflare/index.ts",
+      "default": "./src/ai/cloudflare/index.ts"
+    },
     "./ai": {
       "types": "./src/ai/core/index.ts",
       "import": "./src/ai/core/index.ts",
@@ -527,6 +532,11 @@
         "types": "./dist/ai/anthropic/index.d.ts",
         "import": "./dist/ai/anthropic/index.js",
         "default": "./dist/ai/anthropic/index.js"
+      },
+      "./ai/cloudflare": {
+        "types": "./dist/ai/cloudflare/index.d.ts",
+        "import": "./dist/ai/cloudflare/index.js",
+        "default": "./dist/ai/cloudflare/index.js"
       },
       "./ai": {
         "types": "./dist/ai/core/index.d.ts",

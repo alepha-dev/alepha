@@ -9,6 +9,7 @@ import {
 import { ActorHostCollection } from "../services/ActorHostCollection.ts";
 import { BuildFreshness } from "../services/BuildFreshness.ts";
 import { BuildSlices } from "../services/BuildSlices.ts";
+import { CloudflareAiDetector } from "../services/CloudflareAiDetector.ts";
 import { CloudflareEmailDetector } from "../services/CloudflareEmailDetector.ts";
 import { MetaResolver } from "../services/MetaResolver.ts";
 import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
@@ -33,6 +34,7 @@ import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
 export class BuildManifestTask extends BuildTask {
   protected readonly hostCollection = $inject(ActorHostCollection);
   protected readonly cloudflareEmail = $inject(CloudflareEmailDetector);
+  protected readonly cloudflareAi = $inject(CloudflareAiDetector);
 
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly meta = $inject(MetaResolver);
@@ -326,6 +328,11 @@ export class BuildManifestTask extends BuildTask {
     )
       ? { binding: SEND_EMAIL_DEFAULT_BINDING }
       : undefined;
+    // The same for the Workers AI binding.
+    const aiBinding = this.cloudflareAi.detect(ctx.alepha);
+    const ai: { binding: string } | undefined = aiBinding
+      ? { binding: aiBinding }
+      : undefined;
 
     /*
       `runtimes` is the only runtime declaration (#Q2460). Declared order, never
@@ -379,6 +386,7 @@ export class BuildManifestTask extends BuildTask {
             websocketPaths,
             durableObjects,
             email,
+            ai,
             pageEdge: await this.pageEdgeOf(ctx),
           }
         : undefined,

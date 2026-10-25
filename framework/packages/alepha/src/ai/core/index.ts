@@ -4,6 +4,7 @@ import { AiProvider } from "./providers/AiProvider.ts";
 import { MemoryAiProvider } from "./providers/MemoryAiProvider.ts";
 import { AiHttpErrors } from "./services/AiHttpErrors.ts";
 import { AiToolSchema } from "./services/AiToolSchema.ts";
+import { ChatCompletionFormat } from "./services/ChatCompletionFormat.ts";
 import { SseReader } from "./services/SseReader.ts";
 
 // Exports
@@ -18,6 +19,7 @@ export * from "./providers/AiProvider.ts";
 export * from "./providers/MemoryAiProvider.ts";
 export * from "./services/AiHttpErrors.ts";
 export * from "./services/AiToolSchema.ts";
+export * from "./services/ChatCompletionFormat.ts";
 export * from "./services/SseReader.ts";
 
 /**
@@ -44,7 +46,13 @@ export * from "./services/SseReader.ts";
  */
 export const AlephaAi = $module({
   name: "alepha.ai",
-  services: [AiProvider, AiHttpErrors, AiToolSchema, SseReader],
+  services: [
+    AiProvider,
+    AiHttpErrors,
+    AiToolSchema,
+    ChatCompletionFormat,
+    SseReader,
+  ],
   variants: [MemoryAiProvider],
   register: (alepha) => {
     alepha.with({

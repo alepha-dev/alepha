@@ -967,6 +967,11 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
     for (const email of config.send_email ?? []) {
       bindings.push({ type: "send_email", ...email });
     }
+    // The same for Workers AI: without it `env.AI` is undefined on a Lore
+    // deploy and `WorkersAiProvider` fails at start.
+    if (config.ai?.binding) {
+      bindings.push({ type: "ai", name: config.ai.binding });
+    }
     for (const [name, text] of Object.entries(config.vars ?? {})) {
       bindings.push({ type: "plain_text", name, text: String(text) });
     }
@@ -1015,6 +1020,7 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
     "queues",
     "analytics_engine_datasets",
     "send_email",
+    "ai",
     "services",
     "hyperdrive",
     "durable_objects",
@@ -1311,6 +1317,7 @@ interface WranglerConfig extends DurableObjectLifecycleConfig {
   d1_databases?: Array<{ binding: string; database_id: string }>;
   r2_buckets?: Array<{ binding: string; bucket_name: string }>;
   kv_namespaces?: Array<{ binding: string; id: string }>;
+  ai?: { binding: string };
   send_email?: Array<{
     name: string;
     destination_address?: string;

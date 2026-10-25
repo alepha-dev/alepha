@@ -9,7 +9,7 @@ import { OpenAiCompatibleAiProvider } from "alepha/ai/openai";
 ## Overview
 
 AI provider for the OpenAI Chat Completions wire format, over plain
-`fetch`. One provider for every compatible endpoint, picked by
+`fetch`, its request and stream mapping in `ChatCompletionFormat`. One provider for every compatible endpoint, picked by
 `AI_BASE_URL`:
 
 | endpoint             | `AI_BASE_URL`                                                   |

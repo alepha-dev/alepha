@@ -9,6 +9,7 @@ import { FileSystemProvider } from "alepha/system";
 
 import { ActorHostCollection } from "../services/ActorHostCollection.ts";
 import { BuildSlices } from "../services/BuildSlices.ts";
+import { CloudflareAiDetector } from "../services/CloudflareAiDetector.ts";
 import { CloudflareEmailDetector } from "../services/CloudflareEmailDetector.ts";
 import { DurableObjectConfig } from "../services/DurableObjectConfig.ts";
 import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
@@ -28,6 +29,7 @@ export class BuildCloudflareTask extends BuildTask {
   protected readonly slices = $inject(BuildSlices);
 
   protected readonly cloudflareEmail = $inject(CloudflareEmailDetector);
+  protected readonly cloudflareAi = $inject(CloudflareAiDetector);
 
   // Must match WEBSOCKET_DEFAULT_BINDING in alepha/websocket (kept as a literal
   // here because the CF provider isn't on the node barrel).
@@ -287,6 +289,7 @@ export class BuildCloudflareTask extends BuildTask {
     this.enhanceAnalyticsEngine(ctx, wrangler);
     this.enhanceQueue(ctx, wrangler);
     this.enhanceEmail(ctx, wrangler);
+    this.enhanceAi(ctx, wrangler);
     this.enhanceDurableObjects(ctx, wrangler);
     await this.durableObjectConfig.assertToolchain(root, wrangler);
 
@@ -780,6 +783,25 @@ export class BuildCloudflareTask extends BuildTask {
     // leaving the binding unrestricted lets the worker send to any verified
     // destination.
     wrangler.send_email.push({ name: binding });
+  }
+
+  /**
+   * Declare the Workers AI binding (`"ai": { "binding": "AI" }`) when the app
+   * registered `AlephaAiCloudflare`: from the manifest in prebuilt mode (no
+   * app boot to probe), from the live app otherwise, as {@link enhanceEmail}
+   * does for `send_email`. A config that already declares one is kept.
+   */
+  protected enhanceAi(ctx: BuildTaskContext, wrangler: WranglerConfig): void {
+    let binding: string | undefined;
+    if (ctx.manifest) {
+      binding = ctx.manifest.cloudflare?.ai?.binding;
+    } else if (ctx.alepha) {
+      binding = this.cloudflareAi.detect(ctx.alepha);
+    }
+    if (!binding || wrangler.ai) {
+      return;
+    }
+    wrangler.ai = { binding };
   }
 
   /**

@@ -614,6 +614,39 @@ describe("the worker-side Cloudflare adapter", () => {
       });
     });
 
+    it("uploads the Workers AI binding a wrangler config declares (#Q2771)", async ({
+      expect,
+    }) => {
+      // `BuildCloudflareTask.enhanceAi` writes it; the API upload carries
+      // only what `bindings()` lists, so without it `env.AI` is undefined.
+      const { adapter, fs, naming } = setup();
+      adapter.use(credential);
+      await fs.writeFile(
+        "/deploy/wrangler.jsonc",
+        JSON.stringify({
+          name: "my-app",
+          main: "./main.cloudflare.js",
+          compatibility_date: "2025-11-17",
+          // The globs the build really writes: scoped to the workerd slice, so a
+          // multi-slice artifact does not upload its node chunks.
+          rules: [
+            {
+              type: "ESModule",
+              globs: ["index.workerd.js", "server/workerd/*.js"],
+            },
+          ],
+          ai: { binding: "AI" },
+        }),
+      );
+      await fs.writeFile("/deploy/main.cloudflare.js", "export default {};");
+      await fs.writeFile("/deploy/index.workerd.js", "export const a = 1;");
+      const calls = recordingDeployer(adapter);
+
+      await adapter.deploy(context(naming), run);
+
+      expect(calls[0]!.bindings).toContainEqual({ type: "ai", name: "AI" });
+    });
+
     /**
      * ⚠️ **`_headers` uploaded as an asset is published and applies nothing.**
      * `https://alepha.dev/_headers` answered 200 with the file's own text from
@@ -1266,13 +1299,13 @@ describe("the worker-side Cloudflare adapter", () => {
       const { adapter, fs, naming } = setup();
       adapter.use(credential);
       await deployConfig(fs, {
-        ai: { binding: "AI" },
+        browser: { binding: "BROWSER" },
         tail_consumers: [{ service: "logs" }],
       });
       const calls = recordingDeployer(adapter);
 
       await expect(adapter.deploy(context(naming), run)).rejects.toThrow(
-        /`ai`, `tail_consumers`.*build\.cloudflare\.config/,
+        /`browser`, `tail_consumers`.*build\.cloudflare\.config/,
       );
       expect(calls).toHaveLength(0);
     });

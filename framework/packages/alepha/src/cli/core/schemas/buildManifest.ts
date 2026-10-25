@@ -216,6 +216,11 @@ export const buildManifestSchema = z
          */
         email: z.object({ binding: z.string() }).loose().optional(),
         /**
+         * The Workers AI `ai` binding, captured when the app registers
+         * `AlephaAiCloudflare`. Absent when it does not.
+         */
+        ai: z.object({ binding: z.string() }).loose().optional(),
+        /**
          * What the generated worker needs to find a cached page before the
          * app boots (#E78): whether the page cache is on, the language
          * options, and the source of the self-contained functions it embeds.
