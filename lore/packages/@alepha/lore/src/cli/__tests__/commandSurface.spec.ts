@@ -71,6 +71,7 @@ describe("the Lore CLI command surface", () => {
       "project",
       "quality",
       "quest",
+      "registry",
       "releases",
       "secrets",
     ]);
@@ -120,6 +121,7 @@ describe("the Lore CLI command surface", () => {
       folio: ["list", "get", "create"],
       project: ["list", "info", "create", "link"],
       estate: ["add", "list"],
+      registry: ["add", "list", "remove"],
       quality: ["push"],
       quest: [
         "list",

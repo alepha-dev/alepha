@@ -13,6 +13,7 @@ import { LoginCommand } from "./commands/LoginCommand.ts";
 import { ProjectCommand } from "./commands/ProjectCommand.ts";
 import { QualityCommand } from "./commands/QualityCommand.ts";
 import { QuestCommand } from "./commands/QuestCommand.ts";
+import { RegistryCommand } from "./commands/RegistryCommand.ts";
 import { ReleaseCommand } from "./commands/ReleaseCommand.ts";
 import { SecretsCommand } from "./commands/SecretsCommand.ts";
 import type { LoreEnvironmentOptions } from "./schemas/loreEnvironmentOptions.ts";
@@ -104,6 +105,7 @@ export const AlephaLoreCli = $module({
     ReleaseCommand,
     SecretsCommand,
     EstateCommand,
+    RegistryCommand,
     LoginCommand,
   ],
 });

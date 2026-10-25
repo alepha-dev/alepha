@@ -175,7 +175,7 @@ export class ArtifactCommand {
         .text({
           aliases: ["i"],
           description:
-            "The pullable reference, e.g. ghcr.io/alepha-dev/lore:0.30.0. Only ghcr.io is supported today.",
+            "The pullable reference, e.g. ghcr.io/alepha-dev/lore:0.30.0. ghcr.io is read anonymously; any other registry once the project holds its credential (`lore registry add`).",
         })
         .optional(),
       digest: z
