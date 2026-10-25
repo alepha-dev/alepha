@@ -1,5 +1,5 @@
 import { type ChildProcess, exec, spawn } from "node:child_process";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 import { $inject, Alepha, AlephaError } from "alepha";
 import { $logger } from "alepha/logger";
@@ -566,7 +566,7 @@ export class NodeShellProvider implements ShellProvider {
    * Search order:
    * 1. Local: node_modules/.bin/
    * 2. Pnpm nested: node_modules/alepha/node_modules/.bin/
-   * 3. Monorepo: Walk up to 3 parent directories
+   * 3. Monorepo: every parent directory, up to the filesystem root
    */
   protected async resolveExecutable(
     name: string,
@@ -591,15 +591,13 @@ export class NodeShellProvider implements ShellProvider {
       );
       if (execPath) return execPath;
 
-      // 3. Monorepo: check parent directories (up to 3 levels)
-      let parentDir = this.fs.join(root, "..");
-      for (let i = 0; i < 3; i++) {
+      // 3. Monorepo: every parent directory
+      for (const parentDir of this.ancestors(root)) {
         execPath = await this.findExecutable(
           parentDir,
           `node_modules/.bin/${name}${suffix}`,
         );
         if (execPath) return execPath;
-        parentDir = this.fs.join(parentDir, "..");
       }
     }
 
@@ -639,16 +637,32 @@ export class NodeShellProvider implements ShellProvider {
       join(root, "node_modules/alepha/node_modules/.bin"),
     ];
 
-    let parentDir = join(root, "..");
-    for (let i = 0; i < 3; i++) {
+    for (const parentDir of this.ancestors(root)) {
       dirs.push(join(parentDir, "node_modules/.bin"));
-      parentDir = join(parentDir, "..");
     }
 
     // Existence is not checked: this runs on every shell call, a missing entry
     // in PATH is harmless, and the directory may be created between this call
     // and the child's lookup.
     return [...dirs, process.env.PATH ?? ""].join(separator);
+  }
+
+  /**
+   * Every parent directory of `root`, nearest first, up to the filesystem
+   * root: where Node itself looks for `node_modules`.
+   *
+   * It stopped at three levels until a repository holding several products
+   * put an app at `framework/apps/examples/shop`, four below the one install
+   * (#Q2765), and the shop's deploy could no longer find `alepha`.
+   */
+  protected ancestors(root: string): string[] {
+    const dirs: string[] = [];
+    let dir = join(root);
+    for (let parent = dirname(dir); parent !== dir; parent = dirname(dir)) {
+      dirs.push(parent);
+      dir = parent;
+    }
+    return dirs;
   }
 
   /**
