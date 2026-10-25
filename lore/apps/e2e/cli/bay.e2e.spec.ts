@@ -1012,6 +1012,9 @@ describe("Bay connector against a real Lore", () => {
           cwd: dir,
           env: {
             ...process.env,
+            // vitest's NODE_ENV=test would boot the CLI on an in-memory
+            // file system, where the compose file does not exist.
+            NODE_ENV: "development",
             LORE_URL: lore.url,
             LORE_API_KEY: key.token,
             LORE_PROJECT: String(projectId),
