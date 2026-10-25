@@ -55,6 +55,17 @@ describe("NodeShellProvider.resolveExecutable", () => {
     ).resolves.toBe("/repo/node_modules/.bin/alepha");
   });
 
+  it("walks up past three levels to the repository's one install", async () => {
+    await fs.writeFile("/repo/node_modules/.bin/alepha", "#!/bin/sh");
+
+    await expect(
+      shell.testResolveExecutable(
+        "alepha",
+        "/repo/framework/apps/examples/shop",
+      ),
+    ).resolves.toBe("/repo/node_modules/.bin/alepha");
+  });
+
   it("throws a clear error when the binary is nowhere", async () => {
     await expect(
       shell.testResolveExecutable("missing-bin", "/proj"),
@@ -75,5 +86,20 @@ describe("NodeShellProvider.localBinPath", () => {
     expect(entries[1]).toBe("/proj/node_modules/alepha/node_modules/.bin");
     // The inherited PATH survives at the end.
     expect(path.endsWith(process.env.PATH ?? "")).toBe(true);
+  });
+});
+
+describe("NodeShellProvider.localBinPath for a nested app", () => {
+  it("lists every ancestor's bin directory, down to the filesystem root", () => {
+    const shell = Alepha.create()
+      .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
+      .inject(TestShellProvider);
+
+    const entries = shell
+      .testLocalBinPath("/repo/framework/apps/examples/shop")
+      .split(process.platform === "win32" ? ";" : ":");
+
+    expect(entries).toContain("/repo/node_modules/.bin");
+    expect(entries).toContain("/node_modules/.bin");
   });
 });
