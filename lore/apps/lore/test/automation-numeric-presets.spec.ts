@@ -178,12 +178,14 @@ describe("Numeric automation presets through actual registered metrics", () => {
       select: { key: "quality.coverage.lines", filters: { branch: "main" } },
       guard: { operator: "delta", value: 5 },
     });
-    const day = time.of(next).subtract(1, "day").toISOString().slice(0, 10);
-    const previous = time
-      .of(next)
-      .subtract(2, "days")
-      .toISOString()
-      .slice(0, 10);
+    // Whole UTC days off the instant: a zoned subtract crosses a DST change
+    // an hour short, which lands on the evening of the day before.
+    const daysBefore = (count: number) =>
+      new Date(new Date(next).getTime() - count * 86_400_000)
+        .toISOString()
+        .slice(0, 10);
+    const day = daysBefore(1);
+    const previous = daysBefore(2);
     await quality(previous, 90.75);
     await quality(day, 84.5);
     await quality(day, 10, "topic");
