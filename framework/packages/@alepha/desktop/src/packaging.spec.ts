@@ -112,9 +112,9 @@ describe("@alepha/desktop packaging", () => {
     // Node's own lookup: `node_modules/webview-bun` in this package or any
     // directory above it, wherever the install hoisted it (the repository
     // root, since #Q2765 put the framework under `framework/`).
-    const ancestors = root.split(sep).map((_, i, parts) =>
-      parts.slice(0, parts.length - i).join(sep),
-    );
+    const ancestors = root
+      .split(sep)
+      .map((_, i, parts) => parts.slice(0, parts.length - i).join(sep));
     const found = ancestors.some((dir) =>
       existsSync(
         join(dir, "node_modules", "webview-bun", "build", "libwebview.dylib"),

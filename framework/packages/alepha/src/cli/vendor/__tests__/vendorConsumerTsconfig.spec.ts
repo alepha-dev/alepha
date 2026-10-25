@@ -123,11 +123,7 @@ describe("vendored package tsconfig", () => {
 
     mkdirSync(join(root, "node_modules"), { recursive: true });
     symlinkSync(alepha, join(root, "node_modules/alepha"), "dir");
-    symlinkSync(
-      typesDir,
-      join(root, "node_modules/@types"),
-      "dir",
-    );
+    symlinkSync(typesDir, join(root, "node_modules/@types"), "dir");
 
     return { root, alepha, ui };
   };

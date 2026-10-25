@@ -79,7 +79,7 @@ export class BunPostgresProvider extends PostgresProvider {
     return {
       query: async (text, params) => await reserved.unsafe(text, params ?? []),
       close: async () => {
-        reserved.release();
+        await reserved.release();
       },
     };
   }
