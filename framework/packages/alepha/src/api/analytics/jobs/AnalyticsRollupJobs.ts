@@ -43,17 +43,20 @@ import type { AnalyticsDataset } from "../schemas/analyticsDatasetSchema.ts";
  */
 export class AnalyticsRollupJobs {
   /**
-   * Most source-tier buckets one sweep folds, per tier of a dataset: 336 is
-   * fourteen days of hours, the cap the two-tier sweep always had. See the
+   * Most source-tier buckets one sweep folds, per tier of a dataset. See the
    * class doc for why this is a correctness bound, not a performance knob.
    *
-   * Counted in the source tier's buckets, so a minute tier advances 336
-   * minutes a sweep, not fourteen days of minutes (at 10k devices, ~200M
-   * rows, far past the job's 30 s timeout). It still outpaces real time
-   * (5.6 hours folded per hourly sweep). The value for a minute tier has
-   * not been measured against a production-sized table yet.
+   * Counted in the source tier's buckets, because the rows a fold moves are
+   * buckets times distinct keys, whatever the resolution. Measured in the
+   * #Q2751 benchmark on Postgres with the MCS hub's two datasets at 10k
+   * devices (about 73k keys a bucket): a fold costs about 0.24 s a bucket
+   * for both datasets together, so 36 buckets on each of two backlogged
+   * tiers stays under half the job's 30 s timeout. The old cap, 336, took
+   * 81 s on the 5-minute tier alone. A sweep folds whole buckets of the next
+   * tier, so 36 five-minute buckets fold three hours, and an hour tier
+   * folds a day: still faster than real time on every tier.
    */
-  public static readonly MAX_BUCKETS_PER_SWEEP = 336;
+  public static readonly MAX_BUCKETS_PER_SWEEP = 36;
 
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
