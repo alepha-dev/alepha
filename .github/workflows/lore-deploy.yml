@@ -45,7 +45,6 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       SIGIL_KEY: ${{ secrets.SIGIL_KEY }}
-      SIGIL_CONFIG: ${{ secrets.SIGIL_CONFIG }}
 
     steps:
       - name: Git Checkout
