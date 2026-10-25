@@ -69,6 +69,12 @@ export const workspaceProjects = (
       ...jsdom,
       extends: false,
       resolve: { ...jsdom.resolve, alias },
+      // Vite serves files under the nearest `workspaces` root only, which is
+      // `lore/`. The framework's jsdom setup file lives in `../framework`
+      // (#Q2765), so the repository root is allowed as a whole.
+      server: {
+        fs: { allow: [resolve(fileURLToPath(import.meta.url), "../../..")] },
+      },
       test: {
         ...sharedTestOptions(),
         ...jsdom.test,

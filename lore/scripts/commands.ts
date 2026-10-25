@@ -81,10 +81,9 @@ export class LoreCommands {
    * after the build, since the suite never skips a missing Bay.
    */
   protected bayDir(root: string): string {
-    const candidates = [
-      process.env.BAY_DIR,
-      join(root, "..", "bay"),
-    ].filter((dir): dir is string => !!dir);
+    const candidates = [process.env.BAY_DIR, join(root, "..", "bay")].filter(
+      (dir): dir is string => !!dir,
+    );
 
     const found = candidates.find((dir) => existsSync(join(dir, "go.mod")));
     if (!found) {
