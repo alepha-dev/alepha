@@ -215,8 +215,8 @@ describe("AnalyticsRollupJobs", () => {
     expect(await buckets()).toEqual([]);
   });
 
-  it("caps how many source buckets one sweep folds: fourteen days of hours", () => {
-    expect(AnalyticsRollupJobs.MAX_BUCKETS_PER_SWEEP).toBe(14 * 24);
+  it("caps how many source buckets one sweep folds: 36, from the #Q2751 benchmark", () => {
+    expect(AnalyticsRollupJobs.MAX_BUCKETS_PER_SWEEP).toBe(36);
   });
 
   it("leaves a dataset with no retention entirely untouched", async () => {
@@ -268,7 +268,7 @@ describe("AnalyticsRollupJobs", () => {
     expect(byBucket.rows).toEqual([{ hour: "2020-01-01", count: 1 }]);
   });
 
-  it("caps a large backlog to fourteen days of an hour tier, finishing over a later sweep", async () => {
+  it("caps a large backlog of an hour tier, finishing over later sweeps", async () => {
     const alepha = makeApp();
     const app = alepha.inject(Backlog);
     const jobs = alepha.inject(AnalyticsRollupJobs);
@@ -301,11 +301,10 @@ describe("AnalyticsRollupJobs", () => {
       (row) => String(row.hour).length === 13,
     );
 
-    // At most fourteen days of hours folded in a single sweep, even though
-    // every one of the 20 days is well past the 1-day hot window.
-    const capDays = AnalyticsRollupJobs.MAX_BUCKETS_PER_SWEEP / 24;
-    expect(rolledAfterOne.length).toBe(capDays);
-    expect(hourlyAfterOne.length).toBe(days - capDays);
+    // 36 hours past the oldest bucket (01-01T10) is 01-02T22, floored to
+    // whole days: one day folds, although all 20 are past the 1-day window.
+    expect(rolledAfterOne.length).toBe(1);
+    expect(hourlyAfterOne.length).toBe(days - 1);
 
     const totalAfterOne = await app.backlog.query({
       since: "2000-01-01",
@@ -314,25 +313,25 @@ describe("AnalyticsRollupJobs", () => {
     // Collapsing, never dropping: the grand total survives an incomplete sweep.
     expect(totalAfterOne.rows).toEqual([{ count: expectedTotal }]);
 
-    // The fold is idempotent, so a second sweep resumes from where the first
-    // stopped and finishes the backlog without double-counting anything.
-    await jobs.sweepNow();
+    // The fold is idempotent, so each later sweep resumes from where the
+    // last stopped and the backlog drains without double-counting anything.
+    for (let sweep = 1; sweep < days; sweep++) await jobs.sweepNow();
 
-    const afterTwo = await app.backlog.query({
+    const drained = await app.backlog.query({
       since: "2000-01-01",
       groupBy: ["hour"],
       select: { count: "sum" },
     });
-    expect(afterTwo.rows.every((row) => String(row.hour).length === 10)).toBe(
+    expect(drained.rows.every((row) => String(row.hour).length === 10)).toBe(
       true,
     );
-    expect(afterTwo.rows).toHaveLength(days);
+    expect(drained.rows).toHaveLength(days);
 
-    const totalAfterTwo = await app.backlog.query({
+    const totalDrained = await app.backlog.query({
       since: "2000-01-01",
       select: { count: "sum" },
     });
-    expect(totalAfterTwo.rows).toEqual([{ count: expectedTotal }]);
+    expect(totalDrained.rows).toEqual([{ count: expectedTotal }]);
   });
 
   it("does not let one dataset's failure block the rest of the sweep", async () => {
