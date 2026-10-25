@@ -110,6 +110,52 @@ export class HttpClient {
   }
 
   /**
+   * Open a streamed response for `args.action`: same URL, headers, body and
+   * `client:request:before` hook as {@link fetchAction}, but the body is
+   * left unread, for an `$sse` stream to consume as it arrives.
+   *
+   * A 4xx/5xx is decoded and thrown as {@link fetchAction} does, so a
+   * refusal before the stream opens (a 401, a 429) is the caller's typed
+   * error. No timeout applies: a stream lasts as long as it lasts, and
+   * `options.request.signal` ends it.
+   */
+  public async fetchStream(args: FetchActionArgs): Promise<Response> {
+    const route = args.action;
+    const options = args.options ?? {};
+    const config = args.config ?? {};
+    const request: RequestInit = { ...options.request };
+    const headers: Record<string, string> = {
+      accept: "text/event-stream",
+    };
+    const url = this.url(args.host ?? "", route, config);
+
+    await this.alepha.events.emit("client:request:before", {
+      route,
+      config,
+      options,
+      headers,
+      request,
+    });
+
+    request.method ??= route.method;
+    await this.body(request, headers, route, config);
+    request.headers = {
+      ...config.headers,
+      ...Object.fromEntries(new Headers(request.headers).entries()),
+      ...headers,
+    };
+
+    const response = await fetch(url, request);
+    if (!response.ok) {
+      throw await this.responseError(
+        response,
+        response.headers.get("content-type") ?? "",
+      );
+    }
+    return response;
+  }
+
+  /**
    * Fetch `url`, decoding the response with `request.schema` when given.
    *
    * On the server the call runs under the ambient signal

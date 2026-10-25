@@ -1145,7 +1145,8 @@ if (jobTimeoutViolations.length > 0) {
  *    `import { Button } from "@alepha/ui"` never loads the form stack; `chart`,
  *    `command`, `calendar`, `otp`, `resizable` and `i18n/fr` import only
  *    `core`, so an opt-in wrapper cannot quietly grow a heavy dependency;
- *    `organizations` imports only `core`, `form`, `table`, and `settings`; and
+ *    `organizations` imports only `core`, `form`, `table`, and `settings`;
+ *    `ai` imports only `core`, `markdown` and `form`; and
  *    the module graph has no cycle. Specs are outside it
  *    (`AccountRouter.spec.ts` imports the admin router, legitimately), and
  *    there is deliberately no allow-list of edges: an edge that is not a cycle
@@ -1169,6 +1170,7 @@ const UI_LEAF_MODULES = [
 ];
 const UI_ALLOWED_IMPORTS: Record<string, ReadonlySet<string>> = {
   organizations: new Set(["core", "form", "table", "settings"]),
+  ai: new Set(["core", "markdown", "form"]),
 };
 const uiViolations: string[] = [];
 

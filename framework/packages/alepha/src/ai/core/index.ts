@@ -25,6 +25,7 @@ export * from "./services/AiHttpErrors.ts";
 export * from "./services/AiToolSchema.ts";
 export * from "./services/ChatCompletionFormat.ts";
 export * from "./services/SseReader.ts";
+export * from "./tools/aiClientTools.ts";
 
 /**
  * AI models behind one provider contract, with no vendor SDK.

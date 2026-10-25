@@ -37,6 +37,7 @@
     "./account": "./src/account/index.ts",
     "./admin": "./src/admin/index.ts",
     "./organizations": "./src/organizations/index.ts",
+    "./ai": "./src/ai/index.ts",
     "./chart": "./src/chart/index.ts",
     "./command": "./src/command/index.ts",
     "./calendar": "./src/calendar/index.ts",
@@ -91,6 +92,10 @@
       "./organizations": {
         "types": "./dist/organizations/index.d.ts",
         "default": "./dist/organizations/index.js"
+      },
+      "./ai": {
+        "types": "./dist/ai/index.d.ts",
+        "default": "./dist/ai/index.js"
       },
       "./chart": {
         "types": "./dist/chart/index.d.ts",

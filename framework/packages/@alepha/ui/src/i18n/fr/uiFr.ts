@@ -43,6 +43,21 @@
  * the components already default to English.
  */
 export const uiFr: Record<string, string> = {
+  // The assistant drawer (`@alepha/ui/ai`).
+  "ai.chat.approve": "Approuver",
+  "ai.chat.confirmTitle": "Exécuter $1 ?",
+  "ai.chat.deny": "Refuser",
+  "ai.chat.empty": "Posez une question sur cette page.",
+  "ai.chat.message": "Message",
+  "ai.chat.new": "Nouvelle conversation",
+  "ai.chat.placeholder": "Demandez à l'assistant",
+  "ai.chat.running": "Exécution de $1",
+  "ai.chat.send": "Envoyer",
+  "ai.chat.title": "Assistant",
+  "ai.chat.toolDone": "$1 exécuté",
+  "ai.chat.toolFailed": "Échec de $1",
+  "ai.chat.untitled": "Conversation sans titre",
+
   // The imperative confirm / alert / prompt.
   "useDialog.cancel": "Annuler",
   "useDialog.confirm": "Confirmer",
