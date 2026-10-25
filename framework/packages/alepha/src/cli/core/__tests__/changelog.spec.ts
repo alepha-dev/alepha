@@ -25,6 +25,10 @@ class MockGitProvider extends GitProvider {
       throw new Error("No git mocks configured");
     }
     const cmd = args.join(" ");
+    // Every spec runs at a repository root unless it says otherwise.
+    if (cmd === "rev-parse --show-prefix" && !currentMockResponses.has(cmd)) {
+      return "";
+    }
     const response = currentMockResponses.get(cmd);
     if (response === undefined) {
       throw new Error(`Unmocked git command: ${cmd}`);
@@ -778,6 +782,23 @@ describe("changelog", () => {
         },
       ]);
       // Outputs to stdout - test verifies no error
+    });
+
+    test("leaves out the commits of sibling products below a repository root", async () => {
+      await setupCommand(
+        [
+          { cmd: "rev-parse --show-prefix", response: "framework/\n" },
+          {
+            cmd: "ls-tree -d --name-only --full-tree HEAD",
+            response: ".github\nbay\nframework\nlore\n",
+          },
+          {
+            cmd: "log 0.5.0..HEAD --pretty=format:%h %s%n%b%x1e -- :(top) :(top,exclude)bay :(top,exclude)lore",
+            response: gitLog(["abc12345 feat(api): new feature"]),
+          },
+        ],
+        ["changelog", "--from=0.5.0"],
+      );
     });
 
     test("should show changes from specified version", async () => {

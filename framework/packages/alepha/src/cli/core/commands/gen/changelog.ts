@@ -286,6 +286,36 @@ export class ChangelogCommand {
     return tags || null;
   }
 
+  /**
+   * The pathspec that keeps a release note to this project.
+   *
+   * At the repository root there is nothing to exclude. Below it, the
+   * project is one of several products side by side (`framework/`, `lore/`,
+   * `bay/`), and a commit that only touched a sibling belongs to that
+   * sibling's notes, whatever its scope says.
+   *
+   * The siblings are excluded rather than `.` included, because `.` drops
+   * every commit made before the project moved into its folder: those
+   * touched `packages/...`, not `framework/packages/...`, and the first
+   * release after the move would have come out empty.
+   */
+  protected async pathspec(
+    git: (args: string[]) => Promise<string>,
+  ): Promise<string[]> {
+    const prefix = (await git(["rev-parse", "--show-prefix"])).trim();
+    if (!prefix) {
+      return [];
+    }
+    const own = prefix.split("/")[0];
+    const siblings = (
+      await git(["ls-tree", "-d", "--name-only", "--full-tree", "HEAD"])
+    )
+      .trim()
+      .split("\n")
+      .filter((dir) => dir && dir !== own && !dir.startsWith("."));
+    return ["--", ":(top)", ...siblings.map((dir) => `:(top,exclude)${dir}`)];
+  }
+
   // ---------------------------------------------------------------------------
   // COMMAND
   // ---------------------------------------------------------------------------
@@ -351,6 +381,7 @@ export class ChangelogCommand {
         "log",
         `${fromRef}..${toRef}`,
         "--pretty=format:%h %s%n%b%x1e",
+        ...(await this.pathspec(git)),
       ]);
 
       if (!commitsOutput.trim()) {
