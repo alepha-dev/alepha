@@ -333,7 +333,7 @@ jobs:
       # exits 0 with a log line.
       # ──────────────────────────────────────────────────────────────
       - name: Rebuild docs for workerd
-        working-directory: framework/apps/docs
+        working-directory: docs
         run: yarn alepha build --runtime=workerd && yarn alepha gen:llms
 
       - name: Publish the Lore release
@@ -362,7 +362,7 @@ jobs:
       # drop them. Only `LORE_API_KEY`: the Cloudflare credential is the
       # estate's, held by Lore.
       - name: Deploy docs
-        working-directory: framework/apps/docs
+        working-directory: docs
         run: yarn alepha deploy --env production --prebuilt
         env:
           LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
@@ -371,8 +371,8 @@ jobs:
       # alepha.dev stays in Lore as an artifact to roll back to; `latest` is
       # the one tag the deploy above replaces.
       - name: Archive docs as a versioned artifact
-        working-directory: framework/apps/docs
-        run: yarn run -T lore artifacts push --app docs --tag "$VERSION"
+        working-directory: docs
+        run: yarn lore artifacts push --app docs --tag "$VERSION"
         env:
           LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
           VERSION: ${{ steps.version.outputs.version }}

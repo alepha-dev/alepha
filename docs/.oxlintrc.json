@@ -1,0 +1,6 @@
+{
+  "$schema": "../node_modules/oxlint/configuration_schema.json",
+  // The framework's rules: the site moved out of `framework/` (#Q2766) but is
+  // still held to them.
+  "extends": ["../framework/.oxlintrc.json"]
+}

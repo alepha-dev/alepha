@@ -1,0 +1,14 @@
+node_modules
+dist
+.gen
+# The pinned checkouts a deploy builds the framework and Bay sections from
+# (`scripts/pin-content.ts`, #Q2766).
+.content
+coverage
+test-results
+playwright-report
+.playwright
+.wrangler
+.env
+**/.env.*
+!**/.env.example

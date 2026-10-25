@@ -1,0 +1,45 @@
+{
+  "name": "docs",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "alepha build && alepha gen:llms",
+    "check:docs": "alepha check:docs",
+    "copy": "alepha gen:docs && alepha gen:tree",
+    "copy&dev": "alepha dev",
+    "dev": "alepha dev",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui",
+    "gen:llm": "alepha gen:llms",
+    "lint": "alepha lint",
+    "start": "node dist",
+    "test": "alepha test",
+    "typecheck": "alepha typecheck",
+    "pin": "alepha docs:pin"
+  },
+  "dependencies": {
+    "@alepha/lore": "npm:0.33.0",
+    "@fontsource/jetbrains-mono": "^5.3.0",
+    "@tabler/icons-react": "^3.49.0",
+    "alepha": "^0.33.0",
+    "fuse.js": "^7.5.0",
+    "react": "^19.3.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@xmldom/xmldom": "^0.9.12",
+    "alepha": "^0.33.0",
+    "highlight.js": "^11.12.0",
+    "jsdom": "^30.1.2",
+    "marked": "^18.1.0",
+    "react-dom": "^19.3.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.3",
+    "vitest": "^5.0.3",
+    "wrangler": "^4.147.0"
+  }
+}

@@ -1,0 +1,25 @@
+# What only this site knows about its own files. `alepha build` merges it into
+# dist/public/_headers: the security headers helmetOptions produces go above
+# it under /*, and a year of immutable caching for every content-hashed file
+# (/entry.*, /chunk.*, /asset.*) goes below it. See the deployment guide,
+# "Static File Headers".
+#
+# Every host that serves these files itself applies the merged file:
+# Cloudflare (docs deploys through `lore apps deploy`), Bay, and the app's own
+# server. Cloudflare defaults every file to
+# `cache-control: public, max-age=0, must-revalidate`, which is right for a
+# docs page and is what a file no rule caches gets everywhere.
+
+# Not content-hashed, so not immutable - but a logo that changes twice a year
+# has no business being revalidated on every navigation. A day is the honest
+# trade between staleness and traffic. A hashed image such as
+# `/asset.<hash>.png` also matches these, and the build's hash rules, written
+# after them, replace the value rather than join it.
+/*.png
+  Cache-Control: public, max-age=86400
+
+/*.svg
+  Cache-Control: public, max-age=86400
+
+/*.ico
+  Cache-Control: public, max-age=86400

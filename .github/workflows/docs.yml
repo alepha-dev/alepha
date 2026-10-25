@@ -1,0 +1,133 @@
+name: Docs
+
+permissions:
+  contents: read
+
+# alepha.dev: the site in `docs/`, documenting the three products from their
+# own folders (#Q2766). Its checks run on any change to the site or to a
+# product's pages; the deploy runs on `main` only.
+on:
+  push:
+    branches:
+      - "**"
+    paths:
+      - "docs/**"
+      - "framework/docs/**"
+      - "lore/docs/**"
+      - "bay/docs/**"
+      - ".github/workflows/docs.yml"
+      - ".github/actions/**"
+      - "package.json"
+      - "yarn.lock"
+      - ".yarnrc.yml"
+      - ".nvmrc"
+  pull_request:
+    branches:
+      - main
+    # The same list as `push`.
+    paths:
+      - "docs/**"
+      - "framework/docs/**"
+      - "lore/docs/**"
+      - "bay/docs/**"
+      - ".github/workflows/docs.yml"
+      - ".github/actions/**"
+      - "package.json"
+      - "yarn.lock"
+      - ".yarnrc.yml"
+      - ".nvmrc"
+
+concurrency:
+  group: docs-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  LORE_PROJECT: alepha
+
+# Every `run` step works inside `docs/`. A step's own `working-directory` is
+# relative to the repository root.
+defaults:
+  run:
+    working-directory: docs
+
+jobs:
+  # The site as `main` has it, every section from the working tree: lint,
+  # types, unit specs, the build and the end-to-end suite.
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      # `gen:docs` then `gen:tree`: the framework's generated reference and
+      # the tree of all three products, which everything below reads.
+      - name: Prepare
+        run: yarn copy
+
+      - name: Lint Site
+        run: yarn lint
+
+      - name: TypeScript Check
+        run: yarn typecheck
+
+      - name: Test Site
+        run: yarn test
+
+      - name: Build Site
+        run: yarn build
+
+      - name: Setup Playwright
+        uses: ./.github/actions/playwright
+        with:
+          working-directory: docs
+
+      - name: Run E2E Tests
+        timeout-minutes: 15
+        run: yarn e2e
+
+  # alepha.dev from `main`, each section pinned to how its product ships:
+  # the framework at its latest release tag, Lore at `main`, Bay at `main`
+  # until its releases carry tags of their own (#Q2767). So a Lore page fix
+  # ships now, and an unreleased framework page does not. `release.yml`
+  # deploys the same way at each framework release.
+  deploy:
+    needs: check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    concurrency:
+      group: docs-deploy
+      cancel-in-progress: false
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The release tags and their history, for the pinned checkout and
+          # each page's last-modified date.
+          fetch-depth: 0
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Pin the framework at its release
+        run: yarn pin
+
+      # `gen:tree` reads the pinned framework through DOCS_FRAMEWORK_ROOT;
+      # `gen:llms` follows every build, which does not write the llms.txt
+      # files itself.
+      - name: Build for workerd
+        env:
+          DOCS_FRAMEWORK_ROOT: docs/.content/framework
+        run: |
+          yarn alepha gen:tree
+          yarn alepha build --runtime=workerd
+          yarn alepha gen:llms
+
+      - name: Deploy docs
+        run: yarn alepha deploy --env production --prebuilt
+        env:
+          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
