@@ -6,13 +6,13 @@ import { join, resolve } from "node:path";
  *
  * The site lives in `docs/`, beside the three products it documents
  * (`framework/`, `lore/`, `bay/`), and each section follows how its product
- * ships (#Q2766): the framework's pages describe the npm release, Bay's the
- * released binary, Lore's the hosted `main`. A deploy materialises the
- * framework (and later Bay) at its release tag and names that checkout in
- * `DOCS_FRAMEWORK_ROOT` / `DOCS_BAY_ROOT`; without them every section reads
- * the working tree, which is what `yarn dev` and the checks want.
+ * ships (#Q2766): the framework's and Bay's pages describe the release (one
+ * version and one tag for both, #Q2776), Lore's the hosted `main`. A deploy
+ * checks the latest release tag out (`yarn pin`) and names that checkout in
+ * `DOCS_RELEASE_ROOT`; without it every section reads the working tree, which
+ * is what `yarn dev` and the checks want.
  *
- * Only `gen:tree` follows the pins. `gen:docs` and `check:docs` work on the
+ * Only `gen:tree` follows the pin. `gen:docs` and `check:docs` work on the
  * framework working tree, always: they write and audit the pages a commit
  * carries, not the ones a deploy publishes.
  */
@@ -28,25 +28,29 @@ export class DocsRoots {
   public static readonly framework = join(DocsRoots.repo, "framework");
 
   /**
-   * The framework as published: the pinned checkout when a deploy names one.
+   * The framework as released: the pinned checkout when a deploy names one.
    */
   public static frameworkPublished(): string {
-    const pinned = DocsRoots.pinned("DOCS_FRAMEWORK_ROOT");
-    if (!pinned) {
+    const release = DocsRoots.release();
+    if (!release) {
       return DocsRoots.framework;
     }
     // A tag cut before the repository took its three folders (#Q2765) has
     // the framework at its root; any later one under `framework/`.
-    const nested = join(pinned, "framework");
-    return existsSync(join(nested, "docs")) ? nested : pinned;
+    const nested = join(release, "framework");
+    return existsSync(join(nested, "docs")) ? nested : release;
   }
 
   /**
-   * Bay as published: the pinned checkout when a deploy names one.
+   * Bay as released. A tag cut before Bay joined the shared release has no
+   * `bay/docs`, and the section then reads the working tree.
    */
   public static bayPublished(): string {
-    const pinned = DocsRoots.pinned("DOCS_BAY_ROOT");
-    return pinned ? join(pinned, "bay") : join(DocsRoots.repo, "bay");
+    const release = DocsRoots.release();
+    const pinned = release ? join(release, "bay") : undefined;
+    return pinned && existsSync(join(pinned, "docs"))
+      ? pinned
+      : join(DocsRoots.repo, "bay");
   }
 
   /**
@@ -57,11 +61,11 @@ export class DocsRoots {
   }
 
   /**
-   * The checkout an env var names, or nothing when it is unset or was never
-   * checked out (no release tag to pin yet).
+   * The release checkout `DOCS_RELEASE_ROOT` names, or nothing when it is
+   * unset or was never checked out.
    */
-  protected static pinned(name: string): string | undefined {
-    const value = process.env[name];
+  protected static release(): string | undefined {
+    const value = process.env.DOCS_RELEASE_ROOT;
     if (!value) {
       return undefined;
     }

@@ -1,8 +1,15 @@
 name: Release
 
+# ONE release for the whole repository (#Q2776): the framework's packages,
+# `@alepha/lore` with the Lore image, and Bay's binaries, all under one bare
+# `x.y.z` tag and one GitHub release. Lore and Bay take the framework's
+# version: they shipped on their own between #E72 and this, never again.
+
 permissions:
   contents: write
   id-token: write
+  # The Lore image, pushed to ghcr.io/alepha-dev/lore.
+  packages: write
 
 # One release at a time, and never cancel one.
 #
@@ -145,9 +152,28 @@ jobs:
       # nothing above is committed, pushed or published, so a red run here
       # leaves the repository and npm untouched. Skipped on a resume, whose
       # version is already on npm.
+      # Lore and its client take the framework's version, so the one tag names
+      # all three products. `apps/lore` is what /version reports and the image
+      # is tagged with; `@alepha/lore` is the npm package. Bay has no manifest:
+      # its version is stamped into the binary at build time.
+      - name: Align Lore's version
+        if: inputs.resume_tag == ''
+        working-directory: lore
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          yarn workspace @alepha/lore version "${VERSION}"
+          yarn workspace lore version "${VERSION}"
+
+      # One Lore release per product project, each carrying this tag. A project
+      # with no release of that tag passes with a log line, so a release with
+      # no Lore or Bay work still ships.
       - name: Check the Lore release is complete
         if: inputs.resume_tag == ''
-        run: yarn lore releases check --tag "$VERSION"
+        run: |
+          for project in alepha lore bay; do
+            LORE_PROJECT="$project" yarn lore releases check --tag "$VERSION"
+          done
         env:
           LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
           VERSION: ${{ steps.version.outputs.version }}
@@ -256,18 +282,67 @@ jobs:
           cp packages/alepha/assets/agents-template.md packages/alepha/AGENTS.md
           cp CHANGELOG.md packages/alepha/CHANGELOG.md
 
+      # Lore's own build: `@alepha/lore` (its `bin`, sigil and client) for npm,
+      # and `apps/lore` for the image below.
+      - name: Build Lore
+        working-directory: lore
+        run: yarn build
+
+      # Bay, built and tested before anything ships: the binaries go onto the
+      # GitHub release below, with their checksums.
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: bay/go.mod
+          cache-dependency-path: bay/go.sum
+
+      - name: Test Bay
+        working-directory: bay
+        run: go test ./...
+
+      - name: Build Bay binaries
+        working-directory: bay
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/bay"
+          for arch in amd64 arm64; do
+            GOOS=linux GOARCH="$arch" CGO_ENABLED=0 go build \
+              -trimpath \
+              -ldflags "-s -w -X main.version=${VERSION}" \
+              -o "$RUNNER_TEMP/bay/bay-linux-${arch}" \
+              ./cmd/bay
+          done
+          cd "$RUNNER_TEMP/bay" && sha256sum bay-linux-amd64 bay-linux-arm64 > SHA256SUMS && cat SHA256SUMS
+
+      # The image is built here, before anything is public, and pushed after
+      # the tag: an image that does not build stops the release while it is
+      # still reversible.
+      - name: Build the Lore image
+        working-directory: lore/apps/lore
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          yarn alepha image --tag "ghcr.io/alepha-dev/lore:${VERSION}"
+          docker tag "ghcr.io/alepha-dev/lore:${VERSION}" "ghcr.io/alepha-dev/lore:latest"
+
       # ──────────────────────────────────────────────────────────────────
       # Everything above is reversible: a failure leaves a dirty runner and
       # nothing else. From here on it is public.
       #
       # Last, so that every artifact is known to build before any of it ships.
-      # Bay's binaries left with Bay (#E72): github.com/alepha-dev/bay
-      # releases them itself.
+      #
+      # ⚠️ The framework's packages by `-W` (this worktree), then `@alepha/lore`
+      # by name. `-A` reached every public workspace of the repository, Lore's
+      # included, which is how a release would publish a package nobody
+      # versioned with it. npm trusted publishing names THIS file for every one
+      # of them, `@alepha/lore` included.
       # ──────────────────────────────────────────────────────────────────
       - name: Publish to NPM
         if: inputs.resume_tag == ''
         run: |
-          yarn workspaces foreach --no-private -Apt npm publish --tolerate-republish --access public --provenance
+          yarn workspaces foreach --no-private -Wpt npm publish --tolerate-republish --access public --provenance
+          yarn workspace @alepha/lore npm publish --tolerate-republish --access public --provenance
 
       # ──────────────────────────────────────────────────────────────────
       #
@@ -286,6 +361,23 @@ jobs:
       # have its assets bolted on afterwards, because that avoided reordering a
       # working pipeline. The reorder happened, so the split has no reason left
       #  -  and a release that is born complete never exists in a half state.
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Safe to repeat on a resume: a tag already pushed is pushed again.
+      - name: Push the Lore image
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          docker push "ghcr.io/alepha-dev/lore:${VERSION}"
+          docker push "ghcr.io/alepha-dev/lore:latest"
+
+      # Bay's binaries ride on the one release: `bay/install.sh` takes the
+      # newest release that carries one.
       - name: Create GitHub Release
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
@@ -294,6 +386,10 @@ jobs:
           body_path: /tmp/release_notes.txt
           draft: false
           prerelease: false
+          files: |
+            ${{ runner.temp }}/bay/bay-linux-amd64
+            ${{ runner.temp }}/bay/bay-linux-arm64
+            ${{ runner.temp }}/bay/SHA256SUMS
 
       # ──────────────────────────────────────────────────────────────
       # The docs rebuild and the Lore release, last.
@@ -327,23 +423,40 @@ jobs:
       # Nothing is torn by going red, and re-running the job publishes again
       # cleanly: the publish exits 0 on an already-published release.
       #
-      # The publish runs from the root and reports to the workflow-level
-      # `LORE_PROJECT` at the top of this file. `--tag` is the version, byte
-      # for byte: `releases.tag` preserves case. A version with no Lore release
-      # exits 0 with a log line.
+      # The publish runs once per product project (alepha, lore, bay), each
+      # naming its project in `LORE_PROJECT`. `--tag` is the version, byte for
+      # byte: `releases.tag` preserves case. A project with no release of that
+      # version exits 0 with a log line.
       # ──────────────────────────────────────────────────────────────
       - name: Rebuild docs for workerd
         working-directory: docs
         run: yarn alepha build --runtime=workerd && yarn alepha gen:llms
 
-      - name: Publish the Lore release
-        run: yarn lore releases publish --tag "$VERSION"
+      # Lore's build and image, recorded in Lore's own project (`lore`), before
+      # the Lore releases are published so the `lore` release lists them.
+      - name: Push the Lore artifact to Lore
+        working-directory: lore/apps/lore
+        run: |
+          yarn lore artifacts push --tag "$VERSION"
+          yarn lore artifacts push-image --tag "$VERSION" --image "ghcr.io/alepha-dev/lore:$VERSION"
+        env:
+          LORE_PROJECT: lore
+          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
+          VERSION: ${{ steps.version.outputs.version }}
+
+      - name: Publish the Lore releases
+        run: |
+          for project in alepha lore bay; do
+            LORE_PROJECT="$project" yarn lore releases publish --tag "$VERSION"
+          done
         env:
           LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
           VERSION: ${{ steps.version.outputs.version }}
 
       # ──────────────────────────────────────────────────────────────
-      # `alepha.dev`, and ONLY here (#Q2480).
+      # `alepha.dev` at each release. `docs.yml` also deploys it from `main`,
+      # with the framework section pinned to the latest release tag (#Q2766),
+      # so between releases it never shows an unreleased framework page.
       #
       # It used to deploy from `deploy-latest.yml` on every green push to
       # `main`, so the site documented code no one could install yet: an agent
