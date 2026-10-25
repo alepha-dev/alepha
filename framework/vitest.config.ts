@@ -1,6 +1,5 @@
 import { defineConfig } from "vitest/config";
 
-import { projects as docs } from "./apps/docs/vitest.config.ts";
 import { projects as calculator } from "./apps/examples/calculator/vitest.config.ts";
 import { projects as mobile } from "./apps/examples/mobile/vitest.config.ts";
 import { projects as relations } from "./apps/examples/relations/vitest.config.ts";
@@ -97,7 +96,6 @@ export default defineConfig({
       ...createAlepha,
       ...devtools,
       ...discord,
-      ...docs,
       ...mobile,
       ...mqtt,
       ...paymentsStripe,

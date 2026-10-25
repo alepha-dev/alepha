@@ -68,7 +68,9 @@ type ExportsEntry = string | { types?: string; import?: string };
  */
 const SRC = "packages/alepha/src";
 
-const SRC_ROOTS = ["packages/alepha/src", "apps/docs/src", "apps/docs/scripts"];
+// The docs site sits beside the framework since #Q2766 (`../docs`), and is
+// still held to the framework's rules: it renders the guides that state them.
+const SRC_ROOTS = ["packages/alepha/src", "../docs/src", "../docs/scripts"];
 
 /**
  * A file is exempt from the `Date.now()` rule when the timestamp it produces is

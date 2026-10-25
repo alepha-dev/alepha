@@ -25,6 +25,9 @@ on:
     # change under `lore/` or `bay/` alone runs only their workflows.
     paths:
       - "framework/**"
+      # The docs generators and `check:docs`, which the framework's `yarn copy`
+      # and checks run (#Q2766).
+      - "docs/scripts/**"
       - ".github/workflows/verify.yml"
       - ".github/actions/**"
       - "package.json"
@@ -40,6 +43,9 @@ on:
     # The same list as `push`.
     paths:
       - "framework/**"
+      # The docs generators and `check:docs`, which the framework's `yarn copy`
+      # and checks run (#Q2766).
+      - "docs/scripts/**"
       - ".github/workflows/verify.yml"
       - ".github/actions/**"
       - "package.json"
@@ -470,17 +476,18 @@ jobs:
       - name: Prepare
         run: yarn workspaces foreach -Wpt --exclude alepha-monorepo run copy && yarn oxfmt
 
-      # The four apps the step below runs, and nothing else. Their suites
+      # The three apps the step below runs, and nothing else. The docs site
+      # left the framework for `docs/` and its own workflow, `docs.yml` (#Q2766). Their suites
       # read their own `dist/` only.
       - name: Build Project
-        run: yarn workspaces foreach -Wpt --include '{docs,ui,shop,ssr}' run build
+        run: yarn workspaces foreach -Wpt --include '{ui,shop,ssr}' run build
 
       - name: Setup Playwright
         uses: ./.github/actions/playwright
         with:
           working-directory: framework
 
-      # `yarn e2e`: docs, ui, examples/shop and examples/ssr.
+      # `yarn e2e`: ui, examples/shop and examples/ssr.
       #
       # ⚠️ **`--exclude alepha-monorepo` is load-bearing and is NOT tidy-up.**
       # `-A` includes the repository root, the root workspace has an `e2e`

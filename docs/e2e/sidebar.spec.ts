@@ -1,0 +1,152 @@
+import { expect, test } from "@playwright/test";
+
+test.describe("Sidebar", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto("/docs/guides-introduction");
+    await page.waitForLoadState("networkidle");
+  });
+
+  test("sidebar is visible on desktop", async ({ page }) => {
+    const sidebar = page.locator('[class*="sidebar"]').first();
+    await expect(sidebar).toBeVisible();
+
+    // Sidebar should contain clickable items (buttons or links)
+    const items = sidebar.locator("button, a");
+    const count = await items.count();
+    expect(count).toBeGreaterThan(0);
+  });
+
+  test("sidebar contains file tree items", async ({ page }) => {
+    const sidebar = page.locator('[class*="sidebar"]').first();
+
+    // Should have multiple clickable file items
+    const items = sidebar.locator("button, a");
+    const count = await items.count();
+    expect(count).toBeGreaterThan(3);
+  });
+
+  test("clicking sidebar item navigates", async ({ page }) => {
+    const sidebar = page.locator('[class*="sidebar"]').first();
+
+    // Find a clickable file item (look for .md or file indicators)
+    const fileItem = sidebar.locator('button:has-text(".md")').first();
+
+    if (await fileItem.isVisible()) {
+      await fileItem.click();
+      await page.waitForLoadState("networkidle");
+      await expect(page).toHaveURL(/\/docs\//);
+    }
+  });
+});
+
+/**
+ * Feedback #P2199, #Q2338: the tree's hrefs carry `$`, a `$primitive` page's
+ * URL carries `%24` (the sitemap, every link the router builds), and a string
+ * comparison left the Explorer collapsed with nothing marked on all of them.
+ */
+test.describe("Explorer on an encoded path", () => {
+  test("a $primitive page loaded by its %24 URL expands its folder and marks itself", async ({
+    page,
+  }) => {
+    await page.goto("/docs/reference-primitives-%24sitemap");
+    await page.waitForLoadState("networkidle");
+
+    const tree = page.getByRole("tree", { name: "Documentation files" });
+    const active = tree.locator('[aria-current="page"]');
+    await expect(active).toHaveCount(1);
+    await expect(active).toHaveAttribute("aria-label", "$sitemap.md");
+    await expect(active).toBeVisible();
+  });
+});
+
+test.describe("Table of Contents", () => {
+  test("TOC highlights current section on scroll", async ({ page }) => {
+    await page.goto("/docs/guides-introduction");
+    await page.waitForLoadState("networkidle");
+
+    // Find TOC
+    const toc = page.locator(
+      '[class*="toc"], [class*="TableOfContents"], nav[aria-label*="contents" i]',
+    );
+
+    if (await toc.isVisible()) {
+      // Scroll down significantly
+      await page.evaluate(() => window.scrollTo(0, 1000));
+      await page.waitForTimeout(500);
+
+      // Just verify TOC is still visible and functional
+      await expect(toc).toBeVisible();
+    }
+  });
+
+  test("clicking TOC item scrolls to section", async ({ page }) => {
+    await page.goto("/docs/guides-introduction");
+    await page.waitForLoadState("networkidle");
+
+    const toc = page.locator(
+      '[class*="toc"], [class*="TableOfContents"], nav[aria-label*="contents" i]',
+    );
+
+    if (await toc.isVisible()) {
+      // Find a TOC link
+      const tocLink = toc.locator("a, button").nth(1);
+
+      if (await tocLink.isVisible()) {
+        // The content pane is the scroller, not the window, so the thing to
+        // measure is where the target heading sits in the viewport. Items
+        // are built from the headings in document order, so the second item
+        // names the second heading.
+        const heading = page.locator("#html-content [data-heading]").nth(1);
+        const before = await heading.evaluate(
+          (el) => el.getBoundingClientRect().top,
+        );
+
+        await tocLink.click();
+        await page.waitForTimeout(500);
+
+        const after = await heading.evaluate(
+          (el) => el.getBoundingClientRect().top,
+        );
+
+        // The heading moved: the pane scrolled to it.
+        expect(after).not.toBe(before);
+      }
+    }
+  });
+});
+
+test.describe("Status Bar", () => {
+  test("status bar shows file information", async ({ page }) => {
+    await page.goto("/docs/guides-introduction");
+    await page.waitForLoadState("networkidle");
+
+    const statusBar = page.locator('[class*="status"], [class*="StatusBar"]');
+
+    if (await statusBar.isVisible()) {
+      // Status bar should contain some file info
+      const text = await statusBar.textContent();
+      expect(text).toBeTruthy();
+    }
+  });
+
+  test("status bar shows live clock", async ({ page }) => {
+    await page.goto("/docs/guides-introduction");
+    await page.waitForLoadState("networkidle");
+
+    const statusBar = page.locator('[class*="status"], [class*="StatusBar"]');
+
+    if (await statusBar.isVisible()) {
+      // Get initial time display
+      await statusBar.textContent();
+
+      // Wait and check if time updates
+      await page.waitForTimeout(1100);
+
+      await statusBar.textContent();
+
+      // Clock should have potentially changed (or be showing time)
+      // Just verify status bar is still visible
+      await expect(statusBar).toBeVisible();
+    }
+  });
+});

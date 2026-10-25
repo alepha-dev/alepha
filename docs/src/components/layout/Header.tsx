@@ -1,0 +1,479 @@
+import {
+  IconBrandGithub,
+  IconFile,
+  IconGitBranch,
+  IconKeyboard,
+  IconMenu2,
+  IconMoon,
+  IconSearch,
+  IconSun,
+  IconX,
+} from "@tabler/icons-react";
+import { useAlepha } from "alepha/react";
+import { Link, useRouter, useRouterState } from "alepha/react/router";
+import { useCallback, useEffect, useState } from "react";
+
+import { getInitialMode, MODE_KEY, type Mode } from "./docsTheme.ts";
+
+// =============================================================================
+// HEADER - IDE STYLE
+// =============================================================================
+
+/**
+ * The four products, sitting next to the version chip because they share its
+ * version number and its changelog. Commerce ships as a framework package for
+ * now and so has no page of its own yet.
+ */
+const PRODUCTS = [
+  { href: "/", label: "Framework" },
+  { href: "/lore", label: "Lore" },
+  { href: "/bay", label: "Bay" },
+];
+
+export interface HeaderProps {
+  showTabs?: boolean;
+}
+
+const Header = (props: HeaderProps) => {
+  const { showTabs = true } = props;
+  const alepha = useAlepha();
+  const routerState = useRouterState();
+
+  return (
+    <header
+      className="bg-base flex"
+      style={{
+        height: 40,
+        borderBottom: "1px solid var(--color-border)",
+        position: "relative",
+        zIndex: 100,
+      }}
+    >
+      {/* Left - Menu Button & Tabs */}
+      <div className="flex flex-1 items-center">
+        {/* Mobile Menu Button - Only on docs pages */}
+        {showTabs && (
+          <button
+            type="button"
+            className="visible-mobile flex h-full items-center justify-center border-r"
+            onClick={() =>
+              window.dispatchEvent(new CustomEvent("toggle-mobile-sidebar"))
+            }
+            aria-label="Toggle sidebar menu"
+            aria-expanded={false}
+            style={{
+              width: 44,
+              background: "transparent",
+              border: "none",
+              color: "var(--color-text-muted)",
+              cursor: "pointer",
+            }}
+          >
+            <IconMenu2 size={20} />
+          </button>
+        )}
+
+        {/* Alepha Logo/Home */}
+        <Link
+          href="/"
+          className="logo-btn flex h-full items-center gap-2 border-r px-4"
+          style={{ textDecoration: "none", color: "var(--color-text-bright)" }}
+        >
+          {/*
+            `logo.svg`, not `favicon.png`: the favicon is a 192x192 PNG, and
+            rendering it at 32x32 shipped 31 KB to draw 1 KB of logo - three
+            times over, because the browser fetches it once as the icon, once
+            for React's hoisted `<link rel="preload" as="image">`, and once as
+            this image, each in a different cache bucket.
+          */}
+          <img
+            src="/logo.svg"
+            alt="Alepha"
+            width={32}
+            height={32}
+            style={{ margin: "-8px" }}
+          />
+        </Link>
+
+        {/* Version - Links to Changelog */}
+        <Link
+          href="/changelog"
+          className="version-btn hidden-mobile flex h-full items-center gap-2 border-r px-4"
+          style={{
+            // Set here rather than in CSS because the inline colour on this
+            // element would win over a class. Colour only, like the product
+            // links: a weight change would re-measure the chip.
+            color:
+              routerState.url.pathname === "/changelog"
+                ? "var(--color-text-bright)"
+                : "var(--color-text-muted)",
+            fontSize: 12,
+            textDecoration: "none",
+          }}
+          aria-current={
+            routerState.url.pathname === "/changelog" ? "page" : undefined
+          }
+          title="View Changelog"
+        >
+          <IconGitBranch size={14} />
+          <span>v{alepha.meta.version}</span>
+        </Link>
+
+        {/* Products. One version number covers all of them, which is why they
+            sit next to it rather than in their own nav. */}
+        <nav className="product-nav hidden-mobile" aria-label="Products">
+          {PRODUCTS.map((it) => {
+            // Framework owns TWO spaces, `/` and `/docs/*`, and cannot match
+            // by prefix because `/` is a prefix of everything. It used to
+            // match `/` exactly, which meant no product was highlighted on any
+            // of its 378 doc pages. The others match their prefix, which is
+            // what lights Lore up on `/lore/docs/...` (quest #1603).
+            const path = routerState.url.pathname;
+            const active =
+              it.href === "/"
+                ? path === "/" || path.startsWith("/docs")
+                : path.startsWith(it.href);
+
+            return (
+              <Link
+                key={it.href}
+                href={it.href}
+                className={`product-nav-link${active ? " is-active" : ""}`}
+                aria-current={active ? "page" : undefined}
+              >
+                {it.label}
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* Tabs - Only shown on docs pages, hidden on mobile */}
+        {showTabs && (
+          <div className="hidden-mobile">
+            <TabBar />
+          </div>
+        )}
+      </div>
+
+      {/* Right - Actions */}
+      <div className="flex items-center gap-1 px-3">
+        {/* Search Button */}
+        <SearchButton />
+
+        {/* Keyboard Shortcuts */}
+        <div className="hidden-mobile">
+          <HeaderButton
+            icon={<IconKeyboard size={16} />}
+            title="Keyboard Shortcuts"
+            onClick={() =>
+              window.dispatchEvent(new CustomEvent("show-keyboard-help"))
+            }
+          />
+        </div>
+
+        {/* GitHub */}
+        <HeaderButton
+          icon={<IconBrandGithub size={16} />}
+          title="View on GitHub"
+          href="https://github.com/alepha-dev/alepha"
+          target="_blank"
+        />
+
+        {/* Dark/Light Mode Toggle */}
+        <DarkModeToggle />
+      </div>
+    </header>
+  );
+};
+
+export default Header;
+
+// =============================================================================
+// SEARCH BUTTON
+// =============================================================================
+
+const SearchButton = () => {
+  const [isMac, setIsMac] = useState(true);
+
+  useEffect(() => {
+    // `navigator` is client-only, so the seed must be `true` for both the server
+    // render and hydration; the real platform lands on the first commit.
+    // oxlint-disable-next-line react/set-state-in-effect
+    setIsMac(navigator.platform.toLowerCase().includes("mac"));
+  }, []);
+
+  const openSearch = useCallback(() => {
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "k",
+        metaKey: isMac,
+        ctrlKey: !isMac,
+      }),
+    );
+  }, [isMac]);
+
+  return (
+    <button
+      type="button"
+      onClick={openSearch}
+      title="Search"
+      aria-label={`Search documentation (${isMac ? "⌘" : "Ctrl+"}K)`}
+      className="header-btn flex items-center gap-2 rounded transition-colors"
+      style={{
+        padding: "4px 8px",
+        background: "transparent",
+        border: "none",
+        color: "var(--color-text-muted)",
+        cursor: "pointer",
+        fontSize: 12,
+      }}
+    >
+      <IconSearch size={14} />
+      <span
+        aria-hidden="true"
+        style={{ fontSize: 11, color: "var(--color-text-muted)" }}
+      >
+        {isMac ? "⌘" : "Ctrl+"}K
+      </span>
+    </button>
+  );
+};
+
+// =============================================================================
+// TAB BAR
+// =============================================================================
+
+const TabBar = () => {
+  const router = useRouter();
+  const state = useRouterState();
+  const currentPath = state.url?.pathname || "";
+  const layer = state.layers.slice(-1)[0];
+  const currentName =
+    layer?.props?.name || layer?.name || currentPath.split("/").pop() || "docs";
+
+  // Store recently visited tabs
+  const [tabs, setTabs] = useState<{ path: string; name: string }[]>([]);
+
+  // Recorded during render rather than from an effect: the tab strip is
+  // derived from where the router already is, so waiting for a commit only
+  // renders the strip once without the page you just opened.
+  //
+  // Only a document that LOADED earns a tab: a layer carrying an error is
+  // NotFound rendered by the route's errorHandler, and a tab for it would
+  // name a page that does not exist. `Layout` keeps such a layer out of the
+  // IDE layout altogether (quest #1675); this is the same rule, one level
+  // down, for a header that ever shows tabs beside one.
+  const [recordedPath, setRecordedPath] = useState<string | undefined>();
+  if (
+    currentPath?.startsWith("/docs/") &&
+    !layer?.error &&
+    currentPath !== recordedPath
+  ) {
+    setRecordedPath(currentPath);
+    setTabs((prev) => {
+      // Remove if already exists
+      const filtered = prev.filter((t) => t.path !== currentPath);
+      // Add to front
+      const newTabs = [{ path: currentPath, name: currentName }, ...filtered];
+      // Keep only last 5
+      return newTabs.slice(0, 5);
+    });
+  }
+
+  const handleClose = useCallback(
+    (closedPath: string) => {
+      const isActive = closedPath === currentPath;
+      setTabs((prev) => {
+        const newTabs = prev.filter((t) => t.path !== closedPath);
+        // If closing the active tab, navigate to the next most recent tab
+        if (isActive && newTabs.length > 0) {
+          void router.push(newTabs[0].path);
+        }
+        return newTabs;
+      });
+    },
+    [currentPath, router],
+  );
+
+  return (
+    <div
+      className="flex h-full items-center"
+      style={{ paddingLeft: 12 }}
+      role="tablist"
+      aria-label="Open documents"
+    >
+      {tabs.map((tab) => (
+        <Tab
+          key={tab.path}
+          path={tab.path}
+          name={tab.name}
+          isActive={tab.path === currentPath}
+          onClose={() => handleClose(tab.path)}
+        />
+      ))}
+    </div>
+  );
+};
+
+// =============================================================================
+// TAB - Clean pill-style tabs
+// =============================================================================
+
+const Tab = (props: {
+  path: string;
+  name: string;
+  isActive: boolean;
+  onClose: () => void;
+}) => {
+  const { path, name, isActive, onClose } = props;
+
+  return (
+    <div
+      className={`pill-tab ${isActive ? "" : "tab-inactive"}`}
+      role="tab"
+      aria-selected={isActive}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        height: 28,
+        padding: "0 12px",
+        marginRight: 4,
+        borderRadius: 6,
+        background: isActive ? "var(--color-bg-panel)" : "transparent",
+        border: isActive
+          ? "1px solid var(--color-border)"
+          : "1px solid transparent",
+        color: isActive ? "var(--color-text)" : "var(--color-text-muted)",
+        fontSize: 12,
+        cursor: "pointer",
+        transition: "all 0.15s ease",
+      }}
+    >
+      <Link
+        href={path}
+        className="flex items-center gap-2"
+        aria-current={isActive ? "page" : undefined}
+        style={{
+          textDecoration: "none",
+          color: "inherit",
+        }}
+      >
+        <IconFile
+          size={14}
+          style={{
+            color: isActive ? "var(--color-cyan)" : "var(--color-text-muted)",
+            transition: "color 0.15s ease",
+          }}
+        />
+        <span
+          style={{
+            maxWidth: 120,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {name}.md
+        </span>
+      </Link>
+
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onClose();
+        }}
+        aria-label={`Close ${name} tab`}
+        className="btn-reset tab-close flex items-center justify-center"
+        style={{
+          width: 16,
+          height: 16,
+          borderRadius: 4,
+          color: "var(--color-text-muted)",
+          visibility: isActive ? "visible" : "hidden",
+          transition: "all 0.15s ease",
+        }}
+      >
+        <IconX size={12} />
+      </button>
+    </div>
+  );
+};
+
+// =============================================================================
+// HEADER BUTTON
+// =============================================================================
+
+const HeaderButton = (props: {
+  icon: React.ReactNode;
+  label?: string;
+  title?: string;
+  href?: string;
+  target?: string;
+  onClick?: () => void;
+}) => {
+  const Component = props.href ? "a" : "button";
+  const isExternal = props.target === "_blank";
+  const ariaLabel =
+    isExternal && props.title
+      ? `${props.title} (opens in new window)`
+      : props.title;
+
+  return (
+    <Component
+      href={props.href}
+      target={props.target}
+      rel={isExternal ? "noopener noreferrer" : undefined}
+      onClick={props.onClick}
+      title={props.title}
+      aria-label={ariaLabel}
+      className="header-btn flex items-center gap-1 rounded transition-colors"
+      style={{
+        padding: "4px 8px",
+        background: "transparent",
+        border: "none",
+        color: "var(--color-text-muted)",
+        cursor: "pointer",
+        fontSize: 12,
+        textDecoration: "none",
+      }}
+    >
+      {props.icon}
+      {props.label && <span>{props.label}</span>}
+    </Component>
+  );
+};
+
+// =============================================================================
+// DARK MODE TOGGLE
+// =============================================================================
+
+const DarkModeToggle = () => {
+  const [mode, setMode] = useState<Mode>("dark");
+
+  useEffect(() => {
+    const initialMode = getInitialMode();
+    // Reads localStorage and the OS preference, neither of which exists on the
+    // server — seeding from them during render would break hydration.
+    // oxlint-disable-next-line react/set-state-in-effect
+    setMode(initialMode);
+    document.documentElement.setAttribute("data-theme", initialMode);
+  }, []);
+
+  const toggleMode = useCallback(() => {
+    const newMode = mode === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", newMode);
+    localStorage.setItem(MODE_KEY, newMode);
+    setMode(newMode);
+  }, [mode]);
+
+  return (
+    <HeaderButton
+      icon={mode === "dark" ? <IconSun size={16} /> : <IconMoon size={16} />}
+      title={mode === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
+      onClick={toggleMode}
+    />
+  );
+};

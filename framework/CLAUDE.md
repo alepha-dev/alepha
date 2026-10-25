@@ -36,7 +36,7 @@ A small edit goes straight to `main`: no worktree, no quest, no `#Q<n>`. Small m
 
 ### Workspace checks
 
-`yarn check:deps` (depcheck), `check:migrations`, `check:docs` (`apps/docs/scripts/check-docs.ts`: doc code samples against the source, generated pages against the index, meaningful only after `yarn copy`) and `check:conventions` (`scripts/check-conventions.ts`). The first three fan out to every workspace exposing the script. ⚠️ A root fan-out script must keep at least one workspace exposing it: with none left, `yarn workspaces foreach -Apt run <name>` runs the root's own script, which calls itself, and the recursion filled 48 GB of memory in seconds when `check:i18n` lost its last workspace (#E72). It was removed then; remove the root script with the last workspace that needs it. A new cross-app check follows the same shape: workspace script, root aggregator, and a line in the `verify` command in `scripts/commands.ts`.
+`yarn check:deps` (depcheck), `check:migrations`, `check:docs` (`../docs/scripts/check-docs.ts`, run in the docs workspace: doc code samples against the source, generated pages against the index, meaningful only after `yarn copy`) and `check:conventions` (`scripts/check-conventions.ts`). The first three fan out to every workspace exposing the script. ⚠️ A root fan-out script must keep at least one workspace exposing it: with none left, `yarn workspaces foreach -Apt run <name>` runs the root's own script, which calls itself, and the recursion filled 48 GB of memory in seconds when `check:i18n` lost its last workspace (#E72). It was removed then; remove the root script with the last workspace that needs it. A new cross-app check follows the same shape: workspace script, root aggregator, and a line in the `verify` command in `scripts/commands.ts`.
 
 ### One artifact, N runtimes
 
@@ -71,7 +71,7 @@ Retired framework names fail immediately and name their replacement.
 
 This folder is the framework. Lore (`../lore`) and Bay (`../bay`) sit beside it in the same repository since 2026-10-25 (#Q2765, see the root `CLAUDE.md`), with workflows of their own. Every path in this file is relative to `framework/`.
 
-`main` auto-deploys the showcase (`apps/ui`) and the shop example to Cloudflare with no human gate: **Deploy latest** (`deploy-latest.yml`) fires once **Verify** (`verify.yml`) succeeds on a push to `main`. The docs at `alepha.dev` are the exception: they document the published framework, so only **Release** (`release.yml`) deploys them. A Verify cancelled by a newer push leaves that commit undeployed until the next green push.
+`main` auto-deploys the showcase (`apps/ui`) and the shop example to Cloudflare with no human gate: **Deploy latest** (`deploy-latest.yml`) fires once **Verify** (`verify.yml`) succeeds on a push to `main`. The docs site lives in `../docs` since #Q2766 and deploys from **Docs** (`docs.yml`) on `main` and from **Release**: its framework section is always built from the latest release tag, so `main` never publishes an unreleased API. `yarn copy` and `check:docs` here still run the site's generators, which write this folder's `docs/`. A Verify cancelled by a newer push leaves that commit undeployed until the next green push.
 
 ### Lore MCP: the planning memory
 
