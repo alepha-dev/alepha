@@ -16,11 +16,14 @@ import { QuestCommand } from "./commands/QuestCommand.ts";
 import { RegistryCommand } from "./commands/RegistryCommand.ts";
 import { ReleaseCommand } from "./commands/ReleaseCommand.ts";
 import { SecretsCommand } from "./commands/SecretsCommand.ts";
+import { StackCommand } from "./commands/StackCommand.ts";
 import type { LoreEnvironmentOptions } from "./schemas/loreEnvironmentOptions.ts";
 import { AttachmentUploader } from "./services/AttachmentUploader.ts";
 import { LoreOutput } from "./services/LoreOutput.ts";
 import { LoreReferences } from "./services/LoreReferences.ts";
 import { LoreRefusals } from "./services/LoreRefusals.ts";
+import { LoreStackBundler } from "./services/LoreStackBundler.ts";
+import { LoreStackService } from "./services/LoreStackService.ts";
 import { QualityReportReader } from "./services/QualityReportReader.ts";
 
 // ---------------------------------------------------------------------------
@@ -95,6 +98,9 @@ export const AlephaLoreCli = $module({
     LoreRefusals,
     LoreOutput,
     LoreReferences,
+    // Stack bundles and the shared stack lookups (#E80).
+    LoreStackBundler,
+    LoreStackService,
     ProjectCommand,
     QuestCommand,
     FolioCommand,
@@ -106,6 +112,7 @@ export const AlephaLoreCli = $module({
     SecretsCommand,
     EstateCommand,
     RegistryCommand,
+    StackCommand,
     LoginCommand,
   ],
 });
