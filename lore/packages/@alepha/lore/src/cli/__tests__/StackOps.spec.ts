@@ -41,6 +41,14 @@ describe("lore stack operations", () => {
     const printed = alepha.inject(MemoryOutputProvider).lines;
     const calls: Array<{ name: string; request: unknown }> = [];
     const target = { projectId: 7, stackId: "s1", environmentId: "env-0" };
+    const environments: Array<Record<string, unknown>> = [
+      {
+        id: "env-0",
+        env: "production",
+        routes: [{ service: "umami", domain: "analytics.bob.dev" }],
+        members: [],
+      },
+    ];
     Object.assign(
       alepha.inject(LoreProjectResolver) as unknown as Record<string, unknown>,
       {
@@ -60,14 +68,7 @@ describe("lore stack operations", () => {
               {
                 id: "s1",
                 name: "hello",
-                environments: [
-                  {
-                    id: "env-0",
-                    env: "production",
-                    routes: [{ service: "umami", domain: "analytics.bob.dev" }],
-                    members: [],
-                  },
-                ],
+                environments,
               },
             ],
           }),
@@ -101,6 +102,12 @@ describe("lore stack operations", () => {
       stackApi: {
         addStackRoute: record("routeAdd"),
         removeStackRoute: record("routeRemove"),
+        createStackEnvironment: async (request: { body: { env: string } }) => {
+          calls.push({ name: "createEnvironment", request });
+          const id = `env-${environments.length}`;
+          environments.push({ id, env: request.body.env, routes: [] });
+          return { id };
+        },
       },
       deployApi: {
         requestStackLogs: record("requestLogs"),
@@ -134,6 +141,23 @@ describe("lore stack operations", () => {
       const { run, calls } = create();
       await expect(run(["secretsSet"], "A=b")).rejects.toThrow();
       expect(calls).toEqual([]);
+    });
+
+    it("creates an environment not deployed yet, since its first deploy needs the secret", async ({
+      expect,
+    }) => {
+      const { run, calls } = create();
+      await run(["secretsSet"], "APP_SECRET --generate --env staging");
+      expect(calls.map((c) => c.name)).toEqual(["createEnvironment", "set"]);
+      expect(calls[1].request).toMatchObject({
+        params: { environmentId: "env-1" },
+      });
+      await run(["routeAdd"], "web --domain staging.bob.dev --env staging");
+      expect(calls.map((c) => c.name)).toEqual([
+        "createEnvironment",
+        "set",
+        "routeAdd",
+      ]);
     });
 
     it("sets KEY=VALUE and KEY from the environment, and never prints a value", async ({

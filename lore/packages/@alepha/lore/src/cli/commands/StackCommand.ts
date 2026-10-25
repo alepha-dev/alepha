@@ -464,7 +464,7 @@ export class StackCommand {
             "Pass KEY=VALUE (or KEY, or keys with --generate), or --file with a dotenv file. Not both, and not neither.",
           );
         }
-        const target = await this.environmentTarget(flags);
+        const target = await this.environmentTarget(flags, true);
         const sets: Array<{ key: string; value?: string; generate?: number }> =
           flags.file
             ? await this.readDotenv(root, flags.file)
@@ -565,7 +565,7 @@ export class StackCommand {
       await this.refusals.guard(context, async () => {
         const service = args;
         const domain = flags.domain;
-        const target = await this.environmentTarget(flags);
+        const target = await this.environmentTarget(flags, true);
         await this.stackApi.addStackRoute({
           params: target.params,
           body: { service, domain },
@@ -770,24 +770,32 @@ export class StackCommand {
    * The project, stack and environment a command names, resolved, with the
    * three ids the environment endpoints take and its name for messages.
    */
-  protected async environmentTarget(flags: {
-    project?: string;
-    name?: string;
-    env: string;
-  }) {
+  protected async environmentTarget(
+    flags: {
+      project?: string;
+      name?: string;
+      env: string;
+    },
+    create = false,
+  ) {
     const context: LoreRefusalContext = {};
     const { project, projectId } = await this.projects.named(
       flags.project,
       context,
     );
-    const stack = await this.stacks.getStack(
-      projectId,
-      await this.stacks.stackName(project, projectId, flags.name),
-    );
-    const environment = this.stacks.environmentOf(
-      stack,
-      flags.env.trim().toLowerCase(),
-    );
+    const name = await this.stacks.stackName(project, projectId, flags.name);
+    const env = flags.env.trim().toLowerCase();
+    let stack = await this.stacks.getStack(projectId, name);
+    if (create && !stack.environments.some((e) => e.env === env)) {
+      // A secret or a route the first deploy needs is set before it, so
+      // these writes create the environment on the stack's own estate.
+      await this.stackApi.createStackEnvironment({
+        params: { projectId, stackId: stack.id },
+        body: { env },
+      });
+      stack = await this.stacks.getStack(projectId, name);
+    }
+    const environment = this.stacks.environmentOf(stack, env);
     return {
       params: { projectId, stackId: stack.id, environmentId: environment.id },
       environment,
