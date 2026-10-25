@@ -45,7 +45,7 @@ describe("the Lore CLI command surface", () => {
   };
 
   /**
-   * Twelve, and no root of their own: the binary IS the root, so a `lore`
+   * The Lore verbs, and no root of their own: the binary IS the root, so a `lore`
    * command inside it would read `lore lore quality push`.
    *
    * `deploy` is the one verb promoted out of a subject, because it is the
@@ -53,7 +53,7 @@ describe("the Lore CLI command surface", () => {
    * is: see {@link AppsCommand.deployCommand} for why `build` and `destroy`
    * stay where they are.
    */
-  it("puts the twelve Lore verbs at the top level", () => {
+  it("puts the Lore verbs at the top level", () => {
     const names = setup()
       .testGetTopLevelCommands()
       .map((command) => command.name)
@@ -64,6 +64,7 @@ describe("the Lore CLI command surface", () => {
       "artifacts",
       "attachments",
       "deploy",
+      "estate",
       "folio",
       "login",
       "logout",
@@ -118,6 +119,7 @@ describe("the Lore CLI command surface", () => {
       attachments: ["push"],
       folio: ["list", "get", "create"],
       project: ["list", "info", "create", "link"],
+      estate: ["add", "list"],
       quality: ["push"],
       quest: [
         "list",
