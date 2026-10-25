@@ -146,7 +146,7 @@ export class StackCommand {
         .text({
           aliases: ["f"],
           description:
-            "Upload this compose file as a new revision before deploying",
+            "Upload this compose file as a new revision before deploying. Without it or --revision, the compose file here is",
         })
         .optional(),
       estate: z
@@ -178,9 +178,12 @@ export class StackCommand {
         );
         const env = (flags.env ?? "production").trim().toLowerCase();
         let stack = await this.stacks.getStack(projectId, name);
-        const bundle = flags.file
-          ? await this.bundler.bundle(flags.file, root)
-          : undefined;
+        // The compose file beside the command, as `docker compose up` would
+        // read it, unless a revision already uploaded is named.
+        const file =
+          flags.file ??
+          (flags.revision ? undefined : await this.bundler.findDefault(root));
+        const bundle = file ? await this.bundler.bundle(file, root) : undefined;
         const existing = stack.environments.find((e) => e.env === env);
 
         if (flags["dry-run"]) {

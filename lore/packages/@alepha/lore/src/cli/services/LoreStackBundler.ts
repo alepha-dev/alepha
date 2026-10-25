@@ -30,6 +30,26 @@ export class LoreStackBundler {
 
   public static readonly MAX_BYTES = 16 * 1024 * 1024;
 
+  /**
+   * The names Compose itself looks for, in its order.
+   */
+  public static readonly DEFAULT_NAMES = [
+    "compose.yaml",
+    "compose.yml",
+    "docker-compose.yaml",
+    "docker-compose.yml",
+  ];
+
+  /**
+   * The compose file in `root`, by the names Compose looks for, if any.
+   */
+  public async findDefault(root = "/"): Promise<string | undefined> {
+    for (const name of LoreStackBundler.DEFAULT_NAMES) {
+      if (await this.fs.exists(this.fs.resolve(root, name))) return name;
+    }
+    return undefined;
+  }
+
   public async bundle(
     composePath: string,
     root = "/",

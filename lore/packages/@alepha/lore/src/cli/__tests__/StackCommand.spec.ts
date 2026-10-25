@@ -204,7 +204,7 @@ describe("lore stack", () => {
     ]);
   });
 
-  it("deploy uploads the file, creates the environment on its first deploy, follows it, and prints the plan", async ({
+  it("deploy uploads the compose file here, creates the environment on its first deploy, follows it, and prints the plan", async ({
     expect,
   }) => {
     const { fs, run, calls, printed } = create();
@@ -212,7 +212,7 @@ describe("lore stack", () => {
       `${process.cwd()}/compose.yml`,
       "services:\n  db:\n    image: postgres\n",
     );
-    await run("deploy", "--file compose.yml --env staging");
+    await run("deploy", "--env staging");
     expect(calls.map((c) => c.name)).toEqual([
       "upload",
       "createEnvironment",
