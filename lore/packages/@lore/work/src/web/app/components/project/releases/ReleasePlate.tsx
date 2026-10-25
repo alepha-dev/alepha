@@ -1,0 +1,324 @@
+import { Badge, Button, useDialog } from "@alepha/ui";
+import {
+  type I18n,
+  type LinkedCollection,
+  formatReference,
+} from "@lore/core/web";
+import { useAction, useClient } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
+import {
+  CalendarCheck,
+  Inbox,
+  Layers,
+  Pencil,
+  RotateCcw,
+  Send,
+  Swords,
+  Target,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+
+import type { ReleaseController } from "../../../../../api/controllers/ReleaseController.ts";
+import type { ReleaseResource } from "../../../../../api/schemas/releaseResourceSchema.ts";
+import { releaseBuckets } from "./releaseBuckets.ts";
+import ReleaseDefaultBadge from "./ReleaseDefaultBadge.tsx";
+import ReleaseProgressBar from "./ReleaseProgressBar.tsx";
+import {
+  releaseState,
+  STATE_ICONS,
+  STATE_LABEL_KEYS,
+  STATE_TONE,
+} from "./releaseState.ts";
+import { useCountLabel } from "./useCountLabel.ts";
+import { useSetDefaultRelease } from "./useSetDefaultRelease.ts";
+
+export interface ReleasePlateProps {
+  release: ReleaseResource;
+  /**
+   * Counted from the Contents endpoint, so the meta line and the Contents
+   * tab can never disagree about how many epics are in this release.
+   */
+  epicCount: number;
+  /**
+   * The collections other modules list on this page (Deploy's artifacts),
+   * each counted from what its tab renders. A count, not a readiness ratio:
+   * an artifact is present or absent and has no other state.
+   */
+  linked: LinkedCollection[];
+  onEdit: () => void;
+  onChanged: () => void;
+}
+
+/**
+ * The release's identity band: what this release is, how far along it is, and
+ * the two things you can do to it.
+ *
+ * A full-width horizontal plate rather than `DetailLayout`'s 288px identity
+ * aside, which the Epic page uses. A release's identity is four facts wide
+ * and no facts deep, and the tab bodies below - an artifact table, epic cards
+ * carrying every quest - all want the full frame. A column would spend a
+ * quarter of the width to print a tag and a date.
+ *
+ * Every fact on the meta line is backed by a surface on this page: the date
+ * by the Target card, the epics and quests by Contents, each registered
+ * collection (the artifacts) by its own tab. **There is no deployment fact here.** An earlier draft had a
+ * Deployments tab and a "furthest environment" entry; both were cut, and
+ * putting the environment back in this line would be the tab returning
+ * through the side door.
+ */
+const ReleasePlate = (props: ReleasePlateProps) => {
+  const { release } = props;
+  const { tr, l } = useI18n<I18n, "en">();
+  const dialog = useDialog();
+  const releaseApi = useClient<ReleaseController>();
+  // Three counts on one line: "(s)" would be the loudest thing on it.
+  const count = useCountLabel();
+  const defaultRelease = useSetDefaultRelease();
+
+  const published = !!release.releasedAt;
+  const state = releaseState(release);
+  const StateIcon = STATE_ICONS[state];
+  const buckets = releaseBuckets(release.progress);
+
+  // One `useAction` per verb, each holding its confirmation (#E59, #Q2326):
+  // backing out sends nothing, and a refusal is the server's sentence, toasted
+  // by the root `ActionErrorToaster`.
+  const publishAction = useAction<[], void>(
+    {
+      handler: async () => {
+        const ok = await dialog.confirm({
+          title: tr("release.publish.title"),
+          description: tr("release.publish.description", {
+            args: [release.tag ?? String(release.number)],
+          }),
+          confirmLabel: tr("release.publish.confirm"),
+          cancelLabel: tr("common.cancel"),
+          destructive: true,
+        });
+        if (!ok) return;
+        await releaseApi.publishRelease({
+          params: { id: release.id },
+          body: {},
+        });
+        props.onChanged();
+      },
+    },
+    [
+      releaseApi,
+      dialog,
+      release.id,
+      release.tag,
+      release.number,
+      props.onChanged,
+      tr,
+    ],
+  );
+
+  const reopenAction = useAction<[], void>(
+    {
+      handler: async () => {
+        const ok = await dialog.confirm({
+          title: tr("release.reopen.title"),
+          description: tr("release.reopen.description"),
+          confirmLabel: tr("release.reopen.confirm"),
+          cancelLabel: tr("common.cancel"),
+          destructive: true,
+        });
+        if (!ok) return;
+        await releaseApi.reopenRelease({ params: { id: release.id } });
+        props.onChanged();
+      },
+    },
+    [releaseApi, dialog, release.id, props.onChanged, tr],
+  );
+
+  // Page-wide across the plate's three writes.
+  const submitting =
+    publishAction.loading || reopenAction.loading || defaultRelease.busy;
+
+  const meta: Array<{ icon: LucideIcon; text: string; divide?: boolean }> = [
+    {
+      icon: published ? CalendarCheck : Target,
+      // Just the date. The caveat that a target is only an estimate is said
+      // once on this page, in the Target card on Overview, and repeating it
+      // here would make the densest line the wordiest.
+      text: published
+        ? tr("release.meta.released", {
+            args: [l(release.releasedAt as string, { date: "ll" })],
+          })
+        : release.targetDate
+          ? tr("release.meta.target", {
+              args: [l(release.targetDate, { date: "ll" })],
+            })
+          : tr("release.list.noTarget"),
+      divide: true,
+    },
+    {
+      icon: Layers,
+      text: count(
+        props.epicCount,
+        "release.meta.epics.one",
+        "release.meta.epics.many",
+      ),
+    },
+    {
+      icon: Swords,
+      // `total`, matching the ratio in the card to the right of it. Declined
+      // work is outside that denominator and is reported by the bar's own
+      // tooltip rather than by a second count here that would not add up
+      // against the one beside it.
+      text: count(
+        buckets.total,
+        "release.meta.quests.one",
+        "release.meta.quests.many",
+      ),
+    },
+    ...props.linked.flatMap(({ tab, count: rows }) =>
+      tab.metaKeys
+        ? [
+            {
+              icon: tab.icon as LucideIcon,
+              text: count(
+                rows ?? 0,
+                tab.metaKeys.one as never,
+                tab.metaKeys.many as never,
+              ),
+              divide: true,
+            },
+          ]
+        : [],
+    ),
+  ];
+
+  return (
+    <div className="flex flex-wrap items-start gap-5 px-6 pt-[22px] pb-3">
+      <div className="flex min-w-0 flex-1 flex-col gap-2.5">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* The tag is the release's identity AND the join key to its
+              artifacts, so it gets display weight rather than the small
+              secondary badge it used to wear. */}
+          {/* The default glyph rides with the tag here too, so the plate and
+              the list say the same thing in the same place. */}
+          <span className="flex items-center gap-1.5">
+            <span className="bg-muted border-border flex h-8 items-center rounded-lg border px-3 font-mono text-[19px] font-semibold tracking-[-0.01em]">
+              {release.tag ?? formatReference("release", release.number)}
+            </span>
+            <ReleaseDefaultBadge release={release} />
+          </span>
+          {/* The SAME chip the Releases table draws, from the same three
+              tables in `releaseState.ts`. The design called for a green
+              "Open" and a grey "Released"; that would have been a second
+              vocabulary and a second palette for a state the list already
+              names, and the two surfaces disagreeing about one release is
+              worse than either choice on its own. */}
+          <Badge variant="tint" tone={STATE_TONE[state]}>
+            <StateIcon className="size-3" />
+            {tr(STATE_LABEL_KEYS[state])}
+          </Badge>
+          {/* Printed only when it says something the tag does not: `title`
+              is NOT NULL and defaults to the tag server-side, so most
+              releases have one that is a duplicate. */}
+          {release.title && release.title !== release.tag && (
+            <h1 className="truncate text-[17px] font-semibold tracking-[-0.01em]">
+              {release.title}
+            </h1>
+          )}
+        </div>
+
+        <div className="text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12.5px]">
+          {meta.map((entry, index) => (
+            <span key={entry.text} className="flex items-center gap-4">
+              {/* A rule between GROUPS, not between every pair: the date is
+                  one fact, the three counts are one set. */}
+              {index > 0 && entry.divide && (
+                <span className="bg-border h-3.5 w-px" aria-hidden />
+              )}
+              <span className="flex items-center gap-1.5">
+                <entry.icon className="size-[13px] shrink-0" aria-hidden />
+                {entry.text}
+              </span>
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div className="bg-card border-border flex w-70 shrink-0 flex-col gap-2 rounded-[10px] border px-[14px] py-3">
+        <div className="flex items-center justify-between">
+          <span className="text-muted-foreground text-[10.5px] font-semibold tracking-[0.1em] uppercase">
+            {/* A published release's counts are the record of what shipped,
+                not a live measure, and the label is where that is said. */}
+            {published
+              ? tr("release.plate.frozen")
+              : tr("release.hero.progress")}
+          </span>
+          <span className="font-mono text-xs font-semibold">
+            {buckets.completed}/{buckets.total}
+          </span>
+        </div>
+        <ReleaseProgressBar buckets={buckets} />
+      </div>
+
+      <div className="flex shrink-0 items-center gap-2">
+        {/* Hidden rather than disabled once published. A published release
+            is a record: the server refuses every write to it, and an
+            affordance that always fails is worse than no affordance. */}
+        {/* Never offered on a published release: the server refuses it, and
+            the affordance would always fail. Hidden rather than disabled
+            without `release:manage`, the same rule as Publish below. */}
+        {!published && defaultRelease.can && (
+          <Button
+            variant="minimal"
+            size="lg"
+            disabled={submitting}
+            onClick={() =>
+              void (release.defaultSince
+                ? defaultRelease.clear(release)
+                : defaultRelease.set(release))
+            }
+          >
+            <Inbox className="size-4" />
+            {release.defaultSince
+              ? tr("release.default.clear")
+              : tr("release.default.set")}
+          </Button>
+        )}
+        {!published && releaseApi.updateRelease.can() && (
+          <Button variant="outlined" size="lg" onClick={props.onEdit}>
+            <Pencil className="size-4" />
+            {tr("release.detail.edit")}
+          </Button>
+        )}
+        {/* ⚠️ Hidden, not disabled, when the rank lacks `release:manage`: a
+            release nobody here may publish should not advertise a Publish
+            button. The rule for the whole epic is hide by default and disable
+            only where absence would make the layout lie - this row has other
+            content, so it does not. */}
+        {!releaseApi.publishRelease.can() ? null : published ? (
+          // Quieter than Publish was, and deliberately not a toggle beside
+          // it: reopening is what you do when you published by mistake, and
+          // it clears the frozen record.
+          <Button
+            variant="minimal"
+            size="lg"
+            disabled={submitting}
+            onClick={() => void reopenAction.run()}
+          >
+            <RotateCcw className="size-4" />
+            {tr("release.reopen.action")}
+          </Button>
+        ) : (
+          <Button
+            size="lg"
+            disabled={submitting}
+            onClick={() => void publishAction.run()}
+          >
+            <Send className="size-4" />
+            {tr("release.publish.action")}
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default ReleasePlate;

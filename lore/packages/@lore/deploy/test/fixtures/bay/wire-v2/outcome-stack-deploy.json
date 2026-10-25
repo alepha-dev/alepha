@@ -1,0 +1,30 @@
+{
+  "stack": "umami",
+  "env": "production",
+  "revision": 2,
+  "plan": {
+    "created": [],
+    "changed": ["umami"],
+    "removed": [],
+    "fields": {
+      "umami": ["image"]
+    }
+  },
+  "members": [
+    {
+      "service": "db",
+      "kind": "service"
+    },
+    {
+      "service": "umami",
+      "kind": "service",
+      "domains": ["analytics.bob.dev"],
+      "port": 41817
+    }
+  ],
+  "warnings": ["service umami has no healthcheck"],
+  "digests": {
+    "db": "postgres:15-alpine@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "umami": "ghcr.io/umami-software/umami:latest@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  }
+}

@@ -1,0 +1,37 @@
+-- Epic #23. Two additive columns, and one rebuild deliberately left out.
+--
+-- 1. `invitations.organization_id`, nullable, following the `parameters`
+--    precedent: the table moved into `alepha/api/invitations` and framework
+--    entities carry a tenant column. Lore resolves no tenant, so every row
+--    keeps being written NULL with the historic global semantics.
+--
+-- 2. `verification.expires_at`, nullable: a `link` verification is capped at
+--    two hours by `verificationSettingsSchema` and its row is purged after a
+--    day, so an invitation token would have been dead long before the
+--    seven-day invitation it belongs to. An entry may now carry the expiry of
+--    the thing it unlocks.
+--
+-- ⚠️ A THIRD change is not here, and its absence is the point. The two
+-- foreign keys from `invitations` into `users` were dropped from the ENTITY
+-- (no framework module references another module's table -- `api/keys` and
+-- `api/audits` both record a user id as a bare uuid), and drizzle-kit answers
+-- that with the standard SQLite rebuild: CREATE __new / INSERT SELECT /
+-- `DROP TABLE invitations` / RENAME. On D1 a `DROP TABLE` runs its CASCADEs
+-- for real, which is the failure mode that wiped lore-production in 2026-05.
+-- `invitations` is nobody's CASCADE parent today, so that rebuild would
+-- probably have been survivable; "probably survivable" is not a reason to run
+-- a rebuild that buys nothing but cosmetic agreement, and it would also throw
+-- away the `ON DELETE CASCADE` on `invited_by` that Lore has today.
+--
+-- So the physical table keeps both foreign keys while the snapshot beside
+-- this file no longer declares them. Nothing can trip over it: drizzle diffs
+-- the ENTITY against the SNAPSHOT and never reads the live database, and the
+-- cascade that survives is the one that was already there. The next migration
+-- that genuinely has to rebuild this table will resolve the drift on its own,
+-- by building it from the snapshot.
+--
+-- Same precedent, same verdict as `projects.features`'s stale DEFAULT and
+-- `sigils.name`'s physical nullability. See apps/lore/CLAUDE.md, "Migration
+-- safety on D1".
+ALTER TABLE `invitations` ADD `organization_id` text;--> statement-breakpoint
+ALTER TABLE `verification` ADD `expires_at` integer;

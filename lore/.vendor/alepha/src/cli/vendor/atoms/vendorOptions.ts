@@ -1,0 +1,65 @@
+import { $atom, type Infer, z } from "alepha";
+
+/**
+ * Vendor configuration atom.
+ *
+ * Filled from the `vendor` section of `alepha.config.ts`.
+ * Read by `VendorCommand` to resolve remote, branch, and packages.
+ */
+export const vendorOptions = $atom({
+  name: "alepha.cli.vendor.options",
+  description: "Vendor synchronization configuration",
+  schema: z
+    .object({
+      /**
+       * Git remote URL.
+       *
+       * @default "https://github.com/alepha-dev/alepha"
+       */
+      remote: z.text().optional(),
+
+      /**
+       * Branch to sync from.
+       *
+       * @default "main"
+       */
+      branch: z.text().optional(),
+
+      /**
+       * Parent directory holding the vendored packages in the local project.
+       * Relative to the project root. Also where the `vendor.json` lock file
+       * is written. The remote is always expected to lay its packages out
+       * under `packages/`.
+       *
+       * @default ".vendor"
+       */
+      dir: z.text().optional(),
+
+      /**
+       * Package directory names under `dir` to sync.
+       *
+       * @example ["alepha", "@alepha/payments-stripe"]
+       */
+      packages: z.array(z.text()),
+
+      /**
+       * Build each synced package and point its manifest at `dist` (its
+       * `publishConfig`), so Node can load it outside Vite.
+       *
+       * Turn it off when the project loads every vendored package through
+       * Vite as source and no published package imports the framework: the
+       * committed manifests then keep resolving to `src`, and a fresh clone
+       * runs without building anything first.
+       *
+       * @default true
+       */
+      build: z.boolean().optional(),
+    })
+    .optional(),
+  serverOnly: true,
+});
+
+/**
+ * Type for vendor options.
+ */
+export type VendorOptions = Infer<typeof vendorOptions.schema>;

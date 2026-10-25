@@ -1,0 +1,42 @@
+import { LoreCoreMcp } from "@lore/core/mcp";
+import { $module } from "alepha";
+
+import { EpicRefService } from "./services/EpicRefService.ts";
+import { WorkProjectContext } from "./services/WorkProjectContext.ts";
+import { EpicTools } from "./tools/EpicTools.ts";
+import { FeedbackTools } from "./tools/FeedbackTools.ts";
+import { QuestTools } from "./tools/QuestTools.ts";
+import { ReleaseTools } from "./tools/ReleaseTools.ts";
+
+/**
+ * The MCP tools and resources of `@lore/work`, Lore as Jira: quests, epics, releases, areas, the kanban, the roadmap and feedback.
+ *
+ * Registered by `apps/lore/src/main.server.ts` beside `LoreWorkApi`.
+ *
+ * @module
+ */
+export const LoreWorkMcp = $module({
+  name: "lore.work.mcp",
+  // Core first: booting this module alone boots what it depends on.
+  imports: [LoreCoreMcp],
+  services: [
+    QuestTools,
+    ReleaseTools,
+    EpicTools,
+    FeedbackTools,
+    EpicRefService,
+    // The orientation sections each module registers on the core
+    // `ProjectContextRegistry` (#E75, #Q2623); listed because nothing
+    // injects them.
+    WorkProjectContext,
+  ],
+});
+
+// What code outside `src/` imports from this barrel: the entries, other
+// packages and the specs (`apps/lore/test`, `apps/e2e`, Work's own `test/`).
+// Everything else stays internal, reached by relative import.
+
+export { EpicTools } from "./tools/EpicTools.ts";
+export { FeedbackTools } from "./tools/FeedbackTools.ts";
+export { QuestTools } from "./tools/QuestTools.ts";
+export { ReleaseTools } from "./tools/ReleaseTools.ts";

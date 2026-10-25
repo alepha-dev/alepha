@@ -1,0 +1,24 @@
+import { $store } from "alepha";
+import { $command } from "alepha/command";
+
+import { buildOptions } from "../atoms/buildOptions.ts";
+
+export class CleanCommand {
+  protected readonly options = $store(buildOptions);
+
+  /**
+   * Clean the project, removing the build output directory.
+   */
+  public readonly clean = $command({
+    name: "clean",
+    description: "Clean the project",
+    handler: async ({ run }) => {
+      // `./dist` was hardcoded, so a project configuring `output.dist` got a
+      // no-op clean and stale artifacts survived into the next build.
+      // Not `./${distDir}`: an absolute `output.dist` must be removed where
+      // the build writes it, which is how `build` resolves it too.
+      const distDir = this.options.output?.dist ?? "dist";
+      await run.rm(distDir);
+    },
+  });
+}

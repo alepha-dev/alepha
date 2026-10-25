@@ -1,0 +1,393 @@
+import { $inject, AlephaError } from "alepha";
+import { RankService } from "alepha/api/organizations";
+import { $logger } from "alepha/logger";
+import type { UserAccountToken } from "alepha/security";
+
+import type { ProjectCapability } from "../entities/projectCapabilities.ts";
+import type { Project } from "../entities/projects.ts";
+import { CapabilityRegistry } from "../schemas/CapabilityRegistry.ts";
+import type { DashboardCardResource } from "../schemas/dashboardCardResourceSchema.ts";
+import type { DashboardCardValue } from "../schemas/dashboardCardValueSchema.ts";
+import {
+  type DashboardBoard,
+  DashboardMetricCatalog,
+  type DashboardMetricDescriptor,
+} from "../schemas/DashboardMetricCatalog.ts";
+import type {
+  DashboardMetricResolver,
+  DashboardResolvable,
+} from "./DashboardMetricResolver.ts";
+import {
+  DashboardScopeService,
+  type ResolvedDashboardScope,
+} from "./DashboardScopeService.ts";
+import { ProjectSecurityService } from "./ProjectSecurityService.ts";
+
+/**
+ * Turns a whole card list into a whole list of values, in one pass.
+ *
+ * The computing half of the metric registry; `DashboardMetricCatalog` is the
+ * declarative half, and the two are separate only because the catalogue must
+ * stay importable by the browser (it generates the Add-card wizard) and this
+ * one holds repositories.
+ *
+ * ## One request, and one query per metric
+ *
+ * ⚠️ Ten auto-refreshing tiles on the landing page is the exact shape of the
+ * QuestGraph incident (folio #1057): a route loader revalidating once per
+ * second for 51 minutes produced 4,009 identical `/api/_batch` requests from
+ * a single browser tab, roughly 35% of that day's account-wide Worker
+ * invocations. `/api/_batch` collapses transport, not database work — so
+ * this class groups by metric before resolving, and a resolver receives
+ * every card that is its own rather than being called once per card.
+ *
+ * There is no polling anywhere in the dashboard. "Refreshed a minute ago" is
+ * a timestamp on an explicit refresh, not an interval.
+ *
+ * ## One failing tile costs a tile
+ *
+ * Cards read unrelated tables, so one metric failing while its neighbours
+ * succeed is a normal state, not an exception. Every failure mode lands on
+ * `ok: false` for the cards concerned:
+ *
+ * - the metric key is one this build does not know (a card written by a
+ *   newer deploy, or a metric since removed),
+ * - the scope names a project or app the caller has lost access to, or that
+ *   was deleted — `DashboardScopeService` answers those with a 404 rather
+ *   than an empty set, deliberately,
+ * - the resolver itself threw.
+ */
+export class DashboardMetricRegistry {
+  protected readonly log = $logger();
+  protected readonly catalog = $inject(DashboardMetricCatalog);
+  protected readonly scopes = $inject(DashboardScopeService);
+  protected readonly security = $inject(ProjectSecurityService);
+  protected readonly registry = $inject(CapabilityRegistry);
+  protected readonly ranks = $inject(RankService);
+
+  /**
+   * The window a board resolves over when the caller names none (#E77).
+   */
+  static readonly DEFAULT_WINDOW_DAYS = 14;
+
+  /**
+   * Every resolver, by metric key, registered by the module that owns the
+   * metric (#E75, #Q2623): Work's quest, epic, release, tag and feedback
+   * metrics, Deploy's blights and visitors. A card whose metric no module
+   * resolves fails as an unknown metric would.
+   */
+  protected readonly resolverByMetric = new Map<
+    string,
+    DashboardMetricResolver
+  >();
+
+  /**
+   * Register a resolver under the metric key it claims, so a resolver cannot
+   * be registered under a key it does not own.
+   */
+  public register(resolver: DashboardMetricResolver): void {
+    if (this.resolverByMetric.has(resolver.metric)) {
+      throw new AlephaError(
+        `Dashboard metric '${resolver.metric}' has two resolvers`,
+      );
+    }
+    this.resolverByMetric.set(resolver.metric, resolver);
+  }
+
+  protected resolvers(): Map<string, DashboardMetricResolver> {
+    return this.resolverByMetric;
+  }
+
+  /**
+   * The HOME board's entry point.
+   *
+   * It opens with an account-wide users-to-projects join because home has no
+   * single project to gate on: a card there may name several projects, or
+   * apps across them. A project board does have one, already proved on the
+   * route — see {@link resolveForProject}.
+   */
+  async resolve(
+    cards: DashboardCardResource[],
+    user: UserAccountToken,
+  ): Promise<DashboardCardValue[]> {
+    // The membership set, read ONCE for the whole board. Every card's scope is
+    // proven against it below; letting each card read it would run the same
+    // users-to-projects join once per tile, which is the shape this endpoint
+    // exists to avoid.
+    const visible = await this.scopes.visibleProjects(user);
+    return this.resolveOn(cards, user, visible, "home");
+  }
+
+  /**
+   * The PROJECT board's entry point.
+   *
+   * ⚠️ It skips `visibleProjects` entirely, and that changes nothing about
+   * safety. The route has already proved membership on this one project
+   * (`$ownsProject`), so handing the registry that project as the whole
+   * visible set is the same proof arriving from the gate that already ran
+   * rather than from a second account-wide read. Every id a card names is
+   * still proved against it, which inside a project reads as "belongs to this
+   * project", and an id from elsewhere is a 404 rather than an empty answer.
+   *
+   * `narrow()` still runs. A capability is hidden and never deleted, so a card
+   * added while `work.epics` was on must resolve to zero once the option goes
+   * off, rather than counting rows the project no longer shows.
+   */
+  async resolveForProject(
+    cards: DashboardCardResource[],
+    user: UserAccountToken,
+    project: Project,
+    capabilities?: Map<number, ProjectCapability[]>,
+    windowDays: number = DashboardMetricRegistry.DEFAULT_WINDOW_DAYS,
+    evaluatedAt?: string,
+  ): Promise<DashboardCardValue[]> {
+    return this.resolveOn(
+      cards,
+      user,
+      [project],
+      "project",
+      capabilities,
+      windowDays,
+      evaluatedAt,
+    );
+  }
+
+  /**
+   * The capability rows of some projects, in one batched read. Exposed so a
+   * caller that gates on them first (the computed board, #Q2652) hands the
+   * same rows to {@link resolveForProject} instead of reading them twice.
+   */
+  async capabilitiesOf(
+    projectIds: number[],
+  ): Promise<Map<number, ProjectCapability[]>> {
+    return this.security.capabilityRowsForProjects(projectIds);
+  }
+
+  /**
+   * Whether one project has what a metric needs: its capability, and the
+   * option when it names one. The capability gate, in one place: `narrow()`
+   * asks it per target, the computed board per candidate.
+   */
+  answers(
+    descriptor: DashboardMetricDescriptor,
+    projectId: number,
+    capabilities: Map<number, ProjectCapability[]>,
+  ): boolean {
+    const needs = descriptor.needs;
+    if (!needs) return true;
+    const row = (capabilities.get(projectId) ?? []).find(
+      (it) => it.key === needs.capability,
+    );
+    if (!row) return false;
+    if (!needs.option) return true;
+    // Through `optionsOf` rather than reading the JSON directly: an absent
+    // key reads as `false` there, which is the epic's read rule, and a key
+    // this build no longer knows is stripped rather than trusted.
+    return (
+      this.registry.optionsOf(needs.capability, row.options)[needs.option] ===
+      true
+    );
+  }
+
+  protected async resolveOn(
+    cards: DashboardCardResource[],
+    user: UserAccountToken,
+    visible: Project[],
+    board: DashboardBoard,
+    preloaded?: Map<number, ProjectCapability[]>,
+    windowDays: number = DashboardMetricRegistry.DEFAULT_WINDOW_DAYS,
+    evaluatedAt?: string,
+  ): Promise<DashboardCardValue[]> {
+    const resolvers = this.resolvers();
+    const values = new Map<number, DashboardCardValue>();
+
+    // The capability rows for those projects, once: one batched `inArray` for
+    // the board rather than one read per card. On a project board that is one
+    // id, and the read still happens — `narrow()` needs it — unless the
+    // caller already read them.
+    const capabilities =
+      preloaded ??
+      (await this.security.capabilityRowsForProjects(
+        visible.map((project) => project.id),
+      ));
+
+    // The permission gate (#Q2653), once per permission for the board: a
+    // metric that `requires` one the reader lacks answers `noAccess` and is
+    // never resolved. Only a project board has one organization to ask.
+    const granted = new Map<string, boolean>();
+    const organizationId =
+      board === "project" ? visible[0]?.organizationId : undefined;
+    for (const card of cards) {
+      const permission = this.catalog.find(card.metric)?.requires;
+      if (!permission || granted.has(permission)) continue;
+      granted.set(
+        permission,
+        !!organizationId &&
+          (await this.ranks.can(organizationId, permission, user)),
+      );
+    }
+
+    // Group first, resolve second. Each card's scope is proven here, once —
+    // a resolver never sees an id the caller may not read.
+    const byMetric = new Map<string, DashboardResolvable[]>();
+
+    for (const card of cards) {
+      const descriptor = this.catalog.find(card.metric);
+      if (!descriptor || !resolvers.has(card.metric)) {
+        values.set(card.id, this.failed(card, []));
+        continue;
+      }
+      if (!this.catalog.accepts(card.metric, card.scope.kind, board)) {
+        // A card stored before the metric narrowed its accepted kinds, or
+        // before it stopped being offered on this board. It cannot be
+        // resolved and must not be guessed at.
+        values.set(card.id, this.failed(card, []));
+        continue;
+      }
+
+      if (descriptor.requires && !granted.get(descriptor.requires)) {
+        values.set(card.id, {
+          cardId: card.id,
+          ok: true,
+          empty: "noAccess",
+          detail: {},
+          scopeNames: [],
+        });
+        continue;
+      }
+
+      try {
+        const proven = await this.scopes.resolve(card.scope, user, visible);
+        const scope = this.narrow(descriptor, proven, capabilities);
+        const group = byMetric.get(card.metric) ?? [];
+        group.push({
+          card,
+          scope,
+          filters: card.filters,
+          windowDays,
+          evaluatedAt,
+        });
+        byMetric.set(card.metric, group);
+      } catch (error) {
+        // A project or app the caller has since lost, or one that was
+        // deleted. The tile says so; the page does not care.
+        this.log.debug?.(
+          `Dashboard card ${card.id} has an unresolvable scope: ${String(error)}`,
+        );
+        values.set(card.id, this.failed(card, []));
+      }
+    }
+
+    await Promise.all(
+      [...byMetric].map(async ([metric, group]) => {
+        try {
+          const resolved = await resolvers.get(metric)!.resolveAll(group);
+          for (const entry of group) {
+            const value = resolved.get(entry.card.id);
+            values.set(
+              entry.card.id,
+              value
+                ? {
+                    cardId: entry.card.id,
+                    ok: true,
+                    scopeNames: this.scopeNames(entry),
+                    ...value,
+                  }
+                : this.failed(entry.card, this.scopeNames(entry)),
+            );
+          }
+        } catch (error) {
+          this.log.warn(
+            `Dashboard metric '${metric}' failed to resolve: ${String(error)}`,
+          );
+          for (const entry of group) {
+            values.set(
+              entry.card.id,
+              this.failed(entry.card, this.scopeNames(entry)),
+            );
+          }
+        }
+      }),
+    );
+
+    // Returned in the card list's own order, so the caller never has to sort
+    // a response back into the layout it asked about.
+    return cards.map((card) => values.get(card.id) ?? this.failed(card, []));
+  }
+
+  /**
+   * Drop from a proven scope the projects that do not have the metric's
+   * capability, and the apps that belong to them.
+   *
+   * ⚠️ **Narrowing, not refusing.** A capability is hidden and never deleted,
+   * so a project that turns Work off still holds every quest it had. Counting
+   * them would put a number on the landing page for a surface the project no
+   * longer has - the exact thing this epic is about - and refusing the whole
+   * card would turn an `all` scope into "unreadable" because one project of
+   * nine changed its mind. So each target is asked separately, and a card
+   * whose every target dropped out resolves to zero through the resolvers'
+   * own empty-scope branch, which each of them already has because
+   * `inArray: []` throws.
+   *
+   * The capability rows come from the caller's one batched read. A metric
+   * with no `needs` is Core and returns the scope untouched, which is the
+   * whole of the not-my-problem path.
+   */
+  protected narrow(
+    descriptor: DashboardMetricDescriptor,
+    scope: ResolvedDashboardScope,
+    capabilities: Map<number, ProjectCapability[]>,
+  ): ResolvedDashboardScope {
+    if (!descriptor.needs) {
+      return scope;
+    }
+
+    const projects = scope.projects.filter((project) =>
+      this.answers(descriptor, project.id, capabilities),
+    );
+    const projectIds = new Set(projects.map((project) => project.id));
+    // ⚠️ Subjects are dropped WITH their project rather than carried through
+    // it. An epic card added while `work.epics` was on must resolve to zero
+    // once the option goes off, and the resolvers read the subjects, so
+    // leaving them standing over an emptied project list would count rows the
+    // project no longer shows.
+    const subjects = scope.subjects.filter((subject) =>
+      projectIds.has(subject.projectId),
+    );
+
+    return {
+      projectIds: [...projectIds],
+      projects,
+      // Kept `undefined` rather than emptied when the card was never
+      // app-scoped: the field's presence is what says which picker filled it.
+      sigilIds: scope.sigilIds
+        ? subjects.filter((it) => it.kind === "app").map((it) => it.id)
+        : undefined,
+      subjects,
+      viewerId: scope.viewerId,
+    };
+  }
+
+  /**
+   * The names behind a card's scope, for its first chip.
+   *
+   * Empty for an `all` scope: it names nothing, and what "all projects"
+   * should read as is the locale's decision, not this layer's.
+   */
+  protected scopeNames(entry: DashboardResolvable): string[] {
+    if (entry.card.scope.kind === "projects") {
+      return entry.scope.projects.map((project) => project.title);
+    }
+    // An app's name, an epic's own title (a card pinned to one epic on a
+    // board full of them says nothing useful with its project's name on it),
+    // a release's TAG: each subject carries the name its module chose.
+    return entry.scope.subjects.map((subject) => subject.name);
+  }
+
+  protected failed(
+    card: DashboardCardResource,
+    scopeNames: string[],
+  ): DashboardCardValue {
+    return { cardId: card.id, ok: false, detail: {}, scopeNames };
+  }
+}

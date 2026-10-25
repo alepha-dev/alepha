@@ -1,0 +1,1337 @@
+import { $inject, AlephaError } from "alepha";
+import type { ActorHostDeclaration } from "alepha/actor";
+import { KV_DEFAULT_BINDING } from "alepha/cache";
+import { SEND_EMAIL_DEFAULT_BINDING } from "alepha/email/cloudflare";
+import { $logger } from "alepha/logger";
+import { QUEUE_DEFAULT_BINDING, QUEUE_DEFAULT_MAX_RETRIES } from "alepha/queue";
+import type { CronProvider, WorkerdCronProvider } from "alepha/scheduler";
+import { FileSystemProvider } from "alepha/system";
+
+import { ActorHostCollection } from "../services/ActorHostCollection.ts";
+import { BuildSlices } from "../services/BuildSlices.ts";
+import { CloudflareEmailDetector } from "../services/CloudflareEmailDetector.ts";
+import { DurableObjectConfig } from "../services/DurableObjectConfig.ts";
+import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
+
+interface WranglerConfig {
+  [key: string]: any;
+}
+
+/**
+ * Generate Cloudflare Workers deployment configuration.
+ *
+ * Creates:
+ * - wrangler.jsonc with worker configuration
+ * - main.cloudflare.js entry point for Cloudflare Workers
+ */
+export class BuildCloudflareTask extends BuildTask {
+  protected readonly slices = $inject(BuildSlices);
+
+  protected readonly cloudflareEmail = $inject(CloudflareEmailDetector);
+
+  // Must match WEBSOCKET_DEFAULT_BINDING in alepha/websocket (kept as a literal
+  // here because the CF provider isn't on the node barrel).
+  protected readonly websocketDoBinding = "ALEPHA_WEBSOCKET";
+  protected hosts: ActorHostDeclaration[] = [];
+  protected readonly hostCollection = $inject(ActorHostCollection);
+  protected readonly durableObjectConfig = $inject(DurableObjectConfig);
+
+  protected readonly fs = $inject(FileSystemProvider);
+  protected readonly log = $logger();
+
+  /**
+   * How long `executionCtx.waitUntil` keeps a Worker isolate alive after the
+   * response has been sent.
+   *
+   * This is the whole budget a job pushed from a request gets in direct mode,
+   * and nothing in the `$job` API hints at it: `DirectJobDispatcher` runs the
+   * handler through `BackgroundTaskProvider.defer`, which on Workers is
+   * `waitUntil`. A queue consumer gets 15 minutes of wall clock instead,
+   * which is why the warning points at `AlephaApiJobsQueue` rather than at
+   * lowering the timeout. Wall clock only: CPU stays on the standard limit
+   * (30 s by default, 5 min at most through `limits.cpu_ms`), which is a
+   * separate ceiling the queue does not lift.
+   */
+  protected readonly waitUntilBudgetMs = 30_000;
+
+  protected readonly warningComment =
+    "// This file was automatically generated. DO NOT MODIFY.\n" +
+    "// Changes to this file will be lost when the code is regenerated.\n";
+
+  /**
+   * Whether the workspace registers any `$websocket` OR `$room` primitive  -
+   * both ride the same worker upgrade branch and the same
+   * `AlephaWebSocketDurableObject`, so a rooms-only app needs the exact same
+   * wiring. Gates `enhanceDurableObjects`  -  resolved in `generateCloudflare`
+   * from either `ctx.manifest` (prebuilt/manifest mode) or a live
+   * `ctx.alepha` probe.
+   */
+  protected hasWebSocket = false;
+
+  /**
+   * Registered realtime channel paths (e.g. `/ws/chat`)  -  the dedup'd union
+   * of every `$websocket` and `$room` channel  -  resolved in
+   * `generateCloudflare` alongside `hasWebSocket`. From a live `ctx.alepha`
+   * probe, or from `ctx.manifest.websocketPaths` in prebuilt/manifest mode
+   * (see `BuildManifestTask`, which captures the same paths at artifact-build
+   * time so the manifest-only deploy path  -  Lore Deploy `--prebuilt`  -
+   * doesn't need a live Alepha to introspect). Baked into the worker entry
+   * point's upgrade-routing guard so only requests to a known channel path
+   * are forwarded to the room Durable Object.
+   */
+  protected websocketPaths: string[] = [];
+
+  /**
+   * The page cache's pre-boot lookup config (`react:edge:configure:before`), when the
+   * app has pages and the cache is on. See `pageEdgeCode`.
+   */
+  protected pageEdge?: Record<string, any>;
+
+  async run(ctx: BuildTaskContext): Promise<void> {
+    /*
+      Triggered by a workerd SLICE, not by `--target=cloudflare`.
+
+      The target only ever meant "link for workerd", and once the runtimes are
+      declared directly it says the same thing twice. More to the point, a
+      `--runtime node,workerd` build cannot use the target at all  -  it names
+      one destination and the build has two slices  -  so gating on it would make
+      the multi-slice artifact the one case that never gets a `wrangler.jsonc`,
+      which is exactly the case the whole epic exists for.
+
+      Backwards compatible in the direction that matters: `--target=cloudflare`
+      still resolves to a workerd slice, so a build that generated wrangler
+      config before still does.
+    */
+    if (!this.slices.fromOptions(ctx.options).includes("workerd")) {
+      return;
+    }
+
+    const distDir = ctx.options.output?.dist ?? "dist";
+
+    await ctx.run({
+      name: "generate deploy config (cloudflare)",
+      handler: async () => {
+        await this.generateCloudflare(ctx, distDir);
+      },
+    });
+  }
+
+  /**
+   * The last non-empty segment of a path, on either separator.
+   *
+   * ⚠️ Hand-rolled rather than `node:path`'s `basename`, and the reason is not
+   * taste: this task is the one build step a Cloudflare deploy runs from
+   * inside a Worker (epic #1), and `workerd-entry-graph.spec.ts` refuses any
+   * `node:` builtin reaching the workerd entry. Every other path operation
+   * here already goes through `FileSystemProvider`, which has no `basename` to
+   * offer; adding one would mean three implementations for a caller that
+   * splits a string.
+   */
+  protected basename(path: string): string {
+    const segments = path.split(/[\\/]+/).filter(Boolean);
+    return segments.at(-1) ?? "";
+  }
+
+  protected async generateCloudflare(
+    ctx: BuildTaskContext,
+    distDir: string,
+  ): Promise<void> {
+    const root = ctx.root;
+    // Slugify the dir basename  -  wrangler rejects names that aren't
+    // `^[a-z0-9-]+$` (no uppercase, dots, underscores, spaces, etc.).
+    // Without this, running `alepha build --runtime=workerd` in a dir like
+    // `My App` or `club-0.0.2` produces an unusable `wrangler.jsonc`.
+    //
+    // This is a build-time PLACEHOLDER, not the deployed worker name. A
+    // build is environment-agnostic  -  the same artifact ships to staging
+    // and production  -  so the real name is only resolved at deploy time
+    // by `naming.worker()`, as `<name>-<environment>`.
+    //
+    // Consequence worth knowing: pointing wrangler at this config picks
+    // the wrong worker and reports a baffling "Worker does not exist".
+    // Use the name printed by `alepha deploy`, e.g.
+    // `wrangler tail my-app-production`. The file cannot carry a comment
+    // saying so  -  example-ssr's build-artifacts spec pins it as strict
+    // JSON-parseable.
+    const name = this.basename(root)
+      .toLowerCase()
+      .replace(/[^a-z0-9-]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 63);
+    const hasAssets = await this.fs.exists(
+      this.fs.join(root, distDir, ctx.options.output?.public ?? "public"),
+    );
+
+    // In prebuilt mode the workspace's `alepha.config.ts` is never loaded, so
+    // `ctx.options` carries CLI flags only. The manifest is the artifact's
+    // memory of what the author actually declared  -  read it there, or this
+    // deploy quietly regenerates `wrangler.jsonc` with the defaults and
+    // overwrites a correct file with a worse one.
+    const appConfig =
+      ctx.options.cloudflare?.config ?? ctx.manifest?.cloudflare?.config ?? {};
+
+    const workerdEntry = this.slices.entryFileName("workerd");
+    const workerdServerDir = this.slices.serverDir("workerd");
+
+    const wrangler: WranglerConfig = {
+      name,
+      main: "./main.cloudflare.js",
+      compatibility_flags: ["nodejs_compat"],
+      compatibility_date: "2025-11-17",
+      no_bundle: true,
+      rules: [
+        {
+          type: "ESModule",
+          /*
+            ⚠️ **Scoped to the workerd slice, and this is why the slices are
+            namespaced at all.** Under `no_bundle` these globs decide what gets
+            uploaded, and a `dist/` from a `--runtime node,workerd` build holds
+            BOTH slices. The old `["index.js", "server/*.js"]` against such a
+            build sweeps the Node chunks in too: best case a Worker twice the
+            size it needs, likely case a Node chunk importing a node builtin
+            and a deploy refused at validation.
+
+            Nothing about that failure points here, which is what makes the
+            narrow glob load-bearing rather than tidy.
+          */
+          globs: [workerdEntry, `${workerdServerDir}/*.js`],
+        },
+      ],
+      ...appConfig,
+    };
+
+    // `request.signal` aborts on client disconnect only with this flag, and
+    // the ambient cancellation of every request reads it (#E85). Added to a
+    // flag list the app supplied too, since replacing the defaults is the
+    // usual reason to supply one.
+    wrangler.compatibility_flags = [
+      ...new Set([
+        ...(wrangler.compatibility_flags ?? []),
+        "enable_request_signal",
+      ]),
+    ];
+
+    if (hasAssets) {
+      // Merged, not `??=`. The app only ever wants to add a key  -
+      // `not_found_handling`, `run_worker_first`  -  and an all-or-nothing
+      // replace made it restate `directory` and `binding` to do so, which is
+      // a silent footgun: forget `binding` and `env.ASSETS` is simply gone.
+      wrangler.assets = {
+        directory: "./public",
+        binding: "ASSETS",
+        ...wrangler.assets,
+      };
+    }
+
+    wrangler.observability ??= {
+      enabled: true,
+      head_sampling_rate: 1,
+    };
+
+    // Manifest/prebuilt mode: ctx.alepha is a null cast (see BuildCommand),
+    // so read the resource flag captured at artifact-build time instead of
+    // probing a live instance.
+    if (ctx.manifest) {
+      this.hasWebSocket = ctx.manifest.resources.hasWebSocket;
+      this.websocketPaths = ctx.manifest.cloudflare?.websocketPaths ?? [];
+      this.pageEdge = ctx.manifest.cloudflare?.pageEdge;
+    } else {
+      // Asked of the app itself: the page cache and i18n answer with their
+      // options and the source of the functions the worker embeds (#E78).
+      const pageEdge: Record<string, unknown> = {};
+      try {
+        await ctx.alepha.events.emit(
+          "react:edge:configure:before" as any,
+          pageEdge,
+        );
+        this.pageEdge = pageEdge.enabled ? pageEdge : undefined;
+      } catch {
+        this.pageEdge = undefined;
+      }
+      try {
+        // Union of both realtime primitives: a `$room` registers on its
+        // `$channel` path exactly like a `$websocket`, and a rooms-only app
+        // (no `$websocket` at all) still needs the upgrade branch, the DO
+        // binding and the DO class export. Dedup'd  -  a `$room` may share its
+        // channel with a `$websocket` on the same path.
+        const realtimePrimitives = [
+          ...ctx.alepha.primitives("$websocket"),
+          ...ctx.alepha.primitives("$room"),
+        ];
+        this.websocketPaths = [
+          ...new Set(
+            realtimePrimitives.map((p: any) => p.options.channel.options.path),
+          ),
+        ];
+        this.hasWebSocket = this.websocketPaths.length > 0;
+      } catch {
+        this.hasWebSocket = false;
+        this.websocketPaths = [];
+      }
+    }
+
+    this.hosts =
+      ctx.manifest?.cloudflare?.durableObjects ??
+      this.hostCollection.collect(ctx.alepha);
+    if (ctx.manifest && this.hasWebSocket && !this.hosts.length)
+      throw new AlephaError(
+        "Prebuilt realtime artifact lacks durable host declarations. Rebuild it with the current framework.",
+      );
+    this.enhanceDomain(ctx, wrangler);
+    this.enhanceServices(ctx, wrangler);
+    this.enhanceCron(ctx, wrangler);
+    this.warnUnreachableTimeouts(ctx);
+    this.enhanceDatabase(ctx, wrangler);
+    this.enhanceR2(ctx, wrangler);
+    this.enhanceKV(ctx, wrangler);
+    this.enhanceAnalyticsEngine(ctx, wrangler);
+    this.enhanceQueue(ctx, wrangler);
+    this.enhanceEmail(ctx, wrangler);
+    this.enhanceDurableObjects(ctx, wrangler);
+    await this.durableObjectConfig.assertToolchain(root, wrangler);
+
+    await this.fs.writeFile(
+      this.fs.join(root, distDir, "wrangler.jsonc"),
+      JSON.stringify(wrangler, null, 2),
+    );
+
+    // `dist/manifest.json` is written by BuildManifestTask, which runs for
+    // every target  -  the manifest describes the app, not the destination.
+    await this.writeWorkerEntryPoint(root, distDir);
+  }
+
+  /**
+   * Worker-to-worker service bindings, from CLOUDFLARE_SERVICES (JSON).
+   */
+  protected enhanceServices(
+    ctx: BuildTaskContext,
+    wrangler: WranglerConfig,
+  ): void {
+    const raw = this.envOf(ctx, "CLOUDFLARE_SERVICES");
+    if (!raw) {
+      return;
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (error) {
+      // A bare SyntaxError here names neither the variable nor the input.
+      throw new AlephaError(
+        `CLOUDFLARE_SERVICES is not valid JSON. Expected an array of ` +
+          `{ binding, service } objects, got: ${raw}`,
+        { cause: error },
+      );
+    }
+    const services = parsed as Array<{
+      binding: string;
+      service: string;
+    }>;
+    if (services.length > 0) {
+      (wrangler as { services?: unknown }).services = services;
+    }
+  }
+
+  protected enhanceDomain(
+    ctx: BuildTaskContext,
+    wrangler: WranglerConfig,
+  ): void {
+    const domain = this.envOf(ctx, "CLOUDFLARE_DOMAIN");
+
+    // ⚠️ Written in BOTH directions, and never left absent. `putSubdomain`
+    // returns early on `workersDev === undefined`, so an omitted key is not a
+    // default - it is the setting never being sent at all, which is what left
+    // a domainless deploy with no address and no way to reach it.
+    //
+    // `false` when a domain IS set, for the same reason the crons array is
+    // sent when empty: an app that has just gained a custom domain must stop
+    // answering on the workers.dev host it used to be reachable at, and
+    // Cloudflare only stops if it is told to.
+    wrangler.workers_dev = !domain;
+
+    if (!domain) {
+      return;
+    }
+
+    // A Custom Domain is the only binding: it cannot be a wildcard, and the
+    // zone Route that once served one is gone (#Q2482). Refused here rather
+    // than written, because Cloudflare would reject it at deploy with a
+    // message naming nothing about this configuration.
+    if (domain.includes("*")) {
+      throw new AlephaError(
+        `CLOUDFLARE_DOMAIN '${domain}' is a wildcard, and a Cloudflare Custom Domain cannot be one. ` +
+          "Use a plain host, or deploy a multi-tenant app through Lore Deploy.",
+      );
+    }
+
+    wrangler.routes = [
+      {
+        pattern: domain,
+        custom_domain: true,
+      },
+    ];
+  }
+
+  /**
+   * Every build-time warning goes through here, so a test can collect them
+   * without reaching into the logger.
+   */
+  protected warn(message: string): void {
+    this.log.warn(message);
+  }
+
+  protected enhanceCron(ctx: BuildTaskContext, wrangler: WranglerConfig): void {
+    const cronExpressions = ctx.manifest
+      ? ctx.manifest.crons
+      : this.discoverCrons(ctx);
+    if (cronExpressions.length === 0) {
+      return;
+    }
+    wrangler.triggers ??= {};
+    wrangler.triggers.crons = cronExpressions;
+  }
+
+  /**
+   * Warn about the `waitUntil` budget direct mode on Cloudflare holds every
+   * job to, in the two shapes it is invisible in.
+   *
+   * Only in direct mode: behind a queue binding the consumer gets 15 minutes
+   * of wall clock instead, so neither shape is a cap any more.
+   *
+   * The consequence is worse than the truncation itself, which is why it is
+   * worth a build-time line, and it differs between the two:
+   *
+   * - **A declared timeout longer than the budget.** `crashThresholdMs` is
+   *   derived as twice the declared timeout, so a step killed at 30 seconds
+   *   under a `timeout: [10, "minute"]` sits `running` for **twenty minutes**
+   *   before the sweep will even consider it crashed.
+   * - **No declared timeout at all.** Held to the same budget with nothing in
+   *   the code hinting at it, and with no timeout to double,
+   *   `crashThresholdMs` falls back to the `runTimeout` config (30 minutes by
+   *   default), which is longer still. This is the shape that reached
+   *   production: Lore's `deploys.run` declared no `timeout`, so the first
+   *   version of this warning filtered it straight out while its own
+   *   `DeployLimits` promised ten minutes.
+   */
+  protected warnUnreachableTimeouts(ctx: BuildTaskContext): void {
+    // A queue binding changes the budget entirely, so there is nothing to
+    // warn about. Same variable `enhanceQueue` gates the producer on.
+    if (this.envOf(ctx, "CLOUDFLARE_QUEUE_NAME")) {
+      return;
+    }
+    // Only from the live app. A prebuilt deploy has none to read, and the
+    // build that produced the artifact already warned (#Q2465).
+    if (ctx.manifest) {
+      return;
+    }
+    const jobs = this.discoverJobs(ctx);
+    const unreachable = jobs.filter(
+      (job) =>
+        typeof job.timeoutMs === "number" &&
+        job.timeoutMs > this.waitUntilBudgetMs,
+    );
+    const untimed = jobs.filter((job) => typeof job.timeoutMs !== "number");
+    if (unreachable.length === 0 && untimed.length === 0) {
+      return;
+    }
+    const budget = `Direct mode on Cloudflare gives a job about ${this.waitUntilBudgetMs / 1000}s of wall clock after the response (executionCtx.waitUntil).`;
+    const declared =
+      unreachable.length === 0
+        ? ""
+        : ` These declared timeouts cannot be honoured: ${unreachable
+            .map(
+              (job) =>
+                `${job.name} (${Math.round((job.timeoutMs ?? 0) / 1000)}s)`,
+            )
+            .join(
+              ", ",
+            )}. Worse, crash recovery is derived from the declared timeout, so a job killed at the budget sits 'running' for twice its timeout before the sweep touches it.`;
+    const undeclared =
+      untimed.length === 0
+        ? ""
+        : ` These jobs declare no timeout, so they are held to the same budget with nothing in the code saying so: ${untimed
+            .map((job) => job.name)
+            .join(
+              ", ",
+            )}. With no timeout to double, crash recovery falls back to the jobs 'runTimeout' config (30 min by default), so a job killed at the budget sits 'running' for longer still.`;
+    this.warn(
+      `${budget}${declared}${undeclared} Register AlephaApiJobsQueue and set CLOUDFLARE_QUEUE_NAME: a queue consumer gets 15 minutes of wall clock. CPU stays on the standard limit (30s by default, raise it with limits.cpu_ms, max 5 min).`,
+    );
+  }
+
+  /**
+   * Registered jobs and their declared timeouts, from the live container.
+   *
+   * Mirrors {@link discoverCrons}: looked up by class-name string because
+   * the CLI and the workspace are two module graphs, so the imported
+   * `JobProvider` here is a different class object from the one the
+   * workspace registered.
+   */
+  protected discoverJobs(
+    ctx: BuildTaskContext,
+  ): Array<{ name: string; timeoutMs?: number }> {
+    try {
+      const provider = ctx.alepha.inject("alepha.jobs.JobProvider") as {
+        getRegisteredJobs?: () => Map<string, { options: { timeout?: any } }>;
+      };
+      const registry = provider.getRegisteredJobs?.();
+      if (!registry) return [];
+      const dt = ctx.alepha.inject("alepha.datetime.DateTimeProvider") as {
+        duration: (value: any) => { as: (unit: string) => number };
+      };
+      return [...registry.entries()].map(([name, registration]) => ({
+        name,
+        timeoutMs: registration.options.timeout
+          ? dt.duration(registration.options.timeout).as("milliseconds")
+          : undefined,
+      }));
+    } catch {
+      return [];
+    }
+  }
+
+  protected discoverCrons(ctx: BuildTaskContext): string[] {
+    // `CronProvider` is the single registry of cron expressions  -  every
+    // `$job({ cron })` lands there. This used to bail early unless a
+    // `scheduler` primitive existed, which would emit zero cron triggers
+    // for an app whose scheduled work is all `$job`.
+    let cronProvider: CronProvider | undefined;
+    try {
+      cronProvider = ctx.alepha.inject(
+        "alepha.scheduler.CronProvider",
+      ) as WorkerdCronProvider;
+    } catch {}
+    const crons = cronProvider?.getCronJobs();
+    if (!crons || crons.length === 0) {
+      return [];
+    }
+    return [...new Set(crons.map((c) => c.expression))];
+  }
+
+  protected enhanceDatabase(
+    ctx: BuildTaskContext,
+    wrangler: WranglerConfig,
+  ): void {
+    if (this.envOf(ctx, "HYPERDRIVE_ID")) {
+      this.enhanceHyperdrive(ctx, wrangler);
+      return;
+    }
+
+    this.enhanceD1(ctx, wrangler);
+  }
+
+  protected static readonly D1_BINDING = "DB";
+
+  protected enhanceD1(ctx: BuildTaskContext, wrangler: WranglerConfig): void {
+    const url = this.envOf(ctx, "DATABASE_URL");
+    if (!url?.startsWith("d1:")) {
+      return;
+    }
+
+    const [dbName, id] = url.replace("d1://", "").replace("d1:", "").split(":");
+    const binding = BuildCloudflareTask.D1_BINDING;
+    // No `jurisdiction` here: unlike r2_buckets, the wrangler D1 binding schema
+    // has no jurisdiction field (it warns on the unexpected key). D1 data
+    // residency is fixed when the database is created  -  see
+    // CloudflareProvisionClient.ensureD1  -
+    // and the binding just references it by `database_id`.
+    wrangler.d1_databases = wrangler.d1_databases || [];
+    wrangler.d1_databases.push({
+      binding,
+      database_name: dbName,
+      database_id: id,
+    });
+    wrangler.vars ??= {};
+    wrangler.vars.DATABASE_URL = `d1://${binding}`;
+  }
+
+  protected enhanceHyperdrive(
+    ctx: BuildTaskContext,
+    wrangler: WranglerConfig,
+  ): void {
+    const hyperdriveId = this.envOf(ctx, "HYPERDRIVE_ID");
+    if (!hyperdriveId) {
+      return;
+    }
+
+    const binding = "HYPERDRIVE";
+    wrangler.hyperdrive = wrangler.hyperdrive || [];
+    wrangler.hyperdrive.push({
+      binding,
+      id: hyperdriveId,
+    });
+    wrangler.vars ??= {};
+    wrangler.vars.DATABASE_URL = `hyperdrive://${binding}`;
+
+    if (this.envOf(ctx, "POSTGRES_SCHEMA")) {
+      wrangler.vars.POSTGRES_SCHEMA = this.envOf(ctx, "POSTGRES_SCHEMA");
+    }
+  }
+
+  protected enhanceR2(ctx: BuildTaskContext, wrangler: WranglerConfig): void {
+    const bucketName = this.envOf(ctx, "R2_BUCKET_NAME");
+    if (!bucketName) {
+      return;
+    }
+
+    const jurisdiction = this.envOf(ctx, "CLOUDFLARE_JURISDICTION");
+    wrangler.r2_buckets = wrangler.r2_buckets || [];
+    wrangler.r2_buckets.push({
+      binding: bucketName,
+      bucket_name: bucketName,
+      ...(jurisdiction ? { jurisdiction } : {}),
+    });
+    wrangler.vars ??= {};
+    wrangler.vars.R2_BUCKET_NAME = bucketName;
+  }
+
+  protected enhanceKV(ctx: BuildTaskContext, wrangler: WranglerConfig): void {
+    const kvName = this.envOf(ctx, "CLOUDFLARE_KV_NAME");
+    if (!kvName) {
+      return;
+    }
+
+    const kvId = this.envOf(ctx, "CLOUDFLARE_KV_ID");
+
+    wrangler.kv_namespaces = wrangler.kv_namespaces || [];
+    wrangler.kv_namespaces.push({
+      binding: KV_DEFAULT_BINDING,
+      id: kvId ?? "",
+    });
+  }
+
+  protected static readonly ANALYTICS_ENGINE_BINDING = "ANALYTICS";
+
+  /**
+   * Workers Analytics Engine dataset binding, from
+   * `CLOUDFLARE_ANALYTICS_DATASET`.
+   *
+   * A write-only, fire-and-forget sink: `env.ANALYTICS.writeDataPoint({...})`
+   * returns nothing and is not awaited  -  the runtime writes in the
+   * background. Reading it back is **not** this binding's job and cannot be:
+   * queries go over the account-scoped SQL API at
+   * `api.cloudflare.com/…/analytics_engine/sql`, which is plain HTTP with a
+   * bearer token. So a Worker that only writes needs this and nothing else,
+   * and a Worker that also reads needs two credentials that have nothing to do
+   * with each other.
+   *
+   * The dataset does not have to be created first  -  Cloudflare provisions it
+   * on the first data point, which is why there is no id here to pair with the
+   * name, unlike KV or D1.
+   */
+  protected enhanceAnalyticsEngine(
+    ctx: BuildTaskContext,
+    wrangler: WranglerConfig,
+  ): void {
+    const dataset = this.envOf(ctx, "CLOUDFLARE_ANALYTICS_DATASET");
+    if (!dataset) {
+      return;
+    }
+
+    wrangler.analytics_engine_datasets =
+      wrangler.analytics_engine_datasets || [];
+    wrangler.analytics_engine_datasets.push({
+      binding: BuildCloudflareTask.ANALYTICS_ENGINE_BINDING,
+      dataset,
+    });
+
+    // The binding alone is not enough, exactly as it is not for R2. The
+    // provider reads this name at runtime for two things the binding cannot
+    // supply: it is what `index.workerd.ts` checks to select the Analytics
+    // Engine backend at all, and it is the table spliced into `FROM` on the
+    // read path, which goes over HTTP rather than through the binding.
+    //
+    // Without it the worker boots with a perfectly good binding and never
+    // uses it: provider selection falls through to the relational backend,
+    // every write lands in D1, and the dataset stays empty forever with no
+    // error anywhere. Mirrors `wrangler.vars.R2_BUCKET_NAME`.
+    wrangler.vars ??= {};
+    wrangler.vars.CLOUDFLARE_ANALYTICS_DATASET = dataset;
+  }
+
+  protected enhanceQueue(
+    ctx: BuildTaskContext,
+    wrangler: WranglerConfig,
+  ): void {
+    // Consuming a queue this app does not produce to, so it is deliberately
+    // NOT gated on CLOUDFLARE_QUEUE_NAME: an app running jobs in direct mode
+    // still wants its bounce and complaint events.
+    this.enhanceEmailEventsQueue(ctx, wrangler);
+
+    const queueName = this.envOf(ctx, "CLOUDFLARE_QUEUE_NAME");
+    if (!queueName) {
+      return;
+    }
+
+    wrangler.queues ??= {};
+    wrangler.queues.producers = wrangler.queues.producers || [];
+    wrangler.queues.producers.push({
+      binding: QUEUE_DEFAULT_BINDING,
+      queue: queueName,
+    });
+
+    // The worker's queue handler calls `msg.retry()` on any throw. Cloudflare
+    // only gives a failing message somewhere to land if the consumer declares a
+    // `dead_letter_queue`  -  otherwise it burns `max_retries` and DISCARDS the
+    // message, with no record and no signal. CF creates the DLQ on demand, so a
+    // derived default is safe.
+    // `Number("")` is 0, which would silently disable retries when the
+    // variable is exported but empty.
+    const rawMaxRetries = this.envOf(ctx, "CLOUDFLARE_QUEUE_MAX_RETRIES");
+    const maxRetries = rawMaxRetries ? Number(rawMaxRetries) : Number.NaN;
+
+    wrangler.queues.consumers = wrangler.queues.consumers || [];
+    wrangler.queues.consumers.push({
+      queue: queueName,
+      dead_letter_queue:
+        this.envOf(ctx, "CLOUDFLARE_QUEUE_DLQ_NAME") || `${queueName}-dlq`,
+      max_retries: Number.isSafeInteger(maxRetries)
+        ? maxRetries
+        : QUEUE_DEFAULT_MAX_RETRIES,
+      // ⚠️ Without this, Cloudflare holds messages until 10 have arrived or 5
+      // seconds have passed, and a `$job.push()` is ONE message - so every job
+      // sat out the whole window before its handler started. Lore's deploys
+      // went from ~1.5s to 8-10s of queueing the day its jobs moved onto this
+      // queue. A batch of one is full the moment it lands.
+      //
+      // It also gives each job its own invocation, so its own CPU and
+      // wall-clock budget rather than a share of a batch's.
+      max_batch_size: 1,
+    });
+  }
+
+  /**
+   * A second consumer, for the queue Cloudflare's Email Sending event
+   * subscription publishes to.
+   *
+   * **Consumer only, no producer binding.** This app does not write to that
+   * queue; Cloudflare does. It also does not need `CloudflareQueueProvider`,
+   * which throws on start when the `JOBS_QUEUE` binding is missing, so an
+   * app with no job queue at all can still ingest bounces.
+   *
+   * The subscription itself (queue, Email Sending source, one sending
+   * domain) is created in the dashboard or through the API, and is per
+   * domain: a marketing subdomain added later needs its own.
+   */
+  protected enhanceEmailEventsQueue(
+    ctx: BuildTaskContext,
+    wrangler: WranglerConfig,
+  ): void {
+    const queueName = this.envOf(ctx, "CLOUDFLARE_EMAIL_EVENTS_QUEUE");
+    if (!queueName) {
+      return;
+    }
+
+    wrangler.queues ??= {};
+    wrangler.queues.consumers = wrangler.queues.consumers || [];
+    wrangler.queues.consumers.push({
+      queue: queueName,
+      dead_letter_queue:
+        this.envOf(ctx, "CLOUDFLARE_EMAIL_EVENTS_DLQ_NAME") ||
+        `${queueName}-dlq`,
+      max_retries: QUEUE_DEFAULT_MAX_RETRIES,
+    });
+  }
+
+  /**
+   * Provision every declared native host through the common lifecycle policy.
+   * The same serializable declarations are used by live and prebuilt builds.
+   */
+  protected enhanceDurableObjects(
+    ctx: BuildTaskContext,
+    wrangler: WranglerConfig,
+  ): void {
+    this.durableObjectConfig.enhance(wrangler, this.hosts);
+  }
+
+  protected enhanceEmail(
+    ctx: BuildTaskContext,
+    wrangler: WranglerConfig,
+  ): void {
+    // Resolve the CF email binding from whichever source this build path has:
+    // - manifest/prebuilt mode (Lore Deploy, `--prebuilt`): no app boot, so
+    //   read the binding captured into the manifest at artifact-build time.
+    //   Without this the deploy silently drops `send_email` and the worker
+    //   boots with email inert (binding not found).
+    // - full Vite introspection (`ctx.alepha`, no manifest): probe for the
+    //   registered CloudflareEmailProvider.
+    let binding: string | undefined;
+    if (ctx.manifest) {
+      binding = ctx.manifest.cloudflare?.email?.binding;
+    } else if (ctx.alepha && this.cloudflareEmail.detect(ctx.alepha)) {
+      binding = SEND_EMAIL_DEFAULT_BINDING;
+    }
+    if (!binding) {
+      return;
+    }
+
+    wrangler.send_email = wrangler.send_email || [];
+    if (wrangler.send_email.some((b: { name: string }) => b.name === binding)) {
+      return;
+    }
+
+    // NOTE: do NOT set `destination_address` here. On a Cloudflare
+    // `send_email` binding, `destination_address` is a *recipient* allow-list
+    // lock (the worker may then only send TO that one address)  -  it is not the
+    // sender. Setting it to `EMAIL_FROM` (the sender) broke all outbound mail:
+    // a bare address locked delivery to that single recipient ("email to … not
+    // allowed"), and a display-name form like `Lore <noreply@…>` is a malformed
+    // destination value that Cloudflare rejects with "internal error". The
+    // sender goes in the message `from` field (see CloudflareEmailProvider.send);
+    // leaving the binding unrestricted lets the worker send to any verified
+    // destination.
+    wrangler.send_email.push({ name: binding });
+  }
+
+  /**
+   * The page cache's edge tier in the generated worker (#E78), or nothing
+   * when the app has no pages or the cache is off.
+   *
+   * A page cache hit served to a visitor with no cookie, no credential and no
+   * query is the same response for every such visitor, private script
+   * included: the app marks it (`x-alepha-page-edge`), the worker keeps it in
+   * `caches.default`, and the next such request in this colo is answered
+   * BEFORE the app boots, which is the cold-start cost. Its key is the URL,
+   * the build and the language, the language resolved by the app's own
+   * function (`resolveLang`), embedded here from its source so the two
+   * cannot drift. Entries live 60 s at most; an invalidation in this colo
+   * leaves a marker the lookup checks. A signed-in visitor goes through the
+   * app, whose page cache reads the shared entry from `caches.default` too.
+   */
+  protected pageEdgeCode(): string {
+    const edge = this.pageEdge;
+    const fn = edge?.functions as Record<string, string> | undefined;
+    if (
+      !edge?.enabled ||
+      !fn?.builtId ||
+      !fn.markerUrlOf ||
+      !fn.prefixesOf ||
+      !fn.anonymousUrlOf
+    ) {
+      return "const pageEdgeUrl = () => undefined;\nconst pageEdgeFresh = async () => false;";
+    }
+    const lang = edge.lang ? JSON.stringify(edge.lang) : "undefined";
+    const langFunctions =
+      edge.lang && fn.resolveLang && fn.langFromHeader
+        ? `const pageResolveLang = ${fn.resolveLang};\nconst pageLangFromHeader = ${fn.langFromHeader};`
+        : "const pageResolveLang = undefined;\nconst pageLangFromHeader = undefined;";
+    return `
+const PAGE_EDGE_LANG = ${lang};
+const pageBuiltId = ${fn.builtId};
+const pageMarkerUrlOf = ${fn.markerUrlOf};
+const pagePrefixesOf = ${fn.prefixesOf};
+const pageAnonymousUrlOf = ${fn.anonymousUrlOf};
+${langFunctions}
+
+// The edge key of a request that may share a whole page response, or
+// undefined: a GET with no cookie, no credential and no query, in a built app.
+const pageEdgeUrl = (request) => {
+  if (request.method !== "GET") return undefined;
+  if (request.headers.has("authorization") || request.headers.has("cookie")) {
+    return undefined;
+  }
+  const url = new URL(request.url);
+  if (url.search) return undefined;
+  const build = pageBuiltId(__alepha.meta);
+  if (!build) return undefined;
+  let lang = "-";
+  if (PAGE_EDGE_LANG) {
+    if (PAGE_EDGE_LANG.prefix === "unsupported" || !pageResolveLang) {
+      return undefined;
+    }
+    let urlLocale;
+    if (PAGE_EDGE_LANG.prefix) {
+      const first = url.pathname.split("/")[1];
+      urlLocale = PAGE_EDGE_LANG.prefix.locales.includes(first)
+        ? first
+        : PAGE_EDGE_LANG.prefix.defaultLocale;
+    }
+    lang = pageResolveLang({
+      urlLocale,
+      cookieLang: undefined,
+      headerLang: pageLangFromHeader(request.headers.get("accept-language")),
+      languages: PAGE_EDGE_LANG.languages,
+      fallbackLang: PAGE_EDGE_LANG.fallbackLang,
+      autoDetect: PAGE_EDGE_LANG.autoDetect,
+    });
+  }
+  return pageAnonymousUrlOf(url.origin + url.pathname, build, lang);
+};
+
+// Whether no invalidation reached this colo since the entry was written.
+const pageEdgeFresh = async (cache, key, at) => {
+  for (const prefix of pagePrefixesOf(key)) {
+    const marker = await cache.match(pageMarkerUrlOf(prefix));
+    if (marker && Number(await marker.text()) >= at) return false;
+  }
+  return true;
+};`;
+  }
+
+  protected async writeWorkerEntryPoint(
+    root: string,
+    distDir: string,
+  ): Promise<void> {
+    // The workerd slice, always by name. A multi-slice `dist/` has several
+    // entry wrappers side by side and only one of them is linked against
+    // Cloudflare's export conditions; importing any other would upload a
+    // bundle the Worker cannot run.
+    const workerdEntry = this.slices.entryFileName("workerd");
+
+    // Only the workerd slice exports native classes registered by the app graph.
+    const doExport = this.hosts
+      .map(
+        (host) => `\nexport { ${host.exportName} } from "./${workerdEntry}";\n`,
+      )
+      .join("");
+
+    // WebSocket upgrade -> route to the room Durable Object. Runs at the very
+    // top of `fetch`, before `bindEnv`/the normal request pipeline: a
+    // hibernating WS upgrade has no HTTP response for `web:request:before` to
+    // produce, so it must never reach that dispatcher.
+    const upgradeBranch = this.hasWebSocket
+      ? `
+    if (request.headers.get("Upgrade") === "websocket") {
+      const url = new URL(request.url);
+      const wsPaths = ${JSON.stringify(this.websocketPaths)};
+      if (wsPaths.includes(url.pathname)) {
+        const hostRuntime = __alepha.inject("alepha.actor.ActorHostRuntime");
+
+        try {
+          await hostRuntime.ensureStarted(env);
+        } catch (err) {
+          __alepha.log.error("Failed to start Alepha for websocket upgrade", err);
+          return new Response("Internal Server Error", { status: 500 });
+        }
+
+        const wsProvider = __alepha.inject("alepha.websocket.WebSocketServerProvider");
+
+        // \`getEndpoint\` covers \`$websocket\` endpoints; a \`$room\` registers on
+        // the provider's room registry instead, so fall back to
+        // \`getRoomEndpoint\`. Without it, \`$room({ secure })\` was silently
+        // unenforced. Both return their primitive options object directly
+        // (see registerEndpoint/registerRoom in the providers), which is the
+        // shape \`admit\` reads.
+        const endpoint =
+          wsProvider.getEndpoint(url.pathname) ??
+          wsProvider.getRoomEndpoint(url.pathname);
+
+        // One decision for both engines, see WebSocketServerProvider.admit:
+        // the endpoint's own \`authorize\` hook when it has one (a machine
+        // credential, which names its room and never touches the security
+        // realm), the endpoint's \`use\` middlewares, or the session resolver
+        // plus \`secure\` (a \`$room\`) otherwise. A hook that
+        // throws is an outage, not a revocation, so it answers 503 rather
+        // than the 401 a machine client reads as "stop retrying".
+        let admission;
+        try {
+          admission = await wsProvider.admit(endpoint, {
+            url: request.url,
+            headers: {
+              authorization: request.headers.get("authorization") || undefined,
+              cookie: request.headers.get("cookie") || undefined,
+            },
+            signal: request.signal,
+          });
+        } catch (err) {
+          __alepha.log.error("WebSocket admission failed", err);
+          return new Response("Service Unavailable", { status: 503 });
+        }
+        if (!admission.accepted) {
+          return admission.status === 403
+            ? new Response("Forbidden", { status: 403 })
+            : new Response("Unauthorized", { status: 401 });
+        }
+        const userId = admission.userId || "";
+
+        // The room the credential named wins over the one the URL asked for,
+        // which is what keeps a client out of a room it does not own.
+        const roomId =
+          admission.roomId ||
+          url.searchParams.get("roomId") ||
+          (url.searchParams.get("roomIds") || "").split(",")[0].trim() ||
+          "default";
+
+        const connectionId = "ws-" + crypto.randomUUID();
+        const ns = hostRuntime.namespace("ALEPHA_WEBSOCKET");
+        const stub = ns.get(ns.idFromName(url.pathname + ":" + roomId));
+        const forward = new Request(request, {
+          headers: new Headers(request.headers),
+        });
+        // Strip any client-forged x-alepha-ws-* before setting the trusted
+        // values  -  these headers are the worker->DO identity contract.
+        forward.headers.delete("x-alepha-ws-channel");
+        forward.headers.delete("x-alepha-ws-room");
+        forward.headers.delete("x-alepha-ws-conn");
+        forward.headers.delete("x-alepha-ws-user");
+        forward.headers.set("x-alepha-ws-channel", url.pathname);
+        forward.headers.set("x-alepha-ws-room", roomId);
+        forward.headers.set("x-alepha-ws-conn", connectionId);
+        if (userId) forward.headers.set("x-alepha-ws-user", userId);
+
+        return stub.fetch(forward);
+      }
+    }
+`
+      : "";
+
+    const workerCode = `
+import "./${workerdEntry}";
+${doExport}
+// Run an invocation inside an Alepha fork carrying THIS invocation's
+// \`executionCtx.waitUntil\`, so background work (notably $job direct dispatch)
+// can keep the isolate alive past the response.
+//
+// It must be the async context, never the shared store: one isolate serves
+// concurrent invocations, so a store slot would let request B overwrite
+// request A's handle  -  A's background work would then call B's already-returned
+// context ("waitUntil after response") and be silently dropped.
+const withExecutionContext = (executionCtx, fn) => {
+  const waitUntil =
+    executionCtx && typeof executionCtx.waitUntil === "function"
+      ? (p) => executionCtx.waitUntil(p)
+      : undefined;
+
+  return __alepha.context.run(fn, { "cloudflare.waitUntil": waitUntil });
+};
+
+// A \`queue\` or \`scheduled\` invocation carries no bookmark, so a D1
+// session would start \`first-unconstrained\` and may read a replica that
+// has not yet received a row written moments before: a job claimed from
+// the queue found nothing, was skipped and acked, and waited for the sweep
+// (#Q2478). Background work acts on rows written elsewhere, so its session
+// starts on the primary. A no-op when sessions are off.
+const readOnPrimary = () => {
+  __alepha.store.set("alepha.orm.d1.bookmark", "first-primary", {
+    skipEvents: true,
+  });
+};
+
+// Bind the per-invocation Worker \`env\`: keep the full binding (D1, R2, KV, …)
+// in the store for providers, and lift its string values (secrets/vars like
+// PUBLIC_URL) into \`alepha.env\` so \`$env\` resolves them at runtime.
+//
+// \`REDIS_URL\` selects Redis on Node and Bun only: no Redis client runs in a
+// Worker, and the env reaches \`alepha.env\` here, after every module chose
+// its providers. Setting it on a Worker is a configuration mistake, so it is
+// named once per isolate, never refused.
+let redisUrlWarned = false;
+const bindEnv = (env) => {
+  __alepha.set("cloudflare.env", env);
+  __alepha.loadEnv(env);
+  if (!redisUrlWarned && typeof env?.REDIS_URL === "string" && env.REDIS_URL !== "") {
+    redisUrlWarned = true;
+    __alepha.log.warn(
+      "REDIS_URL is set on a Cloudflare Worker, where it selects nothing: cache, queue, topic, lock and actors use the Cloudflare providers.",
+    );
+  }
+};
+
+// --- Edge cache -------------------------------------------------------------
+//
+// Cloudflare's CDN sits in front of an ORIGIN, not in front of a Worker: a
+// response this Worker generates is never stored, no matter what its
+// Cache-Control says. Measured against lore.alepha.dev before this existed -
+// \`/api/public/files/:id\` returned \`public, max-age=1y, immutable\` and no
+// \`cf-cache-status\` header at all, while a static asset on the same zone came
+// back \`cf-cache-status: HIT\`. So the header only ever reached browsers, and
+// every new visitor re-paid the full D1 + R2 round trip.
+//
+// \`Cache-Control: public\` IS the opt-in. A route that declares its body
+// shareable across users has already made exactly the statement a shared cache
+// needs; nothing else is stored, and \`private\` (the default everywhere else)
+// keeps a route out by construction.
+const edgeCache = () =>
+  typeof caches !== "undefined" && caches.default ? caches.default : undefined;
+
+// --- Page cache edge tier (#E78) ---------------------------------------------
+${this.pageEdgeCode()}
+
+// The page cache's internal headers, never sent to a browser.
+const PAGE_HIT_HEADER = "x-alepha-page-hit";
+const PAGE_EDGE_HEADER = "x-alepha-page-edge";
+const PAGE_KEY_HEADER = "x-alepha-page-key";
+const PAGE_AT_HEADER = "x-alepha-page-at";
+
+// What a stored page goes back to before it leaves: the SSR headers it was
+// served with, so the browser never caches a page the edge keeps.
+const servePageFromEdge = (stored) => {
+  const headers = new Headers(stored.headers);
+  headers.delete(PAGE_KEY_HEADER);
+  headers.delete(PAGE_AT_HEADER);
+  headers.set("cache-control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  headers.set("pragma", "no-cache");
+  headers.set("expires", "0");
+  // Development builds carry the page cache header: say where this came from.
+  const outcome = headers.get("x-alepha-cache");
+  if (outcome) headers.set("x-alepha-cache", "edge; " + outcome);
+  return new Response(stored.body, { status: stored.status, headers });
+};
+
+// --- D1 read replication ----------------------------------------------------
+//
+// A D1 session only buys sequential consistency ACROSS requests if the
+// bookmark it ends on is handed back and presented on the next one. Drop it
+// and a user who just created something can be served by a replica that has
+// not caught up, and the write appears to have vanished.
+//
+// Carried in a cookie rather than a header because the browser returns it
+// with no client-side code. Both ends are guarded: an app not running
+// \`DATABASE_D1_MODE=sessions\` never populates the slot, so none of this fires.
+const D1_BOOKMARK_COOKIE = "alepha_d1_bookmark";
+
+const readBookmarkCookie = (request) => {
+  const header = request.headers.get("cookie");
+  if (!header) return undefined;
+
+  for (const part of header.split(";")) {
+    const [name, ...rest] = part.trim().split("=");
+    if (name === D1_BOOKMARK_COOKIE && rest.length) {
+      return decodeURIComponent(rest.join("="));
+    }
+  }
+
+  return undefined;
+};
+
+// Where a request's D1 session starts. A request that can write reads from
+// the primary: a client with no cookie (an MCP agent, an API key, the CLI)
+// would otherwise open \`first-unconstrained\`, and its second call could
+// read a replica that missed its first write, then save that stale row back
+// over it. Every write method counts, reads by POST included, so all MCP
+// traffic reads from the primary: freshness matters more there than a
+// replica's latency.
+//
+// Except \`POST /api/_batch\`: the browser coalesces the reads of a page load
+// into it, and it always carries its bookmark, so read-your-writes already
+// holds there. Sending it to the primary would switch replicas off for the
+// browser in practice.
+const D1_READ_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+
+const d1AnchorFor = (request) => {
+  const incoming = readBookmarkCookie(request);
+  if (D1_READ_METHODS.has(request.method)) return incoming;
+  if (new URL(request.url).pathname === "/api/_batch") return incoming;
+  return "first-primary";
+};
+
+// \`append\`, not \`set\`: the response may already carry auth cookies and
+// replacing the whole header would sign the user out.
+const writeBookmarkCookie = (response, bookmark) => {
+  try {
+    response.headers.append(
+      "set-cookie",
+      D1_BOOKMARK_COOKIE +
+        "=" +
+        encodeURIComponent(bookmark) +
+        "; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=600",
+    );
+  } catch {
+    // A Response built from an immutable source rejects header writes. Losing
+    // the bookmark costs consistency on the next request, never correctness
+    // on this one, so it must not turn into a 500.
+  }
+};
+
+// A shared entry is keyed by URL ALONE. Anything the caller's identity could
+// have influenced must stay out however loudly the route opts in  -  hence the
+// request-side credential check, which no Cache-Control directive can override.
+const isEdgeCacheable = (request, response) => {
+  if (request.method !== "GET") return false;
+  if (request.headers.has("authorization")) return false;
+  if (request.headers.has("cookie")) return false;
+  if (!response || response.status !== 200) return false;
+  // \`put\` rejects a Set-Cookie response outright; refusing here keeps that a
+  // decision rather than a caught exception.
+  if (response.headers.has("set-cookie")) return false;
+  const control = response.headers.get("cache-control") ?? "";
+  return control.includes("public") && !control.includes("no-store");
+};
+
+export default {
+  fetch: async (request, env, executionCtx) => {${upgradeBranch}
+    const ctx = { req: request, res: undefined };
+
+    // Before \`__alepha.start()\`, deliberately. A hit that still paid for the
+    // container boot would leave the expensive half of a cold request exactly
+    // where it was  -  that boot is what separates a 60ms warm response from a
+    // 700-990ms cold one. Consulting the cache for every GET is safe because
+    // only \`isEdgeCacheable\` responses are ever written to it.
+    const cache = edgeCache();
+    if (cache && request.method === "GET") {
+      const hit = await cache.match(request);
+      if (hit) return hit;
+    }
+
+    // A shared page for a visitor with no cookie, no credential and no query,
+    // answered without booting the app (#E78). Its key carries the build and
+    // the language; an invalidation in this colo since it was stored wins.
+    const pageUrl = cache ? pageEdgeUrl(request) : undefined;
+    if (pageUrl) {
+      const stored = await cache.match(pageUrl);
+      if (stored) {
+        const key = stored.headers.get(PAGE_KEY_HEADER);
+        const at = Number(stored.headers.get(PAGE_AT_HEADER));
+        if (key && (await pageEdgeFresh(cache, key, at))) {
+          return servePageFromEdge(stored);
+        }
+        await cache.delete(pageUrl);
+      }
+    }
+
+    bindEnv(env);
+
+    try {
+      await __alepha.start();
+    } catch (err) {
+      __alepha.log.error("Failed to start Alepha for fetch event", err);
+      return new Response("Internal Server Error", { status: 500 });
+    }
+
+    // A holder, not a store read. \`store.set\` writes to the innermost async
+    // layer and the handler runs several layers deeper than this, so the
+    // session it opens cannot be read back from here. Mutating an object this
+    // scope already owns crosses that boundary; reading the store instead
+    // silently returned nothing and the bookmark never reached the response.
+    const d1Carrier = {};
+
+    await withExecutionContext(executionCtx, async () => {
+      __alepha.store.set("alepha.orm.d1.carrier", d1Carrier, {
+        skipEvents: true,
+      });
+
+      const anchor = d1AnchorFor(request);
+      if (anchor) {
+        __alepha.store.set("alepha.orm.d1.bookmark", anchor, {
+          skipEvents: true,
+        });
+      }
+
+      await __alepha.events.emit("web:request:before", ctx);
+    });
+
+    const outgoingBookmark =
+      d1Carrier.session && typeof d1Carrier.session.getBookmark === "function"
+        ? d1Carrier.session.getBookmark()
+        : undefined;
+
+    // Cacheability is decided BEFORE the cookie is attached, and the two are
+    // mutually exclusive. \`isEdgeCacheable\` refuses any response carrying a
+    // \`set-cookie\`, so attaching the bookmark first would silently switch the
+    // edge cache off for every response the moment an app enabled sessions.
+    //
+    // Skipping the bookmark on a cacheable response loses nothing: such a
+    // response is public and shared by construction, so it cannot depend on
+    // one caller's read position.
+    const cacheable = cache && isEdgeCacheable(request, ctx.res);
+
+    // A page cache hit read no bookmark and leaves the visitor's as it was;
+    // the internal headers are read here and never leave (#E78).
+    let pageHit = false;
+    let pageEdge = null;
+    if (ctx.res) {
+      pageHit = ctx.res.headers.has(PAGE_HIT_HEADER);
+      pageEdge = ctx.res.headers.get(PAGE_EDGE_HEADER);
+      try {
+        ctx.res.headers.delete(PAGE_HIT_HEADER);
+        ctx.res.headers.delete(PAGE_EDGE_HEADER);
+      } catch {
+        // An immutable response: the headers stay, harmless.
+      }
+    }
+
+    if (!cacheable && !pageHit && outgoingBookmark && ctx.res) {
+      writeBookmarkCookie(ctx.res, outgoingBookmark);
+    }
+
+    // \`<seconds>;<written at>;<key>\`: the app says this whole response may be
+    // kept for that long under the request's page URL.
+    if (cache && pageUrl && pageEdge && ctx.res && ctx.res.status === 200) {
+      const [seconds, at, key] = pageEdge.split(";");
+      const kept = ctx.res.clone();
+      const headers = new Headers(kept.headers);
+      headers.set("cache-control", "public, max-age=" + seconds);
+      headers.set(PAGE_AT_HEADER, at);
+      headers.set(PAGE_KEY_HEADER, decodeURIComponent(key));
+      headers.delete("set-cookie");
+      const put = cache.put(
+        pageUrl,
+        new Response(kept.body, { status: 200, headers }),
+      );
+      if (executionCtx && typeof executionCtx.waitUntil === "function") {
+        executionCtx.waitUntil(put);
+      } else {
+        await put;
+      }
+    }
+
+    if (cacheable) {
+      // \`put\` drains the body it is given, so the clone goes to the cache and
+      // the original goes to the client. waitUntil keeps the isolate alive
+      // until the write lands instead of racing the response.
+      const stored = ctx.res.clone();
+      if (executionCtx && typeof executionCtx.waitUntil === "function") {
+        executionCtx.waitUntil(cache.put(request, stored));
+      } else {
+        await cache.put(request, stored);
+      }
+    }
+
+    return ctx.res;
+  },
+
+  scheduled: async (event, env, executionCtx) => {
+    bindEnv(env);
+
+    try {
+      await __alepha.start();
+    } catch (err) {
+      __alepha.log.error("Failed to start Alepha for scheduled event", err);
+      throw err;
+    }
+
+    await withExecutionContext(executionCtx, () => {
+      readOnPrimary();
+      return __alepha.events.emit("cloudflare:scheduled", {
+        cron: event.cron,
+        scheduledTime: event.scheduledTime,
+      });
+    });
+  },
+
+  queue: async (batch, env, executionCtx) => {
+    bindEnv(env);
+
+    try {
+      await __alepha.start();
+    } catch (err) {
+      __alepha.log.error("Failed to start Alepha for queue event", err);
+      throw err;
+    }
+
+    // Every message at once, never one after another. Awaited in turn, the
+    // second job of a batch waited for the whole of the first - a Lore deploy
+    // sat behind another for up to 43s - and a job's own concurrency limit
+    // never came into play. Each message still settles on its own.
+    await withExecutionContext(executionCtx, () => {
+      readOnPrimary();
+      return Promise.all(
+        batch.messages.map(async (msg) => {
+          try {
+            await __alepha.events.emit("cloudflare:queue:received", msg.body);
+            msg.ack();
+          } catch (e) {
+            msg.retry();
+          }
+        }),
+      );
+    });
+  },
+};
+`.trim();
+
+    await this.fs.writeFile(
+      this.fs.join(root, distDir, "main.cloudflare.js"),
+      `${this.warningComment}\n${workerCode}`.trim(),
+    );
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "extends": "alepha/tsconfig.base",
+  "compilerOptions": {
+    "types": ["bun"],
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src", "test", "scripts", "alepha.config.ts"]
+}

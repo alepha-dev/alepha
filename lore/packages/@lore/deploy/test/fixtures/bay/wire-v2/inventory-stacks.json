@@ -1,0 +1,31 @@
+{
+  "type": "inventory",
+  "at": "2026-10-24T17:00:00Z",
+  "host": {},
+  "apps": [
+    {
+      "app": "umami.umami",
+      "env": "production",
+      "release": "revision 3",
+      "port": 41817,
+      "domains": ["analytics.bob.dev"],
+      "running": true,
+      "state": "active",
+      "backups": false,
+      "problems": [],
+      "stack": "umami",
+      "service": "umami",
+      "serviceKind": "service"
+    }
+  ],
+  "stacks": [
+    {
+      "stack": "umami",
+      "env": "production",
+      "revision": 3,
+      "baseDomain": "umami.bay.example.com",
+      "tcp": [8883],
+      "notBackedUp": ["umami-db-data"]
+    }
+  ]
+}

@@ -1,0 +1,463 @@
+import { AlephaError, type ZType } from "alepha";
+
+import type { AutomationSlot } from "./automationSlotSchema.ts";
+import type { CapabilityKey } from "./capabilityKeySchema.ts";
+import type { DashboardCardValue } from "./dashboardCardValueSchema.ts";
+import type {
+  DashboardScope,
+  DashboardScopeKind,
+} from "./dashboardScopeSchema.ts";
+
+/**
+ * Which board a metric may be offered on.
+ *
+ * `home` is the signed-in landing page: per user, cross-project, and the only
+ * board that existed before epic #E46. `project` is a project's own board,
+ * shared by everyone in it and reached at the project root.
+ *
+ * ⚠️ **Where a metric may be OFFERED, which is not what a card POINTS at.**
+ * A project-board card that points at the project stores
+ * `kind: "projects", projectIds: [thisProject]`, forced by the controller
+ * rather than chosen by the reader, so the four existing resolvers,
+ * `assertWellFormed`, `narrow()` and `ResolvedDashboardScope` all keep
+ * working untouched. A `self` scope kind would have needed a branch in every
+ * one of them for a value that is always the same.
+ */
+export type DashboardBoard = "home" | "project";
+
+/**
+ * How a card renders its value: one renderer per presentation, picked by the
+ * catalogue and never by the metric key (#E77).
+ *
+ * - `scalar` — the number, and `delta` as a direction.
+ * - `trend` — the number over a sparkline drawn from `series`.
+ * - `progress` — a percent over a stacked bar from `segments`.
+ * - `list` — `rows`, each with a typed reference and a state pill.
+ * - `chart` — `series` as an area or bars, `markers` as rules.
+ * - `status` — one pill per row (an app copy and its state).
+ * - `feed` — `rows` with a relative time.
+ * - `note` — markdown, from the card's own filters.
+ */
+export type DashboardPresentation =
+  | "scalar"
+  | "trend"
+  | "progress"
+  | "list"
+  | "chart"
+  | "status"
+  | "feed"
+  | "note";
+
+/**
+ * Where clicking a card goes.
+ *
+ * A route NAME plus params, not a URL: the names are `$page` keys from
+ * the routers, so the browser hands this straight to `router.push`.
+ *
+ * ⚠️ Route names are plain strings here and a `$page` rename is not
+ * typecheck-protected (see `apps/lore/CLAUDE.md`). `dashboard-links.spec.ts`
+ * asserts every name below still exists in the route table.
+ */
+export interface DashboardCardLink {
+  route: string;
+  params?: Record<string, string>;
+  query?: Record<string, string>;
+}
+
+/**
+ * What a resolver learned about *where* the number came from, so `link()`
+ * can point at something that exists.
+ *
+ * A card scoped to `all` has no single destination by construction, so the
+ * resolver picks one deliberately (the project contributing the most to the
+ * number) and reports it here rather than letting the choice fall out of the
+ * code.
+ */
+export interface DashboardCardTarget {
+  projectSlug?: string;
+  app?: string;
+  env?: string;
+  /**
+   * The epic's per-project `number`, for an `epic` scope.
+   *
+   * ⚠️ **Not the id the scope stores.** `projectEpic` is `/epics/:epicNumber`
+   * and `dashboardScopeSchema.epicId` is a row id, so the two are different
+   * integers and a card that confused them would land on somebody else's
+   * epic without erroring. `link()` is pure and receives only the scope and
+   * this target, so the resolver is the only layer that can carry the
+   * translation across — `DashboardScopeService` reads the row.
+   */
+  epicNumber?: number;
+  /**
+   * The release's `tag`, for a `release` scope. Same trap as
+   * {@link epicNumber}: `projectRelease` is `/releases/:releaseTag`, because
+   * `/alepha/releases/0.28.0` is what the URL is for, and the scope stores an
+   * id. Absent for a release with no tag, which the column permits.
+   */
+  releaseTag?: string;
+  /**
+   * The tag a `tagCompletion` card is narrowed to.
+   *
+   * ⚠️ On the TARGET rather than read off the scope, because it is a FILTER
+   * and `link()` only receives the scope and this. It is the one drill-through
+   * value that comes from `filters` instead of from a resolved row.
+   */
+  tag?: string;
+}
+
+/**
+ * The capability a metric's number comes from.
+ *
+ * ⚠️ **Per scope target, not per board.** This is the HOME dashboard: a card
+ * is scoped to `all`, to some projects, or to some apps. So the requirement
+ * is checked against each candidate target - a project is offered when IT has
+ * the capability, an app when ITS project does, and `all` when any project
+ * the reader belongs to does. A single board-wide answer would either hide a
+ * card the reader has one good project for, or offer one that can only ever
+ * say zero.
+ *
+ * `option` is why this lives here rather than only on
+ * `CapabilityRegistry.dashboardCards`, which is a flat list of keys per
+ * capability: blights and visitors both need Apps **with tracking on**, since
+ * Apps without it is a project that deploys and does not watch. The two
+ * declarations are pinned to each other by
+ * `test/dashboard-capabilities.spec.ts`.
+ */
+export interface DashboardMetricRequirement {
+  capability: CapabilityKey;
+  option?: string;
+}
+
+/**
+ * One clause of the computed board's headline sentence (#Q2663): an i18n key
+ * and its arguments, from a resolved value only. A template, never prose a
+ * model wrote.
+ */
+export interface DashboardHeadlineClause {
+  key: string;
+  args: string[];
+}
+
+/**
+ * One entry in the metric registry.
+ *
+ * Declares everything the rest of the system needs to know about a metric
+ * except how to compute it: the server resolver is a separate class, because
+ * it holds repositories and this file must stay importable by the browser.
+ */
+export interface DashboardMetricDescriptor {
+  /**
+   * Position in the catalogue, which is the Add-card panel's order.
+   */
+  /**
+   * Explicit scalar automation opt-in. Presentation alone is not a value type.
+   */
+  automation?: {
+    kind: "number";
+    requires: string;
+    slots: Record<string, AutomationSlot>;
+    fields?: Record<string, "text" | "number">;
+    operators?: Array<
+      "eq" | "ne" | "lt" | "lte" | "gt" | "gte" | "delta" | "crossesAbove"
+    >;
+  };
+  order: number;
+  /**
+   * Registry key, and the value stored in `dashboard_cards.metric`.
+   */
+  key: string;
+  /**
+   * The boards this metric may be offered on.
+   *
+   * Required rather than defaulted, so a metric added tomorrow decides where
+   * it belongs instead of inheriting an answer. The four v1 metrics are
+   * `["home"]`, which is what keeps home exactly as it was.
+   */
+  boards: DashboardBoard[];
+  /**
+   * Catalogue section in the Add-card panel.
+   */
+  group: "quests" | "flow" | "epics" | "inbox" | "apps" | "knowledge" | "core";
+  /**
+   * i18n key for the catalogue row.
+   */
+  labelKey: string;
+  /**
+   * i18n key for the card's own header, when it differs from the catalogue
+   * row's. The catalogue names the metric ("Untriaged feedback"); the card
+   * only has to name itself, inside a tile whose chips already say the rest
+   * ("Feedback", above an `untriaged` chip). The mockup makes the same split.
+   *
+   * Optional: most metrics read the same in both places.
+   */
+  cardLabelKey?: string;
+  /**
+   * i18n key for the one-line hint under the catalogue row.
+   */
+  hintKey: string;
+  /**
+   * lucide-react icon name, as the mockup names it.
+   */
+  icon: string;
+  presentation: DashboardPresentation;
+  /**
+   * How a `chart` draws its series: `bars` for a count per day, `area` for a
+   * running total. Ignored by every other presentation; `area` when absent.
+   */
+  chartStyle?: "area" | "bars";
+  /**
+   * The scope kinds this metric accepts. A card whose scope kind is absent
+   * here is invalid by construction — visitors take `apps`, never `epic`;
+   * active quests take `projects`, never `apps`.
+   */
+  scopeKinds: DashboardScopeKind[];
+  /**
+   * This metric's own filter vocabulary.
+   */
+  filters: ZType;
+  /**
+   * Where a filter field's options come from, when the schema cannot say.
+   *
+   * ⚠️ Only for values that are ROWS rather than a build-time enum. A
+   * project's tags are the case: the schema types the field as text, and a
+   * free-text box would let somebody type a tag that does not exist and get a
+   * permanent zero. Naming the source here keeps the wizard generated - the
+   * step reads this and fills the options - rather than special-casing a
+   * metric key in a component, which is the property the panel's docblock
+   * asks for.
+   */
+  filterSources?: Record<string, "projectTags">;
+  /**
+   * The capability, and optionally the option, a target must have for this
+   * metric to mean anything there. Every v1 metric has one; the field is
+   * optional so a future Core metric (something about members, say) needs no
+   * placeholder.
+   */
+  needs?: DashboardMetricRequirement;
+  /**
+   * Additionally: the app must report page views.
+   *
+   * Separate from {@link needs} because it is a property of the APP rather
+   * than of its project - two apps in the same tracking project can disagree
+   * about it, and a beacon-less app's analytics page 404s outright
+   * (`assertBeacon`), so a visitors card scoped to one would show a permanent
+   * zero and link to an error. Declared here rather than as
+   * `metric.key === "uniqueVisitors"` in two components, which is what it was.
+   */
+  needsBeacon?: boolean;
+  /**
+   * A project permission the READER must hold for this tile to show them
+   * anything: `stats:read` for the tiles that wrap the Reports queries
+   * (#Q2653), the same gate the Reports tabs have. A reader without it gets
+   * `empty: "noAccess"`, which a computed board drops and a customized one
+   * shows in edit mode only.
+   */
+  requires?: string;
+  /**
+   * The clause this metric adds to the computed board's headline sentence
+   * when its tile rendered (#Q2663), or `undefined` for nothing worth
+   * saying. Pure, from the resolved value: a slot that collapsed never
+   * reaches it, so it never produces a sentence about nothing.
+   */
+  clause?: (value: DashboardCardValue) => DashboardHeadlineClause | undefined;
+  /**
+   * Where clicking goes.
+   *
+   * ⚠️ **Drill-through is configuration, not derivation.** `link()` is
+   * deliberately allowed to disagree with the count — see `activeQuests`
+   * below, which counts `todo + in_progress` and navigates to `status=todo`. A
+   * generic filter-to-query-string translation would land on the wrong list.
+   */
+  link: (
+    scope: DashboardScope,
+    target: DashboardCardTarget,
+  ) => DashboardCardLink | undefined;
+}
+
+/**
+ * The closed set of metrics a dashboard card can show.
+ *
+ * This is the declarative half of the metric registry: label, presentation,
+ * accepted scope kinds, filter schema and drill-through. The computing half
+ * — one resolver class per metric — lives in `DashboardMetricRegistry`,
+ * which holds repositories.
+ *
+ * ⚠️ **Browser-safe on purpose.** The Add-card wizard is generated from this
+ * class, so it is injected on both sides. It must never gain a
+ * `$repository`, a `$inject` of a server service, or an import that pulls
+ * one in.
+ *
+ * Adding a metric is: one entry here, one resolver, one pair of i18n keys.
+ */
+export class DashboardMetricCatalog {
+  /**
+   * Every metric, in the order the Add-card panel lists them (grouped, and
+   * within a group as written).
+   */
+  /**
+   * Every metric, registered by the module that owns it (#E75, #Q2623):
+   * Work's quest, epic, release, tag and feedback metrics, Deploy's blights
+   * and visitors. Kept in `order`, the order the Add-card panel shows them.
+   */
+  protected readonly metrics: DashboardMetricDescriptor[] = [];
+
+  /**
+   * Register a metric. A key is registered once.
+   */
+  register(descriptor: DashboardMetricDescriptor): void {
+    if (this.metrics.some((metric) => metric.key === descriptor.key)) {
+      throw new AlephaError(
+        `Dashboard metric '${descriptor.key}' is registered twice`,
+      );
+    }
+    this.metrics.push(descriptor);
+    this.metrics.sort((a, b) => a.order - b.order);
+  }
+
+  /**
+   * Every metric, catalogue order.
+   */
+  all(): DashboardMetricDescriptor[] {
+    return this.metrics;
+  }
+
+  /**
+   * Every metric one board may offer, catalogue order.
+   *
+   * The Add-card panel reads this rather than {@link all}, so a metric that
+   * only means something inside a project never appears on home and the four
+   * cross-project ones never appear on a project board.
+   */
+  on(board: DashboardBoard): DashboardMetricDescriptor[] {
+    return this.metrics.filter((metric) => metric.boards.includes(board));
+  }
+
+  /**
+   * Whether this metric may be offered on this board at all.
+   */
+  offers(key: string, board: DashboardBoard): boolean {
+    return this.find(key)?.boards.includes(board) ?? false;
+  }
+
+  /**
+   * One metric, or `undefined` for a key this build does not know.
+   */
+  find(key: string): DashboardMetricDescriptor | undefined {
+    return this.metrics.find((metric) => metric.key === key);
+  }
+
+  /**
+   * One metric, or a thrown error. Use where an unknown key is a bug.
+   */
+  get(key: string): DashboardMetricDescriptor {
+    const metric = this.find(key);
+    if (!metric) {
+      throw new AlephaError(`Unknown dashboard metric: ${key}`);
+    }
+    return metric;
+  }
+
+  /**
+   * Whether this metric can be pointed at this kind of thing, on this board.
+   *
+   * ⚠️ **The board is not optional, and that is the point.** A metric offered
+   * only on home must not become storable on a project board because a caller
+   * forgot which board it was validating for, and the two boards genuinely
+   * differ about `projects` and `all`: inside a project the route IS the
+   * project, so both are server-forced rather than chosen.
+   */
+  accepts(
+    key: string,
+    kind: DashboardScopeKind,
+    board: DashboardBoard,
+  ): boolean {
+    if (!this.offers(key, board)) {
+      return false;
+    }
+    return this.find(key)?.scopeKinds.includes(kind) ?? false;
+  }
+
+  /**
+   * The scope kinds a READER may pick from, for this metric on this board.
+   *
+   * Not the same list as `scopeKinds`, and the difference is what makes the
+   * Add-card wizard skip a step rather than render a picker with one answer:
+   * on a project board `projects` and `all` both mean "this project", which
+   * the controller forces, so neither is something to choose. What is left is
+   * an app, an epic or a release — genuinely several answers.
+   */
+  pickableScopeKinds(key: string, board: DashboardBoard): DashboardScopeKind[] {
+    const kinds = this.find(key)?.scopeKinds ?? [];
+    if (board === "home") {
+      return kinds;
+    }
+    const narrower = kinds.filter(
+      (kind) =>
+        kind !== "all" &&
+        kind !== "projects" &&
+        // The reader alone is not a choice; beside the project it is.
+        !(kind === "viewer" && kinds.length === 1),
+    );
+    // ⚠️ A metric that takes the whole project AND something narrower (open
+    // blights, visitors: the project, or some of its apps) keeps "this
+    // project" as a choice beside the narrower one (#Q2650). Dropping it
+    // would make every blights card on a project board name an app, and a
+    // project with one app would be asked a question with one answer.
+    if (
+      narrower.length > 0 &&
+      (kinds.includes("projects") || kinds.includes("all"))
+    ) {
+      return ["projects", ...narrower];
+    }
+    return narrower;
+  }
+
+  /**
+   * The scope a card gets when the reader was never asked.
+   *
+   * On a project board a metric with nothing to point at is stored against
+   * the project itself, as an ordinary `projects` scope carrying the route's
+   * single id. `undefined` when the reader does have a choice to make.
+   */
+  forcedScope(
+    key: string,
+    board: DashboardBoard,
+    projectId: number,
+  ): DashboardScope | undefined {
+    if (board !== "project") {
+      return undefined;
+    }
+    if (this.pickableScopeKinds(key, board).length > 0) {
+      return undefined;
+    }
+    // A metric about the reader and nothing else (#Q2655) is forced to the
+    // reader, exactly as a project metric is forced to the project.
+    const kinds = this.find(key)?.scopeKinds ?? [];
+    if (kinds.length === 1 && kinds[0] === "viewer") {
+      return { kind: "viewer" };
+    }
+    return { kind: "projects", projectIds: [projectId] };
+  }
+
+  /**
+   * Filter values as the metric understands them, defaults filled in.
+   *
+   * Throws on a shape the metric does not recognise. Callers that read a
+   * stored card decide whether that is fatal (a write) or a reason to fall
+   * back to defaults (a read) — see `DashboardCardService.readFilters`.
+   */
+  parseFilters(key: string, filters: unknown): Record<string, unknown> {
+    return this.get(key).filters.parse(filters ?? {}) as Record<
+      string,
+      unknown
+    >;
+  }
+
+  /**
+   * The default filter values of a metric — what an Add-card wizard starts
+   * from, and what a card with unreadable stored filters degrades to.
+   */
+  defaultFilters(key: string): Record<string, unknown> {
+    return this.parseFilters(key, {});
+  }
+}

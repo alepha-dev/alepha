@@ -1,0 +1,2 @@
+DROP INDEX IF EXISTS `folio_links_from_type_from_id_to_id_idx`;--> statement-breakpoint
+CREATE UNIQUE INDEX `folio_links_from_type_from_id_target_type_to_id_idx` ON `folio_links` (`from_type`,`from_id`,`target_type`,`to_id`);

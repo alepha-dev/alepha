@@ -1,0 +1,123 @@
+import { organizationMembers } from "alepha/api/organizations";
+import { $repository } from "alepha/orm";
+
+import { projects } from "../entities/projects.ts";
+
+/**
+ * The one definition of "delete a project and its dependents".
+ *
+ * It exists because there are now two callers — the owner deleting their own
+ * project (`ProjectController.deleteProjectById`) and an operator deleting one
+ * from the admin shell — and a second hand-written copy of a cascade is how
+ * the two drift. The failure mode is silent and permanent: add a child table
+ * to one path, forget the other, and half the deletes leave orphans nobody
+ * looks for.
+ *
+ * `projects` is also the `ON DELETE CASCADE` parent that wiped lore
+ * production in 2026-05, so this is the most destructive path in the app and
+ * the one least suited to being written twice.
+ *
+ * Deliberately not a permission check. Both callers gate first — the owner
+ * path with `$owns`, the admin path with `admin:project:delete` — and putting
+ * authorization here would give the impression the call is safe to make from
+ * anywhere.
+ */
+export class ProjectDeletionService {
+  protected readonly projects = $repository(projects);
+  protected readonly organizationMembers = $repository(organizationMembers);
+  protected readonly steps: ProjectDeletionStep[] = [];
+
+  /**
+   * Register what a module deletes when a project goes, in `order`.
+   */
+  public registerStep(step: ProjectDeletionStep): void {
+    this.steps.push(step);
+  }
+
+  /**
+   * Removes the project row, then the child rows the application deletes
+   * explicitly rather than leaving to a database cascade.
+   *
+   * Answers what it deleted, read BEFORE the cascade. Both callers write an
+   * audit row, and a row saying only `resourceId: 41` is a row nobody can
+   * read six months later - the title is the only thing that names the
+   * project once it is gone. Undefined when there was nothing to delete,
+   * which is what keeps a caller from auditing a deletion that did not
+   * happen.
+   *
+   * Still not a permission check, for the reason above: both callers gate
+   * first, and doing it here would suggest the call is safe from anywhere.
+   */
+  public async deleteProject(
+    projectId: number,
+    options: { force?: boolean } = {},
+  ): Promise<{ id: number; title: string } | undefined> {
+    const project = await this.projects.findById(projectId);
+    const steps = [...this.steps].sort((a, b) => a.order - b.order);
+    const context = { force: options.force === true };
+    await this.freeSlug(projectId);
+    // Children the cascade cannot remove on its own: a restrictive foreign
+    // key between two of the project's own tables refuses the row delete.
+    for (const step of steps.filter((step) => step.before)) {
+      await step.run(projectId, context);
+    }
+    await this.projects.deleteById(projectId, { force: options.force });
+    if (project?.organizationId) {
+      await this.organizationMembers.deleteMany({
+        organizationId: { eq: project.organizationId },
+      });
+    }
+    // What each module deletes explicitly rather than leaving to a database
+    // cascade (#E75, #Q2623): Work's quests.
+    for (const step of steps.filter((step) => !step.before)) {
+      await step.run(projectId, context);
+    }
+    return project ? { id: project.id, title: project.title } : undefined;
+  }
+
+  /**
+   * Releases the project's URL slug so the name can be claimed again.
+   *
+   * Load-bearing, and not obviously so. `deleteById` on an entity with a
+   * `deletedAt` column is a **soft** delete: the row survives, and it keeps
+   * occupying `projects_slug_idx`. But every read path filters soft-deleted
+   * rows out — so `ProjectController.assertSlugAvailable` cannot see the slug
+   * while the UNIQUE index still rejects it. Creating a project with the freed
+   * name would pass the check and then fail on the constraint, surfacing as a
+   * 500 instead of either succeeding or returning a clean 409.
+   *
+   * Clearing it also matches the rename semantics the settings page warns
+   * about: a name you give up is a name someone else can take.
+   *
+   * Runs before the delete rather than after, so `save` is not writing to a
+   * row the repository now considers gone.
+   */
+  protected async freeSlug(projectId: number): Promise<void> {
+    const project = await this.projects.findOne({
+      where: { id: { eq: projectId } },
+    });
+    if (!project?.slug) {
+      return;
+    }
+    project.slug = undefined;
+    await this.projects.save(project);
+  }
+}
+
+/**
+ * One module's part of deleting a project.
+ */
+export interface ProjectDeletionStep {
+  order: number;
+  /**
+   * Runs before the project row is removed instead of after it, for rows a
+   * database cascade would refuse to remove (a restrictive foreign key
+   * between two tables the project cascades into).
+   */
+  before?: boolean;
+  /**
+   * `force` is the row delete's own: true removes the project row, false
+   * only soft-deletes it, and nothing cascades.
+   */
+  run: (projectId: number, options: { force: boolean }) => Promise<void>;
+}

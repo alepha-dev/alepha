@@ -1,0 +1,541 @@
+import { $module } from "alepha";
+import {
+  AlephaApiAnalyticsAdmin,
+  AlephaApiAnalyticsRollup,
+} from "alepha/api/analytics";
+import { AuditService } from "alepha/api/audits";
+import { filesOptions } from "alepha/api/files";
+import { AlephaApiJobsQueue } from "alepha/api/jobs";
+import { JobService } from "alepha/api/jobs";
+import { NotificationSenderService } from "alepha/api/notifications";
+import {
+  AlephaApiOrganizations,
+  organizationConfigAtom,
+  OrganizationPolicyProvider,
+} from "alepha/api/organizations";
+import { DatabaseProvider } from "alepha/orm";
+
+import { AdminMcpController } from "./controllers/AdminMcpController.ts";
+import { AdminProjectController } from "./controllers/AdminProjectController.ts";
+import { AutomationController } from "./controllers/AutomationController.ts";
+import { AutomationDiagnosticController } from "./controllers/AutomationDiagnosticController.ts";
+import { DashboardController } from "./controllers/DashboardController.ts";
+import { HomeController } from "./controllers/HomeController.ts";
+import { InvitationController } from "./controllers/InvitationController.ts";
+import { NotificationPreferenceController } from "./controllers/NotificationPreferenceController.ts";
+import { ProjectCapabilityController } from "./controllers/ProjectCapabilityController.ts";
+import { ProjectController } from "./controllers/ProjectController.ts";
+import { ProjectDashboardController } from "./controllers/ProjectDashboardController.ts";
+import { ProjectPromptController } from "./controllers/ProjectPromptController.ts";
+import { ProjectRankController } from "./controllers/ProjectRankController.ts";
+import { ResourceFilingController } from "./controllers/ResourceFilingController.ts";
+import { SearchController } from "./controllers/SearchController.ts";
+import { OrganizationHooks } from "./hooks/OrganizationHooks.ts";
+import { UserDeletionHook } from "./hooks/UserDeletionHook.ts";
+import { AutomationDispatchJobs } from "./jobs/AutomationDispatchJobs.ts";
+import { AutomationEvidenceJobs } from "./jobs/AutomationEvidenceJobs.ts";
+import { AutomationWorkerJobs } from "./jobs/AutomationWorkerJobs.ts";
+import { AutomationNotificationTemplates } from "./notifications/AutomationNotificationTemplates.ts";
+import { InvitationNotifications } from "./notifications/InvitationNotifications.ts";
+import { LoreInboxNotifications } from "./notifications/LoreInboxNotifications.ts";
+import { NotificationHtmlEscaper } from "./notifications/NotificationHtmlEscaper.ts";
+import { AppSecurityProvider } from "./providers/AppSecurityProvider.ts";
+import { AutomationD1Provider } from "./providers/AutomationD1Provider.ts";
+import { AutomationSqliteProvider } from "./providers/AutomationSqliteProvider.ts";
+import { LoreFileAccessProvider } from "./providers/LoreFileAccessProvider.ts";
+import { LoreInboxRecipientProvider } from "./providers/LoreInboxRecipientProvider.ts";
+import { LoreNotificationPreferences } from "./providers/LoreNotificationPreferences.ts";
+import { LoreOrganizationPolicyProvider } from "./providers/LoreOrganizationPolicyProvider.ts";
+import { CapabilityRegistry } from "./schemas/CapabilityRegistry.ts";
+import { CoreDashboardMetrics } from "./schemas/CoreDashboardMetrics.ts";
+import { LorePermissions } from "./security/LorePermissions.ts";
+import { ProjectRankPresets } from "./security/ProjectRankPresets.ts";
+import { ActivityFeedMetric } from "./services/ActivityFeedMetric.ts";
+import { AutomationAdoptionRegistry } from "./services/AutomationAdoptionRegistry.ts";
+import { AutomationAdoptionService } from "./services/AutomationAdoptionService.ts";
+import { AutomationApprovalFence } from "./services/AutomationApprovalFence.ts";
+import { AutomationAudience } from "./services/AutomationAudience.ts";
+import { AutomationAuthority } from "./services/AutomationAuthority.ts";
+import { AutomationCatalog } from "./services/AutomationCatalog.ts";
+import { AutomationClaims } from "./services/AutomationClaims.ts";
+import { AutomationContextBuilder } from "./services/AutomationContextBuilder.ts";
+import { AutomationDependencies } from "./services/AutomationDependencies.ts";
+import { AutomationDomainActions } from "./services/AutomationDomainActions.ts";
+import { AutomationEvaluator } from "./services/AutomationEvaluator.ts";
+import { AutomationEventDispatch } from "./services/AutomationEventDispatch.ts";
+import { AutomationEvents } from "./services/AutomationEvents.ts";
+import { AutomationEventSubjects } from "./services/AutomationEventSubjects.ts";
+import { AutomationHealth } from "./services/AutomationHealth.ts";
+import { AutomationJobService } from "./services/AutomationJobService.ts";
+import { AutomationLegacyDispatch } from "./services/AutomationLegacyDispatch.ts";
+import { AutomationLegacyQueue } from "./services/AutomationLegacyQueue.ts";
+import { AutomationMutationAudit } from "./services/AutomationMutationAudit.ts";
+import { AutomationMutationContext } from "./services/AutomationMutationContext.ts";
+import { AutomationNotificationSender } from "./services/AutomationNotificationSender.ts";
+import { AutomationOAuthAuthority } from "./services/AutomationOAuthAuthority.ts";
+import { AutomationOrigin } from "./services/AutomationOrigin.ts";
+import { AutomationPersistence } from "./services/AutomationPersistence.ts";
+import { AutomationProjectDeletion } from "./services/AutomationProjectDeletion.ts";
+import { AutomationRoster } from "./services/AutomationRoster.ts";
+import { AutomationRosterWorker } from "./services/AutomationRosterWorker.ts";
+import { AutomationRunEvidence } from "./services/AutomationRunEvidence.ts";
+import { AutomationSchedules } from "./services/AutomationSchedules.ts";
+import { AutomationSelections } from "./services/AutomationSelections.ts";
+import { AutomationService } from "./services/AutomationService.ts";
+import { AutomationTemplateRenderer } from "./services/AutomationTemplateRenderer.ts";
+import { AutomationVariables } from "./services/AutomationVariables.ts";
+import { AutomationVariableService } from "./services/AutomationVariableService.ts";
+import { AutomationWorker } from "./services/AutomationWorker.ts";
+import { CoreAutomationReferences } from "./services/CoreAutomationReferences.ts";
+import { CoreDashboard } from "./services/CoreDashboard.ts";
+import { DashboardAttentionRegistry } from "./services/DashboardAttentionRegistry.ts";
+import { DashboardCardService } from "./services/DashboardCardService.ts";
+import { DashboardMetricRegistry } from "./services/DashboardMetricRegistry.ts";
+import { DashboardScopeService } from "./services/DashboardScopeService.ts";
+import { DashboardSlotRegistry } from "./services/DashboardSlotRegistry.ts";
+import { LoreAudits } from "./services/LoreAudits.ts";
+import { LoreAuditService } from "./services/LoreAuditService.ts";
+import { MomentumMetric } from "./services/MomentumMetric.ts";
+import { NeedsYouMetric } from "./services/NeedsYouMetric.ts";
+import { NoteMetric } from "./services/NoteMetric.ts";
+import { ProjectDashboardCardService } from "./services/ProjectDashboardCardService.ts";
+import { ProjectLimits } from "./services/ProjectLimits.ts";
+import { ProjectMomentumService } from "./services/ProjectMomentumService.ts";
+import { ProjectRoster } from "./services/ProjectRoster.ts";
+import { ProjectSecurityService } from "./services/ProjectSecurityService.ts";
+import { ResourceLinkService } from "./services/ResourceLinkService.ts";
+
+/**
+ * The server half of `@lore/core`, the glue: projects, capabilities, ranks and permissions, notifications, audits, the resource registry and its link graph, search, the dashboard, reports, agent prompts and the web shell.
+ *
+ * It imports no other `@lore` package: work, knowledge and deploy depend on it, and it never depends on them (`check:conventions`).
+ *
+ * Registered by `apps/lore/src/main.server.ts`, after every entry-level
+ * substitution.
+ *
+ * @module
+ */
+export const LoreCoreApi = $module({
+  name: "lore.core.api",
+  // `$analytics()` (used by `ProjectAnalytics` and `DeployAnalytics`) auto-wires `AlephaApiAnalytics`
+  // itself the moment a dataset is injected — the same module-tagging
+  // mechanism `$repository` uses for `AlephaOrm`. The hourly retention sweep
+  // does not: `AnalyticsRollupJobs` lives in the separate `AlephaApiAnalyticsRollup`
+  // module specifically so declaring a dataset never forces a database
+  // connection onto an app that has none. Both `sigil_views` and
+  // `sigil_vitals` declare `retention.hot`, so this import is required, not
+  // optional — without it the sweep never runs and the raw tables grow
+  // forever with no error (see `AnalyticsRetentionGuard`'s boot warning).
+  // `AlephaApiAnalyticsAdmin` is the opt-in admin query surface behind
+  // `admin:analytics:read` — it feeds the /admin/analytics page.
+  //
+  // `AlephaApiOrganizations` owns the membership, rank, and invitation
+  // lifecycle. Lore supplies the project-specific policy and notifications.
+  imports: [
+    AlephaApiAnalyticsRollup,
+    AlephaApiAnalyticsAdmin,
+    // ⚠️ **Without this every `$job` runs inside `executionCtx.waitUntil`,
+    // which Cloudflare cuts off about 30 seconds after the response.** That
+    // is not a slow path, it is a hard ceiling, and `deploys.run` is the
+    // job that lives past it: a `docs` deploy on 2026-09-09 logged
+    // `Uploaded 405 assets` at exactly 30s, the isolate was cancelled
+    // mid-upload, and because the run's own timer died with it the row read
+    // `running` until the sweep, while `lore apps deploy` polled it for the
+    // full ten minutes and CI reported nothing but a long step.
+    //
+    // A queue consumer gets 15 minutes of wall clock instead, which is the
+    // only surface Cloudflare offers that a deploy of somebody else's site
+    // fits inside. It also gives retries a real delay, since the transport
+    // can hold a delayed message rather than waiting for the outbox sweep.
+    //
+    // ⚠️ CPU is a SEPARATE budget and the queue does not raise it. That is
+    // `limits.cpu_ms` in `alepha.config.ts`, and it stays.
+    //
+    // On Node (the self-hosted image, `alepha dev`, tests) this resolves to
+    // `MemoryQueueProvider`, so dispatch takes an in-process hop instead of
+    // running in front of the caller. Durability is unchanged either way:
+    // the outbox row is the guarantee and the reconciliation sweep is the
+    // backstop.
+    AlephaApiJobsQueue,
+    // Registering this module installs the grants provider used by
+    // `$ownsOrganization`, before the controllers whose gates depend on it.
+    AlephaApiOrganizations,
+  ],
+  services: [
+    // Declares the `$realm`. Nothing injects it — it must be listed here
+    // explicitly or the realm (and every permission) is never registered.
+    AppSecurityProvider,
+    // Declares every `$permission`. Nothing injects it either: the strings
+    // reach the registry through `$secure()` anyway, and what this class adds
+    // is their LABELS and their group order - which the rank matrix renders
+    // from. Unlisted, the matrix would show raw `group:name` strings in
+    // whatever order the gates happened to run.
+    LorePermissions,
+    // Declares the $audit types. Nothing but the controllers inject it, and
+    // they inject it lazily - listed here so the types are registered at
+    // boot and the admin filter offers them before any row exists.
+    LoreAudits,
+    ProjectSecurityService,
+    CapabilityRegistry,
+    // Substituted for the framework's `FileAccessProvider` in
+    // `main.server.ts`. Listed here only so DI scanning sees the class.
+    LoreFileAccessProvider,
+    ResourceLinkService,
+    // Declares the `$invitationResource` for `resourceType: "project"`.
+    // Nothing injects it, so like `AppSecurityProvider` it has to be listed
+    // or the resolver is never registered and every invitation 404s.
+    // Declares the `$rankResource` for `type: "project"`, for the same
+    // reason: unlisted, the ranks module knows about no scope at all and
+    // every `requires` allows.
+    ProjectRankPresets,
+    UserDeletionHook,
+    OrganizationHooks,
+    AutomationPersistence,
+    // Registers its project deletion step; nothing injects it.
+    AutomationProjectDeletion,
+    AutomationAdoptionService,
+    AutomationAudience,
+    AutomationRosterWorker,
+
+    AutomationAdoptionRegistry,
+    AutomationLegacyQueue,
+    AutomationLegacyDispatch,
+
+    AutomationOrigin,
+    CoreAutomationReferences,
+    AutomationCatalog,
+    AutomationVariables,
+    AutomationAuthority,
+    AutomationOAuthAuthority,
+    AutomationService,
+    AutomationController,
+    AutomationVariableService,
+    AutomationMutationAudit,
+    AutomationApprovalFence,
+    AutomationDependencies,
+    AutomationHealth,
+    AutomationEventSubjects,
+    AutomationEvaluator,
+    AutomationWorker,
+    AutomationWorkerJobs,
+    AutomationMutationContext,
+    AutomationDomainActions,
+    AutomationRunEvidence,
+    AutomationEvidenceJobs,
+    AutomationDispatchJobs,
+    AutomationSchedules,
+    AutomationSelections,
+    AutomationClaims,
+    AutomationEvents,
+    AutomationEventDispatch,
+    AutomationRoster,
+    AutomationContextBuilder,
+    AutomationTemplateRenderer,
+    AutomationDiagnosticController,
+    InvitationNotifications,
+    // The inbox half: two templates, and the one HTML escaper the four
+    // notification classes share.
+    LoreInboxNotifications,
+    AutomationNotificationTemplates,
+    NotificationHtmlEscaper,
+    // Who is in a project, as one read, for everything that writes to
+    // people. One question, not two.
+    ProjectRoster,
+    // Substituted for the framework's `NotificationInboxRecipientProvider`
+    // in `main.server.ts`. Listed here only so DI scanning sees the class,
+    // the same arrangement `LoreFileAccessProvider` has.
+    LoreInboxRecipientProvider,
+    // Substituted for the framework's `NotificationPreferenceProvider` in
+    // `main.server.ts`, same arrangement.
+    LoreNotificationPreferences,
+    NotificationPreferenceController,
+    ProjectLimits,
+    // The dashboard: the membership gate every card scope goes through, and
+    // card storage. The declarative registry (`DashboardMetricCatalog`) is
+    // browser-safe and constructed by whatever injects it; each module
+    // registers its descriptors from both its api and its web module.
+    DashboardScopeService,
+    DashboardCardService,
+    // The project board's own storage. A second table rather than a branch
+    // inside the one above: the configuration belongs to the project, so
+    // every query here names a project and none of them names a user.
+    ProjectDashboardCardService,
+    DashboardMetricRegistry,
+    DashboardSlotRegistry,
+    // "Needs you" (#Q2656): core's own metric over the modules' sources.
+    DashboardAttentionRegistry,
+    CoreDashboardMetrics,
+    NeedsYouMetric,
+    // The core tiles of #Q2659, and the momentum read Home shares.
+    ProjectMomentumService,
+    ActivityFeedMetric,
+    MomentumMetric,
+    NoteMetric,
+    CoreDashboard,
+    ProjectController,
+    // The landing page's own reads: the momentum bars and the activity panel.
+    // Off `ProjectController` because neither is about one project, and off
+    // `getHomeOverview` because that endpoint fills an atom every page holds.
+    HomeController,
+    ProjectCapabilityController,
+    ProjectRankController,
+    ProjectPromptController,
+    ResourceFilingController,
+    InvitationController,
+    AdminProjectController,
+    // What the MCP surface is asked for, over time (#E65). Admin rather than
+    // a project page: a tool call is not scoped to a project.
+    AdminMcpController,
+    SearchController,
+    DashboardController,
+    // The project board. A second controller rather than a branch inside the
+    // one above: every path here hangs off `/projects/:projectId` and is
+    // gated by `$ownsProject`, where home's hang off `/me` and cannot be.
+    ProjectDashboardController,
+  ],
+  register: (alepha) => {
+    alepha.with({
+      optional: true,
+      provide: NotificationSenderService,
+      use: AutomationNotificationSender,
+    });
+    alepha.with({
+      optional: true,
+      provide: JobService,
+      use: AutomationJobService,
+    });
+    if (String(alepha.env.DATABASE_URL ?? "").startsWith("d1:"))
+      alepha.with({
+        optional: true,
+        provide: DatabaseProvider,
+        use: AutomationD1Provider,
+      });
+    else if (
+      !alepha.isBun() &&
+      (!alepha.env.DATABASE_URL ||
+        String(alepha.env.DATABASE_URL) === ":memory:" ||
+        String(alepha.env.DATABASE_URL).startsWith("sqlite:"))
+    )
+      alepha.with({
+        optional: true,
+        provide: DatabaseProvider,
+        use: AutomationSqliteProvider,
+      });
+    // Registered before any module, so these substitutions land before the
+    // first `$audit` user or organization policy reader is constructed.
+    alepha.with({
+      provide: OrganizationPolicyProvider,
+      use: LoreOrganizationPolicyProvider,
+    });
+    alepha.with({ provide: AuditService, use: LoreAuditService });
+    alepha.store.set(organizationConfigAtom, {
+      ...alepha.store.get(organizationConfigAtom),
+      memberPermissions: LorePermissions.MEMBER_DEFAULT,
+      floor: LorePermissions.FLOOR,
+      ownerOnly: LorePermissions.OWNER_ONLY,
+    });
+    alepha.store.set(filesOptions, {
+      ...alepha.store.get(filesOptions),
+      maxTotalSize: 10 * 1024,
+      maxUserSize: 250,
+    });
+  },
+});
+
+// ---- re-exports, generated by the extraction (#E75) ----
+
+export { AdminMcpController } from "./controllers/AdminMcpController.ts";
+export { AdminProjectController } from "./controllers/AdminProjectController.ts";
+export { DashboardController } from "./controllers/DashboardController.ts";
+export { HomeController } from "./controllers/HomeController.ts";
+export { InvitationController } from "./controllers/InvitationController.ts";
+export { NotificationPreferenceController } from "./controllers/NotificationPreferenceController.ts";
+export { ProjectCapabilityController } from "./controllers/ProjectCapabilityController.ts";
+export { ProjectController } from "./controllers/ProjectController.ts";
+export { ProjectDashboardController } from "./controllers/ProjectDashboardController.ts";
+export { ProjectPromptController } from "./controllers/ProjectPromptController.ts";
+export { ProjectRankController } from "./controllers/ProjectRankController.ts";
+export { ResourceFilingController } from "./controllers/ResourceFilingController.ts";
+export { SearchController } from "./controllers/SearchController.ts";
+export { UserDeletionHook } from "./hooks/UserDeletionHook.ts";
+export { LoreInboxNotifications } from "./notifications/LoreInboxNotifications.ts";
+export { NotificationHtmlEscaper } from "./notifications/NotificationHtmlEscaper.ts";
+export { AppSecurityProvider } from "./providers/AppSecurityProvider.ts";
+export { LoreFileAccessProvider } from "./providers/LoreFileAccessProvider.ts";
+export { LoreInboxRecipientProvider } from "./providers/LoreInboxRecipientProvider.ts";
+export { LoreNotificationPreferences } from "./providers/LoreNotificationPreferences.ts";
+export {
+  type ResourceRef,
+  ResourceRegistry,
+} from "./resources/ResourceRegistry.ts";
+export { SearchPreview } from "./resources/SearchPreview.ts";
+export { orderSearchHits } from "./searchRanking.ts";
+export { $ownsProject } from "./security/$ownsProject.ts";
+export { LoreOAuthScopes } from "./security/LoreOAuthScopes.ts";
+export { LorePermissions } from "./security/LorePermissions.ts";
+export { ProjectPermissions } from "./security/ProjectPermissions.ts";
+export { ProjectRankPresets } from "./security/ProjectRankPresets.ts";
+export { AssignedWorkRegistry } from "./services/AssignedWorkRegistry.ts";
+export { BestEffort } from "./services/BestEffort.ts";
+export { BoundParameters } from "./services/BoundParameters.ts";
+export { DashboardCardService } from "./services/DashboardCardService.ts";
+export { DashboardMetricRegistry } from "./services/DashboardMetricRegistry.ts";
+export { ProjectMomentumService } from "./services/ProjectMomentumService.ts";
+export {
+  type DashboardAttentionItem,
+  type DashboardAttentionItems,
+  type DashboardAttentionSource,
+  DashboardAttentionRegistry,
+} from "./services/DashboardAttentionRegistry.ts";
+export {
+  type ComputedDashboard,
+  type DashboardSlot,
+  type DashboardSlotCandidate,
+  DashboardSlotRegistry,
+} from "./services/DashboardSlotRegistry.ts";
+export type {
+  DashboardMetricResolver,
+  DashboardResolvable,
+} from "./services/DashboardMetricResolver.ts";
+export {
+  DashboardScopeService,
+  type ResolvedDashboardScope,
+} from "./services/DashboardScopeService.ts";
+export { FileAccessRegistry } from "./services/FileAccessRegistry.ts";
+export { LoreAuditService } from "./services/LoreAuditService.ts";
+export { LoreAudits } from "./services/LoreAudits.ts";
+export { ProjectCountRegistry } from "./services/ProjectCountRegistry.ts";
+export { ProjectDeletionService } from "./services/ProjectDeletionService.ts";
+export { ProjectLimits } from "./services/ProjectLimits.ts";
+export { ProjectResourceMapper } from "./services/ProjectResourceMapper.ts";
+export {
+  ProjectRoster,
+  type ProjectRosterEntry,
+} from "./services/ProjectRoster.ts";
+export { ProjectSecurityService } from "./services/ProjectSecurityService.ts";
+export { ResourceLinkService } from "./services/ResourceLinkService.ts";
+export { ProjectAnalytics } from "./entities/projectAnalytics.ts";
+
+export { AutomationReferences } from "./services/AutomationReferences.ts";
+
+export { AutomationCatalog } from "./services/AutomationCatalog.ts";
+export { AutomationPersistence } from "./services/AutomationPersistence.ts";
+
+export { AutomationVariables } from "./services/AutomationVariables.ts";
+
+export { AutomationAuthority } from "./services/AutomationAuthority.ts";
+export { AutomationAccess } from "./services/AutomationAccess.ts";
+
+export { AutomationRunEvidence } from "./services/AutomationRunEvidence.ts";
+
+export { AutomationDatabase } from "./services/AutomationDatabase.ts";
+export { AutomationD1Provider } from "./providers/AutomationD1Provider.ts";
+
+export { AutomationClaims } from "./services/AutomationClaims.ts";
+export { AutomationEvents } from "./services/AutomationEvents.ts";
+export { AutomationRoster } from "./services/AutomationRoster.ts";
+export { AutomationAtomic } from "./services/AutomationAtomic.ts";
+export { AutomationDispatchRegistry } from "./services/AutomationDispatchRegistry.ts";
+
+export { AutomationContextBuilder } from "./services/AutomationContextBuilder.ts";
+export type { AutomationRenderContext } from "./services/AutomationContextBuilder.ts";
+export { AutomationTemplateRenderer } from "./services/AutomationTemplateRenderer.ts";
+export type {
+  AutomationRenderedAction,
+  AutomationRenderTarget,
+} from "./services/AutomationTemplateRenderer.ts";
+export { AutomationCollections } from "./services/AutomationCollections.ts";
+export type { AutomationCollectionFormatInput } from "./services/AutomationCollections.ts";
+
+export { AutomationSourceRepository } from "./services/AutomationSourceRepository.ts";
+export { AutomationOrigin } from "./services/AutomationOrigin.ts";
+
+export { AutomationEventDispatch } from "./services/AutomationEventDispatch.ts";
+
+export { AutomationSqliteProvider } from "./providers/AutomationSqliteProvider.ts";
+
+export { AutomationSchedules } from "./services/AutomationSchedules.ts";
+export {
+  AutomationSelections,
+  type AutomationSelected,
+  type AutomationSelectionHandler,
+  type AutomationSelectionPage,
+} from "./services/AutomationSelections.ts";
+
+export {
+  AutomationGuards,
+  type AutomationGuardInput,
+  type AutomationGuardResult,
+} from "./services/AutomationGuards.ts";
+
+export { AutomationNotifications } from "./services/AutomationNotifications.ts";
+export { AutomationNotificationOutbox } from "./services/AutomationNotificationOutbox.ts";
+export { AutomationNotificationTemplates } from "./notifications/AutomationNotificationTemplates.ts";
+export { AutomationNotificationSender } from "./services/AutomationNotificationSender.ts";
+
+export {
+  AutomationChannels,
+  type AutomationChannelAdapter,
+} from "./services/AutomationChannels.ts";
+
+export {
+  AutomationMutationContext,
+  type AutomationMutationState,
+} from "./services/AutomationMutationContext.ts";
+export {
+  AutomationDomainActions,
+  type AutomationDomainAction,
+  type AutomationDomainHandler,
+} from "./services/AutomationDomainActions.ts";
+export { AutomationBatchRepository } from "./services/AutomationBatchRepository.ts";
+
+export {
+  AutomationHealth,
+  type AutomationHealthDecision,
+} from "./services/AutomationHealth.ts";
+export {
+  AutomationDependencies,
+  AutomationDependencyError,
+} from "./services/AutomationDependencies.ts";
+
+export {
+  AutomationEventSubjects,
+  type AutomationEventSubjectHandler,
+} from "./services/AutomationEventSubjects.ts";
+
+export {
+  AutomationEvaluator,
+  type AutomationEvaluation,
+  type AutomationPlannedOperation,
+} from "./services/AutomationEvaluator.ts";
+
+export { AutomationWorker } from "./services/AutomationWorker.ts";
+export { AutomationWorkerJobs } from "./jobs/AutomationWorkerJobs.ts";
+
+export { AutomationApprovalFence } from "./services/AutomationApprovalFence.ts";
+
+export { AutomationService } from "./services/AutomationService.ts";
+export { AutomationVariableService } from "./services/AutomationVariableService.ts";
+
+export { AutomationController } from "./controllers/AutomationController.ts";
+
+export { AutomationConfigurationWrites } from "./services/AutomationConfigurationWrites.ts";
+
+export {
+  AutomationPresetRegistry,
+  type AutomationPresetValues,
+  type AutomationPresetBindings,
+} from "./services/AutomationPresetRegistry.ts";
+export { AutomationPresetService } from "./services/AutomationPresetService.ts";
+
+export { AutomationSetupOptions } from "./services/AutomationSetupOptions.ts";
+
+export { AutomationAdoptionRegistry } from "./services/AutomationAdoptionRegistry.ts";
+export { AutomationLegacyQueue } from "./services/AutomationLegacyQueue.ts";
+export { AutomationLegacyDispatch } from "./services/AutomationLegacyDispatch.ts";
+export { AutomationLegacyJobProvider } from "./services/AutomationLegacyJobProvider.ts";
+
+export { AutomationAudience } from "./services/AutomationAudience.ts";
+export { AutomationRosterWorker } from "./services/AutomationRosterWorker.ts";
+
+export { AutomationAdoptionService } from "./services/AutomationAdoptionService.ts";

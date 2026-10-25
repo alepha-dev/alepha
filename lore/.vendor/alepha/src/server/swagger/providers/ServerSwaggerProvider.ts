@@ -1,0 +1,769 @@
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+import {
+  $atom,
+  $hook,
+  $inject,
+  $store,
+  Alepha,
+  type Infer,
+  isTypeFile,
+  isTypeStream,
+  MIDDLEWARE_PROTECTED,
+  MIDDLEWARE_RESPONSES,
+  type MiddlewareMetadata,
+  TimeoutError,
+  type ZObject,
+  type ZType,
+  z,
+} from "alepha";
+import { $logger } from "alepha/logger";
+import {
+  $action,
+  type ActionPrimitive,
+  errorSchema,
+  type HttpErrorClass,
+  InternalServerError,
+  isMultipart,
+  type RequestConfigSchema,
+  ServerProvider,
+  ServerRouterProvider,
+  statusTextByStatus,
+} from "alepha/server";
+import { ServerStaticProvider } from "alepha/server/static";
+import { FileSystemProvider } from "alepha/system";
+
+import {
+  $swagger,
+  type OpenApiDocument,
+  type OpenApiOperation,
+  type SwaggerPrimitiveOptions,
+} from "../primitives/$swagger.ts";
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Swagger provider configuration atom
+ */
+export const swaggerOptions = $atom({
+  name: "alepha.server.swagger.options",
+  schema: z.object({
+    excludeKeys: z
+      .array(z.string())
+      .describe("Keys to exclude from swagger schema")
+      .optional(),
+  }),
+  default: {
+    excludeKeys: [],
+  },
+  serverOnly: true,
+});
+
+export type ServerSwaggerProviderOptions = Infer<typeof swaggerOptions.schema>;
+
+declare module "alepha" {
+  interface State {
+    [swaggerOptions.key]: ServerSwaggerProviderOptions;
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export class ServerSwaggerProvider {
+  public static readonly id: string = "alepha.server.ServerSwaggerProvider";
+  protected readonly serverStaticProvider = $inject(ServerStaticProvider);
+  protected readonly serverRouterProvider = $inject(ServerRouterProvider);
+  protected readonly serverProvider = $inject(ServerProvider);
+  protected readonly alepha = $inject(Alepha);
+  protected readonly log = $logger();
+  protected readonly options = $store(swaggerOptions);
+  protected readonly fs = $inject(FileSystemProvider);
+
+  public json?: OpenApiDocument;
+
+  protected readonly configure = $hook({
+    on: "configure",
+    priority: "last", // wait for all configurations, sometimes some actions are registered late!
+    handler: async (alepha) => {
+      const options = alepha.primitives($swagger)?.[0]?.options;
+      if (!options) {
+        return;
+      }
+
+      this.json = await this.setupSwaggerPlugin(options);
+    },
+  });
+
+  public generateSwaggerDoc(options: SwaggerPrimitiveOptions): OpenApiDocument {
+    const json = this.configureOpenApi(
+      this.alepha.primitives($action),
+      options,
+    );
+
+    if (options.rewrite) {
+      options.rewrite(json);
+    }
+
+    return json;
+  }
+
+  protected async setupSwaggerPlugin(
+    options: SwaggerPrimitiveOptions,
+  ): Promise<OpenApiDocument | undefined> {
+    if (options.disabled) {
+      return;
+    }
+
+    const json = this.generateSwaggerDoc(options);
+
+    const prefix = options.prefix ?? "/docs";
+
+    this.configureSwaggerApi(prefix, json);
+
+    if (options.ui !== false) {
+      await this.configureSwaggerUi(prefix, options);
+    } else {
+      this.log.info(`Swagger API available at ${prefix}/json`);
+    }
+
+    return json;
+  }
+
+  protected configureOpenApi(
+    actions: ActionPrimitive<RequestConfigSchema>[],
+    doc: SwaggerPrimitiveOptions,
+  ): OpenApiDocument {
+    const openApi: OpenApiDocument = {
+      openapi: "3.0.0",
+      info: doc.info ?? {
+        title: "API Documentation",
+        version: "1.0.0",
+      },
+      servers: doc.servers ?? [{ url: this.serverProvider.hostname }],
+      paths: {},
+      components: {},
+    };
+
+    let hasSecurity = false;
+    const excludeTags = doc.excludeTags ?? [];
+    const schemas: Record<string, any> = {};
+
+    const toJson = (source: ZType): any => {
+      let json: any;
+      try {
+        json = z.toJSONSchema(source as any);
+      } catch {
+        json = {};
+      }
+      // zod stamps a `$schema` dialect URL we don't want in OpenAPI fragments.
+      json.$schema = undefined;
+      // Alepha's internal `~`-prefixed metadata is already gone: `z.toJSONSchema`
+      // strips it for every consumer. Only the document's own `excludeKeys`
+      // remain to apply here.
+      this.removePrivateFields(json, this.options.excludeKeys || []);
+      return json;
+    };
+
+    /**
+     * A form body, with its byte fields spelled the way OpenAPI spells them.
+     *
+     * `z.file()` and `z.stream()` are tagged `format: "binary"` / `"stream"` —
+     * Alepha's words for *how the bytes reach the handler*, which is a question
+     * OpenAPI does not ask and has no vocabulary for. Emitted raw, a reader
+     * that does not recognise the format renders no file picker at all.
+     *
+     * Not routed through {@link schema} on purpose: a titled body would be
+     * hoisted into `components/schemas` and shared, and these fields are
+     * rewritten per use.
+     */
+    const multipartSchema = (body: ZObject): any => {
+      const json = toJson(body);
+      const shape = z.schema.shape(body);
+      for (const key in shape) {
+        const field = z.schema.unwrap(shape[key]);
+        if (!isTypeFile(field) && !isTypeStream(field)) {
+          continue;
+        }
+        json.properties ??= {};
+        json.properties[key] = {
+          ...json.properties[key],
+          type: "string",
+          format: "binary",
+        };
+      }
+      return json;
+    };
+
+    const schema = (source: ZType): any => {
+      const json = toJson(source);
+      // A titled schema is hoisted into `components/schemas` and referenced.
+      const title =
+        (typeof (source as any)?.meta === "function"
+          ? (source as any).meta()?.title
+          : undefined) ?? json.title;
+      if (typeof title === "string") {
+        schemas[title] = json;
+        return { $ref: `#/components/schemas/${title}` };
+      }
+      return json;
+    };
+
+    for (const route of actions) {
+      if (!route.options.schema) {
+        continue;
+      }
+
+      const response = this.getResponseSchema(route);
+      if (!response) {
+        continue;
+      }
+
+      if (excludeTags.includes(route.group)) {
+        continue;
+      }
+
+      if (route.options.hide) {
+        continue;
+      }
+
+      const operation: OpenApiOperation = {
+        operationId: route.name,
+        summary: route.options.summary,
+        description: route.options.description,
+        deprecated: route.options.deprecated || undefined,
+        tags: [route.group.replaceAll(":", " / ")],
+        responses: {
+          [response.status]: {
+            description: this.getStatusDescription(response.status),
+            content: response.type
+              ? {
+                  [response.type]: {
+                    schema: schema(response.schema),
+                  },
+                }
+              : undefined,
+          },
+        },
+      };
+
+      // The capability flag, not the middleware's name: anything that turns
+      // a visitor away for who they are is documented the same way.
+      const isSecured = route.middlewares.some(
+        (m) => m?.meta?.[MIDDLEWARE_PROTECTED] === "true",
+      );
+
+      if (isSecured) {
+        operation.security = [{ bearerAuth: [] }];
+        operation.responses["401"] = {
+          description: "Unauthorized",
+        };
+        hasSecurity = true;
+      }
+
+      if (
+        z.schema.isObject(route.options.schema.body) ||
+        z.schema.isArray(route.options.schema.body)
+      ) {
+        // `isMultipart`, not a second predicate of this module's own. The one
+        // that used to live here answered for `z.file()` alone, so a route
+        // taking its bytes in flight was documented as JSON — and it had
+        // already missed `.optional()` the same way. One reading of "is this
+        // multipart" for the client, the server and the spec.
+        if (
+          z.schema.isObject(route.options.schema.body) &&
+          isMultipart({ schema: route.options.schema })
+        ) {
+          operation.requestBody = {
+            required: true,
+            content: {
+              "multipart/form-data": {
+                schema: multipartSchema(route.options.schema.body),
+              },
+            },
+          };
+        } else {
+          operation.requestBody = {
+            required: true,
+            content: {
+              "application/json": {
+                schema: schema(route.options.schema.body),
+              },
+            },
+          };
+        }
+      }
+
+      if (z.schema.isObject(route.options.schema.query)) {
+        operation.parameters ??= [];
+        const requiredKeys: string[] = z.schema.requiredInputKeys(
+          route.options.schema.query,
+        );
+        for (const [key, value] of Object.entries(
+          z.schema.shape(route.options.schema.query),
+        )) {
+          const param: any = {
+            name: key,
+            in: "query",
+            required: requiredKeys.includes(key),
+            schema: schema(value),
+          };
+          const example = this.extractExample(value);
+          if (example !== undefined) param.example = example;
+          operation.parameters.push(param);
+        }
+      }
+
+      if (z.schema.isObject(route.options.schema.params)) {
+        operation.parameters ??= [];
+        for (const [key, value] of Object.entries(
+          z.schema.shape(route.options.schema.params),
+        )) {
+          const valueMeta =
+            typeof (value as any)?.meta === "function"
+              ? ((value as any).meta() ?? {})
+              : {};
+          const description =
+            typeof valueMeta.description === "string"
+              ? valueMeta.description
+              : undefined;
+          const ref = schema(value);
+          ref.description = undefined;
+          const param: any = {
+            name: key,
+            in: "path",
+            required: true,
+            description,
+            schema: ref,
+          };
+          const example = this.extractExample(value);
+          if (example !== undefined) param.example = example;
+          operation.parameters.push(param);
+        }
+      }
+
+      const hasValidation =
+        operation.requestBody || operation.parameters?.length;
+      if (hasValidation) {
+        operation.responses["400"] = {
+          description: "Bad Request",
+        };
+      }
+
+      if (route.errors !== undefined) {
+        this.documentErrors(operation, route, schema);
+      }
+
+      if (route.timeout !== undefined) {
+        this.documentTimeout(operation, schema);
+      }
+
+      const url = route.prefix + this.replacePathParams(route.path);
+
+      openApi.paths[url] = {
+        ...openApi.paths[url],
+        [route.method.toLowerCase()]: operation,
+      };
+    }
+
+    if (hasSecurity && openApi.components) {
+      openApi.components.securitySchemes = {
+        bearerAuth: {
+          type: "http",
+          scheme: "bearer",
+          bearerFormat: "JWT",
+          description:
+            "Enter a JWT token or API key. Both are accepted as Bearer tokens.",
+        },
+      };
+    }
+
+    if (openApi.components) openApi.components.schemas = schemas;
+
+    return JSON.parse(JSON.stringify(openApi));
+  }
+
+  /**
+   * Document the responses of a strict action (one declaring `errors`):
+   * what its middlewares answer instead of running it (their
+   * `MIDDLEWARE_RESPONSES` meta), each declared error with its code and
+   * `data` schema, and the 500 an undeclared error becomes.
+   *
+   * Two declared errors sharing a status are a `oneOf` on that status.
+   * Actions without `errors` never reach this, so their output is unchanged.
+   */
+  protected documentErrors(
+    operation: OpenApiOperation,
+    route: ActionPrimitive<RequestConfigSchema>,
+    schema: (source: ZType) => any,
+  ): void {
+    for (const status of this.getMiddlewareResponses(route.middlewares)) {
+      operation.responses[String(status)] ??= {
+        description: this.getStatusDescription(status),
+      };
+    }
+
+    const byStatus = new Map<string, any[]>();
+    for (const cls of [...(route.errors ?? []), InternalServerError]) {
+      const { code, status } = this.getErrorIdentity(cls);
+      const key = status === undefined ? "default" : String(status);
+      const refs = byStatus.get(key) ?? [];
+      refs.push(schema(this.getErrorSchema(cls, code)));
+      byStatus.set(key, refs);
+    }
+
+    for (const [key, refs] of byStatus) {
+      const unique = [...new Map(refs.map((r) => [JSON.stringify(r), r]))];
+      const values = unique.map(([, r]) => r);
+      operation.responses[key] = {
+        description:
+          key === "default" ? "Error" : this.getStatusDescription(Number(key)),
+        content: {
+          "application/json": {
+            schema: values.length === 1 ? values[0] : { oneOf: values },
+          },
+        },
+      };
+    }
+  }
+
+  /**
+   * Document the 503 `TimeoutError` of an action with an effective timeout
+   * (its own, or the `serverApiOptions` default). Joins a 503 the action's
+   * declared errors already document as a `oneOf`.
+   */
+  protected documentTimeout(
+    operation: OpenApiOperation,
+    schema: (source: ZType) => any,
+  ): void {
+    const cls = TimeoutError as unknown as HttpErrorClass;
+    const ref = schema(this.getErrorSchema(cls, TimeoutError.name));
+    const existing =
+      operation.responses["503"]?.content?.["application/json"]?.schema;
+    const all = existing ? [...(existing.oneOf ?? [existing]), ref] : [ref];
+    const values = [
+      ...new Map(all.map((r: any) => [JSON.stringify(r), r])).values(),
+    ];
+    operation.responses["503"] = {
+      description: this.getStatusDescription(503),
+      content: {
+        "application/json": {
+          schema: values.length === 1 ? values[0] : { oneOf: values },
+        },
+      },
+    };
+  }
+
+  /**
+   * The statuses the middlewares declare in their `MIDDLEWARE_RESPONSES`
+   * meta, deduplicated and sorted.
+   */
+  protected getMiddlewareResponses(
+    middlewares: Array<MiddlewareMetadata | undefined>,
+  ): number[] {
+    const statuses = new Set<number>();
+    for (const middleware of middlewares) {
+      const value = middleware?.meta?.[MIDDLEWARE_RESPONSES];
+      for (const part of value?.split(",") ?? []) {
+        const status = Number(part.trim());
+        if (Number.isInteger(status)) statuses.add(status);
+      }
+    }
+    return [...statuses].sort((a, b) => a - b);
+  }
+
+  /**
+   * The name and status of a declared error class: its `name`, and the
+   * `status` its defaults give (none for an error that takes it at runtime).
+   */
+  protected getErrorIdentity(cls: HttpErrorClass): {
+    code: string;
+    status?: number;
+  } {
+    const statics = cls as unknown as { defaults?: { status?: number } };
+    return { code: cls.name, status: statics.defaults?.status };
+  }
+
+  /**
+   * The JSON body of one declared error, `{ name, message, data, cause? }`:
+   * `name` fixed, `data` typed by the class's merged schema, titled by the
+   * name so it is hoisted into `components/schemas`.
+   */
+  protected getErrorSchema(cls: HttpErrorClass, code: string): ZType {
+    const data = (cls as unknown as { schema?: ZObject }).schema;
+    return errorSchema
+      .extend({
+        name: z.literal(code),
+        ...(data ? { data } : {}),
+      })
+      .meta({ title: code })
+      .describe(`The ${code} error`);
+  }
+
+  public replacePathParams(url: string): string {
+    return url.replace(/:\w+/g, (match) => {
+      const paramName = match.slice(1);
+      return `{${paramName}}`;
+    });
+  }
+
+  public getResponseSchema(route: ActionPrimitive<RequestConfigSchema>):
+    | {
+        type?: string;
+        schema?: any;
+        status: number;
+      }
+    | undefined {
+    const schema: any = route.options.schema?.response;
+    if (!schema) {
+      return {
+        status: 204,
+      };
+    }
+
+    if (
+      z.schema.isObject(schema) ||
+      z.schema.isArray(schema) ||
+      z.schema.isRecord(schema)
+    ) {
+      return {
+        schema,
+        status: 200,
+        type: "application/json",
+      };
+    }
+
+    if (z.schema.isVoid(schema)) {
+      return {
+        status: 204,
+      };
+    }
+
+    if (z.schema.isString(schema)) {
+      return {
+        schema,
+        status: 200,
+        type: "text/plain",
+      };
+    }
+
+    if (
+      z.schema.isNumber(schema) ||
+      z.schema.isInteger(schema) ||
+      z.schema.isBoolean(schema)
+    ) {
+      // The router serves scalar responses as text, not JSON.
+      return {
+        schema,
+        status: 200,
+        type: "text/plain",
+      };
+    }
+
+    if (isTypeFile(schema)) {
+      return {
+        schema,
+        status: 200,
+        type: "application/octet-stream",
+      };
+    }
+
+    // Status-code-keyed map: e.g. { 201: z.object({...}) }
+    const status = Object.keys(schema)[0];
+    if (status && !Number.isNaN(Number(status))) {
+      const inner = schema[status];
+      return {
+        schema: inner,
+        status: Number(status),
+        type: this.getContentType(inner),
+      };
+    }
+  }
+
+  protected extractExample(schema: any): any {
+    const meta =
+      typeof schema?.meta === "function" ? (schema.meta() ?? {}) : {};
+    if (Array.isArray(meta.examples) && meta.examples.length > 0) {
+      return meta.examples[0];
+    }
+    if (meta.example !== undefined) {
+      return meta.example;
+    }
+    const def = z.schema.defaultValue(schema);
+    if (def !== undefined) {
+      return def;
+    }
+    return undefined;
+  }
+
+  protected getStatusDescription(status: number): string {
+    switch (status) {
+      case 200:
+        return "OK";
+      case 201:
+        return "Created";
+      case 204:
+        return "No Content";
+      case 400:
+        return "Bad Request";
+      case 401:
+        return "Unauthorized";
+      case 403:
+        return "Forbidden";
+      case 404:
+        return "Not Found";
+      case 500:
+        return "Internal Server Error";
+      default:
+        return statusTextByStatus[status] ?? "";
+    }
+  }
+
+  protected getContentType(schema: any): string | undefined {
+    if (!schema) return undefined;
+    if (z.schema.isObject(schema) || z.schema.isArray(schema)) {
+      return "application/json";
+    }
+    if (z.schema.isString(schema)) return "text/plain";
+    if (
+      z.schema.isNumber(schema) ||
+      z.schema.isInteger(schema) ||
+      z.schema.isBoolean(schema)
+    ) {
+      return "application/json";
+    }
+    if (isTypeFile(schema)) return "application/octet-stream";
+    return "application/json";
+  }
+
+  protected configureSwaggerApi(prefix: string, json: OpenApiDocument): void {
+    this.serverRouterProvider.createRoute({
+      method: "GET",
+      path: `${prefix}/json`,
+      schema: {
+        response: z.json(),
+      },
+      handler: () => json,
+    });
+  }
+
+  protected async configureSwaggerUi(
+    prefix: string,
+    options: SwaggerPrimitiveOptions,
+  ): Promise<void> {
+    const ui = typeof options.ui === "object" ? options.ui : {};
+    const persistAuth = ui.persistAuthorization !== false;
+    const initializer = `
+window.onload = function() {
+	window.ui = SwaggerUIBundle({
+		url: "${prefix}/json",
+		dom_id: '#swagger-ui',
+		deepLinking: true,
+		persistAuthorization: ${persistAuth},
+		presets: [
+			SwaggerUIBundle.presets.apis,
+			SwaggerUIStandalonePreset
+		],
+		plugins: [
+			SwaggerUIBundle.plugins.DownloadUrl
+		],
+		layout: "BaseLayout"
+	});
+
+  document.body.style.backgroundColor = "#f2f2f2";
+
+	const options = ${JSON.stringify(ui)};
+
+	if (options.initOAuth) {
+		ui.initOAuth(options.initOAuth);
+	}
+};
+		`.trim();
+
+    if (!this.alepha.isServerless()) {
+      const dirname = fileURLToPath(import.meta.url);
+
+      const root = await this.getAssetPath(
+        ui.root,
+        // TODO: resolve the asset directory from the package root instead of probing relative paths
+        join(dirname, "../../assets/swagger-ui"),
+        join(dirname, "../../../assets/swagger-ui"),
+        join(dirname, "../../../../assets/swagger-ui"),
+        join(dirname, "../../../../../assets/swagger-ui"),
+      );
+
+      if (!root) {
+        this.log.warn(`Failed to locate Swagger UI assets for path ${prefix}`);
+        return;
+      }
+
+      await this.serverStaticProvider.createStaticServer({
+        path: prefix,
+        root,
+      });
+    }
+
+    this.serverRouterProvider.createRoute({
+      method: "GET",
+      path: `${prefix}/swagger-initializer.js`,
+      handler: ({ reply }) => {
+        reply.headers["content-type"] = "application/javascript; charset=utf-8";
+        return initializer;
+      },
+    });
+
+    this.log.info("SwaggerUI OK", {
+      url: `${this.serverProvider.hostname}${prefix}`,
+    });
+  }
+
+  protected async getAssetPath(
+    ...paths: (string | undefined)[]
+  ): Promise<string | undefined> {
+    for (const path of paths) {
+      if (!path) continue;
+      const exists = await this.fs.exists(path);
+      if (exists) {
+        return path;
+      }
+    }
+  }
+
+  public removePrivateFields<T extends Record<string, any>>(
+    obj: T,
+    excludeList: string[],
+  ): T {
+    if (obj === null || typeof obj !== "object") return obj;
+
+    const visited = new WeakSet();
+
+    const traverse = (o: any): void => {
+      if (visited.has(o)) return;
+      visited.add(o);
+
+      if (Array.isArray(o)) {
+        for (let i = 0; i < o.length; i++) {
+          const item = o[i];
+          if (item !== null && typeof item === "object") {
+            traverse(item);
+          }
+        }
+      } else {
+        for (const excludeKey of excludeList) {
+          if (excludeKey in o) {
+            delete o[excludeKey];
+          }
+        }
+        for (const key in o) {
+          const item = o[key];
+          if (item !== null && typeof item === "object") {
+            traverse(item);
+          }
+        }
+      }
+    };
+
+    traverse(obj);
+    return obj;
+  }
+}

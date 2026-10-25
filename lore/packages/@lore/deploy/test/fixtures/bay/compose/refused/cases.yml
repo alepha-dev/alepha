@@ -1,0 +1,74 @@
+# Each case is a compose file Bay refuses, and the words both sides say.
+# `stage` is where Lore refuses it: `parse` (unreadable or a malformed
+# x-lore) or `bay` (readable, but Bay cannot run it).
+- name: container_name
+  stage: bay
+  expect: "service web: container_name is not allowed"
+  compose: |
+    services:
+      web: {image: nginx, container_name: web}
+- name: build
+  stage: bay
+  expect: "service web: build is not allowed"
+  compose: |
+    services:
+      web: {build: .}
+- name: privileged
+  stage: bay
+  expect: "service web: privileged is not allowed on Bay"
+  compose: |
+    services:
+      web: {image: nginx, privileged: true}
+- name: host network
+  stage: bay
+  expect: "service web: network_mode: host is not allowed on Bay"
+  compose: |
+    services:
+      web: {image: nginx, network_mode: host}
+- name: docker socket
+  stage: bay
+  expect: "service web: mounting the Docker socket is not allowed"
+  compose: |
+    services:
+      web:
+        image: nginx
+        volumes: ["/var/run/docker.sock:/var/run/docker.sock"]
+- name: host bind mount
+  stage: bay
+  expect: "service web: bind mount /etc is outside the bundle"
+  compose: |
+    services:
+      web:
+        image: nginx
+        volumes: ["/etc:/host-etc:ro"]
+- name: bind mount the bundle lacks
+  stage: parse
+  expect: "service broker: bind mount ./missing.conf is not in the bundle"
+  compose: |
+    services:
+      broker:
+        image: eclipse-mosquitto:2
+        volumes: ["./missing.conf:/mosquitto/config/mosquitto.conf:ro"]
+- name: x-lore typo
+  stage: parse
+  expect: "service web: x-lore.rotues is not a field"
+  compose: |
+    services:
+      web:
+        image: nginx
+        x-lore: {rotues: ["@"]}
+- name: full domain in the file
+  stage: parse
+  expect: 'service web: x-lore.routes: "www.example.com" is a full domain'
+  compose: |
+    services:
+      web:
+        image: nginx
+        x-lore: {routes: ["www.example.com"]}
+- name: service depends on an app
+  stage: bay
+  expect: "service worker depends on api, an app service"
+  compose: |
+    services:
+      api: {x-lore: {app: api}}
+      worker: {image: busybox, depends_on: [api]}

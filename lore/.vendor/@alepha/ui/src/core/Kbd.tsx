@@ -1,0 +1,32 @@
+import { cn } from "./utils.ts";
+
+export type KbdProps = React.ComponentProps<"kbd">;
+
+const Kbd = (props: KbdProps) => {
+  const { className, ...rest } = props;
+  return (
+    <kbd
+      data-slot="kbd"
+      className={cn(
+        "bg-muted text-muted-foreground in-data-[slot=tooltip-content]:bg-background/20 in-data-[slot=tooltip-content]:text-background dark:in-data-[slot=tooltip-content]:bg-background/10 pointer-events-none inline-flex h-5 w-fit min-w-5 items-center justify-center gap-1 rounded-sm px-1 font-sans text-xs font-medium select-none [&_svg:not([class*='size-'])]:size-3",
+        className,
+      )}
+      {...rest}
+    />
+  );
+};
+
+export type KbdGroupProps = React.ComponentProps<"div">;
+
+const KbdGroup = (props: KbdGroupProps) => {
+  const { className, ...rest } = props;
+  return (
+    <kbd
+      data-slot="kbd-group"
+      className={cn("inline-flex items-center gap-1", className)}
+      {...rest}
+    />
+  );
+};
+
+export { Kbd, KbdGroup };

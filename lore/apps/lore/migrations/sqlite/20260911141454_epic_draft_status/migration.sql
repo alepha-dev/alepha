@@ -1,0 +1,21 @@
+-- An epic's first status is `draft`, where it was `planned` (#Q2269).
+-- "Planned" read as "the planning is finished", which is what `ready`
+-- means. Decision note: Lore folio #F1290.
+--
+-- ⚠️ The UPDATE is load-bearing, not tidy. `status` is a `mode: "text"` enum
+-- with no CHECK constraint, so SQLite keeps the old value happily, but the
+-- entity validates it on READ: a row still saying `planned` fails to decode
+-- and takes every epic query with it (the 2026-08-05 shape, see
+-- apps/lore/CLAUDE.md, "Renaming a REQUIRED key inside a JSON column").
+--
+-- ⚠️ HAND-WRITTEN. drizzle generated a rebuild of `epics` here, only to move
+-- the column DEFAULT from 'planned' to 'draft', and it was deleted. On D1 the
+-- rebuild's `DROP TABLE epics` fires `quests.epic_id`, `folios.epic_id` and
+-- `epics.depends_on` (all ON DELETE SET NULL) against the copied rows, which
+-- would detach every quest and every folio from its epic. So the physical
+-- DEFAULT stays 'planned' while the snapshot says 'draft': accepted drift,
+-- the same verdict as the `projects.features` DEFAULT. Nothing reads it,
+-- because `EpicController.createEpic` is the only insert path and writes the
+-- status itself. Do not "fix" the drift by regenerating the rebuild.
+
+UPDATE `epics` SET `status` = 'draft' WHERE `status` = 'planned';
