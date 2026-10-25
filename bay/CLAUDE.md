@@ -27,10 +27,16 @@ the Alepha project), and its history came with it.
 
 ## Releases
 
-`.github/workflows/release.yml` is run by hand (`workflow_dispatch`, with a
-dry-run switch): it builds the linux amd64 and arm64 binaries, tags the commit
-and publishes a GitHub release with `SHA256SUMS`. `install.sh` installs from
-`releases/latest`.
+`Bay Release` (`.github/workflows/bay-release.yml` at the repository root) is
+run by hand (`workflow_dispatch`, with a dry-run switch): it builds the linux
+amd64 and arm64 binaries, tags the commit **`bay-<version>`** and publishes a
+GitHub release with `SHA256SUMS`, then redeploys alepha.dev so the Bay pages
+follow the tag (#Q2767). The prefix is load-bearing: the framework tags bare
+versions in the same repository. Bay's releases are never the repository's
+"latest", so `install.sh` asks the GitHub API for the newest `bay-*` release
+(and falls back to alepha-dev/bay's last one until a `bay-*` exists). The
+install address is `https://alepha.dev/bay/install.sh`, a redirect to
+`bay/install.sh` on `main`.
 
 ## Planning lives in Lore
 
@@ -44,10 +50,10 @@ Nothing here is versioned: Alepha is pre-1.0 and breaking is allowed. When one
 of these changes, the other side moves with it.
 
 - **`manifest.json` and the `.tar.zst` archive**, written by `alepha build` and
-  `alepha pack` in `alepha-dev/alepha`, read by `internal/manifest` and the
+  `alepha pack` in `../framework`, read by `internal/manifest` and the
   deploy path.
 - **The `bay` CLI**, driven over ssh by the framework's `BayAdapter`
-  (`packages/alepha/src/cli/platform-lib/adapters/BayAdapter.ts`): `bay list`,
+  (`../framework/packages/alepha/src/cli/infra-lib/adapters/BayAdapter.ts`): `bay list`,
   `bay deploy -`, `bay env`, `--secrets-file`, `--control-socket`.
 - **The names Bay writes itself** (`internal/deploy/deploy.go`), mirrored as
   `bayOwnedKeys` in the framework's `secretKeys.ts`.
@@ -55,5 +61,5 @@ of these changes, the other side moves with it.
   the framework's `HeadersFileReader.spec.ts` runs from a copy.
 - **The estate wire format with Lore** (`internal/connector/testdata/wire-v1`,
   `cmd/bay/testdata/logs-result.json`), pinned by copies in
-  `alepha-dev/lore`. Lore's `bay.e2e.spec.ts` builds this repo and runs it
-  against a real Lore.
+  `../lore`. Lore's `bay.e2e.spec.ts` builds `bay/` and runs it against a real
+  Lore.

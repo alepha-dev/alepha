@@ -1,8 +1,8 @@
 #!/bin/sh
 #
-# Bay installer -- https://github.com/alepha-dev/bay
+# Bay installer -- https://alepha.dev/bay
 #
-#   curl -sSL https://raw.githubusercontent.com/alepha-dev/bay/main/install.sh | sh
+#   curl -sSL https://alepha.dev/bay/install.sh | sh
 #
 # Installs Docker when it is missing (Bay runs every app in a container), then
 # the `bay` binary and the directory layout described in INSTALL.md. It
@@ -15,7 +15,7 @@
 # `bay` service is already running, restarted.
 #
 # Environment:
-#   BAY_VERSION   release tag to install, or "latest" (default)
+#   BAY_VERSION   version to install (0.32.0 or bay-0.32.0), or "latest" (default)
 #   BAY_PREFIX    install root (default /opt/bay)
 #   BAY_BIN_LINK  symlink to put on PATH (default /usr/local/bin/bay)
 #   BAY_INSTALL_DOCKER  "no" to refuse installing Docker and stop instead
@@ -23,7 +23,11 @@
 #
 set -eu
 
-REPO="alepha-dev/bay"
+# Bay is released from the Alepha repository, beside the framework and Lore,
+# under `bay-<version>` tags (#Q2767). Until the first of those exists, the
+# last releases of the old alepha-dev/bay repository still serve "latest".
+REPO="alepha-dev/alepha"
+LEGACY_REPO="alepha-dev/bay"
 BAY_VERSION="${BAY_VERSION:-latest}"
 BAY_PREFIX="${BAY_PREFIX:-/opt/bay}"
 BAY_BIN_LINK="${BAY_BIN_LINK:-/usr/local/bin/bay}"
@@ -36,7 +40,7 @@ die() {
 # --- checks ----------------------------------------------------------------
 
 [ "$(uname -s)" = "Linux" ] || die "Bay runs on Linux only (this is $(uname -s)).
-Build from source for other systems: https://github.com/$REPO"
+Build from source for other systems: https://github.com/$REPO/tree/main/bay"
 
 case "$(uname -m)" in
   x86_64 | amd64) ARCH="amd64" ;;
@@ -45,7 +49,7 @@ case "$(uname -m)" in
 esac
 
 [ "$(id -u)" = "0" ] || die "this installer writes to $BAY_PREFIX and $BAY_BIN_LINK, so it needs root.
-Re-run it as:  curl -sSL https://raw.githubusercontent.com/alepha-dev/bay/main/install.sh | sudo sh"
+Re-run it as:  curl -sSL https://alepha.dev/bay/install.sh | sudo sh"
 
 if command -v curl >/dev/null 2>&1; then
   fetch() { curl -fsSL "$1" -o "$2"; }
@@ -107,10 +111,19 @@ echo "==> Docker ready (Engine API $DOCKER_API)"
 
 # --- download --------------------------------------------------------------
 
+# The repository's own "latest" release is the framework's, so Bay's newest
+# is the first `bay-*` tag the API lists (releases come newest first).
 if [ "$BAY_VERSION" = "latest" ]; then
-  BASE="https://github.com/$REPO/releases/latest/download"
+  fetch "https://api.github.com/repos/$REPO/releases?per_page=100" "$TMP/releases.json" \
+    || die "could not list releases: https://github.com/$REPO/releases"
+  TAG="$(grep -o '"tag_name": *"bay-[0-9][0-9.]*"' "$TMP/releases.json" | head -1 | sed 's/.*"\(bay-[0-9.]*\)"/\1/')"
+  if [ -n "$TAG" ]; then
+    BASE="https://github.com/$REPO/releases/download/$TAG"
+  else
+    BASE="https://github.com/$LEGACY_REPO/releases/latest/download"
+  fi
 else
-  BASE="https://github.com/$REPO/releases/download/$BAY_VERSION"
+  BASE="https://github.com/$REPO/releases/download/bay-${BAY_VERSION#bay-}"
 fi
 
 ASSET="bay-linux-$ARCH"
@@ -171,5 +184,5 @@ else
   echo "Check the host with:  bay doctor"
   echo "Next: run bay serve under systemd, then grant a user the right to deploy."
   echo "Both steps, with the unit file to copy:"
-  echo "  https://github.com/$REPO/blob/main/INSTALL.md"
+  echo "  https://github.com/$REPO/blob/main/bay/INSTALL.md"
 fi

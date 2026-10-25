@@ -318,7 +318,7 @@ a fold in this seam has to be correct
 after a rollup and identical across every backend, not merely plausible on the one you tested
 against.
 
-The portable replacement is the pattern [Lore](https://github.com/alepha-dev/lore)'s own `sigil_views` dataset already uses:
+The portable replacement is the pattern [Lore](https://alepha.dev/lore)'s own `sigil_views` dataset already uses:
 declare a measure that is `1` per event (call it `count`, or anything else) and `sum` it. That is
 an ordinary `sum`, so it survives a rollup and a sampled backend for the same reason any other
 measure does:
@@ -588,7 +588,7 @@ backlog.
 
 ## Registering the module
 
-A real example, from [Lore](https://github.com/alepha-dev/lore):
+A real example, from [Lore](https://alepha.dev/lore):
 
 ```typescript
 import { $module } from "alepha";

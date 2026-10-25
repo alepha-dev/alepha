@@ -1,4 +1,4 @@
-name: Release
+name: Lore Release
 
 permissions:
   contents: write
@@ -6,7 +6,7 @@ permissions:
   packages: write
 
 concurrency:
-  group: release
+  group: lore-release
   cancel-in-progress: false
 
 env:
@@ -16,6 +16,16 @@ env:
 # the image is tagged with) and `@alepha/lore` (the npm package) move together.
 # The changelog is Lore's own release feature: the quests attached to the
 # release in the Lore project, frozen when it is published.
+#
+# ⚠️ The git tag is `lore-<version>` (#Q2767). The framework tags bare
+# versions in this same repository, and its release reads the newest bare tag
+# as its changelog base; a bare Lore tag would become that base. The Lore
+# release inside Lore keeps the bare version: that is project `lore`'s own
+# namespace.
+#
+# ⚠️ npm trusted publishing names this file: `@alepha/lore`'s publisher on
+# npmjs.com is alepha-dev/alepha with workflow `lore-release.yml`. Renaming it
+# breaks the publish with a 404 from npm.
 on:
   workflow_dispatch:
     inputs:
@@ -33,6 +43,12 @@ on:
         required: true
         type: boolean
         default: false
+
+# Every `run` step works inside `lore/`. A step's own `working-directory` is
+# relative to the repository root.
+defaults:
+  run:
+    working-directory: lore
 
 jobs:
   release:
@@ -54,7 +70,7 @@ jobs:
         run: corepack enable
 
       - name: Prepare Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "26.x"
           cache: "yarn"
@@ -79,6 +95,10 @@ jobs:
             echo "::error::@alepha/lore is ${VERSION} but lore is ${LORE}: they release together"
             exit 1
           fi
+          if git ls-remote --exit-code --tags origin "refs/tags/lore-${VERSION}" >/dev/null; then
+            echo "::error::Tag lore-${VERSION} already exists"
+            exit 1
+          fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       # Before anything irreversible, dry runs included: the Lore release
@@ -91,13 +111,28 @@ jobs:
           LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
           VERSION: ${{ steps.version.outputs.version }}
 
+      # The commits since the previous Lore tag that touched `lore/`, for the
+      # GitHub release. Taken before the release commit exists, so it is not
+      # listed in its own notes.
+      - name: Collect the release notes
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          previous=$(git tag -l 'lore-*' --sort=-version:refname | head -1)
+          range=${previous:+${previous}..}HEAD
+          {
+            echo "Lore ${VERSION}: \`@alepha/lore@${VERSION}\` on npm, \`ghcr.io/alepha-dev/lore:${VERSION}\`."
+            echo ""
+            git log --no-merges --format='- %s (%h)' "$range" -- . | head -200
+          } > "$RUNNER_TEMP/lore-notes.md"
+
       - name: Commit and Tag Release
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
-          git add -A
-          git commit -m "release: ${VERSION}"
-          git tag -a "${VERSION}" -m "release: ${VERSION}"
+          git add apps/lore/package.json packages/@alepha/lore/package.json ../yarn.lock
+          git commit -m "release(lore): ${VERSION}"
+          git tag -a "lore-${VERSION}" -m "release(lore): ${VERSION}"
 
       - name: Build
         run: yarn build
@@ -128,7 +163,7 @@ jobs:
       # Built in a dry run too: an image that does not build is exactly what a
       # rehearsal is for.
       - name: Build the Lore Image
-        working-directory: apps/lore
+        working-directory: lore/apps/lore
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
@@ -143,17 +178,19 @@ jobs:
           docker push "ghcr.io/alepha-dev/lore:${VERSION}"
           docker push "ghcr.io/alepha-dev/lore:latest"
 
+      # Not the repository's "latest": that badge stays on the framework.
       - name: Create GitHub Release
         if: ${{ !inputs.dry_run }}
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
-          tag_name: ${{ steps.version.outputs.version }}
-          name: ${{ steps.version.outputs.version }}
-          generate_release_notes: true
+          tag_name: lore-${{ steps.version.outputs.version }}
+          name: Lore ${{ steps.version.outputs.version }}
+          body_path: ${{ runner.temp }}/lore-notes.md
+          make_latest: "false"
 
       - name: Push lore artifact to Lore (node + workerd)
         if: ${{ !inputs.dry_run }}
-        working-directory: apps/lore
+        working-directory: lore/apps/lore
         run: yarn lore artifacts push --tag "$VERSION"
         env:
           LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
@@ -161,7 +198,7 @@ jobs:
 
       - name: Record the Lore image in Lore
         if: ${{ !inputs.dry_run }}
-        working-directory: apps/lore
+        working-directory: lore/apps/lore
         run: >-
           yarn lore artifacts push-image
           --tag "$VERSION"
@@ -188,9 +225,11 @@ jobs:
             verb="Released"
           fi
           {
-            echo "### ${verb} ${VERSION}"
+            echo "### ${verb} Lore ${VERSION}"
             echo ""
             echo "- \`@alepha/lore@${VERSION}\` to npm"
             echo "- \`ghcr.io/alepha-dev/lore:${VERSION}\` and \`:latest\`"
-            echo "- git tag \`${VERSION}\`, the GitHub release, and the Lore release \`${VERSION}\` (project lore)"
+            echo "- git tag \`lore-${VERSION}\`, the GitHub release, and the Lore release \`${VERSION}\` (project lore)"
+            echo ""
+            cat "$RUNNER_TEMP/lore-notes.md"
           } >> "$GITHUB_STEP_SUMMARY"

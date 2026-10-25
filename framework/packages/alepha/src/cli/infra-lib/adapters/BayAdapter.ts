@@ -320,7 +320,7 @@ export class BayAdapter extends InfraAdapter<BayEnvironmentOptions> {
       return new AlephaError(
         `Signed in to ${host}, but its \`bay\` has no \`env\` command, so there is nowhere to put ` +
           "this app's secrets  -  it answered with its usage banner instead. Upgrade `bay` on the " +
-          `host (see https://github.com/alepha-dev/bay/blob/main/INSTALL.md). Until then the app runs without them. (${detail.slice(0, 200)})`,
+          `host (see https://github.com/alepha-dev/alepha/blob/main/bay/INSTALL.md). Until then the app runs without them. (${detail.slice(0, 200)})`,
       );
     }
     if (/unknown flag "--secrets-file"/i.test(detail)) {
@@ -331,7 +331,7 @@ export class BayAdapter extends InfraAdapter<BayEnvironmentOptions> {
       // is still serving.
       return new AlephaError(
         `Signed in to ${host}, but its \`bay\` does not know \`--secrets-file\`, so this app's ` +
-          "secrets have nowhere to go. Upgrade `bay` on the host (see https://github.com/alepha-dev/bay/blob/main/INSTALL.md). " +
+          "secrets have nowhere to go. Upgrade `bay` on the host (see https://github.com/alepha-dev/alepha/blob/main/bay/INSTALL.md). " +
           "Nothing was deployed  -  the release that was serving still is. " +
           `(${detail.slice(0, 200)})`,
       );

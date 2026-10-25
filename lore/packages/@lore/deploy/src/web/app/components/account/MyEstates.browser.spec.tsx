@@ -312,7 +312,7 @@ describe("MyEstates", () => {
 
     const guide = await findByTestId("estate-create-guide");
     expect(guide.getAttribute("href")).toBe(
-      "https://github.com/alepha-dev/lore/blob/main/docs/1-guides/5-cloudflare-token.md",
+      "https://alepha.dev/lore/docs/guides-cloudflare-token",
     );
     // It leaves the app mid-form, so it must not take the half-filled
     // dialog with it.
