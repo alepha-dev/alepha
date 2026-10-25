@@ -977,14 +977,17 @@ describe("Bay connector against a real Lore", () => {
 
   it("runs Bob's stack from the lore CLI: create, a generated secret, a route, a bundled deploy", async () => {
     // The built bin, as a host runs it (#Q2700, #Q2701), against the estate
-    // the deploy case above lent and opened to deploys. The owner's session
-    // token stands in for an API key: both are a bearer to Lore.
+    // the deploy case above lent and opened to deploys, with an API key as
+    // CI would hold one.
     const bin = join(ROOT, "packages/@alepha/lore/dist/bin/index.js");
     if (!existsSync(bin)) {
       throw new Error(
         "packages/@alepha/lore/dist is missing: run `yarn build` first",
       );
     }
+    const key = await ok<{ token: string }>(
+      call(lore, owner, "createApiKey", { body: { name: "bob cli" } }),
+    );
     const dir = join(work, "bob");
     await mkdir(join(dir, "site"), { recursive: true });
     await writeFile(join(dir, "site", "index.html"), "bob was here\n");
@@ -1010,7 +1013,7 @@ describe("Bay connector against a real Lore", () => {
           env: {
             ...process.env,
             LORE_URL: lore.url,
-            LORE_API_KEY: owner.token,
+            LORE_API_KEY: key.token,
             LORE_PROJECT: String(projectId),
             CLAUDECODE: "",
             NO_COLOR: "1",

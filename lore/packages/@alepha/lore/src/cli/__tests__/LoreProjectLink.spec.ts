@@ -24,6 +24,8 @@ describe(".alepha/lore.json", () => {
         LOG_LEVEL: "error",
         LORE_API_KEY: "k",
         LORE_URL: "",
+        // Blanked: CI exports LORE_PROJECT for its own deploys.
+        LORE_PROJECT: "",
         HOME: "/nonexistent",
         ...env,
       },
