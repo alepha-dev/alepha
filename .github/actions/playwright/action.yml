@@ -1,6 +1,14 @@
 name: Playwright
 description: Cache and install the chromium build the e2e suites drive
 
+# A composite action's steps run at the repository root, where no workspace
+# depends on Playwright: `yarn playwright` resolves only inside the product
+# folder whose suites it drives (#Q2765).
+inputs:
+  working-directory:
+    description: The product folder whose Playwright to install (framework, lore)
+    required: true
+
 runs:
   using: composite
   steps:
@@ -14,6 +22,7 @@ runs:
         [ -n "$version" ] || { echo "could not resolve the Playwright version"; exit 1; }
         echo "version=$version" >> "$GITHUB_OUTPUT"
       shell: bash
+      working-directory: ${{ inputs.working-directory }}
 
     - name: Cache Playwright browsers
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -41,3 +50,4 @@ runs:
     - name: Install Playwright
       run: timeout 240 yarn playwright install chromium
       shell: bash
+      working-directory: ${{ inputs.working-directory }}

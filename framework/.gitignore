@@ -1,0 +1,42 @@
+.DS_Store
+
+node_modules
+dist
+coverage
+test-report.junit.xml
+test-results
+playwright-report
+
+.yarn/*
+!.yarn/patches/
+.idea
+.env
+/.claude/
+.codex
+.run
+.gen
+.playwright-mcp
+.playwright-cli
+.playwright
+
+**/.env.*
+!**/.env.example
+
+deno.lock
+.e2e-tmp
+docs/plans
+docs/superpowers
+apps/ride/*
+!apps/ride/package.json
+BUGS.md
+assets/docs
+.superpowers
+
+.fleet
+
+# Artifacts produced by `alepha pack` — one per deploy, in the workspace root.
+*.tar.gz
+
+# workerd's cf-metadata cache, written by miniflare v5 the first time a test
+# boots a worker. v4 kept this elsewhere, so it only appeared with the upgrade.
+.wrangler

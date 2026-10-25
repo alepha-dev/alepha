@@ -1,0 +1,58 @@
+{
+  "name": "alepha-monorepo",
+  "private": true,
+  "description": "Alepha framework monorepo workspace",
+  "workspaces": {
+    "packages": [
+      "packages/**/*",
+      "apps/**/*",
+      "!apps/**/*/dist"
+    ]
+  },
+  "type": "module",
+  "scripts": {
+    "w": "yarn workspace",
+    "a": "yarn alepha",
+    "v": "yarn alepha verify",
+    "verify": "yarn alepha verify",
+    "clean": "yarn alepha clean",
+    "copy": "yarn workspaces foreach -Wpt run copy && yarn lint",
+    "lint": "yarn alepha lint",
+    "typecheck": "tsc --noEmit && yarn workspaces foreach -Wpt --exclude alepha-monorepo -j 4 run typecheck",
+    "test": "yarn vitest run",
+    "check:deps": "yarn workspaces foreach -Wpt exec depcheck .",
+    "check:conventions": "node scripts/check-conventions.ts",
+    "check:docs": "yarn workspaces foreach -Wpt run check:docs",
+    "check:migrations": "yarn workspaces foreach -Wpt run check:migrations",
+    "build": "yarn workspaces foreach -Wpt run build",
+    "test:bun": "bun test ./packages/**/*.bun.spec.ts",
+    "test:broker": "yarn vitest run --config packages/@alepha/mqtt/vitest.broker.config.ts",
+    "e2e": "yarn workspaces foreach -Wpt run e2e",
+    "e2e-cli": "yarn w e2e-cli test"
+  },
+  "devDependencies": {
+    "@alepha/lore": "npm:0.33.0",
+    "@playwright/test": "^1.63.0",
+    "@types/bun": "^1.4.2",
+    "@types/node": "^26.6.4",
+    "@types/react": "^19.3.0",
+    "@vitest/coverage-v8": "^5.0.3",
+    "alepha": "^0.33.0",
+    "depcheck": "^1.4.7",
+    "oxfmt": "^0.73.0",
+    "oxlint": "^1.87.0",
+    "oxlint-tsgolint": "^7.0.2003",
+    "rolldown": "~1.2.12",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.3",
+    "vitest": "^5.0.3"
+  },
+  "dependenciesMeta": {
+    "esbuild": {
+      "built": true
+    },
+    "workerd": {
+      "built": true
+    }
+  }
+}

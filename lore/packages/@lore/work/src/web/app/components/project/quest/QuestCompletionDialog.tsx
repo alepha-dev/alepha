@@ -1,0 +1,172 @@
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Input,
+} from "@alepha/ui";
+import { currentProjectAtom, type I18n, LoreEditor } from "@lore/core/web";
+import { useStore } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
+import { SquareSlash, Swords } from "lucide-react";
+import { useState } from "react";
+
+import type { QuestResource } from "../../../../../api/schemas/questResourceSchema.ts";
+
+export interface QuestCompletionDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  submitting: boolean;
+  /**
+   * Objectives still unticked. Each needs a reason before the quest can
+   * close, and the reason is stored on the objective rather than folded
+   * into the summary.
+   */
+  unticked: QuestResource["objectives"];
+  onConfirm: (
+    message: string | undefined,
+    waive: Array<{ objectiveId: number; reason: string }>,
+  ) => void;
+}
+
+const QuestCompletionDialog = (props: QuestCompletionDialogProps) => {
+  // The links the editor's View mode produces are URLs, so it needs the slug.
+  const [project] = useStore(currentProjectAtom);
+  const { tr } = useI18n<I18n, "en">();
+  const [message, setMessage] = useState("");
+  const [reasons, setReasons] = useState<Record<number, string>>({});
+
+  const handleClose = (open: boolean) => {
+    if (!open) {
+      setMessage("");
+      setReasons({});
+    }
+    props.onOpenChange(open);
+  };
+
+  // Every unticked objective needs a reason. The alternative the server used
+  // to force was ticking a box for work nobody did, and a false tick is
+  // indistinguishable from a real one forever after.
+  const waivers = props.unticked.map((objective) => ({
+    objectiveId: objective.id,
+    reason: (reasons[objective.id] ?? "").trim(),
+  }));
+  const waiversIncomplete = waivers.some((waiver) => !waiver.reason);
+
+  const confirm = (withMessage: boolean) => {
+    const trimmed = message.trim();
+    props.onConfirm(
+      withMessage && trimmed.length > 0 ? trimmed : undefined,
+      waivers,
+    );
+  };
+
+  return (
+    <Dialog open={props.open} onOpenChange={handleClose}>
+      {/*
+        `3xl` rather than `xl`: the editor's toolbar wants ~810px and a
+        completion summary is worth the room. This is the cosmetic half of
+        #171 — the fix that matters is `min-w-0` on the editor wrapper plus a
+        scrollable toolbar, without which a wider dialog only moves the
+        breakpoint to a narrower viewport.
+
+        The height half is `max-h-[85vh]` plus `flex flex-col`, replacing
+        `DialogContent`'s own `grid`. The dialog is `fixed top-1/2
+        -translate-y-1/2`, so an unbounded one grows past the viewport in
+        BOTH directions at once: with ~15 unticked objectives the waiver
+        list pushed the summary editor and the confirm button off screen and
+        the quest could not be closed at all.
+      */}
+      <DialogContent className="flex max-h-[85vh] flex-col sm:max-w-3xl">
+        <DialogHeader className="shrink-0">
+          <DialogTitle>{tr("quest.view.complete.title")}</DialogTitle>
+          <DialogDescription>
+            {tr("quest.view.complete.description")}
+          </DialogDescription>
+        </DialogHeader>
+
+        {/* Above the summary: what was skipped is the question a reader of
+            this quest asks first, and answering it is also what unlocks the
+            button. */}
+        {props.unticked.length > 0 && (
+          <div className="border-border flex min-h-0 flex-1 flex-col gap-3 rounded-md border px-3 py-3">
+            <p className="text-muted-foreground flex shrink-0 items-start gap-2 text-xs">
+              <SquareSlash className="mt-0.5 size-3.5 shrink-0" />
+              <span>{tr("quest.view.complete.waive.hint")}</span>
+            </p>
+            {/* The one unbounded region, so the one that scrolls. The hint
+                above stays put — it explains the fields, and a hint that
+                scrolls away is a hint nobody reads. `min-h-0` on both this
+                and its parent, because a flex item defaults to
+                `min-height: auto` and would refuse to shrink below its
+                content however small the cap. */}
+            <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
+              {props.unticked.map((objective) => (
+                <label key={objective.id} className="flex flex-col gap-1">
+                  <span className="text-sm">{objective.title}</span>
+                  <Input
+                    value={reasons[objective.id] ?? ""}
+                    onChange={(event) =>
+                      setReasons((current) => ({
+                        ...current,
+                        [objective.id]: event.target.value,
+                      }))
+                    }
+                    placeholder={tr("quest.view.complete.waive.placeholder")}
+                    disabled={props.submitting}
+                  />
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* `shrink-0` so the waiver list above is what gives way. The
+            editor's own `minHeight` would hold it at 200px regardless, but
+            saying so here keeps the intent next to the layout that depends
+            on it. */}
+        <div className="shrink-0">
+          <LoreEditor
+            element={{
+              kind: "quest",
+              projectId: project?.id ?? 0,
+              projectSlug: project?.slug ?? "",
+            }}
+            value={message}
+            onChange={setMessage}
+            placeholder={tr("quest.view.complete.placeholder")}
+            minHeight={200}
+          />
+        </div>
+        <DialogFooter className="shrink-0 gap-2">
+          <Button
+            type="button"
+            variant="minimal"
+            onClick={() => confirm(false)}
+            disabled={props.submitting || waiversIncomplete}
+          >
+            {tr("quest.view.complete.skip")}
+          </Button>
+          <Button
+            type="button"
+            onClick={() => confirm(true)}
+            disabled={
+              props.submitting ||
+              message.trim().length === 0 ||
+              waiversIncomplete
+            }
+            className="bg-green-600 text-white hover:bg-green-700"
+          >
+            <Swords className="size-4" />
+            {tr("quest.view.complete.submit")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+export default QuestCompletionDialog;

@@ -1,0 +1,24 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: app
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d app"]
+      interval: 1s
+      retries: 30
+    x-lore:
+      backup:
+        postgres: { user: app, db: app }
+  cache:
+    image: redis:${REDIS_TAG:-7-alpine}
+  api:
+    depends_on: [db, cache]
+    x-lore:
+      app: api
+      routes: ["@", "api"]
+volumes:
+  pgdata:

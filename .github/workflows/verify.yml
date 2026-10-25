@@ -21,12 +21,31 @@ on:
   push:
     branches:
       - "**"
+    # The framework's part of the tree, plus what every product shares. A
+    # change under `lore/` or `bay/` alone runs only their workflows.
+    paths:
+      - "framework/**"
+      - ".github/workflows/verify.yml"
+      - ".github/actions/**"
+      - "package.json"
+      - "yarn.lock"
+      - ".yarnrc.yml"
+      - ".nvmrc"
   # Kept, though same-repo branches no longer need it: a pull_request run is
   # the only way a FORK's code is ever tested, and this repository is public.
   # The cost is that a PR opened by hand from a local branch runs CI twice.
   pull_request:
     branches:
       - main
+    # The same list as `push`.
+    paths:
+      - "framework/**"
+      - ".github/workflows/verify.yml"
+      - ".github/actions/**"
+      - "package.json"
+      - "yarn.lock"
+      - ".yarnrc.yml"
+      - ".nvmrc"
   workflow_run:
     workflows: ["Release"]
     types:
@@ -70,6 +89,14 @@ concurrency:
 # the secret, and it stays on the individual steps that need it.
 env:
   LORE_PROJECT: alepha
+
+# Every `run` step works inside `framework/`: the repository holds the
+# framework, Lore and Bay side by side (#Q2765), and this workflow is the
+# framework's. A step's own `working-directory` is relative to the repository
+# root, so it names `framework/` too.
+defaults:
+  run:
+    working-directory: framework
 
 jobs:
   # ──────────────────────────────────────────────────────────────────────
@@ -257,7 +284,7 @@ jobs:
       # and it is `foreach run copy && yarn lint`, so `-A` without the exclude
       # runs every generator twice, concurrently, and the lint after all.
       - name: Prepare
-        run: yarn workspaces foreach -Apt --exclude alepha-monorepo run copy && yarn oxfmt
+        run: yarn workspaces foreach -Wpt --exclude alepha-monorepo run copy && yarn oxfmt
 
       # No `--coverage`. That flag is what `nightly.yml` runs nightly, and it
       # carries five of the nine numbers Lore stores, not four: it also turns
@@ -332,7 +359,7 @@ jobs:
 
       # See `test`: the generators and oxfmt, not `yarn lint`.
       - name: Prepare
-        run: yarn workspaces foreach -Apt --exclude alepha-monorepo run copy && yarn oxfmt
+        run: yarn workspaces foreach -Wpt --exclude alepha-monorepo run copy && yarn oxfmt
 
       - name: Test Project
         run: yarn alepha test --shard ${{ matrix.shard }}/6
@@ -441,21 +468,23 @@ jobs:
 
       # See `test` above: the generators and oxfmt, not `yarn lint`.
       - name: Prepare
-        run: yarn workspaces foreach -Apt --exclude alepha-monorepo run copy && yarn oxfmt
+        run: yarn workspaces foreach -Wpt --exclude alepha-monorepo run copy && yarn oxfmt
 
       # The four apps the step below runs, and nothing else. Their suites
       # read their own `dist/` only.
       - name: Build Project
-        run: yarn workspaces foreach -Apt --include '{docs,ui,shop,ssr}' run build
+        run: yarn workspaces foreach -Wpt --include '{docs,ui,shop,ssr}' run build
 
       - name: Setup Playwright
         uses: ./.github/actions/playwright
+        with:
+          working-directory: framework
 
       # `yarn e2e`: docs, ui, examples/shop and examples/ssr.
       #
       # ⚠️ **`--exclude alepha-monorepo` is load-bearing and is NOT tidy-up.**
       # `-A` includes the repository root, the root workspace has an `e2e`
-      # script of its own, and that script is `foreach -Apt run e2e` with no
+      # script of its own, and that script is `foreach -Wpt run e2e` with no
       # exclusions - so dropping this flag makes the step run every suite a
       # second time, both copies at once. That is not a theoretical risk: it
       # is what the first version of this job did.
@@ -470,7 +499,7 @@ jobs:
       # was tried first for exactly that reason and recursed the same way.
       - name: Run E2E Tests
         timeout-minutes: 20
-        run: yarn workspaces foreach -Apt --exclude alepha-monorepo run e2e
+        run: yarn workspaces foreach -Wpt --exclude alepha-monorepo run e2e
 
   # Its own job for the reason it was already its own step: `e2e-cli` packs
   # the workspace with `yarn pack` and installs the tarball into a throwaway
@@ -491,7 +520,7 @@ jobs:
 
       # See `test` above: the generators and oxfmt, not `yarn lint`.
       - name: Prepare
-        run: yarn workspaces foreach -Apt --exclude alepha-monorepo run copy && yarn oxfmt
+        run: yarn workspaces foreach -Wpt --exclude alepha-monorepo run copy && yarn oxfmt
 
       # The tarball carries `dist/`, so the build has to have happened:
       # `apps/e2e-cli/src/cli.e2e.spec.ts` fails with a named error rather

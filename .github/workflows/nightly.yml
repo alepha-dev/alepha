@@ -44,6 +44,14 @@ concurrency:
 env:
   LORE_PROJECT: alepha
 
+# Every `run` step works inside `framework/`: the repository holds the
+# framework, Lore and Bay side by side (#Q2765), and this workflow is the
+# framework's. A step's own `working-directory` is relative to the repository
+# root, so it names `framework/` too.
+defaults:
+  run:
+    working-directory: framework
+
 jobs:
   coverage:
     runs-on: ubuntu-latest

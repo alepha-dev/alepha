@@ -1,0 +1,225 @@
+import { Button, Tooltip, TooltipContent, TooltipTrigger } from "@alepha/ui";
+import type { EditorView } from "@codemirror/view";
+import { useI18n } from "alepha/react/i18n";
+import { useCallback, useEffect, useRef, useState } from "react";
+
+import type { I18n } from "../../../services/I18n.ts";
+import { markdownCommands } from "./markdownCommands.ts";
+import { MARKDOWN_TOOLBAR_GROUPS } from "./markdownToolbarActions.ts";
+
+export interface MarkdownSelectionToolbarProps {
+  /**
+   * The live editor. Non-nullable on purpose: the caller mounts this only
+   * once the view exists, so there is no "not ready yet" state to model.
+   */
+  view: EditorView;
+}
+
+interface ToolbarPosition {
+  left: number;
+  top: number;
+}
+
+/**
+ * How long after the pointer comes up the bar appears.
+ *
+ * The reporter asked for a delay by name (feedback #P2116) rather than for
+ * the bar merely to stop chasing the cursor: a control that materialises
+ * under the finger the instant it lifts is its own kind of startling. It
+ * also lets the selection settle - a drag that ends on a word boundary
+ * emits a last `selectionchange` after the `pointerup`.
+ *
+ * Short enough that a double-click still reads as instant.
+ */
+const SHOW_AFTER_POINTER_UP_MS = 150;
+
+/**
+ * A small floating bar over the current selection — select a word, format
+ * it without leaving the text.
+ *
+ * Positioned with `position: fixed` against viewport coordinates from
+ * `view.coordsAtPos`, so it does not need a positioned ancestor and cannot
+ * be clipped by the document pane's `overflow`.
+ *
+ * ## Why `selectionchange` and not a CodeMirror update listener
+ *
+ * The extension list is fixed when the view is constructed, and this
+ * component mounts alongside rather than inside it — adding a listener
+ * afterwards would mean reconfiguring the editor. `selectionchange` on the
+ * document is the same signal one level up, and it also fires for the
+ * drag-select and double-click paths that are the whole point of this
+ * control.
+ *
+ * ⚠️ It fires on every mousemove of a drag, though, which is why the bar is
+ * suppressed between `pointerdown` and `pointerup` - see `dragging` below.
+ * Keyboard selection touches no pointer event and is therefore never gated:
+ * shift+arrows and cmd+A show the bar on the `selectionchange` itself.
+ */
+const MarkdownSelectionToolbar = (props: MarkdownSelectionToolbarProps) => {
+  const { tr } = useI18n<I18n, "en">();
+  const [position, setPosition] = useState<ToolbarPosition | null>(null);
+  /**
+   * Whether a pointer is currently down on the editor.
+   *
+   * A ref rather than state: it is read inside `sync`, which every listener
+   * calls, and re-rendering on a flag that only ever suppresses a render
+   * would be a render per mousemove of the drag it exists to quieten.
+   */
+  const dragging = useRef(false);
+  const showTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const sync = useCallback(() => {
+    const view = props.view;
+    // ⚠️ `selectionchange` fires on every mousemove of a drag-select, so
+    // without this the bar appeared the moment the selection was one
+    // character wide and then chased the anchor for the whole gesture -
+    // floating over the very text the reader was still selecting
+    // (feedback #P2116).
+    //
+    // Suppressed here rather than by unsubscribing, so the scroll and
+    // resize listeners keep running: they call the same `sync`, and a
+    // handler that has to know why it was called is a handler that will
+    // eventually get it wrong.
+    if (dragging.current) return setPosition(null);
+    const range = view.state.selection.main;
+    // Nothing selected, or the caret is merely sitting somewhere — a
+    // toolbar over an empty selection has nothing to format.
+    if (range.empty || !view.hasFocus) return setPosition(null);
+
+    const from = view.coordsAtPos(range.from);
+    const to = view.coordsAtPos(range.to);
+    if (!from || !to) return setPosition(null);
+
+    // Above the selection, centred on it. `coordsAtPos` is already in
+    // viewport space, which is what `fixed` wants.
+    setPosition({
+      left: (from.left + to.right) / 2,
+      top: Math.min(from.top, to.top),
+    });
+  }, [props.view]);
+
+  useEffect(() => {
+    /**
+     * A press that starts INSIDE the editor begins a selection gesture.
+     *
+     * ⚠️ The containment check is what keeps the bar's own buttons working:
+     * a press on one of them is a pointerdown too, and hiding the bar under
+     * the finger about to release on it would make every command
+     * unreachable. They live outside `view.dom`, so they never match.
+     */
+    const onPointerDown = (event: PointerEvent) => {
+      if (!props.view.dom.contains(event.target as Node)) return;
+      dragging.current = true;
+      if (showTimer.current) clearTimeout(showTimer.current);
+      setPosition(null);
+    };
+
+    /**
+     * ⚠️ On the DOCUMENT, not the editor: a drag that starts in the text
+     * and ends in the margin, or outside the window entirely, releases
+     * there. Listening on `view.dom` would leave the flag set and the bar
+     * gone until the next press.
+     *
+     * `pointercancel` too, for the touch gesture the browser takes over.
+     */
+    const onPointerRelease = () => {
+      if (!dragging.current) return;
+      dragging.current = false;
+      if (showTimer.current) clearTimeout(showTimer.current);
+      showTimer.current = setTimeout(sync, SHOW_AFTER_POINTER_UP_MS);
+    };
+
+    // Reads CodeMirror's selection geometry, which only exists once the editor
+    // has been committed to the DOM.
+    // oxlint-disable-next-line react/set-state-in-effect
+    sync();
+    document.addEventListener("selectionchange", sync);
+    // Capture, so a handler that stops propagation on its way up cannot
+    // strand the flag.
+    document.addEventListener("pointerdown", onPointerDown, true);
+    document.addEventListener("pointerup", onPointerRelease, true);
+    document.addEventListener("pointercancel", onPointerRelease, true);
+    // Scrolling moves the text out from under a `fixed` element, so the bar
+    // has to follow it or it ends up pointing at the wrong words. `true`
+    // captures scrolls on the pane, not just the window.
+    window.addEventListener("scroll", sync, true);
+    window.addEventListener("resize", sync);
+    return () => {
+      document.removeEventListener("selectionchange", sync);
+      document.removeEventListener("pointerdown", onPointerDown, true);
+      document.removeEventListener("pointerup", onPointerRelease, true);
+      document.removeEventListener("pointercancel", onPointerRelease, true);
+      window.removeEventListener("scroll", sync, true);
+      window.removeEventListener("resize", sync);
+      if (showTimer.current) clearTimeout(showTimer.current);
+    };
+  }, [props.view, sync]);
+
+  if (!position) return null;
+
+  return (
+    <div
+      data-testid="markdown-selection-toolbar"
+      className="bg-popover border-border pointer-events-auto fixed z-50 flex -translate-x-1/2 -translate-y-full items-center gap-0.5 rounded-md border p-0.5 shadow-md"
+      style={{ left: position.left, top: position.top - 6 }}
+    >
+      {MARKDOWN_TOOLBAR_GROUPS.map((group) => (
+        <div
+          key={group[0].id}
+          className="border-border flex items-center gap-0.5 border-l pl-1 first:border-l-0 first:pl-0"
+        >
+          {group.map(({ id, labelKey, Icon }) => {
+            const label = tr(labelKey);
+            return (
+              <Tooltip key={id}>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      type="button"
+                      size="icon-xs"
+                      variant="minimal"
+                      aria-label={label}
+                      // ⚠️ No `title`. A real tooltip and the browser's own
+                      // would both fire, and the native one draws a second
+                      // black box a beat later, next to this one.
+                      //
+                      // The lift and its curves live in
+                      // `.lore-md-toolbar-button` — two properties, two
+                      // easings, which `duration-*` cannot express.
+                      //
+                      // `hover:bg-hover`, deliberately stronger than the
+                      // ghost variant's `hover:bg-hover`. This bar floats
+                      // over the document on `bg-popover`, which in the dark
+                      // themes sits at L 0.21-0.23; muted lands 0.04-0.05
+                      // above it, accent 0.09-0.11. A toolbar that appears
+                      // on selection and disappears again wants the louder
+                      // of the two.
+                      //
+                      // The `dark:` repeat is what defeats a dark-only
+                      // override on the variant. There is none today (one
+                      // was removed for quest #1643), but the repeat costs
+                      // nothing and keeps this bar's choice explicit.
+                      className="lore-md-toolbar-button hover:bg-hover hover:text-accent-foreground dark:hover:bg-hover"
+                      // `mousedown`, not `click`, and prevented: a click
+                      // would blur the editor first, collapsing the very
+                      // selection the command is about to act on.
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        markdownCommands[id](props.view);
+                      }}
+                    >
+                      <Icon className="size-3" />
+                    </Button>
+                  }
+                />
+                <TooltipContent>{label}</TooltipContent>
+              </Tooltip>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+};
+
+export default MarkdownSelectionToolbar;

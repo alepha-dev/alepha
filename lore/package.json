@@ -1,0 +1,50 @@
+{
+  "name": "lore-monorepo",
+  "private": true,
+  "description": "Alepha Lore: the app, its CLI and its client",
+  "workspaces": {
+    "packages": [
+      "apps/*",
+      "packages/**/*",
+      "!apps/*/dist"
+    ]
+  },
+  "type": "module",
+  "scripts": {
+    "w": "yarn workspace",
+    "a": "yarn alepha",
+    "v": "yarn alepha verify",
+    "verify": "yarn alepha verify",
+    "clean": "yarn alepha clean",
+    "lint": "yarn alepha lint",
+    "typecheck": "tsc --noEmit && yarn workspaces foreach -Wpt --exclude lore-monorepo -j 4 run typecheck",
+    "test": "yarn vitest run",
+    "check:deps": "yarn workspaces foreach -Wpt exec depcheck .",
+    "check:conventions": "node scripts/check-conventions.ts",
+    "check:i18n": "yarn workspaces foreach -Wpt run check:i18n",
+    "check:migrations": "yarn workspaces foreach -Wpt run check:migrations",
+    "build": "yarn workspaces foreach -Wpt run build",
+    "e2e": "yarn w e2e web",
+    "e2e-cli": "yarn w e2e cli"
+  },
+  "devDependencies": {
+    "@alepha/lore": "workspace:*",
+    "@playwright/test": "^1.64.0",
+    "@types/bun": "^1.4.3",
+    "@types/node": "^26.6.5",
+    "@vitest/coverage-v8": "^5.0.4",
+    "alepha": "workspace:*",
+    "depcheck": "^1.4.7",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.4"
+  },
+  "dependenciesMeta": {
+    "esbuild": {
+      "built": true
+    },
+    "workerd": {
+      "built": true
+    }
+  }
+}

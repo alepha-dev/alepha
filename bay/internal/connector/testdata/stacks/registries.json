@@ -1,0 +1,7 @@
+[
+  {
+    "host": "harbor.corp.example",
+    "username": "ci",
+    "password": "glpat-example-token"
+  }
+]

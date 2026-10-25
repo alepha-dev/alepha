@@ -1,0 +1,14 @@
+{
+  "type": "command",
+  "id": "9e3a4f5b-6c7d-4e8f-a0b1-2c3d4e5f6a7b",
+  "kind": "deploy",
+  "app": "mcs-api",
+  "environment": "staging",
+  "stack": "mcs",
+  "service": "api",
+  "artifact": {
+    "id": "2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e",
+    "sha256": "3d36c57c79a07d779aa50b6e1d68c3f74e7d61ab4b11e1ac9cdb7f9e1f2a3b4c",
+    "size": 4096
+  }
+}

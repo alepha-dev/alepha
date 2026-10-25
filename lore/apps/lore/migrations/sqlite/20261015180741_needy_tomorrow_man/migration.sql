@@ -1,0 +1,3 @@
+ALTER TABLE `automations` ADD `schedule_cron` text;--> statement-breakpoint
+CREATE INDEX `automation_receipts_rule_state_idx` ON `automation_receipts` (`automation_id`,`kind`,`status`);--> statement-breakpoint
+CREATE INDEX `quests_automation_reminders_idx` ON `quests` (`project_id`,`reminder_next_at`,`short_id`) WHERE ((("quests"."deleted_at" is null)) and (("quests"."completed_at" is null)) and (("quests"."shelved_at" is null)) and (("quests"."accepted_at" is not null)) and (("quests"."accepted_by" is not null)) and (("quests"."reminder_interval" is not null)));

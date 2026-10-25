@@ -1,0 +1,222 @@
+import { AlephaSigil, SigilSinkProvider } from "@alepha/lore/sigil";
+import { adminRouterOptionsAtom } from "@alepha/ui/admin";
+import { LoreCoreApi } from "@lore/core/api";
+import {
+  AutomationNotificationSender,
+  AutomationLegacyJobProvider,
+  LoreFileAccessProvider,
+  LoreInboxRecipientProvider,
+  LoreNotificationPreferences,
+  LoreOAuthScopes,
+} from "@lore/core/api";
+import { LoreCoreMcp } from "@lore/core/mcp";
+import { LoreCoreWeb } from "@lore/core/web";
+import { ProjectScopeGrants } from "@lore/core/web";
+import { LoreDeployApi } from "@lore/deploy/api";
+import {
+  DeployJobs,
+  EstateCommandTransport,
+  WebSocketEstateCommandTransport,
+} from "@lore/deploy/api";
+import { LoreDeployMcp } from "@lore/deploy/mcp";
+import { LoreDeployWeb } from "@lore/deploy/web";
+import { LoreKnowledgeApi } from "@lore/knowledge/api";
+import { LoreKnowledgeMcp } from "@lore/knowledge/mcp";
+import { LoreKnowledgeWeb } from "@lore/knowledge/web";
+import { LoreWorkApi } from "@lore/work/api";
+import { LoreWorkMcp } from "@lore/work/mcp";
+import { LoreWorkWeb } from "@lore/work/web";
+import { Alepha, run } from "alepha";
+import { FileAccessProvider } from "alepha/api/files";
+import { JobProvider } from "alepha/api/jobs";
+import { jobConfig } from "alepha/api/jobs";
+import {
+  NotificationInboxRecipientProvider,
+  NotificationPreferenceProvider,
+  NotificationSenderService,
+} from "alepha/api/notifications";
+import { oauthOptions } from "alepha/api/oauth";
+import { CaptchaProvider, TurnstileCaptchaProvider } from "alepha/captcha";
+import { AlephaEmailCloudflare } from "alepha/email/cloudflare";
+import { ScopeGrantsProvider } from "alepha/server/links";
+
+import { loreAdminOptions } from "@/web/admin/adminChrome.tsx";
+import { LoreWebAdmin } from "@/web/admin/index.ts";
+
+import { LoreSigilSinkProvider } from "./providers/LoreSigilSinkProvider.ts";
+
+const alepha = Alepha.create({
+  env: {
+    APP_NAME: "LORE",
+  },
+});
+
+// Before any module: the job provider creates its sweep cron when it is
+// constructed. See `DeployJobs.JOB_SWEEP` (#Q2478).
+alepha.set(jobConfig, {
+  ...alepha.store.get(jobConfig),
+  ...DeployJobs.JOB_SWEEP,
+});
+
+// Cloudflare Email Sending. Registered only in production — both the real
+// Workers runtime and the CF build (Vite bakes `NODE_ENV=production`, so
+// `isProduction()` is true there and the build can still introspect the module
+// to emit the `send_email` binding into `wrangler.jsonc`). Skipped in `alepha
+// dev` to avoid the provider's "not running on Workers" inert-boot warning.
+if (alepha.isProduction()) {
+  alepha.with(AlephaEmailCloudflare);
+}
+
+// SMTP, for a self-hosted instance that has a mail server. Registered only
+// when EMAIL_HOST is set, because `AlephaEmailSmtp` substitutes
+// `EmailProvider` unconditionally and a transport pointed at nothing would
+// fail every send. Without it the container falls through to
+// `LocalEmailProvider`, which writes mail to `${DATA_DIR}/emails` — a useful
+// escape hatch for an operator with no SMTP, and the reason
+// `verifyEmailRequired` and `resetPasswordAllowed` are off until this is
+// configured (see `AppSecurityProvider`).
+//
+// ⚠️ **What keeps nodemailer out of the Worker is `alepha/email/smtp`'s own
+// `workerd` entry, not this `if`.** This file is also the Cloudflare Worker
+// entry, and a server build bundles every `import()` it can see: a STATIC
+// import once killed the production deploy at boot validation
+// (`createRequire is unavailable on workerd; cannot require "events"`), and
+// this dynamic one still shipped 222 kB of nodemailer the Worker could never
+// run, until the `workerd` condition started resolving to an entry without it.
+//
+// The import stays dynamic so a Docker instance with no EMAIL_HOST never loads
+// nodemailer at all. A Worker sends through the `send_email` binding and never
+// carries EMAIL_HOST; if one ever did, the `workerd` entry refuses to register
+// and names `AlephaEmailCloudflare`, which beats skipping it in silence.
+if (alepha.env.EMAIL_HOST) {
+  const { AlephaEmailSmtp } = await import("alepha/email/smtp");
+  alepha.with(AlephaEmailSmtp);
+}
+
+// Register the captcha provider BEFORE any module that depends on `alepha/captcha`
+// (e.g. `LoreCoreApi` → `RealmController`). The `AlephaCaptcha` module auto-binds the
+// memory provider on load; substituting after that point trips the DI guard.
+// Register if and only if TURNSTILE_SITE_KEY is present.
+if (alepha.env.TURNSTILE_SITE_KEY) {
+  alepha.with({ provide: CaptchaProvider, use: TurnstileCaptchaProvider });
+}
+
+// Widen the framework's creator-only `/api/files/:id` policy with
+// lore-aware rules (avatars are public-authed, project icons follow
+// project visibility, quest attachments require project membership,
+// feedback attachments require project ownership).
+alepha.with({ provide: FileAccessProvider, use: LoreFileAccessProvider });
+
+// Configure the OAuth 2.1 authorization server BEFORE `LoreCoreApi` (which holds
+// the `$realm`). `$realm` merges this value and only overrides `realm`, so
+// `resource` and `loginPath` set here are preserved. `loginPath` points at
+// Lore's actual login route; the OAuth `authorize` endpoint redirects
+// unauthenticated users there.
+alepha.set(oauthOptions, {
+  realm: "users",
+  resource: "/mcp",
+  loginPath: "/auth/login",
+  // The consent screen is the first page a third party ever sees from Lore -
+  // Claude renders it when connecting to the MCP endpoint - so it says which
+  // product it is asking on behalf of, and where the grant can be undone.
+  productName: "Lore",
+  connectionsPath: "/account/connections",
+  // What each scope a connected app may be granted says on the consent
+  // screen, and the permissions its token then carries: every project member
+  // group for `mcp` and `cli`, nothing under `admin:*`, nothing for `openid`.
+  // The policy and its reasons are on the class.
+  scopes: LoreOAuthScopes.SCOPES,
+});
+
+// Lore's admin chrome (the back-arrow brand + hidden name columns on the
+// users table) is set here AND in main.browser.ts — server-only would leave
+// the browser rendering default chrome after hydration.
+alepha.set(adminRouterOptionsAtom, loreAdminOptions);
+
+// Lore self-reports through its own sigil, so the floating feedback button
+// renders on every Lore page — including the feedback form itself, where it
+// offers to open the form you are already looking at. `*` matches within one
+// path segment, so this covers `/sds/request` and not `/sds/request/anything`.
+// The estate command queue pushes over the estates websocket (epic #20).
+// Declared BEFORE `LoreDeployApi`, which registers the default transport that
+// reaches nothing: a substitution after the service is in use is refused.
+alepha.with({
+  provide: EstateCommandTransport,
+  use: WebSocketEstateCommandTransport,
+});
+
+// What `action.can()` means inside a project.
+//
+// ⚠️ At the top of the ENTRY, not in `LoreCoreWeb.register()`, and the two are
+// not interchangeable. A module's `register` runs when the module is injected,
+// which here is after the `@lore/*` api and MCP modules have already instantiated
+// `LinkProvider` - and `LinkProvider` injects `ScopeGrantsProvider`, so the
+// substitution arrives as a `TooLateSubstitutionError` and the server does not
+// boot. Every other substitution in this file is up here for the same reason.
+//
+// ⚠️ And in BOTH entries, not only the browser one: `can()` runs during render
+// on both sides of hydration, and a control the server renders and the client
+// then hides is exactly the drift `LinkProvider.can`'s own comment exists to
+// prevent.
+alepha.with({ provide: ScopeGrantsProvider, use: ProjectScopeGrants });
+
+// Who an email address belongs to, for the inbox channel. The framework's
+// default resolves nobody, which is how an app that has not implemented this
+// gets a skipped receipt rather than a crash.
+//
+// Declared BEFORE `LoreCoreApi`, for the same reason the transport above is:
+// `LoreCoreApi` pulls in `alepha/api/notifications`, and a substitution after the
+// service is in use is refused.
+alepha.with({
+  provide: NotificationInboxRecipientProvider,
+  use: LoreInboxRecipientProvider,
+});
+
+// Whether somebody still wants to be told. A read seam with no table in the
+// framework, on purpose: a preference is an app's own product decision, and
+// this is Lore's answer. Same ordering constraint as the line above.
+alepha.with({
+  provide: NotificationPreferenceProvider,
+  use: LoreNotificationPreferences,
+});
+
+// Deferred automation notifications retain current-author and recipient gates.
+alepha.with({
+  provide: NotificationSenderService,
+  use: AutomationNotificationSender,
+});
+
+alepha.with({ provide: JobProvider, use: AutomationLegacyJobProvider });
+
+// The `@lore/*` modules, core first. Every entry-level substitution above
+// comes before them: a substitution recorded after a module resolved what it
+// replaces is a `TooLateSubstitutionError`.
+alepha.with(LoreCoreApi);
+alepha.with(LoreWorkApi);
+alepha.with(LoreKnowledgeApi);
+alepha.with(LoreDeployApi);
+alepha.with(LoreCoreMcp);
+alepha.with(LoreWorkMcp);
+alepha.with(LoreKnowledgeMcp);
+alepha.with(LoreDeployMcp);
+
+// Lore reports to Lore, and this line is what makes that possible.
+//
+// It is both the reporting app and the sink, so the ordinary transport would
+// have the Worker fetch its own hostname — a subrequest Cloudflare refuses.
+// Both call sites in `SigilSinkProvider` are fail-open, so that refusal shows
+// up nowhere: Lore would look enrolled and report nothing. The substitution
+// answers those two calls in process instead, against its own services.
+//
+// It must come BEFORE `AlephaSigil`, which registers the provider being
+// replaced here.
+alepha.with({ provide: SigilSinkProvider, use: LoreSigilSinkProvider });
+
+alepha.with(LoreCoreWeb);
+alepha.with(LoreWorkWeb);
+alepha.with(LoreKnowledgeWeb);
+alepha.with(LoreDeployWeb);
+alepha.with(AlephaSigil);
+alepha.with(LoreWebAdmin);
+
+run(alepha);

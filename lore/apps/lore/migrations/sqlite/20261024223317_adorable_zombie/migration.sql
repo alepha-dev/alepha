@@ -1,0 +1,1 @@
+ALTER TABLE `estate_inventories` ADD `stacks` text;
