@@ -1,16 +1,16 @@
 # Bay Deployment
 
-[Bay](https://github.com/alepha-dev/bay) is a self-hosted application server for Alepha apps. Where
+[Bay](https://alepha.dev/bay) is a self-hosted application server for Alepha apps. Where
 Cloudflare gives you someone else's serverless infra, Bay runs your apps as ordinary long-lived
 processes on a machine you own, with TLS, rollback and process isolation handled for you.
 
 This page covers the framework's side: the `bay()` adapter used by `alepha deploy` and `alepha infra`, which deploys an app
 to a host that already runs Bay. Bay itself (installing it, running it, upgrading it, its own CLI) is
-documented in [its repository](https://github.com/alepha-dev/bay). The short version of installing
+documented in [its documentation](https://alepha.dev/bay). The short version of installing
 it, on the host:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/alepha-dev/bay/main/install.sh | sudo sh
+curl -sSL https://alepha.dev/bay/install.sh | sudo sh
 ```
 
 Use Bay when you want a long-lived runtime (background work between requests, in-process caches, a
@@ -198,7 +198,7 @@ skipped entirely and says so too: it has no process, so it has no environment, a
 at build time is already inside the artifact.
 
 To change a running app's configuration **without** redeploying it, use Bay's own `bay env set` on
-the host; see [Bay's documentation](https://github.com/alepha-dev/bay).
+the host; see [Bay's documentation](https://alepha.dev/bay).
 
 > This needs a `bay` on the host new enough to know `--secrets-file`. An older one refuses the flag,
 > and the CLI turns that into `its bay does not know --secrets-file … Upgrade bay on the host`. That

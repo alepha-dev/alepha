@@ -26,6 +26,8 @@ Workflows live in the root `.github/workflows/`, one set per product, each scope
 - `verify.yml` (framework): `framework/**` and the shared root files.
 - `lore-verify.yml`: `lore/**`, `framework/**` and `bay/**`.
 - `bay-ci.yml`: `bay/**`.
+
+**Releases** are dispatched by hand, one workflow per product, and each tags in its own namespace: the framework `release.yml` with bare `x.y.z` (its changelog reads the newest bare tag), `lore-release.yml` with `lore-x.y.z`, `bay-release.yml` with `bay-x.y.z`. Lore's and Bay's GitHub releases are never the repository's "latest".
 - `docs.yml`: `docs/**` and every product's `docs/`. It deploys alepha.dev on `main`, each section from how its product ships (#Q2766): the framework from its latest release tag (`yarn pin`, then `DOCS_FRAMEWORK_ROOT`), Lore from `main`, Bay from `main` until its releases carry tags.
 
 A step's own `working-directory` is relative to the repository root, so it names the product folder (`framework/apps/ui`).

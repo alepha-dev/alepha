@@ -45,7 +45,8 @@ export class DocsRoots {
    * Bay as published: the pinned checkout when a deploy names one.
    */
   public static bayPublished(): string {
-    return DocsRoots.pinned("DOCS_BAY_ROOT") ?? join(DocsRoots.repo, "bay");
+    const pinned = DocsRoots.pinned("DOCS_BAY_ROOT");
+    return pinned ? join(pinned, "bay") : join(DocsRoots.repo, "bay");
   }
 
   /**
@@ -55,8 +56,16 @@ export class DocsRoots {
     return join(DocsRoots.repo, "lore");
   }
 
+  /**
+   * The checkout an env var names, or nothing when it is unset or was never
+   * checked out (no release tag to pin yet).
+   */
   protected static pinned(name: string): string | undefined {
     const value = process.env[name];
-    return value ? resolve(DocsRoots.repo, value) : undefined;
+    if (!value) {
+      return undefined;
+    }
+    const dir = resolve(DocsRoots.repo, value);
+    return existsSync(dir) ? dir : undefined;
   }
 }

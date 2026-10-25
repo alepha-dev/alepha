@@ -188,7 +188,7 @@ test.describe("Automations", () => {
       page.getByRole("link", { name: "How automations work" }),
     ).toHaveAttribute(
       "href",
-      "https://github.com/alepha-dev/lore/blob/main/docs/1-guides/9-automations.md",
+      "https://alepha.dev/lore/docs/guides-automations",
     );
     await expect(
       page.getByText("No automations yet", { exact: true }),

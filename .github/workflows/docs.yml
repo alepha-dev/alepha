@@ -36,6 +36,9 @@ on:
       - "yarn.lock"
       - ".yarnrc.yml"
       - ".nvmrc"
+  # Dispatched by `bay-release.yml` once a Bay release exists, so the Bay pages
+  # follow the new tag. The site needs no change for that, only a rebuild.
+  workflow_dispatch:
 
 concurrency:
   group: docs-${{ github.event_name }}-${{ github.ref }}
@@ -90,13 +93,15 @@ jobs:
         run: yarn e2e
 
   # alepha.dev from `main`, each section pinned to how its product ships:
-  # the framework at its latest release tag, Lore at `main`, Bay at `main`
-  # until its releases carry tags of their own (#Q2767). So a Lore page fix
+  # the framework at its latest release tag, Lore at `main`, Bay at its latest
+  # `bay-*` tag (`main` until the first one exists, #Q2767). So a Lore page fix
   # ships now, and an unreleased framework page does not. `release.yml`
   # deploys the same way at each framework release.
   deploy:
     needs: check
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: >-
+      github.ref == 'refs/heads/main'
+      && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     concurrency:
@@ -113,15 +118,17 @@ jobs:
       - name: Setup
         uses: ./.github/actions/setup
 
-      - name: Pin the framework at its release
+      - name: Pin the framework and Bay at their releases
         run: yarn pin
 
-      # `gen:tree` reads the pinned framework through DOCS_FRAMEWORK_ROOT;
+      # `gen:tree` reads the pinned checkouts through DOCS_FRAMEWORK_ROOT and
+      # DOCS_BAY_ROOT (a root `yarn pin` did not check out is ignored);
       # `gen:llms` follows every build, which does not write the llms.txt
       # files itself.
       - name: Build for workerd
         env:
           DOCS_FRAMEWORK_ROOT: docs/.content/framework
+          DOCS_BAY_ROOT: docs/.content/bay
         run: |
           yarn alepha gen:tree
           yarn alepha build --runtime=workerd
