@@ -975,6 +975,103 @@ describe("Bay connector against a real Lore", () => {
     }
   });
 
+  it("runs Bob's stack from the lore CLI: create, a generated secret, a route, a bundled deploy", async () => {
+    // The built bin, as a host runs it (#Q2700, #Q2701), against the estate
+    // the deploy case above lent and opened to deploys. The owner's session
+    // token stands in for an API key: both are a bearer to Lore.
+    const bin = join(ROOT, "packages/@alepha/lore/dist/bin/index.js");
+    if (!existsSync(bin)) {
+      throw new Error(
+        "packages/@alepha/lore/dist is missing: run `yarn build` first",
+      );
+    }
+    const dir = join(work, "bob");
+    await mkdir(join(dir, "site"), { recursive: true });
+    await writeFile(join(dir, "site", "index.html"), "bob was here\n");
+    await writeFile(
+      join(dir, "compose.yml"),
+      [
+        "services:",
+        "  web:",
+        "    image: busybox:1.37",
+        '    command: ["httpd", "-f", "-p", "8080", "-h", "/www"]',
+        '    ports: ["8080"]',
+        "    volumes:",
+        '      - "./site:/www:ro"',
+        "    environment:",
+        "      APP_SECRET: ${APP_SECRET}",
+        "",
+      ].join("\n"),
+    );
+    const cli = (args: string[]): Promise<Ran> =>
+      new Promise((resolveRun, reject) => {
+        const child = spawn("node", [bin, ...args, "--name", "bob"], {
+          cwd: dir,
+          env: {
+            ...process.env,
+            LORE_URL: lore.url,
+            LORE_API_KEY: owner.token,
+            LORE_PROJECT: String(projectId),
+            CLAUDECODE: "",
+            NO_COLOR: "1",
+          },
+          stdio: ["ignore", "pipe", "pipe"],
+        });
+        let out = "";
+        child.stdout.on("data", (d) => (out += d));
+        child.stderr.on("data", (d) => (out += d));
+        child.on("error", reject);
+        child.on("close", (code) => resolveRun({ code: code ?? -1, out }));
+      });
+
+    try {
+      const created = await cli(["stack", "create", "--estate", "ovh-1"]);
+      expect(created.code, created.out).toBe(0);
+      // Set before the first deploy, which needs it: the environment is
+      // created by the write.
+      const secret = await cli([
+        "stack",
+        "secrets",
+        "set",
+        "APP_SECRET",
+        "--generate",
+        "--env",
+        "production",
+      ]);
+      expect(secret.code, secret.out).toBe(0);
+      const route = await cli([
+        "stack",
+        "route",
+        "add",
+        "web",
+        "--domain",
+        "bob-e2e.example.test",
+        "--env",
+        "production",
+      ]);
+      expect(route.code, route.out).toBe(0);
+
+      const deployed = await cli(["stack", "deploy", "--env", "production"]);
+      expect(
+        deployed.code,
+        `${deployed.out}\nbay log:\n${bay.log.slice(-2000)}`,
+      ).toBe(0);
+      expect(deployed.out).toContain("Uploaded revision 1");
+
+      const ps = await cli(["stack", "ps", "--env", "production"]);
+      expect(ps.code, ps.out).toBe(0);
+      expect(ps.out).toContain("web");
+    } finally {
+      await bayCli(bay, [
+        "stack",
+        "destroy",
+        "bob/production",
+        "--purge",
+        "--yes",
+      ]).catch(() => undefined);
+    }
+  });
+
   it("fails a deploy whose digest no longer matches, with no partial state", async () => {
     // A tag Bay has never pulled: an artifact it already holds under its
     // digest would be deployed from the cache, which is the point of the

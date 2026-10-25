@@ -23,6 +23,13 @@ export const loreEnvironmentOptionsSchema = z.object({
    * project first. An existing copy keeps the estate it has.
    */
   estate: z.text().optional(),
+  /**
+   * Deploy the app into this stack (#Q2703): `lore({ stack: "hello" })` and
+   * `alepha deploy staging` put the app into `hello/staging`, redeploying
+   * only its service. The estate is the stack environment's, so `estate` is
+   * ignored with it.
+   */
+  stack: z.text().optional(),
 });
 
 export type LoreEnvironmentOptions = Infer<typeof loreEnvironmentOptionsSchema>;

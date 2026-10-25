@@ -1,6 +1,9 @@
 import type { AppController } from "@lore/deploy/api";
 import type { DeployController } from "@lore/deploy/api";
-import type { ProjectEstateController } from "@lore/deploy/api";
+import type {
+  ProjectEstateController,
+  StackController,
+} from "@lore/deploy/api";
 import { $inject, AlephaError } from "alepha";
 import type { RunnerMethod } from "alepha/command";
 import { DateTimeProvider } from "alepha/datetime";
@@ -22,6 +25,12 @@ import { LoreClientService } from "./LoreClientService.ts";
 export interface LoreInstance {
   id: string;
   estateId?: string;
+  /**
+   * The stack environment this copy is a member of, when it is one: it then
+   * deploys through it, on that environment's estate (#Q2703).
+   */
+  stackEnvironmentId?: string;
+  stack?: { id: string; name: string; environmentId: string; env: string };
   ephemeral?: boolean;
   /**
    * The address Lore serves the copy at, once a deploy has given it one.
@@ -91,6 +100,7 @@ export class LoreDeployer {
     this.client.scope(),
   );
   protected readonly deploys = $client<DeployController>(this.client.scope());
+  protected readonly stacks = $client<StackController>(this.client.scope());
 
   /**
    * The tag a build carries when nobody names one.
@@ -258,6 +268,51 @@ export class LoreDeployer {
   /**
    * Every copy of every app in the project.
    */
+  /**
+   * The copy `app/env` as a member of stack `stackName`'s environment `env`,
+   * made so when it is not (#Q2703): created when `create` allows and it is
+   * missing, then attached. The stack and its environment must exist; a
+   * stack's first deploy (`lore stack deploy`) is what creates an environment.
+   */
+  public async memberInstance(
+    projectId: number,
+    app: string,
+    env: string,
+    stackName: string,
+    create: boolean,
+  ): Promise<LoreInstance> {
+    const { items } = await this.stacks.listStacks({ params: { projectId } });
+    const stack = items.find((it) => it.name === stackName);
+    if (!stack) {
+      throw new AlephaError(
+        `This project has no stack named ${stackName}. Create it with \`lore stack create --file compose.yml --estate <estate>\`.`,
+      );
+    }
+    const environment = stack.environments.find((e) => e.env === env);
+    if (!environment) {
+      throw new AlephaError(
+        `Stack ${stackName} has no environment ${env}. Deploy the stack there once: \`lore stack deploy --env ${env}\`.`,
+      );
+    }
+    let instance = await this.findInstance(projectId, app, env);
+    if (!instance) {
+      if (!create) {
+        return await this.loadInstance(projectId, app, env);
+      }
+      await this.apps.createApp({ params: { projectId }, body: { app, env } });
+      this.log.info(`Created ${app}/${env} in ${stackName}/${env}`);
+      instance = await this.readInstance(projectId, app, env);
+    }
+    if (instance.stackEnvironmentId !== environment.id) {
+      await this.stacks.attachStackMember({
+        params: { projectId, stackId: stack.id, environmentId: environment.id },
+        body: { instanceId: instance.id },
+      });
+      instance = await this.readInstance(projectId, app, env);
+    }
+    return instance;
+  }
+
   public async listInstances(
     projectId: number,
   ): Promise<Array<LoreInstance & { app: string; env: string }>> {
@@ -276,8 +331,13 @@ export class LoreDeployer {
     projectId: number,
     app: string,
     env: string,
-    instance: { estateId?: string } | undefined,
+    instance: { estateId?: string; stackEnvironmentId?: string } | undefined,
   ): Promise<string> {
+    // A stack member runs where its stack does, and only a Bay runs stacks:
+    // the node build, whatever the copy's own (absent) estate would say.
+    if (instance?.stackEnvironmentId) {
+      return LoreDeployer.TARGET_FOR_RUNTIME.node;
+    }
     if (!instance?.estateId) {
       // ⚠️ Refused, not fallen back on. Building every target for an
       // environment that names no estate produces bytes nobody asked for and

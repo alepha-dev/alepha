@@ -371,15 +371,27 @@ export class LoreAdapter extends InfraAdapter<LoreEnvironmentOptions> {
     // Created only from `provision`, the step `up` runs first. A granular
     // `infra build` or `infra deploy` on a missing copy is refused,
     // with `lore deploy`'s own message.
-    const instance = options.create
-      ? ((await this.deployer.findInstance(projectId, ctx.project, ctx.env)) ??
-        (await this.deployer.createInstance(
+    const instance = ctx.options.stack
+      ? await this.deployer.memberInstance(
           projectId,
           ctx.project,
           ctx.env,
-          ctx.options.estate,
-        )))
-      : await this.deployer.loadInstance(projectId, ctx.project, ctx.env);
+          ctx.options.stack,
+          options.create ?? false,
+        )
+      : options.create
+        ? ((await this.deployer.findInstance(
+            projectId,
+            ctx.project,
+            ctx.env,
+          )) ??
+          (await this.deployer.createInstance(
+            projectId,
+            ctx.project,
+            ctx.env,
+            ctx.options.estate,
+          )))
+        : await this.deployer.loadInstance(projectId, ctx.project, ctx.env);
     const target = { project, projectId, instance };
     this.targets.set(key, target);
     return target;
