@@ -164,7 +164,9 @@ export class AdminMcpController {
   /**
    * One row per tool, with its calls split by how they ended, busiest first.
    */
-  protected leaderboard(rows: Array<Record<string, string | number>>): Array<{
+  protected leaderboard(
+    rows: Array<Record<string, string | number | null>>,
+  ): Array<{
     tool: string;
     total: number;
     ok: number;
@@ -207,7 +209,7 @@ export class AdminMcpController {
    * One zero-filled series per named tool, in the order they were named.
    */
   protected series(
-    rows: Array<Record<string, string | number>>,
+    rows: Array<Record<string, string | number | null>>,
     days: string[],
     tools: string[],
   ): Array<{ tool: string; counts: number[]; total: number }> {

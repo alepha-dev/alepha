@@ -245,7 +245,11 @@ describe("EstateStatsService", () => {
     });
     // `WaeAnalyticsProvider.assertRetention` refuses anything above roughly
     // 90 days at declaration time, on the one backend the tests never boot.
-    const hotDays = Number(String(dataset.retention?.hot).replace(/d$/, ""));
+    // The two-tier form, not a tier chain: a chain has no single `hot`.
+    const retention = dataset.retention;
+    expect(Array.isArray(retention)).toBe(false);
+    const hot = Array.isArray(retention) ? undefined : retention?.hot;
+    const hotDays = Number(String(hot).replace(/d$/, ""));
     expect(hotDays).toBeGreaterThan(0);
     expect(hotDays).toBeLessThanOrEqual(90);
   });

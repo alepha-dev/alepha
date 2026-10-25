@@ -1031,9 +1031,9 @@ export class InsightsController {
    */
   protected foldUnknown<K extends string>(
     // The dataset's own row type: every dimension comes back as a string and
-    // every measure as a number, so the cast the loop would otherwise need is
-    // stated once, here.
-    rows: Array<Record<string, string | number>>,
+    // every measure as a number, or `null` for a fold whose bucket holds no
+    // reading, so the cast the loop would otherwise need is stated once, here.
+    rows: Array<Record<string, string | number | null>>,
     key: K,
     /**
      * Where an empty string goes. `other` for every dimension that names a
