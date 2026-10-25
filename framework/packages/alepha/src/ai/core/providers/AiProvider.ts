@@ -101,6 +101,8 @@ export abstract class AiProvider {
           inputTokens: event.inputTokens,
           outputTokens: event.outputTokens,
         };
+      } else if (event.type === "vendor") {
+        completion.vendor = { provider: event.provider, data: event.data };
       } else if (event.type === "end") {
         completion.reason = event.reason;
       }
@@ -126,6 +128,31 @@ export abstract class AiProvider {
       );
     }
     return model;
+  }
+
+  /**
+   * Fail at start when no model can ever be resolved: no `AI_MODEL`, and
+   * not every `$ai` names its own `model`. Vendor providers call it from
+   * their `start` hook.
+   *
+   * @throws AiConfigError naming this provider.
+   */
+  public assertModelConfigured(): void {
+    if (this.env.AI_MODEL) {
+      return;
+    }
+    const declared = this.alepha.primitives("$ai") as Array<{
+      options?: { model?: string };
+    }>;
+    if (declared.length > 0 && declared.every((ai) => ai.options?.model)) {
+      return;
+    }
+    throw new AiConfigError(
+      { provider: this.name },
+      {
+        message: `No model for the '${this.name}' AI provider: set AI_MODEL, or a model on every $ai.`,
+      },
+    );
   }
 
   /**
@@ -191,6 +218,21 @@ export interface AiAssistantMessage {
   role: "assistant";
   content: string;
   toolCalls?: AiToolCall[];
+  /**
+   * What the vendor asked to get back with this message, opaque to
+   * everything but the provider that wrote it (Anthropic's signed thinking
+   * blocks, which a turn that called tools must replay). A provider ignores
+   * another vendor's data.
+   */
+  vendor?: AiVendorData;
+}
+
+/**
+ * Opaque per-vendor data carried on an assistant message.
+ */
+export interface AiVendorData {
+  provider: string;
+  data: unknown;
 }
 
 export interface AiToolMessage {
@@ -237,6 +279,10 @@ export type AiEndReason = "stop" | "tool" | "length";
 
 /**
  * One event of a streamed response.
+ *
+ * `vendor` carries data the provider needs back on the next request (see
+ * {@link AiAssistantMessage.vendor}); a caller stores it and otherwise
+ * ignores it.
  */
 export type AiEvent =
   | { type: "text"; text: string }
@@ -247,6 +293,7 @@ export type AiEvent =
       input: Record<string, unknown>;
     }
   | { type: "usage"; inputTokens: number; outputTokens: number }
+  | { type: "vendor"; provider: string; data: unknown }
   | { type: "end"; reason: AiEndReason };
 
 /**
@@ -257,6 +304,11 @@ export interface AiCompletion {
   toolCalls: AiToolCall[];
   usage: AiUsage;
   reason: AiEndReason;
+  /**
+   * Vendor data to store on the assistant message, see
+   * {@link AiAssistantMessage.vendor}.
+   */
+  vendor?: AiVendorData;
 }
 
 export interface AiUsage {

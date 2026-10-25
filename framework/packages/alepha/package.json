@@ -48,6 +48,11 @@
       "import": "./src/actor/core/index.ts",
       "default": "./src/actor/core/index.ts"
     },
+    "./ai/anthropic": {
+      "types": "./src/ai/anthropic/index.ts",
+      "import": "./src/ai/anthropic/index.ts",
+      "default": "./src/ai/anthropic/index.ts"
+    },
     "./ai": {
       "types": "./src/ai/core/index.ts",
       "import": "./src/ai/core/index.ts",
@@ -512,6 +517,11 @@
         "bun": "./dist/actor/core/index.bun.js",
         "import": "./dist/actor/core/index.js",
         "default": "./dist/actor/core/index.js"
+      },
+      "./ai/anthropic": {
+        "types": "./dist/ai/anthropic/index.d.ts",
+        "import": "./dist/ai/anthropic/index.js",
+        "default": "./dist/ai/anthropic/index.js"
       },
       "./ai": {
         "types": "./dist/ai/core/index.d.ts",
