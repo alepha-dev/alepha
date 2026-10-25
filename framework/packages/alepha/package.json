@@ -58,6 +58,11 @@
       "import": "./src/ai/core/index.ts",
       "default": "./src/ai/core/index.ts"
     },
+    "./ai/openai": {
+      "types": "./src/ai/openai/index.ts",
+      "import": "./src/ai/openai/index.ts",
+      "default": "./src/ai/openai/index.ts"
+    },
     "./api/analytics": {
       "types": "./src/api/analytics/index.ts",
       "workerd": "./src/api/analytics/index.workerd.ts",
@@ -527,6 +532,11 @@
         "types": "./dist/ai/core/index.d.ts",
         "import": "./dist/ai/core/index.js",
         "default": "./dist/ai/core/index.js"
+      },
+      "./ai/openai": {
+        "types": "./dist/ai/openai/index.d.ts",
+        "import": "./dist/ai/openai/index.js",
+        "default": "./dist/ai/openai/index.js"
       },
       "./api/analytics": {
         "types": "./dist/api/analytics/index.d.ts",

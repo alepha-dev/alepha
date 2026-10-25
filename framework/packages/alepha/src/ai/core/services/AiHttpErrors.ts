@@ -3,6 +3,7 @@ import { AiContextLengthError } from "../errors/AiContextLengthError.ts";
 import { AiError } from "../errors/AiError.ts";
 import { AiOverloadedError } from "../errors/AiOverloadedError.ts";
 import { AiRateLimitError } from "../errors/AiRateLimitError.ts";
+import { AiToolsUnsupportedError } from "../errors/AiToolsUnsupportedError.ts";
 
 /**
  * Maps a vendor's HTTP failure to the typed `AiError` family, so an app
@@ -20,6 +21,14 @@ export class AiHttpErrors {
    */
   public readonly contextPattern =
     /prompt is too long|context.length|context window|maximum context|too many tokens|context_length_exceeded/i;
+
+  /**
+   * Message fragments for a model without function calling: Ollama's
+   * "does not support tools", vLLM's "tool choice requires", Workers AI's
+   * "function calling is not supported".
+   */
+  public readonly toolsPattern =
+    /does not support tools|tools? (?:are|is) not supported|function calling is not supported|tool choice requires/i;
 
   /**
    * Read a failed response and build the error to throw.
@@ -61,6 +70,9 @@ export class AiHttpErrors {
     }
     if (status === 529 || status === 503) {
       return new AiOverloadedError(data, { message: text });
+    }
+    if (this.toolsPattern.test(message)) {
+      return new AiToolsUnsupportedError(data, { message: text });
     }
     if (status === 413 || this.contextPattern.test(message)) {
       return new AiContextLengthError(data, { message: text });
