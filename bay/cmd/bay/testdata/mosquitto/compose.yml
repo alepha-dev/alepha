@@ -1,0 +1,7 @@
+services:
+  broker:
+    image: eclipse-mosquitto:2
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    x-lore:
+      tcp: 21883

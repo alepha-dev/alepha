@@ -1,0 +1,13 @@
+# Anchored with a leading slash on purpose. A bare `bay` matches ANY path
+# component of that name, so it swallowed the whole `cmd/bay/` directory — the
+# CLI, the server and the control API — and `git add` would have committed a
+# module with no `main` package.
+#
+# Nothing caught that at the time, because Go was not in CI. It is now — the
+# `check` job in .github/workflows/ci.yml builds and tests on ubuntu-latest, and
+# `./test-linux.sh` runs the same steps locally.
+/bay
+/bay-data/
+
+# Artifacts produced by `alepha pack`.
+*.tar.gz
