@@ -3,6 +3,7 @@ import { CommandError } from "alepha/command";
 import { HttpClient, isHttpError } from "alepha/server";
 import type { ClientScope } from "alepha/server/links";
 
+import { LoreProjectLink } from "./LoreProjectLink.ts";
 import { LoreTokenStore } from "./LoreTokenStore.ts";
 
 /**
@@ -29,6 +30,7 @@ export class LoreClientService {
   public static readonly CLIENT_ID = "alepha-cli";
 
   protected readonly tokens = $inject(LoreTokenStore);
+  protected readonly link = $inject(LoreProjectLink);
   protected readonly http = $inject(HttpClient);
 
   /**
@@ -283,10 +285,13 @@ export class LoreClientService {
    * warning annotation nobody read.
    */
   public resolveProject(flag?: string): string {
-    const project = flag || String(this.env.LORE_PROJECT || "");
+    // Third, the directory's own link (#Q2698): a compose project with no
+    // package.json still knows which project it deploys to.
+    const project =
+      flag || String(this.env.LORE_PROJECT || "") || this.link.linked || "";
     if (!project) {
       throw new AlephaError(
-        "No Lore project named. Pass --project <slug> (or -p), or set LORE_PROJECT in the environment.",
+        "No Lore project named. Pass --project <slug> (or -p), set LORE_PROJECT in the environment, or run `lore project link <slug>` here.",
       );
     }
     return project;

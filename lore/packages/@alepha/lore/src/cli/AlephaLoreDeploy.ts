@@ -8,6 +8,7 @@ import { LoreArtifactPusher } from "./services/LoreArtifactPusher.ts";
 import { LoreClientService } from "./services/LoreClientService.ts";
 import { LoreDeployer } from "./services/LoreDeployer.ts";
 import { LoreDeviceLogin } from "./services/LoreDeviceLogin.ts";
+import { LoreProjectLink } from "./services/LoreProjectLink.ts";
 import { LoreProjectResolver } from "./services/LoreProjectResolver.ts";
 import { LoreSecretsService } from "./services/LoreSecretsService.ts";
 import { LoreTokenStore } from "./services/LoreTokenStore.ts";
@@ -40,6 +41,8 @@ export const AlephaLoreDeploy = $module({
   services: [
     LoreClientService,
     LoreTokenStore,
+    // `.alepha/lore.json`, read at start (#Q2698).
+    LoreProjectLink,
     LoreProjectResolver,
     GitContextService,
     ArtifactUploader,

@@ -6,6 +6,7 @@ import { $client } from "alepha/server/links";
 
 import { LoreClientService } from "../services/LoreClientService.ts";
 import { LoreOutput } from "../services/LoreOutput.ts";
+import { LoreProjectLink } from "../services/LoreProjectLink.ts";
 import { LoreProjectResolver } from "../services/LoreProjectResolver.ts";
 import {
   type LoreRefusalContext,
@@ -41,6 +42,7 @@ export class ProjectCommand {
   protected readonly projects = $inject(LoreProjectResolver);
   protected readonly refusals = $inject(LoreRefusals);
   protected readonly render = $inject(LoreOutput);
+  protected readonly link = $inject(LoreProjectLink);
 
   /**
    * ⚠️ Declared after `client`: a field initializer reading a field declared
@@ -159,10 +161,90 @@ export class ProjectCommand {
    * `findLast`, so a second class declaring `project` would shadow this one
    * silently.
    */
+  /**
+   * `lore project create <slug>`: a project with Apps and deploys on, and the
+   * current directory linked to it (`.alepha/lore.json`), so every later
+   * command here finds it with no flag (#Q2698).
+   */
+  public readonly create = $command({
+    name: "create",
+    description:
+      "Create a project and link this directory to it (.alepha/lore.json)",
+    args: z.text({
+      title: "name",
+      description: "The project's name; its slug is derived from it",
+    }),
+    flags: z.object({
+      "no-link": z
+        .boolean()
+        .describe("Create the project without writing .alepha/lore.json")
+        .optional(),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ args, flags, print }) => {
+      await this.refusals.guard({}, async () => {
+        const created = await this.projectApi.createProject({
+          body: {
+            title: args,
+            capabilities: [{ key: "apps", options: { deploy: true } }],
+          },
+        });
+        const path = flags["no-link"]
+          ? undefined
+          : await this.link.write(
+              process.cwd(),
+              created.slug ?? String(created.id),
+            );
+        if (flags.output === "json") {
+          this.render.json(print, {
+            id: created.id,
+            slug: created.slug,
+            linked: path,
+          });
+          return;
+        }
+        print(`Created ${created.slug} (id ${created.id})`);
+        if (path) {
+          print(`Linked this directory: ${path}`);
+        }
+      });
+    },
+  });
+
+  /**
+   * `lore project link <slug>`: links the current directory to an existing
+   * project, after checking the project exists and is readable.
+   */
+  public readonly linkProject = $command({
+    name: "link",
+    description:
+      "Link this directory to an existing project (.alepha/lore.json)",
+    args: z.text({ title: "project", description: "The project, by slug" }),
+    flags: z.object({
+      force: z
+        .boolean()
+        .describe("Replace a link to another project")
+        .optional(),
+    }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = { project: args };
+      await this.refusals.guard(context, async () => {
+        await this.projects.resolve(args);
+        const path = await this.link.write(
+          process.cwd(),
+          args,
+          flags.force ?? false,
+        );
+        print(`Linked this directory to ${args}: ${path}`);
+      });
+    },
+  });
+
   public readonly project = $command({
     name: "project",
-    description: "The projects you belong to: list them, or look at one",
-    children: [this.list, this.info],
+    description:
+      "The projects you belong to: list, look at one, create one, or link this directory to one",
+    children: [this.list, this.info, this.create, this.linkProject],
     handler: async ({ help }) => {
       help();
     },

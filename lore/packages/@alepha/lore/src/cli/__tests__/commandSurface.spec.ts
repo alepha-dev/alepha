@@ -117,7 +117,7 @@ describe("the Lore CLI command surface", () => {
       artifacts: ["push", "push-image"],
       attachments: ["push"],
       folio: ["list", "get", "create"],
-      project: ["list", "info"],
+      project: ["list", "info", "create", "link"],
       quality: ["push"],
       quest: [
         "list",
