@@ -99,6 +99,11 @@ describe("Numeric automation presets through actual registered metrics", () => {
       where: { automationId: rule.id, occurrenceId: ready.occurrenceId },
     });
   };
+  // Whole UTC days off the instant, as the preset counts them: a zoned
+  // `subtract(1, "day")` under the Paris TZ crosses a DST change an hour
+  // short and lands on the evening of the day before (#Q2705).
+  const daysAgo = (count: number) =>
+    new Date(time.nowMillis() - count * 86_400_000).toISOString().slice(0, 10);
   const quality = (
     day: string,
     value: number,
@@ -238,8 +243,8 @@ describe("Numeric automation presets through actual registered metrics", () => {
       threshold: 5,
       branch: "topic",
     });
-    const day = time.now().subtract(1, "day").toISOString().slice(0, 10);
-    const previous = time.now().subtract(2, "days").toISOString().slice(0, 10);
+    const day = daysAgo(1);
+    const previous = daysAgo(2);
     await quality(previous, 90, "topic");
     await quality(day, 85, "topic");
     await quality(previous, 100);
@@ -258,13 +263,10 @@ describe("Numeric automation presets through actual registered metrics", () => {
     expect,
   }) => {
     const rule = await arm("coverage-regression", { threshold: 1 });
-    const day = time.now().subtract(1, "day").toISOString().slice(0, 10);
-    const previous = time.now().subtract(2, "days").toISOString().slice(0, 10);
+    const day = daysAgo(1);
+    const previous = daysAgo(2);
     await quality(day, 80);
-    await quality(
-      time.now().subtract(3, "days").toISOString().slice(0, 10),
-      100,
-    );
+    await quality(daysAgo(3), 100);
     await quality(previous, 100, "topic");
     const other = await createTestProject(alepha, {
       capabilities: [{ key: "apps" }],
