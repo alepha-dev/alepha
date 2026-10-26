@@ -233,9 +233,10 @@ describe("dashboard apps tiles", () => {
   describe("uniqueVisitors", () => {
     it("gains a sparkline over the window", async ({ expect }) => {
       const docs = await copy("docs", "production", ["beacon"], 1);
-      const yesterday = dateTime
-        .now()
-        .subtract(1, "day")
+      // The last complete UTC day, as `DailyVisitorsService` counts it: a
+      // zoned `subtract(1, "day")` under the Paris TZ crosses a DST change an
+      // hour short and lands on the day before (#Q2705).
+      const yesterday = new Date(dateTime.nowMillis() - 86_400_000)
         .toISOString()
         .slice(0, 10);
       for (const visitorHash of ["a", "b"]) {
