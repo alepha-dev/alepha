@@ -37,15 +37,16 @@ property never moves the URL.
 
 ## Options
 
-| Option        | Type                        | Required | Description                                                     |
-| ------------- | --------------------------- | -------- | --------------------------------------------------------------- |
-| `name`        | `string`                    | No       | Name of the SSE endpoint.                                       |
-| `group`       | `string`                    | No       | Group SSE endpoints together.                                   |
-| `path`        | `string`                    | Yes      | Pathname of the route, below the API prefix (`/api` by default) |
-| `schema`      | `TConfig`                   | No       | The config schema for the SSE endpoint.                         |
-| `description` | `string`                    | No       | A short description of the endpoint                             |
-| `disabled`    | `boolean`                   | No       | Disable the SSE endpoint.                                       |
-| `handler`     | `SseHandler&lt;TConfig&gt;` | Yes      | Main SSE handler                                                |
+| Option        | Type                              | Required | Description                                                                                                                                                            |
+| ------------- | --------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`        | `string`                          | No       | Name of the SSE endpoint.                                                                                                                                              |
+| `group`       | `string`                          | No       | Group SSE endpoints together.                                                                                                                                          |
+| `path`        | `string`                          | Yes      | Pathname of the route, below the API prefix (`/api` by default)                                                                                                        |
+| `schema`      | `TConfig`                         | No       | The config schema for the SSE endpoint.                                                                                                                                |
+| `description` | `string`                          | No       | A short description of the endpoint                                                                                                                                    |
+| `disabled`    | `boolean`                         | No       | Disable the SSE endpoint.                                                                                                                                              |
+| `use`         | `TUse`                            | No       | Middlewares wrapping the handler, as on `$action`: `use: [$secure()]` refuses an anonymous caller before the stream opens and hands the handler a non-optional `user`. |
+| `handler`     | `SseHandler&lt;TConfig, TUse&gt;` | Yes      |                                                                                                                                                                        |
 
 ## Examples
 

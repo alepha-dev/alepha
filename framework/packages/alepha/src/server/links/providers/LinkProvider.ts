@@ -18,9 +18,9 @@ import {
   type ServerResponseBody,
   type SseConfigSchema,
   type SseEventData,
+  SseFetchResponse,
   type SsePrimitive,
   type SseRequestEntry,
-  type SseStream,
   UnauthorizedError,
 } from "alepha/server";
 
@@ -725,6 +725,12 @@ export class LinkProvider {
       service: link.service,
     });
 
+    // A `$sse` is a stream, never batched and never read whole: the
+    // response body is handed to an `SseFetchResponse` as it arrives.
+    if (link.kind === "sse") {
+      return this.followStream(link, config, options);
+    }
+
     // Browser-only: use batch collector for calls without explicit host.
     //
     // Not with a default origin: `BatchCollector` posts to a relative
@@ -788,11 +794,39 @@ export class LinkProvider {
     return $;
   }
 
-  protected async followRemote(
+  /**
+   * Open a `$sse` over HTTP: the request {@link followRemote} would make,
+   * answered by a stream of typed events. A refusal before the stream opens
+   * (401, 404, 429) rejects with its typed error.
+   */
+  protected async followStream(
     link: HttpClientLink,
     config: Partial<ServerRequestConfigEntry> = {},
     options: ClientRequestOptions & ResolvedClientScope = {},
-  ): Promise<FetchResponse> {
+  ): Promise<SseFetchResponse<unknown>> {
+    const { action, host, forwarded } = await this.prepareRemote(link, options);
+    const response = await this.httpClient.fetchStream({
+      host,
+      config,
+      options: forwarded,
+      action: action as any,
+    });
+    return new SseFetchResponse(response);
+  }
+
+  /**
+   * The action, host and request options of a call to a remote link: the
+   * credential ladder, the request id, the API prefix. Shared by
+   * {@link followRemote} and {@link followStream}.
+   */
+  protected async prepareRemote(
+    link: HttpClientLink,
+    options: ClientRequestOptions & ResolvedClientScope = {},
+  ): Promise<{
+    action: HttpClientLink;
+    host: string | undefined;
+    forwarded: ClientRequestOptions & ClientScope;
+  }> {
     // Weakest first, each source overwriting the one before it:
     //
     //   ALS  <  default origin credential  <  scope.headers
@@ -878,9 +912,19 @@ export class LinkProvider {
     delete forwarded.service;
     forwarded.request = { ...options.request, headers };
 
+    return { action, host: link.host ?? origin, forwarded };
+  }
+
+  protected async followRemote(
+    link: HttpClientLink,
+    config: Partial<ServerRequestConfigEntry> = {},
+    options: ClientRequestOptions & ResolvedClientScope = {},
+  ): Promise<FetchResponse> {
+    const { action, host, forwarded } = await this.prepareRemote(link, options);
+
     // else, make a request
     return this.httpClient.fetchAction({
-      host: link.host ?? origin,
+      host,
       config,
       options: forwarded,
       action: action as any, // schema.body ZodAny is not accepted
@@ -1129,7 +1173,14 @@ export interface VirtualAction<T extends RequestConfigSchema> extends Pick<
 }
 
 export interface VirtualSse<T extends SseConfigSchema> {
-  (config?: SseRequestEntry<T>): Promise<SseStream<SseEventData<T>>>;
+  /**
+   * Open the stream. `options.request.signal` ends it, in the browser as on
+   * the server.
+   */
+  (
+    config?: SseRequestEntry<T>,
+    options?: ClientRequestOptions,
+  ): Promise<AsyncIterable<SseEventData<T>>>;
   name: string;
   can: () => boolean;
 }

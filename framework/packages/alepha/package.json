@@ -48,6 +48,33 @@
       "import": "./src/actor/core/index.ts",
       "default": "./src/actor/core/index.ts"
     },
+    "./ai/anthropic": {
+      "types": "./src/ai/anthropic/index.ts",
+      "import": "./src/ai/anthropic/index.ts",
+      "default": "./src/ai/anthropic/index.ts"
+    },
+    "./ai/cloudflare": {
+      "types": "./src/ai/cloudflare/index.ts",
+      "import": "./src/ai/cloudflare/index.ts",
+      "default": "./src/ai/cloudflare/index.ts"
+    },
+    "./ai": {
+      "types": "./src/ai/core/index.ts",
+      "import": "./src/ai/core/index.ts",
+      "default": "./src/ai/core/index.ts"
+    },
+    "./ai/openai": {
+      "types": "./src/ai/openai/index.ts",
+      "import": "./src/ai/openai/index.ts",
+      "default": "./src/ai/openai/index.ts"
+    },
+    "./api/ai": {
+      "types": "./src/api/ai/index.ts",
+      "react-native": "./src/api/ai/index.browser.ts",
+      "browser": "./src/api/ai/index.browser.ts",
+      "import": "./src/api/ai/index.ts",
+      "default": "./src/api/ai/index.ts"
+    },
     "./api/analytics": {
       "types": "./src/api/analytics/index.ts",
       "workerd": "./src/api/analytics/index.workerd.ts",
@@ -507,6 +534,33 @@
         "bun": "./dist/actor/core/index.bun.js",
         "import": "./dist/actor/core/index.js",
         "default": "./dist/actor/core/index.js"
+      },
+      "./ai/anthropic": {
+        "types": "./dist/ai/anthropic/index.d.ts",
+        "import": "./dist/ai/anthropic/index.js",
+        "default": "./dist/ai/anthropic/index.js"
+      },
+      "./ai/cloudflare": {
+        "types": "./dist/ai/cloudflare/index.d.ts",
+        "import": "./dist/ai/cloudflare/index.js",
+        "default": "./dist/ai/cloudflare/index.js"
+      },
+      "./ai": {
+        "types": "./dist/ai/core/index.d.ts",
+        "import": "./dist/ai/core/index.js",
+        "default": "./dist/ai/core/index.js"
+      },
+      "./ai/openai": {
+        "types": "./dist/ai/openai/index.d.ts",
+        "import": "./dist/ai/openai/index.js",
+        "default": "./dist/ai/openai/index.js"
+      },
+      "./api/ai": {
+        "types": "./dist/api/ai/index.d.ts",
+        "react-native": "./dist/api/ai/index.browser.js",
+        "browser": "./dist/api/ai/index.browser.js",
+        "import": "./dist/api/ai/index.js",
+        "default": "./dist/api/ai/index.js"
       },
       "./api/analytics": {
         "types": "./dist/api/analytics/index.d.ts",

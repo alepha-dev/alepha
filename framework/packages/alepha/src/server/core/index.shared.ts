@@ -11,6 +11,7 @@ export * from "./errors/UnauthorizedError.ts";
 export * from "./errors/ValidationError.ts";
 export * from "./helpers/isMultipart.ts";
 export * from "./helpers/ServerReply.ts";
+export * from "./helpers/SseStreams.ts";
 export * from "./interfaces/ServerRequest.ts";
 export * from "./schemas/errorSchema.ts";
 export * from "./schemas/healthSchema.ts";

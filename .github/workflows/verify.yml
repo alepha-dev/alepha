@@ -487,7 +487,8 @@ jobs:
         with:
           working-directory: framework
 
-      # `yarn e2e`: ui, examples/shop and examples/ssr.
+      # `yarn e2e`: ui, examples/shop, examples/ssr and examples/ai (which
+      # builds itself in its `start:e2e`, so it is absent from the step above).
       #
       # ⚠️ **`--exclude alepha-monorepo` is load-bearing and is NOT tidy-up.**
       # `-A` includes the repository root, the root workspace has an `e2e`

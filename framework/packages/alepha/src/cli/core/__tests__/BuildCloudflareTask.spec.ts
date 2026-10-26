@@ -23,6 +23,7 @@ class TestBuildCloudflareTask extends BuildCloudflareTask {
   public testEnhanceCron = this.enhanceCron.bind(this);
   public testEnhanceDomain = this.enhanceDomain.bind(this);
   public testEnhanceEmail = this.enhanceEmail.bind(this);
+  public testEnhanceAi = this.enhanceAi.bind(this);
   public testWarnUnreachableTimeouts = this.warnUnreachableTimeouts.bind(this);
   public setPageEdge(value: Record<string, any> | undefined) {
     this.pageEdge = value;
@@ -1179,6 +1180,53 @@ describe("BuildCloudflareTask", () => {
       );
 
       expect(wrangler.send_email).toBeUndefined();
+    });
+  });
+
+  /**
+   * The Workers AI binding follows the email one: from the manifest when
+   * prebuilt, from the live app otherwise (#Q2771).
+   */
+  describe("enhanceAi", () => {
+    it("binds ai from the manifest's cloudflare block", () => {
+      const task = createTask();
+      const wrangler: any = {};
+      task.testEnhanceAi(
+        {
+          manifest: {
+            cloudflare: { websocketPaths: [], ai: { binding: "AI" } },
+          },
+        } as any,
+        wrangler,
+      );
+      expect(wrangler.ai).toEqual({ binding: "AI" });
+    });
+
+    it("binds ai under the provider's binding name when the live app registers AlephaAiCloudflare", async () => {
+      const { Alepha } = await import("alepha");
+      const { AlephaAiCloudflare } = await import("alepha/ai/cloudflare");
+      const app = Alepha.create({ env: { AI_BINDING: "MODELS" } }).with(
+        AlephaAiCloudflare,
+      );
+      const task = createTask();
+      const wrangler: any = {};
+      task.testEnhanceAi({ alepha: app } as any, wrangler);
+      expect(wrangler.ai).toEqual({ binding: "MODELS" });
+    });
+
+    it("binds nothing for an app without Workers AI, and keeps a declared binding", async () => {
+      const { Alepha } = await import("alepha");
+      const task = createTask();
+      const none: any = {};
+      task.testEnhanceAi({ alepha: Alepha.create() } as any, none);
+      expect(none.ai).toBeUndefined();
+
+      const declared: any = { ai: { binding: "MINE" } };
+      task.testEnhanceAi(
+        { manifest: { cloudflare: { ai: { binding: "AI" } } } } as any,
+        declared,
+      );
+      expect(declared.ai).toEqual({ binding: "MINE" });
     });
   });
 

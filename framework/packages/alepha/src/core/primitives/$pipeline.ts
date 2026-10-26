@@ -110,16 +110,24 @@ export type ProvidingMiddleware<TProvides extends object> = Middleware & {
  * What the middlewares of a `use` tuple guarantee together, as one object
  * type. `unknown` (no constraint) when none of them provides anything.
  */
-export type MiddlewareProvides<TUse extends readonly unknown[]> =
-  MiddlewareProvidesUnion<TUse> extends never
-    ? unknown
-    : (
-          MiddlewareProvidesUnion<TUse> extends unknown
-            ? (value: MiddlewareProvidesUnion<TUse>) => void
-            : never
-        ) extends (value: infer I) => void
-      ? I
-      : never;
+export type MiddlewareProvides<TUse extends readonly unknown[]> = [
+  MiddlewareProvidesUnion<TUse>,
+] extends [never]
+  ? unknown
+  : ProvidesIntersection<MiddlewareProvidesUnion<TUse>>;
+
+/**
+ * A union turned into the intersection of its members. `U` must be a naked
+ * type parameter for the conditional to distribute: written over
+ * `MiddlewareProvidesUnion<TUse>` directly it did not, and two providing
+ * middlewares (`$secure()` and one adding a field) gave the handler the
+ * union of what they provide instead of both.
+ */
+type ProvidesIntersection<U> = (
+  U extends unknown ? (value: U) => void : never
+) extends (value: infer I) => void
+  ? I
+  : never;
 
 /**
  * The union of what each middleware of a `use` tuple provides.

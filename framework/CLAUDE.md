@@ -63,7 +63,7 @@ Retired framework names fail immediately and name their replacement.
 
 - Primitives carry a `$` prefix (`$action`, `$entity`, `$repository`), services are wired by the DI container (`$inject()`), React hooks are `use` + noun.
 - **`alepha`** (`packages/alepha/src/`) exports 50+ sub-modules, imported as `alepha/<module>` (`alepha/server`, `alepha/api/users`).
-- **`@alepha/ui`**: Base UI + Tailwind components in seventeen modules, `src/<module>/` with an `index.ts` barrel each. `@alepha/ui` itself is `src/core`; the subpaths are `form`, `settings`, `table`, `tree`, `markdown`, `shell`, `auth`, `account`, `admin`, `organizations`, the opt-in wrappers `chart`, `command`, `calendar`, `otp`, `resizable`, and `i18n/fr`. Edited in place, no registry. `check:conventions` guards the map: `core` imports no other module, `organizations` only `core`, `form`, `table`, `settings`, the wrappers and `i18n/fr` only `core`, and there is no cycle.
+- **`@alepha/ui`**: Base UI + Tailwind components in eighteen modules, `src/<module>/` with an `index.ts` barrel each. `@alepha/ui` itself is `src/core`; the subpaths are `form`, `settings`, `table`, `tree`, `markdown`, `shell`, `auth`, `account`, `admin`, `organizations`, `ai`, the opt-in wrappers `chart`, `command`, `calendar`, `otp`, `resizable`, and `i18n/fr`. Edited in place, no registry. `check:conventions` guards the map: `core` imports no other module, `organizations` only `core`, `form`, `table`, `settings`, `ai` only `core`, `markdown`, `form`, the wrappers and `i18n/fr` only `core`, and there is no cycle.
 - **`lore`**: the Lore CLI, from the npm package `@alepha/lore` (a root devDependency, so `yarn lore` resolves). CI uses it for `yarn lore releases publish` (`release.yml`) and `yarn lore quality push` (`nightly.yml`), both against project `alepha`. Its source is `../lore/packages/@alepha/lore`, but the framework pins the npm release (`npm:` in `package.json`), so CI never runs an unbuilt CLI.
 - Others: `@alepha/devtools`, `@alepha/commerce`, `@alepha/payments-stripe`, `@alepha/discord`, `@alepha/protobuf`, `@alepha/mqtt` (MQTT 5 client and `$topic` provider), `create-alepha`.
 
@@ -117,12 +117,12 @@ Every workspace holding specs owns a `vitest.config.ts` calling `workspaceProjec
 
 ### Ports
 
-| band                                  | owner                                                                                                                                                                               |
-| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `3300-3399`                           | dev servers, `dev.port` in `alepha.config.ts`: docs 3302, shop 3305, totp 3307, ui 3308, devtools 3310 (its Vite config), ssr 3311, `~/git/loom` 3312, mobile 3313, calculator 3314 |
-| `5173+`                               | dev servers with no `dev.port`, and `alepha dev` in multi-app mode (`5173 + index` via `SERVER_PORT`, which **overrides `dev.port`**)                                               |
-| `4300-4999`                           | **e2e, and nothing else**                                                                                                                                                           |
-| `11883` / `15432` / `16379` / `19090` | `compose.yml` test services (mosquitto / postgres / redis / versitygw)                                                                                                              |
+| band                                  | owner                                                                                                                                                                                        |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `3300-3399`                           | dev servers, `dev.port` in `alepha.config.ts`: docs 3302, shop 3305, totp 3307, ui 3308, devtools 3310 (its Vite config), ssr 3311, `~/git/loom` 3312, mobile 3313, calculator 3314, ai 3315 |
+| `5173+`                               | dev servers with no `dev.port`, and `alepha dev` in multi-app mode (`5173 + index` via `SERVER_PORT`, which **overrides `dev.port`**)                                                        |
+| `4300-4999`                           | **e2e, and nothing else**                                                                                                                                                                    |
+| `11883` / `15432` / `16379` / `19090` | `compose.yml` test services (mosquitto / postgres / redis / versitygw)                                                                                                                       |
 
 ⚠️ `check:conventions` reads this table: every dev port must appear in the `3300-3399` row.
 
