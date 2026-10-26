@@ -27,7 +27,7 @@ export default defineConfig({
     // never come from the git remote (a fork would publish the wrong URL,
     // permanently, on a public artifact).
     labels: {
-      source: "https://github.com/alepha-dev/lore",
+      source: "https://github.com/alepha-dev/alepha",
       title: "Lore",
       description: "Project management and telemetry for Alepha applications.",
       licenses: "MIT",

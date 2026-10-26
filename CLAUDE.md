@@ -26,7 +26,9 @@ Workflows live in the root `.github/workflows/`, one set per product, each scope
 - `verify.yml` (framework): `framework/**` and the shared root files.
 - `lore-verify.yml`: `lore/**`, `framework/**` and `bay/**`.
 - `bay-ci.yml`: `bay/**`.
-- `docs.yml`: `docs/**` and every product's `docs/`. It deploys alepha.dev on `main`, each section from how its product ships (#Q2766): the framework from its latest release tag (`yarn pin`, then `DOCS_FRAMEWORK_ROOT`), Lore from `main`, Bay from `main` until its releases carry tags.
+
+**One release for everything** (#Q2776): `release.yml`, dispatched by hand, gives the framework, Lore and Bay one version and one bare `x.y.z` tag. It publishes the framework's packages and `@alepha/lore` to npm (trusted publishing names `release.yml` for all of them), pushes `ghcr.io/alepha-dev/lore`, attaches Bay's binaries and `SHA256SUMS` to the GitHub release, publishes the Lore release of that version in projects `alepha`, `lore` and `bay`, and deploys alepha.dev. The framework's `CHANGELOG.md` stays framework-only.
+- `docs.yml`: `docs/**` and every product's `docs/`. It deploys alepha.dev on `main`, each section from how its product ships (#Q2766): the framework and Bay from the latest release tag (`yarn pin`, then `DOCS_RELEASE_ROOT`), Lore from `main`.
 
 A step's own `working-directory` is relative to the repository root, so it names the product folder (`framework/apps/ui`).
 

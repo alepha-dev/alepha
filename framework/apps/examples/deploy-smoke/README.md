@@ -23,5 +23,5 @@ lore apps deploy --env production --tag smoke-1
 ```
 
 Both read `LORE_API_KEY` and `LORE_PROJECT` from the environment. The `lore`
-binary and its deploy guide live in the
-[Lore repository](https://github.com/alepha-dev/lore).
+binary and its deploy guide live in
+[`lore/`](../../../../lore) and at [alepha.dev/lore](https://alepha.dev/lore).

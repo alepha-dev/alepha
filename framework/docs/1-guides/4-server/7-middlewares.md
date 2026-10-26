@@ -172,7 +172,7 @@ Memory, several once `REDIS_URL` is set, Durable Objects on workerd) belong to t
 
 That gap is why this is not opt-in. A supervisor or load balancer starting your app cannot ask it to expose a readiness endpoint; without one, the best it can do is open a TCP connection, which succeeds while the app is still building its database. It then sends traffic the app cannot serve. Alepha exposes `/health` universally so the caller can tell _listening_ from _working_.
 
-Put your reverse proxy in front of it: `/health` describes your internals and belongs on loopback, not on the public host. [Bay](https://github.com/alepha-dev/bay) returns 404 for it on the public interface.
+Put your reverse proxy in front of it: `/health` describes your internals and belongs on loopback, not on the public host. [Bay](https://alepha.dev/bay) returns 404 for it on the public interface.
 
 <!-- docs-check-ignore: migration note about a removed symbol -->
 

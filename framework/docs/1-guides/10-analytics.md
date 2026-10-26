@@ -150,6 +150,12 @@ the last flush, before the database closes). Two flushes of one dataset never ov
 - **Analytics Engine ignores `buffer`**, with an info log at boot: its writes are already
   fire-and-forget batches.
 
+Measured on Postgres at 1,300 readings a second from two instances (10k devices, 10 minutes),
+both modes kept up; unbuffered, each `record()` took 4 ms at the median and 24 ms at p99 and the
+database ran at 25 to 50 % of a core, while `{ maxRows: 1000, flushMs: 1000 }` brought that to
+about 2.5 %, with flushes of 17 ms at the median and 72 ms at p99. Buffering is a cost saving at
+that rate, not a requirement.
+
 The buffer reports through hooks rather than a metrics dependency, so an app wires them into its
 own metrics: `analytics:flush:success` and `analytics:flush:error` carry `{ dataset, rows,
 durationMs }` (plus `error`), and `primitive.bufferDepth()` returns the keys waiting.
@@ -318,7 +324,7 @@ a fold in this seam has to be correct
 after a rollup and identical across every backend, not merely plausible on the one you tested
 against.
 
-The portable replacement is the pattern [Lore](https://github.com/alepha-dev/lore)'s own `sigil_views` dataset already uses:
+The portable replacement is the pattern [Lore](https://alepha.dev/lore)'s own `sigil_views` dataset already uses:
 declare a measure that is `1` per event (call it `count`, or anything else) and `sum` it. That is
 an ordinary `sum`, so it survives a rollup and a sampled backend for the same reason any other
 measure does:
@@ -447,8 +453,10 @@ none, so an existing dataset's data stays where it is. Its migration is an ordin
 
 **The sweep stays hourly**, whatever the finest resolution: a minute tier can only fold whole
 hours into an hour tier, so a faster sweep would fold nothing more. Each sweep folds at most
-`AnalyticsRollupJobs.MAX_BUCKETS_PER_SWEEP` source buckets per tier (336: fourteen days of
-hours), and catches up over later sweeps.
+`AnalyticsRollupJobs.MAX_BUCKETS_PER_SWEEP` source buckets per tier (36), rounded down to whole
+buckets of the next tier but never less than one, and catches up over later sweeps: three hours
+of a 5-minute tier, or one day of an hour tier, per hourly sweep. The cap comes from a benchmark
+at 10k devices, where one 5-minute bucket of a gauge dataset with 34k keys folds in about 0.18 s.
 
 ### Analytics Engine keeps two tiers, and roughly 90 days of hours
 
@@ -588,7 +596,7 @@ backlog.
 
 ## Registering the module
 
-A real example, from [Lore](https://github.com/alepha-dev/lore):
+A real example, from [Lore](https://alepha.dev/lore):
 
 ```typescript
 import { $module } from "alepha";

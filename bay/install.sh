@@ -1,8 +1,8 @@
 #!/bin/sh
 #
-# Bay installer -- https://github.com/alepha-dev/bay
+# Bay installer -- https://alepha.dev/bay
 #
-#   curl -sSL https://raw.githubusercontent.com/alepha-dev/bay/main/install.sh | sh
+#   curl -sSL https://alepha.dev/bay/install.sh | sh
 #
 # Installs Docker when it is missing (Bay runs every app in a container), then
 # the `bay` binary and the directory layout described in INSTALL.md. It
@@ -15,7 +15,7 @@
 # `bay` service is already running, restarted.
 #
 # Environment:
-#   BAY_VERSION   release tag to install, or "latest" (default)
+#   BAY_VERSION   version to install (e.g. 0.34.0), or "latest" (default)
 #   BAY_PREFIX    install root (default /opt/bay)
 #   BAY_BIN_LINK  symlink to put on PATH (default /usr/local/bin/bay)
 #   BAY_INSTALL_DOCKER  "no" to refuse installing Docker and stop instead
@@ -23,7 +23,12 @@
 #
 set -eu
 
-REPO="alepha-dev/bay"
+# Bay is released from the Alepha repository with the framework and Lore, one
+# version and one GitHub release for all three (#Q2776): the release carries
+# `bay-linux-amd64`, `bay-linux-arm64` and `SHA256SUMS`. Releases from before
+# that (0.31.0 and older) live in the archived alepha-dev/bay repository.
+REPO="alepha-dev/alepha"
+LEGACY_REPO="alepha-dev/bay"
 BAY_VERSION="${BAY_VERSION:-latest}"
 BAY_PREFIX="${BAY_PREFIX:-/opt/bay}"
 BAY_BIN_LINK="${BAY_BIN_LINK:-/usr/local/bin/bay}"
@@ -36,7 +41,7 @@ die() {
 # --- checks ----------------------------------------------------------------
 
 [ "$(uname -s)" = "Linux" ] || die "Bay runs on Linux only (this is $(uname -s)).
-Build from source for other systems: https://github.com/$REPO"
+Build from source for other systems: https://github.com/$REPO/tree/main/bay"
 
 case "$(uname -m)" in
   x86_64 | amd64) ARCH="amd64" ;;
@@ -45,7 +50,7 @@ case "$(uname -m)" in
 esac
 
 [ "$(id -u)" = "0" ] || die "this installer writes to $BAY_PREFIX and $BAY_BIN_LINK, so it needs root.
-Re-run it as:  curl -sSL https://raw.githubusercontent.com/alepha-dev/bay/main/install.sh | sudo sh"
+Re-run it as:  curl -sSL https://alepha.dev/bay/install.sh | sudo sh"
 
 if command -v curl >/dev/null 2>&1; then
   fetch() { curl -fsSL "$1" -o "$2"; }
@@ -107,16 +112,40 @@ echo "==> Docker ready (Engine API $DOCKER_API)"
 
 # --- download --------------------------------------------------------------
 
-if [ "$BAY_VERSION" = "latest" ]; then
-  BASE="https://github.com/$REPO/releases/latest/download"
-else
-  BASE="https://github.com/$REPO/releases/download/$BAY_VERSION"
-fi
-
 ASSET="bay-linux-$ARCH"
 
+# "latest" is the newest release that carries a Bay binary: the releases come
+# newest first, and one cut while Bay released on its own has none. The
+# archived repository's latest (0.31.0) is newer than the last shared release
+# before the split (0.30.0), so the two are compared and the higher one wins.
+if [ "$BAY_VERSION" = "latest" ]; then
+  fetch "https://api.github.com/repos/$REPO/releases?per_page=100" "$TMP/releases.json" \
+    || die "could not list releases: https://github.com/$REPO/releases"
+  URL="$(grep -o "\"browser_download_url\": *\"[^\"]*/$ASSET\"" "$TMP/releases.json" | head -1 | sed 's/.*": *"\(.*\)"/\1/')"
+  SHARED="$(printf '%s' "$URL" | sed -n 's#.*/releases/download/\([0-9][0-9.]*\)/.*#\1#p')"
+  LEGACY=""
+  if fetch "https://api.github.com/repos/$LEGACY_REPO/releases/latest" "$TMP/legacy.json"; then
+    LEGACY="$(grep -o '"tag_name": *"[0-9][0-9.]*"' "$TMP/legacy.json" | head -1 | sed 's/.*"\([0-9.]*\)"/\1/')"
+  fi
+  NEWEST="$(printf '%s\n%s\n' "$SHARED" "$LEGACY" | grep . | sort -t. -k1,1n -k2,2n -k3,3n | tail -1)"
+  [ -n "$NEWEST" ] || die "no Bay release found in $REPO or $LEGACY_REPO"
+  if [ "$NEWEST" = "$SHARED" ]; then
+    BASE="https://github.com/$REPO/releases/download/$SHARED"
+  else
+    BASE="https://github.com/$LEGACY_REPO/releases/download/$LEGACY"
+  fi
+  BAY_VERSION="$NEWEST"
+else
+  BASE="https://github.com/$REPO/releases/download/${BAY_VERSION#v}"
+fi
+
 echo "==> Downloading $ASSET ($BAY_VERSION)"
-fetch "$BASE/$ASSET" "$TMP/bay" || die "download failed: $BASE/$ASSET"
+# A version from before the shared release lives in the archived repository.
+if ! fetch "$BASE/$ASSET" "$TMP/bay" && ! printf '%s' "$BASE" | grep -q "$LEGACY_REPO"; then
+  BASE="https://github.com/$LEGACY_REPO/releases/download/${BAY_VERSION#v}"
+  fetch "$BASE/$ASSET" "$TMP/bay" || die "download failed: $BASE/$ASSET"
+fi
+[ -s "$TMP/bay" ] || die "download failed: $BASE/$ASSET"
 fetch "$BASE/SHA256SUMS" "$TMP/SHA256SUMS" || die "download failed: $BASE/SHA256SUMS"
 
 # The binary is about to run as root, so a truncated download and a tampered
@@ -171,5 +200,5 @@ else
   echo "Check the host with:  bay doctor"
   echo "Next: run bay serve under systemd, then grant a user the right to deploy."
   echo "Both steps, with the unit file to copy:"
-  echo "  https://github.com/$REPO/blob/main/INSTALL.md"
+  echo "  https://github.com/$REPO/blob/main/bay/INSTALL.md"
 fi
