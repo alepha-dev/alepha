@@ -79,6 +79,9 @@ export const clientTool = (
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+/**
+ * Options of {@link $ai}.
+ */
 export interface AiPrimitiveOptions {
   /**
    * Name of the assistant, in logs. Defaults to the property key.
@@ -168,6 +171,10 @@ export interface AiTurnInput {
   signal?: AbortSignal;
 }
 
+/**
+ * The answer that resumes a paused turn: a decision on a confirmation, or a
+ * client tool's result.
+ */
 export type AiResume =
   | { callId: string; decision: "approve" | "deny" }
   | { callId: string; result: unknown };

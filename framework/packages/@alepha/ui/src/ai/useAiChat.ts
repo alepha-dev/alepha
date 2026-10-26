@@ -4,7 +4,13 @@ import type {
   AiPendingCallResource,
   AiStreamEvent,
 } from "alepha/api/ai";
-import { type RunResult, useAction, useAlepha, useClient } from "alepha/react";
+import {
+  type RunResult,
+  useAction,
+  useAlepha,
+  useClient,
+  useQueryClient,
+} from "alepha/react";
 import { useRouter } from "alepha/react/router";
 import { useCallback, useMemo, useRef, useState } from "react";
 
@@ -33,6 +39,7 @@ export const useAiChat = (options: UseAiChatOptions = {}): UseAiChat => {
   const alepha = useAlepha();
   const forms = useMemo(() => AiFormRegistry.of(alepha), [alepha]);
   const router = useRouter<any>();
+  const queries = useQueryClient();
   const [conversationId, setConversationId] = useState<string | undefined>(
     options.conversationId,
   );
@@ -107,6 +114,7 @@ export const useAiChat = (options: UseAiChatOptions = {}): UseAiChat => {
       signal: AbortSignal,
     ): Promise<void> => {
       let stream: AsyncIterable<AiStreamEvent> | undefined = first;
+      let ranTools = false;
       while (stream) {
         let text = "";
         let clientCall: AiPendingCallResource | undefined;
@@ -120,6 +128,7 @@ export const useAiChat = (options: UseAiChatOptions = {}): UseAiChat => {
           } else if (event.type === "tool_call") {
             setActivity(event.name);
           } else if (event.type === "tool_result") {
+            ranTools = true;
             setActivity(undefined);
             push({
               role: "tool",
@@ -152,6 +161,13 @@ export const useAiChat = (options: UseAiChatOptions = {}): UseAiChat => {
         }
         setActivity(undefined);
         stream = undefined;
+        if (ranTools) {
+          // What the assistant ran may have changed what the page shows.
+          for (const key of options.invalidates ?? []) {
+            queries.invalidate(key);
+          }
+          ranTools = false;
+        }
         if (clientCall && idRef.current) {
           const result = await runClientTool(clientCall.name, clientCall.input);
           stream = await api.resume(
@@ -164,7 +180,7 @@ export const useAiChat = (options: UseAiChatOptions = {}): UseAiChat => {
         }
       }
     },
-    [api, push, runClientTool],
+    [api, push, runClientTool, queries, options.invalidates],
   );
 
   const send = useAction<[message: string]>(
@@ -262,6 +278,9 @@ export const useAiChat = (options: UseAiChatOptions = {}): UseAiChat => {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+/**
+ * Options of {@link useAiChat}.
+ */
 export interface UseAiChatOptions {
   /**
    * The `$ai` to talk to, when the app declares several.
@@ -271,6 +290,11 @@ export interface UseAiChatOptions {
    * A stored conversation to continue.
    */
   conversationId?: string;
+  /**
+   * Query keys to invalidate after a turn ran a tool, so the page re-reads
+   * what the assistant may have changed (`[["notes"]]`).
+   */
+  invalidates?: unknown[][];
   /**
    * The app's own client tools, by name, beside `navigate` and `fillForm`.
    * The result goes back to the model.
@@ -292,6 +316,9 @@ export interface AiChatItem {
   isError?: boolean;
 }
 
+/**
+ * What {@link useAiChat} returns.
+ */
 export interface UseAiChat {
   conversationId?: string;
   items: AiChatItem[];

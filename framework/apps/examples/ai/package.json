@@ -1,0 +1,28 @@
+{
+  "name": "ai-example",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "alepha dev",
+    "build": "alepha build --runtime node,workerd",
+    "typecheck": "tsc --noEmit",
+    "check:migrations": "alepha db migrations check",
+    "db:generate": "alepha db migrations create",
+    "start": "yarn build && node dist",
+    "start:e2e": "CI=true alepha build --runtime node && DATABASE_URL=sqlite://node_modules/.e2e/ai.db AI_E2E=1 APP_SECRET=e2e-test-secret node dist",
+    "e2e": "playwright test"
+  },
+  "dependencies": {
+    "@alepha/ui": "workspace:*",
+    "alepha": "workspace:^",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@tailwindcss/vite": "^4.3.3",
+    "tailwindcss": "^4.3.3",
+    "vite": "^8.3.3",
+    "wrangler": "^4.147.0"
+  }
+}

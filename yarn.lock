@@ -4790,6 +4790,22 @@ __metadata:
   languageName: node
   linkType: hard
 
+"ai-example@workspace:framework/apps/examples/ai":
+  version: 0.0.0-use.local
+  resolution: "ai-example@workspace:framework/apps/examples/ai"
+  dependencies:
+    "@alepha/ui": "workspace:*"
+    "@playwright/test": "npm:^1.63.0"
+    "@tailwindcss/vite": "npm:^4.3.3"
+    alepha: "workspace:^"
+    react: "npm:^19.3.0"
+    react-dom: "npm:^19.3.0"
+    tailwindcss: "npm:^4.3.3"
+    vite: "npm:^8.3.3"
+    wrangler: "npm:^4.147.0"
+  languageName: unknown
+  linkType: soft
+
 "ajv@npm:8.20.0":
   version: 8.20.0
   resolution: "ajv@npm:8.20.0"

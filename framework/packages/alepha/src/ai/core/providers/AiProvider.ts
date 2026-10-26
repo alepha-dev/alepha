@@ -209,11 +209,17 @@ export interface AiChatRequest {
  */
 export type AiMessage = AiUserMessage | AiAssistantMessage | AiToolMessage;
 
+/**
+ * What the person typed (with its page-context block, when one was sent).
+ */
 export interface AiUserMessage {
   role: "user";
   content: string;
 }
 
+/**
+ * What the model answered: its text and the tools it called.
+ */
 export interface AiAssistantMessage {
   role: "assistant";
   content: string;
@@ -235,6 +241,9 @@ export interface AiVendorData {
   data: unknown;
 }
 
+/**
+ * The result of one tool call, matched to it by `callId`.
+ */
 export interface AiToolMessage {
   role: "tool";
   callId: string;
@@ -311,6 +320,9 @@ export interface AiCompletion {
   vendor?: AiVendorData;
 }
 
+/**
+ * Tokens one response cost. `inputTokens` counts cached input too.
+ */
 export interface AiUsage {
   inputTokens: number;
   outputTokens: number;
