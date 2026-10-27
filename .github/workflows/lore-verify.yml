@@ -38,8 +38,10 @@ concurrency:
   group: lore-verify-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Lore's work is tracked in project `alepha`, with the framework's and Bay's
+# (#E94): one project, the product told apart by area.
 env:
-  LORE_PROJECT: lore
+  LORE_PROJECT: alepha
 
 # CI is the gate: a green `yarn v` is not. Every branch push runs this graph.
 # Every `run` step works inside `lore/` (#Q2765). A step's own
