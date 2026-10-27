@@ -11,7 +11,7 @@ curl -sSL https://alepha.dev/bay/install.sh | sudo sh
 ```
 
 The installer sets up Docker when it is missing (Bay runs every app in a
-container, epic E73 in the Lore project Bay), then fetches the newest
+container, epic E103 in the Lore project Alepha), then fetches the newest
 [release](https://github.com/alepha-dev/alepha/releases) for the host's
 architecture and verifies its checksum. `bay doctor` checks a host. Or build it
 yourself:
@@ -25,7 +25,7 @@ scp bay root@HOST:/opt/bay/bin/bay
 a fifth - granting a human or a CI job the right to deploy - that is the one
 people miss and the source of every confusing first-deploy failure.
 
-The design notes live in the Lore project **Bay** (`lore.alepha.dev/bay`), and in the `alepha-bay` directory of the Alepha project for what predates it.
+The design notes live in the Lore project **Alepha** (`lore.alepha.dev/alepha`), area `bay` and the `alepha-bay` directory. Before 2026-10-27 they were in a project of their own, Bay, whose post-split numbers folio F1427 maps.
 
 ## The shape of it
 

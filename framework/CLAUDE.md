@@ -75,7 +75,7 @@ This folder is the framework. Lore (`../lore`) and Bay (`../bay`) sit beside it 
 
 ### Lore MCP: the planning memory
 
-Decisions, plans and bug reports for the framework, this repository, live in the **Alepha project, id `1`**. Lore's own work is project `74` (https://lore.alepha.dev/lore) and Bay's is project `75` (https://lore.alepha.dev/bay): file there, not in `1`, for a change to either application. Projects `2` and `64` are empty shells from the 2026-08-18 merge: never file there. A reference above 1000 in an older note was a Lore number (`n - 1000`); shop feedback carries +2000.
+Decisions, plans and bug reports for the framework, this repository, live in the **Alepha project, id `1`**. Lore's and Bay's work live there too since #E94 (2026-10-27), told apart by area (`lore/*`, `bay`); their old projects `74` and `75` are archived, and folios #F1422 and #F1427 map their renumbered post-split numbers. Projects `2` and `64` are empty shells from the 2026-08-18 merge: never file there. A reference above 1000 in an older note was a Lore number (`n - 1000`); shop feedback carries +2000.
 
 - Before a non-trivial change, orient with `project_context` (project `1`), then `folio_get` the relevant folios.
 - **Folios record decisions, quests record work.** Write a folio (`folio_create` with a good `summary`) whenever a session produces a non-obvious decision or design note.

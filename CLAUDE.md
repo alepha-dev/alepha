@@ -2,14 +2,14 @@
 
 This repository holds three products side by side (#Q2765, folio #F1398 of the Alepha project):
 
-| folder       | product                                     | read first            | Lore project       |
-| ------------ | ------------------------------------------- | --------------------- | ------------------ |
-| `framework/` | Alepha, the framework (`alepha`, `@alepha/ui`, ...) | `framework/CLAUDE.md` | `Alepha`, id `1`   |
-| `lore/`      | Lore, the app, its CLI and its modules      | `lore/CLAUDE.md`      | `Lore`, id `74`    |
-| `bay/`       | Bay, the Go application server              | `bay/CLAUDE.md`       | `Bay`, id `75`     |
-| `docs/`      | alepha.dev, the site documenting all three   | this file             | `Alepha`, id `1`   |
+| folder       | product                                     | read first            | Lore areas                     |
+| ------------ | ------------------------------------------- | --------------------- | ------------------------------ |
+| `framework/` | Alepha, the framework (`alepha`, `@alepha/ui`, ...) | `framework/CLAUDE.md` | `alepha/*`, `@alepha/*`, `cli` |
+| `lore/`      | Lore, the app, its CLI and its modules      | `lore/CLAUDE.md`      | `lore/*`                       |
+| `bay/`       | Bay, the Go application server              | `bay/CLAUDE.md`       | `bay`                          |
+| `docs/`      | alepha.dev, the site documenting all three   | this file             | `docs`                         |
 
-File quests and folios in the project of the product the work changes. A change spanning two products goes in the project of the one it is for, and names the other in its description.
+All three products are planned in ONE Lore project, **Alepha** (`https://lore.alepha.dev/alepha`, id `1`), since #E94 (2026-10-27): a quest says which product it is for by its `area`. A change spanning two products takes the area of the one it is for, and names the other in its description. The projects `Lore` (id `74`) and `Bay` (id `75`) are archived; a number either used after 2026-10-01 that project 1 already held was renumbered, and folios #F1422 (Lore) and #F1427 (Bay) map the old number to the new one.
 
 ## One install, three checks
 
