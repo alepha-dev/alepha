@@ -73,6 +73,7 @@ import { WorkFileAccess } from "./services/WorkFileAccess.ts";
 import { WorkFlowDashboardMetrics } from "./services/WorkFlowDashboardMetrics.ts";
 import { WorkPlanDashboardMetrics } from "./services/WorkPlanDashboardMetrics.ts";
 import { WorkProjectCounts } from "./services/WorkProjectCounts.ts";
+import { WorkProjectMerge } from "./services/WorkProjectMerge.ts";
 import { WorkYourDashboardMetrics } from "./services/WorkYourDashboardMetrics.ts";
 import { YourQuestsMetric } from "./services/YourQuestsMetric.ts";
 
@@ -135,9 +136,11 @@ export const LoreWorkApi = $module({
     WorkDashboard,
     // Who may read each module's attachment bucket (#Q2623).
     WorkFileAccess,
-    // Work's parts of a member leaving and a project going (#Q2623).
+    // Work's parts of a member leaving and a project going (#Q2623), and
+    // of a project merging into another (#Q2780).
     QuestMemberRemoval,
     QuestProjectDeletion,
+    WorkProjectMerge,
     QuestAuthorshipController,
     QuestJobs,
     EpicJobs,

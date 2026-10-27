@@ -354,3 +354,20 @@ export const projectActivityResultSchema = z.object({
       "The stamp of the last event read, to pass as the next call's `since`. Equals `since` when nothing matched, so the cursor never moves backwards over events you have not seen.",
     ),
 });
+
+/**
+ * `project_merge` (#E94, #Q2783): the two projects, by id, and whether to
+ * write. A dry run unless `dryRun` is false.
+ */
+export const projectMergeParamsSchema = z.object({
+  source: z
+    .integer()
+    .describe("Project ID to merge FROM. It is left empty, to be archived."),
+  target: z.integer().describe("Project ID to merge INTO. It keeps its own."),
+  dryRun: z
+    .boolean()
+    .optional()
+    .describe(
+      "Defaults to true: answer the plan and write nothing. Pass false to apply it, in one atomic batch.",
+    ),
+});
