@@ -407,6 +407,19 @@ export { LoreAudits } from "./services/LoreAudits.ts";
 export { ProjectCountRegistry } from "./services/ProjectCountRegistry.ts";
 export { ProjectDeletionService } from "./services/ProjectDeletionService.ts";
 export { ProjectLimits } from "./services/ProjectLimits.ts";
+export {
+  ProjectMergeNumbers,
+  type ProjectMergeNumbering,
+} from "./services/ProjectMergeNumbers.ts";
+export {
+  type ProjectMergeContext,
+  type ProjectMergeJoin,
+  type ProjectMergePlan,
+  type ProjectMergeRenumber,
+  ProjectMergeService,
+  type ProjectMergeStep,
+  type ProjectMergeStepPlan,
+} from "./services/ProjectMergeService.ts";
 export { ProjectResourceMapper } from "./services/ProjectResourceMapper.ts";
 export {
   ProjectRoster,
