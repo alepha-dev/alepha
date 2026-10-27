@@ -61,13 +61,13 @@ A small edit (a few lines, no decision anyone would look for later) goes straigh
 
 ### Releasing
 
-Lore ships in the repository's one release (#Q2776): `release.yml` at the root sets `apps/lore` and `@alepha/lore` to the framework's version, publishes the package to npm (trusted publishing, which names `release.yml`), pushes `ghcr.io/alepha-dev/lore`, records the artifact and image in project `lore`, and publishes the Lore release of that version there, all under one bare `x.y.z` tag. The changelog is Lore's own release feature: the quests attached to the release in the Lore project.
+Lore ships in the repository's one release (#Q2776): `release.yml` at the root sets `apps/lore` and `@alepha/lore` to the framework's version, publishes the package to npm (trusted publishing, which names `release.yml`), pushes `ghcr.io/alepha-dev/lore`, records the artifact and image in project `alepha`, and publishes the Lore release of that version there, all under one bare `x.y.z` tag. The changelog is Lore's own release feature: the quests attached to the release.
 
 ## Lore MCP: the planning memory
 
-Decisions, plans and bug reports live in the Lore project **Lore** (`https://lore.alepha.dev/lore`, project id `74`). Framework work stays in project `Alepha` (id `1`), Bay's in project `Bay` (id `75`).
+Decisions, plans and bug reports live in the Lore project **Alepha** (`https://lore.alepha.dev/alepha`, project id `1`), with the framework's and Bay's: one project since #E94 (2026-10-27), each product told apart by its quests' `area` (`lore/*` for Lore). Projects `Lore` (id `74`) and `Bay` (id `75`) are archived; a number they used after 2026-10-01 that project 1 already held was renumbered, and folio #F1422 maps the old number to the new one.
 
-- Before a non-trivial change, orient with `project_context` (project `74`), then `folio_get` the relevant folios.
+- Before a non-trivial change, orient with `project_context` (project `1`), then `folio_get` the relevant folios.
 - **Folios record decisions, quests record work.** Write a folio whenever a session produces a non-obvious decision.
 - **Every commit belongs to a quest**, a small edit excepted: find or file it (`quest_create` with an existing `area`), accept it before the first commit, name it as `#Q<n>` in every commit, record each sha with `quest_commit_add`, complete it when the work lands.
 
