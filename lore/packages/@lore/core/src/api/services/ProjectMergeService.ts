@@ -162,6 +162,7 @@ export interface ProjectMergeStepPlan {
   moved: Record<string, number>;
   renumbered: ProjectMergeRenumber[];
   joined: ProjectMergeJoin[];
+  changed: ProjectMergeChange[];
   statements: SQLLike[];
 }
 
@@ -189,6 +190,20 @@ export interface ProjectMergeJoin {
   key: string;
   sourceId: number | string;
   targetId: number | string;
+}
+
+/**
+ * A field of a moved item the merge had to change for it to fit in the
+ * target, other than its number: a folio title suffixed because the target
+ * has one by that name, a pin dropped because the target's pins fill the
+ * budget.
+ */
+export interface ProjectMergeChange {
+  kind: string;
+  id: number | string;
+  field: string;
+  from: string;
+  to: string;
 }
 
 /**

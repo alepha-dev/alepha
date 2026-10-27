@@ -58,7 +58,7 @@ export class ProjectMergeNumbers {
         to: next,
       });
       statements.push(
-        sql`UPDATE ${sql.identifier(input.table)} SET ${sql.identifier(input.column)} = ${next} WHERE id = ${row.id}`,
+        sql`UPDATE ${sql.identifier(input.table)} SET ${sql.identifier(input.column)} = ${next} WHERE ${sql.identifier(input.idColumn ?? "id")} = ${row.id}`,
       );
     }
     if (next > current) {
@@ -96,6 +96,10 @@ export interface ProjectMergeNumbering {
   kind: string;
   table: string;
   column: string;
+  /**
+   * The moved rows' primary key column, `id` unless named.
+   */
+  idColumn?: string;
   /**
    * The `$sequence` that allocates this number, scoped by project id.
    */

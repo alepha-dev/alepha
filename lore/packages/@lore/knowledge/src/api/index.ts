@@ -26,6 +26,7 @@ import { KnowledgeAutomationReferences } from "./services/KnowledgeAutomationRef
 import { KnowledgeDashboard } from "./services/KnowledgeDashboard.ts";
 import { KnowledgeDashboardMetrics } from "./services/KnowledgeDashboardMetrics.ts";
 import { KnowledgeFileAccess } from "./services/KnowledgeFileAccess.ts";
+import { KnowledgeProjectMerge } from "./services/KnowledgeProjectMerge.ts";
 import { PinnedFolioMetric } from "./services/PinnedFolioMetric.ts";
 import { RecentFoliosMetric } from "./services/RecentFoliosMetric.ts";
 
@@ -43,6 +44,8 @@ export const LoreKnowledgeApi = $module({
     FolioResourceKind,
     DirectoryResourceKind,
     KnowledgeFileAccess,
+    // Registers its project merge step (#Q2781); nothing injects it.
+    KnowledgeProjectMerge,
     FolioController,
     DirectoryController,
     FolioAttachmentController,

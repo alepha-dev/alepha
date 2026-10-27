@@ -412,6 +412,7 @@ export {
   type ProjectMergeNumbering,
 } from "./services/ProjectMergeNumbers.ts";
 export {
+  type ProjectMergeChange,
   type ProjectMergeContext,
   type ProjectMergeJoin,
   type ProjectMergePlan,

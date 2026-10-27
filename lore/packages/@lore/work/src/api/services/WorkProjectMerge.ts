@@ -69,7 +69,7 @@ export class WorkProjectMerge {
     statements.push(...areas.statements);
     moved.areas = areas.moved;
 
-    return { moved, renumbered, joined, statements };
+    return { moved, renumbered, joined, changed: [], statements };
   }
 
   /**
