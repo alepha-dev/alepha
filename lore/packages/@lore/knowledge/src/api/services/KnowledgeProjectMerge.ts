@@ -44,6 +44,7 @@ export class KnowledgeProjectMerge {
     this.merge.registerStep({
       order: 20,
       name: "knowledge",
+      tables: ["folios", "folio_directories", "folio_blobs"],
       plan: (context) => this.plan(context),
     });
   }

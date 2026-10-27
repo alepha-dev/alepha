@@ -88,6 +88,7 @@ import { AutomationVariableService } from "./services/AutomationVariableService.
 import { AutomationWorker } from "./services/AutomationWorker.ts";
 import { CoreAutomationReferences } from "./services/CoreAutomationReferences.ts";
 import { CoreDashboard } from "./services/CoreDashboard.ts";
+import { CoreProjectMerge } from "./services/CoreProjectMerge.ts";
 import { DashboardAttentionRegistry } from "./services/DashboardAttentionRegistry.ts";
 import { DashboardCardService } from "./services/DashboardCardService.ts";
 import { DashboardMetricRegistry } from "./services/DashboardMetricRegistry.ts";
@@ -193,6 +194,8 @@ export const LoreCoreApi = $module({
     AutomationPersistence,
     // Registers its project deletion step; nothing injects it.
     AutomationProjectDeletion,
+    // Registers core's project merge step (#Q2782); nothing injects it.
+    CoreProjectMerge,
     AutomationAdoptionService,
     AutomationAudience,
     AutomationRosterWorker,
@@ -413,6 +416,7 @@ export {
 } from "./services/ProjectMergeNumbers.ts";
 export {
   type ProjectMergeChange,
+  type ProjectMergeConflict,
   type ProjectMergeContext,
   type ProjectMergeJoin,
   type ProjectMergePlan,
@@ -421,6 +425,10 @@ export {
   type ProjectMergeStep,
   type ProjectMergeStepPlan,
 } from "./services/ProjectMergeService.ts";
+export {
+  type ProjectMergeTable,
+  ProjectMergeTables,
+} from "./services/ProjectMergeTables.ts";
 export { ProjectResourceMapper } from "./services/ProjectResourceMapper.ts";
 export {
   ProjectRoster,

@@ -1,4 +1,4 @@
-import { ProjectMergeService } from "@lore/core/api";
+import { type ProjectMergePlan, ProjectMergeService } from "@lore/core/api";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -14,6 +14,9 @@ import {
   createTestQuest,
   WorkTestEntities,
 } from "../src/testing/index.ts";
+
+const workOf = (plan: ProjectMergePlan) =>
+  plan.steps.find((step) => step.name === "work")!;
 
 interface TestContext {
   alepha: Alepha;
@@ -80,7 +83,7 @@ describe("ProjectMergeService, Work's step", () => {
 
       const plan = await ctx.merge.merge(source.id, target.id);
 
-      const work = plan.steps.find((step) => step.name === "work")!;
+      const work = workOf(plan);
       expect(work.moved.quests).toBe(3);
       expect(work.renumbered.filter((r) => r.kind === "quest")).toEqual([
         { kind: "quest", id: taken.id, from: 2, to: 10 },
@@ -101,7 +104,7 @@ describe("ProjectMergeService, Work's step", () => {
 
       const plan = await ctx.merge.merge(source.id, target.id);
 
-      expect(plan.steps[0].renumbered).toEqual([
+      expect(workOf(plan).renumbered).toEqual([
         expect.objectContaining({ kind: "quest", from: 4, to: 5 }),
       ]);
       expect(await shortIdsOf(target.id)).toEqual([5]);
@@ -142,7 +145,7 @@ describe("ProjectMergeService, Work's step", () => {
       await ctx.merge.merge(lore.id, target.id);
       const plan = await ctx.merge.merge(bay.id, target.id);
 
-      expect(plan.steps[0].renumbered).toEqual([
+      expect(workOf(plan).renumbered).toEqual([
         expect.objectContaining({ kind: "quest", from: 5, to: 6 }),
       ]);
       expect(await shortIdsOf(target.id)).toEqual([5, 6]);
@@ -174,7 +177,7 @@ describe("ProjectMergeService, Work's step", () => {
 
       const plan = await ctx.merge.merge(source.id, target.id);
 
-      expect(plan.steps[0].renumbered).toEqual(
+      expect(workOf(plan).renumbered).toEqual(
         expect.arrayContaining([
           { kind: "epic", id: epic.id, from: 73, to: 74 },
           { kind: "feedback", id: moved.id, from: 1, to: 2 },
@@ -224,7 +227,7 @@ describe("ProjectMergeService, Work's step", () => {
 
       const plan = await ctx.merge.merge(source.id, target.id);
 
-      const work = plan.steps[0];
+      const work = workOf(plan);
       expect(work.joined).toContainEqual({
         kind: "release",
         key: "0.33.0",
@@ -272,7 +275,7 @@ describe("ProjectMergeService, Work's step", () => {
 
       const plan = await ctx.merge.merge(source.id, target.id);
 
-      expect(plan.steps[0].renumbered).toEqual([
+      expect(workOf(plan).renumbered).toEqual([
         { kind: "release", id: moved.id, from: 1, to: 2 },
       ]);
       expect((await ctx.repos.releases.findById(moved.id))!.number).toBe(2);
@@ -295,7 +298,7 @@ describe("ProjectMergeService, Work's step", () => {
 
       const plan = await ctx.merge.merge(source.id, target.id);
 
-      expect(plan.steps[0].moved.areas).toBe(1);
+      expect(workOf(plan).moved.areas).toBe(1);
       const names = (
         await ctx.repos.areas.findMany({
           where: { projectId: { eq: target.id } },

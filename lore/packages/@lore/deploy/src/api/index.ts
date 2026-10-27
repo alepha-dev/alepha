@@ -55,6 +55,7 @@ import { DeployDashboardMetrics } from "./services/DeployDashboardMetrics.ts";
 import { DeployGate } from "./services/DeployGate.ts";
 import { DeployLimits } from "./services/DeployLimits.ts";
 import { DeployProjectCounts } from "./services/DeployProjectCounts.ts";
+import { DeployProjectMerge } from "./services/DeployProjectMerge.ts";
 import { DeployRegistry } from "./services/DeployRegistry.ts";
 import { DeployRunner } from "./services/DeployRunner.ts";
 import { DeployService } from "./services/DeployService.ts";
@@ -118,6 +119,8 @@ export const LoreDeployApi = $module({
     DeployDashboardMetrics,
     BlightQuestHandBack,
     DeployDashboard,
+    // Registers its project merge step (#Q2782); nothing injects it.
+    DeployProjectMerge,
     // Deploy's "needs you" source (#Q2656).
     DeployAttentionSources,
     // The apps tiles of #E77 (#Q2657).

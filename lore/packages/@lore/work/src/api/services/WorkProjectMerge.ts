@@ -39,6 +39,7 @@ export class WorkProjectMerge {
     this.merge.registerStep({
       order: 10,
       name: "work",
+      tables: ["quests", "epics", "feedback", "releases", "areas"],
       plan: (context) => this.plan(context),
     });
   }

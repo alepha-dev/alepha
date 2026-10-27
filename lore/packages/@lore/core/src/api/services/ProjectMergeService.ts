@@ -67,6 +67,14 @@ export class ProjectMergeService {
         plans.push({ name: step.name, ...(await step.plan(context)) });
       }
       const dryRun = options.dryRun === true;
+      const conflicts = plans.flatMap((plan) => plan.conflicts ?? []);
+      if (!dryRun && conflicts.length) {
+        throw new AlephaError(
+          `The merge would put two rows under one key, decide each first: ${conflicts
+            .map((conflict) => `${conflict.kind} "${conflict.key}"`)
+            .join(", ")}`,
+        );
+      }
       if (!dryRun) {
         await this.apply(plans.flatMap((plan) => plan.statements));
       }
@@ -77,6 +85,14 @@ export class ProjectMergeService {
         steps: plans.map(({ statements: _, ...plan }) => plan),
       };
     });
+  }
+
+  /**
+   * Every table some registered step moves or deliberately leaves behind,
+   * so a spec can fail when a project-scoped table is neither.
+   */
+  public tables(): string[] {
+    return this.steps.flatMap((step) => step.tables);
   }
 
   /**
@@ -142,6 +158,11 @@ export interface ProjectMergeStep {
    */
   name: string;
   /**
+   * Every project-scoped table the step moves, or leaves in the source on
+   * purpose.
+   */
+  tables: string[];
+  /**
    * Reads both projects and answers what the step would do, with the
    * statements that do it. Writes nothing: the service runs the statements
    * of every step together, after every step has planned.
@@ -163,7 +184,23 @@ export interface ProjectMergeStepPlan {
   renumbered: ProjectMergeRenumber[];
   joined: ProjectMergeJoin[];
   changed: ProjectMergeChange[];
+  /**
+   * Source rows whose unique key the target already has, and that the step
+   * may not decide for itself. A merge with any refuses to run.
+   */
+  conflicts?: ProjectMergeConflict[];
   statements: SQLLike[];
+}
+
+/**
+ * A source row the merge will not move: the target holds a row under the
+ * same unique key, and which one wins is a person's call.
+ */
+export interface ProjectMergeConflict {
+  kind: string;
+  key: string;
+  sourceId: number | string;
+  targetId: number | string;
 }
 
 /**
