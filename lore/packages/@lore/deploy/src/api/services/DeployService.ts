@@ -1,4 +1,5 @@
 import { $inject, AlephaError } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 import { BadRequestError, NotFoundError } from "alepha/server";
@@ -6,7 +7,7 @@ import { BadRequestError, NotFoundError } from "alepha/server";
 import { type AppInstance, appInstances } from "../entities/appInstances.ts";
 import { type Artifact, artifacts } from "../entities/artifacts.ts";
 import { type Deployment, deployments } from "../entities/deployments.ts";
-import { estates } from "../entities/estates.ts";
+import { type Estate, estates } from "../entities/estates.ts";
 import { AppSecretService } from "./AppSecretService.ts";
 import { AppService } from "./AppService.ts";
 import { ArtifactService } from "./ArtifactService.ts";
@@ -15,6 +16,7 @@ import { DeployGate } from "./DeployGate.ts";
 import { DeployLimits } from "./DeployLimits.ts";
 import { DeployRegistry } from "./DeployRegistry.ts";
 import { DeployRunner } from "./DeployRunner.ts";
+import { EstateCommandService } from "./EstateCommandService.ts";
 import { EstateService } from "./EstateService.ts";
 import { ResourceNameService } from "./ResourceNameService.ts";
 import { StackDeployService } from "./StackDeployService.ts";
@@ -42,6 +44,8 @@ export class DeployService {
   protected readonly registry = $inject(DeployRegistry);
   protected readonly names = $inject(ResourceNameService);
   protected readonly stackDeploys = $inject(StackDeployService);
+  protected readonly commands = $inject(EstateCommandService);
+  protected readonly dateTime = $inject(DateTimeProvider);
 
   /**
    * Write the row a deploy will be followed through.
@@ -170,6 +174,13 @@ export class DeployService {
     // failing inside a job, after an artifact has been fetched and unpacked.
     await this.maybeProvisionSigil(instance, artifact, input);
 
+    // A Bay machine pulls its work from the command queue: `run` below only
+    // deploys to Cloudflare, and on a Bay estate it failed every app deploy
+    // with "names no Cloudflare account" (#Q2706).
+    if (estate.type === "bay") {
+      return await this.queueOnMachine(instance, estate, artifact, input);
+    }
+
     return await this.rows.create({
       projectId: input.projectId,
       instanceId: instance.id,
@@ -179,6 +190,65 @@ export class DeployService {
       sha256: artifact.sha256,
       status: "queued",
       createdBy: input.createdBy,
+    });
+  }
+
+  /**
+   * Queue a copy's deploy as a `deploy` command for its Bay machine, and
+   * write the row the Deploy tab follows.
+   *
+   * The payload is the one `EstateCommandController` sends from the owner's
+   * console, so Bay sees the same command whichever side asked. The row
+   * carries `commandId`: {@link run} leaves it alone, and
+   * `StackDeployService.onCommandProgressed` moves it on every ack.
+   *
+   * ⚠️ `assertAccepts` before the name is stored, for the controller's
+   * reason: a deploy this estate refuses must not leave a name behind.
+   */
+  protected async queueOnMachine(
+    instance: AppInstance,
+    estate: Estate,
+    artifact: Artifact,
+    input: { projectId: number; createdBy?: string },
+  ): Promise<Deployment> {
+    const { fileId, size } = artifact;
+    if (!fileId || size === undefined) {
+      throw new BadRequestError(
+        `${artifact.app} ${artifact.tag} stores no packed build to send to '${estate.slug}'. Push one with \`lore artifacts push\`.`,
+      );
+    }
+    this.commands.assertAccepts(estate, "deploy");
+    const name = await this.names.resolve(instance, estate);
+    const segment = this.names.projectSegmentOf(instance, name);
+    const command = await this.commands.enqueue(
+      estate,
+      {
+        kind: "deploy",
+        payload: {
+          app: artifact.app,
+          environment: instance.env,
+          ...(segment ? { project: segment } : {}),
+          artifact: { id: artifact.id, sha256: artifact.sha256, size },
+        },
+      },
+      input.createdBy,
+    );
+    return await this.rows.create({
+      projectId: input.projectId,
+      instanceId: instance.id,
+      artifactId: artifact.id,
+      app: artifact.app,
+      tag: artifact.tag,
+      sha256: artifact.sha256,
+      status: "queued",
+      commandId: command.id,
+      createdBy: input.createdBy,
+      log: [
+        {
+          at: new Date(this.dateTime.nowMillis()).toISOString(),
+          text: `Queued on ${estate.slug}`,
+        },
+      ],
     });
   }
 

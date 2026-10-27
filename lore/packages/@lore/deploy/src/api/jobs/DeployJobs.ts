@@ -270,6 +270,12 @@ export class DeployJobs {
       });
 
       for (const row of rows) {
+        if (row.commandId) {
+          // Follows its estate command, whose own sweep fails it with the
+          // machine's reason (a Bay deploy may run 15 minutes): the messages
+          // below are about a Worker run it never had (#Q2706).
+          continue;
+        }
         const since = row.startedAt ?? row.createdAt;
         if (!since || new Date(since).getTime() > nowMs - budgetMs) {
           // Queued a long time and started recently: alive, and its own timer
