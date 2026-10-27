@@ -23,10 +23,10 @@ import type { SQLLike } from "alepha/orm";
  * writes is reached through the sigil, not the project.
  *
  * A unique key the target already holds is refused for what a row IS (a
- * deployed copy, a sigil, a stack, an artifact, a blight), and the
- * target's row kept for what only describes the project: an estate it
- * already borrows, a registry it already logs in to, a day of coverage on
- * a branch it already measured.
+ * deployed copy, a sigil, a stack, a blight), and the target's row kept
+ * for what only describes the project or repeats it: an estate it already
+ * borrows, a registry it already logs in to, a day of coverage on a branch
+ * it already measured, a build it was pushed too.
  */
 export class DeployProjectMerge {
   protected readonly merge = $inject(ProjectMergeService);
@@ -46,10 +46,14 @@ export class DeployProjectMerge {
       onCollision: "refuse",
     },
     {
+      // A build key held by both projects is ONE build pushed twice: a
+      // version tag moves only under `--force`, and `latest` always names the
+      // newest push, which is the target's once CI reports there. The
+      // source's row goes; its bytes stay in the bucket, unreferenced.
       kind: "artifact",
       table: "artifacts",
       keys: ["app", "tag", "runtime", "format"],
-      onCollision: "refuse",
+      onCollision: "keepTarget",
     },
     {
       kind: "blight",
