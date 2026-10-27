@@ -6,6 +6,10 @@ permissions:
 # Lore ships to lore.alepha.dev once Verify succeeds on a push to main. There
 # is no human gate: read "Migration safety on D1" in apps/lore/CLAUDE.md before
 # pushing a migration.
+#
+# `workflow_dispatch` ships main as it stands, without waiting for Verify
+# (#Q2707): for a hotfix whose branch was already green, never for a migration
+# Verify has not run on main. See "The workflow" in lore/CLAUDE.md.
 on:
   workflow_run:
     workflows: ["Lore Verify"]
@@ -13,9 +17,10 @@ on:
       - completed
     branches:
       - main
+  workflow_dispatch:
 
 concurrency:
-  group: lore-deploy-${{ github.event.workflow_run.head_branch }}
+  group: lore-deploy-${{ github.event.workflow_run.head_branch || github.ref_name }}
   cancel-in-progress: false
 
 env:
@@ -33,11 +38,17 @@ jobs:
     # owner moves the `lore-production` secrets here and archives
     # alepha-dev/lore, that repository still deploys Lore, and two deployers
     # racing one Worker is the failure this gate prevents (#Q2765).
+    # A dispatch deploys main only: a branch never ships to production.
     if: >-
       vars.LORE_DEPLOY == 'true'
-      && github.event.workflow_run.conclusion == 'success'
-      && github.event.workflow_run.head_branch == 'main'
-      && github.event.workflow_run.event == 'push'
+      && (
+        (github.event_name == 'workflow_run'
+          && github.event.workflow_run.conclusion == 'success'
+          && github.event.workflow_run.head_branch == 'main'
+          && github.event.workflow_run.event == 'push')
+        || (github.event_name == 'workflow_dispatch'
+          && github.ref == 'refs/heads/main')
+      )
     runs-on: ubuntu-26.04
     timeout-minutes: 10
 
@@ -50,7 +61,7 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           fetch-tags: true
 
       - name: Setup

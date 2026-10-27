@@ -50,6 +50,8 @@ A small edit (a few lines, no decision anyone would look for later) goes straigh
 
 ⚠️ **`main` deploys to production with no human gate.** `Lore Deploy` runs `alepha deploy` on `lore-production` once `Lore Verify` succeeds on a push to `main`, as soon as the repository variable `LORE_DEPLOY` is `true`. Lore migrations target D1, which cascade-wipes children on `DROP TABLE`: read "Migration safety on D1" in `apps/lore/CLAUDE.md` before pushing one.
 
+**A hotfix can skip the wait** (#Q2707): `gh workflow run lore-deploy.yml --ref main` deploys main as it stands, without waiting for `Lore Verify` on main. Use it only when every commit main holds beyond the last deploy was green on its own branch, and never when one of them carries a migration. A dispatch from any other ref is skipped.
+
 ### Verifying
 
 - `yarn v` (`yarn alepha verify`) runs what CI runs, the Docker image aside: install, lint, then typecheck and the audits (`check:deps`, `check:conventions`, `check:i18n`, `check:migrations`), `yarn test`, `yarn build`, `yarn e2e` and `yarn e2e-cli`. `e2e-cli` needs Go and builds Bay from `../bay` (or `BAY_DIR`). No service is needed: every spec runs on SQLite.
