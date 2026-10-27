@@ -2,7 +2,9 @@ import {
   type ProjectMergeContext,
   type ProjectMergeJoin,
   ProjectMergeNumbers,
+  ProjectMergeReferences,
   type ProjectMergeRenumber,
+  type ProjectMergeRewriter,
   ProjectMergeService,
   type ProjectMergeStepPlan,
 } from "@lore/core/api";
@@ -33,6 +35,7 @@ import { DatabaseProvider, sql, type SQLLike } from "alepha/orm";
 export class WorkProjectMerge {
   protected readonly merge = $inject(ProjectMergeService);
   protected readonly numbers = $inject(ProjectMergeNumbers);
+  protected readonly references = $inject(ProjectMergeReferences);
   protected readonly database = $inject(DatabaseProvider);
 
   constructor() {
@@ -41,7 +44,61 @@ export class WorkProjectMerge {
       name: "work",
       tables: ["quests", "epics", "feedback", "releases", "areas"],
       plan: (context) => this.plan(context),
+      rewrite: (context, rewriter) => this.rewrite(context, rewriter),
     });
+  }
+
+  /**
+   * Every Work text that can hold a reference: quest bodies and completion
+   * summaries, their comments, epic descriptions, feedback and its
+   * comments, release notes. Read by the source's ids, which is what they
+   * still are while the plan is read.
+   */
+  protected async rewrite(
+    context: ProjectMergeContext,
+    rewriter: ProjectMergeRewriter,
+  ): Promise<{ rewritten: Record<string, number>; statements: SQLLike[] }> {
+    const source = context.sourceProjectId;
+    const targets = [
+      {
+        table: "quests",
+        columns: ["description", "completion_message"],
+        where: sql`project_id = ${source}`,
+      },
+      {
+        table: "quest_comments",
+        columns: ["body"],
+        where: sql`quest_id IN (SELECT id FROM quests WHERE project_id = ${source})`,
+      },
+      {
+        table: "epics",
+        columns: ["description"],
+        where: sql`project_id = ${source}`,
+      },
+      {
+        table: "feedback",
+        columns: ["description"],
+        where: sql`project_id = ${source}`,
+      },
+      {
+        table: "feedback_comments",
+        columns: ["body"],
+        where: sql`feedback_id IN (SELECT id FROM feedback WHERE project_id = ${source})`,
+      },
+      {
+        table: "releases",
+        columns: ["description", "changelog"],
+        where: sql`project_id = ${source}`,
+      },
+    ];
+    const rewritten: Record<string, number> = {};
+    const statements: SQLLike[] = [];
+    for (const target of targets) {
+      const result = await this.references.rewrite(rewriter, target);
+      rewritten[target.table] = result.rewritten;
+      statements.push(...result.statements);
+    }
+    return { rewritten, statements };
   }
 
   protected async plan(

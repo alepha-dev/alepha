@@ -4,6 +4,10 @@ import { DatabaseProvider, type SQLLike } from "alepha/orm";
 import { AutomationD1Provider } from "../providers/AutomationD1Provider.ts";
 import { AutomationSqliteProvider } from "../providers/AutomationSqliteProvider.ts";
 import { AutomationDatabase } from "./AutomationDatabase.ts";
+import {
+  ProjectMergeReferences,
+  type ProjectMergeRewriter,
+} from "./ProjectMergeReferences.ts";
 
 /**
  * Moves everything a project holds into another one (#E94, folio #F1401),
@@ -31,6 +35,7 @@ import { AutomationDatabase } from "./AutomationDatabase.ts";
 export class ProjectMergeService {
   protected readonly database = $inject(DatabaseProvider);
   protected readonly automationDatabase = $inject(AutomationDatabase);
+  protected readonly references = $inject(ProjectMergeReferences);
   protected readonly steps: ProjectMergeStep[] = [];
 
   /**
@@ -66,6 +71,22 @@ export class ProjectMergeService {
       for (const step of steps) {
         plans.push({ name: step.name, ...(await step.plan(context)) });
       }
+      // References second: a folio's text may name a quest Work renumbered,
+      // so the rewriter needs every step's numbers before any step rewrites.
+      const rewriter = this.references.rewriter({
+        renumbered: plans.flatMap((plan) => plan.renumbered),
+        sourceSlug: await this.slugOf(sourceProjectId),
+        targetSlug: await this.slugOf(targetProjectId),
+      });
+      for (const [index, step] of steps.entries()) {
+        if (!step.rewrite || rewriter.empty) {
+          continue;
+        }
+        const plan = plans[index];
+        const result = await step.rewrite(context, rewriter, plan);
+        plan.rewritten = result.rewritten;
+        plan.statements.push(...result.statements);
+      }
       const dryRun = options.dryRun === true;
       const conflicts = plans.flatMap((plan) => plan.conflicts ?? []);
       if (!dryRun && conflicts.length) {
@@ -93,6 +114,14 @@ export class ProjectMergeService {
    */
   public tables(): string[] {
     return this.steps.flatMap((step) => step.tables);
+  }
+
+  protected async slugOf(projectId: number): Promise<string | undefined> {
+    const rows = await this.database.execute(
+      `SELECT slug FROM projects WHERE id = ${Number(projectId)}`,
+    );
+    const slug = rows[0]?.slug;
+    return typeof slug === "string" ? slug : undefined;
   }
 
   /**
@@ -170,6 +199,17 @@ export interface ProjectMergeStep {
   plan: (
     context: ProjectMergeContext,
   ) => Promise<Omit<ProjectMergeStepPlan, "name">>;
+  /**
+   * Rewrites the references inside the step's own text, once every step
+   * has planned, so a renumber in one module reaches text in another. Its
+   * statements run after the plan's own, in the same batch. `plan` is the
+   * step's own, for what it changed in passing (a folio title).
+   */
+  rewrite?: (
+    context: ProjectMergeContext,
+    rewriter: ProjectMergeRewriter,
+    plan: ProjectMergeStepPlan,
+  ) => Promise<{ rewritten: Record<string, number>; statements: SQLLike[] }>;
 }
 
 /**
@@ -184,6 +224,10 @@ export interface ProjectMergeStepPlan {
   renumbered: ProjectMergeRenumber[];
   joined: ProjectMergeJoin[];
   changed: ProjectMergeChange[];
+  /**
+   * Rows whose text was rewritten to follow a renumber, per `table.column`.
+   */
+  rewritten?: Record<string, number>;
   /**
    * Source rows whose unique key the target already has, and that the step
    * may not decide for itself. A merge with any refuses to run.

@@ -3,6 +3,7 @@ import {
   type ProjectMergeContext,
   ProjectMergeNumbers,
   type ProjectMergeRenumber,
+  type ProjectMergeRewriter,
   ProjectMergeService,
   type ProjectMergeStepPlan,
 } from "@lore/core/api";
@@ -46,7 +47,51 @@ export class KnowledgeProjectMerge {
       name: "knowledge",
       tables: ["folios", "folio_directories", "folio_blobs"],
       plan: (context) => this.plan(context),
+      rewrite: (context, rewriter, plan) =>
+        this.rewrite(context, rewriter, plan.changed),
     });
+  }
+
+  /**
+   * Folio bodies and summaries, outside the protected ones: their content
+   * is ciphertext the server cannot read, let alone rewrite. The search
+   * text is rebuilt with the folio's final title, which the name check may
+   * have just suffixed.
+   */
+  protected async rewrite(
+    context: ProjectMergeContext,
+    rewriter: ProjectMergeRewriter,
+    changed: ProjectMergeChange[],
+  ): Promise<{ rewritten: Record<string, number>; statements: SQLLike[] }> {
+    const titles = new Map(
+      changed
+        .filter((change) => change.kind === "folio" && change.field === "title")
+        .map((change) => [String(change.id), change.to]),
+    );
+    const rows = await this.database.execute(
+      sql`SELECT id, title, summary, content FROM folios WHERE project_id = ${context.sourceProjectId} AND protected = ${this.flag(false)}`,
+    );
+    const text = (value: unknown) => (typeof value === "string" ? value : "");
+    const statements: SQLLike[] = [];
+    for (const row of rows) {
+      const id = text(row.id);
+      const summary = text(row.summary);
+      const content = text(row.content);
+      const nextSummary = rewriter.text(summary);
+      const nextContent = rewriter.text(content);
+      if (nextSummary === summary && nextContent === content) {
+        continue;
+      }
+      const searchText = buildFolioSearchText({
+        title: titles.get(id) ?? text(row.title),
+        summary: nextSummary,
+        content: nextContent,
+      });
+      statements.push(
+        sql`UPDATE folios SET summary = ${nextSummary}, content = ${nextContent}, search_text = ${searchText} WHERE id = ${id}`,
+      );
+    }
+    return { rewritten: { folios: statements.length }, statements };
   }
 
   /**

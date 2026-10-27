@@ -113,6 +113,8 @@ export class LoreAudits {
       "capability",
       "archive",
       "unarchive",
+      // Another project merged into this one (#Q2783).
+      "merge",
     ],
     // A session editing one resource repeatedly is the everyday case here -
     // an MCP agent, or somebody working through a form - so `update` folds

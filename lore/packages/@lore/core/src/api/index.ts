@@ -426,6 +426,10 @@ export {
   type ProjectMergeStepPlan,
 } from "./services/ProjectMergeService.ts";
 export {
+  ProjectMergeReferences,
+  ProjectMergeRewriter,
+} from "./services/ProjectMergeReferences.ts";
+export {
   type ProjectMergeTable,
   ProjectMergeTables,
 } from "./services/ProjectMergeTables.ts";

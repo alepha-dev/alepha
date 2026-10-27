@@ -1,4 +1,4 @@
-import { ProjectMergeService } from "@lore/core/api";
+import { AdminProjectController, ProjectMergeService } from "@lore/core/api";
 import { appInstances, qualityRuns, sigils } from "@lore/deploy/schemas";
 import { Alepha } from "alepha";
 import { organizationMembers } from "alepha/api/organizations";
@@ -11,7 +11,9 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { bootLore } from "./fixtures/bootLore.ts";
 import {
+  createTestFolio,
   createTestProject,
+  createTestQuest,
   TestEntityRepositories,
 } from "./fixtures/entities.ts";
 
@@ -212,5 +214,59 @@ describe("ProjectMergeService across every module", () => {
       [target.createdBy]: "owner",
       [source.createdBy]: "member",
     });
+  });
+
+  it("rewrites a folio's reference to a quest Work renumbered, and leaves one that kept its number", async ({
+    expect,
+  }) => {
+    const target = await createTestProject(ctx.alepha);
+    const source = await createTestProject(ctx.alepha);
+    await createTestQuest(ctx.alepha, target, { shortId: 7 });
+    const renumbered = await createTestQuest(ctx.alepha, source, {
+      shortId: 7,
+    });
+    await createTestQuest(ctx.alepha, source, { shortId: 3 });
+    const note = await createTestFolio(ctx.alepha, source, {
+      shortId: 1,
+      title: "Decision",
+      content: "Done in [[#Q7]] after [[#Q3]].",
+    });
+
+    const plan = await ctx.merge.merge(source.id, target.id);
+
+    const work = plan.steps.find((step) => step.name === "work")!;
+    const to = work.renumbered.find((row) => row.id === renumbered.id)!.to;
+    const folio = (await ctx.repos.folios.findById(note.id))!;
+    expect(folio.content).toBe(`Done in [[#Q${to}]] after [[#Q3]].`);
+    expect(folio.searchText).toContain(`[[#q${to}]]`);
+    expect(
+      plan.steps.find((step) => step.name === "knowledge")!.rewritten,
+    ).toEqual({ folios: 1 });
+  });
+
+  it("answers a dry run by default from the admin action, with the mapping as markdown", async ({
+    expect,
+  }) => {
+    const target = await createTestProject(ctx.alepha, { title: "Alepha" });
+    const source = await createTestProject(ctx.alepha, { title: "Lore" });
+    await createTestQuest(ctx.alepha, target, { shortId: 2683 });
+    const quest = await createTestQuest(ctx.alepha, source, {
+      shortId: 2683,
+    });
+    const admin = { id: crypto.randomUUID(), roles: ["admin"] };
+
+    const result = await ctx.alepha
+      .inject(AdminProjectController)
+      .mergeProject.fetch(
+        { params: { id: source.id }, body: { target: target.id } },
+        { user: admin },
+      );
+
+    expect(result.data.dryRun).toBe(true);
+    expect(result.data.report).toContain("# Lore merged into Alepha");
+    expect(result.data.report).toContain("| #Q2683 | [[#Q2684]] |");
+    expect((await ctx.repos.quests.findById(quest.id))!.projectId).toBe(
+      source.id,
+    );
   });
 });
