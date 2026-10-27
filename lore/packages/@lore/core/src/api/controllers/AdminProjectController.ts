@@ -8,11 +8,8 @@ import { $action, okSchema } from "alepha/server";
 import { projects } from "../entities/projects.ts";
 import { coreRelations } from "../relations/coreRelations.ts";
 import { adminProjectResourceSchema } from "../schemas/adminProjectResourceSchema.ts";
-import { projectMergeResultSchema } from "../schemas/projectMergeResultSchema.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
 import { ProjectDeletionService } from "../services/ProjectDeletionService.ts";
-import { ProjectMergeReport } from "../services/ProjectMergeReport.ts";
-import { ProjectMergeService } from "../services/ProjectMergeService.ts";
 
 /**
  * Instance-wide view of every project, for the admin shell.
@@ -48,8 +45,6 @@ export class AdminProjectController {
   protected readonly projectsWith = $repository(coreRelations, "projects");
   protected readonly members = $repository(organizationMembers);
   protected readonly projectDeletion = $inject(ProjectDeletionService);
-  protected readonly projectMerge = $inject(ProjectMergeService);
-  protected readonly mergeReport = $inject(ProjectMergeReport);
   protected readonly audits = $inject(LoreAudits);
   protected readonly dateTime = $inject(DateTimeProvider);
 
@@ -226,59 +221,6 @@ export class AdminProjectController {
         deleted.push(id);
       }
       return { deleted };
-    },
-  });
-
-  /**
-   * Merge one project into another (#E94, #Q2783, folio #F1401): every
-   * row of the source moves into the target, a per-project number the
-   * target already uses is renumbered, and the references in moved text
-   * follow. A **dry run by default**: the caller reads the plan, conflicts
-   * included, before anything is written.
-   *
-   * Gated on `admin:project:delete`, the permission that may already empty
-   * a project, because a merge leaves the source empty. The caller archives
-   * the source afterwards; nothing here deletes a project row.
-   */
-  public readonly mergeProject = $action({
-    path: `${this.url}/:id/merge`,
-    method: "POST",
-    group: this.group,
-    use: [$secure({ permissions: ["admin:project:delete"] })],
-    description:
-      "Merge a project into another, renumbering what collides (dry run unless dryRun is false)",
-    schema: {
-      params: z.object({ id: z.integer() }),
-      body: z.object({
-        target: z.integer(),
-        dryRun: z.boolean().optional(),
-      }),
-      response: projectMergeResultSchema,
-    },
-    handler: async ({ params, body, user }) => {
-      const dryRun = body.dryRun !== false;
-      const source = await this.projects.findById(params.id);
-      const target = await this.projects.findById(body.target);
-      const plan = await this.projectMerge.merge(params.id, body.target, {
-        dryRun,
-      });
-      if (!dryRun) {
-        await this.audits.project.logSuccess("merge", {
-          ...this.audits.actor(user),
-          severity: "warning",
-          resourceType: "project",
-          resourceId: String(body.target),
-          description: `${source?.title ?? params.id} merged into ${target?.title ?? body.target}`,
-        });
-      }
-      return {
-        ...plan,
-        report: this.mergeReport.markdown(plan, {
-          source: source?.title ?? String(params.id),
-          target: target?.title ?? String(body.target),
-          at: this.dateTime.nowISOString(),
-        }),
-      };
     },
   });
 }

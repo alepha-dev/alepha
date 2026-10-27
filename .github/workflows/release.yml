@@ -165,15 +165,12 @@ jobs:
           yarn workspace @alepha/lore version "${VERSION}"
           yarn workspace lore version "${VERSION}"
 
-      # One Lore release per product project, each carrying this tag. A project
-      # with no release of that tag passes with a log line, so a release with
-      # no Lore or Bay work still ships.
+      # The Lore release of this tag, in project `alepha`, which tracks the
+      # framework, Lore and Bay since #E94. No release of that tag passes with
+      # a log line.
       - name: Check the Lore release is complete
         if: inputs.resume_tag == ''
-        run: |
-          for project in alepha lore bay; do
-            LORE_PROJECT="$project" yarn lore releases check --tag "$VERSION"
-          done
+        run: yarn lore releases check --tag "$VERSION"
         env:
           LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
           VERSION: ${{ steps.version.outputs.version }}
@@ -423,32 +420,28 @@ jobs:
       # Nothing is torn by going red, and re-running the job publishes again
       # cleanly: the publish exits 0 on an already-published release.
       #
-      # The publish runs once per product project (alepha, lore, bay), each
-      # naming its project in `LORE_PROJECT`. `--tag` is the version, byte for
-      # byte: `releases.tag` preserves case. A project with no release of that
-      # version exits 0 with a log line.
+      # The publish runs once, in project `alepha` (`LORE_PROJECT` at the top
+      # of this file), which holds the framework's, Lore's and Bay's work since
+      # #E94. `--tag` is the version, byte for byte: `releases.tag` preserves
+      # case. No release of that version exits 0 with a log line.
       # ──────────────────────────────────────────────────────────────
       - name: Rebuild docs for workerd
         working-directory: docs
         run: yarn alepha build --runtime=workerd && yarn alepha gen:llms
 
-      # Lore's build and image, recorded in Lore's own project (`lore`), before
-      # the Lore releases are published so the `lore` release lists them.
+      # Lore's build and image, recorded in project `alepha` before the release
+      # is published, so the release lists them.
       - name: Push the Lore artifact to Lore
         working-directory: lore/apps/lore
         run: |
           yarn lore artifacts push --tag "$VERSION"
           yarn lore artifacts push-image --tag "$VERSION" --image "ghcr.io/alepha-dev/lore:$VERSION"
         env:
-          LORE_PROJECT: lore
           LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
           VERSION: ${{ steps.version.outputs.version }}
 
-      - name: Publish the Lore releases
-        run: |
-          for project in alepha lore bay; do
-            LORE_PROJECT="$project" yarn lore releases publish --tag "$VERSION"
-          done
+      - name: Publish the Lore release
+        run: yarn lore releases publish --tag "$VERSION"
         env:
           LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
           VERSION: ${{ steps.version.outputs.version }}

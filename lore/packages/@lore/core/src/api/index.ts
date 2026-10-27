@@ -26,6 +26,7 @@ import { NotificationPreferenceController } from "./controllers/NotificationPref
 import { ProjectCapabilityController } from "./controllers/ProjectCapabilityController.ts";
 import { ProjectController } from "./controllers/ProjectController.ts";
 import { ProjectDashboardController } from "./controllers/ProjectDashboardController.ts";
+import { ProjectMergeController } from "./controllers/ProjectMergeController.ts";
 import { ProjectPromptController } from "./controllers/ProjectPromptController.ts";
 import { ProjectRankController } from "./controllers/ProjectRankController.ts";
 import { ResourceFilingController } from "./controllers/ResourceFilingController.ts";
@@ -286,6 +287,7 @@ export const LoreCoreApi = $module({
     ResourceFilingController,
     InvitationController,
     AdminProjectController,
+    ProjectMergeController,
     // What the MCP surface is asked for, over time (#E65). Admin rather than
     // a project page: a tool call is not scoped to a project.
     AdminMcpController,
@@ -410,6 +412,7 @@ export { LoreAudits } from "./services/LoreAudits.ts";
 export { ProjectCountRegistry } from "./services/ProjectCountRegistry.ts";
 export { ProjectDeletionService } from "./services/ProjectDeletionService.ts";
 export { ProjectLimits } from "./services/ProjectLimits.ts";
+export { ProjectMergeController } from "./controllers/ProjectMergeController.ts";
 export {
   ProjectMergeNumbers,
   type ProjectMergeNumbering,

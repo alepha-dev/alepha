@@ -69,6 +69,12 @@ export class QualityCommand {
             "Lore project slug, overriding LORE_PROJECT for this invocation",
         })
         .optional(),
+      branch: z
+        .text({
+          description:
+            "The branch the run is filed under, instead of the checked-out one: two suites of one project on one branch push under two labels, or the second push of a day replaces the first",
+        })
+        .optional(),
     }),
     handler: async ({ flags, root }) => {
       const project = this.client.resolveProject(flags.project);
@@ -78,11 +84,12 @@ export class QualityCommand {
         this.git.resolve(root),
       ]);
 
+      const branch = flags.branch || git.branch;
       await this.api.pushQualityRun({
         params: { projectId },
         body: {
           commitSha: git.commitSha,
-          branch: git.branch,
+          branch,
           coverage: report.coverage,
           tests: report.tests,
           durationMs: report.durationMs,
@@ -91,7 +98,7 @@ export class QualityCommand {
 
       this.log.info(
         `Pushed ${report.tests.total} test(s) and ${report.coverage.lines}% line coverage to ${project}`,
-        { commitSha: git.commitSha, branch: git.branch },
+        { commitSha: git.commitSha, branch },
       );
     },
   });

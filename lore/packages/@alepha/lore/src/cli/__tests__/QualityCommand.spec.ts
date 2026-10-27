@@ -229,6 +229,16 @@ describe("lore quality push", () => {
       );
     });
 
+    it("files the run under --branch when one is given", async () => {
+      const ctx = await push(
+        { env: { GITHUB_SHA: "cafebabe1234", GITHUB_REF_NAME: "main" } },
+        "--branch lore/main",
+      );
+
+      expect(ctx.link.pushes[0].body.branch).toBe("lore/main");
+      expect(ctx.link.pushes[0].body.commitSha).toBe("cafebabe1234");
+    });
+
     it("falls back to GITHUB_SHA where git names no commit", async () => {
       const ctx = await setup({
         env: { GITHUB_SHA: "cafebabe1234", GITHUB_REF_NAME: "main" },

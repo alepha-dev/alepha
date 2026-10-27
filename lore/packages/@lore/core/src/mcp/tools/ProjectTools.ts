@@ -10,8 +10,8 @@ import {
   UnauthorizedError,
 } from "alepha/server";
 
-import { AdminProjectController } from "../../api/controllers/AdminProjectController.ts";
 import { ProjectController } from "../../api/controllers/ProjectController.ts";
+import { ProjectMergeController } from "../../api/controllers/ProjectMergeController.ts";
 import type { AssignedWorkItem } from "../../api/schemas/assignedWorkItemSchema.ts";
 import type { CapabilityKey } from "../../api/schemas/capabilityKeySchema.ts";
 import { projectMergeResultSchema } from "../../api/schemas/projectMergeResultSchema.ts";
@@ -34,7 +34,7 @@ import { ProjectContextRegistry } from "../services/ProjectContextRegistry.ts";
  */
 export class ProjectTools {
   protected readonly projectController = $inject(ProjectController);
-  protected readonly adminProjects = $inject(AdminProjectController);
+  protected readonly projectMerges = $inject(ProjectMergeController);
   protected readonly contextSections = $inject(ProjectContextRegistry);
   protected readonly projectSecurity = $inject(ProjectSecurityService);
   protected readonly slugs = $inject(ProjectSlugService);
@@ -245,7 +245,7 @@ export class ProjectTools {
    */
   project_merge = $tool({
     description:
-      "ADMIN ONLY (`admin:project:delete`). Merge one project into another: every quest, epic, folio, feedback item, release, area, sigil, app and automation of `source` moves into `target`. A per-project number `target` already uses is renumbered above its counter, and `[[#Q12]]` references and Lore URLs inside moved text follow. A release joins `target`'s release of the same tag, an area its area of the same name. A row whose unique key both projects hold (a sigil name, an app/env pair, a stack) is a CONFLICT: the plan lists it and a real run refuses until it is resolved. **Dry run by default**: read `steps` (and any `conflicts`) before passing `dryRun: false`. `report` is the mapping as markdown, to publish as a folio in `target` with `folio_create`. Archive `source` afterwards; this tool deletes no project.",
+      "OWNER ONLY: needs `project:delete` in BOTH projects. Merge one project into another: every quest, epic, folio, feedback item, release, area, sigil, app and automation of `source` moves into `target`. A per-project number `target` already uses is renumbered above its counter, and `[[#Q12]]` references and Lore URLs inside moved text follow. A release joins `target`'s release of the same tag, an area its area of the same name. A row whose unique key both projects hold (a sigil name, an app/env pair, a stack) is a CONFLICT: the plan lists it and a real run refuses until it is resolved. **Dry run by default**: read `steps` (and any `conflicts`) before passing `dryRun: false`. `report` is the mapping as markdown, to publish as a folio in `target` with `folio_create`. Archive `source` afterwards; this tool deletes no project.",
     title: "Merge projects",
     annotations: {
       destructiveHint: true,
@@ -255,7 +255,7 @@ export class ProjectTools {
       result: projectMergeResultSchema,
     },
     handler: async ({ params }) =>
-      this.adminProjects.mergeProject({
+      this.projectMerges.mergeProject({
         params: { id: params.source },
         body: { target: params.target, dryRun: params.dryRun },
       }),

@@ -1,4 +1,4 @@
-import { AdminProjectController, ProjectMergeService } from "@lore/core/api";
+import { ProjectMergeController, ProjectMergeService } from "@lore/core/api";
 import { appInstances, qualityRuns, sigils } from "@lore/deploy/schemas";
 import { Alepha } from "alepha";
 import { organizationMembers } from "alepha/api/organizations";
@@ -244,22 +244,25 @@ describe("ProjectMergeService across every module", () => {
     ).toEqual({ folios: 1 });
   });
 
-  it("answers a dry run by default from the admin action, with the mapping as markdown", async ({
+  it("answers a dry run by default to the owner of both projects, with the mapping as markdown", async ({
     expect,
   }) => {
     const target = await createTestProject(ctx.alepha, { title: "Alepha" });
-    const source = await createTestProject(ctx.alepha, { title: "Lore" });
+    const source = await createTestProject(ctx.alepha, {
+      title: "Lore",
+      createdBy: target.createdBy,
+    });
     await createTestQuest(ctx.alepha, target, { shortId: 2683 });
     const quest = await createTestQuest(ctx.alepha, source, {
       shortId: 2683,
     });
-    const admin = { id: crypto.randomUUID(), roles: ["admin"] };
+    const owner = { id: target.createdBy, roles: ["user"] };
 
     const result = await ctx.alepha
-      .inject(AdminProjectController)
+      .inject(ProjectMergeController)
       .mergeProject.fetch(
         { params: { id: source.id }, body: { target: target.id } },
-        { user: admin },
+        { user: owner },
       );
 
     expect(result.data.dryRun).toBe(true);
@@ -268,5 +271,22 @@ describe("ProjectMergeService across every module", () => {
     expect((await ctx.repos.quests.findById(quest.id))!.projectId).toBe(
       source.id,
     );
+  });
+
+  it("refuses a caller who owns the source but not the target", async ({
+    expect,
+  }) => {
+    const target = await createTestProject(ctx.alepha);
+    const source = await createTestProject(ctx.alepha);
+    const owner = { id: source.createdBy, roles: ["user"] };
+
+    await expect(
+      ctx.alepha
+        .inject(ProjectMergeController)
+        .mergeProject.fetch(
+          { params: { id: source.id }, body: { target: target.id } },
+          { user: owner },
+        ),
+    ).rejects.toThrow(/project:delete/);
   });
 });
