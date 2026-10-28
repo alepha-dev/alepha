@@ -1083,6 +1083,7 @@
     "node": ">=24.0.0"
   },
   "llms": "https://alepha.dev/llms.txt",
+  "llmsLocal": "./docs",
   "scarfSettings": {
     "enabled": false
   }

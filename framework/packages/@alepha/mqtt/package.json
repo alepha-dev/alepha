@@ -74,5 +74,6 @@
   "engines": {
     "node": ">=24.0.0"
   },
-  "llms": "https://alepha.dev/llms.txt"
+  "llms": "https://alepha.dev/llms.txt",
+  "llmsLocal": "./docs"
 }
