@@ -55,7 +55,9 @@ of these changes, the other side moves with it.
   deploy path.
 - **The `bay` CLI**, driven over ssh by the framework's `BayAdapter`
   (`../framework/packages/alepha/src/cli/infra-lib/adapters/BayAdapter.ts`): `bay list`,
-  `bay deploy -`, `bay env`, `--secrets-file`, `--control-socket`.
+  `bay deploy -`, `bay deploy <stack>/<env>/<service> -`, `bay env`,
+  `--secrets-file`, `--control-socket`. With a stack it finds the service
+  from `bay list`, by the `stackApp` (`x-lore.app`) of the stack's members.
 - **The names Bay writes itself** (`internal/deploy/deploy.go`), mirrored as
   `bayOwnedKeys` in the framework's `secretKeys.ts`.
 - **The `_headers` conformance fixture** (`internal/headers/testdata/`), which

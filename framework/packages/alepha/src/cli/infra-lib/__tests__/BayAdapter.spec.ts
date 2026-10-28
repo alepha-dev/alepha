@@ -1591,3 +1591,219 @@ describe("BayAdapter  -  inspect reports the secrets that are set", () => {
     expect(shell.getCallsMatching(/bay env list/)).toHaveLength(0);
   });
 });
+
+describe("BayAdapter  -  deploying into a stack environment", () => {
+  const LIST = "ssh -o BatchMode=yes deploy@bay.example.com bay list";
+
+  /*
+    What `bay list` answers for `mcs/staging` once its compose file is
+    applied: the app service `api` runs `demo` (its `x-lore.app`), next to a
+    Postgres Compose runs. A standalone `demo/staging` is there too, so a
+    filter on the app name alone would pick the wrong instance.
+  */
+  const stackListing = JSON.stringify([
+    {
+      name: "demo",
+      env: "staging",
+      domains: ["old.example.com"],
+      release: "r-0",
+    },
+    {
+      name: "mcs.api",
+      env: "staging",
+      domains: ["api.mcs-staging.example.com"],
+      release: "r-7",
+      stack: "mcs",
+      service: "api",
+      serviceKind: "app",
+      stackApp: "demo",
+    },
+    {
+      name: "mcs.db",
+      env: "staging",
+      release: "",
+      stack: "mcs",
+      service: "db",
+      serviceKind: "service",
+    },
+  ]);
+
+  const inStack = (overrides: Record<string, unknown> = {}) =>
+    context({
+      env: "staging",
+      options: { host: "deploy@bay.example.com", stack: "mcs", ...overrides },
+    });
+
+  const withListing = async (body: string) => {
+    const ready = await setup();
+    ready.shell.configure({ outputs: { [LIST]: body } });
+    return ready;
+  };
+
+  it("redeploys only the service whose x-lore.app names this app", async () => {
+    const { adapter, shell } = await withListing(stackListing);
+
+    await adapter.deploy(inStack(), run);
+
+    expect(
+      shell.wasCalled(
+        "ssh -o BatchMode=yes deploy@bay.example.com bay deploy mcs/staging/api -",
+      ),
+    ).toBe(true);
+    expect(shell.getCallsMatching(/bay deploy .*--name/)).toHaveLength(0);
+  });
+
+  it("finds the service by app name, not by service name", async () => {
+    const { adapter, shell } = await withListing(
+      JSON.stringify([
+        {
+          name: "mcs.web",
+          env: "staging",
+          release: "",
+          stack: "mcs",
+          service: "web",
+          serviceKind: "app",
+          stackApp: "demo",
+        },
+      ]),
+    );
+
+    await adapter.deploy(inStack(), run);
+
+    expect(
+      shell.wasCalled(
+        "ssh -o BatchMode=yes deploy@bay.example.com bay deploy mcs/staging/web -",
+      ),
+    ).toBe(true);
+  });
+
+  it("takes $BAY_STACK over the config", async () => {
+    const { adapter, shell } = await withListing(stackListing);
+    process.env.BAY_STACK = "mcs";
+    try {
+      await adapter.deploy(
+        context({
+          env: "staging",
+          options: { host: "deploy@bay.example.com" },
+        }),
+        run,
+      );
+    } finally {
+      delete process.env.BAY_STACK;
+    }
+
+    expect(
+      shell.wasCalled(
+        "ssh -o BatchMode=yes deploy@bay.example.com bay deploy mcs/staging/api -",
+      ),
+    ).toBe(true);
+  });
+
+  it("keeps a configured domain off a stack service, which its stack routes", async () => {
+    const { adapter, shell } = await withListing(stackListing);
+
+    await adapter.deploy(inStack({ domain: "demo.example.com" }), run);
+
+    expect(shell.getCallsMatching(/--domain/)).toHaveLength(0);
+  });
+
+  it("refuses before packing when no service runs this app", async () => {
+    const { adapter, shell } = await withListing(
+      JSON.stringify([
+        {
+          name: "mcs.api",
+          env: "staging",
+          release: "",
+          stack: "mcs",
+          service: "api",
+          serviceKind: "app",
+          stackApp: "other",
+        },
+      ]),
+    );
+
+    await expect(adapter.deploy(inStack(), run)).rejects.toThrow(
+      /No service of stack mcs\/staging .* runs demo; its app services are api \(other\)/,
+    );
+    expect(shell.getCallsMatching(/pack/)).toHaveLength(0);
+  });
+
+  it("says to deploy the stack first when its environment has no app service", async () => {
+    const { adapter } = await withListing("[]");
+
+    await expect(adapter.deploy(inStack(), run)).rejects.toThrow(
+      /Stack mcs\/staging on deploy@bay\.example\.com has no app service\. Deploy the stack first/,
+    );
+  });
+
+  it("refuses two services running the same app", async () => {
+    const twice = JSON.parse(stackListing);
+    twice.push({ ...twice[1], name: "mcs.api2", service: "api2" });
+    const { adapter } = await withListing(JSON.stringify(twice));
+
+    await expect(adapter.deploy(inStack(), run)).rejects.toThrow(
+      /has 2 services running demo \(api, api2\)/,
+    );
+  });
+
+  it("refuses a stack name Bay would refuse, before anything runs", async () => {
+    const { adapter, shell } = await setup();
+
+    await expect(
+      adapter.deploy(inStack({ stack: "mcs.prod" }), run),
+    ).rejects.toThrow(/Refusing to put stack "mcs\.prod"/);
+    expect(shell.calls).toHaveLength(0);
+  });
+
+  it("refuses a service name that is not one, even from the Bay", async () => {
+    const { adapter } = await withListing(
+      JSON.stringify([
+        {
+          name: "mcs.x",
+          env: "staging",
+          release: "",
+          stack: "mcs",
+          service: "x; rm -rf /",
+          serviceKind: "app",
+          stackApp: "demo",
+        },
+      ]),
+    );
+
+    await expect(adapter.deploy(inStack(), run)).rejects.toThrow(
+      /Refusing to put service/,
+    );
+  });
+
+  it("reports the stack service in status, with its own secrets", async () => {
+    const { adapter, shell } = await setup();
+    shell.configure({
+      outputs: {
+        [LIST]: stackListing,
+        "ssh -o BatchMode=yes deploy@bay.example.com bay env list mcs.api/staging":
+          JSON.stringify({ app: ["STRIPE_KEY"], bayOwned: ["APP_SECRET"] }),
+      },
+    });
+
+    const state = await adapter.inspect(inStack(), run);
+
+    expect(state.workers).toEqual([
+      {
+        name: "mcs/staging/api",
+        exists: true,
+        detail: "api.mcs-staging.example.com",
+        version: "r-7",
+      },
+    ]);
+    expect(state.secrets).toEqual([{ name: "STRIPE_KEY", deployed: true }]);
+  });
+
+  it("refuses to tear down one service of a stack", async () => {
+    const { adapter, shell } = await setup();
+
+    await expect(adapter.teardown(inStack(), run)).rejects.toThrow(
+      /bay stack destroy mcs\/staging/,
+    );
+    expect(shell.calls).toHaveLength(0);
+  });
+});

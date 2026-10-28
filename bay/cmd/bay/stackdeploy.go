@@ -385,7 +385,7 @@ func (s *server) recordAppMember(name, env, service string, x stack.XLore, domai
 			return err
 		}
 		app := state.App{Name: state.MemberName(name, service), Env: env, Domains: domains, Port: port,
-			Stack: name, Service: service, ServiceKind: "app", RuntimeImage: x.Runtime}
+			Stack: name, Service: service, ServiceKind: "app", StackApp: x.App, RuntimeImage: x.Runtime}
 		if err := s.store.Upsert(app); err != nil {
 			return err
 		}
@@ -393,7 +393,7 @@ func (s *server) recordAppMember(name, env, service string, x stack.XLore, domai
 		return nil
 	}
 	existing.Domains = domains
-	existing.Stack, existing.Service, existing.ServiceKind = name, service, "app"
+	existing.Stack, existing.Service, existing.ServiceKind, existing.StackApp = name, service, "app", x.App
 	if x.Runtime != "" {
 		existing.RuntimeImage = x.Runtime
 	}

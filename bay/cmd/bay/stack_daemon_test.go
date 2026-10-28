@@ -64,7 +64,7 @@ func shopCompose(nginxTag string) string {
       routes: ["@"]
   api:
     x-lore:
-      app: api
+      app: shop-api
       routes: ["api"]
 volumes:
   cachedata:
@@ -140,6 +140,11 @@ func TestStackDeployDaemon(t *testing.T) {
 		}
 		if status, body := get(base); status != 200 || !strings.Contains(body, "nginx") {
 			t.Fatalf("web: %d %.80s", status, body)
+		}
+		// The app service records which app it runs: how the framework's
+		// BayAdapter finds the service to deploy into from `bay list`.
+		if api, _ := s.store.Get(memberKey("shop", env, "api")); api.StackApp != "shop-api" || api.ServiceKind != "app" {
+			t.Fatalf("api member = %+v", api)
 		}
 		if !d.Running(memberKey("shop", env, "cache")) {
 			t.Fatal("the cache member is not found running under its Bay name")

@@ -175,6 +175,11 @@ type App struct {
 	// itself (blue/green, hardening), or "service" for one compose runs from
 	// its image. Empty on a standalone app.
 	ServiceKind string `json:"serviceKind,omitempty"`
+	// StackApp is the app an "app" service runs: its `x-lore.app`. It is how a
+	// deployer that knows only its own app name (the framework's BayAdapter)
+	// finds the service to deploy into, through `bay list`. Recorded at each
+	// stack deploy, so it follows the compose file.
+	StackApp string `json:"stackApp,omitempty"`
 	// BackupHook is how a stack service is dumped (`x-lore.backup`), recorded
 	// from the revision at deploy time. A service member with a hook has
 	// Backups set, so the schedule takes it like any app database.
