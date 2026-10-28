@@ -108,6 +108,7 @@ describe("alepha docs", () => {
     }
 
     return {
+      fs,
       cli: alepha.inject(CliProvider),
       cmd: alepha.inject(DocsCommand),
       output: alepha.inject(MemoryOutputProvider),
@@ -156,6 +157,23 @@ describe("alepha docs", () => {
       await cli.run(cmd.docs, { root: "/repo/apps/web" });
 
       expect(output.text).toContain("- reference-primitives-$entity");
+    });
+
+    it("stops at the node_modules holding alepha, ignoring any above it", async () => {
+      const { cli, cmd, output, fs } = await createTestEnv();
+      // An outer checkout's install, one level above the project.
+      await fs.writeFile(
+        "/node_modules/@alepha/ui/package.json",
+        JSON.stringify({ name: "@alepha/ui", version: "9.9.9" }),
+      );
+      await fs.writeFile(
+        "/node_modules/@alepha/ui/docs/packages-alepha-ui-form.md",
+        '---\nslug: "packages-alepha-ui-form"\n---\n\n# Form\n',
+      );
+
+      await cli.run(cmd.docs, { root: "/project" });
+
+      expect(output.text).not.toContain("@alepha/ui");
     });
 
     it("says where it looked when no package ships docs", async () => {

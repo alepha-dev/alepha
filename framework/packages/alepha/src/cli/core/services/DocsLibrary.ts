@@ -158,6 +158,11 @@ export class DocsLibrary {
   /**
    * `node_modules/alepha` and every `node_modules/@alepha/*` that carries a
    * `docs/` folder, nearest copy first, from the project root up.
+   *
+   * The walk stops at the `node_modules` holding `alepha`: that is the
+   * project's install, and anything above it belongs to someone else. A
+   * project inside another checkout (the CLI's own e2e project sits inside
+   * this repository) would otherwise list the outer checkout's packages.
    */
   protected async packageDirs(root: string): Promise<string[]> {
     const found = new Map<string, string>();
@@ -182,7 +187,7 @@ export class DocsLibrary {
         }
       }
       const parent = this.fs.resolve(dir, "..");
-      if (parent === dir) break;
+      if (found.has("alepha") || parent === dir) break;
       dir = parent;
     }
     return [...found.values()];
