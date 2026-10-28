@@ -72,6 +72,7 @@ describe("the CLI's build tasks and its commands", () => {
       "clean",
       "db",
       "dev",
+      "docs",
       "gen",
       "init",
       "lint",

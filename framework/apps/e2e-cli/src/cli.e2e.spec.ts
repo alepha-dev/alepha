@@ -365,6 +365,28 @@ describe("Alepha CLI E2E", () => {
       }
     });
 
+    it("prints the installed docs with alepha docs: the index, a page, a grep", async () => {
+      // Only `alepha` is installed here, so the index names no @alepha/ui page.
+      const index = await run(`"${CLI}" docs`, PROJECT_DIR);
+      expect(index.exitCode).toBe(0);
+      expect(index.stdout).toMatch(/^# Alepha docs\n/);
+      expect(index.stdout).toContain("- guides-introduction (Introduction)");
+      expect(index.stdout).not.toContain("@alepha/ui@");
+      expect(index.stdout).not.toContain(String.fromCharCode(27));
+
+      const entity = await run(`"${CLI}" docs '$entity'`, PROJECT_DIR);
+      expect(entity.exitCode).toBe(0);
+      expect(entity.stdout).toMatch(/^# \$entity\n/);
+
+      const grep = await run(`"${CLI}" docs --grep paginate`, PROJECT_DIR);
+      expect(grep.exitCode).toBe(0);
+      expect(grep.stdout).toMatch(/^[a-z$-]+:\d+: .*paginate/im);
+
+      const miss = await run(`"${CLI}" docs entty`, PROJECT_DIR);
+      expect(miss.exitCode).toBe(1);
+      expect(miss.stdout).toContain("- reference-primitives-$entity");
+    });
+
     it("resolves every subpath its exports map declares", async () => {
       // Reaches for each condition's target on disk as well as importing the
       // one node picks: a broken `browser`, `workerd` or `bun` entry is
