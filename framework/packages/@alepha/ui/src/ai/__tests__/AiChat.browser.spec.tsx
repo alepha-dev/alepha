@@ -158,6 +158,38 @@ describe("AiChat", () => {
     ]);
   });
 
+  it("keeps what was typed when the drawer re-renders before Send", async () => {
+    const { links, view } = await mount((l) => {
+      l.streams.push([
+        { type: "conversation", conversationId },
+        { type: "text", text: "Done." },
+        { type: "end", reason: "stop" },
+      ]);
+    });
+    const box = await waitFor(() => {
+      const found = document.querySelector("[data-testid='ai-chat'] textarea");
+      expect(found).toBeTruthy();
+      return found as HTMLTextAreaElement;
+    });
+
+    fireEvent.change(box, { target: { value: "add a note" } });
+    // Any re-render of the drawer, here a new prop: the history fetch
+    // settling did it in the AI example's e2e, between the fill and Send.
+    view.rerender(
+      <AlephaContext.Provider value={alepha!}>
+        <InvoicePage onForm={() => {}} />
+        <AiChat open onOpenChange={() => {}} title="Assistant" />
+      </AlephaContext.Provider>,
+    );
+    fireEvent.click(view.getByRole("button", { name: "Send" }));
+
+    await waitFor(() =>
+      expect(links.bodies("chat").map((body) => body.message)).toEqual([
+        "add a note",
+      ]),
+    );
+  });
+
   it("continues the conversation it is in and keeps the history", async () => {
     const { links, view, say } = await mount((l) => {
       l.conversations = [

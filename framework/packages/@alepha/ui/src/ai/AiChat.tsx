@@ -50,16 +50,16 @@ export interface AiChatProps extends UseAiChatOptions {
 export const AiChat = (props: AiChatProps) => {
   const { tr } = useI18n();
   const chat = useAiChat(props);
-  const form = useForm(
-    {
-      schema: aiChatMessageFormSchema,
-      handler: async (values) => {
-        form.reset();
-        await chat.send(values.message);
-      },
+  // No deps: `chat.send` is a new function every render, and a dep change
+  // rebuilds an empty form, dropping what was typed before Send. `useForm`
+  // keeps the handler fresh on every commit anyway (#Q2934).
+  const form = useForm({
+    schema: aiChatMessageFormSchema,
+    handler: async (values) => {
+      form.reset();
+      await chat.send(values.message);
     },
-    [chat.send],
-  );
+  });
 
   return (
     <Drawer
