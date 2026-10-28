@@ -18,7 +18,8 @@
   },
   "files": [
     "dist",
-    "src"
+    "src",
+    "docs"
   ],
   "type": "module",
   "main": "./src/index.ts",

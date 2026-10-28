@@ -21,7 +21,8 @@
     "assets",
     "dist",
     "src",
-    "THIRD_PARTY_NOTICES.md"
+    "THIRD_PARTY_NOTICES.md",
+    "docs"
   ],
   "type": "module",
   "main": "./src/core/index.ts",

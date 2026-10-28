@@ -2,6 +2,7 @@ import { changelog } from "alepha/cli";
 import { defineConfig } from "alepha/cli/config";
 
 import { AlephaCommands } from "./scripts/commands.ts";
+import { PackageDocsCommand } from "./scripts/package-docs.ts";
 
 export default defineConfig({
   plugins: [
@@ -89,5 +90,6 @@ export default defineConfig({
     }),
     // Register repository commands after the built-ins.
     AlephaCommands,
+    PackageDocsCommand,
   ],
 });

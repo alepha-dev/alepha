@@ -33,7 +33,8 @@
     "tsconfig.base.json",
     "AGENTS.md",
     "CHANGELOG.md",
-    "CLAUDE.md"
+    "CLAUDE.md",
+    "docs"
   ],
   "type": "module",
   "main": "./src/core/index.ts",

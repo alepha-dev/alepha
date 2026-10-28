@@ -261,6 +261,14 @@ describe("Alepha CLI E2E", () => {
           "These tests install a packed tarball, and the tarball carries dist/.",
       );
     }
+    // The docs pages come from the same `yarn build` (`package:docs`).
+    if (
+      !existsSync(join(ROOT, "packages/alepha/docs/guides-introduction.md"))
+    ) {
+      throw new Error(
+        "packages/alepha/docs is missing  -  run `yarn build` before `yarn e2e-cli`.",
+      );
+    }
 
     await mkdir(TARBALL_DIR, { recursive: true });
     await mkdir(PROJECT_DIR, { recursive: true });
@@ -328,6 +336,33 @@ describe("Alepha CLI E2E", () => {
       // and no escape sequence survives.
       expect(result.stdout).toMatch(/^\d+\.\d+\.\d+\n$/);
       expect(result.stderr).toBe("");
+    });
+
+    it("ships the docs pages of its version, linked to each other and not to the site", async () => {
+      // `yarn build` copies them in (`package:docs`, #Q2755), so an agent
+      // reads the docs of the installed version from node_modules.
+      const docsDir = join(PROJECT_DIR, "node_modules/alepha/docs");
+      const files = await readdir(docsDir);
+      expect(files).toContain("guides-introduction.md");
+      expect(files).toContain("reference-primitives-$entity.md");
+
+      const page = await readFile(
+        join(docsDir, "reference-primitives-$entity.md"),
+        "utf-8",
+      );
+      expect(page).toMatch(
+        /^---\nslug: "reference-primitives-\$entity"\ntitle: "\$entity"\nsummary: ".+"\npackage: "alepha"\nsection: "reference"\n---\n/,
+      );
+
+      // Every relative link lands on a page the tarball carries, and none
+      // goes back to alepha.dev/docs, which documents another version.
+      for (const file of files) {
+        const body = await readFile(join(docsDir, file), "utf-8");
+        expect(body).not.toMatch(/\]\((https:\/\/alepha\.dev)?\/docs\//);
+        for (const [, target] of body.matchAll(/\]\(\.\/([^)#]+\.md)/g)) {
+          expect(files, `${file} links to ${target}`).toContain(target);
+        }
+      }
     });
 
     it("resolves every subpath its exports map declares", async () => {

@@ -19,7 +19,8 @@
   },
   "files": [
     "dist",
-    "assets"
+    "assets",
+    "docs"
   ],
   "type": "module",
   "exports": {
