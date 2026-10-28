@@ -27,7 +27,7 @@ start. That has three problems, and the package copy has none of them:
 - **The network.** Sandboxes, CI runners and offline sessions cannot reach the site. The
   package is already on disk.
 
-## The four forms
+## The four forms, for the framework
 
 **The index.** `npx alepha docs` with no argument lists every page of every installed Alepha
 package, grouped by package and section, one line each: slug, title, one-sentence summary.
@@ -57,6 +57,23 @@ Print one with `npx alepha docs <slug>`.
 
 The output is plain markdown with no colour and no spinner, whether or not stdout is a
 terminal: the reader is usually an agent piping it.
+
+## Your own app
+
+The framework's manual is half of what an agent needs; the other half is a map of the app it
+is editing. `npx alepha docs --app` prints it, read from the app's container rather than guessed
+from its source tree: every `$action` with its path, method and schemas, every `$entity` with
+its columns, the `$page`s, `$route`s, `$job`s and `$topic`s, and the environment variables
+(names, types and defaults, never values).
+
+```bash
+npx alepha docs --app                        # the overview, one line per item
+npx alepha docs --app entities               # one section in full
+npx alepha docs --app actions --grep invoice # only what mentions "invoice"
+```
+
+The app is loaded but not started, so no server binds and no job runs. The
+[Docs Command](/docs/cli-commands-docs) page has the sections and their sizes on a real app.
 
 ## The files
 

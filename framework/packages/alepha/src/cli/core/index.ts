@@ -39,6 +39,7 @@ import { AppEntryProvider } from "./providers/AppEntryProvider.ts";
 import { ViteBuildProvider } from "./providers/ViteBuildProvider.ts";
 import { ViteDevServerProvider } from "./providers/ViteDevServerProvider.ts";
 import { AlephaCliUtils } from "./services/AlephaCliUtils.ts";
+import { AppMapRenderer } from "./services/AppMapRenderer.ts";
 import { ArchiveCompressor } from "./services/ArchiveCompressor.ts";
 import { BuildPipeline } from "./services/BuildPipeline.ts";
 import { BuildSlices } from "./services/BuildSlices.ts";
@@ -97,6 +98,7 @@ export * from "./services/BuildManifestReader.ts";
 export * from "./schemas/presetSchema.ts";
 export * from "./schemas/infraProviderSchema.ts";
 export * from "./services/AlephaCliUtils.ts";
+export * from "./services/AppMapRenderer.ts";
 export * from "./services/GitMessageParser.ts";
 export * from "./services/PackageManagerUtils.ts";
 export * from "./services/ProjectScaffolder.ts";
@@ -170,6 +172,7 @@ export const AlephaCliServices = $module({
     DockerImageBuilder,
     DesktopAdapterResolver,
     DocsLibrary,
+    AppMapRenderer,
     WorkspaceCompiler,
     WorkspacePacker,
     // Build tasks. `BuildCommand` orchestrates these and stays in `AlephaCli`:
