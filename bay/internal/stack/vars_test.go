@@ -54,4 +54,21 @@ func TestVars(t *testing.T) {
 			t.Fatalf("env = %v", env)
 		}
 	})
+
+	t.Run("a stack's own database replaces the SQLite Bay provisioned", func(t *testing.T) {
+		env := AppEnv(
+			map[string]string{"DATABASE_URL": "postgres://app:pw@db:5432/app"},
+			map[string]string{"DATABASE_URL": "sqlite:///apps/demo/data/app.db"},
+		)
+		if env["DATABASE_URL"] != "postgres://app:pw@db:5432/app" {
+			t.Fatalf("env = %v", env)
+		}
+		env = AppEnv(
+			map[string]string{"DATABASE_URL": "postgres://stack"},
+			map[string]string{"DATABASE_URL": "postgres://the-app-s-own"},
+		)
+		if env["DATABASE_URL"] != "postgres://the-app-s-own" {
+			t.Fatalf("an app's own non-SQLite URL still wins: %v", env)
+		}
+	})
 }

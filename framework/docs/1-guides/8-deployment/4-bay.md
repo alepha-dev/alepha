@@ -170,7 +170,8 @@ The stack environment must exist first (`bay stack deploy mcs/staging compose.ym
 `lore stack deploy`). `domain` is not used: a stack service is routed by its stack (`x-lore.routes`,
 `bay stack route`). `alepha infra status` reports the service, and `alepha infra down` refuses: a
 stack is taken down as a whole, with `bay stack destroy`. `BAY_STACK` overrides `stack`, like
-`BAY_HOST`.
+`BAY_HOST`. The walkthrough, with the compose file, variables, staging and backups, is
+[Postgres and Redis on a Bay Stack](/docs/guides-deployment-bay-stack).
 
 ## Secrets
 

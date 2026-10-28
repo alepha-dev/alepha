@@ -1297,6 +1297,18 @@ func (s *server) deployArtifact(ctx context.Context, opts deployArtifactOptions)
 		secrets = parsed
 	}
 
+	// A stack member's provision reads its stack's variables, read before anything
+	// moves like the secrets: a DATABASE_URL there is the stack's own database
+	// (see deploy.Options.StackVars).
+	var stackVars map[string]string
+	if member, ok := s.store.Get(key); ok && member.Stack != "" {
+		vars, err := stack.LoadVars(s.root, member.Stack, member.Env)
+		if err != nil {
+			return nil, &deployFailure{Status: http.StatusInternalServerError, Err: err}
+		}
+		stackVars = vars
+	}
+
 	// Whether it was serving is read first, because it decides both how this
 	// deploy runs and what a failed one has to put back.
 	wasRunning := s.runner.Running(key)
@@ -1326,6 +1338,7 @@ func (s *server) deployArtifact(ctx context.Context, opts deployArtifactOptions)
 		Storage:         s.store.Storage(),
 		MigratedStorage: opts.MigratedStorage,
 		Secrets:         secrets,
+		StackVars:       stackVars,
 	}, s.store)
 	if err != nil {
 		if blueGreen {
