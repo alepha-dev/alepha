@@ -1,0 +1,33 @@
+# The compose file of the framework guide "Postgres and Redis on a Bay stack"
+# (framework/docs/1-guides/8-deployment/6-bay-stack.md), applied on a real
+# Docker daemon by TestStackPostgresRedisDaemon. Change both together.
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: app
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d app"]
+      interval: 2s
+      retries: 30
+    x-lore:
+      backup:
+        postgres: { user: app, db: app }
+  redis:
+    image: redis:7-alpine
+    volumes: [redisdata:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      retries: 30
+  web:
+    depends_on: [db, redis]
+    x-lore:
+      app: myapp
+      routes: ["@"]
+volumes:
+  pgdata:
+  redisdata:

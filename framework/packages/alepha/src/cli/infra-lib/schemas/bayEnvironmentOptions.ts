@@ -4,7 +4,8 @@ import { environmentOptionsSchema } from "./environmentOptions.ts";
 
 /**
  * What `bay()` takes: the shared `domain`, plus the ssh destination of the
- * machine and the path of Bay's control socket on it.
+ * machine, the path of Bay's control socket on it, and the stack the app is
+ * deployed into, if any.
  */
 export const bayEnvironmentOptionsSchema = environmentOptionsSchema.extend({
   /**
@@ -42,6 +43,27 @@ export const bayEnvironmentOptionsSchema = environmentOptionsSchema.extend({
    * the same way `$BAY_HOST` overrides `host`.
    */
   socket: z.text().optional(),
+  /**
+   * The Bay stack this app is deployed into, e.g. `"mcs"`.
+   *
+   * A stack is a `compose.yml` applied on the Bay (`bay stack deploy`, or
+   * `lore stack deploy`): the app runs as the service whose
+   * `x-lore: { app: <name> }` names it, next to Postgres, Redis or anything
+   * else the file declares. The environment's name is the stack
+   * environment's, so `alepha deploy staging` deploys into `mcs/staging`
+   * and redeploys only this app's service, as
+   * `bay deploy mcs/staging/<service> -`.
+   *
+   * The stack must have been deployed first: the service is found by asking
+   * the Bay, and a stack environment that does not exist yet has none. With
+   * a stack, `domain` is not used: the service's routes come from the
+   * stack (`x-lore.routes`, `bay stack route`).
+   *
+   * Without it, the app is deployed on its own, as `bay deploy - --name <app>`.
+   *
+   * `$BAY_STACK` overrides, the same way `$BAY_HOST` overrides `host`.
+   */
+  stack: z.text().optional(),
 });
 
 export type BayEnvironmentOptions = Infer<typeof bayEnvironmentOptionsSchema>;

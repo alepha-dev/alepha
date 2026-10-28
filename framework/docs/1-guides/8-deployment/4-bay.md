@@ -146,6 +146,33 @@ Bay takes it from there: it reads the manifest, creates what the app declares, s
 waits for `/health` to answer, swaps traffic over, and keeps the previous release around to roll back
 to if readiness never arrives.
 
+### Into a stack
+
+An app that needs Postgres or Redis next to it runs in a Bay **stack**: a `compose.yml` applied on the
+host, where the app is the service marked `x-lore: { app: <name> }`. Give `bay()` the stack's name:
+
+```typescript
+infra({
+  environments: {
+    staging: bay({ host: "deploy@bay.example.com", stack: "mcs" }),
+  },
+});
+```
+
+`alepha deploy --env staging` then asks the Bay which service of `mcs/staging` runs this app and
+redeploys that service alone, blue/green, leaving Postgres and Redis running:
+
+```bash
+ssh -o BatchMode=yes deploy@bay.example.com 'bay deploy mcs/staging/api -' < myapp-latest.tar.zst
+```
+
+The stack environment must exist first (`bay stack deploy mcs/staging compose.yml` on the host, or
+`lore stack deploy`). `domain` is not used: a stack service is routed by its stack (`x-lore.routes`,
+`bay stack route`). `alepha infra status` reports the service, and `alepha infra down` refuses: a
+stack is taken down as a whole, with `bay stack destroy`. `BAY_STACK` overrides `stack`, like
+`BAY_HOST`. The walkthrough, with the compose file, variables, staging and backups, is
+[Postgres and Redis on a Bay Stack](/docs/guides-deployment-bay-stack).
+
 ## Secrets
 
 `alepha deploy` pushes them, and **which keys** it pushes is decided by what your app declares

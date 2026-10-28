@@ -164,6 +164,132 @@ export class BayAdapter extends InfraAdapter<BayEnvironmentOptions> {
   }
 
   /**
+   * What a stack name, and the environment of a stack, are allowed to look
+   * like: `stackNamePattern` on the Go side. Narrower than
+   * {@link appKeyPattern}: no dot, because a member app is named
+   * `<stack>.<service>`.
+   */
+  protected readonly stackKeyPattern = /^[a-z0-9]([a-z0-9-]{0,40}[a-z0-9])?$/;
+
+  /**
+   * A compose service name, as Compose allows it. It comes back from the Bay
+   * and goes onto a command line, so it is checked like everything else.
+   */
+  protected readonly servicePattern = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/;
+
+  /**
+   * The Bay stack this environment deploys into, or undefined for an app
+   * deployed on its own.
+   *
+   * `$BAY_STACK` overrides the config, the same way `$BAY_HOST` overrides
+   * {@link host}. With a stack the environment is the stack environment's
+   * name too, so it is held to the same pattern: Bay would refuse it
+   * otherwise, after the pack.
+   */
+  protected stack(
+    ctx: InfraContext<BayEnvironmentOptions>,
+  ): string | undefined {
+    const configured = process.env.BAY_STACK ?? ctx.options.stack;
+    if (!configured) {
+      return undefined;
+    }
+    this.assertSafe("stack", configured, this.stackKeyPattern);
+    this.assertSafe("stack environment", ctx.env, this.stackKeyPattern);
+    return configured;
+  }
+
+  /**
+   * Every instance on the Bay, from `bay list`.
+   *
+   * Stack members are instances too, named `<stack>.<service>`, and carry
+   * their stack, service, kind and, for an app service, the app it runs
+   * (`stackApp`, its `x-lore.app`).
+   */
+  protected async listInstances(
+    ctx: InfraContext<BayEnvironmentOptions>,
+    host: string,
+  ): Promise<BayInstance[]> {
+    let answer: string;
+    try {
+      answer = await this.remote(ctx, this.bayArgv(ctx, ["list"]));
+    } catch (error) {
+      throw this.explain(host, error);
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(answer.trim() || "[]");
+    } catch {
+      // Anything but JSON means something other than `bay list` answered  -
+      // the same reasoning `deployedUrl` uses for `bay deploy`. Without this,
+      // `platform status` against a login banner or a shell error dies on a
+      // parse error naming neither Bay nor the host.
+      throw new AlephaError(
+        `Bay at ${host} answered \`bay list\` with something other than JSON: ${answer.slice(0, 300)}`,
+      );
+    }
+    // `bay list` marshals a nil slice as `null`, not `[]`, on a Bay with
+    // nothing deployed. Calling .filter on that throws with a message naming
+    // neither Bay nor the empty host.
+    return (parsed as BayInstance[] | null) ?? [];
+  }
+
+  /**
+   * The service of `<stack>/<env>` that runs this app: the one whose
+   * `x-lore: { app }` names it.
+   *
+   * Asked of the Bay rather than read from a local `compose.yml`: the file
+   * applied on the host is the truth, and a stack deployed from Lore has no
+   * copy in the app's repository. So the stack environment has to exist,
+   * which is also what Bay needs before it accepts an artifact for it.
+   */
+  protected async stackService(
+    ctx: InfraContext<BayEnvironmentOptions>,
+    stack: string,
+    host: string,
+  ): Promise<string> {
+    const target = `${stack}/${ctx.env}`;
+    const services = (await this.listInstances(ctx, host)).filter(
+      (instance) =>
+        instance.stack === stack &&
+        instance.env === ctx.env &&
+        instance.serviceKind === "app",
+    );
+    const mine = services.filter(
+      (instance) => instance.stackApp === ctx.project,
+    );
+    if (mine.length === 1 && mine[0].service) {
+      this.assertSafe("service", mine[0].service, this.servicePattern);
+      return mine[0].service;
+    }
+    if (mine.length > 1) {
+      throw new AlephaError(
+        `Stack ${target} on ${host} has ${mine.length} services running ${ctx.project} ` +
+          `(${mine.map((instance) => instance.service).join(", ")}): one app is one service. ` +
+          "Give each its own x-lore.app in compose.yml.",
+      );
+    }
+    if (services.length === 0) {
+      throw new AlephaError(
+        `Stack ${target} on ${host} has no app service. Deploy the stack first ` +
+          `(bay stack deploy ${target} compose.yml, or lore stack deploy), ` +
+          `with a service carrying x-lore: { app: ${ctx.project} }.`,
+      );
+    }
+    const named = services
+      .map((instance) =>
+        instance.stackApp
+          ? `${instance.service} (${instance.stackApp})`
+          : instance.service,
+      )
+      .join(", ");
+    throw new AlephaError(
+      `No service of stack ${target} on ${host} runs ${ctx.project}; its app services are ${named}. ` +
+        `Set x-lore: { app: ${ctx.project} } on one of them and redeploy the stack. ` +
+        "A service listed without its app is from a Bay older than the stackApp field: upgrade it, then redeploy the stack.",
+    );
+  }
+
+  /**
    * Refuses a value that has no business on a command line.
    *
    * `ssh` joins its command arguments into ONE string and hands it to the
@@ -606,6 +732,9 @@ export class BayAdapter extends InfraAdapter<BayEnvironmentOptions> {
   /**
    * Packs the artifact and pipes it into `bay deploy -` in one ssh invocation.
    *
+   * With a `stack`, into `bay deploy <stack>/<env>/<service> -` instead: only
+   * the app's service of that stack environment is redeployed.
+   *
    * Piped rather than staged: `scp` to a temp path would double the artifact on
    * the host's disk, leave litter behind when a deploy dies mid-way, and cost
    * three round trips instead of one.
@@ -621,10 +750,27 @@ export class BayAdapter extends InfraAdapter<BayEnvironmentOptions> {
     // rejection that was knowable from the config alone. `socket`'s result
     // is discarded here  -  it exists purely to validate early; `bayArgv`
     // below re-derives it once there is something to deploy.
+    const stack = this.stack(ctx);
     const domains = this.domains(ctx);
     this.socket(ctx);
 
     await this.validateDeployArtifact(ctx);
+
+    // In a stack, the target is the service that runs this app, asked of the
+    // Bay before the pack for the same reason: a stack that is not there, or
+    // names no service for this app, is knowable without building anything.
+    let target: string | undefined;
+    if (stack) {
+      target = `${stack}/${ctx.env}/${await this.stackService(ctx, stack, host)}`;
+      if (domains.length > 0) {
+        // Not passed: a stack service is routed by its stack, and a domain
+        // set on the member would be replaced by the next stack deploy.
+        this.log.info(
+          `Not passing domain ${domains.join(", ")}: ${target} is routed by its stack ` +
+            "(x-lore.routes, or bay stack route on the host).",
+        );
+      }
+    }
 
     let artifact = "";
     await run({
@@ -658,9 +804,15 @@ export class BayAdapter extends InfraAdapter<BayEnvironmentOptions> {
     await run({
       name: `deploy → ${host}`,
       handler: async () => {
-        const args = ["deploy", "-", "--name", ctx.project, "--env", ctx.env];
-        for (const domain of domains) {
-          args.push("--domain", domain);
+        // `bay deploy <stack>/<env>/<service> -` redeploys that one service
+        // of the stack environment, blue/green, against its current revision.
+        const args = target
+          ? ["deploy", target, "-"]
+          : ["deploy", "-", "--name", ctx.project, "--env", ctx.env];
+        if (!target) {
+          for (const domain of domains) {
+            args.push("--domain", domain);
+          }
         }
         if (secretsPath) {
           args.push("--secrets-file", secretsPath);
@@ -840,15 +992,16 @@ export class BayAdapter extends InfraAdapter<BayEnvironmentOptions> {
   /**
    * The keys Bay writes into every instance's `.env` itself.
    *
-   * A mirror of `bayOwnedKeys` in Bay's `internal/deploy/deploy.go` (github.com/alepha-dev/bay), which
-   * is the authority  -  Bay REFUSES a push containing one of these, naming it.
+   * A mirror of `bayOwnedKeys` in Bay's `internal/deploy/deploy.go` (`bay/` in
+   * this repository), which is the authority  -  Bay REFUSES a push containing
+   * one of these, naming it.
    * Filtering here turns that refusal into a skipped key with a log line
    * instead of a failed deploy, which matters because a workspace's
    * `.env.production` legitimately carries `APP_SECRET` and `DATABASE_URL` for
    * the platform it was first written for.
    *
-   * The copy is guarded rather than trusted: `BayAdapter.spec.ts` reads a copy
-   * of the Go block and fails if the two lists diverge. Without that, a key added on
+   * The copy is guarded rather than trusted: `BayAdapter.spec.ts` reads the Go
+   * source and fails if the two lists diverge. Without that, a key added on
    * the Go side would not break anything here  -  it would just start failing
    * every deploy of any app that happens to set it.
    *
@@ -967,12 +1120,16 @@ export class BayAdapter extends InfraAdapter<BayEnvironmentOptions> {
   protected async instanceSecrets(
     ctx: InfraContext<BayEnvironmentOptions>,
     host: string,
+    name: string,
   ): Promise<SecretState[]> {
+    // The instance's own name, which for a stack member is `<stack>.<service>`
+    // and came back from the Bay: checked before it reaches a command line.
+    this.assertSafe("instance name", name, this.appKeyPattern);
     let answer: string;
     try {
       answer = await this.remote(
         ctx,
-        this.bayArgv(ctx, ["env", "list", `${ctx.project}/${ctx.env}`]),
+        this.bayArgv(ctx, ["env", "list", `${name}/${ctx.env}`]),
       );
     } catch (error) {
       throw this.explain(host, error);
@@ -999,39 +1156,18 @@ export class BayAdapter extends InfraAdapter<BayEnvironmentOptions> {
     // Both go on a command line below, once there is an app to ask about.
     this.assertSafe("app name", ctx.project, this.appKeyPattern);
     this.assertSafe("environment", ctx.env, this.appKeyPattern);
-    let answer: string;
-    try {
-      answer = await this.remote(ctx, this.bayArgv(ctx, ["list"]));
-    } catch (error) {
-      throw this.explain(host, error);
-    }
+    const stack = this.stack(ctx);
+    const instances = await this.listInstances(ctx, host);
 
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(answer.trim() || "[]");
-    } catch {
-      // Anything but JSON means something other than `bay list` answered  -
-      // the same reasoning `deployedUrl` uses for `bay deploy`. Without this,
-      // `platform status` against a login banner or a shell error dies on a
-      // parse error naming neither Bay nor the host.
-      throw new AlephaError(
-        `Bay at ${host} answered \`bay list\` with something other than JSON: ${answer.slice(0, 300)}`,
-      );
-    }
-    // `bay list` marshals a nil slice as `null`, not `[]`, on a Bay with
-    // nothing deployed. Calling .filter on that throws with a message naming
-    // neither Bay nor the empty host.
-    const apps =
-      (parsed as Array<{
-        name: string;
-        env: string;
-        domains?: string[];
-        domain?: string;
-        release: string;
-      }> | null) ?? [];
-
-    const mine = apps.filter(
-      (a) => a.name === ctx.project && a.env === ctx.env,
+    // In a stack, this app is the member whose service runs it, named
+    // `<stack>.<service>` on the Bay and shown as `<stack>/<env>/<service>`.
+    const mine = instances.filter((a) =>
+      stack
+        ? a.stack === stack &&
+          a.env === ctx.env &&
+          a.serviceKind === "app" &&
+          a.stackApp === ctx.project
+        : a.name === ctx.project && a.env === ctx.env,
     );
     // Asked of the host, not assumed. `secrets: []` used to mean "this adapter
     // cannot answer" and read as "none are configured"  -  the same silence that
@@ -1039,10 +1175,12 @@ export class BayAdapter extends InfraAdapter<BayEnvironmentOptions> {
     // deployed there is genuinely no instance and no `.env`, and the empty
     // list is then the true answer rather than a stand-in for one.
     const secrets =
-      mine.length > 0 ? await this.instanceSecrets(ctx, host) : [];
+      mine.length > 0
+        ? await this.instanceSecrets(ctx, host, mine[0].name)
+        : [];
     return {
       workers: mine.map((a) => ({
-        name: `${a.name}/${a.env}`,
+        name: stack ? `${stack}/${a.env}/${a.service}` : `${a.name}/${a.env}`,
         exists: true,
         // `domains` is the live field, canonical first. `domain` is
         // `LegacyDomain` on the Go side  -  folded into `domains` and cleared on
@@ -1078,6 +1216,16 @@ export class BayAdapter extends InfraAdapter<BayEnvironmentOptions> {
     const host = this.host(ctx);
     this.assertSafe("app name", ctx.project, this.appKeyPattern);
     this.assertSafe("environment", ctx.env, this.appKeyPattern);
+    const stack = this.stack(ctx);
+    if (stack) {
+      // `bay remove` on one member would leave the stack's compose file naming
+      // a service Bay no longer runs, and the next stack deploy would bring it
+      // back. A stack is taken down as a whole, on purpose, on the host.
+      throw new AlephaError(
+        `${ctx.project} is deployed into stack ${stack}/${ctx.env}, which is removed as a whole: ` +
+          `remove its service from compose.yml and redeploy the stack, or run bay stack destroy ${stack}/${ctx.env} on ${host}.`,
+      );
+    }
 
     await run({
       name: `remove ${ctx.project}/${ctx.env}`,
@@ -1113,4 +1261,27 @@ export class BayAdapter extends InfraAdapter<BayEnvironmentOptions> {
       },
     });
   }
+}
+
+/**
+ * One instance as `bay list` answers it: `state.App` on the Go side, with
+ * only the fields this adapter reads.
+ */
+interface BayInstance {
+  name: string;
+  env: string;
+  domains?: string[];
+  domain?: string;
+  release: string;
+  /**
+   * Set on a stack member: its stack, its service, and whether it is an app
+   * service (`"app"`, run by Bay) or one Compose runs (`"service"`).
+   */
+  stack?: string;
+  service?: string;
+  serviceKind?: string;
+  /**
+   * The app an app service runs, its `x-lore.app`.
+   */
+  stackApp?: string;
 }

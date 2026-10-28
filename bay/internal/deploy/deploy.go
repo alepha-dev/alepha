@@ -93,6 +93,11 @@ type Options struct {
 	// so everything else in the `.env` survives a redeploy exactly as it
 	// always has.
 	Secrets map[string]string
+	// StackVars are the variables of the stack environment a member app
+	// belongs to, nil for a standalone app. Read for one decision only: a
+	// stack that supplies its own DATABASE_URL (its Postgres) is the user
+	// bringing a database, so Bay provisions no SQLite for the member.
+	StackVars map[string]string
 }
 
 // Result reports what was deployed.
@@ -446,8 +451,13 @@ func provision(opts Options, instance string, m *manifest.Manifest, port int, cu
 	}
 
 	// Managed vs BYO: a DATABASE_URL supplied by the user wins and Bay steps
-	// back entirely — it will not create a SQLite file it does not own.
-	if m.Resources.Database && !userSupplied(env, "DATABASE_URL") {
+	// back entirely — it will not create a SQLite file it does not own. A
+	// stack variable is the user's too: the stack's Postgres. Bay's own SQLite
+	// URL left by an earlier deploy is dropped then, or it would shadow the
+	// stack's at start (the app's .env wins over stack variables).
+	if userSupplied(opts.StackVars, "DATABASE_URL") && !userSupplied(env, "DATABASE_URL") {
+		delete(env, "DATABASE_URL")
+	} else if m.Resources.Database && !userSupplied(env, "DATABASE_URL") {
 		dbPath = filepath.Join(dataDir, "app.db")
 		if _, statErr := os.Stat(dbPath); os.IsNotExist(statErr) {
 			f, err := os.OpenFile(dbPath, os.O_CREATE|os.O_WRONLY, 0o600)

@@ -86,6 +86,11 @@ func VarNames(root, stack, env string) ([]string, error) {
 AppEnv is what an app service runs with: the stack's variables, overlaid by
 the app's own `.env`, which already carries Bay's keys. So, highest first:
 Bay's keys, the app's variables, the stack's.
+
+One exception: a stack DATABASE_URL that is not SQLite replaces the SQLite
+one Bay provisioned. That is the stack bringing its own database (Postgres
+beside the app), Bay's managed-versus-BYO rule, and it holds when the
+variable was set after the app's first deploy.
 */
 func AppEnv(stackVars, appEnv map[string]string) map[string]string {
 	out := make(map[string]string, len(stackVars)+len(appEnv))
@@ -93,6 +98,10 @@ func AppEnv(stackVars, appEnv map[string]string) map[string]string {
 		out[k] = v
 	}
 	for k, v := range appEnv {
+		if k == "DATABASE_URL" && strings.HasPrefix(v, "sqlite://") &&
+			stackVars[k] != "" && !strings.HasPrefix(stackVars[k], "sqlite://") {
+			continue
+		}
 		out[k] = v
 	}
 	return out
