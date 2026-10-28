@@ -17,6 +17,7 @@ import { describe, expect, it } from "vitest";
 import { users } from "../../users/entities/users.ts";
 import { apiKeyEntity } from "../entities/apiKeyEntity.ts";
 import { AlephaApiKeys } from "../index.ts";
+import { ApiKeyJobs } from "../jobs/ApiKeyJobs.ts";
 import { ApiKeyNotifications } from "../notifications/ApiKeyNotifications.ts";
 import { apiKeyOptions } from "../parameters/ApiKeyParameters.ts";
 import { ApiKeyService } from "../services/ApiKeyService.ts";
@@ -33,8 +34,17 @@ class TestApp {
   });
 }
 
+/**
+ * Stands in for the module's crons. `travel()` fires every cron it crosses,
+ * and the daily `system.keys.notify-expiring` run would race the spec's own
+ * `notifyExpiring()` calls: on CI, a read of the spec was cancelled
+ * ("canceling statement due to user request") while that run was live.
+ */
+class NoApiKeyJobs {}
+
 const setup = async (options: { notifications: boolean }) => {
   const alepha = Alepha.create()
+    .with({ provide: ApiKeyJobs, use: NoApiKeyJobs })
     .with(AlephaOrmPostgres)
     .with(AlephaServer)
     .with(AlephaSecurity)
