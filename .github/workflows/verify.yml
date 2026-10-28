@@ -28,6 +28,9 @@ on:
       # The docs generators and `check:docs`, which the framework's `yarn copy`
       # and checks run (#Q2766).
       - "docs/scripts/**"
+      # Bay's owned env keys, which `BayAdapter.spec.ts` pins the framework's
+      # mirror against (#Q2763).
+      - "bay/internal/deploy/deploy.go"
       - ".github/workflows/verify.yml"
       - ".github/actions/**"
       - "package.json"
@@ -46,6 +49,9 @@ on:
       # The docs generators and `check:docs`, which the framework's `yarn copy`
       # and checks run (#Q2766).
       - "docs/scripts/**"
+      # Bay's owned env keys, which `BayAdapter.spec.ts` pins the framework's
+      # mirror against (#Q2763).
+      - "bay/internal/deploy/deploy.go"
       - ".github/workflows/verify.yml"
       - ".github/actions/**"
       - "package.json"

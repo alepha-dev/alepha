@@ -1469,12 +1469,14 @@ describe("BayAdapter  -  the Bay-owned key list", () => {
       A cross-language guard: a key added to `bayOwnedKeys` on the Go side
       breaks nothing here  -  the adapter simply starts pushing it, and Bay
       starts refusing every deploy of any app that sets it. The Go list is the
-      authority. Since Bay left the monorepo (#E72) this reads a copy of its
-      block (`fixtures/bay-owned-keys.go.txt`), refreshed in the same change
-      as the mirror: the guard holds the two in step, it no longer sees Bay.
+      authority. Bay is back in this repository (#Q2765), so this reads its
+      source, and `verify.yml` runs on a change to that file (#Q2763).
     */
     const source = await readFile(
-      new URL("./fixtures/bay-owned-keys.go.txt", import.meta.url),
+      new URL(
+        "../../../../../../../bay/internal/deploy/deploy.go",
+        import.meta.url,
+      ),
       "utf8",
     );
     const block = source.match(
