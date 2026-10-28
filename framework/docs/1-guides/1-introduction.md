@@ -67,7 +67,7 @@ class OrderService {
 The schema, the HTTP method, the validation, the return type - all visible in one place.
 No jumping between files, no guessing which middleware runs first.
 
-A machine-readable documentation file is available at [alepha.dev/llms.txt](https://alepha.dev/llms.txt).
+A machine-readable documentation file is available at [alepha.dev/llms.txt](https://alepha.dev/llms.txt). Inside a project, `npx alepha docs` prints the same pages for the installed version: see [Docs for Agents](/docs/guides-docs-for-agents).
 AI assistants can consume it to understand the full API surface and generate correct Alepha code.
 
 ### Multi-runtime, zero configuration
