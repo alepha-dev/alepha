@@ -33,7 +33,8 @@
     "tsconfig.base.json",
     "AGENTS.md",
     "CHANGELOG.md",
-    "CLAUDE.md"
+    "CLAUDE.md",
+    "docs"
   ],
   "type": "module",
   "main": "./src/core/index.ts",
@@ -1082,6 +1083,7 @@
     "node": ">=24.0.0"
   },
   "llms": "https://alepha.dev/llms.txt",
+  "llmsLocal": "./docs",
   "scarfSettings": {
     "enabled": false
   }

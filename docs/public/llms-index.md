@@ -2,6 +2,8 @@
 
 > Alepha is a convention-driven TypeScript framework for building robust, end-to-end type-safe full-stack applications.
 
+**Working in a project that already installs Alepha? Run `npx alepha docs` instead of reading this site.** This site documents the latest release; `npx alepha docs` prints the same pages for the version the project installed, word for word and offline, from `node_modules/alepha/docs/`. `npx alepha docs <slug>` prints a page (the slug is each URL below without `https://alepha.dev/docs/` and `.md`), and `npx alepha docs --grep <text>` searches every page.
+
 ## Overview
 
 **Core Principles:**

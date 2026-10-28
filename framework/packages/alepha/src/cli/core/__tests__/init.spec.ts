@@ -249,6 +249,21 @@ describe("alepha init", () => {
         true,
       );
     });
+
+    it("tells the agent to read the installed docs before writing code", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { root: "/project" });
+
+      const agents = await fs.readTextFile("/project/AGENTS.md");
+      // Near the top: an agent that reads the first screen sees it.
+      const head = agents.split("\n").slice(0, 12).join("\n");
+      expect(head).toContain(
+        "**Before writing Alepha code, run `npx alepha docs`.**",
+      );
+      expect(agents).toContain("`node_modules/alepha/docs/`");
+    });
   });
 
   // ─────────────────────────────────────────────────────────────────────────────

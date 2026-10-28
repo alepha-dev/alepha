@@ -43,10 +43,13 @@ export class AlephaCommands {
         `apps/*/*/dist`,
         `apps/*/*/coverage`,
         `packages/*/dist`,
+        // The pages `yarn build` copies in (`package:docs`, #Q2755).
+        `packages/*/docs`,
         `packages/*/node_modules`,
         `packages/*/coverage`,
         // The scoped packages sit one level deeper.
         `packages/*/*/dist`,
+        `packages/*/*/docs`,
         `packages/*/*/node_modules`,
         `packages/*/*/coverage`,
       ]);

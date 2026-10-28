@@ -60,6 +60,14 @@ that the page is broken.
 
 This is an **Alepha** project.
 
+**Before writing Alepha code, run \`npx alepha docs\`.** It prints the index of
+the Alepha documentation for the version this project installed, word for
+word and offline: \`npx alepha docs <slug>\` prints a page,
+\`npx alepha docs '$entity'\` a primitive's reference, and
+\`npx alepha docs --grep <text>\` searches every page. The same pages are plain
+markdown in \`node_modules/alepha/docs/\` (and \`node_modules/@alepha/*/docs/\`),
+for agents that grep.
+
 ## Structure
 
 Every Alepha project has the same layout. There are no variants  -  put new
@@ -188,8 +196,10 @@ a passing local check does not prove that deployment or SSR works.
 
 ## Documentation
 
+- Docs for the installed version: \`npx alepha docs\`, or the files in
+  \`node_modules/alepha/docs/\`
 - Framework source: \`node_modules/alepha/src/\`
-- Docs: https://alepha.dev/llms.txt
+- Site, latest release only: https://alepha.dev/llms.txt
 `.trim() + "\n"
   );
 };

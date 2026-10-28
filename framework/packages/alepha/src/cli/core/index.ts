@@ -1,6 +1,6 @@
 /**
  * The Alepha CLI core: `init`, `dev`, `build`, `verify`, `db`, `test`,
- * `lint`, `typecheck`, `gen` and `pack`. Loaded automatically when the
+ * `lint`, `typecheck`, `gen`, `pack` and `docs`. Loaded automatically when the
  * `alepha` binary runs; each command is documented in the CLI section of the
  * docs site.
  *
@@ -19,6 +19,7 @@ import { CleanCommand } from "./commands/clean.ts";
 import { CompileCommand } from "./commands/compile.ts";
 import { DbCommand } from "./commands/db.ts";
 import { DevCommand } from "./commands/dev.ts";
+import { DocsCommand } from "./commands/docs.ts";
 import { GenCommand } from "./commands/gen.ts";
 import {
   changelogOptions,
@@ -38,11 +39,13 @@ import { AppEntryProvider } from "./providers/AppEntryProvider.ts";
 import { ViteBuildProvider } from "./providers/ViteBuildProvider.ts";
 import { ViteDevServerProvider } from "./providers/ViteDevServerProvider.ts";
 import { AlephaCliUtils } from "./services/AlephaCliUtils.ts";
+import { AppMapRenderer } from "./services/AppMapRenderer.ts";
 import { ArchiveCompressor } from "./services/ArchiveCompressor.ts";
 import { BuildPipeline } from "./services/BuildPipeline.ts";
 import { BuildSlices } from "./services/BuildSlices.ts";
 import { DesktopAdapterResolver } from "./services/DesktopAdapterResolver.ts";
 import { DockerImageBuilder } from "./services/DockerImageBuilder.ts";
+import { DocsLibrary } from "./services/DocsLibrary.ts";
 import { InfraConfigEditor } from "./services/InfraConfigEditor.ts";
 import { PackageManagerUtils } from "./services/PackageManagerUtils.ts";
 import { ProjectScaffolder } from "./services/ProjectScaffolder.ts";
@@ -75,6 +78,7 @@ export * from "./commands/clean.ts";
 export * from "./commands/compile.ts";
 export * from "./commands/image.ts";
 export * from "./commands/db.ts";
+export * from "./commands/docs.ts";
 export * from "./commands/dev.ts";
 export * from "./commands/gen/changelog.ts";
 export * from "./commands/gen/openapi.ts";
@@ -94,6 +98,7 @@ export * from "./services/BuildManifestReader.ts";
 export * from "./schemas/presetSchema.ts";
 export * from "./schemas/infraProviderSchema.ts";
 export * from "./services/AlephaCliUtils.ts";
+export * from "./services/AppMapRenderer.ts";
 export * from "./services/GitMessageParser.ts";
 export * from "./services/PackageManagerUtils.ts";
 export * from "./services/ProjectScaffolder.ts";
@@ -103,6 +108,7 @@ export * from "./services/BuildSlices.ts";
 export * from "./services/DockerImageBuilder.ts";
 export * from "./services/ViteUtils.ts";
 export * from "./services/DesktopAdapterResolver.ts";
+export * from "./services/DocsLibrary.ts";
 export * from "./services/WorkspaceCompiler.ts";
 export * from "./services/WorkspacePacker.ts";
 export * from "./tasks/BuildAssetsTask.ts";
@@ -165,6 +171,8 @@ export const AlephaCliServices = $module({
     BuildPipeline,
     DockerImageBuilder,
     DesktopAdapterResolver,
+    DocsLibrary,
+    AppMapRenderer,
     WorkspaceCompiler,
     WorkspacePacker,
     // Build tasks. `BuildCommand` orchestrates these and stays in `AlephaCli`:
@@ -203,6 +211,7 @@ export const AlephaCli = $module({
     CleanCommand,
     DbCommand,
     DevCommand,
+    DocsCommand,
     InitCommand,
     LintCommand,
     CompileCommand,

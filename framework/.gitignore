@@ -40,3 +40,7 @@ assets/docs
 # workerd's cf-metadata cache, written by miniflare v5 the first time a test
 # boots a worker. v4 kept this elsewhere, so it only appeared with the upgrade.
 .wrangler
+
+# The docs pages `yarn build` copies into each package (`package:docs`, #Q2755).
+/packages/*/docs
+/packages/@alepha/*/docs

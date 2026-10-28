@@ -4,10 +4,12 @@ Convention-driven TypeScript framework for type-safe full-stack applications.
 
 ## Documentation
 
-- Index, start here: https://alepha.dev/llms.txt. Every page it lists is plain
-  markdown; fetch only the pages you need.
-- The site documents the latest release. When this project pins an older
-  version, the sources below are the truth.
+- Start here: `npx alepha docs`. It prints the index of the docs of the
+  version this project installed, from `node_modules/alepha/docs/` (and each
+  `node_modules/@alepha/*/docs/`), word for word and offline.
+  `npx alepha docs <slug>` prints a page, `npx alepha docs '$entity'` a
+  primitive, `npx alepha docs --grep <text>` searches them all.
+- The site, https://alepha.dev/llms.txt, documents the latest release only.
 - Offline: framework sources ship in `node_modules/alepha/src/`, with usage
   examples in the `.spec.ts` file beside each primitive.
 
@@ -347,4 +349,4 @@ always on disk next to the app using it.
 
 Usage examples live in the `.spec.ts` files beside each primitive.
 
-Full documentation: https://alepha.dev/llms.txt
+Full documentation: `npx alepha docs` (this version), https://alepha.dev/llms.txt (latest release).

@@ -24,7 +24,7 @@
     "check:conventions": "node scripts/check-conventions.ts",
     "check:docs": "yarn workspace docs check:docs",
     "check:migrations": "yarn workspaces foreach -Wpt run check:migrations",
-    "build": "yarn workspaces foreach -Wpt run build",
+    "build": "yarn alepha package:docs && yarn workspaces foreach -Wpt run build",
     "test:bun": "bun test ./packages/**/*.bun.spec.ts",
     "test:broker": "yarn vitest run --config packages/@alepha/mqtt/vitest.broker.config.ts",
     "e2e": "yarn workspaces foreach -Wpt run e2e",
