@@ -1,7 +1,7 @@
 <div align="center">
 <h1>
 <img
-  src="https://raw.githubusercontent.com/alepha-dev/alepha/main/packages/alepha/assets/logo.svg"
+  src="https://raw.githubusercontent.com/alepha-dev/alepha/main/framework/packages/alepha/assets/logo.svg"
   width="128"
   height="128"
   alt="Alepha logo"

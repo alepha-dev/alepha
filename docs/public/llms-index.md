@@ -320,4 +320,4 @@ React hooks:
 
 Every page listed below is plain markdown: the HTML page at `https://alepha.dev/docs/<slug>` is served as markdown at `https://alepha.dev/docs/<slug>.md`. Fetch only the pages you need.
 
-- [Examples](https://github.com/alepha-dev/alepha/tree/main/apps): Example applications
+- [Examples](https://github.com/alepha-dev/alepha/tree/main/framework/apps): Example applications
