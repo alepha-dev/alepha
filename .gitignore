@@ -10,3 +10,4 @@ node_modules
 .codex
 .superpowers
 .playwright-cli
+.wrangler
