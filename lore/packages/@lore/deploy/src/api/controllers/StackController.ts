@@ -12,10 +12,10 @@ import { StackService } from "../services/StackService.ts";
 /**
  * Stacks: apps and services deployed together from one `compose.yml`.
  *
- * They live under the Apps capability with its `deploy` option, like the
- * Deploy and Environment tabs: reads take `app:read` and no capability (a
- * project that turns `deploy` off gets its stacks back untouched when it
- * returns), writes take `deploy:manage` behind `apps.deploy`.
+ * They live under the Apps capability with its `stacks` option, off by
+ * default: reads take `app:read` and no capability (a
+ * project that turns `stacks` off gets its stacks back untouched when it
+ * returns), writes take `deploy:manage` behind `apps.stacks`.
  */
 export class StackController {
   protected readonly stacks = $inject(StackService);
@@ -24,7 +24,7 @@ export class StackController {
     $ownsProject({
       param: "projectId",
       requires: "deploy:manage",
-      capability: { key: "apps", option: "deploy" },
+      capability: { key: "apps", option: "stacks" },
     });
 
   protected readGate = () =>

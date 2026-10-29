@@ -826,7 +826,10 @@ describe("Bay connector against a real Lore", () => {
           title: "Bay E2E",
           // Apps with deploys on: a Bay deploy names the copy it is for.
           capabilities: [
-            { key: "apps", options: { track: true, deploy: true } },
+            {
+              key: "apps",
+              options: { track: true, deploy: true, stacks: true },
+            },
           ],
         },
       }),

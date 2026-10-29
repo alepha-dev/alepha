@@ -24,7 +24,7 @@ import {
 
 /**
  * The world every stack spec starts from: an owner, a project with Apps and
- * `deploy` on, and repositories to arrange rows the API has no verb for.
+ * `deploy` and `stacks` on, and repositories to arrange rows the API has no verb for.
  */
 export class StackRows {
   public readonly estates = $repository(estates);
@@ -82,7 +82,7 @@ export const newUser = async (alepha: Alepha) => {
 
 export const stackWorld = async (
   alepha: Alepha,
-  options: { deploy?: boolean } = {},
+  options: { stacks?: boolean } = {},
 ): Promise<StackWorld> => {
   const user = await newUser(alepha);
   const project = (
@@ -96,7 +96,10 @@ export const stackWorld = async (
   await alepha.inject(ProjectCapabilityController).setCapability.fetch(
     {
       params: { projectId: project.id, key: "apps" },
-      body: { enabled: true, options: { deploy: options.deploy ?? true } },
+      body: {
+        enabled: true,
+        options: { deploy: true, stacks: options.stacks ?? true },
+      },
     },
     { user },
   );

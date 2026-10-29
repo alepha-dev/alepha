@@ -358,7 +358,7 @@ describe("stacks", () => {
           ),
       ).rejects.toThrow();
 
-      const off = await stackWorld(alepha, { deploy: false });
+      const off = await stackWorld(alepha, { stacks: false });
       await expect(createStack(alepha, off, { name: "x" })).rejects.toThrow();
       const listed = await alepha
         .inject(StackController)

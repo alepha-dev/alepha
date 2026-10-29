@@ -67,7 +67,9 @@ test.describe("the stack console", () => {
         capabilities: ["apps"],
       },
     );
-    await setCapability(page, projectId, "apps", { options: { deploy: true } });
+    await setCapability(page, projectId, "apps", {
+      options: { deploy: true, stacks: true },
+    });
 
     await test.step("the Stacks page lists nothing, then a stack created from it", async () => {
       await page.goto(`/${slug}/stacks`);

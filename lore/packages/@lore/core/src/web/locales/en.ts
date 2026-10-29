@@ -3000,6 +3000,9 @@ export default {
   "project.capability.apps.option.uptime.label": "Healthchecks",
   "project.capability.apps.option.uptime.description":
     "Check websites, ports, certificates and scheduled jobs without a sigil.",
+  "project.capability.apps.option.stacks.label": "Stacks",
+  "project.capability.apps.option.stacks.description":
+    "Deploy apps and services together from one compose.yml.",
   "uptime.description": "Website, port, certificate and scheduled job checks.",
   "uptime.recentChecks": "Recent checks",
   "uptime.notMeasured": "Not measured",

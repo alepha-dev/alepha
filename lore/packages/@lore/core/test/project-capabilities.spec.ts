@@ -301,6 +301,7 @@ describe("Project capabilities", () => {
       track: true,
       deploy: false,
       uptime: false,
+      stacks: false,
     });
   });
 

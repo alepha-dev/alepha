@@ -71,20 +71,16 @@ export class DeployShell {
         // with no way to reach the copies it has recorded.
       },
       {
-        // Stacks (#E79). Shown under `deploy`: a stack exists to be deployed,
-        // and a project that only watches its apps has nothing to do here.
-        // ⚠️ Through `available`, never `option`: an option that owns a nav
-        // entry is taken off the Apps settings page, and `deploy` must stay a
-        // switch there.
+        // Stacks (#E79), behind their own `stacks` option, off by default.
+        // An option that owns a nav entry is switched in General >
+        // Capabilities, like `uptime`.
         route: "projectStacks",
         permission: "app:read",
         labelKey: "stacks.title",
         icon: Layers,
         group: "ops",
         order: 15,
-        reads: [currentProjectAtom],
-        available: (ctx) =>
-          capabilityOption(ctx.get(currentProjectAtom), "apps", "deploy"),
+        option: "stacks",
         activeOn: (name) =>
           name === "projectStacks" || name === "projectStackEnvironment",
       },

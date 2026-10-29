@@ -2996,6 +2996,9 @@ export default {
   "project.capability.apps.option.uptime.label": "Contrôles de santé",
   "project.capability.apps.option.uptime.description":
     "Surveillez les sites, ports, certificats et tâches planifiées sans sigil.",
+  "project.capability.apps.option.stacks.label": "Stacks",
+  "project.capability.apps.option.stacks.description":
+    "Déployez ensemble des apps et des services depuis un seul compose.yml.",
   "uptime.description":
     "Surveillance des sites, ports, certificats et tâches planifiées.",
   "uptime.recentChecks": "Contrôles récents",

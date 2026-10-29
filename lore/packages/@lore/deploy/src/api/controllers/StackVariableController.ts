@@ -13,7 +13,7 @@ import { StackVariableService } from "../services/StackVariableService.ts";
  *
  * ⚠️ No response carries a value, for anybody, on the way in or out: names,
  * a short prefix of the long ones, whether Lore generated it, and who set it
- * last. Reads take `app:read`; writes `deploy:manage` behind `apps.deploy`.
+ * last. Reads take `app:read`; writes `deploy:manage` behind `apps.stacks`.
  */
 export class StackVariableController {
   protected readonly stacks = $inject(StackService);
@@ -23,7 +23,7 @@ export class StackVariableController {
     $ownsProject({
       param: "projectId",
       requires: "deploy:manage",
-      capability: { key: "apps", option: "deploy" },
+      capability: { key: "apps", option: "stacks" },
     });
 
   protected readGate = () =>

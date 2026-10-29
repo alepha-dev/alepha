@@ -25,7 +25,7 @@ import {
  * service, roll back, read a service's logs.
  *
  * Every tool goes through the HTTP actions, so the gates are the same ones
- * (`app:read` to read, `deploy:manage` behind `apps.deploy` to deploy or read
+ * (`app:read` to read, `deploy:manage` behind `apps.stacks` to deploy or read
  * logs). ⚠️ No tool returns a variable or a registry credential: there is no
  * value anywhere in these results, by construction, and no estate argument.
  */

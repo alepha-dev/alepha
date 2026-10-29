@@ -132,6 +132,7 @@ describe("CapabilityRegistry", () => {
       track: true,
       deploy: false,
       uptime: false,
+      stacks: false,
     });
     expect(ctx.registry.optionsOf("support", {})).toEqual({});
   });
@@ -143,7 +144,7 @@ describe("CapabilityRegistry", () => {
     // has to load. Throwing here is the 2026-08-05 failure mode.
     expect(
       ctx.registry.optionsOf("apps", { track: true, futureThing: true }),
-    ).toEqual({ track: true, deploy: false, uptime: false });
+    ).toEqual({ track: true, deploy: false, uptime: false, stacks: false });
 
     // In: `createProject`'s body is `.partial()`, so a mistyped feature key
     // has been accepted silently for as long as the bag has existed. This is
@@ -172,6 +173,7 @@ describe("CapabilityRegistry", () => {
       track: true,
       deploy: false,
       uptime: false,
+      stacks: false,
     });
   });
 

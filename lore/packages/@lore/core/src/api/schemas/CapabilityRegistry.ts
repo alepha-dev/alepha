@@ -400,6 +400,15 @@ export class CapabilityRegistry {
           wizard: true,
           preselected: false,
         },
+        {
+          // Stacks (#E79): off by default, like every other surface of Apps
+          // but `track`, and switched beside its sidebar entry.
+          key: "stacks",
+          labelKey: "project.capability.apps.option.stacks.label",
+          descriptionKey: "project.capability.apps.option.stacks.description",
+          wizard: true,
+          preselected: false,
+        },
       ],
       mcpTools: [
         "app_instance_list",

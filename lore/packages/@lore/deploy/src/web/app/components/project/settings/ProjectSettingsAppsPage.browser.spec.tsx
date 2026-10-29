@@ -119,7 +119,12 @@ describe("the Apps settings page", () => {
           params: { projectId: 1, key: "apps" },
           body: {
             enabled: true,
-            options: { track: true, deploy: false, uptime: false },
+            options: {
+              track: true,
+              deploy: false,
+              uptime: false,
+              stacks: false,
+            },
           },
         },
       ]),

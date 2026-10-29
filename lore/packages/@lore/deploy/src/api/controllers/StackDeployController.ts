@@ -14,7 +14,7 @@ import { StackService } from "../services/StackService.ts";
  *
  * There is no estate argument anywhere, as on an app deploy: the estate is a
  * property of the environment (or the stack's default), resolved server-side.
- * Writes take `deploy:manage` behind `apps.deploy`; the log takes `app:read`.
+ * Writes take `deploy:manage` behind `apps.stacks`; the log takes `app:read`.
  */
 export class StackDeployController {
   protected readonly stacks = $inject(StackService);
@@ -25,7 +25,7 @@ export class StackDeployController {
     $ownsProject({
       param: "projectId",
       requires: "deploy:manage",
-      capability: { key: "apps", option: "deploy" },
+      capability: { key: "apps", option: "stacks" },
     });
 
   protected readGate = () =>
