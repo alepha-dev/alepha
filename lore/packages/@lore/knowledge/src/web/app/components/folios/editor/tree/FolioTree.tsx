@@ -9,6 +9,7 @@ import {
   Lock,
   PanelLeftClose,
   Pin,
+  RefreshCw,
 } from "lucide-react";
 import { type ReactElement, useEffect } from "react";
 
@@ -134,6 +135,20 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
             icon-only variant. Not a `Tooltip`, because these sit in a 40px
             header strip where the native one costs nothing and a portalled
             popup would need a provider this pane does not have. */}
+        {/* First, and outside `canWrite`: a Viewer reads the tree, and a
+            folio an agent filed over MCP is as invisible to them until it
+            reloads (#Q2935). */}
+        <Button
+          type="button"
+          size="icon-sm"
+          variant="minimal"
+          onClick={() => commands.refresh()}
+          disabled={tree.refreshing}
+          aria-label={tr("folios.editor.tree.refresh")}
+          title={tr("folios.editor.tree.refresh")}
+        >
+          <RefreshCw className="size-3.5" />
+        </Button>
         {canWrite && (
           <>
             <Button

@@ -93,6 +93,13 @@ export interface FolioTreeVerbs {
    * otherwise, which is `FolioPassphraseDialog`'s contract.
    */
   confirmEncrypt: (passphrase: string) => Promise<string | null>;
+  /**
+   * Fetch the tree again, in place (#Q2935): a folio created or moved
+   * elsewhere (another tab, an agent over MCP) shows without a page reload.
+   * Expanded directories and the selection live outside the two atoms it
+   * rewrites, so both survive it.
+   */
+  refresh: () => void;
 }
 
 /**
@@ -122,6 +129,10 @@ export interface FolioTreeState {
    * the dialog from it; nothing else reads it.
    */
   encryptingTitle?: string;
+  /**
+   * A {@link FolioTreeVerbs.refresh} is in flight.
+   */
+  refreshing: boolean;
   /**
    * Stable for the life of the hook. A row may hold onto it across any
    * number of renders without going stale.
@@ -295,6 +306,22 @@ export const useFolioTreeModel = (
       onError: () => {},
     },
     [input.projectId, folioApi, directoryApi],
+  );
+
+  const refreshAction = useAction<[], void>(
+    {
+      handler: async () => {
+        const [folioList, dirList] = await Promise.all([
+          folioApi.tree({ params: { projectId: input.projectId } }),
+          directoryApi.listAllDirectories({
+            params: { projectId: input.projectId },
+          }),
+        ]);
+        setFolios(folioList);
+        setDirectories(dirList);
+      },
+    },
+    [input.projectId, folioApi, directoryApi, setFolios, setDirectories],
   );
 
   const tree = useMemo(
@@ -947,6 +974,7 @@ export const useFolioTreeModel = (
     beginEncrypt,
     cancelEncrypt,
     confirmEncrypt,
+    refresh: () => void refreshAction.run(),
   };
 
   /**
@@ -978,6 +1006,7 @@ export const useFolioTreeModel = (
       cancelEncrypt: () => implRef.current.cancelEncrypt(),
       confirmEncrypt: (passphrase) =>
         implRef.current.confirmEncrypt(passphrase),
+      refresh: () => implRef.current.refresh(),
     }),
     [state.commands],
   );
@@ -993,6 +1022,7 @@ export const useFolioTreeModel = (
     dragId,
     drop,
     encryptingTitle: encrypting?.title,
+    refreshing: refreshAction.loading,
     commands,
     canWrite: folioApi.create.can(),
   };

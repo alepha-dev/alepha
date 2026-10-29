@@ -384,6 +384,7 @@ export default {
   "folios.editor.tree.title": "Folios",
   "folios.editor.tree.new-folio": "Nouveau folio",
   "folios.editor.tree.new-directory": "Nouveau dossier",
+  "folios.editor.tree.refresh": "Actualiser l\u2019arborescence",
   "folios.editor.tree.collapse": "Replier l\u2019arborescence",
   "folios.editor.tree.expand": "Afficher l\u2019arborescence",
   "folios.editor.tree.empty": "Aucun folio pour l'instant.",

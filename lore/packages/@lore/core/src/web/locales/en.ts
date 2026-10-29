@@ -382,6 +382,7 @@ export default {
   "folios.editor.tree.title": "Folios",
   "folios.editor.tree.new-folio": "New folio",
   "folios.editor.tree.new-directory": "New directory",
+  "folios.editor.tree.refresh": "Refresh the tree",
   "folios.editor.tree.collapse": "Collapse the tree",
   "folios.editor.tree.expand": "Show the tree",
   "folios.editor.tree.empty": "No folios yet.",

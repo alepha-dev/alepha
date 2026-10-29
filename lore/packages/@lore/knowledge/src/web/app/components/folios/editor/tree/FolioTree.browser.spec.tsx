@@ -30,6 +30,12 @@ const DIR_B = "22222222-2222-4222-8222-222222222222";
 const calls: Array<{ name: string; input: any }> = [];
 
 /**
+ * A case's own answer for one action, by name, in place of the generic
+ * reply below. Reset per case with `calls`.
+ */
+const replies: Record<string, unknown> = {};
+
+/**
  * `FolioTree` renders from the two atoms; the fallback query only runs while
  * both are empty, so seeding them keeps this spec off the network entirely.
  *
@@ -43,6 +49,7 @@ class FakeLinkProvider extends LinkProvider {
       Object.assign(
         async (input: any) => {
           calls.push({ name, input });
+          if (name in replies) return replies[name];
           return Object.assign([], {
             content: [],
             items: [],
@@ -120,6 +127,7 @@ describe("FolioTree", () => {
     await alepha?.stop();
     alepha = undefined;
     calls.length = 0;
+    for (const name of Object.keys(replies)) delete replies[name];
   });
 
   const folioOf = (id: string, title: string, directoryId?: string) => ({
@@ -441,6 +449,38 @@ describe("FolioTree", () => {
     back open on every click for as long as that folio stayed selected. An
     invariant cannot be overridden by the person using it, which is the bug.
   */
+  describe("the refresh button", () => {
+    const INSIDE_A = "33333333-3333-4333-8333-333333333333";
+
+    it("is offered to a reader who may not write", async () => {
+      await mount({}, true);
+
+      expect(screen.getByLabelText("Refresh the tree")).not.toBeNull();
+      expect(screen.queryByLabelText("New folio")).toBeNull();
+    });
+
+    it("refetches the tree, keeping the open directory and the selection", async () => {
+      await mount({ currentFolioId: INSIDE_A });
+      replies.tree = [
+        folioOf(INSIDE_A, "Inside A", DIR_A),
+        folioOf("66666666-6666-4666-8666-666666666666", "Filed by an agent"),
+      ];
+      replies.listAllDirectories = [
+        { id: DIR_A, shortId: 1, name: "Framework" },
+        { id: DIR_B, shortId: 2, name: "Lore" },
+      ];
+
+      await click(screen.getByLabelText("Refresh the tree"));
+
+      await screen.findByText("Filed by an agent");
+      expect(calls.map((c) => c.name)).toEqual(
+        expect.arrayContaining(["tree", "listAllDirectories"]),
+      );
+      // Framework stays open, and the open folio's row stays selected.
+      expect(rowFor("Inside A").getAttribute("aria-selected")).toBe("true");
+    });
+  });
+
   describe("the directory holding the open folio", () => {
     const INSIDE_A = "33333333-3333-4333-8333-333333333333";
     const AT_ROOT = "44444444-4444-4444-8444-444444444444";
