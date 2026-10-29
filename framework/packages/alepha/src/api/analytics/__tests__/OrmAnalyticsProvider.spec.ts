@@ -327,6 +327,126 @@ describe("OrmAnalyticsProvider", () => {
   });
 });
 
+describe.each([
+  {
+    dialect: "postgres",
+    boot: () => Alepha.create().with(AlephaOrmPostgres),
+  },
+  {
+    dialect: "sqlite",
+    boot: () => {
+      const alepha = Alepha.create().with({
+        provide: DatabaseProvider,
+        use: NodeSqliteProvider,
+      });
+      alepha.store.mut(nodeSqliteOptions, (old) => ({
+        ...old,
+        path: "sqlite://:memory:",
+      }));
+      return alepha;
+    },
+  },
+])("OrmAnalyticsProvider bounded prune ($dialect)", ({ boot }) => {
+  // Lore's 00:00 UTC sweep timed out with the prune's DELETE in flight
+  // (#Q2938): one statement per tier over every expired row, however many.
+  const days = (
+    provider: OrmAnalyticsProvider,
+    of: typeof dataset,
+    key: "hour" | "minute" = "hour",
+  ) =>
+    provider
+      .query(of, {
+        since: "2000-01-01",
+        groupBy: [key],
+        select: { count: "sum" },
+        orderBy: { key, direction: "asc" },
+      })
+      .then((result) => result.rows.map((row) => String(row[key])));
+
+  it("drains a 100-day backlog over three calls, 36 days each, and keeps what is inside the window", async ({
+    expect,
+  }) => {
+    const alepha = boot();
+    const provider = alepha.inject(OrmAnalyticsProvider);
+    provider.register(dataset);
+    await alepha.start();
+
+    try {
+      const start = Date.parse("2026-01-01T10:00:00.000Z");
+      const backlog = Array.from({ length: 100 }, (_, i) => ({
+        hour: new Date(start + i * 86_400_000).toISOString().slice(0, 13),
+        app: "a",
+        path: "/x",
+        count: 1,
+      }));
+      await provider.record(dataset, [
+        ...backlog,
+        { hour: "2026-06-01T10", app: "a", path: "/x", count: 1 },
+      ]);
+      // Every expired row folded into the day tier first, as the sweep does
+      // before it prunes; the June row stays raw, past `before`.
+      await provider.rollup(dataset, 0, "2026-05-01");
+      expect(await days(provider, dataset)).toHaveLength(101);
+
+      const remaining: number[] = [];
+      for (let call = 0; call < 4; call++) {
+        await provider.prune(dataset, "2026-05-01");
+        remaining.push((await days(provider, dataset)).length);
+      }
+
+      // 100 expired days, 36 a call, oldest first, beside the June row
+      // that is inside the window: 64 expired left, then 28, then none. The
+      // fourth call finds nothing older than `before` and deletes nothing.
+      expect(remaining).toEqual([65, 29, 1, 1]);
+      expect(await days(provider, dataset)).toEqual(["2026-06-01T10"]);
+    } finally {
+      await alepha.stop();
+    }
+  });
+
+  it("covers at least two hours a call on a minute tier, so its backlog outruns the clock", async ({
+    expect,
+  }) => {
+    const minutes = {
+      ...dataset,
+      name: "orm_prune_minutes",
+      resolution: "1m" as const,
+      retention: [{ resolution: "1m" as const, keep: "1h" }],
+    };
+    const alepha = boot();
+    const provider = alepha.inject(OrmAnalyticsProvider);
+    provider.register(minutes);
+    await alepha.start();
+
+    try {
+      // One reading every 10 minutes for six hours: 36 buckets.
+      const start = Date.parse("2026-08-01T00:00:00.000Z");
+      await provider.record(
+        minutes,
+        Array.from({ length: 36 }, (_, i) => ({
+          hour: new Date(start + i * 600_000).toISOString().slice(0, 16),
+          app: "a",
+          path: "/x",
+          count: 1,
+        })),
+      );
+
+      await provider.prune(minutes, "2026-08-01T06:00");
+      // 36 one-minute buckets would be 00:00 to 00:36; the floor of two
+      // hours deletes 00:00 to 01:50, twelve readings.
+      const left = await days(provider, minutes, "minute");
+      expect(left).toHaveLength(24);
+      expect(left[0]).toBe("2026-08-01T02:00");
+
+      await provider.prune(minutes, "2026-08-01T06:00");
+      await provider.prune(minutes, "2026-08-01T06:00");
+      expect(await days(provider, minutes, "minute")).toEqual([]);
+    } finally {
+      await alepha.stop();
+    }
+  });
+});
+
 analyticsConformance("orm", async (datasets) => {
   const alepha = Alepha.create().with(AlephaOrmPostgres);
   const provider = alepha.inject(OrmAnalyticsProvider);
