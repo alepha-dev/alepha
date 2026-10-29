@@ -96,6 +96,23 @@ export const NAV_BANDS: CapabilityNavEntry["group"][] = [
 ];
 
 /**
+ * The sidebar's groups: one per band, Settings joining the last band rather
+ * than standing alone under it, so the config band and Settings read as one
+ * group with no gap between them (#Q2936). With that band empty, Settings is
+ * a group of its own and keeps its separation from the band above. Empty
+ * groups are dropped.
+ */
+export const navGroupsWithSettings = <T>(
+  bands: T[][],
+  settings: T,
+): { items: T[] }[] =>
+  bands
+    .map((items, index) => ({
+      items: index === bands.length - 1 ? [...items, settings] : items,
+    }))
+    .filter((group) => group.items.length > 0);
+
+/**
  * The entries no capability owns.
  *
  * The dashboard is the project's landing page and Activity sits under it;

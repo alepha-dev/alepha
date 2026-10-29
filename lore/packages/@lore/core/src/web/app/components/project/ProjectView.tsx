@@ -14,6 +14,7 @@ import { useAtomsVersion } from "../shared/useAtomsVersion.ts";
 import {
   type CapabilityNavEntry,
   NAV_BANDS,
+  navGroupsWithSettings,
   type ProjectShellContext,
 } from "./capabilityNav.ts";
 import ProjectActionsCreateButton from "./ProjectActionsCreateButton.tsx";
@@ -119,41 +120,39 @@ const ProjectView = () => {
       .sort((a, b) => a.order - b.order)
       .map(toItem);
 
-  const nav: NavGroup[] = [
-    // Activity is a group of one, above Work, so the separator the groups
-    // already draw falls between it and Quests. A hand-placed divider would
-    // do the same thing once and then disagree with the four below it.
-    //
-    // It is alone rather than at the top of Work because it is not work: it
-    // is the view over every other group, and the project's landing page.
-    ...NAV_BANDS.map((band) => ({ items: itemsOf(band) })),
-    {
-      items: [
+  const settingsItem: NavGroup["items"][number] = {
+    // A collapsible group since #Q2565, where it used to be one link
+    // into a page carrying its own second nav rail. The shell opens it
+    // by itself while one of its children is the active route, and a
+    // section whose capability is off is not listed: its master switch
+    // is in General, which always is.
+    label: tr("project.menu.settings"),
+    icon: Cog,
+    children: shell.settingsSections().flatMap((section) => {
+      const tabs = visibleSettingsTabs(section, project);
+      const first = tabs[0];
+      if (!first) return [];
+      return [
         {
-          // A collapsible group since #Q2565, where it used to be one link
-          // into a page carrying its own second nav rail. The shell opens it
-          // by itself while one of its children is the active route, and a
-          // section whose capability is off is not listed: its master switch
-          // is in General, which always is.
-          label: tr("project.menu.settings"),
-          icon: Cog,
-          children: shell.settingsSections().flatMap((section) => {
-            const tabs = visibleSettingsTabs(section, project);
-            const first = tabs[0];
-            if (!first) return [];
-            return [
-              {
-                label: tr(section.labelKey as never),
-                icon: section.icon,
-                href: router.path(first.route, { params: { projectSlug } }),
-                active: activeSettings?.section.key === section.key,
-              },
-            ];
-          }),
+          label: tr(section.labelKey as never),
+          icon: section.icon,
+          href: router.path(first.route, { params: { projectSlug } }),
+          active: activeSettings?.section.key === section.key,
         },
-      ],
-    },
-  ].filter((group) => group.items.length > 0);
+      ];
+    }),
+  };
+
+  // Activity is a group of one, above Work, so the separator the groups
+  // already draw falls between it and Quests. A hand-placed divider would do
+  // the same thing once and then disagree with the four below it.
+  //
+  // It is alone rather than at the top of Work because it is not work: it is
+  // the view over every other group, and the project's landing page.
+  const nav: NavGroup[] = navGroupsWithSettings(
+    NAV_BANDS.map((band) => itemsOf(band)),
+    settingsItem,
+  );
 
   const breadcrumbs: { label: string; href?: string }[] = [
     {
