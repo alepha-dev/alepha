@@ -1,4 +1,5 @@
 name: Release
+run-name: Release${{ inputs.dry_run && ' (dry run)' || '' }}
 
 # ONE release for the whole repository (#Q2776): the framework's packages,
 # `@alepha/lore` with the Lore image, and Bay's binaries, all under one bare
@@ -10,6 +11,8 @@ permissions:
   id-token: write
   # The Lore image, pushed to ghcr.io/alepha-dev/lore.
   packages: write
+  # The Verify Framework and Verify Lore dispatches after the push.
+  actions: write
 
 # One release at a time, and never cancel one.
 #
@@ -43,6 +46,18 @@ on:
           - patch
           - major
         default: "minor"
+      # Everything up to the first publish, and nothing after it (#Q2948):
+      # the bump, the Lore release check, the changelog, the local commit and
+      # tag, every build, Bay's tests and binaries, the Lore image and the
+      # docs build all run; npm, the push, the image push, the GitHub release,
+      # the Lore artifacts and release, and the docs deploy are all skipped.
+      # The run summary lists what would have shipped. The runner is thrown
+      # away, so the local commit and tag go with it.
+      dry_run:
+        description: "Dry run: build and check everything, publish nothing"
+        required: false
+        type: boolean
+        default: false
       # Finishes a release that tore AFTER its push: the tag exists and npm
       # has the version, but a later step failed. 0.30.0 died at the image
       # build this way (#Q2492). "Re-run failed jobs" cannot finish one: it
@@ -142,16 +157,6 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Released version: $VERSION"
 
-      # The gate on what ships (#Q2589). 0.31.0 was published at 47/66, because
-      # the only Lore call was the publish at the very end, which never looked
-      # at progress. This fails while the open Lore release carrying the tag has
-      # unfinished quests (shelved ones excluded), and passes with a log line
-      # when no release carries it.
-      #
-      # It sits after the bump only because the bump is what names the version:
-      # nothing above is committed, pushed or published, so a red run here
-      # leaves the repository and npm untouched. Skipped on a resume, whose
-      # version is already on npm.
       # Lore and its client take the framework's version, so the one tag names
       # all three products. `apps/lore` is what /version reports and the image
       # is tagged with; `@alepha/lore` is the npm package. Bay has no manifest:
@@ -165,9 +170,17 @@ jobs:
           yarn workspace @alepha/lore version "${VERSION}"
           yarn workspace lore version "${VERSION}"
 
-      # The Lore release of this tag, in project `alepha`, which tracks the
-      # framework, Lore and Bay since #E94. No release of that tag passes with
-      # a log line.
+      # The gate on what ships (#Q2589). 0.31.0 was published at 47/66, because
+      # the only Lore call was the publish at the very end, which never looked
+      # at progress. This fails while the open Lore release carrying the tag
+      # (in project `alepha`, which tracks the framework, Lore and Bay since
+      # #E94) has unfinished quests, shelved ones excluded, and passes with a
+      # log line when no release carries it.
+      #
+      # It sits after the bump only because the bump is what names the version:
+      # nothing above is committed, pushed or published, so a red run here
+      # leaves the repository and npm untouched. Skipped on a resume, whose
+      # version is already on npm. A dry run keeps it: it only reads.
       - name: Check the Lore release is complete
         if: inputs.resume_tag == ''
         run: yarn lore releases check --tag "$VERSION"
@@ -325,7 +338,18 @@ jobs:
 
       # ──────────────────────────────────────────────────────────────────
       # Everything above is reversible: a failure leaves a dirty runner and
-      # nothing else. From here on it is public.
+      # nothing else. From here on it is public, and a dry run skips every
+      # step that publishes (`dry_run`, #Q2948).
+      #
+      # What npm would receive, package by package, in place of the publish.
+      # ──────────────────────────────────────────────────────────────────
+      - name: List what npm would receive (dry run)
+        if: inputs.dry_run
+        run: |
+          yarn workspaces foreach --no-private -Wpt pack --dry-run
+          yarn workspace @alepha/lore pack --dry-run
+
+      # ──────────────────────────────────────────────────────────────────
       #
       # Last, so that every artifact is known to build before any of it ships.
       #
@@ -336,7 +360,7 @@ jobs:
       # of them, `@alepha/lore` included.
       # ──────────────────────────────────────────────────────────────────
       - name: Publish to NPM
-        if: inputs.resume_tag == ''
+        if: inputs.resume_tag == '' && inputs.dry_run != true
         run: |
           yarn workspaces foreach --no-private -Wpt npm publish --tolerate-republish --access public --provenance
           yarn workspace @alepha/lore npm publish --tolerate-republish --access public --provenance
@@ -350,15 +374,34 @@ jobs:
       # by hand fixes that.
       # ──────────────────────────────────────────────────────────────────
       - name: Push Changes and Tags
-        if: inputs.resume_tag == ''
+        if: inputs.resume_tag == '' && inputs.dry_run != true
         run: |
           git push --follow-tags
+
+      # The release commit was pushed with `GITHUB_TOKEN`, and a push made with
+      # it triggers no workflow, so nothing would verify it, and nothing would
+      # then deploy it. `workflow_dispatch` is the one event that token MAY
+      # trigger, so this starts the two Verify runs whose success on `main`
+      # deploys: Verify Framework, then Deploy Framework (ui, shop), and Verify
+      # Lore, then Deploy Lore at the released version.
+      #
+      # Here rather than a `workflow_run` on Release in those two files, which
+      # is what it was until #Q2948: that fired on EVERY completed Release,
+      # failed and dry ones included, and redeployed production each time.
+      - name: Verify the release commit
+        if: inputs.resume_tag == '' && inputs.dry_run != true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh workflow run verify-framework.yml --repo "$GITHUB_REPOSITORY" --ref main
+          gh workflow run verify-lore.yml --repo "$GITHUB_REPOSITORY" --ref main
 
       # One step, not two: the release used to be created before the build and
       # have its assets bolted on afterwards, because that avoided reordering a
       # working pipeline. The reorder happened, so the split has no reason left
       #  -  and a release that is born complete never exists in a half state.
       - name: Log in to GitHub Container Registry
+        if: inputs.dry_run != true
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ghcr.io
@@ -367,6 +410,7 @@ jobs:
 
       # Safe to repeat on a resume: a tag already pushed is pushed again.
       - name: Push the Lore image
+        if: inputs.dry_run != true
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
@@ -376,6 +420,7 @@ jobs:
       # Bay's binaries ride on the one release: `bay/install.sh` takes the
       # newest release that carries one.
       - name: Create GitHub Release
+        if: inputs.dry_run != true
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: ${{ steps.version.outputs.version }}
@@ -432,6 +477,7 @@ jobs:
       # Lore's build and image, recorded in project `alepha` before the release
       # is published, so the release lists them.
       - name: Push the Lore artifact to Lore
+        if: inputs.dry_run != true
         working-directory: lore/apps/lore
         run: |
           yarn lore artifacts push --tag "$VERSION"
@@ -441,6 +487,7 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
 
       - name: Publish the Lore release
+        if: inputs.dry_run != true
         run: yarn lore releases publish --tag "$VERSION"
         env:
           LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
@@ -468,6 +515,7 @@ jobs:
       # drop them. Only `LORE_API_KEY`: the Cloudflare credential is the
       # estate's, held by Lore.
       - name: Deploy docs
+        if: inputs.dry_run != true
         working-directory: docs
         run: yarn alepha deploy --env production --prebuilt
         env:
@@ -477,8 +525,37 @@ jobs:
       # alepha.dev stays in Lore as an artifact to roll back to; `latest` is
       # the one tag the deploy above replaces.
       - name: Archive docs as a versioned artifact
+        if: inputs.dry_run != true
         working-directory: docs
         run: yarn lore artifacts push --app docs --tag "$VERSION"
         env:
           LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
           VERSION: ${{ steps.version.outputs.version }}
+
+      # What a real run would have shipped, on the run page. Last, so it only
+      # appears once every build above has passed.
+      - name: Summary (dry run)
+        if: inputs.dry_run
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          {
+            echo "### Dry run: would have released ${VERSION}"
+            echo ""
+            echo "Nothing was published. A real run would have:"
+            echo ""
+            echo "- published the framework's packages and \`@alepha/lore\` ${VERSION} to npm"
+            echo "- pushed the release commit and the tag \`${VERSION}\`, then started Verify Framework and Verify Lore on \`main\`"
+            echo "- pushed \`ghcr.io/alepha-dev/lore:${VERSION}\` and \`:latest\`"
+            echo "- created the GitHub release with Bay's binaries"
+            echo "- pushed the Lore artifacts, published Lore release ${VERSION} and deployed alepha.dev"
+            echo ""
+            echo "#### Bay binaries"
+            echo '```'
+            cat "$RUNNER_TEMP/bay/SHA256SUMS"
+            echo '```'
+            echo ""
+            echo "#### Release notes"
+            echo ""
+            cat /tmp/release_notes.txt
+          } >> "$GITHUB_STEP_SUMMARY"

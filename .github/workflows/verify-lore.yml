@@ -33,19 +33,16 @@ on:
       - "yarn.lock"
       - ".yarnrc.yml"
       - ".nvmrc"
-  # The Release commit, pushed with `GITHUB_TOKEN`, triggers no push run: this
-  # verifies it, and `deploy-lore.yml` then ships the released version.
-  workflow_run:
-    workflows: ["Release"]
-    types:
-      - completed
+  # By hand, and by Release after it pushes the release commit (#Q2948): a
+  # push made with `GITHUB_TOKEN` triggers no workflow, and a dispatch is the
+  # one event it may. A green dispatch on `main` deploys, like a push.
+  workflow_dispatch:
   # `verify-all.yml`, by hand. A called run is filed under "Verify All", so it
   # never triggers `deploy-lore.yml`.
   workflow_call:
 
-# Namespaced by event: a `workflow_run`'s `github.ref` is the default branch,
-# so without it the Release follow-up would cancel a push run of main
-# (`check:conventions` holds this).
+# Namespaced by event, so a dispatch on `main` and a push to it never cancel
+# each other.
 concurrency:
   group: verify-lore-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true

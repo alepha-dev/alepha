@@ -58,13 +58,10 @@ on:
       - "yarn.lock"
       - ".yarnrc.yml"
       - ".nvmrc"
-  # The Release commit is pushed with `GITHUB_TOKEN`, and a push made with it
-  # triggers no workflow: this is what verifies it, and what then lets
-  # `deploy-framework.yml` ship it.
-  workflow_run:
-    workflows: ["Release"]
-    types:
-      - completed
+  # By hand, and by Release after it pushes the release commit (#Q2948): a
+  # push made with `GITHUB_TOKEN` triggers no workflow, and a dispatch is the
+  # one event it may. A green dispatch on `main` deploys, like a push.
+  workflow_dispatch:
   # `verify-all.yml`, by hand. A called run is filed under "Verify All", so it
   # never triggers `deploy-framework.yml`: checking is not shipping.
   workflow_call:
