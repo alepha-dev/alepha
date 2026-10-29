@@ -1,5 +1,6 @@
+import { lore } from "@alepha/lore/cli";
 import { defineConfig } from "alepha/cli/config";
-import { cloudflare, infra } from "alepha/cli/infra";
+import { infra } from "alepha/cli/infra";
 
 import pkg from "../../packages/alepha/package.json" with { type: "json" };
 
@@ -51,23 +52,24 @@ export default defineConfig({
   },
   plugins: [
     infra({
-      // Worker `alepha-ui-production`: the name Lore Deploy gave it, so
-      // `platform up` took the Worker and its Custom Domain over (#Q2576).
-      project: "alepha",
-      // Worker secrets are auto-detected from the build manifest's `env` list
-      // (every `$env`-declared key), so no `secrets.keys` is needed: CI
-      // delivers them through the deploy job's `env:` block.
+      // Deployed by Lore (#Q2778), the way `docs/alepha.config.ts` is:
+      // `lore()` names the copy `ui/production` (the package name and the
+      // environment key) in Lore project `alepha`, and Lore derives the Worker
+      // name `alepha-ui-production` from the project slug, which is the Worker
+      // `ui.alepha.dev` already runs on (#Q2576), so the first deploy takes it
+      // over in place. The domain is the copy's `url` in Lore, not a field
+      // here.
+      //
+      // Lore seals the copy's secrets (every `$env`-declared key the build
+      // manifest lists, valued from the job env) and archives each build as a
+      // versioned artifact with rollback. It mints a sigil only for a build
+      // whose manifest declares `SIGIL_KEY`, which this one does not yet.
+      //
+      // No infra-level `project` here: it would prefix the app name Lore
+      // receives (`alepha-ui`), and Lore prefixes its own project slug on top,
+      // giving `alepha-alepha-ui-production`, a new Worker.
       environments: {
-        // A Custom Domain, NOT a Worker Route (the only binding `alepha
-        // platform` makes since the `zone` field was removed).
-        //
-        // Docs once needed a Route because the apex still holds the GitHub Pages A
-        // and AAAA records, and a Custom Domain owns its DNS record, so
-        // Cloudflare would refuse to create one without deleting those first.
-        // None of that applies here: `ui.alepha.dev` is a fresh subdomain with
-        // no records to preserve, so the simpler form is the correct one and
-        // Cloudflare manages the record and the certificate itself.
-        production: cloudflare({ domain: "ui.alepha.dev" }),
+        production: lore({ project: "alepha", estate: "cf-feunard" }),
       },
     }),
   ],
