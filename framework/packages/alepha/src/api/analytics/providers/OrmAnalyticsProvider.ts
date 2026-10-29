@@ -425,15 +425,83 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
     return `substr(${column}, 1, 14) || CASE ${cases.join(" ")} ELSE '${last}' END`;
   }
 
+  /**
+   * Deletes, on every tier, the rows older than `before`, but at most
+   * {@link MAX_PRUNE_BUCKETS} buckets of the last tier past each tier's own
+   * oldest row in one call. The rest goes on the next hourly sweep.
+   *
+   * **Bounded, because one statement over an unbounded range is what a
+   * sweep cannot afford.** This used to be a single
+   * `DELETE ... WHERE time_bucket < before` per tier, which on a table
+   * nobody had pruned for a while deletes every expired row in one
+   * statement. The rollup job runs on a Worker under a 30 s timeout, on D1,
+   * and Lore's 00:00 UTC sweep timed out with this very DELETE in flight
+   * (#Q2938). Capping the range in the job (as `MAX_BUCKETS_PER_SWEEP` does
+   * for folds) would not do: the job only sees the provider seam, while the
+   * rows live here, per tier.
+   *
+   * The bound is a range on the bucket, never `LIMIT` on a `DELETE` (absent
+   * from Postgres, and from SQLite unless compiled in) nor a `rowid IN
+   * (SELECT ...)` (no `rowid` on Postgres): one spelling for every dialect,
+   * served by the unique index, which leads with the bucket. Each tier
+   * resumes from its own `MIN`, an index lookup, and a tier with nothing
+   * older than `before` costs that lookup alone, no `DELETE`: D1 caps the
+   * statements one invocation may run.
+   *
+   * Stopping short is safe. Every row left behind is past its window and
+   * still collapsed into the last tier (or is an orphan a missed fold left),
+   * so a query reads it as before, for an hour or two more, and the next
+   * call carries on from the oldest bucket still there.
+   * `WaeAnalyticsProvider.prune()` records the whole `before` as its prune
+   * floor before calling this, so on that backend nothing below it is ever
+   * served again, deleted yet or not.
+   */
   public async prune(dataset: AnalyticsDataset, before: string): Promise<void> {
     const timeColumn = AnalyticsEntityFactory.TIME_COLUMN;
-    for (const repository of this.entities(dataset)) {
+    const tiers = AnalyticsTiers.of(dataset);
+    const last = tiers[tiers.length - 1].resolution;
+    const span = Math.max(
+      OrmAnalyticsProvider.MAX_PRUNE_BUCKETS *
+        AnalyticsBuckets.minutesOf(last) *
+        60_000,
+      OrmAnalyticsProvider.MIN_PRUNE_SPAN,
+    );
+
+    const repositories = this.entities(dataset);
+    for (let tier = 0; tier < repositories.length; tier++) {
+      const oldest = await this.oldestBucket(dataset, tier);
+      if (!oldest || oldest >= before) continue;
+      const capped = AnalyticsBuckets.bucket(
+        AnalyticsBuckets.startOf(oldest) + span,
+        last,
+      );
+      const boundary = capped < before ? capped : before;
       await this.database.run(
-        sql`DELETE FROM ${repository.table} WHERE ${sql.raw(timeColumn)} < ${before}`,
+        sql`DELETE FROM ${repositories[tier].table} WHERE ${sql.raw(timeColumn)} < ${boundary}`,
         z.object({}),
       );
     }
   }
+
+  /**
+   * Most buckets of the last tier one {@link prune} call deletes, per tier.
+   *
+   * The same 36 as `AnalyticsRollupJobs.MAX_BUCKETS_PER_SWEEP`, from the same
+   * #Q2751 benchmark: a fold of one bucket (an `INSERT ... SELECT` and a
+   * `DELETE` of the same rows) cost about 0.24 s for 73k keys, so deleting
+   * 36 buckets of that size, a strict subset of the work, stays well under
+   * a third of the job's 30 s timeout. On Lore's day tier it is 36 days a
+   * sweep, which drains any backlog far faster than one new day a day.
+   */
+  public static readonly MAX_PRUNE_BUCKETS = 36;
+
+  /**
+   * Least time one {@link prune} call covers, two hours: twice the sweep's
+   * cadence. 36 buckets of a last tier finer than an hour (a dataset whose
+   * only tier is minutes) would span less than the hour that ages out
+   * between two sweeps, and its backlog would never drain.
+   */
+  public static readonly MIN_PRUNE_SPAN = 2 * 60 * 60 * 1000;
 
   /**
    * `MIN(time_bucket)` of one tier: an index lookup, since the unique index

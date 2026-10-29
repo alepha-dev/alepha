@@ -132,32 +132,67 @@ export class AnalyticsRollupJobs {
   ): Promise<void> {
     const tiers = AnalyticsTiers.of(dataset);
     if (!tiers[0].keep) return;
+    const started = this.dateTime.nowMillis();
 
     for (let index = 0; index < tiers.length - 1; index++) {
       const keep = tiers[index].keep;
       if (!keep) break;
-      const boundary = await this.rollupBoundary(
-        dataset,
-        index,
-        now - AnalyticsBuckets.parseWindow(keep),
-      );
-      if (boundary) {
-        await this.provider.rollup(dataset, index, boundary);
-        this.log.debug(
-          `Rolled up '${dataset.name}' tier ${index} before ${boundary}`,
+      await this.timed(dataset, `rollup tier ${index}`, async () => {
+        const boundary = await this.rollupBoundary(
+          dataset,
+          index,
+          now - AnalyticsBuckets.parseWindow(keep),
         );
-      }
+        if (!boundary) return "nothing to fold";
+        await this.provider.rollup(dataset, index, boundary);
+        return `before ${boundary}`;
+      });
     }
 
     const last = tiers[tiers.length - 1];
-    if (last.keep) {
-      const cutoff = AnalyticsBuckets.bucket(
-        now - AnalyticsBuckets.parseWindow(last.keep),
-        last.resolution,
-      );
-      await this.provider.prune(dataset, cutoff);
-      this.log.debug(`Pruned '${dataset.name}' before ${cutoff}`);
+    const lastKeep = last.keep;
+    if (lastKeep) {
+      await this.timed(dataset, "prune", async () => {
+        const cutoff = AnalyticsBuckets.bucket(
+          now - AnalyticsBuckets.parseWindow(lastKeep),
+          last.resolution,
+        );
+        await this.provider.prune(dataset, cutoff);
+        return `before ${cutoff}`;
+      });
     }
+
+    this.log.info(`Analytics sweep of '${dataset.name}' done`, {
+      dataset: dataset.name,
+      step: "total",
+      ms: this.dateTime.nowMillis() - started,
+    });
+  }
+
+  /**
+   * Runs one step of a dataset's sweep, then logs at info the dataset, the
+   * step and how long it took.
+   *
+   * The job runs under a 30 s timeout, and Lore's 00:00 UTC run hit it two
+   * nights running (#Q2938) with nothing in the logs to say which step ate
+   * the time: a fold of which tier, or the prune. One line per step, logged
+   * as each one finishes, is what lets a run that times out still show how
+   * far it got and what every finished step cost. Read through
+   * `DateTimeProvider` like every clock in the framework, so a paused test
+   * clock reads 0 ms.
+   */
+  protected async timed(
+    dataset: AnalyticsDataset,
+    step: string,
+    run: () => Promise<string>,
+  ): Promise<void> {
+    const started = this.dateTime.nowMillis();
+    const detail = await run();
+    this.log.info(`Analytics sweep of '${dataset.name}': ${step}, ${detail}`, {
+      dataset: dataset.name,
+      step,
+      ms: this.dateTime.nowMillis() - started,
+    });
   }
 
   /**

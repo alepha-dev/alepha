@@ -98,6 +98,12 @@ export abstract class AnalyticsProvider {
    * provider that reaches every tier cannot strand an orphan if a rollup was
    * ever missed, and no caller can construct a case where the two scopings
    * differ.
+   *
+   * A provider may stop short of `before` to bound one call, as
+   * `OrmAnalyticsProvider` does (see its `MAX_PRUNE_BUCKETS`): the job that
+   * drives it sweeps hourly under a timeout, and the next sweep resumes from
+   * whatever is still oldest. A provider that stops short must still delete
+   * the oldest rows first, so every call makes progress.
    */
   abstract prune(dataset: AnalyticsDataset, before: string): Promise<void>;
 

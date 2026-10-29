@@ -741,6 +741,13 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
    * whole mechanism exists to close. Either way self-heals on the next
    * sweep; only the direction of the transient error differs, and
    * under-reporting briefly is the safe one.
+   *
+   * `cold.prune()` is bounded per call (see
+   * `OrmAnalyticsProvider.MAX_PRUNE_BUCKETS`) and may leave part of a
+   * backlog for the next sweep, which needs no bound of its own here: the
+   * floor is recorded at the whole `before`, so whatever `cold` has not
+   * deleted yet is already never served. The forward needs none either, it
+   * is capped by {@link maxForwardRows}.
    */
   public async prune(dataset: AnalyticsDataset, before: string): Promise<void> {
     await this.cold.recordPruneFloor(dataset, before);

@@ -16,6 +16,7 @@ import {
   AnalyticsProvider,
   AnalyticsRollupJobs,
   MemoryAnalyticsProvider,
+  OrmAnalyticsProvider,
 } from "../index.ts";
 
 /**
@@ -51,6 +52,16 @@ class Views {
     measures: z.object({ count: z.number() }),
     slots: { dimensions: ["app"], measures: ["count"] },
     retention: { hot: "2d", rollup: "day", cold: "5d" },
+  });
+}
+
+class Expired {
+  public readonly expired = $analytics({
+    index: "app",
+    dimensions: z.object({ app: z.string() }),
+    measures: z.object({ count: z.number() }),
+    slots: { dimensions: ["app"], measures: ["count"] },
+    retention: { hot: "1d", rollup: "day", cold: "5d" },
   });
 }
 
@@ -332,6 +343,68 @@ describe("AnalyticsRollupJobs", () => {
       select: { count: "sum" },
     });
     expect(totalDrained.rows).toEqual([{ count: expectedTotal }]);
+  });
+
+  it("prunes a large expired backlog over several sweeps, each bounded, and logs every step's time", async ({
+    expect,
+  }) => {
+    // Lore's 00:00 UTC sweep timed out with the prune's DELETE in flight
+    // (#Q2938). The relational provider is the one that bounds its prune,
+    // so it replaces memory here.
+    const alepha = makeApp(OrmAnalyticsProvider);
+    const app = alepha.inject(Expired);
+    const jobs = alepha.inject(AnalyticsRollupJobs);
+    const provider = alepha.inject(AnalyticsProvider);
+    const dateTime = alepha.inject(DateTimeProvider);
+    await alepha.start();
+    dateTime.pause();
+
+    const days = 100;
+    const start = Date.parse("2020-01-01T10:00:00.000Z");
+    await app.expired.recordMany(
+      Array.from({ length: days }, (_, i) => ({
+        app: "a",
+        count: 1,
+        hour: new Date(start + i * 86_400_000).toISOString().slice(0, 13),
+      })),
+    );
+    const recent = dateTime.now().subtract(2, "day").toISOString().slice(0, 10);
+    await app.expired.record({ app: "a", count: 1, hour: `${recent}T10` });
+    // Folded up front, past the fold cap, so the sweeps below only prune.
+    await provider.rollup(app.expired.dataset, 0, "2021-01-01");
+
+    const buckets = async () =>
+      (
+        await app.expired.query({
+          since: "2000-01-01",
+          groupBy: ["hour"],
+          select: { count: "sum" },
+        })
+      ).rows.map((row) => String(row.hour));
+
+    const left: number[] = [];
+    for (let sweep = 0; sweep < 4; sweep++) {
+      await jobs.sweepNow();
+      left.push((await buckets()).length);
+    }
+
+    // 36 days a sweep, oldest first, never the whole 100 in one statement;
+    // the day inside the 5-day window (folded by the first sweep, past
+    // the 1-day hot one) survives every sweep.
+    expect(left).toEqual([65, 29, 1, 1]);
+    expect(await buckets()).toEqual([recent]);
+
+    const steps = alepha
+      .inject(MemoryDestinationProvider)
+      .logs.filter(
+        (entry) =>
+          entry.level === "INFO" &&
+          entry.data?.dataset === "expired" &&
+          typeof entry.data?.ms === "number",
+      )
+      .map((entry) => entry.data.step);
+    expect(steps.slice(0, 3)).toEqual(["rollup tier 0", "prune", "total"]);
+    expect(steps).toHaveLength(12);
   });
 
   it("does not let one dataset's failure block the rest of the sweep", async () => {
