@@ -1136,8 +1136,12 @@ export class FolioController {
       // leaving the folio stuck in its current directory (regression
       // hit while moving the Club Glossary to root — Alepha treats
       // `undefined` as "no change" but `null` as "set NULL").
+      // A present key holding `undefined` is "unchanged", not "move": the
+      // MCP tool calls this action in process and passes every optional
+      // field, so `"directoryId" in body` moved every content-only
+      // `folio_update` to the root (#Q2779).
       let directoryId: string | null | undefined = existing.directoryId;
-      if ("directoryId" in body) {
+      if (body.directoryId !== undefined) {
         if (body.directoryId === null) {
           directoryId = null;
         } else {
