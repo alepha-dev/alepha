@@ -40,8 +40,9 @@ permissions:
 #     fork PR from its own `main` passed the branch checks alone and would
 #     have deployed the fork's `head_sha` with this repository's secrets
 #     (#Q2946). Every job below also requires the run to come from this
-#     repository, and from a push or a dispatch (Release starts one on
-#     `main` after its push, #Q2948), never a PR.
+#     repository, and from a push or a dispatch, never a PR. A dispatch made
+#     by Release's `GITHUB_TOKEN` fires no `workflow_run` at all, so Release
+#     dispatches this file itself (#Q2953).
 #
 # ⚠️ **Per-deploy gating could not survive the split.** A `workflow_run` gate
 # is atomic - Verify Framework passed or it did not. ui and shop used to need only

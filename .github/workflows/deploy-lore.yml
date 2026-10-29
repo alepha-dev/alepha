@@ -6,8 +6,9 @@ permissions:
 # "Lore Deploy" (`lore-deploy.yml`) until #Q2946.
 #
 # Lore ships to lore.alepha.dev once Verify Lore (`verify-lore.yml`) succeeds
-# on `main`: on a push, or on the dispatch Release starts after pushing its
-# commit (#Q2948).
+# on `main` after a push. Release dispatches this file itself after pushing
+# its commit, because the Verify Lore run it starts fires no `workflow_run`
+# (#Q2953).
 # There is no human gate: read "Migration safety on D1" in
 # lore/apps/lore/CLAUDE.md before pushing a migration.
 #
