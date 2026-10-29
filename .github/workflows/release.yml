@@ -379,22 +379,30 @@ jobs:
           git push --follow-tags
 
       # The release commit was pushed with `GITHUB_TOKEN`, and a push made with
-      # it triggers no workflow, so nothing would verify it, and nothing would
-      # then deploy it. `workflow_dispatch` is the one event that token MAY
-      # trigger, so this starts the two Verify runs whose success on `main`
-      # deploys: Verify Framework, then Deploy Framework (ui, shop), and Verify
-      # Lore, then Deploy Lore at the released version.
+      # it triggers no workflow, so nothing would verify it or deploy it.
+      # `workflow_dispatch` is the one event that token MAY trigger, so this
+      # dispatches all four by name: Verify Framework and Verify Lore on the
+      # release commit, and Deploy Framework (ui, shop) and Deploy Lore at the
+      # released version.
       #
-      # Here rather than a `workflow_run` on Release in those two files, which
-      # is what it was until #Q2948: that fired on EVERY completed Release,
-      # failed and dry ones included, and redeployed production each time.
-      - name: Verify the release commit
+      # ⚠️ **The deploys are dispatched here, not left to follow the Verify
+      # runs.** A run started by `GITHUB_TOKEN` fires no `workflow_run`
+      # downstream: on 0.34.0 both Verify runs went green and no deploy
+      # followed (#Q2953). Deploying without waiting is safe for the same
+      # reason Deploy All is: the release commit only bumps versions and
+      # prepends the changelog, over a `main` that Verify already passed.
+      #
+      # Until #Q2948 the Verify runs followed Release through a `workflow_run`
+      # in their own files, which fired on EVERY completed Release, failed and
+      # dry ones included, and redeployed production each time.
+      - name: Verify and deploy the release commit
         if: inputs.resume_tag == '' && inputs.dry_run != true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh workflow run verify-framework.yml --repo "$GITHUB_REPOSITORY" --ref main
-          gh workflow run verify-lore.yml --repo "$GITHUB_REPOSITORY" --ref main
+          for workflow in verify-framework.yml verify-lore.yml deploy-framework.yml deploy-lore.yml; do
+            gh workflow run "$workflow" --repo "$GITHUB_REPOSITORY" --ref main
+          done
 
       # One step, not two: the release used to be created before the build and
       # have its assets bolted on afterwards, because that avoided reordering a
@@ -545,7 +553,7 @@ jobs:
             echo "Nothing was published. A real run would have:"
             echo ""
             echo "- published the framework's packages and \`@alepha/lore\` ${VERSION} to npm"
-            echo "- pushed the release commit and the tag \`${VERSION}\`, then started Verify Framework and Verify Lore on \`main\`"
+            echo "- pushed the release commit and the tag \`${VERSION}\`, then dispatched Verify Framework, Verify Lore, Deploy Framework and Deploy Lore on \`main\`"
             echo "- pushed \`ghcr.io/alepha-dev/lore:${VERSION}\` and \`:latest\`"
             echo "- created the GitHub release with Bay's binaries"
             echo "- pushed the Lore artifacts, published Lore release ${VERSION} and deployed alepha.dev"
