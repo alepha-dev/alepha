@@ -77,12 +77,16 @@ const ChangelogRelease = (props: ChangelogReleaseProps) => {
   );
 };
 
-function formatDate(dateStr: string): string {
+// A release date is a calendar day ("2026-10-28"), not an instant: format it
+// in UTC, or a visitor west of UTC hydrates the previous day over the
+// prerendered one (React #418).
+export function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
   return date.toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
     day: "numeric",
+    timeZone: "UTC",
   });
 }
 
