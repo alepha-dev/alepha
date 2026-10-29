@@ -804,7 +804,8 @@ export class CloudflareAdapter extends WorkerCloudflareAdapter {
       tasks.push({
         name: `provision r2 (${bucketName})`,
         handler: async () => {
-          await api.ensureR2(bucketName);
+          // `weur`, as D1 (#Q2954).
+          await api.ensureR2(bucketName, { locationHint: "weur" });
         },
       });
     }

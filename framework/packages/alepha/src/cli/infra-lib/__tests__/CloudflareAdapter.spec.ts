@@ -93,6 +93,7 @@ class SettledCredentialSource extends CloudflareCredentialSource {
 class MemoryProvisionClient extends CloudflareProvisionClient {
   public d1Databases: Array<{ uuid: string; name: string }> = [];
   public d1Hints: Record<string, string | undefined> = {};
+  public r2Hints: Record<string, string | undefined> = {};
   public kvNamespaces: Array<{ id: string; title: string }> = [];
   public r2Buckets: Array<{ name: string; creation_date: string }> = [];
   public queues: Array<{ queue_id: string; queue_name: string }> = [];
@@ -150,9 +151,13 @@ class MemoryProvisionClient extends CloudflareProvisionClient {
     return this.r2Buckets as never;
   }
 
-  public override async ensureR2(name: string) {
+  public override async ensureR2(
+    name: string,
+    options: { locationHint?: string } = {},
+  ) {
     if (!this.r2Buckets.some((b) => b.name === name)) {
       this.r2Buckets.push({ name, creation_date: "2026-10-11T00:00:00Z" });
+      this.r2Hints[name] = options.locationHint;
     }
   }
 
@@ -506,6 +511,26 @@ describe("CloudflareAdapter", () => {
       await adapter.provision(ctx, createMockRun());
 
       expect(api.d1Hints).toEqual({ "acme-portal-production": "weur" });
+    });
+
+    test("creates R2 with the weur location hint, as D1", async ({
+      expect,
+    }) => {
+      const { adapter, naming, api } = createTestEnv();
+      const ctx = makeCtx(naming, {
+        resources: {
+          hasDatabase: false,
+          hasBucket: true,
+          hasAnalytics: false,
+          hasKV: false,
+          hasQueue: false,
+          hasCron: false,
+        },
+      });
+
+      await adapter.provision(ctx, createMockRun());
+
+      expect(api.r2Hints).toEqual({ "acme-portal-production": "weur" });
     });
 
     test("a second provision creates nothing", async ({ expect }) => {
