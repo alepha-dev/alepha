@@ -17,7 +17,8 @@
   "author": "Nicolas Foures",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/alepha-dev/lore.git"
+    "url": "git+https://github.com/alepha-dev/alepha.git",
+    "directory": "lore/packages/@alepha/lore"
   },
   "bin": "./src/bin/index.ts",
   "files": [
