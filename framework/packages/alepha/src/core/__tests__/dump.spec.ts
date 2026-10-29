@@ -126,4 +126,13 @@ describe("Alepha.dump", () => {
     expect(dump.env.A_KEY).toBeDefined();
     expect(dump.env.B_KEY).toBeDefined();
   });
+
+  // #Q2945: no service declares APP_NAME, so without Alepha's own schema the
+  // manifest never listed it and Lore sealed it as a secret.
+  it("reports Alepha's own APP_NAME as a plain variable", () => {
+    const dump = Alepha.create().dump();
+
+    expect(dump.env.APP_NAME).toBeDefined();
+    expect(dump.env.APP_NAME.secret).toBe(false);
+  });
 });

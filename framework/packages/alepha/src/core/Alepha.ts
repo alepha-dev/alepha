@@ -29,6 +29,7 @@ import { AlsProvider, type StateScope } from "./providers/AlsProvider.ts";
 import { CodecManager } from "./providers/CodecManager.ts";
 import { type EmitReport, EventManager } from "./providers/EventManager.ts";
 import { StateManager } from "./providers/StateManager.ts";
+import { alephaEnvSchema } from "./schemas/alephaEnvSchema.ts";
 import {
   type Infer,
   type ZObject,
@@ -1596,6 +1597,8 @@ export class Alepha {
     // app and was internally inconsistent: dump() instantiated providers for
     // `providers` but never saw their env.
     const providers = this.graph();
+    // Alepha's own keys: no service declares them, so nothing else parses them.
+    this.parseEnv(alephaEnvSchema, { service: "Alepha" });
 
     const env: Record<string, AlephaDumpEnvVariable> = {};
     for (const [schema] of this.cacheEnv.entries()) {
