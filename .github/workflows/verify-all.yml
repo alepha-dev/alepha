@@ -1,0 +1,36 @@
+name: Verify All
+
+permissions:
+  contents: read
+
+# Every product's checks at once, by hand, on the ref it is dispatched from:
+#
+#   gh workflow run verify-all.yml --ref <branch>
+#
+# A push already runs whichever of the three its paths touch, so this is for
+# the times that is not enough: proving a branch or `main` whole after a
+# change outside every `paths` list, or after a flaky run.
+#
+# ⚠️ **Nothing here deploys, and that is deliberate.** `deploy-latest.yml` and
+# `lore-deploy.yml` follow "Verify Framework" and "Verify Lore" by NAME, and a
+# called workflow's run is filed under this one's name, so a green Verify All
+# on `main` ships nothing. Checking is not shipping.
+on:
+  workflow_dispatch:
+
+# A newer dispatch on the same ref supersedes the older one. The called
+# workflows key their own groups on `workflow_dispatch`, so this never
+# cancels a push run.
+concurrency:
+  group: verify-all-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  framework:
+    uses: ./.github/workflows/verify-framework.yml
+
+  lore:
+    uses: ./.github/workflows/verify-lore.yml
+
+  bay:
+    uses: ./.github/workflows/verify-bay.yml

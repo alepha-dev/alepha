@@ -4,7 +4,8 @@ permissions:
   contents: read
 
 # ---------------------------------------------------------------------------
-# The deploy half, split out of `ci.yml` on 2026-09-09. `verify.yml` is the
+# The deploy half, split out of `ci.yml` on 2026-09-09. `verify-framework.yml`
+# (workflow "Verify Framework", `verify.yml` until #Q2946) is the
 # other half and this file is downstream of it: nothing here decides whether
 # the code is good, only where it goes.
 #
@@ -13,10 +14,11 @@ permissions:
 # workflow they still ran as jobs and were skipped by an `if:` - correct, but
 # four grey nodes on every branch run, and one edit away from not being
 # skipped. Downstream, with the branch filter below, no run is created at all
-# unless Verify ran on main.
+# unless Verify Framework ran on main.
 #
-# ⚠️ **Three things about `workflow_run` that are not obvious, and two of them
-# have already cost this repository a silent missed deploy:**
+# ⚠️ **Four things about `workflow_run` that are not obvious. Two of them have
+# already cost this repository a silent missed deploy, a third would have
+# shipped a fork:**
 #
 #  1. It fires on FAILURE as well as success. Every job below checks
 #     `conclusion == 'success'` itself; there is no workflow-level gate.
@@ -26,11 +28,17 @@ permissions:
 #  3. The file that runs is always the DEFAULT BRANCH's copy of this one. That
 #     is a feature: deploy logic cannot be edited from a branch, so a branch
 #     cannot teach itself to deploy.
+#  4. `head_branch` is a branch NAME, and a fork can have one called `main`.
+#     Verify Framework runs on `pull_request`, fork PRs included, so a green
+#     fork PR from its own `main` passed the branch checks alone and would
+#     have deployed the fork's `head_sha` with this repository's secrets
+#     (#Q2946). Every job below also requires the run to come from this
+#     repository, and from a push or the Release follow-up, never a PR.
 #
 # ⚠️ **Per-deploy gating could not survive the split.** A `workflow_run` gate
-# is atomic - Verify passed or it did not. ui and shop used to need only
+# is atomic - Verify Framework passed or it did not. ui and shop used to need only
 # `[checks, test]` and could ship while e2e was still running. They now wait
-# for all of Verify, which costs them a minute or two and is arguably more
+# for all of Verify Framework, which costs them a minute or two and is arguably more
 # honest.
 #
 # ⚠️ **The docs at `alepha.dev` are not deployed from here (#Q2480).** They
@@ -40,7 +48,10 @@ permissions:
 # ---------------------------------------------------------------------------
 on:
   workflow_run:
-    workflows: ["Verify"]
+    # By NAME: renaming Verify Framework without this line stops every deploy,
+    # silently. A run called by `verify-all.yml` is filed under "Verify All"
+    # and never lands here.
+    workflows: ["Verify Framework"]
     types:
       - completed
     # ⚠️ This filter reads the head branch of the TRIGGERING run, not
@@ -49,7 +60,7 @@ on:
     # run exists, and that is the point: without it every `claude/**` push
     # created a Deploy latest run that skipped all four jobs in four seconds,
     # filed under `main` because of point 2, and left a grey line in the run
-    # list next to the Verify it belonged to. Those runs decided nothing.
+    # list next to the Verify run it belonged to. Those runs decided nothing.
     # With it, no run is created at all.
     #
     # The `head_branch == 'main'` checks on the jobs below stay. They are not
@@ -74,7 +85,7 @@ concurrency:
 # Where a `lore` command in this workflow would report, named once so no step
 # can forget. None runs here since Lore's own deploy left with Lore for
 # github.com/alepha-dev/lore (#E72); the variable stays so this file,
-# `verify.yml` and `release.yml` keep naming the same project.
+# `verify-framework.yml` and `release.yml` keep naming the same project.
 #
 # It used to come from `lore({ project: "alepha" })` in `alepha.config.ts`,
 # which meant it came from whichever directory a step happened to run in.
@@ -115,6 +126,8 @@ jobs:
     if: >-
       github.event.workflow_run.conclusion == 'success'
       && github.event.workflow_run.head_branch == 'main'
+      && github.event.workflow_run.head_repository.full_name == github.repository
+      && contains(fromJSON('["push", "workflow_run"]'), github.event.workflow_run.event)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: ui-production
@@ -143,6 +156,8 @@ jobs:
     if: >-
       github.event.workflow_run.conclusion == 'success'
       && github.event.workflow_run.head_branch == 'main'
+      && github.event.workflow_run.head_repository.full_name == github.repository
+      && contains(fromJSON('["push", "workflow_run"]'), github.event.workflow_run.event)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: shop-production

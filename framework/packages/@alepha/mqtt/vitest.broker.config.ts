@@ -10,7 +10,7 @@ import { defineConfig } from "vitest/config";
  * `scripts/vitest.projects.ts`, as `*.bun.spec` is, so the six `test` shards
  * never collect it; this config is the only one that does, run by the root
  * `yarn test:broker` (in `yarn v`, and the `mqtt-broker` job of
- * `verify.yml`). It needs Mosquitto on 11883 (`docker compose up -d`).
+ * `verify-framework.yml`). It needs Mosquitto on 11883 (`docker compose up -d`).
  *
  * ⚠️ A separate project rather than an env-gated `describe.skipIf`: a job
  * that lost its env var would skip every case and go green. Here no broker

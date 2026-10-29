@@ -1,17 +1,28 @@
-name: Bay CI
+name: Verify Bay
 
 on:
+  # Branches only: with no `branches` filter a tag push runs this too, and
+  # GitHub skips the `paths` filter for tags.
   push:
+    branches:
+      - "**"
     paths:
       - "bay/**"
-      - ".github/workflows/bay-ci.yml"
+      - ".github/workflows/verify-bay.yml"
   pull_request:
+    branches:
+      - main
+    # The same list as `push`.
     paths:
       - "bay/**"
-      - ".github/workflows/bay-ci.yml"
+      - ".github/workflows/verify-bay.yml"
+  # `verify-all.yml`, by hand.
+  workflow_call:
 
+# Namespaced by event, so a Verify All on a branch never cancels that
+# branch's push run, nor the other way round.
 concurrency:
-  group: bay-ci-${{ github.ref }}
+  group: verify-bay-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:

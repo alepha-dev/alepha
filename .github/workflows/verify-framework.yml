@@ -1,4 +1,4 @@
-name: Verify
+name: Verify Framework
 
 permissions:
   contents: read
@@ -31,7 +31,7 @@ on:
       # Bay's owned env keys, which `BayAdapter.spec.ts` pins the framework's
       # mirror against (#Q2763).
       - "bay/internal/deploy/deploy.go"
-      - ".github/workflows/verify.yml"
+      - ".github/workflows/verify-framework.yml"
       - ".github/actions/**"
       - "package.json"
       - "yarn.lock"
@@ -52,16 +52,22 @@ on:
       # Bay's owned env keys, which `BayAdapter.spec.ts` pins the framework's
       # mirror against (#Q2763).
       - "bay/internal/deploy/deploy.go"
-      - ".github/workflows/verify.yml"
+      - ".github/workflows/verify-framework.yml"
       - ".github/actions/**"
       - "package.json"
       - "yarn.lock"
       - ".yarnrc.yml"
       - ".nvmrc"
+  # The Release commit is pushed with `GITHUB_TOKEN`, and a push made with it
+  # triggers no workflow: this is what verifies it, and what then lets
+  # `deploy-latest.yml` ship it.
   workflow_run:
     workflows: ["Release"]
     types:
       - completed
+  # `verify-all.yml`, by hand. A called run is filed under "Verify All", so it
+  # never triggers `deploy-latest.yml`: checking is not shipping.
+  workflow_call:
 
 concurrency:
   # Namespaced by event, because `github.ref` for a `workflow_run` is the
@@ -75,7 +81,7 @@ concurrency:
   #
   # Per branch, so two agents pushing two branches never cancel each other -
   # only a newer push to the SAME branch does.
-  group: verify-${{ github.event_name }}-${{ github.ref }}
+  group: verify-framework-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 # ⚠️ **Nothing in this workflow runs a `lore` command any more** - those went
@@ -84,9 +90,8 @@ concurrency:
 #
 # It stays because removing it is a change to the environment the suite runs
 # in, not a tidy-up (a spec container merges over `process.env`, so a value
-# set for every job reaches the code under test). The spec written to blank
-# it left with Lore for github.com/alepha-dev/lore (#E72); dropping the
-# variable is still its own change, with its own run to prove it.
+# set for every job reaches the code under test). Dropping the variable is
+# its own change, with its own run to prove it.
 #
 # The paragraphs below are the history of why it is declared once at the top.
 #
@@ -433,8 +438,8 @@ jobs:
   # `foreach -p` and then `yarn e2e-cli` after it. Measured on run
   # 34291618784: 653s for the suites, of which **lore alone was 10.8 minutes**
   # (171 tests, 2 workers) and every other app finished inside 2.1 minutes.
-  # Lore's suite then got a sharded job of its own, until Lore left for
-  # github.com/alepha-dev/lore (#E72).
+  # Lore's suite then got a sharded job of its own, and lives in
+  # `verify-lore.yml` since Lore came back as `lore/` (#Q2765).
   #
   # Each builds its own rather than sharing one through an artifact, and that
   # is arithmetic, not laziness: a serialised build job costs its own ~82s of

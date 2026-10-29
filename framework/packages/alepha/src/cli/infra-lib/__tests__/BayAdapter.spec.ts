@@ -1470,7 +1470,7 @@ describe("BayAdapter  -  the Bay-owned key list", () => {
       breaks nothing here  -  the adapter simply starts pushing it, and Bay
       starts refusing every deploy of any app that sets it. The Go list is the
       authority. Bay is back in this repository (#Q2765), so this reads its
-      source, and `verify.yml` runs on a change to that file (#Q2763).
+      source, and `verify-framework.yml` runs on a change to that file (#Q2763).
     */
     const source = await readFile(
       new URL(
