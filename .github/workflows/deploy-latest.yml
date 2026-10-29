@@ -99,14 +99,17 @@ defaults:
 jobs:
   # ---------------------------------------------------------------------------
   # The component showcase at `ui.alepha.dev`, and the shop demo at
-  # `shop.alepha.dev`, deployed with `alepha deploy` (#Q2576).
+  # `shop.alepha.dev`, deployed with `alepha deploy` through Lore (#Q2778),
+  # the way `docs.yml` deploys `alepha.dev`.
   #
-  # They went through Lore Deploy from #E1 until Lore left this repository
-  # (#E72). `infra({ project: "alepha" })` gives them the names Lore had
-  # given their Workers (`alepha-<app>-production`), so the first `up` took
-  # each Worker and its Custom Domain over instead of colliding with it.
-  # Cloudflare credentials are repository secrets; each app's own secrets live
-  # in its GitHub environment and reach the Worker through the job env.
+  # Each app's `lore({ project: "alepha", estate: "cf-feunard" })` deploys its
+  # copy (`ui/production`, `shop/production`) in Lore project `alepha`, and
+  # Lore names the Worker `alepha-<app>-production`, the one `cloudflare()`
+  # deployed before (#Q2576), so it is taken over in place. Lore holds the
+  # Cloudflare credential (the estate), so the job needs `LORE_API_KEY` alone,
+  # a repository secret. Each app's own secrets live in its GitHub environment,
+  # reach `alepha deploy` through the job env, and are sealed into the copy
+  # before the run starts.
   # ---------------------------------------------------------------------------
   deploy-ui-production:
     if: >-
@@ -115,10 +118,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: ui-production
-
-    env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
     steps:
       - name: Git Checkout
@@ -133,11 +132,12 @@ jobs:
       - name: Prepare
         run: yarn copy
 
-      # `alepha-ui-production` (`infra({ project: "alepha" })`), the Worker
-      # Lore Deploy created, taken over with its Custom Domain (#Q2576).
+      # Copy `ui/production`, Worker `alepha-ui-production` (#Q2778).
       - name: Deploy
         working-directory: framework/apps/ui
         run: yarn alepha deploy --env production
+        env:
+          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
 
   deploy-shop-production:
     if: >-
@@ -146,10 +146,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: shop-production
-
-    env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
     steps:
       - name: Git Checkout
@@ -165,11 +161,13 @@ jobs:
         run: yarn copy
 
       # A demo: its data is disposable. Secrets come from the `shop-production`
-      # environment and are resolved from the job env by `deploy`.
+      # environment; `deploy` reads each key the build manifest declares from
+      # the job env and seals it into copy `shop/production` (#Q2778).
       - name: Deploy
         working-directory: framework/apps/examples/shop
         run: yarn alepha deploy --env production
         env:
+          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
           APP_SECRET: ${{ secrets.APP_SECRET }}
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
           STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
