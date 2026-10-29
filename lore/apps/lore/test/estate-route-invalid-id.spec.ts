@@ -26,8 +26,9 @@ describe("the estate page with a malformed id", () => {
     const page = [...alepha.primitives($page)].find((it) => it.name === "bay");
     if (!page?.options.loader) throw new AlephaError("no bay page loader");
 
-    const error = await page.options
-      .loader({ params: { estateId: "not-a-uuid" } } as never)
+    const loader = page.options.loader;
+    const error = await Promise.resolve()
+      .then(() => loader({ params: { estateId: "not-a-uuid" } } as never))
       .catch((e: unknown) => e);
 
     expect(isHttpError(error, 404)).toBe(true);
