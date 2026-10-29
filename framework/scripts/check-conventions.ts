@@ -586,7 +586,7 @@ for (const file of readdirSync(workflowDir).sort()) {
   // The rule is about `github.ref` specifically, because that is the
   // expression whose value is a surprise: on a `workflow_run` it resolves to
   // the DEFAULT BRANCH. A group that never mentions it cannot have the bug -
-  // `deploy-latest.yml` keys on `workflow_run.head_branch` and is correct
+  // `deploy-framework.yml` keys on `workflow_run.head_branch` and is correct
   // without mentioning `github.event_name` at all, which the older
   // "must contain github.event_name" form would have called a violation.
   const group = groupLine[1];

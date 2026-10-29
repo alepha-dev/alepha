@@ -38,6 +38,9 @@ on:
       - ".nvmrc"
   # A hand-run rebuild of alepha.dev from `main`, pinned like the push one.
   workflow_dispatch:
+  # `deploy-all.yml`. A called run sees the caller's event, `workflow_dispatch`,
+  # and its ref, so the `deploy` job's gate covers it.
+  workflow_call:
 
 concurrency:
   group: docs-${{ github.event_name }}-${{ github.ref }}

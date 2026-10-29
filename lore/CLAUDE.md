@@ -48,9 +48,9 @@ core <- deploy
 
 A small edit (a few lines, no decision anyone would look for later) goes straight to `main` with no quest.
 
-⚠️ **`main` deploys to production with no human gate.** `Lore Deploy` runs `alepha deploy` on `lore-production` once **Verify Lore** succeeds on `main` (a push, or the Release commit), unless the repository variable `LORE_DEPLOY`, the kill switch, is set to anything but `true`. Lore migrations target D1, which cascade-wipes children on `DROP TABLE`: read "Migration safety on D1" in `apps/lore/CLAUDE.md` before pushing one.
+⚠️ **`main` deploys to production with no human gate.** **Deploy Lore** (`deploy-lore.yml`) runs `alepha deploy` on `lore-production` once **Verify Lore** succeeds on `main` (a push, or the Release commit), unless the repository variable `LORE_DEPLOY`, the kill switch, is set to anything but `true`. Lore migrations target D1, which cascade-wipes children on `DROP TABLE`: read "Migration safety on D1" in `apps/lore/CLAUDE.md` before pushing one.
 
-**A hotfix can skip the wait** (#Q2707): `gh workflow run lore-deploy.yml --ref main` deploys main as it stands, without waiting for Verify Lore on main. Use it only when every commit main holds beyond the last deploy was green on its own branch, and never when one of them carries a migration. A dispatch from any other ref is skipped.
+**A hotfix can skip the wait** (#Q2707): `gh workflow run deploy-lore.yml --ref main` (or `deploy-all.yml`, which also ships the framework apps and the docs) deploys main as it stands, without waiting for Verify Lore on main. Use it only when every commit main holds beyond the last deploy was green on its own branch, and never when one of them carries a migration. A dispatch from any other ref is skipped.
 
 ### Verifying
 

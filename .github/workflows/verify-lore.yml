@@ -34,13 +34,13 @@ on:
       - ".yarnrc.yml"
       - ".nvmrc"
   # The Release commit, pushed with `GITHUB_TOKEN`, triggers no push run: this
-  # verifies it, and `lore-deploy.yml` then ships the released version.
+  # verifies it, and `deploy-lore.yml` then ships the released version.
   workflow_run:
     workflows: ["Release"]
     types:
       - completed
   # `verify-all.yml`, by hand. A called run is filed under "Verify All", so it
-  # never triggers `lore-deploy.yml`.
+  # never triggers `deploy-lore.yml`.
   workflow_call:
 
 # Namespaced by event: a `workflow_run`'s `github.ref` is the default branch,

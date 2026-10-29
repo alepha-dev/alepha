@@ -11,8 +11,8 @@ permissions:
 # the times that is not enough: proving a branch or `main` whole after a
 # change outside every `paths` list, or after a flaky run.
 #
-# ⚠️ **Nothing here deploys, and that is deliberate.** `deploy-latest.yml` and
-# `lore-deploy.yml` follow "Verify Framework" and "Verify Lore" by NAME, and a
+# ⚠️ **Nothing here deploys, and that is deliberate.** `deploy-framework.yml` and
+# `deploy-lore.yml` follow "Verify Framework" and "Verify Lore" by NAME, and a
 # called workflow's run is filed under this one's name, so a green Verify All
 # on `main` ships nothing. Checking is not shipping.
 on:

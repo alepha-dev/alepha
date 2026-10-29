@@ -23,11 +23,13 @@ All three products are planned in ONE Lore project, **Alepha** (`https://lore.al
 
 Workflows live in the root `.github/workflows/`, one set per product, each scoped by `paths` and running its steps in its folder (`defaults.run.working-directory`):
 
-- **Verify Framework** (`verify-framework.yml`): `framework/**` and the shared root files. Green on `main`, it triggers **Deploy latest** (ui.alepha.dev, shop.alepha.dev).
-- **Verify Lore** (`verify-lore.yml`): `lore/**`, `framework/**` and `bay/**`, since Lore builds on the framework's source and its e2e builds Bay. Green on `main`, it triggers **Lore Deploy** (lore.alepha.dev).
+- **Verify Framework** (`verify-framework.yml`): `framework/**` and the shared root files. Green on `main`, it triggers **Deploy Framework** (`deploy-framework.yml`: ui.alepha.dev, shop.alepha.dev).
+- **Verify Lore** (`verify-lore.yml`): `lore/**`, `framework/**` and `bay/**`, since Lore builds on the framework's source and its e2e builds Bay. Green on `main`, it triggers **Deploy Lore** (`deploy-lore.yml`: lore.alepha.dev).
 - **Verify Bay** (`verify-bay.yml`): `bay/**`.
 - **Verify All** (`verify-all.yml`): the three above at once, by hand only (`gh workflow run verify-all.yml --ref <branch>`). It deploys nothing: the deploys follow the other three by name, and a called run is filed under "Verify All".
 - **Docs** (`docs.yml`): `docs/**` and every product's `docs/`. It deploys alepha.dev on `main`, each section from how its product ships (#Q2766): the framework and Bay from the latest release tag (`yarn pin`, then `DOCS_RELEASE_ROOT`), Lore from `main`.
+
+- **Deploy All** (`deploy-all.yml`): Deploy Framework, Deploy Lore and Docs at once, by hand, from `main` only (`gh workflow run deploy-all.yml --ref main`). It ships `main` as it stands without waiting for a Verify, as each deploy file's own dispatch does; never use it over a Lore migration Verify Lore has not run on `main`. Bay is deployed by no workflow.
 
 The Release commit is pushed with `GITHUB_TOKEN`, which triggers no workflow, so Verify Framework and Verify Lore also run when **Release** completes, and their deploys follow on `main`.
 

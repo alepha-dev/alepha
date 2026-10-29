@@ -12,7 +12,7 @@ on:
   # could therefore only be proven by merging it.
   #
   # ⚠️ **Nothing here deploys.** This workflow verifies and stops; the deploys
-  # live in `deploy-latest.yml`, which triggers on this one succeeding and
+  # live in `deploy-framework.yml`, which triggers on this one succeeding and
   # refuses anything whose head branch is not `main`. That is what makes a
   # branch push safe to run. Before this split the guards were in-file and
   # said `github.event_name != 'pull_request'`, which is TRUE for a push to
@@ -60,13 +60,13 @@ on:
       - ".nvmrc"
   # The Release commit is pushed with `GITHUB_TOKEN`, and a push made with it
   # triggers no workflow: this is what verifies it, and what then lets
-  # `deploy-latest.yml` ship it.
+  # `deploy-framework.yml` ship it.
   workflow_run:
     workflows: ["Release"]
     types:
       - completed
   # `verify-all.yml`, by hand. A called run is filed under "Verify All", so it
-  # never triggers `deploy-latest.yml`: checking is not shipping.
+  # never triggers `deploy-framework.yml`: checking is not shipping.
   workflow_call:
 
 concurrency:
@@ -85,7 +85,7 @@ concurrency:
   cancel-in-progress: true
 
 # ⚠️ **Nothing in this workflow runs a `lore` command any more** - those went
-# to `deploy-latest.yml` with the deploy jobs, then left with Lore's own
+# to `deploy-framework.yml` with the deploy jobs, then left with Lore's own
 # deploy (#E72), and this variable is inherited by the test jobs alone now.
 #
 # It stays because removing it is a change to the environment the suite runs

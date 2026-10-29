@@ -1,13 +1,20 @@
-name: Deploy latest
+name: Deploy Framework
 
 permissions:
   contents: read
 
 # ---------------------------------------------------------------------------
+# The framework's deploys: the showcase at ui.alepha.dev and the shop demo at
+# shop.alepha.dev. "Deploy latest" (`deploy-latest.yml`) until #Q2946.
+#
 # The deploy half, split out of `ci.yml` on 2026-09-09. `verify-framework.yml`
-# (workflow "Verify Framework", `verify.yml` until #Q2946) is the
-# other half and this file is downstream of it: nothing here decides whether
-# the code is good, only where it goes.
+# (workflow "Verify Framework") is the other half and this file is downstream
+# of it: nothing here decides whether the code is good, only where it goes.
+#
+# By hand, `gh workflow run deploy-framework.yml --ref main`, or through
+# `deploy-all.yml`, it ships `main` as it stands without waiting for Verify
+# Framework: for a redeploy, or a hotfix whose branch was already green. A
+# dispatch from any other ref is skipped.
 #
 # **Why a second file at all.** An agent works in a worktree, pushes a
 # `claude/**` branch and watches CI. When the deploys lived in the same
@@ -58,7 +65,7 @@ on:
     # `github.ref` (which point 2 above says is always the default branch). It
     # is the only place `workflow_run` will tell you the real branch before a
     # run exists, and that is the point: without it every `claude/**` push
-    # created a Deploy latest run that skipped all four jobs in four seconds,
+    # created a deploy run that skipped all four jobs in four seconds,
     # filed under `main` because of point 2, and left a grey line in the run
     # list next to the Verify run it belonged to. Those runs decided nothing.
     # With it, no run is created at all.
@@ -69,13 +76,20 @@ on:
     # second trigger to this block.
     branches:
       - main
+  workflow_dispatch:
+  # `deploy-all.yml`. A called run sees the caller's event, `workflow_dispatch`,
+  # and its ref, so the dispatch half of each job's gate covers it.
+  workflow_call:
 
 concurrency:
   # ⚠️ Keyed on the HEAD BRANCH, never on `github.ref` - see point 2 above.
   # `github.ref` is the default branch for every `workflow_run`, so a group
   # built from it would put every branch's deploy in one bucket and cancel
   # them against each other.
-  group: deploy-latest-${{ github.event.workflow_run.head_branch }}
+  # A dispatch has no `workflow_run`, and falls back to the ref it ran on; both
+  # land in `deploy-framework-main`, so a hand deploy queues behind an
+  # automatic one rather than racing it.
+  group: deploy-framework-${{ github.event.workflow_run.head_branch || github.ref_name }}
   # Deliberately NOT cancel-in-progress. A deploy that is halfway through
   # `deploy` has already run migrations; cancelling it leaves the
   # database ahead of the Worker. A superseded deploy is wasteful, an
@@ -124,10 +138,13 @@ jobs:
   # ---------------------------------------------------------------------------
   deploy-ui-production:
     if: >-
-      github.event.workflow_run.conclusion == 'success'
-      && github.event.workflow_run.head_branch == 'main'
-      && github.event.workflow_run.head_repository.full_name == github.repository
-      && contains(fromJSON('["push", "workflow_run"]'), github.event.workflow_run.event)
+      (github.event_name == 'workflow_run'
+        && github.event.workflow_run.conclusion == 'success'
+        && github.event.workflow_run.head_branch == 'main'
+        && github.event.workflow_run.head_repository.full_name == github.repository
+        && contains(fromJSON('["push", "workflow_run"]'), github.event.workflow_run.event))
+      || (github.event_name == 'workflow_dispatch'
+        && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: ui-production
@@ -136,7 +153,7 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           fetch-tags: true
 
       - name: Setup
@@ -154,10 +171,13 @@ jobs:
 
   deploy-shop-production:
     if: >-
-      github.event.workflow_run.conclusion == 'success'
-      && github.event.workflow_run.head_branch == 'main'
-      && github.event.workflow_run.head_repository.full_name == github.repository
-      && contains(fromJSON('["push", "workflow_run"]'), github.event.workflow_run.event)
+      (github.event_name == 'workflow_run'
+        && github.event.workflow_run.conclusion == 'success'
+        && github.event.workflow_run.head_branch == 'main'
+        && github.event.workflow_run.head_repository.full_name == github.repository
+        && contains(fromJSON('["push", "workflow_run"]'), github.event.workflow_run.event))
+      || (github.event_name == 'workflow_dispatch'
+        && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: shop-production
@@ -166,7 +186,7 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           fetch-tags: true
 
       - name: Setup

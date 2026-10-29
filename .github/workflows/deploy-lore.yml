@@ -1,8 +1,10 @@
-name: Lore Deploy
+name: Deploy Lore
 
 permissions:
   contents: read
 
+# "Lore Deploy" (`lore-deploy.yml`) until #Q2946.
+#
 # Lore ships to lore.alepha.dev once Verify Lore (`verify-lore.yml`) succeeds
 # on `main`: on a push, or on the Release commit it verifies after a Release.
 # There is no human gate: read "Migration safety on D1" in
@@ -11,6 +13,7 @@ permissions:
 # `workflow_dispatch` ships main as it stands, without waiting for Verify Lore
 # (#Q2707): for a hotfix whose branch was already green, never for a migration
 # Verify Lore has not run on main. See "The workflow" in lore/CLAUDE.md.
+# `deploy-all.yml` calls this file the same way.
 on:
   workflow_run:
     # By NAME: renaming Verify Lore without this line stops every deploy,
@@ -22,9 +25,12 @@ on:
     branches:
       - main
   workflow_dispatch:
+  # `deploy-all.yml`. A called run sees the caller's event, `workflow_dispatch`,
+  # and its ref, so the dispatch half of the gate below covers it.
+  workflow_call:
 
 concurrency:
-  group: lore-deploy-${{ github.event.workflow_run.head_branch || github.ref_name }}
+  group: deploy-lore-${{ github.event.workflow_run.head_branch || github.ref_name }}
   cancel-in-progress: false
 
 # Project `alepha` holds Lore's work and its sigil since #E94.
