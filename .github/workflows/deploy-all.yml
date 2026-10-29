@@ -1,0 +1,41 @@
+name: Deploy All
+
+permissions:
+  contents: read
+
+# Every production deploy at once, by hand, from `main` as it stands:
+#
+#   gh workflow run deploy-all.yml --ref main
+#
+# Deploy Framework (ui.alepha.dev, shop.alepha.dev), Deploy Lore
+# (lore.alepha.dev) and Docs (alepha.dev, after its checks). Each called file
+# gates itself: a dispatch from any ref but `main` deploys nothing, and Deploy
+# Lore still honours its LORE_DEPLOY kill switch.
+#
+# ⚠️ **It does not wait for Verify.** Like each file's own dispatch, it ships
+# what `main` holds now: run it when every commit since the last deploy was
+# green, never over a Lore migration Verify Lore has not run on `main`.
+#
+# Bay is not here: no workflow deploys it. Its binaries ship with Release.
+on:
+  workflow_dispatch:
+
+# One at a time, never cancelled: a deploy interrupted after its migrations
+# leaves a database ahead of its Worker. The called files keep their own
+# groups, so a run here queues behind an automatic deploy of the same app.
+concurrency:
+  group: deploy-all
+  cancel-in-progress: false
+
+jobs:
+  framework:
+    uses: ./.github/workflows/deploy-framework.yml
+    secrets: inherit
+
+  lore:
+    uses: ./.github/workflows/deploy-lore.yml
+    secrets: inherit
+
+  docs:
+    uses: ./.github/workflows/docs.yml
+    secrets: inherit

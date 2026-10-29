@@ -1,26 +1,36 @@
-name: Lore Deploy
+name: Deploy Lore
 
 permissions:
   contents: read
 
-# Lore ships to lore.alepha.dev once Verify succeeds on a push to main. There
-# is no human gate: read "Migration safety on D1" in apps/lore/CLAUDE.md before
-# pushing a migration.
+# "Lore Deploy" (`lore-deploy.yml`) until #Q2946.
 #
-# `workflow_dispatch` ships main as it stands, without waiting for Verify
+# Lore ships to lore.alepha.dev once Verify Lore (`verify-lore.yml`) succeeds
+# on `main`: on a push, or on the Release commit it verifies after a Release.
+# There is no human gate: read "Migration safety on D1" in
+# lore/apps/lore/CLAUDE.md before pushing a migration.
+#
+# `workflow_dispatch` ships main as it stands, without waiting for Verify Lore
 # (#Q2707): for a hotfix whose branch was already green, never for a migration
-# Verify has not run on main. See "The workflow" in lore/CLAUDE.md.
+# Verify Lore has not run on main. See "The workflow" in lore/CLAUDE.md.
+# `deploy-all.yml` calls this file the same way.
 on:
   workflow_run:
-    workflows: ["Lore Verify"]
+    # By NAME: renaming Verify Lore without this line stops every deploy,
+    # silently. A run called by `verify-all.yml` is filed under "Verify All"
+    # and never lands here.
+    workflows: ["Verify Lore"]
     types:
       - completed
     branches:
       - main
   workflow_dispatch:
+  # `deploy-all.yml`. A called run sees the caller's event, `workflow_dispatch`,
+  # and its ref, so the dispatch half of the gate below covers it.
+  workflow_call:
 
 concurrency:
-  group: lore-deploy-${{ github.event.workflow_run.head_branch || github.ref_name }}
+  group: deploy-lore-${{ github.event.workflow_run.head_branch || github.ref_name }}
   cancel-in-progress: false
 
 # Project `alepha` holds Lore's work and its sigil since #E94.
@@ -35,18 +45,20 @@ defaults:
 
 jobs:
   deploy-lore-production:
-    # ⚠️ Off until the repository variable LORE_DEPLOY is `true`. Until the
-    # owner moves the `lore-production` secrets here and archives
-    # alepha-dev/lore, that repository still deploys Lore, and two deployers
-    # racing one Worker is the failure this gate prevents (#Q2765).
-    # A dispatch deploys main only: a branch never ships to production.
+    # The repository variable LORE_DEPLOY is the kill switch: anything but
+    # `true` stops every Lore deploy. It gated the move from alepha-dev/lore,
+    # which is gone (#Q2765).
+    # A dispatch deploys main only: a branch never ships to production. A
+    # `pull_request` run never ships either, and the head repository check
+    # keeps a fork's branch named `main` out (#Q2946).
     if: >-
       vars.LORE_DEPLOY == 'true'
       && (
         (github.event_name == 'workflow_run'
           && github.event.workflow_run.conclusion == 'success'
           && github.event.workflow_run.head_branch == 'main'
-          && github.event.workflow_run.event == 'push')
+          && github.event.workflow_run.head_repository.full_name == github.repository
+          && contains(fromJSON('["push", "workflow_run"]'), github.event.workflow_run.event))
         || (github.event_name == 'workflow_dispatch'
           && github.ref == 'refs/heads/main')
       )

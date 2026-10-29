@@ -13,7 +13,7 @@ permissions:
 
 # One release at a time, and never cancel one.
 #
-# `cancel-in-progress: true`  -  what `verify.yml` uses, and right there  -  would be
+# `cancel-in-progress: true`  -  what `verify-framework.yml` uses, and right there  -  would be
 # actively dangerous here: interrupting the job between `npm publish` and
 # `git push` leaves a published version whose tag exists on no remote, which is
 # the exact tear the step order further down is arranged to avoid. Two
@@ -24,7 +24,7 @@ concurrency:
   cancel-in-progress: false
 
 # Where every `lore` command in this workflow reports, named once so no step
-# can forget. See the same block in `verify.yml` and `deploy-latest.yml`:
+# can forget. See the same block in `verify-framework.yml` and `deploy-framework.yml`:
 # this is the line that replaces four `continue-on-error` steps each relying on
 # whichever `alepha.config.ts` their working directory happened to hold. One of
 # them held none, and Lore's own 0.28.0 artifact was never pushed because of it.
@@ -451,7 +451,7 @@ jobs:
       # with the framework section pinned to the latest release tag (#Q2766),
       # so between releases it never shows an unreleased framework page.
       #
-      # It used to deploy from `deploy-latest.yml` on every green push to
+      # It used to deploy from `deploy-latest.yml` (now `deploy-framework.yml`) on every green push to
       # `main`, so the site documented code no one could install yet: an agent
       # reading `llms.txt` was told about APIs its `node_modules` did not have.
       # The docs now move with the npm version, and a docs-only fix waits for

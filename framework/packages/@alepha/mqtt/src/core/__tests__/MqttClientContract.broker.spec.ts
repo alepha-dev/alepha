@@ -11,7 +11,7 @@ import { MqttClientContract } from "./MqttClientContract.ts";
 
 /**
  * The contract on a real broker: Mosquitto, from `compose.yml` locally
- * (11883) and from the `mqtt-broker` job of `verify.yml` in CI, same port.
+ * (11883) and from the `mqtt-broker` job of `verify-framework.yml` in CI, same port.
  *
  * Not in the root run: `*.broker.spec.ts` is excluded by
  * `scripts/vitest.projects.ts` and collected only by

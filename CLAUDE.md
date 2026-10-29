@@ -23,12 +23,17 @@ All three products are planned in ONE Lore project, **Alepha** (`https://lore.al
 
 Workflows live in the root `.github/workflows/`, one set per product, each scoped by `paths` and running its steps in its folder (`defaults.run.working-directory`):
 
-- `verify.yml` (framework): `framework/**` and the shared root files.
-- `lore-verify.yml`: `lore/**`, `framework/**` and `bay/**`.
-- `bay-ci.yml`: `bay/**`.
+- **Verify Framework** (`verify-framework.yml`): `framework/**` and the shared root files. Green on `main`, it triggers **Deploy Framework** (`deploy-framework.yml`: ui.alepha.dev, shop.alepha.dev).
+- **Verify Lore** (`verify-lore.yml`): `lore/**`, `framework/**` and `bay/**`, since Lore builds on the framework's source and its e2e builds Bay. Green on `main`, it triggers **Deploy Lore** (`deploy-lore.yml`: lore.alepha.dev).
+- **Verify Bay** (`verify-bay.yml`): `bay/**`.
+- **Verify All** (`verify-all.yml`): the three above at once, by hand only (`gh workflow run verify-all.yml --ref <branch>`). It deploys nothing: the deploys follow the other three by name, and a called run is filed under "Verify All".
+- **Docs** (`docs.yml`): `docs/**` and every product's `docs/`. It deploys alepha.dev on `main`, each section from how its product ships (#Q2766): the framework and Bay from the latest release tag (`yarn pin`, then `DOCS_RELEASE_ROOT`), Lore from `main`.
+
+- **Deploy All** (`deploy-all.yml`): Deploy Framework, Deploy Lore and Docs at once, by hand, from `main` only (`gh workflow run deploy-all.yml --ref main`). It ships `main` as it stands without waiting for a Verify, as each deploy file's own dispatch does; never use it over a Lore migration Verify Lore has not run on `main`. Bay is deployed by no workflow.
+
+The Release commit is pushed with `GITHUB_TOKEN`, which triggers no workflow, so Verify Framework and Verify Lore also run when **Release** completes, and their deploys follow on `main`.
 
 **One release for everything** (#Q2776): `release.yml`, dispatched by hand, gives the framework, Lore and Bay one version and one bare `x.y.z` tag. It publishes the framework's packages and `@alepha/lore` to npm (trusted publishing names `release.yml` for all of them), pushes `ghcr.io/alepha-dev/lore`, attaches Bay's binaries and `SHA256SUMS` to the GitHub release, publishes the Lore release of that version in projects `alepha`, `lore` and `bay`, and deploys alepha.dev. The framework's `CHANGELOG.md` stays framework-only.
-- `docs.yml`: `docs/**` and every product's `docs/`. It deploys alepha.dev on `main`, each section from how its product ships (#Q2766): the framework and Bay from the latest release tag (`yarn pin`, then `DOCS_RELEASE_ROOT`), Lore from `main`.
 
 A step's own `working-directory` is relative to the repository root, so it names the product folder (`framework/apps/ui`).
 

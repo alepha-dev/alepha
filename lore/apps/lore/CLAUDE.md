@@ -128,7 +128,7 @@ A table rebuild is how drizzle-kit changes what SQLite cannot alter in place (`C
 
 **Limits of local testing:** every database the suites build is empty or seeded by hand, so passing tests cannot prove that production data survives a migration. The manual migration rehearsal workflow was removed at the owner's request on 2026-10-10; CI no longer checks migrations against a copy of production. The `alepha rehearse` command remains available for an explicitly arranged run on an ephemeral CI runner, with cleanup even if the process is interrupted.
 
-**CI auto-deploys to prod on every push to `main` whose Verify succeeds** (this repository's `.github/workflows/verify.yml`, workflow **Verify**, then `.github/workflows/deploy-latest.yml` → `deploy-lore-production` job, a `workflow_run` on Verify → `yarn alepha deploy --env production` from `apps/lore`). A Verify cancelled by a newer push skips that commit's deploy; the next green push ships it. There is no human gate between push and prod migration. Treat every D1 migration as you would a `DROP DATABASE` — read every line before pushing.
+**CI auto-deploys to prod on every push to `main` whose Verify Lore succeeds** (the root's `.github/workflows/verify-lore.yml`, workflow **Verify Lore**, then `.github/workflows/deploy-lore.yml`, workflow **Deploy Lore**, job `deploy-lore-production`, a `workflow_run` on Verify Lore that runs `yarn alepha deploy --env production` from `apps/lore`). A Verify Lore run cancelled by a newer push skips that commit's deploy; the next green push ships it. There is no human gate between push and prod migration. Treat every D1 migration as you would a `DROP DATABASE`: read every line before pushing.
 
 ### What the 2026-08 great-rename migration got right (worked example)
 

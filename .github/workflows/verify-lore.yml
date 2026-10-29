@@ -1,4 +1,4 @@
-name: Lore Verify
+name: Verify Lore
 
 permissions:
   contents: read
@@ -13,7 +13,7 @@ on:
       - "lore/**"
       - "framework/**"
       - "bay/**"
-      - ".github/workflows/lore-verify.yml"
+      - ".github/workflows/verify-lore.yml"
       - ".github/actions/**"
       - "package.json"
       - "yarn.lock"
@@ -27,15 +27,27 @@ on:
       - "lore/**"
       - "framework/**"
       - "bay/**"
-      - ".github/workflows/lore-verify.yml"
+      - ".github/workflows/verify-lore.yml"
       - ".github/actions/**"
       - "package.json"
       - "yarn.lock"
       - ".yarnrc.yml"
       - ".nvmrc"
+  # The Release commit, pushed with `GITHUB_TOKEN`, triggers no push run: this
+  # verifies it, and `deploy-lore.yml` then ships the released version.
+  workflow_run:
+    workflows: ["Release"]
+    types:
+      - completed
+  # `verify-all.yml`, by hand. A called run is filed under "Verify All", so it
+  # never triggers `deploy-lore.yml`.
+  workflow_call:
 
+# Namespaced by event: a `workflow_run`'s `github.ref` is the default branch,
+# so without it the Release follow-up would cancel a push run of main
+# (`check:conventions` holds this).
 concurrency:
-  group: lore-verify-${{ github.event_name }}-${{ github.ref }}
+  group: verify-lore-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 # Lore's work is tracked in project `alepha`, with the framework's and Bay's

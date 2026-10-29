@@ -56,7 +56,7 @@ services:
   # under a second, weighs a few MB and speaks MQTT 5 from a three-line
   # config. Pinned to an exact version, like `s3`: the EMQX service it
   # replaces was unpinned, one of the causes of its 20% failure rate. The
-  # `mqtt-broker` job of verify.yml runs the same image and config; keep the
+  # `mqtt-broker` job of verify-framework.yml runs the same image and config; keep the
   # two in step.
   mosquitto:
     restart: always
