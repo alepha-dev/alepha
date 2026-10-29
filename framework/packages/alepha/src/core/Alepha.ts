@@ -29,13 +29,13 @@ import { AlsProvider, type StateScope } from "./providers/AlsProvider.ts";
 import { CodecManager } from "./providers/CodecManager.ts";
 import { type EmitReport, EventManager } from "./providers/EventManager.ts";
 import { StateManager } from "./providers/StateManager.ts";
-import { alephaEnvSchema } from "./schemas/alephaEnvSchema.ts";
 import {
   type Infer,
   type ZObject,
   type ZType,
   z,
 } from "./providers/ZodProvider.ts";
+import { alephaEnvSchema } from "./schemas/alephaEnvSchema.ts";
 
 /**
  * The build metadata token, replaced by `alepha build` and `alepha dev`.
