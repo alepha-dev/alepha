@@ -1,5 +1,6 @@
 import { Alepha } from "alepha";
 import { BackgroundTaskProvider } from "alepha/background";
+import { DateTimeProvider } from "alepha/datetime";
 import { HttpClient } from "alepha/server";
 import { describe, expect, it } from "vitest";
 
@@ -241,6 +242,42 @@ describe("SigilSinkProvider", () => {
     );
     // And stamped, so a page that outlives it can tell.
     expect(published.configAt).toBeGreaterThan(0);
+  });
+
+  it("publishes the same stamp to two renders seconds apart", async () => {
+    // The page cache renders a page twice before storing it and refuses it
+    // when the markup differs (#Q2943). A fresh stamp per render made every
+    // page carrying the atom uncacheable.
+    const alepha = Alepha.create({
+      env: {
+        NODE_ENV: "production",
+        APP_SECRET: "test-secret",
+        SERVER_PORT: 0,
+        SIGIL_SINK: "https://sigil.example.com/",
+        SIGIL_KEY: "sg_demo_secret",
+      },
+    })
+      .with({ provide: HttpClient, use: RecordingHttpClient })
+      .with(AlephaSigil);
+    await alepha.start();
+    const dateTime = alepha.inject(DateTimeProvider);
+    const render = async () => {
+      await alepha.events.emit("react:server:render:begin", {
+        state: {},
+      } as any);
+      return alepha.store.get(sigilClientAtom).configAt;
+    };
+
+    const first = await render();
+    await dateTime.travel(2, "seconds");
+    const second = await render();
+
+    expect(second).toBe(first);
+
+    // And it still moves on, so an old page can tell it is old.
+    await dateTime.travel(30, "seconds");
+    const later = await render();
+    expect(later).toBeGreaterThan(first);
   });
 
   /**

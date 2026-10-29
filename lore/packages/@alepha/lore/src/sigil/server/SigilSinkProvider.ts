@@ -205,10 +205,42 @@ export class SigilSinkProvider {
       if (this.alepha.isBrowser()) return;
 
       this.alepha.events.on("react:server:render:begin", () => {
-        this.alepha.store.set(sigilClientAtom, this.clientConfig());
+        this.alepha.store.set(
+          sigilClientAtom,
+          this.clientConfig(this.renderStamp()),
+        );
       });
     },
   });
+
+  /**
+   * The stamp of the last render, reused by the next one while it is younger
+   * than {@link RENDER_STAMP_REUSE_MS}.
+   */
+  protected lastRenderStamp = 0;
+
+  /**
+   * How long one render's stamp is reused, well inside the freshness window.
+   *
+   * The page cache renders a page a second time before storing it, and
+   * refuses it when the two differ (#Q2943): a stamp of the render's own
+   * millisecond made every page carrying this atom uncacheable. Reusing the
+   * previous stamp keeps two renders seconds apart identical, and costs a
+   * page at most this much of its freshness.
+   */
+  protected readonly RENDER_STAMP_REUSE_MS = 10_000;
+
+  /**
+   * The stamp a render publishes: the previous one while it is recent, now
+   * otherwise.
+   */
+  protected renderStamp(): number {
+    const now = this.dateTime.nowMillis();
+    if (now - this.lastRenderStamp >= this.RENDER_STAMP_REUSE_MS) {
+      this.lastRenderStamp = now;
+    }
+    return this.lastRenderStamp;
+  }
 
   /**
    * The subset of the config the browser is allowed to see, stamped.
@@ -216,14 +248,16 @@ export class SigilSinkProvider {
    * Also what the ingest response hands back, so a page whose stamp has gone
    * stale gets the current answer from the call it was going to make anyway.
    */
-  public clientConfig(): SigilClientConfig {
+  public clientConfig(
+    configAt: number = this.dateTime.nowMillis(),
+  ): SigilClientConfig {
     return {
       enabled: this.enabledTrackers(),
       feedbackButtonExcludedPaths:
         this.config?.feedbackButtonExcludedPaths ?? [],
       feedbackUrl: this.feedbackUrl(),
       feedbackButton: this.config?.feedbackButton,
-      configAt: this.dateTime.nowMillis(),
+      configAt,
     };
   }
 
