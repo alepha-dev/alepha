@@ -101,6 +101,12 @@ export class DeployRouter {
     },
     lazy: () => import("./components/bay/BayLayout.tsx"),
     loader: async ({ params }) => {
+      // A mistyped or stale URL is a page that does not exist. Without this
+      // the id failed `getEstate`'s UUID schema inside the request encode
+      // and rendered as a server error, logged as a blight (#Q2939).
+      if (!z.uuid().safeParse(params.estateId).success) {
+        throw new NotFoundError("Estate not found");
+      }
       const estate = await this.estateApi.getEstate({
         params: { estateId: params.estateId },
       });
