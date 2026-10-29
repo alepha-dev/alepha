@@ -23,7 +23,7 @@ services:
       POSTGRES_DB: app
     volumes: [pgdata:/var/lib/postgresql/data]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U app -d app"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U app -d app"]
       interval: 2s
       retries: 30
     x-lore:
@@ -54,6 +54,11 @@ volumes:
   the routes.
 - **`routes: ["@"]`** serves the app on the environment's base domain. Labels are relative (`@`,
   `api`, `auth`), never full domains, so one file serves production and staging.
+- **The healthcheck asks over TCP, `-h 127.0.0.1`.** Bay starts the app once every service it
+  depends on is healthy. On its first boot the Postgres image runs a temporary server on the unix
+  socket only, before it creates `POSTGRES_DB`, so a socket check (`pg_isready` without `-h`)
+  reports healthy while the database does not exist yet. The temporary server never listens on
+  TCP.
 - **`x-lore.backup`** tells Bay how to dump Postgres, under the same schedule as an app's SQLite
   database. See [what backups cover](#what-backups-cover).
 - **`${POSTGRES_PASSWORD}`** comes from the stack environment's variables, below. A variable the

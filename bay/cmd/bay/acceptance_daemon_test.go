@@ -185,7 +185,7 @@ func appStackCompose(redisTag string) string {
       POSTGRES_DB: app
     volumes: [pgdata:/var/lib/postgresql/data]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U app -d app"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U app -d app"]
       interval: 1s
       timeout: 3s
       retries: 30
