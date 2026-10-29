@@ -138,11 +138,12 @@ export interface VendorLock {
  */
 export class VendorService {
   /**
-   * Parent directory of vendored packages on the remote. Hardcoded because the
-   * Alepha monorepo lays its packages out under `packages/` and the vendor
-   * tool only targets that layout.
+   * Parent directories of vendored packages on the remote, tried in order.
+   * The Alepha monorepo moved its packages from `packages/` to
+   * `framework/packages/`; a consumer's last-synced commit may predate the
+   * move, so a clone is read with whichever layout it has.
    */
-  protected readonly remoteDir = "packages";
+  protected readonly remoteDirs = ["framework/packages", "packages"];
 
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly log = $logger();
@@ -192,9 +193,10 @@ export class VendorService {
 
     try {
       tmpDir = await this.cloneRemote(options.remote, options.branch);
+      const remoteDir = await this.resolveRemoteDir(tmpDir);
 
       for (const pkg of options.packages) {
-        const remotePkgDir = this.fs.join(tmpDir, this.remoteDir, pkg);
+        const remotePkgDir = this.fs.join(remoteDir, pkg);
         const localPkgDir = this.fs.join(options.root, options.dir, pkg);
 
         const remoteExists = await this.fs.exists(remotePkgDir);
@@ -257,6 +259,21 @@ export class VendorService {
   }
 
   /**
+   * The packages directory of a cloned remote: the first of `remoteDirs` that
+   * exists, or the first one when none does (every package then reads as
+   * missing from the remote).
+   */
+  protected async resolveRemoteDir(cloneDir: string): Promise<string> {
+    for (const dir of this.remoteDirs) {
+      const candidate = this.fs.join(cloneDir, dir);
+      if (await this.fs.exists(candidate)) {
+        return candidate;
+      }
+    }
+    return this.fs.join(cloneDir, this.remoteDirs[0]);
+  }
+
+  /**
    * Diff local packages against an already-cloned remote.
    */
   protected async diffFromClone(
@@ -268,9 +285,10 @@ export class VendorService {
   ): Promise<VendorDiffResult> {
     const results: VendorPackageDiff[] = [];
     let totalChanges = 0;
+    const remoteDir = await this.resolveRemoteDir(tmpDir);
 
     for (const pkg of packages) {
-      const remotePkgDir = this.fs.join(tmpDir, this.remoteDir, pkg);
+      const remotePkgDir = this.fs.join(remoteDir, pkg);
       const localPkgDir = this.fs.join(root, dir, pkg);
 
       const remoteExists = await this.fs.exists(remotePkgDir);
