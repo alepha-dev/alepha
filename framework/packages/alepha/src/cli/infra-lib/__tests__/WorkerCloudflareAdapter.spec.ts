@@ -130,12 +130,12 @@ describe("the worker-side Cloudflare adapter", () => {
     const { adapter, naming } = setup();
     const calls: string[] = [];
     const provisioner = {
-      ensureD1: async (name: string) => {
-        calls.push(`d1:${name}`);
+      ensureD1: async (name: string, options?: { locationHint?: string }) => {
+        calls.push(`d1:${name}:${options?.locationHint}`);
         return { uuid: "db-uuid", name };
       },
-      ensureR2: async (name: string) => {
-        calls.push(`r2:${name}`);
+      ensureR2: async (name: string, options?: { locationHint?: string }) => {
+        calls.push(`r2:${name}:${options?.locationHint}`);
       },
       ensureKV: async (title: string) => {
         calls.push(`kv:${title}`);
@@ -158,13 +158,33 @@ describe("the worker-side Cloudflare adapter", () => {
 
     // A bucket and a namespace the app does not bind are not created: an
     // empty R2 bucket in somebody's account is a bill and a surprise.
+    // D1 is placed in `weur`, as the CLI places it: without a hint Cloudflare
+    // picks the region nearest this Worker's colo (#Q2954).
     expect(calls).toEqual([
-      "d1:my-app-staging",
+      "d1:my-app-staging:weur",
       "queue:my-app-staging",
       // The dead-letter queue is a real queue, and a consumer naming one
       // Cloudflare does not have is refused at bind time.
       "queue:my-app-staging-dlq",
     ]);
+  });
+
+  it("creates the bucket in weur, as the database", async ({ expect }) => {
+    const { adapter, naming } = setup();
+    const hints: Record<string, string | undefined> = {};
+    const provisioner = {
+      ensureR2: async (name: string, options?: { locationHint?: string }) => {
+        hints[name] = options?.locationHint;
+      },
+    };
+    Object.assign(adapter as unknown as Record<string, unknown>, {
+      credential,
+      provisioner: () => provisioner,
+    });
+
+    await adapter.provision(context(naming, { hasBucket: true }), run);
+
+    expect(hints).toEqual({ "my-app-staging": "weur" });
   });
 
   it("provisions every resource in one step, so the waits overlap", async ({

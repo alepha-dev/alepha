@@ -214,7 +214,9 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
       tasks.push({
         name: `provision d1 (${name})`,
         handler: async () => {
-          const database = await api.ensureD1(name);
+          // `weur`, as the CLI: without a hint Cloudflare places it near
+          // this Worker's colo, which may be anywhere (#Q2954).
+          const database = await api.ensureD1(name, { locationHint: "weur" });
           // The shape `BuildCloudflareTask.enhanceD1` parses. It is a URL
           // rather than two variables because that is what the task reads and
           // what a node deploy sets.
@@ -229,7 +231,7 @@ export class WorkerCloudflareAdapter extends InfraAdapter<EnvironmentOptions> {
       tasks.push({
         name: `provision r2 (${name})`,
         handler: async () => {
-          await api.ensureR2(name);
+          await api.ensureR2(name, { locationHint: "weur" });
           this.provisioned.R2_BUCKET_NAME = name;
           this.provisionedResources.r2 = name;
         },

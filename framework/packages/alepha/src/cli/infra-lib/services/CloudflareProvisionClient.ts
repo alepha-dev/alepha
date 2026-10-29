@@ -103,8 +103,9 @@ export class CloudflareProvisionClient {
    * rather than refuse or make a second one.
    *
    * `locationHint` is the `primary_location_hint` a NEW database is created
-   * with. The CLI passes `"weur"`, what it has always created with; Lore
-   * passes nothing and lets Cloudflare pick.
+   * with. Both adapters pass `"weur"`: without a hint Cloudflare places it
+   * near the request, and Lore sends that request from whichever colo its
+   * Worker runs in (#Q2954).
    */
   public async ensureD1(
     name: string,
@@ -298,13 +299,27 @@ export class CloudflareProvisionClient {
     return all;
   }
 
-  public async ensureR2(name: string): Promise<void> {
+  /**
+   * `locationHint` places a NEW bucket, as it does a D1 database: without one
+   * Cloudflare picks the region nearest the request, which put a French club's
+   * bucket in WNAM (#Q2954). A location is fixed at creation, so an existing
+   * bucket keeps its own. Under a jurisdiction the `cf-r2-jurisdiction` header
+   * decides placement and the hint is not sent.
+   */
+  public async ensureR2(
+    name: string,
+    options: { locationHint?: string } = {},
+  ): Promise<void> {
     if ((await this.listR2()).some((it) => it.name === name)) {
       return;
     }
+    const body: Record<string, unknown> = { name };
+    if (!this.jurisdiction && options.locationHint) {
+      body.locationHint = options.locationHint;
+    }
     await this.fetch(`/accounts/${this.accountId}/r2/buckets`, {
       method: "POST",
-      body: { name },
+      body,
     });
   }
 
