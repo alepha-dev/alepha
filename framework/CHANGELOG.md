@@ -1,3 +1,40 @@
+## [0.34.0] - 2026-10-29
+
+### Features
+
+- **cli**: alepha docs --app maps the project's own app from its container: actions with schemas, entities, pages, routes, jobs, topics, env names #E91 #Q2759 (`4af35506`)
+- **cli**: alepha init's AGENTS.md, the package's agent notes, llms.txt and every package.json point agents at alepha docs and the local docs/ #E91 #Q2757 (`a18383ac`)
+- **cli**: alepha docs prints the installed packages' docs from node_modules: the index, a page by slug or name, or --grep results #E91 #Q2756 (`a6f8fb89`)
+- **platform**: bay({ stack }) deploys the app into its service of a Bay stack environment #E92 #Q2762 (`9ce67270`)
+- **cli**: every published package ships its docs pages at docs/<slug>.md, with front matter and links rewritten to local pages #E91 #Q2755 (`86dc7de1`)
+- **ui**: @alepha/ui/ai, an AiChat drawer, useAiChat and useAiContext with navigate and fillForm client tools; $client opens a $sse from the browser #E93 #Q2774 (`6ed9567a`)
+- **api**: alepha/api/ai, conversations with chat and resume over $sse, a per-user token budget, a turn rate and retention; $sse gains use #E93 #Q2773 (`2c610c29`)
+- **ui**: the shell reads right to left, nav groups are disclosures, Control gains checkboxes, month and accept #Q2760 (`d36a426f`)
+- **ui/admin**: analytics explorer for gauge folds, sub-hour grains and instant ranges #E90 #Q2752 (`89b05efc`)
+- **api/analytics**: buffered recording for high-throughput ingest #E90 #Q2751 (`468d8897`)
+- **api/analytics**: instant-precision query bounds (from/to) #E90 #Q2750 (`32b6e2b6`)
+- **api/analytics**: multi-tier rollup chain and minute/hour retention windows #E90 #Q2749 (`739d53a8`)
+- **api/analytics**: sub-hour bucket resolution (1m, 5m, 15m) #E90 #Q2748 (`2035b25c`)
+- **api/analytics**: gauge measures with min, max and last folds #E90 #Q2747 (`8619a6f5`)
+- **ui**: DataTable leading slot, drawn on the toolbar's row before the search (Club #Q669) (`fec3f6f4`)
+- **mqtt**: $topic request/response, MQTT 5 Response Topic natively, emulated elsewhere #E88 #Q2739 (`9f76faec`)
+- **mqtt**: $topic over MQTT, with shared groups and wait() on templated names #E88 #Q2738 (`8ae0d755`)
+- **mqtt**: restore @alepha/mqtt as an MQTT 5 client with a memory broker #E88 #Q2737 (`807a65db`)
+
+### Bug Fixes
+
+- **analytics**: the rollup sweep logs each step's time, and a prune deletes at most 36 last-tier buckets per tier a sweep #Q2938 (`4f723175`)
+- **core**: APP_NAME is declared secret: false, so a build's manifest lists it as a variable and Lore stops sealing it #Q2945 (`8a9239d8`)
+- **cli**: alepha docs stops at the node_modules holding alepha, so a project inside another checkout never lists the outer install's packages #E91 #Q2756 (`7188534f`)
+- **ui**: AiChat keeps the typed message when the drawer re-renders before Send #Q2934 (`c7a2cfd2`)
+- **system**: the shell finds a project binary in any parent node_modules, not three levels up #Q2765 (`82b0754c`)
+- **orm**: await the Bun reserved connection's release, a promise in @types/bun 1.4.4 #Q2765 (`8caaf6c3`)
+- **cli**: the changelog leaves out commits that only touched a sibling product folder #Q2765 (`7b5b671d`)
+- **react/router**: the boot marker wraps the first screen's leaf instead of sitting beside it, so useId matches the server (Club #Q704) (`c9b30b1d`)
+- **api/analytics**: recordMany pre-folds rows sharing a bucket and dimensions #E90 #Q2754 (`bcd874fa`)
+- **api/organizations**: assigning the default rank clears the stored one, and the owner is never demoted by assign (Club #Q676) (`d2f7fddd`)
+- **cli**: Cloudflare builds emit send_email again, and fail when detection misses #Q2745 (`d5e2bfbb`)
+
 ## [0.33.0] - 2026-10-16
 
 ### Breaking Changes
