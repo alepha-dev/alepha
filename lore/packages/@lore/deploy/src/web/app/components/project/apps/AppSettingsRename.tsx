@@ -137,7 +137,7 @@ const AppSettingsRename = (props: AppSettingsRenameProps) => {
     return null;
   }
 
-  const isOwner = can("app:manage");
+  const canManage = can("app:manage");
   const stored = instance[props.half];
   const changed = draft.trim().toLowerCase() !== stored;
   const isApp = props.half === "app";
@@ -165,7 +165,7 @@ const AppSettingsRename = (props: AppSettingsRenameProps) => {
           id={`app-settings-${props.half}`}
           className="min-w-0 flex-1 sm:w-72"
           value={draft}
-          disabled={!isOwner || busy}
+          disabled={!canManage || busy}
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === "Enter") {
@@ -173,7 +173,7 @@ const AppSettingsRename = (props: AppSettingsRenameProps) => {
             }
           }}
         />
-        {isOwner ? (
+        {canManage ? (
           <Button
             variant="outlined"
             disabled={busy || !changed}
@@ -190,7 +190,7 @@ const AppSettingsRename = (props: AppSettingsRenameProps) => {
                 {tr("app.settings.rename.save")}
               </Button>
             </TooltipTrigger>
-            <TooltipContent>{tr("app.settings.ownerOnly")}</TooltipContent>
+            <TooltipContent>{tr("app.settings.notAllowed")}</TooltipContent>
           </Tooltip>
         )}
       </div>

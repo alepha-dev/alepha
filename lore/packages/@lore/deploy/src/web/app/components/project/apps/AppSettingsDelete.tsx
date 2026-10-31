@@ -91,7 +91,7 @@ const AppSettingsDelete = () => {
     return null;
   }
 
-  const isOwner = can("app:manage");
+  const canManage = can("app:manage");
 
   return (
     <SettingsDangerSection title={tr("app.settings.danger")}>
@@ -99,7 +99,7 @@ const AppSettingsDelete = () => {
         label={tr("app.settings.delete.title")}
         description={tr("app.settings.delete.description")}
       >
-        {isOwner ? (
+        {canManage ? (
           <Button
             variant="outlined"
             intent="danger"
@@ -125,7 +125,7 @@ const AppSettingsDelete = () => {
                 {tr("app.settings.delete.action")}
               </Button>
             </TooltipTrigger>
-            <TooltipContent>{tr("app.settings.ownerOnly")}</TooltipContent>
+            <TooltipContent>{tr("app.settings.notAllowed")}</TooltipContent>
           </Tooltip>
         )}
       </SettingsRow>

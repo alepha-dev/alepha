@@ -233,7 +233,7 @@ const AppEnvironment = () => {
         />
       ) : (
         <p className="text-muted-foreground text-sm">
-          {tr("app.environment.ownerOnly")}
+          {tr("app.environment.notAllowed")}
         </p>
       )}
 

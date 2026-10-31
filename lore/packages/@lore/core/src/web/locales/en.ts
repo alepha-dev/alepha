@@ -1493,8 +1493,8 @@ export default {
   "app.environment.import.cancel": "Cancel",
   "app.environment.import.submit": "Import $1",
   "app.environment.import.done": "$1 imported",
-  "app.environment.ownerOnly":
-    "Only the project owner can change what this copy runs with.",
+  "app.environment.notAllowed":
+    "Your rank does not allow changing what this copy runs with.",
   "app.tab.settings": "Settings",
   "app.dashboard.token": "Token",
   "app.dashboard.token.none": "No sigil yet",
@@ -1623,7 +1623,7 @@ export default {
   "app.settings.sigil.remove.title": "Remove the sigil",
   "app.settings.sigil.remove.description":
     "Stops this copy reporting and removes what it has reported from the project. Raw rows in Analytics Engine stay until they expire, unread. The app itself stays. To revoke a leaked token without losing the history, rotate it instead.",
-  "app.settings.ownerOnly": "Only the project owner can do this.",
+  "app.settings.notAllowed": "Your rank does not allow this.",
 
   "insights.range.1d": "Today",
   "insights.range.7d": "7 days",
@@ -1787,7 +1787,7 @@ export default {
   "estates.project.empty":
     "No estate lent yet. Until one is, this project has nowhere to deploy.",
   "estates.project.add": "Add an estate",
-  "estates.project.ownerOnly": "Only the project owner can add an estate.",
+  "estates.project.notAllowed": "Your rank does not allow adding an estate.",
   "estates.project.lentBy": "lent by $1",
   "bay.nav.overview": "Overview",
   "bay.nav.apps": "Apps",

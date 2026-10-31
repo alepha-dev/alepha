@@ -43,15 +43,15 @@ type UserRow = Infer<typeof users.schema>;
  * Attaching is a grant, and a bigger one than it looks: whoever can deploy in
  * the project can then run code inside the estate owner's account, with that
  * account's storage and secrets bound to it. So attaching needs both hats on
- * one caller: `assertOwner` on the project (it changes what the project can
+ * one caller: `estate:lend` on the project (it changes what the project can
  * deploy to) and `loadOwned` on the estate (it exposes the owner's account).
- * A plain member with an estate of their own cannot lend it into a project
- * they do not own; widening that is one line in `attachEstate`, and folio
+ * A plain member with an estate of their own cannot lend it: `estate:lend` is
+ * on nobody by default, so widening that is a rank carrying it, and folio
  * #1198 records the owner's decision to start narrow.
  *
- * Detaching takes either owner: the project owner is giving up a capability,
- * the estate owner is withdrawing a loan. Both are legitimate and neither
- * undeploys anything.
+ * Detaching takes either side: a rank with `estate:lend` is giving up a
+ * capability, the estate owner is withdrawing a loan. Both are legitimate and
+ * neither undeploys anything.
  *
  * ## What a member may learn
  *
@@ -185,7 +185,7 @@ export class ProjectEstateController {
       const estateOwner = estate.ownerUserId === user.id;
       if (!mayLend && !estateOwner) {
         throw new ForbiddenError(
-          "Only the project owner or the estate owner can detach an estate",
+          "Detaching an estate needs estate:lend, or owning the estate",
         );
       }
 
