@@ -140,7 +140,7 @@ func (s *server) handleMigrateStorage(w http.ResponseWriter, r *http.Request) {
 	// those are exactly the ones nobody notices are missing.
 	wasRunning := s.runner.Running(app.Key())
 	if wasRunning {
-		_ = s.runner.Stop(app.Key(), stopGrace)
+		_ = s.stopForMaintenance(app.Key())
 	}
 
 	copied, err := uploadTree(r.Context(), client, storageDir, deploy.BlobPrefix(app.Name, app.Env))

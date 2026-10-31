@@ -1,8 +1,16 @@
 package main
 
 import (
+	"context"
+	"errors"
+	"net/http"
+	"net/http/httptest"
 	"sync"
 	"testing"
+	"time"
+
+	"github.com/alepha-dev/bay/internal/health"
+	"github.com/alepha-dev/bay/internal/state"
 )
 
 /*
@@ -91,5 +99,83 @@ func TestConcurrentDeploysLeaveExactlyOneLiveWatch(t *testing.T) {
 	}
 	if live != 1 {
 		t.Fatalf("exactly one watch may reach a verdict, %d are live", live)
+	}
+}
+
+// downWhileStopped is a /health that answers only while the app runs, the way
+// a closed port does.
+type downWhileStopped struct{ runner *fakeRunner }
+
+func (d downWhileStopped) RoundTrip(req *http.Request) (*http.Response, error) {
+	if !d.runner.Running("demo/production") {
+		return nil, errors.New("connection refused")
+	}
+	return readyTransport{}.RoundTrip(req)
+}
+
+func TestAStorageMigrationInsideTheWindowIsNotRolledBack(t *testing.T) {
+	// The migration stops the app for as long as its files take to copy. To the
+	// watch that is a dead release, and the rollback would start the previous
+	// one while the copy is still walking its directory.
+	f := localAppWithUploads(t)
+	s := f.server
+	s.probe = &health.Probe{Client: &http.Client{Transport: downWhileStopped{f.runner}}}
+	s.watchWindow, s.watchEvery = time.Minute, time.Millisecond
+	key := "demo/production"
+	out, failure := s.deployArtifact(context.Background(), deployArtifactOptions{
+		Artifact: bucketDeployableArtifact(t), Name: "demo", Env: "production",
+	})
+	if failure != nil {
+		t.Fatalf("redeploy: %v", failure)
+	}
+
+	var once sync.Once
+	copying, finish := make(chan struct{}), make(chan struct{})
+	blobs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		once.Do(func() { close(copying) })
+		<-finish
+	}))
+	defer blobs.Close()
+	if err := s.store.SetStorage(&state.S3Target{
+		Endpoint: blobs.URL, Bucket: "bay-blobs", AccessKey: "a", SecretKey: "b", Region: "auto",
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	for !s.watching(key) {
+		time.Sleep(time.Millisecond)
+	}
+	migrated := make(chan *httptest.ResponseRecorder)
+	go func() { migrated <- migrateStorage(t, f) }()
+	<-copying
+	waitForWatch(t, s, key)
+	close(finish)
+
+	if rec := <-migrated; rec.Code != http.StatusOK {
+		t.Fatalf("migrate: %d %s", rec.Code, rec.Body)
+	}
+	if got := f.app(t).Release; got != out.Result.Release {
+		t.Fatalf("rolled back to %s in the middle of the migration", got)
+	}
+}
+
+func TestARestoreEndsTheWatch(t *testing.T) {
+	// Same stop, same reason, and worse timing: the rollback would start the
+	// previous release on a database that is being swapped.
+	f := newBackupFixture(t)
+	newRecoveryBucket(t, f)
+	watch := f.server.beginWatch("demo/production")
+
+	req := httptest.NewRequest(http.MethodPost, "/apps/demo/production/restore?confirm=yes", nil)
+	req.SetPathValue("name", "demo")
+	req.SetPathValue("env", "production")
+	rec := httptest.NewRecorder()
+	f.server.handleRestore(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("restore: %d %s", rec.Code, rec.Body)
+	}
+	if watch.Err() == nil {
+		t.Fatal("the watch must end before the app is stopped for the restore")
 	}
 }
