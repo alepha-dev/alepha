@@ -1603,7 +1603,7 @@ export default {
   "app.settings.sigil.create": "Créer un sigil",
   "app.settings.sigil.remove.title": "Retirer le sigil",
   "app.settings.sigil.remove.description":
-    "Arrête les remontées de cette copie et efface ce qu’elle a remonté. L’application elle-même est conservée. Pour révoquer un jeton fuité sans perdre l’historique, renouvelez-le plutôt.",
+    "Arrête les remontées de cette copie et retire du projet ce qu’elle a remonté. Les lignes brutes d’Analytics Engine restent jusqu’à leur expiration, sans plus être lues. L’application elle-même est conservée. Pour révoquer un jeton fuité sans perdre l’historique, renouvelez-le plutôt.",
   "app.settings.ownerOnly":
     "Seul le propriétaire du projet peut effectuer cette action.",
 
@@ -1760,7 +1760,7 @@ export default {
   "sigils.rotate.confirm": "Renouveler",
   "sigils.delete.confirmTitle": "Supprimer $1 ?",
   "sigils.delete.confirmDescription":
-    "Cela efface tout ce que cette application a remonté (pages vues, Web Vitals, visiteurs uniques et son budget d’erreurs) ainsi que son jeton. Les fléaux déjà déposés sont conservés. Pour révoquer un jeton fuité sans perdre l’historique, renouvelez-le plutôt.",
+    "Cela retire du projet tout ce que cette application a remonté (pages vues, Web Vitals, visiteurs uniques et son budget d’erreurs) ainsi que son jeton. Les lignes brutes d’Analytics Engine restent jusqu’à leur expiration, sans plus être lues. Les fléaux déjà déposés sont conservés. Pour révoquer un jeton fuité sans perdre l’historique, renouvelez-le plutôt.",
   "sigils.delete.confirm": "Supprimer",
   "sigils.toast.created": "Sigil créé",
   "sigils.toast.rotated": "Jeton renouvelé",

@@ -141,7 +141,7 @@ export class AppInstanceTools {
   app_instance_delete = $tool({
     title: "Delete an app instance",
     description:
-      "⚠️ Removes the deployed copy AND its sigil, and with that sigil everything it ever reported: page views, web vitals, unique visitors and its error budget. Blights already filed are kept. ⚠️ It undeploys nothing — the copy keeps running wherever it runs; what goes is Lore's record of it. To revoke a leaked token without losing the history, use `sigil_rotate`; to remove the credential and keep the copy, use `sigil_delete`. Needs `app:manage`.",
+      "⚠️ Removes the deployed copy AND its sigil, and with that sigil everything it ever reported: page views, web vitals, unique visitors and its error budget. Raw rows in Analytics Engine, which has no delete, stay until they expire, unread. Blights already filed are kept. ⚠️ It undeploys nothing — the copy keeps running wherever it runs; what goes is Lore's record of it. To revoke a leaked token without losing the history, use `sigil_rotate`; to remove the credential and keep the copy, use `sigil_delete`. Needs `app:manage`.",
     annotations: { readOnlyHint: false, destructiveHint: true },
     schema: {
       params: appInstanceDeleteParamsSchema,
