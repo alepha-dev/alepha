@@ -34,5 +34,6 @@ alepha.store.set(sellerIdentityAtom.key, {
 
 ### Providers
 
+- [`ExchangeRateProvider`](/docs/reference-providers-exchangerateprovider) - What one unit of a currency was worth on a day.
 - [`HtmlInvoiceRenderer`](/docs/reference-providers-htmlinvoicerenderer) - Renders a print-ready, legally complete invoice as HTML.
 - [`InvoiceRenderer`](/docs/reference-providers-invoicerenderer) - Turns an invoice row into something a customer can keep.

@@ -8,7 +8,8 @@ npm install @alepha/commerce
 
 ## Overview
 
-The two customer-facing order emails: confirmation and shipping notice.
+The two customer-facing order emails: confirmation and shipping notice,
+sent by the jobs of `@alepha/commerce/settlement`.
 
 A separate module because a point-of-sale sends neither - it hands over a
 receipt across a counter - and because the wording is brand-sensitive enough

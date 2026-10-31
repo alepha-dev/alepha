@@ -74,7 +74,9 @@ await stock.recordIntake(ring.id, 3, { variantId: variant.id });
 
 `VariantService.generate` writes the missing combinations of the option groups, and leaves what exists alone.
 
-The public list, `GET /api/commerce/products`, takes `category` (a slug, with everything under it), `q`, `minPrice`, `maxPrice`, `available` and `sort`.
+A product also carries `compareAtPrice`, `metaTitle`, `metaDescription`, `weightGrams`, `lengthMm`, `widthMm` and `heightMm`. A compare-at price reaches a storefront only when it is above the price, and only in the product's own currency. EU law wants it to be the lowest price of the last 30 days: nothing checks that, it is the merchant's claim.
+
+The public list, `GET /api/commerce/products`, takes `category` (a slug, with everything under it), `q`, `minPrice`, `maxPrice`, `available`, `currency` and `sort`.
 
 ## Stock
 
@@ -85,6 +87,10 @@ Stock is a ledger, never a counter. `onHand` sums its movements, `reserved` sums
 A checkout session moves from a cart to a paid order: `start`, `setEmail`, `setAddress`, `setShippingMethod`, `pay`. Settlement arrives later, from the payment webhook, through `payments:captured`. Every action checks that the caller holds the session's cart cookie or is its signed-in user.
 
 A capture that lands after its hold expired and its stock was sold becomes a stray capture: the order is cancelled, the money is recorded on it, and `commerce:capture:strayDetected` fires. Nobody is refunded automatically.
+
+The settlement issues the invoice and sends the emails as retried jobs, the confirmation and the shipping notice alike, so a failing mail server delays a message without losing it. A nightly job deletes expired carts and abandons checkouts left open past `checkoutConfig.abandonOpenAfterDays`.
+
+Delivery is a table of zones and rates. A rate has a price, an optional `freeAbove`, and an optional weight band, `minWeightGrams` and `maxWeightGrams`: above the floor, up to and including the ceiling, one rate per band. A cart weighs what its lines say, the variant's weight over the product's, and a line with none weighs nothing. A cart that grows out of the band its buyer chose is refused at `pay()`, and they choose again.
 
 ## Promotions
 
@@ -123,6 +129,28 @@ With `distanceSelling` on, a line and its delivery pay the delivery country's ra
 
 With `reverseCharge` on, a buyer in another EU country whose number passes VIES (`setVatNumber`) pays net, and the invoice carries the number and the statutory mention.
 
+## Currencies
+
+A product has one price, in one currency, and a cart that never chose reads exactly that. To sell in others, name them and write a price for each: nothing is converted, because a figure moved by a nightly rate is not one a buyer can be shown twice.
+
+```ts
+alepha.store.set(orderConfig.key, {
+  ...alepha.store.get(orderConfig.key)!,
+  baseCurrency: "EUR",
+  currencies: ["EUR", "CHF"],
+});
+
+await prices.set(ring, { currency: "CHF", price: 44000 });
+```
+
+A storefront sets the cart's currency with `PUT /api/commerce/cart/currency` and reads the catalogue with `?currency=CHF`, which leaves out what has no price there. A product with no row in a currency is not on sale in it, and a variant with a price of its own needs its own row, or it would sell at the product's. Switching a cart holding such a line is refused, naming it.
+
+A delivery rate or a promotion takes an optional `currency`, the shop's own when unset, and a rate is offered to carts in its currency only. A plain percentage applies everywhere; an amount or a minimum only in its own currency.
+
+The order, the payment and the invoice are in the buyer's currency. An EU invoice in a foreign currency has to state its VAT in the seller's as well, at a rate your tax administration accepts, so substitute `ExchangeRateProvider`: without one the invoice goes out without that line and the log says so.
+
+Amounts are in hundredths, so a zero-decimal currency such as JPY does not work, and `sort=price` reads the product's own price. Selling outside the EU also takes `AddressRulesProvider`, which knows the EU-27, and a rate for the destination in `taxConfig.countries`.
+
 ## Refunds, credit notes and returns
 
 The back office refunds an amount, some lines, or everything left, through the payment rail first. A credit note follows by itself, for what was refunded, and the notes of a fully refunded order add up to its invoice, rate by rate. A full refund restocks only an order that never shipped.
@@ -136,6 +164,14 @@ A `digital` product's `config.fileId` names a file in `alepha/api/files`, in a s
 ## Cart reminders
 
 `AlephaCommerceRecovery` sends two reminders for an abandoned cart, only to a buyer who agreed (`recoveryConsent`, never pre-ticked), with a one-click unsubscribe the mail client understands. Set `cartRecoveryConfig.baseUrl`, for the same reason.
+
+## Documents and languages
+
+Invoices, credit notes and the default emails read `CommerceTexts`, in the language of `orderConfig.locale`: the shop's rather than the visitor's, since a legal document follows the seller's books. French, the default, and English ship. Anything else is a dictionary away, and what it leaves out reads in English:
+
+```ts
+alepha.inject(CommerceTexts).add("de", { "invoice.title": "Rechnung" });
+```
 
 ## Admin
 
