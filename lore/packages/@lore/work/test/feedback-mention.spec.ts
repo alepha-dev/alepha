@@ -168,7 +168,8 @@ describe("a mention in a feedback comment", () => {
     // ⚠️ `P`, not `F`. Feedback kept `P` from its Petitions days; `F` is the
     // folio, and hand-building the string is the only way to get it wrong.
     expect(rows[0].title).toMatch(/#P\d+/);
-    expect(rows[0].href).toContain("/feedback");
+    // `?feedback=`, the one address the inbox opens a report from.
+    expect(rows[0].href).toMatch(/\/feedback\?feedback=\d+$/);
 
     await ctx.alepha.stop();
   });

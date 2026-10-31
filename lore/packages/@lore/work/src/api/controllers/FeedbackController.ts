@@ -712,6 +712,12 @@ export class FeedbackController {
         params.feedbackId,
       );
 
+      // The same refusal as `acceptFeedback`. Rejecting an accepted item would
+      // strand its linked quests, which the panel hides on a rejected one.
+      if (feedback.status !== "pending") {
+        throw new BadRequestError("Feedback already triaged");
+      }
+
       await this.feedback.updateById(feedback.id, { status: "rejected" });
 
       await this.audits.feedback.logSuccess("reject", {
