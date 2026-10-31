@@ -125,6 +125,55 @@ describe("the stack model", () => {
       expect(model.volumesExternal).toEqual(["old", "shared", "sharednamed"]);
     });
 
+    it("lets a service name its own stack and the files its bundle carries", ({
+      expect,
+    }) => {
+      const model = parser.parse(
+        [
+          "services:",
+          "  db: {image: nginx}",
+          "  sidecar:",
+          "    image: nginx",
+          '    network_mode: "service:db"',
+          '    pid: "service:db"',
+          "  web:",
+          "    image: nginx",
+          "    volumes_from: [db]",
+          "    env_file:",
+          "      - ./app.env",
+          "      - {path: ./optional.env, required: false}",
+          "networks:",
+          "  backend: {driver: bridge}",
+          "secrets:",
+          "  key: {file: ./key.txt}",
+          "  fromenv: {environment: SECRET}",
+          "configs:",
+          "  inline: {content: hello}",
+        ].join("\n"),
+        ["app.env", "key.txt"],
+      );
+      expect(() => targets.assert(model, ["bay"])).not.toThrow();
+      expect(model.usesInclude).toBe(false);
+    });
+
+    it("reads an env_file in each spelling Compose takes", ({ expect }) => {
+      const model = parser.parse(
+        [
+          "services:",
+          "  one: {image: nginx, env_file: /etc/one.env}",
+          "  many:",
+          "    image: nginx",
+          "    env_file:",
+          "      - ../up.env",
+          "      - {path: /etc/two.env, required: false}",
+        ].join("\n"),
+        [],
+      );
+      const byName = Object.fromEntries(model.services.map((s) => [s.name, s]));
+      expect(byName.one.hostEnvFiles).toEqual(["/etc/one.env"]);
+      expect(byName.many.hostEnvFiles).toEqual(["../up.env", "/etc/two.env"]);
+    });
+
     it("lists interpolated variables, required unless they carry a default, and never a value", ({
       expect,
     }) => {

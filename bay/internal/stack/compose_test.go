@@ -1,6 +1,7 @@
 package stack
 
 import (
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -206,26 +207,17 @@ func TestLoad(t *testing.T) {
 	t.Run("a named volume keeps the name Compose gives it, however the file spells another", func(t *testing.T) {
 		requireCompose(t)
 		service := "services:\n  web:\n    image: nginx\n    volumes: [\"data:/data\"]\n"
-		for _, c := range []struct {
-			name, top, refused string
-			files              map[string]string
-		}{
+		for _, c := range []struct{ name, top, refused string }{
 			{name: "no name", top: "volumes:\n  data: {}\n"},
 			{name: "external false", top: "volumes:\n  data: {external: false}\n"},
 			{name: "the default spelled out", top: "volumes:\n  data: {name: p-staging_data}\n"},
 			{name: "another environment's", top: "volumes:\n  data: {name: p-production_data}\n", refused: "volume data: name is not allowed"},
 			{name: "from a default value", top: "volumes:\n  data: {name: \"${V:-p-production_data}\"}\n", refused: "volume data: name is not allowed"},
-			{name: "from an included file", top: "include: [extra.yml]\n", refused: "volume data: name is not allowed",
-				files: map[string]string{"extra.yml": "volumes:\n  data: {name: p-production_data}\n"}},
 			{name: "external", top: "volumes:\n  data: {external: true}\n", refused: "volume data: external is not allowed"},
 			{name: "external through the old spelling", top: "volumes:\n  data: {external: {name: p-production_data}}\n", refused: "volume data: external is not allowed"},
 		} {
 			t.Run(c.name, func(t *testing.T) {
-				files := map[string]string{"compose.yml": service + c.top}
-				for name, body := range c.files {
-					files[name] = body
-				}
-				l, err := Load(bundleDir(t, files), "p-staging", nil)
+				l, err := Load(bundleDir(t, map[string]string{"compose.yml": service + c.top}), "p-staging", nil)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -241,6 +233,79 @@ func TestLoad(t *testing.T) {
 				}
 				if strings.Count(err.Error(), "volume data:") != 1 {
 					t.Fatalf("one volume, one refusal: %v", err)
+				}
+			})
+		}
+	})
+
+	t.Run("a stack names its own services, networks and the files it carries", func(t *testing.T) {
+		requireCompose(t)
+		dir := bundleDir(t, map[string]string{
+			"compose.yml": `services:
+  db: {image: nginx, networks: [backend]}
+  sidecar:
+    image: nginx
+    network_mode: "service:db"
+    pid: "service:db"
+    ipc: "service:db"
+  web:
+    image: nginx
+    networks: [backend]
+    volumes_from: [db]
+    env_file:
+      - ./app.env
+      - {path: ./optional.env, required: false}
+    secrets: [key, fromenv]
+    configs: [conf, inline]
+networks:
+  backend: {driver: bridge}
+secrets:
+  key: {file: ./key.txt}
+  fromenv: {environment: SECRET}
+configs:
+  conf: {file: ./conf.txt}
+  inline: {content: hello}
+`,
+			"app.env": "A=1\n", "key.txt": "k\n", "conf.txt": "c\n",
+		})
+		l, err := Load(dir, "p-production", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := l.Validate(); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	t.Run("an env_file is seen wherever it comes from and never read", func(t *testing.T) {
+		requireCompose(t)
+		secret := filepath.Join(t.TempDir(), "other-env", ".env")
+		_ = os.MkdirAll(filepath.Dir(secret), 0o755)
+		_ = os.WriteFile(secret, []byte("DB_PASSWORD=production\n"), 0o600)
+		for _, c := range []struct {
+			name  string
+			files map[string]string
+		}{
+			{"directly", map[string]string{
+				"compose.yml": "services:\n  web:\n    image: nginx\n    env_file: [" + secret + "]\n"}},
+			{"optional", map[string]string{
+				"compose.yml": "services:\n  web:\n    image: nginx\n    env_file:\n      - {path: " + secret + ", required: false}\n"}},
+			{"through extends", map[string]string{
+				"compose.yml": "services:\n  web:\n    extends: {file: base.yml, service: base}\n",
+				"base.yml":    "services:\n  base:\n    image: nginx\n    env_file: [" + secret + "]\n"}},
+		} {
+			t.Run(c.name, func(t *testing.T) {
+				l, err := Load(bundleDir(t, c.files), "p-staging", nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				model, _ := json.Marshal(l.Model)
+				if strings.Contains(string(model), "production\"") {
+					t.Fatalf("the file was read into the model: %s", model)
+				}
+				err = l.Validate()
+				if err == nil || !strings.Contains(err.Error(), "service web: env_file "+secret+" is outside the bundle") {
+					t.Fatalf("err = %v", err)
 				}
 			})
 		}

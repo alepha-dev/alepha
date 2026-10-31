@@ -167,8 +167,24 @@ func composePlugin() check {
 		c.Detail = "`docker compose` is missing: install the docker-compose-plugin package"
 		return c
 	}
-	c.OK, c.Detail = true, "docker compose "+strings.TrimSpace(string(out))
+	version := strings.TrimSpace(string(out))
+	if !composeRecent(version) {
+		c.Detail = fmt.Sprintf("docker compose %s is too old, Bay needs %s or newer: upgrade the docker-compose-plugin package", version, minCompose)
+		return c
+	}
+	c.OK, c.Detail = true, "docker compose "+version
 	return c
+}
+
+// minCompose is the first Compose with `config --no-env-resolution`, which
+// every stack is loaded through.
+const minCompose = "2.35"
+
+// composeRecent reads `docker compose version --short`, "2.35.0" or "v5.4.0".
+func composeRecent(version string) bool {
+	major, rest, _ := strings.Cut(strings.TrimPrefix(version, "v"), ".")
+	minor, _, _ := strings.Cut(rest, ".")
+	return apiAtLeast(major+"."+minor, minCompose)
 }
 
 /*

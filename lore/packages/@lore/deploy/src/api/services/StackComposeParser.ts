@@ -20,9 +20,9 @@ import type { StackModelService } from "../schemas/stackModelServiceSchema.ts";
  * parser so a typo fails at upload, not on the machine. Whether a readable
  * file can RUN somewhere is {@link StackTargets}' question.
  *
- * A volume's `name:` is kept whatever its value, where Bay lets through the
- * one Compose would pick: an upload belongs to no environment yet, so there
- * is nothing here to compare it with.
+ * A volume's or a network's `name:` is kept whatever its value, where Bay lets
+ * through the one Compose would pick: an upload belongs to no environment
+ * yet, so there is nothing here to compare it with.
  */
 export class StackComposeParser {
   /**
@@ -71,6 +71,7 @@ export class StackComposeParser {
     const problems: string[] = [];
     const bundle = new Set(files.map((f) => this.normalizePath(f)));
     const volumes = this.map(root.volumes) ?? {};
+    const networks = this.map(root.networks) ?? {};
     const model: StackModel = {
       version: 1,
       services: [],
@@ -78,16 +79,15 @@ export class StackComposeParser {
       volumesWithDriverOpts: Object.keys(volumes)
         .filter((name) => this.map(volumes[name])?.driver_opts !== undefined)
         .sort(),
-      volumesWithName: Object.keys(volumes)
-        .filter(
-          (name) =>
-            this.map(volumes[name])?.name !== undefined &&
-            !this.map(volumes[name])?.external,
-        )
-        .sort(),
-      volumesExternal: Object.keys(volumes)
-        .filter((name) => !!this.map(volumes[name])?.external)
-        .sort(),
+      volumesWithName: this.withName(volumes),
+      volumesExternal: this.external(volumes),
+      networksWithName: this.withName(networks),
+      networksExternal: this.external(networks),
+      hostFiles: [
+        ...this.hostFiles("secret", root.secrets, bundle, problems),
+        ...this.hostFiles("config", root.configs, bundle, problems),
+      ],
+      usesInclude: !!root.include,
       variables: this.variables(text),
     };
     for (const name of Object.keys(services).sort()) {
@@ -114,14 +114,25 @@ export class StackComposeParser {
   ): StackModelService {
     const lore = this.xLore(this.map(svc["x-lore"]), say);
     const ns: string[] = [];
+    const foreign: NonNullable<StackModelService["foreignContainers"]> = [];
     for (const [key, label] of [
       ["network_mode", "network"],
       ["pid", "pid"],
       ["ipc", "ipc"],
       ["userns_mode", "userns"],
     ] as const) {
-      if (svc[key] === "host") {
+      const value = svc[key];
+      if (value === "host") {
         ns.push(label);
+      } else if (typeof value === "string" && value.startsWith("container:")) {
+        foreign.push({ kind: label, target: value });
+      }
+    }
+    for (const from of Array.isArray(svc.volumes_from)
+      ? svc.volumes_from
+      : []) {
+      if (typeof from === "string" && from.startsWith("container:")) {
+        foreign.push({ kind: "volumes", target: from });
       }
     }
     return {
@@ -143,6 +154,8 @@ export class StackComposeParser {
       build: "build" in svc,
       privileged: svc.privileged === true,
       hostNamespaces: ns,
+      foreignContainers: foreign,
+      hostEnvFiles: this.hostEnvFiles(svc.env_file, bundle, say),
     };
   }
 
@@ -355,19 +368,11 @@ export class StackComposeParser {
         out.push({ kind: "volume", source, target });
       } else if (source.endsWith("docker.sock")) {
         out.push({ kind: "socket", source, target });
-      } else if (source.startsWith("/") || source.startsWith("~")) {
+      } else if (this.isOutside(source)) {
         out.push({ kind: "host", source, target });
       } else {
         const rel = this.normalizePath(source);
-        if (rel === ".." || rel.startsWith("../")) {
-          out.push({ kind: "host", source, target });
-          continue;
-        }
-        const present =
-          rel === "" ||
-          bundle.has(rel) ||
-          [...bundle].some((f) => f.startsWith(`${rel}/`));
-        if (!present) {
+        if (!this.isPresent(rel, bundle)) {
           say(
             `bind mount ./${rel} is not in the bundle: add it next to the compose file`,
           );
@@ -376,6 +381,107 @@ export class StackComposeParser {
       }
     }
     return out;
+  }
+
+  /**
+   * The env files read from outside the bundle, from one path, a list of
+   * paths or `{ path, required }`. One the bundle lacks is refused as a bind
+   * mount is, unless it is optional.
+   */
+  protected hostEnvFiles(
+    raw: unknown,
+    bundle: Set<string>,
+    say: (message: string) => void,
+  ): string[] {
+    const out: string[] = [];
+    for (const entry of Array.isArray(raw) ? raw : [raw]) {
+      const m = this.map(entry);
+      const path = typeof entry === "string" ? entry : m?.path;
+      if (typeof path !== "string") {
+        continue;
+      }
+      if (this.isOutside(path)) {
+        out.push(path);
+      } else if (
+        m?.required !== false &&
+        !this.isPresent(this.normalizePath(path), bundle)
+      ) {
+        say(
+          `env_file ./${this.normalizePath(path)} is not in the bundle: add it next to the compose file`,
+        );
+      }
+    }
+    return out;
+  }
+
+  /**
+   * The secrets or configs read from a file outside the bundle. One the
+   * bundle lacks is refused as a bind mount is.
+   */
+  protected hostFiles(
+    kind: "secret" | "config",
+    raw: unknown,
+    bundle: Set<string>,
+    problems: string[],
+  ): NonNullable<StackModel["hostFiles"]> {
+    const section = this.map(raw) ?? {};
+    const out: NonNullable<StackModel["hostFiles"]> = [];
+    for (const name of Object.keys(section).sort()) {
+      const file = this.map(section[name])?.file;
+      if (typeof file !== "string") {
+        continue;
+      }
+      if (this.isOutside(file)) {
+        out.push({ kind, name, source: file });
+      } else if (!this.isPresent(this.normalizePath(file), bundle)) {
+        problems.push(
+          `${kind} ${name}: file ./${this.normalizePath(file)} is not in the bundle: add it next to the compose file`,
+        );
+      }
+    }
+    return out;
+  }
+
+  protected isOutside(path: string): boolean {
+    const rel = this.normalizePath(path);
+    return (
+      path.startsWith("/") ||
+      path.startsWith("~") ||
+      rel === ".." ||
+      rel.startsWith("../")
+    );
+  }
+
+  protected isPresent(rel: string, bundle: Set<string>): boolean {
+    return (
+      rel === "" ||
+      bundle.has(rel) ||
+      [...bundle].some((f) => f.startsWith(`${rel}/`))
+    );
+  }
+
+  /**
+   * The entries of a top-level section setting `name:`, external ones left
+   * out: those are refused for that.
+   */
+  protected withName(section: Record<string, unknown>): string[] {
+    return Object.keys(section)
+      .filter(
+        (name) =>
+          this.map(section[name])?.name !== undefined &&
+          !this.map(section[name])?.external,
+      )
+      .sort();
+  }
+
+  /**
+   * The entries of a top-level section marked `external`, as `true` or as
+   * the old `{ name }`.
+   */
+  protected external(section: Record<string, unknown>): string[] {
+    return Object.keys(section)
+      .filter((name) => !!this.map(section[name])?.external)
+      .sort();
   }
 
   protected dependsOn(raw: unknown): string[] {

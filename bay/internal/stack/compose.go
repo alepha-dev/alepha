@@ -52,10 +52,12 @@ Compose does the parsing, the normalisation (short and long syntaxes, relative
 paths, env lists) and the interpolation from the stack environment's variables,
 so Bay never disagrees with how `docker compose` itself reads the file. What
 Compose drops (`x-lore`) is read from the raw YAML, and what Compose would
-silently blank (an unset `${VAR}`) is refused first.
+silently blank (an unset `${VAR}`) is refused first, as is `include`, which
+Compose would follow before anything could look at it.
 
 The interpolation sees the variables and nothing of Bay's own environment: a
-stack must not read the host's secrets by naming them.
+stack must not read the host's secrets by naming them. Env files stay unresolved
+for the same reason, so Validate sees where each one is instead of its values.
 */
 func Load(dir, project string, vars map[string]string) (*Loaded, error) {
 	file, err := ComposeFile(dir)
@@ -74,6 +76,15 @@ func Load(dir, project string, vars map[string]string) (*Loaded, error) {
 	if err != nil {
 		return nil, err
 	}
+	var top struct {
+		Include any `yaml:"include"`
+	}
+	if err := yaml.Unmarshal(raw, &top); err != nil {
+		return nil, fmt.Errorf("the compose file is not valid YAML: %w", err)
+	}
+	if top.Include != nil {
+		return nil, fmt.Errorf("include is not allowed: Bay reads one compose file, and an include can read another environment's variables")
+	}
 	prepared, err := withAppPlaceholders(raw, xlore)
 	if err != nil {
 		return nil, err
@@ -83,7 +94,7 @@ func Load(dir, project string, vars map[string]string) (*Loaded, error) {
 	defer cancel()
 	cmd := exec.CommandContext(ctx, ComposeCommand, "compose",
 		"--project-name", project, "--project-directory", dir, "--file", "-",
-		"config", "--format", "json")
+		"config", "--format", "json", "--no-env-resolution")
 	cmd.Stdin = bytes.NewReader(prepared)
 	// The variables travel in the process environment, not an env file:
 	// Compose's env-file grammar cannot carry every value (a single quote
@@ -260,14 +271,18 @@ its own boundary, each with the service and the key.
   - container_name: Bay names every container after the stack environment; a
     fixed name collides as soon as there is a second environment
   - privileged, network_mode/pid/ipc/userns_mode host: the host itself
+  - network_mode/pid/ipc/volumes_from container: any container on the host,
+    another environment's included; `service:` names one of the stack's own
   - the Docker socket mounted: root on the host
-  - a bind mount outside the bundle, or of a path the bundle does not carry
+  - a bind mount, env_file, or a secret's or config's file outside the bundle,
+    or of a path the bundle does not carry: a stack's variables are a plain
+    file, so an env_file outside the bundle reads another environment's
   - a named volume with driver_opts: they are mount(2) arguments, so
     `{type: none, o: bind, device: /etc}` is that same bind mount under
     another name, and overlay or a block device reach the host as well
-  - a named volume with a name of its own, or external: Bay names volumes
-    after the stack environment, and either one mounts whatever already
-    carries that name, another environment's data included
+  - a named volume or a network with a name of its own, or external: Bay names
+    both after the stack environment, and either one reaches whatever already
+    carries that name, another environment's included
   - build: Bay runs images and archives, it builds nothing on the host
 */
 func (l *Loaded) Validate() error {
@@ -288,8 +303,25 @@ func (l *Loaded) Validate() error {
 			say("privileged is not allowed on Bay")
 		}
 		for _, key := range []string{"network_mode", "pid", "ipc", "userns_mode"} {
-			if v, _ := svc[key].(string); v == "host" {
+			v, _ := svc[key].(string)
+			if v == "host" {
 				say("%s: host is not allowed on Bay", key)
+			} else if strings.HasPrefix(v, "container:") {
+				say("%s: %s is not allowed: only a service of this stack can be named", key, v)
+			}
+		}
+		from, _ := svc["volumes_from"].([]any)
+		for _, f := range from {
+			if v, _ := f.(string); strings.HasPrefix(v, "container:") {
+				say("volumes_from: %s is not allowed: only a service of this stack can be named", v)
+			}
+		}
+		envFiles, _ := svc["env_file"].([]any)
+		for _, f := range envFiles {
+			file, _ := f.(map[string]any)
+			src, _ := file["path"].(string)
+			if p := l.bundleProblem("env_file", src, file["required"] == false); p != "" {
+				say("%s", p)
 			}
 		}
 		_, isApp := l.XLore[name]["app"]
@@ -307,43 +339,88 @@ func (l *Loaded) Validate() error {
 				say("mounting the Docker socket is not allowed: it is root on the host")
 				continue
 			}
-			rel, err := filepath.Rel(l.Dir, src)
-			if err != nil || rel == ".." || strings.HasPrefix(rel, "../") || filepath.IsAbs(rel) {
-				say("bind mount %s is outside the bundle: only files the bundle carries can be mounted", src)
-				continue
-			}
-			if _, err := os.Stat(src); err != nil {
-				say("bind mount ./%s is not in the bundle: add it next to the compose file", rel)
+			if p := l.bundleProblem("bind mount", src, false); p != "" {
+				say("%s", p)
 			}
 		}
 	}
 	volumes, _ := l.Model["volumes"].(map[string]any)
-	names := make([]string, 0, len(volumes))
-	for name := range volumes {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	for _, name := range names {
+	for _, name := range sortedKeys(volumes) {
 		vol, _ := volumes[name].(map[string]any)
 		if _, ok := vol["driver_opts"]; ok {
 			problems = append(problems, fmt.Sprintf(
 				"volume %s: driver_opts is not allowed: they are mount options, and a bind through them reaches any host path", name))
 		}
-		// Compose writes `name` on every volume, "<project>_<key>" unless the
-		// file chose one, so the key being there says nothing: only its value
-		// does.
-		if external, _ := vol["external"].(bool); external {
-			problems = append(problems, fmt.Sprintf(
-				"volume %s: external is not allowed: Bay names volumes after the stack environment, so staging never reaches production's data", name))
-		} else if fixed, _ := vol["name"].(string); fixed != "" && fixed != l.Project+"_"+name {
-			problems = append(problems, fmt.Sprintf(
-				"volume %s: name is not allowed: Bay names volumes after the stack environment, so staging never reaches production's data", name))
+	}
+	networks, _ := l.Model["networks"].(map[string]any)
+	problems = append(problems, l.foreignNames("volume", volumes, "data")...)
+	problems = append(problems, l.foreignNames("network", networks, "services")...)
+	for _, kind := range []string{"secret", "config"} {
+		section, _ := l.Model[kind+"s"].(map[string]any)
+		for _, name := range sortedKeys(section) {
+			entry, _ := section[name].(map[string]any)
+			src, _ := entry["file"].(string)
+			if src == "" {
+				continue
+			}
+			if p := l.bundleProblem("file", src, false); p != "" {
+				problems = append(problems, fmt.Sprintf("%s %s: %s", kind, name, p))
+			}
 		}
 	}
 	if len(problems) > 0 {
 		return fmt.Errorf("the compose file cannot run on Bay:\n  %s", strings.Join(problems, "\n  "))
 	}
 	return nil
+}
+
+/*
+bundleProblem words why a path Compose resolved cannot be used, or answers ""
+when it can: it must lie inside the bundle and, unless optional, exist there.
+*/
+func (l *Loaded) bundleProblem(what, src string, optional bool) string {
+	rel, err := filepath.Rel(l.Dir, src)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, "../") || filepath.IsAbs(rel) {
+		return fmt.Sprintf("%s %s is outside the bundle: only files the bundle carries can be used", what, src)
+	}
+	if _, err := os.Stat(src); err != nil && !optional {
+		return fmt.Sprintf("%s ./%s is not in the bundle: add it next to the compose file", what, rel)
+	}
+	return ""
+}
+
+/*
+foreignNames refuses each top-level volume or network that is not the stack
+environment's own.
+
+Compose writes `name` on every one, "<project>_<key>" unless the file chose
+another, so the key being there says nothing: only its value does.
+*/
+func (l *Loaded) foreignNames(kind string, section map[string]any, reach string) []string {
+	var out []string
+	for _, name := range sortedKeys(section) {
+		entry, _ := section[name].(map[string]any)
+		key := ""
+		if external, _ := entry["external"].(bool); external {
+			key = "external"
+		} else if fixed, _ := entry["name"].(string); fixed != "" && fixed != l.Project+"_"+name {
+			key = "name"
+		}
+		if key != "" {
+			out = append(out, fmt.Sprintf("%s %s: %s is not allowed: Bay names %ss after the stack environment, so staging never reaches production's %s",
+				kind, name, key, kind, reach))
+		}
+	}
+	return out
+}
+
+func sortedKeys(m map[string]any) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 // PublishedPort is a container port a service published, as Bay rewrote it.

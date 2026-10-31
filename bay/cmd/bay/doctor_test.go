@@ -29,6 +29,18 @@ func TestDoctor(t *testing.T) {
 		}
 	})
 
+	t.Run("reads Compose's version with or without its v", func(t *testing.T) {
+		cases := map[string]bool{
+			"2.35.0": true, "v2.35.1": true, "2.100.0": true, "5.6.1": true, "v5.4.0": true,
+			"2.34.9": false, "v2.9.0": false, "1.29.2": false, "": false,
+		}
+		for version, want := range cases {
+			if got := composeRecent(version); got != want {
+				t.Errorf("composeRecent(%q) = %v", version, got)
+			}
+		}
+	})
+
 	t.Run("an old Docker fails and names the upgrade", func(t *testing.T) {
 		c := dockerVersion(runner.DaemonInfo{Version: "24.0.9", APIVersion: "1.43"}, nil)
 		if c.OK || !strings.Contains(c.Detail, "upgrade Docker") {

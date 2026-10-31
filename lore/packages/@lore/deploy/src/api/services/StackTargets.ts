@@ -39,14 +39,15 @@ export interface StackTarget {
  */
 export class StackTargets {
   /**
-   * The Compose key each host namespace came from, so Bay's refusal is
-   * worded as Bay words it.
+   * The Compose key each host namespace or foreign container came from, so
+   * Bay's refusal is worded as Bay words it.
    */
   protected static readonly COMPOSE_NAMESPACE_KEYS: Record<string, string> = {
     network: "network_mode",
     pid: "pid",
     ipc: "ipc",
     userns: "userns_mode",
+    volumes: "volumes_from",
   };
 
   public readonly targets: Record<string, StackTarget> = {
@@ -79,6 +80,16 @@ export class StackTargets {
               `${StackTargets.COMPOSE_NAMESPACE_KEYS[ns] ?? ns}: host is not allowed on Bay`,
             );
           }
+          for (const c of s.foreignContainers ?? []) {
+            say(
+              `${StackTargets.COMPOSE_NAMESPACE_KEYS[c.kind] ?? c.kind}: ${c.target} is not allowed: only a service of this stack can be named`,
+            );
+          }
+          for (const file of s.hostEnvFiles ?? []) {
+            say(
+              `env_file ${file} is outside the bundle: only files the bundle carries can be used`,
+            );
+          }
           if (s.kind === "service" && !s.image) {
             say("has no image (and is not an x-lore app)");
           }
@@ -89,7 +100,7 @@ export class StackTargets {
               );
             } else if (m.kind === "host") {
               say(
-                `bind mount ${m.source} is outside the bundle: only files the bundle carries can be mounted`,
+                `bind mount ${m.source} is outside the bundle: only files the bundle carries can be used`,
               );
             }
           }
@@ -121,6 +132,26 @@ export class StackTargets {
         for (const name of model.volumesWithName ?? []) {
           out.push(
             `volume ${name}: name is not allowed: Bay names volumes after the stack environment, so staging never reaches production's data`,
+          );
+        }
+        for (const name of model.networksExternal ?? []) {
+          out.push(
+            `network ${name}: external is not allowed: Bay names networks after the stack environment, so staging never reaches production's services`,
+          );
+        }
+        for (const name of model.networksWithName ?? []) {
+          out.push(
+            `network ${name}: name is not allowed: Bay names networks after the stack environment, so staging never reaches production's services`,
+          );
+        }
+        for (const f of model.hostFiles ?? []) {
+          out.push(
+            `${f.kind} ${f.name}: file ${f.source} is outside the bundle: only files the bundle carries can be used`,
+          );
+        }
+        if (model.usesInclude) {
+          out.push(
+            "include is not allowed: Bay reads one compose file, and an include can read another environment's variables",
           );
         }
         return out;

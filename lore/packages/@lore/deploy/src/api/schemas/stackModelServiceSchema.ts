@@ -70,6 +70,19 @@ export const stackModelServiceSchema = z.object({
    * `userns`.
    */
   hostNamespaces: z.array(z.string()),
+  /**
+   * What the service takes from a container named outright instead of a
+   * service of its stack: its `network`, `pid`, `ipc` or `userns` namespace,
+   * or its `volumes`. Absent on a revision stored before Bay refused them.
+   */
+  foreignContainers: z
+    .array(z.object({ kind: z.string(), target: z.string() }))
+    .optional(),
+  /**
+   * The env files the service reads from outside its bundle. Absent on a
+   * revision stored before Bay refused them.
+   */
+  hostEnvFiles: z.array(z.string()).optional(),
 });
 
 export type StackModelService = Infer<typeof stackModelServiceSchema>;
