@@ -13,6 +13,7 @@ import { ClaimLock } from "./services/ClaimLock.ts";
 import { LineConfigService } from "./services/LineConfigService.ts";
 import { OrderService } from "./services/OrderService.ts";
 import { ResourceService } from "./services/ResourceService.ts";
+import { ReturnService } from "./services/ReturnService.ts";
 import { StockService } from "./services/StockService.ts";
 import { VariantService } from "./services/VariantService.ts";
 import { VatCalculator } from "./services/VatCalculator.ts";
@@ -23,11 +24,14 @@ export * from "./controllers/ProductController.ts";
 export * from "./entities/categories.ts";
 export * from "./entities/orderItems.ts";
 export * from "./entities/orderRefunds.ts";
+export * from "./entities/orderReturns.ts";
 export * from "./entities/orders.ts";
 export * from "./schemas/optionGroupSchema.ts";
+export * from "./schemas/orderReturnStatusSchema.ts";
 export * from "./schemas/orderStatusSchema.ts";
 export * from "./schemas/publicCategorySchema.ts";
 export * from "./schemas/publicOrderItemSchema.ts";
+export * from "./schemas/publicReturnSchema.ts";
 export * from "./schemas/publicVariantSchema.ts";
 export * from "./entities/products.ts";
 export * from "./entities/productVariants.ts";
@@ -47,6 +51,7 @@ export * from "./services/ClaimLock.ts";
 export * from "./services/LineConfigService.ts";
 export * from "./services/OrderService.ts";
 export * from "./services/ResourceService.ts";
+export * from "./services/ReturnService.ts";
 export * from "./services/StockService.ts";
 export * from "./services/VariantService.ts";
 export * from "./services/VatCalculator.ts";
@@ -94,6 +99,15 @@ declare module "alepha" {
        */
       refundedTotal: number;
       currency: string;
+    };
+
+    /**
+     * A customer asked to send part of an order back. The parcel is on its way
+     * or about to be: this is the moment to tell them where to send it.
+     */
+    "commerce:return:requested": {
+      returnId: string;
+      orderId: string;
     };
 
     /**
@@ -163,6 +177,7 @@ export const AlephaCommerce = $module({
     CatalogService,
     LineConfigService,
     OrderService,
+    ReturnService,
     ClaimLock,
     StockService,
     VariantService,

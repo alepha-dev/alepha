@@ -171,6 +171,17 @@ export const InvalidRefundError = CommerceError.extend({
 export type InvalidRefundError = InstanceType<typeof InvalidRefundError>;
 
 /**
+ * A return the rules refuse, or a step it is not ready for.
+ */
+export const InvalidReturnError = CommerceError.extend({
+  name: "INVALID_RETURN",
+  default: { status: 409 },
+  message: "Invalid return",
+});
+
+export type InvalidReturnError = InstanceType<typeof InvalidReturnError>;
+
+/**
  * Not enough stock on hand for the requested quantity.
  */
 export const InsufficientStockError = CommerceError.extend({

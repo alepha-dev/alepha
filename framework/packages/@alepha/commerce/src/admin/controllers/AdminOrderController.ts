@@ -1,5 +1,4 @@
 import { $inject, z } from "alepha";
-import { PaymentService } from "alepha/api/payments";
 import { db } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action } from "alepha/server";
@@ -9,6 +8,7 @@ import { refundLineSchema } from "../../entities/orderRefunds.ts";
 import { orders } from "../../entities/orders.ts";
 import { orderStatusEnum } from "../../schemas/orderStatusSchema.ts";
 import { OrderService } from "../../services/OrderService.ts";
+import { OrderRefundService } from "../services/OrderRefundService.ts";
 
 /**
  * Order management: see them, ship them, refund them.
@@ -21,7 +21,7 @@ export class AdminOrderController {
   protected readonly url = "/admin/commerce/orders";
   protected readonly group = "admin:commerce:orders";
   protected readonly orders = $inject(OrderService);
-  protected readonly payments = $inject(PaymentService);
+  protected readonly refunds = $inject(OrderRefundService);
 
   public readonly commerceAdminOrderList = $action({
     method: "GET",
@@ -128,28 +128,35 @@ export class AdminOrderController {
 
       // Everything left when nothing narrower was asked for: on an order that
       // already had part of it back, the rail refuses the whole total.
-      const refund = await this.orders.prepareRefund(params.id, body);
+      const { order: refunded } = await this.refunds.refund(params.id, body);
+      return refunded;
+    },
+  });
 
-      // The PSP first. If it refuses, the order stays as it was - the
-      // customer's money and our record disagreeing is the one outcome to
-      // avoid.
-      if (order.paymentIntentId) {
-        try {
-          await this.payments.refund(
-            order.paymentIntentId,
-            refund.amount,
-            body.reason,
-          );
-        } catch (error) {
-          await this.orders.dropRefund(refund.id);
-          throw error;
-        }
-      }
-
-      return this.orders.refund(params.id, {
-        refundedTotal: order.refundedTotal + refund.amount,
-        reason: body.reason,
-      });
+  /**
+   * Take lines off a paid order that has not left: the money goes back, the
+   * parcel gets lighter, the units go back on the shelf. The money first, for
+   * the reason a refund is.
+   */
+  public readonly commerceAdminOrderCancelLines = $action({
+    method: "POST",
+    path: `${this.url}/:id/cancel-lines`,
+    group: this.group,
+    use: [$secure({ permissions: ["admin:commerce:refund"] })],
+    description: "Cancel lines of an order that has not shipped",
+    schema: {
+      params: z.object({ id: z.uuid() }),
+      body: z.object({
+        lines: z.array(refundLineSchema).min(1),
+        reason: z.text({ maxLength: 500 }).optional(),
+      }),
+      response: orders.schema,
+    },
+    handler: async ({ params, body }) => {
+      await this.orders.assertUnshipped(params.id);
+      const { order } = await this.refunds.refund(params.id, body);
+      await this.orders.cancelLines(params.id, body.lines);
+      return order;
     },
   });
 }

@@ -22,6 +22,7 @@ import { useI18n } from "alepha/react/i18n";
 import {
   CheckCheck,
   CircleDot,
+  Eraser,
   PackageCheck,
   Receipt,
   Truck,
@@ -79,6 +80,7 @@ export const AdminOrders = () => {
   const [refunding, setRefunding] = useState<{
     order: OrderEntity;
     refresh: () => void;
+    cancelLines?: boolean;
   }>();
 
   /**
@@ -201,6 +203,23 @@ export const AdminOrders = () => {
             onClick: (item, ctx) => void deliver.run(item, ctx.refresh),
           },
           {
+            label: tr("commerce.admin.cancelLines", {
+              default: "Cancel lines",
+            }),
+            icon: Eraser,
+            disabled: () =>
+              Boolean(order.shippedAt) ||
+              !["paid", "fulfilled", "partially_refunded"].includes(
+                order.status,
+              ),
+            onClick: (item, ctx) =>
+              setRefunding({
+                order: item,
+                refresh: ctx.refresh,
+                cancelLines: true,
+              }),
+          },
+          {
             label: tr("commerce.admin.refund", { default: "Refund" }),
             icon: Receipt,
             destructive: true,
@@ -282,6 +301,7 @@ export const AdminOrders = () => {
         <AdminOrderRefundSheet
           key={refunding.order.id}
           order={refunding.order}
+          cancelLines={refunding.cancelLines}
           onClose={() => setRefunding(undefined)}
           onRefunded={() => {
             refunding.refresh();

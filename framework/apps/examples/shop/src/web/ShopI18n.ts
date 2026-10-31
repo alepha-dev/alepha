@@ -209,6 +209,7 @@ export class ShopI18n {
         "admin.shipping": "Livraison",
         "admin.promotions": "Promotions",
         "admin.categories": "Catégories",
+        "admin.returns": "Retours",
       },
     }),
   });
@@ -370,6 +371,7 @@ export class ShopI18n {
         "admin.shipping": "Delivery",
         "admin.promotions": "Promotions",
         "admin.categories": "Categories",
+        "admin.returns": "Returns",
       },
     }),
   });

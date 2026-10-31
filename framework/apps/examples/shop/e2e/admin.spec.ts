@@ -355,6 +355,30 @@ test.describe("order management", () => {
     await expect(page.getByText("Remboursée", { exact: true })).toBeVisible();
   });
 
+  test("the returns page opens, and lines cancel before shipping", async ({
+    page,
+  }) => {
+    await signInAsAdmin(page);
+    await page.goto("/admin/retours");
+    await expect(page.getByText("Aucun retour.")).toBeVisible();
+
+    await buy(page, "collier-aurore", { shippingCode: "retrait" });
+    await page.goto("/admin/commandes");
+    await page
+      .getByRole("row", { name: /Payée/ })
+      .first()
+      .getByRole("button", {
+        name: /Open row actions|Ouvrir les actions de la ligne/,
+      })
+      .click();
+    await page.getByRole("menuitem", { name: "Annuler des lignes" }).click();
+    const sheet = page.getByRole("dialog");
+    await expect(sheet.getByText(/reviennent en stock/)).toBeVisible();
+    await sheet.getByRole("spinbutton").first().fill("1");
+    await sheet.getByRole("button", { name: "Rembourser" }).click();
+    await expect(page.getByText(/remboursée/)).toBeVisible();
+  });
+
   test("filters by status", async ({ page }) => {
     await signInAsAdmin(page);
     await page.goto("/admin/commandes");
@@ -552,6 +576,7 @@ test.describe("the admin sidebar", () => {
       "/admin/livraison Livraison",
       "/admin/promotions Promotions",
       "/admin/categories Catégories",
+      "/admin/retours Retours",
       "/admin/users Utilisateurs",
       "/admin/sessions Sessions",
       "/admin/audits Journal d'audit",

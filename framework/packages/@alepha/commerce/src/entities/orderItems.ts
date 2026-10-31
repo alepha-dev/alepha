@@ -71,6 +71,12 @@ export const orderItems = $entity({
     refundedQuantity: db.default(z.integer().min(0), 0),
 
     /**
+     * How many units were cancelled before shipping: what the parcel will not
+     * hold.
+     */
+    cancelledQuantity: db.default(z.integer().min(0), 0),
+
+    /**
      * The product's `config` at order time — what `fulfil` consumes.
      */
     config: z.json().optional(),

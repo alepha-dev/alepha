@@ -3,6 +3,7 @@ import type {
   AdminCategoryController,
   AdminOrderController,
   AdminProductController,
+  AdminReturnController,
 } from "@alepha/commerce/admin";
 import type { CheckoutController } from "@alepha/commerce/checkout";
 import type { AdminPromotionController } from "@alepha/commerce/promotions";
@@ -12,7 +13,14 @@ import { $atom, $inject, Alepha, z } from "alepha";
 import { Tr } from "alepha/react/i18n";
 import { $page, Redirection } from "alepha/react/router";
 import { $client } from "alepha/server/links";
-import { BadgePercent, FolderTree, Gem, Package, Truck } from "lucide-react";
+import {
+  BadgePercent,
+  FolderTree,
+  Gem,
+  Package,
+  PackageOpen,
+  Truck,
+} from "lucide-react";
 
 import { Layout } from "./Layout.tsx";
 
@@ -68,6 +76,7 @@ export class AppRouter {
   protected readonly shippingApi = $client<AdminShippingController>();
   protected readonly promotionApi = $client<AdminPromotionController>();
   protected readonly categoryApi = $client<AdminCategoryController>();
+  protected readonly returnApi = $client<AdminReturnController>();
 
   // ── Storefront ───────────────────────────────────────────────────────
 
@@ -380,5 +389,18 @@ export class AppRouter {
     },
     can: () => this.categoryApi.commerceAdminCategoryList.can(),
     lazy: () => import("./pages/admin/AdminCategoriesPage.tsx"),
+  });
+
+  adminRetours = $pageAdmin({
+    path: "/retours",
+    head: { title: "Retours" },
+    nav: {
+      label: <Tr k="admin.returns" />,
+      icon: <PackageOpen />,
+      group: "Commerce",
+      order: 105,
+    },
+    can: () => this.returnApi.commerceAdminReturnList.can(),
+    lazy: () => import("./pages/admin/AdminRetours.tsx"),
   });
 }

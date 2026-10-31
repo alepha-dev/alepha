@@ -651,6 +651,80 @@ export class OrderService {
   }
 
   /**
+   * Cancel units of a paid order that has not left. What the money does is the
+   * refund's business, and comes first: this is what it does to the parcel and
+   * the shelf.
+   *
+   * @throws InvalidRefundError once the order has shipped, or for units it has
+   *   no more of
+   */
+  public async cancelLines(id: string, lines: RefundLine[]): Promise<void> {
+    await this.db.transactional(async () => {
+      await this.assertUnshipped(id);
+
+      const items = await this.itemsOf(id);
+      for (const line of lines) {
+        const item = items.find((it) => it.id === line.orderItemId);
+        if (!item || line.quantity > item.quantity - item.cancelledQuantity) {
+          throw new InvalidRefundError(
+            `Cannot cancel ${line.quantity} of line ${line.orderItemId} on order ${id}.`,
+          );
+        }
+        await this.itemRepo.updateById(item.id, {
+          cancelledQuantity: item.cancelledQuantity + line.quantity,
+        });
+      }
+      await this.restockLines(id, lines);
+      for (const line of lines) {
+        const item = items.find((it) => it.id === line.orderItemId)!;
+        if (item.cancelledQuantity + line.quantity >= item.quantity) {
+          await this.resources.releaseItem(item.id);
+        }
+      }
+    });
+  }
+
+  /**
+   * @throws InvalidRefundError once the order has left
+   */
+  public async assertUnshipped(id: string): Promise<void> {
+    const order = await this.orderRepo.getById(id);
+    if (order.shippedAt) {
+      throw new InvalidRefundError(
+        `Order ${id} has shipped: its lines can only come back as a return.`,
+      );
+    }
+  }
+
+  /**
+   * Put these units back on the shelf: what a return that came back and a
+   * cancelled line have in common. A line whose kind keeps no stock has nothing
+   * to put back.
+   */
+  public async restockLines(id: string, lines: RefundLine[]): Promise<void> {
+    const items = await this.itemsOf(id);
+    for (const line of lines) {
+      const item = items.find((it) => it.id === line.orderItemId);
+      if (
+        item &&
+        this.kinds
+          .get(item.kind)
+          .tracksStock(item.config as Record<string, any> | undefined)
+      ) {
+        await this.stock.releaseLine(
+          {
+            orderId: id,
+            orderItemId: item.id,
+            productId: item.productId,
+            variantId: item.variantId,
+          },
+          line.quantity,
+        );
+      }
+    }
+  }
+
+  /**
    * Mark items prepared. Optional step — a shop that packs and posts in one go
    * can move straight from `paid` to `shipped`.
    */

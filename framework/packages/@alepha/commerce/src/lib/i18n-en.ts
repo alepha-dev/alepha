@@ -30,6 +30,26 @@
  * copied across verbatim.
  */
 export const commerceEn: Record<string, string> = {
+  "commerce.admin.cancelLines": "Cancel lines",
+  "commerce.admin.cancelLinesHint":
+    "The units come off the parcel and go back in stock. Their money goes back to the customer, and a credit note is issued.",
+  "commerce.admin.cancelLinesTitle": "Cancel lines",
+  "commerce.admin.returns.colReason": "Reason",
+  "commerce.admin.returns.colUnits": "Units",
+  "commerce.admin.returns.empty": "No return.",
+  "commerce.admin.returns.receive": "Parcel received",
+  "commerce.admin.returns.receiveConfirm": "The units go back in stock.",
+  "commerce.admin.returns.receiveTitle": "Parcel received",
+  "commerce.admin.returns.refundConfirm":
+    "The money for these units goes back to the customer, and a credit note is issued. A return of the whole order refunds the delivery too.",
+  "commerce.admin.returns.refundTitle": "Refund this return",
+  "commerce.admin.returns.refuse": "Refuse",
+  "commerce.admin.returns.refuseHint": "Say why: the customer reads it.",
+  "commerce.admin.returns.refuseTitle": "Refuse this return",
+  "commerce.return.received": "Received",
+  "commerce.return.refunded": "Refunded",
+  "commerce.return.refused": "Refused",
+  "commerce.return.requested": "Requested",
   "commerce.admin.refundSheet.fAmount": "Amount (cents)",
   "commerce.admin.refundSheet.fAmountHint":
     "Ignored when quantities are set. Empty: everything left.",

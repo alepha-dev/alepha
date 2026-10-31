@@ -592,6 +592,43 @@ export class StockService {
   }
 
   /**
+   * Give back units of one order line: a return that came back, a line
+   * cancelled before shipping.
+   *
+   * Up to what the ledger still counts as out for that line, so it cannot
+   * restock what a full refund already gave back, and it runs under the lock
+   * for the reason {@link releaseOrder} does.
+   */
+  public async releaseLine(
+    line: {
+      orderId: string;
+      orderItemId: string;
+      productId: string;
+      variantId?: string;
+    },
+    quantity: number,
+  ): Promise<void> {
+    await this.claim(line.productId, line.variantId, async () => {
+      const rows = await this.movementsOfOrder(line.orderId);
+      const out = -rows
+        .filter((row) => row.orderItemId === line.orderItemId)
+        .reduce((sum, row) => sum + row.delta, 0);
+
+      const back = Math.min(quantity, out);
+      if (back > 0) {
+        await this.movements.create({
+          productId: line.productId,
+          variantId: line.variantId,
+          delta: back,
+          reason: "return",
+          orderId: line.orderId,
+          orderItemId: line.orderItemId,
+        });
+      }
+    });
+  }
+
+  /**
    * Put back what a cancelled or refunded order had taken, and drop any hold it
    * still carried.
    *

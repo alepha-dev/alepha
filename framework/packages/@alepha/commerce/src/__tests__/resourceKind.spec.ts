@@ -69,6 +69,7 @@ const line = (resourceIds: string[], from = "18:00", to = "19:30") => ({
 const anItem = (lineConfig: CourtLine): OrderItemEntity => ({
   discount: 0,
   refundedQuantity: 0,
+  cancelledQuantity: 0,
   id: randomUUID(),
   createdAt: new Date().toISOString(),
   orderId: randomUUID(),

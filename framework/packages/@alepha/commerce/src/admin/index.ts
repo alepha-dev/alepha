@@ -4,10 +4,14 @@ import { AlephaCommerce } from "../index.ts";
 import { AdminCategoryController } from "./controllers/AdminCategoryController.ts";
 import { AdminOrderController } from "./controllers/AdminOrderController.ts";
 import { AdminProductController } from "./controllers/AdminProductController.ts";
+import { AdminReturnController } from "./controllers/AdminReturnController.ts";
+import { OrderRefundService } from "./services/OrderRefundService.ts";
 
 export * from "./controllers/AdminCategoryController.ts";
 export * from "./controllers/AdminOrderController.ts";
 export * from "./controllers/AdminProductController.ts";
+export * from "./controllers/AdminReturnController.ts";
+export * from "./services/OrderRefundService.ts";
 
 /**
  * Back-office endpoints for the catalog and orders.
@@ -35,8 +39,10 @@ export const AlephaCommerceAdmin = $module({
   name: "alepha.commerce.admin",
   imports: [AlephaCommerce],
   services: [
+    OrderRefundService,
     AdminProductController,
     AdminOrderController,
     AdminCategoryController,
+    AdminReturnController,
   ],
 });

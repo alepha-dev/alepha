@@ -15,6 +15,11 @@ import type { AdminOrderController } from "../controllers/AdminOrderController.t
 
 export interface AdminOrderRefundSheetProps {
   order: OrderEntity;
+  /**
+   * Take the lines off the order instead: they go back on the shelf and leave
+   * the parcel, on top of the money. Lines only, before shipping.
+   */
+  cancelLines?: boolean;
   onClose: () => void;
   onRefunded: () => void;
 }
@@ -32,7 +37,7 @@ const formatPrice = (cents: number, currency: string) =>
  * note follows by itself, for what was actually refunded.
  */
 export const AdminOrderRefundSheet = (props: AdminOrderRefundSheetProps) => {
-  const { order, onClose, onRefunded } = props;
+  const { order, cancelLines, onClose, onRefunded } = props;
   const client = useClient<AdminOrderController>();
   const { tr } = useI18n();
 
@@ -46,7 +51,7 @@ export const AdminOrderRefundSheet = (props: AdminOrderRefundSheetProps) => {
 
   const left = order.total - order.refundedTotal;
   const items = (detail.data?.items ?? []).filter(
-    (it) => it.quantity > it.refundedQuantity,
+    (it) => it.quantity > it.refundedQuantity + it.cancelledQuantity,
   );
   const itemsKey = items.map((it) => it.id).join(",");
 
@@ -59,7 +64,9 @@ export const AdminOrderRefundSheet = (props: AdminOrderRefundSheetProps) => {
             z
               .integer()
               .min(0)
-              .max(item.quantity - item.refundedQuantity)
+              .max(
+                item.quantity - item.refundedQuantity - item.cancelledQuantity,
+              )
               .meta({
                 title: item.variantLabel
                   ? `${item.name} (${item.variantLabel})`
@@ -96,7 +103,7 @@ export const AdminOrderRefundSheet = (props: AdminOrderRefundSheetProps) => {
           })
           .optional(),
       }),
-    [tr, itemsKey, left],
+    [tr, itemsKey, left, cancelLines],
   );
 
   const form = useForm(
@@ -110,6 +117,20 @@ export const AdminOrderRefundSheet = (props: AdminOrderRefundSheetProps) => {
             quantity: Number(values[`line_${item.id}`] ?? 0),
           }))
           .filter((line) => line.quantity > 0);
+
+        if (cancelLines) {
+          if (lines.length > 0) {
+            await client.commerceAdminOrderCancelLines({
+              params: { id: order.id },
+              body: {
+                lines,
+                ...(values.reason ? { reason: values.reason } : {}),
+              },
+            });
+            onRefunded();
+          }
+          return;
+        }
 
         await client.commerceAdminOrderRefund({
           params: { id: order.id },
@@ -138,15 +159,24 @@ export const AdminOrderRefundSheet = (props: AdminOrderRefundSheetProps) => {
       <SheetContent className="w-full overflow-y-auto sm:max-w-lg">
         <SheetHeader>
           <SheetTitle>
-            {tr("commerce.admin.refundTitle", { default: "Refund" })}
+            {cancelLines
+              ? tr("commerce.admin.cancelLinesTitle", {
+                  default: "Cancel lines",
+                })
+              : tr("commerce.admin.refundTitle", { default: "Refund" })}
           </SheetTitle>
         </SheetHeader>
         <div className="space-y-4 px-4 pb-6">
           <p className="text-muted-foreground text-sm">
-            {tr("commerce.admin.refundConfirm", {
-              default: `Refund ${formatPrice(left, order.currency)} to the customer? The money goes back to them. Stock is released only if the order has not shipped. A credit note is issued.`,
-              args: [formatPrice(left, order.currency)],
-            })}
+            {cancelLines
+              ? tr("commerce.admin.cancelLinesHint", {
+                  default:
+                    "The units come off the parcel and go back in stock. Their money goes back to the customer, and a credit note is issued.",
+                })
+              : tr("commerce.admin.refundConfirm", {
+                  default: `Refund ${formatPrice(left, order.currency)} to the customer? The money goes back to them. Stock is released only if the order has not shipped. A credit note is issued.`,
+                  args: [formatPrice(left, order.currency)],
+                })}
           </p>
           {/*
             Not before the lines are in: they are fields, so the form is built
