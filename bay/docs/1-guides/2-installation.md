@@ -11,8 +11,7 @@ control port.
 ## Requirements
 
 - Linux on `amd64` or `arm64`.
-- **Docker Engine 25 or newer** with the **compose plugin** 2.35 or newer, on
-  **cgroup v2**:
+- **Docker Engine 25 or newer** with the **compose plugin**, on **cgroup v2**:
   Bay runs every app in a container. The installer sets Docker up when it is
   missing.
 - Ports **80** and **443** free. Port 80 answers the ACME HTTP-01 challenge even

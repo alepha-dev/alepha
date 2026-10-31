@@ -12,7 +12,7 @@ There is no admin panel and no inbound control port.
 ## 0. Docker
 
 Bay runs every app in a container, so the host needs **Docker Engine 25 or newer** (Engine API
-1.44) with the **compose plugin** 2.35 or newer, on **cgroup v2**. `install.sh` installs Docker through
+1.44) with the **compose plugin**, on **cgroup v2**. `install.sh` installs Docker through
 get.docker.com when it is missing (`BAY_INSTALL_DOCKER=no` makes it stop instead), and refuses an
 older one. Check a host before the first start with:
 

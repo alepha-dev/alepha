@@ -52,12 +52,11 @@ Compose does the parsing, the normalisation (short and long syntaxes, relative
 paths, env lists) and the interpolation from the stack environment's variables,
 so Bay never disagrees with how `docker compose` itself reads the file. What
 Compose drops (`x-lore`) is read from the raw YAML, and what Compose would
-silently blank (an unset `${VAR}`) is refused first, as is `include`, which
-Compose would follow before anything could look at it.
+silently blank (an unset `${VAR}`) is refused first, as is what it would act on
+while reading (refusedBeforeCompose).
 
 The interpolation sees the variables and nothing of Bay's own environment: a
-stack must not read the host's secrets by naming them. Env files stay unresolved
-for the same reason, so Validate sees where each one is instead of its values.
+stack must not read the host's secrets by naming them.
 */
 func Load(dir, project string, vars map[string]string) (*Loaded, error) {
 	file, err := ComposeFile(dir)
@@ -76,14 +75,19 @@ func Load(dir, project string, vars map[string]string) (*Loaded, error) {
 	if err != nil {
 		return nil, err
 	}
-	var top struct {
-		Include any `yaml:"include"`
+	problems, err := refusedBeforeCompose(raw, dir)
+	if err != nil {
+		return nil, err
 	}
-	if err := yaml.Unmarshal(raw, &top); err != nil {
-		return nil, fmt.Errorf("the compose file is not valid YAML: %w", err)
+	// The variables are Compose's process environment, and it reads its own
+	// settings from there: COMPOSE_ENV_FILES names a file to interpolate from.
+	for _, key := range sortedKeysOf(vars) {
+		if strings.HasPrefix(key, "COMPOSE_") {
+			problems = append(problems, fmt.Sprintf("variable %s is not allowed: a COMPOSE_ name configures Compose itself: unset it with `bay stack env unset`", key))
+		}
 	}
-	if top.Include != nil {
-		return nil, fmt.Errorf("include is not allowed: Bay reads one compose file, and an include can read another environment's variables")
+	if len(problems) > 0 {
+		return nil, fmt.Errorf("the compose file cannot run on Bay:\n  %s", strings.Join(problems, "\n  "))
 	}
 	prepared, err := withAppPlaceholders(raw, xlore)
 	if err != nil {
@@ -94,7 +98,7 @@ func Load(dir, project string, vars map[string]string) (*Loaded, error) {
 	defer cancel()
 	cmd := exec.CommandContext(ctx, ComposeCommand, "compose",
 		"--project-name", project, "--project-directory", dir, "--file", "-",
-		"config", "--format", "json", "--no-env-resolution")
+		"config", "--format", "json")
 	cmd.Stdin = bytes.NewReader(prepared)
 	// The variables travel in the process environment, not an env file:
 	// Compose's env-file grammar cannot carry every value (a single quote
@@ -135,16 +139,21 @@ func minimalEnv() []string {
 }
 
 func varsEnv(vars map[string]string) []string {
-	keys := make([]string, 0, len(vars))
-	for k := range vars {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
+	keys := sortedKeysOf(vars)
 	out := make([]string, 0, len(keys))
 	for _, k := range keys {
 		out = append(out, k+"="+vars[k])
 	}
 	return out
+}
+
+func sortedKeysOf(vars map[string]string) []string {
+	keys := make([]string, 0, len(vars))
+	for k := range vars {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 // variableRef matches a Compose interpolation: $$ (an escaped dollar), ${...}
@@ -265,6 +274,79 @@ func readXLore(raw []byte) (map[string]map[string]any, error) {
 }
 
 /*
+refusedBeforeCompose lists what must be refused from the raw YAML, before
+Compose reads the file.
+
+Compose acts on these while it reads: it follows `include` and `extends.file`,
+and resolves every `env_file` into `environment`, which leaves no trace of the
+file in the model Validate reads. A stack's variables are a plain file on the
+host, so each of these reads another environment's, and `include` does it in
+several spellings (`env_file`, `project_directory`, nested in the included
+file). Asking Compose to leave env files alone is no answer:
+`--no-env-resolution` is accepted and does nothing on Compose 2.38.
+
+Refusing `include` and `extends.file` makes this one file the whole story, so
+every `env_file` is here to be seen. A path holding a variable is refused too:
+the raw text is not where it points.
+*/
+func refusedBeforeCompose(raw []byte, dir string) ([]string, error) {
+	var doc struct {
+		Include  any            `yaml:"include"`
+		Services map[string]any `yaml:"services"`
+	}
+	if err := yaml.Unmarshal(raw, &doc); err != nil {
+		return nil, fmt.Errorf("the compose file is not valid YAML: %w", err)
+	}
+	var problems []string
+	if doc.Include != nil {
+		problems = append(problems, "include is not allowed: Bay reads one compose file, and an include can read another environment's variables")
+	}
+	for _, name := range sortedKeys(doc.Services) {
+		svc, _ := doc.Services[name].(map[string]any)
+		say := func(format string, args ...any) {
+			problems = append(problems, fmt.Sprintf("service %s: ", name)+fmt.Sprintf(format, args...))
+		}
+		if extends, _ := svc["extends"].(map[string]any); extends["file"] != nil {
+			say("extends.file is not allowed: Bay reads one compose file; extend a service of this one")
+		}
+		for _, f := range envFiles(svc["env_file"]) {
+			if strings.Contains(f.path, "$") {
+				say("env_file %s cannot use a variable: Bay has to see where it points", f.path)
+			} else if p := bundleProblem(dir, "env_file", f.path, f.optional); p != "" {
+				say("%s", p)
+			}
+		}
+	}
+	return problems, nil
+}
+
+// envFile is one entry of a service's `env_file`.
+type envFile struct {
+	path     string
+	optional bool
+}
+
+// envFiles reads `env_file` in each of its spellings: a path, a list of paths,
+// or a list of `{path, required}`.
+func envFiles(v any) []envFile {
+	entries, ok := v.([]any)
+	if !ok {
+		entries = []any{v}
+	}
+	var out []envFile
+	for _, e := range entries {
+		switch f := e.(type) {
+		case string:
+			out = append(out, envFile{path: f})
+		case map[string]any:
+			path, _ := f["path"].(string)
+			out = append(out, envFile{path: path, optional: f["required"] == false})
+		}
+	}
+	return out
+}
+
+/*
 Validate refuses what would let a stack collide with another or reach past
 its own boundary, each with the service and the key.
 
@@ -274,9 +356,8 @@ its own boundary, each with the service and the key.
   - network_mode/pid/ipc/volumes_from container: any container on the host,
     another environment's included; `service:` names one of the stack's own
   - the Docker socket mounted: root on the host
-  - a bind mount, env_file, or a secret's or config's file outside the bundle,
-    or of a path the bundle does not carry: a stack's variables are a plain
-    file, so an env_file outside the bundle reads another environment's
+  - a bind mount, or a secret's or config's file, outside the bundle or of a
+    path the bundle does not carry
   - a named volume with driver_opts: they are mount(2) arguments, so
     `{type: none, o: bind, device: /etc}` is that same bind mount under
     another name, and overlay or a block device reach the host as well
@@ -316,14 +397,6 @@ func (l *Loaded) Validate() error {
 				say("volumes_from: %s is not allowed: only a service of this stack can be named", v)
 			}
 		}
-		envFiles, _ := svc["env_file"].([]any)
-		for _, f := range envFiles {
-			file, _ := f.(map[string]any)
-			src, _ := file["path"].(string)
-			if p := l.bundleProblem("env_file", src, file["required"] == false); p != "" {
-				say("%s", p)
-			}
-		}
 		_, isApp := l.XLore[name]["app"]
 		if _, hasImage := svc["image"]; !hasImage && !isApp {
 			say("has no image (and is not an x-lore app)")
@@ -339,7 +412,7 @@ func (l *Loaded) Validate() error {
 				say("mounting the Docker socket is not allowed: it is root on the host")
 				continue
 			}
-			if p := l.bundleProblem("bind mount", src, false); p != "" {
+			if p := bundleProblem(l.Dir, "bind mount", src, false); p != "" {
 				say("%s", p)
 			}
 		}
@@ -363,7 +436,7 @@ func (l *Loaded) Validate() error {
 			if src == "" {
 				continue
 			}
-			if p := l.bundleProblem("file", src, false); p != "" {
+			if p := bundleProblem(l.Dir, "file", src, false); p != "" {
 				problems = append(problems, fmt.Sprintf("%s %s: %s", kind, name, p))
 			}
 		}
@@ -375,15 +448,21 @@ func (l *Loaded) Validate() error {
 }
 
 /*
-bundleProblem words why a path Compose resolved cannot be used, or answers ""
-when it can: it must lie inside the bundle and, unless optional, exist there.
+bundleProblem words why a path cannot be used, or answers "" when it can: it
+must lie inside the bundle and, unless optional, exist there. A relative path is
+the bundle's. One starting with `~` is the home directory's, which filepath.Rel
+cannot place, so it reads as outside.
 */
-func (l *Loaded) bundleProblem(what, src string, optional bool) string {
-	rel, err := filepath.Rel(l.Dir, src)
+func bundleProblem(dir, what, src string, optional bool) string {
+	path := src
+	if !filepath.IsAbs(path) && !strings.HasPrefix(path, "~") {
+		path = filepath.Join(dir, path)
+	}
+	rel, err := filepath.Rel(dir, path)
 	if err != nil || rel == ".." || strings.HasPrefix(rel, "../") || filepath.IsAbs(rel) {
 		return fmt.Sprintf("%s %s is outside the bundle: only files the bundle carries can be used", what, src)
 	}
-	if _, err := os.Stat(src); err != nil && !optional {
+	if _, err := os.Stat(path); err != nil && !optional {
 		return fmt.Sprintf("%s ./%s is not in the bundle: add it next to the compose file", what, rel)
 	}
 	return ""

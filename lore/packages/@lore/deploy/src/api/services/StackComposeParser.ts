@@ -156,6 +156,7 @@ export class StackComposeParser {
       hostNamespaces: ns,
       foreignContainers: foreign,
       hostEnvFiles: this.hostEnvFiles(svc.env_file, bundle, say),
+      extendsFile: this.map(svc.extends)?.file !== undefined,
     };
   }
 
@@ -384,9 +385,9 @@ export class StackComposeParser {
   }
 
   /**
-   * The env files read from outside the bundle, from one path, a list of
-   * paths or `{ path, required }`. One the bundle lacks is refused as a bind
-   * mount is, unless it is optional.
+   * The env files read from outside the bundle or through a variable, from
+   * one path, a list of paths or `{ path, required }`. One the bundle lacks is
+   * refused as a bind mount is, unless it is optional.
    */
   protected hostEnvFiles(
     raw: unknown,
@@ -400,7 +401,7 @@ export class StackComposeParser {
       if (typeof path !== "string") {
         continue;
       }
-      if (this.isOutside(path)) {
+      if (path.includes("$") || this.isOutside(path)) {
         out.push(path);
       } else if (
         m?.required !== false &&

@@ -152,7 +152,7 @@ sudo bay doctor --control-socket /run/bay/control.sock
 ```
 
 One line per check: Docker reachable and at least 25 (API 1.44), cgroup v2, the
-compose plugin at 2.35 or newer, ports 80 and 443, free disk. It exits with status 1 when one
+compose plugin, ports 80 and 443, free disk. It exits with status 1 when one
 fails, so it fits a monitoring script. It needs no running Bay, and on a live
 host it needs the socket, which it dials: if no Bay answers there, ports 80 and
 443 read as held by another program, and both checks fail. Before the first

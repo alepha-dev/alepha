@@ -190,3 +190,15 @@
     include: [extra.yml]
     services:
       web: {image: nginx}
+- name: env_file through a variable
+  stage: bay
+  expect: "service web: env_file ${ENV_FILE:-/etc/hosts} cannot use a variable"
+  compose: |
+    services:
+      web: {image: nginx, env_file: ["${ENV_FILE:-/etc/hosts}"]}
+- name: extends from another file
+  stage: bay
+  expect: "service web: extends.file is not allowed"
+  compose: |
+    services:
+      web: {extends: {file: base.yml, service: base}}

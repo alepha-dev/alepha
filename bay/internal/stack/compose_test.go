@@ -1,7 +1,6 @@
 package stack
 
 import (
-	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -277,35 +276,33 @@ configs:
 		}
 	})
 
-	t.Run("an env_file is seen wherever it comes from and never read", func(t *testing.T) {
-		requireCompose(t)
+	t.Run("a variable cannot configure Compose itself", func(t *testing.T) {
+		dir := bundleDir(t, map[string]string{"compose.yml": "services:\n  web: {image: nginx}\n"})
+		_, err := Load(dir, "p-staging", map[string]string{"COMPOSE_ENV_FILES": "/opt/bay/data/stacks/p-production/.env"})
+		if err == nil || !strings.Contains(err.Error(), "variable COMPOSE_ENV_FILES is not allowed") {
+			t.Fatalf("err = %v", err)
+		}
+	})
+
+	t.Run("an env_file is refused before Compose can read it", func(t *testing.T) {
 		secret := filepath.Join(t.TempDir(), "other-env", ".env")
 		_ = os.MkdirAll(filepath.Dir(secret), 0o755)
 		_ = os.WriteFile(secret, []byte("DB_PASSWORD=production\n"), 0o600)
-		for _, c := range []struct {
-			name  string
-			files map[string]string
-		}{
-			{"directly", map[string]string{
-				"compose.yml": "services:\n  web:\n    image: nginx\n    env_file: [" + secret + "]\n"}},
-			{"optional", map[string]string{
-				"compose.yml": "services:\n  web:\n    image: nginx\n    env_file:\n      - {path: " + secret + ", required: false}\n"}},
-			{"through extends", map[string]string{
-				"compose.yml": "services:\n  web:\n    extends: {file: base.yml, service: base}\n",
-				"base.yml":    "services:\n  base:\n    image: nginx\n    env_file: [" + secret + "]\n"}},
+		outside := "service web: env_file " + secret + " is outside the bundle"
+		for _, c := range []struct{ name, service, refused string }{
+			{"as one path", "env_file: " + secret, outside},
+			{"in a list", "env_file: [" + secret + "]", outside},
+			{"optional", "env_file:\n      - {path: " + secret + ", required: false}", outside},
+			{"up from the bundle", "env_file: [../x.env]", "service web: env_file ../x.env is outside the bundle"},
+			{"from the home directory", "env_file:\n      - {path: ~/x.env, required: false}", "service web: env_file ~/x.env is outside the bundle"},
+			{"through a variable", "env_file: [\"${F:-" + secret + "}\"]", "cannot use a variable"},
+			{"through an anchor", "env_file: *f", outside},
 		} {
 			t.Run(c.name, func(t *testing.T) {
-				l, err := Load(bundleDir(t, c.files), "p-staging", nil)
-				if err != nil {
-					t.Fatal(err)
-				}
-				model, _ := json.Marshal(l.Model)
-				if strings.Contains(string(model), "production\"") {
-					t.Fatalf("the file was read into the model: %s", model)
-				}
-				err = l.Validate()
-				if err == nil || !strings.Contains(err.Error(), "service web: env_file "+secret+" is outside the bundle") {
-					t.Fatalf("err = %v", err)
+				dir := bundleDir(t, map[string]string{
+					"compose.yml": "x-f: &f [" + secret + "]\nservices:\n  web:\n    image: nginx\n    " + c.service + "\n"})
+				if _, err := Load(dir, "p-staging", nil); err == nil || !strings.Contains(err.Error(), c.refused) {
+					t.Fatalf("err = %v, want %q", err, c.refused)
 				}
 			})
 		}

@@ -86,15 +86,18 @@ it refuses:
 - a bind mount, an `env_file`, or a `file:` under `secrets` or `configs`, outside
   the bundle or of a path the bundle does not carry. A stack's variables are a
   plain file on the host, so an `env_file` could otherwise read another
-  environment's passwords;
-- `include`: a stack is one compose file;
+  environment's passwords, and for the same reason its path cannot hold a
+  variable;
+- `include` and `extends` from another file: a stack is one compose file;
 - a named volume with `driver_opts`, which are mount options: a bind through
   them would reach any host path;
 - a named volume or a network marked `external`, or with a `name` of its own:
   Bay names both after the environment, and either one would reach whatever
   already carries that name, another environment's included;
 - a Compose service that `depends_on` an app service;
-- a `${VAR}` with no value and no default.
+- a `${VAR}` with no value and no default;
+- a variable named `COMPOSE_*`: variables reach Compose's own environment, where
+  such a name configures Compose itself.
 
 `ports` are rewritten to a loopback port Bay allocates, so the host port in the
 file is ignored. Nothing else is checked: `devices`, `cap_add`, `security_opt`,

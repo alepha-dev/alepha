@@ -87,7 +87,14 @@ export class StackTargets {
           }
           for (const file of s.hostEnvFiles ?? []) {
             say(
-              `env_file ${file} is outside the bundle: only files the bundle carries can be used`,
+              file.includes("$")
+                ? `env_file ${file} cannot use a variable: Bay has to see where it points`
+                : `env_file ${file} is outside the bundle: only files the bundle carries can be used`,
+            );
+          }
+          if (s.extendsFile) {
+            say(
+              "extends.file is not allowed: Bay reads one compose file; extend a service of this one",
             );
           }
           if (s.kind === "service" && !s.image) {

@@ -79,10 +79,15 @@ export const stackModelServiceSchema = z.object({
     .array(z.object({ kind: z.string(), target: z.string() }))
     .optional(),
   /**
-   * The env files the service reads from outside its bundle. Absent on a
-   * revision stored before Bay refused them.
+   * The env files the service reads from outside its bundle, or through a
+   * variable. Absent on a revision stored before Bay refused them.
    */
   hostEnvFiles: z.array(z.string()).optional(),
+  /**
+   * Whether the service extends one from another file. Absent on a revision
+   * stored before Bay refused it.
+   */
+  extendsFile: z.boolean().optional(),
 });
 
 export type StackModelService = Infer<typeof stackModelServiceSchema>;
