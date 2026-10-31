@@ -15,16 +15,18 @@ class AppRouter {
 The route is `GET /sitemap.xml`. The build writes it to `dist/public/sitemap.xml`,
 which is how a [static site](/docs/guides-deployment-static) gets one. That file is
 also what a built server answers with, because static files mount over the route,
-so `hostname` and `<lastmod>` are the build's. `alepha dev` answers live.
+so `hostname` and `<lastmod>` are the build's. `alepha dev` answers live. With
+`static: false` the build writes no file, so a built server answers live too, and a
+static site has no sitemap.
 
 ## Options
 
-| Option     | Default                 | What it does                                                   |
-| ---------- | ----------------------- | -------------------------------------------------------------- |
-| `hostname` | `PUBLIC_URL`, else `""` | The base of every URL. Empty, the URLs are relative.           |
-| `urls`     | `[]`                    | Extra URLs to list after the pages.                            |
-| `path`     | `/sitemap.xml`          | Where it is served.                                            |
-| `static`   | `true`                  | Has no effect on the build, which prerenders every `$sitemap`. |
+| Option     | Default                 | What it does                                         |
+| ---------- | ----------------------- | ---------------------------------------------------- |
+| `hostname` | `PUBLIC_URL`, else `""` | The base of every URL. Empty, the URLs are relative. |
+| `urls`     | `[]`                    | Extra URLs to list after the pages.                  |
+| `path`     | `/sitemap.xml`          | Where it is served.                                  |
+| `static`   | `true`                  | Whether the build prerenders it to a file.           |
 
 ⚠️ A sitemap is meant to hold absolute URLs, so set `hostname` or `PUBLIC_URL`. A
 prerendered file is written at build time, so `PUBLIC_URL` must be set then.
