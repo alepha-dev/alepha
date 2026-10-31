@@ -1,24 +1,45 @@
 import { $module } from "alepha";
 
+import { CategoryController } from "./controllers/CategoryController.ts";
 import { OrderController } from "./controllers/OrderController.ts";
 import { ProductController } from "./controllers/ProductController.ts";
 import { DigitalKindHandler } from "./kinds/DigitalKindHandler.ts";
 import { GoodKindHandler } from "./kinds/GoodKindHandler.ts";
+import { orderConfig } from "./orderConfigAtom.ts";
+import { OrderDownloadsProvider } from "./providers/OrderDownloadsProvider.ts";
 import { ProductKindRegistry } from "./providers/ProductKindRegistry.ts";
 import { CatalogService } from "./services/CatalogService.ts";
+import { CategoryService } from "./services/CategoryService.ts";
 import { ClaimLock } from "./services/ClaimLock.ts";
+import { CommerceTexts } from "./services/CommerceTexts.ts";
 import { LineConfigService } from "./services/LineConfigService.ts";
 import { OrderService } from "./services/OrderService.ts";
+import { PriceListService } from "./services/PriceListService.ts";
 import { ResourceService } from "./services/ResourceService.ts";
+import { ReturnService } from "./services/ReturnService.ts";
 import { StockService } from "./services/StockService.ts";
+import { VariantService } from "./services/VariantService.ts";
 import { VatCalculator } from "./services/VatCalculator.ts";
 
+export * from "./controllers/CategoryController.ts";
 export * from "./controllers/OrderController.ts";
 export * from "./controllers/ProductController.ts";
+export * from "./entities/categories.ts";
 export * from "./entities/orderItems.ts";
+export * from "./entities/orderRefunds.ts";
+export * from "./entities/orderReturns.ts";
 export * from "./entities/orders.ts";
+export * from "./schemas/optionGroupSchema.ts";
+export * from "./schemas/orderReturnStatusSchema.ts";
 export * from "./schemas/orderStatusSchema.ts";
+export * from "./schemas/publicCategorySchema.ts";
+export * from "./schemas/publicOrderItemSchema.ts";
+export * from "./schemas/publicOrderSchema.ts";
+export * from "./schemas/publicReturnSchema.ts";
+export * from "./schemas/publicVariantSchema.ts";
+export * from "./entities/productPrices.ts";
 export * from "./entities/products.ts";
+export * from "./entities/productVariants.ts";
 export * from "./entities/resourceReservations.ts";
 export * from "./entities/stockMovements.ts";
 export * from "./entities/stockReservations.ts";
@@ -27,13 +48,20 @@ export * from "./interfaces/ProductKindHandler.ts";
 export * from "./kinds/DigitalKindHandler.ts";
 export * from "./kinds/GoodKindHandler.ts";
 export * from "./kinds/ResourceKindHandler.ts";
+export * from "./orderConfigAtom.ts";
+export * from "./providers/OrderDownloadsProvider.ts";
 export * from "./providers/ProductKindRegistry.ts";
 export * from "./services/CatalogService.ts";
+export * from "./services/CategoryService.ts";
 export * from "./services/ClaimLock.ts";
+export * from "./services/CommerceTexts.ts";
 export * from "./services/LineConfigService.ts";
 export * from "./services/OrderService.ts";
+export * from "./services/PriceListService.ts";
 export * from "./services/ResourceService.ts";
+export * from "./services/ReturnService.ts";
 export * from "./services/StockService.ts";
+export * from "./services/VariantService.ts";
 export * from "./services/VatCalculator.ts";
 
 declare module "alepha" {
@@ -41,9 +69,9 @@ declare module "alepha" {
     /**
      * An order's payment has settled and its lines have been fulfilled.
      *
-     * Emitted after the OUTERMOST transaction commits — including when
+     * Emitted after the OUTERMOST transaction commits - including when
      * markPaid ran joined to a caller's transaction, as the settlement webhook
-     * does — so a subscriber reads a committed order, runs while no row locks
+     * does - so a subscriber reads a committed order, runs while no row locks
      * are held, and cannot unwind a sale whose money is already in by
      * throwing.
      */
@@ -55,10 +83,15 @@ declare module "alepha" {
     };
 
     /**
-     * An order has been refunded and its stock put back.
+     * An order has been refunded, in part or in full. Its stock went back only
+     * if it was a full refund of an order that never shipped.
      */
     "commerce:order:refunded": {
       orderId: string;
+      /**
+       * The `commerce_order_refunds` row: what came back, and why.
+       */
+      refundId: string;
       /**
        * The order's own total - what a full refund would come to.
        */
@@ -70,11 +103,19 @@ declare module "alepha" {
       /**
        * Everything given back on the order so far, this refund included.
        * Compare it against {@link total} to tell a partial refund from the
-       * one that undoes the sale; a subscriber that acts only on the latter
-       * (a credit note, for instance) has to make that check.
+       * one that undoes the sale.
        */
       refundedTotal: number;
       currency: string;
+    };
+
+    /**
+     * A customer asked to send part of an order back. The parcel is on its way
+     * or about to be: this is the moment to tell them where to send it.
+     */
+    "commerce:return:requested": {
+      returnId: string;
+      orderId: string;
     };
 
     /**
@@ -127,7 +168,7 @@ declare module "alepha" {
  *   seat on a leg, a room on a night, sold by an application's subclass of
  *   `ResourceKindHandler`.
  *
- * Ships two product kinds — `good` (stock-tracked) and `digital` — and the
+ * Ships two product kinds - `good` (stock-tracked) and `digital` - and the
  * registry that lets any other module add more without editing this package.
  * Cart and checkout are separate modules (`@alepha/commerce/cart`,
  * `@alepha/commerce/checkout`) so a consumer that has no use for them, such as
@@ -137,18 +178,26 @@ declare module "alepha" {
  */
 export const AlephaCommerce = $module({
   name: "alepha.commerce",
+  atoms: [orderConfig],
   services: [
     ProductKindRegistry,
+    CommerceTexts,
+    OrderDownloadsProvider,
+    CategoryService,
     CatalogService,
     LineConfigService,
     OrderService,
+    ReturnService,
     ClaimLock,
     StockService,
+    PriceListService,
+    VariantService,
     ResourceService,
     // Core, not invoicing: a receipt needs this arithmetic and never issues an
     // invoice. See the note on the class.
     VatCalculator,
     ProductController,
+    CategoryController,
     OrderController,
   ],
   // Handlers are not auto-injected: `register` below resolves them explicitly

@@ -27,7 +27,7 @@ export interface CountryAddressRule {
  * ### Why this is a provider and not a constant
  *
  * The day the shop sells to Switzerland or the UK, the list needs one more
- * entry — and editing a framework package to add a country you sell to is
+ * entry - and editing a framework package to add a country you sell to is
  * absurd. Substituting the provider is the supported answer:
  *
  * ```ts
@@ -48,7 +48,7 @@ export class AddressRulesProvider {
   /**
    * The EU-27. Ireland and Malta are the two that break the "just digits"
    * assumption, and Portugal, Poland, Latvia and Lithuania are the ones whose
-   * separators people omit — those are the entries worth reading.
+   * separators people omit - those are the entries worth reading.
    */
   public rules(): Record<string, CountryAddressRule> {
     return {

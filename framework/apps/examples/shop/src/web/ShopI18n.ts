@@ -83,6 +83,7 @@ export class ShopI18n {
 
         // Piece
         "produit.add": "Ajouter au panier",
+        "produit.from": "Dès",
         "produit.adding": "Ajout…",
         "produit.soldOut": "Épuisée",
         "produit.added": "$1 est dans votre panier.",
@@ -104,7 +105,10 @@ export class ShopI18n {
         // Cart
         "cart.title": "Panier",
         "cart.empty": "Panier vide",
-        "cart.emptyLede": "Six pièces vous attendent à l'atelier.",
+        "cart.emptyLede": "Sept pièces vous attendent à l'atelier.",
+        "cart.code": "Code promo",
+        "cart.codeApply": "Appliquer",
+        "cart.codeRemove": "Retirer le code",
         "cart.emptyCta": "Voir les pièces",
         "cart.quantity": "Quantité",
         "cart.quantityFor": "Quantité pour $1",
@@ -140,6 +144,7 @@ export class ShopI18n {
           "Paiement embarqué : à monter avec le fournisseur configuré.",
         "checkout.summary": "Récapitulatif",
         "checkout.shipping": "Livraison",
+        "checkout.discount": "Remise",
         "checkout.total": "Total",
         "checkout.vat": "dont TVA 20 %",
         "checkout.emptyCart": "Panier vide",
@@ -154,6 +159,8 @@ export class ShopI18n {
         "field.postalCode": "Code postal",
         "field.locality": "Ville",
         "field.country": "Pays",
+        "field.recoveryConsent":
+          "Me rappeler ce panier par courriel si je ne termine pas ma commande",
 
         // Confirmation
         "thanks.pending": "Paiement en cours",
@@ -164,6 +171,8 @@ export class ShopI18n {
         "thanks.paidLede":
           "Votre commande est enregistrée et payée. Un courriel de confirmation part à l'instant, et un second quand le colis sera confié au transporteur.",
         "thanks.shipping": "Livraison",
+        "thanks.discount": "Remise",
+        "thanks.download": "Télécharger : $1",
         "thanks.total": "Total réglé",
         "thanks.vat": "dont TVA",
         "thanks.invoice": "Facture $1",
@@ -201,6 +210,9 @@ export class ShopI18n {
         "admin.produits": "Produits",
         "admin.orders": "Commandes",
         "admin.shipping": "Livraison",
+        "admin.promotions": "Promotions",
+        "admin.categories": "Catégories",
+        "admin.returns": "Retours",
       },
     }),
   });
@@ -246,6 +258,7 @@ export class ShopI18n {
         "home.count": "The pieces · $1",
 
         "produit.add": "Add to basket",
+        "produit.from": "From",
         "produit.adding": "Adding…",
         "produit.soldOut": "Sold out",
         "produit.added": "$1 is in your basket.",
@@ -265,7 +278,10 @@ export class ShopI18n {
 
         "cart.title": "Basket",
         "cart.empty": "Your basket is empty",
-        "cart.emptyLede": "Six pieces are waiting in the workshop.",
+        "cart.emptyLede": "Seven pieces are waiting in the workshop.",
+        "cart.code": "Discount code",
+        "cart.codeApply": "Apply",
+        "cart.codeRemove": "Remove the code",
         "cart.emptyCta": "See the pieces",
         "cart.quantity": "Quantity",
         "cart.quantityFor": "Quantity for $1",
@@ -299,6 +315,7 @@ export class ShopI18n {
           "Embedded payment: mount it with the configured provider.",
         "checkout.summary": "Summary",
         "checkout.shipping": "Delivery",
+        "checkout.discount": "Discount",
         "checkout.total": "Total",
         "checkout.vat": "including 20% VAT",
         "checkout.emptyCart": "Your basket is empty",
@@ -312,6 +329,8 @@ export class ShopI18n {
         "field.postalCode": "Postcode",
         "field.locality": "Town",
         "field.country": "Country",
+        "field.recoveryConsent":
+          "Remind me of this basket by email if I do not finish my order",
 
         "thanks.pending": "Payment in progress",
         "thanks.title": "Thank you",
@@ -321,6 +340,8 @@ export class ShopI18n {
         "thanks.paidLede":
           "Your order is recorded and paid. A confirmation email is on its way, and a second one when the parcel is handed to the carrier.",
         "thanks.shipping": "Delivery",
+        "thanks.discount": "Discount",
+        "thanks.download": "Download: $1",
         "thanks.total": "Total paid",
         "thanks.vat": "including VAT",
         "thanks.invoice": "Invoice $1",
@@ -354,6 +375,9 @@ export class ShopI18n {
         "admin.produits": "Products",
         "admin.orders": "Orders",
         "admin.shipping": "Delivery",
+        "admin.promotions": "Promotions",
+        "admin.categories": "Categories",
+        "admin.returns": "Returns",
       },
     }),
   });

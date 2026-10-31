@@ -8,6 +8,17 @@ import { expect, test } from "@playwright/test";
  * failing on.
  */
 test.describe("catalogue", () => {
+  test("a product on sale strikes its old price, and names itself to a crawler", async ({
+    page,
+  }) => {
+    await page.goto("/produit/collier-aurore");
+
+    await expect(page.locator(".prix.line-through")).toHaveText(/109/);
+    await expect(page).toHaveTitle(
+      "Collier en nacre et argent 925, taillé main",
+    );
+  });
+
   test("server-renders the pieces, so a crawler sees them", async ({
     page,
     request,
@@ -18,7 +29,7 @@ test.describe("catalogue", () => {
     expect(html).toContain("Bague Nadir");
 
     await page.goto("/");
-    await expect(page.locator("main ul > li")).toHaveCount(6);
+    await expect(page.locator("main ul > li")).toHaveCount(7);
   });
 
   test("every drawing loads from the files module", async ({ page }) => {
@@ -166,6 +177,48 @@ test.describe("cart", () => {
     await expect(
       page.getByRole("heading", { name: "Boucles Éclipse" }),
     ).toBeVisible();
+  });
+
+  test("a size chooses the variant: its price, its stock, its cart line", async ({
+    page,
+  }) => {
+    await page.goto("/produit/alliance-zenith");
+    await expect(page.getByText("420 €")).toBeVisible();
+
+    await page.getByRole("radio", { name: "58" }).click();
+    await expect(page.getByText("450 €")).toBeVisible();
+    await expect(page.getByText("1 en atelier")).toBeVisible();
+
+    await page.getByRole("button", { name: "Ajouter au panier" }).click();
+    await expect(page.getByText(/dans votre panier/)).toBeVisible();
+
+    await page.goto("/panier");
+    await expect(
+      page.getByRole("heading", { name: "Alliance Zénith" }),
+    ).toBeVisible();
+    await expect(page.getByText("58", { exact: true })).toBeVisible();
+    await expect(page.getByText("450 €").first()).toBeVisible();
+  });
+
+  test("a discount code lowers the cart, and a bad one says why", async ({
+    page,
+  }) => {
+    await page.goto("/produit/collier-aurore");
+    await page.getByRole("button", { name: "Ajouter au panier" }).click();
+    await expect(page.getByText(/dans votre panier/)).toBeVisible();
+
+    await page.goto("/panier");
+    await page.locator('input[name="code"]').fill("PASUNCODE");
+    await page.getByRole("button", { name: "Appliquer" }).click();
+    await expect(page.getByText(/is not a valid code/)).toBeVisible();
+
+    await page.locator('input[name="code"]').fill("bienvenue10");
+    await page.getByRole("button", { name: "Appliquer" }).click();
+    await expect(page.getByText("Bienvenue à l'atelier")).toBeVisible();
+    await expect(page.getByText("80,10 €").first()).toBeVisible();
+
+    await page.getByRole("button", { name: "Retirer le code" }).click();
+    await expect(page.getByText("Bienvenue à l'atelier")).toHaveCount(0);
   });
 
   test("changing a quantity re-prices from the server", async ({ page }) => {

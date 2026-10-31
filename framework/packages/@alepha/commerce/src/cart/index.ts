@@ -2,11 +2,13 @@ import { $module } from "alepha";
 
 import { AlephaCommerce } from "../index.ts";
 import { CartController } from "./controllers/CartController.ts";
+import { CartDiscountProvider } from "./providers/CartDiscountProvider.ts";
 import { CartService } from "./services/CartService.ts";
 
 export * from "./controllers/CartController.ts";
 export * from "./entities/cartItems.ts";
 export * from "./entities/carts.ts";
+export * from "./providers/CartDiscountProvider.ts";
 export * from "./services/CartService.ts";
 
 /**
@@ -22,5 +24,5 @@ export * from "./services/CartService.ts";
 export const AlephaCommerceCart = $module({
   name: "alepha.commerce.cart",
   imports: [AlephaCommerce],
-  services: [CartService, CartController],
+  services: [CartDiscountProvider, CartService, CartController],
 });

@@ -41,7 +41,7 @@ test.describe("catalogue management", () => {
     ).toBeVisible();
     await expect(page.getByRole("cell", { name: /Bague Nadir/ })).toBeVisible();
     // `count: true` on the admin listing, so the total is a number and not "?".
-    await expect(page.getByText(/6 of 6|6 sur 6/)).toBeVisible();
+    await expect(page.getByText(/7 of 7|7 sur 7/)).toBeVisible();
   });
 
   test("opens a product on its own page with its values", async ({ page }) => {
@@ -127,6 +127,90 @@ test.describe("catalogue management", () => {
     // Put it back on the seller's default rate.
     await page.locator('input[name="vatRateBps"]').fill("");
     await page.getByRole("button", { name: "Enregistrer" }).first().click();
+  });
+
+  test("the Variants tab writes the combinations an option adds", async ({
+    page,
+  }) => {
+    await page.goto("/admin/produits");
+    await page.getByRole("cell", { name: "Alliance Zénith" }).click();
+    await page.getByText("Déclinaisons", { exact: true }).click();
+    await expect(page.getByText("ZENITH-58")).toBeVisible();
+
+    await page
+      .locator('textarea[name="groups"]')
+      .fill("Taille: 50, 54, 58, 62");
+    await page.getByRole("button", { name: "Enregistrer et générer" }).click();
+
+    await expect(page.getByText("ALLIANCE-ZENITH-62")).toBeVisible();
+    await expect(page.getByText("ZENITH-58")).toBeVisible();
+
+    // Back to what the checkout specs and the seed say.
+    await page
+      .getByRole("listitem")
+      .filter({ hasText: "ALLIANCE-ZENITH-62" })
+      .getByRole("button", { name: "Supprimer" })
+      .click();
+    await page.getByRole("button", { name: /Confirmer|Confirm|OK/ }).click();
+    await expect(page.getByText("ALLIANCE-ZENITH-62")).toHaveCount(0);
+  });
+
+  test("the Prices tab writes a price in another currency", async ({
+    page,
+  }) => {
+    await page.goto("/admin/produits");
+    await page.getByRole("cell", { name: "Collier Aurore" }).click();
+    await page.getByRole("radio", { name: "Prix" }).click();
+    await expect(page.getByText("Vendu en EUR uniquement.")).toBeVisible();
+
+    await page.locator('input[name="price"]').fill("15900");
+    await page.getByRole("button", { name: "Enregistrer le prix" }).click();
+    await expect(page.getByText(/159[.,]00/)).toBeVisible();
+
+    // Back to what the seed says.
+    await page.getByRole("button", { name: "Retirer", exact: true }).click();
+    await page.getByRole("button", { name: /Confirmer|Confirm|OK/ }).click();
+    await expect(page.getByText("Vendu en EUR uniquement.")).toBeVisible();
+  });
+
+  test("a promotion created in the admin is taken by the cart", async ({
+    page,
+  }) => {
+    await page.goto("/admin/promotions");
+    await expect(page.getByText("BIENVENUE10")).toBeVisible();
+
+    await page.getByRole("button", { name: "Nouvelle promotion" }).click();
+    await page.locator('input[name="name"]').fill("Vingt euros");
+    await page.locator('input[name="code"]').fill("VINGT");
+    await page.locator('input[name="value"]').fill("2000");
+    await page.getByRole("combobox").filter({ hasText: "Pourcentage" }).click();
+    await page.getByRole("option", { name: "Montant fixe" }).click();
+    await page.getByRole("button", { name: "Enregistrer" }).click();
+    await expect(page.getByText("VINGT", { exact: true })).toBeVisible();
+
+    await page.goto("/produit/collier-aurore");
+    await page.getByRole("button", { name: "Ajouter au panier" }).click();
+    await expect(page.getByText(/dans votre panier/)).toBeVisible();
+    await page.goto("/panier");
+    await page.locator('input[name="code"]').fill("vingt");
+    await page.getByRole("button", { name: "Appliquer" }).click();
+    await expect(page.getByText("Vingt euros")).toBeVisible();
+  });
+
+  test("a category created in the admin is offered on the product", async ({
+    page,
+  }) => {
+    await page.goto("/admin/categories");
+    await page.getByRole("button", { name: "Nouvelle catégorie" }).click();
+    await page.locator('input[name="name"]').fill("Bagues");
+    await page.locator('input[name="slug"]').fill("bagues");
+    await page.getByRole("button", { name: "Enregistrer" }).click();
+    await expect(page.getByText("bagues", { exact: true })).toBeVisible();
+
+    await page.goto("/admin/produits");
+    await page.getByRole("cell", { name: "Bague Nadir" }).click();
+    await page.getByRole("combobox", { name: "Catégorie" }).click();
+    await expect(page.getByRole("option", { name: "Bagues" })).toBeVisible();
   });
 
   test("a price edited in the admin shows on the storefront", async ({
@@ -263,10 +347,53 @@ test.describe("order management", () => {
     await page.getByRole("menuitem", { name: "Rembourser" }).click();
     // Scoped to the dialog: the amount is also in the table row behind it, and an
     // unscoped match is a strict-mode violation that says nothing about consent.
-    await expect(
-      page.getByRole("alertdialog").getByText(/95,90/),
-    ).toBeVisible();
-    await page.getByRole("button", { name: /Confirmer|Confirm|OK/ }).click();
+    const refund = page.getByRole("dialog");
+    await expect(refund.getByText(/95,90/)).toBeVisible();
+
+    // Part of it first: an amount and a reason, for the credit note.
+    await refund.locator('input[name="amount"]').fill("1000");
+    await refund.locator('[name="reason"]').fill("Geste commercial");
+    await refund.getByRole("button", { name: "Rembourser" }).click();
+    await expect(page.getByText(/remboursée/)).toBeVisible();
+    await expect(page.getByText(/-10,00.*remboursés/)).toBeVisible();
+
+    // Then the rest: with nothing narrower asked for, what is left.
+    await page
+      .getByRole("row", { name: /95,90/ })
+      .getByRole("button", {
+        name: /Open row actions|Ouvrir les actions de la ligne/,
+      })
+      .click();
+    await page.getByRole("menuitem", { name: "Rembourser" }).click();
+    await expect(page.getByRole("dialog").getByText(/85,90/)).toBeVisible();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Rembourser" })
+      .click();
+    await expect(page.getByText("Remboursée", { exact: true })).toBeVisible();
+  });
+
+  test("the returns page opens, and lines cancel before shipping", async ({
+    page,
+  }) => {
+    await signInAsAdmin(page);
+    await page.goto("/admin/retours");
+    await expect(page.getByText("Aucun retour.")).toBeVisible();
+
+    await buy(page, "collier-aurore", { shippingCode: "retrait" });
+    await page.goto("/admin/commandes");
+    await page
+      .getByRole("row", { name: /Payée/ })
+      .first()
+      .getByRole("button", {
+        name: /Open row actions|Ouvrir les actions de la ligne/,
+      })
+      .click();
+    await page.getByRole("menuitem", { name: "Annuler des lignes" }).click();
+    const sheet = page.getByRole("dialog");
+    await expect(sheet.getByText(/reviennent en stock/)).toBeVisible();
+    await sheet.getByRole("spinbutton").first().fill("1");
+    await sheet.getByRole("button", { name: "Rembourser" }).click();
     await expect(page.getByText(/remboursée/)).toBeVisible();
   });
 
@@ -465,6 +592,9 @@ test.describe("the admin sidebar", () => {
       "/admin/produits Produits",
       "/admin/commandes Commandes",
       "/admin/livraison Livraison",
+      "/admin/promotions Promotions",
+      "/admin/categories Catégories",
+      "/admin/retours Retours",
       "/admin/users Utilisateurs",
       "/admin/sessions Sessions",
       "/admin/audits Journal d'audit",

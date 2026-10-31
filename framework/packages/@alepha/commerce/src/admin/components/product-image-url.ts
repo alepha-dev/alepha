@@ -2,7 +2,7 @@
  * Resolve a `products.images` entry to something an `<img src>` can load.
  *
  * That column holds either a file id from `alepha/api/files` or an absolute
- * URL — deliberately, so a shop serving its photographs from a CDN carries no
+ * URL - deliberately, so a shop serving its photographs from a CDN carries no
  * file rows at all (see the note on `products.images`). Both shapes therefore
  * reach the UI, and only the id needs a route.
  *

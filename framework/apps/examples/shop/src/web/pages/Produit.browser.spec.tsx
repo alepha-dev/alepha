@@ -25,6 +25,7 @@ const PRODUIT: PublicProduct = {
   images: [],
   attributes: {},
   available: 3,
+  optionGroups: [],
 };
 
 /**

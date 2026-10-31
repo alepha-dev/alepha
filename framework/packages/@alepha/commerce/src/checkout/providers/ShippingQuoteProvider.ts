@@ -16,12 +16,23 @@ export interface CheckoutShippingQuote {
 }
 
 /**
+ * What a delivery rate depends on, beyond the destination and the subtotal.
+ */
+export interface ShippingQuoteContext {
+  /**
+   * The cart's, unset on one that never chose.
+   */
+  currency?: string;
+  weightGrams?: number;
+}
+
+/**
  * Where the checkout asks what delivery costs.
  *
  * ### Why this indirection exists
  *
  * `checkout` must not depend on `@alepha/commerce/shipping`. Ticketing has a
- * cart and a checkout and ships *nothing* — a hard dependency would put two
+ * cart and a checkout and ships *nothing* - a hard dependency would put two
  * shipping tables into its migrations forever. So the checkout asks an
  * abstraction, and the shipping module answers it by substitution.
  *
@@ -47,6 +58,7 @@ export abstract class ShippingQuoteProvider {
   abstract quote(
     country: string,
     subtotal: number,
+    context?: ShippingQuoteContext,
   ): Promise<CheckoutShippingQuote[]>;
 
   /**
@@ -58,6 +70,7 @@ export abstract class ShippingQuoteProvider {
     country: string,
     subtotal: number,
     code: string,
+    context?: ShippingQuoteContext,
   ): Promise<CheckoutShippingQuote | undefined>;
 }
 

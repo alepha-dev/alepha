@@ -27,7 +27,7 @@ export class CheckoutSettlementListener {
         ?.checkoutSessionId;
 
       if (!sessionId) {
-        // Not ours — some other part of the app took this payment.
+        // Not ours - some other part of the app took this payment.
         return;
       }
 
@@ -101,7 +101,7 @@ export class CheckoutSettlementListener {
   /**
    * An intent the payment sweep expired is a failure with a different
    * name: the buyer opened the PSP page and never finished. Same
-   * treatment — the session and its pending order must not sit in a
+   * treatment - the session and its pending order must not sit in a
    * `paying` graveyard forever.
    */
   protected readonly onExpired = $hook({

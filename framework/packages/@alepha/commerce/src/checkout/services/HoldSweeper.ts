@@ -13,14 +13,14 @@ import { checkoutConfig } from "../checkoutConfigAtom.ts";
  * to configure, and the reason it lives here is the same for both.
  *
  * Lives in the checkout module rather than in the core one for a dependency
- * reason: `$job` comes from `alepha/api/jobs`, and a point-of-sale consumer —
- * which sells synchronously and so never takes a hold — should not have to carry
+ * reason: `$job` comes from `alepha/api/jobs`, and a point-of-sale consumer -
+ * which sells synchronously and so never takes a hold - should not have to carry
  * the job system. Checkout already depends on it through
  * `alepha/api/payments`, so here it is free.
  *
  * A sweep rather than a timer per hold: a sweep survives a restart and a timer
  * does not. Its cadence comes from {@link checkoutConfig} and is deliberately
- * coarse — see the atom for why a late tick is harmless here.
+ * coarse - see the atom for why a late tick is harmless here.
  */
 export class HoldSweeper {
   protected readonly stock = $inject(StockService);

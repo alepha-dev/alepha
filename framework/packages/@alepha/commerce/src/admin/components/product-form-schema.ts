@@ -11,14 +11,14 @@ type TrFunction = I18nProvider<any, any>["tr"];
  * The product editor's schema.
  *
  * Built per render rather than declared at module scope because both its
- * labels and its kind list come from runtime data — the translation catalogue
+ * labels and its kind list come from runtime data - the translation catalogue
  * and `ProductKindRegistry`. Callers must memoise it (`useMemo`) so `useForm`
  * does not re-anchor every render.
  *
  * ### What changed, and why it matters
  *
  * The drawer this replaces offered six fields. `currency` and `vatRateBps` are
- * new here, and `vatRateBps` was not even accepted by the API — see the note on
+ * new here, and `vatRateBps` was not even accepted by the API - see the note on
  * it in `AdminProductController`. Without them a catalogue could only ever be
  * single-currency and single-rate, whatever the entity claimed.
  *
@@ -26,7 +26,7 @@ type TrFunction = I18nProvider<any, any>["tr"];
  * own tabs, because an upload grid and a key/value editor are not form fields.
  */
 /**
- * Offered in the currency picker. Not an exhaustive ISO-4217 list — a picker
+ * Offered in the currency picker. Not an exhaustive ISO-4217 list - a picker
  * with 180 entries is worse than one with eight, and the caller merges in
  * whatever the product is already priced in so an unusual currency already set
  * never silently disappears from its own form.
@@ -46,6 +46,7 @@ export const productFormSchema = (
   tr: TrFunction,
   kinds: string[],
   currentCurrency?: string,
+  categories: Array<{ value: string; label: string }> = [],
 ) => {
   const currencies = [
     ...new Set([
@@ -60,7 +61,7 @@ export const productFormSchema = (
      *
      * `useForm` decodes `initialValues` against this schema the moment it is
      * constructed, and a detail page's first render happens before its product
-     * has loaded — so the fields are empty strings and a `minLength: 1` here
+     * has loaded - so the fields are empty strings and a `minLength: 1` here
      * throws `SchemaValidationError` out of a `useMemo`, taking the whole page
      * to the error boundary. It is not a validation failure the user could
      * ever see or fix; the page simply never renders.
@@ -87,6 +88,13 @@ export const productFormSchema = (
         items: kinds.map((kind) => ({ value: kind, label: kind })),
       },
     }),
+    categoryId: z
+      .text()
+      .meta({
+        title: tr("commerce.admin.fCategory", { default: "Category" }),
+        $control: { width: 50, items: categories },
+      })
+      .optional(),
     /*
      * Cents, and labelled as cents. An operator who types 8900 and sees
      * 89,00 € in the list learns the unit once; a euro field needs a
@@ -108,9 +116,23 @@ export const productFormSchema = (
         items: currencies.map((code) => ({ value: code, label: code })),
       },
     }),
+    compareAtPrice: z
+      .integer()
+      .min(0)
+      .meta({
+        title: tr("commerce.admin.fCompareAtPrice", {
+          default: "Compare-at price (cents)",
+        }),
+        description: tr("commerce.admin.fCompareAtPriceHint", {
+          default:
+            "Struck through beside the price when higher. EU law: the lowest price of the last 30 days.",
+        }),
+        $control: { width: 50 },
+      })
+      .optional(),
     /*
      * Basis points, for the same reason the price is cents: 2000 is exactly
-     * 20 %, where 20.0 as a float is not exactly anything. Optional — unset
+     * 20 %, where 20.0 as a float is not exactly anything. Optional - unset
      * means the seller's default rate from `TaxService`, which is what most of
      * a catalogue wants and why this is not required.
      */
@@ -134,6 +156,57 @@ export const productFormSchema = (
       .meta({
         title: tr("commerce.admin.fDescription", { default: "Description" }),
         $control: { width: 100, area: true },
+      })
+      .optional(),
+    metaTitle: z
+      .text({ maxLength: 200 })
+      .meta({
+        title: tr("commerce.admin.fMetaTitle", {
+          default: "Title for search engines",
+        }),
+        description: tr("commerce.admin.fMetaHint", {
+          default: "Empty: the name and the description.",
+        }),
+      })
+      .optional(),
+    metaDescription: z
+      .text({ maxLength: 500 })
+      .meta({
+        title: tr("commerce.admin.fMetaDescription", {
+          default: "Description for search engines",
+        }),
+      })
+      .optional(),
+    weightGrams: z
+      .integer()
+      .min(0)
+      .meta({
+        title: tr("commerce.admin.fWeight", { default: "Weight (g)" }),
+        $control: { width: 25 },
+      })
+      .optional(),
+    lengthMm: z
+      .integer()
+      .min(0)
+      .meta({
+        title: tr("commerce.admin.fLength", { default: "Length (mm)" }),
+        $control: { width: 25 },
+      })
+      .optional(),
+    widthMm: z
+      .integer()
+      .min(0)
+      .meta({
+        title: tr("commerce.admin.fWidth", { default: "Width (mm)" }),
+        $control: { width: 25 },
+      })
+      .optional(),
+    heightMm: z
+      .integer()
+      .min(0)
+      .meta({
+        title: tr("commerce.admin.fHeight", { default: "Height (mm)" }),
+        $control: { width: 25 },
       })
       .optional(),
     published: z.boolean().meta({

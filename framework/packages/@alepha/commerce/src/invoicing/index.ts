@@ -5,14 +5,13 @@ import { OrderDocumentsProvider } from "../checkout/providers/OrderDocumentsProv
 import { HtmlInvoiceRenderer } from "./providers/HtmlInvoiceRenderer.ts";
 import { InvoiceRenderer } from "./providers/InvoiceRenderer.ts";
 import { sellerIdentityAtom } from "./sellerIdentityAtom.ts";
-import { InvoiceIssueListener } from "./services/InvoiceIssueListener.ts";
 import { InvoiceService } from "./services/InvoiceService.ts";
 
 export * from "./entities/invoices.ts";
+export * from "./providers/ExchangeRateProvider.ts";
 export * from "./providers/HtmlInvoiceRenderer.ts";
 export * from "./providers/InvoiceRenderer.ts";
 export * from "./sellerIdentityAtom.ts";
-export * from "./services/InvoiceIssueListener.ts";
 export * from "./services/InvoiceService.ts";
 
 /**
@@ -23,9 +22,10 @@ export * from "./services/InvoiceService.ts";
  * because Ticketing and a POS have their own fiscal obligations and different
  * documents to produce.
  *
- * Importing it is the whole integration — an invoice is issued automatically
- * when an order is paid. Configure the seller first, or every invoice will claim
- * to come from "Unnamed seller":
+ * An invoice is issued when an order is paid and a credit note when it is
+ * refunded, both by the jobs of `@alepha/commerce/settlement`, which an
+ * application imports alongside this. Configure the seller first, or every
+ * invoice will claim to come from "Unnamed seller":
  *
  * ```ts
  * alepha.store.set(sellerIdentityAtom.key, {
@@ -43,7 +43,7 @@ export const AlephaCommerceInvoicing = $module({
   name: "alepha.commerce.invoicing",
   imports: [AlephaCommerceCheckout],
   atoms: [sellerIdentityAtom],
-  services: [InvoiceService, InvoiceRenderer, InvoiceIssueListener],
+  services: [InvoiceService, InvoiceRenderer],
   variants: [HtmlInvoiceRenderer],
   register: (alepha) => {
     alepha.with({

@@ -16,7 +16,7 @@ export interface AdminProductDetailOverviewTabProps {
  * What the product *is* and what it costs.
  *
  * `AutoForm` builds the layout from the schema, so adding a field is a schema
- * entry rather than a form redesign — which is how `vatRateBps` and `currency`
+ * entry rather than a form redesign - which is how `vatRateBps` and `currency`
  * arrived here at all. See `product-form-schema.ts` for the field list and the
  * reasoning about units.
  */

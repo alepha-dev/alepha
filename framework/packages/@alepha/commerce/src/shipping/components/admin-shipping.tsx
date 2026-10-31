@@ -26,10 +26,10 @@ import { useCallback, useMemo, useState } from "react";
 import type { AdminShippingController } from "../controllers/AdminShippingController.ts";
 import type { ShippingRateEntity } from "../entities/shippingRates.ts";
 
-const formatPrice = (cents: number) =>
+const formatPrice = (cents: number, currency = "EUR") =>
   new Intl.NumberFormat(undefined, {
     style: "currency",
-    currency: "EUR",
+    currency,
   }).format((cents ?? 0) / 100);
 
 /**
@@ -170,7 +170,9 @@ export const AdminShipping = () => {
             label: tr("commerce.admin.ratePrice", { default: "Price" }),
             align: "right",
             cell: (r) => (
-              <span className="tabular-nums">{formatPrice(r.price)}</span>
+              <span className="tabular-nums">
+                {formatPrice(r.price, r.currency)}
+              </span>
             ),
           },
           freeAbove: {
@@ -178,7 +180,20 @@ export const AdminShipping = () => {
             align: "right",
             cell: (r) => (
               <span className="text-muted-foreground text-xs tabular-nums">
-                {r.freeAbove != null ? formatPrice(r.freeAbove) : "—"}
+                {r.freeAbove != null
+                  ? formatPrice(r.freeAbove, r.currency)
+                  : "-"}
+              </span>
+            ),
+          },
+          maxWeightGrams: {
+            label: tr("commerce.admin.rateWeight", { default: "Weight" }),
+            align: "right",
+            cell: (r) => (
+              <span className="text-muted-foreground text-xs tabular-nums">
+                {r.minWeightGrams != null || r.maxWeightGrams != null
+                  ? `${r.minWeightGrams ?? 0} - ${r.maxWeightGrams ?? "∞"} g`
+                  : "-"}
               </span>
             ),
           },
@@ -187,7 +202,7 @@ export const AdminShipping = () => {
             cell: (r) => (
               <span className="text-muted-foreground text-xs">
                 {r.minDays == null
-                  ? "—"
+                  ? "-"
                   : r.minDays === r.maxDays
                     ? `${r.minDays} d`
                     : `${r.minDays}-${r.maxDays} d`}
@@ -259,12 +274,46 @@ const AdminRateSheet = (props: AdminRateSheetProps) => {
             }),
             $control: { width: 50 },
           }),
+        currency: z
+          .text({ minLength: 3, maxLength: 3 })
+          .meta({
+            title: tr("commerce.admin.rateCurrency", { default: "Currency" }),
+            description: tr("commerce.admin.rateCurrencyHint", {
+              default:
+                "Leave empty for the shop's own. Offered to a cart in this currency only.",
+            }),
+            $control: { width: 50 },
+          })
+          .optional(),
         freeAbove: z
           .integer()
           .min(0)
           .meta({
             title: tr("commerce.admin.freeAboveCents", {
               default: "Free above (cents)",
+            }),
+            $control: { width: 50 },
+          })
+          .optional(),
+        minWeightGrams: z
+          .integer()
+          .min(0)
+          .meta({
+            title: tr("commerce.admin.rateMinWeight", {
+              default: "Above (g)",
+            }),
+            description: tr("commerce.admin.rateWeightHint", {
+              default: "The weight band, one rate per band. Empty: any weight.",
+            }),
+            $control: { width: 50 },
+          })
+          .optional(),
+        maxWeightGrams: z
+          .integer()
+          .min(0)
+          .meta({
+            title: tr("commerce.admin.rateMaxWeight", {
+              default: "Up to (g)",
             }),
             $control: { width: 50 },
           })

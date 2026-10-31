@@ -118,10 +118,31 @@ test.describe("payment and confirmation", () => {
     await expect(page.getByRole("link", { name: /Facture FA-/ })).toBeVisible();
   });
 
+  test("a digital piece is delivered by a link, not by a public URL", async ({
+    page,
+    request,
+  }) => {
+    await buy(page, "carte-cadeau-50");
+
+    const lien = page.getByRole("link", { name: /Télécharger/ });
+    const href = await lien.getAttribute("href");
+    expect(href).toMatch(/^\/commerce\/downloads\/[\w-]+$/);
+
+    const response = await request.get(href!);
+    expect(response.status()).toBe(200);
+    expect(await response.text()).toContain("Carte cadeau");
+
+    // An invented token opens nothing.
+    expect(
+      (await request.get("/commerce/downloads/pas-un-vrai-jeton")).status(),
+    ).toBe(404);
+  });
+
   test("the invoice carries every mention French law requires", async ({
     page,
   }) => {
     await buy(page, "boucles-eclipse", { shippingCode: "retrait" });
+    await expect(page.getByText(/Commande CMD-\d{4}-\d{6}/)).toBeVisible();
     // Assert where the link points before following it. When the invoice route
     // was not registered this test failed on the rendered 404 and said nothing
     // about the cause; the href is what distinguishes a bad link from a missing

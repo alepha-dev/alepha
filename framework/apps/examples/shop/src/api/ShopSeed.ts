@@ -1,5 +1,12 @@
-import { CatalogService, StockService } from "@alepha/commerce";
+import {
+  CatalogService,
+  type OptionGroup,
+  orderConfig,
+  StockService,
+  VariantService,
+} from "@alepha/commerce";
 import { sellerIdentityAtom } from "@alepha/commerce/invoicing";
+import { PromotionService } from "@alepha/commerce/promotions";
 import { ShippingService } from "@alepha/commerce/shipping";
 import { $hook, $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
@@ -28,10 +35,32 @@ interface Piece {
    * Grams.
    */
   poids: string;
+  /**
+   * The grams a delivery rate reads, on what `poids` says for a person.
+   */
+  grammes?: number;
+  compareAtPrice?: number;
+  metaTitle?: string;
   dimensions: string;
   drawing: string;
   stock: number;
   config?: Record<string, any>;
+  /**
+   * The file a digital piece delivers: stored at seed time, since its id is
+   * what goes in the config.
+   */
+  download?: { name: string; text: string };
+  /**
+   * The choices a buyer makes, and one entry per combination. `stock` is then
+   * not used: a product sold by variant holds its stock on them.
+   */
+  optionGroups?: OptionGroup[];
+  variants?: Array<{
+    sku: string;
+    options: Record<string, string>;
+    price?: number;
+    stock: number;
+  }>;
 }
 
 /**
@@ -46,7 +75,9 @@ export class ShopSeed {
   protected readonly alepha = $inject(Alepha);
   protected readonly catalog = $inject(CatalogService);
   protected readonly stock = $inject(StockService);
+  protected readonly variants = $inject(VariantService);
   protected readonly shipping = $inject(ShippingService);
+  protected readonly promotions = $inject(PromotionService);
   protected readonly media = $inject(ShopMedia);
   protected readonly drawings = $inject(ShopDrawings);
 
@@ -68,10 +99,33 @@ export class ShopSeed {
         timezone: "Europe/Paris",
       });
 
+      // Francs in the back office, for the price lists: the storefront stays in
+      // euros, since a cart only changes currency when it is asked to.
+      this.alepha.store.set(orderConfig.key, {
+        ...this.alepha.store.get(orderConfig.key)!,
+        currencies: ["EUR", "CHF"],
+      });
+
       await this.seedShipping();
       await this.seedCatalogue();
+      await this.seedPromotions();
     },
   });
+
+  /**
+   * One code, so the cart's field has something to accept.
+   */
+  protected async seedPromotions(): Promise<void> {
+    if (await this.promotions.findByCode("BIENVENUE10")) {
+      return;
+    }
+    await this.promotions.create({
+      name: "Bienvenue à l'atelier",
+      code: "BIENVENUE10",
+      kind: "percent",
+      value: 1000,
+    });
+  }
 
   protected pieces(): Piece[] {
     const { OR_JAUNE, OR_GRIS, ARGENT } = ShopDrawings;
@@ -82,9 +136,12 @@ export class ShopSeed {
         description:
           "Une goutte de nacre taillée à la main, suspendue à une chaîne forçat. La nacre est prélevée sur des coquilles d'élevage bretonnes ; deux gouttes ne sont jamais du même blanc.",
         price: 8900,
+        compareAtPrice: 10900,
+        metaTitle: "Collier en nacre et argent 925, taillé main",
         titre: "925",
         metal: "Argent",
         poids: "4,2 g",
+        grammes: 4,
         dimensions: "Chaîne 42 cm · goutte 18 × 11 mm",
         drawing: this.drawings.necklace(ARGENT),
         stock: 6,
@@ -148,6 +205,31 @@ export class ShopSeed {
         config: { trackStock: true, lowStockThreshold: 2 },
       },
       {
+        slug: "alliance-zenith",
+        name: "Alliance Zénith",
+        description:
+          "Un jonc plein, sans soudure apparente, tourné à la taille de votre doigt. La plus grande taille demande un peu plus d'or, et le prix le dit.",
+        price: 42000,
+        titre: "750",
+        metal: "Or gris 18 carats",
+        poids: "4,4 g",
+        dimensions: "Largeur 3 mm · jonc plein",
+        drawing: this.drawings.ring(OR_GRIS),
+        stock: 0,
+        config: { trackStock: true, lowStockThreshold: 1 },
+        optionGroups: [{ name: "Taille", values: ["50", "54", "58"] }],
+        variants: [
+          { sku: "ZENITH-50", options: { Taille: "50" }, stock: 2 },
+          { sku: "ZENITH-54", options: { Taille: "54" }, stock: 3 },
+          {
+            sku: "ZENITH-58",
+            options: { Taille: "58" },
+            price: 45000,
+            stock: 1,
+          },
+        ],
+      },
+      {
         slug: "carte-cadeau-50",
         name: "Carte cadeau",
         description:
@@ -160,7 +242,10 @@ export class ShopSeed {
         dimensions: "Envoi immédiat",
         drawing: this.drawings.giftCard(ShopDrawings.OR_JAUNE),
         stock: 0,
-        config: { downloadUrl: "https://atelier-aurore.test/cadeau/50" },
+        download: {
+          name: "carte-cadeau.txt",
+          text: "Carte cadeau de cinquante euros, valable deux ans.",
+        },
       },
     ];
   }
@@ -178,12 +263,23 @@ export class ShopSeed {
         name: piece.name,
         description: piece.description,
         price: piece.price,
+        compareAtPrice: piece.compareAtPrice,
+        metaTitle: piece.metaTitle,
+        weightGrams: piece.grammes,
         kind: piece.kind,
         published: true,
         images: [fileId],
         // The kind's payload. Anything not declared by its handler's schema is
         // stripped on write, which is why the spec plate lives in `attributes`.
-        config: piece.config,
+        config: piece.download
+          ? {
+              fileId: await this.media.storeDownload(
+                piece.download.name,
+                piece.download.text,
+              ),
+            }
+          : piece.config,
+        optionGroups: piece.optionGroups,
         attributes: {
           titre: piece.titre,
           metal: piece.metal,
@@ -195,6 +291,13 @@ export class ShopSeed {
       if (piece.stock > 0) {
         await this.stock.recordIntake(product.id, piece.stock, {
           note: "Put on display",
+        });
+      }
+      for (const { stock, ...variant } of piece.variants ?? []) {
+        const created = await this.variants.create(product.id, variant);
+        await this.stock.recordIntake(product.id, stock, {
+          note: "Put on display",
+          variantId: created.id,
         });
       }
       this.log.info(`Seeded '${piece.slug}'`);

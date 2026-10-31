@@ -1,5 +1,8 @@
+import { $inject } from "alepha";
+
 import type { PricedCartLine } from "../../cart/services/CartService.ts";
 import type { RenderedMail } from "../../notifications/providers/OrderMailRenderer.ts";
+import { CommerceTexts } from "../../services/CommerceTexts.ts";
 
 /**
  * Writes the abandoned-cart reminder emails.
@@ -9,33 +12,41 @@ import type { RenderedMail } from "../../notifications/providers/OrderMailRender
  * want its own voice.
  */
 export abstract class CartRecoveryMailRenderer {
+  /**
+   * @param unsubscribeUrl where the buyer leaves. A renderer MUST put it in the
+   *   message: the headers carry it too, but not every mail client shows them.
+   */
   abstract reminder(
     stage: 1 | 2,
     lines: PricedCartLine[],
+    unsubscribeUrl: string,
   ): Promise<RenderedMail>;
 }
 
 /**
- * Plain-text French defaults, matching the language of the package's other
+ * Plain-text defaults in the shop's language, like the package's other
  * customer-facing mails.
  */
 export class DefaultCartRecoveryMailRenderer extends CartRecoveryMailRenderer {
+  protected readonly texts = $inject(CommerceTexts);
+
   public async reminder(
     stage: 1 | 2,
     lines: PricedCartLine[],
+    unsubscribeUrl: string,
   ): Promise<RenderedMail> {
-    const items = lines.map((l) => `- ${l.name} × ${l.quantity}`).join("\n");
-
-    if (stage === 1) {
-      return {
-        subject: "Votre panier vous attend",
-        body: `Vous avez laissé ces articles dans votre panier :\n\n${items}\n\nIls sont toujours disponibles — finalisez votre commande quand vous voulez.`,
-      };
-    }
+    const items = lines
+      .map(
+        (l) =>
+          `- ${l.name}${l.variantLabel ? ` (${l.variantLabel})` : ""} × ${l.quantity}`,
+      )
+      .join("\n");
+    const footer = this.texts.t("reminder.unsubscribe", unsubscribeUrl);
+    const name = stage === 1 ? "reminder.first" : "reminder.second";
 
     return {
-      subject: "Dernier rappel — votre panier expire bientôt",
-      body: `Votre panier contient encore :\n\n${items}\n\nIl expirera prochainement. C'est le moment de finaliser votre commande.`,
+      subject: this.texts.t(`${name}.subject`),
+      body: `${this.texts.t(`${name}.body`, items)}\n\n${footer}`,
     };
   }
 }

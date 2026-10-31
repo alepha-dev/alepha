@@ -5,10 +5,10 @@ import { $entity, db } from "alepha/orm";
 /**
  * Where a checkout has got to.
  *
- * - `open`      — collecting details.
- * - `paying`    — an order and a payment intent exist; awaiting settlement.
- * - `completed` — the payment settled and the order is paid.
- * - `abandoned` — expired or explicitly given up on.
+ * - `open`      - collecting details.
+ * - `paying`    - an order and a payment intent exist; awaiting settlement.
+ * - `completed` - the payment settled and the order is paid.
+ * - `abandoned` - expired or explicitly given up on.
  */
 export const checkoutStatusEnum = z.enum([
   "open",
@@ -22,7 +22,7 @@ export const checkoutStatusEnum = z.enum([
  *
  * ### Why this table exists at all
  *
- * The checkout module cannot add columns to `commerce_orders` — entities are
+ * The checkout module cannot add columns to `commerce_orders` - entities are
  * code and migrations are per-app, so a module cannot reach into another
  * module's table. So it keeps its own: the address being collected, the
  * shipping choice, the computed totals all live here while they are still in
@@ -51,7 +51,25 @@ export const checkoutSessions = $entity({
     email: z.text({ maxLength: 320 }).optional(),
 
     /**
-     * Opaque while in flux — the shape is region-specific.
+     * When the buyer agreed to be reminded about this cart. A reminder to
+     * somebody who has not bought is commercial prospecting, and needs this on
+     * the record.
+     */
+    recoveryConsentAt: z.text().optional(),
+
+    /**
+     * What a reminder's unsubscribe link carries. Set with the consent.
+     */
+    recoveryToken: z.text({ maxLength: 64 }).optional(),
+
+    /**
+     * A VAT number the registry confirmed, normalised. What a business buyer
+     * gets reverse charge on.
+     */
+    vatNumber: z.text({ maxLength: 32 }).optional(),
+
+    /**
+     * Opaque while in flux - the shape is region-specific.
      */
     shippingAddress: z.json().optional(),
 
@@ -64,6 +82,10 @@ export const checkoutSessions = $entity({
      * Totals as last computed. Recomputed before the order is created.
      */
     subtotal: db.default(z.integer().min(0), 0),
+    /**
+     * Already taken off {@link subtotal}.
+     */
+    discountTotal: db.default(z.integer().min(0), 0),
     shippingTotal: db.default(z.integer().min(0), 0),
     taxTotal: db.default(z.integer().min(0), 0),
     grandTotal: db.default(z.integer().min(0), 0),

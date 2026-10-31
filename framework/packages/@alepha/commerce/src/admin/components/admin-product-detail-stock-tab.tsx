@@ -30,8 +30,8 @@ export interface AdminProductDetailStockTabProps {
  * Stock: the three figures, a way to correct them, and the ledger that explains
  * how they got there.
  *
- * The ledger is the point. On-hand is a *sum over this table* — never a counter
- * — so "why is this 3?" has an exact answer, and until now nothing in the back
+ * The ledger is the point. On-hand is a *sum over this table* - never a counter
+ * - so "why is this 3?" has an exact answer, and until now nothing in the back
  * office ever displayed it.
  */
 export const AdminProductDetailStockTab = (

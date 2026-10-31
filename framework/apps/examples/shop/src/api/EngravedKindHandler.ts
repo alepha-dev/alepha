@@ -47,7 +47,7 @@ export class EngravedKindHandler extends ProductKindHandler {
    * every other lock it needs.
    */
   public lockKeys(item: OrderItemEntity): ClaimLockKey[] {
-    return [{ namespace: StockService.LOCK_NAMESPACE, key: item.productId }];
+    return [StockService.lockKey(item.productId, item.variantId)];
   }
 
   /**
@@ -58,12 +58,15 @@ export class EngravedKindHandler extends ProductKindHandler {
   public async reserve(item: OrderItemEntity): Promise<void> {
     await this.stock.reserve(item.productId, item.quantity, {
       orderId: item.orderId,
+      variantId: item.variantId,
     });
   }
 
   public async fulfil(item: OrderItemEntity): Promise<void> {
     await this.stock.recordSale(item.productId, item.quantity, {
       orderId: item.orderId,
+      orderItemId: item.id,
+      variantId: item.variantId,
     });
 
     const config = item.config as { extraLeadDays: number };

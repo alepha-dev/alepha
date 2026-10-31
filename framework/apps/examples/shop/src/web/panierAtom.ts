@@ -19,20 +19,34 @@ export const panierAtom = $atom({
         z.object({
           lineId: z.uuid(),
           productId: z.uuid(),
+          variantId: z.uuid().optional(),
           lineConfig: z.record(z.text(), z.any()).optional(),
           name: z.text(),
+          variantLabel: z.text().optional(),
           kind: z.text(),
           unitPrice: z.integer(),
           quantity: z.integer(),
+          discount: z.integer().default(0),
           lineTotal: z.integer(),
           image: z.text().optional(),
         }),
       )
       .default([]),
+    itemsTotal: z.integer().default(0),
+    discountTotal: z.integer().default(0),
+    discountLabel: z.text().optional(),
+    promotionCode: z.text().optional(),
+    promotionRefused: z.text().optional(),
     subtotal: z.integer().default(0),
     currency: z.text().default("EUR"),
   }),
-  default: { lines: [], subtotal: 0, currency: "EUR" },
+  default: {
+    lines: [],
+    itemsTotal: 0,
+    discountTotal: 0,
+    subtotal: 0,
+    currency: "EUR",
+  },
 });
 
 export type Panier = Infer<typeof panierAtom.schema>;

@@ -13,7 +13,7 @@ export const stockReasonEnum = z.enum([
 ]);
 
 /**
- * Append-only stock ledger. On-hand is the sum of a product's deltas — never a
+ * Append-only stock ledger. On-hand is the sum of a product's deltas - never a
  * counter column.
  *
  * A counter read outside the writing transaction is what lets two concurrent
@@ -28,6 +28,12 @@ export const stockMovements = $entity({
     productId: z.uuid(),
 
     /**
+     * The variant that moved, on a product sold by variant. The product's
+     * on-hand is the sum across them.
+     */
+    variantId: z.uuid().optional(),
+
+    /**
      * Signed: negative for a sale, positive for an intake or a return.
      */
     delta: z.integer(),
@@ -39,9 +45,19 @@ export const stockMovements = $entity({
      */
     orderId: z.uuid().optional(),
 
+    /**
+     * The order line behind the movement: what makes a sale idempotent per
+     * line, since one order can carry a product on two lines.
+     */
+    orderItemId: z.uuid().optional(),
+
     note: z.text({ maxLength: 500 }).optional(),
   }),
-  indexes: [{ columns: ["productId"] }, { columns: ["orderId"] }],
+  indexes: [
+    { columns: ["productId"] },
+    { columns: ["variantId"] },
+    { columns: ["orderId"] },
+  ],
 });
 
 export type StockMovementEntity = Infer<typeof stockMovements.schema>;
