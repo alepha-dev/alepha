@@ -156,7 +156,7 @@ export class ServerCookiesProvider {
       }
 
       if (options.compress) {
-        rawValue = inflateRawSync(Buffer.from(rawValue, "base64")).toString(
+        rawValue = inflateRawSync(Buffer.from(rawValue, "base64url")).toString(
           "utf8",
         );
       }
@@ -182,7 +182,7 @@ export class ServerCookiesProvider {
     let value = JSON.stringify(this.alepha.codec.decode(options.schema, data));
 
     if (options.compress) {
-      value = deflateRawSync(value).toString("base64");
+      value = deflateRawSync(value).toString("base64url");
     }
 
     if (options.encrypt) {
@@ -245,11 +245,11 @@ export class ServerCookiesProvider {
       cipher.final(),
     ]);
     const authTag = cipher.getAuthTag();
-    return Buffer.concat([iv, authTag, encrypted]).toString("base64");
+    return Buffer.concat([iv, authTag, encrypted]).toString("base64url");
   }
 
   protected decrypt(encryptedText: string): string {
-    const data = Buffer.from(encryptedText, "base64");
+    const data = Buffer.from(encryptedText, "base64url");
     const iv = data.subarray(0, this.IV_LENGTH);
     const authTag = data.subarray(
       this.IV_LENGTH,
