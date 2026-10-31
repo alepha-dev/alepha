@@ -332,10 +332,10 @@ npx alepha capacitor build android --variant acme
 npx alepha capacitor build android --variant base
 ```
 
-There is one pair of native projects. Each command first writes the selected identity into it,
-except `release` and `sync --web-only`, which leave it as it is: the bundle id, the display name,
-the URL scheme, `applicationId` and the identity strings, the icons and splash. The writer owns
-those settings only, refuses a project it does not recognise (a second
+There is one pair of native projects. A command first writes the selected identity into it: the
+bundle id, the display name, the URL scheme, `applicationId` and the identity strings, the icons and
+splash. `release` and `sync --web-only` do not, and leave it as it is. The writer owns those
+settings only, refuses a project it does not recognise (a second
 target, URL types of your own, product flavors) before writing anything, and puts every file back
 when a switch fails. Switching x, then y, then x leaves the files byte for byte as they were. Each
 variant's shell builds into `dist-capacitor/<variant>/`, and its build records carry its name. One
