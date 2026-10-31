@@ -157,7 +157,7 @@ report is rejected.
 | `feedback_attachment_get` | One attachment's content. Images come back inline, text decoded, and other types as a note.                      |
 | `feedback_comment_add`    | Comment on the thread, marked as written by an agent. Needs Support on.                                          |
 | `feedback_accept`         | Move a pending report to accepted. Refused on a report already triaged.                                          |
-| `feedback_reject`         | Move a report to rejected. Unlike `feedback_accept`, it does not check the current status.                       |
+| `feedback_reject`         | Move a pending report to rejected. Refused on a report already triaged.                                          |
 
 The two triage tools need `feedback:triage` and Support on. Accepting creates no
 quest: file one with `quest_create` and `feedback_shortId`. Deleting a report has
