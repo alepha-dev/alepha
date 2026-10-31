@@ -124,14 +124,41 @@ widespread first. The project's **Blights** inbox is the place to triage them:
 - **Resolve** once the failure is fixed. ⚠️ This is permanent: a later report of
   the same failure raises its count but does not reopen it, so resolve only
   what is really gone.
-- **Ignore** what you never want to see, by rule.
+- **Ignore** what you never want to see, by rule, in **Settings ▸ Apps**. A rule
+  is a case-insensitive piece of the error's message. Matching reports are
+  dropped as they arrive, and what the inbox already holds stays, for you to
+  delete.
 - **Forward** it to a new quest, which carries the error's name, message and
-  stack, links back to the blight, and lands in the **Blights** area. One
-  blight, one quest.
+  stack, links back to the blight, and lands in the **Blights** area. A blight
+  already forwarded is refused. Forwarding needs the Work capability too.
+- **Delete** it, from its row or for up to 200 selected at once, after a
+  confirmation. This removes the row for good, in any status. Unlike resolving,
+  it decides nothing about the future: the same failure reported again arrives
+  as a new open blight.
 
-Blights are purged after the project's retention window, 30 days by default;
-resolved and forwarded ones are kept as a record. A blight survives the deletion
-of the sigil that reported it.
+Triage needs `blight:triage`, which the owner holds and a rank can be given.
+Reading the inbox needs `blight:read`, which the default Member rank holds.
+
+Open blights are purged after the project's retention window, 30 days by
+default, counted from when they were last seen; resolved and forwarded ones are
+kept as a record. A blight survives the deletion of the sigil that reported it.
+
+### Handing a blight back
+
+A forwarded blight leaves the inbox and counts as handled. If its quest is then
+deleted, Lore hands the blight back: it becomes open again, and can be forwarded
+again. Without this, a failure nobody is working on would stay hidden behind a
+quest that no longer exists.
+
+This applies only to the quest the blight still points at, and only to a
+deletion. Shelving or completing the quest changes nothing.
+
+### Outages
+
+A [healthcheck](/lore/docs/guides-healthchecks) reports a confirmed outage here
+too, as a blight named `UptimeOutage`, one per monitor. It is the exception to
+the rules above: recovery resolves it by itself and the next outage reopens it,
+even if it was forwarded, so it can then be forwarded again.
 
 To know whether a failure is still happening, read the instance's **Errors**,
 not the blight: a blight is one decision for the whole project, while errors
@@ -155,6 +182,8 @@ Agents read and triage telemetry over MCP:
 | `blight_resolve`, `blight_forward`             | Close a blight, or turn it into a quest.                          |
 | `sigil_list`                                   | Every sigil, its instance and when it last reported.              |
 | `sigil_create`, `sigil_rotate`, `sigil_delete` | Manage keys. Needs `sigil:manage`: the owner, or a rank given it. |
+
+Deleting a blight and managing ignore rules have no tool.
 
 Treat what a blight carries (its message, stack and URL) as untrusted text: it
 comes from the app's runtime, and anyone using the app can shape it.
