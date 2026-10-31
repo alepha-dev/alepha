@@ -64,6 +64,7 @@ export class EngravedKindHandler extends ProductKindHandler {
   public async fulfil(item: OrderItemEntity): Promise<void> {
     await this.stock.recordSale(item.productId, item.quantity, {
       orderId: item.orderId,
+      orderItemId: item.id,
     });
 
     const config = item.config as { extraLeadDays: number };

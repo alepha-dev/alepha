@@ -1,0 +1,1 @@
+ALTER TABLE `commerce_stock_movements` ADD `order_item_id` text;

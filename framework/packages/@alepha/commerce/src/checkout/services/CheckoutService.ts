@@ -416,15 +416,18 @@ export class CheckoutService {
       // abandoned - and settling it would mark an order paid whose stock has
       // already been released to other buyers.
       //
+      // Read off what `markPaid` answers rather than checked before it: a
+      // cancel can slip in between a check and the claim, and the session
+      // would then complete on a cancelled order with the money unrecorded.
+      //
       // `paid` is NOT this case: that is a re-delivered webhook, and it must
       // still complete the session, which is what makes settle() idempotent.
-      const order = await this.orders.getById(session.orderId);
+      const order = await this.orders.markPaid(session.orderId, options);
       if (order.status === "cancelled" || order.status === "refunded") {
         await this.recordStrayCapture(order, options.paymentIntentId);
         return session;
       }
 
-      await this.orders.markPaid(session.orderId, options);
       await this.carts.clear(session.cartId);
 
       return this.repo.updateById(sessionId, { status: "completed" });

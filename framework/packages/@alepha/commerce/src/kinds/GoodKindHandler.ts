@@ -61,6 +61,7 @@ export class GoodKindHandler extends ProductKindHandler {
     }
     await this.stock.recordSale(item.productId, item.quantity, {
       orderId: item.orderId,
+      orderItemId: item.id,
     });
   }
 

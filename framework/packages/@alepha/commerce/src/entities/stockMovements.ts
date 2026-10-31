@@ -39,6 +39,12 @@ export const stockMovements = $entity({
      */
     orderId: z.uuid().optional(),
 
+    /**
+     * The order line behind the movement: what makes a sale idempotent per
+     * line, since one order can carry a product on two lines.
+     */
+    orderItemId: z.uuid().optional(),
+
     note: z.text({ maxLength: 500 }).optional(),
   }),
   indexes: [{ columns: ["productId"] }, { columns: ["orderId"] }],

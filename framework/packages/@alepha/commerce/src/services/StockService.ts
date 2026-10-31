@@ -310,14 +310,24 @@ export class StockService {
    * to others, so counting its own hold against it would refuse every reserved
    * sale.
    *
+   * Idempotent on the order line: `ProductKindHandler.fulfil` is re-delivered,
+   * and a line the ledger already counts as sold is not sold twice. By the
+   * order's line and not the order, because one order can carry a product on
+   * two lines. Without an `orderItemId` it is one sale per order and product;
+   * without an `orderId`, a counter sale nothing can redeliver.
+   *
    * @throws InsufficientStockError when the units are not physically there.
    */
   public async recordSale(
     productId: string,
     quantity: number,
-    context: { orderId?: string } = {},
+    context: { orderId?: string; orderItemId?: string } = {},
   ): Promise<void> {
     await this.claim(productId, async (locked) => {
+      if (await this.alreadySold(productId, context)) {
+        return;
+      }
+
       // The decision under the lock, a fast pre-check without it: same as
       // `reserve`.
       const onHand = await this.onHand(productId);
@@ -334,6 +344,7 @@ export class StockService {
         delta: -quantity,
         reason: "sale",
         orderId: context.orderId,
+        orderItemId: context.orderItemId,
       });
 
       if (!locked && !(await this.movementFits(productId, movement.id))) {
@@ -351,6 +362,32 @@ export class StockService {
         await this.consumeHold(context.orderId, productId, quantity);
       }
     });
+  }
+
+  /**
+   * Whether the ledger counts this line as sold: its sales and the returns
+   * against them leave units out, so a line whose sale was given back sells
+   * again.
+   */
+  protected async alreadySold(
+    productId: string,
+    context: { orderId?: string; orderItemId?: string },
+  ): Promise<boolean> {
+    if (!context.orderId) {
+      return false;
+    }
+    const rows = await this.movements.findMany({
+      where: {
+        orderId: { eq: context.orderId },
+        productId: { eq: productId },
+        reason: { inArray: ["sale", "return"] },
+        orderItemId: context.orderItemId
+          ? { eq: context.orderItemId }
+          : { isNull: true },
+      },
+      columns: ["delta"],
+    });
+    return rows.reduce((sum, row) => sum + row.delta, 0) < 0;
   }
 
   /**
@@ -463,21 +500,56 @@ export class StockService {
   /**
    * Put back what a cancelled or refunded order had taken, and drop any hold it
    * still carried.
+   *
+   * Idempotent: it gives back what the ledger still counts as out for the
+   * order, line by line, so a second run finds nothing left. Under the locks
+   * of the products involved, so two runs that overlap cannot both read the
+   * same remainder.
    */
   public async releaseOrder(orderId: string): Promise<void> {
-    const sales = await this.movements.findMany({
-      where: { orderId: { eq: orderId }, reason: { eq: "sale" } },
+    const sold = await this.movementsOfOrder(orderId);
+    const keys = [...new Set(sold.map((it) => it.productId))].map((key) => ({
+      namespace: StockService.LOCK_NAMESPACE,
+      key,
+    }));
+
+    await this.lock.run(keys, async () => {
+      const out = new Map<
+        string,
+        Omit<StockMovementEntity, "id" | "createdAt">
+      >();
+      for (const row of await this.movementsOfOrder(orderId)) {
+        const key = `${row.productId}:${row.orderItemId ?? ""}`;
+        const line = out.get(key) ?? { ...row, delta: 0 };
+        out.set(key, { ...line, delta: line.delta + row.delta });
+      }
+
+      for (const line of out.values()) {
+        if (line.delta < 0) {
+          await this.movements.create({
+            productId: line.productId,
+            delta: -line.delta,
+            reason: "return",
+            orderId,
+            orderItemId: line.orderItemId,
+            note: `Release of order ${orderId}`,
+          });
+        }
+      }
     });
-    for (const sale of sales) {
-      await this.movements.create({
-        productId: sale.productId,
-        delta: -sale.delta,
-        reason: "return",
-        orderId,
-        note: `Release of order ${orderId}`,
-      });
-    }
+
     await this.releaseFor(orderId);
+  }
+
+  protected async movementsOfOrder(
+    orderId: string,
+  ): Promise<StockMovementEntity[]> {
+    return this.movements.findMany({
+      where: {
+        orderId: { eq: orderId },
+        reason: { inArray: ["sale", "return"] },
+      },
+    });
   }
 
   /**

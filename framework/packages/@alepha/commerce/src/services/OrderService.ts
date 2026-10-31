@@ -1,7 +1,12 @@
 import { $inject, Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { $repository, DatabaseProvider, type Page } from "alepha/orm";
+import {
+  $repository,
+  DatabaseProvider,
+  DbEntityNotFoundError,
+  type Page,
+} from "alepha/orm";
 
 import { type OrderItemEntity, orderItems } from "../entities/orderItems.ts";
 import {
@@ -224,12 +229,6 @@ export class OrderService {
   }
 
   /**
-   * Settle a pending order: flip it to `paid` and fulfil its lines.
-   *
-   * Idempotent on the order's status — a re-delivered payment webhook finds the
-   * order already `paid` and does nothing, rather than fulfilling twice.
-   */
-  /**
    * Keep a capture that arrived for an order no longer taking money.
    *
    * A plain write, deliberately: the order's STATUS does not move. Money that
@@ -245,13 +244,31 @@ export class OrderService {
     return this.orderRepo.updateById(id, { strayCaptures: captures });
   }
 
+  /**
+   * Settle a pending order: flip it to `paid` and fulfil its lines.
+   *
+   * Idempotent on the order's status, and safe under concurrency: the status
+   * moves first, by a conditional update, so of two settles that overlap one
+   * moves it and the other finds nothing to move and does nothing. A check
+   * made before fulfilling could not say that: both would read `pending`, and
+   * the second would sell the stock again once the first let go of the lock.
+   *
+   * Returns the order as it stands, which is not `paid` when somebody else
+   * moved it first: cancelled, say. The caller reads the status.
+   */
   public async markPaid(
     id: string,
     options: { paymentIntentId?: string } = {},
   ): Promise<OrderEntity> {
     return this.db.transactional(async () => {
-      const current = await this.orderRepo.getById(id);
-      if (current.status !== "pending") {
+      const order = await this.claim(id, ["pending"], {
+        status: "paid",
+        ...(options.paymentIntentId
+          ? { paymentIntentId: options.paymentIntentId }
+          : {}),
+      });
+      if (!order) {
+        const current = await this.orderRepo.getById(id);
         this.log.debug("Order already settled, skipping fulfilment", {
           orderId: id,
           status: current.status,
@@ -266,17 +283,11 @@ export class OrderService {
         await this.fulfilAll(items);
       } catch (error) {
         // Where there is no transaction, the lines fulfilled before the one
-        // that threw stay sold. The order is not paid, so they come back.
-        await this.undoWithoutTransaction(id);
+        // that threw stay sold, and the status stays moved. The order is not
+        // paid, so both come back.
+        await this.undoWithoutTransaction(id, { status: "pending" });
         throw error;
       }
-
-      const order = await this.orderRepo.updateById(id, {
-        status: "paid",
-        ...(options.paymentIntentId
-          ? { paymentIntentId: options.paymentIntentId }
-          : {}),
-      });
 
       // Only on the transition — a redelivered webhook returns above and emits
       // nothing, which is what stops a second invoice for one sale. Deferred
@@ -314,12 +325,11 @@ export class OrderService {
     return this.db.transactional(async () => {
       // A paid order is not cancelled, it is refunded: cancelling one used
       // to release units that were sold and leave the money taken.
-      await this.assertTransition(id, ["pending"], "cancelled");
-      await this.stock.releaseFor(id);
-      await this.resources.releaseFor(id);
-      const order = await this.orderRepo.updateById(id, {
+      const order = await this.transition(id, ["pending"], {
         status: "cancelled",
       });
+      await this.stock.releaseFor(id);
+      await this.resources.releaseFor(id);
 
       // Deferred for the same reason as in markPaid: cancel() is reached from
       // inside abandonWithOrder()'s transaction on payments:failed.
@@ -375,15 +385,42 @@ export class OrderService {
         return current;
       }
       const full = refundedTotal >= current.total;
+      const to = full ? "refunded" : "partially_refunded";
 
       // Only money that moved can come back: a pending order has nothing to
       // refund, and flipping it hid that no payment ever happened. A partially
       // refunded order can be refunded again, up to the rest.
-      await this.assertTransition(
-        id,
-        ["paid", "fulfilled", "shipped", "delivered", "partially_refunded"],
-        full ? "refunded" : "partially_refunded",
-      );
+      const from: OrderStatus[] = [
+        "paid",
+        "fulfilled",
+        "shipped",
+        "delivered",
+        "partially_refunded",
+      ];
+      if (!from.includes(current.status)) {
+        throw this.refusedTransition(current, from, to);
+      }
+
+      // Conditional on what was read, the refunded total included: an admin
+      // refund racing the rail's own webhook moves the order once. The loser
+      // decides again on what the winner wrote, which is usually nothing left
+      // to do.
+      let order: OrderEntity;
+      try {
+        order = await this.orderRepo.updateOne(
+          {
+            id: { eq: id },
+            status: { eq: current.status },
+            refundedTotal: { eq: current.refundedTotal },
+          },
+          { status: to, refundedTotal },
+        );
+      } catch (error) {
+        if (error instanceof DbEntityNotFoundError) {
+          return this.refund(id, options);
+        }
+        throw error;
+      }
 
       // Stock comes back only when the sale is undone. A partial refund is a
       // price adjustment on goods the customer keeps, so releasing units here
@@ -394,11 +431,6 @@ export class OrderService {
         await this.stock.releaseOrder(id);
         await this.resources.releaseOrder(id);
       }
-
-      const order = await this.orderRepo.updateById(id, {
-        status: full ? "refunded" : "partially_refunded",
-        refundedTotal,
-      });
 
       // Only on the transition, and deferred for the same reason as in
       // markPaid — nothing stops a caller from wrapping refund() in a
@@ -429,12 +461,11 @@ export class OrderService {
   public async markFulfilled(id: string): Promise<OrderEntity> {
     // `partially_refunded` too: a goodwill refund is a price adjustment, and
     // the parcel it applies to still has to be packed.
-    await this.assertTransition(
-      id,
-      ["paid", "partially_refunded"],
-      "fulfilled",
+    return this.db.transactional(() =>
+      this.transition(id, ["paid", "partially_refunded"], {
+        status: "fulfilled",
+      }),
     );
-    return this.orderRepo.updateById(id, { status: "fulfilled" });
   }
 
   /**
@@ -443,42 +474,47 @@ export class OrderService {
    * Guarded: only a paid or prepared order can ship. Without the guard an admin
    * double-click could ship a refunded order, and the buyer would get a tracking
    * email for a parcel nobody sent — the class of unguarded status transition
-   * this codebase has been bitten by before.
+   * this codebase has been bitten by before. Conditional as well as guarded: of
+   * two clicks that overlap, one ships and the other is refused, so the
+   * shipping email goes out once.
    */
   public async markShipped(
     id: string,
     options: { trackingNumber?: string; trackingUrl?: string } = {},
   ): Promise<OrderEntity> {
-    await this.assertTransition(
-      id,
-      ["paid", "fulfilled", "partially_refunded"],
-      "shipped",
-    );
+    return this.db.transactional(async () => {
+      const order = await this.transition(
+        id,
+        ["paid", "fulfilled", "partially_refunded"],
+        {
+          status: "shipped",
+          shippedAt: this.dateTime.nowISOString(),
+          ...(options.trackingNumber
+            ? { trackingNumber: options.trackingNumber }
+            : {}),
+          ...(options.trackingUrl ? { trackingUrl: options.trackingUrl } : {}),
+        },
+      );
 
-    const order = await this.orderRepo.updateById(id, {
-      status: "shipped",
-      shippedAt: this.dateTime.nowISOString(),
-      ...(options.trackingNumber
-        ? { trackingNumber: options.trackingNumber }
-        : {}),
-      ...(options.trackingUrl ? { trackingUrl: options.trackingUrl } : {}),
+      await this.db.afterCommit(() =>
+        this.alepha.events.emit("commerce:order:shipped", {
+          orderId: order.id,
+          trackingNumber: order.trackingNumber,
+          trackingUrl: order.trackingUrl,
+        }),
+      );
+
+      return order;
     });
-
-    await this.alepha.events.emit("commerce:order:shipped", {
-      orderId: order.id,
-      trackingNumber: order.trackingNumber,
-      trackingUrl: order.trackingUrl,
-    });
-
-    return order;
   }
 
   public async markDelivered(id: string): Promise<OrderEntity> {
-    await this.assertTransition(id, ["shipped"], "delivered");
-    return this.orderRepo.updateById(id, {
-      status: "delivered",
-      deliveredAt: this.dateTime.nowISOString(),
-    });
+    return this.db.transactional(() =>
+      this.transition(id, ["shipped"], {
+        status: "delivered",
+        deliveredAt: this.dateTime.nowISOString(),
+      }),
+    );
   }
 
   public async getById(id: string): Promise<OrderEntity> {
@@ -528,14 +564,22 @@ export class OrderService {
    * Where there IS a transaction nothing is written here: the rollback
    * already undoes it all, and a write into a transaction that a failed
    * statement aborted would only replace the real error with its own.
+   *
+   * `restore` is what the failed step wrote on the order itself.
    */
-  protected async undoWithoutTransaction(orderId: string): Promise<void> {
+  protected async undoWithoutTransaction(
+    orderId: string,
+    restore?: { status: OrderStatus },
+  ): Promise<void> {
     if (this.db.supportsTransactions) {
       return;
     }
     try {
       await this.stock.releaseOrder(orderId);
       await this.resources.releaseOrder(orderId);
+      if (restore) {
+        await this.orderRepo.updateById(orderId, restore);
+      }
     } catch (cleanup) {
       // The error being rethrown is the one the caller needs; this one only
       // means the sweep will tidy up instead.
@@ -547,20 +591,65 @@ export class OrderService {
   }
 
   /**
-   * Refuse a status change that does not come from an expected state.
+   * Move an order out of one of `from`, on the database's word rather than on
+   * a value read earlier, and answer `undefined` when it was in none of them.
+   *
+   * This is what every transition goes through. A check followed by a write
+   * lets two callers pass the check on the same read: the conditional update
+   * cannot, because the row is what decides. On Postgres the second update
+   * waits for the first to commit, then matches nothing; a database with no
+   * transaction runs one after the other and gets the same answer. So it
+   * needs no `FOR UPDATE`, which SQLite and D1 do not have.
+   *
+   * Comes before any side effect: whoever moved the order is the one caller
+   * that fulfils it, or releases its stock.
    */
-  protected async assertTransition(
+  protected async claim(
     id: string,
     from: OrderStatus[],
-    to: OrderStatus,
+    patch: Partial<OrderEntity> & { status: OrderStatus },
+  ): Promise<OrderEntity | undefined> {
+    try {
+      return await this.orderRepo.updateOne(
+        { id: { eq: id }, status: { inArray: from } },
+        patch,
+      );
+    } catch (error) {
+      if (error instanceof DbEntityNotFoundError) {
+        return undefined;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * {@link claim}, refusing a status change that does not come from an
+   * expected state.
+   */
+  protected async transition(
+    id: string,
+    from: OrderStatus[],
+    patch: Partial<OrderEntity> & { status: OrderStatus },
   ): Promise<OrderEntity> {
-    const order = await this.orderRepo.getById(id);
-    if (!from.includes(order.status)) {
-      throw new CommerceError(
-        `Cannot move order ${id} to '${to}': it is '${order.status}', expected one of ${from.join(", ")}.`,
+    const order = await this.claim(id, from, patch);
+    if (!order) {
+      throw this.refusedTransition(
+        await this.orderRepo.getById(id),
+        from,
+        patch.status,
       );
     }
     return order;
+  }
+
+  protected refusedTransition(
+    order: OrderEntity,
+    from: OrderStatus[],
+    to: OrderStatus,
+  ): CommerceError {
+    return new CommerceError(
+      `Cannot move order ${order.id} to '${to}': it is '${order.status}', expected one of ${from.join(", ")}.`,
+    );
   }
 
   public async itemsOf(orderId: string): Promise<OrderItemEntity[]> {
