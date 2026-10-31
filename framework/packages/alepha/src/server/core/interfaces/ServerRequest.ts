@@ -171,6 +171,8 @@ export interface ServerRequest<
    *
    * The same object as `alepha.context.signal` inside the request's context,
    * so code the handler calls inherits it without being handed it.
+   *
+   * A local `run()` has no client: it carries its caller's ambient signal.
    */
   signal: AbortSignal;
 
