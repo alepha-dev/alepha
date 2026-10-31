@@ -1,5 +1,6 @@
-import { ProjectController } from "@lore/core/api";
+import { ProjectController, ProjectSecurityService } from "@lore/core/api";
 import { Alepha } from "alepha";
+import { RankService } from "alepha/api/organizations";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { AlephaMcp } from "alepha/mcp";
@@ -13,7 +14,14 @@ import { AppController } from "../src/api/index.ts";
 import { LoreDeployApi } from "../src/api/index.ts";
 import { LoreDeployMcp } from "../src/mcp/index.ts";
 import { AppInstanceTools, DeployTools } from "../src/mcp/index.ts";
-import { deployments } from "../src/schemas/index.ts";
+import {
+  appInstances,
+  artifacts,
+  deployments,
+  estateProjects,
+  estates,
+} from "../src/schemas/index.ts";
+import { createTestMemberByProjectId } from "../src/testing/index.ts";
 
 /**
  * Shipping from a conversation.
@@ -25,6 +33,10 @@ import { deployments } from "../src/schemas/index.ts";
  */
 class Probe {
   deployments = $repository(deployments);
+  estates = $repository(estates);
+  grants = $repository(estateProjects);
+  instances = $repository(appInstances);
+  artifacts = $repository(artifacts);
 }
 
 const setup = async () => {
@@ -93,10 +105,130 @@ const setup = async () => {
     instance,
     call,
     OWNER,
+    owner,
+    users,
   };
 };
 
 describe("Lore MCP - deploys", () => {
+  describe("who may deploy", () => {
+    /**
+     * A copy on a lent Bay estate, with one stored build and one run that
+     * succeeded, so `deploy_start` and `deploy_rollback` both reach their
+     * write. Bay keeps no version history, so a rollback redeploys that build.
+     *
+     * ⚠️ Without the estate the rollback's plan refuses first, for a caller who
+     * holds `app:read` alone: the spec would pass and prove nothing about
+     * `deploy:manage`.
+     */
+    const shippable = async () => {
+      const world = await setup();
+      const { alepha, probe, project, instance, owner, users } = world;
+
+      const estate = await probe.estates.create({
+        ownerUserId: owner.id,
+        type: "bay",
+        slug: "bay-shipyard",
+        deployAllowed: true,
+        credentialStatus: "valid",
+      } as never);
+      await probe.grants.create({ estateId: estate.id, projectId: project.id });
+      await probe.instances.updateById(instance.id, { estateId: estate.id });
+      await probe.artifacts.create({
+        projectId: project.id,
+        app: "club",
+        tag: "0.28.0",
+        runtime: "node",
+        format: "archive",
+        sha256: "a".repeat(64),
+        size: 10,
+        fileId: crypto.randomUUID(),
+      } as never);
+      const run = await probe.deployments.create({
+        projectId: project.id,
+        instanceId: instance.id,
+        app: "club",
+        tag: "0.28.0",
+        sha256: "a".repeat(64),
+        status: "succeeded",
+      } as never);
+
+      const shipper = await users.createUser({ username: "shipper" });
+      await alepha.inject(RankService).save(
+        await alepha
+          .inject(ProjectSecurityService)
+          .organizationIdOf(project.id),
+        {
+          key: "shipper",
+          name: "Shipper",
+          permissions: ["project:read", "app:read", "deploy:manage"],
+        },
+        { id: owner.id, roles: ["user"] } as any,
+      );
+      await createTestMemberByProjectId(alepha, project.id, shipper.id, {
+        rank: "shipper",
+      });
+      const member = await users.createUser({ username: "member" });
+      await createTestMemberByProjectId(alepha, project.id, member.id);
+
+      return { ...world, run, shipper, member };
+    };
+
+    it("is whoever holds deploy:manage, not only the owner", async () => {
+      const { deployTools, project, run, shipper, call } = await shippable();
+
+      const started: any = await call(
+        deployTools.deploy_start,
+        { project: project.id, app: "club", env: "production", tag: "0.28.0" },
+        shipper.id,
+      );
+      expect(started.id).toBeTruthy();
+
+      const back: any = await call(
+        deployTools.deploy_rollback,
+        { project: project.id, deployment: run.id },
+        shipper.id,
+      );
+      expect(back.path).toBe("artifact");
+    });
+
+    it("refuses a rank without it", async () => {
+      const { deployTools, project, run, member, call } = await shippable();
+
+      await expect(
+        call(
+          deployTools.deploy_start,
+          {
+            project: project.id,
+            app: "club",
+            env: "production",
+            tag: "0.28.0",
+          },
+          member.id,
+        ),
+      ).rejects.toThrow(/deploy:manage/);
+      await expect(
+        call(
+          deployTools.deploy_rollback,
+          { project: project.id, deployment: run.id },
+          member.id,
+        ),
+      ).rejects.toThrow(/deploy:manage/);
+    });
+
+    it("is what the tools tell an agent", async () => {
+      const { deployTools } = await setup();
+
+      for (const tool of [
+        deployTools.deploy_start,
+        deployTools.deploy_rollback,
+      ]) {
+        expect(tool.options.description).toContain("Needs `deploy:manage`");
+        expect(tool.options.description).not.toContain("owner only");
+      }
+    });
+  });
+
   describe("what the surface is, and is not", () => {
     it("adds three deploy tools and no estate tool", async () => {
       // ⚠️ An estate is owned by a USER and lent to projects, so it is not a
