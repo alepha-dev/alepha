@@ -112,7 +112,10 @@ describe("the instance Settings tab", () => {
   const mount = async (
     instance: AppInstanceResource,
     responses: Record<string, unknown> = {},
-    { owner = true }: { owner?: boolean } = {},
+    {
+      owner = true,
+      permissions = ["project:read", "app:read"],
+    }: { owner?: boolean; permissions?: string[] } = {},
   ) => {
     const alepha = Alepha.create()
       .with(AlephaLogger)
@@ -137,7 +140,7 @@ describe("the instance Settings tab", () => {
         : projectFixture({
             title: "Alepha",
             slug: "alepha",
-            permissions: ["project:read", "app:read"],
+            permissions,
             rank: { key: "member", name: "Member" },
           })) as never,
     );
@@ -291,9 +294,9 @@ describe("the instance Settings tab", () => {
   });
 
   it("hides every mutation from a member", async ({ expect }) => {
-    // Owner-only server-side, and the controls are disabled here purely so a
-    // member is not walked through a destructive confirmation only to be
-    // refused at the end.
+    // Refused server-side without `app:manage`, and the controls are disabled
+    // here purely so a member is not walked through a destructive confirmation
+    // only to be refused at the end.
     const { view } = await mount(anInstance(), {}, { owner: false });
 
     for (const id of [
@@ -310,5 +313,33 @@ describe("the instance Settings tab", () => {
         .querySelector<HTMLButtonElement>('button[aria-label="Delete"]')
         ?.hasAttribute("disabled"),
     ).toBe(true);
+  });
+
+  it("opens the same controls to a rank holding app:manage, owner or not", async ({
+    expect,
+  }) => {
+    const { view } = await mount(
+      anInstance(),
+      {},
+      {
+        owner: false,
+        permissions: ["project:read", "app:read", "app:manage"],
+      },
+    );
+
+    for (const id of [
+      "#app-settings-app",
+      "#app-settings-env",
+      "#app-settings-url",
+    ]) {
+      expect(view.container.querySelector<HTMLInputElement>(id)?.disabled).toBe(
+        false,
+      );
+    }
+    expect(
+      view.container
+        .querySelector<HTMLButtonElement>('button[aria-label="Delete"]')
+        ?.hasAttribute("disabled"),
+    ).toBe(false);
   });
 });
