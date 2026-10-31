@@ -679,6 +679,13 @@ export abstract class Repository<T extends ZObject> {
           `findMany on '${this.tableName}' was given both 'for' and 'cache': a cached result takes no row lock. Drop one of them.`,
         );
       }
+      if (opts.for && this.provider.dialect !== "postgresql") {
+        // Refused rather than ignored: the caller would believe it holds a
+        // lock, and drizzle's SQLite builder has no `.for` to call anyway.
+        throw new AlephaError(
+          `findMany on '${this.tableName}' was given 'for', and row locks exist on PostgreSQL only. The '${this.provider.dialect}' dialect has none: drop the option.`,
+        );
+      }
       const cache = this.inTransaction(opts) ? undefined : opts.cache;
       if (cache) {
         const cacheKey =
