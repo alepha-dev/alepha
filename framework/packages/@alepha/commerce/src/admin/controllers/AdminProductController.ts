@@ -84,6 +84,7 @@ const productInputSchema = z.object({
  * An order line as the catalogue shows it: the line, plus its order's context.
  */
 export const productOrderLineSchema = orderItems.schema.extend({
+  orderNumber: z.text().optional(),
   orderStatus: z.text().optional(),
   orderCreatedAt: z.text().optional(),
   orderCurrency: z.text().optional(),

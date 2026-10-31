@@ -55,8 +55,8 @@ export class DefaultOrderMailRenderer extends OrderMailRenderer {
       .join("");
 
     return {
-      subject: `Votre commande est confirmée`,
-      body: `<p>Merci, nous avons bien reçu votre commande et votre paiement.</p>
+      subject: `Votre commande${this.reference(order)} est confirmée`,
+      body: `<p>Merci, nous avons bien reçu votre commande${this.reference(order)} et votre paiement.</p>
 <ul>${lines}</ul>
 ${
   order.discountTotal > 0
@@ -80,7 +80,7 @@ ${
 
   public async shipped(order: OrderEntity): Promise<RenderedMail> {
     return {
-      subject: `Votre commande est en route`,
+      subject: `Votre commande${this.reference(order)} est en route`,
       body: `<p>Votre colis a été confié au transporteur.</p>
 ${
   order.trackingNumber
@@ -93,6 +93,14 @@ ${
     : ""
 }`,
     };
+  }
+
+  /**
+   * The order's number, with its leading space, or nothing on an order older
+   * than the column.
+   */
+  protected reference(order: OrderEntity): string {
+    return order.number ? ` ${order.number}` : "";
   }
 
   protected money(cents: number, currency: string): string {

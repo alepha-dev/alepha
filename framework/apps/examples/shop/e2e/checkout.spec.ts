@@ -122,6 +122,7 @@ test.describe("payment and confirmation", () => {
     page,
   }) => {
     await buy(page, "boucles-eclipse", { shippingCode: "retrait" });
+    await expect(page.getByText(/Commande CMD-\d{4}-\d{6}/)).toBeVisible();
     // Assert where the link points before following it. When the invoice route
     // was not registered this test failed on the rendered 404 and said nothing
     // about the cause; the href is what distinguishes a bad link from a missing

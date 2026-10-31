@@ -33,6 +33,10 @@ export class AdminOrderController {
         size: z.integer().min(1).max(100).optional(),
         page: z.integer().min(0).optional(),
         status: orderStatusEnum.optional(),
+        /**
+         * A piece of the order number.
+         */
+        q: z.text({ maxLength: 40 }).optional(),
       }),
       response: db.page(orders.schema),
     },

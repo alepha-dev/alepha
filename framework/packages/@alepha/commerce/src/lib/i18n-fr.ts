@@ -171,6 +171,8 @@ export const commerceFr: Record<string, string> = {
   "commerce.admin.detail.tabDetails": "Détails",
   "commerce.admin.detail.tabStock": "Stock",
   "commerce.admin.detail.tabVariants": "Déclinaisons",
+  "commerce.admin.colNumber": "Commande",
+  "commerce.admin.searchNumber": "Rechercher par numéro de commande",
   "commerce.admin.categories.delete": "Supprimer",
   "commerce.admin.categories.deleteConfirm":
     "Supprimer définitivement « $1 » ? Une catégorie qui contient encore des produits ne peut pas être supprimée.",

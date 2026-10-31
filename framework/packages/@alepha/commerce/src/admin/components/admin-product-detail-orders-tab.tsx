@@ -56,7 +56,9 @@ export const AdminProductDetailOrdersTab = (
           orderId: {
             label: tr("commerce.admin.orders.colOrder", { default: "Order" }),
             cell: (line) => (
-              <code className="text-xs">#{line.orderId.slice(0, 8)}</code>
+              <code className="text-xs">
+                {line.orderNumber ?? `#${line.orderId.slice(0, 8)}`}
+              </code>
             ),
           },
           orderStatus: {

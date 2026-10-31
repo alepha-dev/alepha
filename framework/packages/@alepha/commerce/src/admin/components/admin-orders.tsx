@@ -80,6 +80,16 @@ export const AdminOrders = () => {
    * so a status added there is offered here without a second edit.
    */
   const filterFields = {
+    search: {
+      preset: "search",
+      control: {
+        inputProps: {
+          title: tr("commerce.admin.searchNumber", {
+            default: "Search by order number",
+          }),
+        },
+      },
+    },
     status: {
       schema: orderStatusEnum,
       mode: "default",
@@ -107,6 +117,7 @@ export const AdminOrders = () => {
           page: params.page,
           size: params.size,
           ...(params.filters?.status ? { status: params.filters.status } : {}),
+          ...(params.filters?.search ? { q: params.filters.search } : {}),
         },
       }),
     [client],
@@ -221,6 +232,14 @@ export const AdminOrders = () => {
           },
         ]}
         columns={{
+          number: {
+            label: tr("commerce.admin.colNumber", { default: "Order" }),
+            cell: (o) => (
+              <span className="font-mono text-xs">
+                {o.number ?? o.id.slice(0, 8).toUpperCase()}
+              </span>
+            ),
+          },
           createdAt: {
             label: tr("commerce.admin.colWhen", { default: "Date" }),
             sortable: true,
@@ -331,7 +350,7 @@ const AdminOrderSheet = (props: AdminOrderSheetProps) => {
       <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
         <SheetHeader>
           <SheetTitle className="font-mono text-sm">
-            {orderId.slice(0, 8).toUpperCase()}
+            {order?.number ?? orderId.slice(0, 8).toUpperCase()}
           </SheetTitle>
         </SheetHeader>
 

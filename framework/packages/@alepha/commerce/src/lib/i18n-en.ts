@@ -30,6 +30,8 @@
  * copied across verbatim.
  */
 export const commerceEn: Record<string, string> = {
+  "commerce.admin.colNumber": "Order",
+  "commerce.admin.searchNumber": "Search by order number",
   "commerce.admin.categories.delete": "Delete",
   "commerce.admin.categories.deleteConfirm":
     "Permanently delete “$1”? A category that still holds products cannot be deleted.",

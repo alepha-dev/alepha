@@ -105,7 +105,9 @@ const Merci = (props: MerciProps) => {
             {attente ? tr("thanks.pending") : tr("thanks.title")}
           </h1>
           <p className="mesure text-muted-foreground mt-2">
-            {tr("thanks.order", { args: [order.id.slice(0, 8).toUpperCase()] })}
+            {tr("thanks.order", {
+              args: [order.number ?? order.id.slice(0, 8).toUpperCase()],
+            })}
           </p>
         </div>
       </div>

@@ -1,8 +1,9 @@
-import { $inject, Alepha } from "alepha";
+import { $inject, $store, Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import {
   $repository,
+  $sequence,
   DatabaseProvider,
   DbEntityNotFoundError,
   type Page,
@@ -17,6 +18,7 @@ import {
 import { products } from "../entities/products.ts";
 import type { ProductVariantEntity } from "../entities/productVariants.ts";
 import { CommerceError } from "../errors/CommerceError.ts";
+import { orderConfig } from "../orderConfigAtom.ts";
 import { ProductKindRegistry } from "../providers/ProductKindRegistry.ts";
 import { ClaimLock } from "./ClaimLock.ts";
 import { LineConfigService } from "./LineConfigService.ts";
@@ -79,6 +81,7 @@ export interface CreateOrderInput {
  * and a line whose order has gone is still a true record of a sale.
  */
 export interface ProductOrderLine extends OrderItemEntity {
+  orderNumber?: string;
   orderStatus?: OrderStatus;
   orderCreatedAt?: string;
   orderCurrency?: string;
@@ -112,6 +115,12 @@ export class OrderService {
   protected readonly variants = $inject(VariantService);
   protected readonly lock = $inject(ClaimLock);
   protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly config = $store(orderConfig);
+
+  /**
+   * One counter per year, so a number stays short.
+   */
+  protected readonly orderNumber = $sequence({ name: "commerce_order" });
 
   /**
    * Create an order, snapshotting each line from its product.
@@ -206,8 +215,15 @@ export class OrderService {
       discountTotal += line.discount ?? 0;
     }
 
+    // Taken before the transaction, unlike an invoice's: inside it the counter's
+    // row stays locked until COMMIT, and every checkout would wait for the one
+    // ahead of it. An order that then fails burns its number, which is fine
+    // for a reference.
+    const number = await this.nextNumber();
+
     return this.db.transactional(async () => {
       const order = await this.orderRepo.create({
+        number,
         userId: input.userId,
         status,
         // Items + delivery: this is the figure the card is charged.
@@ -574,13 +590,24 @@ export class OrderService {
    * Back-office listing, filterable by status.
    */
   public async list(
-    query: { size?: number; page?: number; status?: OrderStatus } = {},
+    query: {
+      size?: number;
+      page?: number;
+      status?: OrderStatus;
+      /**
+       * A piece of the order number.
+       */
+      q?: string;
+    } = {},
   ): Promise<Page<OrderEntity>> {
     const where = this.orderRepo.createQueryWhere();
     // Omitted rather than set to undefined: a `where` value of `undefined`
     // throws rather than being ignored.
     if (query.status) {
       where.status = { eq: query.status };
+    }
+    if (query.q) {
+      where.number = { contains: query.q };
     }
     return this.orderRepo.paginate(
       { sort: "-createdAt", ...query },
@@ -623,6 +650,16 @@ export class OrderService {
         error: cleanup,
       });
     }
+  }
+
+  /**
+   * `CMD-2026-000123`. Zero-padded so a plain text sort matches creation
+   * order, like an invoice number.
+   */
+  protected async nextNumber(): Promise<string> {
+    const year = this.dateTime.now().format("YYYY");
+    const sequence = await this.orderNumber.next(year);
+    return `${this.config.numberPrefix}-${year}-${String(sequence).padStart(6, "0")}`;
   }
 
   /**
@@ -731,6 +768,7 @@ export class OrderService {
         const order = byId.get(item.orderId);
         return {
           ...item,
+          orderNumber: order?.number,
           orderStatus: order?.status,
           orderCreatedAt: order?.createdAt,
           orderCurrency: order?.currency,

@@ -23,6 +23,15 @@ export const orders = $entity({
     version: db.version(),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
+
+    /**
+     * What a person says on the phone: `CMD-2026-000123`. Unique and in
+     * sequence, per year. Not gapless, and it does not need to be: the legal
+     * numbering is the invoice's, and an abandoned checkout may burn a number.
+     * Unset on an order older than the column.
+     */
+    number: z.text({ minLength: 1, maxLength: 40 }).optional(),
+
     /**
      * Buyer. Optional — a walk-in sale is anonymous.
      */
@@ -130,6 +139,7 @@ export const orders = $entity({
     strayCaptures: z.array(z.json()).optional(),
   }),
   indexes: [
+    { columns: ["number"], unique: true },
     { columns: ["status"] },
     { columns: ["userId"] },
     { columns: ["createdAt"] },
