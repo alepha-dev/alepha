@@ -158,7 +158,7 @@ export const commerceEn: Record<string, string> = {
   "commerce.admin.ratePriceCents": "Price incl. tax (cents)",
   "commerce.admin.refund": "Refund",
   "commerce.admin.refundConfirm":
-    "Refund $1 to the customer? The money goes back to them and the stock is released. A credit note is issued.",
+    "Refund $1 to the customer? The money goes back to them. Stock is released only if the order has not shipped. A credit note is issued.",
   "commerce.admin.refundTitle": "Refund",
   "commerce.admin.refunded": "Order refunded.",
   "commerce.admin.reserved": "reserved",

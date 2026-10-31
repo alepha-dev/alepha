@@ -69,7 +69,8 @@ declare module "alepha" {
     };
 
     /**
-     * An order has been refunded and its stock put back.
+     * An order has been refunded, in part or in full. Its stock went back only
+     * if it was a full refund of an order that never shipped.
      */
     "commerce:order:refunded": {
       orderId: string;

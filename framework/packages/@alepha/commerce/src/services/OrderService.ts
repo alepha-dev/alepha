@@ -478,8 +478,16 @@ export class OrderService {
       // would put things back on the shelf that never returned.
       // The same for intervals: a full refund gives the court back, a partial
       // one leaves it booked.
+      //
+      // And only while the goods are still here. Once shipped they are with
+      // the customer or lost in transit, and restocking them sells units the
+      // shop does not have: a return records what actually came back. Read off
+      // `shippedAt`, because the status can hide it: a shipped order partially
+      // refunded reads `partially_refunded`.
       if (full) {
-        await this.stock.releaseOrder(id);
+        if (!current.shippedAt) {
+          await this.stock.releaseOrder(id);
+        }
         await this.resources.releaseOrder(id);
       }
 

@@ -181,7 +181,7 @@ export const AdminOrders = () => {
         return {
           title: tr("commerce.admin.refundTitle", { default: "Refund" }),
           description: tr("commerce.admin.refundConfirm", {
-            default: `Refund ${formatPrice(remaining, order.currency)} to the customer? The money goes back to them and the stock is released. A credit note is issued.`,
+            default: `Refund ${formatPrice(remaining, order.currency)} to the customer? The money goes back to them. Stock is released only if the order has not shipped. A credit note is issued.`,
             args: [formatPrice(remaining, order.currency)],
           }),
           destructive: true,

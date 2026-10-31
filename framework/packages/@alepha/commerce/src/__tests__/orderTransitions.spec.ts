@@ -166,6 +166,65 @@ describe("order transitions", () => {
   });
 });
 
+describe("a full refund", () => {
+  it("restocks an order that never left", async ({ expect }) => {
+    const ctx = await setup("postgres");
+    const { ring, orderId } = await reachPaid(ctx);
+
+    await ctx.orders.refund(orderId);
+
+    expect(await ctx.stock.onHand(ring.id)).toBe(3);
+  });
+
+  it("restocks an order packed but not posted", async ({ expect }) => {
+    const ctx = await setup("postgres");
+    const { ring, orderId } = await reachPaid(ctx);
+    await ctx.orders.markFulfilled(orderId);
+
+    await ctx.orders.refund(orderId);
+
+    expect(await ctx.stock.onHand(ring.id)).toBe(3);
+  });
+
+  it("leaves the ledger alone once the goods have left", async ({ expect }) => {
+    const ctx = await setup("postgres");
+    const { ring, orderId } = await reachPaid(ctx);
+    await ctx.orders.markShipped(orderId);
+
+    await ctx.orders.refund(orderId);
+
+    expect((await ctx.orders.getById(orderId)).status).toBe("refunded");
+    expect(await ctx.stock.onHand(ring.id)).toBe(2);
+  });
+
+  it("leaves the ledger alone after delivery", async ({ expect }) => {
+    const ctx = await setup("postgres");
+    const { ring, orderId } = await reachPaid(ctx);
+    await ctx.orders.markShipped(orderId);
+    await ctx.orders.markDelivered(orderId);
+
+    await ctx.orders.refund(orderId);
+
+    expect(await ctx.stock.onHand(ring.id)).toBe(2);
+  });
+
+  it("is not fooled by a partial refund hiding the shipment in the status", async ({
+    expect,
+  }) => {
+    const ctx = await setup("postgres");
+    const { ring, orderId } = await reachPaid(ctx);
+    await ctx.orders.markShipped(orderId);
+    await ctx.orders.refund(orderId, { refundedTotal: 1000 });
+    expect((await ctx.orders.getById(orderId)).status).toBe(
+      "partially_refunded",
+    );
+
+    await ctx.orders.refund(orderId);
+
+    expect(await ctx.stock.onHand(ring.id)).toBe(2);
+  });
+});
+
 describe("the stock ledger, order by order", () => {
   describe.each(["postgres", "sqlite"] as const)("on %s", (backend) => {
     describe("recordSale", () => {

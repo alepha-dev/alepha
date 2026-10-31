@@ -106,7 +106,7 @@ export const commerceFr: Record<string, string> = {
   "commerce.admin.refund": "Rembourser",
   "commerce.admin.refundTitle": "Rembourser",
   "commerce.admin.refundConfirm":
-    "Rembourser $1 au client ? L'argent repart chez lui et le stock est libéré. Un avoir sera émis.",
+    "Rembourser $1 au client ? L'argent repart chez lui. Le stock n'est libéré que si la commande n'est pas expédiée. Un avoir sera émis.",
   "commerce.admin.refunded": "Commande remboursée.",
   "commerce.admin.colWhen": "Date",
   "commerce.admin.colTotal": "Total",
