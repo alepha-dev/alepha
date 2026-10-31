@@ -425,7 +425,7 @@ func (s *server) handleRestore(w http.ResponseWriter, r *http.Request) {
 	// wait rather than fail for the length of it.
 	defer s.holdDuring(app.Key())()
 
-	if err := s.runner.Stop(app.Key(), stopGrace); err != nil {
+	if err := s.stopForMaintenance(app.Key()); err != nil {
 		writeError(w, http.StatusInternalServerError, "stop app: "+err.Error())
 		return
 	}

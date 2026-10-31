@@ -1623,8 +1623,9 @@ func (s *server) watchAndRollback(app state.App, previous string) {
 	}).Run(ctx)
 
 	if ctx.Err() != nil {
-		// Superseded by a newer deploy. Its watch owns this app now.
-		s.log.Info("watch cancelled by a newer deploy",
+		// Superseded by a newer deploy, whose watch owns this app now, or ended
+		// by a restore (see stopForMaintenance).
+		s.log.Info("watch cancelled by a newer deploy or a restore",
 			"app", app.Key(), "release", app.Release)
 		return
 	}
@@ -1689,6 +1690,25 @@ func (s *server) beginWatch(key string) context.Context {
 	ctx, cancel := context.WithCancel(context.Background())
 	s.watches[key] = cancel
 	return ctx
+}
+
+/*
+stopForMaintenance takes an app down for a job that brings it back itself: a
+restore, a storage migration.
+
+Its rollback watch ends here, first. From the outside such a stop is a release
+that died, and one that outlasts the threshold would have the rollback start
+the previous release in the middle of the job, on a database being swapped. Not
+armed again afterwards: what comes back is the job's result, not the release
+the watch was judging, and somebody is at the controls.
+*/
+func (s *server) stopForMaintenance(key string) error {
+	s.watchMu.Lock()
+	if cancel, ok := s.watches[key]; ok {
+		cancel()
+	}
+	s.watchMu.Unlock()
+	return s.runner.Stop(key, stopGrace)
 }
 
 // endWatch drops this app's entry, unless a newer watch has already claimed it.
