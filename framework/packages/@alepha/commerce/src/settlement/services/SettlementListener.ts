@@ -55,6 +55,20 @@ export class SettlementListener {
     },
   });
 
+  protected readonly onOrderShipped = $hook({
+    on: "commerce:order:shipped",
+    handler: async (event) => {
+      const executionId = await this.jobs.shippingNotice.push(
+        { orderId: event.orderId },
+        { key: event.orderId },
+      );
+      this.log.debug("Shipping notice job pushed", {
+        orderId: event.orderId,
+        executionId,
+      });
+    },
+  });
+
   protected readonly onOrderRefunded = $hook({
     on: "commerce:order:refunded",
     handler: async (event) => {

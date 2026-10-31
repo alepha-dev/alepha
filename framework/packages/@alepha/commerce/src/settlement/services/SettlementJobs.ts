@@ -64,6 +64,29 @@ export class SettlementJobs {
   });
 
   /**
+   * The "it's on its way" email, keyed on the order: at-least-once like the
+   * confirmation, and visible on the admin jobs page when SMTP is down.
+   */
+  public readonly shippingNotice = $job({
+    name: "system.commerce.ship-notice",
+    description: "Sends the shipping notice of an order handed to a carrier.",
+    schema: z.object({ orderId: z.uuid() }),
+    retention: { ok: { days: 30 }, error: { days: 90 } },
+    retry: {
+      retries: 4,
+      backoff: { initial: [1, "second"], factor: 4, max: [10, "minute"] },
+    },
+    timeout: [30, "seconds"],
+    handler: async ({ payload }) => {
+      if (this.alepha.has(OrderMailer)) {
+        await this.alepha
+          .inject(OrderMailer)
+          .sendShippingNoticeFor(payload.orderId);
+      }
+    },
+  });
+
+  /**
    * One credit note per refund, keyed on the refund. Idempotent through
    * `InvoiceService.creditRefund`, so a retry after a crash issues nothing
    * twice. An `error` row on the admin jobs page says a refund has no credit
