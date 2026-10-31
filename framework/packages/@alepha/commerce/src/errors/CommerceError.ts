@@ -103,6 +103,50 @@ export const VariantHasOrdersError = CommerceError.extend({
 export type VariantHasOrdersError = InstanceType<typeof VariantHasOrdersError>;
 
 /**
+ * A discount code or promotion that does not apply, with the reason a buyer is
+ * owed.
+ */
+export const PromotionRefusedError = CommerceError.extend({
+  name: "PROMOTION_REFUSED",
+  default: { status: 400 },
+  schema: z.object({
+    code: z.text(),
+    reason: z.enum([
+      "invalid",
+      "expired",
+      "notYet",
+      "minimum",
+      "usedUp",
+      "alreadyUsed",
+    ]),
+  }),
+  message: (data) =>
+    ({
+      invalid: `'${data.code}' is not a valid code.`,
+      expired: `'${data.code}' is no longer valid.`,
+      notYet: `'${data.code}' is not valid yet.`,
+      minimum: `'${data.code}' needs a higher minimum order.`,
+      usedUp: `'${data.code}' has been used up.`,
+      alreadyUsed: `You have already used '${data.code}'.`,
+    })[data.reason],
+});
+
+export type PromotionRefusedError = InstanceType<typeof PromotionRefusedError>;
+
+/**
+ * A promotion that has been used cannot be deleted.
+ */
+export const PromotionInUseError = CommerceError.extend({
+  name: "PROMOTION_IN_USE",
+  default: { status: 409 },
+  schema: z.object({ promotionId: z.text(), used: z.number() }),
+  message: (data) =>
+    `Promotion ${data.promotionId} has been used ${data.used} time(s) and cannot be deleted. Switch it off instead.`,
+});
+
+export type PromotionInUseError = InstanceType<typeof PromotionInUseError>;
+
+/**
  * Not enough stock on hand for the requested quantity.
  */
 export const InsufficientStockError = CommerceError.extend({

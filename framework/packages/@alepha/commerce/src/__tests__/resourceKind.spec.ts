@@ -67,6 +67,7 @@ const line = (resourceIds: string[], from = "18:00", to = "19:30") => ({
  * An order line built by hand, to drive the handler with no order around it.
  */
 const anItem = (lineConfig: CourtLine): OrderItemEntity => ({
+  discount: 0,
   id: randomUUID(),
   createdAt: new Date().toISOString(),
   orderId: randomUUID(),

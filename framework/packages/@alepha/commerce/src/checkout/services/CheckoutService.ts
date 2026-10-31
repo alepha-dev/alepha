@@ -3,6 +3,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository, DatabaseProvider } from "alepha/orm";
 
+import { CartDiscountProvider } from "../../cart/providers/CartDiscountProvider.ts";
 import { CartService } from "../../cart/services/CartService.ts";
 import {
   CommerceError,
@@ -29,6 +30,7 @@ import { TaxService } from "./TaxService.ts";
  */
 export interface CheckoutTotals {
   subtotal: number;
+  discountTotal: number;
   shippingTotal: number;
   taxTotal: number;
   grandTotal: number;
@@ -51,6 +53,7 @@ export class CheckoutService {
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly repo = $repository(checkoutSessions);
   protected readonly carts = $inject(CartService);
+  protected readonly discounts = $inject(CartDiscountProvider);
   protected readonly orders = $inject(OrderService);
   protected readonly tax = $inject(TaxService);
   protected readonly payment = $inject(CheckoutPaymentProvider);
@@ -229,6 +232,11 @@ export class CheckoutService {
     if (priced.lines.length === 0) {
       throw new CommerceError("Cannot pay for an empty cart.");
     }
+    // Same rule as a withdrawn delivery rate: the buyer accepted a figure with
+    // this code, and charging a different one is not a recoverable mistake.
+    if (priced.codeRefusal) {
+      throw priced.codeRefusal;
+    }
 
     // Re-quote the chosen method rather than trusting the stored total: the row
     // may be minutes old, and a rate can have changed or been withdrawn. If the
@@ -284,8 +292,10 @@ export class CheckoutService {
         productId: l.productId,
         variantId: l.variantId,
         quantity: l.quantity,
+        discount: l.discount,
         lineConfig: l.lineConfig,
       })),
+      promotionCode: priced.promotionCode,
       shippingMethod: session.shippingMethod,
       shippingAddress: session.shippingAddress as
         | Record<string, any>
@@ -324,15 +334,24 @@ export class CheckoutService {
 
     let handoff: PaymentHandoff;
     try {
+      // The moment a usage limit is decided: a cart only ever read it.
+      if (priced.discount) {
+        await this.discounts.redeem(priced.discount, {
+          orderId: order.id,
+          userId: session.userId,
+          email: session.email,
+        });
+      }
       handoff = await this.payment.start(paying, {
         returnUrl: options.returnUrl,
         email: session.email,
       });
     } catch (error) {
-      // A PSP that refuses the handoff must not strand the session in
-      // `paying` with a pending order: nothing reconciles that state (the
-      // `commerce:checkout:paymentStarted` event is only emitted after the handoff)
-      // and the buyer's retry was refused as "not open".
+      // A PSP that refuses the handoff, or a promotion that ran out, must not
+      // strand the session in `paying` with a pending order: nothing reconciles
+      // that state (the `commerce:checkout:paymentStarted` event is only
+      // emitted after the handoff) and the buyer's retry was refused as "not
+      // open".
       await this.orders.cancel(order.id);
       await this.repo.updateById(sessionId, { status: "open" });
       throw error;
@@ -652,10 +671,13 @@ export class CheckoutService {
     priced: Awaited<ReturnType<CartService["price"]>>,
     shippingQuote?: CheckoutShippingQuote,
   ): CheckoutTotals {
-    const shippingTotal = shippingQuote?.price ?? 0;
+    const shippingTotal = priced.discount?.freeShipping
+      ? 0
+      : (shippingQuote?.price ?? 0);
     const tax = this.tax.compute(priced, shippingTotal);
     return {
       subtotal: priced.subtotal,
+      discountTotal: priced.discountTotal,
       shippingTotal,
       taxTotal: tax.total,
       grandTotal: priced.subtotal + shippingTotal,

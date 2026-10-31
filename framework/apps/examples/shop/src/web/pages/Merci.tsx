@@ -134,7 +134,7 @@ const Merci = (props: MerciProps) => {
               ) : null}
             </span>
             <Prix
-              cents={item.unitPrice * item.quantity}
+              cents={item.unitPrice * item.quantity - item.discount}
               currency={order.currency}
             />
           </li>
@@ -142,6 +142,17 @@ const Merci = (props: MerciProps) => {
       </ul>
 
       <dl className="trait mt-2 space-y-2 border-t pt-5 text-sm">
+        {order.discountTotal > 0 ? (
+          <div className="flex justify-between">
+            <dt className="text-muted-foreground">
+              {tr("thanks.discount")}
+              {order.promotionCode ? ` · ${order.promotionCode}` : ""}
+            </dt>
+            <dd>
+              <Prix cents={-order.discountTotal} currency={order.currency} />
+            </dd>
+          </div>
+        ) : null}
         {order.shippingTotal > 0 ? (
           <div className="flex justify-between">
             <dt className="text-muted-foreground">

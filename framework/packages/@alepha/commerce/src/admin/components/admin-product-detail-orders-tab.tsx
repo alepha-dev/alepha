@@ -91,7 +91,10 @@ export const AdminProductDetailOrdersTab = (
             align: "right",
             cell: (line) => (
               <span className="font-medium tabular-nums">
-                {money(line.unitPrice * line.quantity, line.orderCurrency)}
+                {money(
+                  line.unitPrice * line.quantity - line.discount,
+                  line.orderCurrency,
+                )}
               </span>
             ),
           },

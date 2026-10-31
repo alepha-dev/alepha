@@ -66,6 +66,24 @@ export const usePanier = () => {
     [client, setPanier],
   );
 
+  const code = useAction<[code: string]>(
+    {
+      handler: async (_ctx, value: string) => {
+        setPanier(await client.commerceCartApplyCode({ body: { code: value } }));
+      },
+    },
+    [client, setPanier],
+  );
+
+  const retraitCode = useAction(
+    {
+      handler: async () => {
+        setPanier(await client.commerceCartRemoveCode({}));
+      },
+    },
+    [client, setPanier],
+  );
+
   return {
     panier,
     /**
@@ -75,6 +93,8 @@ export const usePanier = () => {
     ajouter: ajout.run,
     definirQuantite: miseAJour.run,
     retirer: retrait.run,
+    appliquerCode: code.run,
+    retirerCode: retraitCode.run,
     /**
      * True while any cart write is in flight. A second call to a running verb
      * is dropped by `useAction`, so the controls that send one are held while

@@ -34,6 +34,12 @@ export const carts = $entity({
      * for signed-in users, say) instead of a constant buried in a job.
      */
     expiresAt: z.text(),
+
+    /**
+     * The code the buyer applied, re-judged every time the cart is priced.
+     * Unset when none is, or when the cart module has no promotions behind it.
+     */
+    promotionCode: z.text({ maxLength: 64 }).optional(),
   }),
   indexes: [
     { columns: ["token"], unique: true },

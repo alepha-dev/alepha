@@ -42,6 +42,18 @@ export const orders = $entity({
     total: z.integer().min(0),
 
     /**
+     * Taken off the items, tax included, already deducted from {@link total}.
+     * Spread over the lines on `orderItems.discount`.
+     */
+    discountTotal: db.default(z.integer().min(0), 0),
+
+    /**
+     * The code that earned it, as typed. A snapshot, not a reference: the
+     * promotion can change or go, and this order keeps saying what it had.
+     */
+    promotionCode: z.text({ maxLength: 64 }).optional(),
+
+    /**
      * Delivery charged, already included in {@link total}.
      */
     shippingTotal: db.default(z.integer().min(0), 0),

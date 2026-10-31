@@ -189,6 +189,27 @@ test.describe("cart", () => {
     await expect(page.getByText("450 €").first()).toBeVisible();
   });
 
+  test("a discount code lowers the cart, and a bad one says why", async ({
+    page,
+  }) => {
+    await page.goto("/produit/collier-aurore");
+    await page.getByRole("button", { name: "Ajouter au panier" }).click();
+    await expect(page.getByText(/dans votre panier/)).toBeVisible();
+
+    await page.goto("/panier");
+    await page.locator('input[name="code"]').fill("PASUNCODE");
+    await page.getByRole("button", { name: "Appliquer" }).click();
+    await expect(page.getByText(/is not a valid code/)).toBeVisible();
+
+    await page.locator('input[name="code"]').fill("bienvenue10");
+    await page.getByRole("button", { name: "Appliquer" }).click();
+    await expect(page.getByText("Bienvenue à l'atelier")).toBeVisible();
+    await expect(page.getByText("80,10 €").first()).toBeVisible();
+
+    await page.getByRole("button", { name: "Retirer le code" }).click();
+    await expect(page.getByText("Bienvenue à l'atelier")).toHaveCount(0);
+  });
+
   test("changing a quantity re-prices from the server", async ({ page }) => {
     await page.goto("/produit/collier-aurore");
     await page.getByRole("button", { name: "Ajouter au panier" }).click();

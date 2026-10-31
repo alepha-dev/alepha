@@ -46,6 +46,13 @@ export const orderItems = $entity({
     unitPrice: z.integer().min(0),
 
     /**
+     * This line's share of the order's discount, tax included. What the line
+     * cost the buyer is `unitPrice * quantity - discount`: the base its VAT is
+     * computed on, and what refunding it gives back.
+     */
+    discount: db.default(z.integer().min(0), 0),
+
+    /**
      * The product's VAT rate at order time, in basis points. Unset means the
      * seller's default applied.
      *

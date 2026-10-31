@@ -382,7 +382,7 @@ const AdminOrderSheet = (props: AdminOrderSheetProps) => {
                       </span>
                       <span className="tabular-nums">
                         {formatPrice(
-                          item.unitPrice * item.quantity,
+                          item.unitPrice * item.quantity - item.discount,
                           order.currency,
                         )}
                       </span>
@@ -391,6 +391,19 @@ const AdminOrderSheet = (props: AdminOrderSheetProps) => {
                 </ul>
 
                 <dl className="mt-4 space-y-1 text-sm">
+                  {order.discountTotal > 0 ? (
+                    <div className="flex justify-between">
+                      <dt className="text-muted-foreground">
+                        {tr("commerce.admin.discountLine", {
+                          default: "Discount",
+                        })}
+                        {order.promotionCode ? ` · ${order.promotionCode}` : ""}
+                      </dt>
+                      <dd className="tabular-nums">
+                        {formatPrice(-order.discountTotal, order.currency)}
+                      </dd>
+                    </div>
+                  ) : null}
                   {order.shippingTotal > 0 ? (
                     <div className="flex justify-between">
                       <dt className="text-muted-foreground">

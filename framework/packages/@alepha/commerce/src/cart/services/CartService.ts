@@ -5,11 +5,18 @@ import { $repository } from "alepha/orm";
 
 import { type ProductEntity, products } from "../../entities/products.ts";
 import type { ProductVariantEntity } from "../../entities/productVariants.ts";
-import { CommerceError } from "../../errors/CommerceError.ts";
+import {
+  CommerceError,
+  PromotionRefusedError,
+} from "../../errors/CommerceError.ts";
 import { LineConfigService } from "../../services/LineConfigService.ts";
 import { VariantService } from "../../services/VariantService.ts";
 import { type CartItemEntity, cartItems } from "../entities/cartItems.ts";
 import { type CartEntity, carts } from "../entities/carts.ts";
+import {
+  type CartDiscount,
+  CartDiscountProvider,
+} from "../providers/CartDiscountProvider.ts";
 
 /**
  * A cart priced against the catalog as it stands right now.
@@ -18,10 +25,37 @@ export interface PricedCart {
   cart: CartEntity;
   lines: PricedCartLine[];
   /**
-   * Sum of the lines, in the smallest currency unit.
+   * What the lines come to before any discount.
+   */
+  itemsTotal: number;
+  /**
+   * Taken off the items, tax included. `0` without a discount.
+   */
+  discountTotal: number;
+  /**
+   * Sum of the lines: what the items cost the buyer, after the discount.
+   * Everything downstream reads this one, delivery thresholds included, since
+   * VAT is owed on what is paid.
    */
   subtotal: number;
   currency: string;
+  /**
+   * The discount this cart earned.
+   */
+  discount?: CartDiscount;
+  /**
+   * What the buyer reads for it.
+   */
+  discountLabel?: string;
+  /**
+   * The code at work, when the discount came from one.
+   */
+  promotionCode?: string;
+  /**
+   * Why the applied code stopped applying. The cart prices without it, and
+   * `pay()` refuses rather than charge a figure the buyer did not see.
+   */
+  codeRefusal?: PromotionRefusedError;
 }
 
 export interface PricedCartLine {
@@ -55,8 +89,13 @@ export interface PricedCartLine {
   rateBps?: number;
   quantity: number;
   /**
-   * `unitPrice * quantity`. The unit price comes from the kind's `unitPrice`
-   * hook when it has one, else from the catalogue, and never from the client.
+   * This line's share of the cart's discount.
+   */
+  discount: number;
+  /**
+   * `unitPrice * quantity - discount`. The unit price comes from the kind's
+   * `unitPrice` hook when it has one, else from the catalogue, and never from
+   * the client.
    */
   lineTotal: number;
   /**
@@ -86,6 +125,7 @@ export class CartService {
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly lines = $inject(LineConfigService);
   protected readonly variants = $inject(VariantService);
+  protected readonly discounts = $inject(CartDiscountProvider);
   protected readonly dateTime = $inject(DateTimeProvider);
 
   /**
@@ -255,6 +295,33 @@ export class CartService {
     for (const line of lines) {
       await this.itemRepo.deleteById(line.id);
     }
+    await this.cartRepo.updateById(cartId, { promotionCode: null });
+  }
+
+  /**
+   * Apply a discount code to the cart, refusing with the reason when it does
+   * not apply to this basket.
+   *
+   * @throws PromotionRefusedError
+   */
+  public async applyCode(cartId: string, code: string): Promise<CartEntity> {
+    const normalised = code.trim().toUpperCase();
+    const { cart, itemsTotal } = await this.price(cartId);
+    const discount = await this.discounts.evaluate({
+      cart,
+      itemsTotal,
+      code: normalised,
+    });
+    if (!discount) {
+      throw new PromotionRefusedError({ code: normalised, reason: "invalid" });
+    }
+    await this.touch(cartId);
+    return this.cartRepo.updateById(cartId, { promotionCode: normalised });
+  }
+
+  public async removeCode(cartId: string): Promise<CartEntity> {
+    await this.touch(cartId);
+    return this.cartRepo.updateById(cartId, { promotionCode: null });
   }
 
   /**
@@ -280,7 +347,14 @@ export class CartService {
     });
 
     if (items.length === 0) {
-      return { cart, lines: [], subtotal: 0, currency: "EUR" };
+      return {
+        cart,
+        lines: [],
+        itemsTotal: 0,
+        discountTotal: 0,
+        subtotal: 0,
+        currency: "EUR",
+      };
     }
 
     const productIds = [...new Set(items.map((i) => i.productId))];
@@ -323,17 +397,89 @@ export class CartService {
         unitPrice,
         rateBps: product.vatRateBps,
         quantity: item.quantity,
+        discount: 0,
         lineTotal: unitPrice * item.quantity,
         image: variant?.image ?? product.images[0],
       });
     }
 
+    const itemsTotal = lines.reduce((sum, l) => sum + l.lineTotal, 0);
+    const { discount, codeRefusal } = await this.earned(cart, itemsTotal);
+    this.applyDiscount(lines, discount?.amount ?? 0);
+
     return {
       cart,
       lines,
+      itemsTotal,
+      discountTotal: discount?.amount ?? 0,
       subtotal: lines.reduce((sum, l) => sum + l.lineTotal, 0),
       currency: lines[0] ? byId.get(lines[0].productId)!.currency : "EUR",
+      discount,
+      discountLabel: discount?.label,
+      promotionCode: discount?.code,
+      codeRefusal,
     };
+  }
+
+  /**
+   * What this cart earns. A code that stopped applying is not a failure to
+   * price: the cart still renders, without it, and says why.
+   */
+  protected async earned(
+    cart: CartEntity,
+    itemsTotal: number,
+  ): Promise<{
+    discount?: CartDiscount;
+    codeRefusal?: PromotionRefusedError;
+  }> {
+    if (itemsTotal === 0) {
+      return {};
+    }
+    try {
+      return {
+        discount: await this.discounts.evaluate({
+          cart,
+          itemsTotal,
+          code: cart.promotionCode,
+        }),
+      };
+    } catch (error) {
+      if (!(error instanceof PromotionRefusedError) || !cart.promotionCode) {
+        throw error;
+      }
+      return {
+        discount: await this.discounts.evaluate({ cart, itemsTotal }),
+        codeRefusal: error,
+      };
+    }
+  }
+
+  /**
+   * Take the discount off the tax-inclusive lines, in proportion to what each
+   * comes to, so VAT is computed on what is actually paid, rate by rate.
+   *
+   * Whole cents: every line takes the floor of its share, and what that leaves
+   * goes one cent at a time to the lines with the largest remainders, so the
+   * shares add up to the discount exactly.
+   */
+  protected applyDiscount(lines: PricedCartLine[], amount: number): void {
+    const total = lines.reduce((sum, l) => sum + l.lineTotal, 0);
+    if (amount <= 0 || total <= 0) {
+      return;
+    }
+
+    const shares = lines.map((line, index) => {
+      const exact = (line.lineTotal * amount) / total;
+      return { index, floor: Math.floor(exact), rest: exact % 1 };
+    });
+    let left = amount - shares.reduce((sum, s) => sum + s.floor, 0);
+    for (const share of [...shares].sort((a, b) => b.rest - a.rest)) {
+      const extra = left > 0 ? 1 : 0;
+      left -= extra;
+      const line = lines[share.index]!;
+      line.discount = share.floor + extra;
+      line.lineTotal -= line.discount;
+    }
   }
 
   /**

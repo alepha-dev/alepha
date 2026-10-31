@@ -84,7 +84,8 @@ export class InvoiceService {
       sku: item.sku,
       quantity: item.quantity,
       unitPrice: item.unitPrice,
-      lineTotal: item.unitPrice * item.quantity,
+      discount: item.discount > 0 ? item.discount : undefined,
+      lineTotal: item.unitPrice * item.quantity - item.discount,
       rateBps: rateOf(item.rateBps),
     }));
 

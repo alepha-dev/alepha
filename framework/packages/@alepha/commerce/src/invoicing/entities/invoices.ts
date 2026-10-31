@@ -75,6 +75,7 @@ export const invoices = $entity({
         sku: z.text({ maxLength: 64 }).optional(),
         quantity: z.integer(),
         unitPrice: z.integer(),
+        discount: z.integer().optional(),
         lineTotal: z.integer(),
         rateBps: z.integer(),
       }),
@@ -120,7 +121,11 @@ export interface InvoiceLine {
    */
   unitPrice: number;
   /**
-   * Tax-inclusive line total.
+   * What the line's share of a discount took off, when it had one.
+   */
+  discount?: number;
+  /**
+   * Tax-inclusive line total, after the discount: the base the VAT is on.
    */
   lineTotal: number;
   rateBps: number;

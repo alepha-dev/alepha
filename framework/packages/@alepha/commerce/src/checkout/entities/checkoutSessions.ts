@@ -64,6 +64,10 @@ export const checkoutSessions = $entity({
      * Totals as last computed. Recomputed before the order is created.
      */
     subtotal: db.default(z.integer().min(0), 0),
+    /**
+     * Already taken off {@link subtotal}.
+     */
+    discountTotal: db.default(z.integer().min(0), 0),
     shippingTotal: db.default(z.integer().min(0), 0),
     taxTotal: db.default(z.integer().min(0), 0),
     grandTotal: db.default(z.integer().min(0), 0),

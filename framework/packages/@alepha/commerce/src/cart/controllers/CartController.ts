@@ -15,6 +15,7 @@ const cartLineSchema = z.object({
   kind: z.text(),
   unitPrice: z.integer(),
   quantity: z.integer(),
+  discount: z.integer(),
   lineTotal: z.integer(),
   image: z.text().optional(),
 });
@@ -22,6 +23,14 @@ const cartLineSchema = z.object({
 const pricedCartSchema = z.object({
   cartId: z.uuid(),
   lines: z.array(cartLineSchema),
+  itemsTotal: z.integer(),
+  discountTotal: z.integer(),
+  discountLabel: z.text().optional(),
+  promotionCode: z.text().optional(),
+  /**
+   * The applied code does not apply any more, and why.
+   */
+  promotionRefused: z.text().optional(),
   subtotal: z.integer(),
   currency: z.text(),
 });
@@ -124,6 +133,35 @@ export class CartController {
     },
   });
 
+  public readonly commerceCartApplyCode = $action({
+    method: "PUT",
+    path: `${this.url}/code`,
+    group: this.group,
+    description: "Apply a discount code",
+    schema: {
+      body: z.object({ code: z.text({ minLength: 1, maxLength: 64 }) }),
+      response: pricedCartSchema,
+    },
+    handler: async ({ body }) => {
+      const cart = await this.resolveCart();
+      await this.carts.applyCode(cart.id, body.code);
+      return this.priceOf(cart.id);
+    },
+  });
+
+  public readonly commerceCartRemoveCode = $action({
+    method: "DELETE",
+    path: `${this.url}/code`,
+    group: this.group,
+    description: "Remove the discount code",
+    schema: { response: pricedCartSchema },
+    handler: async () => {
+      const cart = await this.resolveCart();
+      await this.carts.removeCode(cart.id);
+      return this.priceOf(cart.id);
+    },
+  });
+
   /**
    * Read the cart the cookie points at, minting one if this visitor has none -
    * and, when the visitor is signed in, make sure it is THEIR cart.
@@ -194,9 +232,15 @@ export class CartController {
         kind: l.kind,
         unitPrice: l.unitPrice,
         quantity: l.quantity,
+        discount: l.discount,
         lineTotal: l.lineTotal,
         image: l.image,
       })),
+      itemsTotal: priced.itemsTotal,
+      discountTotal: priced.discountTotal,
+      discountLabel: priced.discountLabel,
+      promotionCode: priced.promotionCode,
+      promotionRefused: priced.codeRefusal?.message,
       subtotal: priced.subtotal,
       currency: priced.currency,
     };

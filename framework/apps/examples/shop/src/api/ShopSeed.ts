@@ -5,6 +5,7 @@ import {
   VariantService,
 } from "@alepha/commerce";
 import { sellerIdentityAtom } from "@alepha/commerce/invoicing";
+import { PromotionService } from "@alepha/commerce/promotions";
 import { ShippingService } from "@alepha/commerce/shipping";
 import { $hook, $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
@@ -64,6 +65,7 @@ export class ShopSeed {
   protected readonly stock = $inject(StockService);
   protected readonly variants = $inject(VariantService);
   protected readonly shipping = $inject(ShippingService);
+  protected readonly promotions = $inject(PromotionService);
   protected readonly media = $inject(ShopMedia);
   protected readonly drawings = $inject(ShopDrawings);
 
@@ -87,8 +89,24 @@ export class ShopSeed {
 
       await this.seedShipping();
       await this.seedCatalogue();
+      await this.seedPromotions();
     },
   });
+
+  /**
+   * One code, so the cart's field has something to accept.
+   */
+  protected async seedPromotions(): Promise<void> {
+    if (await this.promotions.findByCode("BIENVENUE10")) {
+      return;
+    }
+    await this.promotions.create({
+      name: "Bienvenue à l'atelier",
+      code: "BIENVENUE10",
+      kind: "percent",
+      value: 1000,
+    });
+  }
 
   protected pieces(): Piece[] {
     const { OR_JAUNE, OR_GRIS, ARGENT } = ShopDrawings;

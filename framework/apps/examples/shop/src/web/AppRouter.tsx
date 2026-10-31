@@ -4,13 +4,14 @@ import type {
   AdminProductController,
 } from "@alepha/commerce/admin";
 import type { CheckoutController } from "@alepha/commerce/checkout";
+import type { AdminPromotionController } from "@alepha/commerce/promotions";
 import type { AdminShippingController } from "@alepha/commerce/shipping";
 import { $pageAdmin } from "@alepha/ui/admin";
 import { $atom, $inject, Alepha, z } from "alepha";
 import { Tr } from "alepha/react/i18n";
 import { $page, Redirection } from "alepha/react/router";
 import { $client } from "alepha/server/links";
-import { Gem, Package, Truck } from "lucide-react";
+import { BadgePercent, Gem, Package, Truck } from "lucide-react";
 
 import { Layout } from "./Layout.tsx";
 
@@ -64,6 +65,7 @@ export class AppRouter {
   protected readonly productApi = $client<AdminProductController>();
   protected readonly orderApi = $client<AdminOrderController>();
   protected readonly shippingApi = $client<AdminShippingController>();
+  protected readonly promotionApi = $client<AdminPromotionController>();
 
   // ── Storefront ───────────────────────────────────────────────────────
 
@@ -350,5 +352,18 @@ export class AppRouter {
     },
     can: () => this.shippingApi.commerceAdminShippingRates.can(),
     lazy: () => import("./pages/admin/AdminLivraison.tsx"),
+  });
+
+  adminPromotions = $pageAdmin({
+    path: "/promotions",
+    head: { title: "Promotions" },
+    nav: {
+      label: <Tr k="admin.promotions" />,
+      icon: <BadgePercent />,
+      group: "Commerce",
+      order: 103,
+    },
+    can: () => this.promotionApi.commerceAdminPromotionList.can(),
+    lazy: () => import("./pages/admin/AdminPromotionsPage.tsx"),
   });
 }

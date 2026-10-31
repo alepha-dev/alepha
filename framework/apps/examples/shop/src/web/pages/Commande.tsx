@@ -131,6 +131,7 @@ const Commande = () => {
   const [etape, setEtape] = useState(1);
   const [totaux, setTotaux] = useState<{
     subtotal: number;
+    discountTotal: number;
     shippingTotal: number;
     taxTotal: number;
     grandTotal: number;
@@ -420,6 +421,17 @@ const Commande = () => {
       <aside className="trait h-fit border-t pt-6 md:sticky md:top-24">
         <h2 className="estampe text-xs">{tr("checkout.summary")}</h2>
         <dl className="mt-5 space-y-2 text-sm">
+          {(totaux?.discountTotal ?? panier.discountTotal) > 0 ? (
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">{tr("checkout.discount")}</dt>
+              <dd>
+                <Prix
+                  cents={-(totaux?.discountTotal ?? panier.discountTotal)}
+                  currency={totaux?.currency}
+                />
+              </dd>
+            </div>
+          ) : null}
           <div className="flex justify-between">
             <dt className="text-muted-foreground">{tr("cart.subtotal")}</dt>
             <dd>

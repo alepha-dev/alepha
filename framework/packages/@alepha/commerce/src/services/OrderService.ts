@@ -33,6 +33,12 @@ export interface OrderLineInput {
    */
   variantId?: string;
   /**
+   * This line's share of a discount, tax included: the order takes
+   * `unitPrice * quantity - discount` for it. The caller computed it and is
+   * trusted to: a line config comes from a buyer, a discount never does.
+   */
+  discount?: number;
+  /**
    * What the line chooses beyond the product, for a kind that takes it (a
    * court and an interval). Validated again by the kind's handler before the
    * order is written, whatever validated it before: without that, a client
@@ -48,6 +54,10 @@ export interface CreateOrderInput {
   paymentIntentId?: string;
   shippingMethod?: string;
   shippingAddress?: Record<string, any>;
+  /**
+   * The code behind the lines' discounts, frozen on the order.
+   */
+  promotionCode?: string;
   /**
    * Delivery charged. Added to the line-item sum to form `orders.total`, which
    * is what the customer pays — see the note on that column.
@@ -190,8 +200,10 @@ export class OrderService {
 
     const shippingTotal = input.shippingTotal ?? 0;
     let itemsTotal = 0;
+    let discountTotal = 0;
     for (const [index, line] of input.lines.entries()) {
       itemsTotal += accepted[index]!.unitPrice * line.quantity;
+      discountTotal += line.discount ?? 0;
     }
 
     return this.db.transactional(async () => {
@@ -199,7 +211,9 @@ export class OrderService {
         userId: input.userId,
         status,
         // Items + delivery: this is the figure the card is charged.
-        total: itemsTotal + shippingTotal,
+        total: itemsTotal - discountTotal + shippingTotal,
+        discountTotal,
+        promotionCode: input.promotionCode,
         shippingTotal,
         taxTotal: input.taxTotal ?? 0,
         currency,
@@ -222,6 +236,7 @@ export class OrderService {
             sku: variant?.sku,
             variantLabel: variant && this.variants.label(product, variant),
             unitPrice: accepted[index]!.unitPrice,
+            discount: line.discount ?? 0,
             rateBps: product.vatRateBps,
             quantity: line.quantity,
             config: product.config,

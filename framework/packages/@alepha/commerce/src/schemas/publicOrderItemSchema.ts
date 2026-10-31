@@ -21,6 +21,7 @@ export const publicOrderItemSchema = z.object({
   sku: z.text({ maxLength: 64 }).optional(),
   variantLabel: z.text({ maxLength: 200 }).optional(),
   unitPrice: z.integer(),
+  discount: z.integer(),
   rateBps: z.integer().optional(),
   quantity: z.integer(),
   /**

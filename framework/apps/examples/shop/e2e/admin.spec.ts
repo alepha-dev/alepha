@@ -155,6 +155,30 @@ test.describe("catalogue management", () => {
     await expect(page.getByText("ALLIANCE-ZENITH-62")).toHaveCount(0);
   });
 
+  test("a promotion created in the admin is taken by the cart", async ({
+    page,
+  }) => {
+    await page.goto("/admin/promotions");
+    await expect(page.getByText("BIENVENUE10")).toBeVisible();
+
+    await page.getByRole("button", { name: "Nouvelle promotion" }).click();
+    await page.locator('input[name="name"]').fill("Vingt euros");
+    await page.locator('input[name="code"]').fill("VINGT");
+    await page.locator('input[name="value"]').fill("2000");
+    await page.getByRole("combobox").filter({ hasText: "Pourcentage" }).click();
+    await page.getByRole("option", { name: "Montant fixe" }).click();
+    await page.getByRole("button", { name: "Enregistrer" }).click();
+    await expect(page.getByText("VINGT", { exact: true })).toBeVisible();
+
+    await page.goto("/produit/collier-aurore");
+    await page.getByRole("button", { name: "Ajouter au panier" }).click();
+    await expect(page.getByText(/dans votre panier/)).toBeVisible();
+    await page.goto("/panier");
+    await page.locator('input[name="code"]').fill("vingt");
+    await page.getByRole("button", { name: "Appliquer" }).click();
+    await expect(page.getByText("Vingt euros")).toBeVisible();
+  });
+
   test("a price edited in the admin shows on the storefront", async ({
     page,
   }) => {
@@ -491,6 +515,7 @@ test.describe("the admin sidebar", () => {
       "/admin/produits Produits",
       "/admin/commandes Commandes",
       "/admin/livraison Livraison",
+      "/admin/promotions Promotions",
       "/admin/users Utilisateurs",
       "/admin/sessions Sessions",
       "/admin/audits Journal d'audit",

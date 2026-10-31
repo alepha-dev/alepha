@@ -13,6 +13,7 @@ const sessionSchema = z.object({
   id: z.uuid(),
   status: z.text(),
   subtotal: z.integer(),
+  discountTotal: z.integer(),
   shippingTotal: z.integer(),
   taxTotal: z.integer(),
   grandTotal: z.integer(),

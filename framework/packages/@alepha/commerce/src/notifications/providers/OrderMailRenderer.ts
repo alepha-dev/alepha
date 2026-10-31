@@ -48,7 +48,7 @@ export class DefaultOrderMailRenderer extends OrderMailRenderer {
           `<li>${this.escape(item.name)}${
             item.variantLabel ? ` (${this.escape(item.variantLabel)})` : ""
           } × ${item.quantity} — ${this.money(
-            item.unitPrice * item.quantity,
+            item.unitPrice * item.quantity - item.discount,
             order.currency,
           )}</li>`,
       )
@@ -58,6 +58,11 @@ export class DefaultOrderMailRenderer extends OrderMailRenderer {
       subject: `Votre commande est confirmée`,
       body: `<p>Merci, nous avons bien reçu votre commande et votre paiement.</p>
 <ul>${lines}</ul>
+${
+  order.discountTotal > 0
+    ? `<p>Remise déduite : ${this.money(order.discountTotal, order.currency)}</p>`
+    : ""
+}
 ${
   order.shippingTotal > 0
     ? `<p>Livraison : ${this.money(order.shippingTotal, order.currency)}</p>`

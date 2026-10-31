@@ -35,6 +35,7 @@
     "./cart": "./src/cart/index.ts",
     "./checkout": "./src/checkout/index.ts",
     "./shipping": "./src/shipping/index.ts",
+    "./promotions": "./src/promotions/index.ts",
     "./invoicing": "./src/invoicing/index.ts",
     "./notifications": "./src/notifications/index.ts",
     "./settlement": "./src/settlement/index.ts",
@@ -44,7 +45,8 @@
     "./styles.css": "./src/styles.css",
     "./admin/components/*": "./src/admin/components/*.tsx",
     "./checkout/components/*": "./src/checkout/components/*",
-    "./shipping/components/*": "./src/shipping/components/*.tsx"
+    "./shipping/components/*": "./src/shipping/components/*.tsx",
+    "./promotions/components/*": "./src/promotions/components/*.tsx"
   },
   "scripts": {
     "lint": "alepha lint",
