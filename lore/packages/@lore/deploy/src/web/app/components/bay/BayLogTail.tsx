@@ -144,11 +144,6 @@ const BayLogTail = (props: BayLogTailProps) => {
                 {tr("bay.logs.truncated", { args: [String(result.truncated)] })}
               </p>
             ) : null}
-            {result.undated ? (
-              <p className="text-muted-foreground text-xs">
-                {tr("bay.logs.undated", { args: [String(result.undated)] })}
-              </p>
-            ) : null}
 
             {result.lines.length === 0 ? (
               <p className="text-muted-foreground text-xs">

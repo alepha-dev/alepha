@@ -384,6 +384,27 @@ func TestDeployWritesTheSecretSetIntoTheInstanceEnvAndNowhereElse(t *testing.T) 
 	}
 }
 
+// Lore's key names are not Bay's to trust, and a name ParseAssignments refuses
+// leaves the file in place: this one holds the rest of the set in plaintext.
+func TestDeployRemovesTheSecretsFileItStagedWhenItIsRefused(t *testing.T) {
+	sink := newDeploySink(t, deployableArtifact(t))
+	sink.secrets = `{"not-a-key":"x","STRIPE_KEY":"sk_live_from_lore"}`
+	f, acts := deployReady(t, sink, true)
+	rec := &ackRecorder{}
+
+	acts.Command(context.Background(), deployCommand("d6b", sink), rec.send)
+
+	if rec.last().Status != "failed" {
+		t.Fatalf("the deploy must be refused, got %+v", rec.last())
+	}
+	entries, _ := os.ReadDir(f.root)
+	for _, e := range entries {
+		if strings.HasPrefix(e.Name(), ".deploy-secrets-") {
+			t.Fatalf("a refused deploy left plaintext secrets under the root: %s", e.Name())
+		}
+	}
+}
+
 func TestDeployReportsWhatTheDeployPathRefused(t *testing.T) {
 	sink := newDeploySink(t, refusedArtifact(t))
 	f, acts := deployReady(t, sink, true)

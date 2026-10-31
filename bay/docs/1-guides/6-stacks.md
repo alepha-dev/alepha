@@ -81,13 +81,15 @@ service:
 - a service with neither `image` nor `x-lore.app`;
 - the Docker socket as a mount, a bind mount outside the bundle, or one of a
   path the bundle does not carry;
+- a named volume with `driver_opts`, which are mount options: a bind through
+  them would reach any host path;
 - a Compose service that `depends_on` an app service;
 - a `${VAR}` with no value and no default.
 
 `ports` are rewritten to a loopback port Bay allocates, so the host port in the
 file is ignored. Nothing else is checked: `devices`, `cap_add`, `security_opt`,
-`cgroup`, `uts` and a named volume's `driver_opts` reach Docker as written, so
-whoever deploys a stack can reach the host.
+`cgroup` and `uts` reach Docker as written, so whoever deploys a stack can reach
+the host.
 
 ## Environments
 
@@ -99,8 +101,7 @@ and destroying staging leaves production alone.
 ## Deploying
 
 These commands, and every other `bay` command on this page, run on the host with
-`BAY_SOCKET` set, as in [Operating](/bay/docs/guides-operating). `bay stack
-deploy` refuses `--control-socket`, so the variable is the only way here.
+`BAY_SOCKET` set, as in [Operating](/bay/docs/guides-operating).
 
 ```bash
 export BAY_SOCKET=/run/bay/control.sock

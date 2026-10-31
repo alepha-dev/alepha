@@ -20,10 +20,7 @@ import { type Infer, z } from "alepha";
  * a static site that will never have a process, and a supervised app that is
  * simply quiet.
  *
- * `undated` counts lines that carry no timestamp and were kept regardless of
- * a `--since` window: an app writing plain text to stdout produces nothing
- * else, and hiding them would suppress exactly the `console.log` somebody just
- * added. `truncated` counts lines dropped to fit the cap, oldest first.
+ * `truncated` counts lines dropped to fit the cap, oldest first.
  *
  * Bounded on the way in, because this is the only command whose answer is a
  * payload rather than an ack, and the payload comes from the machine. The line
@@ -34,7 +31,6 @@ import { type Infer, z } from "alepha";
 export const estateCommandResultSchema = z.object({
   supervised: z.boolean(),
   static: z.boolean().optional(),
-  undated: z.integer().min(0).optional(),
   truncated: z.integer().min(0).optional(),
   lines: z
     .array(

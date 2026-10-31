@@ -72,3 +72,15 @@
     services:
       api: {x-lore: {app: api}}
       worker: {image: busybox, depends_on: [api]}
+- name: named volume with driver options
+  stage: bay
+  expect: "volume hostroot: driver_opts is not allowed"
+  compose: |
+    services:
+      web:
+        image: nginx
+        volumes: ["hostroot:/host"]
+    volumes:
+      hostroot:
+        driver: local
+        driver_opts: {type: none, o: bind, device: /etc}

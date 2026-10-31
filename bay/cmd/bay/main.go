@@ -128,8 +128,8 @@ func main() {
 		}
 	}
 	var err error
-	// Every command except `serve` is a client of the control API, reached over
-	// the unix socket. `--control-socket` is the only thing to resolve.
+	// `serve` binds the socket; for every other command it is the one thing to
+	// resolve, and the few that are no client of the control API ignore it.
 	if os.Args[1] != "serve" {
 		readControlFlag(os.Args[2:])
 	}
@@ -250,8 +250,9 @@ func usageText() string {
               # BEFORE the release is swapped in, so the app boots with its
               # secrets — there is no window where it runs without them.
               # Bay CONSUMES it: the file is unlinked whether the deploy
-              # succeeds or fails. A symlink or a group/world-readable file is
-              # refused, as are keys Bay owns.
+              # succeeds or fails. Keys Bay owns are refused. A symlink, a
+              # group/world-readable file or a line that is not an assignment
+              # is refused too, and the file is left where it is.
               # --name defaults to the artifact's project, and drives BOTH the
               # instance key and the subdomain: one app, one identity
               # --domain is repeatable and accepts a comma-separated list —
@@ -333,20 +334,22 @@ func usageText() string {
                 # them. The secret is stored 0600 beside state.json and never
                 # printed again; http:// is accepted for a loopback host only.
                 # Takes effect without restarting "bay serve". Edits the file
-                # directly, so it takes --root (or $BAY_ROOT), not the socket.
+                # directly, so it takes --root (or $BAY_ROOT); the socket only
+                # tells a running Bay to re-read it.
   bay connector show              # sink, estate, connection state; never the secret
   bay connector clear             # forget the sink and the secret: dials nobody
 
-Every command except "serve" is a thin client of the control API. There is no
-second code path.
+Every command except "serve", "doctor", "version", "connector" and "stack exec"
+is a thin client of the control API. There is no second code path.
 
-That API listens on a unix socket and nothing else. It can create users, read
-every app's secrets and delete every backup, so it is root-equivalent, and a
-loopback TCP port with a shared secret is the wrong shape for that: any process
-on the host can reach the port, the secret ends up in a shell history and an
-environment variable, and a bind-address typo publishes it to the internet. The
-socket's authorization is the file mode, enforced by the kernel — reaching it
-already requires being root or in the control group.
+That API listens on a unix socket and nothing else. It deploys code, and a stack
+it deploys runs containers with the devices and capabilities they ask for, so it
+is root-equivalent, and a loopback TCP port with a shared secret is the wrong
+shape for that: any process on the host can reach the port, the secret ends up
+in a shell history and an environment variable, and a bind-address typo
+publishes it to the internet. The socket's authorization is the file mode,
+enforced by the kernel: reaching it already requires being root or in the
+control group.
 
 Remote access is SSH, and nothing else: reach the host that way and run bay
 commands there directly, e.g. "ssh host ./bay deploy app.tar.zst --name app".
@@ -651,7 +654,8 @@ func cmdServe(args []string) error {
 	proxySrv := &http.Server{Addr: addr, Handler: portEighty(router, challenge, store, tlsAddr)}
 	// The control API listens on a unix socket and nowhere else.
 	//
-	// It can create users, read every app's secrets and delete every backup.
+	// It deploys code, and a stack it deploys runs containers with the devices
+	// and capabilities they ask for, so it is root-equivalent.
 	// A loopback TCP port with a shared secret was the wrong shape for that:
 	// every process on the host could reach the port, the secret had to live in
 	// a shell history and an environment variable to be usable, and a typo in
@@ -1289,9 +1293,9 @@ func (s *server) deployArtifact(ctx context.Context, opts deployArtifactOptions)
 	// — refusing it here costs the caller nothing, while refusing it after the
 	// stop would be an outage caused by a validation.
 	//
-	// The file is gone either way. `ConsumeSecretsFile` unlinks it on every
-	// path out, so a refusal does not leave plaintext credentials on the disk
-	// of the host somebody is about to go and debug.
+	// A file that reads as secrets is gone either way, so a refused key does not
+	// leave plaintext credentials on the disk of the host somebody is about to go
+	// and debug. One that does not is left alone: see `ConsumeSecretsFile`.
 	var secrets map[string]string
 	if opts.SecretsFile != "" {
 		parsed, err := deploy.ConsumeSecretsFile(opts.SecretsFile)
@@ -2069,6 +2073,10 @@ func cmdStatus(args []string) error {
 			problems++
 			fmt.Printf("           ⚠ last attempt failed: %s\n", a.LastBackupError)
 		}
+		if a.BackupHold != "" {
+			problems++
+			fmt.Printf("           ⚠ scheduled backups are held after a failed restore: %s\n", a.BackupHold)
+		}
 		// Named, not counted as a problem: an unhooked volume is a choice the
 		// stack's author made, and a status that always fails is one nobody
 		// reads. It is still said on every run.
@@ -2242,6 +2250,20 @@ func readControlFlag(args []string) {
 	}
 }
 
+// dropControlFlag takes `--control-socket PATH`, which readControlFlag has already
+// read, out of the arguments of a command that reads them by position.
+func dropControlFlag(args []string) []string {
+	out := make([]string, 0, len(args))
+	for i := 0; i < len(args); i++ {
+		if args[i] == "--control-socket" && i < len(args)-1 {
+			i++
+			continue
+		}
+		out = append(out, args[i])
+	}
+	return out
+}
+
 // controlSocketPath returns the socket to prefer, if one is reachable.
 //
 // On the host itself the socket is both the simpler path and the safer one:
@@ -2266,6 +2288,17 @@ func controlSocketPath() string {
 // socketFlag holds --control-socket for client commands.
 var socketFlag string
 
+// controlTransport dials the socket instead of the network. The URL's host is
+// ignored by the transport but still has to parse, so callers keep composing
+// http://bay/path exactly as before.
+func controlTransport(sock string) *http.Transport {
+	return &http.Transport{
+		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+			return (&net.Dialer{}).DialContext(ctx, "unix", sock)
+		},
+	}
+}
+
 func call(method, url string, body io.Reader) (string, error) {
 	client := &http.Client{Timeout: 5 * time.Minute}
 
@@ -2277,14 +2310,7 @@ func call(method, url string, body io.Reader) (string, error) {
 				"(see --control-socket / $BAY_SOCKET). " +
 				"For remote deploys, ssh into the Bay host and run bay there.")
 	}
-	// Dial the socket instead of the network. The URL's host is ignored by the
-	// transport but still has to parse, so callers keep composing
-	// http://bay/path exactly as before.
-	client.Transport = &http.Transport{
-		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
-			return (&net.Dialer{}).DialContext(ctx, "unix", sock)
-		},
-	}
+	client.Transport = controlTransport(sock)
 
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {

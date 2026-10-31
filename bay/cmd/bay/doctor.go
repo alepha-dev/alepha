@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/alepha-dev/bay/internal/runner"
 )
@@ -183,7 +185,7 @@ func portFree(port int) check {
 		c.OK, c.Detail = true, "free"
 		return c
 	}
-	if controlSocketPath() != "" {
+	if bayAnswers() {
 		c.OK, c.Detail = true, "held, and a Bay answers on this host"
 		return c
 	}
@@ -193,6 +195,27 @@ func portFree(port int) check {
 	}
 	c.Detail = "already in use by another program: stop it, Bay is the reverse proxy on this host"
 	return c
+}
+
+/*
+bayAnswers asks the control API whether a Bay is there.
+
+A path says nothing: --control-socket and $BAY_SOCKET are whatever was typed, and
+a socket file outlives the Bay that bound it. `/settings` is the cheapest route,
+and an answer from it is what tells Bay from anything else on a socket.
+*/
+func bayAnswers() bool {
+	sock := controlSocketPath()
+	if sock == "" {
+		return false
+	}
+	client := &http.Client{Timeout: 3 * time.Second, Transport: controlTransport(sock)}
+	res, err := client.Get(controlHost + "/settings")
+	if err != nil {
+		return false
+	}
+	defer res.Body.Close()
+	return res.StatusCode == http.StatusOK
 }
 
 // diskFree checks the data root's filesystem has room for a deploy.

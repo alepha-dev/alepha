@@ -66,10 +66,14 @@ export class StackComposeParser {
 
     const problems: string[] = [];
     const bundle = new Set(files.map((f) => this.normalizePath(f)));
+    const volumes = this.map(root.volumes) ?? {};
     const model: StackModel = {
       version: 1,
       services: [],
-      volumes: Object.keys(this.map(root.volumes) ?? {}).sort(),
+      volumes: Object.keys(volumes).sort(),
+      volumesWithDriverOpts: Object.keys(volumes)
+        .filter((name) => this.map(volumes[name])?.driver_opts !== undefined)
+        .sort(),
       variables: this.variables(text),
     };
     for (const name of Object.keys(services).sort()) {

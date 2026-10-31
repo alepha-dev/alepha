@@ -381,6 +381,7 @@ const stackUsage = `usage: bay stack <command> <stack>/<env> ...
 
 // cmdStack is `bay stack`.
 func cmdStack(args []string) error {
+	args = dropControlFlag(args)
 	if len(args) < 1 {
 		return errors.New(stackUsage)
 	}

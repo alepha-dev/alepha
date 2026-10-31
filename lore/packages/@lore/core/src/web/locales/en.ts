@@ -1912,8 +1912,6 @@ export default {
     "This Bay does not supervise this instance, so it has no journal for it.",
   "bay.logs.static": "A static site has no process, and therefore no log.",
   "bay.logs.truncated": "$1 older line(s) were dropped to fit.",
-  "bay.logs.undated":
-    "$1 line(s) carried no timestamp and were kept regardless of the window.",
   "bay.logs.empty": "Supervised, and it has said nothing.",
   "bay.commands.empty": "Nothing has been asked of this machine",
   "bay.commands.empty.description":

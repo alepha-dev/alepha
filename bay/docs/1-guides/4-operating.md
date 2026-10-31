@@ -30,14 +30,15 @@ bay status --json    # the same, for a script
 warning. `--json` exits 1 on the same rows except the last two, and lists them
 as each entry's `problems`. Each warning names what to do:
 
-| Warning                                    | Meaning                                                                  |
-| ------------------------------------------ | ------------------------------------------------------------------------ |
-| `process ⚠ NOT RUNNING`                    | the app is down, crashed or stopped on purpose alike                     |
-| `⚠ restarted N time(s)`                    | the container keeps dying: read its logs                                 |
-| `⚠ stale — expected every 24h0m0s`         | no backup in twice the backup interval, or none ever                     |
-| `⚠ last attempt failed: ...`               | the last backup failed, with the reason                                  |
-| `⚠ isolation relaxed: ...`                 | `bay harden --relax` is in force for this app                            |
-| `⚠ apps and backups share ONE credential`  | `bay config s3` was used: see [Backups](/bay/docs/guides-backups#where-backups-go) |
+| Warning                                                    | Meaning                                                                                     |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `process ⚠ NOT RUNNING`                                    | the app is down, crashed or stopped on purpose alike                                        |
+| `⚠ restarted N time(s)`                                    | the container keeps dying: read its logs                                                    |
+| `⚠ stale — expected every 24h0m0s`                         | no backup in twice the backup interval, or none ever                                        |
+| `⚠ last attempt failed: ...`                               | the last backup failed, with the reason                                                     |
+| `⚠ scheduled backups are held after a failed restore: ...` | a deploy could not restore this app: `bay restore` it, or `bay backup` to keep its database |
+| `⚠ isolation relaxed: ...`                                 | `bay harden --relax` is in force for this app                                               |
+| `⚠ apps and backups share ONE credential`                  | `bay config s3` was used: see [Backups](/bay/docs/guides-backups#where-backups-go)          |
 
 ## Logs
 
@@ -153,9 +154,9 @@ sudo bay doctor --control-socket /run/bay/control.sock
 One line per check: Docker reachable and at least 25 (API 1.44), cgroup v2, the
 compose plugin, ports 80 and 443, free disk. It exits with status 1 when one
 fails, so it fits a monitoring script. It needs no running Bay, and on a live
-host it needs the socket: without it ports 80 and 443 read as held by another
-program, and both checks fail. Before the first start, `sudo bay doctor` is
-enough.
+host it needs the socket, which it dials: if no Bay answers there, ports 80 and
+443 read as held by another program, and both checks fail. Before the first
+start, `sudo bay doctor` is enough.
 
 ## Troubleshooting
 

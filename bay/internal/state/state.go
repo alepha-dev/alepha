@@ -97,6 +97,12 @@ type App struct {
 	// LastBackupError is when and why the most recent attempt failed. Cleared on
 	// the next success.
 	LastBackupError string `json:"lastBackupError,omitempty"`
+	// BackupHold is when and why the schedule must leave this app alone: a deploy
+	// created its database empty and could not restore the snapshot that may
+	// exist. Backing that database up would make it the newest snapshot, and the
+	// next plain `bay restore` would install it. Cleared by a restore, and by a
+	// backup somebody asked for, which is them saying this database is the one.
+	BackupHold string `json:"backupHold,omitempty"`
 
 	// Crons is how many cron expressions the artifact declared. Derived from the
 	// manifest at deploy time, so it is replaced on every deploy rather than
@@ -382,6 +388,7 @@ func (s *Store) Upsert(app App) error {
 			app.LastBackupAt = a.LastBackupAt
 			app.LastBackupKey = a.LastBackupKey
 			app.LastBackupError = a.LastBackupError
+			app.BackupHold = a.BackupHold
 			// Traffic history belongs to the instance, not the release. Resetting
 			// it here would make every app read "no traffic ever" right after a
 			// deploy — so the staleness badge would be blank for exactly the apps
@@ -455,7 +462,20 @@ func (s *Store) RecordBackupSuccess(key, s3Key string, at time.Time) error {
 		a.LastBackupKey = s3Key
 		// Cleared on success so a stale reason never outlives the failure.
 		a.LastBackupError = ""
+		a.BackupHold = ""
 	})
+}
+
+// HoldBackups keeps the schedule off an app. See `App.BackupHold`.
+func (s *Store) HoldBackups(key, reason string, at time.Time) error {
+	return s.mutate(key, func(a *App) {
+		a.BackupHold = at.UTC().Format(time.RFC3339) + ": " + reason
+	})
+}
+
+// ClearBackupHold gives an app back to the schedule.
+func (s *Store) ClearBackupHold(key string) error {
+	return s.mutate(key, func(a *App) { a.BackupHold = "" })
 }
 
 // RecordBackupFailure stores why the last attempt failed.
