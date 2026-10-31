@@ -1787,7 +1787,7 @@ export default {
   "estates.project.empty":
     "No estate lent yet. Until one is, this project has nowhere to deploy.",
   "estates.project.add": "Add an estate",
-  "estates.project.ownerOnly": "Only the project owner can add an estate.",
+  "estates.project.notAllowed": "Your rank does not allow adding an estate.",
   "estates.project.lentBy": "lent by $1",
   "bay.nav.overview": "Overview",
   "bay.nav.apps": "Apps",

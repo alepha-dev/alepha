@@ -1772,8 +1772,8 @@ export default {
   "estates.project.empty":
     "Aucun domaine prêté pour l'instant. Tant qu'il n'y en a pas, ce projet n'a nulle part où déployer.",
   "estates.project.add": "Ajouter un domaine",
-  "estates.project.ownerOnly":
-    "Seul le propriétaire du projet peut ajouter un domaine.",
+  "estates.project.notAllowed":
+    "Votre rang ne permet pas d'ajouter un domaine.",
   "estates.project.lentBy": "prêté par $1",
   "bay.nav.overview": "Vue d'ensemble",
   "bay.nav.apps": "Applications",
