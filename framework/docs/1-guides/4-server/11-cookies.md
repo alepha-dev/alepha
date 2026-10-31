@@ -105,17 +105,34 @@ class Session {
 Both derive their key from `APP_SECRET`, so changing the secret invalidates these
 cookies.
 
-| Option     | Algorithm   | A bad value                                                                                     |
-| ---------- | ----------- | ----------------------------------------------------------------------------------------------- |
-| `sign`     | HMAC-SHA256 | `.get()` answers `undefined` and logs a warning. A malformed signature also deletes the cookie. |
-| `encrypt`  | AES-256-GCM | `.get()` answers `undefined`, and the cookie is deleted.                                        |
-| `compress` | raw deflate | `.get()` answers `undefined`, and the cookie is deleted.                                        |
+| Option     | Algorithm   | A bad value                                                              |
+| ---------- | ----------- | ------------------------------------------------------------------------ |
+| `sign`     | HMAC-SHA256 | `.get()` answers `undefined`, logs a warning, and the cookie is deleted. |
+| `encrypt`  | AES-256-GCM | `.get()` answers `undefined`, and the cookie is deleted.                 |
+| `compress` | raw deflate | `.get()` answers `undefined`, and the cookie is deleted.                 |
 
 A value that fails its schema, or is not valid JSON, is treated as corrupted too:
-`.get()` answers `undefined` and the cookie is deleted.
+`.get()` answers `undefined` and the cookie is deleted. The deletion carries the
+cookie's own `path` and `domain`.
 
-⚠️ That deletion is sent for `Path=/` with no domain, so it does not remove a cookie
-declared with another `path` or a `domain`. Only `.del()` carries those.
+## Large values
+
+A browser silently drops a cookie past about 4 KB, so a `$cookie` is chunked for
+you: a value that encodes to more than 3,800 bytes is written as `<name>.0`,
+`<name>.1`, ... with the same attributes, and joined back on read. `.set()` and
+`.del()` expire the chunks the cookie no longer uses, and a lost or altered chunk
+counts as a bad value, as above. A name ending in `.<number>` is therefore reserved.
+
+A cookie the browser reads cannot be chunked. An atom with `persist: "cookie"` is
+not written past that size, and the server logs a warning.
+
+Chunking keeps the value, not the cost: every chunk goes back on every request, and
+request headers are capped, at 16 KB in total by default on Node and 8 KB for the
+`Cookie` header on a default nginx. Past that a request fails with a 431 or a 400,
+before any of your code runs. The server logs a warning naming the cookie and its
+size once a client's cookies pass about 6 KB. A very large value belongs in a
+server-side session, with only an ID in the cookie, see
+[Authentication](/docs/guides-security-authentication).
 
 ## In the browser
 
