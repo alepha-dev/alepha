@@ -1,7 +1,7 @@
 import { $inject } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
-import { $repository } from "alepha/orm";
+import { $repository, type SQL } from "alepha/orm";
 
 import { type ProductEntity, products } from "../../entities/products.ts";
 import type { ProductVariantEntity } from "../../entities/productVariants.ts";
@@ -138,8 +138,13 @@ export class CartService {
     const existing = await this.cartRepo.findOne({
       where: { token: { eq: token } },
     });
-    if (existing) {
+    if (existing && existing.expiresAt >= this.dateTime.nowISOString()) {
       return existing;
+    }
+    // Past its expiry a cart is gone, whether or not the sweep has been: a
+    // visitor back after a month gets an empty basket under the same cookie.
+    if (existing) {
+      await this.cartRepo.deleteById(existing.id);
     }
     return this.cartRepo.create({
       token,
@@ -168,7 +173,10 @@ export class CartService {
     // order is the point: without it "the user's cart" is whichever row the
     // database happened to return.
     const [cart] = await this.cartRepo.findMany({
-      where: { userId: { eq: userId } },
+      where: {
+        userId: { eq: userId },
+        expiresAt: { gte: this.dateTime.nowISOString() },
+      },
       orderBy: { column: "updatedAt", direction: "desc" },
       limit: 1,
     });
@@ -298,7 +306,24 @@ export class CartService {
 
   public async clear(cartId: string): Promise<void> {
     await this.itemRepo.deleteMany({ cartId: { eq: cartId } });
-    await this.cartRepo.updateById(cartId, { promotionCode: null });
+    // `updateMany`: a settlement can reach a cart the sweep has already removed.
+    await this.cartRepo.updateMany(
+      { id: { eq: cartId } },
+      { promotionCode: null },
+    );
+  }
+
+  /**
+   * Delete the carts past their expiry, their lines with them. `keep` lists the
+   * ids to leave, a subquery: what a live checkout still points at, which this
+   * module cannot know.
+   */
+  public async deleteExpired(keep: SQL): Promise<number> {
+    const deleted = await this.cartRepo.deleteMany({
+      expiresAt: { lt: this.dateTime.nowISOString() },
+      id: { notInArray: keep },
+    });
+    return deleted.length;
   }
 
   /**

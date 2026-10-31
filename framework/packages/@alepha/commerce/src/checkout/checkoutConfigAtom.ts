@@ -14,10 +14,23 @@ export const checkoutConfig = $atom({
       .describe(
         "Cron expression for the expired-hold release sweep, stock holds and interval holds alike. Safe to make coarse: `StockService` and `ResourceService` already exclude holds by `expiresAt` from every read, so availability is correct whether or not the sweep has run. A late tick delays tidying the `status` column, it never oversells.",
       ),
+    cartSweepCron: z
+      .text()
+      .describe(
+        "Cron expression for the sweep that deletes expired carts and abandons stale open checkouts. Coarse by nature: nothing reads what it removes.",
+      ),
+    abandonOpenAfterDays: z
+      .integer()
+      .min(1)
+      .describe(
+        "Days an open checkout may sit untouched before it is marked abandoned. Longer than the recovery sequence, so a reminder never lands on a closed checkout.",
+      ),
   }),
   default: {
     baseUrl: "",
     stockSweepCron: "*/15 * * * *",
+    cartSweepCron: "0 3 * * *",
+    abandonOpenAfterDays: 7,
   },
   serverOnly: true,
 });

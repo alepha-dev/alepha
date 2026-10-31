@@ -22,6 +22,7 @@ import {
 import { AddressService } from "./services/AddressService.ts";
 import { CheckoutService } from "./services/CheckoutService.ts";
 import { CheckoutSettlementListener } from "./services/CheckoutSettlementListener.ts";
+import { CheckoutSweeper } from "./services/CheckoutSweeper.ts";
 import { HoldSweeper } from "./services/HoldSweeper.ts";
 import { TaxService } from "./services/TaxService.ts";
 import { taxConfig } from "./taxConfigAtom.ts";
@@ -40,6 +41,7 @@ export * from "./providers/VatNumberChecker.ts";
 export * from "./services/AddressService.ts";
 export * from "./services/CheckoutService.ts";
 export * from "./services/CheckoutSettlementListener.ts";
+export * from "./services/CheckoutSweeper.ts";
 export * from "./services/HoldSweeper.ts";
 export * from "./services/TaxService.ts";
 export * from "./taxConfigAtom.ts";
@@ -115,6 +117,7 @@ export const AlephaCommerceCheckout = $module({
     CheckoutService,
     CheckoutSettlementListener,
     HoldSweeper,
+    CheckoutSweeper,
     CheckoutController,
     TaxService,
   ],
