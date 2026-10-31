@@ -107,6 +107,21 @@ describe("feedback rate limit", () => {
     await ctx.alepha.stop();
   });
 
+  it("refuses a submission with no signed-in account", async ({ expect }) => {
+    const owner = await createTestUser(ctx);
+    const projectId = await createProject(ctx, owner);
+
+    const error = await ctx.feedbackController.submitFeedback
+      .fetch({
+        params: { projectId },
+        body: { title: "Anonymous", description: "Something broke" },
+      })
+      .catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(HttpError);
+    expect((error as HttpError).status).toBe(401);
+  });
+
   it("rate-limits a non-member past the daily cap with a clean 429 message", async ({
     expect,
   }) => {

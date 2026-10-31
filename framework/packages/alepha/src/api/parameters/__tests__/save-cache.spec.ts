@@ -66,6 +66,36 @@ describe("ParameterProvider direct save cache", () => {
     expect(await settings.get()).toEqual({ value: 3, label: "default" });
   });
 
+  it("notifies subscribers once when get() switches to a scheduled version", async () => {
+    const { settings, provider, time } = await setup();
+    await provider.save(settings.name, { value: 3 }, "", {
+      activationDate: time.now().add(1, "hour").toDate(),
+    });
+    const received: unknown[] = [];
+    settings.sub((value) => received.push(value));
+
+    await time.travel(2, "hours");
+    await settings.get();
+    await settings.get();
+
+    expect(received).toEqual([{ value: 3, label: "default" }]);
+  });
+
+  it("stays quiet when a scheduled version changes nothing", async () => {
+    const { settings, provider, time } = await setup();
+    await provider.save(settings.name, { value: 2 }, "");
+    await provider.save(settings.name, { value: 2 }, "", {
+      activationDate: time.now().add(1, "hour").toDate(),
+    });
+    const received: unknown[] = [];
+    settings.sub((value) => received.push(value));
+
+    await time.travel(2, "hours");
+    await settings.get();
+
+    expect(received).toEqual([]);
+  });
+
   it("keeps the current value when a saved version is already expired", async () => {
     const { settings, provider, time } = await setup();
     await provider.save(settings.name, { value: 2 }, "");

@@ -21,7 +21,7 @@ export class LoreConventions {
       "  Bodies    @file, or @- for stdin, on the flags whose help says so.",
       "  Refs      12, Q12 or '#Q12' (quote the #); F12 for a folio; 45 or E45 for an epic.",
       "  Exit      0 ok, 1 failure or partial write, 3 not authenticated, 4 forbidden",
-      "            (for project, quest and folio).",
+      "            (for project, quest, folio, estate, registry and stack).",
     ].join("\n");
   }
 }

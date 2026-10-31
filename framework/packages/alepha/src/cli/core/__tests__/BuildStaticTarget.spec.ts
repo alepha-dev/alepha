@@ -417,4 +417,93 @@ describe('a static build, declared as runtime: ["static"]', () => {
       ).rejects.toThrow(/has none/);
     });
   });
+
+  describe("the page rendered into index.html", () => {
+    const fakePage = (name: string, options: Record<string, unknown> = {}) => ({
+      name,
+      options,
+      render: async () => ({ html: `<html><body>${name}</body></html>` }),
+    });
+
+    /**
+     * Run the task over `pages`, and answer which one it rendered.
+     */
+    const renderedBy = async (pages: Array<ReturnType<typeof fakePage>>) => {
+      const alepha = Alepha.create().with({
+        provide: FileSystemProvider,
+        use: MemoryFileSystemProvider,
+      });
+      const rendered: string[] = [];
+      const primitives = pages.map((page) => ({
+        ...page,
+        render: async () => {
+          rendered.push(page.name);
+          return page.render();
+        },
+      }));
+      // `parent` and `children` compare by identity, so they must point at
+      // the objects the task receives.
+      for (const page of primitives) {
+        const { parent, children } = page.options;
+        if (parent) {
+          page.options = {
+            ...page.options,
+            parent: primitives[pages.indexOf(parent as never)],
+          };
+        }
+        if (children) {
+          page.options = {
+            ...page.options,
+            children: (children as typeof pages).map(
+              (child) => primitives[pages.indexOf(child)],
+            ),
+          };
+        }
+      }
+
+      await alepha.inject(BuildStaticTask).run({
+        alepha: { isConfigured: () => true, primitives: () => primitives },
+        root: "/root/my-app",
+        options: { runtime: "static" },
+        run: async (step: { handler: () => Promise<void> }) => step.handler(),
+      } as any);
+
+      return rendered;
+    };
+
+    it('takes a page declaring path: "/"', async () => {
+      expect(await renderedBy([fakePage("home", { path: "/" })])).toEqual([
+        "home",
+      ]);
+    });
+
+    it("takes a page that leaves path out, which the router serves at /", async () => {
+      expect(await renderedBy([fakePage("home")])).toEqual(["home"]);
+    });
+
+    it("takes a path-less child of a layout at /", async () => {
+      const home = fakePage("home");
+      const layout = fakePage("layout", { path: "/", children: [home] });
+
+      expect(await renderedBy([layout, home])).toEqual(["home"]);
+    });
+
+    it("skips a path-less layout whose children point at it with parent", async () => {
+      const layout = fakePage("layout");
+      const home = fakePage("home", { parent: layout });
+
+      expect(await renderedBy([layout, home])).toEqual(["home"]);
+    });
+
+    it("skips a path-less child sitting under another path", async () => {
+      const dashboard = fakePage("dashboard");
+      const admin = fakePage("admin", {
+        path: "/admin",
+        children: [dashboard],
+      });
+      const home = fakePage("home", { path: "/" });
+
+      expect(await renderedBy([admin, dashboard, home])).toEqual(["home"]);
+    });
+  });
 });

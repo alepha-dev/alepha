@@ -129,10 +129,88 @@ const testDuplicateTargetsSqlite = async (alepha: Alepha) => {
   expect(row.hits).toBe(2);
 };
 
+const archives = $entity({
+  name: "test_upsert_many_archives",
+  schema: z.object({
+    id: db.primaryKey(z.integer()),
+    slug: z.text(),
+    label: z.text(),
+    deletedAt: db.deletedAt(),
+  }),
+  constraints: [{ columns: ["slug"], unique: true }],
+});
+
+class ArchiveApp {
+  repository = $repository(archives);
+}
+
+/**
+ * A row the `DO UPDATE` guard skipped comes back from neither branch of the
+ * statement, so the only trace of it is a result shorter than the input.
+ * `upsert` throws on the same conflict, and the two have to agree.
+ */
+const testRefusesSoftDeletedConflict = async (alepha: Alepha) => {
+  const app = alepha.inject(ArchiveApp);
+  await alepha.start();
+  const live = await app.repository.create({ slug: "live", label: "Live" });
+  const gone = await app.repository.create({ slug: "gone", label: "Gone" });
+  await app.repository.deleteById(gone.id);
+
+  await expect(
+    app.repository.upsertMany(
+      [
+        { slug: "live", label: "Live, edited" },
+        { slug: "gone", label: "Gone, edited" },
+        { slug: "new", label: "New" },
+      ],
+      { target: ["slug"] },
+    ),
+  ).rejects.toThrow(/test_upsert_many_archives.*already-deleted/);
+
+  const rows = await app.repository.findMany({}, { force: true });
+  const labels = Object.fromEntries(rows.map((r) => [r.slug, r.label]));
+  expect(labels.gone).toBe("Gone");
+  expect(rows.find((r) => r.id === live.id)?.label).toBe("Live, edited");
+};
+
+const testForceOverwritesSoftDeleted = async (alepha: Alepha) => {
+  const app = alepha.inject(ArchiveApp);
+  await alepha.start();
+  const gone = await app.repository.create({ slug: "gone", label: "Gone" });
+  await app.repository.deleteById(gone.id);
+
+  const rows = await app.repository.upsertMany(
+    [{ slug: "gone", label: "Gone, edited" }],
+    { target: ["slug"], force: true },
+  );
+
+  expect(rows.map((r) => r.label)).toEqual(["Gone, edited"]);
+};
+
 const sqlite = () =>
   Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } });
 
 describe("upsertMany", () => {
+  it("throws on a soft-deleted conflict, as upsert does (sqlite)", async () => {
+    await testRefusesSoftDeletedConflict(sqlite());
+  });
+
+  it("throws on a soft-deleted conflict, as upsert does (postgres)", async () => {
+    await testRefusesSoftDeletedConflict(
+      Alepha.create().with(AlephaOrmPostgres),
+    );
+  });
+
+  it("overwrites a soft-deleted row under force (sqlite)", async () => {
+    await testForceOverwritesSoftDeleted(sqlite());
+  });
+
+  it("overwrites a soft-deleted row under force (postgres)", async () => {
+    await testForceOverwritesSoftDeleted(
+      Alepha.create().with(AlephaOrmPostgres),
+    );
+  });
+
   it("accumulates counters through excluded (sqlite)", async () => {
     await testAccumulatesThroughExcluded(sqlite());
   });

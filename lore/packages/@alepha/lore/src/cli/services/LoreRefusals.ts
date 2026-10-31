@@ -17,8 +17,8 @@ export interface LoreRefusalContext {
 }
 
 /**
- * Turns the ways a `lore project`, `lore quest` or `lore folio` call is
- * refused into an exit code and a sentence naming the fix.
+ * Turns the ways a `lore project`, `quest`, `folio`, `estate`, `registry` or
+ * `stack` call is refused into an exit code and a sentence naming the fix.
  *
  * | Cause | What arrives | Exit |
  * | --- | --- | --- |
