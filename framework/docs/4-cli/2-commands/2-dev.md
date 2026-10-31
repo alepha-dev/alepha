@@ -45,6 +45,12 @@ You get:
 
 Backend-only projects (no browser entry) run through the same Vite server - you still get instant reload on save, without a bundler/watcher setup of your own.
 
+React Fast Refresh comes from Vite's React plugin, which `dev` registers for you. Set `dev.noViteReactPlugin: true` in `alepha.config.ts` to leave it out.
+
+### Inspector
+
+`alepha dev` mounts [`alepha/inspector`](/docs/guides-core-inspector) into the app on every load, so the devtools can see it. No app imports the inspector itself: a production build carries it only when built with `alepha build --inspect`.
+
 ### Workspace Mode
 
 Run `alepha dev` from a workspace root with an `apps/` directory, and it spawns every app in parallel:
@@ -56,8 +62,8 @@ alepha dev
 ```
 
 - Each app gets a port from its position in the `apps/` listing, starting at 5173. Ports are stable: `--only web` keeps `web` on the same port it has when all apps run, so OAuth redirect URIs and client configs stay valid.
-- Log lines are prefixed with the app name (via `APP_NAME`).
-- `--only api,web` filters which apps start.
+- Each app runs with `SERVER_PORT` set to that port and `APP_NAME` set to its name in upper case, which prefixes its log lines.
+- `--only api,web` filters which apps start, and `--mode` is forwarded to every app.
 - Scoped directories (`apps/@myorg/api`) are supported.
 
 ## Entry Point Detection
@@ -78,6 +84,7 @@ export default defineConfig({
   entry: {
     server: "src/server.ts",
     browser: "src/client.ts",
+    style: "src/theme.css",
   },
 });
 ```

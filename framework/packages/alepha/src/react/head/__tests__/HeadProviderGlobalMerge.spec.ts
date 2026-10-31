@@ -49,6 +49,27 @@ describe("HeadProvider global head merge", () => {
     expect((state.head as any).htmlAttributes).toEqual({ lang: "es" });
   });
 
+  it("lets a page's description replace the global one", () => {
+    const provider = createProvider();
+    provider.global = [{ title: "Site", description: "The tagline" }];
+    const state = {
+      head: {},
+      layers: [{ route: { head: { description: "The page" } } }],
+    };
+
+    provider.fillHead(state as any);
+
+    const meta: any[] = (state.head as any).meta;
+    const contents = (key: string) =>
+      meta
+        .filter((it) => it.name === key || it.property === key)
+        .map((it) => it.content);
+    expect(contents("description")).toEqual(["The page"]);
+    expect(contents("og:description")).toEqual(["The page"]);
+    expect(contents("twitter:description")).toEqual(["The page"]);
+    expect(contents("og:title")).toEqual(["Site"]);
+  });
+
   it("merges bodyAttributes across global heads", () => {
     const provider = createProvider();
     provider.global = [

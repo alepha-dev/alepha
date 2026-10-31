@@ -35,7 +35,7 @@ export interface WsAttachment {
   roomId: string;
   channelPath: string;
   /**
-   * The upgrade URL's query parameters (first value per key), carried through
+   * The upgrade URL's query parameters (last value per key), carried through
    * the hibernation attachment so `RoomSocket.query` survives isolate resets.
    * The Node provider exposes the same map; without it here, an application
    * that names the joining entity by query hint (`?hero=…`) refuses every

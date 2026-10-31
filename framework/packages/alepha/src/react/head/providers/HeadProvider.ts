@@ -2,7 +2,7 @@ import { $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
 
 import { SeoExpander } from "../helpers/SeoExpander.ts";
-import type { Head } from "../interfaces/Head.ts";
+import type { Head, HeadMeta } from "../interfaces/Head.ts";
 
 /**
  * Provides methods to fill and merge head information into the application state.
@@ -244,6 +244,20 @@ export class HeadProvider {
     };
   }
 
+  /**
+   * A page's tags over the ones it inherits, replaced by `name` or `property`.
+   * Appended, a page with a description of its own carried two
+   * `<meta name="description">`, the site's first, and a search engine may
+   * quote either.
+   */
+  protected replaceMeta(inherited: HeadMeta[], meta: HeadMeta[]): HeadMeta[] {
+    const keys = new Set(meta.map((it) => it.name ?? it.property));
+    return [
+      ...inherited.filter((it) => !keys.has(it.name ?? it.property)),
+      ...meta,
+    ];
+  }
+
   protected mergeAttributes(
     previous?: Record<string, string>,
     next?: Record<string, string>,
@@ -272,7 +286,7 @@ export class HeadProvider {
 
     // Expand SEO fields into meta tags
     const { meta, link } = this.seoExpander.expand(head);
-    state.head.meta = [...(state.head.meta ?? []), ...meta];
+    state.head.meta = this.replaceMeta(state.head.meta ?? [], meta);
     state.head.link = [...(state.head.link ?? []), ...link];
 
     // Record that this page named its own URL. The expansion above already

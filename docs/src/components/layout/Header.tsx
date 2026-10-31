@@ -126,7 +126,7 @@ const Header = (props: HeaderProps) => {
             // Framework owns TWO spaces, `/` and `/docs/*`, and cannot match
             // by prefix because `/` is a prefix of everything. It used to
             // match `/` exactly, which meant no product was highlighted on any
-            // of its 378 doc pages. The others match their prefix, which is
+            // of its doc pages. The others match their prefix, which is
             // what lights Lore up on `/lore/docs/...` (quest #1603).
             const path = routerState.url.pathname;
             const active =

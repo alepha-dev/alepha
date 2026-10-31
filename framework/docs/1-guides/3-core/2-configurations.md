@@ -44,6 +44,8 @@ const alepha = Alepha.create({
 
 Values passed to `Alepha.create({ env })` take precedence over `process.env`. Variables from `.env` files loaded before the process starts (e.g. via `alepha dev`) are available automatically through `process.env`.
 
+A Cloudflare Worker receives its vars and secrets on the request's `env` binding, not on `process.env`. `alepha.loadEnv(env)` lifts them into `alepha.env` at runtime: only string values are taken (a D1, R2 or KV binding is skipped), a value already set wins, and the parsed `$env` cache is cleared so the next read sees them. The entry `alepha build` generates for Workers already does this.
+
 ### Variable interpolation
 
 String values support `$VAR` interpolation using other variables from the same schema:
@@ -61,7 +63,7 @@ class Config {
 }
 ```
 
-A value that must keep a literal `$KEY` escapes it as `$$KEY`: with `PORT` declared, a password set to `pa$$PORTss` reads `pa$PORTss` rather than `pa5432ss`. Only keys declared in the same schema are substituted; an unknown `$NAME` stays as written.
+Substitution is transitive: a value may reference a key whose own value references another one. A value that must keep a literal `$KEY` escapes it as `$$KEY`: with `PORT` declared, a password set to `pa$$PORTss` reads `pa$PORTss` rather than `pa5432ss`. Only keys declared in the same schema are substituted; an unknown `$NAME` stays as written.
 
 ### Reading a variable under another name
 
@@ -160,8 +162,8 @@ Three things read it:
   so this only ever loosens what an author asked to loosen.
 
   Only keys the artifact itself vouched for are eligible: a key injected by an
-  orchestrator through `.env.<env>.local`, or listed in `platform.secrets.keys`,
-  is not on `variables` and stays a secret.
+  orchestrator through `.env.<env>.local`, or listed in `infra().secrets.keys` in
+  `alepha.config.ts`, is not on `variables` and stays a secret.
 
 ## State Management with $atom
 
@@ -188,14 +190,26 @@ Recommended naming convention for `name` is dot-separated, e.g. `"app.config"`, 
 
 If the schema itself is optional (wrapped with `.optional()`, e.g. `z.object({...}).optional()`), the `default` is optional too. Otherwise - even when every field inside the object is optional - `default` is required.
 
-Beyond `name` / `schema` / `default`, an atom also takes `description`, `serverOnly`, and
-`persist: "cookie" | "localStorage" | "sessionStorage"`. Two things to know before reaching
-for them:
+Beyond `name` / `schema` / `default`, an atom takes a few options that decide where its value may travel. On the server, what the current request wrote to the store is serialized into the HTML so the browser starts from the same state (SSR hydration), and a value set at boot never reaches the browser; these options shape that.
+
+| Option        | Effect                                                                                                                                                                                                    |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `description` | Shown in the devtools and generated docs                                                                                                                                                                  |
+| `persist`     | `"cookie"`, `"localStorage"` or `"sessionStorage"`: the browser keeps the value across reloads                                                                                                            |
+| `serverOnly`  | The value never goes into the SSR payload, and the devtools show the atom without its value                                                                                                               |
+| `personal`    | The value belongs to the visitor: it goes into a per-request `<script id="__ssr_private">`, never the shared payload, so a cached page cannot hand it to the next visitor. Default for cookie-bound atoms |
+| `serialize`   | `(value) => value`: shapes the copy written into the HTML, to drop fields the browser has no business seeing. The server keeps the full value                                                             |
+
+Four things to know before reaching for them:
 
 - `serverOnly` and `persist` cannot be combined - `$atom()` throws at call time.
+- `serialize` cannot remove a field the schema requires: the browser validates
+  the result against `schema`.
 - Cookie persistence is unsigned and unencrypted, and anything client-persisted is
   attacker-writable. Never persist roles, permissions, or entitlements in an atom; treat a
   persisted value as user input.
+- `serverOnly` only covers the SSR payload and the devtools: an `$action` that returns the
+  value still returns it.
 
 ### Reading and writing atoms
 
@@ -213,6 +227,9 @@ alepha.store.set(appConfig, { theme: "dark", language: "fr" });
 
 // Shorthand write on the container
 alepha.set(appConfig, { theme: "dark", language: "fr" });
+
+// Update from the current value
+alepha.store.mut(appConfig, (current) => ({ ...current, theme: "light" }));
 ```
 
 ### Reading atoms with $store
@@ -251,7 +268,7 @@ console.log(counter.count.value); // 42
 
 ### State mutation events
 
-Every `store.set()` call emits a `"state:mutated"` event:
+`alepha.store.watch(atom, (value, prevValue) => ...)` observes one atom outside React, and returns an unsubscribe function. Underneath, every `store.set()` call emits a `"state:mutated"` event:
 
 ```typescript
 alepha.events.on("state:mutated", ({ key, value, prevValue }) => {

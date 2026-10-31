@@ -22,7 +22,7 @@ The first failure stops the pipeline. This checks the app's default build, not e
 
 ## This repository's inner loop
 
-The Alepha monorepo overrides verification: `yarn v` installs dependencies, runs copy/generators and lint, then typecheck and the four `check:*` audits in parallel, then the Node and Bun test lanes. It neither cleans nor builds. Docker test services must be running, and a shared lock serializes runs across worktrees. Generated docs must be reviewed and staged before `check:docs` passes.
+The Alepha monorepo overrides verification: `yarn v` installs dependencies, runs copy/generators and lint, then typecheck and the four `check:*` audits in parallel, then the Node and Bun test lanes, then the MQTT contract suite against a Mosquitto broker (`test:broker`). It neither cleans nor builds. Docker test services must be running, and a shared lock serializes runs across worktrees. Generated docs must be reviewed and staged before `check:docs` passes.
 
 The repository's branch CI is the release gate: checks, six test jobs, app e2e and CLI e2e. A green local pipeline cannot catch every build, SSR or browser regression. Follow the repository's `CLAUDE.md`, push the branch, and read the complete CI result before landing it.
 
