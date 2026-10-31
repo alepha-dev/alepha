@@ -2218,6 +2218,20 @@ func readControlFlag(args []string) {
 	}
 }
 
+// dropControlFlag takes `--control-socket PATH`, which readControlFlag has already
+// read, out of the arguments of a command that reads them by position.
+func dropControlFlag(args []string) []string {
+	out := make([]string, 0, len(args))
+	for i := 0; i < len(args); i++ {
+		if args[i] == "--control-socket" && i < len(args)-1 {
+			i++
+			continue
+		}
+		out = append(out, args[i])
+	}
+	return out
+}
+
 // controlSocketPath returns the socket to prefer, if one is reachable.
 //
 // On the host itself the socket is both the simpler path and the safer one:

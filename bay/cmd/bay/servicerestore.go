@@ -183,6 +183,7 @@ func (s *server) handleStackRestore(w http.ResponseWriter, r *http.Request) {
 // cmdStackBackup is `bay backup list|restore <stack>/<env> ...`.
 func cmdStackBackup(verb string, args []string) error {
 	const usage = "usage: bay backup list <stack>/<env> [service]\n       bay backup restore <stack>/<env> <service> <backup> [--from <stack>/<env>] [--yes]"
+	args = dropControlFlag(args)
 	if len(args) < 1 {
 		return errors.New(usage)
 	}
@@ -192,6 +193,9 @@ func cmdStackBackup(verb string, args []string) error {
 	}
 	base := controlHost + "/stacks/" + name + "/" + env
 	if verb == "list" {
+		if err := checkFlags(args[1:], nil, nil); err != nil {
+			return err
+		}
 		query := ""
 		if len(args) > 1 {
 			query = "?service=" + neturl.QueryEscape(args[1])

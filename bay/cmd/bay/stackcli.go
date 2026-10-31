@@ -397,8 +397,13 @@ a service's container, for an operator on the host.
 It never goes through the control API, on purpose: an exec is arbitrary
 command execution, and the control API's verbs are what Lore's connector may
 ask for. Reaching a container takes Docker access on this host, which is SSH.
+
+So it has no use for `--control-socket`, but it still takes it off the command,
+as every client does: a wrapper adds that flag to everything it runs. A container
+command that needs a flag of that name goes through `sh -c`.
 */
 func cmdStackExec(args []string) error {
+	args = dropControlFlag(args)
 	if len(args) < 3 {
 		return errors.New("usage: bay stack exec <stack>/<env> <service> <cmd...>")
 	}
