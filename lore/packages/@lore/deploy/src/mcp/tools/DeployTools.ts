@@ -61,7 +61,7 @@ export class DeployTools {
   deploy_start = $tool({
     title: "Deploy a stored build",
     description:
-      "Ship a build that has already been pushed onto one deployed copy. ⚠️ **Nothing here builds.** A tag with no stored artifact is refused rather than built, which is the point of having a registry: a build that passed staging on Tuesday must be the same bytes when it is promoted on Friday. Omitting the tag deploys `latest`, the one tag whose bytes may be replaced in place, so it promotes whatever was pushed last rather than a version somebody chose. There is deliberately no estate argument: where a copy deploys to is a property of the copy, and an agent that could name an estate could deploy into somebody else's cloud account. Project owner only. Answers immediately with a run id; follow it with `deploy_status`.",
+      "Ship a build that has already been pushed onto one deployed copy. ⚠️ **Nothing here builds.** A tag with no stored artifact is refused rather than built, which is the point of having a registry: a build that passed staging on Tuesday must be the same bytes when it is promoted on Friday. Omitting the tag deploys `latest`, the one tag whose bytes may be replaced in place, so it promotes whatever was pushed last rather than a version somebody chose. There is deliberately no estate argument: where a copy deploys to is a property of the copy, and an agent that could name an estate could deploy into somebody else's cloud account. Needs `deploy:manage`. Answers immediately with a run id; follow it with `deploy_status`.",
     annotations: { readOnlyHint: false, destructiveHint: true },
     schema: {
       params: deployStartParamsSchema,
@@ -124,7 +124,7 @@ export class DeployTools {
   deploy_rollback = $tool({
     title: "Roll a copy back",
     description:
-      "Point a deployed copy back at something it ran before. Takes the fast path when Cloudflare still holds that version - seconds, no upload - and redeploys the stored build when it does not, saying which it did. ⚠️ **A rollback changes the code and not the database.** If migrations have landed since that run shipped, this refuses once and names how many; pass `acknowledge_migrations` to proceed knowing the old build will run against the current schema. Project owner only.",
+      "Point a deployed copy back at something it ran before. Takes the fast path when Cloudflare still holds that version - seconds, no upload - and redeploys the stored build when it does not, saying which it did. ⚠️ **A rollback changes the code and not the database.** If migrations have landed since that run shipped, this refuses once and names how many; pass `acknowledge_migrations` to proceed knowing the old build will run against the current schema. Needs `deploy:manage`.",
     annotations: { readOnlyHint: false, destructiveHint: true },
     schema: {
       params: deployRollbackParamsSchema,

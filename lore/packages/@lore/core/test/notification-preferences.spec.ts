@@ -106,9 +106,10 @@ describe("Lore's notification preferences", () => {
   });
 
   /**
-   * Axis one. Email off is off for every category on that channel, and the
-   * inbox is untouched by it: there is no `inbox` channel switch, because a
-   * bell you have silenced is a feature you have deleted.
+   * Axis one. Email off is off for every category on that channel, a critical
+   * template aside, and the inbox is untouched by it: there is no `inbox`
+   * channel switch, because a bell you have silenced is a feature you have
+   * deleted.
    */
   it("honours the email channel switch, and leaves the inbox alone", async ({
     expect,
@@ -159,6 +160,29 @@ describe("Lore's notification preferences", () => {
 
     expect(await ask(ctx, { category: "security" })).toBe(false);
     expect(await ask(ctx, { category: "security", critical: true })).toBe(true);
+
+    await ctx.alepha.stop();
+  });
+
+  /**
+   * The same account, reached through the broader switch: the Email switch
+   * promises that sign-in codes and password resets are not affected.
+   */
+  it("never lets the email switch stop a critical template", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    await ctx.probe.prefs.create({
+      userId: ctx.user.id,
+      emailEnabled: false,
+    } as never);
+
+    expect(await ask(ctx, { category: "security", critical: true })).toBe(true);
+    // `critical` is what earns it, not the category.
+    expect(await ask(ctx, { category: "security" })).toBe(false);
+    expect(await ask(ctx, { category: "security", critical: false })).toBe(
+      false,
+    );
 
     await ctx.alepha.stop();
   });

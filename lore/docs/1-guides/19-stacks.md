@@ -67,9 +67,16 @@ refused at upload. Every reason is listed at once:
 
 - no `container_name`, no `build`, no `privileged`, no host network, PID, IPC or
   user namespace;
+- no `container:` under `network_mode`, `pid`, `ipc` or `volumes_from`, which
+  would reach another environment's containers: `service:<name>`, or a plain
+  service name under `volumes_from`, names one of the stack's own;
 - every plain service needs an `image`;
-- no Docker socket, and no bind mount outside the bundle;
+- no Docker socket;
+- no bind mount, `env_file`, or `file:` under `secrets` or `configs` outside the
+  bundle, and no variable in an `env_file` path;
+- no `include`, and no `extends` from another file: a stack is one compose file;
 - no named volume with `driver_opts`, which could bind any host path;
+- no named volume or network marked `external`, or with a `name` of its own;
 - a plain service cannot depend on an app service.
 
 The **Revisions** tab lists them newest first and shows the difference between
@@ -176,7 +183,8 @@ lore stack secrets list -e production
 `--length` says otherwise (16 to 256), so it never passes through a terminal.
 `-e` is required on these commands: a variable set on the wrong environment is a
 production secret in staging. An environment holds up to 200 variables, each
-up to 5,000 characters.
+up to 5,000 characters. Bay refuses a deploy with a variable named `COMPOSE_*`,
+which would configure Compose itself.
 
 ## Routes
 

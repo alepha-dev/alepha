@@ -31,8 +31,8 @@ import {
  * except minting, which is what `sigil_create` still does.
  *
  * Listing and reading are open to any project member; creating, rotating and
- * deleting are owner-only, and that is enforced in `SigilController` rather
- * than restated here.
+ * deleting need `sigil:manage`, and that is enforced in `SigilController`
+ * rather than restated here.
  */
 export class SigilTools {
   protected readonly sigils = $inject(SigilController);
