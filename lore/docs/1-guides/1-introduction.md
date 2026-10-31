@@ -17,7 +17,8 @@ A project is not one fixed shape. It is a container that composes four
   [Telemetry](/lore/docs/guides-telemetry) and
   [Deploying an app](/lore/docs/guides-deploying).
 - **Support** - **feedback**, inbound bug and feature triage, plus a
-  first-party request form your users can reach.
+  first-party request form your users can reach. See
+  [Feedback](/lore/docs/guides-feedback).
 
 Turn a capability off and its pages, its menu entries and its search results
 go with it. Nothing is deleted: turn it back on and everything is where you
@@ -40,9 +41,10 @@ flowchart LR
 **Reports** sits outside the four: every project has it, and each of its tabs
 appears when the capability behind it does.
 
-Every one of those surfaces is exposed over **MCP**, which is the primary consumer:
-an AI agent reads the folio index to orient itself, drives quests as work lands, and
-files what it learned back as a folio. `project_context` answers the capability
+Most of those surfaces are exposed over **MCP**, which is the primary consumer: an
+AI agent reads the folio index to orient itself, drives quests as work lands, and
+files what it learned back as a folio. [MCP tools](/lore/docs/guides-mcp) lists every
+tool, and what has none. `project_context` answers the capability
 set first, then only the sections those capabilities own - a section a project
 has turned off is absent rather than empty, so an agent is never told a project
 tracks something it does not.
@@ -112,11 +114,17 @@ what each optional variable buys.
   project stands, at a glance.
 - [Folios](/lore/docs/guides-folios) and
   [Attachments](/lore/docs/guides-attachments) - the project's memory.
-- [Agent prompts](/lore/docs/guides-agent-prompts) and
-  [Automations](/lore/docs/guides-automations) - putting agents to work.
+- [Feedback](/lore/docs/guides-feedback) and
+  [Notifications](/lore/docs/guides-notifications) - hearing from your users and
+  from Lore.
+- [Agent prompts](/lore/docs/guides-agent-prompts),
+  [Automations](/lore/docs/guides-automations) and
+  [MCP tools](/lore/docs/guides-mcp) - putting agents to work.
 - [The lore CLI](/lore/docs/guides-cli) - every command.
 - [Telemetry](/lore/docs/guides-telemetry),
+  [Healthchecks](/lore/docs/guides-healthchecks),
   [Deploying an app](/lore/docs/guides-deploying),
-  [Artifacts](/lore/docs/guides-artifacts) and
+  [Artifacts](/lore/docs/guides-artifacts),
+  [Stacks](/lore/docs/guides-stacks) and
   [Estates](/lore/docs/guides-estates) - running your apps.
 - [Self-Hosting](/lore/docs/guides-self-hosting) - your own instance.
