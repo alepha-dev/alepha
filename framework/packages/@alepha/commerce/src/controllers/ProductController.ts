@@ -8,7 +8,7 @@ import { optionGroupSchema } from "../schemas/optionGroupSchema.ts";
 import { publicVariantSchema } from "../schemas/publicVariantSchema.ts";
 import { CatalogService } from "../services/CatalogService.ts";
 import { CategoryService } from "../services/CategoryService.ts";
-import { StockService } from "../services/StockService.ts";
+import { type StockFigures, StockService } from "../services/StockService.ts";
 import { VariantService } from "../services/VariantService.ts";
 
 /**
@@ -95,18 +95,16 @@ export class ProductController {
         ...filters,
         ...(category ? { categoryId: await this.categoryId(category) } : {}),
       });
-      const variants = await this.variants.listForProducts(
-        page.content.map((product) => product.id),
-      );
+      const ids = page.content.map((product) => product.id);
+      const variants = await this.variants.listForProducts(ids);
       // Availability per row, so a listing can grey out what is gone without a
-      // second request per product.
-      const content = await Promise.all(
-        page.content.map(async (product) => {
-          const onSale = this.onSale(product, variants);
-          const { priceFrom, available } = await this.figures(product, onSale);
-          return { ...this.publicView(product), priceFrom, available };
-        }),
-      );
+      // second request per product, and for the whole page in two queries.
+      const stock = await this.stock.figuresFor(ids);
+      const content = page.content.map((product) => {
+        const onSale = this.onSale(product, variants);
+        const { priceFrom, available } = this.figures(product, onSale, stock);
+        return { ...this.publicView(product), priceFrom, available };
+      });
       return { ...page, content };
     },
   });
@@ -129,9 +127,10 @@ export class ProductController {
         product,
         await this.variants.listOf(product.id),
       );
-      const { priceFrom, available, perVariant } = await this.figures(
+      const { priceFrom, available, perVariant } = this.figures(
         product,
         onSale,
+        await this.stock.figuresFor([product.id]),
       );
       return {
         ...this.publicView(product),
@@ -168,27 +167,26 @@ export class ProductController {
    * availability is the sum of those on sale: stock under a variant nobody can
    * pick cannot be sold.
    */
-  protected async figures(
+  protected figures(
     product: ProductEntity,
     onSale: ProductVariantEntity[],
+    stock: StockFigures,
   ) {
     if (onSale.length === 0) {
       return {
         priceFrom: undefined,
-        available: await this.stock.available(product.id),
+        available: stock.of(product.id).available,
         perVariant: [],
       };
     }
 
-    const perVariant = await Promise.all(
-      onSale.map(async (variant) => ({
-        id: variant.id,
-        options: variant.options as Record<string, string>,
-        price: variant.price ?? product.price,
-        image: variant.image,
-        available: await this.stock.available(product.id, variant.id),
-      })),
-    );
+    const perVariant = onSale.map((variant) => ({
+      id: variant.id,
+      options: variant.options as Record<string, string>,
+      price: variant.price ?? product.price,
+      image: variant.image,
+      available: stock.of(product.id, variant.id).available,
+    }));
     const prices = perVariant.map((it) => it.price);
     return {
       priceFrom: new Set(prices).size > 1 ? Math.min(...prices) : undefined,

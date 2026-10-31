@@ -297,12 +297,7 @@ export class CartService {
   }
 
   public async clear(cartId: string): Promise<void> {
-    const lines = await this.itemRepo.findMany({
-      where: { cartId: { eq: cartId } },
-    });
-    for (const line of lines) {
-      await this.itemRepo.deleteById(line.id);
-    }
+    await this.itemRepo.deleteMany({ cartId: { eq: cartId } });
     await this.cartRepo.updateById(cartId, { promotionCode: null });
   }
 

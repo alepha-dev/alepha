@@ -140,19 +140,15 @@ export class AdminProductController {
     },
     handler: async ({ query }) => {
       const page = await this.catalog.listAll(query);
-      const variants = await this.variants.listForProducts(
-        page.content.map((product) => product.id),
-      );
-      const withStock = await Promise.all(
-        page.content.map(async (product) => ({
-          ...product,
-          onHand: await this.stock.onHand(product.id),
-          reserved: await this.stock.reserved(product.id),
-          available: await this.stock.available(product.id),
-          variantCount: variants.filter((it) => it.productId === product.id)
-            .length,
-        })),
-      );
+      const ids = page.content.map((product) => product.id);
+      const variants = await this.variants.listForProducts(ids);
+      const stock = await this.stock.figuresFor(ids);
+      const withStock = page.content.map((product) => ({
+        ...product,
+        ...stock.of(product.id),
+        variantCount: variants.filter((it) => it.productId === product.id)
+          .length,
+      }));
       return { ...page, content: withStock };
     },
   });
@@ -233,11 +229,10 @@ export class AdminProductController {
     },
     handler: async ({ params }) => {
       const product = await this.catalog.getById(params.id);
+      const stock = await this.stock.figuresFor([product.id]);
       return {
         ...product,
-        onHand: await this.stock.onHand(product.id),
-        reserved: await this.stock.reserved(product.id),
-        available: await this.stock.available(product.id),
+        ...stock.of(product.id),
         variantCount: (await this.variants.listOf(product.id)).length,
       };
     },
@@ -548,14 +543,11 @@ export class AdminProductController {
     productId: string,
     variants: ProductVariantEntity[],
   ) {
-    return Promise.all(
-      variants.map(async (variant) => ({
-        ...variant,
-        onHand: await this.stock.onHand(productId, variant.id),
-        reserved: await this.stock.reserved(productId, variant.id),
-        available: await this.stock.available(productId, variant.id),
-      })),
-    );
+    const stock = await this.stock.figuresFor([productId]);
+    return variants.map((variant) => ({
+      ...variant,
+      ...stock.of(productId, variant.id),
+    }));
   }
 
   /**

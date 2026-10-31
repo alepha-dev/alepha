@@ -15,6 +15,26 @@ import { InsufficientStockError } from "../errors/CommerceError.ts";
 import { ClaimLock, type ClaimLockKey } from "./ClaimLock.ts";
 
 /**
+ * What the ledger says about one product or variant.
+ */
+export interface StockFigure {
+  onHand: number;
+  reserved: number;
+  available: number;
+}
+
+/**
+ * The figures of a page of products, read at once.
+ */
+export interface StockFigures {
+  /**
+   * Without a variant, the product's total. Zero for what the ledger does not
+   * know.
+   */
+  of(productId: string, variantId?: string): StockFigure;
+}
+
+/**
  * Stock, as an append-only ledger plus a set of temporary holds.
  *
  * Three numbers, and confusing them is how shops oversell:
@@ -113,18 +133,15 @@ export class StockService {
    */
   public async releaseExpiredReservations(): Promise<number> {
     const now = this.dateTime.nowISOString();
-    const stale = await this.reservations.findMany({
-      where: { status: { eq: "held" }, expiresAt: { lt: now } },
-    });
+    const released = await this.reservations.updateMany(
+      { status: { eq: "held" }, expiresAt: { lt: now } },
+      { status: "released" },
+    );
 
-    for (const hold of stale) {
-      await this.reservations.updateById(hold.id, { status: "released" });
+    if (released.length > 0) {
+      this.log.info(`Released ${released.length} expired stock reservation(s)`);
     }
-
-    if (stale.length > 0) {
-      this.log.info(`Released ${stale.length} expired stock reservation(s)`);
-    }
-    return stale.length;
+    return released.length;
   }
 
   // -------------------------------------------------------------------------
@@ -137,14 +154,14 @@ export class StockService {
    * outside it is stale by the time it is acted on.
    */
   public async onHand(productId: string, variantId?: string): Promise<number> {
-    const rows = await this.movements.findMany({
+    const [row] = await this.movements.aggregate({
+      select: { delta: { sum: true } },
       where: {
         productId: { eq: productId },
         ...(variantId ? { variantId: { eq: variantId } } : {}),
       },
-      columns: ["delta"],
     });
-    return rows.reduce((sum, row) => sum + row.delta, 0);
+    return Number(row?.delta.sum ?? 0);
   }
 
   /**
@@ -155,17 +172,16 @@ export class StockService {
     productId: string,
     variantId?: string,
   ): Promise<number> {
-    const now = this.dateTime.nowISOString();
-    const holds = await this.reservations.findMany({
+    const [row] = await this.reservations.aggregate({
+      select: { quantity: { sum: true } },
       where: {
         productId: { eq: productId },
         ...(variantId ? { variantId: { eq: variantId } } : {}),
         status: { eq: "held" },
-        expiresAt: { gte: now },
+        expiresAt: { gte: this.dateTime.nowISOString() },
       },
-      columns: ["quantity"],
     });
-    return holds.reduce((sum, hold) => sum + hold.quantity, 0);
+    return Number(row?.quantity.sum ?? 0);
   }
 
   /**
@@ -180,6 +196,77 @@ export class StockService {
       this.reserved(productId, variantId),
     ]);
     return onHand - reserved;
+  }
+
+  /**
+   * The figures of many products in two queries, whatever their number: one
+   * sum per product and variant over the ledger, one over the live holds.
+   *
+   * What a list reads. {@link available} per row was two scans per product on
+   * the busiest page of a shop.
+   */
+  public async figuresFor(productIds: string[]): Promise<StockFigures> {
+    const totals = new Map<string, { onHand: number; reserved: number }>();
+    const add = (
+      key: string,
+      field: "onHand" | "reserved",
+      value: number,
+    ): void => {
+      const entry = totals.get(key) ?? { onHand: 0, reserved: 0 };
+      entry[field] += value;
+      totals.set(key, entry);
+    };
+    const keyOf = (productId: string, variantId?: string | null) =>
+      `${productId}:${variantId ?? ""}`;
+
+    if (productIds.length > 0) {
+      const movements = await this.movements.aggregate({
+        select: {
+          productId: true,
+          variantId: true,
+          delta: { sum: true },
+        },
+        where: { productId: { inArray: productIds } },
+        groupBy: ["productId", "variantId"],
+      });
+      for (const row of movements) {
+        const value = Number(row.delta.sum ?? 0);
+        add(keyOf(row.productId), "onHand", value);
+        if (row.variantId) {
+          add(keyOf(row.productId, row.variantId), "onHand", value);
+        }
+      }
+
+      const holds = await this.reservations.aggregate({
+        select: {
+          productId: true,
+          variantId: true,
+          quantity: { sum: true },
+        },
+        where: {
+          productId: { inArray: productIds },
+          status: { eq: "held" },
+          expiresAt: { gte: this.dateTime.nowISOString() },
+        },
+        groupBy: ["productId", "variantId"],
+      });
+      for (const row of holds) {
+        const value = Number(row.quantity.sum ?? 0);
+        add(keyOf(row.productId), "reserved", value);
+        if (row.variantId) {
+          add(keyOf(row.productId, row.variantId), "reserved", value);
+        }
+      }
+    }
+
+    return {
+      of: (productId, variantId) => {
+        const { onHand, reserved } = totals.get(
+          keyOf(productId, variantId),
+        ) ?? { onHand: 0, reserved: 0 };
+        return { onHand, reserved, available: onHand - reserved };
+      },
+    };
   }
 
   /**
@@ -328,12 +415,10 @@ export class StockService {
    * Idempotent: a hold already consumed or released is left alone.
    */
   public async releaseFor(orderId: string): Promise<void> {
-    const holds = await this.reservations.findMany({
-      where: { orderId: { eq: orderId }, status: { eq: "held" } },
-    });
-    for (const hold of holds) {
-      await this.reservations.updateById(hold.id, { status: "released" });
-    }
+    await this.reservations.updateMany(
+      { orderId: { eq: orderId }, status: { eq: "held" } },
+      { status: "released" },
+    );
   }
 
   /**
@@ -435,7 +520,8 @@ export class StockService {
     variantId: string | undefined,
     orderId?: string,
   ): Promise<number> {
-    const holds = await this.reservations.findMany({
+    const [row] = await this.reservations.aggregate({
+      select: { quantity: { sum: true } },
       where: {
         productId: { eq: productId },
         ...(variantId ? { variantId: { eq: variantId } } : {}),
@@ -443,9 +529,8 @@ export class StockService {
         expiresAt: { gte: this.dateTime.nowISOString() },
         ...(orderId ? { orderId: { ne: orderId } } : {}),
       },
-      columns: ["quantity"],
     });
-    return holds.reduce((sum, hold) => sum + hold.quantity, 0);
+    return Number(row?.quantity.sum ?? 0);
   }
 
   /**
@@ -460,7 +545,8 @@ export class StockService {
     if (!context.orderId) {
       return false;
     }
-    const rows = await this.movements.findMany({
+    const [row] = await this.movements.aggregate({
+      select: { delta: { sum: true } },
       where: {
         orderId: { eq: context.orderId },
         productId: { eq: productId },
@@ -469,18 +555,17 @@ export class StockService {
           ? { eq: context.orderItemId }
           : { isNull: true },
       },
-      columns: ["delta"],
     });
-    return rows.reduce((sum, row) => sum + row.delta, 0) < 0;
+    return Number(row?.delta.sum ?? 0) < 0;
   }
 
   /**
    * Whether a sale just written is one the ledger can actually back, on a
    * database where {@link claim} holds no lock.
    *
-   * The whole ledger is replayed in the order it was written - see
-   * {@link holdFits} for why `(createdAt, id)` is that order there and not on
-   * Postgres - and the balance is summed up to and including this movement.
+   * The ledger is summed in the order it was written - see {@link holdFits}
+   * for why `(createdAt, id)` is that order there and not on Postgres - up to
+   * and including this movement.
    * The sale survives if the running balance never went negative at its own
    * row.
    *
@@ -501,27 +586,23 @@ export class StockService {
     variantId: string | undefined,
     movementId: string,
   ): Promise<boolean> {
-    const movements = await this.movements.findMany({
+    const movement = await this.movements.findById(movementId);
+    if (!movement) {
+      return false;
+    }
+
+    const [row] = await this.movements.aggregate({
+      select: { delta: { sum: true } },
       where: {
         productId: { eq: productId },
         ...(variantId ? { variantId: { eq: variantId } } : {}),
+        or: [
+          { createdAt: { lt: movement.createdAt } },
+          { createdAt: { eq: movement.createdAt }, id: { lte: movementId } },
+        ],
       },
-      orderBy: [
-        { column: "createdAt", direction: "asc" },
-        { column: "id", direction: "asc" },
-      ],
-      columns: ["id", "delta"],
     });
-
-    let running = 0;
-    for (const movement of movements) {
-      running += movement.delta;
-      if (movement.id === movementId) {
-        return running >= 0;
-      }
-    }
-
-    return false;
+    return Number(row?.delta.sum ?? 0) >= 0;
   }
 
   /**
