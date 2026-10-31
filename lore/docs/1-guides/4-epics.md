@@ -31,11 +31,11 @@ none leaves, and none is deleted.
 
 **Completed** also happens on its own, when the last open quest of an epic
 in progress is completed or shelved. It is final: nothing reopens. Neither
-does a quest, in any epic: a completed quest is immutable, and follow-up
-work is a new quest linked to the old one. The epic's own title and
-description stay editable, because the record of what happened is meant to
-be curated, and folios can still be filed under it. An outcome note written
-after the work shipped belongs exactly there.
+does a quest, in any epic: a completed quest's title, description and
+objectives are frozen, and follow-up work is a new quest linked to the old one.
+The epic's own title and description stay editable, because the record of what
+happened is meant to be curated, and folios can still be filed under it. An
+outcome note written after the work shipped belongs exactly there.
 
 So the epic page offers two moves, and only while nobody has started: **Mark
 as ready** on a draft epic, **Back to draft** on a ready one. Mark as
@@ -155,7 +155,7 @@ Going the other way, an epic can hand ITSELF to an agent: **Review** asks
 one to sharpen the plan while it is still open (draft or ready), and
 **Work on it** hands the whole epic over, quest by quest, once it is ready.
 Both are in the epic's Agent Prompts menu, which is off until a project
-turns it on. See [Agent prompts](6-agent-prompts.md).
+turns it on. See [Agent prompts](/lore/docs/guides-agent-prompts).
 
 ## What the roadmap shows
 

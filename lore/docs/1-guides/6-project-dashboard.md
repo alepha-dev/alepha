@@ -1,8 +1,9 @@
 # The project dashboard
 
-Every project has a board, and it is what you land on when you open the
-project. It holds cards: each one is a number, and each number is a link to
-the page it came from.
+Every project has a **Dashboard**, and it is what you land on when you open the
+project. This page calls it the board; it is not the **Kanban** page of
+[Quests](/lore/docs/guides-quests). It holds cards: each one is a number, and
+each number is a link to the page it came from.
 
 ## The board belongs to the project, not to you
 

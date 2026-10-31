@@ -1,7 +1,8 @@
 # Deploying an app
 
-Lore can deploy your app for you. You lend it a cloud account, tell it which
-copies of your app exist, and then shipping is one command or one button.
+Lore can deploy your app for you. You lend it a machine running Bay or a
+Cloudflare account, tell it which copies of your app exist, and then shipping is
+one command or one button.
 
 This page is the whole story, from an empty project to a rollback.
 
@@ -27,7 +28,7 @@ Lore when the list stops being fixed.
 
 | Thing            | What it is                                                                             |
 | ---------------- | -------------------------------------------------------------------------------------- |
-| **Estate**       | A cloud account you own and lend to a project. Yours, not the project's.               |
+| **Estate**       | A Bay machine or Cloudflare account you lend to a project. Yours, not the project's.   |
 | **App instance** | One deployed copy, named by a pair: an app and an environment. `club` in `production`. |
 | **Artifact**     | A build somebody pushed, named by a tag. Immutable, except `latest`.                   |
 | **Deployment**   | One run of "put these bytes on that copy", with its log.                               |
@@ -45,7 +46,7 @@ looking for a second switch.
 
 Open **Settings → Apps → Estates** and add one. A Cloudflare estate needs an account id
 and an API token, and Lore checks the token against that account before the
-estate exists - see [The Cloudflare token](5-cloudflare-token.md) for which
+estate exists - see [The Cloudflare token](/lore/docs/guides-cloudflare-token) for which
 permissions it needs and why the obvious template is not the right one.
 
 An estate belongs to **you**, not to the project. Lending it to a project lets
