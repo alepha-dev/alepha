@@ -1,4 +1,5 @@
 import { $atom, $inject, $module, $store, Alepha, z } from "alepha";
+import { MemoryDestinationProvider } from "alepha/logger";
 import { $action, AlephaServer } from "alepha/server";
 import { describe, expect, it } from "vitest";
 
@@ -303,5 +304,52 @@ describe("request isolation (cookie-seeded state never leaks across concurrent r
     // The root (app-level) store must never have been mutated by a
     // request-scoped cookie read.
     expect(alepha.store.get(settingsAtom, "app")).toEqual({ theme: "light" });
+  });
+
+  describe("a value too large for one cookie", () => {
+    const largeAtom = $atom({
+      name: "test.cookie.large",
+      schema: z.object({ data: z.string() }),
+      default: { data: "" },
+      persist: "cookie",
+    });
+
+    class LargeAtomApp {
+      protected readonly alepha = $inject(Alepha);
+
+      large = $store(largeAtom);
+
+      update = $action({
+        method: "POST",
+        path: "/update-large",
+        schema: { response: z.object({ ok: z.boolean() }) },
+        handler: () => {
+          this.alepha.store.set(largeAtom, { data: "x".repeat(4000) });
+          return { ok: true };
+        },
+      });
+    }
+
+    it("warns and writes nothing, since the browser reads it and it cannot be chunked", async () => {
+      const large = Alepha.create()
+        .with(AlephaServer)
+        .with(AlephaServerCookies);
+      const largeApp = large.inject(LargeAtomApp);
+      await large.start();
+
+      const response = await largeApp.update.fetch();
+
+      expect(response.data).toEqual({ ok: true });
+      expect(response.raw?.headers.get("set-cookie")).toBeNull();
+      expect(
+        large
+          .inject(MemoryDestinationProvider)
+          .logs.some(
+            (entry) =>
+              entry.level === "WARN" &&
+              entry.message.includes("test.cookie.large"),
+          ),
+      ).toBe(true);
+    });
   });
 });
