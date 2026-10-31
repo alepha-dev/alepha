@@ -14,8 +14,8 @@ func recordingControlAPI(t *testing.T) (socket string, query *string) {
 	socket = controlSocket(t)
 	query = new(string)
 	serveSocket(t, socket, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		*query = r.URL.RawQuery
-		_, _ = w.Write([]byte("[]"))
+		*query = r.URL.Path + "?" + r.URL.RawQuery
+		_, _ = w.Write([]byte("{}"))
 	}))
 	return socket, query
 }
@@ -30,7 +30,7 @@ func TestStackBackupLeavesTheControlFlagOutOfItsArguments(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if *query != "" {
+		if strings.Contains(*query, "service") {
 			t.Fatalf("query = %q", *query)
 		}
 	})
@@ -42,7 +42,7 @@ func TestStackBackupLeavesTheControlFlagOutOfItsArguments(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if *query != "service=db" {
+		if !strings.HasSuffix(*query, "?service=db") {
 			t.Fatalf("query = %q", *query)
 		}
 	})
@@ -70,6 +70,41 @@ func TestStackBackupLeavesTheControlFlagOutOfItsArguments(t *testing.T) {
 	})
 }
 
+// `bay stack logs` used to name the instance after the flag.
+func TestStackCommandsLeaveTheControlFlagOutOfTheirArguments(t *testing.T) {
+	t.Run("logs does not take it for a service", func(t *testing.T) {
+		socket, query := recordingControlAPI(t)
+
+		_ = cmdStack([]string{"logs", "mcs/production", "--control-socket", socket})
+
+		if strings.Contains(*query, "control-socket") {
+			t.Fatalf("called %q", *query)
+		}
+	})
+
+	t.Run("deploy does not refuse it", func(t *testing.T) {
+		socket, query := recordingControlAPI(t)
+
+		_ = cmdStack([]string{"deploy", "mcs/production", "--control-socket", socket})
+
+		if !strings.Contains(*query, "/stacks/mcs/production/deploy") {
+			t.Fatalf("the deploy never reached the control API, called %q", *query)
+		}
+	})
+}
+
+func TestBareRuntimesAcceptsTheControlFlag(t *testing.T) {
+	socket, query := recordingControlAPI(t)
+
+	if err := cmdRuntimes([]string{"--control-socket", socket}); err != nil {
+		t.Fatal(err)
+	}
+
+	if !strings.HasPrefix(*query, "/runtimes?") {
+		t.Fatalf("called %q", *query)
+	}
+}
+
 // A stand-in `docker`, since `stack exec` runs the real one: what it was given
 // is the whole question.
 func TestStackExecLeavesTheControlFlagOutOfTheContainerCommand(t *testing.T) {
@@ -81,7 +116,7 @@ func TestStackExecLeavesTheControlFlagOutOfTheContainerCommand(t *testing.T) {
 	}
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 
-	err := cmdStackExec([]string{"mcs/production", "db", "psql", "-U", "app", "--control-socket", "/run/bay/control.sock"})
+	err := cmdStack([]string{"exec", "mcs/production", "db", "psql", "-U", "app", "--control-socket", "/run/bay/control.sock"})
 	if err != nil {
 		t.Fatal(err)
 	}
