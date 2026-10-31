@@ -1473,8 +1473,8 @@ export default {
   "app.environment.import.cancel": "Annuler",
   "app.environment.import.submit": "Importer $1",
   "app.environment.import.done": "$1 importés",
-  "app.environment.ownerOnly":
-    "Seul le propriétaire du projet peut changer ce avec quoi cette copie s\u2019exécute.",
+  "app.environment.notAllowed":
+    "Votre rang ne permet pas de changer ce avec quoi cette copie s\u2019exécute.",
   "app.tab.settings": "Paramètres",
   "app.dashboard.token": "Jeton",
   "app.dashboard.identity": "Identité",
@@ -1604,8 +1604,7 @@ export default {
   "app.settings.sigil.remove.title": "Retirer le sigil",
   "app.settings.sigil.remove.description":
     "Arrête les remontées de cette copie et retire du projet ce qu’elle a remonté. Les lignes brutes d’Analytics Engine restent jusqu’à leur expiration, sans plus être lues. L’application elle-même est conservée. Pour révoquer un jeton fuité sans perdre l’historique, renouvelez-le plutôt.",
-  "app.settings.ownerOnly":
-    "Seul le propriétaire du projet peut effectuer cette action.",
+  "app.settings.notAllowed": "Votre rang ne permet pas cette action.",
 
   "insights.range.1d": "Aujourd'hui",
   "insights.range.7d": "7 jours",
@@ -1773,8 +1772,8 @@ export default {
   "estates.project.empty":
     "Aucun domaine prêté pour l'instant. Tant qu'il n'y en a pas, ce projet n'a nulle part où déployer.",
   "estates.project.add": "Ajouter un domaine",
-  "estates.project.ownerOnly":
-    "Seul le propriétaire du projet peut ajouter un domaine.",
+  "estates.project.notAllowed":
+    "Votre rang ne permet pas d'ajouter un domaine.",
   "estates.project.lentBy": "prêté par $1",
   "bay.nav.overview": "Vue d'ensemble",
   "bay.nav.apps": "Applications",

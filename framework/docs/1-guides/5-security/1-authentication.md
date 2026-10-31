@@ -126,6 +126,12 @@ On this path a failed refresh, whatever the cause, deletes the cookie, and
 
 The security errors carry their own status the same way: an `InvalidTokenError` is an `UnauthorizedError` (401), an `InvalidPermissionError` a `ForbiddenError` (403), and a `RealmNotFoundError` an `AlephaError` (500), since it always means the app's configuration names a realm it does not declare.
 
+### The `tokens` Cookie Can Outgrow One Cookie
+
+Browsers cap one cookie at about 4 KB and silently drop anything larger, which reads as a logout right after a login. Tokens from an external provider such as Keycloak pass that easily: a JWT barely compresses, and encryption and encoding add to it. So `$cookie` chunks automatically: a value that encodes to more than 3,800 bytes is written as `app.tokens.0`, `app.tokens.1`, ... with the same attributes and joined back on read. Sign-out and refresh expire every chunk they no longer use, and a chunk that is lost or tampered with signs the user out rather than failing the request.
+
+Chunking keeps the session; it does not make it free. Every chunk goes back on every request, and request headers are capped: 16 KB in total by default on Node, 8 KB for the `Cookie` header on a default nginx (`large_client_header_buffers`). Past that the request fails with a 431 or a 400, before any of your code runs. The server logs a warning naming the cookie and its size when a client's cookies pass about 6 KB. If you see it for `tokens`, ask the provider for fewer claims, or keep the tokens in a server-side session with only an ID in the cookie.
+
 ## User Management with $realm
 
 `$realm` is a higher-level primitive that wraps `$issuer` with built-in user management: registration, login, sessions, password handling, and identity providers.

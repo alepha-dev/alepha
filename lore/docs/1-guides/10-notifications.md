@@ -53,9 +53,8 @@ to grant.
 **Notifications** in your account holds your preferences. They apply to you in
 every project.
 
-- **Email** turns off everything that would be mailed to you. ⚠️ That includes
-  sign-in codes and password resets, although the switch's description says
-  otherwise.
+- **Email** turns off everything that would be mailed to you, except the security
+  mail your account depends on, such as sign-in codes and password resets.
 - **In-app** has no switch: the inbox is always on.
 - **Kinds of message** are switches that apply to both channels at once. Sign-in
   codes and password resets are not listed, and stay on whatever you mute here.

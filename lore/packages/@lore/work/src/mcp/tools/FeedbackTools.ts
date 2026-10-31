@@ -20,10 +20,10 @@ import {
 } from "../schemas/feedbackSchemas.ts";
 
 /**
- * MCP tools for feedback — user-submitted bug/feature requests that the
- * project owner triages. Any project member can list the inbox and inspect
- * an item; accept and reject are owner-only. Promoting feedback to a quest
- * is a separate quest_create call with `feedbackId` set.
+ * MCP tools for feedback: user-submitted bug/feature requests, triaged by
+ * whoever holds `feedback:triage`. Any project member can list the inbox and
+ * inspect an item; accept and reject need that permission. Promoting feedback
+ * to a quest is a separate quest_create call with `feedbackId` set.
  */
 export class FeedbackTools {
   protected readonly feedbackController = $inject(FeedbackController);
@@ -153,7 +153,7 @@ export class FeedbackTools {
 
   feedback_list = $tool({
     description:
-      "List feedback (user-submitted bug/feature requests) for a project. Any project member can read it; accept/reject are owner-only. Defaults to status 'pending' — the inbox the owner needs to triage. Pass status='all' to see everything. " +
+      "List feedback (user-submitted bug/feature requests) for a project. Any project member can read it; accept and reject need `feedback:triage`. Defaults to status 'pending': the inbox waiting for triage. Pass status='all' to see everything. " +
       "⚠️ **PAGED since 0.28.0, where it used to return every row.** It answers at most 50 at a time, newest first, and `hasMore` says whether older rows remain — a project with 106 accepted items now takes three calls, so treat a full page as 'there is probably more' rather than as the whole set. Page with `offset`, raised by the page size; there is no cursor. " +
       "A row with a non-zero `attachmentCount` carries files: `feedback_get` lists them and `feedback_attachment_get` renders an image inline, so triage does not need a round-trip per row to find out which reports came with a screenshot.",
     title: "List feedback",
@@ -308,7 +308,7 @@ export class FeedbackTools {
 
   feedback_accept = $tool({
     description:
-      "Accept a pending feedback item — owner declares the request valid. Status flips pending → accepted. Quests are created separately via quest_create with feedbackId set.",
+      "Accept a pending feedback item: the caller declares the request valid. Needs `feedback:triage`. Status flips pending → accepted. Quests are created separately via quest_create with feedbackId set.",
     title: "Accept feedback",
     annotations: { readOnlyHint: false, destructiveHint: false },
     schema: {
@@ -332,7 +332,7 @@ export class FeedbackTools {
 
   feedback_reject = $tool({
     description:
-      "Reject a pending feedback item. Soft state transition — the row remains for audit.",
+      "Reject a pending feedback item. Soft state transition: the row remains for audit. Needs `feedback:triage`.",
     title: "Reject feedback",
     annotations: { readOnlyHint: false, destructiveHint: false },
     schema: {

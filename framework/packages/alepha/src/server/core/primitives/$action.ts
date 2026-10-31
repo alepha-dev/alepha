@@ -610,6 +610,9 @@ export class ActionPrimitive<
       headers,
       reply,
       ip: parentIp,
+      // A local call is part of its caller's unit of work: the fork below
+      // adds no signal, so this stays the same object as the ambient one.
+      signal: this.alepha.context.signal,
       metadata: {
         routePath: this.route.path,
         routeMethod: this.route.method,

@@ -431,7 +431,7 @@ export const questCreateParamsSchema = projectParamsSchema.extend({
   feedback_shortId: z
     .integer()
     .describe(
-      "Per-project shortId of an ACCEPTED feedback item to link this quest to (it then shows under that item's 'linked quests'). Owner-only; the feedback must already be accepted (accept it first via feedback_accept).",
+      "Per-project shortId of an ACCEPTED feedback item to link this quest to (it then shows under that item's 'linked quests'). Needs `feedback:triage`; the feedback must already be accepted (accept it first via feedback_accept).",
     )
     .optional(),
   epic_number: z
@@ -664,7 +664,7 @@ export const questUpdateParamsSchema = entityRefSchema.extend({
   feedback_shortId: z
     .integer()
     .describe(
-      "Link this quest to the ACCEPTED feedback item with this per-project shortId (shows under that item's 'linked quests'). Pass 0 to clear the link. Owner-only; the feedback must already be accepted. Allowed on a COMPLETED quest, which is the usual case: which reported issue the work resolved is normally established after the fact, and there is no 'link an existing quest' endpoint on the feedback side.",
+      "Link this quest to the ACCEPTED feedback item with this per-project shortId (shows under that item's 'linked quests'). Pass 0 to clear the link. Needs `feedback:triage` to link; the feedback must already be accepted. Allowed on a COMPLETED quest, which is the usual case: which reported issue the work resolved is normally established after the fact, and there is no 'link an existing quest' endpoint on the feedback side.",
     )
     .optional(),
   epic_number: z

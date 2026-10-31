@@ -2607,8 +2607,11 @@ export class JobProvider {
       keepNewest: boolean;
     },
   ): Promise<void> {
+    // `createdAt`, not `completedAt`: `(jobName, status, createdAt)` serves it.
+    // No index leads `completedAt`, so that order fetched and sorted every row
+    // of the job and status on each chunk, which on a busy job passed D1's 5 s
+    // timeout (#Q3019). The two only disagree on runs that overlapped.
     const newestFirst = [
-      { column: "completedAt" as const, direction: "desc" as const },
       { column: "createdAt" as const, direction: "desc" as const },
     ];
     let deleted = 0;

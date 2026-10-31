@@ -36,8 +36,8 @@ import {
  * - an **estate** (`app_instance_update`) is where it deploys to, and must be
  *   one lent to this project.
  *
- * Reads are open to any project member; creating, updating and deleting are
- * owner-only, enforced in `AppController` rather than restated here.
+ * Reads are open to any project member; creating, updating and deleting need
+ * `app:manage`, enforced in `AppController` rather than restated here.
  */
 export class AppInstanceTools {
   protected readonly apps = $inject(AppController);
