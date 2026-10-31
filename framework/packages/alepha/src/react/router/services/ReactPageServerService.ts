@@ -36,13 +36,17 @@ export class ReactPageServerService extends ReactPageService {
   }
 
   public async fetch(
-    pathname: string,
+    name: string,
     options: PagePrimitiveRenderOptions = {},
   ): Promise<{
     html: string;
     response: Response;
   }> {
-    const response = await fetch(`${this.serverProvider.hostname}/${pathname}`);
+    const pathname = this.pageApi.pathname(name, {
+      params: options.params,
+      query: options.query,
+    });
+    const response = await fetch(`${this.serverProvider.hostname}${pathname}`);
 
     const html = await response.text();
     if (options?.html) {

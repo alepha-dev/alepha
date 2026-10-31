@@ -356,8 +356,8 @@ If the entity has an `updatedAt` column, it is automatically set on conflict.
 
 An upsert that conflicts with a soft-deleted row throws rather than bringing the
 row back: hard-delete it first. `{ force: true }` lifts that guard and overwrites
-the row, which stays soft-deleted. `upsertMany` does not throw: it leaves such a
-row out of what it returns, so it can return fewer rows than it was given.
+the row, which stays soft-deleted. `upsertMany` throws the same way, once its
+other rows are written: wrap it in `$transactional` to keep them out too.
 
 ### upsertMany
 
@@ -666,7 +666,7 @@ await this.repo.transaction(async (tx) => {
 All repository methods accept `{ tx }` in their options parameter to participate in the transaction (`tx: null` forces a statement outside the ambient `$transactional` one). Beyond `tx`, that options parameter also takes:
 
 - `force`: include soft-deleted rows.
-- `for`: a row lock taken by the SELECT. `{ for: "update" }` (or `"no key update"`, `"share"`, `"key share"`), or `{ for: { mode: "update", onLocked: "skip" } }` for `SKIP LOCKED` (`"nowait"` for `NOWAIT`). PostgreSQL only: SQLite has no row locks, and a read given `for` throws a `TypeError` there.
+- `for`: a row lock taken by the SELECT. `{ for: "update" }` (or `"no key update"`, `"share"`, `"key share"`), or `{ for: { mode: "update", onLocked: "skip" } }` for `SKIP LOCKED` (`"nowait"` for `NOWAIT`). PostgreSQL only: SQLite and D1 have no row locks, and a read given `for` throws an `AlephaError` there.
 - `now`: override the timestamp used for `updatedAt`.
 - `signal`: an `AbortSignal` that refuses the statement once it fired, and cancels it in flight where the driver can. A read outside a transaction already inherits the request's or job's signal (see [Cancellation](/docs/guides-core-cancellation)); a write only takes one given here, so a client that left never cuts a write sequence in half.
 - `timeout`: how long the statement may run before it fails with `DbTimeoutError` (503). It wins over `DATABASE_TIMEOUT`; `false` or `0` means none. No timeout applies inside a transaction.

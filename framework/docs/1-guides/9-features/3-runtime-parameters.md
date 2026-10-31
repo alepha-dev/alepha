@@ -166,9 +166,10 @@ Each version's status, as the history and the admin UI show it:
 | `future`  | any later scheduled version                              |
 | `expired` | every other past version                                 |
 
-A running process holds the `next` version in memory too, and `get()` switches
-to it as soon as its date passes, without a database round trip. The switch
-publishes nothing and calls no `sub()` callback.
+A running process holds the `next` version in memory too, and the first `get()`
+after its date switches to it without a database round trip. The switch calls
+that process's `sub()` callbacks when the value changed, and publishes nothing:
+each instance switches on its own `get()`.
 
 ## Reacting to a change
 
@@ -196,8 +197,9 @@ const unsubscribe = this.pricing.sub((value) => {
 ```
 
 `sub()` returns its own unsubscribe function. The callback runs on every
-instance whose cached value a save or a reload actually changed, so treat it as
-a cache invalidation signal rather than a place to do work once.
+instance whose cached value a save, a reload or a scheduled switch actually
+changed, so treat it as a cache invalidation signal rather than a place to do
+work once.
 
 ### How long a change takes to land everywhere
 

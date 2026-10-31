@@ -83,7 +83,7 @@ export class SigilTools {
   sigil_create = $tool({
     title: "Create a sigil",
     description:
-      "Mint the key one deployed copy reports with, creating the copy first if it does not exist yet. Project owner only. Pass `app` and, for anything but production, `env`. ⚠️ One sigil per copy: a second would split that copy's history in two and make every aggregate wrong, so a copy that already has one is refused — use `sigil_rotate` to replace the credential. ⚠️ The returned `token` is the only cleartext copy that will ever exist: it is stored hashed, so nothing can show it again. Hand it to whoever configures the app and do not echo it into a folio, a quest or a commit. `name` is a deprecated alias of `app`.",
+      "Mint the key one deployed copy reports with, creating the copy first if it does not exist yet. Needs `sigil:manage`, and `app:manage` when the copy has to be created. Pass `app` and, for anything but production, `env`. ⚠️ One sigil per copy: a second would split that copy's history in two and make every aggregate wrong, so a copy that already has one is refused — use `sigil_rotate` to replace the credential. ⚠️ The returned `token` is the only cleartext copy that will ever exist: it is stored hashed, so nothing can show it again. Hand it to whoever configures the app and do not echo it into a folio, a quest or a commit. `name` is a deprecated alias of `app`.",
     annotations: { readOnlyHint: false, destructiveHint: false },
     schema: {
       params: sigilCreateParamsSchema,
@@ -134,7 +134,7 @@ export class SigilTools {
   sigil_rotate = $tool({
     title: "Rotate a sigil's token",
     description:
-      "Revoke a sigil's token and mint a replacement, keeping the sigil and everything it has ever reported. Project owner only. This is the right answer to a leaked token: the old one stops working the instant the hash changes, while views, vitals, unique visitors and the app's error budget all survive. Prefer it to `sigil_delete`, which throws that history away. ⚠️ The new `token` is shown once — the app must be updated with it or it stops reporting.",
+      "Revoke a sigil's token and mint a replacement, keeping the sigil and everything it has ever reported. Needs `sigil:manage`. This is the right answer to a leaked token: the old one stops working the instant the hash changes, while views, vitals, unique visitors and the app's error budget all survive. Prefer it to `sigil_delete`, which throws that history away. ⚠️ The new `token` is shown once — the app must be updated with it or it stops reporting.",
     annotations: { readOnlyHint: false, destructiveHint: false },
     schema: {
       params: sigilRotateParamsSchema,
@@ -159,7 +159,7 @@ export class SigilTools {
   sigil_delete = $tool({
     title: "Delete a sigil",
     description:
-      "Remove a credential and everything it reported. Project owner only. ⚠️ DESTRUCTIVE: the aggregate tables cascade, so this erases that copy's page views, web vitals, unique visitors and error budget. Cannot be undone; if the goal is only to invalidate a leaked token, use `sigil_rotate`. Blights already filed survive - a triage decision outlives the credential that surfaced it. ⚠️ **The deployed copy SURVIVES**, with no sigil: this used to remove the app, and since Apps v3 it does not. `app_instance_delete` is the tool that removes the copy.",
+      "Remove a credential and everything it reported from the project. Needs `sigil:manage`. ⚠️ DESTRUCTIVE: the aggregate tables cascade, so that copy's page views, web vitals, unique visitors and error budget leave every report. Raw rows in Analytics Engine, which has no delete, stay until they expire, unread. Cannot be undone; if the goal is only to invalidate a leaked token, use `sigil_rotate`. Blights already filed survive - a triage decision outlives the credential that surfaced it. ⚠️ **The deployed copy SURVIVES**, with no sigil: this used to remove the app, and since Apps v3 it does not. `app_instance_delete` is the tool that removes the copy.",
     annotations: {
       readOnlyHint: false,
       destructiveHint: true,

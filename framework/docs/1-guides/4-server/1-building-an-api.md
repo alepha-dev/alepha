@@ -176,7 +176,7 @@ Beyond `method`, `path`, `schema` and `handler`:
 | `silent`      | Keep the action's requests out of the request log                                                                               |
 | `disabled`    | See [Disabling an Action](#disabling-an-action)                                                                                 |
 
-No action has a timeout by default; the `serverApiOptions` atom's `timeout` (in milliseconds) sets one for all of them, and an action's own `timeout` wins. The deadline covers the `use` middlewares and the handler, and aborts `alepha.context.signal` so that queries and outbound calls, which read it, stop too. The request's `signal` does not abort at the deadline: it only fires on a disconnect, so hand `alepha.context.signal` to anything that takes a signal explicitly, like a bare `fetch`.
+No action has a timeout by default; the `serverApiOptions` atom's `timeout` (in milliseconds) sets one for all of them, and an action's own `timeout` wins. The deadline covers the `use` middlewares and the handler, and aborts the request's `signal`, the same object as `alepha.context.signal`, so that queries and outbound calls, which read it, stop too. Hand it to anything that takes a signal explicitly, like a bare `fetch`.
 
 ## Groups
 
