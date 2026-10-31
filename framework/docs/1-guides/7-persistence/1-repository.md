@@ -356,8 +356,8 @@ If the entity has an `updatedAt` column, it is automatically set on conflict.
 
 An upsert that conflicts with a soft-deleted row throws rather than bringing the
 row back: hard-delete it first. `{ force: true }` lifts that guard and overwrites
-the row, which stays soft-deleted. `upsertMany` does not throw: it leaves such a
-row out of what it returns, so it can return fewer rows than it was given.
+the row, which stays soft-deleted. `upsertMany` throws the same way, once its
+other rows are written: wrap it in `$transactional` to keep them out too.
 
 ### upsertMany
 

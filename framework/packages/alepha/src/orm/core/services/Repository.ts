@@ -1435,6 +1435,10 @@ export abstract class Repository<T extends ZObject> {
    * `createMany`, the batches are not one atomic unit unless the caller wraps
    * the call in `$transactional`.
    *
+   * A row conflicting with a soft-deleted one throws, as in {@link upsert},
+   * once the other rows are written: the same `$transactional` keeps them out
+   * too.
+   *
    * ⚠️ **Two rules the single-row version does not have.**
    *
    * 1. **No duplicate conflict targets within one call.** The engines disagree,
@@ -1575,6 +1579,16 @@ export abstract class Repository<T extends ZObject> {
           data: values,
           entity: entities,
         });
+
+        // A conflict the soft-delete guard skipped neither inserts nor updates,
+        // so it only shows as a shorter result. Thrown last: the other rows are
+        // written, and the cache and the event above have to say so.
+        const refused = values.length - entities.length;
+        if (refused > 0) {
+          throw new AlephaError(
+            `Upsert on '${this.tableName}' conflicted with ${refused} already-deleted row(s); refusing to overwrite them.`,
+          );
+        }
 
         return entities;
       } catch (error) {
