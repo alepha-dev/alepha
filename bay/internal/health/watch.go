@@ -21,8 +21,11 @@ for making things worse.
 */
 type Watch struct {
 	Probe *Probe
-	// Port the app answers on.
-	Port int
+	// Port says which port the app answers on now. A function, called before
+	// every probe, because an instance can move within the window: blue/green
+	// publishes each new container on a host port of its own and closes the
+	// last one, on a restart as much as on a deploy.
+	Port func() int
 	// How long after the deploy to keep watching.
 	Window time.Duration
 	// How often to ask.
@@ -66,7 +69,7 @@ func (w *Watch) Run(ctx context.Context) Verdict {
 		case <-time.After(w.Interval):
 		}
 
-		status, hasHealth, err := w.Probe.Check(ctx, w.Port)
+		status, hasHealth, err := w.Probe.Check(ctx, w.Port())
 		if ctx.Err() != nil {
 			// The window closed mid-check; that is not a failure.
 			return Verdict{Healthy: true, Checks: checks}

@@ -411,7 +411,11 @@ type server struct {
 	// readyWait overrides readyTimeout for a blue/green candidate when set:
 	// tests waiting for a release that never comes up need not wait a minute.
 	readyWait time.Duration
-	tls       *tlsconf.Manager
+	// watchWindow and watchEvery override rollbackWindow and rollbackInterval
+	// when set: tests of the rollback watch need not sit through two minutes.
+	watchWindow time.Duration
+	watchEvery  time.Duration
+	tls         *tlsconf.Manager
 	// tcp holds the raw TCP ports stack services opted into (x-lore.tcp).
 	tcp *proxy.TCP
 	// probe answers "is this app serving?", which is a different question from
@@ -1596,11 +1600,25 @@ func (s *server) watchAndRollback(app state.App, previous string) {
 	ctx := s.beginWatch(app.Key())
 	defer s.endWatch(app.Key())
 
+	window, every := rollbackWindow, rollbackInterval
+	if s.watchWindow > 0 {
+		window = s.watchWindow
+	}
+	if s.watchEvery > 0 {
+		every = s.watchEvery
+	}
 	verdict := (&health.Watch{
-		Probe:     s.probe,
-		Port:      app.UpstreamPort(),
-		Window:    rollbackWindow,
-		Interval:  rollbackInterval,
+		Probe: s.probe,
+		// Read from the store, as the proxy reads it for every request. `app`
+		// is the copy the deploy held before its switch, and even a fresh one
+		// would go stale: a restart inside the window moves the host port
+		// again, and the port it left is closed.
+		Port: func() int {
+			current, _ := s.store.Get(app.Key())
+			return current.UpstreamPort()
+		},
+		Window:    window,
+		Interval:  every,
 		Threshold: rollbackThreshold,
 	}).Run(ctx)
 
@@ -1620,9 +1638,18 @@ func (s *server) watchAndRollback(app state.App, previous string) {
 	// this line an operator may have deployed or rolled back by hand, and
 	// reverting their release to one they never asked for is worse than leaving
 	// a bad one running — they are standing right there.
-	if current, ok := s.store.Get(app.Key()); !ok || current.Release != app.Release {
+	current, ok := s.store.Get(app.Key())
+	if !ok || current.Release != app.Release {
 		s.log.Warn("release failed, but the app has already moved on — not rolling back",
 			"app", app.Key(), "watched", app.Release, "reason", verdict.Reason)
+		return
+	}
+	// Down on purpose: `bay stop` and `bay stack stop` close the port the watch
+	// is probing, and a rollback ends in a start, which would undo the stop on
+	// a release nobody asked for.
+	if current.Stopped {
+		s.log.Info("app stopped during its watch, not rolling back",
+			"app", app.Key(), "release", app.Release)
 		return
 	}
 
@@ -1630,7 +1657,9 @@ func (s *server) watchAndRollback(app state.App, previous string) {
 		"app", app.Key(), "bad", app.Release, "to", previous,
 		"reason", verdict.Reason, "checks", verdict.Checks)
 
-	if err := s.rollbackTo(app, previous); err != nil {
+	// From `current`, not `app`: a container that is down is started again on
+	// the host port it is given, and only the store's is the one the proxy dials.
+	if err := s.rollbackTo(current, previous); err != nil {
 		// Nothing left to try automatically. Said loudly rather than retried:
 		// an app stuck between two releases needs a human, and a loop here
 		// would bury the one line that says so. What went wrong is in the

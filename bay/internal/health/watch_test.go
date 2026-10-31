@@ -3,7 +3,9 @@ package health
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
+	"net/http/httptest"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -12,7 +14,7 @@ import (
 func watchOn(port int, threshold int, window time.Duration) Verdict {
 	return (&Watch{
 		Probe:     &Probe{},
-		Port:      port,
+		Port:      func() int { return port },
 		Window:    window,
 		Interval:  30 * time.Millisecond,
 		Threshold: threshold,
@@ -92,6 +94,38 @@ func TestWatchDoesNotJudgeAnAppWithoutHealth(t *testing.T) {
 
 	if !verdict.Healthy {
 		t.Fatalf("an app with no /health must pass, got %+v", verdict)
+	}
+}
+
+func TestWatchFollowsAnAppThatMoves(t *testing.T) {
+	// Blue/green closes the port it switched away from. Probing it would judge
+	// a healthy app by a container that no longer exists.
+	port := serveOn(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		fmt.Fprint(w, `{"ready":true}`)
+	}))
+	closed := httptest.NewServer(http.NotFoundHandler())
+	closedPort := closed.Listener.Addr().(*net.TCPAddr).Port
+	closed.Close()
+
+	var asked atomic.Int32
+	verdict := (&Watch{
+		Probe: &Probe{},
+		Port: func() int {
+			if asked.Add(1) == 1 {
+				return closedPort
+			}
+			return port
+		},
+		Window:    300 * time.Millisecond,
+		Interval:  30 * time.Millisecond,
+		Threshold: 3,
+	}).Run(context.Background())
+
+	if !verdict.Healthy {
+		t.Fatalf("the app moved and kept serving, got %+v", verdict)
+	}
+	if asked.Load() < 3 {
+		t.Fatalf("the port must be asked for at every probe, asked %d times", asked.Load())
 	}
 }
 
