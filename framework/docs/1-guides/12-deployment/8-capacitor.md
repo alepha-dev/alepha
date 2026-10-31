@@ -261,8 +261,11 @@ carry, and `dev` sets them for the run:
 
 `dev` records the originals in `.capacitor-dev.json` and puts them back on exit, on Ctrl+C and when
 the launch fails. A crash cannot restore anything: the next `sync` or `build` refuses while the
-journal exists, and `alepha capacitor dev --restore` puts the files back. A build also refuses any
-of those exceptions it finds, so nothing a dev run changes can reach a binary.
+journal exists, and `alepha capacitor dev --restore` puts the files back.
+
+⚠️ The journal is what keeps those exceptions out of a binary, so never delete it by hand: a build
+does not look for `NSAllowsLocalNetworking`, and it reads an Android network security config only
+under the name `network_security_config.xml`.
 
 In dev the page is server-rendered, and the server never sees the native session: a signed-in app
 logs a hydration mismatch on its account menu, which React repairs. A bundled build has no server
@@ -291,9 +294,10 @@ variant, the build number read from the native project (`CURRENT_PROJECT_VERSION
 `versionCode`), a fingerprint of the native inputs, the signing and the artifact's digest. A build
 number already recorded from other native inputs is refused before anything compiles: bump it.
 
-Before syncing, a build also refuses development residue: a `server.url`, App Transport Security
-exceptions in `Info.plist`, and cleartext or user certificate authorities outside the
-`debug-overrides` of the Android network security config.
+Before syncing, a build also refuses development residue: a `server.url`, `NSAllowsArbitraryLoads`
+or `NSExceptionDomains` in `Info.plist`, `usesCleartextTraffic="true"` in the manifest, and
+cleartext or user certificate authorities outside the `debug-overrides` of
+`res/xml/network_security_config.xml`.
 
 ## Variants
 
@@ -328,9 +332,10 @@ npx alepha capacitor build android --variant acme
 npx alepha capacitor build android --variant base
 ```
 
-There is one pair of native projects. Each command first writes the selected identity into it: the
-bundle id, the display name, the URL scheme, `applicationId` and the identity strings, the icons and
-splash. The writer owns those settings only, refuses a project it does not recognise (a second
+There is one pair of native projects. Each command first writes the selected identity into it,
+except `release` and `sync --web-only`, which leave it as it is: the bundle id, the display name,
+the URL scheme, `applicationId` and the identity strings, the icons and splash. The writer owns
+those settings only, refuses a project it does not recognise (a second
 target, URL types of your own, product flavors) before writing anything, and puts every file back
 when a switch fails. Switching x, then y, then x leaves the files byte for byte as they were. Each
 variant's shell builds into `dist-capacitor/<variant>/`, and its build records carry its name. One
