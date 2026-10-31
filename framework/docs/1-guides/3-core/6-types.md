@@ -323,7 +323,7 @@ Validation is a thin wrapper over `schema.safeParse` - everything beyond type ch
 
 There is no extra coercion layer: `null` in a non-nullable field is a validation error, and a non-array value passed to an array schema is rejected, not wrapped.
 
-If validation fails, a `SchemaValidationError` is thrown with details about the first failing constraint.
+If validation fails, a `SchemaValidationError` is thrown with details about the first failing constraint: its message reads `Invalid input: <reason> at <path>` (for a missing field, the reason is `'<path>' is required`), and `error.data` carries `{ message, path, params }`, with `path` as a JSON pointer such as `/address/city` and `params` the raw Zod issue.
 
 ## Encoding
 
@@ -380,6 +380,28 @@ const result = alepha.codec.decode(schema, binaryData, { encoder: "protobuf" });
 ```
 
 Validation runs automatically after decoding. Disable it with `validation: false`.
+
+## Schema Introspection
+
+Code that walks a schema (a form builder, a table generator) reads it through `z.schema.*` rather than Zod internals:
+
+```typescript check
+import { z } from "alepha";
+
+const order = z.object({
+  status: z.enum(["OPEN", "PAID"]),
+  note: z.text().optional(),
+  currency: z.text().default("EUR"),
+});
+
+z.schema.requiredInputKeys(order); // ["status"]: optional and defaulted keys are not required
+z.schema.enumOptions(order.shape.status); // ["OPEN", "PAID"]
+z.schema.defaultValue(order.shape.currency); // "EUR"
+```
+
+`requiredInputKeys` answers what an input must carry, not whether a column may be `NULL`: a `.nullable()` key stays required, because `null` is a value and the key still has to carry it, while a defaulted key is not required although its column is `NOT NULL`.
+
+`z.schema` also has type guards (`isObject`, `isArray`, `isEnum`, `isDateTime`, ...), `unwrap` to peel optional, nullable and default wrappers, and `meta` to read what a schema was tagged with.
 
 ## Accessing Zod Directly
 

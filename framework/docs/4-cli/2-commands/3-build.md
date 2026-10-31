@@ -33,6 +33,23 @@ Then three commands turn that one `dist/` into the format you need:
 
 The build runs a fixed pipeline of tasks:
 
+```mermaid
+flowchart TD
+  A[Clean dist] --> B[Build client]
+  B --> C[Build server, once per runtime]
+  C --> D[Copy assets]
+  D --> E[PWA manifest]
+  E --> F[Prerender]
+  F --> G[dist/manifest.json]
+  G --> H{Deploy config}
+  H -->|workerd slice| I[wrangler.jsonc]
+  H -->|static| J[Static site files]
+  I --> K[public/_headers]
+  J --> K
+  H -->|otherwise| K
+  K --> L[Brotli sidecars]
+```
+
 1. **Cleans the dist folder**: Fresh start, no stale files
 2. **Builds the client**: Compiles React, bundles assets, optimizes for browsers
 3. **Builds the server**: one slice per declared runtime, and only this step repeats
@@ -42,7 +59,7 @@ The build runs a fixed pipeline of tasks:
 7. **Writes the build manifest**: `dist/manifest.json`
 8. **Generates deployment configs**: `wrangler.jsonc` when a workerd slice was built, the static site files for `runtime: ["static"]`
 9. **Writes `dist/public/_headers`**: security and cache headers for hosts that serve files without the app (see [Static File Headers](/docs/guides-deployment-headers))
-10. **Pre-compresses assets**: Writes `.br` (Brotli) copies of client assets
+10. **Pre-compresses assets**: Writes `.br` (Brotli) copies of client assets. Skipped when `workerd` is the only slice: Cloudflare compresses at the edge and never serves a `.br` sidecar
 
 ## Output Structure
 
@@ -227,15 +244,15 @@ The reports show:
 
 ## Environment Variables
 
-The build process respects your environment:
+The build loads `.env`, `.env.<mode>` and `.env.<mode>.local` (`--mode` is `production` by default) into its own process. That is the environment it analyzes the app in, and the one prerendered pages are rendered with:
 
 ```bash filename=.env.production
 API_URL=https://api.myapp.com
 ```
 
-> **Build-time Variables**
+> **Read at runtime, not baked in**
 >
-> Environment variables are embedded at build time. For variables that should differ between environments, use runtime configuration instead.
+> The server bundle does not embed your variables: a server slice reads its environment when it starts, so one `dist/` serves every environment. Only `process.env.NODE_ENV` and the build metadata behind `alepha.meta` are compiled in as constants, in both bundles, along with the `VITE_*` variables Vite inlines into the client bundle. `alepha.env` is empty in the browser. What a prerendered page displays is fixed at build time, like the rest of its HTML.
 
 ## Build Configuration
 
@@ -275,7 +292,7 @@ The build automatically:
 - **Tree shakes**: Removes unused code
 - **Code splits**: Creates separate chunks for routes
 - **Hashes filenames**: Enables aggressive caching
-- **Pre-compresses assets**: Writes Brotli (`.br`) copies of JS/CSS/SVG/HTML
+- **Pre-compresses assets**: Writes Brotli (`.br`) copies of JS, CSS, WASM, SVG, HTML and XML files
 
 ## Server-Side Optimization
 

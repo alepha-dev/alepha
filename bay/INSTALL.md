@@ -5,7 +5,8 @@ human or a CI job the right to deploy is a fifth, and it is the one people miss.
 failures on a first real deploy all came from that fifth step, so it has its own section below.
 
 This guide describes a Linux host reached over SSH, which is the only remote surface Bay has:
-`alepha platform` drives your own `ssh` binary and talks to Bay's control socket on the other side.
+the Alepha CLI (`alepha deploy`, `alepha infra ...`) drives your own `ssh` binary and talks to Bay's
+control socket on the other side.
 There is no admin panel and no inbound control port.
 
 ## 0. Docker
@@ -13,14 +14,15 @@ There is no admin panel and no inbound control port.
 Bay runs every app in a container, so the host needs **Docker Engine 25 or newer** (Engine API
 1.44) with the **compose plugin**, on **cgroup v2**. `install.sh` installs Docker through
 get.docker.com when it is missing (`BAY_INSTALL_DOCKER=no` makes it stop instead), and refuses an
-older one. Check a host at any time with:
+older one. Check a host before the first start with:
 
 ```bash
-bay doctor --root /opt/bay/data
+sudo bay doctor
 ```
 
 One line per check (Docker reachable and recent, cgroup v2, compose, ports 80 and 443, free disk),
-exit status 1 when any fails.
+exit status 1 when any fails. Once Bay runs it holds ports 80 and 443, and the doctor accepts that
+only when it is given the socket: add `--control-socket /run/bay/control.sock` on a live host.
 
 ⚠️ **The Docker socket is root-equivalent**, like Bay's own control socket: whoever can talk to it
 can start a privileged container and own the host. Bay reaches it as root and never exposes it;
@@ -67,7 +69,7 @@ data root on a filesystem Docker can bind-mount; `/opt/bay/data` is the guide's 
 # /etc/systemd/system/bay.service
 [Unit]
 Description=Bay — Alepha application server
-After=network-online.target
+After=network-online.target docker.service
 Wants=network-online.target
 
 [Service]
@@ -91,9 +93,9 @@ ExecStart=/opt/bay/bin/bay serve \
 WantedBy=multi-user.target
 ```
 
-`RuntimeDirectory=bay` is what creates `/run/bay` on start and removes it on stop; without it the
-`--control-socket` path has no parent directory. Ports 80 and 443 both matter even if you only serve
-HTTPS — ACME's HTTP-01 challenge answers on 80.
+`RuntimeDirectory=bay` has systemd create `/run/bay` on start and remove it on stop; Bay creates the
+directory itself when it is missing. Ports 80 and 443 both matter even if you only serve HTTPS:
+ACME's HTTP-01 challenge answers on 80.
 
 With `--tls`, port 80 answers that challenge first and then sends every other request for a
 registered domain to HTTPS with a `308`, path and query kept (and the `--tls-addr` port, when it is
@@ -116,6 +118,11 @@ bay status --control-socket /run/bay/control.sock
 ```
 
 As root that should print the hosted apps (none yet, on a fresh install).
+
+`bay` looks for the socket at `./bay-data/control.sock`, so every client command on this host has to
+be told. `export BAY_SOCKET=/run/bay/control.sock` does it for a session, and the samples further
+down assume it; `--control-socket` does it for one command, but `bay stack deploy`,
+`bay backup restore` and bare `bay runtimes` refuse that flag.
 
 ## 5. Grant a user the right to deploy — the step that bites
 
@@ -148,7 +155,7 @@ Note the message blames `bay serve` for being down. It is running; you simply ca
 
 ### 5b. `bay` must be on the _non-interactive_ PATH
 
-`alepha platform` runs its commands as `ssh HOST bay ...`, which starts a **non-interactive** shell.
+The Alepha CLI runs its commands as `ssh HOST bay ...`, which starts a **non-interactive** shell.
 That shell reads neither `~/.profile` nor `~/.bashrc`'s interactive section, so a PATH exported there
 does not apply. Put the binary somewhere already on the default PATH:
 
@@ -176,13 +183,20 @@ You want `bay-control` in the groups, a path for `bay`, and real app output — 
 In the deploying project's `alepha.config.ts`:
 
 ```typescript
-platform({
-  environments: {
-    production: bay({
-      host: "bay-prod",
-      socket: "/run/bay/control.sock",
+import { defineConfig } from "alepha/cli/config";
+import { bay, infra } from "alepha/cli/infra";
+
+export default defineConfig({
+  plugins: [
+    infra({
+      environments: {
+        production: bay({
+          host: "bay-prod",
+          socket: "/run/bay/control.sock",
+        }),
+      },
     }),
-  },
+  ],
 });
 ```
 
@@ -202,7 +216,7 @@ absolute.
 Then, from the project:
 
 ```bash
-alepha platform status -e production
+alepha infra status -e production
 ```
 
 ## 6b. Connect it to Lore (optional)
@@ -213,26 +227,31 @@ machine dials OUT, there is no inbound port, and the secret it dials with authen
 and grants nothing on this host.
 
 On Lore, create an **estate** under `/account/estates`. The secret is shown once. Then, on the
-host, as root or as a member of the control group:
+host, as root:
 
 ```bash
-bay connector set https://lore.example.com est_... --root /opt/bay/data
-bay connector show --root /opt/bay/data
+sudo bay connector set https://lore.example.com est_... --root /opt/bay/data --control-socket /run/bay/control.sock
+sudo bay connector show --root /opt/bay/data --control-socket /run/bay/control.sock
 ```
 
 `set` stores the sink and the secret at mode 0600 beside `state.json` and tells the running
-`bay serve` to re-read them, so nothing restarts. `show` prints the sink, the estate Lore named
-and whether the connection is up; it never prints the secret. `clear` forgets both and the machine
-dials nobody again.
+`bay serve` over the control socket to re-read them, so nothing restarts. Those files are under the
+`0700` data root, so a member of the control group cannot run these commands. Without
+`--control-socket` (or `BAY_SOCKET`) `bay serve` is not told, and a host enrolling for the first
+time dials nothing until its next restart. `show` prints the sink, the estate Lore named and whether
+the connection is up; it never prints the secret. `clear` forgets both and the machine dials nobody
+again. The secret is a command-line argument, so `ps` shows it while `set` runs and the shell
+history keeps it: clear that entry.
 
 ### What the machine will do, and nothing else
 
 What Lore may make the machine do is a **closed vocabulary of seven verbs**, each naming one instance
-or stack environment this Bay already runs:
+or stack environment. `deploy` and `stack-deploy` create what they name; the others refuse an
+instance this Bay does not run:
 
 | verb      | what it does                                                                                        |
 | --------- | --------------------------------------------------------------------------------------------------- |
-| `restart` | hold requests, stop, start. Refused for an app somebody stopped on purpose: use `start`             |
+| `restart` | blue/green, as a deploy replaces a running app; a Compose service restarts in place. Refused for an app that is not running: use `start` |
 | `deploy`  | an artifact named by DIGEST, which the machine pulls and verifies before anything touches disk      |
 | `stop`    | out of service and disabled, so it stays down through a reboot and a Bay upgrade                    |
 | `start`   | back into service, clearing that intent. A no-op on an app already running, never a restart         |
@@ -243,17 +262,22 @@ or stack environment this Bay already runs:
 Deploys stay refused until the estate's owner allows them on the estate, and the machine honours
 that switch on its own side too.
 
-⚠️ **This list is a security boundary, not a menu.** The secret is on the host in cleartext, so
-whoever holds it can ask for anything in this table and nothing outside it. Every verb names an
-instance and takes no path, no shell command and no argument list; `logs` carries a line count, a
-window and a pattern, all bounded and validated. Adding a verb widens what a leaked secret is
-worth, so it is a decision about that, not a feature.
+⚠️ **This list is a security boundary, not a menu.** It is all that Lore, or whoever controls Lore,
+can ask of this machine. Every verb names an instance and takes no path, no shell command and no
+argument list; `logs` carries a line count, a window and a pattern, all bounded and validated.
+Adding a verb widens what a compromised Lore is worth, so it is a decision about that, not a
+feature.
+
+The secret points the other way. It is on the host in cleartext, and it is the bearer the machine
+shows Lore when it dials, so whoever holds it can pose as this machine to Lore, down to pulling the
+artifacts and secret sets of the commands queued for it. It sends no command to the host.
 
 `stack-deploy` is the one verb that runs a compose file, which is to say containers of the
-bundle's choosing: allowing deploys on an estate that runs stacks is trusting Lore with the
-images on it. It is held to the same switch as `deploy`, it takes a digest and a revision
-number and nothing else, and a bundle can still not mount a host path outside its own directory
-or publish a port Bay did not allocate. Stack members are addressed by the existing verbs, as the
+bundle's choosing: allowing deploys on an estate is trusting Lore with the host. It is held to the
+same switch as `deploy`, it takes a digest and a revision number and nothing else, and a bundle goes
+through the checks of any compose file, and only those: no bind mount outside its own directory and
+no Docker socket, but `devices`, `cap_add` and `security_opt` pass, and `x-lore.tcp: N` opens public
+port N. Stack members are addressed by the existing verbs, as the
 instance `<stack>.<service>`: `restart` and `start` on a Compose service go through Compose, and
 `deploy` on an app service is the ordinary artifact deploy. Exec into a container is not a verb
 and never will be; it takes SSH.
@@ -298,7 +322,7 @@ Signed in to HOST, but its `bay` is too old to read the deploy artifact from std
   (error: open -: no such file or directory)
 ```
 
-A Bay predating `--secrets-file` is the second version gate. `alepha platform up` stages the app's
+A Bay predating `--secrets-file` is the second version gate. `alepha deploy` stages the app's
 declared secrets to a 0600 file on this host and hands `bay deploy` its path, so that Bay can merge
 them before the release is swapped in. A Bay that does not know the flag refuses it:
 
@@ -310,14 +334,14 @@ Signed in to HOST, but its `bay` does not know `--secrets-file`, so this app's s
 
 **Nothing lands.** The flag is refused while the artifact is still on stdin, so no release is
 unpacked, `current` is not moved, and the app that was serving keeps serving. Upgrade the binary and
-re-run `alepha platform up`. (The CLI removes the staged secrets file itself when a deploy fails this
+re-run `alepha deploy`. (The CLI removes the staged secrets file itself when a deploy fails this
 way — see below.)
 
 A project with nothing to send never reaches this and keeps deploying to an old Bay unchanged — an
 app that declares no `$env` keys, or whose declared keys are set neither in `.env.<env>` nor in the
 deploying environment. Static sites are skipped outright, having no process to configure.
 
-A Bay predating `bay env` is a third, softer gate: `alepha platform status` reads back which
+A Bay predating `bay env` is a third, softer gate: `alepha infra status` reads back which
 variables are configured with `bay env list`, and an older Bay prints its usage banner instead. That
 one affects reporting only, never a deploy.
 
@@ -380,7 +404,7 @@ console is the same stop, with the same durability.
 
 ## Diagnosing a failed deploy
 
-The `alepha platform` pre-flight distinguishes these for you, so read its message before digging:
+The Alepha CLI's pre-flight distinguishes these for you, so read its message before digging:
 
 | Message                                    | Fix                                                          |
 | ------------------------------------------ | ------------------------------------------------------------ |
@@ -388,6 +412,6 @@ The `alepha platform` pre-flight distinguishes these for you, so read its messag
 | `connect: permission denied` on the socket | §5a — add the user to `bay-control`, then reconnect          |
 | too old to read the artifact from stdin    | §7 — upgrade the host binary                                 |
 | `bay` does not know `--secrets-file`       | §7 — upgrade the host binary; nothing was deployed           |
-| `bay` has no `env` command                 | §7 — upgrade the host binary; affects `platform status` only |
+| `bay` has no `env` command                 | §7 — upgrade the host binary; affects `infra status` only    |
 | `no secrets file at /tmp/…`                | §7 — remove `PrivateTmp=` from `bay.service`                 |
 | `control api unreachable` as root          | Bay really is down: `systemctl status bay`                   |

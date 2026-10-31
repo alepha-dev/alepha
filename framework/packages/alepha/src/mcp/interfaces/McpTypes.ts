@@ -516,6 +516,9 @@ export interface McpContext<T = unknown> {
    * being handed it; pass it explicitly only to an API that takes one and
    * does not read the context. Absent when the transport does not support
    * cancellation.
+   *
+   * A tool's `timeout` narrows the context alone: at the deadline
+   * `alepha.context.signal` aborts and this one does not.
    */
   signal?: AbortSignal;
 

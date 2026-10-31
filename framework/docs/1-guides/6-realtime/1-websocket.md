@@ -1,0 +1,423 @@
+# WebSocket
+
+Alepha provides real-time, bidirectional messaging through the `$channel` and `$websocket` primitives. You define a typed message schema once, write a single handler, and the same application code runs unchanged on a long-lived Node process (a VPS, backed by `ws`) or on Cloudflare Workers (backed by Durable Objects). The browser client - `useRoom` - is identical on both.
+
+> Need **in-memory state and a server-side tick loop** (a game world, a live simulation) rather than a stateless per-message handler? See [Stateful Rooms (`$room`)](/docs/guides-realtime-rooms).
+
+> Only need the server to push, over plain HTTP? See [`$sse`](/docs/guides-server-building-an-api#streaming-with-sse).
+
+## Quick Start
+
+```typescript check
+// channels/ChatChannels.ts
+import { z } from "alepha";
+import { $channel } from "alepha/websocket";
+
+export const chatMessageSchema = z.object({
+  username: z.text(),
+  content: z.text(),
+  timestamp: z.integer(),
+});
+
+export class ChatChannels {
+  chatChannel = $channel({
+    path: "/ws/chat",
+    description: "Simple chat channel",
+    schema: {
+      in: chatMessageSchema, // server -> client
+      out: z.object({ content: z.text() }), // client -> server
+    },
+  });
+}
+```
+
+```typescript
+// AppChatServer.ts
+import { $inject } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
+import { $websocket } from "alepha/websocket";
+
+import { ChatChannels } from "./channels/ChatChannels.ts";
+
+export class AppChatServer {
+  protected readonly channels = $inject(ChatChannels);
+  protected readonly dateTime = $inject(DateTimeProvider);
+
+  chat = $websocket({
+    channel: this.channels.chatChannel,
+    handler: async ({ connectionId, message, reply }) => {
+      await reply({
+        message: {
+          username: connectionId.slice(0, 8),
+          content: message.content,
+          timestamp: this.dateTime.nowMillis(),
+        },
+      });
+    },
+  });
+}
+```
+
+```typescript
+// main.server.ts
+import { Alepha, run } from "alepha";
+import { AlephaWebSocket } from "alepha/websocket";
+
+import { AppChatServer } from "./AppChatServer.ts";
+
+const alepha = Alepha.create();
+alepha.with(AlephaWebSocket);
+alepha.with(AppChatServer);
+run(alepha);
+```
+
+```tsx
+// components/Chat.tsx
+import { useInject } from "alepha/react";
+import { useRoom } from "alepha/react/websocket";
+import { useState } from "react";
+
+import { ChatChannels } from "../channels/ChatChannels.ts";
+
+export function Chat() {
+  const channels = useInject(ChatChannels);
+  const [messages, setMessages] = useState<any[]>([]);
+  const roomId = "lobby";
+
+  const chat = useRoom(
+    {
+      roomId,
+      channel: channels.chatChannel,
+      handler: (message) => setMessages((prev) => [message, ...prev]),
+    },
+    [roomId],
+  );
+
+  return (
+    <button
+      onClick={() => chat.send({ content: "hello" })}
+      disabled={!chat.isConnected}
+    >
+      Send
+    </button>
+  );
+}
+```
+
+## Defining a Channel
+
+`$channel` declares the "vocabulary" for a WebSocket endpoint - its path and the message shapes flowing in both directions. Channels are just schema definitions; they must be defined as a class property so Alepha can register them.
+
+```typescript check
+import { z } from "alepha";
+import { $channel } from "alepha/websocket";
+
+class ChatChannels {
+  chatChannel = $channel({
+    path: "/ws/chat",
+    description: "Real-time chat channel",
+    schema: {
+      // Server -> client messages
+      in: z.union([
+        z.object({
+          type: z.literal("append"),
+          content: z.text(),
+          username: z.text(),
+        }),
+        z.object({ type: z.literal("system"), message: z.text() }),
+      ]),
+      // Client -> server messages
+      out: z.object({ content: z.text() }),
+      // Optional: validate roomId shape (defaults to any string)
+      roomId: z.uuid(),
+    },
+  });
+}
+```
+
+| Option          | Type                  | Description                                                            |
+| --------------- | --------------------- | ---------------------------------------------------------------------- |
+| `path`          | `string`              | Required. The WebSocket endpoint path (e.g. `/ws/chat`).               |
+| `description`   | `string`              | Optional documentation.                                                |
+| `schema.in`     | `ZObject \| ZodUnion` | Messages sent from server to client.                                   |
+| `schema.out`    | `ZObject \| ZodUnion` | Messages sent from client to server.                                   |
+| `schema.roomId` | `ZodString`           | Optional room ID validation (e.g. `z.uuid()`). Defaults to any string. |
+
+Schemas use the `z` builder - the same one used by `$action`.
+
+`schema.roomId` is enforced at the handshake on both engines: a join naming a room the schema rejects is closed with code `1008` and the reason `Invalid room id`, and every id of a multi-room join is checked, not just the first. A client that names no room at all joins `default`, which is never validated - it is the framework's fallback, not a choice, so declaring `z.uuid()` does not refuse connections that simply omit the parameter.
+
+## Server Handler
+
+`$websocket` turns a channel into a live server endpoint: it accepts connections, validates inbound messages against `schema.out`, and calls your handler.
+
+```typescript
+import { $websocket } from "alepha/websocket";
+
+class ChatController {
+  chat = $websocket({
+    channel: this.channels.chatChannel,
+    handler: async ({ connectionId, userId, roomId, message, reply }) => {
+      await reply({
+        message: {
+          type: "append",
+          username: userId ?? "anon",
+          content: message.content,
+        },
+        exceptSelf: true,
+      });
+    },
+    onConnect: ({ connectionId, userId, roomIds }) => {
+      console.log(`${connectionId} joined ${roomIds.join(", ")}`);
+    },
+    onDisconnect: ({ connectionId }) => {
+      console.log(`${connectionId} left`);
+    },
+  });
+}
+```
+
+The handler context:
+
+| Field            | Description                                                                                            |
+| ---------------- | ------------------------------------------------------------------------------------------------------ |
+| `connectionId`   | Unique ID for this connection.                                                                         |
+| `userId`         | Authenticated user ID, when a `$secure` in `use` resolved one (see [Authentication](#authentication)). |
+| `roomId`         | Room the incoming message was sent from.                                                               |
+| `message`        | The parsed, schema-validated client message.                                                           |
+| `reply(options)` | Send a message back to the room, scoped to this connection's context.                                  |
+
+A message that fails `schema.out`, and a handler that throws, answer the sending socket with `{ error: "<message>" }` and leave the connection open. On Node, a message naming a `roomId` the connection did not join keeps being handled, but in the connection's first room: the claimed room is ignored with a warning, so a client in room A cannot broadcast into room B.
+
+`reply()` options:
+
+| Option                | Type             | Description                                                                                                 |
+| --------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------- |
+| `message`             | `Infer<TClient>` | Required. The message to send.                                                                              |
+| `roomId`              | `string`         | Target room. Defaults to the sender's room.                                                                 |
+| `exceptSelf`          | `boolean`        | Exclude the sender's own connection.                                                                        |
+| `exceptConnectionIds` | `string[]`       | Exclude specific connections.                                                                               |
+| `exceptUserIds`       | `string[]`       | Exclude specific users. Requires `alepha/security`. **Not honored on the Cloudflare provider** - see below. |
+
+## Server-Initiated Messages
+
+Beyond replying to an incoming message, a `$websocket` instance exposes `emit()` to push messages from anywhere in your app - a cron job, an `$action`, a database hook:
+
+```typescript
+class NotificationService {
+  protected readonly chat = $inject(ChatController).chat;
+
+  async broadcastAnnouncement(roomId: string, text: string) {
+    await this.chat.emit({
+      roomId,
+      message: { type: "system", message: text },
+    });
+  }
+}
+```
+
+`emit()` accepts:
+
+| Option                                  | Description                                          |
+| --------------------------------------- | ---------------------------------------------------- |
+| `message`                               | Required.                                            |
+| `roomId` / `roomIds`                    | Target one or more rooms.                            |
+| `userId` / `userIds`                    | Target a user's connections (Node only - see below). |
+| `connectionId` / `connectionIds`        | Target specific connections (Node only - see below). |
+| `exceptConnectionIds` / `exceptUserIds` | Exclusions.                                          |
+
+With no `roomId(s)`, `userId(s)` or `connectionId(s)` at all, `emit()` on Node broadcasts to every connection on the channel, whatever room it joined. Cloudflare refuses that form (see below).
+
+## Client
+
+`useRoom` is the React hook for connecting to a room. Multiple `useRoom` calls on the same channel share a single underlying WebSocket connection.
+
+```tsx
+import { useInject } from "alepha/react";
+import { useRoom } from "alepha/react/websocket";
+
+function Chat() {
+  const channels = useInject(ChatChannels);
+
+  const chat = useRoom(
+    {
+      roomId: "lobby",
+      channel: channels.chatChannel,
+      handler: (message) => {
+        if (message.type === "append") {
+          // ... append to state
+        }
+      },
+    },
+    ["lobby"], // deps - reconnects when these change
+  );
+
+  return (
+    <button
+      onClick={() => chat.send({ content: "hi" })}
+      disabled={!chat.isConnected}
+    >
+      Send
+    </button>
+  );
+}
+```
+
+`useRoom` returns `{ send, isConnected, isConnecting, isError, error, reconnect, disconnect }`. On the server (SSR), it no-ops safely. `send` called while the socket is down does not throw: the message is queued, up to 1000 with the oldest dropped first, and flushed once the connection opens. A message that fails the schema throws either way.
+
+Besides `roomId`, `channel` and `handler`, `useRoom` takes `url`, `autoReconnect`, `reconnectInterval`, `maxReconnectAttempts` and the callbacks `onConnect`, `onDisconnect` and `onError`.
+
+The connection URL is resolved in this order:
+
+1. The `url` option, used as given (the client only appends `?roomIds=`).
+2. In a browser, `window.location`: `ws:` or `wss:` to match the page, the page's host, and the channel path.
+3. Outside a browser, `WEBSOCKET_URL` followed by the channel path.
+
+So `WEBSOCKET_URL` does not override auto-detection in a browser: point a browser at another host with `url`. The reconnect options fall back to environment variables when the hook does not set them:
+
+| Env Var                            | Default | Description                                                                          |
+| ---------------------------------- | ------- | ------------------------------------------------------------------------------------ |
+| `WEBSOCKET_URL`                    | `""`    | Server base URL outside a browser, e.g. `ws://localhost:3001`. Ignored in a browser. |
+| `WEBSOCKET_RECONNECT_INTERVAL`     | `3000`  | Milliseconds between reconnect attempts.                                             |
+| `WEBSOCKET_MAX_RECONNECT_ATTEMPTS` | `10`    | Set to `-1` for infinite retries.                                                    |
+
+## Authentication
+
+Put `$secure()` in the endpoint's `use` to require authentication, exactly as on an action, and `maxConnectionsPerUser` to cap how many concurrent connections a user may hold:
+
+```typescript
+chat = $websocket({
+  channel: this.channels.chatChannel,
+  handler: async ({ userId, message, reply }) => {
+    /* ... */
+  },
+  use: [$secure()],
+  maxConnectionsPerUser: 3,
+});
+```
+
+Identity is resolved from the WebSocket handshake through `alepha/security`'s usual resolver chain, fed with the handshake's URL and headers (including `cookie`). Browsers cannot set custom headers on a WebSocket handshake, so in practice this means:
+
+- A session **cookie** is sent automatically by the browser and works out of the box.
+- An API key (with the realm's `apiKeys` feature on) can travel as the `?api_key=` query parameter, since it can't go in an `Authorization` header. There is no query parameter for a JWT: a non-browser client that can set headers sends `Authorization: Bearer ...` on the handshake instead.
+
+The middlewares run on the upgrade request, before the socket exists. An unauthenticated handshake is refused with `401`, and a user without a role or permission `$secure` asks for (`use: [$secure({ roles: ["moderator"] })]`) with `403`. This works identically on both the Node and Cloudflare providers.
+
+**What `maxConnectionsPerUser` counts differs by engine.** On Node the server holds every connection, so the cap is per endpoint: three connections total, whichever rooms they joined. On Cloudflare a Durable Object IS one room and only knows its own sockets, so the cap is per room: the same user may hold three in each room they join. Counting across rooms would put a second coordinator object on the path of every upgrade, which is a real cost for a limit that exists to stop one user opening tabs without end. Both engines refuse the same way, closing the socket with code `1008` and the reason `Max connections per user exceeded`, so a client cannot tell them apart. An unauthenticated connection is never capped on either, since there is no identity to count against.
+
+### Authorizing a machine, not a user
+
+`$secure` answers "is a person signed in". Some endpoints are opened by a machine holding a secret rather than by a person with a session: a build agent, a fleet of servers reporting in. Give those an `authorize` hook instead:
+
+```typescript
+estates = $websocket({
+  channel: this.channels.estates,
+  handler: async ({ roomId, message }) => {
+    /* ... */
+  },
+  authorize: async ({ headers }) => {
+    const estate = await this.estates.verify(headers.authorization);
+    return estate ? { roomId: estate.id } : undefined;
+  },
+});
+```
+
+Three things follow from returning `{ roomId }` rather than a user:
+
+- The hook runs **before the socket is accepted**, on Node and on Cloudflare alike. Returning `undefined` refuses the handshake with a 401 and no socket ever exists. A hook that throws answers 503 instead: an outage in the credential store is not a revocation, and a client should keep retrying rather than give up.
+- **The room it names replaces the one the URL asked for.** A client's `?roomId=` is ignored on an endpoint with `authorize`, so a caller cannot enter a room its credential does not own, and a room-targeted `emit()` reaches only the sockets the credential put there.
+- The connection has **no `userId`** unless the hook returns one. It never resolves through `alepha/security`, so the secret is not a session and grants nothing on any HTTP endpoint. `emit({ userId })` cannot reach it; `emit({ roomId })` can.
+
+`$room` takes the same hook, and the room it returns is the one the socket joins. Declaring `authorize` together with `$secure` (or a `$room`'s `secure`) on one endpoint is refused at registration: an endpoint has one way in.
+
+## Node / VPS
+
+On Node, `alepha/websocket` runs on top of the `ws` package, attached to the same HTTP server as the rest of your app. A frame larger than `maxPayload` on the `websocketOptions` atom (1 MiB by default) closes the connection with code `1009` before it is parsed:
+
+```typescript
+Alepha.create({ [websocketOptions.key]: { maxPayload: 4 * 1024 * 1024 } });
+```
+
+A connection can join multiple rooms at once (`?roomIds=room-1,room-2`, or `?roomId=` repeated) - `useRoom`/`WebSocketClient` sends all active room subscriptions as query params when it connects. A connection that names no room joins `default`.
+
+For horizontal scaling across multiple Node instances, server-initiated messages (`reply()`, `emit()`) are distributed via `alepha/topic` (in memory without `REDIS_URL`, Redis once it is set): one instance publishes, every instance receives, and each forwards to its own local connections that match.
+
+```mermaid
+flowchart LR
+  C1[Client in room lobby] -->|message| A[Instance A<br/>$websocket handler]
+  A -->|reply or emit| T[(alepha/topic<br/>Redis or memory)]
+  T --> A
+  T --> B[Instance B]
+  A -->|local sockets in lobby| C1
+  A -->|local sockets in lobby| C2[Client 2]
+  B -->|local sockets in lobby| C3[Client 3]
+```
+
+For `$websocket` sockets (a `$room` socket emits none of them), the Node provider also emits observability hooks, fire-and-forget so a subscriber can never break the connection it watches: `websocket:connected` and `websocket:disconnected` (with the close `code` and `reason`), `websocket:message:received` (the raw frame text, before validation) and `websocket:error:reported`. Each payload carries `connectionId` and the channel `path`.
+
+```typescript
+connections = $hook({
+  on: "websocket:connected",
+  handler: ({ connectionId, path }) => this.metrics.increment(path),
+});
+```
+
+Because Cloudflare allows only one room per connection (see below), joining multiple rooms on Node is **not portable**. The Node provider logs a dev-only warning when a connection joins more than one room, so you notice before deploying to Cloudflare.
+
+## Cloudflare (Durable Objects)
+
+On Cloudflare, `alepha/websocket` is backed by one **Durable Object per `channelPath:roomId`**, using the WebSocket Hibernation API to retain accepted connections when the host is recreated. Room state and connection data bags are still volatile. Your `$websocket` handler runs _inside_ that Durable Object, so `reply()` is a local fan-out over the DO's own sockets - there is no cross-isolate hop, and no Redis or `alepha/topic` bus is needed. The Durable Object _is_ the topic bus.
+
+This gives the same channel/handler code as Node, with a few v1 limitations worth knowing:
+
+**`emit` is room-scoped only.** `emit({ roomId })` and `emit({ roomIds })` work - each resolves to a Durable Object stub and calls its broadcast RPC. Targeting a `userId`/`connectionId`, or a channel-wide broadcast (no target at all), throws an `AlephaError` instead of silently doing nothing.
+
+**One room per connection.** A client socket is accepted by exactly one Durable Object, so a connection belongs to exactly one room - there is no equivalent of Node's multi-room connections. This is the _portable contract_: code that only ever joins a single room per connection behaves identically on both providers. If you rely on Node's multi-room support, watch for its dev-mode warning before deploying to Cloudflare.
+
+**`exceptUserIds` is not honored on Cloudflare.** `reply()`'s and `emit()`'s `exceptConnectionIds` work as expected; `exceptUserIds` is silently ignored by the Cloudflare provider (it only tracks connections, not the user index Node maintains). Use `exceptConnectionIds` if you need to exclude specific clients.
+
+**Host configuration is generated.** `alepha build --runtime workerd` collects generic host declarations from `$websocket`, `$room` and `$actor`. A socket-only or room-only app keeps the existing class and binding. Without an explicit legacy migration history, the generated `wrangler.jsonc` uses declarative SQLite exports:
+
+```jsonc
+{
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "ALEPHA_WEBSOCKET",
+        "class_name": "AlephaWebSocketDurableObject",
+      },
+    ],
+  },
+  "exports": {
+    "AlephaWebSocketDurableObject": {
+      "type": "durable-object",
+      "storage": "sqlite",
+    },
+  },
+}
+```
+
+The class remains `AlephaWebSocketDurableObject`, the binding remains
+`ALEPHA_WEBSOCKET`, and the instance identity remains `channelPath + ":" + roomId`.
+Shared actor host/runtime facilities do not persist `RoomEngine.state` or `conn.data`.
+
+Use a Wrangler toolchain supporting declarative exports. An explicit
+`build.cloudflare.config.migrations` array keeps the legacy history path instead;
+DO exports and migrations cannot coexist. Conflicting bindings or a required-host
+tombstone reject the build. Switching a deployed Worker to exports is a one-way
+control-plane transition, not an application-state migration. Both Cloudflare
+deploy transports consume the same manifest declarations. See
+[actor state and namespace provisioning](/docs/guides-persistence-actors) for the
+configuration rules, prebuilt path and durability limits.
+
+Build and test locally with:
+
+```bash
+npx alepha build --runtime workerd
+npx wrangler dev
+```
+
+Open two browser tabs on the same room to see messages broadcast between them; a different room stays isolated.
+
+With an explicit environment configured through `alepha/cli/infra`, deploy through
+`alepha deploy`. `alepha deploy --prebuilt` uses the existing artifact.

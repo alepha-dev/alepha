@@ -20,7 +20,7 @@ export const changelog: ChangelogEntry[] = generated.changelog;
 
 /**
  * The URL prefix a doc set lives under. Framework keeps `/docs`, which is
- * where all 378 of its pages already are; each product gets its own space so
+ * where all of its pages already are; each product gets its own space so
  * a Bay guide is a Bay URL rather than a framework page named `bay-`
  * something (quest #1603).
  */

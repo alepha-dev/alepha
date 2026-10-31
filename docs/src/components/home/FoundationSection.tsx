@@ -90,9 +90,9 @@ const FoundationSection = () => {
             <span className="slab-note">
               <DocLink to="packages-alepha-server-core">server</DocLink> ·{" "}
               <DocLink to="packages-alepha-orm-core">orm</DocLink> ·{" "}
-              <DocLink to="guides-server-authentication">auth</DocLink> ·{" "}
-              <DocLink to="packages-alepha-queue-core">queues</DocLink> ·{" "}
-              <DocLink to="guides-server-background-jobs">cron</DocLink> ·{" "}
+              <DocLink to="guides-security-authentication">auth</DocLink> ·{" "}
+              <DocLink to="packages-alepha-queue">queues</DocLink> ·{" "}
+              <DocLink to="guides-features-background-jobs">cron</DocLink> ·{" "}
               <DocLink to="guides-persistence-storage">storage</DocLink> ·{" "}
               <DocLink to="guides-frontend-react">SSR</DocLink>
             </span>

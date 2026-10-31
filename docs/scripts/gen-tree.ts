@@ -5,7 +5,9 @@ import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 import hljs from "highlight.js";
 import { Marked, type Tokens } from "marked";
+import { runnerImport } from "vite";
 
+import { DocsMarkdown } from "./DocsMarkdown.ts";
 import type {
   ChangelogChange,
   ChangelogEntry,
@@ -24,7 +26,7 @@ import { snippets } from "./snippets.ts";
  * written, validated by `check-docs`, and silently published nowhere.
  *
  * **`product` is the URL space.** The framework is `""`, so its pages stay at
- * `/docs/:slug` and all 378 existing URLs keep working; it also keeps an empty
+ * `/docs/:slug` and its existing URLs keep working; it also keeps an empty
  * category, because prefixing it would rewrite every one of them. Bay and Lore
  * were published here too, each at `/<product>/docs/:slug` with its own tree
  * and sidebar (quest #1603), until they left this repository with their docs
@@ -105,6 +107,39 @@ export class TreeCommand {
   ]);
 
   protected marked = this.createMarked();
+
+  /**
+   * Draws a ` ```mermaid ` fence as SVG, set by `loadMermaid()` before any
+   * page is rendered. Unset, a fence renders as the code block it is.
+   */
+  protected mermaid?: (source: string, index: number) => string | undefined;
+
+  /**
+   * Diagrams drawn so far in this run, so each gets its own marker ids.
+   */
+  protected mermaidCount = 0;
+
+  /**
+   * Load `scripts/mermaid.tsx` through Vite, which is what reads its `.tsx`
+   * and `@alepha/ui`'s, where Node's type stripping cannot.
+   *
+   * `graphre` (the flowchart layout) is a UMD bundle, whose named exports
+   * Node's CommonJS lexer cannot see, so it is aliased to a shim that
+   * `require`s it.
+   */
+  async loadMermaid(): Promise<void> {
+    const { module } = await runnerImport<typeof import("./mermaid.tsx")>(
+      join(import.meta.dirname, "mermaid.tsx"),
+      {
+        configFile: false,
+        logLevel: "error",
+        resolve: {
+          alias: { graphre: join(import.meta.dirname, "graphre.ts") },
+        },
+      },
+    );
+    this.mermaid = module.renderMermaid;
+  }
 
   /**
    * Converts npm commands to other package manager equivalents
@@ -493,12 +528,9 @@ export class TreeCommand {
 
     const renderer = {
       heading: ({ text, depth }: Tokens.Heading) => {
-        const baseSlug = text
-          .replace(/\//g, "-")
-          .replace(/[()`:/@"]/g, "")
-          .trim()
-          .replace(/ /g, "-")
-          .toLowerCase();
+        // GitHub's rule, shared with `check:docs` so a link it accepts is
+        // an anchor this page has.
+        const baseSlug = DocsMarkdown.headingId(text);
 
         // De-duplicate ids GitHub-style: the second "## Secrets" on a page
         // becomes #secrets-1. Without this, duplicate headings emit the same
@@ -524,6 +556,15 @@ export class TreeCommand {
         const langParts = (lang || "").split(/\s+/);
         const actualLang = langParts[0] || "";
         const meta = langParts.slice(1).join(" ") || null;
+
+        // A diagram the renderer cannot draw (an unsupported type, a refused
+        // construct, a parse failure) falls through to the code block.
+        if (actualLang === "mermaid" && this.mermaid) {
+          const svg = this.mermaid(text, this.mermaidCount++);
+          if (svg) {
+            return `<div class="mermaid-diagram">${svg}</div>`;
+          }
+        }
 
         // Check if this is a package manager command (bash/sh or no lang specified)
         const isBashLike =
@@ -638,7 +679,7 @@ export class TreeCommand {
           product,
           slug: fullSlug,
           name: this.pretty(filename),
-          description: "",
+          description: DocsMarkdown.description(originalContent),
           content,
           originalContent,
           originalName: entry.name,
@@ -670,14 +711,8 @@ export class TreeCommand {
       `Generating full slug for category: ${categoryPath}, filename: ${filename}`,
     );
 
-    // Split the category path and clean each part
-    const parts = categoryPath.split("/").map((part) => this.cleanName(part));
-
-    // Add the filename
-    parts.push(this.cleanName(filename));
-
-    // Join with dashes and create slug
-    const fullSlug = this.slug(parts.join("-"));
+    // Shared with `check:docs`, which resolves every doc link against it.
+    const fullSlug = DocsMarkdown.slug(categoryPath, filename);
     this.log.trace(`Generated slug: ${fullSlug}`);
 
     return fullSlug;
@@ -696,7 +731,7 @@ export class TreeCommand {
   /**
    * A doc's name in `.gen/`, and the one place the product-plus-slug pair is
    * turned into a filename. Framework pages keep their bare slug so the
-   * generated tree is unchanged for the 378 pages that are not moving.
+   * generated tree is unchanged for the pages that did not move.
    */
   outputName(item: { product: DocProduct; slug: string }): string {
     return item.product ? `${item.product}-${item.slug}` : item.slug;
@@ -829,12 +864,7 @@ export class TreeCommand {
   }
 
   slug(name: string) {
-    const slug = name
-      .toLowerCase()
-      .replace(/^(\d+)-/, "") // remove the leading order prefix, not interior digits
-      .replace(/[/\\]/g, "-")
-      .replace(/\s+/g, "-") // replace spaces with dashes
-      .replace("@", "");
+    const slug = DocsMarkdown.slugify(name);
     this.log.trace(`Generated slug "${slug}" from "${name}"`);
     return slug;
   }
@@ -1057,6 +1087,8 @@ export class TreeCommand {
       });
 
       const items: DocItem[] = [];
+
+      await run("load diagram renderer", () => this.loadMermaid());
 
       await run("parse docs", async () => {
         for (const { dir, category, level, product } of DOC_ROOTS) {

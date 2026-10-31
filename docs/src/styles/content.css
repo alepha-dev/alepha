@@ -190,6 +190,62 @@
 }
 
 /* -----------------------------------------------------------------------------
+   DIAGRAMS
+   ----------------------------------------------------------------------------- */
+
+/*
+ * A ` ```mermaid ` fence, drawn as inline SVG by `gen-tree.ts` with
+ * `@alepha/ui`'s renderer. That SVG paints with the shadcn-style tokens
+ * (`--card`, `--border`, `--muted`, ...), mapped here onto the site palette,
+ * so it follows the light and dark themes like the rest of the page. Its
+ * Tailwind classes (`my-4 block w-full`) have no stylesheet on this site,
+ * hence the layout rules below.
+ */
+.terminal-content .mermaid-diagram {
+  --background: var(--color-bg);
+  --foreground: var(--color-text);
+  --card: var(--color-bg-panel);
+  --card-foreground: var(--color-text-bright);
+  --muted: var(--color-bg-elevated);
+  --muted-foreground: var(--color-text-muted);
+  --border: var(--color-border);
+  --primary: var(--color-accent);
+  margin: 24px 0;
+}
+
+.terminal-content .mermaid-diagram > svg {
+  display: block;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* A sequence diagram keeps its natural width and scrolls, never scales. */
+.terminal-content .mermaid-diagram .alepha-diagram-scroll {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.terminal-content .mermaid-diagram .alepha-diagram-scroll > svg {
+  display: block;
+  margin: 0 auto;
+}
+
+/*
+ * The arrowheads paint with `context-stroke`, which WebKit does not support:
+ * Safari draws them with no paint at all. Every edge and message is
+ * `--muted-foreground`, so naming that colour is exact, not an approximation.
+ */
+@supports not (fill: context-stroke) {
+  .terminal-content .mermaid-diagram marker path[fill="context-stroke"] {
+    fill: var(--muted-foreground);
+  }
+
+  .terminal-content .mermaid-diagram marker path[stroke="context-stroke"] {
+    stroke: var(--muted-foreground);
+  }
+}
+
+/* -----------------------------------------------------------------------------
    TABLE OF CONTENTS
    ----------------------------------------------------------------------------- */
 

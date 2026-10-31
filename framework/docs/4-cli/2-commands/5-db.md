@@ -22,6 +22,8 @@ Every subcommand except `migrations apply` accepts:
 | ------------ | ---------------------------------------------------------------------------------------------------------------- |
 | `--provider` | Target a single database provider by name (e.g. `postgres`, `sqlite`). Default: all providers with repositories. |
 
+Every subcommand except `doctor` also takes `--mode` (`-m`), which loads `.env.<mode>` and `.env.<mode>.local` on top of `.env`. That is how a deploy runs `alepha db migrations apply --mode production` against the database `.env.production` names.
+
 ## Commands
 
 ### migrations check

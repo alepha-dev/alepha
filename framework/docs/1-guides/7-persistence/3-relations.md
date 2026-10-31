@@ -1,0 +1,364 @@
+# Relations
+
+Declare how entities relate to one another once, then read the graph with `include`. The whole tree arrives in one statement.
+
+```typescript check
+import { z } from "alepha";
+import {
+  $entity,
+  $relations,
+  $repositories,
+  $repository,
+  db,
+} from "alepha/orm";
+```
+
+Relations are the layer above [joins](/docs/guides-persistence-joins). A join is a SQL join you write per query; a relation is a name you declare once and reuse. Relations also do what a join cannot: one-to-many without multiplying rows, many-to-many without exposing the junction, and arbitrary nesting.
+
+## Declaring the graph
+
+Relations live in their own statement, not on `$entity`:
+
+```typescript filename="schema.ts" check
+import { z } from "alepha";
+import { $entity, $relations, db } from "alepha/orm";
+
+const teams = $entity({
+  name: "teams",
+  schema: z.object({
+    id: db.primaryKey(),
+    name: z.text(),
+  }),
+});
+
+const players = $entity({
+  name: "players",
+  schema: z.object({
+    id: db.primaryKey(),
+    teamId: db.ref(z.uuid(), () => teams.cols.id),
+    name: z.text(),
+    mentorId: db.ref(z.uuid().optional(), () => players.cols.id),
+  }),
+});
+
+const tournaments = $entity({
+  name: "tournaments",
+  schema: z.object({
+    id: db.primaryKey(),
+    title: z.text(),
+  }),
+});
+
+/** Junction: which team entered which tournament. */
+const entries = $entity({
+  name: "entries",
+  schema: z.object({
+    id: db.primaryKey(),
+    teamId: db.ref(z.uuid(), () => teams.cols.id),
+    tournamentId: db.ref(z.uuid(), () => tournaments.cols.id),
+  }),
+  indexes: [{ columns: ["teamId", "tournamentId"], unique: true }],
+});
+
+export const schema = { teams, players, tournaments, entries };
+
+export const relations = $relations(schema, (r) => ({
+  teams: {
+    players: r.many.players({ from: r.teams.id, to: r.players.teamId }),
+  },
+  players: {
+    team: r.one.teams({ from: r.players.teamId, to: r.teams.id }),
+    mentor: r.one.players({ from: r.players.mentorId, to: r.players.id }),
+  },
+}));
+```
+
+Both sides of every join are typed. Swap `r.teams.id` for `r.teams.name` in the `players` relation and it stops compiling, because a text column cannot pair with `players.teamId`.
+
+### Why relations are a separate statement
+
+They cannot be inferred from `db.ref`, and they cannot be nested inside `$entity`. `players.mentorId` is the reason: a self-reference makes the entity's own type depend on itself, and TypeScript gives up with `TS7022`. The `() => any` inside `db.ref` is what keeps that from happening, which also means the reference carries no type information for anything else to read.
+
+Declaring relations separately sidesteps it entirely - by the time `$relations` runs, every entity is already a complete type.
+
+### The graph can be partial
+
+A `$relations` schema does not have to cover the application. Five entities out of twenty-three is a normal starting point: a relational repository and a plain one address the same tables and coexist, so one controller migrates while everything else stays as it was.
+
+## Getting a repository
+
+Two shapes, same object underneath.
+
+```typescript
+class TeamService {
+  /** One binding for every entity in the schema. */
+  repos = $repositories(relations);
+
+  /** ...or just the one this class needs. */
+  teams = $repository(relations, "teams");
+}
+```
+
+`$repository(entity)` - the plain form - is unchanged. The two-argument form takes the relations and the key of the entity within its schema. The examples below use `repos` from that first binding.
+
+## Reading
+
+### include
+
+```typescript
+const team = await repos.teams.findOne({
+  where: { name: { eq: "Rovers" } },
+  include: { players: true },
+});
+
+team?.players[0]?.name; // fully inferred
+```
+
+A `many` relation yields an array; a `one` yields `T | undefined`. A relation you did not include is absent from the type, so reading it is a compile error rather than `undefined` at runtime.
+
+An empty to-many is `[]`, never `undefined` - which is the case a `LEFT JOIN` gets wrong.
+
+### Nesting
+
+```typescript
+const team = await repos.teams.findOne({
+  where: { id: { eq: teamId } },
+  include: { players: { include: { mentor: true } } },
+});
+
+team?.players[0]?.mentor?.name;
+```
+
+Depth costs columns, not round trips: each level becomes a subquery inside the same statement.
+
+### Many-to-many
+
+Both sides hop through the junction with `.through()`, and each names its own column on it:
+
+```typescript
+const relations = $relations(schema, (r) => ({
+  teams: {
+    tournaments: r.many.tournaments({
+      from: r.teams.id.through(r.entries.teamId),
+      to: r.tournaments.id.through(r.entries.tournamentId),
+    }),
+  },
+  tournaments: {
+    teams: r.many.teams({
+      from: r.tournaments.id.through(r.entries.tournamentId),
+      to: r.teams.id.through(r.entries.teamId),
+    }),
+  },
+}));
+```
+
+The junction never appears in the result - a row reached through it is a plain target row, with no link columns bolted on. Hopping only one side throws at declaration time, because there would be nothing to match on the other.
+
+> **A many-to-many de-duplicates only if the junction does.** `include` returns what the join returns. If a team could hold two `entries` rows for the same tournament, that tournament comes back twice and nothing in the response type would catch it. The unique index on `(teamId, tournamentId)` above is what makes the relation safe - worth a test of its own next to the endpoints that rely on it.
+
+### Shaping a relation
+
+A relation is a query, so it takes the same vocabulary as the root:
+
+```typescript
+const team = await repos.teams.findOne({
+  where: { id: { eq: teamId } },
+  include: {
+    players: {
+      where: { name: { like: "A%" } },
+      orderBy: { column: "name", direction: "asc" },
+      limit: 5,
+      select: ["id", "name"],
+    },
+  },
+});
+```
+
+`limit` caps rows **per parent**, not across the result - which is the other thing a plain join cannot do without truncating children instead of parents.
+
+### Projection
+
+`select` narrows the row and its type:
+
+```typescript
+const teams = await repos.teams.findMany({
+  select: ["name"],
+  include: { players: true },
+});
+
+teams[0]?.name;
+// teams[0].id is a compile error - it was projected away
+```
+
+Projecting the parent does not break its relations: the join key is still read internally and does not resurface in the result.
+
+## Filtering by a relation
+
+A `where` key that names a declared relation takes a nested `where` describing the related rows, and compiles to `EXISTS`:
+
+```typescript
+// Teams that have a player called Ana.
+const found = await repos.teams.findMany({
+  where: { players: { name: { eq: "Ana" } } },
+});
+```
+
+Because it is an `EXISTS`, the root rows are not multiplied and nothing needs de-duplicating afterwards. Column filters and relation filters combine, and relation filters nest:
+
+```typescript
+await repos.players.findMany({
+  where: {
+    name: { like: "A%" },
+    team: { name: { eq: "Rovers" } },
+  },
+});
+
+// Two levels deep.
+await repos.players.findMany({
+  where: { team: { players: { name: { eq: "Ana" } } } },
+});
+```
+
+`{}` is meaningful - the join condition alone is a presence check:
+
+```typescript
+// Teams with at least one player.
+await repos.teams.findMany({ where: { players: {} } });
+```
+
+Every operator works at any depth: `inArray`, `like`, `between`, all of them.
+
+## Soft delete
+
+Soft-delete filtering applies automatically at every level of the tree,
+including a relation included with a bare `true`. A soft-deleted player does
+not make its team match.
+
+### force
+
+Some views want the history a soft delete hides - a crash inbox still shows reports from a source that has since been revoked. `force` is the same flag the plain repository takes:
+
+```typescript
+await repos.teams.findMany({
+  include: { players: { force: true } },
+});
+```
+
+It applies to the level that asked for it, so a forced parent does not quietly un-hide everything hanging off it. For the root rows, `force` is a statement option, as on the plain repository:
+
+```typescript
+await repos.teams.findMany({ include: { players: true } }, { force: true });
+```
+
+## Statement options
+
+`findMany`, `findOne`, `getOne`, `findById`, `getById` and `paginate` take a last `options` argument with the plain repository's names: `tx` (an explicit transaction, or `null` for none), `force` and `now`. `count` takes `tx` and `force`.
+
+```typescript
+await repos.teams.transaction(async (tx) => {
+  const teams = await repos.teams.findMany(
+    { include: { players: true } },
+    { tx },
+  );
+});
+```
+
+Two plain options are not offered on a relational read:
+
+- **`for`** (row locks): Postgres refuses `FOR UPDATE` on the nullable side of an outer join, and `include` builds outer joins. Lock the root rows through `.base` instead.
+- **`cache`**: the cache is invalidated per table, so a write to an included table would leave a cached tree stale.
+
+`paginate` follows the plain repository's rules: the page comes from the `PageQuery` alone (`limit` and `offset` in the query are refused), `size` is held to `[1, 100]`, and `pagination.sort` wins over the query's `orderBy`, which is the default order.
+
+## Writing
+
+`create` understands nested data and runs the whole graph in one transaction:
+
+```typescript
+const team = await repos.teams.create({
+  data: {
+    name: "Rovers",
+    players: {
+      create: [{ name: "Ana" }, { name: "Bo" }],
+    },
+  },
+  include: { players: true },
+});
+```
+
+Ordering is forced by where each foreign key lives: a **to-one** related row is created first, because this row's key points at it; a **to-many** child is created after, because its key points back. A failure part-way through leaves no half-built graph behind, except on a driver without transactions (Cloudflare D1), where the rows written before the failure stay.
+
+### Nested create through a many-to-many
+
+A nested `create` under a `.through()` relation creates each child, then writes the junction row that links it to the parent, inside the same transaction:
+
+```typescript
+const team = await repos.teams.create({
+  data: {
+    name: "Rovers",
+    tournaments: { create: [{ title: "Spring Cup" }] },
+  },
+  include: { tournaments: true },
+});
+```
+
+The junction row carries only the two link columns, so every other column on it needs a default. The junction must be in the schema passed to `$relations`. A nested `create` through a **to-one** `.through()` relation is refused: the link lives in the junction, not on the row. Create the related row, then insert the junction row yourself.
+
+Nested writes only create: there is no nested `connect`, `update` or `delete`. To link an existing row, write its foreign key (or the junction row) directly.
+
+`update` takes `where` / `data` as an options object; `upsert` takes `create` / `update` / `target`. Both accept `include` on the result:
+
+```typescript
+await repos.teams.update({
+  where: { id: { eq: teamId } },
+  data: { name: "Rovers FC" },
+  include: { players: true },
+});
+```
+
+The other methods are on the relational repository too, and ignore relations. Writes take one options object, like the reads:
+
+```typescript
+await repos.teams.createMany({ data: [{ name: "A" }, { name: "B" }] });
+await repos.teams.updateMany({
+  where: { name: { eq: "A" } },
+  data: { name: "C" },
+});
+await repos.teams.delete({ where: { name: { eq: "C" } } }); // first match
+await repos.teams.deleteMany({ where: { name: { like: "Z%" } }, force: true });
+await repos.teams.count({ where: { name: { like: "R%" } } });
+await repos.teams.aggregate({ select: { id: { count: true } } });
+```
+
+`findById(id, { include })`, `getById`, `getOne`, `updateById(id, data)`, `deleteById(id, { force })`, `save(entity)`, `query`, `transaction` and `paginate(page, query, { count })` keep their plain shapes. `.base` is the fully typed plain repository, for the statement options a relational read does not take (`for`, `cache`).
+
+## What it costs
+
+One statement, whatever the shape. Each included relation becomes a subquery, using the strategy the dialect is best at:
+
+| Dialect       | Strategy                                                      |
+| ------------- | ------------------------------------------------------------- |
+| PostgreSQL    | `LEFT JOIN LATERAL` with `json_agg`                           |
+| SQLite        | correlated subqueries with `json_object` / `json_group_array` |
+| Cloudflare D1 | the same, restricted to `json_*` - D1's SQLite has no `jsonb` |
+
+`toSQL()` returns the statement without running it, which is how you get it in front of `EXPLAIN`:
+
+```typescript
+const { sql, params } = repos.teams.toSQL({
+  where: { id: { eq: teamId } },
+  include: { players: true },
+});
+```
+
+It needs a query with relations - without them the read goes through the plain repository and there is no gap to inspect.
+
+Every table a read touched is announced on `repository:read:before`, root first, so a cache keyed per table sees the whole tree rather than only its root.
+
+## Limitations
+
+- **A relation filter cannot go inside `and` / `or` / `not`.** Those compile to one SQL expression, and an `EXISTS` cannot be folded into it. Lift the relation filter to the top level of the `where`; anything else is refused with an explanatory error rather than quietly matching nothing.
+- **`count` cannot carry a relation filter.** There is no count on the relational engine, so the predicate cannot reach a `COUNT(*)`. It is refused rather than returning a number that ignored the filter. The same applies to `paginate(..., { count: true })`.
+- **Only foreign keys are relations.** A `uuid[]` column of ids, or a polymorphic id column told apart by a discriminator, is not a foreign key - those lookups stay explicit.
+- **No aggregates through relations.** Use `.base.aggregate()` or raw SQL.
+- **`paginate` pages the root only.** Relations are resolved in full for the rows on that page, which is the point: page size bounds the work.

@@ -189,7 +189,7 @@ A bare `alepha init` fills missing files without replacing them. The explicit `-
 
 If you don't specify `--pm`, `init` figures it out automatically, strongest evidence first:
 
-1. A lockfile in the target directory - `yarn.lock`, `pnpm-lock.yaml`, `bun.lock` or `package-lock.json`
+1. A lockfile in the target directory - `yarn.lock`, `pnpm-lock.yaml`, `bun.lock` (or the older `bun.lockb`) or `package-lock.json`
 2. Inside a workspace → inherits the workspace's package manager
 3. How you invoked the CLI → `bunx alepha init` gives you Bun, `pnpm dlx` gives you pnpm, `npx` gives you npm
 4. Running under Bun → uses Bun
