@@ -843,7 +843,7 @@ export default {
     "Envoyer un build sur une machine qui vous appartient.",
   "project.capability.support.label": "Recueillir les retours",
   "project.capability.support.description":
-    "Un formulaire public et une boîte de tri.",
+    "Un formulaire de demande pour tout compte Lore connecté, et une boîte de tri.",
   "project.settings.areas.title": "Domaines",
   "project.settings.areas.description":
     "Les parties de votre système. Chaque quête appartient à exactement une. Renommez un domaine vers un domaine existant pour les fusionner.",

@@ -865,7 +865,7 @@ export default {
     "Push a build to a machine you own.",
   "project.capability.support.label": "Collect feedback",
   "project.capability.support.description":
-    "A public request form and a triage inbox.",
+    "A request form for any signed-in Lore account, and a triage inbox.",
   "project.settings.areas.title": "Areas",
   "project.settings.areas.description":
     "The parts of your system. Every quest belongs to exactly one. Rename an area onto an existing one to merge them.",
