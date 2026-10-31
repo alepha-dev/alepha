@@ -228,3 +228,163 @@ func TestBlueGreenDaemon(t *testing.T) {
 		}
 	})
 }
+
+// waitForWatch blocks until the app's rollback watch has finished, a rollback
+// it decided on included: endWatch is deferred past it.
+func waitForWatch(t *testing.T, s *server, key string) {
+	t.Helper()
+	deadline := time.Now().Add(time.Minute)
+	for s.watching(key) {
+		if time.Now().After(deadline) {
+			t.Fatal("the rollback watch never finished")
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+}
+
+func (s *server) watching(key string) bool {
+	s.watchMu.Lock()
+	defer s.watchMu.Unlock()
+	_, ok := s.watches[key]
+	return ok
+}
+
+// answer is what the app says through the proxy, the way a visitor reaches it.
+func answer(t *testing.T, front *httptest.Server, host string) string {
+	t.Helper()
+	req, _ := http.NewRequest(http.MethodGet, front.URL+"/", nil)
+	req.Host = host
+	res, err := (&http.Client{Timeout: 30 * time.Second}).Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	body, _ := io.ReadAll(res.Body)
+	return res.Status + " " + string(body)
+}
+
+/*
+TestRollbackWatchDaemon runs the health watch against what blue/green really
+does to a host port.
+
+The watch's three failures in a row are what it takes to undo a release, so a
+probe aimed at a port nothing listens on any more is a healthy release reverted
+half a minute after it shipped. The window and interval are shortened; the
+threshold is the real one.
+*/
+func TestRollbackWatchDaemon(t *testing.T) {
+	d := daemonDocker(t)
+	root := daemonRoot(t, d)
+	store, err := state.Open(filepath.Join(root, "state.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.SetBaseDomain("bay.test"); err != nil {
+		t.Fatal(err)
+	}
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	router := proxy.New(root, store, log)
+	s := &server{
+		root: root, store: store, runner: d, probe: &health.Probe{}, log: log,
+		router: router, keepReleases: defaultKeepReleases, readyWait: 10 * time.Second,
+		watchWindow: time.Second, watchEvery: 100 * time.Millisecond,
+	}
+	front := httptest.NewServer(router)
+	defer front.Close()
+
+	env := "wd" + strconv.FormatInt(time.Now().UnixNano()%1e9, 36)
+	key := "bluegreen/" + env
+	t.Cleanup(func() {
+		waitForWatch(t, s, key)
+		_ = d.Remove(key, true)
+		_ = d.DiscardCandidate(key)
+	})
+	deployVersion := func(version string) *deployOutcome {
+		t.Helper()
+		out, failure := s.deployArtifact(context.Background(), deployArtifactOptions{
+			Artifact: versionedArtifact(t, version), Name: "bluegreen", Env: env,
+		})
+		if failure != nil {
+			t.Fatalf("deploy %s: %v", version, failure)
+		}
+		return out
+	}
+
+	host := deployVersion("v1").Result.App.Domain()
+
+	t.Run("a healthy release survives the watch of its own deploy", func(t *testing.T) {
+		out := deployVersion("v2")
+		waitForWatch(t, s, key)
+
+		app, _ := store.Get(key)
+		if app.Release != out.Result.Release {
+			t.Fatalf("reverted to %s, on a release that was serving", app.Release)
+		}
+		if got := answer(t, front, host); !strings.Contains(got, `"version":"v2"`) {
+			t.Fatalf("answer = %s", got)
+		}
+	})
+
+	t.Run("a restart inside the window does not lose the app", func(t *testing.T) {
+		s.watchWindow = 6 * time.Second
+		out := deployVersion("v3")
+		before, _ := store.Get(key)
+		if err := s.restart(before); err != nil {
+			t.Fatal(err)
+		}
+		if !s.watching(key) {
+			t.Fatal("the window closed before the restart returned: this proved nothing")
+		}
+		waitForWatch(t, s, key)
+
+		after, _ := store.Get(key)
+		if after.UpstreamPort() == before.UpstreamPort() {
+			t.Fatalf("the restart did not move the host port: %d", before.UpstreamPort())
+		}
+		if after.Release != out.Result.Release {
+			t.Fatalf("reverted to %s after a restart of a release that was serving", after.Release)
+		}
+	})
+
+	t.Run("a release that dies is rolled back, somewhere the proxy can reach", func(t *testing.T) {
+		s.watchWindow = time.Minute
+		previous, _ := store.Get(key)
+		deployVersion("v4")
+		// Docker keeps restarting a release that crashes, and Running says no
+		// while it does. A stop holds that state still.
+		if err := d.Stop(key, 0); err != nil {
+			t.Fatal(err)
+		}
+		waitForWatch(t, s, key)
+
+		after, _ := store.Get(key)
+		if after.Release != previous.Release {
+			t.Fatalf("release = %s, want it rolled back to %s", after.Release, previous.Release)
+		}
+		if got := answer(t, front, host); !strings.Contains(got, `"version":"v3"`) {
+			t.Fatalf("rolled back, but the proxy gets: %s", got)
+		}
+	})
+
+	t.Run("a stop inside the window is not undone", func(t *testing.T) {
+		out := deployVersion("v5")
+		if err := s.stopInstance(key); err != nil {
+			t.Fatal(err)
+		}
+		waitForWatch(t, s, key)
+
+		if d.Running(key) {
+			t.Fatal("the watch started an app somebody stopped")
+		}
+		after, _ := store.Get(key)
+		if after.Release != out.Result.Release {
+			t.Fatalf("reverted to %s while stopped", after.Release)
+		}
+		if err := s.startInstance(key); err != nil {
+			t.Fatal(err)
+		}
+		if got := answer(t, front, host); !strings.Contains(got, `"version":"v5"`) {
+			t.Fatalf("started again, but the proxy gets: %s", got)
+		}
+	})
+}
