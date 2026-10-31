@@ -1,10 +1,12 @@
 import { $inject, $store } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+import { $logger } from "alepha/logger";
 import { $repository, $sequence, DatabaseProvider } from "alepha/orm";
 
 import { TaxService } from "../../checkout/services/TaxService.ts";
 import type { RefundLine } from "../../entities/orderRefunds.ts";
 import { CommerceError } from "../../errors/CommerceError.ts";
+import { orderConfig } from "../../orderConfigAtom.ts";
 import { ClaimLock } from "../../services/ClaimLock.ts";
 import { CommerceTexts } from "../../services/CommerceTexts.ts";
 import { OrderService } from "../../services/OrderService.ts";
@@ -14,6 +16,7 @@ import {
   type InvoiceLine,
   invoices,
 } from "../entities/invoices.ts";
+import { ExchangeRateProvider } from "../providers/ExchangeRateProvider.ts";
 import { sellerIdentityAtom } from "../sellerIdentityAtom.ts";
 
 /**
@@ -39,6 +42,9 @@ export class InvoiceService {
   protected readonly tax = $inject(TaxService);
   protected readonly lock = $inject(ClaimLock);
   protected readonly texts = $inject(CommerceTexts);
+  protected readonly rates = $inject(ExchangeRateProvider);
+  protected readonly config = $store(orderConfig);
+  protected readonly log = $logger();
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly seller = $store(sellerIdentityAtom);
 
@@ -139,6 +145,13 @@ export class InvoiceService {
       );
     }
 
+    // Asked before the transaction: a rate may come from far away.
+    const booksVat = await this.booksVat(
+      order.currency,
+      totals.vatCents,
+      this.issuedOn(seller.timezone),
+    );
+
     // The number and the row are written in one transaction, so a failure here
     // cannot consume a number.
     return this.db.transactional(async () => {
@@ -165,8 +178,44 @@ export class InvoiceService {
         vatTotal: totals.vatCents,
         grandTotal: totals.ttcCents,
         currency: order.currency,
+        booksVat,
       });
     });
+  }
+
+  /**
+   * The VAT of a sale in the seller's own currency, when that is not the one
+   * it was made in. No rate must not stop an invoice: the buyer has paid and
+   * is owed one, so it goes out without the line, and the log says so.
+   */
+  protected async booksVat(
+    currency: string,
+    vatTotal: number,
+    on: string,
+  ): Promise<InvoiceEntity["booksVat"]> {
+    const books = this.config.baseCurrency;
+    if (currency === books || vatTotal === 0) {
+      return undefined;
+    }
+    const rate = await this.rates.rate(currency, books, on);
+    if (rate === undefined) {
+      this.log.warn(
+        `No ${currency} to ${books} rate for ${on}: the invoice states its VAT in ${currency} only. See ExchangeRateProvider.`,
+      );
+      return undefined;
+    }
+    return {
+      currency: books,
+      rate,
+      vatTotal: this.converted(vatTotal, rate),
+    };
+  }
+
+  /**
+   * Rounded on the magnitude, so a credit note mirrors its invoice to the cent.
+   */
+  protected converted(vatTotal: number, rate: number): number {
+    return Math.sign(vatTotal) * Math.round(Math.abs(vatTotal) * rate);
   }
 
   /**
@@ -241,6 +290,10 @@ export class InvoiceService {
         vatTotal: totals.vatCents,
         grandTotal: totals.ttcCents,
         currency: original.currency,
+        booksVat: original.booksVat && {
+          ...original.booksVat,
+          vatTotal: this.converted(totals.vatCents, original.booksVat.rate),
+        },
         note: options.reason,
       });
     });

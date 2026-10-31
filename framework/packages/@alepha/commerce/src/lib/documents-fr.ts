@@ -25,6 +25,7 @@ export const commerceDocumentsFr: Record<string, string> = {
   "invoice.vatLine": "TVA $1 sur $2",
   "invoice.totalGross": "Total TTC",
   "invoice.discount": "Remise",
+  "invoice.booksVat": "TVA à payer : $1 (1 $2 = $3 $4)",
   "invoice.delivery": "Livraison",
   "invoice.anonymousBuyer": "Client",
   "invoice.paid": "Facture acquittée. Le paiement a été reçu à la commande.",

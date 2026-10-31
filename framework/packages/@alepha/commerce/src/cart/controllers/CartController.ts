@@ -100,6 +100,22 @@ export class CartController {
     },
   });
 
+  public readonly commerceCartSetCurrency = $action({
+    method: "PUT",
+    path: `${this.url}/currency`,
+    group: this.group,
+    description: "Choose the currency the cart pays in",
+    schema: {
+      body: z.object({ currency: z.text({ minLength: 3, maxLength: 3 }) }),
+      response: pricedCartSchema,
+    },
+    handler: async ({ body }) => {
+      const cart = await this.resolveCart();
+      await this.carts.setCurrency(cart.id, body.currency);
+      return this.priceOf(cart.id);
+    },
+  });
+
   public readonly commerceCartSetQuantity = $action({
     method: "PUT",
     path: `${this.url}/items/:lineId`,

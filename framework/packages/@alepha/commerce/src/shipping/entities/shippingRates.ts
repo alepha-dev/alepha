@@ -40,6 +40,12 @@ export const shippingRates = $entity({
     price: z.integer().min(0),
 
     /**
+     * What `price` and `freeAbove` are in, the shop's own when unset. One rate
+     * per currency, each with its `code`: `air` and `air-usd`.
+     */
+    currency: z.text({ minLength: 3, maxLength: 3 }).optional(),
+
+    /**
      * Free when the cart subtotal reaches this. Null → never free.
      */
     freeAbove: z.integer().min(0).optional(),

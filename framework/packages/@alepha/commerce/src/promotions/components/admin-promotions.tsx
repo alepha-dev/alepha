@@ -29,10 +29,10 @@ type PromotionRow = Awaited<
   ReturnType<AdminPromotionController["commerceAdminPromotionList"]["run"]>
 >["content"][number];
 
-const formatPrice = (cents: number) =>
+const formatPrice = (cents: number, currency = "EUR") =>
   new Intl.NumberFormat(undefined, {
     style: "currency",
-    currency: "EUR",
+    currency,
   }).format(cents / 100);
 
 /**
@@ -104,7 +104,7 @@ export const AdminPromotions = () => {
       return `${promotion.value / 100} %`;
     }
     if (promotion.kind === "amount") {
-      return formatPrice(promotion.value);
+      return formatPrice(promotion.value, promotion.currency);
     }
     return tr("commerce.admin.promotions.freeShipping", {
       default: "Free delivery",
@@ -308,6 +308,19 @@ const AdminPromotionSheet = (props: AdminPromotionSheetProps) => {
             $control: { width: 50 },
           })
           .optional(),
+        currency: z
+          .text({ minLength: 3, maxLength: 3 })
+          .meta({
+            title: tr("commerce.admin.promotions.fCurrency", {
+              default: "Currency",
+            }),
+            description: tr("commerce.admin.promotions.fCurrencyHint", {
+              default:
+                "What the amounts are in, the shop's own when empty. A plain percentage applies in any currency.",
+            }),
+            $control: { width: 50 },
+          })
+          .optional(),
         usageLimit: z
           .integer()
           .min(1)
@@ -362,6 +375,7 @@ const AdminPromotionSheet = (props: AdminPromotionSheetProps) => {
         kind: promotion?.kind ?? "percent",
         value: promotion?.value,
         minSubtotal: promotion?.minSubtotal,
+        currency: promotion?.currency,
         usageLimit: promotion?.usageLimit,
         usagePerCustomer: promotion?.usagePerCustomer,
         startsAt: promotion?.startsAt,

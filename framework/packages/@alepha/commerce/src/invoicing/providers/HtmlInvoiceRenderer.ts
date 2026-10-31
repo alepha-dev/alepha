@@ -156,6 +156,18 @@ ${
     : ""
 }
 
+${
+  invoice.booksVat
+    ? `<p class="notice">${t(
+        "invoice.booksVat",
+        this.money(invoice.booksVat.vatTotal, invoice.booksVat.currency),
+        invoice.currency,
+        String(invoice.booksVat.rate).replace(".", t("invoice.decimalMark")),
+        invoice.booksVat.currency,
+      )}</p>`
+    : ""
+}
+
 <footer>
   <p>${t("invoice.paid")}</p>
   <p>${t("invoice.withdrawal")}</p>

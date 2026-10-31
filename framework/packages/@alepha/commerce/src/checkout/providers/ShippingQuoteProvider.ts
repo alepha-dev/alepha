@@ -43,10 +43,12 @@ export abstract class ShippingQuoteProvider {
 
   /**
    * Options for a destination, or an empty array when delivery does not apply.
+   * `currency` is the cart's, unset on one that never chose.
    */
   abstract quote(
     country: string,
     subtotal: number,
+    currency?: string,
   ): Promise<CheckoutShippingQuote[]>;
 
   /**
@@ -58,6 +60,7 @@ export abstract class ShippingQuoteProvider {
     country: string,
     subtotal: number,
     code: string,
+    currency?: string,
   ): Promise<CheckoutShippingQuote | undefined>;
 }
 

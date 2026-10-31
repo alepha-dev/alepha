@@ -56,6 +56,12 @@ export const promotions = $entity({
     minSubtotal: z.integer().min(0).optional(),
 
     /**
+     * What `value` and `minSubtotal` are in, the shop's own when unset. A
+     * promotion stating no amount, a plain percentage, applies in any currency.
+     */
+    currency: z.text({ minLength: 3, maxLength: 3 }).optional(),
+
+    /**
      * The validity window, ISO instants, either end open.
      */
     startsAt: z.text().optional(),

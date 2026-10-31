@@ -14,6 +14,7 @@ import { ClaimLock } from "./services/ClaimLock.ts";
 import { CommerceTexts } from "./services/CommerceTexts.ts";
 import { LineConfigService } from "./services/LineConfigService.ts";
 import { OrderService } from "./services/OrderService.ts";
+import { PriceListService } from "./services/PriceListService.ts";
 import { ResourceService } from "./services/ResourceService.ts";
 import { ReturnService } from "./services/ReturnService.ts";
 import { StockService } from "./services/StockService.ts";
@@ -36,6 +37,7 @@ export * from "./schemas/publicOrderItemSchema.ts";
 export * from "./schemas/publicOrderSchema.ts";
 export * from "./schemas/publicReturnSchema.ts";
 export * from "./schemas/publicVariantSchema.ts";
+export * from "./entities/productPrices.ts";
 export * from "./entities/products.ts";
 export * from "./entities/productVariants.ts";
 export * from "./entities/resourceReservations.ts";
@@ -55,6 +57,7 @@ export * from "./services/ClaimLock.ts";
 export * from "./services/CommerceTexts.ts";
 export * from "./services/LineConfigService.ts";
 export * from "./services/OrderService.ts";
+export * from "./services/PriceListService.ts";
 export * from "./services/ResourceService.ts";
 export * from "./services/ReturnService.ts";
 export * from "./services/StockService.ts";
@@ -187,6 +190,7 @@ export const AlephaCommerce = $module({
     ReturnService,
     ClaimLock,
     StockService,
+    PriceListService,
     VariantService,
     ResourceService,
     // Core, not invoicing: a receipt needs this arithmetic and never issues an

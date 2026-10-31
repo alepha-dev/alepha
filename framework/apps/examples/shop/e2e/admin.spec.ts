@@ -155,6 +155,24 @@ test.describe("catalogue management", () => {
     await expect(page.getByText("ALLIANCE-ZENITH-62")).toHaveCount(0);
   });
 
+  test("the Prices tab writes a price in another currency", async ({
+    page,
+  }) => {
+    await page.goto("/admin/produits");
+    await page.getByRole("cell", { name: "Collier Aurore" }).click();
+    await page.getByRole("radio", { name: "Prix" }).click();
+    await expect(page.getByText("Vendu en EUR uniquement.")).toBeVisible();
+
+    await page.locator('input[name="price"]').fill("15900");
+    await page.getByRole("button", { name: "Enregistrer le prix" }).click();
+    await expect(page.getByText(/159[.,]00/)).toBeVisible();
+
+    // Back to what the seed says.
+    await page.getByRole("button", { name: "Retirer", exact: true }).click();
+    await page.getByRole("button", { name: /Confirmer|Confirm|OK/ }).click();
+    await expect(page.getByText("Vendu en EUR uniquement.")).toBeVisible();
+  });
+
   test("a promotion created in the admin is taken by the cart", async ({
     page,
   }) => {

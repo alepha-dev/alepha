@@ -40,6 +40,12 @@ export const carts = $entity({
      * Unset when none is, or when the cart module has no promotions behind it.
      */
     promotionCode: z.text({ maxLength: 64 }).optional(),
+
+    /**
+     * What the buyer chose to pay in. Unset on a cart that never chose: each
+     * line then reads its product's own price, in its own currency.
+     */
+    currency: z.text({ minLength: 3, maxLength: 3 }).optional(),
   }),
   indexes: [
     { columns: ["token"], unique: true },

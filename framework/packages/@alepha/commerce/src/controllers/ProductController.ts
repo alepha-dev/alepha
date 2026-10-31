@@ -8,6 +8,10 @@ import { optionGroupSchema } from "../schemas/optionGroupSchema.ts";
 import { publicVariantSchema } from "../schemas/publicVariantSchema.ts";
 import { CatalogService } from "../services/CatalogService.ts";
 import { CategoryService } from "../services/CategoryService.ts";
+import {
+  type PriceList,
+  PriceListService,
+} from "../services/PriceListService.ts";
 import { type StockFigures, StockService } from "../services/StockService.ts";
 import { VariantService } from "../services/VariantService.ts";
 
@@ -58,6 +62,7 @@ export class ProductController {
   protected readonly stock = $inject(StockService);
   protected readonly variants = $inject(VariantService);
   protected readonly categories = $inject(CategoryService);
+  protected readonly prices = $inject(PriceListService);
 
   public readonly commerceProductList = $action({
     method: "GET",
@@ -80,6 +85,10 @@ export class ProductController {
         minPrice: z.integer().min(0).optional(),
         maxPrice: z.integer().min(0).optional(),
         /**
+         * Prices in this currency, and only what sells in it.
+         */
+        currency: z.text({ minLength: 3, maxLength: 3 }).optional(),
+        /**
          * Only what can be bought now.
          */
         available: z.boolean().optional(),
@@ -100,10 +109,27 @@ export class ProductController {
       // Availability per row, so a listing can grey out what is gone without a
       // second request per product, and for the whole page in two queries.
       const stock = await this.stock.figuresFor(ids);
-      const content = page.content.map((product) => {
-        const onSale = this.onSale(product, variants);
-        const { priceFrom, available } = this.figures(product, onSale, stock);
-        return { ...this.publicView(product), priceFrom, available };
+      const list = await this.prices.forCurrency(ids, query.currency);
+      const content = page.content.flatMap((product) => {
+        const onSale = this.onSale(product, variants, list);
+        const { priceFrom, available, perVariant } = this.figures(
+          product,
+          onSale,
+          stock,
+          list,
+        );
+        // Priced through a variant nobody can pick: not on sale after all.
+        const price = this.priceOf(product, list, perVariant);
+        return price === undefined
+          ? []
+          : [
+              {
+                ...this.publicView(product, query.currency),
+                price,
+                priceFrom,
+                available,
+              },
+            ];
       });
       return { ...page, content };
     },
@@ -116,24 +142,38 @@ export class ProductController {
     description: "Get a published product by slug, with its availability",
     schema: {
       params: z.object({ slug: z.text({ minLength: 1, maxLength: 200 }) }),
+      query: z.object({
+        /**
+         * Prices in this currency. A product not on sale in it is not found.
+         */
+        currency: z.text({ minLength: 3, maxLength: 3 }).optional(),
+      }),
       response: publicProductSchema,
     },
-    handler: async ({ params }) => {
+    handler: async ({ params, query }) => {
       const product = await this.catalog.findBySlug(params.slug);
       if (!product?.published) {
         throw new NotFoundError(`No such product: ${params.slug}`);
       }
+      const list = await this.prices.forCurrency([product.id], query.currency);
       const onSale = this.onSale(
         product,
         await this.variants.listOf(product.id),
+        list,
       );
       const { priceFrom, available, perVariant } = this.figures(
         product,
         onSale,
         await this.stock.figuresFor([product.id]),
+        list,
       );
+      const price = this.priceOf(product, list, perVariant);
+      if (price === undefined) {
+        throw new NotFoundError(`No such product: ${params.slug}`);
+      }
       return {
-        ...this.publicView(product),
+        ...this.publicView(product, query.currency),
+        price,
         priceFrom,
         available,
         variants: onSale.length > 0 ? perVariant : undefined,
@@ -153,13 +193,36 @@ export class ProductController {
   }
 
   /**
-   * The variants of a product a buyer can pick.
+   * The variants of a product a buyer can pick, at a price they have.
    */
   protected onSale(
     product: ProductEntity,
     variants: ProductVariantEntity[],
+    list: PriceList,
   ): ProductVariantEntity[] {
-    return variants.filter((it) => it.productId === product.id && it.active);
+    return variants.filter(
+      (it) =>
+        it.productId === product.id &&
+        it.active &&
+        list.of(product, it) !== undefined,
+    );
+  }
+
+  /**
+   * The product's price in the list, else its cheapest variant's: a product
+   * may be on sale in a currency through its variants alone.
+   */
+  protected priceOf(
+    product: ProductEntity,
+    list: PriceList,
+    perVariant: Array<{ price: number }>,
+  ): number | undefined {
+    return (
+      list.of(product) ??
+      (perVariant.length > 0
+        ? Math.min(...perVariant.map((it) => it.price))
+        : undefined)
+    );
   }
 
   /**
@@ -171,6 +234,7 @@ export class ProductController {
     product: ProductEntity,
     onSale: ProductVariantEntity[],
     stock: StockFigures,
+    list: PriceList,
   ) {
     if (onSale.length === 0) {
       return {
@@ -183,7 +247,7 @@ export class ProductController {
     const perVariant = onSale.map((variant) => ({
       id: variant.id,
       options: variant.options as Record<string, string>,
-      price: variant.price ?? product.price,
+      price: list.of(product, variant)!,
       image: variant.image,
       available: stock.of(product.id, variant.id).available,
     }));
@@ -199,15 +263,14 @@ export class ProductController {
    * Narrow a catalog row to what a storefront may see. One place, so a new
    * internal column cannot leak by being forgotten here.
    */
-  protected publicView(product: ProductEntity) {
+  protected publicView(product: ProductEntity, currency?: string) {
     return {
       id: product.id,
       kind: product.kind,
       slug: product.slug,
       name: product.name,
       description: product.description,
-      price: product.price,
-      currency: product.currency,
+      currency: currency ?? product.currency,
       images: product.images,
       attributes: product.attributes,
       optionGroups: product.optionGroups,

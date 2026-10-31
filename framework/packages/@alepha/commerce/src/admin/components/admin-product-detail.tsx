@@ -15,6 +15,7 @@ import {
 import { useI18n } from "alepha/react/i18n";
 import { useRouter, useRouterState } from "alepha/react/router";
 import {
+  Coins,
   Eye,
   EyeOff,
   Images,
@@ -33,6 +34,7 @@ import { AdminProductDetailDetailsTab } from "./admin-product-detail-details-tab
 import { AdminProductDetailMediaTab } from "./admin-product-detail-media-tab.tsx";
 import { AdminProductDetailOrdersTab } from "./admin-product-detail-orders-tab.tsx";
 import { AdminProductDetailOverviewTab } from "./admin-product-detail-overview-tab.tsx";
+import { AdminProductDetailPricesTab } from "./admin-product-detail-prices-tab.tsx";
 import { AdminProductDetailStockTab } from "./admin-product-detail-stock-tab.tsx";
 import { AdminProductDetailVariantsTab } from "./admin-product-detail-variants-tab.tsx";
 import { imagesFormSchema } from "./images-form-schema.ts";
@@ -52,6 +54,7 @@ type TabKey =
   | "media"
   | "details"
   | "variants"
+  | "prices"
   | "stock"
   | "orders";
 
@@ -358,6 +361,20 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
   );
   const variants = variantsQuery.data ?? [];
 
+  const pricesQuery = useQuery(
+    {
+      handler: ({ signal }) =>
+        client.commerceAdminProductPrices(
+          { params: { id: productId } },
+          { request: { signal } },
+        ),
+      // The tab stays hidden: nothing here blocks the product.
+      onError: () => {},
+    },
+    [client, productId],
+  );
+  const currencies = pricesQuery.data?.currencies ?? [];
+
   /*
    * By the ids, for the reason `kindsKey` above is a string: `variants` is a
    * fresh array until the query resolves.
@@ -505,6 +522,18 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
       icon: Layers,
       label: tr("commerce.admin.detail.tabVariants", { default: "Variants" }),
     },
+    // Only where there is a choice: a shop in one currency has no list to edit.
+    ...(currencies.length > 1
+      ? [
+          {
+            value: "prices",
+            icon: Coins,
+            label: tr("commerce.admin.detail.tabPrices", {
+              default: "Prices",
+            }),
+          },
+        ]
+      : []),
     {
       value: "stock",
       icon: Package,
@@ -604,6 +633,16 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
             void variantsQuery.refetch();
             void productQuery.refetch();
           }}
+        />
+      )}
+
+      {tab === "prices" && product && (
+        <AdminProductDetailPricesTab
+          product={product}
+          variants={variants}
+          currencies={currencies}
+          prices={pricesQuery.data?.prices ?? []}
+          onChanged={() => void pricesQuery.refetch()}
         />
       )}
 

@@ -24,6 +24,7 @@ export const commerceDocumentsEn: Record<string, string> = {
   "invoice.vatLine": "VAT $1 on $2",
   "invoice.totalGross": "Total incl. VAT",
   "invoice.discount": "Discount",
+  "invoice.booksVat": "VAT payable: $1 (1 $2 = $3 $4)",
   "invoice.delivery": "Delivery",
   "invoice.anonymousBuyer": "Customer",
   "invoice.paid": "Invoice paid. Payment was received with the order.",

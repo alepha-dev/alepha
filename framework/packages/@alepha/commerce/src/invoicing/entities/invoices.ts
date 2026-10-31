@@ -100,6 +100,19 @@ export const invoices = $entity({
     vatTotal: z.integer(),
     grandTotal: z.integer(),
     currency: z.text({ minLength: 3, maxLength: 3 }),
+
+    /**
+     * The VAT in the seller's own currency, on an invoice in another: what EU
+     * law wants on it, frozen with its rate, which a credit note keeps. See
+     * `ExchangeRateProvider`.
+     */
+    booksVat: z
+      .object({
+        currency: z.text({ minLength: 3, maxLength: 3 }),
+        rate: z.number(),
+        vatTotal: z.integer(),
+      })
+      .optional(),
   }),
   indexes: [
     { columns: ["number"], unique: true },

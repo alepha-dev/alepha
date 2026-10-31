@@ -12,6 +12,7 @@ const promotionInputSchema = z.object({
   kind: promotionKindEnum,
   value: z.integer().min(0).optional(),
   minSubtotal: z.integer().min(0).optional(),
+  currency: z.text({ minLength: 3, maxLength: 3 }).optional(),
   startsAt: z.text().optional(),
   endsAt: z.text().optional(),
   usageLimit: z.integer().min(1).optional(),

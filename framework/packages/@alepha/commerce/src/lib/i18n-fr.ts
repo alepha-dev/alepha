@@ -148,7 +148,29 @@ export const commerceFr: Record<string, string> = {
   "commerce.admin.rateCodeHint":
     "Écrit sur la commande. Ne le changez plus ensuite.",
   "commerce.admin.ratePriceCents": "Tarif TTC (centimes)",
+  "commerce.admin.detail.tabPrices": "Prix",
   "commerce.admin.freeAboveCents": "Offert à partir de (centimes)",
+  "commerce.admin.prices.empty": "Vendu en $1 uniquement.",
+  "commerce.admin.prices.fCurrency": "Devise",
+  "commerce.admin.prices.fPrice": "Prix TTC (centimes)",
+  "commerce.admin.prices.fVariant": "Variante",
+  "commerce.admin.prices.fVariantHint":
+    "Laissez vide pour le produit. Une variante qui a son propre prix a besoin de sa propre ligne.",
+  "commerce.admin.prices.hint":
+    "Saisis à la main, jamais convertis. Une devise sans prix ici est une devise dans laquelle ce produit n'est pas vendu.",
+  "commerce.admin.prices.remove": "Retirer",
+  "commerce.admin.prices.removeConfirm":
+    "Le produit ne sera plus vendu en $1. Les paniers qui le contiennent perdront la ligne.",
+  "commerce.admin.prices.removeTitle": "Retirer ce prix",
+  "commerce.admin.prices.set": "Enregistrer le prix",
+  "commerce.admin.prices.title": "Prix dans d'autres devises",
+  "commerce.admin.prices.wholeProduct": "Le produit",
+  "commerce.admin.promotions.fCurrency": "Devise",
+  "commerce.admin.promotions.fCurrencyHint":
+    "La devise des montants, celle de la boutique si vide. Un simple pourcentage s'applique dans toutes les devises.",
+  "commerce.admin.rateCurrency": "Devise",
+  "commerce.admin.rateCurrencyHint":
+    "Laissez vide pour celle de la boutique. Proposé uniquement aux paniers dans cette devise.",
   "commerce.admin.minDays": "Délai min. (jours)",
   "commerce.admin.maxDays": "Délai max. (jours)",
 

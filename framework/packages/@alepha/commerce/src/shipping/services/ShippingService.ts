@@ -1,6 +1,8 @@
+import { $store } from "alepha";
 import { $repository, type Page } from "alepha/orm";
 
 import { NoShippingRateError } from "../../errors/CommerceError.ts";
+import { orderConfig } from "../../orderConfigAtom.ts";
 import {
   type ShippingRateEntity,
   shippingRates,
@@ -43,16 +45,21 @@ export interface ShippingQuote {
 export class ShippingService {
   protected readonly zoneRepo = $repository(shippingZones);
   protected readonly rateRepo = $repository(shippingRates);
+  protected readonly config = $store(orderConfig);
 
   /**
    * Every option available for a destination, cheapest first.
    *
    * Returns an empty array when no zone covers the country - the caller decides
    * whether that is an error (at checkout) or just an empty picker (browsing).
+   *
+   * Only the rates in `currency`, the shop's own when unset: a delivery fee is
+   * added to a basket and has to be in the same money.
    */
   public async quote(
     country: string,
     subtotal: number,
+    currency?: string,
   ): Promise<ShippingQuote[]> {
     const zone = await this.zoneFor(country);
     if (!zone) {
@@ -63,7 +70,9 @@ export class ShippingService {
       where: { zoneId: { eq: zone.id }, active: { eq: true } },
     });
 
+    const shop = this.config.baseCurrency;
     return rates
+      .filter((rate) => (rate.currency ?? shop) === (currency ?? shop))
       .map((rate) => this.priceRate(rate, subtotal))
       .sort((a, b) => a.price - b.price);
   }
@@ -78,8 +87,9 @@ export class ShippingService {
     country: string,
     subtotal: number,
     code: string,
+    currency?: string,
   ): Promise<ShippingQuote> {
-    const quotes = await this.quote(country, subtotal);
+    const quotes = await this.quote(country, subtotal, currency);
     const match = quotes.find((q) => q.code === code);
     if (!match) {
       throw new NoShippingRateError({ country });
@@ -120,6 +130,7 @@ export class ShippingService {
     code: string;
     name: string;
     price: number;
+    currency?: string;
     freeAbove?: number;
     minDays?: number;
     maxDays?: number;

@@ -104,7 +104,29 @@ export const commerceEn: Record<string, string> = {
     "“$1” stops applying. Orders that used it keep their discount.",
   "commerce.admin.promotions.offTitle": "Switch this promotion off",
   "commerce.admin.promotions.on": "On",
+  "commerce.admin.detail.tabPrices": "Prices",
   "commerce.admin.detail.tabVariants": "Variants",
+  "commerce.admin.prices.empty": "Sold in $1 only.",
+  "commerce.admin.prices.fCurrency": "Currency",
+  "commerce.admin.prices.fPrice": "Price incl. tax (cents)",
+  "commerce.admin.prices.fVariant": "Variant",
+  "commerce.admin.prices.fVariantHint":
+    "Leave empty for the product. A variant with a price of its own needs its own row.",
+  "commerce.admin.prices.hint":
+    "Written by hand, never converted. A currency with no price here is one this product does not sell in.",
+  "commerce.admin.prices.remove": "Take off",
+  "commerce.admin.prices.removeConfirm":
+    "The product stops selling in $1. Carts holding it lose the line.",
+  "commerce.admin.prices.removeTitle": "Take this price off",
+  "commerce.admin.prices.set": "Set the price",
+  "commerce.admin.prices.title": "Prices in other currencies",
+  "commerce.admin.prices.wholeProduct": "The product",
+  "commerce.admin.promotions.fCurrency": "Currency",
+  "commerce.admin.promotions.fCurrencyHint":
+    "What the amounts are in, the shop's own when empty. A plain percentage applies in any currency.",
+  "commerce.admin.rateCurrency": "Currency",
+  "commerce.admin.rateCurrencyHint":
+    "Leave empty for the shop's own. Offered to a cart in this currency only.",
   "commerce.admin.stock.fVariant": "Variant",
   "commerce.admin.variants.delete": "Delete",
   "commerce.admin.variants.deleteConfirm":

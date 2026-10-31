@@ -1,4 +1,4 @@
-import { $hook, $inject } from "alepha";
+import { $hook, $inject, $store } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, type Page } from "alepha/orm";
 
@@ -6,6 +6,7 @@ import {
   PromotionInUseError,
   PromotionRefusedError,
 } from "../../errors/CommerceError.ts";
+import { orderConfig } from "../../orderConfigAtom.ts";
 import { ClaimLock } from "../../services/ClaimLock.ts";
 import { promotionRedemptions } from "../entities/promotionRedemptions.ts";
 import {
@@ -20,6 +21,7 @@ export interface PromotionInput {
   kind: PromotionKind;
   value?: number;
   minSubtotal?: number;
+  currency?: string;
   startsAt?: string;
   endsAt?: string;
   usageLimit?: number;
@@ -43,6 +45,7 @@ export class PromotionService {
   protected readonly redemptions = $repository(promotionRedemptions);
   protected readonly lock = $inject(ClaimLock);
   protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly config = $store(orderConfig);
 
   public async create(data: PromotionInput): Promise<PromotionEntity> {
     return this.repo.create({ ...data, code: this.normalise(data.code) });
@@ -119,16 +122,25 @@ export class PromotionService {
    */
   public async assertApplies(
     promotion: PromotionEntity,
-    context: { itemsTotal: number; userId?: string },
+    context: { itemsTotal: number; userId?: string; currency?: string },
   ): Promise<void> {
     const code = promotion.code ?? promotion.name;
     const now = this.dateTime.nowISOString();
+    const shop = this.config.baseCurrency;
+    const statesAnAmount =
+      promotion.kind === "amount" || promotion.minSubtotal !== undefined;
 
     if (!promotion.active || (promotion.endsAt && promotion.endsAt < now)) {
       throw new PromotionRefusedError({ code, reason: "expired" });
     }
     if (promotion.startsAt && promotion.startsAt > now) {
       throw new PromotionRefusedError({ code, reason: "notYet" });
+    }
+    if (
+      statesAnAmount &&
+      (promotion.currency ?? shop) !== (context.currency ?? shop)
+    ) {
+      throw new PromotionRefusedError({ code, reason: "currency" });
     }
     if (
       promotion.minSubtotal !== undefined &&

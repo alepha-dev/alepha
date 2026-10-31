@@ -14,6 +14,16 @@ export const orderConfig = $atom({
       .describe(
         "The language of invoices, credit notes and the default emails: `fr` and `en` ship, see `CommerceTexts` for any other.",
       ),
+    baseCurrency: z
+      .text({ minLength: 3, maxLength: 3 })
+      .describe(
+        "The currency of the seller's books: what an empty cart reads, what a delivery rate or a promotion naming none is in, and what an invoice in another currency states its VAT in.",
+      ),
+    currencies: z
+      .array(z.text({ minLength: 3, maxLength: 3 }))
+      .describe(
+        "What a buyer may choose between. Each needs its price list, its delivery rates and an amount in cents with two decimals: a zero-decimal currency such as JPY does not work.",
+      ),
     withdrawalDays: z
       .integer()
       .min(0)
@@ -24,6 +34,8 @@ export const orderConfig = $atom({
   default: {
     numberPrefix: "CMD",
     locale: "fr",
+    baseCurrency: "EUR",
+    currencies: ["EUR"],
     withdrawalDays: 14,
   },
   serverOnly: true,

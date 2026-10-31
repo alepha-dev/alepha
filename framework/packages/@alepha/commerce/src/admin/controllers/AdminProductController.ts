@@ -4,6 +4,7 @@ import { $secure } from "alepha/security";
 import { $action } from "alepha/server";
 
 import { orderItems } from "../../entities/orderItems.ts";
+import { productPrices } from "../../entities/productPrices.ts";
 import { products } from "../../entities/products.ts";
 import {
   type ProductVariantEntity,
@@ -14,6 +15,7 @@ import { ProductKindRegistry } from "../../providers/ProductKindRegistry.ts";
 import { optionGroupSchema } from "../../schemas/optionGroupSchema.ts";
 import { CatalogService } from "../../services/CatalogService.ts";
 import { OrderService } from "../../services/OrderService.ts";
+import { PriceListService } from "../../services/PriceListService.ts";
 import { StockService } from "../../services/StockService.ts";
 import { VariantService } from "../../services/VariantService.ts";
 
@@ -80,6 +82,12 @@ const productInputSchema = z.object({
   published: z.boolean().optional(),
 });
 
+const priceInputSchema = z.object({
+  currency: z.text({ minLength: 3, maxLength: 3 }),
+  price: z.integer().min(0),
+  variantId: z.uuid().optional(),
+});
+
 /**
  * An order line as the catalogue shows it: the line, plus its order's context.
  */
@@ -113,6 +121,7 @@ export class AdminProductController {
   protected readonly orders = $inject(OrderService);
   protected readonly kinds = $inject(ProductKindRegistry);
   protected readonly variants = $inject(VariantService);
+  protected readonly prices = $inject(PriceListService);
 
   public readonly commerceAdminProductList = $action({
     method: "GET",
@@ -381,6 +390,60 @@ export class AdminProductController {
         reserved: await this.stock.reserved(params.id, variantId),
         available: await this.stock.available(params.id, variantId),
       };
+    },
+  });
+
+  /**
+   * A product's prices in other currencies, and what it may be priced in.
+   */
+  public readonly commerceAdminProductPrices = $action({
+    method: "GET",
+    path: `${this.url}/:id/prices`,
+    group: this.group,
+    use: [$secure({ permissions: ["admin:commerce:read"] })],
+    description: "List a product's prices in other currencies",
+    schema: {
+      params: z.object({ id: z.uuid() }),
+      response: z.object({
+        currencies: z.array(z.text()),
+        prices: z.array(productPrices.schema),
+      }),
+    },
+    handler: async ({ params }) => ({
+      currencies: this.prices.currencies,
+      prices: await this.prices.listOf(params.id),
+    }),
+  });
+
+  public readonly commerceAdminProductPriceSet = $action({
+    method: "PUT",
+    path: `${this.url}/:id/prices`,
+    group: this.group,
+    use: [$secure({ permissions: ["admin:commerce:write"] })],
+    description: "Set a product's or a variant's price in a currency",
+    schema: {
+      params: z.object({ id: z.uuid() }),
+      body: priceInputSchema,
+      response: productPrices.schema,
+    },
+    handler: async ({ params, body }) =>
+      this.prices.set(await this.catalog.getById(params.id), body),
+  });
+
+  public readonly commerceAdminProductPriceRemove = $action({
+    method: "POST",
+    path: `${this.url}/:id/prices/remove`,
+    group: this.group,
+    use: [$secure({ permissions: ["admin:commerce:write"] })],
+    description: "Take a price off: the product stops selling in that currency",
+    schema: {
+      params: z.object({ id: z.uuid() }),
+      body: priceInputSchema.pick({ currency: true, variantId: true }),
+      response: z.object({ deleted: z.boolean() }),
+    },
+    handler: async ({ params, body }) => {
+      await this.prices.remove(params.id, body);
+      return { deleted: true };
     },
   });
 

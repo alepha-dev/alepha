@@ -20,8 +20,9 @@ export class TableShippingQuoteProvider extends ShippingQuoteProvider {
   public async quote(
     country: string,
     subtotal: number,
+    currency?: string,
   ): Promise<CheckoutShippingQuote[]> {
-    const quotes = await this.shipping.quote(country, subtotal);
+    const quotes = await this.shipping.quote(country, subtotal, currency);
     return quotes.map((q) => ({
       code: q.code,
       name: q.name,
@@ -35,8 +36,9 @@ export class TableShippingQuoteProvider extends ShippingQuoteProvider {
     country: string,
     subtotal: number,
     code: string,
+    currency?: string,
   ): Promise<CheckoutShippingQuote | undefined> {
-    const quotes = await this.quote(country, subtotal);
+    const quotes = await this.quote(country, subtotal, currency);
     return quotes.find((q) => q.code === code);
   }
 }

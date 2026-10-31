@@ -27,6 +27,7 @@ import { orderConfig } from "../orderConfigAtom.ts";
 import { ProductKindRegistry } from "../providers/ProductKindRegistry.ts";
 import { ClaimLock } from "./ClaimLock.ts";
 import { LineConfigService } from "./LineConfigService.ts";
+import { PriceListService } from "./PriceListService.ts";
 import { ResourceService } from "./ResourceService.ts";
 import { StockService } from "./StockService.ts";
 import { VariantService } from "./VariantService.ts";
@@ -68,6 +69,11 @@ export interface CreateOrderInput {
   userId?: string;
   lines: OrderLineInput[];
   status?: OrderStatus;
+  /**
+   * What the buyer chose to pay in, priced from that currency's list. Unset,
+   * the lines' products say, and all have to say the same.
+   */
+  currency?: string;
   paymentIntentId?: string;
   shippingMethod?: string;
   shippingAddress?: Record<string, any>;
@@ -135,6 +141,7 @@ export class OrderService {
   protected readonly resources = $inject(ResourceService);
   protected readonly lines = $inject(LineConfigService);
   protected readonly variants = $inject(VariantService);
+  protected readonly prices = $inject(PriceListService);
   protected readonly lock = $inject(ClaimLock);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly config = $store(orderConfig);
@@ -185,15 +192,17 @@ export class OrderService {
      * payment intent is created from the same wrong figure.
      *
      * It was unreachable through the back office while nothing could set
-     * `currency`, and reachable through the API the whole time. Multi-currency
-     * pricing is a real feature, but it needs conversion at checkout, not a
-     * silent reinterpretation of the number.
+     * `currency`, and reachable through the API the whole time.
+     *
+     * An order placed in a chosen currency is priced from that currency's list
+     * below, so nothing is reinterpreted, and a product with no price there is
+     * refused line by line.
      */
-    const currency = byId.get(productIds[0]!)!.currency;
+    const currency = input.currency ?? byId.get(productIds[0]!)!.currency;
     const foreign = productIds.find(
       (id) => byId.get(id)!.currency !== currency,
     );
-    if (foreign) {
+    if (foreign && !input.currency) {
       throw new CommerceError(
         `Cannot create an order mixing currencies: product ${foreign} is priced in ${
           byId.get(foreign)!.currency
@@ -205,6 +214,7 @@ export class OrderService {
     // transaction opens: the same two calls `CartService.price` made, so the
     // order charges what the cart showed.
     const allVariants = await this.variants.listForProducts(productIds);
+    const list = await this.prices.forCurrency(productIds, input.currency);
     const accepted: Array<{
       lineConfig: Record<string, any> | undefined;
       unitPrice: number;
@@ -222,9 +232,18 @@ export class OrderService {
         line.lineConfig,
         line.quantity,
       );
+      const listPrice = list.of(product, variant);
+      if (listPrice === undefined) {
+        throw new CommerceError(`${product.name} is not sold in ${currency}.`);
+      }
       accepted.push({
         lineConfig,
-        unitPrice: await this.lines.unitPrice(product, lineConfig, variant),
+        unitPrice: await this.lines.unitPrice(
+          product,
+          lineConfig,
+          variant,
+          listPrice,
+        ),
         variant,
       });
     }

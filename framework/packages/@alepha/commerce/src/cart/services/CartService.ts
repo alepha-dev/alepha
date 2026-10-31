@@ -10,6 +10,7 @@ import {
   PromotionRefusedError,
 } from "../../errors/CommerceError.ts";
 import { LineConfigService } from "../../services/LineConfigService.ts";
+import { PriceListService } from "../../services/PriceListService.ts";
 import { VariantService } from "../../services/VariantService.ts";
 import { type CartItemEntity, cartItems } from "../entities/cartItems.ts";
 import { type CartEntity, carts } from "../entities/carts.ts";
@@ -125,6 +126,7 @@ export class CartService {
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly lines = $inject(LineConfigService);
   protected readonly variants = $inject(VariantService);
+  protected readonly prices = $inject(PriceListService);
   protected readonly discounts = $inject(CartDiscountProvider);
   protected readonly dateTime = $inject(DateTimeProvider);
 
@@ -215,6 +217,7 @@ export class CartService {
    *
    * @throws InvalidLineError when the handler refuses the line, or the variant
    *   is missing, foreign or switched off.
+   * @throws CommerceError when it has no price in the cart's currency.
    */
   public async add(
     cartId: string,
@@ -235,6 +238,12 @@ export class CartService {
     }
 
     const variant = await this.variants.resolve(product, variantId);
+    const { currency } = await this.cartRepo.getById(cartId);
+    const list = await this.prices.forCurrency([productId], currency);
+    if (list.of(product, variant) === undefined) {
+      throw new CommerceError(`${product.name} is not sold in ${currency}.`);
+    }
+
     const config = await this.lines.accept(product, lineConfig, quantity);
     const lineKey = await this.lineKey(config, variant?.id);
 
@@ -265,6 +274,57 @@ export class CartService {
       lineConfig: config,
       lineKey,
     });
+  }
+
+  /**
+   * Choose what this cart pays in.
+   *
+   * Refused rather than dropping a line the buyer put there: they can take it
+   * out themselves, knowing why.
+   *
+   * @throws CommerceError in a currency the shop does not sell in, or when a
+   *   line has no price in it.
+   */
+  public async setCurrency(
+    cartId: string,
+    currency: string,
+  ): Promise<CartEntity> {
+    const wanted = currency.toUpperCase();
+    if (!this.prices.currencies.includes(wanted)) {
+      throw new CommerceError(`This shop does not sell in ${wanted}.`);
+    }
+
+    const items = await this.itemRepo.findMany({
+      where: { cartId: { eq: cartId } },
+    });
+    const productIds = [...new Set(items.map((i) => i.productId))];
+    const found =
+      productIds.length > 0
+        ? await this.productRepo.findMany({
+            where: { id: { inArray: productIds } },
+          })
+        : [];
+    const variants = await this.variants.listForProducts(productIds);
+    const list = await this.prices.forCurrency(productIds, wanted);
+
+    const unpriced = found.filter((product) =>
+      items.some(
+        (item) =>
+          item.productId === product.id &&
+          list.of(
+            product,
+            variants.find((it) => it.id === item.variantId),
+          ) === undefined,
+      ),
+    );
+    if (unpriced.length > 0) {
+      throw new CommerceError(
+        `Not sold in ${wanted}: ${unpriced.map((it) => it.name).join(", ")}.`,
+      );
+    }
+
+    await this.touch(cartId);
+    return this.cartRepo.updateById(cartId, { currency: wanted });
   }
 
   /**
@@ -357,9 +417,10 @@ export class CartService {
    *
    * A line that can no longer be sold is dropped from the result, silently,
    * because the alternative is a storefront that cannot render a cart at all:
-   * a product unpublished or deleted since it was added, and a line its kind
-   * now refuses (a slot whose start has passed). That is also what keeps cart
-   * recovery, which mails these lines, from offering last week's slot.
+   * a product unpublished or deleted since it was added, a line its kind now
+   * refuses (a slot whose start has passed), and one whose price in the cart's
+   * currency was taken off. That is also what keeps cart recovery, which mails
+   * these lines, from offering last week's slot.
    */
   public async price(cartId: string): Promise<PricedCart> {
     const cart = await this.cartRepo.getById(cartId);
@@ -381,7 +442,7 @@ export class CartService {
         itemsTotal: 0,
         discountTotal: 0,
         subtotal: 0,
-        currency: "EUR",
+        currency: cart.currency ?? this.prices.baseCurrency,
       };
     }
 
@@ -391,6 +452,7 @@ export class CartService {
     });
     const byId = new Map(found.map((p) => [p.id, p]));
     const variants = await this.variants.listForProducts(productIds);
+    const list = await this.prices.forCurrency(productIds, cart.currency);
 
     const lines: PricedCartLine[] = [];
     for (const item of items) {
@@ -407,10 +469,15 @@ export class CartService {
         continue;
       }
       const { lineConfig, variant } = sellable;
+      const listPrice = list.of(product, variant);
+      if (listPrice === undefined) {
+        continue;
+      }
       const unitPrice = await this.lines.unitPrice(
         product,
         lineConfig,
         variant,
+        listPrice,
       );
       lines.push({
         item,
@@ -441,7 +508,11 @@ export class CartService {
       itemsTotal,
       discountTotal: discount?.amount ?? 0,
       subtotal: lines.reduce((sum, l) => sum + l.lineTotal, 0),
-      currency: lines[0] ? byId.get(lines[0].productId)!.currency : "EUR",
+      currency:
+        cart.currency ??
+        (lines[0]
+          ? byId.get(lines[0].productId)!.currency
+          : this.prices.baseCurrency),
       discount,
       discountLabel: discount?.label,
       promotionCode: discount?.code,
@@ -516,12 +587,19 @@ export class CartService {
    * Each line goes through {@link add}, line config included, so it is judged
    * again. A line that can no longer be sold (a product unpublished, a slot
    * already past) is left behind rather than failing the sign-in that
-   * triggered the merge.
+   * triggered the merge, and so is one with no price in the cart's currency.
+   * That is the anonymous cart's when the other was empty: the buyer chose it
+   * a moment ago.
    */
   public async merge(fromCartId: string, toCartId: string): Promise<void> {
     const lines = await this.itemRepo.findMany({
       where: { cartId: { eq: fromCartId } },
     });
+    const from = await this.cartRepo.getById(fromCartId);
+    const held = await this.itemRepo.count({ cartId: { eq: toCartId } });
+    if (from.currency && held === 0) {
+      await this.cartRepo.updateById(toCartId, { currency: from.currency });
+    }
     for (const line of lines) {
       try {
         await this.add(

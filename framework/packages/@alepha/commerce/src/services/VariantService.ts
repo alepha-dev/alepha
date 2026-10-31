@@ -1,3 +1,4 @@
+import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 
 import { orderItems } from "../entities/orderItems.ts";
@@ -11,6 +12,7 @@ import {
   VariantHasOrdersError,
 } from "../errors/CommerceError.ts";
 import type { OptionGroup } from "../schemas/optionGroupSchema.ts";
+import { PriceListService } from "./PriceListService.ts";
 
 export interface VariantInput {
   sku: string;
@@ -27,6 +29,7 @@ export interface VariantInput {
  * on a product with variants names one, and it must be on sale.
  */
 export class VariantService {
+  protected readonly prices = $inject(PriceListService);
   protected readonly repo = $repository(productVariants);
   /**
    * Read-only, for {@link delete}'s guard: the same rule as a product's.
@@ -58,6 +61,7 @@ export class VariantService {
     if (sold > 0) {
       throw new VariantHasOrdersError({ variantId: id, orderLines: sold });
     }
+    await this.prices.removeVariant(id);
     await this.repo.deleteById(id);
   }
 

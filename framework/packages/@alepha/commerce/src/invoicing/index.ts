@@ -8,6 +8,7 @@ import { sellerIdentityAtom } from "./sellerIdentityAtom.ts";
 import { InvoiceService } from "./services/InvoiceService.ts";
 
 export * from "./entities/invoices.ts";
+export * from "./providers/ExchangeRateProvider.ts";
 export * from "./providers/HtmlInvoiceRenderer.ts";
 export * from "./providers/InvoiceRenderer.ts";
 export * from "./sellerIdentityAtom.ts";

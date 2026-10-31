@@ -72,9 +72,8 @@ describe("order numbers", () => {
     it("takes the prefix from the configuration", async ({ expect }) => {
       const ctx = await setup(backend);
       ctx.alepha.store.set(orderConfig.key, {
+        ...ctx.alepha.store.get(orderConfig.key)!,
         numberPrefix: "AA",
-        locale: "fr",
-        withdrawalDays: 14,
       });
       const piece = await aPiece(ctx);
 

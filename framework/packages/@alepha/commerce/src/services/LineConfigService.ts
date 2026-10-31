@@ -72,9 +72,13 @@ export class LineConfigService {
     product: ProductEntity,
     lineConfig: Record<string, any> | undefined,
     variant?: ProductVariantEntity,
+    listPrice?: number,
   ): Promise<number> {
     const handler = this.kinds.get(product.kind);
-    const priced = { ...product, price: variant?.price ?? product.price };
+    const priced = {
+      ...product,
+      price: listPrice ?? variant?.price ?? product.price,
+    };
     return handler.unitPrice
       ? handler.unitPrice(priced, lineConfig)
       : priced.price;

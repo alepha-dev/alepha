@@ -1,6 +1,7 @@
 import {
   CatalogService,
   type OptionGroup,
+  orderConfig,
   StockService,
   VariantService,
 } from "@alepha/commerce";
@@ -90,6 +91,13 @@ export class ShopSeed {
         // A Paris atelier bills on Paris dates: a sale at 00:30 on 1 January
         // is a January sale, not a 31 December one.
         timezone: "Europe/Paris",
+      });
+
+      // Francs in the back office, for the price lists: the storefront stays in
+      // euros, since a cart only changes currency when it is asked to.
+      this.alepha.store.set(orderConfig.key, {
+        ...this.alepha.store.get(orderConfig.key)!,
+        currencies: ["EUR", "CHF"],
       });
 
       await this.seedShipping();

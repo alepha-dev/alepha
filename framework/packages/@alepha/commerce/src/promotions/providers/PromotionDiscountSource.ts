@@ -22,6 +22,7 @@ export class PromotionDiscountSource implements CartDiscountSource {
     const judged = {
       itemsTotal: context.itemsTotal,
       userId: context.cart.userId,
+      currency: context.cart.currency,
     };
 
     if (context.code) {
@@ -62,7 +63,7 @@ export class PromotionDiscountSource implements CartDiscountSource {
    */
   protected async applies(
     promotion: PromotionEntity,
-    judged: { itemsTotal: number; userId?: string },
+    judged: { itemsTotal: number; userId?: string; currency?: string },
   ): Promise<boolean> {
     try {
       await this.promotions.assertApplies(promotion, judged);

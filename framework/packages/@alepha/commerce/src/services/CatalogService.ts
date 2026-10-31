@@ -13,6 +13,7 @@ import { ProductHasOrdersError } from "../errors/CommerceError.ts";
 import { ProductKindRegistry } from "../providers/ProductKindRegistry.ts";
 import type { OptionGroup } from "../schemas/optionGroupSchema.ts";
 import { CategoryService } from "./CategoryService.ts";
+import { PriceListService } from "./PriceListService.ts";
 import { StockService } from "./StockService.ts";
 
 export interface CreateProduct {
@@ -65,6 +66,10 @@ export interface PublicCatalogQuery extends CatalogQuery {
   minPrice?: number;
   maxPrice?: number;
   /**
+   * Only what sells in this currency, the price range read in it.
+   */
+  currency?: string;
+  /**
    * Only what can be bought now: stock left, or a product no ledger counts.
    */
   available?: boolean;
@@ -90,6 +95,7 @@ export class CatalogService {
   protected readonly db = $inject(DatabaseProvider);
   protected readonly categories = $inject(CategoryService);
   protected readonly stock = $inject(StockService);
+  protected readonly prices = $inject(PriceListService);
 
   public async create(data: CreateProduct): Promise<ProductEntity> {
     const kind = data.kind ?? "good";
@@ -142,14 +148,35 @@ export class CatalogService {
         inArray: await this.categories.subtreeOf(query.categoryId),
       };
     }
-    if (query.minPrice !== undefined || query.maxPrice !== undefined) {
-      where.price = {
-        ...(query.minPrice !== undefined ? { gte: query.minPrice } : {}),
-        ...(query.maxPrice !== undefined ? { lte: query.maxPrice } : {}),
-      };
+    const range =
+      query.minPrice !== undefined || query.maxPrice !== undefined
+        ? {
+            ...(query.minPrice !== undefined ? { gte: query.minPrice } : {}),
+            ...(query.maxPrice !== undefined ? { lte: query.maxPrice } : {}),
+          }
+        : undefined;
+    if (range && !query.currency) {
+      where.price = range;
     }
 
     const and = [
+      ...(query.currency
+        ? [
+            {
+              or: [
+                {
+                  currency: { eq: query.currency },
+                  ...(range ? { price: range } : {}),
+                },
+                {
+                  id: {
+                    inArray: this.prices.productsIn(query.currency, query),
+                  },
+                },
+              ],
+            },
+          ]
+        : []),
       ...(query.available
         ? [
             {

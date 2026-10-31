@@ -240,6 +240,7 @@ export class CheckoutService {
               country,
               priced.subtotal,
               session.shippingMethod,
+              priced.cart.currency,
             ),
             context,
           )
@@ -267,7 +268,7 @@ export class CheckoutService {
       );
     }
     const priced = await this.carts.price(session.cartId);
-    return this.shipping.quote(country, priced.subtotal);
+    return this.shipping.quote(country, priced.subtotal, priced.cart.currency);
   }
 
   /**
@@ -290,7 +291,12 @@ export class CheckoutService {
     }
 
     const priced = await this.carts.price(session.cartId);
-    const quote = await this.shipping.quoteFor(country, priced.subtotal, code);
+    const quote = await this.shipping.quoteFor(
+      country,
+      priced.subtotal,
+      code,
+      priced.cart.currency,
+    );
     if (!quote) {
       throw new CommerceError(
         `'${code}' is not an available delivery option for ${country}.`,
@@ -351,7 +357,11 @@ export class CheckoutService {
         // Nothing offered is not "nothing to charge": a country no zone covers
         // used to carry on with no quote, and a France-only shop took an order
         // to Germany with free delivery.
-        const offered = await this.shipping.quote(country, priced.subtotal);
+        const offered = await this.shipping.quote(
+          country,
+          priced.subtotal,
+          priced.cart.currency,
+        );
         if (offered.length === 0) {
           throw new NoShippingRateError({ country });
         }
@@ -366,6 +376,7 @@ export class CheckoutService {
         country,
         priced.subtotal,
         session.shippingMethod,
+        priced.cart.currency,
       );
       if (!quote) {
         throw new CommerceError(
@@ -395,6 +406,7 @@ export class CheckoutService {
         net: net?.get(l.lineId),
       })),
       promotionCode: priced.promotionCode,
+      currency: priced.cart.currency,
       taxCountry: country,
       shippingRateBps: context.reverseCharge
         ? 0
@@ -758,7 +770,11 @@ export class CheckoutService {
     if (!country) {
       return this.totalsOf(priced);
     }
-    const quotes = await this.shipping.quote(country, priced.subtotal);
+    const quotes = await this.shipping.quote(
+      country,
+      priced.subtotal,
+      priced.cart.currency,
+    );
     if (this.shipping.delivers && quotes.length === 0) {
       throw new NoShippingRateError({ country });
     }
