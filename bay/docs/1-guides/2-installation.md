@@ -59,8 +59,8 @@ sudo bay doctor
 It prints one line per check (Docker reachable and recent, cgroup v2, compose,
 ports 80 and 443, free disk under `--root`, `/opt/bay/data` by default) and
 exits with status 1 when one fails. Once Bay runs it holds ports 80 and 443,
-and the doctor accepts that only when it is given the socket, so on a live
-host:
+and the doctor accepts that only when a Bay answers on the socket it is given,
+so on a live host:
 
 ```bash
 sudo bay doctor --control-socket /run/bay/control.sock
@@ -146,8 +146,7 @@ export BAY_SOCKET=/run/bay/control.sock
 ```
 
 Use the flag under `sudo`, which resets the environment. Otherwise prefer
-`BAY_SOCKET`: a few commands refuse `--control-socket`, as the
-[CLI reference](/bay/docs/guides-cli-reference) lists.
+`BAY_SOCKET`, which saves repeating it.
 
 ## 4. Grant a user the right to deploy
 
