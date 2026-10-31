@@ -1,4 +1,4 @@
-import { $inject } from "alepha";
+import { $inject, isFileLike } from "alepha";
 import { $logger } from "alepha/logger";
 import { HttpClient, HttpError } from "alepha/server";
 
@@ -44,9 +44,9 @@ export class BatchCollector {
 
     if (batch.length === 0) return;
 
-    // Entries with a binary body (File/Blob) can't survive JSON-stringify, so
-    // they must bypass the batch endpoint and use their direct (multipart)
-    // call instead.
+    // Entries with a binary body (a FileLike or a Blob) can't survive
+    // JSON-stringify, so they must bypass the batch endpoint and use their
+    // direct (multipart) call instead.
     const binaryEntries: PendingBatchEntry[] = [];
     const remaining: PendingBatchEntry[] = [];
     for (const item of batch) {
@@ -170,8 +170,9 @@ export class BatchCollector {
   protected hasBinaryBody(body: unknown): boolean {
     if (!body || typeof body !== "object") return false;
     for (const v of Object.values(body as Record<string, unknown>)) {
+      // A Blob has no `name`, so `isFileLike` does not cover it.
+      if (isFileLike(v)) return true;
       if (typeof Blob !== "undefined" && v instanceof Blob) return true;
-      if (typeof File !== "undefined" && v instanceof File) return true;
     }
     return false;
   }

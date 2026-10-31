@@ -85,7 +85,7 @@ export class AppInstanceTools {
   app_instance_create = $tool({
     title: "Create an app instance",
     description:
-      "Track a deployed copy: you name the app and which copy it is, and nothing is minted. ⚠️ Both are required and neither defaults — omitting the environment on an app that already has a `production` would either collide or silently make a second copy. The key it reports with is `sigil_create`, added afterwards and optional: an instance without one is not broken, it is a copy nobody wired telemetry into. Project owner only. There is deliberately no `app_create`: an app exists because an instance names it.",
+      "Track a deployed copy: you name the app and which copy it is, and nothing is minted. ⚠️ Both are required and neither defaults — omitting the environment on an app that already has a `production` would either collide or silently make a second copy. The key it reports with is `sigil_create`, added afterwards and optional: an instance without one is not broken, it is a copy nobody wired telemetry into. Needs `app:manage`. There is deliberately no `app_create`: an app exists because an instance names it.",
     annotations: { readOnlyHint: false, destructiveHint: false },
     schema: {
       params: appInstanceCreateParamsSchema,
@@ -113,7 +113,7 @@ export class AppInstanceTools {
   app_instance_update = $tool({
     title: "Update an app instance",
     description:
-      'Rename either half, pin the address, or point the copy at an estate. Every field is optional and an omitted one is left alone; `url: ""` clears the pinned address and `estateId: null` clears the deploy target. ⚠️ Both names are the URL, so renaming either MOVES the page — but not the deployed key, which carries the project slug and not these names, so nothing has to be redeployed or rotated. The estate must be one lent to this project. Project owner only.',
+      'Rename either half, pin the address, or point the copy at an estate. Every field is optional and an omitted one is left alone; `url: ""` clears the pinned address and `estateId: null` clears the deploy target. ⚠️ Both names are the URL, so renaming either MOVES the page — but not the deployed key, which carries the project slug and not these names, so nothing has to be redeployed or rotated. The estate must be one lent to this project. Needs `app:manage`.',
     annotations: { readOnlyHint: false, destructiveHint: false },
     schema: {
       params: appInstanceUpdateParamsSchema,
@@ -141,7 +141,7 @@ export class AppInstanceTools {
   app_instance_delete = $tool({
     title: "Delete an app instance",
     description:
-      "⚠️ Removes the deployed copy AND its sigil, and with that sigil everything it ever reported: page views, web vitals, unique visitors and its error budget. Blights already filed are kept. ⚠️ It undeploys nothing — the copy keeps running wherever it runs; what goes is Lore's record of it. To revoke a leaked token without losing the history, use `sigil_rotate`; to remove the credential and keep the copy, use `sigil_delete`. Project owner only.",
+      "⚠️ Removes the deployed copy AND its sigil, and with that sigil everything it ever reported: page views, web vitals, unique visitors and its error budget. Raw rows in Analytics Engine, which has no delete, stay until they expire, unread. Blights already filed are kept. ⚠️ It undeploys nothing — the copy keeps running wherever it runs; what goes is Lore's record of it. To revoke a leaked token without losing the history, use `sigil_rotate`; to remove the credential and keep the copy, use `sigil_delete`. Needs `app:manage`.",
     annotations: { readOnlyHint: false, destructiveHint: true },
     schema: {
       params: appInstanceDeleteParamsSchema,

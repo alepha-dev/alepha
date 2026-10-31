@@ -194,9 +194,8 @@ Through [`$client` or `useClient`](/docs/guides-server-http-links), an upload is
 an ordinary call: pass a browser `File` (or any `FileLike`) as the file field.
 The client sees the file field in the action's schema and sends `FormData`
 instead of JSON, appending strings as they are, numbers and booleans as text,
-and objects as JSON. A `File` or `Blob` keeps the call out of a `/api/_batch`
-request; the batch recognises no other `FileLike`, which can join it and be
-stringified, so in the browser pass a `File` or a `Blob`.
+and objects as JSON. A file field, a `Blob` included, keeps the call out of a
+`/api/_batch` request.
 
 ```typescript
 const api = useClient<UploadController>();

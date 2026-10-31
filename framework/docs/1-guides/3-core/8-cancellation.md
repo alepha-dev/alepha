@@ -36,16 +36,16 @@ the app signal, which aborts when `alepha.stop()` begins.
 
 ## Where the signal comes from
 
-| Unit of work          | Its signal aborts when                                                             |
-| --------------------- | ---------------------------------------------------------------------------------- |
-| An HTTP request       | the client disconnects before the response is complete (`ServerRequest.signal`)    |
-| A `$job` execution    | it is cancelled, or still running when stop's drain deadline passes, or times out  |
-| A queue message       | still being processed when the workers' `drainTimeout` passes at stop              |
-| A cron tick           | its task stops                                                                     |
-| An MCP tool call      | the client cancels it (`notifications/cancelled`), or its HTTP request disconnects |
-| A `$sse` handler      | the stream ends: the client leaves, `close()` is called, or the handler finishes   |
-| A WebSocket admission | the socket closes before the upgrade was decided                                   |
-| A CLI command         | the process receives SIGINT or SIGTERM                                             |
+| Unit of work          | Its signal aborts when                                                                                      |
+| --------------------- | ----------------------------------------------------------------------------------------------------------- |
+| An HTTP request       | the client disconnects before the response is complete, or its `$action` times out (`ServerRequest.signal`) |
+| A `$job` execution    | it is cancelled, or still running when stop's drain deadline passes, or times out                           |
+| A queue message       | still being processed when the workers' `drainTimeout` passes at stop                                       |
+| A cron tick           | its task stops                                                                                              |
+| An MCP tool call      | the client cancels it (`notifications/cancelled`), its HTTP request disconnects, or its `$tool` times out   |
+| A `$sse` handler      | the stream ends: the client leaves, `close()` is called, or the handler finishes                            |
+| A WebSocket admission | the socket closes before the upgrade was decided                                                            |
+| A CLI command         | the process receives SIGINT or SIGTERM                                                                      |
 
 On Node the disconnect is the response's socket closing before the response
 finished. On Bun and Cloudflare Workers it is the runtime's own
@@ -55,10 +55,7 @@ when the app supplies its own flag list.
 
 The public `signal` parameters stay where they are (`$job`'s handler,
 `$sse`'s context, `McpContext.signal`, `ServerRequest.signal`), and each is
-the same object as `alepha.context.signal` inside that handler. The exception
-is a `timeout` on `$action` or `$tool`: it narrows the context alone, so at the
-deadline `alepha.context.signal` aborts while `ServerRequest.signal` and
-`McpContext.signal` do not.
+the same object as `alepha.context.signal` inside that handler.
 
 A unit of work does not abort when stop begins. The server, jobs and queue
 workers drain first, and abort what is still running at their own deadline.

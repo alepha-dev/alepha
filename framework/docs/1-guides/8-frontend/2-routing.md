@@ -525,7 +525,7 @@ onEnter: () => {
 A `$page` is also an object you can call from server code:
 
 - `page.render(options?)` renders the page to HTML on the server and returns it with the router state. Meant for tests and build steps; it throws in the browser.
-- `page.fetch(options?)` requests the page's `path` from the running server over HTTP and returns `{ html, response }`; `html` is the content of the root element unless `options.html` is `true`. The `path` goes out as declared: `options.params` and `options.query` are ignored.
+- `page.fetch(options?)` requests the page from the running server over HTTP, at its full path with `options.params` and `options.query` filled in, and returns `{ html, response }`; `html` is the content of the root element unless `options.html` is `true`.
 - `page.invalidate(params?)` purges the page from the [page cache](/docs/guides-frontend-page-cache), every entry or those of one param set.
 
 ## Page Animations

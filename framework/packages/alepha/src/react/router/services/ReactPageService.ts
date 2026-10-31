@@ -10,7 +10,7 @@ import type {
  */
 export abstract class ReactPageService {
   public fetch(
-    pathname: string,
+    name: string,
     options: PagePrimitiveRenderOptions = {},
   ): Promise<{
     html: string;

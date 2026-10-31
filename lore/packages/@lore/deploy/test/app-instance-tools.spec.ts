@@ -1,5 +1,6 @@
-import { ProjectController } from "@lore/core/api";
+import { ProjectController, ProjectSecurityService } from "@lore/core/api";
 import { Alepha } from "alepha";
+import { RankService } from "alepha/api/organizations";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { AlephaMcp } from "alepha/mcp";
@@ -12,6 +13,7 @@ import { describe, expect, it } from "vitest";
 import { LoreDeployApi } from "../src/api/index.ts";
 import { LoreDeployMcp } from "../src/mcp/index.ts";
 import { AppInstanceTools, SigilTools } from "../src/mcp/index.ts";
+import { createTestMemberByProjectId } from "../src/testing/index.ts";
 
 /**
  * The Apps surface over MCP: an agent is exactly where a new deployed copy
@@ -70,8 +72,67 @@ const setup = async () => {
     } as any),
   );
 
-  return { alepha, appTools, sigilTools, project, call };
+  return { alepha, appTools, sigilTools, project, call, asUser, owner, users };
 };
+
+describe("Lore MCP — who may manage an app and its sigil", () => {
+  it("is whoever holds app:manage and sigil:manage, not only the owner", async () => {
+    const { alepha, appTools, sigilTools, project, asUser, owner, users } =
+      await setup();
+    const manager = await users.createUser({ username: "manager" });
+    await alepha.inject(RankService).save(
+      await alepha.inject(ProjectSecurityService).organizationIdOf(project.id),
+      {
+        key: "app-manager",
+        name: "App manager",
+        permissions: ["project:read", "app:read", "app:manage", "sigil:manage"],
+      },
+      { id: owner.id, roles: ["user"] } as any,
+    );
+    await createTestMemberByProjectId(alepha, project.id, manager.id, {
+      rank: "app-manager",
+    });
+    const call = (tool: any, params: Record<string, unknown>) =>
+      asUser(manager.id, () => tool.execute(params));
+    const copy = { project: project.id, app: "club", env: "staging" };
+
+    await call(appTools.app_instance_create, copy);
+    await call(appTools.app_instance_update, { ...copy, url: "https://c.dev" });
+    const sigil: any = await call(sigilTools.sigil_create, copy);
+    const held = { project: project.id, id: sigil.id };
+    await call(sigilTools.sigil_rotate, held);
+    await call(sigilTools.sigil_delete, held);
+    await call(appTools.app_instance_delete, copy);
+
+    const listed: any = await call(appTools.app_instance_list, {
+      project: project.id,
+    });
+    expect(listed.instances).toEqual([]);
+  });
+
+  it("is what the tools tell an agent", async () => {
+    const { appTools, sigilTools } = await setup();
+    const needs = {
+      "app:manage": [
+        appTools.app_instance_create,
+        appTools.app_instance_update,
+        appTools.app_instance_delete,
+      ],
+      "sigil:manage": [
+        sigilTools.sigil_create,
+        sigilTools.sigil_rotate,
+        sigilTools.sigil_delete,
+      ],
+    };
+
+    for (const [permission, tools] of Object.entries(needs)) {
+      for (const tool of tools) {
+        expect(tool.options.description).toContain(`Needs \`${permission}\``);
+        expect(tool.options.description).not.toContain("owner only");
+      }
+    }
+  });
+});
 
 describe("Lore MCP — app instances", () => {
   it("creates a deployed copy and mints nothing", async () => {

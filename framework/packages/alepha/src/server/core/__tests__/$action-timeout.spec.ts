@@ -23,6 +23,8 @@ import {
 class Probe {
   outbound?: unknown;
   outboundSettled?: Promise<void>;
+  requestAbort?: unknown;
+  ambientMatched?: boolean;
   started = new Map<string, () => void>();
   ready = new Map<string, Promise<void>>();
 
@@ -74,6 +76,29 @@ class Api {
       );
       this.probe.start("slow");
       await call;
+      return "done";
+    },
+  });
+
+  /**
+   * Hands the request's `signal` to an API that reads no context, as a bare
+   * `fetch` does: the deadline has to reach it through that signal alone.
+   */
+  bareSignal = $action({
+    method: "POST",
+    path: "/bareSignal",
+    timeout: [5, "seconds"],
+    handler: async ({ signal }) => {
+      this.probe.ambientMatched = signal === this.alepha.context.signal;
+      signal.addEventListener(
+        "abort",
+        () => {
+          this.probe.requestAbort = signal.reason;
+        },
+        { once: true },
+      );
+      this.probe.start("bareSignal");
+      await this.dateTime.wait([1, "hours"]);
       return "done";
     },
   });
@@ -199,6 +224,18 @@ describe("$action timeout", () => {
       expect(probe.outbound).toBeInstanceOf(TimeoutError);
     });
 
+    it("aborts the request's signal at the deadline, the same object as the context's", async ({
+      expect,
+    }) => {
+      const { probe, callPast } = await start();
+
+      const http = await callPast("bareSignal", 5_000);
+
+      expect(http.status).toBe(503);
+      expect(probe.requestAbort).toBeInstanceOf(TimeoutError);
+      expect(probe.ambientMatched).toBe(true);
+    });
+
     it("answers at the deadline even when the handler ignores its signal", async ({
       expect,
     }) => {
@@ -285,6 +322,21 @@ describe("$action timeout", () => {
       const error = await pending;
       expect(error).toBeInstanceOf(TimeoutError);
       expect((error as TimeoutError).status).toBe(503);
+    });
+
+    it("hands the deadline's signal to a handler called with run()", async ({
+      expect,
+    }) => {
+      const { alepha, api, probe } = await start();
+      const dateTime = alepha.inject(DateTimeProvider);
+
+      probe.expect("bareSignal");
+      const pending = caught(() => api.bareSignal());
+      await probe.ready.get("bareSignal");
+      await dateTime.travel(5_000);
+
+      expect(await pending).toBeInstanceOf(TimeoutError);
+      expect(probe.requestAbort).toBeInstanceOf(TimeoutError);
     });
   });
 

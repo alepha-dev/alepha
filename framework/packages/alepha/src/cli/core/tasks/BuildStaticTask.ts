@@ -183,10 +183,7 @@ export class BuildStaticTask extends BuildTask {
     ctx: BuildTaskContext,
     publicDir: string,
   ): Promise<void> {
-    const pages = ctx.alepha.primitives("page") as any[];
-    const rootPage = pages.find(
-      (p) => p.options.path === "/" && !p.options.children,
-    );
+    const rootPage = this.findRootPage(ctx.alepha.primitives("page") as any[]);
 
     if (!rootPage) {
       throw new AlephaError(
@@ -199,6 +196,32 @@ export class BuildStaticTask extends BuildTask {
 
     await this.fs.mkdir(dirname(filepath));
     await this.fs.writeFile(filepath, html);
+  }
+
+  /**
+   * The `$page` the router answers `/` with.
+   *
+   * An omitted `path` is the router's `/`, under the page's parent when it has
+   * one, so a path-less page counts only if every page above it sits at `/`
+   * too. A page with children is a layout, which renders nothing of its own.
+   * This reads the primitives rather than the router, since the app was loaded
+   * through Vite and its provider is another module instance than the CLI's.
+   */
+  protected findRootPage(pages: any[]): any {
+    const childrenOf = (page: any): any[] => {
+      const { children } = page.options;
+      const declared =
+        typeof children === "function" ? children() : (children ?? []);
+      return [...declared, ...pages.filter((it) => it.options.parent === page)];
+    };
+    const atRoot = (page: any): boolean => {
+      if ((page.options.path ?? "/") !== "/") {
+        return false;
+      }
+      const parent = pages.find((it) => childrenOf(it).includes(page));
+      return !parent || atRoot(parent);
+    };
+    return pages.find((page) => childrenOf(page).length === 0 && atRoot(page));
   }
 
   protected stripRootContent(html: string): string {

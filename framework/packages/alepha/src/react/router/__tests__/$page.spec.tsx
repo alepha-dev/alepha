@@ -424,6 +424,77 @@ describe("$page primitive tests", () => {
     expect(await app.staticPage.fetch().then((it) => it.html)).toBe(html);
   });
 
+  test("$page.fetch - fills the page's params and query into the URL", async ({
+    expect,
+  }) => {
+    class App {
+      user = $page({
+        path: "/users/:id",
+        schema: {
+          params: z.object({ id: z.text() }),
+          query: z.object({ tab: z.text() }),
+        },
+        loader: ({ params, query }) => ({
+          label: `${params.id}/${query.tab}`,
+        }),
+        component: ({ label }) => label,
+      });
+    }
+
+    const app = alepha.inject(App);
+    await alepha.start();
+
+    const { html, response } = await app.user.fetch({
+      params: { id: "42" },
+      query: { tab: "billing" },
+    });
+
+    expect(html).toBe("42/billing");
+    expect(new URL(response.url).pathname).toBe("/users/42");
+    expect(new URL(response.url).search).toBe("?tab=billing");
+  });
+
+  test("$page.fetch - builds a single slash, at the root and below it", async ({
+    expect,
+  }) => {
+    class App {
+      home = $page({ path: "/", component: () => "Home" });
+      about = $page({ path: "/about", component: () => "About" });
+    }
+
+    const app = alepha.inject(App);
+    await alepha.start();
+
+    const home = await app.home.fetch();
+    const about = await app.about.fetch();
+
+    expect(home.html).toBe("Home");
+    expect(new URL(home.response.url).pathname).toBe("/");
+    expect(about.html).toBe("About");
+    expect(new URL(about.response.url).pathname).toBe("/about");
+  });
+
+  test("$page.fetch - requests a child under its parent's path", async ({
+    expect,
+  }) => {
+    class App {
+      settings = $page({
+        path: "/settings",
+        children: () => [this.profile],
+        component: () => <NestedView />,
+      });
+      profile = $page({ path: "/profile", component: () => "Profile" });
+    }
+
+    const app = alepha.inject(App);
+    await alepha.start();
+
+    const { html, response } = await app.profile.fetch();
+
+    expect(html).toBe("Profile");
+    expect(new URL(response.url).pathname).toBe("/settings/profile");
+  });
+
   test("$page - server response handler", async ({ expect }) => {
     const mockHandler = vi.fn();
 
