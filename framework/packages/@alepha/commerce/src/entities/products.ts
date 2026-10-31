@@ -10,13 +10,13 @@ import { optionGroupSchema } from "../schemas/optionGroupSchema.ts";
  * ### Why `kind` is free text and not an enum
  *
  * An add-on module cannot extend a `z.enum` declared here, and it cannot add a
- * column to this table either — entities are code, migrations are per-app. So
+ * column to this table either - entities are code, migrations are per-app. So
  * the set of kinds is open, and each module *registers* the kinds it
  * understands with `ProductKindRegistry`, supplying a config schema and a
  * `fulfil` implementation.
  *
  * Core ships `good` and `digital`. A point-of-sale module adds `wallet_topup`,
- * a ticketing module adds `seat` — neither has to touch this file.
+ * a ticketing module adds `seat` - neither has to touch this file.
  *
  * `config` is the per-kind payload, validated by the registered handler and
  * opaque to the core. It is deliberately not queryable in SQL: when a query
@@ -50,7 +50,7 @@ export const products = $entity({
     categoryId: z.uuid().optional(),
 
     /**
-     * Images, first one first — that is the one a listing shows.
+     * Images, first one first - that is the one a listing shows.
      *
      * Each entry is either a file id from `alepha/api/files` (served by that
      * module at `/public/files/{id}`) or an absolute URL. Kept as plain text
@@ -65,8 +65,8 @@ export const products = $entity({
      * default from `TaxService`.
      *
      * A real column rather than a `config` field because a catalog is routinely
-     * mixed-rate — books and food sit at a reduced rate beside goods at the
-     * standard one — and the tax on a sale is not a per-kind concern that a
+     * mixed-rate - books and food sit at a reduced rate beside goods at the
+     * standard one - and the tax on a sale is not a per-kind concern that a
      * handler could own. Without it, a shop's invoice showed one bucket at the
      * seller's default rate whatever it had actually sold: the per-rate
      * breakdown the invoicing module promises, and the law requires, could
@@ -93,7 +93,7 @@ export const products = $entity({
      * dimensions, care instructions.
      *
      * Separate from {@link config} because config is *validated by the kind's
-     * handler*, which strips anything the handler does not declare — the first
+     * handler*, which strips anything the handler does not declare - the first
      * version of this shop put its spec sheet in `config` and watched it vanish
      * on write. That stripping is correct for a payload `fulfil` relies on, and
      * wrong for free-form copy, so the two live apart.

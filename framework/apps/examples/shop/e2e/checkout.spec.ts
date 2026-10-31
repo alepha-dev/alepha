@@ -133,7 +133,9 @@ test.describe("payment and confirmation", () => {
     expect(await response.text()).toContain("Carte cadeau");
 
     // An invented token opens nothing.
-    expect((await request.get("/commerce/downloads/pas-un-vrai-jeton")).status()).toBe(404);
+    expect(
+      (await request.get("/commerce/downloads/pas-un-vrai-jeton")).status(),
+    ).toBe(404);
   });
 
   test("the invoice carries every mention French law requires", async ({

@@ -81,7 +81,7 @@ declare module "alepha" {
  *
  * Depends on the cart module and on `alepha/api/payments`, which owns the
  * intent lifecycle and the PSP adapters. Registers hosted-redirect payment by
- * default — the one handoff every PSP supports — leaving an embedded card field
+ * default - the one handoff every PSP supports - leaving an embedded card field
  * to a substitution:
  *
  * ```ts

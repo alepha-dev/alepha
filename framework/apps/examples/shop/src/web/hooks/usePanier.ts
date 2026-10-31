@@ -69,7 +69,9 @@ export const usePanier = () => {
   const code = useAction<[code: string]>(
     {
       handler: async (_ctx, value: string) => {
-        setPanier(await client.commerceCartApplyCode({ body: { code: value } }));
+        setPanier(
+          await client.commerceCartApplyCode({ body: { code: value } }),
+        );
       },
     },
     [client, setPanier],

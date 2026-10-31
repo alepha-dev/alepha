@@ -83,7 +83,7 @@ export interface CreateOrderInput {
   vatNumber?: string;
   /**
    * Delivery charged. Added to the line-item sum to form `orders.total`, which
-   * is what the customer pays — see the note on that column.
+   * is what the customer pays - see the note on that column.
    */
   shippingTotal?: number;
   /**
@@ -95,7 +95,7 @@ export interface CreateOrderInput {
 
 /**
  * An order line with the few facts about its parent order that make it
- * readable on its own — which is how the catalogue shows a product's sales.
+ * readable on its own - which is how the catalogue shows a product's sales.
  *
  * The order fields are optional because the parent lookup is a separate query:
  * an order deleted between the two would otherwise take the whole page down,
@@ -113,9 +113,9 @@ export interface ProductOrderLine extends OrderItemEntity {
  *
  * Two entry points, matching the two ways money arrives:
  *
- * - {@link create} with `status: "pending"` — an online checkout, settled later
+ * - {@link create} with `status: "pending"` - an online checkout, settled later
  *   by {@link markPaid} when the payment webhook lands.
- * - {@link create} with `status: "paid"` — a counter sale, where the money is
+ * - {@link create} with `status: "paid"` - a counter sale, where the money is
  *   already in the till.
  *
  * Fulfilment (what a paid line *does*) is delegated to the handler registered
@@ -148,7 +148,7 @@ export class OrderService {
    * Create an order, snapshotting each line from its product.
    *
    * When the order is created already `paid`, fulfilment runs inside the same
-   * transaction — so a handler that throws (out of stock, say) rolls the order
+   * transaction - so a handler that throws (out of stock, say) rolls the order
    * back rather than leaving a paid order half-delivered.
    */
   public async create(input: CreateOrderInput): Promise<OrderEntity> {
@@ -179,7 +179,7 @@ export class OrderService {
      *
      * `total` below is a plain sum of `price * quantity` across the lines, and
      * the order carries a single `currency`. Taking the first product's
-     * currency and summing the rest into it — which is what this did — charges
+     * currency and summing the rest into it - which is what this did - charges
      * a cart of a €89 ring and a $120 pendant as 209 EUR. Nothing anywhere
      * would have reported it: the order looks internally consistent, and the
      * payment intent is created from the same wrong figure.
@@ -366,10 +366,10 @@ export class OrderService {
         throw error;
       }
 
-      // Only on the transition — a redelivered webhook returns above and emits
+      // Only on the transition - a redelivered webhook returns above and emits
       // nothing, which is what stops a second invoice for one sale. Deferred
       // via afterCommit, not placed after this block: this block may be
-      // JOINING a caller's transaction (the webhook path — CheckoutService's
+      // JOINING a caller's transaction (the webhook path - CheckoutService's
       // settle() wraps markPaid), and "after markPaid's block" would still be
       // inside that outer transaction, handing subscribers uncommitted rows
       // and holding row locks on orders and stock while they issue invoices
@@ -524,7 +524,7 @@ export class OrderService {
       );
 
       // Only on the transition, and deferred for the same reason as in
-      // markPaid — nothing stops a caller from wrapping refund() in a
+      // markPaid - nothing stops a caller from wrapping refund() in a
       // transaction of its own.
       await this.db.afterCommit(() =>
         this.alepha.events.emit("commerce:order:refunded", {
@@ -745,7 +745,7 @@ export class OrderService {
   }
 
   /**
-   * Mark items prepared. Optional step — a shop that packs and posts in one go
+   * Mark items prepared. Optional step - a shop that packs and posts in one go
    * can move straight from `paid` to `shipped`.
    */
   /**
@@ -768,7 +768,7 @@ export class OrderService {
    *
    * Guarded: only a paid or prepared order can ship. Without the guard an admin
    * double-click could ship a refunded order, and the buyer would get a tracking
-   * email for a parcel nobody sent — the class of unguarded status transition
+   * email for a parcel nobody sent - the class of unguarded status transition
    * this codebase has been bitten by before. Conditional as well as guarded: of
    * two clicks that overlap, one ships and the other is refused, so the
    * shipping email goes out once.
@@ -976,7 +976,7 @@ export class OrderService {
    * Every order line that sold a given product, newest first, each carrying the
    * date and status of the order it belongs to.
    *
-   * The catalogue's answer to "has this ever sold, and to what effect" — which
+   * The catalogue's answer to "has this ever sold, and to what effect" - which
    * is a question about lines, not orders: one order may contain the product
    * twice at different prices, and rolling those into a single order row would
    * hide exactly the detail being asked for. The line's own snapshotted
@@ -1037,7 +1037,7 @@ export class OrderService {
 
   /**
    * Ask each handler to hold what its line consumes. A handler with nothing to
-   * hold — a download, a gift card — simply does not implement `reserve`.
+   * hold - a download, a gift card - simply does not implement `reserve`.
    *
    * A throw here (nothing left in stock) aborts the order's transaction, which
    * is the behaviour we want: better to refuse at the checkout than to take

@@ -19,7 +19,7 @@ export * from "./services/ShippingService.ts";
  * anything: a point-of-sale hands goods over the counter, a ticketing app sells
  * a QR code. Neither should carry two tables and a service it cannot use.
  *
- * Importing this module is the whole integration — it claims the checkout's
+ * Importing this module is the whole integration - it claims the checkout's
  * `ShippingQuoteProvider` slot, and delivery starts being priced. Remove the
  * import and the checkout goes back to charging nothing for delivery, with no
  * other code change.

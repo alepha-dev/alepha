@@ -15,7 +15,7 @@ import { StockService } from "../services/StockService.ts";
 import { AlephaCommerceSettlement } from "../settlement/index.ts";
 
 /**
- * Poll until the mailbox holds `count` mails — the confirmation now
+ * Poll until the mailbox holds `count` mails - the confirmation now
  * arrives through the settlement job, a beat after the webhook.
  */
 const waitForMail = async (mail: MemoryEmailProvider, count: number) => {

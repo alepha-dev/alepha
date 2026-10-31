@@ -6,7 +6,7 @@ import { $atom, type Infer, z } from "alepha";
  * These are not decorative fields. A French B2C invoice is invalid without the
  * seller's name, address and SIRET; `vatNumber` is required once the seller is
  * liable for VAT, and `vatExemptionNotice` replaces the tax lines when they are
- * not — a micro-entreprise under the franchise must print
+ * not - a micro-entreprise under the franchise must print
  * "TVA non applicable, art. 293 B du CGI" and charge no tax.
  *
  * An atom rather than a database row: it is deployment configuration, it changes

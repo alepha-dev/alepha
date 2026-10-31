@@ -206,8 +206,9 @@ const ownWorktree = (all: Workspace[]): Workspace[] => {
  * A workspace declares a `version` if and only if it is published.
  *
  * A private workspace (the docs, the showcase, the examples) never ships to the
- * registry, so a number in its manifest is decoration that nothing bumps. `@alepha/commerce`, `payments-mollie` and
- * `sigil` drifted to 0.1.0, 0.20.6 and 0.20.1 while `alepha` reached 0.26.0.
+ * registry, so a number in its manifest is decoration that nothing bumps.
+ * `payments-mollie` and `sigil` drifted to 0.20.6 and 0.20.1 while `alepha`
+ * reached 0.26.0.
  *
  * The release job's bump step encodes the invariant directly, filtering with
  * `--no-private`, so a violation stays invisible until someone dispatches a
@@ -285,13 +286,6 @@ const SUBPATH_EXEMPT: Record<string, string | string[]> = {
   // A container, not a module. `.` is the DI kernel itself; `$module` is
   // declared *by* it.
   alepha: ["."],
-  // `./vat` is `services/VatCalculator.ts` - a class handed a public path,
-  // the same mistake sigil spent 13 subpaths on. Exempt rather than fixed
-  // because commerce is private and its whole surface is already queued for
-  // restructure: 15 subpaths, a build that emits one entry, and no
-  // `publishConfig` at all, so 14 of them would resolve to nothing in a
-  // tarball. Delete this line when that lands - it must not outlive it.
-  "@alepha/commerce": ["./vat"],
 };
 
 const subpathViolations: string[] = [];

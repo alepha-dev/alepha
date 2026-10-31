@@ -328,7 +328,7 @@ export class CheckoutController {
         return parsed.toString();
       }
     } catch {
-      // Not a URL at all — falls through to the rejection below.
+      // Not a URL at all - falls through to the rejection below.
     }
 
     throw new BadRequestError(

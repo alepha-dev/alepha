@@ -17,7 +17,7 @@ export interface AdminProductDetailOrdersTabProps {
  * What this product has actually sold.
  *
  * Lines rather than orders: one order can hold the same product twice at
- * different prices, and each line carries the price it was sold at — a
+ * different prices, and each line carries the price it was sold at - a
  * snapshot, deliberately, so editing the catalogue never rewrites history.
  * That is why the amounts here can disagree with the product's current price,
  * and why they should.

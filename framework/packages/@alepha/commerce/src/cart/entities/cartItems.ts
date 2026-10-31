@@ -9,7 +9,7 @@ import { carts } from "./carts.ts";
  *
  * Note what is *not* here: a price. A cart line is a reference plus a quantity,
  * and the price is read from the catalog every time the cart is priced. The
- * alternative — snapshotting the price at add-time — means a visitor who left a
+ * alternative - snapshotting the price at add-time - means a visitor who left a
  * tab open for a week pays last week's price, and the merchant discovers it
  * from their margin report. The price snapshot belongs on the *order* line,
  * where it is a record of what was actually agreed.

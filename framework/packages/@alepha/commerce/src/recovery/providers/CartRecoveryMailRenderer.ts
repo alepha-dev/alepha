@@ -41,12 +41,12 @@ export class DefaultCartRecoveryMailRenderer extends CartRecoveryMailRenderer {
     if (stage === 1) {
       return {
         subject: "Votre panier vous attend",
-        body: `Vous avez laissé ces articles dans votre panier :\n\n${items}\n\nIls sont toujours disponibles — finalisez votre commande quand vous voulez.${footer}`,
+        body: `Vous avez laissé ces articles dans votre panier :\n\n${items}\n\nIls sont toujours disponibles - finalisez votre commande quand vous voulez.${footer}`,
       };
     }
 
     return {
-      subject: "Dernier rappel — votre panier expire bientôt",
+      subject: "Dernier rappel - votre panier expire bientôt",
       body: `Votre panier contient encore :\n\n${items}\n\nIl expirera prochainement. C'est le moment de finaliser votre commande.${footer}`,
     };
   }

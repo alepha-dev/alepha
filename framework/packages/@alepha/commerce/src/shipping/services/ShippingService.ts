@@ -20,7 +20,7 @@ export interface ShippingQuote {
   code: string;
   name: string;
   /**
-   * What this cart actually pays — 0 when `freeAbove` is met.
+   * What this cart actually pays - 0 when `freeAbove` is met.
    */
   price: number;
   /**
@@ -47,7 +47,7 @@ export class ShippingService {
   /**
    * Every option available for a destination, cheapest first.
    *
-   * Returns an empty array when no zone covers the country — the caller decides
+   * Returns an empty array when no zone covers the country - the caller decides
    * whether that is an error (at checkout) or just an empty picker (browsing).
    */
   public async quote(
@@ -128,7 +128,7 @@ export class ShippingService {
   }
 
   /**
-   * Withdraw an option without deleting it — historical orders reference its
+   * Withdraw an option without deleting it - historical orders reference its
    * `code`, and the merchant usually wants it back next season.
    */
   public async deactivateRate(id: string): Promise<ShippingRateEntity> {

@@ -15,7 +15,7 @@ export const reservationStatusEnum = z.enum(["held", "consumed", "released"]);
  * Decrementing at checkout means an abandoned basket silently destroys stock
  * until someone notices. Decrementing at settlement means two buyers can both
  * reach the payment page for the last ring, and the loser pays for something
- * that does not exist — a refund, an apology, and a bad review.
+ * that does not exist - a refund, an apology, and a bad review.
  *
  * A hold is the answer: it makes the unit unavailable to everyone else, and it
  * expires by itself if the payment never lands.
@@ -48,7 +48,7 @@ export const stockReservations = $entity({
 
     /**
      * When the hold stops counting. A `held` row past this instant is already
-     * ineffective for availability, whether or not the sweep has run — so a
+     * ineffective for availability, whether or not the sweep has run - so a
      * late sweep delays cleanup, it never oversells.
      */
     expiresAt: z.text(),

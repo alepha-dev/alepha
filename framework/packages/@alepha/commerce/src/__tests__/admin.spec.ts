@@ -135,7 +135,7 @@ describe("admin catalog", () => {
     );
     const row = page.content.find((p) => p.id === ring.id)!;
 
-    // Three are in the drawer, one is spoken for, two are sellable — showing
+    // Three are in the drawer, one is spoken for, two are sellable - showing
     // only "3" is what makes a restock decision wrong.
     expect(row.onHand).toBe(3);
     expect(row.reserved).toBe(1);

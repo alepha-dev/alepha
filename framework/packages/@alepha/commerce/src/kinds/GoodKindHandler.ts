@@ -22,7 +22,7 @@ export const goodConfigSchema = z.object({
 /**
  * A tangible item handed over to the buyer. The default kind.
  *
- * Fulfilment is a stock decrement — and, for a product with
+ * Fulfilment is a stock decrement - and, for a product with
  * `trackStock: false`, nothing at all. That second case is why this is a
  * handler and not a hard-coded branch in `OrderService`.
  */

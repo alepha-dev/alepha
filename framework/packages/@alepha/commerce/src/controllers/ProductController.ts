@@ -48,7 +48,7 @@ export const publicProductSchema = z.object({
 export type PublicProduct = Infer<typeof publicProductSchema>;
 
 /**
- * Public catalog. No authentication — a storefront is readable by anyone, and
+ * Public catalog. No authentication - a storefront is readable by anyone, and
  * only published rows are ever returned.
  */
 export class ProductController {

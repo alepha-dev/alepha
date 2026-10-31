@@ -12,7 +12,7 @@ type TrFunction = I18nProvider<any, any>["tr"];
  * `quantity` allows negatives, which is the whole difference between this and
  * the list's one-click `+1` restock: a real correction goes both ways. The
  * server refuses zero, and treats `intake` / `return` as additions whatever
- * sign arrives — only `adjustment` may subtract.
+ * sign arrives - only `adjustment` may subtract.
  */
 export const stockAdjustSchema = (
   tr: TrFunction,

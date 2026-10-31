@@ -15,7 +15,7 @@ export interface RenderedMail {
  *
  * Abstract because these two messages are the most brand-sensitive text a shop
  * sends, and a framework has no business deciding their wording or their
- * language. The default below is deliberately plain French prose — correct,
+ * language. The default below is deliberately plain French prose - correct,
  * complete, and obviously meant to be replaced:
  *
  * ```ts
@@ -54,7 +54,7 @@ export class DefaultOrderMailRenderer extends OrderMailRenderer {
         (item) =>
           `<li>${this.escape(item.name)}${
             item.variantLabel ? ` (${this.escape(item.variantLabel)})` : ""
-          } × ${item.quantity} — ${this.money(
+          } × ${item.quantity} - ${this.money(
             item.unitPrice * item.quantity - item.discount,
             order.currency,
           )}</li>`,

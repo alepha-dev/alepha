@@ -58,7 +58,7 @@ type TabKey =
 /**
  * Composition root for the product detail page.
  *
- * Owns the data — queries, forms, mutations — and hands each tab what it needs.
+ * Owns the data - queries, forms, mutations - and hands each tab what it needs.
  * The tabs render and fetch nothing themselves, which is what keeps a page with
  * five of them readable.
  *
@@ -66,14 +66,14 @@ type TabKey =
  *
  * The drawer this replaces reached six of the product entity's fields.
  * `currency`, `vatRateBps`, `images`, `attributes` and `config` had no UI at
- * all — and `vatRateBps` was not even accepted by the API, so a mixed-rate
+ * all - and `vatRateBps` was not even accepted by the API, so a mixed-rate
  * catalogue was impossible however anyone tried. That is more than a drawer
  * holds.
  *
  * ### Several forms, not one
  *
  * Overview, Media, Stock and the kind's config each own a form. They submit to
- * different endpoints and have different lifetimes — `ControlUpload` writes as
+ * different endpoints and have different lifetimes - `ControlUpload` writes as
  * uploads land, so sharing the editor's form would leave it dirty and let its
  * Reset discard an upload that already happened.
  */
@@ -121,7 +121,7 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
       key: ["commerce", "product-kinds"],
       staleTime: [10, "minutes"],
       handler: () => client.commerceAdminProductKinds({}),
-      // Kind metadata only shapes the pickers — a failure must not block.
+      // Kind metadata only shapes the pickers - a failure must not block.
       onError: () => {},
     },
     [client],
@@ -134,8 +134,8 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
   /*
    * `kinds.join()` rather than `kinds` itself: `kindsQuery.data?.kinds ?? []`
    * yields a fresh array on every render until the query resolves, so the array
-   * as a dependency would rebuild the schema — and, through the form's `deps`
-   * below, the form — on every single render.
+   * as a dependency would rebuild the schema - and, through the form's `deps`
+   * below, the form - on every single render.
    */
   const categoryClient = useClient<AdminCategoryController>();
   const categoriesQuery = useQuery(
@@ -178,7 +178,7 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
       },
       handler: async (values) => {
         /*
-         * Emptiness is checked here rather than in the schema — see the note in
+         * Emptiness is checked here rather than in the schema - see the note in
          * `product-form-schema.ts`. A schema-level `minLength` crashes the page
          * on its empty first render, long before anyone types anything.
          */
@@ -212,7 +212,7 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
     /*
      * Rebuild the model when the schema changes.
      *
-     * `useForm` memoises on these deps and captures the schema once — with the
+     * `useForm` memoises on these deps and captures the schema once - with the
      * default `[]` the form is built on the first render, when the kind list has
      * not arrived, and the Type picker is left with no options for the life of
      * the page. The values survive: the effect below re-anchors them from the
@@ -263,7 +263,7 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
   /*
    * Subscribed rather than read off the field, so the preview grid re-renders
    * when `ControlUpload` writes an id after an upload finishes and when the
-   * arrows reorder — neither of which is a React state change of this
+   * arrows reorder - neither of which is a React state change of this
    * component's own.
    */
   const [imagesValue, setImagesValue] = useFieldValue(imagesForm.input.images);
@@ -273,8 +273,8 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
   // -- Kind config form ------------------------------------------------------
 
   /*
-   * The handler's `configSchema` arrives as JSON Schema — a zod schema cannot
-   * be serialised — and is rebuilt here with `jsonSchemaToZod`, the same
+   * The handler's `configSchema` arrives as JSON Schema - a zod schema cannot
+   * be serialised - and is rebuilt here with `jsonSchemaToZod`, the same
    * round-trip `api/parameters` and `api/analytics` use for exactly this.
    *
    * Falls back to an empty object so the hook below is called unconditionally;
@@ -459,7 +459,7 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
           /*
            * The server refuses (409) once the product appears on an order line,
            * and its message says why and what to do instead. Surfacing it
-           * verbatim beats a generic failure toast — "unpublish it" is the
+           * verbatim beats a generic failure toast - "unpublish it" is the
            * actionable half.
            */
           toast.error(

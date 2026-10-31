@@ -5,10 +5,10 @@ import { $entity, db } from "alepha/orm";
 /**
  * Where a checkout has got to.
  *
- * - `open`      — collecting details.
- * - `paying`    — an order and a payment intent exist; awaiting settlement.
- * - `completed` — the payment settled and the order is paid.
- * - `abandoned` — expired or explicitly given up on.
+ * - `open`      - collecting details.
+ * - `paying`    - an order and a payment intent exist; awaiting settlement.
+ * - `completed` - the payment settled and the order is paid.
+ * - `abandoned` - expired or explicitly given up on.
  */
 export const checkoutStatusEnum = z.enum([
   "open",
@@ -22,7 +22,7 @@ export const checkoutStatusEnum = z.enum([
  *
  * ### Why this table exists at all
  *
- * The checkout module cannot add columns to `commerce_orders` — entities are
+ * The checkout module cannot add columns to `commerce_orders` - entities are
  * code and migrations are per-app, so a module cannot reach into another
  * module's table. So it keeps its own: the address being collected, the
  * shipping choice, the computed totals all live here while they are still in
@@ -69,7 +69,7 @@ export const checkoutSessions = $entity({
     vatNumber: z.text({ maxLength: 32 }).optional(),
 
     /**
-     * Opaque while in flux — the shape is region-specific.
+     * Opaque while in flux - the shape is region-specific.
      */
     shippingAddress: z.json().optional(),
 

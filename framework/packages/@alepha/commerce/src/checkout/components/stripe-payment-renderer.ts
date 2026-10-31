@@ -7,7 +7,7 @@ import type { EmbeddedPaymentRenderer } from "./payment-slot.tsx";
  *
  * Typed here rather than by depending on `@stripe/stripe-js`: the SDK must be
  * loaded from Stripe's own domain at runtime (they require it, for PCI scope),
- * so the npm package would buy types and nothing else — at the cost of a
+ * so the npm package would buy types and nothing else - at the cost of a
  * dependency in a framework package.
  */
 interface StripeLike {

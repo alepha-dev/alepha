@@ -64,9 +64,9 @@ declare module "alepha" {
     /**
      * An order's payment has settled and its lines have been fulfilled.
      *
-     * Emitted after the OUTERMOST transaction commits — including when
+     * Emitted after the OUTERMOST transaction commits - including when
      * markPaid ran joined to a caller's transaction, as the settlement webhook
-     * does — so a subscriber reads a committed order, runs while no row locks
+     * does - so a subscriber reads a committed order, runs while no row locks
      * are held, and cannot unwind a sale whose money is already in by
      * throwing.
      */
@@ -163,7 +163,7 @@ declare module "alepha" {
  *   seat on a leg, a room on a night, sold by an application's subclass of
  *   `ResourceKindHandler`.
  *
- * Ships two product kinds — `good` (stock-tracked) and `digital` — and the
+ * Ships two product kinds - `good` (stock-tracked) and `digital` - and the
  * registry that lets any other module add more without editing this package.
  * Cart and checkout are separate modules (`@alepha/commerce/cart`,
  * `@alepha/commerce/checkout`) so a consumer that has no use for them, such as

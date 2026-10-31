@@ -12,7 +12,7 @@ import { InvoiceRenderer, type RenderedInvoice } from "./InvoiceRenderer.ts";
  * price; the tax broken down per rate; and, when the seller is not liable for
  * VAT, the statutory notice printed *instead of* the tax lines.
  *
- * The layout is plain on purpose — an invoice is read by a customer once and by
+ * The layout is plain on purpose - an invoice is read by a customer once and by
  * an accountant twice, and neither wants a design.
  */
 export class HtmlInvoiceRenderer extends InvoiceRenderer {
@@ -50,7 +50,7 @@ export class HtmlInvoiceRenderer extends InvoiceRenderer {
     ${
       credit
         ? `<div>Annule et remplace la facture précédente${
-            invoice.note ? ` — ${this.escape(invoice.note)}` : ""
+            invoice.note ? ` - ${this.escape(invoice.note)}` : ""
           }</div>`
         : ""
     }

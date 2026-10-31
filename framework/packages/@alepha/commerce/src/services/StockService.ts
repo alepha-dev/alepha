@@ -39,9 +39,9 @@ export interface StockFigures {
  *
  * Three numbers, and confusing them is how shops oversell:
  *
- * - {@link onHand} — what is physically there: the sum of movements.
- * - {@link reserved} — what is spoken for: live, unexpired holds.
- * - {@link available} — what may still be sold: on-hand minus reserved. **This
+ * - {@link onHand} - what is physically there: the sum of movements.
+ * - {@link reserved} - what is spoken for: live, unexpired holds.
+ * - {@link available} - what may still be sold: on-hand minus reserved. **This
  *   is the one a storefront shows and the one {@link reserve} checks.**
  *
  * Each takes an optional variant. Without one it sums everything under the
@@ -124,8 +124,8 @@ export class StockService {
    * Mark expired holds as released, and report how many.
    *
    * A plain method, not a `$job`: scheduling it would make this package depend
-   * on `alepha/api/jobs`, and a point-of-sale — which has no payment window and
-   * so no holds — would carry the job system for nothing. The scheduler lives in
+   * on `alepha/api/jobs`, and a point-of-sale - which has no payment window and
+   * so no holds - would carry the job system for nothing. The scheduler lives in
    * `@alepha/commerce/checkout`, which already has jobs via the payments module.
    *
    * Nothing depends on this running promptly: {@link reserved} already excludes
@@ -150,7 +150,7 @@ export class StockService {
   /**
    * What is physically in stock: the sum of the movement ledger.
    *
-   * Call inside the transaction that is about to write a movement — a value read
+   * Call inside the transaction that is about to write a movement - a value read
    * outside it is stale by the time it is acted on.
    */
   public async onHand(productId: string, variantId?: string): Promise<number> {
@@ -411,7 +411,7 @@ export class StockService {
   }
 
   /**
-   * Give up an order's holds — the payment failed, or the buyer walked away.
+   * Give up an order's holds - the payment failed, or the buyer walked away.
    * Idempotent: a hold already consumed or released is left alone.
    */
   public async releaseFor(orderId: string): Promise<void> {
@@ -632,7 +632,7 @@ export class StockService {
    *
    * Distinct from {@link recordIntake} because the reason is different and the
    * ledger is read by reason: an intake is stock arriving, an adjustment is the
-   * book being wrong — breakage, a miscount, a unit written off. Rolling them
+   * book being wrong - breakage, a miscount, a unit written off. Rolling them
    * together would make "how much did we take in this quarter" unanswerable.
    *
    * `delta` is signed and must not be zero; a zero movement is a row that says
@@ -656,7 +656,7 @@ export class StockService {
   }
 
   /**
-   * The product's ledger, newest first — every movement and why it happened.
+   * The product's ledger, newest first - every movement and why it happened.
    *
    * Paginated rather than returned whole: this table only grows, and a product
    * that has sold for a year has a ledger no screen wants in one response.

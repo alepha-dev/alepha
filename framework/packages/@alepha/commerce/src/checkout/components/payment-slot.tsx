@@ -18,7 +18,7 @@ export interface PaymentSlotProps {
   returnUrl: string;
   /**
    * Renderers for embedded providers, keyed by the `provider` name the server
-   * reported — `"stripe"`, `"mollie"`, `"memory"`. Omit it for a redirect-only
+   * reported - `"stripe"`, `"mollie"`, `"memory"`. Omit it for a redirect-only
    * shop.
    */
   renderers?: Record<string, EmbeddedPaymentRenderer>;
@@ -41,7 +41,7 @@ export interface EmbeddedPaymentRenderer {
   /**
    * Mount the card field into `container` and take the payment.
    *
-   * Must resolve when the payer has confirmed — not when the money has settled.
+   * Must resolve when the payer has confirmed - not when the money has settled.
    * Settlement arrives by webhook, and the two are different events: treating
    * this promise as proof of payment is the mistake this comment exists to
    * prevent.
@@ -93,7 +93,7 @@ export const PaymentSlot = (props: PaymentSlotProps) => {
   const [confirmed, setConfirmed] = useState(false);
   const [failure, setFailure] = useState<Error | undefined>();
 
-  // A redirect handoff has nothing to render — leave for the PSP.
+  // A redirect handoff has nothing to render - leave for the PSP.
   useEffect(() => {
     if (handoff.mode === "redirect") {
       window.location.assign(handoff.url);
@@ -116,7 +116,7 @@ export const PaymentSlot = (props: PaymentSlotProps) => {
           `Pass one in the \`renderers\` prop.`,
       );
       // The failure branch of mounting a third-party payment renderer into a DOM
-      // node — an external system, and the node does not exist during render.
+      // node - an external system, and the node does not exist during render.
       // oxlint-disable-next-line react/set-state-in-effect
       setFailure(error);
       onError?.(error);

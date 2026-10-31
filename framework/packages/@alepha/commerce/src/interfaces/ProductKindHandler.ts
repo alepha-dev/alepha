@@ -8,7 +8,7 @@ import type { ClaimLockKey } from "../services/ClaimLock.ts";
  * What a module must implement to teach the catalog a new kind of sellable
  * thing.
  *
- * A handler is an ordinary service, so it may `$inject` whatever it needs — the
+ * A handler is an ordinary service, so it may `$inject` whatever it needs - the
  * point-of-sale handler injects the wallet, a ticketing handler injects the QR
  * issuer. It is registered with `ProductKindRegistry` from its module's
  * `register()` hook.
@@ -16,7 +16,7 @@ import type { ClaimLockKey } from "../services/ClaimLock.ts";
 export abstract class ProductKindHandler {
   /**
    * The `products.kind` value this handler owns. Must be unique across the
-   * whole application — the registry rejects a duplicate rather than letting
+   * whole application - the registry rejects a duplicate rather than letting
    * the last module registered win silently.
    */
   abstract readonly kind: string;

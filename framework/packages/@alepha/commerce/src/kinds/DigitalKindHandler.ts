@@ -17,7 +17,7 @@ export const digitalConfigSchema = z.object({
 });
 
 /**
- * Something dematerialised — a file, a licence key, a link.
+ * Something dematerialised - a file, a licence key, a link.
  *
  * Fulfilment touches no stock. Delivery is `@alepha/commerce/downloads`: a link
  * per paid line, in the confirmation email. Without that module this handler

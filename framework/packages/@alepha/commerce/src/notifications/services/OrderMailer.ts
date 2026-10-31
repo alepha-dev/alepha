@@ -36,7 +36,7 @@ export class OrderMailer {
   protected readonly shipped = $email({ name: "commerce-order-shipped" });
 
   /**
-   * Send the order confirmation, returning whether one went out — `false`
+   * Send the order confirmation, returning whether one went out - `false`
    * means the order has no email on file (a counter sale), which is a
    * normal outcome, not an error. Throws on render/SMTP failure so the
    * calling job can retry.

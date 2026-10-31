@@ -112,7 +112,7 @@ export class TaxService {
    *
    * Each line is taxed at its rate for the destination, see {@link rateFor}.
    * Lines sharing a rate are summed *before* the split, so a rate rounds once
-   * rather than once per line — the same rule the invoice applies, which is what
+   * rather than once per line - the same rule the invoice applies, which is what
    * keeps the figure quoted at checkout equal to the one on the document that
    * follows it.
    *

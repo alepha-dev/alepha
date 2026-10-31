@@ -45,7 +45,7 @@ const withShipping = async () => {
 };
 
 /**
- * Checkout alone — the ticketing / downloads case.
+ * Checkout alone - the ticketing / downloads case.
  */
 const withoutShipping = async () => {
   const alepha = Alepha.create()
@@ -148,7 +148,7 @@ describe("shipping in the checkout", () => {
     await carts.add(cart.id, ring.id, 1);
 
     const opened = await checkout.start(cart.id);
-    // No address yet — delivery is unknown, so it is not charged.
+    // No address yet - delivery is unknown, so it is not charged.
     expect(opened.shippingTotal).toBe(0);
     expect(opened.grandTotal).toBe(8900);
 
@@ -375,7 +375,7 @@ describe("shipping in the checkout", () => {
     const opened = await checkout.start(cart.id);
     const addressed = await checkout.setAddress(opened.id, address);
 
-    // No provider, so no options and nothing charged — not an error.
+    // No provider, so no options and nothing charged - not an error.
     expect(await checkout.shippingOptions(opened.id)).toEqual([]);
     expect(addressed.shippingTotal).toBe(0);
     expect(addressed.grandTotal).toBe(500);

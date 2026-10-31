@@ -75,13 +75,13 @@ export interface PublicCatalogQuery extends CatalogQuery {
  *
  * The one rule it enforces: a product's `config` must satisfy the schema
  * declared by the handler that owns its `kind`. Validating on write is what
- * keeps `fulfil` free of defensive parsing — by the time a line is paid for,
+ * keeps `fulfil` free of defensive parsing - by the time a line is paid for,
  * its config has already been proven well-formed.
  */
 export class CatalogService {
   protected readonly repo = $repository(products);
   /**
-   * Read-only, and only for {@link delete}'s guard — whether a product may be
+   * Read-only, and only for {@link delete}'s guard - whether a product may be
    * removed is a catalogue rule that only the order history can answer.
    */
   protected readonly orderItemRepo = $repository(orderItems);
@@ -126,7 +126,7 @@ export class CatalogService {
   }
 
   /**
-   * Public catalog listing — published rows only.
+   * Public catalog listing - published rows only.
    */
   public async list(
     query: PublicCatalogQuery = {},
@@ -205,7 +205,7 @@ export class CatalogService {
 
   /**
    * Back-office listing: drafts included. Deliberately a separate method from
-   * {@link list} rather than a `published?` filter — a public endpoint that
+   * {@link list} rather than a `published?` filter - a public endpoint that
    * forgets to pass the filter would leak unfinished products, and an
    * easy-to-forget parameter is how that happens.
    */
@@ -271,8 +271,8 @@ export class CatalogService {
           published: false,
         });
       } catch (error) {
-        // Only a lost race for this slug is retryable. Anything else — a kind
-        // with a config schema that rejects `{}`, a database that is down — is
+        // Only a lost race for this slug is retryable. Anything else - a kind
+        // with a config schema that rejects `{}`, a database that is down - is
         // the caller's problem and must not be swallowed 50 times over.
         if (!(await this.findBySlug(slug))) throw error;
       }
@@ -287,15 +287,15 @@ export class CatalogService {
    * Remove a product from the catalogue for good.
    *
    * Refuses while any order line still points at it. Deleting anyway would be
-   * safe for the *order* — `orderItems` snapshots name, price and kind, and
-   * holds `productId` as a plain uuid precisely so nothing cascades — but it
+   * safe for the *order* - `orderItems` snapshots name, price and kind, and
+   * holds `productId` as a plain uuid precisely so nothing cascades - but it
    * would strip the catalogue row an operator needs to answer "what is this
    * line on the invoice", and there is no undo. Unpublishing hides a product
    * from buyers and keeps the history readable, which is what someone reaching
    * for delete on a product that has sold actually wants.
    *
    * The check lives here rather than in the controller so no future caller can
-   * forget it. That is why this service knows about `orderItems` at all —
+   * forget it. That is why this service knows about `orderItems` at all -
    * whether a product may be deleted is a catalogue rule that only the order
    * history can answer.
    */
@@ -313,12 +313,12 @@ export class CatalogService {
    * Not simply the first registered kind: kinds are ordered arbitrarily, and
    * the first one may declare a config schema with required fields. Core's
    * `digital` requires a `fileId`, so "first registered" made
-   * {@link createDraft} fail outright on any application that registers it —
+   * {@link createDraft} fail outright on any application that registers it -
    * the button did nothing and answered 400.
    *
    * `good` first, because it is `products.kind`'s own default and needs no
    * configuration. Failing that, the first kind that can be created with an
-   * empty config — a draft has nobody to ask for a download URL yet, and the
+   * empty config - a draft has nobody to ask for a download URL yet, and the
    * operator picks the real kind on the detail page a moment later.
    */
   protected draftKind(): string {

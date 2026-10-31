@@ -178,7 +178,7 @@ export const AdminShipping = () => {
             align: "right",
             cell: (r) => (
               <span className="text-muted-foreground text-xs tabular-nums">
-                {r.freeAbove != null ? formatPrice(r.freeAbove) : "—"}
+                {r.freeAbove != null ? formatPrice(r.freeAbove) : "-"}
               </span>
             ),
           },
@@ -187,7 +187,7 @@ export const AdminShipping = () => {
             cell: (r) => (
               <span className="text-muted-foreground text-xs">
                 {r.minDays == null
-                  ? "—"
+                  ? "-"
                   : r.minDays === r.maxDays
                     ? `${r.minDays} d`
                     : `${r.minDays}-${r.maxDays} d`}

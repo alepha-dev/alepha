@@ -147,7 +147,7 @@ export class CheckoutService {
   }
 
   /**
-   * Announce a captured email once the write is committed — deferred via
+   * Announce a captured email once the write is committed - deferred via
    * afterCommit for the same reason as the order events: this method can
    * be reached from inside a caller's transaction, and subscribers must
    * read committed rows.
@@ -171,7 +171,7 @@ export class CheckoutService {
 
   /**
    * Record the delivery address, after validating it against its country's
-   * rules, and re-price — because the destination is what decides delivery cost.
+   * rules, and re-price - because the destination is what decides delivery cost.
    *
    * Clears any previously chosen `shippingMethod`: a method valid for France is
    * not necessarily offered for Malta, and silently keeping a stale choice is
@@ -263,7 +263,7 @@ export class CheckoutService {
     const country = this.countryOf(session);
     if (!country) {
       throw new CommerceError(
-        `Checkout ${sessionId} has no address yet — call setAddress() first.`,
+        `Checkout ${sessionId} has no address yet - call setAddress() first.`,
       );
     }
     const priced = await this.carts.price(session.cartId);
@@ -285,7 +285,7 @@ export class CheckoutService {
     const country = this.countryOf(session);
     if (!country) {
       throw new CommerceError(
-        `Checkout ${sessionId} has no address yet — call setAddress() first.`,
+        `Checkout ${sessionId} has no address yet - call setAddress() first.`,
       );
     }
 
@@ -331,7 +331,7 @@ export class CheckoutService {
 
     // Re-quote the chosen method rather than trusting the stored total: the row
     // may be minutes old, and a rate can have changed or been withdrawn. If the
-    // buyer's selection is no longer offered, stop — charging them a different
+    // buyer's selection is no longer offered, stop - charging them a different
     // delivery price than the one they accepted is not a recoverable mistake.
     let quote: CheckoutShippingQuote | undefined;
     const country = this.countryOf(session);
@@ -411,8 +411,8 @@ export class CheckoutService {
     });
 
     // The invariant that matters in this whole file: the order says exactly what
-    // the card is about to be charged. It was briefly false — the order total
-    // excluded delivery — and the only reason it is not still false is that a
+    // the card is about to be charged. It was briefly false - the order total
+    // excluded delivery - and the only reason it is not still false is that a
     // test compared the two numbers. Assert it rather than trust it.
     if (order.total !== totals.grandTotal) {
       throw new CommerceError(
@@ -465,7 +465,7 @@ export class CheckoutService {
       paymentIntentId: handoff.intentId,
     });
 
-    // The buyer is now on the PSP page and may never come back — announce
+    // The buyer is now on the PSP page and may never come back - announce
     // it so the settlement module can schedule a reconciliation.
     await this.db.afterCommit(() =>
       this.alepha.events.emit(
@@ -543,7 +543,7 @@ export class CheckoutService {
       }
       if (!session.orderId) {
         throw new CommerceError(
-          `Checkout ${sessionId} has no order to settle — pay() has not run.`,
+          `Checkout ${sessionId} has no order to settle - pay() has not run.`,
         );
       }
 
@@ -621,7 +621,7 @@ export class CheckoutService {
   }
 
   /**
-   * Find the checkout that a payment intent belongs to — the lookup a webhook
+   * Find the checkout that a payment intent belongs to - the lookup a webhook
    * handler needs.
    */
   public async findByPaymentIntent(
@@ -647,7 +647,7 @@ export class CheckoutService {
     const session = await this.repo.getById(sessionId);
     if (!session.orderId) {
       throw new CommerceError(
-        `Checkout ${sessionId} has no order yet — pay() has not run.`,
+        `Checkout ${sessionId} has no order yet - pay() has not run.`,
       );
     }
     const order = await this.orders.getById(session.orderId);
@@ -684,7 +684,7 @@ export class CheckoutService {
    * reached `paying` has an order behind it, and leaving that order `pending`
    * would keep its stock held until the sweep noticed.
    *
-   * Idempotent — a second failed-payment event finds the session already
+   * Idempotent - a second failed-payment event finds the session already
    * abandoned.
    */
   public async abandonWithOrder(
@@ -733,7 +733,7 @@ export class CheckoutService {
   }
 
   /**
-   * What the payment front-end can do — surfaced so a storefront renders the
+   * What the payment front-end can do - surfaced so a storefront renders the
    * right thing without hard-coding which PSP is installed.
    */
   public capabilities() {

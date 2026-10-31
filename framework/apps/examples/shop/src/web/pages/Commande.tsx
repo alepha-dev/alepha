@@ -431,7 +431,9 @@ const Commande = () => {
         <dl className="mt-5 space-y-2 text-sm">
           {(totaux?.discountTotal ?? panier.discountTotal) > 0 ? (
             <div className="flex justify-between">
-              <dt className="text-muted-foreground">{tr("checkout.discount")}</dt>
+              <dt className="text-muted-foreground">
+                {tr("checkout.discount")}
+              </dt>
               <dd>
                 <Prix
                   cents={-(totaux?.discountTotal ?? panier.discountTotal)}

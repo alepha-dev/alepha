@@ -23,7 +23,7 @@ import { sellerIdentityAtom } from "../sellerIdentityAtom.ts";
  * 1. **The number is gapless.** `$sequence` participates in the surrounding
  *    transaction, so a rollback returns the number to the pool instead of
  *    burning it. Postgres's own `nextval()` deliberately does the opposite,
- *    which would leave holes — and a hole in an invoice series is what an audit
+ *    which would leave holes - and a hole in an invoice series is what an audit
  *    asks about.
  * 2. **The content is frozen.** Everything is copied onto the row at issue time,
  *    so no later edit to a product or an address can rewrite what was billed.
@@ -90,7 +90,7 @@ export class InvoiceService {
     const seller = this.seller;
     const exempt = Boolean(seller.vatExemptionNotice);
     // Each line bills at the rate snapshotted onto it, falling back to the
-    // seller's default. A mixed-rate order — books beside goods — is the normal
+    // seller's default. A mixed-rate order - books beside goods - is the normal
     // case, not an edge one, and applying one rate to all of it produced an
     // invoice whose single bucket disagreed with what was sold.
     const rateOf = (snapshot?: number) =>
@@ -140,7 +140,7 @@ export class InvoiceService {
     // The number and the row are written in one transaction, so a failure here
     // cannot consume a number.
     return this.db.transactional(async () => {
-      // In the seller's timezone, not UTC — see `issuedOn`.
+      // In the seller's timezone, not UTC - see `issuedOn`.
       const issuedAt = this.issuedOn(seller.timezone);
       const year = Number(issuedAt.slice(0, 4));
       const seq = await this.invoiceNumber.next(`default:${year}`);
@@ -170,7 +170,7 @@ export class InvoiceService {
   /**
    * Issue a credit note reversing an invoice, in full or in part.
    *
-   * A credit note takes the *next* number in the same series — it is not a
+   * A credit note takes the *next* number in the same series - it is not a
    * deletion and it does not reuse the corrected invoice's number.
    *
    * With `lines`, it credits those units, each at its own rate. With `amount`,

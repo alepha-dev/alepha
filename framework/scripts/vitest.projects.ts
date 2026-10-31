@@ -179,9 +179,8 @@ const sharedExclude = ["**/node_modules/**", "**/dist/**", "**/e2e/**"];
  * conditions are and would flatten `browser` and `types` down to one file.
  * `@alepha/lore/sigil` was the live case until Lore left this repository:
  * aliasing it handed a jsdom spec `index.ts` where the exports map gives
- * `index.browser.ts`. `@alepha/commerce/*` is the one left: its exports map
- * sends `@alepha/commerce/vat` to `services/VatCalculator.ts`, where the alias
- * would look for `src/vat`.
+ * `index.browser.ts`. `@alepha/commerce/*` is the one left, whose exports map
+ * says the same thing the alias would.
  */
 const tsconfigAlias = (
   root: string,

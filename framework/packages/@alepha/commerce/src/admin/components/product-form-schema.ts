@@ -11,14 +11,14 @@ type TrFunction = I18nProvider<any, any>["tr"];
  * The product editor's schema.
  *
  * Built per render rather than declared at module scope because both its
- * labels and its kind list come from runtime data — the translation catalogue
+ * labels and its kind list come from runtime data - the translation catalogue
  * and `ProductKindRegistry`. Callers must memoise it (`useMemo`) so `useForm`
  * does not re-anchor every render.
  *
  * ### What changed, and why it matters
  *
  * The drawer this replaces offered six fields. `currency` and `vatRateBps` are
- * new here, and `vatRateBps` was not even accepted by the API — see the note on
+ * new here, and `vatRateBps` was not even accepted by the API - see the note on
  * it in `AdminProductController`. Without them a catalogue could only ever be
  * single-currency and single-rate, whatever the entity claimed.
  *
@@ -26,7 +26,7 @@ type TrFunction = I18nProvider<any, any>["tr"];
  * own tabs, because an upload grid and a key/value editor are not form fields.
  */
 /**
- * Offered in the currency picker. Not an exhaustive ISO-4217 list — a picker
+ * Offered in the currency picker. Not an exhaustive ISO-4217 list - a picker
  * with 180 entries is worse than one with eight, and the caller merges in
  * whatever the product is already priced in so an unusual currency already set
  * never silently disappears from its own form.
@@ -61,7 +61,7 @@ export const productFormSchema = (
      *
      * `useForm` decodes `initialValues` against this schema the moment it is
      * constructed, and a detail page's first render happens before its product
-     * has loaded — so the fields are empty strings and a `minLength: 1` here
+     * has loaded - so the fields are empty strings and a `minLength: 1` here
      * throws `SchemaValidationError` out of a `useMemo`, taking the whole page
      * to the error boundary. It is not a validation failure the user could
      * ever see or fix; the page simply never renders.
@@ -118,7 +118,7 @@ export const productFormSchema = (
     }),
     /*
      * Basis points, for the same reason the price is cents: 2000 is exactly
-     * 20 %, where 20.0 as a float is not exactly anything. Optional — unset
+     * 20 %, where 20.0 as a float is not exactly anything. Optional - unset
      * means the seller's default rate from `TaxService`, which is what most of
      * a catalogue wants and why this is not required.
      */

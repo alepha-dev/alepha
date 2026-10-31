@@ -34,7 +34,7 @@ export const orderItems = $entity({
     variantId: z.uuid().optional(),
 
     /**
-     * Snapshots — see the class note above.
+     * Snapshots - see the class note above.
      */
     kind: z.text({ maxLength: 64 }),
     name: z.text({ maxLength: 200 }),
@@ -77,7 +77,7 @@ export const orderItems = $entity({
     cancelledQuantity: db.default(z.integer().min(0), 0),
 
     /**
-     * The product's `config` at order time — what `fulfil` consumes.
+     * The product's `config` at order time - what `fulfil` consumes.
      */
     config: z.json().optional(),
 

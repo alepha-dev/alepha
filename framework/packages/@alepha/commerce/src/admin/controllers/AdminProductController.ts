@@ -68,7 +68,7 @@ const productInputSchema = z.object({
    * It was missing here while `products.vatRateBps` and
    * `CatalogService.CreateProduct` both had it, so the column the entity
    * documents as the whole reason a mixed-rate catalogue works could not be set
-   * through the API at all — an undeclared body field is stripped before the
+   * through the API at all - an undeclared body field is stripped before the
    * handler sees it. Every product billed at the seller's default rate, and the
    * per-rate breakdown invoicing promises could never have more than one line.
    */
@@ -101,8 +101,8 @@ export type AdminProductOrderLine = Infer<typeof productOrderLineSchema>;
 /**
  * Catalog management.
  *
- * Reads carry stock figures the public catalog has no business exposing —
- * on-hand, reserved, available — because deciding what to restock is the reason
+ * Reads carry stock figures the public catalog has no business exposing -
+ * on-hand, reserved, available - because deciding what to restock is the reason
  * anyone opens this screen.
  */
 export class AdminProductController {
@@ -128,7 +128,7 @@ export class AdminProductController {
         /*
          * The catalogue's Type filter.
          *
-         * `CatalogService.listAll` has always honoured `query.kind` — it was
+         * `CatalogService.listAll` has always honoured `query.kind` - it was
          * only missing from this schema, and an undeclared query param is
          * stripped before the handler sees it. So the filter sent
          * `?kind=engraved`, got a 200, and the table came back unfiltered:
@@ -154,7 +154,7 @@ export class AdminProductController {
   });
 
   /**
-   * The kinds this deployment understands — what a product form's picker offers.
+   * The kinds this deployment understands - what a product form's picker offers.
    * Reading it from the registry rather than hard-coding a list is what lets an
    * application's own kind appear here without touching this package.
    */
@@ -162,13 +162,13 @@ export class AdminProductController {
    * No `name:` override.
    *
    * It used to register as `commerceAdminProductKindList` while the property
-   * — which is what `$client<AdminProductController>()` dispatches on — stayed
+   * - which is what `$client<AdminProductController>()` dispatches on - stayed
    * `commerceAdminProductKinds`, so every caller resolved a name the registry
    * did not have and got "Action commerceAdminProductKinds not found" at
    * runtime. Typecheck cannot see it: the proxy is typed from the class, so
    * the property exists and only the registered name is wrong.
    *
-   * The effect was silent rather than loud — `kinds` stayed undefined, and
+   * The effect was silent rather than loud - `kinds` stayed undefined, and
    * both the catalogue's Type filter and the editor's kind picker rendered
    * with no options at all rather than failing. It was the only `name:`
    * override in this controller, and nothing anywhere referenced the name it
@@ -183,7 +183,7 @@ export class AdminProductController {
     /*
      * `schemas` is *added* beside `kinds` rather than replacing it with a
      * richer array. The list filter and the editor's kind picker both read
-     * `kinds`, as may a vendored consumer — and a response-shape change is
+     * `kinds`, as may a vendored consumer - and a response-shape change is
      * invisible to them until it 404s a form at runtime.
      *
      * A kind whose handler declares no `configSchema` is simply absent from
@@ -211,7 +211,7 @@ export class AdminProductController {
   });
 
   /**
-   * One product with its stock figures — what the detail page loads.
+   * One product with its stock figures - what the detail page loads.
    *
    * The list endpoint could not serve this: it pages, so a product on page 4 is
    * not reachable by id, and a detail page that had to scan pages to find its
@@ -347,7 +347,7 @@ export class AdminProductController {
       params: z.object({ id: z.uuid() }),
       body: z.object({
         /**
-         * Signed, and refused at zero — see `StockService.recordAdjustment`.
+         * Signed, and refused at zero - see `StockService.recordAdjustment`.
          */
         quantity: z.integer().min(-100000).max(100000),
         reason: z.enum(["intake", "return", "adjustment"]),
@@ -468,7 +468,7 @@ export class AdminProductController {
   });
 
   /**
-   * The product's stock ledger — every movement and why it happened.
+   * The product's stock ledger - every movement and why it happened.
    *
    * The table has always been written and never read: on-hand is a sum over it,
    * so "why is this 3?" had no answer anywhere in the back office.

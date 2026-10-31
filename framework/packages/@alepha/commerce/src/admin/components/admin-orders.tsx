@@ -66,7 +66,7 @@ const STATUS_VARIANT: Record<
  * Order management: see them, ship them, refund them.
  *
  * Every mutating action is gated by a confirmation, and the labels say what will
- * happen rather than what the endpoint is called — "Rembourser 95,90 €", not
+ * happen rather than what the endpoint is called - "Rembourser 95,90 €", not
  * "Refund". An operator clicking through a list of orders needs the amount in the
  * dialog, because that is the fact they are agreeing to.
  */
@@ -285,7 +285,7 @@ export const AdminOrders = () => {
             label: tr("commerce.admin.colShipping", { default: "Shipping" }),
             cell: (o) => (
               <div className="flex flex-col">
-                <span className="text-xs">{o.shippingMethod ?? "—"}</span>
+                <span className="text-xs">{o.shippingMethod ?? "-"}</span>
                 {o.trackingNumber ? (
                   <span className="text-muted-foreground font-mono text-xs">
                     {o.trackingNumber}
@@ -332,7 +332,7 @@ interface AdminOrderSheetProps {
 /**
  * One order, in full: what was bought, where it goes, what was charged.
  *
- * A sheet rather than a route, for the same reason as the product editor — an
+ * A sheet rather than a route, for the same reason as the product editor - an
  * operator working through a morning's orders should not lose the list. The lines
  * come from the order's own snapshot, so an order placed a year ago still shows
  * the name and price that were agreed then.

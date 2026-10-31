@@ -21,7 +21,7 @@ export interface CheckoutShippingQuote {
  * ### Why this indirection exists
  *
  * `checkout` must not depend on `@alepha/commerce/shipping`. Ticketing has a
- * cart and a checkout and ships *nothing* — a hard dependency would put two
+ * cart and a checkout and ships *nothing* - a hard dependency would put two
  * shipping tables into its migrations forever. So the checkout asks an
  * abstraction, and the shipping module answers it by substitution.
  *

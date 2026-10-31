@@ -27,14 +27,14 @@ const formatPrice = (cents: number, currency: string) =>
   );
 
 /**
- * Toolbar filter. Module scope so its identity stays stable across renders —
+ * Toolbar filter. Module scope so its identity stays stable across renders -
  * `DataTable` owns a `useForm` over it, and a fresh reference each render would
  * re-anchor that form for nothing.
  */
 export interface AdminProductsProps {
   /**
-   * Where a product's detail page lives. The route belongs to the application —
-   * this package registers no pages — so the path it mounted it at is passed in.
+   * Where a product's detail page lives. The route belongs to the application -
+   * this package registers no pages - so the path it mounted it at is passed in.
    * `:productId` is appended. Defaults to `/admin/products`.
    */
   detailPath?: string;
@@ -50,8 +50,8 @@ export interface AdminProductsProps {
  * ### There is no editor here, and no create form
  *
  * Both used to be a `Sheet` over this list. The sheet reached six of the
- * product entity's fields and had no room for the rest — images, tax rate,
- * attributes, per-kind config — so editing moved to a page of its own.
+ * product entity's fields and had no room for the rest - images, tax rate,
+ * attributes, per-kind config - so editing moved to a page of its own.
  *
  * With the editor gone there is nowhere a create form belongs either, so
  * "New product" writes a draft immediately (`product-N`, unpublished, at zero)
@@ -84,7 +84,7 @@ export const AdminProducts = (props: AdminProductsProps) => {
   );
 
   // The kinds this deployment registered, read from the server rather than
-  // hard-coded — which is what lets an application's own kind appear in the
+  // hard-coded - which is what lets an application's own kind appear in the
   // picker without touching this component.
   const { data: kinds } = useQuery(
     {
@@ -177,7 +177,7 @@ export const AdminProducts = (props: AdminProductsProps) => {
       }),
       // Deliberately +1 rather than a quantity prompt: a dialog that asks for a
       // number is a form, and forms belong in the editor. One click covers the
-      // common case — one unit came back from the workshop.
+      // common case - one unit came back from the workshop.
       handler: async (product, refresh) => {
         await client.commerceAdminProductRestock({
           params: { id: product.id },

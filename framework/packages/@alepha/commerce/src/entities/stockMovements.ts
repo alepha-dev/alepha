@@ -13,7 +13,7 @@ export const stockReasonEnum = z.enum([
 ]);
 
 /**
- * Append-only stock ledger. On-hand is the sum of a product's deltas — never a
+ * Append-only stock ledger. On-hand is the sum of a product's deltas - never a
  * counter column.
  *
  * A counter read outside the writing transaction is what lets two concurrent

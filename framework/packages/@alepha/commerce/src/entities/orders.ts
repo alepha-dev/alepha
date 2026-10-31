@@ -33,14 +33,14 @@ export const orders = $entity({
     number: z.text({ minLength: 1, maxLength: 40 }).optional(),
 
     /**
-     * Buyer. Optional — a walk-in sale is anonymous.
+     * Buyer. Optional - a walk-in sale is anonymous.
      */
     userId: z.uuid().optional(),
 
     status: orderStatusEnum,
 
     /**
-     * **What the customer pays** — items plus delivery, in the smallest currency
+     * **What the customer pays** - items plus delivery, in the smallest currency
      * unit. Not the line-item sum.
      *
      * The distinction is not pedantic: an order whose `total` excluded delivery
@@ -111,7 +111,7 @@ export const orders = $entity({
 
     /**
      * Set once the payment rail hands back a reference. Plain text, not a
-     * `db.ref` to `paymentIntents` — a ref would make this module depend on
+     * `db.ref` to `paymentIntents` - a ref would make this module depend on
      * `alepha/api/payments` at the schema level, and the payment rail is
      * substitutable.
      */
@@ -135,7 +135,7 @@ export const orders = $entity({
     deliveredAt: z.text().optional(),
 
     /**
-     * Address shape varies by region — kept opaque on purpose.
+     * Address shape varies by region - kept opaque on purpose.
      */
     shippingAddress: z.json().optional(),
 

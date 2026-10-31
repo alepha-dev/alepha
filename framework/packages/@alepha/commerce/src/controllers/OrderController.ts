@@ -15,7 +15,7 @@ import { ReturnService } from "../services/ReturnService.ts";
  *
  * Every route is scoped to the signed-in user and re-checks ownership on the
  * detail route. Scoping the list is not enough on its own: the detail route takes
- * an id, and a uuid is not a secret — without the check, any signed-in customer
+ * an id, and a uuid is not a secret - without the check, any signed-in customer
  * could read anyone's order by guessing one.
  */
 export class OrderController {

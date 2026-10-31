@@ -28,7 +28,7 @@ export interface VatBucket {
  * ### Why the core, and not `invoicing`
  *
  * It shipped under `invoicing/`, reachable only through a module that imports
- * checkout — so a point-of-sale wanting nothing but the arithmetic had to take
+ * checkout - so a point-of-sale wanting nothing but the arithmetic had to take
  * carts and checkout sessions with it, tables this package elsewhere says a POS
  * should not carry. A receipt needs this maths and never issues an invoice, and
  * the very application it came from is a POS. It belongs to the core, and is
@@ -52,7 +52,7 @@ export class VatCalculator {
       return { baseCents: ttcCents, vatCents: 0 };
     }
     const baseCents = Math.round((ttcCents * 10000) / (10000 + rateBps));
-    // The remainder, never a second rounding — that is what keeps the sum exact.
+    // The remainder, never a second rounding - that is what keeps the sum exact.
     return { baseCents, vatCents: ttcCents - baseCents };
   }
 
@@ -60,7 +60,7 @@ export class VatCalculator {
    * Group tax-inclusive lines into per-rate buckets, sorted by rate.
    *
    * Lines sharing a rate are summed *before* the split, so a bucket rounds once
-   * rather than once per line — which is both more accurate and what a single
+   * rather than once per line - which is both more accurate and what a single
    * line at that rate would have produced.
    */
   public ventilate(
@@ -82,7 +82,7 @@ export class VatCalculator {
   }
 
   /**
-   * The rate carrying the largest amount — what a one-line summary shows.
+   * The rate carrying the largest amount - what a one-line summary shows.
    */
   /**
    * @public Called by applications, not from this package. `club` alone uses
@@ -119,8 +119,8 @@ export class VatCalculator {
   /**
    * Split one sale's ventilation across several tenders, one group per amount.
    *
-   * A split payment — half on a card, the rest in cash, or a wallet covering
-   * part of a basket — records a leg per tender, and each leg carries its own
+   * A split payment - half on a card, the rest in cash, or a wallet covering
+   * part of a basket - records a leg per tender, and each leg carries its own
    * share of the tax. The daily closure then aggregates legs, so a cent lost
    * here is a cent the closure is out by, and a closure that does not reconcile
    * is the kind of problem that surfaces at an inspection rather than in a test.

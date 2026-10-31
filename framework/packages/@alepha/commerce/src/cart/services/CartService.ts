@@ -188,7 +188,7 @@ export class CartService {
 
   /**
    * Mint a token for a visitor who has none. The caller is responsible for
-   * putting it in a signed cookie — this service never touches HTTP.
+   * putting it in a signed cookie - this service never touches HTTP.
    */
   public newToken(): string {
     return this.crypto.randomText(32);

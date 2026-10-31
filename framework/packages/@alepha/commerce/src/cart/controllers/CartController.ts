@@ -39,7 +39,7 @@ const pricedCartSchema = z.object({
  * The cart as a storefront sees it.
  *
  * The cart handle lives in a signed, http-only cookie rather than being passed
- * by the client. A client-supplied cart id is an enumeration hole — anyone could
+ * by the client. A client-supplied cart id is an enumeration hole - anyone could
  * read or edit a stranger's basket by guessing a uuid. Signing it means the
  * server minted it.
  */
