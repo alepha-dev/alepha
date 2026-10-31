@@ -69,6 +69,7 @@ refused at upload. Every reason is listed at once:
   user namespace;
 - every plain service needs an `image`;
 - no Docker socket, and no bind mount outside the bundle;
+- no named volume with `driver_opts`, which could bind any host path;
 - a plain service cannot depend on an app service.
 
 The **Revisions** tab lists them newest first and shows the difference between
