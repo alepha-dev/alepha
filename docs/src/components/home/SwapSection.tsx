@@ -85,9 +85,9 @@ const SwapSection = () => {
           Fourteen in-memory providers ship with the framework, covering the{" "}
           <DocLink to="packages-alepha-system">filesystem</DocLink>, the{" "}
           <DocLink to="packages-alepha-system">shell</DocLink>,{" "}
-          <DocLink to="packages-alepha-queue-core">queues</DocLink>,{" "}
-          <DocLink to="packages-alepha-topic-core">topics</DocLink>,{" "}
-          <DocLink to="packages-alepha-lock-core">locks</DocLink>,{" "}
+          <DocLink to="packages-alepha-queue">queues</DocLink>,{" "}
+          <DocLink to="packages-alepha-topic">topics</DocLink>,{" "}
+          <DocLink to="packages-alepha-lock">locks</DocLink>,{" "}
           <DocLink to="packages-alepha-email-core">mail</DocLink>,{" "}
           <DocLink to="packages-alepha-sms">SMS</DocLink>,{" "}
           <DocLink to="packages-alepha-api-payments">payments</DocLink>,{" "}
