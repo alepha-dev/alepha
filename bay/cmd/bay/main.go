@@ -128,8 +128,8 @@ func main() {
 		}
 	}
 	var err error
-	// Every command except `serve` is a client of the control API, reached over
-	// the unix socket. `--control-socket` is the only thing to resolve.
+	// `serve` binds the socket; for every other command it is the one thing to
+	// resolve, and the few that are no client of the control API ignore it.
 	if os.Args[1] != "serve" {
 		readControlFlag(os.Args[2:])
 	}
@@ -334,20 +334,22 @@ func usageText() string {
                 # them. The secret is stored 0600 beside state.json and never
                 # printed again; http:// is accepted for a loopback host only.
                 # Takes effect without restarting "bay serve". Edits the file
-                # directly, so it takes --root (or $BAY_ROOT), not the socket.
+                # directly, so it takes --root (or $BAY_ROOT); the socket only
+                # tells a running Bay to re-read it.
   bay connector show              # sink, estate, connection state; never the secret
   bay connector clear             # forget the sink and the secret: dials nobody
 
-Every command except "serve" is a thin client of the control API. There is no
-second code path.
+Every command except "serve", "doctor", "version", "connector" and "stack exec"
+is a thin client of the control API. There is no second code path.
 
-That API listens on a unix socket and nothing else. It can create users, read
-every app's secrets and delete every backup, so it is root-equivalent, and a
-loopback TCP port with a shared secret is the wrong shape for that: any process
-on the host can reach the port, the secret ends up in a shell history and an
-environment variable, and a bind-address typo publishes it to the internet. The
-socket's authorization is the file mode, enforced by the kernel — reaching it
-already requires being root or in the control group.
+That API listens on a unix socket and nothing else. It deploys code, and a stack
+it deploys runs containers with the devices and capabilities they ask for, so it
+is root-equivalent, and a loopback TCP port with a shared secret is the wrong
+shape for that: any process on the host can reach the port, the secret ends up
+in a shell history and an environment variable, and a bind-address typo
+publishes it to the internet. The socket's authorization is the file mode,
+enforced by the kernel: reaching it already requires being root or in the
+control group.
 
 Remote access is SSH, and nothing else: reach the host that way and run bay
 commands there directly, e.g. "ssh host ./bay deploy app.tar.zst --name app".
@@ -648,7 +650,8 @@ func cmdServe(args []string) error {
 	proxySrv := &http.Server{Addr: addr, Handler: portEighty(router, challenge, store, tlsAddr)}
 	// The control API listens on a unix socket and nowhere else.
 	//
-	// It can create users, read every app's secrets and delete every backup.
+	// It deploys code, and a stack it deploys runs containers with the devices
+	// and capabilities they ask for, so it is root-equivalent.
 	// A loopback TCP port with a shared secret was the wrong shape for that:
 	// every process on the host could reach the port, the secret had to live in
 	// a shell history and an environment variable to be usable, and a typo in

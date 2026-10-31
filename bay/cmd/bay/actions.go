@@ -29,10 +29,12 @@ variant with typed fields, no action takes a free-form path, a shell command
 or an argument list, and a name that is not here is refused and reported,
 never passed through to anything.
 
-`deploy` is already code execution as the app user, so the vocabulary bounds
-the blast radius without making it small. It does bound it: a compromised
-Lore can restart or redeploy the apps this machine already hosts, from
-artifacts it already accepts, and can do nothing else here.
+`deploy` is already code execution as the app user, and `stack-deploy` runs
+what a compose file asks for, devices and capabilities included, so on a
+machine that accepts deploys a compromised Lore can reach the host. The
+vocabulary bounds the rest: on one that does not (`DeployAllowed`, read from the
+welcome frame), it can restart, stop, start and back up the instances this
+machine already runs and read their logs, and can do nothing else here.
 
 Adding a variant is a decision about what a remote party may make this host
 do. It belongs in this file, beside this comment, and nowhere else.
