@@ -9,6 +9,11 @@ export const orderConfig = $atom({
       .describe(
         "Prefix of the order number, as in `CMD-2026-000123`. A reference for the phone, the support desk and the parcel label; the legal numbering is the invoice's.",
       ),
+    locale: z
+      .text({ maxLength: 8 })
+      .describe(
+        "The language of invoices, credit notes and the default emails: `fr` and `en` ship, see `CommerceTexts` for any other.",
+      ),
     withdrawalDays: z
       .integer()
       .min(0)
@@ -18,6 +23,7 @@ export const orderConfig = $atom({
   }),
   default: {
     numberPrefix: "CMD",
+    locale: "fr",
     withdrawalDays: 14,
   },
   serverOnly: true,

@@ -1,5 +1,8 @@
+import { $inject } from "alepha";
+
 import type { PricedCartLine } from "../../cart/services/CartService.ts";
 import type { RenderedMail } from "../../notifications/providers/OrderMailRenderer.ts";
+import { CommerceTexts } from "../../services/CommerceTexts.ts";
 
 /**
  * Writes the abandoned-cart reminder emails.
@@ -21,10 +24,12 @@ export abstract class CartRecoveryMailRenderer {
 }
 
 /**
- * Plain-text French defaults, matching the language of the package's other
+ * Plain-text defaults in the shop's language, like the package's other
  * customer-facing mails.
  */
 export class DefaultCartRecoveryMailRenderer extends CartRecoveryMailRenderer {
+  protected readonly texts = $inject(CommerceTexts);
+
   public async reminder(
     stage: 1 | 2,
     lines: PricedCartLine[],
@@ -36,18 +41,12 @@ export class DefaultCartRecoveryMailRenderer extends CartRecoveryMailRenderer {
           `- ${l.name}${l.variantLabel ? ` (${l.variantLabel})` : ""} × ${l.quantity}`,
       )
       .join("\n");
-    const footer = `\n\nPour ne plus recevoir ces rappels : ${unsubscribeUrl}`;
-
-    if (stage === 1) {
-      return {
-        subject: "Votre panier vous attend",
-        body: `Vous avez laissé ces articles dans votre panier :\n\n${items}\n\nIls sont toujours disponibles - finalisez votre commande quand vous voulez.${footer}`,
-      };
-    }
+    const footer = this.texts.t("reminder.unsubscribe", unsubscribeUrl);
+    const name = stage === 1 ? "reminder.first" : "reminder.second";
 
     return {
-      subject: "Dernier rappel - votre panier expire bientôt",
-      body: `Votre panier contient encore :\n\n${items}\n\nIl expirera prochainement. C'est le moment de finaliser votre commande.${footer}`,
+      subject: this.texts.t(`${name}.subject`),
+      body: `${this.texts.t(`${name}.body`, items)}\n\n${footer}`,
     };
   }
 }

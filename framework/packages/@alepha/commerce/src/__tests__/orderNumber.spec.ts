@@ -23,6 +23,7 @@ const setup = async (backend: "postgres" | "sqlite" = "postgres") => {
     catalog: alepha.inject(CatalogService),
     orders: alepha.inject(OrderService),
     adminOrders: alepha.inject(AdminOrderController),
+    mails: alepha.inject(DefaultOrderMailRenderer),
   };
   await alepha.start();
   return ctx;
@@ -72,6 +73,7 @@ describe("order numbers", () => {
       const ctx = await setup(backend);
       ctx.alepha.store.set(orderConfig.key, {
         numberPrefix: "AA",
+        locale: "fr",
         withdrawalDays: 14,
       });
       const piece = await aPiece(ctx);
@@ -91,7 +93,7 @@ describe("order numbers", () => {
       const order = await ctx.orders.create({
         lines: [{ productId: piece.id, quantity: 1 }],
       });
-      const renderer = new DefaultOrderMailRenderer();
+      const renderer = ctx.mails;
 
       const confirmation = await renderer.confirmation(
         order,

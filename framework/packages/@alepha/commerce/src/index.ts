@@ -11,6 +11,7 @@ import { ProductKindRegistry } from "./providers/ProductKindRegistry.ts";
 import { CatalogService } from "./services/CatalogService.ts";
 import { CategoryService } from "./services/CategoryService.ts";
 import { ClaimLock } from "./services/ClaimLock.ts";
+import { CommerceTexts } from "./services/CommerceTexts.ts";
 import { LineConfigService } from "./services/LineConfigService.ts";
 import { OrderService } from "./services/OrderService.ts";
 import { ResourceService } from "./services/ResourceService.ts";
@@ -51,6 +52,7 @@ export * from "./providers/ProductKindRegistry.ts";
 export * from "./services/CatalogService.ts";
 export * from "./services/CategoryService.ts";
 export * from "./services/ClaimLock.ts";
+export * from "./services/CommerceTexts.ts";
 export * from "./services/LineConfigService.ts";
 export * from "./services/OrderService.ts";
 export * from "./services/ResourceService.ts";
@@ -176,6 +178,7 @@ export const AlephaCommerce = $module({
   atoms: [orderConfig],
   services: [
     ProductKindRegistry,
+    CommerceTexts,
     OrderDownloadsProvider,
     CategoryService,
     CatalogService,

@@ -1,3 +1,6 @@
+import { $inject } from "alepha";
+
+import { CommerceTexts } from "../../services/CommerceTexts.ts";
 import type { VatBucket } from "../../services/VatCalculator.ts";
 import type { InvoiceEntity, InvoiceLine } from "../entities/invoices.ts";
 import type { SellerIdentity } from "../sellerIdentityAtom.ts";
@@ -16,18 +19,21 @@ import { InvoiceRenderer, type RenderedInvoice } from "./InvoiceRenderer.ts";
  * an accountant twice, and neither wants a design.
  */
 export class HtmlInvoiceRenderer extends InvoiceRenderer {
+  protected readonly texts = $inject(CommerceTexts);
+
   public async render(invoice: InvoiceEntity): Promise<RenderedInvoice> {
     const seller = invoice.seller as unknown as SellerIdentity;
     const buyer = invoice.buyer as unknown as Record<string, string>;
     const lines = invoice.lines as unknown as InvoiceLine[];
     const buckets = invoice.vatBuckets as unknown as VatBucket[];
     const credit = Boolean(invoice.creditsInvoiceId);
+    const t = (key: string, ...args: string[]) => this.texts.t(key, ...args);
 
     return {
       contentType: "text/html; charset=utf-8",
       filename: `${invoice.number}.html`,
       body: `<!doctype html>
-<html lang="fr"><head><meta charset="utf-8">
+<html lang="${t("invoice.lang")}"><head><meta charset="utf-8">
 <title>${this.escape(invoice.number)}</title>
 <style>
   body { font: 13px/1.5 system-ui, sans-serif; max-width: 44rem; margin: 2rem auto; padding: 0 1rem; }
@@ -45,11 +51,11 @@ export class HtmlInvoiceRenderer extends InvoiceRenderer {
 <body>
 <header>
   <div>
-    <h1>${credit ? "Facture d'avoir" : "Facture"} ${this.escape(invoice.number)}</h1>
-    <div>Émise le ${this.formatDate(invoice.issuedAt)}</div>
+    <h1>${t(credit ? "invoice.creditTitle" : "invoice.title")} ${this.escape(invoice.number)}</h1>
+    <div>${t("invoice.issuedOn", this.formatDate(invoice.issuedAt))}</div>
     ${
       credit
-        ? `<div>Annule et remplace la facture précédente${
+        ? `<div>${t("invoice.replaces")}${
             invoice.note ? ` - ${this.escape(invoice.note)}` : ""
           }</div>`
         : ""
@@ -59,29 +65,29 @@ export class HtmlInvoiceRenderer extends InvoiceRenderer {
     <strong>${this.escape(seller.name)}</strong><br>
     ${this.escape(seller.address).replace(/\n/g, "<br>")}<br>
     ${seller.legalForm ? `${this.escape(seller.legalForm)}<br>` : ""}
-    SIRET ${this.escape(seller.registrationNumber)}<br>
-    ${seller.vatNumber ? `TVA ${this.escape(seller.vatNumber)}<br>` : ""}
+    ${t("invoice.registration")} ${this.escape(seller.registrationNumber)}<br>
+    ${seller.vatNumber ? `${t("invoice.vat")} ${this.escape(seller.vatNumber)}<br>` : ""}
     ${seller.email ? `${this.escape(seller.email)}<br>` : ""}
   </address>
 </header>
 
-<h2>Client</h2>
+<h2>${t("invoice.buyer")}</h2>
 <address>
   ${this.escape(buyer.fullName ?? "")}<br>
   ${buyer.line1 ? `${this.escape(buyer.line1)}<br>` : ""}
   ${buyer.line2 ? `${this.escape(buyer.line2)}<br>` : ""}
   ${this.escape(buyer.postalCode ?? "")} ${this.escape(buyer.locality ?? "")}<br>
   ${this.escape(buyer.country ?? "")}
-  ${buyer.vatNumber ? `<br>TVA ${this.escape(buyer.vatNumber)}` : ""}
+  ${buyer.vatNumber ? `<br>${t("invoice.vat")} ${this.escape(buyer.vatNumber)}` : ""}
 </address>
 
 <table>
   <thead><tr>
-    <th>Désignation</th>
-    <th class="num">Qté</th>
-    <th class="num">P.U. TTC</th>
-    ${seller.vatExemptionNotice ? "" : '<th class="num">TVA</th>'}
-    <th class="num">Total TTC</th>
+    <th>${t("invoice.colDescription")}</th>
+    <th class="num">${t("invoice.colQuantity")}</th>
+    <th class="num">${t("invoice.colUnitPrice")}</th>
+    ${seller.vatExemptionNotice ? "" : `<th class="num">${t("invoice.vat")}</th>`}
+    <th class="num">${t("invoice.colTotal")}</th>
   </tr></thead>
   <tbody>
     ${lines
@@ -91,7 +97,7 @@ export class HtmlInvoiceRenderer extends InvoiceRenderer {
         line.sku ? `<br><small>${this.escape(line.sku)}</small>` : ""
       }${
         line.discount
-          ? `<br><small>Remise ${this.money(-line.discount, invoice.currency)}</small>`
+          ? `<br><small>${t("invoice.discount")} ${this.money(-line.discount, invoice.currency)}</small>`
           : ""
       }</td>
       <td class="num">${line.quantity}</td>
@@ -109,26 +115,27 @@ export class HtmlInvoiceRenderer extends InvoiceRenderer {
   <tfoot>
     ${
       seller.vatExemptionNotice
-        ? `<tr><td colspan="3">Total</td><td class="num">${this.money(
+        ? `<tr><td colspan="3">${t("invoice.total")}</td><td class="num">${this.money(
             invoice.grandTotal,
             invoice.currency,
           )}</td></tr>`
-        : `<tr><td colspan="3">Total HT</td><td class="num"></td><td class="num">${this.money(
+        : `<tr><td colspan="3">${t("invoice.totalNet")}</td><td class="num"></td><td class="num">${this.money(
             invoice.baseTotal,
             invoice.currency,
           )}</td></tr>
       ${buckets
         .map(
           (bucket) => `<tr>
-        <td colspan="3">TVA ${this.rate(bucket.rateBps)} sur ${this.money(
-          bucket.baseCents,
-          invoice.currency,
+        <td colspan="3">${t(
+          "invoice.vatLine",
+          this.rate(bucket.rateBps),
+          this.money(bucket.baseCents, invoice.currency),
         )}</td><td class="num"></td>
         <td class="num">${this.money(bucket.vatCents, invoice.currency)}</td>
       </tr>`,
         )
         .join("")}
-      <tr><td colspan="3">Total TTC</td><td class="num"></td><td class="num">${this.money(
+      <tr><td colspan="3">${t("invoice.totalGross")}</td><td class="num"></td><td class="num">${this.money(
         invoice.grandTotal,
         invoice.currency,
       )}</td></tr>`
@@ -144,18 +151,14 @@ ${
 ${
   buyer.vatNumber
     ? `<p class="notice">${this.escape(
-        seller.reverseChargeNotice ?? "Autoliquidation - article 283-2 du CGI",
+        seller.reverseChargeNotice ?? t("invoice.reverseCharge"),
       )}</p>`
     : ""
 }
 
 <footer>
-  <p>Facture acquittée. Le paiement a été reçu à la commande.</p>
-  <p>
-    Conformément aux articles L221-18 et suivants du code de la consommation,
-    vous disposez d'un délai de quatorze jours à compter de la réception pour
-    exercer votre droit de rétractation.
-  </p>
+  <p>${t("invoice.paid")}</p>
+  <p>${t("invoice.withdrawal")}</p>
 </footer>
 </body></html>`,
     };
@@ -167,11 +170,12 @@ ${
   }
 
   /**
-   * Basis points to a percentage: 2000 → "20 %", 550 → "5,5 %".
+   * Basis points to a percentage, with the shop's decimal mark: 550 is "5,5 %"
+   * in French and "5.5 %" in English.
    */
   protected rate(bps: number): string {
-    const percent = bps / 100;
-    return `${String(percent).replace(".", ",")} %`;
+    const percent = String(bps / 100);
+    return `${percent.replace(".", this.texts.t("invoice.decimalMark"))} %`;
   }
 
   protected formatDate(iso: string): string {

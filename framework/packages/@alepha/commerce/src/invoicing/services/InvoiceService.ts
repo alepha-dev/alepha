@@ -6,6 +6,7 @@ import { TaxService } from "../../checkout/services/TaxService.ts";
 import type { RefundLine } from "../../entities/orderRefunds.ts";
 import { CommerceError } from "../../errors/CommerceError.ts";
 import { ClaimLock } from "../../services/ClaimLock.ts";
+import { CommerceTexts } from "../../services/CommerceTexts.ts";
 import { OrderService } from "../../services/OrderService.ts";
 import { type VatBucket, VatCalculator } from "../../services/VatCalculator.ts";
 import {
@@ -37,6 +38,7 @@ export class InvoiceService {
   protected readonly vat = $inject(VatCalculator);
   protected readonly tax = $inject(TaxService);
   protected readonly lock = $inject(ClaimLock);
+  protected readonly texts = $inject(CommerceTexts);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly seller = $store(sellerIdentityAtom);
 
@@ -115,7 +117,7 @@ export class InvoiceService {
     // the rates present is a further step this does not take.
     if (order.shippingTotal > 0) {
       lines.push({
-        description: `Livraison${order.shippingMethod ? ` (${order.shippingMethod})` : ""}`,
+        description: `${this.texts.t("invoice.delivery")}${order.shippingMethod ? ` (${order.shippingMethod})` : ""}`,
         quantity: 1,
         unitPrice: order.shippingTotal,
         lineTotal: order.shippingTotal,
@@ -153,7 +155,7 @@ export class InvoiceService {
         seller,
         buyer: {
           ...((order.shippingAddress as Record<string, any>) ?? {
-            fullName: "Client",
+            fullName: this.texts.t("invoice.anonymousBuyer"),
           }),
           ...(order.vatNumber ? { vatNumber: order.vatNumber } : {}),
         },
@@ -269,7 +271,7 @@ export class InvoiceService {
 
           const invoice = await this.issue(orderId);
           const note = await this.creditNote(invoice.id, {
-            reason: refund.reason ?? "Remboursement de la commande",
+            reason: refund.reason ?? this.texts.t("credit.fullReason"),
             amount: refund.amount,
             lines: refund.lines,
           });
@@ -344,7 +346,7 @@ export class InvoiceService {
       lines: shares.map((share) => {
         const ttc = share.baseCents + share.vatCents;
         return {
-          description: reason ?? "Remboursement partiel",
+          description: reason ?? this.texts.t("credit.partialReason"),
           quantity: -1,
           unitPrice: ttc,
           lineTotal: -ttc,
