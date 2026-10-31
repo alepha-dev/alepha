@@ -163,6 +163,20 @@ export class CartController {
   });
 
   /**
+   * The cart this browser's signed cookie points at, if any. What proves a
+   * guest owns a checkout: the token is signed, so the server minted it.
+   *
+   * Outside a request there is no browser, and so no cart.
+   */
+  public async currentCart() {
+    if (!this.alepha.get("alepha.http.request")) {
+      return undefined;
+    }
+    const token = this.cartCookie.get();
+    return token ? this.carts.findByToken(token) : undefined;
+  }
+
+  /**
    * Read the cart the cookie points at, minting one if this visitor has none -
    * and, when the visitor is signed in, make sure it is THEIR cart.
    *

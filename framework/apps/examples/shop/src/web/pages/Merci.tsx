@@ -1,4 +1,4 @@
-import type { OrderEntity, OrderItemEntity } from "@alepha/commerce";
+import type { PublicOrder, PublicOrderItem } from "@alepha/commerce";
 import type { CheckoutController } from "@alepha/commerce/checkout";
 import type { DurationLike } from "alepha/datetime";
 import { useClient, useQuery } from "alepha/react";
@@ -10,8 +10,8 @@ import { Poincon } from "../components/Poincon.tsx";
 import { Prix } from "../components/Prix.tsx";
 
 export interface MerciProps {
-  order: OrderEntity;
-  items: OrderItemEntity[];
+  order: PublicOrder;
+  items: PublicOrderItem[];
   /**
    * Invoice numbers issued for this order, oldest first.
    */

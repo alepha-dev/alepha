@@ -149,6 +149,14 @@ export class CartService {
   }
 
   /**
+   * The cart behind a token, if there is one. A read: unlike {@link resolve} it
+   * mints nothing.
+   */
+  public async findByToken(token: string): Promise<CartEntity | undefined> {
+    return this.cartRepo.findOne({ where: { token: { eq: token } } });
+  }
+
+  /**
    * The cart a signed-in customer already owns, if any.
    *
    * Most recently touched first: a customer who checked out from one device

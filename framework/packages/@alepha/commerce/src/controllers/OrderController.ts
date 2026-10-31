@@ -4,8 +4,8 @@ import { $secure } from "alepha/security";
 import { $action, ForbiddenError } from "alepha/server";
 
 import { refundLineSchema } from "../entities/orderRefunds.ts";
-import { orders } from "../entities/orders.ts";
 import { publicOrderItemSchema } from "../schemas/publicOrderItemSchema.ts";
+import { publicOrderSchema } from "../schemas/publicOrderSchema.ts";
 import { publicReturnSchema } from "../schemas/publicReturnSchema.ts";
 import { OrderService } from "../services/OrderService.ts";
 import { ReturnService } from "../services/ReturnService.ts";
@@ -35,9 +35,10 @@ export class OrderController {
         size: z.integer().min(1).max(100).optional(),
         page: z.integer().min(0).optional(),
       }),
-      response: db.page(orders.schema),
+      response: db.page(publicOrderSchema),
     },
-    handler: async ({ query, user }) => this.orders.listForUser(user.id, query),
+    handler: async ({ query, user }) =>
+      this.orders.listForUser(user.id, query) as any,
   });
 
   public readonly commerceOrderDetail = $action({
@@ -49,13 +50,13 @@ export class OrderController {
     schema: {
       params: z.object({ id: z.uuid() }),
       response: z.object({
-        order: orders.schema,
+        order: publicOrderSchema,
         items: z.array(publicOrderItemSchema),
       }),
     },
     handler: async ({ params, user }) => {
       const order = await this.ownOrder(params.id, user.id);
-      return { order, items: await this.orders.itemsOf(order.id) };
+      return { order, items: await this.orders.itemsOf(order.id) } as any;
     },
   });
 

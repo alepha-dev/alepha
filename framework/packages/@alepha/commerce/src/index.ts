@@ -31,6 +31,7 @@ export * from "./schemas/orderReturnStatusSchema.ts";
 export * from "./schemas/orderStatusSchema.ts";
 export * from "./schemas/publicCategorySchema.ts";
 export * from "./schemas/publicOrderItemSchema.ts";
+export * from "./schemas/publicOrderSchema.ts";
 export * from "./schemas/publicReturnSchema.ts";
 export * from "./schemas/publicVariantSchema.ts";
 export * from "./entities/products.ts";
