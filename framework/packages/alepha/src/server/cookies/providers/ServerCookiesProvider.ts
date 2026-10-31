@@ -44,6 +44,13 @@ export class ServerCookiesProvider {
   // difference with this budget leaves room for the prefixed chunk name.
   protected readonly CHUNK_LENGTH = 3800;
 
+  // Every cookie goes back on every request, and request headers are capped:
+  // 16 KB in total on Node, 8 KB for the Cookie header on a default nginx. Past
+  // that a request fails with 431 or 400, so warn while there is still room.
+  protected readonly COOKIE_BUDGET = 6000;
+
+  protected readonly warnedCookies = new Set<string>();
+
   public readonly onRequest = $hook({
     on: "server:request:before",
     handler: ({ request }) => {
@@ -79,6 +86,7 @@ export class ServerCookiesProvider {
         if (setCookieHeaders.length > 0) {
           request.reply.headers["set-cookie"] = setCookieHeaders;
         }
+        this.warnOverBudget(request.cookies);
       }
     },
   });
@@ -283,6 +291,41 @@ export class ServerCookiesProvider {
       : [];
 
     this.expire([cookieName, ...chunks], cookies, scope);
+  }
+
+  /**
+   * Warns once per cookie this response wrote when everything the client will
+   * send from now on passes the budget. Only written cookies are named and
+   * remembered: their names are the app's, whereas a request's cookie names are
+   * the client's to invent, without limit.
+   */
+  protected warnOverBudget(cookies: Cookies): void {
+    const sent: Record<string, string> = { ...cookies.req };
+    const written: Record<string, number> = {};
+
+    for (const [name, cookie] of Object.entries(cookies.res)) {
+      if (!cookie || cookie.maxAge === 0) {
+        delete sent[name];
+        continue;
+      }
+      sent[name] = cookie.value;
+      const cookieName = name.replace(/\.(0|[1-9]\d*)$/, "");
+      written[cookieName] = (written[cookieName] ?? 0) + cookie.value.length;
+    }
+
+    const total = Object.entries(sent).reduce(
+      (sum, [name, value]) => sum + name.length + value.length + 3,
+      0,
+    );
+    if (total <= this.COOKIE_BUDGET) return;
+
+    for (const [name, size] of Object.entries(written)) {
+      if (this.warnedCookies.has(name)) continue;
+      this.warnedCookies.add(name);
+      this.log.warn(
+        `Cookies for this client total ${total} bytes, near the 8 KB a default nginx accepts and the 16 KB Node does. "${name}" is ${size} bytes of that. A large value belongs in a server-side session, with only its ID in the cookie.`,
+      );
+    }
   }
 
   protected expire(
