@@ -34,6 +34,17 @@ export const publicProductSchema = z.object({
   description: z.text().optional(),
   price: z.integer(),
   currency: z.text(),
+  /**
+   * Struck through beside the price: only ever higher than it, and only in the
+   * product's own currency.
+   */
+  compareAtPrice: z.integer().optional(),
+  metaTitle: z.text().optional(),
+  metaDescription: z.text().optional(),
+  weightGrams: z.integer().optional(),
+  lengthMm: z.integer().optional(),
+  widthMm: z.integer().optional(),
+  heightMm: z.integer().optional(),
   images: z.array(z.text()),
   attributes: z.record(z.text(), z.any()).optional(),
   available: z.integer(),
@@ -117,6 +128,7 @@ export class ProductController {
           onSale,
           stock,
           list,
+          query.currency,
         );
         // Priced through a variant nobody can pick: not on sale after all.
         const price = this.priceOf(product, list, perVariant);
@@ -126,6 +138,12 @@ export class ProductController {
               {
                 ...this.publicView(product, query.currency),
                 price,
+                compareAtPrice: this.struck(
+                  product,
+                  product.compareAtPrice,
+                  price,
+                  query.currency,
+                ),
                 priceFrom,
                 available,
               },
@@ -166,6 +184,7 @@ export class ProductController {
         onSale,
         await this.stock.figuresFor([product.id]),
         list,
+        query.currency,
       );
       const price = this.priceOf(product, list, perVariant);
       if (price === undefined) {
@@ -174,6 +193,12 @@ export class ProductController {
       return {
         ...this.publicView(product, query.currency),
         price,
+        compareAtPrice: this.struck(
+          product,
+          product.compareAtPrice,
+          price,
+          query.currency,
+        ),
         priceFrom,
         available,
         variants: onSale.length > 0 ? perVariant : undefined,
@@ -235,6 +260,7 @@ export class ProductController {
     onSale: ProductVariantEntity[],
     stock: StockFigures,
     list: PriceList,
+    currency?: string,
   ) {
     if (onSale.length === 0) {
       return {
@@ -244,19 +270,44 @@ export class ProductController {
       };
     }
 
-    const perVariant = onSale.map((variant) => ({
-      id: variant.id,
-      options: variant.options as Record<string, string>,
-      price: list.of(product, variant)!,
-      image: variant.image,
-      available: stock.of(product.id, variant.id).available,
-    }));
+    const perVariant = onSale.map((variant) => {
+      const price = list.of(product, variant)!;
+      return {
+        id: variant.id,
+        options: variant.options as Record<string, string>,
+        price,
+        compareAtPrice: this.struck(
+          product,
+          variant.compareAtPrice ?? product.compareAtPrice,
+          price,
+          currency,
+        ),
+        image: variant.image,
+        available: stock.of(product.id, variant.id).available,
+      };
+    });
     const prices = perVariant.map((it) => it.price);
     return {
       priceFrom: new Set(prices).size > 1 ? Math.min(...prices) : undefined,
       available: perVariant.reduce((sum, it) => sum + it.available, 0),
       perVariant,
     };
+  }
+
+  /**
+   * The compare-at price, when there is something to compare. It is in the
+   * product's own currency, so it says nothing beside a price in another.
+   */
+  protected struck(
+    product: ProductEntity,
+    compareAtPrice: number | undefined,
+    price: number,
+    currency?: string,
+  ): number | undefined {
+    const comparable = !currency || currency === product.currency;
+    return comparable && compareAtPrice !== undefined && compareAtPrice > price
+      ? compareAtPrice
+      : undefined;
   }
 
   /**
@@ -271,6 +322,12 @@ export class ProductController {
       name: product.name,
       description: product.description,
       currency: currency ?? product.currency,
+      metaTitle: product.metaTitle,
+      metaDescription: product.metaDescription,
+      weightGrams: product.weightGrams,
+      lengthMm: product.lengthMm,
+      widthMm: product.widthMm,
+      heightMm: product.heightMm,
       images: product.images,
       attributes: product.attributes,
       optionGroups: product.optionGroups,

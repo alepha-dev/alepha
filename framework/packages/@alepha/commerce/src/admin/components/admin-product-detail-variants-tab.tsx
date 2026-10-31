@@ -304,6 +304,19 @@ const AdminVariantSheet = (props: AdminVariantSheetProps) => {
             $control: { width: 40 },
           })
           .optional(),
+        compareAtPrice: z
+          .integer()
+          .min(0)
+          .meta({
+            title: tr("commerce.admin.variants.fCompareAtPrice", {
+              default: "Compare-at price (cents)",
+            }),
+            description: tr("commerce.admin.variants.fCompareAtPriceHint", {
+              default: "Empty: the product's.",
+            }),
+            $control: { width: 40 },
+          })
+          .optional(),
         weightGrams: z
           .integer()
           .min(0)
@@ -336,6 +349,7 @@ const AdminVariantSheet = (props: AdminVariantSheetProps) => {
       initialValues: {
         sku: variant.sku,
         price: variant.price,
+        compareAtPrice: variant.compareAtPrice,
         weightGrams: variant.weightGrams,
         image: variant.image,
         active: variant.active,

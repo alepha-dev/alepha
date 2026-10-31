@@ -73,6 +73,8 @@ export class AdminShippingController {
         price: z.integer().min(0),
         currency: z.text({ minLength: 3, maxLength: 3 }).optional(),
         freeAbove: z.integer().min(0).optional(),
+        minWeightGrams: z.integer().min(0).optional(),
+        maxWeightGrams: z.integer().min(0).optional(),
         minDays: z.integer().min(0).max(365).optional(),
         maxDays: z.integer().min(0).max(365).optional(),
       }),

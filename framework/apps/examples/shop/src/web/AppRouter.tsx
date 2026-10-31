@@ -201,8 +201,9 @@ export class AppRouter {
     // `head` receives the loader's props directly — destructuring `{ props }`
     // silently yields undefined and the page falls back to the default title.
     head: (props: any) => ({
-      title: `${props.produit.name} · Atelier Aurore`,
-      description: props.produit.description,
+      title:
+        props.produit.metaTitle ?? `${props.produit.name} · Atelier Aurore`,
+      description: props.produit.metaDescription ?? props.produit.description,
     }),
     lazy: () => import("./pages/Produit.tsx"),
   });

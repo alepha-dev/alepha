@@ -35,6 +35,12 @@ interface Piece {
    * Grams.
    */
   poids: string;
+  /**
+   * The grams a delivery rate reads, on what `poids` says for a person.
+   */
+  grammes?: number;
+  compareAtPrice?: number;
+  metaTitle?: string;
   dimensions: string;
   drawing: string;
   stock: number;
@@ -130,9 +136,12 @@ export class ShopSeed {
         description:
           "Une goutte de nacre taillée à la main, suspendue à une chaîne forçat. La nacre est prélevée sur des coquilles d'élevage bretonnes ; deux gouttes ne sont jamais du même blanc.",
         price: 8900,
+        compareAtPrice: 10900,
+        metaTitle: "Collier en nacre et argent 925, taillé main",
         titre: "925",
         metal: "Argent",
         poids: "4,2 g",
+        grammes: 4,
         dimensions: "Chaîne 42 cm · goutte 18 × 11 mm",
         drawing: this.drawings.necklace(ARGENT),
         stock: 6,
@@ -254,6 +263,9 @@ export class ShopSeed {
         name: piece.name,
         description: piece.description,
         price: piece.price,
+        compareAtPrice: piece.compareAtPrice,
+        metaTitle: piece.metaTitle,
+        weightGrams: piece.grammes,
         kind: piece.kind,
         published: true,
         images: [fileId],

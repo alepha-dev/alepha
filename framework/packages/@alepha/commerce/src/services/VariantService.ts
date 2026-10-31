@@ -18,6 +18,7 @@ export interface VariantInput {
   sku: string;
   options: Record<string, string>;
   price?: number;
+  compareAtPrice?: number;
   image?: string;
   weightGrams?: number;
   position?: number;

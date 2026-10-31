@@ -106,6 +106,16 @@ export const commerceEn: Record<string, string> = {
   "commerce.admin.promotions.on": "On",
   "commerce.admin.detail.tabPrices": "Prices",
   "commerce.admin.detail.tabVariants": "Variants",
+  "commerce.admin.fCompareAtPrice": "Compare-at price (cents)",
+  "commerce.admin.fCompareAtPriceHint":
+    "Struck through beside the price when higher. EU law: the lowest price of the last 30 days.",
+  "commerce.admin.fHeight": "Height (mm)",
+  "commerce.admin.fLength": "Length (mm)",
+  "commerce.admin.fMetaDescription": "Description for search engines",
+  "commerce.admin.fMetaHint": "Empty: the name and the description.",
+  "commerce.admin.fMetaTitle": "Title for search engines",
+  "commerce.admin.fWeight": "Weight (g)",
+  "commerce.admin.fWidth": "Width (mm)",
   "commerce.admin.prices.empty": "Sold in $1 only.",
   "commerce.admin.prices.fCurrency": "Currency",
   "commerce.admin.prices.fPrice": "Price incl. tax (cents)",
@@ -125,6 +135,13 @@ export const commerceEn: Record<string, string> = {
   "commerce.admin.promotions.fCurrencyHint":
     "What the amounts are in, the shop's own when empty. A plain percentage applies in any currency.",
   "commerce.admin.rateCurrency": "Currency",
+  "commerce.admin.rateMaxWeight": "Up to (g)",
+  "commerce.admin.rateMinWeight": "Above (g)",
+  "commerce.admin.rateWeight": "Weight",
+  "commerce.admin.rateWeightHint":
+    "The weight band, one rate per band. Empty: any weight.",
+  "commerce.admin.variants.fCompareAtPrice": "Compare-at price (cents)",
+  "commerce.admin.variants.fCompareAtPriceHint": "Empty: the product's.",
   "commerce.admin.rateCurrencyHint":
     "Leave empty for the shop's own. Offered to a cart in this currency only.",
   "commerce.admin.stock.fVariant": "Variant",

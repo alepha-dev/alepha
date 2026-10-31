@@ -16,6 +16,17 @@ export interface CheckoutShippingQuote {
 }
 
 /**
+ * What a delivery rate depends on, beyond the destination and the subtotal.
+ */
+export interface ShippingQuoteContext {
+  /**
+   * The cart's, unset on one that never chose.
+   */
+  currency?: string;
+  weightGrams?: number;
+}
+
+/**
  * Where the checkout asks what delivery costs.
  *
  * ### Why this indirection exists
@@ -43,12 +54,11 @@ export abstract class ShippingQuoteProvider {
 
   /**
    * Options for a destination, or an empty array when delivery does not apply.
-   * `currency` is the cart's, unset on one that never chose.
    */
   abstract quote(
     country: string,
     subtotal: number,
-    currency?: string,
+    context?: ShippingQuoteContext,
   ): Promise<CheckoutShippingQuote[]>;
 
   /**
@@ -60,7 +70,7 @@ export abstract class ShippingQuoteProvider {
     country: string,
     subtotal: number,
     code: string,
-    currency?: string,
+    context?: ShippingQuoteContext,
   ): Promise<CheckoutShippingQuote | undefined>;
 }
 

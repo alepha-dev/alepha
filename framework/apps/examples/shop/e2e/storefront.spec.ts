@@ -8,6 +8,17 @@ import { expect, test } from "@playwright/test";
  * failing on.
  */
 test.describe("catalogue", () => {
+  test("a product on sale strikes its old price, and names itself to a crawler", async ({
+    page,
+  }) => {
+    await page.goto("/produit/collier-aurore");
+
+    await expect(page.locator(".prix.line-through")).toHaveText(/109/);
+    await expect(page).toHaveTitle(
+      "Collier en nacre et argent 925, taillé main",
+    );
+  });
+
   test("server-renders the pieces, so a crawler sees them", async ({
     page,
     request,

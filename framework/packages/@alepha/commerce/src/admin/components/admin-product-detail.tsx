@@ -175,8 +175,15 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
         categoryId: product?.categoryId,
         price: product?.price ?? 0,
         currency: product?.currency ?? "EUR",
+        compareAtPrice: product?.compareAtPrice,
         vatRateBps: product?.vatRateBps,
         description: product?.description ?? "",
+        metaTitle: product?.metaTitle,
+        metaDescription: product?.metaDescription,
+        weightGrams: product?.weightGrams,
+        lengthMm: product?.lengthMm,
+        widthMm: product?.widthMm,
+        heightMm: product?.heightMm,
         published: product?.published ?? false,
       },
       handler: async (values) => {
@@ -204,7 +211,18 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
 
         await client.commerceAdminProductUpdate({
           params: { id: productId },
-          body: values,
+          body: {
+            ...values,
+            // An emptied field arrives absent, which an update reads as "leave
+            // it": the sale would never end.
+            compareAtPrice: values.compareAtPrice ?? null,
+            metaTitle: values.metaTitle ?? null,
+            metaDescription: values.metaDescription ?? null,
+            weightGrams: values.weightGrams ?? null,
+            lengthMm: values.lengthMm ?? null,
+            widthMm: values.widthMm ?? null,
+            heightMm: values.heightMm ?? null,
+          },
         });
         toast.success(
           tr("commerce.admin.saved", { default: "Product saved." }),
@@ -235,8 +253,15 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
       kind: product.kind,
       price: product.price,
       currency: product.currency,
+      compareAtPrice: product.compareAtPrice,
       vatRateBps: product.vatRateBps,
       description: product.description ?? "",
+      metaTitle: product.metaTitle,
+      metaDescription: product.metaDescription,
+      weightGrams: product.weightGrams,
+      lengthMm: product.lengthMm,
+      widthMm: product.widthMm,
+      heightMm: product.heightMm,
       published: product.published,
     });
   }, [productQuery.data]);

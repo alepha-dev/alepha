@@ -46,10 +46,18 @@ export const productVariants = $entity({
     price: z.integer().min(0).optional(),
 
     /**
+     * Struck through beside the price, or unset to take the product's.
+     */
+    compareAtPrice: z.integer().min(0).optional(),
+
+    /**
      * A file id or an absolute URL, shown instead of the product's first image.
      */
     image: z.text({ maxLength: 500 }).optional(),
 
+    /**
+     * Or unset to take the product's.
+     */
     weightGrams: z.integer().min(0).optional(),
 
     /**

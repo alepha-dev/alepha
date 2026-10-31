@@ -186,6 +186,17 @@ export const AdminShipping = () => {
               </span>
             ),
           },
+          maxWeightGrams: {
+            label: tr("commerce.admin.rateWeight", { default: "Weight" }),
+            align: "right",
+            cell: (r) => (
+              <span className="text-muted-foreground text-xs tabular-nums">
+                {r.minWeightGrams != null || r.maxWeightGrams != null
+                  ? `${r.minWeightGrams ?? 0} - ${r.maxWeightGrams ?? "∞"} g`
+                  : "-"}
+              </span>
+            ),
+          },
           minDays: {
             label: tr("commerce.admin.delay", { default: "Lead time" }),
             cell: (r) => (
@@ -280,6 +291,29 @@ const AdminRateSheet = (props: AdminRateSheetProps) => {
           .meta({
             title: tr("commerce.admin.freeAboveCents", {
               default: "Free above (cents)",
+            }),
+            $control: { width: 50 },
+          })
+          .optional(),
+        minWeightGrams: z
+          .integer()
+          .min(0)
+          .meta({
+            title: tr("commerce.admin.rateMinWeight", {
+              default: "Above (g)",
+            }),
+            description: tr("commerce.admin.rateWeightHint", {
+              default: "The weight band, one rate per band. Empty: any weight.",
+            }),
+            $control: { width: 50 },
+          })
+          .optional(),
+        maxWeightGrams: z
+          .integer()
+          .min(0)
+          .meta({
+            title: tr("commerce.admin.rateMaxWeight", {
+              default: "Up to (g)",
             }),
             $control: { width: 50 },
           })

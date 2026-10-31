@@ -41,6 +41,10 @@ export interface PricedCart {
   subtotal: number;
   currency: string;
   /**
+   * What the parcel weighs: a delivery rate's band reads it.
+   */
+  weightGrams: number;
+  /**
    * The discount this cart earned.
    */
   discount?: CartDiscount;
@@ -89,6 +93,11 @@ export interface PricedCartLine {
    */
   rateBps?: number;
   quantity: number;
+  /**
+   * What one unit weighs, the variant's over the product's, `0` when nobody
+   * said.
+   */
+  weightGrams: number;
   /**
    * This line's share of the cart's discount.
    */
@@ -443,6 +452,7 @@ export class CartService {
         discountTotal: 0,
         subtotal: 0,
         currency: cart.currency ?? this.prices.baseCurrency,
+        weightGrams: 0,
       };
     }
 
@@ -492,6 +502,7 @@ export class CartService {
         unitPrice,
         rateBps: product.vatRateBps,
         quantity: item.quantity,
+        weightGrams: variant?.weightGrams ?? product.weightGrams ?? 0,
         discount: 0,
         lineTotal: unitPrice * item.quantity,
         image: variant?.image ?? product.images[0],
@@ -508,6 +519,10 @@ export class CartService {
       itemsTotal,
       discountTotal: discount?.amount ?? 0,
       subtotal: lines.reduce((sum, l) => sum + l.lineTotal, 0),
+      weightGrams: lines.reduce(
+        (sum, l) => sum + l.weightGrams * l.quantity,
+        0,
+      ),
       currency:
         cart.currency ??
         (lines[0]

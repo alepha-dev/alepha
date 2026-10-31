@@ -23,6 +23,13 @@ export interface CreateProduct {
   description?: string;
   price: number;
   currency?: string;
+  compareAtPrice?: number;
+  metaTitle?: string;
+  metaDescription?: string;
+  weightGrams?: number;
+  lengthMm?: number;
+  widthMm?: number;
+  heightMm?: number;
   categoryId?: string;
   /**
    * VAT rate in basis points; omit to bill at the seller's default rate.
@@ -43,6 +50,23 @@ export interface CreateProduct {
   attributes?: Record<string, any>;
   published?: boolean;
 }
+
+/**
+ * What a form leaves empty to clear: `null`, since an absent field changes
+ * nothing.
+ */
+type Clearable =
+  | "compareAtPrice"
+  | "metaTitle"
+  | "metaDescription"
+  | "weightGrams"
+  | "lengthMm"
+  | "widthMm"
+  | "heightMm";
+
+export type UpdateProduct = Omit<Partial<CreateProduct>, Clearable> & {
+  [K in Clearable]?: CreateProduct[K] | null;
+};
 
 export interface CatalogQuery {
   size?: number;
@@ -108,10 +132,7 @@ export class CatalogService {
     });
   }
 
-  public async update(
-    id: string,
-    data: Partial<CreateProduct>,
-  ): Promise<ProductEntity> {
+  public async update(id: string, data: UpdateProduct): Promise<ProductEntity> {
     const current = await this.repo.getById(id);
     const kind = data.kind ?? current.kind;
     // Re-validate against the (possibly new) kind: changing `kind` on an

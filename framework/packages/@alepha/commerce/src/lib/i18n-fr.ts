@@ -150,6 +150,17 @@ export const commerceFr: Record<string, string> = {
   "commerce.admin.ratePriceCents": "Tarif TTC (centimes)",
   "commerce.admin.detail.tabPrices": "Prix",
   "commerce.admin.freeAboveCents": "Offert à partir de (centimes)",
+  "commerce.admin.fCompareAtPrice": "Prix barré (centimes)",
+  "commerce.admin.fCompareAtPriceHint":
+    "Barré à côté du prix s'il est plus élevé. Droit européen : le prix le plus bas des 30 derniers jours.",
+  "commerce.admin.fHeight": "Hauteur (mm)",
+  "commerce.admin.fLength": "Longueur (mm)",
+  "commerce.admin.fMetaDescription":
+    "Description pour les moteurs de recherche",
+  "commerce.admin.fMetaHint": "Vide : le nom et la description.",
+  "commerce.admin.fMetaTitle": "Titre pour les moteurs de recherche",
+  "commerce.admin.fWeight": "Poids (g)",
+  "commerce.admin.fWidth": "Largeur (mm)",
   "commerce.admin.prices.empty": "Vendu en $1 uniquement.",
   "commerce.admin.prices.fCurrency": "Devise",
   "commerce.admin.prices.fPrice": "Prix TTC (centimes)",
@@ -169,6 +180,13 @@ export const commerceFr: Record<string, string> = {
   "commerce.admin.promotions.fCurrencyHint":
     "La devise des montants, celle de la boutique si vide. Un simple pourcentage s'applique dans toutes les devises.",
   "commerce.admin.rateCurrency": "Devise",
+  "commerce.admin.rateMaxWeight": "Jusqu'à (g)",
+  "commerce.admin.rateMinWeight": "Au-delà de (g)",
+  "commerce.admin.rateWeight": "Poids",
+  "commerce.admin.rateWeightHint":
+    "La tranche de poids, un tarif par tranche. Vide : tout poids.",
+  "commerce.admin.variants.fCompareAtPrice": "Prix barré (centimes)",
+  "commerce.admin.variants.fCompareAtPriceHint": "Vide : celui du produit.",
   "commerce.admin.rateCurrencyHint":
     "Laissez vide pour celle de la boutique. Proposé uniquement aux paniers dans cette devise.",
   "commerce.admin.minDays": "Délai min. (jours)",

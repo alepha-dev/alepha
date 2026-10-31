@@ -51,6 +51,14 @@ export const shippingRates = $entity({
     freeAbove: z.integer().min(0).optional(),
 
     /**
+     * The weight band it applies to, either end open: above the floor, up to
+     * and including the ceiling. One rate per band, each with its `code`: a
+     * carrier's grid is `up to 1 kg`, `1 to 2 kg`. Unset: any weight.
+     */
+    minWeightGrams: z.integer().min(0).optional(),
+    maxWeightGrams: z.integer().min(0).optional(),
+
+    /**
      * Shown to the buyer as an estimate.
      */
     minDays: z.integer().min(0).optional(),

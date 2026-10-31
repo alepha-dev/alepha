@@ -5,7 +5,10 @@ import { $logger } from "alepha/logger";
 import { $repository, DatabaseProvider } from "alepha/orm";
 
 import { CartDiscountProvider } from "../../cart/providers/CartDiscountProvider.ts";
-import { CartService } from "../../cart/services/CartService.ts";
+import {
+  CartService,
+  type PricedCart,
+} from "../../cart/services/CartService.ts";
 import {
   CommerceError,
   InsufficientStockError,
@@ -26,7 +29,10 @@ import {
 import type { PaymentHandoff } from "../providers/CheckoutPaymentProvider.ts";
 import { CheckoutPaymentProvider } from "../providers/CheckoutPaymentProvider.ts";
 import { OrderDocumentsProvider } from "../providers/OrderDocumentsProvider.ts";
-import type { CheckoutShippingQuote } from "../providers/ShippingQuoteProvider.ts";
+import type {
+  CheckoutShippingQuote,
+  ShippingQuoteContext,
+} from "../providers/ShippingQuoteProvider.ts";
 import { ShippingQuoteProvider } from "../providers/ShippingQuoteProvider.ts";
 import { VatNumberChecker } from "../providers/VatNumberChecker.ts";
 import { AddressService } from "./AddressService.ts";
@@ -240,7 +246,7 @@ export class CheckoutService {
               country,
               priced.subtotal,
               session.shippingMethod,
-              priced.cart.currency,
+              this.parcelOf(priced),
             ),
             context,
           )
@@ -268,7 +274,7 @@ export class CheckoutService {
       );
     }
     const priced = await this.carts.price(session.cartId);
-    return this.shipping.quote(country, priced.subtotal, priced.cart.currency);
+    return this.shipping.quote(country, priced.subtotal, this.parcelOf(priced));
   }
 
   /**
@@ -295,7 +301,7 @@ export class CheckoutService {
       country,
       priced.subtotal,
       code,
-      priced.cart.currency,
+      this.parcelOf(priced),
     );
     if (!quote) {
       throw new CommerceError(
@@ -360,7 +366,7 @@ export class CheckoutService {
         const offered = await this.shipping.quote(
           country,
           priced.subtotal,
-          priced.cart.currency,
+          this.parcelOf(priced),
         );
         if (offered.length === 0) {
           throw new NoShippingRateError({ country });
@@ -376,7 +382,7 @@ export class CheckoutService {
         country,
         priced.subtotal,
         session.shippingMethod,
-        priced.cart.currency,
+        this.parcelOf(priced),
       );
       if (!quote) {
         throw new CommerceError(
@@ -773,7 +779,7 @@ export class CheckoutService {
     const quotes = await this.shipping.quote(
       country,
       priced.subtotal,
-      priced.cart.currency,
+      this.parcelOf(priced),
     );
     if (this.shipping.delivers && quotes.length === 0) {
       throw new NoShippingRateError({ country });
@@ -820,6 +826,16 @@ export class CheckoutService {
       taxTotal: tax.total,
       grandTotal: priced.subtotal + shippingTotal,
       currency: priced.currency,
+    };
+  }
+
+  /**
+   * What a delivery rate needs to know about the basket.
+   */
+  protected parcelOf(priced: PricedCart): ShippingQuoteContext {
+    return {
+      currency: priced.cart.currency,
+      weightGrams: priced.weightGrams,
     };
   }
 

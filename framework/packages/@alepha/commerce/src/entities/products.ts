@@ -47,6 +47,29 @@ export const products = $entity({
     price: z.integer().min(0),
     currency: db.default(z.text({ minLength: 3, maxLength: 3 }), "EUR"),
 
+    /**
+     * What it sold for before, struck through beside `price`. Shown only when
+     * higher. EU law (the Omnibus directive) wants this to be the lowest price
+     * of the last 30 days: nothing here checks that, it is the merchant's claim.
+     */
+    compareAtPrice: z.integer().min(0).optional(),
+
+    /**
+     * What a search engine reads, instead of the name and the description.
+     */
+    metaTitle: z.text({ maxLength: 200 }).optional(),
+    metaDescription: z.text({ maxLength: 500 }).optional(),
+
+    /**
+     * The parcel it makes: a weight is what a delivery rate's band reads. A line
+     * with none weighs nothing, which is right for a download and undercharges
+     * a good someone forgot to weigh.
+     */
+    weightGrams: z.integer().min(0).optional(),
+    lengthMm: z.integer().min(0).optional(),
+    widthMm: z.integer().min(0).optional(),
+    heightMm: z.integer().min(0).optional(),
+
     categoryId: z.uuid().optional(),
 
     /**

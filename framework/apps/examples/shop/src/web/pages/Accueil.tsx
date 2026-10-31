@@ -125,6 +125,13 @@ const Accueil = (props: AccueilProps) => {
                       currency={produit.currency}
                       className="text-lg sm:text-xl"
                     />
+                    {produit.compareAtPrice && !produit.priceFrom ? (
+                      <Prix
+                        cents={produit.compareAtPrice}
+                        currency={produit.currency}
+                        barre
+                      />
+                    ) : null}
                   </span>
                 </Link>
               </li>

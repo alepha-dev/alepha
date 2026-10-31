@@ -67,6 +67,9 @@ const Produit = (props: ProduitProps) => {
   );
   const parVariante = (produit.variants?.length ?? 0) > 0;
   const stock = parVariante ? (variante?.available ?? 0) : disponible;
+  const prixBarre = parVariante
+    ? variante?.compareAtPrice
+    : produit.compareAtPrice;
 
   const surCommande = produit.kind === "engraved";
   const dematerialise = produit.kind === "digital";
@@ -103,12 +106,15 @@ const Produit = (props: ProduitProps) => {
       <div className="pose" style={{ animationDelay: "120ms" }}>
         <h1 className="estampe-lg">{produit.name}</h1>
 
-        <div className="mt-6">
+        <div className="mt-6 flex items-baseline gap-3">
           <Prix
             cents={variante?.price ?? produit.price}
             currency={produit.currency}
             className="text-2xl"
           />
+          {prixBarre ? (
+            <Prix cents={prixBarre} currency={produit.currency} barre />
+          ) : null}
         </div>
 
         <p className="text-muted-foreground mt-6">{produit.description}</p>

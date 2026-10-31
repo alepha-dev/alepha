@@ -50,6 +50,7 @@ const variantInputSchema = z.object({
   sku: z.text({ minLength: 1, maxLength: 64 }),
   options: z.record(z.text(), z.text()),
   price: z.integer().min(0).optional(),
+  compareAtPrice: z.integer().min(0).optional(),
   image: z.text({ maxLength: 500 }).optional(),
   weightGrams: z.integer().min(0).optional(),
   position: z.integer().optional(),
@@ -64,6 +65,13 @@ const productInputSchema = z.object({
   categoryId: z.uuid().optional(),
   price: z.integer().min(0),
   currency: z.text({ minLength: 3, maxLength: 3 }).optional(),
+  compareAtPrice: z.integer().min(0).optional(),
+  metaTitle: z.text({ maxLength: 200 }).optional(),
+  metaDescription: z.text({ maxLength: 500 }).optional(),
+  weightGrams: z.integer().min(0).optional(),
+  lengthMm: z.integer().min(0).optional(),
+  widthMm: z.integer().min(0).optional(),
+  heightMm: z.integer().min(0).optional(),
   /*
    * VAT rate in basis points.
    *
@@ -80,6 +88,20 @@ const productInputSchema = z.object({
   config: z.record(z.text(), z.any()).optional(),
   attributes: z.record(z.text(), z.any()).optional(),
   published: z.boolean().optional(),
+});
+
+/**
+ * `null` clears what an update would otherwise leave alone: a sale ends by
+ * taking the compare-at price off.
+ */
+const productUpdateSchema = productInputSchema.partial().extend({
+  compareAtPrice: z.integer().min(0).nullable().optional(),
+  metaTitle: z.text({ maxLength: 200 }).nullable().optional(),
+  metaDescription: z.text({ maxLength: 500 }).nullable().optional(),
+  weightGrams: z.integer().min(0).nullable().optional(),
+  lengthMm: z.integer().min(0).nullable().optional(),
+  widthMm: z.integer().min(0).nullable().optional(),
+  heightMm: z.integer().min(0).nullable().optional(),
 });
 
 const priceInputSchema = z.object({
@@ -283,7 +305,7 @@ export class AdminProductController {
     description: "Update a product",
     schema: {
       params: z.object({ id: z.uuid() }),
-      body: productInputSchema.partial(),
+      body: productUpdateSchema,
       response: products.schema,
     },
     handler: async ({ params, body }) => this.catalog.update(params.id, body),
