@@ -1,5 +1,5 @@
 # The compose file of the framework guide "Postgres and Redis on a Bay stack"
-# (framework/docs/1-guides/8-deployment/6-bay-stack.md), applied on a real
+# (framework/docs/1-guides/12-deployment/6-bay-stack.md), applied on a real
 # Docker daemon by TestStackPostgresRedisDaemon. Change both together.
 services:
   db:
