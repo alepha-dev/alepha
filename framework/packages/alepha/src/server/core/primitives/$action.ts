@@ -279,9 +279,10 @@ export interface ActionPrimitiveOptions<
    *
    * The deadline covers the `use` middlewares and the handler (a `$lock`
    * wait or a `$secure` key fetch counts), not the request body's upload nor
-   * a streamed response body. When it passes, the action's signal aborts
-   * with the `TimeoutError`, so the handler's outbound calls and queries stop
-   * too, and the caller is answered at once.
+   * a streamed response body. When it passes, `alepha.context.signal` aborts
+   * with the `TimeoutError`, so the outbound calls and queries reading it stop
+   * too, and the caller is answered at once. The request's own `signal` fires
+   * on a disconnect only.
    *
    * None by default: the `serverApiOptions` atom's `timeout` sets one for
    * every action, and `false` opts this one out of it. A timeout passes

@@ -147,7 +147,7 @@ export const renderWithAlepha = async (
  * @returns The render result with the Alepha instance
  *
  * @public For applications' own tests, and listed as such in the testing
- * guide (`1-guides/7-testing/2-react-tests.md`). No caller here by design -
+ * guide (`1-guides/11-testing/2-react-tests.md`). No caller here by design -
  * this module IS the caller-facing surface. Do not delete it for being
  * unreferenced.
  */

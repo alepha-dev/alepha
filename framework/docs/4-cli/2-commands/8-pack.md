@@ -1,6 +1,6 @@
 # Pack Command
 
-Pack a built workspace into a deployable `tar.zst`. The archive contains everything a remote runner needs to deploy the app - Alepha Bay, Alepha Rocket, or `alepha deploy --prebuilt` in the app's checkout - and nothing else.
+Pack a built workspace into a deployable `tar.zst`. The archive contains everything a remote runner needs to deploy the app - Alepha Bay, Lore Deploy, or `alepha deploy --prebuilt` in the app's checkout - and nothing else.
 
 ## Quick Start
 
@@ -24,7 +24,7 @@ manifest.json         what the build declared
 migrations/           SQL migration files (if present)
 ```
 
-No source, no `alepha.config.ts`, no `package.json` - the deploy side reads everything it needs from `manifest.json` (which slices are inside, detected resources, declared env keys, platform options) and never touches source. Excluded: `node_modules`, `.alepha` build cache, `e2e`, `playwright-report`, `coverage`, and OS junk files.
+No source, no `alepha.config.ts`, no `package.json` - the deploy side reads everything it needs from `manifest.json` (which slices are inside, detected resources, declared env keys, platform options) and never touches source. Excluded: `node_modules`, the `.alepha` build cache, `e2e`, `playwright-report`, `test-results`, `coverage`, source maps (`*.map`, see below) and OS junk files (`.DS_Store`, `._*`).
 
 ## Why zstd, and why the window is pinned
 
@@ -47,12 +47,20 @@ Source maps are excluded from the artifact and written to a sibling `<project>-<
 | Flag             | Description                                                                                     |
 | ---------------- | ----------------------------------------------------------------------------------------------- |
 | `--tag`, `-t`    | Tag suffix for the artifact name, Docker-style (default: `latest` → `<project>-latest.tar.zst`) |
-| `--output`, `-o` | Output directory for the archive (default: current directory)                                   |
+| `--output`, `-o` | Output directory for the archive (default: the project directory)                               |
 | `--name`, `-n`   | Project name for the artifact filename (default: `package.json` `name`)                         |
 
 The project name comes from `package.json` `name`, slugified for the filename (`@acme/app` → `acme-app`).
 
 `--name` is what a deploy passes when the app is known by another name: `infra({ name })` sets the identity the deploy side uses, and it is free to differ from the package name. The Bay adapter of `alepha deploy` passes it for you (`alepha pack --name <project>`), so `pack` writes the file the deploy then looks for. Unlike the `package.json` default it is used verbatim, so it has to be a plain filename: letters, digits, `.`, `_` and `-`.
+
+## Refusals
+
+`pack` checks what it is about to archive and stops, rather than produce an artifact that fails later on the deploy side:
+
+- **No `dist/`**: run `alepha build` first.
+- **No `dist/manifest.json`**: the build predates the manifest. Rebuild with the current `alepha`.
+- **A database but no `migrations/`**: the manifest says the app has a database and there is no `migrations/` next to `dist/`, so the deploy would boot with no schema. Generate them with `alepha db migrations create`, or make them reachable from this workspace when they live in another one.
 
 ## Deploying a Packed Artifact
 
@@ -66,4 +74,4 @@ alepha deploy --prebuilt
 
 `--prebuilt` skips the Vite bundle steps and reads the detected resources from `dist/manifest.json`, so the app's source is never imported. Only the deploy config (`wrangler.jsonc`) is regenerated.
 
-Extracted on its own, the archive has no environments, and `alepha deploy --prebuilt` stops on "Missing infra configuration". An orchestrator that deploys the bare artifact (Alepha Rocket, Lore's deploy runner) supplies the environments itself. This is the workflow those orchestrators run: build once, pack once, deploy the same artifact to many environments or tenants.
+Extracted on its own, the archive has no environments, and `alepha deploy --prebuilt` stops on "Missing infra configuration". An orchestrator that deploys the bare artifact (Lore Deploy) supplies the environments itself. This is the workflow those orchestrators run: build once, pack once, deploy the same artifact to many environments or tenants.

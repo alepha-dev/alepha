@@ -1,0 +1,781 @@
+# Routing
+
+Alepha uses the `$page` primitive to define React routes, with support for data loading, code splitting, SSR, SSG, nested routing, and type-safe parameters.
+
+## Setup
+
+```typescript check
+import { $page } from "alepha/react/router";
+```
+
+Routes are defined as class properties. The class is registered with the Alepha instance in your entry files.
+
+## Defining Pages
+
+A complete example from a real Alepha application:
+
+```typescript
+import { z } from "alepha";
+import { $page } from "alepha/react/router";
+import { $client } from "alepha/server/links";
+
+import type { CountApi } from "./CountApi.ts";
+
+export class AppRouter {
+  countApi = $client<CountApi>();
+
+  home = $page({
+    head: { title: "Home" },
+    schema: {
+      query: z.object({
+        name: z.text({ default: "Alepha" }),
+      }),
+    },
+    loader: async ({ query }) => {
+      return {
+        greeting: `Hello, ${query.name} SSR!`,
+        count: await this.countApi.inc().then((result) => result.count),
+      };
+    },
+    lazy: () => import("./Home.tsx"),
+  });
+
+  about = $page({
+    head: { title: "About" },
+    path: "/about",
+    lazy: () => import("./About.tsx"),
+  });
+}
+```
+
+## Page Options
+
+### name
+
+The page's route name, used by `router.push("home")`, `router.path("home")` and `useRouter<AppRouter>()`'s type-safe names. Defaults to the class property key (`home`, `about` above) and must be unique.
+
+### path
+
+URL pattern with parameter support. A child page's path is appended to its parent's, so a page only declares its own segment. If omitted, it defaults to `""`: a root page answers on `/`, a child page on its parent's path (an index page).
+
+```typescript
+path: "/users/:id";
+path: "/blog/:slug";
+```
+
+### schema
+
+Type-safe URL parameters and query strings using Zod schemas.
+
+```typescript
+schema: {
+  params: z.object({ id: z.integer() }),
+  query: z.object({ tab: z.text().optional() }),
+}
+```
+
+Parameters and query values are validated and typed in the `loader` and component props.
+
+### loader
+
+Data fetching function. Receives typed `params` and `query`, every prop returned by the parent layers' loaders, and the router state (`url`, `name`, `head`, `meta`). The returned object is passed to the component as props, and to the loaders of the child pages. In SSR, it runs on the server and its result is serialized into the HTML, so the browser does not run it again when it hydrates. During client navigation it runs in the browser: call the API through a `$client`, never a server service.
+
+```typescript
+loader: async ({ params, query }) => {
+  const user = await this.userApi.getUser({ params: { id: params.id } });
+  return { user };
+};
+```
+
+When the URL changes, only the layers whose page, params or query changed re-run their loader; the others keep their props. A layer that re-runs forces every layer below it to re-run too, since their loaders received its props:
+
+```mermaid
+flowchart TD
+  A[Navigation to a new URL] --> B[Match the route: root layout to leaf page]
+  B --> C{Next layer: same page, params and query as before?}
+  C -->|yes, and no layer above re-ran| D[Reuse its props]
+  C -->|no| E[Run its use middleware, then its loader]
+  E --> F[Merge the result into the props passed down]
+  D --> G{More layers?}
+  F --> G
+  G -->|yes| C
+  G -->|no| H[Render the layers into nested NestedViews]
+```
+
+### component and lazy
+
+Provide the React component to render. Use `lazy` for code splitting (recommended):
+
+```typescript
+// Code splitting (recommended)
+lazy: () => import("./UserProfile.tsx")
+
+// Direct component
+component: ({ user }) => <div>{user.name}</div>
+```
+
+Lazy-loaded modules must use a default export.
+
+A page with neither `component` nor `lazy` renders a bare `<NestedView />`: a pure layout layer, useful for grouping children under a path, a loader or a `use` guard without any markup of its own.
+
+### head
+
+Set document head tags (title, meta, etc.). Can be static or dynamic:
+
+```typescript
+// Static
+head: {
+  title: "About Us";
+}
+
+// Dynamic, based on loader data
+head: (props) => ({
+  title: props.user.name,
+  description: `Profile of ${props.user.name}`,
+});
+```
+
+#### Canonical URLs
+
+Every page gets a `<link rel="canonical">`, plus `og:url` and `twitter:url`, without declaring anything. Set `PUBLIC_URL` and they are built from it and the page's matched route path:
+
+```txt
+PUBLIC_URL=https://example.com   →   <link rel="canonical" href="https://example.com/docs/routing">
+```
+
+It is built from the **route path**, not the request URL, so `?utm_source=newsletter` and a trailing slash never reach the tag - collapsing those duplicates is the entire job of a canonical, and one built from `location.href` would certify them instead.
+
+Nothing is emitted when there is no `PUBLIC_URL` to build on, for wildcard and `/404` routes, or when a layer errored - in each case there is no single URL the page could honestly name, and a relative canonical resolves against whichever host served it, which is exactly the ambiguity being removed.
+
+To point a page somewhere else - a duplicate that should defer to the original - set `url` yourself:
+
+```typescript
+head: {
+  url: "https://example.com/docs/routing";
+}
+```
+
+Set it on a **page**, never in the global `$head()`: there it names the same URL for the whole site, and search engines read that as every page being a duplicate of that one. Alepha logs a warning if you do.
+
+### static
+
+Pre-render the page at build time (SSG). On the server it goes through the automatic [page cache](/docs/guides-frontend-page-cache) like any other page, and is kept until the next deploy whether or not it has a loader.
+
+```typescript
+// Simple static page
+static: true
+
+// With predefined entries
+static: {
+  entries: [
+    { params: { slug: "hello-world" } },
+    { params: { slug: "getting-started" } },
+  ],
+}
+```
+
+> **The prerender runs `configure`, never `start`.** A static page is rendered at build time in an application that has been configured and not started, since starting it would listen on a port and connect to its databases inside the build. So a value a `$hook({ on: "start" })` puts in the store is missing from the prerendered HTML, while the browser, which runs `start` before it hydrates, has it. If the page reads that value, the two trees differ and React reports a hydration error (#418) on every first load. Set anything a static page reads from the store on `configure`:
+>
+> ```typescript
+> class Themes {
+>   alepha = $inject(Alepha);
+>
+>   register = $hook({
+>     on: "configure", // not "start": the prerender never runs it
+>     handler: () => this.alepha.store.set(uiThemeListAtom, THEMES),
+>   });
+> }
+> ```
+
+### ssr
+
+Disable server-side rendering for the page component (`@default true`). With `ssr: false` the component renders client-side only (wrapped in `<ClientOnly />` internally), but the **loader still runs on the server** - data fetching is unaffected. The value is decided at the leaf and inherited as a default by descendants: `ssr: false` on a parent acts as the default for its children, and a child can override with `ssr: true`.
+
+A page behind a guard (`use: [$secure()]` on the page or on a layout above it) with no explicit `ssr` defaults to `ssr: false`: nobody who cannot run JavaScript gets past the guard, so painting its HTML on the server would cost CPU for no reader. An explicit `ssr: true` opts back in.
+
+```typescript
+ssr: false;
+```
+
+#### Browser-only modules: `*.client.tsx`
+
+`ssr: false` stops the server from rendering a page, not from bundling it: the
+build follows every `import()` it can see, so an editor or a chart library
+reached only from a client-rendered page still ships in the server bundle.
+Name the file that pulls it in `*.client.tsx` (or `.client.ts`) and it does not
+exist on the server. Every server-side build, and the server half of
+`alepha dev`, replaces it with a component that renders nothing, so nothing it
+imports is resolved there. The browser gets the real module.
+
+```tsx
+// Reports.client.tsx imports the chart library. The server never sees it.
+reports = $page({
+  path: "/reports",
+  ssr: false,
+  lazy: () => import("./components/Reports.client.tsx"),
+});
+```
+
+Reach a `.client` module only from code the server never renders: a lazy page
+that is not server-rendered (`ssr: false`, or beneath a guarded layout such as
+`$secure()`), or a component inside `<ClientOnly>`. Rendered on the server
+anyway, it renders nothing and hydration reports the mismatch. Server code that
+imports one of its exports **by name** fails the build. Files under
+`node_modules` are never replaced.
+
+### stream
+
+Buffer the HTML instead of streaming it, so the page can choose its status code (`@default true`).
+
+A page is streamed with an early `<head>` flush by default: the head leaves before the loader runs, which is what makes the first paint fast. The cost is that the HTTP status is committed by then, so a page whose existence depends on data cannot answer `404` - a missing product renders the error boundary with a `200`, which a crawler indexes as a real page.
+
+With `stream: false` the page renders to a string first and only then replies, so `onServerResponse` sees the finished render and can set `reply.status`.
+
+```typescript
+product = $page({
+  path: "/product/:slug",
+  stream: false,
+  loader: async ({ params }) => {
+    const product = await this.api.find(params.slug);
+    if (!product) throw new NotFoundError("No such product");
+    return { product };
+  },
+  onServerResponse: ({ reply }) => {
+    if (/* the loader found nothing */) reply.status = 404;
+  },
+});
+```
+
+Use it for the handful of routes that can legitimately not exist - a product, an article, a profile. Leave it alone everywhere else: buffering delays the first byte by the whole render.
+
+### cache
+
+The automatic [page cache](/docs/guides-frontend-page-cache), for this page. A page that reads nothing about its visitor is cached with no option (until the next deploy without a loader, 60 seconds with one); `cache: { ttl }` sets another lifetime, `cache: { invalidatedBy }` names the writes that purge it, and `cache: false` opts out.
+
+```typescript
+cache: { ttl: [1, "hour"], invalidatedBy: [{ action: "productUpdate" }] }
+```
+
+### use
+
+Attach middlewares to the page, such as a guard. A `$cache` here is refused: the page cache is automatic, and caching the whole document would store the visitor's private state with it.
+
+```typescript
+use: [$secure()];
+```
+
+> **Note.** **`$secure` on a page is a real guard.** An anonymous visitor is refused at the router: with a `login` route declared, the result is a redirect to `/login?redirect=<path>`, and the loader's data never reaches the HTML; with no login route, the server answers 401. A signed-in visitor who lacks the permissions is not sent to the login page, which would loop: the server renders the not-found page with a `404`. The two `$secure` variants refuse differently under the hood (the browser returns, the server throws), and the router normalises both - which also means a page's own `errorHandler` cannot catch the refusal, because on the server the middleware chain wraps the render.
+>
+> Keep `$secure` on the endpoints underneath as well. Defense in depth: the API answers 401 whatever the interface does.
+>
+> **Two sign-in pages.** Exactly one route can be called `login`, so an application serving two realms - a back office whose agents sign in with an identifier, a password and a realm, beside a public side asking for an email and a password - cannot say which door a denied page belongs to, and every refusal lands on whichever page holds the name. Set `loginRoutesAtom` to map a path prefix to a route name, first match wins:
+>
+> ```typescript
+> alepha.store.set(loginRoutesAtom, [
+>   { prefix: "/admin", route: "agent" },
+>   { prefix: "/", route: "signIn" },
+> ]);
+> ```
+>
+> A prefix list rather than a resolver function, so the value is data: it validates, it serialises into the store, and it is set the same way on the server and in the browser. Unset - or set to a list nothing matches, or one naming a route that does not exist - the router resolves `login` exactly as it always did, so a single-realm application never touches this.
+
+### can
+
+UI-affordance predicate for the page's navigation entry - **not security**. Navigation surfaces (sidebar, breadcrumbs, command palette) consult it to hide or disable the entry; the router never does, and nothing returns a 403. For real access control, gate the page with `use: [$secure({ permissions })]`, which is server-enforced. A page guarded that way with no `can` of its own gets one derived from the guard's permissions, so navigation surfaces hide it without the permissions being declared twice; an explicit `can` always wins.
+
+```typescript
+can: ({ has }) => has("admin"); // hide the nav entry
+can: ({ has }) => has("admin") || "disabled"; // show it greyed out
+```
+
+### redirect
+
+Redirect to another path when this page is matched - shorthand for throwing a `Redirection` in the loader. The redirect happens before any loader or component rendering.
+
+```typescript
+home = $page({
+  path: "/",
+  redirect: "/dashboard",
+});
+```
+
+### nav
+
+Navigation metadata - declares the page's presence in navigation surfaces (sidebar, breadcrumbs, command palette). A page without `nav` is route-only: reachable by URL but not listed. `label`, `icon`, `description`, and `badge` accept any `ReactNode`. Visibility is UI-only - an entry hides when `nav.hidden` is set, when `nav.permission` isn't fully granted, or when `can()` returns `false`.
+
+```typescript
+users = $page({
+  path: "/users",
+  nav: { label: "Users", icon: <Users /> },
+  lazy: () => import("./pages/Users"),
+});
+```
+
+| Field         | Type                 | Description                                                                                                          |
+| ------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `label`       | `ReactNode`          | Entry label. Falls back to the page's `label`, then its `head.title`.                                                |
+| `icon`        | `ReactNode`          | Leading icon.                                                                                                        |
+| `group`       | `string`             | Section the entry belongs to: the sidebar group heading and the command-palette section.                             |
+| `order`       | `number`             | Sort order within the group, ascending.                                                                              |
+| `permission`  | `string \| string[]` | Permissions required to see the entry, all of them, as in `$secure({ permissions })`. For OR or custom logic, `can`. |
+| `keywords`    | `string[]`           | Extra command-palette search terms beyond the label.                                                                 |
+| `description` | `ReactNode`          | Command-palette subtitle and sidebar tooltip.                                                                        |
+| `badge`       | `ReactNode`          | Trailing badge (an unread count, "New").                                                                             |
+| `hidden`      | `boolean`            | Keep the route out of navigation surfaces, as for a `/users/:id` detail page.                                        |
+
+In `@alepha/ui`, `useNavTree` and `NavShell` build the sidebar from these fields; [$pageNav](/docs/reference-primitives-$pagenav) declares `nav` and the route guard's permission in one place.
+
+### props
+
+Default props passed to the component; props returned by the `loader` override them.
+
+```typescript
+props: () => ({ pageSize: 25 });
+```
+
+## Nested Routing
+
+Define parent-child relationships between pages using `parent` on the child or `children` on the parent. Parent pages render child content using the `<NestedView />` component.
+
+### Which option to use
+
+The choice is not stylistic - it depends on **who owns the child page**:
+
+- **You own the child** (you wrote the `$page` and can edit it) → set `parent` on the child. The child declares its own place in the tree.
+- **You don't own the child** (it comes from another package or an injected router you can't modify) → add it to `children` on your parent. The parent adopts pages it doesn't control.
+
+The second case is the reason `children` exists. When you `$inject` a router from another package, its `$page` definitions are frozen - you can't reach in and set `parent` on them. `children` is how you mount those external pages under one of your own layouts:
+
+```typescript
+class AppRouter {
+  protected productRouter = $inject(ProductRouter);
+
+  layout = $page({
+    path: "/app",
+    component: () => <Shell><NestedView /></Shell>,
+    children: () => [
+      this.productRouter.catalogPage,
+      this.productRouter.checkoutPage,
+    ],
+  });
+}
+```
+
+When you do own the child, prefer `parent` - it keeps parents free of forward references to their own descendants and reads top-down:
+
+```typescript
+import { $page } from "alepha/react/router";
+import { NestedView } from "alepha/react/router";
+
+class AppRouter {
+  layout = $page({
+    path: "/app",
+    component: () => (
+      <div>
+        <nav>Sidebar</nav>
+        <main>
+          <NestedView />
+        </main>
+      </div>
+    ),
+  });
+
+  dashboard = $page({
+    path: "/dashboard",
+    parent: this.layout,
+    lazy: () => import("./Dashboard.tsx"),
+  });
+
+  settings = $page({
+    path: "/settings",
+    parent: this.layout,
+    lazy: () => import("./Settings.tsx"),
+  });
+}
+```
+
+> ⚠️ **Declare each edge from one side only.** If page B already has `parent: pageA`, do not also list B in `pageA.children`. The link is already established; stating it on both sides creates a TypeScript circular dependency between the two class fields (each references the other before it is initialised).
+
+`<NestedView />` renders the matched child page. Its optional `errorBoundary` prop is `false` to drop the error boundary it wraps the child in, or `(error, reset) => ReactNode` for a custom fallback.
+
+### When a page remounts
+
+Each page in the matched stack is keyed by its own path, compiled from the params it matched: `/epics/51` and `/epics/50` are two keys, so navigating from one to the other **remounts** the epic page and everything below it. The layouts above it keep their key and their state. This is the Next.js App Router behaviour.
+
+| navigation                              | page below the change | layouts above |
+| --------------------------------------- | --------------------- | ------------- |
+| a param changes (`/epics/51` to `/50`)  | remounted             | kept          |
+| only the query changes (`?tab=history`) | kept, loader re-runs  | kept          |
+| `router.invalidate()`                   | kept, loader re-runs  | kept          |
+
+So a component may seed local state from its props, and a different record always starts fresh:
+
+```tsx
+const Epic = (props: { epic: Epic }) => {
+  // Safe across `/epics/51` to `/epics/50`: the page remounts.
+  const [draft, setDraft] = useState(props.epic.title);
+  // ...
+};
+```
+
+Two consequences to design around:
+
+- **State that must survive a param change lives in the parent layout.** A tree beside a document, a selected tab, a scroll position: put it in the layout that has no param (`/folios`, not `/folios/:id`) and let the child page read it, through a context scoped to that layout or an `$atom`.
+- **`invalidate()` and a query change do not remount.** The loader re-runs and hands the mounted page new props, so a `useState(props.x)` still holds the value it was seeded with. Read the prop directly where it must follow a reload.
+
+A page with a `:param` in its path and no `schema.params` behaves the same way: its identity is compiled from the raw URL segment, so `/users/1` to `/users/2` remounts it and re-runs its loader.
+
+### Ready-made routers from `@alepha/ui`
+
+Three routers ship whole surfaces you can mount instead of rebuilding:
+
+| Router          | Surface                                                            | Extend with                           |
+| --------------- | ------------------------------------------------------------------ | ------------------------------------- |
+| `AuthRouter`    | `/auth/{login,register,reset-password,verify-email}`               | - (write your own to change the URLs) |
+| `AdminRouter`   | `/admin` - users, sessions, keys, jobs, audits, …                  | `$pageAdmin`                          |
+| `AccountRouter` | `/account` - profile, security, sessions, API keys, connected apps | `$pageAccount`                        |
+
+`$pageAdmin` and `$pageAccount` are `$pageNav` already parented to their shell,
+so one call adds a page to the shared sidebar with no separate registration -
+the shell reads each page's own `nav` metadata. Both follow the same rules:
+put your pages in your own `nav.group` at `order: 100` to `999`, where they
+sort between the shell's built-in groups (the built-ins are parked at 1 and at
+1000 and up), and gate with `can: () => this.someApi.someAction.can()` rather
+than `permission` alone, because a permission is self-declaring and stays
+granted over an API that was never mounted.
+
+Both shells are root routes with their own chrome: a `NavShell` sidebar
+derived from the route subtree, a topbar with a ⌘K search scoped to the shell,
+and the account menu. `/account`'s sidebar floats, and its menu carries a
+"Back to site" item. Do not adopt either layout into your own layout's
+`children`: each mounts its own `Toaster`, so every toast would show twice.
+Configure the chrome through the options atom instead:
+
+```typescript
+import { AccountRouter, accountRouterOptionsAtom } from "@alepha/ui/account";
+
+alepha.set(accountRouterOptionsAtom, {
+  brand: <MyBrand />, // defaults to the user's avatar and name
+  homeRouteName: "home", // where "Back to site" goes
+  hide: ["connections"], // pages this application does not offer
+});
+```
+
+An account page frames itself with `AccountPage`: `variant="table"` for a
+`DataTable` that fills the area, `variant="form"` for a centred column of
+cards.
+
+## Error Handling
+
+Use `errorHandler` to catch loader or rendering errors. It receives the error and the router state, and returns a ReactNode for a custom error page, a `Redirection` to redirect, `null` for the built-in error page, or `undefined` to let the error propagate. A page without a handler of its own uses its nearest parent's.
+
+```typescript
+import { NotFound, Redirection } from "alepha/react/router";
+import { isHttpError } from "alepha/server";
+
+errorHandler: (error, state) => {
+  if (isHttpError(error, 404)) {
+    return <NotFound />;
+  }
+  if (isHttpError(error, 401)) {
+    return new Redirection({ redirect: "/login" });
+  }
+}
+```
+
+The same handler also covers failures thrown _around_ the render - a `use:`
+middleware such as a `$rateLimit` answering 429, or a server hook such as the
+not-ready guard that answers while the app is still booting. Those never run a loader, so there
+is no layer to fail; the router still resolves the nearest `errorHandler` and
+renders its result as a full HTML page.
+
+When no handler applies, the built-in error page answers: the stack overlay in
+development, a plain card carrying the request id in production.
+
+### HTML or JSON
+
+The switch is the request's `Accept` header, and nothing else:
+
+- `Accept: text/html`: what a browser sends on a hard navigation - gets a
+  rendered document.
+- Anything else, including the `*/*` that `fetch()` defaults to, keeps the JSON
+  error body. API clients are unaffected.
+
+An error page is server-rendered and deliberately **not** hydrated: it ships no
+entry script, so the client cannot boot and re-render the very URL the server
+just refused. A custom error component is therefore static - hooks that read
+context (`useRouter`, `useI18n`) work, event handlers do not.
+
+## Lifecycle Callbacks
+
+- `onEnter`: called when the user enters the page (browser only)
+- `onLeave`: called when the user leaves the page (browser only)
+
+```typescript
+onEnter: () => {
+  analytics.trackPageView("/dashboard");
+  window.scrollTo(0, 0);
+};
+```
+
+- `onServerResponse(request)`: called on the server with the request and its `reply`. A streamed page calls it before the loader runs, once the head is ready to flush; a `stream: false` page calls it after the render, which is when it can still change `reply.status` (see [stream](#stream)). A [page cache](/docs/guides-frontend-page-cache) hit does not call it.
+
+### Page methods
+
+A `$page` is also an object you can call from server code:
+
+- `page.render(options?)` renders the page to HTML on the server and returns it with the router state. Meant for tests and build steps; it throws in the browser.
+- `page.fetch(options?)` requests the page's `path` from the running server over HTTP and returns `{ html, response }`; `html` is the content of the root element unless `options.html` is `true`. The `path` goes out as declared: `options.params` and `options.query` are ignored.
+- `page.invalidate(params?)` purges the page from the [page cache](/docs/guides-frontend-page-cache), every entry or those of one param set.
+
+## Page Animations
+
+CSS-based enter/exit animations (experimental).
+
+```typescript
+// Simple animation name
+animation: "fadeIn"
+
+// Detailed enter/exit
+animation: {
+  enter: { name: "fadeIn", duration: 300 },
+  exit: { name: "fadeOut", duration: 200, timing: "ease-in-out" },
+}
+
+// Dynamic based on router state
+animation: (state) => ({
+  enter: "slideIn",
+  exit: "slideOut",
+})
+```
+
+Define the keyframes in your CSS:
+
+```css
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+```
+
+## Router Hooks
+
+### useRouter
+
+Access the router for navigation. Accepts a type parameter for type-safe page name references.
+
+```typescript
+import { useRouter } from "alepha/react/router";
+
+const Nav = () => {
+  const router = useRouter<AppRouter>();
+
+  return (
+    <div>
+      <p>Current path: {router.pathname}</p>
+      <button onClick={() => router.push("/about")}>About</button>
+      <button onClick={() => router.push("home")}>Home (by name)</button>
+      <button onClick={() => router.back()}>Back</button>
+      <button onClick={() => router.forward()}>Forward</button>
+      <button onClick={() => router.reload()}>Reload</button>
+    </div>
+  );
+}
+```
+
+**Key methods and properties:**
+
+| Method/Property                         | Description                                                                                                                                         |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `push(name, opts)` / `push(path, opts)` | Navigate to a page name (options: `params`, `query`, `replace`, `meta`, `force`) or to a path starting with `/` (no `params`).                      |
+| `back()`                                | Go back in history.                                                                                                                                 |
+| `forward()`                             | Go forward in history.                                                                                                                              |
+| `reload()`                              | Reload the current page.                                                                                                                            |
+| `isActive(href, { startWith? })`        | Check if the given path is the current route (`startWith` matches on a segment boundary).                                                           |
+| `pathname`                              | Current pathname string.                                                                                                                            |
+| `query`                                 | Current query parameters as `Record<string, string>`.                                                                                               |
+| `path(name, cfg)`                       | Resolve a page name to its URL path.                                                                                                                |
+| `anchor(name, opts)` / `anchor(path)`   | Returns `{ href, onClick }` props for anchor elements, under the same two forms as `push`.                                                          |
+| `setQueryParams(record, { push? })`     | Update URL query parameters without navigation. Accepts a record or an updater `(current) => next`; replaces the history entry unless `push: true`. |
+| `invalidate(props?)`                    | Re-run the current route's loaders without navigating (after a mutation the loader computes).                                                       |
+| `canGoBack`                             | Whether there is an in-app history entry to go back to.                                                                                             |
+| `state`                                 | The current `ReactRouterState` (`url`, `params`, `query`, `layers`, ...).                                                                           |
+
+`push` and `anchor` take one of two forms, told apart by type:
+
+- **A page name**, with that page's params: `router.push("userProfile", { params: { id } })`. On a typed router (`useRouter<AppRouter>()`) a misspelled name is a compile error, and `params` is typed from the page's `schema.params` and required when it has a required key. A page that declares `schema.params` gets exactly the params given; one that does not still inherits the current route's.
+- **A path starting with `/`**: `router.push("/settings", { query: { tab: "security" } })`. It honours `query` and `replace`; `params` belongs to a page name and is a type error here.
+
+Nothing else is router navigation. A relative path, a bare `?query` and an absolute `https://` URL are refused: changing only the query is `setQueryParams`, and leaving the app is an `<a href>` or `window.location.assign`. A dynamic path is typed `` `/${string}` `` where it is produced (the router exports it as `RouterPath`), not cast at the call.
+
+A name no page has throws an `AlephaError` naming the closest ones, typed router or not. It used to navigate to the relative URL instead.
+
+`useRouter()` does not re-render on navigation by itself. A component that renders from the current location reads it with `useRouterState()`, which subscribes to the router state and returns the `ReactRouterState`.
+
+### useActive
+
+Determine if a route is active and get anchor props for navigation links.
+
+```typescript check
+import { useActive } from "alepha/react/router";
+
+interface NavLinkProps {
+  href: string;
+  label: string;
+}
+
+const NavLink = (props: NavLinkProps) => {
+  const { isActive, isPending, anchorProps } = useActive(props.href);
+
+  return (
+    <a {...anchorProps} className={isActive ? "active" : ""}>
+      {isPending ? "Loading..." : props.label}
+    </a>
+  );
+};
+```
+
+Accepts a path, a page name (resolved with `router.path`), or an options object:
+
+```typescript
+const { isActive } = useActive({ href: "/docs", startWith: true });
+// isActive is true for /docs, /docs/intro, /docs/api, etc.
+```
+
+### useQueryParams
+
+Manage typed query parameters with a schema.
+
+```typescript check
+import { useQueryParams } from "alepha/react/router";
+import { z } from "alepha";
+
+const SearchPage = () => {
+  const [params, setParams] = useQueryParams(
+    z.object({
+      search: z.text().optional(),
+      page: z.integer().optional(),
+    }),
+  );
+
+  return (
+    <input
+      value={params.search ?? ""}
+      onChange={(e) => setParams({ ...params, search: e.target.value })}
+    />
+  );
+}
+```
+
+Options:
+
+| Option   | Type                          | Default    | Description                                                                                                                                      |
+| -------- | ----------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `key`    | `string`                      | `"q"`      | Param name for `base64` format. Ignored by `querystring`.                                                                                        |
+| `format` | `"base64"` \| `"querystring"` | `"base64"` | `base64` packs the whole object into one opaque param (`?q=…`); `querystring` spreads each field as its own readable param (`?search=…&page=…`). |
+| `push`   | `boolean`                     | `false`    | `true` adds a history entry (`pushState`) so back returns to the previous value; `false` replaces the current entry (`replaceState`).            |
+
+With `format: "querystring"`, each schema field maps to its own URL param,
+and values are coerced back to their declared types on read (e.g. a
+`z.integer()` field reads `?page=2` as the number `2`).
+
+## Links and Anchor Interception
+
+Plain `<a href="/...">` anchors are intercepted automatically and routed
+through the SPA router - no `<Link>` wrapper required. This works inside
+React JSX as well as in raw HTML injected into the page (e.g. Markdown
+content rendered from a CMS).
+
+```html
+<a href="/about">About</a>
+```
+
+The interceptor bails out (and lets the browser handle the click natively)
+when any of the following apply:
+
+- the click uses a modifier key (`meta`, `ctrl`, `shift`, `alt`)
+- the mouse button isn't the primary one (middle/right click)
+- the anchor has `target` other than `_self` (e.g. `target="_blank"`)
+- the anchor has a `download` attribute
+- the anchor has a `data-no-router` attribute (explicit opt-out)
+- the `href` uses a non-http(s) scheme (`mailto:`, `tel:`, `data:`, …)
+- the `href` points to a different origin
+- the `href` is hash-only (`#section`)
+- another listener already called `event.preventDefault()`
+
+To force a hard navigation on a same-origin link, opt out per-anchor:
+
+```html
+<a href="/legacy" data-no-router>Legacy page</a>
+```
+
+To disable the global interceptor, set `interceptAnchorClicks: false` on
+the `reactBrowserOptions` atom (`alepha.react.browser.options`, exported from
+`alepha/react/router`). The same atom holds `scrollRestoration`: `"auto"` (the
+default) scrolls a new navigation to the top or to its `#hash` and restores the
+saved position on back and forward, `"top"` always jumps to the top, and
+`"manual"` leaves scrolling to you.
+
+### `<Link>` component
+
+`<Link>` is still available as a thin wrapper around `<a>` that wires the
+router via `onClick` directly:
+
+```typescript check
+import { Link } from "alepha/react/router";
+
+<>
+  <Link href="/about">About</Link>
+  <Link href="userProfile" params={{ id: "42" }}>
+    Profile
+  </Link>
+</>;
+```
+
+`href` is a path or a page name, with `params` for a page name and `query` for either, as `router.anchor` takes them.
+
+With the global interceptor enabled, `<Link>` is mostly a stylistic
+preference. Reach for it when you want explicit per-link control or
+intend to extend it with prefetching/active-state logic later.
+
+## From server render to client navigation
+
+A first visit is rendered on the server; every navigation after it runs in the browser. The loader results the server computed travel in the HTML, so hydration does not fetch them again:
+
+```mermaid
+sequenceDiagram
+  participant B as Browser
+  participant S as Server
+  participant A as API actions
+  B->>S: GET /users/42
+  S->>S: Match the route, run use middleware, look up the page cache
+  S-->>B: Flush the head early (streamed pages)
+  S->>A: Run each layer's loader
+  S-->>B: Stream the HTML, then the __ssr payload (layers and atoms)
+  B->>B: Restore atoms, rebuild layers from the payload, hydrateRoot
+  Note over B: Loaders do not re-run on hydration
+  B->>B: Click on a link, router.push
+  B->>A: Run the changed layers' loaders in the browser, $client calls over HTTP
+  B->>B: Render, emit react:transition:end
+```
+
+## Router Events
+
+Route transitions emit events on the Alepha event system:
+
+- `react:transition:begin`: navigation started (includes previous and new state)
+- `react:transition:success`: navigation completed
+- `react:transition:error`: navigation failed
+- `react:transition:end`: always emitted after transition completes
+
+A navigation also emits `react:action:begin` and `react:action:end` with `type: "transition"`, so a global loading indicator covers it like any other action.
+
+## Reference
+
+- [$page](/docs/reference-primitives-$page): every option, generated from the source.
+- [alepha/react/router](/docs/packages-alepha-react-router): `useRouter`, `useRouterState`, `NestedView`, `Link`, `Redirection` and the router options atoms.
+- [alepha/react/head](/docs/packages-alepha-react-head): the `head` option and `$head`.

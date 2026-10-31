@@ -129,5 +129,5 @@ and to prove that a delivery channel can live outside the framework.
 
 ## Links
 
-- [Notifications guide](https://alepha.dev/docs/guides-server-notifications)
+- [Notifications guide](https://alepha.dev/docs/guides-features-notifications)
 - [alepha.dev](https://alepha.dev)

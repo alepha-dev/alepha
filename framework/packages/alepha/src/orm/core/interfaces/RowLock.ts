@@ -5,7 +5,7 @@
  * instead: `onLocked: "skip"` leaves the locked rows out (`SKIP LOCKED`, the
  * job-queue pattern), `onLocked: "nowait"` fails at once (`NOWAIT`).
  *
- * Postgres only: SQLite has no row locks and ignores it.
+ * Postgres only: SQLite has no row locks, and a read given one throws there.
  */
 export type RowLock =
   | RowLockMode

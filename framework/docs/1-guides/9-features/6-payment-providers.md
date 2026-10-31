@@ -1,0 +1,153 @@
+# Payment Providers
+
+A `PaymentProvider` is the bridge between Alepha's lifecycle and a real payment service provider. The abstract class defines eleven required methods covering the intent lifecycle and saved cards, plus two a real provider should implement:
+
+```typescript
+abstract class PaymentProvider {
+  createSession(intent, { returnUrl, authorize?, saveCard?, label?, customerEmail?, idempotencyKey?, stripeAccount?, applicationFeeAmount? }): Promise<{ url, providerRef }>;
+  capturePayment(providerRef, amount, options?): Promise<void>;
+  voidPayment(providerRef, options?): Promise<void>;
+  refundPayment(providerRef, amount, options?): Promise<{ providerRef }>;
+  parseWebhook(request): Promise<WebhookEvent>; // { providerRef, providerRefAlt?, status, account?, raw }
+  createPaymentMethod(userId, token, options?): Promise<CreatePaymentMethodResult>;
+  deletePaymentMethod(providerRef, options?): Promise<void>;
+  expireSession(providerRef, options?): Promise<void>;
+
+  // saved cards: a setup session saves a card without a payment, and the
+  // saved card can later be charged with the payer absent
+  createSetupSession(userId, { returnUrl, metadata?, stripeAccount?, idempotencyKey? }): Promise<{ url, providerRef }>;
+  retrieveSavedPaymentMethod(userId, providerRef, options?): Promise<CreatePaymentMethodResult | null>;
+  chargeOffSession(userId, paymentMethodRef, amount, options): Promise<{ status, providerRef?, code? }>;
+
+  // optional: embedded card fields (Stripe Payment Element and friends);
+  // PaymentService.supportsEmbeddedPayment() dispatches on its presence
+  createElementSession?(intent, options?): Promise<{ clientSecret, publishableKey, provider, providerRef }>;
+
+  // non-abstract, returns null by default - but providers SHOULD override it:
+  // it is the reconciliation path when a webhook goes missing. The shipped
+  // provider does.
+  retrieveSessionStatus(providerRef, options?): Promise<"authorized" | "captured" | "failed" | null>;
+}
+```
+
+Every `options?` above is `ProviderAccountOptions`, `{ stripeAccount?, idempotencyKey? }`, except `createElementSession`'s, which is `{ stripeAccount? }`; `chargeOffSession` takes `{ currency?, applicationFeeAmount?, metadata?, idempotencyKey?, stripeAccount? }`. `CreatePaymentMethodResult` is `{ providerRef, type, brand?, last4?, expMonth?, expYear? }`.
+
+`createSession` options carry Connect-style fields (`stripeAccount`, `applicationFeeAmount`). Every later call about that session takes the same `{ stripeAccount }`: a Stripe direct charge lives on the connected account only, and the platform account cannot see it. `PaymentService` records the account on the intent (`providerAccount`) when it creates the session and passes it on every poll, expiry, capture, void and refund, so a provider only has to honour the option.
+
+`createElementSession` returns a `providerRef` too: the PSP's own id for the payment the browser confirms (a Stripe PaymentIntent). `PaymentService` stores it, with the account, before handing the client secret back, so the webhook that settles the payment matches the intent the same way a redirect session's does, and the stale-intent sweep can poll it. `expireSession` receives that ref for an abandoned embedded payment and must leave it unpayable: the Stripe provider cancels the PaymentIntent (`cancellation_reason: "abandoned"`), since a PaymentIntent, unlike a Checkout session, never expires on its own.
+
+`PaymentService` and `PaymentMethodService` call these methods; you never call them directly. The one exception is `chargeOffSession`, which no framework service wraps: inject `PaymentProvider` to charge a saved card off-session. It answers `succeeded`, `failed`, or `requires_action` when the bank wants the payer back (3-D Secure).
+
+One implementation ships with the framework, `@alepha/payments-stripe`. It composes with `AlephaApiPayments` like this:
+
+```typescript
+import { AlephaPaymentsStripe } from "@alepha/payments-stripe";
+import { Alepha } from "alepha";
+import { AlephaApiPayments } from "alepha/api/payments";
+
+const alepha = Alepha.create()
+  .with(AlephaApiPayments)
+  .with(AlephaPaymentsStripe);
+```
+
+`AlephaPaymentsStripe` imports `AlephaApiPayments` itself, and its `register` calls `alepha.with({ provide: PaymentProvider, use: StripePaymentProvider })`, so the `MemoryPaymentProvider` default is replaced automatically.
+
+```mermaid
+flowchart LR
+  PS[PaymentService] --> PP[PaymentProvider]
+  PMS[PaymentMethodService] --> PP
+  PP -.->|default| MEM[MemoryPaymentProvider]
+  PP -->|AlephaPaymentsStripe| STRIPE[StripePaymentProvider]
+  PP -->|your module| OWN[Your provider]
+```
+
+## Stripe
+
+```bash
+npm install @alepha/payments-stripe
+```
+
+### Environment
+
+| Variable                        | Description                                                                                     |
+| ------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `STRIPE_SECRET_KEY`             | API key (`sk_test_...` / `sk_live_...`).                                                        |
+| `STRIPE_WEBHOOK_SECRET`         | Signing secret returned by `webhookEndpoints.create`.                                           |
+| `STRIPE_PUBLISHABLE_KEY`        | Optional. Required for the embedded Payment Element - `createElementSession` throws without it. |
+| `STRIPE_CONNECT_WEBHOOK_SECRET` | Optional. Signing secret for Connect webhooks; gates `parseConnectWebhook`.                     |
+
+### Webhook security
+
+Stripe signs webhook payloads with HMAC-SHA256. `StripePaymentProvider.parseWebhook` calls `stripe.webhooks.constructEventAsync(body, signature, secret)` (the async variant - the sync one relies on Node's synchronous crypto, which doesn't exist on workerd) and throws if the signature is missing or invalid. This is the only authentication on `/api/payments/webhook`.
+
+### Webhook provisioning
+
+Provision the webhook endpoint yourself using the Stripe SDK - `stripe.webhookEndpoints.create({ url, enabled_events })` where `url` is `${baseUrl}/api/payments/webhook`. Store the returned signing secret as `STRIPE_WEBHOOK_SECRET` on the deployed worker so `StripePaymentProvider.parseWebhook` can verify incoming payloads.
+
+Enable the events below. They are the ones the provider maps to a status; any other event type reaches `PaymentService` unmapped, and is logged and ignored.
+
+| Stripe event                               | Status                                                            |
+| ------------------------------------------ | ----------------------------------------------------------------- |
+| `payment_intent.succeeded`                 | `captured`                                                        |
+| `payment_intent.amount_capturable_updated` | `authorized`                                                      |
+| `payment_intent.payment_failed`            | `failed`                                                          |
+| `payment_intent.canceled`                  | `failed`                                                          |
+| `checkout.session.completed`               | `captured` when `payment_status` is `paid`; otherwise ignored     |
+| `checkout.session.async_payment_succeeded` | `captured` (SEPA debit, bank transfers and other delayed methods) |
+| `checkout.session.async_payment_failed`    | `failed`                                                          |
+| `checkout.session.expired`                 | `failed`                                                          |
+
+A Checkout event carries both the session id and its PaymentIntent id, and `PaymentService.handleParsedWebhook()` matches the intent on either. That matters on connected accounts, where Stripe creates the PaymentIntent lazily and the intent first stores the session id (`cs_...`).
+
+`parseConnectWebhook(request)` verifies an event from a `connect: true` endpoint with `STRIPE_CONNECT_WEBHOOK_SECRET`, and returns the emitting account in `account`. No built-in route calls it: mount your own action that passes its result to `PaymentService.handleParsedWebhook()`.
+
+<!-- docs-check-historical -->
+
+Earlier versions shipped an `AlephaCliPlatformStripePlugin` that registered a `PlatformHook` to do this during `alepha platform up`. That mechanism was removed: deploy frequency and webhook lifetime are different concerns. Webhook setup happens once per environment, not on every deploy - handle it from your provisioning code.
+
+<!-- /docs-check-historical -->
+
+### Customer mapping
+
+`StripePaymentProvider` caches a mapping of Alepha `userId` → Stripe customer ID in the database cache (`alepha/cache/database`, TTL 30 days), keyed per account (`platform` or the connected account id). On a cache miss it searches Stripe by `metadata.alepha_user_id` and creates a new customer if none is found, with an idempotency key so two concurrent misses cannot create two customers.
+
+### Checkout sessions
+
+`createSession` opens a Stripe Checkout session in `mode: "payment"` with one line item named after `label` (`"Payment"` when absent), and sends the payer back to `returnUrl` whether they pay or cancel. `authorize: true` sets `capture_method: "manual"`, and `saveCard: true` sets `setup_future_usage: "off_session"`. The stored `providerRef` is the session's PaymentIntent id, or the session id when Stripe has not created the PaymentIntent yet.
+
+`retrieveSessionStatus` asks Stripe for that session or PaymentIntent, so the stale-intent sweep settles a payment whose webhook never arrived. `expireSession` expires an open Checkout session, or cancels the PaymentIntent (`cancellation_reason: "abandoned"`).
+
+### Saved payment methods
+
+Stripe's tokenize-then-attach model maps directly: the client tokenizes a card via Stripe.js, posts the token to `POST /api/payments/payment-methods`, and `StripePaymentProvider.createPaymentMethod` calls `paymentMethods.attach(token, { customer })`.
+
+### Beyond the contract
+
+`StripePaymentProvider` also exposes Stripe-only helpers outside the `PaymentProvider` contract, reached by injecting `StripePaymentProvider` itself: Connect (`createConnectAccount`, `getConnectAccount`, `getConnectAccountStatus`, `createAccountSession`, `createAccountOnboardingLink`, `parseConnectWebhook`), subscriptions (`createCheckoutSubscription`, `retrieveSubscription`, `updateSubscriptionPrice`, `setSubscriptionCancelAt`, `cancelSubscription`, `createBillingPortalSession`), `createCheckoutSetup` and `constructPlatformEvent`. They are how an application lets Stripe own recurring billing, as the [Payments guide](/docs/guides-features-payments) recommends.
+
+## Writing your own provider
+
+Implement the contract and register it the same way. Both shipped providers (`MemoryPaymentProvider` and `StripePaymentProvider`) use `implements` rather than `extends` - note that with `implements`, the normally-optional `retrieveSessionStatus` becomes required, which is a feature: it forces the reconciliation path to exist.
+
+```typescript
+import { $module } from "alepha";
+import { AlephaApiPayments, PaymentProvider } from "alepha/api/payments";
+
+class AdyenPaymentProvider implements PaymentProvider {
+  // ... implement the lifecycle methods ...
+}
+
+export const AlephaPaymentsAdyen = $module({
+  name: "alepha.payments.adyen",
+  services: [AdyenPaymentProvider],
+  imports: [AlephaApiPayments],
+  register: (alepha) =>
+    alepha.with({ provide: PaymentProvider, use: AdyenPaymentProvider }),
+});
+```
+
+Three things to get right:
+
+1. **`parseWebhook` must establish authenticity**: either signature verification or re-fetch. The webhook endpoint has no other auth.
+2. **Status mapping is your contract with `PaymentService`.** The service understands `authorized`, `captured`, `failed`. Anything else is logged and ignored - use that to silently drop transient states (`open`, `pending`). When the PSP has two ids for one payment, return the second as `providerRefAlt`: the service matches the intent on either and repoints it to the second.
+3. **Amounts are integers** in Alepha's storage (minor units / cents). PSPs that want decimal strings (Mollie) need a converter.

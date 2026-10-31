@@ -31,7 +31,8 @@ export interface InspectorTailOptions {
   intervalMs?: number;
   /**
    * How many of the entries already logged to deliver first, before
-   * following. `0` follows from now on.
+   * following. `0` follows from now on. A dead run has nothing to follow,
+   * so left unset there it delivers the whole log file.
    *
    * @default 0
    */
