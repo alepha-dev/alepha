@@ -249,7 +249,6 @@ func TestLogsResultMatchesTheSharedFixture(t *testing.T) {
 	}
 	encoded, err := json.Marshal(logsResult{
 		Supervised: true,
-		Undated:    1,
 		Truncated:  12,
 		Lines: []runner.LogLine{
 			{

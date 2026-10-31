@@ -1902,8 +1902,6 @@ export default {
   "bay.logs.static":
     "Un site statique n'a pas de processus, donc pas de journal.",
   "bay.logs.truncated": "$1 ligne(s) plus ancienne(s) ont été écartées.",
-  "bay.logs.undated":
-    "$1 ligne(s) sans horodatage ont été conservées malgré la fenêtre demandée.",
   "bay.logs.empty": "Supervisée, et elle n'a rien dit.",
   "bay.commands.empty": "Rien n'a été demandé à cette machine",
   "bay.commands.empty.description":

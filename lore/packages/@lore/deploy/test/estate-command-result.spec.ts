@@ -35,7 +35,6 @@ describe("The result a logs command uploads, shared with Bay", () => {
     // "No lines" sends an operator to three different places, and this is
     // where that distinction survives the wire.
     expect(parsed.supervised).toBe(true);
-    expect(parsed.undated).toBe(1);
     expect(parsed.truncated).toBe(12);
   });
 
