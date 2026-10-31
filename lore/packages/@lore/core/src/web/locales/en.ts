@@ -865,7 +865,7 @@ export default {
     "Push a build to a machine you own.",
   "project.capability.support.label": "Collect feedback",
   "project.capability.support.description":
-    "A public request form and a triage inbox.",
+    "A request form for any signed-in Lore account, and a triage inbox.",
   "project.settings.areas.title": "Areas",
   "project.settings.areas.description":
     "The parts of your system. Every quest belongs to exactly one. Rename an area onto an existing one to merge them.",
@@ -1622,7 +1622,7 @@ export default {
   "app.settings.sigil.create": "Create a sigil",
   "app.settings.sigil.remove.title": "Remove the sigil",
   "app.settings.sigil.remove.description":
-    "Stops this copy reporting and erases what it has reported. The app itself stays. To revoke a leaked token without losing the history, rotate it instead.",
+    "Stops this copy reporting and removes what it has reported from the project. Raw rows in Analytics Engine stay until they expire, unread. The app itself stays. To revoke a leaked token without losing the history, rotate it instead.",
   "app.settings.ownerOnly": "Only the project owner can do this.",
 
   "insights.range.1d": "Today",
@@ -1774,7 +1774,7 @@ export default {
   "sigils.rotate.confirm": "Rotate",
   "sigils.delete.confirmTitle": "Delete $1?",
   "sigils.delete.confirmDescription":
-    "This erases everything this app ever reported (page views, web vitals, unique visitors and its error budget) along with its token. Blights already filed are kept. To revoke a leaked token without losing the history, rotate it instead.",
+    "This removes everything this app ever reported (page views, web vitals, unique visitors and its error budget) from the project, along with its token. Raw rows in Analytics Engine stay until they expire, unread. Blights already filed are kept. To revoke a leaked token without losing the history, rotate it instead.",
   "sigils.delete.confirm": "Delete",
   "sigils.toast.created": "Sigil created",
   "sigils.toast.rotated": "Token rotated",

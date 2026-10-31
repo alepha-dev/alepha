@@ -272,7 +272,7 @@ export class ToolPrimitive<T extends ToolPrimitiveSchema> extends Primitive<
         user: this.currentUser(),
       } as never),
     this.options.use,
-    (run) => this.dateTime.deadline(run, this.timeout),
+    (run, args) => this.withDeadline(run, args),
   );
 
   /**
@@ -285,6 +285,22 @@ export class ToolPrimitive<T extends ToolPrimitiveSchema> extends Primitive<
       return undefined;
     }
     return own ?? (this.settings.timeout || undefined);
+  }
+
+  /**
+   * Run the composed pipeline under the tool's deadline, when it has one, with
+   * the deadline's signal as `context.signal`.
+   */
+  protected withDeadline(run: (...args: any[]) => any, args: any[]): any {
+    const timeout = this.timeout;
+    if (timeout === undefined) {
+      return run(...args);
+    }
+    const [params, context] = args as [unknown, McpContext | undefined];
+    return this.dateTime.deadline(
+      (signal) => run(params, context && { ...context, signal }),
+      timeout,
+    );
   }
 
   /**

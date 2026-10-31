@@ -54,6 +54,16 @@ const setup = () => {
 };
 
 describe("lore -h and lore help", () => {
+  it("scopes the exit codes to every command family LoreRefusals guards", ({
+    expect,
+  }) => {
+    const description = LoreConventions.describe("0.0.0");
+
+    expect(description).toContain(
+      "(for project, quest, folio, estate, registry and stack)",
+    );
+  });
+
   it("describes every flag of every command", ({ expect }) => {
     const { cli } = setup();
 

@@ -653,11 +653,16 @@ export class PagePrimitive<
     await this.reactPageService.invalidate(this.name, params);
   }
 
+  /**
+   * Request this page from the running server over HTTP, at its full path
+   * with `options.params` and `options.query` filled in. The server's own
+   * routing answers, middlewares and page cache included.
+   */
   public async fetch(options?: PagePrimitiveRenderOptions): Promise<{
     html: string;
     response: Response;
   }> {
-    return this.reactPageService.fetch(this.options.path || "", options);
+    return this.reactPageService.fetch(this.name, options);
   }
 }
 

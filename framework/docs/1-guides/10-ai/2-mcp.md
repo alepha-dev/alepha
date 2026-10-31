@@ -563,7 +563,7 @@ search = $tool({
 });
 ```
 
-A call that runs out of time returns a **tool execution error** (`isError: true`, "Timed out after 30 s"), not a JSON-RPC error, so the model can retry or narrow its request. `alepha.context.signal` aborts with a `TimeoutError`, so outbound calls and queries that honour it stop too. The handler's `context.signal` does not abort at the deadline: it only follows the client's cancel and the HTTP disconnect.
+A call that runs out of time returns a **tool execution error** (`isError: true`, "Timed out after 30 s"), not a JSON-RPC error, so the model can retry or narrow its request. The handler's `context.signal`, the same object as `alepha.context.signal`, aborts with a `TimeoutError`, so outbound calls and queries that honour it stop too.
 
 To set a default for every tool, write the `mcpToolOptions` atom (milliseconds; unset or `0` means none). A tool's own `timeout` wins, and `timeout: false` opts one tool out:
 

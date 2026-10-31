@@ -1,9 +1,44 @@
-import { Alepha } from "alepha";
+import { Alepha, type FileLike } from "alepha";
 import { describe, it } from "vitest";
 
 import { BatchCollector } from "../services/BatchCollector.ts";
 
 describe("BatchCollector", () => {
+  it("sends a body holding a FileLike through its direct call, not as JSON", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create();
+    const collector = alepha.inject(BatchCollector);
+    // A FileLike that is no Blob: what `file()` and the server's multipart
+    // parser hand out, and what HttpClient sends as multipart.
+    const attachment: FileLike = {
+      name: "report.pdf",
+      type: "application/pdf",
+      size: 3,
+      lastModified: 0,
+      stream: () => new ReadableStream(),
+      text: async () => "pdf",
+      arrayBuffer: async () => new ArrayBuffer(3),
+    };
+    const direct: string[] = [];
+    const entry = (action: string, body?: Record<string, any>) => ({
+      action,
+      body,
+      directCall: async () => {
+        direct.push(action);
+        return action;
+      },
+    });
+
+    const results = await Promise.all([
+      collector.add(entry("upload", { file: attachment })),
+      collector.add(entry("list")),
+    ]);
+
+    expect(results).toEqual(["upload", "list"]);
+    expect(direct).toEqual(["upload", "list"]);
+  });
+
   it("should deduplicate identical entries", ({ expect }) => {
     const alepha = Alepha.create();
     const collector = alepha.inject(BatchCollector);
