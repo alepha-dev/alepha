@@ -2041,6 +2041,10 @@ func cmdStatus(args []string) error {
 			problems++
 			fmt.Printf("           ⚠ last attempt failed: %s\n", a.LastBackupError)
 		}
+		if a.BackupHold != "" {
+			problems++
+			fmt.Printf("           ⚠ scheduled backups are held after a failed restore: %s\n", a.BackupHold)
+		}
 		// Named, not counted as a problem: an unhooked volume is a choice the
 		// stack's author made, and a status that always fails is one nobody
 		// reads. It is still said on every run.
