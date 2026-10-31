@@ -83,20 +83,26 @@ service:
   path the bundle does not carry;
 - a named volume with `driver_opts`, which are mount options: a bind through
   them would reach any host path;
+- a named volume marked `external`, or with a `name` of its own: Bay names
+  volumes after the environment, and either one would mount whatever already
+  carries that name, another environment's data included;
 - a Compose service that `depends_on` an app service;
 - a `${VAR}` with no value and no default.
 
 `ports` are rewritten to a loopback port Bay allocates, so the host port in the
 file is ignored. Nothing else is checked: `devices`, `cap_add`, `security_opt`,
-`cgroup` and `uts` reach Docker as written, so whoever deploys a stack can reach
-the host.
+`cgroup`, `uts`, a `file:` under `secrets` or `configs`, `volumes_from`, an
+external network, and `container:` as `network_mode` or `pid` reach Docker as
+written, so whoever deploys a stack can reach the host and other environments.
 
 ## Environments
 
 A stack is deployed per environment, addressed as `<stack>/<env>`. Each one is
 its own Compose project (`mcs-production`, `mcs-staging`), with its own network,
-volumes, variables and containers: staging cannot reach production's Postgres,
-and destroying staging leaves production alone.
+volumes, variables and containers: staging does not see production's Postgres,
+and destroying staging leaves production alone. This keeps environments from
+colliding by mistake. It does not contain a file written to reach past it,
+through what the list above leaves unchecked.
 
 ## Deploying
 
