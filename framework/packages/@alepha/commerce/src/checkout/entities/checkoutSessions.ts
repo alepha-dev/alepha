@@ -63,6 +63,12 @@ export const checkoutSessions = $entity({
     recoveryToken: z.text({ maxLength: 64 }).optional(),
 
     /**
+     * A VAT number the registry confirmed, normalised. What a business buyer
+     * gets reverse charge on.
+     */
+    vatNumber: z.text({ maxLength: 32 }).optional(),
+
+    /**
      * Opaque while in flux — the shape is region-specific.
      */
     shippingAddress: z.json().optional(),

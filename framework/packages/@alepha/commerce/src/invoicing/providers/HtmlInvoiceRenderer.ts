@@ -72,6 +72,7 @@ export class HtmlInvoiceRenderer extends InvoiceRenderer {
   ${buyer.line2 ? `${this.escape(buyer.line2)}<br>` : ""}
   ${this.escape(buyer.postalCode ?? "")} ${this.escape(buyer.locality ?? "")}<br>
   ${this.escape(buyer.country ?? "")}
+  ${buyer.vatNumber ? `<br>TVA ${this.escape(buyer.vatNumber)}` : ""}
 </address>
 
 <table>
@@ -138,6 +139,13 @@ export class HtmlInvoiceRenderer extends InvoiceRenderer {
 ${
   seller.vatExemptionNotice
     ? `<p class="notice">${this.escape(seller.vatExemptionNotice)}</p>`
+    : ""
+}
+${
+  buyer.vatNumber
+    ? `<p class="notice">${this.escape(
+        seller.reverseChargeNotice ?? "Autoliquidation - article 283-2 du CGI",
+      )}</p>`
     : ""
 }
 

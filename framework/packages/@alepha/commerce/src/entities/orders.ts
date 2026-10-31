@@ -92,6 +92,24 @@ export const orders = $entity({
     refundedTotal: db.default(z.integer().min(0), 0),
 
     /**
+     * The country whose VAT applied, when it was not simply the shop's own:
+     * what a distance sale is reported under.
+     */
+    taxCountry: z.text({ minLength: 2, maxLength: 2 }).optional(),
+
+    /**
+     * The rate delivery was taxed at, frozen like a line's. Unset takes the
+     * seller's default.
+     */
+    shippingRateBps: z.integer().min(0).max(10000).optional(),
+
+    /**
+     * The buyer's VAT number, on a sale under reverse charge. Set means no VAT
+     * was charged, every line is net, and the invoice has to say why.
+     */
+    vatNumber: z.text({ maxLength: 32 }).optional(),
+
+    /**
      * Set once the payment rail hands back a reference. Plain text, not a
      * `db.ref` to `paymentIntents` — a ref would make this module depend on
      * `alepha/api/payments` at the schema level, and the payment rail is

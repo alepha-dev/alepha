@@ -46,6 +46,16 @@ export interface OrderLineInput {
    */
   discount?: number;
   /**
+   * The rate the line pays, when it is not the product's: the destination's,
+   * under distance selling.
+   */
+  rateBps?: number;
+  /**
+   * The line without VAT, under reverse charge. Worked out by the caller, which
+   * holds the rule, and replacing the price the catalogue says.
+   */
+  net?: { unitPrice: number; discount: number };
+  /**
    * What the line chooses beyond the product, for a kind that takes it (a
    * court and an interval). Validated again by the kind's handler before the
    * order is written, whatever validated it before: without that, a client
@@ -65,6 +75,12 @@ export interface CreateOrderInput {
    * The code behind the lines' discounts, frozen on the order.
    */
   promotionCode?: string;
+  /**
+   * See the same fields on `orders`.
+   */
+  taxCountry?: string;
+  shippingRateBps?: number;
+  vatNumber?: string;
   /**
    * Delivery charged. Added to the line-item sum to form `orders.total`, which
    * is what the customer pays — see the note on that column.
@@ -217,8 +233,9 @@ export class OrderService {
     let itemsTotal = 0;
     let discountTotal = 0;
     for (const [index, line] of input.lines.entries()) {
-      itemsTotal += accepted[index]!.unitPrice * line.quantity;
-      discountTotal += line.discount ?? 0;
+      itemsTotal +=
+        (line.net?.unitPrice ?? accepted[index]!.unitPrice) * line.quantity;
+      discountTotal += line.net?.discount ?? line.discount ?? 0;
     }
 
     // Taken before the transaction, unlike an invoice's: inside it the counter's
@@ -236,6 +253,9 @@ export class OrderService {
         total: itemsTotal - discountTotal + shippingTotal,
         discountTotal,
         promotionCode: input.promotionCode,
+        taxCountry: input.taxCountry,
+        shippingRateBps: input.shippingRateBps,
+        vatNumber: input.vatNumber,
         shippingTotal,
         taxTotal: input.taxTotal ?? 0,
         currency,
@@ -257,9 +277,9 @@ export class OrderService {
             name: product.name,
             sku: variant?.sku,
             variantLabel: variant && this.variants.label(product, variant),
-            unitPrice: accepted[index]!.unitPrice,
-            discount: line.discount ?? 0,
-            rateBps: product.vatRateBps,
+            unitPrice: line.net?.unitPrice ?? accepted[index]!.unitPrice,
+            discount: line.net?.discount ?? line.discount ?? 0,
+            rateBps: line.rateBps ?? product.vatRateBps,
             quantity: line.quantity,
             config: product.config,
             lineConfig: accepted[index]!.lineConfig,

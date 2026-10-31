@@ -201,6 +201,26 @@ export type DownloadUnavailableError = InstanceType<
 >;
 
 /**
+ * A VAT number that cannot be accepted: `invalid` by the registry, or
+ * `unavailable` because the registry could not be asked. A buyer needs to know
+ * which: one is a typo, the other is try again.
+ */
+export const VatNumberRefusedError = CommerceError.extend({
+  name: "VAT_NUMBER_REFUSED",
+  default: { status: 400 },
+  schema: z.object({
+    vatNumber: z.text(),
+    reason: z.enum(["invalid", "unavailable"]),
+  }),
+  message: (data) =>
+    data.reason === "invalid"
+      ? `'${data.vatNumber}' is not a valid VAT number.`
+      : `'${data.vatNumber}' cannot be checked at the moment. Try again later.`,
+});
+
+export type VatNumberRefusedError = InstanceType<typeof VatNumberRefusedError>;
+
+/**
  * Not enough stock on hand for the requested quantity.
  */
 export const InsufficientStockError = CommerceError.extend({

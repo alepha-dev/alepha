@@ -21,6 +21,7 @@ const sessionSchema = z.object({
   grandTotal: z.integer(),
   currency: z.text(),
   orderId: z.uuid().optional(),
+  vatNumber: z.text().optional(),
 });
 
 /**
@@ -124,6 +125,26 @@ export class CheckoutController {
     handler: async ({ params, body }) => {
       await this.assertOwned(params.id);
       return this.checkout.setAddress(params.id, body);
+    },
+  });
+
+  /**
+   * A business buyer's VAT number, checked with the registry before it counts.
+   * Sent empty, it takes the number off.
+   */
+  public readonly commerceCheckoutSetVatNumber = $action({
+    method: "PUT",
+    path: `${this.url}/:id/vat-number`,
+    group: this.group,
+    description: "Record a business buyer's VAT number and re-price",
+    schema: {
+      params: z.object({ id: z.uuid() }),
+      body: z.object({ vatNumber: z.text({ maxLength: 32 }).optional() }),
+      response: sessionSchema,
+    },
+    handler: async ({ params, body }) => {
+      await this.assertOwned(params.id);
+      return this.checkout.setVatNumber(params.id, body.vatNumber);
     },
   });
 

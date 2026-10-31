@@ -119,7 +119,7 @@ export class InvoiceService {
         quantity: 1,
         unitPrice: order.shippingTotal,
         lineTotal: order.shippingTotal,
-        rateBps: rateOf(undefined),
+        rateBps: rateOf(order.shippingRateBps),
       });
     }
 
@@ -151,8 +151,11 @@ export class InvoiceService {
         orderId,
         issuedAt,
         seller,
-        buyer: (order.shippingAddress as Record<string, any>) ?? {
-          fullName: "Client",
+        buyer: {
+          ...((order.shippingAddress as Record<string, any>) ?? {
+            fullName: "Client",
+          }),
+          ...(order.vatNumber ? { vatNumber: order.vatNumber } : {}),
         },
         lines,
         vatBuckets: buckets,

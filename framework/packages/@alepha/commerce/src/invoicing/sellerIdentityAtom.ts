@@ -43,6 +43,15 @@ export const sellerIdentityAtom = $atom({
       .optional()
       .describe("e.g. 'TVA non applicable, art. 293 B du CGI'"),
     /**
+     * Printed on a sale under reverse charge, where the buyer accounts for the
+     * VAT. The statutory mention, so it is the seller's to word for their law;
+     * unset, the French one.
+     */
+    reverseChargeNotice: z
+      .text({ maxLength: 200 })
+      .optional()
+      .describe("e.g. 'Autoliquidation - article 283-2 du CGI'"),
+    /**
      * Prefix of the invoice number.
      */
     numberPrefix: z.text({ maxLength: 8 }).default("FA"),

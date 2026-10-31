@@ -11,6 +11,7 @@ import {
   InsufficientStockError,
   NoShippingRateError,
   ResourceUnavailableError,
+  VatNumberRefusedError,
 } from "../../errors/CommerceError.ts";
 import {
   type OrderDownload,
@@ -27,8 +28,9 @@ import { CheckoutPaymentProvider } from "../providers/CheckoutPaymentProvider.ts
 import { OrderDocumentsProvider } from "../providers/OrderDocumentsProvider.ts";
 import type { CheckoutShippingQuote } from "../providers/ShippingQuoteProvider.ts";
 import { ShippingQuoteProvider } from "../providers/ShippingQuoteProvider.ts";
+import { VatNumberChecker } from "../providers/VatNumberChecker.ts";
 import { AddressService } from "./AddressService.ts";
-import { TaxService } from "./TaxService.ts";
+import { type TaxContext, TaxService } from "./TaxService.ts";
 
 /**
  * Totals for a checkout, all in the smallest currency unit.
@@ -62,6 +64,7 @@ export class CheckoutService {
   protected readonly discounts = $inject(CartDiscountProvider);
   protected readonly orders = $inject(OrderService);
   protected readonly tax = $inject(TaxService);
+  protected readonly vatNumbers = $inject(VatNumberChecker);
   protected readonly payment = $inject(CheckoutPaymentProvider);
   protected readonly addresses = $inject(AddressService);
   protected readonly shipping = $inject(ShippingQuoteProvider);
@@ -186,11 +189,64 @@ export class CheckoutService {
     this.assertOpen(session);
 
     const clean = this.addresses.validate(address);
-    const totals = await this.computeTotals(session.cartId, clean.country);
+    const totals = await this.computeTotals(session.cartId, clean.country, {
+      country: clean.country,
+      reverseCharge: this.tax.reverseCharge(session.vatNumber, clean.country),
+    });
 
     return this.repo.updateById(sessionId, {
       shippingAddress: clean,
       shippingMethod: null,
+      ...totals,
+    });
+  }
+
+  /**
+   * Record a business buyer's VAT number, once the registry has confirmed it,
+   * and re-price: a valid number from another country takes the VAT off. Empty,
+   * it removes the number and the VAT comes back.
+   *
+   * Refused rather than kept unconfirmed: a sale without VAT on a number nobody
+   * checked is the shop's own liability.
+   *
+   * @throws VatNumberRefusedError
+   */
+  public async setVatNumber(
+    sessionId: string,
+    vatNumber?: string,
+  ): Promise<CheckoutSessionEntity> {
+    const session = await this.repo.getById(sessionId);
+    this.assertOpen(session);
+
+    const normalised = vatNumber?.replace(/[\s.-]/g, "").toUpperCase();
+    if (normalised) {
+      const check = await this.vatNumbers.check(normalised);
+      if (check.status !== "valid") {
+        throw new VatNumberRefusedError({
+          vatNumber: normalised,
+          reason: check.status,
+        });
+      }
+    }
+
+    const context = this.taxContext({ ...session, vatNumber: normalised });
+    const country = context.country;
+    const priced = await this.carts.price(session.cartId);
+    const totals =
+      session.shippingMethod && country
+        ? this.totalsOf(
+            priced,
+            await this.shipping.quoteFor(
+              country,
+              priced.subtotal,
+              session.shippingMethod,
+            ),
+            context,
+          )
+        : await this.computeTotals(session.cartId, country, context);
+
+    return this.repo.updateById(sessionId, {
+      vatNumber: normalised ?? null,
       ...totals,
     });
   }
@@ -241,7 +297,7 @@ export class CheckoutService {
       );
     }
 
-    const totals = this.totalsOf(priced, quote);
+    const totals = this.totalsOf(priced, quote, this.taxContext(session));
     return this.repo.updateById(sessionId, {
       shippingMethod: quote.code,
       ...totals,
@@ -318,7 +374,11 @@ export class CheckoutService {
       }
     }
 
-    const totals = this.totalsOf(priced, quote);
+    const context = this.taxContext(session);
+    const totals = this.totalsOf(priced, quote, context);
+    const net = context.reverseCharge
+      ? this.tax.net(priced, quote?.price).lines
+      : undefined;
 
     const order = await this.orders.create({
       userId: session.userId,
@@ -329,8 +389,17 @@ export class CheckoutService {
         quantity: l.quantity,
         discount: l.discount,
         lineConfig: l.lineConfig,
+        rateBps: context.reverseCharge
+          ? 0
+          : this.tax.rateFor(l.rateBps, country),
+        net: net?.get(l.lineId),
       })),
       promotionCode: priced.promotionCode,
+      taxCountry: country,
+      shippingRateBps: context.reverseCharge
+        ? 0
+        : this.tax.rateFor(undefined, country),
+      vatNumber: context.reverseCharge ? session.vatNumber : undefined,
       shippingMethod: session.shippingMethod,
       shippingAddress: session.shippingAddress as
         | Record<string, any>
@@ -683,6 +752,7 @@ export class CheckoutService {
   protected async computeTotals(
     cartId: string,
     country?: string,
+    context: TaxContext = {},
   ): Promise<CheckoutTotals> {
     const priced = await this.carts.price(cartId);
     if (!country) {
@@ -692,7 +762,7 @@ export class CheckoutService {
     if (this.shipping.delivers && quotes.length === 0) {
       throw new NoShippingRateError({ country });
     }
-    return this.totalsOf(priced, quotes[0]);
+    return this.totalsOf(priced, quotes[0], context);
   }
 
   /**
@@ -707,11 +777,26 @@ export class CheckoutService {
   protected totalsOf(
     priced: Awaited<ReturnType<CartService["price"]>>,
     shippingQuote?: CheckoutShippingQuote,
+    context: TaxContext = {},
   ): CheckoutTotals {
     const shippingTotal = priced.discount?.freeShipping
       ? 0
       : (shippingQuote?.price ?? 0);
-    const tax = this.tax.compute(priced, shippingTotal);
+
+    // Under reverse charge the figure itself changes: a business pays net.
+    if (context.reverseCharge) {
+      const net = this.tax.net(priced, shippingTotal);
+      return {
+        subtotal: net.subtotal,
+        discountTotal: net.discountTotal,
+        shippingTotal: net.shippingTotal,
+        taxTotal: 0,
+        grandTotal: net.subtotal + net.shippingTotal,
+        currency: priced.currency,
+      };
+    }
+
+    const tax = this.tax.compute(priced, shippingTotal, context);
     return {
       subtotal: priced.subtotal,
       discountTotal: priced.discountTotal,
@@ -719,6 +804,17 @@ export class CheckoutService {
       taxTotal: tax.total,
       grandTotal: priced.subtotal + shippingTotal,
       currency: priced.currency,
+    };
+  }
+
+  /**
+   * What the session's destination and number mean for its tax.
+   */
+  protected taxContext(session: CheckoutSessionEntity): TaxContext {
+    const country = this.countryOf(session);
+    return {
+      country,
+      reverseCharge: this.tax.reverseCharge(session.vatNumber, country),
     };
   }
 

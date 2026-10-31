@@ -15,11 +15,16 @@ import {
   NoShippingQuoteProvider,
   ShippingQuoteProvider,
 } from "./providers/ShippingQuoteProvider.ts";
+import {
+  VatNumberChecker,
+  ViesVatNumberChecker,
+} from "./providers/VatNumberChecker.ts";
 import { AddressService } from "./services/AddressService.ts";
 import { CheckoutService } from "./services/CheckoutService.ts";
 import { CheckoutSettlementListener } from "./services/CheckoutSettlementListener.ts";
 import { HoldSweeper } from "./services/HoldSweeper.ts";
 import { TaxService } from "./services/TaxService.ts";
+import { taxConfig } from "./taxConfigAtom.ts";
 
 export * from "./checkoutConfigAtom.ts";
 export * from "./controllers/CheckoutController.ts";
@@ -31,11 +36,13 @@ export * from "./providers/EmbeddedCheckoutPayment.ts";
 export * from "./providers/OrderDocumentsProvider.ts";
 export * from "./providers/RedirectCheckoutPayment.ts";
 export * from "./providers/ShippingQuoteProvider.ts";
+export * from "./providers/VatNumberChecker.ts";
 export * from "./services/AddressService.ts";
 export * from "./services/CheckoutService.ts";
 export * from "./services/CheckoutSettlementListener.ts";
 export * from "./services/HoldSweeper.ts";
 export * from "./services/TaxService.ts";
+export * from "./taxConfigAtom.ts";
 
 declare module "alepha" {
   interface Hooks {
@@ -97,10 +104,11 @@ export const AlephaCommerceCheckout = $module({
     AlephaApiPayments,
     AlephaApiJobs,
   ],
-  atoms: [checkoutConfig],
+  atoms: [checkoutConfig, taxConfig],
   services: [
     CheckoutPaymentProvider,
     ShippingQuoteProvider,
+    VatNumberChecker,
     OrderDocumentsProvider,
     AddressRulesProvider,
     AddressService,
@@ -114,8 +122,14 @@ export const AlephaCommerceCheckout = $module({
     RedirectCheckoutPayment,
     EmbeddedCheckoutPayment,
     NoShippingQuoteProvider,
+    ViesVatNumberChecker,
   ],
   register: (alepha) => {
+    alepha.with({
+      optional: true,
+      provide: VatNumberChecker,
+      use: ViesVatNumberChecker,
+    });
     alepha.with({
       optional: true,
       provide: CheckoutPaymentProvider,
