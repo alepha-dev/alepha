@@ -265,6 +265,9 @@ its own boundary, each with the service and the key.
   - a named volume with driver_opts: they are mount(2) arguments, so
     `{type: none, o: bind, device: /etc}` is that same bind mount under
     another name, and overlay or a block device reach the host as well
+  - a named volume with a name of its own, or external: Bay names volumes
+    after the stack environment, and either one mounts whatever already
+    carries that name, another environment's data included
   - build: Bay runs images and archives, it builds nothing on the host
 */
 func (l *Loaded) Validate() error {
@@ -325,6 +328,16 @@ func (l *Loaded) Validate() error {
 		if _, ok := vol["driver_opts"]; ok {
 			problems = append(problems, fmt.Sprintf(
 				"volume %s: driver_opts is not allowed: they are mount options, and a bind through them reaches any host path", name))
+		}
+		// Compose writes `name` on every volume, "<project>_<key>" unless the
+		// file chose one, so the key being there says nothing: only its value
+		// does.
+		if external, _ := vol["external"].(bool); external {
+			problems = append(problems, fmt.Sprintf(
+				"volume %s: external is not allowed: Bay names volumes after the stack environment, so staging never reaches production's data", name))
+		} else if fixed, _ := vol["name"].(string); fixed != "" && fixed != l.Project+"_"+name {
+			problems = append(problems, fmt.Sprintf(
+				"volume %s: name is not allowed: Bay names volumes after the stack environment, so staging never reaches production's data", name))
 		}
 	}
 	if len(problems) > 0 {

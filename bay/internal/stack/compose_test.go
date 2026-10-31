@@ -202,6 +202,49 @@ func TestLoad(t *testing.T) {
 			t.Fatal(err)
 		}
 	})
+
+	t.Run("a named volume keeps the name Compose gives it, however the file spells another", func(t *testing.T) {
+		requireCompose(t)
+		service := "services:\n  web:\n    image: nginx\n    volumes: [\"data:/data\"]\n"
+		for _, c := range []struct {
+			name, top, refused string
+			files              map[string]string
+		}{
+			{name: "no name", top: "volumes:\n  data: {}\n"},
+			{name: "external false", top: "volumes:\n  data: {external: false}\n"},
+			{name: "the default spelled out", top: "volumes:\n  data: {name: p-staging_data}\n"},
+			{name: "another environment's", top: "volumes:\n  data: {name: p-production_data}\n", refused: "volume data: name is not allowed"},
+			{name: "from a default value", top: "volumes:\n  data: {name: \"${V:-p-production_data}\"}\n", refused: "volume data: name is not allowed"},
+			{name: "from an included file", top: "include: [extra.yml]\n", refused: "volume data: name is not allowed",
+				files: map[string]string{"extra.yml": "volumes:\n  data: {name: p-production_data}\n"}},
+			{name: "external", top: "volumes:\n  data: {external: true}\n", refused: "volume data: external is not allowed"},
+			{name: "external through the old spelling", top: "volumes:\n  data: {external: {name: p-production_data}}\n", refused: "volume data: external is not allowed"},
+		} {
+			t.Run(c.name, func(t *testing.T) {
+				files := map[string]string{"compose.yml": service + c.top}
+				for name, body := range c.files {
+					files[name] = body
+				}
+				l, err := Load(bundleDir(t, files), "p-staging", nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				err = l.Validate()
+				if c.refused == "" {
+					if err != nil {
+						t.Fatal(err)
+					}
+					return
+				}
+				if err == nil || !strings.Contains(err.Error(), c.refused) {
+					t.Fatalf("err = %v, want %q", err, c.refused)
+				}
+				if strings.Count(err.Error(), "volume data:") != 1 {
+					t.Fatalf("one volume, one refusal: %v", err)
+				}
+			})
+		}
+	})
 }
 
 func TestVolumeMounts(t *testing.T) {

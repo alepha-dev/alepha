@@ -19,6 +19,10 @@ import type { StackModelService } from "../schemas/stackModelServiceSchema.ts";
  * malformed, with the service and the key, mirroring Bay's own `x-lore`
  * parser so a typo fails at upload, not on the machine. Whether a readable
  * file can RUN somewhere is {@link StackTargets}' question.
+ *
+ * A volume's `name:` is kept whatever its value, where Bay lets through the
+ * one Compose would pick: an upload belongs to no environment yet, so there
+ * is nothing here to compare it with.
  */
 export class StackComposeParser {
   /**
@@ -73,6 +77,16 @@ export class StackComposeParser {
       volumes: Object.keys(volumes).sort(),
       volumesWithDriverOpts: Object.keys(volumes)
         .filter((name) => this.map(volumes[name])?.driver_opts !== undefined)
+        .sort(),
+      volumesWithName: Object.keys(volumes)
+        .filter(
+          (name) =>
+            this.map(volumes[name])?.name !== undefined &&
+            !this.map(volumes[name])?.external,
+        )
+        .sort(),
+      volumesExternal: Object.keys(volumes)
+        .filter((name) => !!this.map(volumes[name])?.external)
         .sort(),
       variables: this.variables(text),
     };

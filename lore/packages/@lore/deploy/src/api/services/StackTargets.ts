@@ -113,6 +113,16 @@ export class StackTargets {
             `volume ${name}: driver_opts is not allowed: they are mount options, and a bind through them reaches any host path`,
           );
         }
+        for (const name of model.volumesExternal ?? []) {
+          out.push(
+            `volume ${name}: external is not allowed: Bay names volumes after the stack environment, so staging never reaches production's data`,
+          );
+        }
+        for (const name of model.volumesWithName ?? []) {
+          out.push(
+            `volume ${name}: name is not allowed: Bay names volumes after the stack environment, so staging never reaches production's data`,
+          );
+        }
         return out;
       },
     },

@@ -103,6 +103,28 @@ describe("the stack model", () => {
       expect(model.volumes).toEqual(["pgdata"]);
     });
 
+    it("sorts a volume's own name from external, in each spelling Compose takes", ({
+      expect,
+    }) => {
+      const model = parser.parse(
+        [
+          "services:",
+          "  web:",
+          "    image: nginx",
+          "volumes:",
+          "  plain: {}",
+          "  notexternal: {external: false}",
+          "  named: {name: other_data}",
+          "  shared: {external: true}",
+          "  sharednamed: {external: true, name: other_data}",
+          "  old: {external: {name: other_data}}",
+        ].join("\n"),
+        [],
+      );
+      expect(model.volumesWithName).toEqual(["named"]);
+      expect(model.volumesExternal).toEqual(["old", "shared", "sharednamed"]);
+    });
+
     it("lists interpolated variables, required unless they carry a default, and never a value", ({
       expect,
     }) => {

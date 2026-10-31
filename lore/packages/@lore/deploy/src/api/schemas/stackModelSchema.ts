@@ -24,6 +24,16 @@ export const stackModelSchema = z.object({
    */
   volumesWithDriverOpts: z.array(z.string()).optional(),
   /**
+   * The named volumes setting `name:`, which Bay refuses, external ones left
+   * out. Absent on a revision stored before Bay did.
+   */
+  volumesWithName: z.array(z.string()).optional(),
+  /**
+   * The named volumes marked `external`, which Bay refuses. Absent on a
+   * revision stored before Bay did.
+   */
+  volumesExternal: z.array(z.string()).optional(),
+  /**
    * Every `${VAR}` the file interpolates. `required` when it has no default,
    * which is what a deploy refuses to dispatch while unset.
    */
