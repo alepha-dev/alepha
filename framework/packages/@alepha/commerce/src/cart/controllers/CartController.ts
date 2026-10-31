@@ -8,8 +8,10 @@ import { CartService } from "../services/CartService.ts";
 const cartLineSchema = z.object({
   lineId: z.uuid(),
   productId: z.uuid(),
+  variantId: z.uuid().optional(),
   lineConfig: z.record(z.text(), z.any()).optional(),
   name: z.text(),
+  variantLabel: z.text().optional(),
   kind: z.text(),
   unitPrice: z.integer(),
   quantity: z.integer(),
@@ -63,6 +65,10 @@ export class CartController {
     schema: {
       body: z.object({
         productId: z.uuid(),
+        /**
+         * Required on a product sold by variant.
+         */
+        variantId: z.uuid().optional(),
         quantity: z.integer().min(1).max(999).optional(),
         /**
          * What the line chooses beyond the product, for a kind that takes
@@ -79,6 +85,7 @@ export class CartController {
         body.productId,
         body.quantity ?? 1,
         body.lineConfig,
+        body.variantId,
       );
       return this.priceOf(cart.id);
     },
@@ -180,8 +187,10 @@ export class CartController {
       lines: priced.lines.map((l) => ({
         lineId: l.lineId,
         productId: l.productId,
+        variantId: l.variantId,
         lineConfig: l.lineConfig,
         name: l.name,
+        variantLabel: l.variantLabel,
         kind: l.kind,
         unitPrice: l.unitPrice,
         quantity: l.quantity,

@@ -83,6 +83,7 @@ export class ShopI18n {
 
         // Piece
         "produit.add": "Ajouter au panier",
+        "produit.from": "Dès",
         "produit.adding": "Ajout…",
         "produit.soldOut": "Épuisée",
         "produit.added": "$1 est dans votre panier.",
@@ -246,6 +247,7 @@ export class ShopI18n {
         "home.count": "The pieces · $1",
 
         "produit.add": "Add to basket",
+        "produit.from": "From",
         "produit.adding": "Adding…",
         "produit.soldOut": "Sold out",
         "produit.added": "$1 is in your basket.",

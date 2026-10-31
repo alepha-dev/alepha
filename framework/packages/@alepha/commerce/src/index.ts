@@ -11,15 +11,19 @@ import { LineConfigService } from "./services/LineConfigService.ts";
 import { OrderService } from "./services/OrderService.ts";
 import { ResourceService } from "./services/ResourceService.ts";
 import { StockService } from "./services/StockService.ts";
+import { VariantService } from "./services/VariantService.ts";
 import { VatCalculator } from "./services/VatCalculator.ts";
 
 export * from "./controllers/OrderController.ts";
 export * from "./controllers/ProductController.ts";
 export * from "./entities/orderItems.ts";
 export * from "./entities/orders.ts";
+export * from "./schemas/optionGroupSchema.ts";
 export * from "./schemas/orderStatusSchema.ts";
 export * from "./schemas/publicOrderItemSchema.ts";
+export * from "./schemas/publicVariantSchema.ts";
 export * from "./entities/products.ts";
+export * from "./entities/productVariants.ts";
 export * from "./entities/resourceReservations.ts";
 export * from "./entities/stockMovements.ts";
 export * from "./entities/stockReservations.ts";
@@ -35,6 +39,7 @@ export * from "./services/LineConfigService.ts";
 export * from "./services/OrderService.ts";
 export * from "./services/ResourceService.ts";
 export * from "./services/StockService.ts";
+export * from "./services/VariantService.ts";
 export * from "./services/VatCalculator.ts";
 
 declare module "alepha" {
@@ -145,6 +150,7 @@ export const AlephaCommerce = $module({
     OrderService,
     ClaimLock,
     StockService,
+    VariantService,
     ResourceService,
     // Core, not invoicing: a receipt needs this arithmetic and never issues an
     // invoice. See the note on the class.

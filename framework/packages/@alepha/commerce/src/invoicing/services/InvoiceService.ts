@@ -78,7 +78,10 @@ export class InvoiceService {
       exempt ? 0 : (snapshot ?? this.tax.rateBps());
 
     const lines: InvoiceLine[] = items.map((item) => ({
-      description: item.name,
+      description: item.variantLabel
+        ? `${item.name} (${item.variantLabel})`
+        : item.name,
+      sku: item.sku,
       quantity: item.quantity,
       unitPrice: item.unitPrice,
       lineTotal: item.unitPrice * item.quantity,

@@ -31,6 +31,12 @@ export const stockReservations = $entity({
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
     productId: z.uuid(),
+
+    /**
+     * The variant held, on a product sold by variant.
+     */
+    variantId: z.uuid().optional(),
+
     quantity: z.integer().min(1),
 
     /**
@@ -49,6 +55,7 @@ export const stockReservations = $entity({
   }),
   indexes: [
     { columns: ["productId", "status"] },
+    { columns: ["variantId", "status"] },
     { columns: ["orderId"] },
     { columns: ["status", "expiresAt"] },
   ],

@@ -114,11 +114,18 @@ const Accueil = (props: AccueilProps) => {
                     </p>
                   </div>
 
-                  <Prix
-                    cents={produit.price}
-                    currency={produit.currency}
-                    className="col-span-2 text-lg sm:col-span-1 sm:text-xl"
-                  />
+                  <span className="col-span-2 sm:col-span-1">
+                    {produit.priceFrom !== undefined ? (
+                      <span className="mesure text-muted-foreground mr-2">
+                        {tr("produit.from")}
+                      </span>
+                    ) : null}
+                    <Prix
+                      cents={produit.priceFrom ?? produit.price}
+                      currency={produit.currency}
+                      className="text-lg sm:text-xl"
+                    />
+                  </span>
                 </Link>
               </li>
             );

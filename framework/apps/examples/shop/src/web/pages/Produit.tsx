@@ -1,7 +1,11 @@
 import type { PublicProduct } from "@alepha/commerce";
 import { Button, useToast } from "@alepha/ui";
+import { ControlSelect } from "@alepha/ui/form";
+import { z } from "alepha";
+import { useForm, useFormValues } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { Link } from "alepha/react/router";
+import { useMemo } from "react";
 
 import { Dessin } from "../components/Dessin.tsx";
 import { PlaqueSpec } from "../components/PlaqueSpec.tsx";
@@ -31,16 +35,49 @@ const Produit = (props: ProduitProps) => {
   const toast = useToast();
   const { tr } = useI18n();
 
+  /*
+   * One `Control` per option group, so the choice is a form like any other.
+   * Preset on the first variant still in stock: the page opens on something
+   * that can be bought.
+   */
+  const groupes = produit.optionGroups;
+  const schema = useMemo(
+    () =>
+      z.object(
+        Object.fromEntries(
+          groupes.map((groupe) => [
+            groupe.name,
+            z
+              .enum(groupe.values as [string, ...string[]])
+              .meta({ title: groupe.name }),
+          ]),
+        ),
+      ),
+    [produit.id],
+  );
+  const preset =
+    produit.variants?.find((it) => it.available > 0) ?? produit.variants?.[0];
+  const form = useForm(
+    { schema, initialValues: preset?.options ?? {}, handler: async () => {} },
+    [schema],
+  );
+  const choix = useFormValues(form);
+  const variante = produit.variants?.find((it) =>
+    groupes.every((groupe) => it.options[groupe.name] === choix[groupe.name]),
+  );
+  const parVariante = (produit.variants?.length ?? 0) > 0;
+  const stock = parVariante ? (variante?.available ?? 0) : disponible;
+
   const surCommande = produit.kind === "engraved";
   const dematerialise = produit.kind === "digital";
-  const epuise = !dematerialise && disponible <= 0;
+  const epuise = !dematerialise && stock <= 0;
 
   // No catch: a refusal (the domain's 409 when the last one has just gone,
   // which names the stock) is toasted by the layout's `ActionErrorToaster`,
   // and `ajouter` resolves `undefined` for it, so the success toast is not
   // shown.
   const onAjouter = async () => {
-    if ((await ajouter(produit.id, 1)).ok) {
+    if ((await ajouter(produit.id, 1, variante?.id)).ok) {
       toast.success(tr("produit.added", { args: [produit.name] }));
     }
   };
@@ -68,13 +105,24 @@ const Produit = (props: ProduitProps) => {
 
         <div className="mt-6">
           <Prix
-            cents={produit.price}
+            cents={variante?.price ?? produit.price}
             currency={produit.currency}
             className="text-2xl"
           />
         </div>
 
         <p className="text-muted-foreground mt-6">{produit.description}</p>
+
+        {parVariante
+          ? groupes.map((groupe) => (
+              <div key={groupe.name} className="mt-6">
+                <ControlSelect
+                  input={(form.input as Record<string, any>)[groupe.name]}
+                  segmented
+                />
+              </div>
+            ))
+          : null}
 
         <PlaqueSpec spec={spec} reference={produit.slug} variant="detail" />
 
@@ -89,7 +137,7 @@ const Produit = (props: ProduitProps) => {
               ? `${tr("produit.engraved")}${spec.dimensions ? ` · ${spec.dimensions}` : ""}`
               : epuise
                 ? tr("produit.noneLeft")
-                : tr("produit.inStock", { args: [String(disponible)] })}
+                : tr("produit.inStock", { args: [String(stock)] })}
         </p>
 
         <Button

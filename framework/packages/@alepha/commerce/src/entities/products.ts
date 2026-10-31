@@ -2,6 +2,8 @@ import type { Infer } from "alepha";
 import { z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
+import { optionGroupSchema } from "../schemas/optionGroupSchema.ts";
+
 /**
  * A sellable catalog row.
  *
@@ -74,6 +76,12 @@ export const products = $entity({
      * afterwards cannot retroactively change what was invoiced.
      */
     vatRateBps: z.integer().min(0).max(10000).optional(),
+
+    /**
+     * The choices this product offers (`Taille`, `Couleur`): what a storefront
+     * draws as pickers and what the admin multiplies out into variants.
+     */
+    optionGroups: db.default(z.array(optionGroupSchema), []),
 
     /**
      * Kind-specific payload. Validated by the registered handler.

@@ -41,7 +41,7 @@ test.describe("catalogue management", () => {
     ).toBeVisible();
     await expect(page.getByRole("cell", { name: /Bague Nadir/ })).toBeVisible();
     // `count: true` on the admin listing, so the total is a number and not "?".
-    await expect(page.getByText(/6 of 6|6 sur 6/)).toBeVisible();
+    await expect(page.getByText(/7 of 7|7 sur 7/)).toBeVisible();
   });
 
   test("opens a product on its own page with its values", async ({ page }) => {
@@ -127,6 +127,32 @@ test.describe("catalogue management", () => {
     // Put it back on the seller's default rate.
     await page.locator('input[name="vatRateBps"]').fill("");
     await page.getByRole("button", { name: "Enregistrer" }).first().click();
+  });
+
+  test("the Variants tab writes the combinations an option adds", async ({
+    page,
+  }) => {
+    await page.goto("/admin/produits");
+    await page.getByRole("cell", { name: "Alliance Zénith" }).click();
+    await page.getByText("Déclinaisons", { exact: true }).click();
+    await expect(page.getByText("ZENITH-58")).toBeVisible();
+
+    await page
+      .locator('textarea[name="groups"]')
+      .fill("Taille: 50, 54, 58, 62");
+    await page.getByRole("button", { name: "Enregistrer et générer" }).click();
+
+    await expect(page.getByText("ALLIANCE-ZENITH-62")).toBeVisible();
+    await expect(page.getByText("ZENITH-58")).toBeVisible();
+
+    // Back to what the checkout specs and the seed say.
+    await page
+      .getByRole("listitem")
+      .filter({ hasText: "ALLIANCE-ZENITH-62" })
+      .getByRole("button", { name: "Supprimer" })
+      .click();
+    await page.getByRole("button", { name: /Confirmer|Confirm|OK/ }).click();
+    await expect(page.getByText("ALLIANCE-ZENITH-62")).toHaveCount(0);
   });
 
   test("a price edited in the admin shows on the storefront", async ({

@@ -12,7 +12,7 @@ import {
   stockReservations,
 } from "../entities/stockReservations.ts";
 import { InsufficientStockError } from "../errors/CommerceError.ts";
-import { ClaimLock } from "./ClaimLock.ts";
+import { ClaimLock, type ClaimLockKey } from "./ClaimLock.ts";
 
 /**
  * Stock, as an append-only ledger plus a set of temporary holds.
@@ -23,6 +23,10 @@ import { ClaimLock } from "./ClaimLock.ts";
  * - {@link reserved} — what is spoken for: live, unexpired holds.
  * - {@link available} — what may still be sold: on-hand minus reserved. **This
  *   is the one a storefront shows and the one {@link reserve} checks.**
+ *
+ * Each takes an optional variant. Without one it sums everything under the
+ * product, which is the product's own figure when it has no variants and the
+ * total across them when it has.
  *
  * Ported from Club's `StockService`, which learned the hard way that a counter
  * column oversells: two concurrent sales read the same snapshot, both see
@@ -78,6 +82,18 @@ export class StockService {
    */
   public static readonly LOCK_NAMESPACE = "alepha:commerce:stock";
 
+  /**
+   * The lock a claim takes: on the variant when there is one, so two sizes of
+   * one shirt do not contend, on the product otherwise. A product sold by
+   * variant is never claimed at product level: the cart refuses such a line.
+   */
+  public static lockKey(productId: string, variantId?: string): ClaimLockKey {
+    return {
+      namespace: StockService.LOCK_NAMESPACE,
+      key: variantId ?? productId,
+    };
+  }
+
   protected readonly log = $logger();
   protected readonly lock = $inject(ClaimLock);
   protected readonly movements = $repository(stockMovements);
@@ -120,9 +136,12 @@ export class StockService {
    * Call inside the transaction that is about to write a movement — a value read
    * outside it is stale by the time it is acted on.
    */
-  public async onHand(productId: string): Promise<number> {
+  public async onHand(productId: string, variantId?: string): Promise<number> {
     const rows = await this.movements.findMany({
-      where: { productId: { eq: productId } },
+      where: {
+        productId: { eq: productId },
+        ...(variantId ? { variantId: { eq: variantId } } : {}),
+      },
       columns: ["delta"],
     });
     return rows.reduce((sum, row) => sum + row.delta, 0);
@@ -132,11 +151,15 @@ export class StockService {
    * What live holds have spoken for. Expired holds are excluded here, not just
    * by the sweep, so a late sweep can never cause an oversell.
    */
-  public async reserved(productId: string): Promise<number> {
+  public async reserved(
+    productId: string,
+    variantId?: string,
+  ): Promise<number> {
     const now = this.dateTime.nowISOString();
     const holds = await this.reservations.findMany({
       where: {
         productId: { eq: productId },
+        ...(variantId ? { variantId: { eq: variantId } } : {}),
         status: { eq: "held" },
         expiresAt: { gte: now },
       },
@@ -148,10 +171,13 @@ export class StockService {
   /**
    * What may still be sold. This is what a storefront should display.
    */
-  public async available(productId: string): Promise<number> {
+  public async available(
+    productId: string,
+    variantId?: string,
+  ): Promise<number> {
     const [onHand, reserved] = await Promise.all([
-      this.onHand(productId),
-      this.reserved(productId),
+      this.onHand(productId, variantId),
+      this.reserved(productId, variantId),
     ]);
     return onHand - reserved;
   }
@@ -167,13 +193,14 @@ export class StockService {
   public async reserve(
     productId: string,
     quantity: number,
-    options: { orderId: string; ttlMinutes?: number },
+    options: { orderId: string; ttlMinutes?: number; variantId?: string },
   ): Promise<StockReservationEntity> {
-    return this.claim(productId, async (locked) => {
+    const { variantId } = options;
+    return this.claim(productId, variantId, async (locked) => {
       // Under the lock this check is the decision. Without it, it only
       // rejects the obviously impossible before anything is written: two
       // racers can both pass it, and the replay below decides.
-      const available = await this.available(productId);
+      const available = await this.available(productId, variantId);
       if (available < quantity) {
         throw new InsufficientStockError({
           productId,
@@ -185,6 +212,7 @@ export class StockService {
       const ttl = options.ttlMinutes ?? StockService.RESERVATION_TTL_MINUTES;
       const hold = await this.reservations.create({
         productId,
+        variantId,
         quantity,
         orderId: options.orderId,
         status: "held",
@@ -193,12 +221,12 @@ export class StockService {
         ).toISOString(),
       });
 
-      if (!locked && !(await this.holdFits(productId, hold.id))) {
+      if (!locked && !(await this.holdFits(productId, variantId, hold.id))) {
         await this.reservations.updateById(hold.id, { status: "released" });
         throw new InsufficientStockError({
           productId,
           requested: quantity,
-          onHand: Math.max(0, await this.available(productId)),
+          onHand: Math.max(0, await this.available(productId, variantId)),
         });
       }
 
@@ -208,7 +236,8 @@ export class StockService {
 
   /**
    * Run one claim on a product's stock so that no other claim on the same
-   * product decides at the same time, and tell it whether its own check is
+   * product, or variant, decides at the same time, and tell it whether its own
+   * check is
    * the decision. See {@link ClaimLock} for how, on each database.
    *
    * Where `locked` is false the claim must replay: see {@link holdFits} and
@@ -216,12 +245,10 @@ export class StockService {
    */
   protected async claim<R>(
     productId: string,
+    variantId: string | undefined,
     decide: (locked: boolean) => Promise<R>,
   ): Promise<R> {
-    return this.lock.run(
-      { namespace: StockService.LOCK_NAMESPACE, key: productId },
-      decide,
-    );
+    return this.lock.run(StockService.lockKey(productId, variantId), decide);
   }
 
   /**
@@ -245,14 +272,16 @@ export class StockService {
    */
   protected async holdFits(
     productId: string,
+    variantId: string | undefined,
     holdId: string,
   ): Promise<boolean> {
     const now = this.dateTime.nowISOString();
     const [onHand, holds] = await Promise.all([
-      this.onHand(productId),
+      this.onHand(productId, variantId),
       this.reservations.findMany({
         where: {
           productId: { eq: productId },
+          ...(variantId ? { variantId: { eq: variantId } } : {}),
           status: { eq: "held" },
           expiresAt: { gte: now },
         },
@@ -324,9 +353,14 @@ export class StockService {
   public async recordSale(
     productId: string,
     quantity: number,
-    context: { orderId?: string; orderItemId?: string } = {},
+    context: {
+      orderId?: string;
+      orderItemId?: string;
+      variantId?: string;
+    } = {},
   ): Promise<void> {
-    await this.claim(productId, async (locked) => {
+    const { variantId } = context;
+    await this.claim(productId, variantId, async (locked) => {
       if (await this.alreadySold(productId, context)) {
         return;
       }
@@ -334,8 +368,8 @@ export class StockService {
       // The decision under the lock, a fast pre-check without it: same as
       // `reserve`.
       const sellable =
-        (await this.onHand(productId)) -
-        (await this.heldByOthers(productId, context.orderId));
+        (await this.onHand(productId, variantId)) -
+        (await this.heldByOthers(productId, variantId, context.orderId));
       if (sellable < quantity) {
         throw new InsufficientStockError({
           productId,
@@ -346,25 +380,29 @@ export class StockService {
 
       const movement = await this.movements.create({
         productId,
+        variantId,
         delta: -quantity,
         reason: "sale",
         orderId: context.orderId,
         orderItemId: context.orderItemId,
       });
 
-      if (!locked && !(await this.movementFits(productId, movement.id))) {
+      if (
+        !locked &&
+        !(await this.movementFits(productId, variantId, movement.id))
+      ) {
         await this.movements.deleteById(movement.id);
         throw new InsufficientStockError({
           productId,
           requested: quantity,
-          onHand: Math.max(0, await this.onHand(productId)),
+          onHand: Math.max(0, await this.onHand(productId, variantId)),
         });
       }
 
       // Inside the claim, so on Postgres the sale and the hold it uses up
       // commit together: no reader sees the units both sold and still held.
       if (context.orderId) {
-        await this.consumeHold(context.orderId, productId, quantity);
+        await this.consumeHold(context.orderId, productId, quantity, variantId);
       }
     });
   }
@@ -375,11 +413,13 @@ export class StockService {
    */
   protected async heldByOthers(
     productId: string,
+    variantId: string | undefined,
     orderId?: string,
   ): Promise<number> {
     const holds = await this.reservations.findMany({
       where: {
         productId: { eq: productId },
+        ...(variantId ? { variantId: { eq: variantId } } : {}),
         status: { eq: "held" },
         expiresAt: { gte: this.dateTime.nowISOString() },
         ...(orderId ? { orderId: { ne: orderId } } : {}),
@@ -439,10 +479,14 @@ export class StockService {
    */
   protected async movementFits(
     productId: string,
+    variantId: string | undefined,
     movementId: string,
   ): Promise<boolean> {
     const movements = await this.movements.findMany({
-      where: { productId: { eq: productId } },
+      where: {
+        productId: { eq: productId },
+        ...(variantId ? { variantId: { eq: variantId } } : {}),
+      },
       orderBy: [
         { column: "createdAt", direction: "asc" },
         { column: "id", direction: "asc" },
@@ -468,10 +512,15 @@ export class StockService {
   public async recordIntake(
     productId: string,
     quantity: number,
-    options: { reason?: "intake" | "return"; note?: string } = {},
+    options: {
+      reason?: "intake" | "return";
+      note?: string;
+      variantId?: string;
+    } = {},
   ): Promise<void> {
     await this.movements.create({
       productId,
+      variantId: options.variantId,
       delta: quantity,
       reason: options.reason ?? "intake",
       note: options.note,
@@ -492,13 +541,14 @@ export class StockService {
   public async recordAdjustment(
     productId: string,
     delta: number,
-    options: { note?: string } = {},
+    options: { note?: string; variantId?: string } = {},
   ): Promise<void> {
     if (delta === 0) {
       throw new AlephaError("A stock adjustment cannot be zero.");
     }
     await this.movements.create({
       productId,
+      variantId: options.variantId,
       delta,
       reason: "adjustment",
       note: options.note,
@@ -533,10 +583,9 @@ export class StockService {
    */
   public async releaseOrder(orderId: string): Promise<void> {
     const sold = await this.movementsOfOrder(orderId);
-    const keys = [...new Set(sold.map((it) => it.productId))].map((key) => ({
-      namespace: StockService.LOCK_NAMESPACE,
-      key,
-    }));
+    const keys = sold.map((it) =>
+      StockService.lockKey(it.productId, it.variantId),
+    );
 
     await this.lock.run(keys, async () => {
       const out = new Map<
@@ -553,6 +602,7 @@ export class StockService {
         if (line.delta < 0) {
           await this.movements.create({
             productId: line.productId,
+            variantId: line.variantId,
             delta: -line.delta,
             reason: "return",
             orderId,
@@ -588,11 +638,13 @@ export class StockService {
     orderId: string,
     productId: string,
     quantity: number,
+    variantId?: string,
   ): Promise<void> {
     const holds = await this.reservations.findMany({
       where: {
         orderId: { eq: orderId },
         productId: { eq: productId },
+        ...(variantId ? { variantId: { eq: variantId } } : {}),
         status: { eq: "held" },
       },
     });

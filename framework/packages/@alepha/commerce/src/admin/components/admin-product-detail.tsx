@@ -18,6 +18,7 @@ import {
   Eye,
   EyeOff,
   Images,
+  Layers,
   Package,
   Receipt,
   Tags,
@@ -32,6 +33,7 @@ import { AdminProductDetailMediaTab } from "./admin-product-detail-media-tab.tsx
 import { AdminProductDetailOrdersTab } from "./admin-product-detail-orders-tab.tsx";
 import { AdminProductDetailOverviewTab } from "./admin-product-detail-overview-tab.tsx";
 import { AdminProductDetailStockTab } from "./admin-product-detail-stock-tab.tsx";
+import { AdminProductDetailVariantsTab } from "./admin-product-detail-variants-tab.tsx";
 import { imagesFormSchema } from "./images-form-schema.ts";
 import { productFormSchema } from "./product-form-schema.ts";
 import { stockAdjustSchema } from "./stock-adjust-schema.ts";
@@ -44,7 +46,13 @@ export interface AdminProductDetailProps {
   backPath?: string;
 }
 
-type TabKey = "overview" | "media" | "details" | "stock" | "orders";
+type TabKey =
+  | "overview"
+  | "media"
+  | "details"
+  | "variants"
+  | "stock"
+  | "orders";
 
 /**
  * Composition root for the product detail page.
@@ -317,24 +325,57 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
 
   // -- Stock -----------------------------------------------------------------
 
-  const adjustSchema = useMemo(() => stockAdjustSchema(tr), [tr]);
-
-  const adjustForm = useForm({
-    schema: adjustSchema,
-    initialValues: { quantity: 1, reason: "intake" as const },
-    handler: async (values) => {
-      await client.commerceAdminProductAdjustStock({
-        params: { id: productId },
-        body: values,
-      });
-      toast.success(
-        tr("commerce.admin.stock.adjusted", { default: "Stock updated." }),
-      );
-      // Both the figures (aside + cards) and the ledger below have changed.
-      await productQuery.refetch();
-      setMovementsSignal((n) => n + 1);
+  const variantsQuery = useQuery(
+    {
+      handler: ({ signal }) =>
+        client.commerceAdminProductVariants(
+          { params: { id: productId } },
+          { request: { signal } },
+        ),
     },
-  });
+    [client, productId],
+  );
+  const variants = variantsQuery.data ?? [];
+
+  /*
+   * By the ids, for the reason `kindsKey` above is a string: `variants` is a
+   * fresh array until the query resolves.
+   */
+  const variantsKey = variants.map((it) => it.id).join(",");
+  const adjustSchema = useMemo(
+    () =>
+      stockAdjustSchema(
+        tr,
+        variants.map((variant) => ({
+          value: variant.id,
+          label: Object.values(variant.options as Record<string, string>).join(
+            " / ",
+          ),
+        })),
+      ),
+    [tr, variantsKey],
+  );
+
+  const adjustForm = useForm(
+    {
+      schema: adjustSchema,
+      initialValues: { quantity: 1, reason: "intake" as const },
+      handler: async (values) => {
+        await client.commerceAdminProductAdjustStock({
+          params: { id: productId },
+          body: values,
+        });
+        toast.success(
+          tr("commerce.admin.stock.adjusted", { default: "Stock updated." }),
+        );
+        // Both the figures (aside + cards) and the ledger below have changed.
+        await productQuery.refetch();
+        await variantsQuery.refetch();
+        setMovementsSignal((n) => n + 1);
+      },
+    },
+    [adjustSchema],
+  );
 
   const movementsFetcher = useCallback(
     (params: { page: number; size: number }) =>
@@ -439,6 +480,11 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
       label: tr("commerce.admin.detail.tabDetails", { default: "Details" }),
     },
     {
+      value: "variants",
+      icon: Layers,
+      label: tr("commerce.admin.detail.tabVariants", { default: "Variants" }),
+    },
+    {
       value: "stock",
       icon: Package,
       label: tr("commerce.admin.detail.tabStock", { default: "Stock" }),
@@ -526,6 +572,17 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
           onSaveAttributes={(next) => void saveAttributes.run(next)}
           configForm={hasConfig ? configForm : undefined}
           savingConfig={configSaving}
+        />
+      )}
+
+      {tab === "variants" && product && (
+        <AdminProductDetailVariantsTab
+          product={product}
+          variants={variants}
+          onChanged={() => {
+            void variantsQuery.refetch();
+            void productQuery.refetch();
+          }}
         />
       )}
 

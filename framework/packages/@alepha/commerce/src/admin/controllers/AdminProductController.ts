@@ -5,11 +5,17 @@ import { $action } from "alepha/server";
 
 import { orderItems } from "../../entities/orderItems.ts";
 import { products } from "../../entities/products.ts";
+import {
+  type ProductVariantEntity,
+  productVariants,
+} from "../../entities/productVariants.ts";
 import { stockMovements } from "../../entities/stockMovements.ts";
 import { ProductKindRegistry } from "../../providers/ProductKindRegistry.ts";
+import { optionGroupSchema } from "../../schemas/optionGroupSchema.ts";
 import { CatalogService } from "../../services/CatalogService.ts";
 import { OrderService } from "../../services/OrderService.ts";
 import { StockService } from "../../services/StockService.ts";
+import { VariantService } from "../../services/VariantService.ts";
 
 /**
  * A catalog row with its live stock figures, which is what an admin needs.
@@ -18,9 +24,35 @@ export const adminProductSchema = products.schema.extend({
   onHand: z.integer(),
   reserved: z.integer(),
   available: z.integer(),
+  /**
+   * How many variants the product sells through. Above zero, a stock movement
+   * has to name one.
+   */
+  variantCount: z.integer(),
 });
 
 export type AdminProductResource = Infer<typeof adminProductSchema>;
+
+/**
+ * A variant with its live stock figures.
+ */
+export const adminVariantSchema = productVariants.schema.extend({
+  onHand: z.integer(),
+  reserved: z.integer(),
+  available: z.integer(),
+});
+
+export type AdminVariantResource = Infer<typeof adminVariantSchema>;
+
+const variantInputSchema = z.object({
+  sku: z.text({ minLength: 1, maxLength: 64 }),
+  options: z.record(z.text(), z.text()),
+  price: z.integer().min(0).optional(),
+  image: z.text({ maxLength: 500 }).optional(),
+  weightGrams: z.integer().min(0).optional(),
+  position: z.integer().optional(),
+  active: z.boolean().optional(),
+});
 
 const productInputSchema = z.object({
   kind: z.text({ maxLength: 64 }).optional(),
@@ -40,6 +72,7 @@ const productInputSchema = z.object({
    * per-rate breakdown invoicing promises could never have more than one line.
    */
   vatRateBps: z.integer().min(0).max(10000).optional(),
+  optionGroups: z.array(optionGroupSchema).optional(),
   images: z.array(z.text({ maxLength: 500 })).optional(),
   config: z.record(z.text(), z.any()).optional(),
   attributes: z.record(z.text(), z.any()).optional(),
@@ -77,6 +110,7 @@ export class AdminProductController {
   protected readonly stock = $inject(StockService);
   protected readonly orders = $inject(OrderService);
   protected readonly kinds = $inject(ProductKindRegistry);
+  protected readonly variants = $inject(VariantService);
 
   public readonly commerceAdminProductList = $action({
     method: "GET",
@@ -104,12 +138,17 @@ export class AdminProductController {
     },
     handler: async ({ query }) => {
       const page = await this.catalog.listAll(query);
+      const variants = await this.variants.listForProducts(
+        page.content.map((product) => product.id),
+      );
       const withStock = await Promise.all(
         page.content.map(async (product) => ({
           ...product,
           onHand: await this.stock.onHand(product.id),
           reserved: await this.stock.reserved(product.id),
           available: await this.stock.available(product.id),
+          variantCount: variants.filter((it) => it.productId === product.id)
+            .length,
         })),
       );
       return { ...page, content: withStock };
@@ -197,6 +236,7 @@ export class AdminProductController {
         onHand: await this.stock.onHand(product.id),
         reserved: await this.stock.reserved(product.id),
         available: await this.stock.available(product.id),
+        variantCount: (await this.variants.listOf(product.id)).length,
       };
     },
   });
@@ -277,14 +317,17 @@ export class AdminProductController {
       body: z.object({
         quantity: z.integer().min(1).max(100000),
         note: z.text({ maxLength: 500 }).optional(),
+        variantId: z.uuid().optional(),
       }),
       response: z.object({ onHand: z.integer() }),
     },
     handler: async ({ params, body }) => {
+      const variantId = await this.stockTarget(params.id, body.variantId);
       await this.stock.recordIntake(params.id, body.quantity, {
         note: body.note,
+        variantId,
       });
-      return { onHand: await this.stock.onHand(params.id) };
+      return { onHand: await this.stock.onHand(params.id, variantId) };
     },
   });
 
@@ -312,6 +355,7 @@ export class AdminProductController {
         quantity: z.integer().min(-100000).max(100000),
         reason: z.enum(["intake", "return", "adjustment"]),
         note: z.text({ maxLength: 500 }).optional(),
+        variantId: z.uuid().optional(),
       }),
       response: z.object({
         onHand: z.integer(),
@@ -320,23 +364,109 @@ export class AdminProductController {
       }),
     },
     handler: async ({ params, body }) => {
+      const variantId = await this.stockTarget(params.id, body.variantId);
       // An intake and a return are additions the ledger reports separately; an
       // adjustment is the only one that may go down.
       if (body.reason === "adjustment") {
         await this.stock.recordAdjustment(params.id, body.quantity, {
           note: body.note,
+          variantId,
         });
       } else {
         await this.stock.recordIntake(params.id, Math.abs(body.quantity), {
           reason: body.reason,
           note: body.note,
+          variantId,
         });
       }
       return {
-        onHand: await this.stock.onHand(params.id),
-        reserved: await this.stock.reserved(params.id),
-        available: await this.stock.available(params.id),
+        onHand: await this.stock.onHand(params.id, variantId),
+        reserved: await this.stock.reserved(params.id, variantId),
+        available: await this.stock.available(params.id, variantId),
       };
+    },
+  });
+
+  /**
+   * A product's variants with their stock figures: the matrix the Variants tab
+   * edits.
+   */
+  public readonly commerceAdminProductVariants = $action({
+    method: "GET",
+    path: `${this.url}/:id/variants`,
+    group: this.group,
+    use: [$secure({ permissions: ["admin:commerce:read"] })],
+    description: "List a product's variants, with stock figures",
+    schema: {
+      params: z.object({ id: z.uuid() }),
+      response: z.array(adminVariantSchema),
+    },
+    handler: async ({ params }) =>
+      this.withFigures(params.id, await this.variants.listOf(params.id)),
+  });
+
+  /**
+   * Write the combinations of the product's option groups that are missing.
+   * What exists keeps its stock, price and SKU.
+   */
+  public readonly commerceAdminProductVariantsGenerate = $action({
+    method: "POST",
+    path: `${this.url}/:id/variants/generate`,
+    group: this.group,
+    use: [$secure({ permissions: ["admin:commerce:write"] })],
+    description: "Generate the missing combinations of the option groups",
+    schema: {
+      params: z.object({ id: z.uuid() }),
+      response: z.array(adminVariantSchema),
+    },
+    handler: async ({ params }) => {
+      const product = await this.catalog.getById(params.id);
+      return this.withFigures(params.id, await this.variants.generate(product));
+    },
+  });
+
+  public readonly commerceAdminProductVariantCreate = $action({
+    method: "POST",
+    path: `${this.url}/:id/variants`,
+    group: this.group,
+    use: [$secure({ permissions: ["admin:commerce:write"] })],
+    description: "Add a variant",
+    schema: {
+      params: z.object({ id: z.uuid() }),
+      body: variantInputSchema,
+      response: productVariants.schema,
+    },
+    handler: async ({ params, body }) => this.variants.create(params.id, body),
+  });
+
+  public readonly commerceAdminProductVariantUpdate = $action({
+    method: "PUT",
+    path: `${this.url}/:id/variants/:variantId`,
+    group: this.group,
+    use: [$secure({ permissions: ["admin:commerce:write"] })],
+    description: "Update a variant",
+    schema: {
+      params: z.object({ id: z.uuid(), variantId: z.uuid() }),
+      body: variantInputSchema.partial(),
+      response: productVariants.schema,
+    },
+    handler: async ({ params, body }) =>
+      this.variants.update(params.variantId, body),
+  });
+
+  public readonly commerceAdminProductVariantDelete = $action({
+    method: "DELETE",
+    path: `${this.url}/:id/variants/:variantId`,
+    group: this.group,
+    use: [$secure({ permissions: ["admin:commerce:write"] })],
+    description: "Delete a variant that has never been ordered",
+    schema: {
+      params: z.object({ id: z.uuid(), variantId: z.uuid() }),
+      response: z.object({ deleted: z.boolean() }),
+    },
+    handler: async ({ params }) => {
+      await this.variants.delete(params.variantId);
+      return { deleted: true };
     },
   });
 
@@ -411,4 +541,35 @@ export class AdminProductController {
       return { deleted: true };
     },
   });
+
+  protected async withFigures(
+    productId: string,
+    variants: ProductVariantEntity[],
+  ) {
+    return Promise.all(
+      variants.map(async (variant) => ({
+        ...variant,
+        onHand: await this.stock.onHand(productId, variant.id),
+        reserved: await this.stock.reserved(productId, variant.id),
+        available: await this.stock.available(productId, variant.id),
+      })),
+    );
+  }
+
+  /**
+   * The variant a stock movement lands on. A product sold by variant takes
+   * none at product level: units there could never be sold.
+   */
+  protected async stockTarget(
+    productId: string,
+    variantId?: string,
+  ): Promise<string | undefined> {
+    const variants = await this.variants.listOf(productId);
+    // A variant switched off still takes a correction: only selling stops.
+    if (variantId && variants.some((it) => it.id === variantId)) {
+      return variantId;
+    }
+    const product = await this.catalog.getById(productId);
+    return this.variants.pick(product, variants, variantId)?.id;
+  }
 }

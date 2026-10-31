@@ -19,8 +19,10 @@ export const panierAtom = $atom({
         z.object({
           lineId: z.uuid(),
           productId: z.uuid(),
+          variantId: z.uuid().optional(),
           lineConfig: z.record(z.text(), z.any()).optional(),
           name: z.text(),
+          variantLabel: z.text().optional(),
           kind: z.text(),
           unitPrice: z.integer(),
           quantity: z.integer(),

@@ -233,11 +233,20 @@ export const AdminProducts = (props: AdminProductsProps) => {
             destructive: product.published,
             onClick: (item, ctx) => void publish.run(item, ctx.refresh),
           },
-          {
-            label: tr("commerce.admin.restock", { default: "Restock" }),
-            icon: PackagePlus,
-            onClick: (item, ctx) => void restock.run(item, ctx.refresh),
-          },
+          // Restocking a product sold by variant names a variant, which is the
+          // detail page's stock form: a click here has nothing to land on.
+          ...(product.variantCount > 0
+            ? []
+            : [
+                {
+                  label: tr("commerce.admin.restock", { default: "Restock" }),
+                  icon: PackagePlus,
+                  onClick: (
+                    item: AdminProductResource,
+                    ctx: { refresh: () => void },
+                  ) => void restock.run(item, ctx.refresh),
+                },
+              ]),
         ]}
         columns={{
           name: {

@@ -282,6 +282,7 @@ export class CheckoutService {
       status: "pending",
       lines: priced.lines.map((l) => ({
         productId: l.productId,
+        variantId: l.variantId,
         quantity: l.quantity,
         lineConfig: l.lineConfig,
       })),

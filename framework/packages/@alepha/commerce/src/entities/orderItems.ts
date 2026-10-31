@@ -28,10 +28,21 @@ export const orderItems = $entity({
     productId: z.uuid(),
 
     /**
+     * The variant sold, on a product sold by variant. Plain uuid, like
+     * `productId`.
+     */
+    variantId: z.uuid().optional(),
+
+    /**
      * Snapshots — see the class note above.
      */
     kind: z.text({ maxLength: 64 }),
     name: z.text({ maxLength: 200 }),
+    sku: z.text({ maxLength: 64 }).optional(),
+    /**
+     * The variant's option values as the buyer read them: `Bleu / M`.
+     */
+    variantLabel: z.text({ maxLength: 200 }).optional(),
     unitPrice: z.integer().min(0),
 
     /**

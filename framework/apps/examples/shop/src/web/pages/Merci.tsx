@@ -122,6 +122,11 @@ const Merci = (props: MerciProps) => {
           >
             <span>
               <span className="estampe text-xs">{item.name}</span>
+              {item.variantLabel ? (
+                <span className="mesure text-muted-foreground ml-2">
+                  {item.variantLabel}
+                </span>
+              ) : null}
               {item.quantity > 1 ? (
                 <span className="mesure text-muted-foreground ml-2">
                   × {item.quantity}

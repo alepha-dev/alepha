@@ -15,16 +15,23 @@ import {
   orders,
 } from "../entities/orders.ts";
 import { products } from "../entities/products.ts";
+import type { ProductVariantEntity } from "../entities/productVariants.ts";
 import { CommerceError } from "../errors/CommerceError.ts";
 import { ProductKindRegistry } from "../providers/ProductKindRegistry.ts";
 import { ClaimLock } from "./ClaimLock.ts";
 import { LineConfigService } from "./LineConfigService.ts";
 import { ResourceService } from "./ResourceService.ts";
 import { StockService } from "./StockService.ts";
+import { VariantService } from "./VariantService.ts";
 
 export interface OrderLineInput {
   productId: string;
   quantity: number;
+  /**
+   * The variant sold, required on a product sold by variant. Checked here too:
+   * the cart is not the only way an order gets created.
+   */
+  variantId?: string;
   /**
    * What the line chooses beyond the product, for a kind that takes it (a
    * court and an interval). Validated again by the kind's handler before the
@@ -92,6 +99,7 @@ export class OrderService {
   protected readonly stock = $inject(StockService);
   protected readonly resources = $inject(ResourceService);
   protected readonly lines = $inject(LineConfigService);
+  protected readonly variants = $inject(VariantService);
   protected readonly lock = $inject(ClaimLock);
   protected readonly dateTime = $inject(DateTimeProvider);
 
@@ -155,12 +163,19 @@ export class OrderService {
     // Each line judged by its kind and priced on the server, before the
     // transaction opens: the same two calls `CartService.price` made, so the
     // order charges what the cart showed.
+    const allVariants = await this.variants.listForProducts(productIds);
     const accepted: Array<{
       lineConfig: Record<string, any> | undefined;
       unitPrice: number;
+      variant: ProductVariantEntity | undefined;
     }> = [];
     for (const line of input.lines) {
       const product = byId.get(line.productId)!;
+      const variant = this.variants.pick(
+        product,
+        allVariants.filter((it) => it.productId === product.id),
+        line.variantId,
+      );
       const lineConfig = await this.lines.accept(
         product,
         line.lineConfig,
@@ -168,7 +183,8 @@ export class OrderService {
       );
       accepted.push({
         lineConfig,
-        unitPrice: await this.lines.unitPrice(product, lineConfig),
+        unitPrice: await this.lines.unitPrice(product, lineConfig, variant),
+        variant,
       });
     }
 
@@ -196,11 +212,15 @@ export class OrderService {
       const items = await this.itemRepo.createMany(
         input.lines.map((line, index) => {
           const product = byId.get(line.productId)!;
+          const variant = accepted[index]!.variant;
           return {
             orderId: order.id,
             productId: product.id,
+            variantId: variant?.id,
             kind: product.kind,
             name: product.name,
+            sku: variant?.sku,
+            variantLabel: variant && this.variants.label(product, variant),
             unitPrice: accepted[index]!.unitPrice,
             rateBps: product.vatRateBps,
             quantity: line.quantity,

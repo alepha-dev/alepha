@@ -30,6 +30,32 @@
  * copied across verbatim.
  */
 export const commerceEn: Record<string, string> = {
+  "commerce.admin.detail.tabVariants": "Variants",
+  "commerce.admin.stock.fVariant": "Variant",
+  "commerce.admin.variants.delete": "Delete",
+  "commerce.admin.variants.deleteConfirm":
+    "Permanently delete $1? A variant that has sold cannot be deleted: switch it off instead.",
+  "commerce.admin.variants.deleteTitle": "Delete this variant",
+  "commerce.admin.variants.empty":
+    "This product sells as one unit. Add options above to sell it by variant.",
+  "commerce.admin.variants.fActive": "On sale",
+  "commerce.admin.variants.fGroups": "Options",
+  "commerce.admin.variants.fGroupsHint":
+    "One option per line: 'Size: S, M, L'.",
+  "commerce.admin.variants.fImage": "Image (file id or URL)",
+  "commerce.admin.variants.fPrice": "Price incl. tax (cents)",
+  "commerce.admin.variants.fPriceHint": "Empty: the product's price.",
+  "commerce.admin.variants.fSku": "SKU",
+  "commerce.admin.variants.fWeight": "Weight (g)",
+  "commerce.admin.variants.generate": "Save and generate",
+  "commerce.admin.variants.groupsInvalid":
+    "Write each option as 'Name: value, value'.",
+  "commerce.admin.variants.listTitle": "Variants",
+  "commerce.admin.variants.off": "Off",
+  "commerce.admin.variants.optionsHint":
+    "Saving writes the combinations that are missing. Existing variants keep their stock and price.",
+  "commerce.admin.variants.optionsTitle": "Options",
+  "commerce.admin.variants.stockLine": "$1 / $2",
   "commerce.admin.address": "Delivery address",
   "commerce.admin.allKinds": "All types",
   "commerce.admin.allStatuses": "All statuses",

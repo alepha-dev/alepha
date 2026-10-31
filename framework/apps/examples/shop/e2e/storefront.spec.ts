@@ -18,7 +18,7 @@ test.describe("catalogue", () => {
     expect(html).toContain("Bague Nadir");
 
     await page.goto("/");
-    await expect(page.locator("main ul > li")).toHaveCount(6);
+    await expect(page.locator("main ul > li")).toHaveCount(7);
   });
 
   test("every drawing loads from the files module", async ({ page }) => {
@@ -166,6 +166,27 @@ test.describe("cart", () => {
     await expect(
       page.getByRole("heading", { name: "Boucles Éclipse" }),
     ).toBeVisible();
+  });
+
+  test("a size chooses the variant: its price, its stock, its cart line", async ({
+    page,
+  }) => {
+    await page.goto("/produit/alliance-zenith");
+    await expect(page.getByText("420 €")).toBeVisible();
+
+    await page.getByRole("radio", { name: "58" }).click();
+    await expect(page.getByText("450 €")).toBeVisible();
+    await expect(page.getByText("1 en atelier")).toBeVisible();
+
+    await page.getByRole("button", { name: "Ajouter au panier" }).click();
+    await expect(page.getByText(/dans votre panier/)).toBeVisible();
+
+    await page.goto("/panier");
+    await expect(
+      page.getByRole("heading", { name: "Alliance Zénith" }),
+    ).toBeVisible();
+    await expect(page.getByText("58", { exact: true })).toBeVisible();
+    await expect(page.getByText("450 €").first()).toBeVisible();
   });
 
   test("changing a quantity re-prices from the server", async ({ page }) => {

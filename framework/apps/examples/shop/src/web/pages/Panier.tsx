@@ -48,6 +48,11 @@ const Panier = () => {
 
               <div className="min-w-0">
                 <h2 className="estampe text-sm">{line.name}</h2>
+                {line.variantLabel ? (
+                  <p className="mesure text-muted-foreground mt-1">
+                    {line.variantLabel}
+                  </p>
+                ) : null}
                 <div className="mesure text-muted-foreground mt-2 flex items-center gap-3">
                   <label className="flex items-center gap-2">
                     <span>{tr("cart.quantity")}</span>

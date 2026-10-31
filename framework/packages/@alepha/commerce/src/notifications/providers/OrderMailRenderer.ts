@@ -45,7 +45,9 @@ export class DefaultOrderMailRenderer extends OrderMailRenderer {
     const lines = items
       .map(
         (item) =>
-          `<li>${this.escape(item.name)} × ${item.quantity} — ${this.money(
+          `<li>${this.escape(item.name)}${
+            item.variantLabel ? ` (${this.escape(item.variantLabel)})` : ""
+          } × ${item.quantity} — ${this.money(
             item.unitPrice * item.quantity,
             order.currency,
           )}</li>`,

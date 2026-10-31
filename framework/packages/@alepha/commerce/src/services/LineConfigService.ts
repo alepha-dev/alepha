@@ -1,6 +1,7 @@
 import { $inject, SchemaValidationError, SchemaValidator } from "alepha";
 
 import type { ProductEntity } from "../entities/products.ts";
+import type { ProductVariantEntity } from "../entities/productVariants.ts";
 import { InvalidLineError } from "../errors/CommerceError.ts";
 import { ProductKindRegistry } from "../providers/ProductKindRegistry.ts";
 
@@ -61,15 +62,21 @@ export class LineConfigService {
 
   /**
    * The unit price of a line, from the kind's `unitPrice` hook when it has
-   * one, else the product's catalogue price. Never read from the client.
+   * one, else the catalogue's: the variant's, or the product's without an
+   * override. Never read from the client.
+   *
+   * The hook sees the product with the variant's price applied, so a kind that
+   * prices by the slot keeps reading one `price`.
    */
   public async unitPrice(
     product: ProductEntity,
     lineConfig: Record<string, any> | undefined,
+    variant?: ProductVariantEntity,
   ): Promise<number> {
     const handler = this.kinds.get(product.kind);
+    const priced = { ...product, price: variant?.price ?? product.price };
     return handler.unitPrice
-      ? handler.unitPrice(product, lineConfig)
-      : product.price;
+      ? handler.unitPrice(priced, lineConfig)
+      : priced.price;
   }
 }

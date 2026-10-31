@@ -1,4 +1,9 @@
-import { CatalogService, StockService } from "@alepha/commerce";
+import {
+  CatalogService,
+  type OptionGroup,
+  StockService,
+  VariantService,
+} from "@alepha/commerce";
 import { sellerIdentityAtom } from "@alepha/commerce/invoicing";
 import { ShippingService } from "@alepha/commerce/shipping";
 import { $hook, $inject, Alepha } from "alepha";
@@ -32,6 +37,17 @@ interface Piece {
   drawing: string;
   stock: number;
   config?: Record<string, any>;
+  /**
+   * The choices a buyer makes, and one entry per combination. `stock` is then
+   * not used: a product sold by variant holds its stock on them.
+   */
+  optionGroups?: OptionGroup[];
+  variants?: Array<{
+    sku: string;
+    options: Record<string, string>;
+    price?: number;
+    stock: number;
+  }>;
 }
 
 /**
@@ -46,6 +62,7 @@ export class ShopSeed {
   protected readonly alepha = $inject(Alepha);
   protected readonly catalog = $inject(CatalogService);
   protected readonly stock = $inject(StockService);
+  protected readonly variants = $inject(VariantService);
   protected readonly shipping = $inject(ShippingService);
   protected readonly media = $inject(ShopMedia);
   protected readonly drawings = $inject(ShopDrawings);
@@ -148,6 +165,31 @@ export class ShopSeed {
         config: { trackStock: true, lowStockThreshold: 2 },
       },
       {
+        slug: "alliance-zenith",
+        name: "Alliance Zénith",
+        description:
+          "Un jonc plein, sans soudure apparente, tourné à la taille de votre doigt. La plus grande taille demande un peu plus d'or, et le prix le dit.",
+        price: 42000,
+        titre: "750",
+        metal: "Or gris 18 carats",
+        poids: "4,4 g",
+        dimensions: "Largeur 3 mm · jonc plein",
+        drawing: this.drawings.ring(OR_GRIS),
+        stock: 0,
+        config: { trackStock: true, lowStockThreshold: 1 },
+        optionGroups: [{ name: "Taille", values: ["50", "54", "58"] }],
+        variants: [
+          { sku: "ZENITH-50", options: { Taille: "50" }, stock: 2 },
+          { sku: "ZENITH-54", options: { Taille: "54" }, stock: 3 },
+          {
+            sku: "ZENITH-58",
+            options: { Taille: "58" },
+            price: 45000,
+            stock: 1,
+          },
+        ],
+      },
+      {
         slug: "carte-cadeau-50",
         name: "Carte cadeau",
         description:
@@ -184,6 +226,7 @@ export class ShopSeed {
         // The kind's payload. Anything not declared by its handler's schema is
         // stripped on write, which is why the spec plate lives in `attributes`.
         config: piece.config,
+        optionGroups: piece.optionGroups,
         attributes: {
           titre: piece.titre,
           metal: piece.metal,
@@ -195,6 +238,13 @@ export class ShopSeed {
       if (piece.stock > 0) {
         await this.stock.recordIntake(product.id, piece.stock, {
           note: "Put on display",
+        });
+      }
+      for (const { stock, ...variant } of piece.variants ?? []) {
+        const created = await this.variants.create(product.id, variant);
+        await this.stock.recordIntake(product.id, stock, {
+          note: "Put on display",
+          variantId: created.id,
         });
       }
       this.log.info(`Seeded '${piece.slug}'`);

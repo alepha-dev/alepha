@@ -24,7 +24,12 @@ export class DefaultCartRecoveryMailRenderer extends CartRecoveryMailRenderer {
     stage: 1 | 2,
     lines: PricedCartLine[],
   ): Promise<RenderedMail> {
-    const items = lines.map((l) => `- ${l.name} × ${l.quantity}`).join("\n");
+    const items = lines
+      .map(
+        (l) =>
+          `- ${l.name}${l.variantLabel ? ` (${l.variantLabel})` : ""} × ${l.quantity}`,
+      )
+      .join("\n");
 
     if (stage === 1) {
       return {

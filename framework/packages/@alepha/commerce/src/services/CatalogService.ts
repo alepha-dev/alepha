@@ -5,6 +5,7 @@ import { orderItems } from "../entities/orderItems.ts";
 import { type ProductEntity, products } from "../entities/products.ts";
 import { ProductHasOrdersError } from "../errors/CommerceError.ts";
 import { ProductKindRegistry } from "../providers/ProductKindRegistry.ts";
+import type { OptionGroup } from "../schemas/optionGroupSchema.ts";
 
 export interface CreateProduct {
   kind?: string;
@@ -18,6 +19,10 @@ export interface CreateProduct {
    * VAT rate in basis points; omit to bill at the seller's default rate.
    */
   vatRateBps?: number;
+  /**
+   * The choices the product offers; see `VariantService.generate`.
+   */
+  optionGroups?: OptionGroup[];
   /**
    * File ids or URLs; the first is the listing image.
    */

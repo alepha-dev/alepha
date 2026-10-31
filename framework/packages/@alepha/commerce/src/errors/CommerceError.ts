@@ -90,6 +90,19 @@ export const ProductHasOrdersError = CommerceError.extend({
 export type ProductHasOrdersError = InstanceType<typeof ProductHasOrdersError>;
 
 /**
+ * A variant that still appears on order lines cannot be deleted.
+ */
+export const VariantHasOrdersError = CommerceError.extend({
+  name: "VARIANT_HAS_ORDERS",
+  default: { status: 409 },
+  schema: z.object({ variantId: z.text(), orderLines: z.number() }),
+  message: (data) =>
+    `Variant ${data.variantId} appears on ${data.orderLines} order line(s) and cannot be deleted. Switch it off instead.`,
+});
+
+export type VariantHasOrdersError = InstanceType<typeof VariantHasOrdersError>;
+
+/**
  * Not enough stock on hand for the requested quantity.
  */
 export const InsufficientStockError = CommerceError.extend({

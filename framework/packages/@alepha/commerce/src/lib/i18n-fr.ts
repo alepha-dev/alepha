@@ -170,6 +170,7 @@ export const commerceFr: Record<string, string> = {
   "commerce.admin.detail.tabMedia": "Images",
   "commerce.admin.detail.tabDetails": "Détails",
   "commerce.admin.detail.tabStock": "Stock",
+  "commerce.admin.detail.tabVariants": "Déclinaisons",
   "commerce.admin.detail.tabOrders": "Ventes",
   "commerce.admin.detail.loadError": "Impossible de charger le produit",
   "commerce.admin.detail.notFound": "Produit introuvable.",
@@ -224,6 +225,31 @@ export const commerceFr: Record<string, string> = {
   "commerce.admin.stock.fQuantity": "Quantité",
   "commerce.admin.stock.fReason": "Motif",
   "commerce.admin.stock.fNote": "Note",
+  "commerce.admin.stock.fVariant": "Déclinaison",
+  "commerce.admin.variants.delete": "Supprimer",
+  "commerce.admin.variants.deleteConfirm":
+    "Supprimer définitivement $1 ? Une déclinaison déjà vendue ne peut pas être supprimée : désactivez-la.",
+  "commerce.admin.variants.deleteTitle": "Supprimer cette déclinaison",
+  "commerce.admin.variants.empty":
+    "Ce produit se vend à l'unité. Ajoutez des options ci-dessus pour le vendre par déclinaison.",
+  "commerce.admin.variants.fActive": "En vente",
+  "commerce.admin.variants.fGroups": "Options",
+  "commerce.admin.variants.fGroupsHint":
+    "Une option par ligne : « Taille: S, M, L ».",
+  "commerce.admin.variants.fImage": "Image (id de fichier ou URL)",
+  "commerce.admin.variants.fPrice": "Prix TTC (centimes)",
+  "commerce.admin.variants.fPriceHint": "Vide : le prix du produit.",
+  "commerce.admin.variants.fSku": "Référence",
+  "commerce.admin.variants.fWeight": "Poids (g)",
+  "commerce.admin.variants.generate": "Enregistrer et générer",
+  "commerce.admin.variants.groupsInvalid":
+    "Écrivez chaque option sous la forme « Nom: valeur, valeur ».",
+  "commerce.admin.variants.listTitle": "Déclinaisons",
+  "commerce.admin.variants.off": "Désactivée",
+  "commerce.admin.variants.optionsHint":
+    "Enregistrer écrit les combinaisons manquantes. Les déclinaisons existantes gardent leur stock et leur prix.",
+  "commerce.admin.variants.optionsTitle": "Options",
+  "commerce.admin.variants.stockLine": "$1 / $2",
 
   "commerce.admin.orders.empty": "Ce produit n'a jamais été commandé.",
   "commerce.admin.orders.colWhen": "Date",

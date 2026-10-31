@@ -4,8 +4,10 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 
 import { type ProductEntity, products } from "../../entities/products.ts";
+import type { ProductVariantEntity } from "../../entities/productVariants.ts";
 import { CommerceError } from "../../errors/CommerceError.ts";
 import { LineConfigService } from "../../services/LineConfigService.ts";
+import { VariantService } from "../../services/VariantService.ts";
 import { type CartItemEntity, cartItems } from "../entities/cartItems.ts";
 import { type CartEntity, carts } from "../entities/carts.ts";
 
@@ -31,11 +33,20 @@ export interface PricedCartLine {
   lineId: string;
   productId: string;
   /**
+   * The variant chosen, on a product sold by variant.
+   */
+  variantId?: string;
+  /**
    * What this line chooses beyond the product (the court and the interval),
    * as validated when it was added.
    */
   lineConfig?: Record<string, any>;
   name: string;
+  /**
+   * The variant's option values as a buyer reads them: `Bleu / M`.
+   */
+  variantLabel?: string;
+  sku?: string;
   kind: string;
   unitPrice: number;
   /**
@@ -49,7 +60,8 @@ export interface PricedCartLine {
    */
   lineTotal: number;
   /**
-   * First product image, so a cart can show a thumbnail without a second query.
+   * The variant's image, else the first product image, so a cart can show a
+   * thumbnail without a second query.
    */
   image?: string;
 }
@@ -73,6 +85,7 @@ export class CartService {
   protected readonly productRepo = $repository(products);
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly lines = $inject(LineConfigService);
+  protected readonly variants = $inject(VariantService);
   protected readonly dateTime = $inject(DateTimeProvider);
 
   /**
@@ -142,13 +155,17 @@ export class CartService {
    * outright for a kind that takes none. Adding holds nothing, whatever the
    * kind: the hold is taken at `pay()`.
    *
-   * @throws InvalidLineError when the handler refuses the line.
+   * On a product sold by variant, `variantId` is required and must be on sale.
+   *
+   * @throws InvalidLineError when the handler refuses the line, or the variant
+   *   is missing, foreign or switched off.
    */
   public async add(
     cartId: string,
     productId: string,
     quantity = 1,
     lineConfig?: unknown,
+    variantId?: string,
   ): Promise<CartItemEntity> {
     if (quantity < 1) {
       throw new CommerceError(`Quantity must be at least 1, got ${quantity}.`);
@@ -161,8 +178,9 @@ export class CartService {
       throw new CommerceError(`Product is not purchasable: ${productId}`);
     }
 
+    const variant = await this.variants.resolve(product, variantId);
     const config = await this.lines.accept(product, lineConfig, quantity);
-    const lineKey = await this.lineKey(config);
+    const lineKey = await this.lineKey(config, variant?.id);
 
     const line = await this.itemRepo.findOne({
       where: {
@@ -186,6 +204,7 @@ export class CartService {
     return this.itemRepo.create({
       cartId,
       productId,
+      variantId: variant?.id,
       quantity,
       lineConfig: config,
       lineKey,
@@ -264,10 +283,12 @@ export class CartService {
       return { cart, lines: [], subtotal: 0, currency: "EUR" };
     }
 
+    const productIds = [...new Set(items.map((i) => i.productId))];
     const found = await this.productRepo.findMany({
-      where: { id: { inArray: [...new Set(items.map((i) => i.productId))] } },
+      where: { id: { inArray: productIds } },
     });
     const byId = new Map(found.map((p) => [p.id, p]));
+    const variants = await this.variants.listForProducts(productIds);
 
     const lines: PricedCartLine[] = [];
     for (const item of items) {
@@ -275,23 +296,35 @@ export class CartService {
       if (!product?.published) {
         continue;
       }
-      const lineConfig = await this.stillSellable(product, item);
-      if (lineConfig === false) {
+      const sellable = await this.stillSellable(
+        product,
+        item,
+        variants.filter((it) => it.productId === product.id),
+      );
+      if (sellable === false) {
         continue;
       }
-      const unitPrice = await this.lines.unitPrice(product, lineConfig);
+      const { lineConfig, variant } = sellable;
+      const unitPrice = await this.lines.unitPrice(
+        product,
+        lineConfig,
+        variant,
+      );
       lines.push({
         item,
         lineId: item.id,
         productId: product.id,
+        variantId: variant?.id,
         lineConfig,
         name: product.name,
+        variantLabel: variant && this.variants.label(product, variant),
+        sku: variant?.sku,
         kind: product.kind,
         unitPrice,
         rateBps: product.vatRateBps,
         quantity: item.quantity,
         lineTotal: unitPrice * item.quantity,
-        image: product.images[0],
+        image: variant?.image ?? product.images[0],
       });
     }
 
@@ -322,6 +355,7 @@ export class CartService {
           line.productId,
           line.quantity,
           line.lineConfig,
+          line.variantId,
         );
       } catch (error) {
         if (!(error instanceof CommerceError)) {
@@ -333,17 +367,23 @@ export class CartService {
   }
 
   /**
-   * The line key of a validated line config: `""` without one, else the
-   * sha-256 of its canonical JSON (keys sorted at every depth), so the same
-   * choice written in a different key order is the same line.
+   * The line key of a validated line config and its variant: `""` with
+   * neither, else the sha-256 of their canonical JSON (keys sorted at every
+   * depth), so the same choice written in a different key order is the same
+   * line and two variants of a product are two.
    */
   public async lineKey(
     lineConfig: Record<string, any> | undefined,
+    variantId?: string,
   ): Promise<string> {
-    if (lineConfig === undefined) {
+    if (lineConfig === undefined && variantId === undefined) {
       return "";
     }
-    return this.crypto.hash(JSON.stringify(this.canonical(lineConfig)));
+    return this.crypto.hash(
+      JSON.stringify(
+        this.canonical(variantId ? { lineConfig, variantId } : lineConfig),
+      ),
+    );
   }
 
   protected canonical(value: unknown): unknown {
@@ -361,16 +401,31 @@ export class CartService {
   }
 
   /**
-   * The line's config if its kind still sells it, `false` when the kind now
-   * refuses it. Only a refusal (a `CommerceError`) drops the line; any other
-   * failure is a fault and propagates.
+   * The line's config and variant if they still sell, `false` when the kind
+   * refuses it now or the variant was switched off. Only a refusal (a
+   * `CommerceError`) drops the line; any other failure is a fault and
+   * propagates.
    */
   protected async stillSellable(
     product: ProductEntity,
     item: CartItemEntity,
-  ): Promise<Record<string, any> | undefined | false> {
+    variants: ProductVariantEntity[],
+  ): Promise<
+    | {
+        lineConfig: Record<string, any> | undefined;
+        variant: ProductVariantEntity | undefined;
+      }
+    | false
+  > {
     try {
-      return await this.lines.accept(product, item.lineConfig, item.quantity);
+      return {
+        variant: this.variants.pick(product, variants, item.variantId),
+        lineConfig: await this.lines.accept(
+          product,
+          item.lineConfig,
+          item.quantity,
+        ),
+      };
     } catch (error) {
       if (error instanceof CommerceError) {
         return false;

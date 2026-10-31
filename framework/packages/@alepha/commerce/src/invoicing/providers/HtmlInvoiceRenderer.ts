@@ -86,7 +86,9 @@ export class HtmlInvoiceRenderer extends InvoiceRenderer {
     ${lines
       .map(
         (line) => `<tr>
-      <td>${this.escape(line.description)}</td>
+      <td>${this.escape(line.description)}${
+        line.sku ? `<br><small>${this.escape(line.sku)}</small>` : ""
+      }</td>
       <td class="num">${line.quantity}</td>
       <td class="num">${this.money(line.unitPrice, invoice.currency)}</td>
       ${

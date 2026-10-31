@@ -28,6 +28,12 @@ export const stockMovements = $entity({
     productId: z.uuid(),
 
     /**
+     * The variant that moved, on a product sold by variant. The product's
+     * on-hand is the sum across them.
+     */
+    variantId: z.uuid().optional(),
+
+    /**
      * Signed: negative for a sale, positive for an intake or a return.
      */
     delta: z.integer(),
@@ -47,7 +53,11 @@ export const stockMovements = $entity({
 
     note: z.text({ maxLength: 500 }).optional(),
   }),
-  indexes: [{ columns: ["productId"] }, { columns: ["orderId"] }],
+  indexes: [
+    { columns: ["productId"] },
+    { columns: ["variantId"] },
+    { columns: ["orderId"] },
+  ],
 });
 
 export type StockMovementEntity = Infer<typeof stockMovements.schema>;

@@ -21,11 +21,20 @@ export const usePanier = () => {
   const client = useClient<CartController>();
   const [panier, setPanier] = useStore(panierAtom);
 
-  const ajout = useAction<[productId: string, quantity: number]>(
+  const ajout = useAction<
+    [productId: string, quantity: number, variantId?: string]
+  >(
     {
-      handler: async (_ctx, productId: string, quantity: number) => {
+      handler: async (
+        _ctx,
+        productId: string,
+        quantity: number,
+        variantId?: string,
+      ) => {
         setPanier(
-          await client.commerceCartAdd({ body: { productId, quantity } }),
+          await client.commerceCartAdd({
+            body: { productId, quantity, variantId },
+          }),
         );
       },
     },

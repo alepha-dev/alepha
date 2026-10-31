@@ -367,6 +367,12 @@ const AdminOrderSheet = (props: AdminOrderSheetProps) => {
                     >
                       <span>
                         {item.name}
+                        {item.variantLabel ? (
+                          <span className="text-muted-foreground">
+                            {" "}
+                            ({item.variantLabel})
+                          </span>
+                        ) : null}
                         {item.quantity > 1 ? (
                           <span className="text-muted-foreground">
                             {" "}

@@ -39,7 +39,7 @@ export class GoodKindHandler extends ProductKindHandler {
     if (!this.tracksStock(item)) {
       return [];
     }
-    return [{ namespace: StockService.LOCK_NAMESPACE, key: item.productId }];
+    return [StockService.lockKey(item.productId, item.variantId)];
   }
 
   /**
@@ -52,6 +52,7 @@ export class GoodKindHandler extends ProductKindHandler {
     }
     await this.stock.reserve(item.productId, item.quantity, {
       orderId: item.orderId,
+      variantId: item.variantId,
     });
   }
 
@@ -62,6 +63,7 @@ export class GoodKindHandler extends ProductKindHandler {
     await this.stock.recordSale(item.productId, item.quantity, {
       orderId: item.orderId,
       orderItemId: item.id,
+      variantId: item.variantId,
     });
   }
 

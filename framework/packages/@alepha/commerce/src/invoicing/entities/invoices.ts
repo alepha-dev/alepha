@@ -72,6 +72,7 @@ export const invoices = $entity({
     lines: z.array(
       z.object({
         description: z.text({ maxLength: 400 }),
+        sku: z.text({ maxLength: 64 }).optional(),
         quantity: z.integer(),
         unitPrice: z.integer(),
         lineTotal: z.integer(),
@@ -112,6 +113,7 @@ export type InvoiceEntity = Infer<typeof invoices.schema>;
  */
 export interface InvoiceLine {
   description: string;
+  sku?: string;
   quantity: number;
   /**
    * Tax-inclusive unit price.
