@@ -60,6 +60,11 @@ the same object as `alepha.context.signal` inside that handler.
 A unit of work does not abort when stop begins. The server, jobs and queue
 workers drain first, and abort what is still running at their own deadline.
 
+A local `action.run()` is not a unit of work of its own. Its
+`ServerRequest.signal` is its caller's, narrowed by the action's `timeout` if it
+has one: the handler stops with the request, job or tick that called it, and
+outside any of them it holds the app signal.
+
 ## What inherits it
 
 Without anyone passing a signal:

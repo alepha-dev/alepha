@@ -368,7 +368,7 @@ health probe under a prefix that otherwise requires a token.
 
 ## Writing Your Own
 
-An action middleware is an ordinary [pipeline middleware](/docs/guides-core-pipelines#writing-a-middleware): `createMiddleware` from `alepha`, whose wrapped function receives the action's `ServerRequest` as its first argument. On a local `run()` that request is a partial one: `signal`, `requestId`, `userAgent` and the other fields the HTTP layer fills are undefined, and what a middleware sets on `reply` is thrown away.
+An action middleware is an ordinary [pipeline middleware](/docs/guides-core-pipelines#writing-a-middleware): `createMiddleware` from `alepha`, whose wrapped function receives the action's `ServerRequest` as its first argument. On a local `run()` that request is a partial one: `requestId`, `userAgent` and the other fields the HTTP layer fills are undefined, `signal` is the caller's, and what a middleware sets on `reply` is thrown away.
 
 ```typescript check
 import { createMiddleware, type Middleware } from "alepha";
