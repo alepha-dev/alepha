@@ -3,7 +3,9 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $repository, $sequence, DatabaseProvider } from "alepha/orm";
 
 import { TaxService } from "../../checkout/services/TaxService.ts";
+import type { RefundLine } from "../../entities/orderRefunds.ts";
 import { CommerceError } from "../../errors/CommerceError.ts";
+import { ClaimLock } from "../../services/ClaimLock.ts";
 import { OrderService } from "../../services/OrderService.ts";
 import { type VatBucket, VatCalculator } from "../../services/VatCalculator.ts";
 import {
@@ -34,6 +36,7 @@ export class InvoiceService {
   protected readonly orders = $inject(OrderService);
   protected readonly vat = $inject(VatCalculator);
   protected readonly tax = $inject(TaxService);
+  protected readonly lock = $inject(ClaimLock);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly seller = $store(sellerIdentityAtom);
 
@@ -44,15 +47,31 @@ export class InvoiceService {
   protected readonly invoiceNumber = $sequence({ name: "commerce_invoice" });
 
   /**
+   * First key of the per-order issue lock. See `ClaimLock`.
+   */
+  public static readonly LOCK_NAMESPACE = "alepha:commerce:invoice";
+
+  /**
    * Issue the invoice for a paid order, or return the one already issued.
    *
    * Idempotent by design: settlement can be re-driven by a redelivered webhook,
    * and issuing two invoices for one sale is a far worse outcome than doing
    * nothing.
    *
+   * Under a lock on the order, because two jobs can get here at once: the
+   * settlement's and, for an order refunded straight after it was paid, the
+   * credit note's.
+   *
    * @throws CommerceError when the order is not paid
    */
   public async issueForOrder(orderId: string): Promise<InvoiceEntity> {
+    return this.lock.run(
+      { namespace: InvoiceService.LOCK_NAMESPACE, key: orderId },
+      () => this.issue(orderId),
+    );
+  }
+
+  protected async issue(orderId: string): Promise<InvoiceEntity> {
     const existing = await this.repo.findOne({
       where: { orderId: { eq: orderId }, creditsInvoiceId: { isNull: true } },
     });
@@ -82,6 +101,7 @@ export class InvoiceService {
         ? `${item.name} (${item.variantLabel})`
         : item.name,
       sku: item.sku,
+      orderItemId: item.id,
       quantity: item.quantity,
       unitPrice: item.unitPrice,
       discount: item.discount > 0 ? item.discount : undefined,
@@ -149,25 +169,52 @@ export class InvoiceService {
    *
    * A credit note takes the *next* number in the same series — it is not a
    * deletion and it does not reuse the corrected invoice's number.
+   *
+   * With `lines`, it credits those units, each at its own rate. With `amount`,
+   * it credits that figure exactly, shared across the rates of what the invoice
+   * has left. With neither, it credits everything left, which is the whole
+   * invoice when nothing was credited before. So however a refund was cut up,
+   * the credit notes of a fully refunded order add up to the invoice, rate by
+   * rate.
+   *
+   * @throws CommerceError when it would credit more than the invoice has left
    */
   public async creditNote(
     invoiceId: string,
-    options: { reason?: string } = {},
+    options: {
+      reason?: string;
+      amount?: number;
+      lines?: RefundLine[];
+    } = {},
   ): Promise<InvoiceEntity> {
     const original = await this.repo.getById(invoiceId);
+    const previous = await this.repo.findMany({
+      where: { creditsInvoiceId: { eq: invoiceId } },
+    });
 
-    const lines = (original.lines as unknown as InvoiceLine[]).map((line) => ({
-      ...line,
-      quantity: -line.quantity,
-      lineTotal: -line.lineTotal,
-    }));
-    const buckets = (original.vatBuckets as unknown as VatBucket[]).map(
-      (bucket) => ({
-        rateBps: bucket.rateBps,
-        baseCents: -bucket.baseCents,
-        vatCents: -bucket.vatCents,
-      }),
-    );
+    const remaining = this.vat
+      .merge([
+        original.vatBuckets as VatBucket[],
+        ...previous.map((note) => note.vatBuckets as VatBucket[]),
+      ])
+      .filter((bucket) => bucket.baseCents + bucket.vatCents !== 0);
+    const left = this.vat.totals(remaining).ttcCents;
+
+    if (left <= 0 || (options.amount ?? 0) > left) {
+      throw new CommerceError(
+        `Cannot credit ${options.amount ?? "the rest"} on invoice ${original.number}: ${left} is left.`,
+      );
+    }
+
+    const { lines, buckets } = options.lines?.length
+      ? this.creditedLines(original, options.lines)
+      : options.amount !== undefined && options.amount < left
+        ? this.creditedAmount(remaining, options.amount, options.reason)
+        : previous.length > 0
+          ? this.creditedAmount(remaining, left, options.reason, remaining)
+          : this.creditedWhole(original);
+
+    const totals = this.vat.totals(buckets);
 
     return this.db.transactional(async () => {
       const seller = this.seller;
@@ -185,13 +232,132 @@ export class InvoiceService {
         buyer: original.buyer,
         lines,
         vatBuckets: buckets,
-        baseTotal: -original.baseTotal,
-        vatTotal: -original.vatTotal,
-        grandTotal: -original.grandTotal,
+        baseTotal: totals.baseCents,
+        vatTotal: totals.vatCents,
+        grandTotal: totals.ttcCents,
         currency: original.currency,
         note: options.reason,
       });
     });
+  }
+
+  /**
+   * Answer a refund with its credit note, once: a retried job finds the note
+   * already on the refund and stops.
+   *
+   * Issues the invoice first if the settlement has not got there yet: a refund
+   * can arrive before it, and a credit note needs something to credit.
+   */
+  public async creditRefund(
+    refundId: string,
+  ): Promise<InvoiceEntity | undefined> {
+    const { orderId } = await this.orders.refundById(refundId);
+
+    // The same lock as `issueForOrder`, held to the end: read outside it, two
+    // deliveries would both find the refund uncredited.
+    return this.lock.run(
+      { namespace: InvoiceService.LOCK_NAMESPACE, key: orderId },
+      () =>
+        this.db.transactional(async () => {
+          const refund = await this.orders.refundById(refundId);
+          if (refund.creditNoteId) {
+            return undefined;
+          }
+
+          const invoice = await this.issue(orderId);
+          const note = await this.creditNote(invoice.id, {
+            reason: refund.reason ?? "Remboursement de la commande",
+            amount: refund.amount,
+            lines: refund.lines,
+          });
+          await this.orders.markRefundCredited(refund.id, note.id);
+          return note;
+        }),
+    );
+  }
+
+  /**
+   * Every line of the invoice, negated: the one credit note that can mirror it.
+   */
+  protected creditedWhole(original: InvoiceEntity) {
+    return {
+      lines: (original.lines as InvoiceLine[]).map((line) => ({
+        ...line,
+        quantity: -line.quantity,
+        lineTotal: -line.lineTotal,
+        discount: undefined,
+      })),
+      buckets: (original.vatBuckets as VatBucket[]).map((bucket) =>
+        this.negated(bucket),
+      ),
+    };
+  }
+
+  /**
+   * These units, at what they cost and at their own rate.
+   */
+  protected creditedLines(original: InvoiceEntity, refunded: RefundLine[]) {
+    const invoiced = original.lines as InvoiceLine[];
+    const lines = refunded.map(({ orderItemId, quantity }) => {
+      const line = invoiced.find((it) => it.orderItemId === orderItemId);
+      if (!line) {
+        throw new CommerceError(
+          `Invoice ${original.number} has no line for order line ${orderItemId}.`,
+        );
+      }
+      return {
+        ...line,
+        quantity: -quantity,
+        lineTotal: -Math.round((line.lineTotal * quantity) / line.quantity),
+        discount: undefined,
+      };
+    });
+
+    const buckets = this.vat
+      .ventilate(
+        lines.map((line) => ({
+          ttcCents: -line.lineTotal,
+          rateBps: line.rateBps,
+        })),
+      )
+      .map((bucket) => this.negated(bucket));
+
+    return { lines, buckets };
+  }
+
+  /**
+   * One line per rate, since an amount belongs to no line in particular.
+   * `exact` is what is left of the invoice, credited as it stands: the last
+   * note closes every rate to the cent, whatever rounding the others did.
+   */
+  protected creditedAmount(
+    remaining: VatBucket[],
+    amount: number,
+    reason?: string,
+    exact?: VatBucket[],
+  ) {
+    const shares = exact ?? this.vat.shareOf(remaining, amount);
+    return {
+      lines: shares.map((share) => {
+        const ttc = share.baseCents + share.vatCents;
+        return {
+          description: reason ?? "Remboursement partiel",
+          quantity: -1,
+          unitPrice: ttc,
+          lineTotal: -ttc,
+          rateBps: share.rateBps,
+        };
+      }),
+      buckets: shares.map((share) => this.negated(share)),
+    };
+  }
+
+  protected negated(bucket: VatBucket): VatBucket {
+    return {
+      rateBps: bucket.rateBps,
+      baseCents: -bucket.baseCents,
+      vatCents: -bucket.vatCents,
+    };
   }
 
   public async getById(id: string): Promise<InvoiceEntity> {

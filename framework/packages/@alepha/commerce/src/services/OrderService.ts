@@ -11,13 +11,18 @@ import {
 
 import { type OrderItemEntity, orderItems } from "../entities/orderItems.ts";
 import {
+  type OrderRefundEntity,
+  orderRefunds,
+  type RefundLine,
+} from "../entities/orderRefunds.ts";
+import {
   type OrderEntity,
   type OrderStatus,
   orders,
 } from "../entities/orders.ts";
 import { products } from "../entities/products.ts";
 import type { ProductVariantEntity } from "../entities/productVariants.ts";
-import { CommerceError } from "../errors/CommerceError.ts";
+import { CommerceError, InvalidRefundError } from "../errors/CommerceError.ts";
 import { orderConfig } from "../orderConfigAtom.ts";
 import { ProductKindRegistry } from "../providers/ProductKindRegistry.ts";
 import { ClaimLock } from "./ClaimLock.ts";
@@ -107,6 +112,7 @@ export class OrderService {
   protected readonly db = $inject(DatabaseProvider);
   protected readonly orderRepo = $repository(orders);
   protected readonly itemRepo = $repository(orderItems);
+  protected readonly refundRepo = $repository(orderRefunds);
   protected readonly productRepo = $repository(products);
   protected readonly kinds = $inject(ProductKindRegistry);
   protected readonly stock = $inject(StockService);
@@ -416,7 +422,7 @@ export class OrderService {
    */
   public async refund(
     id: string,
-    options: { refundedTotal?: number } = {},
+    options: { refundedTotal?: number; reason?: string } = {},
   ): Promise<OrderEntity> {
     return this.db.transactional(async () => {
       const current = await this.orderRepo.getById(id);
@@ -491,14 +497,21 @@ export class OrderService {
         await this.resources.releaseOrder(id);
       }
 
+      const refund = await this.completeRefund(
+        id,
+        refundedTotal - current.refundedTotal,
+        options.reason,
+      );
+
       // Only on the transition, and deferred for the same reason as in
       // markPaid — nothing stops a caller from wrapping refund() in a
       // transaction of its own.
       await this.db.afterCommit(() =>
         this.alepha.events.emit("commerce:order:refunded", {
           orderId: order.id,
+          refundId: refund.id,
           total: order.total,
-          amount: refundedTotal - current.refundedTotal,
+          amount: refund.amount,
           refundedTotal,
           currency: order.currency,
         }),
@@ -506,6 +519,135 @@ export class OrderService {
 
       return order;
     });
+  }
+
+  /**
+   * Write down a refund before asking the payment rail for it: how much, of
+   * what, and why, none of which the rail will hand back.
+   *
+   * By lines, by amount, or neither for whatever is left. Lines are valued at
+   * what they cost the buyer, their share of any discount taken off, and
+   * delivery is only reached by a refund of what is left.
+   *
+   * @throws InvalidRefundError when it asks for more than the order has left
+   */
+  public async prepareRefund(
+    id: string,
+    input: { amount?: number; lines?: RefundLine[]; reason?: string } = {},
+  ): Promise<OrderRefundEntity> {
+    const order = await this.orderRepo.getById(id);
+    const left = order.total - order.refundedTotal;
+    const lines = input.lines ?? [];
+
+    const amount =
+      lines.length > 0 ? await this.valueOf(id, lines) : (input.amount ?? left);
+
+    if (amount <= 0 || amount > left) {
+      throw new InvalidRefundError(
+        `Cannot refund ${amount} on order ${id}: ${left} is left.`,
+      );
+    }
+
+    return this.refundRepo.create({
+      orderId: id,
+      amount,
+      reason: input.reason,
+      lines,
+      status: "pending",
+    });
+  }
+
+  /**
+   * Forget a refund the payment rail turned down.
+   */
+  public async dropRefund(refundId: string): Promise<void> {
+    await this.refundRepo.deleteById(refundId);
+  }
+
+  public async refundById(refundId: string): Promise<OrderRefundEntity> {
+    return this.refundRepo.getById(refundId);
+  }
+
+  public async refundsOf(orderId: string): Promise<OrderRefundEntity[]> {
+    return this.refundRepo.findMany({
+      where: { orderId: { eq: orderId } },
+      orderBy: { column: "createdAt", direction: "asc" },
+    });
+  }
+
+  /**
+   * Say which credit note answered a refund.
+   */
+  public async markRefundCredited(
+    refundId: string,
+    creditNoteId: string,
+  ): Promise<void> {
+    await this.refundRepo.updateById(refundId, { creditNoteId });
+  }
+
+  /**
+   * What these units cost the buyer, and refuse any the order no longer has.
+   */
+  protected async valueOf(
+    orderId: string,
+    lines: RefundLine[],
+  ): Promise<number> {
+    const items = await this.itemsOf(orderId);
+    let amount = 0;
+    for (const line of lines) {
+      const item = items.find((it) => it.id === line.orderItemId);
+      if (!item) {
+        throw new InvalidRefundError(
+          `Order ${orderId} has no line ${line.orderItemId}.`,
+        );
+      }
+      if (line.quantity > item.quantity - item.refundedQuantity) {
+        throw new InvalidRefundError(
+          `Cannot refund ${line.quantity} of '${item.name}': ${
+            item.quantity - item.refundedQuantity
+          } left.`,
+        );
+      }
+      const paid = item.unitPrice * item.quantity - item.discount;
+      amount += Math.round((paid * line.quantity) / item.quantity);
+    }
+    return amount;
+  }
+
+  /**
+   * Close the refund this money belongs to: the one the back office prepared
+   * for this amount, or a new row for a refund that started on the rail.
+   */
+  protected async completeRefund(
+    orderId: string,
+    amount: number,
+    reason?: string,
+  ): Promise<OrderRefundEntity> {
+    const [prepared] = await this.refundRepo.findMany({
+      where: {
+        orderId: { eq: orderId },
+        status: { eq: "pending" },
+        amount: { eq: amount },
+      },
+      orderBy: { column: "createdAt", direction: "asc" },
+      limit: 1,
+    });
+    if (!prepared) {
+      return this.refundRepo.create({
+        orderId,
+        amount,
+        reason,
+        status: "done",
+      });
+    }
+
+    for (const line of prepared.lines) {
+      const item = await this.itemRepo.getById(line.orderItemId);
+      await this.itemRepo.updateById(item.id, {
+        refundedQuantity: item.refundedQuantity + line.quantity,
+      });
+    }
+    return this.refundRepo.updateById(prepared.id, { status: "done" });
   }
 
   /**

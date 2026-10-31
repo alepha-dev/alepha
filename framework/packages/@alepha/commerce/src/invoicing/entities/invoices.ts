@@ -73,6 +73,7 @@ export const invoices = $entity({
       z.object({
         description: z.text({ maxLength: 400 }),
         sku: z.text({ maxLength: 64 }).optional(),
+        orderItemId: z.uuid().optional(),
         quantity: z.integer(),
         unitPrice: z.integer(),
         discount: z.integer().optional(),
@@ -115,6 +116,11 @@ export type InvoiceEntity = Infer<typeof invoices.schema>;
 export interface InvoiceLine {
   description: string;
   sku?: string;
+  /**
+   * The order line this one bills: what a credit note by line finds it by.
+   * Unset on the delivery line.
+   */
+  orderItemId?: string;
   quantity: number;
   /**
    * Tax-inclusive unit price.

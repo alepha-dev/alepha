@@ -24,6 +24,7 @@ export const publicOrderItemSchema = z.object({
   discount: z.integer(),
   rateBps: z.integer().optional(),
   quantity: z.integer(),
+  refundedQuantity: z.integer(),
   /**
    * What the buyer chose themselves: the court and the interval.
    */

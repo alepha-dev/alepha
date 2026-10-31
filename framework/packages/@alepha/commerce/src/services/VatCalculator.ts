@@ -164,6 +164,39 @@ export class VatCalculator {
   }
 
   /**
+   * The share of a ventilation that comes to exactly `amount`, tax included: a
+   * partial credit note, which must say the figure that was refunded and not
+   * one that rounding moved.
+   *
+   * Where {@link apportion} rounds base and tax apart and lets the last leg
+   * absorb what is left, this has a single leg, so it shares the tax-inclusive
+   * amount across the rates (the last rate takes the remainder) and splits each
+   * share. That is what keeps `base + vat === amount`.
+   */
+  public shareOf(buckets: VatBucket[], amount: number): VatBucket[] {
+    const ttcOf = (bucket: VatBucket) => bucket.baseCents + bucket.vatCents;
+    const total = buckets.reduce((sum, b) => sum + ttcOf(b), 0);
+    if (total <= 0 || amount <= 0) {
+      return [];
+    }
+
+    let left = amount;
+    return buckets
+      .map((bucket, index) => {
+        const share =
+          index === buckets.length - 1
+            ? left
+            : Math.round((ttcOf(bucket) * amount) / total);
+        left -= share;
+        return {
+          rateBps: bucket.rateBps,
+          ...this.fromInclusive(share, bucket.rateBps),
+        };
+      })
+      .filter((bucket) => bucket.baseCents !== 0 || bucket.vatCents !== 0);
+  }
+
+  /**
    * Merge several ventilations into one. Used to aggregate a period.
    */
   /**

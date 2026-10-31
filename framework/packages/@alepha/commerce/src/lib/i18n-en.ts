@@ -30,6 +30,11 @@
  * copied across verbatim.
  */
 export const commerceEn: Record<string, string> = {
+  "commerce.admin.refundSheet.fAmount": "Amount (cents)",
+  "commerce.admin.refundSheet.fAmountHint":
+    "Ignored when quantities are set. Empty: everything left.",
+  "commerce.admin.refundSheet.fReason": "Reason",
+  "commerce.admin.refundSheet.fReasonHint": "Printed on the credit note.",
   "commerce.admin.colNumber": "Order",
   "commerce.admin.searchNumber": "Search by order number",
   "commerce.admin.categories.delete": "Delete",
@@ -160,6 +165,7 @@ export const commerceEn: Record<string, string> = {
   "commerce.admin.refundConfirm":
     "Refund $1 to the customer? The money goes back to them. Stock is released only if the order has not shipped. A credit note is issued.",
   "commerce.admin.refundTitle": "Refund",
+  "commerce.admin.refundedAmount": "-$1 refunded",
   "commerce.admin.refunded": "Order refunded.",
   "commerce.admin.reserved": "reserved",
   "commerce.admin.reservedLabel": "Reserved",

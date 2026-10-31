@@ -22,6 +22,7 @@ export * from "./controllers/OrderController.ts";
 export * from "./controllers/ProductController.ts";
 export * from "./entities/categories.ts";
 export * from "./entities/orderItems.ts";
+export * from "./entities/orderRefunds.ts";
 export * from "./entities/orders.ts";
 export * from "./schemas/optionGroupSchema.ts";
 export * from "./schemas/orderStatusSchema.ts";
@@ -75,6 +76,10 @@ declare module "alepha" {
     "commerce:order:refunded": {
       orderId: string;
       /**
+       * The `commerce_order_refunds` row: what came back, and why.
+       */
+      refundId: string;
+      /**
        * The order's own total - what a full refund would come to.
        */
       total: number;
@@ -85,8 +90,7 @@ declare module "alepha" {
       /**
        * Everything given back on the order so far, this refund included.
        * Compare it against {@link total} to tell a partial refund from the
-       * one that undoes the sale; a subscriber that acts only on the latter
-       * (a credit note, for instance) has to make that check.
+       * one that undoes the sale.
        */
       refundedTotal: number;
       currency: string;

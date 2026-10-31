@@ -9,6 +9,7 @@ import {
   SheetHeader,
   SheetTitle,
   useDialog,
+  useToast,
 } from "@alepha/ui";
 import { AdminPage, useConfirmedAction } from "@alepha/ui/admin";
 import {
@@ -30,6 +31,7 @@ import { useCallback, useState } from "react";
 import type { OrderEntity, OrderStatus } from "../../entities/orders.ts";
 import { orderStatusEnum } from "../../schemas/orderStatusSchema.ts";
 import type { AdminOrderController } from "../controllers/AdminOrderController.ts";
+import { AdminOrderRefundSheet } from "./admin-order-refund-sheet.tsx";
 
 const formatPrice = (cents: number, currency: string) =>
   new Intl.NumberFormat(undefined, { style: "currency", currency }).format(
@@ -71,8 +73,13 @@ export const AdminOrders = () => {
   const client = useClient<AdminOrderController>();
   const { l, tr } = useI18n();
   const dialog = useDialog();
+  const toast = useToast();
 
   const [detailOf, setDetailOf] = useState<string>();
+  const [refunding, setRefunding] = useState<{
+    order: OrderEntity;
+    refresh: () => void;
+  }>();
 
   /**
    * The table's only filter, so it is on the bar from the start: a default
@@ -171,35 +178,6 @@ export const AdminOrders = () => {
     [client],
   );
 
-  const refund = useConfirmedAction<[OrderEntity, () => void]>(
-    {
-      confirm: (order) => {
-        // What the button will actually take back: the rest, on an order that
-        // has already had part of it refunded. The amount is the fact the
-        // operator is agreeing to, so it has to be the real one.
-        const remaining = Math.max(0, order.total - order.refundedTotal);
-        return {
-          title: tr("commerce.admin.refundTitle", { default: "Refund" }),
-          description: tr("commerce.admin.refundConfirm", {
-            default: `Refund ${formatPrice(remaining, order.currency)} to the customer? The money goes back to them. Stock is released only if the order has not shipped. A credit note is issued.`,
-            args: [formatPrice(remaining, order.currency)],
-          }),
-          destructive: true,
-        };
-      },
-      handler: async (order, refresh) => {
-        await client.commerceAdminOrderRefund({
-          params: { id: order.id },
-          body: {},
-        });
-        refresh();
-      },
-      success: () =>
-        tr("commerce.admin.refunded", { default: "Order refunded." }),
-    },
-    [client],
-  );
-
   return (
     <AdminPage>
       <DataTable<OrderEntity, typeof filterFields>
@@ -228,7 +206,8 @@ export const AdminOrders = () => {
             destructive: true,
             disabled: () =>
               ["pending", "cancelled", "refunded"].includes(order.status),
-            onClick: (item, ctx) => void refund.run(item, ctx.refresh),
+            onClick: (item, ctx) =>
+              setRefunding({ order: item, refresh: ctx.refresh }),
           },
         ]}
         columns={{
@@ -298,6 +277,21 @@ export const AdminOrders = () => {
           },
         }}
       />
+
+      {refunding ? (
+        <AdminOrderRefundSheet
+          key={refunding.order.id}
+          order={refunding.order}
+          onClose={() => setRefunding(undefined)}
+          onRefunded={() => {
+            refunding.refresh();
+            setRefunding(undefined);
+            toast.success(
+              tr("commerce.admin.refunded", { default: "Order refunded." }),
+            );
+          }}
+        />
+      ) : null}
 
       {detailOf ? (
         <AdminOrderSheet

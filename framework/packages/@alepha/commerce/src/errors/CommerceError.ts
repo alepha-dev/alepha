@@ -160,6 +160,17 @@ export const CategoryInUseError = CommerceError.extend({
 export type CategoryInUseError = InstanceType<typeof CategoryInUseError>;
 
 /**
+ * A refund asking for more than the order has left to give back.
+ */
+export const InvalidRefundError = CommerceError.extend({
+  name: "INVALID_REFUND",
+  default: { status: 400 },
+  message: "Invalid refund",
+});
+
+export type InvalidRefundError = InstanceType<typeof InvalidRefundError>;
+
+/**
  * Not enough stock on hand for the requested quantity.
  */
 export const InsufficientStockError = CommerceError.extend({

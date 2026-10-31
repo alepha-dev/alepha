@@ -329,11 +329,30 @@ test.describe("order management", () => {
     await page.getByRole("menuitem", { name: "Rembourser" }).click();
     // Scoped to the dialog: the amount is also in the table row behind it, and an
     // unscoped match is a strict-mode violation that says nothing about consent.
-    await expect(
-      page.getByRole("alertdialog").getByText(/95,90/),
-    ).toBeVisible();
-    await page.getByRole("button", { name: /Confirmer|Confirm|OK/ }).click();
+    const refund = page.getByRole("dialog");
+    await expect(refund.getByText(/95,90/)).toBeVisible();
+
+    // Part of it first: an amount and a reason, for the credit note.
+    await refund.locator('input[name="amount"]').fill("1000");
+    await refund.locator('[name="reason"]').fill("Geste commercial");
+    await refund.getByRole("button", { name: "Rembourser" }).click();
     await expect(page.getByText(/remboursée/)).toBeVisible();
+    await expect(page.getByText(/-10,00.*remboursés/)).toBeVisible();
+
+    // Then the rest: with nothing narrower asked for, what is left.
+    await page
+      .getByRole("row", { name: /95,90/ })
+      .getByRole("button", {
+        name: /Open row actions|Ouvrir les actions de la ligne/,
+      })
+      .click();
+    await page.getByRole("menuitem", { name: "Rembourser" }).click();
+    await expect(page.getByRole("dialog").getByText(/85,90/)).toBeVisible();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Rembourser" })
+      .click();
+    await expect(page.getByText("Remboursée", { exact: true })).toBeVisible();
   });
 
   test("filters by status", async ({ page }) => {

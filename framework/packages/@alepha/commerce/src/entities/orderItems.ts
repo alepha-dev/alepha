@@ -65,6 +65,12 @@ export const orderItems = $entity({
     quantity: z.integer().min(1),
 
     /**
+     * How many units a refund by line has given back. The money itself is
+     * `orders.refundedTotal`.
+     */
+    refundedQuantity: db.default(z.integer().min(0), 0),
+
+    /**
      * The product's `config` at order time — what `fulfil` consumes.
      */
     config: z.json().optional(),

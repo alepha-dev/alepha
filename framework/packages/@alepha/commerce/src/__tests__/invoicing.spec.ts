@@ -90,6 +90,23 @@ const aRing = (catalog: CatalogService, price = 8900) =>
  * Waits for the settlement job to issue the invoice: issuance is a stage of
  * that job now, landing a beat after the webhook returns.
  */
+/**
+ * Wait for the jobs to have issued this many documents.
+ */
+const invoicesOf = async (
+  ctx: Awaited<ReturnType<typeof setup>>,
+  orderId: string,
+  count: number,
+) => {
+  const deadline = Date.now() + 5_000;
+  let issued = await ctx.invoices.listForOrder(orderId);
+  while (issued.length < count && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    issued = await ctx.invoices.listForOrder(orderId);
+  }
+  return issued;
+};
+
 const sell = async (
   ctx: Awaited<ReturnType<typeof setup>>,
   productId: string,
@@ -438,7 +455,8 @@ describe("credit notes", () => {
     const orderId = await sell(ctx, ring.id);
     await ctx.orders.refund(orderId);
 
-    const issued = await ctx.invoices.listForOrder(orderId);
+    // The credit note is a job, like the invoice.
+    const issued = await invoicesOf(ctx, orderId, 2);
     expect(issued).toHaveLength(2);
 
     const [original, credit] = issued;
@@ -462,6 +480,7 @@ describe("credit notes", () => {
     await ctx.orders.refund(orderId);
     await ctx.orders.refund(orderId);
 
+    expect(await invoicesOf(ctx, orderId, 2)).toHaveLength(2);
     expect(await ctx.invoices.listForOrder(orderId)).toHaveLength(2);
   });
 });

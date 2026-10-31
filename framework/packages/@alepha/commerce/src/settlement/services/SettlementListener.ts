@@ -55,6 +55,20 @@ export class SettlementListener {
     },
   });
 
+  protected readonly onOrderRefunded = $hook({
+    on: "commerce:order:refunded",
+    handler: async (event) => {
+      const executionId = await this.jobs.refundCreditNote.push(
+        { refundId: event.refundId },
+        { key: event.refundId },
+      );
+      this.log.debug("Credit note job pushed", {
+        orderId: event.orderId,
+        executionId,
+      });
+    },
+  });
+
   /**
    * A paid order means the reconciliation has nothing left to do; its own
    * opening re-check would skip anyway. Cancelling the parked row now ends

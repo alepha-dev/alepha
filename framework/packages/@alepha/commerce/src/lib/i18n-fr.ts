@@ -107,6 +107,7 @@ export const commerceFr: Record<string, string> = {
   "commerce.admin.refundTitle": "Rembourser",
   "commerce.admin.refundConfirm":
     "Rembourser $1 au client ? L'argent repart chez lui. Le stock n'est libéré que si la commande n'est pas expédiée. Un avoir sera émis.",
+  "commerce.admin.refundedAmount": "-$1 remboursés",
   "commerce.admin.refunded": "Commande remboursée.",
   "commerce.admin.colWhen": "Date",
   "commerce.admin.colTotal": "Total",
@@ -171,6 +172,11 @@ export const commerceFr: Record<string, string> = {
   "commerce.admin.detail.tabDetails": "Détails",
   "commerce.admin.detail.tabStock": "Stock",
   "commerce.admin.detail.tabVariants": "Déclinaisons",
+  "commerce.admin.refundSheet.fAmount": "Montant (centimes)",
+  "commerce.admin.refundSheet.fAmountHint":
+    "Ignoré si des quantités sont indiquées. Vide : tout ce qui reste.",
+  "commerce.admin.refundSheet.fReason": "Motif",
+  "commerce.admin.refundSheet.fReasonHint": "Imprimé sur l'avoir.",
   "commerce.admin.colNumber": "Commande",
   "commerce.admin.searchNumber": "Rechercher par numéro de commande",
   "commerce.admin.categories.delete": "Supprimer",

@@ -5,6 +5,7 @@ import { $secure } from "alepha/security";
 import { $action } from "alepha/server";
 
 import { orderItems } from "../../entities/orderItems.ts";
+import { refundLineSchema } from "../../entities/orderRefunds.ts";
 import { orders } from "../../entities/orders.ts";
 import { orderStatusEnum } from "../../schemas/orderStatusSchema.ts";
 import { OrderService } from "../../services/OrderService.ts";
@@ -98,38 +99,57 @@ export class AdminOrderController {
     path: `${this.url}/:id/refund`,
     group: this.group,
     use: [$secure({ permissions: ["admin:commerce:refund"] })],
-    description: "Refund the order through the payment rail",
+    description:
+      "Refund an order through the payment rail: some lines, an amount, or what is left",
     schema: {
       params: z.object({ id: z.uuid() }),
-      body: z.object({ reason: z.text({ maxLength: 500 }).optional() }),
+      body: z.object({
+        reason: z.text({ maxLength: 500 }).optional(),
+        /**
+         * Tax included. Ignored when `lines` is set.
+         */
+        amount: z.integer().min(1).optional(),
+        lines: z.array(refundLineSchema).optional(),
+      }),
       response: orders.schema,
     },
     handler: async ({ params, body }) => {
       const order = await this.orders.getById(params.id);
 
-      /*
-       * What is LEFT, not the whole total.
-       *
-       * `PaymentService.refund` refuses an amount over the remaining
-       * refundable amount, so asking for the full total on an order that has
-       * already had part of it back is not an over-refund - it is a throw,
-       * and the operator is left with a Refund button that only fails. On an
-       * untouched order the two are the same number.
-       */
-      const remaining = Math.max(0, order.total - order.refundedTotal);
+      // Nothing narrower asked for, and nothing left to give: a second click
+      // on Refund, which is not an error worth an operator's time.
+      if (
+        order.refundedTotal >= order.total &&
+        !body.amount &&
+        !body.lines?.length
+      ) {
+        return order;
+      }
+
+      // Everything left when nothing narrower was asked for: on an order that
+      // already had part of it back, the rail refuses the whole total.
+      const refund = await this.orders.prepareRefund(params.id, body);
 
       // The PSP first. If it refuses, the order stays as it was - the
       // customer's money and our record disagreeing is the one outcome to
       // avoid.
-      if (order.paymentIntentId && remaining > 0) {
-        await this.payments.refund(
-          order.paymentIntentId,
-          remaining,
-          body.reason,
-        );
+      if (order.paymentIntentId) {
+        try {
+          await this.payments.refund(
+            order.paymentIntentId,
+            refund.amount,
+            body.reason,
+          );
+        } catch (error) {
+          await this.orders.dropRefund(refund.id);
+          throw error;
+        }
       }
 
-      return this.orders.refund(params.id);
+      return this.orders.refund(params.id, {
+        refundedTotal: order.refundedTotal + refund.amount,
+        reason: body.reason,
+      });
     },
   });
 }
