@@ -77,12 +77,11 @@ type ProjectContext = {
   maxFileSizeMb: number;
 };
 
-const readDraftFromQuery = (query: URLSearchParams): DraftContext => {
+export const readDraftFromQuery = (query: URLSearchParams): DraftContext => {
   const tags = query
     .getAll("tags")
     .map((v) => v.trim())
-    .filter((v) => v.length > 0 && v.length <= MAX_TAG_LENGTH)
-    .slice(0, MAX_TAGS);
+    .filter((v) => v.length > 0 && v.length <= MAX_TAG_LENGTH);
 
   // The embed launcher sends `type=bug|feature` — fold it into the tag set
   // (feedback has no first-class type column; tags carry the taxonomy).
@@ -94,8 +93,9 @@ const readDraftFromQuery = (query: URLSearchParams): DraftContext => {
     tags.unshift(typeParam);
   }
 
+  // Capped last: `feedbackBodySchema` refuses a 21st tag, and `type` counts.
   const draft: DraftContext = {};
-  if (tags.length > 0) draft.tags = tags;
+  if (tags.length > 0) draft.tags = tags.slice(0, MAX_TAGS);
 
   // Page-context provenance forwarded by the sigil button via the
   // `/sigil/request` popup (keys defined in `@alepha/lore`). `url`

@@ -235,8 +235,8 @@ export interface AuditLogOptions {
    * admin audit page is where they are read.
    *
    * Set both for a tenant-layer event, and set them together: the indexes
-   * lead on the pair, so a `scopeId` without a `scopeType` is a row no
-   * scoped query will ever return.
+   * lead on the pair, so a `scopeId` without a `scopeType` misses every query
+   * naming a `scopeType`, and a filter on `scopeId` alone finds it by a scan.
    */
   scopeType?: string;
   scopeId?: string;

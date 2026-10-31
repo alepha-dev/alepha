@@ -12,8 +12,8 @@ import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
  * - **pages** — every `$page` with `static: true` is rendered to an HTML file
  *   (supports parameterized routes via `static.entries`).
  * - **routes** — every `static` route primitive (a `$route({ static: true })`
- *   or a `$sitemap`) is invoked in-process and its body written verbatim to
- *   `{path}` (e.g. `sitemap.xml`, `robots.txt`).
+ *   or a `$sitemap` unless it says `static: false`) is invoked in-process and
+ *   its body written verbatim to `{path}` (e.g. `sitemap.xml`, `robots.txt`).
  *
  * Both passes read the primitive registry and call a method on the already
  * created primitive instances — no provider is re-injected, so this works in
@@ -89,13 +89,16 @@ export class BuildPrerenderTask extends BuildTask {
 
   /**
    * Infer route primitives to snapshot: `$route({ static: true })` and every
-   * `$sitemap`. Both expose an async `prerender(): { path, body }`.
+   * `$sitemap` that is not `static: false`, whose default is `true`. Both
+   * expose an async `prerender(): { path, body }`.
    */
   protected getStaticRoutePrimitives(ctx: BuildTaskContext): any[] {
     const routes = (ctx.alepha.primitives("route") as any[]).filter(
       (route) => route.options?.static === true,
     );
-    const sitemaps = ctx.alepha.primitives("sitemap") as any[];
+    const sitemaps = (ctx.alepha.primitives("sitemap") as any[]).filter(
+      (sitemap) => sitemap.options?.static !== false,
+    );
     return [...routes, ...sitemaps];
   }
 

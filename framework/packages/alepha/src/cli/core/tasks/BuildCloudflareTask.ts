@@ -1043,7 +1043,7 @@ const bindEnv = (env) => {
   if (!redisUrlWarned && typeof env?.REDIS_URL === "string" && env.REDIS_URL !== "") {
     redisUrlWarned = true;
     __alepha.log.warn(
-      "REDIS_URL is set on a Cloudflare Worker, where it selects nothing: cache, queue, topic, lock and actors use the Cloudflare providers.",
+      "REDIS_URL is set on a Cloudflare Worker, where it selects nothing: cache, queue and actors use the Cloudflare providers, and topic and lock are memory only, per isolate.",
     );
   }
 };

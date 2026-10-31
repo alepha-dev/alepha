@@ -186,9 +186,8 @@ Prerenders your pages to plain HTML/CSS/JS for any static host. Not compatible w
 ### Sitemap Generation
 
 Add the [`$sitemap`](/docs/packages-alepha-react-sitemap) primitive to a router. It
-serves `sitemap.xml` from your `$page` primitives - live at request time, and
-prerendered to `dist/public/sitemap.xml` at build time (so static deployments get
-the file too):
+builds `sitemap.xml` from your `$page` primitives and prerenders it to
+`dist/public/sitemap.xml`, the file both a static site and a built server serve:
 
 ```typescript check
 import { $sitemap } from "alepha/react/sitemap";
