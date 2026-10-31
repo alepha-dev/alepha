@@ -5947,6 +5947,7 @@ __metadata:
     "@xmldom/xmldom": "npm:^0.9.12"
     alepha: "npm:^0.34.0"
     fuse.js: "npm:^7.5.0"
+    graphre: "npm:^0.1.3"
     highlight.js: "npm:^11.12.0"
     jsdom: "npm:^30.1.2"
     marked: "npm:^18.1.0"

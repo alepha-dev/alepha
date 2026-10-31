@@ -1,0 +1,211 @@
+# Stateful Rooms
+
+`$websocket` is a stateless, per-message handler. A real-time game server needs
+the opposite: **in-memory state that lives across messages, and an authoritative
+tick loop that advances the world on the server's clock, not the client's.**
+That is `$room`.
+
+A `$room` is one volatile stateful room, addressed by `channelPath:roomId`, with a
+lifecycle:
+
+- it comes to life on the first join (running its `state` factory once),
+- while a socket is connected and `tickHz > 0`, a loop calls `onTick(room, dt)`
+  every `1000/tickHz` ms,
+- when the last socket leaves, `onEmpty` runs and the state is discarded.
+
+```mermaid
+flowchart LR
+  E((No room)) -->|first join or call| S[state factory runs]
+  S --> L[Live: onJoin, onMessage,<br/>onTick, onLeave]
+  L -->|last socket leaves| X[onEmpty, loop stops,<br/>state discarded]
+  X --> E
+```
+
+A headless room brought to life by `call()` never had a socket, so it never
+reaches that last step. On Node it is disposed, without `onEmpty`, after five
+minutes with no `call()`; on Cloudflare its state lives until the host is
+recreated.
+
+The **same code runs on both runtimes.** On a Node VPS the room is a plain
+object in a `Map` driven by `setInterval`. On Cloudflare it is one Durable
+Object per `channelPath:roomId`, with its loop running inside that host. The
+framework owns the native host and socket lifecycle. Host recreation starts a new
+room engine, even when accepted sockets survive.
+
+## An authoritative simulation room
+
+```typescript
+import { $channel, $room } from "alepha/websocket";
+
+// serverFrame / clientIntent: your z.object() (or union) message schemas.
+// World: your own simulation class.
+class GameServer {
+  world = $channel({
+    path: "/ws/world",
+    schema: { in: serverFrame, out: clientIntent },
+  });
+
+  room = $room({
+    channel: this.world,
+    tickHz: 20,
+    state: () => new World(),
+
+    onJoin: (room, conn) => room.state.spawn(conn.id),
+    onMessage: (room, conn, intent) => room.state.enqueue(conn.id, intent),
+    onTick: (room, dt) => {
+      room.state.step(dt); // advance the authoritative sim
+      for (const conn of room.connections) {
+        // per-recipient AOI view
+        room.send(conn.id, room.state.viewFor(conn.id));
+      }
+    },
+    onLeave: (room, conn) => room.state.despawn(conn.id),
+  });
+}
+```
+
+Key points:
+
+- **`room.state`** is your world - created by the factory (which receives
+  `{ roomId }` and may be async), never serialized by the framework. Keep
+  authoritative collections (players, monsters, loot) here.
+- **`dt`** in `onTick` is the elapsed time since the previous tick, in
+  **milliseconds**.
+- **`room.send(id, msg)`** targets one connection. This is what a per-recipient
+  area-of-interest stream needs: each client gets a _different_ frame every tick.
+  **`room.broadcast(msg, { exceptConnectionIds })`** fans out to all, and
+  **`room.close(id, code?, reason?)`** drops one connection. `room.roomId`,
+  `room.connections` and `room.size` describe the room.
+- **`conn.data`** is a per-connection bag you own (last acked input seq, hero id,
+  AOI cursor...). It is volatile and resets when the host is recreated.
+  `conn.userId` is set when admission resolved a user, and `conn.query` holds
+  the upgrade URL's query parameters (last value per key). The query is
+  **untrusted**: the client wrote it, so read a preference from it, never an
+  identity.
+- **`onMessage`** receives a message already validated against the channel's
+  `schema.out`. An invalid message, and an `onMessage` that throws, answer that
+  socket with `{ error: "<message>" }`; the room carries on. Errors in
+  `onLeave` and `onEmpty` are logged and never abort the teardown.
+- **`onTick` never throws out of the loop**: an error is logged and the room
+  keeps ticking. The tick loop is the speed limit; flooding messages buys no
+  extra ticks. An async `onTick` slower than the period does not pile up: the
+  beats that land while it still runs are skipped, with a warning.
+- **A `state` factory that throws** fails that join (on Node the socket is
+  closed with `1011 Room join failed`) and is retried on the next join or call,
+  rather than latching the room broken.
+
+## Options
+
+| Option                  | Description                                                                                |
+| ----------------------- | ------------------------------------------------------------------------------------------ |
+| `channel`               | Required. The `$channel` whose `path` the room serves and whose schemas type its messages. |
+| `state`                 | `({ roomId }) => state`, may be async. Runs once when the room comes to life.              |
+| `tickHz`                | Ticks per second. Omit (or `0`) for a headless room with no loop.                          |
+| `onJoin`                | `(room, conn)` after a socket is admitted.                                                 |
+| `onMessage`             | `(room, conn, message)` for each valid client message.                                     |
+| `onTick`                | `(room, dt)` on every beat while a socket is connected; `dt` in milliseconds.              |
+| `onLeave`               | `(room, conn)` when a socket closes.                                                       |
+| `onEmpty`               | `(room)` when the last socket has left, before the state is discarded.                     |
+| `methods`               | Server-side functions `(room, ...args)`, reached through `call(roomId, name, ...args)`.    |
+| `secure`                | `true` to require a signed-in user. See [Admission](#admission).                           |
+| `authorize`             | Machine admission hook returning the room to join. See [Admission](#admission).            |
+| `maxConnectionsPerUser` | Cap on one user's sockets. See [Admission](#admission).                                    |
+
+## Headless coordinators and presence (`methods`)
+
+Omit `tickHz` and the room is **headless**: no loop, no sockets required,
+addressed by id and reached through server-side `methods`. This models
+cross-room shared state and single-owner leases - reached from another room, an
+HTTP action, or anywhere on the server.
+
+```typescript
+// partySchema: any z.object() / union message schema
+class Party {
+  channel = $channel({
+    path: "/ws/party",
+    schema: { in: partySchema, out: partySchema },
+  });
+
+  session = $room({
+    channel: this.channel,
+    state: () => ({ switches: {} as Record<string, boolean> }),
+    methods: {
+      setSwitch: (room, id: string, v: boolean) => {
+        room.state.switches[id] = v;
+      },
+      snapshot: (room) => room.state.switches,
+    },
+  });
+
+  async flip(partyId: string, id: string) {
+    await this.session.call(partyId, "setSwitch", id, true); // one room, by id
+    await this.session.broadcast(partyId, { type: "state-changed" });
+  }
+}
+```
+
+On Cloudflare `call()` is a Durable Object RPC; on Node it is a direct in-process
+call. Either way the room comes to life lazily on its first call. `call()`
+resolves `Promise<unknown>`: the method's return type is not carried through, so
+cast what you read back. Calling a method the room does not declare throws an
+`AlephaError` (`Room method '...' is not defined on this room.`). The primitive's
+`broadcast(roomId, msg, { exceptConnectionIds })` reaches the sockets of one
+live room and is a no-op when that room holds none.
+
+## Admission
+
+`$room` takes the same admission options as `$websocket` (see
+[Authentication](/docs/guides-realtime-websocket#authentication)): `secure: true`
+to require a signed-in user, `maxConnectionsPerUser` to cap their sockets, or an
+`authorize` hook whose returned `roomId` is the room the socket joins. `secure`
+and `authorize` together are refused at registration.
+
+## Mapping a sharded game server onto `$room`
+
+A cooperative RPG on Workers has three kinds of authoritative object. All
+three are one `$room`:
+
+| Game object                                                            | `$room` shape                                                          | addressed by    |
+| ---------------------------------------------------------------------- | ---------------------------------------------------------------------- | --------------- |
+| **World** (the 20Hz simulation of one map)                             | `tickHz: 20`, `state: () => new World()`, `onTick` steps + streams AOI | `partyId:mapId` |
+| **Session coordinator** (party-wide switches/variables, chat, victory) | headless, `methods` mutate + snapshot, `broadcast` pushes to rooms     | `partyId`       |
+| **Presence lease** (single-owner hero connection + epoch)              | headless, `methods` acquire/renew/release                              | `heroId`        |
+
+The pure simulation (`step()`, reconciliation, the wire protocol) stays in your
+own runtime-free package and is called from `onTick`/`onMessage` - Alepha never
+touches it.
+
+## Node vs Cloudflare: what differs
+
+|                      | Node (VPS)          | Cloudflare                                            |
+| -------------------- | ------------------- | ----------------------------------------------------- |
+| Room instance        | object in a `Map`   | one Durable Object per `channel:room`                 |
+| Tick loop            | `setInterval`       | `setInterval` inside the DO; restarted after recovery |
+| `state` in memory    | one process, shared | volatile per-engine; reset on recreation              |
+| Coordinator `call()` | direct method call  | DO-to-DO RPC                                          |
+| Transactions         | full SQL            | D1 has no multi-statement transactions                |
+
+On a single VPS a coordinator/lease is a headless room in the same process.
+On Cloudflare it is a Durable Object host, but its `state` is still ordinary
+in-memory state. A process restart or native host recreation loses that state.
+An active tick loop does not provide persistence.
+
+Persist important changes through a repository or
+[`$actor`](/docs/guides-persistence-actors) as they happen in a method or callback.
+Room methods and callbacks can await actor calls; actor reducers themselves must
+remain pure and synchronous. `onEmpty` runs for the normal empty-room lifecycle;
+it is not a guaranteed callback before eviction, reset or process failure.
+
+**Watchdog.** On Cloudflare the existing Durable Object alarm runs about every
+10 seconds while the room holds sockets. After recreation it rehydrates accepted
+sockets the fresh engine has forgotten and restarts the tick loop. Connection
+attachments preserve the connection id, user id, room and query metadata; neither
+`room.state` nor `conn.data` is restored. Connectivity recovery is separate from
+application-state recovery. Headless room methods also create a fresh engine on
+their first call after recreation.
+
+Actor and WebSocket hosts share runtime resolution, namespace lookup and startup
+coordination. They keep separate state and the existing WebSocket class, binding
+and `channelPath:roomId` identities. See
+[namespace provisioning](/docs/guides-persistence-actors#build-and-namespace-provisioning)
+for declarative exports, explicit legacy history and prebuilt deployment.

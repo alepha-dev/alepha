@@ -85,7 +85,7 @@ const AdminSection = () => {
               on <code>init</code> and this is already there. Turn on a module
               and its screens appear on their own:{" "}
               <DocLink to="packages-alepha-api-users">users</DocLink>,{" "}
-              <DocLink to="guides-server-authentication">sessions</DocLink>,{" "}
+              <DocLink to="guides-security-authentication">sessions</DocLink>,{" "}
               <DocLink to="packages-alepha-api-keys">API keys</DocLink>,{" "}
               <DocLink to="packages-alepha-api-jobs">jobs</DocLink>,{" "}
               <DocLink to="packages-alepha-api-notifications">

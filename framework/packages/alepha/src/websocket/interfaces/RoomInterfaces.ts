@@ -36,7 +36,7 @@ export interface RoomSocket {
    */
   readonly userId?: string;
   /**
-   * The upgrade URL's query parameters, verbatim (first value per key). The
+   * The upgrade URL's query parameters, verbatim (last value per key). The
    * roomId is already extracted from these, but an application may carry extra
    * identity hints here (e.g. lindocara's `?hero=` beside `?roomId=`) that its
    * `onJoin` re-validates server-side. Untrusted client input by definition —

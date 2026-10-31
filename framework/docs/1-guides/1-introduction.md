@@ -29,6 +29,24 @@ Each layer builds on the previous.
 Not all layers are required. Foundation alone is enough for CLI tools. Add Backend for APIs,
 Frontend for web apps, Platform for users and background jobs.
 
+The same picture, from your code down to the runtime:
+
+```mermaid
+flowchart TD
+  A["Your classes<br/>declare $ primitives"] --> C["Alepha container<br/>DI, lifecycle, env, modules"]
+  C --> H["HTTP<br/>$route, $action"]
+  C --> D["Data<br/>$entity, $repository, $storage"]
+  C --> J["Async<br/>$job, $topic, $cache"]
+  C --> R["React SSR<br/>$page"]
+  H & D & J & R --> P["Providers chosen for the runtime"]
+  P --> N["Node.js 24+"]
+  P --> B["Bun"]
+  P --> W["Cloudflare Workers"]
+```
+
+Your code only talks to primitives. Which HTTP server, database driver or queue
+sits underneath is the provider the container binds for the runtime it starts on.
+
 ## Why Alepha in 2026?
 
 The way software gets built has changed. AI assistants write large portions of application code.
@@ -49,6 +67,12 @@ no decorator metadata.
 An AI assistant reading this code knows exactly what it does:
 
 ```typescript
+import { z } from "alepha";
+import { $repository } from "alepha/orm";
+import { $action } from "alepha/server";
+
+import { orderEntity } from "./orderEntity.ts";
+
 class OrderService {
   orders = $repository(orderEntity);
 
@@ -73,7 +97,8 @@ AI assistants can consume it to understand the full API surface and generate cor
 ### Multi-runtime, zero configuration
 
 Alepha detects the runtime at startup and swaps providers automatically. The same code runs on
-Node.js, Bun, and Cloudflare Workers without conditional imports or platform-specific build steps.
+Node.js, Bun, and Cloudflare Workers without conditional imports: the only runtime-specific step
+is choosing the build target (`alepha build --runtime=...`, see below).
 
 ```typescript filename="src/main.ts"
 import { run } from "alepha";
@@ -102,7 +127,8 @@ Alepha uses **Zod** as the single source of truth, imported as `z` from `alepha`
 from `zod` directly - the framework's `z` carries its defaults and extra formats.
 
 - `$entity` uses the schema to create the database table.
-- `$action` uses the same schema to validate the HTTP request and generate OpenAPI docs.
+- `$action` uses the same schema to validate the HTTP request and a JSON response, and to describe
+  the endpoint in OpenAPI once you add the [OpenAPI module](/docs/guides-server-openapi).
 - `$page` uses the same schema to type your React component props.
 
 Data flows from your database to your React component without ever losing its type information or
@@ -170,10 +196,10 @@ Declarations like `$job({ cron })` automatically map to native platform formats 
 `alepha build` produces a self-contained `dist/` folder. The build system supports multiple targets:
 
 ```bash
-alepha build                         # Default: Node.js
+alepha build                       # Default: Node.js
 alepha build --runtime=workerd     # Adapts to Cloudflare Workers
-alepha build --runtime=static         # Static site generation
-alepha build --runtime=bun           # Bun runtime
+alepha build --runtime=static      # Static site generation
+alepha build --runtime=bun         # Bun runtime
 ```
 
 You can run the output directly:

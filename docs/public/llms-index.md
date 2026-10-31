@@ -320,4 +320,6 @@ React hooks:
 
 Every page listed below is plain markdown: the HTML page at `https://alepha.dev/docs/<slug>` is served as markdown at `https://alepha.dev/docs/<slug>.md`. Fetch only the pages you need.
 
+Each section of the guides and of the CLI opens with an `llms-full.txt`: all of its pages in one file, for when you need the whole topic. A page listed directly under Guides or CLI, outside any section, has none. The reference and package pages are too many to list here; each kind has its own index, linked under "API reference" at the end.
+
 - [Examples](https://github.com/alepha-dev/alepha/tree/main/framework/apps): Example applications

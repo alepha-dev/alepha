@@ -205,8 +205,9 @@ export class InfraOrchestrator {
     // deploy served with none at all, and it removes the second version
     // every `up` used to publish.
     //
-    // `secrets` stays after `deploy` for adapters that still push separately
-    // (Bay), where the target has to exist first.
+    // `secrets` stays after `deploy` for an adapter that pushes separately,
+    // where the target has to exist first. Bay's step is empty: its secrets
+    // ride along with the artifact.
     const url = await adapter.deploy(ctx, run);
     await adapter.secrets(ctx, run);
 

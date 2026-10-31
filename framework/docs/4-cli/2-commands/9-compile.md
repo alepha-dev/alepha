@@ -27,7 +27,7 @@ When Node gains the same capability, the command switches which slice it picks a
 
 ## It consumes `dist/`
 
-`server/` and `public/` are removed once the binary carries them, and so is **every** slice's entry wrapper, read from the manifest. `manifest.json` and `migrations/` stay:
+`server/` and `public/` are removed once the binary carries them, and so is **every** slice's entry wrapper, read from the manifest. `manifest.json` stays, and the project's `migrations/` is copied in beside the binary:
 
 ```txt
 dist/
@@ -46,9 +46,9 @@ It never unpacks an archive. If you have one, unpack it first.
 
 | Flag             | Description                                                                                                                                                                                            |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `--output`, `-o` | File name of the binary inside `dist/` (default: `app`)                                                                                                                                                |
+| `--output`, `-o` | File name of the binary inside `dist/` (default: `app`). Lowercase letters, digits, `.`, `_` and `-`, starting with a letter or a digit                                                                |
 | `--target`       | Bun target triple, e.g. `bun-linux-arm64-musl` (default: this machine)                                                                                                                                 |
-| `--minify`       | Minify the compiled output (default: on)                                                                                                                                                               |
+| `--minify`       | Minify the compiled output (default: on); `--no-minify` turns it off                                                                                                                                   |
 | `--desktop`      | Build a native macOS app, `dist/<name>.app`, from the top-level `desktop` config. Needs `@alepha/desktop`; macOS only, for this Mac's architecture. See [Desktop App](/docs/guides-deployment-desktop) |
 
 ⚠️ There is no `compile:` config key. Three settings, all flags (`--desktop` reads the top-level `desktop` key, and nothing else does): a key nobody sets is worse than three flags, and `alepha image` drives the triple itself rather than reading one from config.

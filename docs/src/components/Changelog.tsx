@@ -33,7 +33,7 @@ export interface ChangelogProps {
 const RELEASE_LIMIT = 10;
 
 const CHANGELOG_URL =
-  "https://github.com/alepha-dev/alepha/blob/main/CHANGELOG.md";
+  "https://github.com/alepha-dev/alepha/blob/main/framework/CHANGELOG.md";
 
 /**
  * The recent release history on one route, every release open.

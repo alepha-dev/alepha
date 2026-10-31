@@ -88,6 +88,15 @@ const mod = $module({
 
 A `register` function adds custom logic - conditional providers, atom seeding, environment checks - but it never suppresses auto-registration: `services` are always injected. The ordering guarantee is: `atoms` are registered, then `register()` runs, then `imports` are wired, then `services` are injected - so substitutions recorded in `register()` (e.g. `alepha.with({ provide, use })`) apply to the subsequent auto-injection.
 
+```mermaid
+flowchart LR
+  W["alepha.with(MyModule)"] --> A[register atoms]
+  A --> R["run register(alepha)"]
+  R --> I[wire imports]
+  I --> S[inject services]
+  S --> L[container locks after the start hooks]
+```
+
 ```typescript
 const mod = $module({
   name: "my.module",
@@ -100,7 +109,7 @@ const mod = $module({
 });
 ```
 
-Services listed in `variants` are _not_ auto-registered - they're opt-in implementations the user wires explicitly with `alepha.with(...)` (e.g. a transport choice).
+Services listed in `variants` are _not_ auto-registered - they're opt-in implementations the user wires explicitly with `alepha.with(...)` (e.g. a transport choice), or that exist only once something injects them. They still belong to the module (its name in logs, its `LOG_LEVEL` prefix). `alepha/crypto` declares `SecretProvider` this way, so an app that signs nothing never has to set `APP_SECRET`.
 
 ## Module Dependencies
 

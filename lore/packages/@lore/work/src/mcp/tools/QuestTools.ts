@@ -1238,7 +1238,7 @@ export class QuestTools {
    */
   quest_delete = $tool({
     description:
-      "Permanently delete a quest. Use this to clean up mistakenly-created quests. Only the quest creator or project owner can delete. Cannot be undone. Refused inside an 'in_progress' or 'completed' epic, whose quest set is frozen: a quest that will not be done there is shelved (quest_shelve), which keeps the record that it was specified and declined.",
+      "Permanently delete a quest. Use this to clean up mistakenly-created quests. Only the quest creator, or someone whose rank grants `quest:delete` (the Member rank does by default), can delete. Cannot be undone. Refused inside an 'in_progress' or 'completed' epic, whose quest set is frozen: a quest that will not be done there is shelved (quest_shelve), which keeps the record that it was specified and declined.",
     title: "Delete quest",
     annotations: {
       destructiveHint: true,

@@ -1,0 +1,417 @@
+# Cloudflare Workers Deployment
+
+A `workerd` runtime slice generates a Cloudflare Workers bundle with a `wrangler.jsonc` configuration.
+
+## Build
+
+```bash
+alepha build --runtime=workerd
+```
+
+Declaring a `workerd` slice is what asks for the Cloudflare deploy config: `wrangler.jsonc` and the Worker entry point are written because the build produced a slice only Cloudflare can run.
+
+A build may carry other slices beside it. `alepha build --runtime workerd,node` produces one `dist/` holding both, and the Worker upload takes only the workerd one.
+
+## Credentials
+
+`alepha deploy` talks to the Cloudflare API directly. It takes its credential from the first source that has one:
+
+1. **`CLOUDFLARE_API_TOKEN`**, an API token with Workers, D1, R2, KV and Queues permissions. Used as is: Wrangler is neither run nor installed. This is the CI path.
+2. **An existing `wrangler login`**, read once per run with `wrangler auth token`.
+3. **A new `wrangler login`**, started automatically, but only in an interactive terminal. Off a terminal (CI, a pipe) with no token, the deploy fails and names `CLOUDFLARE_API_TOKEN` instead of opening a browser nobody can reach.
+
+Each run logs which source it used, never the token. The account is the environment's `accountId` option, else `CLOUDFLARE_ACCOUNT_ID`, else the only account the token can see (set one of the first two when it sees several).
+
+Wrangler is kept for the interactive login only, because Cloudflare opens its OAuth device flow to its own clients alone. Log in ahead of time, or from an SSH session or a container with no browser:
+
+```bash
+alepha infra login --env production
+alepha infra login --env production --device
+```
+
+`--device` prints a code to enter on another machine (`wrangler login --device`, Wrangler 4.119.0 or later). `alepha infra logout --env production` discards the stored login. With `CLOUDFLARE_API_TOKEN` set, none of this is needed, and no command runs Wrangler.
+
+`CLOUDFLARE_ANALYTICS_TOKEN` is **not** a deploy credential - it is the optional, app-runtime Analytics Engine read token (scope: Account Analytics · Read). It is deliberately named differently from `CLOUDFLARE_API_TOKEN`: that name is the deploy credential, so putting a read-only token there makes every provisioning call fail with an authentication error.
+
+## Deploy
+
+The recommended path is the [infra plugin](/docs/cli-plugins-infra), which provisions resources, builds, migrates, deploys, and pushes secrets in one command:
+
+```bash
+alepha deploy
+```
+
+`alepha deploy` authenticates (see above), then provisions, builds, migrates, deploys and handles secrets. Plain `alepha build --runtime workerd` needs no cloud credentials; `alepha infra build` may look up existing resource bindings.
+
+The upload goes through the Cloudflare API, not `wrangler deploy`: the script, its bindings, its secrets and its static assets are one Worker version. **Secrets add, they do not replace.** A secret the environment no longer declares, or one set by hand in the dashboard or with `wrangler secret put`, stays on the Worker: Cloudflare carries it over to each new version. Each deploy names those secrets in a warning; delete one with `wrangler secret delete <name>` or in the dashboard.
+
+To deploy a build manually instead:
+
+```bash
+alepha build --runtime=workerd
+cd dist && wrangler deploy
+```
+
+## Local Testing
+
+Test the Worker locally before deploying:
+
+```bash
+wrangler dev --config=dist/wrangler.jsonc
+```
+
+## Generated Configuration
+
+The build produces:
+
+- `dist/wrangler.jsonc`: Wrangler configuration with worker name, compatibility flags, and bindings
+- `dist/main.cloudflare.js`: Worker entry point that bootstraps Alepha and handles `fetch`, `scheduled`, and `queue` events
+- `dist/index.workerd.js` and `dist/server/workerd/`: the workerd slice it imports. The upload rules match only these, so a `node` slice in the same `dist/` never reaches the Worker
+
+The `wrangler.jsonc` sets `compatibility_date` `2025-11-17`, the `nodejs_compat` compatibility flag and `no_bundle: true` (Alepha bundles the code itself).
+
+Each binding is written from what the build finds: an environment variable present at build time, or a module the app registers. `alepha deploy` sets the variables from the resources it provisioned; a manual build needs them in its environment or `.env.<mode>`.
+
+| Build-time source                        | Binding in `wrangler.jsonc`                                     |
+| ---------------------------------------- | --------------------------------------------------------------- |
+| `DATABASE_URL=d1://<name>:<id>`          | D1 database `DB`                                                |
+| `HYPERDRIVE_ID`                          | Hyperdrive `HYPERDRIVE`, and `DATABASE_URL` pointed at it       |
+| `R2_BUCKET_NAME`                         | R2 bucket, bound under the bucket's name                        |
+| `CLOUDFLARE_KV_NAME`, `CLOUDFLARE_KV_ID` | KV namespace `KV_CACHE`                                         |
+| `CLOUDFLARE_QUEUE_NAME`                  | Queue producer `JOBS_QUEUE`, its consumer and dead-letter queue |
+| `CLOUDFLARE_EMAIL_EVENTS_QUEUE`          | A consumer only, for Email Sending events                       |
+| `CLOUDFLARE_ANALYTICS_DATASET`           | Analytics Engine dataset `ANALYTICS`                            |
+| `$job({ cron })`                         | Cron Triggers                                                   |
+| the Cloudflare email provider            | `send_email` binding `SEND_EMAIL`                               |
+| `alepha/ai/cloudflare`                   | Workers AI binding `AI`                                         |
+| `$websocket`, `$room`, `$actor`          | Durable Objects (see below)                                     |
+| a client build in `dist/public/`         | Static assets `ASSETS`                                          |
+
+## SQLite D1
+
+Use Cloudflare D1 for the database. Set the `DATABASE_URL` in `.env.production`:
+
+```bash
+DATABASE_URL=d1://my-database:00000000-0000-0000-0000-000000000000
+```
+
+Format: `d1://<database-name>:<database-id>`
+
+The build automatically adds the D1 binding to `wrangler.jsonc` (the binding is always named `DB`), and rewrites the deployed `DATABASE_URL` to reference it:
+
+```json
+{
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "my-database",
+      "database_id": "00000000-0000-0000-0000-000000000000"
+    }
+  ],
+  "vars": { "DATABASE_URL": "d1://DB" }
+}
+```
+
+### Query timeouts
+
+A D1 query has no client-side deadline of its own, so a slow one occupies the
+Worker until the platform kills the whole invocation. Two variables bound it:
+
+| Variable                 | Values                     | Default                             |
+| ------------------------ | -------------------------- | ----------------------------------- |
+| `DATABASE_TIMEOUT`       | milliseconds, `0` disables | `5000` on serverless, off elsewhere |
+| `DATABASE_TIMEOUT_SCOPE` | `all`, `reads`             | `all`                               |
+
+Every driver reads them, not only D1, and a statement's own `timeout` option
+wins over them. The budget is on by default on serverless because that is where
+an unbounded query costs an invocation rather than a connection. D1 cannot
+abort a statement: a timed-out one is abandoned and finishes on its own. `reads` narrows it to
+statements that only read, for an app that would rather a long write finish
+than be abandoned halfway.
+
+### Read replication
+
+D1 can serve reads from regional replicas, which lowers read latency for users
+far from the primary. It does nothing unless the code opens a **session**:
+without `withSession`, every query goes to the primary whatever the dashboard
+says.
+
+```bash
+DATABASE_D1_MODE=sessions   # 'primary' is the default
+```
+
+**⚠️ This is a latency and throughput feature, not an availability one.** A
+replica may happen to answer while the primary is busy, but Cloudflare
+documents no such guarantee, and it must not be relied on as one. If the
+primary is down, treat the database as down.
+
+**The consistency model, and the one thing to understand.** A session is
+anchored to a _bookmark_: a position in the database's history. Reads inside
+a session see everything up to that bookmark, so within one session you always
+read your own writes. Across requests the bookmark has to travel, or a user
+who just created something can be served by a replica that has not caught up
+and the write appears to have vanished.
+
+Alepha carries it for you, in a cookie:
+
+```
+set-cookie: alepha_d1_bookmark=<bookmark>; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=600
+```
+
+A cookie rather than a header because the browser returns it with no
+client-side code. An API client that does not keep cookies gets a fresh
+session per request, which is correct but forfeits read-your-writes across
+calls - send the cookie back yourself if that matters.
+
+**A request that can write reads from the primary.** Any method other than
+`GET`, `HEAD` or `OPTIONS` opens its session on `first-primary`, whatever
+bookmark it carries. Without that, a client with no cookie (an MCP agent, an
+API key, a CLI) could have its second call read a replica that missed its
+first write, and a handler that loads a row and saves it back would restore
+the stale copy over that write. The one exception is `POST /api/_batch`: the
+browser coalesces a page load's reads into it and always sends its bookmark,
+so it keeps the bookmark and its replicas.
+
+The cost: every MCP call is a `POST`, read-only tools included, so all MCP
+traffic reads from the primary.
+
+Two consequences worth knowing before switching it on:
+
+- **A response that sets the bookmark cookie is not edge-cacheable.** Alepha
+  decides cacheability before attaching the cookie, and the two are mutually
+  exclusive: a shared public response cannot depend on one caller's read
+  position.
+- **The default is `primary`, deliberately.** It changes consistency
+  semantics, and a bookmark-propagation bug surfaces as stale reads, which is
+  an unpleasant class of bug to chase. Turn it on for an app whose users are
+  spread across regions, and leave it off for one whose primary already sits
+  next to its traffic.
+
+Enabling replication on the database itself is a separate, one-time action in
+the Cloudflare dashboard. Setting `DATABASE_D1_MODE=sessions` without it, or
+enabling it without the flag, changes nothing on its own.
+
+## R2 Buckets
+
+The R2 binding is added to `wrangler.jsonc` when `R2_BUCKET_NAME` is set at build time - the infra plugin sets it automatically when your app declares any `$storage`; for a manual build, set it yourself in the environment. R2 keys every object as `{prefix}/{tenantId}/{storage}/{fileId}` inside that one bucket - a storage is a prefix, not a bucket of its own. The leading prefix comes from `S3_KEY_PREFIX`, falling back to `alepha.name` (`APP_NAME`, else the build's app name), never the bucket root.
+
+## Cron Triggers
+
+`$job({ cron })` expressions are detected at build time and mapped to Cloudflare Cron Triggers in `wrangler.jsonc`:
+
+```json
+{
+  "triggers": {
+    "crons": ["0 * * * *", "0 0 * * *"]
+  }
+}
+```
+
+The Worker's `scheduled` handler dispatches the `cloudflare:scheduled` event, which Alepha routes to the matching `$job` handler.
+
+Expressions are **deduplicated**, so what costs you a Cron Trigger is the number
+of _distinct_ expressions, not the number of jobs. Jobs sharing an expression
+all run in the same invocation. The framework's own sweeps default to
+`*/15 * * * *` for this reason - see
+[Sweeps owned by other modules](/docs/guides-features-background-jobs) for the atoms
+that tune them, and prefer aligning a new `$job` with an expression already in
+use over introducing a sixth one.
+
+⚠️ **Cron Triggers are capped per ACCOUNT, not per Worker**: 5 on the free plan,
+250 on paid. Two Alepha apps on one free account can exceed it between them
+before either declares a `$job` of its own.
+
+A cron's CPU budget also depends on its interval: **30 seconds under an hourly
+interval, 15 minutes at or above.** Wall clock is 15 minutes either way. The
+default `*/15 * * * *` sweep sits on the 30-second side, which is deliberate -
+measured p99 is 58 ms against it, and raising the interval to collect the
+larger tier would make crash recovery four times slower for a budget that is
+500x from binding.
+
+## Build with Mode
+
+Use `--mode` to control which `.env` file is loaded:
+
+```bash
+alepha build --runtime=workerd --mode production
+```
+
+This loads `.env` and `.env.production` before building.
+
+## WebSockets and Rooms
+
+Apps registering `$websocket` or `$room` primitives get their realtime wiring automatically - the two are treated identically, so a rooms-only app needs no extra configuration:
+
+- the worker entry gets a WebSocket upgrade branch routing each registered channel path to a Durable Object
+- `wrangler.jsonc` gets the `ALEPHA_WEBSOCKET` Durable Object binding and its SQLite migration (skipped if your own `build.cloudflare.config.migrations` already declares `AlephaWebSocketDurableObject`; otherwise the first free `v<n>` tag is used)
+- the server bundle re-exports the `AlephaWebSocketDurableObject` class so wrangler can resolve it
+- `secure: true` on either primitive rejects unauthenticated upgrades with a 401
+
+## Actors and Rate Limits
+
+Apps that declare an `$actor` get the `ALEPHA_ACTOR` Durable Object automatically,
+and that includes every app using `alepha/api/users` or a `$rateLimit`: login, MFA,
+registration and password-reset limits are actors.
+
+- `wrangler.jsonc` gets the `ALEPHA_ACTOR` binding and the `AlephaActorDurableObject`
+  class (declarative exports, or a migration step on the legacy path)
+- the server bundle re-exports `AlephaActorDurableObject` from `alepha/actor`
+- each actor identity, each counter key for a limiter, is its own instance, with
+  SQLite storage; expired counters delete themselves through the instance's alarm
+
+An app that already deployed without actors adds the class on its first deploy after
+the upgrade. Nothing has to be declared by hand, and an app that also runs
+WebSockets keeps `ALEPHA_WEBSOCKET` beside it.
+
+## Static Assets
+
+If your project has a React frontend, the built client assets are placed in `dist/public/` and served via Cloudflare's asset binding.
+
+Cloudflare compresses assets at the edge and never serves a `.br` file in place of the original, so a build whose only slice is `workerd` writes no brotli copies. A `--runtime node,workerd` build keeps them, for the node slice that does serve them; the Worker uploads them unused. [`_headers`](/docs/guides-deployment-headers) is applied by Cloudflare as written.
+
+## Page cache at the edge
+
+Server-rendered pages that read nothing about their visitor are cached automatically (see [Page cache](/docs/guides-frontend-page-cache)). On Workers the cache has three tiers:
+
+- **The isolate** keeps a bounded in-memory copy, as on Node.
+- **`caches.default`** keeps the page's shared part, so any isolate of the same data centre can answer from it. A signed-in visitor still boots the app, which skips the loaders and the render and appends the visitor's own hydration script.
+- **Before the app boots**, the generated worker answers a request with no cookie, no `Authorization` header and no query string from a whole stored response, the same for every such visitor. That is what saves the cold-start cost (700 ms to 1 s) on anonymous traffic. The key is the URL, the build and the language, resolved by the same function the app uses (`Accept-Language` against your dictionaries, or the URL prefix with `routing: "prefix"`; prefix routing with `routingExclude` turns this tier off).
+
+`caches.default` belongs to one Cloudflare data centre, and so does a delete. So every entry lives **60 seconds at most** on Workers, whatever the page's own lifetime, and an invalidation (`invalidatedBy`, `page.invalidate()`) takes effect at once in the data centre that ran the write and within 60 seconds everywhere else. A page cache hit leaves the visitor's D1 bookmark cookie as it was: it ran no query, so it has nothing to hand back.
+
+## Queue
+
+`$job` dispatch can travel through [Cloudflare Queues](https://developers.cloudflare.com/queues/). Register `AlephaApiJobsQueue` and `alepha deploy` provisions a queue and its `<queue>-dlq`, and the build adds the `JOBS_QUEUE` binding, the `queue` consumer and the dead-letter queue to `wrangler.jsonc`. A manual build adds them when `CLOUDFLARE_QUEUE_NAME` is set:
+
+| Variable                       | Default       | Effect                                               |
+| ------------------------------ | ------------- | ---------------------------------------------------- |
+| `CLOUDFLARE_QUEUE_NAME`        | none          | The queue. Without it, no queue binding is written   |
+| `CLOUDFLARE_QUEUE_DLQ_NAME`    | `<queue>-dlq` | The dead-letter queue                                |
+| `CLOUDFLARE_QUEUE_MAX_RETRIES` | `3`           | Deliveries before a message goes to the dead letters |
+
+At runtime, `CloudflareQueueProvider` replaces the default queue provider and `WorkerdWorkerProvider` handles message consumption via push-based `queue` events (no polling). Messages are sent in batches of up to 100 per `sendBatch` call, so a `pushMany()` of 500 jobs costs 5 subrequests rather than 500.
+
+A job is delivered the moment it lands. The consumer is declared with `max_batch_size: 1`: left to Cloudflare's defaults it would hold messages until 10 had arrived or 5 seconds had passed, and a job is one message, so every `push()` would sit out that window before its handler started. It also gives each job its own invocation, with its own CPU and wall-clock budget. Where a batch does hold several messages - the email-events consumer keeps the default batching - the Worker's `queue` handler runs them concurrently, and each one acks or retries on its own.
+
+A `$job` handler that throws is caught and recorded by `JobProvider`, so it acks and retries through the outbox sweep. Only infrastructure failures - an undecodable message, an unreachable backend - propagate to `msg.retry()` and eventually land in the dead-letter queue.
+
+⚠️ **The dead-letter queue catches less than its name suggests, and nothing
+consumes it.** Because handler errors are absorbed by `JobProvider`, the DLQ
+only ever collects undecodable envelopes and broker failures - never a failed
+job. Failed jobs live on their outbox row and appear in the admin UI, which is
+where to look. Nothing surfaces the DLQ's depth, so treat a message landing
+there as an infrastructure problem you will have to go looking for.
+
+**Queues are the recommended path for anything long-running or high-volume on
+Cloudflare**, for the reason in the next section: a queue consumer gets 15
+minutes of wall clock, the most generous surface the platform offers, and the
+transport can hold a delayed message so retries land on their backoff instead
+of on the sweep grid.
+
+⚠️ **That buys wall clock, not CPU.** Cloudflare's CPU table has a single
+configurable row, "CPU time per HTTP request", default 30 seconds and capped at
+300,000 ms through `limits.cpu_ms`; nothing grants a queue consumer more. A
+handler that waits on I/O gets the full 15 minutes, because waiting does not
+count as CPU. One that hashes, renders or parses for more than 30 seconds is
+killed as Error 1102 whether or not a queue is bound, so raise `limits.cpu_ms`
+for it and keep it raised after the queue lands:
+
+```jsonc
+// wrangler.jsonc, via alepha.config.ts
+"limits": { "cpu_ms": 300000 }
+```
+
+## Jobs without a queue (direct mode)
+
+By default `$job` falls back to **direct mode** when `AlephaApiJobsQueue` is not
+loaded:
+
+- `push()` writes a row to the outbox table, then schedules the handler
+  in-process so the HTTP response returns immediately.
+- If the worker invocation ends before the handler finishes, the next
+  reconciliation sweep re-dispatches the row.
+
+That is a fine default for low-volume, short work. But on Workers it is **a
+different reliability contract, not just the cheaper option**, and the API
+gives you no hint of the cliff:
+
+- **A job pushed from a request has about 30 seconds of wall clock.** The
+  isolate is kept alive by `executionCtx.waitUntil`, which Cloudflare caps
+  there. A declared `timeout` longer than that is simply unreachable, and the
+  build warns when it sees one.
+- **Crash recovery is derived from the declared timeout**, at twice its value.
+  So a job declaring `timeout: [10, "minute"]` and killed at 30 seconds sits
+  `running` for **twenty minutes** before the sweep will even consider it
+  crashed.
+- **Declaring no `timeout` is not an escape, it is the worse case.** The job is
+  held to the same 30 seconds with nothing in its own code hinting at it, and
+  with no timeout to double, crash recovery falls back to the `runTimeout`
+  config instead: 30 minutes by default. The build warns about these too, in a
+  clause of their own.
+- **Timers do not survive.** A local timer armed after the response never
+  fires, so delayed pushes and retry backoff both degrade to sweep
+  granularity here (see below).
+- **`pushMany` fan-out drips.** Concurrency is bounded, and each slice gets the
+  same 30-second window.
+
+None of this applies on long-running Node, and none of it applies behind a
+queue.
+
+## Retry granularity
+
+`$job` retries use exponential backoff with full jitter. The outbox row's
+`scheduledAt` is the truth and the sweep is the backstop, so nothing is ever
+lost; what differs by runtime is only how soon anything looks at the row.
+
+| Setup                          | Retry lands                       |
+| ------------------------------ | --------------------------------- |
+| Node, either dispatcher        | at the backoff, on a local timer  |
+| Workers + `AlephaApiJobsQueue` | at the backoff, held by the queue |
+| Workers, direct mode           | **at the next `sweepCron` tick**  |
+
+The last row is the residual limit of direct mode on Workers, and it is
+inherent rather than an oversight: there is no in-process way to schedule a
+wake-up once the isolate has frozen. Practically, a retry there can land
+anywhere between a few seconds and ~15 minutes after the failure.
+
+Two ways out, depending on what you need:
+
+- Register `AlephaApiJobsQueue` so the transport can hold the message.
+- For a payload that expires before the next tick - a verification code lives
+  300 seconds while the sweep runs every 900 - use `push(payload, { inline:
+  true })`, which runs the handler in front of the caller and fails terminally
+  instead of retrying something that will arrive stale.
+
+## Limitations
+
+- **Redis** does not run in a Worker: `$lock`, `$cache`, `$topic`, queues and actors use the Cloudflare providers. `REDIS_URL` set on a Worker selects nothing and logs one warning per isolate.
+
+## Configuration
+
+```typescript check
+import { defineConfig } from "alepha/cli/config";
+
+export default defineConfig({
+  build: {
+    runtime: ["workerd"],
+    cloudflare: {
+      config: {
+        // Additional wrangler.jsonc fields merged into the generated config
+      },
+    },
+  },
+});
+```
+
+`build.cloudflare.config` is merged over the generated config. `alepha deploy` sends only the fields its API upload knows: compatibility settings, `vars`, `triggers`, one custom-domain route, `assets` (`not_found_handling`, `run_worker_first`), `observability`, `placement`, `limits`, and the D1, R2, KV, queue, Analytics Engine, `send_email`, Workers AI, service, Hyperdrive and Durable Object bindings. Any other top-level field (`vectorize`, `browser`, `tail_consumers`...), a zone route or a second custom domain fails the deploy by name before anything is uploaded, rather than shipping a Worker without it.
+
+## Full Example
+
+```bash
+# .env.production
+DATABASE_URL=d1://alepha-app:00000000-0000-0000-0000-000000000000
+
+# Build and deploy
+alepha build --runtime=workerd --mode production
+cd dist && wrangler deploy
+```
